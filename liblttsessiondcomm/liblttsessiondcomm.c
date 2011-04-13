@@ -67,27 +67,27 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
  */
 int lttcomm_connect_unix_sock(const char *pathname)
 {
-    struct sockaddr_un sun;
-    int fd;
+	struct sockaddr_un sun;
+	int fd;
 	int ret = 1;
 
-    fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
 		perror("socket");
 		goto error;
 	}
 
-    memset(&sun, 0, sizeof(sun));
-    sun.sun_family = AF_UNIX;
-    strncpy(sun.sun_path, pathname, sizeof(sun.sun_path));
+	memset(&sun, 0, sizeof(sun));
+	sun.sun_family = AF_UNIX;
+	strncpy(sun.sun_path, pathname, sizeof(sun.sun_path));
 
-    ret = connect(fd, (struct sockaddr *) &sun, sizeof(sun));
-    if (ret < 0) {
-        perror("connect");
+	ret = connect(fd, (struct sockaddr *) &sun, sizeof(sun));
+	if (ret < 0) {
+		perror("connect");
 		goto error;
-    }
+	}
 
-    return fd;
+	return fd;
 
 error:
 	return -1;

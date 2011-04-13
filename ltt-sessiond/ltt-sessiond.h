@@ -19,10 +19,15 @@
 #ifndef _LTT_SESSIOND_H
 #define _LTT_SESSIOND_H
 
-const char default_home_dir[] = "/tmp";
-const char default_tracing_group[] = "tracing";
-const char default_ust_sock_dir[] = "/tmp/ust-app-socks";
-const char default_global_apps_pipe[] = "/tmp/ust-app-socks/global";
+#define DEFAULT_HOME_DIR		"/tmp"
+#define DEFAULT_TRACING_GROUP		"/tracing"
+#define DEFAULT_UST_SOCK_DIR		"/tmp/ust-app-socks"
+#define DEFAULT_GLOBAL_APPS_PIPE	"/tmp/ust-app-socks/global"
+
+extern const char default_home_dir[],
+	default_tracing_group[],
+	default_ust_sock_dir[],
+	default_global_apps_pipe[];
 
 /* LTTng trace representation */
 struct ltt_lttng_trace {

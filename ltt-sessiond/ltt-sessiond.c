@@ -39,6 +39,11 @@
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"
 
+const char default_home_dir[] = DEFAULT_HOME_DIR;
+const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
+const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
+const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
+
 /* Static functions */
 static int set_signal_handler(void);
 static int set_socket_perms(void);
@@ -94,11 +99,11 @@ static void *thread_manage_apps(void *data)
 	struct ltt_traceable_app *lta;
 
 	/* TODO: Something more elegant is needed but fine for now */
-    struct {
+	struct {
 		int reg;	/* 1:register, 0:unregister */
-        pid_t pid;
-        uid_t uid;
-    } reg_msg;
+		pid_t pid;
+		uid_t uid;
+	} reg_msg;
 
 	/* Notify all applications to register */
 	notify_apps(default_global_apps_pipe);
@@ -595,7 +600,7 @@ static const char *get_home_dir(void)
 {
 	const char *home_path;
 
-	if ((home_path = (const char*) getenv("HOME")) == NULL) {
+	if ((home_path = (const char *) getenv("HOME")) == NULL) {
 		home_path = default_home_dir;
 	}
 
@@ -724,6 +729,7 @@ static void sighandler(int sig)
 		case SIGINT:
 		case SIGTERM:
 			cleanup();
+			break;
 		default:
 			break;
 	}

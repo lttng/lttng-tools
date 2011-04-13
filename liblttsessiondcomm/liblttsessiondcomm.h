@@ -39,7 +39,7 @@
 /* Get the error code index from 0 since
  * LTTCOMM_OK start at 1000
  */
-#define LTTCOMM_ERR_INDEX(code) code - LTTCOMM_OK
+#define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_OK)
 
 enum lttcomm_command_type {
 	LTTNG_CREATE_SESSION,
