@@ -1,0 +1,71 @@
+LTTng Trace Control
+----------------
+
+Please visit http://lttng.org for more information.
+
+Latest development can be found at:
+
+	* Gitweb :	http://git.lttng.org/lttng-tools.git/
+	* Git :		git://git.lttng.org/lttng-tools.git
+
+PREREQUISITES:
+
+	- libuuid
+	  Universally unique id library - headers and static libraries libuuid
+	  generates and parses 128-bit universally unique ids (UUIDs). See RFC
+	  4122 for more information.
+
+	  * Debian/Ubuntu package: uuid-dev
+
+	- liburcu
+	  Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
+	  
+	  -> Tested with liburcu >= v0.5.4
+
+	  * Debian/Ubuntu package: liburcu-dev
+	  * Git : git://lttng.org/userspace-rcu.git
+	  * Website:  http://lttng.org/urcu
+
+	- libustctl
+	  LTTng user-space tracer control library
+
+	  Needed for interaction with that tracer.
+
+	- liblttctl
+	  LTTng kernel tracer control library
+
+	  Needed for interaction with that tracer.
+
+INSTALLATION INSTRUCTIONS:
+
+  - Download, compile and install liburcu, libuuid, libustctl and liblttctl
+  - In this package's tree, run ./configure.
+  - Run make.
+  - Run make install.
+  - Run ldconfig.
+
+  If compiling from the git repository, run ./bootstrap before running
+  the configure script, to generate it.
+
+PACKAGE CONTENTS:
+
+	This package contains the following elements:
+
+	- liblttngctl
+	  The LTTng trace control library.
+
+	- liblttsessiondcomm
+	  The ltt-sessiond communication library. In order to talk with ltt-sessiond,
+	  thi library must be used.
+
+	- ltt-sessiond
+	  The LTTng session daemon binary.
+
+	- lttng
+	  The LTTng tracer command line control tool.
+
+	- include
+	  The liblttngctl API header file.
+
+	- tests
+	  Various test programs.
