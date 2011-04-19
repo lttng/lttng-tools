@@ -41,6 +41,8 @@ static char *progname;
 /* Prototypes */
 static int process_client_opt(void);
 static int process_opt_list_apps(void);
+static void sighandler(int sig);
+static int set_signal_handler(void);
 
 /*
  *  start_client
@@ -114,24 +116,147 @@ error:
 }
 
 /*
+ *  spawn_sessiond
+ *
+ *  Spawn a session daemon by forking and execv.
+ */
+static int spawn_sessiond(char *pathname)
+{
+	int ret = 0;
+	pid_t pid;
+
+	MSG("Spawning session daemon");
+	pid = fork();
+	if (pid == 0) {
+		/* Spawn session daemon and tell
+		 * it to signal us when ready.
+		 */
+		ret = execlp(pathname, "ltt-sessiond", "--sig-parent", NULL);
+		if (ret < 0) {
+			if (errno == ENOENT) {
+				ERR("No session daemon found. Use --sessiond-path.");
+			} else {
+				perror("execlp");
+			}
+			kill(getppid(), SIGTERM);
+			exit(EXIT_FAILURE);
+		}
+		exit(EXIT_SUCCESS);
+	} else if (pid > 0) {
+		/* Wait for ltt-sessiond to start */
+		pause();
+		goto end;
+	} else {
+		perror("fork");
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
  *  check_ltt_sessiond
  *
  *  Check if the session daemon is available using
- *  the liblttngctl API for the check.
+ *  the liblttngctl API for the check. If not, try to
+ *  spawn a daemon.
  */
 static int check_ltt_sessiond(void)
 {
 	int ret;
+	char *pathname = NULL;
 
 	ret = lttng_check_session_daemon();
 	if (ret < 0) {
-		ERR("No session daemon found. Aborting.");
+		/* Try command line option path */
+		if (opt_sessiond_path != NULL) {
+			ret = access(opt_sessiond_path, F_OK | X_OK);
+			if (ret < 0) {
+				ERR("No such file: %s", opt_sessiond_path);
+				goto end;
+			}
+			pathname = opt_sessiond_path;
+		} else {
+			/* Try LTTNG_SESSIOND_PATH env variable */
+			pathname = strdup(getenv(LTTNG_SESSIOND_PATH_ENV));
+		}
+
+		/* Let's rock and roll */
+		if (pathname == NULL) {
+			ret = asprintf(&pathname, "ltt-sessiond");
+			if (ret < 0) {
+				goto end;
+			}
+		}
+
+		ret = spawn_sessiond(pathname);
+		free(pathname);
+		if (ret < 0) {
+			ERR("Problem occurs when starting %s", pathname);
+			goto end;
+		}
 	}
 
+end:
 	return ret;
 }
 
+/*
+ *  set_signal_handler
+ *
+ *  Setup signal handler for SIGCHLD and SIGTERM.
+ */
+static int set_signal_handler(void)
+{
+	int ret = 0;
+	struct sigaction sa;
+	sigset_t sigset;
 
+	if ((ret = sigemptyset(&sigset)) < 0) {
+		perror("sigemptyset");
+		goto end;
+	}
+
+	sa.sa_handler = sighandler;
+	sa.sa_mask = sigset;
+	sa.sa_flags = 0;
+	if ((ret = sigaction(SIGCHLD, &sa, NULL)) < 0) {
+		perror("sigaction");
+		goto end;
+	}
+
+	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+		perror("sigaction");
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ *  sighandler
+ *
+ *  Signal handler for the daemon
+ */
+static void sighandler(int sig)
+{
+	DBG("%d received", sig);
+	switch (sig) {
+		case SIGTERM:
+			clean_exit(EXIT_FAILURE);
+			break;
+		case SIGCHLD:
+			/* Notify is done */
+			break;
+		default:
+			break;
+	}
+
+	return;
+}
 /*
  * clean_exit
  */
@@ -142,7 +267,7 @@ void clean_exit(int code)
 }
 
 /*
- * main
+ *  main
  */
 int main(int argc, char *argv[])
 {
@@ -158,6 +283,11 @@ int main(int argc, char *argv[])
 	ret = parse_args(argc, (const char **) argv);
 	if (ret < 0) {
 		return EXIT_FAILURE;
+	}
+
+	ret = set_signal_handler();
+	if (ret < 0) {
+		return ret;
 	}
 
 	if (opt_tracing_group != NULL) {
@@ -177,7 +307,7 @@ int main(int argc, char *argv[])
 	/* Check if the lttng session daemon is running.
 	 * If no, a daemon will be spawned.
 	 */
-	if (check_ltt_sessiond() < 0) {
+	if (opt_no_sessiond == 0 && (check_ltt_sessiond() < 0)) {
 		return EXIT_FAILURE;
 	}
 

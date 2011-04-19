@@ -69,8 +69,10 @@ static struct ltt_session *find_session(uuid_t);
 /* Variables */
 const char *progname;
 const char *opt_tracing_group;
+static int opt_sig_parent;
 static int opt_daemon;
 static int is_root;			/* Set to 1 if the daemon is running as root */
+static pid_t ppid;
 
 static char apps_unix_sock_path[PATH_MAX];			/* Global application Unix socket path */
 static char client_unix_sock_path[PATH_MAX];		/* Global client Unix socket path */
@@ -183,6 +185,13 @@ static void *thread_manage_clients(void *data)
 	ret = lttcomm_listen_unix_sock(client_socket);
 	if (ret < 0) {
 		goto error;
+	}
+
+	/* Notify parent pid that we are ready
+	 * to accept command for client side.
+	 */
+	if (opt_sig_parent) {
+		kill(ppid, SIGCHLD);
 	}
 
 	while (1) {
@@ -511,7 +520,8 @@ static void usage(void)
 			"\t-a, --apps-sock PATH\t\tSpecify path for apps unix socket.\n"
 			"\t-d, --daemonize\t\tStart as a daemon.\n"
 			"\t-g, --group NAME\t\tSpecify the tracing group name. (default: tracing)\n"
-			"\t-V, --version\t\tShow version number.\n",
+			"\t-V, --version\t\tShow version number.\n"
+			"\t-S, --sig-parent\t\tSend SIGCHLD to parent pid to notify readiness.\n",
 			progname);
 }
 
@@ -526,6 +536,7 @@ static int parse_args(int argc, char **argv)
 		{ "client-sock", 1, 0, 'c' },
 		{ "apps-sock", 1, 0, 'a' },
 		{ "daemonize", 0, 0, 'd' },
+		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
 		{ "group", 1, 0, 'g' },
 		{ "version", 0, 0, 'V' },
@@ -534,7 +545,7 @@ static int parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhV" "a:c:g:s:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhVS" "a:c:g:s:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -564,6 +575,9 @@ static int parse_args(int argc, char **argv)
 		case 'V':
 			fprintf(stdout, "%s\n", VERSION);
 			exit(EXIT_SUCCESS);
+		case 'S':
+			opt_sig_parent = 1;
+			break;
 		default:
 			/* Unknown option or other error.
 			 * Error is printed by getopt, just return */
@@ -872,6 +886,11 @@ int main(int argc, char **argv)
 	/* Set credentials to socket */
 	if (is_root && (set_socket_perms() < 0)) {
 		goto error;
+	}
+
+	/* Get parent pid if -S, --sig-parent is specified. */
+	if (opt_sig_parent) {
+		ppid = getppid();
 	}
 
 	while (1) {

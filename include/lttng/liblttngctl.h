@@ -19,7 +19,14 @@
 #ifndef _LIBLTTNGCTL_H
 #define _LIBLTTNGCTL_H
 
+/* Default unix group name for tracing.
+ */
 #define DEFAULT_TRACING_GROUP "tracing"
+
+/* Environment variable to set session daemon
+ * binary path.
+ */
+#define LTTNG_SESSIOND_PATH_ENV "LTTNG_SESSIOND_PATH"
 
 /* 
  * From libuuid
