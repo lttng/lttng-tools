@@ -56,14 +56,12 @@ static int process_client_opt(void)
 	/* Connect to the session daemon */
 	ret = lttng_connect_sessiond();
 	if (ret < 0) {
-		ERR("%s", lttng_get_readable_code(ret));
 		goto end;
 	}
 
 	if (opt_list_apps) {
 		ret = process_opt_list_apps();
 		if (ret < 0) {
-			ERR("%s", lttng_get_readable_code(ret));
 			goto end;
 		}
 	}
@@ -71,6 +69,7 @@ static int process_client_opt(void)
 	return 0;
 
 end:
+	ERR("%s", lttng_get_readable_code(ret));
 	return ret;
 }
 
