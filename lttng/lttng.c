@@ -105,6 +105,9 @@ static int process_opt_list_apps(void)
 		fclose(fp);
 	}
 
+	/* Allocated by lttng_ust_list_apps() */
+	free(pids);
+
 	return 0;
 
 error:

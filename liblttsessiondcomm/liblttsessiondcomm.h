@@ -31,11 +31,6 @@
 /* Queue size of listen(2) */
 #define MAX_LISTEN 10
 
-/* Maximum amount of PID the list_apps command
- * can send back to the lttng client.
- */
-#define MAX_APPS_PID 20
-
 /* Get the error code index from 0 since
  * LTTCOMM_OK start at 1000
  */
@@ -78,6 +73,7 @@ enum lttcomm_return_code {
 	LTTCOMM_SESSION_FAIL,	/* Create session fail */
 	LTTCOMM_START_FAIL,		/* Start tracing fail */
 	LTTCOMM_LIST_FAIL,		/* Listing apps fail */
+	LTTCOMM_NO_APPS,		/* No traceable application */
 	LTTCOMM_NR,				/* Last element */
 };
 
@@ -126,11 +122,15 @@ struct lttcomm_lttng_msg {
 	uuid_t session_id;
 	pid_t pid;
 	char trace_name[NAME_MAX];
+	/* This flag indicates how many packet are in
+	 * the transmission. Ex: If list apps is requested,
+	 * and there is 4 pids registered, num_pckt will be 4
+	 */
+	unsigned int num_pckt;
 	union {
 		/* UST_LIST_APPS */
 		struct {
-			size_t size;
-			pid_t pids[MAX_APPS_PID];
+			pid_t pid;
 		} list_apps;
 	} u;
 };

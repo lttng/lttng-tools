@@ -50,11 +50,13 @@ static int set_socket_perms(void);
 static void sighandler(int);
 static void daemonize(void);
 static void cleanup(void);
+static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
 static int check_existing_daemon(void);
 static int notify_apps(const char*);
 static int connect_app(pid_t);
 static int init_daemon_socket(void);
-static struct lttcomm_lttng_msg *process_client_msg(struct lttcomm_session_msg*);
+static int process_client_msg(int sock, struct lttcomm_session_msg*);
+static int send_unix_sock(int sock, void *buf, size_t len);
 
 static void *thread_manage_clients(void *);
 static void *thread_manage_apps(void *);
@@ -77,13 +79,17 @@ static int client_socket;
 static int apps_socket;
 
 static struct ltt_session *current_session;
-static int session_count;
+
+/* Number of element for the list below. */
+static unsigned int session_count;
+static unsigned int traceable_app_count;
 
 /* Init session's list */
 static struct ltt_session_list ltt_session_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
 };
 
+/* Init ust traceabl application's list */
 static struct ltt_traceable_app_list ltt_traceable_app_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_traceable_app_list.head),
 };
@@ -136,12 +142,17 @@ static void *thread_manage_apps(void *data)
 			lta->pid = reg_msg.pid;
 			lta->uid = reg_msg.uid;
 			cds_list_add(&lta->list, &ltt_traceable_app_list.head);
+			traceable_app_count++;
 		} else {
 			/* Unregistering */
 			lta = NULL;
 			cds_list_for_each_entry(lta, &ltt_traceable_app_list.head, list) {
 				if (lta->pid == reg_msg.pid && lta->uid == reg_msg.uid) {
 					cds_list_del(&lta->list);
+					/* Check to not overflow here */
+					if (traceable_app_count != 0) {
+						traceable_app_count--;
+					}
 					break;
 				}
 			}
@@ -168,7 +179,6 @@ static void *thread_manage_clients(void *data)
 {
 	int sock, ret;
 	struct lttcomm_session_msg lsm;
-	struct lttcomm_lttng_msg *llm;
 
 	ret = lttcomm_listen_unix_sock(client_socket);
 	if (ret < 0) {
@@ -193,34 +203,36 @@ static void *thread_manage_clients(void *data)
 		}
 
 		/* This function dispatch the work to the LTTng or UST libs
-		 * and make sure that the reply structure (llm) is filled.
+		 * and then sends back the response to the client. This is needed
+		 * because there might be more then one lttcomm_lttng_msg to
+		 * send out so process_client_msg do both jobs.
 		 */
-		llm = process_client_msg(&lsm);
-
-		/* Having a valid lttcomm_lttng_msg struct, reply is sent back
-		 * to the client directly.
-		 */
-		if (llm != NULL) {
-			ret = lttcomm_send_unix_sock(sock, llm,
-					sizeof(struct lttcomm_lttng_msg));
-			free(llm);
-			if (ret < 0) {
-				continue;
-			}
-		} else {
-			/* The lttcomm_lttng_msg struct was not allocated
-			 * correctly. Fatal error since the daemon is not able
-			 * to respond. However, we still permit client connection.
-			 *
-			 * TODO: We should have a default llm that tells the client
-			 * that the sessiond had a fatal error and thus the client could
-			 * take action to restart ltt-sessiond or inform someone.
-			 */
+		ret = process_client_msg(sock, &lsm);
+		if (ret < 0) {
+			/* Error detected but still accept command */
+			continue;
 		}
 	}
 
 error:
 	return NULL;
+}
+
+/*
+ *  send_unix_sock
+ *
+ *  Send data on a unix socket using the liblttsessiondcomm API.
+ *
+ *  Return lttcomm error code.
+ */
+static int send_unix_sock(int sock, void *buf, size_t len)
+{
+	/* Check valid length */
+	if (len <= 0) {
+		return -1;
+	}
+
+	return lttcomm_send_unix_sock(sock, buf, len);
 }
 
 /*
@@ -378,75 +390,114 @@ error:
  *
  *  Return size of the array.
  */
-static size_t ust_list_apps(pid_t *pids)
+static size_t ust_list_apps(pid_t **pids)
 {
 	size_t size = 0;
 	struct ltt_traceable_app *iter = NULL;
+	pid_t *p;
 
+	if (traceable_app_count == 0) {
+		/* No dynamic allocation is done */
+		goto end;
+	}
+
+	p = malloc(sizeof(pid_t) * traceable_app_count);
+
+	/* TODO: Mutex needed to access this list */
 	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
-		if (size >= MAX_APPS_PID) {
-			break;
-		}
-
-		pids[size] = iter->pid;
+		p[size] = iter->pid;
 		size++;
 	}
 
+	*pids = p;
+
+end:
 	return size;
 }
 
 /*
- * 	process_client_msg
+ *  copy_common_data
  *
- * 	This takes the lttcomm_session_msg struct and process the command requested
- * 	by the client. It then creates the reply by allocating a lttcomm_lttng_msg
- * 	and fill it with the necessary information.
- *
- * 	It's the caller responsability to free that structure when done with it.
- * 	
- * 	Return pointer to lttcomm_lttng_msg allocated struct.
+ *  Copy common data between lttcomm_lttng_msg and lttcomm_session_msg
  */
-static struct lttcomm_lttng_msg *process_client_msg(struct lttcomm_session_msg *lsm)
+static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm)
 {
-	struct lttcomm_lttng_msg *llm;
-
-	/* Allocate the reply message structure */
-	llm = malloc(sizeof(struct lttcomm_lttng_msg));
-	if (llm == NULL) {
-		perror("malloc");
-		goto end;
-	}
-
-	/* Copy common data to identify the response
-	 * on the lttng client side.
-	 */
 	llm->cmd_type = lsm->cmd_type;
 	llm->pid = lsm->pid;
 	if (!uuid_is_null(lsm->session_id)) {
 		uuid_copy(llm->session_id, lsm->session_id);
 	}
 	strncpy(llm->trace_name, lsm->trace_name, sizeof(llm->trace_name));
+}
+
+/*
+ * 	process_client_msg
+ *
+ * 	This takes the lttcomm_session_msg struct and process the command requested
+ * 	by the client. It then creates response(s) and send it back to the
+ * 	given socket (sock).
+ *
+ * 	Return any error encountered or 0 for success.
+ */
+static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
+{
+	int ret;
+	struct lttcomm_lttng_msg llm;
+
+	/* Copy common data to identify the response
+	 * on the lttng client side.
+	 */
+	copy_common_data(&llm, lsm);
 
 	/* Default return code.
-	 * In a our world, everything is OK... right?
+	 * In our world, everything is OK... right? ;)
 	 */
-	llm->ret_code = LTTCOMM_OK;
+	llm.ret_code = LTTCOMM_OK;
 
 	/* Process by command type */
 	switch (lsm->cmd_type) {
 		case UST_LIST_APPS:
 		{
-			llm->u.list_apps.size = ust_list_apps(llm->u.list_apps.pids);
+			pid_t *pids;
+			llm.num_pckt = ust_list_apps(&pids);
+			if (llm.num_pckt == 0) {
+				ret = LTTCOMM_NO_APPS;
+				goto error;
+			}
+
+			/* Send all packets */
+			while (llm.num_pckt != 0) {
+				llm.u.list_apps.pid = pids[traceable_app_count - llm.num_pckt];
+				ret = send_unix_sock(sock, (void*) &llm, sizeof(llm));
+				if (ret < 0) {
+					goto send_error;
+				}
+				llm.num_pckt--;
+			}
+			/* Allocated array by ust_list_apps() */
+			free(pids);
+
 			break;
 		}
 		default:
+		{
 			/* Undefined command */
-			llm->ret_code = LTTCOMM_UND;
+			ret = LTTCOMM_UND;
 			break;
+		}
 	}
 
-end:
-	return llm;
+	return 0;
+
+send_error:
+	return ret;
+
+error:
+	/* Notify client of error */
+	llm.ret_code = ret;
+	send_unix_sock(sock, (void*) &llm, sizeof(llm));
+
+	return -1;
 }
 
 /*

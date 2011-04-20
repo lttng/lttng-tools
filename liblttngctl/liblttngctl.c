@@ -40,6 +40,7 @@ static struct lttcomm_session_msg lsm;
 /* Prototypes */
 static int check_tracing_group(const char *grp_name);
 static int ask_sessiond(void);
+static int recvfrom_sessiond(void);
 static int set_session_daemon_path(void);
 static void reset_data_struct(void);
 
@@ -54,8 +55,7 @@ static int connected;
 /*
  *  ask_sessiond
  *
- *  Send lttcomm_session_msg to the daemon and wait
- *  for the reply. Data replied will be put in llm
+ *  Send lttcomm_session_msg to the session daemon.
  *
  *  On success, return 0
  *  On error, return error code
@@ -65,29 +65,45 @@ static int ask_sessiond(void)
 	int ret;
 
 	if (!connected) {
-		ret = -ECONNREFUSED;
-		goto error;
+		ret = -ENOTCONN;
+		goto end;
 	}
 
 	ret = lttcomm_send_unix_sock(sessiond_socket, &lsm, sizeof(lsm));
-	if (ret < 0) {
-		goto error;
+
+end:
+	return ret;
+}
+
+/*
+ *  recvfrom_sessiond
+ *
+ *  Receive data from the sessiond socket.
+ *
+ *  On success, return 0
+ *  On error, return recv() error code
+ */
+static int recvfrom_sessiond(void)
+{
+	int ret;
+
+	if (!connected) {
+		ret = -ENOTCONN;
+		goto end;
 	}
 
 	ret = lttcomm_recv_unix_sock(sessiond_socket, &llm, sizeof(llm));
 	if (ret < 0) {
-		goto error;
+		goto end;
 	}
 
 	/* Check return code */
 	if (llm.ret_code != LTTCOMM_OK) {
 		ret = -llm.ret_code;
-		goto error;
+		goto end;
 	}
 
-	return 0;
-
-error:
+end:
 	return ret;
 }
 
@@ -152,7 +168,9 @@ end:
  */
 size_t lttng_ust_list_apps(pid_t **pids)
 {
-	int ret;
+	int ret, first = 0;
+	size_t size = 0;
+	pid_t *p = NULL;
 
 	lsm.cmd_type = UST_LIST_APPS;
 
@@ -161,9 +179,23 @@ size_t lttng_ust_list_apps(pid_t **pids)
 		goto error;
 	}
 
-	*pids = llm.u.list_apps.pids;
+	do {
+		ret = recvfrom_sessiond();
+		if (ret < 0) {
+			goto error;
+		}
 
-	return llm.u.list_apps.size;
+		if (first == 0) {
+			first = 1;
+			size = llm.num_pckt;
+			p = malloc(sizeof(pid_t) * size);
+		}
+		p[size - llm.num_pckt] = llm.u.list_apps.pid;
+	} while ((llm.num_pckt-1) != 0);
+
+	*pids = p;
+
+	return size;
 
 error:
 	return ret;
