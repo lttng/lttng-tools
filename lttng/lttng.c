@@ -170,7 +170,7 @@ static int spawn_sessiond(char *pathname)
 		/* Spawn session daemon and tell
 		 * it to signal us when ready.
 		 */
-		ret = execlp(pathname, "ltt-sessiond", "--sig-parent", NULL);
+		ret = execlp(pathname, "ltt-sessiond", "--sig-parent", "--quiet", NULL);
 		if (ret < 0) {
 			if (errno == ENOENT) {
 				ERR("No session daemon found. Use --sessiond-path.");

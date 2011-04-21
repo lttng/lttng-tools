@@ -38,7 +38,9 @@
 
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"
+#include "lttngerr.h"
 
+/* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
 const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
 const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
@@ -71,6 +73,8 @@ const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
 static int opt_daemon;
+int opt_verbose;
+int opt_quiet;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;
 
@@ -256,7 +260,7 @@ static int connect_app(pid_t pid)
 
 	sock = ustctl_connect_pid(pid);
 	if (sock < 0) {
-		fprintf(stderr, "Fail connecting to the PID %d\n", pid);
+		ERR("Fail connecting to the PID %d\n", pid);
 	}
 
 	return sock;
@@ -544,7 +548,8 @@ static void usage(void)
 			"\t-d, --daemonize\t\tStart as a daemon.\n"
 			"\t-g, --group NAME\t\tSpecify the tracing group name. (default: tracing)\n"
 			"\t-V, --version\t\tShow version number.\n"
-			"\t-S, --sig-parent\t\tSend SIGCHLD to parent pid to notify readiness.\n",
+			"\t-S, --sig-parent\t\tSend SIGCHLD to parent pid to notify readiness.\n"
+			"\t-q, --quiet\t\tNo output at all.\n",
 			progname);
 }
 
@@ -563,12 +568,13 @@ static int parse_args(int argc, char **argv)
 		{ "help", 0, 0, 'h' },
 		{ "group", 1, 0, 'g' },
 		{ "version", 0, 0, 'V' },
+		{ "quiet", 0, 0, 'q' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhVS" "a:c:g:s:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqVS" "a:c:g:s:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -600,6 +606,9 @@ static int parse_args(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 		case 'S':
 			opt_sig_parent = 1;
+			break;
+		case 'q':
+			opt_quiet = 1;
 			break;
 		default:
 			/* Unknown option or other error.
@@ -711,7 +720,7 @@ static int set_socket_perms(void)
 		(grp = getgrnam(default_tracing_group));
 
 	if (grp == NULL) {
-		fprintf(stderr, "Missing tracing group. Aborting execution.\n");
+		ERR("Missing tracing group. Aborting execution.\n");
 		ret = -1;
 		goto end;
 	}
@@ -791,8 +800,8 @@ static void sighandler(int sig)
 static void cleanup()
 {
 	/* <fun> */
-	fprintf(stdout, "\n\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
-	fprintf(stdout, "%c[%d;%dm Matthew, BEET driven development works!%c[%dm\n",27,1,33,27,0);
+	MSG("\n\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
+	MSG("%c[%d;%dm Matthew, BEET driven development works!%c[%dm\n",27,1,33,27,0);
 	/* </fun> */
 
 	unlink(client_unix_sock_path);
@@ -855,7 +864,7 @@ int main(int argc, char **argv)
 	 * socket needed by the daemon are present, this test fails
 	 */
 	if ((ret = check_existing_daemon()) == 0) {
-		fprintf(stderr, "Already running daemon.\n");
+		ERR("Already running daemon.\n");
 		goto error;
 	}
 
