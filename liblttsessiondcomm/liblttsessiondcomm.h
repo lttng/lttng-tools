@@ -75,6 +75,7 @@ enum lttcomm_return_code {
 	LTTCOMM_LIST_FAIL,		/* Listing apps fail */
 	LTTCOMM_NO_APPS,		/* No traceable application */
 	LTTCOMM_NO_SESS,		/* No sessions available */
+	LTTCOMM_FATAL,			/* Session daemon had a fatal error */
 	LTTCOMM_NR,				/* Last element */
 };
 
@@ -115,7 +116,11 @@ struct lttcomm_session_msg {
 };
 
 /*
- * Data structure for the lttng client response
+ * Data structure for the lttng client response.
+ *
+ * This data structure is the control struct use in
+ * the header of the transmission. NEVER put variable
+ * size data in here.
  */
 struct lttcomm_lttng_msg {
 	enum lttcomm_command_type cmd_type;
@@ -123,22 +128,7 @@ struct lttcomm_lttng_msg {
 	uuid_t session_id;
 	pid_t pid;
 	char trace_name[NAME_MAX];
-	/* This flag indicates how many packet are in
-	 * the transmission. Ex: If list apps is requested,
-	 * and there is 4 pids registered, num_pckt will be 4
-	 */
-	unsigned int num_pckt;
-	union {
-		/* UST_LIST_APPS */
-		struct {
-			pid_t pid;
-		} list_apps;
-		/* LTTNG_LIST_SESSIONS */
-		struct {
-			char name[NAME_MAX];
-			char uuid[37];	/* See libuuid not exported size UUID_STR_LEN */
-		} list_sessions;
-	} u;
+	unsigned int size_payload;
 };
 
 extern int lttcomm_create_unix_sock(const char *pathname);

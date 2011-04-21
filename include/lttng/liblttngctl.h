@@ -46,7 +46,7 @@ extern int lttng_connect_sessiond(void);
 extern int lttng_set_tracing_group(const char *name);
 extern int lttng_check_session_daemon(void);
 extern const char *lttng_get_readable_code(int code);
-extern size_t lttng_ust_list_apps(pid_t **pids);
-extern size_t lttng_list_sessions(struct lttng_session **sessions);
+extern int lttng_ust_list_apps(pid_t **pids);
+extern int lttng_list_sessions(struct lttng_session **sessions);
 
 #endif /* _LIBLTTNGCTL_H */

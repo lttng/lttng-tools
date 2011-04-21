@@ -34,33 +34,28 @@ static int sessiond_socket;
 static char sessiond_sock_path[PATH_MAX];
 
 /* Communication structure to ltt-sessiond */
-static struct lttcomm_lttng_msg llm;
 static struct lttcomm_session_msg lsm;
 
 /* Prototypes */
 static int check_tracing_group(const char *grp_name);
-static int ask_sessiond(void);
-static int recvfrom_sessiond(void);
+static int ask_sessiond(enum lttcomm_command_type lct, void **buf);
+static int recv_data_sessiond(void *buf, size_t len);
+static int send_data_sessiond(void);
 static int set_session_daemon_path(void);
-static void reset_data_struct(void);
-
-int lttng_connect_sessiond(void);
-int lttng_create_session(const char *name, char *session_id);
-int lttng_check_session_daemon(void);
 
 /* Variables */
 static char *tracing_group;
 static int connected;
 
 /*
- *  ask_sessiond
+ *  send_data_sessiond
  *
  *  Send lttcomm_session_msg to the session daemon.
  *
  *  On success, return 0
  *  On error, return error code
  */
-static int ask_sessiond(void)
+static int send_data_sessiond(void)
 {
 	int ret;
 
@@ -76,14 +71,14 @@ end:
 }
 
 /*
- *  recvfrom_sessiond
+ *  recv_data_sessiond
  *
  *  Receive data from the sessiond socket.
  *
  *  On success, return 0
  *  On error, return recv() error code
  */
-static int recvfrom_sessiond(void)
+static int recv_data_sessiond(void *buf, size_t len)
 {
 	int ret;
 
@@ -92,18 +87,69 @@ static int recvfrom_sessiond(void)
 		goto end;
 	}
 
-	ret = lttcomm_recv_unix_sock(sessiond_socket, &llm, sizeof(llm));
+	ret = lttcomm_recv_unix_sock(sessiond_socket, buf, len);
 	if (ret < 0) {
 		goto end;
 	}
 
-	/* Check return code */
+end:
+	return ret;
+}
+
+/*
+ *  ask_sessiond
+ *
+ *  Ask the session daemon a specific command
+ *  and put the data into buf.
+ *
+ *  Return size of data (only payload, not header).
+ */
+static int ask_sessiond(enum lttcomm_command_type lct, void **buf)
+{
+	int ret;
+	size_t size;
+	void *data = NULL;
+	struct lttcomm_lttng_msg llm;
+
+	lsm.cmd_type = lct;
+
+	/* Send command to session daemon */
+	ret = send_data_sessiond();
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Get header from data transmission */
+	ret = recv_data_sessiond(&llm, sizeof(llm));
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Check error code if OK */
 	if (llm.ret_code != LTTCOMM_OK) {
 		ret = -llm.ret_code;
 		goto end;
 	}
 
+	size = llm.size_payload;
+	if (size == 0) {
+		goto end;
+	}
+
+	data = (void*) malloc(size);
+
+	/* Get payload data */
+	ret = recv_data_sessiond(data, size);
+	if (ret < 0) {
+		goto end;
+	}
+
+	*buf = data;
+	ret = size;
+
 end:
+	/* Reset lsm data struct */
+	memset(&lsm, 0, sizeof(lsm));
 	return ret;
 }
 
@@ -122,83 +168,24 @@ const char *lttng_get_readable_code(int code)
 }
 
 /*
- *  lttng_create_session
- *
- *  Create a tracing session using "name" to the session daemon.
- *  If no name is given, the auto session creation is set and
- *  the daemon will take care of finding a name.
- *
- *  On success, return 0 and session_id point to the uuid str.
- *  On error, negative value is returned.
- */
-int lttng_create_session(const char *name, char *session_id)
-{
-	int ret;
-
-	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	if (name == NULL) {
-		lsm.u.create_session.auto_session = 1;
-	} else {
-		strncpy(lsm.session_name, name, strlen(name));
-		lsm.u.create_session.auto_session = 0;
-	}
-
-	/* Ask the session daemon */
-	ret = ask_sessiond();
-	if (ret < 0) {
-		goto end;
-	}
-
-	/* Unparse session ID */
-	uuid_unparse(llm.session_id, session_id);
-
-end:
-	reset_data_struct();
-
-	return ret;
-}
-
-/*
  *  lttng_ust_list_apps
  *
  *  Ask the session daemon for all UST traceable
  *  applications.
  *
- *  Return the size of pids.
+ *  Return the number of pids.
+ *  On error, return negative value.
  */
-size_t lttng_ust_list_apps(pid_t **pids)
+int lttng_ust_list_apps(pid_t **pids)
 {
-	int ret, first = 0;
-	size_t size = 0;
-	pid_t *p = NULL;
+	int ret;
 
-	lsm.cmd_type = UST_LIST_APPS;
-
-	ret = ask_sessiond();
+	ret = ask_sessiond(UST_LIST_APPS, (void**) pids);
 	if (ret < 0) {
-		goto error;
+		return ret;
 	}
 
-	do {
-		ret = recvfrom_sessiond();
-		if (ret < 0) {
-			goto error;
-		}
-
-		if (first == 0) {
-			first = 1;
-			size = llm.num_pckt;
-			p = malloc(sizeof(pid_t) * size);
-		}
-		p[size - llm.num_pckt] = llm.u.list_apps.pid;
-	} while ((llm.num_pckt-1) != 0);
-
-	*pids = p;
-
-	return size;
-
-error:
-	return ret;
+	return ret / sizeof(pid_t);
 }
 
 /*
@@ -206,44 +193,19 @@ error:
  *
  *  Ask the session daemon for all available sessions.
  *
- *  Return number of sessions
+ *  Return number of session.
+ *  On error, return negative value.
  */
-size_t lttng_list_sessions(struct lttng_session **sessions)
+int lttng_list_sessions(struct lttng_session **sessions)
 {
-	int ret, first = 0;
-	size_t size = 0;
-	struct lttng_session *ls = NULL;
+	int ret;
 
-	lsm.cmd_type = LTTNG_LIST_SESSIONS;
-
-	ret = ask_sessiond();
+	ret = ask_sessiond(LTTNG_LIST_SESSIONS, (void**) sessions);
 	if (ret < 0) {
-		goto error;
+		return ret;
 	}
 
-	do {
-		ret = recvfrom_sessiond();
-		if (ret < 0) {
-			goto error;
-		}
-
-		if (first == 0) {
-			first = 1;
-			size = llm.num_pckt;
-			ls = malloc(sizeof(struct lttng_session) * size);
-		}
-		strncpy(ls[size - llm.num_pckt].name, llm.u.list_sessions.name,
-				sizeof(ls[size - llm.num_pckt].name));
-		strncpy(ls[size - llm.num_pckt].uuid, llm.u.list_sessions.uuid,
-				sizeof(ls[size - llm.num_pckt].uuid));
-	} while ((llm.num_pckt - 1) != 0);
-
-	*sessions = ls;
-
-	return size;
-
-error:
-	return ret;
+	return ret / sizeof(struct lttng_session);
 }
 
 /*
@@ -311,17 +273,6 @@ int lttng_check_session_daemon(void)
 	}
 
 	return 0;
-}
-
-/*
- *  reset_data_struct
- *
- *  Reset session daemon structures.
- */
-static void reset_data_struct(void)
-{
-	memset(&lsm, 0, sizeof(lsm));
-	memset(&llm, 0, sizeof(llm));
 }
 
 /*

@@ -35,6 +35,7 @@
 
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
 #include <ust/ustctl.h>		/* UST control lib (-lust) */
+#include <lttng/liblttngctl.h>
 
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"
@@ -58,7 +59,10 @@ static int connect_app(pid_t);
 static int init_daemon_socket(void);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
-static size_t ust_list_apps(pid_t **pids);
+
+/* Command function */
+static void get_list_apps(void *buf);
+static void get_list_sessions(void *buf);
 
 static void *thread_manage_clients(void *);
 static void *thread_manage_apps(void *);
@@ -396,36 +400,47 @@ error:
 }
 
 /*
- * 	ust_list_apps
+ * 	get_list_apps
  *
  *  List traceable user-space application and fill an
  *  array of pids.
- *
- *  Return size of the array.
  */
-static size_t ust_list_apps(pid_t **pids)
+static void get_list_apps(void *buf)
 {
-	size_t size = 0;
+	size_t index = 0;
 	struct ltt_traceable_app *iter = NULL;
-	pid_t *p;
-
-	if (traceable_app_count == 0) {
-		/* No dynamic allocation is done */
-		goto end;
-	}
-
-	p = malloc(sizeof(pid_t) * traceable_app_count);
+	pid_t *pids = (pid_t *) buf;
 
 	/* TODO: Mutex needed to access this list */
 	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
-		p[size] = iter->pid;
-		size++;
+		pids[index] = iter->pid;
+		index++;
 	}
+}
 
-	*pids = p;
+/*
+ *  get_list_sessions
+ *
+ *  List sessions and fill the data buffer.
+ */
+static void get_list_sessions(void *buf)
+{
+	int i = 0;
+	struct ltt_session *iter = NULL;
+	struct lttng_session lsess;
+	struct lttng_session *data = (struct lttng_session *) buf;
 
-end:
-	return size;
+	/* Iterate over session list and append data after
+	 * the control struct in the buffer.
+	 */
+	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
+		uuid_unparse(iter->uuid, lsess.uuid);
+		strncpy(lsess.name, iter->name, sizeof(lsess.name));
+		memcpy(data + (i * sizeof(struct lttng_session)), &lsess, sizeof(lsess));
+		i++;
+		/* Reset struct for next pass */
+		memset(&lsess, 0, sizeof(lsess));
+	}
 }
 
 /*
@@ -444,6 +459,42 @@ static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_sessi
 }
 
 /*
+ *  setup_data_buffer
+ *
+ *  Setup the outgoing data buffer for the response
+ *  data allocating the right amount of memory.
+ *
+ *  Return total size of the buffer pointed by buf.
+ */
+static int setup_data_buffer(void **buf, size_t s_data, struct lttcomm_lttng_msg *llm)
+{
+	int ret = 0;
+	void *new_buf;
+	size_t buf_size;
+
+	buf_size = sizeof(struct lttcomm_lttng_msg) + s_data;
+	new_buf = malloc(buf_size);
+	if (new_buf == NULL) {
+		perror("malloc");
+		ret = -1;
+		goto error;
+	}
+
+	/* Setup lttcomm_lttng_msg data and copy
+	 * it to the newly allocated buffer.
+	 */
+	llm->size_payload = s_data;
+	memcpy(new_buf, llm, sizeof(struct lttcomm_lttng_msg));
+
+	*buf = new_buf;
+
+	return buf_size;
+
+error:
+	return ret;
+}
+
+/*
  * 	process_client_msg
  *
  * 	This takes the lttcomm_session_msg struct and process the command requested
@@ -456,6 +507,8 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 {
 	int ret;
 	struct lttcomm_lttng_msg llm;
+	void *send_buf = NULL;
+	int buf_size;
 
 	/* Copy common data to identify the response
 	 * on the lttng client side.
@@ -471,46 +524,50 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	switch (lsm->cmd_type) {
 		case UST_LIST_APPS:
 		{
-			pid_t *pids;
-			llm.num_pckt = ust_list_apps(&pids);
-			if (llm.num_pckt == 0) {
+			/* Stop right now if no apps */
+			if (traceable_app_count == 0) {
 				ret = LTTCOMM_NO_APPS;
 				goto error;
 			}
 
-			/* Send all packets */
-			while (llm.num_pckt != 0) {
-				llm.u.list_apps.pid = pids[traceable_app_count - llm.num_pckt];
-				ret = send_unix_sock(sock, (void*) &llm, sizeof(llm));
-				if (ret < 0) {
-					goto send_error;
-				}
-				llm.num_pckt--;
+			/* Setup data buffer and details for transmission */
+			buf_size = setup_data_buffer(&send_buf,
+					sizeof(pid_t) * traceable_app_count, &llm);
+			if (buf_size < 0) {
+				ret = LTTCOMM_FATAL;
+				goto error;
 			}
-			/* Allocated array by ust_list_apps() */
-			free(pids);
+
+			get_list_apps(send_buf + sizeof(struct lttcomm_lttng_msg));
+
+			ret = send_unix_sock(sock, send_buf, buf_size);
+			if (ret < 0) {
+				goto send_error;
+			}
 
 			break;
 		}
 		case LTTNG_LIST_SESSIONS:
 		{
-			struct ltt_session *iter = NULL;
-
-			llm.num_pckt = session_count;
-			if (llm.num_pckt == 0) {
+			/* Stop right now if no session */
+			if (session_count == 0) {
 				ret = LTTCOMM_NO_SESS;
 				goto error;
 			}
 
-			cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-				uuid_unparse(iter->uuid, llm.u.list_sessions.uuid);
-				strncpy(llm.u.list_sessions.name, iter->name,
-						sizeof(llm.u.list_sessions.name));
-				ret = send_unix_sock(sock, (void*) &llm, sizeof(llm));
-				if (ret < 0) {
-					goto send_error;
-				}
-				llm.num_pckt--;
+			/* Setup data buffer and details for transmission */
+			buf_size = setup_data_buffer(&send_buf,
+					(sizeof(struct lttng_session) * session_count), &llm);
+			if (buf_size < 0) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+
+			get_list_sessions(send_buf + sizeof(struct lttcomm_lttng_msg));
+
+			ret = send_unix_sock(sock, send_buf, buf_size);
+			if (ret < 0) {
+				goto send_error;
 			}
 
 			break;
@@ -519,8 +576,12 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		{
 			/* Undefined command */
 			ret = LTTCOMM_UND;
-			break;
+			goto error;
 		}
+	}
+
+	if (send_buf != NULL) {
+		free(send_buf);
 	}
 
 	return 0;
@@ -531,6 +592,7 @@ send_error:
 error:
 	/* Notify client of error */
 	llm.ret_code = ret;
+	llm.size_payload = 0;
 	send_unix_sock(sock, (void*) &llm, sizeof(llm));
 
 	return -1;

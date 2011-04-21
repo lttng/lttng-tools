@@ -19,8 +19,7 @@
 #ifndef _LTT_SESSIOND_H
 #define _LTT_SESSIOND_H
 
-#define DEFAULT_HOME_DIR		"/tmp"
-#define DEFAULT_TRACING_GROUP		"/tracing"
+#define DEFAULT_HOME_DIR			"/tmp"
 #define DEFAULT_UST_SOCK_DIR		"/tmp/ust-app-socks"
 #define DEFAULT_GLOBAL_APPS_PIPE	"/tmp/ust-app-socks/global"
 
