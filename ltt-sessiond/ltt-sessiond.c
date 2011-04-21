@@ -48,7 +48,6 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 static int set_signal_handler(void);
 static int set_socket_perms(void);
 static void sighandler(int);
-static void daemonize(void);
 static void cleanup(void);
 static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
 static int check_existing_daemon(void);
@@ -703,48 +702,6 @@ end:
 }
 
 /*
- * 	daemonize
- *
- * 	Daemonize ltt-sessiond.
- */
-static void daemonize(void)
-{
-	pid_t pid, sid;
-	const char *home_dir = get_home_dir();
-
-	/* Fork off the parent process */
-	if ((pid = fork()) < 0) {
-		perror("fork");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Parent can now exit */
-	if (pid > 0) {
-		exit(EXIT_SUCCESS);
-	}
-
-	/* Change the file mode mask */
-	umask(0);
-
-	/* Create a new SID for the child process */
-	if ((sid = setsid()) < 0) {
-		perror("setsid");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Change the current working directory */
-	if ((chdir(home_dir)) < 0) {
-		perror("chdir");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Close out the standard file descriptors */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-}
-
-/*
  *	set_signal_handler
  *
  *	Setup signal handler for :
@@ -836,7 +793,11 @@ int main(int argc, char **argv)
 
 	/* Daemonize */
 	if (opt_daemon) {
-		daemonize();
+		ret = daemon(0, 0);
+		if (ret < 0) {
+			perror("daemon");
+			goto error;
+		}
 	}
 
 	/* Check if daemon is UID = 0 */
