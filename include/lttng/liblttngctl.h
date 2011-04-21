@@ -19,6 +19,8 @@
 #ifndef _LIBLTTNGCTL_H
 #define _LIBLTTNGCTL_H
 
+#include <limits.h>
+
 /* Default unix group name for tracing.
  */
 #define DEFAULT_TRACING_GROUP "tracing"
@@ -28,10 +30,16 @@
  */
 #define LTTNG_SESSIOND_PATH_ENV "LTTNG_SESSIOND_PATH"
 
-/* 
- * From libuuid
+/* From libuuid
  */
 #define UUID_STR_LEN 37
+
+/* Simple structure representing a session.
+ */
+struct lttng_session {
+	char name[NAME_MAX];
+	char uuid[UUID_STR_LEN];
+};
 
 extern int lttng_create_session(const char *name, char *session_id);
 extern int lttng_connect_sessiond(void);
@@ -39,5 +47,6 @@ extern int lttng_set_tracing_group(const char *name);
 extern int lttng_check_session_daemon(void);
 extern const char *lttng_get_readable_code(int code);
 extern size_t lttng_ust_list_apps(pid_t **pids);
+extern size_t lttng_list_sessions(struct lttng_session **sessions);
 
 #endif /* _LIBLTTNGCTL_H */

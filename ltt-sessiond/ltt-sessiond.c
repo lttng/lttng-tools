@@ -56,6 +56,7 @@ static int connect_app(pid_t);
 static int init_daemon_socket(void);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
+static size_t ust_list_apps(pid_t **pids);
 
 static void *thread_manage_clients(void *);
 static void *thread_manage_apps(void *);
@@ -484,6 +485,29 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 			}
 			/* Allocated array by ust_list_apps() */
 			free(pids);
+
+			break;
+		}
+		case LTTNG_LIST_SESSIONS:
+		{
+			struct ltt_session *iter = NULL;
+
+			llm.num_pckt = session_count;
+			if (llm.num_pckt == 0) {
+				ret = LTTCOMM_NO_SESS;
+				goto error;
+			}
+
+			cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
+				uuid_unparse(iter->uuid, llm.u.list_sessions.uuid);
+				strncpy(llm.u.list_sessions.name, iter->name,
+						sizeof(llm.u.list_sessions.name));
+				ret = send_unix_sock(sock, (void*) &llm, sizeof(llm));
+				if (ret < 0) {
+					goto send_error;
+				}
+				llm.num_pckt--;
+			}
 
 			break;
 		}

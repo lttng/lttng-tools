@@ -202,6 +202,51 @@ error:
 }
 
 /*
+ *  lttng_list_sessions
+ *
+ *  Ask the session daemon for all available sessions.
+ *
+ *  Return number of sessions
+ */
+size_t lttng_list_sessions(struct lttng_session **sessions)
+{
+	int ret, first = 0;
+	size_t size = 0;
+	struct lttng_session *ls = NULL;
+
+	lsm.cmd_type = LTTNG_LIST_SESSIONS;
+
+	ret = ask_sessiond();
+	if (ret < 0) {
+		goto error;
+	}
+
+	do {
+		ret = recvfrom_sessiond();
+		if (ret < 0) {
+			goto error;
+		}
+
+		if (first == 0) {
+			first = 1;
+			size = llm.num_pckt;
+			ls = malloc(sizeof(struct lttng_session) * size);
+		}
+		strncpy(ls[size - llm.num_pckt].name, llm.u.list_sessions.name,
+				sizeof(ls[size - llm.num_pckt].name));
+		strncpy(ls[size - llm.num_pckt].uuid, llm.u.list_sessions.uuid,
+				sizeof(ls[size - llm.num_pckt].uuid));
+	} while ((llm.num_pckt - 1) != 0);
+
+	*sessions = ls;
+
+	return size;
+
+error:
+	return ret;
+}
+
+/*
  *  lttng_connect_sessiond
  *
  *  Connect to the LTTng session daemon.

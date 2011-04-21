@@ -74,6 +74,7 @@ enum lttcomm_return_code {
 	LTTCOMM_START_FAIL,		/* Start tracing fail */
 	LTTCOMM_LIST_FAIL,		/* Listing apps fail */
 	LTTCOMM_NO_APPS,		/* No traceable application */
+	LTTCOMM_NO_SESS,		/* No sessions available */
 	LTTCOMM_NR,				/* Last element */
 };
 
@@ -132,6 +133,11 @@ struct lttcomm_lttng_msg {
 		struct {
 			pid_t pid;
 		} list_apps;
+		/* LTTNG_LIST_SESSIONS */
+		struct {
+			char name[NAME_MAX];
+			char uuid[37];	/* See libuuid not exported size UUID_STR_LEN */
+		} list_sessions;
 	} u;
 };
 

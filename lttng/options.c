@@ -30,6 +30,7 @@ int opt_quiet = 0;
 int opt_verbose = 0;
 int opt_list_apps = 0;
 int opt_no_sessiond = 0;
+int opt_list_session = 0;
 
 enum {
 	OPT_HELP = 42,
@@ -47,6 +48,7 @@ static struct poptOption long_options[] = {
 	{"list-apps",		'l',	POPT_ARG_VAL,		&opt_list_apps, 1, 0},
 	{"no-sessiond",		0,		POPT_ARG_VAL,		&opt_no_sessiond, 1, 0},
 	{"sessiond-path",	0,		POPT_ARG_STRING,	&opt_sessiond_path, 0, 0},
+	{"list-session",	0,		POPT_ARG_VAL,		&opt_list_session, 1, 0},
 	{0, 0, 0, 0, 0, 0}
 };
 
@@ -66,6 +68,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --group NAME        Unix tracing group name. (default: tracing)\n");
 	fprintf(ofp, "      --no-sessiond       Don't spawn a session daemon.\n");
 	fprintf(ofp, "      --sessiond-path     Session daemon full path\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Session options:\n");
+	fprintf(ofp, "      --list-session      List all available sessions\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Tracing options:\n");
 	//fprintf(ofp, "      --session [NAME]    Specify tracing session. If no NAME is given\n");

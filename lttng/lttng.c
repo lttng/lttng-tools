@@ -41,6 +41,7 @@ static char *progname;
 /* Prototypes */
 static int process_client_opt(void);
 static int process_opt_list_apps(void);
+static int process_opt_list_sessions(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
 
@@ -68,10 +69,48 @@ static int process_client_opt(void)
 		}
 	}
 
+	if (opt_list_session) {
+		ret = process_opt_list_sessions();
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
 	return 0;
 
 end:
 	ERR("%s", lttng_get_readable_code(ret));
+	return ret;
+}
+
+/*
+ *  process_opt_list_sessions
+ *
+ *  Get the list of available sessions from
+ *  the session daemon and print it to user.
+ */
+static int process_opt_list_sessions(void)
+{
+	int ret, count, i;
+	struct lttng_session *sess;
+
+	count = lttng_list_sessions(&sess);
+	if (count < 0) {
+		ret = count;
+		goto error;
+	}
+
+	MSG("Available sessions [Name (uuid)]:");
+	for (i = 0; i < count; i++) {
+		MSG("\tName: %s (uuid: %s)", sess[i].name, sess[i].uuid);
+	}
+
+	free(sess);
+	MSG("\nTo select a session, use --session UUID.");
+
+	return 0;
+
+error:
 	return ret;
 }
 

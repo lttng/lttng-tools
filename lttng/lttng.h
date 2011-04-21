@@ -31,6 +31,7 @@ extern char *opt_session_name;
 extern char *opt_sessiond_path;
 extern int opt_list_apps;
 extern int opt_no_sessiond;
+extern int opt_list_session;
 
 #define SESSIOND_PATH_NUM 6
 
