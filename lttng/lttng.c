@@ -122,22 +122,24 @@ error:
  */
 static int process_opt_list_apps(void)
 {
-	int i, ret;
+	int i, ret, count;
 	pid_t *pids;
 	FILE *fp;
 	char path[24];	/* Can't go bigger than /proc/65535/cmdline */
 	char cmdline[PATH_MAX];
 
-	ret = lttng_ust_list_apps(&pids);
-	if (ret < 0) {
+	count = lttng_ust_list_apps(&pids);
+	if (count < 0) {
+		ret = count;
 		goto error;
 	}
 
 	MSG("LTTng UST traceable application [name (pid)]:");
-	for (i=0; i < ret; i++) {
+	for (i=0; i < count; i++) {
 		snprintf(path, sizeof(path), "/proc/%d/cmdline", pids[i]);
 		fp = fopen(path, "r");
 		if (fp == NULL) {
+			MSG("\t(not running) (%d)", pids[i]);
 			continue;
 		}
 		ret = fread(cmdline, 1, sizeof(cmdline), fp);
@@ -219,7 +221,13 @@ static int check_ltt_sessiond(void)
 			pathname = opt_sessiond_path;
 		} else {
 			/* Try LTTNG_SESSIOND_PATH env variable */
-			pathname = strdup(getenv(LTTNG_SESSIOND_PATH_ENV));
+			pathname = getenv(LTTNG_SESSIOND_PATH_ENV);
+			if (pathname != NULL) {
+				/* strdup here in order to make the free()
+				 * not fail later on.
+				 */
+				pathname = strdup(pathname);
+			}
 		}
 
 		/* Let's rock and roll */
