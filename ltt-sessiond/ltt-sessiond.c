@@ -50,12 +50,12 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 /* Static functions */
 static int set_signal_handler(void);
 static int set_socket_perms(void);
-static void sighandler(int);
+static void sighandler(int sig);
 static void cleanup(void);
 static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
 static int check_existing_daemon(void);
-static int notify_apps(const char*);
-static int connect_app(pid_t);
+static int notify_apps(const char* name);
+static int connect_app(pid_t pid);
 static int init_daemon_socket(void);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
@@ -65,13 +65,13 @@ static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *
 static void get_list_apps(pid_t *pids);
 static void get_list_sessions(struct lttng_session *lt);
 
-static void *thread_manage_clients(void *);
-static void *thread_manage_apps(void *);
+static void *thread_manage_clients(void *data);
+static void *thread_manage_apps(void *data);
 
 static int create_session(char *name, uuid_t *session_id);
-static void destroy_session(uuid_t);
+static void destroy_session(uuid_t session_id);
 
-static struct ltt_session *find_session(uuid_t);
+static struct ltt_session *find_session(uuid_t session_id);
 
 /* Variables */
 const char *progname;
@@ -540,11 +540,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				goto error;
 			}
 
-			ret = send_unix_sock(sock, send_buf, buf_size);
-			if (ret < 0) {
-				goto send_error;
-			}
-
+			goto send;
 			break;
 		}
 		case UST_LIST_APPS:
@@ -565,11 +561,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 
 			get_list_apps((pid_t *)(send_buf + sizeof(struct lttcomm_lttng_msg)));
 
-			ret = send_unix_sock(sock, send_buf, buf_size);
-			if (ret < 0) {
-				goto send_error;
-			}
-
+			goto send;
 			break;
 		}
 		case LTTNG_LIST_SESSIONS:
@@ -590,11 +582,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 
 			get_list_sessions((struct lttng_session *)(send_buf + sizeof(struct lttcomm_lttng_msg)));
 
-			ret = send_unix_sock(sock, send_buf, buf_size);
-			if (ret < 0) {
-				goto send_error;
-			}
-
+			goto send;
 			break;
 		}
 		default:
@@ -605,13 +593,13 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 	}
 
+send:
+	ret = send_unix_sock(sock, send_buf, buf_size);
+
 	if (send_buf != NULL) {
 		free(send_buf);
 	}
 
-	return 0;
-
-send_error:
 	return ret;
 
 error:
