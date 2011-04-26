@@ -85,7 +85,7 @@ enum lttcomm_return_code {
 struct lttcomm_session_msg {
 	/* Common data to almost all command */
 	enum lttcomm_command_type cmd_type;
-	uuid_t session_id;
+	char session_id[37];
 	char trace_name[NAME_MAX];
 	char session_name[NAME_MAX];
 	pid_t pid;
@@ -125,7 +125,7 @@ struct lttcomm_session_msg {
 struct lttcomm_lttng_msg {
 	enum lttcomm_command_type cmd_type;
 	enum lttcomm_return_code ret_code;
-	uuid_t session_id;
+	char session_id[37];
 	pid_t pid;
 	char trace_name[NAME_MAX];
 	unsigned int size_payload;

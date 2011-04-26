@@ -24,6 +24,7 @@
 /* Option variables */
 char *opt_tracing_group;
 char *opt_session_name;
+char *opt_create_session;
 char *opt_sessiond_path;
 int opt_trace_kernel = 0;
 int opt_quiet = 0;
@@ -43,6 +44,7 @@ static struct poptOption long_options[] = {
 	{"kernel",			0,		POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
 	{"no-kernel",		0,		POPT_ARG_VAL,		&opt_trace_kernel, 0, 0, 0},
 	{"session",			0,		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_session_name, 0, 0},
+	{"create-session",  'c',	POPT_ARG_STRING,	&opt_create_session, 0, 0},
 	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0},
 	{"verbose",			'v',	POPT_ARG_VAL,		&opt_verbose, 1, 0},
 	{"list-apps",		'l',	POPT_ARG_VAL,		&opt_list_apps, 1, 0},
@@ -62,22 +64,23 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage : lttng [OPTION]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -v, --verbose           Verbose mode\n");
-	fprintf(ofp, "  -q, --quiet             Quiet mode\n");
-	fprintf(ofp, "      --help              Show help\n");
-	fprintf(ofp, "      --group NAME        Unix tracing group name. (default: tracing)\n");
-	fprintf(ofp, "      --no-sessiond       Don't spawn a session daemon.\n");
-	fprintf(ofp, "      --sessiond-path     Session daemon full path\n");
+	fprintf(ofp, "  -v, --verbose                Verbose mode\n");
+	fprintf(ofp, "  -q, --quiet                  Quiet mode\n");
+	fprintf(ofp, "      --help                   Show help\n");
+	fprintf(ofp, "      --group NAME             Unix tracing group name. (default: tracing)\n");
+	fprintf(ofp, "      --no-sessiond            Don't spawn a session daemon.\n");
+	fprintf(ofp, "      --sessiond-path          Session daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Session options:\n");
-	fprintf(ofp, "      --list-session      List all available sessions\n");
+	fprintf(ofp, "  -c, --create-session NAME    Create a new session\n");
+	fprintf(ofp, "      --list-session           List all available sessions\n");
+	//fprintf(ofp, "      --session [NAME]       Specify tracing session. If no NAME is given\n");
+	//fprintf(ofp, "                             or option is ommited, a session will be created\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Tracing options:\n");
-	//fprintf(ofp, "      --session [NAME]    Specify tracing session. If no NAME is given\n");
-	//fprintf(ofp, "                          or option is ommited, a session will be created\n");
-	//fprintf(ofp, "      --kernel            Enable kernel tracing\n");
-	//fprintf(ofp, "      --no-kernel         Disable kernel tracing\n");
-	fprintf(ofp, "  -l, --list-apps         List traceable UST applications\n");
+	//fprintf(ofp, "      --kernel               Enable kernel tracing\n");
+	//fprintf(ofp, "      --no-kernel            Disable kernel tracing\n");
+	fprintf(ofp, "  -l, --list-apps              List traceable UST applications\n");
 }
 
 /*

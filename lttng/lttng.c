@@ -42,6 +42,7 @@ static char *progname;
 static int process_client_opt(void);
 static int process_opt_list_apps(void);
 static int process_opt_list_sessions(void);
+static int process_opt_create_session(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
 
@@ -76,10 +77,40 @@ static int process_client_opt(void)
 		}
 	}
 
+	if (opt_create_session != NULL) {
+		ret = process_opt_create_session();
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
 	return 0;
 
 end:
 	ERR("%s", lttng_get_readable_code(ret));
+	return ret;
+}
+
+/*
+ *  process_opt_create_session
+ *
+ *  Create a new session using the name pass
+ *  to the command line.
+ */
+static int process_opt_create_session(void)
+{
+	int ret;
+	char *session_id;
+
+	ret = lttng_create_session(opt_create_session, &session_id);
+	if (ret < 0) {
+		goto error;
+	}
+
+	MSG("Session created:");
+	MSG("    %s (%s)", opt_create_session, session_id);
+
+error:
 	return ret;
 }
 

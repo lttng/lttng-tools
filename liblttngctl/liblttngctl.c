@@ -35,6 +35,7 @@ static char sessiond_sock_path[PATH_MAX];
 
 /* Communication structure to ltt-sessiond */
 static struct lttcomm_session_msg lsm;
+static struct lttcomm_lttng_msg llm;
 
 /* Prototypes */
 static int check_tracing_group(const char *grp_name);
@@ -109,7 +110,6 @@ static int ask_sessiond(enum lttcomm_command_type lct, void **buf)
 	int ret;
 	size_t size;
 	void *data = NULL;
-	struct lttcomm_lttng_msg llm;
 
 	lsm.cmd_type = lct;
 
@@ -186,6 +186,34 @@ int lttng_ust_list_apps(pid_t **pids)
 	}
 
 	return ret / sizeof(pid_t);
+}
+
+/*
+ *  lttng_create_session
+ *
+ *  Create a brand new session using name. Allocate
+ *  the session_id param pointing to the UUID.
+ */
+int lttng_create_session(char *name, char **session_id)
+{
+	int ret;
+	char *uuid;
+
+	strncpy(lsm.session_name, name, sizeof(lsm.session_name));
+
+	ret = ask_sessiond(LTTNG_CREATE_SESSION, NULL);
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Allocate UUID string length */
+	uuid = malloc(UUID_STR_LEN);
+
+	strncpy(uuid, llm.session_id, UUID_STR_LEN);
+	*session_id = uuid;
+
+end:
+	return ret;
 }
 
 /*
