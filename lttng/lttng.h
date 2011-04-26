@@ -30,6 +30,7 @@ extern char *opt_tracing_group;
 extern char *opt_session_name;
 extern char *opt_create_session;
 extern char *opt_sessiond_path;
+extern char *opt_destroy_session;
 extern int opt_list_apps;
 extern int opt_no_sessiond;
 extern int opt_list_session;

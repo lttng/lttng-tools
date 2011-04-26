@@ -26,6 +26,7 @@ char *opt_tracing_group;
 char *opt_session_name;
 char *opt_create_session;
 char *opt_sessiond_path;
+char *opt_destroy_session;
 int opt_trace_kernel = 0;
 int opt_quiet = 0;
 int opt_verbose = 0;
@@ -51,6 +52,7 @@ static struct poptOption long_options[] = {
 	{"no-sessiond",		0,		POPT_ARG_VAL,		&opt_no_sessiond, 1, 0},
 	{"sessiond-path",	0,		POPT_ARG_STRING,	&opt_sessiond_path, 0, 0},
 	{"list-session",	0,		POPT_ARG_VAL,		&opt_list_session, 1, 0},
+	{"destroy-session", 'd',	POPT_ARG_STRING,	&opt_destroy_session, 0, 0},
 	{0, 0, 0, 0, 0, 0}
 };
 
@@ -74,8 +76,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Session options:\n");
 	fprintf(ofp, "  -c, --create-session NAME    Create a new session\n");
 	fprintf(ofp, "      --list-session           List all available sessions\n");
-	//fprintf(ofp, "      --session [NAME]       Specify tracing session. If no NAME is given\n");
-	//fprintf(ofp, "                             or option is ommited, a session will be created\n");
+	fprintf(ofp, "      --session [NAME]         Specify tracing session. If no NAME is given\n");
+	fprintf(ofp, "                               or option is ommited, a session will be created\n");
+	fprintf(ofp, "  -d, --destroy-session=NAME   Destroy the session specified by NAME\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Tracing options:\n");
 	//fprintf(ofp, "      --kernel               Enable kernel tracing\n");

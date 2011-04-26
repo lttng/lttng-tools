@@ -194,23 +194,40 @@ int lttng_ust_list_apps(pid_t **pids)
  *  Create a brand new session using name. Allocate
  *  the session_id param pointing to the UUID.
  */
-int lttng_create_session(char *name, char **session_id)
+int lttng_create_session(char *name, uuid_t *session_id)
 {
 	int ret;
 	char *uuid;
 
 	strncpy(lsm.session_name, name, sizeof(lsm.session_name));
+	lsm.session_name[sizeof(lsm.session_name) - 1] = '\0';
 
 	ret = ask_sessiond(LTTNG_CREATE_SESSION, NULL);
 	if (ret < 0) {
 		goto end;
 	}
 
-	/* Allocate UUID string length */
-	uuid = malloc(UUID_STR_LEN);
+	uuid_copy(*session_id, llm.session_id);
 
-	strncpy(uuid, llm.session_id, UUID_STR_LEN);
-	*session_id = uuid;
+end:
+	return ret;
+}
+
+/*
+ *  lttng_destroy_session
+ *
+ *  Destroy session using name.
+ */
+int lttng_destroy_session(uuid_t *uuid)
+{
+	int ret;
+
+	uuid_copy(lsm.session_id, *uuid);
+
+	ret = ask_sessiond(LTTNG_DESTROY_SESSION, NULL);
+	if (ret < 0) {
+		goto end;
+	}
 
 end:
 	return ret;

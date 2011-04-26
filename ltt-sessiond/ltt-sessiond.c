@@ -69,9 +69,10 @@ static void *thread_manage_clients(void *data);
 static void *thread_manage_apps(void *data);
 
 static int create_session(char *name, uuid_t *session_id);
-static void destroy_session(uuid_t session_id);
+static int destroy_session(uuid_t *uuid);
 
-static struct ltt_session *find_session(uuid_t session_id);
+static struct ltt_session *find_session_by_uuid(uuid_t session_id);
+static struct ltt_session *find_session_by_name(char *name);
 
 /* Variables */
 const char *progname;
@@ -302,13 +303,14 @@ error:
 }
 
 /*
- * 	find_session
+ * 	find_session_by_uuid
  *
  * 	Return a ltt_session structure ptr that matches the uuid.
  */
-static struct ltt_session *find_session(uuid_t session_id)
+static struct ltt_session *find_session_by_uuid(uuid_t session_id)
 {
-	struct ltt_session *iter = NULL;
+	int found = 0;
+	struct ltt_session *iter;
 
 	/* Sanity check for NULL session_id */
 	if (uuid_is_null(session_id)) {
@@ -316,12 +318,41 @@ static struct ltt_session *find_session(uuid_t session_id)
 	}
 
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (uuid_compare(iter->uuid, session_id)) {
+		if (uuid_compare(iter->uuid, session_id) == 0) {
+			found = 1;
 			break;
 		}
 	}
 
 end:
+	if (!found) {
+		iter = NULL;
+	}
+	return iter;
+}
+
+/*
+ * 	find_session_by_name
+ *
+ * 	Return a ltt_session structure ptr that matches name.
+ * 	If no session found, NULL is returned.
+ */
+static struct ltt_session *find_session_by_name(char *name)
+{
+	int found = 0;
+	struct ltt_session *iter;
+
+	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
+		if (strncmp(iter->name, name, strlen(iter->name)) == 0) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (!found) {
+		iter = NULL;
+	}
+
 	return iter;
 }
 
@@ -330,22 +361,26 @@ end:
  *
  *  Delete session from the global session list
  *  and free the memory.
+ *
+ *  Return -1 if no session is found.
+ *  On success, return 1;
  */
-static void destroy_session(uuid_t session_id)
+static int destroy_session(uuid_t *uuid)
 {
-	struct ltt_session *iter = NULL;
+	int found = -1;
+	struct ltt_session *iter;
 
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (uuid_compare(iter->uuid, session_id)) {
+		if (uuid_compare(iter->uuid, *uuid) == 0) {
 			cds_list_del(&iter->list);
+			free(iter);
+			session_count--;
+			found = 1;
 			break;
 		}
 	}
 
-	if (iter) {
-		free(iter);
-		session_count--;
-	}
+	return found;
 }
 
 /*
@@ -371,7 +406,7 @@ static int create_session(char *name, uuid_t *session_id)
 		}
 	} else {
 		/* Generate session name based on the session count */
-		if (asprintf(&new_session->name, "%s%d", "auto", session_count) < 0) {
+		if (asprintf(&new_session->name, "%s%d", "lttng-", session_count) < 0) {
 			goto error;
 		}
 	}
@@ -456,11 +491,12 @@ static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_sessi
 	llm->pid = lsm->pid;
 
 	/* Manage uuid */
-	if (lsm->session_id != NULL) {
-		strncpy(llm->session_id, lsm->session_id, UUID_STR_LEN);
+	if (!uuid_is_null(lsm->session_id)) {
+		uuid_copy(llm->session_id, lsm->session_id);
 	}
 
 	strncpy(llm->trace_name, lsm->trace_name, strlen(llm->trace_name));
+	llm->trace_name[strlen(llm->trace_name) - 1] = '\0';
 }
 
 /*
@@ -526,29 +562,37 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	switch (lsm->cmd_type) {
 		case LTTNG_CREATE_SESSION:
 		{
-			uuid_t uuid;
-			ret = create_session(lsm->session_name, &uuid);
+			ret = create_session(lsm->session_name, &llm.session_id);
 			if (ret < 0) {
-				goto error;
+				goto end;
 			}
-
-			uuid_unparse(uuid, llm.session_id);
 
 			buf_size = setup_data_buffer(&send_buf, 0, &llm);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
-				goto error;
+				goto end;
 			}
 
-			goto send;
 			break;
+		}
+		case LTTNG_DESTROY_SESSION:
+		{
+			ret = destroy_session(&lsm->session_id);
+			if (ret < 0) {
+				ret = LTTCOMM_NO_SESS;
+			} else {
+				ret = LTTCOMM_OK;
+			}
+
+			/* No auxiliary data so only send the llm struct. */
+			goto end;
 		}
 		case UST_LIST_APPS:
 		{
 			/* Stop right now if no apps */
 			if (traceable_app_count == 0) {
 				ret = LTTCOMM_NO_APPS;
-				goto error;
+				goto end;
 			}
 
 			/* Setup data buffer and details for transmission */
@@ -556,12 +600,11 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 					sizeof(pid_t) * traceable_app_count, &llm);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
-				goto error;
+				goto end;
 			}
 
 			get_list_apps((pid_t *)(send_buf + sizeof(struct lttcomm_lttng_msg)));
 
-			goto send;
 			break;
 		}
 		case LTTNG_LIST_SESSIONS:
@@ -569,7 +612,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 			/* Stop right now if no session */
 			if (session_count == 0) {
 				ret = LTTCOMM_NO_SESS;
-				goto error;
+				goto end;
 			}
 
 			/* Setup data buffer and details for transmission */
@@ -577,23 +620,21 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 					(sizeof(struct lttng_session) * session_count), &llm);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
-				goto error;
+				goto end;
 			}
 
 			get_list_sessions((struct lttng_session *)(send_buf + sizeof(struct lttcomm_lttng_msg)));
 
-			goto send;
 			break;
 		}
 		default:
 		{
 			/* Undefined command */
 			ret = LTTCOMM_UND;
-			goto error;
+			goto end;
 		}
 	}
 
-send:
 	ret = send_unix_sock(sock, send_buf, buf_size);
 
 	if (send_buf != NULL) {
@@ -602,13 +643,13 @@ send:
 
 	return ret;
 
-error:
+end:
 	/* Notify client of error */
 	llm.ret_code = ret;
 	llm.size_payload = 0;
 	send_unix_sock(sock, (void*) &llm, sizeof(llm));
 
-	return -1;
+	return ret;
 }
 
 /*

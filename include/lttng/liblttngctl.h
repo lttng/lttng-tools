@@ -20,6 +20,7 @@
 #define _LIBLTTNGCTL_H
 
 #include <limits.h>
+#include <uuid/uuid.h>
 
 /* Default unix group name for tracing.
  */
@@ -41,7 +42,8 @@ struct lttng_session {
 	char uuid[UUID_STR_LEN];
 };
 
-extern int lttng_create_session(char *name, char **session_id);
+extern int lttng_create_session(char *name, uuid_t *session_id);
+extern int lttng_destroy_session(uuid_t *uuid);
 extern int lttng_connect_sessiond(void);
 extern int lttng_set_tracing_group(const char *name);
 extern int lttng_check_session_daemon(void);

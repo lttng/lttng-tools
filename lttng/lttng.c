@@ -56,6 +56,7 @@ static int set_signal_handler(void);
 static int process_client_opt(void)
 {
 	int ret;
+	uuid_t uuid;
 
 	/* Connect to the session daemon */
 	ret = lttng_connect_sessiond();
@@ -84,6 +85,14 @@ static int process_client_opt(void)
 		}
 	}
 
+	if (opt_destroy_session != NULL) {
+		uuid_parse(opt_destroy_session, uuid);
+		ret = lttng_destroy_session(&uuid);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
 	return 0;
 
 end:
@@ -100,15 +109,18 @@ end:
 static int process_opt_create_session(void)
 {
 	int ret;
-	char *session_id;
+	uuid_t session_id;
+	char str_uuid[37];
 
 	ret = lttng_create_session(opt_create_session, &session_id);
 	if (ret < 0) {
 		goto error;
 	}
 
+	uuid_unparse(session_id, str_uuid);
+
 	MSG("Session created:");
-	MSG("    %s (%s)", opt_create_session, session_id);
+	MSG("    %s (%s)", opt_create_session, str_uuid);
 
 error:
 	return ret;
