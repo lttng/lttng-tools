@@ -45,6 +45,7 @@ struct lttng_session {
 extern int lttng_create_session(char *name, uuid_t *session_id);
 extern int lttng_destroy_session(uuid_t *uuid);
 extern int lttng_connect_sessiond(void);
+extern int lttng_disconnect_sessiond(void);
 extern int lttng_set_tracing_group(const char *name);
 extern int lttng_check_session_daemon(void);
 extern const char *lttng_get_readable_code(int code);

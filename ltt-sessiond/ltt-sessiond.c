@@ -217,7 +217,7 @@ static void *thread_manage_clients(void *data)
 		 * request of the client.
 		 */
 		ret = lttcomm_recv_unix_sock(sock, &lsm, sizeof(lsm));
-		if (ret < 0) {
+		if (ret <= 0) {
 			continue;
 		}
 
@@ -897,6 +897,7 @@ static void sighandler(int sig)
 {
 	switch (sig) {
 		case SIGPIPE:
+			return;
 		case SIGINT:
 		case SIGTERM:
 			cleanup();

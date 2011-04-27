@@ -357,6 +357,9 @@ static void sighandler(int sig)
 void clean_exit(int code)
 {
 	DBG("Clean exit");
+	if (lttng_disconnect_sessiond() < 0) {
+		ERR("Session daemon disconnect failed.");
+	}
 	exit(code);
 }
 
@@ -376,12 +379,12 @@ int main(int argc, char *argv[])
 
 	ret = parse_args(argc, (const char **) argv);
 	if (ret < 0) {
-		return EXIT_FAILURE;
+		clean_exit(EXIT_FAILURE);
 	}
 
 	ret = set_signal_handler();
 	if (ret < 0) {
-		return ret;
+		clean_exit(ret);
 	}
 
 	if (opt_tracing_group != NULL) {
@@ -394,7 +397,7 @@ int main(int argc, char *argv[])
 		DBG("Kernel tracing activated");
 		if (getuid() != 0) {
 			ERR("%s must be setuid root", progname);
-			return -EPERM;
+			clean_exit(-EPERM);
 		}
 	}
 
@@ -402,13 +405,15 @@ int main(int argc, char *argv[])
 	 * If no, a daemon will be spawned.
 	 */
 	if (opt_no_sessiond == 0 && (check_ltt_sessiond() < 0)) {
-		return EXIT_FAILURE;
+		clean_exit(EXIT_FAILURE);
 	}
 
 	ret = process_client_opt();
 	if (ret < 0) {
-		return ret;
+		clean_exit(ret);
 	}
+
+	clean_exit(0);
 
 	return 0;
 }

@@ -281,6 +281,24 @@ int lttng_connect_sessiond(void)
 }
 
 /*
+ *  lttng_disconnect_sessiond
+ *
+ *  Clean disconnect the session daemon.
+ */
+int lttng_disconnect_sessiond(void)
+{
+	int ret = 0;
+
+	if (connected) {
+		ret = lttcomm_close_unix_sock(sessiond_socket);
+		sessiond_socket = 0;
+		connected = 0;
+	}
+
+	return ret;
+}
+
+/*
  *  lttng_set_current_session_uuid
  *
  *  Set the session uuid for current lsm.

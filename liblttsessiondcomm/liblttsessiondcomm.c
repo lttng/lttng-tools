@@ -226,3 +226,21 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 
 	return ret;
 }
+
+/*
+ *  lttcomm_close_unix_sock
+ *
+ *  Shutdown cleanly a unix socket.
+ */
+int lttcomm_close_unix_sock(int sock)
+{
+	int ret;
+
+	/* Shutdown receptions and transmissions */
+	ret = shutdown(sock, SHUT_RDWR);
+	if (ret < 0) {
+		perror("shutdown");
+	}
+
+	return ret;
+}
