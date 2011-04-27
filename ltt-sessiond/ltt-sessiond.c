@@ -56,6 +56,7 @@ static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_sessi
 static int check_existing_daemon(void);
 static int notify_apps(const char* name);
 static int connect_app(pid_t pid);
+static int find_app_by_pid(pid_t pid);
 static int init_daemon_socket(void);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
@@ -157,21 +158,16 @@ static void *thread_manage_apps(void *data)
 			traceable_app_count++;
 		} else {
 			/* Unregistering */
-			lta = NULL;
 			cds_list_for_each_entry(lta, &ltt_traceable_app_list.head, list) {
 				if (lta->pid == reg_msg.pid && lta->uid == reg_msg.uid) {
 					cds_list_del(&lta->list);
+					free(lta);
 					/* Check to not overflow here */
 					if (traceable_app_count != 0) {
 						traceable_app_count--;
 					}
 					break;
 				}
-			}
-
-			/* If an item was found, free it from memory */
-			if (lta) {
-				free(lta);
 			}
 		}
 	}
@@ -259,10 +255,18 @@ static int send_unix_sock(int sock, void *buf, size_t len)
  *
  * 	Return a socket connected to the libust communication socket
  * 	of the application identified by the pid.
+ *
+ * 	If the pid is not found in the traceable list,
+ * 	return -1 to indicate error.
  */
 static int connect_app(pid_t pid)
 {
-	int sock;
+	int sock, ret;
+
+	ret = find_app_by_pid(pid);
+	if (ret == 0) {
+		return -1;
+	}
 
 	sock = ustctl_connect_pid(pid);
 	if (sock < 0) {
@@ -300,6 +304,26 @@ static int notify_apps(const char *name)
 
 error:
 	return ret;
+}
+
+/*
+ *  find_app_by_pid
+ *
+ *  Iterate over the traceable apps list.
+ *  On success, return 1, else return 0
+ */
+static int find_app_by_pid(pid_t pid)
+{
+	struct ltt_traceable_app *iter;
+
+	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
+		if (iter->pid == pid) {
+			/* Found */
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -437,6 +461,51 @@ error:
 }
 
 /*
+ *  ust_create_trace
+ *
+ *  Create an userspace trace using pid.
+ *  This trace is then appended to the current session
+ *  ust trace list.
+ */
+static int ust_create_trace(pid_t pid)
+{
+	int sock, ret;
+	struct ltt_ust_trace *trace;
+
+	trace = malloc(sizeof(struct ltt_ust_trace));
+	if (trace == NULL) {
+		perror("malloc");
+		ret = -1;
+		goto error;
+	}
+
+	/* Init */
+	trace->pid = pid;
+	trace->shmid = 0;
+
+	/* Connect to app using ustctl API */
+	sock = connect_app(pid);
+	if (sock < 0) {
+		ret = LTTCOMM_NO_TRACEABLE;
+		goto error;
+	}
+
+	ret = ustctl_create_trace(sock, "auto");
+	if (ret < 0) {
+		ret = LTTCOMM_CREATE_FAIL;
+		goto error;
+	}
+
+	/* Check if current session is valid */
+	if (current_session) {
+		cds_list_add(&trace->list, &current_session->ust_traces);
+	}
+
+error:
+	return ret;
+}
+
+/*
  * 	get_list_apps
  *
  *  List traceable user-space application and fill an
@@ -553,6 +622,19 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	 */
 	copy_common_data(&llm, lsm);
 
+	/* Check command that needs a session */
+	if (lsm->cmd_type != LTTNG_CREATE_SESSION &&
+		lsm->cmd_type != LTTNG_LIST_SESSIONS &&
+		lsm->cmd_type != UST_LIST_APPS)
+	{
+		current_session = find_session_by_uuid(lsm->session_id);
+		if (current_session == NULL) {
+			ret = LTTCOMM_SELECT_SESS;
+			goto end;
+		}
+	}
+
+
 	/* Default return code.
 	 * In our world, everything is OK... right? ;)
 	 */
@@ -589,16 +671,13 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 		case UST_CREATE_TRACE:
 		{
-			int sock;
-			sock = connect_app(lsm->pid);
-
-			ret = ustctl_create_trace(sock, "auto");
+			ret = ust_create_trace(lsm->pid);
 			if (ret < 0) {
 				ret = LTTCOMM_CREATE_FAIL;
-			} else {
-				ret = LTTCOMM_OK;
+				goto end;
 			}
 
+			/* No auxiliary data so only send the llm struct. */
 			goto end;
 		}
 		case UST_LIST_APPS:

@@ -39,7 +39,7 @@ struct ltt_lttng_trace {
 struct ltt_ust_trace {
 	struct cds_list_head list;
 	int shmid;
-	char trace_name[NAME_MAX];
+	pid_t pid;
 	struct cds_list_head markers;
 };
 
