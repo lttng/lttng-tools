@@ -587,6 +587,20 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 			/* No auxiliary data so only send the llm struct. */
 			goto end;
 		}
+		case UST_CREATE_TRACE:
+		{
+			int sock;
+			sock = connect_app(lsm->pid);
+
+			ret = ustctl_create_trace(sock, "auto");
+			if (ret < 0) {
+				ret = LTTCOMM_CREATE_FAIL;
+			} else {
+				ret = LTTCOMM_OK;
+			}
+
+			goto end;
+		}
 		case UST_LIST_APPS:
 		{
 			/* Stop right now if no apps */

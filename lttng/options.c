@@ -33,6 +33,7 @@ int opt_verbose = 0;
 int opt_list_apps = 0;
 int opt_no_sessiond = 0;
 int opt_list_session = 0;
+pid_t opt_create_trace = 0;
 
 enum {
 	OPT_HELP = 42,
@@ -40,21 +41,22 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",			'h',	POPT_ARG_NONE,		0, OPT_HELP, 0, 0},
+	{"create-session",  'c',	POPT_ARG_STRING,	&opt_create_session, 0, 0, 0},
+	{"create-trace",	'C',	POPT_ARG_INT,		&opt_create_trace, 0, 0, 0},
+	{"destroy-session", 'd',	POPT_ARG_STRING,	&opt_destroy_session, 0, 0, 0},
 	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0},
+	{"help",			'h',	POPT_ARG_NONE,		0, OPT_HELP, 0, 0},
 	{"kernel",			0,		POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
+	{"list-apps",		'L',	POPT_ARG_VAL,		&opt_list_apps, 1, 0, 0},
+	{"list-sessions",	'l',	POPT_ARG_VAL,		&opt_list_session, 1, 0, 0},
 	{"no-kernel",		0,		POPT_ARG_VAL,		&opt_trace_kernel, 0, 0, 0},
+	{"no-sessiond",		0,		POPT_ARG_VAL,		&opt_no_sessiond, 1, 0, 0},
+	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0, 0},
+	{"session",			's',	POPT_ARG_STRING,	&opt_session_uuid, 0, 0, 0},
+	{"sessiond-path",	0,		POPT_ARG_STRING,	&opt_sessiond_path, 0, 0, 0},
+	{"verbose",			'v',	POPT_ARG_VAL,		&opt_verbose, 1, 0, 0},
 	//{"session",			0,		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_session_name, 0, 0},
-	{"session",			's',	POPT_ARG_STRING,	&opt_session_uuid, 0, 0},
-	{"create-session",  'c',	POPT_ARG_STRING,	&opt_create_session, 0, 0},
-	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0},
-	{"verbose",			'v',	POPT_ARG_VAL,		&opt_verbose, 1, 0},
-	{"list-apps",		'L',	POPT_ARG_VAL,		&opt_list_apps, 1, 0},
-	{"no-sessiond",		0,		POPT_ARG_VAL,		&opt_no_sessiond, 1, 0},
-	{"sessiond-path",	0,		POPT_ARG_STRING,	&opt_sessiond_path, 0, 0},
-	{"list-sessions",	'l',	POPT_ARG_VAL,		&opt_list_session, 1, 0},
-	{"destroy-session", 'd',	POPT_ARG_STRING,	&opt_destroy_session, 0, 0},
-	{0, 0, 0, 0, 0, 0}
+	{0, 0, 0, 0, 0, 0, 0}
 };
 
 
@@ -71,19 +73,23 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -q, --quiet                  Quiet mode\n");
 	fprintf(ofp, "      --help                   Show help\n");
 	fprintf(ofp, "      --group NAME             Unix tracing group name. (default: tracing)\n");
-	fprintf(ofp, "      --no-sessiond            Don't spawn a session daemon.\n");
+	fprintf(ofp, "      --no-sessiond            Don't spawn a session daemon\n");
 	fprintf(ofp, "      --sessiond-path          Session daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Session options:\n");
 	fprintf(ofp, "  -c, --create-session NAME    Create a new session\n");
 	fprintf(ofp, "  -l, --list-sessions          List all available sessions\n");
-	fprintf(ofp, "  -s, --session UUID           Specify tracing session using UUID.\n");
+	fprintf(ofp, "  -s, --session UUID           Specify tracing session using UUID\n");
 	fprintf(ofp, "  -d, --destroy-session=NAME   Destroy the session specified by NAME\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Tracing options:\n");
 	//fprintf(ofp, "      --kernel               Enable kernel tracing\n");
 	//fprintf(ofp, "      --no-kernel            Disable kernel tracing\n");
 	fprintf(ofp, "  -L, --list-apps              List traceable UST applications\n");
+	fprintf(ofp, "  -C, --create-trace PID       Create trace for PID\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
+	fprintf(ofp, "See http://lttng.org/ust for updates, bug reports and news.\n");
 }
 
 /*

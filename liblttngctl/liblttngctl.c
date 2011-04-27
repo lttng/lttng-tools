@@ -168,6 +168,21 @@ const char *lttng_get_readable_code(int code)
 }
 
 /*
+ *  lttng_ust_create_trace
+ *
+ *  Request a trace creation for pid.
+ */
+int lttng_ust_create_trace(pid_t pid)
+{
+	int ret;
+
+	lsm.pid = pid;
+	ret = ask_sessiond(UST_CREATE_TRACE, NULL);
+
+	return ret;
+}
+
+/*
  *  lttng_ust_list_apps
  *
  *  Ask the session daemon for all UST traceable

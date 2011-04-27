@@ -52,5 +52,6 @@ extern const char *lttng_get_readable_code(int code);
 extern int lttng_ust_list_apps(pid_t **pids);
 extern int lttng_list_sessions(struct lttng_session **sessions);
 extern void lttng_set_current_session_uuid(char *uuid);
+extern int lttng_ust_create_trace(pid_t pid);
 
 #endif /* _LIBLTTNGCTL_H */

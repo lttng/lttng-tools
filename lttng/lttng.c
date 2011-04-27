@@ -97,6 +97,15 @@ static int process_client_opt(void)
 		lttng_set_current_session_uuid(opt_session_uuid);
 	}
 
+	if (opt_create_trace) {
+		DBG("Create trace for pid %d", opt_create_trace);
+		ret = lttng_ust_create_trace(opt_create_trace);
+		if (ret < 0) {
+			goto end;
+		}
+		MSG("Trace created successfully!\nUse --start PID to start tracing");
+	}
+
 	return 0;
 
 end:

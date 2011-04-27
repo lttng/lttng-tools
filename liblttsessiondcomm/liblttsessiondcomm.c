@@ -41,6 +41,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_APPS) ] = "No traceable apps found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_SESS) ] = "No session found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_FATAL) ] = "Fatal error of the session daemon",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_CREATE_FAIL) ] = "Create trace failed",
 };
 
 /*
