@@ -93,6 +93,10 @@ static int process_client_opt(void)
 		}
 	}
 
+	if (opt_session_uuid != NULL) {
+		lttng_set_current_session_uuid(opt_session_uuid);
+	}
+
 	return 0;
 
 end:

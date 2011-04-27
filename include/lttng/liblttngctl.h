@@ -50,5 +50,6 @@ extern int lttng_check_session_daemon(void);
 extern const char *lttng_get_readable_code(int code);
 extern int lttng_ust_list_apps(pid_t **pids);
 extern int lttng_list_sessions(struct lttng_session **sessions);
+extern void lttng_set_current_session_uuid(char *uuid);
 
 #endif /* _LIBLTTNGCTL_H */

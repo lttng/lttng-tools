@@ -197,7 +197,6 @@ int lttng_ust_list_apps(pid_t **pids)
 int lttng_create_session(char *name, uuid_t *session_id)
 {
 	int ret;
-	char *uuid;
 
 	strncpy(lsm.session_name, name, sizeof(lsm.session_name));
 	lsm.session_name[sizeof(lsm.session_name) - 1] = '\0';
@@ -279,6 +278,16 @@ int lttng_connect_sessiond(void)
 	connected = 1;
 
 	return 0;
+}
+
+/*
+ *  lttng_set_current_session_uuid
+ *
+ *  Set the session uuid for current lsm.
+ */
+void lttng_set_current_session_uuid(char *uuid)
+{
+	uuid_parse(uuid, lsm.session_id);
 }
 
 /*

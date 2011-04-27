@@ -27,7 +27,7 @@ extern int opt_trace_kernel;
 extern int opt_verbose;
 extern int opt_quiet;
 extern char *opt_tracing_group;
-extern char *opt_session_name;
+extern char *opt_session_uuid;
 extern char *opt_create_session;
 extern char *opt_sessiond_path;
 extern char *opt_destroy_session;

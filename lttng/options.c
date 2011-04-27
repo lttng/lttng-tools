@@ -23,7 +23,7 @@
 
 /* Option variables */
 char *opt_tracing_group;
-char *opt_session_name;
+char *opt_session_uuid;
 char *opt_create_session;
 char *opt_sessiond_path;
 char *opt_destroy_session;
@@ -44,7 +44,8 @@ static struct poptOption long_options[] = {
 	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0},
 	{"kernel",			0,		POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
 	{"no-kernel",		0,		POPT_ARG_VAL,		&opt_trace_kernel, 0, 0, 0},
-	{"session",			0,		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_session_name, 0, 0},
+	//{"session",			0,		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_session_name, 0, 0},
+	{"session",			's',	POPT_ARG_STRING,	&opt_session_uuid, 0, 0},
 	{"create-session",  'c',	POPT_ARG_STRING,	&opt_create_session, 0, 0},
 	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0},
 	{"verbose",			'v',	POPT_ARG_VAL,		&opt_verbose, 1, 0},
@@ -76,8 +77,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Session options:\n");
 	fprintf(ofp, "  -c, --create-session NAME    Create a new session\n");
 	fprintf(ofp, "      --list-session           List all available sessions\n");
-	fprintf(ofp, "      --session [NAME]         Specify tracing session. If no NAME is given\n");
-	fprintf(ofp, "                               or option is ommited, a session will be created\n");
+	fprintf(ofp, "  -s, --session UUID           Specify tracing session using UUID.\n");
 	fprintf(ofp, "  -d, --destroy-session=NAME   Destroy the session specified by NAME\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Tracing options:\n");
@@ -96,6 +96,11 @@ int parse_args(int argc, const char **argv)
 {
 	static poptContext pc;
 	int opt;
+
+	/* If no options, fail */
+	if (argc < 2) {
+		return -1;
+	}
 
 	pc = poptGetContext("lttng", argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
