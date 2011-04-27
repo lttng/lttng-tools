@@ -61,6 +61,10 @@ static int init_daemon_socket(void);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
 static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *llm);
+static void add_traceable_app(struct ltt_traceable_app *lta);
+static void del_traceable_app(struct ltt_traceable_app *lta);
+static void add_session_list(struct ltt_session *ls);
+static void del_session_list(struct ltt_session *ls);
 
 /* Command function */
 static void get_list_apps(pid_t *pids);
@@ -106,6 +110,9 @@ static struct ltt_session_list ltt_session_list = {
 static struct ltt_traceable_app_list ltt_traceable_app_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_traceable_app_list.head),
 };
+
+/* List mutex */
+pthread_mutex_t ltt_traceable_app_list_mutex;
 
 /*
  * 	thread_manage_apps
@@ -154,18 +161,13 @@ static void *thread_manage_apps(void *data)
 			lta = malloc(sizeof(struct ltt_traceable_app));
 			lta->pid = reg_msg.pid;
 			lta->uid = reg_msg.uid;
-			cds_list_add(&lta->list, &ltt_traceable_app_list.head);
-			traceable_app_count++;
+			add_traceable_app(lta);
 		} else {
 			/* Unregistering */
 			cds_list_for_each_entry(lta, &ltt_traceable_app_list.head, list) {
 				if (lta->pid == reg_msg.pid && lta->uid == reg_msg.uid) {
-					cds_list_del(&lta->list);
+					del_traceable_app(lta);
 					free(lta);
-					/* Check to not overflow here */
-					if (traceable_app_count != 0) {
-						traceable_app_count--;
-					}
 					break;
 				}
 			}
@@ -231,6 +233,62 @@ static void *thread_manage_clients(void *data)
 
 error:
 	return NULL;
+}
+
+/*
+ *  add_traceable_app
+ *
+ *  Add a traceable application structure to the global
+ *  list protected by a mutex.
+ */
+static void add_traceable_app(struct ltt_traceable_app *lta)
+{
+	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
+	cds_list_add(&lta->list, &ltt_traceable_app_list.head);
+	traceable_app_count++;
+	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
+}
+
+/*
+ *  del_traceable_app
+ *
+ *  Delete a traceable application structure from the
+ *  global list protected by a mutex.
+ */
+static void del_traceable_app(struct ltt_traceable_app *lta)
+{
+	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
+	cds_list_del(&lta->list);
+	/* Sanity check */
+	if (traceable_app_count != 0) {
+		traceable_app_count--;
+	}
+	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
+}
+
+/*
+ *  add_session_list
+ *
+ *  Add a ltt_session structure to the global list.
+ */
+static void add_session_list(struct ltt_session *ls)
+{
+	cds_list_add(&ls->list, &ltt_session_list.head);
+	session_count++;
+}
+
+/*
+ *  del_session_list
+ *
+ *  Delete a ltt_session structure to the global list.
+ */
+static void del_session_list(struct ltt_session *ls)
+{
+	cds_list_del(&ls->list);
+	/* Sanity check */
+	if (session_count != 0) {
+		session_count--;
+	}
 }
 
 /*
@@ -316,12 +374,15 @@ static int find_app_by_pid(pid_t pid)
 {
 	struct ltt_traceable_app *iter;
 
+	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
 	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
 		if (iter->pid == pid) {
+			pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
 			/* Found */
 			return 1;
 		}
 	}
+	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
 
 	return 0;
 }
@@ -396,9 +457,8 @@ static int destroy_session(uuid_t *uuid)
 
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (uuid_compare(iter->uuid, *uuid) == 0) {
-			cds_list_del(&iter->list);
+			del_session_list(iter);
 			free(iter);
-			session_count--;
 			found = 1;
 			break;
 		}
@@ -450,9 +510,7 @@ static int create_session(char *name, uuid_t *session_id)
 	CDS_INIT_LIST_HEAD(&new_session->lttng_traces);
 
 	/* Add new session to the global session list */
-	cds_list_add(&new_session->list, &ltt_session_list.head);
-
-	session_count++;
+	add_session_list(new_session);
 
 	return 0;
 
@@ -516,11 +574,15 @@ static void get_list_apps(pid_t *pids)
 	int i = 0;
 	struct ltt_traceable_app *iter;
 
-	/* TODO: Mutex needed to access this list */
+	/* Protected by a mutex here because the threads manage_client
+	 * and manage_apps can access this list.
+	 */
+	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
 	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
 		pids[i] = iter->pid;
 		i++;
 	}
+	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
 }
 
 /*
