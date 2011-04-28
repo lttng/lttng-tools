@@ -812,16 +812,15 @@ end:
  */
 static void usage(void)
 {
-	fprintf(stderr, "Usage:\n%s OPTIONS\n\nOptions:\n"
-			"\t-h, --help\t\tDisplay this usage.\n"
-			"\t-c, --client-sock PATH\t\tSpecify path for the client unix socket\n"
-			"\t-a, --apps-sock PATH\t\tSpecify path for apps unix socket.\n"
-			"\t-d, --daemonize\t\tStart as a daemon.\n"
-			"\t-g, --group NAME\t\tSpecify the tracing group name. (default: tracing)\n"
-			"\t-V, --version\t\tShow version number.\n"
-			"\t-S, --sig-parent\t\tSend SIGCHLD to parent pid to notify readiness.\n"
-			"\t-q, --quiet\t\tNo output at all.\n",
-			progname);
+	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
+	fprintf(stderr, "  -h, --help                Display this usage.\n");
+	fprintf(stderr, "  -c, --client-sock PATH    Specify path for the client unix socket\n");
+	fprintf(stderr, "  -a, --apps-sock PATH      Specify path for apps unix socket.\n");
+	fprintf(stderr, "  -d, --daemonize           Start as a daemon.\n");
+	fprintf(stderr, "  -g, --group NAME          Specify the tracing group name. (default: tracing)\n");
+	fprintf(stderr, "  -V, --version             Show version number.\n");
+	fprintf(stderr, "  -S, --sig-parent          Send SIGCHLD to parent pid to notify readiness.\n");
+	fprintf(stderr, "  -q, --quiet               No output at all.\n");
 }
 
 /*
@@ -857,7 +856,7 @@ static int parse_args(int argc, char **argv)
 				fprintf(stderr, " with arg %s\n", optarg);
 			}
 			break;
-		case 's':
+		case 'c':
 			snprintf(client_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'a':
@@ -1072,8 +1071,8 @@ static void sighandler(int sig)
 static void cleanup()
 {
 	/* <fun> */
-	MSG("\n\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
-	MSG("%c[%d;%dm Matthew, BEET driven development works!%c[%dm\n",27,1,33,27,0);
+	MSG("\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
+	MSG("%c[%d;%dmMatthew, BEET driven development works!%c[%dm",27,1,33,27,0);
 	/* </fun> */
 
 	unlink(client_unix_sock_path);
