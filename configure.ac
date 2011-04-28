@@ -48,9 +48,10 @@ AC_CONFIG_FILES([
 	include/Makefile
 	liblttngctl/Makefile
 	liblttsessiondcomm/Makefile
+	ltt-sessiond/Makefile
 	lttng/Makefile
 	tests/Makefile
-	ltt-sessiond/Makefile
+	tests/ltt-sessiond/Makefile
 ])
 
 AC_OUTPUT

@@ -1,3 +1,3 @@
-SUBDIRS = .
+SUBDIRS = . ltt-sessiond
 
-dist_noinst_SCRIPTS = runall
+dist_noinst_SCRIPTS = runall.sh
