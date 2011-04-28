@@ -78,6 +78,7 @@ enum lttcomm_return_code {
 	LTTCOMM_FATAL,			/* Session daemon had a fatal error */
 	LTTCOMM_NO_TRACEABLE,	/* Error for non traceable app */
 	LTTCOMM_SELECT_SESS,	/* Must select a session */
+	LTTCOMM_EXIST_SESS,		/* Session name already exist */
 	LTTCOMM_NR,				/* Last element */
 };
 

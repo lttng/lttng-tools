@@ -93,7 +93,7 @@ function test_session_same_name()
 {
 	lttng_create_session "test-same"
 	lttng_create_session "test-same"
-	if [ $LTTNG_RET_CODE -ne 1 ]; then
+	if [ $LTTNG_RET_CODE -ne 0 ]; then
 		echo "[-] Session with the same name: FAILED!"
 		printf "Two session having the same name NOT ALLOWED\n"
 		clean_exit 1

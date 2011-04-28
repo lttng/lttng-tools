@@ -477,21 +477,26 @@ static int create_session(char *name, uuid_t *session_id)
 {
 	struct ltt_session *new_session;
 
+	new_session = find_session_by_name(name);
+	if (new_session != NULL) {
+		goto error;
+	}
+
 	/* Allocate session data structure */
 	new_session = malloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
 		perror("malloc");
-		goto error;
+		goto error_mem;
 	}
 
 	if (name != NULL) {
 		if (asprintf(&new_session->name, "%s", name) < 0) {
-			goto error;
+			goto error_mem;
 		}
 	} else {
 		/* Generate session name based on the session count */
 		if (asprintf(&new_session->name, "%s%d", "lttng-", session_count) < 0) {
-			goto error;
+			goto error_mem;
 		}
 	}
 
@@ -516,6 +521,9 @@ static int create_session(char *name, uuid_t *session_id)
 
 error:
 	return -1;
+
+error_mem:
+	return -ENOMEM;
 }
 
 /*
@@ -708,6 +716,11 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		{
 			ret = create_session(lsm->session_name, &llm.session_id);
 			if (ret < 0) {
+				if (ret == -1) {
+					ret = LTTCOMM_EXIST_SESS;
+				} else {
+					ret = LTTCOMM_FATAL;
+				}
 				goto end;
 			}
 
