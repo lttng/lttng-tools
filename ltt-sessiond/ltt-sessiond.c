@@ -1136,7 +1136,10 @@ int main(int argc, char **argv)
 	 */
 	if ((ret = check_existing_daemon()) == 0) {
 		ERR("Already running daemon.\n");
-		goto error;
+		/* We do not goto error because we must not
+		 * cleanup() because a daemon is already working.
+		 */
+		return EXIT_FAILURE;
 	}
 
 	if (set_signal_handler() < 0) {
