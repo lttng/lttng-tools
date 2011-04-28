@@ -684,6 +684,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 {
 	int ret;
 	int buf_size;
+	size_t header_size;
 	char *send_buf = NULL;
 	struct lttcomm_lttng_msg llm;
 
@@ -704,11 +705,12 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 	}
 
-
 	/* Default return code.
 	 * In our world, everything is OK... right? ;)
 	 */
 	llm.ret_code = LTTCOMM_OK;
+
+	header_size = sizeof(struct lttcomm_lttng_msg);
 
 	/* Process by command type */
 	switch (lsm->cmd_type) {
@@ -771,7 +773,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				goto end;
 			}
 
-			get_list_apps((pid_t *)(send_buf + sizeof(struct lttcomm_lttng_msg)));
+			get_list_apps((pid_t *)(send_buf + header_size));
 
 			break;
 		}
@@ -791,7 +793,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				goto end;
 			}
 
-			get_list_sessions((struct lttng_session *)(send_buf + sizeof(struct lttcomm_lttng_msg)));
+			get_list_sessions((struct lttng_session *)(send_buf + header_size));
 
 			break;
 		}
