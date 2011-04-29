@@ -50,31 +50,29 @@ const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
 const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
 /* Static functions */
-static int set_signal_handler(void);
-static int set_socket_perms(void);
-static void sighandler(int sig);
-static void cleanup(void);
-static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
 static int check_existing_daemon(void);
-static int notify_apps(const char* name);
 static int connect_app(pid_t pid);
 static int init_daemon_socket(void);
+static int notify_apps(const char* name);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
+static int set_signal_handler(void);
+static int set_socket_perms(void);
 static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *llm);
-
-/* Command function */
+static void cleanup(void);
+static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
+static void sighandler(int sig);
 
 static void *thread_manage_clients(void *data);
 static void *thread_manage_apps(void *data);
 
 /* Variables */
+int opt_verbose;
+int opt_quiet;
 const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
 static int opt_daemon;
-int opt_verbose;
-int opt_quiet;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;
 
@@ -615,8 +613,8 @@ static int parse_args(int argc, char **argv)
  * 	init_daemon_socket
  *
  * 	Creates the two needed socket by the daemon.
- * 		apps_socket - The communication socket for all UST apps.
- * 		client_socket - The communication of the cli tool (lttng).
+ * 	    apps_socket - The communication socket for all UST apps.
+ * 	    client_socket - The communication of the cli tool (lttng).
  */
 static int init_daemon_socket()
 {
@@ -662,7 +660,7 @@ end:
  * 	check_existing_daemon
  *
  * 	Check if the global socket is available.
- * 	If yes, error is returned.
+ *  If yes, error is returned.
  */
 static int check_existing_daemon()
 {
@@ -677,12 +675,12 @@ static int check_existing_daemon()
 }
 
 /*
- *	get_home_dir
+ *  get_home_dir
  *
- *	Return pointer to home directory path using
- *	the env variable HOME.
+ *  Return pointer to home directory path using
+ *  the env variable HOME.
  *
- *	Default : /tmp
+ *  Default : /tmp
  */
 static const char *get_home_dir(void)
 {
@@ -726,9 +724,9 @@ end:
 }
 
 /*
- *	set_signal_handler
+ *  set_signal_handler
  *
- *	Setup signal handler for :
+ *  Setup signal handler for :
  *		SIGINT, SIGTERM, SIGPIPE
  */
 static int set_signal_handler(void)
@@ -764,9 +762,9 @@ static int set_signal_handler(void)
 }
 
 /**
- *	sighandler
+ *  sighandler
  *
- *	Signal handler for the daemon
+ *  Signal handler for the daemon
  */
 static void sighandler(int sig)
 {
@@ -785,9 +783,9 @@ static void sighandler(int sig)
 }
 
 /*
- *	cleanup
+ *  cleanup
  *
- *	Cleanup the daemon on exit
+ *  Cleanup the daemon on exit
  */
 static void cleanup()
 {
