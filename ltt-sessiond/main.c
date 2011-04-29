@@ -40,6 +40,7 @@
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"
 #include "lttngerr.h"
+#include "session.h"
 
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
@@ -63,21 +64,12 @@ static int send_unix_sock(int sock, void *buf, size_t len);
 static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *llm);
 static void add_traceable_app(struct ltt_traceable_app *lta);
 static void del_traceable_app(struct ltt_traceable_app *lta);
-static void add_session_list(struct ltt_session *ls);
-static void del_session_list(struct ltt_session *ls);
 
 /* Command function */
 static void get_list_apps(pid_t *pids);
-static void get_list_sessions(struct lttng_session *lt);
 
 static void *thread_manage_clients(void *data);
 static void *thread_manage_apps(void *data);
-
-static int create_session(char *name, uuid_t *session_id);
-static int destroy_session(uuid_t *uuid);
-
-static struct ltt_session *find_session_by_uuid(uuid_t session_id);
-static struct ltt_session *find_session_by_name(char *name);
 
 /* Variables */
 const char *progname;
@@ -98,13 +90,7 @@ static int apps_socket;
 static struct ltt_session *current_session;
 
 /* Number of element for the list below. */
-static unsigned int session_count;
 static unsigned int traceable_app_count;
-
-/* Init session's list */
-static struct ltt_session_list ltt_session_list = {
-	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
-};
 
 /* Init ust traceabl application's list */
 static struct ltt_traceable_app_list ltt_traceable_app_list = {
@@ -267,31 +253,6 @@ static void del_traceable_app(struct ltt_traceable_app *lta)
 }
 
 /*
- *  add_session_list
- *
- *  Add a ltt_session structure to the global list.
- */
-static void add_session_list(struct ltt_session *ls)
-{
-	cds_list_add(&ls->list, &ltt_session_list.head);
-	session_count++;
-}
-
-/*
- *  del_session_list
- *
- *  Delete a ltt_session structure to the global list.
- */
-static void del_session_list(struct ltt_session *ls)
-{
-	cds_list_del(&ls->list);
-	/* Sanity check */
-	if (session_count != 0) {
-		session_count--;
-	}
-}
-
-/*
  *  send_unix_sock
  *
  *  Send data on a unix socket using the liblttsessiondcomm API.
@@ -388,145 +349,6 @@ static int find_app_by_pid(pid_t pid)
 }
 
 /*
- * 	find_session_by_uuid
- *
- * 	Return a ltt_session structure ptr that matches the uuid.
- */
-static struct ltt_session *find_session_by_uuid(uuid_t session_id)
-{
-	int found = 0;
-	struct ltt_session *iter;
-
-	/* Sanity check for NULL session_id */
-	if (uuid_is_null(session_id)) {
-		goto end;
-	}
-
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (uuid_compare(iter->uuid, session_id) == 0) {
-			found = 1;
-			break;
-		}
-	}
-
-end:
-	if (!found) {
-		iter = NULL;
-	}
-	return iter;
-}
-
-/*
- * 	find_session_by_name
- *
- * 	Return a ltt_session structure ptr that matches name.
- * 	If no session found, NULL is returned.
- */
-static struct ltt_session *find_session_by_name(char *name)
-{
-	int found = 0;
-	struct ltt_session *iter;
-
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (strncmp(iter->name, name, strlen(iter->name)) == 0) {
-			found = 1;
-			break;
-		}
-	}
-
-	if (!found) {
-		iter = NULL;
-	}
-
-	return iter;
-}
-
-/*
- * 	destroy_session
- *
- *  Delete session from the global session list
- *  and free the memory.
- *
- *  Return -1 if no session is found.
- *  On success, return 1;
- */
-static int destroy_session(uuid_t *uuid)
-{
-	int found = -1;
-	struct ltt_session *iter;
-
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (uuid_compare(iter->uuid, *uuid) == 0) {
-			del_session_list(iter);
-			free(iter);
-			found = 1;
-			break;
-		}
-	}
-
-	return found;
-}
-
-/*
- * 	create_session
- *
- * 	Create a brand new session and add it to the
- * 	global session list.
- */
-static int create_session(char *name, uuid_t *session_id)
-{
-	struct ltt_session *new_session;
-
-	new_session = find_session_by_name(name);
-	if (new_session != NULL) {
-		goto error;
-	}
-
-	/* Allocate session data structure */
-	new_session = malloc(sizeof(struct ltt_session));
-	if (new_session == NULL) {
-		perror("malloc");
-		goto error_mem;
-	}
-
-	if (name != NULL) {
-		if (asprintf(&new_session->name, "%s", name) < 0) {
-			goto error_mem;
-		}
-	} else {
-		/* Generate session name based on the session count */
-		if (asprintf(&new_session->name, "%s%d", "lttng-", session_count) < 0) {
-			goto error_mem;
-		}
-	}
-
-	/* UUID generation */
-	uuid_generate(new_session->uuid);
-	uuid_copy(*session_id, new_session->uuid);
-
-	/* Set consumer (identifier) to 0. This means that there is
-	 * NO consumer attach to that session yet.
-	 */
-	new_session->ust_consumer = 0;
-	new_session->lttng_consumer = 0;
-
-	/* Init list */
-	CDS_INIT_LIST_HEAD(&new_session->ust_traces);
-	CDS_INIT_LIST_HEAD(&new_session->lttng_traces);
-
-	/* Add new session to the global session list */
-	add_session_list(new_session);
-
-	return 0;
-
-error:
-	return -1;
-
-error_mem:
-	return -ENOMEM;
-}
-
-/*
  *  ust_create_trace
  *
  *  Create an userspace trace using pid.
@@ -591,32 +413,6 @@ static void get_list_apps(pid_t *pids)
 		i++;
 	}
 	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-}
-
-/*
- *  get_list_sessions
- *
- *  List sessions and fill the data buffer.
- */
-static void get_list_sessions(struct lttng_session *lt)
-{
-	int i = 0;
-	struct ltt_session *iter;
-	struct lttng_session lsess;
-
-	/* Iterate over session list and append data after
-	 * the control struct in the buffer.
-	 */
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		/* Copy name and uuid */
-		uuid_unparse(iter->uuid, lsess.uuid);
-		strncpy(lsess.name, iter->name, sizeof(lsess.name));
-		lsess.name[sizeof(lsess.name) - 1] = '\0';
-		memcpy(&lt[i], &lsess, sizeof(lsess));
-		i++;
-		/* Reset struct for next pass */
-		memset(&lsess, 0, sizeof(lsess));
-	}
 }
 
 /*
@@ -779,6 +575,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 		case LTTNG_LIST_SESSIONS:
 		{
+			unsigned int session_count = get_session_count();
 			/* Stop right now if no session */
 			if (session_count == 0) {
 				ret = LTTCOMM_NO_SESS;
@@ -793,7 +590,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				goto end;
 			}
 
-			get_list_sessions((struct lttng_session *)(send_buf + header_size));
+			get_lttng_session((struct lttng_session *)(send_buf + header_size));
 
 			break;
 		}
