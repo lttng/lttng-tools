@@ -5,12 +5,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
@@ -41,6 +41,7 @@
 #include "ltt-sessiond.h"
 #include "lttngerr.h"
 #include "session.h"
+#include "traceable-app.h"
 
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
@@ -57,16 +58,12 @@ static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_sessi
 static int check_existing_daemon(void);
 static int notify_apps(const char* name);
 static int connect_app(pid_t pid);
-static int find_app_by_pid(pid_t pid);
 static int init_daemon_socket(void);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
 static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *llm);
-static void add_traceable_app(struct ltt_traceable_app *lta);
-static void del_traceable_app(struct ltt_traceable_app *lta);
 
 /* Command function */
-static void get_list_apps(pid_t *pids);
 
 static void *thread_manage_clients(void *data);
 static void *thread_manage_apps(void *data);
@@ -89,17 +86,6 @@ static int apps_socket;
 
 static struct ltt_session *current_session;
 
-/* Number of element for the list below. */
-static unsigned int traceable_app_count;
-
-/* Init ust traceabl application's list */
-static struct ltt_traceable_app_list ltt_traceable_app_list = {
-	.head = CDS_LIST_HEAD_INIT(ltt_traceable_app_list.head),
-};
-
-/* List mutex */
-pthread_mutex_t ltt_traceable_app_list_mutex;
-
 /*
  * 	thread_manage_apps
  *
@@ -108,7 +94,6 @@ pthread_mutex_t ltt_traceable_app_list_mutex;
 static void *thread_manage_apps(void *data)
 {
 	int sock, ret;
-	struct ltt_traceable_app *lta;
 
 	/* TODO: Something more elegant is needed but fine for now */
 	struct {
@@ -144,19 +129,16 @@ static void *thread_manage_apps(void *data)
 		/* Add application to the global traceable list */
 		if (reg_msg.reg == 1) {
 			/* Registering */
-			lta = malloc(sizeof(struct ltt_traceable_app));
-			lta->pid = reg_msg.pid;
-			lta->uid = reg_msg.uid;
-			add_traceable_app(lta);
+			ret = register_traceable_app(reg_msg.pid, reg_msg.uid);
+			if (ret < 0) {
+				/* register_traceable_app only return an error with
+				 * ENOMEM. At this point, we better stop everything.
+				 */
+				goto error;
+			}
 		} else {
 			/* Unregistering */
-			cds_list_for_each_entry(lta, &ltt_traceable_app_list.head, list) {
-				if (lta->pid == reg_msg.pid && lta->uid == reg_msg.uid) {
-					del_traceable_app(lta);
-					free(lta);
-					break;
-				}
-			}
+			unregister_traceable_app(reg_msg.pid);
 		}
 	}
 
@@ -222,37 +204,6 @@ error:
 }
 
 /*
- *  add_traceable_app
- *
- *  Add a traceable application structure to the global
- *  list protected by a mutex.
- */
-static void add_traceable_app(struct ltt_traceable_app *lta)
-{
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
-	cds_list_add(&lta->list, &ltt_traceable_app_list.head);
-	traceable_app_count++;
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-}
-
-/*
- *  del_traceable_app
- *
- *  Delete a traceable application structure from the
- *  global list protected by a mutex.
- */
-static void del_traceable_app(struct ltt_traceable_app *lta)
-{
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
-	cds_list_del(&lta->list);
-	/* Sanity check */
-	if (traceable_app_count != 0) {
-		traceable_app_count--;
-	}
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-}
-
-/*
  *  send_unix_sock
  *
  *  Send data on a unix socket using the liblttsessiondcomm API.
@@ -280,14 +231,16 @@ static int send_unix_sock(int sock, void *buf, size_t len)
  */
 static int connect_app(pid_t pid)
 {
-	int sock, ret;
+	int sock;
+	struct ltt_traceable_app *lta;
 
-	ret = find_app_by_pid(pid);
-	if (ret == 0) {
+	lta = find_app_by_pid(pid);
+	if (lta == NULL) {
+		/* App not found */
 		return -1;
 	}
 
-	sock = ustctl_connect_pid(pid);
+	sock = ustctl_connect_pid(lta->pid);
 	if (sock < 0) {
 		ERR("Fail connecting to the PID %d\n", pid);
 	}
@@ -323,29 +276,6 @@ static int notify_apps(const char *name)
 
 error:
 	return ret;
-}
-
-/*
- *  find_app_by_pid
- *
- *  Iterate over the traceable apps list.
- *  On success, return 1, else return 0
- */
-static int find_app_by_pid(pid_t pid)
-{
-	struct ltt_traceable_app *iter;
-
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
-	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
-		if (iter->pid == pid) {
-			pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-			/* Found */
-			return 1;
-		}
-	}
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-
-	return 0;
 }
 
 /*
@@ -391,28 +321,6 @@ static int ust_create_trace(pid_t pid)
 
 error:
 	return ret;
-}
-
-/*
- * 	get_list_apps
- *
- *  List traceable user-space application and fill an
- *  array of pids.
- */
-static void get_list_apps(pid_t *pids)
-{
-	int i = 0;
-	struct ltt_traceable_app *iter;
-
-	/* Protected by a mutex here because the threads manage_client
-	 * and manage_apps can access this list.
-	 */
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
-	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
-		pids[i] = iter->pid;
-		i++;
-	}
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
 }
 
 /*
@@ -555,21 +463,22 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 		case UST_LIST_APPS:
 		{
+			unsigned int app_count = get_app_count();
 			/* Stop right now if no apps */
-			if (traceable_app_count == 0) {
+			if (app_count == 0) {
 				ret = LTTCOMM_NO_APPS;
 				goto end;
 			}
 
 			/* Setup data buffer and details for transmission */
 			buf_size = setup_data_buffer(&send_buf,
-					sizeof(pid_t) * traceable_app_count, &llm);
+					sizeof(pid_t) * app_count, &llm);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
 				goto end;
 			}
 
-			get_list_apps((pid_t *)(send_buf + header_size));
+			get_app_list_pids((pid_t *)(send_buf + header_size));
 
 			break;
 		}
@@ -876,7 +785,7 @@ static void sighandler(int sig)
 }
 
 /*
- *	cleanup 
+ *	cleanup
  *
  *	Cleanup the daemon on exit
  */

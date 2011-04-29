@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
