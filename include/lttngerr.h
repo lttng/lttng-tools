@@ -36,24 +36,19 @@ enum __lttng_print_type {
 /*
  *  __lttng_print
  *
- *  Internal function for printing message
- *  depending on command line option and verbosity.
+ *  Macro for printing message depending on
+ *  command line option and verbosity.
  */
-void __lttng_print(enum __lttng_print_type type, const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-
-	if (opt_quiet == 0) {
-		if (type == PRINT_MSG || (opt_verbose && type == PRINT_DBG)) {
-			vfprintf(stdout, fmt, ap);
-		} else if (type != PRINT_MSG && type != PRINT_DBG) {
-			vfprintf(stderr, fmt, ap);
-		}
-	}
-
-	va_end(ap);
-}
+#define __lttng_print(type, fmt, args...)	\
+	do {							\
+		if (opt_quiet == 0) {		\
+			if (type == PRINT_MSG || (opt_verbose && type == PRINT_DBG)) {	\
+				fprintf(stdout, fmt, ## args);	\
+			} else if (type != PRINT_MSG && type != PRINT_DBG) {	\
+				fprintf(stderr, fmt, ## args);		\
+			}	\
+		}	\
+	} while (0);
 
 #define MSG(fmt, args...) __lttng_print(PRINT_MSG, fmt "\n", ## args)
 #define ERR(fmt, args...) __lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
