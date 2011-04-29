@@ -108,7 +108,7 @@ int parse_args(int argc, const char **argv)
 		return -1;
 	}
 
-	pc = poptGetContext("lttng", argc, argv, long_options, 0);
+	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
