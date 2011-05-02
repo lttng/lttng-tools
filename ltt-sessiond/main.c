@@ -375,6 +375,42 @@ error:
 }
 
 /*
+ *  ust_stop_trace
+ *
+ *  Stop a trace. This trace, identified by the pid, must be
+ *  in the current session ust_traces list.
+ */
+static int ust_stop_trace(pid_t pid)
+{
+	int sock, ret;
+	struct ltt_ust_trace *trace;
+
+	DBG("Stopping trace for pid %d", pid);
+
+	trace = find_session_ust_trace_by_pid(current_session, pid);
+	if (trace == NULL) {
+		ret = LTTCOMM_NO_TRACE;
+		goto error;
+	}
+
+	/* Connect to app using ustctl API */
+	sock = connect_app(pid);
+	if (sock < 0) {
+		ret = LTTCOMM_NO_TRACEABLE;
+		goto error;
+	}
+
+	ret = ustctl_stop_trace(sock, trace->name);
+	if (ret < 0) {
+		ret = LTTCOMM_STOP_FAIL;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
  *  copy_common_data
  *
  *  Copy common data between lttcomm_lttng_msg and lttcomm_session_msg
@@ -560,6 +596,13 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		case UST_START_TRACE:
 		{
 			ret = ust_start_trace(lsm->pid);
+
+			/* No auxiliary data so only send the llm struct. */
+			goto end;
+		}
+		case UST_STOP_TRACE:
+		{
+			ret = ust_stop_trace(lsm->pid);
 
 			/* No auxiliary data so only send the llm struct. */
 			goto end;

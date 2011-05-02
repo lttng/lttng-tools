@@ -73,6 +73,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CREATE_FAIL,	/* Create trace fail */
 	LTTCOMM_SESSION_FAIL,	/* Create session fail */
 	LTTCOMM_START_FAIL,		/* Start tracing fail */
+	LTTCOMM_STOP_FAIL,		/* Stop tracing fail */
 	LTTCOMM_LIST_FAIL,		/* Listing apps fail */
 	LTTCOMM_NO_APPS,		/* No traceable application */
 	LTTCOMM_NO_SESS,		/* No sessions available */

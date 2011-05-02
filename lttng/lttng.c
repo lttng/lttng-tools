@@ -126,6 +126,15 @@ static int process_client_opt(void)
 		MSG("Trace started successfully!");
 	}
 
+	if (opt_stop_trace) {
+		DBG("Stop trace for pid %d", opt_stop_trace);
+		ret = lttng_ust_stop_trace(opt_stop_trace);
+		if (ret < 0) {
+			goto end;
+		}
+		MSG("Trace stopped successfully!");
+	}
+
 	return 0;
 
 end:

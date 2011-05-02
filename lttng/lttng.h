@@ -37,5 +37,6 @@ extern int opt_list_session;
 extern int opt_list_traces;
 extern pid_t opt_create_trace;
 extern pid_t opt_start_trace;
+extern pid_t opt_stop_trace;
 
 #endif /* _LTTNG_H */

@@ -69,5 +69,6 @@ extern int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces);
 extern void lttng_set_current_session_uuid(char *uuid);
 extern int lttng_ust_create_trace(pid_t pid);
 extern int lttng_ust_start_trace(pid_t pid);
+extern int lttng_ust_stop_trace(pid_t pid);
 
 #endif /* _LIBLTTNGCTL_H */

@@ -183,6 +183,21 @@ int lttng_ust_start_trace(pid_t pid)
 }
 
 /*
+ *  lttng_ust_stop_trace
+ *
+ *  Request a trace stop for pid.
+ */
+int lttng_ust_stop_trace(pid_t pid)
+{
+	int ret;
+
+	lsm.pid = pid;
+	ret = ask_sessiond(UST_STOP_TRACE, NULL);
+
+	return ret;
+}
+
+/*
  *  lttng_ust_create_trace
  *
  *  Request a trace creation for pid.
