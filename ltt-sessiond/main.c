@@ -101,6 +101,8 @@ static void *thread_manage_apps(void *data)
 		uid_t uid;
 	} reg_msg;
 
+	DBG("[thread] Manage apps started");
+
 	/* Notify all applications to register */
 	notify_apps(default_global_apps_pipe);
 
@@ -156,6 +158,8 @@ static void *thread_manage_clients(void *data)
 {
 	int sock, ret;
 	struct lttcomm_session_msg lsm;
+
+	DBG("[thread] Manage client started");
 
 	ret = lttcomm_listen_unix_sock(client_socket);
 	if (ret < 0) {
@@ -233,6 +237,8 @@ static int connect_app(pid_t pid)
 	int sock;
 	struct ltt_traceable_app *lta;
 
+	DBG("Connect to application pid %d", pid);
+
 	lta = find_app_by_pid(pid);
 	if (lta == NULL) {
 		/* App not found */
@@ -261,6 +267,8 @@ static int notify_apps(const char *name)
 	int fd;
 	int ret = -1;
 
+	DBG("Notify the global application pipe");
+
 	/* Try opening the global pipe */
 	fd = open(name, O_WRONLY);
 	if (fd < 0) {
@@ -288,6 +296,8 @@ static int ust_create_trace(pid_t pid)
 {
 	int sock, ret;
 	struct ltt_ust_trace *trace;
+
+	DBG("Creating trace for pid %d", pid);
 
 	trace = malloc(sizeof(struct ltt_ust_trace));
 	if (trace == NULL) {
@@ -426,6 +436,8 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	size_t header_size;
 	char *send_buf = NULL;
 	struct lttcomm_lttng_msg llm;
+
+	DBG("Processing client message");
 
 	/* Copy common data to identify the response
 	 * on the lttng client side.
@@ -771,6 +783,8 @@ static int set_socket_perms(void)
 		perror("chown");
 	}
 
+	DBG("Sockets permissions set");
+
 end:
 	return ret;
 }
@@ -810,6 +824,8 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
+	DBG("Signal handler set for SIGTERM, SIGPIPE and SIGINT");
+
 	return ret;
 }
 
@@ -822,9 +838,14 @@ static void sighandler(int sig)
 {
 	switch (sig) {
 		case SIGPIPE:
+			DBG("SIGPIPE catched");
 			return;
 		case SIGINT:
+			DBG("SIGINT catched");
+			cleanup();
+			break;
 		case SIGTERM:
+			DBG("SIGTERM catched");
 			cleanup();
 			break;
 		default:
@@ -841,6 +862,8 @@ static void sighandler(int sig)
  */
 static void cleanup()
 {
+	DBG("Cleaning up");
+
 	/* <fun> */
 	MSG("\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
 	MSG("%c[%d;%dmMatthew, BEET driven development works!%c[%dm",27,1,33,27,0);

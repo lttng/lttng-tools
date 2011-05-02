@@ -94,7 +94,7 @@ int register_traceable_app(pid_t pid, uid_t uid)
 	lta->uid = uid;
 	lta->pid = pid;
 	add_traceable_app(lta);
-	DBG("PID %d registered", pid);
+	DBG("Application %d registered with UID %d", pid, uid);
 
 	return 0;
 }

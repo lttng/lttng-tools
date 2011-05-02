@@ -144,6 +144,7 @@ int destroy_session(uuid_t *uuid)
 
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (uuid_compare(iter->uuid, *uuid) == 0) {
+			DBG("Destroying session %s", iter->name);
 			del_session_list(iter);
 			free(iter);
 			found = 1;
@@ -163,6 +164,8 @@ int destroy_session(uuid_t *uuid)
 int create_session(char *name, uuid_t *session_id)
 {
 	struct ltt_session *new_session;
+
+	DBG("Creating session %s", name);
 
 	new_session = find_session_by_name(name);
 	if (new_session != NULL) {
@@ -224,6 +227,8 @@ void get_lttng_session(struct lttng_session *lt)
 	int i = 0;
 	struct ltt_session *iter;
 	struct lttng_session lsess;
+
+	DBG("Getting all available session");
 
 	/* Iterate over session list and append data after
 	 * the control struct in the buffer.
