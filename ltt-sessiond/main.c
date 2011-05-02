@@ -587,6 +587,7 @@ static void usage(void)
 	fprintf(stderr, "  -V, --version             Show version number.\n");
 	fprintf(stderr, "  -S, --sig-parent          Send SIGCHLD to parent pid to notify readiness.\n");
 	fprintf(stderr, "  -q, --quiet               No output at all.\n");
+	fprintf(stderr, "  -v, --verbose             Verbose mode. Activate DBG() macro.\n");
 }
 
 /*
@@ -605,12 +606,13 @@ static int parse_args(int argc, char **argv)
 		{ "group", 1, 0, 'g' },
 		{ "version", 0, 0, 'V' },
 		{ "quiet", 0, 0, 'q' },
+		{ "verbose", 0, 0, 'v' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqVS" "a:c:g:s:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -645,6 +647,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'q':
 			opt_quiet = 1;
+			break;
+		case 'v':
+			opt_verbose = 1;
 			break;
 		default:
 			/* Unknown option or other error.
