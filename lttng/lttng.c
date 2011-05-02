@@ -46,8 +46,8 @@ static int process_opt_list_traces(void);
 static int process_opt_create_session(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
-static int get_cmdline_by_pid(pid_t pid, char **cmdline);
 static int validate_options(void);
+static char *get_cmdline_by_pid(pid_t pid);
 
 /*
  *  start_client
@@ -153,7 +153,9 @@ static int process_opt_list_traces(void)
 	MSG("Userspace traces:");
 	for (i = 0; i < ret; i++) {
 		if (traces[i].type == USERSPACE) {
-			MSG("\t%d) %s (pid: %d)", i, traces[i].name, traces[i].pid);
+			MSG("\t%d) %s (pid: %d): %s",
+					i, traces[i].name, traces[i].pid,
+					get_cmdline_by_pid(traces[i].pid));
 		} else {
 			break;
 		}
@@ -249,8 +251,8 @@ static int process_opt_list_apps(void)
 
 	MSG("LTTng UST traceable application [name (pid)]:");
 	for (i=0; i < count; i++) {
-		ret = get_cmdline_by_pid(pids[i], &cmdline);
-		if (!ret) {
+		cmdline = get_cmdline_by_pid(pids[i]);
+		if (cmdline == NULL) {
 			MSG("\t(not running) (%d)", pids[i]);
 			continue;
 		}
@@ -270,34 +272,32 @@ error:
 /*
  *  get_cmdline_by_pid
  *
- *  Get command line from /proc for a
- *  specific pid. Allocate cmdline so the
- *  user must free() that pointer.
+ *  Get command line from /proc for a specific pid.
  *
- *  On success, return 1
- *  On error (not found), return 0
+ *  On success, return an allocated string pointer pointing to
+ *  the proc cmdline.
+ *  On error, return NULL.
  */
-static int get_cmdline_by_pid(pid_t pid, char **cmdline)
+static char *get_cmdline_by_pid(pid_t pid)
 {
 	int ret;
 	FILE *fp;
+	char *cmdline = NULL;
 	char path[24];	/* Can't go bigger than /proc/65535/cmdline */
 
 	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	fp = fopen(path, "r");
 	if (fp == NULL) {
-		goto not_running;
+		goto end;
 	}
 
 	/* Caller must free() *cmdline */
-	*cmdline = malloc(PATH_MAX);
-	ret = fread(*cmdline, 1, PATH_MAX, fp);
+	cmdline = malloc(PATH_MAX);
+	ret = fread(cmdline, 1, PATH_MAX, fp);
 	fclose(fp);
 
-	return 1;
-
-not_running:
-	return 0;
+end:
+	return cmdline;
 }
 
 /*
