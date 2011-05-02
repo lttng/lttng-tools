@@ -34,9 +34,10 @@ int opt_list_apps = 0;
 int opt_no_sessiond = 0;
 int opt_list_session = 0;
 int opt_list_traces = 0;
-pid_t opt_create_trace = 0;
-pid_t opt_start_trace = 0;
-pid_t opt_stop_trace = 0;
+int opt_create_trace = 0;
+int opt_start_trace = 0;
+int opt_stop_trace = 0;
+pid_t opt_trace_pid = 0;
 
 enum {
 	OPT_HELP = 42,
@@ -45,7 +46,7 @@ enum {
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"create-session",  'c',	POPT_ARG_STRING,	&opt_create_session, 0, 0, 0},
-	{"create-trace",	'C',	POPT_ARG_INT,		&opt_create_trace, 0, 0, 0},
+	{"create-trace",	'C',	POPT_ARG_VAL,		&opt_create_trace, 1, 0, 0},
 	{"destroy-session", 'd',	POPT_ARG_STRING,	&opt_destroy_session, 0, 0, 0},
 	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0},
 	{"help",			'h',	POPT_ARG_NONE,		0, OPT_HELP, 0, 0},
@@ -55,11 +56,12 @@ static struct poptOption long_options[] = {
 	{"list-traces",		't',	POPT_ARG_VAL,		&opt_list_traces, 1, 0, 0},
 	{"no-kernel",		0,		POPT_ARG_VAL,		&opt_trace_kernel, 0, 0, 0},
 	{"no-sessiond",		0,		POPT_ARG_VAL,		&opt_no_sessiond, 1, 0, 0},
+	{"pid",				'p',	POPT_ARG_INT,		&opt_trace_pid, 0, 0, 0},
 	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0, 0},
 	{"session",			's',	POPT_ARG_STRING,	&opt_session_uuid, 0, 0, 0},
 	{"sessiond-path",	0,		POPT_ARG_STRING,	&opt_sessiond_path, 0, 0, 0},
-	{"start",			0,		POPT_ARG_INT,		&opt_start_trace, 0, 0, 0},
-	{"stop",			0,		POPT_ARG_INT,		&opt_stop_trace, 0, 0, 0},
+	{"start",			0,		POPT_ARG_VAL,		&opt_start_trace, 1, 0, 0},
+	{"stop",			0,		POPT_ARG_VAL,		&opt_stop_trace, 1, 0, 0},
 	{"verbose",			'v',	POPT_ARG_VAL,		&opt_verbose, 1, 0, 0},
 	//{"session",			0,		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_session_name, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -91,11 +93,12 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Tracing options:\n");
 	//fprintf(ofp, "      --kernel               Enable kernel tracing\n");
 	//fprintf(ofp, "      --no-kernel            Disable kernel tracing\n");
+	fprintf(ofp, "  -p, --pid PID                Set tracing action for PID\n");
 	fprintf(ofp, "  -L, --list-apps              List traceable UST applications\n");
 	fprintf(ofp, "  -t, --list-traces            List session's traces. Use -s to specify the session\n");
-	fprintf(ofp, "  -C, --create-trace PID       Create trace for PID\n");
-	fprintf(ofp, "      --start PID              Start trace for PID\n");
-	fprintf(ofp, "      --stop PID               Stop trace for PID\n");
+	fprintf(ofp, "  -C, --create-trace           Create a trace\n");
+	fprintf(ofp, "      --start                  Start tracing\n");
+	fprintf(ofp, "      --stop                   Stop tracing\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
 	fprintf(ofp, "See http://lttng.org/ust for updates, bug reports and news.\n");

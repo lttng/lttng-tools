@@ -108,31 +108,37 @@ static int process_client_opt(void)
 		lttng_set_current_session_uuid(opt_session_uuid);
 	}
 
-	if (opt_create_trace) {
-		DBG("Create trace for pid %d", opt_create_trace);
-		ret = lttng_ust_create_trace(opt_create_trace);
-		if (ret < 0) {
-			goto end;
-		}
-		MSG("Trace created successfully!\nUse --start PID to start tracing.");
+	if (opt_trace_kernel) {
+		ERR("Not implemented yet");
+		goto end;
 	}
 
-	if (opt_start_trace) {
-		DBG("Start trace for pid %d", opt_start_trace);
-		ret = lttng_ust_start_trace(opt_start_trace);
-		if (ret < 0) {
-			goto end;
+	if (opt_trace_pid != 0) {
+		if (opt_create_trace) {
+			DBG("Create a userspace trace for pid %d", opt_trace_pid);
+			ret = lttng_ust_create_trace(opt_trace_pid);
+			if (ret < 0) {
+				goto end;
+			}
+			MSG("Trace created successfully!\nUse --start to start tracing.");
 		}
-		MSG("Trace started successfully!");
-	}
 
-	if (opt_stop_trace) {
-		DBG("Stop trace for pid %d", opt_stop_trace);
-		ret = lttng_ust_stop_trace(opt_stop_trace);
-		if (ret < 0) {
-			goto end;
+		if (opt_start_trace) {
+			DBG("Start trace for pid %d", opt_trace_pid);
+			ret = lttng_ust_start_trace(opt_trace_pid);
+			if (ret < 0) {
+				goto end;
+			}
+			MSG("Trace started successfully!");
+		} else if (opt_stop_trace) {
+			DBG("Stop trace for pid %d", opt_trace_pid);
+			ret = lttng_ust_stop_trace(opt_trace_pid);
+			if (ret < 0) {
+				goto end;
+			}
+			MSG("Trace stopped successfully!");
 		}
-		MSG("Trace stopped successfully!");
+
 	}
 
 	return 0;
@@ -320,9 +326,19 @@ end:
  */
 static int validate_options(void)
 {
-	if ((opt_session_uuid == NULL) &&
-			(opt_create_trace || opt_start_trace || opt_list_traces)) {
+	/* Conflicting command */
+	if (opt_start_trace && opt_stop_trace) {
+		ERR("Can't use --start and --stop together.");
+		goto error;
+	/* Must have a session UUID for trace action. */
+	} else if ((opt_session_uuid == NULL) &&
+			(opt_create_trace || opt_start_trace || opt_stop_trace || opt_list_traces)) {
 		ERR("You need to specify a session UUID.\nPlease use --session UUID to do so.");
+		goto error;
+	/* If no PID specified and trace_kernel is off */
+	} else if ((opt_trace_pid == 0 && opt_trace_kernel == 0) &&
+			(opt_create_trace || opt_start_trace || opt_stop_trace)) {
+		ERR("Please specify a PID using -p, --pid PID.");
 		goto error;
 	}
 
