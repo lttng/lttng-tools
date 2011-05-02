@@ -42,6 +42,7 @@ static char *progname;
 static int process_client_opt(void);
 static int process_opt_list_apps(void);
 static int process_opt_list_sessions(void);
+static int process_opt_list_traces(void);
 static int process_opt_create_session(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
@@ -75,6 +76,13 @@ static int process_client_opt(void)
 
 	if (opt_list_session) {
 		ret = process_opt_list_sessions();
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	if (opt_list_traces) {
+		ret = process_opt_list_traces();
 		if (ret < 0) {
 			goto end;
 		}
@@ -122,6 +130,45 @@ static int process_client_opt(void)
 
 end:
 	ERR("%s", lttng_get_readable_code(ret));
+	return ret;
+}
+
+/*
+ *  process_opt_list_traces
+ *
+ *  Get list of all traces for a specific session uuid.
+ */
+static int process_opt_list_traces(void)
+{
+	int ret, i;
+	uuid_t uuid;
+	struct lttng_trace *traces;
+
+	uuid_parse(opt_session_uuid, uuid);
+	ret = lttng_list_traces(&uuid, &traces);
+	if (ret < 0) {
+		goto error;
+	}
+
+	MSG("Userspace traces:");
+	for (i = 0; i < ret; i++) {
+		if (traces[i].type == USERSPACE) {
+			MSG("\t%d) %s (pid: %d)", i, traces[i].name, traces[i].pid);
+		} else {
+			break;
+		}
+	}
+
+	MSG("Kernel traces:");
+	for (;i < ret; i++) {
+		if (traces[i].type == KERNEL) {
+			MSG("\t%d) %s", i, traces[i].name);
+		}
+	}
+
+	free(traces);
+
+error:
 	return ret;
 }
 
@@ -265,8 +312,8 @@ not_running:
 static int validate_options(void)
 {
 	if ((opt_session_uuid == NULL) &&
-			(opt_create_trace || opt_start_trace)) {
-		ERR("Can't act on trace without a session ID.\nPlease specify using --session UUID");
+			(opt_create_trace || opt_start_trace || opt_list_traces)) {
+		ERR("You need to specify a session UUID.\nPlease use --session UUID to do so.");
 		goto error;
 	}
 

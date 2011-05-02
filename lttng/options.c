@@ -33,6 +33,7 @@ int opt_verbose = 0;
 int opt_list_apps = 0;
 int opt_no_sessiond = 0;
 int opt_list_session = 0;
+int opt_list_traces = 0;
 pid_t opt_create_trace = 0;
 pid_t opt_start_trace = 0;
 
@@ -50,6 +51,7 @@ static struct poptOption long_options[] = {
 	{"kernel",			0,		POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
 	{"list-apps",		'L',	POPT_ARG_VAL,		&opt_list_apps, 1, 0, 0},
 	{"list-sessions",	'l',	POPT_ARG_VAL,		&opt_list_session, 1, 0, 0},
+	{"list-traces",		't',	POPT_ARG_VAL,		&opt_list_traces, 1, 0, 0},
 	{"no-kernel",		0,		POPT_ARG_VAL,		&opt_trace_kernel, 0, 0, 0},
 	{"no-sessiond",		0,		POPT_ARG_VAL,		&opt_no_sessiond, 1, 0, 0},
 	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0, 0},
@@ -88,6 +90,7 @@ static void usage(FILE *ofp)
 	//fprintf(ofp, "      --kernel               Enable kernel tracing\n");
 	//fprintf(ofp, "      --no-kernel            Disable kernel tracing\n");
 	fprintf(ofp, "  -L, --list-apps              List traceable UST applications\n");
+	fprintf(ofp, "  -t, --list-traces            List session's traces. Use -s to specify the session\n");
 	fprintf(ofp, "  -C, --create-trace PID       Create trace for PID\n");
 	fprintf(ofp, "      --start PID              Start trace for PID\n");
 	fprintf(ofp, "\n");

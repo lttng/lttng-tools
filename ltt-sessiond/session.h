@@ -35,9 +35,11 @@ struct ltt_session {
 	struct cds_list_head list;
 	uuid_t uuid;
 	struct cds_list_head ust_traces;
-	struct cds_list_head lttng_traces;
+	struct cds_list_head kernel_traces;
+	unsigned int ust_trace_count;
+	unsigned int kern_trace_count;
 	pid_t ust_consumer;
-	pid_t lttng_consumer;
+	pid_t kernel_consumer;
 };
 
 /* Prototypes */

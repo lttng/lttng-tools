@@ -34,6 +34,7 @@ extern char *opt_destroy_session;
 extern int opt_list_apps;
 extern int opt_no_sessiond;
 extern int opt_list_session;
+extern int opt_list_traces;
 extern pid_t opt_create_trace;
 extern pid_t opt_start_trace;
 

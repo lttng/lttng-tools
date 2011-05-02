@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <urcu/list.h>
 
 #include "lttngerr.h"
@@ -47,3 +48,52 @@ struct ltt_ust_trace *find_session_ust_trace_by_pid(struct ltt_session *session,
 	return NULL;
 }
 
+/*
+ *  get_trace_count_per_session
+ *
+ *  Return the total count of traces (ust and kernel)
+ *  for the specified session.
+ */
+int get_trace_count_per_session(struct ltt_session *session)
+{
+	return session->ust_trace_count + session->kern_trace_count;
+}
+
+/*
+ *  get_traces_per_session
+ *
+ *  Fill the lttng_trace array of all the
+ *  available trace of the session.
+ */
+void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces)
+{
+	int i = 0;
+	struct ltt_ust_trace *ust_iter;
+	struct ltt_kernel_trace *kern_iter;
+	struct lttng_trace trace;
+
+	DBG("Getting userspace traces for session %s", session->name);
+
+	/* Getting userspace traces */
+	cds_list_for_each_entry(ust_iter, &session->ust_traces, list) {
+		trace.type = USERSPACE;
+		trace.pid = ust_iter->pid;
+		strncpy(trace.name, ust_iter->name, sizeof(trace.name));
+		trace.name[sizeof(trace.name) - 1] = '\0';
+		memcpy(&traces[i], &trace, sizeof(trace));
+		memset(&trace, 0, sizeof(trace));
+		i++;
+	}
+
+	DBG("Getting kernel traces for session %s", session->name);
+
+	/* Getting kernel traces */
+	cds_list_for_each_entry(kern_iter, &session->kernel_traces, list) {
+		trace.type = KERNEL;
+		strncpy(trace.name, kern_iter->name, sizeof(trace.name));
+		trace.name[sizeof(trace.name) - 1] = '\0';
+		memcpy(&traces[i], &trace, sizeof(trace));
+		memset(&trace, 0, sizeof(trace));
+		i++;
+	}
+}

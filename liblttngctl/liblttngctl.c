@@ -219,6 +219,28 @@ int lttng_ust_list_apps(pid_t **pids)
 }
 
 /*
+ *  lttng_list_traces
+ *
+ *  Ask the session daemon for all traces (kernel and ust)
+ *  for the session identified by uuid.
+ *
+ *  Return the number of traces.
+ */
+int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces)
+{
+	int ret;
+
+	uuid_copy(lsm.session_id, *uuid);
+
+	ret = ask_sessiond(LTTNG_LIST_TRACES, (void **) traces);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret / sizeof(struct lttng_trace);
+}
+
+/*
  *  lttng_create_session
  *
  *  Create a brand new session using name. Allocate

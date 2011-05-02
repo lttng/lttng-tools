@@ -198,11 +198,15 @@ int create_session(char *name, uuid_t *session_id)
 	 * NO consumer attach to that session yet.
 	 */
 	new_session->ust_consumer = 0;
-	new_session->lttng_consumer = 0;
+	new_session->kernel_consumer = 0;
 
 	/* Init list */
 	CDS_INIT_LIST_HEAD(&new_session->ust_traces);
-	CDS_INIT_LIST_HEAD(&new_session->lttng_traces);
+	CDS_INIT_LIST_HEAD(&new_session->kernel_traces);
+
+	/* Set trace list counter */
+	new_session->ust_trace_count = 0;
+	new_session->kern_trace_count = 0;
 
 	/* Add new session to the global session list */
 	add_session_list(new_session);

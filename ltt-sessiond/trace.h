@@ -22,15 +22,16 @@
 #include "session.h"
 
 /* LTTng trace representation */
-struct ltt_lttng_trace {
+struct ltt_kernel_trace {
 	struct cds_list_head list;
-	char trace_name[NAME_MAX];
+	char name[NAME_MAX];
 	struct cds_list_head marker_list;
 };
 
 /* UST trace representation */
 struct ltt_ust_trace {
 	struct cds_list_head list;
+	char name[NAME_MAX];
 	int shmid;
 	pid_t pid;
 	struct cds_list_head markers;
@@ -43,5 +44,7 @@ struct ltt_ust_marker {
 };
 
 struct ltt_ust_trace *find_session_ust_trace_by_pid(struct ltt_session *session, pid_t pid);
+int get_trace_count_per_session(struct ltt_session *session);
+void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
 
 #endif /* _LTT_TRACE_H */

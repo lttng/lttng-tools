@@ -309,6 +309,11 @@ static int ust_create_trace(pid_t pid)
 	/* Init */
 	trace->pid = pid;
 	trace->shmid = 0;
+	/* NOTE: to be removed. Trace name will no longer be
+	 * required for LTTng userspace tracer. For now, we set it
+	 * to 'auto' for API compliance.
+	 */
+	snprintf(trace->name, 5, "auto");
 
 	/* Connect to app using ustctl API */
 	sock = connect_app(pid);
@@ -317,7 +322,7 @@ static int ust_create_trace(pid_t pid)
 		goto error;
 	}
 
-	ret = ustctl_create_trace(sock, "auto");
+	ret = ustctl_create_trace(sock, trace->name);
 	if (ret < 0) {
 		ret = LTTCOMM_CREATE_FAIL;
 		goto error;
@@ -326,6 +331,7 @@ static int ust_create_trace(pid_t pid)
 	/* Check if current session is valid */
 	if (current_session) {
 		cds_list_add(&trace->list, &current_session->ust_traces);
+		current_session->ust_trace_count++;
 	}
 
 error:
@@ -496,6 +502,25 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 
 			/* No auxiliary data so only send the llm struct. */
 			goto end;
+		}
+		case LTTNG_LIST_TRACES:
+		{
+			unsigned int trace_count = get_trace_count_per_session(current_session);
+
+			if (trace_count == 0) {
+				ret = LTTCOMM_NO_TRACE;
+				goto end;
+			}
+
+			buf_size = setup_data_buffer(&send_buf,
+					sizeof(struct lttng_trace) * trace_count, &llm);
+			if (buf_size < 0) {
+				ret = LTTCOMM_FATAL;
+				goto end;
+			}
+
+			get_traces_per_session(current_session, (struct lttng_trace *)(send_buf + header_size));
+			break;
 		}
 		case UST_CREATE_TRACE:
 		{

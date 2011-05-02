@@ -35,11 +35,25 @@
  */
 #define UUID_STR_LEN 37
 
+/* Trace type for lttng_trace.
+ */
+enum lttng_trace_type {
+	KERNEL, USERSPACE,
+};
+
 /* Simple structure representing a session.
  */
 struct lttng_session {
 	char name[NAME_MAX];
 	char uuid[UUID_STR_LEN];
+};
+
+/* Simple trace representation.
+ */
+struct lttng_trace {
+	char name[NAME_MAX];
+	pid_t pid;
+	enum lttng_trace_type type;
 };
 
 extern int lttng_create_session(char *name, uuid_t *session_id);
@@ -51,6 +65,7 @@ extern int lttng_check_session_daemon(void);
 extern const char *lttng_get_readable_code(int code);
 extern int lttng_ust_list_apps(pid_t **pids);
 extern int lttng_list_sessions(struct lttng_session **sessions);
+extern int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces);
 extern void lttng_set_current_session_uuid(char *uuid);
 extern int lttng_ust_create_trace(pid_t pid);
 extern int lttng_ust_start_trace(pid_t pid);
