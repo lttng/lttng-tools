@@ -96,6 +96,7 @@ static int process_client_opt(void)
 	}
 
 	if (opt_session_uuid != NULL) {
+		DBG("Set session uuid to %s", opt_session_uuid);
 		lttng_set_current_session_uuid(opt_session_uuid);
 	}
 
@@ -106,6 +107,15 @@ static int process_client_opt(void)
 			goto end;
 		}
 		MSG("Trace created successfully!\nUse --start PID to start tracing.");
+	}
+
+	if (opt_start_trace) {
+		DBG("Start trace for pid %d", opt_start_trace);
+		ret = lttng_ust_start_trace(opt_start_trace);
+		if (ret < 0) {
+			goto end;
+		}
+		MSG("Trace started successfully!");
 	}
 
 	return 0;
@@ -255,8 +265,8 @@ not_running:
 static int validate_options(void)
 {
 	if ((opt_session_uuid == NULL) &&
-			(opt_create_trace)) {
-		ERR("Can't create trace without a session ID.\nPlease specify using --session UUID");
+			(opt_create_trace || opt_start_trace)) {
+		ERR("Can't act on trace without a session ID.\nPlease specify using --session UUID");
 		goto error;
 	}
 
@@ -400,15 +410,17 @@ end:
  */
 static void sighandler(int sig)
 {
-	DBG("%d received", sig);
 	switch (sig) {
 		case SIGTERM:
+			DBG("SIGTERM catched");
 			clean_exit(EXIT_FAILURE);
 			break;
 		case SIGCHLD:
 			/* Notify is done */
+			DBG("SIGCHLD catched");
 			break;
 		default:
+			DBG("Unknown signal %d catched", sig);
 			break;
 	}
 

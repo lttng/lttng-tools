@@ -168,6 +168,21 @@ const char *lttng_get_readable_code(int code)
 }
 
 /*
+ *  lttng_ust_start_trace
+ *
+ *  Request a trace start for pid.
+ */
+int lttng_ust_start_trace(pid_t pid)
+{
+	int ret;
+
+	lsm.pid = pid;
+	ret = ask_sessiond(UST_START_TRACE, NULL);
+
+	return ret;
+}
+
+/*
  *  lttng_ust_create_trace
  *
  *  Request a trace creation for pid.

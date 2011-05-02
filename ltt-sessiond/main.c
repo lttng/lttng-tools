@@ -323,6 +323,42 @@ error:
 }
 
 /*
+ *  ust_start_trace
+ *
+ *  Start a trace. This trace, identified by the pid, must be
+ *  in the current session ust_traces list.
+ */
+static int ust_start_trace(pid_t pid)
+{
+	int sock, ret;
+	struct ltt_ust_trace *trace;
+
+	DBG("Starting trace for pid %d", pid);
+
+	trace = find_session_ust_trace_by_pid(current_session, pid);
+	if (trace == NULL) {
+		ret = LTTCOMM_NO_TRACE;
+		goto error;
+	}
+
+	/* Connect to app using ustctl API */
+	sock = connect_app(pid);
+	if (sock < 0) {
+		ret = LTTCOMM_NO_TRACEABLE;
+		goto error;
+	}
+
+	ret = ustctl_start_trace(sock, "auto");
+	if (ret < 0) {
+		ret = LTTCOMM_START_FAIL;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
  *  copy_common_data
  *
  *  Copy common data between lttcomm_lttng_msg and lttcomm_session_msg
@@ -453,7 +489,10 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		{
 			ret = ust_create_trace(lsm->pid);
 			if (ret < 0) {
-				ret = LTTCOMM_CREATE_FAIL;
+				/* If -1 is returned from ust_create_trace, malloc
+				 * failed so it's pretty much a fatal error.
+				 */
+				ret = LTTCOMM_FATAL;
 				goto end;
 			}
 
@@ -480,6 +519,13 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 			get_app_list_pids((pid_t *)(send_buf + header_size));
 
 			break;
+		}
+		case UST_START_TRACE:
+		{
+			ret = ust_start_trace(lsm->pid);
+
+			/* No auxiliary data so only send the llm struct. */
+			goto end;
 		}
 		case LTTNG_LIST_SESSIONS:
 		{

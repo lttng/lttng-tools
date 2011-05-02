@@ -75,6 +75,7 @@ enum lttcomm_return_code {
 	LTTCOMM_LIST_FAIL,		/* Listing apps fail */
 	LTTCOMM_NO_APPS,		/* No traceable application */
 	LTTCOMM_NO_SESS,		/* No sessions available */
+	LTTCOMM_NO_TRACE,		/* No trace exist */
 	LTTCOMM_FATAL,			/* Session daemon had a fatal error */
 	LTTCOMM_NO_TRACEABLE,	/* Error for non traceable app */
 	LTTCOMM_SELECT_SESS,	/* Must select a session */

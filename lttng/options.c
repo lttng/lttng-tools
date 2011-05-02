@@ -34,6 +34,7 @@ int opt_list_apps = 0;
 int opt_no_sessiond = 0;
 int opt_list_session = 0;
 pid_t opt_create_trace = 0;
+pid_t opt_start_trace = 0;
 
 enum {
 	OPT_HELP = 42,
@@ -54,6 +55,7 @@ static struct poptOption long_options[] = {
 	{"quiet",			'q',	POPT_ARG_VAL,		&opt_quiet, 1, 0, 0},
 	{"session",			's',	POPT_ARG_STRING,	&opt_session_uuid, 0, 0, 0},
 	{"sessiond-path",	0,		POPT_ARG_STRING,	&opt_sessiond_path, 0, 0, 0},
+	{"start",			0,		POPT_ARG_INT,		&opt_start_trace, 0, 0, 0},
 	{"verbose",			'v',	POPT_ARG_VAL,		&opt_verbose, 1, 0, 0},
 	//{"session",			0,		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_session_name, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -87,6 +89,7 @@ static void usage(FILE *ofp)
 	//fprintf(ofp, "      --no-kernel            Disable kernel tracing\n");
 	fprintf(ofp, "  -L, --list-apps              List traceable UST applications\n");
 	fprintf(ofp, "  -C, --create-trace PID       Create trace for PID\n");
+	fprintf(ofp, "      --start PID              Start trace for PID\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
 	fprintf(ofp, "See http://lttng.org/ust for updates, bug reports and news.\n");
