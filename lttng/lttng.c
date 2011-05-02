@@ -45,6 +45,7 @@ static int process_opt_list_sessions(void);
 static int process_opt_create_session(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
+static int get_cmdline_by_pid(pid_t pid, char **cmdline);
 
 /*
  *  start_client
@@ -180,9 +181,7 @@ static int process_opt_list_apps(void)
 {
 	int i, ret, count;
 	pid_t *pids;
-	FILE *fp;
-	char path[24];	/* Can't go bigger than /proc/65535/cmdline */
-	char cmdline[PATH_MAX];
+	char *cmdline;
 
 	count = lttng_ust_list_apps(&pids);
 	if (count < 0) {
@@ -192,15 +191,13 @@ static int process_opt_list_apps(void)
 
 	MSG("LTTng UST traceable application [name (pid)]:");
 	for (i=0; i < count; i++) {
-		snprintf(path, sizeof(path), "/proc/%d/cmdline", pids[i]);
-		fp = fopen(path, "r");
-		if (fp == NULL) {
+		ret = get_cmdline_by_pid(pids[i], &cmdline);
+		if (!ret) {
 			MSG("\t(not running) (%d)", pids[i]);
 			continue;
 		}
-		ret = fread(cmdline, 1, sizeof(cmdline), fp);
 		MSG("\t%s (%d)", cmdline, pids[i]);
-		fclose(fp);
+		free(cmdline);
 	}
 
 	/* Allocated by lttng_ust_list_apps() */
@@ -210,6 +207,39 @@ static int process_opt_list_apps(void)
 
 error:
 	return ret;
+}
+
+/*
+ *  get_cmdline_by_pid
+ *
+ *  Get command line from /proc for a
+ *  specific pid. Allocate cmdline so the
+ *  user must free() that pointer.
+ *
+ *  On success, return 1
+ *  On error (not found), return 0
+ */
+static int get_cmdline_by_pid(pid_t pid, char **cmdline)
+{
+	int ret;
+	FILE *fp;
+	char path[24];	/* Can't go bigger than /proc/65535/cmdline */
+
+	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
+	fp = fopen(path, "r");
+	if (fp == NULL) {
+		goto not_running;
+	}
+
+	/* Caller must free() *cmdline */
+	*cmdline = malloc(PATH_MAX);
+	ret = fread(*cmdline, 1, PATH_MAX, fp);
+	fclose(fp);
+
+	return 1;
+
+not_running:
+	return 0;
 }
 
 /*
