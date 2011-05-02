@@ -46,6 +46,7 @@ static int process_opt_create_session(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
 static int get_cmdline_by_pid(pid_t pid, char **cmdline);
+static int validate_options(void);
 
 /*
  *  start_client
@@ -104,7 +105,7 @@ static int process_client_opt(void)
 		if (ret < 0) {
 			goto end;
 		}
-		MSG("Trace created successfully!\nUse --start PID to start tracing");
+		MSG("Trace created successfully!\nUse --start PID to start tracing.");
 	}
 
 	return 0;
@@ -240,6 +241,29 @@ static int get_cmdline_by_pid(pid_t pid, char **cmdline)
 
 not_running:
 	return 0;
+}
+
+/*
+ *  validate_options
+ *
+ *  Make sure that all options passed to the command line
+ *  are compatible with each others.
+ *
+ *  On error, return -1
+ *  On success, return 0
+ */
+static int validate_options(void)
+{
+	if ((opt_session_uuid == NULL) &&
+			(opt_create_trace)) {
+		ERR("Can't create trace without a session ID.\nPlease specify using --session UUID");
+		goto error;
+	}
+
+	return 0;
+
+error:
+	return -1;
 }
 
 /*
@@ -419,6 +443,11 @@ int main(int argc, char *argv[])
 	ret = parse_args(argc, (const char **) argv);
 	if (ret < 0) {
 		clean_exit(EXIT_FAILURE);
+	}
+
+	ret = validate_options();
+	if (ret < 0) {
+		return EXIT_FAILURE;
 	}
 
 	ret = set_signal_handler();
