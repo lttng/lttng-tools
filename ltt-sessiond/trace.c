@@ -16,32 +16,34 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_TRACE_H
-#define _LTT_TRACE_H
+#define _GNU_SOURCE
+#include <errno.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <urcu/list.h>
 
+#include "lttngerr.h"
+#include "trace.h"
 #include "session.h"
 
-/* LTTng trace representation */
-struct ltt_lttng_trace {
-	struct cds_list_head list;
-	char trace_name[NAME_MAX];
-	struct cds_list_head marker_list;
-};
+/*
+ *  find_session_ust_trace_by_pid
+ *
+ *  Iterate over the session ust_traces and
+ *  return a pointer or NULL if not found.
+ */
+struct ltt_ust_trace *find_session_ust_trace_by_pid(struct ltt_session *session, pid_t pid)
+{
+	struct ltt_ust_trace *iter;
 
-/* UST trace representation */
-struct ltt_ust_trace {
-	struct cds_list_head list;
-	int shmid;
-	pid_t pid;
-	struct cds_list_head markers;
-};
+	cds_list_for_each_entry(iter, &session->ust_traces, list) {
+		if (iter->pid == pid) {
+			/* Found */
+			return iter;
+		}
+	}
 
-struct ltt_ust_marker {
-	struct cds_list_head list;
-	char *name;
-	char *channel;
-};
+	return NULL;
+}
 
-struct ltt_ust_trace *find_session_ust_trace_by_pid(struct ltt_session *session, pid_t pid);
-
-#endif /* _LTT_TRACE_H */
