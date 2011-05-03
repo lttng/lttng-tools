@@ -20,7 +20,7 @@
 #define _LTTNGERR_H
 
 #include <errno.h>
-#include <stdarg.h>
+#include <stdio.h>
 
 extern int opt_quiet;
 extern int opt_verbose;
