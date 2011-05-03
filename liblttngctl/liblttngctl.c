@@ -24,7 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <lttng/liblttngctl.h>
+#include <lttng/lttng.h>
 
 #include "liblttsessiondcomm.h"
 #include "lttngerr.h"

@@ -19,7 +19,7 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
-#include <lttng/liblttngctl.h>
+#include <lttng/lttng.h>
 #include <uuid/uuid.h>
 
 /* Global session list */

@@ -30,7 +30,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <lttng/liblttngctl.h>
+#include <lttng/lttng.h>
 
 #include "lttng.h"
 #include "lttngerr.h"

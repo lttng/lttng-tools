@@ -35,7 +35,7 @@
 
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
 #include <ust/ustctl.h>		/* UST control lib (-lust) */
-#include <lttng/liblttngctl.h>
+#include <lttng/lttng.h>
 
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"

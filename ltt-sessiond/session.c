@@ -17,12 +17,10 @@
  */
 
 #define _GNU_SOURCE
-#include <lttng/liblttngctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <urcu/list.h>
-#include <uuid/uuid.h>
 
 #include "lttngerr.h"
 #include "session.h"
