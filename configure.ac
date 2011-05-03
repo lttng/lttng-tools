@@ -46,6 +46,7 @@ AC_PROG_LIBTOOL
 AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
+	libkernelctl/Makefile
 	liblttngctl/Makefile
 	liblttsessiondcomm/Makefile
 	ltt-sessiond/Makefile
