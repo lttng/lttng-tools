@@ -111,6 +111,11 @@ static int ask_sessiond(enum lttcomm_command_type lct, void **buf)
 	size_t size;
 	void *data = NULL;
 
+	ret = lttng_connect_sessiond();
+	if (ret < 0) {
+		goto end;
+	}
+
 	lsm.cmd_type = lct;
 
 	/* Send command to session daemon */
@@ -148,7 +153,7 @@ static int ask_sessiond(enum lttcomm_command_type lct, void **buf)
 	ret = size;
 
 end:
-	/* Reset lsm data struct */
+	lttng_disconnect_sessiond();
 	memset(&lsm, 0, sizeof(lsm));
 	return ret;
 }

@@ -37,6 +37,7 @@
 
 /* Variables */
 static char *progname;
+static char short_uuid[9];
 
 /* Prototypes */
 static int process_client_opt(void);
@@ -44,7 +45,9 @@ static int process_opt_list_apps(void);
 static int process_opt_list_sessions(void);
 static int process_opt_list_traces(void);
 static int process_opt_create_session(void);
+static int process_opt_session_uuid(void);
 static void sighandler(int sig);
+static void shorten_uuid(char *in, char *out);
 static int set_signal_handler(void);
 static int validate_options(void);
 static char *get_cmdline_by_pid(pid_t pid);
@@ -60,12 +63,6 @@ static int process_client_opt(void)
 {
 	int ret;
 	uuid_t uuid;
-
-	/* Connect to the session daemon */
-	ret = lttng_connect_sessiond();
-	if (ret < 0) {
-		goto end;
-	}
 
 	if (opt_list_apps) {
 		ret = process_opt_list_apps();
@@ -104,8 +101,12 @@ static int process_client_opt(void)
 	}
 
 	if (opt_session_uuid != NULL) {
-		DBG("Set session uuid to %s", opt_session_uuid);
-		lttng_set_current_session_uuid(opt_session_uuid);
+		DBG("Set session uuid to %s", short_uuid);
+		ret = process_opt_session_uuid();
+		if (ret < 0) {
+			ERR("Session UUID %s not found", opt_session_uuid);
+			goto error;
+		}
 	}
 
 	if (opt_trace_kernel) {
@@ -145,6 +146,41 @@ static int process_client_opt(void)
 
 end:
 	ERR("%s", lttng_get_readable_code(ret));
+	return ret;
+
+error:
+	return ret;
+}
+
+/*
+ *  process_opt_session_uuid
+ *
+ *  Set current session uuid to the current flow of
+ *  command(s) using the already shorten uuid.
+ */
+static int process_opt_session_uuid(void)
+{
+	int ret, count, i;
+	struct lttng_session *sessions;
+
+	count = lttng_list_sessions(&sessions);
+	if (count < 0) {
+		ret = count;
+		goto error;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (strncmp(sessions[i].uuid, short_uuid, 8) == 0) {
+			lttng_set_current_session_uuid(sessions[i].uuid);
+			break;
+		}
+	}
+
+	free(sessions);
+
+	return 0;
+
+error:
 	return ret;
 }
 
@@ -216,6 +252,38 @@ error:
 }
 
 /*
+ *  extract_short_uuid
+ *
+ *  Extract shorten uuid and copy it to out.
+ *  Shorten uuid format : '<name>.<short_uuid>'
+ */
+static int extract_short_uuid(char *in, char *out)
+{
+	char *tok;
+
+	tok = strchr(in, '.');
+	if (strlen(tok+1) == 8) {
+		memcpy(out, tok+1, 8);
+		out[9] = '\0';
+		return 0;
+	}
+
+	return -1;
+}
+
+/*
+ * shorten_uuid
+ *
+ * Small function to shorten the 37 bytes long uuid_t
+ * string representation to 8 characters.
+ */
+static void shorten_uuid(char *in, char *out)
+{
+	memcpy(out, in, 8);
+	out[8] = '\0';
+}
+
+/*
  *  process_opt_list_sessions
  *
  *  Get the list of available sessions from
@@ -224,21 +292,24 @@ error:
 static int process_opt_list_sessions(void)
 {
 	int ret, count, i;
+	char tmp_short_uuid[9];
 	struct lttng_session *sess;
 
 	count = lttng_list_sessions(&sess);
+	DBG("Session count %d", count);
 	if (count < 0) {
 		ret = count;
 		goto error;
 	}
 
-	MSG("Available sessions [Name (uuid)]:");
+	MSG("Available sessions (UUIDs):");
 	for (i = 0; i < count; i++) {
-		MSG("\tName: %s (uuid: %s)", sess[i].name, sess[i].uuid);
+		shorten_uuid(sess[i].uuid, tmp_short_uuid);
+		MSG("    %d) %s.%s", i+1, sess[i].name, tmp_short_uuid);
 	}
 
 	free(sess);
-	MSG("\nTo select a session, use --session UUID.");
+	MSG("\nTo select a session, use -s, --session UUID.");
 
 	return 0;
 
@@ -326,6 +397,8 @@ end:
  */
 static int validate_options(void)
 {
+	int ret;
+
 	/* Conflicting command */
 	if (opt_start_trace && opt_stop_trace) {
 		ERR("Can't use --start and --stop together.");
@@ -340,6 +413,14 @@ static int validate_options(void)
 			(opt_create_trace || opt_start_trace || opt_stop_trace)) {
 		ERR("Please specify a PID using -p, --pid PID.");
 		goto error;
+	}
+
+	if (opt_session_uuid != NULL) {
+		ret = extract_short_uuid(opt_session_uuid, short_uuid);
+		if (ret < 0) {
+			ERR("Session UUID not valid. Must be <name>.<short_uuid>");
+			goto error;
+		}
 	}
 
 	return 0;
@@ -498,15 +579,13 @@ static void sighandler(int sig)
 
 	return;
 }
+
 /*
  * clean_exit
  */
 void clean_exit(int code)
 {
 	DBG("Clean exit");
-	if (lttng_disconnect_sessiond() < 0) {
-		ERR("Session daemon disconnect failed.");
-	}
 	exit(code);
 }
 

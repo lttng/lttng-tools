@@ -242,6 +242,7 @@ static int connect_app(pid_t pid)
 	lta = find_app_by_pid(pid);
 	if (lta == NULL) {
 		/* App not found */
+		DBG("Application pid %d not found", pid);
 		return -1;
 	}
 
@@ -645,6 +646,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	return ret;
 
 end:
+	DBG("Return code to client %d", ret);
 	/* Notify client of error */
 	llm.ret_code = ret;
 	llm.size_payload = 0;
