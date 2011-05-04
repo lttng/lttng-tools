@@ -24,9 +24,10 @@
 /* Option variables */
 char *opt_tracing_group;
 char *opt_session_uuid;
-char *opt_create_session;
 char *opt_sessiond_path;
-char *opt_destroy_session;
+char *opt_session_name;
+int opt_create_session;
+int opt_destroy_session;
 int opt_trace_kernel = 0;
 int opt_quiet = 0;
 int opt_verbose = 0;
@@ -41,14 +42,16 @@ pid_t opt_trace_pid = 0;
 
 enum {
 	OPT_HELP = 42,
+	OPT_CREATE_SESSION,
+	OPT_DESTROY_SESSION,
 };
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"create-session",  'c',	POPT_ARG_STRING,	&opt_create_session, 0, 0, 0},
+	{"create-session",  'c',	POPT_ARG_STRING,	0, OPT_CREATE_SESSION, 0, 0},
 	{"create-trace",	'C',	POPT_ARG_VAL,		&opt_create_trace, 1, 0, 0},
-	{"destroy-session", 'd',	POPT_ARG_STRING,	&opt_destroy_session, 0, 0, 0},
-	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0},
+	{"destroy-session", 'd',	POPT_ARG_STRING,	0, OPT_DESTROY_SESSION, 0, 0},
+	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0, 0},
 	{"help",			'h',	POPT_ARG_NONE,		0, OPT_HELP, 0, 0},
 	{"kernel",			0,		POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
 	{"list-apps",		'L',	POPT_ARG_VAL,		&opt_list_apps, 1, 0, 0},
@@ -128,6 +131,14 @@ int parse_args(int argc, const char **argv)
 		case OPT_HELP:
 			usage(stderr);
 			clean_exit(EXIT_SUCCESS);
+			break;
+		case OPT_CREATE_SESSION:
+			opt_create_session = 1;
+			opt_session_name = poptGetOptArg(pc);
+			break;
+		case OPT_DESTROY_SESSION:
+			opt_destroy_session = 1;
+			opt_session_uuid = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);

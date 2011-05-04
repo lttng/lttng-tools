@@ -237,7 +237,7 @@ void get_lttng_session(struct lttng_session *lt)
 	 */
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		/* Copy name and uuid */
-		uuid_unparse(iter->uuid, lsess.uuid);
+		uuid_copy(lsess.uuid, iter->uuid);
 		strncpy(lsess.name, iter->name, sizeof(lsess.name));
 		lsess.name[sizeof(lsess.name) - 1] = '\0';
 		memcpy(&lt[i], &lsess, sizeof(lsess));

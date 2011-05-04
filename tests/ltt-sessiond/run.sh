@@ -25,7 +25,7 @@ SESSIOND_BIN="$PWD/../../ltt-sessiond/ltt-sessiond"
 LTTNG_BIN="$PWD/../../lttng/lttng"
 #SESSIOND_ARGS="-c $SESSIOND_CLIENT_SOCK_PATH -a $SESSIOND_APPS_SOCK_PATH"
 SESSIOND_ARGS=""
-SESSION_ID_REGEX="[[:alnum:]]{8}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{4}-[[:alnum:]]{12}"
+SESSION_ID_REGEX=".[[:alnum:]]{8}"
 
 function clean_exit()
 {

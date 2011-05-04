@@ -375,9 +375,9 @@ int lttng_disconnect_sessiond(void)
  *
  *  Set the session uuid for current lsm.
  */
-void lttng_set_current_session_uuid(char *uuid)
+void lttng_set_current_session_uuid(uuid_t *uuid)
 {
-	uuid_parse(uuid, lsm.session_id);
+	uuid_copy(lsm.session_id, *uuid);
 }
 
 /*

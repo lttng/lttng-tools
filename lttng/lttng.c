@@ -37,7 +37,10 @@
 
 /* Variables */
 static char *progname;
-static char short_uuid[9];
+static char *session_name;
+static char short_str_uuid[UUID_SHORT_STR_LEN];
+static char long_str_uuid[UUID_STR_LEN];
+static uuid_t current_uuid;
 
 /* Prototypes */
 static int process_client_opt(void);
@@ -45,12 +48,13 @@ static int process_opt_list_apps(void);
 static int process_opt_list_sessions(void);
 static int process_opt_list_traces(void);
 static int process_opt_create_session(void);
-static int process_opt_session_uuid(void);
+static int set_session_uuid(void);
 static void sighandler(int sig);
-static void shorten_uuid(char *in, char *out);
 static int set_signal_handler(void);
 static int validate_options(void);
 static char *get_cmdline_by_pid(pid_t pid);
+static void set_opt_session_info(void);
+static void shorten_uuid(char *long_u, char *short_u);
 
 /*
  *  start_client
@@ -62,7 +66,8 @@ static char *get_cmdline_by_pid(pid_t pid);
 static int process_client_opt(void)
 {
 	int ret;
-	uuid_t uuid;
+
+	set_opt_session_info();
 
 	if (opt_list_apps) {
 		ret = process_opt_list_apps();
@@ -78,6 +83,32 @@ static int process_client_opt(void)
 		}
 	}
 
+	if (opt_destroy_session) {
+		ret = lttng_destroy_session(&current_uuid);
+		if (ret < 0) {
+			goto end;
+		}
+		MSG("Session %s destroyed.", opt_session_uuid);
+	}
+
+	if (!opt_list_session && !opt_list_apps) {
+		if (uuid_is_null(current_uuid)) {
+			/* If no session uuid, create session */
+			DBG("No session specified. Creating session.");
+			ret = process_opt_create_session();
+			if (ret < 0) {
+				goto end;
+			}
+		}
+
+		DBG("Set session uuid to %s", long_str_uuid);
+		ret = set_session_uuid();
+		if (ret < 0) {
+			ERR("Session UUID %s not found", opt_session_uuid);
+			goto error;
+		}
+	}
+
 	if (opt_list_traces) {
 		ret = process_opt_list_traces();
 		if (ret < 0) {
@@ -85,30 +116,9 @@ static int process_client_opt(void)
 		}
 	}
 
-	if (opt_create_session != NULL) {
-		ret = process_opt_create_session();
-		if (ret < 0) {
-			goto end;
-		}
-	}
-
-	if (opt_destroy_session != NULL) {
-		uuid_parse(opt_destroy_session, uuid);
-		ret = lttng_destroy_session(&uuid);
-		if (ret < 0) {
-			goto end;
-		}
-	}
-
-	if (opt_session_uuid != NULL) {
-		DBG("Set session uuid to %s", short_uuid);
-		ret = process_opt_session_uuid();
-		if (ret < 0) {
-			ERR("Session UUID %s not found", opt_session_uuid);
-			goto error;
-		}
-	}
-
+	/*
+	 * Action on traces (kernel or/and userspace).
+	 */
 	if (opt_trace_kernel) {
 		ERR("Not implemented yet");
 		goto end;
@@ -153,15 +163,71 @@ error:
 }
 
 /*
- *  process_opt_session_uuid
+ *  set_opt_session_info
+ *
+ *  Setup session_name, current_uuid, short_str_uuid and
+ *  long_str_uuid using the command line options.
+ */
+static void set_opt_session_info(void)
+{
+	int count, i, short_len;
+	char *tok;
+	struct lttng_session *sessions;
+
+	if (opt_session_uuid != NULL) {
+		short_len = sizeof(short_str_uuid) - 1;
+		/* Shorten uuid */
+		tok = strchr(opt_session_uuid, '.');
+		if (strlen(tok + 1) == short_len) {
+			memcpy(short_str_uuid, tok + 1, short_len);
+			short_str_uuid[short_len] = '\0';
+		}
+
+		/* Get long real uuid_t from session daemon */
+		count = lttng_list_sessions(&sessions);
+		for (i = 0; i < count; i++) {
+			uuid_unparse(sessions[i].uuid, long_str_uuid);
+			if (strncmp(long_str_uuid, short_str_uuid, 8) == 0) {
+				uuid_copy(current_uuid, sessions[i].uuid);
+				break;
+			}
+		}
+	}
+
+	if (opt_session_name != NULL) {
+		session_name = strndup(opt_session_name, NAME_MAX);
+	}
+}
+
+/*
+ * shorten_uuid
+ *
+ * Small function to shorten the 37 bytes long uuid_t
+ * string representation to 8 characters.
+ */
+static void shorten_uuid(char *long_u, char *short_u)
+{
+	memcpy(short_u, long_u, 8);
+	short_u[UUID_SHORT_STR_LEN - 1] = '\0';
+}
+
+/*
+ *  set_session_uuid
  *
  *  Set current session uuid to the current flow of
- *  command(s) using the already shorten uuid.
+ *  command(s) using the already shorten uuid or
+ *  current full uuid.
  */
-static int process_opt_session_uuid(void)
+static int set_session_uuid(void)
 {
 	int ret, count, i;
+	char str_uuid[37];
 	struct lttng_session *sessions;
+
+	if (!uuid_is_null(current_uuid)) {
+		lttng_set_current_session_uuid(&current_uuid);
+		goto end;
+	}
 
 	count = lttng_list_sessions(&sessions);
 	if (count < 0) {
@@ -170,14 +236,16 @@ static int process_opt_session_uuid(void)
 	}
 
 	for (i = 0; i < count; i++) {
-		if (strncmp(sessions[i].uuid, short_uuid, 8) == 0) {
-			lttng_set_current_session_uuid(sessions[i].uuid);
+		uuid_unparse(sessions[i].uuid, str_uuid);
+		if (strncmp(str_uuid, short_str_uuid, 8) == 0) {
+			lttng_set_current_session_uuid(&sessions[i].uuid);
 			break;
 		}
 	}
 
 	free(sessions);
 
+end:
 	return 0;
 
 error:
@@ -192,11 +260,9 @@ error:
 static int process_opt_list_traces(void)
 {
 	int ret, i;
-	uuid_t uuid;
 	struct lttng_trace *traces;
 
-	uuid_parse(opt_session_uuid, uuid);
-	ret = lttng_list_traces(&uuid, &traces);
+	ret = lttng_list_traces(&current_uuid, &traces);
 	if (ret < 0) {
 		goto error;
 	}
@@ -236,51 +302,31 @@ static int process_opt_create_session(void)
 	int ret;
 	uuid_t session_id;
 	char str_uuid[37];
+	char name[NAME_MAX];
+	time_t rawtime;
+	struct tm *timeinfo;
 
-	ret = lttng_create_session(opt_create_session, &session_id);
+	/* Auto session creation */
+	if (opt_create_session == 0) {
+		time(&rawtime);
+		timeinfo = localtime(&rawtime);
+		strftime(name, sizeof(name), "%Y%m%d-%H%M%S", timeinfo);
+		session_name = strndup(name, sizeof(name));
+	}
+
+	ret = lttng_create_session(session_name, &session_id);
 	if (ret < 0) {
 		goto error;
 	}
 
 	uuid_unparse(session_id, str_uuid);
+	uuid_copy(current_uuid, session_id);
+	shorten_uuid(str_uuid, short_str_uuid);
 
-	MSG("Session created:");
-	MSG("    %s (%s)", opt_create_session, str_uuid);
+	MSG("Session UUID created: %s.%s", session_name, short_str_uuid);
 
 error:
 	return ret;
-}
-
-/*
- *  extract_short_uuid
- *
- *  Extract shorten uuid and copy it to out.
- *  Shorten uuid format : '<name>.<short_uuid>'
- */
-static int extract_short_uuid(char *in, char *out)
-{
-	char *tok;
-
-	tok = strchr(in, '.');
-	if (strlen(tok+1) == 8) {
-		memcpy(out, tok+1, 8);
-		out[9] = '\0';
-		return 0;
-	}
-
-	return -1;
-}
-
-/*
- * shorten_uuid
- *
- * Small function to shorten the 37 bytes long uuid_t
- * string representation to 8 characters.
- */
-static void shorten_uuid(char *in, char *out)
-{
-	memcpy(out, in, 8);
-	out[8] = '\0';
 }
 
 /*
@@ -293,6 +339,7 @@ static int process_opt_list_sessions(void)
 {
 	int ret, count, i;
 	char tmp_short_uuid[9];
+	char str_uuid[37];
 	struct lttng_session *sess;
 
 	count = lttng_list_sessions(&sess);
@@ -304,7 +351,8 @@ static int process_opt_list_sessions(void)
 
 	MSG("Available sessions (UUIDs):");
 	for (i = 0; i < count; i++) {
-		shorten_uuid(sess[i].uuid, tmp_short_uuid);
+		uuid_unparse(sess[i].uuid, str_uuid);
+		shorten_uuid(str_uuid, tmp_short_uuid);
 		MSG("    %d) %s.%s", i+1, sess[i].name, tmp_short_uuid);
 	}
 
@@ -397,30 +445,21 @@ end:
  */
 static int validate_options(void)
 {
-	int ret;
-
 	/* Conflicting command */
 	if (opt_start_trace && opt_stop_trace) {
 		ERR("Can't use --start and --stop together.");
-		goto error;
-	/* Must have a session UUID for trace action. */
-	} else if ((opt_session_uuid == NULL) &&
-			(opt_create_trace || opt_start_trace || opt_stop_trace || opt_list_traces)) {
-		ERR("You need to specify a session UUID.\nPlease use --session UUID to do so.");
 		goto error;
 	/* If no PID specified and trace_kernel is off */
 	} else if ((opt_trace_pid == 0 && opt_trace_kernel == 0) &&
 			(opt_create_trace || opt_start_trace || opt_stop_trace)) {
 		ERR("Please specify a PID using -p, --pid PID.");
 		goto error;
-	}
-
-	if (opt_session_uuid != NULL) {
-		ret = extract_short_uuid(opt_session_uuid, short_uuid);
-		if (ret < 0) {
-			ERR("Session UUID not valid. Must be <name>.<short_uuid>");
-			goto error;
-		}
+	} else if (opt_session_uuid && opt_create_session) {
+		ERR("Please don't use -s and -c together. Useless action.");
+		goto error;
+	} else if (opt_list_traces && opt_session_uuid == NULL) {
+		ERR("Can't use -t without -s, --session option.");
+		goto error;
 	}
 
 	return 0;
@@ -586,6 +625,10 @@ static void sighandler(int sig)
 void clean_exit(int code)
 {
 	DBG("Clean exit");
+	if (session_name) {
+		free(session_name);
+	}
+
 	exit(code);
 }
 

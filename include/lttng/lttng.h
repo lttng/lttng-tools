@@ -31,9 +31,10 @@
  */
 #define LTTNG_SESSIOND_PATH_ENV "LTTNG_SESSIOND_PATH"
 
-/* From libuuid
- */
+/* UUID string length (including \0) */
 #define UUID_STR_LEN 37
+/* UUID short string version length (including \0) */
+#define UUID_SHORT_STR_LEN 9
 
 /* Trace type for lttng_trace.
  */
@@ -45,7 +46,7 @@ enum lttng_trace_type {
  */
 struct lttng_session {
 	char name[NAME_MAX];
-	char uuid[UUID_STR_LEN];
+	uuid_t uuid;
 };
 
 /* Simple trace representation.
@@ -66,7 +67,7 @@ extern const char *lttng_get_readable_code(int code);
 extern int lttng_ust_list_apps(pid_t **pids);
 extern int lttng_list_sessions(struct lttng_session **sessions);
 extern int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces);
-extern void lttng_set_current_session_uuid(char *uuid);
+extern void lttng_set_current_session_uuid(uuid_t *uuid);
 extern int lttng_ust_create_trace(pid_t pid);
 extern int lttng_ust_start_trace(pid_t pid);
 extern int lttng_ust_stop_trace(pid_t pid);
