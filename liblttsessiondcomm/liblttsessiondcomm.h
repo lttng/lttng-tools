@@ -22,11 +22,18 @@
 #include <limits.h>
 #include <uuid/uuid.h>
 
+#define LTTNG_RUNDIR						"/var/run/lttng"
+
 /* Default unix socket path */
-#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		"/tmp/client-ltt-sessiond"
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK		"/tmp/apps-ltt-sessiond"
+#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		LTTNG_RUNDIR "/client-ltt-sessiond"
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK		LTTNG_RUNDIR "/apps-ltt-sessiond"
 #define DEFAULT_HOME_APPS_UNIX_SOCK			"%s/.apps-ltt-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK		"%s/.client-ltt-sessiond"
+
+/* Kernel consumer path */
+#define KCONSUMERD_PATH						LTTNG_RUNDIR "/kconsumerd"
+#define KCONSUMERD_CMD_SOCK_PATH			KCONSUMERD_PATH "/command"
+#define KCONSUMERD_ERR_SOCK_PATH			KCONSUMERD_PATH "/error"
 
 /* Queue size of listen(2) */
 #define MAX_LISTEN 10

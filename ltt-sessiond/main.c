@@ -58,14 +58,17 @@ static int notify_apps(const char* name);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
 static int set_signal_handler(void);
-static int set_socket_perms(void);
+static int set_permissions(void);
 static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *llm);
+static int create_lttng_rundir(void);
+static int set_kconsumerd_sockets(void);
 static void cleanup(void);
 static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
 static void sighandler(int sig);
 
 static void *thread_manage_clients(void *data);
 static void *thread_manage_apps(void *data);
+static void *thread_manage_kconsumerd(void *data);
 
 /* Variables */
 int opt_verbose;
@@ -77,13 +80,50 @@ static int opt_daemon;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;
 
-static char apps_unix_sock_path[PATH_MAX];			/* Global application Unix socket path */
-static char client_unix_sock_path[PATH_MAX];		/* Global client Unix socket path */
+static char apps_unix_sock_path[PATH_MAX];				/* Global application Unix socket path */
+static char client_unix_sock_path[PATH_MAX];			/* Global client Unix socket path */
+static char kconsumerd_err_unix_sock_path[PATH_MAX];	/* kconsumerd error Unix socket path */
+static char kconsumerd_cmd_unix_sock_path[PATH_MAX];	/* kconsumerd command Unix socket path */
 
-static int client_socket;
-static int apps_socket;
+static int client_sock;
+static int apps_sock;
+static int kconsumerd_err_sock;
 
 static struct ltt_session *current_session;
+
+/*
+ *  thread_manage_kconsumerd
+ *
+ *  This thread manage the kconsumerd error sent
+ *  back to the session daemon.
+ */
+static void *thread_manage_kconsumerd(void *data)
+{
+	int sock, ret;
+
+	DBG("[thread] Manage kconsumerd started");
+
+	ret = lttcomm_listen_unix_sock(kconsumerd_err_sock);
+	if (ret < 0) {
+		goto error;
+	}
+
+	sock = lttcomm_accept_unix_sock(kconsumerd_err_sock);
+	if (sock < 0) {
+		goto error;
+	}
+
+	while (1) {
+		//ret = lttcomm_recv_unix_sock(sock, &lsm, sizeof(lsm));
+		if (ret <= 0) {
+			/* TODO: Consumerd died? */
+			continue;
+		}
+	}
+
+error:
+	return NULL;
+}
 
 /*
  * 	thread_manage_apps
@@ -106,14 +146,14 @@ static void *thread_manage_apps(void *data)
 	/* Notify all applications to register */
 	notify_apps(default_global_apps_pipe);
 
-	ret = lttcomm_listen_unix_sock(apps_socket);
+	ret = lttcomm_listen_unix_sock(apps_sock);
 	if (ret < 0) {
 		goto error;
 	}
 
 	while (1) {
 		/* Blocking call, waiting for transmission */
-		sock = lttcomm_accept_unix_sock(apps_socket);
+		sock = lttcomm_accept_unix_sock(apps_sock);
 		if (sock < 0) {
 			goto error;
 		}
@@ -161,7 +201,7 @@ static void *thread_manage_clients(void *data)
 
 	DBG("[thread] Manage client started");
 
-	ret = lttcomm_listen_unix_sock(client_socket);
+	ret = lttcomm_listen_unix_sock(client_sock);
 	if (ret < 0) {
 		goto error;
 	}
@@ -175,7 +215,7 @@ static void *thread_manage_clients(void *data)
 
 	while (1) {
 		/* Blocking call, waiting for transmission */
-		sock = lttcomm_accept_unix_sock(client_socket);
+		sock = lttcomm_accept_unix_sock(client_sock);
 		if (sock < 0) {
 			goto error;
 		}
@@ -661,15 +701,17 @@ end:
 static void usage(void)
 {
 	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
-	fprintf(stderr, "  -h, --help                Display this usage.\n");
-	fprintf(stderr, "  -c, --client-sock PATH    Specify path for the client unix socket\n");
-	fprintf(stderr, "  -a, --apps-sock PATH      Specify path for apps unix socket.\n");
-	fprintf(stderr, "  -d, --daemonize           Start as a daemon.\n");
-	fprintf(stderr, "  -g, --group NAME          Specify the tracing group name. (default: tracing)\n");
-	fprintf(stderr, "  -V, --version             Show version number.\n");
-	fprintf(stderr, "  -S, --sig-parent          Send SIGCHLD to parent pid to notify readiness.\n");
-	fprintf(stderr, "  -q, --quiet               No output at all.\n");
-	fprintf(stderr, "  -v, --verbose             Verbose mode. Activate DBG() macro.\n");
+	fprintf(stderr, "  -h, --help                         Display this usage.\n");
+	fprintf(stderr, "  -c, --client-sock PATH             Specify path for the client unix socket\n");
+	fprintf(stderr, "  -a, --apps-sock PATH               Specify path for apps unix socket\n");
+	fprintf(stderr, "      --kconsumerd-err-sock PATH     Specify path for the kernel consumer error socket\n");
+	fprintf(stderr, "      --kconsumerd-cmd-sock PATH     Specify path for the kernel consumer command socket\n");
+	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
+	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
+	fprintf(stderr, "  -V, --version                      Show version number.\n");
+	fprintf(stderr, "  -S, --sig-parent                   Send SIGCHLD to parent pid to notify readiness.\n");
+	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
+	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
 }
 
 /*
@@ -682,6 +724,8 @@ static int parse_args(int argc, char **argv)
 	static struct option long_options[] = {
 		{ "client-sock", 1, 0, 'c' },
 		{ "apps-sock", 1, 0, 'a' },
+		{ "kconsumerd-cmd-sock", 1, 0, 0 },
+		{ "kconsumerd-err-sock", 1, 0, 0 },
 		{ "daemonize", 0, 0, 'd' },
 		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
@@ -694,7 +738,7 @@ static int parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:E:C:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -727,6 +771,12 @@ static int parse_args(int argc, char **argv)
 		case 'S':
 			opt_sig_parent = 1;
 			break;
+		case 'E':
+			snprintf(kconsumerd_err_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'C':
+			snprintf(kconsumerd_cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
 		case 'q':
 			opt_quiet = 1;
 			break;
@@ -747,8 +797,8 @@ static int parse_args(int argc, char **argv)
  * 	init_daemon_socket
  *
  * 	Creates the two needed socket by the daemon.
- * 	    apps_socket - The communication socket for all UST apps.
- * 	    client_socket - The communication of the cli tool (lttng).
+ * 	    apps_sock - The communication socket for all UST apps.
+ * 	    client_sock - The communication of the cli tool (lttng).
  */
 static int init_daemon_socket()
 {
@@ -758,8 +808,9 @@ static int init_daemon_socket()
 	old_umask = umask(0);
 
 	/* Create client tool unix socket */
-	client_socket = lttcomm_create_unix_sock(client_unix_sock_path);
-	if (client_socket < 0) {
+	client_sock = lttcomm_create_unix_sock(client_unix_sock_path);
+	if (client_sock < 0) {
+		ERR("Create unix sock failed: %s", client_unix_sock_path);
 		ret = -1;
 		goto end;
 	}
@@ -767,20 +818,23 @@ static int init_daemon_socket()
 	/* File permission MUST be 660 */
 	ret = chmod(client_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
+		ERR("Set file permissions failed: %s", client_unix_sock_path);
 		perror("chmod");
 		goto end;
 	}
 
 	/* Create the application unix socket */
-	apps_socket = lttcomm_create_unix_sock(apps_unix_sock_path);
-	if (apps_socket < 0) {
+	apps_sock = lttcomm_create_unix_sock(apps_unix_sock_path);
+	if (apps_sock < 0) {
+		ERR("Create unix sock failed: %s", apps_unix_sock_path);
 		ret = -1;
 		goto end;
 	}
 
-	/* File permission MUST be 660 */
+	/* File permission MUST be 666 */
 	ret = chmod(apps_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (ret < 0) {
+		ERR("Set file permissions failed: %s", apps_unix_sock_path);
 		perror("chmod");
 		goto end;
 	}
@@ -828,11 +882,11 @@ static const char *get_home_dir(void)
 }
 
 /*
- *  set_socket_perms
+ *  set_permissions
  *
  *	Set the tracing group gid onto the client socket.
  */
-static int set_socket_perms(void)
+static int set_permissions(void)
 {
 	int ret;
 	struct group *grp;
@@ -848,14 +902,94 @@ static int set_socket_perms(void)
 		goto end;
 	}
 
-	ret = chown(client_unix_sock_path, 0, grp->gr_gid);
+	/* Set lttng run dir */
+	ret = chown(LTTNG_RUNDIR, 0, grp->gr_gid);
 	if (ret < 0) {
+		ERR("Unable to set group on " LTTNG_RUNDIR);
 		perror("chown");
 	}
 
-	DBG("Sockets permissions set");
+	/* lttng client socket path */
+	ret = chown(client_unix_sock_path, 0, grp->gr_gid);
+	if (ret < 0) {
+		ERR("Unable to set group on %s", client_unix_sock_path);
+		perror("chown");
+	}
+
+	/* kconsumerd error socket path */
+	ret = chown(kconsumerd_err_unix_sock_path, 0, grp->gr_gid);
+	if (ret < 0) {
+		ERR("Unable to set group on %s", kconsumerd_err_unix_sock_path);
+		perror("chown");
+	}
+
+	DBG("All permissions are set");
 
 end:
+	return ret;
+}
+
+/*
+ *  create_lttng_rundir
+ *
+ *  Create the lttng run directory needed for all
+ *  global sockets and pipe.
+ */
+static int create_lttng_rundir(void)
+{
+	int ret;
+
+	ret = mkdir(LTTNG_RUNDIR, S_IRWXU | S_IRWXG );
+	if (ret < 0) {
+		ERR("Unable to create " LTTNG_RUNDIR);
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ *  set_kconsumerd_sockets
+ *
+ *  Setup sockets and directory needed by the kconsumerd
+ *  communication with the session daemon.
+ */
+static int set_kconsumerd_sockets(void)
+{
+	int ret;
+
+	if (strlen(kconsumerd_err_unix_sock_path) == 0) {
+		snprintf(kconsumerd_err_unix_sock_path, PATH_MAX, KCONSUMERD_ERR_SOCK_PATH);
+	}
+
+	if (strlen(kconsumerd_cmd_unix_sock_path) == 0) {
+		snprintf(kconsumerd_cmd_unix_sock_path, PATH_MAX, KCONSUMERD_CMD_SOCK_PATH);
+	}
+
+	ret = mkdir(KCONSUMERD_PATH, S_IRWXU | S_IRWXG);
+	if (ret < 0) {
+		ERR("Failed to create " KCONSUMERD_PATH);
+		goto error;
+	}
+
+	/* Create the kconsumerd error unix socket */
+	kconsumerd_err_sock = lttcomm_create_unix_sock(kconsumerd_err_unix_sock_path);
+	if (kconsumerd_err_sock < 0) {
+		ERR("Create unix sock failed: %s", kconsumerd_err_unix_sock_path);
+		ret = -1;
+		goto error;
+	}
+
+	/* File permission MUST be 660 */
+	ret = chmod(kconsumerd_err_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	if (ret < 0) {
+		ERR("Set file permissions failed: %s", kconsumerd_err_unix_sock_path);
+		perror("chmod");
+		goto error;
+	}
+
+error:
 	return ret;
 }
 
@@ -932,6 +1066,9 @@ static void sighandler(int sig)
  */
 static void cleanup()
 {
+	int ret;
+	char *cmd;
+
 	DBG("Cleaning up");
 
 	/* <fun> */
@@ -941,6 +1078,18 @@ static void cleanup()
 
 	unlink(client_unix_sock_path);
 	unlink(apps_unix_sock_path);
+	unlink(kconsumerd_err_unix_sock_path);
+
+	ret = asprintf(&cmd, "rm -rf " LTTNG_RUNDIR);
+	if (ret < 0) {
+		ERR("asprintf failed. Something is really wrong!");
+	}
+
+	/* Remove lttng run directory */
+	ret = system(cmd);
+	if (ret < 0) {
+		ERR("Unable to clean " LTTNG_RUNDIR);
+	}
 }
 
 /*
@@ -973,25 +1122,35 @@ int main(int argc, char **argv)
 
 	/* Set all sockets path */
 	if (is_root) {
+		ret = create_lttng_rundir();
+		if (ret < 0) {
+			goto error;
+		}
+
 		if (strlen(apps_unix_sock_path) == 0) {
-			(snprintf(apps_unix_sock_path, PATH_MAX,
-					DEFAULT_GLOBAL_APPS_UNIX_SOCK));
+			snprintf(apps_unix_sock_path, PATH_MAX,
+					DEFAULT_GLOBAL_APPS_UNIX_SOCK);
 		}
 
 		if (strlen(client_unix_sock_path) == 0) {
-			(snprintf(client_unix_sock_path, PATH_MAX,
-					DEFAULT_GLOBAL_CLIENT_UNIX_SOCK));
+			snprintf(client_unix_sock_path, PATH_MAX,
+					DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
+		}
+
+		ret = set_kconsumerd_sockets();
+		if (ret < 0) {
+			goto error;
 		}
 	} else {
 		if (strlen(apps_unix_sock_path) == 0) {
-			(snprintf(apps_unix_sock_path, PATH_MAX,
-					DEFAULT_HOME_APPS_UNIX_SOCK, get_home_dir()));
+			snprintf(apps_unix_sock_path, PATH_MAX,
+					DEFAULT_HOME_APPS_UNIX_SOCK, get_home_dir());
 		}
 
 		/* Set the cli tool unix socket path */
 		if (strlen(client_unix_sock_path) == 0) {
-			(snprintf(client_unix_sock_path, PATH_MAX,
-					DEFAULT_HOME_CLIENT_UNIX_SOCK, get_home_dir()));
+			snprintf(client_unix_sock_path, PATH_MAX,
+					DEFAULT_HOME_CLIENT_UNIX_SOCK, get_home_dir());
 		}
 	}
 
@@ -1001,7 +1160,7 @@ int main(int argc, char **argv)
 	if ((ret = check_existing_daemon()) == 0) {
 		ERR("Already running daemon.\n");
 		/* We do not goto error because we must not
-		 * cleanup() because a daemon is already working.
+		 * cleanup() because a daemon is already running.
 		 */
 		return EXIT_FAILURE;
 	}
@@ -1010,13 +1169,13 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
-	/* Setup the two needed unix socket */
+	/* Setup the needed unix socket */
 	if (init_daemon_socket() < 0) {
 		goto error;
 	}
 
 	/* Set credentials to socket */
-	if (is_root && (set_socket_perms() < 0)) {
+	if (is_root && (set_permissions() < 0)) {
 		goto error;
 	}
 
