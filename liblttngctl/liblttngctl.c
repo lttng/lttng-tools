@@ -35,11 +35,11 @@ static char sessiond_sock_path[PATH_MAX];
 
 /* Communication structure to ltt-sessiond */
 static struct lttcomm_session_msg lsm;
-static struct lttcomm_lttng_msg llm;
+static struct lttcomm_lttng_header llh;
 
 /* Prototypes */
 static int check_tracing_group(const char *grp_name);
-static int ask_sessiond(enum lttcomm_command_type lct, void **buf);
+static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf);
 static int recv_data_sessiond(void *buf, size_t len);
 static int send_data_sessiond(void);
 static int set_session_daemon_path(void);
@@ -105,7 +105,7 @@ end:
  *
  *  Return size of data (only payload, not header).
  */
-static int ask_sessiond(enum lttcomm_command_type lct, void **buf)
+static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 {
 	int ret;
 	size_t size;
@@ -125,18 +125,18 @@ static int ask_sessiond(enum lttcomm_command_type lct, void **buf)
 	}
 
 	/* Get header from data transmission */
-	ret = recv_data_sessiond(&llm, sizeof(llm));
+	ret = recv_data_sessiond(&llh, sizeof(llh));
 	if (ret < 0) {
 		goto end;
 	}
 
 	/* Check error code if OK */
-	if (llm.ret_code != LTTCOMM_OK) {
-		ret = -llm.ret_code;
+	if (llh.ret_code != LTTCOMM_OK) {
+		ret = -llh.ret_code;
 		goto end;
 	}
 
-	size = llm.size_payload;
+	size = llh.payload_size;
 	if (size == 0) {
 		goto end;
 	}
@@ -278,7 +278,7 @@ int lttng_create_session(char *name, uuid_t *session_id)
 		goto end;
 	}
 
-	uuid_copy(*session_id, llm.session_id);
+	uuid_copy(*session_id, llh.session_id);
 
 end:
 	return ret;

@@ -45,7 +45,7 @@
  */
 #define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_OK)
 
-enum lttcomm_command_type {
+enum lttcomm_sessiond_command {
 	LTTNG_CREATE_SESSION,
 	LTTNG_DESTROY_SESSION,
 	LTTNG_FORCE_SUBBUF_SWITCH,
@@ -113,7 +113,7 @@ enum lttcomm_kconsumerd_fd_state {
  */
 struct lttcomm_session_msg {
 	/* Common data to almost all command */
-	enum lttcomm_command_type cmd_type;
+	enum lttcomm_sessiond_command cmd_type;
 	uuid_t session_id;
 	char trace_name[NAME_MAX];
 	char session_name[NAME_MAX];
@@ -151,13 +151,13 @@ struct lttcomm_session_msg {
  * the header of the transmission. NEVER put variable
  * size data in here.
  */
-struct lttcomm_lttng_msg {
-	enum lttcomm_command_type cmd_type;
+struct lttcomm_lttng_header {
+	enum lttcomm_sessiond_command cmd_type;
 	enum lttcomm_return_code ret_code;
 	uuid_t session_id;
 	pid_t pid;
 	char trace_name[NAME_MAX];
-	unsigned int size_payload;
+	unsigned int payload_size;
 };
 
 /*

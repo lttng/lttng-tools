@@ -59,11 +59,11 @@ static int process_client_msg(int sock, struct lttcomm_session_msg*);
 static int send_unix_sock(int sock, void *buf, size_t len);
 static int set_signal_handler(void);
 static int set_permissions(void);
-static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_msg *llm);
+static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_header *llh);
 static int create_lttng_rundir(void);
 static int set_kconsumerd_sockets(void);
 static void cleanup(void);
-static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm);
+static void copy_common_data(struct lttcomm_lttng_header *llh, struct lttcomm_session_msg *lsm);
 static void sighandler(int sig);
 
 static void *thread_manage_clients(void *data);
@@ -232,7 +232,7 @@ static void *thread_manage_clients(void *data)
 
 		/* This function dispatch the work to the LTTng or UST libs
 		 * and then sends back the response to the client. This is needed
-		 * because there might be more then one lttcomm_lttng_msg to
+		 * because there might be more then one lttcomm_lttng_header to
 		 * send out so process_client_msg do both jobs.
 		 */
 		ret = process_client_msg(sock, &lsm);
@@ -454,20 +454,20 @@ error:
 /*
  *  copy_common_data
  *
- *  Copy common data between lttcomm_lttng_msg and lttcomm_session_msg
+ *  Copy common data between lttcomm_lttng_header and lttcomm_session_msg
  */
-static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_session_msg *lsm)
+static void copy_common_data(struct lttcomm_lttng_header *llh, struct lttcomm_session_msg *lsm)
 {
-	llm->cmd_type = lsm->cmd_type;
-	llm->pid = lsm->pid;
+	llh->cmd_type = lsm->cmd_type;
+	llh->pid = lsm->pid;
 
 	/* Manage uuid */
 	if (!uuid_is_null(lsm->session_id)) {
-		uuid_copy(llm->session_id, lsm->session_id);
+		uuid_copy(llh->session_id, lsm->session_id);
 	}
 
-	strncpy(llm->trace_name, lsm->trace_name, strlen(llm->trace_name));
-	llm->trace_name[strlen(llm->trace_name) - 1] = '\0';
+	strncpy(llh->trace_name, lsm->trace_name, strlen(llh->trace_name));
+	llh->trace_name[strlen(llh->trace_name) - 1] = '\0';
 }
 
 /*
@@ -478,12 +478,12 @@ static void copy_common_data(struct lttcomm_lttng_msg *llm, struct lttcomm_sessi
  *
  *  Return total size of the buffer pointed by buf.
  */
-static int setup_data_buffer(char **buf, size_t s_data, struct lttcomm_lttng_msg *llm)
+static int setup_data_buffer(char **buf, size_t s_data, struct lttcomm_lttng_header *llh)
 {
 	int ret = 0;
 	size_t buf_size;
 
-	buf_size = sizeof(struct lttcomm_lttng_msg) + s_data;
+	buf_size = sizeof(struct lttcomm_lttng_header) + s_data;
 	*buf = malloc(buf_size);
 	if (*buf == NULL) {
 		perror("malloc");
@@ -491,11 +491,11 @@ static int setup_data_buffer(char **buf, size_t s_data, struct lttcomm_lttng_msg
 		goto error;
 	}
 
-	/* Setup lttcomm_lttng_msg data and copy
+	/* Setup lttcomm_lttng_header data and copy
 	 * it to the newly allocated buffer.
 	 */
-	llm->size_payload = s_data;
-	memcpy(*buf, llm, sizeof(struct lttcomm_lttng_msg));
+	llh->payload_size = s_data;
+	memcpy(*buf, llh, sizeof(struct lttcomm_lttng_header));
 
 	return buf_size;
 
@@ -518,14 +518,14 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	int buf_size;
 	size_t header_size;
 	char *send_buf = NULL;
-	struct lttcomm_lttng_msg llm;
+	struct lttcomm_lttng_header llh;
 
 	DBG("Processing client message");
 
 	/* Copy common data to identify the response
 	 * on the lttng client side.
 	 */
-	copy_common_data(&llm, lsm);
+	copy_common_data(&llh, lsm);
 
 	/* Check command that needs a session */
 	if (lsm->cmd_type != LTTNG_CREATE_SESSION &&
@@ -542,15 +542,15 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	/* Default return code.
 	 * In our world, everything is OK... right? ;)
 	 */
-	llm.ret_code = LTTCOMM_OK;
+	llh.ret_code = LTTCOMM_OK;
 
-	header_size = sizeof(struct lttcomm_lttng_msg);
+	header_size = sizeof(struct lttcomm_lttng_header);
 
 	/* Process by command type */
 	switch (lsm->cmd_type) {
 		case LTTNG_CREATE_SESSION:
 		{
-			ret = create_session(lsm->session_name, &llm.session_id);
+			ret = create_session(lsm->session_name, &llh.session_id);
 			if (ret < 0) {
 				if (ret == -1) {
 					ret = LTTCOMM_EXIST_SESS;
@@ -560,7 +560,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				goto end;
 			}
 
-			buf_size = setup_data_buffer(&send_buf, 0, &llm);
+			buf_size = setup_data_buffer(&send_buf, 0, &llh);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
 				goto end;
@@ -577,7 +577,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				ret = LTTCOMM_OK;
 			}
 
-			/* No auxiliary data so only send the llm struct. */
+			/* No auxiliary data so only send the llh struct. */
 			goto end;
 		}
 		case LTTNG_LIST_TRACES:
@@ -590,7 +590,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 			}
 
 			buf_size = setup_data_buffer(&send_buf,
-					sizeof(struct lttng_trace) * trace_count, &llm);
+					sizeof(struct lttng_trace) * trace_count, &llh);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
 				goto end;
@@ -610,7 +610,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 				goto end;
 			}
 
-			/* No auxiliary data so only send the llm struct. */
+			/* No auxiliary data so only send the llh struct. */
 			goto end;
 		}
 		case UST_LIST_APPS:
@@ -624,7 +624,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 
 			/* Setup data buffer and details for transmission */
 			buf_size = setup_data_buffer(&send_buf,
-					sizeof(pid_t) * app_count, &llm);
+					sizeof(pid_t) * app_count, &llh);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
 				goto end;
@@ -638,14 +638,14 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		{
 			ret = ust_start_trace(lsm->pid);
 
-			/* No auxiliary data so only send the llm struct. */
+			/* No auxiliary data so only send the llh struct. */
 			goto end;
 		}
 		case UST_STOP_TRACE:
 		{
 			ret = ust_stop_trace(lsm->pid);
 
-			/* No auxiliary data so only send the llm struct. */
+			/* No auxiliary data so only send the llh struct. */
 			goto end;
 		}
 		case LTTNG_LIST_SESSIONS:
@@ -659,7 +659,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 
 			/* Setup data buffer and details for transmission */
 			buf_size = setup_data_buffer(&send_buf,
-					(sizeof(struct lttng_session) * session_count), &llm);
+					(sizeof(struct lttng_session) * session_count), &llh);
 			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
 				goto end;
@@ -688,9 +688,9 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 end:
 	DBG("Return code to client %d", ret);
 	/* Notify client of error */
-	llm.ret_code = ret;
-	llm.size_payload = 0;
-	send_unix_sock(sock, (void*) &llm, sizeof(llm));
+	llh.ret_code = ret;
+	llh.payload_size = 0;
+	send_unix_sock(sock, (void*) &llh, sizeof(llh));
 
 	return ret;
 }
