@@ -20,6 +20,7 @@
 #define _LIBLTTNGCTL_H
 
 #include <limits.h>
+#include <stdint.h>
 #include <uuid/uuid.h>
 
 /* Default unix group name for tracing.
@@ -35,6 +36,8 @@
 #define UUID_STR_LEN 37
 /* UUID short string version length (including \0) */
 #define UUID_SHORT_STR_LEN 9
+
+typedef uint64_t u64;
 
 /* Trace type for lttng_trace.
  */
@@ -55,6 +58,26 @@ struct lttng_trace {
 	char name[NAME_MAX];
 	pid_t pid;
 	enum lttng_trace_type type;
+};
+
+/*
+ * LTTng DebugFS ABI structures.
+ */
+enum lttng_instrum_type {
+	INSTRUM_TRACEPOINTS,
+};
+
+struct lttng_channel {
+	int overwrite;         /* 1: overwrite, 0: discard */
+	u64 subbuf_size;
+	u64 num_subbuf;
+	unsigned int switch_timer_interval;
+	unsigned int read_timer_interval;
+};
+
+struct lttng_event {
+	enum lttng_instrum_type itype;
+	char name[];
 };
 
 extern int lttng_create_session(char *name, uuid_t *session_id);
