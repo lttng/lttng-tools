@@ -23,10 +23,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <urcu/list.h>
+#include <ust/ustctl.h>
 
+#include "liblttsessiondcomm.h"
 #include "lttngerr.h"
 #include "trace.h"
 #include "session.h"
+
+static struct ltt_ust_trace *find_session_ust_trace_by_pid(
+		struct ltt_session *session, pid_t pid);
 
 /*
  *  find_session_ust_trace_by_pid
@@ -34,7 +39,8 @@
  *  Iterate over the session ust_traces and
  *  return a pointer or NULL if not found.
  */
-struct ltt_ust_trace *find_session_ust_trace_by_pid(struct ltt_session *session, pid_t pid)
+static struct ltt_ust_trace *find_session_ust_trace_by_pid(
+		struct ltt_session *session, pid_t pid)
 {
 	struct ltt_ust_trace *iter;
 
@@ -97,3 +103,108 @@ void get_traces_per_session(struct ltt_session *session, struct lttng_trace *tra
 		i++;
 	}
 }
+
+/*
+ *  ust_create_trace
+ *
+ *  Create an userspace trace using pid.
+ *  This trace is then appended to the current session
+ *  ust trace list.
+ */
+int ust_create_trace(int sock, pid_t pid)
+{
+	int ret;
+	struct ltt_ust_trace *trace;
+
+	DBG("Creating trace for pid %d", pid);
+
+	trace = malloc(sizeof(struct ltt_ust_trace));
+	if (trace == NULL) {
+		perror("malloc");
+		ret = -1;
+		goto error;
+	}
+
+	/* Init */
+	trace->pid = pid;
+	trace->shmid = 0;
+	/* NOTE: to be removed. Trace name will no longer be
+	 * required for LTTng userspace tracer. For now, we set it
+	 * to 'auto' for API compliance.
+	 */
+	snprintf(trace->name, 5, "auto");
+
+	ret = ustctl_create_trace(sock, trace->name);
+	if (ret < 0) {
+		ret = LTTCOMM_CREATE_FAIL;
+		goto error;
+	}
+
+	/* Check if current session is valid */
+	if (current_session) {
+		cds_list_add(&trace->list, &current_session->ust_traces);
+		current_session->ust_trace_count++;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ *  ust_start_trace
+ *
+ *  Start a trace. This trace, identified by the pid, must be
+ *  in the current session ust_traces list.
+ */
+int ust_start_trace(int sock, pid_t pid)
+{
+	int ret;
+	struct ltt_ust_trace *trace;
+
+	DBG("Starting trace for pid %d", pid);
+
+	trace = find_session_ust_trace_by_pid(current_session, pid);
+	if (trace == NULL) {
+		ret = LTTCOMM_NO_TRACE;
+		goto error;
+	}
+
+	ret = ustctl_start_trace(sock, "auto");
+	if (ret < 0) {
+		ret = LTTCOMM_START_FAIL;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ *  ust_stop_trace
+ *
+ *  Stop a trace. This trace, identified by the pid, must be
+ *  in the current session ust_traces list.
+ */
+int ust_stop_trace(int sock, pid_t pid)
+{
+	int ret;
+	struct ltt_ust_trace *trace;
+
+	DBG("Stopping trace for pid %d", pid);
+
+	trace = find_session_ust_trace_by_pid(current_session, pid);
+	if (trace == NULL) {
+		ret = LTTCOMM_NO_TRACE;
+		goto error;
+	}
+
+	ret = ustctl_stop_trace(sock, trace->name);
+	if (ret < 0) {
+		ret = LTTCOMM_STOP_FAIL;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+

@@ -43,8 +43,10 @@ struct ltt_ust_marker {
 	char *channel;
 };
 
-struct ltt_ust_trace *find_session_ust_trace_by_pid(struct ltt_session *session, pid_t pid);
 int get_trace_count_per_session(struct ltt_session *session);
 void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
+int ust_create_trace(int sock, pid_t pid);
+int ust_start_trace(int sock, pid_t pid);
+int ust_stop_trace(int sock, pid_t pid);
 
 #endif /* _LTT_TRACE_H */

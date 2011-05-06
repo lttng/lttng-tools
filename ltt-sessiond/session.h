@@ -22,6 +22,8 @@
 #include <lttng/lttng.h>
 #include <uuid/uuid.h>
 
+extern struct ltt_session *current_session;
+
 /* Global session list */
 struct ltt_session_list {
 	struct cds_list_head head;

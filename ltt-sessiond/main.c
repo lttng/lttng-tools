@@ -52,7 +52,7 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
 /* Static functions */
 static int check_existing_daemon(void);
-static int connect_app(pid_t pid);
+static int ust_connect_app(pid_t pid);
 static int init_daemon_socket(void);
 static int notify_apps(const char* name);
 static int process_client_msg(int sock, struct lttcomm_session_msg*);
@@ -89,7 +89,8 @@ static int client_sock;
 static int apps_sock;
 static int kconsumerd_err_sock;
 
-static struct ltt_session *current_session;
+/* Extern in session.h */
+struct ltt_session *current_session;
 
 /*
  *  thread_manage_kconsumerd
@@ -264,7 +265,7 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 }
 
 /*
- * 	connect_app
+ * 	ust_connect_app
  *
  * 	Return a socket connected to the libust communication socket
  * 	of the application identified by the pid.
@@ -272,7 +273,7 @@ static int send_unix_sock(int sock, void *buf, size_t len)
  * 	If the pid is not found in the traceable list,
  * 	return -1 to indicate error.
  */
-static int connect_app(pid_t pid)
+static int ust_connect_app(pid_t pid)
 {
 	int sock;
 	struct ltt_traceable_app *lta;
@@ -320,131 +321,6 @@ static int notify_apps(const char *name)
 	ret = write(fd, "42", 2);
 	if (ret < 0) {
 		perror("write");
-	}
-
-error:
-	return ret;
-}
-
-/*
- *  ust_create_trace
- *
- *  Create an userspace trace using pid.
- *  This trace is then appended to the current session
- *  ust trace list.
- */
-static int ust_create_trace(pid_t pid)
-{
-	int sock, ret;
-	struct ltt_ust_trace *trace;
-
-	DBG("Creating trace for pid %d", pid);
-
-	trace = malloc(sizeof(struct ltt_ust_trace));
-	if (trace == NULL) {
-		perror("malloc");
-		ret = -1;
-		goto error;
-	}
-
-	/* Init */
-	trace->pid = pid;
-	trace->shmid = 0;
-	/* NOTE: to be removed. Trace name will no longer be
-	 * required for LTTng userspace tracer. For now, we set it
-	 * to 'auto' for API compliance.
-	 */
-	snprintf(trace->name, 5, "auto");
-
-	/* Connect to app using ustctl API */
-	sock = connect_app(pid);
-	if (sock < 0) {
-		ret = LTTCOMM_NO_TRACEABLE;
-		goto error;
-	}
-
-	ret = ustctl_create_trace(sock, trace->name);
-	if (ret < 0) {
-		ret = LTTCOMM_CREATE_FAIL;
-		goto error;
-	}
-
-	/* Check if current session is valid */
-	if (current_session) {
-		cds_list_add(&trace->list, &current_session->ust_traces);
-		current_session->ust_trace_count++;
-	}
-
-error:
-	return ret;
-}
-
-/*
- *  ust_start_trace
- *
- *  Start a trace. This trace, identified by the pid, must be
- *  in the current session ust_traces list.
- */
-static int ust_start_trace(pid_t pid)
-{
-	int sock, ret;
-	struct ltt_ust_trace *trace;
-
-	DBG("Starting trace for pid %d", pid);
-
-	trace = find_session_ust_trace_by_pid(current_session, pid);
-	if (trace == NULL) {
-		ret = LTTCOMM_NO_TRACE;
-		goto error;
-	}
-
-	/* Connect to app using ustctl API */
-	sock = connect_app(pid);
-	if (sock < 0) {
-		ret = LTTCOMM_NO_TRACEABLE;
-		goto error;
-	}
-
-	ret = ustctl_start_trace(sock, "auto");
-	if (ret < 0) {
-		ret = LTTCOMM_START_FAIL;
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-/*
- *  ust_stop_trace
- *
- *  Stop a trace. This trace, identified by the pid, must be
- *  in the current session ust_traces list.
- */
-static int ust_stop_trace(pid_t pid)
-{
-	int sock, ret;
-	struct ltt_ust_trace *trace;
-
-	DBG("Stopping trace for pid %d", pid);
-
-	trace = find_session_ust_trace_by_pid(current_session, pid);
-	if (trace == NULL) {
-		ret = LTTCOMM_NO_TRACE;
-		goto error;
-	}
-
-	/* Connect to app using ustctl API */
-	sock = connect_app(pid);
-	if (sock < 0) {
-		ret = LTTCOMM_NO_TRACEABLE;
-		goto error;
-	}
-
-	ret = ustctl_stop_trace(sock, trace->name);
-	if (ret < 0) {
-		ret = LTTCOMM_STOP_FAIL;
-		goto error;
 	}
 
 error:
@@ -514,8 +390,7 @@ error:
  */
 static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 {
-	int ret;
-	int buf_size;
+	int ust_sock, ret, buf_size;
 	size_t header_size;
 	char *send_buf = NULL;
 	struct lttcomm_lttng_header llh;
@@ -545,6 +420,16 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	llh.ret_code = LTTCOMM_OK;
 
 	header_size = sizeof(struct lttcomm_lttng_header);
+
+	/* Connect to ust apps if available pid */
+	if (lsm->pid != 0) {
+		/* Connect to app using ustctl API */
+		ust_sock = ust_connect_app(lsm->pid);
+		if (ust_sock < 0) {
+			ret = LTTCOMM_NO_TRACEABLE;
+			goto end;
+		}
+	}
 
 	/* Process by command type */
 	switch (lsm->cmd_type) {
@@ -601,7 +486,7 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 		case UST_CREATE_TRACE:
 		{
-			ret = ust_create_trace(lsm->pid);
+			ret = ust_create_trace(ust_sock, lsm->pid);
 			if (ret < 0) {
 				/* If -1 is returned from ust_create_trace, malloc
 				 * failed so it's pretty much a fatal error.
@@ -636,14 +521,14 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 		}
 		case UST_START_TRACE:
 		{
-			ret = ust_start_trace(lsm->pid);
+			ret = ust_start_trace(ust_sock, lsm->pid);
 
 			/* No auxiliary data so only send the llh struct. */
 			goto end;
 		}
 		case UST_STOP_TRACE:
 		{
-			ret = ust_stop_trace(lsm->pid);
+			ret = ust_stop_trace(ust_sock, lsm->pid);
 
 			/* No auxiliary data so only send the llh struct. */
 			goto end;
