@@ -1,4 +1,6 @@
-/* Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+/*
+ * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ *                      Julien Desfossez <julien.desfossez@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -92,6 +94,20 @@ enum lttcomm_return_code {
 	LTTCOMM_NR,				/* Last element */
 };
 
+/* commands for kconsumerd */
+enum lttcomm_consumerd_command {
+	LTTCOMM_ADD_STREAM = 1100,
+	LTTCOMM_UPDATE_STREAM, /* pause, delete, start depending on fd state */
+	LTTCOMM_STOP, /* delete all */
+};
+
+/* state of each fd in consumerd */
+enum lttcomm_kconsumerd_fd_state {
+	ACTIVE_FD,
+	PAUSE_FD,
+	DELETE_FD,
+};
+
 /*
  * Data structure for ltt-session received message
  */
@@ -142,6 +158,27 @@ struct lttcomm_lttng_msg {
 	pid_t pid;
 	char trace_name[NAME_MAX];
 	unsigned int size_payload;
+};
+
+/*
+ * Data structures for the kconsumerd communications
+ *
+ * The header structure is sent to the kconsumerd daemon to inform
+ * how many lttcomm_kconsumerd_msg it is about to receive
+ */
+struct lttcomm_kconsumerd_header {
+	unsigned int payload_size;
+	enum lttcomm_consumerd_command cmd_type;
+	enum lttcomm_return_code ret_code;
+};
+
+/* lttcomm_kconsumerd_msg represents a file descriptor to consume the
+ * data and a path name to write it
+ */
+struct lttcomm_kconsumerd_msg {
+	char path_name[PATH_MAX];
+	int fd;
+	enum lttcomm_kconsumerd_fd_state state;
 };
 
 extern int lttcomm_create_unix_sock(const char *pathname);
