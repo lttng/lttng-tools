@@ -25,22 +25,22 @@
 
 int kernctl_create_channel(int fd, struct lttng_channel *chops)
 {
-	return ioctl(fd, KERNEL_IO_CREATE_CHANNEL, chops);
+	return ioctl(fd, KERNEL_CREATE_CHANNEL, chops);
 }
 
 int kernctl_create_event(int fd, struct lttng_event *ev)
 {
-	return ioctl(fd, KERNEL_IO_CREATE_EVENT, ev);
+	return ioctl(fd, KERNEL_CREATE_EVENT, ev);
 }
 
 int kernctl_create_session(int fd)
 {
-	return ioctl(fd, KERNEL_IO_CREATE_SESSION);
+	return ioctl(fd, KERNEL_CREATE_SESSION);
 }
 
 int kernctl_create_stream(int fd)
 {
-	return ioctl(fd, KERNEL_IO_CREATE_STREAM);
+	return ioctl(fd, KERNEL_CREATE_STREAM);
 }
 
 /* returns the maximum size for sub-buffers. */
@@ -85,6 +85,12 @@ int kernctl_get_subbuf_size(int fd, unsigned long *len)
 	return ioctl(fd, RING_BUFFER_GET_SUBBUF_SIZE, len);
 }
 
+/* open the metadata global channel */
+int kernctl_open_metadata(int fd, struct lttng_channel *chops)
+{
+	return ioctl(fd, KERNEL_OPEN_METADATA, chops);
+}
+
 /* Release exclusive sub-buffer access, move consumer forward. */
 int kernctl_put_next_subbuf(int fd)
 {
@@ -117,11 +123,11 @@ int kernctl_snapshot_get_produced(int fd, unsigned long *pos)
 
 int kernctl_start_session(int fd)
 {
-	return ioctl(fd, KERNEL_IO_SESSION_START);
+	return ioctl(fd, KERNEL_SESSION_START);
 }
 
 int kernctl_stop_session(int fd)
 {
-	return ioctl(fd, KERNEL_IO_SESSION_STOP);
+	return ioctl(fd, KERNEL_SESSION_STOP);
 }
 

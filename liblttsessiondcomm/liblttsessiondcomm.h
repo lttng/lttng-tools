@@ -94,6 +94,15 @@ enum lttcomm_return_code {
 	LTTCOMM_SELECT_SESS,	/* Must select a session */
 	LTTCOMM_EXIST_SESS,		/* Session name already exist */
 	LTTCOMM_NR,				/* Last element */
+	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
+	KCONSUMERD_SUCCESS_RECV_FD,	/* success on receiving fds */
+	KCONSUMERD_ERROR_RECV_FD,	/* error on receiving fds */
+	KCONSUMERD_POLL_ERROR,	/* Error in polling thread in kconsumerd */
+	KCONSUMERD_POLL_NVAL,	/* Poll on closed fd */
+	KCONSUMERD_POLL_HUP,	/* All fds have hungup */
+	KCONSUMERD_EXIT_SUCCESS,	/* kconsumerd exiting normally */
+	KCONSUMERD_EXIT_FAILURE,	/* kconsumerd exiting on error */
+	KCONSUMERD_OUTFD_ERROR,	/* error opening the tracefile */
 };
 
 /* commands for kconsumerd */
@@ -178,6 +187,7 @@ struct lttcomm_kconsumerd_msg {
 	char path_name[PATH_MAX];
 	int fd;
 	u32 state;    /* enum lttcomm_kconsumerd_fd_state */
+	unsigned long max_sb_size; /* the subbuffer size for this channel */
 };
 
 extern int lttcomm_create_unix_sock(const char *pathname);

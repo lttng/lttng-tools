@@ -25,3 +25,4 @@ libtool
 
 ltt-sessiond/ltt-sessiond
 lttng/lttng
+kconsumerd/kconsumerd

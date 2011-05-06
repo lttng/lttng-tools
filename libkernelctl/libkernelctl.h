@@ -33,6 +33,7 @@ int kernctl_get_next_subbuf(int fd);
 int kernctl_get_padded_subbuf_size(int fd, unsigned long *len);
 int kernctl_get_subbuf(int fd, unsigned long *len);
 int kernctl_get_subbuf_size(int fd, unsigned long *len);
+int kernctl_open_metadata(int fd, struct lttng_channel *chops);
 int kernctl_put_next_subbuf(int fd);
 int kernctl_put_subbuf(int fd);
 int kernctl_snapshot(int fd);

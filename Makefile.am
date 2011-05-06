@@ -5,4 +5,5 @@ SUBDIRS = liblttsessiondcomm \
 		  liblttngctl \
 		  lttng \
 		  ltt-sessiond \
+		  kconsumerd \
 		  tests
