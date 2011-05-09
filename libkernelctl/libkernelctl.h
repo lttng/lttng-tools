@@ -22,23 +22,23 @@
 
 #include <lttng/lttng.h>
 
-int kernctl_create_channel(int, struct lttng_channel*);
-int kernctl_create_event(int, struct lttng_event*);
-int kernctl_create_session(int);
-int kernctl_create_stream(int);
-int kernctl_get_max_subbuf_size(int, unsigned long*);
-int kernctl_get_mmap_len(int, unsigned long*);
-int kernctl_get_mmap_read_offset(int, unsigned long*);
-int kernctl_get_next_subbuf(int);
-int kernctl_get_padded_subbuf_size(int, unsigned long*);
-int kernctl_get_subbuf(int fd, unsigned long*);
-int kernctl_get_subbuf_size(int, unsigned long *);
-int kernctl_put_next_subbuf(int);
+int kernctl_create_channel(int fd, struct lttng_channel *chops);
+int kernctl_create_event(int fd, struct lttng_event *ev);
+int kernctl_create_session(int fd);
+int kernctl_create_stream(int fd);
+int kernctl_get_max_subbuf_size(int fd, unsigned long *len);
+int kernctl_get_mmap_len(int fd, unsigned long *len);
+int kernctl_get_mmap_read_offset(int fd, unsigned long *len);
+int kernctl_get_next_subbuf(int fd);
+int kernctl_get_padded_subbuf_size(int fd, unsigned long *len);
+int kernctl_get_subbuf(int fd, unsigned long *len);
+int kernctl_get_subbuf_size(int fd, unsigned long *len);
+int kernctl_put_next_subbuf(int fd);
 int kernctl_put_subbuf(int fd);
-int kernctl_snapshot(int);
-int kernctl_snapshot_get_consumed(int, unsigned long*);
-int kernctl_snapshot_get_produced(int, unsigned long*);
-int kernctl_start_session(int);
-int kernctl_stop_session(int);
+int kernctl_snapshot(int fd);
+int kernctl_snapshot_get_consumed(int fd, unsigned long *len);
+int kernctl_snapshot_get_produced(int fd, unsigned long *len);
+int kernctl_start_session(int fd);
+int kernctl_stop_session(int fd);
 
 #endif /* _LTT_LIBKERNELCTL_H */
