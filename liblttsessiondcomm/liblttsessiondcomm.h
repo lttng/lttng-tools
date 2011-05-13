@@ -24,6 +24,11 @@
 #include <limits.h>
 #include <uuid/uuid.h>
 
+/*
+ * FIXME: 32, 64bit enums -> uint32_t uint64_t for data exchange.
+ * Same for pid_t.
+ */
+
 #define LTTNG_RUNDIR						"/var/run/lttng"
 
 /* Default unix socket path */
@@ -145,7 +150,7 @@ struct lttcomm_session_msg {
 };
 
 /*
- * Data structure for the lttng client response.
+ * Data structure for the response from sessiond to the lttng client.
  *
  * This data structure is the control struct use in
  * the header of the transmission. NEVER put variable

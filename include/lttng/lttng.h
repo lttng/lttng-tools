@@ -60,6 +60,7 @@ struct lttng_trace {
 	enum lttng_trace_type type;
 };
 
+/* TODO: don't export these into system-installed headers. */
 /*
  * LTTng DebugFS ABI structures.
  */

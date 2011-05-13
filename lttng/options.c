@@ -41,7 +41,7 @@ int opt_stop_trace = 0;
 pid_t opt_trace_pid = 0;
 
 enum {
-	OPT_HELP = 42,
+	OPT_HELP,
 	OPT_CREATE_SESSION,
 	OPT_DESTROY_SESSION,
 };
@@ -91,7 +91,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -c, --create-session NAME    Create a new session\n");
 	fprintf(ofp, "  -l, --list-sessions          List all available sessions\n");
 	fprintf(ofp, "  -s, --session UUID           Specify tracing session using UUID\n");
-	fprintf(ofp, "  -d, --destroy-session=NAME   Destroy the session specified by NAME\n");
+	fprintf(ofp, "  -d, --destroy-session NAME   Destroy the session specified by NAME\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Tracing options:\n");
 	//fprintf(ofp, "      --kernel               Enable kernel tracing\n");
@@ -104,7 +104,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --stop                   Stop tracing\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
-	fprintf(ofp, "See http://lttng.org/ust for updates, bug reports and news.\n");
+	fprintf(ofp, "See http://lttng.org for updates, bug reports and news.\n");
 }
 
 /*

@@ -121,6 +121,7 @@ static int process_client_opt(void)
 	 */
 	if (opt_trace_kernel) {
 		ERR("Not implemented yet");
+		ret = -ENOSYS;
 		goto end;
 	}
 
@@ -156,9 +157,7 @@ static int process_client_opt(void)
 
 end:
 	ERR("%s", lttng_get_readable_code(ret));
-	return ret;
-
-error:
+error:	/* fall through */
 	return ret;
 }
 
@@ -481,20 +480,19 @@ static int spawn_sessiond(char *pathname)
 	MSG("Spawning session daemon");
 	pid = fork();
 	if (pid == 0) {
-		/* Spawn session daemon and tell
+		/*
+		 * Spawn session daemon and tell
 		 * it to signal us when ready.
 		 */
-		ret = execlp(pathname, "ltt-sessiond", "--sig-parent", "--quiet", NULL);
-		if (ret < 0) {
-			if (errno == ENOENT) {
-				ERR("No session daemon found. Use --sessiond-path.");
-			} else {
-				perror("execlp");
-			}
-			kill(getppid(), SIGTERM);
-			exit(EXIT_FAILURE);
+		execlp(pathname, "ltt-sessiond", "--sig-parent", "--quiet", NULL);
+		/* execlp only returns if error happened */
+		if (errno == ENOENT) {
+			ERR("No session daemon found. Use --sessiond-path.");
+		} else {
+			perror("execlp");
 		}
-		exit(EXIT_SUCCESS);
+		kill(getppid(), SIGTERM);	/* unpause parent */
+		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		/* Wait for ltt-sessiond to start */
 		pause();
@@ -519,7 +517,7 @@ end:
 static int check_ltt_sessiond(void)
 {
 	int ret;
-	char *pathname = NULL;
+	char *pathname = NULL, *alloc_pathname = NULL;
 
 	ret = lttng_check_session_daemon();
 	if (ret < 0) {
@@ -534,24 +532,19 @@ static int check_ltt_sessiond(void)
 		} else {
 			/* Try LTTNG_SESSIOND_PATH env variable */
 			pathname = getenv(LTTNG_SESSIOND_PATH_ENV);
-			if (pathname != NULL) {
-				/* strdup here in order to make the free()
-				 * not fail later on.
-				 */
-				pathname = strdup(pathname);
-			}
 		}
 
 		/* Let's rock and roll */
 		if (pathname == NULL) {
-			ret = asprintf(&pathname, "ltt-sessiond");
+			ret = asprintf(&alloc_pathname, "ltt-sessiond");
 			if (ret < 0) {
 				goto end;
 			}
+			pathname = alloc_pathname;
 		}
 
 		ret = spawn_sessiond(pathname);
-		free(pathname);
+		free(alloc_pathname);
 		if (ret < 0) {
 			ERR("Problem occurs when starting %s", pathname);
 			goto end;

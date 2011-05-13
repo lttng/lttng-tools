@@ -22,6 +22,11 @@
 #include <lttng/lttng.h>
 #include <uuid/uuid.h>
 
+/*
+ * FIXME: create a cmd_context structure to pass this kind of
+ * information around as parameter. Will facilitate multithreaded design
+ * later.
+ */
 extern struct ltt_session *current_session;
 
 /* Global session list */

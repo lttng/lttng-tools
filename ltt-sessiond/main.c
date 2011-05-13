@@ -44,6 +44,13 @@
 #include "trace.h"
 #include "traceable-app.h"
 
+/*
+ * TODO:
+ * teardown: signal SIGTERM handler -> write into pipe. Threads waits
+ * with epoll on pipe and on other pipes/sockets for commands.  Main
+ * simply waits on pthread join.
+ */
+
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
 const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
@@ -136,6 +143,9 @@ static void *thread_manage_apps(void *data)
 	int sock, ret;
 
 	/* TODO: Something more elegant is needed but fine for now */
+	/* FIXME: change all types to either uint8_t, uint32_t, uint64_t
+	 * for 32-bit vs 64-bit compat processes. */
+	/* replicate in ust with version number */
 	struct {
 		int reg;	/* 1:register, 0:unregister */
 		pid_t pid;
@@ -144,13 +154,13 @@ static void *thread_manage_apps(void *data)
 
 	DBG("[thread] Manage apps started");
 
-	/* Notify all applications to register */
-	notify_apps(default_global_apps_pipe);
-
 	ret = lttcomm_listen_unix_sock(apps_sock);
 	if (ret < 0) {
 		goto error;
 	}
+
+	/* Notify all applications to register */
+	notify_apps(default_global_apps_pipe);
 
 	while (1) {
 		/* Blocking call, waiting for transmission */
@@ -403,15 +413,18 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 	copy_common_data(&llh, lsm);
 
 	/* Check command that needs a session */
-	if (lsm->cmd_type != LTTNG_CREATE_SESSION &&
-		lsm->cmd_type != LTTNG_LIST_SESSIONS &&
-		lsm->cmd_type != UST_LIST_APPS)
-	{
+	switch (lsm->cmd_type) {
+	case LTTNG_CREATE_SESSION:
+	case LTTNG_LIST_SESSIONS:
+	case UST_LIST_APPS:
+		break;
+	default:
 		current_session = find_session_by_uuid(lsm->session_id);
 		if (current_session == NULL) {
 			ret = LTTCOMM_SELECT_SESS;
 			goto end;
 		}
+		break;
 	}
 
 	/* Default return code.
@@ -433,133 +446,131 @@ static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
 
 	/* Process by command type */
 	switch (lsm->cmd_type) {
-		case LTTNG_CREATE_SESSION:
-		{
-			ret = create_session(lsm->session_name, &llh.session_id);
-			if (ret < 0) {
-				if (ret == -1) {
-					ret = LTTCOMM_EXIST_SESS;
-				} else {
-					ret = LTTCOMM_FATAL;
-				}
-				goto end;
-			}
-
-			buf_size = setup_data_buffer(&send_buf, 0, &llh);
-			if (buf_size < 0) {
-				ret = LTTCOMM_FATAL;
-				goto end;
-			}
-
-			break;
-		}
-		case LTTNG_DESTROY_SESSION:
-		{
-			ret = destroy_session(&lsm->session_id);
-			if (ret < 0) {
-				ret = LTTCOMM_NO_SESS;
+	case LTTNG_CREATE_SESSION:
+	{
+		ret = create_session(lsm->session_name, &llh.session_id);
+		if (ret < 0) {
+			if (ret == -1) {
+				ret = LTTCOMM_EXIST_SESS;
 			} else {
-				ret = LTTCOMM_OK;
-			}
-
-			/* No auxiliary data so only send the llh struct. */
-			goto end;
-		}
-		case LTTNG_LIST_TRACES:
-		{
-			unsigned int trace_count = get_trace_count_per_session(current_session);
-
-			if (trace_count == 0) {
-				ret = LTTCOMM_NO_TRACE;
-				goto end;
-			}
-
-			buf_size = setup_data_buffer(&send_buf,
-					sizeof(struct lttng_trace) * trace_count, &llh);
-			if (buf_size < 0) {
 				ret = LTTCOMM_FATAL;
-				goto end;
 			}
-
-			get_traces_per_session(current_session, (struct lttng_trace *)(send_buf + header_size));
-			break;
-		}
-		case UST_CREATE_TRACE:
-		{
-			ret = ust_create_trace(ust_sock, lsm->pid);
-			if (ret < 0) {
-				/* If -1 is returned from ust_create_trace, malloc
-				 * failed so it's pretty much a fatal error.
-				 */
-				ret = LTTCOMM_FATAL;
-				goto end;
-			}
-
-			/* No auxiliary data so only send the llh struct. */
 			goto end;
 		}
-		case UST_LIST_APPS:
-		{
-			unsigned int app_count = get_app_count();
-			/* Stop right now if no apps */
-			if (app_count == 0) {
-				ret = LTTCOMM_NO_APPS;
-				goto end;
-			}
 
-			/* Setup data buffer and details for transmission */
-			buf_size = setup_data_buffer(&send_buf,
-					sizeof(pid_t) * app_count, &llh);
-			if (buf_size < 0) {
-				ret = LTTCOMM_FATAL;
-				goto end;
-			}
-
-			get_app_list_pids((pid_t *)(send_buf + header_size));
-
-			break;
-		}
-		case UST_START_TRACE:
-		{
-			ret = ust_start_trace(ust_sock, lsm->pid);
-
-			/* No auxiliary data so only send the llh struct. */
+		buf_size = setup_data_buffer(&send_buf, 0, &llh);
+		if (buf_size < 0) {
+			ret = LTTCOMM_FATAL;
 			goto end;
 		}
-		case UST_STOP_TRACE:
-		{
-			ret = ust_stop_trace(ust_sock, lsm->pid);
 
-			/* No auxiliary data so only send the llh struct. */
+		break;
+	}
+	case LTTNG_DESTROY_SESSION:
+	{
+		ret = destroy_session(&lsm->session_id);
+		if (ret < 0) {
+			ret = LTTCOMM_NO_SESS;
+		} else {
+			ret = LTTCOMM_OK;
+		}
+
+		/* No auxiliary data so only send the llh struct. */
+		goto end;
+	}
+	case LTTNG_LIST_TRACES:
+	{
+		unsigned int trace_count = get_trace_count_per_session(current_session);
+
+		if (trace_count == 0) {
+			ret = LTTCOMM_NO_TRACE;
 			goto end;
 		}
-		case LTTNG_LIST_SESSIONS:
-		{
-			unsigned int session_count = get_session_count();
-			/* Stop right now if no session */
-			if (session_count == 0) {
-				ret = LTTCOMM_NO_SESS;
-				goto end;
-			}
 
-			/* Setup data buffer and details for transmission */
-			buf_size = setup_data_buffer(&send_buf,
-					(sizeof(struct lttng_session) * session_count), &llh);
-			if (buf_size < 0) {
-				ret = LTTCOMM_FATAL;
-				goto end;
-			}
-
-			get_lttng_session((struct lttng_session *)(send_buf + header_size));
-
-			break;
-		}
-		default:
-		{
-			/* Undefined command */
-			ret = LTTCOMM_UND;
+		buf_size = setup_data_buffer(&send_buf,
+				sizeof(struct lttng_trace) * trace_count, &llh);
+		if (buf_size < 0) {
+			ret = LTTCOMM_FATAL;
 			goto end;
 		}
+
+		get_traces_per_session(current_session, (struct lttng_trace *)(send_buf + header_size));
+		break;
+	}
+	case UST_CREATE_TRACE:
+	{
+		ret = ust_create_trace(ust_sock, lsm->pid);
+		if (ret < 0) {
+			/* If -1 is returned from ust_create_trace, malloc
+			 * failed so it's pretty much a fatal error.
+			 */
+			ret = LTTCOMM_FATAL;
+			goto end;
+		}
+
+		/* No auxiliary data so only send the llh struct. */
+		goto end;
+	}
+	case UST_LIST_APPS:
+	{
+		unsigned int app_count = get_app_count();
+		/* Stop right now if no apps */
+		if (app_count == 0) {
+			ret = LTTCOMM_NO_APPS;
+			goto end;
+		}
+
+		/* Setup data buffer and details for transmission */
+		buf_size = setup_data_buffer(&send_buf,
+				sizeof(pid_t) * app_count, &llh);
+		if (buf_size < 0) {
+			ret = LTTCOMM_FATAL;
+			goto end;
+		}
+
+		get_app_list_pids((pid_t *)(send_buf + header_size));
+
+		break;
+	}
+	case UST_START_TRACE:
+	{
+		ret = ust_start_trace(ust_sock, lsm->pid);
+
+		/* No auxiliary data so only send the llh struct. */
+		goto end;
+	}
+	case UST_STOP_TRACE:
+	{
+		ret = ust_stop_trace(ust_sock, lsm->pid);
+
+		/* No auxiliary data so only send the llh struct. */
+		goto end;
+	}
+	case LTTNG_LIST_SESSIONS:
+	{
+		unsigned int session_count = get_session_count();
+		/* Stop right now if no session */
+		if (session_count == 0) {
+			ret = LTTCOMM_NO_SESS;
+			goto end;
+		}
+
+		/* Setup data buffer and details for transmission */
+		buf_size = setup_data_buffer(&send_buf,
+				(sizeof(struct lttng_session) * session_count), &llh);
+		if (buf_size < 0) {
+			ret = LTTCOMM_FATAL;
+			goto end;
+		}
+
+		get_lttng_session((struct lttng_session *)(send_buf + header_size));
+
+		break;
+	}
+	default:
+		/* Undefined command */
+		ret = LTTCOMM_UND;
+		goto end;
 	}
 
 	ret = send_unix_sock(sock, send_buf, buf_size);
@@ -769,7 +780,10 @@ static const char *get_home_dir(void)
 /*
  *  set_permissions
  *
- *	Set the tracing group gid onto the client socket.
+ *  Set the tracing group gid onto the client socket.
+ *
+ *  Race window between mkdir and chown is OK because we are going from
+ *  less permissive (root.root) to more permissive (root.tracing).
  */
 static int set_permissions(void)
 {
@@ -1047,7 +1061,7 @@ int main(int argc, char **argv)
 		/* We do not goto error because we must not
 		 * cleanup() because a daemon is already running.
 		 */
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 	}
 
 	if (set_signal_handler() < 0) {
@@ -1094,10 +1108,9 @@ int main(int argc, char **argv)
 	}
 
 	cleanup();
-	return 0;
+	exit(EXIT_SUCCESS);
 
 error:
 	cleanup();
-
-	return EXIT_FAILURE;
+	exit(EXIT_FAILURE);
 }

@@ -145,7 +145,10 @@ int ust_create_trace(int sock, pid_t pid)
 		cds_list_add(&trace->list, &current_session->ust_traces);
 		current_session->ust_trace_count++;
 	}
+	return 0;
 
+error_create:
+	free(trace);
 error:
 	return ret;
 }
