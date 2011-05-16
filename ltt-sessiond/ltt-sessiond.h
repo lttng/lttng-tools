@@ -27,4 +27,16 @@ extern const char default_home_dir[],
 	default_ust_sock_dir[],
 	default_global_apps_pipe[];
 
+/*
+ * This contains extra data needed for processing a command received by the
+ * session daemon from the lttng client.
+ */
+struct command_ctx {
+	int ust_sock;
+	unsigned int lttng_msg_size;
+	struct ltt_session *session;
+	struct lttcomm_lttng_msg *llm;
+	struct lttcomm_session_msg *lsm;
+};
+
 #endif /* _LTT_SESSIOND_H */

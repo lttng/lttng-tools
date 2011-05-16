@@ -35,7 +35,7 @@ static char sessiond_sock_path[PATH_MAX];
 
 /* Communication structure to ltt-sessiond */
 static struct lttcomm_session_msg lsm;
-static struct lttcomm_lttng_header llh;
+static struct lttcomm_lttng_msg llm;
 
 /* Prototypes */
 static int check_tracing_group(const char *grp_name);
@@ -125,18 +125,18 @@ static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 	}
 
 	/* Get header from data transmission */
-	ret = recv_data_sessiond(&llh, sizeof(llh));
+	ret = recv_data_sessiond(&llm, sizeof(llm));
 	if (ret < 0) {
 		goto end;
 	}
 
 	/* Check error code if OK */
-	if (llh.ret_code != LTTCOMM_OK) {
-		ret = -llh.ret_code;
+	if (llm.ret_code != LTTCOMM_OK) {
+		ret = -llm.ret_code;
 		goto end;
 	}
 
-	size = llh.payload_size;
+	size = llm.trace_name_offset + llm.data_size;
 	if (size == 0) {
 		goto end;
 	}
@@ -250,7 +250,7 @@ int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces)
 {
 	int ret;
 
-	uuid_copy(lsm.session_id, *uuid);
+	uuid_copy(lsm.session_uuid, *uuid);
 
 	ret = ask_sessiond(LTTNG_LIST_TRACES, (void **) traces);
 	if (ret < 0) {
@@ -278,7 +278,7 @@ int lttng_create_session(char *name, uuid_t *session_id)
 		goto end;
 	}
 
-	uuid_copy(*session_id, llh.session_id);
+	uuid_copy(*session_id, llm.session_uuid);
 
 end:
 	return ret;
@@ -293,7 +293,7 @@ int lttng_destroy_session(uuid_t *uuid)
 {
 	int ret;
 
-	uuid_copy(lsm.session_id, *uuid);
+	uuid_copy(lsm.session_uuid, *uuid);
 
 	ret = ask_sessiond(LTTNG_DESTROY_SESSION, NULL);
 	if (ret < 0) {
@@ -377,7 +377,7 @@ int lttng_disconnect_sessiond(void)
  */
 void lttng_set_current_session_uuid(uuid_t *uuid)
 {
-	uuid_copy(lsm.session_id, *uuid);
+	uuid_copy(lsm.session_uuid, *uuid);
 }
 
 /*

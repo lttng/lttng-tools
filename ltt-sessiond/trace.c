@@ -29,6 +29,7 @@
 #include "lttngerr.h"
 #include "trace.h"
 #include "session.h"
+#include "ltt-sessiond.h"
 
 static struct ltt_ust_trace *find_session_ust_trace_by_pid(
 		struct ltt_session *session, pid_t pid);
@@ -111,12 +112,12 @@ void get_traces_per_session(struct ltt_session *session, struct lttng_trace *tra
  *  This trace is then appended to the current session
  *  ust trace list.
  */
-int ust_create_trace(int sock, pid_t pid)
+int ust_create_trace(struct command_ctx *cmd_ctx)
 {
 	int ret;
 	struct ltt_ust_trace *trace;
 
-	DBG("Creating trace for pid %d", pid);
+	DBG("Creating trace for pid %d", cmd_ctx->lsm->pid);
 
 	trace = malloc(sizeof(struct ltt_ust_trace));
 	if (trace == NULL) {
@@ -126,7 +127,7 @@ int ust_create_trace(int sock, pid_t pid)
 	}
 
 	/* Init */
-	trace->pid = pid;
+	trace->pid = cmd_ctx->lsm->pid;
 	trace->shmid = 0;
 	/* NOTE: to be removed. Trace name will no longer be
 	 * required for LTTng userspace tracer. For now, we set it
@@ -134,19 +135,19 @@ int ust_create_trace(int sock, pid_t pid)
 	 */
 	snprintf(trace->name, 5, "auto");
 
-	ret = ustctl_create_trace(sock, trace->name);
+	ret = ustctl_create_trace(cmd_ctx->ust_sock, trace->name);
 	if (ret < 0) {
 		ret = LTTCOMM_CREATE_FAIL;
 		goto error_create;
 	}
 
 	/* Check if current session is valid */
-	if (current_session) {
-		cds_list_add(&trace->list, &current_session->ust_traces);
-		current_session->ust_trace_count++;
+	if (cmd_ctx->session) {
+		cds_list_add(&trace->list, &cmd_ctx->session->ust_traces);
+		cmd_ctx->session->ust_trace_count++;
 	}
 
-	return 0;
+	return LTTCOMM_OK;
 
 error_create:
 	free(trace);
@@ -160,24 +161,26 @@ error:
  *  Start a trace. This trace, identified by the pid, must be
  *  in the current session ust_traces list.
  */
-int ust_start_trace(int sock, pid_t pid)
+int ust_start_trace(struct command_ctx *cmd_ctx)
 {
 	int ret;
 	struct ltt_ust_trace *trace;
 
-	DBG("Starting trace for pid %d", pid);
+	DBG("Starting trace for pid %d", cmd_ctx->lsm->pid);
 
-	trace = find_session_ust_trace_by_pid(current_session, pid);
+	trace = find_session_ust_trace_by_pid(cmd_ctx->session, cmd_ctx->lsm->pid);
 	if (trace == NULL) {
 		ret = LTTCOMM_NO_TRACE;
 		goto error;
 	}
 
-	ret = ustctl_start_trace(sock, "auto");
+	ret = ustctl_start_trace(cmd_ctx->ust_sock, "auto");
 	if (ret < 0) {
 		ret = LTTCOMM_START_FAIL;
 		goto error;
 	}
+
+	ret = LTTCOMM_OK;
 
 error:
 	return ret;
@@ -189,24 +192,26 @@ error:
  *  Stop a trace. This trace, identified by the pid, must be
  *  in the current session ust_traces list.
  */
-int ust_stop_trace(int sock, pid_t pid)
+int ust_stop_trace(struct command_ctx *cmd_ctx)
 {
 	int ret;
 	struct ltt_ust_trace *trace;
 
-	DBG("Stopping trace for pid %d", pid);
+	DBG("Stopping trace for pid %d", cmd_ctx->lsm->pid);
 
-	trace = find_session_ust_trace_by_pid(current_session, pid);
+	trace = find_session_ust_trace_by_pid(cmd_ctx->session, cmd_ctx->lsm->pid);
 	if (trace == NULL) {
 		ret = LTTCOMM_NO_TRACE;
 		goto error;
 	}
 
-	ret = ustctl_stop_trace(sock, trace->name);
+	ret = ustctl_stop_trace(cmd_ctx->ust_sock, trace->name);
 	if (ret < 0) {
 		ret = LTTCOMM_STOP_FAIL;
 		goto error;
 	}
+
+	ret = LTTCOMM_OK;
 
 error:
 	return ret;

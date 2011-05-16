@@ -115,7 +115,7 @@ enum lttcomm_kconsumerd_fd_state {
  */
 struct lttcomm_session_msg {
 	u32 cmd_type;    /* enum lttcomm_sessiond_command */
-	uuid_t session_id;
+	uuid_t session_uuid;
 	char trace_name[NAME_MAX];
 	char session_name[NAME_MAX];
 	u32 pid;    /* pid_t */
@@ -148,13 +148,15 @@ struct lttcomm_session_msg {
 /*
  * Data structure for the response from sessiond to the lttng client.
  */
-struct lttcomm_lttng_header {
+struct lttcomm_lttng_msg {
 	u32 cmd_type;   /* enum lttcomm_sessiond_command */
 	u32 ret_code;   /* enum lttcomm_return_code */
 	u32 pid;        /* pid_t */
-	u32 payload_size;
-	uuid_t session_id;
-	char trace_name[NAME_MAX];
+	u32 trace_name_offset;
+	u32 data_size;
+	uuid_t session_uuid;
+	/* Contains: trace_name + data */
+	char payload[];
 };
 
 /*

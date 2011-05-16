@@ -62,16 +62,16 @@ static int check_existing_daemon(void);
 static int ust_connect_app(pid_t pid);
 static int init_daemon_socket(void);
 static int notify_apps(const char* name);
-static int process_client_msg(int sock, struct lttcomm_session_msg*);
+static int process_client_msg(struct command_ctx *cmd_ctx);
 static int send_unix_sock(int sock, void *buf, size_t len);
 static int set_signal_handler(void);
 static int set_permissions(void);
-static int setup_data_buffer(char **buf, size_t size, struct lttcomm_lttng_header *llh);
+static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size);
 static int create_lttng_rundir(void);
 static int set_kconsumerd_sockets(void);
 static void cleanup(void);
-static void copy_common_data(struct lttcomm_lttng_header *llh, struct lttcomm_session_msg *lsm);
 static void sighandler(int sig);
+static void clean_command_ctx(struct command_ctx *cmd_ctx);
 
 static void *thread_manage_clients(void *data);
 static void *thread_manage_apps(void *data);
@@ -95,9 +95,6 @@ static char kconsumerd_cmd_unix_sock_path[PATH_MAX];	/* kconsumerd command Unix 
 static int client_sock;
 static int apps_sock;
 static int kconsumerd_err_sock;
-
-/* Extern in session.h */
-struct ltt_session *current_session;
 
 /*
  *  thread_manage_kconsumerd
@@ -208,7 +205,7 @@ error:
 static void *thread_manage_clients(void *data)
 {
 	int sock, ret;
-	struct lttcomm_session_msg lsm;
+	struct command_ctx *cmd_ctx;
 
 	DBG("[thread] Manage client started");
 
@@ -226,31 +223,53 @@ static void *thread_manage_clients(void *data)
 
 	while (1) {
 		/* Blocking call, waiting for transmission */
+		DBG("Accepting client command ...");
 		sock = lttcomm_accept_unix_sock(client_sock);
 		if (sock < 0) {
 			goto error;
 		}
 
+		/* Allocate context command to process the client request */
+		cmd_ctx = malloc(sizeof(struct command_ctx));
+
+		/* Allocate data buffer for reception */
+		cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
+		cmd_ctx->llm = NULL;
+		cmd_ctx->session = NULL;
+
 		/*
 		 * Data is received from the lttng client. The struct
-		 * lttcomm_session_msg (lsm) contains the command and data
-		 * request of the client.
+		 * lttcomm_session_msg (lsm) contains the command and data request of
+		 * the client.
 		 */
-		ret = lttcomm_recv_unix_sock(sock, &lsm, sizeof(lsm));
+		DBG("Receiving data from client ...");
+		ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm, sizeof(struct lttcomm_session_msg));
 		if (ret <= 0) {
 			continue;
 		}
 
-		/* This function dispatch the work to the LTTng or UST libs
-		 * and then sends back the response to the client. This is needed
-		 * because there might be more then one lttcomm_lttng_header to
-		 * send out so process_client_msg do both jobs.
+		/*
+		 * This function dispatch the work to the kernel or userspace tracer
+		 * libs and fill the lttcomm_lttng_msg data structure of all the needed
+		 * informations for the client. The command context struct contains
+		 * everything this function may needs.
 		 */
-		ret = process_client_msg(sock, &lsm);
+		ret = process_client_msg(cmd_ctx);
 		if (ret < 0) {
+			/* TODO: Inform client somehow of the fatal error. At this point,
+			 * ret < 0 means that a malloc failed (ENOMEM). */
 			/* Error detected but still accept command */
+			clean_command_ctx(cmd_ctx);
 			continue;
 		}
+
+		DBG("Sending response to client (size: %d)", cmd_ctx->lttng_msg_size);
+		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
+		if (ret < 0) {
+			ERR("Failed to send data back to client");
+		}
+
+		clean_command_ctx(cmd_ctx);
 	}
 
 error:
@@ -272,6 +291,26 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 	}
 
 	return lttcomm_send_unix_sock(sock, buf, len);
+}
+
+/*
+ *  clean_command_ctx
+ *
+ *  Free memory of a command context structure.
+ */
+static void clean_command_ctx(struct command_ctx *cmd_ctx)
+{
+	DBG("Clean command context structure %p", cmd_ctx);
+	if (cmd_ctx) {
+		if (cmd_ctx->llm) {
+			free(cmd_ctx->llm);
+		}
+		if (cmd_ctx->lsm) {
+			free(cmd_ctx->lsm);
+		}
+		free(cmd_ctx);
+		cmd_ctx = NULL;
+	}
 }
 
 /*
@@ -338,50 +377,45 @@ error:
 }
 
 /*
- *  copy_common_data
+ *  setup_lttng_msg
  *
- *  Copy common data between lttcomm_lttng_header and lttcomm_session_msg
- */
-static void copy_common_data(struct lttcomm_lttng_header *llh, struct lttcomm_session_msg *lsm)
-{
-	llh->cmd_type = lsm->cmd_type;
-	llh->pid = lsm->pid;
-
-	/* Manage uuid */
-	if (!uuid_is_null(lsm->session_id)) {
-		uuid_copy(llh->session_id, lsm->session_id);
-	}
-
-	strncpy(llh->trace_name, lsm->trace_name, strlen(llh->trace_name));
-	llh->trace_name[strlen(llh->trace_name) - 1] = '\0';
-}
-
-/*
- *  setup_data_buffer
- *
- *  Setup the outgoing data buffer for the response
- *  data allocating the right amount of memory.
+ *  Setup the outgoing data buffer for the response (llm) by allocating the
+ *  right amount of memory and copying the original information from the lsm
+ *  structure.
  *
  *  Return total size of the buffer pointed by buf.
  */
-static int setup_data_buffer(char **buf, size_t s_data, struct lttcomm_lttng_header *llh)
+static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 {
-	int ret = 0;
-	size_t buf_size;
+	int ret, buf_size, trace_name_size;
 
-	buf_size = sizeof(struct lttcomm_lttng_header) + s_data;
-	*buf = malloc(buf_size);
-	if (*buf == NULL) {
+	/*
+	 * Check for the trace_name. If defined, it's part of the payload data of
+	 * the llm structure.
+	 */
+	trace_name_size = strlen(cmd_ctx->lsm->trace_name);
+	buf_size = trace_name_size + size;
+
+	cmd_ctx->llm = malloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
+	if (cmd_ctx->llm == NULL) {
 		perror("malloc");
-		ret = -1;
+		ret = -ENOMEM;
 		goto error;
 	}
 
-	/* Setup lttcomm_lttng_header data and copy
-	 * it to the newly allocated buffer.
-	 */
-	llh->payload_size = s_data;
-	memcpy(*buf, llh, sizeof(struct lttcomm_lttng_header));
+	/* Copy common data */
+	cmd_ctx->llm->cmd_type = cmd_ctx->lsm->cmd_type;
+	cmd_ctx->llm->pid = cmd_ctx->lsm->pid;
+	if (!uuid_is_null(cmd_ctx->lsm->session_uuid)) {
+		uuid_copy(cmd_ctx->llm->session_uuid, cmd_ctx->lsm->session_uuid);
+	}
+
+	cmd_ctx->llm->trace_name_offset = trace_name_size;
+	cmd_ctx->llm->data_size = size;
+	cmd_ctx->lttng_msg_size = sizeof(struct lttcomm_lttng_msg) + buf_size;
+
+	/* Copy trace name to the llm structure. Begining of the payload. */
+	memcpy(cmd_ctx->llm->payload, cmd_ctx->lsm->trace_name, trace_name_size);
 
 	return buf_size;
 
@@ -392,202 +426,217 @@ error:
 /*
  * 	process_client_msg
  *
- * 	This takes the lttcomm_session_msg struct and process the command requested
- * 	by the client. It then creates response(s) and send it back to the
- * 	given socket (sock).
+ *  Process the command requested by the lttng client within the command
+ *  context structure.  This function make sure that the return structure (llm)
+ *  is set and ready for transmission before returning.
  *
  * 	Return any error encountered or 0 for success.
  */
-static int process_client_msg(int sock, struct lttcomm_session_msg *lsm)
+static int process_client_msg(struct command_ctx *cmd_ctx)
 {
-	int ust_sock, ret, buf_size;
-	size_t header_size;
-	char *send_buf = NULL;
-	struct lttcomm_lttng_header llh;
+	int ret;
 
-	DBG("Processing client message");
-
-	/* Copy common data to identify the response
-	 * on the lttng client side.
-	 */
-	copy_common_data(&llh, lsm);
+	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
 	/* Check command that needs a session */
-	switch (lsm->cmd_type) {
+	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case UST_LIST_APPS:
 		break;
 	default:
-		current_session = find_session_by_uuid(lsm->session_id);
-		if (current_session == NULL) {
+		cmd_ctx->session = find_session_by_uuid(cmd_ctx->lsm->session_uuid);
+		if (cmd_ctx->session == NULL) {
 			ret = LTTCOMM_SELECT_SESS;
-			goto end;
+			goto error;
 		}
 		break;
 	}
 
-	/* Default return code.
-	 * In our world, everything is OK... right? ;)
-	 */
-	llh.ret_code = LTTCOMM_OK;
-
-	header_size = sizeof(struct lttcomm_lttng_header);
-
 	/* Connect to ust apps if available pid */
-	if (lsm->pid != 0) {
+	if (cmd_ctx->lsm->pid > 0) {
 		/* Connect to app using ustctl API */
-		ust_sock = ust_connect_app(lsm->pid);
-		if (ust_sock < 0) {
+		cmd_ctx->ust_sock = ust_connect_app(cmd_ctx->lsm->pid);
+		if (cmd_ctx->ust_sock < 0) {
 			ret = LTTCOMM_NO_TRACEABLE;
-			goto end;
+			goto error;
 		}
 	}
 
 	/* Process by command type */
-	switch (lsm->cmd_type) {
+	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	{
-		ret = create_session(lsm->session_name, &llh.session_id);
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		ret = create_session(cmd_ctx->lsm->session_name, &cmd_ctx->llm->session_uuid);
 		if (ret < 0) {
 			if (ret == -1) {
 				ret = LTTCOMM_EXIST_SESS;
 			} else {
 				ret = LTTCOMM_FATAL;
 			}
-			goto end;
+			goto error;
 		}
 
-		buf_size = setup_data_buffer(&send_buf, 0, &llh);
-		if (buf_size < 0) {
-			ret = LTTCOMM_FATAL;
-			goto end;
-		}
-
+		ret = LTTCOMM_OK;
 		break;
 	}
 	case LTTNG_DESTROY_SESSION:
 	{
-		ret = destroy_session(&lsm->session_id);
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
-			ret = LTTCOMM_NO_SESS;
-		} else {
-			ret = LTTCOMM_OK;
+			goto setup_error;
 		}
 
-		/* No auxiliary data so only send the llh struct. */
-		goto end;
+		ret = destroy_session(&cmd_ctx->lsm->session_uuid);
+		if (ret < 0) {
+			ret = LTTCOMM_NO_SESS;
+			goto error;
+		}
+
+		ret = LTTCOMM_OK;
+		break;
 	}
 	case LTTNG_LIST_TRACES:
 	{
-		unsigned int trace_count = get_trace_count_per_session(current_session);
+		unsigned int trace_count;
 
+		trace_count = get_trace_count_per_session(cmd_ctx->session);
 		if (trace_count == 0) {
 			ret = LTTCOMM_NO_TRACE;
-			goto end;
+			goto error;
 		}
 
-		buf_size = setup_data_buffer(&send_buf,
-				sizeof(struct lttng_trace) * trace_count, &llh);
-		if (buf_size < 0) {
-			ret = LTTCOMM_FATAL;
-			goto end;
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_trace) * trace_count);
+		if (ret < 0) {
+			goto setup_error;
 		}
 
-		get_traces_per_session(current_session, (struct lttng_trace *)(send_buf + header_size));
+		get_traces_per_session(cmd_ctx->session,
+				(struct lttng_trace *)(cmd_ctx->llm->payload));
+
+		ret = LTTCOMM_OK;
 		break;
 	}
 	case UST_CREATE_TRACE:
 	{
-		ret = ust_create_trace(ust_sock, lsm->pid);
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
-			/* If -1 is returned from ust_create_trace, malloc
-			 * failed so it's pretty much a fatal error.
-			 */
-			ret = LTTCOMM_FATAL;
-			goto end;
+			goto setup_error;
 		}
 
-		/* No auxiliary data so only send the llh struct. */
-		goto end;
+		ret = ust_create_trace(cmd_ctx);
+		if (ret < 0) {
+			goto setup_error;
+		}
+		break;
 	}
 	case UST_LIST_APPS:
 	{
-		unsigned int app_count = get_app_count();
-		/* Stop right now if no apps */
+		unsigned int app_count;
+
+		app_count = get_app_count();
+		DBG("Traceable application count : %d", app_count);
 		if (app_count == 0) {
 			ret = LTTCOMM_NO_APPS;
-			goto end;
+			goto error;
 		}
 
-		/* Setup data buffer and details for transmission */
-		buf_size = setup_data_buffer(&send_buf,
-				sizeof(pid_t) * app_count, &llh);
-		if (buf_size < 0) {
-			ret = LTTCOMM_FATAL;
-			goto end;
+		ret = setup_lttng_msg(cmd_ctx, sizeof(pid_t) * app_count);
+		if (ret < 0) {
+			goto setup_error;
 		}
 
-		get_app_list_pids((pid_t *)(send_buf + header_size));
+		get_app_list_pids((pid_t *)(cmd_ctx->llm->payload));
 
+		ret = LTTCOMM_OK;
 		break;
 	}
 	case UST_START_TRACE:
 	{
-		ret = ust_start_trace(ust_sock, lsm->pid);
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
 
-		/* No auxiliary data so only send the llh struct. */
-		goto end;
+		ret = ust_start_trace(cmd_ctx);
+		if (ret < 0) {
+			goto setup_error;
+		}
+		break;
 	}
 	case UST_STOP_TRACE:
 	{
-		ret = ust_stop_trace(ust_sock, lsm->pid);
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
 
-		/* No auxiliary data so only send the llh struct. */
-		goto end;
+		ret = ust_stop_trace(cmd_ctx);
+		if (ret < 0) {
+			goto setup_error;
+		}
+		break;
 	}
 	case LTTNG_LIST_SESSIONS:
 	{
-		unsigned int session_count = get_session_count();
-		/* Stop right now if no session */
+		unsigned int session_count;
+
+		session_count = get_session_count();
 		if (session_count == 0) {
 			ret = LTTCOMM_NO_SESS;
-			goto end;
+			goto error;
 		}
 
-		/* Setup data buffer and details for transmission */
-		buf_size = setup_data_buffer(&send_buf,
-				(sizeof(struct lttng_session) * session_count), &llh);
-		if (buf_size < 0) {
-			ret = LTTCOMM_FATAL;
-			goto end;
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * session_count);
+		if (ret < 0) {
+			goto setup_error;
 		}
 
-		get_lttng_session((struct lttng_session *)(send_buf + header_size));
+		get_lttng_session((struct lttng_session *)(cmd_ctx->llm->payload));
 
+		ret = LTTCOMM_OK;
 		break;
 	}
 	default:
 		/* Undefined command */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
 		ret = LTTCOMM_UND;
-		goto end;
+		break;
 	}
 
-	ret = send_unix_sock(sock, send_buf, buf_size);
-
-	if (send_buf != NULL) {
-		free(send_buf);
-	}
+	/* Set return code */
+	cmd_ctx->llm->ret_code = ret;
 
 	return ret;
 
-end:
+error:
 	DBG("Return code to client %d", ret);
-	/* Notify client of error */
-	llh.ret_code = ret;
-	llh.payload_size = 0;
-	send_unix_sock(sock, (void*) &llh, sizeof(llh));
 
+	if (cmd_ctx->llm == NULL) {
+		DBG("Missing llm structure. Allocating one.");
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+	}
+	/* Notify client of error */
+	cmd_ctx->llm->ret_code = ret;
+
+setup_error:
 	return ret;
 }
 

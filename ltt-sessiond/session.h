@@ -22,13 +22,6 @@
 #include <lttng/lttng.h>
 #include <uuid/uuid.h>
 
-/*
- * FIXME: create a cmd_context structure to pass this kind of
- * information around as parameter. Will facilitate multithreaded design
- * later.
- */
-extern struct ltt_session *current_session;
-
 /* Global session list */
 struct ltt_session_list {
 	struct cds_list_head head;
@@ -52,7 +45,7 @@ struct ltt_session {
 /* Prototypes */
 int create_session(char *name, uuid_t *session_id);
 int destroy_session(uuid_t *uuid);
-void get_lttng_session(struct lttng_session *lt);
+void get_lttng_session(struct lttng_session *sessions);
 struct ltt_session *find_session_by_uuid(uuid_t session_id);
 struct ltt_session *find_session_by_name(char *name);
 unsigned int get_session_count(void);

@@ -19,6 +19,7 @@
 #ifndef _LTT_TRACE_H
 #define _LTT_TRACE_H
 
+#include "ltt-sessiond.h"
 #include "session.h"
 
 /* LTTng trace representation */
@@ -45,8 +46,8 @@ struct ltt_ust_marker {
 
 int get_trace_count_per_session(struct ltt_session *session);
 void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
-int ust_create_trace(int sock, pid_t pid);
-int ust_start_trace(int sock, pid_t pid);
-int ust_stop_trace(int sock, pid_t pid);
+int ust_create_trace(struct command_ctx *cmd_ctx);
+int ust_start_trace(struct command_ctx *cmd_ctx);
+int ust_stop_trace(struct command_ctx *cmd_ctx);
 
 #endif /* _LTT_TRACE_H */

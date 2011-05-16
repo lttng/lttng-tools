@@ -41,7 +41,7 @@ int opt_stop_trace = 0;
 pid_t opt_trace_pid = 0;
 
 enum {
-	OPT_HELP,
+	OPT_HELP = 1,
 	OPT_CREATE_SESSION,
 	OPT_DESTROY_SESSION,
 };

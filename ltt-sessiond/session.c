@@ -224,7 +224,7 @@ error_mem:
  *  Iterate over the global session list and
  *  fill the lttng_session array.
  */
-void get_lttng_session(struct lttng_session *lt)
+void get_lttng_session(struct lttng_session *sessions)
 {
 	int i = 0;
 	struct ltt_session *iter;
@@ -240,7 +240,7 @@ void get_lttng_session(struct lttng_session *lt)
 		uuid_copy(lsess.uuid, iter->uuid);
 		strncpy(lsess.name, iter->name, sizeof(lsess.name));
 		lsess.name[sizeof(lsess.name) - 1] = '\0';
-		memcpy(&lt[i], &lsess, sizeof(lsess));
+		memcpy(&sessions[i], &lsess, sizeof(lsess));
 		i++;
 		/* Reset struct for next pass */
 		memset(&lsess, 0, sizeof(lsess));
