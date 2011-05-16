@@ -137,7 +137,7 @@ int ust_create_trace(int sock, pid_t pid)
 	ret = ustctl_create_trace(sock, trace->name);
 	if (ret < 0) {
 		ret = LTTCOMM_CREATE_FAIL;
-		goto error;
+		goto error_create;
 	}
 
 	/* Check if current session is valid */
@@ -145,6 +145,7 @@ int ust_create_trace(int sock, pid_t pid)
 		cds_list_add(&trace->list, &current_session->ust_traces);
 		current_session->ust_trace_count++;
 	}
+
 	return 0;
 
 error_create:
