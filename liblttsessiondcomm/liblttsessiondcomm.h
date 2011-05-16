@@ -24,10 +24,7 @@
 #include <limits.h>
 #include <uuid/uuid.h>
 
-/*
- * FIXME: 32, 64bit enums -> uint32_t uint64_t for data exchange.
- * Same for pid_t.
- */
+#include "lttng-share.h"
 
 #define LTTNG_RUNDIR						"/var/run/lttng"
 
@@ -114,15 +111,14 @@ enum lttcomm_kconsumerd_fd_state {
 };
 
 /*
- * Data structure for ltt-session received message
+ * Data structure received from lttng client to session daemon.
  */
 struct lttcomm_session_msg {
-	/* Common data to almost all command */
-	enum lttcomm_sessiond_command cmd_type;
+	u32 cmd_type;    /* enum lttcomm_sessiond_command */
 	uuid_t session_id;
 	char trace_name[NAME_MAX];
 	char session_name[NAME_MAX];
-	pid_t pid;
+	u32 pid;    /* pid_t */
 	union {
 		struct {
 			int auto_session;
@@ -151,18 +147,14 @@ struct lttcomm_session_msg {
 
 /*
  * Data structure for the response from sessiond to the lttng client.
- *
- * This data structure is the control struct use in
- * the header of the transmission. NEVER put variable
- * size data in here.
  */
 struct lttcomm_lttng_header {
-	enum lttcomm_sessiond_command cmd_type;
-	enum lttcomm_return_code ret_code;
+	u32 cmd_type;   /* enum lttcomm_sessiond_command */
+	u32 ret_code;   /* enum lttcomm_return_code */
+	u32 pid;        /* pid_t */
+	u32 payload_size;
 	uuid_t session_id;
-	pid_t pid;
 	char trace_name[NAME_MAX];
-	unsigned int payload_size;
 };
 
 /*
@@ -172,9 +164,9 @@ struct lttcomm_lttng_header {
  * how many lttcomm_kconsumerd_msg it is about to receive
  */
 struct lttcomm_kconsumerd_header {
-	unsigned int payload_size;
-	enum lttcomm_consumerd_command cmd_type;
-	enum lttcomm_return_code ret_code;
+	u32 payload_size;
+	u32 cmd_type;	/* enum lttcomm_consumerd_command */
+	u32 ret_code;	/* enum lttcomm_return_code */
 };
 
 /* lttcomm_kconsumerd_msg represents a file descriptor to consume the
@@ -183,7 +175,7 @@ struct lttcomm_kconsumerd_header {
 struct lttcomm_kconsumerd_msg {
 	char path_name[PATH_MAX];
 	int fd;
-	enum lttcomm_kconsumerd_fd_state state;
+	u32 state;    /* enum lttcomm_kconsumerd_fd_state */
 };
 
 extern int lttcomm_create_unix_sock(const char *pathname);

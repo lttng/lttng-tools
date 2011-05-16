@@ -37,8 +37,6 @@
 /* UUID short string version length (including \0) */
 #define UUID_SHORT_STR_LEN 9
 
-typedef uint64_t u64;
-
 /* Trace type for lttng_trace.
  */
 enum lttng_trace_type {

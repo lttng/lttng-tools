@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
- *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- *                      David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) - 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,29 +16,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTTNG_KERNEL_H
-#define _LTTNG_KERNEL_H
+#ifndef _LTTNG_SHARE_H
+#define _LTTNG_SHARE_H
 
-#include "lttng-share.h"
+#include <stdint.h>
 
-/*
- * LTTng DebugFS ABI structures.
- */
-enum lttng_instrum_type {
-	INSTRUM_TRACEPOINTS,
-};
+typedef uint32_t u32;
+typedef uint64_t u64;
 
-struct lttng_channel {
-	int overwrite;         /* 1: overwrite, 0: discard */
-	u64 subbuf_size;
-	u64 num_subbuf;
-	unsigned int switch_timer_interval;
-	unsigned int read_timer_interval;
-};
-
-struct lttng_event {
-	enum lttng_instrum_type itype;
-	char name[];
-};
-
-#endif /* _LTTNG_KERNEL_H */
+#endif /* _LTTNG_SHARE_H */
