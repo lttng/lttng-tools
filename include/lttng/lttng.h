@@ -60,27 +60,6 @@ struct lttng_trace {
 	enum lttng_trace_type type;
 };
 
-/* TODO: don't export these into system-installed headers. */
-/*
- * LTTng DebugFS ABI structures.
- */
-enum lttng_instrum_type {
-	INSTRUM_TRACEPOINTS,
-};
-
-struct lttng_channel {
-	int overwrite;         /* 1: overwrite, 0: discard */
-	u64 subbuf_size;
-	u64 num_subbuf;
-	unsigned int switch_timer_interval;
-	unsigned int read_timer_interval;
-};
-
-struct lttng_event {
-	enum lttng_instrum_type itype;
-	char name[];
-};
-
 extern int lttng_create_session(char *name, uuid_t *session_id);
 extern int lttng_destroy_session(uuid_t *uuid);
 extern int lttng_connect_sessiond(void);

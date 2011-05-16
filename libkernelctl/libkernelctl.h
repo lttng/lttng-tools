@@ -20,7 +20,7 @@
 #ifndef _LTT_LIBKERNELCTL_H
 #define _LTT_LIBKERNELCTL_H
 
-#include <lttng/lttng.h>
+#include "lttng-kernel.h"
 
 int kernctl_create_channel(int fd, struct lttng_channel *chops);
 int kernctl_create_event(int fd, struct lttng_event *ev);
