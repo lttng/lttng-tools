@@ -1102,6 +1102,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	DBG("Client socket path %s", client_unix_sock_path);
+	DBG("Application socket path %s", apps_unix_sock_path);
+
 	/* See if daemon already exist. If any of the two
 	 * socket needed by the daemon are present, this test fails
 	 */

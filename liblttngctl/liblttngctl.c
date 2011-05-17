@@ -431,7 +431,7 @@ static int set_session_daemon_path(void)
 
 	/* Are we in the tracing group ? */
 	ret = check_tracing_group(tracing_group);
-	if (ret < 0) {
+	if (ret < 0 && getuid() != 0) {
 		if (sprintf(sessiond_sock_path, DEFAULT_HOME_CLIENT_UNIX_SOCK,
 					getenv("HOME")) < 0) {
 			return -ENOMEM;
