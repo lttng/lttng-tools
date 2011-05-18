@@ -154,7 +154,6 @@ static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 
 end:
 	lttng_disconnect_sessiond();
-	memset(&lsm, 0, sizeof(lsm));
 	return ret;
 }
 
@@ -343,10 +342,9 @@ int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces)
 /*
  *  lttng_create_session
  *
- *  Create a brand new session using name. Allocate
- *  the session_id param pointing to the UUID.
+ *  Create a brand new session using name.
  */
-int lttng_create_session(char *name, uuid_t *session_id)
+int lttng_create_session(char *name)
 {
 	int ret;
 
@@ -357,8 +355,6 @@ int lttng_create_session(char *name, uuid_t *session_id)
 	if (ret < 0) {
 		goto end;
 	}
-
-	uuid_copy(*session_id, llm.session_uuid);
 
 end:
 	return ret;

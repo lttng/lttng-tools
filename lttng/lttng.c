@@ -38,9 +38,9 @@
 /* Variables */
 static char *progname;
 static char *session_name;
-static char short_str_uuid[UUID_SHORT_STR_LEN];
-static char long_str_uuid[UUID_STR_LEN];
 static uuid_t current_uuid;
+static int auto_session;
+static int auto_trace;
 
 /* Prototypes */
 static int process_client_opt(void);
@@ -48,13 +48,14 @@ static int process_opt_list_apps(void);
 static int process_opt_list_sessions(void);
 static int process_opt_list_traces(void);
 static int process_opt_create_session(void);
+static int process_kernel_create_trace(void);
+static int process_opt_kernel_event(void);
 static int set_session_uuid(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
 static int validate_options(void);
 static char *get_cmdline_by_pid(pid_t pid);
 static void set_opt_session_info(void);
-static void shorten_uuid(char *long_u, char *short_u);
 
 /*
  *  start_client
@@ -74,6 +75,7 @@ static int process_client_opt(void)
 		if (ret < 0) {
 			goto end;
 		}
+		goto error;
 	}
 
 	if (opt_list_session) {
@@ -81,6 +83,22 @@ static int process_client_opt(void)
 		if (ret < 0) {
 			goto end;
 		}
+		goto error;
+	}
+
+	/* Session creation or auto session set on */
+	if (auto_session || opt_create_session) {
+		DBG("Creating a new session");
+		ret = process_opt_create_session();
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	ret = set_session_uuid();
+	if (ret < 0) {
+		ERR("Session %s not found", opt_session_name);
+		goto error;
 	}
 
 	if (opt_destroy_session) {
@@ -88,25 +106,7 @@ static int process_client_opt(void)
 		if (ret < 0) {
 			goto end;
 		}
-		MSG("Session %s destroyed.", opt_session_uuid);
-	}
-
-	if (!opt_list_session && !opt_list_apps) {
-		if (uuid_is_null(current_uuid)) {
-			/* If no session uuid, create session */
-			DBG("No session specified. Creating session.");
-			ret = process_opt_create_session();
-			if (ret < 0) {
-				goto end;
-			}
-		}
-
-		DBG("Set session uuid to %s", long_str_uuid);
-		ret = set_session_uuid();
-		if (ret < 0) {
-			ERR("Session UUID %s not found", opt_session_uuid);
-			goto error;
-		}
+		MSG("Session %s destroyed.", opt_session_name);
 	}
 
 	if (opt_list_traces) {
@@ -119,23 +119,36 @@ static int process_client_opt(void)
 	/*
 	 * Action on traces (kernel or/and userspace).
 	 */
+
 	if (opt_trace_kernel) {
-		ERR("Not implemented yet");
-		ret = -ENOSYS;
-		goto end;
+		if (auto_trace || opt_create_trace) {
+			DBG("Creating a kernel trace");
+			ret = process_kernel_create_trace();
+			if (ret < 0) {
+				goto end;
+			}
+		}
+
+		if (opt_event_list != NULL) {
+			ret = process_opt_kernel_event();
+		} else {
+			// Enable all events
+		}
+
+		goto error;
 	}
 
 	if (opt_trace_pid != 0) {
-		if (opt_create_trace) {
+		if (auto_trace || opt_create_trace) {
 			DBG("Create a userspace trace for pid %d", opt_trace_pid);
 			ret = lttng_ust_create_trace(opt_trace_pid);
 			if (ret < 0) {
 				goto end;
 			}
-			MSG("Trace created successfully!\nUse --start to start tracing.");
+			MSG("Trace created successfully!");
 		}
 
-		if (opt_start_trace) {
+		if (auto_trace || opt_start_trace) {
 			DBG("Start trace for pid %d", opt_trace_pid);
 			ret = lttng_ust_start_trace(opt_trace_pid);
 			if (ret < 0) {
@@ -162,6 +175,42 @@ error:	/* fall through */
 }
 
 /*
+ *  process_kernel_create_trace
+ *
+ *  Create a kernel trace.
+ */
+static int process_kernel_create_trace(void)
+{
+	return 0;
+}
+
+/*
+ *  process_kernel_event
+ *
+ *  Enable kernel event from the command line list given.
+ */
+static int process_opt_kernel_event(void)
+{
+	int ret;
+	char *event_name;
+
+	event_name = strtok(opt_event_list, ",");
+	while (event_name != NULL) {
+		DBG("Enabling kernel event %s", event_name);
+		ret = lttng_kernel_enable_event(event_name);
+		if (ret < 0) {
+			ERR("%s %s", lttng_get_readable_code(ret), event_name);
+		} else {
+			MSG("Kernel event %s enabled.", event_name);
+		}
+		/* Next event */
+		event_name = strtok(NULL, ",");
+	}
+
+	return 0;
+}
+
+/*
  *  set_opt_session_info
  *
  *  Setup session_name, current_uuid, short_str_uuid and
@@ -169,58 +218,21 @@ error:	/* fall through */
  */
 static void set_opt_session_info(void)
 {
-	int count, i, short_len;
-	char *tok;
-	struct lttng_session *sessions;
-
-	if (opt_session_uuid != NULL) {
-		short_len = sizeof(short_str_uuid) - 1;
-		/* Shorten uuid */
-		tok = strchr(opt_session_uuid, '.');
-		if (strlen(tok + 1) == short_len) {
-			memcpy(short_str_uuid, tok + 1, short_len);
-			short_str_uuid[short_len] = '\0';
-		}
-
-		/* Get long real uuid_t from session daemon */
-		count = lttng_list_sessions(&sessions);
-		for (i = 0; i < count; i++) {
-			uuid_unparse(sessions[i].uuid, long_str_uuid);
-			if (strncmp(long_str_uuid, short_str_uuid, 8) == 0) {
-				uuid_copy(current_uuid, sessions[i].uuid);
-				break;
-			}
-		}
-	}
-
 	if (opt_session_name != NULL) {
 		session_name = strndup(opt_session_name, NAME_MAX);
+		DBG("Session name set to %s", session_name);
 	}
-}
-
-/*
- * shorten_uuid
- *
- * Small function to shorten the 37 bytes long uuid_t
- * string representation to 8 characters.
- */
-static void shorten_uuid(char *long_u, char *short_u)
-{
-	memcpy(short_u, long_u, 8);
-	short_u[UUID_SHORT_STR_LEN - 1] = '\0';
 }
 
 /*
  *  set_session_uuid
  *
- *  Set current session uuid to the current flow of
- *  command(s) using the already shorten uuid or
- *  current full uuid.
+ *  Set current session uuid to the current flow of command(s) using the
+ *  session_name.
  */
 static int set_session_uuid(void)
 {
-	int ret, count, i;
-	char str_uuid[37];
+	int ret, count, i, found = 0;
 	struct lttng_session *sessions;
 
 	if (!uuid_is_null(current_uuid)) {
@@ -235,16 +247,22 @@ static int set_session_uuid(void)
 	}
 
 	for (i = 0; i < count; i++) {
-		uuid_unparse(sessions[i].uuid, str_uuid);
-		if (strncmp(str_uuid, short_str_uuid, 8) == 0) {
+		if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
 			lttng_set_current_session_uuid(&sessions[i].uuid);
+			uuid_copy(current_uuid, sessions[i].uuid);
+			found = 1;
 			break;
 		}
 	}
 
 	free(sessions);
 
+	if (!found) {
+		return -1;
+	}
+
 end:
+	DBG("Session UUID set");
 	return 0;
 
 error:
@@ -262,7 +280,14 @@ static int process_opt_list_traces(void)
 	struct lttng_trace *traces;
 
 	ret = lttng_list_traces(&current_uuid, &traces);
+	DBG("Number of traces to list %d", ret);
 	if (ret < 0) {
+		goto error;
+	}
+
+	/* No traces */
+	if (ret == 0) {
+		MSG("No traces found.");
 		goto error;
 	}
 
@@ -299,30 +324,25 @@ error:
 static int process_opt_create_session(void)
 {
 	int ret;
-	uuid_t session_id;
-	char str_uuid[37];
 	char name[NAME_MAX];
 	time_t rawtime;
 	struct tm *timeinfo;
 
-	/* Auto session creation */
-	if (opt_create_session == 0) {
+	/* Auto session name creation */
+	if (opt_session_name == NULL) {
 		time(&rawtime);
 		timeinfo = localtime(&rawtime);
-		strftime(name, sizeof(name), "%Y%m%d-%H%M%S", timeinfo);
+		strftime(name, sizeof(name), "auto-%Y%m%d-%H%M%S", timeinfo);
 		session_name = strndup(name, sizeof(name));
+		DBG("Auto session name set to %s", session_name);
 	}
 
-	ret = lttng_create_session(session_name, &session_id);
+	ret = lttng_create_session(session_name);
 	if (ret < 0) {
 		goto error;
 	}
 
-	uuid_unparse(session_id, str_uuid);
-	uuid_copy(current_uuid, session_id);
-	shorten_uuid(str_uuid, short_str_uuid);
-
-	MSG("Session UUID created: %s.%s", session_name, short_str_uuid);
+	MSG("Session created: %s", session_name);
 
 error:
 	return ret;
@@ -337,11 +357,9 @@ error:
 static int process_opt_list_sessions(void)
 {
 	int ret, count, i;
-	char tmp_short_uuid[9];
-	char str_uuid[37];
-	struct lttng_session *sess;
+	struct lttng_session *sessions;
 
-	count = lttng_list_sessions(&sess);
+	count = lttng_list_sessions(&sessions);
 	DBG("Session count %d", count);
 	if (count < 0) {
 		ret = count;
@@ -350,12 +368,10 @@ static int process_opt_list_sessions(void)
 
 	MSG("Available sessions (UUIDs):");
 	for (i = 0; i < count; i++) {
-		uuid_unparse(sess[i].uuid, str_uuid);
-		shorten_uuid(str_uuid, tmp_short_uuid);
-		MSG("    %d) %s.%s", i+1, sess[i].name, tmp_short_uuid);
+		MSG("    %d) %s", i+1, sessions[i].name);
 	}
 
-	free(sess);
+	free(sessions);
 	MSG("\nTo select a session, use -s, --session UUID.");
 
 	return 0;
@@ -436,31 +452,70 @@ end:
 /*
  *  validate_options
  *
- *  Make sure that all options passed to the command line
- *  are compatible with each others.
+ *  Make sure that all options passed to the command line are compatible with
+ *  each others.
  *
  *  On error, return -1
  *  On success, return 0
  */
 static int validate_options(void)
 {
+	/* If listing options, jump validation */
+	if (opt_list_apps || opt_list_session) {
+		goto end;
+	}
 	/* Conflicting command */
 	if (opt_start_trace && opt_stop_trace) {
 		ERR("Can't use --start and --stop together.");
 		goto error;
 	/* If no PID specified and trace_kernel is off */
-	} else if ((opt_trace_pid == 0 && opt_trace_kernel == 0) &&
-			(opt_create_trace || opt_start_trace || opt_stop_trace)) {
-		ERR("Please specify a PID using -p, --pid PID.");
+	} else if ((opt_trace_pid == 0 && !opt_trace_kernel) &&
+			(opt_create_trace || opt_start_trace || opt_stop_trace || opt_destroy_trace)) {
+		ERR("Please specify for which tracer (-k or -p PID).");
 		goto error;
-	} else if (opt_session_uuid && opt_create_session) {
-		ERR("Please don't use -s and -c together. Useless action.");
-		goto error;
-	} else if (opt_list_traces && opt_session_uuid == NULL) {
+	/* List traces, we need a session name */
+	} else if (opt_list_traces && opt_session_name == NULL) {
 		ERR("Can't use -t without -s, --session option.");
+		goto error;
+	/* Can't set event for both kernel and userspace at the same time */
+	} else if (opt_event_list != NULL && (opt_trace_kernel && opt_trace_pid)) {
+		ERR("Please don't use --event for both kernel and userspace.\nOne at a time to enable events.");
+		goto error;
+	/* Don't need a trace name for kernel tracig */
+	} else if (opt_trace_name != NULL && opt_trace_kernel) {
+		ERR("For action on a kernel trace, please don't specify a trace name.");
+		goto error;
+	} else if (opt_destroy_trace && opt_session_name == NULL) {
+		ERR("Please specify a session in order to destroy a trace");
+		goto error;
+	} else if (opt_create_trace || opt_destroy_trace) {
+		/* Both kernel and user-space are denied for these options */
+		if (opt_trace_pid != 0 && opt_trace_kernel) {
+			ERR("Kernel and user-space trace creation and destruction can't be used together.");
+			goto error;
+		/* Need a trace name for user-space tracing */
+		} else if (opt_trace_name == NULL && opt_trace_pid != 0) {
+			ERR("Please specify a trace name for user-space tracing");
+			goto error;
+		}
+	} else if (opt_stop_trace && opt_trace_pid != 0 && opt_trace_name == NULL) {
+		ERR("Please specify a trace name for user-space tracing");
 		goto error;
 	}
 
+	/* If start trace, auto start tracing */
+	if (opt_start_trace) {
+		DBG("Requesting auto tracing");
+		auto_trace = 1;
+	}
+
+	/* If no session, auto create one */
+	if (opt_session_name == NULL) {
+		DBG("Requesting an auto session creation");
+		auto_session = 1;
+	}
+
+end:
 	return 0;
 
 error:

@@ -58,7 +58,7 @@ struct lttng_trace {
 	enum lttng_trace_type type;
 };
 
-extern int lttng_create_session(char *name, uuid_t *session_id);
+extern int lttng_create_session(char *name);
 extern int lttng_destroy_session(uuid_t *uuid);
 extern int lttng_connect_sessiond(void);
 extern int lttng_disconnect_sessiond(void);

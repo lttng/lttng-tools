@@ -99,6 +99,7 @@ enum lttcomm_return_code {
 	LTTCOMM_NO_TRACEABLE,	/* Error for non traceable app */
 	LTTCOMM_SELECT_SESS,	/* Must select a session */
 	LTTCOMM_EXIST_SESS,		/* Session name already exist */
+	LTTCOMM_NO_EVENT,		/* No event found */
 	LTTCOMM_NR,				/* Last element */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,	/* success on receiving fds */

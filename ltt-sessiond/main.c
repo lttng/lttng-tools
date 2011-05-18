@@ -160,6 +160,7 @@ static void *thread_manage_apps(void *data)
 	notify_apps(default_global_apps_pipe);
 
 	while (1) {
+		DBG("Accepting application registration");
 		/* Blocking call, waiting for transmission */
 		sock = lttcomm_accept_unix_sock(apps_sock);
 		if (sock < 0) {
@@ -263,7 +264,8 @@ static void *thread_manage_clients(void *data)
 			continue;
 		}
 
-		DBG("Sending response to client (size: %d)", cmd_ctx->lttng_msg_size);
+		DBG("Sending response (size: %d, retcode: %d)",
+				cmd_ctx->lttng_msg_size, cmd_ctx->llm->ret_code);
 		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
 		if (ret < 0) {
 			ERR("Failed to send data back to client");
@@ -465,6 +467,19 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
+	case KERNEL_ENABLE_EVENT:
+	{
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Enabling kernel event %s", cmd_ctx->lsm->u.event.event_name);
+
+		ret = LTTCOMM_OK;
+		break;
+	}
 	case LTTNG_CREATE_SESSION:
 	{
 		/* Setup lttng message with no payload */
@@ -624,12 +639,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	return ret;
 
 error:
-	DBG("Return code to client %d", ret);
-
 	if (cmd_ctx->llm == NULL) {
 		DBG("Missing llm structure. Allocating one.");
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
+		if (setup_lttng_msg(cmd_ctx, 0) < 0) {
 			goto setup_error;
 		}
 	}
