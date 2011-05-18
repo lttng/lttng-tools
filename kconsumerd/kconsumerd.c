@@ -73,13 +73,49 @@ static char command_sock_path[PATH_MAX]; /* Global command socket path */
 static char error_sock_path[PATH_MAX]; /* Global error path */
 
 /*
+ * del_fd
+ *
+ * Remove a fd from the global list protected by a mutex
+ */
+static void del_fd(struct ltt_kconsumerd_fd *lcf)
+{
+	pthread_mutex_lock(&kconsumerd_lock_fds);
+	cds_list_del(&lcf->list);
+	if (fds_count > 0) {
+		fds_count--;
+		DBG("Removed ltt_kconsumerd_fd");
+		if (lcf != NULL) {
+			close(lcf->out_fd);
+			close(lcf->consumerd_fd);
+			free(lcf);
+			lcf = NULL;
+		}
+	}
+	pthread_mutex_unlock(&kconsumerd_lock_fds);
+}
+
+/*
  *  cleanup
  *
  *  Cleanup the daemon's socket on exit
  */
 static void cleanup()
 {
+	struct ltt_kconsumerd_fd *iter;
+
+
+	/* remove the socket file */
 	unlink(command_sock_path);
+
+	/* unblock the threads */
+	WARN("Terminating the threads before exiting");
+	pthread_cancel(threads[0]);
+	pthread_cancel(threads[1]);
+
+	/* close all outfd */
+	cds_list_for_each_entry(iter, &kconsumerd_fd_list.head, list) {
+		del_fd(iter);
+	}
 }
 
 /* send_error
@@ -93,21 +129,6 @@ static int send_error(enum lttcomm_return_code cmd)
 				sizeof(enum lttcomm_sessiond_command));
 	} else {
 		return 0;
-	}
-}
-
-/*
- * cleanup_kconsumerd_fd
- *
- * Close the FDs and frees a ltt_kconsumerd_fd struct
- */
-static void cleanup_kconsumerd_fd(struct ltt_kconsumerd_fd *lcf)
-{
-	if (lcf != NULL) {
-		close(lcf->out_fd);
-		close(lcf->consumerd_fd);
-		free(lcf);
-		lcf = NULL;
 	}
 }
 
@@ -152,36 +173,6 @@ end:
 	return ret;
 }
 
-/*
- * del_fd
- *
- * Remove a fd from the global list protected by a mutex
- */
-static void del_fd(struct ltt_kconsumerd_fd *lcf)
-{
-	pthread_mutex_lock(&kconsumerd_lock_fds);
-	cds_list_del(&lcf->list);
-	if (fds_count > 0) {
-		fds_count--;
-		DBG("Removed ltt_kconsumerd_fd");
-		cleanup_kconsumerd_fd(lcf);
-	}
-	pthread_mutex_unlock(&kconsumerd_lock_fds);
-}
-
-/*
- * close_outfds
- *
- * Close all fds in the previous fd_list
- * Must be used with kconsumerd_lock_fds lock held
- */
-static void close_outfds()
-{
-	struct ltt_kconsumerd_fd *iter;
-	cds_list_for_each_entry(iter, &kconsumerd_fd_list.head, list) {
-		del_fd(iter);
-	}
-}
 
 /*
  *  sighandler
@@ -190,11 +181,6 @@ static void close_outfds()
  */
 static void sighandler(int sig)
 {
-	/* unblock the threads */
-	pthread_cancel(threads[0]);
-	pthread_cancel(threads[1]);
-
-	close_outfds();
 	cleanup();
 
 	return;
@@ -529,6 +515,7 @@ static void *thread_receive_fds(void *data)
 		/* Blocking call, waiting for transmission */
 		sock = lttcomm_accept_unix_sock(client_socket);
 		if (sock <= 0) {
+			WARN("On accept, retrying");
 			continue;
 		}
 
@@ -536,16 +523,18 @@ static void *thread_receive_fds(void *data)
 		ret = lttcomm_recv_unix_sock(sock, &tmp,
 				sizeof(struct lttcomm_kconsumerd_header));
 		if (ret < 0) {
-			ERR("Receiving the lttcomm_kconsumerd_header");
-			continue;
+			ERR("Receiving the lttcomm_kconsumerd_header, exiting");
+			goto error;
 		}
 		ret = consumerd_recv_fd(sock, tmp.payload_size, tmp.cmd_type);
 		if (ret < 0) {
-			continue;
+			ERR("Receiving the FD, exiting");
+			goto error;
 		}
 	}
 
 error:
+	cleanup();
 	return NULL;
 }
 
@@ -718,6 +707,7 @@ end:
 		free(local_kconsumerd_fd);
 		local_kconsumerd_fd = NULL;
 	}
+	cleanup();
 	return NULL;
 }
 
