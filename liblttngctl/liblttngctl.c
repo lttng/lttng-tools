@@ -159,6 +159,86 @@ end:
 }
 
 /*
+ * BEGIN KERNEL CONTROL
+ */
+
+/*
+ *  lttng_kernel_enable_event
+ *
+ *  Enable an event in the kernel tracer.
+ */
+int lttng_kernel_enable_event(char *event_name)
+{
+	strncpy(lsm.u.event.event_name, event_name, NAME_MAX);
+	return ask_sessiond(KERNEL_ENABLE_EVENT, NULL);
+}
+
+/*
+ *  lttng_kernel_disable_event
+ *
+ *  Disable an event in the kernel tracer.
+ */
+int lttng_kernel_disable_event(char *event_name)
+{
+	strncpy(lsm.u.event.event_name, event_name, NAME_MAX);
+	return ask_sessiond(KERNEL_DISABLE_EVENT, NULL);
+}
+
+/*
+ *  lttng_kernel_create_session
+ *
+ *  Create a session in the kernel tracer.
+ */
+int lttng_kernel_create_session(void)
+{
+	return ask_sessiond(KERNEL_CREATE_SESSION, NULL);
+}
+
+/*
+ *  lttng_kernel_create_channel
+ *
+ *  Create a channel in the kernel tracer.
+ */
+int lttng_kernel_create_channel(int overwrite,
+		u64 subbuf_size, u64 num_subbuf,
+		unsigned int switch_timer_interval,
+		unsigned int read_timer_interval)
+{
+	/* Write setting to the session message */
+	lsm.u.create_channel.overwrite = overwrite;
+	lsm.u.create_channel.subbuf_size = subbuf_size;
+	lsm.u.create_channel.num_subbuf = num_subbuf;
+	lsm.u.create_channel.switch_timer_interval = switch_timer_interval;
+	lsm.u.create_channel.read_timer_interval = read_timer_interval;
+
+	return ask_sessiond(KERNEL_CREATE_CHANNEL, NULL);
+}
+
+/*
+ *  lttng_kernel_start_tracing
+ *
+ *  Start kernel tracing.
+ */
+int lttng_kernel_start_tracing(void)
+{
+	return ask_sessiond(KERNEL_START_TRACE, NULL);
+}
+
+/*
+ *  lttng_kernel_stop_tracing
+ *
+ *  Stop kernel tracing.
+ */
+int lttng_kernel_stop_tracing(void)
+{
+	return ask_sessiond(KERNEL_STOP_TRACE, NULL);
+}
+
+/*
+ * END KERNEL CONTROL
+ */
+
+/*
  *  lttng_get_readable_code
  *
  *  Return a human readable string of code

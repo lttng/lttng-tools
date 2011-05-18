@@ -73,4 +73,17 @@ extern int lttng_ust_create_trace(pid_t pid);
 extern int lttng_ust_start_trace(pid_t pid);
 extern int lttng_ust_stop_trace(pid_t pid);
 
+/*
+ * Kernel tracer control
+ */
+extern int lttng_kernel_enable_event(char *event_name);
+extern int lttng_kernel_disable_event(char *event_name);
+extern int lttng_kernel_create_session(void);
+extern int lttng_kernel_start_tracing(void);
+extern int lttng_kernel_stop_tracing(void);
+extern int lttng_kernel_create_channel(int overwrite,
+		uint64_t subbuf_size, uint64_t num_subbuf,
+		unsigned int switch_timer_interval,
+		unsigned int read_timer_interval);
+
 #endif /* _LIBLTTNGCTL_H */

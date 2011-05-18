@@ -48,6 +48,12 @@
 #define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_OK)
 
 enum lttcomm_sessiond_command {
+	KERNEL_CREATE_CHANNEL,
+	KERNEL_CREATE_SESSION,
+	KERNEL_DISABLE_EVENT,
+	KERNEL_ENABLE_EVENT,
+	KERNEL_START_TRACE,
+	KERNEL_STOP_TRACE,
 	LTTNG_CREATE_SESSION,
 	LTTNG_DESTROY_SESSION,
 	LTTNG_FORCE_SUBBUF_SWITCH,
@@ -134,23 +140,16 @@ struct lttcomm_session_msg {
 		} create_session;
 		/* Marker data */
 		struct {
-			char channel[NAME_MAX];
-			char marker[NAME_MAX];
-		} marker;
-		/* SET_SOCK_PATH */
+			char event_name[NAME_MAX];
+		} event;
+		/* Create channel kernel */
 		struct {
-			char sock_path[PATH_MAX];
-		} sock_path;
-		/* SET_SUBBUF_NUM */
-		struct {
-			unsigned int subbuf_num;
-			char channel[NAME_MAX];
-		} subbuf_num;
-		/* SET_SUBBUF_SIZE */
-		struct {
-			unsigned int subbuf_size;
-			char channel[NAME_MAX];
-		} subbuf_size;
+			int overwrite;
+			u64 subbuf_size;
+			u64 num_subbuf;
+			unsigned int switch_timer_interval;
+			unsigned int read_timer_interval;
+		} create_channel;
 	} u;
 };
 
