@@ -37,7 +37,7 @@ extern int opt_enable_event;
 extern int opt_disable_event;
 extern int opt_destroy_session;
 extern int opt_create_session;
-extern int opt_create_channel;
+extern int opt_kern_create_channel;
 extern int opt_list_apps;
 extern int opt_no_sessiond;
 extern int opt_list_session;

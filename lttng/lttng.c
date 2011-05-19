@@ -181,7 +181,24 @@ error:	/* fall through */
  */
 static int process_kernel_create_trace(void)
 {
+	int ret;
+
+	/* Setup kernel session */
+	ret = lttng_kernel_create_session();
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Create an empty channel (with no event) */
+	ret = lttng_kernel_create_channel();
+	if (ret < 0) {
+		goto error;
+	}
+
 	return 0;
+
+error:
+	return ret;
 }
 
 /*

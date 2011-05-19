@@ -42,7 +42,7 @@ int opt_start_trace = 0;
 int opt_stop_trace = 0;
 int opt_enable_event;
 int opt_disable_event;
-int opt_create_channel;
+int opt_kern_create_channel;
 pid_t opt_trace_pid = 0;
 
 enum {
@@ -68,6 +68,7 @@ static struct poptOption long_options[] = {
 	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0, 0},
 	{"help",			'h',	POPT_ARG_NONE,		0, OPT_HELP, 0, 0},
 	{"kernel",			'k',	POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
+	{"kern-create-channel",0,   POPT_ARG_VAL,		&opt_kern_create_channel, 1, 0, 0},
 	{"list-apps",		'L',	POPT_ARG_VAL,		&opt_list_apps, 1, 0, 0},
 	{"list-sessions",	'l',	POPT_ARG_VAL,		&opt_list_session, 1, 0, 0},
 	{"list-traces",		't',	POPT_ARG_VAL,		&opt_list_traces, 1, 0, 0},
@@ -119,7 +120,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --stop [NAME]            Stop tracing. Use NAME to identify user-space trace\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Kernel tracing options:\n");
-	fprintf(ofp, "      --create-channel         Create kernel channel\n");
+	fprintf(ofp, "      --kern-create-channel    Create a kernel channel\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "User-space tracing options:\n");
 	fprintf(ofp, "\n");

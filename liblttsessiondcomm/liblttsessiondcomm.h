@@ -82,34 +82,38 @@ enum lttcomm_sessiond_command {
  * lttcomm error code.
  */
 enum lttcomm_return_code {
-	LTTCOMM_OK = 1000,		/* Ok */
-	LTTCOMM_ERR,			/* Unknown Error */
-	LTTCOMM_UND,			/* Undefine command */
-	LTTCOMM_ALLOC_FAIL,		/* Trace allocation fail */
-	LTTCOMM_NO_SESSION,		/* No session found */
-	LTTCOMM_CREATE_FAIL,	/* Create trace fail */
-	LTTCOMM_SESSION_FAIL,	/* Create session fail */
-	LTTCOMM_START_FAIL,		/* Start tracing fail */
-	LTTCOMM_STOP_FAIL,		/* Stop tracing fail */
-	LTTCOMM_LIST_FAIL,		/* Listing apps fail */
-	LTTCOMM_NO_APPS,		/* No traceable application */
-	LTTCOMM_NO_SESS,		/* No sessions available */
-	LTTCOMM_NO_TRACE,		/* No trace exist */
-	LTTCOMM_FATAL,			/* Session daemon had a fatal error */
-	LTTCOMM_NO_TRACEABLE,	/* Error for non traceable app */
-	LTTCOMM_SELECT_SESS,	/* Must select a session */
-	LTTCOMM_EXIST_SESS,		/* Session name already exist */
-	LTTCOMM_NO_EVENT,		/* No event found */
-	LTTCOMM_NR,				/* Last element */
+	LTTCOMM_OK = 1000,				/* Ok */
+	LTTCOMM_ERR,					/* Unknown Error */
+	LTTCOMM_UND,					/* Undefine command */
+	LTTCOMM_ALLOC_FAIL,				/* Trace allocation fail */
+	LTTCOMM_NO_SESSION,				/* No session found */
+	LTTCOMM_CREATE_FAIL,			/* Create trace fail */
+	LTTCOMM_SESSION_FAIL,			/* Create session fail */
+	LTTCOMM_START_FAIL,				/* Start tracing fail */
+	LTTCOMM_STOP_FAIL,				/* Stop tracing fail */
+	LTTCOMM_LIST_FAIL,				/* Listing apps fail */
+	LTTCOMM_NO_APPS,				/* No traceable application */
+	LTTCOMM_NO_SESS,				/* No sessions available */
+	LTTCOMM_NO_TRACE,				/* No trace exist */
+	LTTCOMM_FATAL,					/* Session daemon had a fatal error */
+	LTTCOMM_NO_TRACEABLE,			/* Error for non traceable app */
+	LTTCOMM_SELECT_SESS,			/* Must select a session */
+	LTTCOMM_EXIST_SESS,				/* Session name already exist */
+	LTTCOMM_NO_EVENT,				/* No event found */
+	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
+	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
+	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
-	KCONSUMERD_SUCCESS_RECV_FD,	/* success on receiving fds */
-	KCONSUMERD_ERROR_RECV_FD,	/* error on receiving fds */
-	KCONSUMERD_POLL_ERROR,	/* Error in polling thread in kconsumerd */
-	KCONSUMERD_POLL_NVAL,	/* Poll on closed fd */
-	KCONSUMERD_POLL_HUP,	/* All fds have hungup */
-	KCONSUMERD_EXIT_SUCCESS,	/* kconsumerd exiting normally */
-	KCONSUMERD_EXIT_FAILURE,	/* kconsumerd exiting on error */
-	KCONSUMERD_OUTFD_ERROR,	/* error opening the tracefile */
+	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
+	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
+	KCONSUMERD_POLL_ERROR,			/* Error in polling thread in kconsumerd */
+	KCONSUMERD_POLL_NVAL,			/* Poll on closed fd */
+	KCONSUMERD_POLL_HUP,			/* All fds have hungup */
+	KCONSUMERD_EXIT_SUCCESS,		/* kconsumerd exiting normally */
+	KCONSUMERD_EXIT_FAILURE,		/* kconsumerd exiting on error */
+	KCONSUMERD_OUTFD_ERROR,			/* error opening the tracefile */
+	/* MUST be last element */
+	LTTCOMM_NR,						/* Last element */
 };
 
 /* commands for kconsumerd */
@@ -143,14 +147,6 @@ struct lttcomm_session_msg {
 		struct {
 			char event_name[NAME_MAX];
 		} event;
-		/* Create channel kernel */
-		struct {
-			int overwrite;
-			u64 subbuf_size;
-			u64 num_subbuf;
-			unsigned int switch_timer_interval;
-			unsigned int read_timer_interval;
-		} create_channel;
 	} u;
 };
 

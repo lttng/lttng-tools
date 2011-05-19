@@ -22,6 +22,16 @@
 #define DEFAULT_UST_SOCK_DIR		"/tmp/ust-app-socks"
 #define DEFAULT_GLOBAL_APPS_PIPE	"/tmp/ust-app-socks/global"
 
+/*
+ * Kernel tracer defines
+ */
+#define DEFAULT_KERNEL_TRACER_PATH			"/mnt/debugfs/lttng"
+#define DEFAULT_KERNEL_OVERWRITE            0
+#define DEFAULT_KERNEL_SUBBUF_SIZE          512		/* bytes */
+#define DEFAULT_KERNEL_SUBBUF_NUM           2		/* Must always be a power of 2 */
+#define DEFAULT_KERNEL_SWITCH_TIMER         0		/* usec */
+#define DEFAULT_KERNEL_READ_TIMER           10000	/* usec */
+
 extern const char default_home_dir[],
 	default_tracing_group[],
 	default_ust_sock_dir[],

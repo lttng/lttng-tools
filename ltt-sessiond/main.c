@@ -40,6 +40,7 @@
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"
 #include "lttngerr.h"
+#include "kernel-ctl.h"
 #include "session.h"
 #include "trace.h"
 #include "traceable-app.h"
@@ -95,6 +96,7 @@ static char kconsumerd_cmd_unix_sock_path[PATH_MAX];	/* kconsumerd command Unix 
 static int client_sock;
 static int apps_sock;
 static int kconsumerd_err_sock;
+static int kernel_tracer_fd;
 
 /*
  *  thread_manage_kconsumerd
@@ -455,6 +457,17 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 
+	/* Check command for kernel tracing */
+	switch (cmd_ctx->lsm->cmd_type) {
+	case KERNEL_CREATE_SESSION:
+	case KERNEL_CREATE_CHANNEL:
+		if (kernel_tracer_fd == 0) {
+			ret = LTTCOMM_KERN_NA;
+			goto error;
+		}
+		break;
+	}
+
 	/* Connect to ust apps if available pid */
 	if (cmd_ctx->lsm->pid > 0) {
 		/* Connect to app using ustctl API */
@@ -467,6 +480,42 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
+	case KERNEL_CREATE_SESSION:
+	{
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Creating kernel session");
+
+		ret = kernel_create_session(cmd_ctx, kernel_tracer_fd);
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_SESS_FAIL;
+			goto error;
+		}
+
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case KERNEL_CREATE_CHANNEL:
+	{
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Creating kernel session");
+
+		ret = kernel_create_channel(cmd_ctx);
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_CHAN_FAIL;
+			goto error;
+		}
+
+		ret = LTTCOMM_OK;
+		break;
+	}
 	case KERNEL_ENABLE_EVENT:
 	{
 		/* Setup lttng message with no payload */
@@ -910,6 +959,21 @@ error:
 }
 
 /*
+ *  init_kernel_tracer
+ *
+ *  Setup necessary data for kernel tracer action.
+ */
+static void init_kernel_tracer(void)
+{
+	/* Set the global kernel tracer fd */
+	kernel_tracer_fd = open(DEFAULT_KERNEL_TRACER_PATH, O_RDWR);
+	if (kernel_tracer_fd < 0) {
+		WARN("No kernel tracer available");
+		kernel_tracer_fd = 0;
+	}
+}
+
+/*
  *  set_kconsumerd_sockets
  *
  *  Setup sockets and directory needed by the kconsumerd
@@ -1101,6 +1165,9 @@ int main(int argc, char **argv)
 		if (ret < 0) {
 			goto error;
 		}
+
+		/* Setup kernel tracer */
+		init_kernel_tracer();
 	} else {
 		if (strlen(apps_unix_sock_path) == 0) {
 			snprintf(apps_unix_sock_path, PATH_MAX,

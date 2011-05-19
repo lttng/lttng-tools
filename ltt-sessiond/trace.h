@@ -21,12 +21,31 @@
 
 #include "ltt-sessiond.h"
 #include "session.h"
+#include "lttng-kernel.h"
 
-/* LTTng trace representation */
-struct ltt_kernel_trace {
-	struct cds_list_head list;
+/* Kernel event list */
+struct ltt_kernel_event_list {
+	struct cds_list_head head;
+};
+
+/* Kernel event */
+struct ltt_kernel_event {
 	char name[NAME_MAX];
-	struct cds_list_head marker_list;
+	int fd;
+	struct cds_list_head list;
+};
+
+/* Kernel channel */
+struct ltt_kernel_channel {
+	int fd;
+	struct lttng_channel *channel;
+	struct ltt_kernel_event_list events_list;
+};
+
+/* Kernel session */
+struct ltt_kernel_session {
+	int fd;
+	struct ltt_kernel_channel *channel;
 };
 
 /* UST trace representation */

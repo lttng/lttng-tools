@@ -198,18 +198,8 @@ int lttng_kernel_create_session(void)
  *
  *  Create a channel in the kernel tracer.
  */
-int lttng_kernel_create_channel(int overwrite,
-		u64 subbuf_size, u64 num_subbuf,
-		unsigned int switch_timer_interval,
-		unsigned int read_timer_interval)
+int lttng_kernel_create_channel(void)
 {
-	/* Write setting to the session message */
-	lsm.u.create_channel.overwrite = overwrite;
-	lsm.u.create_channel.subbuf_size = subbuf_size;
-	lsm.u.create_channel.num_subbuf = num_subbuf;
-	lsm.u.create_channel.switch_timer_interval = switch_timer_interval;
-	lsm.u.create_channel.read_timer_interval = read_timer_interval;
-
 	return ask_sessiond(KERNEL_CREATE_CHANNEL, NULL);
 }
 
