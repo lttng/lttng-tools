@@ -260,16 +260,18 @@ static int on_read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice chan to pipe ret %ld", ret);
 		if (ret < 0) {
+			ret = errno;
 			perror("Error in relay splice");
-			goto write_end;
+			goto splice_error;
 		}
 
 		ret = splice(thread_pipe[0], NULL, outfd, NULL, ret,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice pipe to file %ld", ret);
 		if (ret < 0) {
+			ret = errno;
 			perror("Error in file splice");
-			goto write_end;
+			goto splice_error;
 		}
 		if (ret >= len) {
 			len = 0;
@@ -279,7 +281,7 @@ static int on_read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd,
 				SYNC_FILE_RANGE_WRITE);
 		kconsumerd_fd->out_fd_offset += ret;
 	}
-write_end:
+
 	/*
 	 * This does a blocking write-and-wait on any page that belongs to the
 	 * subbuffer prior to the one we just wrote.
@@ -307,6 +309,26 @@ write_end:
 		posix_fadvise(outfd, orig_offset - kconsumerd_fd->max_sb_size,
 				kconsumerd_fd->max_sb_size, POSIX_FADV_DONTNEED);
 	}
+	goto end;
+
+splice_error:
+	/* send the appropriate error description to sessiond */
+	switch(ret) {
+		case EBADF:
+			send_error(KCONSUMERD_SPLICE_EBADF);
+			break;
+		case EINVAL:
+			send_error(KCONSUMERD_SPLICE_EINVAL);
+			break;
+		case ENOMEM:
+			send_error(KCONSUMERD_SPLICE_ENOMEM);
+			break;
+		case ESPIPE:
+			send_error(KCONSUMERD_SPLICE_ESPIPE);
+			break;
+	}
+
+end:
 	return ret;
 }
 

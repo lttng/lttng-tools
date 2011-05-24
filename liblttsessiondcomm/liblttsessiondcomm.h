@@ -112,6 +112,10 @@ enum lttcomm_return_code {
 	KCONSUMERD_EXIT_SUCCESS,		/* kconsumerd exiting normally */
 	KCONSUMERD_EXIT_FAILURE,		/* kconsumerd exiting on error */
 	KCONSUMERD_OUTFD_ERROR,			/* error opening the tracefile */
+	KCONSUMERD_SPLICE_EBADF,		/* EBADF from splice(2) */
+	KCONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
+	KCONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
+	KCONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
 };

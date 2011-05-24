@@ -60,6 +60,10 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_EXIT_SUCCESS) ] = "Kconsumerd exiting normally",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_EXIT_FAILURE) ] = "Kconsumerd exiting on error",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_OUTFD_ERROR) ] = "Kconsumerd error opening the tracefile",
+	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_EBADF) ] = "Kconsumerd splice EBADF",
+	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_EINVAL) ] = "Kconsumerd splice EINVAL",
+	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_ENOMEM) ] = "Kconsumerd splice ENOMEM",
+	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_ESPIPE) ] = "Kconsumerd splice ESPIPE",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "No event found",
 };
 
