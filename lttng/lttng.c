@@ -196,6 +196,12 @@ static int process_kernel_create_trace(void)
 		goto error;
 	}
 
+	/* Opening metadata for session */
+	ret = lttng_kernel_open_metadata();
+	if (ret < 0) {
+		goto error;
+	}
+
 	return 0;
 
 error:

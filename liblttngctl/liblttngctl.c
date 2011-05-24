@@ -204,6 +204,16 @@ int lttng_kernel_create_channel(void)
 }
 
 /*
+ *  lttng_kernel_open_metadata
+ *
+ *  Open metadata in the kernel tracer.
+ */
+int lttng_kernel_open_metadata(void)
+{
+	return ask_sessiond(KERNEL_OPEN_METADATA, NULL);
+}
+
+/*
  *  lttng_kernel_start_tracing
  *
  *  Start kernel tracing.

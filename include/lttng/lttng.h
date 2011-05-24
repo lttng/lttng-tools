@@ -82,5 +82,6 @@ extern int lttng_kernel_create_session(void);
 extern int lttng_kernel_start_tracing(void);
 extern int lttng_kernel_stop_tracing(void);
 extern int lttng_kernel_create_channel(void);
+extern int lttng_kernel_open_metadata(void);
 
 #endif /* _LIBLTTNGCTL_H */
