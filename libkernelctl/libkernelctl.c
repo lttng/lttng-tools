@@ -131,3 +131,12 @@ int kernctl_stop_session(int fd)
 	return ioctl(fd, LTTNG_KERNEL_SESSION_STOP);
 }
 
+int kernctl_tracepoint_list(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_TRACEPOINT_LIST);
+}
+
+int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v)
+{
+	return ioctl(fd, LTTNG_KERNEL_TRACER_VERSION, v);
+}

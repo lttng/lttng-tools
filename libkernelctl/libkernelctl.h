@@ -41,5 +41,7 @@ int kernctl_snapshot_get_consumed(int fd, unsigned long *len);
 int kernctl_snapshot_get_produced(int fd, unsigned long *len);
 int kernctl_start_session(int fd);
 int kernctl_stop_session(int fd);
+int kernctl_tracepoint_list(int fd);
+int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v);
 
 #endif /* _LTT_LIBKERNELCTL_H */
