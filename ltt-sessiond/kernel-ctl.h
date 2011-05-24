@@ -19,7 +19,10 @@
 #ifndef _LTT_KERNEL_CTL_H
 #define _LTT_KERNEL_CTL_H
 
+#include "trace.h"
+
 int kernel_create_session(struct command_ctx *cmd_ctx, int tracer_fd);
 int kernel_create_channel(struct command_ctx *cmd_ctx);
+int kernel_enable_event(struct ltt_kernel_channel *channel, char *name);
 
 #endif /* _LTT_KERNEL_CTL_H */

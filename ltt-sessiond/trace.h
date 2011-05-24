@@ -30,8 +30,8 @@ struct ltt_kernel_event_list {
 
 /* Kernel event */
 struct ltt_kernel_event {
-	char name[NAME_MAX];
 	int fd;
+	struct lttng_kernel_event *event;
 	struct cds_list_head list;
 };
 

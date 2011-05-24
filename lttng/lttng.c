@@ -131,11 +131,12 @@ static int process_client_opt(void)
 
 		if (opt_event_list != NULL) {
 			ret = process_opt_kernel_event();
+			if (ret < 0) {
+				goto end;
+			}
 		} else {
 			// Enable all events
 		}
-
-		goto error;
 	}
 
 	if (opt_trace_pid != 0) {
@@ -521,7 +522,7 @@ static int validate_options(void)
 	}
 
 	/* If start trace, auto start tracing */
-	if (opt_start_trace) {
+	if (opt_start_trace || opt_event_list != NULL) {
 		DBG("Requesting auto tracing");
 		auto_trace = 1;
 	}

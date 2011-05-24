@@ -526,6 +526,12 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		DBG("Enabling kernel event %s", cmd_ctx->lsm->u.event.event_name);
 
+		ret = kernel_enable_event(cmd_ctx->session->kernel_session->channel, cmd_ctx->lsm->u.event.event_name);
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			goto error;
+		}
+
 		ret = LTTCOMM_OK;
 		break;
 	}

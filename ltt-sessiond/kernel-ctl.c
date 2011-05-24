@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "ltt-sessiond.h"
 #include "libkernelctl.h"
@@ -95,6 +96,45 @@ int kernel_create_channel(struct command_ctx *cmd_ctx)
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 
 	cmd_ctx->session->kernel_session->channel = lkc;
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ *  kernel_enable_event
+ *
+ *  Enable kernel event.
+ */
+int kernel_enable_event(struct ltt_kernel_channel *channel, char *name)
+{
+	int ret;
+	struct ltt_kernel_event *event;
+	struct lttng_kernel_event *lke;
+
+	event = malloc(sizeof(struct ltt_kernel_event));
+	lke = malloc(sizeof(struct lttng_kernel_event));
+
+	if (event == NULL || lke == NULL) {
+		perror("kernel enable event malloc");
+		ret = -errno;
+		goto error;
+	}
+
+	/* Setting up a kernel event */
+	strncpy(lke->name, name, LTTNG_SYM_NAME_LEN);
+	lke->instrumentation = LTTNG_KERNEL_TRACEPOINTS;
+	event->event = lke;
+
+	ret = kernctl_create_event(channel->fd, lke);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Add event to event list */
+	cds_list_add(&event->list, &channel->events_list.head);
 
 	return 0;
 

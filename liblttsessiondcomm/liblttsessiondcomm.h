@@ -103,6 +103,8 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
+	LTTCOMM_KERN_ENABLE_FAIL,		/* Kernel enable event failed */
+	LTTCOMM_KERN_DISABLE_FAIL,		/* Kernel disable event failed */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
