@@ -52,6 +52,7 @@ enum lttcomm_sessiond_command {
 	KERNEL_CREATE_SESSION,
 	KERNEL_DISABLE_EVENT,
 	KERNEL_ENABLE_EVENT,
+	KERNEL_OPEN_METADATA,
 	KERNEL_START_TRACE,
 	KERNEL_STOP_TRACE,
 	LTTNG_CREATE_SESSION,
@@ -105,6 +106,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
 	LTTCOMM_KERN_ENABLE_FAIL,		/* Kernel enable event failed */
 	LTTCOMM_KERN_DISABLE_FAIL,		/* Kernel disable event failed */
+	LTTCOMM_KERN_META_FAIL,			/* Kernel open metadata failed */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */

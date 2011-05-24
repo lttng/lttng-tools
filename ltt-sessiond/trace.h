@@ -42,9 +42,16 @@ struct ltt_kernel_channel {
 	struct ltt_kernel_event_list events_list;
 };
 
+/* Metadata */
+struct ltt_kernel_metadata {
+	int fd;
+	struct lttng_kernel_channel *conf;
+};
+
 /* Kernel session */
 struct ltt_kernel_session {
 	int fd;
+	struct ltt_kernel_metadata *metadata;
 	struct ltt_kernel_channel *channel;
 };
 

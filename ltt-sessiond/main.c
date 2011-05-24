@@ -461,6 +461,13 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch (cmd_ctx->lsm->cmd_type) {
 	case KERNEL_CREATE_SESSION:
 	case KERNEL_CREATE_CHANNEL:
+	case KERNEL_DISABLE_EVENT:
+	case KERNEL_ENABLE_EVENT:
+	case KERNEL_OPEN_METADATA:
+	case KERNEL_START_TRACE:
+	case KERNEL_STOP_TRACE:
+		/* TODO: reconnect to kernel tracer to check if
+		 * it's loadded */
 		if (kernel_tracer_fd == 0) {
 			ret = LTTCOMM_KERN_NA;
 			goto error;
@@ -529,6 +536,25 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = kernel_enable_event(cmd_ctx->session->kernel_session->channel, cmd_ctx->lsm->u.event.event_name);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			goto error;
+		}
+
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case KERNEL_OPEN_METADATA:
+	{
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Open kernel metadata");
+
+		ret = kernel_open_metadata(cmd_ctx->session->kernel_session);
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_META_FAIL;
 			goto error;
 		}
 
@@ -1120,6 +1146,9 @@ static void cleanup()
 	if (ret < 0) {
 		ERR("Unable to clean " LTTNG_RUNDIR);
 	}
+
+	// TODO Clean kernel trace fds
+	close(kernel_tracer_fd);
 }
 
 /*

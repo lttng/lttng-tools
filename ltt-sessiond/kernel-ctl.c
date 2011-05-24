@@ -88,6 +88,7 @@ int kernel_create_channel(struct command_ctx *cmd_ctx)
 
 	ret = kernctl_create_channel(cmd_ctx->session->kernel_session->fd, chan);
 	if (ret < 0) {
+		perror("ioctl create channel");
 		goto error;
 	}
 
@@ -135,6 +136,47 @@ int kernel_enable_event(struct ltt_kernel_channel *channel, char *name)
 
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ *  kernel_open_metadata
+ *
+ *  Open metadata stream.
+ */
+int kernel_open_metadata(struct ltt_kernel_session *session)
+{
+	int ret;
+	struct ltt_kernel_metadata *lkm;
+	struct lttng_kernel_channel *conf;
+
+	lkm = malloc(sizeof(struct ltt_kernel_metadata));
+	conf = malloc(sizeof(struct lttng_kernel_channel));
+
+	if (lkm == NULL || conf == NULL) {
+		perror("kernel open metadata malloc");
+		ret = -errno;
+		goto error;
+	}
+
+	conf->overwrite = DEFAULT_KERNEL_OVERWRITE;
+	conf->subbuf_size = DEFAULT_KERNEL_SUBBUF_SIZE;
+	conf->num_subbuf = DEFAULT_KERNEL_SUBBUF_NUM;
+	conf->switch_timer_interval = DEFAULT_KERNEL_SWITCH_TIMER;
+	conf->read_timer_interval = DEFAULT_KERNEL_READ_TIMER;
+
+	ret = kernctl_open_metadata(session->fd, conf);
+	if (ret < 0) {
+		goto error;
+	}
+
+	session->metadata = lkm;
+	session->metadata->fd = ret;
+	session->metadata->conf = conf;
 
 	return 0;
 

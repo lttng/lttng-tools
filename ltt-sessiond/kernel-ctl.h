@@ -24,5 +24,6 @@
 int kernel_create_session(struct command_ctx *cmd_ctx, int tracer_fd);
 int kernel_create_channel(struct command_ctx *cmd_ctx);
 int kernel_enable_event(struct ltt_kernel_channel *channel, char *name);
+int kernel_open_metadata(struct ltt_kernel_session *session);
 
 #endif /* _LTT_KERNEL_CTL_H */
