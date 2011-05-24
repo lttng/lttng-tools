@@ -19,9 +19,6 @@
 #ifndef _LTT_KCONSUMERD_H
 #define _LTT_KCONSUMERD_H
 
-/* timeout of 1s on poll to ensure the fd list is updated when needed */
-#define POLL_TIMEOUT 1000
-
 struct ltt_kconsumerd_fd_list {
 	struct cds_list_head head;
 };
