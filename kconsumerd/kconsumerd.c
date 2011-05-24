@@ -581,8 +581,8 @@ static int update_poll_array(struct pollfd **pollfd,
 		DBG("Inside for each");
 		if (iter->state == ACTIVE_FD) {
 			DBG("Active FD %d", iter->consumerd_fd);
-			pollfd[i]->fd = iter->consumerd_fd;
-			pollfd[i]->events = POLLIN | POLLPRI;
+			(*pollfd)[i].fd = iter->consumerd_fd;
+			(*pollfd)[i].events = POLLIN | POLLPRI;
 			local_kconsumerd_fd[i] = iter;
 			i++;
 		} else if (iter->state == DELETE_FD) {
