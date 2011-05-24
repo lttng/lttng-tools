@@ -511,13 +511,13 @@ static void *thread_receive_fds(void *data)
 		goto error;
 	}
 
+	/* Blocking call, waiting for transmission */
+	sock = lttcomm_accept_unix_sock(client_socket);
+	if (sock <= 0) {
+		WARN("On accept, retrying");
+		goto error;
+	}
 	while (1) {
-		/* Blocking call, waiting for transmission */
-		sock = lttcomm_accept_unix_sock(client_socket);
-		if (sock <= 0) {
-			WARN("On accept, retrying");
-			continue;
-		}
 
 		/* We first get the number of fd we are about to receive */
 		ret = lttcomm_recv_unix_sock(sock, &tmp,
