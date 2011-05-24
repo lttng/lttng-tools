@@ -46,16 +46,19 @@
 /* returns the offset of the subbuffer belonging to the mmap reader. */
 #define RING_BUFFER_GET_MMAP_READ_OFFSET    _IOR(0xF6, 0x0B, unsigned long)
 
-/* Create session LTTNG_SESSION */
-#define KERNEL_CREATE_SESSION       _IO(0xF6, 0x40)
-#define KERNEL_SESSION_START _IO(0xF6, 0x41)
-#define KERNEL_SESSION_STOP  _IO(0xF6, 0x42)
-
-/* Create channel LTTNG_CHANNEL */
-#define KERNEL_CREATE_CHANNEL       _IOW(0xF6, 0x43, struct lttng_channel)
-#define KERNEL_CREATE_STREAM        _IO(0xF6, 0x44)
-#define KERNEL_CREATE_EVENT     _IOW(0xF6, 0x45, struct lttng_event)
-
-#define KERNEL_OPEN_METADATA	_IOW(0xF6, 0x46, struct lttng_channel)
+#define LTTNG_KERNEL_SESSION        _IO(0xF6, 0x40)
+#define LTTNG_KERNEL_SESSION_START  _IO(0xF6, 0x41)
+#define LTTNG_KERNEL_SESSION_STOP   _IO(0xF6, 0x42)
+#define LTTNG_KERNEL_CHANNEL        \
+	    _IOW(0xF6, 0x43, struct lttng_kernel_channel)
+#define LTTNG_KERNEL_STREAM     _IO(0xF6, 0x44)
+#define LTTNG_KERNEL_EVENT      \
+	    _IOW(0xF6, 0x45, struct lttng_kernel_event)
+#define LTTNG_KERNEL_METADATA       \
+	    _IOW(0xF6, 0x46, struct lttng_kernel_channel)
+#define LTTNG_KERNEL_KPROBE     \
+	    _IOW(0xF6, 0x47, struct lttng_kernel_kprobe)
+#define LTTNG_KERNEL_TRACER_VERSION \
+	    _IOR(0xF6, 0x48, struct lttng_kernel_tracer_version)
 
 #endif /* _LTT_KERNEL_IOCTL_H */

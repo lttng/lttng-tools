@@ -38,7 +38,7 @@ struct ltt_kernel_event {
 /* Kernel channel */
 struct ltt_kernel_channel {
 	int fd;
-	struct lttng_channel *channel;
+	struct lttng_kernel_channel *channel;
 	struct ltt_kernel_event_list events_list;
 };
 

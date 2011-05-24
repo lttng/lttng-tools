@@ -68,10 +68,10 @@ int kernel_create_channel(struct command_ctx *cmd_ctx)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
-	struct lttng_channel *chan;
+	struct lttng_kernel_channel *chan;
 
 	lkc = malloc(sizeof(struct ltt_kernel_channel));
-	chan = malloc(sizeof(struct lttng_channel));
+	chan = malloc(sizeof(struct lttng_kernel_channel));
 
 	if (lkc == NULL || chan == NULL) {
 		perror("kernel channel malloc");

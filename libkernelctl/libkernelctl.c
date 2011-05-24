@@ -23,24 +23,24 @@
 #include "libkernelctl.h"
 #include "lttngerr.h"
 
-int kernctl_create_channel(int fd, struct lttng_channel *chops)
+int kernctl_create_channel(int fd, struct lttng_kernel_channel *chops)
 {
-	return ioctl(fd, KERNEL_CREATE_CHANNEL, chops);
+	return ioctl(fd, LTTNG_KERNEL_CHANNEL, chops);
 }
 
-int kernctl_create_event(int fd, struct lttng_event *ev)
+int kernctl_create_event(int fd, struct lttng_kernel_event *ev)
 {
-	return ioctl(fd, KERNEL_CREATE_EVENT, ev);
+	return ioctl(fd, LTTNG_KERNEL_EVENT, ev);
 }
 
 int kernctl_create_session(int fd)
 {
-	return ioctl(fd, KERNEL_CREATE_SESSION);
+	return ioctl(fd, LTTNG_KERNEL_SESSION);
 }
 
 int kernctl_create_stream(int fd)
 {
-	return ioctl(fd, KERNEL_CREATE_STREAM);
+	return ioctl(fd, LTTNG_KERNEL_STREAM);
 }
 
 /* returns the maximum size for sub-buffers. */
@@ -86,9 +86,9 @@ int kernctl_get_subbuf_size(int fd, unsigned long *len)
 }
 
 /* open the metadata global channel */
-int kernctl_open_metadata(int fd, struct lttng_channel *chops)
+int kernctl_open_metadata(int fd, struct lttng_kernel_channel *chops)
 {
-	return ioctl(fd, KERNEL_OPEN_METADATA, chops);
+	return ioctl(fd, LTTNG_KERNEL_METADATA, chops);
 }
 
 /* Release exclusive sub-buffer access, move consumer forward. */
@@ -123,11 +123,11 @@ int kernctl_snapshot_get_produced(int fd, unsigned long *pos)
 
 int kernctl_start_session(int fd)
 {
-	return ioctl(fd, KERNEL_SESSION_START);
+	return ioctl(fd, LTTNG_KERNEL_SESSION_START);
 }
 
 int kernctl_stop_session(int fd)
 {
-	return ioctl(fd, KERNEL_SESSION_STOP);
+	return ioctl(fd, LTTNG_KERNEL_SESSION_STOP);
 }
 

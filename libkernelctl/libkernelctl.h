@@ -22,8 +22,8 @@
 
 #include "lttng-kernel.h"
 
-int kernctl_create_channel(int fd, struct lttng_channel *chops);
-int kernctl_create_event(int fd, struct lttng_event *ev);
+int kernctl_create_channel(int fd, struct lttng_kernel_channel *chops);
+int kernctl_create_event(int fd, struct lttng_kernel_event *ev);
 int kernctl_create_session(int fd);
 int kernctl_create_stream(int fd);
 int kernctl_get_max_subbuf_size(int fd, unsigned long *len);
@@ -33,7 +33,7 @@ int kernctl_get_next_subbuf(int fd);
 int kernctl_get_padded_subbuf_size(int fd, unsigned long *len);
 int kernctl_get_subbuf(int fd, unsigned long *len);
 int kernctl_get_subbuf_size(int fd, unsigned long *len);
-int kernctl_open_metadata(int fd, struct lttng_channel *chops);
+int kernctl_open_metadata(int fd, struct lttng_kernel_channel *chops);
 int kernctl_put_next_subbuf(int fd);
 int kernctl_put_subbuf(int fd);
 int kernctl_snapshot(int fd);
