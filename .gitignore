@@ -22,6 +22,7 @@ config.log
 config.status
 stamp-h1
 libtool
+tags
 
 ltt-sessiond/ltt-sessiond
 lttng/lttng
