@@ -519,7 +519,7 @@ static void *thread_receive_fds(void *data)
 	/* Blocking call, waiting for transmission */
 	sock = lttcomm_accept_unix_sock(client_socket);
 	if (sock <= 0) {
-		WARN("On accept, retrying");
+		WARN("On accept");
 		goto error;
 	}
 	while (1) {
@@ -555,29 +555,6 @@ static int update_poll_array(struct pollfd **pollfd,
 	struct ltt_kconsumerd_fd *iter;
 	int i = 0;
 
-	if (*pollfd != NULL) {
-		free(*pollfd);
-		*pollfd = NULL;
-	}
-
-	if (*local_kconsumerd_fd != NULL) {
-		free(*local_kconsumerd_fd);
-		*local_kconsumerd_fd = NULL;
-	}
-
-	/* allocate for all fds + 1 for the poll_pipe */
-	*pollfd = malloc((fds_count + 1) * sizeof(struct pollfd));
-	if (*pollfd == NULL) {
-		perror("pollfd malloc");
-		goto error_mem;
-	}
-
-	/* allocate for all fds + 1 for the poll_pipe */
-	*local_kconsumerd_fd = malloc((fds_count + 1) * sizeof(struct ltt_kconsumerd_fd));
-	if (*local_kconsumerd_fd == NULL) {
-		perror("local_kconsumerd_fd malloc");
-		goto error_mem;
-	}
 
 	DBG("Updating poll fd array");
 	pthread_mutex_lock(&kconsumerd_lock_fds);
@@ -605,8 +582,6 @@ static int update_poll_array(struct pollfd **pollfd,
 	pthread_mutex_unlock(&kconsumerd_lock_fds);
 	return i;
 
-error_mem:
-	return -ENOMEM;
 }
 
 /*
@@ -643,6 +618,27 @@ static void *thread_poll_fds(void *data)
 		 * local array as well
 		 */
 		if (update_fd_array) {
+			if (pollfd != NULL) {
+				free(pollfd);
+				pollfd = NULL;
+			}
+			if (local_kconsumerd_fd != NULL) {
+				free(local_kconsumerd_fd);
+				local_kconsumerd_fd = NULL;
+			}
+			/* allocate for all fds + 1 for the poll_pipe */
+			pollfd = malloc((fds_count + 1) * sizeof(struct pollfd));
+			if (pollfd == NULL) {
+				perror("pollfd malloc");
+				goto end;
+			}
+			/* allocate for all fds + 1 for the poll_pipe */
+			local_kconsumerd_fd = malloc((fds_count + 1) * sizeof(struct ltt_kconsumerd_fd));
+			if (local_kconsumerd_fd == NULL) {
+				perror("local_kconsumerd_fd malloc");
+				goto end;
+			}
+
 			ret = update_poll_array(&pollfd, local_kconsumerd_fd);
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
