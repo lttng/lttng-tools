@@ -214,6 +214,16 @@ int lttng_kernel_open_metadata(void)
 }
 
 /*
+ *  lttng_kernel_create_stream
+ *
+ *  Create stream in the kernel tracer.
+ */
+int lttng_kernel_create_stream(void)
+{
+	return ask_sessiond(KERNEL_CREATE_STREAM, NULL);
+}
+
+/*
  *  lttng_kernel_start_tracing
  *
  *  Start kernel tracing.

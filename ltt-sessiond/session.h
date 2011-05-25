@@ -50,5 +50,6 @@ void get_lttng_session(struct lttng_session *sessions);
 struct ltt_session *find_session_by_uuid(uuid_t session_id);
 struct ltt_session *find_session_by_name(char *name);
 unsigned int get_session_count(void);
+struct ltt_session_list *get_session_list(void);
 
 #endif /* _LTT_SESSION_H */

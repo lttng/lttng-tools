@@ -28,6 +28,16 @@ struct ltt_kernel_event_list {
 	struct cds_list_head head;
 };
 
+/* Channel stream list */
+struct ltt_kernel_stream_list {
+	struct cds_list_head head;
+};
+
+/* Channel list */
+struct ltt_kernel_channel_list {
+	struct cds_list_head head;
+};
+
 /* Kernel event */
 struct ltt_kernel_event {
 	int fd;
@@ -38,21 +48,37 @@ struct ltt_kernel_event {
 /* Kernel channel */
 struct ltt_kernel_channel {
 	int fd;
+	char *pathname;
+	unsigned int stream_count;
 	struct lttng_kernel_channel *channel;
 	struct ltt_kernel_event_list events_list;
+	struct ltt_kernel_stream_list stream_list;
+	struct cds_list_head list;
 };
 
 /* Metadata */
 struct ltt_kernel_metadata {
 	int fd;
+	char *pathname;
 	struct lttng_kernel_channel *conf;
+};
+
+/* Channel stream */
+struct ltt_kernel_stream {
+	int fd;
+	char *pathname;
+	int state;
+	struct cds_list_head list;
 };
 
 /* Kernel session */
 struct ltt_kernel_session {
 	int fd;
+	int metadata_stream_fd;
+	unsigned int channel_count;
+	unsigned int stream_count_global;
 	struct ltt_kernel_metadata *metadata;
-	struct ltt_kernel_channel *channel;
+	struct ltt_kernel_channel_list channel_list;
 };
 
 /* UST trace representation */

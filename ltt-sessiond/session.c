@@ -33,9 +33,19 @@ static void add_session_list(struct ltt_session *ls);
 static void del_session_list(struct ltt_session *ls);
 
 /* Init session's list */
-static struct ltt_session_list ltt_session_list = {
+struct ltt_session_list ltt_session_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
 };
+
+/*
+ *  get_session_list
+ *
+ *  Return a pointer to the session list.
+ */
+struct ltt_session_list *get_session_list(void)
+{
+	return &ltt_session_list;
+}
 
 /*
  *  get_session_count

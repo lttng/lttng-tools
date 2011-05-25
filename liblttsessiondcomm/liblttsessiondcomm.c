@@ -54,6 +54,12 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_ENABLE_FAIL) ] = "Enable kernel event failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_DISABLE_FAIL) ] = "Disable kernel event failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_META_FAIL) ] = "Opening metadata failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_START_FAIL) ] = "Starting kernel trace failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_STOP_FAIL) ] = "Stoping kernel trace failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CONSUMER_FAIL) ] = "Kernel consumer start failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_STREAM_FAIL) ] = "Kernel create stream failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_DIR_FAIL) ] = "Kernel trace directory creation failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_DIR_EXIST) ] = "Kernel trace directory already exist",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_COMMAND_SOCK_READY) ] = "Kconsumerd command socket ready",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SUCCESS_RECV_FD) ] = "Kconsumerd success on receiving fds",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_ERROR_RECV_FD) ] = "Kconsumerd error on receiving fds",
@@ -267,6 +273,44 @@ int lttcomm_close_unix_sock(int sock)
 	ret = shutdown(sock, SHUT_RDWR);
 	if (ret < 0) {
 		perror("shutdown");
+	}
+
+	return ret;
+}
+
+/*
+ *  lttcomm_send_fds_unix_sock
+ *
+ *  Send multiple fds on a unix socket.
+ */
+ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, size_t len)
+{
+	struct msghdr msg;
+	struct cmsghdr *cmptr;
+	struct iovec iov[1];
+	ssize_t ret = -1;
+	unsigned int sizeof_fds = nb_fd * sizeof(int);
+	char tmp[CMSG_SPACE(sizeof_fds)];
+
+	memset(&msg, 0, sizeof(msg));
+
+	msg.msg_control = (caddr_t)tmp;
+	msg.msg_controllen = CMSG_LEN(sizeof_fds);
+
+	cmptr = CMSG_FIRSTHDR(&msg);
+	cmptr->cmsg_len = CMSG_LEN(sizeof_fds);
+	cmptr->cmsg_level = SOL_SOCKET;
+	cmptr->cmsg_type = SCM_RIGHTS;
+	memcpy(CMSG_DATA(cmptr), fds, sizeof_fds);
+
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+	ret = sendmsg(sock, &msg, 0);
+	if (ret < 0) {
+		perror("sendmsg");
 	}
 
 	return ret;

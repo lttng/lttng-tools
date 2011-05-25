@@ -20,10 +20,16 @@
 #define _LTT_KERNEL_CTL_H
 
 #include "trace.h"
+#include "session.h"
 
-int kernel_create_session(struct command_ctx *cmd_ctx, int tracer_fd);
-int kernel_create_channel(struct command_ctx *cmd_ctx);
-int kernel_enable_event(struct ltt_kernel_channel *channel, char *name);
+int kernel_create_session(struct ltt_session *session, int tracer_fd);
+int kernel_create_channel(struct ltt_kernel_session *session);
+int kernel_enable_event(struct ltt_kernel_session *session, char *name);
 int kernel_open_metadata(struct ltt_kernel_session *session);
+int kernel_create_metadata_stream(struct ltt_kernel_session *session);
+int kernel_create_channel_stream(struct ltt_kernel_channel *channel);
+int kernel_start_session(struct ltt_kernel_session *session);
+int kernel_stop_session(struct ltt_kernel_session *session);
+pid_t kernel_start_consumer(void);
 
 #endif /* _LTT_KERNEL_CTL_H */

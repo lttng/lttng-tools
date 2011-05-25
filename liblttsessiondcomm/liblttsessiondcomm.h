@@ -50,6 +50,7 @@
 enum lttcomm_sessiond_command {
 	KERNEL_CREATE_CHANNEL,
 	KERNEL_CREATE_SESSION,
+	KERNEL_CREATE_STREAM,
 	KERNEL_DISABLE_EVENT,
 	KERNEL_ENABLE_EVENT,
 	KERNEL_OPEN_METADATA,
@@ -107,6 +108,12 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_ENABLE_FAIL,		/* Kernel enable event failed */
 	LTTCOMM_KERN_DISABLE_FAIL,		/* Kernel disable event failed */
 	LTTCOMM_KERN_META_FAIL,			/* Kernel open metadata failed */
+	LTTCOMM_KERN_START_FAIL,		/* Kernel start trace failed */
+	LTTCOMM_KERN_STOP_FAIL,			/* Kernel stop trace failed */
+	LTTCOMM_KERN_CONSUMER_FAIL,		/* Kernel consumer start failed */
+	LTTCOMM_KERN_STREAM_FAIL,		/* Kernel create stream failed */
+	LTTCOMM_KERN_DIR_FAIL,			/* Kernel trace directory creation failed */
+	LTTCOMM_KERN_DIR_EXIST,			/* Kernel traec directory exist */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
@@ -199,6 +206,7 @@ extern int lttcomm_connect_unix_sock(const char *pathname);
 extern int lttcomm_accept_unix_sock(int sock);
 extern int lttcomm_listen_unix_sock(int sock);
 extern int lttcomm_close_unix_sock(int sock);
+extern ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, size_t len);
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);

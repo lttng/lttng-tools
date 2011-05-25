@@ -50,6 +50,7 @@ static int process_opt_list_traces(void);
 static int process_opt_create_session(void);
 static int process_kernel_create_trace(void);
 static int process_opt_kernel_event(void);
+static int process_kernel_start_trace(void);
 static int set_session_uuid(void);
 static void sighandler(int sig);
 static int set_signal_handler(void);
@@ -137,6 +138,22 @@ static int process_client_opt(void)
 		} else {
 			// Enable all events
 		}
+
+		if (auto_trace || opt_start_trace) {
+			DBG("Starting kernel tracing");
+			ret = process_kernel_start_trace();
+			if (ret < 0) {
+				goto end;
+			}
+		}
+
+		if (opt_stop_trace) {
+			DBG("Stopping kernel tracing");
+			ret = lttng_kernel_stop_tracing();
+			if (ret < 0) {
+				goto end;
+			}
+		}
 	}
 
 	if (opt_trace_pid != 0) {
@@ -172,6 +189,33 @@ static int process_client_opt(void)
 end:
 	ERR("%s", lttng_get_readable_code(ret));
 error:	/* fall through */
+	return ret;
+}
+
+/*
+ *  process_kernel_start_trace
+ *
+ *  Start a kernel trace.
+ */
+static int process_kernel_start_trace(void)
+{
+	int ret;
+
+	ret = lttng_kernel_create_stream();
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = lttng_kernel_start_tracing();
+	if (ret < 0) {
+		goto error;
+	}
+
+	MSG("Kernel tracing started");
+
+	return 0;
+
+error:
 	return ret;
 }
 
