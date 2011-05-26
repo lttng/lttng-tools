@@ -569,6 +569,9 @@ static int validate_options(void)
 	} else if (opt_stop_trace && opt_trace_pid != 0 && opt_trace_name == NULL) {
 		ERR("Please specify a trace name for user-space tracing");
 		goto error;
+	} else if (opt_stop_trace && opt_session_name == NULL) {
+		ERR("Please specify a session to stop tracing");
+		goto error;
 	}
 
 	/* If start trace, auto start tracing */
