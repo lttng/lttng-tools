@@ -42,8 +42,8 @@
 #include "ltt-sessiond.h"
 #include "lttngerr.h"
 #include "kernel-ctl.h"
+#include "ust-ctl.h"
 #include "session.h"
-#include "trace.h"
 #include "traceable-app.h"
 
 /*

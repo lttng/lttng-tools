@@ -19,8 +19,9 @@
 #ifndef _LTT_KERNEL_CTL_H
 #define _LTT_KERNEL_CTL_H
 
-#include "trace.h"
+#include "ltt-sessiond.h"
 #include "session.h"
+#include "trace.h"
 
 int kernel_create_session(struct ltt_session *session, int tracer_fd);
 int kernel_create_channel(struct ltt_kernel_session *session);

@@ -27,10 +27,7 @@
 
 #include "liblttsessiondcomm.h"
 #include "lttngerr.h"
-#include "ltt-sessiond.h"
-#include "session.h"
 #include "ust-ctl.h"
-#include "trace.h"
 
 /*
  *  find_session_ust_trace_by_pid

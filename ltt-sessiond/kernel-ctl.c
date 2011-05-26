@@ -27,7 +27,6 @@
 #include "ltt-sessiond.h"
 #include "libkernelctl.h"
 #include "kernel-ctl.h"
-#include "trace.h"
 
 /*
  *  kernel_create_session

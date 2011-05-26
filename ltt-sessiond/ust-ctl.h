@@ -21,6 +21,7 @@
 
 #include "ltt-sessiond.h"
 #include "session.h"
+#include "trace.h"
 
 int get_trace_count_per_session(struct ltt_session *session);
 void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
