@@ -113,7 +113,8 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_CONSUMER_FAIL,		/* Kernel consumer start failed */
 	LTTCOMM_KERN_STREAM_FAIL,		/* Kernel create stream failed */
 	LTTCOMM_KERN_DIR_FAIL,			/* Kernel trace directory creation failed */
-	LTTCOMM_KERN_DIR_EXIST,			/* Kernel traec directory exist */
+	LTTCOMM_KERN_DIR_EXIST,			/* Kernel trace directory exist */
+	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */

@@ -892,6 +892,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
+		if (cmd_ctx->session->kernel_session == NULL) {
+			ret = LTTCOMM_KERN_NO_SESSION;
+			goto error;
+		}
+
 		DBG("Stop kernel tracing");
 
 		ret = kernel_stop_session(cmd_ctx->session->kernel_session);
