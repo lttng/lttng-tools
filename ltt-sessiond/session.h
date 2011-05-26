@@ -28,6 +28,8 @@ struct ltt_session_list {
 	struct cds_list_head head;
 };
 
+extern struct ltt_session_list ltt_session_list;
+
 /* ltt-session - This data structure contains information needed
  * to identify a tracing session for both LTTng and UST.
  */
@@ -40,7 +42,6 @@ struct ltt_session {
 	unsigned int ust_trace_count;
 	unsigned int kern_session_count;
 	pid_t ust_consumer;
-	pid_t kernel_consumer;
 };
 
 /* Prototypes */

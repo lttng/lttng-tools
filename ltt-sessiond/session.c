@@ -32,7 +32,7 @@ static unsigned int session_count;
 static void add_session_list(struct ltt_session *ls);
 static void del_session_list(struct ltt_session *ls);
 
-/* Init session's list */
+/* Init global session list */
 struct ltt_session_list ltt_session_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
 };
@@ -202,11 +202,15 @@ int create_session(char *name, uuid_t *session_id)
 	uuid_generate(new_session->uuid);
 	uuid_copy(*session_id, new_session->uuid);
 
-	/* Set consumer (identifier) to 0. This means that there is
+	/*
+	 * Set consumer (identifier) to 0. This means that there is
 	 * NO consumer attach to that session yet.
 	 */
 	new_session->ust_consumer = 0;
-	new_session->kernel_consumer = 0;
+
+	/* Init kernel session */
+	new_session->kernel_session = NULL;
+	new_session->kern_session_count = 0;
 
 	/* Init list */
 	CDS_INIT_LIST_HEAD(&new_session->ust_traces);

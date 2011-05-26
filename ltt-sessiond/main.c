@@ -59,257 +59,150 @@ const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
 const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
 const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
-/* Static functions */
-static int check_existing_daemon(void);
-static int ust_connect_app(pid_t pid);
-static int init_daemon_socket(void);
-static int notify_apps(const char* name);
-static int process_client_msg(struct command_ctx *cmd_ctx);
-static int send_unix_sock(int sock, void *buf, size_t len);
-static int set_signal_handler(void);
-static int set_permissions(void);
-static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size);
-static int create_lttng_rundir(void);
-static int create_trace_dir(struct ltt_kernel_session *session);
-static int set_kconsumerd_sockets(void);
-static void cleanup(void);
-static void sighandler(int sig);
-static void clean_command_ctx(struct command_ctx *cmd_ctx);
-static void teardown_kernel_session(struct ltt_session *session);
-
-static void *thread_manage_clients(void *data);
-static void *thread_manage_apps(void *data);
-static void *thread_manage_kconsumerd(void *data);
-
 /* Variables */
-int opt_verbose;
-int opt_quiet;
+int opt_verbose;    /* Not static for lttngerr.h */
+int opt_quiet;      /* Not static for lttngerr.h */
 const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
 static int opt_daemon;
 static int is_root;			/* Set to 1 if the daemon is running as root */
-static pid_t ppid;
+static pid_t ppid;          /* Parent PID for --sig-parent option */
+static pid_t kconsumerd_pid;
 
 static char apps_unix_sock_path[PATH_MAX];				/* Global application Unix socket path */
 static char client_unix_sock_path[PATH_MAX];			/* Global client Unix socket path */
 static char kconsumerd_err_unix_sock_path[PATH_MAX];	/* kconsumerd error Unix socket path */
 static char kconsumerd_cmd_unix_sock_path[PATH_MAX];	/* kconsumerd command Unix socket path */
 
+/* Sockets and FDs */
 static int client_sock;
 static int apps_sock;
 static int kconsumerd_err_sock;
 static int kconsumerd_cmd_sock;
 static int kernel_tracer_fd;
+
+/* Pthread, Mutexes and Semaphores */
 static pthread_t kconsumerd_thread;
+static pthread_t apps_thread;
+static pthread_t client_thread;
 static sem_t kconsumerd_sem;
 
-static pthread_mutex_t kconsumerd_pid_mutex;
-static pid_t kconsumerd_pid;
+static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
 /*
- *  thread_manage_kconsumerd
+ *  free_kernel_session
  *
- *  This thread manage the kconsumerd error sent
- *  back to the session daemon.
+ *  Free all data structure inside a kernel session and the session pointer.
  */
-static void *thread_manage_kconsumerd(void *data)
+static void free_kernel_session(struct ltt_kernel_session *session)
 {
-	int sock, ret;
-	enum lttcomm_return_code code;
+	struct ltt_kernel_channel *chan;
+	struct ltt_kernel_stream *stream;
+	struct ltt_kernel_event *event;
 
-	DBG("[thread] Manage kconsumerd started");
+	/* Clean metadata */
+	close(session->metadata_stream_fd);
+	close(session->metadata->fd);
+	free(session->metadata->conf);
+	free(session->metadata);
 
-	ret = lttcomm_listen_unix_sock(kconsumerd_err_sock);
-	if (ret < 0) {
-		goto error;
-	}
-
-	sock = lttcomm_accept_unix_sock(kconsumerd_err_sock);
-	if (sock < 0) {
-		goto error;
-	}
-
-	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
-	if (ret <= 0) {
-		goto error;
-	}
-
-	if (code == KCONSUMERD_COMMAND_SOCK_READY) {
-		kconsumerd_cmd_sock = lttcomm_connect_unix_sock(kconsumerd_cmd_unix_sock_path);
-		if (kconsumerd_cmd_sock < 0) {
-			perror("kconsumerd connect");
-			goto error;
+	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		/* Clean all event(s) */
+		cds_list_for_each_entry(event, &chan->events_list.head, list) {
+			close(event->fd);
+			free(event->event);
+			free(event);
 		}
-		/* Signal condition to tell that the kconsumerd is ready */
-		sem_post(&kconsumerd_sem);
-		DBG("Kconsumerd command socket ready");
-	} else {
-		DBG("[sessiond] Kconsumerd error when waiting for SOCK_READY : %s",
-				lttcomm_get_readable_code(-code));
-		goto error;
+
+		/* Clean streams */
+		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
+			close(stream->fd);
+			free(stream->pathname);
+			free(stream);
+		}
+		/* Clean channel */
+		close(chan->fd);
+		free(chan->channel);
+		free(chan->pathname);
+		free(chan);
 	}
 
-	/* Wait for any kconsumerd error */
-	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
-	if (ret <= 0) {
-		ERR("[sessiond] Kconsumerd closed the command socket");
-		goto error;
-	}
+	close(session->fd);
+	free(session);
 
-	ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
-
-error:
-	teardown_kernel_session((struct ltt_session *) data);
-	return NULL;
+	DBG("All kernel session data structures freed");
 }
 
 /*
- * 	thread_manage_apps
+ *  teardown_kernel_session
  *
- * 	This thread manage the application socket communication
+ *  Complete teardown of a kernel session. This free all data structure
+ *  related to a kernel session and update counter.
  */
-static void *thread_manage_apps(void *data)
+static void teardown_kernel_session(struct ltt_session *session)
 {
-	int sock, ret;
-
-	/* TODO: Something more elegant is needed but fine for now */
-	/* FIXME: change all types to either uint8_t, uint32_t, uint64_t
-	 * for 32-bit vs 64-bit compat processes. */
-	/* replicate in ust with version number */
-	struct {
-		int reg;	/* 1:register, 0:unregister */
-		pid_t pid;
-		uid_t uid;
-	} reg_msg;
-
-	DBG("[thread] Manage apps started");
-
-	ret = lttcomm_listen_unix_sock(apps_sock);
-	if (ret < 0) {
-		goto error;
+	if (session->kernel_session != NULL) {
+		DBG("Tearing down kernel session");
+		free_kernel_session(session->kernel_session);
+		/* Extra precaution */
+		session->kernel_session = NULL;
+		/* Decrement session count */
+		session->kern_session_count--;
 	}
-
-	/* Notify all applications to register */
-	notify_apps(default_global_apps_pipe);
-
-	while (1) {
-		DBG("Accepting application registration");
-		/* Blocking call, waiting for transmission */
-		sock = lttcomm_accept_unix_sock(apps_sock);
-		if (sock < 0) {
-			goto error;
-		}
-
-		/* Basic recv here to handle the very simple data
-		 * that the libust send to register (reg_msg).
-		 */
-		ret = recv(sock, &reg_msg, sizeof(reg_msg), 0);
-		if (ret < 0) {
-			perror("recv");
-			continue;
-		}
-
-		/* Add application to the global traceable list */
-		if (reg_msg.reg == 1) {
-			/* Registering */
-			ret = register_traceable_app(reg_msg.pid, reg_msg.uid);
-			if (ret < 0) {
-				/* register_traceable_app only return an error with
-				 * ENOMEM. At this point, we better stop everything.
-				 */
-				goto error;
-			}
-		} else {
-			/* Unregistering */
-			unregister_traceable_app(reg_msg.pid);
-		}
-	}
-
-error:
-
-	return NULL;
 }
 
 /*
- * 	thread_manage_clients
+ *  cleanup
  *
- * 	This thread manage all clients request using the unix
- * 	client socket for communication.
+ *  Cleanup the daemon on exit
  */
-static void *thread_manage_clients(void *data)
+static void cleanup()
 {
-	int sock, ret;
-	struct command_ctx *cmd_ctx;
+	int ret;
+	char *cmd;
+	struct ltt_session *sess;
 
-	DBG("[thread] Manage client started");
+	DBG("Cleaning up");
 
-	ret = lttcomm_listen_unix_sock(client_sock);
+	/* <fun> */
+	MSG("\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
+	MSG("%c[%d;%dmMatthew, BEET driven development works!%c[%dm",27,1,33,27,0);
+	/* </fun> */
+
+	/* Stopping all threads */
+	DBG("Terminating all threads");
+	pthread_cancel(client_thread);
+	pthread_cancel(apps_thread);
+	if (kconsumerd_pid != 0) {
+		pthread_cancel(kconsumerd_thread);
+	}
+
+	DBG("Unlinking all unix socket");
+	unlink(client_unix_sock_path);
+	unlink(apps_unix_sock_path);
+	unlink(kconsumerd_err_unix_sock_path);
+
+	DBG("Removing %s directory", LTTNG_RUNDIR);
+	ret = asprintf(&cmd, "rm -rf " LTTNG_RUNDIR);
 	if (ret < 0) {
-		goto error;
+		ERR("asprintf failed. Something is really wrong!");
 	}
 
-	/* Notify parent pid that we are ready
-	 * to accept command for client side.
-	 */
-	if (opt_sig_parent) {
-		kill(ppid, SIGCHLD);
+	/* Remove lttng run directory */
+	ret = system(cmd);
+	if (ret < 0) {
+		ERR("Unable to clean " LTTNG_RUNDIR);
 	}
 
-	while (1) {
-		/* Blocking call, waiting for transmission */
-		DBG("Accepting client command ...");
-		sock = lttcomm_accept_unix_sock(client_sock);
-		if (sock < 0) {
-			goto error;
-		}
-
-		/* Allocate context command to process the client request */
-		cmd_ctx = malloc(sizeof(struct command_ctx));
-
-		/* Allocate data buffer for reception */
-		cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
-		cmd_ctx->llm = NULL;
-		cmd_ctx->session = NULL;
-
-		/*
-		 * Data is received from the lttng client. The struct
-		 * lttcomm_session_msg (lsm) contains the command and data request of
-		 * the client.
-		 */
-		DBG("Receiving data from client ...");
-		ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm, sizeof(struct lttcomm_session_msg));
-		if (ret <= 0) {
-			continue;
-		}
-
-		/*
-		 * This function dispatch the work to the kernel or userspace tracer
-		 * libs and fill the lttcomm_lttng_msg data structure of all the needed
-		 * informations for the client. The command context struct contains
-		 * everything this function may needs.
-		 */
-		ret = process_client_msg(cmd_ctx);
-		if (ret < 0) {
-			/* TODO: Inform client somehow of the fatal error. At this point,
-			 * ret < 0 means that a malloc failed (ENOMEM). */
-			/* Error detected but still accept command */
-			clean_command_ctx(cmd_ctx);
-			continue;
-		}
-
-		DBG("Sending response (size: %d, retcode: %d)",
-				cmd_ctx->lttng_msg_size, cmd_ctx->llm->ret_code);
-		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
-		if (ret < 0) {
-			ERR("Failed to send data back to client");
-		}
-
-		clean_command_ctx(cmd_ctx);
+	DBG("Cleaning up all session");
+	/* Cleanup ALL session */
+	cds_list_for_each_entry(sess, &ltt_session_list.head, list) {
+		teardown_kernel_session(sess);
+		// TODO complete session cleanup (including UST)
 	}
 
-error:
-	return NULL;
+	close(kernel_tracer_fd);
 }
 
 /*
@@ -460,19 +353,143 @@ error:
 }
 
 /*
+ *  thread_manage_kconsumerd
+ *
+ *  This thread manage the kconsumerd error sent
+ *  back to the session daemon.
+ */
+static void *thread_manage_kconsumerd(void *data)
+{
+	int sock, ret;
+	enum lttcomm_return_code code;
+
+	DBG("[thread] Manage kconsumerd started");
+
+	ret = lttcomm_listen_unix_sock(kconsumerd_err_sock);
+	if (ret < 0) {
+		goto error;
+	}
+
+	sock = lttcomm_accept_unix_sock(kconsumerd_err_sock);
+	if (sock < 0) {
+		goto error;
+	}
+
+	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
+	if (ret <= 0) {
+		goto error;
+	}
+
+	if (code == KCONSUMERD_COMMAND_SOCK_READY) {
+		kconsumerd_cmd_sock = lttcomm_connect_unix_sock(kconsumerd_cmd_unix_sock_path);
+		if (kconsumerd_cmd_sock < 0) {
+			perror("kconsumerd connect");
+			goto error;
+		}
+		/* Signal condition to tell that the kconsumerd is ready */
+		sem_post(&kconsumerd_sem);
+		DBG("Kconsumerd command socket ready");
+	} else {
+		DBG("[sessiond] Kconsumerd error when waiting for SOCK_READY : %s",
+				lttcomm_get_readable_code(-code));
+		goto error;
+	}
+
+	/* Wait for any kconsumerd error */
+	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
+	if (ret <= 0) {
+		ERR("[sessiond] Kconsumerd closed the command socket");
+		goto error;
+	}
+
+	ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
+
+error:
+	kconsumerd_pid = 0;
+	return NULL;
+}
+
+/*
+ * 	thread_manage_apps
+ *
+ * 	This thread manage the application socket communication
+ */
+static void *thread_manage_apps(void *data)
+{
+	int sock, ret;
+
+	/* TODO: Something more elegant is needed but fine for now */
+	/* FIXME: change all types to either uint8_t, uint32_t, uint64_t
+	 * for 32-bit vs 64-bit compat processes. */
+	/* replicate in ust with version number */
+	struct {
+		int reg;	/* 1:register, 0:unregister */
+		pid_t pid;
+		uid_t uid;
+	} reg_msg;
+
+	DBG("[thread] Manage apps started");
+
+	ret = lttcomm_listen_unix_sock(apps_sock);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Notify all applications to register */
+	notify_apps(default_global_apps_pipe);
+
+	while (1) {
+		DBG("Accepting application registration");
+		/* Blocking call, waiting for transmission */
+		sock = lttcomm_accept_unix_sock(apps_sock);
+		if (sock < 0) {
+			goto error;
+		}
+
+		/* Basic recv here to handle the very simple data
+		 * that the libust send to register (reg_msg).
+		 */
+		ret = recv(sock, &reg_msg, sizeof(reg_msg), 0);
+		if (ret < 0) {
+			perror("recv");
+			continue;
+		}
+
+		/* Add application to the global traceable list */
+		if (reg_msg.reg == 1) {
+			/* Registering */
+			ret = register_traceable_app(reg_msg.pid, reg_msg.uid);
+			if (ret < 0) {
+				/* register_traceable_app only return an error with
+				 * ENOMEM. At this point, we better stop everything.
+				 */
+				goto error;
+			}
+		} else {
+			/* Unregistering */
+			unregister_traceable_app(reg_msg.pid);
+		}
+	}
+
+error:
+
+	return NULL;
+}
+
+/*
  *  start_kconsumerd_thread
  *
  *  Start the thread_manage_kconsumerd. This must be done after a kconsumerd
  *  exec or it will fails.
  */
-static int start_kconsumerd_thread(struct ltt_session *session)
+static int start_kconsumerd_thread(void)
 {
 	int ret;
 
 	/* Setup semaphore */
 	sem_init(&kconsumerd_sem, 0, 0);
 
-	ret = pthread_create(&kconsumerd_thread, NULL, thread_manage_kconsumerd, (void *) session);
+	ret = pthread_create(&kconsumerd_thread, NULL, thread_manage_kconsumerd, (void *) NULL);
 	if (ret != 0) {
 		perror("pthread_create kconsumerd");
 		goto error;
@@ -584,68 +601,31 @@ error:
 }
 
 /*
- *  free_kernel_session
+ *  create_trace_dir
  *
- *  Free all data structure inside a kernel session and the session pointer.
+ *  Create the trace output directory.
  */
-static void free_kernel_session(struct ltt_kernel_session *session)
+static int create_trace_dir(struct ltt_kernel_session *session)
 {
+	int ret;
 	struct ltt_kernel_channel *chan;
-	struct ltt_kernel_stream *stream;
-	struct ltt_kernel_event *event;
 
-	/* Clean metadata */
-	close(session->metadata_stream_fd);
-	close(session->metadata->fd);
-	free(session->metadata->conf);
-	free(session->metadata);
-
+	/* Create all channel directories */
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		/* Clean all event(s) */
-		cds_list_for_each_entry(event, &chan->events_list.head, list) {
-			close(event->fd);
-			free(event->event);
-			free(event);
+		ret = mkdir(chan->pathname, S_IRWXU | S_IRWXG );
+		if (ret < 0) {
+			perror("mkdir trace path");
+			ret = -errno;
+			goto error;
 		}
-
-		/* Clean streams */
-		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
-			close(stream->fd);
-			free(stream->pathname);
-			free(stream);
-		}
-		/* Clean channel */
-		close(chan->fd);
-		free(chan->channel);
-		free(chan->pathname);
-		free(chan);
 	}
 
-	close(session->fd);
-	free(session);
+	return 0;
 
-	DBG("All kernel session data structures freed");
+error:
+	return ret;
 }
 
-/*
- *  teardown_kernel_session
- *
- *  Complete teardown of a kernel session. This free all data structure
- *  related to a kernel session and update counter.
- */
-static void teardown_kernel_session(struct ltt_session *session)
-{
-	if (session->kernel_session != NULL) {
-		DBG("Tearing down kernel session");
-		free_kernel_session(session->kernel_session);
-		/* Extra precaution */
-		session->kernel_session = NULL;
-		/* Decrement session count */
-		session->kern_session_count--;
-		/* Set kconsumerd pid to 0 (inactive) */
-		session->kernel_consumer = 0;
-	}
-}
 
 /*
  * 	process_client_msg
@@ -731,7 +711,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 		pthread_mutex_unlock(&kconsumerd_pid_mutex);
 
-		ret = start_kconsumerd_thread(cmd_ctx->session);
+		ret = start_kconsumerd_thread();
 		if (ret < 0) {
 			ERR("Fatal error : start_kconsumerd_thread()");
 			ret = LTTCOMM_FATAL;
@@ -1072,6 +1052,88 @@ setup_error:
 }
 
 /*
+ * 	thread_manage_clients
+ *
+ * 	This thread manage all clients request using the unix
+ * 	client socket for communication.
+ */
+static void *thread_manage_clients(void *data)
+{
+	int sock, ret;
+	struct command_ctx *cmd_ctx;
+
+	DBG("[thread] Manage client started");
+
+	ret = lttcomm_listen_unix_sock(client_sock);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Notify parent pid that we are ready
+	 * to accept command for client side.
+	 */
+	if (opt_sig_parent) {
+		kill(ppid, SIGCHLD);
+	}
+
+	while (1) {
+		/* Blocking call, waiting for transmission */
+		DBG("Accepting client command ...");
+		sock = lttcomm_accept_unix_sock(client_sock);
+		if (sock < 0) {
+			goto error;
+		}
+
+		/* Allocate context command to process the client request */
+		cmd_ctx = malloc(sizeof(struct command_ctx));
+
+		/* Allocate data buffer for reception */
+		cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
+		cmd_ctx->llm = NULL;
+		cmd_ctx->session = NULL;
+
+		/*
+		 * Data is received from the lttng client. The struct
+		 * lttcomm_session_msg (lsm) contains the command and data request of
+		 * the client.
+		 */
+		DBG("Receiving data from client ...");
+		ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm, sizeof(struct lttcomm_session_msg));
+		if (ret <= 0) {
+			continue;
+		}
+
+		/*
+		 * This function dispatch the work to the kernel or userspace tracer
+		 * libs and fill the lttcomm_lttng_msg data structure of all the needed
+		 * informations for the client. The command context struct contains
+		 * everything this function may needs.
+		 */
+		ret = process_client_msg(cmd_ctx);
+		if (ret < 0) {
+			/* TODO: Inform client somehow of the fatal error. At this point,
+			 * ret < 0 means that a malloc failed (ENOMEM). */
+			/* Error detected but still accept command */
+			clean_command_ctx(cmd_ctx);
+			continue;
+		}
+
+		DBG("Sending response (size: %d, retcode: %d)",
+				cmd_ctx->lttng_msg_size, cmd_ctx->llm->ret_code);
+		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
+		if (ret < 0) {
+			ERR("Failed to send data back to client");
+		}
+
+		clean_command_ctx(cmd_ctx);
+	}
+
+error:
+	return NULL;
+}
+
+
+/*
  * usage function on stderr
  */
 static void usage(void)
@@ -1309,32 +1371,6 @@ end:
 }
 
 /*
- *  create_trace_dir
- *
- *  Create the trace output directory.
- */
-static int create_trace_dir(struct ltt_kernel_session *session)
-{
-	int ret;
-	struct ltt_kernel_channel *chan;
-
-	/* Create all channel directories */
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = mkdir(chan->pathname, S_IRWXU | S_IRWXG );
-		if (ret < 0) {
-			perror("mkdir trace path");
-			ret = -errno;
-			goto error;
-		}
-	}
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
  *  create_lttng_rundir
  *
  *  Create the lttng run directory needed for all
@@ -1416,6 +1452,32 @@ error:
 }
 
 /*
+ *  sighandler
+ *
+ *  Signal handler for the daemon
+ */
+static void sighandler(int sig)
+{
+	switch (sig) {
+		case SIGPIPE:
+			DBG("SIGPIPE catched");
+			return;
+		case SIGINT:
+			DBG("SIGINT catched");
+			cleanup();
+			break;
+		case SIGTERM:
+			DBG("SIGTERM catched");
+			cleanup();
+			break;
+		default:
+			break;
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
+/*
  *  set_signal_handler
  *
  *  Setup signal handler for :
@@ -1455,84 +1517,13 @@ static int set_signal_handler(void)
 	return ret;
 }
 
-/**
- *  sighandler
- *
- *  Signal handler for the daemon
- */
-static void sighandler(int sig)
-{
-	switch (sig) {
-		case SIGPIPE:
-			DBG("SIGPIPE catched");
-			return;
-		case SIGINT:
-			DBG("SIGINT catched");
-			cleanup();
-			break;
-		case SIGTERM:
-			DBG("SIGTERM catched");
-			cleanup();
-			break;
-		default:
-			break;
-	}
-
-	exit(EXIT_SUCCESS);
-}
-
-/*
- *  cleanup
- *
- *  Cleanup the daemon on exit
- */
-static void cleanup()
-{
-	int ret;
-	char *cmd;
-	struct ltt_session *sess;
-	struct ltt_session_list *session_list = get_session_list();
-
-	DBG("Cleaning up");
-
-	/* <fun> */
-	MSG("\n%c[%d;%dm*** assert failed *** ==> %c[%dm", 27,1,31,27,0);
-	MSG("%c[%d;%dmMatthew, BEET driven development works!%c[%dm",27,1,33,27,0);
-	/* </fun> */
-
-	unlink(client_unix_sock_path);
-	unlink(apps_unix_sock_path);
-	unlink(kconsumerd_err_unix_sock_path);
-
-	ret = asprintf(&cmd, "rm -rf " LTTNG_RUNDIR);
-	if (ret < 0) {
-		ERR("asprintf failed. Something is really wrong!");
-	}
-
-	/* Remove lttng run directory */
-	ret = system(cmd);
-	if (ret < 0) {
-		ERR("Unable to clean " LTTNG_RUNDIR);
-	}
-
-	/* Cleanup ALL session */
-	cds_list_for_each_entry(sess, &session_list->head, list) {
-		teardown_kernel_session(sess);
-		// TODO complete session cleanup (including UST)
-	}
-
-	close(kernel_tracer_fd);
-}
-
 /*
  * main
  */
 int main(int argc, char **argv)
 {
-	int i;
 	int ret = 0;
 	void *status;
-	pthread_t threads[2];
 
 	/* Parse arguments */
 	progname = argv[0];
@@ -1624,25 +1615,23 @@ int main(int argc, char **argv)
 
 	while (1) {
 		/* Create thread to manage the client socket */
-		ret = pthread_create(&threads[0], NULL, thread_manage_clients, (void *) NULL);
+		ret = pthread_create(&client_thread, NULL, thread_manage_clients, (void *) NULL);
 		if (ret != 0) {
 			perror("pthread_create");
 			goto error;
 		}
 
 		/* Create thread to manage application socket */
-		ret = pthread_create(&threads[1], NULL, thread_manage_apps, (void *) NULL);
+		ret = pthread_create(&apps_thread, NULL, thread_manage_apps, (void *) NULL);
 		if (ret != 0) {
 			perror("pthread_create");
 			goto error;
 		}
 
-		for (i = 0; i < 2; i++) {
-			ret = pthread_join(threads[i], &status);
-			if (ret != 0) {
-				perror("pthread_join");
-				goto error;
-			}
+		ret = pthread_join(client_thread, &status);
+		if (ret != 0) {
+			perror("pthread_join");
+			goto error;
 		}
 	}
 
