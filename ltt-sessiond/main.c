@@ -390,22 +390,28 @@ static void *thread_manage_kconsumerd(void *data)
 		sem_post(&kconsumerd_sem);
 		DBG("Kconsumerd command socket ready");
 	} else {
-		DBG("[sessiond] Kconsumerd error when waiting for SOCK_READY : %s",
+		DBG("Kconsumerd error when waiting for SOCK_READY : %s",
 				lttcomm_get_readable_code(-code));
 		goto error;
 	}
 
-	/* Wait for any kconsumerd error */
-	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
-	if (ret <= 0) {
-		ERR("[sessiond] Kconsumerd closed the command socket");
-		goto error;
-	}
+	while (1) {
+		/* Wait for any kconsumerd error */
+		ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
+		if (ret <= 0) {
+			ERR("Kconsumerd closed the command socket");
+			goto error;
+		}
 
-	ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
+		ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
+		if (code != KCONSUMERD_POLL_HUP) {
+			goto error;
+		}
+	}
 
 error:
 	kconsumerd_pid = 0;
+	DBG("Kconsumerd thread dying");
 	return NULL;
 }
 
@@ -568,6 +574,8 @@ static int start_kconsumerd(void)
 		kconsumerd_pid = ret;
 	}
 	pthread_mutex_unlock(&kconsumerd_pid_mutex);
+
+	DBG("Kconsumerd pid %d", ret);
 
 	DBG("Spawning kconsumerd thread");
 
