@@ -477,12 +477,12 @@ error:
 }
 
 /*
- *  start_kconsumerd_thread
+ *  spawn_kconsumerd_thread
  *
  *  Start the thread_manage_kconsumerd. This must be done after a kconsumerd
  *  exec or it will fails.
  */
-static int start_kconsumerd_thread(void)
+static int spawn_kconsumerd_thread(void)
 {
 	int ret;
 
@@ -495,6 +495,7 @@ static int start_kconsumerd_thread(void)
 		goto error;
 	}
 
+	/* Wait for the kconsumerd thread to be ready */
 	sem_wait(&kconsumerd_sem);
 
 	return 0;
@@ -504,13 +505,17 @@ error:
 }
 
 /*
- *  kernel_start_consumer
+ *  spawn_kconsumerd
  *
- *  Start a kernel consumer daemon (kconsumerd).
+ *  Fork and exec a kernel consumer daemon (kconsumerd).
+ *
+ *  NOTE: It is very important to fork a kconsumerd BEFORE opening any kernel
+ *  file descriptor using the libkernelctl or kernel-ctl functions. So, a
+ *  kernel consumer MUST only be spawned before creating a kernel session.
  *
  *  Return pid if successful else -1.
  */
-pid_t kernel_start_consumer(void)
+static pid_t spawn_kconsumerd(void)
 {
 	int ret;
 	pid_t pid;
@@ -533,6 +538,47 @@ pid_t kernel_start_consumer(void)
 		ret = -errno;
 		goto error;
 	}
+
+error:
+	return ret;
+}
+
+/*
+ *  start_kconsumerd
+ *
+ *  Spawn the kconsumerd daemon and session daemon thread.
+ */
+static int start_kconsumerd(void)
+{
+	int ret;
+
+	DBG("Spawning kconsumerd");
+
+	pthread_mutex_lock(&kconsumerd_pid_mutex);
+	if (kconsumerd_pid == 0) {
+		ret = spawn_kconsumerd();
+		if (ret < 0) {
+			ERR("Spawning kconsumerd failed");
+			ret = LTTCOMM_KERN_CONSUMER_FAIL;
+			pthread_mutex_unlock(&kconsumerd_pid_mutex);
+			goto error;
+		}
+
+		/* Setting up the global kconsumerd_pid */
+		kconsumerd_pid = ret;
+	}
+	pthread_mutex_unlock(&kconsumerd_pid_mutex);
+
+	DBG("Spawning kconsumerd thread");
+
+	ret = spawn_kconsumerd_thread();
+	if (ret < 0) {
+		ERR("Fatal error spawning kconsumerd thread");
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	return 0;
 
 error:
 	return ret;
@@ -695,26 +741,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		DBG("Checking if kconsumerd is alive");
-		pthread_mutex_lock(&kconsumerd_pid_mutex);
-		if (kconsumerd_pid == 0) {
-			ret = kernel_start_consumer();
-			if (ret < 0) {
-				ERR("Kernel start kconsumerd failed");
-				ret = LTTCOMM_KERN_CONSUMER_FAIL;
-				pthread_mutex_unlock(&kconsumerd_pid_mutex);
-				goto error;
-			}
-
-			/* Setting up the global kconsumerd_pid */
-			kconsumerd_pid = ret;
-		}
-		pthread_mutex_unlock(&kconsumerd_pid_mutex);
-
-		ret = start_kconsumerd_thread();
+		ret = start_kconsumerd();
 		if (ret < 0) {
-			ERR("Fatal error : start_kconsumerd_thread()");
-			ret = LTTCOMM_FATAL;
 			goto error;
 		}
 
