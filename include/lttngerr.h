@@ -22,6 +22,10 @@
 #include <errno.h>
 #include <stdio.h>
 
+/* Stringify the expansion of a define */
+#define XSTR(d) STR(d)
+#define STR(s) #s
+
 extern int opt_quiet;
 extern int opt_verbose;
 
@@ -54,6 +58,6 @@ enum __lttng_print_type {
 #define ERR(fmt, args...) __lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
 #define WARN(fmt, args...) __lttng_print(PRINT_WARN, "Warning: " fmt "\n", ## args)
 #define BUG(fmt, args...) __lttng_print(PRINT_BUG, "BUG: " fmt "\n", ## args)
-#define DBG(fmt, args...) __lttng_print(PRINT_DBG, "DEBUG: " fmt "\n", ## args)
+#define DBG(fmt, args...) __lttng_print(PRINT_DBG, "DEBUG: " fmt " [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
 
 #endif /* _LTTNGERR_H */
