@@ -18,21 +18,19 @@
 
 #define _GNU_SOURCE
 #include <errno.h>
-#include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <urcu/list.h>
+#include <unistd.h>
+
 #include <ust/ustctl.h>
 
 #include "liblttsessiondcomm.h"
 #include "lttngerr.h"
-#include "trace.h"
-#include "session.h"
 #include "ltt-sessiond.h"
-
-static struct ltt_ust_trace *find_session_ust_trace_by_pid(
-		struct ltt_session *session, pid_t pid);
+#include "session.h"
+#include "ust-ctl.h"
+#include "trace.h"
 
 /*
  *  find_session_ust_trace_by_pid
