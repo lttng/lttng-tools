@@ -666,6 +666,7 @@ static int create_trace_dir(struct ltt_kernel_session *session)
 
 	/* Create all channel directories */
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		DBG("Creating trace directory at %s", chan->pathname);
 		ret = mkdir(chan->pathname, S_IRWXU | S_IRWXG );
 		if (ret < 0) {
 			perror("mkdir trace path");
@@ -679,7 +680,6 @@ static int create_trace_dir(struct ltt_kernel_session *session)
 error:
 	return ret;
 }
-
 
 /*
  * 	process_client_msg

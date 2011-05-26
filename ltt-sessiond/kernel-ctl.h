@@ -19,7 +19,6 @@
 #ifndef _LTT_KERNEL_CTL_H
 #define _LTT_KERNEL_CTL_H
 
-#include "ltt-sessiond.h"
 #include "session.h"
 #include "trace.h"
 
@@ -31,6 +30,5 @@ int kernel_create_metadata_stream(struct ltt_kernel_session *session);
 int kernel_create_channel_stream(struct ltt_kernel_channel *channel);
 int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
-pid_t kernel_start_consumer(void);
 
 #endif /* _LTT_KERNEL_CTL_H */
