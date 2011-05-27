@@ -1,4 +1,8 @@
 /*
+ * lttng.h
+ *
+ * Linux Trace Toolkit Control Library Header File
+ *
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
@@ -16,73 +20,80 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LIBLTTNGCTL_H
-#define _LIBLTTNGCTL_H
+#ifndef _LTTNG_H
+#define _LTTNG_H
 
 #include <limits.h>
-#include <stdint.h>
 #include <uuid/uuid.h>
 
-/* Default unix group name for tracing.
- */
-#define DEFAULT_TRACING_GROUP "tracing"
+/* Default unix group name for tracing. */
+#define LTTNG_DEFAULT_TRACING_GROUP "tracing"
 
-/* Environment variable to set session daemon
- * binary path.
- */
+/* Environment variable to set session daemon binary path. */
 #define LTTNG_SESSIOND_PATH_ENV "LTTNG_SESSIOND_PATH"
 
-/* UUID string length (including \0) */
-#define UUID_STR_LEN 37
-/* UUID short string version length (including \0) */
-#define UUID_SHORT_STR_LEN 9
-
-/* Trace type for lttng_trace.
+/*
+ * Trace type for lttng_trace.
  */
 enum lttng_trace_type {
-	KERNEL, USERSPACE,
+	KERNEL,
+	USERSPACE,
 };
 
-/* Simple structure representing a session.
+/*
+ * Basic trace information exposed.
+ */
+struct lttng_trace {
+	char name[NAME_MAX];
+	pid_t pid;      /* Only useful for user-space trace */
+	enum lttng_trace_type type;
+};
+
+/*
+ * Basic session information exposed.
  */
 struct lttng_session {
 	char name[NAME_MAX];
 	uuid_t uuid;
 };
 
-/* Simple trace representation.
+/*
+ * Session daemon control
  */
-struct lttng_trace {
-	char name[NAME_MAX];
-	pid_t pid;
-	enum lttng_trace_type type;
-};
-
+extern int lttng_check_session_daemon(void);
+extern int lttng_connect_sessiond(void);
 extern int lttng_create_session(char *name);
 extern int lttng_destroy_session(uuid_t *uuid);
-extern int lttng_connect_sessiond(void);
 extern int lttng_disconnect_sessiond(void);
-extern int lttng_set_tracing_group(const char *name);
-extern int lttng_check_session_daemon(void);
-extern const char *lttng_get_readable_code(int code);
-extern int lttng_ust_list_apps(pid_t **pids);
+/* Return an allocated array of lttng_session */
 extern int lttng_list_sessions(struct lttng_session **sessions);
+/* Return an allocated array of lttng_traces */
 extern int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces);
+/* Set tracing group for the current execution */
+extern int lttng_set_tracing_group(const char *name);
+/* Set session uuid for the current execution */
 extern void lttng_set_current_session_uuid(uuid_t *uuid);
+extern const char *lttng_get_readable_code(int code);
+
+/*
+ * User-space tracer control
+ */
 extern int lttng_ust_create_trace(pid_t pid);
+/* Return an allocated array of pids */
+extern int lttng_ust_list_apps(pid_t **pids);
 extern int lttng_ust_start_trace(pid_t pid);
 extern int lttng_ust_stop_trace(pid_t pid);
 
 /*
  * Kernel tracer control
  */
-extern int lttng_kernel_enable_event(char *event_name);
-extern int lttng_kernel_disable_event(char *event_name);
+extern int lttng_kernel_create_channel(void);
 extern int lttng_kernel_create_session(void);
+extern int lttng_kernel_create_stream(void);
+extern int lttng_kernel_disable_event(char *event_name);
+extern int lttng_kernel_enable_event(char *event_name);
+extern int lttng_kernel_open_metadata(void);
 extern int lttng_kernel_start_tracing(void);
 extern int lttng_kernel_stop_tracing(void);
-extern int lttng_kernel_create_channel(void);
-extern int lttng_kernel_create_stream(void);
-extern int lttng_kernel_open_metadata(void);
 
-#endif /* _LIBLTTNGCTL_H */
+#endif /* _LTTNG_H */
