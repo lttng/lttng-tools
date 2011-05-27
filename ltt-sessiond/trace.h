@@ -23,6 +23,13 @@
 #include <urcu/list.h>
 #include "lttng-kernel.h"
 
+/* Default kernel channel attributes */
+#define DEFAULT_KERNEL_OVERWRITE            0
+#define DEFAULT_KERNEL_SUBBUF_SIZE          4096    /* bytes */
+#define DEFAULT_KERNEL_SUBBUF_NUM           8       /* Must always be a power of 2 */
+#define DEFAULT_KERNEL_SWITCH_TIMER         0       /* usec */
+#define DEFAULT_KERNEL_READ_TIMER           200     /* usec */
+
 /* Kernel event list */
 struct ltt_kernel_event_list {
 	struct cds_list_head head;
@@ -95,5 +102,25 @@ struct ltt_ust_marker {
 	char *name;
 	char *channel;
 };
+
+/*
+ * Function prototype
+ */
+
+/* Kernel session */
+struct ltt_kernel_session *trace_create_kernel_session(void);
+
+/* Kernel channel */
+struct ltt_kernel_channel *trace_create_kernel_channel(void);
+
+/* Kernel event */
+struct ltt_kernel_event *trace_create_kernel_event(char *name,
+		enum lttng_kernel_instrumentation type);
+
+/* Kernel metadata */
+struct ltt_kernel_metadata *trace_create_kernel_metadata(void);
+
+/* Kernel stream */
+struct ltt_kernel_stream *trace_create_kernel_stream(void);
 
 #endif /* _LTT_TRACE_H */

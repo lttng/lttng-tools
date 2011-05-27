@@ -31,33 +31,31 @@
 /*
  *  kernel_create_session
  *
- *  Create a new kernel session using the command context session.
+ *  Create a new kernel session, register it to the kernel tracer and add it to
+ *  the session daemon session.
  */
 int kernel_create_session(struct ltt_session *session, int tracer_fd)
 {
 	int ret;
 	struct ltt_kernel_session *lks;
 
-	/* Allocate a new kernel session */
-	lks = malloc(sizeof(struct ltt_kernel_session));
+	/* Allocate data structure */
+	lks = trace_create_kernel_session();
 	if (lks == NULL) {
-		perror("kernel session malloc");
-		ret = -errno;
+		ret = -1;
 		goto error;
 	}
 
+	/* Kernel tracer session creation */
 	ret = kernctl_create_session(tracer_fd);
 	if (ret < 0) {
+		perror("ioctl kernel create session");
 		goto error;
 	}
 
-	/* Assigning session fd and to the command context */
 	lks->fd = ret;
-	lks->channel_count = 0;
-	lks->stream_count_global = 0;
 	session->kernel_session = lks;
 	session->kern_session_count++;
-	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
 	DBG("Kernel session created (fd: %d)", lks->fd);
 
@@ -70,88 +68,60 @@ error:
 /*
  *  kernel_create_channel
  *
- *  Create a kernel channel within the kernel session.
+ *  Create a kernel channel, register it to the kernel tracer and add it to the
+ *  kernel session.
  */
 int kernel_create_channel(struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
-	struct lttng_kernel_channel *chan;
 
-	lkc = malloc(sizeof(struct ltt_kernel_channel));
-	chan = malloc(sizeof(struct lttng_kernel_channel));
-
-	if (lkc == NULL || chan == NULL) {
-		perror("kernel channel malloc");
-		ret = -errno;
+	/* Allocate kernel channel */
+	lkc = trace_create_kernel_channel();
+	if (lkc == NULL) {
 		goto error;
 	}
 
-	chan->overwrite = DEFAULT_KERNEL_OVERWRITE;
-	chan->subbuf_size = DEFAULT_KERNEL_SUBBUF_SIZE;
-	chan->num_subbuf = DEFAULT_KERNEL_SUBBUF_NUM;
-	chan->switch_timer_interval = DEFAULT_KERNEL_SWITCH_TIMER;
-	chan->read_timer_interval = DEFAULT_KERNEL_READ_TIMER;
-
-	ret = kernctl_create_channel(session->fd, chan);
+	/* Kernel tracer channel creation */
+	ret = kernctl_create_channel(session->fd, lkc->channel);
 	if (ret < 0) {
-		perror("ioctl create channel");
+		perror("ioctl kernel create channel");
 		goto error;
 	}
 
-	/* Setup the channel */
+	/* Setup the channel fd */
 	lkc->fd = ret;
-	lkc->channel = chan;
-	lkc->stream_count = 0;
-	ret = asprintf(&lkc->pathname, "%s", DEFAULT_TRACE_OUTPUT);
-	if (ret < 0) {
-		perror("asprintf kernel create channel");
-		goto error;
-	}
-
-	DBG("Channel path set to %s", lkc->pathname);
-
-	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
-	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
+	/* Add channel to session */
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
 
-	DBG("Kernel channel created (fd: %d)", lkc->fd);
+	DBG("Kernel channel created (fd: %d and path: %s)", lkc->fd, lkc->pathname);
 
 	return 0;
 
 error:
-	return ret;
+	return -1;
 }
 
 /*
  *  kernel_enable_event
  *
- *  Enable kernel event.
+ *  Create a kernel event, enable it to the kernel tracer and add it to the
+ *  channel event list of the kernel session.
  */
 int kernel_enable_event(struct ltt_kernel_session *session, char *name)
 {
 	int ret;
 	struct ltt_kernel_channel *chan;
 	struct ltt_kernel_event *event;
-	struct lttng_kernel_event *lke;
 
-	event = malloc(sizeof(struct ltt_kernel_event));
-	lke = malloc(sizeof(struct lttng_kernel_event));
-
-	if (event == NULL || lke == NULL) {
-		perror("kernel enable event malloc");
-		ret = -errno;
+	event = trace_create_kernel_event(name, LTTNG_KERNEL_TRACEPOINTS);
+	if (event == NULL) {
 		goto error;
 	}
 
-	/* Setting up a kernel event */
-	strncpy(lke->name, name, LTTNG_SYM_NAME_LEN);
-	lke->instrumentation = LTTNG_KERNEL_TRACEPOINTS;
-	event->event = lke;
-
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = kernctl_create_event(chan->fd, lke);
+		ret = kernctl_create_event(chan->fd, event->event);
 		if (ret < 0) {
 			goto error;
 		}
@@ -165,55 +135,41 @@ int kernel_enable_event(struct ltt_kernel_session *session, char *name)
 	return 0;
 
 error:
-	return ret;
+	return -1;
 }
 
 /*
  *  kernel_open_metadata
  *
- *  Open metadata stream.
+ *  Create kernel metadata, open from the kernel tracer and add it to the
+ *  kernel session.
  */
 int kernel_open_metadata(struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
-	struct lttng_kernel_channel *conf;
 
-	lkm = malloc(sizeof(struct ltt_kernel_metadata));
-	conf = malloc(sizeof(struct lttng_kernel_channel));
-
-	if (lkm == NULL || conf == NULL) {
-		perror("kernel open metadata malloc");
-		ret = -errno;
+	/* Allocate kernel metadata */
+	lkm = trace_create_kernel_metadata();
+	if (lkm == NULL) {
 		goto error;
 	}
 
-	conf->overwrite = DEFAULT_KERNEL_OVERWRITE;
-	conf->subbuf_size = DEFAULT_KERNEL_SUBBUF_SIZE;
-	conf->num_subbuf = DEFAULT_KERNEL_SUBBUF_NUM;
-	conf->switch_timer_interval = DEFAULT_KERNEL_SWITCH_TIMER;
-	conf->read_timer_interval = DEFAULT_KERNEL_READ_TIMER;
-
-	ret = kernctl_open_metadata(session->fd, conf);
+	/* Kernel tracer metadata creation */
+	ret = kernctl_open_metadata(session->fd, lkm->conf);
 	if (ret < 0) {
 		goto error;
 	}
 
 	lkm->fd = ret;
-	lkm->conf = conf;
-	ret = asprintf(&lkm->pathname, "%s/metadata", DEFAULT_TRACE_OUTPUT);
-	if (ret < 0) {
-		perror("asprintf kernel metadata");
-		goto error;
-	}
 	session->metadata = lkm;
 
-	DBG("Kernel metadata opened (fd: %d)", lkm->fd);
+	DBG("Kernel metadata opened (fd: %d and path: %s)", lkm->fd, lkm->pathname);
 
 	return 0;
 
 error:
-	return ret;
+	return -1;
 }
 
 /*
@@ -263,7 +219,8 @@ error:
 /*
  *  kernel_create_channel_stream
  *
- *  Create a stream for a channel.
+ *  Create a stream for a channel, register it to the kernel tracer and add it
+ *  to the stream list of the channel.
  *
  *  Return the number of created stream. Else, a negative value.
  */
@@ -273,10 +230,9 @@ int kernel_create_channel_stream(struct ltt_kernel_channel *channel)
 	struct ltt_kernel_stream *lks;
 
 	while ((ret = kernctl_create_stream(channel->fd)) > 0) {
-		lks = malloc(sizeof(struct ltt_kernel_stream));
+		lks = trace_create_kernel_stream();
 		if (lks == NULL) {
-			perror("kernel create stream malloc");
-			ret = -errno;
+			close(ret);
 			goto error;
 		}
 
@@ -287,24 +243,25 @@ int kernel_create_channel_stream(struct ltt_kernel_channel *channel)
 			perror("asprintf kernel create stream");
 			goto error;
 		}
-		lks->state = 0;
 
+		/* Add stream to channe stream list */
 		cds_list_add(&lks->list, &channel->stream_list.head);
 		channel->stream_count++;
-	}
 
-	DBG("Kernel channel stream created (num: %d)", channel->stream_count);
+		DBG("Kernel stream %d created (fd: %d, state: %d, path: %s)",
+				channel->stream_count, lks->fd, lks->state, lks->pathname);
+	}
 
 	return channel->stream_count;
 
 error:
-	return ret;
+	return -1;
 }
 
 /*
  *  kernel_create_metadata_stream
  *
- *  Create the metadata stream.
+ *  Create the metadata stream and set it to the kernel session.
  */
 int kernel_create_metadata_stream(struct ltt_kernel_session *session)
 {
@@ -313,7 +270,6 @@ int kernel_create_metadata_stream(struct ltt_kernel_session *session)
 	ret = kernctl_create_stream(session->metadata->fd);
 	if (ret < 0) {
 		perror("kernel create metadata stream");
-		ret = -errno;
 		goto error;
 	}
 
@@ -323,5 +279,5 @@ int kernel_create_metadata_stream(struct ltt_kernel_session *session)
 	return 0;
 
 error:
-	return ret;
+	return -1;
 }
