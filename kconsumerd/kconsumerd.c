@@ -70,6 +70,9 @@ static int error_socket = -1;
 /* to count the number of time the user pressed ctrl+c */
 static int sigintcount = 0;
 
+/* flag to inform the polling thread to quit when all fd hung up */
+static int quit = 0;
+
 /* Argument variables */
 int opt_quiet;
 int opt_verbose;
@@ -486,6 +489,7 @@ static int consumerd_recv_fd(int sfd, int size,
 	}
 
 end:
+	DBG("consumerd_recv_fd thread exiting");
 	if (buf != NULL) {
 		free(buf);
 		buf = NULL;
@@ -509,43 +513,50 @@ static void *thread_receive_fds(void *data)
 	client_socket = lttcomm_create_unix_sock(command_sock_path);
 	if (client_socket < 0) {
 		ERR("Cannot create command socket");
-		goto error;
+		goto end;
 	}
 
 	ret = lttcomm_listen_unix_sock(client_socket);
 	if (ret < 0) {
-		goto error;
+		goto end;
 	}
 
 	DBG("Sending ready command to ltt-sessiond");
 	ret = send_error(KCONSUMERD_COMMAND_SOCK_READY);
 	if (ret < 0) {
 		ERR("Error sending ready command to ltt-sessiond");
-		goto error;
+		goto end;
 	}
 
 	/* Blocking call, waiting for transmission */
 	sock = lttcomm_accept_unix_sock(client_socket);
 	if (sock <= 0) {
 		WARN("On accept");
-		goto error;
+		goto end;
 	}
 	while (1) {
 		/* We first get the number of fd we are about to receive */
 		ret = lttcomm_recv_unix_sock(sock, &tmp,
 				sizeof(struct lttcomm_kconsumerd_header));
 		if (ret <= 0) {
-			ERR("Receiving the lttcomm_kconsumerd_header, exiting");
-			goto error;
+			ERR("Communication interrupted on command socket");
+			goto end;
 		}
+		if (tmp.cmd_type == STOP) {
+			DBG("Received STOP command");
+			quit = 1;
+			goto end;
+		}
+		/* we received a command to add or update fds */
 		ret = consumerd_recv_fd(sock, tmp.payload_size, tmp.cmd_type);
 		if (ret <= 0) {
 			ERR("Receiving the FD, exiting");
-			goto error;
+			goto end;
 		}
 	}
 
-error:
+end:
+	DBG("thread_receive_fds exiting");
 	return NULL;
 }
 
@@ -575,8 +586,6 @@ static int update_poll_array(struct pollfd **pollfd,
 			(*pollfd)[i].events = POLLIN | POLLPRI;
 			local_kconsumerd_fd[i] = iter;
 			i++;
-		} else if (iter->state == DELETE_FD) {
-			del_fd(iter);
 		}
 	}
 	/*
@@ -681,16 +690,20 @@ static void *thread_poll_fds(void *data)
 			switch(pollfd[i].revents) {
 			case POLLERR:
 				ERR("Error returned in polling fd %d.", pollfd[i].fd);
+				del_fd(local_kconsumerd_fd[i]);
+				update_fd_array = 1;
 				num_hup++;
-				send_error(KCONSUMERD_POLL_ERROR);
 				break;
 			case POLLHUP:
 				ERR("Polling fd %d tells it has hung up.", pollfd[i].fd);
+				del_fd(local_kconsumerd_fd[i]);
+				update_fd_array = 1;
 				num_hup++;
 				break;
 			case POLLNVAL:
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
-				send_error(KCONSUMERD_POLL_NVAL);
+				del_fd(local_kconsumerd_fd[i]);
+				update_fd_array = 1;
 				num_hup++;
 				break;
 			case POLLPRI:
@@ -708,8 +721,10 @@ static void *thread_poll_fds(void *data)
 		/* If every buffer FD has hung up, we end the read loop here */
 		if (nb_fd > 0 && num_hup == nb_fd) {
 			DBG("every buffer FD has hung up\n");
-			send_error(KCONSUMERD_POLL_HUP);
-			goto end;
+			if (quit == 1) {
+				goto end;
+			}
+			continue;
 		}
 
 		/* Take care of low priority channels. */
@@ -727,6 +742,7 @@ static void *thread_poll_fds(void *data)
 		}
 	}
 end:
+	DBG("polling thread exiting");
 	if (pollfd != NULL) {
 		free(pollfd);
 		pollfd = NULL;

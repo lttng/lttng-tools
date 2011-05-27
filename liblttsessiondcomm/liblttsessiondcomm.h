@@ -169,8 +169,7 @@ struct lttcomm_lttng_msg {
  */
 struct lttcomm_kconsumerd_header {
 	u32 payload_size;
-	u32 cmd_type;	/* enum lttcomm_consumerd_command */
-	u32 ret_code;	/* enum lttcomm_return_code */
+	u32 cmd_type;	/* enum kconsumerd_command */
 };
 
 /* lttcomm_kconsumerd_msg represents a file descriptor to consume the

@@ -30,8 +30,8 @@
 /* Commands for kconsumerd */
 enum kconsumerd_command {
 	ADD_STREAM,
-	UPDATE_STREAM, /* pause, delete, start depending on fd state */
-	STOP, /* delete all */
+	UPDATE_STREAM, /* pause, delete, active depending on fd state */
+	STOP, /* inform the kconsumerd to quit when all fd has hang up */
 };
 
 /* State of each fd in consumerd */
