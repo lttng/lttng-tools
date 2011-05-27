@@ -19,7 +19,7 @@
 #include <popt.h>
 #include <stdlib.h>
 
-#include "lttng.h"
+#include "options.h"
 
 /* Option variables */
 char *opt_event_list;

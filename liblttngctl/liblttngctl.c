@@ -588,5 +588,5 @@ end:
 static void __attribute__((constructor)) init()
 {
 	/* Set default session group */
-	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
+	lttng_set_tracing_group(LTTNG_DEFAULT_TRACING_GROUP);
 }

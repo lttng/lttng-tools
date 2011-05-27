@@ -32,8 +32,8 @@
 
 #include <lttng/lttng.h>
 
-#include "lttng.h"
 #include "lttngerr.h"
+#include "options.h"
 
 /* Variables */
 static char *progname;

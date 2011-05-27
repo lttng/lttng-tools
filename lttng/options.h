@@ -15,8 +15,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTTNG_H
-#define _LTTNG_H
+#ifndef _LTTNG_OPTIONS_H
+#define _LTTNG_OPTIONS_H_
 
 /* Function prototypes */
 int parse_args(int argc, const char **argv);
@@ -47,4 +47,4 @@ extern int opt_start_trace;
 extern int opt_stop_trace;
 extern pid_t opt_trace_pid;
 
-#endif /* _LTTNG_H */
+#endif /* _LTTNG_OPTIONS_H */
