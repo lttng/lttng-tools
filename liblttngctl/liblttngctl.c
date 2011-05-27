@@ -37,13 +37,6 @@ static char sessiond_sock_path[PATH_MAX];
 static struct lttcomm_session_msg lsm;
 static struct lttcomm_lttng_msg llm;
 
-/* Prototypes */
-static int check_tracing_group(const char *grp_name);
-static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf);
-static int recv_data_sessiond(void *buf, size_t len);
-static int send_data_sessiond(void);
-static int set_session_daemon_path(void);
-
 /* Variables */
 static char *tracing_group;
 static int connected;
@@ -89,9 +82,6 @@ static int recv_data_sessiond(void *buf, size_t len)
 	}
 
 	ret = lttcomm_recv_unix_sock(sessiond_socket, buf, len);
-	if (ret < 0) {
-		goto end;
-	}
 
 end:
 	return ret;
@@ -100,8 +90,7 @@ end:
 /*
  *  ask_sessiond
  *
- *  Ask the session daemon a specific command
- *  and put the data into buf.
+ *  Ask the session daemon a specific command and put the data into buf.
  *
  *  Return size of data (only payload, not header).
  */
@@ -146,6 +135,7 @@ static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 	/* Get payload data */
 	ret = recv_data_sessiond(data, size);
 	if (ret < 0) {
+		free(data);
 		goto end;
 	}
 
@@ -155,6 +145,83 @@ static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 end:
 	lttng_disconnect_sessiond();
 	return ret;
+}
+
+/*
+ *  check_tracing_group
+ *
+ *  Check if the specified group name exist.
+ *  If yes, 0, else -1
+ */
+static int check_tracing_group(const char *grp_name)
+{
+	struct group *grp_tracing;	/* no free(). See getgrnam(3) */
+	gid_t *grp_list;
+	int grp_list_size, grp_id, i;
+	int ret = -1;
+
+	/* Get GID of group 'tracing' */
+	grp_tracing = getgrnam(grp_name);
+	if (grp_tracing == NULL) {
+		/* NULL means not found also. getgrnam(3) */
+		if (errno != 0) {
+			perror("getgrnam");
+		}
+		goto end;
+	}
+
+	/* Get number of supplementary group IDs */
+	grp_list_size = getgroups(0, NULL);
+	if (grp_list_size < 0) {
+		perror("getgroups");
+		goto end;
+	}
+
+	/* Alloc group list of the right size */
+	grp_list = malloc(grp_list_size * sizeof(gid_t));
+	grp_id = getgroups(grp_list_size, grp_list);
+	if (grp_id < -1) {
+		perror("getgroups");
+		goto free_list;
+	}
+
+	for (i = 0; i < grp_list_size; i++) {
+		if (grp_list[i] == grp_tracing->gr_gid) {
+			ret = 0;
+			break;
+		}
+	}
+
+free_list:
+	free(grp_list);
+
+end:
+	return ret;
+}
+
+/*
+ *  set_session_daemon_path
+ *
+ *  Set sessiond socket path by putting it in 
+ *  the global sessiond_sock_path variable.
+ */
+static int set_session_daemon_path(void)
+{
+	int ret;
+
+	/* Are we in the tracing group ? */
+	ret = check_tracing_group(tracing_group);
+	if (ret < 0 && getuid() != 0) {
+		if (sprintf(sessiond_sock_path, DEFAULT_HOME_CLIENT_UNIX_SOCK,
+					getenv("HOME")) < 0) {
+			return -ENOMEM;
+		}
+	} else {
+		strncpy(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+				sizeof(DEFAULT_GLOBAL_CLIENT_UNIX_SOCK));
+	}
+
+	return 0;
 }
 
 /*
@@ -268,12 +335,8 @@ const char *lttng_get_readable_code(int code)
  */
 int lttng_ust_start_trace(pid_t pid)
 {
-	int ret;
-
 	lsm.pid = pid;
-	ret = ask_sessiond(UST_START_TRACE, NULL);
-
-	return ret;
+	return ask_sessiond(UST_START_TRACE, NULL);
 }
 
 /*
@@ -283,12 +346,8 @@ int lttng_ust_start_trace(pid_t pid)
  */
 int lttng_ust_stop_trace(pid_t pid)
 {
-	int ret;
-
 	lsm.pid = pid;
-	ret = ask_sessiond(UST_STOP_TRACE, NULL);
-
-	return ret;
+	return ask_sessiond(UST_STOP_TRACE, NULL);
 }
 
 /*
@@ -298,19 +357,14 @@ int lttng_ust_stop_trace(pid_t pid)
  */
 int lttng_ust_create_trace(pid_t pid)
 {
-	int ret;
-
 	lsm.pid = pid;
-	ret = ask_sessiond(UST_CREATE_TRACE, NULL);
-
-	return ret;
+	return ask_sessiond(UST_CREATE_TRACE, NULL);
 }
 
 /*
  *  lttng_ust_list_apps
  *
- *  Ask the session daemon for all UST traceable
- *  applications.
+ *  Ask the session daemon for all UST traceable applications.
  *
  *  Return the number of pids.
  *  On error, return negative value.
@@ -330,10 +384,11 @@ int lttng_ust_list_apps(pid_t **pids)
 /*
  *  lttng_list_traces
  *
- *  Ask the session daemon for all traces (kernel and ust)
- *  for the session identified by uuid.
+ *  Ask the session daemon for all traces (kernel and ust) for the session
+ *  identified by uuid.
  *
  *  Return the number of traces.
+ *  On error, return negative value.
  */
 int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces)
 {
@@ -356,18 +411,8 @@ int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces)
  */
 int lttng_create_session(char *name)
 {
-	int ret;
-
-	strncpy(lsm.session_name, name, sizeof(lsm.session_name));
-	lsm.session_name[sizeof(lsm.session_name) - 1] = '\0';
-
-	ret = ask_sessiond(LTTNG_CREATE_SESSION, NULL);
-	if (ret < 0) {
-		goto end;
-	}
-
-end:
-	return ret;
+	strncpy(lsm.session_name, name, NAME_MAX);
+	return ask_sessiond(LTTNG_CREATE_SESSION, NULL);
 }
 
 /*
@@ -377,17 +422,8 @@ end:
  */
 int lttng_destroy_session(uuid_t *uuid)
 {
-	int ret;
-
 	uuid_copy(lsm.session_uuid, *uuid);
-
-	ret = ask_sessiond(LTTNG_DESTROY_SESSION, NULL);
-	if (ret < 0) {
-		goto end;
-	}
-
-end:
-	return ret;
+	return ask_sessiond(LTTNG_DESTROY_SESSION, NULL);
 }
 
 /*
@@ -484,102 +520,29 @@ int lttng_set_tracing_group(const char *name)
 /*
  *  lttng_check_session_daemon
  *
- *  Return 0 if a sesssion daemon is available
- *  else return -1
+ *  Yes, return 1
+ *  No, return 0
+ *  Error, return negative value
  */
-int lttng_check_session_daemon(void)
+int lttng_session_daemon_alive(void)
 {
 	int ret;
 
 	ret = set_session_daemon_path();
 	if (ret < 0) {
+		/* Error */
 		return ret;
 	}
 
 	/* If socket exist, we consider the daemon started */
 	ret = access(sessiond_sock_path, F_OK);
 	if (ret < 0) {
-		return ret;
+		/* Not alive */
+		return 0;
 	}
 
-	return 0;
-}
-
-/*
- *  set_session_daemon_path
- *
- *  Set sessiond socket path by putting it in 
- *  the global sessiond_sock_path variable.
- */
-static int set_session_daemon_path(void)
-{
-	int ret;
-
-	/* Are we in the tracing group ? */
-	ret = check_tracing_group(tracing_group);
-	if (ret < 0 && getuid() != 0) {
-		if (sprintf(sessiond_sock_path, DEFAULT_HOME_CLIENT_UNIX_SOCK,
-					getenv("HOME")) < 0) {
-			return -ENOMEM;
-		}
-	} else {
-		strncpy(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				sizeof(DEFAULT_GLOBAL_CLIENT_UNIX_SOCK));
-	}
-
-	return 0;
-}
-
-/*
- *  check_tracing_group
- *
- *  Check if the specified group name exist.
- *  If yes, 0, else -1
- */
-static int check_tracing_group(const char *grp_name)
-{
-	struct group *grp_tracing;	/* no free(). See getgrnam(3) */
-	gid_t *grp_list;
-	int grp_list_size, grp_id, i;
-	int ret = -1;
-
-	/* Get GID of group 'tracing' */
-	grp_tracing = getgrnam(grp_name);
-	if (grp_tracing == NULL) {
-		/* NULL means not found also. getgrnam(3) */
-		if (errno != 0) {
-			perror("getgrnam");
-		}
-		goto end;
-	}
-
-	/* Get number of supplementary group IDs */
-	grp_list_size = getgroups(0, NULL);
-	if (grp_list_size < 0) {
-		perror("getgroups");
-		goto end;
-	}
-
-	/* Alloc group list of the right size */
-	grp_list = malloc(grp_list_size * sizeof(gid_t));
-	grp_id = getgroups(grp_list_size, grp_list);
-	if (grp_id < -1) {
-		perror("getgroups");
-		goto free_list;
-	}
-
-	for (i = 0; i < grp_list_size; i++) {
-		if (grp_list[i] == grp_tracing->gr_gid) {
-			ret = 0;
-			break;
-		}
-	}
-
-free_list:
-	free(grp_list);
-
-end:
-	return ret;
+	/* Is alive */
+	return 1;
 }
 
 /*

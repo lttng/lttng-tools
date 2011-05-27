@@ -645,8 +645,8 @@ static int check_ltt_sessiond(void)
 	int ret;
 	char *pathname = NULL, *alloc_pathname = NULL;
 
-	ret = lttng_check_session_daemon();
-	if (ret < 0) {
+	ret = lttng_session_daemon_alive();
+	if (ret == 0) {	/* not alive */
 		/* Try command line option path */
 		if (opt_sessiond_path != NULL) {
 			ret = access(opt_sessiond_path, F_OK | X_OK);

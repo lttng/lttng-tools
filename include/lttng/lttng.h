@@ -60,7 +60,6 @@ struct lttng_session {
 /*
  * Session daemon control
  */
-extern int lttng_check_session_daemon(void);
 extern int lttng_connect_sessiond(void);
 extern int lttng_create_session(char *name);
 extern int lttng_destroy_session(uuid_t *uuid);
@@ -69,6 +68,7 @@ extern int lttng_disconnect_sessiond(void);
 extern int lttng_list_sessions(struct lttng_session **sessions);
 /* Return an allocated array of lttng_traces */
 extern int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces);
+extern int lttng_session_daemon_alive(void);
 /* Set tracing group for the current execution */
 extern int lttng_set_tracing_group(const char *name);
 /* Set session uuid for the current execution */
