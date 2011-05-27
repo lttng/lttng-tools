@@ -67,6 +67,9 @@ static int poll_pipe[2];
 /* socket to communicate errors with sessiond */
 static int error_socket = -1;
 
+/* to count the number of time the user pressed ctrl+c */
+static int sigintcount = 0;
+
 /* Argument variables */
 int opt_quiet;
 int opt_verbose;
@@ -185,6 +188,11 @@ end:
  */
 static void sighandler(int sig)
 {
+	if (sig == SIGINT && sigintcount++ == 0) {
+		DBG("ignoring first SIGINT");
+		return;
+	}
+
 	cleanup();
 
 	return;
