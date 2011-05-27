@@ -156,7 +156,7 @@ static int add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_fd)
 	/* Opening the tracefile in write mode */
 	DBG("Opening %s for writing", tmp_fd->path_name);
 	ret = open(tmp_fd->path_name,
-			O_WRONLY|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+			O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
 	if (ret < 0) {
 		ERR("Opening %s", tmp_fd->path_name);
 		perror("open");
