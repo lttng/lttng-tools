@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
+ *                      David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,28 +17,28 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_KCONSUMERD_H
-#define _LTT_KCONSUMERD_H
+#ifndef _LTTNG_KCONSUMERD_H
+#define _LTTNG_KCONSUMERD_H
 
-#include "lttng-kconsumerd.h"
+#include "lttng-share.h"
 
-struct ltt_kconsumerd_fd_list {
-	struct cds_list_head head;
+/* Kernel consumer path */
+#define KCONSUMERD_PATH						LTTNG_RUNDIR "/kconsumerd"
+#define KCONSUMERD_CMD_SOCK_PATH			KCONSUMERD_PATH "/command"
+#define KCONSUMERD_ERR_SOCK_PATH			KCONSUMERD_PATH "/error"
+
+/* Commands for kconsumerd */
+enum kconsumerd_command {
+	ADD_STREAM,
+	UPDATE_STREAM, /* pause, delete, start depending on fd state */
+	STOP, /* delete all */
 };
 
-/*
- * Internal representation of the FDs,
- * sessiond_fd is used to identify uniquely a fd
- */
-struct ltt_kconsumerd_fd {
-	struct cds_list_head list;
-	int sessiond_fd; /* used to identify uniquely a fd with sessiond */
-	int consumerd_fd; /* fd to consume */
-	int out_fd; /* output file to write the data */
-	off_t out_fd_offset; /* write position in the output file descriptor */
-	char path_name[PATH_MAX]; /* tracefile name */
-	enum kconsumerd_fd_state state;
-	unsigned long max_sb_size; /* the subbuffer size for this channel */
+/* State of each fd in consumerd */
+enum kconsumerd_fd_state {
+	ACTIVE_FD,
+	PAUSE_FD,
+	DELETE_FD,
 };
 
-#endif /* _LTT_KCONSUMERD_H */
+#endif /* _LTTNG_KCONSUMERD_H */

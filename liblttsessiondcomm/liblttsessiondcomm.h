@@ -26,18 +26,11 @@
 
 #include "lttng-share.h"
 
-#define LTTNG_RUNDIR						"/var/run/lttng"
-
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		LTTNG_RUNDIR "/client-ltt-sessiond"
 #define DEFAULT_GLOBAL_APPS_UNIX_SOCK		LTTNG_RUNDIR "/apps-ltt-sessiond"
 #define DEFAULT_HOME_APPS_UNIX_SOCK			"%s/.apps-ltt-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK		"%s/.client-ltt-sessiond"
-
-/* Kernel consumer path */
-#define KCONSUMERD_PATH						LTTNG_RUNDIR "/kconsumerd"
-#define KCONSUMERD_CMD_SOCK_PATH			KCONSUMERD_PATH "/command"
-#define KCONSUMERD_ERR_SOCK_PATH			KCONSUMERD_PATH "/error"
 
 /* Queue size of listen(2) */
 #define MAX_LISTEN 10
@@ -130,20 +123,6 @@ enum lttcomm_return_code {
 	KCONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
-};
-
-/* commands for kconsumerd */
-enum lttcomm_consumerd_command {
-	LTTCOMM_ADD_STREAM = 1100,
-	LTTCOMM_UPDATE_STREAM, /* pause, delete, start depending on fd state */
-	LTTCOMM_STOP, /* delete all */
-};
-
-/* state of each fd in consumerd */
-enum lttcomm_kconsumerd_fd_state {
-	ACTIVE_FD,
-	PAUSE_FD,
-	DELETE_FD,
 };
 
 /*

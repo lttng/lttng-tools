@@ -392,7 +392,7 @@ end:
  * Update a fd according to what we just received
  */
 static void change_fd_state(int sessiond_fd,
-		enum lttcomm_kconsumerd_fd_state state)
+		enum kconsumerd_fd_state state)
 {
 	struct ltt_kconsumerd_fd *iter;
 	cds_list_for_each_entry(iter, &kconsumerd_fd_list.head, list) {
@@ -411,7 +411,7 @@ static void change_fd_state(int sessiond_fd,
  * Returns the size of received data
  */
 static int consumerd_recv_fd(int sfd, int size,
-		enum lttcomm_consumerd_command cmd_type)
+		enum kconsumerd_command cmd_type)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
@@ -459,7 +459,7 @@ static int consumerd_recv_fd(int sfd, int size,
 		DBG("Receive : expecting %d fds", nb_fd);
 		for (i = 0; i < nb_fd; i++) {
 			switch (cmd_type) {
-			case LTTCOMM_ADD_STREAM:
+			case ADD_STREAM:
 				DBG("add_fd %s (%d)", buf[i].path_name, ((int *)CMSG_DATA(cmsg))[i]);
 				ret = add_fd(&buf[i], ((int *)CMSG_DATA(cmsg))[i]);
 				if (ret < 0) {
@@ -467,7 +467,7 @@ static int consumerd_recv_fd(int sfd, int size,
 					goto end;
 				}
 				break;
-			case LTTCOMM_UPDATE_STREAM:
+			case UPDATE_STREAM:
 				change_fd_state(buf[i].fd, buf[i].state);
 				break;
 			default:

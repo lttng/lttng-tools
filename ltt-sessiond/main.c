@@ -45,6 +45,7 @@
 #include "ust-ctl.h"
 #include "session.h"
 #include "traceable-app.h"
+#include "lttng-kconsumerd.h"
 
 /*
  * TODO:
@@ -584,7 +585,7 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 
 	/* Setup header */
 	lkh.payload_size = nb_fd * sizeof(struct lttcomm_kconsumerd_msg);
-	lkh.cmd_type = LTTCOMM_ADD_STREAM;
+	lkh.cmd_type = ADD_STREAM;
 
 	DBG("Sending kconsumerd header");
 
