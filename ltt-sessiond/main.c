@@ -332,6 +332,7 @@ static void *thread_manage_kconsumerd(void *data)
 		goto error;
 	}
 
+	/* Getting status code from kconsumerd */
 	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
 	if (ret <= 0) {
 		goto error;
@@ -340,6 +341,7 @@ static void *thread_manage_kconsumerd(void *data)
 	if (code == KCONSUMERD_COMMAND_SOCK_READY) {
 		kconsumerd_cmd_sock = lttcomm_connect_unix_sock(kconsumerd_cmd_unix_sock_path);
 		if (kconsumerd_cmd_sock < 0) {
+			sem_post(&kconsumerd_sem);
 			perror("kconsumerd connect");
 			goto error;
 		}
@@ -352,19 +354,14 @@ static void *thread_manage_kconsumerd(void *data)
 		goto error;
 	}
 
-	while (1) {
-		/* Wait for any kconsumerd error */
-		ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
-		if (ret <= 0) {
-			ERR("Kconsumerd closed the command socket");
-			goto error;
-		}
-
-		ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
-		if (code != KCONSUMERD_POLL_HUP) {
-			goto error;
-		}
+	/* Wait for any kconsumerd error */
+	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
+	if (ret <= 0) {
+		ERR("Kconsumerd closed the command socket");
+		goto error;
 	}
+
+	ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
 
 error:
 	kconsumerd_pid = 0;
@@ -461,9 +458,15 @@ static int spawn_kconsumerd_thread(void)
 	/* Wait for the kconsumerd thread to be ready */
 	sem_wait(&kconsumerd_sem);
 
+	if (kconsumerd_pid == 0) {
+		ERR("Kconsumerd did not start");
+		goto error;
+	}
+
 	return 0;
 
 error:
+	ret = LTTCOMM_KERN_CONSUMER_FAIL;
 	return ret;
 }
 
@@ -535,11 +538,9 @@ static int start_kconsumerd(void)
 	DBG("Kconsumerd pid %d", ret);
 
 	DBG("Spawning kconsumerd thread");
-
 	ret = spawn_kconsumerd_thread();
 	if (ret < 0) {
 		ERR("Fatal error spawning kconsumerd thread");
-		ret = LTTCOMM_FATAL;
 		goto error;
 	}
 
