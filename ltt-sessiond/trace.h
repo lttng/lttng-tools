@@ -104,23 +104,23 @@ struct ltt_ust_marker {
 };
 
 /*
- * Function prototype
+ * Create functions malloc() the data structure.
  */
-
-/* Kernel session */
 struct ltt_kernel_session *trace_create_kernel_session(void);
-
-/* Kernel channel */
 struct ltt_kernel_channel *trace_create_kernel_channel(void);
-
-/* Kernel event */
 struct ltt_kernel_event *trace_create_kernel_event(char *name,
 		enum lttng_kernel_instrumentation type);
-
-/* Kernel metadata */
 struct ltt_kernel_metadata *trace_create_kernel_metadata(void);
-
-/* Kernel stream */
 struct ltt_kernel_stream *trace_create_kernel_stream(void);
+
+/*
+ * Destroy functions free() the data structure and remove from linked list if
+ * it's applies.
+ */
+void trace_destroy_kernel_session(struct ltt_kernel_session *session);
+void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata);
+void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel);
+void trace_destroy_kernel_event(struct ltt_kernel_event *event);
+void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream);
 
 #endif /* _LTT_TRACE_H */

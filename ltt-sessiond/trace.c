@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <urcu/list.h>
 
 #include "ltt-sessiond.h"
@@ -206,4 +207,80 @@ struct ltt_kernel_stream *trace_create_kernel_stream(void)
 
 error:
 	return NULL;
+}
+
+void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
+{
+	/* Close kernel fd */
+	close(stream->fd);
+	free(stream->pathname);
+
+	/* Remove from stream list */
+	cds_list_del(&stream->list);
+	free(stream);
+}
+
+void trace_destroy_kernel_event(struct ltt_kernel_event *event)
+{
+	/* Close kernel fd */
+	close(event->fd);
+	/* Free attributes */
+	free(event->event);
+
+	/* Remove from event list */
+	cds_list_del(&event->list);
+	free(event);
+}
+
+void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
+{
+	struct ltt_kernel_stream *stream;
+	struct ltt_kernel_event *event;
+
+	/* Close kernel fd */
+	close(channel->fd);
+	free(channel->pathname);
+	/* Free attributes structure */
+	free(channel->channel);
+
+	/* For each stream in the channel list */
+	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
+		trace_destroy_kernel_stream(stream);
+	}
+
+	/* For each event in the channel list */
+	cds_list_for_each_entry(event, &channel->events_list.head, list) {
+		trace_destroy_kernel_event(event);
+	}
+
+	/* Remove from channel list */
+	cds_list_del(&channel->list);
+	free(channel);
+}
+
+void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
+{
+	/* Close kernel fd */
+	close(metadata->fd);
+	/* Free attributes */
+	free(metadata->conf);
+
+	free(metadata);
+}
+
+void trace_destroy_kernel_session(struct ltt_kernel_session *session)
+{
+	struct ltt_kernel_channel *channel;
+
+	/* Close kernel fds */
+	close(session->fd);
+	close(session->metadata_stream_fd);
+
+	trace_destroy_kernel_metadata(session->metadata);
+
+	cds_list_for_each_entry(channel, &session->channel_list.head, list) {
+		trace_destroy_kernel_channel(channel);
+	}
+
+	free(session);
 }

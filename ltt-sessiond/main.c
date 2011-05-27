@@ -91,50 +91,6 @@ static sem_t kconsumerd_sem;
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
 /*
- *  free_kernel_session
- *
- *  Free all data structure inside a kernel session and the session pointer.
- */
-static void free_kernel_session(struct ltt_kernel_session *session)
-{
-	struct ltt_kernel_channel *chan;
-	struct ltt_kernel_stream *stream;
-	struct ltt_kernel_event *event;
-
-	/* Clean metadata */
-	close(session->metadata_stream_fd);
-	close(session->metadata->fd);
-	free(session->metadata->conf);
-	free(session->metadata);
-
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		/* Clean all event(s) */
-		cds_list_for_each_entry(event, &chan->events_list.head, list) {
-			close(event->fd);
-			free(event->event);
-			free(event);
-		}
-
-		/* Clean streams */
-		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
-			close(stream->fd);
-			free(stream->pathname);
-			free(stream);
-		}
-		/* Clean channel */
-		close(chan->fd);
-		free(chan->channel);
-		free(chan->pathname);
-		free(chan);
-	}
-
-	close(session->fd);
-	free(session);
-
-	DBG("All kernel session data structures freed");
-}
-
-/*
  *  teardown_kernel_session
  *
  *  Complete teardown of a kernel session. This free all data structure
@@ -144,7 +100,7 @@ static void teardown_kernel_session(struct ltt_session *session)
 {
 	if (session->kernel_session != NULL) {
 		DBG("Tearing down kernel session");
-		free_kernel_session(session->kernel_session);
+		trace_destroy_kernel_session(session->kernel_session);
 		/* Extra precaution */
 		session->kernel_session = NULL;
 		/* Decrement session count */
