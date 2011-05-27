@@ -312,18 +312,18 @@ static int on_read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd,
 splice_error:
 	/* send the appropriate error description to sessiond */
 	switch(ret) {
-		case EBADF:
-			send_error(KCONSUMERD_SPLICE_EBADF);
-			break;
-		case EINVAL:
-			send_error(KCONSUMERD_SPLICE_EINVAL);
-			break;
-		case ENOMEM:
-			send_error(KCONSUMERD_SPLICE_ENOMEM);
-			break;
-		case ESPIPE:
-			send_error(KCONSUMERD_SPLICE_ESPIPE);
-			break;
+	case EBADF:
+		send_error(KCONSUMERD_SPLICE_EBADF);
+		break;
+	case EINVAL:
+		send_error(KCONSUMERD_SPLICE_EINVAL);
+		break;
+	case ENOMEM:
+		send_error(KCONSUMERD_SPLICE_ENOMEM);
+		break;
+	case ESPIPE:
+		send_error(KCONSUMERD_SPLICE_ESPIPE);
+		break;
 	}
 
 end:
@@ -459,19 +459,19 @@ static int consumerd_recv_fd(int sfd, int size,
 		DBG("Receive : expecting %d fds", nb_fd);
 		for (i = 0; i < nb_fd; i++) {
 			switch (cmd_type) {
-				case LTTCOMM_ADD_STREAM:
-					DBG("add_fd %s (%d)", buf[i].path_name, ((int *)CMSG_DATA(cmsg))[i]);
-					ret = add_fd(&buf[i], ((int *)CMSG_DATA(cmsg))[i]);
-					if (ret < 0) {
-						send_error(KCONSUMERD_OUTFD_ERROR);
-						goto end;
-					}
-					break;
-				case LTTCOMM_UPDATE_STREAM:
-					change_fd_state(buf[i].fd, buf[i].state);
-					break;
-				default:
-					break;
+			case LTTCOMM_ADD_STREAM:
+				DBG("add_fd %s (%d)", buf[i].path_name, ((int *)CMSG_DATA(cmsg))[i]);
+				ret = add_fd(&buf[i], ((int *)CMSG_DATA(cmsg))[i]);
+				if (ret < 0) {
+					send_error(KCONSUMERD_OUTFD_ERROR);
+					goto end;
+				}
+				break;
+			case LTTCOMM_UPDATE_STREAM:
+				change_fd_state(buf[i].fd, buf[i].state);
+				break;
+			default:
+				break;
 			}
 		}
 		/* flag to tell the polling thread to update its fd array */
@@ -625,7 +625,7 @@ static void *thread_poll_fds(void *data)
 		 * the ltt_fd_list has been updated, we need to update our
 		 * local array as well
 		 */
-		if (update_fd_array) {
+		if (update_fd_array == 1) {
 			if (pollfd != NULL) {
 				free(pollfd);
 				pollfd = NULL;
@@ -679,29 +679,29 @@ static void *thread_poll_fds(void *data)
 		/* Take care of high priority channels first. */
 		for (i = 0; i < nb_fd; i++) {
 			switch(pollfd[i].revents) {
-				case POLLERR:
-					ERR("Error returned in polling fd %d.", pollfd[i].fd);
-					num_hup++;
-					send_error(KCONSUMERD_POLL_ERROR);
-					break;
-				case POLLHUP:
-					ERR("Polling fd %d tells it has hung up.", pollfd[i].fd);
-					num_hup++;
-					break;
-				case POLLNVAL:
-					ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
-					send_error(KCONSUMERD_POLL_NVAL);
-					num_hup++;
-					break;
-				case POLLPRI:
-					DBG("Urgent read on fd %d", pollfd[i].fd);
-					high_prio = 1;
-					ret = read_subbuffer(local_kconsumerd_fd[i]);
-					/* it's ok to have an unavailable sub-buffer (FIXME : is it ?) */
-					if (ret == EAGAIN) {
-						ret = 0;
-					}
-					break;
+			case POLLERR:
+				ERR("Error returned in polling fd %d.", pollfd[i].fd);
+				num_hup++;
+				send_error(KCONSUMERD_POLL_ERROR);
+				break;
+			case POLLHUP:
+				ERR("Polling fd %d tells it has hung up.", pollfd[i].fd);
+				num_hup++;
+				break;
+			case POLLNVAL:
+				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
+				send_error(KCONSUMERD_POLL_NVAL);
+				num_hup++;
+				break;
+			case POLLPRI:
+				DBG("Urgent read on fd %d", pollfd[i].fd);
+				high_prio = 1;
+				ret = read_subbuffer(local_kconsumerd_fd[i]);
+				/* it's ok to have an unavailable sub-buffer (FIXME : is it ?) */
+				if (ret == EAGAIN) {
+					ret = 0;
+				}
+				break;
 			}
 		}
 
@@ -713,17 +713,15 @@ static void *thread_poll_fds(void *data)
 		}
 
 		/* Take care of low priority channels. */
-		if (!high_prio) {
+		if (high_prio == 0) {
 			for (i = 0; i < nb_fd; i++) {
-				switch(pollfd[i].revents) {
-					case POLLIN:
-						DBG("Normal read on fd %d", pollfd[i].fd);
-						ret = read_subbuffer(local_kconsumerd_fd[i]);
-						/* it's ok to have an unavailable subbuffer (FIXME : is it ?) */
-						if (ret == EAGAIN) {
-							ret = 0;
-						}
-						break;
+				if (pollfd[i].revents == POLLIN) {
+					DBG("Normal read on fd %d", pollfd[i].fd);
+					ret = read_subbuffer(local_kconsumerd_fd[i]);
+					/* it's ok to have an unavailable subbuffer (FIXME : is it ?) */
+					if (ret == EAGAIN) {
+						ret = 0;
+					}
 				}
 			}
 		}
@@ -789,36 +787,36 @@ static void parse_args(int argc, char **argv)
 		}
 
 		switch (c) {
-			case 0:
-				fprintf(stderr, "option %s", long_options[option_index].name);
-				if (optarg) {
-					fprintf(stderr, " with arg %s\n", optarg);
-				}
-				break;
-			case 'c':
-				snprintf(command_sock_path, PATH_MAX, "%s", optarg);
-				break;
-			case 'e':
-				snprintf(error_sock_path, PATH_MAX, "%s", optarg);
-				break;
-			case 'd':
-				opt_daemon = 1;
-				break;
-			case 'h':
-				usage();
-				exit(EXIT_FAILURE);
-			case 'q':
-				opt_quiet = 1;
-				break;
-			case 'v':
-				opt_verbose = 1;
-				break;
-			case 'V':
-				fprintf(stdout, "%s\n", VERSION);
-				exit(EXIT_SUCCESS);
-			default:
-				usage();
-				exit(EXIT_FAILURE);
+		case 0:
+			fprintf(stderr, "option %s", long_options[option_index].name);
+			if (optarg) {
+				fprintf(stderr, " with arg %s\n", optarg);
+			}
+			break;
+		case 'c':
+			snprintf(command_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'e':
+			snprintf(error_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'd':
+			opt_daemon = 1;
+			break;
+		case 'h':
+			usage();
+			exit(EXIT_FAILURE);
+		case 'q':
+			opt_quiet = 1;
+			break;
+		case 'v':
+			opt_verbose = 1;
+			break;
+		case 'V':
+			fprintf(stdout, "%s\n", VERSION);
+			exit(EXIT_SUCCESS);
+		default:
+			usage();
+			exit(EXIT_FAILURE);
 		}
 	}
 }
