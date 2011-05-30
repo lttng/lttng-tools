@@ -30,20 +30,20 @@ char *opt_trace_name;
 int opt_destroy_trace;
 int opt_create_session;
 int opt_destroy_session;
-int opt_trace_kernel = 0;
-int opt_quiet = 0;
-int opt_verbose = 0;
-int opt_list_apps = 0;
-int opt_no_sessiond = 0;
-int opt_list_session = 0;
-int opt_list_traces = 0;
+int opt_trace_kernel;
+int opt_quiet;
+int opt_verbose;
+int opt_list_apps;
+int opt_no_sessiond;
+int opt_list_session;
+int opt_list_traces;
 int opt_create_trace;
-int opt_start_trace = 0;
-int opt_stop_trace = 0;
+int opt_start_trace;
+int opt_stop_trace;
 int opt_enable_event;
 int opt_disable_event;
 int opt_kern_create_channel;
-pid_t opt_trace_pid = 0;
+pid_t opt_trace_pid;
 
 enum {
 	OPT_HELP = 1,
