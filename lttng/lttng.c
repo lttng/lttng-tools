@@ -47,6 +47,7 @@ static int process_client_opt(void);
 static int process_opt_list_apps(void);
 static int process_opt_list_sessions(void);
 static int process_opt_list_traces(void);
+static int process_opt_kernel_list_events(void);
 static int process_opt_create_session(void);
 static int process_kernel_create_trace(void);
 static int process_opt_kernel_event(void);
@@ -83,6 +84,18 @@ static int process_client_opt(void)
 		ret = process_opt_list_sessions();
 		if (ret < 0) {
 			goto end;
+		}
+		goto error;
+	}
+
+	if (opt_list_events) {
+		if (opt_trace_kernel) {
+			ret = process_opt_kernel_list_events();
+			if (ret < 0) {
+				goto end;
+			}
+		} else if (opt_trace_pid != 0) {
+			// TODO
 		}
 		goto error;
 	}
@@ -253,7 +266,40 @@ error:
 }
 
 /*
- *  process_kernel_event
+ *  process_opt_kernel_list_events
+ *
+ *  Ask for all trace events in the kernel and pretty print them.
+ */
+static int process_opt_kernel_list_events(void)
+{
+	int ret, pos, size;
+	char *event_list, *event, *ptr;
+
+	DBG("Getting all tracing events");
+
+	ret = lttng_kernel_list_events(&event_list);
+	if (ret < 0) {
+		ERR("Unable to list events.");
+		return ret;
+	}
+
+	MSG("Kernel tracepoints:\n-------------");
+
+	ptr = event_list;
+	while ((size = sscanf(ptr, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
+		MSG("    - %s", event);
+		/* Move pointer to the next line */
+		ptr += pos + 1;
+		free(event);
+	}
+
+	free(event_list);
+
+	return 0;
+}
+
+/*
+ *  process_opt_kernel_event
  *
  *  Enable kernel event from the command line list given.
  */

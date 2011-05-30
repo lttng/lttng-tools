@@ -22,6 +22,14 @@
 #include "session.h"
 #include "trace.h"
 
+/*
+ * Default size for the event list when kernel_list_events is called. This size
+ * value is based on the initial LTTng 2.0 version set of tracepoints. This is
+ * NOT an upper bound because if the real event list size is bigger, dynamic
+ * reallocation is performed.
+ */
+#define KERNEL_EVENT_LIST_SIZE	2000
+
 int kernel_create_session(struct ltt_session *session, int tracer_fd);
 int kernel_create_channel(struct ltt_kernel_session *session);
 int kernel_enable_event(struct ltt_kernel_session *session, char *name);
@@ -30,5 +38,6 @@ int kernel_create_metadata_stream(struct ltt_kernel_session *session);
 int kernel_create_channel_stream(struct ltt_kernel_channel *channel);
 int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
+ssize_t kernel_list_events(int tracer_fd, char **event_list);
 
 #endif /* _LTT_KERNEL_CTL_H */

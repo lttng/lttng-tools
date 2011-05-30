@@ -92,6 +92,7 @@ extern int lttng_kernel_create_session(void);
 extern int lttng_kernel_create_stream(void);
 extern int lttng_kernel_disable_event(char *event_name);
 extern int lttng_kernel_enable_event(char *event_name);
+extern int lttng_kernel_list_events(char **event_list);
 extern int lttng_kernel_open_metadata(void);
 extern int lttng_kernel_start_tracing(void);
 extern int lttng_kernel_stop_tracing(void);

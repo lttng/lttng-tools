@@ -291,6 +291,19 @@ int lttng_kernel_create_stream(void)
 }
 
 /*
+ *  lttng_kernel_list_events
+ *
+ *  List all available events in the kernel.
+ *
+ *  Return the size (bytes) of the list and set the event_list array.
+ *  On error, return negative value.
+ */
+int lttng_kernel_list_events(char **event_list)
+{
+	return ask_sessiond(KERNEL_LIST_EVENTS, (void **) event_list);
+}
+
+/*
  *  lttng_kernel_start_tracing
  *
  *  Start kernel tracing.

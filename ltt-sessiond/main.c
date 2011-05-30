@@ -658,6 +658,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
+	case KERNEL_LIST_EVENTS:
 	case UST_LIST_APPS:
 		break;
 	default:
@@ -676,6 +677,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case KERNEL_CREATE_STREAM:
 	case KERNEL_DISABLE_EVENT:
 	case KERNEL_ENABLE_EVENT:
+	case KERNEL_LIST_EVENTS:
 	case KERNEL_OPEN_METADATA:
 	case KERNEL_START_TRACE:
 	case KERNEL_STOP_TRACE:
@@ -757,6 +759,34 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
 			goto error;
 		}
+
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case KERNEL_LIST_EVENTS:
+	{
+		char *event_list;
+		ssize_t size;
+
+		size = kernel_list_events(kernel_tracer_fd, &event_list);
+		if (size < 0) {
+			ret = LTTCOMM_KERN_LIST_FAIL;
+			goto error;
+		}
+
+		/*
+		 * Setup lttng message with payload size set to the event list size in
+		 * bytes and then copy list into the llm payload.
+		 */
+		ret = setup_lttng_msg(cmd_ctx, size);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		/* Copy event list into message payload */
+		memcpy(cmd_ctx->llm->payload, event_list, size);
+
+		free(event_list);
 
 		ret = LTTCOMM_OK;
 		break;

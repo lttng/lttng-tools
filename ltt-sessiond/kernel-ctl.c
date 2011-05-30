@@ -281,3 +281,63 @@ int kernel_create_metadata_stream(struct ltt_kernel_session *session)
 error:
 	return -1;
 }
+
+/*
+ *  kernel_list_events
+ *
+ *  Get the event list from the kernel tracer and return that list in the CTF
+ *  format.
+ */
+ssize_t kernel_list_events(int tracer_fd, char **list)
+{
+	int fd;
+	char *buf, *line = NULL;
+	size_t nb, nbmem, total = 0;
+	ssize_t size;
+	FILE *fp;
+
+	fd = kernctl_tracepoint_list(tracer_fd);
+	if (fd < 0) {
+		perror("kernel tracepoint list");
+		goto error;
+	}
+
+	fp = fdopen(fd, "r");
+	if (fp == NULL) {
+		perror("kernel tracepoint list fdopen");
+		goto error;
+	}
+
+	/*
+	 * Init memory size counter
+	 * See kernel-ctl.h for explanation of this value
+	 */
+	nbmem = KERNEL_EVENT_LIST_SIZE;
+	buf = malloc(nbmem);
+
+	while ((size = getline(&line, &nb, fp)) != -1) {
+		if (total + size > nbmem) {
+			DBG("Reallocating event list from %ld to %ld bytes", nbmem,
+					total + size + KERNEL_EVENT_LIST_SIZE);
+			/* Adding the default size again */
+			nbmem = total + size + KERNEL_EVENT_LIST_SIZE;
+			buf = realloc(buf, nbmem);
+			if (buf == NULL) {
+				perror("realloc list events");
+				goto error;
+			}
+		}
+		memcpy(buf + total, line, size);
+		total += size;
+	}
+
+	*list = buf;
+
+	DBG("Kernel list events done");
+
+	return total;
+
+error:
+	return -1;
+}
+

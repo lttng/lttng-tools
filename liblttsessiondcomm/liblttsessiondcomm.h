@@ -46,6 +46,7 @@ enum lttcomm_sessiond_command {
 	KERNEL_CREATE_STREAM,
 	KERNEL_DISABLE_EVENT,
 	KERNEL_ENABLE_EVENT,
+	KERNEL_LIST_EVENTS,
 	KERNEL_OPEN_METADATA,
 	KERNEL_START_TRACE,
 	KERNEL_STOP_TRACE,
@@ -108,6 +109,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_DIR_FAIL,			/* Kernel trace directory creation failed */
 	LTTCOMM_KERN_DIR_EXIST,			/* Kernel trace directory exist */
 	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
+	LTTCOMM_KERN_LIST_FAIL,			/* Kernel listing events failed */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
