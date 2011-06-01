@@ -235,8 +235,16 @@ static int set_session_daemon_path(void)
  */
 int lttng_kernel_enable_event(char *event_name)
 {
-	strncpy(lsm.u.event.event_name, event_name, NAME_MAX);
-	return ask_sessiond(KERNEL_ENABLE_EVENT, NULL);
+	int ret;
+
+	if (event_name == NULL) {
+		ret = ask_sessiond(KERNEL_ENABLE_ALL_EVENT, NULL);
+	} else {
+		strncpy(lsm.u.event.event_name, event_name, NAME_MAX);
+		ret = ask_sessiond(KERNEL_ENABLE_EVENT, NULL);
+	}
+
+	return ret;
 }
 
 /*

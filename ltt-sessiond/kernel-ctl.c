@@ -123,6 +123,7 @@ int kernel_enable_event(struct ltt_kernel_session *session, char *name)
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
 		ret = kernctl_create_event(chan->fd, event->event);
 		if (ret < 0) {
+			ERR("Unable to enable event %s", name);
 			goto error;
 		}
 

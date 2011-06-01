@@ -42,6 +42,7 @@ int opt_create_trace;
 int opt_start_trace;
 int opt_stop_trace;
 int opt_enable_event;
+int opt_enable_all_event;
 int opt_disable_event;
 int opt_kern_create_channel;
 pid_t opt_trace_pid;
@@ -66,6 +67,7 @@ static struct poptOption long_options[] = {
 	{"destroy-session", 'd',	POPT_ARG_STRING,	0, OPT_DESTROY_SESSION, 0, 0},
 	{"disable-event",	0,		POPT_ARG_STRING,	0, OPT_DISABLE_EVENT, 0, 0},
 	{"enable-event",	'e',	POPT_ARG_STRING,	0, OPT_ENABLE_EVENT, 0, 0},
+	{"enable-all-event",'a',	POPT_ARG_VAL,		&opt_enable_all_event, 1, 0, 0},
 	{"group",			0,		POPT_ARG_STRING,	&opt_tracing_group, 0, 0, 0},
 	{"help",			'h',	POPT_ARG_NONE,		0, OPT_HELP, 0, 0},
 	{"kernel",			'k',	POPT_ARG_VAL,		&opt_trace_kernel, 1, 0, 0},
@@ -116,6 +118,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel                 Specify action on kernel tracer\n");
 	fprintf(ofp, "      --list-events            List all available tracing events\n");
 	fprintf(ofp, "  -e, --enable-event LIST      Enable tracing event (support marker and tracepoint)\n");
+	fprintf(ofp, "  -a, --enable-all-event       Enable all tracing event\n");
 	fprintf(ofp, "      --disable-event LIST     Disable tracing event (support marker and tracepoint)\n");
 	fprintf(ofp, "  -C, --create-trace           Create a trace. Allocate and setup a trace\n");
 	fprintf(ofp, "  -D, --destroy-trace [NAME]   Destroy a trace. Use NAME to identify user-space trace\n");

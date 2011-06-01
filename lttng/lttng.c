@@ -143,13 +143,11 @@ static int process_client_opt(void)
 			}
 		}
 
-		if (opt_event_list != NULL) {
+		if (opt_event_list != NULL || opt_enable_all_event) {
 			ret = process_opt_kernel_event();
 			if (ret < 0) {
 				goto end;
 			}
-		} else {
-			// Enable all events
 		}
 
 		if (auto_trace || opt_start_trace) {
@@ -308,6 +306,17 @@ static int process_opt_kernel_event(void)
 	int ret;
 	char *event_name;
 
+	if (opt_enable_all_event) {
+		ret = lttng_kernel_enable_event(NULL);
+		if (ret < 0) {
+			ERR("%s", lttng_get_readable_code(ret));
+		} else {
+			MSG("All kernel event enabled");
+		}
+
+		goto end;
+	}
+
 	event_name = strtok(opt_event_list, ",");
 	while (event_name != NULL) {
 		DBG("Enabling kernel event %s", event_name);
@@ -321,6 +330,7 @@ static int process_opt_kernel_event(void)
 		event_name = strtok(NULL, ",");
 	}
 
+end:
 	return 0;
 }
 
@@ -621,7 +631,7 @@ static int validate_options(void)
 	}
 
 	/* If start trace, auto start tracing */
-	if (opt_start_trace || opt_event_list != NULL) {
+	if (opt_start_trace || opt_event_list != NULL || opt_enable_all_event) {
 		DBG("Requesting auto tracing");
 		auto_trace = 1;
 	}

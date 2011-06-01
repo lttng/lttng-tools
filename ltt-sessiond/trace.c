@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <urcu/list.h>
 
+#include "lttngerr.h"
 #include "ltt-sessiond.h"
 #include "trace.h"
 
@@ -211,6 +212,7 @@ error:
 
 void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
 {
+	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
 	close(stream->fd);
 	free(stream->pathname);
@@ -222,6 +224,7 @@ void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
 
 void trace_destroy_kernel_event(struct ltt_kernel_event *event)
 {
+	DBG("[trace] Closing event fd %d", event->fd);
 	/* Close kernel fd */
 	close(event->fd);
 	/* Free attributes */
@@ -237,6 +240,7 @@ void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 	struct ltt_kernel_stream *stream;
 	struct ltt_kernel_event *event;
 
+	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
 	close(channel->fd);
 	free(channel->pathname);
@@ -260,6 +264,7 @@ void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 
 void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
 {
+	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
 	close(metadata->fd);
 	/* Free attributes */
@@ -272,8 +277,10 @@ void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel;
 
+	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */
 	close(session->fd);
+	DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
 	close(session->metadata_stream_fd);
 
 	trace_destroy_kernel_metadata(session->metadata);

@@ -561,35 +561,17 @@ error:
  */
 static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 {
-	int ret, i = 0;
-	/* Plus one here for the metadata fd */
-	size_t nb_fd = session->stream_count_global + 1;
-	int fds[nb_fd];
+	int ret;
+	size_t nb_fd;
 	struct ltt_kernel_stream *stream;
 	struct ltt_kernel_channel *chan;
 	struct lttcomm_kconsumerd_header lkh;
-	struct lttcomm_kconsumerd_msg buf[nb_fd];
+	struct lttcomm_kconsumerd_msg lkm;
 
-	/* Add metadata data */
-	fds[i] = session->metadata_stream_fd;
-	buf[i].fd = fds[i];
-	buf[i].state = ACTIVE_FD;
-	buf[i].max_sb_size = session->metadata->conf->subbuf_size;
-	strncpy(buf[i].path_name, session->metadata->pathname, PATH_MAX);
-
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
-			i++;
-			fds[i] = stream->fd;
-			buf[i].fd = stream->fd;
-			buf[i].state = stream->state;
-			buf[i].max_sb_size = chan->channel->subbuf_size;
-			strncpy(buf[i].path_name, stream->pathname, PATH_MAX);
-		}
-	}
+	nb_fd = session->stream_count_global;
 
 	/* Setup header */
-	lkh.payload_size = nb_fd * sizeof(struct lttcomm_kconsumerd_msg);
+	lkh.payload_size = (nb_fd + 1) * sizeof(struct lttcomm_kconsumerd_msg);
 	lkh.cmd_type = ADD_STREAM;
 
 	DBG("Sending kconsumerd header");
@@ -600,12 +582,35 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 		goto error;
 	}
 
-	DBG("Sending all fds to kconsumerd");
+	DBG("Sending metadata stream fd");
 
-	ret = lttcomm_send_fds_unix_sock(sock, buf, fds, nb_fd, lkh.payload_size);
+	/* Send metadata stream fd first */
+	lkm.fd = session->metadata_stream_fd;
+	lkm.state = ACTIVE_FD;
+	lkm.max_sb_size = session->metadata->conf->subbuf_size;
+	strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
+
+	ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
 	if (ret < 0) {
-		perror("send kconsumerd fds");
+		perror("send kconsumerd fd");
 		goto error;
+	}
+
+	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
+			lkm.fd = stream->fd;
+			lkm.state = stream->state;
+			lkm.max_sb_size = chan->channel->subbuf_size;
+			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
+
+			DBG("Sending fd %d to kconsumerd", lkm.fd);
+
+			ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
+			if (ret < 0) {
+				perror("send kconsumerd fd");
+				goto error;
+			}
+		}
 	}
 
 	DBG("Kconsumerd fds sent");
@@ -763,6 +768,43 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
 			goto error;
 		}
+
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case KERNEL_ENABLE_ALL_EVENT:
+	{
+		int pos, size;
+		char *event_list, *event, *ptr;
+
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Enabling all kernel event");
+
+		size = kernel_list_events(kernel_tracer_fd, &event_list);
+		if (size < 0) {
+			ret = LTTCOMM_KERN_LIST_FAIL;
+			goto error;
+		}
+
+		ptr = event_list;
+		while ((size = sscanf(ptr, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
+			/* Enable each single event */
+			ret = kernel_enable_event(cmd_ctx->session->kernel_session, event);
+			if (ret < 0) {
+				ret = LTTCOMM_KERN_ENABLE_FAIL;
+				goto error;
+			}
+			/* Move pointer to the next line */
+			ptr += pos + 1;
+			free(event);
+		}
+
+		free(event_list);
 
 		ret = LTTCOMM_OK;
 		break;
