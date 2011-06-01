@@ -486,6 +486,8 @@ static pid_t spawn_kconsumerd(void)
 	int ret;
 	pid_t pid;
 
+	DBG("Spawning kconsumerd");
+
 	pid = fork();
 	if (pid == 0) {
 		/*
@@ -518,21 +520,21 @@ static int start_kconsumerd(void)
 {
 	int ret;
 
-	DBG("Spawning kconsumerd");
-
 	pthread_mutex_lock(&kconsumerd_pid_mutex);
-	if (kconsumerd_pid == 0) {
-		ret = spawn_kconsumerd();
-		if (ret < 0) {
-			ERR("Spawning kconsumerd failed");
-			ret = LTTCOMM_KERN_CONSUMER_FAIL;
-			pthread_mutex_unlock(&kconsumerd_pid_mutex);
-			goto error;
-		}
-
-		/* Setting up the global kconsumerd_pid */
-		kconsumerd_pid = ret;
+	if (kconsumerd_pid != 0) {
+		goto end;
 	}
+
+	ret = spawn_kconsumerd();
+	if (ret < 0) {
+		ERR("Spawning kconsumerd failed");
+		ret = LTTCOMM_KERN_CONSUMER_FAIL;
+		pthread_mutex_unlock(&kconsumerd_pid_mutex);
+		goto error;
+	}
+
+	/* Setting up the global kconsumerd_pid */
+	kconsumerd_pid = ret;
 	pthread_mutex_unlock(&kconsumerd_pid_mutex);
 
 	DBG("Kconsumerd pid %d", ret);
@@ -544,6 +546,8 @@ static int start_kconsumerd(void)
 		goto error;
 	}
 
+end:
+	pthread_mutex_unlock(&kconsumerd_pid_mutex);
 	return 0;
 
 error:
