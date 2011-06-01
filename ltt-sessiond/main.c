@@ -1411,8 +1411,12 @@ static int create_lttng_rundir(void)
 
 	ret = mkdir(LTTNG_RUNDIR, S_IRWXU | S_IRWXG );
 	if (ret < 0) {
-		ERR("Unable to create " LTTNG_RUNDIR);
-		goto error;
+		if (errno != EEXIST) {
+			ERR("Unable to create " LTTNG_RUNDIR);
+			goto error;
+		} else {
+			ret = 0;
+		}
 	}
 
 error:
