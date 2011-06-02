@@ -649,6 +649,23 @@ error:
 }
 
 /*
+ *  init_kernel_tracer
+ *
+ *  Setup necessary data for kernel tracer action.
+ */
+static void init_kernel_tracer(void)
+{
+	/* Set the global kernel tracer fd */
+	kernel_tracer_fd = open(DEFAULT_KERNEL_TRACER_PATH, O_RDWR);
+	if (kernel_tracer_fd < 0) {
+		WARN("No kernel tracer available");
+		kernel_tracer_fd = 0;
+	}
+
+	DBG("Kernel tracer fd %d", kernel_tracer_fd);
+}
+
+/*
  * 	process_client_msg
  *
  *  Process the command requested by the lttng client within the command
@@ -690,11 +707,13 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case KERNEL_OPEN_METADATA:
 	case KERNEL_START_TRACE:
 	case KERNEL_STOP_TRACE:
-		/* TODO: reconnect to kernel tracer to check if
-		 * it's loadded */
+		/* Kernel tracer check */
 		if (kernel_tracer_fd == 0) {
-			ret = LTTCOMM_KERN_NA;
-			goto error;
+			init_kernel_tracer();
+			if (kernel_tracer_fd == 0) {
+				ret = LTTCOMM_KERN_NA;
+				goto error;
+			}
 		}
 		break;
 	}
@@ -1470,23 +1489,6 @@ static int create_lttng_rundir(void)
 
 error:
 	return ret;
-}
-
-/*
- *  init_kernel_tracer
- *
- *  Setup necessary data for kernel tracer action.
- */
-static void init_kernel_tracer(void)
-{
-	/* Set the global kernel tracer fd */
-	kernel_tracer_fd = open(DEFAULT_KERNEL_TRACER_PATH, O_RDWR);
-	if (kernel_tracer_fd < 0) {
-		WARN("No kernel tracer available");
-		kernel_tracer_fd = 0;
-	}
-
-	DBG("Kernel tracer fd %d", kernel_tracer_fd);
 }
 
 /*
