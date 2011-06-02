@@ -540,7 +540,6 @@ static void *thread_receive_fds(void *data)
 		}
 		if (tmp.cmd_type == STOP) {
 			DBG("Received STOP command");
-			quit = 1;
 			goto end;
 		}
 		/* we received a command to add or update fds */
@@ -553,6 +552,11 @@ static void *thread_receive_fds(void *data)
 
 end:
 	DBG("thread_receive_fds exiting");
+	quit = 1;
+	ret = write(poll_pipe[1], "4", 1);
+	if (ret < 0) {
+		perror("poll pipe write");
+	}
 	return NULL;
 }
 
@@ -668,6 +672,11 @@ static void *thread_poll_fds(void *data)
 		if (num_rdy == -1) {
 			perror("Poll error");
 			send_error(KCONSUMERD_POLL_ERROR);
+			goto end;
+		}
+
+		/* No FDs and quit, cleanup the thread */
+		if (nb_fd == 0 && quit == 1) {
 			goto end;
 		}
 
