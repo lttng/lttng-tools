@@ -1201,6 +1201,9 @@ static void *thread_manage_clients(void *data)
 		}
 
 		clean_command_ctx(cmd_ctx);
+
+		/* End of transmission */
+		close(sock);
 	}
 
 error:
