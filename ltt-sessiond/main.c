@@ -35,7 +35,6 @@
 #include <unistd.h>
 
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
-#include <ust/ustctl.h>		/* UST control lib (-lust) */
 #include <lttng/lttng.h>
 
 #include "liblttsessiondcomm.h"
@@ -46,6 +45,7 @@
 #include "session.h"
 #include "traceable-app.h"
 #include "lttng-kconsumerd.h"
+#include "libustctl.h"
 
 /*
  * TODO:
@@ -224,7 +224,7 @@ static int ust_connect_app(pid_t pid)
 
 	sock = ustctl_connect_pid(lta->pid);
 	if (sock < 0) {
-		ERR("Fail connecting to the PID %d\n", pid);
+		ERR("Fail connecting to the PID %d", pid);
 	}
 
 	return sock;

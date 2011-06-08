@@ -19,10 +19,13 @@
 #ifndef _LTTNG_SHARE_H
 #define _LTTNG_SHARE_H
 
+#include <asm/types.h>
 #include <stdint.h>
 
 typedef uint32_t u32;
 typedef uint64_t u64;
+
+typedef __s64 s64;
 
 #define LTTNG_RUNDIR        "/var/run/lttng"
 

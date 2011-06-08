@@ -25,11 +25,6 @@ AC_CHECK_LIB([uuid], [uuid_generate], [],
 	[AC_MSG_ERROR([Cannot find libuuid. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-# Check libustctl
-AC_CHECK_LIB([ustctl], [ustctl_connect_pid], [],
-	[AC_MSG_ERROR([Cannot find libustctl. Use [LDFLAGS]=-Ldir to specify its location.])]
-)
-
 # Check liburcu
 AC_CHECK_LIB([urcu], [synchronize_rcu], [],
 	[AC_MSG_ERROR([Cannot find liburcu. Use [LDFLAGS]=-Ldir to specify its location.])]
@@ -49,6 +44,8 @@ AC_CONFIG_FILES([
 	libkernelctl/Makefile
 	liblttngctl/Makefile
 	liblttsessiondcomm/Makefile
+	libustctl/Makefile
+	libustcomm/Makefile
 	ltt-sessiond/Makefile
 	lttng/Makefile
 	kconsumerd/Makefile

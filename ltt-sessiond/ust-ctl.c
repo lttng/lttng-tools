@@ -23,8 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <ust/ustctl.h>
-
+#include "libustctl.h"
 #include "liblttsessiondcomm.h"
 #include "lttngerr.h"
 #include "ust-ctl.h"
