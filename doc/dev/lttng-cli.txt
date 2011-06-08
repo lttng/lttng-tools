@@ -1,0 +1,96 @@
+lttng-tools command line interface
+
+(Note: as of June 8th, 2011, this document is at [RFC] stage.)
+
+This document describes the "lttng" command line interface.
+
+Authors:
+David Goulet <david.goulet@polymtl.ca>
+Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+
+We plan to go for a git-alike UI:
+
+  lttng command [options]
+
+Where command can be one of the following, and the options are
+per-command:
+
+(note: in this description, options between [ ] are optional)
+
+* Basic options
+
+  -v, --verbose                # Verbose mode
+  -q, --quiet                  # Quiet mode
+      --help                   # Show help
+      --group NAME             # Unix tracing group name. (default: tracing)
+      --no-sessiond            # Don't spawn a session daemon
+      --sessiond-path          # Session daemon full path
+  help/--help/-h               # list LTTng commands
+
+* List interfaces:
+
+lttng list [--help]        # show list options
+lttng list --events        # list all available instrumentation
+lttng list --kernel        # list kernel instrumentation
+lttng list --pid n         # list userspace app instrumentation by pid
+lttng list command_name    # list userspace app instrumentation by command
+lttng list --app           # list traceable user-space applications/pids
+lttng list --sessions      # list tracing sessions
+
+* Show version
+
+lttng version [--help]     # show lttng-tools version and version options
+lttng version --kernel     # show kernel lttng version
+lttng version --pid n      # show kernel lttng version
+lttng version command_name # show lttng versions for app by command
+
+* Tracing session control
+
+lttng create [--session] name # create a tracing session (default name provided)
+             [--output path]  # optionally specify the output path 
+
+---> This command prints
+     "Working directory of created session is /path/to/name. Change your"
+     "current working directory to interact with this session."
+
+---> All the following commands use the current working directory
+     .lttng/config file to keep track of the session on which actions
+     should be applied.
+
+lttng destroy [--session] name # teardown a tracing session
+lttng start [--session] name   # start tracing for a session
+lttng stop [--session] name    # stop tracing for a session
+
+
+(note in manpage (warning) about --all and cmd_name:
+"WARNING: this may noticeably slow down your system!")
+lttng add-channel name --kernel [options]
+lttng add-channel name --userspace [--all/--pid n/cmd_name] [options]
+  available options:
+  --discard (default)
+  --overwrite
+  --subbuf_size
+  --num_subbuf
+  --switch_timer_interval
+  --read_timer_interval
+
+lttng config --kernel --channel name
+lttng config --channel name [--all/--pid n/cmd_name]
+
+(note: no channel name specified creates a "default" channel)
+lttng add-event name --kernel [--channel name]
+lttng add-event name --userspace [--channel name] [--all/--pid n/cmd_name]
+  available options, either:
+  --tracepoint (default)
+  --marker
+  --kprobe address
+  --function
+  (support list of names: name1,name2,name3... all with the same
+   options)
+lttng enable-event name --kernel [--channel name]
+lttng disable-event name --kernel [--channel name]
+lttng enable-event name --userspace [--channel name] [--all/--pid n/cmd_name]
+lttng disable-event name --userspace [--channel name] [--all/--pid n/cmd_name]
+
+lttng add-context name --kernel [--event name] [--channel name] --type context_type [context options]
+lttng add-context name --userspace [--event name] [--channel name] [--all/--pid n/cmd_name] --type context_type [context options]
