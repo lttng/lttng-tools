@@ -26,9 +26,6 @@ AC_CHECK_LIB([uuid], [uuid_generate], [],
 )
 
 # Check liburcu
-AC_CHECK_LIB([urcu], [synchronize_rcu], [],
-	[AC_MSG_ERROR([Cannot find liburcu. Use [LDFLAGS]=-Ldir to specify its location.])]
-)
 AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]
 )
