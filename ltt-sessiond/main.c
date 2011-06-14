@@ -637,9 +637,11 @@ static int create_trace_dir(struct ltt_kernel_session *session)
 		// TODO: recursive create dir
 		ret = mkdir(chan->pathname, S_IRWXU | S_IRWXG );
 		if (ret < 0) {
-			perror("mkdir trace path");
-			ret = -errno;
-			goto error;
+			if (ret != EEXIST) {
+				perror("mkdir trace path");
+				ret = -errno;
+				goto error;
+			}
 		}
 	}
 
@@ -1514,8 +1516,11 @@ static int set_kconsumerd_sockets(void)
 
 	ret = mkdir(KCONSUMERD_PATH, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
-		ERR("Failed to create " KCONSUMERD_PATH);
-		goto error;
+		if (errno != EEXIST) {
+			ERR("Failed to create " KCONSUMERD_PATH);
+			goto error;
+		}
+		ret = 0;
 	}
 
 	/* Create the kconsumerd error unix socket */
