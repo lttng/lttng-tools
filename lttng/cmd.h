@@ -16,17 +16,33 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_UST_CTL_H
-#define _LTT_UST_CTL_H
+#ifndef _LTTNG_CMD_H
+#define _LTTNG_CMD_H
 
-#include "ltt-sessiond.h"
-#include "session.h"
-#include "trace.h"
+#include <lttng/lttng.h>
+#include "lttngerr.h"
+#include "lttng-share.h"
+#include "lttng-kernel.h"
 
-int get_trace_count_per_session(struct ltt_session *session);
-//void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
-int ust_create_trace(struct command_ctx *cmd_ctx);
-int ust_start_trace(struct command_ctx *cmd_ctx);
-int ust_stop_trace(struct command_ctx *cmd_ctx);
+enum cmd_error_code {
+	CMD_SUCCESS,
+	CMD_ERROR,
+	CMD_UNDEFINED,
+	CMD_NOT_IMPLEMENTED,
+	CMD_FATAL,
+};
 
-#endif /* _LTT_TRACE_H */
+struct cmd_struct {
+	const char *name;
+	int (*func)(int argc, const char **argv);
+};
+
+extern int cmd_list(int argc, const char **argv);
+extern int cmd_create(int argc, const char **argv);
+extern int cmd_destroy(int argc, const char **argv);
+extern int cmd_add_channel(int argc, const char **argv);
+extern int cmd_start(int argc, const char **argv);
+extern int cmd_stop(int argc, const char **argv);
+extern int cmd_enable_events(int argc, const char **argv);
+
+#endif /* _LTTNG_CMD_H */

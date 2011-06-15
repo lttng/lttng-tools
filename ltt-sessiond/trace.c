@@ -66,29 +66,26 @@ error:
  *
  *  Return pointer to structure or NULL.
  */
-struct ltt_kernel_channel *trace_create_kernel_channel(void)
+struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
-	struct lttng_kernel_channel *chan;
 
 	lkc = malloc(sizeof(struct ltt_kernel_channel));
-	chan = malloc(sizeof(struct lttng_kernel_channel));
-	if (lkc == NULL || chan == NULL) {
-		perror("kernel channel malloc");
+	if (lkc == NULL) {
+		perror("ltt_kernel_channel malloc");
 		goto error;
 	}
 
-	/* Default value to channel */
-	chan->overwrite = DEFAULT_KERNEL_OVERWRITE;
-	chan->subbuf_size = DEFAULT_KERNEL_SUBBUF_SIZE;
-	chan->num_subbuf = DEFAULT_KERNEL_SUBBUF_NUM;
-	chan->switch_timer_interval = DEFAULT_KERNEL_SWITCH_TIMER;
-	chan->read_timer_interval = DEFAULT_KERNEL_READ_TIMER;
+	lkc->channel = malloc(sizeof(struct lttng_channel));
+	if (lkc->channel == NULL) {
+		perror("lttng_channel malloc");
+		goto error;
+	}
+	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
 
 	lkc->fd = 0;
 	lkc->stream_count = 0;
-	lkc->channel = chan;
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
@@ -112,8 +109,7 @@ error:
  *
  *  Return pointer to structure or NULL.
  */
-struct ltt_kernel_event *trace_create_kernel_event(char *name,
-		enum lttng_kernel_instrumentation type)
+struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 {
 	struct ltt_kernel_event *lke;
 	struct lttng_kernel_event *attr;
@@ -125,9 +121,30 @@ struct ltt_kernel_event *trace_create_kernel_event(char *name,
 		goto error;
 	}
 
-	/* Init event attribute */
-	attr->instrumentation = type;
-	strncpy(attr->name, name, LTTNG_SYM_NAME_LEN);
+	switch (ev->type) {
+	case LTTNG_EVENT_KPROBES:
+		attr->instrumentation = LTTNG_KERNEL_KPROBES;
+		attr->u.kprobe.addr = ev->attr.kprobe.addr;
+		attr->u.kprobe.offset = ev->attr.kprobe.offset;
+		strncpy(attr->u.kprobe.symbol_name,
+				ev->attr.kprobe.symbol_name, LTTNG_SYM_NAME_LEN);
+		break;
+	case LTTNG_EVENT_FUNCTION:
+		attr->instrumentation = LTTNG_KERNEL_FUNCTION;
+		strncpy(attr->u.ftrace.symbol_name,
+				ev->attr.ftrace.symbol_name, LTTNG_SYM_NAME_LEN);
+		break;
+	case LTTNG_EVENT_TRACEPOINTS:
+		attr->instrumentation = LTTNG_KERNEL_TRACEPOINTS;
+		break;
+	default:
+		ERR("Unknown kernel instrumentation type (%d)", ev->type);
+		goto error;
+	}
+
+	/* Copy event name */
+	strncpy(attr->name, ev->name, LTTNG_SYM_NAME_LEN);
+
 	/* Setting up a kernel event */
 	lke->fd = 0;
 	lke->event = attr;
@@ -149,25 +166,25 @@ struct ltt_kernel_metadata *trace_create_kernel_metadata(void)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
-	struct lttng_kernel_channel *attr;
+	struct lttng_channel *chan;
 
 	lkm = malloc(sizeof(struct ltt_kernel_metadata));
-	attr = malloc(sizeof(struct lttng_kernel_channel));
-	if (lkm == NULL || attr == NULL) {
+	chan = malloc(sizeof(struct lttng_channel));
+	if (lkm == NULL || chan == NULL) {
 		perror("kernel metadata malloc");
 		goto error;
 	}
 
 	/* Set default attributes */
-	attr->overwrite = DEFAULT_KERNEL_OVERWRITE;
-	attr->subbuf_size = DEFAULT_KERNEL_SUBBUF_SIZE;
-	attr->num_subbuf = DEFAULT_KERNEL_SUBBUF_NUM;
-	attr->switch_timer_interval = DEFAULT_KERNEL_SWITCH_TIMER;
-	attr->read_timer_interval = DEFAULT_KERNEL_READ_TIMER;
+	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	chan->attr.subbuf_size = DEFAULT_CHANNEL_SUBBUF_SIZE;
+	chan->attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
+	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
 
 	/* Init metadata */
 	lkm->fd = 0;
-	lkm->conf = attr;
+	lkm->conf = chan;
 	/* Set default metadata path */
 	ret = asprintf(&lkm->pathname, "%s/metadata", DEFAULT_TRACE_OUTPUT);
 	if (ret < 0) {

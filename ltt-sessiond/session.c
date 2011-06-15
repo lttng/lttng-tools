@@ -145,13 +145,13 @@ struct ltt_session *find_session_by_name(char *name)
  *  Return -1 if no session is found.
  *  On success, return 1;
  */
-int destroy_session(uuid_t *uuid)
+int destroy_session(char *name)
 {
 	int found = -1;
 	struct ltt_session *iter;
 
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (uuid_compare(iter->uuid, *uuid) == 0) {
+		if (strcmp(iter->name, name) == 0) {
 			DBG("Destroying session %s", iter->name);
 			del_session_list(iter);
 			free(iter);
@@ -166,41 +166,55 @@ int destroy_session(uuid_t *uuid)
 /*
  * 	create_session
  *
- * 	Create a brand new session and add it to the
- * 	global session list.
+ * 	Create a brand new session and add it to the global session list.
  */
-int create_session(char *name, uuid_t *session_id)
+int create_session(char *name, char *path)
 {
+	int ret;
 	struct ltt_session *new_session;
 
-	DBG("Creating session %s", name);
+	DBG("Creating session %s at %s", name, path);
 
 	new_session = find_session_by_name(name);
 	if (new_session != NULL) {
-		goto error;
+		ret = -EEXIST;
+		goto error_exist;
 	}
 
 	/* Allocate session data structure */
 	new_session = malloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
 		perror("malloc");
-		goto error_mem;
+		ret = -ENOMEM;
+		goto error_malloc;
 	}
 
+	/* Define session name */
 	if (name != NULL) {
 		if (asprintf(&new_session->name, "%s", name) < 0) {
-			goto error_mem;
+			ret = -ENOMEM;
+			goto error_asprintf;
 		}
 	} else {
-		/* Generate session name based on the session count */
-		if (asprintf(&new_session->name, "%s%d", "lttng-", session_count) < 0) {
-			goto error_mem;
+		ERR("No session name given");
+		ret = -1;
+		goto error;
+	}
+
+	/* Define session system path */
+	if (path != NULL) {
+		if (asprintf(&new_session->path, "%s", path) < 0) {
+			ret = -ENOMEM;
+			goto error_asprintf;
 		}
+	} else {
+		ERR("No session path given");
+		ret = -1;
+		goto error;
 	}
 
 	/* UUID generation */
 	uuid_generate(new_session->uuid);
-	uuid_copy(*session_id, new_session->uuid);
 
 	/*
 	 * Set consumer (identifier) to 0. This means that there is
@@ -224,17 +238,20 @@ int create_session(char *name, uuid_t *session_id)
 	return 0;
 
 error:
-	return -1;
+error_asprintf:
+	if (new_session != NULL) {
+		free(new_session);
+	}
 
-error_mem:
-	return -ENOMEM;
+error_exist:
+error_malloc:
+	return ret;
 }
 
 /*
  *  get_lttng_session
  *
- *  Iterate over the global session list and
- *  fill the lttng_session array.
+ *  Iterate over the global session list and fill the lttng_session array.
  */
 void get_lttng_session(struct lttng_session *sessions)
 {
@@ -248,8 +265,8 @@ void get_lttng_session(struct lttng_session *sessions)
 	 * the control struct in the buffer.
 	 */
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		/* Copy name and uuid */
-		uuid_copy(lsess.uuid, iter->uuid);
+		strncpy(lsess.path, iter->path, sizeof(lsess.path));
+		lsess.path[sizeof(lsess.path) - 1] = '\0';
 		strncpy(lsess.name, iter->name, sizeof(lsess.name));
 		lsess.name[sizeof(lsess.name) - 1] = '\0';
 		memcpy(&sessions[i], &lsess, sizeof(lsess));

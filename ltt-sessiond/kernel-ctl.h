@@ -31,13 +31,16 @@
 #define KERNEL_EVENT_LIST_SIZE	2000
 
 int kernel_create_session(struct ltt_session *session, int tracer_fd);
-int kernel_create_channel(struct ltt_kernel_session *session);
-int kernel_enable_event(struct ltt_kernel_session *session, char *name);
+int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan);
+int kernel_create_event(struct ltt_kernel_channel *channel, struct lttng_event *ev);
 int kernel_open_metadata(struct ltt_kernel_session *session);
-int kernel_create_metadata_stream(struct ltt_kernel_session *session);
-int kernel_create_channel_stream(struct ltt_kernel_channel *channel);
+int kernel_open_metadata_stream(struct ltt_kernel_session *session);
+int kernel_open_channel_stream(struct ltt_kernel_channel *channel);
+int kernel_flush_buffer(struct ltt_kernel_channel *channel);
+int kernel_metadata_flush_buffer(int fd);
 int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(int tracer_fd, char **event_list);
+void kernel_wait_quiescent(int fd);
 
 #endif /* _LTT_KERNEL_CTL_H */

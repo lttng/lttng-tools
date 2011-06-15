@@ -1,4 +1,7 @@
 /*
+   DBG("Creating kernel event %s for channel %s.",
+   cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
+
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
@@ -32,6 +35,8 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
@@ -159,6 +164,7 @@ static void cleanup()
 		// TODO complete session cleanup (including UST)
 	}
 
+	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
 }
 
@@ -197,6 +203,103 @@ static void clean_command_ctx(struct command_ctx *cmd_ctx)
 		free(cmd_ctx);
 		cmd_ctx = NULL;
 	}
+}
+
+/*
+ *  send_kconsumerd_fds
+ *
+ *  Send all stream fds of the kernel session to the consumer.
+ */
+static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
+{
+	int ret;
+	size_t nb_fd;
+	struct ltt_kernel_stream *stream;
+	struct ltt_kernel_channel *chan;
+	struct lttcomm_kconsumerd_header lkh;
+	struct lttcomm_kconsumerd_msg lkm;
+
+	nb_fd = session->stream_count_global;
+
+	/* Setup header */
+	lkh.payload_size = (nb_fd + 1) * sizeof(struct lttcomm_kconsumerd_msg);
+	lkh.cmd_type = ADD_STREAM;
+
+	DBG("Sending kconsumerd header");
+
+	ret = lttcomm_send_unix_sock(sock, &lkh, sizeof(struct lttcomm_kconsumerd_header));
+	if (ret < 0) {
+		perror("send kconsumerd header");
+		goto error;
+	}
+
+	DBG("Sending metadata stream fd");
+
+	/* Send metadata stream fd first */
+	lkm.fd = session->metadata_stream_fd;
+	lkm.state = ACTIVE_FD;
+	lkm.max_sb_size = session->metadata->conf->attr.subbuf_size;
+	strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
+
+	ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
+	if (ret < 0) {
+		perror("send kconsumerd fd");
+		goto error;
+	}
+
+	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
+			lkm.fd = stream->fd;
+			lkm.state = stream->state;
+			lkm.max_sb_size = chan->channel->attr.subbuf_size;
+			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
+
+			DBG("Sending fd %d to kconsumerd", lkm.fd);
+
+			ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
+			if (ret < 0) {
+				perror("send kconsumerd fd");
+				goto error;
+			}
+		}
+	}
+
+	DBG("Kconsumerd fds sent");
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ *  create_trace_dir
+ *
+ *  Create the trace output directory.
+ */
+static int create_trace_dir(struct ltt_kernel_session *session)
+{
+	int ret;
+	struct ltt_kernel_channel *chan;
+
+	/* Create all channel directories */
+	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		DBG("Creating trace directory at %s", chan->pathname);
+		// TODO: recursive create dir
+		ret = mkdir(chan->pathname, S_IRWXU | S_IRWXG );
+		if (ret < 0) {
+			if (ret != EEXIST) {
+				perror("mkdir trace path");
+				ret = -errno;
+				goto error;
+			}
+		}
+	}
+
+	return 0;
+
+error:
+	return ret;
 }
 
 /*
@@ -273,14 +376,9 @@ error:
  */
 static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 {
-	int ret, buf_size, trace_name_size;
+	int ret, buf_size;
 
-	/*
-	 * Check for the trace_name. If defined, it's part of the payload data of
-	 * the llm structure.
-	 */
-	trace_name_size = strlen(cmd_ctx->lsm->trace_name);
-	buf_size = trace_name_size + size;
+	buf_size = size;
 
 	cmd_ctx->llm = malloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
 	if (cmd_ctx->llm == NULL) {
@@ -292,16 +390,9 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 	/* Copy common data */
 	cmd_ctx->llm->cmd_type = cmd_ctx->lsm->cmd_type;
 	cmd_ctx->llm->pid = cmd_ctx->lsm->pid;
-	if (!uuid_is_null(cmd_ctx->lsm->session_uuid)) {
-		uuid_copy(cmd_ctx->llm->session_uuid, cmd_ctx->lsm->session_uuid);
-	}
 
-	cmd_ctx->llm->trace_name_offset = trace_name_size;
 	cmd_ctx->llm->data_size = size;
 	cmd_ctx->lttng_msg_size = sizeof(struct lttcomm_lttng_msg) + buf_size;
-
-	/* Copy trace name to the llm structure. Begining of the payload. */
-	memcpy(cmd_ctx->llm->payload, cmd_ctx->lsm->trace_name, trace_name_size);
 
 	return buf_size;
 
@@ -555,103 +646,6 @@ error:
 }
 
 /*
- *  send_kconsumerd_fds
- *
- *  Send all stream fds of the kernel session to the consumer.
- */
-static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
-{
-	int ret;
-	size_t nb_fd;
-	struct ltt_kernel_stream *stream;
-	struct ltt_kernel_channel *chan;
-	struct lttcomm_kconsumerd_header lkh;
-	struct lttcomm_kconsumerd_msg lkm;
-
-	nb_fd = session->stream_count_global;
-
-	/* Setup header */
-	lkh.payload_size = (nb_fd + 1) * sizeof(struct lttcomm_kconsumerd_msg);
-	lkh.cmd_type = ADD_STREAM;
-
-	DBG("Sending kconsumerd header");
-
-	ret = lttcomm_send_unix_sock(sock, &lkh, sizeof(struct lttcomm_kconsumerd_header));
-	if (ret < 0) {
-		perror("send kconsumerd header");
-		goto error;
-	}
-
-	DBG("Sending metadata stream fd");
-
-	/* Send metadata stream fd first */
-	lkm.fd = session->metadata_stream_fd;
-	lkm.state = ACTIVE_FD;
-	lkm.max_sb_size = session->metadata->conf->subbuf_size;
-	strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
-
-	ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
-	if (ret < 0) {
-		perror("send kconsumerd fd");
-		goto error;
-	}
-
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
-			lkm.fd = stream->fd;
-			lkm.state = stream->state;
-			lkm.max_sb_size = chan->channel->subbuf_size;
-			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
-
-			DBG("Sending fd %d to kconsumerd", lkm.fd);
-
-			ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
-			if (ret < 0) {
-				perror("send kconsumerd fd");
-				goto error;
-			}
-		}
-	}
-
-	DBG("Kconsumerd fds sent");
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- *  create_trace_dir
- *
- *  Create the trace output directory.
- */
-static int create_trace_dir(struct ltt_kernel_session *session)
-{
-	int ret;
-	struct ltt_kernel_channel *chan;
-
-	/* Create all channel directories */
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		DBG("Creating trace directory at %s", chan->pathname);
-		// TODO: recursive create dir
-		ret = mkdir(chan->pathname, S_IRWXU | S_IRWXG );
-		if (ret < 0) {
-			if (ret != EEXIST) {
-				perror("mkdir trace path");
-				ret = -errno;
-				goto error;
-			}
-		}
-	}
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
  *  init_kernel_tracer
  *
  *  Setup necessary data for kernel tracer action.
@@ -669,6 +663,108 @@ static void init_kernel_tracer(void)
 }
 
 /*
+ *  start_kernel_trace
+ *
+ *  Start tracing by creating trace directory and sending FDs to the kernel
+ *  consumer.
+ */
+static int start_kernel_trace(struct ltt_kernel_session *session)
+{
+	int ret;
+
+	/* Create trace directory */
+	ret = create_trace_dir(session);
+	if (ret < 0) {
+		if (ret == -EEXIST) {
+			ret = LTTCOMM_KERN_DIR_EXIST;
+		} else {
+			ret = LTTCOMM_KERN_DIR_FAIL;
+			goto error;
+		}
+	}
+
+	if (session->kconsumer_fds_sent == 0) {
+		ret = send_kconsumerd_fds(kconsumerd_cmd_sock, session);
+		if (ret < 0) {
+			ERR("Send kconsumerd fds failed");
+			ret = LTTCOMM_KERN_CONSUMER_FAIL;
+			goto error;
+		}
+
+		session->kconsumer_fds_sent = 1;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ *  init_default_channel
+ *
+ *  Allocate a channel structure and fill it.
+ */
+static struct lttng_channel *init_default_channel(void)
+{
+	struct lttng_channel *chan;
+
+	chan = malloc(sizeof(struct lttng_channel));
+	if (chan == NULL) {
+		perror("init channel malloc");
+		goto error;
+	}
+
+	if (snprintf(chan->name, NAME_MAX, DEFAULT_CHANNEL_NAME) < 0) {
+		perror("snprintf defautl channel name");
+		return NULL;
+	}
+
+	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	chan->attr.subbuf_size = DEFAULT_CHANNEL_SUBBUF_SIZE;
+	chan->attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
+	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+error:
+	return chan;
+}
+
+/*
+ *  create_kernel_session
+ *
+ *  Create a kernel tracer session then create the default channel.
+ */
+static int create_kernel_session(struct ltt_session *session)
+{
+	int ret;
+	struct lttng_channel *chan;
+
+	DBG("Creating kernel session");
+
+	ret = kernel_create_session(session, kernel_tracer_fd);
+	if (ret < 0) {
+		ret = LTTCOMM_KERN_SESS_FAIL;
+		goto error;
+	}
+
+	chan = init_default_channel();
+	if (chan == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	DBG("Creating default kernel channel %s", DEFAULT_CHANNEL_NAME);
+
+	ret = kernel_create_channel(session->kernel_session, chan);
+	if (ret < 0) {
+		ret = LTTCOMM_KERN_CHAN_FAIL;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
  * 	process_client_msg
  *
  *  Process the command requested by the lttng client within the command
@@ -683,33 +779,41 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
-	/* Check command that needs a session */
+	/* Listing commands don't need a session */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
-	case KERNEL_LIST_EVENTS:
-	case UST_LIST_APPS:
+	case LTTNG_LIST_EVENTS:
+	case LTTNG_KERNEL_LIST_EVENTS:
+	case LTTNG_LIST_TRACEABLE_APPS:
 		break;
 	default:
-		cmd_ctx->session = find_session_by_uuid(cmd_ctx->lsm->session_uuid);
+		DBG("Getting session %s by name", cmd_ctx->lsm->session_name);
+		cmd_ctx->session = find_session_by_name(cmd_ctx->lsm->session_name);
 		if (cmd_ctx->session == NULL) {
-			ret = LTTCOMM_SELECT_SESS;
+			/* If session name not found */
+			if (cmd_ctx->lsm->session_name != NULL) {
+				ret = LTTCOMM_SESS_NOT_FOUND;
+			} else {	/* If no session name specified */
+				ret = LTTCOMM_SELECT_SESS;
+			}
 			goto error;
 		}
 		break;
 	}
 
-	/* Check command for kernel tracing */
+	/*
+	 * Check kernel command for kernel session.
+	 */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case KERNEL_CREATE_SESSION:
-	case KERNEL_CREATE_CHANNEL:
-	case KERNEL_CREATE_STREAM:
-	case KERNEL_DISABLE_EVENT:
-	case KERNEL_ENABLE_EVENT:
-	case KERNEL_LIST_EVENTS:
-	case KERNEL_OPEN_METADATA:
-	case KERNEL_START_TRACE:
-	case KERNEL_STOP_TRACE:
+	case LTTNG_KERNEL_CREATE_CHANNEL:
+	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
+	case LTTNG_KERNEL_DISABLE_CHANNEL:
+	case LTTNG_KERNEL_DISABLE_EVENT:
+	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
+	case LTTNG_KERNEL_ENABLE_CHANNEL:
+	case LTTNG_KERNEL_ENABLE_EVENT:
+	case LTTNG_KERNEL_LIST_EVENTS:
 		/* Kernel tracer check */
 		if (kernel_tracer_fd == 0) {
 			init_kernel_tracer();
@@ -718,7 +822,23 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				goto error;
 			}
 		}
-		break;
+
+		/* Need a session for kernel command */
+		if (cmd_ctx->lsm->cmd_type != LTTNG_KERNEL_LIST_EVENTS &&
+				cmd_ctx->session->kernel_session == NULL) {
+			ret = create_kernel_session(cmd_ctx->session);
+			if (ret < 0) {
+				ret = LTTCOMM_KERN_SESS_FAIL;
+				goto error;
+			}
+
+			if (kconsumerd_pid == 0) {
+				ret = start_kconsumerd();
+				if (ret < 0) {
+					goto error;
+				}
+			}
+		}
 	}
 
 	/* Connect to ust apps if available pid */
@@ -733,40 +853,19 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case KERNEL_CREATE_SESSION:
+	case LTTNG_KERNEL_CREATE_CHANNEL:
 	{
+		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
 			goto setup_error;
 		}
 
-		ret = start_kconsumerd();
-		if (ret < 0) {
-			goto error;
-		}
-
-		DBG("Creating kernel session");
-
-		ret = kernel_create_session(cmd_ctx->session, kernel_tracer_fd);
-		if (ret < 0) {
-			ret = LTTCOMM_KERN_SESS_FAIL;
-			goto error;
-		}
-
-		ret = LTTCOMM_OK;
-		break;
-	}
-	case KERNEL_CREATE_CHANNEL:
-	{
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
+		/* Kernel tracer */
 		DBG("Creating kernel channel");
 
-		ret = kernel_create_channel(cmd_ctx->session->kernel_session);
-
+		ret = kernel_create_channel(cmd_ctx->session->kernel_session,
+				&cmd_ctx->lsm->u.channel.chan);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_CHAN_FAIL;
 			goto error;
@@ -775,29 +874,47 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case KERNEL_ENABLE_EVENT:
+	case LTTNG_KERNEL_ENABLE_EVENT:
 	{
+		int found = 0;
+		struct ltt_kernel_channel *chan;
+
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
 			goto setup_error;
 		}
 
-		DBG("Enabling kernel event %s", cmd_ctx->lsm->u.event.event_name);
+		/* Get channel by name and create event for that channel */
+		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
+			if (strcmp(cmd_ctx->lsm->u.enable.channel_name, chan->channel->name) == 0) {
+				DBG("Creating kernel event %s for channel %s.",
+						cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
 
-		ret = kernel_enable_event(cmd_ctx->session->kernel_session, cmd_ctx->lsm->u.event.event_name);
-		if (ret < 0) {
-			ret = LTTCOMM_KERN_ENABLE_FAIL;
-			goto error;
+				ret = kernel_create_event(chan, &cmd_ctx->lsm->u.enable.event);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_ENABLE_FAIL;
+					goto error;
+				}
+				found = 1;
+				break;
+			}
 		}
 
-		ret = LTTCOMM_OK;
+		if (!found) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		} else {
+			kernel_wait_quiescent(kernel_tracer_fd);
+			ret = LTTCOMM_OK;
+		}
 		break;
 	}
-	case KERNEL_ENABLE_ALL_EVENT:
+	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
 	{
-		int pos, size;
+		int pos, size, found;
 		char *event_list, *event, *ptr;
+		struct ltt_kernel_channel *chan;
+		struct lttng_event ev;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -813,10 +930,26 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto error;
 		}
 
+		/* Get channel by name and create event for that channel */
+		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
+			if (strcmp(cmd_ctx->lsm->u.enable.channel_name, chan->channel->name) == 0) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			goto error;
+		}
+
 		ptr = event_list;
 		while ((size = sscanf(ptr, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
-			/* Enable each single event */
-			ret = kernel_enable_event(cmd_ctx->session->kernel_session, event);
+			strncpy(ev.name, event, LTTNG_SYM_NAME_LEN);
+			/* Default event type for enable all */
+			ev.type = LTTNG_EVENT_TRACEPOINTS;
+			/* Enable each single tracepoint event */
+			ret = kernel_create_event(chan, &ev);
 			if (ret < 0) {
 				ret = LTTCOMM_KERN_ENABLE_FAIL;
 				goto error;
@@ -828,13 +961,17 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		free(event_list);
 
+		/* Quiescent wait after event enable */
+		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case KERNEL_LIST_EVENTS:
+	case LTTNG_KERNEL_LIST_EVENTS:
 	{
 		char *event_list;
-		ssize_t size;
+		ssize_t size = 0;
+
+		DBG("Listing kernel events");
 
 		size = kernel_list_events(kernel_tracer_fd, &event_list);
 		if (size < 0) {
@@ -859,26 +996,77 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case KERNEL_OPEN_METADATA:
+	case LTTNG_START_TRACE:
 	{
+		struct ltt_kernel_channel *chan;
+
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
 			goto setup_error;
 		}
 
-		DBG("Open kernel metadata");
+		/* Kernel tracing */
+		if (cmd_ctx->session->kernel_session != NULL) {
+			if (cmd_ctx->session->kernel_session->metadata == NULL) {
+				DBG("Open kernel metadata");
+				ret = kernel_open_metadata(cmd_ctx->session->kernel_session);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_META_FAIL;
+					goto error;
+				}
+			}
 
-		ret = kernel_open_metadata(cmd_ctx->session->kernel_session);
-		if (ret < 0) {
-			ret = LTTCOMM_KERN_META_FAIL;
-			goto error;
+			if (cmd_ctx->session->kernel_session->metadata_stream_fd == 0) {
+				DBG("Opening kernel metadata stream");
+				if (cmd_ctx->session->kernel_session->metadata_stream_fd == 0) {
+					ret = kernel_open_metadata_stream(cmd_ctx->session->kernel_session);
+					if (ret < 0) {
+						ERR("Kernel create metadata stream failed");
+						ret = LTTCOMM_KERN_STREAM_FAIL;
+						goto error;
+					}
+				}
+			}
+
+			/* For each channel */
+			cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
+				if (chan->stream_count == 0) {
+					ret = kernel_open_channel_stream(chan);
+					if (ret < 0) {
+						ERR("Kernel create channel stream failed");
+						ret = LTTCOMM_KERN_STREAM_FAIL;
+						goto error;
+					}
+					/* Update the stream global counter */
+					cmd_ctx->session->kernel_session->stream_count_global += ret;
+				}
+			}
+
+			DBG("Start kernel tracing");
+			ret = kernel_start_session(cmd_ctx->session->kernel_session);
+			if (ret < 0) {
+				ERR("Kernel start session failed");
+				ret = LTTCOMM_KERN_START_FAIL;
+				goto error;
+			}
+
+			ret = start_kernel_trace(cmd_ctx->session->kernel_session);
+			if (ret < 0) {
+				ret = LTTCOMM_KERN_START_FAIL;
+				goto error;
+			}
+
+			/* Quiescent wait after starting trace */
+			kernel_wait_quiescent(kernel_tracer_fd);
 		}
+
+		/* TODO: Start all UST traces */
 
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case KERNEL_CREATE_STREAM:
+	case LTTNG_STOP_TRACE:
 	{
 		struct ltt_kernel_channel *chan;
 		/* Setup lttng message with no payload */
@@ -887,91 +1075,34 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		DBG("Creating kernel stream");
+		/* Kernel tracer */
+		if (cmd_ctx->session->kernel_session != NULL) {
+			DBG("Stop kernel tracing");
 
-		ret = kernel_create_metadata_stream(cmd_ctx->session->kernel_session);
-		if (ret < 0) {
-			ERR("Kernel create metadata stream failed");
-			ret = LTTCOMM_KERN_STREAM_FAIL;
-			goto error;
-		}
-
-		/* For each channel */
-		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
-			ret = kernel_create_channel_stream(chan);
+			ret = kernel_metadata_flush_buffer(cmd_ctx->session->kernel_session->metadata_stream_fd);
 			if (ret < 0) {
-				ERR("Kernel create channel stream failed");
-				ret = LTTCOMM_KERN_STREAM_FAIL;
+				ERR("Kernel metadata flush failed");
+			}
+
+			cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
+				ret = kernel_flush_buffer(chan);
+				if (ret < 0) {
+					ERR("Kernel flush buffer error");
+				}
+			}
+
+			ret = kernel_stop_session(cmd_ctx->session->kernel_session);
+			if (ret < 0) {
+				ERR("Kernel stop session failed");
+				ret = LTTCOMM_KERN_STOP_FAIL;
 				goto error;
 			}
-			/* Update the stream global counter */
-			cmd_ctx->session->kernel_session->stream_count_global += ret;
+
+			/* Quiescent wait after stopping trace */
+			kernel_wait_quiescent(kernel_tracer_fd);
 		}
 
-		ret = LTTCOMM_OK;
-		break;
-	}
-	case KERNEL_START_TRACE:
-	{
-		/* Setup lttng message with no payload */
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		DBG("Start kernel tracing");
-
-		ret = create_trace_dir(cmd_ctx->session->kernel_session);
-		if (ret < 0) {
-			if (ret == -EEXIST) {
-				ret = LTTCOMM_KERN_DIR_EXIST;
-			} else {
-				ret = LTTCOMM_KERN_DIR_FAIL;
-				goto error;
-			}
-		}
-
-		ret = kernel_start_session(cmd_ctx->session->kernel_session);
-		if (ret < 0) {
-			ERR("Kernel start session failed");
-			ret = LTTCOMM_KERN_START_FAIL;
-			goto error;
-		}
-
-		ret = send_kconsumerd_fds(kconsumerd_cmd_sock, cmd_ctx->session->kernel_session);
-		if (ret < 0) {
-			ERR("Send kconsumerd fds failed");
-			ret = LTTCOMM_KERN_CONSUMER_FAIL;
-			goto error;
-		}
-
-		ret = LTTCOMM_OK;
-		break;
-	}
-	case KERNEL_STOP_TRACE:
-	{
-		/* Setup lttng message with no payload */
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		if (cmd_ctx->session->kernel_session == NULL) {
-			ret = LTTCOMM_KERN_NO_SESSION;
-			goto error;
-		}
-
-		DBG("Stop kernel tracing");
-
-		ret = kernel_stop_session(cmd_ctx->session->kernel_session);
-		if (ret < 0) {
-			ERR("Kernel stop session failed");
-			ret = LTTCOMM_KERN_STOP_FAIL;
-			goto error;
-		}
-
-		/* Clean kernel session teardown */
-		teardown_kernel_session(cmd_ctx->session);
+		/* TODO : User-space tracer */
 
 		ret = LTTCOMM_OK;
 		break;
@@ -984,9 +1115,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		ret = create_session(cmd_ctx->lsm->session_name, &cmd_ctx->llm->session_uuid);
+		ret = create_session(cmd_ctx->lsm->session_name, cmd_ctx->lsm->path);
 		if (ret < 0) {
-			if (ret == -1) {
+			if (ret == -EEXIST) {
 				ret = LTTCOMM_EXIST_SESS;
 			} else {
 				ret = LTTCOMM_FATAL;
@@ -1005,15 +1136,19 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		ret = destroy_session(&cmd_ctx->lsm->session_uuid);
+		/* Clean kernel session teardown */
+		teardown_kernel_session(cmd_ctx->session);
+
+		ret = destroy_session(cmd_ctx->lsm->session_name);
 		if (ret < 0) {
-			ret = LTTCOMM_NO_SESS;
+			ret = LTTCOMM_FATAL;
 			goto error;
 		}
 
 		ret = LTTCOMM_OK;
 		break;
 	}
+	/*
 	case LTTNG_LIST_TRACES:
 	{
 		unsigned int trace_count;
@@ -1035,9 +1170,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
+	*/
+	/*
 	case UST_CREATE_TRACE:
 	{
-		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
 			goto setup_error;
@@ -1045,11 +1181,12 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		ret = ust_create_trace(cmd_ctx);
 		if (ret < 0) {
-			goto setup_error;
+			goto error;
 		}
 		break;
 	}
-	case UST_LIST_APPS:
+	*/
+	case LTTNG_LIST_TRACEABLE_APPS:
 	{
 		unsigned int app_count;
 
@@ -1070,9 +1207,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
+	/*
 	case UST_START_TRACE:
 	{
-		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
 			goto setup_error;
@@ -1086,7 +1223,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case UST_STOP_TRACE:
 	{
-		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
 		if (ret < 0) {
 			goto setup_error;
@@ -1098,13 +1234,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 		break;
 	}
+	*/
 	case LTTNG_LIST_SESSIONS:
 	{
 		unsigned int session_count;
 
 		session_count = get_session_count();
 		if (session_count == 0) {
-			ret = LTTCOMM_NO_SESS;
+			ret = LTTCOMM_NO_SESSION;
 			goto error;
 		}
 
@@ -1610,6 +1747,26 @@ static int set_signal_handler(void)
 }
 
 /*
+ *  set_ulimit
+ *
+ *  Set open files limit to unlimited. This daemon can open a large number of
+ *  file descriptors in order to consumer multiple kernel traces.
+ */
+static void set_ulimit(void)
+{
+	int ret;
+	struct rlimit lim;
+
+	lim.rlim_cur = 65535;
+	lim.rlim_max = 65535;
+
+	ret = setrlimit(RLIMIT_NOFILE, &lim);
+	if (ret < 0) {
+		perror("failed to set open files limit");
+	}
+}
+
+/*
  * main
  */
 int main(int argc, char **argv)
@@ -1659,6 +1816,9 @@ int main(int argc, char **argv)
 
 		/* Setup kernel tracer */
 		init_kernel_tracer();
+
+		/* Set ulimit for open files */
+		set_ulimit();
 	} else {
 		if (strlen(apps_unix_sock_path) == 0) {
 			snprintf(apps_unix_sock_path, PATH_MAX,

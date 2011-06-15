@@ -16,17 +16,11 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_UST_CTL_H
-#define _LTT_UST_CTL_H
+#ifndef _LTTNG_UTILS_H
+#define _LTTNG_UTILS_H
 
-#include "ltt-sessiond.h"
-#include "session.h"
-#include "trace.h"
+char *get_config_file_path(void);
+char *get_session_name(void);
+int set_session_name(void);
 
-int get_trace_count_per_session(struct ltt_session *session);
-//void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
-int ust_create_trace(struct command_ctx *cmd_ctx);
-int ust_start_trace(struct command_ctx *cmd_ctx);
-int ust_stop_trace(struct command_ctx *cmd_ctx);
-
-#endif /* _LTT_TRACE_H */
+#endif /* _LTTNG_UTILS_H */

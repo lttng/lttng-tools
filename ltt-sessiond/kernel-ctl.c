@@ -54,6 +54,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	}
 
 	lks->fd = ret;
+	lks->kconsumer_fds_sent = 0;
 	session->kernel_session = lks;
 	session->kern_session_count++;
 
@@ -71,19 +72,19 @@ error:
  *  Create a kernel channel, register it to the kernel tracer and add it to the
  *  kernel session.
  */
-int kernel_create_channel(struct ltt_kernel_session *session)
+int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
 
 	/* Allocate kernel channel */
-	lkc = trace_create_kernel_channel();
+	lkc = trace_create_kernel_channel(chan);
 	if (lkc == NULL) {
 		goto error;
 	}
 
 	/* Kernel tracer channel creation */
-	ret = kernctl_create_channel(session->fd, lkc->channel);
+	ret = kernctl_create_channel(session->fd, &lkc->channel->attr);
 	if (ret < 0) {
 		perror("ioctl kernel create channel");
 		goto error;
@@ -95,7 +96,8 @@ int kernel_create_channel(struct ltt_kernel_session *session)
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
 
-	DBG("Kernel channel created (fd: %d and path: %s)", lkc->fd, lkc->pathname);
+	DBG("Kernel channel %s created (fd: %d and path: %s)",
+			lkc->channel->name, lkc->fd, lkc->pathname);
 
 	return 0;
 
@@ -104,34 +106,31 @@ error:
 }
 
 /*
- *  kernel_enable_event
+ *  kernel_create_event
  *
  *  Create a kernel event, enable it to the kernel tracer and add it to the
  *  channel event list of the kernel session.
  */
-int kernel_enable_event(struct ltt_kernel_session *session, char *name)
+int kernel_create_event(struct ltt_kernel_channel *channel, struct lttng_event *ev)
 {
 	int ret;
-	struct ltt_kernel_channel *chan;
 	struct ltt_kernel_event *event;
 
-	event = trace_create_kernel_event(name, LTTNG_KERNEL_TRACEPOINTS);
+	event = trace_create_kernel_event(ev);
 	if (event == NULL) {
 		goto error;
 	}
 
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = kernctl_create_event(chan->fd, event->event);
-		if (ret < 0) {
-			ERR("Unable to enable event %s", name);
-			goto error;
-		}
-
-		event->fd = ret;
-		/* Add event to event list */
-		cds_list_add(&event->list, &chan->events_list.head);
-		DBG("Event %s enabled (fd: %d)", name, event->fd);
+	ret = kernctl_create_event(channel->fd, event->event);
+	if (ret < 0) {
+		ERR("Unable to enable event %s for channel %s", ev->name, channel->channel->name);
+		goto error;
 	}
+
+	event->fd = ret;
+	/* Add event to event list */
+	cds_list_add(&event->list, &channel->events_list.head);
+	DBG("Event %s enabled (fd: %d)", ev->name, event->fd);
 
 	return 0;
 
@@ -157,7 +156,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 	}
 
 	/* Kernel tracer metadata creation */
-	ret = kernctl_open_metadata(session->fd, lkm->conf);
+	ret = kernctl_open_metadata(session->fd, &lkm->conf->attr);
 	if (ret < 0) {
 		goto error;
 	}
@@ -184,6 +183,7 @@ int kernel_start_session(struct ltt_kernel_session *session)
 
 	ret = kernctl_start_session(session->fd);
 	if (ret < 0) {
+		perror("ioctl start session");
 		goto error;
 	}
 
@@ -193,6 +193,66 @@ int kernel_start_session(struct ltt_kernel_session *session)
 
 error:
 	return ret;
+}
+
+/*
+ *  kernel_wait_quiescent
+ *
+ *  Make a kernel wait to make sure in-flight probe have completed.
+ */
+void kernel_wait_quiescent(int fd)
+{
+	int ret;
+
+	DBG("Kernel quiescent wait on %d", fd);
+
+	ret = kernctl_wait_quiescent(fd);
+	if (ret < 0) {
+		perror("wait quiescent ioctl");
+		ERR("Kernel quiescent wait failed");
+	}
+}
+
+/*
+ *  kernel_metadata_flush_buffer
+ *
+ *  Force flush buffer of metadata.
+ */
+int kernel_metadata_flush_buffer(int fd)
+{
+	int ret;
+
+	ret = kernctl_buffer_flush(fd);
+	if (ret < 0) {
+		ERR("Fail to flush metadata buffers %d (ret: %d", fd, ret);
+	}
+
+	return 0;
+}
+
+/*
+ *  kernel_flush_buffer
+ *
+ *  Force flush buffer for channel.
+ */
+int kernel_flush_buffer(struct ltt_kernel_channel *channel)
+{
+	int ret;
+	struct ltt_kernel_stream *stream;
+
+	DBG("Flush buffer for channel %s", channel->channel->name);
+
+	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
+		DBG("Flushing channel stream %d", stream->fd);
+		ret = kernctl_buffer_flush(stream->fd);
+		if (ret < 0) {
+			perror("ioctl");
+			ERR("Fail to flush buffer for stream %d (ret: %d)",
+					stream->fd, ret);
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -218,14 +278,14 @@ error:
 }
 
 /*
- *  kernel_create_channel_stream
+ *  kernel_open_channel_stream
  *
- *  Create a stream for a channel, register it to the kernel tracer and add it
+ *  Open stream of channel, register it to the kernel tracer and add it
  *  to the stream list of the channel.
  *
  *  Return the number of created stream. Else, a negative value.
  */
-int kernel_create_channel_stream(struct ltt_kernel_channel *channel)
+int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 {
 	int ret;
 	struct ltt_kernel_stream *lks;
@@ -260,11 +320,11 @@ error:
 }
 
 /*
- *  kernel_create_metadata_stream
+ *  kernel_open_metadata_stream
  *
- *  Create the metadata stream and set it to the kernel session.
+ *  Open the metadata stream and set it to the kernel session.
  */
-int kernel_create_metadata_stream(struct ltt_kernel_session *session)
+int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 {
 	int ret;
 
@@ -341,4 +401,3 @@ ssize_t kernel_list_events(int tracer_fd, char **list)
 error:
 	return -1;
 }
-

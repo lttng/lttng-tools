@@ -66,6 +66,7 @@ int get_trace_count_per_session(struct ltt_session *session)
  *  Fill the lttng_trace array of all the
  *  available trace of the session.
  */
+/*
 void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces)
 {
 	int i = 0;
@@ -74,7 +75,6 @@ void get_traces_per_session(struct ltt_session *session, struct lttng_trace *tra
 
 	DBG("Getting userspace traces for session %s", session->name);
 
-	/* Getting userspace traces */
 	cds_list_for_each_entry(ust_iter, &session->ust_traces, list) {
 		trace.type = USERSPACE;
 		trace.pid = ust_iter->pid;
@@ -87,13 +87,13 @@ void get_traces_per_session(struct ltt_session *session, struct lttng_trace *tra
 
 	DBG("Getting kernel traces for session %s", session->name);
 
-	/* Getting kernel traces */
 	if (session->kern_session_count > 0) {
 		trace.type = KERNEL;
 		strncpy(trace.name, "kernel", 6);
 		memcpy(&traces[i], &trace, sizeof(trace));
 	}
 }
+*/
 
 /*
  *  ust_create_trace

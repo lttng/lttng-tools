@@ -21,9 +21,13 @@
 
 #include "kernel-ioctl.h"
 #include "libkernelctl.h"
-#include "lttngerr.h"
 
-int kernctl_create_channel(int fd, struct lttng_kernel_channel *chops)
+int kernctl_buffer_flush(int fd)
+{
+	return ioctl(fd, RING_BUFFER_FLUSH);
+}
+
+int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 {
 	return ioctl(fd, LTTNG_KERNEL_CHANNEL, chops);
 }
@@ -41,6 +45,18 @@ int kernctl_create_session(int fd)
 int kernctl_create_stream(int fd)
 {
 	return ioctl(fd, LTTNG_KERNEL_STREAM);
+}
+
+/* Enable event, channel and session ioctl */
+int kernctl_enable(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_ENABLE);
+}
+
+/* Disable event, channel and session ioctl */
+int kernctl_disable(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_DISABLE);
 }
 
 /* returns the maximum size for sub-buffers. */
@@ -86,7 +102,7 @@ int kernctl_get_subbuf_size(int fd, unsigned long *len)
 }
 
 /* open the metadata global channel */
-int kernctl_open_metadata(int fd, struct lttng_kernel_channel *chops)
+int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
 {
 	return ioctl(fd, LTTNG_KERNEL_METADATA, chops);
 }
@@ -139,4 +155,9 @@ int kernctl_tracepoint_list(int fd)
 int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v)
 {
 	return ioctl(fd, LTTNG_KERNEL_TRACER_VERSION, v);
+}
+
+int kernctl_wait_quiescent(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_WAIT_QUIESCENT);
 }

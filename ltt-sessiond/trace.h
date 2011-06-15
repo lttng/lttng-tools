@@ -21,14 +21,10 @@
 
 #include <limits.h>
 #include <urcu/list.h>
-#include "lttng-kernel.h"
 
-/* Default kernel channel attributes */
-#define DEFAULT_KERNEL_OVERWRITE            0
-#define DEFAULT_KERNEL_SUBBUF_SIZE          4096    /* bytes */
-#define DEFAULT_KERNEL_SUBBUF_NUM           8       /* Must always be a power of 2 */
-#define DEFAULT_KERNEL_SWITCH_TIMER         0       /* usec */
-#define DEFAULT_KERNEL_READ_TIMER           200     /* usec */
+#include <lttng/lttng.h>
+
+#include "lttng-kernel.h"
 
 /* Kernel event list */
 struct ltt_kernel_event_list {
@@ -57,7 +53,7 @@ struct ltt_kernel_channel {
 	int fd;
 	char *pathname;
 	unsigned int stream_count;
-	struct lttng_kernel_channel *channel;
+	struct lttng_channel *channel;
 	struct ltt_kernel_event_list events_list;
 	struct ltt_kernel_stream_list stream_list;
 	struct cds_list_head list;
@@ -67,7 +63,7 @@ struct ltt_kernel_channel {
 struct ltt_kernel_metadata {
 	int fd;
 	char *pathname;
-	struct lttng_kernel_channel *conf;
+	struct lttng_channel *conf;
 };
 
 /* Channel stream */
@@ -82,6 +78,7 @@ struct ltt_kernel_stream {
 struct ltt_kernel_session {
 	int fd;
 	int metadata_stream_fd;
+	int kconsumer_fds_sent;
 	unsigned int channel_count;
 	unsigned int stream_count_global;
 	struct ltt_kernel_metadata *metadata;
@@ -107,9 +104,8 @@ struct ltt_ust_marker {
  * Create functions malloc() the data structure.
  */
 struct ltt_kernel_session *trace_create_kernel_session(void);
-struct ltt_kernel_channel *trace_create_kernel_channel(void);
-struct ltt_kernel_event *trace_create_kernel_event(char *name,
-		enum lttng_kernel_instrumentation type);
+struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan);
+struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev);
 struct ltt_kernel_metadata *trace_create_kernel_metadata(void);
 struct ltt_kernel_stream *trace_create_kernel_stream(void);
 

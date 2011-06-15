@@ -20,10 +20,15 @@
 #ifndef _LTT_LIBKERNELCTL_H
 #define _LTT_LIBKERNELCTL_H
 
+#include <lttng/lttng.h>
+
 #include "lttng-kernel.h"
 
-int kernctl_create_channel(int fd, struct lttng_kernel_channel *chops);
+int kernctl_buffer_flush(int fd);
+int kernctl_create_channel(int fd, struct lttng_channel_attr *chops);
 int kernctl_create_event(int fd, struct lttng_kernel_event *ev);
+int kernctl_enable(int fd);
+int kernctl_disable(int fd);
 int kernctl_create_session(int fd);
 int kernctl_create_stream(int fd);
 int kernctl_get_max_subbuf_size(int fd, unsigned long *len);
@@ -33,7 +38,7 @@ int kernctl_get_next_subbuf(int fd);
 int kernctl_get_padded_subbuf_size(int fd, unsigned long *len);
 int kernctl_get_subbuf(int fd, unsigned long *len);
 int kernctl_get_subbuf_size(int fd, unsigned long *len);
-int kernctl_open_metadata(int fd, struct lttng_kernel_channel *chops);
+int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);
 int kernctl_put_next_subbuf(int fd);
 int kernctl_put_subbuf(int fd);
 int kernctl_snapshot(int fd);
@@ -43,5 +48,6 @@ int kernctl_start_session(int fd);
 int kernctl_stop_session(int fd);
 int kernctl_tracepoint_list(int fd);
 int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v);
+int kernctl_wait_quiescent(int fd);
 
 #endif /* _LTT_LIBKERNELCTL_H */

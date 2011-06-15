@@ -22,8 +22,8 @@
 #define _LIBLTTSESSIONDCOMM_H
 
 #include <limits.h>
-#include <uuid/uuid.h>
 
+#include <lttng/lttng.h>
 #include "lttng-share.h"
 
 /* Default unix socket path */
@@ -41,38 +41,24 @@
 #define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_OK)
 
 enum lttcomm_sessiond_command {
-	KERNEL_CREATE_CHANNEL,
-	KERNEL_CREATE_SESSION,
-	KERNEL_CREATE_STREAM,
-	KERNEL_DISABLE_EVENT,
-	KERNEL_ENABLE_EVENT,
-	KERNEL_ENABLE_ALL_EVENT,
-	KERNEL_LIST_EVENTS,
-	KERNEL_OPEN_METADATA,
-	KERNEL_START_TRACE,
-	KERNEL_STOP_TRACE,
+	/* Tracer context command */
+	LTTNG_KERNEL_CREATE_CHANNEL,
+	LTTNG_KERNEL_DISABLE_CHANNEL,
+	LTTNG_KERNEL_DISABLE_EVENT,
+	LTTNG_KERNEL_DISABLE_ALL_EVENT,
+	LTTNG_KERNEL_ENABLE_CHANNEL,
+	LTTNG_KERNEL_ENABLE_EVENT,
+	LTTNG_KERNEL_ENABLE_ALL_EVENT,
+	LTTNG_KERNEL_LIST_EVENTS,
+	/* Session daemon context command */
 	LTTNG_CREATE_SESSION,
 	LTTNG_DESTROY_SESSION,
-	LTTNG_FORCE_SUBBUF_SWITCH,
-	LTTNG_GET_ALL_SESSION,
-	LTTNG_GET_SOCK_PATH,
-	LTTNG_GET_SUBBUF_NUM_SIZE,
-	LTTNG_LIST_MARKERS,
 	LTTNG_LIST_SESSIONS,
 	LTTNG_LIST_TRACES,
-	LTTNG_LIST_TRACE_EVENTS,
-	LTTNG_SETUP_TRACE,
-	LTTNG_SET_SOCK_PATH,
-	LTTNG_SET_SUBBUF_NUM,
-	LTTNG_SET_SUBBUF_SIZE,
-	UST_ALLOC_TRACE,
-	UST_CREATE_TRACE,
-	UST_DESTROY_TRACE,
-	UST_DISABLE_MARKER,
-	UST_ENABLE_MARKER,
-	UST_LIST_APPS,
-	UST_START_TRACE,
-	UST_STOP_TRACE,
+	LTTNG_LIST_EVENTS,
+	LTTNG_LIST_TRACEABLE_APPS,
+	LTTNG_START_TRACE,
+	LTTNG_STOP_TRACE,
 };
 
 /*
@@ -90,7 +76,7 @@ enum lttcomm_return_code {
 	LTTCOMM_STOP_FAIL,				/* Stop tracing fail */
 	LTTCOMM_LIST_FAIL,				/* Listing apps fail */
 	LTTCOMM_NO_APPS,				/* No traceable application */
-	LTTCOMM_NO_SESS,				/* No sessions available */
+	LTTCOMM_SESS_NOT_FOUND,			/* Session name not found */
 	LTTCOMM_NO_TRACE,				/* No trace exist */
 	LTTCOMM_FATAL,					/* Session daemon had a fatal error */
 	LTTCOMM_NO_TRACEABLE,			/* Error for non traceable app */
@@ -100,6 +86,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
+	LTTCOMM_KERN_CHAN_NOT_FOUND,	/* Kernel channel not found */
 	LTTCOMM_KERN_ENABLE_FAIL,		/* Kernel enable event failed */
 	LTTCOMM_KERN_DISABLE_FAIL,		/* Kernel disable event failed */
 	LTTCOMM_KERN_META_FAIL,			/* Kernel open metadata failed */
@@ -133,18 +120,23 @@ enum lttcomm_return_code {
  */
 struct lttcomm_session_msg {
 	u32 cmd_type;    /* enum lttcomm_sessiond_command */
-	uuid_t session_uuid;
-	char trace_name[NAME_MAX];
 	char session_name[NAME_MAX];
-	u32 pid;    /* pid_t */
+	char path[PATH_MAX];
+	pid_t pid;
 	union {
 		struct {
-			int auto_session;
-		} create_session;
-		/* Marker data */
+			char channel_name[NAME_MAX];
+			char name[NAME_MAX];
+		} disable;
+		/* Event data */
 		struct {
-			char event_name[NAME_MAX];
-		} event;
+			char channel_name[NAME_MAX];
+			struct lttng_event event;
+		} enable;
+		/* Create channel */
+		struct {
+			struct lttng_channel chan;
+		} channel;
 	} u;
 };
 
@@ -155,9 +147,7 @@ struct lttcomm_lttng_msg {
 	u32 cmd_type;   /* enum lttcomm_sessiond_command */
 	u32 ret_code;   /* enum lttcomm_return_code */
 	u32 pid;        /* pid_t */
-	u32 trace_name_offset;
 	u32 data_size;
-	uuid_t session_uuid;
 	/* Contains: trace_name + data */
 	char payload[];
 };

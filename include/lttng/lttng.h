@@ -23,8 +23,9 @@
 #ifndef _LTTNG_H
 #define _LTTNG_H
 
+#include <asm/types.h>
+#include <stdint.h>
 #include <limits.h>
-#include <uuid/uuid.h>
 
 /* Default unix group name for tracing. */
 #define LTTNG_DEFAULT_TRACING_GROUP "tracing"
@@ -33,68 +34,115 @@
 #define LTTNG_SESSIOND_PATH_ENV "LTTNG_SESSIOND_PATH"
 
 /*
- * Trace type for lttng_trace.
+ * Event symbol length.
  */
-enum lttng_trace_type {
-	KERNEL,
-	USERSPACE,
+#define LTTNG_SYMBOL_NAME_LEN 128
+
+enum lttng_event_type {
+	LTTNG_EVENT_TRACEPOINTS,
+	LTTNG_EVENT_KPROBES,
+	LTTNG_EVENT_FUNCTION,
 };
 
 /*
- * Basic trace information exposed.
+ * Either addr is used or symbol_name and offset.
  */
-struct lttng_trace {
-	char name[NAME_MAX];
-	pid_t pid;      /* Only useful for user-space trace */
-	enum lttng_trace_type type;
+struct lttng_event_kprobe_attr {
+	uint64_t addr;
+
+	uint64_t offset;
+	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
 };
 
 /*
- * Basic session information exposed.
+ * Function tracer
+ */
+struct lttng_event_function_attr {
+	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+};
+
+/*
+ * Generic lttng event
+ */
+struct lttng_event {
+	char name[LTTNG_SYMBOL_NAME_LEN];
+	enum lttng_event_type type;
+	/* Per event type configuration */
+	union {
+		struct lttng_event_kprobe_attr kprobe;
+		struct lttng_event_function_attr ftrace;
+	} attr;
+};
+
+/* Tracer channel attributes */
+struct lttng_channel_attr {
+	int overwrite;                        /* 1: overwrite, 0: discard */
+	uint64_t subbuf_size;                      /* bytes */
+	uint64_t num_subbuf;                       /* power of 2 */
+	unsigned int switch_timer_interval;   /* usec */
+	unsigned int read_timer_interval;     /* usec */
+};
+
+/*
+ * Basic session information.
  */
 struct lttng_session {
 	char name[NAME_MAX];
-	uuid_t uuid;
+	char path[PATH_MAX];
+};
+
+/* Channel information structure */
+struct lttng_channel {
+	char name[NAME_MAX];
+	struct lttng_channel_attr attr;
 };
 
 /*
  * Session daemon control
  */
 extern int lttng_connect_sessiond(void);
-extern int lttng_create_session(char *name);
-extern int lttng_destroy_session(uuid_t *uuid);
+
+extern int lttng_create_session(char *name, char *path);
+
+extern int lttng_destroy_session(char *name);
+
 extern int lttng_disconnect_sessiond(void);
+
 /* Return an allocated array of lttng_session */
 extern int lttng_list_sessions(struct lttng_session **sessions);
-/* Return an allocated array of lttng_traces */
-extern int lttng_list_traces(uuid_t *uuid, struct lttng_trace **traces);
+
 extern int lttng_session_daemon_alive(void);
+
 /* Set tracing group for the current execution */
 extern int lttng_set_tracing_group(const char *name);
-/* Set session uuid for the current execution */
-extern void lttng_set_current_session_uuid(uuid_t *uuid);
+
+extern void lttng_set_session_name(char *name);
+
 extern const char *lttng_get_readable_code(int code);
 
-/*
- * User-space tracer control
- */
-extern int lttng_ust_create_trace(pid_t pid);
-/* Return an allocated array of pids */
-extern int lttng_ust_list_apps(pid_t **pids);
-extern int lttng_ust_start_trace(pid_t pid);
-extern int lttng_ust_stop_trace(pid_t pid);
+extern int lttng_start_tracing(char *session_name);
+
+extern int lttng_stop_tracing(char *session_name);
+
+//extern int lttng_ust_list_traceable_apps(pid_t **pids);
 
 /*
- * Kernel tracer control
+ * LTTng Kernel tracer control
  */
-extern int lttng_kernel_create_channel(void);
-extern int lttng_kernel_create_session(void);
-extern int lttng_kernel_create_stream(void);
-extern int lttng_kernel_disable_event(char *event_name);
-extern int lttng_kernel_enable_event(char *event_name);
+extern int lttng_kernel_create_channel(struct lttng_channel *chan);
+
+extern int lttng_kernel_enable_event(struct lttng_event *ev, char *channel_name);
+
+extern int lttng_kernel_enable_channel(char *name);
+
+extern int lttng_kernel_disable_event(char *name, char *channel_name);
+
+extern int lttng_kernel_disable_channel(char *name);
+
 extern int lttng_kernel_list_events(char **event_list);
-extern int lttng_kernel_open_metadata(void);
-extern int lttng_kernel_start_tracing(void);
-extern int lttng_kernel_stop_tracing(void);
+
+/*
+ * LTTng User-space tracer control
+ */
 
 #endif /* _LTTNG_H */

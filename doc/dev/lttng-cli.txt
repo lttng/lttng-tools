@@ -94,3 +94,5 @@ lttng disable-event name --userspace [--channel name] [--all/--pid n/cmd_name]
 
 lttng add-context name --kernel [--event name] [--channel name] --type context_type [context options]
 lttng add-context name --userspace [--event name] [--channel name] [--all/--pid n/cmd_name] --type context_type [context options]
+
+lttng consume [PATH] --continue --snapshot --stop

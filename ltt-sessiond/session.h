@@ -36,6 +36,7 @@ extern struct ltt_session_list ltt_session_list;
 struct ltt_session {
 	struct cds_list_head list;
 	char *name;
+	char *path;
 	uuid_t uuid;
 	struct cds_list_head ust_traces;
 	struct ltt_kernel_session *kernel_session;
@@ -45,8 +46,8 @@ struct ltt_session {
 };
 
 /* Prototypes */
-int create_session(char *name, uuid_t *session_id);
-int destroy_session(uuid_t *uuid);
+int create_session(char *name, char *path);
+int destroy_session(char *name);
 void get_lttng_session(struct lttng_session *sessions);
 struct ltt_session *find_session_by_uuid(uuid_t session_id);
 struct ltt_session *find_session_by_name(char *name);

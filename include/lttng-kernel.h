@@ -28,27 +28,16 @@
 enum lttng_kernel_instrumentation {
 	LTTNG_KERNEL_TRACEPOINTS,
 	LTTNG_KERNEL_KPROBES,
-	LTTNG_KERNEL_FUNCTION_TRACER,
+	LTTNG_KERNEL_FUNCTION,
 };
 
 /*
  * LTTng DebugFS ABI structures.
+ *
+ * This is the kernel ABI copied from lttng-modules tree.
  */
 
-struct lttng_kernel_channel {
-	int overwrite;              /* 1: overwrite, 0: discard */
-	uint64_t subbuf_size;           /* in bytes */
-	uint64_t num_subbuf;
-	unsigned int switch_timer_interval; /* usecs */
-	unsigned int read_timer_interval;   /* usecs */
-};
-
-struct lttng_kernel_tracepoint {
-};
-
-/*
- * Either addr is used, or symbol_name and offset.
- */
+/* Either addr is used or symbol_name and offset. */
 struct lttng_kernel_kprobe {
 	uint64_t addr;
 
@@ -61,11 +50,10 @@ struct lttng_kernel_function_tracer {
 };
 
 struct lttng_kernel_event {
-	char name[LTTNG_SYM_NAME_LEN];  /* event name */
+	char name[LTTNG_SYM_NAME_LEN];
 	enum lttng_kernel_instrumentation instrumentation;
 	/* Per instrumentation type configuration */
 	union {
-		struct lttng_kernel_tracepoint tracepoint;
 		struct lttng_kernel_kprobe kprobe;
 		struct lttng_kernel_function_tracer ftrace;
 	} u;
