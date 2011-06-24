@@ -318,7 +318,7 @@ ssize_t kernel_list_events(int tracer_fd, char **list)
 
 	while ((size = getline(&line, &nb, fp)) != -1) {
 		if (total + size > nbmem) {
-			DBG("Reallocating event list from %ld to %ld bytes", nbmem,
+			DBG("Reallocating event list from %zd to %zd bytes", nbmem,
 					total + size + KERNEL_EVENT_LIST_SIZE);
 			/* Adding the default size again */
 			nbmem = total + size + KERNEL_EVENT_LIST_SIZE;
