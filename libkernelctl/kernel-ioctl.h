@@ -48,28 +48,29 @@
 /* flush the current sub-buffer */
 #define RING_BUFFER_FLUSH                   _IO(0xF6, 0x0C)
 
+/* LTTng file descriptor ioctl */
 #define LTTNG_KERNEL_SESSION                _IO(0xF6, 0x40)
 #define LTTNG_KERNEL_TRACER_VERSION         \
 		_IOR(0xF6, 0x41, struct lttng_kernel_tracer_version)
-
 #define LTTNG_KERNEL_TRACEPOINT_LIST        _IO(0xF6, 0x42)
 #define LTTNG_KERNEL_WAIT_QUIESCENT         _IO(0xF6, 0x43)
 
 /* Session FD ioctl */
 #define LTTNG_KERNEL_METADATA               \
 		_IOW(0xF6, 0x50, struct lttng_channel_attr)
-
 #define LTTNG_KERNEL_CHANNEL                \
 		_IOW(0xF6, 0x51, struct lttng_channel_attr)
-
 #define LTTNG_KERNEL_SESSION_START          _IO(0xF6, 0x52)
 #define LTTNG_KERNEL_SESSION_STOP           _IO(0xF6, 0x53)
 
 /* Channel FD ioctl */
 #define LTTNG_KERNEL_STREAM                 _IO(0xF6, 0x60)
-
 #define LTTNG_KERNEL_EVENT                  \
 		_IOW(0xF6, 0x61, struct lttng_kernel_event)
+
+/* Event and Channel FD ioctl */
+#define LTTNG_KERNEL_CONTEXT                \
+		_IOW(0xF6, 0x70, struct lttng_kernel_context)
 
 /* Event, Channel and Session ioctl */
 #define LTTNG_KERNEL_ENABLE                 _IO(0xF6, 0x80)
