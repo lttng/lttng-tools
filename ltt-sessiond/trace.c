@@ -297,8 +297,10 @@ void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */
 	close(session->fd);
-	DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
-	close(session->metadata_stream_fd);
+	if (session->metadata_stream_fd != 0) {
+		DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
+		close(session->metadata_stream_fd);
+	}
 
 	trace_destroy_kernel_metadata(session->metadata);
 
