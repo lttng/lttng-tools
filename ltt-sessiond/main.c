@@ -826,12 +826,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		/* Need a session for kernel command */
 		if (cmd_ctx->lsm->cmd_type != LTTNG_KERNEL_LIST_EVENTS &&
 				cmd_ctx->session->kernel_session == NULL) {
+
 			ret = create_kernel_session(cmd_ctx->session);
 			if (ret < 0) {
 				ret = LTTCOMM_KERN_SESS_FAIL;
 				goto error;
 			}
 
+			/* Start the kernel consumer daemon */
 			if (kconsumerd_pid == 0) {
 				ret = start_kconsumerd();
 				if (ret < 0) {

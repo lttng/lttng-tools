@@ -18,6 +18,7 @@
 
 #define _GNU_SOURCE
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -54,6 +55,12 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	}
 
 	lks->fd = ret;
+	/* Prevent fd duplication after execlp() */
+	ret = fcntl(lks->fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		perror("fcntl session fd");
+	}
+
 	lks->kconsumer_fds_sent = 0;
 	session->kernel_session = lks;
 	session->kern_session_count++;
@@ -92,6 +99,12 @@ int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_chann
 
 	/* Setup the channel fd */
 	lkc->fd = ret;
+	/* Prevent fd duplication after execlp() */
+	ret = fcntl(lkc->fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		perror("fcntl session fd");
+	}
+
 	/* Add channel to session */
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
@@ -128,6 +141,12 @@ int kernel_create_event(struct ltt_kernel_channel *channel, struct lttng_event *
 	}
 
 	event->fd = ret;
+	/* Prevent fd duplication after execlp() */
+	ret = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		perror("fcntl session fd");
+	}
+
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
 	DBG("Event %s enabled (fd: %d)", ev->name, event->fd);
@@ -162,6 +181,12 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 	}
 
 	lkm->fd = ret;
+	/* Prevent fd duplication after execlp() */
+	ret = fcntl(lkm->fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		perror("fcntl session fd");
+	}
+
 	session->metadata = lkm;
 
 	DBG("Kernel metadata opened (fd: %d and path: %s)", lkm->fd, lkm->pathname);
@@ -298,6 +323,12 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 		}
 
 		lks->fd = ret;
+		/* Prevent fd duplication after execlp() */
+		ret = fcntl(lks->fd, F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			perror("fcntl session fd");
+		}
+
 		ret = asprintf(&lks->pathname, "%s/trace_%d",
 				channel->pathname, channel->stream_count);
 		if (ret < 0) {
@@ -336,6 +367,11 @@ int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 
 	DBG("Kernel metadata stream created (fd: %d)", ret);
 	session->metadata_stream_fd = ret;
+	/* Prevent fd duplication after execlp() */
+	ret = fcntl(session->metadata_stream_fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		perror("fcntl session fd");
+	}
 
 	return 0;
 
