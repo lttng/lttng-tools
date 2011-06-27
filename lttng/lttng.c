@@ -27,7 +27,7 @@
 #include <lttng/lttng.h>
 
 #include "cmd.h"
-#include "config.h"
+#include "conf.h"
 #include "lttngerr.h"
 
 /* Variables */

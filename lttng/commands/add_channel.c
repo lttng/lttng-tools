@@ -26,7 +26,7 @@
 #include <unistd.h>
 
 #include "cmd.h"
-#include "config.h"
+#include "conf.h"
 #include "utils.h"
 
 static char *opt_channel_name;

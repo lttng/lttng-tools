@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #include "cmd.h"
-#include "config.h"
+#include "conf.h"
 
 static char *opt_output_path;
 static char *opt_session_name;

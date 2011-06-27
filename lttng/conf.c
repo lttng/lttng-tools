@@ -25,7 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "config.h"
+#include "conf.h"
 #include "lttngerr.h"
 
 /*

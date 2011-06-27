@@ -20,7 +20,7 @@
 
 #include <lttng/lttng.h>
 
-#include "config.h"
+#include "conf.h"
 
 /*
  *  get_config_file_path
