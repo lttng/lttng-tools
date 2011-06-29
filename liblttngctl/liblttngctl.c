@@ -257,11 +257,11 @@ int lttng_stop_tracing(char *session_name)
 int lttng_kernel_add_context(struct lttng_kernel_context *ctx,
 		char *event_name, char *channel_name)
 {
-	if (strlen(channel_name) != 0) {
+	if (channel_name != NULL) {
 		strncpy(lsm.u.context.channel_name, channel_name, NAME_MAX);
 	}
 
-	if (strlen(event_name) != 0) {
+	if (event_name != NULL) {
 		strncpy(lsm.u.context.event_name, event_name, NAME_MAX);
 	}
 
@@ -276,7 +276,7 @@ int lttng_kernel_enable_event(struct lttng_event *ev, char *channel_name)
 {
 	int ret;
 
-	if (strlen(channel_name) == 0) {
+	if (channel_name == NULL) {
 		strncpy(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME, NAME_MAX);
 	} else {
 		strncpy(lsm.u.enable.channel_name, channel_name, NAME_MAX);
@@ -301,7 +301,7 @@ int lttng_kernel_disable_event(char *name, char *channel_name)
 {
 	int ret;
 
-	if (strlen(channel_name) == 0) {
+	if (channel_name == NULL) {
 		strncpy(lsm.u.disable.channel_name, DEFAULT_CHANNEL_NAME, NAME_MAX);
 	} else {
 		strncpy(lsm.u.disable.channel_name, channel_name, NAME_MAX);
