@@ -139,6 +139,7 @@ struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *cha
 
 	lkc->fd = 0;
 	lkc->stream_count = 0;
+	lkc->enabled = 1;
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
@@ -201,6 +202,7 @@ struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 	/* Setting up a kernel event */
 	lke->fd = 0;
 	lke->event = attr;
+	lke->enabled = 1;
 
 	return lke;
 
@@ -355,7 +357,9 @@ void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 		close(session->metadata_stream_fd);
 	}
 
-	trace_destroy_kernel_metadata(session->metadata);
+	if (session->metadata != NULL) {
+		trace_destroy_kernel_metadata(session->metadata);
+	}
 
 	cds_list_for_each_entry(channel, &session->channel_list.head, list) {
 		trace_destroy_kernel_channel(channel);

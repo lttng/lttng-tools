@@ -87,6 +87,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
 	LTTCOMM_KERN_CHAN_NOT_FOUND,	/* Kernel channel not found */
+	LTTCOMM_KERN_CHAN_ENABLE_FAIL,  /* Kernel enable channel failed */
 	LTTCOMM_KERN_ENABLE_FAIL,		/* Kernel enable event failed */
 	LTTCOMM_KERN_DISABLE_FAIL,		/* Kernel disable event failed */
 	LTTCOMM_KERN_META_FAIL,			/* Kernel open metadata failed */

@@ -941,6 +941,35 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
+	case LTTNG_KERNEL_ENABLE_CHANNEL:
+	{
+		struct ltt_kernel_channel *chan;
+
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
+				cmd_ctx->session->kernel_session);
+		if (chan == NULL) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			goto error;
+		} else if (chan->enabled == 0) {
+			ret = kernel_enable_channel(chan);
+			if (ret < 0) {
+				if (ret != EEXIST) {
+					ret = LTTCOMM_KERN_CHAN_ENABLE_FAIL;
+				}
+				goto error;
+			}
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		ret = LTTCOMM_OK;
+		break;
+	}
 	case LTTNG_KERNEL_ENABLE_EVENT:
 	{
 		struct ltt_kernel_channel *chan;

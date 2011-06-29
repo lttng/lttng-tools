@@ -306,6 +306,7 @@ int lttng_kernel_disable_event(char *name, char *channel_name)
  */
 int lttng_kernel_enable_channel(char *name)
 {
+	strncpy(lsm.u.enable.channel_name, name, NAME_MAX);
 	return ask_sessiond(LTTNG_KERNEL_ENABLE_CHANNEL, NULL);
 }
 

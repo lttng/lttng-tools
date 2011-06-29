@@ -141,7 +141,6 @@ int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *chann
 	}
 
 	event->fd = ret;
-	event->enabled = 1;
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
@@ -158,6 +157,31 @@ free_event:
 	free(event);
 error:
 	return -1;
+}
+
+/*
+ *  kernel_enable_channel
+ *
+ *  Enable a kernel channel.
+ */
+int kernel_enable_channel(struct ltt_kernel_channel *chan)
+{
+	int ret;
+
+	ret = kernctl_enable(chan->fd);
+	if (ret < 0) {
+		perror("enable chan ioctl");
+		ret = errno;
+		goto error;
+	}
+
+	chan->enabled = 1;
+	DBG("Kernel channel %s enabled (fd: %d)", chan->channel->name, chan->fd);
+
+	return 0;
+
+error:
+	return ret;
 }
 
 /*
@@ -181,7 +205,7 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 	return 0;
 
 error:
-	return -1;
+	return ret;
 }
 
 /*
@@ -205,7 +229,7 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 	return 0;
 
 error:
-	return -1;
+	return ret;
 }
 
 /*

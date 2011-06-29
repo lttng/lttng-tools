@@ -5,7 +5,8 @@ bin_PROGRAMS = lttng
 lttng_SOURCES = conf.c commands/start.c commands/add_channel.c \
 				commands/list.c commands/create.c commands/destroy.c \
 				commands/stop.c commands/enable_events.c \
-				commands/disable_events.c utils.c lttng.c
+				commands/disable_events.c commands/enable_channels.c \
+				utils.c lttng.c
 
 lttng_LDADD = \
 		$(top_builddir)/liblttngctl/liblttngctl.la
