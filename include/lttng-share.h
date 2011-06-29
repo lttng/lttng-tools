@@ -36,6 +36,7 @@ typedef __s64 s64;
 #define DEFAULT_CHANNEL_SUBBUF_NUM           8       /* Must always be a power of 2 */
 #define DEFAULT_CHANNEL_SWITCH_TIMER         0       /* usec */
 #define DEFAULT_CHANNEL_READ_TIMER           200     /* usec */
+#define DEFAULT_CHANNEL_OUTPUT               0       /* splice, mmap (0: SPLICE, 1: MMAP, see lttng.h) */
 
 /*
  * lttng user-space instrumentation type

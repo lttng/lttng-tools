@@ -74,6 +74,14 @@ struct lttng_kernel_context {
 };
 
 /*
+ * LTTng consumer mode
+ */
+enum lttng_kernel_output {
+	LTTNG_KERNEL_SPLICE       = 0,
+	LTTNG_KERNEL_MMAP         = 1,
+};
+
+/*
  * Either addr is used or symbol_name and offset.
  */
 struct lttng_event_kprobe_attr {
@@ -110,6 +118,7 @@ struct lttng_channel_attr {
 	uint64_t num_subbuf;                       /* power of 2 */
 	unsigned int switch_timer_interval;   /* usec */
 	unsigned int read_timer_interval;     /* usec */
+	enum lttng_kernel_output output;	/* splice, mmap */
 };
 
 /*

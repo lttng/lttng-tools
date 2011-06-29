@@ -720,6 +720,7 @@ static struct lttng_channel *init_default_channel(void)
 	chan->attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
 	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+	chan->attr.output = DEFAULT_CHANNEL_OUTPUT;
 
 error:
 	return chan;
