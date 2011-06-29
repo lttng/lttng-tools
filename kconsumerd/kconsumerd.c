@@ -35,6 +35,7 @@
 #include <urcu/list.h>
 #include <poll.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 #include "lttngerr.h"
 #include "libkernelctl.h"
@@ -240,6 +241,119 @@ static int set_signal_handler(void)
 }
 
 /*
+ * on_read_subbuffer_mmap
+ *
+ * mmap the ring buffer, read it and write the data to the tracefile.
+ * Returns the number of bytes written
+ */
+static int on_read_subbuffer_mmap(struct ltt_kconsumerd_fd *kconsumerd_fd,
+		unsigned long len)
+{
+	unsigned long mmap_len;
+	unsigned long mmap_offset;
+	unsigned long padded_len;
+	unsigned long padding_len;
+	char *mmap_base;
+	char *padding = NULL;
+	long ret = 0;
+	off_t orig_offset = kconsumerd_fd->out_fd_offset;
+	int fd = kconsumerd_fd->consumerd_fd;
+	int outfd = kconsumerd_fd->out_fd;
+
+	/* get the padded subbuffer size to know the padding required */
+	ret = kernctl_get_padded_subbuf_size(fd, &padded_len);
+	if (ret != 0) {
+		ret = errno;
+		perror("kernctl_get_padded_subbuf_size");
+		goto end;
+	}
+	padding_len = padded_len - len;
+	padding = malloc(padding_len * sizeof(char));
+	memset(padding, '\0', padding_len);
+
+	/* get the len of the mmap region */
+	ret = kernctl_get_mmap_len(fd, &mmap_len);
+	if (ret != 0) {
+		ret = errno;
+		perror("kernctl_get_mmap_len");
+		goto end;
+	}
+
+	/* get the offset inside the fd to mmap */
+	ret = kernctl_get_mmap_read_offset(fd, &mmap_offset);
+	if (ret != 0) {
+		ret = errno;
+		perror("kernctl_get_mmap_read_offset");
+		goto end;
+	}
+
+	mmap_base = mmap(NULL, mmap_len, PROT_READ, MAP_PRIVATE, fd, mmap_offset);
+	if (mmap_base == MAP_FAILED) {
+		perror("Error mmaping");
+		ret = -1;
+		goto end;
+	}
+
+	while (len > 0) {
+		ret = write(outfd, mmap_base, len);
+		if (ret >= len) {
+			len = 0;
+		} else if (ret < 0) {
+			ret = errno;
+			perror("Error in file write");
+			goto end;
+		}
+		/* This won't block, but will start writeout asynchronously */
+		sync_file_range(outfd, kconsumerd_fd->out_fd_offset, ret,
+				SYNC_FILE_RANGE_WRITE);
+		kconsumerd_fd->out_fd_offset += ret;
+	}
+
+	/* once all the data is written, write the padding to disk */
+	ret = write(outfd, padding, padding_len);
+	if (ret < 0) {
+		ret = errno;
+		perror("Error writing padding to file");
+		goto end;
+	}
+
+	/*
+	 * This does a blocking write-and-wait on any page that belongs to the
+	 * subbuffer prior to the one we just wrote.
+	 * Don't care about error values, as these are just hints and ways to
+	 * limit the amount of page cache used.
+	 */
+	if (orig_offset >= kconsumerd_fd->max_sb_size) {
+		sync_file_range(outfd, orig_offset - kconsumerd_fd->max_sb_size,
+				kconsumerd_fd->max_sb_size,
+				SYNC_FILE_RANGE_WAIT_BEFORE
+				| SYNC_FILE_RANGE_WRITE
+				| SYNC_FILE_RANGE_WAIT_AFTER);
+		/*
+		 * Give hints to the kernel about how we access the file:
+		 * POSIX_FADV_DONTNEED : we won't re-access data in a near
+		 * future after we write it.
+		 * We need to call fadvise again after the file grows because
+		 * the kernel does not seem to apply fadvise to non-existing
+		 * parts of the file.
+		 * Call fadvise _after_ having waited for the page writeback to
+		 * complete because the dirty page writeback semantic is not
+		 * well defined. So it can be expected to lead to lower
+		 * throughput in streaming.
+		 */
+		posix_fadvise(outfd, orig_offset - kconsumerd_fd->max_sb_size,
+				kconsumerd_fd->max_sb_size, POSIX_FADV_DONTNEED);
+	}
+	goto end;
+
+end:
+	if (padding != NULL) {
+		free(padding);
+	}
+	return ret;
+}
+
+/*
  * on_read_subbuffer
  *
  * Splice the data from the ring buffer to the tracefile.
@@ -355,22 +469,46 @@ static int read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd)
 		goto end;
 	}
 
-	/* read the whole subbuffer */
-	err = kernctl_get_padded_subbuf_size(infd, &len);
-	if (err != 0) {
-		ret = errno;
-		perror("Getting sub-buffer len failed.");
-		goto end;
-	}
+	if (DEFAULT_CHANNEL_OUTPUT == LTTNG_KERNEL_SPLICE) {
+		/* read the whole subbuffer */
+		err = kernctl_get_padded_subbuf_size(infd, &len);
+		if (err != 0) {
+			ret = errno;
+			perror("Getting sub-buffer len failed.");
+			goto end;
+		}
 
-	/* splice the subbuffer to the tracefile */
-	ret = on_read_subbuffer(kconsumerd_fd, len);
-	if (ret < 0) {
-		/*
-		 * display the error but continue processing to try
-		 * to release the subbuffer
-		 */
-		ERR("Error splicing to tracefile");
+		/* splice the subbuffer to the tracefile */
+		ret = on_read_subbuffer(kconsumerd_fd, len);
+		if (ret < 0) {
+			/*
+			 * display the error but continue processing to try
+			 * to release the subbuffer
+			 */
+			ERR("Error splicing to tracefile");
+		}
+	} else if (DEFAULT_CHANNEL_OUTPUT == LTTNG_KERNEL_MMAP) {
+		/* read the used subbuffer size */
+		err = kernctl_get_subbuf_size(infd, &len);
+		if (err != 0) {
+			ret = errno;
+			perror("Getting sub-buffer len failed.");
+			goto end;
+		}
+
+		/* write the subbuffer to the tracefile */
+		ret = on_read_subbuffer_mmap(kconsumerd_fd, len);
+		if (ret < 0) {
+			/*
+			 * display the error but continue processing to try
+			 * to release the subbuffer
+			 */
+			ERR("Error writing to tracefile");
+		}
+	} else {
+		ERR("Unknown output method");
+		ret = -1;
+		goto end;
 	}
 
 	err = kernctl_put_next_subbuf(infd);
