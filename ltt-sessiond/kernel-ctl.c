@@ -160,6 +160,31 @@ error:
 }
 
 /*
+ *  kernel_disable_channel
+ *
+ *  Disable a kernel channel.
+ */
+int kernel_disable_channel(struct ltt_kernel_channel *chan)
+{
+	int ret;
+
+	ret = kernctl_disable(chan->fd);
+	if (ret < 0) {
+		perror("disable chan ioctl");
+		ret = errno;
+		goto error;
+	}
+
+	chan->enabled = 0;
+	DBG("Kernel channel %s disabled (fd: %d)", chan->channel->name, chan->fd);
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
  *  kernel_enable_channel
  *
  *  Enable a kernel channel.
