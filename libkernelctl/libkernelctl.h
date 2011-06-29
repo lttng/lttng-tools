@@ -24,6 +24,7 @@
 
 #include "lttng-kernel.h"
 
+int kernctl_add_context(int fd, struct lttng_kernel_context *ctx);
 int kernctl_buffer_flush(int fd);
 int kernctl_create_channel(int fd, struct lttng_channel_attr *chops);
 int kernctl_create_event(int fd, struct lttng_kernel_event *ev);

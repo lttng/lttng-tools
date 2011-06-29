@@ -803,6 +803,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	 * Check kernel command for kernel session.
 	 */
 	switch (cmd_ctx->lsm->cmd_type) {
+	case LTTNG_KERNEL_ADD_CONTEXT:
 	case LTTNG_KERNEL_CREATE_CHANNEL:
 	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
 	case LTTNG_KERNEL_DISABLE_CHANNEL:
@@ -852,6 +853,84 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
+	case LTTNG_KERNEL_ADD_CONTEXT:
+	{
+		int found = 0, no_event = 0;
+		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_event *event;
+
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		/* Check if event name is given */
+		if (strlen(cmd_ctx->lsm->u.context.event_name) == 0) {
+			no_event = 1;
+		}
+
+		if (strlen(cmd_ctx->lsm->u.context.channel_name) == 0) {
+			/* Go over all channels */
+			DBG("Adding context to all channels");
+			cds_list_for_each_entry(chan,
+					&cmd_ctx->session->kernel_session->channel_list.head, list) {
+				if (no_event) {
+					ret = kernel_add_channel_context(chan,
+							&cmd_ctx->lsm->u.context.ctx);
+					if (ret < 0) {
+						continue;
+					}
+				} else {
+					event = get_kernel_event_by_name(cmd_ctx->lsm->u.context.event_name, chan);
+					if (event != NULL) {
+						ret = kernel_add_event_context(event,
+								&cmd_ctx->lsm->u.context.ctx);
+						if (ret < 0) {
+							ret = LTTCOMM_KERN_CONTEXT_FAIL;
+							goto error;
+						}
+						found = 1;
+						break;
+					}
+				}
+			}
+		} else {
+			chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.context.channel_name,
+					cmd_ctx->session->kernel_session);
+			if (chan == NULL) {
+				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+				goto error;
+			}
+
+			if (no_event) {
+				ret = kernel_add_channel_context(chan,
+						&cmd_ctx->lsm->u.context.ctx);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_CONTEXT_FAIL;
+					goto error;
+				}
+			} else {
+				event = get_kernel_event_by_name(cmd_ctx->lsm->u.context.event_name, chan);
+				if (event != NULL) {
+					ret = kernel_add_event_context(event,
+							&cmd_ctx->lsm->u.context.ctx);
+					if (ret < 0) {
+						ret = LTTCOMM_KERN_CONTEXT_FAIL;
+						goto error;
+					}
+				}
+			}
+		}
+
+		if (!found && !no_event) {
+			ret = LTTCOMM_NO_EVENT;
+			goto error;
+		}
+
+		ret = LTTCOMM_OK;
+		break;
+	}
 	case LTTNG_KERNEL_CREATE_CHANNEL:
 	{
 		/* Setup lttng message with no payload */

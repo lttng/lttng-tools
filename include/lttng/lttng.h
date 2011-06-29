@@ -44,6 +44,35 @@ enum lttng_event_type {
 	LTTNG_EVENT_FUNCTION,
 };
 
+/* Kernel context possible type */
+enum lttng_kernel_context_type {
+	LTTNG_KERNEL_CONTEXT_PID                = 0,
+	LTTNG_KERNEL_CONTEXT_PERF_COUNTER       = 1,
+	LTTNG_KERNEL_CONTEXT_COMM               = 2,
+	LTTNG_KERNEL_CONTEXT_PRIO               = 3,
+	LTTNG_KERNEL_CONTEXT_NICE               = 4,
+	LTTNG_KERNEL_CONTEXT_VPID               = 5,
+	LTTNG_KERNEL_CONTEXT_TID                = 6,
+	LTTNG_KERNEL_CONTEXT_VTID               = 7,
+	LTTNG_KERNEL_CONTEXT_PPID               = 8,
+	LTTNG_KERNEL_CONTEXT_VPPID              = 9,
+};
+
+/* Perf counter attributes */
+struct lttng_kernel_perf_counter_ctx {
+	uint32_t type;
+	uint64_t config;
+	char name[LTTNG_SYMBOL_NAME_LEN];
+};
+
+/* Event/Channel context */
+struct lttng_kernel_context {
+	enum lttng_kernel_context_type ctx;
+	union {
+		struct lttng_kernel_perf_counter_ctx perf_counter;
+	} u;
+};
+
 /*
  * Either addr is used or symbol_name and offset.
  */
@@ -129,6 +158,9 @@ extern int lttng_stop_tracing(char *session_name);
 /*
  * LTTng Kernel tracer control
  */
+extern int lttng_kernel_add_context(struct lttng_kernel_context *ctx,
+		char *event_name, char *channel_name);
+
 extern int lttng_kernel_create_channel(struct lttng_channel *chan);
 
 extern int lttng_kernel_enable_event(struct lttng_event *ev, char *channel_name);

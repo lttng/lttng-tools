@@ -252,6 +252,24 @@ int lttng_stop_tracing(char *session_name)
  */
 
 /*
+ *  lttng_kernel_add_context
+ */
+int lttng_kernel_add_context(struct lttng_kernel_context *ctx,
+		char *event_name, char *channel_name)
+{
+	if (strlen(channel_name) != 0) {
+		strncpy(lsm.u.context.channel_name, channel_name, NAME_MAX);
+	}
+
+	if (strlen(event_name) != 0) {
+		strncpy(lsm.u.context.event_name, event_name, NAME_MAX);
+	}
+
+	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_kernel_context));
+	return ask_sessiond(LTTNG_KERNEL_ADD_CONTEXT, NULL);
+}
+
+/*
  *  lttng_kernel_enable_event
  */
 int lttng_kernel_enable_event(struct lttng_event *ev, char *channel_name)

@@ -30,6 +30,10 @@
  */
 #define KERNEL_EVENT_LIST_SIZE	2000
 
+int kernel_add_channel_context(struct ltt_kernel_channel *chan,
+		struct lttng_kernel_context *ctx);
+int kernel_add_event_context(struct ltt_kernel_event *event,
+		struct lttng_kernel_context *ctx);
 int kernel_create_session(struct ltt_session *session, int tracer_fd);
 int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan);
 int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *channel);

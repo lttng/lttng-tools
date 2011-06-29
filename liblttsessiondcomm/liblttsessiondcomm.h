@@ -42,6 +42,7 @@
 
 enum lttcomm_sessiond_command {
 	/* Tracer context command */
+	LTTNG_KERNEL_ADD_CONTEXT,
 	LTTNG_KERNEL_CREATE_CHANNEL,
 	LTTNG_KERNEL_DISABLE_CHANNEL,
 	LTTNG_KERNEL_DISABLE_EVENT,
@@ -89,6 +90,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_CHAN_NOT_FOUND,	/* Kernel channel not found */
 	LTTCOMM_KERN_CHAN_DISABLE_FAIL, /* Kernel disable channel failed */
 	LTTCOMM_KERN_CHAN_ENABLE_FAIL,  /* Kernel enable channel failed */
+	LTTCOMM_KERN_CONTEXT_FAIL,      /* Kernel add context failed */
 	LTTCOMM_KERN_ENABLE_FAIL,		/* Kernel enable event failed */
 	LTTCOMM_KERN_DISABLE_FAIL,		/* Kernel disable event failed */
 	LTTCOMM_KERN_META_FAIL,			/* Kernel open metadata failed */
@@ -139,6 +141,12 @@ struct lttcomm_session_msg {
 		struct {
 			struct lttng_channel chan;
 		} channel;
+		/* Context */
+		struct {
+			char channel_name[NAME_MAX];
+			char event_name[NAME_MAX];
+			struct lttng_kernel_context ctx;
+		} context;
 	} u;
 };
 

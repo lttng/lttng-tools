@@ -66,6 +66,7 @@ static struct cmd_struct commands[] =  {
 	{ "disable-event", cmd_disable_events},
 	{ "enable-channel", cmd_enable_channels},
 	{ "disable-channel", cmd_disable_channels},
+	{ "add-context", cmd_add_context},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -84,6 +85,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
 	fprintf(ofp, "    add-channel     Add channel to tracer\n");
+	fprintf(ofp, "    add-context     Add context to event or/and channel\n");
 	fprintf(ofp, "    create          Create tracing session\n");
 	fprintf(ofp, "    destroy         Teardown tracing session\n");
 	fprintf(ofp, "    enable-channel  Enable tracing channel\n");

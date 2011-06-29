@@ -45,6 +45,7 @@ struct ltt_kernel_channel_list {
 struct ltt_kernel_event {
 	int fd;
 	int enabled;
+	struct lttng_kernel_context *ctx;
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
 };
@@ -55,6 +56,7 @@ struct ltt_kernel_channel {
 	int enabled;
 	char *pathname;
 	unsigned int stream_count;
+	struct lttng_kernel_context *ctx;
 	struct lttng_channel *channel;
 	struct ltt_kernel_event_list events_list;
 	struct ltt_kernel_stream_list stream_list;

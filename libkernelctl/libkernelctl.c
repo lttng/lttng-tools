@@ -22,6 +22,11 @@
 #include "kernel-ioctl.h"
 #include "libkernelctl.h"
 
+int kernctl_add_context(int fd, struct lttng_kernel_context *ctx)
+{
+	return ioctl(fd, LTTNG_KERNEL_CONTEXT, ctx);
+}
+
 int kernctl_buffer_flush(int fd)
 {
 	return ioctl(fd, RING_BUFFER_FLUSH);

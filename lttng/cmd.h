@@ -47,5 +47,6 @@ extern int cmd_enable_events(int argc, const char **argv);
 extern int cmd_disable_events(int argc, const char **argv);
 extern int cmd_enable_channels(int argc, const char **argv);
 extern int cmd_disable_channels(int argc, const char **argv);
+extern int cmd_add_context(int argc, const char **argv);
 
 #endif /* _LTTNG_CMD_H */

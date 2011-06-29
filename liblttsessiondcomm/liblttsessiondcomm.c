@@ -54,6 +54,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_NOT_FOUND) ] = "Kernel channel not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_DISABLE_FAIL) ] = "Disable kernel channel failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_ENABLE_FAIL) ] = "Enable kernel channel failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CONTEXT_FAIL) ] = "Add kernel context failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_ENABLE_FAIL) ] = "Enable kernel event failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_DISABLE_FAIL) ] = "Disable kernel event failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_META_FAIL) ] = "Opening metadata failed",
@@ -78,7 +79,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_EINVAL) ] = "Kconsumerd splice EINVAL",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_ENOMEM) ] = "Kconsumerd splice ENOMEM",
 	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_ESPIPE) ] = "Kconsumerd splice ESPIPE",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "No event found",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "Event not found",
 };
 
 /*

@@ -30,6 +30,68 @@
 #include "kernel-ctl.h"
 
 /*
+ *  kernel_add_channel_context
+ *
+ *  Add context on a kernel channel.
+ */
+int kernel_add_channel_context(struct ltt_kernel_channel *chan,
+		struct lttng_kernel_context *ctx)
+{
+	int ret;
+
+	DBG("Adding context to channel %s", chan->channel->name);
+	ret = kernctl_add_context(chan->fd, ctx);
+	if (ret < 0) {
+		perror("add context ioctl");
+		goto error;
+	}
+
+	chan->ctx = malloc(sizeof(struct lttng_kernel_context));
+	if (chan->ctx == NULL) {
+		perror("malloc event context");
+		goto error;
+	}
+
+	memcpy(chan->ctx, ctx, sizeof(struct lttng_kernel_context));
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ *  kernel_add_event_context
+ *
+ *  Add context on a kernel event.
+ */
+int kernel_add_event_context(struct ltt_kernel_event *event,
+		struct lttng_kernel_context *ctx)
+{
+	int ret;
+
+	DBG("Adding context to event %s", event->event->name);
+	ret = kernctl_add_context(event->fd, ctx);
+	if (ret < 0) {
+		perror("add context ioctl");
+		goto error;
+	}
+
+	event->ctx = malloc(sizeof(struct lttng_kernel_context));
+	if (event->ctx == NULL) {
+		perror("malloc event context");
+		goto error;
+	}
+
+	memcpy(event->ctx, ctx, sizeof(struct lttng_kernel_context));
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
  *  kernel_create_session
  *
  *  Create a new kernel session, register it to the kernel tracer and add it to
