@@ -1,7 +1,4 @@
 /*
-   DBG("Creating kernel event %s for channel %s.",
-   cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
-
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or
