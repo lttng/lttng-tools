@@ -1166,7 +1166,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				ret = kernel_create_event(&ev_attr, chan);
 				if (ret < 0) {
 					/* Ignore error here and continue */
-					continue;
 				}
 			}
 
