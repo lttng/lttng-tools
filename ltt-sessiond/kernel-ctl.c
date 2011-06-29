@@ -136,11 +136,12 @@ int kernel_create_event(struct ltt_kernel_channel *channel, struct lttng_event *
 
 	ret = kernctl_create_event(channel->fd, event->event);
 	if (ret < 0) {
-		ERR("Unable to enable event %s for channel %s", ev->name, channel->channel->name);
-		goto error;
+		perror("create event ioctl");
+		goto free_event;
 	}
 
 	event->fd = ret;
+	event->enabled = 1;
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
@@ -149,7 +150,39 @@ int kernel_create_event(struct ltt_kernel_channel *channel, struct lttng_event *
 
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
-	DBG("Event %s enabled (fd: %d)", ev->name, event->fd);
+	DBG("Event %s created (fd: %d)", ev->name, event->fd);
+
+	return 0;
+
+free_event:
+	free(event);
+error:
+	return -1;
+}
+
+/*
+ *  kernel_disable_event
+ *
+ *  Disable a kernel event for a specific channel.
+ */
+int kernel_disable_event(char *event_name, struct ltt_kernel_channel *channel)
+{
+	int ret;
+	struct ltt_kernel_event *iter;
+
+	cds_list_for_each_entry(iter, &channel->events_list.head, list) {
+		if (strcmp(iter->event->name, event_name) == 0) {
+			ret = kernctl_disable(iter->fd);
+			if (ret < 0) {
+				perror("disable event ioctl");
+				goto error;
+			}
+
+			iter->enabled = 0;
+			DBG("Kernel event %s disabled (fd: %d)", iter->event->name, iter->fd);
+			break;
+		}
+	}
 
 	return 0;
 

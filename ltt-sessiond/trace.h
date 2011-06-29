@@ -44,6 +44,7 @@ struct ltt_kernel_channel_list {
 /* Kernel event */
 struct ltt_kernel_event {
 	int fd;
+	int enabled;
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
 };

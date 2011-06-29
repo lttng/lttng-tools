@@ -63,6 +63,7 @@ static struct cmd_struct commands[] =  {
 	{ "start", cmd_start},
 	{ "stop", cmd_stop},
 	{ "enable-event", cmd_enable_events},
+	{ "disable-event", cmd_disable_events},
 	{ NULL, NULL}	/* Array closure */
 };
 

@@ -876,6 +876,41 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
+	case LTTNG_KERNEL_DISABLE_EVENT:
+	{
+		int found = 0;
+		struct ltt_kernel_channel *chan;
+
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		/* Get channel by name and create event for that channel */
+		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
+			if (strcmp(cmd_ctx->lsm->u.disable.channel_name, chan->channel->name) == 0) {
+				DBG("Disabling kernel event %s for channel %s.",
+						cmd_ctx->lsm->u.disable.name, cmd_ctx->lsm->u.disable.channel_name);
+
+				ret = kernel_disable_event(cmd_ctx->lsm->u.disable.name, chan);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_DISABLE_FAIL;
+					goto error;
+				}
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		} else {
+			kernel_wait_quiescent(kernel_tracer_fd);
+			ret = LTTCOMM_OK;
+		}
+		break;
+	}
 	case LTTNG_KERNEL_ENABLE_EVENT:
 	{
 		int found = 0;
