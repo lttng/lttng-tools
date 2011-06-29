@@ -102,6 +102,14 @@ struct ltt_ust_marker {
 };
 
 /*
+ * Get functions.
+ */
+struct ltt_kernel_event *get_kernel_event_by_name(
+		char *name, struct ltt_kernel_channel *channel);
+struct ltt_kernel_channel *get_kernel_channel_by_name(
+		char *name, struct ltt_kernel_session *session);
+
+/*
  * Create functions malloc() the data structure.
  */
 struct ltt_kernel_session *trace_create_kernel_session(void);

@@ -875,8 +875,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_KERNEL_DISABLE_EVENT:
 	{
-		int found = 0;
 		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_event *ev;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -884,34 +884,32 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		/* Get channel by name and create event for that channel */
-		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
-			if (strcmp(cmd_ctx->lsm->u.disable.channel_name, chan->channel->name) == 0) {
-				DBG("Disabling kernel event %s for channel %s.",
-						cmd_ctx->lsm->u.disable.name, cmd_ctx->lsm->u.disable.channel_name);
+		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+				cmd_ctx->session->kernel_session);
+		if (chan == NULL) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			goto error;
+		}
 
-				ret = kernel_disable_event(cmd_ctx->lsm->u.disable.name, chan);
-				if (ret < 0) {
-					ret = LTTCOMM_KERN_DISABLE_FAIL;
-					goto error;
-				}
-				found = 1;
-				break;
+		ev = get_kernel_event_by_name(cmd_ctx->lsm->u.disable.name, chan);
+		if (ev != NULL) {
+			DBG("Disabling kernel event %s for channel %s.",
+					cmd_ctx->lsm->u.disable.name, cmd_ctx->lsm->u.disable.channel_name);
+			ret = kernel_disable_event(ev);
+			if (ret < 0) {
+				ret = LTTCOMM_KERN_ENABLE_FAIL;
+				goto error;
 			}
 		}
 
-		if (!found) {
-			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
-		} else {
-			kernel_wait_quiescent(kernel_tracer_fd);
-			ret = LTTCOMM_OK;
-		}
+		kernel_wait_quiescent(kernel_tracer_fd);
+		ret = LTTCOMM_OK;
 		break;
 	}
 	case LTTNG_KERNEL_ENABLE_EVENT:
 	{
-		int found = 0;
 		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_event *ev;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -919,28 +917,31 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		/* Get channel by name and create event for that channel */
-		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
-			if (strcmp(cmd_ctx->lsm->u.enable.channel_name, chan->channel->name) == 0) {
-				DBG("Creating kernel event %s for channel %s.",
-						cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
-
-				ret = kernel_create_event(chan, &cmd_ctx->lsm->u.enable.event);
-				if (ret < 0) {
-					ret = LTTCOMM_KERN_ENABLE_FAIL;
-					goto error;
-				}
-				found = 1;
-				break;
-			}
-		}
-
-		if (!found) {
+		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
+				cmd_ctx->session->kernel_session);
+		if (chan == NULL) {
 			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
-		} else {
-			kernel_wait_quiescent(kernel_tracer_fd);
-			ret = LTTCOMM_OK;
+			goto error;
 		}
+
+		ev = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, chan);
+		if (ev == NULL) {
+			DBG("Creating kernel event %s for channel %s.",
+					cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
+			ret = kernel_create_event(&cmd_ctx->lsm->u.enable.event, chan);
+		} else {
+			DBG("Enabling kernel event %s for channel %s.",
+					cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
+			ret = kernel_enable_event(ev);
+		}
+
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			goto error;
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		ret = LTTCOMM_OK;
 		break;
 	}
 	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
@@ -983,7 +984,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			/* Default event type for enable all */
 			ev.type = LTTNG_EVENT_TRACEPOINTS;
 			/* Enable each single tracepoint event */
-			ret = kernel_create_event(chan, &ev);
+			ret = kernel_create_event(&ev, chan);
 			if (ret < 0) {
 				ret = LTTCOMM_KERN_ENABLE_FAIL;
 				goto error;

@@ -28,6 +28,59 @@
 #include "trace.h"
 
 /*
+ *  get_kernel_channel_by_name
+ *
+ *  Find the channel name for the given kernel session.
+ */
+struct ltt_kernel_channel *get_kernel_channel_by_name(
+		char *name, struct ltt_kernel_session *session)
+{
+	struct ltt_kernel_channel *chan;
+
+	if (session == NULL) {
+		ERR("Undefine session");
+		goto error;
+	}
+
+	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		if (strcmp(name, chan->channel->name) == 0) {
+			DBG("Found channel by name %s", name);
+			return chan;
+		}
+	}
+
+error:
+	return NULL;
+}
+
+/*
+ *  get_kernel_event_by_name
+ *
+ *  Find the event name for the given channel.
+ */
+struct ltt_kernel_event *get_kernel_event_by_name(
+		char *name, struct ltt_kernel_channel *channel)
+{
+	struct ltt_kernel_event *ev;
+
+	if (channel == NULL) {
+		ERR("Undefine channel");
+		goto error;
+	}
+
+	cds_list_for_each_entry(ev, &channel->events_list.head, list) {
+		if (strcmp(name, ev->event->name) == 0) {
+			DBG("Found event by name %s for channel %s", name,
+					channel->channel->name);
+			return ev;
+		}
+	}
+
+error:
+	return NULL;
+}
+
+/*
  *  trace_create_kernel_session
  *
  *  Allocate and initialize a kernel session data structure.

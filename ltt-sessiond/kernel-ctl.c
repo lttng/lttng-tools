@@ -124,7 +124,7 @@ error:
  *  Create a kernel event, enable it to the kernel tracer and add it to the
  *  channel event list of the kernel session.
  */
-int kernel_create_event(struct ltt_kernel_channel *channel, struct lttng_event *ev)
+int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *channel)
 {
 	int ret;
 	struct ltt_kernel_event *event;
@@ -161,28 +161,46 @@ error:
 }
 
 /*
- *  kernel_disable_event
+ *  kernel_enable_event
  *
- *  Disable a kernel event for a specific channel.
+ *  Enable a kernel event.
  */
-int kernel_disable_event(char *event_name, struct ltt_kernel_channel *channel)
+int kernel_enable_event(struct ltt_kernel_event *event)
 {
 	int ret;
-	struct ltt_kernel_event *iter;
 
-	cds_list_for_each_entry(iter, &channel->events_list.head, list) {
-		if (strcmp(iter->event->name, event_name) == 0) {
-			ret = kernctl_disable(iter->fd);
-			if (ret < 0) {
-				perror("disable event ioctl");
-				goto error;
-			}
-
-			iter->enabled = 0;
-			DBG("Kernel event %s disabled (fd: %d)", iter->event->name, iter->fd);
-			break;
-		}
+	ret = kernctl_enable(event->fd);
+	if (ret < 0) {
+		perror("enable event ioctl");
+		goto error;
 	}
+
+	event->enabled = 1;
+	DBG("Kernel event %s enabled (fd: %d)", event->event->name, event->fd);
+
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
+ *  kernel_disable_event
+ *
+ *  Disable a kernel event.
+ */
+int kernel_disable_event(struct ltt_kernel_event *event)
+{
+	int ret;
+
+	ret = kernctl_disable(event->fd);
+	if (ret < 0) {
+		perror("disable event ioctl");
+		goto error;
+	}
+
+	event->enabled = 0;
+	DBG("Kernel event %s disabled (fd: %d)", event->event->name, event->fd);
 
 	return 0;
 
