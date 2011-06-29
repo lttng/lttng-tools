@@ -906,6 +906,41 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
+	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
+	{
+		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_event *ev;
+
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Disabling all enabled kernel events");
+
+		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+				cmd_ctx->session->kernel_session);
+		if (chan == NULL) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		/* For each event in the kernel session */
+		cds_list_for_each_entry(ev, &chan->events_list.head, list) {
+			DBG("Disabling kernel event %s for channel %s.",
+					ev->event->name, cmd_ctx->lsm->u.disable.channel_name);
+			ret = kernel_disable_event(ev);
+			if (ret < 0) {
+				continue;
+			}
+		}
+
+		/* Quiescent wait after event disable */
+		kernel_wait_quiescent(kernel_tracer_fd);
+		ret = LTTCOMM_OK;
+		break;
+	}
 	case LTTNG_KERNEL_ENABLE_EVENT:
 	{
 		struct ltt_kernel_channel *chan;
@@ -927,11 +962,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ev = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, chan);
 		if (ev == NULL) {
 			DBG("Creating kernel event %s for channel %s.",
-					cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
+					cmd_ctx->lsm->u.enable.event.name, chan->channel->name);
 			ret = kernel_create_event(&cmd_ctx->lsm->u.enable.event, chan);
 		} else {
 			DBG("Enabling kernel event %s for channel %s.",
-					cmd_ctx->lsm->u.enable.event.name, cmd_ctx->lsm->u.enable.channel_name);
+					cmd_ctx->lsm->u.enable.event.name, chan->channel->name);
 			ret = kernel_enable_event(ev);
 		}
 
@@ -946,10 +981,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
 	{
-		int pos, size, found;
+		int pos, size;
 		char *event_list, *event, *ptr;
 		struct ltt_kernel_channel *chan;
-		struct lttng_event ev;
+		struct ltt_kernel_event *ev;
+		struct lttng_event ev_attr;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -959,36 +995,44 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		DBG("Enabling all kernel event");
 
+		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
+				cmd_ctx->session->kernel_session);
+		if (chan == NULL) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		/* For each event in the kernel session */
+		cds_list_for_each_entry(ev, &chan->events_list.head, list) {
+			DBG("Enabling kernel event %s for channel %s.",
+					ev->event->name, chan->channel->name);
+			ret = kernel_enable_event(ev);
+			if (ret < 0) {
+				continue;
+			}
+		}
+
 		size = kernel_list_events(kernel_tracer_fd, &event_list);
 		if (size < 0) {
 			ret = LTTCOMM_KERN_LIST_FAIL;
 			goto error;
 		}
 
-		/* Get channel by name and create event for that channel */
-		cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
-			if (strcmp(cmd_ctx->lsm->u.enable.channel_name, chan->channel->name) == 0) {
-				found = 1;
-				break;
-			}
-		}
-
-		if (!found) {
-			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
-			goto error;
-		}
-
 		ptr = event_list;
 		while ((size = sscanf(ptr, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
-			strncpy(ev.name, event, LTTNG_SYM_NAME_LEN);
-			/* Default event type for enable all */
-			ev.type = LTTNG_EVENT_TRACEPOINTS;
-			/* Enable each single tracepoint event */
-			ret = kernel_create_event(&ev, chan);
-			if (ret < 0) {
-				ret = LTTCOMM_KERN_ENABLE_FAIL;
-				goto error;
+			ev = get_kernel_event_by_name(event, chan);
+			if (ev == NULL) {
+				strncpy(ev_attr.name, event, LTTNG_SYM_NAME_LEN);
+				/* Default event type for enable all */
+				ev_attr.type = LTTNG_EVENT_TRACEPOINTS;
+				/* Enable each single tracepoint event */
+				ret = kernel_create_event(&ev_attr, chan);
+				if (ret < 0) {
+					/* Ignore error here and continue */
+					continue;
+				}
 			}
+
 			/* Move pointer to the next line */
 			ptr += pos + 1;
 			free(event);
