@@ -32,6 +32,7 @@
 static char *opt_event_name;
 static char *opt_channel_name;
 static char *opt_perf_name;
+static char *opt_session_name;
 static int *opt_kernel;
 static int opt_pid_all;
 static int opt_userspace;
@@ -48,6 +49,7 @@ enum {
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
+	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
@@ -70,6 +72,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -c, --channel NAME       Apply on channel\n");
 	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
@@ -123,7 +126,7 @@ static int add_context(void)
 	int ret = CMD_SUCCESS;
 	struct lttng_kernel_context context;
 
-	if (set_session_name() < 0) {
+	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
 		goto error;
 	}

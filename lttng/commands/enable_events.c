@@ -33,6 +33,7 @@ static char *opt_event_list;
 static int opt_event_type;
 static char *opt_kernel;
 static char *opt_cmd_name;
+static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
 static int opt_enable_all;
@@ -53,6 +54,7 @@ enum {
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
+	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"all-events",     'a', POPT_ARG_VAL, &opt_enable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
@@ -74,6 +76,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng enable-event NAME[,NAME2,...] [options] [event_options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
 	fprintf(ofp, "  -a, --all-events         Enable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
@@ -100,7 +103,7 @@ static int enable_events(void)
 	char *event_name, *channel_name;
 	struct lttng_event ev;
 
-	if (set_session_name() < 0) {
+	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
 		goto error;
 	}

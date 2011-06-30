@@ -82,15 +82,19 @@ error:
  *
  *  Get session name and set it for the lttng control lib.
  */
-int set_session_name(void)
+int set_session_name(char *name)
 {
 	int ret;
 	char *session_name;
 
-	session_name = get_session_name();
-	if (session_name == NULL) {
-		ret = -1;
-		goto error;
+	if (name != NULL) {
+		session_name = name;
+	} else {
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = -1;
+			goto error;
+		}
 	}
 
 	lttng_set_session_name(session_name);

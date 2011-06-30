@@ -21,6 +21,6 @@
 
 char *get_config_file_path(void);
 char *get_session_name(void);
-int set_session_name(void);
+int set_session_name(char *name);
 
 #endif /* _LTTNG_UTILS_H */

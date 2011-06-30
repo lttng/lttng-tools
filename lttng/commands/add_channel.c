@@ -32,6 +32,7 @@
 static char *opt_channel_name;
 static char *opt_kernel;
 static char *opt_cmd_name;
+static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
 static pid_t opt_pid;
@@ -51,6 +52,7 @@ enum {
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
+	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
@@ -72,6 +74,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng add-channel NAME [options] [channel_options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -k, --kernel             Apply on the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply on the user-space tracer\n");
 	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
@@ -96,7 +99,7 @@ static int add_channel(void)
 {
 	int ret = CMD_SUCCESS;
 
-	if (set_session_name() < 0) {
+	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
 		goto error;
 	}
