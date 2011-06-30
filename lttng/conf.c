@@ -109,14 +109,14 @@ static int create_config_dir(char *path)
 	/* Create session directory .lttng */
 	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP);
 	if (ret < 0) {
-		if (errno == EEXIST) {
-			ERR("Session already exist at %s", path);
-		} else  {
+		if (errno != EEXIST) {
 			perror("mkdir config");
 			ERR("Couldn't init config directory at %s", path);
+			ret = -errno;
+			goto error;
+		} else {
+			ret = 0;
 		}
-		ret = -errno;
-		goto error;
 	}
 
 error:
