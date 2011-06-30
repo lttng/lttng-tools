@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <urcu/list.h>
 
 #include "lttngerr.h"
@@ -171,9 +172,10 @@ int destroy_session(char *name)
 int create_session(char *name, char *path)
 {
 	int ret;
+	char date_time[NAME_MAX];
 	struct ltt_session *new_session;
-
-	DBG("Creating session %s at %s", name, path);
+	time_t rawtime;
+	struct tm *timeinfo;
 
 	new_session = find_session_by_name(name);
 	if (new_session != NULL) {
@@ -203,7 +205,15 @@ int create_session(char *name, char *path)
 
 	/* Define session system path */
 	if (path != NULL) {
-		if (asprintf(&new_session->path, "%s", path) < 0) {
+		if (strstr(name, "auto-") == NULL) {
+			time(&rawtime);
+			timeinfo = localtime(&rawtime);
+			strftime(date_time, sizeof(date_time), "-%Y%m%d-%H%M%S", timeinfo);
+		} else {
+			date_time[0] = '\0';
+		}
+
+		if (asprintf(&new_session->path, "%s/%s%s", path, name, date_time) < 0) {
 			ret = -ENOMEM;
 			goto error_asprintf;
 		}
@@ -234,6 +244,8 @@ int create_session(char *name, char *path)
 
 	/* Add new session to the global session list */
 	add_session_list(new_session);
+
+	DBG("Tracing session %s created in %s", name, new_session->path);
 
 	return 0;
 

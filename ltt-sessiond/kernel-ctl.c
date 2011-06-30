@@ -141,13 +141,13 @@ error:
  *  Create a kernel channel, register it to the kernel tracer and add it to the
  *  kernel session.
  */
-int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan)
+int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan, char *path)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
 
 	/* Allocate kernel channel */
-	lkc = trace_create_kernel_channel(chan);
+	lkc = trace_create_kernel_channel(chan, path);
 	if (lkc == NULL) {
 		goto error;
 	}

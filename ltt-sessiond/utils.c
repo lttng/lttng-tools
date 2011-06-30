@@ -28,6 +28,22 @@
 
 #include "utils.h"
 
+/*
+ *  get_home_dir
+ *
+ *  Return pointer to home directory path using the env variable HOME.
+ *  No home, NULL is returned.
+ */
+const char *get_home_dir(void)
+{
+	return ((const char *) getenv("HOME"));
+}
+
+/*
+ *  mkdir_recursive
+ *
+ *  Create recursively directory using the FULL path.
+ */
 int mkdir_recursive(const char *path, mode_t mode)
 {
     int ret;

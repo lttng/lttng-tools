@@ -751,7 +751,7 @@ static int create_kernel_session(struct ltt_session *session)
 
 	DBG("Creating default kernel channel %s", DEFAULT_CHANNEL_NAME);
 
-	ret = kernel_create_channel(session->kernel_session, chan);
+	ret = kernel_create_channel(session->kernel_session, chan, session->path);
 	if (ret < 0) {
 		ret = LTTCOMM_KERN_CHAN_FAIL;
 		goto error;
@@ -943,7 +943,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		DBG("Creating kernel channel");
 
 		ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-				&cmd_ctx->lsm->u.channel.chan);
+				&cmd_ctx->lsm->u.channel.chan, cmd_ctx->session->path);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_CHAN_FAIL;
 			goto error;
@@ -1755,25 +1755,6 @@ static int check_existing_daemon()
 }
 
 /*
- *  get_home_dir
- *
- *  Return pointer to home directory path using
- *  the env variable HOME.
- *
- *  Default : /tmp
- */
-static const char *get_home_dir(void)
-{
-	const char *home_path;
-
-	if ((home_path = (const char *) getenv("HOME")) == NULL) {
-		home_path = default_home_dir;
-	}
-
-	return home_path;
-}
-
-/*
  *  set_permissions
  *
  *  Set the tracing group gid onto the client socket.
@@ -1988,6 +1969,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0;
 	void *status;
+	const char *home_path;
 
 	/* Parse arguments */
 	progname = argv[0];
@@ -2035,15 +2017,22 @@ int main(int argc, char **argv)
 		/* Set ulimit for open files */
 		set_ulimit();
 	} else {
+		home_path = get_home_dir();
+		if (home_path == NULL) {
+			ERR("Can't get HOME directory for sockets creation.\n \
+				 Please specify --socket PATH.");
+			goto error;
+		}
+
 		if (strlen(apps_unix_sock_path) == 0) {
 			snprintf(apps_unix_sock_path, PATH_MAX,
-					DEFAULT_HOME_APPS_UNIX_SOCK, get_home_dir());
+					DEFAULT_HOME_APPS_UNIX_SOCK, home_path);
 		}
 
 		/* Set the cli tool unix socket path */
 		if (strlen(client_unix_sock_path) == 0) {
 			snprintf(client_unix_sock_path, PATH_MAX,
-					DEFAULT_HOME_CLIENT_UNIX_SOCK, get_home_dir());
+					DEFAULT_HOME_CLIENT_UNIX_SOCK, home_path);
 		}
 	}
 

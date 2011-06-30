@@ -28,6 +28,7 @@
 
 #include "cmd.h"
 #include "conf.h"
+#include "utils.h"
 
 static char *opt_output_path;
 static char *opt_session_name;
@@ -84,6 +85,8 @@ static int create_session()
 	if (opt_output_path == NULL) {
 		alloc_path = config_get_default_path();
 		if (alloc_path == NULL) {
+			ERR("Home path not found.\n \
+				 Please specify an output path using -o, --output PATH");
 			ret = CMD_FATAL;
 			goto error;
 		}
@@ -114,7 +117,7 @@ static int create_session()
 	}
 
 	MSG("Session %s created.", session_name);
-	MSG("Working directory of created session is %s", path);
+	MSG("Working directory of created session is %s/%s", path, session_name);
 
 	ret = CMD_SUCCESS;
 

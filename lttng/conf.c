@@ -148,19 +148,12 @@ error:
 /*
  *  config_get_default_path
  *
- *  Return the default path to config directory which is the current working
- *  directory. User must free() the returned allocated string.
+ *  Return the HOME directory path. The output is dup so the user MUST
+ *  free(3) the returned string.
  */
 char *config_get_default_path(void)
 {
-	char *alloc_path;
-
-	alloc_path = getcwd(NULL, 0);
-	if (alloc_path == NULL) {
-		perror("getcwd");
-	}
-
-	return alloc_path;
+	return strdup(getenv("HOME"));
 }
 
 /*

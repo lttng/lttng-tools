@@ -20,5 +20,6 @@
 #define _LTT_UTILS_H
 
 int mkdir_recursive(const char *path, mode_t mode);
+const char *get_home_dir(void);
 
 #endif /* _LTT_UTILS_H */

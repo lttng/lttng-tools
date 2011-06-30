@@ -119,7 +119,7 @@ error:
  *
  *  Return pointer to structure or NULL.
  */
-struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan)
+struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan, char *path)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
@@ -144,7 +144,7 @@ struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *cha
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
 	/* Set default trace output path */
-	ret = asprintf(&lkc->pathname, "%s", DEFAULT_TRACE_OUTPUT);
+	ret = asprintf(&lkc->pathname, "%s", path);
 	if (ret < 0) {
 		perror("asprintf kernel create channel");
 		goto error;
