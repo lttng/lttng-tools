@@ -469,7 +469,8 @@ static int read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd)
 		goto end;
 	}
 
-	if (DEFAULT_CHANNEL_OUTPUT == LTTNG_KERNEL_SPLICE) {
+	switch (DEFAULT_KERNEL_CHANNEL_OUTPUT) {
+	case LTTNG_KERNEL_SPLICE:
 		/* read the whole subbuffer */
 		err = kernctl_get_padded_subbuf_size(infd, &len);
 		if (err != 0) {
@@ -487,7 +488,8 @@ static int read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd)
 			 */
 			ERR("Error splicing to tracefile");
 		}
-	} else if (DEFAULT_CHANNEL_OUTPUT == LTTNG_KERNEL_MMAP) {
+		break;
+	case LTTNG_KERNEL_MMAP:
 		/* read the used subbuffer size */
 		err = kernctl_get_subbuf_size(infd, &len);
 		if (err != 0) {
@@ -505,10 +507,10 @@ static int read_subbuffer(struct ltt_kconsumerd_fd *kconsumerd_fd)
 			 */
 			ERR("Error writing to tracefile");
 		}
-	} else {
+		break;
+	default:
 		ERR("Unknown output method");
 		ret = -1;
-		goto end;
 	}
 
 	err = kernctl_put_next_subbuf(infd);

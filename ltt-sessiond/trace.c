@@ -236,7 +236,7 @@ struct ltt_kernel_metadata *trace_create_kernel_metadata(void)
 	chan->attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
 	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
-	chan->attr.output = DEFAULT_CHANNEL_OUTPUT;
+	chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 
 	/* Init metadata */
 	lkm->fd = 0;
