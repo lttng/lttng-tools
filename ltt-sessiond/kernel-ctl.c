@@ -491,8 +491,8 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 			perror("fcntl session fd");
 		}
 
-		ret = asprintf(&lks->pathname, "%s/trace_%d",
-				channel->pathname, channel->stream_count);
+		ret = asprintf(&lks->pathname, "%s/%s_%d",
+				channel->pathname, channel->channel->name, channel->stream_count);
 		if (ret < 0) {
 			perror("asprintf kernel create stream");
 			goto error;
