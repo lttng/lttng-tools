@@ -173,11 +173,6 @@ void config_destroy(char *path)
 		perror("remove config file");
 	}
 
-	ret = rmdir(path);
-	if (ret < 0) {
-		perror("rmdir config dir");
-	}
-
 	free(config_path);
 }
 
