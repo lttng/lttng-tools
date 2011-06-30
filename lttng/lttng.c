@@ -67,6 +67,7 @@ static struct cmd_struct commands[] =  {
 	{ "enable-channel", cmd_enable_channels},
 	{ "disable-channel", cmd_disable_channels},
 	{ "add-context", cmd_add_context},
+	{ "set-session", cmd_set_session},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -93,6 +94,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    disable-channel Disable tracing channel\n");
 	fprintf(ofp, "    disable-event   Disable tracing event\n");
 	fprintf(ofp, "    list            List possible tracing options\n");
+	fprintf(ofp, "    set-session     Set current session name\n");
 	fprintf(ofp, "    start           Start tracing\n");
 	fprintf(ofp, "    stop            Stop tracing\n");
 	fprintf(ofp, "    version         Show version information\n");
