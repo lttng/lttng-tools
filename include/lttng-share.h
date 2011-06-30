@@ -30,17 +30,17 @@ typedef __s64 s64;
 #define LTTNG_RUNDIR        "/var/run/lttng"
 
 /* Default channel attributes */
-#define DEFAULT_CHANNEL_NAME			"channel0"
-#define DEFAULT_CHANNEL_OVERWRITE		0
+#define DEFAULT_CHANNEL_NAME                "channel0"
+#define DEFAULT_CHANNEL_OVERWRITE           0       /* usec */
 /* DEFAULT_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_SIZE		4096	/* bytes */
+#define DEFAULT_CHANNEL_SUBBUF_SIZE         4096    /* bytes */
 /* DEFAULT_CHANNEL_SUBBUF_NUM must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_NUM		8
-#define DEFAULT_CHANNEL_SWITCH_TIMER		0	/* usec */
-#define DEFAULT_CHANNEL_READ_TIMER		200	/* usec */
+#define DEFAULT_CHANNEL_SUBBUF_NUM          8
+#define DEFAULT_CHANNEL_SWITCH_TIMER        0       /* usec */
+#define DEFAULT_CHANNEL_READ_TIMER          200     /* usec */
 /* See lttng.h enum lttng_kernel_output for channel output */
-#define DEFAULT_KERNEL_CHANNEL_OUTPUT		LTTNG_KERNEL_SPLICE
-#define DEFAULT_UST_CHANNEL_OUTPUT		LTTNG_UST_MMAP
+#define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_KERNEL_SPLICE
+#define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_UST_MMAP
 
 /*
  * lttng user-space instrumentation type
