@@ -1761,7 +1761,7 @@ static int check_existing_daemon()
  *  Set the tracing group gid onto the client socket.
  *
  *  Race window between mkdir and chown is OK because we are going from
- *  less permissive (root.root) to more permissive (root.tracing).
+ *  more permissive (root.root) to les permissive (root.tracing).
  */
 static int set_permissions(void)
 {
@@ -1774,8 +1774,13 @@ static int set_permissions(void)
 		(grp = getgrnam(default_tracing_group));
 
 	if (grp == NULL) {
-		ERR("Missing tracing group. Aborting execution.\n");
-		ret = -1;
+		if (is_root) {
+			WARN("No tracing group detected");
+			ret = 0;
+		} else {
+			ERR("Missing tracing group. Aborting execution.");
+			ret = -1;
+		}
 		goto end;
 	}
 
