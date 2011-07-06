@@ -41,6 +41,8 @@ static char *opt_sessiond_path;
 enum {
 	OPT_NO_SESSIOND,
 	OPT_SESSION_PATH,
+	OPT_DUMP_OPTIONS,
+	OPT_DUMP_COMMANDS,
 };
 
 /* Getopt options. No first level command. */
@@ -51,6 +53,8 @@ static struct option long_options[] = {
 	{"quiet",            0, NULL, 'q'},
 	{"no-sessiond",      0, NULL, OPT_NO_SESSIOND},
 	{"sessiond-path",    1, NULL, OPT_SESSION_PATH},
+	{"list-options",     0, NULL, OPT_DUMP_OPTIONS},
+	{"list-commands",    0, NULL, OPT_DUMP_COMMANDS},
 	{NULL, 0, NULL, 0}
 };
 
@@ -83,6 +87,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -q, --quiet            Quiet mode\n");
 	fprintf(ofp, "      --no-sessiond      Don't spawn a session daemon\n");
 	fprintf(ofp, "      --sessiond-path    Session daemon full path\n");
+	fprintf(ofp, "      --list-options     Simple listing of lttng options\n");
+	fprintf(ofp, "      --list-commands    Simple listing of lttng commands\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
 	fprintf(ofp, "    add-channel     Add channel to tracer\n");
@@ -101,6 +107,49 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
 	fprintf(ofp, "See http://lttng.org for updates, bug reports and news.\n");
+}
+
+/*
+ *  list_options
+ *
+ *  List options line by line. This is mostly for bash auto completion and to
+ *  avoid difficult parsing.
+ */
+static void list_options(FILE *ofp)
+{
+	int i = 0;
+	struct option *option = NULL;
+
+	option = &long_options[i];
+	while (option->name != NULL) {
+		fprintf(ofp, "--%s\n", option->name);
+
+		if (isprint(option->val)) {
+			fprintf(ofp, "-%c\n", option->val);
+		}
+
+		i++;
+		option = &long_options[i];
+	}
+}
+
+/*
+ *  list_commands
+ *
+ *  List commands line by line. This is mostly for bash auto completion and to
+ *  avoid difficult parsing.
+ */
+static void list_commands(FILE *ofp)
+{
+	int i = 0;
+	struct cmd_struct *cmd = NULL;
+
+	cmd = &commands[i];
+	while (cmd->name != NULL) {
+		fprintf(ofp, "%s\n", cmd->name);
+		i++;
+		cmd = &commands[i];
+	}
 }
 
 /*
@@ -343,6 +392,14 @@ static int parse_args(int argc, char **argv)
 		case OPT_SESSION_PATH:
 			opt_sessiond_path = strdup(optarg);
 			break;
+		case OPT_DUMP_OPTIONS:
+			list_options(stdout);
+			ret = 0;
+			goto error;
+		case OPT_DUMP_COMMANDS:
+			list_commands(stdout);
+			ret = 0;
+			goto error;
 		default:
 			usage(stderr);
 			goto error;
