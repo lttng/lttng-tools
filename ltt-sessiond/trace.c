@@ -217,7 +217,7 @@ error:
  *
  *  Return pointer to structure or NULL.
  */
-struct ltt_kernel_metadata *trace_create_kernel_metadata(void)
+struct ltt_kernel_metadata *trace_create_kernel_metadata(char *path)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
@@ -242,7 +242,7 @@ struct ltt_kernel_metadata *trace_create_kernel_metadata(void)
 	lkm->fd = 0;
 	lkm->conf = chan;
 	/* Set default metadata path */
-	ret = asprintf(&lkm->pathname, "%s/metadata", DEFAULT_TRACE_OUTPUT);
+	ret = asprintf(&lkm->pathname, "%s/metadata", path);
 	if (ret < 0) {
 		perror("asprintf kernel metadata");
 		goto error;

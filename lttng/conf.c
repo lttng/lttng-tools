@@ -29,11 +29,11 @@
 #include "lttngerr.h"
 
 /*
- *  get_config_file_path
+ *  config_get_file_path
  *
  *  Return the path with '/CONFIG_FILENAME' added to it.
  */
-static char *get_config_file_path(char *path)
+char *config_get_file_path(char *path)
 {
 	int ret;
 	char *file_path;
@@ -56,7 +56,7 @@ static FILE *open_config(char *path, const char *mode)
 	FILE *fp = NULL;
 	char *file_path;
 
-	file_path = get_config_file_path(path);
+	file_path = config_get_file_path(path);
 	if (file_path == NULL) {
 		goto error;
 	}
@@ -98,32 +98,6 @@ error:
 }
 
 /*
- *  create_config_dir
- *
- *  Create the empty config dir.
- */
-static int create_config_dir(char *path)
-{
-	int ret;
-
-	/* Create session directory .lttng */
-	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP);
-	if (ret < 0) {
-		if (errno != EEXIST) {
-			perror("mkdir config");
-			ERR("Couldn't init config directory at %s", path);
-			ret = -errno;
-			goto error;
-		} else {
-			ret = 0;
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
  *  write_config
  *
  *  Append data to the config file in file_path
@@ -148,12 +122,11 @@ error:
 /*
  *  config_get_default_path
  *
- *  Return the HOME directory path. The output is dup so the user MUST
- *  free(3) the returned string.
+ *  Return the HOME directory path. Caller MUST NOT free(3) the return pointer.
  */
 char *config_get_default_path(void)
 {
-	return strdup(getenv("HOME"));
+	return getenv("HOME");
 }
 
 /*
@@ -166,7 +139,10 @@ void config_destroy(char *path)
 	int ret;
 	char *config_path;
 
-	config_path = get_config_file_path(path);
+	config_path = config_get_file_path(path);
+	if (config_path == NULL) {
+		return;
+	}
 
 	ret = remove(config_path);
 	if (ret < 0) {
@@ -242,42 +218,28 @@ error:
 }
 
 /*
- *  config_generate_dir_path
- *
- *  Return allocated path string to path/CONFIG_DIRNAME.
- */
-char *config_generate_dir_path(char *path)
-{
-	int ret;
-	char *new_path;
-
-	ret = asprintf(&new_path, "%s/%s", path, CONFIG_DIRNAME);
-	if (ret < 0) {
-		perror("config path problem");
-		goto error;
-	}
-
-error:
-	return new_path;
-}
-
-/*
  *  config_init
  *
  *  Init configuration directory and file.
  */
-int config_init(char *path)
+int config_init(char *session_name)
 {
 	int ret;
+	char *path;
 
-	/* Create config directory (.lttng) */
-	ret = create_config_dir(path);
-	if (ret < 0) {
+	path = config_get_default_path();
+	if (path == NULL) {
+		ret = -1;
 		goto error;
 	}
 
 	/* Create default config file */
 	ret = create_config_file(path);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = config_add_session_name(path, session_name);
 	if (ret < 0) {
 		goto error;
 	}

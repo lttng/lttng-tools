@@ -23,33 +23,6 @@
 #include "conf.h"
 
 /*
- *  get_config_file_path
- *
- *  Return absolute path to the configuration file.
- */
-char *get_config_file_path(void)
-{
-	char *alloc_path, *path = NULL;
-
-	/* Get path to config directory */
-	alloc_path = config_get_default_path();
-	if (alloc_path == NULL) {
-		goto error;
-	}
-
-	/* Get path to config file */
-	path = config_generate_dir_path(alloc_path);
-	if (path == NULL) {
-		goto free_alloc_path;
-	}
-
-free_alloc_path:
-	free(alloc_path);
-error:
-	return path;
-}
-
-/*
  *  get_session_name
  *
  *  Return allocated string with the session name found in the config
@@ -60,7 +33,7 @@ char *get_session_name(void)
 	char *path, *session_name = NULL;
 
 	/* Get path to config file */
-	path = get_config_file_path();
+	path = config_get_default_path();
 	if (path == NULL) {
 		goto error;
 	}
@@ -68,11 +41,9 @@ char *get_session_name(void)
 	/* Get session name from config */
 	session_name = config_read_session_name(path);
 	if (session_name == NULL) {
-		goto free_path;
+		goto error;
 	}
 
-free_path:
-	free(path);
 error:
 	return session_name;
 }

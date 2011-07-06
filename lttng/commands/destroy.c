@@ -81,7 +81,7 @@ static int destroy_session()
 		goto free_name;
 	}
 
-	path = get_config_file_path();
+	path = config_get_default_path();
 	if (path == NULL) {
 		ret = CMD_FATAL;
 		goto free_name;

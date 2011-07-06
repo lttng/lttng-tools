@@ -52,7 +52,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng create [options] [NAME]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "  -o, --output PATH    Specify output path\n");
+	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
 	fprintf(ofp, "\n");
 }
 
@@ -66,7 +66,7 @@ static int create_session()
 {
 	int ret;
 	char name[NAME_MAX];
-	char *session_name, *path = NULL, *alloc_path;
+	char *session_name, *traces_path = NULL, *alloc_path = NULL;
 	time_t rawtime;
 	struct tm *timeinfo;
 
@@ -83,41 +83,36 @@ static int create_session()
 
 	/* Auto output path */
 	if (opt_output_path == NULL) {
-		alloc_path = config_get_default_path();
+		alloc_path = strdup(config_get_default_path());
 		if (alloc_path == NULL) {
 			ERR("Home path not found.\n \
 				 Please specify an output path using -o, --output PATH");
 			ret = CMD_FATAL;
 			goto error;
 		}
+
+		ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME, alloc_path);
+		if (ret < 0) {
+			perror("asprintf trace dir name");
+			goto error;
+		}
 	} else {
-		alloc_path = opt_output_path;
+		traces_path = opt_output_path;
 	}
 
-	path = config_generate_dir_path(alloc_path);
-	if (path == NULL) {
-		ret = CMD_FATAL;
+	ret = lttng_create_session(session_name, traces_path);
+	if (ret < 0) {
 		goto error;
 	}
 
 	/* Init lttng session config */
-	ret = config_init(path);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = config_add_session_name(path, session_name);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = lttng_create_session(session_name, path);
+	ret = config_init(session_name);
 	if (ret < 0) {
 		goto error;
 	}
 
 	MSG("Session %s created.", session_name);
-	MSG("Working directory of created session is %s/%s", path, session_name);
+	MSG("Traces will be written in %s ", traces_path);
 
 	ret = CMD_SUCCESS;
 
@@ -126,8 +121,8 @@ error:
 		free(alloc_path);
 	}
 
-	if (path) {
-		free(path);
+	if (traces_path) {
+		free(traces_path);
 	}
 	return ret;
 }

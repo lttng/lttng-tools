@@ -118,7 +118,7 @@ struct ltt_kernel_channel *get_kernel_channel_by_name(
 struct ltt_kernel_session *trace_create_kernel_session(void);
 struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan, char *path);
 struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev);
-struct ltt_kernel_metadata *trace_create_kernel_metadata(void);
+struct ltt_kernel_metadata *trace_create_kernel_metadata(char *path);
 struct ltt_kernel_stream *trace_create_kernel_stream(void);
 
 /*

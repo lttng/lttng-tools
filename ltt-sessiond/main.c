@@ -1225,7 +1225,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		if (cmd_ctx->session->kernel_session != NULL) {
 			if (cmd_ctx->session->kernel_session->metadata == NULL) {
 				DBG("Open kernel metadata");
-				ret = kernel_open_metadata(cmd_ctx->session->kernel_session);
+				ret = kernel_open_metadata(cmd_ctx->session->kernel_session,
+						cmd_ctx->session->path);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_META_FAIL;
 					goto error;

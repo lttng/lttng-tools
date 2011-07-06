@@ -33,6 +33,9 @@
 /* Environment variable to set session daemon binary path. */
 #define LTTNG_SESSIOND_PATH_ENV "LTTNG_SESSIOND_PATH"
 
+/* Default trace output directory name */
+#define LTTNG_DEFAULT_TRACE_DIR_NAME "lttng-traces"
+
 /*
  * Event symbol length.
  */

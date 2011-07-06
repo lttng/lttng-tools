@@ -59,25 +59,11 @@ static void usage(FILE *ofp)
 static int set_session(void)
 {
 	int ret = CMD_SUCCESS;
-	char *path, *alloc_path;
+	char *path;
 
-	alloc_path = config_get_default_path();
-	if (alloc_path == NULL) {
-		ERR("Unable to find config directory");
-		ret = CMD_ERROR;
-		goto error;
-	}
-
-	path = config_generate_dir_path(alloc_path);
+	path = config_get_default_path();
 	if (path == NULL) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	ret = config_init(path);
-	if (ret < 0) {
-		ERR("Init config directory and file failed");
-		ret = CMD_ERROR;
+		ret = -1;
 		goto error;
 	}
 
