@@ -581,7 +581,7 @@ static pid_t spawn_kconsumerd(void)
 		/*
 		 * Exec kconsumerd.
 		 */
-		execlp("kconsumerd", "kconsumerd", "--verbose", NULL);
+		execlp("ltt-kconsumerd", "ltt-kconsumerd", "--verbose", NULL);
 		if (errno != 0) {
 			perror("kernel start consumer exec");
 		}

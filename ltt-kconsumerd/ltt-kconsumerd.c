@@ -39,7 +39,6 @@
 
 #include "lttngerr.h"
 #include "libkernelctl.h"
-#include "liblttsessiondcomm.h"
 #include "liblttkconsumerd.h"
 
 /* the two threads (receive fd and poll) */

@@ -7,6 +7,6 @@ SUBDIRS = liblttsessiondcomm \
 		  libustcomm \
 		  libustctl \
 		  lttng \
+		  ltt-kconsumerd \
 		  ltt-sessiond \
-		  kconsumerd \
 		  tests

@@ -44,9 +44,9 @@ AC_CONFIG_FILES([
 	liblttsessiondcomm/Makefile
 	libustctl/Makefile
 	libustcomm/Makefile
+	ltt-kconsumerd/Makefile
 	ltt-sessiond/Makefile
 	lttng/Makefile
-	kconsumerd/Makefile
 	tests/Makefile
 	tests/ltt-sessiond/Makefile
 ])
