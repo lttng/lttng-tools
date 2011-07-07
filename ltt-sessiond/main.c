@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
+#include <sys/mount.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -642,20 +643,138 @@ error:
 }
 
 /*
+ *  modprobe_kernel_modules
+ */
+static int modprobe_kernel_modules(void)
+{
+	int ret = 0, i = 0;
+	char modprobe[256];
+
+	while (kernel_modules_list[i] != NULL) {
+		ret = snprintf(modprobe, sizeof(modprobe), "/sbin/modprobe %s",
+				kernel_modules_list[i]);
+		if (ret < 0) {
+			perror("snprintf modprobe");
+			goto error;
+		}
+		ret = system(modprobe);
+		if (ret < 0) {
+			ERR("Unable to load module %s", kernel_modules_list[i]);
+		}
+		DBG("Modprobe successfully %s", kernel_modules_list[i]);
+		i++;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ *  mount_debugfs
+ */
+static int mount_debugfs(char *path)
+{
+	int ret;
+	char *type = "debugfs";
+
+	ret = mkdir_recursive(path, S_IRWXU | S_IRWXG);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = mount(type, path, type, 0, NULL);
+	if (ret < 0) {
+		perror("mount debugfs");
+		goto error;
+	}
+
+	DBG("Mounted debugfs successfully at %s", path);
+
+error:
+	return ret;
+}
+
+/*
  *  init_kernel_tracer
  *
  *  Setup necessary data for kernel tracer action.
  */
 static void init_kernel_tracer(void)
 {
-	/* Set the global kernel tracer fd */
-	kernel_tracer_fd = open(DEFAULT_KERNEL_TRACER_PATH, O_RDWR);
-	if (kernel_tracer_fd < 0) {
-		WARN("No kernel tracer available");
-		kernel_tracer_fd = 0;
+	int ret;
+	char *proc_mounts = "/proc/mounts";
+	char line[256];
+	char *debugfs_path = NULL, *lttng_path;
+	FILE *fp;
+
+	/* Detect debugfs */
+	fp = fopen(proc_mounts, "r");
+	if (fp == NULL) {
+		ERR("Unable to probe %s", proc_mounts);
+		goto error;
 	}
 
+	while (fgets(line, sizeof(line), fp) != NULL) {
+		if (strstr(line, "debugfs") != NULL) {
+			/* Remove first string */
+			strtok(line, " ");
+			/* Dup string here so we can reuse line later on */
+			debugfs_path = strdup(strtok(NULL, " "));
+			DBG("Got debugfs path : %s", debugfs_path);
+			break;
+		}
+	}
+
+	fclose(fp);
+
+	/* Mount debugfs if needded */
+	if (debugfs_path == NULL) {
+		ret = asprintf(&debugfs_path, "/mnt/debugfs");
+		if (ret < 0) {
+			perror("asprintf debugfs path");
+			goto error;
+		}
+		ret = mount_debugfs(debugfs_path);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/* Modprobe lttng kernel modules */
+	ret = modprobe_kernel_modules();
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Setup lttng kernel path */
+	ret = asprintf(&lttng_path, "%s/lttng", debugfs_path);
+	if (ret < 0) {
+		perror("asprintf lttng path");
+		goto error;
+	}
+
+	/* Open debugfs lttng */
+	kernel_tracer_fd = open(lttng_path, O_RDWR);
+	if (kernel_tracer_fd < 0) {
+		DBG("Failed to open %s", lttng_path);
+		goto error;
+	}
+
+	free(lttng_path);
+	free(debugfs_path);
 	DBG("Kernel tracer fd %d", kernel_tracer_fd);
+	return;
+
+error:
+	if (lttng_path) {
+		free(lttng_path);
+	}
+	if (debugfs_path) {
+		free(debugfs_path);
+	}
+	WARN("No kernel tracer available");
+	kernel_tracer_fd = 0;
+	return;
 }
 
 /*
@@ -1995,7 +2114,6 @@ int main(int argc, char **argv)
 	/* Check if daemon is UID = 0 */
 	is_root = !getuid();
 
-	/* Set all sockets path */
 	if (is_root) {
 		ret = create_lttng_rundir();
 		if (ret < 0) {

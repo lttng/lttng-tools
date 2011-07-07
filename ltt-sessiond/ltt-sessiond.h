@@ -24,10 +24,27 @@
 #define DEFAULT_GLOBAL_APPS_PIPE	DEFAULT_UST_SOCK_DIR "/global"
 #define DEFAULT_TRACE_OUTPUT        DEFAULT_HOME_DIR "/lttng"
 
-/*
- * Kernel tracer defines
- */
-#define DEFAULT_KERNEL_TRACER_PATH			"/mnt/debugfs/lttng"
+/* LTTng kernel tracer modules list */
+const char *kernel_modules_list[] = {
+	"lib-ring-buffer",
+	"ltt-relay",
+	"ltt-ring-buffer-client-discard",
+	"ltt-ring-buffer-client-overwrite",
+	"ltt-ring-buffer-metadata-client",
+	"ltt-ring-buffer-client-mmap-discard",
+	"ltt-ring-buffer-client-mmap-overwrite",
+	"ltt-ring-buffer-metadata-mmap-client",
+	"lttng-ftrace",
+	"lttng-kprobes",
+	"lttng-probe-block",
+	"lttng-probe-irq",
+	"lttng-probe-kvm",
+	"lttng-probe-lttng",
+	"lttng-probe-sched",
+	"lttng-probe-syscalls",
+	"lttng-types",
+	NULL,
+};
 
 extern const char default_home_dir[],
 	default_tracing_group[],
