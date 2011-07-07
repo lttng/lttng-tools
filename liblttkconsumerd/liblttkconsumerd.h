@@ -16,12 +16,29 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_KCONSUMERD_H
-#define _LTT_KCONSUMERD_H
+#ifndef _LIBLTTKCONSUMERD_H
+#define _LIBLTTKCONSUMERD_H
 
 #include "lttng-kconsumerd.h"
+#include "liblttsessiondcomm.h"
 
-struct ltt_kconsumerd_fd_list {
+/*
+ * When the receiving thread dies, we need to have a way to make
+ * the polling thread exit eventually.
+ * If all FDs hang up (normal case when the ltt-sessiond stops),
+ * we can exit cleanly, but if there is a problem and for whatever
+ * reason some FDs remain open, the consumer should still exit eventually.
+ *
+ * If the timeout is reached, it means that during this period
+ * no events occurred on the FDs so we need to force an exit.
+ * This case should not happen but it is a safety to ensure we won't block
+ * the consumer indefinitely.
+ *
+ * The value of 2 seconds is an arbitrary choice.
+ */
+#define KCONSUMERD_POLL_GRACE_PERIOD 2000
+
+struct kconsumerd_fd_list {
 	struct cds_list_head head;
 };
 
@@ -29,7 +46,7 @@ struct ltt_kconsumerd_fd_list {
  * Internal representation of the FDs,
  * sessiond_fd is used to identify uniquely a fd
  */
-struct ltt_kconsumerd_fd {
+struct kconsumerd_fd {
 	struct cds_list_head list;
 	int sessiond_fd; /* used to identify uniquely a fd with sessiond */
 	int consumerd_fd; /* fd to consume */
@@ -40,4 +57,12 @@ struct ltt_kconsumerd_fd {
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
 };
 
-#endif /* _LTT_KCONSUMERD_H */
+int kconsumerd_create_poll_pipe();
+int kconsumerd_send_error(enum lttcomm_return_code cmd);
+void *kconsumerd_thread_poll_fds(void *data);
+void *kconsumerd_thread_receive_fds(void *data);
+void kconsumerd_cleanup();
+void kconsumerd_set_error_socket(int sock);
+void kconsumerd_set_command_socket_path(char *sock);
+
+#endif /* _LIBLTTKCONSUMERD_H */

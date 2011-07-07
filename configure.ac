@@ -39,6 +39,7 @@ AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
 	libkernelctl/Makefile
+	liblttkconsumerd/Makefile
 	liblttngctl/Makefile
 	liblttsessiondcomm/Makefile
 	libustctl/Makefile
