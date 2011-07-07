@@ -38,7 +38,7 @@ static int opt_pid_all;
 static int opt_userspace;
 static int opt_enable_all;
 static pid_t opt_pid;
-static char *opt_kprobe_addr;
+static char *opt_kprobe;
 static char *opt_function_symbol;
 static char *opt_channel_name;
 
@@ -86,10 +86,62 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
-	fprintf(ofp, "    --kprobe ADDR          Kernel Kprobe\n");
+	fprintf(ofp, "    --kprobe [addr | symbol+offset]\n");
+	fprintf(ofp, "                           Kernel Kprobe. (addr or offset can be base 8,10 and 16)\n");
 	fprintf(ofp, "    --function SYMBOL      Function tracer event\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
+}
+
+/*
+ *  parse_kprobe_addr
+ *
+ *  Parse kprobe options.
+ */
+static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
+{
+	int ret;
+	uint64_t hex;
+	char name[LTTNG_SYMBOL_NAME_LEN];
+
+	if (opt == NULL) {
+		ret = -1;
+		goto error;
+	}
+
+	/* Check for symbol+offset */
+	ret = sscanf(opt, "%[^'+']+%li", name, &hex);
+	if (ret == 2) {
+		strncpy(ev->attr.kprobe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
+		DBG("kprobe symbol %s", ev->attr.kprobe.symbol_name);
+		if (hex == 0) {
+			ERR("Invalid kprobe offset %lu", hex);
+			ret = -1;
+			goto error;
+		}
+		ev->attr.kprobe.offset = hex;
+		DBG("kprobe offset %lu", ev->attr.kprobe.offset);
+		goto error;
+	}
+
+	/* Check for address */
+	ret = sscanf(opt, "%li", &hex);
+	if (ret > 0) {
+		if (hex == 0) {
+			ERR("Invalid kprobe address %lu", hex);
+			ret = -1;
+			goto error;
+		}
+		ev->attr.kprobe.addr = hex;
+		DBG("kprobe addr %lu", ev->attr.kprobe.addr);
+		goto error;
+	}
+
+	/* No match */
+	ret = -1;
+
+error:
+	return ret;
 }
 
 /*
@@ -143,8 +195,13 @@ static int enable_events(void)
 				ret = lttng_kernel_enable_event(&ev, channel_name);
 				break;
 			case LTTNG_EVENT_KPROBES:
-				/* FIXME: check addr format */
-				ev.attr.kprobe.addr = atoll(opt_kprobe_addr);
+				ret = parse_kprobe_opts(&ev, opt_kprobe);
+				if (ret < 0) {
+					ERR("Unable to parse kprobe options");
+					ret = 0;
+					goto error;
+				}
+
 				ret = lttng_kernel_enable_event(&ev, channel_name);
 				break;
 			case LTTNG_EVENT_FUNCTION:
@@ -215,7 +272,7 @@ int cmd_enable_events(int argc, const char **argv)
 			goto end;
 		case OPT_KPROBE:
 			opt_event_type = LTTNG_EVENT_KPROBES;
-			opt_kprobe_addr = poptGetOptArg(pc);
+			opt_kprobe = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
