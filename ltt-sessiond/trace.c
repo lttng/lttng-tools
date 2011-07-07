@@ -24,7 +24,6 @@
 #include <urcu/list.h>
 
 #include "lttngerr.h"
-#include "ltt-sessiond.h"
 #include "trace.h"
 
 /*

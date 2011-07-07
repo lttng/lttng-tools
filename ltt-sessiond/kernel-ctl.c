@@ -25,7 +25,6 @@
 #include <unistd.h>
 
 #include "lttngerr.h"
-#include "ltt-sessiond.h"
 #include "libkernelctl.h"
 #include "kernel-ctl.h"
 
