@@ -28,6 +28,7 @@
 #include "lttngerr.h"
 #include "ust-ctl.h"
 
+#ifdef DISABLED
 /*
  *  find_session_ust_trace_by_pid
  *
@@ -206,4 +207,5 @@ int ust_stop_trace(struct command_ctx *cmd_ctx)
 error:
 	return ret;
 }
+#endif
 
