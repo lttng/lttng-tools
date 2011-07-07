@@ -26,4 +26,4 @@ tags
 
 ltt-sessiond/ltt-sessiond
 lttng/lttng
-kconsumerd/kconsumerd
+ltt-kconsumerd/ltt-kconsumerd
