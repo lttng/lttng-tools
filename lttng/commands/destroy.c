@@ -94,7 +94,6 @@ static int destroy_session()
 		MSG("Session %s destroyed", session_name);
 	}
 
-	free(path);
 	ret = CMD_SUCCESS;
 
 free_name:
