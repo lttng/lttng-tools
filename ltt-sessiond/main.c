@@ -21,6 +21,7 @@
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
+#include <poll.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -74,6 +75,7 @@ static int opt_daemon;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t kconsumerd_pid;
+static struct pollfd *kernel_pollfd;
 
 static char apps_unix_sock_path[PATH_MAX];				/* Global application Unix socket path */
 static char client_unix_sock_path[PATH_MAX];			/* Global client Unix socket path */
@@ -86,11 +88,13 @@ static int apps_sock;
 static int kconsumerd_err_sock;
 static int kconsumerd_cmd_sock;
 static int kernel_tracer_fd;
+static int kernel_poll_pipe[2];
 
 /* Pthread, Mutexes and Semaphores */
 static pthread_t kconsumerd_thread;
 static pthread_t apps_thread;
 static pthread_t client_thread;
+static pthread_t kernel_thread;
 static sem_t kconsumerd_sem;
 
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
@@ -133,6 +137,7 @@ static void cleanup()
 	DBG("Terminating all threads");
 	pthread_cancel(client_thread);
 	pthread_cancel(apps_thread);
+	pthread_cancel(kernel_thread);
 	if (kconsumerd_pid != 0) {
 		pthread_cancel(kconsumerd_thread);
 	}
@@ -163,6 +168,8 @@ static void cleanup()
 
 	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
+	close(kernel_poll_pipe[0]);
+	close(kernel_poll_pipe[1]);
 }
 
 /*
@@ -203,23 +210,24 @@ static void clean_command_ctx(struct command_ctx *cmd_ctx)
 }
 
 /*
- *  send_kconsumerd_fds
+ *  send_kconsumerd_channel_fds
  *
- *  Send all stream fds of the kernel session to the consumer.
+ *  Send all stream fds of kernel channel to the consumer.
  */
-static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
+static int send_kconsumerd_channel_fds(int sock, struct ltt_kernel_channel *channel)
 {
 	int ret;
 	size_t nb_fd;
 	struct ltt_kernel_stream *stream;
-	struct ltt_kernel_channel *chan;
 	struct lttcomm_kconsumerd_header lkh;
 	struct lttcomm_kconsumerd_msg lkm;
 
-	nb_fd = session->stream_count_global;
+	DBG("Sending fds of channel %s to kernel consumer", channel->channel->name);
+
+	nb_fd = channel->stream_count;
 
 	/* Setup header */
-	lkh.payload_size = (nb_fd + 1) * sizeof(struct lttcomm_kconsumerd_msg);
+	lkh.payload_size = nb_fd * sizeof(struct lttcomm_kconsumerd_msg);
 	lkh.cmd_type = ADD_STREAM;
 
 	DBG("Sending kconsumerd header");
@@ -230,25 +238,11 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 		goto error;
 	}
 
-	DBG("Sending metadata stream fd");
-
-	/* Send metadata stream fd first */
-	lkm.fd = session->metadata_stream_fd;
-	lkm.state = ACTIVE_FD;
-	lkm.max_sb_size = session->metadata->conf->attr.subbuf_size;
-	strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
-
-	ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
-	if (ret < 0) {
-		perror("send kconsumerd fd");
-		goto error;
-	}
-
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		cds_list_for_each_entry(stream, &chan->stream_list.head, list) {
+	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
+		if (stream->fd != 0) {
 			lkm.fd = stream->fd;
 			lkm.state = stream->state;
-			lkm.max_sb_size = chan->channel->attr.subbuf_size;
+			lkm.max_sb_size = channel->channel->attr.subbuf_size;
 			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
 
 			DBG("Sending fd %d to kconsumerd", lkm.fd);
@@ -261,7 +255,7 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 		}
 	}
 
-	DBG("Kconsumerd fds sent");
+	DBG("Kconsumerd channel fds sent");
 
 	return 0;
 
@@ -270,26 +264,53 @@ error:
 }
 
 /*
- *  create_trace_dir
+ *  send_kconsumerd_fds
  *
- *  Create the trace output directory.
+ *  Send all stream fds of the kernel session to the consumer.
  */
-static int create_trace_dir(struct ltt_kernel_session *session)
+static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_channel *chan;
+	struct lttcomm_kconsumerd_header lkh;
+	struct lttcomm_kconsumerd_msg lkm;
 
-	/* Create all channel directories */
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		DBG("Creating trace directory at %s", chan->pathname);
-		ret = mkdir_recursive(chan->pathname, S_IRWXU | S_IRWXG );
+	/* Setup header */
+	lkh.payload_size = sizeof(struct lttcomm_kconsumerd_msg);
+	lkh.cmd_type = ADD_STREAM;
+
+	DBG("Sending kconsumerd header for metadata");
+
+	ret = lttcomm_send_unix_sock(sock, &lkh, sizeof(struct lttcomm_kconsumerd_header));
+	if (ret < 0) {
+		perror("send kconsumerd header");
+		goto error;
+	}
+
+	DBG("Sending metadata stream fd");
+
+	if (session->metadata_stream_fd != 0) {
+		/* Send metadata stream fd first */
+		lkm.fd = session->metadata_stream_fd;
+		lkm.state = ACTIVE_FD;
+		lkm.max_sb_size = session->metadata->conf->attr.subbuf_size;
+		strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
+
+		ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
 		if (ret < 0) {
-			if (ret != EEXIST) {
-				ERR("Trace directory creation error");
-				goto error;
-			}
+			perror("send kconsumerd fd");
+			goto error;
 		}
 	}
+
+	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
+		ret = send_kconsumerd_channel_fds(sock, chan);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	DBG("Kconsumerd fds (metadata and channel streams) sent");
 
 	return 0;
 
@@ -393,6 +414,181 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 
 error:
 	return ret;
+}
+
+/*
+ *  update_kernel_pollfd
+ *
+ *  Update the kernel pollfd set of all channel fd available over
+ *  all tracing session. Add the wakeup pipe at the end of the set.
+ */
+static int update_kernel_pollfd(void)
+{
+	int i = 0;
+	unsigned int nb_fd = 1;
+	struct ltt_session *session;
+	struct ltt_kernel_channel *channel;
+
+	DBG("Updating kernel_pollfd");
+
+	/* Get the number of channel of all kernel session */
+	cds_list_for_each_entry(session, &ltt_session_list.head, list) {
+		if (session->kernel_session == NULL) {
+			continue;
+		}
+		nb_fd += session->kernel_session->channel_count;
+	}
+
+	DBG("Resizing kernel_pollfd to size %d", nb_fd);
+
+	kernel_pollfd = realloc(kernel_pollfd, nb_fd * sizeof(struct pollfd));
+	if (kernel_pollfd == NULL) {
+		perror("malloc kernel_pollfd");
+		goto error;
+	}
+
+	cds_list_for_each_entry(session, &ltt_session_list.head, list) {
+		if (session->kernel_session == NULL) {
+			continue;
+		}
+		if (i >= nb_fd) {
+			ERR("To much channel for kernel_pollfd size");
+			break;
+		}
+		cds_list_for_each_entry(channel, &session->kernel_session->channel_list.head, list) {
+			kernel_pollfd[i].fd = channel->fd;
+			kernel_pollfd[i].events = POLLIN | POLLRDNORM;
+			i++;
+		}
+	}
+
+	/* Adding wake up pipe */
+	kernel_pollfd[nb_fd - 1].fd = kernel_poll_pipe[0];
+	kernel_pollfd[nb_fd - 1].events = POLLIN;
+
+	return nb_fd;
+
+error:
+	return -1;
+}
+
+/*
+ *  update_kernel_stream
+ *
+ *  Find the channel fd from 'fd' over all tracing session.  When found, check
+ *  for new channel stream and send those stream fds to the kernel consumer.
+ *
+ *  Useful for CPU hotplug feature.
+ */
+static int update_kernel_stream(int fd)
+{
+	int ret = 0;
+	struct ltt_session *session;
+	struct ltt_kernel_channel *channel;
+
+	DBG("Updating kernel streams for channel fd %d", fd);
+
+	cds_list_for_each_entry(session, &ltt_session_list.head, list) {
+		if (session->kernel_session == NULL) {
+			continue;
+		}
+		cds_list_for_each_entry(channel, &session->kernel_session->channel_list.head, list) {
+			if (channel->fd == fd) {
+				DBG("Channel found, updating kernel streams");
+				ret = kernel_open_channel_stream(channel);
+				if (ret < 0) {
+					goto end;
+				}
+				/*
+				 * Have we already sent fds to the consumer? If yes, it means that
+				 * tracing is started so it is safe to send our updated stream fds.
+				 */
+				if (session->kernel_session->kconsumer_fds_sent == 1) {
+					ret = send_kconsumerd_channel_fds(kconsumerd_cmd_sock, channel);
+					if (ret < 0) {
+						goto end;
+					}
+				}
+				goto end;
+			}
+		}
+	}
+
+end:
+	return ret;
+}
+
+/*
+ *  thread_manage_kernel
+ *
+ *  This thread manage event coming from the kernel.
+ *
+ *  Features supported in this thread:
+ *   -) CPU Hotplug
+ */
+static void *thread_manage_kernel(void *data)
+{
+	int ret, i, nb_fd = 0;
+	char tmp;
+	int update_poll_flag = 1;
+
+	DBG("Thread manage kernel started");
+
+	while (1) {
+		if (update_poll_flag == 1) {
+			nb_fd = update_kernel_pollfd();
+			if (nb_fd < 0) {
+				goto error;
+			}
+			update_poll_flag = 0;
+		}
+
+		DBG("Polling on %d fds", nb_fd);
+
+		/* Poll infinite value of time */
+		ret = poll(kernel_pollfd, nb_fd, -1);
+		if (ret < 0) {
+			perror("poll kernel thread");
+			goto error;
+		} else if (ret == 0) {
+			/* Should not happen since timeout is infinite */
+			continue;
+		}
+
+		DBG("Kernel poll event triggered");
+
+		/*
+		 * Check if the wake up pipe was triggered. If so, the kernel_pollfd
+		 * must be updated.
+		 */
+		if (kernel_pollfd[nb_fd - 1].revents == POLLIN) {
+			ret = read(kernel_poll_pipe[0], &tmp, 1);
+			update_poll_flag = 1;
+			continue;
+		}
+
+		for (i = 0; i < nb_fd; i++) {
+			switch (kernel_pollfd[i].revents) {
+			/*
+			 * New CPU detected by the kernel. Adding kernel stream to kernel
+			 * session and updating the kernel consumer
+			 */
+			case POLLIN | POLLRDNORM:
+				ret = update_kernel_stream(kernel_pollfd[i].fd);
+				if (ret < 0) {
+					continue;
+				}
+				break;
+			}
+		}
+	}
+
+error:
+	DBG("Kernel thread dying");
+	if (kernel_pollfd) {
+		free(kernel_pollfd);
+	}
+	return NULL;
 }
 
 /*
@@ -785,17 +981,6 @@ static int start_kernel_trace(struct ltt_kernel_session *session)
 {
 	int ret;
 
-	/* Create trace directory */
-	ret = create_trace_dir(session);
-	if (ret < 0) {
-		if (ret == -EEXIST) {
-			ret = LTTCOMM_KERN_DIR_EXIST;
-		} else {
-			ret = LTTCOMM_KERN_DIR_FAIL;
-			goto error;
-		}
-	}
-
 	if (session->kconsumer_fds_sent == 0) {
 		ret = send_kconsumerd_fds(kconsumerd_cmd_sock, session);
 		if (ret < 0) {
@@ -808,6 +993,22 @@ static int start_kernel_trace(struct ltt_kernel_session *session)
 	}
 
 error:
+	return ret;
+}
+
+/*
+ * Notify kernel thread to update it's pollfd.
+ */
+static int notify_kernel_pollfd(void)
+{
+	int ret;
+
+	/* Inform kernel thread of the new kernel channel */
+	ret = write(kernel_poll_pipe[1], "!", 1);
+	if (ret < 0) {
+		perror("write kernel poll pipe");
+	}
+
 	return ret;
 }
 
@@ -866,6 +1067,14 @@ static int create_kernel_session(struct ltt_session *session)
 		goto error;
 	}
 
+	ret = mkdir_recursive(session->path, S_IRWXU | S_IRWXG );
+	if (ret < 0) {
+		if (ret != EEXIST) {
+			ERR("Trace directory creation error");
+			goto error;
+		}
+	}
+
 	DBG("Creating default kernel channel %s", DEFAULT_CHANNEL_NAME);
 
 	ret = kernel_create_channel(session->kernel_session, chan, session->path);
@@ -873,6 +1082,8 @@ static int create_kernel_session(struct ltt_session *session)
 		ret = LTTCOMM_KERN_CHAN_FAIL;
 		goto error;
 	}
+
+	ret = notify_kernel_pollfd();
 
 error:
 	return ret;
@@ -1063,6 +1274,12 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				&cmd_ctx->lsm->u.channel.chan, cmd_ctx->session->path);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_CHAN_FAIL;
+			goto error;
+		}
+
+		ret = notify_kernel_pollfd();
+		if (ret < 0) {
+			ret = LTTCOMM_FATAL;
 			goto error;
 		}
 
@@ -1473,6 +1690,16 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		teardown_kernel_session(cmd_ctx->session);
 
 		ret = destroy_session(cmd_ctx->lsm->session_name);
+		if (ret < 0) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+
+		/*
+		 * Must notify the kernel thread here to update it's pollfd in order to
+		 * remove the channel(s)' fd just destroyed.
+		 */
+		ret = notify_kernel_pollfd();
 		if (ret < 0) {
 			ret = LTTCOMM_FATAL;
 			goto error;
@@ -1929,6 +2156,16 @@ end:
 }
 
 /*
+ *  create_kernel_poll_pipe
+ *
+ *  Create the pipe used to wake up the kernel thread.
+ */
+static int create_kernel_poll_pipe(void)
+{
+	return pipe2(kernel_poll_pipe, O_CLOEXEC);
+}
+
+/*
  *  create_lttng_rundir
  *
  *  Create the lttng run directory needed for all
@@ -2191,6 +2428,11 @@ int main(int argc, char **argv)
 		ppid = getppid();
 	}
 
+	/* Setup the kernel pipe for waking up the kernel thread */
+	if (create_kernel_poll_pipe() < 0) {
+		goto error;
+	}
+
 	while (1) {
 		/* Create thread to manage the client socket */
 		ret = pthread_create(&client_thread, NULL, thread_manage_clients, (void *) NULL);
@@ -2201,6 +2443,13 @@ int main(int argc, char **argv)
 
 		/* Create thread to manage application socket */
 		ret = pthread_create(&apps_thread, NULL, thread_manage_apps, (void *) NULL);
+		if (ret != 0) {
+			perror("pthread_create");
+			goto error;
+		}
+
+		/* Create kernel thread to manage kernel event */
+		ret = pthread_create(&kernel_thread, NULL, thread_manage_kernel, (void *) NULL);
 		if (ret != 0) {
 			perror("pthread_create");
 			goto error;
