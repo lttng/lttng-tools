@@ -185,12 +185,15 @@ static void kconsumerd_change_fd_state(int sessiond_fd,
 		enum kconsumerd_fd_state state)
 {
 	struct kconsumerd_fd *iter;
+
+	pthread_mutex_lock(&kconsumerd_lock_fds);
 	cds_list_for_each_entry(iter, &kconsumerd_fd_list.head, list) {
 		if (iter->sessiond_fd == sessiond_fd) {
 			iter->state = state;
 			break;
 		}
 	}
+	pthread_mutex_unlock(&kconsumerd_lock_fds);
 }
 
 /*
@@ -208,7 +211,6 @@ static int kconsumerd_update_poll_array(struct pollfd **pollfd,
 	int i = 0;
 
 	DBG("Updating poll fd array");
-	pthread_mutex_lock(&kconsumerd_lock_fds);
 
 	cds_list_for_each_entry(iter, &kconsumerd_fd_list.head, list) {
 		DBG("Inside for each");
@@ -229,7 +231,6 @@ static int kconsumerd_update_poll_array(struct pollfd **pollfd,
 	(*pollfd)[i].events = POLLIN;
 
 	kconsumerd_update_fd_array = 0;
-	pthread_mutex_unlock(&kconsumerd_lock_fds);
 	return i;
 }
 
@@ -651,12 +652,16 @@ void *kconsumerd_thread_poll_fds(void *data)
 				free(local_kconsumerd_fd);
 				local_kconsumerd_fd = NULL;
 			}
+
+			/* Lock mutex for fds count */
+			pthread_mutex_lock(&kconsumerd_lock_fds);
 			/* allocate for all fds + 1 for the kconsumerd_poll_pipe */
 			pollfd = malloc((kconsumerd_fds_count + 1) * sizeof(struct pollfd));
 			if (pollfd == NULL) {
 				perror("pollfd malloc");
 				goto end;
 			}
+
 			/* allocate for all fds + 1 for the kconsumerd_poll_pipe */
 			local_kconsumerd_fd = malloc((kconsumerd_fds_count + 1) *
 					sizeof(struct kconsumerd_fd));
@@ -670,6 +675,9 @@ void *kconsumerd_thread_poll_fds(void *data)
 				kconsumerd_send_error(KCONSUMERD_POLL_ERROR);
 				goto end;
 			}
+			/* Unlock mutex for fds count */
+			pthread_mutex_unlock(&kconsumerd_lock_fds);
+
 			nb_fd = ret;
 		}
 
@@ -758,6 +766,7 @@ void *kconsumerd_thread_poll_fds(void *data)
 		}
 	}
 end:
+	pthread_mutex_unlock(&kconsumerd_lock_fds);
 	DBG("polling thread exiting");
 	if (pollfd != NULL) {
 		free(pollfd);
