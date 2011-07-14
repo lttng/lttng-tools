@@ -67,7 +67,7 @@ static void sighandler(int sig)
 		return;
 	}
 
-	kconsumerd_cleanup();
+	kconsumerd_should_exit();
 }
 
 /*

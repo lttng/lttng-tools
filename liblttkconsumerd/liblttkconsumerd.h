@@ -61,7 +61,8 @@ int kconsumerd_create_poll_pipe();
 int kconsumerd_send_error(enum lttcomm_return_code cmd);
 void *kconsumerd_thread_poll_fds(void *data);
 void *kconsumerd_thread_receive_fds(void *data);
-void kconsumerd_cleanup();
+void kconsumerd_should_exit(void);
+void kconsumerd_cleanup(void);
 void kconsumerd_set_error_socket(int sock);
 void kconsumerd_set_command_socket_path(char *sock);
 

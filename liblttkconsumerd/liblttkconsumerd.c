@@ -69,6 +69,12 @@ static int kconsumerd_thread_pipe[2];
 /* pipe to wake the poll thread when necessary */
 static int kconsumerd_poll_pipe[2];
 
+/*
+ * TODO: create a should_quit pipe to let the signal handler wake up the
+ * fd receiver thread. It should be initialized before any signal can be
+ * received by the library.
+ */
+
 /* timeout parameter, to control the polling thread grace period */
 static int kconsumerd_poll_timeout = -1;
 
@@ -78,8 +84,13 @@ static int kconsumerd_error_socket;
 /* socket to exchange commands with sessiond */
 static char *kconsumerd_command_sock_path;
 
-/* flag to inform the polling thread to kconsumerd_quit when all fd hung up */
-static int kconsumerd_quit = 0;
+/*
+ * flag to inform the polling thread to quit when all fd hung up.
+ * Updated by the kconsumerd_thread_receive_fds when it notices that all
+ * fds has hung up. Also updated by the signal handler
+ * (kconsumerd_should_exit()). Read by the polling threads.
+ */
+static volatile int kconsumerd_quit = 0;
 
 /*
  * kconsumerd_set_error_socket
@@ -790,7 +801,6 @@ end:
 		free(local_kconsumerd_fd);
 		local_kconsumerd_fd = NULL;
 	}
-	kconsumerd_cleanup();
 	return NULL;
 }
 
@@ -835,6 +845,8 @@ void *kconsumerd_thread_receive_fds(void *data)
 		goto end;
 	}
 
+	/* TODO: poll on socket and "should_quit" fd pipe */
+	/* TODO: change blocking call into non-blocking call */
 	/* Blocking call, waiting for transmission */
 	sock = lttcomm_accept_unix_sock(client_socket);
 	if (sock <= 0) {
@@ -843,6 +855,8 @@ void *kconsumerd_thread_receive_fds(void *data)
 	}
 	while (1) {
 		/* We first get the number of fd we are about to receive */
+		/* TODO: poll on sock and "should_quit" fd pipe */
+		/* TODO: change recv into a non-blocking call */
 		ret = lttcomm_recv_unix_sock(sock, &tmp,
 				sizeof(struct lttcomm_kconsumerd_header));
 		if (ret <= 0) {
@@ -851,6 +865,10 @@ void *kconsumerd_thread_receive_fds(void *data)
 		}
 		if (tmp.cmd_type == STOP) {
 			DBG("Received STOP command");
+			goto end;
+		}
+		if (kconsumerd_quit) {
+			DBG("kconsumerd_thread_receive_fds received quit from signal");
 			goto end;
 		}
 		/* we received a command to add or update fds */
@@ -890,17 +908,33 @@ end:
  *
  *  Cleanup the daemon's socket on exit
  */
-void kconsumerd_cleanup()
+void kconsumerd_cleanup(void)
 {
 	struct kconsumerd_fd *iter;
 
 	/* remove the socket file */
 	unlink(kconsumerd_command_sock_path);
 
-	/* close all outfd */
+	/*
+	 * close all outfd. Called when there are no more threads
+	 * running (after joining on the threads), no need to protect
+	 * list iteration with mutex.
+	 */
 	cds_list_for_each_entry(iter, &kconsumerd_data.fd_list.head, list) {
 		kconsumerd_del_fd(iter);
 	}
+}
+
+/*
+ * Called from signal handler.
+ */
+void kconsumerd_should_exit(void)
+{
+	kconsumerd_quit = 1;
+	/*
+	 * TODO: write into a should_quit pipe to wake up the fd
+	 * receiver thread.
+	 */
 }
 
 /*
