@@ -86,6 +86,30 @@ void kconsumerd_set_command_socket_path(char *sock)
 }
 
 /*
+ * kconsumerd_find_session_fd
+ *
+ * Find a session fd in the global list.
+ *
+ * Return 1 if found else 0
+ */
+static int kconsumerd_find_session_fd(int fd)
+{
+	struct kconsumerd_fd *iter;
+
+	pthread_mutex_lock(&kconsumerd_lock_fds);
+	cds_list_for_each_entry(iter, &kconsumerd_fd_list.head, list) {
+		if (iter->sessiond_fd == fd) {
+			DBG("Duplicate session fd %d", fd);
+			pthread_mutex_unlock(&kconsumerd_lock_fds);
+			return 1;
+		}
+	}
+	pthread_mutex_unlock(&kconsumerd_lock_fds);
+
+	return 0;
+}
+
+/*
  * kconsumerd_del_fd
  *
  * Remove a fd from the global list protected by a mutex
@@ -113,8 +137,14 @@ static void kconsumerd_del_fd(struct kconsumerd_fd *lcf)
  */
 static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_fd)
 {
-	struct kconsumerd_fd *tmp_fd;
 	int ret;
+	struct kconsumerd_fd *tmp_fd;
+
+	/* Check if already exist */
+	ret = kconsumerd_find_session_fd(buf->fd);
+	if (ret == 1) {
+		goto end;
+	}
 
 	tmp_fd = malloc(sizeof(struct kconsumerd_fd));
 	tmp_fd->sessiond_fd = buf->fd;
@@ -576,7 +606,6 @@ static int kconsumerd_consumerd_recv_fd(int sfd, int size,
 	}
 
 end:
-	DBG("kconsumerd_consumerd_recv_fd thread exiting");
 	return ret;
 }
 
