@@ -100,10 +100,19 @@ static sem_t kconsumerd_sem;
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
 /*
+ * Pointer initialized before thread creation.
+ *
+ * This points to the tracing session list containing the session count and a
+ * mutex lock. The lock MUST be taken if you iterate over the list. The lock
+ * MUST NOT be taken if you call a public function in session.c.
+ */
+static struct ltt_session_list *session_list_ptr;
+
+/*
  *  teardown_kernel_session
  *
- *  Complete teardown of a kernel session. This free all data structure
- *  related to a kernel session and update counter.
+ *  Complete teardown of a kernel session. This free all data structure related
+ *  to a kernel session and update counter.
  */
 static void teardown_kernel_session(struct ltt_session *session)
 {
@@ -161,10 +170,13 @@ static void cleanup()
 
 	DBG("Cleaning up all session");
 	/* Cleanup ALL session */
-	cds_list_for_each_entry(sess, &ltt_session_list.head, list) {
+	cds_list_for_each_entry(sess, &session_list_ptr->head, list) {
 		teardown_kernel_session(sess);
 		// TODO complete session cleanup (including UST)
 	}
+
+	/* Destroy session list mutex */
+	pthread_mutex_destroy(&session_list_ptr->lock);
 
 	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
@@ -432,11 +444,15 @@ static int update_kernel_pollfd(void)
 	DBG("Updating kernel_pollfd");
 
 	/* Get the number of channel of all kernel session */
-	cds_list_for_each_entry(session, &ltt_session_list.head, list) {
+	pthread_mutex_lock(&session_list_ptr->lock);
+	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		lock_session(session);
 		if (session->kernel_session == NULL) {
+			unlock_session(session);
 			continue;
 		}
 		nb_fd += session->kernel_session->channel_count;
+		unlock_session(session);
 	}
 
 	DBG("Resizing kernel_pollfd to size %d", nb_fd);
@@ -447,12 +463,15 @@ static int update_kernel_pollfd(void)
 		goto error;
 	}
 
-	cds_list_for_each_entry(session, &ltt_session_list.head, list) {
+	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		lock_session(session);
 		if (session->kernel_session == NULL) {
+			unlock_session(session);
 			continue;
 		}
 		if (i >= nb_fd) {
 			ERR("To much channel for kernel_pollfd size");
+			unlock_session(session);
 			break;
 		}
 		cds_list_for_each_entry(channel, &session->kernel_session->channel_list.head, list) {
@@ -460,7 +479,9 @@ static int update_kernel_pollfd(void)
 			kernel_pollfd[i].events = POLLIN | POLLRDNORM;
 			i++;
 		}
+		unlock_session(session);
 	}
+	pthread_mutex_unlock(&session_list_ptr->lock);
 
 	/* Adding wake up pipe */
 	kernel_pollfd[nb_fd - 1].fd = kernel_poll_pipe[0];
@@ -469,6 +490,7 @@ static int update_kernel_pollfd(void)
 	return nb_fd;
 
 error:
+	pthread_mutex_unlock(&session_list_ptr->lock);
 	return -1;
 }
 
@@ -488,8 +510,11 @@ static int update_kernel_stream(int fd)
 
 	DBG("Updating kernel streams for channel fd %d", fd);
 
-	cds_list_for_each_entry(session, &ltt_session_list.head, list) {
+	pthread_mutex_lock(&session_list_ptr->lock);
+	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		lock_session(session);
 		if (session->kernel_session == NULL) {
+			unlock_session(session);
 			continue;
 		}
 		cds_list_for_each_entry(channel, &session->kernel_session->channel_list.head, list) {
@@ -512,9 +537,14 @@ static int update_kernel_stream(int fd)
 				goto end;
 			}
 		}
+		unlock_session(session);
 	}
 
 end:
+	if (session) {
+		unlock_session(session);
+	}
+	pthread_mutex_unlock(&session_list_ptr->lock);
 	return ret;
 }
 
@@ -561,10 +591,15 @@ static void *thread_manage_kernel(void *data)
 		 * Check if the wake up pipe was triggered. If so, the kernel_pollfd
 		 * must be updated.
 		 */
-		if (kernel_pollfd[nb_fd - 1].revents == POLLIN) {
+		switch (kernel_pollfd[nb_fd - 1].revents) {
+		case POLLIN:
 			ret = read(kernel_poll_pipe[0], &tmp, 1);
 			update_poll_flag = 1;
 			continue;
+		case POLLERR:
+			goto error;
+		default:
+			break;
 		}
 
 		for (i = 0; i < nb_fd; i++) {
@@ -1123,6 +1158,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				ret = LTTCOMM_SELECT_SESS;
 			}
 			goto error;
+		} else {
+			/* Acquire lock for the session */
+			lock_session(cmd_ctx->session);
 		}
 		break;
 	}
@@ -1829,6 +1867,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	/* Set return code */
 	cmd_ctx->llm->ret_code = ret;
 
+	if (cmd_ctx->session) {
+		unlock_session(cmd_ctx->session);
+	}
+
 	return ret;
 
 error:
@@ -1842,6 +1884,9 @@ error:
 	cmd_ctx->llm->ret_code = ret;
 
 setup_error:
+	if (cmd_ctx->session) {
+		unlock_session(cmd_ctx->session);
+	}
 	return ret;
 }
 
@@ -2432,6 +2477,9 @@ int main(int argc, char **argv)
 	if (create_kernel_poll_pipe() < 0) {
 		goto error;
 	}
+
+	/* Get session list pointer */
+	session_list_ptr = get_session_list();
 
 	while (1) {
 		/* Create thread to manage the client socket */

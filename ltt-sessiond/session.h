@@ -22,30 +22,53 @@
 #include <lttng/lttng.h>
 #include <urcu/list.h>
 
-/* Global session list */
+/*
+ * Tracing session list
+ *
+ * Statically declared in session.c and can be accessed by using
+ * get_session_list() function that returns the pointer to the list.
+ */
 struct ltt_session_list {
+	/*
+	 * This lock protects any read/write access to the list and count (which is
+	 * basically the list size). All public functions in session.c acquire this
+	 * lock and release it before returning. If none of those functions are
+	 * used, the lock MUST be acquired in order to iterate or/and do any
+	 * actions on that list.
+	 */
+	pthread_mutex_t lock;
+	/*
+	 * Number of element in the list.
+	 */
+	unsigned int count;
 	struct cds_list_head head;
 };
 
-extern struct ltt_session_list ltt_session_list;
-
-/* ltt-session - This data structure contains information needed
- * to identify a tracing session for both LTTng and UST.
+/*
+ * This data structure contains information needed to identify a tracing
+ * session for both LTTng and UST.
  */
 struct ltt_session {
-	struct cds_list_head list;
 	char *name;
 	char *path;
-	struct cds_list_head ust_traces;
 	struct ltt_kernel_session *kernel_session;
+	struct cds_list_head ust_traces;
 	unsigned int ust_trace_count;
-	pid_t ust_consumer;
+	/*
+	 * Protect any read/write on this session data structure. This lock must be
+	 * acquired *before* using any public functions declared below. Use
+	 * lock_session() and unlock_session() for that.
+	 */
+	pthread_mutex_t lock;
+	struct cds_list_head list;
 };
 
 /* Prototypes */
 int create_session(char *name, char *path);
 int destroy_session(char *name);
 void get_lttng_session(struct lttng_session *sessions);
+void lock_session(struct ltt_session *session);
+void unlock_session(struct ltt_session *session);
 struct ltt_session *find_session_by_name(char *name);
 unsigned int get_session_count(void);
 struct ltt_session_list *get_session_list(void);
