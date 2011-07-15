@@ -61,6 +61,7 @@ struct kconsumerd_global_data {
 	unsigned int need_update;
 } kconsumerd_data = {
 	.fd_list.head = CDS_LIST_HEAD_INIT(kconsumerd_data.fd_list.head),
+	.need_update = 1,
 };
 
 /* communication with splice */
