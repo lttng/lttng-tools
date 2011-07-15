@@ -75,6 +75,7 @@ static int kconsumerd_poll_pipe[2];
  * received by the library.
  */
 
+
 /* timeout parameter, to control the polling thread grace period */
 static int kconsumerd_poll_timeout = -1;
 
@@ -116,6 +117,7 @@ void kconsumerd_set_command_socket_path(char *sock)
  * kconsumerd_find_session_fd
  *
  * Find a session fd in the global list.
+ * The kconsumerd_data.lock must be locked during this call
  *
  * Return 1 if found else 0
  */
@@ -123,7 +125,6 @@ static int kconsumerd_find_session_fd(int fd)
 {
 	struct kconsumerd_fd *iter;
 
-	pthread_mutex_lock(&kconsumerd_data.lock);
 	cds_list_for_each_entry(iter, &kconsumerd_data.fd_list.head, list) {
 		if (iter->sessiond_fd == fd) {
 			DBG("Duplicate session fd %d", fd);
@@ -131,7 +132,6 @@ static int kconsumerd_find_session_fd(int fd)
 			return 1;
 		}
 	}
-	pthread_mutex_unlock(&kconsumerd_data.lock);
 
 	return 0;
 }
