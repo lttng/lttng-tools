@@ -202,7 +202,6 @@ int create_session(char *name, char *path)
 
 	/* Init kernel session */
 	new_session->kernel_session = NULL;
-	new_session->kern_session_count = 0;
 
 	/* Init list */
 	CDS_INIT_LIST_HEAD(&new_session->ust_traces);

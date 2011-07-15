@@ -108,8 +108,6 @@ static void teardown_kernel_session(struct ltt_session *session)
 		trace_destroy_kernel_session(session->kernel_session);
 		/* Extra precaution */
 		session->kernel_session = NULL;
-		/* Decrement session count */
-		session->kern_session_count--;
 	}
 }
 

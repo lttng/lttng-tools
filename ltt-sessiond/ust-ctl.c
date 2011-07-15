@@ -58,7 +58,7 @@ static struct ltt_ust_trace *find_session_ust_trace_by_pid(
  */
 int get_trace_count_per_session(struct ltt_session *session)
 {
-	return session->ust_trace_count + session->kern_session_count;
+	return session->ust_trace_count;
 }
 
 /*

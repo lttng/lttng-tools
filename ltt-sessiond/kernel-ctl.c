@@ -124,7 +124,6 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 
 	lks->kconsumer_fds_sent = 0;
 	session->kernel_session = lks;
-	session->kern_session_count++;
 
 	DBG("Kernel session created (fd: %d)", lks->fd);
 

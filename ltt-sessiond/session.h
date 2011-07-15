@@ -39,7 +39,6 @@ struct ltt_session {
 	struct cds_list_head ust_traces;
 	struct ltt_kernel_session *kernel_session;
 	unsigned int ust_trace_count;
-	unsigned int kern_session_count;
 	pid_t ust_consumer;
 };
 
