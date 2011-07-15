@@ -20,11 +20,6 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-# Check libuuid
-AC_CHECK_LIB([uuid], [uuid_generate], [],
-	[AC_MSG_ERROR([Cannot find libuuid. Use [LDFLAGS]=-Ldir to specify its location.])]
-)
-
 # Check liburcu
 AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]

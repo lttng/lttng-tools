@@ -10,13 +10,6 @@ Latest development can be found at:
 
 PREREQUISITES:
 
-	- libuuid
-	  Universally unique id library - headers and static libraries libuuid
-	  generates and parses 128-bit universally unique ids (UUIDs). See RFC
-	  4122 for more information.
-
-	  * Debian/Ubuntu package: uuid-dev
-
 	- liburcu
 	  Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 	  

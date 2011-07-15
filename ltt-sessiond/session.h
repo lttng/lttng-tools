@@ -21,7 +21,6 @@
 
 #include <lttng/lttng.h>
 #include <urcu/list.h>
-#include <uuid/uuid.h>
 
 /* Global session list */
 struct ltt_session_list {
@@ -37,7 +36,6 @@ struct ltt_session {
 	struct cds_list_head list;
 	char *name;
 	char *path;
-	uuid_t uuid;
 	struct cds_list_head ust_traces;
 	struct ltt_kernel_session *kernel_session;
 	unsigned int ust_trace_count;
@@ -49,7 +47,6 @@ struct ltt_session {
 int create_session(char *name, char *path);
 int destroy_session(char *name);
 void get_lttng_session(struct lttng_session *sessions);
-struct ltt_session *find_session_by_uuid(uuid_t session_id);
 struct ltt_session *find_session_by_name(char *name);
 unsigned int get_session_count(void);
 struct ltt_session_list *get_session_list(void);

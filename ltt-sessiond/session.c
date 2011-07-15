@@ -84,35 +84,6 @@ static void del_session_list(struct ltt_session *ls)
 }
 
 /*
- * 	find_session_by_uuid
- *
- * 	Return a ltt_session structure ptr that matches the uuid.
- */
-struct ltt_session *find_session_by_uuid(uuid_t session_id)
-{
-	int found = 0;
-	struct ltt_session *iter;
-
-	/* Sanity check for NULL session_id */
-	if (uuid_is_null(session_id)) {
-		goto end;
-	}
-
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (uuid_compare(iter->uuid, session_id) == 0) {
-			found = 1;
-			break;
-		}
-	}
-
-end:
-	if (!found) {
-		iter = NULL;
-	}
-	return iter;
-}
-
-/*
  * 	find_session_by_name
  *
  * 	Return a ltt_session structure ptr that matches name.
@@ -222,9 +193,6 @@ int create_session(char *name, char *path)
 		ret = -1;
 		goto error;
 	}
-
-	/* UUID generation */
-	uuid_generate(new_session->uuid);
 
 	/*
 	 * Set consumer (identifier) to 0. This means that there is
