@@ -97,7 +97,9 @@ static int destroy_session()
 	ret = CMD_SUCCESS;
 
 free_name:
-	free(session_name);
+	if (opt_session_name == NULL) {
+		free(session_name);
+	}
 error:
 	return ret;
 }

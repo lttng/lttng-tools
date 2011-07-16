@@ -83,7 +83,9 @@ static int stop_tracing(void)
 	MSG("Tracing stopped for session %s", session_name);
 
 free_name:
-	free(session_name);
+	if (opt_session_name == NULL) {
+		free(session_name);
+	}
 error:
 	return ret;
 }

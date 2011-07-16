@@ -58,18 +58,19 @@ int set_session_name(char *name)
 	int ret;
 	char *session_name;
 
-	if (name != NULL) {
-		session_name = name;
-	} else {
+	if (!name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
 			ret = -1;
 			goto error;
 		}
+	} else {
+		session_name = name;
 	}
 
 	lttng_set_session_name(session_name);
-	free(session_name);
+	if (!name)
+		free(session_name);
 
 	ret = 0;
 

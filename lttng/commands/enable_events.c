@@ -152,7 +152,7 @@ error:
 static int enable_events(void)
 {
 	int err, ret = CMD_SUCCESS;
-	char *event_name, *channel_name;
+	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 
 	if (set_session_name(opt_session_name) < 0) {
@@ -235,6 +235,9 @@ static int enable_events(void)
 	}
 
 error:
+	if (opt_channel_name == NULL) {
+		free(channel_name);
+	}
 	return ret;
 }
 
