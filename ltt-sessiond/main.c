@@ -839,6 +839,7 @@ static int start_kconsumerd(void)
 
 	pthread_mutex_lock(&kconsumerd_pid_mutex);
 	if (kconsumerd_pid != 0) {
+		pthread_mutex_unlock(&kconsumerd_pid_mutex);
 		goto end;
 	}
 
@@ -864,7 +865,6 @@ static int start_kconsumerd(void)
 	}
 
 end:
-	pthread_mutex_unlock(&kconsumerd_pid_mutex);
 	return 0;
 
 error:
