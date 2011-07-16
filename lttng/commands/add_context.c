@@ -36,7 +36,6 @@ static char *opt_session_name;
 static int *opt_kernel;
 static int opt_pid_all;
 static int opt_userspace;
-static int opt_ctx_type;
 static int opt_perf_type;
 static int opt_perf_id;
 static pid_t opt_pid;
@@ -121,7 +120,7 @@ static void usage(FILE *ofp)
  *
  *  Add context to channel or event.
  */
-static int add_context(void)
+static int add_context(int type)
 {
 	int ret = CMD_SUCCESS;
 	struct lttng_kernel_context context;
@@ -131,8 +130,8 @@ static int add_context(void)
 		goto error;
 	}
 
-	context.ctx = opt_ctx_type;
-	if (opt_ctx_type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
+	context.ctx = type;
+	if (type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
 		context.u.perf_counter.type = opt_perf_type;
 		context.u.perf_counter.config = opt_perf_id;
 		strncpy(context.u.perf_counter.name, opt_perf_name,
@@ -140,7 +139,7 @@ static int add_context(void)
 	}
 
 	if (opt_kernel) {
-		DBG("Adding kernel context\n");
+		DBG("Adding kernel context");
 		ret = lttng_kernel_add_context(&context, opt_event_name, opt_channel_name);
 		if (ret < 0) {
 			goto error;
@@ -172,9 +171,14 @@ error:
  */
 int cmd_add_context(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	char *tmp;
 	static poptContext pc;
+
+	if (argc < 2) {
+		usage(stderr);
+		goto end;
+	}
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -191,9 +195,15 @@ int cmd_add_context(int argc, const char **argv)
 			if (tmp == NULL) {
 				usage(stderr);
 				ret = CMD_ERROR;
+				free(tmp);
 				goto end;
 			}
-			opt_ctx_type = atoi(tmp);
+			ret = add_context(atoi(tmp));
+			if (ret < 0) {
+				free(tmp);
+				goto end;
+			}
+			free(tmp);
 			break;
 		default:
 			usage(stderr);
@@ -201,8 +211,6 @@ int cmd_add_context(int argc, const char **argv)
 			goto end;
 		}
 	}
-
-	ret = add_context();
 
 end:
 	return ret;
