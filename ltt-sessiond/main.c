@@ -2495,6 +2495,7 @@ static void set_ulimit(void)
 	int ret;
 	struct rlimit lim;
 
+	/* The kernel does not allowed an infinite limit for open files */
 	lim.rlim_cur = 65535;
 	lim.rlim_max = 65535;
 
@@ -2515,14 +2516,13 @@ int main(int argc, char **argv)
 
 	/* Create thread quit pipe */
 	if (init_thread_quit_pipe() < 0) {
-		/* No goto error because nothing is initialized at this point */
-		exit(EXIT_FAILURE);
+		goto exit;
 	}
 
 	/* Parse arguments */
 	progname = argv[0];
 	if ((ret = parse_args(argc, argv) < 0)) {
-		goto error;
+		goto exit;
 	}
 
 	/* Daemonize */
@@ -2530,7 +2530,7 @@ int main(int argc, char **argv)
 		ret = daemon(0, 0);
 		if (ret < 0) {
 			perror("daemon");
-			goto error;
+			goto exit;
 		}
 	}
 
@@ -2540,7 +2540,7 @@ int main(int argc, char **argv)
 	if (is_root) {
 		ret = create_lttng_rundir();
 		if (ret < 0) {
-			goto error;
+			goto exit;
 		}
 
 		if (strlen(apps_unix_sock_path) == 0) {
@@ -2552,23 +2552,12 @@ int main(int argc, char **argv)
 			snprintf(client_unix_sock_path, PATH_MAX,
 					DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
 		}
-
-		ret = set_kconsumerd_sockets();
-		if (ret < 0) {
-			goto error;
-		}
-
-		/* Setup kernel tracer */
-		init_kernel_tracer();
-
-		/* Set ulimit for open files */
-		set_ulimit();
 	} else {
 		home_path = get_home_dir();
 		if (home_path == NULL) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");
-			goto error;
+			goto exit;
 		}
 
 		if (strlen(apps_unix_sock_path) == 0) {
@@ -2594,10 +2583,31 @@ int main(int argc, char **argv)
 	if ((ret = check_existing_daemon()) == 0) {
 		ERR("Already running daemon.\n");
 		/*
-		 * We do not goto error because we must not
-		 * cleanup() because a daemon is already running.
+		 * We do not goto error because we must not cleanup() because a daemon
+		 * is already running.
 		 */
-		exit(EXIT_FAILURE);
+		goto exit;
+	}
+
+	/* After this point, we can safely call cleanup() so goto error is used */
+
+	/*
+	 * These actions must be executed as root. We do that *after* setting up
+	 * the sockets path because we MUST make the check for another daemon using
+	 * those paths *before* trying to set the kernel consumer sockets and init
+	 * kernel tracer.
+	 */
+	if (is_root) {
+		ret = set_kconsumerd_sockets();
+		if (ret < 0) {
+			goto error;
+		}
+
+		/* Setup kernel tracer */
+		init_kernel_tracer();
+
+		/* Set ulimit for open files */
+		set_ulimit();
 	}
 
 	if (set_signal_handler() < 0) {
@@ -2664,5 +2674,7 @@ int main(int argc, char **argv)
 
 error:
 	cleanup();
+
+exit:
 	exit(EXIT_FAILURE);
 }
