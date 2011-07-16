@@ -105,6 +105,8 @@ static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid 
  * This points to the tracing session list containing the session count and a
  * mutex lock. The lock MUST be taken if you iterate over the list. The lock
  * MUST NOT be taken if you call a public function in session.c.
+ *
+ * The lock is nested inside the structure: session_list_ptr->lock.
  */
 static struct ltt_session_list *session_list_ptr;
 
