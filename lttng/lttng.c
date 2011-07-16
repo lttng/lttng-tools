@@ -72,6 +72,7 @@ static struct cmd_struct commands[] =  {
 	{ "disable-channel", cmd_disable_channels},
 	{ "add-context", cmd_add_context},
 	{ "set-session", cmd_set_session},
+	{ "version", cmd_version},
 	{ NULL, NULL}	/* Array closure */
 };
 
