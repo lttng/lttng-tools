@@ -57,8 +57,9 @@ struct kconsumerd_fd {
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
 };
 
-int kconsumerd_create_poll_pipe();
+int kconsumerd_init(void);
 int kconsumerd_send_error(enum lttcomm_return_code cmd);
+int kconsumerd_poll_socket(struct pollfd *kconsumerd_sockpoll);
 void *kconsumerd_thread_poll_fds(void *data);
 void *kconsumerd_thread_receive_fds(void *data);
 void kconsumerd_should_exit(void);

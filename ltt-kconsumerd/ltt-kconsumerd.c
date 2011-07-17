@@ -227,10 +227,9 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
-	/* create the pipe to wake to polling thread when needed */
-	ret = kconsumerd_create_poll_pipe();
+	/* create the pipe to wake to receiving thread when needed */
+	ret = kconsumerd_init();
 	if (ret < 0) {
-		perror("Error creating poll pipe");
 		goto end;
 	}
 
