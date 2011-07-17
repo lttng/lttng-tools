@@ -226,18 +226,18 @@ static int send_unix_sock(int sock, void *buf, size_t len)
  *
  *  Free memory of a command context structure.
  */
-static void clean_command_ctx(struct command_ctx *cmd_ctx)
+static void clean_command_ctx(struct command_ctx **cmd_ctx)
 {
-	DBG("Clean command context structure %p", cmd_ctx);
-	if (cmd_ctx) {
-		if (cmd_ctx->llm) {
-			free(cmd_ctx->llm);
+	DBG("Clean command context structure");
+	if (*cmd_ctx) {
+		if ((*cmd_ctx)->llm) {
+			free((*cmd_ctx)->llm);
 		}
-		if (cmd_ctx->lsm) {
-			free(cmd_ctx->lsm);
+		if ((*cmd_ctx)->lsm) {
+			free((*cmd_ctx)->lsm);
 		}
-		free(cmd_ctx);
-		cmd_ctx = NULL;
+		free(*cmd_ctx);
+		*cmd_ctx = NULL;
 	}
 }
 
@@ -2081,7 +2081,7 @@ static void *thread_manage_clients(void *data)
 			/* TODO: Inform client somehow of the fatal error. At this point,
 			 * ret < 0 means that a malloc failed (ENOMEM). */
 			/* Error detected but still accept command */
-			clean_command_ctx(cmd_ctx);
+			clean_command_ctx(&cmd_ctx);
 			continue;
 		}
 
@@ -2092,7 +2092,7 @@ static void *thread_manage_clients(void *data)
 			ERR("Failed to send data back to client");
 		}
 
-		clean_command_ctx(cmd_ctx);
+		clean_command_ctx(&cmd_ctx);
 
 		/* End of transmission */
 		close(sock);
@@ -2109,7 +2109,7 @@ error:
 
 	unlink(client_unix_sock_path);
 
-	clean_command_ctx(cmd_ctx);
+	clean_command_ctx(&cmd_ctx);
 	return NULL;
 }
 
