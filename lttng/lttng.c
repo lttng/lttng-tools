@@ -39,7 +39,6 @@ static int opt_no_sessiond;
 static char *opt_sessiond_path;
 
 enum {
-	OPT_NO_SESSIOND,
 	OPT_SESSION_PATH,
 	OPT_DUMP_OPTIONS,
 	OPT_DUMP_COMMANDS,
@@ -51,7 +50,7 @@ static struct option long_options[] = {
 	{"group",            1, NULL, 'g'},
 	{"verbose",          0, NULL, 'v'},
 	{"quiet",            0, NULL, 'q'},
-	{"no-sessiond",      0, NULL, OPT_NO_SESSIOND},
+	{"no-sessiond",      0, NULL, 'n'},
 	{"sessiond-path",    1, NULL, OPT_SESSION_PATH},
 	{"list-options",     0, NULL, OPT_DUMP_OPTIONS},
 	{"list-commands",    0, NULL, OPT_DUMP_COMMANDS},
@@ -86,7 +85,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -g, --group NAME       Unix tracing group name. (default: tracing)\n");
 	fprintf(ofp, "  -v, --verbose          Verbose mode\n");
 	fprintf(ofp, "  -q, --quiet            Quiet mode\n");
-	fprintf(ofp, "      --no-sessiond      Don't spawn a session daemon\n");
+	fprintf(ofp, "  -n, --no-sessiond      Don't spawn a session daemon\n");
 	fprintf(ofp, "      --sessiond-path    Session daemon full path\n");
 	fprintf(ofp, "      --list-options     Simple listing of lttng options\n");
 	fprintf(ofp, "      --list-commands    Simple listing of lttng commands\n");
@@ -373,7 +372,7 @@ static int parse_args(int argc, char **argv)
 		clean_exit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+hvqg:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hnvqg:", long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			usage(stderr);
@@ -387,7 +386,7 @@ static int parse_args(int argc, char **argv)
 		case 'g':
 			lttng_set_tracing_group(optarg);
 			break;
-		case OPT_NO_SESSIOND:
+		case 'n':
 			opt_no_sessiond = 1;
 			break;
 		case OPT_SESSION_PATH:
