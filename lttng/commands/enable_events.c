@@ -193,6 +193,9 @@ static int enable_events(void)
 			switch (opt_event_type) {
 			case LTTNG_EVENT_TRACEPOINTS:
 				ret = lttng_kernel_enable_event(&ev, channel_name);
+				if (ret < 0) {
+					ERR("Unable to find event %s", ev.name);
+				}
 				break;
 			case LTTNG_EVENT_KPROBES:
 				ret = parse_kprobe_opts(&ev, opt_kprobe);
