@@ -431,13 +431,13 @@ static int parse_args(int argc, char **argv)
 	if (ret < 0) {
 		if (ret == -1) {
 			usage(stderr);
-			goto error;
 		} else {
 			ERR("%s", lttng_get_readable_code(ret));
 		}
+		goto error;
 	}
 
-	return ret;
+	return 0;
 
 error:
 	return -1;
@@ -464,7 +464,9 @@ int main(int argc, char *argv[])
 	}
 
 	ret = parse_args(argc, argv);
-	clean_exit(ret);
+	if (ret < 0) {
+		clean_exit(EXIT_FAILURE);
+	}
 
 	return 0;
 }
