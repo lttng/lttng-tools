@@ -1,0 +1,504 @@
+RFC - New processes model for UST and LTTng
+
+Author: David Goulet <david.goulet@polymtl.ca>
+
+Contributors:
+    * Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+    * Yannick Brosseau <yannick.brosseau@polymtl.ca>
+    * Nils Carlson <nils.carlson@ericsson.com>
+    * Michel Dagenais <michel.dagenais@polymtl.ca>
+    * Stefan Hajnoczi <stefanha@gmail.com>
+
+Version:
+    - v0.1: 17/01/2011
+        * Initial proposal
+
+    - v0.2: 19/01/2011 
+        After multiple reply from all the contributors above, here is the list
+        of what has changed:
+        * Change/Add Terminology elements from the initial model
+        * New figures for four new scenarios
+        * Add inprocess library section
+        * LTTng kernel tracer support proposition
+        * More details for the Model and Components
+        * Improve the basic model. Quite different from the last one
+    
+    - v0.3: 28/01/2011
+        In response from Michel Dagenais and Nils Carlson comments:
+        * Add scaling to reasons of this re-engineering
+        * Purpose of the session ID
+        * Explain why ltt-sessiond creates the tracing buffers
+        * ust-consumerd interaction schema
+        * Clarify inprocess library behavior
+
+    - v0.4: 01/02/2011
+        After Mathieu Desnoyers and Michel Dagenais comments:
+        * Add section Introduction
+        * Define the global and per-user ltt-sessiond 
+        * Add details for ltt-sessiond in the inprocess lib section
+        * Session ID are now UUID
+        * Add buffer snapshot schema for ust-consumerd
+        * ltt-sessiond validate inprocess lib version
+        * ltt-sessiond socket validation by the inprocess lib.
+        * Add lttng definition
+        * Add consumer to the Model section
+
+Terminology
+-----------------
+
+ltt-sessiond - Main daemon for trace session registry for UST and LTTng
+
+ust-consumerd - Daemon that consume UST buffers for a specific application
+
+ltt-consumerd - Daemon that consume LTTng buffers
+
+tracing session - A trace linked to a set of specific tracepoints and to a set
+                  of tracing buffers
+
+tracing buffers - Buffers containing tracing data
+
+tracing data - Data created by tracing an application
+
+inprocess library - UST library linked with the application
+
+shared memory - system V shared memory
+
+application common named pipe - Global named pipe that triggers application
+                                registration, on pipe event, to ltt-sessiond
+
+lttng - New command line tool for LTTng and UST tracing control
+
+Introduction
+-----------------
+
+This RFC propose a brand new UST and LTTng daemon model. This re-engineering
+was mostly driven by the need of:
+
+    * Better security in terms of access rights on tracing data
+    * Manage tracing session
+    * Scaling in terms of thread/processes needed to perform tracing
+    * LTTng and UST integration in terms of merging traces and session control
+    * Networking such as streaming and remote control over different traces
+
+The new model follows the basic principles of having a session registry
+(ltt-sessiond) and consumers for each tracing session (ust-consumerd and
+ltt-consumerd).
+
+With this proposal, LTTng and UST will share the same tracing session, be
+managed by the same tool and bring a complete integration between these two
+powerful tools.
+
+NOTE: This proposal does NOT makes UST dependent on LTTng and vice versa.
+
+Model
+-----------------
+
+A global and/or per-user registry keeps track of all tracing sessions. Any user
+that wants to manage either a kernel trace using LTTng or an application trace
+with UST must interact with that registry for any possible actions.
+
+The model address multiple tracing use cases based on the fact that we
+introduce a tracing Unix group (tracing group). Only users in that group or
+root can use the global registry. Other users will create a local registry
+(per-user registry) that will be completely independent from the global one.
+
+Two cases:
+
+    1) Users in the tracing group, it's tracing session can consume all tracing
+       buffers from all applications and the kernel.
+
+    2) Users NOT in the tracing group, it's tracing session can only consume
+       data from its own applications' buffers hence tracing his applications.
+
+A session stored by the registry consist of:
+
+    * Session name (given by the user or automatically assigned)
+    * List of traces (LTTng or UST)
+    * Tracepoints/markers associated to a trace of that session
+    * UUID
+    * Associated user (UID)
+
+Then, consumers are used to extract data from tracing buffers. These consumers
+are daemon consuming either UST or/and LTTng buffers. For a single session,
+only one UST consumer and one LTTng consumer is necessary. The daemon CAN
+handle multiple tracing buffers for network streaming by example or for quick
+snapshot. These consumers are told by the inprocess library or the kernel to
+start getting out data on disk or network.
+
+For the next subsections, every components of this new proposal is explained
+from the global and per-user registry perspective.
+
+LTT-SESSIOND:
+
+The ltt-sessiond daemon acts as a session registry i.e. by keeping reference to
+all active session and, by active, it means a session in any state other than
+destroyed. Each entity we are keeping track of, here session, will have a
+universal unique identifier (UUID) assigned to it. The purpose of this UUID is
+to track a session in order to apply any kind of actions (Ex: Attach, Destroy).
+A human readable version SHOULD be consider in order to facilitate the session
+identification when listed by lttng.
+
+The daemon creates two local Unix sockets (AF_UNIX). The first one is for what
+we call client communication i.e. interaction with lttng (or any other
+compatible tools). That socket is set with the ltt-sessiond credentials with
+read-write mode for both user and group. The second one is a global socket for
+application registration for the UST case (see inprocess lib subsection below).
+
+This daemon is also responsible for tracing buffers creation. Two main reasons
+motivate this design:
+
+    * The ltt-sessiond needs to keep track of all the shared memory segments in
+    order to be able to give reference to any other possible consumer.
+
+    * For the case of sharing tracing buffers between all userspace
+    applications, having the registry allocating them will allow that but, if
+    the inprocess library was allocating them, we will need to redesign the
+    whole model.
+
+For all tracing actions either to interact with a session or a specific trace,
+the lttng client MUST go through ltt-sessiond. The daemon will take care of
+routing the command to the write inprocess library or the kernel.
+
+Global registry:
+
+A global registry SHOULD be started, idealy at boot, with credentials UID root
+and GID of the tracing group. Only user within the tracing group will be able
+to interact with that registry. All applications will try to register to that
+registry using the global socket (second one discuss above).
+
+Per-user registry:
+
+This type of registry address two use cases. The first one is when a session
+creation is requested from lttng but no global ltt-sessiond exist. So, a
+ltt-sessiond will be spawned in order to manage the tracing of that user. The
+second use case is when a user is not in the tracing group thus he cannot
+communication with the global registry.
+
+However, care MUST be put in order to manage the socket's daemon. They are not
+global anymore so they should be created in the home directory of the user
+requesting tracing.
+
+In both cases, for global and per-user registry, all applications MUST try to
+register to both ltt-sessiond. (see inprocess library subsection for details)
+
+The trace roles of ltt-sessiond:
+
+    Trace interaction - Create, Destroy, Pause, Stop, Start, Set options
+
+    Registry - keep track of trace's information:
+        * shared memory location (only the keyid)
+        * application PID (UST)
+        * type (kernel or UST)
+        * session name
+        * UID
+
+    Buffers creation - creates shared memory for the tracing buffers.
+
+UST-CONSUMERD:
+
+The purpose of this daemon is to consume the UST trace buffers for only a
+specific session. The session MAY have several traces for example two different
+applications. The client tool, lttng has to create the ust-consumerd if NONE
+is available for that session. It is very important to understand that for a
+tracing session, there is only one ust-consumerd for all the traced
+applications.
+
+This daemon basically empty the tracing buffers when asked for and writes that
+data to disk for future analysis using LTTv or/and TMF (Tracing Monitoring
+Frameworks). The inprocess library is the one that tells the ust-consumerd
+daemon that the buffers are ready for consumption.
+
+Here is a flow of action to illustrate the ust-consumerd life span:
+
+1) 
++-----------+    ops     +--------------+
+| lttng A |<---------->| ltt-sessiond |
++-----------+            +--------------+
+
+lttng ask for tracing an application using the PID and the session UUID. The
+shared memory reference is given to lttng and the ust-consumerd communication
+socket if ust-consumerd already exist.
+
+2a) If ust-consumerd EXIST
+
++-----------+        
+| lttng A |        
++-----------+        
+    | mem ref.               
+    |   +---------------+   read   +------------+    
+    +-->| ust-consumerd |--------->| shared mem |
+        +---------------+          +------------+
+
+In that case, lttng only ask ust-consumerd to consume the buffers using
+the reference it previously got from ltt-sessiond.
+
+2b) If ust-consumerd DOES NOT EXIST
+
++-----------+              +--------------+
+| lttng A |        +---->| ltt-sessiond |
++-----------+        |     +--------------+
+    | ID             |
+    | mem ref.       | register
+    |   +---------------+
+    +-->| ust-consumerd |
+        +---------------+
+
+lttng spawns the ust-consumerd for the session using the session UUID in
+order for the daemon to register as a consumer to ltt-sessiond for that
+session.
+
+Quick buffer snapshot:
+
+1) Here, lttng will request a buffer snapshot for an already running session.
+
++-----------+                     +--------------+          
+| lttng A |-------- ops ------->| ltt-sessiond |          
++-----------+                     +--------------+          
+ |                                      | command
+ |  +-----------------+     +-------+<--+
+ |  | ust-consumerd 1 |<----| app_1 |-+
+ |  +-----------------+     +-------+ | write
+ |    1   |                           v  
+ |        |               +-------------+
+ |        +--- read ----->| shared mem. |
+ |                        +-------------+ 
+ |                               ^                 
+ |  +-----------------+          |
+ +->| ust-consumerd 2 |----------+
+    +-----------------+  snapshot
+            | write
+            |
+            +---> disk/network
+
+The first ust-consumerd (1) was already consuming buffers for the current
+session. So, lttng ask for a live snapshot. A new ust-consumerd (2) is
+spawned, snapshot the buffers using the shared memory reference from
+ltt-sessiond, writes date to disk and die after all.
+
+On the security side, the ust-consumerd gets UID/GID from the lttng
+credentials since it was spawned by lttng and so the files containing the
+tracing data will also be set to UID/GID of the lttng client. No setuid or
+setgid is used, we only use the credentials of the user.
+
+The roles of ust-consumerd:
+    
+    Register to ltt-sessiond - Using a session UUID and credentials (UID/GID)
+
+    Consume buffers - Write data to a file descriptor (on disk, network, ...)
+
+Buffer consumption is triggered by the inprocess library which tells
+ust-consumerd when to consume.
+
+LTT-CONSUMERD:
+
+The purpose of this daemon is to consume the LTTng trace buffers for only a
+specific session. 
+
+For that kernel consumer, ltt-sessiond will pass different anonymous file
+descriptors to the ltt-consumerd using a Unix socket. From these file
+desriptors, it will be able to get the data from a special function export by
+the LTTng kernel.
+
+ltt-consumerd will be managed by the exact same way as ust-consumerd. However,
+in order to trace the kernel, you are either root (UID=0) or in the tracing
+group.
+
+The roles of ltt-consumerd:
+
+    Register to ltt-sessiond - Using a session UUID and credentials (UID/GID)
+
+    Consume buffers - Write data to a file descriptor (on disk, network, ...)
+
+Kernel triggers ltt-consumerd for buffer consumption.
+
+UST INPROCESS LIBRARY:
+
+When the application starts, this library will check for the global named pipe
+of ltt-sessiond. If present, it MUST validate that root is the owner. This
+check is very important to prevent ltt-sessiond spoofing. If the pipe is root,
+we are certain that it's the privileged user that operates tracing. Then, using
+it's UID, the application will try to register to the per-user ltt-sessiond
+again verifying before the owner ship of the named pipe that should match the
+UID.
+
+Before registration, the inprocess library MUST validate with the ltt-sessiond
+the library version for compatibility reason. This is mechanism is useful for
+library compatibility but also to see if ltt-sessiond socket is valid (means
+that an actual ltt-sessiond is listening on the other side). Having no response
+for over 10 seconds, the application will cut communication on that socket and
+fallback to the application common named pipe (explain below).
+
+If the socket is valid, it will register as a traceable application using the
+apps credentials and will open a local Unix socket, passed to ltt-sessiond, in
+order to receive an eventual shared memory reference. It will then wait on it
+if any other command are given by the lttng client. This socket becomes the
+only channel of communication between the registry and the application.
+
+If no ltt-sessiond is present at registration, the application tries to open
+the application common named pipe or create it if it does not exist and wait on
+it (using poll or epoll Linux API). Having any type of event on that pipe, the
+inprocess library will then try to register to the global and per-user
+ltt-sessiond. If it fails again, it goes back again to wait on that pipe.
+
+SHARED MEMORY
+
+For UST, this is the memory area where the tracing buffers will be held and
+given access in read-write mode for the inprocess library of the application.
+
+On the LTTng side (for ltt-consumerd), these buffers are in the kernel space
+and given access by opening a file in the debugfs file system. With an
+anonymous file desriptor, this consumer will be able to extract the data.
+
+This memory is ONLY used for the tracing data. No communication between
+components is done using that memory.
+
+A shared memory segment for tracing MUST be set with the tracing group GID for
+the UST buffers. This is the job of ltt-sessiond.
+
+PREREQUISITES:
+
+The global ltt-sessiond daemon MUST always be running as "root" or an
+equivalent user having the same privilege as root (UID = 0).
+
+The ltt-sessiond daemon SHOULD be up and running at all time in order to trace
+a tracable application.
+
+The new lttng library API MUST be used to interact with the
+ltt-sessiond registry daemon for every trace action needed by the user. 
+
+A tracing group MUST be created. Whoever is in that group is able to access the
+tracing data of any buffers and is able to trace any application or the kernel.
+
+WARNING: The tracing group name COULD interfere with other already existing
+groups. Care should be put at install time for that (from source and packages)
+
+The next section illustrates different use cases using that new model.
+
+Use Cases
+-----------------
+
+Each case considers these :
+
+* user A - UID: A; GID: A, tracing
+* user B - UID: B; GID: B, tracing
+
+Scenario 1 - Single user tracing app_1
+------
+
+This first scenario shows how user A will start a trace for application app_1
+that is not running.
+
+1) lttng ask ltt-sessiond for a new session through a Unix socket. If
+allowed, ltt-sessiond returns a session UUID to the client.
+(Ex: ops --> new session)
+
++-----------+    ops     +--------------+
+| lttng A   |<---------->| ltt-sessiond |
++-----------+            +--------------+
+
+2) The app_1 is spawned by lttng having the user A credentials. Then, app_1
+automatically register to ltt-sessiond has a "tracable apps" through the global
+named pipe of ltt-sessiond using the UID/GID and session UUID.
+
+The shared memory is created with the app_1 UID (rw-) and tracing group GID
+(r--) and a reference is given back to app_1
+
++-----------+            +--------------+
+| lttng A   |            | ltt-sessiond |
++-----------+            +--------------+
+    |                     ^    |
+    |   +-------+         |    |   +-------------+
+    +-->| app_1 |<--------+    +-->| shared mem. |
+        +-------+                  +-------------+
+
+3) app_1 connect to the shared memory and ust-consumerd is spawned with the
+session UUID and lttng credentials (user A). It then register to ltt-sessiond
+for a valid session to consume using the previous session UUID and credentials.
+
++-----------+            +--------------+
+| lttng A   |        +-->| ltt-sessiond |----------+
++-----------+        |   +--------------+          |
+    |                |                             |
+    |   +---------------+    read                  | commands
+    +-->| ust-consumerd |---------+                |   and
+        +---------------+         v                | options
+          ^  |                  +-------------+    |
+          |  v          +------>| shared mem. |    |
+        +-------+       |       +-------------+    |
+        | app_1 |--------                          |
+        +-------+     write                        |
+            ^                                      |
+            +---------------------------------------
+
+Scenario 2 - Single user tracing already running app_1
+------
+
+1) lttng ask ltt-sessiond for a new session through a Unix socket. If allowed
+(able to write on socket), ltt-sessiond returns a session UUID to the client.
+
++-----------+    ops     +--------------+
+| lttng A   |<---------->| ltt-sessiond |
++-----------+            +--------------+
+                           ^ 
+        +-------+   read   |
+        | app_1 |----------+
+        +-------+
+
+NOTE: At this stage, since app_1 is already running, the registration of app_1
+to ltt-sessiond has already been done. However, the shared memory segment is
+not allocated yet until a trace session is initiated. Having no shared memory,
+the inprocess library of app_1 will wait on the local Unix socket connected to
+ltt-sessiond for the reference.
+
++-----------+            +--------------+
+| lttng A   |            | ltt-sessiond |
++-----------+            +--------------+
+                          ^    |
+        +-------+         |    |   +-------------+
+        | app_1 |<--------+    +-->| shared mem. |
+        +-------+    commands      +-------------+
+            |                           ^
+            +---------- write ----------+
+
+2) lttng spawns a ust-consumerd for the session. We get the same figure as
+step 3 in the first scenario.
+
+There is a small difference though. The application MAY NOT be using the same
+credentials as user A (lttng).  However, the shared memory is always GID of
+the tracing group. So, in order for user A to trace app_1, is MUST be in the
+tracing group otherwise, if the application is not set with the user
+credentials, user A will not be able to trace app_1
+
+Scenario 3 - Multiple users tracing the same running application
+------
+
+1) Session are created for the two users. Using the same exact mechanism as
+before, the shared memory and consumers are created. Two users, two sessions,
+two consumers and two shared memories for the same application.
+
++-----------+                     +--------------+          
+| lttng A   |-------- ops ------->| ltt-sessiond |          
++-----------+      ^              +--------------+          
+                   |                           ^ commands
++-----------+      |               +-------+<--+
+| lttng B   |------+          +--->| app_1 |------- write -----+
++-----------+                 |    +-------+                   | 
+                              |                                | 
+         +-----------------+  |               +-------------+  |
+         | ust-consumerd A |--O--- read ----->| shared mem. |<-+
+         +-----------------+  |               +-------------+  |  
+                              |                                |    
+         +-----------------+  v               +-------------+  |
+         | ust-consumerd B |--+--- read ----->| shared mem. |<-+
+         +-----------------+                  +-------------+    
+
+ust-consumerd A - UID: user A (rw-), GID: tracing (r--)
+ust-consumerd B - UID: user B (rw-), GID: tracing (r--)
+
+Scenario 4 - User not in the tracing group
+------
+
+For this particular case, it's all goes back to the first scenario. The user
+MUST start the application using his credentials. The session will be created
+by the per-user ltt-sessiond but he will not be able to trace anything that the
+user does not owned.
