@@ -19,7 +19,7 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
-#include <lttng/lttng.h>
+//#include <lttng/lttng.h>
 #include <urcu/list.h>
 
 /*
@@ -37,10 +37,14 @@ struct ltt_session_list {
 	 * actions on that list.
 	 */
 	pthread_mutex_t lock;
+
 	/*
-	 * Number of element in the list.
+	 * Number of element in the list. The session list lock MUST be acquired if
+	 * this counter is used when iterating over the session list.
 	 */
 	unsigned int count;
+
+	/* Linked list head */
 	struct cds_list_head head;
 };
 
@@ -66,11 +70,13 @@ struct ltt_session {
 /* Prototypes */
 int create_session(char *name, char *path);
 int destroy_session(char *name);
-void get_lttng_session(struct lttng_session *sessions);
+
 void lock_session(struct ltt_session *session);
+void lock_session_list(void);
 void unlock_session(struct ltt_session *session);
+void unlock_session_list(void);
+
 struct ltt_session *find_session_by_name(char *name);
-unsigned int get_session_count(void);
 struct ltt_session_list *get_session_list(void);
 
 #endif /* _LTT_SESSION_H */

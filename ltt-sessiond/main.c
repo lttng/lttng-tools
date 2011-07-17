@@ -468,7 +468,7 @@ static int update_kernel_pollfd(void)
 	DBG("Updating kernel_pollfd");
 
 	/* Get the number of channel of all kernel session */
-	pthread_mutex_lock(&session_list_ptr->lock);
+	lock_session_list();
 	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
 		lock_session(session);
 		if (session->kernel_session == NULL) {
@@ -505,7 +505,7 @@ static int update_kernel_pollfd(void)
 		}
 		unlock_session(session);
 	}
-	pthread_mutex_unlock(&session_list_ptr->lock);
+	unlock_session_list();
 
 	/* Adding wake up pipe */
 	kernel_pollfd[nb_fd - 2].fd = kernel_poll_pipe[0];
@@ -517,7 +517,7 @@ static int update_kernel_pollfd(void)
 	return nb_fd;
 
 error:
-	pthread_mutex_unlock(&session_list_ptr->lock);
+	unlock_session_list();
 	return -1;
 }
 
@@ -537,7 +537,7 @@ static int update_kernel_stream(int fd)
 
 	DBG("Updating kernel streams for channel fd %d", fd);
 
-	pthread_mutex_lock(&session_list_ptr->lock);
+	lock_session_list();
 	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
 		lock_session(session);
 		if (session->kernel_session == NULL) {
@@ -568,10 +568,10 @@ static int update_kernel_stream(int fd)
 	}
 
 end:
+	unlock_session_list();
 	if (session) {
 		unlock_session(session);
 	}
-	pthread_mutex_unlock(&session_list_ptr->lock);
 	return ret;
 }
 
@@ -1225,6 +1225,30 @@ static int create_kernel_session(struct ltt_session *session)
 
 error:
 	return ret;
+}
+
+/*
+ * Using the session list, filled a lttng_session array to send back to the
+ * client for session listing.
+ *
+ * The session list lock MUST be acquired before calling this function. Use
+ * lock_session_list() and unlock_session_list().
+ */
+static void list_lttng_sessions(struct lttng_session *sessions)
+{
+	int i = 0;
+	struct ltt_session *session;
+
+	DBG("Getting all available session");
+	/*
+	 * Iterate over session list and append data after the control struct in
+	 * the buffer.
+	 */
+	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		strncpy(sessions[i].path, session->path, PATH_MAX);
+		strncpy(sessions[i].name, session->name, NAME_MAX);
+		i++;
+	}
 }
 
 /*
@@ -1938,20 +1962,23 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	*/
 	case LTTNG_LIST_SESSIONS:
 	{
-		unsigned int session_count;
+		lock_session_list();
 
-		session_count = get_session_count();
-		if (session_count == 0) {
+		if (session_list_ptr->count == 0) {
 			ret = LTTCOMM_NO_SESSION;
 			goto error;
 		}
 
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * session_count);
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) *
+				session_list_ptr->count);
 		if (ret < 0) {
 			goto setup_error;
 		}
 
-		get_lttng_session((struct lttng_session *)(cmd_ctx->llm->payload));
+		/* Filled the session array */
+		list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload));
+
+		unlock_session_list();
 
 		ret = LTTCOMM_OK;
 		break;

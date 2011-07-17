@@ -17,6 +17,7 @@
  */
 
 #define _GNU_SOURCE
+#include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,6 +88,22 @@ struct ltt_session_list *get_session_list(void)
 }
 
 /*
+ * Acquire session list lock
+ */
+void lock_session_list(void)
+{
+	pthread_mutex_lock(&ltt_session_list.lock);
+}
+
+/*
+ * Release session list lock
+ */
+void unlock_session_list(void)
+{
+	pthread_mutex_unlock(&ltt_session_list.lock);
+}
+
+/*
  * Acquire session lock
  */
 void lock_session(struct ltt_session *session)
@@ -103,22 +120,6 @@ void unlock_session(struct ltt_session *session)
 }
 
 /*
- *  get_session_count
- *
- *  Return session_count
- */
-unsigned int get_session_count(void)
-{
-	unsigned int count;
-
-	pthread_mutex_lock(&ltt_session_list.lock);
-	count = ltt_session_list.count;
-	pthread_mutex_unlock(&ltt_session_list.lock);
-
-	return count;
-}
-
-/*
  * 	find_session_by_name
  *
  * 	Return a ltt_session structure ptr that matches name.
@@ -129,14 +130,14 @@ struct ltt_session *find_session_by_name(char *name)
 	int found = 0;
 	struct ltt_session *iter;
 
-	pthread_mutex_lock(&ltt_session_list.lock);
+	lock_session_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (strncmp(iter->name, name, strlen(name)) == 0) {
 			found = 1;
 			break;
 		}
 	}
-	pthread_mutex_unlock(&ltt_session_list.lock);
+	unlock_session_list();
 
 	if (!found) {
 		iter = NULL;
@@ -157,7 +158,7 @@ int destroy_session(char *name)
 	int found = -1;
 	struct ltt_session *iter;
 
-	pthread_mutex_lock(&ltt_session_list.lock);
+	lock_session_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (strcmp(iter->name, name) == 0) {
 			DBG("Destroying session %s", iter->name);
@@ -170,7 +171,7 @@ int destroy_session(char *name)
 			break;
 		}
 	}
-	pthread_mutex_unlock(&ltt_session_list.lock);
+	unlock_session_list();
 
 	return found;
 }
@@ -244,9 +245,9 @@ int create_session(char *name, char *path)
 	new_session->ust_trace_count = 0;
 
 	/* Add new session to the session list */
-	pthread_mutex_lock(&ltt_session_list.lock);
+	lock_session_list();
 	add_session_list(new_session);
-	pthread_mutex_unlock(&ltt_session_list.lock);
+	unlock_session_list();
 
 	/* Init lock */
 	pthread_mutex_init(&new_session->lock, NULL);
@@ -265,35 +266,3 @@ error_exist:
 error_malloc:
 	return ret;
 }
-
-/*
- *  get_lttng_session
- *
- *  Iterate over the global session list and fill the lttng_session array.
- */
-void get_lttng_session(struct lttng_session *sessions)
-{
-	int i = 0;
-	struct ltt_session *iter;
-	struct lttng_session lsess;
-
-	DBG("Getting all available session");
-
-	/*
-	 * Iterate over session list and append data after the control struct in
-	 * the buffer.
-	 */
-	pthread_mutex_lock(&ltt_session_list.lock);
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		strncpy(lsess.path, iter->path, sizeof(lsess.path));
-		lsess.path[sizeof(lsess.path) - 1] = '\0';
-		strncpy(lsess.name, iter->name, sizeof(lsess.name));
-		lsess.name[sizeof(lsess.name) - 1] = '\0';
-		memcpy(&sessions[i], &lsess, sizeof(lsess));
-		i++;
-		/* Reset struct for next pass */
-		memset(&lsess, 0, sizeof(lsess));
-	}
-	pthread_mutex_unlock(&ltt_session_list.lock);
-}
-
