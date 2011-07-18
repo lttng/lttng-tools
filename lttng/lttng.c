@@ -62,7 +62,6 @@ static struct cmd_struct commands[] =  {
 	{ "list", cmd_list},
 	{ "create", cmd_create},
 	{ "destroy", cmd_destroy},
-	{ "add-channel", cmd_add_channel},
 	{ "start", cmd_start},
 	{ "stop", cmd_stop},
 	{ "enable-event", cmd_enable_events},
@@ -91,7 +90,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-commands    Simple listing of lttng commands\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
-	fprintf(ofp, "    add-channel     Add channel to tracer\n");
 	fprintf(ofp, "    add-context     Add context to event or/and channel\n");
 	fprintf(ofp, "    create          Create tracing session\n");
 	fprintf(ofp, "    destroy         Teardown tracing session\n");

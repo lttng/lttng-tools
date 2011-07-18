@@ -244,6 +244,7 @@ static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 
 	size = llm.data_size;
 	if (size == 0) {
+		ret = 0;
 		goto end;
 	}
 
@@ -265,8 +266,6 @@ end:
 }
 
 /*
- *  lttng_start_tracing
- *
  *  Start tracing for all trace of the session.
  */
 int lttng_start_tracing(char *session_name)
@@ -276,8 +275,6 @@ int lttng_start_tracing(char *session_name)
 }
 
 /*
- *  lttng_stop_tracing
- *
  *  Stop tracing for all trace of the session.
  */
 int lttng_stop_tracing(char *session_name)
@@ -287,15 +284,14 @@ int lttng_stop_tracing(char *session_name)
 }
 
 /*
- * BEGIN Kernel control API
+ *  lttng_add_context
  */
+int lttng_add_context(struct lttng_domain *domain,
+		struct lttng_event_context *ctx, char *event_name, char *channel_name)
 
-/*
- *  lttng_kernel_add_context
- */
-int lttng_kernel_add_context(struct lttng_kernel_context *ctx,
-		char *event_name, char *channel_name)
 {
+	int ret;
+
 	if (channel_name != NULL) {
 		strncpy(lsm.u.context.channel_name, channel_name, NAME_MAX);
 	}
@@ -304,14 +300,28 @@ int lttng_kernel_add_context(struct lttng_kernel_context *ctx,
 		strncpy(lsm.u.context.event_name, event_name, NAME_MAX);
 	}
 
-	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_kernel_context));
-	return ask_sessiond(LTTNG_KERNEL_ADD_CONTEXT, NULL);
+	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
+
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+		ret = ask_sessiond(LTTNG_KERNEL_ADD_CONTEXT, NULL);
+		break;
+	case LTTNG_DOMAIN_UST:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		break;
+	default:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		break;
+	};
+
+	return ret;
 }
 
 /*
- *  lttng_kernel_enable_event
+ *  lttng_enable_event
  */
-int lttng_kernel_enable_event(struct lttng_event *ev, char *channel_name)
+int lttng_enable_event(struct lttng_domain *domain,
+		struct lttng_event *ev, char *channel_name)
 {
 	int ret;
 
@@ -321,22 +331,31 @@ int lttng_kernel_enable_event(struct lttng_event *ev, char *channel_name)
 		strncpy(lsm.u.enable.channel_name, channel_name, NAME_MAX);
 	}
 
-	if (ev == NULL) {
-		ret = ask_sessiond(LTTNG_KERNEL_ENABLE_ALL_EVENT, NULL);
-	} else {
-		memcpy(&lsm.u.enable.event, ev, sizeof(struct lttng_event));
-		ret = ask_sessiond(LTTNG_KERNEL_ENABLE_EVENT, NULL);
-	}
+	switch (domain->type) {
+		case LTTNG_DOMAIN_KERNEL:
+			if (ev == NULL) {
+				ret = ask_sessiond(LTTNG_KERNEL_ENABLE_ALL_EVENT, NULL);
+			} else {
+				memcpy(&lsm.u.enable.event, ev, sizeof(struct lttng_event));
+				ret = ask_sessiond(LTTNG_KERNEL_ENABLE_EVENT, NULL);
+			}
+			break;
+		case LTTNG_DOMAIN_UST:
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
+		default:
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
+			break;
+	};
 
 	return ret;
 }
 
 /*
- *  lttng_kernel_disable_event
- *
- *  Disable an event in the kernel tracer.
+ * Disable an event in the kernel tracer.
  */
-int lttng_kernel_disable_event(char *name, char *channel_name)
+int lttng_disable_event(struct lttng_domain *domain, char *name,
+		char *channel_name)
 {
 	int ret;
 
@@ -346,69 +365,100 @@ int lttng_kernel_disable_event(char *name, char *channel_name)
 		strncpy(lsm.u.disable.channel_name, channel_name, NAME_MAX);
 	}
 
-	if (name == NULL) {
-		ret = ask_sessiond(LTTNG_KERNEL_DISABLE_ALL_EVENT, NULL);
-	} else {
-		strncpy(lsm.u.disable.name, name, NAME_MAX);
-		ret = ask_sessiond(LTTNG_KERNEL_DISABLE_EVENT, NULL);
-	}
+	switch (domain->type) {
+		case LTTNG_DOMAIN_KERNEL:
+			if (name == NULL) {
+				ret = ask_sessiond(LTTNG_KERNEL_DISABLE_ALL_EVENT, NULL);
+			} else {
+				strncpy(lsm.u.disable.name, name, NAME_MAX);
+				ret = ask_sessiond(LTTNG_KERNEL_DISABLE_EVENT, NULL);
+			}
+			break;
+		case LTTNG_DOMAIN_UST:
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
+		default:
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
+			break;
+	};
 
 	return ret;
 }
 
 /*
- *  lttng_kernel_enable_channel
- *
- *  Enable recording for a channel for the kernel tracer.
+ * Enable recording for a channel for the kernel tracer.
  */
-int lttng_kernel_enable_channel(char *name)
+int lttng_enable_channel(struct lttng_domain *domain, struct lttng_channel *chan)
 {
-	strncpy(lsm.u.enable.channel_name, name, NAME_MAX);
-	return ask_sessiond(LTTNG_KERNEL_ENABLE_CHANNEL, NULL);
-}
+	int ret;
 
-/*
- *  lttng_kernel_disable_channel
- *
- *  Disable recording for the channel for the kernel tracer.
- */
-int lttng_kernel_disable_channel(char *name)
-{
-	strncpy(lsm.u.disable.channel_name, name, NAME_MAX);
-	return ask_sessiond(LTTNG_KERNEL_DISABLE_CHANNEL, NULL);
-}
-
-/*
- *  lttng_kernel_create_channel
- *
- *  Create a channel in the kernel tracer.
- */
-int lttng_kernel_create_channel(struct lttng_channel *chan)
-{
 	memcpy(&lsm.u.channel.chan, chan, sizeof(struct lttng_channel));
-	return ask_sessiond(LTTNG_KERNEL_CREATE_CHANNEL, NULL);
+
+	switch (domain->type) {
+		case LTTNG_DOMAIN_KERNEL:
+			ret = ask_sessiond(LTTNG_KERNEL_ENABLE_CHANNEL, NULL);
+			break;
+		case LTTNG_DOMAIN_UST:
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
+		default:
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
+			break;
+	};
+
+	return ret;
 }
 
 /*
- *  lttng_list_events
- *
- *  List all available events in the kernel.
- *
- *  Return the size (bytes) of the list and set the event_list array.
- *  On error, return negative value.
+ * Disable recording for the channel for the kernel tracer.
  */
-int lttng_kernel_list_events(char **event_list)
+int lttng_disable_channel(struct lttng_domain *domain, char *name)
 {
-	return ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) event_list);
+	int ret;
+
+	strncpy(lsm.u.disable.channel_name, name, NAME_MAX);
+
+	switch (domain->type) {
+		case LTTNG_DOMAIN_KERNEL:
+			ret = ask_sessiond(LTTNG_KERNEL_DISABLE_CHANNEL, NULL);
+			break;
+		case LTTNG_DOMAIN_UST:
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
+		default:
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
+			break;
+	};
+
+	return ret;
 }
 
 /*
- * END Kernel control API
+ * List all available events in the kernel.
+ *
+ * Return the size (bytes) of the list and set the event_list array.
+ * On error, return negative value.
  */
+int lttng_list_events(struct lttng_domain *domain, char **event_list)
+{
+	int ret;
+
+	switch (domain->type) {
+		case LTTNG_DOMAIN_KERNEL:
+			ret = ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) event_list);
+			break;
+		case LTTNG_DOMAIN_UST:
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
+		default:
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
+			break;
+	};
+
+	return ret;
+}
 
 /*
- *  lttng_get_readable_code
- *
  *  Return a human readable string of code
  */
 const char *lttng_get_readable_code(int code)
@@ -421,53 +471,6 @@ const char *lttng_get_readable_code(int code)
 }
 
 /*
- *  lttng_ust_list_apps
- *
- *  Ask the session daemon for all UST traceable applications.
- *
- *  Return the number of pids.
- *  On error, return negative value.
- */
-int lttng_ust_list_traceable_apps(pid_t **pids)
-{
-	int ret;
-
-	ret = ask_sessiond(LTTNG_LIST_TRACEABLE_APPS, (void**) pids);
-	if (ret < 0) {
-		return ret;
-	}
-
-	return ret / sizeof(pid_t);
-}
-
-/*
- *  lttng_list_traces
- *
- *  Ask the session daemon for all traces (kernel and ust) for the session
- *  identified by name.
- *
- *  Return the number of traces.
- *  On error, return negative value.
- */
-/*
-int lttng_list_traces(char *session_name, struct lttng_trace **traces)
-{
-	int ret;
-
-	strncpy(lsm.session_name, session_name, NAME_MAX);
-
-	ret = ask_sessiond(LTTNG_LIST_TRACES, (void **) traces);
-	if (ret < 0) {
-		return ret;
-	}
-
-	return ret / sizeof(struct lttng_trace);
-}
-*/
-
-/*
- *  lttng_create_session
- *
  *  Create a brand new session using name.
  */
 int lttng_create_session(char *name, char *path)
@@ -478,8 +481,6 @@ int lttng_create_session(char *name, char *path)
 }
 
 /*
- *  lttng_destroy_session
- *
  *  Destroy session using name.
  */
 int lttng_destroy_session(char *name)
@@ -489,8 +490,6 @@ int lttng_destroy_session(char *name)
 }
 
 /*
- *  lttng_list_sessions
- *
  *  Ask the session daemon for all available sessions.
  *
  *  Return number of session.
@@ -508,6 +507,9 @@ int lttng_list_sessions(struct lttng_session **sessions)
 	return ret / sizeof(struct lttng_session);
 }
 
+/*
+ * Set session name for the current lsm.
+ */
 void lttng_set_session_name(char *name)
 {
 	strncpy(lsm.session_name, name, NAME_MAX);

@@ -85,6 +85,7 @@ static int disable_events(void)
 	int err, ret = CMD_SUCCESS;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
+	struct lttng_domain dom;
 
 	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
@@ -101,9 +102,13 @@ static int disable_events(void)
 		channel_name = opt_channel_name;
 	}
 
+	if (opt_kernel) {
+		dom.type = LTTNG_DOMAIN_KERNEL;
+	}
+
 	if (opt_disable_all) {
 		if (opt_kernel) {
-			ret = lttng_kernel_disable_event(NULL, channel_name);
+			ret = lttng_disable_event(&dom, NULL, channel_name);
 			goto error;
 		}
 
@@ -120,7 +125,7 @@ static int disable_events(void)
 
 			/* Copy name and type of the event */
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
-			ret = lttng_kernel_disable_event(event_name, channel_name);
+			ret = lttng_disable_event(&dom, event_name, channel_name);
 			if (ret < 0) {
 				MSG("Unable to disable event %s for channel %s",
 						event_name, channel_name);

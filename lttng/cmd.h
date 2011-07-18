@@ -40,7 +40,6 @@ struct cmd_struct {
 extern int cmd_list(int argc, const char **argv);
 extern int cmd_create(int argc, const char **argv);
 extern int cmd_destroy(int argc, const char **argv);
-extern int cmd_add_channel(int argc, const char **argv);
 extern int cmd_start(int argc, const char **argv);
 extern int cmd_stop(int argc, const char **argv);
 extern int cmd_enable_events(int argc, const char **argv);

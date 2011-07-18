@@ -104,10 +104,13 @@ static int list_kernel(void)
 {
 	int ret, pos, size;
 	char *event_list, *event, *ptr;
+	struct lttng_domain dom;
 
 	DBG("Getting all tracing events");
 
-	ret = lttng_kernel_list_events(&event_list);
+	dom.type = LTTNG_DOMAIN_KERNEL;
+
+	ret = lttng_list_events(&dom, &event_list);
 	if (ret < 0) {
 		ERR("Unable to list kernel instrumentation");
 		return ret;
@@ -170,7 +173,7 @@ static int list_apps(void)
 	pid_t *pids;
 	char *cmdline;
 
-	count = 0;
+	count = -1;
 	//count = lttng_ust_list_traceable_apps(&pids);
 	if (count < 0) {
 		ret = count;

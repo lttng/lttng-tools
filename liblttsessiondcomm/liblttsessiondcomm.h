@@ -43,7 +43,6 @@
 enum lttcomm_sessiond_command {
 	/* Tracer context command */
 	LTTNG_KERNEL_ADD_CONTEXT,
-	LTTNG_KERNEL_CREATE_CHANNEL,
 	LTTNG_KERNEL_DISABLE_CHANNEL,
 	LTTNG_KERNEL_DISABLE_EVENT,
 	LTTNG_KERNEL_DISABLE_ALL_EVENT,
@@ -69,6 +68,8 @@ enum lttcomm_return_code {
 	LTTCOMM_OK = 1000,				/* Ok */
 	LTTCOMM_ERR,					/* Unknown Error */
 	LTTCOMM_UND,					/* Undefine command */
+	LTTCOMM_NOT_IMPLEMENTED,        /* Command not implemented */
+	LTTCOMM_UNKNOWN_DOMAIN,         /* Tracing domain not known */
 	LTTCOMM_ALLOC_FAIL,				/* Trace allocation fail */
 	LTTCOMM_NO_SESSION,				/* No session found */
 	LTTCOMM_CREATE_FAIL,			/* Create trace fail */
@@ -85,6 +86,7 @@ enum lttcomm_return_code {
 	LTTCOMM_EXIST_SESS,				/* Session name already exist */
 	LTTCOMM_NO_EVENT,				/* No event found */
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
+	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
 	LTTCOMM_KERN_CHAN_NOT_FOUND,	/* Kernel channel not found */
@@ -145,7 +147,7 @@ struct lttcomm_session_msg {
 		struct {
 			char channel_name[NAME_MAX];
 			char event_name[NAME_MAX];
-			struct lttng_kernel_context ctx;
+			struct lttng_event_context ctx;
 		} context;
 	} u;
 };

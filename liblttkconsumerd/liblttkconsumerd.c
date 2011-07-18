@@ -496,7 +496,7 @@ static int kconsumerd_read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
 	}
 
 	switch (DEFAULT_KERNEL_CHANNEL_OUTPUT) {
-	case LTTNG_KERNEL_SPLICE:
+	case LTTNG_EVENT_SPLICE:
 		/* read the whole subbuffer */
 		err = kernctl_get_padded_subbuf_size(infd, &len);
 		if (err != 0) {
@@ -515,7 +515,7 @@ static int kconsumerd_read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
 			ERR("Error splicing to tracefile");
 		}
 		break;
-	case LTTNG_KERNEL_MMAP:
+	case LTTNG_EVENT_MMAP:
 		/* read the used subbuffer size */
 		err = kernctl_get_subbuf_size(infd, &len);
 		if (err != 0) {

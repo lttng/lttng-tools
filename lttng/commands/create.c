@@ -112,7 +112,7 @@ static int create_session()
 	}
 
 	MSG("Session %s created.", session_name);
-	MSG("Traces will be written in %s ", traces_path);
+	MSG("Traces will be written in %s/%s-<date>-<time> ", traces_path, session_name);
 
 	ret = CMD_SUCCESS;
 

@@ -175,12 +175,12 @@ struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 	}
 
 	switch (ev->type) {
-	case LTTNG_EVENT_KPROBE:
+	case LTTNG_EVENT_PROBE:
 		attr->instrumentation = LTTNG_KERNEL_KPROBE;
-		attr->u.kprobe.addr = ev->attr.kprobe.addr;
-		attr->u.kprobe.offset = ev->attr.kprobe.offset;
+		attr->u.kprobe.addr = ev->attr.probe.addr;
+		attr->u.kprobe.offset = ev->attr.probe.offset;
 		strncpy(attr->u.kprobe.symbol_name,
-				ev->attr.kprobe.symbol_name, LTTNG_SYM_NAME_LEN);
+				ev->attr.probe.symbol_name, LTTNG_SYM_NAME_LEN);
 		break;
 	case LTTNG_EVENT_FUNCTION:
 		attr->instrumentation = LTTNG_KERNEL_FUNCTION;

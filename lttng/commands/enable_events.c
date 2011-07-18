@@ -112,15 +112,15 @@ static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
 	/* Check for symbol+offset */
 	ret = sscanf(opt, "%[^'+']+%li", name, &hex);
 	if (ret == 2) {
-		strncpy(ev->attr.kprobe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
-		DBG("kprobe symbol %s", ev->attr.kprobe.symbol_name);
+		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
+		DBG("kprobe symbol %s", ev->attr.probe.symbol_name);
 		if (hex == 0) {
 			ERR("Invalid kprobe offset %lu", hex);
 			ret = -1;
 			goto error;
 		}
-		ev->attr.kprobe.offset = hex;
-		DBG("kprobe offset %lu", ev->attr.kprobe.offset);
+		ev->attr.probe.offset = hex;
+		DBG("kprobe offset %lu", ev->attr.probe.offset);
 		goto error;
 	}
 
@@ -132,8 +132,8 @@ static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
 			ret = -1;
 			goto error;
 		}
-		ev->attr.kprobe.addr = hex;
-		DBG("kprobe addr %lu", ev->attr.kprobe.addr);
+		ev->attr.probe.addr = hex;
+		DBG("kprobe addr %lu", ev->attr.probe.addr);
 		goto error;
 	}
 
@@ -154,6 +154,7 @@ static int enable_events(void)
 	int err, ret = CMD_SUCCESS;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
+	struct lttng_domain dom;
 
 	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
@@ -170,9 +171,14 @@ static int enable_events(void)
 		channel_name = opt_channel_name;
 	}
 
+	/* Create lttng domain */
+	if (opt_kernel) {
+		dom.type = LTTNG_DOMAIN_KERNEL;
+	}
+
 	if (opt_enable_all) {
 		if (opt_kernel) {
-			ret = lttng_kernel_enable_event(NULL, channel_name);
+			ret = lttng_enable_event(&dom, NULL, channel_name);
 			goto error;
 		}
 
@@ -192,32 +198,28 @@ static int enable_events(void)
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_TRACEPOINT:
-				ret = lttng_kernel_enable_event(&ev, channel_name);
-				if (ret < 0) {
-					ERR("Unable to find event %s", ev.name);
-				}
 				break;
-			case LTTNG_EVENT_KPROBE:
+			case LTTNG_EVENT_PROBE:
 				ret = parse_kprobe_opts(&ev, opt_kprobe);
 				if (ret < 0) {
 					ERR("Unable to parse kprobe options");
 					ret = 0;
 					goto error;
 				}
-
-				ret = lttng_kernel_enable_event(&ev, channel_name);
 				break;
 			case LTTNG_EVENT_FUNCTION:
 				strncpy(ev.attr.ftrace.symbol_name, opt_function_symbol, LTTNG_SYMBOL_NAME_LEN);
-				ret = lttng_kernel_enable_event(&ev, channel_name);
 				break;
 			default:
 				ret = CMD_NOT_IMPLEMENTED;
 				goto error;
 			}
 
-			if (ret > 0) {
+			ret = lttng_enable_event(&dom, &ev, channel_name);
+			if (ret == 0) {
 				MSG("Kernel event %s created in channel %s", event_name, channel_name);
+			} else if (ret < 0) {
+				ERR("Unable to find event %s", ev.name);
 			}
 		} else if (opt_userspace) {		/* User-space tracer action */
 			/*
@@ -277,7 +279,7 @@ int cmd_enable_events(int argc, const char **argv)
 			ret = CMD_NOT_IMPLEMENTED;
 			goto end;
 		case OPT_KPROBE:
-			opt_event_type = LTTNG_EVENT_KPROBE;
+			opt_event_type = LTTNG_EVENT_PROBE;
 			opt_kprobe = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION:

@@ -123,7 +123,8 @@ static void usage(FILE *ofp)
 static int add_context(int type)
 {
 	int ret = CMD_SUCCESS;
-	struct lttng_kernel_context context;
+	struct lttng_event_context context;
+	struct lttng_domain dom;
 
 	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
@@ -139,8 +140,12 @@ static int add_context(int type)
 	}
 
 	if (opt_kernel) {
+		/* Create kernel domain */
+		dom.type = LTTNG_DOMAIN_KERNEL;
+
 		DBG("Adding kernel context");
-		ret = lttng_kernel_add_context(&context, opt_event_name, opt_channel_name);
+		ret = lttng_add_context(&dom, &context, opt_event_name,
+				opt_channel_name);
 		if (ret < 0) {
 			goto error;
 		} else {

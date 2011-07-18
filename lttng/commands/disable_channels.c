@@ -77,10 +77,15 @@ static int disable_channels(void)
 {
 	int ret = CMD_SUCCESS;
 	char *channel_name;
+	struct lttng_domain dom;
 
 	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
 		goto error;
+	}
+
+	if (opt_kernel) {
+		dom.type = LTTNG_DOMAIN_KERNEL;
 	}
 
 	/* Strip channel list */
@@ -89,7 +94,7 @@ static int disable_channels(void)
 		/* Kernel tracer action */
 		if (opt_kernel) {
 			DBG("Disabling kernel channel %s", channel_name);
-			ret = lttng_kernel_disable_channel(channel_name);
+			ret = lttng_disable_channel(&dom, channel_name);
 			if (ret < 0) {
 				goto error;
 			} else {

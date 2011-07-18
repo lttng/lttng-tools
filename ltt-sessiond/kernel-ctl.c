@@ -281,6 +281,9 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 	ret = kernctl_enable(event->fd);
 	if (ret < 0) {
 		perror("enable event ioctl");
+		if (errno == EEXIST) {
+			ret = -EEXIST;
+		}
 		goto error;
 	}
 
