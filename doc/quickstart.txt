@@ -67,14 +67,14 @@ $HOME/lttng-traces/mysession-<date>-<time>
 User-space Tracing
 --------------
 
-User-space tracer 2.0 not released at this point. You'll have to use 'ustctl'
-to control user-space tracing.
+User-space tracer 2.0 not released at this point. For the 0.x versions,
+you need to use 'ustctl' to control user-space tracing.
 
 Reading a trace
 --------------
 
-To read your trace, you'll need babeltrace which will text dump your the trace.
-Please see http://www.efficios.com/ctf and git tree
+To read your trace, you can use babeltrace which will text dump your the
+trace. Please see http://www.efficios.com/ctf and git tree
 http://git.efficios.com/?p=babeltrace.git
 
 # babeltrace -n $HOME/lttng-traces/mysession-<date>-<time> | less
