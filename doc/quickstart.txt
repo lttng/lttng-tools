@@ -1,0 +1,82 @@
+QUICKSTART
+--------------
+
+This is a quick start guide for the complete LTTng tool chain. This is divided
+in three sections respectively Kernel tracing, user-space tracing and reading a
+trace.
+
+See the README file for installation procedure or use the various Linux
+distribution packages.
+
+In order to trace the Kernel, you'll need the lttng-modules >= 2.0 compiled and
+installed. See http://lttng.org/content/lttng-kernel-tracer for more
+instructions for that part. For user-space tracing, you'll need an instrumented
+application, please see http://lttng.org/ust
+
+lttng-tools provide a session daemon (ltt-sessiond) that acts as a tracing
+registry. To trace any instrumented applications or the kernel, a registered
+tracing session is needed.
+
+To interact with the session daemon and a tracing session, you can use the
+lttng command line UI (lttng).
+
+The next sections explain how to do tracing :)
+
+Kernel Tracing
+--------------
+
+You have to modprobe the lttng-modules manually or the session daemon will do
+it for you if they can be found on your system.
+
+You can then start the session daemon by hand or the lttng command line tool
+will do it for you.
+
+List possible kernel events:
+
+# lttng list -k
+
+1) Create a tracing session. A .lttngrc will be created in $HOME containing
+the session name (here 'mysession') you are working on.
+
+# lttng create mysession
+
+2) Enable event(s). Here for example, we want only 'sched_switch' and
+'sys_enter' events for the kernel (-k/--kernel).
+
+# lttng enable-event sched_switch,sys_enter -k
+
+or enable ALL events (-a/--all):
+
+# lttng enable-event -a -k
+
+3) Start tracing:
+
+# lttng start
+
+Tracing is in progress at this point and will be written in
+$HOME/lttng-traces/mysession-<date>-<time>
+
+4) Stop tracing:
+
+# lttng stop
+
+5) Destroy your session after you are done with tracing
+
+# lttng destroy
+
+User-space Tracing
+--------------
+
+User-space tracer 2.0 not released at this point. You'll have to use 'ustctl'
+to control user-space tracing.
+
+Reading a trace
+--------------
+
+To read your trace, you'll need babeltrace which will text dump your the trace.
+Please see http://www.efficios.com/ctf and git tree
+http://git.efficios.com/?p=babeltrace.git
+
+# babeltrace -n $HOME/lttng-traces/mysession-<date>-<time> | less
+
+Voilà!
