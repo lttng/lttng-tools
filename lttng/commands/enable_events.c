@@ -179,6 +179,9 @@ static int enable_events(void)
 	if (opt_enable_all) {
 		if (opt_kernel) {
 			ret = lttng_enable_event(&dom, NULL, channel_name);
+            if (ret == 0) {
+                MSG("All kernel events are enabled in channel %s", channel_name);
+            }
 			goto error;
 		}
 

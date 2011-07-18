@@ -1646,7 +1646,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 
 				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-						&cmd_ctx->lsm->u.channel.chan, cmd_ctx->session->path);
+						chan, cmd_ctx->session->path);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_CHAN_FAIL;
 					goto error;
