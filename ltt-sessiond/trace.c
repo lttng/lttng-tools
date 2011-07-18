@@ -175,8 +175,8 @@ struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 	}
 
 	switch (ev->type) {
-	case LTTNG_EVENT_KPROBES:
-		attr->instrumentation = LTTNG_KERNEL_KPROBES;
+	case LTTNG_EVENT_KPROBE:
+		attr->instrumentation = LTTNG_KERNEL_KPROBE;
 		attr->u.kprobe.addr = ev->attr.kprobe.addr;
 		attr->u.kprobe.offset = ev->attr.kprobe.offset;
 		strncpy(attr->u.kprobe.symbol_name,
@@ -187,8 +187,8 @@ struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 		strncpy(attr->u.ftrace.symbol_name,
 				ev->attr.ftrace.symbol_name, LTTNG_SYM_NAME_LEN);
 		break;
-	case LTTNG_EVENT_TRACEPOINTS:
-		attr->instrumentation = LTTNG_KERNEL_TRACEPOINTS;
+	case LTTNG_EVENT_TRACEPOINT:
+		attr->instrumentation = LTTNG_KERNEL_TRACEPOINT;
 		break;
 	default:
 		ERR("Unknown kernel instrumentation type (%d)", ev->type);

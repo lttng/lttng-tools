@@ -38,9 +38,12 @@ typedef __s64 s64;
 #define DEFAULT_CHANNEL_SUBBUF_NUM          8
 #define DEFAULT_CHANNEL_SWITCH_TIMER        0       /* usec */
 #define DEFAULT_CHANNEL_READ_TIMER          200     /* usec */
-/* See lttng.h enum lttng_kernel_output for channel output */
+/* See lttng-kernel.h enum lttng_kernel_output for channel output */
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_KERNEL_SPLICE
+
+/* == NOT IMPLEMENTED ==
 #define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_UST_MMAP
+*/
 
 /*
  * lttng user-space instrumentation type

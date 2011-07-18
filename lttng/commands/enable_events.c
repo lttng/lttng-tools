@@ -191,13 +191,13 @@ static int enable_events(void)
 			ev.type = opt_event_type;
 
 			switch (opt_event_type) {
-			case LTTNG_EVENT_TRACEPOINTS:
+			case LTTNG_EVENT_TRACEPOINT:
 				ret = lttng_kernel_enable_event(&ev, channel_name);
 				if (ret < 0) {
 					ERR("Unable to find event %s", ev.name);
 				}
 				break;
-			case LTTNG_EVENT_KPROBES:
+			case LTTNG_EVENT_KPROBE:
 				ret = parse_kprobe_opts(&ev, opt_kprobe);
 				if (ret < 0) {
 					ERR("Unable to parse kprobe options");
@@ -258,7 +258,7 @@ int cmd_enable_events(int argc, const char **argv)
 	poptReadDefaultConfig(pc, 0);
 
 	/* Default event type */
-	opt_event_type = LTTNG_KERNEL_TRACEPOINTS;
+	opt_event_type = LTTNG_EVENT_TRACEPOINT;
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -271,13 +271,13 @@ int cmd_enable_events(int argc, const char **argv)
 			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		case OPT_TRACEPOINT:
-			opt_event_type = LTTNG_EVENT_TRACEPOINTS;
+			opt_event_type = LTTNG_EVENT_TRACEPOINT;
 			break;
 		case OPT_MARKER:
 			ret = CMD_NOT_IMPLEMENTED;
 			goto end;
 		case OPT_KPROBE:
-			opt_event_type = LTTNG_EVENT_KPROBES;
+			opt_event_type = LTTNG_EVENT_KPROBE;
 			opt_kprobe = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION:

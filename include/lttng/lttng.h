@@ -37,14 +37,31 @@
 #define LTTNG_DEFAULT_TRACE_DIR_NAME "lttng-traces"
 
 /*
- * Event symbol length.
+ * Event symbol length. Copied from LTTng kernel ABI.
  */
 #define LTTNG_SYMBOL_NAME_LEN 128
 
+/*
+ * Every lttng_event_* structure both apply to kernel event and user-space
+ * event.
+ *
+ * Every lttng_kernel_* is copied from the LTTng kernel ABI.
+ */
+
 enum lttng_event_type {
-	LTTNG_EVENT_TRACEPOINTS,
-	LTTNG_EVENT_KPROBES,
+	LTTNG_EVENT_TRACEPOINT,
+	LTTNG_EVENT_KPROBE,
 	LTTNG_EVENT_FUNCTION,
+};
+
+/*
+ * LTTng consumer mode
+ */
+enum lttng_event_output {
+	/* Using splice(2) */
+	LTTNG_EVENT_SPLICE       = 0,
+	/* Using mmap(2) */
+	LTTNG_EVENT_MMAP         = 1,
 };
 
 /* Kernel context possible type */
@@ -77,14 +94,6 @@ struct lttng_kernel_context {
 };
 
 /*
- * LTTng consumer mode
- */
-enum lttng_kernel_output {
-	LTTNG_KERNEL_SPLICE       = 0,
-	LTTNG_KERNEL_MMAP         = 1,
-};
-
-/*
  * Either addr is used or symbol_name and offset.
  */
 struct lttng_event_kprobe_attr {
@@ -114,28 +123,37 @@ struct lttng_event {
 	} attr;
 };
 
-/* Tracer channel attributes */
+/*
+ * Tracer channel attributes. For both kernel and user-space.
+ */
 struct lttng_channel_attr {
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes */
 	uint64_t num_subbuf;                /* power of 2 */
 	unsigned int switch_timer_interval; /* usec */
 	unsigned int read_timer_interval;   /* usec */
-	enum lttng_kernel_output output;    /* splice, mmap */
+	enum lttng_event_output output;    /* splice, mmap */
+};
+
+/*
+ * Channel information structure. For both kernel and user-space.
+ */
+struct lttng_channel {
+	char name[NAME_MAX];
+	struct lttng_channel_attr attr;
 };
 
 /*
  * Basic session information.
+ *
+ * This is an 'output data' meaning that it only comes *from* the session
+ * daemon *to* the lttng client. It's basically a 'human' representation of
+ * tracing entities (here a session).
  */
 struct lttng_session {
 	char name[NAME_MAX];
+	/* The path where traces are written */
 	char path[PATH_MAX];
-};
-
-/* Channel information structure */
-struct lttng_channel {
-	char name[NAME_MAX];
-	struct lttng_channel_attr attr;
 };
 
 /*
@@ -149,7 +167,9 @@ extern int lttng_destroy_session(char *name);
 
 extern int lttng_disconnect_sessiond(void);
 
-/* Return an allocated array of lttng_session */
+/*
+ * Return a "lttng_session" array. Caller must free(3) the returned data.
+ */
 extern int lttng_list_sessions(struct lttng_session **sessions);
 
 extern int lttng_session_daemon_alive(void);
@@ -164,8 +184,6 @@ extern const char *lttng_get_readable_code(int code);
 extern int lttng_start_tracing(char *session_name);
 
 extern int lttng_stop_tracing(char *session_name);
-
-//extern int lttng_ust_list_traceable_apps(pid_t **pids);
 
 /*
  * LTTng Kernel tracer control
@@ -188,5 +206,7 @@ extern int lttng_kernel_list_events(char **event_list);
 /*
  * LTTng User-space tracer control
  */
+
+//extern int lttng_ust_list_traceable_apps(pid_t **pids);
 
 #endif /* _LTTNG_H */

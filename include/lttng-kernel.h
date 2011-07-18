@@ -26,9 +26,17 @@
 #define LTTNG_SYM_NAME_LEN  128
 
 enum lttng_kernel_instrumentation {
-	LTTNG_KERNEL_TRACEPOINTS,
-	LTTNG_KERNEL_KPROBES,
-	LTTNG_KERNEL_FUNCTION,
+	LTTNG_KERNEL_TRACEPOINT    = 0,
+	LTTNG_KERNEL_KPROBE        = 1,
+	LTTNG_KERNEL_FUNCTION      = 2,
+};
+
+/*
+ * LTTng consumer mode
+ */
+enum lttng_kernel_output {
+	LTTNG_KERNEL_SPLICE       = 0,
+	LTTNG_KERNEL_MMAP         = 1,
 };
 
 /*

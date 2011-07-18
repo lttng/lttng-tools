@@ -1663,7 +1663,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			if (ev == NULL) {
 				strncpy(ev_attr.name, event, LTTNG_SYM_NAME_LEN);
 				/* Default event type for enable all */
-				ev_attr.type = LTTNG_EVENT_TRACEPOINTS;
+				ev_attr.type = LTTNG_EVENT_TRACEPOINT;
 				/* Enable each single tracepoint event */
 				ret = kernel_create_event(&ev_attr, chan);
 				if (ret < 0) {
