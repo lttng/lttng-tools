@@ -159,13 +159,9 @@ struct lttng_session {
 /*
  * Session daemon control
  */
-extern int lttng_connect_sessiond(void);
-
 extern int lttng_create_session(char *name, char *path);
 
 extern int lttng_destroy_session(char *name);
-
-extern int lttng_disconnect_sessiond(void);
 
 /*
  * Return a "lttng_session" array. Caller must free(3) the returned data.

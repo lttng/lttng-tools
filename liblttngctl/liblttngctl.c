@@ -89,70 +89,9 @@ end:
 }
 
 /*
- *  ask_sessiond
- *
- *  Ask the session daemon a specific command and put the data into buf.
- *
- *  Return size of data (only payload, not header).
- */
-static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
-{
-	int ret;
-	size_t size;
-	void *data = NULL;
-
-	ret = lttng_connect_sessiond();
-	if (ret < 0) {
-		goto end;
-	}
-
-	lsm.cmd_type = lct;
-
-	/* Send command to session daemon */
-	ret = send_data_sessiond();
-	if (ret < 0) {
-		goto end;
-	}
-
-	/* Get header from data transmission */
-	ret = recv_data_sessiond(&llm, sizeof(llm));
-	if (ret < 0) {
-		goto end;
-	}
-
-	/* Check error code if OK */
-	if (llm.ret_code != LTTCOMM_OK) {
-		ret = -llm.ret_code;
-		goto end;
-	}
-
-	size = llm.data_size;
-	if (size == 0) {
-		goto end;
-	}
-
-	data = (void*) malloc(size);
-
-	/* Get payload data */
-	ret = recv_data_sessiond(data, size);
-	if (ret < 0) {
-		free(data);
-		goto end;
-	}
-
-	*buf = data;
-	ret = size;
-
-end:
-	lttng_disconnect_sessiond();
-	return ret;
-}
-
-/*
- *  check_tracing_group
- *
  *  Check if the specified group name exist.
- *  If yes, 0, else -1
+ *
+ *  If yes return 0, else return -1.
  */
 static int check_tracing_group(const char *grp_name)
 {
@@ -201,10 +140,8 @@ end:
 }
 
 /*
- *  set_session_daemon_path
- *
- *  Set sessiond socket path by putting it in 
- *  the global sessiond_sock_path variable.
+ *  Set sessiond socket path by putting it in the global sessiond_sock_path
+ *  variable.
  */
 static int set_session_daemon_path(void)
 {
@@ -223,6 +160,108 @@ static int set_session_daemon_path(void)
 	}
 
 	return 0;
+}
+
+/*
+ *  Connect to the LTTng session daemon.
+ *
+ *  On success, return 0. On error, return -1.
+ */
+static int connect_sessiond(void)
+{
+	int ret;
+
+	ret = set_session_daemon_path();
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* Connect to the sesssion daemon */
+	ret = lttcomm_connect_unix_sock(sessiond_sock_path);
+	if (ret < 0) {
+		return ret;
+	}
+
+	sessiond_socket = ret;
+	connected = 1;
+
+	return 0;
+}
+
+/*
+ *  Clean disconnect the session daemon.
+ */
+static int disconnect_sessiond(void)
+{
+	int ret = 0;
+
+	if (connected) {
+		ret = lttcomm_close_unix_sock(sessiond_socket);
+		sessiond_socket = 0;
+		connected = 0;
+	}
+
+	return ret;
+}
+
+/*
+ *  ask_sessiond
+ *
+ *  Ask the session daemon a specific command and put the data into buf.
+ *
+ *  Return size of data (only payload, not header).
+ */
+static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
+{
+	int ret;
+	size_t size;
+	void *data = NULL;
+
+	ret = connect_sessiond();
+	if (ret < 0) {
+		goto end;
+	}
+
+	lsm.cmd_type = lct;
+
+	/* Send command to session daemon */
+	ret = send_data_sessiond();
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Get header from data transmission */
+	ret = recv_data_sessiond(&llm, sizeof(llm));
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Check error code if OK */
+	if (llm.ret_code != LTTCOMM_OK) {
+		ret = -llm.ret_code;
+		goto end;
+	}
+
+	size = llm.data_size;
+	if (size == 0) {
+		goto end;
+	}
+
+	data = (void*) malloc(size);
+
+	/* Get payload data */
+	ret = recv_data_sessiond(data, size);
+	if (ret < 0) {
+		free(data);
+		goto end;
+	}
+
+	*buf = data;
+	ret = size;
+
+end:
+	disconnect_sessiond();
+	return ret;
 }
 
 /*
@@ -467,52 +506,6 @@ int lttng_list_sessions(struct lttng_session **sessions)
 	}
 
 	return ret / sizeof(struct lttng_session);
-}
-
-/*
- *  lttng_connect_sessiond
- *
- *  Connect to the LTTng session daemon.
- *  On success, return 0
- *  On error, return a negative value
- */
-int lttng_connect_sessiond(void)
-{
-	int ret;
-
-	ret = set_session_daemon_path();
-	if (ret < 0) {
-		return ret;
-	}
-
-	/* Connect to the sesssion daemon */
-	ret = lttcomm_connect_unix_sock(sessiond_sock_path);
-	if (ret < 0) {
-		return ret;
-	}
-
-	sessiond_socket = ret;
-	connected = 1;
-
-	return 0;
-}
-
-/*
- *  lttng_disconnect_sessiond
- *
- *  Clean disconnect the session daemon.
- */
-int lttng_disconnect_sessiond(void)
-{
-	int ret = 0;
-
-	if (connected) {
-		ret = lttcomm_close_unix_sock(sessiond_socket);
-		sessiond_socket = 0;
-		connected = 0;
-	}
-
-	return ret;
 }
 
 void lttng_set_session_name(char *name)
