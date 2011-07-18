@@ -268,7 +268,7 @@ end:
 /*
  *  Start tracing for all trace of the session.
  */
-int lttng_start_tracing(char *session_name)
+int lttng_start_tracing(const char *session_name)
 {
 	strncpy(lsm.session_name, session_name, NAME_MAX);
 	return ask_sessiond(LTTNG_START_TRACE, NULL);
@@ -277,7 +277,7 @@ int lttng_start_tracing(char *session_name)
 /*
  *  Stop tracing for all trace of the session.
  */
-int lttng_stop_tracing(char *session_name)
+int lttng_stop_tracing(const char *session_name)
 {
 	strncpy(lsm.session_name, session_name, NAME_MAX);
 	return ask_sessiond(LTTNG_STOP_TRACE, NULL);
@@ -287,8 +287,8 @@ int lttng_stop_tracing(char *session_name)
  *  lttng_add_context
  */
 int lttng_add_context(struct lttng_domain *domain,
-		struct lttng_event_context *ctx, char *event_name, char *channel_name)
-
+		struct lttng_event_context *ctx, const char *event_name,
+		const char *channel_name)
 {
 	int ret;
 
@@ -321,7 +321,7 @@ int lttng_add_context(struct lttng_domain *domain,
  *  lttng_enable_event
  */
 int lttng_enable_event(struct lttng_domain *domain,
-		struct lttng_event *ev, char *channel_name)
+		struct lttng_event *ev, const char *channel_name)
 {
 	int ret;
 
@@ -354,8 +354,8 @@ int lttng_enable_event(struct lttng_domain *domain,
 /*
  * Disable an event in the kernel tracer.
  */
-int lttng_disable_event(struct lttng_domain *domain, char *name,
-		char *channel_name)
+int lttng_disable_event(struct lttng_domain *domain, const char *name,
+		const char *channel_name)
 {
 	int ret;
 
@@ -388,7 +388,8 @@ int lttng_disable_event(struct lttng_domain *domain, char *name,
 /*
  * Enable recording for a channel for the kernel tracer.
  */
-int lttng_enable_channel(struct lttng_domain *domain, struct lttng_channel *chan)
+int lttng_enable_channel(struct lttng_domain *domain,
+		struct lttng_channel *chan)
 {
 	int ret;
 
@@ -412,7 +413,7 @@ int lttng_enable_channel(struct lttng_domain *domain, struct lttng_channel *chan
 /*
  * Disable recording for the channel for the kernel tracer.
  */
-int lttng_disable_channel(struct lttng_domain *domain, char *name)
+int lttng_disable_channel(struct lttng_domain *domain, const char *name)
 {
 	int ret;
 
@@ -473,7 +474,7 @@ const char *lttng_get_readable_code(int code)
 /*
  *  Create a brand new session using name.
  */
-int lttng_create_session(char *name, char *path)
+int lttng_create_session(const char *name, const char *path)
 {
 	strncpy(lsm.session_name, name, NAME_MAX);
 	strncpy(lsm.path, path, PATH_MAX);
@@ -483,7 +484,7 @@ int lttng_create_session(char *name, char *path)
 /*
  *  Destroy session using name.
  */
-int lttng_destroy_session(char *name)
+int lttng_destroy_session(const char *name)
 {
 	strncpy(lsm.session_name, name, NAME_MAX);
 	return ask_sessiond(LTTNG_DESTROY_SESSION, NULL);
@@ -510,7 +511,7 @@ int lttng_list_sessions(struct lttng_session **sessions)
 /*
  * Set session name for the current lsm.
  */
-void lttng_set_session_name(char *name)
+void lttng_set_session_name(const char *name)
 {
 	strncpy(lsm.session_name, name, NAME_MAX);
 }

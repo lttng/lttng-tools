@@ -197,7 +197,7 @@ struct lttng_session {
 /*
  * Create tracing session using a name and a path where trace will be written.
  */
-extern int lttng_create_session(char *name, char *path);
+extern int lttng_create_session(const char *name, const char *path);
 
 /*
  * Destroy tracing session.
@@ -205,7 +205,7 @@ extern int lttng_create_session(char *name, char *path);
  * The session will not be useable anymore, tracing will stopped for all
  * registered trace and tracing buffers will be flushed.
  */
-extern int lttng_destroy_session(char *name);
+extern int lttng_destroy_session(const char *name);
 
 /*
  * List tracing sessions.
@@ -232,7 +232,7 @@ extern int lttng_set_tracing_group(const char *name);
  * it's not done, you'll get an error saying that the session is not found.
  * It avoids the use of a session name on every API call.
  */
-extern void lttng_set_session_name(char *name);
+extern void lttng_set_session_name(const char *name);
 
 /*
  * Return a human readable error message of a lttng-tools error code.
@@ -244,12 +244,12 @@ extern const char *lttng_get_readable_code(int code);
 /*
  * Start tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_start_tracing(char *session_name);
+extern int lttng_start_tracing(const char *session_name);
 
 /*
  * Stop tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_stop_tracing(char *session_name);
+extern int lttng_stop_tracing(const char *session_name);
 
 /*
  * Add context to event for a specific channel.
@@ -260,7 +260,8 @@ extern int lttng_stop_tracing(char *session_name);
  */
 
 extern int lttng_add_context(struct lttng_domain *domain,
-		struct lttng_event_context *ctx, char *event_name, char *channel_name);
+		struct lttng_event_context *ctx, const char *event_name,
+		const char *channel_name);
 
 /*
  * Create or enable a kernel event.
@@ -271,29 +272,31 @@ extern int lttng_add_context(struct lttng_domain *domain,
  * If channel_name is NULL, the default channel is used (channel0).
  */
 extern int lttng_enable_event(struct lttng_domain *domain, struct lttng_event *ev,
-		char *channel_name);
+		const char *channel_name);
 
 /*
  * Create or enable a kernel channel.
  *
  * If name is NULL, the default channel is enabled (channel0).
  */
-extern int lttng_enable_channel(struct lttng_domain *domain, struct lttng_channel *chan);
+extern int lttng_enable_channel(struct lttng_domain *domain,
+		struct lttng_channel *chan);
 
 /*
  * Disable kernel event.
  *
  * If channel_name is NULL, the default channel is used (channel0).
  */
-extern int lttng_disable_event(struct lttng_domain *domain, char *name,
-		char *channel_name);
+extern int lttng_disable_event(struct lttng_domain *domain, const char *name,
+		const char *channel_name);
 
 /*
  * Disable kernel channel.
  *
  * If channel_name is NULL, the default channel is disabled (channel0).
  */
-extern int lttng_disable_channel(struct lttng_domain *domain, char *name);
+extern int lttng_disable_channel(struct lttng_domain *domain,
+		const char *name);
 
 /*
  * List kernel events.
