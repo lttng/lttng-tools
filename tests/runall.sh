@@ -40,8 +40,6 @@ function run() {
 
 #### ADD TESTS HERE ####
 
-run ltt-sessiond/run.sh
-
 #### END TESTS HERE ####
 
 echo "--------------------------"
