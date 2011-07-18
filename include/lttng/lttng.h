@@ -94,9 +94,9 @@ struct lttng_kernel_context {
 };
 
 /*
- * Either addr is used or symbol_name and offset.
+ * Kernel Kprobe. Either addr is used or symbol_name and offset.
  */
-struct lttng_event_kprobe_attr {
+struct lttng_kernel_kprobe_attr {
 	uint64_t addr;
 
 	uint64_t offset;
@@ -118,7 +118,7 @@ struct lttng_event {
 	enum lttng_event_type type;
 	/* Per event type configuration */
 	union {
-		struct lttng_event_kprobe_attr kprobe;
+		struct lttng_kernel_kprobe_attr kprobe;
 		struct lttng_event_function_attr ftrace;
 	} attr;
 };
@@ -132,7 +132,7 @@ struct lttng_channel_attr {
 	uint64_t num_subbuf;                /* power of 2 */
 	unsigned int switch_timer_interval; /* usec */
 	unsigned int read_timer_interval;   /* usec */
-	enum lttng_event_output output;    /* splice, mmap */
+	enum lttng_event_output output;     /* splice, mmap */
 };
 
 /*

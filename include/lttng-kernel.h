@@ -45,15 +45,8 @@ enum lttng_kernel_output {
  * This is the kernel ABI copied from lttng-modules tree.
  */
 
-/* Either addr is used or symbol_name and offset. */
-struct lttng_kernel_kprobe {
-	uint64_t addr;
-
-	uint64_t offset;
-	char symbol_name[LTTNG_SYM_NAME_LEN];
-};
-
-struct lttng_kernel_function_tracer {
+/* Function tracer */
+struct lttng_kernel_function_attr {
 	char symbol_name[LTTNG_SYM_NAME_LEN];
 };
 
@@ -62,8 +55,8 @@ struct lttng_kernel_event {
 	enum lttng_kernel_instrumentation instrumentation;
 	/* Per instrumentation type configuration */
 	union {
-		struct lttng_kernel_kprobe kprobe;
-		struct lttng_kernel_function_tracer ftrace;
+		struct lttng_kernel_kprobe_attr kprobe;
+		struct lttng_kernel_function_attr ftrace;
 	} u;
 };
 
