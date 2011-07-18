@@ -3,7 +3,7 @@ AM_CFLAGS = -fno-strict-aliasing
 
 noinst_LTLIBRARIES = libustctl.la
 
-libustctl_la_SOURCES = libustctl.c
+libustctl_la_SOURCES =
 
-libustctl_la_LIBADD = \
-					  $(top_builddir)/libustcomm/libustcomm.la
+libustctl_la_LIBADD = $(top_builddir)/libustcomm/libustcomm.la
+

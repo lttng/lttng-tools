@@ -49,7 +49,6 @@
 #include "session.h"
 #include "traceable-app.h"
 #include "lttng-kconsumerd.h"
-#include "libustctl.h"
 #include "utils.h"
 
 /*
@@ -350,6 +349,7 @@ error:
 	return ret;
 }
 
+#ifdef DISABLED
 /*
  * 	ust_connect_app
  *
@@ -380,6 +380,7 @@ static int ust_connect_app(pid_t pid)
 
 	return sock;
 }
+#endif	/* DISABLED */
 
 /*
  * 	notify_apps
@@ -1334,6 +1335,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 	}
 
+#ifdef DISABLED
 	/* Connect to ust apps if available pid */
 	if (cmd_ctx->lsm->pid > 0) {
 		/* Connect to app using ustctl API */
@@ -1343,6 +1345,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto error;
 		}
 	}
+#endif	/* DISABLED */
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
