@@ -336,7 +336,7 @@ static int check_sessiond(void)
 
 		/* Let's rock and roll */
 		if (pathname == NULL) {
-			ret = asprintf(&alloc_pathname, INSTALL_PATH "/ltt-sessiond");
+			ret = asprintf(&alloc_pathname, INSTALL_BIN_PATH "/ltt-sessiond");
 			if (ret < 0) {
 				perror("asprintf spawn sessiond");
 				goto end;

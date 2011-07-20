@@ -914,7 +914,7 @@ static pid_t spawn_kconsumerd(void)
 		/*
 		 * Exec kconsumerd.
 		 */
-		execl(INSTALL_PATH "/ltt-kconsumerd", "ltt-kconsumerd", "--quiet", NULL);
+		execl(INSTALL_BIN_PATH "/ltt-kconsumerd", "ltt-kconsumerd", "--quiet", NULL);
 		if (errno != 0) {
 			perror("kernel start consumer exec");
 		}
