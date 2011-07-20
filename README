@@ -5,60 +5,65 @@ Please visit http://lttng.org for more information.
 
 Latest development can be found at:
 
-	* Gitweb :	http://git.lttng.org/lttng-tools.git/
-	* Git :		git://git.lttng.org/lttng-tools.git
+    * Gitweb :  http://git.lttng.org/lttng-tools.git/
+    * Git :     git://git.lttng.org/lttng-tools.git
 
-PREREQUISITES:
+REQUIREMENTS:
 
-	- liburcu
-	  Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
-	  
-	  -> Tested with liburcu >= v0.5.4
+    - liburcu
+      Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
-	  * Debian/Ubuntu package: liburcu-dev
-	  * Git : git://lttng.org/userspace-rcu.git
-	  * Website:  http://lttng.org/urcu
+      -> Tested with liburcu >= v0.5.4
 
-	- libustctl
-	  LTTng user-space tracer control library
+      * Debian/Ubuntu package: liburcu-dev
+      * Git : git://lttng.org/userspace-rcu.git
+      * Website:  http://lttng.org/urcu
 
-	  Needed for interaction with that tracer.
+    - libpopt
+      Library for parsing command line parameters
 
-	- liblttctl
-	  LTTng kernel tracer control library
-
-	  Needed for interaction with that tracer.
+      * Debian/Ubuntu package: libpopt-dev
 
 INSTALLATION INSTRUCTIONS:
 
-  - Download, compile and install liburcu, libuuid, libustctl and liblttctl
-  - In this package's tree, run ./configure.
-  - Run make.
-  - Run make install.
-  - Run ldconfig.
+  - Download, compile and install the prerequisites.
+  Then:
+  $ ./configure
+  $ make
+  $ sudo make install
+  $ sudo ldconfig
 
   If compiling from the git repository, run ./bootstrap before running
   the configure script, to generate it.
 
 PACKAGE CONTENTS:
 
-	This package contains the following elements:
+    This package contains the following elements:
 
-	- liblttngctl
-	  The LTTng trace control library.
+    - liblttngctl
+      The LTTng tracing control library.
 
-	- liblttsessiondcomm
-	  The ltt-sessiond communication library. In order to talk with ltt-sessiond,
-	  thi library must be used.
+    - liblttsessiondcomm
+      The ltt-sessiond communication library. In order to talk with ltt-sessiond,
+      thiis library must be used.
 
-	- ltt-sessiond
-	  The LTTng session daemon binary.
+    - libkernelctl
+      Kernel tracer control and ioctl definitions.
 
-	- lttng
-	  The LTTng tracer command line control tool.
+    - liblttkconsumerd
+      Library for Kernel trace consumer.
 
-	- include
-	  The liblttngctl API header file.
+    - ltt-kconsumerd
+      The Kernel consumer daemon which uses liblttkconsumerd.
 
-	- tests
-	  Various test programs.
+    - ltt-sessiond
+      The LTTng session daemon binary.
+
+    - lttng
+      The LTTng tracer command line control tool.
+
+    - include (lttng.h --> installed in $(includedir)/lttng/lttng.h)
+      The liblttngctl API header file.
+
+    - tests
+      Various test programs.

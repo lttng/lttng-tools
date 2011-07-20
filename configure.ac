@@ -52,6 +52,7 @@ AC_CONFIG_FILES([
 	ltt-sessiond/Makefile
 	lttng/Makefile
 	tests/Makefile
+	doc/Makefile
 ])
 
 AC_OUTPUT
