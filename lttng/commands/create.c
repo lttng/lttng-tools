@@ -64,7 +64,7 @@ static void usage(FILE *ofp)
  */
 static int create_session()
 {
-	int ret;
+	int ret, have_name = 0;
 	char name[NAME_MAX];
 	char *session_name, *traces_path = NULL, *alloc_path = NULL;
 	time_t rawtime;
@@ -79,6 +79,7 @@ static int create_session()
 		DBG("Auto session name set to %s", session_name);
 	} else {
 		session_name = opt_session_name;
+		have_name = 1;
 	}
 
 	/* Auto output path */
@@ -112,7 +113,11 @@ static int create_session()
 	}
 
 	MSG("Session %s created.", session_name);
-	MSG("Traces will be written in %s/%s-<date>-<time> ", traces_path, session_name);
+	if (have_name) {
+		MSG("Traces will be written in %s/%s-<date>-<time>" , traces_path, session_name);
+	} else {
+		MSG("Traces will be written in %s/%s", traces_path, session_name);
+	}
 
 	ret = CMD_SUCCESS;
 
