@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "../cmd.h"
 #include "../conf.h"
@@ -197,11 +198,11 @@ int cmd_enable_channels(int argc, const char **argv)
 			break;
 		case OPT_SUBBUF_SIZE:
 			chan.attr.subbuf_size = atol(poptGetOptArg(pc));
-			DBG("Channel subbuf size set to %lu", chan.attr.subbuf_size);
+			DBG("Channel subbuf size set to %" PRIu64, chan.attr.subbuf_size);
 			break;
 		case OPT_NUM_SUBBUF:
 			chan.attr.num_subbuf = atoi(poptGetOptArg(pc));
-			DBG("Channel subbuf num set to %lu", chan.attr.num_subbuf);
+			DBG("Channel subbuf num set to %" PRIu64, chan.attr.num_subbuf);
 			break;
 		case OPT_SWITCH_TIMER:
 			chan.attr.switch_timer_interval = atoi(poptGetOptArg(pc));

@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "../cmd.h"
 #include "../conf.h"
@@ -110,30 +111,30 @@ static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
 	}
 
 	/* Check for symbol+offset */
-	ret = sscanf(opt, "%[^'+']+%li", name, &hex);
+	ret = sscanf(opt, "%[^'+']+%" SCNu64, name, &hex);
 	if (ret == 2) {
 		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
 		DBG("kprobe symbol %s", ev->attr.probe.symbol_name);
 		if (hex == 0) {
-			ERR("Invalid kprobe offset %lu", hex);
+			ERR("Invalid kprobe offset %" PRIu64, hex);
 			ret = -1;
 			goto error;
 		}
 		ev->attr.probe.offset = hex;
-		DBG("kprobe offset %lu", ev->attr.probe.offset);
+		DBG("kprobe offset %" PRIu64, ev->attr.probe.offset);
 		goto error;
 	}
 
 	/* Check for address */
-	ret = sscanf(opt, "%li", &hex);
+	ret = sscanf(opt, "%" SCNu64, &hex);
 	if (ret > 0) {
 		if (hex == 0) {
-			ERR("Invalid kprobe address %lu", hex);
+			ERR("Invalid kprobe address %" PRIu64, hex);
 			ret = -1;
 			goto error;
 		}
 		ev->attr.probe.addr = hex;
-		DBG("kprobe addr %lu", ev->attr.probe.addr);
+		DBG("kprobe addr %" PRIu64, ev->attr.probe.addr);
 		goto error;
 	}
 
