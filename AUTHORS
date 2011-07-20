@@ -1,1 +1,16 @@
+LTTng Tools
+
+Authors:
+-----------
+
+Julien Desfossez <julien.desfossez@polymtl.ca>
+    -) Kernel Consumer and Control
+
+Mathieu Desnoyers <mathieu.desnoyers>
+    -) Helped designed the lttng-tools infrastructure and doing a lot of code
+       reviews. Code has been taken from the kernel consumer of ltt-control.
+
 David Goulet <david.goulet@polymtl.ca>
+    -) Session Deamon, Lib LTTng Control, Communication Library and lttng
+       command line tool
+
