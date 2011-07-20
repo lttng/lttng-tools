@@ -25,9 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "cmd.h"
-#include "conf.h"
-#include "utils.h"
+#include "../cmd.h"
 
 enum {
 	OPT_HELP = 1,

@@ -1,7 +1,9 @@
-AC_INIT([lttng-tools], [0.0.1], [david.goulet@polymtl.ca], [http://lttng.org])
+AC_INIT([lttng-tools], [0.0.1], [david.goulet@polymtl.ca], ,[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
+AC_CANONICAL_TARGET
+AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([config])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([foreign])
 AM_SILENT_RULES([yes])
 
 AC_CHECK_HEADERS([ \
@@ -25,10 +27,17 @@ AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]
 )
 
-CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
-
 AC_PROG_CC
 AC_PROG_LIBTOOL
+
+CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
+
+DEFAULT_INCLUDES="-I\$(top_srcdir) -I\$(top_builddir)"
+
+lttngincludedir="${includedir}/lttng"
+
+AC_SUBST(lttngincludedir)
+AC_SUBST(DEFAULT_INCLUDES)
 
 AC_CONFIG_FILES([
 	Makefile

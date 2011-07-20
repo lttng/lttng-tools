@@ -9,4 +9,5 @@ SUBDIRS = liblttsessiondcomm \
 		  lttng \
 		  ltt-kconsumerd \
 		  ltt-sessiond \
-		  tests
+		  tests \
+		  include

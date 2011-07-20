@@ -25,9 +25,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "cmd.h"
-#include "conf.h"
-#include "utils.h"
+#include "../cmd.h"
+#include "../conf.h"
+#include "../utils.h"
 
 static char *opt_session_name;
 

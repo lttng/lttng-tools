@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cmd.h"
+#include "../cmd.h"
 
 static int opt_pid;
 static int opt_channels;
