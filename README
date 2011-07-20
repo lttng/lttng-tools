@@ -36,6 +36,12 @@ INSTALLATION INSTRUCTIONS:
   If compiling from the git repository, run ./bootstrap before running
   the configure script, to generate it.
 
+USAGE:
+
+Please see doc/quickstart.txt to help you start tracing. You can also use the
+-h/--help command on 'lttng' and all other commands offered in this tool (Ex:
+lttng enable-event -h).
+
 PACKAGE CONTENTS:
 
     This package contains the following elements:
