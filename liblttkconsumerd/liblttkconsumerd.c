@@ -124,7 +124,6 @@ static int kconsumerd_find_session_fd(int fd)
 	cds_list_for_each_entry(iter, &kconsumerd_data.fd_list.head, list) {
 		if (iter->sessiond_fd == fd) {
 			DBG("Duplicate session fd %d", fd);
-			pthread_mutex_unlock(&kconsumerd_data.lock);
 			return 1;
 		}
 	}
