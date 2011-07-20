@@ -651,6 +651,9 @@ static int kconsumerd_consumerd_recv_fd(int sfd,
 			}
 			/* signal the poll thread */
 			tmp2 = write(kconsumerd_poll_pipe[1], "4", 1);
+			if (tmp2 < 0) {
+				perror("write kconsumerd poll");
+			}
 		} else {
 			ERR("Didn't received any fd");
 			kconsumerd_send_error(KCONSUMERD_ERROR_RECV_FD);
@@ -762,6 +765,9 @@ void *kconsumerd_thread_poll_fds(void *data)
 		if (pollfd[nb_fd].revents == POLLIN) {
 			DBG("kconsumerd_poll_pipe wake up");
 			tmp2 = read(kconsumerd_poll_pipe[0], &tmp, 1);
+			if (tmp2 < 0) {
+				perror("read kconsumerd poll");
+			}
 			continue;
 		}
 
@@ -1020,6 +1026,9 @@ void kconsumerd_should_exit(void)
 	int ret;
 	kconsumerd_quit = 1;
 	ret = write(kconsumerd_should_quit[1], "4", 1);
+	if (ret < 0) {
+		perror("write kconsumerd quit");
+	}
 }
 
 /*

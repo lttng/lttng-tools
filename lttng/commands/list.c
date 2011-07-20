@@ -89,6 +89,9 @@ static char *get_cmdline_by_pid(pid_t pid)
 	/* Caller must free() *cmdline */
 	cmdline = malloc(PATH_MAX);
 	ret = fread(cmdline, 1, PATH_MAX, fp);
+	if (ret < 0) {
+		perror("fread proc list");
+	}
 	fclose(fp);
 
 end:

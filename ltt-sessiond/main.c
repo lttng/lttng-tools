@@ -1118,7 +1118,7 @@ error:
  */
 static int start_kernel_trace(struct ltt_kernel_session *session)
 {
-	int ret;
+	int ret = 0;
 
 	if (session->kconsumer_fds_sent == 0) {
 		ret = send_kconsumerd_fds(kconsumerd_cmd_sock, session);
@@ -1246,7 +1246,7 @@ static void list_lttng_sessions(struct lttng_session *sessions)
  */
 static int process_client_msg(struct command_ctx *cmd_ctx)
 {
-	int ret;
+	int ret = LTTCOMM_OK;
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
