@@ -109,6 +109,9 @@ static int create_session()
 	/* Init lttng session config */
 	ret = config_init(session_name);
 	if (ret < 0) {
+		if (ret == -1) {
+			ret = CMD_ERROR;
+		}
 		goto error;
 	}
 
