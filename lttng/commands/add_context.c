@@ -25,6 +25,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <urcu/list.h>
+
 #include "../cmd.h"
 #include "../conf.h"
 #include "../utils.h"
@@ -36,13 +38,26 @@ static char *opt_session_name;
 static int *opt_kernel;
 static int opt_pid_all;
 static int opt_userspace;
-static int opt_perf_type;
-static int opt_perf_id;
+static int opt_perf_type = -1;
+static int opt_perf_id = -1;
 static pid_t opt_pid;
 
 enum {
 	OPT_HELP = 1,
 	OPT_TYPE,
+};
+
+struct ctx_type_list {
+	struct cds_list_head head;
+};
+
+struct ctx_type {
+	int type;
+	struct cds_list_head list;
+};
+
+static struct ctx_type_list ctx_type_list = {
+	.head = CDS_LIST_HEAD_INIT(ctx_type_list.head),
 };
 
 static struct poptOption long_options[] = {
@@ -68,6 +83,12 @@ static struct poptOption long_options[] = {
 static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng add-context [options] [context_options]\n");
+	fprintf(ofp, "\n");
+
+	fprintf(ofp, "If no event name is given (-e), the context will be added to "
+			"all events in the channel.\n");
+	fprintf(ofp, "If no channel and no event is given (-c/-e), the context "
+			"will be added to all events in all channels\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -120,49 +141,70 @@ static void usage(FILE *ofp)
  *
  *  Add context to channel or event.
  */
-static int add_context(int type)
+static int add_context(void)
 {
 	int ret = CMD_SUCCESS;
 	struct lttng_event_context context;
 	struct lttng_domain dom;
+	struct ctx_type *type;
 
 	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
 		goto error;
 	}
 
-	context.ctx = type;
-	if (type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
-		context.u.perf_counter.type = opt_perf_type;
-		context.u.perf_counter.config = opt_perf_id;
-		strncpy(context.u.perf_counter.name, opt_perf_name,
-				LTTNG_SYMBOL_NAME_LEN);
-	}
+	/* Iterate over all context type given */
+	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
+		context.ctx = type->type;
+		if (type->type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
+			/* Not defined */
+			if (opt_perf_type == -1) {
+				ERR("No perf event type given. Please use --perf-type TYPE.");
+				goto error;
+			}
+			context.u.perf_counter.type = opt_perf_type;
+			if (opt_perf_id == -1) {
+				ERR("No perf event id given. Please use --perf-id ID.");
+				goto error;
+			}
+			context.u.perf_counter.config = opt_perf_id;
+			if (opt_perf_name == NULL) {
+				ERR("No perf name given. Please use --perf-name NAME.");
+				goto error;
+			}
+			strncpy(context.u.perf_counter.name, opt_perf_name,
+					LTTNG_SYMBOL_NAME_LEN);
+		}
 
-	if (opt_kernel) {
-		/* Create kernel domain */
-		dom.type = LTTNG_DOMAIN_KERNEL;
+		if (opt_kernel) {
+			/* Create kernel domain */
+			dom.type = LTTNG_DOMAIN_KERNEL;
 
-		DBG("Adding kernel context");
-		ret = lttng_add_context(&dom, &context, opt_event_name,
-				opt_channel_name);
-		if (ret < 0) {
+			DBG("Adding kernel context");
+			ret = lttng_add_context(&dom, &context, opt_event_name,
+					opt_channel_name);
+			if (ret < 0) {
+				goto error;
+			} else {
+				if (type->type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
+					MSG("Perf counter context added");
+				} else {
+					MSG("Kernel context %d added", type->type);
+				}
+			}
+		} else if (opt_userspace) {		/* User-space tracer action */
+			/*
+			 * TODO: Waiting on lttng UST 2.0
+			 */
+			if (opt_pid_all) {
+			} else if (opt_pid != 0) {
+			}
+			ret = CMD_NOT_IMPLEMENTED;
 			goto error;
 		} else {
-			MSG("Kernel context added");
+			ERR("Please specify a tracer (kernel or user-space)");
+			goto error;
 		}
-	} else if (opt_userspace) {		/* User-space tracer action */
-		/*
-		 * TODO: Waiting on lttng UST 2.0
-		 */
-		if (opt_pid_all) {
-		} else if (opt_pid != 0) {
-		}
-		ret = CMD_NOT_IMPLEMENTED;
-		goto error;
-	} else {
-		ERR("Please specify a tracer (kernel or user-space)");
-		goto error;
 	}
 
 error:
@@ -179,6 +221,7 @@ int cmd_add_context(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS;
 	char *tmp;
 	static poptContext pc;
+	struct ctx_type *type;
 
 	if (argc < 2) {
 		usage(stderr);
@@ -203,11 +246,14 @@ int cmd_add_context(int argc, const char **argv)
 				free(tmp);
 				goto end;
 			}
-			ret = add_context(atoi(tmp));
-			if (ret < 0) {
-				free(tmp);
+			type = malloc(sizeof(struct ctx_type));
+			if (type == NULL) {
+				perror("malloc ctx_type");
+				ret = -1;
 				goto end;
 			}
+			type->type = atoi(tmp);
+			cds_list_add(&type->list, &ctx_type_list.head);
 			free(tmp);
 			break;
 		default:
@@ -215,6 +261,13 @@ int cmd_add_context(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	ret = add_context();
+
+	/* Cleanup allocated memory */
+	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
+		free(type);
 	}
 
 end:
