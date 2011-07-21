@@ -100,10 +100,10 @@ You can on the same line activate multiple context:
 5) Enable perf counter for an event:
 
 Again, a new powerful feature is the possibility to add perf counter data
-(using the perf API by Ingo Molnar) to the trace on a per event basis. Let say
-we want to get the CPU cycles at each define event:
+(using the perf API by Ingo Molnar and Thomas Gleixner) to the trace on a per
+event basis. Let say we want to get the CPU cycles at each define event:
 
-# lttng add-context -k -e sched_switch -t 1 --perf-name aname --perf-type 0 --perf-id 0
+# lttng add-context -k -e sched_switch -t perf --perf-type hw --perf-id cpu_cycles
 
 You'll have to use the add-context help for all possible perf counter values.
 
