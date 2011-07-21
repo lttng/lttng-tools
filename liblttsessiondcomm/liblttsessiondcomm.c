@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "liblttsessiondcomm.h"
 
@@ -223,11 +224,9 @@ int lttcomm_listen_unix_sock(int sock)
  */
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg;
+	struct msghdr msg = { 0 };
 	struct iovec iov[1];
 	ssize_t ret = -1;
-
-	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -250,11 +249,9 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
  */
 ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg;
+	struct msghdr msg = { 0 };
 	struct iovec iov[1];
 	ssize_t ret = -1;
-
-	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -294,23 +291,29 @@ int lttcomm_close_unix_sock(int sock)
  */
 ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, size_t len)
 {
-	struct msghdr msg;
+	struct msghdr msg = { 0 };
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
 
-	memset(&msg, 0, sizeof(msg));
+	/*
+	 * Note: the consumerd receiver only supports receiving one FD at a
+	 * time for now.
+	 */
+	assert(nb_fd == 1);
 
 	msg.msg_control = (caddr_t)tmp;
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
-	cmptr->cmsg_len = CMSG_LEN(sizeof_fds);
 	cmptr->cmsg_level = SOL_SOCKET;
 	cmptr->cmsg_type = SCM_RIGHTS;
+	cmptr->cmsg_len = CMSG_LEN(sizeof_fds);
 	memcpy(CMSG_DATA(cmptr), fds, sizeof_fds);
+	/* Sum of the length of all control messages in the buffer: */
+	msg.msg_controllen = cmptr->cmsg_len;
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;

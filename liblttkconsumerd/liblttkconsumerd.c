@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <urcu/list.h>
+#include <assert.h>
 
 #include "libkernelctl.h"
 #include "liblttkconsumerd.h"
@@ -585,7 +586,6 @@ static int kconsumerd_consumerd_recv_fd(int sfd,
 		struct pollfd *kconsumerd_sockpoll, int size,
 		enum kconsumerd_command cmd_type)
 {
-	struct msghdr msg;
 	struct iovec iov[1];
 	int ret = 0, i, tmp2;
 	struct cmsghdr *cmsg;
@@ -596,8 +596,15 @@ static int kconsumerd_consumerd_recv_fd(int sfd,
 	/* the number of fds we are about to receive */
 	nb_fd = size / sizeof(struct lttcomm_kconsumerd_msg);
 
+	/*
+	 * Note: only supporting receiving one FD at a time for now.
+	 * This code needs fixing if we wish to receive more (a single
+	 * receive for the whole fd batch rather than one per fd).
+	 */
+	assert(nb_fd == 1);
+
 	for (i = 0; i < nb_fd; i++) {
-		memset(&msg, 0, sizeof(msg));
+		struct msghdr msg = { 0 };
 
 		/* Prepare to receive the structures */
 		iov[0].iov_base = &lkm;
@@ -631,12 +638,13 @@ static int kconsumerd_consumerd_recv_fd(int sfd,
 			kconsumerd_send_error(KCONSUMERD_ERROR_RECV_FD);
 			goto end;
 		}
+
 		/* if we received fds */
 		if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
 			switch (cmd_type) {
 			case ADD_STREAM:
-				DBG("kconsumerd_add_fd %s (%d)", lkm.path_name, (CMSG_DATA(cmsg)[0]));
-				ret = kconsumerd_add_fd(&lkm, (CMSG_DATA(cmsg)[0]));
+				DBG("kconsumerd_add_fd %s (%d)", lkm.path_name, ((int *) CMSG_DATA(cmsg))[0]);
+				ret = kconsumerd_add_fd(&lkm, ((int *) CMSG_DATA(cmsg))[0]);
 				if (ret < 0) {
 					kconsumerd_send_error(KCONSUMERD_OUTFD_ERROR);
 					goto end;
