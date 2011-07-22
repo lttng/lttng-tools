@@ -1,3 +1,9 @@
+2011-07-22 lttng-tools 2.0-pre2
+	* Multiple fixes
+	* New add-context options for perf counter and context
+	* Using the install bin path from autotool for execl() call
+	* Update quickstart guide
+
 2011-07-20 lttng-tools 2.0-pre1
 	* First prerelease of lttng-tools.
 	* Working with the LTTng v2.0-pre1 modules and Babeltrace v0.1

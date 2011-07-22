@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools], [2.0-pre1], [david.goulet@polymtl.ca], ,[http://lttng.org])
+AC_INIT([lttng-tools], [2.0-pre2], [david.goulet@polymtl.ca], ,[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
