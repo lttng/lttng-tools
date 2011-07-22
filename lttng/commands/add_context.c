@@ -32,14 +32,14 @@
 #include "../conf.h"
 #include "../utils.h"
 
+#define PRINT_LINE_LEN	80
+
 static char *opt_event_name;
 static char *opt_channel_name;
 static char *opt_session_name;
 static int *opt_kernel;
 static int opt_pid_all;
 static int opt_userspace;
-static char *opt_perf_type;
-static char *opt_perf_id;
 static pid_t opt_pid;
 
 enum {
@@ -69,16 +69,19 @@ enum context_type {
 enum perf_type {
 	PERF_TYPE_HARDWARE = 0,
 	PERF_TYPE_SOFTWARE = 1,
+	PERF_TYPE_HW_CACHE = 3,
 };
 
 enum perf_count_hard {
-	PERF_COUNT_HW_CPU_CYCLES          = 0,
-	PERF_COUNT_HW_INSTRUCTIONS        = 1,
-	PERF_COUNT_HW_CACHE_REFERENCES    = 2,
-	PERF_COUNT_HW_CACHE_MISSES        = 3,
-	PERF_COUNT_HW_BRANCH_INSTRUCTIONS = 4,
-	PERF_COUNT_HW_BRANCH_MISSES       = 5,
-	PERF_COUNT_HW_BUS_CYCLES          = 6,
+	PERF_COUNT_HW_CPU_CYCLES		= 0,
+	PERF_COUNT_HW_INSTRUCTIONS		= 1,
+	PERF_COUNT_HW_CACHE_REFERENCES		= 2,
+	PERF_COUNT_HW_CACHE_MISSES		= 3,
+	PERF_COUNT_HW_BRANCH_INSTRUCTIONS	= 4,
+	PERF_COUNT_HW_BRANCH_MISSES		= 5,
+	PERF_COUNT_HW_BUS_CYCLES		= 6,
+	PERF_COUNT_HW_STALLED_CYCLES_FRONTEND	= 7,
+	PERF_COUNT_HW_STALLED_CYCLES_BACKEND	= 8,
 };
 
 enum perf_count_soft {
@@ -93,6 +96,39 @@ enum perf_count_soft {
 	PERF_COUNT_SW_EMULATION_FAULTS = 8,
 };
 
+/*
+ * Generalized hardware cache events:
+ *
+ *       { L1-D, L1-I, LLC, ITLB, DTLB, BPU } x
+ *       { read, write, prefetch } x
+ *       { accesses, misses }
+ */
+enum perf_hw_cache_id {
+	PERF_COUNT_HW_CACHE_L1D			= 0,
+	PERF_COUNT_HW_CACHE_L1I			= 1,
+	PERF_COUNT_HW_CACHE_LL			= 2,
+	PERF_COUNT_HW_CACHE_DTLB		= 3,
+	PERF_COUNT_HW_CACHE_ITLB		= 4,
+	PERF_COUNT_HW_CACHE_BPU			= 5,
+
+	PERF_COUNT_HW_CACHE_MAX,		/* non-ABI */
+};
+
+enum perf_hw_cache_op_id {
+	PERF_COUNT_HW_CACHE_OP_READ		= 0,
+	PERF_COUNT_HW_CACHE_OP_WRITE		= 1,
+	PERF_COUNT_HW_CACHE_OP_PREFETCH		= 2,
+
+	PERF_COUNT_HW_CACHE_OP_MAX,		/* non-ABI */
+};
+
+enum perf_hw_cache_op_result_id {
+	PERF_COUNT_HW_CACHE_RESULT_ACCESS	= 0,
+	PERF_COUNT_HW_CACHE_RESULT_MISS		= 1,
+
+	PERF_COUNT_HW_CACHE_RESULT_MAX,		/* non-ABI */
+};
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -104,81 +140,112 @@ static struct poptOption long_options[] = {
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"type",           't', POPT_ARG_STRING, 0, OPT_TYPE, 0, 0},
-	{"perf-type",      0,   POPT_ARG_STRING, &opt_perf_type, 0, 0, 0},
-	{"perf-id",        0,   POPT_ARG_STRING, &opt_perf_id, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
-};
-
-/*
- * Context type for command line option parsing.
- */
-struct ctx_type {
-	int type;
-	struct cds_list_head list;
-};
-
-/*
- * Perf counter type
- */
-static struct ctx_perf_type {
-	enum perf_type value;
-	char *symbol;
-} ctx_perf_type[] = {
-	{ PERF_TYPE_HARDWARE, "hw" },
-	{ PERF_TYPE_SOFTWARE, "sw" },
-};
-
-/*
- * Perf counter IDs
- */
-static struct ctx_perf {
-	enum perf_type type;
-	union {
-		enum perf_count_hard hard;
-		enum perf_count_soft soft;
-	} id;
-	char *symbol;
-} ctx_perf[] = {
-	/* Hardware counter */
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_CPU_CYCLES, "cpu_cycles" },
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_INSTRUCTIONS, "instr" },
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_CACHE_REFERENCES, "cache_refs" },
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_CACHE_MISSES, "cache_miss" },
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_BRANCH_INSTRUCTIONS, "branch_instr" },
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_BRANCH_MISSES, "branch_miss" },
-	{ PERF_TYPE_HARDWARE, .id.hard = PERF_COUNT_HW_BUS_CYCLES, "bus_cycles" },
-	/* Sofware counter */
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_CPU_CLOCK, "cpu_clock" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_TASK_CLOCK, "task_clock" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_PAGE_FAULTS, "page_faults" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_CONTEXT_SWITCHES, "ctx_switches" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_CPU_MIGRATIONS, "cpu_migration" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_PAGE_FAULTS_MIN, "page_faults_minor" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_PAGE_FAULTS_MAJ, "page_faults_major" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_ALIGNMENT_FAULTS, "align_faults" },
-	{ PERF_TYPE_SOFTWARE, .id.soft = PERF_COUNT_SW_EMULATION_FAULTS, "emu_faults" },
-	/* Closure */
-	{ -1, .id.hard = -1 , NULL },
 };
 
 /*
  * Context options
  */
-static struct ctx_opts {
-	enum context_type value;
+#define PERF_HW(opt, name)						\
+	{								\
+		"perf:" #opt, CONTEXT_PERF_COUNTER,			\
+		.u.perf = { PERF_TYPE_HARDWARE, PERF_COUNT_HW_##name, },\
+	}
+
+#define PERF_SW(opt, name)						\
+	{								\
+		"perf:" #opt, CONTEXT_PERF_COUNTER,			\
+		.u.perf = { PERF_TYPE_SOFTWARE, PERF_COUNT_SW_##name, },\
+	}
+
+#define _PERF_HW_CACHE(optstr, name, op, result)			\
+	{								\
+		"perf:" optstr, CONTEXT_PERF_COUNTER,			\
+		.u.perf = {						\
+			PERF_TYPE_HW_CACHE,				\
+			(uint64_t) PERF_COUNT_HW_CACHE_##name		\
+			* (uint64_t) PERF_COUNT_HW_CACHE_OP_##op	\
+			* (uint64_t) PERF_COUNT_HW_CACHE_RESULT_##result, \
+		},							\
+	}
+
+#define PERF_HW_CACHE(opt, name)					\
+	_PERF_HW_CACHE(#opt "-loads", name, READ, ACCESS),		\
+	_PERF_HW_CACHE(#opt "-load-misses", name, READ, MISS),		\
+	_PERF_HW_CACHE(#opt "-stores", name, WRITE, ACCESS),		\
+	_PERF_HW_CACHE(#opt "-store-misses", name, WRITE, MISS),	\
+	_PERF_HW_CACHE(#opt "-prefetches", name, PREFETCH, ACCESS),	\
+	_PERF_HW_CACHE(#opt "-prefetch-misses", name, PREFETCH, MISS)	\
+
+static
+const struct ctx_opts {
 	char *symbol;
+	enum context_type ctx_type;
+	union {
+		struct {
+			uint32_t type;
+			uint64_t config;
+		} perf;
+	} u;
 } ctx_opts[] = {
-	{ CONTEXT_PID, "pid" },
-	{ CONTEXT_PERF_COUNTER, "perf" },
-	{ CONTEXT_COMM, "comm" },
-	{ CONTEXT_PRIO, "prio" },
-	{ CONTEXT_NICE, "nice" },
-	{ CONTEXT_VPID, "vpid" },
-	{ CONTEXT_TID, "tid" },
-	{ CONTEXT_VTID, "vtid" },
-	{ CONTEXT_PPID, "ppid" },
-	{ CONTEXT_VPPID, "vppid" },
-	{ -1, NULL },		/* Closure */
+	{ "pid", CONTEXT_PID },
+	{ "comm", CONTEXT_COMM },
+	{ "prio", CONTEXT_PRIO },
+	{ "nice", CONTEXT_NICE },
+	{ "vpid", CONTEXT_VPID },
+	{ "tid", CONTEXT_TID },
+	{ "vtid", CONTEXT_VTID },
+	{ "ppid", CONTEXT_PPID },
+	{ "vppid", CONTEXT_VPPID },
+	/* Perf options */
+	PERF_HW(cpu-cycles, CPU_CYCLES),
+	PERF_HW(cycles, CPU_CYCLES),
+	PERF_HW(stalled-cycles-frontend, STALLED_CYCLES_FRONTEND),
+	PERF_HW(idle-cycles-frontend, STALLED_CYCLES_FRONTEND),
+	PERF_HW(stalled-cycles-backend, STALLED_CYCLES_BACKEND),
+	PERF_HW(idle-cycles-backend, STALLED_CYCLES_BACKEND),
+	PERF_HW(instructions, INSTRUCTIONS),
+	PERF_HW(cache-references, CACHE_REFERENCES),
+	PERF_HW(cache-misses, CACHE_MISSES),
+	PERF_HW(branch-instructions, BRANCH_INSTRUCTIONS),
+	PERF_HW(branches, BRANCH_INSTRUCTIONS),
+	PERF_HW(branch-misses, BRANCH_MISSES),
+	PERF_HW(bus-cycles, BUS_CYCLES),
+
+	PERF_HW_CACHE(L1-dcache, L1D),
+	PERF_HW_CACHE(L1-icache, L1I),
+	PERF_HW_CACHE(LLC, LL),
+	PERF_HW_CACHE(dTLB, DTLB),
+	_PERF_HW_CACHE("iTLB-loads", ITLB, READ, ACCESS),
+	_PERF_HW_CACHE("iTLB-load-misses", ITLB, READ, MISS),
+	_PERF_HW_CACHE("branch-loads", BPU, READ, ACCESS),
+	_PERF_HW_CACHE("branch-load-misses", BPU, READ, MISS),
+
+
+	PERF_SW(cpu-clock, CPU_CLOCK),
+	PERF_SW(task-clock, TASK_CLOCK),
+	PERF_SW(page-fault, PAGE_FAULTS),
+	PERF_SW(faults, PAGE_FAULTS),
+	PERF_SW(major-faults, PAGE_FAULTS_MAJ),
+	PERF_SW(minor-faults, PAGE_FAULTS_MIN),
+	PERF_SW(context-switches, CONTEXT_SWITCHES),
+	PERF_SW(cs, CONTEXT_SWITCHES),
+	PERF_SW(cpu-migrations, CPU_MIGRATIONS),
+	PERF_SW(migrations, CPU_MIGRATIONS),
+	PERF_SW(alignment-faults, ALIGNMENT_FAULTS),
+	PERF_SW(emulation-faults, EMULATION_FAULTS),
+	{ NULL, -1 },		/* Closure */
+};
+
+#undef PERF_SW
+#undef PERF_HW
+
+/*
+ * Context type for command line option parsing.
+ */
+struct ctx_type {
+	const struct ctx_opts *opt;
+	struct cds_list_head list;
 };
 
 /*
@@ -192,72 +259,30 @@ struct ctx_type_list {
 };
 
 /*
- * Pretty print perf type.
- */
-static void print_perf_type(FILE *ofp)
-{
-	fprintf(ofp, "                               ");
-	fprintf(ofp, "%s = %d, ", ctx_perf_type[0].symbol, ctx_perf_type[0].value);
-	fprintf(ofp, "%s = %d\n", ctx_perf_type[1].symbol, ctx_perf_type[1].value);
-}
-
-/*
  * Pretty print context type.
  */
 static void print_ctx_type(FILE *ofp)
 {
-	int i = 0;
+	const char *indent = "                               ";
+	int indent_len = strlen(indent);
+	int len, i = 0;
 
-	fprintf(ofp, "                               ");
+	fprintf(ofp, indent);
+	len = indent_len;
 	while (ctx_opts[i].symbol != NULL) {
-		fprintf(ofp, "%s = %d, ", ctx_opts[i].symbol, ctx_opts[i].value);
-		i++;
-		if (!(i%3)) {
-			fprintf(ofp, "\n                               ");
-		}
-	}
-}
-
-/*
- * Pretty print perf hardware counter.
- */
-static void print_perf_hw(FILE *ofp)
-{
-	int i = 0, count = 0;
-
-	fprintf(ofp, "                               ");
-	while (ctx_perf[i].symbol != NULL) {
-		if (ctx_perf[i].type == PERF_TYPE_HARDWARE) {
-			fprintf(ofp, "%s = %d, ", ctx_perf[i].symbol, ctx_perf[i].id.hard);
-			count++;
-			if (!(count % 3)) {
-				fprintf(ofp, "\n                               ");
+		if (len > indent_len) {
+			if (len + strlen(ctx_opts[i].symbol) + 2
+					>= PRINT_LINE_LEN) {
+				fprintf(ofp, ",\n");
+				fprintf(ofp, indent);
+				len = indent_len;
+			} else {
+				len += fprintf(ofp, ", ");
 			}
 		}
+		len += fprintf(ofp, "%s", ctx_opts[i].symbol);
 		i++;
 	}
-	fprintf(ofp, "\n");
-}
-
-/*
- * Pretty print perf software counter.
- */
-static void print_perf_sw(FILE *ofp)
-{
-	int i = 0, count = 0;
-
-	fprintf(ofp, "                               ");
-	while (ctx_perf[i].symbol != NULL) {
-		if (ctx_perf[i].type == PERF_TYPE_SOFTWARE) {
-			fprintf(ofp, "%s = %d, ", ctx_perf[i].symbol, ctx_perf[i].id.soft);
-			count++;
-			if (!(count % 3)) {
-				fprintf(ofp, "\n                               ");
-			}
-		}
-		i++;
-	}
-	fprintf(ofp, "\n");
 }
 
 /*
@@ -265,12 +290,12 @@ static void print_perf_sw(FILE *ofp)
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng add-context -t TYPE [options] [context_options]\n");
+	fprintf(ofp, "usage: lttng add-context -t TYPE\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "If no event name is given (-e), the context will be added to "
-			"all events in the channel.\n");
-	fprintf(ofp, "If no channel and no event is given (-c/-e), the context "
-			"will be added to all events in all channels\n");
+	fprintf(ofp, "If no event name is given (-e), the context will be added to\n");
+	fprintf(ofp, "all events in the channel.\n");
+	fprintf(ofp, "If no channel and no event is given (-c/-e), the context\n");
+	fprintf(ofp, "will be added to all events in all channels.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -281,92 +306,17 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
 	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
-	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on the command line.\n");
-	fprintf(ofp, "                           TYPE can be a digit or a string below:\n");
+	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
+	fprintf(ofp, "                           the command line.\n");
+	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
 	print_ctx_type(ofp);
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Context options:\n");
-	fprintf(ofp, "      --perf-type TYPE     Perf event type. TYPE can be a digit or a string below:\n");
-	print_perf_type(ofp);
-	fprintf(ofp, "      --perf-id ID         Perf event id. ID can be a digit or a string below:\n");
-	fprintf(ofp, "                           Hardware IDs (%s: %d):\n", ctx_perf_type[0].symbol, ctx_perf_type[0].value);
-	print_perf_hw(ofp);
-	fprintf(ofp, "                           Software IDs (%s: %d):\n", ctx_perf_type[1].symbol, ctx_perf_type[1].value);
-	print_perf_sw(ofp);
 	fprintf(ofp, "Example:\n");
-	fprintf(ofp, "This command will add the context information 'prio' and a perf counter hardware branch miss to\n"
-			"the 'sys_enter' event in the trace data output.\n");
-	fprintf(ofp, "# lttng add-context -k -e sys_enter -t prio -t perf --perf-type hw --perf-id branch_miss\n");
+	fprintf(ofp, "This command will add the context information 'prio' and two perf\n"
+			"counters: hardware branch misses and cache-misses, to all events\n"
+			"in the trace data output:\n");
+	fprintf(ofp, "# lttng add-context -k -t prio -t perf:branch-misses -t perf:cache-misses\n");
 	fprintf(ofp, "\n");
-}
-
-/*
- * Return perf hardware counter index.
- */
-static int find_perf_idx(const char *opt)
-{
-	int ret = -1, i = 0;
-
-	while (ctx_perf[i].symbol != NULL) {
-		if (strcmp(opt, ctx_perf[i].symbol) == 0) {
-			ret = i;
-			goto end;
-		}
-		i++;
-	}
-
-end:
-	return ret;
-}
-
-/*
- * Return perf type index in global array.
- */
-static int find_perf_type_idx(const char *opt)
-{
-	int ret = -1, i = 0;
-
-	while (ctx_perf_type[i].symbol != NULL) {
-		if (strcmp(opt, ctx_perf_type[i].symbol) == 0) {
-			ret = i;
-			goto end;
-		}
-		i++;
-	}
-
-end:
-	return ret;
-}
-
-/*
- * Return perf counter index
- */
-static int find_perf_symbol_idx(int type, int id)
-{
-	int ret = -1, i = 0;
-
-	while (ctx_perf[i].symbol != NULL) {
-		if (ctx_perf[i].type == type) {
-			switch (type) {
-			case PERF_TYPE_HARDWARE:
-				if (ctx_perf[i].id.hard == id) {
-					ret = i;
-					goto end;
-				}
-				break;
-			case PERF_TYPE_SOFTWARE:
-				if (ctx_perf[i].id.soft == id) {
-					ret = i;
-					goto end;
-				}
-				break;
-			}
-		}
-		i++;
-	}
-
-end:
-	return ret;
 }
 
 /*
@@ -389,33 +339,15 @@ end:
 }
 
 /*
- * Return context symbol index
- */
-static int find_ctx_symbol_idx(int type)
-{
-	int ret = -1, i = 0;
-
-	while (ctx_opts[i].symbol != NULL) {
-		if (type == ctx_opts[i].value) {
-			ret = i;
-			goto end;
-		}
-		i++;
-	}
-
-end:
-	return ret;
-}
-
-/*
  * Add context to channel or event.
  */
 static int add_context(void)
 {
-	int ret = CMD_SUCCESS, index;
+	int ret = CMD_SUCCESS;
 	struct lttng_event_context context;
 	struct lttng_domain dom;
 	struct ctx_type *type;
+	char *ptr;
 
 	if (set_session_name(opt_session_name) < 0) {
 		ret = CMD_ERROR;
@@ -424,46 +356,20 @@ static int add_context(void)
 
 	/* Iterate over all context type given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
-		context.ctx = type->type;
-		if (type->type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
-			/* Check perf type */
-			if (isdigit(*opt_perf_type)) {
-				context.u.perf_counter.type = atoi(opt_perf_type);
-			} else {
-				index = find_perf_type_idx(opt_perf_type);
-				if (index == -1) {
-					ERR("Bad event type given. Please use --perf-type TYPE.");
-					goto error;
-				}
-				context.u.perf_counter.type = ctx_perf_type[index].value;
+		context.ctx = type->opt->ctx_type;
+		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
+			context.u.perf_counter.type = type->opt->u.perf.type;
+			context.u.perf_counter.config = type->opt->u.perf.config;
+			strcpy(context.u.perf_counter.name,
+			       type->opt->symbol);
+			/* Replace : and - by _ */
+			while ((ptr = strchr(context.u.perf_counter.name, '-')) != NULL) {
+				*ptr = '_';
 			}
-
-			/* Check perf counter ID */
-			if (isdigit(*opt_perf_id)) {
-				context.u.perf_counter.config = atoi(opt_perf_id);
-				index = find_perf_symbol_idx(context.u.perf_counter.type,
-						context.u.perf_counter.config);
-			} else {
-				index = find_perf_idx(opt_perf_id);
-				switch (context.u.perf_counter.type) {
-				case PERF_TYPE_HARDWARE:
-					context.u.perf_counter.config = ctx_perf[index].id.hard;
-					break;
-				case PERF_TYPE_SOFTWARE:
-					context.u.perf_counter.config = ctx_perf[index].id.soft;
-					break;
-				}
+			while ((ptr = strchr(context.u.perf_counter.name, ':')) != NULL) {
+				*ptr = '_';
 			}
-
-			if (index == -1) {
-				ERR("Bad perf event id given. Please use --perf-id ID.");
-				goto error;
-			}
-
-			strncpy(context.u.perf_counter.name, ctx_perf[index].symbol,
-					LTTNG_SYMBOL_NAME_LEN);
 		}
-
 		if (opt_kernel) {
 			/* Create kernel domain */
 			dom.type = LTTNG_DOMAIN_KERNEL;
@@ -474,12 +380,7 @@ static int add_context(void)
 			if (ret < 0) {
 				goto error;
 			} else {
-				if (type->type == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
-					MSG("Perf counter %s added", context.u.perf_counter.name);
-				} else {
-					index = find_ctx_symbol_idx(type->type);
-					MSG("Kernel context %s added", ctx_opts[index].symbol);
-				}
+				MSG("Kernel context %s added", type->opt->symbol);
 			}
 		} else if (opt_userspace) {		/* User-space tracer action */
 			/*
@@ -508,7 +409,7 @@ int cmd_add_context(int argc, const char **argv)
 	int index, opt, ret = CMD_SUCCESS;
 	char *tmp;
 	static poptContext pc;
-	struct ctx_type *type;
+	struct ctx_type *type, *tmptype;
 
 	if (argc < 2) {
 		usage(stderr);
@@ -539,18 +440,13 @@ int cmd_add_context(int argc, const char **argv)
 				ret = -1;
 				goto end;
 			}
-			/* Numerical value are allowed also */
-			if (isdigit(*tmp)) {
-				type->type = atoi(tmp);
-			} else {
-				index = find_ctx_type_idx(tmp);
-				if (index < 0) {
-					ERR("Unknown context type %s", tmp);
-					goto end;
-				}
-				type->type = ctx_opts[index].value;
+			index = find_ctx_type_idx(tmp);
+			if (index < 0) {
+				ERR("Unknown context type %s", tmp);
+				goto end;
 			}
-			if (type->type == -1) {
+			type->opt = &ctx_opts[index];
+			if (type->opt->ctx_type == -1) {
 				ERR("Unknown context type %s", tmp);
 			} else {
 				cds_list_add(&type->list, &ctx_type_list.head);
@@ -567,7 +463,7 @@ int cmd_add_context(int argc, const char **argv)
 	ret = add_context();
 
 	/* Cleanup allocated memory */
-	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
+	cds_list_for_each_entry_safe(type, tmptype, &ctx_type_list.head, list) {
 		free(type);
 	}
 
