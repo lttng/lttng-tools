@@ -39,7 +39,7 @@ static int opt_pid_all;
 static int opt_userspace;
 static int opt_enable_all;
 static pid_t opt_pid;
-static char *opt_kprobe;
+static char *opt_probe;
 static char *opt_function_symbol;
 static char *opt_channel_name;
 
@@ -48,7 +48,7 @@ enum {
 	OPT_USERSPACE,
 	OPT_TRACEPOINT,
 	OPT_MARKER,
-	OPT_KPROBE,
+	OPT_PROBE,
 	OPT_FUNCTION,
 };
 
@@ -64,7 +64,7 @@ static struct poptOption long_options[] = {
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
-	{"kprobe",         0,   POPT_ARG_STRING, 0, OPT_KPROBE, 0, 0},
+	{"probe",         0,   POPT_ARG_STRING, 0, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, 0, OPT_FUNCTION, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -87,19 +87,21 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
-	fprintf(ofp, "    --kprobe [addr | symbol+offset]\n");
-	fprintf(ofp, "                           Kernel Kprobe. (addr or offset can be base 8,10 and 16)\n");
+	fprintf(ofp, "    --probe [addr | symbol+offset]\n");
+	fprintf(ofp, "                           Dynamic probe.\n");
+	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
+	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
 	fprintf(ofp, "    --function SYMBOL      Function tracer event\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
 }
 
 /*
- *  parse_kprobe_addr
+ *  parse_probe_addr
  *
- *  Parse kprobe options.
+ *  Parse probe options.
  */
-static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
+static int parse_probe_opts(struct lttng_event *ev, char *opt)
 {
 	int ret;
 	uint64_t hex;
@@ -114,14 +116,14 @@ static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
 	ret = sscanf(opt, "%[^'+']+%" SCNu64, name, &hex);
 	if (ret == 2) {
 		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
-		DBG("kprobe symbol %s", ev->attr.probe.symbol_name);
+		DBG("probe symbol %s", ev->attr.probe.symbol_name);
 		if (hex == 0) {
-			ERR("Invalid kprobe offset %" PRIu64, hex);
+			ERR("Invalid probe offset %" PRIu64, hex);
 			ret = -1;
 			goto error;
 		}
 		ev->attr.probe.offset = hex;
-		DBG("kprobe offset %" PRIu64, ev->attr.probe.offset);
+		DBG("probe offset %" PRIu64, ev->attr.probe.offset);
 		goto error;
 	}
 
@@ -129,12 +131,12 @@ static int parse_kprobe_opts(struct lttng_event *ev, char *opt)
 	ret = sscanf(opt, "%" SCNu64, &hex);
 	if (ret > 0) {
 		if (hex == 0) {
-			ERR("Invalid kprobe address %" PRIu64, hex);
+			ERR("Invalid probe address %" PRIu64, hex);
 			ret = -1;
 			goto error;
 		}
 		ev->attr.probe.addr = hex;
-		DBG("kprobe addr %" PRIu64, ev->attr.probe.addr);
+		DBG("probe addr %" PRIu64, ev->attr.probe.addr);
 		goto error;
 	}
 
@@ -204,9 +206,9 @@ static int enable_events(void)
 			case LTTNG_EVENT_TRACEPOINT:
 				break;
 			case LTTNG_EVENT_PROBE:
-				ret = parse_kprobe_opts(&ev, opt_kprobe);
+				ret = parse_probe_opts(&ev, opt_probe);
 				if (ret < 0) {
-					ERR("Unable to parse kprobe options");
+					ERR("Unable to parse probe options");
 					ret = 0;
 					goto error;
 				}
@@ -282,9 +284,9 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_MARKER:
 			ret = CMD_NOT_IMPLEMENTED;
 			goto end;
-		case OPT_KPROBE:
+		case OPT_PROBE:
 			opt_event_type = LTTNG_EVENT_PROBE;
-			opt_kprobe = poptGetOptArg(pc);
+			opt_probe = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
