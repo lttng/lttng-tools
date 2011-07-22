@@ -23,13 +23,13 @@ registry. To trace any instrumented applications or the kernel, a registered
 tracing session is needed beforehand. To interact with the session daemon and a
 tracing session, you should use the lttng command line UI (lttng).
 
-Here is a list of some new powerful features the LTTng 2.0 kernel tracer
-offers:
+Here is a list of some powerful features the LTTng 2.0 kernel tracer offers:
 
 	* Kprobes support
 	* Function Tracer support
 	* Context information support (add context data to an event)
 	* Perf counter support
+	* Tracepoint support
 
 The next sections explain how to do tracing :)
 
@@ -67,18 +67,18 @@ or enable ALL events (-a/--all):
 3) Enable kprobes and/or the function tracer with lttng
 
 This is a new feature made possible by the new LTTng 2.0 kernel tracer. You can
-enable a Kprobe (by Masami Hiramatsu) and data will be output in the trace
-along side with your tracing data.
+enable a dynamic probe and data will be output in the trace along side with
+your tracing data.
 
-# lttng enable-event aname --kprobe symbol+0xffff7260695
+# lttng enable-event aname --probe symbol+0xffff7260695
 
 or
 
-# lttng enable-event aname --kprobe 0xffff7260695
+# lttng enable-event aname --probe 0xffff7260695
 
-Either an <address> or a <symbol+offset> can be used for kprobes.
+Either an <address> or a <symbol+offset> can be used for probes.
 
-You can also enable function tracer, which uses the ftrace API (by Steven
+You can also enable function tracer, which uses the Ftrace API (by Steven
 Rostedt). Again, data will be output in the trace.
 
 # lttng enable-event aname --function <symbol_name>
@@ -88,22 +88,22 @@ Rostedt). Again, data will be output in the trace.
 This is also a new feature which allows you to add context information to an
 event. For example, you can add the PID along with the event information:
 
-# lttng add-context -k -e sched_switch -t 0
+# lttng add-context -k -e sched_switch -t pid
 
 At this point, you will have to look at 'lttng add-context --help' for all
 possible context type which are integer values.
 
 You can on the same line activate multiple context:
 
-# lttng add-context -k -e sched_switch -t 0 -t 2 -t 4
+# lttng add-context -k -e sched_switch -t pid -t nice -t tid
 
 5) Enable perf counter for an event:
 
 Again, a new powerful feature is the possibility to add perf counter data
 (using the perf API by Ingo Molnar and Thomas Gleixner) to the trace on a per
-event basis. Let say we want to get the CPU cycles at each define event:
+event basis. Let say we want to get the CPU cycles at each event:
 
-# lttng add-context -k -e sched_switch -t perf --perf-type hw --perf-id cpu_cycles
+# lttng add-context -k -e sched_switch -t perf:cpu-cycles
 
 You'll have to use the add-context help for all possible perf counter values.
 
