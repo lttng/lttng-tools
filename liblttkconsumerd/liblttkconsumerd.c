@@ -597,12 +597,8 @@ static int kconsumerd_consumerd_recv_fd(int sfd,
 	nb_fd = size / sizeof(struct lttcomm_kconsumerd_msg);
 
 	/*
-	 * Note: only supporting receiving one FD at a time for now.
-	 * This code needs fixing if we wish to receive more (a single
-	 * receive for the whole fd batch rather than one per fd).
+	 * nb_fd is the number of fds we receive. One fd per recvmsg.
 	 */
-	assert(nb_fd == 1);
-
 	for (i = 0; i < nb_fd; i++) {
 		struct msghdr msg = { 0 };
 

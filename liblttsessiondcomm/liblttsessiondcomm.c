@@ -299,8 +299,8 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, 
 	char tmp[CMSG_SPACE(sizeof_fds)];
 
 	/*
-	 * Note: the consumerd receiver only supports receiving one FD at a
-	 * time for now.
+	 * Note: the consumerd receiver only supports receiving one FD per
+	 * message.
 	 */
 	assert(nb_fd == 1);
 
