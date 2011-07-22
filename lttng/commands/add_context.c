@@ -313,7 +313,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Example:\n");
 	fprintf(ofp, "This command will add the context information 'prio' and two perf\n"
-			"counters: hardware branch misses and cache-misses, to all events\n"
+			"counters: hardware branch misses and cache misses, to all events\n"
 			"in the trace data output:\n");
 	fprintf(ofp, "# lttng add-context -k -t prio -t perf:branch-misses -t perf:cache-misses\n");
 	fprintf(ofp, "\n");
