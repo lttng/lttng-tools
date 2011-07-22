@@ -267,14 +267,14 @@ static void print_ctx_type(FILE *ofp)
 	int indent_len = strlen(indent);
 	int len, i = 0;
 
-	fprintf(ofp, indent);
+	fprintf(ofp, "%s", indent);
 	len = indent_len;
 	while (ctx_opts[i].symbol != NULL) {
 		if (len > indent_len) {
 			if (len + strlen(ctx_opts[i].symbol) + 2
 					>= PRINT_LINE_LEN) {
 				fprintf(ofp, ",\n");
-				fprintf(ofp, indent);
+				fprintf(ofp, "%s", indent);
 				len = indent_len;
 			} else {
 				len += fprintf(ofp, ", ");
