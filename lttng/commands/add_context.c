@@ -164,8 +164,8 @@ static struct poptOption long_options[] = {
 		.u.perf = {						\
 			PERF_TYPE_HW_CACHE,				\
 			(uint64_t) PERF_COUNT_HW_CACHE_##name		\
-			* (uint64_t) PERF_COUNT_HW_CACHE_OP_##op	\
-			* (uint64_t) PERF_COUNT_HW_CACHE_RESULT_##result, \
+			| ((uint64_t) PERF_COUNT_HW_CACHE_OP_##op << 8)	\
+			| ((uint64_t) PERF_COUNT_HW_CACHE_RESULT_##result << 16), \
 		},							\
 	}
 
