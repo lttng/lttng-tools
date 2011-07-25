@@ -4,8 +4,8 @@
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
+# as published by the Free Software Foundation; only version 2
+# of the License.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,37 +17,14 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 
-TEST_DIR=$(dirname $0)
-
-failed=0
-num_test=1
-
-function run() {
-	printf "%d) Running test $@\n" $num_test
-	echo "=================================="
-
-	# Running test
-	./$@
-	if [ $? -ne 0 ]; then
-		let failed=$failed+1
-		printf "\nTest $@ FAILED\n\n"
-	else
-		printf "\nTest $@ PASSED\n\n"
-	fi
-
-	let num_test=$num_test+1
-}
-
 #### ADD TESTS HERE ####
+
+for bin in test_sessions;
+do
+	./$bin
+done
 
 #### END TESTS HERE ####
 
-echo "--------------------------"
-if [ $failed -eq 0 ]; then
-	echo "All passed!"
-else
-	echo "$failed tests failed"
-fi
-echo "--------------------------"
-
+echo ""
 exit 0

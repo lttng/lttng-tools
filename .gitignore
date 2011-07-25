@@ -27,3 +27,5 @@ tags
 ltt-sessiond/ltt-sessiond
 lttng/lttng
 ltt-kconsumerd/ltt-kconsumerd
+
+tests/test_sessions
