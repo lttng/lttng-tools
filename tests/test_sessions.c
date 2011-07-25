@@ -26,6 +26,7 @@
 #include <time.h>
 
 #include "ltt-sessiond/session.h"
+#include "utils.h"
 
 #define SESSION1 "test1"
 
@@ -259,7 +260,7 @@ int main(int argc, char **argv)
 	if (ret < 0) {
 		return -1;
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	printf("Validating created session %s: ", SESSION1);
 	tmp = find_session_by_name(SESSION1);
@@ -274,21 +275,21 @@ int main(int argc, char **argv)
 	lock_session(tmp);
 	unlock_session(tmp);
 
-	printf("Success\n");
+	PRINT_OK();
 
 	printf("Destroy 1 session %s: ", SESSION1);
 	ret = destroy_one_session(SESSION1);
 	if (ret < 0) {
 		return -1;
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	printf("Two session with same name: ");
 	ret = two_session_same_name();
 	if (ret < 0) {
 		return -1;
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	empty_session_list();
 
@@ -297,14 +298,14 @@ int main(int argc, char **argv)
 	if (ret < 0) {
 		return -1;
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	printf("Fuzzing destroy_session argument: ");
 	ret = fuzzing_destroy_args();
 	if (ret < 0) {
 		return -1;
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	printf("Creating %d sessions: ", MAX_SESSIONS);
 	for (i = 0; i < MAX_SESSIONS; i++) {
@@ -316,7 +317,7 @@ int main(int argc, char **argv)
 		}
 		free(tmp_name);
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	printf("Destroying %d sessions: ", MAX_SESSIONS);
 	for (i = 0; i < MAX_SESSIONS; i++) {
@@ -328,7 +329,7 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	printf("Success\n");
+	PRINT_OK();
 
 	/* Session list must be 0 */
 	assert(!session_list->count);

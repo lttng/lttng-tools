@@ -19,12 +19,20 @@
 
 #### ADD TESTS HERE ####
 
-for bin in test_sessions;
-do
-	./$bin
-done
+test_suite=( test_sessions test_kernel_data_trace )
 
 #### END TESTS HERE ####
+
+for bin in ${test_suite[@]};
+do
+	./$bin
+	# Test must return 0 to pass.
+	if [ $? -ne 0 ]; then
+		echo -e '\e[1;31mFAIL\e[0m'
+		echo ""
+		exit 1
+	fi
+done
 
 echo ""
 exit 0

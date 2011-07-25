@@ -29,3 +29,4 @@ lttng/lttng
 ltt-kconsumerd/ltt-kconsumerd
 
 tests/test_sessions
+tests/test_kernel_data_trace
