@@ -209,6 +209,14 @@ static int disconnect_sessiond(void)
 }
 
 /*
+ * Reset the session message structure.
+ */
+static void reset_session_msg(void)
+{
+	memset(&lsm, 0, sizeof(struct lttcomm_session_msg));
+}
+
+/*
  *  ask_sessiond
  *
  *  Ask the session daemon a specific command and put the data into buf.
@@ -266,6 +274,7 @@ static int ask_sessiond(enum lttcomm_sessiond_command lct, void **buf)
 
 end:
 	disconnect_sessiond();
+	reset_session_msg();
 	return ret;
 }
 
