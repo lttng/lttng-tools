@@ -51,13 +51,6 @@
 #include "lttng-kconsumerd.h"
 #include "utils.h"
 
-/*
- * TODO:
- * teardown: signal SIGTERM handler -> write into pipe. Threads waits
- * with epoll on pipe and on other pipes/sockets for commands.  Main
- * simply waits on pthread join.
- */
-
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
 const char default_tracing_group[] = LTTNG_DEFAULT_TRACING_GROUP;
@@ -67,6 +60,7 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 /* Variables */
 int opt_verbose;    /* Not static for lttngerr.h */
 int opt_quiet;      /* Not static for lttngerr.h */
+
 const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
@@ -111,7 +105,8 @@ static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid 
  * mutex lock. The lock MUST be taken if you iterate over the list. The lock
  * MUST NOT be taken if you call a public function in session.c.
  *
- * The lock is nested inside the structure: session_list_ptr->lock.
+ * The lock is nested inside the structure: session_list_ptr->lock. Please use
+ * lock_session_list and unlock_session_list for lock acquisition.
  */
 static struct ltt_session_list *session_list_ptr;
 
@@ -135,10 +130,8 @@ error:
 }
 
 /*
- *  teardown_kernel_session
- *
- *  Complete teardown of a kernel session. This free all data structure related
- *  to a kernel session and update counter.
+ * Complete teardown of a kernel session. This free all data structure related
+ * to a kernel session and update counter.
  */
 static void teardown_kernel_session(struct ltt_session *session)
 {
@@ -151,7 +144,7 @@ static void teardown_kernel_session(struct ltt_session *session)
 }
 
 /*
- *  Cleanup the daemon
+ * Cleanup the daemon
  */
 static void cleanup()
 {
@@ -204,11 +197,9 @@ static void cleanup()
 }
 
 /*
- *  send_unix_sock
+ * Send data on a unix socket using the liblttsessiondcomm API.
  *
- *  Send data on a unix socket using the liblttsessiondcomm API.
- *
- *  Return lttcomm error code.
+ * Return lttcomm error code.
  */
 static int send_unix_sock(int sock, void *buf, size_t len)
 {
@@ -221,9 +212,7 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 }
 
 /*
- *  clean_command_ctx
- *
- *  Free memory of a command context structure.
+ * Free memory of a command context structure.
  */
 static void clean_command_ctx(struct command_ctx **cmd_ctx)
 {
@@ -241,9 +230,7 @@ static void clean_command_ctx(struct command_ctx **cmd_ctx)
 }
 
 /*
- *  send_kconsumerd_channel_fds
- *
- *  Send all stream fds of kernel channel to the consumer.
+ * Send all stream fds of kernel channel to the consumer.
  */
 static int send_kconsumerd_channel_fds(int sock, struct ltt_kernel_channel *channel)
 {
@@ -295,9 +282,7 @@ error:
 }
 
 /*
- *  send_kconsumerd_fds
- *
- *  Send all stream fds of the kernel session to the consumer.
+ * Send all stream fds of the kernel session to the consumer.
  */
 static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 {
@@ -351,13 +336,10 @@ error:
 
 #ifdef DISABLED
 /*
- * 	ust_connect_app
+ * Return a socket connected to the libust communication socket of the
+ * application identified by the pid.
  *
- * 	Return a socket connected to the libust communication socket
- * 	of the application identified by the pid.
- *
- * 	If the pid is not found in the traceable list,
- * 	return -1 to indicate error.
+ * If the pid is not found in the traceable list, return -1 to indicate error.
  */
 static int ust_connect_app(pid_t pid)
 {
@@ -383,13 +365,11 @@ static int ust_connect_app(pid_t pid)
 #endif	/* DISABLED */
 
 /*
- * 	notify_apps
+ * Notify apps by writing 42 to a named pipe using name. Every applications
+ * waiting for a ltt-sessiond will be notified and re-register automatically to
+ * the session daemon.
  *
- *  Notify apps by writing 42 to a named pipe using name.
- * 	Every applications waiting for a ltt-sessiond will be notified
- * 	and re-register automatically to the session daemon.
- *
- * 	Return open or write error value.
+ * Return open or write error value.
  */
 static int notify_apps(const char *name)
 {
@@ -415,13 +395,11 @@ error:
 }
 
 /*
- *  setup_lttng_msg
+ * Setup the outgoing data buffer for the response (llm) by allocating the
+ * right amount of memory and copying the original information from the lsm
+ * structure.
  *
- *  Setup the outgoing data buffer for the response (llm) by allocating the
- *  right amount of memory and copying the original information from the lsm
- *  structure.
- *
- *  Return total size of the buffer pointed by buf.
+ * Return total size of the buffer pointed by buf.
  */
 static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 {
@@ -450,10 +428,8 @@ error:
 }
 
 /*
- *  update_kernel_pollfd
- *
- *  Update the kernel pollfd set of all channel fd available over
- *  all tracing session. Add the wakeup pipe at the end of the set.
+ * Update the kernel pollfd set of all channel fd available over all tracing
+ * session. Add the wakeup pipe at the end of the set.
  */
 static int update_kernel_pollfd(void)
 {
@@ -523,12 +499,10 @@ error:
 }
 
 /*
- *  update_kernel_stream
+ * Find the channel fd from 'fd' over all tracing session.  When found, check
+ * for new channel stream and send those stream fds to the kernel consumer.
  *
- *  Find the channel fd from 'fd' over all tracing session.  When found, check
- *  for new channel stream and send those stream fds to the kernel consumer.
- *
- *  Useful for CPU hotplug feature.
+ * Useful for CPU hotplug feature.
  */
 static int update_kernel_stream(int fd)
 {
@@ -577,12 +551,10 @@ end:
 }
 
 /*
- *  thread_manage_kernel
+ * This thread manage event coming from the kernel.
  *
- *  This thread manage event coming from the kernel.
- *
- *  Features supported in this thread:
- *   -) CPU Hotplug
+ * Features supported in this thread:
+ *    -) CPU Hotplug
  */
 static void *thread_manage_kernel(void *data)
 {
@@ -663,10 +635,7 @@ error:
 }
 
 /*
- *  thread_manage_kconsumerd
- *
- *  This thread manage the kconsumerd error sent
- *  back to the session daemon.
+ * This thread manage the kconsumerd error sent back to the session daemon.
  */
 static void *thread_manage_kconsumerd(void *data)
 {
@@ -759,8 +728,6 @@ error:
 }
 
 /*
- * 	thread_manage_apps
- *
  * 	This thread manage the application socket communication
  */
 static void *thread_manage_apps(void *data)
@@ -858,10 +825,8 @@ error:
 }
 
 /*
- *  spawn_kconsumerd_thread
- *
- *  Start the thread_manage_kconsumerd. This must be done after a kconsumerd
- *  exec or it will fails.
+ * Start the thread_manage_kconsumerd. This must be done after a kconsumerd
+ * exec or it will fails.
  */
 static int spawn_kconsumerd_thread(void)
 {
@@ -892,15 +857,9 @@ error:
 }
 
 /*
- *  spawn_kconsumerd
+ * Fork and exec a kernel consumer daemon (kconsumerd).
  *
- *  Fork and exec a kernel consumer daemon (kconsumerd).
- *
- *  NOTE: It is very important to fork a kconsumerd BEFORE opening any kernel
- *  file descriptor using the libkernelctl or kernel-ctl functions. So, a
- *  kernel consumer MUST only be spawned before creating a kernel session.
- *
- *  Return pid if successful else -1.
+ * Return pid if successful else -1.
  */
 static pid_t spawn_kconsumerd(void)
 {
@@ -939,9 +898,7 @@ error:
 }
 
 /*
- *  start_kconsumerd
- *
- *  Spawn the kconsumerd daemon and session daemon thread.
+ * Spawn the kconsumerd daemon and session daemon thread.
  */
 static int start_kconsumerd(void)
 {
@@ -982,7 +939,7 @@ error:
 }
 
 /*
- *  modprobe_kernel_modules
+ * modprobe_kernel_modules
  */
 static int modprobe_kernel_modules(void)
 {
@@ -1009,7 +966,7 @@ error:
 }
 
 /*
- *  mount_debugfs
+ * mount_debugfs
  */
 static int mount_debugfs(char *path)
 {
@@ -1034,9 +991,7 @@ error:
 }
 
 /*
- *  init_kernel_tracer
- *
- *  Setup necessary data for kernel tracer action.
+ * Setup necessary data for kernel tracer action.
  */
 static void init_kernel_tracer(void)
 {
@@ -1117,10 +1072,8 @@ error:
 }
 
 /*
- *  start_kernel_trace
- *
- *  Start tracing by creating trace directory and sending FDs to the kernel
- *  consumer.
+ * Start tracing by creating trace directory and sending FDs to the kernel
+ * consumer.
  */
 static int start_kernel_trace(struct ltt_kernel_session *session)
 {
@@ -1158,9 +1111,7 @@ static int notify_kernel_pollfd(void)
 }
 
 /*
- *  init_default_channel
- *
- *  Allocate a channel structure and fill it.
+ * Allocate a channel structure and fill it.
  */
 static struct lttng_channel *init_default_channel(void)
 {
@@ -1189,9 +1140,7 @@ error:
 }
 
 /*
- *  create_kernel_session
- *
- *  Create a kernel tracer session then create the default channel.
+ * Create a kernel tracer session then create the default channel.
  */
 static int create_kernel_session(struct ltt_session *session)
 {
@@ -1242,11 +1191,9 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 }
 
 /*
- * 	process_client_msg
- *
- *  Process the command requested by the lttng client within the command
- *  context structure.  This function make sure that the return structure (llm)
- *  is set and ready for transmission before returning.
+ * Process the command requested by the lttng client within the command
+ * context structure. This function make sure that the return structure (llm)
+ * is set and ready for transmission before returning.
  *
  * 	Return any error encountered or 0 for success.
  */
@@ -2043,10 +1990,8 @@ setup_error:
 }
 
 /*
- * 	thread_manage_clients
- *
- * 	This thread manage all clients request using the unix
- * 	client socket for communication.
+ * This thread manage all clients request using the unix client socket for
+ * communication.
  */
 static void *thread_manage_clients(void *data)
 {
@@ -2263,9 +2208,7 @@ static int parse_args(int argc, char **argv)
 }
 
 /*
- * 	init_daemon_socket
- *
- * 	Creates the two needed socket by the daemon.
+ * Creates the two needed socket by the daemon.
  * 	    apps_sock - The communication socket for all UST apps.
  * 	    client_sock - The communication of the cli tool (lttng).
  */
@@ -2314,10 +2257,7 @@ end:
 }
 
 /*
- * 	check_existing_daemon
- *
- * 	Check if the global socket is available.
- *  If yes, error is returned.
+ * Check if the global socket is available.  If yes, error is returned.
  */
 static int check_existing_daemon()
 {
@@ -2332,12 +2272,10 @@ static int check_existing_daemon()
 }
 
 /*
- *  set_permissions
+ * Set the tracing group gid onto the client socket.
  *
- *  Set the tracing group gid onto the client socket.
- *
- *  Race window between mkdir and chown is OK because we are going from
- *  more permissive (root.root) to les permissive (root.tracing).
+ * Race window between mkdir and chown is OK because we are going from more
+ * permissive (root.root) to les permissive (root.tracing).
  */
 static int set_permissions(void)
 {
@@ -2388,9 +2326,7 @@ end:
 }
 
 /*
- *  create_kernel_poll_pipe
- *
- *  Create the pipe used to wake up the kernel thread.
+ * Create the pipe used to wake up the kernel thread.
  */
 static int create_kernel_poll_pipe(void)
 {
@@ -2398,10 +2334,7 @@ static int create_kernel_poll_pipe(void)
 }
 
 /*
- *  create_lttng_rundir
- *
- *  Create the lttng run directory needed for all
- *  global sockets and pipe.
+ * Create the lttng run directory needed for all global sockets and pipe.
  */
 static int create_lttng_rundir(void)
 {
@@ -2422,10 +2355,8 @@ error:
 }
 
 /*
- *  set_kconsumerd_sockets
- *
- *  Setup sockets and directory needed by the kconsumerd
- *  communication with the session daemon.
+ * Setup sockets and directory needed by the kconsumerd communication with the
+ * session daemon.
  */
 static int set_kconsumerd_sockets(void)
 {
@@ -2469,9 +2400,7 @@ error:
 }
 
 /*
- *  sighandler
- *
- *  Signal handler for the daemon
+ * Signal handler for the daemon
  */
 static void sighandler(int sig)
 {
@@ -2495,9 +2424,7 @@ static void sighandler(int sig)
 }
 
 /*
- *  set_signal_handler
- *
- *  Setup signal handler for :
+ * Setup signal handler for :
  *		SIGINT, SIGTERM, SIGPIPE
  */
 static int set_signal_handler(void)
@@ -2535,10 +2462,8 @@ static int set_signal_handler(void)
 }
 
 /*
- *  set_ulimit
- *
- *  Set open files limit to unlimited. This daemon can open a large number of
- *  file descriptors in order to consumer multiple kernel traces.
+ * Set open files limit to unlimited. This daemon can open a large number of
+ * file descriptors in order to consumer multiple kernel traces.
  */
 static void set_ulimit(void)
 {
