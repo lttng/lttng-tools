@@ -65,17 +65,23 @@ static void usage(FILE *ofp)
 static int create_session()
 {
 	int ret, have_name = 0;
-	char name[NAME_MAX];
+	char datetime[16];
 	char *session_name, *traces_path = NULL, *alloc_path = NULL;
 	time_t rawtime;
 	struct tm *timeinfo;
 
+	/* Get date and time for automatic session name/path */
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+
 	/* Auto session name creation */
 	if (opt_session_name == NULL) {
-		time(&rawtime);
-		timeinfo = localtime(&rawtime);
-		strftime(name, sizeof(name), "auto-%Y%m%d-%H%M%S", timeinfo);
-		session_name = name;
+		ret = asprintf(&session_name, "auto-%s", datetime);
+		if (ret < 0) {
+			perror("asprintf session name");
+			goto error;
+		}
 		DBG("Auto session name set to %s", session_name);
 	} else {
 		session_name = opt_session_name;
@@ -92,7 +98,8 @@ static int create_session()
 			goto error;
 		}
 
-		ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME, alloc_path);
+		ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME
+				"/%s-%s", alloc_path, session_name, datetime);
 		if (ret < 0) {
 			perror("asprintf trace dir name");
 			goto error;
@@ -117,7 +124,7 @@ static int create_session()
 
 	MSG("Session %s created.", session_name);
 	if (have_name) {
-		MSG("Traces will be written in %s/%s-<date>-<time>" , traces_path, session_name);
+		MSG("Traces will be written in %s" , traces_path);
 	} else {
 		MSG("Traces will be written in %s/%s", traces_path, session_name);
 	}
