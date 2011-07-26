@@ -156,10 +156,10 @@ struct ltt_session *find_session_by_name(char *name)
 int destroy_session(char *name)
 {
 	int found = -1;
-	struct ltt_session *iter;
+	struct ltt_session *iter, *tmp;
 
 	lock_session_list();
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
+	cds_list_for_each_entry_safe(iter, tmp, &ltt_session_list.head, list) {
 		if (strcmp(iter->name, name) == 0) {
 			DBG("Destroying session %s", iter->name);
 			del_session_list(iter);

@@ -150,7 +150,7 @@ static void cleanup()
 {
 	int ret;
 	char *cmd;
-	struct ltt_session *sess;
+	struct ltt_session *sess, *stmp;
 
 	DBG("Cleaning up");
 
@@ -184,7 +184,7 @@ static void cleanup()
 		pthread_mutex_destroy(&session_list_ptr->lock);
 
 		/* Cleanup ALL session */
-		cds_list_for_each_entry(sess, &session_list_ptr->head, list) {
+		cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
 			teardown_kernel_session(sess);
 			// TODO complete session cleanup (including UST)
 		}

@@ -311,8 +311,8 @@ void trace_destroy_kernel_event(struct ltt_kernel_event *event)
 
 void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 {
-	struct ltt_kernel_stream *stream;
-	struct ltt_kernel_event *event;
+	struct ltt_kernel_stream *stream, *stmp;
+	struct ltt_kernel_event *event, *etmp;
 
 	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
@@ -322,12 +322,12 @@ void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 	free(channel->channel);
 
 	/* For each stream in the channel list */
-	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
+	cds_list_for_each_entry_safe(stream, stmp, &channel->stream_list.head, list) {
 		trace_destroy_kernel_stream(stream);
 	}
 
 	/* For each event in the channel list */
-	cds_list_for_each_entry(event, &channel->events_list.head, list) {
+	cds_list_for_each_entry_safe(event, etmp, &channel->events_list.head, list) {
 		trace_destroy_kernel_event(event);
 	}
 
@@ -349,7 +349,7 @@ void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
 
 void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 {
-	struct ltt_kernel_channel *channel;
+	struct ltt_kernel_channel *channel, *ctmp;
 
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */
@@ -363,7 +363,7 @@ void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 		trace_destroy_kernel_metadata(session->metadata);
 	}
 
-	cds_list_for_each_entry(channel, &session->channel_list.head, list) {
+	cds_list_for_each_entry_safe(channel, ctmp, &session->channel_list.head, list) {
 		trace_destroy_kernel_channel(channel);
 	}
 
