@@ -906,6 +906,7 @@ static pid_t spawn_kconsumerd(void)
 {
 	int ret;
 	pid_t pid;
+	const char *verbosity;
 
 	DBG("Spawning kconsumerd");
 
@@ -914,7 +915,12 @@ static pid_t spawn_kconsumerd(void)
 		/*
 		 * Exec kconsumerd.
 		 */
-		execl(INSTALL_BIN_PATH "/ltt-kconsumerd", "ltt-kconsumerd", "--quiet", NULL);
+		if (opt_verbose > 1) {
+			verbosity = "--verbose";
+		} else {
+			verbosity = "--quiet";
+		}
+		execl(INSTALL_BIN_PATH "/ltt-kconsumerd", "ltt-kconsumerd", verbosity, NULL);
 		if (errno != 0) {
 			perror("kernel start consumer exec");
 		}
@@ -2243,7 +2249,8 @@ static int parse_args(int argc, char **argv)
 			opt_quiet = 1;
 			break;
 		case 'v':
-			opt_verbose = 1;
+			/* Verbose level can increase using multiple -v */
+			opt_verbose += 1;
 			break;
 		default:
 			/* Unknown option or other error.
