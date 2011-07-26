@@ -59,17 +59,10 @@ static void usage(FILE *ofp)
 static int set_session(void)
 {
 	int ret = CMD_SUCCESS;
-	char *path;
 
-	path = config_get_default_path();
-	if (path == NULL) {
-		ret = -1;
-		goto error;
-	}
-
-	ret = config_add_session_name(path, opt_session_name);
+	ret = config_init(opt_session_name);
 	if (ret < 0) {
-		ERR("Unable to add session name to config");
+		ERR("Unable to set session name");
 		ret = CMD_ERROR;
 		goto error;
 	}
