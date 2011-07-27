@@ -104,7 +104,7 @@ static void usage(FILE *ofp)
 static int parse_probe_opts(struct lttng_event *ev, char *opt)
 {
 	int ret;
-	uint64_t hex;
+	char s_hex[19];
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
 	if (opt == NULL) {
@@ -113,29 +113,29 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	}
 
 	/* Check for symbol+offset */
-	ret = sscanf(opt, "%[^'+']+%" SCNu64, name, &hex);
+	ret = sscanf(opt, "%[^'+']+%s", name, s_hex);
 	if (ret == 2) {
 		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
 		DBG("probe symbol %s", ev->attr.probe.symbol_name);
-		if (hex == 0) {
-			ERR("Invalid probe offset %" PRIu64, hex);
+		if (strlen(s_hex) == 0) {
+			ERR("Invalid probe offset %s", s_hex);
 			ret = -1;
 			goto error;
 		}
-		ev->attr.probe.offset = hex;
+		ev->attr.probe.offset = strtoul(s_hex, NULL, 0);
 		DBG("probe offset %" PRIu64, ev->attr.probe.offset);
 		goto error;
 	}
 
 	/* Check for address */
-	ret = sscanf(opt, "%" SCNu64, &hex);
+	ret = sscanf(opt, "%s", s_hex);
 	if (ret > 0) {
-		if (hex == 0) {
-			ERR("Invalid probe address %" PRIu64, hex);
+		if (strlen(s_hex) == 0) {
+			ERR("Invalid probe address %s", s_hex);
 			ret = -1;
 			goto error;
 		}
-		ev->attr.probe.addr = hex;
+		ev->attr.probe.addr = strtoul(s_hex, NULL, 0);
 		DBG("probe addr %" PRIu64, ev->attr.probe.addr);
 		goto error;
 	}
@@ -224,8 +224,6 @@ static int enable_events(void)
 			ret = lttng_enable_event(&dom, &ev, channel_name);
 			if (ret == 0) {
 				MSG("Kernel event %s created in channel %s", event_name, channel_name);
-			} else if (ret < 0) {
-				ERR("Unable to find event %s", ev.name);
 			}
 		} else if (opt_userspace) {		/* User-space tracer action */
 			/*
