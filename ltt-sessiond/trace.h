@@ -56,6 +56,7 @@ struct ltt_kernel_channel {
 	int enabled;
 	char *pathname;
 	unsigned int stream_count;
+	unsigned int event_count;
 	struct lttng_kernel_context *ctx;
 	struct lttng_channel *channel;
 	struct ltt_kernel_event_list events_list;

@@ -138,6 +138,7 @@ struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *cha
 
 	lkc->fd = 0;
 	lkc->stream_count = 0;
+	lkc->event_count = 0;
 	lkc->enabled = 1;
 	lkc->ctx = NULL;
 	/* Init linked list */

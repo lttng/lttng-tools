@@ -209,6 +209,8 @@ int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *chann
 
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
+	channel->event_count++;
+
 	DBG("Event %s created (fd: %d)", ev->name, event->fd);
 
 	return 0;
