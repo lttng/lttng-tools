@@ -1,3 +1,11 @@
+2011-07-23 lttng-tools 2.0-pre4
+	* Fix kprobe attributes
+	* Fix channel creation when not found at event enable
+	* Add safe list iteration
+	* Add two tests into the git tree
+	* Kernel consumer can be put in debug mode with -vv
+	* Trace path is now created on the client side
+
 2011-07-23 lttng-tools 2.0-pre3
 	* Fix perf hw cache counter config values
 
