@@ -1113,7 +1113,7 @@ static int notify_kernel_pollfd(void)
 /*
  * Allocate a channel structure and fill it.
  */
-static struct lttng_channel *init_default_channel(void)
+static struct lttng_channel *init_default_channel(char *name)
 {
 	struct lttng_channel *chan;
 
@@ -1123,7 +1123,7 @@ static struct lttng_channel *init_default_channel(void)
 		goto error;
 	}
 
-	if (snprintf(chan->name, NAME_MAX, DEFAULT_CHANNEL_NAME) < 0) {
+	if (snprintf(chan->name, NAME_MAX, "%s", name) < 0) {
 		perror("snprintf defautl channel name");
 		return NULL;
 	}
@@ -1526,9 +1526,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			kchan = get_kernel_channel_by_name(channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
-				DBG("Creating default channel");
+				DBG("Channel not found. Creating channel %s", channel_name);
 
-				chan = init_default_channel();
+				chan = init_default_channel(channel_name);
 				if (chan == NULL) {
 					ret = LTTCOMM_FATAL;
 					goto error;
@@ -1590,9 +1590,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			kchan = get_kernel_channel_by_name(channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
-				DBG("Creating default channel");
+				DBG("Channel not found. Creating channel %s", channel_name);
 
-				chan = init_default_channel();
+				chan = init_default_channel(channel_name);
 				if (chan == NULL) {
 					ret = LTTCOMM_FATAL;
 					goto error;
