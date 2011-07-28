@@ -129,9 +129,7 @@ static int create_session()
 	}
 
 	MSG("Session %s created.", session_name);
-	if (have_name) {
-		MSG("Traces will be written in %s" , traces_path);
-	}
+	MSG("Traces will be written in %s" , traces_path);
 
 	ret = CMD_SUCCESS;
 
