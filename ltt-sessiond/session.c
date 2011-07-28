@@ -132,7 +132,7 @@ struct ltt_session *find_session_by_name(char *name)
 
 	lock_session_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (strncmp(iter->name, name, strlen(name)) == 0) {
+		if (strncmp(iter->name, name, NAME_MAX) == 0) {
 			found = 1;
 			break;
 		}
