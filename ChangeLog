@@ -1,3 +1,8 @@
+2011-07-23 lttng-tools 2.0-pre5
+	* Fix Add context command
+	* Fix auto session path creation
+	* Fix bad strncmp at channel creation
+
 2011-07-23 lttng-tools 2.0-pre4
 	* Fix kprobe attributes
 	* Fix channel creation when not found at event enable
