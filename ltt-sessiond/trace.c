@@ -185,6 +185,14 @@ struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 				ev->attr.probe.symbol_name, LTTNG_SYM_NAME_LEN);
 		break;
 	case LTTNG_EVENT_FUNCTION:
+		attr->instrumentation = LTTNG_KERNEL_KRETPROBE;
+		attr->u.kretprobe.addr = ev->attr.probe.addr;
+		attr->u.kretprobe.offset = ev->attr.probe.offset;
+		attr->u.kretprobe.offset = ev->attr.probe.offset;
+		strncpy(attr->u.kretprobe.symbol_name,
+				ev->attr.probe.symbol_name, LTTNG_SYM_NAME_LEN);
+		break;
+	case LTTNG_EVENT_FUNCTION_ENTRY:
 		attr->instrumentation = LTTNG_KERNEL_FUNCTION;
 		strncpy(attr->u.ftrace.symbol_name,
 				ev->attr.ftrace.symbol_name, LTTNG_SYM_NAME_LEN);

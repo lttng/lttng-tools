@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <ctype.h>
 
 #include "../cmd.h"
 #include "../conf.h"
@@ -40,7 +41,8 @@ static int opt_userspace;
 static int opt_enable_all;
 static pid_t opt_pid;
 static char *opt_probe;
-static char *opt_function_symbol;
+static char *opt_function;
+static char *opt_function_entry_symbol;
 static char *opt_channel_name;
 
 enum {
@@ -50,6 +52,7 @@ enum {
 	OPT_MARKER,
 	OPT_PROBE,
 	OPT_FUNCTION,
+	OPT_FUNCTION_ENTRY,
 };
 
 static struct poptOption long_options[] = {
@@ -66,6 +69,7 @@ static struct poptOption long_options[] = {
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
 	{"probe",         0,   POPT_ARG_STRING, 0, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, 0, OPT_FUNCTION, 0, 0},
+	{"function:entry", 0,   POPT_ARG_STRING, 0, OPT_FUNCTION_ENTRY, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -87,11 +91,16 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
-	fprintf(ofp, "    --probe [addr | symbol+offset]\n");
+	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
-	fprintf(ofp, "    --function SYMBOL      Function tracer event\n");
+	fprintf(ofp, "    --function [addr | symbol | symbol+offset]\n");
+	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
+	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
+	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
+	fprintf(ofp, "    --function:entry symbol\n");
+	fprintf(ofp, "                           Function tracer event\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
 }
@@ -109,7 +118,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 
 	if (opt == NULL) {
 		ret = -1;
-		goto error;
+		goto end;
 	}
 
 	/* Check for symbol+offset */
@@ -120,12 +129,25 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 		if (strlen(s_hex) == 0) {
 			ERR("Invalid probe offset %s", s_hex);
 			ret = -1;
-			goto error;
+			goto end;
 		}
 		ev->attr.probe.offset = strtoul(s_hex, NULL, 0);
 		DBG("probe offset %" PRIu64, ev->attr.probe.offset);
 		ev->attr.probe.addr = 0;
-		goto error;
+		goto end;
+	}
+
+	/* Check for symbol */
+	if (isalpha(name[0])) {
+		ret = sscanf(opt, "%s", name);
+		if (ret == 1) {
+			strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
+			DBG("probe symbol %s", ev->attr.probe.symbol_name);
+			ev->attr.probe.offset = 0;
+			DBG("probe offset %" PRIu64, ev->attr.probe.offset);
+			ev->attr.probe.addr = 0;
+			goto end;
+		}
 	}
 
 	/* Check for address */
@@ -134,19 +156,19 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 		if (strlen(s_hex) == 0) {
 			ERR("Invalid probe address %s", s_hex);
 			ret = -1;
-			goto error;
+			goto end;
 		}
 		ev->attr.probe.addr = strtoul(s_hex, NULL, 0);
 		DBG("probe addr %" PRIu64, ev->attr.probe.addr);
 		ev->attr.probe.offset = 0;
 		memset(ev->attr.probe.symbol_name, 0, LTTNG_SYMBOL_NAME_LEN);
-		goto error;
+		goto end;
 	}
 
 	/* No match */
 	ret = -1;
 
-error:
+end:
 	return ret;
 }
 
@@ -222,7 +244,17 @@ static int enable_events(void)
 				}
 				break;
 			case LTTNG_EVENT_FUNCTION:
-				strncpy(ev.attr.ftrace.symbol_name, opt_function_symbol, LTTNG_SYMBOL_NAME_LEN);
+				ret = parse_probe_opts(&ev, opt_function);
+				if (ret < 0) {
+					ERR("Unable to parse function probe options");
+					ret = 0;
+					goto error;
+				}
+				break;
+			case LTTNG_EVENT_FUNCTION_ENTRY:
+				strncpy(ev.attr.ftrace.symbol_name,
+					opt_function_entry_symbol,
+					LTTNG_SYMBOL_NAME_LEN);
 				break;
 			default:
 				ret = CMD_NOT_IMPLEMENTED;
@@ -296,7 +328,11 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
-			opt_function_symbol = poptGetOptArg(pc);
+			opt_function = poptGetOptArg(pc);
+			break;
+		case OPT_FUNCTION_ENTRY:
+			opt_event_type = LTTNG_EVENT_FUNCTION_ENTRY;
+			opt_function_entry_symbol = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);

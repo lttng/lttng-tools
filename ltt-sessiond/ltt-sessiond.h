@@ -36,6 +36,7 @@ const char *kernel_modules_list[] = {
 	"ltt-ring-buffer-metadata-mmap-client",
 	"lttng-ftrace",
 	"lttng-kprobes",
+	"lttng-kretprobes",
 	"lttng-probe-block",
 	"lttng-probe-irq",
 	"lttng-probe-kvm",
