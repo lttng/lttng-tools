@@ -98,8 +98,14 @@ static int create_session()
 			goto error;
 		}
 
-		ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME
-				"/%s-%s", alloc_path, session_name, datetime);
+		if (have_name) {
+			ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME
+					"/%s-%s", alloc_path, session_name, datetime);
+		} else {
+			ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME
+					"/%s", alloc_path, session_name);
+		}
+
 		if (ret < 0) {
 			perror("asprintf trace dir name");
 			goto error;
@@ -125,8 +131,6 @@ static int create_session()
 	MSG("Session %s created.", session_name);
 	if (have_name) {
 		MSG("Traces will be written in %s" , traces_path);
-	} else {
-		MSG("Traces will be written in %s/%s", traces_path, session_name);
 	}
 
 	ret = CMD_SUCCESS;
