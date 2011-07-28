@@ -1318,7 +1318,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				if (no_event) {
 					ret = kernel_add_channel_context(chan, &ctx);
 					if (ret < 0) {
-						continue;
+						ret = LTTCOMM_KERN_CONTEXT_FAIL;
+						goto error;
 					}
 				} else {
 					event = get_kernel_event_by_name(cmd_ctx->lsm->u.context.event_name, chan);

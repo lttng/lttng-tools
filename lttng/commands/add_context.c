@@ -349,19 +349,19 @@ static int add_context(void)
 	struct ctx_type *type;
 	char *ptr;
 
-	if (set_session_name(opt_session_name) < 0) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
 	/* Iterate over all context type given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
+		/* Set session name for the current command */
+		if (set_session_name(opt_session_name) < 0) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
 		context.ctx = type->opt->ctx_type;
 		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
 			context.u.perf_counter.type = type->opt->u.perf.type;
 			context.u.perf_counter.config = type->opt->u.perf.config;
-			strcpy(context.u.perf_counter.name,
-			       type->opt->symbol);
+			strcpy(context.u.perf_counter.name, type->opt->symbol);
 			/* Replace : and - by _ */
 			while ((ptr = strchr(context.u.perf_counter.name, '-')) != NULL) {
 				*ptr = '_';
@@ -378,6 +378,7 @@ static int add_context(void)
 			ret = lttng_add_context(&dom, &context, opt_event_name,
 					opt_channel_name);
 			if (ret < 0) {
+				fprintf(stderr, "%s: ", type->opt->symbol);
 				goto error;
 			} else {
 				MSG("Kernel context %s added", type->opt->symbol);
