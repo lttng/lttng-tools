@@ -1,4 +1,8 @@
-2011-07-23 lttng-tools 2.0-pre5
+2011-07-29 lttng-tools 2.0-pre6
+	* Fix enable multiple events
+	* Add function entry feature
+
+2011-07-28 lttng-tools 2.0-pre5
 	* Fix Add context command
 	* Fix auto session path creation
 	* Fix bad strncmp at channel creation
