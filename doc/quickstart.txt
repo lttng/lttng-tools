@@ -42,7 +42,7 @@ it for you if those modules can be found on your system.
 Again, you can then start the session daemon (ltt-sessiond) by hand or the
 lttng command line tool will do it for you.
 
-List possible kernel events:
+List available kernel events:
 
 # lttng list -k
 
