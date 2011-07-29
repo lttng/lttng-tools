@@ -162,11 +162,6 @@ static int enable_events(void)
 	struct lttng_event ev;
 	struct lttng_domain dom;
 
-	if (set_session_name(opt_session_name) < 0) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
 	if (opt_channel_name == NULL) {
 		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
 		if (err < 0) {
@@ -183,6 +178,11 @@ static int enable_events(void)
 	}
 
 	if (opt_enable_all) {
+		if (set_session_name(opt_session_name) < 0) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
 		if (opt_kernel) {
 			ret = lttng_enable_event(&dom, NULL, channel_name);
 			if (ret == 0) {
@@ -197,6 +197,11 @@ static int enable_events(void)
 	/* Strip event list */
 	event_name = strtok(opt_event_list, ",");
 	while (event_name != NULL) {
+		if (set_session_name(opt_session_name) < 0) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
 		/* Kernel tracer action */
 		if (opt_kernel) {
 			DBG("Enabling kernel event %s for channel %s",
