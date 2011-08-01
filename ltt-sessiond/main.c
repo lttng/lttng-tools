@@ -1936,12 +1936,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		if (session_list_ptr->count == 0) {
 			ret = LTTCOMM_NO_SESSION;
+			unlock_session_list();
 			goto error;
 		}
 
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) *
 				session_list_ptr->count);
 		if (ret < 0) {
+			unlock_session_list();
 			goto setup_error;
 		}
 
