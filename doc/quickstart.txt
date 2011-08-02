@@ -36,11 +36,11 @@ The next sections explain how to do tracing :)
 Kernel Tracing
 --------------
 
-You have to modprobe the lttng-modules manually or the session daemon will do
-it for you if those modules can be found on your system.
-
-Again, you can then start the session daemon (ltt-sessiond) by hand or the
-lttng command line tool will do it for you.
+You can start the session daemon by invoking the command "ltt-sessiond",
+or let the lttng command line tool do it for you. The session daemon
+loads the LTTng tracer modules for you if those modules can be found on
+your system. If they are not found, the kernel tracing feature will be
+unavailable.
 
 List available kernel events:
 
@@ -136,8 +136,9 @@ you need to use 'ustctl' to control user-space tracing.
 Reading a trace
 --------------
 
-To read your trace, you can use babeltrace which will text dump your the
-trace. Please see http://www.efficios.com/ctf and git tree
+The tool "Babeltrace" can be used to dump your binary trace into a
+human-readable text format. Please see
+http://www.efficios.com/babeltrace and git tree
 http://git.efficios.com/?p=babeltrace.git
 
 # babeltrace -n $HOME/lttng-traces/mysession-<date>-<time> | less
