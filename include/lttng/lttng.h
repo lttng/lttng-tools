@@ -218,7 +218,7 @@ extern int lttng_destroy_session(const char *name);
 extern int lttng_list_sessions(struct lttng_session **sessions);
 
 /*
- * List registered domain(s) of the session.
+ * List registered domain(s) of a session.
  *
  * Return the size of the "lttng_domain" array. Caller must free(3).
  */
@@ -243,11 +243,12 @@ extern int lttng_list_events(struct lttng_domain *domain,
 		struct lttng_event **events);
 
 /*
- * List available kernel tracing events
+ * List available tracepoints of domain.
  *
  * Return the size of the "lttng_event" array. Caller must free(3).
  */
-extern int lttng_list_kernel_events(struct lttng_event **events);
+extern int lttng_list_tracepoints(struct lttng_domain *domain,
+		struct lttng_event **events);
 
 /*
  * Check if a session daemon is alive.
@@ -331,12 +332,5 @@ extern int lttng_disable_event(struct lttng_domain *domain, const char *name,
  */
 extern int lttng_disable_channel(struct lttng_domain *domain,
 		const char *name);
-
-/*
- * List kernel events.
- *
- * Return the size of the allocated event list. Caller must free(3) the data.
- */
-//extern int lttng_list_events(struct lttng_domain *domain, char **event_list);
 
 #endif /* _LTTNG_H */

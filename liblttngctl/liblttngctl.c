@@ -468,16 +468,32 @@ int lttng_disable_channel(struct lttng_domain *domain, const char *name)
 }
 
 /*
- * List all available kernel events.
+ * List all available tracepoints of domain.
  *
- * Return the size (bytes) of the list and set the event_list array.
+ * Return the size (bytes) of the list and set the events array.
  * On error, return negative value.
  */
-int lttng_list_kernel_events(struct lttng_event **events)
+int lttng_list_tracepoints(struct lttng_domain *domain,
+		struct lttng_event **events)
 {
 	int ret;
 
-	ret = ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) events);
+	ret = copy_lttng_domain(domain);
+	if (ret < 0) {
+		return -LTTCOMM_UNKNOWN_DOMAIN;
+	}
+
+	switch (domain->type) {
+		case LTTNG_DOMAIN_KERNEL:
+			ret = ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) events);
+			break;
+		case LTTNG_DOMAIN_UST:
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
+		default:
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
+			break;
+	};
 
 	return ret / sizeof(struct lttng_event);
 }

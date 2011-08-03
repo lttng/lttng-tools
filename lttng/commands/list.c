@@ -113,10 +113,13 @@ static int list_kernel_events(void)
 {
 	int i, size;
 	struct lttng_event *event_list;
+	struct lttng_domain dom;
 
 	DBG("Getting all tracing events");
 
-	size = lttng_list_kernel_events(&event_list);
+	dom.type = LTTNG_DOMAIN_KERNEL;
+
+	size = lttng_list_tracepoints(&dom, &event_list);
 	if (size < 0) {
 		ERR("Unable to list kernel events");
 		return size;
