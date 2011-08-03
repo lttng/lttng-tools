@@ -1941,7 +1941,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	*/
 	case LTTNG_LIST_DOMAINS:
 	{
-		size_t nb_dom;
+		size_t nb_dom = 0;
 
 		if (cmd_ctx->session->kernel_session != NULL) {
 			nb_dom++;
