@@ -41,6 +41,7 @@
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
 #include <lttng/lttng.h>
 
+#include "context.h"
 #include "liblttsessiondcomm.h"
 #include "ltt-sessiond.h"
 #include "lttngerr.h"
@@ -1293,7 +1294,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	 * Check kernel command for kernel session.
 	 */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_KERNEL_ADD_CONTEXT:
+	case LTTNG_ADD_CONTEXT:
 	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
 	case LTTNG_KERNEL_DISABLE_CHANNEL:
 	case LTTNG_KERNEL_DISABLE_EVENT:
@@ -1344,12 +1345,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_KERNEL_ADD_CONTEXT:
+	case LTTNG_ADD_CONTEXT:
 	{
-		int found = 0, no_event = 0;
-		struct ltt_kernel_channel *chan;
-		struct ltt_kernel_event *event;
-		struct lttng_kernel_context ctx;
+		struct lttng_kernel_context kctx;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1357,72 +1355,27 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		/* Check if event name is given */
-		if (strlen(cmd_ctx->lsm->u.context.event_name) == 0) {
-			no_event = 1;
-		}
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			/* Create Kernel context */
+			kctx.ctx = cmd_ctx->lsm->u.context.ctx.ctx;
+			kctx.u.perf_counter.type = cmd_ctx->lsm->u.context.ctx.u.perf_counter.type;
+			kctx.u.perf_counter.config = cmd_ctx->lsm->u.context.ctx.u.perf_counter.config;
+			strncpy(kctx.u.perf_counter.name,
+					cmd_ctx->lsm->u.context.ctx.u.perf_counter.name,
+					LTTNG_SYMBOL_NAME_LEN);
 
-		/* Create Kernel context */
-		ctx.ctx = cmd_ctx->lsm->u.context.ctx.ctx;
-		ctx.u.perf_counter.type = cmd_ctx->lsm->u.context.ctx.u.perf_counter.type;
-		ctx.u.perf_counter.config = cmd_ctx->lsm->u.context.ctx.u.perf_counter.config;
-		strncpy(ctx.u.perf_counter.name,
-				cmd_ctx->lsm->u.context.ctx.u.perf_counter.name,
-				sizeof(ctx.u.perf_counter.name));
-
-		if (strlen(cmd_ctx->lsm->u.context.channel_name) == 0) {
-			/* Go over all channels */
-			DBG("Adding context to all channels");
-			cds_list_for_each_entry(chan,
-					&cmd_ctx->session->kernel_session->channel_list.head, list) {
-				if (no_event) {
-					ret = kernel_add_channel_context(chan, &ctx);
-					if (ret < 0) {
-						ret = LTTCOMM_KERN_CONTEXT_FAIL;
-						goto error;
-					}
-				} else {
-					event = get_kernel_event_by_name(cmd_ctx->lsm->u.context.event_name, chan);
-					if (event != NULL) {
-						ret = kernel_add_event_context(event, &ctx);
-						if (ret < 0) {
-							ret = LTTCOMM_KERN_CONTEXT_FAIL;
-							goto error;
-						}
-						found = 1;
-						break;
-					}
-				}
-			}
-		} else {
-			chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.context.channel_name,
-					cmd_ctx->session->kernel_session);
-			if (chan == NULL) {
-				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			/* Add kernel context to kernel tracer. See context.c */
+			ret = add_kernel_context(cmd_ctx->session->kernel_session, &kctx,
+					cmd_ctx->lsm->u.context.event_name,
+					cmd_ctx->lsm->u.context.channel_name);
+			if (ret != LTTCOMM_OK) {
 				goto error;
 			}
-
-			if (no_event) {
-				ret = kernel_add_channel_context(chan, &ctx);
-				if (ret < 0) {
-					ret = LTTCOMM_KERN_CONTEXT_FAIL;
-					goto error;
-				}
-			} else {
-				event = get_kernel_event_by_name(cmd_ctx->lsm->u.context.event_name, chan);
-				if (event != NULL) {
-					ret = kernel_add_event_context(event, &ctx);
-					if (ret < 0) {
-						ret = LTTCOMM_KERN_CONTEXT_FAIL;
-						goto error;
-					}
-				}
-			}
-		}
-
-		if (!found && !no_event) {
-			ret = LTTCOMM_NO_EVENT;
-			goto error;
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
 		}
 
 		ret = LTTCOMM_OK;

@@ -6,8 +6,10 @@ AM_CFLAGS = -fno-strict-aliasing
 
 bin_PROGRAMS = ltt-sessiond
 
-ltt_sessiond_SOURCES = utils.c trace.c session.c traceable-app.c ust-ctl.c kernel-ctl.c main.c \
-                       utils.h trace.h session.h traceable-app.h ust-ctl.h kernel-ctl.h ltt-sessiond.h
+ltt_sessiond_SOURCES = utils.c trace.c session.c traceable-app.c ust-ctl.c \
+                       kernel-ctl.c context.c main.c \
+                       utils.h trace.h session.h traceable-app.h ust-ctl.h \
+                       context.h kernel-ctl.h ltt-sessiond.h
 
 ltt_sessiond_LDADD = \
 		 $(top_builddir)/liblttsessiondcomm/liblttsessiondcomm.la \

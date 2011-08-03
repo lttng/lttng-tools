@@ -41,7 +41,12 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 	DBG("Adding context to channel %s", chan->channel->name);
 	ret = kernctl_add_context(chan->fd, ctx);
 	if (ret < 0) {
-		perror("add context ioctl");
+		if (errno != EEXIST) {
+			perror("add context ioctl");
+		} else {
+			/* If EEXIST, we just ignore the error */
+			ret = 0;
+		}
 		goto error;
 	}
 

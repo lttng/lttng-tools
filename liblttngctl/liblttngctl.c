@@ -337,30 +337,15 @@ int lttng_add_context(struct lttng_domain *domain,
 		struct lttng_event_context *ctx, const char *event_name,
 		const char *channel_name)
 {
-	int ret = -1;
-
 	copy_string(lsm.u.context.channel_name, channel_name, NAME_MAX);
 	copy_string(lsm.u.context.event_name, event_name, NAME_MAX);
+	copy_lttng_domain(domain);
 
 	if (ctx) {
 		memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
 	}
 
-	if (domain) {
-		switch (domain->type) {
-		case LTTNG_DOMAIN_KERNEL:
-			ret = ask_sessiond(LTTNG_KERNEL_ADD_CONTEXT, NULL);
-			break;
-		case LTTNG_DOMAIN_UST:
-			ret = LTTCOMM_NOT_IMPLEMENTED;
-			break;
-		default:
-			ret = LTTCOMM_UNKNOWN_DOMAIN;
-			break;
-		};
-	}
-
-	return ret;
+	return ask_sessiond(LTTNG_ADD_CONTEXT, NULL);
 }
 
 /*
