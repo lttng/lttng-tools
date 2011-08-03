@@ -1269,7 +1269,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
-	case LTTNG_KERNEL_LIST_EVENTS:
+	case LTTNG_LIST_TRACEPOINTS:
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm->session_name);
@@ -1300,7 +1300,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
 	case LTTNG_KERNEL_ENABLE_CHANNEL:
 	case LTTNG_KERNEL_ENABLE_EVENT:
-	case LTTNG_KERNEL_LIST_EVENTS:
+	case LTTNG_LIST_TRACEPOINTS:
 		/* Kernel tracer check */
 		if (kernel_tracer_fd == 0) {
 			init_kernel_tracer();
@@ -1311,7 +1311,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 
 		/* Need a session for kernel command */
-		if (cmd_ctx->lsm->cmd_type != LTTNG_KERNEL_LIST_EVENTS &&
+		if (cmd_ctx->lsm->cmd_type != LTTNG_LIST_TRACEPOINTS &&
 				cmd_ctx->session->kernel_session == NULL) {
 
 			ret = create_kernel_session(cmd_ctx->session);
@@ -1704,31 +1704,39 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_LIST_EVENTS:
+	case LTTNG_LIST_TRACEPOINTS:
 	{
 		struct lttng_event *events;
-		ssize_t size = 0;
+		ssize_t nb_events = 0;
 
-		DBG("Listing kernel events");
-
-		size = kernel_list_events(kernel_tracer_fd, &events);
-		if (size < 0) {
-			ret = LTTCOMM_KERN_LIST_FAIL;
-			goto error;
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			DBG("Listing kernel events");
+			nb_events = kernel_list_events(kernel_tracer_fd, &events);
+			if (nb_events < 0) {
+				ret = LTTCOMM_KERN_LIST_FAIL;
+				goto error;
+			}
+			break;
+		default:
+			/* TODO: Userspace listing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			break;
 		}
 
 		/*
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event) * size);
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event) * nb_events);
 		if (ret < 0) {
+			free(events);
 			goto setup_error;
 		}
 
 		/* Copy event list into message payload */
 		memcpy(cmd_ctx->llm->payload, events,
-				sizeof(struct lttng_event) * size);
+				sizeof(struct lttng_event) * nb_events);
 
 		free(events);
 

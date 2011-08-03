@@ -499,22 +499,13 @@ int lttng_disable_channel(struct lttng_domain *domain, const char *name)
 int lttng_list_tracepoints(struct lttng_domain *domain,
 		struct lttng_event **events)
 {
-	int ret = -1;
+	int ret;
 
 	copy_lttng_domain(domain);
 
-	if (domain) {
-		switch (domain->type) {
-			case LTTNG_DOMAIN_KERNEL:
-				ret = ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) events);
-				break;
-			case LTTNG_DOMAIN_UST:
-				ret = LTTCOMM_NOT_IMPLEMENTED;
-				break;
-			default:
-				ret = LTTCOMM_UNKNOWN_DOMAIN;
-				break;
-		};
+	ret = ask_sessiond(LTTNG_LIST_TRACEPOINTS, (void **) events);
+	if (ret < 0) {
+		return ret;
 	}
 
 	return ret / sizeof(struct lttng_event);
