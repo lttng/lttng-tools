@@ -53,10 +53,10 @@ enum lttcomm_sessiond_command {
 	/* Session daemon context command */
 	LTTNG_CREATE_SESSION,
 	LTTNG_DESTROY_SESSION,
-	LTTNG_LIST_SESSIONS,
-	LTTNG_LIST_TRACES,
+	LTTNG_LIST_CHANNELS,
+	LTTNG_LIST_DOMAINS,
 	LTTNG_LIST_EVENTS,
-	LTTNG_LIST_TRACEABLE_APPS,
+	LTTNG_LIST_SESSIONS,
 	LTTNG_START_TRACE,
 	LTTNG_STOP_TRACE,
 };
@@ -128,7 +128,7 @@ struct lttcomm_session_msg {
 	u32 cmd_type;    /* enum lttcomm_sessiond_command */
 	char session_name[NAME_MAX];
 	char path[PATH_MAX];
-	pid_t pid;
+	struct lttng_domain domain;
 	union {
 		struct {
 			char channel_name[NAME_MAX];
@@ -149,6 +149,10 @@ struct lttcomm_session_msg {
 			char event_name[NAME_MAX];
 			struct lttng_event_context ctx;
 		} context;
+		/* List */
+		struct {
+			char channel_name[NAME_MAX];
+		} list;
 	} u;
 };
 

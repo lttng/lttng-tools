@@ -545,18 +545,16 @@ error:
 }
 
 /*
- *  kernel_list_events
- *
- *  Get the event list from the kernel tracer and return that list in the CTF
- *  format.
+ * Get the event list from the kernel tracer and return the number of elements.
  */
-ssize_t kernel_list_events(int tracer_fd, char **list)
+ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 {
-	int fd;
-	char *buf, *line = NULL;
-	size_t nb, nbmem, total = 0;
+	int fd, pos;
+	char *event;
+	size_t nbmem, count = 0;
 	ssize_t size;
 	FILE *fp;
+	struct lttng_event *elist;
 
 	fd = kernctl_tracepoint_list(tracer_fd);
 	if (fd < 0) {
@@ -575,29 +573,29 @@ ssize_t kernel_list_events(int tracer_fd, char **list)
 	 * See kernel-ctl.h for explanation of this value
 	 */
 	nbmem = KERNEL_EVENT_LIST_SIZE;
-	buf = malloc(nbmem);
+	elist = malloc(sizeof(struct lttng_event) * nbmem);
 
-	while ((size = getline(&line, &nb, fp)) != -1) {
-		if (total + size > nbmem) {
+	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
+		if (count > nbmem) {
 			DBG("Reallocating event list from %zd to %zd bytes", nbmem,
-					total + size + KERNEL_EVENT_LIST_SIZE);
+					nbmem + KERNEL_EVENT_LIST_SIZE);
 			/* Adding the default size again */
-			nbmem = total + size + KERNEL_EVENT_LIST_SIZE;
-			buf = realloc(buf, nbmem);
-			if (buf == NULL) {
+			nbmem += KERNEL_EVENT_LIST_SIZE;
+			elist = realloc(elist, nbmem);
+			if (elist == NULL) {
 				perror("realloc list events");
 				goto error;
 			}
 		}
-		memcpy(buf + total, line, size);
-		total += size;
+		strncpy(elist[count].name, event, strlen(event));
+		count++;
 	}
 
-	*list = buf;
+	*events = elist;
 
-	DBG("Kernel list events done");
+	DBG("Kernel list events done (%ld events)", count);
 
-	return total;
+	return count;
 
 error:
 	return -1;

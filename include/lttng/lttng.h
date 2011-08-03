@@ -58,14 +58,6 @@ enum lttng_domain_type {
 	LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN,
 };
 
-struct lttng_domain {
-	enum lttng_domain_type type;
-	union {
-		pid_t pid;
-		char exec_name[NAME_MAX];
-	} attr;
-};
-
 /*
  * Instrumentation type of tracing event.
  */
@@ -96,6 +88,14 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_VTID               = 7,
 	LTTNG_EVENT_CONTEXT_PPID               = 8,
 	LTTNG_EVENT_CONTEXT_VPPID              = 9,
+};
+
+struct lttng_domain {
+	enum lttng_domain_type type;
+	union {
+		pid_t pid;
+		char exec_name[NAME_MAX];
+	} attr;
 };
 
 /* Perf counter attributes */
@@ -138,6 +138,7 @@ struct lttng_event_function_attr {
 struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	enum lttng_event_type type;
+	uint32_t enabled;
 	/* Per event type configuration */
 	union {
 		struct lttng_event_probe_attr probe;
@@ -162,6 +163,7 @@ struct lttng_channel_attr {
  */
 struct lttng_channel {
 	char name[NAME_MAX];
+	uint32_t enabled;
 	struct lttng_channel_attr attr;
 };
 
@@ -209,12 +211,43 @@ extern int lttng_create_session(const char *name, const char *path);
 extern int lttng_destroy_session(const char *name);
 
 /*
- * List tracing sessions.
+ * List all tracing sessions.
  *
- * Return the size of the "lttng_session" array. Caller must free(3) the
- * returned data.
+ * Return the size of the "lttng_session" array. Caller must free(3).
  */
 extern int lttng_list_sessions(struct lttng_session **sessions);
+
+/*
+ * List registered domain(s) of the session.
+ *
+ * Return the size of the "lttng_domain" array. Caller must free(3).
+ */
+extern int lttng_list_domains(const char *session_name,
+		struct lttng_domain **domains);
+
+/*
+ * List channel(s) of a session.
+ *
+ * Return the size of the "lttng_channel" array. Caller must free(3).
+ */
+extern int lttng_list_channels(struct lttng_domain *domain,
+		const char *session_name, struct lttng_channel **channels);
+
+/*
+ * List event(s) of a session channel.
+ *
+ * Return the size of the "lttng_event" array. Caller must free(3).
+ */
+extern int lttng_list_events(struct lttng_domain *domain,
+		const char *session_name, const char *channel_name,
+		struct lttng_event **events);
+
+/*
+ * List available kernel tracing events
+ *
+ * Return the size of the "lttng_event" array. Caller must free(3).
+ */
+extern int lttng_list_kernel_events(struct lttng_event **events);
 
 /*
  * Check if a session daemon is alive.
@@ -304,6 +337,6 @@ extern int lttng_disable_channel(struct lttng_domain *domain,
  *
  * Return the size of the allocated event list. Caller must free(3) the data.
  */
-extern int lttng_list_events(struct lttng_domain *domain, char **event_list);
+//extern int lttng_list_events(struct lttng_domain *domain, char **event_list);
 
 #endif /* _LTTNG_H */

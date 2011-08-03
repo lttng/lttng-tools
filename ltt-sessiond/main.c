@@ -416,7 +416,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 
 	/* Copy common data */
 	cmd_ctx->llm->cmd_type = cmd_ctx->lsm->cmd_type;
-	cmd_ctx->llm->pid = cmd_ctx->lsm->pid;
+	cmd_ctx->llm->pid = cmd_ctx->lsm->domain.attr.pid;
 
 	cmd_ctx->llm->data_size = size;
 	cmd_ctx->lttng_msg_size = sizeof(struct lttcomm_lttng_msg) + buf_size;
@@ -1124,7 +1124,7 @@ static struct lttng_channel *init_default_channel(char *name)
 	}
 
 	if (snprintf(chan->name, NAME_MAX, "%s", name) < 0) {
-		perror("snprintf defautl channel name");
+		perror("snprintf channel name");
 		return NULL;
 	}
 
@@ -1191,6 +1191,68 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 }
 
 /*
+ * Fill lttng_channel array of all channels.
+ */
+static void list_lttng_channels(struct ltt_session *session,
+		struct lttng_channel *channels)
+{
+	int i = 0;
+	struct ltt_kernel_channel *kchan;
+
+	DBG("Listing channels for session %s", session->name);
+
+	/* Kernel channels */
+	if (session->kernel_session != NULL) {
+		cds_list_for_each_entry(kchan, &session->kernel_session->channel_list.head, list) {
+			/* Copy lttng_channel struct to array */
+			memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
+			channels[i].enabled = kchan->enabled;
+			i++;
+		}
+	}
+
+	/* TODO: Missing UST listing */
+}
+
+/*
+ * Fill lttng_event array of all events in the channel.
+ */
+static void list_lttng_events(struct ltt_kernel_channel *kchan,
+		struct lttng_event *events)
+{
+	/*
+	 * TODO: This is ONLY kernel. Need UST support.
+	 */
+	int i = 0;
+	struct ltt_kernel_event *event;
+
+	DBG("Listing events for channel %s", kchan->channel->name);
+
+	/* Kernel channels */
+	cds_list_for_each_entry(event, &kchan->events_list.head , list) {
+		strncpy(events[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
+		events[i].enabled = event->enabled;
+		switch (event->event->instrumentation) {
+			case LTTNG_KERNEL_TRACEPOINT:
+				events[i].type = LTTNG_EVENT_TRACEPOINT;
+				break;
+			case LTTNG_KERNEL_KPROBE:
+			case LTTNG_KERNEL_KRETPROBE:
+				events[i].type = LTTNG_EVENT_PROBE;
+				memcpy(&events[i].attr.probe, &event->event->u.kprobe,
+						sizeof(struct lttng_kernel_kprobe));
+				break;
+			case LTTNG_KERNEL_FUNCTION:
+				events[i].type = LTTNG_EVENT_FUNCTION;
+				memcpy(&events[i].attr.ftrace, &event->event->u.ftrace,
+						sizeof(struct lttng_kernel_function));
+				break;
+		}
+		i++;
+	}
+}
+
+/*
  * Process the command requested by the lttng client within the command
  * context structure. This function make sure that the return structure (llm)
  * is set and ready for transmission before returning.
@@ -1207,9 +1269,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
-	case LTTNG_LIST_EVENTS:
 	case LTTNG_KERNEL_LIST_EVENTS:
-	case LTTNG_LIST_TRACEABLE_APPS:
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm->session_name);
@@ -1570,11 +1630,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
 	{
-		int pos, size;
-		char *event_list, *event, *ptr, *channel_name;
+		int size, i;
+		char *channel_name;
 		struct ltt_kernel_channel *kchan;
 		struct ltt_kernel_event *ev;
-		struct lttng_event ev_attr;
+		struct lttng_event *event_list;
 		struct lttng_channel *chan;
 
 		/* Setup lttng message with no payload */
@@ -1624,23 +1684,17 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto error;
 		}
 
-		ptr = event_list;
-		while ((size = sscanf(ptr, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
-			ev = get_kernel_event_by_name(event, kchan);
+		for (i = 0; i < size; i++) {
+			ev = get_kernel_event_by_name(event_list[i].name, kchan);
 			if (ev == NULL) {
-				strncpy(ev_attr.name, event, LTTNG_SYM_NAME_LEN);
 				/* Default event type for enable all */
-				ev_attr.type = LTTNG_EVENT_TRACEPOINT;
+				event_list[i].type = LTTNG_EVENT_TRACEPOINT;
 				/* Enable each single tracepoint event */
-				ret = kernel_create_event(&ev_attr, kchan);
+				ret = kernel_create_event(&event_list[i], kchan);
 				if (ret < 0) {
 					/* Ignore error here and continue */
 				}
 			}
-
-			/* Move pointer to the next line */
-			ptr += pos + 1;
-			free(event);
 		}
 
 		free(event_list);
@@ -1652,12 +1706,12 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_KERNEL_LIST_EVENTS:
 	{
-		char *event_list;
+		struct lttng_event *events;
 		ssize_t size = 0;
 
 		DBG("Listing kernel events");
 
-		size = kernel_list_events(kernel_tracer_fd, &event_list);
+		size = kernel_list_events(kernel_tracer_fd, &events);
 		if (size < 0) {
 			ret = LTTCOMM_KERN_LIST_FAIL;
 			goto error;
@@ -1667,15 +1721,16 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx, size);
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event) * size);
 		if (ret < 0) {
 			goto setup_error;
 		}
 
 		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, event_list, size);
+		memcpy(cmd_ctx->llm->payload, events,
+				sizeof(struct lttng_event) * size);
 
-		free(event_list);
+		free(events);
 
 		ret = LTTCOMM_OK;
 		break;
@@ -1844,29 +1899,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 	/*
-	case LTTNG_LIST_TRACES:
-	{
-		unsigned int trace_count;
-
-		trace_count = get_trace_count_per_session(cmd_ctx->session);
-		if (trace_count == 0) {
-			ret = LTTCOMM_NO_TRACE;
-			goto error;
-		}
-
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_trace) * trace_count);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		get_traces_per_session(cmd_ctx->session,
-				(struct lttng_trace *)(cmd_ctx->llm->payload));
-
-		ret = LTTCOMM_OK;
-		break;
-	}
-	*/
-	/*
 	case UST_CREATE_TRACE:
 	{
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1880,29 +1912,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 		break;
 	}
-	*/
-	case LTTNG_LIST_TRACEABLE_APPS:
-	{
-		unsigned int app_count;
-
-		app_count = get_app_count();
-		DBG("Traceable application count : %d", app_count);
-		if (app_count == 0) {
-			ret = LTTCOMM_NO_APPS;
-			goto error;
-		}
-
-		ret = setup_lttng_msg(cmd_ctx, sizeof(pid_t) * app_count);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		get_app_list_pids((pid_t *)(cmd_ctx->llm->payload));
-
-		ret = LTTCOMM_OK;
-		break;
-	}
-	/*
 	case UST_START_TRACE:
 	{
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1930,6 +1939,84 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 	*/
+	case LTTNG_LIST_DOMAINS:
+	{
+		size_t nb_dom;
+
+		if (cmd_ctx->session->kernel_session != NULL) {
+			nb_dom++;
+		}
+
+		nb_dom += cmd_ctx->session->ust_trace_count;
+
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_domain) * nb_dom);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		((struct lttng_domain *)(cmd_ctx->llm->payload))[0].type =
+			LTTNG_DOMAIN_KERNEL;
+
+		/* TODO: User-space tracer domain support */
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case LTTNG_LIST_CHANNELS:
+	{
+		/*
+		 * TODO: Only kernel channels are listed here. UST listing
+		 * is needed on lttng-ust 2.0 release.
+		 */
+		size_t nb_chan = 0;
+		if (cmd_ctx->session->kernel_session != NULL) {
+			nb_chan += cmd_ctx->session->kernel_session->channel_count;
+		}
+
+		ret = setup_lttng_msg(cmd_ctx,
+				sizeof(struct lttng_channel) * nb_chan);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		list_lttng_channels(cmd_ctx->session,
+				(struct lttng_channel *)(cmd_ctx->llm->payload));
+
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case LTTNG_LIST_EVENTS:
+	{
+		/*
+		 * TODO: Only kernel events are listed here. UST listing
+		 * is needed on lttng-ust 2.0 release.
+		 */
+		size_t nb_event = 0;
+		struct ltt_kernel_channel *kchan = NULL;
+
+		if (cmd_ctx->session->kernel_session != NULL) {
+			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.list.channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+				goto error;
+			}
+			nb_event += kchan->event_count;
+		}
+
+		ret = setup_lttng_msg(cmd_ctx,
+				sizeof(struct lttng_event) * nb_event);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		DBG("Listing events (%ld events)", nb_event);
+
+		list_lttng_events(kchan,
+				(struct lttng_event *)(cmd_ctx->llm->payload));
+
+		ret = LTTCOMM_OK;
+		break;
+	}
 	case LTTNG_LIST_SESSIONS:
 	{
 		lock_session_list();

@@ -279,6 +279,26 @@ end:
 }
 
 /*
+ * Copy domain to lttcomm_session_msg domain.
+ *
+ * Return -1 if the domain is unkown.
+ */
+static int copy_lttng_domain(struct lttng_domain *dom)
+{
+	switch (dom->type) {
+	case LTTNG_DOMAIN_KERNEL:
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+		memcpy(&lsm.domain, dom, sizeof(struct lttng_domain));
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+/*
  *  Start tracing for all trace of the session.
  */
 int lttng_start_tracing(const char *session_name)
@@ -448,28 +468,18 @@ int lttng_disable_channel(struct lttng_domain *domain, const char *name)
 }
 
 /*
- * List all available events in the kernel.
+ * List all available kernel events.
  *
  * Return the size (bytes) of the list and set the event_list array.
  * On error, return negative value.
  */
-int lttng_list_events(struct lttng_domain *domain, char **event_list)
+int lttng_list_kernel_events(struct lttng_event **events)
 {
 	int ret;
 
-	switch (domain->type) {
-		case LTTNG_DOMAIN_KERNEL:
-			ret = ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) event_list);
-			break;
-		case LTTNG_DOMAIN_UST:
-			ret = LTTCOMM_NOT_IMPLEMENTED;
-			break;
-		default:
-			ret = LTTCOMM_UNKNOWN_DOMAIN;
-			break;
-	};
+	ret = ask_sessiond(LTTNG_KERNEL_LIST_EVENTS, (void **) events);
 
-	return ret;
+	return ret / sizeof(struct lttng_event);
 }
 
 /*
@@ -519,6 +529,68 @@ int lttng_list_sessions(struct lttng_session **sessions)
 	}
 
 	return ret / sizeof(struct lttng_session);
+}
+
+/*
+ * List domain of a session.
+ */
+int lttng_list_domains(const char *session_name, struct lttng_domain **domains)
+{
+	int ret;
+
+	strncpy(lsm.session_name, session_name, NAME_MAX);
+	ret = ask_sessiond(LTTNG_LIST_DOMAINS, (void**) domains);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret / sizeof(struct lttng_domain);
+}
+
+/*
+ * List channels of a session
+ */
+int lttng_list_channels(struct lttng_domain *domain,
+		const char *session_name, struct lttng_channel **channels)
+{
+	int ret;
+
+	strncpy(lsm.session_name, session_name, NAME_MAX);
+	ret = copy_lttng_domain(domain);
+	if (ret < 0) {
+		return -LTTCOMM_UNKNOWN_DOMAIN;
+	}
+
+	ret = ask_sessiond(LTTNG_LIST_CHANNELS, (void**) channels);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret / sizeof(struct lttng_channel);
+}
+
+/*
+ * List events of a session channel.
+ */
+int lttng_list_events(struct lttng_domain *domain,
+		const char *session_name, const char *channel_name,
+		struct lttng_event **events)
+{
+	int ret;
+
+	strncpy(lsm.session_name, session_name, NAME_MAX);
+	strncpy(lsm.u.list.channel_name, channel_name, NAME_MAX);
+	ret = copy_lttng_domain(domain);
+	if (ret < 0) {
+		return -LTTCOMM_UNKNOWN_DOMAIN;
+	}
+
+	ret = ask_sessiond(LTTNG_LIST_EVENTS, (void**) events);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret / sizeof(struct lttng_event);
 }
 
 /*
