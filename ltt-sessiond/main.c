@@ -1296,7 +1296,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_ADD_CONTEXT:
 	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
-	case LTTNG_KERNEL_DISABLE_CHANNEL:
+	case LTTNG_DISABLE_CHANNEL:
 	case LTTNG_KERNEL_DISABLE_EVENT:
 	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
 	case LTTNG_KERNEL_ENABLE_CHANNEL:
@@ -1376,14 +1376,15 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		default:
 			/* TODO: Userspace tracing */
 			ret = LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
 		}
 
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_DISABLE_CHANNEL:
+	case LTTNG_DISABLE_CHANNEL:
 	{
-		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_channel *kchan;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1391,22 +1392,30 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
-				cmd_ctx->session->kernel_session);
-		if (chan == NULL) {
-			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
-			goto error;
-		} else if (chan->enabled == 1) {
-			ret = kernel_disable_channel(chan);
-			if (ret < 0) {
-				if (ret != EEXIST) {
-					ret = LTTCOMM_KERN_CHAN_DISABLE_FAIL;
-				}
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 				goto error;
+			} else if (kchan->enabled == 1) {
+				ret = kernel_disable_channel(kchan);
+				if (ret < 0) {
+					if (ret != EEXIST) {
+						ret = LTTCOMM_KERN_CHAN_DISABLE_FAIL;
+					}
+					goto error;
+				}
 			}
+			kernel_wait_quiescent(kernel_tracer_fd);
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}

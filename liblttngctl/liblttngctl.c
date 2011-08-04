@@ -450,29 +450,16 @@ int lttng_enable_channel(struct lttng_domain *domain,
 }
 
 /*
- * Disable recording for the channel for the kernel tracer.
+ * Disable channel.
+ *
+ * All tracing will be stopped for registered events of the channel.
  */
 int lttng_disable_channel(struct lttng_domain *domain, const char *name)
 {
-	int ret = -1;
-
 	copy_string(lsm.u.disable.channel_name, name, NAME_MAX);
+	copy_lttng_domain(domain);
 
-	if (domain) {
-		switch (domain->type) {
-			case LTTNG_DOMAIN_KERNEL:
-				ret = ask_sessiond(LTTNG_KERNEL_DISABLE_CHANNEL, NULL);
-				break;
-			case LTTNG_DOMAIN_UST:
-				ret = LTTCOMM_NOT_IMPLEMENTED;
-				break;
-			default:
-				ret = LTTCOMM_UNKNOWN_DOMAIN;
-				break;
-		};
-	}
-
-	return ret;
+	return ask_sessiond(LTTNG_DISABLE_CHANNEL, NULL);
 }
 
 /*
