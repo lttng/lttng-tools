@@ -126,8 +126,7 @@ enum lttcomm_return_code {
  */
 struct lttcomm_session_msg {
 	u32 cmd_type;    /* enum lttcomm_sessiond_command */
-	char session_name[NAME_MAX];
-	char path[PATH_MAX];
+	struct lttng_session session;
 	struct lttng_domain domain;
 	union {
 		struct {

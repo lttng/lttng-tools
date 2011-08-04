@@ -317,7 +317,7 @@ static void copy_string(char *dst, const char *src, size_t len)
  */
 int lttng_start_tracing(const char *session_name)
 {
-	copy_string(lsm.session_name, session_name, NAME_MAX);
+	copy_string(lsm.session.name, session_name, NAME_MAX);
 	return ask_sessiond(LTTNG_START_TRACE, NULL);
 }
 
@@ -326,7 +326,7 @@ int lttng_start_tracing(const char *session_name)
  */
 int lttng_stop_tracing(const char *session_name)
 {
-	copy_string(lsm.session_name, session_name, NAME_MAX);
+	copy_string(lsm.session.name, session_name, NAME_MAX);
 	return ask_sessiond(LTTNG_STOP_TRACE, NULL);
 }
 
@@ -500,8 +500,8 @@ const char *lttng_get_readable_code(int code)
  */
 int lttng_create_session(const char *name, const char *path)
 {
-	copy_string(lsm.session_name, name, NAME_MAX);
-	copy_string(lsm.path, path, PATH_MAX);
+	copy_string(lsm.session.name, name, NAME_MAX);
+	copy_string(lsm.session.path, path, PATH_MAX);
 	return ask_sessiond(LTTNG_CREATE_SESSION, NULL);
 }
 
@@ -510,7 +510,7 @@ int lttng_create_session(const char *name, const char *path)
  */
 int lttng_destroy_session(const char *name)
 {
-	copy_string(lsm.session_name, name, NAME_MAX);
+	copy_string(lsm.session.name, name, NAME_MAX);
 	return ask_sessiond(LTTNG_DESTROY_SESSION, NULL);
 }
 
@@ -539,7 +539,7 @@ int lttng_list_domains(const char *session_name, struct lttng_domain **domains)
 {
 	int ret;
 
-	copy_string(lsm.session_name, session_name, NAME_MAX);
+	copy_string(lsm.session.name, session_name, NAME_MAX);
 	ret = ask_sessiond(LTTNG_LIST_DOMAINS, (void**) domains);
 	if (ret < 0) {
 		return ret;
@@ -556,7 +556,7 @@ int lttng_list_channels(struct lttng_domain *domain,
 {
 	int ret;
 
-	copy_string(lsm.session_name, session_name, NAME_MAX);
+	copy_string(lsm.session.name, session_name, NAME_MAX);
 	copy_lttng_domain(domain);
 
 	ret = ask_sessiond(LTTNG_LIST_CHANNELS, (void**) channels);
@@ -576,7 +576,7 @@ int lttng_list_events(struct lttng_domain *domain,
 {
 	int ret;
 
-	copy_string(lsm.session_name, session_name, NAME_MAX);
+	copy_string(lsm.session.name, session_name, NAME_MAX);
 	copy_string(lsm.u.list.channel_name, channel_name, NAME_MAX);
 	copy_lttng_domain(domain);
 
@@ -593,7 +593,7 @@ int lttng_list_events(struct lttng_domain *domain,
  */
 void lttng_set_session_name(const char *name)
 {
-	copy_string(lsm.session_name, name, NAME_MAX);
+	copy_string(lsm.session.name, name, NAME_MAX);
 }
 
 /*

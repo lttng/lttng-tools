@@ -1273,11 +1273,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_LIST_TRACEPOINTS:
 		break;
 	default:
-		DBG("Getting session %s by name", cmd_ctx->lsm->session_name);
-		cmd_ctx->session = find_session_by_name(cmd_ctx->lsm->session_name);
+		DBG("Getting session %s by name", cmd_ctx->lsm->session.name);
+		cmd_ctx->session = find_session_by_name(cmd_ctx->lsm->session.name);
 		if (cmd_ctx->session == NULL) {
 			/* If session name not found */
-			if (cmd_ctx->lsm->session_name != NULL) {
+			if (cmd_ctx->lsm->session.name != NULL) {
 				ret = LTTCOMM_SESS_NOT_FOUND;
 			} else {	/* If no session name specified */
 				ret = LTTCOMM_SELECT_SESS;
@@ -1825,7 +1825,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		ret = create_session(cmd_ctx->lsm->session_name, cmd_ctx->lsm->path);
+		ret = create_session(cmd_ctx->lsm->session.name, cmd_ctx->lsm->session.path);
 		if (ret < 0) {
 			if (ret == -EEXIST) {
 				ret = LTTCOMM_EXIST_SESS;
@@ -1849,7 +1849,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		/* Clean kernel session teardown */
 		teardown_kernel_session(cmd_ctx->session);
 
-		ret = destroy_session(cmd_ctx->lsm->session_name);
+		ret = destroy_session(cmd_ctx->lsm->session.name);
 		if (ret < 0) {
 			ret = LTTCOMM_FATAL;
 			goto error;
