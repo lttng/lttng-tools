@@ -385,7 +385,7 @@ int lttng_enable_event(struct lttng_domain *domain,
 }
 
 /*
- * Disable an event in the kernel tracer.
+ * Disable event of a channel and domain.
  */
 int lttng_disable_event(struct lttng_domain *domain, const char *name,
 		const char *channel_name)
@@ -398,23 +398,13 @@ int lttng_disable_event(struct lttng_domain *domain, const char *name,
 		copy_string(lsm.u.disable.channel_name, channel_name, NAME_MAX);
 	}
 
-	if (domain) {
-		switch (domain->type) {
-			case LTTNG_DOMAIN_KERNEL:
-				if (name == NULL) {
-					ret = ask_sessiond(LTTNG_KERNEL_DISABLE_ALL_EVENT, NULL);
-				} else {
-					copy_string(lsm.u.disable.name, name, NAME_MAX);
-					ret = ask_sessiond(LTTNG_KERNEL_DISABLE_EVENT, NULL);
-				}
-				break;
-			case LTTNG_DOMAIN_UST:
-				ret = LTTCOMM_NOT_IMPLEMENTED;
-				break;
-			default:
-				ret = LTTCOMM_UNKNOWN_DOMAIN;
-				break;
-		};
+	copy_lttng_domain(domain);
+
+	if (name == NULL) {
+		ret = ask_sessiond(LTTNG_DISABLE_ALL_EVENT, NULL);
+	} else {
+		copy_string(lsm.u.disable.name, name, NAME_MAX);
+		ret = ask_sessiond(LTTNG_DISABLE_EVENT, NULL);
 	}
 
 	return ret;

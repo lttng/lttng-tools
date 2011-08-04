@@ -1295,9 +1295,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	 */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_ADD_CONTEXT:
-	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
+	case LTTNG_DISABLE_ALL_EVENT:
 	case LTTNG_DISABLE_CHANNEL:
-	case LTTNG_KERNEL_DISABLE_EVENT:
+	case LTTNG_DISABLE_EVENT:
 	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
 	case LTTNG_KERNEL_ENABLE_CHANNEL:
 	case LTTNG_KERNEL_ENABLE_EVENT:
@@ -1419,10 +1419,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_DISABLE_EVENT:
+	case LTTNG_DISABLE_EVENT:
 	{
-		struct ltt_kernel_channel *chan;
-		struct ltt_kernel_event *ev;
+		struct ltt_kernel_channel *kchan;
+		struct ltt_kernel_event *kevent;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1430,32 +1430,41 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
-				cmd_ctx->session->kernel_session);
-		if (chan == NULL) {
-			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+				goto error;
+			}
+
+			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.disable.name, kchan);
+			if (kevent != NULL) {
+				DBG("Disabling kernel event %s for channel %s.", kevent->event->name,
+						kchan->channel->name);
+				ret = kernel_disable_event(kevent);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_ENABLE_FAIL;
+					goto error;
+				}
+			}
+
+			kernel_wait_quiescent(kernel_tracer_fd);
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
 
-		ev = get_kernel_event_by_name(cmd_ctx->lsm->u.disable.name, chan);
-		if (ev != NULL) {
-			DBG("Disabling kernel event %s for channel %s.",
-					cmd_ctx->lsm->u.disable.name, cmd_ctx->lsm->u.disable.channel_name);
-			ret = kernel_disable_event(ev);
-			if (ret < 0) {
-				ret = LTTCOMM_KERN_ENABLE_FAIL;
-				goto error;
-			}
-		}
-
-		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_DISABLE_ALL_EVENT:
+	case LTTNG_DISABLE_ALL_EVENT:
 	{
-		struct ltt_kernel_channel *chan;
-		struct ltt_kernel_event *ev;
+		struct ltt_kernel_channel *kchan;
+		struct ltt_kernel_event *kevent;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1463,27 +1472,35 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		DBG("Disabling all enabled kernel events");
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			DBG("Disabling all enabled kernel events");
+			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+				goto error;
+			}
 
-		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
-				cmd_ctx->session->kernel_session);
-		if (chan == NULL) {
-			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			/* For each event in the kernel session */
+			cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
+				DBG("Disabling kernel event %s for channel %s.",
+						kevent->event->name, kchan->channel->name);
+				ret = kernel_disable_event(kevent);
+				if (ret < 0) {
+					continue;
+				}
+			}
+
+			/* Quiescent wait after event disable */
+			kernel_wait_quiescent(kernel_tracer_fd);
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
 
-		/* For each event in the kernel session */
-		cds_list_for_each_entry(ev, &chan->events_list.head, list) {
-			DBG("Disabling kernel event %s for channel %s.",
-					ev->event->name, cmd_ctx->lsm->u.disable.channel_name);
-			ret = kernel_disable_event(ev);
-			if (ret < 0) {
-				continue;
-			}
-		}
-
-		/* Quiescent wait after event disable */
-		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}
