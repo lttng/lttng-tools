@@ -1291,17 +1291,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 
 	/*
-	 * Check kernel command for kernel session.
+	 * Check domain type for specifif "pre-action".
 	 */
-	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_ADD_CONTEXT:
-	case LTTNG_DISABLE_ALL_EVENT:
-	case LTTNG_DISABLE_CHANNEL:
-	case LTTNG_DISABLE_EVENT:
-	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
-	case LTTNG_KERNEL_ENABLE_CHANNEL:
-	case LTTNG_KERNEL_ENABLE_EVENT:
-	case LTTNG_LIST_TRACEPOINTS:
+	switch (cmd_ctx->lsm->domain.type) {
+	case LTTNG_DOMAIN_KERNEL:
 		/* Kernel tracer check */
 		if (kernel_tracer_fd == 0) {
 			init_kernel_tracer();
@@ -1329,19 +1322,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 			}
 		}
+		break;
+	default:
+		break;
 	}
-
-#ifdef DISABLED
-	/* Connect to ust apps if available pid */
-	if (cmd_ctx->lsm->pid > 0) {
-		/* Connect to app using ustctl API */
-		cmd_ctx->ust_sock = ust_connect_app(cmd_ctx->lsm->pid);
-		if (cmd_ctx->ust_sock < 0) {
-			ret = LTTCOMM_NO_TRACEABLE;
-			goto error;
-		}
-	}
-#endif	/* DISABLED */
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
@@ -1504,9 +1488,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_ENABLE_CHANNEL:
+	case LTTNG_ENABLE_CHANNEL:
 	{
-		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_channel *kchan;
 
 		/* Setup lttng message with no payload */
 		ret = setup_lttng_msg(cmd_ctx, 0);
@@ -1514,44 +1498,53 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		chan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
-				cmd_ctx->session->kernel_session);
-		if (chan == NULL) {
-			/* Channel not found, creating it */
-			DBG("Creating kernel channel");
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				/* Channel not found, creating it */
+				DBG("Creating kernel channel");
 
-			ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-					&cmd_ctx->lsm->u.channel.chan, cmd_ctx->session->path);
-			if (ret < 0) {
-				ret = LTTCOMM_KERN_CHAN_FAIL;
-				goto error;
-			}
-
-			/* Notify kernel thread that there is a new channel */
-			ret = notify_kernel_pollfd();
-			if (ret < 0) {
-				ret = LTTCOMM_FATAL;
-				goto error;
-			}
-		} else if (chan->enabled == 0) {
-			ret = kernel_enable_channel(chan);
-			if (ret < 0) {
-				if (ret != EEXIST) {
-					ret = LTTCOMM_KERN_CHAN_ENABLE_FAIL;
+				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
+						&cmd_ctx->lsm->u.channel.chan, cmd_ctx->session->path);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_CHAN_FAIL;
+					goto error;
 				}
-				goto error;
+
+				/* Notify kernel thread that there is a new channel */
+				ret = notify_kernel_pollfd();
+				if (ret < 0) {
+					ret = LTTCOMM_FATAL;
+					goto error;
+				}
+			} else if (kchan->enabled == 0) {
+				ret = kernel_enable_channel(kchan);
+				if (ret < 0) {
+					if (ret != EEXIST) {
+						ret = LTTCOMM_KERN_CHAN_ENABLE_FAIL;
+					}
+					goto error;
+				}
 			}
+
+			kernel_wait_quiescent(kernel_tracer_fd);
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_ENABLE_EVENT:
+	case LTTNG_ENABLE_EVENT:
 	{
 		char *channel_name;
 		struct ltt_kernel_channel *kchan;
-		struct ltt_kernel_event *ev;
+		struct ltt_kernel_event *kevent;
 		struct lttng_channel *chan;
 
 		/* Setup lttng message with no payload */
@@ -1562,57 +1555,65 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		channel_name = cmd_ctx->lsm->u.enable.channel_name;
 
-		do {
-			kchan = get_kernel_channel_by_name(channel_name,
-					cmd_ctx->session->kernel_session);
-			if (kchan == NULL) {
-				DBG("Channel not found. Creating channel %s", channel_name);
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			do {
+				kchan = get_kernel_channel_by_name(channel_name,
+						cmd_ctx->session->kernel_session);
+				if (kchan == NULL) {
+					DBG("Channel not found. Creating channel %s", channel_name);
 
-				chan = init_default_channel(channel_name);
-				if (chan == NULL) {
-					ret = LTTCOMM_FATAL;
-					goto error;
+					chan = init_default_channel(channel_name);
+					if (chan == NULL) {
+						ret = LTTCOMM_FATAL;
+						goto error;
+					}
+
+					ret = kernel_create_channel(cmd_ctx->session->kernel_session,
+							chan, cmd_ctx->session->path);
+					if (ret < 0) {
+						ret = LTTCOMM_KERN_CHAN_FAIL;
+						goto error;
+					}
 				}
+			} while (kchan == NULL);
 
-				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-						chan, cmd_ctx->session->path);
-				if (ret < 0) {
-					ret = LTTCOMM_KERN_CHAN_FAIL;
+			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
+			if (kevent == NULL) {
+				DBG("Creating kernel event %s for channel %s.",
+						cmd_ctx->lsm->u.enable.event.name, channel_name);
+				ret = kernel_create_event(&cmd_ctx->lsm->u.enable.event, kchan);
+			} else {
+				DBG("Enabling kernel event %s for channel %s.",
+						kevent->event->name, channel_name);
+				ret = kernel_enable_event(kevent);
+				if (ret == -EEXIST) {
+					ret = LTTCOMM_KERN_EVENT_EXIST;
 					goto error;
 				}
 			}
-		} while (kchan == NULL);
 
-		ev = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
-		if (ev == NULL) {
-			DBG("Creating kernel event %s for channel %s.",
-					cmd_ctx->lsm->u.enable.event.name, channel_name);
-			ret = kernel_create_event(&cmd_ctx->lsm->u.enable.event, kchan);
-		} else {
-			DBG("Enabling kernel event %s for channel %s.",
-					cmd_ctx->lsm->u.enable.event.name, channel_name);
-			ret = kernel_enable_event(ev);
-			if (ret == -EEXIST) {
-				ret = LTTCOMM_KERN_EVENT_EXIST;
+			if (ret < 0) {
+				ret = LTTCOMM_KERN_ENABLE_FAIL;
 				goto error;
 			}
-		}
 
-		if (ret < 0) {
-			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			kernel_wait_quiescent(kernel_tracer_fd);
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
-
-		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}
-	case LTTNG_KERNEL_ENABLE_ALL_EVENT:
+	case LTTNG_ENABLE_ALL_EVENT:
 	{
 		int size, i;
 		char *channel_name;
 		struct ltt_kernel_channel *kchan;
-		struct ltt_kernel_event *ev;
+		struct ltt_kernel_event *kevent;
 		struct lttng_event *event_list;
 		struct lttng_channel *chan;
 
@@ -1626,60 +1627,69 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		channel_name = cmd_ctx->lsm->u.enable.channel_name;
 
-		do {
-			kchan = get_kernel_channel_by_name(channel_name,
-					cmd_ctx->session->kernel_session);
-			if (kchan == NULL) {
-				DBG("Channel not found. Creating channel %s", channel_name);
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			do {
+				kchan = get_kernel_channel_by_name(channel_name,
+						cmd_ctx->session->kernel_session);
+				if (kchan == NULL) {
+					DBG("Channel not found. Creating channel %s", channel_name);
 
-				chan = init_default_channel(channel_name);
-				if (chan == NULL) {
-					ret = LTTCOMM_FATAL;
-					goto error;
+					chan = init_default_channel(channel_name);
+					if (chan == NULL) {
+						ret = LTTCOMM_FATAL;
+						goto error;
+					}
+
+					ret = kernel_create_channel(cmd_ctx->session->kernel_session,
+							chan, cmd_ctx->session->path);
+					if (ret < 0) {
+						ret = LTTCOMM_KERN_CHAN_FAIL;
+						goto error;
+					}
 				}
+			} while (kchan == NULL);
 
-				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-						chan, cmd_ctx->session->path);
+			/* For each event in the kernel session */
+			cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
+				DBG("Enabling kernel event %s for channel %s.",
+						kevent->event->name, channel_name);
+				ret = kernel_enable_event(kevent);
 				if (ret < 0) {
-					ret = LTTCOMM_KERN_CHAN_FAIL;
-					goto error;
+					continue;
 				}
 			}
-		} while (kchan == NULL);
 
-		/* For each event in the kernel session */
-		cds_list_for_each_entry(ev, &kchan->events_list.head, list) {
-			DBG("Enabling kernel event %s for channel %s.",
-					ev->event->name, channel_name);
-			ret = kernel_enable_event(ev);
-			if (ret < 0) {
-				continue;
+			size = kernel_list_events(kernel_tracer_fd, &event_list);
+			if (size < 0) {
+				ret = LTTCOMM_KERN_LIST_FAIL;
+				goto error;
 			}
-		}
 
-		size = kernel_list_events(kernel_tracer_fd, &event_list);
-		if (size < 0) {
-			ret = LTTCOMM_KERN_LIST_FAIL;
+			for (i = 0; i < size; i++) {
+				kevent = get_kernel_event_by_name(event_list[i].name, kchan);
+				if (kevent == NULL) {
+					/* Default event type for enable all */
+					event_list[i].type = LTTNG_EVENT_TRACEPOINT;
+					/* Enable each single tracepoint event */
+					ret = kernel_create_event(&event_list[i], kchan);
+					if (ret < 0) {
+						/* Ignore error here and continue */
+					}
+				}
+			}
+
+			free(event_list);
+
+			/* Quiescent wait after event enable */
+			kernel_wait_quiescent(kernel_tracer_fd);
+			break;
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
 
-		for (i = 0; i < size; i++) {
-			ev = get_kernel_event_by_name(event_list[i].name, kchan);
-			if (ev == NULL) {
-				/* Default event type for enable all */
-				event_list[i].type = LTTNG_EVENT_TRACEPOINT;
-				/* Enable each single tracepoint event */
-				ret = kernel_create_event(&event_list[i], kchan);
-				if (ret < 0) {
-					/* Ignore error here and continue */
-				}
-			}
-		}
-
-		free(event_list);
-
-		/* Quiescent wait after event enable */
-		kernel_wait_quiescent(kernel_tracer_fd);
 		ret = LTTCOMM_OK;
 		break;
 	}
@@ -1757,7 +1767,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 
 			/* For each channel */
-			cds_list_for_each_entry(chan, &cmd_ctx->session->kernel_session->channel_list.head, list) {
+			cds_list_for_each_entry(chan,
+					&cmd_ctx->session->kernel_session->channel_list.head, list) {
 				if (chan->stream_count == 0) {
 					ret = kernel_open_channel_stream(chan);
 					if (ret < 0) {
@@ -1885,47 +1896,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-	/*
-	case UST_CREATE_TRACE:
-	{
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		ret = ust_create_trace(cmd_ctx);
-		if (ret < 0) {
-			goto error;
-		}
-		break;
-	}
-	case UST_START_TRACE:
-	{
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		ret = ust_start_trace(cmd_ctx);
-		if (ret < 0) {
-			goto setup_error;
-		}
-		break;
-	}
-	case UST_STOP_TRACE:
-	{
-		ret = setup_lttng_msg(cmd_ctx, 0);
-		if (ret < 0) {
-			goto setup_error;
-		}
-
-		ret = ust_stop_trace(cmd_ctx);
-		if (ret < 0) {
-			goto setup_error;
-		}
-		break;
-	}
-	*/
 	case LTTNG_LIST_DOMAINS:
 	{
 		size_t nb_dom = 0;

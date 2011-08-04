@@ -354,7 +354,7 @@ int lttng_add_context(struct lttng_domain *domain,
 int lttng_enable_event(struct lttng_domain *domain,
 		struct lttng_event *ev, const char *channel_name)
 {
-	int ret = -1;
+	int ret;
 
 	if (channel_name == NULL) {
 		copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME, NAME_MAX);
@@ -362,23 +362,13 @@ int lttng_enable_event(struct lttng_domain *domain,
 		copy_string(lsm.u.enable.channel_name, channel_name, NAME_MAX);
 	}
 
-	if (domain) {
-		switch (domain->type) {
-			case LTTNG_DOMAIN_KERNEL:
-				if (ev == NULL) {
-					ret = ask_sessiond(LTTNG_KERNEL_ENABLE_ALL_EVENT, NULL);
-				} else {
-					memcpy(&lsm.u.enable.event, ev, sizeof(struct lttng_event));
-					ret = ask_sessiond(LTTNG_KERNEL_ENABLE_EVENT, NULL);
-				}
-				break;
-			case LTTNG_DOMAIN_UST:
-				ret = LTTCOMM_NOT_IMPLEMENTED;
-				break;
-			default:
-				ret = LTTCOMM_UNKNOWN_DOMAIN;
-				break;
-		};
+	copy_lttng_domain(domain);
+
+	if (ev == NULL) {
+		ret = ask_sessiond(LTTNG_ENABLE_ALL_EVENT, NULL);
+	} else {
+		memcpy(&lsm.u.enable.event, ev, sizeof(struct lttng_event));
+		ret = ask_sessiond(LTTNG_ENABLE_EVENT, NULL);
 	}
 
 	return ret;
@@ -411,37 +401,21 @@ int lttng_disable_event(struct lttng_domain *domain, const char *name,
 }
 
 /*
- * Enable recording for a channel for the kernel tracer.
+ * Enable channel per domain
  */
 int lttng_enable_channel(struct lttng_domain *domain,
 		struct lttng_channel *chan)
 {
-	int ret = -1;
-
 	if (chan) {
 		memcpy(&lsm.u.channel.chan, chan, sizeof(struct lttng_channel));
 	}
 
-	if (domain) {
-		switch (domain->type) {
-			case LTTNG_DOMAIN_KERNEL:
-				ret = ask_sessiond(LTTNG_KERNEL_ENABLE_CHANNEL, NULL);
-				break;
-			case LTTNG_DOMAIN_UST:
-				ret = LTTCOMM_NOT_IMPLEMENTED;
-				break;
-			default:
-				ret = LTTCOMM_UNKNOWN_DOMAIN;
-				break;
-		};
-	}
+	copy_lttng_domain(domain);
 
-	return ret;
+	return ask_sessiond(LTTNG_ENABLE_CHANNEL, NULL);
 }
 
 /*
- * Disable channel.
- *
  * All tracing will be stopped for registered events of the channel.
  */
 int lttng_disable_channel(struct lttng_domain *domain, const char *name)

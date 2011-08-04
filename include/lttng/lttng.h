@@ -51,11 +51,11 @@
  * Domain type are the different possible tracers.
  */
 enum lttng_domain_type {
-	LTTNG_DOMAIN_KERNEL,
-	LTTNG_DOMAIN_UST,
-	LTTNG_DOMAIN_UST_EXEC_NAME,
-	LTTNG_DOMAIN_UST_PID,
-	LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN,
+	LTTNG_DOMAIN_KERNEL                   = 1,
+	LTTNG_DOMAIN_UST                      = 2,
+	LTTNG_DOMAIN_UST_EXEC_NAME            = 3,
+	LTTNG_DOMAIN_UST_PID                  = 4,
+	LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN  = 5,
 };
 
 /*
