@@ -99,6 +99,8 @@ static sem_t kconsumerd_sem;
 
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
+static int modprobe_remove_kernel_modules(void);
+
 /*
  * Pointer initialized before thread creation.
  *
@@ -195,6 +197,9 @@ static void cleanup()
 
 	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
+
+	DBG("Unloading kernel modules");
+	modprobe_remove_kernel_modules();
 }
 
 /*
@@ -944,22 +949,67 @@ error:
  */
 static int modprobe_kernel_modules(void)
 {
-	int ret = 0, i = 0;
+	int ret = 0, i;
 	char modprobe[256];
 
-	while (kernel_modules_list[i] != NULL) {
-		ret = snprintf(modprobe, sizeof(modprobe), "/sbin/modprobe %s",
-				kernel_modules_list[i]);
+	for (i = 0; i < ARRAY_SIZE(kernel_modules_list); i++) {
+		ret = snprintf(modprobe, sizeof(modprobe),
+			"/sbin/modprobe %s%s",
+			kernel_modules_list[i].required ? "" : "--quiet ",
+			kernel_modules_list[i].name);
 		if (ret < 0) {
 			perror("snprintf modprobe");
 			goto error;
 		}
+		modprobe[sizeof(modprobe) - 1] = '\0';
 		ret = system(modprobe);
-		if (ret < 0) {
-			ERR("Unable to load module %s", kernel_modules_list[i]);
+		if (ret == -1) {
+			ERR("Unable to launch modprobe for module %s",
+				kernel_modules_list[i].name);
+		} else if (kernel_modules_list[i].required
+			   && WEXITSTATUS(ret) != 0) {
+			ERR("Unable to load module %s",
+				kernel_modules_list[i].name);
+		} else {
+			DBG("Modprobe successfully %s",
+				kernel_modules_list[i].name);
 		}
-		DBG("Modprobe successfully %s", kernel_modules_list[i]);
-		i++;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * modprobe_remove_kernel_modules
+ * Remove modules in reverse load order.
+ */
+static int modprobe_remove_kernel_modules(void)
+{
+	int ret = 0, i;
+	char modprobe[256];
+
+	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
+		ret = snprintf(modprobe, sizeof(modprobe),
+			"/sbin/modprobe --remove --quiet %s",
+			kernel_modules_list[i].name);
+		if (ret < 0) {
+			perror("snprintf modprobe --remove");
+			goto error;
+		}
+		modprobe[sizeof(modprobe) - 1] = '\0';
+		ret = system(modprobe);
+		if (ret == -1) {
+			ERR("Unable to launch modprobe --remove for module %s",
+				kernel_modules_list[i].name);
+		} else if (kernel_modules_list[i].required
+			   && WEXITSTATUS(ret) != 0) {
+			ERR("Unable to remove module %s",
+				kernel_modules_list[i].name);
+		} else {
+			DBG("Modprobe removal successful %s",
+				kernel_modules_list[i].name);
+		}
 	}
 
 error:

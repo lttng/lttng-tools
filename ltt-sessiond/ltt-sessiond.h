@@ -19,32 +19,38 @@
 #ifndef _LTT_SESSIOND_H
 #define _LTT_SESSIOND_H
 
-#define DEFAULT_HOME_DIR			"/tmp"
+#define DEFAULT_HOME_DIR		"/tmp"
 #define DEFAULT_UST_SOCK_DIR		DEFAULT_HOME_DIR "/ust-app-socks"
 #define DEFAULT_GLOBAL_APPS_PIPE	DEFAULT_UST_SOCK_DIR "/global"
-#define DEFAULT_TRACE_OUTPUT        DEFAULT_HOME_DIR "/lttng"
+#define DEFAULT_TRACE_OUTPUT        	DEFAULT_HOME_DIR "/lttng"
+
+struct module_param {
+	const char *name;
+	int required;
+};
 
 /* LTTng kernel tracer modules list */
-const char *kernel_modules_list[] = {
-	"lib-ring-buffer",
-	"ltt-relay",
-	"ltt-ring-buffer-client-discard",
-	"ltt-ring-buffer-client-overwrite",
-	"ltt-ring-buffer-metadata-client",
-	"ltt-ring-buffer-client-mmap-discard",
-	"ltt-ring-buffer-client-mmap-overwrite",
-	"ltt-ring-buffer-metadata-mmap-client",
-	"lttng-ftrace",
-	"lttng-kprobes",
-	"lttng-kretprobes",
-	"lttng-probe-block",
-	"lttng-probe-irq",
-	"lttng-probe-kvm",
-	"lttng-probe-lttng",
-	"lttng-probe-sched",
-	"lttng-probe-syscalls",
-	"lttng-types",
-	NULL,
+const struct module_param kernel_modules_list[] = {
+	/* used by ltt-relay, unload last */
+	{ "lttng-ftrace", 0 },
+	{ "lttng-kprobes", 0 },
+	{ "lttng-kretprobes", 0 },
+
+	{ "lib-ring-buffer", 1 },
+	{ "ltt-relay", 1 },
+	{ "ltt-ring-buffer-client-discard", 1 },
+	{ "ltt-ring-buffer-client-overwrite", 1 },
+	{ "ltt-ring-buffer-metadata-client", 1 },
+	{ "ltt-ring-buffer-client-mmap-discard", 1 },
+	{ "ltt-ring-buffer-client-mmap-overwrite", 1 },
+	{ "ltt-ring-buffer-metadata-mmap-client", 1 },
+	{ "lttng-probe-lttng", 1 },
+	{ "lttng-types", 0 },
+	{ "lttng-probe-block", 0 },
+	{ "lttng-probe-irq", 0 },
+	{ "lttng-probe-kvm", 0 },
+	{ "lttng-probe-sched", 0 },
+	{ "lttng-probe-syscalls", 0 },
 };
 
 extern const char default_home_dir[],

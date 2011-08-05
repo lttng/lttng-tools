@@ -19,6 +19,10 @@
 #ifndef _LTT_UTILS_H
 #define _LTT_UTILS_H
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array)	(sizeof(array) / (sizeof((array)[0])))
+#endif
+
 int mkdir_recursive(const char *path, mode_t mode);
 const char *get_home_dir(void);
 
