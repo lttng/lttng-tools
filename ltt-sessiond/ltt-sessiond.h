@@ -31,13 +31,11 @@ struct module_param {
 
 /* LTTng kernel tracer modules list */
 const struct module_param kernel_modules_list[] = {
-	/* used by ltt-relay, unload last */
+	{ "ltt-relay", 1 },
 	{ "lttng-ftrace", 0 },
 	{ "lttng-kprobes", 0 },
 	{ "lttng-kretprobes", 0 },
-
 	{ "lib-ring-buffer", 1 },
-	{ "ltt-relay", 1 },
 	{ "ltt-ring-buffer-client-discard", 1 },
 	{ "ltt-ring-buffer-client-overwrite", 1 },
 	{ "ltt-ring-buffer-metadata-client", 1 },
