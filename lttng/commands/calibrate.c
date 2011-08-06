@@ -136,7 +136,7 @@ static int calibrate_lttng(void)
 		ret = CMD_NOT_IMPLEMENTED;
 		goto end;
 	} else {
-		ERR("Please specify a tracer (kernel or user-space)");
+		ERR("Please specify a tracer (--kernel or --userspace)");
 		goto end;
 	}
 end:

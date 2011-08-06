@@ -275,7 +275,7 @@ static int enable_events(void)
 			ret = CMD_NOT_IMPLEMENTED;
 			goto error;
 		} else {
-			ERR("Please specify a tracer (kernel or user-space)");
+			ERR("Please specify a tracer (--kernel or --userspace)");
 			goto error;
 		}
 
