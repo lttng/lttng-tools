@@ -44,7 +44,7 @@ const char *get_home_dir(void)
  *
  *  Create recursively directory using the FULL path.
  */
-int mkdir_recursive(const char *path, mode_t mode, gid_t gid)
+int mkdir_recursive(const char *path, mode_t mode)
 {
 	int ret;
 	char *p, tmp[PATH_MAX];
