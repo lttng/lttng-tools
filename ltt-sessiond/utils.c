@@ -44,41 +44,41 @@ const char *get_home_dir(void)
  *
  *  Create recursively directory using the FULL path.
  */
-int mkdir_recursive(const char *path, mode_t mode)
+int mkdir_recursive(const char *path, mode_t mode, gid_t gid)
 {
-    int ret;
-    char *p, tmp[PATH_MAX];
-    size_t len;
-    mode_t old_umask;
+	int ret;
+	char *p, tmp[PATH_MAX];
+	size_t len;
+	mode_t old_umask;
 
-    ret = snprintf(tmp, sizeof(tmp), "%s", path);
+	ret = snprintf(tmp, sizeof(tmp), "%s", path);
 	if (ret < 0) {
 		perror("snprintf mkdir");
 		goto error;
 	}
 
-    len = ret;
-    if (tmp[len - 1] == '/') {
-        tmp[len - 1] = 0;
-    }
+	len = ret;
+	if (tmp[len - 1] == '/') {
+		tmp[len - 1] = 0;
+	}
 
-    old_umask = umask(0);
-    for (p = tmp + 1; *p; p++) {
-        if (*p == '/') {
-            *p = 0;
-            ret = mkdir(tmp, mode);
-            if (ret < 0) {
-                if (!(errno == EEXIST)) {
+	old_umask = umask(0);
+	for (p = tmp + 1; *p; p++) {
+		if (*p == '/') {
+			*p = 0;
+			ret = mkdir(tmp, mode);
+			if (ret < 0) {
+				if (!(errno == EEXIST)) {
 					perror("mkdir recursive");
 					ret = errno;
-                    goto umask_error;
-                }
-            }
-            *p = '/';
-        }
-    }
+					goto umask_error;
+				}
+			}
+			*p = '/';
+		}
+	}
 
-    ret = mkdir(tmp, mode);
+	ret = mkdir(tmp, mode);
 	if (ret < 0) {
 		ret = errno;
 	}
@@ -86,5 +86,5 @@ int mkdir_recursive(const char *path, mode_t mode)
 umask_error:
 	umask(old_umask);
 error:
-    return ret;
+	return ret;
 }
