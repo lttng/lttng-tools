@@ -409,6 +409,23 @@ void kernel_wait_quiescent(int fd)
 }
 
 /*
+ *  kernel_calibrate
+ */
+int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
+{
+	int ret;
+
+	ret = kernctl_calibrate(fd, calibrate);
+	if (ret < 0) {
+		perror("calibrate ioctl");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
  *  kernel_metadata_flush_buffer
  *
  *  Force flush buffer of metadata.

@@ -90,6 +90,10 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_VPPID              = 9,
 };
 
+enum lttng_calibrate_type {
+	LTTNG_CALIBRATE_FUNCTION               = 0,
+};
+
 struct lttng_domain {
 	enum lttng_domain_type type;
 	union {
@@ -165,6 +169,10 @@ struct lttng_channel {
 	char name[NAME_MAX];
 	uint32_t enabled;
 	struct lttng_channel_attr attr;
+};
+
+struct lttng_calibrate {
+	enum lttng_calibrate_type type;
 };
 
 /*
@@ -332,5 +340,11 @@ extern int lttng_disable_event(struct lttng_domain *domain, const char *name,
  */
 extern int lttng_disable_channel(struct lttng_domain *domain,
 		const char *name);
+
+/*
+ * Calibrate LTTng overhead.
+ */
+extern int lttng_calibrate(struct lttng_domain *domain,
+		struct lttng_calibrate *calibrate);
 
 #endif /* _LTTNG_H */

@@ -8,7 +8,7 @@ lttng_SOURCES = cmd.h conf.c conf.h commands/start.c \
 				commands/disable_events.c commands/enable_channels.c \
 				commands/disable_channels.c commands/add_context.c \
 				commands/set_session.c commands/version.c \
-				utils.c utils.h lttng.c
+				commands/calibrate.c utils.c utils.h lttng.c
 
 lttng_LDADD = \
 		$(top_builddir)/liblttngctl/liblttngctl.la

@@ -71,6 +71,7 @@ static struct cmd_struct commands[] =  {
 	{ "add-context", cmd_add_context},
 	{ "set-session", cmd_set_session},
 	{ "version", cmd_version},
+	{ "calibrate", cmd_calibrate},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -91,6 +92,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
 	fprintf(ofp, "    add-context     Add context to event or/and channel\n");
+	fprintf(ofp, "    calibrate       Quantify LTTng overhead\n");
 	fprintf(ofp, "    create          Create tracing session\n");
 	fprintf(ofp, "    destroy         Teardown tracing session\n");
 	fprintf(ofp, "    enable-channel  Enable tracing channel\n");

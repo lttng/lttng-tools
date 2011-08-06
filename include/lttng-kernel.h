@@ -105,4 +105,12 @@ struct lttng_kernel_tracer_version {
 	uint32_t sublevel;
 };
 
+enum lttng_kernel_calibrate_type {
+	LTTNG_KERNEL_CALIBRATE_KRETPROBE,
+};
+
+struct lttng_kernel_calibrate {
+	enum lttng_kernel_calibrate_type type;	/* type (input) */
+};
+
 #endif /* _LTTNG_KERNEL_H */

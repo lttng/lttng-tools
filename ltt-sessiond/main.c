@@ -1321,6 +1321,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
+	case LTTNG_CALIBRATE:
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm->session.name);
@@ -1341,7 +1342,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 
 	/*
-	 * Check domain type for specifif "pre-action".
+	 * Check domain type for specific "pre-action".
 	 */
 	switch (cmd_ctx->lsm->domain.type) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1355,20 +1356,26 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 
 		/* Need a session for kernel command */
-		if (cmd_ctx->lsm->cmd_type != LTTNG_LIST_TRACEPOINTS &&
-				cmd_ctx->session->kernel_session == NULL) {
-
-			ret = create_kernel_session(cmd_ctx->session);
-			if (ret < 0) {
-				ret = LTTCOMM_KERN_SESS_FAIL;
-				goto error;
-			}
-
-			/* Start the kernel consumer daemon */
-			if (kconsumerd_pid == 0) {
-				ret = start_kconsumerd();
+		switch (cmd_ctx->lsm->cmd_type) {
+		case LTTNG_CREATE_SESSION:
+		case LTTNG_LIST_SESSIONS:
+		case LTTNG_LIST_TRACEPOINTS:
+		case LTTNG_CALIBRATE:
+			break;
+		default:
+			if (cmd_ctx->session->kernel_session == NULL) {
+				ret = create_kernel_session(cmd_ctx->session);
 				if (ret < 0) {
+					ret = LTTCOMM_KERN_SESS_FAIL;
 					goto error;
+				}
+
+				/* Start the kernel consumer daemon */
+				if (kconsumerd_pid == 0) {
+					ret = start_kconsumerd();
+					if (ret < 0) {
+						goto error;
+					}
 				}
 			}
 		}
@@ -2049,6 +2056,37 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
+
+	case LTTNG_CALIBRATE:
+	{
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+		{
+			struct lttng_kernel_calibrate kcalibrate;
+
+			kcalibrate.type = cmd_ctx->lsm->u.calibrate.type;
+			ret = kernel_calibrate(kernel_tracer_fd, &kcalibrate);
+			if (ret < 0) {
+				ret = LTTCOMM_KERN_ENABLE_FAIL;
+				goto error;
+			}
+			break;
+		}
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
+		}
+		ret = LTTCOMM_OK;
+		break;
+	}
+
 	default:
 		/* Undefined command */
 		ret = setup_lttng_msg(cmd_ctx, 0);

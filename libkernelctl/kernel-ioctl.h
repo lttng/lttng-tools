@@ -54,6 +54,8 @@
 		_IOR(0xF6, 0x41, struct lttng_kernel_tracer_version)
 #define LTTNG_KERNEL_TRACEPOINT_LIST        _IO(0xF6, 0x42)
 #define LTTNG_KERNEL_WAIT_QUIESCENT         _IO(0xF6, 0x43)
+#define LTTNG_KERNEL_CALIBRATE			\
+	_IOWR(0xF6, 0x44, struct lttng_kernel_calibrate)
 
 /* Session FD ioctl */
 #define LTTNG_KERNEL_METADATA               \

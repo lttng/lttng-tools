@@ -576,6 +576,22 @@ int lttng_set_tracing_group(const char *name)
 }
 
 /*
+ *  lttng_calibrate
+ */
+int lttng_calibrate(struct lttng_domain *domain,
+		struct lttng_calibrate *calibrate)
+{
+	int ret;
+
+	copy_lttng_domain(domain);
+
+	memcpy(&lsm.u.calibrate, calibrate, sizeof(struct lttng_calibrate));
+	ret = ask_sessiond(LTTNG_CALIBRATE, NULL);
+
+	return ret;
+}
+
+/*
  *  lttng_check_session_daemon
  *
  *  Yes, return 1

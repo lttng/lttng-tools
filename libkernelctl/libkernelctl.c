@@ -166,3 +166,8 @@ int kernctl_wait_quiescent(int fd)
 {
 	return ioctl(fd, LTTNG_KERNEL_WAIT_QUIESCENT);
 }
+
+int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
+{
+	return ioctl(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
+}

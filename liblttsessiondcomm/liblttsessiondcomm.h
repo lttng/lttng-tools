@@ -59,6 +59,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_LIST_TRACEPOINTS,
 	LTTNG_START_TRACE,
 	LTTNG_STOP_TRACE,
+	LTTNG_CALIBRATE,
 };
 
 /*
@@ -152,6 +153,7 @@ struct lttcomm_session_msg {
 		struct {
 			char channel_name[NAME_MAX];
 		} list;
+		struct lttng_calibrate calibrate;
 	} u;
 };
 
