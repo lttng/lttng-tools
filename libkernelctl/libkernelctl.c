@@ -22,14 +22,15 @@
 #include "kernel-ioctl.h"
 #include "libkernelctl.h"
 
-int kernctl_add_context(int fd, struct lttng_kernel_context *ctx)
+int kernctl_create_session(int fd)
 {
-	return ioctl(fd, LTTNG_KERNEL_CONTEXT, ctx);
+	return ioctl(fd, LTTNG_KERNEL_SESSION);
 }
 
-int kernctl_buffer_flush(int fd)
+/* open the metadata global channel */
+int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
 {
-	return ioctl(fd, RING_BUFFER_FLUSH);
+	return ioctl(fd, LTTNG_KERNEL_METADATA, chops);
 }
 
 int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
@@ -37,20 +38,21 @@ int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 	return ioctl(fd, LTTNG_KERNEL_CHANNEL, chops);
 }
 
+int kernctl_create_stream(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_STREAM);
+}
+
 int kernctl_create_event(int fd, struct lttng_kernel_event *ev)
 {
 	return ioctl(fd, LTTNG_KERNEL_EVENT, ev);
 }
 
-int kernctl_create_session(int fd)
+int kernctl_add_context(int fd, struct lttng_kernel_context *ctx)
 {
-	return ioctl(fd, LTTNG_KERNEL_SESSION);
+	return ioctl(fd, LTTNG_KERNEL_CONTEXT, ctx);
 }
 
-int kernctl_create_stream(int fd)
-{
-	return ioctl(fd, LTTNG_KERNEL_STREAM);
-}
 
 /* Enable event, channel and session ioctl */
 int kernctl_enable(int fd)
@@ -64,84 +66,6 @@ int kernctl_disable(int fd)
 	return ioctl(fd, LTTNG_KERNEL_DISABLE);
 }
 
-/* returns the maximum size for sub-buffers. */
-int kernctl_get_max_subbuf_size(int fd, unsigned long *len)
-{
-	return ioctl(fd, RING_BUFFER_GET_MAX_SUBBUF_SIZE, len);
-}
-
-/* returns the length to mmap. */
-int kernctl_get_mmap_len(int fd, unsigned long *len)
-{
-	return ioctl(fd, RING_BUFFER_GET_MMAP_LEN, len);
-}
-
-/* returns the offset of the subbuffer belonging to the mmap reader. */
-int kernctl_get_mmap_read_offset(int fd, unsigned long *off)
-{
-	return ioctl(fd, RING_BUFFER_GET_MMAP_READ_OFFSET, off);
-}
-
-/* Get exclusive read access to the next sub-buffer that can be read. */
-int kernctl_get_next_subbuf(int fd)
-{
-	return ioctl(fd, RING_BUFFER_GET_NEXT_SUBBUF);
-}
-
-/* returns the size of the current sub-buffer, without padding (for mmap). */
-int kernctl_get_padded_subbuf_size(int fd, unsigned long *len)
-{
-	return ioctl(fd, RING_BUFFER_GET_PADDED_SUBBUF_SIZE, len);
-}
-
-/* Get exclusive read access to the specified sub-buffer position */
-int kernctl_get_subbuf(int fd, unsigned long *len)
-{
-	return ioctl(fd, RING_BUFFER_GET_SUBBUF, len);
-}
-
-/* returns the size of the current sub-buffer, without padding (for mmap). */
-int kernctl_get_subbuf_size(int fd, unsigned long *len)
-{
-	return ioctl(fd, RING_BUFFER_GET_SUBBUF_SIZE, len);
-}
-
-/* open the metadata global channel */
-int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
-{
-	return ioctl(fd, LTTNG_KERNEL_METADATA, chops);
-}
-
-/* Release exclusive sub-buffer access, move consumer forward. */
-int kernctl_put_next_subbuf(int fd)
-{
-	return ioctl(fd, RING_BUFFER_PUT_NEXT_SUBBUF);
-}
-
-/* Release exclusive sub-buffer access */
-int kernctl_put_subbuf(int fd)
-{
-	return ioctl(fd, RING_BUFFER_PUT_SUBBUF);
-}
-
-/* Get a snapshot of the current ring buffer producer and consumer positions */
-int kernctl_snapshot(int fd)
-{
-	return ioctl(fd, RING_BUFFER_SNAPSHOT);
-}
-
-/* Get the consumer position (iteration start) */
-int kernctl_snapshot_get_consumed(int fd, unsigned long *pos)
-{
-	return ioctl(fd, RING_BUFFER_SNAPSHOT_GET_CONSUMED, pos);
-}
-
-/* Get the producer position (iteration end) */
-int kernctl_snapshot_get_produced(int fd, unsigned long *pos)
-{
-	return ioctl(fd, RING_BUFFER_SNAPSHOT_GET_PRODUCED, pos);
-}
-
 int kernctl_start_session(int fd)
 {
 	return ioctl(fd, LTTNG_KERNEL_SESSION_START);
@@ -151,6 +75,7 @@ int kernctl_stop_session(int fd)
 {
 	return ioctl(fd, LTTNG_KERNEL_SESSION_STOP);
 }
+
 
 int kernctl_tracepoint_list(int fd)
 {
@@ -170,4 +95,95 @@ int kernctl_wait_quiescent(int fd)
 int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 {
 	return ioctl(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
+}
+
+
+int kernctl_buffer_flush(int fd)
+{
+	return ioctl(fd, RING_BUFFER_FLUSH);
+}
+
+
+/* Buffer operations */
+
+/* For mmap mode, readable without "get" operation */
+
+/* returns the length to mmap. */
+int kernctl_get_mmap_len(int fd, unsigned long *len)
+{
+	return ioctl(fd, RING_BUFFER_GET_MMAP_LEN, len);
+}
+
+/* returns the maximum size for sub-buffers. */
+int kernctl_get_max_subbuf_size(int fd, unsigned long *len)
+{
+	return ioctl(fd, RING_BUFFER_GET_MAX_SUBBUF_SIZE, len);
+}
+
+/*
+ * For mmap mode, operate on the current packet (between get/put or
+ * get_next/put_next).
+ */
+
+/* returns the offset of the subbuffer belonging to the mmap reader. */
+int kernctl_get_mmap_read_offset(int fd, unsigned long *off)
+{
+	return ioctl(fd, RING_BUFFER_GET_MMAP_READ_OFFSET, off);
+}
+
+/* returns the size of the current sub-buffer, without padding (for mmap). */
+int kernctl_get_subbuf_size(int fd, unsigned long *len)
+{
+	return ioctl(fd, RING_BUFFER_GET_SUBBUF_SIZE, len);
+}
+
+/* returns the size of the current sub-buffer, without padding (for mmap). */
+int kernctl_get_padded_subbuf_size(int fd, unsigned long *len)
+{
+	return ioctl(fd, RING_BUFFER_GET_PADDED_SUBBUF_SIZE, len);
+}
+
+/* Get exclusive read access to the next sub-buffer that can be read. */
+int kernctl_get_next_subbuf(int fd)
+{
+	return ioctl(fd, RING_BUFFER_GET_NEXT_SUBBUF);
+}
+
+
+/* Release exclusive sub-buffer access, move consumer forward. */
+int kernctl_put_next_subbuf(int fd)
+{
+	return ioctl(fd, RING_BUFFER_PUT_NEXT_SUBBUF);
+}
+
+/* snapshot */
+
+/* Get a snapshot of the current ring buffer producer and consumer positions */
+int kernctl_snapshot(int fd)
+{
+	return ioctl(fd, RING_BUFFER_SNAPSHOT);
+}
+
+/* Get the consumer position (iteration start) */
+int kernctl_snapshot_get_consumed(int fd, unsigned long *pos)
+{
+	return ioctl(fd, RING_BUFFER_SNAPSHOT_GET_CONSUMED, pos);
+}
+
+/* Get the producer position (iteration end) */
+int kernctl_snapshot_get_produced(int fd, unsigned long *pos)
+{
+	return ioctl(fd, RING_BUFFER_SNAPSHOT_GET_PRODUCED, pos);
+}
+
+/* Get exclusive read access to the specified sub-buffer position */
+int kernctl_get_subbuf(int fd, unsigned long *len)
+{
+	return ioctl(fd, RING_BUFFER_GET_SUBBUF, len);
+}
+
+/* Release exclusive sub-buffer access */
+int kernctl_put_subbuf(int fd)
+{
+	return ioctl(fd, RING_BUFFER_PUT_SUBBUF);
 }
