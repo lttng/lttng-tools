@@ -115,11 +115,12 @@ int lttcomm_connect_unix_sock(const char *pathname)
 {
 	struct sockaddr_un sun;
 	int fd;
-	int ret = 1;
+	int ret;
 
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
 		perror("socket");
+		ret = fd;
 		goto error;
 	}
 
@@ -129,14 +130,20 @@ int lttcomm_connect_unix_sock(const char *pathname)
 
 	ret = connect(fd, (struct sockaddr *) &sun, sizeof(sun));
 	if (ret < 0) {
-		perror("connect");
-		goto error;
+		/*
+		 * Don't print message on connect error, because connect
+		 * is used in normal execution to detect if sessiond is
+		 * alive.
+		 */
+		goto error_connect;
 	}
 
 	return fd;
 
+error_connect:
+	close(fd);
 error:
-	return -1;
+	return ret;
 }
 
 /*
