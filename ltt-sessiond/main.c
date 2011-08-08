@@ -146,10 +146,18 @@ static void teardown_kernel_session(struct ltt_session *session)
 	}
 }
 
+static void stop_threads(void)
+{
+	/* Stopping all threads */
+	DBG("Terminating all threads");
+	close(thread_quit_pipe[0]);
+	close(thread_quit_pipe[1]);
+}
+
 /*
  * Cleanup the daemon
  */
-static void cleanup()
+static void cleanup(void)
 {
 	int ret;
 	char *cmd;
@@ -162,11 +170,6 @@ static void cleanup()
 		"Matthew, BEET driven development works!%c[%dm",
 		27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
 	/* </fun> */
-
-	/* Stopping all threads */
-	DBG("Terminating all threads");
-	close(thread_quit_pipe[0]);
-	close(thread_quit_pipe[1]);
 
 	DBG("Removing %s directory", LTTNG_RUNDIR);
 	ret = asprintf(&cmd, "rm -rf " LTTNG_RUNDIR);
@@ -860,6 +863,23 @@ static int spawn_kconsumerd_thread(void)
 error:
 	ret = LTTCOMM_KERN_CONSUMER_FAIL;
 	return ret;
+}
+
+static int join_kconsumerd_thread(void)
+{
+	void *status;
+	int ret;
+
+	if (kconsumerd_pid != 0) {
+		ret = kill(kconsumerd_pid, SIGTERM);
+		if (ret) {
+			ERR("Error killing kconsumerd");
+			return ret;
+		}
+		return pthread_join(kconsumerd_thread, &status);
+	} else {
+		return 0;
+	}
 }
 
 /*
@@ -2347,7 +2367,7 @@ static int parse_args(int argc, char **argv)
  * 	    apps_sock - The communication socket for all UST apps.
  * 	    client_sock - The communication of the cli tool (lttng).
  */
-static int init_daemon_socket()
+static int init_daemon_socket(void)
 {
 	int ret = 0;
 	mode_t old_umask;
@@ -2394,7 +2414,7 @@ end:
 /*
  * Check if the global socket is available.  If yes, error is returned.
  */
-static int check_existing_daemon()
+static int check_existing_daemon(void)
 {
 	int ret;
 
@@ -2536,26 +2556,27 @@ error:
 
 /*
  * Signal handler for the daemon
+ *
+ * Simply stop all worker threads, leaving main() return gracefully
+ * after joining all threads and calling cleanup().
  */
 static void sighandler(int sig)
 {
 	switch (sig) {
-		case SIGPIPE:
-			DBG("SIGPIPE catched");
-			return;
-		case SIGINT:
-			DBG("SIGINT catched");
-			cleanup();
-			break;
-		case SIGTERM:
-			DBG("SIGTERM catched");
-			cleanup();
-			break;
-		default:
-			break;
+	case SIGPIPE:
+		DBG("SIGPIPE catched");
+		return;
+	case SIGINT:
+		DBG("SIGINT catched");
+		stop_threads();
+		break;
+	case SIGTERM:
+		DBG("SIGTERM catched");
+		stop_threads();
+		break;
+	default:
+		break;
 	}
-
-	exit(EXIT_SUCCESS);
 }
 
 /*
@@ -2625,14 +2646,14 @@ int main(int argc, char **argv)
 	const char *home_path;
 
 	/* Create thread quit pipe */
-	if (init_thread_quit_pipe() < 0) {
-		goto exit;
+	if ((ret = init_thread_quit_pipe()) < 0) {
+		goto error;
 	}
 
 	/* Parse arguments */
 	progname = argv[0];
 	if ((ret = parse_args(argc, argv) < 0)) {
-		goto exit;
+		goto error;
 	}
 
 	/* Daemonize */
@@ -2640,7 +2661,7 @@ int main(int argc, char **argv)
 		ret = daemon(0, 0);
 		if (ret < 0) {
 			perror("daemon");
-			goto exit;
+			goto error;
 		}
 	}
 
@@ -2650,7 +2671,7 @@ int main(int argc, char **argv)
 	if (is_root) {
 		ret = create_lttng_rundir();
 		if (ret < 0) {
-			goto exit;
+			goto error;
 		}
 
 		if (strlen(apps_unix_sock_path) == 0) {
@@ -2667,7 +2688,8 @@ int main(int argc, char **argv)
 		if (home_path == NULL) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");
-			goto exit;
+			ret = -EPERM;
+			goto error;
 		}
 
 		if (strlen(apps_unix_sock_path) == 0) {
@@ -2693,10 +2715,10 @@ int main(int argc, char **argv)
 	if ((ret = check_existing_daemon()) == 0) {
 		ERR("Already running daemon.\n");
 		/*
-		 * We do not goto error because we must not cleanup() because a daemon
-		 * is already running.
+		 * We do not goto exit because we must not cleanup()
+		 * because a daemon is already running.
 		 */
-		goto exit;
+		goto error;
 	}
 
 	/* After this point, we can safely call cleanup() so goto error is used */
@@ -2710,7 +2732,7 @@ int main(int argc, char **argv)
 	if (is_root) {
 		ret = set_kconsumerd_sockets();
 		if (ret < 0) {
-			goto error;
+			goto exit;
 		}
 
 		/* Setup kernel tracer */
@@ -2720,18 +2742,18 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
-	if (set_signal_handler() < 0) {
-		goto error;
+	if ((ret = set_signal_handler()) < 0) {
+		goto exit;
 	}
 
 	/* Setup the needed unix socket */
-	if (init_daemon_socket() < 0) {
-		goto error;
+	if ((ret = init_daemon_socket()) < 0) {
+		goto exit;
 	}
 
 	/* Set credentials to socket */
-	if (is_root && (set_permissions() < 0)) {
-		goto error;
+	if (is_root && ((ret = set_permissions()) < 0)) {
+		goto exit;
 	}
 
 	/* Get parent pid if -S, --sig-parent is specified. */
@@ -2740,8 +2762,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the kernel pipe for waking up the kernel thread */
-	if (create_kernel_poll_pipe() < 0) {
-		goto error;
+	if ((ret = create_kernel_poll_pipe()) < 0) {
+		goto exit;
 	}
 
 	/*
@@ -2750,41 +2772,61 @@ int main(int argc, char **argv)
 	 */
 	session_list_ptr = get_session_list();
 
-	while (1) {
-		/* Create thread to manage the client socket */
-		ret = pthread_create(&client_thread, NULL, thread_manage_clients, (void *) NULL);
-		if (ret != 0) {
-			perror("pthread_create");
-			goto error;
-		}
-
-		/* Create thread to manage application socket */
-		ret = pthread_create(&apps_thread, NULL, thread_manage_apps, (void *) NULL);
-		if (ret != 0) {
-			perror("pthread_create");
-			goto error;
-		}
-
-		/* Create kernel thread to manage kernel event */
-		ret = pthread_create(&kernel_thread, NULL, thread_manage_kernel, (void *) NULL);
-		if (ret != 0) {
-			perror("pthread_create");
-			goto error;
-		}
-
-		ret = pthread_join(client_thread, &status);
-		if (ret != 0) {
-			perror("pthread_join");
-			goto error;
-		}
+	/* Create thread to manage the client socket */
+	ret = pthread_create(&client_thread, NULL, thread_manage_clients, (void *) NULL);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto exit_client;
 	}
 
-	cleanup();
-	exit(EXIT_SUCCESS);
+	/* Create thread to manage application socket */
+	ret = pthread_create(&apps_thread, NULL, thread_manage_apps, (void *) NULL);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto exit_apps;
+	}
 
-error:
-	cleanup();
+	/* Create kernel thread to manage kernel event */
+	ret = pthread_create(&kernel_thread, NULL, thread_manage_kernel, (void *) NULL);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto exit_kernel;
+	}
 
+	ret = pthread_join(kernel_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_kernel:
+	ret = pthread_join(apps_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_apps:
+	ret = pthread_join(client_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+	ret = join_kconsumerd_thread();
+	if (ret != 0) {
+		perror("join_kconsumerd");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_client:
 exit:
+	/*
+	 * cleanup() is called when no other thread is running.
+	 */
+	cleanup();
+	if (!ret)
+		exit(EXIT_SUCCESS);
+error:
 	exit(EXIT_FAILURE);
 }
