@@ -19,8 +19,8 @@
 #ifndef _LIBLTTKCONSUMERD_H
 #define _LIBLTTKCONSUMERD_H
 
+#include <lttng/lttng-sessiond-comm.h>
 #include "lttng-kconsumerd.h"
-#include "liblttsessiondcomm.h"
 
 /*
  * When the receiving thread dies, we need to have a way to make

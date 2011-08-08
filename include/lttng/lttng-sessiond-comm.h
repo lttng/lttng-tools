@@ -1,6 +1,10 @@
+#ifndef _LTTNG_SESSIOND_COMM_H
+#define _LTTNG_SESSIOND_COMM_H
+
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Julien Desfossez <julien.desfossez@polymtl.ca>
+ *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,16 +19,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- * 
  */
 
-#ifndef _LIBLTTSESSIONDCOMM_H
-#define _LIBLTTSESSIONDCOMM_H
+/*
+ * This header is meant for liblttng and libust internal use ONLY.
+ * These declarations should NOT be considered stable API.
+ */
 
 #include <limits.h>
-
 #include <lttng/lttng.h>
-#include "lttng-share.h"
 
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		LTTNG_RUNDIR "/client-ltt-sessiond"
@@ -126,7 +129,7 @@ enum lttcomm_return_code {
  * Data structure received from lttng client to session daemon.
  */
 struct lttcomm_session_msg {
-	u32 cmd_type;    /* enum lttcomm_sessiond_command */
+	uint32_t cmd_type;    /* enum lttcomm_sessiond_command */
 	struct lttng_session session;
 	struct lttng_domain domain;
 	union {
@@ -161,10 +164,10 @@ struct lttcomm_session_msg {
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
-	u32 cmd_type;   /* enum lttcomm_sessiond_command */
-	u32 ret_code;   /* enum lttcomm_return_code */
-	u32 pid;        /* pid_t */
-	u32 data_size;
+	uint32_t cmd_type;   /* enum lttcomm_sessiond_command */
+	uint32_t ret_code;   /* enum lttcomm_return_code */
+	uint32_t pid;        /* pid_t */
+	uint32_t data_size;
 	/* Contains: trace_name + data */
 	char payload[];
 };
@@ -176,8 +179,8 @@ struct lttcomm_lttng_msg {
  * how many lttcomm_kconsumerd_msg it is about to receive
  */
 struct lttcomm_kconsumerd_header {
-	u32 payload_size;
-	u32 cmd_type;	/* enum kconsumerd_command */
+	uint32_t payload_size;
+	uint32_t cmd_type;	/* enum kconsumerd_command */
 };
 
 /* lttcomm_kconsumerd_msg represents a file descriptor to consume the
@@ -186,7 +189,7 @@ struct lttcomm_kconsumerd_header {
 struct lttcomm_kconsumerd_msg {
 	char path_name[PATH_MAX];
 	int fd;
-	u32 state;    /* enum lttcomm_kconsumerd_fd_state */
+	uint32_t state;    /* enum lttcomm_kconsumerd_fd_state */
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
 };
 
@@ -195,9 +198,10 @@ extern int lttcomm_connect_unix_sock(const char *pathname);
 extern int lttcomm_accept_unix_sock(int sock);
 extern int lttcomm_listen_unix_sock(int sock);
 extern int lttcomm_close_unix_sock(int sock);
-extern ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, size_t len);
+extern ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
+					  size_t nb_fd, size_t len);
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
 
-#endif	/* _LIBLTTSESSIONDCOMM_H */
+#endif	/* _LTTNG_SESSIOND_COMM_H */

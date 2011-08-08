@@ -23,8 +23,8 @@
 #include <urcu/list.h>
 
 #include <lttng/lttng.h>
+#include <lttng/lttng-sessiond-comm.h>
 
-#include "liblttsessiondcomm.h"
 #include "lttng-kernel.h"
 #include "kernel-ctl.h"
 #include "trace.h"
