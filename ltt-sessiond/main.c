@@ -60,6 +60,7 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
 /* Variables */
 int opt_verbose;    /* Not static for lttngerr.h */
+int opt_verbose_kconsumerd;    /* Not static for lttngerr.h */
 int opt_quiet;      /* Not static for lttngerr.h */
 
 const char *progname;
@@ -900,7 +901,7 @@ static pid_t spawn_kconsumerd(void)
 		/*
 		 * Exec kconsumerd.
 		 */
-		if (opt_verbose > 1) {
+		if (opt_verbose > 1 || opt_verbose_kconsumerd) {
 			verbosity = "--verbose";
 		} else {
 			verbosity = "--quiet";
@@ -2280,6 +2281,7 @@ static void usage(void)
 	fprintf(stderr, "  -S, --sig-parent                   Send SIGCHLD to parent pid to notify readiness.\n");
 	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
+	fprintf(stderr, "      --verbose-kconsumerd           Verbose mode for kconsumerd. Activate DBG() macro.\n");
 }
 
 /*
@@ -2301,12 +2303,13 @@ static int parse_args(int argc, char **argv)
 		{ "version", 0, 0, 'V' },
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
+		{ "verbose-kconsumerd", 0, 0, 'Z' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:E:C:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:E:C:Z", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -2351,6 +2354,9 @@ static int parse_args(int argc, char **argv)
 		case 'v':
 			/* Verbose level can increase using multiple -v */
 			opt_verbose += 1;
+			break;
+		case 'Z':
+			opt_verbose_kconsumerd += 1;
 			break;
 		default:
 			/* Unknown option or other error.
