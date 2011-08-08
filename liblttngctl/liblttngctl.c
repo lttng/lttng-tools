@@ -608,12 +608,21 @@ int lttng_session_daemon_alive(void)
 		return ret;
 	}
 
-	/* If socket exist, we consider the daemon started */
+	/* If socket exist, we check if the daemon listens to connect. */
 	ret = access(sessiond_sock_path, F_OK);
 	if (ret < 0) {
 		/* Not alive */
 		return 0;
 	}
+
+	ret = lttcomm_connect_unix_sock(sessiond_sock_path);
+	if (ret < 0) {
+		/* Not alive */
+		return 0;
+	}
+	ret = lttcomm_close_unix_sock(ret);
+	if (ret < 0)
+		perror("lttcomm_close_unix_sock");
 
 	/* Is alive */
 	return 1;

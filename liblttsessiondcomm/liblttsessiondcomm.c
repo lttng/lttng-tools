@@ -186,6 +186,8 @@ int lttcomm_create_unix_sock(const char *pathname)
 	sun.sun_family = AF_UNIX;
 	strncpy(sun.sun_path, pathname, strlen(pathname));
 
+	/* Unlink the old file if present */
+	(void) unlink(pathname);
 	ret = bind(fd, (struct sockaddr *) &sun, sizeof(sun));
 	if (ret < 0) {
 		perror("bind");

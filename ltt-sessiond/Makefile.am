@@ -11,7 +11,9 @@ ltt_sessiond_SOURCES = utils.c trace.c session.c traceable-app.c ust-ctl.c \
                        utils.h trace.h session.h traceable-app.h ust-ctl.h \
                        context.h kernel-ctl.h ltt-sessiond.h
 
+# link on liblttngctl for check if sessiond is already alive.
 ltt_sessiond_LDADD = \
 		 $(top_builddir)/liblttsessiondcomm/liblttsessiondcomm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
-		 $(top_builddir)/libustctl/libustctl.la
+		 $(top_builddir)/libustctl/libustctl.la	\
+		 $(top_builddir)/liblttngctl/liblttngctl.la

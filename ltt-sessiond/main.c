@@ -2418,18 +2418,21 @@ end:
 }
 
 /*
- * Check if the global socket is available.  If yes, error is returned.
+ * Check if the global socket is available, and if a daemon is answering
+ * at the other side. If yes, error is returned.
  */
 static int check_existing_daemon(void)
 {
 	int ret;
 
-	ret = access(client_unix_sock_path, F_OK);
-	if (ret == 0) {
-		ret = access(apps_unix_sock_path, F_OK);
-	}
-
-	return ret;
+	if (access(client_unix_sock_path, F_OK) < 0 &&
+	    access(apps_unix_sock_path, F_OK) < 0)
+		return 0;
+	/* Is there anybody out there ? */
+	if (lttng_session_daemon_alive())
+		return -EEXIST;
+	else
+		return 0;
 }
 
 /*
@@ -2714,11 +2717,9 @@ int main(int argc, char **argv)
 	DBG("Application socket path %s", apps_unix_sock_path);
 
 	/*
-	 * See if daemon already exist. If any of the two socket needed by the
-	 * daemon are present, this test fails. However, if the daemon is killed
-	 * with a SIGKILL, those unix socket must be unlinked by hand.
+	 * See if daemon already exist.
 	 */
-	if ((ret = check_existing_daemon()) == 0) {
+	if ((ret = check_existing_daemon()) < 0) {
 		ERR("Already running daemon.\n");
 		/*
 		 * We do not goto exit because we must not cleanup()
