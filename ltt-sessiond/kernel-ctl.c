@@ -599,7 +599,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 
 	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
 		if (count > nbmem) {
-			DBG("Reallocating event list from %zd to %zd bytes", nbmem,
+			DBG("Reallocating event list from %zu to %zu bytes", nbmem,
 					nbmem + KERNEL_EVENT_LIST_SIZE);
 			/* Adding the default size again */
 			nbmem += KERNEL_EVENT_LIST_SIZE;
@@ -615,7 +615,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 
 	*events = elist;
 
-	DBG("Kernel list events done (%ld events)", count);
+	DBG("Kernel list events done (%zu events)", count);
 
 	return count;
 

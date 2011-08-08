@@ -2062,7 +2062,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
-		DBG("Listing events (%ld events)", nb_event);
+		DBG("Listing events (%zu events)", nb_event);
 
 		list_lttng_events(kchan,
 				(struct lttng_event *)(cmd_ctx->llm->payload));
