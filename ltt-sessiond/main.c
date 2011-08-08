@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -113,6 +114,20 @@ static int modprobe_remove_kernel_modules(void);
  * lock_session_list and unlock_session_list for lock acquisition.
  */
 static struct ltt_session_list *session_list_ptr;
+
+static gid_t allowed_group(void)
+{
+	struct group *grp;
+
+	grp = (opt_tracing_group != NULL) ?
+		(grp = getgrnam(opt_tracing_group)) :
+		(grp = getgrnam(default_tracing_group));
+	if (!grp) {
+		return -1;
+	} else {
+		return grp->gr_gid;
+	}
+}
 
 /*
  * Init quit pipe.
@@ -1045,7 +1060,7 @@ static int mount_debugfs(char *path)
 	int ret;
 	char *type = "debugfs";
 
-	ret = mkdir_recursive(path, S_IRWXU | S_IRWXG);
+	ret = mkdir_recursive(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
 	if (ret < 0) {
 		goto error;
 	}
@@ -1226,9 +1241,10 @@ static int create_kernel_session(struct ltt_session *session)
 		goto error;
 	}
 
-	ret = mkdir_recursive(session->path, S_IRWXU | S_IRWXG );
+	ret = mkdir_recursive(session->path, S_IRWXU | S_IRWXG,
+			      geteuid(), allowed_group()); 
 	if (ret < 0) {
-		if (ret != EEXIST) {
+		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
 			goto error;
 		}
@@ -2445,13 +2461,10 @@ static int set_permissions(void)
 {
 	int ret;
 	struct group *grp;
+	gid_t gid;
 
-	/* Decide which group name to use */
-	(opt_tracing_group != NULL) ?
-		(grp = getgrnam(opt_tracing_group)) :
-		(grp = getgrnam(default_tracing_group));
-
-	if (grp == NULL) {
+	gid = allowed_group();
+	if (gid < 0) {
 		if (is_root) {
 			WARN("No tracing group detected");
 			ret = 0;
@@ -2463,21 +2476,21 @@ static int set_permissions(void)
 	}
 
 	/* Set lttng run dir */
-	ret = chown(LTTNG_RUNDIR, 0, grp->gr_gid);
+	ret = chown(LTTNG_RUNDIR, 0, gid);
 	if (ret < 0) {
 		ERR("Unable to set group on " LTTNG_RUNDIR);
 		perror("chown");
 	}
 
 	/* lttng client socket path */
-	ret = chown(client_unix_sock_path, 0, grp->gr_gid);
+	ret = chown(client_unix_sock_path, 0, gid);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", client_unix_sock_path);
 		perror("chown");
 	}
 
 	/* kconsumerd error socket path */
-	ret = chown(kconsumerd_err_unix_sock_path, 0, grp->gr_gid);
+	ret = chown(kconsumerd_err_unix_sock_path, 0, gid);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", kconsumerd_err_unix_sock_path);
 		perror("chown");

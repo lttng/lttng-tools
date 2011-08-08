@@ -1,5 +1,6 @@
 /*
- * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -44,7 +45,7 @@ const char *get_home_dir(void)
  *
  *  Create recursively directory using the FULL path.
  */
-int mkdir_recursive(const char *path, mode_t mode)
+int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	int ret;
 	char *p, tmp[PATH_MAX];
@@ -70,7 +71,19 @@ int mkdir_recursive(const char *path, mode_t mode)
 			if (ret < 0) {
 				if (!(errno == EEXIST)) {
 					perror("mkdir recursive");
-					ret = errno;
+					ret = -errno;
+					goto umask_error;
+				}
+			} else if (ret == 0) {
+				/*
+				 * We created the directory. Set its
+				 * ownership to the user/group
+				 * specified.
+				 */
+				ret = chown(tmp, uid, gid);
+				if (ret < 0) {
+					perror("chown in mkdir recursive");
+					ret = -errno;
 					goto umask_error;
 				}
 			}
@@ -80,7 +93,18 @@ int mkdir_recursive(const char *path, mode_t mode)
 
 	ret = mkdir(tmp, mode);
 	if (ret < 0) {
-		ret = errno;
+		ret = -errno;
+	} else if (ret == 0) {
+		/*
+		 * We created the directory. Set its ownership to the
+		 * user/group specified.
+		 */
+		ret = chown(tmp, uid, gid);
+		if (ret < 0) {
+			perror("chown in mkdir recursive");
+			ret = -errno;
+			goto umask_error;
+		}
 	}
 
 umask_error:
