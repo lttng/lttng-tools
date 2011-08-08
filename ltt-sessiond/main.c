@@ -119,9 +119,11 @@ static gid_t allowed_group(void)
 {
 	struct group *grp;
 
-	grp = (opt_tracing_group != NULL) ?
-		(grp = getgrnam(opt_tracing_group)) :
-		(grp = getgrnam(default_tracing_group));
+	if (opt_tracing_group) {
+		grp = getgrnam(opt_tracing_group);
+	} else {
+		grp = getgrnam(default_tracing_group);
+	}
 	if (!grp) {
 		return -1;
 	} else {
@@ -2439,8 +2441,6 @@ end:
  */
 static int check_existing_daemon(void)
 {
-	int ret;
-
 	if (access(client_unix_sock_path, F_OK) < 0 &&
 	    access(apps_unix_sock_path, F_OK) < 0)
 		return 0;
@@ -2460,7 +2460,6 @@ static int check_existing_daemon(void)
 static int set_permissions(void)
 {
 	int ret;
-	struct group *grp;
 	gid_t gid;
 
 	gid = allowed_group();
