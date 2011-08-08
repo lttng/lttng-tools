@@ -1004,7 +1004,7 @@ end:
  */
 void kconsumerd_cleanup(void)
 {
-	struct kconsumerd_fd *iter;
+	struct kconsumerd_fd *iter, *tmp;
 
 	/* remove the socket file */
 	unlink(kconsumerd_command_sock_path);
@@ -1014,7 +1014,7 @@ void kconsumerd_cleanup(void)
 	 * running (after joining on the threads), no need to protect
 	 * list iteration with mutex.
 	 */
-	cds_list_for_each_entry(iter, &kconsumerd_data.fd_list.head, list) {
+	cds_list_for_each_entry_safe(iter, tmp, &kconsumerd_data.fd_list.head, list) {
 		kconsumerd_del_fd(iter);
 	}
 }
