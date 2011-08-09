@@ -32,7 +32,7 @@
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		LTTNG_RUNDIR "/client-ltt-sessiond"
 #define DEFAULT_GLOBAL_APPS_UNIX_SOCK		LTTNG_RUNDIR "/apps-ltt-sessiond"
-#define DEFAULT_HOME_APPS_UNIX_SOCK			"%s/.apps-ltt-sessiond"
+#define DEFAULT_HOME_APPS_UNIX_SOCK		"%s/.apps-ltt-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK		"%s/.client-ltt-sessiond"
 
 /* Queue size of listen(2) */
