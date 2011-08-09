@@ -127,6 +127,7 @@ int lttcomm_connect_unix_sock(const char *pathname)
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
 	strncpy(sun.sun_path, pathname, sizeof(sun.sun_path));
+	sun.sun_path[sizeof(sun.sun_path) - 1] = '\0';
 
 	ret = connect(fd, (struct sockaddr *) &sun, sizeof(sun));
 	if (ret < 0) {
@@ -191,7 +192,8 @@ int lttcomm_create_unix_sock(const char *pathname)
 
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
-	strncpy(sun.sun_path, pathname, strlen(pathname));
+	strncpy(sun.sun_path, pathname, sizeof(sun.sun_path));
+	sun.sun_path[sizeof(sun.sun_path) - 1] = '\0';
 
 	/* Unlink the old file if present */
 	(void) unlink(pathname);

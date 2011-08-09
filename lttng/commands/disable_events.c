@@ -125,6 +125,7 @@ static int disable_events(void)
 
 			/* Copy name and type of the event */
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 			ret = lttng_disable_event(&dom, event_name, channel_name);
 			if (ret < 0) {
 				MSG("Unable to disable event %s for channel %s",

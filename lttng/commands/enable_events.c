@@ -125,6 +125,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	ret = sscanf(opt, "%[^'+']+%s", name, s_hex);
 	if (ret == 2) {
 		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
+		ev->attr.probe.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		DBG("probe symbol %s", ev->attr.probe.symbol_name);
 		if (strlen(s_hex) == 0) {
 			ERR("Invalid probe offset %s", s_hex);
@@ -142,6 +143,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 		ret = sscanf(opt, "%s", name);
 		if (ret == 1) {
 			strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
+			ev->attr.probe.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 			DBG("probe symbol %s", ev->attr.probe.symbol_name);
 			ev->attr.probe.offset = 0;
 			DBG("probe offset %" PRIu64, ev->attr.probe.offset);
@@ -230,6 +232,7 @@ static int enable_events(void)
 					event_name, channel_name);
 			/* Copy name and type of the event */
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 			ev.type = opt_event_type;
 
 			switch (opt_event_type) {
@@ -255,6 +258,7 @@ static int enable_events(void)
 				strncpy(ev.attr.ftrace.symbol_name,
 					opt_function_entry_symbol,
 					LTTNG_SYMBOL_NAME_LEN);
+				ev.attr.ftrace.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
 			default:
 				ret = CMD_NOT_IMPLEMENTED;

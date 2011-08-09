@@ -177,6 +177,7 @@ static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_f
 	tmp_fd->state = buf->state;
 	tmp_fd->max_sb_size = buf->max_sb_size;
 	strncpy(tmp_fd->path_name, buf->path_name, PATH_MAX);
+	tmp_fd->path_name[PATH_MAX - 1] = '\0';
 
 	/* Opening the tracefile in write mode */
 	ret = open(tmp_fd->path_name,

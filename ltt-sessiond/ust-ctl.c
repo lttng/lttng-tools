@@ -89,7 +89,8 @@ void get_traces_per_session(struct ltt_session *session, struct lttng_trace *tra
 
 	if (session->kern_session_count > 0) {
 		trace.type = KERNEL;
-		strncpy(trace.name, "kernel", 6);
+		strncpy(trace.name, "kernel", sizeof(trace.name));
+		trace.name[sizeof(trace.name) - 1] = '\0';
 		memcpy(&traces[i], &trace, sizeof(trace));
 	}
 }

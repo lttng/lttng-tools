@@ -289,6 +289,7 @@ static int send_kconsumerd_channel_fds(int sock, struct ltt_kernel_channel *chan
 			lkm.state = stream->state;
 			lkm.max_sb_size = channel->channel->attr.subbuf_size;
 			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
+			lkm.path_name[PATH_MAX - 1] = '\0';
 
 			DBG("Sending fd %d to kconsumerd", lkm.fd);
 
@@ -338,6 +339,7 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 		lkm.state = ACTIVE_FD;
 		lkm.max_sb_size = session->metadata->conf->attr.subbuf_size;
 		strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
+		lkm.path_name[PATH_MAX - 1] = '\0';
 
 		ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
 		if (ret < 0) {
@@ -1275,7 +1277,9 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 	 */
 	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
 		strncpy(sessions[i].path, session->path, PATH_MAX);
+		sessions[i].path[PATH_MAX - 1] = '\0';
 		strncpy(sessions[i].name, session->name, NAME_MAX);
+		sessions[i].name[NAME_MAX - 1] = '\0';
 		i++;
 	}
 }
@@ -1321,6 +1325,7 @@ static void list_lttng_events(struct ltt_kernel_channel *kchan,
 	/* Kernel channels */
 	cds_list_for_each_entry(event, &kchan->events_list.head , list) {
 		strncpy(events[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
+		events[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		events[i].enabled = event->enabled;
 		switch (event->event->instrumentation) {
 			case LTTNG_KERNEL_TRACEPOINT:
@@ -1444,6 +1449,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			strncpy(kctx.u.perf_counter.name,
 					cmd_ctx->lsm->u.context.ctx.u.perf_counter.name,
 					LTTNG_SYMBOL_NAME_LEN);
+			kctx.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 
 			/* Add kernel context to kernel tracer. See context.c */
 			ret = add_kernel_context(cmd_ctx->session->kernel_session, &kctx,

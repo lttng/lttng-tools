@@ -47,6 +47,18 @@ static char *tracing_group;
 static int connected;
 
 /*
+ * Copy string from src to dst and enforce null terminated byte.
+ */
+static void copy_string(char *dst, const char *src, size_t len)
+{
+	if (src && dst) {
+		strncpy(dst, src, len);
+		/* Enforce the NULL terminated byte */
+		dst[len - 1] = '\0';
+	}
+}
+
+/*
  *  send_data_sessiond
  *
  *  Send lttcomm_session_msg to the session daemon.
@@ -154,13 +166,14 @@ static int set_session_daemon_path(void)
 	/* Are we in the tracing group ? */
 	ret = check_tracing_group(tracing_group);
 	if (ret < 0 && getuid() != 0) {
-		if (sprintf(sessiond_sock_path, DEFAULT_HOME_CLIENT_UNIX_SOCK,
-					getenv("HOME")) < 0) {
+		if (snprintf(sessiond_sock_path, PATH_MAX,
+			     DEFAULT_HOME_CLIENT_UNIX_SOCK,
+			     getenv("HOME")) < 0) {
 			return -ENOMEM;
 		}
 	} else {
-		strncpy(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				sizeof(DEFAULT_GLOBAL_CLIENT_UNIX_SOCK));
+		copy_string(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+			    PATH_MAX);
 	}
 
 	return 0;
@@ -297,18 +310,6 @@ static void copy_lttng_domain(struct lttng_domain *dom)
 			lsm.domain.type = LTTNG_DOMAIN_KERNEL;
 			break;
 		}
-	}
-}
-
-/*
- * Copy string from src to dst and enforce null terminated byte.
- */
-static void copy_string(char *dst, const char *src, size_t len)
-{
-	if (src && dst) {
-		strncpy(dst, src, len);
-		/* Enforce the NULL terminated byte */
-		dst[len - 1] = '\0';
 	}
 }
 

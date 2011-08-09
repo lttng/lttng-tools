@@ -609,7 +609,8 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 				goto error;
 			}
 		}
-		strncpy(elist[count].name, event, strlen(event));
+		strncpy(elist[count].name, event, LTTNG_SYMBOL_NAME_LEN);
+		elist[count].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		count++;
 	}
 
