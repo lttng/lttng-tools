@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I config
 
-SUBDIRS = liblttsessiondcomm \
+SUBDIRS = liblttng-sessiond-comm \
 		  libkernelctl \
 		  liblttkconsumerd \
 		  liblttngctl \

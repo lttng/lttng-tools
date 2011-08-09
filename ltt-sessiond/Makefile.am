@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/liblttsessiondcomm \
+AM_CPPFLAGS = -I$(top_srcdir)/include \
 			  -I$(top_srcdir)/libkernelctl -I$(top_srcdir)/libustctl \
 			  -DINSTALL_BIN_PATH=\"$(bindir)\"
 
@@ -13,7 +13,7 @@ ltt_sessiond_SOURCES = utils.c trace.c session.c traceable-app.c ust-ctl.c \
 
 # link on liblttngctl for check if sessiond is already alive.
 ltt_sessiond_LDADD = \
-		 $(top_builddir)/liblttsessiondcomm/liblttsessiondcomm.la \
+		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/libustctl/libustctl.la	\
 		 $(top_builddir)/liblttngctl/liblttngctl.la
