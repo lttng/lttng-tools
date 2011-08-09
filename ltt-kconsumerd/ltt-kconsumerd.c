@@ -38,8 +38,8 @@
 #include <sys/mman.h>
 
 #include "lttngerr.h"
-#include "libkernelctl.h"
-#include "liblttkconsumerd.h"
+#include "kernelctl.h"
+#include "lttkconsumerd.h"
 
 /* the two threads (receive fd and poll) */
 pthread_t threads[2];

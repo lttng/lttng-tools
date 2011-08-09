@@ -30,8 +30,8 @@
 #include <urcu/list.h>
 #include <assert.h>
 
-#include "libkernelctl.h"
-#include "liblttkconsumerd.h"
+#include "kernelctl.h"
+#include "lttkconsumerd.h"
 #include "lttngerr.h"
 
 static

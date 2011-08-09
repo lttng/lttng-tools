@@ -20,7 +20,7 @@
 #include <sys/ioctl.h>
 
 #include "kernel-ioctl.h"
-#include "libkernelctl.h"
+#include "kernelctl.h"
 
 int kernctl_create_session(int fd)
 {

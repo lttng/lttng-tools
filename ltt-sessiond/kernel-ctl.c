@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #include "lttngerr.h"
-#include "libkernelctl.h"
+#include "kernelctl.h"
 #include "kernel-ctl.h"
 
 /*
