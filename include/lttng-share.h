@@ -27,8 +27,6 @@ typedef uint64_t u64;
 
 typedef __s64 s64;
 
-#define LTTNG_RUNDIR        "/var/run/lttng"
-
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME                "channel0"
 #define DEFAULT_CHANNEL_OVERWRITE           0       /* usec */

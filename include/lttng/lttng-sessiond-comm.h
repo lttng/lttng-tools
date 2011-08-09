@@ -29,6 +29,8 @@
 #include <limits.h>
 #include <lttng/lttng.h>
 
+#define LTTNG_RUNDIR        "/var/run/lttng"
+
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		LTTNG_RUNDIR "/client-ltt-sessiond"
 #define DEFAULT_GLOBAL_APPS_UNIX_SOCK		LTTNG_RUNDIR "/apps-ltt-sessiond"

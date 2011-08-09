@@ -20,10 +20,11 @@
 #ifndef _LTTNG_KCONSUMERD_H
 #define _LTTNG_KCONSUMERD_H
 
+#include <lttng/lttng-sessiond-comm.h>
 #include "lttng-share.h"
 
 /* Kernel consumer path */
-#define KCONSUMERD_PATH						LTTNG_RUNDIR "/kconsumerd"
+#define KCONSUMERD_PATH					LTTNG_RUNDIR "/kconsumerd"
 #define KCONSUMERD_CMD_SOCK_PATH			KCONSUMERD_PATH "/command"
 #define KCONSUMERD_ERR_SOCK_PATH			KCONSUMERD_PATH "/error"
 
