@@ -587,7 +587,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	fp = fdopen(fd, "r");
 	if (fp == NULL) {
 		perror("kernel tracepoint list fdopen");
-		goto error;
+		goto error_fp;
 	}
 
 	/*
@@ -606,7 +606,8 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 			elist = realloc(elist, nbmem);
 			if (elist == NULL) {
 				perror("realloc list events");
-				goto error;
+				count = -ENOMEM;
+				goto end;
 			}
 		}
 		strncpy(elist[count].name, event, LTTNG_SYMBOL_NAME_LEN);
@@ -615,11 +616,13 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	}
 
 	*events = elist;
-
 	DBG("Kernel list events done (%zu events)", count);
-
+end:
+	fclose(fp);	/* closes both fp and fd */
 	return count;
 
+error_fp:
+	close(fd);
 error:
 	return -1;
 }
