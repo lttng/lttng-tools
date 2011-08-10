@@ -60,10 +60,10 @@ static struct poptOption long_options[] = {
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"discard",        0,   POPT_ARG_NONE, 0, OPT_DISCARD, 0, 0},
 	{"overwrite",      0,   POPT_ARG_NONE, 0, OPT_OVERWRITE, 0, 0},
-	{"subbuf_size",    0,   POPT_ARG_DOUBLE, 0, OPT_SUBBUF_SIZE, 0, 0},
-	{"num_subbuf",     0,   POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0},
-	{"switch_timer",   0,   POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0},
-	{"read_timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
+	{"subbuf-size",    0,   POPT_ARG_DOUBLE, 0, OPT_SUBBUF_SIZE, 0, 0},
+	{"num-subbuf",     0,   POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0},
+	{"switch-timer",   0,   POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0},
+	{"read-timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -84,10 +84,10 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Channel options:\n");
 	fprintf(ofp, "      --discard            Discard event when buffers are full (default)\n");
 	fprintf(ofp, "      --overwrite          Flight recorder mode\n");
-	fprintf(ofp, "      --subbuf_size        Subbuffer size in bytes (default: 4096)\n");
-	fprintf(ofp, "      --num_subbuf         Number of subbufers (default: 2)\n");
-	fprintf(ofp, "      --switch_timer       Switch timer interval in usec (default: 0)\n");
-	fprintf(ofp, "      --read_timer         Read timer interval in usec (default: 200)\n");
+	fprintf(ofp, "      --subbuf-size        Subbuffer size in bytes (default: 4096)\n");
+	fprintf(ofp, "      --num-subbuf         Number of subbufers (default: 2)\n");
+	fprintf(ofp, "      --switch-timer       Switch timer interval in usec (default: 0)\n");
+	fprintf(ofp, "      --read-timer         Read timer interval in usec (default: 200)\n");
 	fprintf(ofp, "\n");
 }
 
