@@ -323,7 +323,7 @@ static int list_sessions(const char *session_name)
 	}
 
 	if (session_name == NULL) {
-		MSG("\nUse lttng list -s <session_name> for a detail listing");
+		MSG("\nUse lttng list <session_name> for more details");
 	}
 
 	return CMD_SUCCESS;
