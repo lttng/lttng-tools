@@ -29,13 +29,13 @@
 #include <limits.h>
 #include <lttng/lttng.h>
 
-#define LTTNG_RUNDIR			        "/var/run/lttng"
+#define LTTNG_RUNDIR                        "/var/run/lttng"
 
 /* Default unix socket path */
-#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK		LTTNG_RUNDIR "/client-ltt-sessiond"
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK		LTTNG_RUNDIR "/apps-ltt-sessiond"
-#define DEFAULT_HOME_APPS_UNIX_SOCK		"%s/.apps-ltt-sessiond"
-#define DEFAULT_HOME_CLIENT_UNIX_SOCK		"%s/.client-ltt-sessiond"
+#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK     LTTNG_RUNDIR "/client-ltt-sessiond"
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK       LTTNG_RUNDIR "/apps-ltt-sessiond"
+#define DEFAULT_HOME_APPS_UNIX_SOCK         "%s/.apps-ltt-sessiond"
+#define DEFAULT_HOME_CLIENT_UNIX_SOCK       "%s/.client-ltt-sessiond"
 
 /* Queue size of listen(2) */
 #define MAX_LISTEN 10
@@ -48,6 +48,7 @@
 enum lttcomm_sessiond_command {
 	/* Tracer command */
 	LTTNG_ADD_CONTEXT,
+	LTTNG_CALIBRATE,
 	LTTNG_DISABLE_CHANNEL,
 	LTTNG_DISABLE_EVENT,
 	LTTNG_DISABLE_ALL_EVENT,
@@ -64,7 +65,6 @@ enum lttcomm_sessiond_command {
 	LTTNG_LIST_TRACEPOINTS,
 	LTTNG_START_TRACE,
 	LTTNG_STOP_TRACE,
-	LTTNG_CALIBRATE,
 };
 
 /*
@@ -200,8 +200,9 @@ extern int lttcomm_connect_unix_sock(const char *pathname);
 extern int lttcomm_accept_unix_sock(int sock);
 extern int lttcomm_listen_unix_sock(int sock);
 extern int lttcomm_close_unix_sock(int sock);
+/* Send fd(s) over a unix socket. */
 extern ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
-					  size_t nb_fd, size_t len);
+		size_t nb_fd, size_t len);
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
