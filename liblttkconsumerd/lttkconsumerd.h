@@ -19,7 +19,7 @@
 #ifndef _LIBLTTKCONSUMERD_H
 #define _LIBLTTKCONSUMERD_H
 
-#include <lttng/lttng-sessiond-comm.h>
+#include <lttng-sessiond-comm.h>
 #include "lttng-kconsumerd.h"
 
 /*

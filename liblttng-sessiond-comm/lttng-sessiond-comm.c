@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include <lttng/lttng-sessiond-comm.h>
+#include <lttng-sessiond-comm.h>
 
 /*
  * Human readable error message.

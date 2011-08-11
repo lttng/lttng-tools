@@ -41,7 +41,7 @@
 
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
 #include <lttng/lttng.h>
-#include <lttng/lttng-sessiond-comm.h>
+#include <lttng-sessiond-comm.h>
 
 #include "context.h"
 #include "ltt-sessiond.h"

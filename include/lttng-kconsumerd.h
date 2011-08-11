@@ -20,7 +20,7 @@
 #ifndef _LTTNG_KCONSUMERD_H
 #define _LTTNG_KCONSUMERD_H
 
-#include <lttng/lttng-sessiond-comm.h>
+#include <lttng-sessiond-comm.h>
 #include "lttng-share.h"
 
 /* Kernel consumer path */

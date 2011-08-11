@@ -23,7 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <lttng/lttng-sessiond-comm.h>
+#include <lttng-sessiond-comm.h>
 #include "lttngerr.h"
 #include "ust-ctl.h"
 

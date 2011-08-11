@@ -1,5 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include
 
-lib_LTLIBRARIES = liblttng-sessiond-comm.la
+noinst_LTLIBRARIES = liblttng-sessiond-comm.la
 
-liblttng_sessiond_comm_la_SOURCES = lttng-sessiond-comm.c
+liblttng_sessiond_comm_la_SOURCES = lttng-sessiond-comm.c \
+				    lttng-sessiond-comm.h

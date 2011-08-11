@@ -30,7 +30,7 @@
 
 #include <lttng/lttng.h>
 
-#include <lttng/lttng-sessiond-comm.h>
+#include <lttng-sessiond-comm.h>
 #include "lttngerr.h"
 #include "lttng-share.h"
 
