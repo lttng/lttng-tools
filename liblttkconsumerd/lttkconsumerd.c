@@ -127,11 +127,18 @@ static int kconsumerd_find_session_fd(int fd)
  */
 static void kconsumerd_del_fd(struct kconsumerd_fd *lcf)
 {
+	int ret;
 	pthread_mutex_lock(&kconsumerd_data.lock);
 	cds_list_del(&lcf->list);
 	if (kconsumerd_data.fds_count > 0) {
 		kconsumerd_data.fds_count--;
 		if (lcf != NULL) {
+			if (lcf->mmap_base != NULL) {
+				ret = munmap(lcf->mmap_base, lcf->mmap_len);
+				if (ret != 0) {
+					perror("munmap");
+				}
+			}
 			if (lcf->out_fd != 0) {
 				close(lcf->out_fd);
 			}
@@ -168,6 +175,9 @@ static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_f
 	tmp_fd->max_sb_size = buf->max_sb_size;
 	tmp_fd->out_fd = 0;
 	tmp_fd->out_fd_offset = 0;
+	tmp_fd->mmap_len = 0;
+	tmp_fd->mmap_base = NULL;
+	tmp_fd->output = buf->output;
 	strncpy(tmp_fd->path_name, buf->path_name, PATH_MAX);
 	tmp_fd->path_name[PATH_MAX - 1] = '\0';
 
@@ -183,6 +193,24 @@ static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_f
 		tmp_fd->out_fd = ret;
 		DBG("Adding %s (%d, %d, %d)", tmp_fd->path_name,
 				tmp_fd->sessiond_fd, tmp_fd->consumerd_fd, tmp_fd->out_fd);
+	}
+
+	if (tmp_fd->output == LTTNG_EVENT_MMAP) {
+		/* get the len of the mmap region */
+		ret = kernctl_get_mmap_len(tmp_fd->consumerd_fd, &tmp_fd->mmap_len);
+		if (ret != 0) {
+			ret = errno;
+			perror("kernctl_get_mmap_len");
+			goto end;
+		}
+
+		tmp_fd->mmap_base = mmap(NULL, tmp_fd->mmap_len,
+				PROT_READ, MAP_PRIVATE, tmp_fd->consumerd_fd, 0);
+		if (tmp_fd->mmap_base == MAP_FAILED) {
+			perror("Error mmaping");
+			ret = -1;
+			goto end;
+		}
 	}
 
 	cds_list_add(&tmp_fd->list, &kconsumerd_data.fd_list.head);
@@ -259,32 +287,12 @@ static int kconsumerd_update_poll_array(struct kconsumerd_local_data *ctx,
 int kconsumerd_on_read_subbuffer_mmap(struct kconsumerd_local_data *ctx,
 		struct kconsumerd_fd *kconsumerd_fd, unsigned long len)
 {
-	unsigned long mmap_len, mmap_offset, padded_len, padding_len;
-	char *mmap_base;
+	unsigned long mmap_offset;
 	char *padding = NULL;
 	long ret = 0;
 	off_t orig_offset = kconsumerd_fd->out_fd_offset;
 	int fd = kconsumerd_fd->consumerd_fd;
 	int outfd = kconsumerd_fd->out_fd;
-
-	/* get the padded subbuffer size to know the padding required */
-	ret = kernctl_get_padded_subbuf_size(fd, &padded_len);
-	if (ret != 0) {
-		ret = errno;
-		perror("kernctl_get_padded_subbuf_size");
-		goto end;
-	}
-	padding_len = padded_len - len;
-	padding = malloc(padding_len * sizeof(char));
-	memset(padding, '\0', padding_len);
-
-	/* get the len of the mmap region */
-	ret = kernctl_get_mmap_len(fd, &mmap_len);
-	if (ret != 0) {
-		ret = errno;
-		perror("kernctl_get_mmap_len");
-		goto end;
-	}
 
 	/* get the offset inside the fd to mmap */
 	ret = kernctl_get_mmap_read_offset(fd, &mmap_offset);
@@ -294,15 +302,8 @@ int kconsumerd_on_read_subbuffer_mmap(struct kconsumerd_local_data *ctx,
 		goto end;
 	}
 
-	mmap_base = mmap(NULL, mmap_len, PROT_READ, MAP_PRIVATE, fd, mmap_offset);
-	if (mmap_base == MAP_FAILED) {
-		perror("Error mmaping");
-		ret = -1;
-		goto end;
-	}
-
 	while (len > 0) {
-		ret = write(outfd, mmap_base, len);
+		ret = write(outfd, kconsumerd_fd->mmap_base + mmap_offset, len);
 		if (ret >= len) {
 			len = 0;
 		} else if (ret < 0) {
@@ -314,14 +315,6 @@ int kconsumerd_on_read_subbuffer_mmap(struct kconsumerd_local_data *ctx,
 		sync_file_range(outfd, kconsumerd_fd->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		kconsumerd_fd->out_fd_offset += ret;
-	}
-
-	/* once all the data is written, write the padding to disk */
-	ret = write(outfd, padding, padding_len);
-	if (ret < 0) {
-		ret = errno;
-		perror("Error writing padding to file");
-		goto end;
 	}
 
 	/*
@@ -914,7 +907,7 @@ void *kconsumerd_thread_receive_fds(void *data)
 		/* we received a command to add or update fds */
 		ret = kconsumerd_consumerd_recv_fd(ctx, sock, kconsumerd_sockpoll,
 				tmp.payload_size, tmp.cmd_type);
-		if (ret <= 0) {
+		if (ret < 0) {
 			ERR("Receiving the FD, exiting");
 			goto end;
 		}

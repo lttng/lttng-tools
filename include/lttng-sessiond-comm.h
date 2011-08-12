@@ -193,6 +193,7 @@ struct lttcomm_kconsumerd_msg {
 	int fd;
 	uint32_t state;    /* enum lttcomm_kconsumerd_fd_state */
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
+	enum lttng_event_output output; /* use splice or mmap to consume this fd */
 };
 
 extern int lttcomm_create_unix_sock(const char *pathname);

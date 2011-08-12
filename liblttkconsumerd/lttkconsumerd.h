@@ -55,6 +55,9 @@ struct kconsumerd_fd {
 	char path_name[PATH_MAX]; /* tracefile name */
 	enum kconsumerd_fd_state state;
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
+	void *mmap_base;
+	size_t mmap_len;
+	enum lttng_event_output output; /* splice or mmap */
 };
 
 struct kconsumerd_local_data {

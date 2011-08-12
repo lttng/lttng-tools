@@ -288,6 +288,7 @@ static int send_kconsumerd_channel_fds(int sock, struct ltt_kernel_channel *chan
 			lkm.fd = stream->fd;
 			lkm.state = stream->state;
 			lkm.max_sb_size = channel->channel->attr.subbuf_size;
+			lkm.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
 			lkm.path_name[PATH_MAX - 1] = '\0';
 
@@ -338,6 +339,7 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 		lkm.fd = session->metadata_stream_fd;
 		lkm.state = ACTIVE_FD;
 		lkm.max_sb_size = session->metadata->conf->attr.subbuf_size;
+		lkm.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
 		lkm.path_name[PATH_MAX - 1] = '\0';
 

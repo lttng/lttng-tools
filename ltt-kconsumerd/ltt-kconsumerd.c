@@ -237,7 +237,7 @@ static int read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
 			break;
 		case LTTNG_EVENT_MMAP:
 			/* read the used subbuffer size */
-			err = kernctl_get_subbuf_size(infd, &len);
+			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
 				ret = errno;
 				perror("Getting sub-buffer len failed.");
