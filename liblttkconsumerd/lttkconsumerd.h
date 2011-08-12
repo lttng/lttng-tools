@@ -57,14 +57,68 @@ struct kconsumerd_fd {
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
 };
 
+/*
+ * kconsumerd_init(void)
+ * initialise the necessary environnement :
+ * - inform the polling thread to update the polling array
+ * - create the poll_pipe
+ * - create the should_quit pipe (for signal handler)
+ * returns the return code of pipe, 0 on success, -1 on error
+ */
 int kconsumerd_init(void);
+
+/*
+ * kconsumerd_send_error
+ * send return code to ltt-sessiond
+ * returns the return code of sendmsg : the number of bytes transmitted
+ * or -1 on error.
+ */
 int kconsumerd_send_error(enum lttcomm_return_code cmd);
+
+/*
+ * kconsumerd_poll_socket
+ * Poll on the should_quit pipe and the command socket
+ * return -1 on error and should exit, 0 if data is
+ * available on the command socket
+ */
 int kconsumerd_poll_socket(struct pollfd *kconsumerd_sockpoll);
+
+/*
+ *  kconsumerd_thread_poll_fds
+ *  This thread polls the fds in the ltt_fd_list to consume the data
+ *  and write it to tracefile if necessary.
+ */
 void *kconsumerd_thread_poll_fds(void *data);
+
+/*
+ *  kconsumerd_thread_receive_fds
+ *  This thread listens on the consumerd socket and
+ *  receives the file descriptors from ltt-sessiond
+ */
 void *kconsumerd_thread_receive_fds(void *data);
+
+/*
+ * kconsumerd_should_exit
+ * Called from signal handler to ensure a clean exit
+ */
 void kconsumerd_should_exit(void);
+
+/*
+ *  kconsumerd_cleanup
+ *  Cleanup the daemon's socket on exit
+ */
 void kconsumerd_cleanup(void);
+
+/*
+ * kconsumerd_set_error_socket
+ * Set the error socket for communication with a session daemon
+ */
 void kconsumerd_set_error_socket(int sock);
+
+/*
+ * kconsumerd_set_command_socket_path
+ * Set the command socket path for communication with a session daemon
+ */
 void kconsumerd_set_command_socket_path(char *sock);
 
 #endif /* _LIBLTTKCONSUMERD_H */
