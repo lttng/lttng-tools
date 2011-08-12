@@ -1,3 +1,12 @@
+2011-08-12 lttng-tools 2.0-pre11
+	* New lttng API using the lttng_handle
+	* Multiple fixes of kernel consumer
+	* Register the consuming function and add a library context
+	* Kernel consumer fix mmap/munmap
+	* lttng-sessiond-comm header has been privatize
+	* Kernel traces are written in the kernel/ directory
+	* Add underscore to enable-channel command options
+
 2011-07-29 lttng-tools 2.0-pre6
 	* Fix enable multiple events
 	* Add function entry feature
