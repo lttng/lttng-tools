@@ -50,6 +50,8 @@ enum {
 	OPT_USERSPACE,
 };
 
+static struct lttng_handle *handle;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -96,19 +98,20 @@ static void usage(FILE *ofp)
  *
  *  Adding channel using the lttng API.
  */
-static int enable_channel(void)
+static int enable_channel(char *session_name)
 {
 	int ret = CMD_SUCCESS;
 	char *channel_name;
 	struct lttng_domain dom;
 
-	if (set_session_name(opt_session_name) < 0) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	}
+
+	handle = lttng_create_handle(session_name, &dom);
+	if (handle == NULL) {
+		ret = -1;
+		goto error;
 	}
 
 	/* Strip event list */
@@ -122,7 +125,7 @@ static int enable_channel(void)
 			strncpy(chan.name, channel_name, NAME_MAX);
 			chan.name[NAME_MAX - 1] = '\0';
 
-			ret = lttng_enable_channel(&dom, &chan);
+			ret = lttng_enable_channel(handle, &chan);
 			if (ret < 0) {
 				goto error;
 			} else {
@@ -147,6 +150,8 @@ static int enable_channel(void)
 	}
 
 error:
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 
@@ -172,6 +177,7 @@ int cmd_enable_channels(int argc, const char **argv)
 {
 	int opt, ret;
 	static poptContext pc;
+	char *session_name = NULL;
 
 	init_channel_config();
 
@@ -227,7 +233,17 @@ int cmd_enable_channels(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = enable_channel();
+	if (!opt_session_name) {
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = -1;
+			goto end;
+		}
+	} else {
+		session_name = opt_session_name;
+	}
+
+	ret = enable_channel(session_name);
 
 end:
 	return ret;

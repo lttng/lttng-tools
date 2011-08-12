@@ -39,6 +39,8 @@ enum {
 	OPT_HELP = 1,
 };
 
+static struct lttng_handle *handle;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -113,13 +115,10 @@ static int list_kernel_events(void)
 {
 	int i, size;
 	struct lttng_event *event_list;
-	struct lttng_domain dom;
 
 	DBG("Getting all tracing events");
 
-	dom.type = LTTNG_DOMAIN_KERNEL;
-
-	size = lttng_list_tracepoints(&dom, &event_list);
+	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
 		ERR("Unable to list kernel events");
 		return size;
@@ -139,13 +138,12 @@ static int list_kernel_events(void)
 /*
  * List events of channel of session and domain.
  */
-static int list_events(struct lttng_domain *dom,
-		const char *session_name, const char *channel_name)
+static int list_events(const char *channel_name)
 {
 	int ret, count, i;
 	struct lttng_event *events = NULL;
 
-	count = lttng_list_events(dom, session_name, channel_name, &events);
+	count = lttng_list_events(handle, channel_name, &events);
 	if (count < 0) {
 		ret = count;
 		goto error;
@@ -222,8 +220,7 @@ static void print_channel(struct lttng_channel *channel)
  *
  * If channel_name is NULL, all channels are listed.
  */
-static int list_channels(struct lttng_domain *dom,
-		const char *session_name, const char *channel_name)
+static int list_channels(const char *channel_name)
 {
 	int count, i, ret = CMD_SUCCESS;
 	unsigned int chan_found = 0;
@@ -231,7 +228,7 @@ static int list_channels(struct lttng_domain *dom,
 
 	DBG("Listing channel(s) (%s)", channel_name);
 
-	count = lttng_list_channels(dom, session_name, &channels);
+	count = lttng_list_channels(handle, &channels);
 	if (count < 0) {
 		ret = count;
 		goto error;
@@ -255,7 +252,7 @@ static int list_channels(struct lttng_domain *dom,
 		print_channel(&channels[i]);
 
 		/* Listing events per channel */
-		ret = list_events(dom, session_name, channels[i].name);
+		ret = list_events(channels[i].name);
 		if (ret < 0) {
 			MSG("%s", lttng_get_readable_code(ret));
 		}
@@ -307,6 +304,7 @@ static int list_sessions(const char *session_name)
 				MSG("%sTrace path: %s\n", indent4, sessions[i].path);
 				break;
 			}
+			continue;
 		}
 
 		MSG("  %d) %s (%s)", i + 1, sessions[i].name, sessions[i].path);
@@ -335,14 +333,14 @@ error:
 /*
  * List available domain(s) for a session.
  */
-static int list_domains(const char *session_name)
+static int list_domains(void)
 {
 	int i, count, ret = CMD_SUCCESS;
 	struct lttng_domain *domains = NULL;
 
 	MSG("Domains:\n-------------");
 
-	count = lttng_list_domains(session_name, &domains);
+	count = lttng_list_domains(handle, &domains);
 	if (count < 0) {
 		ret = count;
 		goto error;
@@ -406,6 +404,15 @@ int cmd_list(int argc, const char **argv)
 	session_name = poptGetArg(pc);
 	DBG("Session name: %s", session_name);
 
+	if (opt_kernel) {
+		domain.type = LTTNG_DOMAIN_KERNEL;
+	}
+
+	handle = lttng_create_handle(session_name, &domain);
+	if (handle == NULL) {
+		goto end;
+	}
+
 	if (session_name == NULL) {
 		if (opt_kernel) {
 			ret = list_kernel_events();
@@ -427,14 +434,13 @@ int cmd_list(int argc, const char **argv)
 
 		/* Domain listing */
 		if (opt_domain) {
-			ret = list_domains(session_name);
+			ret = list_domains();
 			goto end;
 		}
 
 		if (opt_kernel) {
-			domain.type = LTTNG_DOMAIN_KERNEL;
 			/* Channel listing */
-			ret = list_channels(&domain, session_name, opt_channel);
+			ret = list_channels(opt_channel);
 			if (ret < 0) {
 				goto end;
 			}
@@ -442,7 +448,7 @@ int cmd_list(int argc, const char **argv)
 			/* TODO: Userspace domain */
 		} else {
 			/* We want all domain(s) */
-			ret = lttng_list_domains(session_name, &domains);
+			ret = lttng_list_domains(handle, &domains);
 			if (ret < 0) {
 				goto end;
 			}
@@ -457,7 +463,15 @@ int cmd_list(int argc, const char **argv)
 					break;
 				}
 
-				ret = list_channels(&domains[i], session_name, opt_channel);
+				/* Clean handle before creating a new one */
+				lttng_destroy_handle(handle);
+
+				handle = lttng_create_handle(session_name, &domains[i]);
+				if (handle == NULL) {
+					goto end;
+				}
+
+				ret = list_channels(opt_channel);
 				if (ret < 0) {
 					goto end;
 				}
@@ -469,5 +483,7 @@ end:
 	if (domains) {
 		free(domains);
 	}
+	lttng_destroy_handle(handle);
+
 	return ret;
 }

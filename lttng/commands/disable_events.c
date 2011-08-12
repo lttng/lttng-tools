@@ -44,6 +44,8 @@ enum {
 	OPT_USERSPACE,
 };
 
+static struct lttng_handle *handle;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -80,17 +82,12 @@ static void usage(FILE *ofp)
  *
  *  Disabling event using the lttng API.
  */
-static int disable_events(void)
+static int disable_events(char *session_name)
 {
 	int err, ret = CMD_SUCCESS;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
-
-	if (set_session_name(opt_session_name) < 0) {
-		ret = CMD_ERROR;
-		goto error;
-	}
 
 	if (opt_channel_name == NULL) {
 		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
@@ -106,9 +103,15 @@ static int disable_events(void)
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	}
 
+	handle = lttng_create_handle(session_name, &dom);
+	if (handle == NULL) {
+		ret = -1;
+		goto error;
+	}
+
 	if (opt_disable_all) {
 		if (opt_kernel) {
-			ret = lttng_disable_event(&dom, NULL, channel_name);
+			ret = lttng_disable_event(handle, NULL, channel_name);
 			goto error;
 		}
 
@@ -126,7 +129,7 @@ static int disable_events(void)
 			/* Copy name and type of the event */
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
 			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-			ret = lttng_disable_event(&dom, event_name, channel_name);
+			ret = lttng_disable_event(handle, event_name, channel_name);
 			if (ret < 0) {
 				MSG("Unable to disable event %s for channel %s",
 						event_name, channel_name);
@@ -156,6 +159,8 @@ error:
 	if (opt_channel_name == NULL) {
 		free(channel_name);
 	}
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 
@@ -168,6 +173,7 @@ int cmd_disable_events(int argc, const char **argv)
 {
 	int opt, ret;
 	static poptContext pc;
+	char *session_name = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -197,7 +203,17 @@ int cmd_disable_events(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = disable_events();
+	if (!opt_session_name) {
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = -1;
+			goto end;
+		}
+	} else {
+		session_name = opt_session_name;
+	}
+
+	ret = disable_events(session_name);
 
 end:
 	return ret;

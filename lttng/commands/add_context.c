@@ -47,6 +47,8 @@ enum {
 	OPT_TYPE,
 };
 
+static struct lttng_handle *handle;
+
 /*
  * Taken from the LTTng ABI
  */
@@ -341,7 +343,7 @@ end:
 /*
  * Add context to channel or event.
  */
-static int add_context(void)
+static int add_context(char *session_name)
 {
 	int ret = CMD_SUCCESS;
 	struct lttng_event_context context;
@@ -349,13 +351,18 @@ static int add_context(void)
 	struct ctx_type *type;
 	char *ptr;
 
+	if (opt_kernel) {
+		dom.type = LTTNG_DOMAIN_KERNEL;
+	}
+
+	handle = lttng_create_handle(session_name, &dom);
+	if (handle == NULL) {
+		ret = -1;
+		goto error;
+	}
+
 	/* Iterate over all context type given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
-		/* Set session name for the current command */
-		if (set_session_name(opt_session_name) < 0) {
-			ret = CMD_ERROR;
-			goto error;
-		}
 
 		context.ctx = type->opt->ctx_type;
 		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
@@ -371,11 +378,8 @@ static int add_context(void)
 			}
 		}
 		if (opt_kernel) {
-			/* Create kernel domain */
-			dom.type = LTTNG_DOMAIN_KERNEL;
-
 			DBG("Adding kernel context");
-			ret = lttng_add_context(&dom, &context, opt_event_name,
+			ret = lttng_add_context(handle, &context, opt_event_name,
 					opt_channel_name);
 			if (ret < 0) {
 				fprintf(stderr, "%s: ", type->opt->symbol);
@@ -399,6 +403,8 @@ static int add_context(void)
 	}
 
 error:
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 
@@ -411,6 +417,7 @@ int cmd_add_context(int argc, const char **argv)
 	char *tmp;
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
+	char *session_name = NULL;
 
 	if (argc < 2) {
 		usage(stderr);
@@ -461,7 +468,17 @@ int cmd_add_context(int argc, const char **argv)
 		}
 	}
 
-	ret = add_context();
+	if (!opt_session_name) {
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = -1;
+			goto end;
+		}
+	} else {
+		session_name = opt_session_name;
+	}
+
+	ret = add_context(session_name);
 
 	/* Cleanup allocated memory */
 	cds_list_for_each_entry_safe(type, tmptype, &ctx_type_list.head, list) {

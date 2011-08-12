@@ -21,6 +21,7 @@
 #include <lttng/lttng.h>
 
 #include "conf.h"
+#include "lttngerr.h"
 
 /*
  *  get_session_name
@@ -45,35 +46,6 @@ char *get_session_name(void)
 	}
 
 error:
+	DBG("Session name found: %s", session_name);
 	return session_name;
-}
-
-/*
- *  set_session_name
- *
- *  Get session name and set it for the lttng control lib.
- */
-int set_session_name(char *name)
-{
-	int ret;
-	char *session_name;
-
-	if (!name) {
-		session_name = get_session_name();
-		if (session_name == NULL) {
-			ret = -1;
-			goto error;
-		}
-	} else {
-		session_name = name;
-	}
-
-	lttng_set_session_name(session_name);
-	if (!name)
-		free(session_name);
-
-	ret = 0;
-
-error:
-	return ret;
 }

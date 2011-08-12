@@ -49,6 +49,8 @@ enum {
 	OPT_FUNCTION_ENTRY,
 };
 
+static struct lttng_handle *handle;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -105,6 +107,12 @@ static int calibrate_lttng(void)
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	}
 
+	handle = lttng_create_handle(NULL, &dom);
+	if (handle == NULL) {
+		ret = -1;
+		goto end;
+	}
+
 	/* Kernel tracer action */
 	if (opt_kernel) {
 		switch (opt_event_type) {
@@ -117,7 +125,7 @@ static int calibrate_lttng(void)
 		case LTTNG_EVENT_FUNCTION:
 			DBG("Calibrating kernel functions");
 			calibrate.type = LTTNG_CALIBRATE_FUNCTION;
-			ret = lttng_calibrate(&dom, &calibrate);
+			ret = lttng_calibrate(handle, &calibrate);
 			break;
 		case LTTNG_EVENT_FUNCTION_ENTRY:
 			DBG("Calibrating kernel function entry");
@@ -140,6 +148,8 @@ static int calibrate_lttng(void)
 		goto end;
 	}
 end:
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 

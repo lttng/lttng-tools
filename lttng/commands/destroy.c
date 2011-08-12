@@ -30,6 +30,7 @@
 #include "../utils.h"
 
 static char *opt_session_name;
+static struct lttng_handle *handle;
 
 enum {
 	OPT_HELP = 1,
@@ -76,7 +77,13 @@ static int destroy_session()
 		session_name = opt_session_name;
 	}
 
-	ret = lttng_destroy_session(session_name);
+	handle = lttng_create_handle(session_name, NULL);
+	if (handle == NULL) {
+		ret = -1;
+		goto error;
+	}
+
+	ret = lttng_destroy_session(handle);
 	if (ret < 0) {
 		goto free_name;
 	}
@@ -101,6 +108,8 @@ free_name:
 		free(session_name);
 	}
 error:
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 

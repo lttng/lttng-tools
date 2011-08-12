@@ -41,6 +41,8 @@ enum {
 	OPT_USERSPACE,
 };
 
+static struct lttng_handle *handle;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -69,23 +71,22 @@ static void usage(FILE *ofp)
 }
 
 /*
- *  disable_channels
- *
- *  Disabling channel using the lttng API.
+ * Disabling channel using the lttng API.
  */
-static int disable_channels(void)
+static int disable_channels(char *session_name)
 {
 	int ret = CMD_SUCCESS;
 	char *channel_name;
 	struct lttng_domain dom;
 
-	if (set_session_name(opt_session_name) < 0) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	}
+
+	handle = lttng_create_handle(session_name, &dom);
+	if (handle == NULL) {
+		ret = -1;
+		goto error;
 	}
 
 	/* Strip channel list */
@@ -94,7 +95,7 @@ static int disable_channels(void)
 		/* Kernel tracer action */
 		if (opt_kernel) {
 			DBG("Disabling kernel channel %s", channel_name);
-			ret = lttng_disable_channel(&dom, channel_name);
+			ret = lttng_disable_channel(handle, channel_name);
 			if (ret < 0) {
 				goto error;
 			} else {
@@ -119,6 +120,8 @@ static int disable_channels(void)
 	}
 
 error:
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 
@@ -131,6 +134,7 @@ int cmd_disable_channels(int argc, const char **argv)
 {
 	int opt, ret;
 	static poptContext pc;
+	char *session_name = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -159,7 +163,17 @@ int cmd_disable_channels(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = disable_channels();
+	if (!opt_session_name) {
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = -1;
+			goto end;
+		}
+	} else {
+		session_name = opt_session_name;
+	}
+
+	ret = disable_channels(session_name);
 
 end:
 	return ret;

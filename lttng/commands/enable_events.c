@@ -55,6 +55,8 @@ enum {
 	OPT_FUNCTION_ENTRY,
 };
 
+static struct lttng_handle *handle;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -179,7 +181,7 @@ end:
  *
  *  Enabling event using the lttng API.
  */
-static int enable_events(void)
+static int enable_events(char *session_name)
 {
 	int err, ret = CMD_SUCCESS;
 	char *event_name, *channel_name = NULL;
@@ -201,14 +203,15 @@ static int enable_events(void)
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	}
 
-	if (opt_enable_all) {
-		if (set_session_name(opt_session_name) < 0) {
-			ret = CMD_ERROR;
-			goto error;
-		}
+	handle = lttng_create_handle(session_name, &dom);
+	if (handle == NULL) {
+		ret = -1;
+		goto error;
+	}
 
+	if (opt_enable_all) {
 		if (opt_kernel) {
-			ret = lttng_enable_event(&dom, NULL, channel_name);
+			ret = lttng_enable_event(handle, NULL, channel_name);
 			if (ret == 0) {
 				MSG("All kernel events are enabled in channel %s", channel_name);
 			}
@@ -221,11 +224,6 @@ static int enable_events(void)
 	/* Strip event list */
 	event_name = strtok(opt_event_list, ",");
 	while (event_name != NULL) {
-		if (set_session_name(opt_session_name) < 0) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-
 		/* Kernel tracer action */
 		if (opt_kernel) {
 			DBG("Enabling kernel event %s for channel %s",
@@ -265,7 +263,7 @@ static int enable_events(void)
 				goto error;
 			}
 
-			ret = lttng_enable_event(&dom, &ev, channel_name);
+			ret = lttng_enable_event(handle, &ev, channel_name);
 			if (ret == 0) {
 				MSG("Kernel event %s created in channel %s", event_name, channel_name);
 			}
@@ -291,6 +289,8 @@ error:
 	if (opt_channel_name == NULL) {
 		free(channel_name);
 	}
+	lttng_destroy_handle(handle);
+
 	return ret;
 }
 
@@ -303,6 +303,7 @@ int cmd_enable_events(int argc, const char **argv)
 {
 	int opt, ret;
 	static poptContext pc;
+	char *session_name = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -353,8 +354,22 @@ int cmd_enable_events(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = enable_events();
+	if (!opt_session_name) {
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = -1;
+			goto end;
+		}
+	} else {
+		session_name = opt_session_name;
+	}
+
+	ret = enable_events(session_name);
 
 end:
+	if (opt_session_name == NULL) {
+		free(session_name);
+	}
+
 	return ret;
 }

@@ -189,6 +189,14 @@ struct lttng_session {
 };
 
 /*
+ * Handle used as a context for commands.
+ */
+struct lttng_handle {
+	char session_name[NAME_MAX];
+	struct lttng_domain domain;
+};
+
+/*
  * Public LTTng control API
  *
  * For functions having a lttng domain type as parameter, if a bad value is
@@ -202,8 +210,19 @@ struct lttng_session {
  */
 
 /*
- * Session daemon control
+ * Create an handle used as a context for every request made to the library.
+ *
+ * This handle contains the session name and lttng domain on which the command
+ * will be executed on.
  */
+extern struct lttng_handle *lttng_create_handle(const char *session_name,
+		struct lttng_domain *domain);
+
+/*
+ * Destroy an handle. This will simply free(3) the data pointer returned by
+ * lttng_create_handle() and rendering it unsuable.
+ */
+extern void lttng_destroy_handle(struct lttng_handle *handle);
 
 /*
  * Create tracing session using a name and a path where trace will be written.
@@ -216,7 +235,7 @@ extern int lttng_create_session(const char *name, const char *path);
  * The session will not be useable anymore, tracing will stopped for all
  * registered trace and tracing buffers will be flushed.
  */
-extern int lttng_destroy_session(const char *name);
+extern int lttng_destroy_session(struct lttng_handle *handle);
 
 /*
  * List all tracing sessions.
@@ -230,7 +249,7 @@ extern int lttng_list_sessions(struct lttng_session **sessions);
  *
  * Return the size of the "lttng_domain" array. Caller must free(3).
  */
-extern int lttng_list_domains(const char *session_name,
+extern int lttng_list_domains(struct lttng_handle *handle,
 		struct lttng_domain **domains);
 
 /*
@@ -238,24 +257,23 @@ extern int lttng_list_domains(const char *session_name,
  *
  * Return the size of the "lttng_channel" array. Caller must free(3).
  */
-extern int lttng_list_channels(struct lttng_domain *domain,
-		const char *session_name, struct lttng_channel **channels);
+extern int lttng_list_channels(struct lttng_handle *handle,
+		struct lttng_channel **channels);
 
 /*
  * List event(s) of a session channel.
  *
  * Return the size of the "lttng_event" array. Caller must free(3).
  */
-extern int lttng_list_events(struct lttng_domain *domain,
-		const char *session_name, const char *channel_name,
-		struct lttng_event **events);
+extern int lttng_list_events(struct lttng_handle *handle,
+		const char *channel_name, struct lttng_event **events);
 
 /*
- * List available tracepoints of domain.
+ * List available tracepoints of a specific lttng domain.
  *
  * Return the size of the "lttng_event" array. Caller must free(3).
  */
-extern int lttng_list_tracepoints(struct lttng_domain *domain,
+extern int lttng_list_tracepoints(struct lttng_handle *handle,
 		struct lttng_event **events);
 
 /*
@@ -269,15 +287,6 @@ extern int lttng_session_daemon_alive(void);
 extern int lttng_set_tracing_group(const char *name);
 
 /*
- * Set the session name of the *current* flow of execution.
- *
- * This is a VERY important things to do before doing any tracing actions. If
- * it's not done, you'll get an error saying that the session is not found.
- * It avoids the use of a session name on every API call.
- */
-extern void lttng_set_session_name(const char *name);
-
-/*
  * Return a human readable error message of a lttng-tools error code.
  *
  * Parameter MUST be a negative value or else you'll get a generic message.
@@ -287,12 +296,12 @@ extern const char *lttng_get_readable_code(int code);
 /*
  * Start tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_start_tracing(const char *session_name);
+extern int lttng_start_tracing(struct lttng_handle *handle);
 
 /*
  * Stop tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_stop_tracing(const char *session_name);
+extern int lttng_stop_tracing(struct lttng_handle *handle);
 
 /*
  * Add context to event for a specific channel.
@@ -301,8 +310,7 @@ extern int lttng_stop_tracing(const char *session_name);
  * If channel_name is NULL, a lookup of the event's channel is done.
  * If both are NULL, the context is applied on all events of all channels.
  */
-
-extern int lttng_add_context(struct lttng_domain *domain,
+extern int lttng_add_context(struct lttng_handle *handle,
 		struct lttng_event_context *ctx, const char *event_name,
 		const char *channel_name);
 
@@ -314,15 +322,15 @@ extern int lttng_add_context(struct lttng_domain *domain,
  *
  * If channel_name is NULL, the default channel is used (channel0).
  */
-extern int lttng_enable_event(struct lttng_domain *domain, struct lttng_event *ev,
-		const char *channel_name);
+extern int lttng_enable_event(struct lttng_handle *handle,
+		struct lttng_event *ev, const char *channel_name);
 
 /*
  * Create or enable a kernel channel.
  *
  * If name is NULL, the default channel is enabled (channel0).
  */
-extern int lttng_enable_channel(struct lttng_domain *domain,
+extern int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *chan);
 
 /*
@@ -330,21 +338,21 @@ extern int lttng_enable_channel(struct lttng_domain *domain,
  *
  * If channel_name is NULL, the default channel is used (channel0).
  */
-extern int lttng_disable_event(struct lttng_domain *domain, const char *name,
-		const char *channel_name);
+extern int lttng_disable_event(struct lttng_handle *handle,
+		const char *name, const char *channel_name);
 
 /*
  * Disable kernel channel.
  *
  * If channel_name is NULL, the default channel is disabled (channel0).
  */
-extern int lttng_disable_channel(struct lttng_domain *domain,
+extern int lttng_disable_channel(struct lttng_handle *handle,
 		const char *name);
 
 /*
  * Calibrate LTTng overhead.
  */
-extern int lttng_calibrate(struct lttng_domain *domain,
+extern int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate);
 
 #endif /* _LTTNG_H */
