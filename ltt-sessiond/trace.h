@@ -86,6 +86,7 @@ struct ltt_kernel_session {
 	int kconsumer_fds_sent;
 	unsigned int channel_count;
 	unsigned int stream_count_global;
+	char *trace_path;
 	struct ltt_kernel_metadata *metadata;
 	struct ltt_kernel_channel_list channel_list;
 };

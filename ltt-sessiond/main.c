@@ -1245,8 +1245,15 @@ static int create_kernel_session(struct ltt_session *session)
 		goto error;
 	}
 
-	ret = mkdir_recursive(session->path, S_IRWXU | S_IRWXG,
-			      geteuid(), allowed_group()); 
+	ret = asprintf(&session->kernel_session->trace_path, "%s/kernel",
+			session->path);
+	if (ret < 0) {
+		perror("asprintf kernel traces path");
+		goto error;
+	}
+
+	ret = mkdir_recursive(session->kernel_session->trace_path,
+			S_IRWXU | S_IRWXG, geteuid(), allowed_group());
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
@@ -1360,7 +1367,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
-	/* Listing commands don't need a session */
+	/*
+	 * Commands that DO NOT need a session.
+	 */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
@@ -1609,7 +1618,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				DBG("Creating kernel channel");
 
 				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-						&cmd_ctx->lsm->u.channel.chan, cmd_ctx->session->path);
+						&cmd_ctx->lsm->u.channel.chan,
+						cmd_ctx->session->kernel_session->trace_path);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_CHAN_FAIL;
 					goto error;
@@ -1672,7 +1682,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					}
 
 					ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-							chan, cmd_ctx->session->path);
+							chan, cmd_ctx->session->kernel_session->trace_path);
 					if (ret < 0) {
 						ret = LTTCOMM_KERN_CHAN_FAIL;
 						goto error;
@@ -1744,7 +1754,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					}
 
 					ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-							chan, cmd_ctx->session->path);
+							chan, cmd_ctx->session->kernel_session->trace_path);
 					if (ret < 0) {
 						ret = LTTCOMM_KERN_CHAN_FAIL;
 						goto error;
@@ -1849,7 +1859,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			if (cmd_ctx->session->kernel_session->metadata == NULL) {
 				DBG("Open kernel metadata");
 				ret = kernel_open_metadata(cmd_ctx->session->kernel_session,
-						cmd_ctx->session->path);
+						cmd_ctx->session->kernel_session->trace_path);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_META_FAIL;
 					goto error;
