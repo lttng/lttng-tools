@@ -73,6 +73,7 @@ static void create_one_kernel_session(void)
 	assert(kern->channel_count == 0);
 	assert(kern->stream_count_global == 0);
 	assert(kern->metadata == NULL);
+	assert(kern->consumer_fd == 0);
 	PRINT_OK();
 
 	/* Init list in order to avoid sefaults from cds_list_del */

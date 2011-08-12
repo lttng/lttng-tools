@@ -334,6 +334,24 @@ void lttng_destroy_handle(struct lttng_handle *handle)
 }
 
 /*
+ * Register an outside consumer.
+ */
+int lttng_register_consumer(struct lttng_handle *handle,
+		const char *socket_path)
+{
+	struct lttcomm_session_msg lsm;
+
+	lsm.cmd_type = LTTNG_REGISTER_CONSUMER;
+	copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	copy_string(lsm.u.reg.path, socket_path, sizeof(lsm.u.reg.path));
+
+	return ask_sessiond(&lsm, NULL);
+}
+
+/*
  *  Start tracing for all trace of the session.
  */
 int lttng_start_tracing(struct lttng_handle *handle)

@@ -294,6 +294,17 @@ extern int lttng_set_tracing_group(const char *name);
 extern const char *lttng_get_readable_code(int code);
 
 /*
+ * This call permits to register an "outside consumer" to a session and a lttng
+ * domain. No consumer will be spawned and all fds/commands will go through the
+ * socket path given (socket_path).
+ *
+ * NOTE: At the moment, if you use the liblttkconsumerd, you can only use the
+ * command socket. The error socket is not supported yet for roaming consumers.
+ */
+extern int lttng_register_consumer(struct lttng_handle *handle,
+		const char *socket_path);
+
+/*
  * Start tracing for *all* registered trace (kernel and user-space).
  */
 extern int lttng_start_tracing(struct lttng_handle *handle);

@@ -63,6 +63,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_LIST_EVENTS,
 	LTTNG_LIST_SESSIONS,
 	LTTNG_LIST_TRACEPOINTS,
+	LTTNG_REGISTER_CONSUMER,
 	LTTNG_START_TRACE,
 	LTTNG_STOP_TRACE,
 };
@@ -91,6 +92,7 @@ enum lttcomm_return_code {
 	LTTCOMM_SELECT_SESS,			/* Must select a session */
 	LTTCOMM_EXIST_SESS,				/* Session name already exist */
 	LTTCOMM_NO_EVENT,				/* No event found */
+	LTTCOMM_CONNECT_FAIL,           /* Unable to connect to unix socket */
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
@@ -154,6 +156,10 @@ struct lttcomm_session_msg {
 			char event_name[NAME_MAX];
 			struct lttng_event_context ctx;
 		} context;
+		/* Use by register_consumer */
+		struct {
+			char path[PATH_MAX];
+		} reg;
 		/* List */
 		struct {
 			char channel_name[NAME_MAX];

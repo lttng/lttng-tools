@@ -103,6 +103,7 @@ struct ltt_kernel_session *trace_create_kernel_session(void)
 	lks->channel_count = 0;
 	lks->stream_count_global = 0;
 	lks->metadata = NULL;
+	lks->consumer_fd = 0;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
 	return lks;

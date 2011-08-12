@@ -158,6 +158,15 @@ static void teardown_kernel_session(struct ltt_session *session)
 {
 	if (session->kernel_session != NULL) {
 		DBG("Tearing down kernel session");
+
+		/*
+		 * If a custom kernel consumer was registered, close the socket before
+		 * tearing down the complete kernel session structure
+		 */
+		if (session->kernel_session->consumer_fd != kconsumerd_cmd_sock) {
+			lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
+		}
+
 		trace_destroy_kernel_session(session->kernel_session);
 		/* Extra precaution */
 		session->kernel_session = NULL;
@@ -313,7 +322,7 @@ error:
 /*
  * Send all stream fds of the kernel session to the consumer.
  */
-static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
+static int send_kconsumerd_fds(struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_channel *chan;
@@ -326,13 +335,18 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 
 	DBG("Sending kconsumerd header for metadata");
 
-	ret = lttcomm_send_unix_sock(sock, &lkh, sizeof(struct lttcomm_kconsumerd_header));
+	ret = lttcomm_send_unix_sock(session->consumer_fd, &lkh, sizeof(struct lttcomm_kconsumerd_header));
 	if (ret < 0) {
 		perror("send kconsumerd header");
 		goto error;
 	}
 
 	DBG("Sending metadata stream fd");
+
+	/* Extra protection. It's NOT suppose to be set to 0 at this point */
+	if (session->consumer_fd == 0) {
+		session->consumer_fd = kconsumerd_cmd_sock;
+	}
 
 	if (session->metadata_stream_fd != 0) {
 		/* Send metadata stream fd first */
@@ -343,7 +357,7 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 		strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
 		lkm.path_name[PATH_MAX - 1] = '\0';
 
-		ret = lttcomm_send_fds_unix_sock(sock, &lkm, &lkm.fd, 1, sizeof(lkm));
+		ret = lttcomm_send_fds_unix_sock(session->consumer_fd, &lkm, &lkm.fd, 1, sizeof(lkm));
 		if (ret < 0) {
 			perror("send kconsumerd fd");
 			goto error;
@@ -351,7 +365,7 @@ static int send_kconsumerd_fds(int sock, struct ltt_kernel_session *session)
 	}
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = send_kconsumerd_channel_fds(sock, chan);
+		ret = send_kconsumerd_channel_fds(session->consumer_fd, chan);
 		if (ret < 0) {
 			goto error;
 		}
@@ -550,6 +564,12 @@ static int update_kernel_stream(int fd)
 			unlock_session(session);
 			continue;
 		}
+
+		/* This is not suppose to be 0 but this is an extra security check */
+		if (session->kernel_session->consumer_fd == 0) {
+			session->kernel_session->consumer_fd = kconsumerd_cmd_sock;
+		}
+
 		cds_list_for_each_entry(channel, &session->kernel_session->channel_list.head, list) {
 			if (channel->fd == fd) {
 				DBG("Channel found, updating kernel streams");
@@ -557,12 +577,14 @@ static int update_kernel_stream(int fd)
 				if (ret < 0) {
 					goto end;
 				}
+
 				/*
 				 * Have we already sent fds to the consumer? If yes, it means that
 				 * tracing is started so it is safe to send our updated stream fds.
 				 */
 				if (session->kernel_session->kconsumer_fds_sent == 1) {
-					ret = send_kconsumerd_channel_fds(kconsumerd_cmd_sock, channel);
+					ret = send_kconsumerd_channel_fds(session->kernel_session->consumer_fd,
+							channel);
 					if (ret < 0) {
 						goto end;
 					}
@@ -887,6 +909,9 @@ error:
 	return ret;
 }
 
+/*
+ * Join kernel consumer thread
+ */
 static int join_kconsumerd_thread(void)
 {
 	void *status;
@@ -1009,7 +1034,7 @@ static int modprobe_kernel_modules(void)
 			ERR("Unable to launch modprobe for module %s",
 				kernel_modules_list[i].name);
 		} else if (kernel_modules_list[i].required
-			   && WEXITSTATUS(ret) != 0) {
+				&& WEXITSTATUS(ret) != 0) {
 			ERR("Unable to load module %s",
 				kernel_modules_list[i].name);
 		} else {
@@ -1045,7 +1070,7 @@ static int modprobe_remove_kernel_modules(void)
 			ERR("Unable to launch modprobe --remove for module %s",
 				kernel_modules_list[i].name);
 		} else if (kernel_modules_list[i].required
-			   && WEXITSTATUS(ret) != 0) {
+				&& WEXITSTATUS(ret) != 0) {
 			ERR("Unable to remove module %s",
 				kernel_modules_list[i].name);
 		} else {
@@ -1173,7 +1198,16 @@ static int start_kernel_trace(struct ltt_kernel_session *session)
 	int ret = 0;
 
 	if (session->kconsumer_fds_sent == 0) {
-		ret = send_kconsumerd_fds(kconsumerd_cmd_sock, session);
+		/*
+		 * Assign default kernel consumer if no consumer assigned to the kernel
+		 * session. At this point, it's NOT suppose to be 0 but this is an extra
+		 * security check.
+		 */
+		if (session->consumer_fd == 0) {
+			session->consumer_fd = kconsumerd_cmd_sock;
+		}
+
+		ret = send_kconsumerd_fds(session);
 		if (ret < 0) {
 			ERR("Send kconsumerd fds failed");
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
@@ -1245,6 +1279,11 @@ static int create_kernel_session(struct ltt_session *session)
 	if (ret < 0) {
 		ret = LTTCOMM_KERN_SESS_FAIL;
 		goto error;
+	}
+
+	/* Set kernel consumer socket fd */
+	if (kconsumerd_cmd_sock) {
+		session->kernel_session->consumer_fd = kconsumerd_cmd_sock;
 	}
 
 	ret = asprintf(&session->kernel_session->trace_path, "%s/kernel",
@@ -1412,10 +1451,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		/* Need a session for kernel command */
 		switch (cmd_ctx->lsm->cmd_type) {
+		case LTTNG_CALIBRATE:
 		case LTTNG_CREATE_SESSION:
 		case LTTNG_LIST_SESSIONS:
 		case LTTNG_LIST_TRACEPOINTS:
-		case LTTNG_CALIBRATE:
 			break;
 		default:
 			if (cmd_ctx->session->kernel_session == NULL) {
@@ -1426,7 +1465,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 
 				/* Start the kernel consumer daemon */
-				if (kconsumerd_pid == 0) {
+
+				if (kconsumerd_pid == 0 &&
+						cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 					ret = start_kconsumerd();
 					if (ret < 0) {
 						goto error;
@@ -2113,7 +2154,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = LTTCOMM_OK;
 		break;
 	}
-
 	case LTTNG_CALIBRATE:
 	{
 		/* Setup lttng message with no payload */
@@ -2140,6 +2180,43 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
+		ret = LTTCOMM_OK;
+		break;
+	}
+	case LTTNG_REGISTER_CONSUMER:
+	{
+		int sock;
+
+		/* Setup lttng message with no payload */
+		ret = setup_lttng_msg(cmd_ctx, 0);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			{
+				/* Can't register a consumer if there is already one */
+				if (cmd_ctx->session->kernel_session->consumer_fd != 0) {
+					ret = LTTCOMM_CONNECT_FAIL;
+					goto error;
+				}
+
+				sock = lttcomm_connect_unix_sock(cmd_ctx->lsm->u.reg.path);
+				if (sock < 0) {
+					ret = LTTCOMM_CONNECT_FAIL;
+					goto error;
+				}
+
+				cmd_ctx->session->kernel_session->consumer_fd = sock;
+				break;
+			}
+		default:
+			/* TODO: Userspace tracing */
+			ret = LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
+		}
+
 		ret = LTTCOMM_OK;
 		break;
 	}
