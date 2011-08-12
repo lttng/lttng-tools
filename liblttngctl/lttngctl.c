@@ -47,7 +47,7 @@ static int connected;
  */
 static void copy_string(char *dst, const char *src, size_t len)
 {
-	if (src) {
+	if (src && dst) {
 		strncpy(dst, src, len);
 		/* Enforce the NULL terminated byte */
 		dst[len - 1] = '\0';
