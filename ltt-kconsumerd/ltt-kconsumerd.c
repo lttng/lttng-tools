@@ -215,7 +215,7 @@ static int read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
 		goto end;
 	}
 
-	switch (DEFAULT_KERNEL_CHANNEL_OUTPUT) {
+	switch (kconsumerd_fd->output) {
 		case LTTNG_EVENT_SPLICE:
 			/* read the whole subbuffer */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
