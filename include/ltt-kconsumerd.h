@@ -17,29 +17,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTTNG_KCONSUMERD_H
-#define _LTTNG_KCONSUMERD_H
-
-#include <lttng-sessiond-comm.h>
-#include "lttng-share.h"
+#ifndef _LTT_KCONSUMERD_H
+#define _LTT_KCONSUMERD_H
 
 /* Kernel consumer path */
-#define KCONSUMERD_PATH					LTTNG_RUNDIR "/kconsumerd"
-#define KCONSUMERD_CMD_SOCK_PATH			KCONSUMERD_PATH "/command"
-#define KCONSUMERD_ERR_SOCK_PATH			KCONSUMERD_PATH "/error"
+#define KCONSUMERD_PATH                     LTTNG_RUNDIR "/kconsumerd"
+#define KCONSUMERD_CMD_SOCK_PATH            KCONSUMERD_PATH "/command"
+#define KCONSUMERD_ERR_SOCK_PATH            KCONSUMERD_PATH "/error"
 
-/* Commands for kconsumerd */
-enum kconsumerd_command {
-	ADD_STREAM,
-	UPDATE_STREAM, /* pause, delete, active depending on fd state */
-	STOP, /* inform the kconsumerd to quit when all fd has hang up */
-};
-
-/* State of each fd in consumerd */
-enum kconsumerd_fd_state {
-	ACTIVE_FD,
-	PAUSE_FD,
-	DELETE_FD,
-};
-
-#endif /* _LTTNG_KCONSUMERD_H */
+#endif /* _LTT_KCONSUMERD_H */

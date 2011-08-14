@@ -37,12 +37,15 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+#include <lttng/lttng-kconsumerd.h>
+
 #include "lttngerr.h"
 #include "kernelctl.h"
-#include "lttkconsumerd.h"
+#include "ltt-kconsumerd.h"
+#include "lttng-sessiond-comm.h"
 
 /* the two threads (receive fd and poll) */
-pthread_t threads[2];
+static pthread_t threads[2];
 
 /* to count the number of time the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -52,16 +55,14 @@ int opt_quiet;
 int opt_verbose;
 static int opt_daemon;
 static const char *progname;
-char command_sock_path[PATH_MAX]; /* Global command socket path */
-char error_sock_path[PATH_MAX]; /* Global error path */
+static char command_sock_path[PATH_MAX]; /* Global command socket path */
+static char error_sock_path[PATH_MAX]; /* Global error path */
 
-/* the liblttkconsumerd context */
-struct kconsumerd_local_data *ctx;
+/* the liblttngkconsumerd context */
+static struct lttng_kconsumerd_local_data *ctx;
 
 /*
- *  sighandler
- *
- *  Signal handler for the daemon
+ * Signal handler for the daemon
  */
 static void sighandler(int sig)
 {
@@ -70,13 +71,11 @@ static void sighandler(int sig)
 		return;
 	}
 
-	kconsumerd_should_exit(ctx);
+	lttng_kconsumerd_should_exit(ctx);
 }
 
 /*
- *  set_signal_handler
- *
- *  Setup signal handler for :
+ * Setup signal handler for :
  *      SIGINT, SIGTERM, SIGPIPE
  */
 static int set_signal_handler(void)
@@ -194,11 +193,9 @@ static void parse_args(int argc, char **argv)
 }
 
 /*
- * read_subbuffer
- *
- * Consume data on a file descriptor and write it on a trace file
+ * Consume data on a file descriptor and write it on a trace file.
  */
-static int read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
+static int read_subbuffer(struct lttng_kconsumerd_fd *kconsumerd_fd)
 {
 	unsigned long len;
 	int err;
@@ -226,7 +223,7 @@ static int read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
 			}
 
 			/* splice the subbuffer to the tracefile */
-			ret = kconsumerd_on_read_subbuffer_splice(ctx, kconsumerd_fd, len);
+			ret = lttng_kconsumerd_on_read_subbuffer_splice(ctx, kconsumerd_fd, len);
 			if (ret < 0) {
 				/*
 				 * display the error but continue processing to try
@@ -244,7 +241,7 @@ static int read_subbuffer(struct kconsumerd_fd *kconsumerd_fd)
 				goto end;
 			}
 			/* write the subbuffer to the tracefile */
-			ret = kconsumerd_on_read_subbuffer_mmap(ctx, kconsumerd_fd, len);
+			ret = lttng_kconsumerd_on_read_subbuffer_mmap(ctx, kconsumerd_fd, len);
 			if (ret < 0) {
 				/*
 				 * display the error but continue processing to try
@@ -301,12 +298,12 @@ int main(int argc, char **argv)
 				KCONSUMERD_CMD_SOCK_PATH);
 	}
 	/* create the pipe to wake to receiving thread when needed */
-	ctx = kconsumerd_create(read_subbuffer);
+	ctx = lttng_kconsumerd_create(read_subbuffer);
 	if (ctx == NULL) {
 		goto error;
 	}
 
-	kconsumerd_set_command_socket_path(ctx, command_sock_path);
+	lttng_kconsumerd_set_command_sock_path(ctx, command_sock_path);
 	if (strlen(error_sock_path) == 0) {
 		snprintf(error_sock_path, PATH_MAX,
 				KCONSUMERD_ERR_SOCK_PATH);
@@ -323,10 +320,10 @@ int main(int argc, char **argv)
 	if (ret < 0) {
 		WARN("Cannot connect to error socket, is ltt-sessiond started ?");
 	}
-	kconsumerd_set_error_socket(ctx, ret);
+	lttng_kconsumerd_set_error_sock(ctx, ret);
 
 	/* Create the thread to manage the receive of fd */
-	ret = pthread_create(&threads[0], NULL, kconsumerd_thread_receive_fds,
+	ret = pthread_create(&threads[0], NULL, lttng_kconsumerd_thread_receive_fds,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
@@ -334,7 +331,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of traces */
-	ret = pthread_create(&threads[1], NULL, kconsumerd_thread_poll_fds,
+	ret = pthread_create(&threads[1], NULL, lttng_kconsumerd_thread_poll_fds,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
@@ -349,16 +346,16 @@ int main(int argc, char **argv)
 		}
 	}
 	ret = EXIT_SUCCESS;
-	kconsumerd_send_error(ctx, KCONSUMERD_EXIT_SUCCESS);
+	lttng_kconsumerd_send_error(ctx, KCONSUMERD_EXIT_SUCCESS);
 	goto end;
 
 error:
 	ret = EXIT_FAILURE;
-	kconsumerd_send_error(ctx, KCONSUMERD_EXIT_FAILURE);
+	lttng_kconsumerd_send_error(ctx, KCONSUMERD_EXIT_FAILURE);
 
 end:
-	kconsumerd_destroy(ctx);
-	kconsumerd_cleanup();
+	lttng_kconsumerd_destroy(ctx);
+	lttng_kconsumerd_cleanup();
 
 	return ret;
 }

@@ -56,11 +56,11 @@ PACKAGE CONTENTS:
     - libkernelctl
       Kernel tracer control and ioctl definitions.
 
-    - liblttkconsumerd
+    - liblttngkconsumerd
       Library for Kernel trace consumer.
 
     - ltt-kconsumerd
-      The Kernel consumer daemon which uses liblttkconsumerd.
+      The Kernel consumer daemon which uses liblttngkconsumerd.
 
     - ltt-sessiond
       The LTTng session daemon binary.

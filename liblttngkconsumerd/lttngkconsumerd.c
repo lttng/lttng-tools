@@ -28,36 +28,34 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <urcu/list.h>
-#include <assert.h>
+
+#include <lttng/lttng-kconsumerd.h>
 
 #include "kernelctl.h"
-#include "lttkconsumerd.h"
 #include "lttngerr.h"
+#include "lttng-sessiond-comm.h"
 
-static
-struct kconsumerd_global_data {
+static struct lttng_kconsumerd_global_data {
 	/*
 	 * kconsumerd_data.lock protects kconsumerd_data.fd_list,
-	 * kconsumerd_data.fds_count, and kconsumerd_data.need_update.  It
-	 * ensures the count matches the number of items in the fd_list.
-	 * It ensures the list updates *always* trigger an fd_array
-	 * update (therefore need to make list update vs
-	 * kconsumerd_data.need_update flag update atomic, and also flag
-	 * read, fd array and flag clear atomic).
+	 * kconsumerd_data.fds_count, and kconsumerd_data.need_update. It ensures
+	 * the count matches the number of items in the fd_list. It ensures the
+	 * list updates *always* trigger an fd_array update (therefore need to make
+	 * list update vs kconsumerd_data.need_update flag update atomic, and also
+	 * flag read, fd array and flag clear atomic).
 	 */
 	pthread_mutex_t lock;
 	/*
-	 * Number of element for the list below.  Protected by
-	 * kconsumerd_data.lock.
+	 * Number of element for the list below. Protected by kconsumerd_data.lock.
 	 */
 	unsigned int fds_count;
 	/*
-	 * List of FDs.  Protected by kconsumerd_data.lock.
+	 * List of FDs. Protected by kconsumerd_data.lock.
 	 */
-	struct kconsumerd_fd_list fd_list;
+	struct lttng_kconsumerd_fd_list fd_list;
 	/*
-	 * Flag specifying if the local array of FDs needs update in the
-	 * poll function.  Protected by kconsumerd_data.lock.
+	 * Flag specifying if the local array of FDs needs update in the poll
+	 * function. Protected by kconsumerd_data.lock.
 	 */
 	unsigned int need_update;
 } kconsumerd_data = {
@@ -66,49 +64,26 @@ struct kconsumerd_global_data {
 	.need_update = 1,
 };
 
-/* timeout parameter, to control the polling thread grace period */
+/* timeout parameter, to control the polling thread grace period. */
 static int kconsumerd_poll_timeout = -1;
 
 /*
- * flag to inform the polling thread to quit when all fd hung up.
- * Updated by the kconsumerd_thread_receive_fds when it notices that all
- * fds has hung up. Also updated by the signal handler
- * (kconsumerd_should_exit()). Read by the polling threads.
+ * Flag to inform the polling thread to quit when all fd hung up. Updated by
+ * the kconsumerd_thread_receive_fds when it notices that all fds has hung up.
+ * Also updated by the signal handler (kconsumerd_should_exit()). Read by the
+ * polling threads.
  */
 static volatile int kconsumerd_quit = 0;
 
 /*
- * kconsumerd_set_error_socket
+ * Find a session fd in the global list. The kconsumerd_data.lock must be
+ * locked during this call.
  *
- * Set the error socket
- */
-void kconsumerd_set_error_socket(struct kconsumerd_local_data *ctx, int sock)
-{
-	ctx->kconsumerd_error_socket = sock;
-}
-
-/*
- * kconsumerd_set_command_socket_path
- *
- * Set the command socket path
- */
-void kconsumerd_set_command_socket_path(struct kconsumerd_local_data *ctx,
-		char *sock)
-{
-	ctx->kconsumerd_command_sock_path = sock;
-}
-
-/*
- * kconsumerd_find_session_fd
- *
- * Find a session fd in the global list.
- * The kconsumerd_data.lock must be locked during this call
- *
- * Return 1 if found else 0
+ * Return 1 if found else 0.
  */
 static int kconsumerd_find_session_fd(int fd)
 {
-	struct kconsumerd_fd *iter;
+	struct lttng_kconsumerd_fd *iter;
 
 	cds_list_for_each_entry(iter, &kconsumerd_data.fd_list.head, list) {
 		if (iter->sessiond_fd == fd) {
@@ -121,11 +96,9 @@ static int kconsumerd_find_session_fd(int fd)
 }
 
 /*
- * kconsumerd_del_fd
- *
- * Remove a fd from the global list protected by a mutex
+ * Remove a fd from the global list protected by a mutex.
  */
-static void kconsumerd_del_fd(struct kconsumerd_fd *lcf)
+static void kconsumerd_del_fd(struct lttng_kconsumerd_fd *lcf)
 {
 	int ret;
 	pthread_mutex_lock(&kconsumerd_data.lock);
@@ -152,13 +125,12 @@ static void kconsumerd_del_fd(struct kconsumerd_fd *lcf)
 }
 
 /*
- * kconsumerd_add_fd
- *
- * Add a fd to the global list protected by a mutex
+ * Add a fd to the global list protected by a mutex.
  */
-static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_fd)
+static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf,
+		int consumerd_fd)
 {
-	struct kconsumerd_fd *tmp_fd;
+	struct lttng_kconsumerd_fd *tmp_fd;
 	int ret = 0;
 
 	pthread_mutex_lock(&kconsumerd_data.lock);
@@ -168,7 +140,7 @@ static int kconsumerd_add_fd(struct lttcomm_kconsumerd_msg *buf, int consumerd_f
 		goto end;
 	}
 
-	tmp_fd = malloc(sizeof(struct kconsumerd_fd));
+	tmp_fd = malloc(sizeof(struct lttng_kconsumerd_fd));
 	tmp_fd->sessiond_fd = buf->fd;
 	tmp_fd->consumerd_fd = consumerd_fd;
 	tmp_fd->state = buf->state;
@@ -222,14 +194,12 @@ end:
 }
 
 /*
- * kconsumerd_change_fd_state
- *
- * Update a fd according to what we just received
+ * Update a fd according to what we just received.
  */
 static void kconsumerd_change_fd_state(int sessiond_fd,
-		enum kconsumerd_fd_state state)
+		enum lttng_kconsumerd_fd_state state)
 {
-	struct kconsumerd_fd *iter;
+	struct lttng_kconsumerd_fd *iter;
 
 	pthread_mutex_lock(&kconsumerd_data.lock);
 	cds_list_for_each_entry(iter, &kconsumerd_data.fd_list.head, list) {
@@ -243,18 +213,17 @@ static void kconsumerd_change_fd_state(int sessiond_fd,
 }
 
 /*
- * kconsumerd_update_poll_array
+ * Allocate the pollfd structure and the local view of the out fds to avoid
+ * doing a lookup in the linked list and concurrency issues when writing is
+ * needed. Called with kconsumerd_data.lock held.
  *
- * Allocate the pollfd structure and the local view of the out fds
- * to avoid doing a lookup in the linked list and concurrency issues
- * when writing is needed.
- * Returns the number of fds in the structures
- * Called with kconsumerd_data.lock held.
+ * Returns the number of fds in the structures.
  */
-static int kconsumerd_update_poll_array(struct kconsumerd_local_data *ctx,
-		struct pollfd **pollfd, struct kconsumerd_fd **local_kconsumerd_fd)
+static int kconsumerd_update_poll_array(
+		struct lttng_kconsumerd_local_data *ctx, struct pollfd **pollfd,
+		struct lttng_kconsumerd_fd **local_kconsumerd_fd)
 {
-	struct kconsumerd_fd *iter;
+	struct lttng_kconsumerd_fd *iter;
 	int i = 0;
 
 	DBG("Updating poll fd array");
@@ -269,23 +238,137 @@ static int kconsumerd_update_poll_array(struct kconsumerd_local_data *ctx,
 	}
 
 	/*
-	 * insert the kconsumerd_poll_pipe at the end of the array and don't
-	 * increment i so nb_fd is the number of real FD
+	 * Insert the kconsumerd_poll_pipe at the end of the array and don't
+	 * increment i so nb_fd is the number of real FD.
 	 */
 	(*pollfd)[i].fd = ctx->kconsumerd_poll_pipe[0];
 	(*pollfd)[i].events = POLLIN;
 	return i;
 }
 
+/*
+ * Receives an array of file descriptors and the associated structures
+ * describing each fd (path name).
+ *
+ * Returns the size of received data
+ */
+static int kconsumerd_consumerd_recv_fd(
+		struct lttng_kconsumerd_local_data *ctx, int sfd,
+		struct pollfd *kconsumerd_sockpoll, int size,
+		enum lttng_kconsumerd_command cmd_type)
+{
+	struct iovec iov[1];
+	int ret = 0, i, tmp2;
+	struct cmsghdr *cmsg;
+	int nb_fd;
+	char recv_fd[CMSG_SPACE(sizeof(int))];
+	struct lttcomm_kconsumerd_msg lkm;
+
+	/* the number of fds we are about to receive */
+	nb_fd = size / sizeof(struct lttcomm_kconsumerd_msg);
+
+	/*
+	 * nb_fd is the number of fds we receive. One fd per recvmsg.
+	 */
+	for (i = 0; i < nb_fd; i++) {
+		struct msghdr msg = { 0 };
+
+		/* Prepare to receive the structures */
+		iov[0].iov_base = &lkm;
+		iov[0].iov_len = sizeof(lkm);
+		msg.msg_iov = iov;
+		msg.msg_iovlen = 1;
+
+		msg.msg_control = recv_fd;
+		msg.msg_controllen = sizeof(recv_fd);
+
+		DBG("Waiting to receive fd");
+		if (lttng_kconsumerd_poll_socket(kconsumerd_sockpoll) < 0) {
+			goto end;
+		}
+
+		if ((ret = recvmsg(sfd, &msg, 0)) < 0) {
+			perror("recvmsg");
+			continue;
+		}
+
+		if (ret != (size / nb_fd)) {
+			ERR("Received only %d, expected %d", ret, size);
+			lttng_kconsumerd_send_error(ctx, KCONSUMERD_ERROR_RECV_FD);
+			goto end;
+		}
+
+		cmsg = CMSG_FIRSTHDR(&msg);
+		if (!cmsg) {
+			ERR("Invalid control message header");
+			ret = -1;
+			lttng_kconsumerd_send_error(ctx, KCONSUMERD_ERROR_RECV_FD);
+			goto end;
+		}
+
+		/* if we received fds */
+		if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+			switch (cmd_type) {
+				case ADD_STREAM:
+					DBG("kconsumerd_add_fd %s (%d)", lkm.path_name,
+							((int *) CMSG_DATA(cmsg))[0]);
+
+					ret = kconsumerd_add_fd(&lkm, ((int *) CMSG_DATA(cmsg))[0]);
+					if (ret < 0) {
+						lttng_kconsumerd_send_error(ctx, KCONSUMERD_OUTFD_ERROR);
+						goto end;
+					}
+					break;
+				case UPDATE_STREAM:
+					kconsumerd_change_fd_state(lkm.fd, lkm.state);
+					break;
+				default:
+					break;
+			}
+			/* signal the poll thread */
+			tmp2 = write(ctx->kconsumerd_poll_pipe[1], "4", 1);
+			if (tmp2 < 0) {
+				perror("write kconsumerd poll");
+			}
+		} else {
+			ERR("Didn't received any fd");
+			lttng_kconsumerd_send_error(ctx, KCONSUMERD_ERROR_RECV_FD);
+			ret = -1;
+			goto end;
+		}
+	}
+
+end:
+	return ret;
+}
 
 /*
- * kconsumerd_on_read_subbuffer_mmap
+ * Set the error socket.
+ */
+void lttng_kconsumerd_set_error_sock(
+		struct lttng_kconsumerd_local_data *ctx, int sock)
+{
+	ctx->kconsumerd_error_socket = sock;
+}
+
+/*
+ * Set the command socket path.
+ */
+
+void lttng_kconsumerd_set_command_sock_path(
+		struct lttng_kconsumerd_local_data *ctx, char *sock)
+{
+	ctx->kconsumerd_command_sock_path = sock;
+}
+
+/*
+ * Mmap the ring buffer, read it and write the data to the tracefile.
  *
- * mmap the ring buffer, read it and write the data to the tracefile.
  * Returns the number of bytes written
  */
-int kconsumerd_on_read_subbuffer_mmap(struct kconsumerd_local_data *ctx,
-		struct kconsumerd_fd *kconsumerd_fd, unsigned long len)
+int lttng_kconsumerd_on_read_subbuffer_mmap(
+		struct lttng_kconsumerd_local_data *ctx,
+		struct lttng_kconsumerd_fd *kconsumerd_fd, unsigned long len)
 {
 	unsigned long mmap_offset;
 	char *padding = NULL;
@@ -357,13 +440,13 @@ end:
 }
 
 /*
- * kconsumerd_on_read_subbuffer
- *
  * Splice the data from the ring buffer to the tracefile.
- * Returns the number of bytes spliced
+ *
+ * Returns the number of bytes spliced.
  */
-int kconsumerd_on_read_subbuffer_splice(struct kconsumerd_local_data *ctx,
-		struct kconsumerd_fd *kconsumerd_fd, unsigned long len)
+int lttng_kconsumerd_on_read_subbuffer_splice(
+		struct lttng_kconsumerd_local_data *ctx,
+		struct lttng_kconsumerd_fd *kconsumerd_fd, unsigned long len)
 {
 	long ret = 0;
 	loff_t offset = 0;
@@ -435,16 +518,16 @@ splice_error:
 	/* send the appropriate error description to sessiond */
 	switch(ret) {
 	case EBADF:
-		kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_EBADF);
+		lttng_kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_EBADF);
 		break;
 	case EINVAL:
-		kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_EINVAL);
+		lttng_kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_EINVAL);
 		break;
 	case ENOMEM:
-		kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_ENOMEM);
+		lttng_kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_ENOMEM);
 		break;
 	case ESPIPE:
-		kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_ESPIPE);
+		lttng_kconsumerd_send_error(ctx, KCONSUMERD_SPLICE_ESPIPE);
 		break;
 	}
 
@@ -453,13 +536,10 @@ end:
 }
 
 /*
- * kconsumerd_poll_socket
- *
- * Poll on the should_quit pipe and the command socket
- * return -1 on error and should exit, 0 if data is
- * available on the command socket
+ * Poll on the should_quit pipe and the command socket return -1 on error and
+ * should exit, 0 if data is available on the command socket
  */
-int kconsumerd_poll_socket(struct pollfd *kconsumerd_sockpoll)
+int lttng_kconsumerd_poll_socket(struct pollfd *kconsumerd_sockpoll)
 {
 	int num_rdy;
 
@@ -479,119 +559,23 @@ exit:
 }
 
 /*
- * kconsumerd_consumerd_recv_fd
- *
- * Receives an array of file descriptors and the associated
- * structures describing each fd (path name).
- * Returns the size of received data
+ * This thread polls the fds in the ltt_fd_list to consume the data and write
+ * it to tracefile if necessary.
  */
-static int kconsumerd_consumerd_recv_fd(struct kconsumerd_local_data *ctx,
-		int sfd, struct pollfd *kconsumerd_sockpoll, int size,
-		enum kconsumerd_command cmd_type)
-{
-	struct iovec iov[1];
-	int ret = 0, i, tmp2;
-	struct cmsghdr *cmsg;
-	int nb_fd;
-	char recv_fd[CMSG_SPACE(sizeof(int))];
-	struct lttcomm_kconsumerd_msg lkm;
-
-	/* the number of fds we are about to receive */
-	nb_fd = size / sizeof(struct lttcomm_kconsumerd_msg);
-
-	/*
-	 * nb_fd is the number of fds we receive. One fd per recvmsg.
-	 */
-	for (i = 0; i < nb_fd; i++) {
-		struct msghdr msg = { 0 };
-
-		/* Prepare to receive the structures */
-		iov[0].iov_base = &lkm;
-		iov[0].iov_len = sizeof(lkm);
-		msg.msg_iov = iov;
-		msg.msg_iovlen = 1;
-
-		msg.msg_control = recv_fd;
-		msg.msg_controllen = sizeof(recv_fd);
-
-		DBG("Waiting to receive fd");
-		if (kconsumerd_poll_socket(kconsumerd_sockpoll) < 0) {
-			goto end;
-		}
-
-		if ((ret = recvmsg(sfd, &msg, 0)) < 0) {
-			perror("recvmsg");
-			continue;
-		}
-
-		if (ret != (size / nb_fd)) {
-			ERR("Received only %d, expected %d", ret, size);
-			kconsumerd_send_error(ctx, KCONSUMERD_ERROR_RECV_FD);
-			goto end;
-		}
-
-		cmsg = CMSG_FIRSTHDR(&msg);
-		if (!cmsg) {
-			ERR("Invalid control message header");
-			ret = -1;
-			kconsumerd_send_error(ctx, KCONSUMERD_ERROR_RECV_FD);
-			goto end;
-		}
-
-		/* if we received fds */
-		if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
-			switch (cmd_type) {
-			case ADD_STREAM:
-				DBG("kconsumerd_add_fd %s (%d)", lkm.path_name, ((int *) CMSG_DATA(cmsg))[0]);
-				ret = kconsumerd_add_fd(&lkm, ((int *) CMSG_DATA(cmsg))[0]);
-				if (ret < 0) {
-					kconsumerd_send_error(ctx, KCONSUMERD_OUTFD_ERROR);
-					goto end;
-				}
-				break;
-			case UPDATE_STREAM:
-				kconsumerd_change_fd_state(lkm.fd, lkm.state);
-				break;
-			default:
-				break;
-			}
-			/* signal the poll thread */
-			tmp2 = write(ctx->kconsumerd_poll_pipe[1], "4", 1);
-			if (tmp2 < 0) {
-				perror("write kconsumerd poll");
-			}
-		} else {
-			ERR("Didn't received any fd");
-			kconsumerd_send_error(ctx, KCONSUMERD_ERROR_RECV_FD);
-			ret = -1;
-			goto end;
-		}
-	}
-
-end:
-	return ret;
-}
-
-/*
- *  kconsumerd_thread_poll_fds
- *
- *  This thread polls the fds in the ltt_fd_list to consume the data
- *  and write it to tracefile if necessary.
- */
-void *kconsumerd_thread_poll_fds(void *data)
+void *lttng_kconsumerd_thread_poll_fds(void *data)
 {
 	int num_rdy, num_hup, high_prio, ret, i;
 	struct pollfd *pollfd = NULL;
 	/* local view of the fds */
-	struct kconsumerd_fd **local_kconsumerd_fd = NULL;
+	struct lttng_kconsumerd_fd **local_kconsumerd_fd = NULL;
 	/* local view of kconsumerd_data.fds_count */
 	int nb_fd = 0;
 	char tmp;
 	int tmp2;
-	struct kconsumerd_local_data *ctx = data;
+	struct lttng_kconsumerd_local_data *ctx = data;
 
 
-	local_kconsumerd_fd = malloc(sizeof(struct kconsumerd_fd));
+	local_kconsumerd_fd = malloc(sizeof(struct lttng_kconsumerd_fd));
 
 	while (1) {
 		high_prio = 0;
@@ -622,7 +606,7 @@ void *kconsumerd_thread_poll_fds(void *data)
 
 			/* allocate for all fds + 1 for the kconsumerd_poll_pipe */
 			local_kconsumerd_fd = malloc((kconsumerd_data.fds_count + 1) *
-					sizeof(struct kconsumerd_fd));
+					sizeof(struct lttng_kconsumerd_fd));
 			if (local_kconsumerd_fd == NULL) {
 				perror("local_kconsumerd_fd malloc");
 				pthread_mutex_unlock(&kconsumerd_data.lock);
@@ -631,7 +615,7 @@ void *kconsumerd_thread_poll_fds(void *data)
 			ret = kconsumerd_update_poll_array(ctx, &pollfd, local_kconsumerd_fd);
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
-				kconsumerd_send_error(ctx, KCONSUMERD_POLL_ERROR);
+				lttng_kconsumerd_send_error(ctx, KCONSUMERD_POLL_ERROR);
 				pthread_mutex_unlock(&kconsumerd_data.lock);
 				goto end;
 			}
@@ -646,7 +630,7 @@ void *kconsumerd_thread_poll_fds(void *data)
 		DBG("poll num_rdy : %d", num_rdy);
 		if (num_rdy == -1) {
 			perror("Poll error");
-			kconsumerd_send_error(ctx, KCONSUMERD_POLL_ERROR);
+			lttng_kconsumerd_send_error(ctx, KCONSUMERD_POLL_ERROR);
 			goto end;
 		} else if (num_rdy == 0) {
 			DBG("Polling thread timed out");
@@ -740,26 +724,26 @@ end:
 }
 
 /*
- * kconsumerd_create
- *
- * initialise the necessary environnement :
+ * Initialise the necessary environnement :
  * - create a new context
  * - create the poll_pipe
  * - create the should_quit pipe (for signal handler)
  * - create the thread pipe (for splice)
+ *
  * Takes a function pointer as argument, this function is called when data is
  * available on a buffer. This function is responsible to do the
  * kernctl_get_next_subbuf, read the data with mmap or splice depending on the
  * buffer configuration and then kernctl_put_next_subbuf at the end.
+ *
  * Returns a pointer to the new context or NULL on error.
  */
-struct kconsumerd_local_data *kconsumerd_create(
-		int (*buffer_ready)(struct kconsumerd_fd *kconsumerd_fd))
+struct lttng_kconsumerd_local_data *lttng_kconsumerd_create(
+		int (*buffer_ready)(struct lttng_kconsumerd_fd *kconsumerd_fd))
 {
 	int ret;
-	struct kconsumerd_local_data *ctx;
+	struct lttng_kconsumerd_local_data *ctx;
 
-	ctx = malloc(sizeof(struct kconsumerd_local_data));
+	ctx = malloc(sizeof(struct lttng_kconsumerd_local_data));
 	if (ctx == NULL) {
 		perror("allocating context");
 		goto end;
@@ -793,11 +777,9 @@ end:
 }
 
 /*
- * kconsumerd_destroy
- *
- * Close all fds associated with the instance and free the context
+ * Close all fds associated with the instance and free the context.
  */
-void kconsumerd_destroy(struct kconsumerd_local_data *ctx)
+void lttng_kconsumerd_destroy(struct lttng_kconsumerd_local_data *ctx)
 {
 	close(ctx->kconsumerd_error_socket);
 	close(ctx->kconsumerd_thread_pipe[0]);
@@ -812,21 +794,19 @@ void kconsumerd_destroy(struct kconsumerd_local_data *ctx)
 }
 
 /*
- *  kconsumerd_thread_receive_fds
- *
- *  This thread listens on the consumerd socket and
- *  receives the file descriptors from ltt-sessiond
+ * This thread listens on the consumerd socket and receives the file
+ * descriptors from the session daemon.
  */
-void *kconsumerd_thread_receive_fds(void *data)
+void *lttng_kconsumerd_thread_receive_fds(void *data)
 {
 	int sock, client_socket, ret;
 	struct lttcomm_kconsumerd_header tmp;
 	/*
-	 * structure to poll for incoming data on communication socket
-	 * avoids making blocking sockets
+	 * structure to poll for incoming data on communication socket avoids
+	 * making blocking sockets.
 	 */
 	struct pollfd kconsumerd_sockpoll[2];
-	struct kconsumerd_local_data *ctx = data;
+	struct lttng_kconsumerd_local_data *ctx = data;
 
 
 	DBG("Creating command socket %s", ctx->kconsumerd_command_sock_path);
@@ -843,7 +823,7 @@ void *kconsumerd_thread_receive_fds(void *data)
 	}
 
 	DBG("Sending ready command to ltt-sessiond");
-	ret = kconsumerd_send_error(ctx, KCONSUMERD_COMMAND_SOCK_READY);
+	ret = lttng_kconsumerd_send_error(ctx, KCONSUMERD_COMMAND_SOCK_READY);
 	if (ret < 0) {
 		ERR("Error sending ready command to ltt-sessiond");
 		goto end;
@@ -861,7 +841,7 @@ void *kconsumerd_thread_receive_fds(void *data)
 	kconsumerd_sockpoll[1].fd = client_socket;
 	kconsumerd_sockpoll[1].events = POLLIN | POLLPRI;
 
-	if (kconsumerd_poll_socket(kconsumerd_sockpoll) < 0) {
+	if (lttng_kconsumerd_poll_socket(kconsumerd_sockpoll) < 0) {
 		goto end;
 	}
 	DBG("Connection on client_socket");
@@ -883,7 +863,7 @@ void *kconsumerd_thread_receive_fds(void *data)
 	kconsumerd_sockpoll[1].events = POLLIN | POLLPRI;
 
 	while (1) {
-		if (kconsumerd_poll_socket(kconsumerd_sockpoll) < 0) {
+		if (lttng_kconsumerd_poll_socket(kconsumerd_sockpoll) < 0) {
 			goto end;
 		}
 		DBG("Incoming fds on sock");
@@ -928,7 +908,7 @@ end:
 	 * this period, the polling thread will exit even if there
 	 * are still open FDs (should not happen, but safety mechanism).
 	 */
-	kconsumerd_poll_timeout = KCONSUMERD_POLL_GRACE_PERIOD;
+	kconsumerd_poll_timeout = LTTNG_KCONSUMERD_POLL_GRACE_PERIOD;
 
 	/* wake up the polling thread */
 	ret = write(ctx->kconsumerd_poll_pipe[1], "4", 1);
@@ -939,31 +919,28 @@ end:
 }
 
 /*
- *  kconsumerd_cleanup
- *
- *  Close all the tracefiles and stream fds, should be called when all
- *  instances are destroyed.
+ * Close all the tracefiles and stream fds, should be called when all instances
+ * are destroyed.
  */
-void kconsumerd_cleanup(void)
+void lttng_kconsumerd_cleanup(void)
 {
-	struct kconsumerd_fd *iter, *tmp;
+	struct lttng_kconsumerd_fd *iter, *tmp;
 
 	/*
 	 * close all outfd. Called when there are no more threads
 	 * running (after joining on the threads), no need to protect
 	 * list iteration with mutex.
 	 */
-	cds_list_for_each_entry_safe(iter, tmp, &kconsumerd_data.fd_list.head, list) {
+	cds_list_for_each_entry_safe(iter, tmp,
+			&kconsumerd_data.fd_list.head, list) {
 		kconsumerd_del_fd(iter);
 	}
 }
 
 /*
- * kconsumerd_should_exit
- *
  * Called from signal handler.
  */
-void kconsumerd_should_exit(struct kconsumerd_local_data *ctx)
+void lttng_kconsumerd_should_exit(struct lttng_kconsumerd_local_data *ctx)
 {
 	int ret;
 	kconsumerd_quit = 1;
@@ -974,11 +951,10 @@ void kconsumerd_should_exit(struct kconsumerd_local_data *ctx)
 }
 
 /*
- * kconsumerd_send_error
- *
- * send return code to ltt-sessiond
+ * Send return code to the session daemon.
  */
-int kconsumerd_send_error(struct kconsumerd_local_data *ctx, enum lttcomm_return_code cmd)
+int lttng_kconsumerd_send_error(
+		struct lttng_kconsumerd_local_data *ctx, int cmd)
 {
 	if (ctx->kconsumerd_error_socket > 0) {
 		return lttcomm_send_unix_sock(ctx->kconsumerd_error_socket, &cmd,

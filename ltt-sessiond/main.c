@@ -41,6 +41,7 @@
 
 #include <urcu/list.h>		/* URCU list library (-lurcu) */
 #include <lttng/lttng.h>
+#include <lttng/lttng-kconsumerd.h>
 #include <lttng-sessiond-comm.h>
 
 #include "context.h"
@@ -50,7 +51,7 @@
 #include "ust-ctl.h"
 #include "session.h"
 #include "traceable-app.h"
-#include "lttng-kconsumerd.h"
+#include "ltt-kconsumerd.h"
 #include "utils.h"
 
 /* Const values */
