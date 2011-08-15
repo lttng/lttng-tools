@@ -383,7 +383,7 @@ static int add_context(char *session_name)
 					opt_channel_name);
 			if (ret < 0) {
 				fprintf(stderr, "%s: ", type->opt->symbol);
-				goto error;
+				continue;
 			} else {
 				MSG("Kernel context %s added", type->opt->symbol);
 			}
