@@ -3,7 +3,7 @@
 SESSIOND_BIN="ltt-sessiond"
 
 tmpdir=`mktemp -d`
-tests=( kernel_all_events_basic )
+tests=( kernel_event_basic kernel_all_events_basic )
 exit_code=0
 
 function start_tests ()
@@ -16,6 +16,8 @@ function start_tests ()
             exit_code=1
             break
         fi
+		# Cleaning up
+		rm -rf $tmpdir
     done
 }
 
@@ -49,7 +51,5 @@ if [ $? -eq 1 ]; then
 else
     echo -e "\e[1;32mOK\e[0m"
 fi
-
-rm -rf $tmpdir
 
 exit $exit_code

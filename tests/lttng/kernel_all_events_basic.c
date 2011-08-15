@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
     dom.type = LTTNG_DOMAIN_KERNEL;
 
-	printf("\nTesting basic kernel tracing use case:\n");
+	printf("\nTesting tracing all kernel events:\n");
 	printf("-----------\n");
 	/* Check if root */
 	if (getuid() != 0) {
