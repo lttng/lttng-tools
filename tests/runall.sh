@@ -19,7 +19,7 @@
 
 #### ADD TESTS HERE ####
 
-test_suite=( test_sessions test_kernel_data_trace )
+test_suite=( test_sessions test_kernel_data_trace lttng/runall.sh )
 
 #### END TESTS HERE ####
 

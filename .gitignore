@@ -32,3 +32,4 @@ ltt-kconsumerd/ltt-kconsumerd
 
 tests/test_sessions
 tests/test_kernel_data_trace
+tests/kernel_all_events_basic
