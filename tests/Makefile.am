@@ -1,6 +1,8 @@
 AM_CFLAGS=-I$(top_srcdir)/include -I$(top_srcdir)/libkernelctl \
 		  -I$(top_srcdir)/liblttngctl -g -Wall
 
+EXTRA_DIST = runall.sh
+
 noinst_PROGRAMS = test_sessions test_kernel_data_trace
 
 UTILS=utils.h
