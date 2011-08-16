@@ -207,7 +207,13 @@ static int read_subbuffer(struct lttng_kconsumerd_fd *kconsumerd_fd)
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
 		ret = errno;
-		perror("Reserving sub buffer failed (everything is normal, "
+		/*
+		 * This is a debug message even for single-threaded consumer,
+		 * because poll() have more relaxed criterions than get subbuf,
+		 * so get_subbuf may fail for short race windows where poll()
+		 * would issue wakeups.
+		 */
+		DBG("Reserving sub buffer failed (everything is normal, "
 				"it is due to concurrency)");
 		goto end;
 	}
