@@ -132,6 +132,24 @@ extern int lttng_kconsumerd_on_read_subbuffer_splice(
 		struct lttng_kconsumerd_fd *kconsumerd_fd, unsigned long len);
 
 /*
+ * Take a snapshot for a specific fd
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_kconsumerd_take_snapshot(struct lttng_kconsumerd_local_data *ctx,
+        struct lttng_kconsumerd_fd *kconsumerd_fd);
+
+/*
+ * Get the produced position
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_kconsumerd_get_produced_snapshot(
+        struct lttng_kconsumerd_local_data *ctx,
+        struct lttng_kconsumerd_fd *kconsumerd_fd,
+        unsigned long *pos);
+
+/*
  * Send return code to session daemon.
  *
  * Returns the return code of sendmsg : the number of bytes transmitted or -1

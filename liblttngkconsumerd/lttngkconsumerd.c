@@ -361,6 +361,42 @@ void lttng_kconsumerd_set_command_sock_path(
 	ctx->kconsumerd_command_sock_path = sock;
 }
 
+static void lttng_kconsumerd_sync_trace_file(
+		struct lttng_kconsumerd_fd *kconsumerd_fd, off_t orig_offset)
+{
+	int outfd = kconsumerd_fd->out_fd;
+	/*
+	 * This does a blocking write-and-wait on any page that belongs to the
+	 * subbuffer prior to the one we just wrote.
+	 * Don't care about error values, as these are just hints and ways to
+	 * limit the amount of page cache used.
+	 */
+	if (orig_offset >= kconsumerd_fd->max_sb_size) {
+		sync_file_range(outfd, orig_offset - kconsumerd_fd->max_sb_size,
+				kconsumerd_fd->max_sb_size,
+				SYNC_FILE_RANGE_WAIT_BEFORE
+				| SYNC_FILE_RANGE_WRITE
+				| SYNC_FILE_RANGE_WAIT_AFTER);
+		/*
+		 * Give hints to the kernel about how we access the file:
+		 * POSIX_FADV_DONTNEED : we won't re-access data in a near future after
+		 * we write it.
+		 *
+		 * We need to call fadvise again after the file grows because the
+		 * kernel does not seem to apply fadvise to non-existing parts of the
+		 * file.
+		 *
+		 * Call fadvise _after_ having waited for the page writeback to
+		 * complete because the dirty page writeback semantic is not well
+		 * defined. So it can be expected to lead to lower throughput in
+		 * streaming.
+		 */
+		posix_fadvise(outfd, orig_offset - kconsumerd_fd->max_sb_size,
+				kconsumerd_fd->max_sb_size, POSIX_FADV_DONTNEED);
+	}
+}
+
+
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile.
  *
@@ -371,7 +407,6 @@ int lttng_kconsumerd_on_read_subbuffer_mmap(
 		struct lttng_kconsumerd_fd *kconsumerd_fd, unsigned long len)
 {
 	unsigned long mmap_offset;
-	char *padding = NULL;
 	long ret = 0;
 	off_t orig_offset = kconsumerd_fd->out_fd_offset;
 	int fd = kconsumerd_fd->consumerd_fd;
@@ -400,42 +435,11 @@ int lttng_kconsumerd_on_read_subbuffer_mmap(
 		kconsumerd_fd->out_fd_offset += ret;
 	}
 
-	/*
-	 * This does a blocking write-and-wait on any page that belongs to the
-	 * subbuffer prior to the one we just wrote.
-	 * Don't care about error values, as these are just hints and ways to
-	 * limit the amount of page cache used.
-	 */
-	if (orig_offset >= kconsumerd_fd->max_sb_size) {
-		sync_file_range(outfd, orig_offset - kconsumerd_fd->max_sb_size,
-				kconsumerd_fd->max_sb_size,
-				SYNC_FILE_RANGE_WAIT_BEFORE
-				| SYNC_FILE_RANGE_WRITE
-				| SYNC_FILE_RANGE_WAIT_AFTER);
+	lttng_kconsumerd_sync_trace_file(kconsumerd_fd, orig_offset);
 
-		/*
-		 * Give hints to the kernel about how we access the file:
-		 * POSIX_FADV_DONTNEED : we won't re-access data in a near future after
-		 * we write it.
-		 *
-		 * We need to call fadvise again after the file grows because the
-		 * kernel does not seem to apply fadvise to non-existing parts of the
-		 * file.
-		 *
-		 * Call fadvise _after_ having waited for the page writeback to
-		 * complete because the dirty page writeback semantic is not well
-		 * defined. So it can be expected to lead to lower throughput in
-		 * streaming.
-		 */
-		posix_fadvise(outfd, orig_offset - kconsumerd_fd->max_sb_size,
-				kconsumerd_fd->max_sb_size, POSIX_FADV_DONTNEED);
-	}
 	goto end;
 
 end:
-	if (padding != NULL) {
-		free(padding);
-	}
 	return ret;
 }
 
@@ -480,36 +484,8 @@ int lttng_kconsumerd_on_read_subbuffer_splice(
 				SYNC_FILE_RANGE_WRITE);
 		kconsumerd_fd->out_fd_offset += ret;
 	}
+	lttng_kconsumerd_sync_trace_file(kconsumerd_fd, orig_offset);
 
-	/*
-	 * This does a blocking write-and-wait on any page that belongs to the
-	 * subbuffer prior to the one we just wrote.
-	 * Don't care about error values, as these are just hints and ways to
-	 * limit the amount of page cache used.
-	 */
-	if (orig_offset >= kconsumerd_fd->max_sb_size) {
-		sync_file_range(outfd, orig_offset - kconsumerd_fd->max_sb_size,
-				kconsumerd_fd->max_sb_size,
-				SYNC_FILE_RANGE_WAIT_BEFORE
-				| SYNC_FILE_RANGE_WRITE
-				| SYNC_FILE_RANGE_WAIT_AFTER);
-		/*
-		 * Give hints to the kernel about how we access the file:
-		 * POSIX_FADV_DONTNEED : we won't re-access data in a near future after
-		 * we write it.
-		 *
-		 * We need to call fadvise again after the file grows because the
-		 * kernel does not seem to apply fadvise to non-existing parts of the
-		 * file.
-		 *
-		 * Call fadvise _after_ having waited for the page writeback to
-		 * complete because the dirty page writeback semantic is not well
-		 * defined. So it can be expected to lead to lower throughput in
-		 * streaming.
-		 */
-		posix_fadvise(outfd, orig_offset - kconsumerd_fd->max_sb_size,
-				kconsumerd_fd->max_sb_size, POSIX_FADV_DONTNEED);
-	}
 	goto end;
 
 splice_error:
@@ -530,6 +506,48 @@ splice_error:
 	}
 
 end:
+	return ret;
+}
+
+/*
+ * Take a snapshot for a specific fd
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_kconsumerd_take_snapshot(struct lttng_kconsumerd_local_data *ctx,
+		struct lttng_kconsumerd_fd *kconsumerd_fd)
+{
+	int ret = 0;
+	int infd = kconsumerd_fd->consumerd_fd;
+
+	ret = kernctl_snapshot(infd);
+	if (ret != 0) {
+		ret = errno;
+		perror("Getting sub-buffer snapshot.");
+	}
+
+	return ret;
+}
+
+/*
+ * Get the produced position
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_kconsumerd_get_produced_snapshot(
+		struct lttng_kconsumerd_local_data *ctx,
+		struct lttng_kconsumerd_fd *kconsumerd_fd,
+		unsigned long *pos)
+{
+	int ret;
+	int infd = kconsumerd_fd->consumerd_fd;
+
+	ret = kernctl_snapshot_get_produced(infd, pos);
+	if (ret != 0) {
+		ret = errno;
+		perror("kernctl_snapshot_get_produced");
+	}
+
 	return ret;
 }
 
