@@ -1961,16 +1961,16 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 			}
 
-			DBG("Start kernel tracing");
-			ret = kernel_start_session(cmd_ctx->session->kernel_session);
+			ret = start_kernel_trace(cmd_ctx->session->kernel_session);
 			if (ret < 0) {
-				ERR("Kernel start session failed");
 				ret = LTTCOMM_KERN_START_FAIL;
 				goto error;
 			}
 
-			ret = start_kernel_trace(cmd_ctx->session->kernel_session);
+			DBG("Start kernel tracing");
+			ret = kernel_start_session(cmd_ctx->session->kernel_session);
 			if (ret < 0) {
+				ERR("Kernel start session failed");
 				ret = LTTCOMM_KERN_START_FAIL;
 				goto error;
 			}
