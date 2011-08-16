@@ -36,6 +36,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <assert.h>
 
 #include <lttng/lttng-kconsumerd.h>
 
@@ -277,6 +278,54 @@ end:
 	return ret;
 }
 
+static int on_recv_fd(struct lttng_kconsumerd_fd *kconsumerd_fd)
+{
+	int ret;
+
+	/* Opening the tracefile in write mode */
+	if (kconsumerd_fd->path_name != NULL) {
+		ret = open(kconsumerd_fd->path_name,
+				O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
+		if (ret < 0) {
+			ERR("Opening %s", kconsumerd_fd->path_name);
+			perror("open");
+			goto error;
+		}
+		kconsumerd_fd->out_fd = ret;
+	}
+
+	if (kconsumerd_fd->output == LTTNG_EVENT_MMAP) {
+		/* get the len of the mmap region */
+		ret = kernctl_get_mmap_len(kconsumerd_fd->consumerd_fd, &kconsumerd_fd->mmap_len);
+		if (ret != 0) {
+			ret = errno;
+			perror("kernctl_get_mmap_len");
+			goto error_close_fd;
+		}
+
+		kconsumerd_fd->mmap_base = mmap(NULL, kconsumerd_fd->mmap_len,
+				PROT_READ, MAP_PRIVATE, kconsumerd_fd->consumerd_fd, 0);
+		if (kconsumerd_fd->mmap_base == MAP_FAILED) {
+			perror("Error mmaping");
+			ret = -1;
+			goto error_close_fd;
+		}
+	}
+
+	/* we return 0 to let the library handle the FD internally */
+	return 0;
+
+error_close_fd:
+	{
+		int err;
+
+		err = close(kconsumerd_fd->out_fd);
+		assert(!err);
+	}
+error:
+	return ret;
+}
+
 /*
  * main
  */
@@ -303,8 +352,8 @@ int main(int argc, char **argv)
 		snprintf(command_sock_path, PATH_MAX,
 				KCONSUMERD_CMD_SOCK_PATH);
 	}
-	/* create the pipe to wake to receiving thread when needed */
-	ctx = lttng_kconsumerd_create(read_subbuffer);
+	/* create the consumer instance with and assign the callbacks */
+	ctx = lttng_kconsumerd_create(read_subbuffer, on_recv_fd, NULL);
 	if (ctx == NULL) {
 		goto error;
 	}

@@ -79,6 +79,31 @@ struct lttng_kconsumerd_fd {
 struct lttng_kconsumerd_local_data {
 	/* function to call when data is available on a buffer */
 	int (*on_buffer_ready)(struct lttng_kconsumerd_fd *kconsumerd_fd);
+	/*
+	 * function to call when we receive a new fd, it receives a
+	 * newly allocated kconsumerd_fd, depending on the return code
+	 * of this function, the new FD will be handled by the
+	 * application or the library.
+	 *
+	 * Returns:
+	 *    > 0 (success, FD is kept by application)
+	 *   == 0 (success, FD is left to library)
+	 *    < 0 (error)
+	 */
+	int (*on_recv_fd)(struct lttng_kconsumerd_fd *kconsumerd_fd);
+	/*
+	 * function to call when a FD is getting updated by the session
+	 * daemon, this function receives the FD as seen by the session
+	 * daemon (sessiond_fd) and the new state, depending on the
+	 * return code of this function the update of state for the FD
+	 * is handled by the application or the library.
+	 *
+	 * Returns:
+	 *    > 0 (success, FD is kept by application)
+	 *   == 0 (success, FD is left to library)
+	 *    < 0 (error)
+	 */
+	int (*on_update_fd)(int sessiond_fd, uint32_t state);
 	/* socket to communicate errors with sessiond */
 	int kconsumerd_error_socket;
 	/* socket to exchange commands with sessiond */
@@ -98,15 +123,15 @@ struct lttng_kconsumerd_local_data {
  * - create the should_quit pipe (for signal handler)
  * - create the thread pipe (for splice)
  *
- * Takes a function pointer as argument, this function is called when data is
- * available on a buffer. This function is responsible to do the
- * kernctl_get_next_subbuf, read the data with mmap or splice depending on the
- * buffer configuration and then kernctl_put_next_subbuf at the end.
+ * Takes the function pointers to the on_buffer_ready, on_recv_fd, and
+ * on_update_fd callbacks.
  *
  * Returns a pointer to the new context or NULL on error.
  */
 extern struct lttng_kconsumerd_local_data *lttng_kconsumerd_create(
-		int (*buffer_ready)(struct lttng_kconsumerd_fd *kconsumerd_fd));
+		int (*buffer_ready)(struct lttng_kconsumerd_fd *kconsumerd_fd),
+		int (*recv_fd)(struct lttng_kconsumerd_fd *kconsumerd_fd),
+		int (*update_fd)(int sessiond_fd, uint32_t state));
 
 /*
  * Close all fds associated with the instance and free the context.
