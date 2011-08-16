@@ -28,20 +28,30 @@ typedef uint64_t u64;
 typedef __s64 s64;
 
 /* Default channel attributes */
-#define DEFAULT_CHANNEL_NAME                "channel0"
-#define DEFAULT_CHANNEL_OVERWRITE           0       /* usec */
+#define DEFAULT_CHANNEL_NAME			"channel0"
+#define DEFAULT_CHANNEL_OVERWRITE		0       /* usec */
 /* DEFAULT_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_SIZE         4096    /* bytes */
+#define DEFAULT_CHANNEL_SUBBUF_SIZE		4096    /* bytes */
 /* DEFAULT_CHANNEL_SUBBUF_NUM must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_NUM          8
-#define DEFAULT_CHANNEL_SWITCH_TIMER        0       /* usec */
-#define DEFAULT_CHANNEL_READ_TIMER          200     /* usec */
-/* See lttng-kernel.h enum lttng_kernel_output for channel output */
-#define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
+#define DEFAULT_CHANNEL_SUBBUF_NUM		8
+#define DEFAULT_CHANNEL_SWITCH_TIMER		0       /* usec */
+#define DEFAULT_CHANNEL_READ_TIMER		200     /* usec */
+#define DEFAULT_CHANNEL_OUTPUT			LTTNG_EVENT_MMAP
 
-/* == NOT IMPLEMENTED ==
-#define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_UST_MMAP
-*/
+#define DEFAULT_METADATA_SUBBUF_SIZE		4096
+#define DEFAULT_METADATA_SUBBUF_NUM		8
+//TODO: keeping value to 8 currently because consumer is only spawned after
+//start, so it cannot empty the metadata buffer at trace start.
+//#define DEFAULT_METADATA_SUBBUF_NUM		2
+
+/* Kernel has different defaults */
+
+/* DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
+#define DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE	262144    /* bytes */
+/* DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM must always be a power of 2 */
+#define DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM	4
+/* See lttng-kernel.h enum lttng_kernel_output for channel output */
+#define DEFAULT_KERNEL_CHANNEL_OUTPUT		LTTNG_EVENT_SPLICE
 
 /*
  * lttng user-space instrumentation type

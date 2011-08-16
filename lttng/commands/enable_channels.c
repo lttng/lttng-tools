@@ -162,12 +162,25 @@ error:
  */
 static void init_channel_config(void)
 {
-	chan.attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	chan.attr.subbuf_size = DEFAULT_CHANNEL_SUBBUF_SIZE;
-	chan.attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
-	chan.attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-	chan.attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
-	chan.attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+	if (opt_kernel) {
+		/* kernel default */
+		chan.attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		chan.attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+		chan.attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+		chan.attr.subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
+		chan.attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
+		chan.attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+	} else {
+		/* default behavior, used by UST. */
+		chan.attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		chan.attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+		chan.attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+		chan.attr.subbuf_size = DEFAULT_CHANNEL_SUBBUF_SIZE;
+		chan.attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
+		chan.attr.output = DEFAULT_CHANNEL_OUTPUT;
+	}
 }
 
 /*

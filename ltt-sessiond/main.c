@@ -1241,7 +1241,8 @@ static int notify_kernel_pollfd(void)
 /*
  * Allocate a channel structure and fill it.
  */
-static struct lttng_channel *init_default_channel(char *name)
+static struct lttng_channel *init_default_channel(enum lttng_domain_type domain_type,
+						char *name)
 {
 	struct lttng_channel *chan;
 
@@ -1253,18 +1254,29 @@ static struct lttng_channel *init_default_channel(char *name)
 
 	if (snprintf(chan->name, NAME_MAX, "%s", name) < 0) {
 		perror("snprintf channel name");
-		return NULL;
+		goto error;
 	}
 
 	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	chan->attr.subbuf_size = DEFAULT_CHANNEL_SUBBUF_SIZE;
-	chan->attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
 	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
-	chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL:
+		chan->attr.subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
+		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
+		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		break;
+		/* TODO: add UST */
+	default:
+		goto error;	/* Not implemented */
+	}
+
+	return chan;
 
 error:
-	return chan;
+	free(chan);
+	return NULL;
 }
 
 /*
@@ -1713,26 +1725,32 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			do {
+			kchan = get_kernel_channel_by_name(channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				DBG("Channel not found. Creating channel %s", channel_name);
+
+				chan = init_default_channel(cmd_ctx->lsm->domain.type, channel_name);
+				if (chan == NULL) {
+					ret = LTTCOMM_FATAL;
+					goto error;
+				}
+
+				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
+						chan, cmd_ctx->session->kernel_session->trace_path);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_CHAN_FAIL;
+					goto error;
+				}
 				kchan = get_kernel_channel_by_name(channel_name,
 						cmd_ctx->session->kernel_session);
 				if (kchan == NULL) {
-					DBG("Channel not found. Creating channel %s", channel_name);
-
-					chan = init_default_channel(channel_name);
-					if (chan == NULL) {
-						ret = LTTCOMM_FATAL;
-						goto error;
-					}
-
-					ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-							chan, cmd_ctx->session->kernel_session->trace_path);
-					if (ret < 0) {
-						ret = LTTCOMM_KERN_CHAN_FAIL;
-						goto error;
-					}
+					ERR("Channel %s not found after creation. Internal error, giving up.",
+						channel_name);
+					ret = LTTCOMM_FATAL;
+					goto error;
 				}
-			} while (kchan == NULL);
+			}
 
 			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
 			if (kevent == NULL) {
@@ -1785,26 +1803,32 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			do {
+			kchan = get_kernel_channel_by_name(channel_name,
+					cmd_ctx->session->kernel_session);
+			if (kchan == NULL) {
+				DBG("Channel not found. Creating channel %s", channel_name);
+
+				chan = init_default_channel(cmd_ctx->lsm->domain.type, channel_name);
+				if (chan == NULL) {
+					ret = LTTCOMM_FATAL;
+					goto error;
+				}
+
+				ret = kernel_create_channel(cmd_ctx->session->kernel_session,
+						chan, cmd_ctx->session->kernel_session->trace_path);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_CHAN_FAIL;
+					goto error;
+				}
 				kchan = get_kernel_channel_by_name(channel_name,
 						cmd_ctx->session->kernel_session);
 				if (kchan == NULL) {
-					DBG("Channel not found. Creating channel %s", channel_name);
-
-					chan = init_default_channel(channel_name);
-					if (chan == NULL) {
-						ret = LTTCOMM_FATAL;
-						goto error;
-					}
-
-					ret = kernel_create_channel(cmd_ctx->session->kernel_session,
-							chan, cmd_ctx->session->kernel_session->trace_path);
-					if (ret < 0) {
-						ret = LTTCOMM_KERN_CHAN_FAIL;
-						goto error;
-					}
+					ERR("Channel %s not found after creation. Internal error, giving up.",
+						channel_name);
+					ret = LTTCOMM_FATAL;
+					goto error;
 				}
-			} while (kchan == NULL);
+			}
 
 			/* For each event in the kernel session */
 			cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {

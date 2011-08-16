@@ -96,9 +96,9 @@ static void create_kernel_metadata(void)
 	assert(kern->metadata->conf->attr.overwrite
 			== DEFAULT_CHANNEL_OVERWRITE);
 	assert(kern->metadata->conf->attr.subbuf_size
-			== DEFAULT_CHANNEL_SUBBUF_SIZE);
+			== DEFAULT_METADATA_SUBBUF_SIZE);
 	assert(kern->metadata->conf->attr.num_subbuf
-			== DEFAULT_CHANNEL_SUBBUF_NUM);
+			== DEFAULT_METADATA_SUBBUF_NUM);
 	assert(kern->metadata->conf->attr.switch_timer_interval
 			== DEFAULT_CHANNEL_SWITCH_TIMER);
 	assert(kern->metadata->conf->attr.read_timer_interval
