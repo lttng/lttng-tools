@@ -39,10 +39,7 @@ typedef __s64 s64;
 #define DEFAULT_CHANNEL_OUTPUT			LTTNG_EVENT_MMAP
 
 #define DEFAULT_METADATA_SUBBUF_SIZE		4096
-#define DEFAULT_METADATA_SUBBUF_NUM		8
-//TODO: keeping value to 8 currently because consumer is only spawned after
-//start, so it cannot empty the metadata buffer at trace start.
-//#define DEFAULT_METADATA_SUBBUF_NUM		2
+#define DEFAULT_METADATA_SUBBUF_NUM		2
 
 /* Kernel has different defaults */
 
