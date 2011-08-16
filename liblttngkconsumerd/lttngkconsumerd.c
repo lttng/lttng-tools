@@ -474,9 +474,7 @@ int lttng_kconsumerd_on_read_subbuffer_splice(
 			perror("Error in file splice");
 			goto splice_error;
 		}
-		if (ret >= len) {
-			len = 0;
-		}
+		len -= ret;
 		/* This won't block, but will start writeout asynchronously */
 		sync_file_range(outfd, kconsumerd_fd->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
