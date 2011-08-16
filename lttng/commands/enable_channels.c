@@ -84,12 +84,22 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Channel options:\n");
-	fprintf(ofp, "      --discard            Discard event when buffers are full (default)\n");
-	fprintf(ofp, "      --overwrite          Flight recorder mode\n");
-	fprintf(ofp, "      --subbuf-size        Subbuffer size in bytes (default: 4096)\n");
-	fprintf(ofp, "      --num-subbuf         Number of subbufers (default: 2)\n");
-	fprintf(ofp, "      --switch-timer       Switch timer interval in usec (default: 0)\n");
-	fprintf(ofp, "      --read-timer         Read timer interval in usec (default: 200)\n");
+	fprintf(ofp, "      --discard            Discard event when buffers are full%s\n",
+		DEFAULT_CHANNEL_OVERWRITE ? "" : " (default)");
+	fprintf(ofp, "      --overwrite          Flight recorder mode%s\n",
+		DEFAULT_CHANNEL_OVERWRITE ? " (default)" : "");
+	fprintf(ofp, "      --subbuf-size        Subbuffer size in bytes\n");
+	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
+		DEFAULT_CHANNEL_SUBBUF_SIZE,
+		DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE);
+	fprintf(ofp, "      --num-subbuf         Number of subbufers\n");
+	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
+		DEFAULT_CHANNEL_SUBBUF_NUM,
+		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM);
+	fprintf(ofp, "      --switch-timer       Switch timer interval in usec (default: %u)\n",
+		DEFAULT_CHANNEL_SWITCH_TIMER);
+	fprintf(ofp, "      --read-timer         Read timer interval in usec (default: %u)\n",
+		DEFAULT_CHANNEL_READ_TIMER);
 	fprintf(ofp, "\n");
 }
 
