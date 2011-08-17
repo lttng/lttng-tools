@@ -125,7 +125,7 @@ end:
 /*
  *  Check if the specified group name exist.
  *
- *  If yes return 0, else return -1.
+ *  If yes return 1, else return -1.
  */
 static int check_tracing_group(const char *grp_name)
 {
@@ -161,7 +161,7 @@ static int check_tracing_group(const char *grp_name)
 
 	for (i = 0; i < grp_list_size; i++) {
 		if (grp_list[i] == grp_tracing->gr_gid) {
-			ret = 0;
+			ret = 1;
 			break;
 		}
 	}
@@ -174,25 +174,79 @@ end:
 }
 
 /*
- *  Set sessiond socket path by putting it in the global sessiond_sock_path
- *  variable.
+ * Try connect to session daemon with sock_path.
+ *
+ * Return 0 on success, else -1
+ */
+static int try_connect_sessiond(const char *sock_path)
+{
+	int ret;
+
+	/* If socket exist, we check if the daemon listens for connect. */
+	ret = access(sock_path, F_OK);
+	if (ret < 0) {
+		/* Not alive */
+		return -1;
+	}
+
+	ret = lttcomm_connect_unix_sock(sock_path);
+	if (ret < 0) {
+		/* Not alive */
+		return -1;
+	}
+
+	ret = lttcomm_close_unix_sock(ret);
+	if (ret < 0) {
+		perror("lttcomm_close_unix_sock");
+	}
+
+	return 0;
+}
+
+/*
+ * Set sessiond socket path by putting it in the global sessiond_sock_path
+ * variable.
  */
 static int set_session_daemon_path(void)
 {
 	int ret;
+	int in_tgroup = 0;	/* In tracing group */
+	uid_t uid;
 
-	/* Are we in the tracing group ? */
-	ret = check_tracing_group(tracing_group);
-	if (ret < 0 && getuid() != 0) {
+	uid = getuid();
+
+	if (uid != 0) {
+		/* Are we in the tracing group ? */
+		in_tgroup = check_tracing_group(tracing_group);
+	}
+
+	if (uid == 0) {
+		/* Root */
+		copy_string(sessiond_sock_path,
+				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+				sizeof(sessiond_sock_path));
+	} else if (in_tgroup) {
+		/* Tracing group */
+		copy_string(sessiond_sock_path,
+				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+				sizeof(sessiond_sock_path));
+
+		ret = try_connect_sessiond(sessiond_sock_path);
+		if (ret < 0) {
+			/* Global session daemon not available */
+			if (snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
+						DEFAULT_HOME_CLIENT_UNIX_SOCK,
+						getenv("HOME")) < 0) {
+				return -ENOMEM;
+			}
+		}
+	} else {
+		/* Not in tracing group and not root, default */
 		if (snprintf(sessiond_sock_path, PATH_MAX,
 					DEFAULT_HOME_CLIENT_UNIX_SOCK,
 					getenv("HOME")) < 0) {
 			return -ENOMEM;
 		}
-	} else {
-		copy_string(sessiond_sock_path,
-				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				PATH_MAX);
 	}
 
 	return 0;
@@ -748,11 +802,10 @@ int lttng_calibrate(struct lttng_handle *handle,
 }
 
 /*
- *  lttng_check_session_daemon
+ * Check if session daemon is alive.
  *
- *  Yes, return 1
- *  No, return 0
- *  Error, return negative value
+ * Return 1 if alive or 0 if not.
+ * On error return -1
  */
 int lttng_session_daemon_alive(void)
 {
@@ -764,21 +817,16 @@ int lttng_session_daemon_alive(void)
 		return ret;
 	}
 
-	/* If socket exist, we check if the daemon listens to connect. */
-	ret = access(sessiond_sock_path, F_OK);
-	if (ret < 0) {
-		/* Not alive */
-		return 0;
+	if (strlen(sessiond_sock_path) == 0) {
+		/* No socket path set. Weird error */
+		return -1;
 	}
 
-	ret = lttcomm_connect_unix_sock(sessiond_sock_path);
+	ret = try_connect_sessiond(sessiond_sock_path);
 	if (ret < 0) {
 		/* Not alive */
 		return 0;
 	}
-	ret = lttcomm_close_unix_sock(ret);
-	if (ret < 0)
-		perror("lttcomm_close_unix_sock");
 
 	/* Is alive */
 	return 1;
