@@ -753,6 +753,25 @@ static void *thread_manage_kconsumerd(void *data)
 		goto error;
 	}
 
+	/* Kconsumerd err socket */
+	pollfd[1].fd = sock;
+	pollfd[1].events = POLLIN;
+
+	/* Inifinite blocking call, waiting for transmission */
+	ret = poll(pollfd, 2, -1);
+	if (ret < 0) {
+		perror("poll kconsumerd thread");
+		goto error;
+	}
+
+	/* Thread quit pipe has been closed. Killing thread. */
+	if (pollfd[0].revents == POLLNVAL) {
+		goto error;
+	} else if (pollfd[1].revents == POLLERR) {
+		ERR("Kconsumerd err socket second poll error");
+		goto error;
+	}
+
 	/* Wait for any kconsumerd error */
 	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
 	if (ret <= 0) {
