@@ -70,18 +70,18 @@ This is a new feature made possible by the new LTTng 2.0 kernel tracer. You can
 enable a dynamic probe and data will be output in the trace along side with
 your tracing data.
 
-# lttng enable-event aname --probe symbol+0xffff7260695
+# lttng enable-event aname -k --probe symbol+0xffff7260695
 
 or
 
-# lttng enable-event aname --probe 0xffff7260695
+# lttng enable-event aname -k --probe 0xffff7260695
 
 Either an <address> or a <symbol+offset> can be used for probes.
 
 You can also enable function tracer, which uses the Ftrace API (by Steven
 Rostedt). Again, data will be output in the trace.
 
-# lttng enable-event aname --function <symbol_name>
+# lttng enable-event aname -k --function <symbol_name>
 
 4) Enable context information for an event:
 
