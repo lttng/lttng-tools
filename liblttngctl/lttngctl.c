@@ -153,6 +153,10 @@ static int check_tracing_group(const char *grp_name)
 
 	/* Alloc group list of the right size */
 	grp_list = malloc(grp_list_size * sizeof(gid_t));
+	if (!grp_list) {
+		ret = -1;
+		goto end;
+	}
 	grp_id = getgroups(grp_list_size, grp_list);
 	if (grp_id < -1) {
 		perror("getgroups");
