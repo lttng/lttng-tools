@@ -859,10 +859,10 @@ static void *thread_manage_apps(void *data)
 		}
 
 		/*
-		 * Basic recv here to handle the very simple data
-		 * that the libust send to register (reg_msg).
+		 * Using message-based transmissions to ensure we don't
+		 * have to deal with partially received messages.
 		 */
-		ret = recv(sock, &reg_msg, sizeof(reg_msg), 0);
+		ret = lttcomm_recv_unix_sock(sock, &reg_msg, sizeof(reg_msg));
 		if (ret < 0) {
 			perror("recv");
 			continue;
@@ -871,6 +871,11 @@ static void *thread_manage_apps(void *data)
 		/* Add application to the global traceable list */
 		if (reg_msg.reg == 1) {
 			/* Registering */
+			/*
+			 * TODO: socket should be either passed to a
+			 * listener thread (for more messages) or
+			 * closed. It currently leaks.
+			 */
 			ret = register_traceable_app(reg_msg.pid, reg_msg.uid);
 			if (ret < 0) {
 				/* register_traceable_app only return an error with
