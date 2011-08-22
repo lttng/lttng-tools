@@ -54,6 +54,8 @@
 #include "ltt-kconsumerd.h"
 #include "utils.h"
 
+#include "benchmark.h"
+
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
 const char default_tracing_group[] = LTTNG_DEFAULT_TRACING_GROUP;
@@ -231,6 +233,8 @@ static void cleanup(void)
 
 	DBG("Unloading kernel modules");
 	modprobe_remove_kernel_modules();
+
+	benchmark_print_boot_results();
 }
 
 /*
@@ -616,6 +620,8 @@ static void *thread_manage_kernel(void *data)
 	char tmp;
 	int update_poll_flag = 1;
 
+	tracepoint(sessiond_th_kern_start);
+
 	DBG("Thread manage kernel started");
 
 	while (1) {
@@ -628,6 +634,8 @@ static void *thread_manage_kernel(void *data)
 		}
 
 		DBG("Polling on %d fds", nb_fd);
+
+		tracepoint(sessiond_th_kern_poll);
 
 		/* Poll infinite value of time */
 		ret = poll(kernel_pollfd, nb_fd, -1);
@@ -697,6 +705,8 @@ static void *thread_manage_kconsumerd(void *data)
 	enum lttcomm_return_code code;
 	struct pollfd pollfd[2];
 
+	tracepoint(sessiond_th_kcon_start);
+
 	DBG("[thread] Manage kconsumerd started");
 
 	ret = lttcomm_listen_unix_sock(kconsumerd_err_sock);
@@ -710,6 +720,8 @@ static void *thread_manage_kconsumerd(void *data)
 	/* Apps socket */
 	pollfd[1].fd = kconsumerd_err_sock;
 	pollfd[1].events = POLLIN;
+
+	tracepoint(sessiond_th_kcon_poll);
 
 	/* Inifinite blocking call, waiting for transmission */
 	ret = poll(pollfd, 2, -1);
@@ -808,6 +820,8 @@ static void *thread_manage_apps(void *data)
 	int sock = 0, ret;
 	struct pollfd pollfd[2];
 
+	tracepoint(sessiond_th_apps_start);
+
 	/* TODO: Something more elegant is needed but fine for now */
 	/* FIXME: change all types to either uint8_t, uint32_t, uint64_t
 	 * for 32-bit vs 64-bit compat processes. */
@@ -837,6 +851,8 @@ static void *thread_manage_apps(void *data)
 
 	while (1) {
 		DBG("Accepting application registration");
+
+		tracepoint(sessiond_th_apps_poll);
 
 		/* Inifinite blocking call, waiting for transmission */
 		ret = poll(pollfd, 2, -1);
@@ -2317,6 +2333,8 @@ static void *thread_manage_clients(void *data)
 	struct command_ctx *cmd_ctx = NULL;
 	struct pollfd pollfd[2];
 
+	tracepoint(sessiond_th_cli_start);
+
 	DBG("[thread] Manage client started");
 
 	ret = lttcomm_listen_unix_sock(client_sock);
@@ -2340,6 +2358,8 @@ static void *thread_manage_clients(void *data)
 
 	while (1) {
 		DBG("Accepting client command ...");
+
+		tracepoint(sessiond_th_cli_poll);
 
 		/* Inifinite blocking call, waiting for transmission */
 		ret = poll(pollfd, 2, -1);
@@ -2810,6 +2830,8 @@ int main(int argc, char **argv)
 	void *status;
 	const char *home_path;
 
+	tracepoint(sessiond_boot_start);
+
 	/* Create thread quit pipe */
 	if ((ret = init_thread_quit_pipe()) < 0) {
 		goto error;
@@ -2955,6 +2977,8 @@ int main(int argc, char **argv)
 		perror("pthread_create");
 		goto exit_kernel;
 	}
+
+	tracepoint(sessiond_boot_end);
 
 	ret = pthread_join(kernel_thread, &status);
 	if (ret != 0) {

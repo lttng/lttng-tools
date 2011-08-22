@@ -42,6 +42,7 @@ AC_SUBST(DEFAULT_INCLUDES)
 AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
+	benchmark/Makefile
 	libkernelctl/Makefile
 	liblttngkconsumerd/Makefile
 	liblttngctl/Makefile

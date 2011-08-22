@@ -1,6 +1,7 @@
 ACLOCAL_AMFLAGS = -I config
 
-SUBDIRS = liblttng-sessiond-comm \
+SUBDIRS = benchmark \
+		  liblttng-sessiond-comm \
 		  libkernelctl \
 		  liblttngkconsumerd \
 		  liblttngctl \
@@ -12,3 +13,6 @@ SUBDIRS = liblttng-sessiond-comm \
 		  tests \
 		  include \
 		  doc
+
+bench:
+	./benchmark/runall.sh
