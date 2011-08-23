@@ -27,6 +27,11 @@ AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]
 )
 
+# Check liburcu
+AC_CHECK_DECL([caa_get_cycles], [],
+	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/arch.h>]]
+)
+
 AC_PROG_CC
 AC_PROG_LIBTOOL
 

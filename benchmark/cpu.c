@@ -23,11 +23,17 @@
 
 #include "cpu.h"
 
+/*
+ * Return cpu cycle counter
+ */
 cycles_t get_cycles(void)
 {
 	return caa_get_cycles();
 }
 
+/*
+ * Calculate CPU frequency.
+ */
 uint64_t get_cpu_freq(void)
 {
 	struct timezone tz;

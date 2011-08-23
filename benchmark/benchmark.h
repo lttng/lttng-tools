@@ -27,14 +27,22 @@
 
 #define RESULTS_FILE_NAME "/tmp/lttng-bench-results.txt"
 
-void benchmark_print_boot_results(void);
+extern FILE *fp;
 
-#define record_cycles(name) \
-	time_##name = get_cycles();
+void bench_init(void);
+void bench_close(void);
+void bench_print_boot_process(void);
+double bench_get_create_session(void);
+double bench_get_destroy_session(void);
 
-#define tracepoint(name, args...)		\
-	do {								\
-		record_cycles(name);			\
+#define record_cycles(name)             \
+	do {                                \
+		time_##name = get_cycles();     \
+	} while (0)
+
+#define tracepoint(name, args...)       \
+	do {                                \
+		record_cycles(name);            \
 	} while (0)
 
 #endif /* _BENCHMARK_H */

@@ -234,7 +234,13 @@ static void cleanup(void)
 	DBG("Unloading kernel modules");
 	modprobe_remove_kernel_modules();
 
-	benchmark_print_boot_results();
+	/* OUTPUT BENCHMARK RESULTS */
+	bench_init();
+
+	bench_print_boot_process();
+
+	bench_close();
+	/* END BENCHMARK */
 }
 
 /*
@@ -2073,7 +2079,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			goto setup_error;
 		}
 
+		tracepoint(create_session_start);
 		ret = create_session(cmd_ctx->lsm->session.name, cmd_ctx->lsm->session.path);
+		tracepoint(create_session_end);
 		if (ret < 0) {
 			if (ret == -EEXIST) {
 				ret = LTTCOMM_EXIST_SESS;
@@ -2097,7 +2105,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		/* Clean kernel session teardown */
 		teardown_kernel_session(cmd_ctx->session);
 
+		tracepoint(destroy_session_start);
 		ret = destroy_session(cmd_ctx->lsm->session.name);
+		tracepoint(destroy_session_end);
 		if (ret < 0) {
 			ret = LTTCOMM_FATAL;
 			goto error;

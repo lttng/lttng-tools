@@ -23,57 +23,116 @@
 
 #include "benchmark.h"
 
-static FILE *fp;
+FILE *fp;
+static double g_freq;
 
-void benchmark_print_boot_results(void)
+static double calibrate_cpu_freq(void)
 {
-	uint64_t freq = 0;
-	double res;
 	int i, nb_calib = 10;
-	double global_boot_time = 0.0;
+	double freq;
 
-	fp = fopen(RESULTS_FILE_NAME, "w");
-	if (fp == NULL) {
-		perror("fopen benchmark");
-		return;
-	}
+	printf("CPU frequency calibration, this should take 10 seconds\n");
 
 	/* CPU Frequency calibration */
 	for (i = 0; i < nb_calib; i++) {
-		freq += get_cpu_freq();
+		freq += (double) get_cpu_freq();
 	}
-	freq = freq / nb_calib;
+	return (freq / (double)nb_calib);
+}
 
-	fprintf(fp, "CPU frequency %lu Ghz\n\n", freq);
+static void close_logs(void)
+{
+	fclose(fp);
+}
 
-	fprintf(fp, "Results:\n----------\n");
+static void open_logs(void)
+{
+	fp = fopen(RESULTS_FILE_NAME, "a");
+	if (fp == NULL) {
+		perror("fopen benchmark");
+	}
+}
 
-	res = (double) (((double)(time_sessiond_boot_end - time_sessiond_boot_start)
-				/ (((double)freq) / 1000)) / 1000000000);
+static double get_bench_time(cycles_t before, cycles_t after)
+{
+	double ret;
+
+	ret = (((double)(after - before) / (g_freq / 1000.0)) / 1000000000.0);
+
+	return ret;
+}
+
+void bench_init(void)
+{
+	open_logs();
+	if (g_freq == 0) {
+		g_freq = calibrate_cpu_freq();
+		//fprintf(fp, "CPU frequency %f Ghz\n\n", g_freq);
+	}
+}
+
+void bench_close(void)
+{
+	close_logs();
+	printf("Benchmark results in %s\n", RESULTS_FILE_NAME);
+}
+
+double bench_get_create_session(void)
+{
+	if ((time_create_session_start == 0) &&
+			(time_create_session_end == 0)) {
+		fprintf(fp, "NO DATA\n");
+		return 0;
+	}
+
+	return get_bench_time(time_create_session_start, time_create_session_end);
+}
+
+double bench_get_destroy_session(void)
+{
+	if ((time_destroy_session_start == 0) &&
+			(time_destroy_session_end == 0)) {
+		fprintf(fp, "NO DATA\n");
+		return 0;
+	}
+
+	return get_bench_time(time_destroy_session_start, time_destroy_session_end);
+}
+
+/*
+ * Log results of the sessiond boot process.
+ *
+ * Uses all time_sessiond_* values (see measures.h)
+ */
+void bench_print_boot_process(void)
+{
+	double res;
+	double global_boot_time = 0.0;
+
+	fprintf(fp, "--- Session daemon boot process ---\n");
+
+	res = get_bench_time(time_sessiond_boot_start, time_sessiond_boot_end);
 
 	fprintf(fp, "Boot time inside main() from start to first pthread_join (blocking state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	res = (double) (((double)(time_sessiond_th_kern_poll - time_sessiond_th_kern_start)
-				/ (((double)freq) / 1000)) / 1000000000);
+	res = get_bench_time(time_sessiond_th_kern_start, time_sessiond_th_kern_poll);
 
 	fprintf(fp, "Boot time of the kernel thread from start to poll() (ready state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	res = (double) (((double)(time_sessiond_th_apps_poll - time_sessiond_th_apps_start)
-				/ (((double)freq) / 1000)) / 1000000000);
+	res = get_bench_time(time_sessiond_th_apps_start, time_sessiond_th_apps_poll);
 
 	fprintf(fp, "Boot time of the application thread from start to poll() (ready state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	res = (double) (((double)(time_sessiond_th_cli_poll - time_sessiond_th_cli_start)
-				/ (((double)freq) / 1000)) / 1000000000);
+	res = get_bench_time(time_sessiond_th_cli_start, time_sessiond_th_cli_poll);
 
 	fprintf(fp, "Boot time of the client thread from start to poll() (ready state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
@@ -81,6 +140,4 @@ void benchmark_print_boot_results(void)
 	global_boot_time += res;
 
 	fprintf(fp, "Global Boot Time of ltt-sessiond: %0.20f sec.\n", global_boot_time);
-
-	fclose(fp);
 }

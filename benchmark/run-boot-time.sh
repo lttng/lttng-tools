@@ -17,33 +17,35 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 
-#### ADD TESTS HERE ####
-
-test_suite=( "run-boot-time.sh" "run-sessions.sh" )
-
-#### END TESTS HERE ####
-
+SESSIOND_BIN="ltt-sessiond"
 RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
-if [ -e $RESULTS_PATH ]; then
-	mv -v $RESULTS_PATH $RESULTS_PATH.`date +%s`
+echo "Session daemon boot process benchmark"
+
+$BASEDIR/../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet
+if [ $? -ne 0 ]; then
+	echo -e '\e[1;31mFAILED\e[0m'
+	exit 1
+else
+	echo -e "\e[1;32mOK\e[0m"
 fi
 
+PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
+
+# Wait for the benchmark to run
+echo -n "Waiting."
+sleep 1
+echo -n "."
+sleep 1
+echo -n "."
+sleep 1
+
+kill $PID_SESSIOND
+
+echo -e "\nResults will be available shortly in $RESULTS_PATH"
 echo ""
 
-for bin in ${test_suite[@]};
-do
-	$BASEDIR/$bin
-	# Test must return 0 to pass.
-	if [ $? -ne 0 ]; then
-		echo -e '\e[1;31mFAIL\e[0m'
-		echo ""
-		exit 1
-	fi
-	echo ""
-done
-
-mv -v $RESULTS_PATH results-`date +%d%m%Y.%H%M%S`.txt
+tail -F $RESULTS_PATH --pid $PID_SESSIOND 2>/dev/null
 
 exit 0

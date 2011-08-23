@@ -39,4 +39,12 @@ cycles_t time_sessiond_th_apps_poll;
 cycles_t time_sessiond_th_cli_start;
 cycles_t time_sessiond_th_cli_poll;
 
+/* Create tracing session values */
+cycles_t time_create_session_start;
+cycles_t time_create_session_end;
+
+/* Destroy tracing session values */
+cycles_t time_destroy_session_start;
+cycles_t time_destroy_session_end;
+
 #endif /* _MEASURES_H */

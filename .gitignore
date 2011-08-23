@@ -34,3 +34,5 @@ tests/test_sessions
 tests/test_kernel_data_trace
 tests/kernel_all_events_basic
 tests/kernel_event_basic
+
+benchmark/bench_sessions

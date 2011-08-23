@@ -17,33 +17,12 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 
-#### ADD TESTS HERE ####
-
-test_suite=( "run-boot-time.sh" "run-sessions.sh" )
-
-#### END TESTS HERE ####
-
 RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
+NR_ITER=100
 
-if [ -e $RESULTS_PATH ]; then
-	mv -v $RESULTS_PATH $RESULTS_PATH.`date +%s`
-fi
+echo "Create/Destroy benchmarking..."
 
-echo ""
-
-for bin in ${test_suite[@]};
-do
-	$BASEDIR/$bin
-	# Test must return 0 to pass.
-	if [ $? -ne 0 ]; then
-		echo -e '\e[1;31mFAIL\e[0m'
-		echo ""
-		exit 1
-	fi
-	echo ""
-done
-
-mv -v $RESULTS_PATH results-`date +%d%m%Y.%H%M%S`.txt
+$BASEDIR/bench_sessions $NR_ITER
 
 exit 0
