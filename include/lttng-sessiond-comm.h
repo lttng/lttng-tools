@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <lttng/lttng.h>
+#include <lttng-ust.h>
 
 #define LTTNG_RUNDIR                        "/var/run/lttng"
 
@@ -40,8 +41,8 @@
 /* Queue size of listen(2) */
 #define MAX_LISTEN 10
 
-/* Get the error code index from 0 since
- * LTTCOMM_OK start at 1000
+/*
+ * Get the error code index from 0 since LTTCOMM_OK start at 1000
  */
 #define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_OK)
 
@@ -200,6 +201,34 @@ struct lttcomm_kconsumerd_msg {
 	uint32_t state;    /* enum lttcomm_kconsumerd_fd_state */
 	unsigned long max_sb_size; /* the subbuffer size for this channel */
 	enum lttng_event_output output; /* use splice or mmap to consume this fd */
+};
+
+/*
+ * Data structure for the commands sent from sessiond to UST.
+ */
+struct lttcomm_ust_msg {
+	uint32_t cmd_type;    /* enum lttcomm_ust_command */
+	uint32_t handle;
+	uint32_t cmd;
+	union {
+		struct lttng_ust_tracer_version version;
+		struct lttng_ust_channel channel;
+		struct lttng_ust_event event;
+		struct lttng_ust_context context;
+	} u;
+};
+
+/*
+ * Data structure for the response from UST to the session daemon.
+ * cmd_type is sent back in the reply for validation.
+ */
+struct lttcomm_ust_reply {
+	uint32_t handle;
+	uint32_t cmd;
+	uint32_t ret_code;	/* enum lttcomm_return_code */
+	uint32_t ret_val;	/* return value */
+	union {
+	} u;
 };
 
 extern int lttcomm_create_unix_sock(const char *pathname);

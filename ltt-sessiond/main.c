@@ -41,7 +41,6 @@
 #include <lttng/lttng-kconsumerd.h>
 #include <lttngerr.h>
 
-#include "context.h"
 #include "kernel-ctl.h"
 #include "ltt-sessiond.h"
 #include "traceable-app.h"
