@@ -41,11 +41,14 @@
 #include <lttng/lttng-kconsumerd.h>
 #include <lttngerr.h>
 
+#include "context.h"
+#include "futex.h"
 #include "kernel-ctl.h"
 #include "ltt-sessiond.h"
 #include "traceable-app.h"
 #include "ust-ctl.h"
 #include "utils.h"
+#include "ust-comm.h"
 
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
@@ -66,6 +69,7 @@ static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t kconsumerd_pid;
 static struct pollfd *kernel_pollfd;
+static int dispatch_thread_exit;
 
 static char apps_unix_sock_path[PATH_MAX];				/* Global application Unix socket path */
 static char client_unix_sock_path[PATH_MAX];			/* Global client Unix socket path */
@@ -86,16 +90,33 @@ static int kernel_poll_pipe[2];
  */
 static int thread_quit_pipe[2];
 
+/*
+ * This pipe is used to inform the thread managing application communication
+ * that a command is queued and ready to be processed.
+ */
+static int apps_cmd_pipe[2];
+
 /* Pthread, Mutexes and Semaphores */
 static pthread_t kconsumerd_thread;
 static pthread_t apps_thread;
+static pthread_t reg_apps_thread;
 static pthread_t client_thread;
 static pthread_t kernel_thread;
+static pthread_t dispatch_thread;
 static sem_t kconsumerd_sem;
 
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
 static int modprobe_remove_kernel_modules(void);
+
+/*
+ * UST registration command queue. This queue is tied with a futex and uses a N
+ * wakers / 1 waiter implemented and detailed in futex.c/.h
+ *
+ * The thread_manage_apps and thread_dispatch_ust_registration interact with
+ * this queue and the wait/wake scheme.
+ */
+static struct ust_cmd_queue ust_cmd_queue;
 
 /*
  * Pointer initialized before thread creation.
@@ -167,12 +188,18 @@ static void teardown_kernel_session(struct ltt_session *session)
 	}
 }
 
+/*
+ * Stop all threads by closing the thread quit pipe.
+ */
 static void stop_threads(void)
 {
 	/* Stopping all threads */
 	DBG("Terminating all threads");
 	close(thread_quit_pipe[0]);
 	close(thread_quit_pipe[1]);
+	/* Dispatch thread */
+	dispatch_thread_exit = 1;
+	futex_nto1_wake(&ust_cmd_queue.futex);
 }
 
 /*
@@ -216,6 +243,9 @@ static void cleanup(void)
 			// TODO complete session cleanup (including UST)
 		}
 	}
+
+	DBG("Closing all UST sockets");
+	clean_traceable_apps_list();
 
 	pthread_mutex_destroy(&kconsumerd_pid_mutex);
 
@@ -401,7 +431,6 @@ static int ust_connect_app(pid_t pid)
 
 	return sock;
 }
-#endif	/* DISABLED */
 
 /*
  * Notify apps by writing 42 to a named pipe using name. Every applications
@@ -432,6 +461,7 @@ static int notify_apps(const char *name)
 error:
 	return ret;
 }
+#endif	/* DISABLED */
 
 /*
  * Setup the outgoing data buffer for the response (llm) by allocating the
@@ -794,24 +824,232 @@ error:
 }
 
 /*
- * 	This thread manage the application socket communication
+ * Reallocate the apps command pollfd structure of nb_fd size.
+ *
+ * The first two fds must be there at all time.
+ */
+static int update_apps_cmd_pollfd(unsigned int nb_fd, struct pollfd **pollfd)
+{
+	/* Can't accept pollfd less than 2 */
+	if (nb_fd < 2) {
+		goto end;
+	}
+
+	*pollfd = realloc(*pollfd, nb_fd * sizeof(struct pollfd));
+	if (*pollfd == NULL) {
+		perror("realloc manage apps pollfd");
+		goto error;
+	}
+
+	/* First fd is always the quit pipe */
+	(*pollfd)[0].fd = thread_quit_pipe[0];
+	/* Apps command pipe */
+	(*pollfd)[1].fd = apps_cmd_pipe[0];
+	(*pollfd)[1].events = POLLIN;
+
+	DBG("Apps cmd pollfd realloc of size %d", nb_fd);
+
+end:
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
+ * Send registration done packet to the application.
+ */
+static int send_ust_register_done(int sock)
+{
+	struct lttcomm_ust_msg lum;
+
+	DBG("Sending register done command to %d", sock);
+
+	lum.cmd = LTTNG_UST_REGISTER_DONE;
+	lum.handle = LTTNG_UST_ROOT_HANDLE;
+
+	return ustcomm_send_command(sock, &lum);
+}
+
+/*
+ * This thread manage application communication.
  */
 static void *thread_manage_apps(void *data)
 {
+	int i, ret, count;
+	unsigned int nb_fd = 2;
+	int update_poll_flag = 1;
+	struct pollfd *pollfd = NULL;
+	struct ust_command ust_cmd;
+
+	DBG("[thread] Manage application started");
+
+	ust_cmd.sock = -1;
+
+	while (1) {
+		/* See if we have a valid socket to add to pollfd */
+		if (ust_cmd.sock != -1) {
+			nb_fd++;
+			update_poll_flag = 1;
+		}
+
+		/* The pollfd struct must be updated */
+		if (update_poll_flag) {
+			ret = update_apps_cmd_pollfd(nb_fd, &pollfd);
+			if (ret < 0) {
+				/* malloc failed so we quit */
+				goto error;
+			}
+			if (ust_cmd.sock != -1) {
+				/* Update pollfd with the new UST socket */
+				DBG("Adding sock %d to apps cmd pollfd", ust_cmd.sock);
+				pollfd[nb_fd - 1].fd = ust_cmd.sock;
+				pollfd[nb_fd - 1].events = POLLHUP | POLLNVAL;
+				ust_cmd.sock = -1;
+			}
+		}
+
+		DBG("Apps thread polling on %d fds", nb_fd);
+
+		/* Inifinite blocking call, waiting for transmission */
+		ret = poll(pollfd, nb_fd, -1);
+		if (ret < 0) {
+			perror("poll apps thread");
+			goto error;
+		}
+
+		/* Thread quit pipe has been closed. Killing thread. */
+		if (pollfd[0].revents == POLLNVAL) {
+			goto error;
+		} else if (pollfd[1].revents == POLLERR) {
+			ERR("Apps command pipe poll error");
+			goto error;
+		} else if (pollfd[1].revents == POLLIN) {
+			/* Empty pipe */
+			ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
+			if (ret < 0 || ret < sizeof(ust_cmd)) {
+				perror("read apps cmd pipe");
+				goto error;
+			}
+
+			/* Register applicaton to the session daemon */
+			ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
+			if (ret < 0) {
+				/* Only critical ENOMEM error can be returned here */
+				goto error;
+			}
+
+			ret = send_ust_register_done(ust_cmd.sock);
+			if (ret < 0) {
+				/*
+				 * If the registration is not possible, we simply unregister
+				 * the apps and continue
+				 */
+				unregister_traceable_app(ust_cmd.sock);
+			}
+		}
+
+		count = nb_fd;
+		for (i = 2; i < count; i++) {
+			/* Apps socket is closed/hungup */
+			switch (pollfd[i].revents) {
+			case POLLNVAL:
+			case POLLHUP:
+				/* Pipe closed */
+				unregister_traceable_app(pollfd[i].fd);
+				nb_fd--;
+			}
+		}
+
+		if (nb_fd != count) {
+			update_poll_flag = 1;
+		}
+	}
+
+error:
+	DBG("Application communication apps dying");
+	close(apps_cmd_pipe[0]);
+	close(apps_cmd_pipe[1]);
+
+	free(pollfd);
+
+	return NULL;
+}
+
+/*
+ * Dispatch request from the registration threads to the application
+ * communication thread.
+ */
+static void *thread_dispatch_ust_registration(void *data)
+{
+	int ret;
+	struct cds_wfq_node *node;
+	struct ust_command *ust_cmd = NULL;
+
+	DBG("[thread] Dispatch UST command started");
+
+	while (!dispatch_thread_exit) {
+		/* Atomically prepare the queue futex */
+		futex_nto1_prepare(&ust_cmd_queue.futex);
+
+		do {
+			/* Dequeue command for registration */
+			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
+			if (node == NULL) {
+				DBG("Waked up but nothing in the UST command queue");
+				/* Continue thread execution */
+				break;
+			}
+
+			ust_cmd = caa_container_of(node, struct ust_command, node);
+
+			DBG("Dispatching UST registration pid:%d sock:%d",
+					ust_cmd->reg_msg.pid, ust_cmd->sock);
+			/*
+			 * Inform apps thread of the new application registration. This
+			 * call is blocking so we can be assured that the data will be read
+			 * at some point in time or wait to the end of the world :)
+			 */
+			ret = write(apps_cmd_pipe[1], ust_cmd,
+					sizeof(struct ust_command));
+			if (ret < 0) {
+				perror("write apps cmd pipe");
+				if (errno == EBADF) {
+					/*
+					 * We can't inform the application thread to process
+					 * registration. We will exit or else application
+					 * registration will not occur and tracing will never
+					 * start.
+					 */
+					goto error;
+				}
+			}
+			free(ust_cmd);
+		} while (node != NULL);
+
+		/* Futex wait on queue. Blocking call on futex() */
+		futex_nto1_wait(&ust_cmd_queue.futex);
+	}
+
+error:
+	DBG("Dispatch thread dying");
+	return NULL;
+}
+
+/*
+ * This thread manage application registration.
+ */
+static void *thread_registration_apps(void *data)
+{
 	int sock = 0, ret;
 	struct pollfd pollfd[2];
+	/*
+	 * Get allocated in this thread, enqueued to a global queue, dequeued and
+	 * freed in the manage apps thread.
+	 */
+	struct ust_command *ust_cmd = NULL;
 
-	/* TODO: Something more elegant is needed but fine for now */
-	/* FIXME: change all types to either uint8_t, uint32_t, uint64_t
-	 * for 32-bit vs 64-bit compat processes. */
-	/* replicate in ust with version number */
-	struct {
-		int reg;	/* 1:register, 0:unregister */
-		pid_t pid;
-		uid_t uid;
-	} reg_msg;
-
-	DBG("[thread] Manage apps started");
+	DBG("[thread] Manage application registration started");
 
 	ret = lttcomm_listen_unix_sock(apps_sock);
 	if (ret < 0) {
@@ -826,7 +1064,7 @@ static void *thread_manage_apps(void *data)
 	pollfd[1].events = POLLIN;
 
 	/* Notify all applications to register */
-	notify_apps(default_global_apps_pipe);
+	//notify_apps(default_global_apps_pipe);
 
 	while (1) {
 		DBG("Accepting application registration");
@@ -834,7 +1072,7 @@ static void *thread_manage_apps(void *data)
 		/* Inifinite blocking call, waiting for transmission */
 		ret = poll(pollfd, 2, -1);
 		if (ret < 0) {
-			perror("poll apps thread");
+			perror("poll register apps thread");
 			goto error;
 		}
 
@@ -842,7 +1080,7 @@ static void *thread_manage_apps(void *data)
 		if (pollfd[0].revents == POLLNVAL) {
 			goto error;
 		} else if (pollfd[1].revents == POLLERR) {
-			ERR("Apps socket poll error");
+			ERR("Register apps socket poll error");
 			goto error;
 		}
 
@@ -851,39 +1089,46 @@ static void *thread_manage_apps(void *data)
 			goto error;
 		}
 
+		/* Create UST registration command for enqueuing */
+		ust_cmd = malloc(sizeof(struct ust_command));
+		if (ust_cmd == NULL) {
+			perror("ust command malloc");
+			goto error;
+		}
+
 		/*
-		 * Using message-based transmissions to ensure we don't
-		 * have to deal with partially received messages.
+		 * Using message-based transmissions to ensure we don't have to deal
+		 * with partially received messages.
 		 */
-		ret = lttcomm_recv_unix_sock(sock, &reg_msg, sizeof(reg_msg));
-		if (ret < 0) {
-			perror("recv");
+		ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
+				sizeof(struct ust_register_msg));
+		if (ret < 0 || ret != sizeof(struct ust_register_msg)) {
+			perror("lttcomm_recv_unix_sock register apps");
+			free(ust_cmd);
+			close(sock);
 			continue;
 		}
 
-		/* Add application to the global traceable list */
-		if (reg_msg.reg == 1) {
-			/* Registering */
-			/*
-			 * TODO: socket should be either passed to a
-			 * listener thread (for more messages) or
-			 * closed. It currently leaks.
-			 */
-			ret = register_traceable_app(reg_msg.pid, reg_msg.uid);
-			if (ret < 0) {
-				/* register_traceable_app only return an error with
-				 * ENOMEM. At this point, we better stop everything.
-				 */
-				goto error;
-			}
-		} else {
-			/* Unregistering */
-			unregister_traceable_app(reg_msg.pid);
-		}
+		ust_cmd->sock = sock;
+
+		/*
+		 * Lock free enqueue the registration request.
+		 * The red pill has been taken! This apps will be part of the *system*
+		 */
+		cds_wfq_enqueue(&ust_cmd_queue.queue, &ust_cmd->node);
+
+		/*
+		 * Wake the registration queue futex.
+		 * Implicit memory barrier with the exchange in cds_wfq_enqueue.
+		 */
+		futex_nto1_wake(&ust_cmd_queue.futex);
+
+		DBG("Thread manage apps informed of queued node with sock:%d pid:%d",
+				sock, ust_cmd->reg_msg.pid);
 	}
 
 error:
-	DBG("Apps thread dying");
+	DBG("Register apps thread dying");
 	if (apps_sock) {
 		close(apps_sock);
 	}
@@ -2579,13 +2824,15 @@ end:
 static int check_existing_daemon(void)
 {
 	if (access(client_unix_sock_path, F_OK) < 0 &&
-	    access(apps_unix_sock_path, F_OK) < 0)
+			access(apps_unix_sock_path, F_OK) < 0) {
 		return 0;
+	}
 	/* Is there anybody out there ? */
-	if (lttng_session_daemon_alive())
+	if (lttng_session_daemon_alive()) {
 		return -EEXIST;
-	else
+	} else {
 		return 0;
+	}
 }
 
 /*
@@ -2644,6 +2891,14 @@ end:
 static int create_kernel_poll_pipe(void)
 {
 	return pipe2(kernel_poll_pipe, O_CLOEXEC);
+}
+
+/*
+ * Create the application command pipe to wake thread_manage_apps.
+ */
+static int create_apps_cmd_pipe(void)
+{
+	return pipe2(apps_cmd_pipe, O_CLOEXEC);
 }
 
 /*
@@ -2922,6 +3177,14 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
+	/* Setup the thread apps communication pipe. */
+	if ((ret = create_apps_cmd_pipe()) < 0) {
+		goto exit;
+	}
+
+	/* Init UST command queue. */
+	cds_wfq_init(&ust_cmd_queue.queue);
+
 	/*
 	 * Get session list pointer. This pointer MUST NOT be free().
 	 * This list is statically declared in session.c
@@ -2929,23 +3192,40 @@ int main(int argc, char **argv)
 	session_list_ptr = get_session_list();
 
 	/* Create thread to manage the client socket */
-	ret = pthread_create(&client_thread, NULL, thread_manage_clients, (void *) NULL);
+	ret = pthread_create(&client_thread, NULL,
+			thread_manage_clients, (void *) NULL);
 	if (ret != 0) {
-		perror("pthread_create");
+		perror("pthread_create clients");
 		goto exit_client;
+	}
+
+	/* Create thread to dispatch registration */
+	ret = pthread_create(&dispatch_thread, NULL,
+			thread_dispatch_ust_registration, (void *) NULL);
+	if (ret != 0) {
+		perror("pthread_create dispatch");
+		goto exit_dispatch;
+	}
+
+	/* Create thread to manage application registration. */
+	ret = pthread_create(&reg_apps_thread, NULL,
+			thread_registration_apps, (void *) NULL);
+	if (ret != 0) {
+		perror("pthread_create registration");
+		goto exit_reg_apps;
 	}
 
 	/* Create thread to manage application socket */
 	ret = pthread_create(&apps_thread, NULL, thread_manage_apps, (void *) NULL);
 	if (ret != 0) {
-		perror("pthread_create");
+		perror("pthread_create apps");
 		goto exit_apps;
 	}
 
 	/* Create kernel thread to manage kernel event */
 	ret = pthread_create(&kernel_thread, NULL, thread_manage_kernel, (void *) NULL);
 	if (ret != 0) {
-		perror("pthread_create");
+		perror("pthread_create kernel");
 		goto exit_kernel;
 	}
 
@@ -2963,6 +3243,20 @@ exit_kernel:
 	}
 
 exit_apps:
+	ret = pthread_join(reg_apps_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_reg_apps:
+	ret = pthread_join(dispatch_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_dispatch:
 	ret = pthread_join(client_thread, &status);
 	if (ret != 0) {
 		perror("pthread_join");

@@ -207,7 +207,6 @@ struct lttcomm_kconsumerd_msg {
  * Data structure for the commands sent from sessiond to UST.
  */
 struct lttcomm_ust_msg {
-	uint32_t cmd_type;    /* enum lttcomm_ust_command */
 	uint32_t handle;
 	uint32_t cmd;
 	union {

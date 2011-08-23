@@ -76,6 +76,7 @@ struct lttng_ust_context {
 	_UST_CMDR(0x41, struct lttng_ust_tracer_version)
 #define LTTNG_UST_TRACEPOINT_LIST       _UST_CMD(0x42)
 #define LTTNG_UST_WAIT_QUIESCENT        _UST_CMD(0x43)
+#define LTTNG_UST_REGISTER_DONE         _UST_CMD(0x44)
 
 /* Session FD ioctl */
 #define LTTNG_UST_METADATA             \
@@ -97,5 +98,7 @@ struct lttng_ust_context {
 /* Event, Channel and Session ioctl */
 #define LTTNG_UST_ENABLE               _UST_CMD(0x80)
 #define LTTNG_UST_DISABLE              _UST_CMD(0x81)
+
+#define LTTNG_UST_ROOT_HANDLE          0
 
 #endif /* _LTTNG_UST_H */

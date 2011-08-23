@@ -22,9 +22,14 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-# Check liburcu
+# Check liburcu list.h
 AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]
+)
+
+# Check liburcu wfqueue.h
+AC_CHECK_DECL([cds_wfq_init], [],
+	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/wfqueue.h>]]
 )
 
 AC_PROG_CC
