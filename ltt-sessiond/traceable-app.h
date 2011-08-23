@@ -24,9 +24,8 @@ struct ltt_traceable_app_list {
 	struct cds_list_head head;
 };
 
-/* Registered traceable applications. Libust registers
- * to the session daemon and a linked list is kept
- * of all running traceable app.
+/* Registered traceable applications. Libust registers to the session daemon
+ * and a linked list is kept of all running traceable app.
  */
 struct ltt_traceable_app {
 	struct cds_list_head list;
