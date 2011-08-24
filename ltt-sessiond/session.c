@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -49,11 +49,9 @@ static struct ltt_session_list ltt_session_list = {
 };
 
 /*
- *  add_session_list
+ * Add a ltt_session structure to the global list.
  *
- *  Add a ltt_session structure to the global list.
- *
- *  The caller MUST acquire the session list lock before.
+ * The caller MUST acquire the session list lock before.
  */
 static void add_session_list(struct ltt_session *ls)
 {
@@ -62,11 +60,9 @@ static void add_session_list(struct ltt_session *ls)
 }
 
 /*
- *  del_session_list
+ * Delete a ltt_session structure to the global list.
  *
- *  Delete a ltt_session structure to the global list.
- *
- *  The caller MUST acquire the session list lock before.
+ * The caller MUST acquire the session list lock before.
  */
 static void del_session_list(struct ltt_session *ls)
 {
@@ -78,9 +74,7 @@ static void del_session_list(struct ltt_session *ls)
 }
 
 /*
- *  get_session_list
- *
- *  Return a pointer to the session list.
+ * Return a pointer to the session list.
  */
 struct ltt_session_list *get_session_list(void)
 {
@@ -120,10 +114,8 @@ void unlock_session(struct ltt_session *session)
 }
 
 /*
- * 	find_session_by_name
- *
- * 	Return a ltt_session structure ptr that matches name.
- * 	If no session found, NULL is returned.
+ * Return a ltt_session structure ptr that matches name.
+ * If no session found, NULL is returned.
  */
 struct ltt_session *find_session_by_name(char *name)
 {
@@ -147,11 +139,9 @@ struct ltt_session *find_session_by_name(char *name)
 }
 
 /*
- * 	destroy_session
+ * Delete session from the session list and free the memory.
  *
- *  Delete session from the session list and free the memory.
- *
- *  Return -1 if no session is found.  On success, return 1;
+ * Return -1 if no session is found.  On success, return 1;
  */
 int destroy_session(char *name)
 {
@@ -177,9 +167,7 @@ int destroy_session(char *name)
 }
 
 /*
- * 	create_session
- *
- * 	Create a brand new session and add it to the session list.
+ * Create a brand new session and add it to the session list.
  */
 int create_session(char *name, char *path)
 {

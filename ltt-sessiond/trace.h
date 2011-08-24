@@ -107,9 +107,6 @@ struct ltt_ust_marker {
 	char *channel;
 };
 
-/*
- * Get functions.
- */
 struct ltt_kernel_event *get_kernel_event_by_name(
 		char *name, struct ltt_kernel_channel *channel);
 struct ltt_kernel_channel *get_kernel_channel_by_name(

@@ -42,10 +42,8 @@ static void add_traceable_app(struct ltt_traceable_app *lta);
 static void del_traceable_app(struct ltt_traceable_app *lta);
 
 /*
- *  add_traceable_app
- *
- *  Add a traceable application structure to the global
- *  list protected by a mutex.
+ * Add a traceable application structure to the global list protected by a
+ * mutex.
  */
 static void add_traceable_app(struct ltt_traceable_app *lta)
 {
@@ -56,10 +54,8 @@ static void add_traceable_app(struct ltt_traceable_app *lta)
 }
 
 /*
- *  del_traceable_app
- *
- *  Delete a traceable application structure from the
- *  global list protected by a mutex.
+ * Delete a traceable application structure from the global list protected by a
+ * mutex.
  */
 static void del_traceable_app(struct ltt_traceable_app *lta)
 {
@@ -73,13 +69,10 @@ static void del_traceable_app(struct ltt_traceable_app *lta)
 }
 
 /*
- *  register_traceable_app
+ * Using pid and uid (of the app), allocate a new ltt_traceable_app struct and
+ * add it to the global traceable app list.
  *
- *  Using pid and uid (of the app), allocate
- *  a new ltt_traceable_app struct and add it
- *  to the global traceable app list.
- *
- *  On success, return 0, else return malloc ENOMEM.
+ * On success, return 0, else return malloc ENOMEM.
  */
 int register_traceable_app(pid_t pid, uid_t uid)
 {
@@ -100,10 +93,8 @@ int register_traceable_app(pid_t pid, uid_t uid)
 }
 
 /*
- *  unregister_traceable_app
- *
- *  Unregister app by removing it from the global
- *  traceable app list and freeing the data struct.
+ * Unregister app by removing it from the global traceable app list and freeing
+ * the data struct.
  */
 void unregister_traceable_app(pid_t pid)
 {
@@ -118,9 +109,7 @@ void unregister_traceable_app(pid_t pid)
 }
 
 /*
- *  get_app_count
- *
- *  Return traceable_app_count
+ * Return traceable_app_count
  */
 unsigned int get_app_count(void)
 {
@@ -128,10 +117,8 @@ unsigned int get_app_count(void)
 }
 
 /*
- *  find_app_by_pid
- *
- *  Iterate over the traceable apps list and
- *  return a pointer or NULL if not found.
+ * Iterate over the traceable apps list and return a pointer or NULL if not
+ * found.
  */
 struct ltt_traceable_app *find_app_by_pid(pid_t pid)
 {
@@ -151,10 +138,7 @@ struct ltt_traceable_app *find_app_by_pid(pid_t pid)
 }
 
 /*
- * 	get_app_list_pids
- *
- *  List traceable user-space application and fill an
- *  array of pids.
+ * List traceable user-space application and fill an array of pids.
  */
 void get_app_list_pids(pid_t *pids)
 {

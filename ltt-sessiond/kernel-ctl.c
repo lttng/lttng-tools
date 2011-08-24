@@ -29,9 +29,7 @@
 #include "kernel-ctl.h"
 
 /*
- *  kernel_add_channel_context
- *
- *  Add context on a kernel channel.
+ * Add context on a kernel channel.
  */
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct lttng_kernel_context *ctx)
@@ -65,9 +63,7 @@ error:
 }
 
 /*
- *  kernel_add_event_context
- *
- *  Add context on a kernel event.
+ * Add context on a kernel event.
  */
 int kernel_add_event_context(struct ltt_kernel_event *event,
 		struct lttng_kernel_context *ctx)
@@ -96,10 +92,8 @@ error:
 }
 
 /*
- *  kernel_create_session
- *
- *  Create a new kernel session, register it to the kernel tracer and add it to
- *  the session daemon session.
+ * Create a new kernel session, register it to the kernel tracer and add it to
+ * the session daemon session.
  */
 int kernel_create_session(struct ltt_session *session, int tracer_fd)
 {
@@ -139,12 +133,11 @@ error:
 }
 
 /*
- *  kernel_create_channel
- *
- *  Create a kernel channel, register it to the kernel tracer and add it to the
- *  kernel session.
+ * Create a kernel channel, register it to the kernel tracer and add it to the
+ * kernel session.
  */
-int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan, char *path)
+int kernel_create_channel(struct ltt_kernel_session *session,
+		struct lttng_channel *chan, char *path)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
@@ -184,12 +177,11 @@ error:
 }
 
 /*
- *  kernel_create_event
- *
- *  Create a kernel event, enable it to the kernel tracer and add it to the
- *  channel event list of the kernel session.
+ * Create a kernel event, enable it to the kernel tracer and add it to the
+ * channel event list of the kernel session.
  */
-int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *channel)
+int kernel_create_event(struct lttng_event *ev,
+		struct ltt_kernel_channel *channel)
 {
 	int ret;
 	struct ltt_kernel_event *event;
@@ -227,9 +219,7 @@ error:
 }
 
 /*
- *  kernel_disable_channel
- *
- *  Disable a kernel channel.
+ * Disable a kernel channel.
  */
 int kernel_disable_channel(struct ltt_kernel_channel *chan)
 {
@@ -252,9 +242,7 @@ error:
 }
 
 /*
- *  kernel_enable_channel
- *
- *  Enable a kernel channel.
+ * Enable a kernel channel.
  */
 int kernel_enable_channel(struct ltt_kernel_channel *chan)
 {
@@ -277,9 +265,7 @@ error:
 }
 
 /*
- *  kernel_enable_event
- *
- *  Enable a kernel event.
+ * Enable a kernel event.
  */
 int kernel_enable_event(struct ltt_kernel_event *event)
 {
@@ -304,9 +290,7 @@ error:
 }
 
 /*
- *  kernel_disable_event
- *
- *  Disable a kernel event.
+ * Disable a kernel event.
  */
 int kernel_disable_event(struct ltt_kernel_event *event)
 {
@@ -328,10 +312,8 @@ error:
 }
 
 /*
- *  kernel_open_metadata
- *
- *  Create kernel metadata, open from the kernel tracer and add it to the
- *  kernel session.
+ * Create kernel metadata, open from the kernel tracer and add it to the
+ * kernel session.
  */
 int kernel_open_metadata(struct ltt_kernel_session *session, char *path)
 {
@@ -368,9 +350,7 @@ error:
 }
 
 /*
- *  kernel_start_session
- *
- *  Start tracing session.
+ * Start tracing session.
  */
 int kernel_start_session(struct ltt_kernel_session *session)
 {
@@ -391,9 +371,7 @@ error:
 }
 
 /*
- *  kernel_wait_quiescent
- *
- *  Make a kernel wait to make sure in-flight probe have completed.
+ * Make a kernel wait to make sure in-flight probe have completed.
  */
 void kernel_wait_quiescent(int fd)
 {
@@ -409,7 +387,7 @@ void kernel_wait_quiescent(int fd)
 }
 
 /*
- *  kernel_calibrate
+ * Kernel calibrate
  */
 int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 {
@@ -426,8 +404,6 @@ int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 
 
 /*
- *  kernel_metadata_flush_buffer
- *
  *  Force flush buffer of metadata.
  */
 int kernel_metadata_flush_buffer(int fd)
@@ -443,9 +419,7 @@ int kernel_metadata_flush_buffer(int fd)
 }
 
 /*
- *  kernel_flush_buffer
- *
- *  Force flush buffer for channel.
+ * Force flush buffer for channel.
  */
 int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 {
@@ -468,9 +442,7 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 }
 
 /*
- *  kernel_stop_session
- *
- *  Stop tracing session.
+ * Stop tracing session.
  */
 int kernel_stop_session(struct ltt_kernel_session *session)
 {
@@ -490,12 +462,10 @@ error:
 }
 
 /*
- *  kernel_open_channel_stream
+ * Open stream of channel, register it to the kernel tracer and add it
+ * to the stream list of the channel.
  *
- *  Open stream of channel, register it to the kernel tracer and add it
- *  to the stream list of the channel.
- *
- *  Return the number of created stream. Else, a negative value.
+ * Return the number of created stream. Else, a negative value.
  */
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 {
@@ -538,9 +508,7 @@ error:
 }
 
 /*
- *  kernel_open_metadata_stream
- *
- *  Open the metadata stream and set it to the kernel session.
+ * Open the metadata stream and set it to the kernel session.
  */
 int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 {

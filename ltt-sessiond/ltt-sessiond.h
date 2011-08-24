@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -19,10 +19,10 @@
 #ifndef _LTT_SESSIOND_H
 #define _LTT_SESSIOND_H
 
-#define DEFAULT_HOME_DIR		"/tmp"
-#define DEFAULT_UST_SOCK_DIR		DEFAULT_HOME_DIR "/ust-app-socks"
-#define DEFAULT_GLOBAL_APPS_PIPE	DEFAULT_UST_SOCK_DIR "/global"
-#define DEFAULT_TRACE_OUTPUT        	DEFAULT_HOME_DIR "/lttng"
+#define DEFAULT_HOME_DIR            "/tmp"
+#define DEFAULT_UST_SOCK_DIR        DEFAULT_HOME_DIR "/ust-app-socks"
+#define DEFAULT_GLOBAL_APPS_PIPE    DEFAULT_UST_SOCK_DIR "/global"
+#define DEFAULT_TRACE_OUTPUT        DEFAULT_HOME_DIR "/lttng"
 
 struct module_param {
 	const char *name;

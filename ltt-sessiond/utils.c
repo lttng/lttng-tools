@@ -30,10 +30,9 @@
 #include "utils.h"
 
 /*
- *  get_home_dir
+ * Return pointer to home directory path using the env variable HOME.
  *
- *  Return pointer to home directory path using the env variable HOME.
- *  No home, NULL is returned.
+ * No home, NULL is returned.
  */
 const char *get_home_dir(void)
 {
@@ -41,9 +40,7 @@ const char *get_home_dir(void)
 }
 
 /*
- *  mkdir_recursive
- *
- *  Create recursively directory using the FULL path.
+ * Create recursively directory using the FULL path.
  */
 int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
@@ -76,9 +73,8 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 				}
 			} else if (ret == 0) {
 				/*
-				 * We created the directory. Set its
-				 * ownership to the user/group
-				 * specified.
+				 * We created the directory. Set its ownership to the
+				 * user/group specified.
 				 */
 				ret = chown(tmp, uid, gid);
 				if (ret < 0) {
@@ -96,8 +92,8 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 		ret = -errno;
 	} else if (ret == 0) {
 		/*
-		 * We created the directory. Set its ownership to the
-		 * user/group specified.
+		 * We created the directory. Set its ownership to the user/group
+		 * specified.
 		 */
 		ret = chown(tmp, uid, gid);
 		if (ret < 0) {

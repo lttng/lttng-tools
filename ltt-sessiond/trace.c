@@ -27,9 +27,7 @@
 #include "trace.h"
 
 /*
- *  get_kernel_channel_by_name
- *
- *  Find the channel name for the given kernel session.
+ * Find the channel name for the given kernel session.
  */
 struct ltt_kernel_channel *get_kernel_channel_by_name(
 		char *name, struct ltt_kernel_session *session)
@@ -53,9 +51,7 @@ error:
 }
 
 /*
- *  get_kernel_event_by_name
- *
- *  Find the event name for the given channel.
+ * Find the event name for the given channel.
  */
 struct ltt_kernel_event *get_kernel_event_by_name(
 		char *name, struct ltt_kernel_channel *channel)
@@ -80,11 +76,9 @@ error:
 }
 
 /*
- *  trace_create_kernel_session
+ * Allocate and initialize a kernel session data structure.
  *
- *  Allocate and initialize a kernel session data structure.
- *
- *  Return pointer to structure or NULL.
+ * Return pointer to structure or NULL.
  */
 struct ltt_kernel_session *trace_create_kernel_session(void)
 {
@@ -113,11 +107,9 @@ error:
 }
 
 /*
- *  trace_create_kernel_channel
+ * Allocate and initialize a kernel channel data structure.
  *
- *  Allocate and initialize a kernel channel data structure.
- *
- *  Return pointer to structure or NULL.
+ * Return pointer to structure or NULL.
  */
 struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan, char *path)
 {
@@ -159,11 +151,9 @@ error:
 }
 
 /*
- *  trace_create_kernel_event
+ * Allocate and initialize a kernel event. Set name and event type.
  *
- *  Allocate and initialize a kernel event. Set name and event type.
- *
- *  Return pointer to structure or NULL.
+ * Return pointer to structure or NULL.
  */
 struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
 {
@@ -226,11 +216,9 @@ error:
 }
 
 /*
- *  trace_create_kernel_metadata
+ * Allocate and initialize a kernel metadata.
  *
- *  Allocate and initialize a kernel metadata.
- *
- *  Return pointer to structure or NULL.
+ * Return pointer to structure or NULL.
  */
 struct ltt_kernel_metadata *trace_create_kernel_metadata(char *path)
 {
@@ -270,12 +258,10 @@ error:
 }
 
 /*
- *  trace_create_kernel_stream
+ * Allocate and initialize a kernel stream. The stream is set to ACTIVE_FD by
+ * default.
  *
- *  Allocate and initialize a kernel stream. The stream is set to ACTIVE_FD by
- *  default.
- *
- *  Return pointer to structure or NULL.
+ * Return pointer to structure or NULL.
  */
 struct ltt_kernel_stream *trace_create_kernel_stream(void)
 {
@@ -298,6 +284,9 @@ error:
 	return NULL;
 }
 
+/*
+ * Cleanup kernel stream structure.
+ */
 void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
 {
 	DBG("[trace] Closing stream fd %d", stream->fd);
@@ -310,6 +299,9 @@ void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
 	free(stream);
 }
 
+/*
+ * Cleanup kernel event structure.
+ */
 void trace_destroy_kernel_event(struct ltt_kernel_event *event)
 {
 	DBG("[trace] Closing event fd %d", event->fd);
@@ -323,6 +315,9 @@ void trace_destroy_kernel_event(struct ltt_kernel_event *event)
 	free(event);
 }
 
+/*
+ * Cleanup kernel channel structure.
+ */
 void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
@@ -350,6 +345,9 @@ void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 	free(channel);
 }
 
+/*
+ * Cleanup kernel metadata structure.
+ */
 void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
 {
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
@@ -361,6 +359,9 @@ void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
 	free(metadata);
 }
 
+/*
+ * Cleanup kernel session structure 
+ */
 void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel, *ctmp;

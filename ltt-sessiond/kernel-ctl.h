@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -24,11 +24,12 @@
 
 /*
  * Default size for the event list when kernel_list_events is called. This size
- * value is based on the initial LTTng 2.0 version set of tracepoints. This is
- * NOT an upper bound because if the real event list size is bigger, dynamic
- * reallocation is performed.
+ * value is based on the initial LTTng 2.0 version set of tracepoints.
+ *
+ * This is NOT an upper bound because if the real event list size is bigger,
+ * dynamic reallocation is performed.
  */
-#define KERNEL_EVENT_LIST_SIZE	2000
+#define KERNEL_EVENT_LIST_SIZE 80
 
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct lttng_kernel_context *ctx);

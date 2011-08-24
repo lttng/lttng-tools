@@ -19,7 +19,6 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
-//#include <lttng/lttng.h>
 #include <urcu/list.h>
 
 /*
