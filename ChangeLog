@@ -1,3 +1,14 @@
+2011-08-25 lttng-tools 2.0-pre12
+	* Multiple fixes
+	* Fix kconsumerd handling custom channel output
+	* Add lttng_register_consumer to register a custom consumer
+	* Add multiples tests of the session daemon
+	* Default kernel channel size/number changed
+	* Support for UST application registration
+	* Import LTTng UST 2.0 ABI
+	* Send data to kconsumerd before tracing start
+	* Export API of lib kernel consumer (liblttngkconsumerd)
+
 2011-08-12 lttng-tools 2.0-pre11
 	* New lttng API using the lttng_handle
 	* Multiple fixes of kernel consumer
