@@ -23,10 +23,9 @@
 #ifndef _LTTNG_H
 #define _LTTNG_H
 
-#include <asm/types.h>
-#include <sys/types.h>
-#include <stdint.h>
 #include <limits.h>
+#include <stdint.h>
+#include <sys/types.h>
 
 /* Default unix group name for tracing. */
 #define LTTNG_DEFAULT_TRACING_GROUP "tracing"

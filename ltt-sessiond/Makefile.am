@@ -1,5 +1,4 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/benchmark \
-			  -I$(top_srcdir)/libkernelctl -I$(top_srcdir)/libustctl \
 			  -DINSTALL_BIN_PATH=\"$(bindir)\"
 
 AM_CFLAGS = -fno-strict-aliasing

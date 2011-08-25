@@ -29,29 +29,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ipc.h>
 #include <sys/mount.h>
-#include <sys/shm.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 #include <unistd.h>
 
-#include <urcu/list.h>		/* URCU list library (-lurcu) */
-#include <lttng/lttng.h>
-#include <lttng/lttng-kconsumerd.h>
+#include <ltt-kconsumerd.h>
 #include <lttng-sessiond-comm.h>
+#include <lttng/lttng-kconsumerd.h>
+#include <lttngerr.h>
 
 #include "context.h"
-#include "ltt-sessiond.h"
-#include "lttngerr.h"
 #include "kernel-ctl.h"
-#include "ust-ctl.h"
-#include "session.h"
+#include "ltt-sessiond.h"
 #include "traceable-app.h"
-#include "ltt-kconsumerd.h"
+#include "ust-ctl.h"
 #include "utils.h"
 
 #include "benchmark.h"

@@ -21,9 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <urcu/list.h>
 
-#include "lttngerr.h"
+#include <lttngerr.h>
+
 #include "trace.h"
 
 /*

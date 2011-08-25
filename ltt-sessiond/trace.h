@@ -23,8 +23,7 @@
 #include <urcu/list.h>
 
 #include <lttng/lttng.h>
-
-#include "lttng-kernel.h"
+#include <lttng-kernel.h>
 
 /* Kernel event list */
 struct ltt_kernel_event_list {
