@@ -21,51 +21,81 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include <lttngerr.h>
 
 #include "traceable-app.h"
 
-/* Number of element for the list below. */
-static unsigned int traceable_app_count;
-
 /* Init ust traceabl application's list */
-struct ltt_traceable_app_list ltt_traceable_app_list = {
+static struct ltt_traceable_app_list ltt_traceable_app_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_traceable_app_list.head),
+	.lock = PTHREAD_MUTEX_INITIALIZER,
+	.count = 0,
 };
 
-/* List mutex */
-pthread_mutex_t ltt_traceable_app_list_mutex;
-
-/* Internal function */
-static void add_traceable_app(struct ltt_traceable_app *lta);
-static void del_traceable_app(struct ltt_traceable_app *lta);
-
 /*
- * Add a traceable application structure to the global list protected by a
- * mutex.
+ * Add a traceable application structure to the global list.
  */
 static void add_traceable_app(struct ltt_traceable_app *lta)
 {
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
 	cds_list_add(&lta->list, &ltt_traceable_app_list.head);
-	traceable_app_count++;
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
+	ltt_traceable_app_list.count++;
 }
 
 /*
- * Delete a traceable application structure from the global list protected by a
- * mutex.
+ * Delete a traceable application structure from the global list.
  */
 static void del_traceable_app(struct ltt_traceable_app *lta)
 {
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
 	cds_list_del(&lta->list);
 	/* Sanity check */
-	if (traceable_app_count != 0) {
-		traceable_app_count--;
+	if (ltt_traceable_app_list.count > 0) {
+		ltt_traceable_app_list.count--;
 	}
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
+}
+
+/*
+ * Return pointer to traceable apps list.
+ */
+struct ltt_traceable_app_list *get_traceable_apps_list(void)
+{
+	return &ltt_traceable_app_list;
+}
+
+/*
+ * Acquire traceable apps list lock.
+ */
+void lock_apps_list(void)
+{
+	pthread_mutex_lock(&ltt_traceable_app_list.lock);
+}
+
+/*
+ * Release traceable apps list lock.
+ */
+void unlock_apps_list(void)
+{
+	pthread_mutex_unlock(&ltt_traceable_app_list.lock);
+}
+
+/*
+ * Iterate over the traceable apps list and return a pointer or NULL if not
+ * found.
+ */
+static struct ltt_traceable_app *find_app_by_sock(int sock)
+{
+	struct ltt_traceable_app *iter;
+
+	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
+		if (iter->sock == sock) {
+			/* Found */
+			return iter;
+		}
+	}
+
+	return NULL;
 }
 
 /*
@@ -74,7 +104,7 @@ static void del_traceable_app(struct ltt_traceable_app *lta)
  *
  * On success, return 0, else return malloc ENOMEM.
  */
-int register_traceable_app(pid_t pid, uid_t uid)
+int register_traceable_app(struct ust_register_msg *msg, int sock)
 {
 	struct ltt_traceable_app *lta;
 
@@ -84,10 +114,23 @@ int register_traceable_app(pid_t pid, uid_t uid)
 		return -ENOMEM;
 	}
 
-	lta->uid = uid;
-	lta->pid = pid;
+	lta->uid = msg->uid;
+	lta->gid = msg->gid;
+	lta->pid = msg->pid;
+	lta->ppid = msg->ppid;
+	lta->v_major = msg->major;
+	lta->v_minor = msg->minor;
+	lta->sock = sock;
+	strncpy(lta->name, msg->name, sizeof(lta->name));
+	lta->name[16] = '\0';
+
+	lock_apps_list();
 	add_traceable_app(lta);
-	DBG("Application %d registered with UID %d", pid, uid);
+	unlock_apps_list();
+
+	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock:%d name:%s"
+			" (version %d.%d)", lta->pid, lta->ppid, lta->uid, lta->gid,
+			lta->sock, lta->name, lta->v_major, lta->v_minor);
 
 	return 0;
 }
@@ -95,17 +138,23 @@ int register_traceable_app(pid_t pid, uid_t uid)
 /*
  * Unregister app by removing it from the global traceable app list and freeing
  * the data struct.
+ *
+ * The socket is already closed at this point so no close to sock.
  */
-void unregister_traceable_app(pid_t pid)
+void unregister_traceable_app(int sock)
 {
 	struct ltt_traceable_app *lta;
 
-	lta = find_app_by_pid(pid);
-	if (lta != NULL) {
+	lock_apps_list();
+	lta = find_app_by_sock(sock);
+	if (lta) {
+		DBG("PID %d unregistered with sock %d", lta->pid, sock);
+		close(lta->sock);
 		del_traceable_app(lta);
+		unlock_apps_list();
 		free(lta);
-		DBG("PID %d unregistered", pid);
 	}
+	unlock_apps_list();
 }
 
 /*
@@ -113,45 +162,28 @@ void unregister_traceable_app(pid_t pid)
  */
 unsigned int get_app_count(void)
 {
-	return traceable_app_count;
+	unsigned int count;
+
+	lock_apps_list();
+	count = ltt_traceable_app_list.count;
+	unlock_apps_list();
+
+	return count;
 }
 
 /*
- * Iterate over the traceable apps list and return a pointer or NULL if not
- * found.
+ * Free and clean all traceable apps of the global list.
  */
-struct ltt_traceable_app *find_app_by_pid(pid_t pid)
+void clean_traceable_apps_list(void)
 {
-	struct ltt_traceable_app *iter;
+	struct ltt_traceable_app *iter, *tmp;
 
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
-	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
-		if (iter->pid == pid) {
-			pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-			/* Found */
-			return iter;
-		}
-	}
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
-
-	return NULL;
-}
-
-/*
- * List traceable user-space application and fill an array of pids.
- */
-void get_app_list_pids(pid_t *pids)
-{
-	int i = 0;
-	struct ltt_traceable_app *iter;
-
-	/* Protected by a mutex here because the threads manage_client
-	 * and manage_apps can access this list.
+	/*
+	 * Don't acquire list lock here. This function should be called from
+	 * cleanup() functions meaning that the program will exit.
 	 */
-	pthread_mutex_lock(&ltt_traceable_app_list_mutex);
-	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
-		pids[i] = iter->pid;
-		i++;
+	cds_list_for_each_entry_safe(iter, tmp, &ltt_traceable_app_list.head, list) {
+		close(iter->sock);
+		free(iter);
 	}
-	pthread_mutex_unlock(&ltt_traceable_app_list_mutex);
 }
