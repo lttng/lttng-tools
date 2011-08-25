@@ -38,12 +38,11 @@
 #include <sys/mman.h>
 #include <assert.h>
 
+#include <ltt-kconsumerd.h>
+#include <lttng-kernel-ctl.h>
+#include <lttng-sessiond-comm.h>
 #include <lttng/lttng-kconsumerd.h>
-
-#include "lttngerr.h"
-#include "kernelctl.h"
-#include "ltt-kconsumerd.h"
-#include "lttng-sessiond-comm.h"
+#include <lttngerr.h>
 
 /* the two threads (receive fd and poll) */
 static pthread_t threads[2];

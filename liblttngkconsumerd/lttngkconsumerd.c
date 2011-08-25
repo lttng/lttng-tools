@@ -18,6 +18,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
@@ -27,14 +28,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <urcu/list.h>
-#include <assert.h>
 
+#include <lttng-kernel-ctl.h>
+#include <lttng-sessiond-comm.h>
 #include <lttng/lttng-kconsumerd.h>
-
-#include "kernelctl.h"
-#include "lttngerr.h"
-#include "lttng-sessiond-comm.h"
+#include <lttngerr.h>
 
 static struct lttng_kconsumerd_global_data {
 	/*

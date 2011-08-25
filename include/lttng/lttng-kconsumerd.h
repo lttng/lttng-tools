@@ -21,6 +21,7 @@
 
 #include <limits.h>
 #include <lttng/lttng.h>
+#include <urcu/list.h>
 
 /*
  * When the receiving thread dies, we need to have a way to make the polling

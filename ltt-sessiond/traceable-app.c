@@ -21,9 +21,9 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <urcu/list.h>
 
-#include "lttngerr.h"
+#include <lttngerr.h>
+
 #include "traceable-app.h"
 
 /* Number of element for the list below. */

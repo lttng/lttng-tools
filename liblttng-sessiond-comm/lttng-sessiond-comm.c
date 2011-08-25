@@ -17,6 +17,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +27,6 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <lttng-sessiond-comm.h>
 

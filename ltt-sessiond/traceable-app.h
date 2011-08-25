@@ -19,6 +19,8 @@
 #ifndef _TRACEABLE_APP_H 
 #define _TRACEABLE_APP_H
 
+#include <urcu/list.h>
+
 /* Traceable application list */
 struct ltt_traceable_app_list {
 	struct cds_list_head head;

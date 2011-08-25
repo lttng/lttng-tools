@@ -22,10 +22,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <urcu/list.h>
 
-#include "lttngerr.h"
+#include <lttngerr.h>
+
 #include "session.h"
 
 /*

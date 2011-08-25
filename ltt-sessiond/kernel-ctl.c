@@ -24,8 +24,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "lttngerr.h"
-#include "kernelctl.h"
+#include <lttng-kernel-ctl.h>
+#include <lttngerr.h>
+
 #include "kernel-ctl.h"
 
 /*

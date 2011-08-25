@@ -21,18 +21,17 @@
  */
 
 #define _GNU_SOURCE
-#include <errno.h>
 #include <grp.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <lttng/lttng.h>
-
 #include <lttng-sessiond-comm.h>
-#include "lttngerr.h"
-#include "lttng-share.h"
+#include <lttng-share.h>
+#include <lttng/lttng.h>
+#include <lttngerr.h>
 
 /* Socket to session daemon for communication */
 static int sessiond_socket;

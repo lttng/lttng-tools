@@ -1,4 +1,5 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -DINSTALL_BIN_PATH=\""$(bindir)"\"
+AM_CPPFLAGS = -I$(top_srcdir)/include \
+			  -DINSTALL_BIN_PATH=\""$(bindir)"\"
 
 bin_PROGRAMS = lttng
 

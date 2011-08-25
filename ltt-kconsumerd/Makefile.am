@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/libkernelctl
+AM_CPPFLAGS = -I$(top_srcdir)/include
 
 bin_PROGRAMS = ltt-kconsumerd
 
