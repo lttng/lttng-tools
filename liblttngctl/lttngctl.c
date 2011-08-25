@@ -343,6 +343,16 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 		goto end;
 	}
 
+	/*
+	 * Extra protection not to dereference a NULL pointer. If buf is NULL at
+	 * this point, an error is returned and data is freed.
+	 */
+	if (buf == NULL) {
+		ret = -1;
+		free(data);
+		goto end;
+	}
+
 	*buf = data;
 	ret = size;
 
