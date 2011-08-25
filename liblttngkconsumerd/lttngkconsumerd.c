@@ -775,6 +775,7 @@ struct lttng_kconsumerd_local_data *lttng_kconsumerd_create(
 		goto error;
 	}
 
+	ctx->kconsumerd_error_socket = -1;
 	/* assign the callbacks */
 	ctx->on_buffer_ready = buffer_ready;
 	ctx->on_recv_fd = recv_fd;
@@ -869,6 +870,7 @@ void *lttng_kconsumerd_thread_receive_fds(void *data)
 
 	DBG("Sending ready command to ltt-sessiond");
 	ret = lttng_kconsumerd_send_error(ctx, KCONSUMERD_COMMAND_SOCK_READY);
+	/* return < 0 on error, but == 0 is not fatal */
 	if (ret < 0) {
 		ERR("Error sending ready command to ltt-sessiond");
 		goto end;
@@ -997,6 +999,7 @@ void lttng_kconsumerd_should_exit(struct lttng_kconsumerd_local_data *ctx)
 
 /*
  * Send return code to the session daemon.
+ * If the socket is not defined, we return 0, it is not a fatal error
  */
 int lttng_kconsumerd_send_error(
 		struct lttng_kconsumerd_local_data *ctx, int cmd)
