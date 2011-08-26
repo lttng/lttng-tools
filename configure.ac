@@ -12,6 +12,9 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
+# URCU library version needed or newer
+liburcu_version="0.6.0"
+
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
 	[AC_MSG_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]
@@ -22,14 +25,17 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-# Check liburcu list.h
+# Check liburcu list.h, wfqueue.h, futex.h
 AC_CHECK_DECL([cds_list_add], [],
-	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
 )
 
-# Check liburcu wfqueue.h
 AC_CHECK_DECL([cds_wfq_init], [],
-	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/wfqueue.h>]]
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
+)
+
+AC_CHECK_DECL([futex_async], [],
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
 )
 
 AC_PROG_CC
