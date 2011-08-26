@@ -80,8 +80,9 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_session *trace_kernel_create_session(void)
+struct ltt_kernel_session *trace_kernel_create_session(char *path)
 {
+	int ret;
 	struct ltt_kernel_session *lks;
 
 	/* Allocate a new ltt kernel session */
@@ -99,6 +100,13 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 	lks->metadata = NULL;
 	lks->consumer_fd = 0;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
+
+	/* Set session path */
+	ret = asprintf(&lks->trace_path, "%s/kernel", path);
+	if (ret < 0) {
+		perror("asprintf kernel traces path");
+		goto error;
+	}
 
 	return lks;
 
@@ -292,10 +300,10 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
 	close(stream->fd);
-	free(stream->pathname);
-
 	/* Remove from stream list */
 	cds_list_del(&stream->list);
+
+	free(stream->pathname);
 	free(stream);
 }
 
@@ -307,11 +315,12 @@ void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 	DBG("[trace] Closing event fd %d", event->fd);
 	/* Close kernel fd */
 	close(event->fd);
-	/* Free attributes */
-	free(event->event);
 
 	/* Remove from event list */
 	cds_list_del(&event->list);
+
+	free(event->event);
+	free(event->ctx);
 	free(event);
 }
 
@@ -326,9 +335,6 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
 	close(channel->fd);
-	free(channel->pathname);
-	/* Free attributes structure */
-	free(channel->channel);
 
 	/* For each stream in the channel list */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->stream_list.head, list) {
@@ -342,6 +348,10 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 
 	/* Remove from channel list */
 	cds_list_del(&channel->list);
+
+	free(channel->pathname);
+	free(channel->channel);
+	free(channel->ctx);
 	free(channel);
 }
 
@@ -353,9 +363,9 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
 	close(metadata->fd);
-	/* Free attributes */
-	free(metadata->conf);
 
+	free(metadata->conf);
+	free(metadata->pathname);
 	free(metadata);
 }
 
@@ -369,6 +379,7 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */
 	close(session->fd);
+
 	if (session->metadata_stream_fd != 0) {
 		DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
 		close(session->metadata_stream_fd);
@@ -382,5 +393,6 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 		trace_kernel_destroy_channel(channel);
 	}
 
+	free(session->trace_path);
 	free(session);
 }

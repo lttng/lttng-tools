@@ -102,7 +102,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	struct ltt_kernel_session *lks;
 
 	/* Allocate data structure */
-	lks = trace_kernel_create_session();
+	lks = trace_kernel_create_session(session->path);
 	if (lks == NULL) {
 		ret = -1;
 		goto error;

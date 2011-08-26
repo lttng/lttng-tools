@@ -1561,13 +1561,6 @@ static int create_kernel_session(struct ltt_session *session)
 		session->kernel_session->consumer_fd = kconsumerd_cmd_sock;
 	}
 
-	ret = asprintf(&session->kernel_session->trace_path, "%s/kernel",
-			session->path);
-	if (ret < 0) {
-		perror("asprintf kernel traces path");
-		goto error;
-	}
-
 	ret = mkdir_recursive(session->kernel_session->trace_path,
 			S_IRWXU | S_IRWXG, geteuid(), allowed_group());
 	if (ret < 0) {

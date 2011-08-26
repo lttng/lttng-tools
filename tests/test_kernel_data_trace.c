@@ -62,7 +62,7 @@ static char *get_random_string(void)
 static void create_one_kernel_session(void)
 {
 	printf("Create kernel session: ");
-	kern = trace_kernel_create_session();
+	kern = trace_kernel_create_session(PATH1);
 	assert(kern != NULL);
 	PRINT_OK();
 
