@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -19,10 +19,15 @@
 #ifndef _LTT_SESSIOND_H
 #define _LTT_SESSIOND_H
 
-#define DEFAULT_HOME_DIR		"/tmp"
-#define DEFAULT_UST_SOCK_DIR		DEFAULT_HOME_DIR "/ust-app-socks"
-#define DEFAULT_GLOBAL_APPS_PIPE	DEFAULT_UST_SOCK_DIR "/global"
-#define DEFAULT_TRACE_OUTPUT        	DEFAULT_HOME_DIR "/lttng"
+#define _LGPL_SOURCE
+#include <urcu/wfqueue.h>
+
+#include "traceable-app.h"
+
+#define DEFAULT_HOME_DIR            "/tmp"
+#define DEFAULT_UST_SOCK_DIR        DEFAULT_HOME_DIR "/ust-app-socks"
+#define DEFAULT_GLOBAL_APPS_PIPE    DEFAULT_UST_SOCK_DIR "/global"
+#define DEFAULT_TRACE_OUTPUT        DEFAULT_HOME_DIR "/lttng"
 
 struct module_param {
 	const char *name;
@@ -66,6 +71,21 @@ struct command_ctx {
 	struct ltt_session *session;
 	struct lttcomm_lttng_msg *llm;
 	struct lttcomm_session_msg *lsm;
+};
+
+struct ust_command {
+	int sock;
+	struct ust_register_msg reg_msg;
+	struct cds_wfq_node node;
+};
+
+/*
+ * Queue used to enqueue UST registration request (ust_commant) and protected
+ * by a futex with a scheme N wakers / 1 waiters. See futex.c/.h
+ */
+struct ust_cmd_queue {
+	int32_t futex;
+	struct cds_wfq_queue queue;
 };
 
 #endif /* _LTT_SESSIOND_H */

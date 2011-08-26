@@ -21,8 +21,7 @@
 #define _LTT_LIBKERNELCTL_H
 
 #include <lttng/lttng.h>
-
-#include "lttng-kernel.h"
+#include <lttng-kernel.h>
 
 int kernctl_create_session(int fd);
 int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);

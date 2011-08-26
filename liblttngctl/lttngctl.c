@@ -21,18 +21,17 @@
  */
 
 #define _GNU_SOURCE
-#include <errno.h>
 #include <grp.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <lttng/lttng.h>
-
 #include <lttng-sessiond-comm.h>
-#include "lttngerr.h"
-#include "lttng-share.h"
+#include <lttng-share.h>
+#include <lttng/lttng.h>
+#include <lttngerr.h>
 
 /* Socket to session daemon for communication */
 static int sessiond_socket;
@@ -344,6 +343,16 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 	/* Get payload data */
 	ret = recv_data_sessiond(data, size);
 	if (ret < 0) {
+		free(data);
+		goto end;
+	}
+
+	/*
+	 * Extra protection not to dereference a NULL pointer. If buf is NULL at
+	 * this point, an error is returned and data is freed.
+	 */
+	if (buf == NULL) {
+		ret = -1;
 		free(data);
 		goto end;
 	}

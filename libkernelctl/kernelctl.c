@@ -19,8 +19,9 @@
 
 #include <sys/ioctl.h>
 
+#include <lttng-kernel-ctl.h>
+
 #include "kernel-ioctl.h"
-#include "kernelctl.h"
 
 int kernctl_create_session(int fd)
 {

@@ -19,8 +19,11 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
-//#include <lttng/lttng.h>
+#include <pthread.h>
 #include <urcu/list.h>
+
+#include "trace-kernel.h"
+#include "trace-ust.h"
 
 /*
  * Tracing session list

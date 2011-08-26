@@ -1,19 +1,18 @@
 /*
  * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; only version 2 of the License.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
 #define _GNU_SOURCE
@@ -21,10 +20,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <lttng-sessiond-comm.h>
 #include <urcu/list.h>
 
 #include "lttngerr.h"
 #include "context.h"
+#include "kernel-ctl.h"
 
 /*
  * Add kernel context to an event of a specific channel.
@@ -37,7 +39,7 @@ static int add_kctx_to_event(struct lttng_kernel_context *kctx,
 
 	DBG("Add kernel context to event %s", event_name);
 
-	kevent = get_kernel_event_by_name(event_name, kchan);
+	kevent = trace_kernel_get_event_by_name(event_name, kchan);
 	if (kevent != NULL) {
 		ret = kernel_add_event_context(kevent, kctx);
 		if (ret < 0) {
@@ -163,7 +165,7 @@ int add_kernel_context(struct ltt_kernel_session *ksession,
 		}
 	} else {
 		/* Get kernel channel */
-		kchan = get_kernel_channel_by_name(channel_name, ksession);
+		kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
 		if (kchan == NULL) {
 			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 			goto error;

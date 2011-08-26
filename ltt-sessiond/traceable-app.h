@@ -19,25 +19,67 @@
 #ifndef _TRACEABLE_APP_H 
 #define _TRACEABLE_APP_H
 
-/* Traceable application list */
+#include <stdint.h>
+#include <urcu/list.h>
+
+/*
+ * Application registration data structure.
+ */
+struct ust_register_msg {
+	uint32_t major;
+	uint32_t minor;
+	pid_t pid;
+	pid_t ppid;
+	uid_t uid;
+	gid_t gid;
+	char name[16];
+};
+
+/*
+ * Traceable application list.
+ */
 struct ltt_traceable_app_list {
+	/*
+	 * This lock protects any read/write access to the list and count (which is
+	 * basically the list size). All public functions in traceable-app.c
+	 * acquire this lock and release it before returning. If none of those
+	 * functions are used, the lock MUST be acquired in order to iterate or/and
+	 * do any actions on that list.
+	 */
+	pthread_mutex_t lock;
+
+	/*
+	 * Number of element in the list. The session list lock MUST be acquired if
+	 * this counter is used when iterating over the session list.
+	 */
+	unsigned int count;
+
+	/* Linked list head */
 	struct cds_list_head head;
 };
 
-/* Registered traceable applications. Libust registers
- * to the session daemon and a linked list is kept
- * of all running traceable app.
+/* Registered traceable applications. Libust registers to the session daemon
+ * and a linked list is kept of all running traceable app.
  */
 struct ltt_traceable_app {
-	struct cds_list_head list;
+	int sock;            /* Communication socket with the application */
 	pid_t pid;
-	uid_t uid;		/* User ID that owns the apps */
+	pid_t ppid;
+	uid_t uid;           /* User ID that owns the apps */
+	gid_t gid;           /* Group ID that owns the apps */
+	uint32_t v_major;    /* Verion major number */
+	uint32_t v_minor;    /* Verion minor number */
+	char name[17];       /* Process name (short) */
+	struct cds_list_head list;
 };
 
-struct ltt_traceable_app *find_app_by_pid(pid_t pid);
-int register_traceable_app(pid_t pid, uid_t uid);
-void unregister_traceable_app(pid_t pid);
-void get_app_list_pids(pid_t *pids);
+int register_traceable_app(struct ust_register_msg *msg, int sock);
+void unregister_traceable_app(int sock);
 unsigned int get_app_count(void);
+
+void lock_apps_list(void);
+void unlock_apps_list(void);
+void clean_traceable_apps_list(void);
+struct ltt_traceable_app_list *get_traceable_apps_list(void);
 
 #endif /* _TRACEABLE_APP_H */

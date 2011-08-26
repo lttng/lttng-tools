@@ -8,7 +8,7 @@ noinst_PROGRAMS = test_sessions test_kernel_data_trace kernel_all_events_basic \
 
 UTILS=utils.h
 SESSIONS=$(top_srcdir)/ltt-sessiond/session.c
-KERN_DATA_TRACE=$(top_srcdir)/ltt-sessiond/trace.c
+KERN_DATA_TRACE=$(top_srcdir)/ltt-sessiond/trace-kernel.c
 LIBLTTNG=$(top_srcdir)/liblttngctl/lttngctl.c \
 		 $(top_srcdir)/liblttng-sessiond-comm/lttng-sessiond-comm.c
 
