@@ -16,8 +16,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_TRACE_H
-#define _LTT_TRACE_H
+#ifndef _LTT_TRACE_KERNEL_H
+#define _LTT_TRACE_KERNEL_H
 
 #include <limits.h>
 #include <urcu/list.h>
@@ -91,43 +91,31 @@ struct ltt_kernel_session {
 	struct ltt_kernel_channel_list channel_list;
 };
 
-/* UST trace representation */
-struct ltt_ust_trace {
-	struct cds_list_head list;
-	char name[NAME_MAX];
-	int shmid;
-	pid_t pid;
-	struct cds_list_head markers;
-};
-
-struct ltt_ust_marker {
-	struct cds_list_head list;
-	char *name;
-	char *channel;
-};
-
-struct ltt_kernel_event *get_kernel_event_by_name(
+/*
+ * Lookup functions. NULL is returned if not found.
+ */
+struct ltt_kernel_event *trace_kernel_get_event_by_name(
 		char *name, struct ltt_kernel_channel *channel);
-struct ltt_kernel_channel *get_kernel_channel_by_name(
+struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		char *name, struct ltt_kernel_session *session);
 
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_kernel_session *trace_create_kernel_session(void);
-struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan, char *path);
-struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev);
-struct ltt_kernel_metadata *trace_create_kernel_metadata(char *path);
-struct ltt_kernel_stream *trace_create_kernel_stream(void);
+struct ltt_kernel_session *trace_kernel_create_session(void);
+struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan, char *path);
+struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev);
+struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path);
+struct ltt_kernel_stream *trace_kernel_create_stream(void);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if
  * it's applies.
  */
-void trace_destroy_kernel_session(struct ltt_kernel_session *session);
-void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata);
-void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel);
-void trace_destroy_kernel_event(struct ltt_kernel_event *event);
-void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream);
+void trace_kernel_destroy_session(struct ltt_kernel_session *session);
+void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata);
+void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
+void trace_kernel_destroy_event(struct ltt_kernel_event *event);
+void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
 
-#endif /* _LTT_TRACE_H */
+#endif /* _LTT_TRACE_KERNEL_H */

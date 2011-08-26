@@ -182,7 +182,7 @@ static void teardown_kernel_session(struct ltt_session *session)
 			lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
 		}
 
-		trace_destroy_kernel_session(session->kernel_session);
+		trace_kernel_destroy_session(session->kernel_session);
 		/* Extra precaution */
 		session->kernel_session = NULL;
 	}
@@ -1807,7 +1807,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
@@ -1845,14 +1845,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 				goto error;
 			}
 
-			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.disable.name, kchan);
+			kevent = trace_kernel_get_event_by_name(cmd_ctx->lsm->u.disable.name, kchan);
 			if (kevent != NULL) {
 				DBG("Disabling kernel event %s for channel %s.", kevent->event->name,
 						kchan->channel->name);
@@ -1888,7 +1888,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
 			DBG("Disabling all enabled kernel events");
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
@@ -1929,7 +1929,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				/* Channel not found, creating it */
@@ -1987,7 +1987,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(channel_name,
+			kchan = trace_kernel_get_channel_by_name(channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				DBG("Channel not found. Creating channel %s", channel_name);
@@ -2004,7 +2004,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CHAN_FAIL;
 					goto error;
 				}
-				kchan = get_kernel_channel_by_name(channel_name,
+				kchan = trace_kernel_get_channel_by_name(channel_name,
 						cmd_ctx->session->kernel_session);
 				if (kchan == NULL) {
 					ERR("Channel %s not found after creation. Internal error, giving up.",
@@ -2014,7 +2014,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 			}
 
-			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
+			kevent = trace_kernel_get_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
 			if (kevent == NULL) {
 				DBG("Creating kernel event %s for channel %s.",
 						cmd_ctx->lsm->u.enable.event.name, channel_name);
@@ -2065,7 +2065,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(channel_name,
+			kchan = trace_kernel_get_channel_by_name(channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				DBG("Channel not found. Creating channel %s", channel_name);
@@ -2082,7 +2082,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CHAN_FAIL;
 					goto error;
 				}
-				kchan = get_kernel_channel_by_name(channel_name,
+				kchan = trace_kernel_get_channel_by_name(channel_name,
 						cmd_ctx->session->kernel_session);
 				if (kchan == NULL) {
 					ERR("Channel %s not found after creation. Internal error, giving up.",
@@ -2109,7 +2109,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 
 			for (i = 0; i < size; i++) {
-				kevent = get_kernel_event_by_name(event_list[i].name, kchan);
+				kevent = trace_kernel_get_event_by_name(event_list[i].name, kchan);
 				if (kevent == NULL) {
 					/* Default event type for enable all */
 					event_list[i].type = LTTNG_EVENT_TRACEPOINT;
@@ -2393,7 +2393,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		struct ltt_kernel_channel *kchan = NULL;
 
 		if (cmd_ctx->session->kernel_session != NULL) {
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.list.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.list.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;

@@ -24,12 +24,12 @@
 
 #include <lttngerr.h>
 
-#include "trace.h"
+#include "trace-kernel.h"
 
 /*
  * Find the channel name for the given kernel session.
  */
-struct ltt_kernel_channel *get_kernel_channel_by_name(
+struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		char *name, struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *chan;
@@ -53,7 +53,7 @@ error:
 /*
  * Find the event name for the given channel.
  */
-struct ltt_kernel_event *get_kernel_event_by_name(
+struct ltt_kernel_event *trace_kernel_get_event_by_name(
 		char *name, struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_event *ev;
@@ -80,7 +80,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_session *trace_create_kernel_session(void)
+struct ltt_kernel_session *trace_kernel_create_session(void)
 {
 	struct ltt_kernel_session *lks;
 
@@ -111,7 +111,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_channel *trace_create_kernel_channel(struct lttng_channel *chan, char *path)
+struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan, char *path)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
@@ -155,7 +155,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_event *trace_create_kernel_event(struct lttng_event *ev)
+struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 {
 	struct ltt_kernel_event *lke;
 	struct lttng_kernel_event *attr;
@@ -220,7 +220,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_metadata *trace_create_kernel_metadata(char *path)
+struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
@@ -263,7 +263,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_stream *trace_create_kernel_stream(void)
+struct ltt_kernel_stream *trace_kernel_create_stream(void)
 {
 	struct ltt_kernel_stream *lks;
 
@@ -287,7 +287,7 @@ error:
 /*
  * Cleanup kernel stream structure.
  */
-void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
+void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 {
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
@@ -302,7 +302,7 @@ void trace_destroy_kernel_stream(struct ltt_kernel_stream *stream)
 /*
  * Cleanup kernel event structure.
  */
-void trace_destroy_kernel_event(struct ltt_kernel_event *event)
+void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
 	DBG("[trace] Closing event fd %d", event->fd);
 	/* Close kernel fd */
@@ -318,7 +318,7 @@ void trace_destroy_kernel_event(struct ltt_kernel_event *event)
 /*
  * Cleanup kernel channel structure.
  */
-void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
+void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
 	struct ltt_kernel_event *event, *etmp;
@@ -332,12 +332,12 @@ void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 
 	/* For each stream in the channel list */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->stream_list.head, list) {
-		trace_destroy_kernel_stream(stream);
+		trace_kernel_destroy_stream(stream);
 	}
 
 	/* For each event in the channel list */
 	cds_list_for_each_entry_safe(event, etmp, &channel->events_list.head, list) {
-		trace_destroy_kernel_event(event);
+		trace_kernel_destroy_event(event);
 	}
 
 	/* Remove from channel list */
@@ -348,7 +348,7 @@ void trace_destroy_kernel_channel(struct ltt_kernel_channel *channel)
 /*
  * Cleanup kernel metadata structure.
  */
-void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
+void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 {
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
@@ -360,9 +360,9 @@ void trace_destroy_kernel_metadata(struct ltt_kernel_metadata *metadata)
 }
 
 /*
- * Cleanup kernel session structure 
+ * Cleanup kernel session structure
  */
-void trace_destroy_kernel_session(struct ltt_kernel_session *session)
+void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel, *ctmp;
 
@@ -375,11 +375,11 @@ void trace_destroy_kernel_session(struct ltt_kernel_session *session)
 	}
 
 	if (session->metadata != NULL) {
-		trace_destroy_kernel_metadata(session->metadata);
+		trace_kernel_destroy_metadata(session->metadata);
 	}
 
 	cds_list_for_each_entry_safe(channel, ctmp, &session->channel_list.head, list) {
-		trace_destroy_kernel_channel(channel);
+		trace_kernel_destroy_channel(channel);
 	}
 
 	free(session);
