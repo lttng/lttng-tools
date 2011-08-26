@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "ltt-sessiond/trace.h"
+#include "ltt-sessiond/trace-kernel.h"
 #include "utils.h"
 
 /* This path will NEVER be created in this test */
@@ -62,7 +62,7 @@ static char *get_random_string(void)
 static void create_one_kernel_session(void)
 {
 	printf("Create kernel session: ");
-	kern = trace_create_kernel_session();
+	kern = trace_kernel_create_session();
 	assert(kern != NULL);
 	PRINT_OK();
 
@@ -77,7 +77,7 @@ static void create_one_kernel_session(void)
 	PRINT_OK();
 
 	/* Init list in order to avoid sefaults from cds_list_del */
-	trace_destroy_kernel_session(kern);
+	trace_kernel_destroy_session(kern);
 }
 
 static void create_kernel_metadata(void)
@@ -85,7 +85,7 @@ static void create_kernel_metadata(void)
 	assert(kern != NULL);
 
 	printf("Create kernel metadata: ");
-	kern->metadata = trace_create_kernel_metadata(PATH1);
+	kern->metadata = trace_kernel_create_metadata(PATH1);
 	assert(kern->metadata != NULL);
 	PRINT_OK();
 
@@ -107,7 +107,7 @@ static void create_kernel_metadata(void)
 			== DEFAULT_KERNEL_CHANNEL_OUTPUT);
 	PRINT_OK();
 
-	trace_destroy_kernel_metadata(kern->metadata);
+	trace_kernel_destroy_metadata(kern->metadata);
 }
 
 static void create_kernel_channel(void)
@@ -116,7 +116,7 @@ static void create_kernel_channel(void)
 	struct lttng_channel attr;
 
 	printf("Creating kernel channel: ");
-	chan = trace_create_kernel_channel(&attr, PATH1);
+	chan = trace_kernel_create_channel(&attr, PATH1);
 	assert(chan != NULL);
 	PRINT_OK();
 
@@ -131,7 +131,7 @@ static void create_kernel_channel(void)
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&chan->list);
-	trace_destroy_kernel_channel(chan);
+	trace_kernel_destroy_channel(chan);
 }
 
 static void create_kernel_event(void)
@@ -143,7 +143,7 @@ static void create_kernel_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 
 	printf("Creating kernel event: ");
-	event = trace_create_kernel_event(&ev);
+	event = trace_kernel_create_event(&ev);
 	assert(event != NULL);
 	PRINT_OK();
 
@@ -157,7 +157,7 @@ static void create_kernel_event(void)
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&event->list);
-	trace_destroy_kernel_event(event);
+	trace_kernel_destroy_event(event);
 }
 
 static void create_kernel_stream(void)
@@ -165,7 +165,7 @@ static void create_kernel_stream(void)
 	struct ltt_kernel_stream *stream;
 
 	printf("Creating kernel stream: ");
-	stream = trace_create_kernel_stream();
+	stream = trace_kernel_create_stream();
 	assert(stream != NULL);
 	PRINT_OK();
 
@@ -177,7 +177,7 @@ static void create_kernel_stream(void)
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&stream->list);
-	trace_destroy_kernel_stream(stream);
+	trace_kernel_destroy_stream(stream);
 }
 
 int main(int argc, char **argv)
