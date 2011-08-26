@@ -7,6 +7,7 @@ bin_PROGRAMS = ltt-sessiond
 
 ltt_sessiond_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
+                       trace-ust.c trace-ust.h \
                        session.c session.h \
                        traceable-app.c traceable-app.h \
                        ust-ctl.c ust-ctl.h \

@@ -4,7 +4,8 @@
 /*
  * Taken from the lttng-ust-abi.h in the UST 2.0 git tree
  *
- * Copyright 2010-2011 (c) - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright 2010-2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * LTTng-UST ABI header
  *
@@ -13,10 +14,13 @@
 
 #include <stdint.h>
 
-#define LTTNG_UST_SYM_NAME_LEN 128
+#define LTTNG_UST_SYM_NAME_LEN         128
 
-#define LTTNG_UST_COMM_VERSION_MAJOR 0
-#define LTTNG_UST_COMM_VERSION_MINOR 1
+#define LTTNG_UST_COMM_VERSION_MAJOR   0
+#define LTTNG_UST_COMM_VERSION_MINOR   1
+
+/* See lttng-ust.h enum lttng_ust_output */
+#define DEFAULT_UST_CHANNEL_OUTPUT     LTTNG_UST_MMAP
 
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT    = 0,
