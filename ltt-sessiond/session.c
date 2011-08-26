@@ -18,11 +18,9 @@
 
 #define _GNU_SOURCE
 #include <limits.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <urcu/list.h>
 
 #include <lttngerr.h>
 
