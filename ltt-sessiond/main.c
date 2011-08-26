@@ -214,7 +214,7 @@ static void cleanup(void)
 	DBG("Cleaning up");
 
 	/* <fun> */
-	MSG("\n%c[%d;%dm*** assert failed *** ==> %c[%dm%c[%d;%dm"
+	MSG("%c[%d;%dm*** assert failed *** ==> %c[%dm%c[%d;%dm"
 		"Matthew, BEET driven development works!%c[%dm",
 		27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
 	/* </fun> */
@@ -252,8 +252,10 @@ static void cleanup(void)
 	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
 
-	DBG("Unloading kernel modules");
-	modprobe_remove_kernel_modules();
+	if (is_root) {
+		DBG("Unloading kernel modules");
+		modprobe_remove_kernel_modules();
+	}
 }
 
 /*
@@ -1003,8 +1005,12 @@ static void *thread_dispatch_ust_registration(void *data)
 
 			ust_cmd = caa_container_of(node, struct ust_command, node);
 
-			DBG("Dispatching UST registration pid:%d sock:%d",
-					ust_cmd->reg_msg.pid, ust_cmd->sock);
+			DBG("Dispatching UST registration pid:%d ppid:%d uid:%d"
+					" gid:%d sock:%d name:%s (version %d.%d)",
+					ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
+					ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
+					ust_cmd->sock, ust_cmd->reg_msg.name,
+					ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
 			/*
 			 * Inform apps thread of the new application registration. This
 			 * call is blocking so we can be assured that the data will be read
@@ -1102,8 +1108,12 @@ static void *thread_registration_apps(void *data)
 		 */
 		ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
 				sizeof(struct ust_register_msg));
-		if (ret < 0 || ret != sizeof(struct ust_register_msg)) {
-			perror("lttcomm_recv_unix_sock register apps");
+		if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
+			if (ret < 0) {
+				perror("lttcomm_recv_unix_sock register apps");
+			} else {
+				ERR("Wrong size received on apps register");
+			}
 			free(ust_cmd);
 			close(sock);
 			continue;
@@ -1111,6 +1121,12 @@ static void *thread_registration_apps(void *data)
 
 		ust_cmd->sock = sock;
 
+		DBG("UST registration received with pid:%d ppid:%d uid:%d"
+				" gid:%d sock:%d name:%s (version %d.%d)",
+				ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
+				ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
+				ust_cmd->sock, ust_cmd->reg_msg.name,
+				ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
 		/*
 		 * Lock free enqueue the registration request.
 		 * The red pill has been taken! This apps will be part of the *system*
@@ -1122,9 +1138,6 @@ static void *thread_registration_apps(void *data)
 		 * Implicit memory barrier with the exchange in cds_wfq_enqueue.
 		 */
 		futex_nto1_wake(&ust_cmd_queue.futex);
-
-		DBG("Thread manage apps informed of queued node with sock:%d pid:%d",
-				sock, ust_cmd->reg_msg.pid);
 	}
 
 error:
