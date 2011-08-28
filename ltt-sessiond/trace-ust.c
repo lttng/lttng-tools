@@ -27,6 +27,24 @@
 #include "trace-ust.h"
 
 /*
+ * Return an UST session by traceable app PID.
+ */
+struct ltt_ust_session *trace_ust_get_session_by_pid(pid_t pid,
+		struct ltt_ust_session_list *session_list)
+{
+	struct ltt_ust_session *lus;
+
+	cds_list_for_each_entry(lus, &session_list->head, list) {
+		if (lus->app->pid == pid) {
+			DBG("Found UST session by pid %d", pid);
+			return lus;
+		}
+	}
+
+	return NULL;
+}
+
+/*
  * Find the channel name for the given ust session.
  */
 struct ltt_ust_channel *trace_ust_get_channel_by_name(
@@ -80,8 +98,9 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(void)
+struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid)
 {
+	int ret;
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
@@ -97,8 +116,16 @@ struct ltt_ust_session *trace_ust_create_session(void)
 	lus->uconsumer_fds_sent = 0;
 	lus->path = NULL;
 	lus->metadata = NULL;
+	lus->app = NULL;	/* TODO: Search app by PID */
 	lus->channels.count = 0;
 	CDS_INIT_LIST_HEAD(&lus->channels.head);
+
+	/* Set session path */
+	ret = asprintf(&lus->path, "%s/ust_%d", path, pid);
+	if (ret < 0) {
+		perror("asprintf kernel traces path");
+		goto error;
+	}
 
 	return lus;
 

@@ -20,6 +20,7 @@
 
 #include <lttng-sessiond-comm.h>
 
-int ustcomm_send_command(int sock, struct lttcomm_ust_msg *msg);
+struct lttcomm_ust_reply *ustcomm_send_command(int sock,
+		struct lttcomm_ust_msg *msg);
 
 #endif /* _LTT_UST_COMM_H */

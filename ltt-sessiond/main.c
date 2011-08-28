@@ -48,7 +48,7 @@
 #include "traceable-app.h"
 #include "ust-ctl.h"
 #include "utils.h"
-#include "ust-comm.h"
+#include "ust-ctl.h"
 
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
@@ -406,34 +406,6 @@ error:
 }
 
 #ifdef DISABLED
-/*
- * Return a socket connected to the libust communication socket of the
- * application identified by the pid.
- *
- * If the pid is not found in the traceable list, return -1 to indicate error.
- */
-static int ust_connect_app(pid_t pid)
-{
-	int sock;
-	struct ltt_traceable_app *lta;
-
-	DBG("Connect to application pid %d", pid);
-
-	lta = find_app_by_pid(pid);
-	if (lta == NULL) {
-		/* App not found */
-		DBG("Application pid %d not found", pid);
-		return -1;
-	}
-
-	sock = ustctl_connect_pid(lta->pid);
-	if (sock < 0) {
-		ERR("Fail connecting to the PID %d", pid);
-	}
-
-	return sock;
-}
-
 /*
  * Notify apps by writing 42 to a named pipe using name. Every applications
  * waiting for a ltt-sessiond will be notified and re-register automatically to
@@ -830,16 +802,25 @@ error:
  *
  * The first two fds must be there at all time.
  */
-static int update_apps_cmd_pollfd(unsigned int nb_fd, struct pollfd **pollfd)
+static int update_apps_cmd_pollfd(unsigned int nb_fd, unsigned int old_nb_fd,
+		struct pollfd **pollfd)
 {
+	int i, count;
+	struct pollfd *old_pollfd = NULL;
+
 	/* Can't accept pollfd less than 2 */
 	if (nb_fd < 2) {
 		goto end;
 	}
 
-	*pollfd = realloc(*pollfd, nb_fd * sizeof(struct pollfd));
+	if (*pollfd) {
+		/* Save pointer */
+		old_pollfd = *pollfd;
+	}
+
+	*pollfd = malloc(nb_fd * sizeof(struct pollfd));
 	if (*pollfd == NULL) {
-		perror("realloc manage apps pollfd");
+		perror("malloc manage apps pollfd");
 		goto error;
 	}
 
@@ -849,28 +830,34 @@ static int update_apps_cmd_pollfd(unsigned int nb_fd, struct pollfd **pollfd)
 	(*pollfd)[1].fd = apps_cmd_pipe[0];
 	(*pollfd)[1].events = POLLIN;
 
+	/* Start count after the two pipes below */
+	count = 2;
+	for (i = 2; i < old_nb_fd; i++) {
+		/* Add to new pollfd */
+		if (old_pollfd[i].fd != -1) {
+			(*pollfd)[count].fd = old_pollfd[i].fd;
+			(*pollfd)[count].events = POLLHUP | POLLNVAL | POLLERR;
+			count++;
+		}
+
+		if (count > nb_fd) {
+			ERR("Updating poll fd wrong size");
+			goto error;
+		}
+	}
+
+	/* Destroy old pollfd */
+	free(old_pollfd);
+
 	DBG("Apps cmd pollfd realloc of size %d", nb_fd);
 
 end:
 	return 0;
 
 error:
+	/* Destroy old pollfd */
+	free(old_pollfd);
 	return -1;
-}
-
-/*
- * Send registration done packet to the application.
- */
-static int send_ust_register_done(int sock)
-{
-	struct lttcomm_ust_msg lum;
-
-	DBG("Sending register done command to %d", sock);
-
-	lum.cmd = LTTNG_UST_REGISTER_DONE;
-	lum.handle = LTTNG_UST_ROOT_HANDLE;
-
-	return ustcomm_send_command(sock, &lum);
 }
 
 /*
@@ -897,16 +884,17 @@ static void *thread_manage_apps(void *data)
 
 		/* The pollfd struct must be updated */
 		if (update_poll_flag) {
-			ret = update_apps_cmd_pollfd(nb_fd, &pollfd);
+			ret = update_apps_cmd_pollfd(nb_fd, ARRAY_SIZE(pollfd), &pollfd);
 			if (ret < 0) {
 				/* malloc failed so we quit */
 				goto error;
 			}
+
 			if (ust_cmd.sock != -1) {
 				/* Update pollfd with the new UST socket */
 				DBG("Adding sock %d to apps cmd pollfd", ust_cmd.sock);
 				pollfd[nb_fd - 1].fd = ust_cmd.sock;
-				pollfd[nb_fd - 1].events = POLLHUP | POLLNVAL;
+				pollfd[nb_fd - 1].events = POLLHUP | POLLNVAL | POLLERR;
 				ust_cmd.sock = -1;
 			}
 		}
@@ -923,31 +911,36 @@ static void *thread_manage_apps(void *data)
 		/* Thread quit pipe has been closed. Killing thread. */
 		if (pollfd[0].revents == POLLNVAL) {
 			goto error;
-		} else if (pollfd[1].revents == POLLERR) {
-			ERR("Apps command pipe poll error");
-			goto error;
-		} else if (pollfd[1].revents == POLLIN) {
-			/* Empty pipe */
-			ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
-			if (ret < 0 || ret < sizeof(ust_cmd)) {
-				perror("read apps cmd pipe");
+		} else {
+			/* apps_cmd_pipe pipe events */
+			switch (pollfd[1].revents) {
+			case POLLERR:
+				ERR("Apps command pipe poll error");
 				goto error;
-			}
+			case POLLIN:
+				/* Empty pipe */
+				ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
+				if (ret < 0 || ret < sizeof(ust_cmd)) {
+					perror("read apps cmd pipe");
+					goto error;
+				}
 
-			/* Register applicaton to the session daemon */
-			ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
-			if (ret < 0) {
-				/* Only critical ENOMEM error can be returned here */
-				goto error;
-			}
+				/* Register applicaton to the session daemon */
+				ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
+				if (ret < 0) {
+					/* Only critical ENOMEM error can be returned here */
+					goto error;
+				}
 
-			ret = send_ust_register_done(ust_cmd.sock);
-			if (ret < 0) {
-				/*
-				 * If the registration is not possible, we simply unregister
-				 * the apps and continue
-				 */
-				unregister_traceable_app(ust_cmd.sock);
+				ret = ustctl_register_done(ust_cmd.sock);
+				if (ret < 0) {
+					/*
+					 * If the registration is not possible, we simply unregister
+					 * the apps and continue
+					 */
+					unregister_traceable_app(ust_cmd.sock);
+				}
+				break;
 			}
 		}
 
@@ -955,11 +948,15 @@ static void *thread_manage_apps(void *data)
 		for (i = 2; i < count; i++) {
 			/* Apps socket is closed/hungup */
 			switch (pollfd[i].revents) {
-			case POLLNVAL:
+			case POLLERR:
 			case POLLHUP:
+			case POLLNVAL:
 				/* Pipe closed */
 				unregister_traceable_app(pollfd[i].fd);
+				/* Indicate to remove this fd from the pollfd */
+				pollfd[i].fd = -1;
 				nb_fd--;
+				break;
 			}
 		}
 
@@ -1555,6 +1552,43 @@ error:
 }
 
 /*
+ * Create an UST session and add it to the session ust list.
+ */
+static int create_ust_session(pid_t pid, struct ltt_session *session)
+{
+	int ret = -1;
+	struct ltt_ust_session *lus;
+
+	DBG("Creating UST session");
+
+	lus = trace_ust_create_session(session->path, pid);
+	if (lus == NULL) {
+		goto error;
+	}
+
+	ret = mkdir_recursive(lus->path, S_IRWXU | S_IRWXG,
+			geteuid(), allowed_group());
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ERR("Trace directory creation error");
+			goto error;
+		}
+	}
+
+	/* Create session on the UST tracer */
+	ret = ustctl_create_session(lus);
+	if (ret < 0) {
+		goto error;
+	}
+
+	return 0;
+
+error:
+	free(lus);
+	return ret;
+}
+
+/*
  * Create a kernel tracer session then create the default channel.
  */
 static int create_kernel_session(struct ltt_session *session)
@@ -1729,7 +1763,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				goto error;
 			}
 		}
-
 		/* Need a session for kernel command */
 		switch (cmd_ctx->lsm->cmd_type) {
 		case LTTNG_CALIBRATE:
@@ -1744,9 +1777,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_SESS_FAIL;
 					goto error;
 				}
-
 				/* Start the kernel consumer daemon */
-
 				if (kconsumerd_pid == 0 &&
 						cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 					ret = start_kconsumerd();
@@ -1967,8 +1998,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 			kernel_wait_quiescent(kernel_tracer_fd);
 			break;
+		case LTTNG_DOMAIN_UST_PID:
+			break;
 		default:
-			/* TODO: Userspace tracing */
 			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
@@ -2352,7 +2384,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			nb_dom++;
 		}
 
-		nb_dom += cmd_ctx->session->ust_trace_count;
+		nb_dom += cmd_ctx->session->ust_session_list.count;
 
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_domain) * nb_dom);
 		if (ret < 0) {

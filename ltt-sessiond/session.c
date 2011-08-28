@@ -213,21 +213,18 @@ int create_session(char *name, char *path)
 	/* Init kernel session */
 	new_session->kernel_session = NULL;
 
-	/* Init list */
-	CDS_INIT_LIST_HEAD(&new_session->ust_traces);
+	/* Init UST session list */
+	CDS_INIT_LIST_HEAD(&new_session->ust_session_list.head);
 
-	/* Set trace list counter */
-	new_session->ust_trace_count = 0;
+	/* Init lock */
+	pthread_mutex_init(&new_session->lock, NULL);
 
 	/* Add new session to the session list */
 	lock_session_list();
 	add_session_list(new_session);
 	unlock_session_list();
 
-	/* Init lock */
-	pthread_mutex_init(&new_session->lock, NULL);
-
-	DBG("Tracing session %s created in %s", new_session->name, new_session->path);
+	DBG("Tracing session %s created in %s", name, path);
 
 	return 0;
 

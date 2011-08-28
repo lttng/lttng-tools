@@ -99,6 +99,24 @@ static struct ltt_traceable_app *find_app_by_sock(int sock)
 }
 
 /*
+ * Iterate over the traceable apps list and return a pointer or NULL if not
+ * found.
+ */
+struct ltt_traceable_app *traceable_app_get_by_pid(pid_t pid)
+{
+	struct ltt_traceable_app *iter;
+
+	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
+		if (iter->pid == pid) {
+			/* Found */
+			return iter;
+		}
+	}
+
+	return NULL;
+}
+
+/*
  * Using pid and uid (of the app), allocate a new ltt_traceable_app struct and
  * add it to the global traceable app list.
  *

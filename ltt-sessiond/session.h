@@ -59,8 +59,7 @@ struct ltt_session {
 	char *name;
 	char *path;
 	struct ltt_kernel_session *kernel_session;
-	struct cds_list_head ust_traces;
-	unsigned int ust_trace_count;
+	struct ltt_ust_session_list ust_session_list;
 	/*
 	 * Protect any read/write on this session data structure. This lock must be
 	 * acquired *before* using any public functions declared below. Use

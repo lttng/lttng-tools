@@ -17,195 +17,74 @@
  */
 
 #define _GNU_SOURCE
-#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <lttng-sessiond-comm.h>
-#include "lttngerr.h"
+#include <lttngerr.h>
+
+#include "ust-comm.h"
 #include "ust-ctl.h"
 
-#ifdef DISABLED
 /*
- *  find_session_ust_trace_by_pid
- *
- *  Iterate over the session ust_traces and
- *  return a pointer or NULL if not found.
+ * Send registration done packet to the application.
  */
-static struct ltt_ust_trace *find_session_ust_trace_by_pid(
-		struct ltt_session *session, pid_t pid)
+int ustctl_register_done(int sock)
 {
-	struct ltt_ust_trace *iter;
+	struct lttcomm_ust_msg command;
+	struct lttcomm_ust_reply *reply;
 
-	cds_list_for_each_entry(iter, &session->ust_traces, list) {
-		if (iter->pid == pid) {
-			/* Found */
-			return iter;
-		}
-	}
+	DBG("Sending register done command to %d", sock);
 
-	return NULL;
-}
+	command.cmd = LTTNG_UST_REGISTER_DONE;
+	command.handle = LTTNG_UST_ROOT_HANDLE;
 
-/*
- *  get_trace_count_per_session
- *
- *  Return the total count of traces (ust and kernel)
- *  for the specified session.
- */
-int get_trace_count_per_session(struct ltt_session *session)
-{
-	return session->ust_trace_count;
-}
-
-/*
- *  get_traces_per_session
- *
- *  Fill the lttng_trace array of all the
- *  available trace of the session.
- */
-/*
-void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces)
-{
-	int i = 0;
-	struct ltt_ust_trace *ust_iter;
-	struct lttng_trace trace;
-
-	DBG("Getting userspace traces for session %s", session->name);
-
-	cds_list_for_each_entry(ust_iter, &session->ust_traces, list) {
-		trace.type = USERSPACE;
-		trace.pid = ust_iter->pid;
-		strncpy(trace.name, ust_iter->name, sizeof(trace.name));
-		trace.name[sizeof(trace.name) - 1] = '\0';
-		memcpy(&traces[i], &trace, sizeof(trace));
-		memset(&trace, 0, sizeof(trace));
-		i++;
-	}
-
-	DBG("Getting kernel traces for session %s", session->name);
-
-	if (session->kern_session_count > 0) {
-		trace.type = KERNEL;
-		strncpy(trace.name, "kernel", sizeof(trace.name));
-		trace.name[sizeof(trace.name) - 1] = '\0';
-		memcpy(&traces[i], &trace, sizeof(trace));
-	}
-}
-*/
-
-/*
- *  ust_create_trace
- *
- *  Create an userspace trace using pid.
- *  This trace is then appended to the current session
- *  ust trace list.
- */
-int ust_create_trace(struct command_ctx *cmd_ctx)
-{
-	int ret;
-	struct ltt_ust_trace *trace;
-
-	DBG("Creating trace for pid %d", cmd_ctx->lsm->pid);
-
-	trace = malloc(sizeof(struct ltt_ust_trace));
-	if (trace == NULL) {
-		perror("malloc");
-		ret = -1;
+	reply = ustcomm_send_command(sock, &command);
+	if (reply == NULL) {
 		goto error;
 	}
 
-	/* Init */
-	trace->pid = cmd_ctx->lsm->pid;
-	trace->shmid = 0;
-	/* NOTE: to be removed. Trace name will no longer be
-	 * required for LTTng userspace tracer. For now, we set it
-	 * to 'auto' for API compliance.
-	 */
-	snprintf(trace->name, 5, "auto");
-
-	ret = ustctl_create_trace(cmd_ctx->ust_sock, trace->name);
-	if (ret < 0) {
-		ret = LTTCOMM_CREATE_FAIL;
-		goto error_create;
-	}
-
-	/* Check if current session is valid */
-	if (cmd_ctx->session) {
-		cds_list_add(&trace->list, &cmd_ctx->session->ust_traces);
-		cmd_ctx->session->ust_trace_count++;
-	}
-
-	return LTTCOMM_OK;
-
-error_create:
-	free(trace);
-error:
-	return ret;
-}
-
-/*
- *  ust_start_trace
- *
- *  Start a trace. This trace, identified by the pid, must be
- *  in the current session ust_traces list.
- */
-int ust_start_trace(struct command_ctx *cmd_ctx)
-{
-	int ret;
-	struct ltt_ust_trace *trace;
-
-	DBG("Starting trace for pid %d", cmd_ctx->lsm->pid);
-
-	trace = find_session_ust_trace_by_pid(cmd_ctx->session, cmd_ctx->lsm->pid);
-	if (trace == NULL) {
-		ret = LTTCOMM_NO_TRACE;
+	if (reply->ret_code != LTTCOMM_OK) {
+		DBG("Return code: %s", lttcomm_get_readable_code(reply->ret_code));
 		goto error;
 	}
 
-	ret = ustctl_start_trace(cmd_ctx->ust_sock, "auto");
-	if (ret < 0) {
-		ret = LTTCOMM_START_FAIL;
-		goto error;
-	}
-
-	ret = LTTCOMM_OK;
+	return 0;
 
 error:
-	return ret;
+	return -1;
 }
 
 /*
- *  ust_stop_trace
- *
- *  Stop a trace. This trace, identified by the pid, must be
- *  in the current session ust_traces list.
+ * Create an UST session on the tracer.
  */
-int ust_stop_trace(struct command_ctx *cmd_ctx)
+int ustctl_create_session(struct ltt_ust_session *session)
 {
-	int ret;
-	struct ltt_ust_trace *trace;
+	struct lttcomm_ust_msg command;
+	struct lttcomm_ust_reply *reply;
 
-	DBG("Stopping trace for pid %d", cmd_ctx->lsm->pid);
+	DBG("Creating UST session for app pid:%d", session->app->pid);
 
-	trace = find_session_ust_trace_by_pid(cmd_ctx->session, cmd_ctx->lsm->pid);
-	if (trace == NULL) {
-		ret = LTTCOMM_NO_TRACE;
+	command.cmd = LTTNG_UST_SESSION;
+	command.handle = LTTNG_UST_ROOT_HANDLE;
+
+	reply = ustcomm_send_command(session->app->sock, &command);
+	if (reply == NULL) {
 		goto error;
 	}
 
-	ret = ustctl_stop_trace(cmd_ctx->ust_sock, trace->name);
-	if (ret < 0) {
-		ret = LTTCOMM_STOP_FAIL;
+	if (reply->ret_code != LTTCOMM_OK) {
+		DBG("Return code: %s", lttcomm_get_readable_code(reply->ret_code));
 		goto error;
 	}
 
-	ret = LTTCOMM_OK;
+	/* Save session handle */
+	session->handle = reply->handle;
+
+	return 0;
 
 error:
-	return ret;
+	return -1;
 }
-#endif
-

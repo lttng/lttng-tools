@@ -19,4 +19,10 @@
 #ifndef _LTT_UST_CTL_H
 #define _LTT_UST_CTL_H
 
+#include "trace-ust.h"
+
+int ustctl_register_done(int sock);
+int ustctl_create_session(struct ltt_ust_session *session);
+int ustctl_destroy_session(struct ltt_ust_session *session);
+
 #endif /* _LTT_UST_CTL_H */
