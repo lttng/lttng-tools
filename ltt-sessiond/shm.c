@@ -41,7 +41,6 @@
 static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 {
 	int wait_shm_fd, ret;
-	pid_t pid;
 	mode_t mode;
 
 	/* Default permissions */
@@ -84,68 +83,33 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	}
 
 	/*
-	 * If the open failed because the file did not exist, try creating it
-	 * ourself.
+	 * We're alone in a child process, so we can modify the process-wide
+	 * umask.
 	 */
-	pid = fork();
-	if (pid > 0) {
-		int status;
-		/*
-		 * Parent: wait for child to return, in which case the shared memory
-		 * map will have been created.
-		 */
-		pid = wait(&status);
-		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-			goto error;
-		}
+	umask(~mode);
 
-		/*
-		 * Try to open read-only again after creation.
-		 */
-		wait_shm_fd = shm_open(shm_path, O_RDWR, 0);
-		if (wait_shm_fd < 0) {
-			/*
-			 * Real-only open did not work. It's a failure that prohibits using
-			 * shm.
-			 */
-			ERR("Error opening shm %s", shm_path);
-			goto error;
-		}
-		goto end;
-	} else if (pid == 0) {
-		/*
-		 * We're alone in a child process, so we can modify the process-wide
-		 * umask.
-		 */
-		umask(~mode);
-
-		/*
-		 * Try creating shm (or get rw access). We don't do an exclusive open,
-		 * because we allow other processes to create+ftruncate it
-		 * concurrently.
-		 */
-		wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
-		if (wait_shm_fd >= 0) {
-			ret = ftruncate(wait_shm_fd, mmap_size);
-			if (ret < 0) {
-				perror("ftruncate wait shm");
-				exit(EXIT_FAILURE);
-			}
-
-			ret = fchmod(wait_shm_fd, mode);
-			if (ret < 0) {
-				perror("fchmod");
-				exit(EXIT_FAILURE);
-			}
-			exit(EXIT_SUCCESS);
-		}
-		ERR("Error opening shm %s", shm_path);
-		exit(EXIT_FAILURE);
-	} else {
-		return -1;
+	/*
+	 * Try creating shm (or get rw access). We don't do an exclusive open,
+	 * because we allow other processes to create+ftruncate it concurrently.
+	 */
+	wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
+	if (wait_shm_fd < 0) {
+		perror("shm_open wait shm");
+		goto error;
 	}
 
-end:
+	ret = ftruncate(wait_shm_fd, mmap_size);
+	if (ret < 0) {
+		perror("ftruncate wait shm");
+		exit(EXIT_FAILURE);
+	}
+
+	ret = fchmod(wait_shm_fd, mode);
+	if (ret < 0) {
+		perror("fchmod");
+		exit(EXIT_FAILURE);
+	}
+
 	DBG("Got the wait shm fd %d", wait_shm_fd);
 
 	return wait_shm_fd;
@@ -177,6 +141,7 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 
 	wait_shm_mmap = mmap(NULL, mmap_size, PROT_WRITE | PROT_READ,
 			MAP_SHARED, wait_shm_fd, 0);
+
 	/* close shm fd immediately after taking the mmap reference */
 	ret = close(wait_shm_fd);
 	if (ret) {
