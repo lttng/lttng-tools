@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools], [2.0-pre11], [david.goulet@polymtl.ca], ,[http://lttng.org])
+AC_INIT([lttng-tools], [2.0-pre12], [david.goulet@polymtl.ca], ,[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -12,6 +12,9 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
+# URCU library version needed or newer
+liburcu_version="0.6.0"
+
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
 	[AC_MSG_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]
@@ -22,20 +25,22 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-# Check liburcu list.h
+# Check liburcu list.h, wfqueue.h, futex.h
 AC_CHECK_DECL([cds_list_add], [],
-	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/list.h>]]
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
 )
 
-<<<<<<< HEAD
 # Check liburcu
 AC_CHECK_DECL([caa_get_cycles], [],
-	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/arch.h>]]
-=======
-# Check liburcu wfqueue.h
+	[AC_MSG_ERROR([liburcu liburcu_version or newer is needed])], [[#include <urcu/arch.h>]]
+)
+
 AC_CHECK_DECL([cds_wfq_init], [],
-	[AC_MSG_ERROR([liburcu 0.5.4 or newer is needed])], [[#include <urcu/wfqueue.h>]]
->>>>>>> master
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
+)
+
+AC_CHECK_DECL([futex_async], [],
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
 )
 
 AC_PROG_CC

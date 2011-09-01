@@ -20,7 +20,7 @@
 
 #include <lttng-kernel.h>
 
-#include "trace.h"
+#include "trace-kernel.h"
 
 int add_kernel_context(struct ltt_kernel_session *ksession,
 		struct lttng_kernel_context *kctx, char *event_name,

@@ -16,6 +16,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <stdlib.h>
+
 #include <lttngerr.h>
 
 #include "ust-comm.h"
@@ -24,12 +26,18 @@
  * Send msg containing a command to an UST application via sock and wait for
  * the reply.
  *
- * Return -1 on error or if reply fails else return 0.
+ * Return the replied structure or NULL.
  */
-int ustcomm_send_command(int sock, struct lttcomm_ust_msg *msg)
+struct lttcomm_ust_reply *ustcomm_send_command(int sock,
+		struct lttcomm_ust_msg *msg)
 {
 	ssize_t len;
-	struct lttcomm_ust_reply reply;
+	struct lttcomm_ust_reply *reply;
+
+	/* Extra safety */
+	if (msg == NULL || sock < 0) {
+		goto error;
+	}
 
 	DBG("Sending UST command %d to sock %d", msg->cmd, sock);
 
@@ -39,20 +47,22 @@ int ustcomm_send_command(int sock, struct lttcomm_ust_msg *msg)
 		goto error;
 	}
 
+	reply = malloc(sizeof(struct lttcomm_ust_reply));
+	if (reply == NULL) {
+		perror("malloc ust reply");
+		goto error;
+	}
+
 	DBG("Receiving UST reply on sock %d", sock);
 
 	/* Get UST reply */
-	len = lttcomm_recv_unix_sock(sock, &reply, sizeof(reply));
-	if (len < 0) {
+	len = lttcomm_recv_unix_sock(sock, reply, sizeof(*reply));
+	if (len < 0 || len < sizeof(*reply)) {
 		goto error;
 	}
 
-	if (reply.ret_code != LTTCOMM_OK) {
-		goto error;
-	}
-
-	return 0;
+	return reply;
 
 error:
-	return -1;
+	return NULL;
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
- * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,11 +29,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <urcu/futex.h>
 #include <unistd.h>
 
 #include <ltt-kconsumerd.h>
@@ -45,10 +48,11 @@
 #include "futex.h"
 #include "kernel-ctl.h"
 #include "ltt-sessiond.h"
+#include "shm.h"
 #include "traceable-app.h"
 #include "ust-ctl.h"
 #include "utils.h"
-#include "ust-comm.h"
+#include "ust-ctl.h"
 
 #include "benchmark.h"
 
@@ -77,6 +81,7 @@ static char apps_unix_sock_path[PATH_MAX];				/* Global application Unix socket 
 static char client_unix_sock_path[PATH_MAX];			/* Global client Unix socket path */
 static char kconsumerd_err_unix_sock_path[PATH_MAX];	/* kconsumerd error Unix socket path */
 static char kconsumerd_cmd_unix_sock_path[PATH_MAX];	/* kconsumerd command Unix socket path */
+static char wait_shm_path[PATH_MAX];                    /* global wait shm path for UST */
 
 /* Sockets and FDs */
 static int client_sock;
@@ -109,8 +114,6 @@ static sem_t kconsumerd_sem;
 
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
-static int modprobe_remove_kernel_modules(void);
-
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
  * wakers / 1 waiter implemented and detailed in futex.c/.h
@@ -132,6 +135,44 @@ static struct ust_cmd_queue ust_cmd_queue;
  */
 static struct ltt_session_list *session_list_ptr;
 
+/*
+ * Remove modules in reverse load order.
+ */
+static int modprobe_remove_kernel_modules(void)
+{
+	int ret = 0, i;
+	char modprobe[256];
+
+	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
+		ret = snprintf(modprobe, sizeof(modprobe),
+				"/sbin/modprobe --remove --quiet %s",
+				kernel_modules_list[i].name);
+		if (ret < 0) {
+			perror("snprintf modprobe --remove");
+			goto error;
+		}
+		modprobe[sizeof(modprobe) - 1] = '\0';
+		ret = system(modprobe);
+		if (ret == -1) {
+			ERR("Unable to launch modprobe --remove for module %s",
+					kernel_modules_list[i].name);
+		} else if (kernel_modules_list[i].required
+				&& WEXITSTATUS(ret) != 0) {
+			ERR("Unable to remove module %s",
+					kernel_modules_list[i].name);
+		} else {
+			DBG("Modprobe removal successful %s",
+					kernel_modules_list[i].name);
+		}
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Return group ID of the tracing group or -1 if not found.
+ */
 static gid_t allowed_group(void)
 {
 	struct group *grp;
@@ -184,7 +225,7 @@ static void teardown_kernel_session(struct ltt_session *session)
 			lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
 		}
 
-		trace_destroy_kernel_session(session->kernel_session);
+		trace_kernel_destroy_session(session->kernel_session);
 		/* Extra precaution */
 		session->kernel_session = NULL;
 	}
@@ -216,7 +257,7 @@ static void cleanup(void)
 	DBG("Cleaning up");
 
 	/* <fun> */
-	MSG("\n%c[%d;%dm*** assert failed *** ==> %c[%dm%c[%d;%dm"
+	MSG("%c[%d;%dm*** assert failed *** ==> %c[%dm%c[%d;%dm"
 		"Matthew, BEET driven development works!%c[%dm",
 		27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
 	/* </fun> */
@@ -254,8 +295,10 @@ static void cleanup(void)
 	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
 
-	DBG("Unloading kernel modules");
-	modprobe_remove_kernel_modules();
+	if (is_root) {
+		DBG("Unloading kernel modules");
+		modprobe_remove_kernel_modules();
+	}
 
 	/* OUTPUT BENCHMARK RESULTS */
 	bench_init();
@@ -413,65 +456,30 @@ error:
 	return ret;
 }
 
-#ifdef DISABLED
 /*
- * Return a socket connected to the libust communication socket of the
- * application identified by the pid.
- *
- * If the pid is not found in the traceable list, return -1 to indicate error.
+ * Notify UST applications using the shm mmap futex.
  */
-static int ust_connect_app(pid_t pid)
+static int notify_ust_apps(int active)
 {
-	int sock;
-	struct ltt_traceable_app *lta;
+	char *wait_shm_mmap;
 
-	DBG("Connect to application pid %d", pid);
+	DBG("Notifying applications of session daemon state: %d", active);
 
-	lta = find_app_by_pid(pid);
-	if (lta == NULL) {
-		/* App not found */
-		DBG("Application pid %d not found", pid);
-		return -1;
-	}
-
-	sock = ustctl_connect_pid(lta->pid);
-	if (sock < 0) {
-		ERR("Fail connecting to the PID %d", pid);
-	}
-
-	return sock;
-}
-
-/*
- * Notify apps by writing 42 to a named pipe using name. Every applications
- * waiting for a ltt-sessiond will be notified and re-register automatically to
- * the session daemon.
- *
- * Return open or write error value.
- */
-static int notify_apps(const char *name)
-{
-	int fd;
-	int ret = -1;
-
-	DBG("Notify the global application pipe");
-
-	/* Try opening the global pipe */
-	fd = open(name, O_WRONLY);
-	if (fd < 0) {
+	/* See shm.c for this call implying mmap, shm and futex calls */
+	wait_shm_mmap = shm_ust_get_mmap(wait_shm_path, is_root);
+	if (wait_shm_mmap == NULL) {
 		goto error;
 	}
 
-	/* Notify by writing on the pipe */
-	ret = write(fd, "42", 2);
-	if (ret < 0) {
-		perror("write");
-	}
+	/* Wake waiting process */
+	futex_wait_update((int32_t *) wait_shm_mmap, active);
+
+	/* Apps notified successfully */
+	return 0;
 
 error:
-	return ret;
+	return -1;
 }
-#endif	/* DISABLED */
 
 /*
  * Setup the outgoing data buffer for the response (llm) by allocating the
@@ -846,16 +854,25 @@ error:
  *
  * The first two fds must be there at all time.
  */
-static int update_apps_cmd_pollfd(unsigned int nb_fd, struct pollfd **pollfd)
+static int update_apps_cmd_pollfd(unsigned int nb_fd, unsigned int old_nb_fd,
+		struct pollfd **pollfd)
 {
+	int i, count;
+	struct pollfd *old_pollfd = NULL;
+
 	/* Can't accept pollfd less than 2 */
 	if (nb_fd < 2) {
 		goto end;
 	}
 
-	*pollfd = realloc(*pollfd, nb_fd * sizeof(struct pollfd));
+	if (*pollfd) {
+		/* Save pointer */
+		old_pollfd = *pollfd;
+	}
+
+	*pollfd = malloc(nb_fd * sizeof(struct pollfd));
 	if (*pollfd == NULL) {
-		perror("realloc manage apps pollfd");
+		perror("malloc manage apps pollfd");
 		goto error;
 	}
 
@@ -865,28 +882,34 @@ static int update_apps_cmd_pollfd(unsigned int nb_fd, struct pollfd **pollfd)
 	(*pollfd)[1].fd = apps_cmd_pipe[0];
 	(*pollfd)[1].events = POLLIN;
 
+	/* Start count after the two pipes below */
+	count = 2;
+	for (i = 2; i < old_nb_fd; i++) {
+		/* Add to new pollfd */
+		if (old_pollfd[i].fd != -1) {
+			(*pollfd)[count].fd = old_pollfd[i].fd;
+			(*pollfd)[count].events = POLLHUP | POLLNVAL | POLLERR;
+			count++;
+		}
+
+		if (count > nb_fd) {
+			ERR("Updating poll fd wrong size");
+			goto error;
+		}
+	}
+
+	/* Destroy old pollfd */
+	free(old_pollfd);
+
 	DBG("Apps cmd pollfd realloc of size %d", nb_fd);
 
 end:
 	return 0;
 
 error:
+	/* Destroy old pollfd */
+	free(old_pollfd);
 	return -1;
-}
-
-/*
- * Send registration done packet to the application.
- */
-static int send_ust_register_done(int sock)
-{
-	struct lttcomm_ust_msg lum;
-
-	DBG("Sending register done command to %d", sock);
-
-	lum.cmd = LTTNG_UST_REGISTER_DONE;
-	lum.handle = LTTNG_UST_ROOT_HANDLE;
-
-	return ustcomm_send_command(sock, &lum);
 }
 
 /*
@@ -913,16 +936,17 @@ static void *thread_manage_apps(void *data)
 
 		/* The pollfd struct must be updated */
 		if (update_poll_flag) {
-			ret = update_apps_cmd_pollfd(nb_fd, &pollfd);
+			ret = update_apps_cmd_pollfd(nb_fd, ARRAY_SIZE(pollfd), &pollfd);
 			if (ret < 0) {
 				/* malloc failed so we quit */
 				goto error;
 			}
+
 			if (ust_cmd.sock != -1) {
 				/* Update pollfd with the new UST socket */
 				DBG("Adding sock %d to apps cmd pollfd", ust_cmd.sock);
 				pollfd[nb_fd - 1].fd = ust_cmd.sock;
-				pollfd[nb_fd - 1].events = POLLHUP | POLLNVAL;
+				pollfd[nb_fd - 1].events = POLLHUP | POLLNVAL | POLLERR;
 				ust_cmd.sock = -1;
 			}
 		}
@@ -939,31 +963,36 @@ static void *thread_manage_apps(void *data)
 		/* Thread quit pipe has been closed. Killing thread. */
 		if (pollfd[0].revents == POLLNVAL) {
 			goto error;
-		} else if (pollfd[1].revents == POLLERR) {
-			ERR("Apps command pipe poll error");
-			goto error;
-		} else if (pollfd[1].revents == POLLIN) {
-			/* Empty pipe */
-			ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
-			if (ret < 0 || ret < sizeof(ust_cmd)) {
-				perror("read apps cmd pipe");
+		} else {
+			/* apps_cmd_pipe pipe events */
+			switch (pollfd[1].revents) {
+			case POLLERR:
+				ERR("Apps command pipe poll error");
 				goto error;
-			}
+			case POLLIN:
+				/* Empty pipe */
+				ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
+				if (ret < 0 || ret < sizeof(ust_cmd)) {
+					perror("read apps cmd pipe");
+					goto error;
+				}
 
-			/* Register applicaton to the session daemon */
-			ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
-			if (ret < 0) {
-				/* Only critical ENOMEM error can be returned here */
-				goto error;
-			}
+				/* Register applicaton to the session daemon */
+				ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
+				if (ret < 0) {
+					/* Only critical ENOMEM error can be returned here */
+					goto error;
+				}
 
-			ret = send_ust_register_done(ust_cmd.sock);
-			if (ret < 0) {
-				/*
-				 * If the registration is not possible, we simply unregister
-				 * the apps and continue
-				 */
-				unregister_traceable_app(ust_cmd.sock);
+				ret = ustctl_register_done(ust_cmd.sock);
+				if (ret < 0) {
+					/*
+					 * If the registration is not possible, we simply unregister
+					 * the apps and continue
+					 */
+					unregister_traceable_app(ust_cmd.sock);
+				}
+				break;
 			}
 		}
 
@@ -971,11 +1000,15 @@ static void *thread_manage_apps(void *data)
 		for (i = 2; i < count; i++) {
 			/* Apps socket is closed/hungup */
 			switch (pollfd[i].revents) {
-			case POLLNVAL:
+			case POLLERR:
 			case POLLHUP:
+			case POLLNVAL:
 				/* Pipe closed */
 				unregister_traceable_app(pollfd[i].fd);
+				/* Indicate to remove this fd from the pollfd */
+				pollfd[i].fd = -1;
 				nb_fd--;
+				break;
 			}
 		}
 
@@ -1021,8 +1054,12 @@ static void *thread_dispatch_ust_registration(void *data)
 
 			ust_cmd = caa_container_of(node, struct ust_command, node);
 
-			DBG("Dispatching UST registration pid:%d sock:%d",
-					ust_cmd->reg_msg.pid, ust_cmd->sock);
+			DBG("Dispatching UST registration pid:%d ppid:%d uid:%d"
+					" gid:%d sock:%d name:%s (version %d.%d)",
+					ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
+					ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
+					ust_cmd->sock, ust_cmd->reg_msg.name,
+					ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
 			/*
 			 * Inform apps thread of the new application registration. This
 			 * call is blocking so we can be assured that the data will be read
@@ -1094,7 +1131,12 @@ static void *thread_registration_apps(void *data)
 	pollfd[1].events = POLLIN;
 
 	/* Notify all applications to register */
-	//notify_apps(default_global_apps_pipe);
+	ret = notify_ust_apps(1);
+	if (ret < 0) {
+		ERR("Failed to notify applications or create the wait shared memory.\n"
+			"Execution continues but there might be problem for already running\n"
+			"applications that wishes to register.");
+	}
 
 	while (1) {
 		DBG("Accepting application registration");
@@ -1134,8 +1176,12 @@ static void *thread_registration_apps(void *data)
 		 */
 		ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
 				sizeof(struct ust_register_msg));
-		if (ret < 0 || ret != sizeof(struct ust_register_msg)) {
-			perror("lttcomm_recv_unix_sock register apps");
+		if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
+			if (ret < 0) {
+				perror("lttcomm_recv_unix_sock register apps");
+			} else {
+				ERR("Wrong size received on apps register");
+			}
 			free(ust_cmd);
 			close(sock);
 			continue;
@@ -1143,6 +1189,12 @@ static void *thread_registration_apps(void *data)
 
 		ust_cmd->sock = sock;
 
+		DBG("UST registration received with pid:%d ppid:%d uid:%d"
+				" gid:%d sock:%d name:%s (version %d.%d)",
+				ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
+				ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
+				ust_cmd->sock, ust_cmd->reg_msg.name,
+				ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
 		/*
 		 * Lock free enqueue the registration request.
 		 * The red pill has been taken! This apps will be part of the *system*
@@ -1154,21 +1206,19 @@ static void *thread_registration_apps(void *data)
 		 * Implicit memory barrier with the exchange in cds_wfq_enqueue.
 		 */
 		futex_nto1_wake(&ust_cmd_queue.futex);
-
-		DBG("Thread manage apps informed of queued node with sock:%d pid:%d",
-				sock, ust_cmd->reg_msg.pid);
 	}
 
 error:
-	DBG("Register apps thread dying");
-	if (apps_sock) {
-		close(apps_sock);
-	}
-	if (sock) {
-		close(sock);
-	}
+	DBG("UST Registration thread dying");
+
+	/* Notify that the registration thread is gone */
+	notify_ust_apps(0);
+
+	close(apps_sock);
+	close(sock);
 
 	unlink(apps_unix_sock_path);
+
 	return NULL;
 }
 
@@ -1334,42 +1384,6 @@ static int modprobe_kernel_modules(void)
 				kernel_modules_list[i].name);
 		} else {
 			DBG("Modprobe successfully %s",
-				kernel_modules_list[i].name);
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * modprobe_remove_kernel_modules
- * Remove modules in reverse load order.
- */
-static int modprobe_remove_kernel_modules(void)
-{
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-			"/sbin/modprobe --remove --quiet %s",
-			kernel_modules_list[i].name);
-		if (ret < 0) {
-			perror("snprintf modprobe --remove");
-			goto error;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe --remove for module %s",
-				kernel_modules_list[i].name);
-		} else if (kernel_modules_list[i].required
-				&& WEXITSTATUS(ret) != 0) {
-			ERR("Unable to remove module %s",
-				kernel_modules_list[i].name);
-		} else {
-			DBG("Modprobe removal successful %s",
 				kernel_modules_list[i].name);
 		}
 	}
@@ -1574,6 +1588,43 @@ error:
 }
 
 /*
+ * Create an UST session and add it to the session ust list.
+ */
+static int create_ust_session(pid_t pid, struct ltt_session *session)
+{
+	int ret = -1;
+	struct ltt_ust_session *lus;
+
+	DBG("Creating UST session");
+
+	lus = trace_ust_create_session(session->path, pid);
+	if (lus == NULL) {
+		goto error;
+	}
+
+	ret = mkdir_recursive(lus->path, S_IRWXU | S_IRWXG,
+			geteuid(), allowed_group());
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ERR("Trace directory creation error");
+			goto error;
+		}
+	}
+
+	/* Create session on the UST tracer */
+	ret = ustctl_create_session(lus);
+	if (ret < 0) {
+		goto error;
+	}
+
+	return 0;
+
+error:
+	free(lus);
+	return ret;
+}
+
+/*
  * Create a kernel tracer session then create the default channel.
  */
 static int create_kernel_session(struct ltt_session *session)
@@ -1591,13 +1642,6 @@ static int create_kernel_session(struct ltt_session *session)
 	/* Set kernel consumer socket fd */
 	if (kconsumerd_cmd_sock) {
 		session->kernel_session->consumer_fd = kconsumerd_cmd_sock;
-	}
-
-	ret = asprintf(&session->kernel_session->trace_path, "%s/kernel",
-			session->path);
-	if (ret < 0) {
-		perror("asprintf kernel traces path");
-		goto error;
 	}
 
 	ret = mkdir_recursive(session->kernel_session->trace_path,
@@ -1755,7 +1799,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				goto error;
 			}
 		}
-
 		/* Need a session for kernel command */
 		switch (cmd_ctx->lsm->cmd_type) {
 		case LTTNG_CALIBRATE:
@@ -1770,9 +1813,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_SESS_FAIL;
 					goto error;
 				}
-
 				/* Start the kernel consumer daemon */
-
 				if (kconsumerd_pid == 0 &&
 						cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 					ret = start_kconsumerd();
@@ -1782,6 +1823,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 			}
 		}
+		break;
+	case LTTNG_DOMAIN_UST_PID:
 		break;
 	default:
 		break;
@@ -1839,7 +1882,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
@@ -1877,14 +1920,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 				goto error;
 			}
 
-			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.disable.name, kchan);
+			kevent = trace_kernel_get_event_by_name(cmd_ctx->lsm->u.disable.name, kchan);
 			if (kevent != NULL) {
 				DBG("Disabling kernel event %s for channel %s.", kevent->event->name,
 						kchan->channel->name);
@@ -1920,7 +1963,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
 			DBG("Disabling all enabled kernel events");
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.disable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
@@ -1961,7 +2004,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.enable.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				/* Channel not found, creating it */
@@ -1993,8 +2036,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 			kernel_wait_quiescent(kernel_tracer_fd);
 			break;
+		case LTTNG_DOMAIN_UST_PID:
+
+			break;
 		default:
-			/* TODO: Userspace tracing */
 			ret = LTTCOMM_NOT_IMPLEMENTED;
 			goto error;
 		}
@@ -2019,7 +2064,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(channel_name,
+			kchan = trace_kernel_get_channel_by_name(channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				DBG("Channel not found. Creating channel %s", channel_name);
@@ -2036,7 +2081,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CHAN_FAIL;
 					goto error;
 				}
-				kchan = get_kernel_channel_by_name(channel_name,
+				kchan = trace_kernel_get_channel_by_name(channel_name,
 						cmd_ctx->session->kernel_session);
 				if (kchan == NULL) {
 					ERR("Channel %s not found after creation. Internal error, giving up.",
@@ -2046,7 +2091,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 			}
 
-			kevent = get_kernel_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
+			kevent = trace_kernel_get_event_by_name(cmd_ctx->lsm->u.enable.event.name, kchan);
 			if (kevent == NULL) {
 				DBG("Creating kernel event %s for channel %s.",
 						cmd_ctx->lsm->u.enable.event.name, channel_name);
@@ -2097,7 +2142,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			kchan = get_kernel_channel_by_name(channel_name,
+			kchan = trace_kernel_get_channel_by_name(channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				DBG("Channel not found. Creating channel %s", channel_name);
@@ -2114,7 +2159,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CHAN_FAIL;
 					goto error;
 				}
-				kchan = get_kernel_channel_by_name(channel_name,
+				kchan = trace_kernel_get_channel_by_name(channel_name,
 						cmd_ctx->session->kernel_session);
 				if (kchan == NULL) {
 					ERR("Channel %s not found after creation. Internal error, giving up.",
@@ -2141,7 +2186,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 
 			for (i = 0; i < size; i++) {
-				kevent = get_kernel_event_by_name(event_list[i].name, kchan);
+				kevent = trace_kernel_get_event_by_name(event_list[i].name, kchan);
 				if (kevent == NULL) {
 					/* Default event type for enable all */
 					event_list[i].type = LTTNG_EVENT_TRACEPOINT;
@@ -2382,7 +2427,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			nb_dom++;
 		}
 
-		nb_dom += cmd_ctx->session->ust_trace_count;
+		nb_dom += cmd_ctx->session->ust_session_list.count;
 
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_domain) * nb_dom);
 		if (ret < 0) {
@@ -2429,7 +2474,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		struct ltt_kernel_channel *kchan = NULL;
 
 		if (cmd_ctx->session->kernel_session != NULL) {
-			kchan = get_kernel_channel_by_name(cmd_ctx->lsm->u.list.channel_name,
+			kchan = trace_kernel_get_channel_by_name(cmd_ctx->lsm->u.list.channel_name,
 					cmd_ctx->session->kernel_session);
 			if (kchan == NULL) {
 				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
@@ -3138,6 +3183,12 @@ int main(int argc, char **argv)
 			snprintf(client_unix_sock_path, PATH_MAX,
 					DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
 		}
+
+		/* Set global SHM for ust */
+		if (strlen(wait_shm_path) == 0) {
+			snprintf(wait_shm_path, PATH_MAX,
+					DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
+		}
 	} else {
 		home_path = get_home_dir();
 		if (home_path == NULL) {
@@ -3156,6 +3207,12 @@ int main(int argc, char **argv)
 		if (strlen(client_unix_sock_path) == 0) {
 			snprintf(client_unix_sock_path, PATH_MAX,
 					DEFAULT_HOME_CLIENT_UNIX_SOCK, home_path);
+		}
+
+		/* Set global SHM for ust */
+		if (strlen(wait_shm_path) == 0) {
+			snprintf(wait_shm_path, PATH_MAX,
+					DEFAULT_HOME_APPS_WAIT_SHM_PATH, geteuid());
 		}
 	}
 

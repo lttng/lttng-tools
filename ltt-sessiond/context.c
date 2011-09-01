@@ -39,7 +39,7 @@ static int add_kctx_to_event(struct lttng_kernel_context *kctx,
 
 	DBG("Add kernel context to event %s", event_name);
 
-	kevent = get_kernel_event_by_name(event_name, kchan);
+	kevent = trace_kernel_get_event_by_name(event_name, kchan);
 	if (kevent != NULL) {
 		ret = kernel_add_event_context(kevent, kctx);
 		if (ret < 0) {
@@ -165,7 +165,7 @@ int add_kernel_context(struct ltt_kernel_session *ksession,
 		}
 	} else {
 		/* Get kernel channel */
-		kchan = get_kernel_channel_by_name(channel_name, ksession);
+		kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
 		if (kchan == NULL) {
 			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 			goto error;

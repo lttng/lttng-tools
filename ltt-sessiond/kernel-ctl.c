@@ -102,7 +102,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	struct ltt_kernel_session *lks;
 
 	/* Allocate data structure */
-	lks = trace_create_kernel_session();
+	lks = trace_kernel_create_session(session->path);
 	if (lks == NULL) {
 		ret = -1;
 		goto error;
@@ -144,7 +144,7 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	struct ltt_kernel_channel *lkc;
 
 	/* Allocate kernel channel */
-	lkc = trace_create_kernel_channel(chan, path);
+	lkc = trace_kernel_create_channel(chan, path);
 	if (lkc == NULL) {
 		goto error;
 	}
@@ -187,7 +187,7 @@ int kernel_create_event(struct lttng_event *ev,
 	int ret;
 	struct ltt_kernel_event *event;
 
-	event = trace_create_kernel_event(ev);
+	event = trace_kernel_create_event(ev);
 	if (event == NULL) {
 		goto error;
 	}
@@ -322,7 +322,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session, char *path)
 	struct ltt_kernel_metadata *lkm;
 
 	/* Allocate kernel metadata */
-	lkm = trace_create_kernel_metadata(path);
+	lkm = trace_kernel_create_metadata(path);
 	if (lkm == NULL) {
 		goto error;
 	}
@@ -474,7 +474,7 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	struct ltt_kernel_stream *lks;
 
 	while ((ret = kernctl_create_stream(channel->fd)) > 0) {
-		lks = trace_create_kernel_stream();
+		lks = trace_kernel_create_stream();
 		if (lks == NULL) {
 			close(ret);
 			goto error;

@@ -269,7 +269,7 @@ int main(int argc, char **argv)
 	}
 	/* Basic init session values */
 	assert(tmp->kernel_session == NULL);
-	assert(tmp->ust_trace_count == 0);
+	assert(tmp->ust_session_list.count == 0);
 	assert(strlen(tmp->path));
 	assert(strlen(tmp->name));
 	lock_session(tmp);

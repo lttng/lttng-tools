@@ -20,7 +20,7 @@
 #define _LTT_KERNEL_CTL_H
 
 #include "session.h"
-#include "trace.h"
+#include "trace-kernel.h"
 
 /*
  * Default size for the event list when kernel_list_events is called. This size

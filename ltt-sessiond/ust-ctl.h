@@ -19,15 +19,10 @@
 #ifndef _LTT_UST_CTL_H
 #define _LTT_UST_CTL_H
 
-#include "session.h"
-#include "trace.h"
+#include "trace-ust.h"
 
-/*
-int get_trace_count_per_session(struct ltt_session *session);
-void get_traces_per_session(struct ltt_session *session, struct lttng_trace *traces);
-int ust_create_trace(struct command_ctx *cmd_ctx);
-int ust_start_trace(struct command_ctx *cmd_ctx);
-int ust_stop_trace(struct command_ctx *cmd_ctx);
-*/
+int ustctl_register_done(int sock);
+int ustctl_create_session(struct ltt_ust_session *session);
+int ustctl_destroy_session(struct ltt_ust_session *session);
 
-#endif /* _LTT_TRACE_H */
+#endif /* _LTT_UST_CTL_H */

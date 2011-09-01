@@ -16,12 +16,9 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_FUTEX_H
-#define _LTT_FUTEX_H
+#ifndef _LTT_SHM_H
+#define _LTT_SHM_H
 
-void futex_wait_update(int32_t *futex, int active);
-void futex_nto1_prepare(int32_t *futex);
-void futex_nto1_wait(int32_t *futex);
-void futex_nto1_wake(int32_t *futex);
+char *shm_ust_get_mmap(char *shm_path, int global);
 
-#endif /* _LTT_FUTEX_H */
+#endif /* _LTT_SHM_H */
