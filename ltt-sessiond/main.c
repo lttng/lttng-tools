@@ -1106,16 +1106,6 @@ static void *thread_registration_apps(void *data)
 
 	tracepoint(sessiond_th_apps_start);
 
-	/* TODO: Something more elegant is needed but fine for now */
-	/* FIXME: change all types to either uint8_t, uint32_t, uint64_t
-	 * for 32-bit vs 64-bit compat processes. */
-	/* replicate in ust with version number */
-	struct {
-		int reg;	/* 1:register, 0:unregister */
-		pid_t pid;
-		uid_t uid;
-	} reg_msg;
-
 	DBG("[thread] Manage application registration started");
 
 	ret = lttcomm_listen_unix_sock(apps_sock);
