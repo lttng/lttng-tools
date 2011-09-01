@@ -19,7 +19,8 @@
 
 #### ADD TESTS HERE ####
 
-test_suite=( "run-boot-time.sh" "run-sessions.sh" "run-ust-register.sh" )
+test_suite=( "run-boot-time.sh" "run-sessions.sh" "run-ust-register.sh" \
+			 "run-ust-notify.sh" )
 
 #### END TESTS HERE ####
 

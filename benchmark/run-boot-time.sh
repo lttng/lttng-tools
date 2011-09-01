@@ -43,9 +43,7 @@ sleep 1
 
 kill $PID_SESSIOND
 
-echo -e "\nResults will be available shortly in $RESULTS_PATH"
-echo ""
-
-tail -F $RESULTS_PATH --pid $PID_SESSIOND 2>/dev/null
+# Trick to wait for a PID which is not a child
+tail --pid=$PID_SESSIOND --quiet -F $RESULTS_PATH > /dev/null 2>&1
 
 exit 0

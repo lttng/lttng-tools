@@ -21,7 +21,7 @@ SESSIOND_BIN="ltt-sessiond"
 RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
-echo "Session daemon boot process benchmark"
+echo "Session daemon boot"
 
 `BENCH_UST_REGISTER=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet`
 if [ $? -ne 0 ]; then
@@ -39,10 +39,9 @@ sleep 2
 # Start libust instrumented application to register.
 UST_AUTOPROBE=1 UST_TRACE=1 ./$BASEDIR/hello
 
-echo -e "\nResults will be available shortly in $RESULTS_PATH"
-echo ""
-
 kill $PID_SESSIOND
-tail -F $RESULTS_PATH --pid $PID_SESSIOND 2>/dev/null
+
+# Trick to wait for a PID which is not a child
+tail --pid=$PID_SESSIOND --quiet -F $RESULTS_PATH > /dev/null 2>&1
 
 exit 0
