@@ -28,6 +28,8 @@
 
 #include <lttngerr.h>
 
+#include "benchmark.h"
+#include "measures.h"
 #include "shm.h"
 
 /*
@@ -42,6 +44,8 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 {
 	int wait_shm_fd, ret;
 	mode_t mode;
+
+	tracepoint(ust_notify_perms_start);
 
 	/* Default permissions */
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
@@ -88,6 +92,9 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	 */
 	umask(~mode);
 
+	tracepoint(ust_notify_perms_stop);
+
+	tracepoint(ust_notify_shm_start);
 	/*
 	 * Try creating shm (or get rw access). We don't do an exclusive open,
 	 * because we allow other processes to create+ftruncate it concurrently.
@@ -109,6 +116,8 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		perror("fchmod");
 		exit(EXIT_FAILURE);
 	}
+
+	tracepoint(ust_notify_shm_stop);
 
 	DBG("Got the wait shm fd %d", wait_shm_fd);
 
@@ -139,9 +148,12 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 		goto error;
 	}
 
+	tracepoint(ust_notify_mmap_start);
+
 	wait_shm_mmap = mmap(NULL, mmap_size, PROT_WRITE | PROT_READ,
 			MAP_SHARED, wait_shm_fd, 0);
 
+	tracepoint(ust_notify_mmap_stop);
 	/* close shm fd immediately after taking the mmap reference */
 	ret = close(wait_shm_fd);
 	if (ret) {

@@ -35,6 +35,10 @@ cycles_t time_sessiond_th_kern_poll;
 cycles_t time_sessiond_th_apps_start;
 cycles_t time_sessiond_th_apps_poll;
 
+/* Session daemon thread registration apps time */
+cycles_t time_sessiond_th_reg_start;
+cycles_t time_sessiond_th_reg_poll;
+
 /* Session daemon thread manage client time */
 cycles_t time_sessiond_th_cli_start;
 cycles_t time_sessiond_th_cli_poll;
@@ -46,5 +50,66 @@ cycles_t time_create_session_end;
 /* Destroy tracing session values */
 cycles_t time_destroy_session_start;
 cycles_t time_destroy_session_end;
+
+/*
+ * UST registration time
+ *
+ * Start time is taken *after* the poll() has detected activity on the apps
+ * socket and right *before* the accept(). There is a malloc() after that
+ * accept and then we recv() the request from the client. We need to measure
+ * the complete process.
+ */
+cycles_t time_ust_register_start;
+/*
+ * The stop time is measured right after the futex() wake up.
+ */
+cycles_t time_ust_register_stop;
+
+/*
+ * UST dispatch registration request time
+ *
+ * Start time taken *after* the dequeue which is a blocking call.
+ */
+cycles_t time_ust_dispatch_register_start;
+/*
+ * Stop time taken *before* the futex() wait so at this point, the registration
+ * was sent to the manage apps thread.
+ */
+cycles_t time_ust_dispatch_register_stop;
+
+/*
+ * UST managing registration time
+ *
+ * Start *before* the thread reads the pipe containing the registration data.
+ */
+cycles_t time_ust_manage_register_start;
+/*
+ * Stop time taken *after* the register command is sent to the application.
+ */
+cycles_t time_ust_manage_register_stop;
+
+/*
+ * UST notification time (using the shm/futex scheme). Those times were break
+ * down in seperate time for each big action step.
+ *
+ * Start time taken *before* we create/get the SHM mmap.
+ */
+cycles_t time_ust_notify_apps_start;
+/*
+ * Stop time taken after waiting all processes (futex_wait_update()).
+ */
+cycles_t time_ust_notify_apps_stop;
+/* mmap() call */
+cycles_t time_ust_notify_mmap_start;
+cycles_t time_ust_notify_mmap_stop;
+/* Permissions time (chmod/chown) */
+cycles_t time_ust_notify_perms_start;
+cycles_t time_ust_notify_perms_stop;
+/* Fork process */
+cycles_t time_ust_notify_fork_start;
+cycles_t time_ust_notify_fork_stop;
+/* shm_open call */
+cycles_t time_ust_notify_shm_start;
+cycles_t time_ust_notify_shm_stop;
 
 #endif /* _MEASURES_H */

@@ -19,7 +19,7 @@
 
 #### ADD TESTS HERE ####
 
-test_suite=( "run-boot-time.sh" "run-sessions.sh" )
+test_suite=( "run-boot-time.sh" "run-sessions.sh" "run-ust-register.sh" )
 
 #### END TESTS HERE ####
 
@@ -27,7 +27,7 @@ RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
 if [ -e $RESULTS_PATH ]; then
-	mv -v $RESULTS_PATH $RESULTS_PATH.`date +%s`
+	mv -v $RESULTS_PATH "$RESULTS_PATH.`date +%s`.txt"
 fi
 
 echo ""
@@ -44,6 +44,6 @@ do
 	echo ""
 done
 
-mv -v $RESULTS_PATH results-`date +%d%m%Y.%H%M%S`.txt
+mv -v $RESULTS_PATH "results-`date +%d%m%Y.%H%M%S`.txt"
 
 exit 0

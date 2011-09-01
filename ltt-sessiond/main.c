@@ -303,7 +303,17 @@ static void cleanup(void)
 	/* OUTPUT BENCHMARK RESULTS */
 	bench_init();
 
-	bench_print_boot_process();
+	if (getenv("BENCH_UST_NOTIFY")) {
+		bench_print_ust_notification();
+	}
+
+	if (getenv("BENCH_UST_REGISTER")) {
+		bench_print_ust_register();
+	}
+
+	if (getenv("BENCH_BOOT_PROCESS")) {
+		bench_print_boot_process();
+	}
 
 	bench_close();
 	/* END BENCHMARK */
@@ -465,6 +475,8 @@ static int notify_ust_apps(int active)
 
 	DBG("Notifying applications of session daemon state: %d", active);
 
+	tracepoint(ust_notify_apps_start);
+
 	/* See shm.c for this call implying mmap, shm and futex calls */
 	wait_shm_mmap = shm_ust_get_mmap(wait_shm_path, is_root);
 	if (wait_shm_mmap == NULL) {
@@ -473,6 +485,8 @@ static int notify_ust_apps(int active)
 
 	/* Wake waiting process */
 	futex_wait_update((int32_t *) wait_shm_mmap, active);
+
+	tracepoint(ust_notify_apps_stop);
 
 	/* Apps notified successfully */
 	return 0;
@@ -970,6 +984,8 @@ static void *thread_manage_apps(void *data)
 				ERR("Apps command pipe poll error");
 				goto error;
 			case POLLIN:
+				tracepoint(ust_manage_register_start);
+
 				/* Empty pipe */
 				ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
 				if (ret < 0 || ret < sizeof(ust_cmd)) {
@@ -992,6 +1008,8 @@ static void *thread_manage_apps(void *data)
 					 */
 					unregister_traceable_app(ust_cmd.sock);
 				}
+
+				tracepoint(ust_manage_register_stop);
 				break;
 			}
 		}
@@ -1052,6 +1070,8 @@ static void *thread_dispatch_ust_registration(void *data)
 				break;
 			}
 
+			tracepoint(ust_dispatch_register_start);
+
 			ust_cmd = caa_container_of(node, struct ust_command, node);
 
 			DBG("Dispatching UST registration pid:%d ppid:%d uid:%d"
@@ -1082,6 +1102,8 @@ static void *thread_dispatch_ust_registration(void *data)
 			free(ust_cmd);
 		} while (node != NULL);
 
+		tracepoint(ust_dispatch_register_stop);
+
 		/* Futex wait on queue. Blocking call on futex() */
 		futex_nto1_wait(&ust_cmd_queue.futex);
 	}
@@ -1104,7 +1126,7 @@ static void *thread_registration_apps(void *data)
 	 */
 	struct ust_command *ust_cmd = NULL;
 
-	tracepoint(sessiond_th_apps_start);
+	tracepoint(sessiond_th_reg_start);
 
 	DBG("[thread] Manage application registration started");
 
@@ -1131,7 +1153,7 @@ static void *thread_registration_apps(void *data)
 	while (1) {
 		DBG("Accepting application registration");
 
-		tracepoint(sessiond_th_apps_poll);
+		tracepoint(sessiond_th_reg_poll);
 
 		/* Inifinite blocking call, waiting for transmission */
 		ret = poll(pollfd, 2, -1);
@@ -1147,6 +1169,9 @@ static void *thread_registration_apps(void *data)
 			ERR("Register apps socket poll error");
 			goto error;
 		}
+
+		/* Registration starts here. Recording cycles */
+		tracepoint(ust_register_start);
 
 		sock = lttcomm_accept_unix_sock(apps_sock);
 		if (sock < 0) {
@@ -1196,6 +1221,8 @@ static void *thread_registration_apps(void *data)
 		 * Implicit memory barrier with the exchange in cds_wfq_enqueue.
 		 */
 		futex_nto1_wake(&ust_cmd_queue.futex);
+
+		tracepoint(ust_register_stop);
 	}
 
 error:

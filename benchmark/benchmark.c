@@ -100,6 +100,110 @@ double bench_get_destroy_session(void)
 }
 
 /*
+ * Complete UST notification process time break down in different actions.
+ */
+void bench_print_ust_notification(void)
+{
+	double res, total = 0;
+
+	fprintf(fp, "--- UST notification time ---\n");
+
+	if (time_ust_notify_mmap_start == 0 || time_ust_notify_mmap_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_notify_mmap_start,
+			time_ust_notify_mmap_stop);
+	fprintf(fp, "mmap() call time\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	if (time_ust_notify_perms_start == 0 || time_ust_notify_perms_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_notify_perms_start,
+			time_ust_notify_perms_stop);
+	fprintf(fp, "Setting permissions (chown/chmod)\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	if (time_ust_notify_shm_start == 0 || time_ust_notify_shm_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_notify_shm_start,
+			time_ust_notify_shm_stop);
+	fprintf(fp, "shm_open/ftruncate/fchmod\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	fprintf(fp, "Global UST nonification time\n");
+	fprintf(fp, "Time: %.20f sec.\n", total);
+	return;
+
+no_data:
+	fprintf(fp, "NO DATA\n");
+	return;
+}
+
+/*
+ * This time value is only coherent is an UST application registered.
+ */
+void bench_print_ust_register(void)
+{
+	double res, total = 0;
+
+	fprintf(fp, "--- UST registration time ---\n");
+
+	if (time_ust_register_start == 0 || time_ust_register_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_register_start, time_ust_register_stop);
+	fprintf(fp, "UST registration received and send to dispatch time\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	if (time_ust_dispatch_register_start == 0 ||
+			time_ust_dispatch_register_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_dispatch_register_start,
+			time_ust_dispatch_register_stop);
+	fprintf(fp, "Dispatch UST registration request time\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	if (time_ust_manage_register_start == 0 ||
+			time_ust_manage_register_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_manage_register_start,
+			time_ust_manage_register_stop);
+	fprintf(fp, "Manage UST registration time\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	fprintf(fp, "Global time of an UST application registration\n");
+	fprintf(fp, "Time: %.20f sec.\n", total);
+	return;
+
+no_data:
+	fprintf(fp, "NO DATA\n");
+	return;
+}
+
+
+/*
  * Log results of the sessiond boot process.
  *
  * Uses all time_sessiond_* values (see measures.h)

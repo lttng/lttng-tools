@@ -23,7 +23,7 @@ BASEDIR=`dirname $0`
 
 echo "Session daemon boot process benchmark"
 
-$BASEDIR/../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet
+`BENCH_BOOT_PROCESS=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet`
 if [ $? -ne 0 ]; then
 	echo -e '\e[1;31mFAILED\e[0m'
 	exit 1
