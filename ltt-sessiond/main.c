@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
- * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,11 +29,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <urcu/futex.h>
 #include <unistd.h>
 
 #include <ltt-kconsumerd.h>
@@ -45,6 +48,7 @@
 #include "futex.h"
 #include "kernel-ctl.h"
 #include "ltt-sessiond.h"
+#include "shm.h"
 #include "traceable-app.h"
 #include "ust-ctl.h"
 #include "utils.h"
@@ -75,6 +79,7 @@ static char apps_unix_sock_path[PATH_MAX];				/* Global application Unix socket 
 static char client_unix_sock_path[PATH_MAX];			/* Global client Unix socket path */
 static char kconsumerd_err_unix_sock_path[PATH_MAX];	/* kconsumerd error Unix socket path */
 static char kconsumerd_cmd_unix_sock_path[PATH_MAX];	/* kconsumerd command Unix socket path */
+static char wait_shm_path[PATH_MAX];                    /* global wait shm path for UST */
 
 /* Sockets and FDs */
 static int client_sock;
@@ -107,8 +112,6 @@ static sem_t kconsumerd_sem;
 
 static pthread_mutex_t kconsumerd_pid_mutex;	/* Mutex to control kconsumerd pid assignation */
 
-static int modprobe_remove_kernel_modules(void);
-
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
  * wakers / 1 waiter implemented and detailed in futex.c/.h
@@ -130,6 +133,44 @@ static struct ust_cmd_queue ust_cmd_queue;
  */
 static struct ltt_session_list *session_list_ptr;
 
+/*
+ * Remove modules in reverse load order.
+ */
+static int modprobe_remove_kernel_modules(void)
+{
+	int ret = 0, i;
+	char modprobe[256];
+
+	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
+		ret = snprintf(modprobe, sizeof(modprobe),
+				"/sbin/modprobe --remove --quiet %s",
+				kernel_modules_list[i].name);
+		if (ret < 0) {
+			perror("snprintf modprobe --remove");
+			goto error;
+		}
+		modprobe[sizeof(modprobe) - 1] = '\0';
+		ret = system(modprobe);
+		if (ret == -1) {
+			ERR("Unable to launch modprobe --remove for module %s",
+					kernel_modules_list[i].name);
+		} else if (kernel_modules_list[i].required
+				&& WEXITSTATUS(ret) != 0) {
+			ERR("Unable to remove module %s",
+					kernel_modules_list[i].name);
+		} else {
+			DBG("Modprobe removal successful %s",
+					kernel_modules_list[i].name);
+		}
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Return group ID of the tracing group or -1 if not found.
+ */
 static gid_t allowed_group(void)
 {
 	struct group *grp;
@@ -405,37 +446,30 @@ error:
 	return ret;
 }
 
-#ifdef DISABLED
 /*
- * Notify apps by writing 42 to a named pipe using name. Every applications
- * waiting for a ltt-sessiond will be notified and re-register automatically to
- * the session daemon.
- *
- * Return open or write error value.
+ * Notify UST applications using the shm mmap futex.
  */
-static int notify_apps(const char *name)
+static int notify_ust_apps(int active)
 {
-	int fd;
-	int ret = -1;
+	char *wait_shm_mmap;
 
-	DBG("Notify the global application pipe");
+	DBG("Notifying applications of session daemon state: %d", active);
 
-	/* Try opening the global pipe */
-	fd = open(name, O_WRONLY);
-	if (fd < 0) {
+	/* See shm.c for this call implying mmap, shm and futex calls */
+	wait_shm_mmap = shm_ust_get_mmap(wait_shm_path, is_root);
+	if (wait_shm_mmap == NULL) {
 		goto error;
 	}
 
-	/* Notify by writing on the pipe */
-	ret = write(fd, "42", 2);
-	if (ret < 0) {
-		perror("write");
-	}
+	/* Wake waiting process */
+	futex_wait_update((int32_t *) wait_shm_mmap, active);
+
+	/* Apps notified successfully */
+	return 0;
 
 error:
-	return ret;
+	return -1;
 }
-#endif	/* DISABLED */
 
 /*
  * Setup the outgoing data buffer for the response (llm) by allocating the
@@ -1067,7 +1101,12 @@ static void *thread_registration_apps(void *data)
 	pollfd[1].events = POLLIN;
 
 	/* Notify all applications to register */
-	//notify_apps(default_global_apps_pipe);
+	ret = notify_ust_apps(1);
+	if (ret < 0) {
+		ERR("Failed to notify applications or create the wait shared memory.\n"
+			"Execution continues but there might be problem for already running\n"
+			"applications that wishes to register.");
+	}
 
 	while (1) {
 		DBG("Accepting application registration");
@@ -1138,15 +1177,16 @@ static void *thread_registration_apps(void *data)
 	}
 
 error:
-	DBG("Register apps thread dying");
-	if (apps_sock) {
-		close(apps_sock);
-	}
-	if (sock) {
-		close(sock);
-	}
+	DBG("UST Registration thread dying");
+
+	/* Notify that the registration thread is gone */
+	notify_ust_apps(0);
+
+	close(apps_sock);
+	close(sock);
 
 	unlink(apps_unix_sock_path);
+
 	return NULL;
 }
 
@@ -1312,42 +1352,6 @@ static int modprobe_kernel_modules(void)
 				kernel_modules_list[i].name);
 		} else {
 			DBG("Modprobe successfully %s",
-				kernel_modules_list[i].name);
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * modprobe_remove_kernel_modules
- * Remove modules in reverse load order.
- */
-static int modprobe_remove_kernel_modules(void)
-{
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-			"/sbin/modprobe --remove --quiet %s",
-			kernel_modules_list[i].name);
-		if (ret < 0) {
-			perror("snprintf modprobe --remove");
-			goto error;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe --remove for module %s",
-				kernel_modules_list[i].name);
-		} else if (kernel_modules_list[i].required
-				&& WEXITSTATUS(ret) != 0) {
-			ERR("Unable to remove module %s",
-				kernel_modules_list[i].name);
-		} else {
-			DBG("Modprobe removal successful %s",
 				kernel_modules_list[i].name);
 		}
 	}
@@ -1788,6 +1792,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 		}
 		break;
+	case LTTNG_DOMAIN_UST_PID:
+		break;
 	default:
 		break;
 	}
@@ -1999,6 +2005,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			kernel_wait_quiescent(kernel_tracer_fd);
 			break;
 		case LTTNG_DOMAIN_UST_PID:
+
 			break;
 		default:
 			ret = LTTCOMM_NOT_IMPLEMENTED;
@@ -3134,6 +3141,12 @@ int main(int argc, char **argv)
 			snprintf(client_unix_sock_path, PATH_MAX,
 					DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
 		}
+
+		/* Set global SHM for ust */
+		if (strlen(wait_shm_path) == 0) {
+			snprintf(wait_shm_path, PATH_MAX,
+					DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
+		}
 	} else {
 		home_path = get_home_dir();
 		if (home_path == NULL) {
@@ -3152,6 +3165,12 @@ int main(int argc, char **argv)
 		if (strlen(client_unix_sock_path) == 0) {
 			snprintf(client_unix_sock_path, PATH_MAX,
 					DEFAULT_HOME_CLIENT_UNIX_SOCK, home_path);
+		}
+
+		/* Set global SHM for ust */
+		if (strlen(wait_shm_path) == 0) {
+			snprintf(wait_shm_path, PATH_MAX,
+					DEFAULT_HOME_APPS_WAIT_SHM_PATH, geteuid());
 		}
 	}
 

@@ -14,11 +14,12 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        kernel-ctl.c kernel-ctl.h \
                        context.c context.h \
                        futex.c futex.h \
+                       shm.c shm.h \
                        session.c session.h \
                        ltt-sessiond.h main.c
 
 # link on liblttngctl for check if sessiond is already alive.
-ltt_sessiond_LDADD = \
+ltt_sessiond_LDADD = -lrt \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/libustctl/libustctl.la	\

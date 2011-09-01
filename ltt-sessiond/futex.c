@@ -18,6 +18,7 @@
  */
 
 #define _GNU_SOURCE
+#include <limits.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <urcu.h>
@@ -42,6 +43,25 @@
  *
  * Ref: git://git.lttng.org/userspace-rcu.git
  */
+
+/*
+ * Update futex according to active or not. This scheme is used to wake every
+ * libust waiting on the shared memory map futex hence the INT_MAX used in the
+ * futex() call. If active, we set the value and wake everyone else we indicate
+ * that we are gone (cleanup() case).
+ */
+void futex_wait_update(int32_t *futex, int active)
+{
+	if (active) {
+		uatomic_set(futex, 1);
+		futex_async(futex, FUTEX_WAKE,
+				INT_MAX, NULL, NULL, 0);
+	} else {
+		uatomic_set(futex, 0);
+	}
+
+	DBG("Futex wait update active %d", active);
+}
 
 /*
  * Prepare futex.

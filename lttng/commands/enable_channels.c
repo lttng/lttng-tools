@@ -104,9 +104,7 @@ static void usage(FILE *ofp)
 }
 
 /*
- *  enable_channel
- *
- *  Adding channel using the lttng API.
+ * Adding channel using the lttng API.
  */
 static int enable_channel(char *session_name)
 {
@@ -116,43 +114,39 @@ static int enable_channel(char *session_name)
 
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_pid != 0) {
+		dom.type = LTTNG_DOMAIN_UST_PID;
+		dom.attr.pid = opt_pid;
+		DBG("PID %d set to lttng handle", opt_pid);
+	} else {
+		ret = CMD_NOT_IMPLEMENTED;
+		goto error;
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = -1;
 		goto error;
+	} else {
+		ERR("Please specify a tracer (--kernel or --userspace)");
+		goto error;
 	}
 
-	/* Strip event list */
+	/* Strip channel list (format: chan1,chan2,...) */
 	channel_name = strtok(opt_channels, ",");
 	while (channel_name != NULL) {
-		/* Kernel tracer action */
-		if (opt_kernel) {
-			DBG("Enabling kernel channel %s", channel_name);
+		/* Copy channel name and normalize it */
+		strncpy(chan.name, channel_name, NAME_MAX);
+		chan.name[NAME_MAX - 1] = '\0';
 
-			/* Copy channel name and normalize it */
-			strncpy(chan.name, channel_name, NAME_MAX);
-			chan.name[NAME_MAX - 1] = '\0';
+		DBG("Enabling channel %s", channel_name);
 
-			ret = lttng_enable_channel(handle, &chan);
-			if (ret < 0) {
-				goto error;
-			} else {
-				MSG("Kernel channel enabled %s", channel_name);
-			}
-		} else if (opt_userspace) {		/* User-space tracer action */
-			/*
-			 * TODO: Waiting on lttng UST 2.0
-			 */
-			if (opt_pid_all) {
-			} else if (opt_pid != 0) {
-			}
-			ret = CMD_NOT_IMPLEMENTED;
+		ret = lttng_enable_channel(handle, &chan);
+		if (ret < 0) {
 			goto error;
 		} else {
-			ERR("Please specify a tracer (--kernel or --userspace)");
-			goto error;
+			MSG("Channel enabled %s for session %s",
+					channel_name, session_name);
 		}
 
 		/* Next event */
@@ -166,9 +160,7 @@ error:
 }
 
 /*
- *  init_channel_config
- *
- *  Default value for channel configuration.
+ * Default value for channel configuration.
  */
 static void init_channel_config(void)
 {
@@ -194,7 +186,7 @@ static void init_channel_config(void)
 }
 
 /*
- *  Add channel to trace session
+ * Add channel to trace session
  */
 int cmd_enable_channels(int argc, const char **argv)
 {

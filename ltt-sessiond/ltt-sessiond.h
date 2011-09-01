@@ -29,6 +29,9 @@
 #define DEFAULT_GLOBAL_APPS_PIPE    DEFAULT_UST_SOCK_DIR "/global"
 #define DEFAULT_TRACE_OUTPUT        DEFAULT_HOME_DIR "/lttng"
 
+#define DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH   "/lttng-ust-apps-wait"
+#define DEFAULT_HOME_APPS_WAIT_SHM_PATH     "/lttng-ust-apps-wait-%u"
+
 struct module_param {
 	const char *name;
 	int required;
