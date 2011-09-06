@@ -21,29 +21,31 @@ SESSIOND_BIN="ltt-sessiond"
 RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
-echo "Session daemon boot process benchmark"
+echo "Starting session daemon"
 
-`BENCH_BOOT_PROCESS=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet`
-if [ $? -ne 0 ]; then
+BENCH_BOOT_PROCESS=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
+
+PID_SESSIOND=$!
+if [ -z $PID_SESSIOND ]; then
 	echo -e '\e[1;31mFAILED\e[0m'
 	exit 1
 else
 	echo -e "\e[1;32mOK\e[0m"
+	echo "PID session daemon: $PID_SESSIOND"
 fi
-
-PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
 
 # Wait for the benchmark to run
 echo -n "Waiting."
 sleep 1
 echo -n "."
 sleep 1
-echo -n "."
+echo "."
 sleep 1
 
 kill $PID_SESSIOND
 
-# Trick to wait for a PID which is not a child
-tail --pid=$PID_SESSIOND --quiet -F $RESULTS_PATH > /dev/null 2>&1
+wait $PID_SESSIOND
+
+echo "Benchmarks done in $RESULTS_PATH"
 
 exit 0

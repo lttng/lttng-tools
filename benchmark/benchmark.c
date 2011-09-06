@@ -181,14 +181,25 @@ void bench_print_ust_register(void)
 
 	total += res;
 
-	if (time_ust_manage_register_start == 0 ||
-			time_ust_manage_register_stop == 0) {
-		goto no_data;
-	}
+	fprintf(fp, "--> Manage registration breakdown\n");
 
-	res = get_bench_time(time_ust_manage_register_start,
-			time_ust_manage_register_stop);
-	fprintf(fp, "Manage UST registration time\n");
+	res = get_bench_time(time_ust_register_read_start,
+			time_ust_register_read_stop);
+	fprintf(fp, "read() from pipe time\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	res = get_bench_time(time_ust_register_add_start,
+			time_ust_register_add_stop);
+	fprintf(fp, "register_traceable_app time\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	res = get_bench_time(time_ust_register_done_start,
+			time_ust_register_done_stop);
+	fprintf(fp, "send register done command time\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	total += res;
@@ -217,31 +228,45 @@ void bench_print_boot_process(void)
 
 	res = get_bench_time(time_sessiond_boot_start, time_sessiond_boot_end);
 
-	fprintf(fp, "Boot time inside main() from start to first pthread_join (blocking state)\n");
+	fprintf(fp, "Inside main() from start to first pthread_join"
+			"(blocking state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	res = get_bench_time(time_sessiond_th_kern_start, time_sessiond_th_kern_poll);
+	res = get_bench_time(time_sessiond_th_kern_start,
+			time_sessiond_th_kern_poll);
 
-	fprintf(fp, "Boot time of the kernel thread from start to poll() (ready state)\n");
+	fprintf(fp, "Kernel thread from start to poll() (ready state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	res = get_bench_time(time_sessiond_th_apps_start, time_sessiond_th_apps_poll);
+	res = get_bench_time(time_sessiond_th_apps_start,
+			time_sessiond_th_apps_poll);
 
-	fprintf(fp, "Boot time of the application thread from start to poll() (ready state)\n");
+	fprintf(fp, "Application thread from start to poll() (ready state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	res = get_bench_time(time_sessiond_th_cli_start, time_sessiond_th_cli_poll);
+	res = get_bench_time(time_sessiond_th_cli_start,
+			time_sessiond_th_cli_poll);
 
-	fprintf(fp, "Boot time of the client thread from start to poll() (ready state)\n");
+	fprintf(fp, "Client thread from start to poll() (ready state)\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	global_boot_time += res;
 
-	fprintf(fp, "Global Boot Time of ltt-sessiond: %0.20f sec.\n", global_boot_time);
+	res = get_bench_time(time_sessiond_th_dispatch_start,
+			time_sessiond_th_dispatch_block);
+
+	fprintf(fp, "Dispatch registration thread from start to poll()"
+			"(ready state)\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	global_boot_time += res;
+
+	fprintf(fp, "Global Boot Time\n");
+	fprintf(fp, "Time: %0.20f sec.\n", global_boot_time);
 }

@@ -39,6 +39,10 @@ cycles_t time_sessiond_th_apps_poll;
 cycles_t time_sessiond_th_reg_start;
 cycles_t time_sessiond_th_reg_poll;
 
+/* Session daemon thread registration apps time */
+cycles_t time_sessiond_th_dispatch_start;
+cycles_t time_sessiond_th_dispatch_block;
+
 /* Session daemon thread manage client time */
 cycles_t time_sessiond_th_cli_start;
 cycles_t time_sessiond_th_cli_poll;
@@ -79,14 +83,16 @@ cycles_t time_ust_dispatch_register_stop;
 
 /*
  * UST managing registration time
- *
- * Start *before* the thread reads the pipe containing the registration data.
  */
-cycles_t time_ust_manage_register_start;
-/*
- * Stop time taken *after* the register command is sent to the application.
- */
-cycles_t time_ust_manage_register_stop;
+/* read() from pipe */
+cycles_t time_ust_register_read_start;
+cycles_t time_ust_register_read_stop;
+/* register_traceable_app() time */
+cycles_t time_ust_register_add_start;
+cycles_t time_ust_register_add_stop;
+/* send register done command */
+cycles_t time_ust_register_done_start;
+cycles_t time_ust_register_done_stop;
 
 /*
  * UST notification time (using the shm/futex scheme). Those times were break

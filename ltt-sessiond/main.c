@@ -937,6 +937,8 @@ static void *thread_manage_apps(void *data)
 	struct pollfd *pollfd = NULL;
 	struct ust_command ust_cmd;
 
+	tracepoint(sessiond_th_apps_start);
+
 	DBG("[thread] Manage application started");
 
 	ust_cmd.sock = -1;
@@ -967,6 +969,8 @@ static void *thread_manage_apps(void *data)
 
 		DBG("Apps thread polling on %d fds", nb_fd);
 
+		tracepoint(sessiond_th_apps_poll);
+
 		/* Inifinite blocking call, waiting for transmission */
 		ret = poll(pollfd, nb_fd, -1);
 		if (ret < 0) {
@@ -984,7 +988,7 @@ static void *thread_manage_apps(void *data)
 				ERR("Apps command pipe poll error");
 				goto error;
 			case POLLIN:
-				tracepoint(ust_manage_register_start);
+				tracepoint(ust_register_read_start);
 
 				/* Empty pipe */
 				ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
@@ -993,13 +997,18 @@ static void *thread_manage_apps(void *data)
 					goto error;
 				}
 
+				tracepoint(ust_register_read_stop);
+
+				tracepoint(ust_register_add_start);
 				/* Register applicaton to the session daemon */
 				ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
 				if (ret < 0) {
 					/* Only critical ENOMEM error can be returned here */
 					goto error;
 				}
+				tracepoint(ust_register_add_stop);
 
+				tracepoint(ust_register_done_start);
 				ret = ustctl_register_done(ust_cmd.sock);
 				if (ret < 0) {
 					/*
@@ -1009,7 +1018,7 @@ static void *thread_manage_apps(void *data)
 					unregister_traceable_app(ust_cmd.sock);
 				}
 
-				tracepoint(ust_manage_register_stop);
+				tracepoint(ust_register_done_stop);
 				break;
 			}
 		}
@@ -1055,6 +1064,8 @@ static void *thread_dispatch_ust_registration(void *data)
 	struct cds_wfq_node *node;
 	struct ust_command *ust_cmd = NULL;
 
+	tracepoint(sessiond_th_dispatch_start);
+
 	DBG("[thread] Dispatch UST command started");
 
 	while (!dispatch_thread_exit) {
@@ -1062,6 +1073,8 @@ static void *thread_dispatch_ust_registration(void *data)
 		futex_nto1_prepare(&ust_cmd_queue.futex);
 
 		do {
+			tracepoint(sessiond_th_dispatch_block);
+
 			/* Dequeue command for registration */
 			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
 			if (node == NULL) {

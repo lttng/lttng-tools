@@ -22,16 +22,16 @@ RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
 echo "Session daemon boot"
+BENCH_UST_REGISTER=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
 
-`BENCH_UST_REGISTER=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet`
-if [ $? -ne 0 ]; then
+PID_SESSIOND=$!
+if [ -z $PID_SESSIOND ]; then
 	echo -e '\e[1;31mFAILED\e[0m'
 	exit 1
 else
 	echo -e "\e[1;32mOK\e[0m"
+	echo "PID session daemon: $PID_SESSIOND"
 fi
-
-PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
 
 # Wait for sessiond to settle
 sleep 2
@@ -41,7 +41,6 @@ UST_AUTOPROBE=1 UST_TRACE=1 ./$BASEDIR/hello
 
 kill $PID_SESSIOND
 
-# Trick to wait for a PID which is not a child
-tail --pid=$PID_SESSIOND --quiet -F $RESULTS_PATH > /dev/null 2>&1
+wait $PID_SESSIOND
 
 exit 0
