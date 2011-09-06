@@ -899,7 +899,7 @@ error:
  */
 static void *thread_manage_apps(void *data)
 {
-	int i, ret, count;
+	int i, ret, current_nb_fd;
 	unsigned int nb_fd = 2;
 	int update_poll_flag = 1;
 	struct pollfd *pollfd = NULL;
@@ -908,6 +908,7 @@ static void *thread_manage_apps(void *data)
 	DBG("[thread] Manage application started");
 
 	ust_cmd.sock = -1;
+	current_nb_fd = nb_fd;
 
 	while (1) {
 		/* See if we have a valid socket to add to pollfd */
@@ -918,7 +919,7 @@ static void *thread_manage_apps(void *data)
 
 		/* The pollfd struct must be updated */
 		if (update_poll_flag) {
-			ret = update_apps_cmd_pollfd(nb_fd, ARRAY_SIZE(pollfd), &pollfd);
+			ret = update_apps_cmd_pollfd(nb_fd, current_nb_fd, &pollfd);
 			if (ret < 0) {
 				/* malloc failed so we quit */
 				goto error;
@@ -978,8 +979,8 @@ static void *thread_manage_apps(void *data)
 			}
 		}
 
-		count = nb_fd;
-		for (i = 2; i < count; i++) {
+		current_nb_fd = nb_fd;
+		for (i = 2; i < current_nb_fd; i++) {
 			/* Apps socket is closed/hungup */
 			switch (pollfd[i].revents) {
 			case POLLERR:
@@ -994,7 +995,7 @@ static void *thread_manage_apps(void *data)
 			}
 		}
 
-		if (nb_fd != count) {
+		if (nb_fd != current_nb_fd) {
 			update_poll_flag = 1;
 		}
 	}
