@@ -880,6 +880,15 @@ static int update_apps_cmd_pollfd(unsigned int nb_fd, unsigned int old_nb_fd,
 		}
 	}
 
+	if (nb_fd < 2) {
+		/*
+		 * There should *always* be at least two fds in the pollfd. This safety
+		 * check make sure the poll() will actually try on those two pipes at
+		 * best which are the thread_quit_pipe and apps_cmd_pipe.
+		 */
+		nb_fd = 2;
+	}
+
 	/* Destroy old pollfd */
 	free(old_pollfd);
 
