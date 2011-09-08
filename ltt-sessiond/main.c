@@ -2643,8 +2643,8 @@ static void *thread_manage_clients(void *data)
 	pollfd[1].fd = client_sock;
 	pollfd[1].events = POLLIN;
 
-	/* Notify parent pid that we are ready
-	 * to accept command for client side.
+	/*
+	 * Notify parent pid that we are ready to accept command for client side.
 	 */
 	if (opt_sig_parent) {
 		kill(ppid, SIGCHLD);
@@ -2663,63 +2663,69 @@ static void *thread_manage_clients(void *data)
 		/* Thread quit pipe has been closed. Killing thread. */
 		if (pollfd[0].revents == POLLNVAL) {
 			goto error;
-		} else if (pollfd[1].revents == POLLERR) {
+		}
+
+		switch (pollfd[1].revents) {
+		case POLLNVAL:
+		case POLLHUP:
+		case POLLERR:
 			ERR("Client socket poll error");
 			goto error;
-		}
+		case POLLIN:
+			sock = lttcomm_accept_unix_sock(client_sock);
+			if (sock < 0) {
+				goto error;
+			}
 
-		sock = lttcomm_accept_unix_sock(client_sock);
-		if (sock < 0) {
-			goto error;
-		}
+			/* Allocate context command to process the client request */
+			cmd_ctx = malloc(sizeof(struct command_ctx));
 
-		/* Allocate context command to process the client request */
-		cmd_ctx = malloc(sizeof(struct command_ctx));
+			/* Allocate data buffer for reception */
+			cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
+			cmd_ctx->llm = NULL;
+			cmd_ctx->session = NULL;
 
-		/* Allocate data buffer for reception */
-		cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
-		cmd_ctx->llm = NULL;
-		cmd_ctx->session = NULL;
+			/*
+			 * Data is received from the lttng client. The struct
+			 * lttcomm_session_msg (lsm) contains the command and data request of
+			 * the client.
+			 */
+			DBG("Receiving data from client ...");
+			ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm, sizeof(struct lttcomm_session_msg));
+			if (ret <= 0) {
+				continue;
+			}
 
-		/*
-		 * Data is received from the lttng client. The struct
-		 * lttcomm_session_msg (lsm) contains the command and data request of
-		 * the client.
-		 */
-		DBG("Receiving data from client ...");
-		ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm, sizeof(struct lttcomm_session_msg));
-		if (ret <= 0) {
-			continue;
-		}
+			// TODO: Validate cmd_ctx including sanity check for security purpose.
 
-		// TODO: Validate cmd_ctx including sanity check for security purpose.
+			/*
+			 * This function dispatch the work to the kernel or userspace tracer
+			 * libs and fill the lttcomm_lttng_msg data structure of all the needed
+			 * informations for the client. The command context struct contains
+			 * everything this function may needs.
+			 */
+			ret = process_client_msg(cmd_ctx);
+			if (ret < 0) {
+				/* TODO: Inform client somehow of the fatal error. At this point,
+				 * ret < 0 means that a malloc failed (ENOMEM). */
+				/* Error detected but still accept command */
+				clean_command_ctx(&cmd_ctx);
+				continue;
+			}
 
-		/*
-		 * This function dispatch the work to the kernel or userspace tracer
-		 * libs and fill the lttcomm_lttng_msg data structure of all the needed
-		 * informations for the client. The command context struct contains
-		 * everything this function may needs.
-		 */
-		ret = process_client_msg(cmd_ctx);
-		if (ret < 0) {
-			/* TODO: Inform client somehow of the fatal error. At this point,
-			 * ret < 0 means that a malloc failed (ENOMEM). */
-			/* Error detected but still accept command */
+			DBG("Sending response (size: %d, retcode: %d)",
+					cmd_ctx->lttng_msg_size, cmd_ctx->llm->ret_code);
+			ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
+			if (ret < 0) {
+				ERR("Failed to send data back to client");
+			}
+
 			clean_command_ctx(&cmd_ctx);
-			continue;
+
+			/* End of transmission */
+			close(sock);
+			break;
 		}
-
-		DBG("Sending response (size: %d, retcode: %d)",
-				cmd_ctx->lttng_msg_size, cmd_ctx->llm->ret_code);
-		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
-		if (ret < 0) {
-			ERR("Failed to send data back to client");
-		}
-
-		clean_command_ctx(&cmd_ctx);
-
-		/* End of transmission */
-		close(sock);
 	}
 
 error:
