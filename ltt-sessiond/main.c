@@ -567,6 +567,8 @@ static int update_kernel_pollfd(void)
 
 	/* Adding the quit pipe */
 	kernel_pollfd[nb_fd - 1].fd = thread_quit_pipe[0];
+	kernel_pollfd[nb_fd - 1].events =
+		POLLHUP | POLLNVAL | POLLERR | POLLIN | POLLRDHUP | POLLPRI;
 
 	return nb_fd;
 
@@ -667,6 +669,8 @@ static void *thread_manage_kernel(void *data)
 			goto error;
 		} else if (ret == 0) {
 			/* Should not happen since timeout is infinite */
+			ERR("Return value of poll is 0 with an infinite timeout.\n"
+				"This should not have happened! Continuing...");
 			continue;
 		}
 
@@ -860,6 +864,9 @@ static int update_apps_cmd_pollfd(unsigned int nb_fd, unsigned int old_nb_fd,
 
 	/* First fd is always the quit pipe */
 	(*pollfd)[0].fd = thread_quit_pipe[0];
+	(*pollfd)[0].events =
+		POLLHUP | POLLNVAL | POLLERR | POLLIN | POLLRDHUP | POLLPRI;
+
 	/* Apps command pipe */
 	(*pollfd)[1].fd = apps_cmd_pipe[0];
 	(*pollfd)[1].events = POLLIN;
@@ -887,6 +894,7 @@ static int update_apps_cmd_pollfd(unsigned int nb_fd, unsigned int old_nb_fd,
 		 * best which are the thread_quit_pipe and apps_cmd_pipe.
 		 */
 		nb_fd = 2;
+		MSG("nb_fd < 2 --> Not good! Continuing...");
 	}
 
 	/* Destroy old pollfd */
@@ -1105,6 +1113,8 @@ static void *thread_registration_apps(void *data)
 
 	/* First fd is always the quit pipe */
 	pollfd[0].fd = thread_quit_pipe[0];
+	pollfd[0].events =
+		POLLHUP | POLLNVAL | POLLERR | POLLIN | POLLRDHUP | POLLPRI;
 
 	/* Apps socket */
 	pollfd[1].fd = apps_sock;
@@ -2619,6 +2629,8 @@ static void *thread_manage_clients(void *data)
 
 	/* First fd is always the quit pipe */
 	pollfd[0].fd = thread_quit_pipe[0];
+	pollfd[0].events =
+		POLLHUP | POLLNVAL | POLLERR | POLLIN | POLLRDHUP | POLLPRI;
 
 	/* Apps socket */
 	pollfd[1].fd = client_sock;
