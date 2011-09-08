@@ -1141,59 +1141,66 @@ static void *thread_registration_apps(void *data)
 		/* Thread quit pipe has been closed. Killing thread. */
 		if (pollfd[0].revents == POLLNVAL) {
 			goto error;
-		} else if (pollfd[1].revents == POLLERR) {
+		}
+
+		switch (pollfd[1].revents) {
+		case POLLNVAL:
+		case POLLHUP:
+		case POLLRDHUP:
+		case POLLERR:
 			ERR("Register apps socket poll error");
 			goto error;
-		}
-
-		sock = lttcomm_accept_unix_sock(apps_sock);
-		if (sock < 0) {
-			goto error;
-		}
-
-		/* Create UST registration command for enqueuing */
-		ust_cmd = malloc(sizeof(struct ust_command));
-		if (ust_cmd == NULL) {
-			perror("ust command malloc");
-			goto error;
-		}
-
-		/*
-		 * Using message-based transmissions to ensure we don't have to deal
-		 * with partially received messages.
-		 */
-		ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
-				sizeof(struct ust_register_msg));
-		if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
-			if (ret < 0) {
-				perror("lttcomm_recv_unix_sock register apps");
-			} else {
-				ERR("Wrong size received on apps register");
+		case POLLIN:
+			sock = lttcomm_accept_unix_sock(apps_sock);
+			if (sock < 0) {
+				goto error;
 			}
-			free(ust_cmd);
-			close(sock);
-			continue;
+
+			/* Create UST registration command for enqueuing */
+			ust_cmd = malloc(sizeof(struct ust_command));
+			if (ust_cmd == NULL) {
+				perror("ust command malloc");
+				goto error;
+			}
+
+			/*
+			 * Using message-based transmissions to ensure we don't have to deal
+			 * with partially received messages.
+			 */
+			ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
+					sizeof(struct ust_register_msg));
+			if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
+				if (ret < 0) {
+					perror("lttcomm_recv_unix_sock register apps");
+				} else {
+					ERR("Wrong size received on apps register");
+				}
+				free(ust_cmd);
+				close(sock);
+				continue;
+			}
+
+			ust_cmd->sock = sock;
+
+			DBG("UST registration received with pid:%d ppid:%d uid:%d"
+					" gid:%d sock:%d name:%s (version %d.%d)",
+					ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
+					ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
+					ust_cmd->sock, ust_cmd->reg_msg.name,
+					ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
+			/*
+			 * Lock free enqueue the registration request.
+			 * The red pill has been taken! This apps will be part of the *system*
+			 */
+			cds_wfq_enqueue(&ust_cmd_queue.queue, &ust_cmd->node);
+
+			/*
+			 * Wake the registration queue futex.
+			 * Implicit memory barrier with the exchange in cds_wfq_enqueue.
+			 */
+			futex_nto1_wake(&ust_cmd_queue.futex);
+			break;
 		}
-
-		ust_cmd->sock = sock;
-
-		DBG("UST registration received with pid:%d ppid:%d uid:%d"
-				" gid:%d sock:%d name:%s (version %d.%d)",
-				ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
-				ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
-				ust_cmd->sock, ust_cmd->reg_msg.name,
-				ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
-		/*
-		 * Lock free enqueue the registration request.
-		 * The red pill has been taken! This apps will be part of the *system*
-		 */
-		cds_wfq_enqueue(&ust_cmd_queue.queue, &ust_cmd->node);
-
-		/*
-		 * Wake the registration queue futex.
-		 * Implicit memory barrier with the exchange in cds_wfq_enqueue.
-		 */
-		futex_nto1_wake(&ust_cmd_queue.futex);
 	}
 
 error:
