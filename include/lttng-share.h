@@ -42,4 +42,31 @@
 /* See lttng-kernel.h enum lttng_kernel_output for channel output */
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
 
+/*
+ * Takes a pointer x and transform it so we can use it to access members
+ * without a function call. Here an example:
+ *
+ *    #define GET_SIZE(x) LTTNG_REF(x)->size
+ *
+ *    struct { int size; } s;
+ *
+ *    printf("size : %d\n", GET_SIZE(&s));
+ *
+ * For this example we can't use something like this for compatibility purpose
+ * since this will fail:
+ *
+ *    #define GET_SIZE(x) x->size;
+ *
+ * This is mostly use for the compatibility layer of lttng-tools. See
+ * poll/epoll for a good real example. Since x can be on the stack or allocated
+ * memory using malloc(), we must use generic accessors for compat in order to
+ * *not* use a function to access members.
+ */
+#define LTTNG_REF(x) ((typeof(*x) *)(x))
+
+/*
+ * Memory allocation zeroed
+ */
+#define zmalloc(x) calloc(1, x)
+
 #endif /* _LTTNG_SHARE_H */

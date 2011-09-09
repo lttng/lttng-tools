@@ -21,6 +21,7 @@
 
 #include <limits.h>
 #include <lttng/lttng.h>
+#include <poll.h>
 #include <urcu/list.h>
 
 /*
