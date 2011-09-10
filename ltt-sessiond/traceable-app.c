@@ -169,7 +169,6 @@ void unregister_traceable_app(int sock)
 		DBG("PID %d unregistered with sock %d", lta->pid, sock);
 		close(lta->sock);
 		del_traceable_app(lta);
-		unlock_apps_list();
 		free(lta);
 	}
 	unlock_apps_list();

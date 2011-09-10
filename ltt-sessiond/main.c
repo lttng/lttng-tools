@@ -609,7 +609,7 @@ static int update_kernel_stream(int fd)
 				DBG("Channel found, updating kernel streams");
 				ret = kernel_open_channel_stream(channel);
 				if (ret < 0) {
-					goto end;
+					goto error;
 				}
 
 				/*
@@ -620,20 +620,20 @@ static int update_kernel_stream(int fd)
 					ret = send_kconsumerd_channel_fds(session->kernel_session->consumer_fd,
 							channel);
 					if (ret < 0) {
-						goto end;
+						goto error;
 					}
 				}
-				goto end;
+				goto error;
 			}
 		}
 		unlock_session(session);
 	}
-
-end:
 	unlock_session_list();
-	if (session) {
-		unlock_session(session);
-	}
+	return ret;
+
+error:
+	unlock_session(session);
+	unlock_session_list();
 	return ret;
 }
 
