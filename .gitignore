@@ -19,12 +19,16 @@ aclocal.m4
 autom4te.cache/
 config.h
 config.h.in
-config/
 config.log
 config.status
 stamp-h1
 libtool
 tags
+
+# m4 macros not automatically generated
+config/
+!config/epoll.m4
+!config/config_feature.m4
 
 ltt-sessiond/ltt-sessiond
 lttng/lttng

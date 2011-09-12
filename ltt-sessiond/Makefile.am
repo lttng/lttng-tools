@@ -5,6 +5,12 @@ AM_CFLAGS = -fno-strict-aliasing
 
 bin_PROGRAMS = ltt-sessiond
 
+if COMPAT_EPOLL
+COMPAT=compat-epoll.c
+else
+COMPAT=compat-poll.c
+endif
+
 ltt_sessiond_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
                        trace-ust.c trace-ust.h \
@@ -15,6 +21,8 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        context.c context.h \
                        futex.c futex.h \
                        shm.c shm.h \
+                       poll.h \
+                       $(COMPAT) \
                        session.c session.h \
                        ltt-sessiond.h main.c
 
