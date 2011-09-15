@@ -1005,14 +1005,18 @@ static void *thread_manage_apps(void *data)
 						perror("read apps cmd pipe");
 						goto error;
 					}
+					tracepoint(ust_register_read_stop);
 
+					tracepoint(ust_register_add_start);
 					/* Register applicaton to the session daemon */
 					ret = register_traceable_app(&ust_cmd.reg_msg, ust_cmd.sock);
 					if (ret < 0) {
 						/* Only critical ENOMEM error can be returned here */
 						goto error;
 					}
+					tracepoint(ust_register_add_stop);
 
+					tracepoint(ust_register_done_start);
 					ret = ustctl_register_done(ust_cmd.sock);
 					if (ret < 0) {
 						/*
@@ -1032,6 +1036,7 @@ static void *thread_manage_apps(void *data)
 
 						DBG("Apps with sock %d added to poll set", ust_cmd.sock);
 					}
+					tracepoint(ust_register_done_stop);
 					break;
 				}
 			} else {
