@@ -43,6 +43,19 @@ AC_CHECK_DECL([futex_async], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
 )
 
+AX_HAVE_EPOLL(
+	[AX_CONFIG_FEATURE_ENABLE(epoll)],
+	[AX_CONFIG_FEATURE_DISABLE(epoll)]
+)
+
+AX_CONFIG_FEATURE(
+	[epoll], [This platform supports epoll(7)],
+	[HAVE_EPOLL], [This platform supports epoll(7).],
+	[enable_epoll="yes"], [enable_epoll="no"]
+)
+
+AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
+
 AC_PROG_CC
 AC_PROG_LIBTOOL
 

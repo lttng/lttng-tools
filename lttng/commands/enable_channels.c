@@ -119,6 +119,7 @@ static int enable_channel(char *session_name)
 		dom.attr.pid = opt_pid;
 		DBG("PID %d set to lttng handle", opt_pid);
 	} else {
+		ERR("Please specify a tracer (--kernel or --userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -126,9 +127,6 @@ static int enable_channel(char *session_name)
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = -1;
-		goto error;
-	} else {
-		ERR("Please specify a tracer (--kernel or --userspace)");
 		goto error;
 	}
 
