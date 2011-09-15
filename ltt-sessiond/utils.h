@@ -1,9 +1,5 @@
-#ifndef _LTT_UTILS_H
-#define _LTT_UTILS_H
-
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
- * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -19,13 +15,13 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include <unistd.h>
+#ifndef _LTT_UTILS_H
+#define _LTT_UTILS_H
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
-#endif
+#include <unistd.h>
 
 int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 const char *get_home_dir(void);
+int notify_thread_pipe(int wpipe);
 
 #endif /* _LTT_UTILS_H */

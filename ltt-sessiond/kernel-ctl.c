@@ -250,9 +250,8 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 	int ret;
 
 	ret = kernctl_enable(chan->fd);
-	if (ret < 0) {
-		perror("enable chan ioctl");
-		ret = errno;
+	if (ret < 0 && errno != EEXIST) {
+		perror("Enable kernel chan");
 		goto error;
 	}
 
@@ -273,11 +272,8 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 	int ret;
 
 	ret = kernctl_enable(event->fd);
-	if (ret < 0) {
-		perror("enable event ioctl");
-		if (errno == EEXIST) {
-			ret = -EEXIST;
-		}
+	if (ret < 0 && errno != EEXIST) {
+		perror("enable kernel event");
 		goto error;
 	}
 
@@ -298,8 +294,8 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 	int ret;
 
 	ret = kernctl_disable(event->fd);
-	if (ret < 0) {
-		perror("disable event ioctl");
+	if (ret < 0 && errno != EEXIST) {
+		perror("disable kernel event");
 		goto error;
 	}
 

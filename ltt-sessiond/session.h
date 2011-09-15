@@ -29,7 +29,7 @@
  * Tracing session list
  *
  * Statically declared in session.c and can be accessed by using
- * get_session_list() function that returns the pointer to the list.
+ * session_get_list() function that returns the pointer to the list.
  */
 struct ltt_session_list {
 	/*
@@ -63,22 +63,22 @@ struct ltt_session {
 	/*
 	 * Protect any read/write on this session data structure. This lock must be
 	 * acquired *before* using any public functions declared below. Use
-	 * lock_session() and unlock_session() for that.
+	 * session_lock() and session_unlock() for that.
 	 */
 	pthread_mutex_t lock;
 	struct cds_list_head list;
 };
 
 /* Prototypes */
-int create_session(char *name, char *path);
-int destroy_session(char *name);
+int session_create(char *name, char *path);
+int session_destroy(char *name);
 
-void lock_session(struct ltt_session *session);
-void lock_session_list(void);
-void unlock_session(struct ltt_session *session);
-void unlock_session_list(void);
+void session_lock(struct ltt_session *session);
+void session_lock_list(void);
+void session_unlock(struct ltt_session *session);
+void session_unlock_list(void);
 
-struct ltt_session *find_session_by_name(char *name);
-struct ltt_session_list *get_session_list(void);
+struct ltt_session *session_find_by_name(char *name);
+struct ltt_session_list *session_get_list(void);
 
 #endif /* _LTT_SESSION_H */

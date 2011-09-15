@@ -15,14 +15,18 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_CONTEXT_H
-#define _LTT_CONTEXT_H
+#ifndef _LTT_CHANNEL_H
+#define _LTT_CHANNEL_H
 
 #include <lttng/lttng.h>
 
 #include "trace-kernel.h"
 
-int context_kernel_add(struct ltt_kernel_session *ksession,
-		struct lttng_event_context *ctx, char *event_name, char *channel_name);
+int channel_kernel_disable(struct ltt_kernel_session *ksession,
+		char *channel_name);
+int channel_kernel_enable(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan);
+int channel_kernel_create(struct ltt_kernel_session *ksession,
+		char *channel_name, struct lttng_channel *chan, int kernel_pipe);
 
-#endif /* _LTT_CONTEXT_H */
+#endif /* _LTT_CHANNEL_H */

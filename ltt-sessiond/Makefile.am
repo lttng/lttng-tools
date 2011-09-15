@@ -20,6 +20,8 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        ust-ctl.c ust-ctl.h \
                        kernel-ctl.c kernel-ctl.h \
                        context.c context.h \
+                       channel.c channel.h \
+                       event.c event.h \
                        futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \

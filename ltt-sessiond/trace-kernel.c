@@ -39,6 +39,8 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		goto error;
 	}
 
+	DBG("Trying to find channel %s", name);
+
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
 		if (strcmp(name, chan->channel->name) == 0) {
 			DBG("Found channel by name %s", name);
