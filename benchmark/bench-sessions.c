@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 		names[i] = get_random_string();
 		ret = system("echo 3 >/proc/sys/vm/drop_caches");
 		tracepoint(create_session_start);
-		ret = create_session(names[i], PATH1);
+		ret = session_create(names[i], PATH1);
 		tracepoint(create_session_end);
 		if (ret < 0) {
 			printf("Create session went wrong. Aborting\n");
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 	for (i = 0; i < nb_iter; i++) {
 		ret = system("echo 3 >/proc/sys/vm/drop_caches");
 		tracepoint(destroy_session_start);
-		ret = destroy_session(names[i]);
+		ret = session_destroy(names[i]);
 		tracepoint(destroy_session_end);
 		if (ret < 0) {
 			printf("Destroy session went wrong. Aborting\n");
