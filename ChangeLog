@@ -1,3 +1,13 @@
+2011-08-25 lttng-tools 2.0-pre13
+	* Memory leaks fixes and double lock list
+	* Add UST registration with sychronisation
+	* Use poll/epoll compatibility layer for the sessiond
+	* Major code cleanup of ltt-sessiond/main.c
+	* Increase listen() connexion limit
+	* Fix bad enable-channel command
+	* Rename trace.c/.h to trace-kernel
+	* Multiple fixes on the poll management with the new epoll API
+
 2011-08-25 lttng-tools 2.0-pre12
 	* Multiple fixes
 	* Fix kconsumerd handling custom channel output
