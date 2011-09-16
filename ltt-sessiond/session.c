@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
 #include "session.h"
@@ -32,7 +33,7 @@
  * No ltt_session.lock is taken here because those data structure are widely
  * spread across the lttng-tools code base so before caling functions below
  * that can read/write a session, the caller MUST acquire the session lock
- * using lock_session() and unlock_session().
+ * using session_lock() and session_unlock().
  */
 
 /*
@@ -74,7 +75,7 @@ static void del_session_list(struct ltt_session *ls)
 /*
  * Return a pointer to the session list.
  */
-struct ltt_session_list *get_session_list(void)
+struct ltt_session_list *session_get_list(void)
 {
 	return &ltt_session_list;
 }
@@ -82,7 +83,7 @@ struct ltt_session_list *get_session_list(void)
 /*
  * Acquire session list lock
  */
-void lock_session_list(void)
+void session_lock_list(void)
 {
 	pthread_mutex_lock(&ltt_session_list.lock);
 }
@@ -90,7 +91,7 @@ void lock_session_list(void)
 /*
  * Release session list lock
  */
-void unlock_session_list(void)
+void session_unlock_list(void)
 {
 	pthread_mutex_unlock(&ltt_session_list.lock);
 }
@@ -98,7 +99,7 @@ void unlock_session_list(void)
 /*
  * Acquire session lock
  */
-void lock_session(struct ltt_session *session)
+void session_lock(struct ltt_session *session)
 {
 	pthread_mutex_lock(&session->lock);
 }
@@ -106,7 +107,7 @@ void lock_session(struct ltt_session *session)
 /*
  * Release session lock
  */
-void unlock_session(struct ltt_session *session)
+void session_unlock(struct ltt_session *session)
 {
 	pthread_mutex_unlock(&session->lock);
 }
@@ -115,19 +116,19 @@ void unlock_session(struct ltt_session *session)
  * Return a ltt_session structure ptr that matches name.
  * If no session found, NULL is returned.
  */
-struct ltt_session *find_session_by_name(char *name)
+struct ltt_session *session_find_by_name(char *name)
 {
 	int found = 0;
 	struct ltt_session *iter;
 
-	lock_session_list();
+	session_lock_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (strncmp(iter->name, name, NAME_MAX) == 0) {
 			found = 1;
 			break;
 		}
 	}
-	unlock_session_list();
+	session_unlock_list();
 
 	if (!found) {
 		iter = NULL;
@@ -141,12 +142,11 @@ struct ltt_session *find_session_by_name(char *name)
  *
  * Return -1 if no session is found.  On success, return 1;
  */
-int destroy_session(char *name)
+int session_destroy(char *name)
 {
-	int found = -1;
 	struct ltt_session *iter, *tmp;
 
-	lock_session_list();
+	session_lock_list();
 	cds_list_for_each_entry_safe(iter, tmp, &ltt_session_list.head, list) {
 		if (strcmp(iter->name, name) == 0) {
 			DBG("Destroying session %s", iter->name);
@@ -155,26 +155,25 @@ int destroy_session(char *name)
 			free(iter->path);
 			pthread_mutex_destroy(&iter->lock);
 			free(iter);
-			found = 1;
 			break;
 		}
 	}
-	unlock_session_list();
+	session_unlock_list();
 
-	return found;
+	return LTTCOMM_OK;
 }
 
 /*
  * Create a brand new session and add it to the session list.
  */
-int create_session(char *name, char *path)
+int session_create(char *name, char *path)
 {
 	int ret;
 	struct ltt_session *new_session;
 
-	new_session = find_session_by_name(name);
+	new_session = session_find_by_name(name);
 	if (new_session != NULL) {
-		ret = -EEXIST;
+		ret = LTTCOMM_EXIST_SESS;
 		goto error_exist;
 	}
 
@@ -182,31 +181,31 @@ int create_session(char *name, char *path)
 	new_session = malloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
 		perror("malloc");
-		ret = -ENOMEM;
+		ret = LTTCOMM_FATAL;
 		goto error_malloc;
 	}
 
 	/* Define session name */
 	if (name != NULL) {
 		if (asprintf(&new_session->name, "%s", name) < 0) {
-			ret = -ENOMEM;
+			ret = LTTCOMM_FATAL;
 			goto error_asprintf;
 		}
 	} else {
 		ERR("No session name given");
-		ret = -1;
+		ret = LTTCOMM_FATAL;
 		goto error;
 	}
 
 	/* Define session system path */
 	if (path != NULL) {
 		if (asprintf(&new_session->path, "%s", path) < 0) {
-			ret = -ENOMEM;
+			ret = LTTCOMM_FATAL;
 			goto error_asprintf;
 		}
 	} else {
 		ERR("No session path given");
-		ret = -1;
+		ret = LTTCOMM_FATAL;
 		goto error;
 	}
 
@@ -220,13 +219,13 @@ int create_session(char *name, char *path)
 	pthread_mutex_init(&new_session->lock, NULL);
 
 	/* Add new session to the session list */
-	lock_session_list();
+	session_lock_list();
 	add_session_list(new_session);
-	unlock_session_list();
+	session_unlock_list();
 
 	DBG("Tracing session %s created in %s", name, path);
 
-	return 0;
+	return LTTCOMM_OK;
 
 error:
 error_asprintf:

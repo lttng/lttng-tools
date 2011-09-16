@@ -30,6 +30,21 @@
 #include "utils.h"
 
 /*
+ * Write to writable pipe used to notify a thread.
+ */
+int notify_thread_pipe(int wpipe)
+{
+	int ret;
+
+	ret = write(wpipe, "!", 1);
+	if (ret < 0) {
+		perror("write poll pipe");
+	}
+
+	return ret;
+}
+
+/*
  * Return pointer to home directory path using the env variable HOME.
  *
  * No home, NULL is returned.

@@ -21,7 +21,9 @@
 #ifndef _LTTNG_KERNEL_H
 #define _LTTNG_KERNEL_H
 
-#include "lttng-share.h"
+#include <stdint.h>
+
+#include <lttng-share.h>
 
 #define LTTNG_SYM_NAME_LEN  128
 
@@ -55,7 +57,7 @@ enum lttng_kernel_context_type {
 struct lttng_kernel_perf_counter_ctx {
 	uint32_t type;
 	uint64_t config;
-	char name[LTTNG_SYMBOL_NAME_LEN];
+	char name[LTTNG_SYM_NAME_LEN];
 };
 
 /* Event/Channel context */

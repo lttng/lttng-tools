@@ -20,11 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <lttng-sessiond-comm.h>
 #include <urcu/list.h>
 
-#include "lttngerr.h"
+#include <lttng-sessiond-comm.h>
+#include <lttngerr.h>
+
 #include "context.h"
 #include "kernel-ctl.h"
 
@@ -151,15 +151,24 @@ error:
 /*
  * Add kernel context to tracer.
  */
-int add_kernel_context(struct ltt_kernel_session *ksession,
-		struct lttng_kernel_context *kctx, char *event_name,
+int context_kernel_add(struct ltt_kernel_session *ksession,
+		struct lttng_event_context *ctx, char *event_name,
 		char *channel_name)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
+	struct lttng_kernel_context kctx;
+
+	/* Setup kernel context structure */
+	kctx.ctx = ctx->ctx;
+	kctx.u.perf_counter.type = ctx->u.perf_counter.type;
+	kctx.u.perf_counter.config = ctx->u.perf_counter.config;
+	strncpy(kctx.u.perf_counter.name, ctx->u.perf_counter.name,
+			LTTNG_SYMBOL_NAME_LEN);
+	kctx.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 
 	if (strlen(channel_name) == 0) {
-		ret = add_kctx_all_channels(ksession, kctx, event_name);
+		ret = add_kctx_all_channels(ksession, &kctx, event_name);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -171,7 +180,7 @@ int add_kernel_context(struct ltt_kernel_session *ksession,
 			goto error;
 		}
 
-		ret = add_kctx_to_channel(kctx, kchan, event_name);
+		ret = add_kctx_to_channel(&kctx, kchan, event_name);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}

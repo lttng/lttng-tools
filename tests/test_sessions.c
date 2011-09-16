@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 
+#include <lttng-sessiond-comm.h>
 #include "ltt-sessiond/session.h"
 #include "utils.h"
 
@@ -116,8 +117,8 @@ static int create_one_session(char *name, char *path)
 {
 	int ret;
 
-	ret = create_session(name, path);
-	if (ret >= 0) {
+	ret = session_create(name, path);
+	if (ret == LTTCOMM_OK) {
 		/* Validate */
 		ret = find_session_name(name);
 		if (ret < 0) {
@@ -128,8 +129,8 @@ static int create_one_session(char *name, char *path)
 			/* Success */
 			return 0;
 		}
-	} else if (ret < 0) {
-		if (ret == -EEXIST) {
+	} else {
+		if (ret == LTTCOMM_EXIST_SESS) {
 			printf("(session already exists) ");
 		}
 		return -1;
@@ -145,8 +146,9 @@ static int destroy_one_session(char *name)
 {
 	int ret;
 
-	ret = destroy_session(name);
-	if (ret == 1) {
+	ret = session_destroy(name);
+
+	if (ret == LTTCOMM_OK) {
 		/* Validate */
 		ret = find_session_name(name);
 		if (ret < 0) {
@@ -156,11 +158,6 @@ static int destroy_one_session(char *name)
 			/* Fail */
 			return -1;
 		}
-	} else if (ret < 0) {
-		if (ret == -EEXIST) {
-			printf("(session already exists) ");
-		}
-		return -1;
 	}
 
 	return 0;
@@ -171,19 +168,19 @@ static int fuzzing_create_args(void)
 	int ret;
 
 	ret = create_one_session(NULL, NULL);
-	if (ret >= 0) {
+	if (ret > 0) {
 		printf("Session created with (null),(null)\n");
 		return -1;
 	}
 
 	ret = create_one_session(NULL, PATH1);
-	if (ret >= 0) {
+	if (ret > 0) {
 		printf("Session created with (null), %s)\n", PATH1);
 		return -1;
 	}
 
 	ret = create_one_session(SESSION1, NULL);
-	if (ret >= 0) {
+	if (ret > 0) {
 		printf("Session created with %s, (null)\n", SESSION1);
 		return -1;
 	}
@@ -199,13 +196,13 @@ static int fuzzing_destroy_args(void)
 	int ret;
 
 	ret = destroy_one_session(NULL);
-	if (ret >= 0) {
+	if (ret > 0) {
 		printf("Session destroyed with (null)\n");
 		return -1;
 	}
 
 	ret = destroy_one_session(OVERFLOW_SESSION_NAME);
-	if (ret >= 0) {
+	if (ret > 0) {
 		printf("Session destroyed with %s\n", OVERFLOW_SESSION_NAME);
 		return -1;
 	}
@@ -250,7 +247,7 @@ int main(int argc, char **argv)
 
 	printf("\nTesting Sessions:\n-----------\n");
 
-	session_list = get_session_list();
+	session_list = session_get_list();
 	if (session_list == NULL) {
 		return -1;
 	}
@@ -263,7 +260,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Validating created session %s: ", SESSION1);
-	tmp = find_session_by_name(SESSION1);
+	tmp = session_find_by_name(SESSION1);
 	if (tmp == NULL) {
 		return -1;
 	}
@@ -272,8 +269,8 @@ int main(int argc, char **argv)
 	assert(tmp->ust_session_list.count == 0);
 	assert(strlen(tmp->path));
 	assert(strlen(tmp->name));
-	lock_session(tmp);
-	unlock_session(tmp);
+	session_lock(tmp);
+	session_unlock(tmp);
 
 	PRINT_OK();
 

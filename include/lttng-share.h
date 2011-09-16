@@ -1,23 +1,25 @@
 /*
- * Copyright (C) - 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; only version 2 of the License.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
 #ifndef _LTTNG_SHARE_H
 #define _LTTNG_SHARE_H
+
+#include <stdlib.h>
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
@@ -58,9 +60,9 @@
  *    #define GET_SIZE(x) x->size;
  *
  * This is mostly use for the compatibility layer of lttng-tools. See
- * poll/epoll for a good real example. Since x can be on the stack or allocated
+ * poll/epoll for a good example. Since x can be on the stack or allocated
  * memory using malloc(), we must use generic accessors for compat in order to
- * *not* use a function to access members.
+ * *not* use a function to access members and not the variable name.
  */
 #define LTTNG_REF(x) ((typeof(*x) *)(x))
 
@@ -68,5 +70,10 @@
  * Memory allocation zeroed
  */
 #define zmalloc(x) calloc(1, x)
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
+#endif
+
 
 #endif /* _LTTNG_SHARE_H */
