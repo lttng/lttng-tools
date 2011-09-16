@@ -506,7 +506,7 @@ int lttng_enable_event(struct lttng_handle *handle,
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	if (ev) {
+	if (ev || ev->name[0] != '\0') {
 		lsm.cmd_type = LTTNG_ENABLE_EVENT;
 		memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 	} else {

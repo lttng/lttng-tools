@@ -38,6 +38,8 @@ enum lttng_kernel_instrumentation {
 	LTTNG_KERNEL_KPROBE        = 1,
 	LTTNG_KERNEL_FUNCTION      = 2,
 	LTTNG_KERNEL_KRETPROBE     = 3,
+	LTTNG_KERNEL_NOOP          = 4,    /* not hooked */
+	LTTNG_KERNEL_SYSCALLS      = 5,
 };
 
 enum lttng_kernel_context_type {

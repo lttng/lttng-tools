@@ -1713,6 +1713,12 @@ static void list_lttng_events(struct ltt_kernel_channel *kchan,
 				memcpy(&events[i].attr.ftrace, &event->event->u.ftrace,
 						sizeof(struct lttng_kernel_function));
 				break;
+			case LTTNG_KERNEL_NOOP:
+				events[i].type = LTTNG_EVENT_NOOP;
+				break;
+			case LTTNG_KERNEL_SYSCALLS:
+				events[i].type = LTTNG_EVENT_SYSCALLS;
+				break;
 		}
 		i++;
 	}
