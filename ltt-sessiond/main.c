@@ -1716,8 +1716,8 @@ static void list_lttng_events(struct ltt_kernel_channel *kchan,
 			case LTTNG_KERNEL_NOOP:
 				events[i].type = LTTNG_EVENT_NOOP;
 				break;
-			case LTTNG_KERNEL_SYSCALLS:
-				events[i].type = LTTNG_EVENT_SYSCALLS;
+			case LTTNG_KERNEL_SYSCALL:
+				events[i].type = LTTNG_EVENT_SYSCALL;
 				break;
 		}
 		i++;

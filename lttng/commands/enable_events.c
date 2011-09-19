@@ -53,7 +53,7 @@ enum {
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
-	OPT_SYSCALLS,
+	OPT_SYSCALL,
 };
 
 static struct lttng_handle *handle;
@@ -73,7 +73,7 @@ static struct poptOption long_options[] = {
 	{"probe",         0,   POPT_ARG_STRING, 0, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, 0, OPT_FUNCTION, 0, 0},
 	{"function:entry", 0,   POPT_ARG_STRING, 0, OPT_FUNCTION_ENTRY, 0, 0},
-	{"syscalls",     0,     POPT_ARG_NONE, 0, OPT_SYSCALLS, 0, 0},
+	{"syscall",        0,     POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -105,7 +105,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
 	fprintf(ofp, "    --function:entry symbol\n");
 	fprintf(ofp, "                           Function tracer event\n");
-	fprintf(ofp, "    --syscalls             System calls\n");
+	fprintf(ofp, "    --syscall              System call event\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
 }
@@ -224,7 +224,7 @@ static int enable_events(char *session_name)
 			}
 			/* TODO: User-space tracer */
 			break;
-		case LTTNG_EVENT_SYSCALLS:
+		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
 				ev.name[0] = '\0';
 				ev.type = opt_event_type;
@@ -279,7 +279,7 @@ static int enable_events(char *session_name)
 					LTTNG_SYMBOL_NAME_LEN);
 				ev.attr.ftrace.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
-			case LTTNG_EVENT_SYSCALLS:
+			case LTTNG_EVENT_SYSCALL:
 				MSG("per-syscall selection not supported yet. Use \"-a\" for all syscalls.");
 				ret = CMD_NOT_IMPLEMENTED;
 				goto error;
@@ -364,8 +364,8 @@ int cmd_enable_events(int argc, const char **argv)
 			opt_event_type = LTTNG_EVENT_FUNCTION_ENTRY;
 			opt_function_entry_symbol = poptGetOptArg(pc);
 			break;
-		case OPT_SYSCALLS:
-			opt_event_type = LTTNG_EVENT_SYSCALLS;
+		case OPT_SYSCALL:
+			opt_event_type = LTTNG_EVENT_SYSCALL;
 			break;
 		default:
 			usage(stderr);

@@ -204,8 +204,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	case LTTNG_EVENT_TRACEPOINT:
 		attr->instrumentation = LTTNG_KERNEL_TRACEPOINT;
 		break;
-	case LTTNG_EVENT_SYSCALLS:
-		attr->instrumentation = LTTNG_KERNEL_SYSCALLS;
+	case LTTNG_EVENT_SYSCALL:
+		attr->instrumentation = LTTNG_KERNEL_SYSCALL;
 		break;
 	default:
 		ERR("Unknown kernel instrumentation type (%d)", ev->type);
