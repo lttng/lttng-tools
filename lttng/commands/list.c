@@ -177,6 +177,14 @@ static int list_events(const char *channel_name)
 						events[i].name, events[i].enabled);
 				MSG("%ssymbol: \"%s\"", indent8, events[i].attr.ftrace.symbol_name);
 				break;
+			case LTTNG_EVENT_SYSCALL:
+				MSG("%s (type: syscall) [enabled: %d]", indent6,
+						events[i].enabled);
+				break;
+			case LTTNG_EVENT_NOOP:
+				MSG("%s (type: noop) [enabled: %d]", indent6,
+						events[i].enabled);
+				break;
 		}
 	}
 

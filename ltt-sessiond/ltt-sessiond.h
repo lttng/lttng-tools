@@ -56,7 +56,6 @@ const struct module_param kernel_modules_list[] = {
 	{ "lttng-probe-irq", 0 },
 	{ "lttng-probe-kvm", 0 },
 	{ "lttng-probe-sched", 0 },
-	{ "lttng-probe-syscalls", 0 },
 };
 
 extern const char default_home_dir[],

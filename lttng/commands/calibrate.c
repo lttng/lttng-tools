@@ -47,6 +47,7 @@ enum {
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
+	OPT_SYSCALL,
 };
 
 static struct lttng_handle *handle;
@@ -63,6 +64,7 @@ static struct poptOption long_options[] = {
 	{"probe",          0,   POPT_ARG_NONE, 0, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_NONE, 0, OPT_FUNCTION, 0, 0},
 	{"function:entry", 0,   POPT_ARG_NONE, 0, OPT_FUNCTION_ENTRY, 0, 0},
+	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -87,6 +89,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
 	fprintf(ofp, "    --function:entry symbol\n");
 	fprintf(ofp, "                           Function tracer event\n");
+	fprintf(ofp, "    --syscall              System call eventl\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
 }
@@ -129,6 +132,9 @@ static int calibrate_lttng(void)
 			break;
 		case LTTNG_EVENT_FUNCTION_ENTRY:
 			DBG("Calibrating kernel function entry");
+			break;
+		case LTTNG_EVENT_SYSCALL:
+			DBG("Calibrating kernel syscall");
 			break;
 		default:
 			ret = CMD_NOT_IMPLEMENTED;
@@ -192,6 +198,9 @@ int cmd_calibrate(int argc, const char **argv)
 			opt_event_type = LTTNG_EVENT_FUNCTION;
 			break;
 		case OPT_FUNCTION_ENTRY:
+			ret = CMD_NOT_IMPLEMENTED;
+			break;
+		case OPT_SYSCALL:
 			ret = CMD_NOT_IMPLEMENTED;
 			break;
 		default:
