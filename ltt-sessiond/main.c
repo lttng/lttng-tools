@@ -1455,7 +1455,7 @@ static void init_kernel_tracer(void)
 	int ret;
 	char *proc_mounts = "/proc/mounts";
 	char line[256];
-	char *debugfs_path = NULL, *lttng_path;
+	char *debugfs_path = NULL, *lttng_path = NULL;
 	FILE *fp;
 
 	/* Detect debugfs */
@@ -2609,7 +2609,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_LIST_EVENTS:
 	{
 		size_t nb_event;
-		struct lttng_event *events;
+		struct lttng_event *events = NULL;
 
 		nb_event = cmd_list_events(cmd_ctx->session,
 				cmd_ctx->lsm->u.list.channel_name, &events);
