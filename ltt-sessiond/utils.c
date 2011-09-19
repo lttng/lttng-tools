@@ -2,19 +2,18 @@
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; only version 2 of the License.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
 #define _GNU_SOURCE
@@ -27,6 +26,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <lttngerr.h>
+
 #include "utils.h"
 
 /*
@@ -38,7 +39,7 @@ int notify_thread_pipe(int wpipe)
 
 	ret = write(wpipe, "!", 1);
 	if (ret < 0) {
-		perror("write poll pipe");
+		PERROR("write poll pipe");
 	}
 
 	return ret;
@@ -66,7 +67,7 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 
 	ret = snprintf(tmp, sizeof(tmp), "%s", path);
 	if (ret < 0) {
-		perror("snprintf mkdir");
+		PERROR("snprintf mkdir");
 		goto error;
 	}
 
@@ -82,7 +83,7 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 			ret = mkdir(tmp, mode);
 			if (ret < 0) {
 				if (!(errno == EEXIST)) {
-					perror("mkdir recursive");
+					PERROR("mkdir recursive");
 					ret = -errno;
 					goto umask_error;
 				}
@@ -93,7 +94,7 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 				 */
 				ret = chown(tmp, uid, gid);
 				if (ret < 0) {
-					perror("chown in mkdir recursive");
+					PERROR("chown in mkdir recursive");
 					ret = -errno;
 					goto umask_error;
 				}
@@ -104,7 +105,12 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 
 	ret = mkdir(tmp, mode);
 	if (ret < 0) {
-		ret = -errno;
+		if (!(errno == EEXIST)) {
+			PERROR("mkdir recursive last piece");
+			ret = -errno;
+		} else {
+			ret = 0;
+		}
 	} else if (ret == 0) {
 		/*
 		 * We created the directory. Set its ownership to the user/group
@@ -112,7 +118,7 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 		 */
 		ret = chown(tmp, uid, gid);
 		if (ret < 0) {
-			perror("chown in mkdir recursive");
+			PERROR("chown in mkdir recursive");
 			ret = -errno;
 			goto umask_error;
 		}

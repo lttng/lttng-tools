@@ -1432,12 +1432,13 @@ static int mount_debugfs(char *path)
 
 	ret = mkdir_recursive(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
 	if (ret < 0) {
+		PERROR("Cannot create debugfs path");
 		goto error;
 	}
 
 	ret = mount(type, path, type, 0, NULL);
 	if (ret < 0) {
-		perror("mount debugfs");
+		PERROR("Cannot mount debugfs");
 		goto error;
 	}
 
@@ -1487,6 +1488,7 @@ static void init_kernel_tracer(void)
 		}
 		ret = mount_debugfs(debugfs_path);
 		if (ret < 0) {
+			perror("Cannot mount debugfs");
 			goto error;
 		}
 	}
