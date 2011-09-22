@@ -26,6 +26,19 @@
 #include "kernel-ctl.h"
 
 /*
+ * Setup a lttng_event used to enable *all* syscall tracing.
+ */
+static void init_syscalls_kernel_event(struct lttng_event *event)
+{
+	event->name[0] = '\0';
+	/*
+	 * We use LTTNG_EVENT* here since the trace kernel creation will make the
+	 * right changes for the kernel.
+	 */
+	event->type = LTTNG_EVENT_SYSCALL;
+}
+
+/*
  * Disable kernel event for a channel from the kernel session.
  */
 int event_kernel_disable(struct ltt_kernel_session *ksession,
@@ -147,6 +160,30 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 	}
 
 	free(event_list);
+
+	ret = LTTCOMM_OK;
+
+error:
+	return ret;
+}
+
+/*
+ * Enable all kernel syscalls tracing.
+ */
+int event_kernel_enable_syscalls(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
+{
+	int ret;
+	struct lttng_event event;
+
+	init_syscalls_kernel_event(&event);
+
+	DBG("Enabling all syscall tracing");
+
+	ret = kernel_create_event(&event, kchan);
+	if (ret < 0) {
+		goto error;
+	}
 
 	ret = LTTCOMM_OK;
 

@@ -492,7 +492,7 @@ int lttng_enable_event(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (!handle || ev == NULL) {
 		return -1;
 	}
 
@@ -506,12 +506,12 @@ int lttng_enable_event(struct lttng_handle *handle,
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	if (ev && ev->name[0] != '\0') {
+	if (ev->name[0] != '\0') {
 		lsm.cmd_type = LTTNG_ENABLE_EVENT;
-		memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 	} else {
 		lsm.cmd_type = LTTNG_ENABLE_ALL_EVENT;
 	}
+	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 
 	copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
