@@ -2834,7 +2834,7 @@ static void *thread_manage_clients(void *data)
 
 		DBG("Sending response (size: %d, retcode: %s)",
 				cmd_ctx->lttng_msg_size,
-				lttng_get_readable_code(cmd_ctx->llm->ret_code));
+				lttng_get_readable_code(-cmd_ctx->llm->ret_code));
 		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
 		if (ret < 0) {
 			ERR("Failed to send data back to client");
