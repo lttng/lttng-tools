@@ -29,35 +29,59 @@
 extern int opt_quiet;
 extern int opt_verbose;
 
-enum __lttng_print_type {
-	PRINT_ERR,
-	PRINT_WARN,
-	PRINT_BUG,
-	PRINT_DBG,
-	PRINT_MSG,
-};
+#define PRINT_ERR   0x1
+#define PRINT_WARN  0x2
+#define PRINT_BUG   0x3
+#define PRINT_MSG   0x4
+#define PRINT_DBG   0x10
+#define PRINT_DBG2  0x20
+#define PRINT_DBG3  0x30
 
 /*
- *  __lttng_print
- *
- *  Macro for printing message depending on
- *  command line option and verbosity.
+ * Macro for printing message depending on command line option and verbosity.
  */
-#define __lttng_print(type, fmt, args...)	\
-	do {							\
-		if (opt_quiet == 0) {		\
-			if (type == PRINT_MSG || (opt_verbose && type == PRINT_DBG)) {	\
-				fprintf(stdout, fmt, ## args);	\
-			} else if (type != PRINT_MSG && type != PRINT_DBG) {	\
-				fprintf(stderr, fmt, ## args);		\
-			}	\
-		}	\
+#define __lttng_print(type, fmt, args...)                                 \
+	do {                                                                  \
+		if (opt_quiet == 0) {                                             \
+			if (type == PRINT_MSG ||                                      \
+					((type & PRINT_DBG) && opt_verbose == 1) ||           \
+					((type & (PRINT_DBG | PRINT_DBG2)) &&                 \
+						opt_verbose == 2) ||                              \
+					((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&    \
+						opt_verbose == 3)) {                              \
+				fprintf(stdout, fmt, ## args);                            \
+			} else if (type & (PRINT_ERR | PRINT_WARN | PRINT_BUG)) {     \
+				fprintf(stderr, fmt, ## args);                            \
+			}                                                             \
+		}                                                                 \
 	} while (0);
 
-#define MSG(fmt, args...) __lttng_print(PRINT_MSG, fmt "\n", ## args)
-#define ERR(fmt, args...) __lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
-#define WARN(fmt, args...) __lttng_print(PRINT_WARN, "Warning: " fmt "\n", ## args)
-#define BUG(fmt, args...) __lttng_print(PRINT_BUG, "BUG: " fmt "\n", ## args)
-#define DBG(fmt, args...) __lttng_print(PRINT_DBG, "DEBUG: " fmt " [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
+#define MSG(fmt, args...) \
+	__lttng_print(PRINT_MSG, fmt "\n", ## args)
+#define ERR(fmt, args...) \
+	__lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
+#define WARN(fmt, args...) \
+	__lttng_print(PRINT_WARN, "Warning: " fmt "\n", ## args)
+#define BUG(fmt, args...) \
+	__lttng_print(PRINT_BUG, "BUG: " fmt "\n", ## args)
+
+/* Three level of debug. Use -v, -vv or -vvv for the levels */
+#define DBG(fmt, args...) __lttng_print(PRINT_DBG, "DEBUG1: " fmt \
+		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
+#define DBG2(fmt, args...) __lttng_print(PRINT_DBG2, "DEBUG2: " fmt \
+		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
+#define DBG3(fmt, args...) __lttng_print(PRINT_DBG3, "DEBUG3: " fmt \
+		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
+
+#define _PERROR(fmt, args...) \
+	__lttng_print(PRINT_ERR, "perror " fmt "\n", ## args)
+
+#define PERROR(call, args...) \
+    do { \
+		char *buf; \
+		char tmp[200]; \
+		buf = strerror_r(errno, tmp, sizeof(tmp)); \
+		_PERROR(call ": %s", ## args, buf); \
+	} while(0);
 
 #endif /* _LTTNGERR_H */
