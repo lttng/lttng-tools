@@ -177,8 +177,8 @@ static void init_channel_config(void)
 		chan.attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 		chan.attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
 
-		chan.attr.subbuf_size = DEFAULT_CHANNEL_SUBBUF_SIZE;
-		chan.attr.num_subbuf = DEFAULT_CHANNEL_SUBBUF_NUM;
+		chan.attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
+		chan.attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
 		chan.attr.output = DEFAULT_CHANNEL_OUTPUT;
 	}
 }

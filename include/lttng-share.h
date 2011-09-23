@@ -44,6 +44,13 @@
 /* See lttng-kernel.h enum lttng_kernel_output for channel output */
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
 
+/* User space defaults */
+
+/* Must be a power of 2 */
+#define DEFAULT_UST_CHANNEL_SUBBUF_SIZE     4096    /* bytes */
+/* Must be a power of 2 */
+#define DEFAULT_UST_CHANNEL_SUBBUF_NUM      4
+
 /*
  * Takes a pointer x and transform it so we can use it to access members
  * without a function call. Here an example:
