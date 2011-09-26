@@ -245,12 +245,16 @@ static int kconsumerd_consumerd_recv_fd(
 		enum lttng_kconsumerd_command cmd_type)
 {
 	struct iovec iov[1];
-	int ret = 0, i, tmp2;
+	int ret = 0, i, j, tmp2;
 	struct cmsghdr *cmsg;
 	int nb_fd;
 	char recv_fd[CMSG_SPACE(sizeof(int))];
 	struct lttcomm_kconsumerd_msg lkm;
 	struct lttng_kconsumerd_fd *new_fd;
+	union {
+		unsigned char vc[4];
+		int vi;
+	} tmp;
 
 	/* the number of fds we are about to receive */
 	nb_fd = size / sizeof(struct lttcomm_kconsumerd_msg);
@@ -298,10 +302,10 @@ static int kconsumerd_consumerd_recv_fd(
 		if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
 			switch (cmd_type) {
 				case ADD_STREAM:
-					DBG("kconsumerd_add_fd %s (%d)", lkm.path_name,
-							((int *) CMSG_DATA(cmsg))[0]);
-
-					new_fd = kconsumerd_allocate_fd(&lkm, ((int *) CMSG_DATA(cmsg))[0]);
+					for (j = 0; j < sizeof(int); j++)
+						tmp.vc[j] = CMSG_DATA(cmsg)[j];
+					DBG("kconsumerd_add_fd %s (%d)", lkm.path_name, tmp.vi);
+					new_fd = kconsumerd_allocate_fd(&lkm, tmp.vi);
 					if (new_fd == NULL) {
 						lttng_kconsumerd_send_error(ctx, KCONSUMERD_OUTFD_ERROR);
 						goto end;
