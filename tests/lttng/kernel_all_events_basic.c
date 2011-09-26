@@ -33,10 +33,14 @@ int main(int argc, char **argv)
 {
     struct lttng_handle *handle = NULL;
     struct lttng_domain dom;
+	struct lttng_event event;
     char *channel_name = "mychan";
     int ret = 0;
 
     dom.type = LTTNG_DOMAIN_KERNEL;
+
+	memset(&event, 0, sizeof(struct lttng_event));
+	event.type = LTTNG_EVENT_TRACEPOINT;
 
 	printf("\nTesting tracing all kernel events:\n");
 	printf("-----------\n");
@@ -66,7 +70,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Enabling all kernel events: ");
-    if ((ret = lttng_enable_event(handle, NULL, channel_name)) < 0) {
+    if ((ret = lttng_enable_event(handle, &event, channel_name)) < 0) {
         printf("error enabling event: %s\n", lttng_get_readable_code(ret));
 		goto enable_fail;
     }

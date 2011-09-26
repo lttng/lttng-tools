@@ -213,33 +213,38 @@ static int enable_events(char *session_name)
 	}
 
 	if (opt_enable_all) {
+		/* Default setup for enable all */
+		ev.name[0] = '\0';
+		ev.type = opt_event_type;
+
+		ret = lttng_enable_event(handle, &ev, channel_name);
+		if (ret < 0) {
+			goto error;
+		}
+
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
 			if (opt_kernel) {
-				ret = lttng_enable_event(handle, NULL, channel_name);
-				if (ret == 0) {
-					MSG("All kernel events are enabled in channel %s", channel_name);
-				}
-				goto error;
+				MSG("All kernel events are enabled in channel %s",
+						channel_name);
 			}
-			/* TODO: User-space tracer */
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
-				ev.name[0] = '\0';
-				ev.type = opt_event_type;
-
-				ret = lttng_enable_event(handle, &ev, channel_name);
-				if (ret == 0) {
-					MSG("All kernel system calls are enabled in channel %s", channel_name);
-				}
-				goto error;
+				MSG("All kernel system calls are enabled in channel %s",
+						channel_name);
 			}
 			break;
 		default:
-			MSG("Enable all not supported for this instrumentation type.");
+			/*
+			 * We should not be here since lttng_enable_event should had failed
+			 * on the event type.
+			 */
 			goto error;
+
 		}
+
+		goto end;
 	}
 
 	/* Strip event list */
@@ -310,6 +315,7 @@ static int enable_events(char *session_name)
 		event_name = strtok(NULL, ",");
 	}
 
+end:
 error:
 	if (opt_channel_name == NULL) {
 		free(channel_name);

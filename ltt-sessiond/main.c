@@ -2009,7 +2009,7 @@ error:
  * Command LTTNG_ENABLE_ALL_EVENT processed by the client thread.
  */
 static int cmd_enable_event_all(struct ltt_session *session, int domain,
-		char *channel_name)
+		char *channel_name, int event_type)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -2036,8 +2036,18 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_kernel_enable_all(session->kernel_session,
-				kchan, kernel_tracer_fd);
+		if (event_type == LTTNG_KERNEL_SYSCALL) {
+			ret = event_kernel_enable_syscalls(session->kernel_session,
+					kchan, kernel_tracer_fd);
+		} else {
+			/*
+			 * This call enables all LTTNG_KERNEL_TRACEPOINTS and events
+			 * already registered to the channel.
+			 */
+			ret = event_kernel_enable_all(session->kernel_session,
+					kchan, kernel_tracer_fd);
+		}
+
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2560,7 +2570,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		DBG("Enabling all kernel event");
 
 		ret = cmd_enable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.enable.channel_name);
+				cmd_ctx->lsm->u.enable.channel_name,
+				cmd_ctx->lsm->u.enable.event.type);
 		break;
 	}
 	case LTTNG_LIST_TRACEPOINTS:
@@ -2890,7 +2901,7 @@ static void *thread_manage_clients(void *data)
 
 		DBG("Sending response (size: %d, retcode: %s)",
 				cmd_ctx->lttng_msg_size,
-				lttng_get_readable_code(cmd_ctx->llm->ret_code));
+				lttng_get_readable_code(-cmd_ctx->llm->ret_code));
 		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
 		if (ret < 0) {
 			ERR("Failed to send data back to client");

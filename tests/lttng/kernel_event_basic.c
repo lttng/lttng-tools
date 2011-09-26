@@ -35,8 +35,8 @@ int main(int argc, char **argv)
     struct lttng_domain dom;
 	struct lttng_channel channel;
 	struct lttng_event sched_switch;
-	struct lttng_event sys_enter;
-	struct lttng_event sys_exit;
+	struct lttng_event sched_process_exit;
+	struct lttng_event sched_process_free;
 
     int ret = 0;
 
@@ -55,11 +55,11 @@ int main(int argc, char **argv)
 	strcpy(sched_switch.name, "sched_switch");
 	sched_switch.type = LTTNG_EVENT_TRACEPOINT;
 
-	strcpy(sys_enter.name, "sys_enter");
-	sys_enter.type = LTTNG_EVENT_TRACEPOINT;
+	strcpy(sched_process_exit.name, "sched_process_exit");
+	sched_process_exit.type = LTTNG_EVENT_TRACEPOINT;
 
-	strcpy(sys_exit.name, "sys_exit");
-	sys_exit.type = LTTNG_EVENT_TRACEPOINT;
+	strcpy(sched_process_free.name, "sched_process_free");
+	sched_process_free.type = LTTNG_EVENT_TRACEPOINT;
 
 	printf("\nTesting tracing kernel events:\n");
 	printf("-----------\n");
@@ -101,15 +101,15 @@ int main(int argc, char **argv)
     }
 	PRINT_OK();
 
-	printf("Enabling %s kernel event: ", sys_enter.name);
-	if ((ret = lttng_enable_event(handle, &sys_enter, channel.name)) < 0) {
+	printf("Enabling %s kernel event: ", sched_process_exit.name);
+	if ((ret = lttng_enable_event(handle, &sched_process_exit, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_get_readable_code(ret));
 		goto enable_fail;
 	}
 	PRINT_OK();
 
-	printf("Enabling %s kernel event: ", sys_exit.name);
-	if ((ret = lttng_enable_event(handle, &sys_exit, channel.name)) < 0) {
+	printf("Enabling %s kernel event: ", sched_process_free.name);
+	if ((ret = lttng_enable_event(handle, &sched_process_free, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_get_readable_code(ret));
 		goto enable_fail;
 	}
@@ -122,8 +122,8 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
-	printf("Disabling %s kernel event: ", sys_exit.name);
-	if ((ret = lttng_disable_event(handle, sys_exit.name, channel.name)) < 0) {
+	printf("Disabling %s kernel event: ", sched_process_free.name);
+	if ((ret = lttng_disable_event(handle, sched_process_free.name, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_get_readable_code(ret));
 		goto enable_fail;
 	}
@@ -136,8 +136,8 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
-	printf("Renabling %s kernel event: ", sys_exit.name);
-	if ((ret = lttng_enable_event(handle, &sys_exit, channel.name)) < 0) {
+	printf("Renabling %s kernel event: ", sched_process_free.name);
+	if ((ret = lttng_enable_event(handle, &sched_process_free, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_get_readable_code(ret));
 		goto enable_fail;
 	}

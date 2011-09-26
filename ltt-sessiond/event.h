@@ -30,5 +30,7 @@ int event_kernel_enable(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, struct lttng_event *event);
 int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd);
+int event_kernel_enable_syscalls(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan, int kernel_tracer_fd);
 
 #endif /* _LTT_EVENT_H */
