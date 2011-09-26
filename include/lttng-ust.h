@@ -19,9 +19,6 @@
 #define LTTNG_UST_COMM_VERSION_MAJOR   0
 #define LTTNG_UST_COMM_VERSION_MINOR   1
 
-/* See lttng-ust.h enum lttng_ust_output */
-#define DEFAULT_UST_CHANNEL_OUTPUT     LTTNG_UST_MMAP
-
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT    = 0,
 	LTTNG_UST_PROBE         = 1,
