@@ -19,10 +19,18 @@
 #ifndef _LTT_UST_CTL_H
 #define _LTT_UST_CTL_H
 
+#include <lttng/lttng.h>
+
 #include "trace-ust.h"
 
 int ustctl_register_done(int sock);
-int ustctl_create_session(struct ltt_ust_session *session);
-int ustctl_destroy_session(struct ltt_ust_session *session);
+int ustctl_create_channel(int sock, struct ltt_ust_session *session,
+		struct lttng_channel *channel);
+int ustctl_create_session(int sock, struct ltt_ust_session *session);
+int ustctl_destroy_session(int sock, struct ltt_ust_session *session);
+int ustctl_disable_channel(int sock, struct ltt_ust_session *session,
+		struct ltt_ust_channel *chan);
+int ustctl_enable_channel(int sock, struct ltt_ust_session *session,
+		struct ltt_ust_channel *chan);
 
 #endif /* _LTT_UST_CTL_H */

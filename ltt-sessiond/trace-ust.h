@@ -25,8 +25,6 @@
 #include <lttng/lttng.h>
 #include <lttng-ust.h>
 
-#include "traceable-app.h"
-
 /*
  * UST session list.
  */
@@ -51,8 +49,8 @@ struct ltt_ust_channel_list {
 struct ltt_ust_event {
 	int handle;
 	int enabled;
-	struct lttng_ust_context *ctx;
-	struct lttng_ust_event *event;
+	struct lttng_ust_context ctx;
+	struct lttng_ust_event attr;
 	struct cds_list_head list;
 };
 
@@ -60,10 +58,10 @@ struct ltt_ust_event {
 struct ltt_ust_channel {
 	int handle;
 	int enabled;
-	char *name;
-	char *trace_path;                   /* Trace file path name */
-	struct lttng_ust_context *ctx;
-	struct lttng_ust_channel *attr;
+	char name[LTTNG_UST_SYM_NAME_LEN];
+	char trace_path[PATH_MAX];    /* Trace file path name */
+	struct lttng_ust_context ctx;
+	struct lttng_ust_channel attr;
 	struct ltt_ust_event_list events;
 	struct cds_list_head list;
 };
@@ -72,7 +70,7 @@ struct ltt_ust_channel {
 struct ltt_ust_metadata {
 	int handle;
 	char *trace_path;             /* Trace file path name */
-	struct lttng_ust_channel *attr;
+	struct lttng_ust_channel attr;
 };
 
 /* UST session */
@@ -80,8 +78,8 @@ struct ltt_ust_session {
 	int handle;
 	int enabled;
 	int uconsumer_fds_sent;
-	char *path;
-	struct ltt_traceable_app *app;
+	char path[PATH_MAX];
+	struct lttng_domain domain;
 	struct ltt_ust_metadata *metadata;
 	struct ltt_ust_channel_list channels;
 	struct cds_list_head list;
@@ -94,15 +92,16 @@ struct ltt_ust_event *trace_ust_get_event_by_name(
 		char *name, struct ltt_ust_channel *channel);
 struct ltt_ust_channel *trace_ust_get_channel_by_name(
 		char *name, struct ltt_ust_session *session);
-struct ltt_ust_session *trace_ust_get_session_by_pid(pid_t pid,
-		struct ltt_ust_session_list *session_list);
+struct ltt_ust_session *trace_ust_get_session_by_pid(
+		struct ltt_ust_session_list *session_list, pid_t pid);
 
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid);
-struct ltt_ust_channel *trace_ust_create_channel(char *name, char *path,
-		struct lttng_ust_channel *attr);
+struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
+		struct lttng_domain *domain);
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
+		char *path);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev);
 struct ltt_ust_metadata *trace_ust_create_metadata(char *path);
 

@@ -21,12 +21,20 @@
 #include <lttng/lttng.h>
 
 #include "trace-kernel.h"
+#include "trace-ust.h"
 
 int channel_kernel_disable(struct ltt_kernel_session *ksession,
 		char *channel_name);
 int channel_kernel_enable(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan);
 int channel_kernel_create(struct ltt_kernel_session *ksession,
-		char *channel_name, struct lttng_channel *chan, int kernel_pipe);
+		struct lttng_channel *chan, int kernel_pipe);
+
+int channel_ust_create(struct ltt_ust_session *usession,
+		struct lttng_channel *chan, int sock);
+int channel_ust_disable(struct ltt_ust_session *usession,
+		struct ltt_ust_channel *uchan, int sock);
+int channel_ust_enable(struct ltt_ust_session *usession,
+		struct ltt_ust_channel *uchan, int sock);
 
 #endif /* _LTT_CHANNEL_H */

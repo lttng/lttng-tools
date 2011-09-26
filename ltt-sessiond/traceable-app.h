@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <urcu/list.h>
 
+#include "trace-ust.h"
+
 /*
  * Application registration data structure.
  */
@@ -70,6 +72,7 @@ struct ltt_traceable_app {
 	uint32_t v_major;    /* Verion major number */
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */
+	struct ltt_ust_channel_list channels;
 	struct cds_list_head list;
 };
 
@@ -81,5 +84,7 @@ void lock_apps_list(void);
 void unlock_apps_list(void);
 void clean_traceable_apps_list(void);
 struct ltt_traceable_app_list *get_traceable_apps_list(void);
+
+struct ltt_traceable_app *traceable_app_get_by_pid(pid_t pid);
 
 #endif /* _TRACEABLE_APP_H */

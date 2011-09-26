@@ -24,7 +24,7 @@
 
 /*
  * Send msg containing a command to an UST application via sock and wait for
- * the reply.
+ * the reply. Caller must free() the reply structure sent back.
  *
  * Return the replied structure or NULL.
  */
@@ -39,7 +39,7 @@ struct lttcomm_ust_reply *ustcomm_send_command(int sock,
 		goto error;
 	}
 
-	DBG("Sending UST command %d to sock %d", msg->cmd, sock);
+	DBG2("Sending UST command %d to sock %d", msg->cmd, sock);
 
 	/* Send UST msg */
 	len = lttcomm_send_unix_sock(sock, msg, sizeof(*msg));
@@ -53,7 +53,7 @@ struct lttcomm_ust_reply *ustcomm_send_command(int sock,
 		goto error;
 	}
 
-	DBG("Receiving UST reply on sock %d", sock);
+	DBG2("Receiving UST reply on sock %d", sock);
 
 	/* Get UST reply */
 	len = lttcomm_recv_unix_sock(sock, reply, sizeof(*reply));
