@@ -49,10 +49,16 @@ static void add_traceable_app(struct ltt_traceable_app *lta)
  */
 static void del_traceable_app(struct ltt_traceable_app *lta)
 {
+	struct ltt_ust_channel *chan;
+
 	cds_list_del(&lta->list);
 	/* Sanity check */
 	if (ltt_traceable_app_list.count > 0) {
 		ltt_traceable_app_list.count--;
+	}
+
+	cds_list_for_each_entry(chan, &lta->channels.head, list) {
+		trace_ust_destroy_channel(chan);
 	}
 }
 
@@ -109,9 +115,12 @@ struct ltt_traceable_app *traceable_app_get_by_pid(pid_t pid)
 	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
 		if (iter->pid == pid) {
 			/* Found */
+			DBG2("Found traceable app by pid %d", pid);
 			return iter;
 		}
 	}
+
+	DBG2("Traceable app with pid %d not found", pid);
 
 	return NULL;
 }
@@ -141,6 +150,7 @@ int register_traceable_app(struct ust_register_msg *msg, int sock)
 	lta->sock = sock;
 	strncpy(lta->name, msg->name, sizeof(lta->name));
 	lta->name[16] = '\0';
+	CDS_INIT_LIST_HEAD(&lta->channels.head);
 
 	lock_apps_list();
 	add_traceable_app(lta);
@@ -167,8 +177,8 @@ void unregister_traceable_app(int sock)
 	lta = find_app_by_sock(sock);
 	if (lta) {
 		DBG("PID %d unregistered with sock %d", lta->pid, sock);
-		close(lta->sock);
 		del_traceable_app(lta);
+		close(lta->sock);
 		free(lta);
 	}
 	unlock_apps_list();
@@ -200,6 +210,7 @@ void clean_traceable_apps_list(void)
 	 * cleanup() functions meaning that the program will exit.
 	 */
 	cds_list_for_each_entry_safe(iter, tmp, &ltt_traceable_app_list.head, list) {
+		del_traceable_app(iter);
 		close(iter->sock);
 		free(iter);
 	}

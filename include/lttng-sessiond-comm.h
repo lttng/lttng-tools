@@ -94,6 +94,7 @@ enum lttcomm_return_code {
 	LTTCOMM_EXIST_SESS,				/* Session name already exist */
 	LTTCOMM_NO_EVENT,				/* No event found */
 	LTTCOMM_CONNECT_FAIL,           /* Unable to connect to unix socket */
+	LTTCOMM_APP_NOT_FOUND,          /* App not found in traceable app list */
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
@@ -114,6 +115,8 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
 	LTTCOMM_KERN_LIST_FAIL,			/* Kernel listing events failed */
 	LTTCOMM_UST_SESS_FAIL,			/* UST create session failed */
+	LTTCOMM_UST_CHAN_NOT_FOUND,     /* UST channel not found */
+	LTTCOMM_UST_CHAN_FAIL,          /* UST create channel failed */
 	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
 	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
@@ -228,6 +231,12 @@ struct lttcomm_ust_reply {
 	uint32_t ret_code;	/* enum lttcomm_return_code */
 	uint32_t ret_val;	/* return value */
 	union {
+		struct {
+			uint64_t memory_map_size;
+		} channel;
+		struct {
+			uint64_t memory_map_size;
+		} stream;
 	} u;
 };
 

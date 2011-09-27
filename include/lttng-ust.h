@@ -19,9 +19,6 @@
 #define LTTNG_UST_COMM_VERSION_MAJOR   0
 #define LTTNG_UST_COMM_VERSION_MINOR   1
 
-/* See lttng-ust.h enum lttng_ust_output */
-#define DEFAULT_UST_CHANNEL_OUTPUT     LTTNG_UST_MMAP
-
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT    = 0,
 	LTTNG_UST_PROBE         = 1,
@@ -45,6 +42,10 @@ struct lttng_ust_channel {
 	unsigned int switch_timer_interval;	/* usecs */
 	unsigned int read_timer_interval;	/* usecs */
 	enum lttng_ust_output output;		/* output mode */
+	/* The following fields are used internally within UST. */
+	int shm_fd;
+	int wait_fd;
+	uint64_t memory_map_size;
 };
 
 struct lttng_ust_event {

@@ -1620,15 +1620,30 @@ error:
 /*
  * Create an UST session and add it to the session ust list.
  */
-static int create_ust_session(pid_t pid, struct ltt_session *session)
+static int create_ust_session(struct ltt_session *session,
+		struct lttng_domain *domain)
 {
-	int ret = -1;
+	int ret;
 	struct ltt_ust_session *lus;
+	struct ltt_traceable_app *app;
+
+	switch (domain->type) {
+	case LTTNG_DOMAIN_UST_PID:
+		app = traceable_app_get_by_pid(domain->attr.pid);
+		if (app == NULL) {
+			ret = LTTCOMM_APP_NOT_FOUND;
+			goto error;
+		}
+		break;
+	default:
+		goto error;
+	}
 
 	DBG("Creating UST session");
 
-	lus = trace_ust_create_session(session->path, pid);
+	lus = trace_ust_create_session(session->path, domain->attr.pid, domain);
 	if (lus == NULL) {
+		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
 	}
 
@@ -1637,17 +1652,22 @@ static int create_ust_session(pid_t pid, struct ltt_session *session)
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
+			ret = LTTCOMM_UST_SESS_FAIL;
 			goto error;
 		}
 	}
 
 	/* Create session on the UST tracer */
-	ret = ustctl_create_session(lus);
+	ret = ustctl_create_session(app->sock, lus);
 	if (ret < 0) {
+		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
 	}
 
-	return 0;
+	cds_list_add(&lus->list, &session->ust_session_list.head);
+	session->ust_session_list.count++;
+
+	return LTTCOMM_OK;
 
 error:
 	free(lus);
@@ -1801,9 +1821,10 @@ static int cmd_disable_channel(struct ltt_session *session,
 
 			kernel_wait_quiescent(kernel_tracer_fd);
 			break;
+		case LTTNG_DOMAIN_UST_PID:
+			break;
 		default:
-			/* TODO: Userspace tracing */
-			ret = LTTCOMM_NOT_IMPLEMENTED;
+			ret = LTTCOMM_UNKNOWN_DOMAIN;
 			goto error;
 	}
 
@@ -1816,33 +1837,106 @@ error:
 /*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  */
-static int cmd_enable_channel(struct ltt_session *session, int domain,
-		char *channel_name, struct lttng_channel *attr)
+static int cmd_enable_channel(struct ltt_session *session,
+		struct lttng_domain *domain, struct lttng_channel *attr)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 
-	switch (domain) {
-		case LTTNG_DOMAIN_KERNEL:
-			kchan = trace_kernel_get_channel_by_name(channel_name,
-					session->kernel_session);
-			if (kchan == NULL) {
-				ret = channel_kernel_create(session->kernel_session,
-						channel_name, attr, kernel_poll_pipe[1]);
-			} else {
-				ret = channel_kernel_enable(session->kernel_session, kchan);
-			}
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct ltt_kernel_channel *kchan;
 
-			if (ret != LTTCOMM_OK) {
+		kchan = trace_kernel_get_channel_by_name(attr->name,
+				session->kernel_session);
+		if (kchan == NULL) {
+			ret = channel_kernel_create(session->kernel_session,
+					attr, kernel_poll_pipe[1]);
+		} else {
+			ret = channel_kernel_enable(session->kernel_session, kchan);
+		}
+
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		break;
+	}
+	case LTTNG_DOMAIN_UST_PID:
+	{
+		struct ltt_ust_event *uevent, *new_uevent;
+		struct ltt_ust_session *usess;
+		struct ltt_ust_channel *uchan, *app_chan;
+		struct ltt_traceable_app *app;
+
+		usess = trace_ust_get_session_by_pid(&session->ust_session_list,
+				domain->attr.pid);
+		if (usess == NULL) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		app = traceable_app_get_by_pid(domain->attr.pid);
+		if (app == NULL) {
+			ret = LTTCOMM_APP_NOT_FOUND;
+			goto error;
+		}
+
+		uchan = trace_ust_get_channel_by_name(attr->name, usess);
+		if (uchan == NULL) {
+			ret = channel_ust_create(usess, attr, app->sock);
+		} else {
+			ret = channel_ust_enable(usess, uchan, app->sock);
+		}
+
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+
+		/*TODO: This should be put in an external function */
+
+		/* Copy UST channel to add to the traceable app */
+		uchan = trace_ust_get_channel_by_name(attr->name, usess);
+		if (uchan == NULL) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+
+		app_chan = trace_ust_create_channel(attr, session->path);
+		if (app_chan == NULL) {
+			PERROR("malloc ltt_ust_channel");
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+
+		memcpy(app_chan, uchan, sizeof(struct ltt_ust_channel));
+		CDS_INIT_LIST_HEAD(&app_chan->events.head);
+
+		cds_list_for_each_entry(uevent, &uchan->events.head, list) {
+			new_uevent = malloc(sizeof(struct ltt_ust_event));
+			if (new_uevent == NULL) {
+				PERROR("malloc ltt_ust_event");
+				ret = LTTCOMM_FATAL;
 				goto error;
 			}
 
-			kernel_wait_quiescent(kernel_tracer_fd);
-			break;
-		default:
-			/* TODO: Userspace tracing */
-			ret = LTTCOMM_NOT_IMPLEMENTED;
-			goto error;
+			memcpy(new_uevent, uevent, sizeof(struct ltt_ust_event));
+			cds_list_add(&new_uevent->list, &app_chan->events.head);
+			app_chan->events.count++;
+		}
+
+		/* Add channel to traceable_app */
+		cds_list_add(&app_chan->list, &app->channels.head);
+		app->channels.count++;
+
+		DBG("UST channel %s created for app sock %d with pid %d",
+				attr->name, app->sock, domain->attr.pid);
+		break;
+	}
+	default:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		goto error;
 	}
 
 	ret = LTTCOMM_OK;
@@ -1970,7 +2064,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 				session->kernel_session);
 		if (kchan == NULL) {
 			/* This call will notify the kernel thread */
-			ret = channel_kernel_create(session->kernel_session, channel_name,
+			ret = channel_kernel_create(session->kernel_session,
 					NULL, kernel_poll_pipe[1]);
 			if (ret != LTTCOMM_OK) {
 				goto error;
@@ -2020,8 +2114,8 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 				session->kernel_session);
 		if (kchan == NULL) {
 			/* This call will notify the kernel thread */
-			ret = channel_kernel_create(session->kernel_session, channel_name,
-					NULL, kernel_poll_pipe[1]);
+			ret = channel_kernel_create(session->kernel_session, NULL,
+					kernel_poll_pipe[1]);
 			if (ret != LTTCOMM_OK) {
 				goto error;
 			}
@@ -2427,13 +2521,13 @@ error:
 static int process_client_msg(struct command_ctx *cmd_ctx)
 {
 	int ret = LTTCOMM_OK;
-	int need_kernel_session = 1;
+	int need_tracing_session = 1;
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
 	/*
 	 * Check for command that don't needs to allocate a returned payload. We do
-	 * this here so we don't have to make the call for no payload" at each
+	 * this here so we don't have to make the call for no payload at each
 	 * command.
 	 */
 	switch(cmd_ctx->lsm->cmd_type) {
@@ -2458,7 +2552,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
-		need_kernel_session = 0;
+		need_tracing_session = 0;
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm->session.name);
@@ -2494,7 +2588,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 
 		/* Need a session for kernel command */
-		if (need_kernel_session) {
+		if (need_tracing_session) {
 			if (cmd_ctx->session->kernel_session == NULL) {
 				ret = create_kernel_session(cmd_ctx->session);
 				if (ret < 0) {
@@ -2514,6 +2608,24 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 		}
 		break;
+	case LTTNG_DOMAIN_UST_PID:
+	{
+		struct ltt_ust_session *usess;
+
+		if (need_tracing_session) {
+			usess = trace_ust_get_session_by_pid(
+					&cmd_ctx->session->ust_session_list,
+					cmd_ctx->lsm->domain.attr.pid);
+			if (usess == NULL) {
+				ret = create_ust_session(cmd_ctx->session,
+						&cmd_ctx->lsm->domain);
+				if (ret != LTTCOMM_OK) {
+					goto error;
+				}
+			}
+		}
+		break;
+	}
 	default:
 		/* TODO Userspace tracer */
 		break;
@@ -2553,8 +2665,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(cmd_ctx->session, cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.enable.channel_name,
+		ret = cmd_enable_channel(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				&cmd_ctx->lsm->u.channel.chan);
 		break;
 	}

@@ -23,24 +23,33 @@
 
 #include <lttngerr.h>
 #include <lttng-share.h>
+#include <lttng-ust.h>
 
 #include "trace-ust.h"
 
 /*
- * Return an UST session by traceable app PID.
+ * Using a ust session list, it will return the session corresponding to the
+ * pid. Must be a session of domain LTTNG_DOMAIN_UST_PID.
  */
-struct ltt_ust_session *trace_ust_get_session_by_pid(pid_t pid,
-		struct ltt_ust_session_list *session_list)
+struct ltt_ust_session *trace_ust_get_session_by_pid(
+		struct ltt_ust_session_list *session_list, pid_t pid)
 {
-	struct ltt_ust_session *lus;
+	struct ltt_ust_session *sess;
 
-	cds_list_for_each_entry(lus, &session_list->head, list) {
-		if (lus->app->pid == pid) {
-			DBG("Found UST session by pid %d", pid);
-			return lus;
+	if (session_list == NULL) {
+		ERR("Session list is NULL");
+		goto error;
+	}
+
+	cds_list_for_each_entry(sess, &session_list->head, list) {
+		if (sess->domain.type == LTTNG_DOMAIN_UST_PID &&
+				sess->domain.attr.pid == pid) {
+			DBG2("Trace UST session found by pid %d", pid);
+			return sess;
 		}
 	}
 
+error:
 	return NULL;
 }
 
@@ -59,7 +68,7 @@ struct ltt_ust_channel *trace_ust_get_channel_by_name(
 
 	cds_list_for_each_entry(chan, &session->channels.head, list) {
 		if (strcmp(name, chan->name) == 0) {
-			DBG("Found UST channel by name %s", name);
+			DBG2("Found UST channel by name %s", name);
 			return chan;
 		}
 	}
@@ -82,7 +91,7 @@ struct ltt_ust_event *trace_ust_get_event_by_name(
 	}
 
 	cds_list_for_each_entry(ev, &channel->events.head, list) {
-		if (strcmp(name, ev->event->name) == 0) {
+		if (strcmp(name, ev->attr.name) == 0) {
 			DBG("Found UST event by name %s for channel %s", name,
 					channel->name);
 			return ev;
@@ -98,7 +107,8 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid)
+struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
+		struct lttng_domain *domain)
 {
 	int ret;
 	struct ltt_ust_session *lus;
@@ -114,18 +124,21 @@ struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid)
 	lus->handle = -1;
 	lus->enabled = 1;
 	lus->uconsumer_fds_sent = 0;
-	lus->path = NULL;
 	lus->metadata = NULL;
-	lus->app = NULL;	/* TODO: Search app by PID */
 	lus->channels.count = 0;
 	CDS_INIT_LIST_HEAD(&lus->channels.head);
 
+	/* Copy lttng_domain */
+	memcpy(&lus->domain, domain, sizeof(struct lttng_domain));
+
 	/* Set session path */
-	ret = asprintf(&lus->path, "%s/ust_%d", path, pid);
+	ret = snprintf(lus->path, PATH_MAX, "%s/ust_%d", path, pid);
 	if (ret < 0) {
-		perror("asprintf kernel traces path");
+		PERROR("snprintf kernel traces path");
 		goto error;
 	}
+
+	DBG2("UST trace session create successful");
 
 	return lus;
 
@@ -138,8 +151,8 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_channel *trace_ust_create_channel(char *name, char *path,
-		struct lttng_ust_channel *chan)
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
+		char *path)
 {
 	int ret;
 	struct ltt_ust_channel *luc;
@@ -150,25 +163,29 @@ struct ltt_ust_channel *trace_ust_create_channel(char *name, char *path,
 		goto error;
 	}
 
-	luc->attr = malloc(sizeof(struct lttng_ust_channel));
-	if (luc->attr == NULL) {
-		perror("lttng_ust_channel malloc");
-		goto error;
+	/* Copy UST channel attributes */
+	memcpy(&luc->attr, &chan->attr, sizeof(struct lttng_ust_channel));
+
+	/* Translate to UST output enum */
+	switch (luc->attr.output) {
+	default:
+		luc->attr.output = LTTNG_UST_MMAP;
+		break;
 	}
-	memcpy(luc->attr, chan, sizeof(struct lttng_ust_channel));
 
 	luc->handle = -1;
 	luc->enabled = 1;
-	luc->ctx = NULL;
 	luc->events.count = 0;
 	CDS_INIT_LIST_HEAD(&luc->events.head);
 
+	memset(&luc->ctx, 0, sizeof(struct lttng_ust_context));
+
 	/* Copy channel name */
-	strncpy(luc->name, name, LTTNG_UST_SYM_NAME_LEN);
+	strncpy(luc->name, chan->name, sizeof(&luc->name));
 	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Set trace output path */
-	ret = asprintf(&luc->trace_path, "%s", path);
+	ret = snprintf(luc->trace_path, PATH_MAX, "%s", path);
 	if (ret < 0) {
 		perror("asprintf ust create channel");
 		goto error;
@@ -188,27 +205,25 @@ error:
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 {
 	struct ltt_ust_event *lue;
-	struct lttng_ust_event *event;
 
 	lue = malloc(sizeof(struct ltt_ust_event));
-	event = malloc(sizeof(struct lttng_ust_event));
-	if (lue == NULL || event == NULL) {
-		perror("ust event malloc");
+	if (lue == NULL) {
+		PERROR("ust event malloc");
 		goto error;
 	}
 
 	switch (ev->type) {
 	case LTTNG_EVENT_PROBE:
-		event->instrumentation = LTTNG_UST_PROBE;
+		lue->attr.instrumentation = LTTNG_UST_PROBE;
 		break;
 	case LTTNG_EVENT_FUNCTION:
-		event->instrumentation = LTTNG_UST_FUNCTION;
+		lue->attr.instrumentation = LTTNG_UST_FUNCTION;
 		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
-		event->instrumentation = LTTNG_UST_FUNCTION;
+		lue->attr.instrumentation = LTTNG_UST_FUNCTION;
 		break;
 	case LTTNG_EVENT_TRACEPOINT:
-		event->instrumentation = LTTNG_UST_TRACEPOINT;
+		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
@@ -216,14 +231,13 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	}
 
 	/* Copy event name */
-	strncpy(event->name, ev->name, LTTNG_UST_SYM_NAME_LEN);
-	event->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	strncpy(lue->attr.name, ev->name, LTTNG_UST_SYM_NAME_LEN);
+	lue->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Setting up a ust event */
 	lue->handle = -1;
-	lue->event = event;
 	lue->enabled = 1;
-	lue->ctx = NULL;
+	memset(&lue->ctx, 0, sizeof(struct lttng_ust_context));
 
 	return lue;
 
@@ -240,24 +254,21 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 {
 	int ret;
 	struct ltt_ust_metadata *lum;
-	struct lttng_ust_channel *attr;
 
 	lum = malloc(sizeof(struct ltt_ust_metadata));
-	attr = malloc(sizeof(struct lttng_ust_channel));
-	if (lum == NULL || attr == NULL) {
+	if (lum == NULL) {
 		perror("ust metadata malloc");
 		goto error;
 	}
 
 	/* Set default attributes */
-	attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	attr->subbuf_size = DEFAULT_METADATA_SUBBUF_SIZE;
-	attr->num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-	attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
-	attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
+	lum->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	lum->attr.subbuf_size = DEFAULT_METADATA_SUBBUF_SIZE;
+	lum->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
+	lum->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+	lum->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+	lum->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
 
-	lum->attr = attr;
 	lum->handle = -1;
 	/* Set metadata trace path */
 	ret = asprintf(&lum->trace_path, "%s/metadata", path);
@@ -277,11 +288,7 @@ error:
  */
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
-	DBG("[trace] Destroy ust event %s", event->event->name);
-
-	/* Free attributes */
-	free(event->event);
-	free(event->ctx);
+	DBG("[trace] Destroy ust event %s", event->attr.name);
 
 	/* Remove from event list */
 	cds_list_del(&event->list);
@@ -296,11 +303,6 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 	struct ltt_ust_event *event, *etmp;
 
 	DBG("[trace] Destroy ust channel %d", channel->handle);
-
-	free(channel->trace_path);
-	/* Free attributes structure */
-	free(channel->attr);
-	free(channel->ctx);
 
 	/* For each event in the channel list */
 	cds_list_for_each_entry_safe(event, etmp, &channel->events.head, list) {
@@ -320,7 +322,6 @@ void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 	DBG("[trace] Destroy ust metadata %d", metadata->handle);
 
 	/* Free attributes */
-	free(metadata->attr);
 	free(metadata->trace_path);
 
 	free(metadata);
@@ -348,6 +349,9 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 		trace_ust_destroy_channel(channel);
 	}
 
-	free(session->path);
+	if (session->path) {
+		free(session->path);
+	}
+
 	free(session);
 }

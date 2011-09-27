@@ -23,12 +23,13 @@
 
 #include "channel.h"
 #include "kernel-ctl.h"
+#include "ust-ctl.h"
 #include "utils.h"
 
 /*
  * Return allocated channel attributes.
  */
-static struct lttng_channel *init_default_attr(int dom, char *name)
+static struct lttng_channel *init_default_attr(int dom)
 {
 	struct lttng_channel *chan;
 
@@ -38,8 +39,9 @@ static struct lttng_channel *init_default_attr(int dom, char *name)
 		goto error_alloc;
 	}
 
-	if (snprintf(chan->name, sizeof(chan->name), "%s", name) < 0) {
-		perror("snprintf channel name");
+	if (snprintf(chan->name, sizeof(chan->name), "%s",
+				DEFAULT_CHANNEL_NAME) < 0) {
+		perror("snprintf default channel name");
 		goto error;
 	}
 
@@ -53,7 +55,11 @@ static struct lttng_channel *init_default_attr(int dom, char *name)
 			chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 			chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 			break;
-			/* TODO: add UST */
+		case LTTNG_DOMAIN_UST_PID:
+			chan->attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
+			chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
+			chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
+			break;
 		default:
 			goto error;	/* Not implemented */
 	}
@@ -121,14 +127,14 @@ error:
  * Create kernel channel of the kernel session and notify kernel thread.
  */
 int channel_kernel_create(struct ltt_kernel_session *ksession,
-		char *channel_name, struct lttng_channel *chan, int kernel_pipe)
+		struct lttng_channel *chan, int kernel_pipe)
 {
 	int ret;
 	struct lttng_channel *attr = chan;
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		attr = init_default_attr(LTTNG_DOMAIN_KERNEL, channel_name);
+		attr = init_default_attr(LTTNG_DOMAIN_KERNEL);
 		if (attr == NULL) {
 			ret = LTTCOMM_FATAL;
 			goto error;
@@ -146,6 +152,80 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	ret = notify_thread_pipe(kernel_pipe);
 	if (ret < 0) {
 		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	ret = LTTCOMM_OK;
+
+error:
+	return ret;
+}
+
+/*
+ * Create UST channel and enable it on the tracer.
+ */
+int channel_ust_create(struct ltt_ust_session *usession,
+		struct lttng_channel *chan, int sock)
+{
+	int ret;
+	struct lttng_channel *attr = chan;
+
+	/* Creating channel attributes if needed */
+	if (attr == NULL) {
+		attr = init_default_attr(LTTNG_DOMAIN_UST_PID);
+		if (attr == NULL) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+	}
+
+	ret = ustctl_create_channel(sock, usession, attr);
+	if (ret < 0) {
+		ret = LTTCOMM_UST_CHAN_FAIL;
+		goto error;
+	}
+
+	DBG2("Channel %s UST create successfully for sock:%d", attr->name, sock);
+
+	ret = LTTCOMM_OK;
+
+error:
+	return ret;
+}
+
+/*
+ * Enable UST channel on the tracer.
+ */
+int channel_ust_enable(struct ltt_ust_session *usession,
+		struct ltt_ust_channel *uchan, int sock)
+{
+	int ret;
+	ret = LTTCOMM_OK;
+
+	ret = ustctl_enable_channel(sock, usession, uchan);
+	if (ret < 0) {
+		ret = LTTCOMM_UST_CHAN_FAIL;
+		goto error;
+	}
+
+	ret = LTTCOMM_OK;
+
+error:
+	return ret;
+}
+
+/*
+ * Disable UST channel on the tracer.
+ */
+int channel_ust_disable(struct ltt_ust_session *usession,
+		struct ltt_ust_channel *uchan, int sock)
+{
+	int ret;
+	ret = LTTCOMM_OK;
+
+	ret = ustctl_disable_channel(sock, usession, uchan);
+	if (ret < 0) {
+		ret = LTTCOMM_UST_CHAN_FAIL;
 		goto error;
 	}
 

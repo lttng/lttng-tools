@@ -25,7 +25,9 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \
-                       ltt-sessiond.h main.c
+                       ltt-sessiond.h main.c \
+                       ../hashtable/rculfhash.c \
+                       ../hashtable/rculfhash.h
 
 # link on liblttngctl for check if sessiond is already alive.
 ltt_sessiond_LDADD = -lrt \

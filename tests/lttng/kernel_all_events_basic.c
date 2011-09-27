@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     struct lttng_handle *handle = NULL;
     struct lttng_domain dom;
 	struct lttng_event event;
-    char *channel_name = "mychan";
+    char *channel_name = "channel0";
     int ret = 0;
 
     dom.type = LTTNG_DOMAIN_KERNEL;
