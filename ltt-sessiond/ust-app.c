@@ -26,11 +26,11 @@
 
 #include <lttngerr.h>
 
-#include "traceable-app.h"
+#include "ust-app.h"
 
-/* Init ust traceabl application's list */
-static struct ltt_traceable_app_list ltt_traceable_app_list = {
-	.head = CDS_LIST_HEAD_INIT(ltt_traceable_app_list.head),
+/* Init ust traceable application's list */
+static struct ust_app_list ust_app_list = {
+	.head = CDS_LIST_HEAD_INIT(ust_app_list.head),
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.count = 0,
 };
@@ -38,23 +38,23 @@ static struct ltt_traceable_app_list ltt_traceable_app_list = {
 /*
  * Add a traceable application structure to the global list.
  */
-static void add_traceable_app(struct ltt_traceable_app *lta)
+static void add_app_to_list(struct ust_app *lta)
 {
-	cds_list_add(&lta->list, &ltt_traceable_app_list.head);
-	ltt_traceable_app_list.count++;
+	cds_list_add(&lta->list, &ust_app_list.head);
+	ust_app_list.count++;
 }
 
 /*
  * Delete a traceable application structure from the global list.
  */
-static void del_traceable_app(struct ltt_traceable_app *lta)
+static void del_app_from_list(struct ust_app *lta)
 {
 	struct ltt_ust_channel *chan;
 
 	cds_list_del(&lta->list);
 	/* Sanity check */
-	if (ltt_traceable_app_list.count > 0) {
-		ltt_traceable_app_list.count--;
+	if (ust_app_list.count > 0) {
+		ust_app_list.count--;
 	}
 
 	cds_list_for_each_entry(chan, &lta->channels.head, list) {
@@ -63,38 +63,14 @@ static void del_traceable_app(struct ltt_traceable_app *lta)
 }
 
 /*
- * Return pointer to traceable apps list.
- */
-struct ltt_traceable_app_list *get_traceable_apps_list(void)
-{
-	return &ltt_traceable_app_list;
-}
-
-/*
- * Acquire traceable apps list lock.
- */
-void lock_apps_list(void)
-{
-	pthread_mutex_lock(&ltt_traceable_app_list.lock);
-}
-
-/*
- * Release traceable apps list lock.
- */
-void unlock_apps_list(void)
-{
-	pthread_mutex_unlock(&ltt_traceable_app_list.lock);
-}
-
-/*
  * Iterate over the traceable apps list and return a pointer or NULL if not
  * found.
  */
-static struct ltt_traceable_app *find_app_by_sock(int sock)
+static struct ust_app *find_app_by_sock(int sock)
 {
-	struct ltt_traceable_app *iter;
+	struct ust_app *iter;
 
-	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
+	cds_list_for_each_entry(iter, &ust_app_list.head, list) {
 		if (iter->sock == sock) {
 			/* Found */
 			return iter;
@@ -105,14 +81,38 @@ static struct ltt_traceable_app *find_app_by_sock(int sock)
 }
 
 /*
+ * Return pointer to traceable apps list.
+ */
+struct ust_app_list *ust_app_get_list(void)
+{
+	return &ust_app_list;
+}
+
+/*
+ * Acquire traceable apps list lock.
+ */
+void ust_app_lock_list(void)
+{
+	pthread_mutex_lock(&ust_app_list.lock);
+}
+
+/*
+ * Release traceable apps list lock.
+ */
+void ust_app_unlock_list(void)
+{
+	pthread_mutex_unlock(&ust_app_list.lock);
+}
+
+/*
  * Iterate over the traceable apps list and return a pointer or NULL if not
  * found.
  */
-struct ltt_traceable_app *traceable_app_get_by_pid(pid_t pid)
+struct ust_app *ust_app_get_by_pid(pid_t pid)
 {
-	struct ltt_traceable_app *iter;
+	struct ust_app *iter;
 
-	cds_list_for_each_entry(iter, &ltt_traceable_app_list.head, list) {
+	cds_list_for_each_entry(iter, &ust_app_list.head, list) {
 		if (iter->pid == pid) {
 			/* Found */
 			DBG2("Found traceable app by pid %d", pid);
@@ -126,16 +126,16 @@ struct ltt_traceable_app *traceable_app_get_by_pid(pid_t pid)
 }
 
 /*
- * Using pid and uid (of the app), allocate a new ltt_traceable_app struct and
+ * Using pid and uid (of the app), allocate a new ust_app struct and
  * add it to the global traceable app list.
  *
  * On success, return 0, else return malloc ENOMEM.
  */
-int register_traceable_app(struct ust_register_msg *msg, int sock)
+int ust_app_register(struct ust_register_msg *msg, int sock)
 {
-	struct ltt_traceable_app *lta;
+	struct ust_app *lta;
 
-	lta = malloc(sizeof(struct ltt_traceable_app));
+	lta = malloc(sizeof(struct ust_app));
 	if (lta == NULL) {
 		perror("malloc");
 		return -ENOMEM;
@@ -152,9 +152,9 @@ int register_traceable_app(struct ust_register_msg *msg, int sock)
 	lta->name[16] = '\0';
 	CDS_INIT_LIST_HEAD(&lta->channels.head);
 
-	lock_apps_list();
-	add_traceable_app(lta);
-	unlock_apps_list();
+	ust_app_lock_list();
+	add_app_to_list(lta);
+	ust_app_unlock_list();
 
 	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock:%d name:%s"
 			" (version %d.%d)", lta->pid, lta->ppid, lta->uid, lta->gid,
@@ -169,31 +169,31 @@ int register_traceable_app(struct ust_register_msg *msg, int sock)
  *
  * The socket is already closed at this point so no close to sock.
  */
-void unregister_traceable_app(int sock)
+void ust_app_unregister(int sock)
 {
-	struct ltt_traceable_app *lta;
+	struct ust_app *lta;
 
-	lock_apps_list();
+	ust_app_lock_list();
 	lta = find_app_by_sock(sock);
 	if (lta) {
 		DBG("PID %d unregistered with sock %d", lta->pid, sock);
-		del_traceable_app(lta);
+		del_app_from_list(lta);
 		close(lta->sock);
 		free(lta);
 	}
-	unlock_apps_list();
+	ust_app_unlock_list();
 }
 
 /*
  * Return traceable_app_count
  */
-unsigned int get_app_count(void)
+unsigned int ust_app_list_count(void)
 {
 	unsigned int count;
 
-	lock_apps_list();
-	count = ltt_traceable_app_list.count;
-	unlock_apps_list();
+	ust_app_lock_list();
+	count = ust_app_list.count;
+	ust_app_unlock_list();
 
 	return count;
 }
@@ -201,16 +201,16 @@ unsigned int get_app_count(void)
 /*
  * Free and clean all traceable apps of the global list.
  */
-void clean_traceable_apps_list(void)
+void ust_app_clean_list(void)
 {
-	struct ltt_traceable_app *iter, *tmp;
+	struct ust_app *iter, *tmp;
 
 	/*
 	 * Don't acquire list lock here. This function should be called from
 	 * cleanup() functions meaning that the program will exit.
 	 */
-	cds_list_for_each_entry_safe(iter, tmp, &ltt_traceable_app_list.head, list) {
-		del_traceable_app(iter);
+	cds_list_for_each_entry_safe(iter, tmp, &ust_app_list.head, list) {
+		del_app_from_list(iter);
 		close(iter->sock);
 		free(iter);
 	}

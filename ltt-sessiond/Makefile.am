@@ -15,7 +15,7 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
                        trace-ust.c trace-ust.h \
-                       traceable-app.c traceable-app.h \
+                       ust-app.c ust-app.h \
                        ust-comm.c ust-comm.h \
                        ust-ctl.c ust-ctl.h \
                        kernel-ctl.c kernel-ctl.h \
