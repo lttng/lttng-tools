@@ -295,12 +295,15 @@ static int on_recv_fd(struct lttng_kconsumerd_fd *kconsumerd_fd)
 
 	if (kconsumerd_fd->output == LTTNG_EVENT_MMAP) {
 		/* get the len of the mmap region */
-		ret = kernctl_get_mmap_len(kconsumerd_fd->consumerd_fd, &kconsumerd_fd->mmap_len);
+		unsigned long mmap_len;
+
+		ret = kernctl_get_mmap_len(kconsumerd_fd->consumerd_fd, &mmap_len);
 		if (ret != 0) {
 			ret = errno;
 			perror("kernctl_get_mmap_len");
 			goto error_close_fd;
 		}
+		kconsumerd_fd->mmap_len = (size_t) mmap_len;
 
 		kconsumerd_fd->mmap_base = mmap(NULL, kconsumerd_fd->mmap_len,
 				PROT_READ, MAP_PRIVATE, kconsumerd_fd->consumerd_fd, 0);
