@@ -49,7 +49,7 @@ extern int opt_verbose;
 						opt_verbose == 2) ||                              \
 					((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&    \
 						opt_verbose == 3)) {                              \
-				fprintf(stdout, fmt, ## args);                            \
+				fprintf(stderr, fmt, ## args);                            \
 			} else if (type & (PRINT_ERR | PRINT_WARN | PRINT_BUG)) {     \
 				fprintf(stderr, fmt, ## args);                            \
 			}                                                             \

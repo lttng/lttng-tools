@@ -55,16 +55,20 @@ If you have multiple sessions, you can change the current session by using
 
 # lttng set-session myothersession
 
-2) Enable event(s). Here for example, we want only 'sched_switch' and
-'sys_enter' events for the kernel (-k/--kernel).
+2) Enable tracepoint event(s). Here for example, we want only
+'sched_switch' and 'sched_wakeup' events for the kernel (-k/--kernel).
 
-# lttng enable-event sched_switch,sys_enter -k
+# lttng enable-event sched_switch,sched_wakeup -k
 
-or enable ALL events (-a/--all):
+or enable ALL tracepoint events (-a/--all):
 
 # lttng enable-event -a -k
 
-3) Enable kprobes and/or the function tracer with lttng
+3) Enable all system call event(s).
+
+# lttng enable-event -a -k --syscall
+
+4) Enable kprobes and/or the function tracer with lttng
 
 This is a new feature made possible by the new LTTng 2.0 kernel tracer. You can
 enable a dynamic probe and data will be output in the trace along side with
@@ -83,7 +87,7 @@ Rostedt). Again, data will be output in the trace.
 
 # lttng enable-event aname -k --function <symbol_name>
 
-4) Enable context information for an event:
+5) Enable context information for an event:
 
 This is also a new feature which allows you to add context information to an
 event. For example, you can add the PID along with the event information:
@@ -97,7 +101,7 @@ You can on the same line activate multiple context:
 
 # lttng add-context -k -e sched_switch -t pid -t nice -t tid
 
-5) Enable perf counter for an event:
+6) Enable perf counter for an event:
 
 Again, a new powerful feature is the possibility to add perf counter data
 (using the perf API by Ingo Molnar and Thomas Gleixner) to the trace on a per
@@ -107,21 +111,21 @@ event basis. Let say we want to get the CPU cycles at each event:
 
 You'll have to use the add-context help for all possible perf counter values.
 
-6) Start tracing:
+7) Start tracing:
 
 # lttng start
 
 Tracing is in progress at this point and traces will be written in
 $HOME/lttng-traces/mysession-<date>-<time>
 
-7) Stop tracing:
+8) Stop tracing:
 
 # lttng stop
 
 Note: At this point, you can restart the trace (lttng start), enable/disable
 events or just go take a break and come back 3 days later to start it again :).
 
-8) Destroy your session after you are done with tracing
+9) Destroy your session after you are done with tracing
 
 # lttng destroy
 

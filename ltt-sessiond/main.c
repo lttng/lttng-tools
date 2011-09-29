@@ -50,7 +50,7 @@
 #include "kernel-ctl.h"
 #include "ltt-sessiond.h"
 #include "shm.h"
-#include "traceable-app.h"
+#include "ust-app.h"
 #include "ust-ctl.h"
 #include "utils.h"
 #include "ust-ctl.h"
@@ -346,7 +346,7 @@ static void cleanup(void)
 	}
 
 	DBG("Closing all UST sockets");
-	clean_traceable_apps_list();
+	ust_app_clean_list();
 
 	pthread_mutex_destroy(&kconsumerd_pid_mutex);
 
@@ -1025,7 +1025,7 @@ static void *thread_manage_apps(void *data)
 
 					tracepoint(ust_register_add_start);
 					/* Register applicaton to the session daemon */
-					ret = register_traceable_app(&ust_cmd.reg_msg,
+					ret = ust_app_register(&ust_cmd.reg_msg,
 							ust_cmd.sock);
 					if (ret < 0) {
 						/* Only critical ENOMEM error can be returned here */
@@ -1040,7 +1040,7 @@ static void *thread_manage_apps(void *data)
 						 * If the registration is not possible, we simply
 						 * unregister the apps and continue
 						 */
-						unregister_traceable_app(ust_cmd.sock);
+						ust_app_unregister(ust_cmd.sock);
 					} else {
 						/*
 						 * We just need here to monitor the close of the UST
@@ -1070,7 +1070,7 @@ static void *thread_manage_apps(void *data)
 					}
 
 					/* Socket closed */
-					unregister_traceable_app(pollfd);
+					ust_app_unregister(pollfd);
 					break;
 				}
 			}
@@ -1625,11 +1625,11 @@ static int create_ust_session(struct ltt_session *session,
 {
 	int ret;
 	struct ltt_ust_session *lus;
-	struct ltt_traceable_app *app;
+	struct ust_app *app;
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_UST_PID:
-		app = traceable_app_get_by_pid(domain->attr.pid);
+		app = ust_app_get_by_pid(domain->attr.pid);
 		if (app == NULL) {
 			ret = LTTCOMM_APP_NOT_FOUND;
 			goto error;
@@ -1835,6 +1835,42 @@ error:
 }
 
 /*
+ * Copy channel from attributes and set it in the application channel list.
+ */
+static int copy_ust_channel_to_app(struct ltt_ust_session *usess,
+		struct lttng_channel *attr, struct ust_app *app)
+{
+	int ret;
+	struct ltt_ust_channel *uchan, *new_chan;
+
+	uchan = trace_ust_get_channel_by_name(attr->name, usess);
+	if (uchan == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	new_chan = trace_ust_create_channel(attr, usess->path);
+	if (new_chan == NULL) {
+		PERROR("malloc ltt_ust_channel");
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	ret = channel_ust_copy(new_chan, uchan);
+	if (ret < 0) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	/* Add channel to the ust app channel list */
+	cds_list_add(&new_chan->list, &app->channels.head);
+	app->channels.count++;
+
+error:
+	return ret;
+}
+
+/*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  */
 static int cmd_enable_channel(struct ltt_session *session,
@@ -1865,10 +1901,10 @@ static int cmd_enable_channel(struct ltt_session *session,
 	}
 	case LTTNG_DOMAIN_UST_PID:
 	{
-		struct ltt_ust_event *uevent, *new_uevent;
+		int sock;
+		struct ltt_ust_channel *uchan;
 		struct ltt_ust_session *usess;
-		struct ltt_ust_channel *uchan, *app_chan;
-		struct ltt_traceable_app *app;
+		struct ust_app *app;
 
 		usess = trace_ust_get_session_by_pid(&session->ust_session_list,
 				domain->attr.pid);
@@ -1877,58 +1913,28 @@ static int cmd_enable_channel(struct ltt_session *session,
 			goto error;
 		}
 
-		app = traceable_app_get_by_pid(domain->attr.pid);
+		app = ust_app_get_by_pid(domain->attr.pid);
 		if (app == NULL) {
 			ret = LTTCOMM_APP_NOT_FOUND;
 			goto error;
 		}
+		sock = app->sock;
 
 		uchan = trace_ust_get_channel_by_name(attr->name, usess);
 		if (uchan == NULL) {
-			ret = channel_ust_create(usess, attr, app->sock);
+			ret = channel_ust_create(usess, attr, sock);
 		} else {
-			ret = channel_ust_enable(usess, uchan, app->sock);
+			ret = channel_ust_enable(usess, uchan, sock);
 		}
 
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
 
-		/*TODO: This should be put in an external function */
-
-		/* Copy UST channel to add to the traceable app */
-		uchan = trace_ust_get_channel_by_name(attr->name, usess);
-		if (uchan == NULL) {
-			ret = LTTCOMM_FATAL;
+		ret = copy_ust_channel_to_app(usess, attr, app);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
-
-		app_chan = trace_ust_create_channel(attr, session->path);
-		if (app_chan == NULL) {
-			PERROR("malloc ltt_ust_channel");
-			ret = LTTCOMM_FATAL;
-			goto error;
-		}
-
-		memcpy(app_chan, uchan, sizeof(struct ltt_ust_channel));
-		CDS_INIT_LIST_HEAD(&app_chan->events.head);
-
-		cds_list_for_each_entry(uevent, &uchan->events.head, list) {
-			new_uevent = malloc(sizeof(struct ltt_ust_event));
-			if (new_uevent == NULL) {
-				PERROR("malloc ltt_ust_event");
-				ret = LTTCOMM_FATAL;
-				goto error;
-			}
-
-			memcpy(new_uevent, uevent, sizeof(struct ltt_ust_event));
-			cds_list_add(&new_uevent->list, &app_chan->events.head);
-			app_chan->events.count++;
-		}
-
-		/* Add channel to traceable_app */
-		cds_list_add(&app_chan->list, &app->channels.head);
-		app->channels.count++;
 
 		DBG("UST channel %s created for app sock %d with pid %d",
 				attr->name, app->sock, domain->attr.pid);

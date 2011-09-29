@@ -15,6 +15,7 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <string.h>
 #include <unistd.h>
 
 #include <lttng/lttng.h>
@@ -70,6 +71,35 @@ error:
 	free(chan);
 error_alloc:
 	return NULL;
+}
+
+/*
+ * Copy two ltt ust channel. Dst and src must be already allocated.
+ */
+int channel_ust_copy(struct ltt_ust_channel *dst,
+		struct ltt_ust_channel *src)
+{
+	struct ltt_ust_event *uevent, *new_uevent;
+
+	memcpy(dst, src, sizeof(struct ltt_ust_channel));
+	CDS_INIT_LIST_HEAD(&dst->events.head);
+
+	cds_list_for_each_entry(uevent, &src->events.head, list) {
+		new_uevent = malloc(sizeof(struct ltt_ust_event));
+		if (new_uevent == NULL) {
+			perror("malloc ltt_ust_event");
+			goto error;
+		}
+
+		memcpy(new_uevent, uevent, sizeof(struct ltt_ust_event));
+		cds_list_add(&new_uevent->list, &dst->events.head);
+		dst->events.count++;
+	}
+
+	return 0;
+
+error:
+	return -1;
 }
 
 /*

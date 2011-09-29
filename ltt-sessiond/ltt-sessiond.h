@@ -22,7 +22,7 @@
 #define _LGPL_SOURCE
 #include <urcu/wfqueue.h>
 
-#include "traceable-app.h"
+#include "ust-app.h"
 
 #define DEFAULT_HOME_DIR            "/tmp"
 #define DEFAULT_UST_SOCK_DIR        DEFAULT_HOME_DIR "/ust-app-socks"

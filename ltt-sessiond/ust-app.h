@@ -40,7 +40,7 @@ struct ust_register_msg {
 /*
  * Traceable application list.
  */
-struct ltt_traceable_app_list {
+struct ust_app_list{
 	/*
 	 * This lock protects any read/write access to the list and count (which is
 	 * basically the list size). All public functions in traceable-app.c
@@ -63,7 +63,7 @@ struct ltt_traceable_app_list {
 /* Registered traceable applications. Libust registers to the session daemon
  * and a linked list is kept of all running traceable app.
  */
-struct ltt_traceable_app {
+struct ust_app {
 	int sock;            /* Communication socket with the application */
 	pid_t pid;
 	pid_t ppid;
@@ -76,15 +76,14 @@ struct ltt_traceable_app {
 	struct cds_list_head list;
 };
 
-int register_traceable_app(struct ust_register_msg *msg, int sock);
-void unregister_traceable_app(int sock);
-unsigned int get_app_count(void);
+int ust_app_register(struct ust_register_msg *msg, int sock);
+void ust_app_unregister(int sock);
+unsigned int ust_app_list_count(void);
 
-void lock_apps_list(void);
-void unlock_apps_list(void);
-void clean_traceable_apps_list(void);
-struct ltt_traceable_app_list *get_traceable_apps_list(void);
-
-struct ltt_traceable_app *traceable_app_get_by_pid(pid_t pid);
+void ust_app_lock_list(void);
+void ust_app_unlock_list(void);
+void ust_app_clean_list(void);
+struct ust_app_list *ust_app_get_list(void);
+struct ust_app *ust_app_get_by_pid(pid_t pid);
 
 #endif /* _TRACEABLE_APP_H */

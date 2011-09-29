@@ -171,7 +171,9 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 		goto error;
 	}
 
-	ret = epoll_wait(events->epfd, events->events, events->nb_fd, timeout);
+	do {
+		ret = epoll_wait(events->epfd, events->events, events->nb_fd, timeout);
+	} while (ret == -1 && errno == EINTR);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
 		perror("epoll_wait");
