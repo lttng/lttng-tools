@@ -13,7 +13,7 @@ AC_CHECK_HEADERS([ \
 ])
 
 # URCU library version needed or newer
-liburcu_version="0.6.0"
+liburcu_version=">= 0.6.5"
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
@@ -25,30 +25,33 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-# Check liburcu list.h, wfqueue.h, futex.h
+# Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
 )
-
 AC_CHECK_DECL([cds_wfq_init], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
 )
-
 AC_CHECK_DECL([futex_async], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
 )
+AC_CHECK_DECL([rcu_thread_offline], [],
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+)
+AC_CHECK_DECL([rcu_thread_online], [],
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+)
 
+# Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
 	[AX_CONFIG_FEATURE_ENABLE(epoll)],
 	[AX_CONFIG_FEATURE_DISABLE(epoll)]
 )
-
 AX_CONFIG_FEATURE(
 	[epoll], [This platform supports epoll(7)],
 	[HAVE_EPOLL], [This platform supports epoll(7).],
 	[enable_epoll="yes"], [enable_epoll="no"]
 )
-
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 AC_PROG_CC
