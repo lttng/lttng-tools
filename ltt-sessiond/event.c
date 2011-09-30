@@ -161,6 +161,12 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 
 	free(event_list);
 
+	/* Also enable syscalls when enabling all events */
+	ret = event_kernel_enable_syscalls(ksession, kchan, kernel_tracer_fd);
+	if (ret < 0) {
+		goto error;
+	}
+
 	ret = LTTCOMM_OK;
 
 error:
