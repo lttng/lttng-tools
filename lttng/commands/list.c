@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../cmd.h"
 
@@ -184,6 +185,10 @@ static int list_events(const char *channel_name)
 			case LTTNG_EVENT_NOOP:
 				MSG("%s (type: noop) [enabled: %d]", indent6,
 						events[i].enabled);
+				break;
+			case LTTNG_EVENT_ALL:
+				/* We should never have "all" events in list. */
+				assert(0);
 				break;
 		}
 	}

@@ -225,13 +225,19 @@ static int enable_events(char *session_name)
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
 			if (opt_kernel) {
-				MSG("All kernel events are enabled in channel %s",
+				MSG("All kernel tracepoints are enabled in channel %s",
 						channel_name);
 			}
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
 				MSG("All kernel system calls are enabled in channel %s",
+						channel_name);
+			}
+			break;
+		case LTTNG_EVENT_ALL:
+			if (opt_kernel) {
+				MSG("All kernel events are enabled in channel %s",
 						channel_name);
 			}
 			break;
@@ -260,6 +266,9 @@ static int enable_events(char *session_name)
 			ev.type = opt_event_type;
 
 			switch (opt_event_type) {
+			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
+				ev.type = LTTNG_EVENT_TRACEPOINT;
+				/* Fall-through */
 			case LTTNG_EVENT_TRACEPOINT:
 				break;
 			case LTTNG_EVENT_PROBE:
@@ -340,7 +349,7 @@ int cmd_enable_events(int argc, const char **argv)
 	poptReadDefaultConfig(pc, 0);
 
 	/* Default event type */
-	opt_event_type = LTTNG_EVENT_TRACEPOINT;
+	opt_event_type = LTTNG_EVENT_ALL;
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {

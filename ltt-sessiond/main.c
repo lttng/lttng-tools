@@ -1739,6 +1739,9 @@ static void list_lttng_events(struct ltt_kernel_channel *kchan,
 			case LTTNG_KERNEL_SYSCALL:
 				events[i].type = LTTNG_EVENT_SYSCALL;
 				break;
+			case LTTNG_KERNEL_ALL:
+				assert(0);
+				break;
 		}
 		i++;
 	}
@@ -1910,7 +1913,7 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_kernel_disable(session->kernel_session, kchan, event_name);
+		ret = event_kernel_disable_tracepoint(session->kernel_session, kchan, event_name);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2027,7 +2030,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_kernel_enable(session->kernel_session, kchan, event);
+		ret = event_kernel_enable_tracepoint(session->kernel_session, kchan, event);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2077,18 +2080,28 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		if (event_type == LTTNG_KERNEL_SYSCALL) {
-			ret = event_kernel_enable_syscalls(session->kernel_session,
+		switch (event_type) {
+		case LTTNG_KERNEL_SYSCALL:
+			ret = event_kernel_enable_all_syscalls(session->kernel_session,
 					kchan, kernel_tracer_fd);
-		} else {
+			break;
+		case LTTNG_KERNEL_TRACEPOINT:
 			/*
-			 * This call enables all LTTNG_KERNEL_TRACEPOINTS and events
-			 * already registered to the channel.
+			 * This call enables all LTTNG_KERNEL_TRACEPOINTS and
+			 * events already registered to the channel.
 			 */
+			ret = event_kernel_enable_all_tracepoints(session->kernel_session,
+					kchan, kernel_tracer_fd);
+			break;
+		case LTTNG_KERNEL_ALL:
+			/* Enable syscalls and tracepoints */
 			ret = event_kernel_enable_all(session->kernel_session,
 					kchan, kernel_tracer_fd);
+			break;
+		default:
+			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			goto error;
 		}
-
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}

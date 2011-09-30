@@ -61,12 +61,13 @@ enum lttng_domain_type {
  * Instrumentation type of tracing event.
  */
 enum lttng_event_type {
-	LTTNG_EVENT_TRACEPOINT,
-	LTTNG_EVENT_PROBE,
-	LTTNG_EVENT_FUNCTION,
-	LTTNG_EVENT_FUNCTION_ENTRY,
-	LTTNG_EVENT_NOOP,
-	LTTNG_EVENT_SYSCALL,
+	LTTNG_EVENT_ALL                       = -1,
+	LTTNG_EVENT_TRACEPOINT                = 0,
+	LTTNG_EVENT_PROBE                     = 1,
+	LTTNG_EVENT_FUNCTION                  = 2,
+	LTTNG_EVENT_FUNCTION_ENTRY            = 3,
+	LTTNG_EVENT_NOOP                      = 4,
+	LTTNG_EVENT_SYSCALL                   = 5,
 };
 
 /*

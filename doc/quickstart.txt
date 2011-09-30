@@ -78,7 +78,7 @@ This is a new feature made possible by the new LTTng 2.0 kernel tracer. You can
 enable a dynamic probe and data will be output in the trace along side with
 your tracing data.
 
-# lttng enable-event aname -k --probe symbol+0xffff7260695
+# lttng enable-event aname -k --probe symbol+0x0
 
 or
 

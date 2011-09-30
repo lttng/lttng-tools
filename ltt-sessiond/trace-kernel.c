@@ -207,6 +207,9 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	case LTTNG_EVENT_SYSCALL:
 		attr->instrumentation = LTTNG_KERNEL_SYSCALL;
 		break;
+	case LTTNG_EVENT_ALL:
+		attr->instrumentation = LTTNG_KERNEL_ALL;
+		break;
 	default:
 		ERR("Unknown kernel instrumentation type (%d)", ev->type);
 		goto error;

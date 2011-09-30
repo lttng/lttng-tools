@@ -39,9 +39,9 @@ static void init_syscalls_kernel_event(struct lttng_event *event)
 }
 
 /*
- * Disable kernel event for a channel from the kernel session.
+ * Disable kernel tracepoint event for a channel from the kernel session.
  */
-int event_kernel_disable(struct ltt_kernel_session *ksession,
+int event_kernel_disable_tracepoint(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, char *event_name)
 {
 	int ret;
@@ -69,9 +69,9 @@ error:
 }
 
 /*
- * Disable all kernel event for a channel from the kernel session.
+ * Disable kernel tracepoint events for a channel from the kernel session.
  */
-int event_kernel_disable_all(struct ltt_kernel_session *ksession,
+int event_kernel_disable_all_tracepoints(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan)
 {
 	int ret;
@@ -85,16 +85,39 @@ int event_kernel_disable_all(struct ltt_kernel_session *ksession,
 			continue;
 		}
 	}
-
 	ret = LTTCOMM_OK;
-
 	return ret;
 }
 
 /*
- * Enable kernel event for a channel from the kernel session.
+ * Disable kernel syscall events for a channel from the kernel session.
  */
-int event_kernel_enable(struct ltt_kernel_session *ksession,
+int event_kernel_disable_all_syscalls(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan)
+{
+	ERR("Cannot disable syscall tracing for existing session. Please destroy session instead.");
+	return LTTCOMM_OK;	/* Return OK so disable all succeeds */
+}
+
+/*
+ * Disable all kernel event for a channel from the kernel session.
+ */
+int event_kernel_disable_all(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan)
+{
+	int ret;
+
+	ret = event_kernel_disable_all_tracepoints(ksession, kchan);
+	if (ret != LTTCOMM_OK)
+		return ret;
+	ret = event_kernel_disable_all_syscalls(ksession, kchan);
+	return ret;
+}
+
+/*
+ * Enable kernel tracepoint event for a channel from the kernel session.
+ */
+int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, struct lttng_event *event)
 {
 	int ret;
@@ -105,26 +128,24 @@ int event_kernel_enable(struct ltt_kernel_session *ksession,
 		ret = kernel_create_event(event, kchan);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
-			goto error;
+			goto end;
 		}
 	} else if (kevent->enabled == 0) {
 		ret = kernel_enable_event(kevent);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
-			goto error;
+			goto end;
 		}
 	}
-
 	ret = LTTCOMM_OK;
-
-error:
+end:
 	return ret;
 }
 
 /*
- * Enable all kernel event of a channel of the kernel session.
+ * Enable all kernel tracepoint events of a channel of the kernel session.
  */
-int event_kernel_enable_all(struct ltt_kernel_session *ksession,
+int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
 {
 	int size, i, ret;
@@ -143,7 +164,7 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 	size = kernel_list_events(kernel_tracer_fd, &event_list);
 	if (size < 0) {
 		ret = LTTCOMM_KERN_LIST_FAIL;
-		goto error;
+		goto end;
 	}
 
 	for (i = 0; i < size; i++) {
@@ -158,25 +179,17 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 			}
 		}
 	}
-
 	free(event_list);
-
-	/* Also enable syscalls when enabling all events */
-	ret = event_kernel_enable_syscalls(ksession, kchan, kernel_tracer_fd);
-	if (ret < 0) {
-		goto error;
-	}
-
 	ret = LTTCOMM_OK;
-
-error:
+end:
 	return ret;
+
 }
 
 /*
- * Enable all kernel syscalls tracing.
+ * Enable all kernel tracepoint events of a channel of the kernel session.
  */
-int event_kernel_enable_syscalls(struct ltt_kernel_session *ksession,
+int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
 {
 	int ret;
@@ -188,11 +201,26 @@ int event_kernel_enable_syscalls(struct ltt_kernel_session *ksession,
 
 	ret = kernel_create_event(&event, kchan);
 	if (ret < 0) {
-		goto error;
+		goto end;
 	}
-
 	ret = LTTCOMM_OK;
+end:
+	return ret;
+}
 
-error:
+/*
+ * Enable all kernel events of a channel of the kernel session.
+ */
+int event_kernel_enable_all(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
+{
+	int ret;
+
+	ret = event_kernel_enable_all_tracepoints(ksession, kchan, kernel_tracer_fd);
+	if (ret != LTTCOMM_OK) {
+		goto end;
+	}
+	ret = event_kernel_enable_all_syscalls(ksession, kchan, kernel_tracer_fd);
+end:
 	return ret;
 }

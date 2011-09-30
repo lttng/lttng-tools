@@ -22,15 +22,22 @@
 
 #include "trace-kernel.h"
 
-int event_kernel_disable(struct ltt_kernel_session *ksession,
+int event_kernel_disable_tracepoint(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, char *event_name);
+int event_kernel_disable_all_syscalls(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan);
+int event_kernel_disable_all_tracepoints(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan);
 int event_kernel_disable_all(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan);
-int event_kernel_enable(struct ltt_kernel_session *ksession,
+
+int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, struct lttng_event *event);
-int event_kernel_enable_all(struct ltt_kernel_session *ksession,
+int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd);
-int event_kernel_enable_syscalls(struct ltt_kernel_session *ksession,
+int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
+		struct ltt_kernel_channel *kchan, int kernel_tracer_fd);
+int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd);
 
 #endif /* _LTT_EVENT_H */
