@@ -34,6 +34,7 @@
  */
 
 enum lttng_kernel_instrumentation {
+	LTTNG_KERNEL_ALL	   = -1,	/* Used within lttng-tools */
 	LTTNG_KERNEL_TRACEPOINT    = 0,
 	LTTNG_KERNEL_KPROBE        = 1,
 	LTTNG_KERNEL_FUNCTION      = 2,

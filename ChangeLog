@@ -1,3 +1,14 @@
+2011-09-30 lttng-tools 2.0-pre14
+	* Syscall tracing support
+	* Multiple bug fixes (nothing critical)
+	* Add userspace RCU hash table to tree for dev
+	* Update UST ABI
+	* Fix epoll that did not handle EINTR
+	* Liburcu >= 0.6.5 is needed from this release
+	* Enabling all events also enable syscall tracing
+	* Debug messages are now on stderr
+	* Add basic data structure for UST support but not ready yet.
+
 2011-08-25 lttng-tools 2.0-pre13
 	* Memory leaks fixes and double lock list
 	* Add UST registration with sychronisation
