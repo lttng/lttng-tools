@@ -71,7 +71,7 @@ struct ltt_session {
 
 /* Prototypes */
 int session_create(char *name, char *path);
-int session_destroy(char *name);
+int session_destroy(struct ltt_session *session);
 
 void session_lock(struct ltt_session *session);
 void session_lock_list(void);

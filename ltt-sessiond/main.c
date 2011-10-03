@@ -2312,7 +2312,7 @@ static int cmd_destroy_session(struct ltt_session *session, char *name)
 		perror("write kernel poll pipe");
 	}
 
-	ret = session_destroy(name);
+	ret = session_destroy(session);
 
 	return ret;
 }
