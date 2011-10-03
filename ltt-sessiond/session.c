@@ -121,6 +121,8 @@ struct ltt_session *session_find_by_name(char *name)
 	int found = 0;
 	struct ltt_session *iter;
 
+	DBG2("Trying to find session by name %s", name);
+
 	session_lock_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (strncmp(iter->name, name, NAME_MAX) == 0) {

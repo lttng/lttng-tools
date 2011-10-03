@@ -194,8 +194,17 @@ int kernel_create_event(struct lttng_event *ev,
 
 	ret = kernctl_create_event(channel->fd, event->event);
 	if (ret < 0) {
-		perror("create event ioctl");
+		PERROR("create event ioctl");
 		goto free_event;
+	}
+
+	/*
+	 * LTTNG_KERNEL_SYSCALL event creation will return 0 on success. However
+	 * this FD must not be added to the event list.
+	 */
+	if (ret == 0 && event->event->instrumentation == LTTNG_KERNEL_SYSCALL) {
+		DBG2("Kernel event syscall creation success");
+		goto end;
 	}
 
 	event->fd = ret;
@@ -211,6 +220,7 @@ int kernel_create_event(struct lttng_event *ev,
 
 	DBG("Event %s created (fd: %d)", ev->name, event->fd);
 
+end:
 	return 0;
 
 free_event:
