@@ -370,6 +370,7 @@ static void cleanup(void)
 
 	if (getenv("BENCH_UST_REGISTER")) {
 		bench_print_ust_register();
+		bench_print_ust_unregister();
 	}
 
 	if (getenv("BENCH_BOOT_PROCESS")) {
