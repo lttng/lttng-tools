@@ -151,6 +151,29 @@ no_data:
 }
 
 /*
+ * Time taken by an UST apps to unregister.
+ */
+void bench_print_ust_unregister(void)
+{
+    double res;
+
+    fprintf(fp, "--- UST unregister time ---\n");
+
+    if (time_ust_unregister_start == 0 || time_ust_unregister_stop == 0) {
+        goto no_data;
+    }
+
+    res = get_bench_time(time_ust_unregister_start, time_ust_unregister_stop);
+    fprintf(fp, "UST unregister time\n");
+    fprintf(fp, "Time: %.20f sec.\n", res);
+    return;
+
+no_data:
+    fprintf(fp, "NO DATA\n");
+    return;
+}
+
+/*
  * This time value is only coherent is an UST application registered.
  */
 void bench_print_ust_register(void)

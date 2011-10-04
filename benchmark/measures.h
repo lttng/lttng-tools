@@ -70,6 +70,12 @@ cycles_t time_ust_register_start;
 cycles_t time_ust_register_stop;
 
 /*
+ *  * UST unregister time
+ *   */
+cycles_t time_ust_unregister_start;
+cycles_t time_ust_unregister_stop;
+
+/*
  * UST dispatch registration request time
  *
  * Start time taken *after* the dequeue which is a blocking call.

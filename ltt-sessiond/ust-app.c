@@ -28,6 +28,8 @@
 
 #include "ust-app.h"
 
+#include "benchmark.h"
+
 /* Init ust traceable application's list */
 static struct ust_app_list ust_app_list = {
 	.head = CDS_LIST_HEAD_INIT(ust_app_list.head),
@@ -173,6 +175,8 @@ void ust_app_unregister(int sock)
 {
 	struct ust_app *lta;
 
+	tracepoint(ust_unregister_start);
+
 	ust_app_lock_list();
 	lta = find_app_by_sock(sock);
 	if (lta) {
@@ -182,6 +186,8 @@ void ust_app_unregister(int sock)
 		free(lta);
 	}
 	ust_app_unlock_list();
+
+	tracepoint(ust_unregister_stop);
 }
 
 /*
