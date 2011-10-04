@@ -343,3 +343,65 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, 
 
 	return ret;
 }
+
+/*
+ * Receives a single fd from socket.
+ *
+ * Returns the size of received data
+ */
+ssize_t lttcomm_recv_fds_unix_sock(int sock, void *buf, int *fds,
+		size_t nb_fd, size_t len)
+{
+	struct iovec iov[1];
+	int data_fd, i, ret = 0;
+	struct cmsghdr *cmsg;
+	char recv_fd[CMSG_SPACE(sizeof(int))];
+	struct msghdr msg = { 0 };
+	union {
+		unsigned char vc[4];
+		int vi;
+	} tmp;
+
+	/* Prepare to receive the structures */
+	iov[0].iov_base = &data_fd;
+	iov[0].iov_len = sizeof(data_fd);
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = recv_fd;
+	msg.msg_controllen = sizeof(recv_fd);
+
+	ret = recvmsg(sock, &msg, 0);
+	if (ret < 0) {
+		perror("recvmsg fds");
+		goto end;
+	}
+
+	if (ret != sizeof(data_fd)) {
+		fprintf(stderr, "Error: Received %d bytes, expected %ld",
+				ret, sizeof(data_fd));
+		goto end;
+	}
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	if (!cmsg) {
+		fprintf(stderr, "Error: Invalid control message header");
+		ret = -1;
+		goto end;
+	}
+
+	if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
+		fprintf(stderr, "Didn't received any fd");
+		ret = -1;
+		goto end;
+	}
+
+	/* this is our fd */
+	for (i = 0; i < sizeof(int); i++) {
+		tmp.vc[i] = CMSG_DATA(cmsg)[i];
+	}
+
+	ret = tmp.vi;
+
+end:
+	return ret;
+}
