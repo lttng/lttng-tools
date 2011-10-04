@@ -2525,7 +2525,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm->session.name);
+		session_lock_list();
 		cmd_ctx->session = session_find_by_name(cmd_ctx->lsm->session.name);
+		session_unlock_list();
 		if (cmd_ctx->session == NULL) {
 			if (cmd_ctx->lsm->session.name != NULL) {
 				ret = LTTCOMM_SESS_NOT_FOUND;

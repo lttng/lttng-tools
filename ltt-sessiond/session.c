@@ -113,29 +113,25 @@ void session_unlock(struct ltt_session *session)
 }
 
 /*
- * Return a ltt_session structure ptr that matches name.
- * If no session found, NULL is returned.
+ * Return a ltt_session structure ptr that matches name. If no session found,
+ * NULL is returned. This must be called with the session lock held using
+ * session_lock_list and session_unlock_list.
  */
 struct ltt_session *session_find_by_name(char *name)
 {
-	int found = 0;
 	struct ltt_session *iter;
 
 	DBG2("Trying to find session by name %s", name);
 
-	session_lock_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (strncmp(iter->name, name, NAME_MAX) == 0) {
-			found = 1;
-			break;
+			goto found;
 		}
 	}
-	session_unlock_list();
 
-	if (!found) {
-		iter = NULL;
-	}
+	iter = NULL;
 
+found:
 	return iter;
 }
 
@@ -154,8 +150,6 @@ int session_destroy(struct ltt_session *session)
 
 	DBG("Destroying session %s", session->name);
 	del_session_list(session);
-	free(session->name);
-	free(session->path);
 	pthread_mutex_destroy(&session->lock);
 	free(session);
 
@@ -186,7 +180,7 @@ int session_create(char *name, char *path)
 
 	/* Define session name */
 	if (name != NULL) {
-		if (asprintf(&new_session->name, "%s", name) < 0) {
+		if (snprintf(new_session->name, NAME_MAX, "%s", name) < 0) {
 			ret = LTTCOMM_FATAL;
 			goto error_asprintf;
 		}
@@ -198,7 +192,7 @@ int session_create(char *name, char *path)
 
 	/* Define session system path */
 	if (path != NULL) {
-		if (asprintf(&new_session->path, "%s", path) < 0) {
+		if (snprintf(new_session->path, PATH_MAX, "%s", path) < 0) {
 			ret = LTTCOMM_FATAL;
 			goto error_asprintf;
 		}

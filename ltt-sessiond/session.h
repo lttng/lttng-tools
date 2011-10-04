@@ -56,8 +56,8 @@ struct ltt_session_list {
  * session for both LTTng and UST.
  */
 struct ltt_session {
-	char *name;
-	char *path;
+	char name[NAME_MAX];
+	char path[PATH_MAX];
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session_list ust_session_list;
 	/*
