@@ -142,15 +142,18 @@ static int create_one_session(char *name, char *path)
 /*
  * Test deletion of 1 session
  */
-static int destroy_one_session(char *name)
+static int destroy_one_session(struct ltt_session *session)
 {
 	int ret;
 
-	ret = session_destroy(name);
+	ret = session_destroy(session);
 
 	if (ret == LTTCOMM_OK) {
 		/* Validate */
-		ret = find_session_name(name);
+		if (session == NULL) {
+			return 0;
+		}
+		ret = find_session_name(session->name);
 		if (ret < 0) {
 			/* Success, -1 means that the sesion is NOT found */
 			return 0;
@@ -198,12 +201,6 @@ static int fuzzing_destroy_args(void)
 	ret = destroy_one_session(NULL);
 	if (ret > 0) {
 		printf("Session destroyed with (null)\n");
-		return -1;
-	}
-
-	ret = destroy_one_session(OVERFLOW_SESSION_NAME);
-	if (ret > 0) {
-		printf("Session destroyed with %s\n", OVERFLOW_SESSION_NAME);
 		return -1;
 	}
 
@@ -275,7 +272,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Destroy 1 session %s: ", SESSION1);
-	ret = destroy_one_session(SESSION1);
+	ret = destroy_one_session(tmp);
 	if (ret < 0) {
 		return -1;
 	}
@@ -319,7 +316,7 @@ int main(int argc, char **argv)
 	printf("Destroying %d sessions: ", MAX_SESSIONS);
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
-			ret = destroy_one_session(iter->name);
+			ret = destroy_one_session(iter);
 			if (ret < 0) {
 				printf("session %d (name: %s) creation failed\n", i, iter->name);
 				return -1;

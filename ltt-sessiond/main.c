@@ -727,6 +727,12 @@ static void *thread_manage_kernel(void *data)
 
 	while (1) {
 		if (update_poll_flag == 1) {
+			/*
+			 * Reset number of fd in the poll set. Always 2 since there is the thread
+			 * quit pipe and the kernel pipe.
+			 */
+			events.nb_fd = 2;
+
 			ret = update_kernel_poll(&events);
 			if (ret < 0) {
 				goto error;
@@ -2365,7 +2371,7 @@ static int cmd_destroy_session(struct ltt_session *session, char *name)
 		perror("write kernel poll pipe");
 	}
 
-	ret = session_destroy(name);
+	ret = session_destroy(session);
 
 	return ret;
 }

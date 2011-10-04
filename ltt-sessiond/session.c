@@ -121,6 +121,8 @@ struct ltt_session *session_find_by_name(char *name)
 	int found = 0;
 	struct ltt_session *iter;
 
+	DBG2("Trying to find session by name %s", name);
+
 	session_lock_list();
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
 		if (strncmp(iter->name, name, NAME_MAX) == 0) {
@@ -142,23 +144,20 @@ struct ltt_session *session_find_by_name(char *name)
  *
  * Return -1 if no session is found.  On success, return 1;
  */
-int session_destroy(char *name)
+int session_destroy(struct ltt_session *session)
 {
-	struct ltt_session *iter, *tmp;
-
-	session_lock_list();
-	cds_list_for_each_entry_safe(iter, tmp, &ltt_session_list.head, list) {
-		if (strcmp(iter->name, name) == 0) {
-			DBG("Destroying session %s", iter->name);
-			del_session_list(iter);
-			free(iter->name);
-			free(iter->path);
-			pthread_mutex_destroy(&iter->lock);
-			free(iter);
-			break;
-		}
+	/* Safety check */
+	if (session == NULL) {
+		ERR("Session pointer was null on session destroy");
+		return LTTCOMM_OK;
 	}
-	session_unlock_list();
+
+	DBG("Destroying session %s", session->name);
+	del_session_list(session);
+	free(session->name);
+	free(session->path);
+	pthread_mutex_destroy(&session->lock);
+	free(session);
 
 	return LTTCOMM_OK;
 }
