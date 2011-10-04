@@ -56,6 +56,13 @@
 #define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_UST_MMAP
 
 /*
+ * Default timeout value for the sem_timedwait() call. Blocking forever is not
+ * wanted so a timeout is used to control the data flow and not freeze the
+ * session daemon.
+ */
+#define DEFAULT_SEM_WAIT_TIMEOUT            30    /* in seconds */
+
+/*
  * Takes a pointer x and transform it so we can use it to access members
  * without a function call. Here an example:
  *

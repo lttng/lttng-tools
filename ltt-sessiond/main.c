@@ -842,6 +842,8 @@ static void *thread_manage_kconsumerd(void *data)
 		goto error;
 	}
 
+	DBG2("Receiving code from kconsumerd_err_sock");
+
 	/* Getting status code from kconsumerd */
 	ret = lttcomm_recv_unix_sock(sock, &code,
 			sizeof(enum lttcomm_return_code));
@@ -861,7 +863,7 @@ static void *thread_manage_kconsumerd(void *data)
 		sem_post(&kconsumerd_sem);
 		DBG("Kconsumerd command socket ready");
 	} else {
-		DBG("Kconsumerd error when waiting for SOCK_READY : %s",
+		ERR("Kconsumerd error when waiting for SOCK_READY : %s",
 				lttcomm_get_readable_code(-code));
 		goto error;
 	}
@@ -1263,29 +1265,66 @@ error:
 static int spawn_kconsumerd_thread(void)
 {
 	int ret;
+	struct timespec timeout;
+
+	timeout.tv_sec = DEFAULT_SEM_WAIT_TIMEOUT;
+	timeout.tv_nsec = 0;
 
 	/* Setup semaphore */
-	sem_init(&kconsumerd_sem, 0, 0);
+	ret = sem_init(&kconsumerd_sem, 0, 0);
+	if (ret < 0) {
+		PERROR("sem_init kconsumerd_sem");
+		goto error;
+	}
 
 	ret = pthread_create(&kconsumerd_thread, NULL,
 			thread_manage_kconsumerd, (void *) NULL);
 	if (ret != 0) {
-		perror("pthread_create kconsumerd");
+		PERROR("pthread_create kconsumerd");
+		ret = -1;
 		goto error;
 	}
 
-	/* Wait for the kconsumerd thread to be ready */
-	sem_wait(&kconsumerd_sem);
+	/* Get time for sem_timedwait absolute timeout */
+	ret = clock_gettime(CLOCK_REALTIME, &timeout);
+	if (ret < 0) {
+		PERROR("clock_gettime spawn kconsumerd");
+		/* Infinite wait for the kconsumerd thread to be ready */
+		ret = sem_wait(&kconsumerd_sem);
+	} else {
+		/* Normal timeout if the gettime was successful */
+		timeout.tv_sec += DEFAULT_SEM_WAIT_TIMEOUT;
+		ret = sem_timedwait(&kconsumerd_sem, &timeout);
+	}
 
+	if (ret < 0) {
+		if (errno == ETIMEDOUT) {
+			/*
+			 * Call has timed out so we kill the kconsumerd_thread and return
+			 * an error.
+			 */
+			ERR("The kconsumerd thread was never ready. Killing it");
+			ret = pthread_cancel(kconsumerd_thread);
+			if (ret < 0) {
+				PERROR("pthread_cancel kconsumerd_thread");
+			}
+		} else {
+			PERROR("semaphore wait failed kconsumerd thread");
+		}
+		goto error;
+	}
+
+	pthread_mutex_lock(&kconsumerd_pid_mutex);
 	if (kconsumerd_pid == 0) {
 		ERR("Kconsumerd did not start");
+		pthread_mutex_unlock(&kconsumerd_pid_mutex);
 		goto error;
 	}
+	pthread_mutex_unlock(&kconsumerd_pid_mutex);
 
 	return 0;
 
 error:
-	ret = LTTCOMM_KERN_CONSUMER_FAIL;
 	return ret;
 }
 
@@ -1367,18 +1406,16 @@ static int start_kconsumerd(void)
 	ret = spawn_kconsumerd();
 	if (ret < 0) {
 		ERR("Spawning kconsumerd failed");
-		ret = LTTCOMM_KERN_CONSUMER_FAIL;
 		pthread_mutex_unlock(&kconsumerd_pid_mutex);
 		goto error;
 	}
 
 	/* Setting up the global kconsumerd_pid */
 	kconsumerd_pid = ret;
+	DBG2("Kconsumerd pid %d", kconsumerd_pid);
 	pthread_mutex_unlock(&kconsumerd_pid_mutex);
 
-	DBG("Kconsumerd pid %d", ret);
-
-	DBG("Spawning kconsumerd thread");
+	DBG2("Spawning kconsumerd thread");
 	ret = spawn_kconsumerd_thread();
 	if (ret < 0) {
 		ERR("Fatal error spawning kconsumerd thread");
