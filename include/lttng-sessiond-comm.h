@@ -248,6 +248,9 @@ extern int lttcomm_close_unix_sock(int sock);
 /* Send fd(s) over a unix socket. */
 extern ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
 		size_t nb_fd, size_t len);
+/* Recv fd(s) over a unix socket */
+extern ssize_t lttcomm_recv_fds_unix_sock(int sock, void *buf, int *fds,
+		size_t nb_fd, size_t len);
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);

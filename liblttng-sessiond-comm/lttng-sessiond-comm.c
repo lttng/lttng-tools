@@ -1,19 +1,19 @@
 /*
- * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; only version 2 of the License.
  * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
 #define _GNU_SOURCE
@@ -92,13 +92,10 @@ static const char *lttcomm_readable_code[] = {
 };
 
 /*
- *  lttcom_get_readable_code
+ * Return ptr to string representing a human readable error code from the
+ * lttcomm_return_code enum.
  *
- *  Return ptr to string representing a human readable
- *  error code from the lttcomm_return_code enum.
- *
- *  These code MUST be negative in other to treat that
- *  as an error value.
+ * These code MUST be negative in other to treat that as an error value.
  */
 const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 {
@@ -112,9 +109,7 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 }
 
 /*
- * 	lttcomm_connect_unix_sock
- *
- * 	Connect to unix socket using the path name.
+ * Connect to unix socket using the path name.
  */
 int lttcomm_connect_unix_sock(const char *pathname)
 {
@@ -137,9 +132,8 @@ int lttcomm_connect_unix_sock(const char *pathname)
 	ret = connect(fd, (struct sockaddr *) &sun, sizeof(sun));
 	if (ret < 0) {
 		/*
-		 * Don't print message on connect error, because connect
-		 * is used in normal execution to detect if sessiond is
-		 * alive.
+		 * Don't print message on connect error, because connect is used in
+		 * normal execution to detect if sessiond is alive.
 		 */
 		goto error_connect;
 	}
@@ -153,10 +147,8 @@ error:
 }
 
 /*
- * 	lttcomm_accept_unix_sock
- *
- *	Do an accept(2) on the sock and return the
- *	new file descriptor. The socket MUST be bind(2) before.
+ * Do an accept(2) on the sock and return the new file descriptor. The socket
+ * MUST be bind(2) before.
  */
 int lttcomm_accept_unix_sock(int sock)
 {
@@ -178,10 +170,8 @@ error:
 }
 
 /*
- * 	lttcomm_create_unix_sock
- *
- * 	Creates a AF_UNIX local socket using pathname
- * 	bind the socket upon creation and return the fd.
+ * Creates a AF_UNIX local socket using pathname bind the socket upon creation
+ * and return the fd.
  */
 int lttcomm_create_unix_sock(const char *pathname)
 {
@@ -215,9 +205,7 @@ error:
 }
 
 /*
- * 	lttcomm_listen_unix_sock
- *
- * 	Make the socket listen using MAX_LISTEN.
+ * Make the socket listen using MAX_LISTEN.
  */
 int lttcomm_listen_unix_sock(int sock)
 {
@@ -232,11 +220,10 @@ int lttcomm_listen_unix_sock(int sock)
 }
 
 /*
- * 	lttcomm_recv_unix_sock
+ * Receive data of size len in put that data into the buf param. Using recvmsg
+ * API.
  *
- *  Receive data of size len in put that data into
- *  the buf param. Using recvmsg API.
- *  Return the size of received data.
+ * Return the size of received data.
  */
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 {
@@ -258,10 +245,9 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 }
 
 /*
- * 	lttcomm_send_unix_sock
+ * Send buf data of size len. Using sendmsg API.
  *
- * 	Send buf data of size len. Using sendmsg API.
- * 	Return the size of sent data.
+ * Return the size of sent data.
  */
 ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 {
@@ -283,9 +269,7 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 }
 
 /*
- *  lttcomm_close_unix_sock
- *
- *  Shutdown cleanly a unix socket.
+ * Shutdown cleanly a unix socket.
  */
 int lttcomm_close_unix_sock(int sock)
 {
@@ -301,11 +285,10 @@ int lttcomm_close_unix_sock(int sock)
 }
 
 /*
- *  lttcomm_send_fds_unix_sock
- *
- *  Send multiple fds on a unix socket.
+ * Send multiple fds on a unix socket.
  */
-ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, size_t len)
+ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
+		size_t nb_fd, size_t len)
 {
 	struct msghdr msg = { 0 };
 	struct cmsghdr *cmptr;
@@ -315,8 +298,7 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, 
 	char tmp[CMSG_SPACE(sizeof_fds)];
 
 	/*
-	 * Note: the consumerd receiver only supports receiving one FD per
-	 * message.
+	 * Note: the consumerd receiver only supports receiving one FD per message.
 	 */
 	assert(nb_fd == 1);
 
@@ -341,5 +323,67 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds, size_t nb_fd, 
 		perror("sendmsg");
 	}
 
+	return ret;
+}
+
+/*
+ * Receives a single fd from socket.
+ *
+ * Returns the size of received data
+ */
+ssize_t lttcomm_recv_fds_unix_sock(int sock, void *buf, int *fds,
+		size_t nb_fd, size_t len)
+{
+	struct iovec iov[1];
+	int data_fd, i, ret = 0;
+	struct cmsghdr *cmsg;
+	char recv_fd[CMSG_SPACE(sizeof(int))];
+	struct msghdr msg = { 0 };
+	union {
+		unsigned char vc[4];
+		int vi;
+	} tmp;
+
+	/* Prepare to receive the structures */
+	iov[0].iov_base = &data_fd;
+	iov[0].iov_len = sizeof(data_fd);
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = recv_fd;
+	msg.msg_controllen = sizeof(recv_fd);
+
+	ret = recvmsg(sock, &msg, 0);
+	if (ret < 0) {
+		perror("recvmsg fds");
+		goto end;
+	}
+
+	if (ret != sizeof(data_fd)) {
+		fprintf(stderr, "Error: Received %d bytes, expected %ld",
+				ret, sizeof(data_fd));
+		goto end;
+	}
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	if (!cmsg) {
+		fprintf(stderr, "Error: Invalid control message header");
+		ret = -1;
+		goto end;
+	}
+
+	if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
+		fprintf(stderr, "Didn't received any fd");
+		ret = -1;
+		goto end;
+	}
+
+	/* this is our fd */
+	for (i = 0; i < sizeof(int); i++) {
+		tmp.vc[i] = CMSG_DATA(cmsg)[i];
+	}
+
+	ret = tmp.vi;
+
+end:
 	return ret;
 }
