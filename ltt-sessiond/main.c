@@ -1632,7 +1632,7 @@ static int create_ust_session(struct ltt_session *session,
 		struct lttng_domain *domain)
 {
 	int ret;
-	struct ltt_ust_session *lus;
+	struct ltt_ust_session *lus = NULL;
 	struct ust_app *app;
 
 	switch (domain->type) {
@@ -1644,6 +1644,7 @@ static int create_ust_session(struct ltt_session *session,
 		}
 		break;
 	default:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
 	}
 
