@@ -65,6 +65,7 @@ int main(int argc, char **argv)
 	int ret, i, nb_iter;
 	char **names;
 	double value, total = 0;
+	struct ltt_session *session;
 
 	if (getuid() != 0) {
 		printf("Aborting test. Must be uid 0 to drop_caches\n");
@@ -104,9 +105,10 @@ int main(int argc, char **argv)
 
 	fprintf(fp, "--- Destroy tracing session ---\n");
 	for (i = 0; i < nb_iter; i++) {
+		session = session_find_by_name(names[i]);
 		ret = system("echo 3 >/proc/sys/vm/drop_caches");
 		tracepoint(destroy_session_start);
-		ret = session_destroy(names[i]);
+		ret = session_destroy(session);
 		tracepoint(destroy_session_end);
 		if (ret < 0) {
 			printf("Destroy session went wrong. Aborting\n");
