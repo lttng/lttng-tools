@@ -2606,14 +2606,17 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 
 			/* Start the kernel consumer daemon */
+			pthread_mutex_lock(&kconsumerd_pid_mutex);
 			if (kconsumerd_pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+				pthread_mutex_unlock(&kconsumerd_pid_mutex);
 				ret = start_kconsumerd();
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_CONSUMER_FAIL;
 					goto error;
 				}
 			}
+			pthread_mutex_unlock(&kconsumerd_pid_mutex);
 		}
 		break;
 	case LTTNG_DOMAIN_UST_PID:
