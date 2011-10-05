@@ -2053,15 +2053,23 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
+	struct lttng_channel *attr;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
+			attr = channel_new_default_attr(domain);
+			if (attr == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+			snprintf(attr->name, NAME_MAX, "%s", channel_name);
+
 			/* This call will notify the kernel thread */
 			ret = channel_kernel_create(session->kernel_session,
-					NULL, kernel_poll_pipe[1]);
+					attr, kernel_poll_pipe[1]);
 			if (ret != LTTCOMM_OK) {
 				goto error;
 			}
