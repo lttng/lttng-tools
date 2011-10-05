@@ -30,7 +30,7 @@
 /*
  * Return allocated channel attributes.
  */
-static struct lttng_channel *init_default_attr(int dom)
+struct lttng_channel *channel_new_default_attr(int dom)
 {
 	struct lttng_channel *chan;
 
@@ -164,7 +164,7 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		attr = init_default_attr(LTTNG_DOMAIN_KERNEL);
+		attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
 		if (attr == NULL) {
 			ret = LTTCOMM_FATAL;
 			goto error;
@@ -202,7 +202,7 @@ int channel_ust_create(struct ltt_ust_session *usession,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		attr = init_default_attr(LTTNG_DOMAIN_UST_PID);
+		attr = channel_new_default_attr(LTTNG_DOMAIN_UST_PID);
 		if (attr == NULL) {
 			ret = LTTCOMM_FATAL;
 			goto error;

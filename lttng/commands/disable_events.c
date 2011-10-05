@@ -86,7 +86,6 @@ static int disable_events(char *session_name)
 {
 	int err, ret = CMD_SUCCESS;
 	char *event_name, *channel_name = NULL;
-	struct lttng_event ev;
 	struct lttng_domain dom;
 
 	if (opt_channel_name == NULL) {
@@ -126,9 +125,6 @@ static int disable_events(char *session_name)
 			DBG("Disabling kernel event %s for channel %s",
 					event_name, channel_name);
 
-			/* Copy name and type of the event */
-			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
-			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 			ret = lttng_disable_event(handle, event_name, channel_name);
 			if (ret < 0) {
 				MSG("Unable to disable event %s for channel %s",

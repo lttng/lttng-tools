@@ -189,12 +189,16 @@ int kernel_create_event(struct lttng_event *ev,
 
 	event = trace_kernel_create_event(ev);
 	if (event == NULL) {
+		ret = -1;
 		goto error;
 	}
 
 	ret = kernctl_create_event(channel->fd, event->event);
 	if (ret < 0) {
-		PERROR("create event ioctl");
+		if (errno != EEXIST) {
+			PERROR("create event ioctl");
+		}
+		ret = -errno;
 		goto free_event;
 	}
 
@@ -226,7 +230,7 @@ end:
 free_event:
 	free(event);
 error:
-	return -1;
+	return ret;
 }
 
 /*

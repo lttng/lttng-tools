@@ -541,7 +541,7 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	if (name == NULL) {
+	if (name != NULL) {
 		copy_string(lsm.u.disable.name, name, sizeof(lsm.u.disable.name));
 		lsm.cmd_type = LTTNG_DISABLE_EVENT;
 	} else {

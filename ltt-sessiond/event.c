@@ -15,6 +15,7 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <errno.h>
 #include <urcu/list.h>
 
 #include <lttng/lttng.h>
@@ -127,7 +128,11 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
 	if (kevent == NULL) {
 		ret = kernel_create_event(event, kchan);
 		if (ret < 0) {
-			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			if (ret == -EEXIST) {
+				ret = LTTCOMM_KERN_EVENT_EXIST;
+			} else {
+				ret = LTTCOMM_KERN_ENABLE_FAIL;
+			}
 			goto end;
 		}
 	} else if (kevent->enabled == 0) {

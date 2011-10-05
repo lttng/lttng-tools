@@ -39,4 +39,6 @@ int channel_ust_disable(struct ltt_ust_session *usession,
 int channel_ust_enable(struct ltt_ust_session *usession,
 		struct ltt_ust_channel *uchan, int sock);
 
+struct lttng_channel *channel_new_default_attr(int domain);
+
 #endif /* _LTT_CHANNEL_H */
