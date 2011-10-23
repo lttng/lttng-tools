@@ -221,10 +221,11 @@ struct lttcomm_ust_msg {
 	uint32_t handle;
 	uint32_t cmd;
 	union {
-		struct lttng_ust_tracer_version version;
 		struct lttng_ust_channel channel;
+		struct lttng_ust_stream stream;
 		struct lttng_ust_event event;
 		struct lttng_ust_context context;
+		struct lttng_ust_tracer_version version;
 	} u;
 };
 
@@ -244,6 +245,7 @@ struct lttcomm_ust_reply {
 		struct {
 			uint64_t memory_map_size;
 		} stream;
+		struct lttng_ust_tracer_version version;
 	} u;
 };
 

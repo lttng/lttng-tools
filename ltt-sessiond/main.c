@@ -1100,7 +1100,7 @@ static void *thread_dispatch_ust_registration(void *data)
 			/* Dequeue command for registration */
 			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
 			if (node == NULL) {
-				DBG("Waked up but nothing in the UST command queue");
+				DBG("Woken up but nothing in the UST command queue");
 				/* Continue thread execution */
 				break;
 			}
