@@ -23,7 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <lttng-sessiond-comm.h>
+#include <ust/lttng-ust-comm.h>
 #include <lttngerr.h>
 
 #include "ust-comm.h"
@@ -47,8 +47,8 @@ int ustctl_register_done(int sock)
 		goto error;
 	}
 
-	if (reply->ret_code != LTTCOMM_OK) {
-		DBG("Return code: %s", lttcomm_get_readable_code(reply->ret_code));
+	if (reply->ret_code != USTCOMM_OK) {
+		DBG("Return code: %s", ustcomm_get_readable_code(reply->ret_code));
 		goto error;
 	}
 
@@ -74,8 +74,8 @@ int ustctl_create_session(int sock, struct ltt_ust_session *session)
 		goto error;
 	}
 
-	if (reply->ret_code != LTTCOMM_OK) {
-		DBG("Return code: %s", lttcomm_get_readable_code(reply->ret_code));
+	if (reply->ret_code != USTCOMM_OK) {
+		DBG("Return code: %s", ustcomm_get_readable_code(reply->ret_code));
 		goto error;
 	}
 
@@ -119,9 +119,9 @@ int ustctl_create_channel(int sock, struct ltt_ust_session *session,
 		goto error;
 	}
 
-	if (reply->ret_code != LTTCOMM_OK) {
+	if (reply->ret_code != USTCOMM_OK) {
 		DBG("Return code (%d): %s", reply->ret_code,
-				lttcomm_get_readable_code(reply->ret_code));
+				ustcomm_get_readable_code(reply->ret_code));
 		goto error;
 	}
 
@@ -159,9 +159,9 @@ int ustctl_enable_channel(int sock, struct ltt_ust_session *session,
 		goto error;
 	}
 
-	if (reply->ret_code != LTTCOMM_OK) {
+	if (reply->ret_code != USTCOMM_OK) {
 		DBG("Return code (%d): %s", reply->ret_code,
-				lttcomm_get_readable_code(reply->ret_code));
+				ustcomm_get_readable_code(reply->ret_code));
 		goto error;
 	} else if (reply->handle != chan->handle) {
 		ERR("Receive wrong handle from UST reply on enable channel");
@@ -198,9 +198,9 @@ int ustctl_disable_channel(int sock, struct ltt_ust_session *session,
 		goto error;
 	}
 
-	if (reply->ret_code != LTTCOMM_OK) {
+	if (reply->ret_code != USTCOMM_OK) {
 		DBG("Return code (%d): %s", reply->ret_code,
-				lttcomm_get_readable_code(reply->ret_code));
+				ustcomm_get_readable_code(reply->ret_code));
 		goto error;
 	} else if (reply->handle != chan->handle) {
 		ERR("Receive wrong handle from UST reply on enable channel");

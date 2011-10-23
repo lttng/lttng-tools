@@ -206,13 +206,13 @@ error:
 }
 
 /*
- * Make the socket listen using MAX_LISTEN.
+ * Make the socket listen using LTTNG_SESSIOND_COMM_MAX_LISTEN.
  */
 int lttcomm_listen_unix_sock(int sock)
 {
 	int ret;
 
-	ret = listen(sock, MAX_LISTEN);
+	ret = listen(sock, LTTNG_SESSIOND_COMM_MAX_LISTEN);
 	if (ret < 0) {
 		perror("listen");
 	}

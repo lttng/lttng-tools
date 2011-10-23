@@ -39,3 +39,7 @@ ltt_sessiond_LDADD = -lrt \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la
+
+if LTTNG_TOOLS_HAVE_UST
+ltt_sessiond_LDADD += -llttng-ust-comm
+endif

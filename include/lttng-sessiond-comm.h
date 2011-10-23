@@ -38,7 +38,7 @@
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK       "%s/.client-ltt-sessiond"
 
 /* Queue size of listen(2) */
-#define MAX_LISTEN 64
+#define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
 
 /*
  * Get the error code index from 0 since LTTCOMM_OK start at 1000

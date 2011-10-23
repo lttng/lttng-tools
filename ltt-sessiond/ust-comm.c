@@ -19,6 +19,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <lttngerr.h>
+#include <ust/lttng-ust-comm.h>
 #include "ust-comm.h"
 
 /*
@@ -41,7 +42,7 @@ struct lttcomm_ust_reply *ustcomm_send_command(int sock,
 	DBG2("Sending UST command %d to sock %d", msg->cmd, sock);
 
 	/* Send UST msg */
-	len = lttcomm_send_unix_sock(sock, msg, sizeof(*msg));
+	len = ustcomm_send_unix_sock(sock, msg, sizeof(*msg));
 	if (len < 0) {
 		goto error;
 	}
@@ -55,7 +56,7 @@ struct lttcomm_ust_reply *ustcomm_send_command(int sock,
 	DBG2("Receiving UST reply on sock %d", sock);
 
 	/* Get UST reply */
-	len = lttcomm_recv_unix_sock(sock, reply, sizeof(*reply));
+	len = ustcomm_recv_unix_sock(sock, reply, sizeof(*reply));
 	if (len < 0 || len < sizeof(*reply)) {
 		goto error;
 	}
