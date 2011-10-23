@@ -23,7 +23,6 @@
 
 #include <lttngerr.h>
 #include <lttng-share.h>
-#include <lttng-ust.h>
 
 #include "trace-ust.h"
 
@@ -123,7 +122,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
 	/* Init data structure */
 	lus->handle = -1;
 	lus->enabled = 1;
-	lus->uconsumer_fds_sent = 0;
+	lus->consumer_fds_sent = 0;
 	lus->metadata = NULL;
 	lus->channels.count = 0;
 	CDS_INIT_LIST_HEAD(&lus->channels.head);

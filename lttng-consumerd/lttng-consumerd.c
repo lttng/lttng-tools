@@ -37,12 +37,16 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <assert.h>
+#include <config.h>
 
-#include <ltt-kconsumerd.h>
+#include <lttng-consumerd.h>
 #include <lttng-kernel-ctl.h>
 #include <lttng-sessiond-comm.h>
-#include <lttng/lttng-kconsumerd.h>
+#include <lttng/lttng-kconsumer.h>
+#include <lttng/lttng-ustconsumer.h>
 #include <lttngerr.h>
+
+/* TODO : support UST (all direct kernctl accesses). */
 
 /* the two threads (receive fd and poll) */
 static pthread_t threads[2];
@@ -57,9 +61,10 @@ static int opt_daemon;
 static const char *progname;
 static char command_sock_path[PATH_MAX]; /* Global command socket path */
 static char error_sock_path[PATH_MAX]; /* Global error path */
+static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
 /* the liblttngkconsumerd context */
-static struct lttng_kconsumerd_local_data *ctx;
+static struct lttng_consumer_local_data *ctx;
 
 /*
  * Signal handler for the daemon
@@ -71,7 +76,7 @@ static void sighandler(int sig)
 		return;
 	}
 
-	lttng_kconsumerd_should_exit(ctx);
+	lttng_consumer_should_exit(ctx);
 }
 
 /*
@@ -130,6 +135,16 @@ static void usage(void)
 			"Verbose mode. Activate DBG() macro.\n");
 	fprintf(stderr, "  -V, --version                      "
 			"Show version number.\n");
+	fprintf(stderr, "  -k, --kernel                       "
+			"Consumer kernel buffers (default).\n");
+	fprintf(stderr, "  -u, --ust                          "
+			"Consumer UST buffers.%s\n",
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+			""
+#else
+			" (support not compiled in)"
+#endif
+			);
 }
 
 /*
@@ -147,12 +162,16 @@ static void parse_args(int argc, char **argv)
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
 		{ "version", 0, 0, 'V' },
+		{ "kernel", 0, 0, 'k' },
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+		{ "ust", 0, 0, 'u' },
+#endif
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvV" "c:e:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqvVku" "c:e:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -185,6 +204,14 @@ static void parse_args(int argc, char **argv)
 		case 'V':
 			fprintf(stdout, "%s\n", VERSION);
 			exit(EXIT_SUCCESS);
+		case 'k':
+			opt_type = LTTNG_CONSUMER_KERNEL;
+			break;
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+		case 'u':
+			opt_type = LTTNG_CONSUMER_UST;
+			break;
+#endif
 		default:
 			usage();
 			exit(EXIT_FAILURE);
@@ -195,14 +222,14 @@ static void parse_args(int argc, char **argv)
 /*
  * Consume data on a file descriptor and write it on a trace file.
  */
-static int read_subbuffer(struct lttng_kconsumerd_fd *kconsumerd_fd)
+static int read_subbuffer(struct lttng_consumer_stream *stream)
 {
 	unsigned long len;
 	int err;
 	long ret = 0;
-	int infd = kconsumerd_fd->consumerd_fd;
+	int infd = stream->wait_fd;
 
-	DBG("In kconsumerd_read_subbuffer (infd : %d)", infd);
+	DBG("In read_subbuffer (infd : %d)", infd);
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
@@ -218,7 +245,7 @@ static int read_subbuffer(struct lttng_kconsumerd_fd *kconsumerd_fd)
 		goto end;
 	}
 
-	switch (kconsumerd_fd->output) {
+	switch (stream->output) {
 		case LTTNG_EVENT_SPLICE:
 			/* read the whole subbuffer */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
@@ -229,7 +256,7 @@ static int read_subbuffer(struct lttng_kconsumerd_fd *kconsumerd_fd)
 			}
 
 			/* splice the subbuffer to the tracefile */
-			ret = lttng_kconsumerd_on_read_subbuffer_splice(ctx, kconsumerd_fd, len);
+			ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream, len);
 			if (ret < 0) {
 				/*
 				 * display the error but continue processing to try
@@ -247,7 +274,7 @@ static int read_subbuffer(struct lttng_kconsumerd_fd *kconsumerd_fd)
 				goto end;
 			}
 			/* write the subbuffer to the tracefile */
-			ret = lttng_kconsumerd_on_read_subbuffer_mmap(ctx, kconsumerd_fd, len);
+			ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len);
 			if (ret < 0) {
 				/*
 				 * display the error but continue processing to try
@@ -277,37 +304,37 @@ end:
 	return ret;
 }
 
-static int on_recv_fd(struct lttng_kconsumerd_fd *kconsumerd_fd)
+static int on_recv_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
 	/* Opening the tracefile in write mode */
-	if (kconsumerd_fd->path_name != NULL) {
-		ret = open(kconsumerd_fd->path_name,
+	if (stream->path_name != NULL) {
+		ret = open(stream->path_name,
 				O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
 		if (ret < 0) {
-			ERR("Opening %s", kconsumerd_fd->path_name);
+			ERR("Opening %s", stream->path_name);
 			perror("open");
 			goto error;
 		}
-		kconsumerd_fd->out_fd = ret;
+		stream->out_fd = ret;
 	}
 
-	if (kconsumerd_fd->output == LTTNG_EVENT_MMAP) {
+	if (stream->output == LTTNG_EVENT_MMAP) {
 		/* get the len of the mmap region */
 		unsigned long mmap_len;
 
-		ret = kernctl_get_mmap_len(kconsumerd_fd->consumerd_fd, &mmap_len);
+		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
 		if (ret != 0) {
 			ret = errno;
 			perror("kernctl_get_mmap_len");
 			goto error_close_fd;
 		}
-		kconsumerd_fd->mmap_len = (size_t) mmap_len;
+		stream->mmap_len = (size_t) mmap_len;
 
-		kconsumerd_fd->mmap_base = mmap(NULL, kconsumerd_fd->mmap_len,
-				PROT_READ, MAP_PRIVATE, kconsumerd_fd->consumerd_fd, 0);
-		if (kconsumerd_fd->mmap_base == MAP_FAILED) {
+		stream->mmap_base = mmap(NULL, stream->mmap_len,
+				PROT_READ, MAP_PRIVATE, stream->wait_fd, 0);
+		if (stream->mmap_base == MAP_FAILED) {
 			perror("Error mmaping");
 			ret = -1;
 			goto error_close_fd;
@@ -321,7 +348,7 @@ error_close_fd:
 	{
 		int err;
 
-		err = close(kconsumerd_fd->out_fd);
+		err = close(stream->out_fd);
 		assert(!err);
 	}
 error:
@@ -352,18 +379,22 @@ int main(int argc, char **argv)
 
 	if (strlen(command_sock_path) == 0) {
 		snprintf(command_sock_path, PATH_MAX,
-				KCONSUMERD_CMD_SOCK_PATH);
+			opt_type == LTTNG_CONSUMER_KERNEL ?
+				KCONSUMERD_CMD_SOCK_PATH :
+				USTCONSUMERD_CMD_SOCK_PATH);
 	}
 	/* create the consumer instance with and assign the callbacks */
-	ctx = lttng_kconsumerd_create(read_subbuffer, on_recv_fd, NULL);
+	ctx = lttng_consumer_create(opt_type, read_subbuffer, NULL, on_recv_stream, NULL);
 	if (ctx == NULL) {
 		goto error;
 	}
 
-	lttng_kconsumerd_set_command_sock_path(ctx, command_sock_path);
+	lttng_consumer_set_command_sock_path(ctx, command_sock_path);
 	if (strlen(error_sock_path) == 0) {
 		snprintf(error_sock_path, PATH_MAX,
-				KCONSUMERD_ERR_SOCK_PATH);
+			opt_type == LTTNG_CONSUMER_KERNEL ?
+				KCONSUMERD_ERR_SOCK_PATH :
+				USTCONSUMERD_ERR_SOCK_PATH);
 	}
 
 	if (set_signal_handler() < 0) {
@@ -377,10 +408,10 @@ int main(int argc, char **argv)
 	if (ret < 0) {
 		WARN("Cannot connect to error socket, is ltt-sessiond started ?");
 	}
-	lttng_kconsumerd_set_error_sock(ctx, ret);
+	lttng_consumer_set_error_sock(ctx, ret);
 
 	/* Create the thread to manage the receive of fd */
-	ret = pthread_create(&threads[0], NULL, lttng_kconsumerd_thread_receive_fds,
+	ret = pthread_create(&threads[0], NULL, lttng_consumer_thread_receive_fds,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
@@ -388,7 +419,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of traces */
-	ret = pthread_create(&threads[1], NULL, lttng_kconsumerd_thread_poll_fds,
+	ret = pthread_create(&threads[1], NULL, lttng_consumer_thread_poll_fds,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
@@ -403,16 +434,16 @@ int main(int argc, char **argv)
 		}
 	}
 	ret = EXIT_SUCCESS;
-	lttng_kconsumerd_send_error(ctx, KCONSUMERD_EXIT_SUCCESS);
+	lttng_consumer_send_error(ctx, CONSUMERD_EXIT_SUCCESS);
 	goto end;
 
 error:
 	ret = EXIT_FAILURE;
-	lttng_kconsumerd_send_error(ctx, KCONSUMERD_EXIT_FAILURE);
+	lttng_consumer_send_error(ctx, CONSUMERD_EXIT_FAILURE);
 
 end:
-	lttng_kconsumerd_destroy(ctx);
-	lttng_kconsumerd_cleanup();
+	lttng_consumer_destroy(ctx);
+	lttng_consumer_cleanup();
 
 	return ret;
 }

@@ -23,6 +23,8 @@
 
 #include "trace-ust.h"
 
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+
 int ustctl_register_done(int sock);
 int ustctl_create_channel(int sock, struct ltt_ust_session *session,
 		struct lttng_channel *channel);
@@ -32,5 +34,43 @@ int ustctl_disable_channel(int sock, struct ltt_ust_session *session,
 		struct ltt_ust_channel *chan);
 int ustctl_enable_channel(int sock, struct ltt_ust_session *session,
 		struct ltt_ust_channel *chan);
+
+#else
+
+static inline
+int ustctl_register_done(int sock)
+{
+	return -ENOSYS;
+}
+static inline
+int ustctl_create_channel(int sock, struct ltt_ust_session *session,
+		struct lttng_channel *channel)
+{
+	return -ENOSYS;
+}
+static inline
+int ustctl_create_session(int sock, struct ltt_ust_session *session)
+{
+	return -ENOSYS;
+}
+static inline
+int ustctl_destroy_session(int sock, struct ltt_ust_session *session)
+{
+	return -ENOSYS;
+}
+static inline
+int ustctl_disable_channel(int sock, struct ltt_ust_session *session,
+		struct ltt_ust_channel *chan)
+{
+	return -ENOSYS;
+}
+static inline
+int ustctl_enable_channel(int sock, struct ltt_ust_session *session,
+		struct ltt_ust_channel *chan)
+{
+	return -ENOSYS;
+}
+
+#endif
 
 #endif /* _LTT_UST_CTL_H */

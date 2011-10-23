@@ -300,7 +300,7 @@ extern const char *lttng_get_readable_code(int code);
  * domain. No consumer will be spawned and all fds/commands will go through the
  * socket path given (socket_path).
  *
- * NOTE: At the moment, if you use the liblttngkconsumerd, you can only use the
+ * NOTE: At the moment, if you use the liblttng-kconsumer, you can only use the
  * command socket. The error socket is not supported yet for roaming consumers.
  */
 extern int lttng_register_consumer(struct lttng_handle *handle,

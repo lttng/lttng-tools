@@ -14,11 +14,8 @@ endif
 ltt_sessiond_SOURCES = utils.c utils.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
-                       trace-ust.c trace-ust.h \
-                       ust-app.c ust-app.h \
-                       ust-comm.c ust-comm.h \
-                       ust-ctl.c ust-ctl.h \
                        kernel-ctl.c kernel-ctl.h \
+		       ust-ctl.h ust-app.h trace-ust.h \
                        context.c context.h \
                        channel.c channel.h \
                        event.c event.h \
@@ -29,9 +26,16 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        ../hashtable/rculfhash.c \
                        ../hashtable/rculfhash.h
 
+if LTTNG_TOOLS_HAVE_UST
+ltt_sessiond_SOURCES += \
+                       trace-ust.c \
+                       ust-app.c \
+                       ust-comm.c ust-comm.h \
+                       ust-ctl.c
+endif
+
 # link on liblttngctl for check if sessiond is already alive.
 ltt_sessiond_LDADD = -lrt \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
-		 $(top_builddir)/libustctl/libustctl.la	\
 		 $(top_builddir)/liblttngctl/liblttngctl.la

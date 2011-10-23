@@ -82,7 +82,7 @@ struct ltt_kernel_stream {
 struct ltt_kernel_session {
 	int fd;
 	int metadata_stream_fd;
-	int kconsumer_fds_sent;
+	int consumer_fds_sent;
 	int consumer_fd;
 	unsigned int channel_count;
 	unsigned int stream_count_global;

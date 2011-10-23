@@ -40,7 +40,7 @@ struct ust_register_msg {
 /*
  * Traceable application list.
  */
-struct ust_app_list{
+struct ust_app_list {
 	/*
 	 * This lock protects any read/write access to the list and count (which is
 	 * basically the list size). All public functions in traceable-app.c
@@ -76,6 +76,8 @@ struct ust_app {
 	struct cds_list_head list;
 };
 
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+
 int ust_app_register(struct ust_register_msg *msg, int sock);
 void ust_app_unregister(int sock);
 unsigned int ust_app_list_count(void);
@@ -85,5 +87,49 @@ void ust_app_unlock_list(void);
 void ust_app_clean_list(void);
 struct ust_app_list *ust_app_get_list(void);
 struct ust_app *ust_app_get_by_pid(pid_t pid);
+
+#else
+
+static inline
+int ust_app_register(struct ust_register_msg *msg, int sock)
+{
+	return -ENOSYS;
+}
+static inline
+void ust_app_unregister(int sock)
+{
+}
+static inline
+unsigned int ust_app_list_count(void)
+{
+	return 0;
+}
+
+static inline
+void ust_app_lock_list(void)
+{
+}
+static inline
+void ust_app_unlock_list(void)
+{
+}
+static inline
+void ust_app_clean_list(void)
+{
+}
+static inline
+struct ust_app_list *ust_app_get_list(void)
+{
+	return NULL;
+}
+static inline
+struct ust_app *ust_app_get_by_pid(pid_t pid)
+{
+	return NULL;
+}
+
+
+
+#endif
 
 #endif /* _TRACEABLE_APP_H */

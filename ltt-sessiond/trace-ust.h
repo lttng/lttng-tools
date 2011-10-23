@@ -19,11 +19,22 @@
 #ifndef _LTT_TRACE_UST_H
 #define _LTT_TRACE_UST_H
 
+#include <config.h>
 #include <limits.h>
 #include <urcu/list.h>
-
 #include <lttng/lttng.h>
-#include <lttng-ust.h>
+
+/*
+ * FIXME: temporary workaround: we use a lttng-tools local version of
+ * lttng-ust-abi.h if UST is not found. Eventually, we should use our
+ * own internal structures within lttng-tools instead of relying on the
+ * UST ABI.
+ */
+#ifdef CONFIG_CONFIG_LTTNG_TOOLS_HAVE_UST
+#include <ust/lttng-ust-abi.h>
+#else
+#include "lttng-ust-abi.h"
+#endif
 
 /*
  * UST session list.
@@ -77,13 +88,15 @@ struct ltt_ust_metadata {
 struct ltt_ust_session {
 	int handle;
 	int enabled;
-	int uconsumer_fds_sent;
+	int consumer_fds_sent;
 	char path[PATH_MAX];
 	struct lttng_domain domain;
 	struct ltt_ust_metadata *metadata;
 	struct ltt_ust_channel_list channels;
 	struct cds_list_head list;
 };
+
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
 
 /*
  * Lookup functions. NULL is returned if not found.
@@ -113,5 +126,68 @@ void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
+
+#else
+
+static inline
+struct ltt_ust_event *trace_ust_get_event_by_name(
+		char *name, struct ltt_ust_channel *channel)
+{
+	return NULL;
+}
+static inline
+struct ltt_ust_channel *trace_ust_get_channel_by_name(
+		char *name, struct ltt_ust_session *session)
+{
+	return NULL;
+}
+static inline
+struct ltt_ust_session *trace_ust_get_session_by_pid(
+		struct ltt_ust_session_list *session_list, pid_t pid)
+{
+	return NULL;
+}
+
+static inline
+struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
+		struct lttng_domain *domain)
+{
+	return NULL;
+}
+static inline
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
+		char *path)
+{
+	return NULL;
+}
+static inline
+struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
+{
+	return NULL;
+}
+static inline
+struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
+{
+	return NULL;
+}
+
+static inline
+void trace_ust_destroy_session(struct ltt_ust_session *session)
+{
+}
+static inline
+void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
+{
+}
+static inline
+void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
+{
+}
+static inline
+void trace_ust_destroy_event(struct ltt_ust_event *event)
+{
+}
+
+#endif
 
 #endif /* _LTT_TRACE_UST_H */

@@ -17,12 +17,17 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_KCONSUMERD_H
-#define _LTT_KCONSUMERD_H
+#ifndef _LTTNG_CONSUMERD_H
+#define _LTTNG_CONSUMERD_H
 
 /* Kernel consumer path */
 #define KCONSUMERD_PATH                     LTTNG_RUNDIR "/kconsumerd"
 #define KCONSUMERD_CMD_SOCK_PATH            KCONSUMERD_PATH "/command"
 #define KCONSUMERD_ERR_SOCK_PATH            KCONSUMERD_PATH "/error"
 
-#endif /* _LTT_KCONSUMERD_H */
+/* UST consumer path */
+#define USTCONSUMERD_PATH                   LTTNG_RUNDIR "/ustconsumerd"
+#define USTCONSUMERD_CMD_SOCK_PATH          USTCONSUMERD_PATH "/command"
+#define USTCONSUMERD_ERR_SOCK_PATH          USTCONSUMERD_PATH "/error"
+
+#endif /* _LTTNG_CONSUMERD_H */

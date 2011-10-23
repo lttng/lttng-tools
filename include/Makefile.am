@@ -1,4 +1,5 @@
-lttnginclude_HEADERS = lttng/lttng.h lttng/lttng-kconsumerd.h
+lttnginclude_HEADERS = lttng/lttng.h lttng/lttng-kconsumer.h \
+			lttng/lttng-ustconsumer.h lttng/lttng-consumer.h
 
-noinst_HEADERS = lttngerr.h lttng-kernel.h ltt-kconsumerd.h lttng-share.h \
-				 lttng-sessiond-comm.h lttng-ust.h lttng-kernel-ctl.h
+noinst_HEADERS = lttngerr.h lttng-kernel.h lttng-consumerd.h lttng-share.h \
+			lttng-sessiond-comm.h lttng-kernel-ctl.h

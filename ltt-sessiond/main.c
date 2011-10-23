@@ -36,10 +36,11 @@
 #include <sys/wait.h>
 #include <urcu/futex.h>
 #include <unistd.h>
+#include <config.h>
 
-#include <ltt-kconsumerd.h>
+#include <lttng-consumerd.h>
 #include <lttng-sessiond-comm.h>
-#include <lttng/lttng-kconsumerd.h>
+#include <lttng/lttng-consumer.h>
 #include <lttngerr.h>
 
 #include "channel.h"
@@ -55,6 +56,24 @@
 #include "utils.h"
 #include "ust-ctl.h"
 
+struct consumer_data {
+	enum lttng_consumer_type type;
+
+	pthread_t thread;	/* Worker thread interacting with the consumer */
+	sem_t sem;
+
+	/* Mutex to control consumerd pid assignation */
+	pthread_mutex_t pid_mutex;
+	pid_t pid;
+
+	int err_sock;
+	int cmd_sock;
+
+	/* consumer error and command Unix socket path */
+	char err_unix_sock_path[PATH_MAX];
+	char cmd_unix_sock_path[PATH_MAX];
+};
+
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
 const char default_tracing_group[] = LTTNG_DEFAULT_TRACING_GROUP;
@@ -63,7 +82,7 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
 /* Variables */
 int opt_verbose;    /* Not static for lttngerr.h */
-int opt_verbose_kconsumerd;    /* Not static for lttngerr.h */
+int opt_verbose_consumer;    /* Not static for lttngerr.h */
 int opt_quiet;      /* Not static for lttngerr.h */
 
 const char *progname;
@@ -72,24 +91,27 @@ static int opt_sig_parent;
 static int opt_daemon;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
-static pid_t kconsumerd_pid;
+
+/* Consumer daemon specific control data */
+static struct consumer_data kconsumer_data = {
+	.type = LTTNG_CONSUMER_KERNEL,
+};
+static struct consumer_data ustconsumer_data = {
+	.type = LTTNG_CONSUMER_UST,
+};
+
 static int dispatch_thread_exit;
 
 /* Global application Unix socket path */
 static char apps_unix_sock_path[PATH_MAX];
 /* Global client Unix socket path */
 static char client_unix_sock_path[PATH_MAX];
-/* kconsumerd error and command Unix socket path */
-static char kconsumerd_err_unix_sock_path[PATH_MAX];
-static char kconsumerd_cmd_unix_sock_path[PATH_MAX];
 /* global wait shm path for UST */
 static char wait_shm_path[PATH_MAX];
 
 /* Sockets and FDs */
 static int client_sock;
 static int apps_sock;
-static int kconsumerd_err_sock;
-static int kconsumerd_cmd_sock;
 static int kernel_tracer_fd;
 static int kernel_poll_pipe[2];
 
@@ -106,17 +128,12 @@ static int thread_quit_pipe[2];
 static int apps_cmd_pipe[2];
 
 /* Pthread, Mutexes and Semaphores */
-static pthread_t kconsumerd_thread;
 static pthread_t apps_thread;
 static pthread_t reg_apps_thread;
 static pthread_t client_thread;
 static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
-static sem_t kconsumerd_sem;
 
-
-/* Mutex to control kconsumerd pid assignation */
-static pthread_mutex_t kconsumerd_pid_mutex;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -269,7 +286,7 @@ static void teardown_kernel_session(struct ltt_session *session)
 		 * If a custom kernel consumer was registered, close the socket before
 		 * tearing down the complete kernel session structure
 		 */
-		if (session->kernel_session->consumer_fd != kconsumerd_cmd_sock) {
+		if (session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
 			lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
 		}
 
@@ -346,7 +363,7 @@ static void cleanup(void)
 	DBG("Closing all UST sockets");
 	ust_app_clean_list();
 
-	pthread_mutex_destroy(&kconsumerd_pid_mutex);
+	pthread_mutex_destroy(&kconsumer_data.pid_mutex);
 
 	DBG("Closing kernel fd");
 	close(kernel_tracer_fd);
@@ -396,54 +413,57 @@ static void clean_command_ctx(struct command_ctx **cmd_ctx)
 /*
  * Send all stream fds of kernel channel to the consumer.
  */
-static int send_kconsumerd_channel_fds(int sock,
-		struct ltt_kernel_channel *channel)
+static int send_consumer_channel_streams(struct consumer_data *consumer_data,
+		int sock, struct ltt_kernel_channel *channel)
 {
 	int ret;
 	size_t nb_fd;
 	struct ltt_kernel_stream *stream;
-	struct lttcomm_kconsumerd_header lkh;
-	struct lttcomm_kconsumerd_msg lkm;
+	struct lttcomm_consumer_msg lkm;
 
-	DBG("Sending fds of channel %s to kernel consumer",
+	DBG("Sending streams of channel %s to kernel consumer",
 			channel->channel->name);
-
 	nb_fd = channel->stream_count;
 
-	/* Setup header */
-	lkh.payload_size = nb_fd * sizeof(struct lttcomm_kconsumerd_msg);
-	lkh.cmd_type = ADD_STREAM;
-
-	DBG("Sending kconsumerd header");
-
-	ret = lttcomm_send_unix_sock(sock, &lkh,
-			sizeof(struct lttcomm_kconsumerd_header));
+	/* Send channel */
+	lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
+	lkm.u.channel.channel_key = channel->fd;
+	lkm.u.channel.max_sb_size = channel->channel->attr.subbuf_size;
+	lkm.u.channel.mmap_len = 0;	/* for kernel */
+	DBG("Sending channel %d to consumer", lkm.u.stream.stream_key);
+	ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
 	if (ret < 0) {
-		perror("send kconsumerd header");
+		perror("send consumer channel");
 		goto error;
 	}
 
+	/* Send streams */
 	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
-		if (stream->fd != 0) {
-			lkm.fd = stream->fd;
-			lkm.state = stream->state;
-			lkm.max_sb_size = channel->channel->attr.subbuf_size;
-			lkm.output = channel->channel->attr.output;
-			strncpy(lkm.path_name, stream->pathname, PATH_MAX);
-			lkm.path_name[PATH_MAX - 1] = '\0';
-
-			DBG("Sending fd %d to kconsumerd", lkm.fd);
-
-			ret = lttcomm_send_fds_unix_sock(sock, &lkm,
-					&lkm.fd, 1, sizeof(lkm));
-			if (ret < 0) {
-				perror("send kconsumerd fd");
-				goto error;
-			}
+		if (!stream->fd) {
+			continue;
+		}
+		lkm.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
+		lkm.u.stream.channel_key = channel->fd;
+		lkm.u.stream.stream_key = stream->fd;
+		lkm.u.stream.state = stream->state;
+		lkm.u.stream.output = channel->channel->attr.output;
+		lkm.u.stream.mmap_len = 0;	/* for kernel */
+		strncpy(lkm.u.stream.path_name, stream->pathname, PATH_MAX - 1);
+		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
+		DBG("Sending stream %d to consumer", lkm.u.stream.stream_key);
+		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
+		if (ret < 0) {
+			perror("send consumer stream");
+			goto error;
+		}
+		ret = lttcomm_send_fds_unix_sock(sock, &stream->fd, 1);
+		if (ret < 0) {
+			perror("send consumer stream ancillary data");
+			goto error;
 		}
 	}
 
-	DBG("Kconsumerd channel fds sent");
+	DBG("consumer channel streams sent");
 
 	return 0;
 
@@ -454,58 +474,64 @@ error:
 /*
  * Send all stream fds of the kernel session to the consumer.
  */
-static int send_kconsumerd_fds(struct ltt_kernel_session *session)
+static int send_consumer_session_streams(struct consumer_data *consumer_data,
+		struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_channel *chan;
-	struct lttcomm_kconsumerd_header lkh;
-	struct lttcomm_kconsumerd_msg lkm;
-
-	/* Setup header */
-	lkh.payload_size = sizeof(struct lttcomm_kconsumerd_msg);
-	lkh.cmd_type = ADD_STREAM;
-
-	DBG("Sending kconsumerd header for metadata");
-
-	ret = lttcomm_send_unix_sock(session->consumer_fd, &lkh,
-			sizeof(struct lttcomm_kconsumerd_header));
-	if (ret < 0) {
-		perror("send kconsumerd header");
-		goto error;
-	}
+	struct lttcomm_consumer_msg lkm;
+	int sock = session->consumer_fd;
 
 	DBG("Sending metadata stream fd");
 
 	/* Extra protection. It's NOT suppose to be set to 0 at this point */
 	if (session->consumer_fd == 0) {
-		session->consumer_fd = kconsumerd_cmd_sock;
+		session->consumer_fd = consumer_data->cmd_sock;
 	}
 
 	if (session->metadata_stream_fd != 0) {
-		/* Send metadata stream fd first */
-		lkm.fd = session->metadata_stream_fd;
-		lkm.state = ACTIVE_FD;
-		lkm.max_sb_size = session->metadata->conf->attr.subbuf_size;
-		lkm.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
-		strncpy(lkm.path_name, session->metadata->pathname, PATH_MAX);
-		lkm.path_name[PATH_MAX - 1] = '\0';
-
-		ret = lttcomm_send_fds_unix_sock(session->consumer_fd, &lkm,
-				&lkm.fd, 1, sizeof(lkm));
+		/* Send metadata channel fd */
+		lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
+		lkm.u.channel.channel_key = session->metadata->fd;
+		lkm.u.channel.max_sb_size = session->metadata->conf->attr.subbuf_size;
+		lkm.u.channel.mmap_len = 0;	/* for kernel */
+		DBG("Sending metadata channel %d to consumer", lkm.u.stream.stream_key);
+		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
 		if (ret < 0) {
-			perror("send kconsumerd fd");
+			perror("send consumer channel");
+			goto error;
+		}
+
+		/* Send metadata stream fd */
+		lkm.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
+		lkm.u.stream.channel_key = session->metadata->fd;
+		lkm.u.stream.stream_key = session->metadata_stream_fd;
+		lkm.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
+		lkm.u.stream.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		lkm.u.stream.mmap_len = 0;	/* for kernel */
+		strncpy(lkm.u.stream.path_name, session->metadata->pathname, PATH_MAX - 1);
+		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
+		DBG("Sending metadata stream %d to consumer", lkm.u.stream.stream_key);
+		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
+		if (ret < 0) {
+			perror("send consumer stream");
+			goto error;
+		}
+		ret = lttcomm_send_fds_unix_sock(sock, &session->metadata_stream_fd, 1);
+		if (ret < 0) {
+			perror("send consumer stream");
 			goto error;
 		}
 	}
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = send_kconsumerd_channel_fds(session->consumer_fd, chan);
+		ret = send_consumer_channel_streams(consumer_data, sock, chan);
 		if (ret < 0) {
 			goto error;
 		}
 	}
 
-	DBG("Kconsumerd fds (metadata and channel streams) sent");
+	DBG("consumer fds (metadata and channel streams) sent");
 
 	return 0;
 
@@ -618,7 +644,7 @@ error:
  *
  * Useful for CPU hotplug feature.
  */
-static int update_kernel_stream(int fd)
+static int update_stream(struct consumer_data *consumer_data, int fd)
 {
 	int ret = 0;
 	struct ltt_session *session;
@@ -636,7 +662,7 @@ static int update_kernel_stream(int fd)
 
 		/* This is not suppose to be 0 but this is an extra security check */
 		if (session->kernel_session->consumer_fd == 0) {
-			session->kernel_session->consumer_fd = kconsumerd_cmd_sock;
+			session->kernel_session->consumer_fd = consumer_data->cmd_sock;
 		}
 
 		cds_list_for_each_entry(channel,
@@ -653,8 +679,8 @@ static int update_kernel_stream(int fd)
 				 * that tracing is started so it is safe to send our updated
 				 * stream fds.
 				 */
-				if (session->kernel_session->kconsumer_fds_sent == 1) {
-					ret = send_kconsumerd_channel_fds(
+				if (session->kernel_session->consumer_fds_sent == 1) {
+					ret = send_consumer_channel_streams(consumer_data,
 							session->kernel_session->consumer_fd, channel);
 					if (ret < 0) {
 						goto error;
@@ -754,7 +780,7 @@ static void *thread_manage_kernel(void *data)
 				 * kernel session and updating the kernel consumer
 				 */
 				if (revents & LPOLLIN) {
-					ret = update_kernel_stream(pollfd);
+					ret = update_stream(&kconsumer_data, pollfd);
 					if (ret < 0) {
 						continue;
 					}
@@ -779,18 +805,19 @@ error:
 }
 
 /*
- * This thread manage the kconsumerd error sent back to the session daemon.
+ * This thread manage the consumer error sent back to the session daemon.
  */
-static void *thread_manage_kconsumerd(void *data)
+static void *thread_manage_consumer(void *data)
 {
 	int sock = 0, i, ret, pollfd;
 	uint32_t revents, nb_fd;
 	enum lttcomm_return_code code;
 	struct lttng_poll_event events;
+	struct consumer_data *consumer_data = data;
 
-	DBG("[thread] Manage kconsumerd started");
+	DBG("[thread] Manage consumer started");
 
-	ret = lttcomm_listen_unix_sock(kconsumerd_err_sock);
+	ret = lttcomm_listen_unix_sock(consumer_data->err_sock);
 	if (ret < 0) {
 		goto error;
 	}
@@ -804,7 +831,7 @@ static void *thread_manage_kconsumerd(void *data)
 		goto error;
 	}
 
-	ret = lttng_poll_add(&events, kconsumerd_err_sock, LPOLLIN | LPOLLRDHUP);
+	ret = lttng_poll_add(&events, consumer_data->err_sock, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
@@ -829,20 +856,20 @@ static void *thread_manage_kconsumerd(void *data)
 		}
 
 		/* Event on the registration socket */
-		if (pollfd == kconsumerd_err_sock) {
+		if (pollfd == consumer_data->err_sock) {
 			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-				ERR("Kconsumerd err socket poll error");
+				ERR("consumer err socket poll error");
 				goto error;
 			}
 		}
 	}
 
-	sock = lttcomm_accept_unix_sock(kconsumerd_err_sock);
+	sock = lttcomm_accept_unix_sock(consumer_data->err_sock);
 	if (sock < 0) {
 		goto error;
 	}
 
-	DBG2("Receiving code from kconsumerd_err_sock");
+	DBG2("Receiving code from consumer err_sock");
 
 	/* Getting status code from kconsumerd */
 	ret = lttcomm_recv_unix_sock(sock, &code,
@@ -851,25 +878,25 @@ static void *thread_manage_kconsumerd(void *data)
 		goto error;
 	}
 
-	if (code == KCONSUMERD_COMMAND_SOCK_READY) {
-		kconsumerd_cmd_sock =
-			lttcomm_connect_unix_sock(kconsumerd_cmd_unix_sock_path);
-		if (kconsumerd_cmd_sock < 0) {
-			sem_post(&kconsumerd_sem);
-			perror("kconsumerd connect");
+	if (code == CONSUMERD_COMMAND_SOCK_READY) {
+		consumer_data->cmd_sock =
+			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
+		if (consumer_data->cmd_sock < 0) {
+			sem_post(&consumer_data->sem);
+			perror("consumer connect");
 			goto error;
 		}
 		/* Signal condition to tell that the kconsumerd is ready */
-		sem_post(&kconsumerd_sem);
-		DBG("Kconsumerd command socket ready");
+		sem_post(&consumer_data->sem);
+		DBG("consumer command socket ready");
 	} else {
-		ERR("Kconsumerd error when waiting for SOCK_READY : %s",
+		ERR("consumer error when waiting for SOCK_READY : %s",
 				lttcomm_get_readable_code(-code));
 		goto error;
 	}
 
 	/* Remove the kconsumerd error sock since we've established a connexion */
-	ret = lttng_poll_del(&events, kconsumerd_err_sock);
+	ret = lttng_poll_del(&events, consumer_data->err_sock);
 	if (ret < 0) {
 		goto error;
 	}
@@ -902,7 +929,7 @@ static void *thread_manage_kconsumerd(void *data)
 		/* Event on the kconsumerd socket */
 		if (pollfd == sock) {
 			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-				ERR("Kconsumerd err socket second poll error");
+				ERR("consumer err socket second poll error");
 				goto error;
 			}
 		}
@@ -912,21 +939,21 @@ static void *thread_manage_kconsumerd(void *data)
 	ret = lttcomm_recv_unix_sock(sock, &code,
 			sizeof(enum lttcomm_return_code));
 	if (ret <= 0) {
-		ERR("Kconsumerd closed the command socket");
+		ERR("consumer closed the command socket");
 		goto error;
 	}
 
-	ERR("Kconsumerd return code : %s", lttcomm_get_readable_code(-code));
+	ERR("consumer return code : %s", lttcomm_get_readable_code(-code));
 
 error:
-	DBG("Kconsumerd thread dying");
-	close(kconsumerd_err_sock);
-	close(kconsumerd_cmd_sock);
+	DBG("consumer thread dying");
+	close(consumer_data->err_sock);
+	close(consumer_data->cmd_sock);
 	close(sock);
 
-	unlink(kconsumerd_err_unix_sock_path);
-	unlink(kconsumerd_cmd_unix_sock_path);
-	kconsumerd_pid = 0;
+	unlink(consumer_data->err_unix_sock_path);
+	unlink(consumer_data->cmd_unix_sock_path);
+	consumer_data->pid = 0;
 
 	lttng_poll_clean(&events);
 
@@ -1259,10 +1286,10 @@ error:
 }
 
 /*
- * Start the thread_manage_kconsumerd. This must be done after a kconsumerd
+ * Start the thread_manage_consumer. This must be done after a lttng-consumerd
  * exec or it will fails.
  */
-static int spawn_kconsumerd_thread(void)
+static int spawn_consumer_thread(struct consumer_data *consumer_data)
 {
 	int ret;
 	struct timespec timeout;
@@ -1271,16 +1298,16 @@ static int spawn_kconsumerd_thread(void)
 	timeout.tv_nsec = 0;
 
 	/* Setup semaphore */
-	ret = sem_init(&kconsumerd_sem, 0, 0);
+	ret = sem_init(&consumer_data->sem, 0, 0);
 	if (ret < 0) {
-		PERROR("sem_init kconsumerd_sem");
+		PERROR("sem_init consumer semaphore");
 		goto error;
 	}
 
-	ret = pthread_create(&kconsumerd_thread, NULL,
-			thread_manage_kconsumerd, (void *) NULL);
+	ret = pthread_create(&consumer_data->thread, NULL,
+			thread_manage_consumer, consumer_data);
 	if (ret != 0) {
-		PERROR("pthread_create kconsumerd");
+		PERROR("pthread_create consumer");
 		ret = -1;
 		goto error;
 	}
@@ -1288,13 +1315,13 @@ static int spawn_kconsumerd_thread(void)
 	/* Get time for sem_timedwait absolute timeout */
 	ret = clock_gettime(CLOCK_REALTIME, &timeout);
 	if (ret < 0) {
-		PERROR("clock_gettime spawn kconsumerd");
+		PERROR("clock_gettime spawn consumer");
 		/* Infinite wait for the kconsumerd thread to be ready */
-		ret = sem_wait(&kconsumerd_sem);
+		ret = sem_wait(&consumer_data->sem);
 	} else {
 		/* Normal timeout if the gettime was successful */
 		timeout.tv_sec += DEFAULT_SEM_WAIT_TIMEOUT;
-		ret = sem_timedwait(&kconsumerd_sem, &timeout);
+		ret = sem_timedwait(&consumer_data->sem, &timeout);
 	}
 
 	if (ret < 0) {
@@ -1303,24 +1330,24 @@ static int spawn_kconsumerd_thread(void)
 			 * Call has timed out so we kill the kconsumerd_thread and return
 			 * an error.
 			 */
-			ERR("The kconsumerd thread was never ready. Killing it");
-			ret = pthread_cancel(kconsumerd_thread);
+			ERR("The consumer thread was never ready. Killing it");
+			ret = pthread_cancel(consumer_data->thread);
 			if (ret < 0) {
-				PERROR("pthread_cancel kconsumerd_thread");
+				PERROR("pthread_cancel consumer thread");
 			}
 		} else {
-			PERROR("semaphore wait failed kconsumerd thread");
+			PERROR("semaphore wait failed consumer thread");
 		}
 		goto error;
 	}
 
-	pthread_mutex_lock(&kconsumerd_pid_mutex);
-	if (kconsumerd_pid == 0) {
+	pthread_mutex_lock(&consumer_data->pid_mutex);
+	if (consumer_data->pid == 0) {
 		ERR("Kconsumerd did not start");
-		pthread_mutex_unlock(&kconsumerd_pid_mutex);
+		pthread_mutex_unlock(&consumer_data->pid_mutex);
 		goto error;
 	}
-	pthread_mutex_unlock(&kconsumerd_pid_mutex);
+	pthread_mutex_unlock(&consumer_data->pid_mutex);
 
 	return 0;
 
@@ -1329,96 +1356,103 @@ error:
 }
 
 /*
- * Join kernel consumer thread
+ * Join consumer thread
  */
-static int join_kconsumerd_thread(void)
+static int join_consumer_thread(struct consumer_data *consumer_data)
 {
 	void *status;
 	int ret;
 
-	if (kconsumerd_pid != 0) {
-		ret = kill(kconsumerd_pid, SIGTERM);
+	if (consumer_data->pid != 0) {
+		ret = kill(consumer_data->pid, SIGTERM);
 		if (ret) {
-			ERR("Error killing kconsumerd");
+			ERR("Error killing consumer daemon");
 			return ret;
 		}
-		return pthread_join(kconsumerd_thread, &status);
+		return pthread_join(consumer_data->thread, &status);
 	} else {
 		return 0;
 	}
 }
 
 /*
- * Fork and exec a kernel consumer daemon (kconsumerd).
+ * Fork and exec a consumer daemon (consumerd).
  *
  * Return pid if successful else -1.
  */
-static pid_t spawn_kconsumerd(void)
+static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 	pid_t pid;
 	const char *verbosity;
 
-	DBG("Spawning kconsumerd");
+	DBG("Spawning consumerd");
 
 	pid = fork();
 	if (pid == 0) {
 		/*
-		 * Exec kconsumerd.
+		 * Exec consumerd.
 		 */
-		if (opt_verbose > 1 || opt_verbose_kconsumerd) {
+		if (opt_verbose > 1 || opt_verbose_consumer) {
 			verbosity = "--verbose";
 		} else {
 			verbosity = "--quiet";
 		}
-		execl(INSTALL_BIN_PATH "/ltt-kconsumerd",
-				"ltt-kconsumerd", verbosity, NULL);
+		switch (consumer_data->type) {
+		case LTTNG_CONSUMER_KERNEL:
+			execl(INSTALL_BIN_PATH "/lttng-consumerd",
+					"lttng-consumerd", verbosity, "-k", NULL);
+			break;
+		case LTTNG_CONSUMER_UST:
+			execl(INSTALL_BIN_PATH "/lttng-consumerd",
+					"lttng-consumerd", verbosity, "-u", NULL);
+			break;
+		default:
+			perror("unknown consumer type");
+			exit(EXIT_FAILURE);
+		}
 		if (errno != 0) {
 			perror("kernel start consumer exec");
 		}
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		ret = pid;
-		goto error;
 	} else {
-		perror("kernel start consumer fork");
+		perror("start consumer fork");
 		ret = -errno;
-		goto error;
 	}
-
-error:
 	return ret;
 }
 
 /*
- * Spawn the kconsumerd daemon and session daemon thread.
+ * Spawn the consumerd daemon and session daemon thread.
  */
-static int start_kconsumerd(void)
+static int start_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 
-	pthread_mutex_lock(&kconsumerd_pid_mutex);
-	if (kconsumerd_pid != 0) {
-		pthread_mutex_unlock(&kconsumerd_pid_mutex);
+	pthread_mutex_lock(&consumer_data->pid_mutex);
+	if (consumer_data->pid != 0) {
+		pthread_mutex_unlock(&consumer_data->pid_mutex);
 		goto end;
 	}
 
-	ret = spawn_kconsumerd();
+	ret = spawn_consumerd(consumer_data);
 	if (ret < 0) {
-		ERR("Spawning kconsumerd failed");
-		pthread_mutex_unlock(&kconsumerd_pid_mutex);
+		ERR("Spawning consumerd failed");
+		pthread_mutex_unlock(&consumer_data->pid_mutex);
 		goto error;
 	}
 
-	/* Setting up the global kconsumerd_pid */
-	kconsumerd_pid = ret;
-	DBG2("Kconsumerd pid %d", kconsumerd_pid);
-	pthread_mutex_unlock(&kconsumerd_pid_mutex);
+	/* Setting up the consumer_data pid */
+	consumer_data->pid = ret;
+	DBG2("consumer pid %d", consumer_data->pid);
+	pthread_mutex_unlock(&consumer_data->pid_mutex);
 
-	DBG2("Spawning kconsumerd thread");
-	ret = spawn_kconsumerd_thread();
+	DBG2("Spawning consumer control thread");
+	ret = spawn_consumer_thread(consumer_data);
 	if (ret < 0) {
-		ERR("Fatal error spawning kconsumerd thread");
+		ERR("Fatal error spawning consumer control thread");
 		goto error;
 	}
 
@@ -1580,23 +1614,23 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 {
 	int ret = 0;
 
-	if (session->kconsumer_fds_sent == 0) {
+	if (session->consumer_fds_sent == 0) {
 		/*
 		 * Assign default kernel consumer socket if no consumer assigned to the
 		 * kernel session. At this point, it's NOT suppose to be 0 but this is
 		 * an extra security check.
 		 */
 		if (session->consumer_fd == 0) {
-			session->consumer_fd = kconsumerd_cmd_sock;
+			session->consumer_fd = kconsumer_data.cmd_sock;
 		}
 
-		ret = send_kconsumerd_fds(session);
+		ret = send_consumer_session_streams(&kconsumer_data, session);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
 			goto error;
 		}
 
-		session->kconsumer_fds_sent = 1;
+		session->consumer_fds_sent = 1;
 	}
 
 error:
@@ -1677,8 +1711,8 @@ static int create_kernel_session(struct ltt_session *session)
 	}
 
 	/* Set kernel consumer socket fd */
-	if (kconsumerd_cmd_sock) {
-		session->kernel_session->consumer_fd = kconsumerd_cmd_sock;
+	if (kconsumer_data.cmd_sock) {
+		session->kernel_session->consumer_fd = kconsumer_data.cmd_sock;
 	}
 
 	ret = mkdir_recursive(session->kernel_session->trace_path,
@@ -2614,17 +2648,17 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 
 			/* Start the kernel consumer daemon */
-			pthread_mutex_lock(&kconsumerd_pid_mutex);
-			if (kconsumerd_pid == 0 &&
+			pthread_mutex_lock(&kconsumer_data.pid_mutex);
+			if (kconsumer_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
-				pthread_mutex_unlock(&kconsumerd_pid_mutex);
-				ret = start_kconsumerd();
+				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
+				ret = start_consumerd(&kconsumer_data);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_CONSUMER_FAIL;
 					goto error;
 				}
 			}
-			pthread_mutex_unlock(&kconsumerd_pid_mutex);
+			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 		}
 		break;
 	case LTTNG_DOMAIN_UST_PID:
@@ -3058,13 +3092,15 @@ static void usage(void)
 	fprintf(stderr, "  -a, --apps-sock PATH               Specify path for apps unix socket\n");
 	fprintf(stderr, "      --kconsumerd-err-sock PATH     Specify path for the kernel consumer error socket\n");
 	fprintf(stderr, "      --kconsumerd-cmd-sock PATH     Specify path for the kernel consumer command socket\n");
+	fprintf(stderr, "      --ustconsumerd-err-sock PATH   Specify path for the UST consumer error socket\n");
+	fprintf(stderr, "      --ustconsumerd-cmd-sock PATH   Specify path for the UST consumer command socket\n");
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
 	fprintf(stderr, "  -S, --sig-parent                   Send SIGCHLD to parent pid to notify readiness.\n");
 	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
-	fprintf(stderr, "      --verbose-kconsumerd           Verbose mode for kconsumerd. Activate DBG() macro.\n");
+	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
 }
 
 /*
@@ -3077,8 +3113,10 @@ static int parse_args(int argc, char **argv)
 	static struct option long_options[] = {
 		{ "client-sock", 1, 0, 'c' },
 		{ "apps-sock", 1, 0, 'a' },
-		{ "kconsumerd-cmd-sock", 1, 0, 0 },
-		{ "kconsumerd-err-sock", 1, 0, 0 },
+		{ "kconsumerd-cmd-sock", 1, 0, 'C' },
+		{ "kconsumerd-err-sock", 1, 0, 'E' },
+		{ "ustconsumerd-cmd-sock", 1, 0, 'D' },
+		{ "ustconsumerd-err-sock", 1, 0, 'F' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
@@ -3086,13 +3124,13 @@ static int parse_args(int argc, char **argv)
 		{ "version", 0, 0, 'V' },
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
-		{ "verbose-kconsumerd", 0, 0, 'Z' },
+		{ "verbose-consumer", 0, 0, 'Z' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:E:C:Z",
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3127,10 +3165,16 @@ static int parse_args(int argc, char **argv)
 			opt_sig_parent = 1;
 			break;
 		case 'E':
-			snprintf(kconsumerd_err_unix_sock_path, PATH_MAX, "%s", optarg);
+			snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'C':
-			snprintf(kconsumerd_cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'F':
+			snprintf(ustconsumer_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'D':
+			snprintf(ustconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'q':
 			opt_quiet = 1;
@@ -3140,7 +3184,7 @@ static int parse_args(int argc, char **argv)
 			opt_verbose += 1;
 			break;
 		case 'Z':
-			opt_verbose_kconsumerd += 1;
+			opt_verbose_consumer += 1;
 			break;
 		default:
 			/* Unknown option or other error.
@@ -3258,10 +3302,17 @@ static int set_permissions(void)
 		perror("chown");
 	}
 
-	/* kconsumerd error socket path */
-	ret = chown(kconsumerd_err_unix_sock_path, 0, gid);
+	/* kconsumer error socket path */
+	ret = chown(kconsumer_data.err_unix_sock_path, 0, gid);
 	if (ret < 0) {
-		ERR("Unable to set group on %s", kconsumerd_err_unix_sock_path);
+		ERR("Unable to set group on %s", kconsumer_data.err_unix_sock_path);
+		perror("chown");
+	}
+
+	/* ustconsumer error socket path */
+	ret = chown(ustconsumer_data.err_unix_sock_path, 0, gid);
+	if (ret < 0) {
+		ERR("Unable to set group on %s", ustconsumer_data.err_unix_sock_path);
 		perror("chown");
 	}
 
@@ -3312,43 +3363,49 @@ error:
  * Setup sockets and directory needed by the kconsumerd communication with the
  * session daemon.
  */
-static int set_kconsumerd_sockets(void)
+static int set_consumer_sockets(struct consumer_data *consumer_data)
 {
 	int ret;
+	const char *path = consumer_data->type == LTTNG_CONSUMER_KERNEL ?
+			KCONSUMERD_PATH : USTCONSUMERD_PATH;
 
-	if (strlen(kconsumerd_err_unix_sock_path) == 0) {
-		snprintf(kconsumerd_err_unix_sock_path, PATH_MAX,
-				KCONSUMERD_ERR_SOCK_PATH);
+	if (strlen(consumer_data->err_unix_sock_path) == 0) {
+		snprintf(consumer_data->err_unix_sock_path, PATH_MAX,
+			consumer_data->type == LTTNG_CONSUMER_KERNEL ?
+				KCONSUMERD_ERR_SOCK_PATH :
+				USTCONSUMERD_ERR_SOCK_PATH);
 	}
 
-	if (strlen(kconsumerd_cmd_unix_sock_path) == 0) {
-		snprintf(kconsumerd_cmd_unix_sock_path, PATH_MAX,
-				KCONSUMERD_CMD_SOCK_PATH);
+	if (strlen(consumer_data->cmd_unix_sock_path) == 0) {
+		snprintf(consumer_data->cmd_unix_sock_path, PATH_MAX,
+			consumer_data->type == LTTNG_CONSUMER_KERNEL ?
+				KCONSUMERD_CMD_SOCK_PATH :
+				USTCONSUMERD_CMD_SOCK_PATH);
 	}
 
-	ret = mkdir(KCONSUMERD_PATH, S_IRWXU | S_IRWXG);
+	ret = mkdir(path, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
 		if (errno != EEXIST) {
-			ERR("Failed to create " KCONSUMERD_PATH);
+			ERR("Failed to create %s", path);
 			goto error;
 		}
 		ret = 0;
 	}
 
 	/* Create the kconsumerd error unix socket */
-	kconsumerd_err_sock =
-		lttcomm_create_unix_sock(kconsumerd_err_unix_sock_path);
-	if (kconsumerd_err_sock < 0) {
-		ERR("Create unix sock failed: %s", kconsumerd_err_unix_sock_path);
+	consumer_data->err_sock =
+		lttcomm_create_unix_sock(consumer_data->err_unix_sock_path);
+	if (consumer_data->err_sock < 0) {
+		ERR("Create unix sock failed: %s", consumer_data->err_unix_sock_path);
 		ret = -1;
 		goto error;
 	}
 
 	/* File permission MUST be 660 */
-	ret = chmod(kconsumerd_err_unix_sock_path,
+	ret = chmod(consumer_data->err_unix_sock_path,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
-		ERR("Set file permissions failed: %s", kconsumerd_err_unix_sock_path);
+		ERR("Set file permissions failed: %s", consumer_data->err_unix_sock_path);
 		perror("chmod");
 		goto error;
 	}
@@ -3543,11 +3600,14 @@ int main(int argc, char **argv)
 	 * kernel tracer.
 	 */
 	if (is_root) {
-		ret = set_kconsumerd_sockets();
+		ret = set_consumer_sockets(&kconsumer_data);
 		if (ret < 0) {
 			goto exit;
 		}
-
+		ret = set_consumer_sockets(&ustconsumer_data);
+		if (ret < 0) {
+			goto exit;
+		}
 		/* Setup kernel tracer */
 		init_kernel_tracer();
 
@@ -3670,9 +3730,9 @@ exit_dispatch:
 		goto error;	/* join error, exit without cleanup */
 	}
 
-	ret = join_kconsumerd_thread();
+	ret = join_consumer_thread(&kconsumer_data);
 	if (ret != 0) {
-		perror("join_kconsumerd");
+		perror("join_consumer");
 		goto error;	/* join error, exit without cleanup */
 	}
 

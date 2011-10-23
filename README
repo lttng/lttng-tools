@@ -51,16 +51,16 @@ PACKAGE CONTENTS:
 
     - liblttsessiondcomm
       The ltt-sessiond communication library. In order to talk with ltt-sessiond,
-      thiis library must be used.
+      this library must be used.
 
     - libkernelctl
       Kernel tracer control and ioctl definitions.
 
-    - liblttngkconsumerd
-      Library for Kernel trace consumer.
+    - liblttng-consumer
+      Library for Kernel and (optionally) UST trace consumer.
 
-    - ltt-kconsumerd
-      The Kernel consumer daemon which uses liblttngkconsumerd.
+    - lttng-consumerd
+      The consumer daemon which uses liblttng-consumer.
 
     - ltt-sessiond
       The LTTng session daemon binary.
