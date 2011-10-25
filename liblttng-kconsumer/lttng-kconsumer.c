@@ -236,7 +236,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ADD_STREAM:
 	{
 		struct lttng_consumer_stream *new_stream;
-		int fds[1];
+		int fds[2];
 		size_t nb_fd = 1;
 
 		/* block */
