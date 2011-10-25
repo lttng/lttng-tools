@@ -103,7 +103,10 @@ int lttng_ustconsumer_get_produced_snapshot(
 
 static inline
 int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
-		int sock, struct pollfd *consumer_sockpoll);
+		int sock, struct pollfd *consumer_sockpoll)
+{
+	return -ENOSYS;
+}
 
 static inline
 int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
