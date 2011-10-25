@@ -57,28 +57,28 @@ int main(int argc, char **argv)
 
 	printf("Creating tracing session (%s): ", argv[1]);
     if ((ret = lttng_create_session("test", argv[1])) < 0) {
-        printf("error creating the session : %s\n", lttng_get_readable_code(ret));
+        printf("error creating the session : %s\n", lttng_strerror(ret));
 		goto create_fail;
     }
 	PRINT_OK();
 
 	printf("Creating session handle: ");
 	if ((handle = lttng_create_handle("test", &dom)) == NULL) {
-		printf("error creating handle: %s\n", lttng_get_readable_code(ret));
+		printf("error creating handle: %s\n", lttng_strerror(ret));
 		goto handle_fail;
 	}
 	PRINT_OK();
 
 	printf("Enabling all kernel events: ");
     if ((ret = lttng_enable_event(handle, &event, channel_name)) < 0) {
-        printf("error enabling event: %s\n", lttng_get_readable_code(ret));
+        printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
     }
 	PRINT_OK();
 
 	printf("Start tracing: ");
     if ((ret = lttng_start_tracing(handle)) < 0) {
-        printf("error starting tracing: %s\n", lttng_get_readable_code(ret));
+        printf("error starting tracing: %s\n", lttng_strerror(ret));
 		goto start_fail;
     }
 	PRINT_OK();
@@ -87,14 +87,14 @@ int main(int argc, char **argv)
 
 	printf("Stop tracing: ");
 	if ((ret = lttng_stop_tracing(handle)) < 0) {
-		printf("error stopping tracing: %s\n", lttng_get_readable_code(ret));
+		printf("error stopping tracing: %s\n", lttng_strerror(ret));
 		goto stop_fail;
 	}
 	PRINT_OK();
 
 	printf("Destroy tracing session: ");
 	if ((ret = lttng_destroy_session(handle)) < 0) {
-		printf("error destroying session: %s\n", lttng_get_readable_code(ret));
+		printf("error destroying session: %s\n", lttng_strerror(ret));
 	}
 	PRINT_OK();
 

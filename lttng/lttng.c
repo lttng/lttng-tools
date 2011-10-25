@@ -433,7 +433,7 @@ static int parse_args(int argc, char **argv)
 		if (ret == -1) {
 			usage(stderr);
 		} else {
-			ERR("%s", lttng_get_readable_code(ret));
+			ERR("%s", lttng_strerror(ret));
 		}
 		goto error;
 	}

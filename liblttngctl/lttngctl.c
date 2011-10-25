@@ -636,7 +636,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 /*
  *  Return a human readable string of code
  */
-const char *lttng_get_readable_code(int code)
+const char *lttng_strerror(int code)
 {
 	if (code > -LTTCOMM_OK) {
 		return "Ended with errors";

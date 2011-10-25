@@ -208,7 +208,7 @@ struct lttng_handle {
  * array.
  *
  * On error, a negative value is returned being a specific lttng-tools error
- * code which can be humanly interpreted with lttng_get_readable_code(err).
+ * code which can be humanly interpreted with lttng_strerror(err).
  */
 
 /*
@@ -293,7 +293,7 @@ extern int lttng_set_tracing_group(const char *name);
  *
  * Parameter MUST be a negative value or else you'll get a generic message.
  */
-extern const char *lttng_get_readable_code(int code);
+extern const char *lttng_strerror(int code);
 
 /*
  * This call permits to register an "outside consumer" to a session and a lttng
