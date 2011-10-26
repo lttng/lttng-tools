@@ -417,13 +417,11 @@ static int send_consumer_channel_streams(struct consumer_data *consumer_data,
 		int sock, struct ltt_kernel_channel *channel)
 {
 	int ret;
-	size_t nb_fd;
 	struct ltt_kernel_stream *stream;
 	struct lttcomm_consumer_msg lkm;
 
 	DBG("Sending streams of channel %s to kernel consumer",
 			channel->channel->name);
-	nb_fd = channel->stream_count;
 
 	/* Send channel */
 	lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
