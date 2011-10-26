@@ -33,6 +33,7 @@ config/
 ltt-sessiond/ltt-sessiond
 lttng/lttng
 ltt-kconsumerd/ltt-kconsumerd
+lttng-consumerd/lttng-consumerd
 
 tests/test_sessions
 tests/test_kernel_data_trace
