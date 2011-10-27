@@ -114,8 +114,23 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
 	LTTCOMM_KERN_LIST_FAIL,			/* Kernel listing events failed */
 	LTTCOMM_UST_SESS_FAIL,			/* UST create session failed */
+	LTTCOMM_UST_CHAN_FAIL,			/* UST create channel failed */
 	LTTCOMM_UST_CHAN_NOT_FOUND,     /* UST channel not found */
-	LTTCOMM_UST_CHAN_FAIL,          /* UST create channel failed */
+	LTTCOMM_UST_CHAN_DISABLE_FAIL, /* UST disable channel failed */
+	LTTCOMM_UST_CHAN_ENABLE_FAIL,  /* UST enable channel failed */
+	LTTCOMM_UST_CONTEXT_FAIL,      /* UST add context failed */
+	LTTCOMM_UST_ENABLE_FAIL,		/* UST enable event failed */
+	LTTCOMM_UST_DISABLE_FAIL,		/* UST disable event failed */
+	LTTCOMM_UST_META_FAIL,			/* UST open metadata failed */
+	LTTCOMM_UST_START_FAIL,		/* UST start trace failed */
+	LTTCOMM_UST_STOP_FAIL,			/* UST stop trace failed */
+	LTTCOMM_UST_CONSUMER_FAIL,		/* UST consumer start failed */
+	LTTCOMM_UST_STREAM_FAIL,		/* UST create stream failed */
+	LTTCOMM_UST_DIR_FAIL,			/* UST trace directory creation failed */
+	LTTCOMM_UST_DIR_EXIST,			/* UST trace directory exist */
+	LTTCOMM_UST_NO_SESSION,		/* No UST session found */
+	LTTCOMM_UST_LIST_FAIL,			/* UST listing events failed */
+
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	CONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */

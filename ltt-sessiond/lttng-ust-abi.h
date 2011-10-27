@@ -111,6 +111,8 @@ struct lttng_ust_context {
 /* Event and Channel FD commands */
 #define LTTNG_UST_CONTEXT			\
 	_UST_CMDW(0x70, struct lttng_ust_context)
+#define LTTNG_UST_FLUSH_BUFFER			\
+	_UST_CMD(0x71)
 
 /* Event, Channel and Session commands */
 #define LTTNG_UST_ENABLE			_UST_CMD(0x80)

@@ -189,6 +189,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		perror("asprintf ust create channel");
 		goto error;
 	}
+	CDS_INIT_LIST_HEAD(&luc->stream_list.head);
 
 	return luc;
 
@@ -270,7 +271,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 	lum->handle = -1;
 	/* Set metadata trace path */
-	ret = asprintf(&lum->trace_path, "%s/metadata", path);
+	ret = asprintf(&lum->pathname, "%s/metadata", path);
 	if (ret < 0) {
 		perror("asprintf ust metadata");
 		goto error;
@@ -321,8 +322,7 @@ void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 	DBG("[trace] Destroy ust metadata %d", metadata->handle);
 
 	/* Free attributes */
-	free(metadata->trace_path);
-
+	free(metadata->pathname);
 	free(metadata);
 }
 

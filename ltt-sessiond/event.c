@@ -17,10 +17,17 @@
 
 #include <errno.h>
 #include <urcu/list.h>
+#include <string.h>
 
 #include <lttng/lttng.h>
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
+
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#include <ust/lttng-ust-ctl.h>
+#else
+#include "lttng-ust-ctl.h"
+#endif
 
 #include "channel.h"
 #include "event.h"
@@ -226,6 +233,80 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 		goto end;
 	}
 	ret = event_kernel_enable_all_syscalls(ksession, kchan, kernel_tracer_fd);
+end:
+	return ret;
+}
+
+/*
+ * Enable UST tracepoint event for a channel from a UST session.
+ */
+int event_ust_enable_tracepoint(struct ltt_ust_session *ustsession,
+		struct ltt_ust_channel *ustchan, struct lttng_event *event)
+{
+	int ret;
+	struct ltt_ust_event *ustevent;
+	struct lttng_ust_event lttngustevent;
+	struct object_data *object_event;
+
+	ustevent = trace_ust_get_event_by_name(event->name, ustchan);
+	if (ustevent == NULL) {
+		ustevent = trace_ust_create_event(event);
+		if (ustevent == NULL) {
+			ret = -1;
+			goto end;
+		}
+		strncpy(lttngustevent.name, event->name,
+			LTTNG_UST_SYM_NAME_LEN);
+		lttngustevent.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+		/* TODO: adjust to other instrumentation types */
+		lttngustevent.instrumentation = LTTNG_UST_TRACEPOINT;
+		ret = ustctl_create_event(ustsession->sock, &lttngustevent,
+			ustchan->obj, &object_event);
+		if (ret < 0) {
+			if (ret == -EEXIST) {
+				ret = LTTCOMM_KERN_EVENT_EXIST;
+			} else {
+				ret = LTTCOMM_KERN_ENABLE_FAIL;
+			}
+			goto end;
+		}
+		ustevent->obj = object_event;
+		ustevent->handle = object_event->handle;
+		ustevent->enabled = 1;
+		/* Add event to event list */
+		cds_list_add(&ustevent->list, &ustchan->events.head);
+		ustchan->events.count++;
+	} else if (ustevent->enabled == 0) {
+		ret = ustctl_enable(ustsession->sock, ustevent->obj);
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_ENABLE_FAIL;
+			goto end;
+		}
+		ustevent->enabled = 1;
+	}
+	ret = LTTCOMM_OK;
+end:
+	return ret;
+}
+
+int event_ust_disable_tracepoint(struct ltt_ust_session *ustsession,
+		struct ltt_ust_channel *ustchan, char *event_name)
+{
+	int ret;
+	struct ltt_ust_event *ustevent;
+
+	ustevent = trace_ust_get_event_by_name(event_name, ustchan);
+	if (ustevent == NULL) {
+		ret = LTTCOMM_NO_EVENT;
+		goto end;
+	}
+	ret = ustctl_disable(ustsession->sock, ustevent->obj);
+	if (ret < 0) {
+		ret = LTTCOMM_UST_ENABLE_FAIL;
+		goto end;
+	}
+	ustevent->enabled = 0;
+	ret = LTTCOMM_OK;
 end:
 	return ret;
 }

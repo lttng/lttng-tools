@@ -50,6 +50,12 @@ struct ltt_ust_event_list {
 	struct cds_list_head head;
 };
 
+/* UST Stream list */
+struct ltt_ust_stream_list {
+	unsigned int count;
+	struct cds_list_head head;
+};
+
 /* UST Channel list */
 struct ltt_ust_channel_list {
 	unsigned int count;
@@ -60,9 +66,21 @@ struct ltt_ust_channel_list {
 struct ltt_ust_event {
 	int handle;
 	int enabled;
+	/*
+	 * TODO: need internal representation to support more than a
+	 * single context.
+	 */
 	struct lttng_ust_context ctx;
 	struct lttng_ust_event attr;
 	struct cds_list_head list;
+	struct object_data *obj;
+};
+
+/* UST stream */
+struct ltt_ust_stream {
+	struct object_data *obj;
+	struct cds_list_head list;
+	char *pathname;
 };
 
 /* UST channel */
@@ -71,29 +89,41 @@ struct ltt_ust_channel {
 	int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char trace_path[PATH_MAX];    /* Trace file path name */
+	/*
+	 * TODO: need internal representation to support more than a
+	 * single context.
+	 */
 	struct lttng_ust_context ctx;
 	struct lttng_ust_channel attr;
 	struct ltt_ust_event_list events;
 	struct cds_list_head list;
+	struct object_data *obj;
+	unsigned int stream_count;
+	struct ltt_ust_stream_list stream_list;
 };
 
 /* UST Metadata */
 struct ltt_ust_metadata {
 	int handle;
-	char *trace_path;             /* Trace file path name */
+	struct object_data *obj;
+	char *pathname;              /* Trace file path name */
 	struct lttng_ust_channel attr;
+	struct object_data *stream_obj;
 };
 
 /* UST session */
 struct ltt_ust_session {
+	int sock;                     /* socket to send cmds to app */
 	int handle;
 	int enabled;
 	int consumer_fds_sent;
+	int consumer_fd;
 	char path[PATH_MAX];
 	struct lttng_domain domain;
 	struct ltt_ust_metadata *metadata;
 	struct ltt_ust_channel_list channels;
 	struct cds_list_head list;
+	struct object_data *obj;
 };
 
 #ifdef CONFIG_LTTNG_TOOLS_HAVE_UST

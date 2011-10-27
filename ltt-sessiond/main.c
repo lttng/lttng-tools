@@ -41,6 +41,14 @@
 #include <lttng-consumerd.h>
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-consumer.h>
+
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#include <ust/lttng-ust-ctl.h>
+#else
+#include "lttng-ust-ctl.h"
+#endif
+
+
 #include <lttngerr.h>
 
 #include "channel.h"
@@ -413,7 +421,7 @@ static void clean_command_ctx(struct command_ctx **cmd_ctx)
 /*
  * Send all stream fds of kernel channel to the consumer.
  */
-static int send_consumer_channel_streams(struct consumer_data *consumer_data,
+static int send_kconsumer_channel_streams(struct consumer_data *consumer_data,
 		int sock, struct ltt_kernel_channel *channel)
 {
 	int ret;
@@ -428,7 +436,7 @@ static int send_consumer_channel_streams(struct consumer_data *consumer_data,
 	lkm.u.channel.channel_key = channel->fd;
 	lkm.u.channel.max_sb_size = channel->channel->attr.subbuf_size;
 	lkm.u.channel.mmap_len = 0;	/* for kernel */
-	DBG("Sending channel %d to consumer", lkm.u.stream.stream_key);
+	DBG("Sending channel %d to consumer", lkm.u.channel.channel_key);
 	ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
 	if (ret < 0) {
 		perror("send consumer channel");
@@ -470,9 +478,83 @@ error:
 }
 
 /*
+ * Send all stream fds of UST channel to the consumer.
+ */
+static int send_ustconsumer_channel_streams(struct consumer_data *consumer_data,
+		int sock, struct ltt_ust_channel *channel)
+{
+	int ret, fds[2];
+	struct ltt_ust_stream *stream;
+	struct lttcomm_consumer_msg lum;
+
+	DBG("Sending streams of channel %s to UST consumer",
+			channel->name);
+
+	/* Send channel */
+	lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
+	/*
+	 * We need to keep shm_fd open to make sure this key stays
+	 * unique within the session daemon.
+	 */
+	lum.u.channel.channel_key = channel->obj->shm_fd;
+	lum.u.channel.max_sb_size = channel->attr.subbuf_size;
+	lum.u.channel.mmap_len = channel->obj->memory_map_size;
+	DBG("Sending channel %d to consumer", lum.u.channel.channel_key);
+	ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
+	if (ret < 0) {
+		perror("send consumer channel");
+		goto error;
+	}
+	fds[0] = channel->obj->shm_fd;
+	fds[1] = channel->obj->wait_fd;
+	ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+	if (ret < 0) {
+		perror("send consumer channel ancillary data");
+		goto error;
+	}
+
+	/* Send streams */
+	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
+		int fds[2];
+
+		if (!stream->obj->shm_fd) {
+			continue;
+		}
+		lum.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
+		lum.u.stream.channel_key = channel->obj->shm_fd;
+		lum.u.stream.stream_key = stream->obj->shm_fd;
+		lum.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
+		lum.u.stream.output = channel->attr.output;
+		lum.u.stream.mmap_len = stream->obj->memory_map_size;
+		strncpy(lum.u.stream.path_name, stream->pathname, PATH_MAX - 1);
+		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
+		DBG("Sending stream %d to consumer", lum.u.stream.stream_key);
+		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
+		if (ret < 0) {
+			perror("send consumer stream");
+			goto error;
+		}
+		fds[0] = stream->obj->shm_fd;
+		fds[1] = stream->obj->wait_fd;
+		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+		if (ret < 0) {
+			perror("send consumer stream ancillary data");
+			goto error;
+		}
+	}
+
+	DBG("consumer channel streams sent");
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
  * Send all stream fds of the kernel session to the consumer.
  */
-static int send_consumer_session_streams(struct consumer_data *consumer_data,
+static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 		struct ltt_kernel_session *session)
 {
 	int ret;
@@ -482,7 +564,7 @@ static int send_consumer_session_streams(struct consumer_data *consumer_data,
 
 	DBG("Sending metadata stream fd");
 
-	/* Extra protection. It's NOT suppose to be set to 0 at this point */
+	/* Extra protection. It's NOT supposed to be set to 0 at this point */
 	if (session->consumer_fd == 0) {
 		session->consumer_fd = consumer_data->cmd_sock;
 	}
@@ -523,7 +605,86 @@ static int send_consumer_session_streams(struct consumer_data *consumer_data,
 	}
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = send_consumer_channel_streams(consumer_data, sock, chan);
+		ret = send_kconsumer_channel_streams(consumer_data, sock, chan);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	DBG("consumer fds (metadata and channel streams) sent");
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ * Send all stream fds of the UST session to the consumer.
+ */
+static int send_ustconsumer_session_streams(struct consumer_data *consumer_data,
+		struct ltt_ust_session *session)
+{
+	int ret;
+	struct ltt_ust_channel *chan;
+	struct lttcomm_consumer_msg lum;
+	int sock = session->consumer_fd;
+
+	DBG("Sending metadata stream fd");
+
+	/* Extra protection. It's NOT supposed to be set to 0 at this point */
+	if (session->consumer_fd == 0) {
+		session->consumer_fd = consumer_data->cmd_sock;
+	}
+
+	if (session->metadata->obj->shm_fd != 0) {
+		int fds[2];
+
+		/* Send metadata channel fd */
+		lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
+		lum.u.channel.channel_key = session->metadata->obj->shm_fd;
+		lum.u.channel.max_sb_size = session->metadata->attr.subbuf_size;
+		lum.u.channel.mmap_len = 0;	/* for kernel */
+		DBG("Sending metadata channel %d to consumer", lum.u.stream.stream_key);
+		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
+		if (ret < 0) {
+			perror("send consumer channel");
+			goto error;
+		}
+		fds[0] = session->metadata->obj->shm_fd;
+		fds[1] = session->metadata->obj->wait_fd;
+		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+		if (ret < 0) {
+			perror("send consumer metadata channel");
+			goto error;
+		}
+
+		/* Send metadata stream fd */
+		lum.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
+		lum.u.stream.channel_key = session->metadata->obj->shm_fd;
+		lum.u.stream.stream_key = session->metadata->stream_obj->shm_fd;
+		lum.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
+		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
+		lum.u.stream.mmap_len = session->metadata->stream_obj->memory_map_size;
+		strncpy(lum.u.stream.path_name, session->metadata->pathname, PATH_MAX - 1);
+		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
+		DBG("Sending metadata stream %d to consumer", lum.u.stream.stream_key);
+		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
+		if (ret < 0) {
+			perror("send consumer metadata stream");
+			goto error;
+		}
+		fds[0] = session->metadata->stream_obj->shm_fd;
+		fds[1] = session->metadata->stream_obj->wait_fd;
+		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+		if (ret < 0) {
+			perror("send consumer stream");
+			goto error;
+		}
+	}
+
+	cds_list_for_each_entry(chan, &session->channels.head, list) {
+		ret = send_ustconsumer_channel_streams(consumer_data, sock, chan);
 		if (ret < 0) {
 			goto error;
 		}
@@ -642,7 +803,7 @@ error:
  *
  * Useful for CPU hotplug feature.
  */
-static int update_stream(struct consumer_data *consumer_data, int fd)
+static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 {
 	int ret = 0;
 	struct ltt_session *session;
@@ -678,7 +839,7 @@ static int update_stream(struct consumer_data *consumer_data, int fd)
 				 * stream fds.
 				 */
 				if (session->kernel_session->consumer_fds_sent == 1) {
-					ret = send_consumer_channel_streams(consumer_data,
+					ret = send_kconsumer_channel_streams(consumer_data,
 							session->kernel_session->consumer_fd, channel);
 					if (ret < 0) {
 						goto error;
@@ -778,7 +939,7 @@ static void *thread_manage_kernel(void *data)
 				 * kernel session and updating the kernel consumer
 				 */
 				if (revents & LPOLLIN) {
-					ret = update_stream(&kconsumer_data, pollfd);
+					ret = update_kernel_stream(&kconsumer_data, pollfd);
 					if (ret < 0) {
 						continue;
 					}
@@ -1622,9 +1783,39 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 			session->consumer_fd = kconsumer_data.cmd_sock;
 		}
 
-		ret = send_consumer_session_streams(&kconsumer_data, session);
+		ret = send_kconsumer_session_streams(&kconsumer_data, session);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
+			goto error;
+		}
+
+		session->consumer_fds_sent = 1;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Init tracing by creating trace directory and sending fds ust consumer.
+ */
+static int init_ust_tracing(struct ltt_ust_session *session)
+{
+	int ret = 0;
+
+	if (session->consumer_fds_sent == 0) {
+		/*
+		 * Assign default ust consumer socket if no consumer assigned to the
+		 * ust session. At this point, it's NOT suppose to be 0 but this is
+		 * an extra security check.
+		 */
+		if (session->consumer_fd == 0) {
+			session->consumer_fd = ustconsumer_data.cmd_sock;
+		}
+
+		ret = send_ustconsumer_session_streams(&ustconsumer_data, session);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_CONSUMER_FAIL;
 			goto error;
 		}
 
@@ -1677,11 +1868,13 @@ static int create_ust_session(struct ltt_session *session,
 	}
 
 	/* Create session on the UST tracer */
-	ret = ustctl_create_session(app->sock, lus);
+	ret = ustctl_create_session(app->sock);
 	if (ret < 0) {
 		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
 	}
+	lus->handle = ret;
+	lus->sock = app->sock;
 
 	cds_list_add(&lus->list, &session->ust_session_list.head);
 	session->ust_session_list.count++;
@@ -1980,10 +2173,12 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 		char *channel_name, char *event_name)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct ltt_kernel_channel *kchan;
+
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
@@ -1998,8 +2193,34 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *ustsession;
+
+		cds_list_for_each_entry(ustsession, &session->ust_session_list.head, list) {
+			struct ltt_ust_channel *ustchan;
+
+			ustchan = trace_ust_get_channel_by_name(channel_name,
+					ustsession);
+			if (ustchan == NULL) {
+				ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+				goto error;
+			}
+			ret = event_ust_disable_tracepoint(ustsession, ustchan, event_name);
+			if (ret != LTTCOMM_OK) {
+				goto error;
+			}
+
+			ustctl_wait_quiescent(ustsession->sock);
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Userspace tracing */
+		/* TODO: Other UST domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2063,10 +2284,23 @@ static int cmd_add_context(struct ltt_session *session, int domain,
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
-
 		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *ustsession;
+
+		cds_list_for_each_entry(ustsession, &session->ust_session_list.head, list) {
+			/* Add UST context to UST tracer */
+			ret = context_ust_add(ustsession, ctx,
+					event_name, channel_name);
+			if (ret != LTTCOMM_OK) {
+				goto error;
+			}
+		}
+		break;
+	}
 	default:
-		/* TODO: Userspace tracing */
+		/* TODO: UST other domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2084,11 +2318,13 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 	struct lttng_channel *attr;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct ltt_kernel_channel *kchan;
+
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
@@ -2123,8 +2359,54 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *ustsession;
+
+		cds_list_for_each_entry(ustsession, &session->ust_session_list.head, list) {
+			struct ltt_ust_channel *ustchan;
+
+			ustchan = trace_ust_get_channel_by_name(channel_name,
+					ustsession);
+			if (ustchan == NULL) {
+				attr = channel_new_default_attr(domain);
+				if (attr == NULL) {
+					ret = LTTCOMM_FATAL;
+					goto error;
+				}
+				snprintf(attr->name, NAME_MAX, "%s", channel_name);
+
+				ret = channel_ust_create(ustsession,
+						attr, ustsession->sock);
+				if (ret != LTTCOMM_OK) {
+					goto error;
+				}
+			}
+
+			/* Get the newly created ust channel pointer */
+			ustchan = trace_ust_get_channel_by_name(channel_name,
+					ustsession);
+			if (ustchan == NULL) {
+				/* This sould not happen... */
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+
+			ret = event_ust_enable_tracepoint(ustsession, ustchan, event);
+			if (ret != LTTCOMM_OK) {
+				goto error;
+			}
+
+			ustctl_wait_quiescent(ustsession->sock);
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Userspace tracing */
+		/* TODO: UST other domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2241,14 +2523,16 @@ error:
 static int cmd_start_trace(struct ltt_session *session)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_session *ksession;
+	struct ltt_ust_session *ustsession;
 
 	/* Short cut */
 	ksession = session->kernel_session;
 
 	/* Kernel tracing */
 	if (ksession != NULL) {
+		struct ltt_kernel_channel *kchan;
+
 		/* Open kernel metadata */
 		if (ksession->metadata == NULL) {
 			ret = kernel_open_metadata(ksession, ksession->trace_path);
@@ -2299,7 +2583,101 @@ static int cmd_start_trace(struct ltt_session *session)
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
 
-	/* TODO: Start all UST traces */
+	/* Start all UST traces */
+	cds_list_for_each_entry(ustsession, &session->ust_session_list.head, list) {
+		struct ltt_ust_channel *ustchan;
+
+		/* Open kernel metadata */
+		if (ustsession->metadata == NULL) {
+			struct lttng_ust_channel_attr ustattr;
+
+			/* Allocate UST metadata */
+			ustsession->metadata = trace_ust_create_metadata(ustsession->path);
+			if (ustsession->metadata == NULL) {
+				ret = LTTCOMM_UST_META_FAIL;
+				goto error;
+			}
+
+			ustattr.overwrite = ustsession->metadata->attr.overwrite;
+			ustattr.subbuf_size = ustsession->metadata->attr.subbuf_size;
+			ustattr.num_subbuf = ustsession->metadata->attr.num_subbuf;
+			ustattr.switch_timer_interval = ustsession->metadata->attr.switch_timer_interval;
+			ustattr.read_timer_interval = ustsession->metadata->attr.read_timer_interval;
+			ustattr.output = ustsession->metadata->attr.output;
+			
+			/* UST tracer metadata creation */
+			ret = ustctl_open_metadata(ustsession->sock,
+				ustsession->handle, &ustattr,
+				&ustsession->metadata->obj);
+			if (ret < 0) {
+				ret = LTTCOMM_UST_META_FAIL;
+				goto error;
+			}
+		}
+
+		/* Open UST metadata stream */
+		if (ustsession->metadata->stream_obj == NULL) {
+			ret = ustctl_create_stream(ustsession->sock,
+				ustsession->metadata->obj,
+				&ustsession->metadata->stream_obj);
+			if (ret < 0) {
+				ERR("UST create metadata stream failed");
+				ret = LTTCOMM_UST_STREAM_FAIL;
+				goto error;
+			}
+			ret = asprintf(&ustsession->metadata->pathname, "%s/%s",
+					ustsession->path, "metadata");
+			if (ret < 0) {
+				perror("asprintf UST create stream");
+				goto error;
+			}
+		}
+
+		/* For each channel */
+		cds_list_for_each_entry(ustchan, &ustsession->channels.head, list) {
+			if (ustchan->stream_count == 0) {
+				struct ltt_ust_stream *ustream;
+
+				ustream = zmalloc(sizeof(*ustream));
+				if (!ustream) {
+					ret = LTTCOMM_UST_STREAM_FAIL;
+					goto error;
+				}
+				ret = ustctl_create_stream(ustsession->sock,
+					ustchan->obj, &ustream->obj);
+				if (ret < 0) {
+					ret = LTTCOMM_UST_STREAM_FAIL;
+					goto error;
+				}
+				ret = asprintf(&ustream->pathname, "%s/%s_%d",
+						ustchan->trace_path, ustchan->name,
+						ustchan->stream_count);
+				if (ret < 0) {
+					perror("asprintf UST create stream");
+					goto error;
+				}
+				cds_list_add(&ustream->list, &ustchan->stream_list.head);
+				ustchan->stream_count++;
+			}
+		}
+
+		/* Setup UST consumer socket and send fds to it */
+		ret = init_ust_tracing(ustsession);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_START_FAIL;
+			goto error;
+		}
+
+		/* This start the UST tracing */
+		ret = ustctl_start_session(ustsession->sock, ustsession->handle);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_START_FAIL;
+			goto error;
+		}
+
+		/* Quiescent wait after starting trace */
+		ustctl_wait_quiescent(ustsession->sock);
+	}
 
 	ret = LTTCOMM_OK;
 
@@ -2315,6 +2693,8 @@ static int cmd_stop_trace(struct ltt_session *session)
 	int ret;
 	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_session *ksession;
+	struct ltt_ust_session *ustsession;
+	struct ltt_ust_channel *ustchan;
 
 	/* Short cut */
 	ksession = session->kernel_session;
@@ -2345,7 +2725,30 @@ static int cmd_stop_trace(struct ltt_session *session)
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
 
-	/* TODO : User-space tracer */
+	/* Stop each UST session */
+	DBG("Stop UST tracing");
+	cds_list_for_each_entry(ustsession, &session->ust_session_list.head, list) {
+		/* Flush all buffers before stopping */
+		ret = ustctl_flush_buffer(ustsession->sock, ustsession->metadata->obj);
+		if (ret < 0) {
+			ERR("UST metadata flush failed");
+		}
+
+		cds_list_for_each_entry(ustchan, &ustsession->channels.head, list) {
+			ret = ustctl_flush_buffer(ustsession->sock, ustchan->obj);
+			if (ret < 0) {
+				ERR("UST flush buffer error");
+			}
+		}
+
+		ret = ustctl_stop_session(ustsession->sock, ustsession->handle);
+		if (ret < 0) {
+			ret = LTTCOMM_KERN_STOP_FAIL;
+			goto error;
+		}
+
+		ustctl_wait_quiescent(ustsession->sock);
+	}
 
 	ret = LTTCOMM_OK;
 
@@ -2515,6 +2918,8 @@ static ssize_t cmd_list_channels(struct ltt_session *session,
 
 	list_lttng_channels(session, *channels);
 
+	/* TODO UST support */
+
 	return nb_chan;
 
 error:
@@ -2659,7 +3064,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 		}
 		break;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	{
 		struct ltt_ust_session *usess;
 
@@ -2674,11 +3082,22 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					goto error;
 				}
 			}
+			/* Start the kernel consumer daemon */
+			pthread_mutex_lock(&ustconsumer_data.pid_mutex);
+			if (ustconsumer_data.pid == 0 &&
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+				pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
+				ret = start_consumerd(&ustconsumer_data);
+				if (ret < 0) {
+					ret = LTTCOMM_KERN_CONSUMER_FAIL;
+					goto error;
+				}
+			}
+			pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
 		}
 		break;
 	}
 	default:
-		/* TODO Userspace tracer */
 		break;
 	}
 
@@ -2708,7 +3127,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_DISABLE_ALL_EVENT:
 	{
-		DBG("Disabling all kernel event");
+		DBG("Disabling all events");
 
 		ret = cmd_disable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.disable.channel_name);
@@ -2729,7 +3148,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_ENABLE_ALL_EVENT:
 	{
-		DBG("Enabling all kernel event");
+		DBG("Enabling all events");
 
 		ret = cmd_enable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.enable.channel_name,

@@ -21,6 +21,13 @@
 #include <lttng/lttng.h>
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#include <ust/lttng-ust-ctl.h>
+#include <ust/lttng-ust-abi.h>
+#else
+#include "lttng-ust-ctl.h"
+#include "lttng-ust-abi.h"
+#endif
 
 #include "channel.h"
 #include "kernel-ctl.h"
@@ -56,6 +63,7 @@ struct lttng_channel *channel_new_default_attr(int dom)
 			chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 			chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 			break;
+		case LTTNG_DOMAIN_UST:
 		case LTTNG_DOMAIN_UST_PID:
 			chan->attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
 			chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
@@ -164,6 +172,7 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
+		/* FIXME: this appears to be a memory leak */
 		attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
 		if (attr == NULL) {
 			ret = LTTCOMM_FATAL;
@@ -199,23 +208,55 @@ int channel_ust_create(struct ltt_ust_session *usession,
 {
 	int ret;
 	struct lttng_channel *attr = chan;
+	struct ltt_ust_channel *suchan;
+	struct lttng_ust_channel_attr uattr;
+	struct object_data *obj;
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		attr = channel_new_default_attr(LTTNG_DOMAIN_UST_PID);
+		/* FIXME: this appears to be a memory leak */
+		/* TODO: get default for other UST domains */
+		attr = channel_new_default_attr(LTTNG_DOMAIN_UST);
 		if (attr == NULL) {
 			ret = LTTCOMM_FATAL;
 			goto error;
 		}
 	}
 
-	ret = ustctl_create_channel(sock, usession, attr);
+	suchan = trace_ust_create_channel(attr, usession->path);
+	if (suchan == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+	uattr.overwrite = attr->attr.overwrite;
+	uattr.subbuf_size = attr->attr.subbuf_size;
+	uattr.num_subbuf = attr->attr.num_subbuf;
+	uattr.switch_timer_interval = attr->attr.switch_timer_interval;
+	uattr.read_timer_interval = attr->attr.read_timer_interval;
+	uattr.output = attr->attr.output;
+	ret = ustctl_create_channel(sock, usession->handle,
+			&uattr, &obj);
 	if (ret < 0) {
 		ret = LTTCOMM_UST_CHAN_FAIL;
 		goto error;
 	}
+	suchan->attr.overwrite = uattr.overwrite;
+	suchan->attr.subbuf_size = uattr.subbuf_size;
+	suchan->attr.num_subbuf = uattr.num_subbuf;
+	suchan->attr.switch_timer_interval = uattr.switch_timer_interval;
+	suchan->attr.read_timer_interval = uattr.read_timer_interval;
+	suchan->attr.output = uattr.output;
+	suchan->handle = obj->handle;
+	suchan->attr.shm_fd = obj->shm_fd;
+	suchan->attr.wait_fd = obj->wait_fd;
+	suchan->attr.memory_map_size = obj->memory_map_size;
+	suchan->obj = obj;
 
-	DBG2("Channel %s UST create successfully for sock:%d", attr->name, sock);
+	/* Add channel to session */
+	cds_list_add(&suchan->list, &usession->channels.head);
+	usession->channels.count++;
+
+	DBG2("Channel %s UST create successfully for sock:%d", suchan->name, sock);
 
 	ret = LTTCOMM_OK;
 
@@ -229,18 +270,20 @@ error:
 int channel_ust_enable(struct ltt_ust_session *usession,
 		struct ltt_ust_channel *uchan, int sock)
 {
-	int ret;
-	ret = LTTCOMM_OK;
+	int ret = LTTCOMM_OK;
+	struct object_data obj;
 
-	ret = ustctl_enable_channel(sock, usession, uchan);
+	obj.handle = uchan->handle;
+	obj.shm_fd = uchan->attr.shm_fd;
+	obj.wait_fd = uchan->attr.wait_fd;
+	obj.memory_map_size = uchan->attr.memory_map_size;
+	ret = ustctl_enable(sock, &obj);
 	if (ret < 0) {
 		ret = LTTCOMM_UST_CHAN_FAIL;
-		goto error;
+		goto end;
 	}
-
 	ret = LTTCOMM_OK;
-
-error:
+end:
 	return ret;
 }
 
@@ -250,17 +293,19 @@ error:
 int channel_ust_disable(struct ltt_ust_session *usession,
 		struct ltt_ust_channel *uchan, int sock)
 {
-	int ret;
-	ret = LTTCOMM_OK;
+	int ret = LTTCOMM_OK;
+	struct object_data obj;
 
-	ret = ustctl_disable_channel(sock, usession, uchan);
+	obj.handle = uchan->handle;
+	obj.shm_fd = uchan->attr.shm_fd;
+	obj.wait_fd = uchan->attr.wait_fd;
+	obj.memory_map_size = uchan->attr.memory_map_size;
+	ret = ustctl_disable(sock, &obj);
 	if (ret < 0) {
 		ret = LTTCOMM_UST_CHAN_FAIL;
-		goto error;
+		goto end;
 	}
-
 	ret = LTTCOMM_OK;
-
-error:
+end:
 	return ret;
 }

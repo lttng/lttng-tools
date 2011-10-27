@@ -40,4 +40,9 @@ int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
 int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd);
 
+int event_ust_enable_tracepoint(struct ltt_ust_session *ustsession,
+		struct ltt_ust_channel *ustchan, struct lttng_event *event);
+int event_ust_disable_tracepoint(struct ltt_ust_session *ustsession,
+		struct ltt_ust_channel *ustchan, char *event_name);
+
 #endif /* _LTT_EVENT_H */

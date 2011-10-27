@@ -29,9 +29,7 @@ ltt_sessiond_SOURCES = utils.c utils.h \
 if LTTNG_TOOLS_HAVE_UST
 ltt_sessiond_SOURCES += \
                        trace-ust.c \
-                       ust-app.c \
-                       ust-comm.c ust-comm.h \
-                       ust-ctl.c
+                       ust-app.c
 endif
 
 # link on liblttngctl for check if sessiond is already alive.
@@ -41,5 +39,5 @@ ltt_sessiond_LDADD = -lrt \
 		 $(top_builddir)/liblttngctl/liblttngctl.la
 
 if LTTNG_TOOLS_HAVE_UST
-ltt_sessiond_LDADD += -llttng-ust-comm
+ltt_sessiond_LDADD += -llttng-ust-comm -lustctl
 endif

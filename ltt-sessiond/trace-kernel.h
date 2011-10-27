@@ -44,6 +44,10 @@ struct ltt_kernel_channel_list {
 struct ltt_kernel_event {
 	int fd;
 	int enabled;
+	/*
+	 * TODO: need internal representation to support more than a
+	 * single context.
+	 */
 	struct lttng_kernel_context *ctx;
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
@@ -56,6 +60,10 @@ struct ltt_kernel_channel {
 	char *pathname;
 	unsigned int stream_count;
 	unsigned int event_count;
+	/*
+	 * TODO: need internal representation to support more than a
+	 * single context.
+	 */
 	struct lttng_kernel_context *ctx;
 	struct lttng_channel *channel;
 	struct ltt_kernel_event_list events_list;
