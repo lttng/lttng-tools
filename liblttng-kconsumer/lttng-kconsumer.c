@@ -200,7 +200,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
-		lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
+		lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_CMD);
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
@@ -236,26 +236,23 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ADD_STREAM:
 	{
 		struct lttng_consumer_stream *new_stream;
-		int fds[2];
-		size_t nb_fd = 1;
+		int fd;
 
 		/* block */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
 			return -EINTR;
 		}
-		ret = lttcomm_recv_fds_unix_sock(sock, fds, nb_fd);
-		if (ret != sizeof(fds)) {
+		ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
+		if (ret != sizeof(fd)) {
 			lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
 			return ret;
 		}
-		if (nb_fd < 2)
-			fds[1] = fds[0];	/* duplicate same fd if recv only one */
 
-		DBG("consumer_add_stream %s (%d,%d)", msg.u.stream.path_name,
-			fds[0], fds[1]);
+		DBG("consumer_add_stream %s (%d)", msg.u.stream.path_name,
+			fd);
 		new_stream = consumer_allocate_stream(msg.u.stream.channel_key,
 				msg.u.stream.stream_key,
-				fds[0], fds[1],
+				fd, fd,
 				msg.u.stream.state,
 				msg.u.stream.mmap_len,
 				msg.u.stream.output,

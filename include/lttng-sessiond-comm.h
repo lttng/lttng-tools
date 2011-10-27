@@ -119,6 +119,7 @@ enum lttcomm_return_code {
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
 	CONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
+	CONSUMERD_ERROR_RECV_CMD,		/* error on receiving command */
 	CONSUMERD_POLL_ERROR,			/* Error in polling thread in kconsumerd */
 	CONSUMERD_POLL_NVAL,			/* Poll on closed fd */
 	CONSUMERD_POLL_HUP,			/* All fds have hungup */
