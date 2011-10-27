@@ -26,102 +26,151 @@
 
 #include <lttngerr.h>
 
+#include "hashtable.h"
 #include "ust-app.h"
-
-/* Init ust traceable application's list */
-static struct ust_app_list ust_app_list = {
-	.head = CDS_LIST_HEAD_INIT(ust_app_list.head),
-	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.count = 0,
-};
-
-/*
- * Add a traceable application structure to the global list.
- */
-static void add_app_to_list(struct ust_app *lta)
-{
-	cds_list_add(&lta->list, &ust_app_list.head);
-	ust_app_list.count++;
-}
+#include "../hashtable/hash.h"
 
 /*
  * Delete a traceable application structure from the global list.
  */
-static void del_app_from_list(struct ust_app *lta)
+static void delete_ust_app(struct ust_app *lta)
 {
-	struct ltt_ust_channel *chan;
+	int ret;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
 
-	cds_list_del(&lta->list);
-	/* Sanity check */
-	if (ust_app_list.count > 0) {
-		ust_app_list.count--;
+	rcu_read_lock();
+
+	hashtable_get_first(lta->channels, &iter);
+	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+		ret = hashtable_del(lta->channels, &iter);
+		if (!ret) {
+			trace_ust_destroy_channel(
+					caa_container_of(node, struct ltt_ust_channel, node));
+		}
+		hashtable_get_next(lta->channels, &iter);
 	}
 
-	cds_list_for_each_entry(chan, &lta->channels.head, list) {
-		trace_ust_destroy_channel(chan);
-	}
-}
+	free(lta->channels);
+	close(lta->key.sock);
 
-/*
- * Iterate over the traceable apps list and return a pointer or NULL if not
- * found.
- */
-static struct ust_app *find_app_by_sock(int sock)
-{
-	struct ust_app *iter;
-
-	cds_list_for_each_entry(iter, &ust_app_list.head, list) {
-		if (iter->sock == sock) {
-			/* Found */
-			return iter;
+	/* Remove from apps hash table */
+	node = hashtable_lookup(ust_app_ht,
+			(void *) ((unsigned long) lta->key.pid), sizeof(void *), &iter);
+	if (node == NULL) {
+		ERR("UST app pid %d not found in hash table", lta->key.pid);
+	} else {
+		ret = hashtable_del(ust_app_ht, &iter);
+		if (ret) {
+			ERR("UST app unable to delete app %d from hash table",
+					lta->key.pid);
+		} else {
+			DBG2("UST app pid %d deleted", lta->key.pid);
 		}
 	}
 
+	/* Remove from key hash table */
+	node = hashtable_lookup(ust_app_sock_key_map,
+			(void *) ((unsigned long) lta->key.sock), sizeof(void *), &iter);
+	if (node == NULL) {
+		ERR("UST app key %d not found in key hash table", lta->key.sock);
+	} else {
+		ret = hashtable_del(ust_app_sock_key_map, &iter);
+		if (ret) {
+			ERR("UST app unable to delete app sock %d from key hash table",
+					lta->key.sock);
+		} else {
+			DBG2("UST app pair sock %d key %d deleted",
+					lta->key.sock, lta->key.pid);
+		}
+	}
+
+	free(lta);
+
+	rcu_read_unlock();
+}
+
+/*
+ * URCU intermediate call to delete an UST app.
+ */
+static void delete_ust_app_rcu(struct rcu_head *head)
+{
+	struct cds_lfht_node *node =
+		caa_container_of(head, struct cds_lfht_node, head);
+	struct ust_app *app =
+		caa_container_of(node, struct ust_app, node);
+
+	delete_ust_app(app);
+}
+
+/*
+ * Find an ust_app using the sock and return it.
+ */
+static struct ust_app *find_app_by_sock(int sock)
+{
+	struct cds_lfht_node *node;
+	struct ust_app_key *key;
+	struct cds_lfht_iter iter;
+	//struct ust_app *app;
+
+	rcu_read_lock();
+
+	node = hashtable_lookup(ust_app_sock_key_map,
+			(void *)((unsigned long) sock), sizeof(void *), &iter);
+	if (node == NULL) {
+		DBG2("UST app find by sock %d key not found", sock);
+		rcu_read_unlock();
+		goto error;
+	}
+
+	key = caa_container_of(node, struct ust_app_key, node);
+
+	node = hashtable_lookup(ust_app_ht,
+			(void *)((unsigned long) key->pid), sizeof(void *), &iter);
+	if (node == NULL) {
+		DBG2("UST app find by sock %d not found", sock);
+		rcu_read_unlock();
+		goto error;
+	}
+	rcu_read_unlock();
+
+	return caa_container_of(node, struct ust_app, node);
+
+error:
 	return NULL;
 }
 
 /*
  * Return pointer to traceable apps list.
  */
-struct ust_app_list *ust_app_get_list(void)
+struct cds_lfht *ust_app_get_ht(void)
 {
-	return &ust_app_list;
+	return ust_app_ht;
 }
 
 /*
- * Acquire traceable apps list lock.
+ * Return ust app pointer or NULL if not found.
  */
-void ust_app_lock_list(void)
+struct ust_app *ust_app_find_by_pid(pid_t pid)
 {
-	pthread_mutex_lock(&ust_app_list.lock);
-}
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
 
-/*
- * Release traceable apps list lock.
- */
-void ust_app_unlock_list(void)
-{
-	pthread_mutex_unlock(&ust_app_list.lock);
-}
-
-/*
- * Iterate over the traceable apps list and return a pointer or NULL if not
- * found.
- */
-struct ust_app *ust_app_get_by_pid(pid_t pid)
-{
-	struct ust_app *iter;
-
-	cds_list_for_each_entry(iter, &ust_app_list.head, list) {
-		if (iter->pid == pid) {
-			/* Found */
-			DBG2("Found traceable app by pid %d", pid);
-			return iter;
-		}
+	rcu_read_lock();
+	node = hashtable_lookup(ust_app_ht,
+			(void *)((unsigned long) pid), sizeof(void *), &iter);
+	if (node == NULL) {
+		rcu_read_unlock();
+		DBG2("UST app no found with pid %d", pid);
+		goto error;
 	}
+	rcu_read_unlock();
 
-	DBG2("Traceable app with pid %d not found", pid);
+	DBG2("Found UST app by pid %d", pid);
 
+	return caa_container_of(node, struct ust_app, node);
+
+error:
 	return NULL;
 }
 
@@ -143,22 +192,29 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 
 	lta->uid = msg->uid;
 	lta->gid = msg->gid;
-	lta->pid = msg->pid;
+	lta->key.pid = msg->pid;
 	lta->ppid = msg->ppid;
 	lta->v_major = msg->major;
 	lta->v_minor = msg->minor;
-	lta->sock = sock;
+	lta->key.sock = sock;
 	strncpy(lta->name, msg->name, sizeof(lta->name));
 	lta->name[16] = '\0';
-	CDS_INIT_LIST_HEAD(&lta->channels.head);
+	hashtable_node_init(&lta->node, (void *)((unsigned long)lta->key.pid),
+			sizeof(void *));
+	lta->channels = hashtable_new_str(0);
 
-	ust_app_lock_list();
-	add_app_to_list(lta);
-	ust_app_unlock_list();
+	/* Set sock key map */
+	hashtable_node_init(&lta->key.node, (void *)((unsigned long)lta->key.sock),
+			sizeof(void *));
+
+	rcu_read_lock();
+	hashtable_add_unique(ust_app_ht, &lta->node);
+	hashtable_add_unique(ust_app_sock_key_map, &lta->key.node);
+	rcu_read_unlock();
 
 	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock:%d name:%s"
-			" (version %d.%d)", lta->pid, lta->ppid, lta->uid, lta->gid,
-			lta->sock, lta->name, lta->v_major, lta->v_minor);
+			" (version %d.%d)", lta->key.pid, lta->ppid, lta->uid, lta->gid,
+			lta->key.sock, lta->name, lta->v_major, lta->v_minor);
 
 	return 0;
 }
@@ -173,27 +229,26 @@ void ust_app_unregister(int sock)
 {
 	struct ust_app *lta;
 
-	ust_app_lock_list();
+	DBG2("UST app unregistering sock %d", sock);
+
 	lta = find_app_by_sock(sock);
 	if (lta) {
-		DBG("PID %d unregistered with sock %d", lta->pid, sock);
-		del_app_from_list(lta);
-		close(lta->sock);
-		free(lta);
+		DBG("PID %d unregistering with sock %d", lta->key.pid, sock);
+		/* FIXME: Better use a call_rcu here ? */
+		delete_ust_app(lta);
 	}
-	ust_app_unlock_list();
 }
 
 /*
  * Return traceable_app_count
  */
-unsigned int ust_app_list_count(void)
+unsigned long ust_app_list_count(void)
 {
-	unsigned int count;
+	unsigned long count;
 
-	ust_app_lock_list();
-	count = ust_app_list.count;
-	ust_app_unlock_list();
+	rcu_read_lock();
+	count = hashtable_get_count(ust_app_ht);
+	rcu_read_unlock();
 
 	return count;
 }
@@ -203,15 +258,31 @@ unsigned int ust_app_list_count(void)
  */
 void ust_app_clean_list(void)
 {
-	struct ust_app *iter, *tmp;
+	int ret;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
 
-	/*
-	 * Don't acquire list lock here. This function should be called from
-	 * cleanup() functions meaning that the program will exit.
-	 */
-	cds_list_for_each_entry_safe(iter, tmp, &ust_app_list.head, list) {
-		del_app_from_list(iter);
-		close(iter->sock);
-		free(iter);
+	DBG2("UST app clean hash table");
+
+	rcu_read_lock();
+
+	hashtable_get_first(ust_app_ht, &iter);
+	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+		ret = hashtable_del(ust_app_ht, &iter);
+		if (!ret) {
+			call_rcu(&node->head, delete_ust_app_rcu);
+		}
+		hashtable_get_next(ust_app_ht, &iter);
 	}
+
+	rcu_read_unlock();
+}
+
+/*
+ * Init UST app hash table.
+ */
+void ust_app_ht_alloc(void)
+{
+	ust_app_ht = hashtable_new(0);
+	ust_app_sock_key_map = hashtable_new(0);
 }

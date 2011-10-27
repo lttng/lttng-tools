@@ -75,6 +75,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_LIST_FAIL) ] = "Listing kernel events failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_SESS_FAIL) ] = "UST create session failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_FAIL) ] = "UST create channel failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_EXIST) ] = "UST channel already exist",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_NOT_FOUND) ] = "UST channel not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_DISABLE_FAIL) ] = "Disable UST channel failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_ENABLE_FAIL) ] = "Enable UST channel failed",

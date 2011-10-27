@@ -56,6 +56,7 @@
 #include "context.h"
 #include "event.h"
 #include "futex.h"
+#include "hashtable.h"
 #include "kernel-ctl.h"
 #include "ltt-sessiond.h"
 #include "shm.h"
@@ -305,6 +306,17 @@ static void teardown_kernel_session(struct ltt_session *session)
 }
 
 /*
+ * Complete teardown of all UST sessions. This will free everything on his path
+ * and destroy the core essence of all ust sessions :)
+ */
+static void teardown_ust_session(struct ltt_session *session)
+{
+	DBG("Tearing down UST session(s)");
+
+	trace_ust_destroy_session(session->ust_session);
+}
+
+/*
  * Stop all threads by closing the thread quit pipe.
  */
 static void stop_threads(void)
@@ -364,7 +376,8 @@ static void cleanup(void)
 		cds_list_for_each_entry_safe(sess, stmp,
 				&session_list_ptr->head, list) {
 			teardown_kernel_session(sess);
-			// TODO complete session cleanup (including UST)
+			teardown_ust_session(sess);
+			free(sess);
 		}
 	}
 
@@ -1131,6 +1144,9 @@ static void *thread_manage_apps(void *data)
 
 	DBG("[thread] Manage application started");
 
+	rcu_register_thread();
+	rcu_thread_online();
+
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
 		goto error;
@@ -1236,6 +1252,8 @@ error:
 
 	lttng_poll_clean(&events);
 
+	rcu_thread_offline();
+	rcu_unregister_thread();
 	return NULL;
 }
 
@@ -1838,7 +1856,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_UST_PID:
-		app = ust_app_get_by_pid(domain->attr.pid);
+		app = ust_app_find_by_pid(domain->attr.pid);
 		if (app == NULL) {
 			ret = LTTCOMM_APP_NOT_FOUND;
 			goto error;
@@ -1867,17 +1885,41 @@ static int create_ust_session(struct ltt_session *session,
 		}
 	}
 
-	/* Create session on the UST tracer */
-	ret = ustctl_create_session(app->sock);
-	if (ret < 0) {
-		ret = LTTCOMM_UST_SESS_FAIL;
-		goto error;
+	/* The domain type dictate different actions on session creation */
+	switch (domain->type) {
+		case LTTNG_DOMAIN_UST_PID:
+			app = ust_app_find_by_pid(domain->attr.pid);
+			if (app == NULL) {
+				ret = LTTCOMM_APP_NOT_FOUND;
+				goto error;
+			}
+			/* Create session on the UST tracer */
+			ret = ustctl_create_session(app->key.sock, lus);
+			if (ret < 0) {
+				ret = LTTCOMM_UST_SESS_FAIL;
+				goto error;
+			}
+
+			lus->handle = ret;
+			break;
+		case LTTNG_DOMAIN_UST:
+			/* Create session on the UST tracer */
+			ret = ustctl_create_session(app->key.sock, lus);
+			if (ret < 0) {
+				ret = LTTCOMM_UST_SESS_FAIL;
+				goto error;
+			}
+			break;
+		case LTTNG_DOMAIN_UST_EXEC_NAME:
+			break;
+		default:
+			goto error;
 	}
 	lus->handle = ret;
 	lus->sock = app->sock;
 
-	cds_list_add(&lus->list, &session->ust_session_list.head);
-	session->ust_session_list.count++;
+	session->ust_session = lus;
+	printf("%p\n", session->ust_session);
 
 	return LTTCOMM_OK;
 
@@ -2052,13 +2094,14 @@ error:
 /*
  * Copy channel from attributes and set it in the application channel list.
  */
+/*
 static int copy_ust_channel_to_app(struct ltt_ust_session *usess,
 		struct lttng_channel *attr, struct ust_app *app)
 {
 	int ret;
 	struct ltt_ust_channel *uchan, *new_chan;
 
-	uchan = trace_ust_get_channel_by_name(attr->name, usess);
+	uchan = trace_ust_get_channel_by_key(usess->channels, attr->name);
 	if (uchan == NULL) {
 		ret = LTTCOMM_FATAL;
 		goto error;
@@ -2077,13 +2120,10 @@ static int copy_ust_channel_to_app(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	/* Add channel to the ust app channel list */
-	cds_list_add(&new_chan->list, &app->channels.head);
-	app->channels.count++;
-
 error:
 	return ret;
 }
+*/
 
 /*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
@@ -2092,6 +2132,9 @@ static int cmd_enable_channel(struct ltt_session *session,
 		struct lttng_domain *domain, struct lttng_channel *attr)
 {
 	int ret;
+	struct ltt_ust_session *usess = session->ust_session;
+
+	DBG("Enabling channel %s for session %s", session->name, attr->name);
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2114,8 +2157,35 @@ static int cmd_enable_channel(struct ltt_session *session,
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
 	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_channel *uchan;
+
+		DBG2("Enabling channel for LTTNG_DOMAIN_UST domain");
+
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				attr->name);
+		if (uchan == NULL) {
+			uchan = trace_ust_create_channel(attr, usess->path);
+			if (uchan == NULL) {
+				ret = LTTCOMM_UST_CHAN_FAIL;
+				goto error;
+			}
+			rcu_read_lock();
+			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
+			rcu_read_unlock();
+		} else {
+			ret = LTTCOMM_UST_CHAN_EXIST;
+			goto error;
+		}
+
+		/* TODO: Iterate over trace apps to enable that channel */
+
+		break;
+	}
 	case LTTNG_DOMAIN_UST_PID:
 	{
+		/*
 		int sock;
 		struct ltt_ust_channel *uchan;
 		struct ltt_ust_session *usess;
@@ -2153,7 +2223,9 @@ static int cmd_enable_channel(struct ltt_session *session,
 
 		DBG("UST channel %s created for app sock %d with pid %d",
 				attr->name, app->sock, domain->attr.pid);
-		break;
+		*/
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
 	}
 	default:
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
@@ -2879,7 +2951,7 @@ static ssize_t cmd_list_domains(struct ltt_session *session,
 		nb_dom++;
 	}
 
-	nb_dom += session->ust_session_list.count;
+	/* TODO: User-space tracer domain support */
 
 	*domains = malloc(nb_dom * sizeof(struct lttng_domain));
 	if (*domains == NULL) {
@@ -2888,8 +2960,6 @@ static ssize_t cmd_list_domains(struct ltt_session *session,
 	}
 
 	(*domains)[0].type = LTTNG_DOMAIN_KERNEL;
-
-	/* TODO: User-space tracer domain support */
 
 	return nb_dom;
 
@@ -3070,12 +3140,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	{
 		struct ltt_ust_session *usess;
-
 		if (need_tracing_session) {
-			usess = trace_ust_get_session_by_pid(
-					&cmd_ctx->session->ust_session_list,
-					cmd_ctx->lsm->domain.attr.pid);
-			if (usess == NULL) {
+			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
 						&cmd_ctx->lsm->domain);
 				if (ret != LTTCOMM_OK) {
@@ -3096,7 +3162,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
 		}
 		break;
-	}
 	default:
 		break;
 	}
@@ -3355,6 +3420,8 @@ static void *thread_manage_clients(void *data)
 
 	DBG("[thread] Manage client started");
 
+	rcu_register_thread();
+
 	ret = lttcomm_listen_unix_sock(client_sock);
 	if (ret < 0) {
 		goto error;
@@ -3455,6 +3522,7 @@ static void *thread_manage_clients(void *data)
 		// TODO: Validate cmd_ctx including sanity check for
 		// security purpose.
 
+		rcu_thread_online();
 		/*
 		 * This function dispatch the work to the kernel or userspace tracer
 		 * libs and fill the lttcomm_lttng_msg data structure of all the needed
@@ -3462,6 +3530,7 @@ static void *thread_manage_clients(void *data)
 		 * everything this function may needs.
 		 */
 		ret = process_client_msg(cmd_ctx);
+		rcu_thread_offline();
 		if (ret < 0) {
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
@@ -3494,6 +3563,8 @@ error:
 
 	lttng_poll_clean(&events);
 	clean_command_ctx(&cmd_ctx);
+
+	rcu_unregister_thread();
 	return NULL;
 }
 
@@ -3922,6 +3993,8 @@ int main(int argc, char **argv)
 	void *status;
 	const char *home_path;
 
+	rcu_register_thread();
+
 	/* Create thread quit pipe */
 	if ((ret = init_thread_quit_pipe()) < 0) {
 		goto error;
@@ -4064,6 +4137,9 @@ int main(int argc, char **argv)
 	/* Init UST command queue. */
 	cds_wfq_init(&ust_cmd_queue.queue);
 
+	/* Init UST app hash table */
+	ust_app_ht_alloc();
+
 	/*
 	 * Get session list pointer. This pointer MUST NOT be free(). This list is
 	 * statically declared in session.c
@@ -4158,7 +4234,10 @@ exit:
 	/*
 	 * cleanup() is called when no other thread is running.
 	 */
+	rcu_thread_online();
 	cleanup();
+	rcu_thread_offline();
+	rcu_unregister_thread();
 	if (!ret)
 		exit(EXIT_SUCCESS);
 error:

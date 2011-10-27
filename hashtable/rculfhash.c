@@ -139,15 +139,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <urcu/config.h>
 #include <urcu.h>
 #include <urcu-call-rcu.h>
 #include <urcu/arch.h>
 #include <urcu/uatomic.h>
 #include <urcu/compiler.h>
-#include "rculfhash.h"
 #include <stdio.h>
 #include <pthread.h>
+
+#include "rculfhash.h"
 
 #ifdef DEBUG
 #define dbg_printf(fmt, args...)     printf("[debug rculfhash] " fmt, ## args)
@@ -608,7 +608,7 @@ void ht_count_del(struct cds_lfht *ht, unsigned long size)
 
 #else /* #if defined(HAVE_SCHED_GETCPU) && defined(HAVE_SYSCONF) */
 
-static const long nr_cpus_mask = -1;
+static const long nr_cpus_mask = -2;
 
 static
 struct ht_items_count *alloc_per_cpu_items_count(void)
@@ -1041,8 +1041,12 @@ void partition_resize_helper(struct cds_lfht *ht, unsigned long i,
 	 * We spawn just the number of threads we need to satisfy the minimum
 	 * partition size, up to the number of CPUs in the system.
 	 */
-	nr_threads = min(nr_cpus_mask + 1,
-			 len >> MIN_PARTITION_PER_THREAD_ORDER);
+	if (nr_cpus_mask > 0) {
+		nr_threads = min(nr_cpus_mask + 1,
+				 len >> MIN_PARTITION_PER_THREAD_ORDER);
+	} else {
+		nr_threads = 1;
+	}
 	partition_len = len >> get_count_order_ulong(nr_threads);
 	work = calloc(nr_threads, sizeof(*work));
 	thread_id = calloc(nr_threads, sizeof(*thread_id));
@@ -1355,7 +1359,7 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
 	iter->next = next;
 }
 
-void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter)
+void cds_lfht_next_duplicate(struct cds_lfht *ht, struct cds_lfht_iter *iter)
 {
 	struct cds_lfht_node *node, *next;
 	unsigned long reverse_hash;
@@ -1389,6 +1393,41 @@ void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter)
 	assert(!node || !is_dummy(rcu_dereference(node->p.next)));
 	iter->node = node;
 	iter->next = next;
+}
+
+void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter)
+{
+	struct cds_lfht_node *node, *next;
+
+	node = clear_flag(iter->next);
+	for (;;) {
+		if (unlikely(is_end(node))) {
+			node = next = NULL;
+			break;
+		}
+		next = rcu_dereference(node->p.next);
+		if (likely(!is_removed(next))
+		    && !is_dummy(next)) {
+				break;
+		}
+		node = clear_flag(next);
+	}
+	assert(!node || !is_dummy(rcu_dereference(node->p.next)));
+	iter->node = node;
+	iter->next = next;
+}
+
+void cds_lfht_first(struct cds_lfht *ht, struct cds_lfht_iter *iter)
+{
+	struct _cds_lfht_node *lookup;
+
+	/*
+	 * Get next after first dummy node. The first dummy node is the
+	 * first node of the linked list.
+	 */
+	lookup = &ht->t.tbl[0]->nodes[0];
+	iter->next = lookup->next;
+	cds_lfht_next(ht, iter);
 }
 
 void cds_lfht_add(struct cds_lfht *ht, struct cds_lfht_node *node)

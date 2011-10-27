@@ -42,6 +42,11 @@ struct _cds_lfht_node {
 	unsigned long reverse_hash;
 } __attribute__((aligned(4)));
 
+/*
+ * struct cds_lfht_node can be embedded into a structure (as a field).
+ * caa_container_of() can be used to get the structure from the struct
+ * cds_lfht_node after a lookup.
+ */
 struct cds_lfht_node {
 	/* cache-hot for iteration */
 	struct _cds_lfht_node p;          /* needs to be first field */
@@ -180,7 +185,7 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
 		struct cds_lfht_iter *iter);
 
 /*
- * cds_lfht_next - get the next item with same key (after a lookup).
+ * cds_lfht_next_duplicate - get the next item with same key (after a lookup).
  *
  * Uses an iterator initialized by a lookup.
  * Sets *iter-node to the following node with same key.
@@ -188,6 +193,23 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
  * RCU read-side lock must be held across cds_lfht_lookup and
  * cds_lfht_next calls, and also between cds_lfht_next calls using the
  * node returned by a previous cds_lfht_next.
+ * Call with rcu_read_lock held.
+ */
+void cds_lfht_next_duplicate(struct cds_lfht *ht, struct cds_lfht_iter *iter);
+
+/*
+ * cds_lfht_first - get the first node in the table.
+ *
+ * Output in "*iter". *iter->node set to NULL if table is empty.
+ * Call with rcu_read_lock held.
+ */
+void cds_lfht_first(struct cds_lfht *ht, struct cds_lfht_iter *iter);
+
+/*
+ * cds_lfht_next - get the next node in the table.
+ *
+ * Input/Output in "*iter". *iter->node set to NULL if *iter was
+ * pointing to the last table node.
  * Call with rcu_read_lock held.
  */
 void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter);

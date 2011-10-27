@@ -26,9 +26,7 @@
 
 #ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
 
-
 #else
-
 
 #endif
 

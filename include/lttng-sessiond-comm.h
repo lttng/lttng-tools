@@ -114,6 +114,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
 	LTTCOMM_KERN_LIST_FAIL,			/* Kernel listing events failed */
 	LTTCOMM_UST_SESS_FAIL,			/* UST create session failed */
+	LTTCOMM_UST_CHAN_EXIST,         /* UST channel already exist */
 	LTTCOMM_UST_CHAN_FAIL,			/* UST create channel failed */
 	LTTCOMM_UST_CHAN_NOT_FOUND,     /* UST channel not found */
 	LTTCOMM_UST_CHAN_DISABLE_FAIL, /* UST disable channel failed */

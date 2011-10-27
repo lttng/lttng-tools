@@ -59,6 +59,8 @@ AC_CHECK_DECL([ustctl_create_session],
 
 AM_CONDITIONAL([LTTNG_TOOLS_HAVE_UST], [ test "x$have_ust_test" = "x1" ])
 
+AC_CHECK_FUNCS([sched_getcpu sysconf])
+
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
 	[AX_CONFIG_FEATURE_ENABLE(epoll)],

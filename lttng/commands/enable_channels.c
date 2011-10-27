@@ -118,6 +118,11 @@ static int enable_channel(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST_PID;
 		dom.attr.pid = opt_pid;
 		DBG("PID %d set to lttng handle", opt_pid);
+	} else if (opt_userspace && opt_cmd_name == NULL) {
+		dom.type = LTTNG_DOMAIN_UST;
+	} else if (opt_userspace && opt_cmd_name != NULL) {
+		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
+		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
 	} else {
 		ERR("Please specify a tracer (--kernel or --userspace)");
 		ret = CMD_NOT_IMPLEMENTED;

@@ -30,6 +30,7 @@
 #endif
 
 #include "channel.h"
+#include "hashtable.h"
 #include "kernel-ctl.h"
 #include "ust-ctl.h"
 #include "utils.h"
@@ -87,11 +88,12 @@ error_alloc:
 int channel_ust_copy(struct ltt_ust_channel *dst,
 		struct ltt_ust_channel *src)
 {
-	struct ltt_ust_event *uevent, *new_uevent;
+	//struct ltt_ust_event *uevent, *new_uevent;
 
 	memcpy(dst, src, sizeof(struct ltt_ust_channel));
-	CDS_INIT_LIST_HEAD(&dst->events.head);
+	dst->events = hashtable_new_str(0);
 
+	/*
 	cds_list_for_each_entry(uevent, &src->events.head, list) {
 		new_uevent = malloc(sizeof(struct ltt_ust_event));
 		if (new_uevent == NULL) {
@@ -103,11 +105,12 @@ int channel_ust_copy(struct ltt_ust_channel *dst,
 		cds_list_add(&new_uevent->list, &dst->events.head);
 		dst->events.count++;
 	}
+	*/
 
 	return 0;
 
-error:
-	return -1;
+//error:
+//	return -1;
 }
 
 /*
@@ -225,9 +228,10 @@ int channel_ust_create(struct ltt_ust_session *usession,
 
 	suchan = trace_ust_create_channel(attr, usession->path);
 	if (suchan == NULL) {
-		ret = LTTCOMM_FATAL;
+		ret = LTTCOMM_UST_CHAN_FAIL;
 		goto error;
 	}
+
 	uattr.overwrite = attr->attr.overwrite;
 	uattr.subbuf_size = attr->attr.subbuf_size;
 	uattr.num_subbuf = attr->attr.num_subbuf;
@@ -240,6 +244,7 @@ int channel_ust_create(struct ltt_ust_session *usession,
 		ret = LTTCOMM_UST_CHAN_FAIL;
 		goto error;
 	}
+
 	suchan->attr.overwrite = uattr.overwrite;
 	suchan->attr.subbuf_size = uattr.subbuf_size;
 	suchan->attr.num_subbuf = uattr.num_subbuf;

@@ -21,11 +21,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <urcu.h>
 
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
+#include "hashtable.h"
 #include "session.h"
+
+#include "../hashtable/hash.h"
 
 /*
  * NOTES:
@@ -204,9 +208,7 @@ int session_create(char *name, char *path)
 
 	/* Init kernel session */
 	new_session->kernel_session = NULL;
-
-	/* Init UST session list */
-	CDS_INIT_LIST_HEAD(&new_session->ust_session_list.head);
+	new_session->ust_session = NULL;
 
 	/* Init lock */
 	pthread_mutex_init(&new_session->lock, NULL);

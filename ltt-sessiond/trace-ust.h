@@ -21,6 +21,7 @@
 
 #include <config.h>
 #include <limits.h>
+#include <urcu.h>
 #include <urcu/list.h>
 #include <lttng/lttng.h>
 
@@ -36,19 +37,8 @@
 #include "lttng-ust-abi.h"
 #endif
 
-/*
- * UST session list.
- */
-struct ltt_ust_session_list {
-	unsigned int count;
-	struct cds_list_head head;
-};
+#include "../hashtable/rculfhash.h"
 
-/* UST event list */
-struct ltt_ust_event_list {
-	unsigned int count;
-	struct cds_list_head head;
-};
 
 /* UST Stream list */
 struct ltt_ust_stream_list {
@@ -56,28 +46,25 @@ struct ltt_ust_stream_list {
 	struct cds_list_head head;
 };
 
-/* UST Channel list */
-struct ltt_ust_channel_list {
-	unsigned int count;
-	struct cds_list_head head;
+/* Context hash table nodes */
+struct ltt_ust_context {
+	struct lttng_ust_context ctx;
+	struct cds_lfht_node node;
 };
 
 /* UST event */
 struct ltt_ust_event {
 	int handle;
 	int enabled;
-	/*
-	 * TODO: need internal representation to support more than a
-	 * single context.
-	 */
-	struct lttng_ust_context ctx;
-	struct lttng_ust_event attr;
-	struct cds_list_head list;
 	struct object_data *obj;
+	struct lttng_ust_event attr;
+	struct cds_lfht *ctx;
+	struct cds_lfht_node node;
 };
 
 /* UST stream */
 struct ltt_ust_stream {
+	/* TODO hashtable */
 	struct object_data *obj;
 	struct cds_list_head list;
 	char *pathname;
@@ -89,26 +76,42 @@ struct ltt_ust_channel {
 	int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char trace_path[PATH_MAX];    /* Trace file path name */
-	/*
-	 * TODO: need internal representation to support more than a
-	 * single context.
-	 */
-	struct lttng_ust_context ctx;
-	struct lttng_ust_channel attr;
-	struct ltt_ust_event_list events;
-	struct cds_list_head list;
 	struct object_data *obj;
+
 	unsigned int stream_count;
 	struct ltt_ust_stream_list stream_list;
+	struct lttng_ust_channel attr;
+	struct cds_lfht *ctx;
+	struct cds_lfht *events;
+	struct cds_lfht_node node;
 };
 
 /* UST Metadata */
 struct ltt_ust_metadata {
 	int handle;
 	struct object_data *obj;
-	char *pathname;              /* Trace file path name */
+	char pathname[PATH_MAX];              /* Trace file path name */
 	struct lttng_ust_channel attr;
 	struct object_data *stream_obj;
+};
+
+/* UST domain global (LTTNG_DOMAIN_UST) */
+struct ltt_ust_domain_global {
+	struct cds_lfht *channels;
+};
+
+/* UST domain pid (LTTNG_DOMAIN_UST_PID) */
+struct ltt_ust_domain_pid {
+	pid_t pid;
+	struct cds_lfht *channels;
+	struct cds_lfht_node node;
+};
+
+/* UST domain exec name (LTTNG_DOMAIN_UST_EXEC_NAME) */
+struct ltt_ust_domain_exec {
+	char exec_name[LTTNG_UST_SYM_NAME_LEN];
+	struct cds_lfht *channels;
+	struct cds_lfht_node node;
 };
 
 /* UST session */
@@ -119,11 +122,16 @@ struct ltt_ust_session {
 	int consumer_fds_sent;
 	int consumer_fd;
 	char path[PATH_MAX];
-	struct lttng_domain domain;
 	struct ltt_ust_metadata *metadata;
-	struct ltt_ust_channel_list channels;
-	struct cds_list_head list;
 	struct object_data *obj;
+	struct ltt_ust_domain_global domain_global;
+	/*
+	 * Those two hash tables contains data for a specific UST domain and a HT
+	 * of channels for each. See ltt_ust_domain_exec and ltt_ust_domain_pid
+	 * data structures.
+	 */
+	struct cds_lfht *domain_pid;
+	struct cds_lfht *domain_exec;
 };
 
 #ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
@@ -131,12 +139,10 @@ struct ltt_ust_session {
 /*
  * Lookup functions. NULL is returned if not found.
  */
-struct ltt_ust_event *trace_ust_get_event_by_name(
-		char *name, struct ltt_ust_channel *channel);
-struct ltt_ust_channel *trace_ust_get_channel_by_name(
-		char *name, struct ltt_ust_session *session);
-struct ltt_ust_session *trace_ust_get_session_by_pid(
-		struct ltt_ust_session_list *session_list, pid_t pid);
+struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
+		char *name);
+struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
+		char *name);
 
 /*
  * Create functions malloc() the data structure.
@@ -160,17 +166,19 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 #else
 
 static inline
-struct ltt_ust_event *trace_ust_get_event_by_name(
-		char *name, struct ltt_ust_channel *channel)
+struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
+		char *name)
 {
 	return NULL;
 }
+
 static inline
-struct ltt_ust_channel *trace_ust_get_channel_by_name(
-		char *name, struct ltt_ust_session *session)
+struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
+		char *name)
 {
 	return NULL;
 }
+
 static inline
 struct ltt_ust_session *trace_ust_get_session_by_pid(
 		struct ltt_ust_session_list *session_list, pid_t pid)

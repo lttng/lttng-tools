@@ -59,7 +59,7 @@ struct ltt_session {
 	char name[NAME_MAX];
 	char path[PATH_MAX];
 	struct ltt_kernel_session *kernel_session;
-	struct ltt_ust_session_list ust_session_list;
+	struct ltt_ust_session *ust_session;
 	/*
 	 * Protect any read/write on this session data structure. This lock must be
 	 * acquired *before* using any public functions declared below. Use
@@ -80,5 +80,6 @@ void session_unlock_list(void);
 
 struct ltt_session *session_find_by_name(char *name);
 struct ltt_session_list *session_get_list(void);
+unsigned long session_ust_count(struct ltt_session *session);
 
 #endif /* _LTT_SESSION_H */

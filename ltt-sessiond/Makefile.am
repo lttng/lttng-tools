@@ -12,6 +12,7 @@ COMPAT=compat/compat-poll.c
 endif
 
 ltt_sessiond_SOURCES = utils.c utils.h \
+                       hashtable.c hashtable.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
                        kernel-ctl.c kernel-ctl.h \
@@ -24,7 +25,8 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        session.c session.h \
                        ltt-sessiond.h main.c \
                        ../hashtable/rculfhash.c \
-                       ../hashtable/rculfhash.h
+                       ../hashtable/rculfhash.h \
+                       ../hashtable/hash.c ../hashtable/hash.h
 
 if LTTNG_TOOLS_HAVE_UST
 ltt_sessiond_SOURCES += \
@@ -33,7 +35,7 @@ ltt_sessiond_SOURCES += \
 endif
 
 # link on liblttngctl for check if sessiond is already alive.
-ltt_sessiond_LDADD = -lrt \
+ltt_sessiond_LDADD = -lrt -lurcu-cds -lurcu \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la

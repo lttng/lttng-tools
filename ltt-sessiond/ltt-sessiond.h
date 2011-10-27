@@ -20,6 +20,7 @@
 #define _LTT_SESSIOND_H
 
 #define _LGPL_SOURCE
+#include <urcu.h>
 #include <urcu/wfqueue.h>
 
 #include "ust-app.h"
