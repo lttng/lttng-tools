@@ -1,8 +1,4 @@
 /*
- * ust-ctl.h
- *
- * Meta header used to include all relevant file from the lttng ust ABI.
- *
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,23 +15,11 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_UST_CTL_H
-#define _LTT_UST_CTL_H
+#ifndef _UST_CONSUMER_H
+#define _UST_CONSUMER_H
 
-#include <config.h>
+#include "ust-app.h"
 
-/*
- * FIXME: temporary workaround: we use a lttng-tools local version of
- * lttng-ust-abi.h if UST is not found. Eventually, we should use our
- * own internal structures within lttng-tools instead of relying on the
- * UST ABI.
- */
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-ctl.h>
-#include <ust/lttng-ust-abi.h>
-#else
-#include "lttng-ust-ctl.h"
-#include "lttng-ust-abi.h"
-#endif
+int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess);
 
-#endif /* _LTT_UST_CTL_H */
+#endif /* _UST_CONSUMER_H */

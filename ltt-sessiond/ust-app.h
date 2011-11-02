@@ -37,6 +37,9 @@ struct ust_register_msg {
 	char name[16];
 };
 
+/*
+ * Global applications HT used by the session daemon.
+ */
 struct cds_lfht *ust_app_ht;
 
 struct cds_lfht *ust_app_sock_key_map;
@@ -47,20 +50,49 @@ struct ust_app_key {
 	struct cds_lfht_node node;
 };
 
+struct ust_app_event {
+	int enabled;
+	int handle;
+	struct object_data *obj;
+	char name[LTTNG_UST_SYM_NAME_LEN];
+	struct cds_lfht *ctx;
+	struct cds_lfht_node node;
+};
+
+struct ust_app_channel {
+	int enabled;
+	int handle;
+	char name[LTTNG_UST_SYM_NAME_LEN];
+	struct lttng_ust_channel attr;
+	struct object_data *obj;
+	struct cds_lfht *streams;
+	struct cds_lfht *ctx;
+	struct cds_lfht *events;
+	struct cds_lfht_node node;
+};
+
+struct ust_app_session {
+	int enabled;
+	int handle;   /* Used has unique identifier */
+	unsigned int uid;
+	struct ltt_ust_metadata *metadata;
+	struct object_data *obj;
+	struct cds_lfht *channels; /* Registered channels */
+	struct cds_lfht_node node;
+};
+
 /*
  * Registered traceable applications. Libust registers to the session daemon
  * and a linked list is kept of all running traceable app.
  */
 struct ust_app {
-	//int sock;
-	//pid_t pid;
 	pid_t ppid;
 	uid_t uid;           /* User ID that owns the apps */
 	gid_t gid;           /* Group ID that owns the apps */
 	uint32_t v_major;    /* Verion major number */
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */
-	struct cds_lfht *channels;
+	struct cds_lfht *sessions;
 	struct cds_lfht_node node;
 	struct ust_app_key key;
 };
@@ -69,7 +101,12 @@ struct ust_app {
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
 void ust_app_unregister(int sock);
+int ust_app_add_channel(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan);
+int ust_app_add_event(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 unsigned long ust_app_list_count(void);
+int ust_app_start_trace(struct ltt_ust_session *usess);
 
 void ust_app_clean_list(void);
 void ust_app_ht_alloc(void);
@@ -116,6 +153,13 @@ struct ust_app *ust_app_get_by_pid(pid_t pid)
 	return NULL;
 }
 
-#endif
+static inline
+int ust_app_add_channel(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	return 0;
+}
+
+#endif /* CONFIG_LTTNG_TOOLS_HAVE_UST */
 
 #endif /* _LTT_UST_APP_H */

@@ -16,23 +16,23 @@ ltt_sessiond_SOURCES = utils.c utils.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
                        kernel-ctl.c kernel-ctl.h \
-		       ust-ctl.h ust-app.h trace-ust.h \
+                       ust-ctl.h ust-app.h trace-ust.h \
                        context.c context.h \
                        channel.c channel.h \
                        event.c event.h \
                        futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \
-                       ltt-sessiond.h main.c \
                        ../hashtable/rculfhash.c \
                        ../hashtable/rculfhash.h \
                        ../hashtable/hash.c ../hashtable/hash.h
 
 if LTTNG_TOOLS_HAVE_UST
-ltt_sessiond_SOURCES += \
-                       trace-ust.c \
-                       ust-app.c
+ltt_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h
 endif
+
+# Add main.c at the end for compile order
+ltt_sessiond_SOURCES += ltt-sessiond.h main.c
 
 # link on liblttngctl for check if sessiond is already alive.
 ltt_sessiond_LDADD = -lrt -lurcu-cds -lurcu \

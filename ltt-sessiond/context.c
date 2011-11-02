@@ -34,6 +34,7 @@
 #endif
 
 #include "context.h"
+#include "hashtable.h"
 #include "kernel-ctl.h"
 
 /*
@@ -207,6 +208,7 @@ error:
 /*
  * Add UST context to an event of a specific channel.
  */
+#ifdef DISABLE
 static int add_ustctx_to_event(struct ltt_ust_session *ustsession,
 		struct lttng_ust_context *ustctx,
 		struct ltt_ust_channel *ustchan, char *event_name)
@@ -217,7 +219,7 @@ static int add_ustctx_to_event(struct ltt_ust_session *ustsession,
 
 	DBG("Add UST context to event %s", event_name);
 
-	ustevent = trace_ust_get_event_by_name(event_name, ustchan);
+	ustevent = trace_ust_find_event_by_name(ustchan->events, event_name);
 	if (ustevent != NULL) {
 		ret = ustctl_add_context(ustsession->sock, ustctx,
 			ustevent->obj, &context_data);
@@ -232,6 +234,7 @@ static int add_ustctx_to_event(struct ltt_ust_session *ustsession,
 error:
 	return ret;
 }
+#endif
 
 /*
  * Add UST context to all channel.
@@ -239,8 +242,10 @@ error:
  * If event_name is specified, add context to event instead.
  */
 static int add_ustctx_all_channels(struct ltt_ust_session *ustsession,
-		struct lttng_ust_context *ustctx, char *event_name)
+		struct lttng_ust_context *ustctx, char *event_name,
+		struct cds_lfht *channels)
 {
+#ifdef DISABLE
 	int ret, no_event = 0, found = 0;
 	struct ltt_ust_channel *ustchan;
 	struct object_data *context_data;	/* FIXME: currently a memleak */
@@ -251,11 +256,16 @@ static int add_ustctx_all_channels(struct ltt_ust_session *ustsession,
 
 	DBG("Adding ust context to all channels (event: %s)", event_name);
 
-	/* Go over all channels */
-	cds_list_for_each_entry(ustchan, &ustsession->channels.head, list) {
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+
+	rcu_read_lock();
+	hashtable_get_first(channels, &iter);
+	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+		ustchan = caa_container_of(node, struct ltt_ust_channel, node);
 		if (no_event) {
-			ret = ustctl_add_context(ustsession->sock,
-				ustctx, ustchan->obj, &context_data);
+			//ret = ustctl_add_context(ustsession->sock,
+			//		ustctx, ustchan->obj, &context_data);
 			if (ret < 0) {
 				ret = LTTCOMM_UST_CONTEXT_FAIL;
 				goto error;
@@ -271,7 +281,9 @@ static int add_ustctx_all_channels(struct ltt_ust_session *ustsession,
 				break;
 			}
 		}
+		hashtable_get_next(channels, &iter);
 	}
+	rcu_read_unlock();
 
 	if (!found && !no_event) {
 		ret = LTTCOMM_NO_EVENT;
@@ -282,6 +294,8 @@ static int add_ustctx_all_channels(struct ltt_ust_session *ustsession,
 
 error:
 	return ret;
+#endif
+	return 0;
 }
 
 /*
@@ -293,6 +307,7 @@ static int add_ustctx_to_channel(struct ltt_ust_session *ustsession,
 		struct lttng_ust_context *ustctx,
 		struct ltt_ust_channel *ustchan, char *event_name)
 {
+#ifdef DISABLE
 	int ret, no_event = 0, found = 0;
 	struct object_data *context_data;	/* FIXME: currently a memleak */
 
@@ -304,8 +319,8 @@ static int add_ustctx_to_channel(struct ltt_ust_session *ustsession,
 			ustchan->name, event_name);
 
 	if (no_event) {
-		ret = ustctl_add_context(ustsession->sock, ustctx,
-			ustchan->obj, &context_data);
+		//ret = ustctl_add_context(ustsession->sock, ustctx,
+		//	ustchan->obj, &context_data);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_CONTEXT_FAIL;
 			goto error;
@@ -330,6 +345,8 @@ static int add_ustctx_to_channel(struct ltt_ust_session *ustsession,
 
 error:
 	return ret;
+#endif
+	return 0;
 }
 
 /*
@@ -337,23 +354,30 @@ error:
  */
 int context_ust_add(struct ltt_ust_session *ustsession,
 		struct lttng_event_context *ctx, char *event_name,
-		char *channel_name)
+		char *channel_name, int domain)
 {
 	int ret;
+	struct cds_lfht *chan_ht = NULL;
 	struct ltt_ust_channel *ustchan;
 	struct lttng_ust_context ustctx;
 
 	/* Setup UST context structure */
 	ustctx.ctx = ctx->ctx;
 
+	switch (domain) {
+		case LTTNG_DOMAIN_UST:
+			chan_ht = ustsession->domain_global.channels;
+			break;
+	}
+
 	if (strlen(channel_name) == 0) {
-		ret = add_ustctx_all_channels(ustsession, &ustctx, event_name);
+		ret = add_ustctx_all_channels(ustsession, &ustctx, event_name, chan_ht);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
 	} else {
 		/* Get UST channel */
-		ustchan = trace_ust_get_channel_by_name(channel_name, ustsession);
+		ustchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (ustchan == NULL) {
 			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
 			goto error;

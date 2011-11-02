@@ -32,6 +32,7 @@
 int context_kernel_add(struct ltt_kernel_session *ksession,
 		struct lttng_event_context *ctx, char *event_name, char *channel_name);
 int context_ust_add(struct ltt_ust_session *ustsession,
-		struct lttng_event_context *ctx, char *event_name, char *channel_name);
+		struct lttng_event_context *ctx, char *event_name,
+		char *channel_name, int domain);
 
 #endif /* _LTT_CONTEXT_H */

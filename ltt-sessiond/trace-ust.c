@@ -83,7 +83,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
+struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 		struct lttng_domain *domain)
 {
 	int ret;
@@ -97,10 +97,8 @@ struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
 	}
 
 	/* Init data structure */
-	lus->handle = -1;
-	lus->enabled = 1;
 	lus->consumer_fds_sent = 0;
-	lus->metadata = NULL;
+	lus->uid = uid;
 
 	/* Alloc UST domain hash tables */
 	lus->domain_pid = hashtable_new(0);
@@ -110,7 +108,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
 	lus->domain_global.channels = hashtable_new_str(0);
 
 	/* Set session path */
-	ret = snprintf(lus->path, PATH_MAX, "%s/ust_%d", path, pid);
+	ret = snprintf(lus->pathname, PATH_MAX, "%s/ust", path);
 	if (ret < 0) {
 		PERROR("snprintf kernel traces path");
 		goto error;
@@ -142,7 +140,12 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	}
 
 	/* Copy UST channel attributes */
-	memcpy(&luc->attr, &chan->attr, sizeof(struct lttng_ust_channel));
+	luc->attr.overwrite = chan->attr.overwrite;
+	luc->attr.subbuf_size = chan->attr.subbuf_size;
+	luc->attr.num_subbuf = chan->attr.num_subbuf;
+	luc->attr.switch_timer_interval = chan->attr.switch_timer_interval;
+	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
+	luc->attr.output = chan->attr.output;
 
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {
@@ -150,9 +153,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		luc->attr.output = LTTNG_UST_MMAP;
 		break;
 	}
-
-	luc->handle = -1;
-	luc->enabled = 1;
 
 	/* Copy channel name */
 	strncpy(luc->name, chan->name, sizeof(&luc->name));
@@ -165,12 +165,11 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->ctx = hashtable_new_str(0);
 
 	/* Set trace output path */
-	ret = snprintf(luc->trace_path, PATH_MAX, "%s", path);
+	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
 	if (ret < 0) {
 		perror("asprintf ust create channel");
 		goto error;
 	}
-	CDS_INIT_LIST_HEAD(&luc->stream_list.head);
 
 	DBG2("Trace UST channel %s created", luc->name);
 
@@ -216,10 +215,6 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	/* Copy event name */
 	strncpy(lue->attr.name, ev->name, LTTNG_UST_SYM_NAME_LEN);
 	lue->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
-
-	/* Setting up a ust event */
-	lue->handle = -1;
-	lue->enabled = 1;
 
 	/* Init node */
 	hashtable_node_init(&lue->node, (void *) lue->attr.name,
@@ -459,11 +454,11 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	rcu_read_lock();
 
-	DBG2("Trace UST destroy session %d", session->handle);
+	DBG2("Trace UST destroy session %d", session->uid);
 
-	if (session->metadata != NULL) {
-		trace_ust_destroy_metadata(session->metadata);
-	}
+	//if (session->metadata != NULL) {
+	//	trace_ust_destroy_metadata(session->metadata);
+	//}
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);

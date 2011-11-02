@@ -25,20 +25,9 @@
 #include <urcu/list.h>
 #include <lttng/lttng.h>
 
-/*
- * FIXME: temporary workaround: we use a lttng-tools local version of
- * lttng-ust-abi.h if UST is not found. Eventually, we should use our
- * own internal structures within lttng-tools instead of relying on the
- * UST ABI.
- */
-#ifdef CONFIG_CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-abi.h>
-#else
-#include "lttng-ust-abi.h"
-#endif
+#include "ust-ctl.h"
 
 #include "../hashtable/rculfhash.h"
-
 
 /* UST Stream list */
 struct ltt_ust_stream_list {
@@ -54,9 +43,6 @@ struct ltt_ust_context {
 
 /* UST event */
 struct ltt_ust_event {
-	int handle;
-	int enabled;
-	struct object_data *obj;
 	struct lttng_ust_event attr;
 	struct cds_lfht *ctx;
 	struct cds_lfht_node node;
@@ -64,22 +50,16 @@ struct ltt_ust_event {
 
 /* UST stream */
 struct ltt_ust_stream {
-	/* TODO hashtable */
+	int handle;
+	char pathname[PATH_MAX];
 	struct object_data *obj;
-	struct cds_list_head list;
-	char *pathname;
+	struct cds_lfht_node node;
 };
 
 /* UST channel */
 struct ltt_ust_channel {
-	int handle;
-	int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
-	char trace_path[PATH_MAX];    /* Trace file path name */
-	struct object_data *obj;
-
-	unsigned int stream_count;
-	struct ltt_ust_stream_list stream_list;
+	char pathname[PATH_MAX];
 	struct lttng_ust_channel attr;
 	struct cds_lfht *ctx;
 	struct cds_lfht *events;
@@ -116,19 +96,15 @@ struct ltt_ust_domain_exec {
 
 /* UST session */
 struct ltt_ust_session {
-	int sock;                     /* socket to send cmds to app */
-	int handle;
-	int enabled;
+	int uid;   /* Unique identifier of session */
 	int consumer_fds_sent;
 	int consumer_fd;
-	char path[PATH_MAX];
-	struct ltt_ust_metadata *metadata;
-	struct object_data *obj;
+	char pathname[PATH_MAX];
 	struct ltt_ust_domain_global domain_global;
 	/*
-	 * Those two hash tables contains data for a specific UST domain and a HT
-	 * of channels for each. See ltt_ust_domain_exec and ltt_ust_domain_pid
-	 * data structures.
+	 * Those two hash tables contains data for a specific UST domain and each
+	 * contains a HT of channels. See ltt_ust_domain_exec and
+	 * ltt_ust_domain_pid data structures.
 	 */
 	struct cds_lfht *domain_pid;
 	struct cds_lfht *domain_exec;
@@ -147,7 +123,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
+struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 		struct lttng_domain *domain);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		char *path);
@@ -180,13 +156,6 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
 }
 
 static inline
-struct ltt_ust_session *trace_ust_get_session_by_pid(
-		struct ltt_ust_session_list *session_list, pid_t pid)
-{
-	return NULL;
-}
-
-static inline
 struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
 		struct lttng_domain *domain)
 {
@@ -213,19 +182,22 @@ static inline
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
 }
+
 static inline
 void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 {
 }
+
 static inline
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
 }
+
 static inline
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 }
 
-#endif
+#endif /* CONFIG_CONFIG_LTTNG_TOOLS_HAVE_UST */
 
 #endif /* _LTT_TRACE_UST_H */

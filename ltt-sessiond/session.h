@@ -80,6 +80,5 @@ void session_unlock_list(void);
 
 struct ltt_session *session_find_by_name(char *name);
 struct ltt_session_list *session_get_list(void);
-unsigned long session_ust_count(struct ltt_session *session);
 
 #endif /* _LTT_SESSION_H */

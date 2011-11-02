@@ -30,7 +30,7 @@ struct cds_lfht *hashtable_new(unsigned long size)
 	}
 
 	return cds_lfht_new(hash_key, hash_compare_key, 0x42UL,
-			CDS_LFHT_AUTO_RESIZE, size, NULL);
+			size, size, CDS_LFHT_AUTO_RESIZE, NULL);
 }
 
 struct cds_lfht *hashtable_new_str(unsigned long size)
@@ -40,7 +40,7 @@ struct cds_lfht *hashtable_new_str(unsigned long size)
 	}
 
 	return cds_lfht_new(hash_key_str, hash_compare_key_str, 0x42UL,
-			CDS_LFHT_AUTO_RESIZE, size, NULL);
+			size, size, CDS_LFHT_AUTO_RESIZE, NULL);
 }
 
 struct cds_lfht_node *hashtable_iter_get_node(struct cds_lfht_iter *iter)
