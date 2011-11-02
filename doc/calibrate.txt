@@ -31,7 +31,7 @@ for a in $(seq 1 10); do \
 	lttng calibrate --kernel --function;
 done
 lttng destroy
-babeltrace -n $(ls -1drt ~/lttng-traces/calibrate-function-* | tail -n 1)
+babeltrace $(ls -1drt ~/lttng-traces/calibrate-function-* | tail -n 1)
 
 The output from babeltrace can be saved to a text file and opened in a
 spreadsheet (e.g. oocalc) to focus on the per-PMU counter delta between

@@ -149,7 +149,7 @@ human-readable text format. Please see
 http://www.efficios.com/babeltrace and git tree
 http://git.efficios.com/?p=babeltrace.git
 
-# babeltrace -n $HOME/lttng-traces/mysession-<date>-<time> | less
+# babeltrace $HOME/lttng-traces/mysession-<date>-<time> | less
 
 Voilà!
 
