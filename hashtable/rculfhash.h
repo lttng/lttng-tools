@@ -37,12 +37,22 @@ extern "C" {
  * 4-bytes boundaries because the two lower bits are used as flags.
  */
 
+/*
+ * _cds_lfht_node: Contains the internal pointers and reverse-hash
+ * value required for lookup and traversal of the hash table.
+ */
 struct _cds_lfht_node {
 	struct cds_lfht_node *next;	/* ptr | DUMMY_FLAG | REMOVED_FLAG */
 	unsigned long reverse_hash;
 } __attribute__((aligned(4)));
 
 /*
+ * cds_lfht_node: Contains the full key and length required to check for
+ * an actual match, and also contains an rcu_head structure that is used
+ * by RCU to track a node through a given RCU grace period.  There is an
+ * instance of _cds_lfht_node enclosed as a field within each
+ * _cds_lfht_node structure.
+ *
  * struct cds_lfht_node can be embedded into a structure (as a field).
  * caa_container_of() can be used to get the structure from the struct
  * cds_lfht_node after a lookup.
@@ -56,6 +66,7 @@ struct cds_lfht_node {
 	struct rcu_head head;
 };
 
+/* cds_lfht_iter: Used to track state while traversing a hash chain. */
 struct cds_lfht_iter {
 	struct cds_lfht_node *node, *next;
 };
@@ -94,6 +105,7 @@ void cds_lfht_node_init(struct cds_lfht_node *node, void *key,
  */
 enum {
 	CDS_LFHT_AUTO_RESIZE = (1U << 0),
+	CDS_LFHT_ACCOUNTING = (1U << 1),
 };
 
 /*
@@ -103,6 +115,7 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
 			cds_lfht_compare_fct compare_fct,
 			unsigned long hash_seed,
 			unsigned long init_size,
+			unsigned long min_alloc_size,
 			int flags,
 			void (*cds_lfht_call_rcu)(struct rcu_head *head,
 				void (*func)(struct rcu_head *head)),
@@ -121,6 +134,7 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
  * @compare_fct: the key comparison function.
  * @hash_seed: the seed for hash function.
  * @init_size: number of nodes to allocate initially. Must be power of two.
+ * @min_alloc_size: the smallest allocation size to use. Must be power of two.
  * @flags: hash table creation flags (can be combined with bitwise or: '|').
  *           0: no flags.
  *           CDS_LFHT_AUTO_RESIZE: automatically resize hash table.
@@ -136,17 +150,19 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
  * this priority level. Having lower priority for call_rcu and resize threads
  * does not pose any correctness issue, but the resize operations could be
  * starved by updates, thus leading to long hash table bucket chains.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 static inline
 struct cds_lfht *cds_lfht_new(cds_lfht_hash_fct hash_fct,
 			cds_lfht_compare_fct compare_fct,
 			unsigned long hash_seed,
 			unsigned long init_size,
+			unsigned long min_alloc_size,
 			int flags,
 			pthread_attr_t *attr)
 {
 	return _cds_lfht_new(hash_fct, compare_fct, hash_seed,
-			init_size, flags,
+			init_size, min_alloc_size, flags,
 			call_rcu, synchronize_rcu, rcu_read_lock,
 			rcu_read_unlock, rcu_thread_offline,
 			rcu_thread_online, rcu_register_thread,
@@ -158,28 +174,36 @@ struct cds_lfht *cds_lfht_new(cds_lfht_hash_fct hash_fct,
  * @ht: the hash table to destroy.
  * @attr: (output) resize worker thread attributes, as received by cds_lfht_new.
  *        The caller will typically want to free this pointer if dynamically
- *        allocated.
+ *        allocated. The attr point can be NULL if the caller does not
+ *        need to be informed of the value passed to cds_lfht_new().
  *
  * Return 0 on success, negative error value on error.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 int cds_lfht_destroy(struct cds_lfht *ht, pthread_attr_t **attr);
 
 /*
  * cds_lfht_count_nodes - count the number of nodes in the hash table.
- *
+ * @ht: the hash table.
+ * @split_count_before: Sample the node count split-counter before traversal.
+ * @count: Traverse the hash table, count the number of nodes observed.
+ * @removed: Number of logically removed nodes observed during traversal.
+ * @split_count_after: Sample the node count split-counter after traversal.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_count_nodes(struct cds_lfht *ht,
-		long *approx_before,
+		long *split_count_before,
 		unsigned long *count,
 		unsigned long *removed,
-		long *approx_after);
+		long *split_count_after);
 
 /*
  * cds_lfht_lookup - lookup a node by key.
  *
  * Output in "*iter". *iter->node set to NULL if not found.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
 		struct cds_lfht_iter *iter);
@@ -194,6 +218,7 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
  * cds_lfht_next calls, and also between cds_lfht_next calls using the
  * node returned by a previous cds_lfht_next.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_next_duplicate(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 
@@ -202,6 +227,7 @@ void cds_lfht_next_duplicate(struct cds_lfht *ht, struct cds_lfht_iter *iter);
  *
  * Output in "*iter". *iter->node set to NULL if table is empty.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_first(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 
@@ -211,14 +237,16 @@ void cds_lfht_first(struct cds_lfht *ht, struct cds_lfht_iter *iter);
  * Input/Output in "*iter". *iter->node set to NULL if *iter was
  * pointing to the last table node.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 
 /*
  * cds_lfht_add - add a node to the hash table.
  *
- * Call with rcu_read_lock held.
  * This function supports adding redundant keys into the table.
+ * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_add(struct cds_lfht *ht, struct cds_lfht_node *node);
 
@@ -230,6 +258,7 @@ void cds_lfht_add(struct cds_lfht *ht, struct cds_lfht_node *node);
  * cds_lfht_add_unique fails, the node passed as parameter should be
  * freed by the caller.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  *
  * The semantic of this function is that if only this function is used
  * to add keys into the table, no duplicated keys should ever be
@@ -246,6 +275,7 @@ struct cds_lfht_node *cds_lfht_add_unique(struct cds_lfht *ht,
  * was present, return NULL, which also means the operation succeeded.
  * This replacement operation should never fail.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  * After successful replacement, a grace period must be waited for before
  * freeing the memory reserved for the returned node.
  *
@@ -271,6 +301,7 @@ struct cds_lfht_node *cds_lfht_add_replace(struct cds_lfht *ht,
  * Old node can be looked up with cds_lfht_lookup and cds_lfht_next.
  * RCU read-side lock must be held between lookup and replacement.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  * After successful replacement, a grace period must be waited for before
  * freeing the memory reserved for the old node (which can be accessed
  * with cds_lfht_iter_get_node).
@@ -299,6 +330,7 @@ int cds_lfht_replace(struct cds_lfht *ht, struct cds_lfht_iter *old_iter,
  * cds_lfht_iter_get_node.
  * RCU read-side lock must be held between lookup and removal.
  * Call with rcu_read_lock held.
+ * Threads calling this API need to be registered RCU read-side threads.
  * After successful removal, a grace period must be waited for before
  * freeing the memory reserved for old node (which can be accessed with
  * cds_lfht_iter_get_node).
@@ -308,6 +340,8 @@ int cds_lfht_del(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 /*
  * cds_lfht_resize - Force a hash table resize
  * @new_size: update to this hash table size.
+ *
+ * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_resize(struct cds_lfht *ht, unsigned long new_size);
 

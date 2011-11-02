@@ -53,7 +53,7 @@
  *   operation.
  * - The resize operation for larger tables (and available through an
  *   API) allows both expanding and shrinking the hash table.
- * - Per-CPU Split-counters are used to keep track of the number of
+ * - Split-counters are used to keep track of the number of
  *   nodes within the hash table for automatic resize triggering.
  * - Resize operation initiated by long chain detection is executed by a
  *   call_rcu thread, which keeps lock-freedom of add and remove.
@@ -91,12 +91,32 @@
  *   the "dummy node" tables.
  * - There is one dummy node table per hash index order. The size of
  *   each dummy node table is half the number of hashes contained in
- *   this order.
- * - call_rcu is used to garbage-collect the old order table.
+ *   this order (except for order 0).
+ * - synchronzie_rcu is used to garbage-collect the old dummy node table.
  * - The per-order dummy node tables contain a compact version of the
  *   hash table nodes. These tables are invariant after they are
  *   populated into the hash table.
- * 
+ *
+ * Dummy node tables:
+ *
+ * hash table	hash table	the last	all dummy node tables
+ * order	size		dummy node	0   1   2   3   4   5   6(index)
+ * 				table size
+ * 0		1		1		1
+ * 1		2		1		1   1
+ * 2		4		2		1   1   2
+ * 3		8		4		1   1   2   4
+ * 4		16		8		1   1   2   4   8
+ * 5		32		16		1   1   2   4   8  16
+ * 6		64		32		1   1   2   4   8  16  32
+ *
+ * When growing/shrinking, we only focus on the last dummy node table
+ * which size is (!order ? 1 : (1 << (order -1))).
+ *
+ * Example for growing/shrinking:
+ * grow hash table from order 5 to 6: init the index=6 dummy node table
+ * shrink hash table from order 6 to 5: fini the index=6 dummy node table
+ *
  * A bit of ascii art explanation:
  * 
  * Order index is the off-by-one compare to the actual power of 2 because 
@@ -119,12 +139,9 @@
  * 
  * order              bits       reverse
  * 0               0  000        000
- *                 |
- * 1               |  1  001        100       <-    <-
- *                 |  |                        |     |
- * 2               |  |  2  010        010     |     |
+ * 1               |  1  001        100             <-
+ * 2               |  |  2  010        010    <-     |
  *                 |  |  |  3  011        110  | <-  |
- *                 |  |  |  |                  |  |  |
  * 3               -> |  |  |  4  100        001  |  |
  *                    -> |  |     5  101        101  |
  *                       -> |        6  110        011
@@ -139,6 +156,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "config.h"
 #include <urcu.h>
 #include <urcu-call-rcu.h>
 #include <urcu/arch.h>
@@ -156,12 +174,13 @@
 #endif
 
 /*
- * Per-CPU split-counters lazily update the global counter each 1024
+ * Split-counters lazily update the global counter each 1024
  * addition/removal. It automatically keeps track of resize required.
  * We use the bucket length as indicator for need to expand for small
  * tables and machines lacking per-cpu data suppport.
  */
 #define COUNT_COMMIT_ORDER		10
+#define DEFAULT_SPLIT_COUNT_MASK	0xFUL
 #define CHAIN_LEN_TARGET		1
 #define CHAIN_LEN_RESIZE_THRESHOLD	3
 
@@ -204,15 +223,37 @@
 /* Value of the end pointer. Should not interact with flags. */
 #define END_VALUE		NULL
 
+/*
+ * ht_items_count: Split-counters counting the number of node addition
+ * and removal in the table. Only used if the CDS_LFHT_ACCOUNTING flag
+ * is set at hash table creation.
+ *
+ * These are free-running counters, never reset to zero. They count the
+ * number of add/remove, and trigger every (1 << COUNT_COMMIT_ORDER)
+ * operations to update the global counter. We choose a power-of-2 value
+ * for the trigger to deal with 32 or 64-bit overflow of the counter.
+ */
 struct ht_items_count {
 	unsigned long add, del;
 } __attribute__((aligned(CAA_CACHE_LINE_SIZE)));
 
+/*
+ * rcu_level: Contains the per order-index-level dummy node table. The
+ * size of each dummy node table is half the number of hashes contained
+ * in this order (except for order 0). The minimum allocation size
+ * parameter allows combining the dummy node arrays of the lowermost
+ * levels to improve cache locality for small index orders.
+ */
 struct rcu_level {
-	struct rcu_head head;
+	/* Note: manually update allocation length when adding a field */
 	struct _cds_lfht_node nodes[0];
 };
 
+/*
+ * rcu_table: Contains the size and desired new size if a resize
+ * operation is in progress, as well as the statically-sized array of
+ * rcu_level pointers.
+ */
 struct rcu_table {
 	unsigned long size;	/* always a power of 2, shared (RCU) */
 	unsigned long resize_target;
@@ -220,10 +261,17 @@ struct rcu_table {
 	struct rcu_level *tbl[MAX_TABLE_ORDER];
 };
 
+/*
+ * cds_lfht: Top-level data structure representing a lock-free hash
+ * table. Defined in the implementation file to make it be an opaque
+ * cookie to users.
+ */
 struct cds_lfht {
 	struct rcu_table t;
 	cds_lfht_hash_fct hash_fct;
 	cds_lfht_compare_fct compare_fct;
+	unsigned long min_alloc_order;
+	unsigned long min_alloc_size;
 	unsigned long hash_seed;
 	int flags;
 	/*
@@ -246,33 +294,37 @@ struct cds_lfht {
 	void (*cds_lfht_rcu_unregister_thread)(void);
 	pthread_attr_t *resize_attr;	/* Resize threads attributes */
 	long count;			/* global approximate item count */
-	struct ht_items_count *percpu_count;	/* per-cpu item count */
+	struct ht_items_count *split_count;	/* split item count */
 };
 
+/*
+ * rcu_resize_work: Contains arguments passed to RCU worker thread
+ * responsible for performing lazy resize.
+ */
 struct rcu_resize_work {
 	struct rcu_head head;
 	struct cds_lfht *ht;
 };
 
+/*
+ * partition_resize_work: Contains arguments passed to worker threads
+ * executing the hash table resize on partitions of the hash table
+ * assigned to each processor's worker thread.
+ */
 struct partition_resize_work {
-	struct rcu_head head;
+	pthread_t thread_id;
 	struct cds_lfht *ht;
 	unsigned long i, start, len;
 	void (*fct)(struct cds_lfht *ht, unsigned long i,
 		    unsigned long start, unsigned long len);
 };
 
-enum add_mode {
-	ADD_DEFAULT = 0,
-	ADD_UNIQUE = 1,
-	ADD_REPLACE = 2,
-};
-
 static
-struct cds_lfht_node *_cds_lfht_add(struct cds_lfht *ht,
-				unsigned long size,
-				struct cds_lfht_node *node,
-				enum add_mode mode, int dummy);
+void _cds_lfht_add(struct cds_lfht *ht,
+		unsigned long size,
+		struct cds_lfht_node *node,
+		struct cds_lfht_iter *unique_ret,
+		int dummy);
 
 /*
  * Algorithm to reverse bits in a word by lookup table, extended to
@@ -439,38 +491,44 @@ unsigned int fls_u32(uint32_t x)
 
 unsigned int fls_ulong(unsigned long x)
 {
-#if (CAA_BITS_PER_lONG == 32)
+#if (CAA_BITS_PER_LONG == 32)
 	return fls_u32(x);
 #else
 	return fls_u64(x);
 #endif
 }
 
+/*
+ * Return the minimum order for which x <= (1UL << order).
+ * Return -1 if x is 0.
+ */
 int get_count_order_u32(uint32_t x)
 {
-	int order;
+	if (!x)
+		return -1;
 
-	order = fls_u32(x) - 1;
-	if (x & (x - 1))
-		order++;
-	return order;
+	return fls_u32(x - 1);
 }
 
+/*
+ * Return the minimum order for which x <= (1UL << order).
+ * Return -1 if x is 0.
+ */
 int get_count_order_ulong(unsigned long x)
 {
-	int order;
+	if (!x)
+		return -1;
 
-	order = fls_ulong(x) - 1;
-	if (x & (x - 1))
-		order++;
-	return order;
+	return fls_ulong(x - 1);
 }
 
 #ifdef POISON_FREE
-#define poison_free(ptr)				\
-	do {						\
-		memset(ptr, 0x42, sizeof(*(ptr)));	\
-		free(ptr);				\
+#define poison_free(ptr)					\
+	do {							\
+		if (ptr) {					\
+			memset(ptr, 0x42, sizeof(*(ptr)));	\
+			free(ptr);				\
+		}						\
 	} while (0)
 #else
 #define poison_free(ptr)	free(ptr)
@@ -479,85 +537,101 @@ int get_count_order_ulong(unsigned long x)
 static
 void cds_lfht_resize_lazy(struct cds_lfht *ht, unsigned long size, int growth);
 
-/*
- * If the sched_getcpu() and sysconf(_SC_NPROCESSORS_CONF) calls are
- * available, then we support hash table item accounting.
- * In the unfortunate event the number of CPUs reported would be
- * inaccurate, we use modulo arithmetic on the number of CPUs we got.
- */
-#if defined(HAVE_SCHED_GETCPU) && defined(HAVE_SYSCONF)
-
 static
 void cds_lfht_resize_lazy_count(struct cds_lfht *ht, unsigned long size,
 				unsigned long count);
 
 static long nr_cpus_mask = -1;
+static long split_count_mask = -1;
+
+#if defined(HAVE_SYSCONF)
+static void ht_init_nr_cpus_mask(void)
+{
+	long maxcpus;
+
+	maxcpus = sysconf(_SC_NPROCESSORS_CONF);
+	if (maxcpus <= 0) {
+		nr_cpus_mask = -2;
+		return;
+	}
+	/*
+	 * round up number of CPUs to next power of two, so we
+	 * can use & for modulo.
+	 */
+	maxcpus = 1UL << get_count_order_ulong(maxcpus);
+	nr_cpus_mask = maxcpus - 1;
+}
+#else /* #if defined(HAVE_SYSCONF) */
+static void ht_init_nr_cpus_mask(void)
+{
+	nr_cpus_mask = -2;
+}
+#endif /* #else #if defined(HAVE_SYSCONF) */
 
 static
-struct ht_items_count *alloc_per_cpu_items_count(void)
+void alloc_split_items_count(struct cds_lfht *ht)
 {
 	struct ht_items_count *count;
 
-	switch (nr_cpus_mask) {
-	case -2:
-		return NULL;
-	case -1:
-	{
-		long maxcpus;
-
-		maxcpus = sysconf(_SC_NPROCESSORS_CONF);
-		if (maxcpus <= 0) {
-			nr_cpus_mask = -2;
-			return NULL;
-		}
-		/*
-		 * round up number of CPUs to next power of two, so we
-		 * can use & for modulo.
-		 */
-		maxcpus = 1UL << get_count_order_ulong(maxcpus);
-		nr_cpus_mask = maxcpus - 1;
+	if (nr_cpus_mask == -1)	{
+		ht_init_nr_cpus_mask();
+		if (nr_cpus_mask < 0)
+			split_count_mask = DEFAULT_SPLIT_COUNT_MASK;
+		else
+			split_count_mask = nr_cpus_mask;
 	}
-		/* Fall-through */
-	default:
-		return calloc(nr_cpus_mask + 1, sizeof(*count));
+
+	assert(split_count_mask >= 0);
+
+	if (ht->flags & CDS_LFHT_ACCOUNTING) {
+		ht->split_count = calloc(split_count_mask + 1, sizeof(*count));
+		assert(ht->split_count);
+	} else {
+		ht->split_count = NULL;
 	}
 }
 
 static
-void free_per_cpu_items_count(struct ht_items_count *count)
+void free_split_items_count(struct cds_lfht *ht)
 {
-	poison_free(count);
+	poison_free(ht->split_count);
 }
 
+#if defined(HAVE_SCHED_GETCPU)
 static
-int ht_get_cpu(void)
+int ht_get_split_count_index(unsigned long hash)
 {
 	int cpu;
 
-	assert(nr_cpus_mask >= 0);
+	assert(split_count_mask >= 0);
 	cpu = sched_getcpu();
 	if (unlikely(cpu < 0))
-		return cpu;
+		return hash & split_count_mask;
 	else
-		return cpu & nr_cpus_mask;
+		return cpu & split_count_mask;
 }
+#else /* #if defined(HAVE_SCHED_GETCPU) */
+static
+int ht_get_split_count_index(unsigned long hash)
+{
+	return hash & split_count_mask;
+}
+#endif /* #else #if defined(HAVE_SCHED_GETCPU) */
 
 static
-void ht_count_add(struct cds_lfht *ht, unsigned long size)
+void ht_count_add(struct cds_lfht *ht, unsigned long size, unsigned long hash)
 {
-	unsigned long percpu_count;
-	int cpu;
+	unsigned long split_count;
+	int index;
 
-	if (unlikely(!ht->percpu_count))
+	if (unlikely(!ht->split_count))
 		return;
-	cpu = ht_get_cpu();
-	if (unlikely(cpu < 0))
-		return;
-	percpu_count = uatomic_add_return(&ht->percpu_count[cpu].add, 1);
-	if (unlikely(!(percpu_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
+	index = ht_get_split_count_index(hash);
+	split_count = uatomic_add_return(&ht->split_count[index].add, 1);
+	if (unlikely(!(split_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
 		long count;
 
-		dbg_printf("add percpu %lu\n", percpu_count);
+		dbg_printf("add split count %lu\n", split_count);
 		count = uatomic_add_return(&ht->count,
 					   1UL << COUNT_COMMIT_ORDER);
 		/* If power of 2 */
@@ -572,21 +646,19 @@ void ht_count_add(struct cds_lfht *ht, unsigned long size)
 }
 
 static
-void ht_count_del(struct cds_lfht *ht, unsigned long size)
+void ht_count_del(struct cds_lfht *ht, unsigned long size, unsigned long hash)
 {
-	unsigned long percpu_count;
-	int cpu;
+	unsigned long split_count;
+	int index;
 
-	if (unlikely(!ht->percpu_count))
+	if (unlikely(!ht->split_count))
 		return;
-	cpu = ht_get_cpu();
-	if (unlikely(cpu < 0))
-		return;
-	percpu_count = uatomic_add_return(&ht->percpu_count[cpu].del, 1);
-	if (unlikely(!(percpu_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
+	index = ht_get_split_count_index(hash);
+	split_count = uatomic_add_return(&ht->split_count[index].del, 1);
+	if (unlikely(!(split_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
 		long count;
 
-		dbg_printf("del percpu %lu\n", percpu_count);
+		dbg_printf("del split count %lu\n", split_count);
 		count = uatomic_add_return(&ht->count,
 					   -(1UL << COUNT_COMMIT_ORDER));
 		/* If power of 2 */
@@ -598,41 +670,13 @@ void ht_count_del(struct cds_lfht *ht, unsigned long size)
 			 * Don't shrink table if the number of nodes is below a
 			 * certain threshold.
 			 */
-			if (count < (1UL << COUNT_COMMIT_ORDER) * (nr_cpus_mask + 1))
+			if (count < (1UL << COUNT_COMMIT_ORDER) * (split_count_mask + 1))
 				return;
 			cds_lfht_resize_lazy_count(ht, size,
 				count >> (CHAIN_LEN_TARGET - 1));
 		}
 	}
 }
-
-#else /* #if defined(HAVE_SCHED_GETCPU) && defined(HAVE_SYSCONF) */
-
-static const long nr_cpus_mask = -2;
-
-static
-struct ht_items_count *alloc_per_cpu_items_count(void)
-{
-	return NULL;
-}
-
-static
-void free_per_cpu_items_count(struct ht_items_count *count)
-{
-}
-
-static
-void ht_count_add(struct cds_lfht *ht, unsigned long size)
-{
-}
-
-static
-void ht_count_del(struct cds_lfht *ht, unsigned long size)
-{
-}
-
-#endif /* #else #if defined(HAVE_SCHED_GETCPU) && defined(HAVE_SYSCONF) */
-
 
 static
 void check_resize(struct cds_lfht *ht, unsigned long size, uint32_t chain_len)
@@ -713,11 +757,28 @@ unsigned long _uatomic_max(unsigned long *ptr, unsigned long v)
 }
 
 static
-void cds_lfht_free_level(struct rcu_head *head)
+struct _cds_lfht_node *lookup_bucket(struct cds_lfht *ht, unsigned long size,
+		unsigned long hash)
 {
-	struct rcu_level *l =
-		caa_container_of(head, struct rcu_level, head);
-	poison_free(l);
+	unsigned long index, order;
+
+	assert(size > 0);
+	index = hash & (size - 1);
+
+	if (index < ht->min_alloc_size) {
+		dbg_printf("lookup hash %lu index %lu order 0 aridx 0\n",
+			   hash, index);
+		return &ht->t.tbl[0]->nodes[index];
+	}
+	/*
+	 * equivalent to get_count_order_ulong(index + 1), but optimizes
+	 * away the non-existing 0 special-case for
+	 * get_count_order_ulong.
+	 */
+	order = fls_ulong(index);
+	dbg_printf("lookup hash %lu index %lu order %lu aridx %lu\n",
+		   hash, index, order, index & ((1UL << (order - 1)) - 1));
+	return &ht->t.tbl[order]->nodes[index & ((1UL << (order - 1)) - 1)];
 }
 
 /*
@@ -736,6 +797,7 @@ void _cds_lfht_gc_bucket(struct cds_lfht_node *dummy, struct cds_lfht_node *node
 		iter_prev = dummy;
 		/* We can always skip the dummy node initially */
 		iter = rcu_dereference(iter_prev->p.next);
+		assert(!is_removed(iter));
 		assert(iter_prev->p.reverse_hash <= node->p.reverse_hash);
 		/*
 		 * We should never be called with dummy (start of chain)
@@ -760,8 +822,6 @@ void _cds_lfht_gc_bucket(struct cds_lfht_node *dummy, struct cds_lfht_node *node
 			new_next = flag_dummy(clear_flag(next));
 		else
 			new_next = clear_flag(next);
-		if (is_removed(iter))
-			new_next = flag_removed(new_next);
 		(void) uatomic_cmpxchg(&iter_prev->p.next, iter, new_next);
 	}
 	return;
@@ -770,31 +830,28 @@ void _cds_lfht_gc_bucket(struct cds_lfht_node *dummy, struct cds_lfht_node *node
 static
 int _cds_lfht_replace(struct cds_lfht *ht, unsigned long size,
 		struct cds_lfht_node *old_node,
-		struct cds_lfht_node *ret_next,
+		struct cds_lfht_node *old_next,
 		struct cds_lfht_node *new_node)
 {
-	struct cds_lfht_node *dummy, *old_next;
+	struct cds_lfht_node *dummy, *ret_next;
 	struct _cds_lfht_node *lookup;
-	int flagged = 0;
-	unsigned long hash, index, order;
 
 	if (!old_node)	/* Return -ENOENT if asked to replace NULL node */
-		goto end;
+		return -ENOENT;
 
 	assert(!is_removed(old_node));
 	assert(!is_dummy(old_node));
 	assert(!is_removed(new_node));
 	assert(!is_dummy(new_node));
 	assert(new_node != old_node);
-	do {
+	for (;;) {
 		/* Insert after node to be replaced */
-		old_next = ret_next;
 		if (is_removed(old_next)) {
 			/*
 			 * Too late, the old node has been removed under us
 			 * between lookup and replace. Fail.
 			 */
-			goto end;
+			return -ENOENT;
 		}
 		assert(!is_dummy(old_next));
 		assert(new_node != clear_flag(old_next));
@@ -811,55 +868,42 @@ int _cds_lfht_replace(struct cds_lfht *ht, unsigned long size,
 		 */
 		ret_next = uatomic_cmpxchg(&old_node->p.next,
 			      old_next, flag_removed(new_node));
-	} while (ret_next != old_next);
-
-	/* We performed the replacement. */
-	flagged = 1;
+		if (ret_next == old_next)
+			break;		/* We performed the replacement. */
+		old_next = ret_next;
+	}
 
 	/*
 	 * Ensure that the old node is not visible to readers anymore:
 	 * lookup for the node, and remove it (along with any other
 	 * logically removed node) if found.
 	 */
-	hash = bit_reverse_ulong(old_node->p.reverse_hash);
-	assert(size > 0);
-	index = hash & (size - 1);
-	order = get_count_order_ulong(index + 1);
-	lookup = &ht->t.tbl[order]->nodes[index & (!order ? 0 : ((1UL << (order - 1)) - 1))];
+	lookup = lookup_bucket(ht, size, bit_reverse_ulong(old_node->p.reverse_hash));
 	dummy = (struct cds_lfht_node *) lookup;
 	_cds_lfht_gc_bucket(dummy, new_node);
-end:
-	/*
-	 * Only the flagging action indicated that we (and no other)
-	 * replaced the node from the hash table.
-	 */
-	if (flagged) {
-		assert(is_removed(rcu_dereference(old_node->p.next)));
-		return 0;
-	} else {
-		return -ENOENT;
-	}
+
+	assert(is_removed(rcu_dereference(old_node->p.next)));
+	return 0;
 }
 
+/*
+ * A non-NULL unique_ret pointer uses the "add unique" (or uniquify) add
+ * mode. A NULL unique_ret allows creation of duplicate keys.
+ */
 static
-struct cds_lfht_node *_cds_lfht_add(struct cds_lfht *ht,
-				unsigned long size,
-				struct cds_lfht_node *node,
-				enum add_mode mode, int dummy)
+void _cds_lfht_add(struct cds_lfht *ht,
+		unsigned long size,
+		struct cds_lfht_node *node,
+		struct cds_lfht_iter *unique_ret,
+		int dummy)
 {
 	struct cds_lfht_node *iter_prev, *iter, *next, *new_node, *new_next,
-			*dummy_node, *return_node;
+			*return_node;
 	struct _cds_lfht_node *lookup;
-	unsigned long hash, index, order;
 
 	assert(!is_dummy(node));
 	assert(!is_removed(node));
-	if (!size) {
-		assert(dummy);
-		node->p.next = flag_dummy(get_end());
-		return node;	/* Initial first add (head) */
-	}
-	hash = bit_reverse_ulong(node->p.reverse_hash);
+	lookup = lookup_bucket(ht, size, bit_reverse_ulong(node->p.reverse_hash));
 	for (;;) {
 		uint32_t chain_len = 0;
 
@@ -867,9 +911,6 @@ struct cds_lfht_node *_cds_lfht_add(struct cds_lfht *ht,
 		 * iter_prev points to the non-removed node prior to the
 		 * insert location.
 		 */
-		index = hash & (size - 1);
-		order = get_count_order_ulong(index + 1);
-		lookup = &ht->t.tbl[order]->nodes[index & ((!order ? 0 : (1UL << (order - 1))) - 1)];
 		iter_prev = (struct cds_lfht_node *) lookup;
 		/* We can always skip the dummy node initially */
 		iter = rcu_dereference(iter_prev->p.next);
@@ -879,19 +920,38 @@ struct cds_lfht_node *_cds_lfht_add(struct cds_lfht *ht,
 				goto insert;
 			if (likely(clear_flag(iter)->p.reverse_hash > node->p.reverse_hash))
 				goto insert;
+
+			/* dummy node is the first node of the identical-hash-value chain */
+			if (dummy && clear_flag(iter)->p.reverse_hash == node->p.reverse_hash)
+				goto insert;
+
 			next = rcu_dereference(clear_flag(iter)->p.next);
 			if (unlikely(is_removed(next)))
 				goto gc_node;
-			if ((mode == ADD_UNIQUE || mode == ADD_REPLACE)
+
+			/* uniquely add */
+			if (unique_ret
 			    && !is_dummy(next)
-			    && !ht->compare_fct(node->key, node->key_len,
-						clear_flag(iter)->key,
-						clear_flag(iter)->key_len)) {
-				if (mode == ADD_UNIQUE)
-					return clear_flag(iter);
-				else /* mode == ADD_REPLACE */
-					goto replace;
+			    && clear_flag(iter)->p.reverse_hash == node->p.reverse_hash) {
+				struct cds_lfht_iter d_iter = { .node = node, .next = iter, };
+
+				/*
+				 * uniquely adding inserts the node as the first
+				 * node of the identical-hash-value node chain.
+				 *
+				 * This semantic ensures no duplicated keys
+				 * should ever be observable in the table
+				 * (including observe one node by one node
+				 * by forward iterations)
+				 */
+				cds_lfht_next_duplicate(ht, &d_iter);
+				if (!d_iter.node)
+					goto insert;
+
+				*unique_ret = d_iter;
+				return;
 			}
+
 			/* Only account for identical reverse hash once */
 			if (iter_prev->p.reverse_hash != clear_flag(iter)->p.reverse_hash
 			    && !is_dummy(next))
@@ -917,21 +977,8 @@ struct cds_lfht_node *_cds_lfht_add(struct cds_lfht *ht,
 				    new_node) != iter) {
 			continue;	/* retry */
 		} else {
-			if (mode == ADD_REPLACE)
-				return_node = NULL;
-			else	/* ADD_DEFAULT and ADD_UNIQUE */
-				return_node = node;
-			goto gc_end;
-		}
-
-	replace:
-
-		if (!_cds_lfht_replace(ht, size, clear_flag(iter), next,
-				    node)) {
-			return_node = clear_flag(iter);
-			goto end;	/* gc already done */
-		} else {
-			continue;	/* retry */
+			return_node = node;
+			goto end;
 		}
 
 	gc_node:
@@ -943,15 +990,11 @@ struct cds_lfht_node *_cds_lfht_add(struct cds_lfht *ht,
 		(void) uatomic_cmpxchg(&iter_prev->p.next, iter, new_next);
 		/* retry */
 	}
-gc_end:
-	/* Garbage collect logically removed nodes in the bucket */
-	index = hash & (size - 1);
-	order = get_count_order_ulong(index + 1);
-	lookup = &ht->t.tbl[order]->nodes[index & (!order ? 0 : ((1UL << (order - 1)) - 1))];
-	dummy_node = (struct cds_lfht_node *) lookup;
-	_cds_lfht_gc_bucket(dummy_node, node);
 end:
-	return return_node;
+	if (unique_ret) {
+		unique_ret->node = return_node;
+		/* unique_ret->next left unset, never used. */
+	}
 }
 
 static
@@ -961,11 +1004,9 @@ int _cds_lfht_del(struct cds_lfht *ht, unsigned long size,
 {
 	struct cds_lfht_node *dummy, *next, *old;
 	struct _cds_lfht_node *lookup;
-	int flagged = 0;
-	unsigned long hash, index, order;
 
 	if (!node)	/* Return -ENOENT if asked to delete NULL node */
-		goto end;
+		return -ENOENT;
 
 	/* logically delete the node */
 	assert(!is_dummy(node));
@@ -976,7 +1017,7 @@ int _cds_lfht_del(struct cds_lfht *ht, unsigned long size,
 
 		next = old;
 		if (unlikely(is_removed(next)))
-			goto end;
+			return -ENOENT;
 		if (dummy_removal)
 			assert(is_dummy(next));
 		else
@@ -984,33 +1025,19 @@ int _cds_lfht_del(struct cds_lfht *ht, unsigned long size,
 		new_next = flag_removed(next);
 		old = uatomic_cmpxchg(&node->p.next, next, new_next);
 	} while (old != next);
-
 	/* We performed the (logical) deletion. */
-	flagged = 1;
 
 	/*
 	 * Ensure that the node is not visible to readers anymore: lookup for
 	 * the node, and remove it (along with any other logically removed node)
 	 * if found.
 	 */
-	hash = bit_reverse_ulong(node->p.reverse_hash);
-	assert(size > 0);
-	index = hash & (size - 1);
-	order = get_count_order_ulong(index + 1);
-	lookup = &ht->t.tbl[order]->nodes[index & (!order ? 0 : ((1UL << (order - 1)) - 1))];
+	lookup = lookup_bucket(ht, size, bit_reverse_ulong(node->p.reverse_hash));
 	dummy = (struct cds_lfht_node *) lookup;
 	_cds_lfht_gc_bucket(dummy, node);
-end:
-	/*
-	 * Only the flagging action indicated that we (and no other)
-	 * removed the node from the hash.
-	 */
-	if (flagged) {
-		assert(is_removed(rcu_dereference(node->p.next)));
-		return 0;
-	} else {
-		return -ENOENT;
-	}
+
+	assert(is_removed(rcu_dereference(node->p.next)));
+	return 0;
 }
 
 static
@@ -1034,7 +1061,6 @@ void partition_resize_helper(struct cds_lfht *ht, unsigned long i,
 	struct partition_resize_work *work;
 	int thread, ret;
 	unsigned long nr_threads;
-	pthread_t *thread_id;
 
 	/*
 	 * Note: nr_cpus_mask + 1 is always power of 2.
@@ -1049,7 +1075,6 @@ void partition_resize_helper(struct cds_lfht *ht, unsigned long i,
 	}
 	partition_len = len >> get_count_order_ulong(nr_threads);
 	work = calloc(nr_threads, sizeof(*work));
-	thread_id = calloc(nr_threads, sizeof(*thread_id));
 	assert(work);
 	for (thread = 0; thread < nr_threads; thread++) {
 		work[thread].ht = ht;
@@ -1057,16 +1082,15 @@ void partition_resize_helper(struct cds_lfht *ht, unsigned long i,
 		work[thread].len = partition_len;
 		work[thread].start = thread * partition_len;
 		work[thread].fct = fct;
-		ret = pthread_create(&thread_id[thread], ht->resize_attr,
+		ret = pthread_create(&(work[thread].thread_id), ht->resize_attr,
 			partition_resize_thread, &work[thread]);
 		assert(!ret);
 	}
 	for (thread = 0; thread < nr_threads; thread++) {
-		ret = pthread_join(thread_id[thread], NULL);
+		ret = pthread_join(work[thread].thread_id, NULL);
 		assert(!ret);
 	}
 	free(work);
-	free(thread_id);
 }
 
 /*
@@ -1086,19 +1110,18 @@ void init_table_populate_partition(struct cds_lfht *ht, unsigned long i,
 {
 	unsigned long j;
 
+	assert(i > ht->min_alloc_order);
 	ht->cds_lfht_rcu_read_lock();
 	for (j = start; j < start + len; j++) {
 		struct cds_lfht_node *new_node =
 			(struct cds_lfht_node *) &ht->t.tbl[i]->nodes[j];
 
 		dbg_printf("init populate: i %lu j %lu hash %lu\n",
-			   i, j, !i ? 0 : (1UL << (i - 1)) + j);
+			   i, j, (1UL << (i - 1)) + j);
 		new_node->p.reverse_hash =
-			bit_reverse_ulong(!i ? 0 : (1UL << (i - 1)) + j);
-		(void) _cds_lfht_add(ht, !i ? 0 : (1UL << (i - 1)),
-				new_node, ADD_DEFAULT, 1);
-		if (CMM_LOAD_SHARED(ht->in_progress_destroy))
-			break;
+				bit_reverse_ulong((1UL << (i - 1)) + j);
+		_cds_lfht_add(ht, 1UL << (i - 1),
+				new_node, NULL, 1);
 	}
 	ht->cds_lfht_rcu_read_unlock();
 }
@@ -1119,25 +1142,24 @@ void init_table_populate(struct cds_lfht *ht, unsigned long i,
 
 static
 void init_table(struct cds_lfht *ht,
-		unsigned long first_order, unsigned long len_order)
+		unsigned long first_order, unsigned long last_order)
 {
-	unsigned long i, end_order;
+	unsigned long i;
 
-	dbg_printf("init table: first_order %lu end_order %lu\n",
-		   first_order, first_order + len_order);
-	end_order = first_order + len_order;
-	for (i = first_order; i < end_order; i++) {
+	dbg_printf("init table: first_order %lu last_order %lu\n",
+		   first_order, last_order);
+	assert(first_order > ht->min_alloc_order);
+	for (i = first_order; i <= last_order; i++) {
 		unsigned long len;
 
-		len = !i ? 1 : 1UL << (i - 1);
+		len = 1UL << (i - 1);
 		dbg_printf("init order %lu len: %lu\n", i, len);
 
 		/* Stop expand if the resize target changes under us */
-		if (CMM_LOAD_SHARED(ht->t.resize_target) < (!i ? 1 : (1UL << i)))
+		if (CMM_LOAD_SHARED(ht->t.resize_target) < (1UL << i))
 			break;
 
-		ht->t.tbl[i] = calloc(1, sizeof(struct rcu_level)
-				+ (len * sizeof(struct _cds_lfht_node)));
+		ht->t.tbl[i] = calloc(1, len * sizeof(struct _cds_lfht_node));
 		assert(ht->t.tbl[i]);
 
 		/*
@@ -1150,9 +1172,9 @@ void init_table(struct cds_lfht *ht,
 		 * Update table size.
 		 */
 		cmm_smp_wmb();	/* populate data before RCU size */
-		CMM_STORE_SHARED(ht->t.size, !i ? 1 : (1UL << i));
+		CMM_STORE_SHARED(ht->t.size, 1UL << i);
 
-		dbg_printf("init new size: %lu\n", !i ? 1 : (1UL << i));
+		dbg_printf("init new size: %lu\n", 1UL << i);
 		if (CMM_LOAD_SHARED(ht->in_progress_destroy))
 			break;
 	}
@@ -1189,19 +1211,17 @@ void remove_table_partition(struct cds_lfht *ht, unsigned long i,
 {
 	unsigned long j;
 
+	assert(i > ht->min_alloc_order);
 	ht->cds_lfht_rcu_read_lock();
 	for (j = start; j < start + len; j++) {
 		struct cds_lfht_node *fini_node =
 			(struct cds_lfht_node *) &ht->t.tbl[i]->nodes[j];
 
 		dbg_printf("remove entry: i %lu j %lu hash %lu\n",
-			   i, j, !i ? 0 : (1UL << (i - 1)) + j);
+			   i, j, (1UL << (i - 1)) + j);
 		fini_node->p.reverse_hash =
-			bit_reverse_ulong(!i ? 0 : (1UL << (i - 1)) + j);
-		(void) _cds_lfht_del(ht, !i ? 0 : (1UL << (i - 1)),
-				fini_node, 1);
-		if (CMM_LOAD_SHARED(ht->in_progress_destroy))
-			break;
+			bit_reverse_ulong((1UL << (i - 1)) + j);
+		(void) _cds_lfht_del(ht, 1UL << (i - 1), fini_node, 1);
 	}
 	ht->cds_lfht_rcu_read_unlock();
 }
@@ -1222,18 +1242,18 @@ void remove_table(struct cds_lfht *ht, unsigned long i, unsigned long len)
 
 static
 void fini_table(struct cds_lfht *ht,
-		unsigned long first_order, unsigned long len_order)
+		unsigned long first_order, unsigned long last_order)
 {
-	long i, end_order;
+	long i;
+	void *free_by_rcu = NULL;
 
-	dbg_printf("fini table: first_order %lu end_order %lu\n",
-		   first_order, first_order + len_order);
-	end_order = first_order + len_order;
-	assert(first_order > 0);
-	for (i = end_order - 1; i >= first_order; i--) {
+	dbg_printf("fini table: first_order %lu last_order %lu\n",
+		   first_order, last_order);
+	assert(first_order > ht->min_alloc_order);
+	for (i = last_order; i >= first_order; i--) {
 		unsigned long len;
 
-		len = !i ? 1 : 1UL << (i - 1);
+		len = 1UL << (i - 1);
 		dbg_printf("fini order %lu len: %lu\n", i, len);
 
 		/* Stop shrink if the resize target changes under us */
@@ -1250,6 +1270,8 @@ void fini_table(struct cds_lfht *ht,
 		 * return a logically removed node as insert position.
 		 */
 		ht->cds_lfht_synchronize_rcu();
+		if (free_by_rcu)
+			free(free_by_rcu);
 
 		/*
 		 * Set "removed" flag in dummy nodes about to be removed.
@@ -1259,11 +1281,59 @@ void fini_table(struct cds_lfht *ht,
 		 */
 		remove_table(ht, i, len);
 
-		ht->cds_lfht_call_rcu(&ht->t.tbl[i]->head, cds_lfht_free_level);
+		free_by_rcu = ht->t.tbl[i];
 
 		dbg_printf("fini new size: %lu\n", 1UL << i);
 		if (CMM_LOAD_SHARED(ht->in_progress_destroy))
 			break;
+	}
+
+	if (free_by_rcu) {
+		ht->cds_lfht_synchronize_rcu();
+		free(free_by_rcu);
+	}
+}
+
+static
+void cds_lfht_create_dummy(struct cds_lfht *ht, unsigned long size)
+{
+	struct _cds_lfht_node *prev, *node;
+	unsigned long order, len, i, j;
+
+	ht->t.tbl[0] = calloc(1, ht->min_alloc_size * sizeof(struct _cds_lfht_node));
+	assert(ht->t.tbl[0]);
+
+	dbg_printf("create dummy: order %lu index %lu hash %lu\n", 0, 0, 0);
+	ht->t.tbl[0]->nodes[0].next = flag_dummy(get_end());
+	ht->t.tbl[0]->nodes[0].reverse_hash = 0;
+
+	for (order = 1; order < get_count_order_ulong(size) + 1; order++) {
+		len = 1UL << (order - 1);
+		if (order <= ht->min_alloc_order) {
+			ht->t.tbl[order] = (struct rcu_level *) (ht->t.tbl[0]->nodes + len);
+		} else {
+			ht->t.tbl[order] = calloc(1, len * sizeof(struct _cds_lfht_node));
+			assert(ht->t.tbl[order]);
+		}
+
+		i = 0;
+		prev = ht->t.tbl[i]->nodes;
+		for (j = 0; j < len; j++) {
+			if (j & (j - 1)) {	/* Between power of 2 */
+				prev++;
+			} else if (j) {		/* At each power of 2 */
+				i++;
+				prev = ht->t.tbl[i]->nodes;
+			}
+
+			node = &ht->t.tbl[order]->nodes[j];
+			dbg_printf("create dummy: order %lu index %lu hash %lu\n",
+				   order, j, j + len);
+			node->next = prev->next;
+			assert(is_dummy(node->next));
+			node->reverse_hash = bit_reverse_ulong(j + len);
+			prev->next = flag_dummy((struct cds_lfht_node *)node);
+		}
 	}
 }
 
@@ -1271,6 +1341,7 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
 			cds_lfht_compare_fct compare_fct,
 			unsigned long hash_seed,
 			unsigned long init_size,
+			unsigned long min_alloc_size,
 			int flags,
 			void (*cds_lfht_call_rcu)(struct rcu_head *head,
 					void (*func)(struct rcu_head *head)),
@@ -1286,11 +1357,17 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
 	struct cds_lfht *ht;
 	unsigned long order;
 
-	/* init_size must be power of two */
-	if (init_size && (init_size & (init_size - 1)))
+	/* min_alloc_size must be power of two */
+	if (!min_alloc_size || (min_alloc_size & (min_alloc_size - 1)))
 		return NULL;
+	/* init_size must be power of two */
+	if (!init_size || (init_size & (init_size - 1)))
+		return NULL;
+	min_alloc_size = max(min_alloc_size, MIN_TABLE_SIZE);
+	init_size = max(init_size, min_alloc_size);
 	ht = calloc(1, sizeof(struct cds_lfht));
 	assert(ht);
+	ht->flags = flags;
 	ht->hash_fct = hash_fct;
 	ht->compare_fct = compare_fct;
 	ht->hash_seed = hash_seed;
@@ -1303,17 +1380,15 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
 	ht->cds_lfht_rcu_register_thread = cds_lfht_rcu_register_thread;
 	ht->cds_lfht_rcu_unregister_thread = cds_lfht_rcu_unregister_thread;
 	ht->resize_attr = attr;
-	ht->percpu_count = alloc_per_cpu_items_count();
+	alloc_split_items_count(ht);
 	/* this mutex should not nest in read-side C.S. */
 	pthread_mutex_init(&ht->resize_mutex, NULL);
-	order = get_count_order_ulong(max(init_size, MIN_TABLE_SIZE)) + 1;
-	ht->flags = flags;
-	ht->cds_lfht_rcu_thread_offline();
-	pthread_mutex_lock(&ht->resize_mutex);
-	ht->t.resize_target = 1UL << (order - 1);
-	init_table(ht, 0, order);
-	pthread_mutex_unlock(&ht->resize_mutex);
-	ht->cds_lfht_rcu_thread_online();
+	order = get_count_order_ulong(init_size);
+	ht->t.resize_target = 1UL << order;
+	ht->min_alloc_size = min_alloc_size;
+	ht->min_alloc_order = get_count_order_ulong(min_alloc_size);
+	cds_lfht_create_dummy(ht, 1UL << order);
+	ht->t.size = 1UL << order;
 	return ht;
 }
 
@@ -1322,17 +1397,13 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
 {
 	struct cds_lfht_node *node, *next, *dummy_node;
 	struct _cds_lfht_node *lookup;
-	unsigned long hash, reverse_hash, index, order, size;
+	unsigned long hash, reverse_hash, size;
 
 	hash = ht->hash_fct(key, key_len, ht->hash_seed);
 	reverse_hash = bit_reverse_ulong(hash);
 
 	size = rcu_dereference(ht->t.size);
-	index = hash & (size - 1);
-	order = get_count_order_ulong(index + 1);
-	lookup = &ht->t.tbl[order]->nodes[index & (!order ? 0 : ((1UL << (order - 1))) - 1)];
-	dbg_printf("lookup hash %lu index %lu order %lu aridx %lu\n",
-		   hash, index, order, index & (!order ? 0 : ((1UL << (order - 1)) - 1)));
+	lookup = lookup_bucket(ht, size, hash);
 	dummy_node = (struct cds_lfht_node *) lookup;
 	/* We can always skip the dummy node initially */
 	node = rcu_dereference(dummy_node->p.next);
@@ -1347,8 +1418,10 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
 			break;
 		}
 		next = rcu_dereference(node->p.next);
+		assert(node == clear_flag(node));
 		if (likely(!is_removed(next))
 		    && !is_dummy(next)
+		    && node->p.reverse_hash == reverse_hash
 		    && likely(!ht->compare_fct(node->key, node->key_len, key, key_len))) {
 				break;
 		}
@@ -1438,40 +1511,46 @@ void cds_lfht_add(struct cds_lfht *ht, struct cds_lfht_node *node)
 	node->p.reverse_hash = bit_reverse_ulong((unsigned long) hash);
 
 	size = rcu_dereference(ht->t.size);
-	(void) _cds_lfht_add(ht, size, node, ADD_DEFAULT, 0);
-	ht_count_add(ht, size);
+	_cds_lfht_add(ht, size, node, NULL, 0);
+	ht_count_add(ht, size, hash);
 }
 
 struct cds_lfht_node *cds_lfht_add_unique(struct cds_lfht *ht,
 				struct cds_lfht_node *node)
 {
 	unsigned long hash, size;
-	struct cds_lfht_node *ret;
+	struct cds_lfht_iter iter;
 
 	hash = ht->hash_fct(node->key, node->key_len, ht->hash_seed);
 	node->p.reverse_hash = bit_reverse_ulong((unsigned long) hash);
 
 	size = rcu_dereference(ht->t.size);
-	ret = _cds_lfht_add(ht, size, node, ADD_UNIQUE, 0);
-	if (ret == node)
-		ht_count_add(ht, size);
-	return ret;
+	_cds_lfht_add(ht, size, node, &iter, 0);
+	if (iter.node == node)
+		ht_count_add(ht, size, hash);
+	return iter.node;
 }
 
 struct cds_lfht_node *cds_lfht_add_replace(struct cds_lfht *ht,
 				struct cds_lfht_node *node)
 {
 	unsigned long hash, size;
-	struct cds_lfht_node *ret;
+	struct cds_lfht_iter iter;
 
 	hash = ht->hash_fct(node->key, node->key_len, ht->hash_seed);
 	node->p.reverse_hash = bit_reverse_ulong((unsigned long) hash);
 
 	size = rcu_dereference(ht->t.size);
-	ret = _cds_lfht_add(ht, size, node, ADD_REPLACE, 0);
-	if (ret == NULL)
-		ht_count_add(ht, size);
-	return ret;
+	for (;;) {
+		_cds_lfht_add(ht, size, node, &iter, 0);
+		if (iter.node == node) {
+			ht_count_add(ht, size, hash);
+			return NULL;
+		}
+
+		if (!_cds_lfht_replace(ht, size, iter.node, iter.next, node))
+			return iter.node;
+	}
 }
 
 int cds_lfht_replace(struct cds_lfht *ht, struct cds_lfht_iter *old_iter,
@@ -1486,13 +1565,15 @@ int cds_lfht_replace(struct cds_lfht *ht, struct cds_lfht_iter *old_iter,
 
 int cds_lfht_del(struct cds_lfht *ht, struct cds_lfht_iter *iter)
 {
-	unsigned long size;
+	unsigned long size, hash;
 	int ret;
 
 	size = rcu_dereference(ht->t.size);
 	ret = _cds_lfht_del(ht, size, iter->node, 0);
-	if (!ret)
-		ht_count_del(ht, size);
+	if (!ret) {
+		hash = bit_reverse_ulong(iter->node->p.reverse_hash);
+		ht_count_del(ht, size, hash);
+	}
 	return ret;
 }
 
@@ -1528,7 +1609,12 @@ int cds_lfht_delete_dummy(struct cds_lfht *ht)
 				bit_reverse_ulong(ht->t.tbl[order]->nodes[i].reverse_hash));
 			assert(is_dummy(ht->t.tbl[order]->nodes[i].next));
 		}
-		poison_free(ht->t.tbl[order]);
+
+		if (order == ht->min_alloc_order)
+			poison_free(ht->t.tbl[0]);
+		else if (order > ht->min_alloc_order)
+			poison_free(ht->t.tbl[order]);
+		/* Nothing to delete for order < ht->min_alloc_order */
 	}
 	return 0;
 }
@@ -1542,13 +1628,14 @@ int cds_lfht_destroy(struct cds_lfht *ht, pthread_attr_t **attr)
 	int ret;
 
 	/* Wait for in-flight resize operations to complete */
-	CMM_STORE_SHARED(ht->in_progress_destroy, 1);
+	_CMM_STORE_SHARED(ht->in_progress_destroy, 1);
+	cmm_smp_mb();	/* Store destroy before load resize */
 	while (uatomic_read(&ht->in_progress_resize))
 		poll(NULL, 0, 100);	/* wait for 100ms */
 	ret = cds_lfht_delete_dummy(ht);
 	if (ret)
 		return ret;
-	free_per_cpu_items_count(ht->percpu_count);
+	free_split_items_count(ht);
 	if (attr)
 		*attr = ht->resize_attr;
 	poison_free(ht);
@@ -1566,12 +1653,12 @@ void cds_lfht_count_nodes(struct cds_lfht *ht,
 	unsigned long nr_dummy = 0;
 
 	*approx_before = 0;
-	if (nr_cpus_mask >= 0) {
+	if (ht->split_count) {
 		int i;
 
-		for (i = 0; i < nr_cpus_mask + 1; i++) {
-			*approx_before += uatomic_read(&ht->percpu_count[i].add);
-			*approx_before -= uatomic_read(&ht->percpu_count[i].del);
+		for (i = 0; i < split_count_mask + 1; i++) {
+			*approx_before += uatomic_read(&ht->split_count[i].add);
+			*approx_before -= uatomic_read(&ht->split_count[i].del);
 		}
 	}
 
@@ -1596,12 +1683,12 @@ void cds_lfht_count_nodes(struct cds_lfht *ht,
 	} while (!is_end(node));
 	dbg_printf("number of dummy nodes: %lu\n", nr_dummy);
 	*approx_after = 0;
-	if (nr_cpus_mask >= 0) {
+	if (ht->split_count) {
 		int i;
 
-		for (i = 0; i < nr_cpus_mask + 1; i++) {
-			*approx_after += uatomic_read(&ht->percpu_count[i].add);
-			*approx_after -= uatomic_read(&ht->percpu_count[i].del);
+		for (i = 0; i < split_count_mask + 1; i++) {
+			*approx_after += uatomic_read(&ht->split_count[i].add);
+			*approx_after -= uatomic_read(&ht->split_count[i].del);
 		}
 	}
 }
@@ -1613,12 +1700,12 @@ void _do_cds_lfht_grow(struct cds_lfht *ht,
 {
 	unsigned long old_order, new_order;
 
-	old_order = get_count_order_ulong(old_size) + 1;
-	new_order = get_count_order_ulong(new_size) + 1;
-	printf("resize from %lu (order %lu) to %lu (order %lu) buckets\n",
-	       old_size, old_order, new_size, new_order);
+	old_order = get_count_order_ulong(old_size);
+	new_order = get_count_order_ulong(new_size);
+	dbg_printf("resize from %lu (order %lu) to %lu (order %lu) buckets\n",
+		   old_size, old_order, new_size, new_order);
 	assert(new_size > old_size);
-	init_table(ht, old_order, new_order - old_order);
+	init_table(ht, old_order + 1, new_order);
 }
 
 /* called with resize mutex held */
@@ -1628,15 +1715,15 @@ void _do_cds_lfht_shrink(struct cds_lfht *ht,
 {
 	unsigned long old_order, new_order;
 
-	new_size = max(new_size, MIN_TABLE_SIZE);
-	old_order = get_count_order_ulong(old_size) + 1;
-	new_order = get_count_order_ulong(new_size) + 1;
-	printf("resize from %lu (order %lu) to %lu (order %lu) buckets\n",
-	       old_size, old_order, new_size, new_order);
+	new_size = max(new_size, ht->min_alloc_size);
+	old_order = get_count_order_ulong(old_size);
+	new_order = get_count_order_ulong(new_size);
+	dbg_printf("resize from %lu (order %lu) to %lu (order %lu) buckets\n",
+		   old_size, old_order, new_size, new_order);
 	assert(new_size < old_size);
 
 	/* Remove and unlink all dummy nodes to remove. */
-	fini_table(ht, new_order, old_order - new_order);
+	fini_table(ht, new_order + 1, old_order);
 }
 
 
@@ -1650,6 +1737,9 @@ void _do_cds_lfht_resize(struct cds_lfht *ht)
 	 * Resize table, re-do if the target size has changed under us.
 	 */
 	do {
+		assert(uatomic_read(&ht->in_progress_resize));
+		if (CMM_LOAD_SHARED(ht->in_progress_destroy))
+			break;
 		ht->t.resize_initiated = 1;
 		old_size = ht->t.size;
 		new_size = CMM_LOAD_SHARED(ht->t.resize_target);
@@ -1675,7 +1765,7 @@ static
 void resize_target_update_count(struct cds_lfht *ht,
 				unsigned long count)
 {
-	count = max(count, MIN_TABLE_SIZE);
+	count = max(count, ht->min_alloc_size);
 	uatomic_set(&ht->t.resize_target, count);
 }
 
@@ -1718,15 +1808,17 @@ void cds_lfht_resize_lazy(struct cds_lfht *ht, unsigned long size, int growth)
 	cmm_smp_mb();
 	if (!CMM_LOAD_SHARED(ht->t.resize_initiated) && size < target_size) {
 		uatomic_inc(&ht->in_progress_resize);
-		cmm_smp_mb();	/* increment resize count before calling it */
+		cmm_smp_mb();	/* increment resize count before load destroy */
+		if (CMM_LOAD_SHARED(ht->in_progress_destroy)) {
+			uatomic_dec(&ht->in_progress_resize);
+			return;
+		}
 		work = malloc(sizeof(*work));
 		work->ht = ht;
 		ht->cds_lfht_call_rcu(&work->head, do_resize_cb);
 		CMM_STORE_SHARED(ht->t.resize_initiated, 1);
 	}
 }
-
-#if defined(HAVE_SCHED_GETCPU) && defined(HAVE_SYSCONF)
 
 static
 void cds_lfht_resize_lazy_count(struct cds_lfht *ht, unsigned long size,
@@ -1741,12 +1833,14 @@ void cds_lfht_resize_lazy_count(struct cds_lfht *ht, unsigned long size,
 	cmm_smp_mb();
 	if (!CMM_LOAD_SHARED(ht->t.resize_initiated)) {
 		uatomic_inc(&ht->in_progress_resize);
-		cmm_smp_mb();	/* increment resize count before calling it */
+		cmm_smp_mb();	/* increment resize count before load destroy */
+		if (CMM_LOAD_SHARED(ht->in_progress_destroy)) {
+			uatomic_dec(&ht->in_progress_resize);
+			return;
+		}
 		work = malloc(sizeof(*work));
 		work->ht = ht;
 		ht->cds_lfht_call_rcu(&work->head, do_resize_cb);
 		CMM_STORE_SHARED(ht->t.resize_initiated, 1);
 	}
 }
-
-#endif
