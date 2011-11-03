@@ -36,8 +36,7 @@
 static int send_channel_streams(int sock,
 		struct ust_app_channel *uchan)
 {
-	int ret, fds[2];
-	struct ltt_ust_stream *stream;
+	int ret, fd;
 	struct lttcomm_consumer_msg lum;
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
@@ -60,26 +59,23 @@ static int send_channel_streams(int sock,
 		perror("send consumer channel");
 		goto error;
 	}
-	fds[0] = uchan->obj->shm_fd;
-	fds[1] = uchan->obj->wait_fd;
-	ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+	fd = uchan->obj->shm_fd;
+	ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 	if (ret < 0) {
 		perror("send consumer channel ancillary data");
 		goto error;
 	}
 
-
 	rcu_read_lock();
 	hashtable_get_first(uchan->streams, &iter);
 	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
-		stream = caa_container_of(node, struct ltt_ust_stream, node);
-
+		struct ltt_ust_stream *stream =
+				caa_container_of(node, struct ltt_ust_stream, node);
 		int fds[2];
 
 		if (!stream->obj->shm_fd) {
 			goto next;
 		}
-
 		lum.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
 		lum.u.stream.channel_key = uchan->obj->shm_fd;
 		lum.u.stream.stream_key = stream->obj->shm_fd;
@@ -131,6 +127,7 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 	DBG("Sending metadata stream fd");
 
 	if (usess->metadata->obj->shm_fd != 0) {
+		int fd;
 		int fds[2];
 
 		/* Send metadata channel fd */
@@ -144,9 +141,8 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 			perror("send consumer channel");
 			goto error;
 		}
-		fds[0] = usess->metadata->obj->shm_fd;
-		fds[1] = usess->metadata->obj->wait_fd;
-		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+		fd = usess->metadata->obj->shm_fd;
+		ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 		if (ret < 0) {
 			perror("send consumer metadata channel");
 			goto error;
