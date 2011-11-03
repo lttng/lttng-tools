@@ -211,16 +211,16 @@ static int modprobe_remove_kernel_modules(void)
 
 	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
 		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe --remove --quiet %s",
+				"/sbin/modprobe -r -q %s",
 				kernel_modules_list[i].name);
 		if (ret < 0) {
-			perror("snprintf modprobe --remove");
+			perror("snprintf modprobe -r");
 			goto error;
 		}
 		modprobe[sizeof(modprobe) - 1] = '\0';
 		ret = system(modprobe);
 		if (ret == -1) {
-			ERR("Unable to launch modprobe --remove for module %s",
+			ERR("Unable to launch modprobe -r for module %s",
 					kernel_modules_list[i].name);
 		} else if (kernel_modules_list[i].required
 				&& WEXITSTATUS(ret) != 0) {
@@ -1490,7 +1490,7 @@ static int modprobe_kernel_modules(void)
 	for (i = 0; i < ARRAY_SIZE(kernel_modules_list); i++) {
 		ret = snprintf(modprobe, sizeof(modprobe),
 			"/sbin/modprobe %s%s",
-			kernel_modules_list[i].required ? "" : "--quiet ",
+			kernel_modules_list[i].required ? "" : "-q ",
 			kernel_modules_list[i].name);
 		if (ret < 0) {
 			perror("snprintf modprobe");
