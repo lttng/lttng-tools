@@ -93,7 +93,7 @@ void futex_nto1_wait(int32_t *futex)
  */
 void futex_nto1_wake(int32_t *futex)
 {
-	if (unlikely(uatomic_read(futex) == -1)) {
+	if (caa_unlikely(uatomic_read(futex) == -1)) {
 		uatomic_set(futex, 0);
 		futex_async(futex, FUTEX_WAKE, 1, NULL, NULL, 0);
 	}

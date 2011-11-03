@@ -13,7 +13,7 @@ REQUIREMENTS:
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
-      -> Tested with liburcu >= v0.6.5
+      -> Tested with liburcu >= v0.6.6
 
       * Debian/Ubuntu package: liburcu-dev
       * Git : git://lttng.org/userspace-rcu.git

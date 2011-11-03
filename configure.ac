@@ -16,9 +16,6 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
-# URCU library version needed or newer
-liburcu_version=">= 0.6.5"
-
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
 	[AC_MSG_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]
@@ -28,6 +25,9 @@ AC_CHECK_LIB([pthread], [pthread_create], [],
 AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
+
+# URCU library version needed or newer
+liburcu_version=">= 0.6.6"
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
@@ -45,6 +45,11 @@ AC_CHECK_DECL([rcu_thread_offline], [],
 AC_CHECK_DECL([rcu_thread_online], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
+AC_CHECK_DECL([caa_likely], [],
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+)
+
+# Check libust library
 AC_CHECK_DECL([ustctl_create_session],
 	[
 		AC_DEFINE([CONFIG_LTTNG_TOOLS_HAVE_UST], 1)
@@ -56,7 +61,6 @@ AC_CHECK_DECL([ustctl_create_session],
 	],
 	[[#include <ust/lttng-ust-ctl.h>]]
 )
-
 AM_CONDITIONAL([LTTNG_TOOLS_HAVE_UST], [ test "x$have_ust_test" = "x1" ])
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
