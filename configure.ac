@@ -59,7 +59,7 @@ AC_CHECK_DECL([ustctl_create_session],
 		AC_MSG_WARN([UST header not found. Building without UST support.])
 		have_ust_test=0
 	],
-	[[#include <ust/lttng-ust-ctl.h>]]
+	[[#include <lttng/ust-ctl.h>]]
 )
 AM_CONDITIONAL([LTTNG_TOOLS_HAVE_UST], [ test "x$have_ust_test" = "x1" ])
 
