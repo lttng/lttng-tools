@@ -7,7 +7,6 @@ SUBDIRS = liblttng-sessiond-comm \
 		  liblttng-consumer \
 		  lttng-consumerd \
 		  liblttngctl \
-		  libustcomm \
 		  lttng \
 		  ltt-sessiond \
 		  tests \
