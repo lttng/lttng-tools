@@ -5,7 +5,7 @@ noinst_LTLIBRARIES = liblttng-benchmark.la
 noinst_PROGRAMS = bench_sessions
 
 UTILS=utils.h
-SESSIONS=$(top_srcdir)/ltt-sessiond/session.c
+SESSIONS=$(top_srcdir)/lttng-sessiond/session.c
 
 liblttng_benchmark_la_SOURCES = benchmark.c benchmark.h cpu.c cpu.h
 

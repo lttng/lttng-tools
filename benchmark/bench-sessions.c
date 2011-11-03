@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "ltt-sessiond/session.h"
+#include "lttng-sessiond/session.h"
 #include "utils.h"
 #include "benchmark.h"
 
