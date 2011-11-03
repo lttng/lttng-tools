@@ -20,7 +20,7 @@
 #ifndef _LTTNG_UST_CTL_H
 #define _LTTNG_UST_CTL_H
 
-#include <ust/lttng-ust-abi.h>
+#include "lttng-ust-abi.h"
 
 int ustctl_register_done(int sock);
 int ustctl_create_session(int sock);

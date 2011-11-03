@@ -229,7 +229,7 @@ struct lttcomm_consumer_msg {
 
 #ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
 
-#include <ust/lttng-ust-abi.h>
+#include <lttng/ust-abi.h>
 
 /*
  * Data structure for the commands sent from sessiond to UST.

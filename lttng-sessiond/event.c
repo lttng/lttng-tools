@@ -23,16 +23,11 @@
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-ctl.h>
-#else
-#include "lttng-ust-ctl.h"
-#endif
-
 #include "channel.h"
 #include "event.h"
 #include "hashtable.h"
 #include "kernel-ctl.h"
+#include "ust-ctl.h"
 
 /*
  * Setup a lttng_event used to enable *all* syscall tracing.

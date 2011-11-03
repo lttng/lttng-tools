@@ -31,8 +31,8 @@
  * UST ABI.
  */
 #ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-ctl.h>
-#include <ust/lttng-ust-abi.h>
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-abi.h>
 #else
 #include "lttng-ust-ctl.h"
 #include "lttng-ust-abi.h"

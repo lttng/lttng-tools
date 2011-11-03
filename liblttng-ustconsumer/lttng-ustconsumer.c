@@ -29,9 +29,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <ust/lttng-ust-ctl.h>
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-ustconsumer.h>
+#include <lttng/ust-ctl.h>
 #include <lttngerr.h>
 
 extern struct lttng_consumer_global_data consumer_data;

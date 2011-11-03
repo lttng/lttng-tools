@@ -25,14 +25,6 @@
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-ctl.h>
-#include <ust/lttng-ust-abi.h>
-#else
-#include "lttng-ust-ctl.h"
-#include "lttng-ust-abi.h"
-#endif
-
 #include "context.h"
 #include "hashtable.h"
 #include "kernel-ctl.h"

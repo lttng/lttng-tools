@@ -19,15 +19,10 @@
 #define _LTT_CONTEXT_H
 
 #include <lttng/lttng.h>
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-abi.h>
-#else
-#include "lttng-ust-abi.h"
-#endif
-
 
 #include "trace-kernel.h"
 #include "trace-ust.h"
+#include "ust-ctl.h"
 
 int context_kernel_add(struct ltt_kernel_session *ksession,
 		struct lttng_event_context *ctx, char *event_name, char *channel_name);
