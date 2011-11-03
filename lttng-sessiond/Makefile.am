@@ -41,5 +41,5 @@ lttng_sessiond_LDADD = -lrt -lurcu-cds -lurcu \
 		 $(top_builddir)/liblttngctl/liblttngctl.la
 
 if LTTNG_TOOLS_HAVE_UST
-lttng_sessiond_LDADD += -llttng-ust-comm -lustctl
+lttng_sessiond_LDADD += -llttng-ust-comm -llttng-ust-ctl
 endif
