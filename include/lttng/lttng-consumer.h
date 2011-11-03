@@ -83,6 +83,8 @@ struct lttng_consumer_channel {
 	size_t mmap_len;
 	struct lttng_ust_shm_handle *handle;
 	int nr_streams;
+	int shm_fd_is_copy;
+	int wait_fd_is_copy;
 };
 
 /* Forward declaration for UST. */
@@ -110,6 +112,8 @@ struct lttng_consumer_stream {
 	void *mmap_base;
 	size_t mmap_len;
 	enum lttng_event_output output; /* splice or mmap */
+	int shm_fd_is_copy;
+	int wait_fd_is_copy;
 	/* For UST */
 	struct lttng_ust_lib_ring_buffer *buf;
 	int cpu;

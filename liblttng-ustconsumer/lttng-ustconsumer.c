@@ -272,11 +272,11 @@ int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
 		return -ENOMEM;
 	}
 	/*
-	 * The channel shm and wait fds are passed to ustctl, set them
-	 * to -1 here.
+	 * The channel fds are passed to ustctl, we only keep a copy.
 	 */
-	chan->shm_fd = -1;
-	chan->wait_fd = -1;
+	chan->shm_fd_is_copy = 1;
+	chan->wait_fd_is_copy = 1;
+
 	return 0;
 }
 
@@ -305,11 +305,10 @@ int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 		return -EINVAL;
 	}
 	/*
-	 * The stream shm and wait fds are passed to ustctl, set them to
-	 * -1 here.
+	 * The stream fds are passed to ustctl, we only keep a copy.
 	 */
-	stream->shm_fd = -1;
-	stream->wait_fd = -1;
+	stream->shm_fd_is_copy = 1;
+	stream->wait_fd_is_copy = 1;
 
 	return 0;
 }
