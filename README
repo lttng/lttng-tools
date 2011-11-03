@@ -13,7 +13,7 @@ REQUIREMENTS:
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
-      -> Tested with liburcu >= v0.5.4
+      -> Tested with liburcu >= v0.6.5
 
       * Debian/Ubuntu package: liburcu-dev
       * Git : git://lttng.org/userspace-rcu.git
@@ -49,7 +49,7 @@ PACKAGE CONTENTS:
     - liblttngctl
       The LTTng tracing control library.
 
-    - liblttsessiondcomm
+    - liblttng-sessiond-comm
       The ltt-sessiond communication library. In order to talk with ltt-sessiond,
       this library must be used.
 
