@@ -50,7 +50,7 @@ PACKAGE CONTENTS:
       The LTTng tracing control library.
 
     - liblttng-sessiond-comm
-      The ltt-sessiond communication library. In order to talk with ltt-sessiond,
+      The lttng-sessiond communication library. In order to talk with lttng-sessiond,
       this library must be used.
 
     - libkernelctl
@@ -62,7 +62,7 @@ PACKAGE CONTENTS:
     - lttng-consumerd
       The consumer daemon which uses liblttng-consumer.
 
-    - ltt-sessiond
+    - lttng-sessiond
       The LTTng session daemon binary.
 
     - lttng

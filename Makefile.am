@@ -8,7 +8,7 @@ SUBDIRS = liblttng-sessiond-comm \
 		  lttng-consumerd \
 		  liblttngctl \
 		  lttng \
-		  ltt-sessiond \
+		  lttng-sessiond \
 		  tests \
 		  include \
 		  doc

@@ -28,8 +28,8 @@
 /*
  * When the receiving thread dies, we need to have a way to make the polling
  * thread exit eventually. If all FDs hang up (normal case when the
- * ltt-sessiond stops), we can exit cleanly, but if there is a problem and for
- * whatever reason some FDs remain open, the consumer should still exit
+ * lttng-sessiond stops), we can exit cleanly, but if there is a problem and
+ * for whatever reason some FDs remain open, the consumer should still exit
  * eventually.
  *
  * If the timeout is reached, it means that during this period no events

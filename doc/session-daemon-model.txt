@@ -47,6 +47,7 @@ Terminology
 -----------------
 
 ltt-sessiond - Main daemon for trace session registry for UST and LTTng
+NOTE: Changed to lttng-sessiond in the git tree
 
 ust-consumerd - Daemon that consume UST buffers for a specific application
 

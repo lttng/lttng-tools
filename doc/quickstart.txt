@@ -18,7 +18,7 @@ installed. See http://lttng.org/lttng2.0 for more instructions for that part.
 For user-space tracing, you'll need an instrumented application, please see
 http://lttng.org/ust.
 
-lttng-tools provide a session daemon (ltt-sessiond) that acts as a tracing
+lttng-tools provide a session daemon (lttng-sessiond) that acts as a tracing
 registry. To trace any instrumented applications or the kernel, a registered
 tracing session is needed beforehand. To interact with the session daemon and a
 tracing session, you should use the lttng command line UI (lttng).
@@ -36,7 +36,7 @@ The next sections explain how to do tracing :)
 Kernel Tracing
 --------------
 
-You can start the session daemon by invoking the command "ltt-sessiond",
+You can start the session daemon by invoking the command "lttng-sessiond",
 or let the lttng command line tool do it for you. The session daemon
 loads the LTTng tracer modules for you if those modules can be found on
 your system. If they are not found, the kernel tracing feature will be

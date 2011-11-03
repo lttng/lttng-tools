@@ -95,7 +95,7 @@ AC_CONFIG_FILES([
 	liblttngctl/Makefile
 	liblttng-sessiond-comm/Makefile
 	lttng-consumerd/Makefile
-	ltt-sessiond/Makefile
+	lttng-sessiond/Makefile
 	lttng/Makefile
 	tests/Makefile
 	doc/Makefile

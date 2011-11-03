@@ -27,7 +27,7 @@
 
 #include <lttng-sessiond-comm.h>
 
-#include <ltt-sessiond/session.h>
+#include <lttng-sessiond/session.h>
 #include "utils.h"
 
 #define SESSION1 "test1"

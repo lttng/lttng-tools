@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "ltt-sessiond/trace-kernel.h"
+#include "lttng-sessiond/trace-kernel.h"
 #include "utils.h"
 
 /* This path will NEVER be created in this test */

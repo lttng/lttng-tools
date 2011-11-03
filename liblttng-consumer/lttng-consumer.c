@@ -916,11 +916,11 @@ void *lttng_consumer_thread_receive_fds(void *data)
 		goto end;
 	}
 
-	DBG("Sending ready command to ltt-sessiond");
+	DBG("Sending ready command to lttng-sessiond");
 	ret = lttng_consumer_send_error(ctx, CONSUMERD_COMMAND_SOCK_READY);
 	/* return < 0 on error, but == 0 is not fatal */
 	if (ret < 0) {
-		ERR("Error sending ready command to ltt-sessiond");
+		ERR("Error sending ready command to lttng-sessiond");
 		goto end;
 	}
 

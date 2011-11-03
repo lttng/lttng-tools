@@ -401,12 +401,12 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
-	/* Connect to the socket created by ltt-sessiond to report errors */
+	/* Connect to the socket created by lttng-sessiond to report errors */
 	DBG("Connecting to error socket %s", error_sock_path);
 	ret = lttcomm_connect_unix_sock(error_sock_path);
-	/* not a fatal error, but all communication with ltt-sessiond will fail */
+	/* not a fatal error, but all communication with lttng-sessiond will fail */
 	if (ret < 0) {
-		WARN("Cannot connect to error socket, is ltt-sessiond started ?");
+		WARN("Cannot connect to error socket, is lttng-sessiond started ?");
 	}
 	lttng_consumer_set_error_sock(ctx, ret);
 
