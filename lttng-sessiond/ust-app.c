@@ -806,7 +806,6 @@ next_chan:
 		}
 
 		/* Setup UST consumer socket and send fds to it */
-		printf("WTF HERE: sock: %d\n", usess->consumer_fd);
 		ret = ust_consumer_send_session(usess->consumer_fd, ua_sess);
 		if (ret < 0) {
 			goto next;
