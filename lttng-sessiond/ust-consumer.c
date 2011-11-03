@@ -134,7 +134,7 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 		lum.u.channel.channel_key = usess->metadata->obj->shm_fd;
 		lum.u.channel.max_sb_size = usess->metadata->attr.subbuf_size;
-		lum.u.channel.mmap_len = 0;	/* for kernel */
+		lum.u.channel.mmap_len = usess->metadata->obj->memory_map_size;
 		DBG("Sending metadata channel %d to consumer", lum.u.channel.channel_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
