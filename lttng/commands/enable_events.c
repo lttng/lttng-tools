@@ -201,9 +201,22 @@ static int enable_events(char *session_name)
 		channel_name = opt_channel_name;
 	}
 
+	if (opt_kernel && opt_userspace) {
+		MSG("Choose only one of --kernel or --userspace");
+		ret = CMD_FATAL;
+		goto error;
+	}
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	}
+	if (opt_userspace) {
+		/* TODO
+		 * LTTNG_DOMAIN_UST_EXEC_NAME,
+		 * LTTNG_DOMAIN_UST_PID,
+		 * LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN 
+		 */
+		dom.type = LTTNG_DOMAIN_UST;
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -224,10 +237,8 @@ static int enable_events(char *session_name)
 
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
-			if (opt_kernel) {
-				MSG("All kernel tracepoints are enabled in channel %s",
-						channel_name);
-			}
+			MSG("All %s tracepoints are enabled in channel %s",
+				opt_kernel ? "kernel" : "UST", channel_name);
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
@@ -236,20 +247,17 @@ static int enable_events(char *session_name)
 			}
 			break;
 		case LTTNG_EVENT_ALL:
-			if (opt_kernel) {
-				MSG("All kernel events are enabled in channel %s",
-						channel_name);
-			}
+			MSG("All %s events are enabled in channel %s",
+				opt_kernel ? "kernel" : "UST", channel_name);
 			break;
 		default:
 			/*
-			 * We should not be here since lttng_enable_event should had failed
-			 * on the event type.
+			 * We should not be here since
+			 * lttng_enable_event should have failed on the
+			 * event type.
 			 */
 			goto error;
-
 		}
-
 		goto end;
 	}
 
@@ -308,13 +316,41 @@ static int enable_events(char *session_name)
 			}
 		} else if (opt_userspace) {		/* User-space tracer action */
 			/*
-			 * TODO: Waiting on lttng UST 2.0
+			 * TODO: only supporting pid_all tracing for
+			 * now. Should have different domain based on
+			 * opt_pid.
 			 */
-			if (opt_pid_all) {
-			} else if (opt_pid != 0) {
+			if (!opt_pid_all) {
+				MSG("Only supporting tracing all UST processes (-u --all) for now.");
+				ret = CMD_NOT_IMPLEMENTED;
+				goto error;
 			}
-			ret = CMD_NOT_IMPLEMENTED;
-			goto error;
+			DBG("Enabling UST event %s for channel %s",
+					event_name, channel_name);
+			/* Copy name and type of the event */
+			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+			ev.type = opt_event_type;
+
+			switch (opt_event_type) {
+			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
+				ev.type = LTTNG_EVENT_TRACEPOINT;
+				/* Fall-through */
+			case LTTNG_EVENT_TRACEPOINT:
+				break;
+			case LTTNG_EVENT_PROBE:
+			case LTTNG_EVENT_FUNCTION:
+			case LTTNG_EVENT_FUNCTION_ENTRY:
+			case LTTNG_EVENT_SYSCALL:
+			default:
+				ret = CMD_NOT_IMPLEMENTED;
+				goto error;
+			}
+
+			ret = lttng_enable_event(handle, &ev, channel_name);
+			if (ret == 0) {
+				MSG("UST event %s created in channel %s", event_name, channel_name);
+			}
 		} else {
 			ERR("Please specify a tracer (--kernel or --userspace)");
 			goto error;

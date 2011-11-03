@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "ltt-sessiond/trace-kernel.h"
+#include "lttng-sessiond/trace-kernel.h"
 #include "utils.h"
 
 /* This path will NEVER be created in this test */
@@ -69,7 +69,7 @@ static void create_one_kernel_session(void)
 	printf("Validating kernel session: ");
 	assert(kern->fd == 0);
 	assert(kern->metadata_stream_fd == 0);
-	assert(kern->kconsumer_fds_sent == 0);
+	assert(kern->consumer_fds_sent == 0);
 	assert(kern->channel_count == 0);
 	assert(kern->stream_count_global == 0);
 	assert(kern->metadata == NULL);

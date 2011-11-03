@@ -3,13 +3,13 @@ ACLOCAL_AMFLAGS = -I config
 SUBDIRS = benchmark \
 		  liblttng-sessiond-comm \
 		  libkernelctl \
-		  liblttngkconsumerd \
+		  liblttng-kconsumer \
+		  liblttng-ustconsumer \
+		  liblttng-consumer \
+		  lttng-consumerd \
 		  liblttngctl \
-		  libustcomm \
-		  libustctl \
 		  lttng \
-		  ltt-kconsumerd \
-		  ltt-sessiond \
+		  lttng-sessiond \
 		  tests \
 		  include \
 		  doc

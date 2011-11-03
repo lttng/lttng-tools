@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SESSIOND_BIN="ltt-sessiond"
+SESSIOND_BIN="lttng-sessiond"
 
 tmpdir=`mktemp -d`
 tests=( kernel_event_basic kernel_all_events_basic )
@@ -42,7 +42,7 @@ check_lttng_modules
 
 if [ -z $(pidof $SESSIOND_BIN) ]; then
 	echo -n "Starting session daemon... "
-	../ltt-sessiond/$SESSIOND_BIN --daemonize --quiet
+	../lttng-sessiond/$SESSIOND_BIN --daemonize --quiet
 	if [ $? -eq 1 ]; then
 		echo -e '\e[1;31mFAILED\e[0m'
 		rm -rf $tmpdir

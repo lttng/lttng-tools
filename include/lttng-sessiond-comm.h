@@ -28,18 +28,17 @@
 
 #include <limits.h>
 #include <lttng/lttng.h>
-#include <lttng-ust.h>
 
 #define LTTNG_RUNDIR                        "/var/run/lttng"
 
 /* Default unix socket path */
-#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK     LTTNG_RUNDIR "/client-ltt-sessiond"
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK       LTTNG_RUNDIR "/apps-ltt-sessiond"
-#define DEFAULT_HOME_APPS_UNIX_SOCK         "%s/.apps-ltt-sessiond"
-#define DEFAULT_HOME_CLIENT_UNIX_SOCK       "%s/.client-ltt-sessiond"
+#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK     LTTNG_RUNDIR "/client-lttng-sessiond"
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK       LTTNG_RUNDIR "/apps-lttng-sessiond"
+#define DEFAULT_HOME_APPS_UNIX_SOCK         "%s/.apps-lttng-sessiond"
+#define DEFAULT_HOME_CLIENT_UNIX_SOCK       "%s/.client-lttng-sessiond"
 
 /* Queue size of listen(2) */
-#define MAX_LISTEN 64
+#define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
 
 /*
  * Get the error code index from 0 since LTTCOMM_OK start at 1000
@@ -115,21 +114,38 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
 	LTTCOMM_KERN_LIST_FAIL,			/* Kernel listing events failed */
 	LTTCOMM_UST_SESS_FAIL,			/* UST create session failed */
+	LTTCOMM_UST_CHAN_EXIST,         /* UST channel already exist */
+	LTTCOMM_UST_CHAN_FAIL,			/* UST create channel failed */
 	LTTCOMM_UST_CHAN_NOT_FOUND,     /* UST channel not found */
-	LTTCOMM_UST_CHAN_FAIL,          /* UST create channel failed */
-	KCONSUMERD_COMMAND_SOCK_READY,	/* when kconsumerd command socket ready */
-	KCONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
-	KCONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
-	KCONSUMERD_POLL_ERROR,			/* Error in polling thread in kconsumerd */
-	KCONSUMERD_POLL_NVAL,			/* Poll on closed fd */
-	KCONSUMERD_POLL_HUP,			/* All fds have hungup */
-	KCONSUMERD_EXIT_SUCCESS,		/* kconsumerd exiting normally */
-	KCONSUMERD_EXIT_FAILURE,		/* kconsumerd exiting on error */
-	KCONSUMERD_OUTFD_ERROR,			/* error opening the tracefile */
-	KCONSUMERD_SPLICE_EBADF,		/* EBADF from splice(2) */
-	KCONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
-	KCONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
-	KCONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
+	LTTCOMM_UST_CHAN_DISABLE_FAIL, /* UST disable channel failed */
+	LTTCOMM_UST_CHAN_ENABLE_FAIL,  /* UST enable channel failed */
+	LTTCOMM_UST_CONTEXT_FAIL,      /* UST add context failed */
+	LTTCOMM_UST_ENABLE_FAIL,		/* UST enable event failed */
+	LTTCOMM_UST_DISABLE_FAIL,		/* UST disable event failed */
+	LTTCOMM_UST_META_FAIL,			/* UST open metadata failed */
+	LTTCOMM_UST_START_FAIL,		/* UST start trace failed */
+	LTTCOMM_UST_STOP_FAIL,			/* UST stop trace failed */
+	LTTCOMM_UST_CONSUMER_FAIL,		/* UST consumer start failed */
+	LTTCOMM_UST_STREAM_FAIL,		/* UST create stream failed */
+	LTTCOMM_UST_DIR_FAIL,			/* UST trace directory creation failed */
+	LTTCOMM_UST_DIR_EXIST,			/* UST trace directory exist */
+	LTTCOMM_UST_NO_SESSION,		/* No UST session found */
+	LTTCOMM_UST_LIST_FAIL,			/* UST listing events failed */
+
+	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
+	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
+	CONSUMERD_ERROR_RECV_FD,		/* error on receiving fds */
+	CONSUMERD_ERROR_RECV_CMD,		/* error on receiving command */
+	CONSUMERD_POLL_ERROR,			/* Error in polling thread in kconsumerd */
+	CONSUMERD_POLL_NVAL,			/* Poll on closed fd */
+	CONSUMERD_POLL_HUP,			/* All fds have hungup */
+	CONSUMERD_EXIT_SUCCESS,			/* kconsumerd exiting normally */
+	CONSUMERD_EXIT_FAILURE,			/* kconsumerd exiting on error */
+	CONSUMERD_OUTFD_ERROR,			/* error opening the tracefile */
+	CONSUMERD_SPLICE_EBADF,			/* EBADF from splice(2) */
+	CONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
+	CONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
+	CONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
 };
@@ -186,26 +202,34 @@ struct lttcomm_lttng_msg {
 };
 
 /*
- * Data structures for the kconsumerd communications
- *
- * The header structure is sent to the kconsumerd daemon to inform
- * how many lttcomm_kconsumerd_msg it is about to receive
+ * lttcomm_consumer_msg is the message sent from sessiond to consumerd
+ * to either add a channel, add a stream, update a stream, or stop
+ * operation.
  */
-struct lttcomm_kconsumerd_header {
-	uint32_t payload_size;
-	uint32_t cmd_type;	/* enum kconsumerd_command */
+struct lttcomm_consumer_msg {
+	uint32_t cmd_type;	/* enum consumerd_command */
+	union {
+		struct {
+			int channel_key;
+			uint64_t max_sb_size; /* the subbuffer size for this channel */
+			/* shm_fd and wait_fd are sent as ancillary data */
+			uint64_t mmap_len;
+		} channel;
+		struct {
+			int channel_key;
+			int stream_key;
+			/* shm_fd and wait_fd are sent as ancillary data */
+			uint32_t state;    /* enum lttcomm_consumer_fd_state */
+			enum lttng_event_output output; /* use splice or mmap to consume this fd */
+			uint64_t mmap_len;
+			char path_name[PATH_MAX];
+		} stream;
+	} u;
 };
 
-/* lttcomm_kconsumerd_msg represents a file descriptor to consume the
- * data and a path name to write it
- */
-struct lttcomm_kconsumerd_msg {
-	char path_name[PATH_MAX];
-	int fd;
-	uint32_t state;    /* enum lttcomm_kconsumerd_fd_state */
-	unsigned long max_sb_size; /* the subbuffer size for this channel */
-	enum lttng_event_output output; /* use splice or mmap to consume this fd */
-};
+#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+
+#include <ust/lttng-ust-abi.h>
 
 /*
  * Data structure for the commands sent from sessiond to UST.
@@ -214,10 +238,11 @@ struct lttcomm_ust_msg {
 	uint32_t handle;
 	uint32_t cmd;
 	union {
-		struct lttng_ust_tracer_version version;
 		struct lttng_ust_channel channel;
+		struct lttng_ust_stream stream;
 		struct lttng_ust_event event;
 		struct lttng_ust_context context;
+		struct lttng_ust_tracer_version version;
 	} u;
 };
 
@@ -237,20 +262,24 @@ struct lttcomm_ust_reply {
 		struct {
 			uint64_t memory_map_size;
 		} stream;
+		struct lttng_ust_tracer_version version;
 	} u;
 };
+
+#endif /* CONFIG_LTTNG_TOOLS_HAVE_UST */
 
 extern int lttcomm_create_unix_sock(const char *pathname);
 extern int lttcomm_connect_unix_sock(const char *pathname);
 extern int lttcomm_accept_unix_sock(int sock);
 extern int lttcomm_listen_unix_sock(int sock);
 extern int lttcomm_close_unix_sock(int sock);
-/* Send fd(s) over a unix socket. */
-extern ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
-		size_t nb_fd, size_t len);
-/* Recv fd(s) over a unix socket */
-extern ssize_t lttcomm_recv_fds_unix_sock(int sock, void *buf, int *fds,
-		size_t nb_fd, size_t len);
+
+#define LTTCOMM_MAX_SEND_FDS	4
+/* Send a message accompanied by fd(s) over a unix socket. */
+extern ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd);
+/* Recv a message accompanied by fd(s) from a unix socket */
+extern ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
+
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);

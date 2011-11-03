@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <config.h>
 
 #include <lttng/lttng.h>
 
@@ -286,7 +287,7 @@ static int spawn_sessiond(char *pathname)
 		 * Spawn session daemon and tell
 		 * it to signal us when ready.
 		 */
-		execlp(pathname, "ltt-sessiond", "--sig-parent", "--quiet", NULL);
+		execlp(pathname, "lttng-sessiond", "--sig-parent", "--quiet", NULL);
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
 			ERR("No session daemon found. Use --sessiond-path.");
@@ -296,7 +297,7 @@ static int spawn_sessiond(char *pathname)
 		kill(getppid(), SIGTERM);	/* unpause parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
-		/* Wait for ltt-sessiond to start */
+		/* Wait for lttng-sessiond to start */
 		pause();
 		goto end;
 	} else {
@@ -338,7 +339,7 @@ static int check_sessiond(void)
 
 		/* Let's rock and roll */
 		if (pathname == NULL) {
-			ret = asprintf(&alloc_pathname, INSTALL_BIN_PATH "/ltt-sessiond");
+			ret = asprintf(&alloc_pathname, INSTALL_BIN_PATH "/lttng-sessiond");
 			if (ret < 0) {
 				perror("asprintf spawn sessiond");
 				goto end;
@@ -432,7 +433,7 @@ static int parse_args(int argc, char **argv)
 		if (ret == -1) {
 			usage(stderr);
 		} else {
-			ERR("%s", lttng_get_readable_code(ret));
+			ERR("%s", lttng_strerror(ret));
 		}
 		goto error;
 	}

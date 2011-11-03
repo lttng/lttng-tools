@@ -267,7 +267,7 @@ static int list_channels(const char *channel_name)
 		/* Listing events per channel */
 		ret = list_events(channels[i].name);
 		if (ret < 0) {
-			MSG("%s", lttng_get_readable_code(ret));
+			MSG("%s", lttng_strerror(ret));
 		}
 
 		if (chan_found) {

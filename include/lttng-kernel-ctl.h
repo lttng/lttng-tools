@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_LIBKERNELCTL_H
-#define _LTT_LIBKERNELCTL_H
+#ifndef _LTTNG_KERNEL_CTL_H
+#define _LTTNG_KERNEL_CTL_H
 
 #include <lttng/lttng.h>
 #include <lttng-kernel.h>
@@ -67,4 +67,4 @@ int kernctl_put_subbuf(int fd);
 
 int kernctl_buffer_flush(int fd);
 
-#endif /* _LTT_LIBKERNELCTL_H */
+#endif /* _LTTNG_KERNEL_CTL_H */

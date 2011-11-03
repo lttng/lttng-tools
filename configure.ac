@@ -6,6 +6,10 @@ AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 AM_SILENT_RULES([yes])
 
+AC_CONFIG_HEADERS([include/config.h])
+
+AH_TEMPLATE([CONFIG_LTTNG_TOOLS_HAVE_UST], [Defined on systems where UST headers can be found.])
+
 AC_CHECK_HEADERS([ \
 	sys/types.h unistd.h fcntl.h string.h pthread.h limits.h \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
@@ -46,6 +50,21 @@ AC_CHECK_DECL([rcu_thread_offline], [],
 AC_CHECK_DECL([rcu_thread_online], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
+AC_CHECK_DECL([ustctl_create_session],
+	[
+		AC_DEFINE([CONFIG_LTTNG_TOOLS_HAVE_UST], 1)
+		have_ust_test=1
+	],
+	[
+		AC_MSG_WARN([UST header not found. Building without UST support.])
+		have_ust_test=0
+	],
+	[[#include <ust/lttng-ust-ctl.h>]]
+)
+
+AM_CONDITIONAL([LTTNG_TOOLS_HAVE_UST], [ test "x$have_ust_test" = "x1" ])
+
+AC_CHECK_FUNCS([sched_getcpu sysconf])
 
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
@@ -76,13 +95,13 @@ AC_CONFIG_FILES([
 	include/Makefile
 	benchmark/Makefile
 	libkernelctl/Makefile
-	liblttngkconsumerd/Makefile
+	liblttng-consumer/Makefile
+	liblttng-kconsumer/Makefile
+	liblttng-ustconsumer/Makefile
 	liblttngctl/Makefile
 	liblttng-sessiond-comm/Makefile
-	libustctl/Makefile
-	libustcomm/Makefile
-	ltt-kconsumerd/Makefile
-	ltt-sessiond/Makefile
+	lttng-consumerd/Makefile
+	lttng-sessiond/Makefile
 	lttng/Makefile
 	tests/Makefile
 	doc/Makefile

@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <lttng-sessiond-comm.h>
 
@@ -73,21 +74,37 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_NO_SESSION) ] = "No kernel session found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_LIST_FAIL) ] = "Listing kernel events failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_SESS_FAIL) ] = "UST create session failed",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_NOT_FOUND) ] = "UST channel not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_FAIL) ] = "UST create channel failed",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_COMMAND_SOCK_READY) ] = "Kconsumerd command socket ready",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SUCCESS_RECV_FD) ] = "Kconsumerd success on receiving fds",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_ERROR_RECV_FD) ] = "Kconsumerd error on receiving fds",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_POLL_ERROR) ] = "Kconsumerd error in polling thread",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_POLL_NVAL) ] = "Kconsumerd polling on closed fd",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_POLL_HUP) ] = "Kconsumerd all fd hung up",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_EXIT_SUCCESS) ] = "Kconsumerd exiting normally",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_EXIT_FAILURE) ] = "Kconsumerd exiting on error",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_OUTFD_ERROR) ] = "Kconsumerd error opening the tracefile",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_EBADF) ] = "Kconsumerd splice EBADF",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_EINVAL) ] = "Kconsumerd splice EINVAL",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_ENOMEM) ] = "Kconsumerd splice ENOMEM",
-	[ LTTCOMM_ERR_INDEX(KCONSUMERD_SPLICE_ESPIPE) ] = "Kconsumerd splice ESPIPE",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_EXIST) ] = "UST channel already exist",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_NOT_FOUND) ] = "UST channel not found",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_DISABLE_FAIL) ] = "Disable UST channel failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CHAN_ENABLE_FAIL) ] = "Enable UST channel failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_FAIL) ] = "Add UST context failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_ENABLE_FAIL) ] = "Enable UST event failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_DISABLE_FAIL) ] = "Disable UST event failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_META_FAIL) ] = "Opening metadata failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_START_FAIL) ] = "Starting UST trace failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_STOP_FAIL) ] = "Stoping UST trace failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONSUMER_FAIL) ] = "UST consumer start failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_STREAM_FAIL) ] = "UST create stream failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_DIR_FAIL) ] = "UST trace directory creation failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_DIR_EXIST) ] = "UST trace directory already exist",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_NO_SESSION) ] = "No UST session found",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_LIST_FAIL) ] = "Listing UST events failed",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_COMMAND_SOCK_READY) ] = "consumerd command socket ready",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_SUCCESS_RECV_FD) ] = "consumerd success on receiving fds",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_ERROR_RECV_FD) ] = "consumerd error on receiving fds",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_ERROR_RECV_CMD) ] = "consumerd error on receiving command",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_POLL_ERROR) ] = "consumerd error in polling thread",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_POLL_NVAL) ] = "consumerd polling on closed fd",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_POLL_HUP) ] = "consumerd all fd hung up",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_EXIT_SUCCESS) ] = "consumerd exiting normally",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_EXIT_FAILURE) ] = "consumerd exiting on error",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_OUTFD_ERROR) ] = "consumerd error opening the tracefile",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_EBADF) ] = "consumerd splice EBADF",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_EINVAL) ] = "consumerd splice EINVAL",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ENOMEM) ] = "consumerd splice ENOMEM",
+	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ESPIPE) ] = "consumerd splice ESPIPE",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "Event not found",
 };
 
@@ -205,13 +222,13 @@ error:
 }
 
 /*
- * Make the socket listen using MAX_LISTEN.
+ * Make the socket listen using LTTNG_SESSIOND_COMM_MAX_LISTEN.
  */
 int lttcomm_listen_unix_sock(int sock)
 {
 	int ret;
 
-	ret = listen(sock, MAX_LISTEN);
+	ret = listen(sock, LTTNG_SESSIOND_COMM_MAX_LISTEN);
 	if (ret < 0) {
 		perror("listen");
 	}
@@ -285,10 +302,11 @@ int lttcomm_close_unix_sock(int sock)
 }
 
 /*
- * Send multiple fds on a unix socket.
+ * Send a message accompanied by fd(s) over a unix socket.
+ *
+ * Returns the size of data sent, or negative error value.
  */
-ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
-		size_t nb_fd, size_t len)
+ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 {
 	struct msghdr msg = { 0 };
 	struct cmsghdr *cmptr;
@@ -296,11 +314,10 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
 	ssize_t ret = -1;
 	unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
+	char dummy = 0;
 
-	/*
-	 * Note: the consumerd receiver only supports receiving one FD per message.
-	 */
-	assert(nb_fd == 1);
+	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
+		return -EINVAL;
 
 	msg.msg_control = (caddr_t)tmp;
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
@@ -313,8 +330,8 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
 	/* Sum of the length of all control messages in the buffer: */
 	msg.msg_controllen = cmptr->cmsg_len;
 
-	iov[0].iov_base = buf;
-	iov[0].iov_len = len;
+	iov[0].iov_base = &dummy;
+	iov[0].iov_len = 1;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
@@ -322,31 +339,30 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, void *buf, int *fds,
 	if (ret < 0) {
 		perror("sendmsg");
 	}
-
 	return ret;
 }
 
 /*
- * Receives a single fd from socket.
+ * Recv a message accompanied by fd(s) from a unix socket.
  *
- * Returns the size of received data
+ * Returns the size of received data, or negative error value.
+ *
+ * Expect at most "nb_fd" file descriptors. Returns the number of fd
+ * actually received in nb_fd.
  */
-ssize_t lttcomm_recv_fds_unix_sock(int sock, void *buf, int *fds,
-		size_t nb_fd, size_t len)
+ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 {
 	struct iovec iov[1];
-	int data_fd, i, ret = 0;
+	ssize_t ret = 0;
 	struct cmsghdr *cmsg;
-	char recv_fd[CMSG_SPACE(sizeof(int))];
+	size_t sizeof_fds = nb_fd * sizeof(int);
+	char recv_fd[CMSG_SPACE(sizeof_fds)];
 	struct msghdr msg = { 0 };
-	union {
-		unsigned char vc[4];
-		int vi;
-	} tmp;
+	char dummy;
 
 	/* Prepare to receive the structures */
-	iov[0].iov_base = &data_fd;
-	iov[0].iov_len = sizeof(data_fd);
+	iov[0].iov_base = &dummy;
+	iov[0].iov_len = 1;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 	msg.msg_control = recv_fd;
@@ -357,33 +373,35 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, void *buf, int *fds,
 		perror("recvmsg fds");
 		goto end;
 	}
-
-	if (ret != sizeof(data_fd)) {
-		fprintf(stderr, "Error: Received %d bytes, expected %ld",
-				ret, sizeof(data_fd));
+	if (ret != 1) {
+		fprintf(stderr, "Error: Received %zd bytes, expected %d\n",
+				ret, 1);
 		goto end;
 	}
-
+	if (msg.msg_flags & MSG_CTRUNC) {
+		fprintf(stderr, "Error: Control message truncated.\n");
+		ret = -1;
+		goto end;
+	}
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (!cmsg) {
-		fprintf(stderr, "Error: Invalid control message header");
+		fprintf(stderr, "Error: Invalid control message header\n");
 		ret = -1;
 		goto end;
 	}
-
 	if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
-		fprintf(stderr, "Didn't received any fd");
+		fprintf(stderr, "Didn't received any fd\n");
 		ret = -1;
 		goto end;
 	}
-
-	/* this is our fd */
-	for (i = 0; i < sizeof(int); i++) {
-		tmp.vc[i] = CMSG_DATA(cmsg)[i];
+	if (cmsg->cmsg_len != CMSG_LEN(sizeof_fds)) {
+		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
+				cmsg->cmsg_len, CMSG_LEN(sizeof_fds));
+		ret = -1;
+		goto end;
 	}
-
-	ret = tmp.vi;
-
+	memcpy(fds, CMSG_DATA(cmsg), sizeof_fds);
+	ret = sizeof_fds;
 end:
 	return ret;
 }
