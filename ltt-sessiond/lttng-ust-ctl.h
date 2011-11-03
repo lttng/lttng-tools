@@ -20,265 +20,104 @@
 #ifndef _LTTNG_UST_CTL_H
 #define _LTTNG_UST_CTL_H
 
-/*
- * ust-ctl stub API when UST is not present.
-*/
+#include <ust/lttng-ust-abi.h>
 
-#include "lttng-ust-abi.h"
-#include <errno.h>
-
-/*
- * Tracer channel attributes.
- */
-struct lttng_ust_channel_attr {
-	int overwrite;				/* 1: overwrite, 0: discard */
-	uint64_t subbuf_size;			/* bytes */
-	uint64_t num_subbuf;			/* power of 2 */
-	unsigned int switch_timer_interval;	/* usec */
-	unsigned int read_timer_interval;	/* usec */
-	enum lttng_ust_output output;		/* splice, mmap */
-};
-
-struct object_data {
-	int handle;
-	int shm_fd;
-	int wait_fd;
-	uint64_t memory_map_size;
-};
-
-static inline
-int ustctl_register_done(int sock)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_create_session(int sock)
-{
-	return -ENOSYS;
-}
-static inline
+int ustctl_register_done(int sock);
+int ustctl_create_session(int sock);
 int ustctl_open_metadata(int sock, int session_handle,
 		struct lttng_ust_channel_attr *chops,
-		struct object_data **metadata_data)
-{
-	return -ENOSYS;
-}
-static inline
+		struct lttng_ust_object_data **metadata_data);
 int ustctl_create_channel(int sock, int session_handle,
 		struct lttng_ust_channel_attr *chops,
-		struct object_data **channel_data)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_create_stream(int sock, struct object_data *channel_data,
-		struct object_data **stream_data)
-{
-	return -ENOSYS;
-}
-static inline
+		struct lttng_ust_object_data **channel_data);
+int ustctl_create_stream(int sock, struct lttng_ust_object_data *channel_data,
+		struct lttng_ust_object_data **stream_data);
 int ustctl_create_event(int sock, struct lttng_ust_event *ev,
-		struct object_data *channel_data,
-		struct object_data **event_data)
-{
-	return -ENOSYS;
-}
-static inline
+		struct lttng_ust_object_data *channel_data,
+		struct lttng_ust_object_data **event_data);
 int ustctl_add_context(int sock, struct lttng_ust_context *ctx,
-		struct object_data *obj_data,
-		struct object_data **context_data)
-{
-	return -ENOSYS;
-}
+		struct lttng_ust_object_data *obj_data,
+		struct lttng_ust_object_data **context_data);
 
-static inline
-int ustctl_enable(int sock, struct object_data *object)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_disable(int sock, struct object_data *object)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_start_session(int sock, int handle)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_stop_session(int sock, int handle)
-{
-	return -ENOSYS;
-}
+int ustctl_enable(int sock, struct lttng_ust_object_data *object);
+int ustctl_disable(int sock, struct lttng_ust_object_data *object);
+int ustctl_start_session(int sock, int handle);
+int ustctl_stop_session(int sock, int handle);
 
-static inline
-int ustctl_tracepoint_list(int sock)	/* not implemented yet */
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_tracer_version(int sock, struct lttng_ust_tracer_version *v)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_wait_quiescent(int sock)
-{
-	return -ENOSYS;
-}
+int ustctl_tracepoint_list(int sock);	/* not implemented yet */
+int ustctl_tracer_version(int sock, struct lttng_ust_tracer_version *v);
+int ustctl_wait_quiescent(int sock);
 
 /* Flush each buffers in this channel */
-static inline
-int ustctl_flush_buffer(int sock, struct object_data *channel_data)
-{
-	return -ENOSYS;
-}
+int ustctl_flush_buffer(int sock, struct lttng_ust_object_data *channel_data);
 
 /* not implemented yet */
 struct lttng_ust_calibrate;
-static inline
-int ustctl_calibrate(int sock, struct lttng_ust_calibrate *calibrate)
-{
-	return -ENOSYS;
-}
+int ustctl_calibrate(int sock, struct lttng_ust_calibrate *calibrate);
 
 /*
- * Map channel shm_handle and add streams. Typically performed by the
+ * Map channel lttng_ust_shm_handle and add streams. Typically performed by the
  * consumer to map the objects into its memory space.
  */
-static inline
-struct shm_handle *ustctl_map_channel(struct object_data *chan_data)
-{
-	return NULL;
-}
-static inline
-int ustctl_add_stream(struct shm_handle *shm_handle,
-		struct object_data *stream_data)
-{
-	return -ENOSYS;
-}
+struct lttng_ust_shm_handle *ustctl_map_channel(struct lttng_ust_object_data *chan_data);
+int ustctl_add_stream(struct lttng_ust_shm_handle *lttng_ust_shm_handle,
+		struct lttng_ust_object_data *stream_data);
 /*
- * Note: the object_data from which the shm_handle is derived can only
+ * Note: the lttng_ust_object_data from which the lttng_ust_shm_handle is derived can only
  * be released after unmapping the handle.
  */
-static inline
-void ustctl_unmap_channel(struct shm_handle *shm_handle)
-{
-}
+void ustctl_unmap_channel(struct lttng_ust_shm_handle *lttng_ust_shm_handle);
 
 /* Buffer operations */
 
-struct shm_handle;
-struct lib_ring_buffer;
+struct lttng_ust_shm_handle;
+struct lttng_ust_lib_ring_buffer;
 
 /* Open/close stream buffers for read */
-static inline
-struct lib_ring_buffer *ustctl_open_stream_read(struct shm_handle *handle,
-		int cpu)
-{
-	return NULL;
-}
-static inline
-void ustctl_close_stream_read(struct shm_handle *handle,
-                struct lib_ring_buffer *buf)
-{
-}
+struct lttng_ust_lib_ring_buffer *ustctl_open_stream_read(struct lttng_ust_shm_handle *handle,
+		int cpu);
+void ustctl_close_stream_read(struct lttng_ust_shm_handle *handle,
+                struct lttng_ust_lib_ring_buffer *buf);
 
 /* For mmap mode, readable without "get" operation */
-static inline
-int ustctl_get_mmap_len(struct shm_handle *handle,
-		struct lib_ring_buffer *buf,
-		unsigned long *len)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_get_max_subbuf_size(struct shm_handle *handle,
-		struct lib_ring_buffer *buf,
-		unsigned long *len)
-{
-	return -ENOSYS;
-}
+int ustctl_get_mmap_len(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf,
+		unsigned long *len);
+int ustctl_get_max_subbuf_size(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf,
+		unsigned long *len);
 
 /*
  * For mmap mode, operate on the current packet (between get/put or
  * get_next/put_next).
  */
-static inline
-void *ustctl_get_mmap_base(struct shm_handle *handle,
-		struct lib_ring_buffer *buf)
-{
-	return NULL;
-}
-static inline
-int ustctl_get_mmap_read_offset(struct shm_handle *handle,
-		struct lib_ring_buffer *buf, unsigned long *off)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_get_subbuf_size(struct shm_handle *handle,
-		struct lib_ring_buffer *buf, unsigned long *len)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_get_padded_subbuf_size(struct shm_handle *handle,
-		struct lib_ring_buffer *buf, unsigned long *len)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_get_next_subbuf(struct shm_handle *handle,
-		struct lib_ring_buffer *buf)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_put_next_subbuf(struct shm_handle *handle,
-		struct lib_ring_buffer *buf)
-{
-	return -ENOSYS;
-}
+void *ustctl_get_mmap_base(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf);
+int ustctl_get_mmap_read_offset(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off);
+int ustctl_get_subbuf_size(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *len);
+int ustctl_get_padded_subbuf_size(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *len);
+int ustctl_get_next_subbuf(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf);
+int ustctl_put_next_subbuf(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf);
 
 /* snapshot */
 
-static inline
-int ustctl_snapshot(struct shm_handle *handle,
-		struct lib_ring_buffer *buf)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_snapshot_get_consumed(struct shm_handle *handle,
-		struct lib_ring_buffer *buf, unsigned long *pos)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_snapshot_get_produced(struct shm_handle *handle,
-		struct lib_ring_buffer *buf, unsigned long *pos)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_get_subbuf(struct shm_handle *handle,
-		struct lib_ring_buffer *buf, unsigned long *pos)
-{
-	return -ENOSYS;
-}
-static inline
-int ustctl_put_subbuf(struct shm_handle *handle,
-		struct lib_ring_buffer *buf)
-{
-	return -ENOSYS;
-}
+int ustctl_snapshot(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf);
+int ustctl_snapshot_get_consumed(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *pos);
+int ustctl_snapshot_get_produced(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *pos);
+int ustctl_get_subbuf(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *pos);
+int ustctl_put_subbuf(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf);
 
 /* Release object created by members of this API */
-static inline
-void release_object(int sock, struct object_data *data)
-{
-}
+void release_object(int sock, struct lttng_ust_object_data *data);
 
 #endif /* _LTTNG_UST_CTL_H */

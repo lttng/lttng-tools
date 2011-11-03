@@ -53,7 +53,7 @@ struct ust_app_key {
 struct ust_app_event {
 	int enabled;
 	int handle;
-	struct object_data *obj;
+	struct lttng_ust_object_data *obj;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct cds_lfht *ctx;
 	struct cds_lfht_node node;
@@ -64,7 +64,7 @@ struct ust_app_channel {
 	int handle;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_channel attr;
-	struct object_data *obj;
+	struct lttng_ust_object_data *obj;
 	struct cds_lfht *streams;
 	struct cds_lfht *ctx;
 	struct cds_lfht *events;
@@ -76,7 +76,7 @@ struct ust_app_session {
 	int handle;   /* Used has unique identifier */
 	unsigned int uid;
 	struct ltt_ust_metadata *metadata;
-	struct object_data *obj;
+	struct lttng_ust_object_data *obj;
 	struct cds_lfht *channels; /* Registered channels */
 	struct cds_lfht_node node;
 };

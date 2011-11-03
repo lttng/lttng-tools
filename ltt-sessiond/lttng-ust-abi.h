@@ -78,6 +78,25 @@ struct lttng_ust_context {
 	} u;
 };
 
+/*
+ * Tracer channel attributes.
+ */
+struct lttng_ust_channel_attr {
+	int overwrite;				/* 1: overwrite, 0: discard */
+	uint64_t subbuf_size;			/* bytes */
+	uint64_t num_subbuf;			/* power of 2 */
+	unsigned int switch_timer_interval;	/* usec */
+	unsigned int read_timer_interval;	/* usec */
+	enum lttng_ust_output output;		/* splice, mmap */
+};
+
+struct lttng_ust_object_data {
+	int handle;
+	int shm_fd;
+	int wait_fd;
+	uint64_t memory_map_size;
+};
+
 #define _UST_CMD(minor)				(minor)
 #define _UST_CMDR(minor, type)			(minor)
 #define _UST_CMDW(minor, type)			(minor)

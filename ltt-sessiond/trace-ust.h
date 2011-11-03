@@ -52,7 +52,7 @@ struct ltt_ust_event {
 struct ltt_ust_stream {
 	int handle;
 	char pathname[PATH_MAX];
-	struct object_data *obj;
+	struct lttng_ust_object_data *obj;
 	struct cds_lfht_node node;
 };
 
@@ -69,10 +69,10 @@ struct ltt_ust_channel {
 /* UST Metadata */
 struct ltt_ust_metadata {
 	int handle;
-	struct object_data *obj;
+	struct lttng_ust_object_data *obj;
 	char pathname[PATH_MAX];              /* Trace file path name */
 	struct lttng_ust_channel attr;
-	struct object_data *stream_obj;
+	struct lttng_ust_object_data *stream_obj;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

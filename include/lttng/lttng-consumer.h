@@ -81,12 +81,12 @@ struct lttng_consumer_channel {
 	int wait_fd;
 	void *mmap_base;
 	size_t mmap_len;
-	struct shm_handle *handle;
+	struct lttng_ust_shm_handle *handle;
 	int nr_streams;
 };
 
 /* Forward declaration for UST. */
-struct lib_ring_buffer;
+struct lttng_ust_lib_ring_buffer;
 
 /*
  * Internal representation of the streams, sessiond_key is used to identify
@@ -111,7 +111,7 @@ struct lttng_consumer_stream {
 	size_t mmap_len;
 	enum lttng_event_output output; /* splice or mmap */
 	/* For UST */
-	struct lib_ring_buffer *buf;
+	struct lttng_ust_lib_ring_buffer *buf;
 	int cpu;
 };
 

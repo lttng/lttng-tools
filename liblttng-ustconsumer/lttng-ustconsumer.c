@@ -261,7 +261,7 @@ end_nosignal:
 
 int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
 {
-	struct object_data obj;
+	struct lttng_ust_object_data obj;
 
 	obj.handle = -1;
 	obj.shm_fd = chan->shm_fd;
@@ -281,7 +281,7 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 
 int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 {
-	struct object_data obj;
+	struct lttng_ust_object_data obj;
 	int ret;
 
 	obj.handle = -1;

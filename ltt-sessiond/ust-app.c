@@ -569,7 +569,7 @@ int ust_app_add_event(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 	struct lttng_ust_event ltt_uevent;
-	struct object_data *obj_event;
+	struct lttng_ust_object_data *obj_event;
 
 	DBG2("UST app adding event %s to global domain for session uid %d",
 			uevent->attr.name, usess->uid);
