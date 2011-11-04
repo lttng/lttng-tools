@@ -770,34 +770,34 @@ int ust_app_start_trace(struct ltt_ust_session *usess)
 			ua_chan = caa_container_of(ua_chan_node,
 					struct ust_app_channel, node);
 
-			struct ltt_ust_stream *ustream;
+			for (;;) {
+				struct lttng_ust_object_data *obj;
+				struct ltt_ust_stream *ustream;
 
-			ustream = malloc(sizeof(*ustream));
-			if (ustream == NULL) {
-				goto next_chan;
-			}
+				ret = ustctl_create_stream(app->key.sock, ua_chan->obj,
+						&obj);
+				if (ret < 0) {
+					/* Got all streams */
+					goto next_chan;
+				}
 
-			memset(ustream, 0, sizeof(struct ltt_ust_stream));
-
-			ret = ustctl_create_stream(app->key.sock, ua_chan->obj,
-					&ustream->obj);
-			if (ret < 0) {
-				ERR("Creating channel stream failed");
-				goto next_chan;
-			}
-
-			ustream->handle = ustream->obj->handle;
-
-			hashtable_node_init(&ustream->node,
-				(void *)((unsigned long) ustream->handle), sizeof(void *));
-			hashtable_add_unique(ua_chan->streams, &ustream->node);
-
-			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%lu",
-					uchan->pathname, uchan->name,
-					hashtable_get_count(ua_chan->streams));
-			if (ret < 0) {
-				PERROR("asprintf UST create stream");
-				goto next_chan;
+				ustream = malloc(sizeof(*ustream));
+				if (ustream == NULL) {
+					goto next_chan;
+				}
+				memset(ustream, 0, sizeof(struct ltt_ust_stream));
+				ustream->obj = obj;
+				ustream->handle = ustream->obj->handle;
+				hashtable_node_init(&ustream->node,
+					(void *)((unsigned long) ustream->handle), sizeof(void *));
+				hashtable_add_unique(ua_chan->streams, &ustream->node);
+				ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%lu",
+						uchan->pathname, uchan->name,
+						hashtable_get_count(ua_chan->streams) - 1);
+				if (ret < 0) {
+					PERROR("asprintf UST create stream");
+					goto next_chan;
+				}
 			}
 
 next_chan:
