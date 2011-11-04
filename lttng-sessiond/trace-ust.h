@@ -110,7 +110,7 @@ struct ltt_ust_session {
 	struct cds_lfht *domain_exec;
 };
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 /*
  * Lookup functions. NULL is returned if not found.
@@ -139,7 +139,7 @@ void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
 
-#else
+#else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
 struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
@@ -198,6 +198,6 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 }
 
-#endif /* CONFIG_CONFIG_LTTNG_TOOLS_HAVE_UST */
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_TRACE_UST_H */

@@ -227,7 +227,7 @@ struct lttcomm_consumer_msg {
 	} u;
 };
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 #include <lttng/ust-abi.h>
 
@@ -266,7 +266,7 @@ struct lttcomm_ust_reply {
 	} u;
 };
 
-#endif /* CONFIG_LTTNG_TOOLS_HAVE_UST */
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 extern int lttcomm_create_unix_sock(const char *pathname);
 extern int lttcomm_connect_unix_sock(const char *pathname);

@@ -8,8 +8,6 @@ AM_SILENT_RULES([yes])
 
 AC_CONFIG_HEADERS([include/config.h])
 
-AH_TEMPLATE([CONFIG_LTTNG_TOOLS_HAVE_UST], [Defined on systems where UST headers can be found.])
-
 AC_CHECK_HEADERS([ \
 	sys/types.h unistd.h fcntl.h string.h pthread.h limits.h \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
@@ -49,19 +47,25 @@ AC_CHECK_DECL([caa_likely], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 
-# Check libust library
-AC_CHECK_DECL([ustctl_create_session],
-	[
-		AC_DEFINE([CONFIG_LTTNG_TOOLS_HAVE_UST], 1)
-		have_ust_test=1
-	],
-	[
-		AC_MSG_WARN([UST header not found. Building without UST support.])
-		have_ust_test=0
-	],
-	[[#include <lttng/ust-ctl.h>]]
-)
-AM_CONDITIONAL([LTTNG_TOOLS_HAVE_UST], [ test "x$have_ust_test" = "x1" ])
+# Check liblttng-ust-ctl library
+AC_ARG_ENABLE(lttng-ust,
+	[  --disable-lttng-ust     build without LTTng-UST (Userspace Tracing) support.],
+	lttng_ust_support=no, lttng_ust_support=yes)
+
+[
+if test "x$lttng_ust_support" = "xno"; then
+	echo "LTTng-UST support disabled."
+else
+]
+	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_create_session], [],
+		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])]
+	)
+[
+	echo "LTTng-UST support enabled."
+fi
+]
+
+AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl_create_session" = "xyes" ])
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
 

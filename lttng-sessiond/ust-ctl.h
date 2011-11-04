@@ -30,7 +30,7 @@
  * own internal structures within lttng-tools instead of relying on the
  * UST ABI.
  */
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-abi.h>
 #else

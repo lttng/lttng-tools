@@ -97,7 +97,7 @@ struct ust_app {
 	struct ust_app_key key;
 };
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
 void ust_app_unregister(int sock);
@@ -113,7 +113,7 @@ void ust_app_ht_alloc(void);
 struct cds_lfht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
 
-#else
+#else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
 int ust_app_register(struct ust_register_msg *msg, int sock)
@@ -160,6 +160,6 @@ int ust_app_add_channel(struct ltt_ust_session *usess,
 	return 0;
 }
 
-#endif /* CONFIG_LTTNG_TOOLS_HAVE_UST */
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_UST_APP_H */

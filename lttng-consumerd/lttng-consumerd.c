@@ -139,7 +139,7 @@ static void usage(void)
 			"Consumer kernel buffers (default).\n");
 	fprintf(stderr, "  -u, --ust                          "
 			"Consumer UST buffers.%s\n",
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 			""
 #else
 			" (support not compiled in)"
@@ -163,7 +163,7 @@ static void parse_args(int argc, char **argv)
 		{ "verbose", 0, 0, 'v' },
 		{ "version", 0, 0, 'V' },
 		{ "kernel", 0, 0, 'k' },
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 		{ "ust", 0, 0, 'u' },
 #endif
 		{ NULL, 0, 0, 0 }
@@ -207,7 +207,7 @@ static void parse_args(int argc, char **argv)
 		case 'k':
 			opt_type = LTTNG_CONSUMER_KERNEL;
 			break;
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 		case 'u':
 			opt_type = LTTNG_CONSUMER_UST;
 			break;

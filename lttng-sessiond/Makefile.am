@@ -27,7 +27,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        ../hashtable/rculfhash.h \
                        ../hashtable/hash.c ../hashtable/hash.h
 
-if LTTNG_TOOLS_HAVE_UST
+if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h
 endif
 
@@ -40,6 +40,6 @@ lttng_sessiond_LDADD = -lrt -lurcu-cds -lurcu \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la
 
-if LTTNG_TOOLS_HAVE_UST
+if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_LDADD += -llttng-ust-comm -llttng-ust-ctl
 endif
