@@ -85,6 +85,7 @@ struct lttng_consumer_channel {
 	int nr_streams;
 	int shm_fd_is_copy;
 	int wait_fd_is_copy;
+	int cpucount;
 };
 
 /* Forward declaration for UST. */

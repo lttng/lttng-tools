@@ -38,8 +38,7 @@ static int send_channel_streams(int sock,
 {
 	int ret, fd;
 	struct lttcomm_consumer_msg lum;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct ltt_ust_stream *stream;
 
 	DBG("Sending streams of channel %s to UST consumer", uchan->name);
 
@@ -66,15 +65,11 @@ static int send_channel_streams(int sock,
 		goto error;
 	}
 
-	rcu_read_lock();
-	hashtable_get_first(uchan->streams, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
-		struct ltt_ust_stream *stream =
-				caa_container_of(node, struct ltt_ust_stream, node);
+	cds_list_for_each_entry(stream, &uchan->streams.head, list) {
 		int fds[2];
 
 		if (!stream->obj->shm_fd) {
-			goto next;
+			continue;
 		}
 		lum.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
 		lum.u.stream.channel_key = uchan->obj->shm_fd;
@@ -98,11 +93,7 @@ static int send_channel_streams(int sock,
 			perror("send consumer stream ancillary data");
 			goto error;
 		}
-
-next:
-		hashtable_get_next(uchan->streams, &iter);
 	}
-	rcu_read_unlock();
 
 	DBG("consumer channel streams sent");
 

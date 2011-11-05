@@ -181,6 +181,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	case LTTNG_CONSUMER_KERNEL:
 		break;
 	case LTTNG_CONSUMER_UST:
+		stream->cpu = stream->chan->cpucount++;
 		ret = lttng_ustconsumer_allocate_stream(stream);
 		if (ret) {
 			free(stream);

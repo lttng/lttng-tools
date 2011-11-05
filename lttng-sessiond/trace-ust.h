@@ -53,7 +53,8 @@ struct ltt_ust_stream {
 	int handle;
 	char pathname[PATH_MAX];
 	struct lttng_ust_object_data *obj;
-	struct cds_lfht_node node;
+	/* Using a list of streams to keep order. */
+	struct cds_list_head list;
 };
 
 /* UST channel */

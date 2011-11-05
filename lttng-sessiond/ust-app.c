@@ -322,7 +322,7 @@ static struct ust_app_channel *alloc_app_channel(char *name)
 	ua_chan->handle = -1;
 	ua_chan->obj = NULL;
 	ua_chan->ctx = hashtable_new(0);
-	ua_chan->streams = hashtable_new(0);
+	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
 	ua_chan->events = hashtable_new_str(0);
 	hashtable_node_init(&ua_chan->node, (void *) ua_chan->name,
 			strlen(ua_chan->name));
@@ -788,12 +788,11 @@ int ust_app_start_trace(struct ltt_ust_session *usess)
 				memset(ustream, 0, sizeof(struct ltt_ust_stream));
 				ustream->obj = obj;
 				ustream->handle = ustream->obj->handle;
-				hashtable_node_init(&ustream->node,
-					(void *)((unsigned long) ustream->handle), sizeof(void *));
-				hashtable_add_unique(ua_chan->streams, &ustream->node);
-				ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%lu",
+				/* Order is important */
+				cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
+				ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%u",
 						uchan->pathname, uchan->name,
-						hashtable_get_count(ua_chan->streams) - 1);
+						ua_chan->streams.count++);
 				if (ret < 0) {
 					PERROR("asprintf UST create stream");
 					goto next_chan;

@@ -65,7 +65,7 @@ struct ust_app_channel {
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_channel attr;
 	struct lttng_ust_object_data *obj;
-	struct cds_lfht *streams;
+	struct ltt_ust_stream_list streams;
 	struct cds_lfht *ctx;
 	struct cds_lfht *events;
 	struct cds_lfht_node node;
