@@ -126,7 +126,8 @@ struct lttng_consumer_stream {
  */
 struct lttng_consumer_local_data {
 	/* function to call when data is available on a buffer */
-	int (*on_buffer_ready)(struct lttng_consumer_stream *stream);
+	int (*on_buffer_ready)(struct lttng_consumer_stream *stream,
+			struct lttng_consumer_local_data *ctx);
 	/*
 	 * function to call when we receive a new channel, it receives a
 	 * newly allocated channel, depending on the return code of this
@@ -277,7 +278,8 @@ int consumer_add_channel(struct lttng_consumer_channel *channel);
 
 extern struct lttng_consumer_local_data *lttng_consumer_create(
 		enum lttng_consumer_type type,
-		int (*buffer_ready)(struct lttng_consumer_stream *stream),
+		int (*buffer_ready)(struct lttng_consumer_stream *stream,
+			struct lttng_consumer_local_data *ctx),
 		int (*recv_channel)(struct lttng_consumer_channel *channel),
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
 		int (*update_stream)(int sessiond_key, uint32_t state));
@@ -298,5 +300,9 @@ extern void *lttng_consumer_thread_poll_fds(void *data);
 extern void *lttng_consumer_thread_receive_fds(void *data);
 extern int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
+
+int lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx);
+int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
 #endif /* _LTTNG_CONSUMER_H */

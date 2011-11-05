@@ -75,7 +75,11 @@ static int send_channel_streams(int sock,
 		lum.u.stream.channel_key = uchan->obj->shm_fd;
 		lum.u.stream.stream_key = stream->obj->shm_fd;
 		lum.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
-		lum.u.stream.output = uchan->attr.output;
+		/*
+		 * FIXME Hack alert! we force MMAP for now. Mixup
+		 * between EVENT and UST enums elsewhere.
+		 */
+		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		lum.u.stream.mmap_len = stream->obj->memory_map_size;
 		strncpy(lum.u.stream.path_name, stream->pathname, PATH_MAX - 1);
 		lum.u.stream.path_name[PATH_MAX - 1] = '\0';

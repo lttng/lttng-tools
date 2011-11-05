@@ -66,6 +66,10 @@ extern void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan);
 extern int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream);
 extern void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream);
 
+int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx);
+int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
@@ -127,6 +131,19 @@ int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 static inline
 void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 {
+}
+
+static inline
+int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	return -ENOSYS;
+}
+
+static inline
+int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
+{
+	return -ENOSYS;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

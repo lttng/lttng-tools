@@ -220,142 +220,6 @@ static void parse_args(int argc, char **argv)
 }
 
 /*
- * Consume data on a file descriptor and write it on a trace file.
- */
-static int read_subbuffer(struct lttng_consumer_stream *stream)
-{
-	unsigned long len;
-	int err;
-	long ret = 0;
-	int infd = stream->wait_fd;
-
-	DBG("In read_subbuffer (infd : %d)", infd);
-	/* Get the next subbuffer */
-	err = kernctl_get_next_subbuf(infd);
-	if (err != 0) {
-		ret = errno;
-		/*
-		 * This is a debug message even for single-threaded consumer,
-		 * because poll() have more relaxed criterions than get subbuf,
-		 * so get_subbuf may fail for short race windows where poll()
-		 * would issue wakeups.
-		 */
-		DBG("Reserving sub buffer failed (everything is normal, "
-				"it is due to concurrency)");
-		goto end;
-	}
-
-	switch (stream->output) {
-		case LTTNG_EVENT_SPLICE:
-			/* read the whole subbuffer */
-			err = kernctl_get_padded_subbuf_size(infd, &len);
-			if (err != 0) {
-				ret = errno;
-				perror("Getting sub-buffer len failed.");
-				goto end;
-			}
-
-			/* splice the subbuffer to the tracefile */
-			ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream, len);
-			if (ret < 0) {
-				/*
-				 * display the error but continue processing to try
-				 * to release the subbuffer
-				 */
-				ERR("Error splicing to tracefile");
-			}
-			break;
-		case LTTNG_EVENT_MMAP:
-			/* read the used subbuffer size */
-			err = kernctl_get_padded_subbuf_size(infd, &len);
-			if (err != 0) {
-				ret = errno;
-				perror("Getting sub-buffer len failed.");
-				goto end;
-			}
-			/* write the subbuffer to the tracefile */
-			ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len);
-			if (ret < 0) {
-				/*
-				 * display the error but continue processing to try
-				 * to release the subbuffer
-				 */
-				ERR("Error writing to tracefile");
-			}
-			break;
-		default:
-			ERR("Unknown output method");
-			ret = -1;
-	}
-
-	err = kernctl_put_next_subbuf(infd);
-	if (err != 0) {
-		ret = errno;
-		if (errno == EFAULT) {
-			perror("Error in unreserving sub buffer\n");
-		} else if (errno == EIO) {
-			/* Should never happen with newer LTTng versions */
-			perror("Reader has been pushed by the writer, last sub-buffer corrupted.");
-		}
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-static int on_recv_stream(struct lttng_consumer_stream *stream)
-{
-	int ret;
-
-	/* Opening the tracefile in write mode */
-	if (stream->path_name != NULL) {
-		ret = open(stream->path_name,
-				O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
-		if (ret < 0) {
-			ERR("Opening %s", stream->path_name);
-			perror("open");
-			goto error;
-		}
-		stream->out_fd = ret;
-	}
-
-	if (stream->output == LTTNG_EVENT_MMAP) {
-		/* get the len of the mmap region */
-		unsigned long mmap_len;
-
-		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
-		if (ret != 0) {
-			ret = errno;
-			perror("kernctl_get_mmap_len");
-			goto error_close_fd;
-		}
-		stream->mmap_len = (size_t) mmap_len;
-
-		stream->mmap_base = mmap(NULL, stream->mmap_len,
-				PROT_READ, MAP_PRIVATE, stream->wait_fd, 0);
-		if (stream->mmap_base == MAP_FAILED) {
-			perror("Error mmaping");
-			ret = -1;
-			goto error_close_fd;
-		}
-	}
-
-	/* we return 0 to let the library handle the FD internally */
-	return 0;
-
-error_close_fd:
-	{
-		int err;
-
-		err = close(stream->out_fd);
-		assert(!err);
-	}
-error:
-	return ret;
-}
-
-/*
  * main
  */
 int main(int argc, char **argv)
@@ -384,7 +248,8 @@ int main(int argc, char **argv)
 				USTCONSUMERD_CMD_SOCK_PATH);
 	}
 	/* create the consumer instance with and assign the callbacks */
-	ctx = lttng_consumer_create(opt_type, read_subbuffer, NULL, on_recv_stream, NULL);
+	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
+		NULL, lttng_consumer_on_recv_stream, NULL);
 	if (ctx == NULL) {
 		goto error;
 	}

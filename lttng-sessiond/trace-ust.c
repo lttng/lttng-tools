@@ -250,7 +250,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	lum->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
 	lum->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 	lum->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
-	lum->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
+	lum->attr.output = LTTNG_UST_MMAP;
 
 	lum->handle = -1;
 	/* Set metadata trace path */
