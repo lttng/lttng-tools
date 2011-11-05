@@ -845,8 +845,8 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
 				consumer_del_stream(local_stream[i]);
 				num_hup++;
-			} else if ((pollfd[i].revents & POLLHUP &&
-					!(pollfd[i].revents & POLLIN))) {
+			} else if ((pollfd[i].revents & POLLHUP) &&
+					!(pollfd[i].revents & POLLIN)) {
 				DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
 				consumer_del_stream(local_stream[i]);
 				num_hup++;
