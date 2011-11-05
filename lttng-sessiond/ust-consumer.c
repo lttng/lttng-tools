@@ -171,6 +171,7 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 
 		ret = send_channel_streams(sock, uchan);
 		if (ret < 0) {
+			rcu_read_unlock();
 			goto error;
 		}
 		hashtable_get_next(usess->channels, &iter);

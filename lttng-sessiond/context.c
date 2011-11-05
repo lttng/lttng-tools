@@ -260,12 +260,14 @@ static int add_ustctx_all_channels(struct ltt_ust_session *ustsession,
 			//		ustctx, ustchan->obj, &context_data);
 			if (ret < 0) {
 				ret = LTTCOMM_UST_CONTEXT_FAIL;
+				rcu_read_unlock();
 				goto error;
 			}
 		} else {
 			ret = add_ustctx_to_event(ustsession, ustctx, ustchan, event_name);
 			if (ret < 0) {
 				ret = LTTCOMM_UST_CONTEXT_FAIL;
+				rcu_read_unlock();
 				goto error;
 			} else if (ret == 1) {
 				/* Event found and context added */
