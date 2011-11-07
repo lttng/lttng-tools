@@ -712,6 +712,19 @@ error:
 }
 
 /*
+ * For each tracing session, update newly registered apps.
+ */
+static void update_ust_app(int app_sock)
+{
+	struct ltt_session *sess, *stmp;
+
+	/* For all tracing session(s) */
+	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
+		ust_app_global_update(sess->ust_session, app_sock);
+	}
+}
+
+/*
  * This thread manage event coming from the kernel.
  *
  * Features supported in this thread:
@@ -1062,6 +1075,12 @@ static void *thread_manage_apps(void *data)
 						DBG("Apps with sock %d added to poll set",
 								ust_cmd.sock);
 					}
+
+					/*
+					 * Add channel(s) and event(s) to newly registered apps
+					 * from lttng global UST domain.
+					 */
+					update_ust_app(ust_cmd.sock);
 					break;
 				}
 			} else {
@@ -2228,6 +2247,10 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			ret = LTTCOMM_UST_ENABLE_FAIL;
 			goto error;
 		}
+
+		rcu_read_lock();
+		hashtable_add_unique(uchan->events, &uevent->node);
+		rcu_read_unlock();
 		break;
 	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:

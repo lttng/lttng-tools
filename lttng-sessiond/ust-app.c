@@ -827,3 +827,140 @@ next:
 
 	return 0;
 }
+
+void ust_app_global_update(struct ltt_ust_session *usess, int sock)
+{
+	int ret = 0;
+	int session_existed = 1;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node, *ua_chan_node;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+	struct ust_app_event *ua_event;
+	struct lttng_ust_event ltt_uevent;
+	struct ltt_ust_channel *uchan;
+	struct lttng_ust_object_data *obj_event;
+
+	DBG2("UST app global update for app sock %d for session uid %d", sock,
+			usess->uid);
+
+	rcu_read_lock();
+	app = find_app_by_sock(sock);
+	if (app == NULL) {
+		ERR("Failed to update app sock %d", sock);
+		goto error;
+	}
+
+	ua_sess = lookup_session_by_app(usess, app);
+	if (ua_sess == NULL) {
+		DBG2("UST app pid: %d session uid %d not found, creating one",
+				app->key.pid, usess->uid);
+		ua_sess = alloc_app_session();
+		if (ua_sess == NULL) {
+			/* Only malloc can failed so something is really wrong */
+			goto error;
+		}
+		shallow_copy_session(ua_sess, usess);
+		session_existed= 0;
+	}
+
+	if (ua_sess->handle == -1) {
+		ret = ustctl_create_session(app->key.sock);
+		if (ret < 0) {
+			DBG("Error creating session for app pid %d, sock %d",
+					app->key.pid, app->key.sock);
+			/* TODO: free() ua_sess */
+			goto error;
+		}
+
+		DBG2("UST app ustctl create session handle %d", ret);
+		ua_sess->handle = ret;
+
+		/* Add ust app session to app's HT */
+		hashtable_node_init(&ua_sess->node,
+				(void *)((unsigned long) ua_sess->uid), sizeof(void *));
+		hashtable_add_unique(app->sessions, &ua_sess->node);
+	}
+
+	if (session_existed) {
+		goto error;
+	}
+
+	/* Iterate over all channels */
+	hashtable_get_first(usess->domain_global.channels, &iter);
+	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+		uchan = caa_container_of(node, struct ltt_ust_channel, node);
+
+		/* Lookup channel in the ust app session */
+		ua_chan_node = hashtable_lookup(ua_sess->channels,
+				(void *) uchan->name, strlen(uchan->name), &iter);
+		if (ua_chan_node == NULL) {
+			ERR("UST app channel not found for uchan %s", uchan->name);
+			goto next_chan;
+		}
+
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+		/* TODO: remove cast and use lttng-ust-abi.h */
+		ret = ustctl_create_channel(app->key.sock, ua_sess->handle,
+				(struct lttng_ust_channel_attr *)&uchan->attr, &ua_chan->obj);
+		if (ret < 0) {
+			DBG("Error creating channel %s for app (pid: %d, sock: %d) "
+					"and session handle %d with ret %d",
+					uchan->name, app->key.pid, app->key.sock,
+					ua_sess->handle, ret);
+			goto next_chan;
+		}
+
+		ua_chan->handle = ua_chan->obj->handle;
+		ua_chan->attr.shm_fd = ua_chan->obj->shm_fd;
+		ua_chan->attr.wait_fd = ua_chan->obj->wait_fd;
+		ua_chan->attr.memory_map_size = ua_chan->obj->memory_map_size;
+
+		DBG2("Channel %s UST create successfully for pid:%d and sock:%d",
+				uchan->name, app->key.pid, app->key.sock);
+
+		/* For each event(s) of that channel */
+		hashtable_get_first(ua_chan->events, &iter);
+		while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+			ua_event = caa_container_of(node, struct ust_app_event, node);
+
+			/* Prepare lttng ust event */
+			memset(&ltt_uevent, 0, sizeof(ltt_uevent));
+			strncpy(ltt_uevent.name, ua_event->name, sizeof(ltt_uevent.name));
+			ltt_uevent.name[sizeof(ltt_uevent.name) - 1] = '\0';
+
+			/* TODO: adjust to other instrumentation types */
+			ltt_uevent.instrumentation = LTTNG_UST_TRACEPOINT;
+
+			/* Create UST event on tracer */
+			ret = ustctl_create_event(app->key.sock, &ltt_uevent, ua_chan->obj,
+					&obj_event);
+			if (ret < 0) {
+				ERR("Error ustctl create event %s for app pid: %d with ret %d",
+						ua_event->name, app->key.pid, ret);
+				/* TODO: free() ua_event and obj_event */
+				goto next_event;
+			}
+
+			ua_event->obj = obj_event;
+			ua_event->handle = obj_event->handle;
+			ua_event->enabled = 1;
+
+			DBG2("Event %s UST create successfully for pid:%d",
+					ua_event->name, app->key.pid);
+
+next_event:
+			hashtable_get_next(ua_chan->events, &iter);
+		}
+
+next_chan:
+		/* Next applications */
+		hashtable_get_next(ua_sess->channels, &iter);
+	}
+
+error:
+	rcu_read_unlock();
+	return;
+}

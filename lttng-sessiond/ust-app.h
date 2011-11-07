@@ -107,6 +107,7 @@ int ust_app_add_event(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess);
+void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
 void ust_app_ht_alloc(void);
@@ -175,6 +176,10 @@ struct cds_lfht *ust_app_get_ht(void)
 }
 static inline
 void ust_app_ht_alloc(void)
+{
+}
+static inline
+void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {
 }
 

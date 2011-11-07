@@ -34,6 +34,9 @@ AC_CHECK_DECL([cds_list_add], [],
 AC_CHECK_DECL([cds_wfq_init], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
 )
+AC_CHECK_DECL([cds_wfq_dequeue_blocking], [],
+    [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
+)
 AC_CHECK_DECL([futex_async], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
 )
