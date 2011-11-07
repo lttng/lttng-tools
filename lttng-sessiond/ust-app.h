@@ -119,7 +119,7 @@ struct ust_app *ust_app_find_by_pid(pid_t pid);
 static inline
 int ust_app_start_trace(struct ltt_ust_session *usess)
 {
-	return -ENOSYS;
+	return 0;
 }
 static inline
 int ust_app_register(struct ust_register_msg *msg, int sock)
@@ -167,7 +167,7 @@ static inline
 int ust_app_add_event(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
-	return -ENOSYS;
+	return 0;
 }
 static inline
 struct cds_lfht *ust_app_get_ht(void)

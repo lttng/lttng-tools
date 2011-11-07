@@ -692,6 +692,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess)
 	struct lttng_ust_channel_attr uattr;
 	struct ltt_ust_channel *uchan;
 
+	DBG("Starting all UST traces");
+
 	rcu_read_lock();
 	hashtable_get_first(ust_app_ht, &iter);
 	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
