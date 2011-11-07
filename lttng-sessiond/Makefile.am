@@ -35,7 +35,7 @@ endif
 lttng_sessiond_SOURCES += lttng-sessiond.h main.c
 
 # link on liblttngctl for check if sessiond is already alive.
-lttng_sessiond_LDADD = -lrt -lurcu-cds -lurcu \
+lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la
