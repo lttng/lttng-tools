@@ -116,6 +116,11 @@ struct ust_app *ust_app_find_by_pid(pid_t pid);
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
+int ust_app_start_trace(struct ltt_ust_session *usess)
+{
+	return -ENOSYS;
+}
+static inline
 int ust_app_register(struct ust_register_msg *msg, int sock)
 {
 	return -ENOSYS;
@@ -129,7 +134,6 @@ unsigned int ust_app_list_count(void)
 {
 	return 0;
 }
-
 static inline
 void ust_app_lock_list(void)
 {
@@ -152,12 +156,26 @@ struct ust_app *ust_app_get_by_pid(pid_t pid)
 {
 	return NULL;
 }
-
 static inline
 int ust_app_add_channel(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	return 0;
+}
+static inline
+int ust_app_add_event(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
+{
+	return -ENOSYS;
+}
+static inline
+struct cds_lfht *ust_app_get_ht(void)
+{
+	return NULL;
+}
+static inline
+void ust_app_ht_alloc(void)
+{
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
