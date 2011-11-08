@@ -221,7 +221,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	hashtable_node_init(&lue->node, (void *) lue->attr.name,
 			strlen(lue->attr.name));
 	/* Alloc context hash tables */
-	lue->ctx = hashtable_new_str(5);
+	lue->ctx = hashtable_new_str(0);
 
 	return lue;
 
