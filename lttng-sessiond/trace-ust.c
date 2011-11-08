@@ -92,13 +92,14 @@ struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 	/* Allocate a new ltt ust session */
 	lus = malloc(sizeof(struct ltt_ust_session));
 	if (lus == NULL) {
-		perror("create ust session malloc");
+		PERROR("create ust session malloc");
 		goto error;
 	}
 
 	/* Init data structure */
 	lus->consumer_fds_sent = 0;
 	lus->uid = uid;
+	lus->start_trace = 0;
 
 	/* Alloc UST domain hash tables */
 	lus->domain_pid = hashtable_new(0);

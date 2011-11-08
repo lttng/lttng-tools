@@ -843,6 +843,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	struct lttng_ust_event ltt_uevent;
 	struct ltt_ust_channel *uchan;
 	struct lttng_ust_object_data *obj_event;
+	struct lttng_ust_channel_attr uattr;
 
 	DBG2("UST app global update for app sock %d for session uid %d", sock,
 			usess->uid);
@@ -957,9 +958,109 @@ next_event:
 			hashtable_get_next(ua_chan->events, &iter);
 		}
 
+		for (;;) {
+			struct lttng_ust_object_data *obj;
+			struct ltt_ust_stream *ustream;
+
+			ret = ustctl_create_stream(app->key.sock, ua_chan->obj, &obj);
+			if (ret < 0) {
+				/* Got all streams */
+				break;
+			}
+
+			ustream = zmalloc(sizeof(*ustream));
+			if (ustream == NULL) {
+				PERROR("zmalloc ust stream");
+				goto error;
+			}
+
+			ustream->obj = obj;
+			ustream->handle = ustream->obj->handle;
+			/* Order is important */
+			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
+
+			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%u",
+					uchan->pathname, uchan->name, ua_chan->streams.count++);
+			if (ret < 0) {
+				PERROR("asprintf UST create stream");
+				goto error;
+			}
+		}
+
 next_chan:
 		/* Next applications */
 		hashtable_get_next(ua_sess->channels, &iter);
+	}
+
+	if (ua_sess->metadata == NULL) {
+		/* Allocate UST metadata */
+		ua_sess->metadata = trace_ust_create_metadata(usess->pathname);
+		if (ua_sess->metadata == NULL) {
+			ERR("UST app session %d creating metadata failed",
+					ua_sess->handle);
+			goto error;
+		}
+
+		uattr.overwrite = ua_sess->metadata->attr.overwrite;
+		uattr.subbuf_size = ua_sess->metadata->attr.subbuf_size;
+		uattr.num_subbuf = ua_sess->metadata->attr.num_subbuf;
+		uattr.switch_timer_interval =
+			ua_sess->metadata->attr.switch_timer_interval;
+		uattr.read_timer_interval =
+			ua_sess->metadata->attr.read_timer_interval;
+		uattr.output = ua_sess->metadata->attr.output;
+
+		/* UST tracer metadata creation */
+		ret = ustctl_open_metadata(app->key.sock, ua_sess->handle, &uattr,
+				&ua_sess->metadata->obj);
+		if (ret < 0) {
+			ERR("UST app open metadata failed for app pid:%d",
+					app->key.pid);
+			goto error;
+		}
+
+		DBG2("UST metadata opened for app pid %d", app->key.pid);
+	}
+
+	/* Open UST metadata stream */
+	if (ua_sess->metadata->stream_obj == NULL) {
+		ret = ustctl_create_stream(app->key.sock, ua_sess->metadata->obj,
+				&ua_sess->metadata->stream_obj);
+		if (ret < 0) {
+			ERR("UST create metadata stream failed");
+			goto error;
+		}
+
+		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s",
+				usess->pathname, "metadata");
+		if (ret < 0) {
+			PERROR("asprintf UST create stream");
+			goto error;
+		}
+
+		DBG2("UST metadata stream object created for app pid %d",
+				app->key.pid);
+	}
+
+	if (usess->start_trace) {
+		/* Setup UST consumer socket and send fds to it */
+		ret = ust_consumer_send_session(usess->consumer_fd, ua_sess);
+		if (ret < 0) {
+			ERR("UST consumer send session failed");
+			goto error;
+		}
+
+		/* This start the UST tracing */
+		ret = ustctl_start_session(app->key.sock, ua_sess->handle);
+		if (ret < 0) {
+			ERR("Error starting tracing for app pid: %d", app->key.pid);
+			goto error;
+		}
+
+		/* Quiescent wait after starting trace */
+		ustctl_wait_quiescent(app->key.sock);
+
+		DBG2("UST trace started for app pid %d", app->key.pid);
 	}
 
 error:

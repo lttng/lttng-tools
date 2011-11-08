@@ -1718,6 +1718,7 @@ static int create_ust_session(struct ltt_session *session,
 		/* No ustctl for the global UST domain */
 		break;
 	default:
+		ERR("Unknown UST domain on create session %d", domain->type);
 		goto error;
 	}
 	session->ust_session = lus;
@@ -2432,6 +2433,9 @@ static int cmd_start_trace(struct ltt_session *session)
 		/* Quiescent wait after starting trace */
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
+
+	/* Flag session that trace should start automatically */
+	usess->start_trace = 1;
 
 	ret = ust_app_start_trace(usess);
 	if (ret < 0) {
