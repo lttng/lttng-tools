@@ -859,10 +859,16 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	struct lttng_ust_object_data *obj_event;
 	struct lttng_ust_channel_attr uattr;
 
+	rcu_read_lock();
+
+	if (usess == NULL) {
+		DBG2("No UST session on global update. Returning");
+		goto error;
+	}
+
 	DBG2("UST app global update for app sock %d for session uid %d", sock,
 			usess->uid);
 
-	rcu_read_lock();
 	app = find_app_by_sock(sock);
 	if (app == NULL) {
 		ERR("Failed to update app sock %d", sock);
