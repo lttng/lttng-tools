@@ -338,12 +338,6 @@ static void cleanup(void)
 
 	DBG("Cleaning up");
 
-	/* <fun> */
-	MSG("%c[%d;%dm*** assert failed *** ==> %c[%dm%c[%d;%dm"
-		"Matthew, BEET driven development works!%c[%dm",
-		27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
-	/* </fun> */
-
 	if (is_root) {
 		DBG("Removing %s directory", LTTNG_RUNDIR);
 		ret = asprintf(&cmd, "rm -rf " LTTNG_RUNDIR);
@@ -388,6 +382,12 @@ static void cleanup(void)
 
 	close(thread_quit_pipe[0]);
 	close(thread_quit_pipe[1]);
+
+	/* <fun> */
+	MSG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
+			"Matthew, BEET driven development works!%c[%dm",
+			27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
+	/* </fun> */
 }
 
 /*
@@ -720,7 +720,9 @@ static void update_ust_app(int app_sock)
 
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
-		ust_app_global_update(sess->ust_session, app_sock);
+		if (sess->ust_session) {
+			ust_app_global_update(sess->ust_session, app_sock);
+		}
 	}
 }
 
@@ -1983,7 +1985,8 @@ static int cmd_enable_channel(struct ltt_session *session,
 			goto error;
 		}
 
-		ret = ust_app_add_channel(usess, uchan);
+		/* Add channel to all registered applications */
+		ret = ust_app_add_channel_all(usess, uchan);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2243,7 +2246,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			}
 		}
 
-		ret = ust_app_add_event(usess, uchan, uevent);
+		ret = ust_app_add_event_all(usess, uchan, uevent);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_ENABLE_FAIL;
 			goto error;
@@ -2437,7 +2440,7 @@ static int cmd_start_trace(struct ltt_session *session)
 	/* Flag session that trace should start automatically */
 	usess->start_trace = 1;
 
-	ret = ust_app_start_trace(usess);
+	ret = ust_app_start_trace_all(usess);
 	if (ret < 0) {
 		ret = LTTCOMM_UST_START_FAIL;
 		goto error;
