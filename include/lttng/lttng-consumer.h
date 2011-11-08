@@ -118,6 +118,7 @@ struct lttng_consumer_stream {
 	/* For UST */
 	struct lttng_ust_lib_ring_buffer *buf;
 	int cpu;
+	int hangup_flush_done;
 };
 
 /*

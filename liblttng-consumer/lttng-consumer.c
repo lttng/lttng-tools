@@ -847,7 +847,21 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				num_hup++;
 			} else if ((pollfd[i].revents & POLLHUP) &&
 					!(pollfd[i].revents & POLLIN)) {
-				DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
+				if (consumer_data.type == LTTNG_CONSUMER_UST) {
+					DBG("Polling fd %d tells it has hung up. Attempting flush and read.",
+						pollfd[i].fd);
+					if (!local_stream[i]->hangup_flush_done) {
+						lttng_ustconsumer_on_stream_hangup(local_stream[i]);
+						/* try reading after flush */
+						ret = ctx->on_buffer_ready(local_stream[i], ctx);
+						/* it's ok to have an unavailable sub-buffer */
+						if (ret == EAGAIN) {
+							ret = 0;
+						}
+					}
+				} else {
+					DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
+				}
 				consumer_del_stream(local_stream[i]);
 				num_hup++;
 			}
