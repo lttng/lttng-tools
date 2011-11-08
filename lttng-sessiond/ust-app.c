@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <lttngerr.h>
@@ -744,8 +746,20 @@ int ust_app_start_trace(struct ltt_ust_session *usess)
 				goto next;
 			}
 
+			ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s-%d",
+					usess->pathname, app->name, app->key.pid);
+			if (ret < 0) {
+				PERROR("asprintf UST create stream");
+				goto next;
+			}
+
+			ret = mkdir(ua_sess->metadata->pathname, S_IRWXU | S_IRWXG);
+			if (ret < 0) {
+				goto next;
+			}
+
 			ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s",
-					usess->pathname, "metadata");
+					ua_sess->metadata->pathname, "metadata");
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
 				goto next;
@@ -792,9 +806,9 @@ int ust_app_start_trace(struct ltt_ust_session *usess)
 				ustream->handle = ustream->obj->handle;
 				/* Order is important */
 				cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
-				ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%u",
-						uchan->pathname, uchan->name,
-						ua_chan->streams.count++);
+				ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s-%d/%s_%u",
+						usess->pathname, app->name, app->key.pid,
+						uchan->name, ua_chan->streams.count++);
 				if (ret < 0) {
 					PERROR("asprintf UST create stream");
 					goto next_chan;
@@ -890,6 +904,70 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		goto error;
 	}
 
+	if (ua_sess->metadata == NULL) {
+		/* Allocate UST metadata */
+		ua_sess->metadata = trace_ust_create_metadata(usess->pathname);
+		if (ua_sess->metadata == NULL) {
+			ERR("UST app session %d creating metadata failed",
+					ua_sess->handle);
+			goto error;
+		}
+
+		uattr.overwrite = ua_sess->metadata->attr.overwrite;
+		uattr.subbuf_size = ua_sess->metadata->attr.subbuf_size;
+		uattr.num_subbuf = ua_sess->metadata->attr.num_subbuf;
+		uattr.switch_timer_interval =
+			ua_sess->metadata->attr.switch_timer_interval;
+		uattr.read_timer_interval =
+			ua_sess->metadata->attr.read_timer_interval;
+		uattr.output = ua_sess->metadata->attr.output;
+
+		/* UST tracer metadata creation */
+		ret = ustctl_open_metadata(app->key.sock, ua_sess->handle, &uattr,
+				&ua_sess->metadata->obj);
+		if (ret < 0) {
+			ERR("UST app open metadata failed for app pid:%d",
+					app->key.pid);
+			goto error;
+		}
+
+		DBG2("UST metadata opened for app pid %d", app->key.pid);
+	}
+
+	/* Open UST metadata stream */
+	if (ua_sess->metadata->stream_obj == NULL) {
+		ret = ustctl_create_stream(app->key.sock, ua_sess->metadata->obj,
+				&ua_sess->metadata->stream_obj);
+		if (ret < 0) {
+			ERR("UST create metadata stream failed");
+			goto error;
+		}
+
+		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s-%d",
+				usess->pathname, app->name, app->key.pid);
+		if (ret < 0) {
+			PERROR("asprintf UST create stream");
+			goto error;
+		}
+
+		ret = mkdir(ua_sess->metadata->pathname, S_IRWXU | S_IRWXG);
+		if (ret < 0) {
+			PERROR("mkdir UST metadata");
+			goto error;
+		}
+
+		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/metadata",
+				ua_sess->metadata->pathname);
+		if (ret < 0) {
+			PERROR("asprintf UST create stream");
+			goto error;
+		}
+
+		DBG2("UST metadata stream object created for app pid %d",
+				app->key.pid);
+	}
+
+
 	/* Iterate over all channels */
 	hashtable_get_first(usess->domain_global.channels, &iter);
 	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
@@ -979,8 +1057,9 @@ next_event:
 			/* Order is important */
 			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
 
-			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%u",
-					uchan->pathname, uchan->name, ua_chan->streams.count++);
+			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s-%d/%s_%u",
+					usess->pathname, app->name, app->key.pid,
+					uchan->name, ua_chan->streams.count++);
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
 				goto error;
@@ -990,56 +1069,6 @@ next_event:
 next_chan:
 		/* Next applications */
 		hashtable_get_next(ua_sess->channels, &iter);
-	}
-
-	if (ua_sess->metadata == NULL) {
-		/* Allocate UST metadata */
-		ua_sess->metadata = trace_ust_create_metadata(usess->pathname);
-		if (ua_sess->metadata == NULL) {
-			ERR("UST app session %d creating metadata failed",
-					ua_sess->handle);
-			goto error;
-		}
-
-		uattr.overwrite = ua_sess->metadata->attr.overwrite;
-		uattr.subbuf_size = ua_sess->metadata->attr.subbuf_size;
-		uattr.num_subbuf = ua_sess->metadata->attr.num_subbuf;
-		uattr.switch_timer_interval =
-			ua_sess->metadata->attr.switch_timer_interval;
-		uattr.read_timer_interval =
-			ua_sess->metadata->attr.read_timer_interval;
-		uattr.output = ua_sess->metadata->attr.output;
-
-		/* UST tracer metadata creation */
-		ret = ustctl_open_metadata(app->key.sock, ua_sess->handle, &uattr,
-				&ua_sess->metadata->obj);
-		if (ret < 0) {
-			ERR("UST app open metadata failed for app pid:%d",
-					app->key.pid);
-			goto error;
-		}
-
-		DBG2("UST metadata opened for app pid %d", app->key.pid);
-	}
-
-	/* Open UST metadata stream */
-	if (ua_sess->metadata->stream_obj == NULL) {
-		ret = ustctl_create_stream(app->key.sock, ua_sess->metadata->obj,
-				&ua_sess->metadata->stream_obj);
-		if (ret < 0) {
-			ERR("UST create metadata stream failed");
-			goto error;
-		}
-
-		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s",
-				usess->pathname, "metadata");
-		if (ret < 0) {
-			PERROR("asprintf UST create stream");
-			goto error;
-		}
-
-		DBG2("UST metadata stream object created for app pid %d",
-				app->key.pid);
 	}
 
 	if (usess->start_trace) {
