@@ -758,8 +758,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess)
 				goto next;
 			}
 
-			ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s",
-					ua_sess->metadata->pathname, "metadata");
+			ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s-%d/metadata",
+					usess->pathname, app->name, app->key.pid);
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
 				goto next;
@@ -956,8 +956,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 			goto error;
 		}
 
-		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/metadata",
-				ua_sess->metadata->pathname);
+		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s-%d/metadata",
+				usess->pathname, app->name, app->key.pid);
 		if (ret < 0) {
 			PERROR("asprintf UST create stream");
 			goto error;
