@@ -175,7 +175,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.channel.mmap_len,
 				msg.u.channel.max_sb_size);
 		if (new_channel == NULL) {
-			fprintf(stderr, "AAAAA\n");
 			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
 		}
@@ -218,7 +217,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.output,
 				msg.u.stream.path_name);
 		if (new_stream == NULL) {
-			fprintf(stderr, "BBBBBB\n");
 			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
 			goto end;
 		}

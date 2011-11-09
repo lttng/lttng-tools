@@ -305,7 +305,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	struct lttng_consumer_channel *channel;
 	int ret;
 
-	channel = malloc(sizeof(*channel));
+	channel = zmalloc(sizeof(*channel));
 	if (channel == NULL) {
 		perror("malloc struct lttng_consumer_channel");
 		goto end;
