@@ -137,6 +137,9 @@ struct lttng_ust_object_data {
 #define LTTNG_UST_ENABLE			_UST_CMD(0x80)
 #define LTTNG_UST_DISABLE			_UST_CMD(0x81)
 
+/* Tracepoint list commands */
+#define LTTNG_UST_TRACEPOINT_LIST_GET		_UST_CMD(0x90)
+
 #define LTTNG_UST_ROOT_HANDLE	0
 
 struct lttng_ust_obj;
