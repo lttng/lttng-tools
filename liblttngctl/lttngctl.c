@@ -335,7 +335,9 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 	size = llm.data_size;
 	if (size == 0) {
 		/* If client free with size 0 */
-		*buf = NULL;
+		if (buf != NULL) {
+			*buf = NULL;
+		}
 		ret = 0;
 		goto end;
 	}
