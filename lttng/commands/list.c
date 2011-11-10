@@ -82,7 +82,6 @@ static void usage(FILE *ofp)
  * On success, return an allocated string pointer to the proc cmdline.
  * On error, return NULL.
  */
-#ifdef DISABLE
 static char *get_cmdline_by_pid(pid_t pid)
 {
 	int ret;
@@ -107,7 +106,97 @@ static char *get_cmdline_by_pid(pid_t pid)
 end:
 	return cmdline;
 }
-#endif /* DISABLE */
+
+/*
+ * Pretty print single event.
+ */
+static void print_events(struct lttng_event *event)
+{
+	switch (event->type) {
+	case LTTNG_EVENT_TRACEPOINT:
+		MSG("%s%s (type: tracepoint) [enabled: %d]", indent6,
+				event->name, event->enabled);
+		break;
+	case LTTNG_EVENT_PROBE:
+		MSG("%s%s (type: probe) [enabled: %d]", indent6,
+				event->name, event->enabled);
+		if (event->attr.probe.addr != 0) {
+			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
+		} else {
+			MSG("%soffset: 0x%" PRIx64, indent8, event->attr.probe.offset);
+			MSG("%ssymbol: %s", indent8, event->attr.probe.symbol_name);
+		}
+		break;
+	case LTTNG_EVENT_FUNCTION:
+	case LTTNG_EVENT_FUNCTION_ENTRY:
+		MSG("%s%s (type: function) [enabled: %d]", indent6,
+				event->name, event->enabled);
+		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
+		break;
+	case LTTNG_EVENT_SYSCALL:
+		MSG("%s (type: syscall) [enabled: %d]", indent6,
+				event->enabled);
+		break;
+	case LTTNG_EVENT_NOOP:
+		MSG("%s (type: noop) [enabled: %d]", indent6,
+				event->enabled);
+		break;
+	case LTTNG_EVENT_ALL:
+		/* We should never have "all" events in list. */
+		assert(0);
+		break;
+	}
+}
+
+/*
+ * Ask session daemon for all user space tracepoints available.
+ */
+static int list_ust_events(void)
+{
+	int i, size;
+	struct lttng_domain domain;
+	struct lttng_handle *handle;
+	struct lttng_event *event_list;
+	pid_t cur_pid = 0;
+
+	DBG("Getting UST tracing events");
+
+	domain.type = LTTNG_DOMAIN_UST;
+
+	handle = lttng_create_handle(NULL, &domain);
+	if (handle == NULL) {
+		goto error;
+	}
+
+	size = lttng_list_tracepoints(handle, &event_list);
+	if (size < 0) {
+		ERR("Unable to list UST events");
+		return size;
+	}
+
+	MSG("UST events:\n-------------");
+
+	if (size == 0) {
+		MSG("None");
+	}
+
+	for (i = 0; i < size; i++) {
+		if (cur_pid != event_list[i].pid) {
+			cur_pid = event_list[i].pid;
+			MSG("\nPID: %d - Name: %s", cur_pid, get_cmdline_by_pid(cur_pid));
+		}
+		print_events(&event_list[i]);
+	}
+
+	MSG("");
+
+	free(event_list);
+
+	return CMD_SUCCESS;
+
+error:
+	return -1;
+}
 
 /*
  * Ask for all trace events in the kernel and pretty print them.
@@ -115,9 +204,18 @@ end:
 static int list_kernel_events(void)
 {
 	int i, size;
+	struct lttng_domain domain;
+	struct lttng_handle *handle;
 	struct lttng_event *event_list;
 
-	DBG("Getting all tracing events");
+	DBG("Getting kernel tracing events");
+
+	domain.type = LTTNG_DOMAIN_KERNEL;
+
+	handle = lttng_create_handle(NULL, &domain);
+	if (handle == NULL) {
+		goto error;
+	}
 
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
@@ -128,12 +226,17 @@ static int list_kernel_events(void)
 	MSG("Kernel events:\n-------------");
 
 	for (i = 0; i < size; i++) {
-		MSG("  %s", event_list[i].name);
+		print_events(&event_list[i]);
 	}
+
+	MSG("");
 
 	free(event_list);
 
 	return CMD_SUCCESS;
+
+error:
+	return -1;
 }
 
 /*
@@ -157,40 +260,7 @@ static int list_events(const char *channel_name)
 	}
 
 	for (i = 0; i < count; i++) {
-		switch (events[i].type) {
-			case LTTNG_EVENT_TRACEPOINT:
-				MSG("%s%s (type: tracepoint) [enabled: %d]", indent6,
-						events[i].name, events[i].enabled);
-				break;
-			case LTTNG_EVENT_PROBE:
-				MSG("%s%s (type: probe) [enabled: %d]", indent6,
-						events[i].name, events[i].enabled);
-				if (events[i].attr.probe.addr != 0) {
-					MSG("%saddr: 0x%" PRIx64, indent8, events[i].attr.probe.addr);
-				} else {
-					MSG("%soffset: 0x%" PRIx64, indent8, events[i].attr.probe.offset);
-					MSG("%ssymbol: %s", indent8, events[i].attr.probe.symbol_name);
-				}
-				break;
-			case LTTNG_EVENT_FUNCTION:
-			case LTTNG_EVENT_FUNCTION_ENTRY:
-				MSG("%s%s (type: function) [enabled: %d]", indent6,
-						events[i].name, events[i].enabled);
-				MSG("%ssymbol: \"%s\"", indent8, events[i].attr.ftrace.symbol_name);
-				break;
-			case LTTNG_EVENT_SYSCALL:
-				MSG("%s (type: syscall) [enabled: %d]", indent6,
-						events[i].enabled);
-				break;
-			case LTTNG_EVENT_NOOP:
-				MSG("%s (type: noop) [enabled: %d]", indent6,
-						events[i].enabled);
-				break;
-			case LTTNG_EVENT_ALL:
-				/* We should never have "all" events in list. */
-				assert(0);
-				break;
-		}
+		print_events(&events[i]);
 	}
 
 	MSG("");
@@ -366,6 +436,10 @@ static int list_domains(void)
 		switch (domains[i].type) {
 		case LTTNG_DOMAIN_KERNEL:
 			MSG("  - Kernel");
+			break;
+		case LTTNG_DOMAIN_UST:
+			MSG("  - UST global");
+			break;
 		default:
 			break;
 		}
@@ -384,6 +458,7 @@ error:
 int cmd_list(int argc, const char **argv)
 {
 	int opt, i, ret = CMD_SUCCESS;
+	unsigned int nb_domain;
 	const char *session_name;
 	static poptContext pc;
 	struct lttng_domain domain;
@@ -409,16 +484,19 @@ int cmd_list(int argc, const char **argv)
 		}
 	}
 
-	if (opt_userspace || opt_pid != 0) {
-		MSG("*** Userspace tracing not implemented ***\n");
+	if (opt_pid != 0) {
+		MSG("*** Userspace tracing not implemented for PID ***\n");
 	}
 
 	/* Get session name (trailing argument) */
 	session_name = poptGetArg(pc);
-	DBG("Session name: %s", session_name);
+	DBG2("Session name: %s", session_name);
 
 	if (opt_kernel) {
 		domain.type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_userspace) {
+		DBG2("Listing userspace global domain");
+		domain.type = LTTNG_DOMAIN_UST;
 	}
 
 	handle = lttng_create_handle(session_name, &domain);
@@ -427,13 +505,20 @@ int cmd_list(int argc, const char **argv)
 	}
 
 	if (session_name == NULL) {
+		if (!opt_kernel && !opt_userspace) {
+			ret = list_sessions(NULL);
+			if (ret < 0) {
+				goto end;
+			}
+		}
 		if (opt_kernel) {
 			ret = list_kernel_events();
 			if (ret < 0) {
 				goto end;
 			}
-		} else {
-			ret = list_sessions(NULL);
+		}
+		if (opt_userspace) {
+			ret = list_ust_events();
 			if (ret < 0) {
 				goto end;
 			}
@@ -457,19 +542,21 @@ int cmd_list(int argc, const char **argv)
 			if (ret < 0) {
 				goto end;
 			}
-		} else if (opt_userspace) {
-			/* TODO: Userspace domain */
 		} else {
 			/* We want all domain(s) */
-			ret = lttng_list_domains(handle, &domains);
-			if (ret < 0) {
+			nb_domain = lttng_list_domains(handle, &domains);
+			if (nb_domain < 0) {
+				ret = nb_domain;
 				goto end;
 			}
 
-			for (i = 0; i < ret; i++) {
+			for (i = 0; i < nb_domain; i++) {
 				switch (domains[i].type) {
 				case LTTNG_DOMAIN_KERNEL:
 					MSG("=== Domain: Kernel ===\n");
+					break;
+				case LTTNG_DOMAIN_UST:
+					MSG("=== Domain: UST global ===\n");
 					break;
 				default:
 					MSG("=== Domain: Unimplemented ===\n");

@@ -24,6 +24,8 @@
 
 #include "trace-ust.h"
 
+#define UST_APP_EVENT_LIST_SIZE 32
+
 /*
  * Application registration data structure.
  */
@@ -108,6 +110,7 @@ int ust_app_add_event_all(struct ltt_ust_session *usess,
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
+int ust_app_list_events(struct lttng_event **events);
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
@@ -124,6 +127,11 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 }
 static inline
 int ust_app_start_trace_all(struct ltt_ust_session *usess)
+{
+	return 0;
+}
+static inline
+int ust_app_list_events(struct lttng_event **events)
 {
 	return 0;
 }

@@ -145,6 +145,7 @@ struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	enum lttng_event_type type;
 	uint32_t enabled;
+	pid_t pid;
 	/* Per event type configuration */
 	union {
 		struct lttng_event_probe_attr probe;

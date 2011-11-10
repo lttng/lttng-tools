@@ -1794,7 +1794,7 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 /*
  * Fill lttng_channel array of all channels.
  */
-static void list_lttng_channels(struct ltt_session *session,
+static void list_lttng_channels(int domain, struct ltt_session *session,
 		struct lttng_channel *channels)
 {
 	int i = 0;
@@ -1802,59 +1802,162 @@ static void list_lttng_channels(struct ltt_session *session,
 
 	DBG("Listing channels for session %s", session->name);
 
-	/* Kernel channels */
-	if (session->kernel_session != NULL) {
-		cds_list_for_each_entry(kchan,
-				&session->kernel_session->channel_list.head, list) {
-			/* Copy lttng_channel struct to array */
-			memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
-			channels[i].enabled = kchan->enabled;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		/* Kernel channels */
+		if (session->kernel_session != NULL) {
+			cds_list_for_each_entry(kchan,
+					&session->kernel_session->channel_list.head, list) {
+				/* Copy lttng_channel struct to array */
+				memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
+				channels[i].enabled = kchan->enabled;
+				i++;
+			}
+		}
+		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		struct cds_lfht_iter iter;
+		struct ltt_ust_channel *uchan;
+
+		cds_lfht_for_each_entry(session->ust_session->domain_global.channels,
+				&iter, uchan, node) {
+			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
+			channels[i].attr.overwrite = uchan->attr.overwrite;
+			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
+			channels[i].attr.num_subbuf = uchan->attr.num_subbuf;
+			channels[i].attr.switch_timer_interval =
+				uchan->attr.switch_timer_interval;
+			channels[i].attr.read_timer_interval =
+				uchan->attr.read_timer_interval;
+			channels[i].attr.output = uchan->attr.output;
+		}
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+/*
+ * Create a list of ust global domain events.
+ */
+static int list_lttng_ust_global_events(char *channel_name,
+		struct ltt_ust_domain_global *ust_global, struct lttng_event **events)
+{
+	int i = 0, ret = 0;
+	unsigned int nb_event = 0;
+	struct cds_lfht_iter iter;
+	struct ltt_ust_channel *uchan;
+	struct ltt_ust_event *uevent;
+	struct lttng_event *tmp;
+
+	DBG("Listing UST global events for channel %s", channel_name);
+
+	rcu_read_lock();
+
+	/* Count events in all channels */
+	cds_lfht_for_each_entry(ust_global->channels, &iter, uchan, node) {
+		nb_event += hashtable_get_count(uchan->events);
+	}
+
+	if (nb_event == 0) {
+		ret = nb_event;
+		goto error;
+	}
+
+	DBG3("Listing UST global %d events", nb_event);
+
+	tmp = zmalloc(nb_event * sizeof(struct lttng_event));
+	if (tmp == NULL) {
+		ret = -LTTCOMM_FATAL;
+		goto error;
+	}
+
+	cds_lfht_for_each_entry(ust_global->channels, &iter, uchan, node) {
+		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+			strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
+			tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+			switch (uevent->attr.instrumentation) {
+			case LTTNG_UST_TRACEPOINT:
+				tmp[i].type = LTTNG_EVENT_TRACEPOINT;
+				break;
+			case LTTNG_UST_PROBE:
+				tmp[i].type = LTTNG_EVENT_PROBE;
+				break;
+			case LTTNG_UST_FUNCTION:
+				tmp[i].type = LTTNG_EVENT_FUNCTION;
+				break;
+			}
 			i++;
 		}
 	}
 
-	/* TODO: Missing UST listing */
+	ret = nb_event;
+	*events = tmp;
+
+error:
+	rcu_read_unlock();
+	return ret;
 }
 
 /*
- * Fill lttng_event array of all events in the channel.
+ * Fill lttng_event array of all kernel events in the channel.
  */
-static void list_lttng_events(struct ltt_kernel_channel *kchan,
-		struct lttng_event *events)
+static int list_lttng_kernel_events(char *channel_name,
+		struct ltt_kernel_session *kernel_session, struct lttng_event **events)
 {
-	/*
-	 * TODO: This is ONLY kernel. Need UST support.
-	 */
-	int i = 0;
+	int i = 0, ret;
+	unsigned int nb_event;
 	struct ltt_kernel_event *event;
+	struct ltt_kernel_channel *kchan;
+
+	kchan = trace_kernel_get_channel_by_name(channel_name, kernel_session);
+	if (kchan == NULL) {
+		ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	nb_event = kchan->event_count;
 
 	DBG("Listing events for channel %s", kchan->channel->name);
 
+	if (nb_event == 0) {
+		ret = nb_event;
+		goto error;
+	}
+
+	*events = zmalloc(nb_event * sizeof(struct lttng_event));
+	if (*events == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
 	/* Kernel channels */
 	cds_list_for_each_entry(event, &kchan->events_list.head , list) {
-		strncpy(events[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
-		events[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-		events[i].enabled = event->enabled;
+		strncpy((*events)[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
+		(*events)[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+		(*events)[i].enabled = event->enabled;
 		switch (event->event->instrumentation) {
 			case LTTNG_KERNEL_TRACEPOINT:
-				events[i].type = LTTNG_EVENT_TRACEPOINT;
+				(*events)[i].type = LTTNG_EVENT_TRACEPOINT;
 				break;
 			case LTTNG_KERNEL_KPROBE:
 			case LTTNG_KERNEL_KRETPROBE:
-				events[i].type = LTTNG_EVENT_PROBE;
-				memcpy(&events[i].attr.probe, &event->event->u.kprobe,
+				(*events)[i].type = LTTNG_EVENT_PROBE;
+				memcpy(&(*events)[i].attr.probe, &event->event->u.kprobe,
 						sizeof(struct lttng_kernel_kprobe));
 				break;
 			case LTTNG_KERNEL_FUNCTION:
-				events[i].type = LTTNG_EVENT_FUNCTION;
-				memcpy(&events[i].attr.ftrace, &event->event->u.ftrace,
+				(*events)[i].type = LTTNG_EVENT_FUNCTION;
+				memcpy(&((*events)[i].attr.ftrace), &event->event->u.ftrace,
 						sizeof(struct lttng_kernel_function));
 				break;
 			case LTTNG_KERNEL_NOOP:
-				events[i].type = LTTNG_EVENT_NOOP;
+				(*events)[i].type = LTTNG_EVENT_NOOP;
 				break;
 			case LTTNG_KERNEL_SYSCALL:
-				events[i].type = LTTNG_EVENT_SYSCALL;
+				(*events)[i].type = LTTNG_EVENT_SYSCALL;
 				break;
 			case LTTNG_KERNEL_ALL:
 				assert(0);
@@ -1862,6 +1965,11 @@ static void list_lttng_events(struct ltt_kernel_channel *kchan,
 		}
 		i++;
 	}
+
+	return nb_event;
+
+error:
+	return ret;
 }
 
 /*
@@ -2358,8 +2466,14 @@ static ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 			goto error;
 		}
 		break;
+	case LTTNG_DOMAIN_UST:
+		nb_events = ust_app_list_events(events);
+		if (nb_events < 0) {
+			ret = LTTCOMM_UST_LIST_FAIL;
+			goto error;
+		}
+		break;
 	default:
-		/* TODO: Userspace listing */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2641,22 +2755,34 @@ error:
 static ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains)
 {
-	int ret;
+	int ret, index = 0;
 	ssize_t nb_dom = 0;
 
 	if (session->kernel_session != NULL) {
+		DBG3("Listing domains found kernel domain");
 		nb_dom++;
 	}
 
-	/* TODO: User-space tracer domain support */
+	if (session->ust_session != NULL) {
+		DBG3("Listing domains found UST global domain");
+		nb_dom++;
+	}
 
-	*domains = malloc(nb_dom * sizeof(struct lttng_domain));
+	*domains = zmalloc(nb_dom * sizeof(struct lttng_domain));
 	if (*domains == NULL) {
 		ret = -LTTCOMM_FATAL;
 		goto error;
 	}
 
-	(*domains)[0].type = LTTNG_DOMAIN_KERNEL;
+	if (session->kernel_session != NULL) {
+		(*domains)[index].type = LTTNG_DOMAIN_KERNEL;
+		index++;
+	}
+
+	if (session->ust_session != NULL) {
+		(*domains)[index].type = LTTNG_DOMAIN_UST;
+		index++;
+	}
 
 	return nb_dom;
 
@@ -2667,25 +2793,43 @@ error:
 /*
  * Command LTTNG_LIST_CHANNELS processed by the client thread.
  */
-static ssize_t cmd_list_channels(struct ltt_session *session,
+static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		struct lttng_channel **channels)
 {
 	int ret;
 	ssize_t nb_chan = 0;
 
-	if (session->kernel_session != NULL) {
-		nb_chan += session->kernel_session->channel_count;
-	}
-
-	*channels = malloc(nb_chan * sizeof(struct lttng_channel));
-	if (*channels == NULL) {
-		ret = -LTTCOMM_FATAL;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (session->kernel_session != NULL) {
+			nb_chan = session->kernel_session->channel_count;
+		}
+		DBG3("Number of kernel channels %ld", nb_chan);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (session->ust_session != NULL) {
+			nb_chan = hashtable_get_count(
+					session->ust_session->domain_global.channels);
+		}
+		DBG3("Number of UST global channels %ld", nb_chan);
+		break;
+	default:
+		*channels = NULL;
+		ret = -LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
 
-	list_lttng_channels(session, *channels);
+	if (nb_chan > 0) {
+		*channels = zmalloc(nb_chan * sizeof(struct lttng_channel));
+		if (*channels == NULL) {
+			ret = -LTTCOMM_FATAL;
+			goto error;
+		}
 
-	/* TODO UST support */
+		list_lttng_channels(domain, session, *channels);
+	} else {
+		*channels = NULL;
+	}
 
 	return nb_chan;
 
@@ -2696,34 +2840,33 @@ error:
 /*
  * Command LTTNG_LIST_EVENTS processed by the client thread.
  */
-static ssize_t cmd_list_events(struct ltt_session *session,
+static ssize_t cmd_list_events(int domain, struct ltt_session *session,
 		char *channel_name, struct lttng_event **events)
 {
-	int ret;
+	int ret = 0;
 	ssize_t nb_event = 0;
-	struct ltt_kernel_channel *kchan = NULL;
 
-	if (session->kernel_session != NULL) {
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
-		if (kchan == NULL) {
-			ret = -LTTCOMM_KERN_CHAN_NOT_FOUND;
-			goto error;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (session->kernel_session != NULL) {
+			nb_event = list_lttng_kernel_events(channel_name,
+					session->kernel_session, events);
 		}
-		nb_event += kchan->event_count;
+		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		if (session->ust_session != NULL) {
+			nb_event = list_lttng_ust_global_events(channel_name,
+					&session->ust_session->domain_global, events);
+		}
+		break;
 	}
-
-	*events = malloc(nb_event * sizeof(struct lttng_event));
-	if (*events == NULL) {
-		ret = -LTTCOMM_FATAL;
+	default:
+		ret = -LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
 
-	list_lttng_events(kchan, *events);
-
-	/* TODO: User-space tracer support */
-
-	return nb_event;
+	ret = nb_event;
 
 error:
 	return ret;
@@ -2999,7 +3142,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		size_t nb_chan;
 		struct lttng_channel *channels;
 
-		nb_chan = cmd_list_channels(cmd_ctx->session, &channels);
+		nb_chan = cmd_list_channels(cmd_ctx->lsm->domain.type,
+				cmd_ctx->session, &channels);
 		if (nb_chan < 0) {
 			ret = -nb_chan;
 			goto error;
@@ -3021,10 +3165,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_LIST_EVENTS:
 	{
-		size_t nb_event;
+		ssize_t nb_event;
 		struct lttng_event *events = NULL;
 
-		nb_event = cmd_list_events(cmd_ctx->session,
+		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type, cmd_ctx->session,
 				cmd_ctx->lsm->u.list.channel_name, &events);
 		if (nb_event < 0) {
 			ret = -nb_event;

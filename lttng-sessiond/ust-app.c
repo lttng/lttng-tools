@@ -265,6 +265,66 @@ unsigned long ust_app_list_count(void)
 }
 
 /*
+ * Fill events array with all events name of all registered apps.
+ */
+int ust_app_list_events(struct lttng_event **events)
+{
+	int ret, handle;
+	size_t nbmem, count = 0;
+	struct cds_lfht_iter iter;
+	struct ust_app *app;
+	struct lttng_event *tmp;
+
+	nbmem = UST_APP_EVENT_LIST_SIZE;
+	tmp = zmalloc(nbmem * sizeof(struct lttng_event));
+	if (tmp == NULL) {
+		PERROR("zmalloc ust app events");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		handle = ustctl_tracepoint_list(app->key.sock);
+		if (handle < 0) {
+			ERR("UST app list events getting handle failed for app pid %d",
+					app->key.pid);
+			continue;
+		}
+
+		while ((ret = ustctl_tracepoint_list_get(app->key.sock, handle,
+						tmp[count].name)) != -ENOENT) {
+			if (count > nbmem) {
+				DBG2("Reallocating event list from %zu to %zu bytes", nbmem,
+						nbmem + UST_APP_EVENT_LIST_SIZE);
+				nbmem += UST_APP_EVENT_LIST_SIZE;
+				tmp = realloc(tmp, nbmem);
+				if (tmp == NULL) {
+					PERROR("realloc ust app events");
+					ret = -ENOMEM;
+					goto rcu_error;
+				}
+			}
+
+			tmp[count].type = LTTNG_UST_TRACEPOINT;
+			tmp[count].pid = app->key.pid;
+			count++;
+		}
+	}
+
+	ret = count;
+	*events = tmp;
+
+	DBG2("UST app list events done (%zu events)", count);
+
+rcu_error:
+	rcu_read_unlock();
+error:
+	return ret;
+}
+
+/*
  * Free and clean all traceable apps of the global list.
  */
 void ust_app_clean_list(void)
