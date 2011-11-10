@@ -1057,6 +1057,12 @@ static void *thread_manage_apps(void *data)
 						goto error;
 					}
 
+					/*
+					 * Add channel(s) and event(s) to newly registered apps
+					 * from lttng global UST domain.
+					 */
+					update_ust_app(ust_cmd.sock);
+
 					ret = ustctl_register_done(ust_cmd.sock);
 					if (ret < 0) {
 						/*
@@ -1078,11 +1084,6 @@ static void *thread_manage_apps(void *data)
 								ust_cmd.sock);
 					}
 
-					/*
-					 * Add channel(s) and event(s) to newly registered apps
-					 * from lttng global UST domain.
-					 */
-					update_ust_app(ust_cmd.sock);
 					break;
 				}
 			} else {
