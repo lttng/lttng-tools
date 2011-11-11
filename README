@@ -16,7 +16,7 @@ REQUIREMENTS:
       -> Tested with liburcu >= v0.6.6
 
       * Debian/Ubuntu package: liburcu-dev
-      * Git : git://lttng.org/userspace-rcu.git
+      * Git : git://git.lttng.org/userspace-rcu.git
       * Website:  http://lttng.org/urcu
 
     - libpopt
