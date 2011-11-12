@@ -2096,7 +2096,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 
 		/* Add channel to all registered applications */
 		ret = ust_app_add_channel_all(usess, uchan);
-		if (ret != LTTCOMM_OK) {
+		if (ret != 0) {
 			goto error;
 		}
 

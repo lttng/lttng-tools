@@ -808,7 +808,7 @@ int ust_app_add_channel_all(struct ltt_ust_session *usess,
 
 		/* Create session on the tracer side and add it to app session HT */
 		ua_sess = create_ust_app_session(usess, app);
-		if (ret < 0) {
+		if (ua_sess == NULL) {
 			goto next;
 		}
 
@@ -851,7 +851,7 @@ int ust_app_add_event_all(struct ltt_ust_session *usess,
 
 		/* Create session on the tracer side and add it to app session HT */
 		ua_sess = create_ust_app_session(usess, app);
-		if (ret < 0) {
+		if (ua_sess == NULL) {
 			goto next;
 		}
 
@@ -889,15 +889,17 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	DBG("Starting tracing for ust app pid %d", app->key.pid);
 
+	rcu_read_lock();
+
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
 		/* Only malloc can failed so something is really wrong */
-		goto error;
+		goto error_rcu_unlock;
 	}
 
 	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
 	if (ret < 0) {
-		goto error;
+		goto error_rcu_unlock;
 	}
 
 	/* For each channel */
@@ -912,7 +914,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			ustream = zmalloc(sizeof(*ustream));
 			if (ustream == NULL) {
 				PERROR("zmalloc ust stream");
-				continue;
+				goto error_rcu_unlock;
 			}
 
 			ret = ustctl_create_stream(app->key.sock, ua_chan->obj,
@@ -943,22 +945,24 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	/* Setup UST consumer socket and send fds to it */
 	ret = ust_consumer_send_session(usess->consumer_fd, ua_sess);
 	if (ret < 0) {
-		goto error;
+		goto error_rcu_unlock;
 	}
 
 	/* This start the UST tracing */
 	ret = ustctl_start_session(app->key.sock, ua_sess->handle);
 	if (ret < 0) {
 		ERR("Error starting tracing for app pid: %d", app->key.pid);
-		goto error;
+		goto error_rcu_unlock;
 	}
+	rcu_read_unlock();
 
 	/* Quiescent wait after starting trace */
 	ustctl_wait_quiescent(app->key.sock);
 
 	return 0;
 
-error:
+error_rcu_unlock:
+	rcu_read_unlock();
 	return -1;
 }
 
