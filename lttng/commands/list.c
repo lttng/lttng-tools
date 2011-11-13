@@ -28,6 +28,7 @@
 
 static int opt_pid;
 static int opt_userspace;
+static char *opt_cmd_name;
 static int opt_kernel;
 static char *opt_channel;
 static int opt_domain;
@@ -38,6 +39,7 @@ const char *indent8 = "        ";
 
 enum {
 	OPT_HELP = 1,
+	OPT_USERSPACE,
 };
 
 static struct lttng_handle *handle;
@@ -46,7 +48,7 @@ static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"kernel",    'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace", 'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0},
+	{"userspace", 'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
 	{"pid",       'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"channel",   'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
 	{"domain",    'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
@@ -477,6 +479,10 @@ int cmd_list(int argc, const char **argv)
 		case OPT_HELP:
 			usage(stderr);
 			goto end;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
+			opt_cmd_name = poptGetOptArg(pc);
+			break;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

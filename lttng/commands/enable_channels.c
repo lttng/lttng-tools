@@ -36,6 +36,7 @@ static char *opt_cmd_name;
 static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static pid_t opt_pid;
 static struct lttng_channel chan;
 
@@ -208,10 +209,6 @@ int cmd_enable_channels(int argc, const char **argv)
 			usage(stderr);
 			ret = CMD_SUCCESS;
 			goto end;
-		case OPT_USERSPACE:
-			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
-			break;
 		case OPT_DISCARD:
 			chan.attr.overwrite = 0;
 			DBG("Channel set to discard");
@@ -235,6 +232,10 @@ int cmd_enable_channels(int argc, const char **argv)
 		case OPT_READ_TIMER:
 			chan.attr.read_timer_interval = atoi(poptGetOptArg(pc));
 			DBG("Channel read timer interval set to %d", chan.attr.read_timer_interval);
+			break;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
+			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);

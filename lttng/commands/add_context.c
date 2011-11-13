@@ -40,11 +40,13 @@ static char *opt_session_name;
 static int *opt_kernel;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static pid_t opt_pid;
 
 enum {
 	OPT_HELP = 1,
 	OPT_TYPE,
+	OPT_USERSPACE,
 };
 
 static struct lttng_handle *handle;
@@ -138,7 +140,7 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"type",           't', POPT_ARG_STRING, 0, OPT_TYPE, 0, 0},
@@ -460,6 +462,10 @@ int cmd_add_context(int argc, const char **argv)
 				cds_list_add(&type->list, &ctx_type_list.head);
 			}
 			free(tmp);
+			break;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
+			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);

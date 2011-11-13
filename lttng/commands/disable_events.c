@@ -31,11 +31,11 @@
 
 static char *opt_event_list;
 static char *opt_kernel;
-static char *opt_cmd_name;
 static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static int opt_disable_all;
 static pid_t opt_pid;
 

@@ -34,20 +34,20 @@
 
 static int opt_event_type;
 static char *opt_kernel;
-static char *opt_cmd_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static pid_t opt_pid;
 
 enum {
 	OPT_HELP = 1,
-	OPT_USERSPACE,
 	OPT_TRACEPOINT,
 	OPT_MARKER,
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
+	OPT_USERSPACE,
 };
 
 static struct lttng_handle *handle;
@@ -181,10 +181,6 @@ int cmd_calibrate(int argc, const char **argv)
 			usage(stderr);
 			ret = CMD_SUCCESS;
 			goto end;
-		case OPT_USERSPACE:
-			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
-			break;
 		case OPT_TRACEPOINT:
 			ret = CMD_NOT_IMPLEMENTED;
 			break;
@@ -202,6 +198,10 @@ int cmd_calibrate(int argc, const char **argv)
 			break;
 		case OPT_SYSCALL:
 			ret = CMD_NOT_IMPLEMENTED;
+			break;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
+			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);

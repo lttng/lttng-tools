@@ -34,10 +34,10 @@
 static char *opt_event_list;
 static int opt_event_type;
 static char *opt_kernel;
-static char *opt_cmd_name;
 static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static int opt_enable_all;
 static pid_t opt_pid;
 static char *opt_probe;
@@ -47,13 +47,13 @@ static char *opt_channel_name;
 
 enum {
 	OPT_HELP = 1,
-	OPT_USERSPACE,
 	OPT_TRACEPOINT,
 	OPT_MARKER,
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
+	OPT_USERSPACE,
 };
 
 static struct lttng_handle *handle;
@@ -388,15 +388,12 @@ int cmd_enable_events(int argc, const char **argv)
 	opt_event_type = LTTNG_EVENT_ALL;
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
+		fprintf(stderr, "OPT TEST %d\n", opt);
 		switch (opt) {
 		case OPT_HELP:
 			usage(stderr);
 			ret = CMD_SUCCESS;
 			goto end;
-		case OPT_USERSPACE:
-			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
-			break;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
 			break;
@@ -417,6 +414,10 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_SYSCALL:
 			opt_event_type = LTTNG_EVENT_SYSCALL;
+			break;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
+			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);
