@@ -151,7 +151,6 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 	node = hashtable_lookup(ust_app_ht,
 			(void *)((unsigned long) pid), sizeof(void *), &iter);
 	if (node == NULL) {
-		rcu_read_unlock();
 		DBG2("UST app no found with pid %d", pid);
 		goto error;
 	}
@@ -162,6 +161,7 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 	return caa_container_of(node, struct ust_app, node);
 
 error:
+	rcu_read_unlock();
 	return NULL;
 }
 
