@@ -388,7 +388,6 @@ int cmd_enable_events(int argc, const char **argv)
 	opt_event_type = LTTNG_EVENT_ALL;
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
-		fprintf(stderr, "OPT TEST %d\n", opt);
 		switch (opt) {
 		case OPT_HELP:
 			usage(stderr);
