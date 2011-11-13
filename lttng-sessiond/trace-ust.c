@@ -112,13 +112,15 @@ struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 	ret = snprintf(lus->pathname, PATH_MAX, "%s/ust", path);
 	if (ret < 0) {
 		PERROR("snprintf kernel traces path");
-		goto error;
+		goto error_free_session;
 	}
 
 	DBG2("UST trace session create successful");
 
 	return lus;
 
+error_free_session:
+	free(lus);
 error:
 	return NULL;
 }
@@ -169,13 +171,15 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
 	if (ret < 0) {
 		perror("asprintf ust create channel");
-		goto error;
+		goto error_free_channel;
 	}
 
 	DBG2("Trace UST channel %s created", luc->name);
 
 	return luc;
 
+error_free_channel:
+	free(luc);
 error:
 	return NULL;
 }
@@ -210,7 +214,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
-		goto error;
+		goto error_free_event;
 	}
 
 	/* Copy event name */
@@ -225,6 +229,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 
 	return lue;
 
+error_free_event:
+	free(lue);
 error:
 	return NULL;
 }
@@ -258,11 +264,13 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	ret = snprintf(lum->pathname, PATH_MAX, "%s/metadata", path);
 	if (ret < 0) {
 		perror("asprintf ust metadata");
-		goto error;
+		goto error_free_metadata;
 	}
 
 	return lum;
 
+error_free_metadata:
+	free(lum);
 error:
 	return NULL;
 }
