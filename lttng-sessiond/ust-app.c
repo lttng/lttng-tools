@@ -113,7 +113,6 @@ static struct ust_app *find_app_by_sock(int sock)
 			(void *)((unsigned long) sock), sizeof(void *), &iter);
 	if (node == NULL) {
 		DBG2("UST app find by sock %d key not found", sock);
-		rcu_read_unlock();
 		goto error;
 	}
 
@@ -123,7 +122,6 @@ static struct ust_app *find_app_by_sock(int sock)
 			(void *)((unsigned long) key->pid), sizeof(void *), &iter);
 	if (node == NULL) {
 		DBG2("UST app find by sock %d not found", sock);
-		rcu_read_unlock();
 		goto error;
 	}
 
