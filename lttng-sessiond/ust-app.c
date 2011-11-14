@@ -414,6 +414,7 @@ int ust_app_list_events(struct lttng_event **events)
 
 			tmp[count].type = LTTNG_UST_TRACEPOINT;
 			tmp[count].pid = app->key.pid;
+			tmp[count].enabled = -1;
 			count++;
 		}
 	}

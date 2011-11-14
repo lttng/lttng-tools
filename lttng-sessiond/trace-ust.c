@@ -137,7 +137,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	int ret;
 	struct ltt_ust_channel *luc;
 
-	luc = malloc(sizeof(struct ltt_ust_channel));
+	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {
 		perror("ltt_ust_channel malloc");
 		goto error;
@@ -194,7 +194,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 {
 	struct ltt_ust_event *lue;
 
-	lue = malloc(sizeof(struct ltt_ust_event));
+	lue = zmalloc(sizeof(struct ltt_ust_event));
 	if (lue == NULL) {
 		PERROR("ust event malloc");
 		goto error;

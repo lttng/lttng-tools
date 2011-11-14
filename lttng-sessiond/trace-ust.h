@@ -43,6 +43,7 @@ struct ltt_ust_context {
 
 /* UST event */
 struct ltt_ust_event {
+	unsigned int enabled;
 	struct lttng_ust_event attr;
 	struct cds_lfht *ctx;
 	struct cds_lfht_node node;
@@ -59,6 +60,7 @@ struct ltt_ust_stream {
 
 /* UST channel */
 struct ltt_ust_channel {
+	unsigned int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char pathname[PATH_MAX];
 	struct lttng_ust_channel attr;

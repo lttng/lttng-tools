@@ -1879,6 +1879,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
 			strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
 			tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+			tmp[i].enabled = uevent->enabled;
 			switch (uevent->attr.instrumentation) {
 			case LTTNG_UST_TRACEPOINT:
 				tmp[i].type = LTTNG_EVENT_TRACEPOINT;
@@ -2100,6 +2101,8 @@ static int cmd_enable_channel(struct ltt_session *session,
 		if (ret != 0) {
 			goto error;
 		}
+
+		uchan->enabled = 1;
 
 		break;
 	}
@@ -2367,6 +2370,8 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 		rcu_read_lock();
 		hashtable_add_unique(uchan->events, &uevent->node);
 		rcu_read_unlock();
+
+		uevent->enabled = 1;
 
 		DBG3("UST ltt event %s added to channel %s", uevent->attr.name,
 				uchan->name);
