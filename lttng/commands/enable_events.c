@@ -65,14 +65,14 @@ static struct poptOption long_options[] = {
 	{"all-events",     'a', POPT_ARG_VAL, &opt_enable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
-	{"probe",         0,   POPT_ARG_STRING, 0, OPT_PROBE, 0, 0},
-	{"function",       0,   POPT_ARG_STRING, 0, OPT_FUNCTION, 0, 0},
-	{"function:entry", 0,   POPT_ARG_STRING, 0, OPT_FUNCTION_ENTRY, 0, 0},
+	{"probe",         0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
+	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
+	{"function:entry", 0,   POPT_ARG_STRING, &opt_function_entry_symbol, OPT_FUNCTION_ENTRY, 0, 0},
 	{"syscall",        0,     POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -401,22 +401,18 @@ int cmd_enable_events(int argc, const char **argv)
 			goto end;
 		case OPT_PROBE:
 			opt_event_type = LTTNG_EVENT_PROBE;
-			opt_probe = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
-			opt_function = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION_ENTRY:
 			opt_event_type = LTTNG_EVENT_FUNCTION_ENTRY;
-			opt_function_entry_symbol = poptGetOptArg(pc);
 			break;
 		case OPT_SYSCALL:
 			opt_event_type = LTTNG_EVENT_SYSCALL;
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);
