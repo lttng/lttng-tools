@@ -36,5 +36,6 @@ void hashtable_node_init(struct cds_lfht_node *node,
 
 int hashtable_del(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 unsigned long hashtable_get_count(struct cds_lfht *ht);
+int hashtable_destroy(struct cds_lfht *ht);
 
 #endif /* _LTT_HASHTABLE_H */

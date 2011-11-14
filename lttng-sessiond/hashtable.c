@@ -106,3 +106,8 @@ unsigned long hashtable_get_count(struct cds_lfht *ht)
 
 	return count;
 }
+
+int hashtable_destroy(struct cds_lfht *ht)
+{
+	return cds_lfht_destroy(ht, NULL);
+}
