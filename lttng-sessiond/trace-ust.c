@@ -245,7 +245,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	int ret;
 	struct ltt_ust_metadata *lum;
 
-	lum = malloc(sizeof(struct ltt_ust_metadata));
+	lum = zmalloc(sizeof(struct ltt_ust_metadata));
 	if (lum == NULL) {
 		perror("ust metadata malloc");
 		goto error;
