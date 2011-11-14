@@ -56,6 +56,7 @@ struct ust_app_event {
 	int enabled;
 	int handle;
 	struct lttng_ust_object_data *obj;
+	struct lttng_ust_event attr;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct cds_lfht *ctx;
 	struct cds_lfht_node node;

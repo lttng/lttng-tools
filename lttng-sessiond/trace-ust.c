@@ -70,11 +70,12 @@ struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
 	}
 	rcu_read_unlock();
 
-	DBG2("Found UST event by name %s", name);
+	DBG2("Trace UST event found by name %s", name);
 
 	return caa_container_of(node, struct ltt_ust_event, node);
 
 error:
+	DBG2("Trace UST event NOT found by name %s", name);
 	return NULL;
 }
 
@@ -227,6 +228,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	/* Alloc context hash tables */
 	lue->ctx = hashtable_new_str(0);
 
+	DBG2("Trace UST event %s created", lue->attr.name);
+
 	return lue;
 
 error_free_event:
@@ -331,20 +334,23 @@ static void destroy_event_rcu(struct rcu_head *head)
 	trace_ust_destroy_event(event);
 }
 
-static void destroy_event(struct cds_lfht *ht)
+/*
+ * Cleanup UST events hashtable.
+ */
+static void destroy_event(struct cds_lfht *events)
 {
 	int ret;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 
-	cds_lfht_for_each(ht, &iter, node) {
-		ret = hashtable_del(ht, &iter);
+	cds_lfht_for_each(events, &iter, node) {
+		ret = hashtable_del(events, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_event_rcu);
 		}
 	}
 
-	hashtable_destroy(ht);
+	hashtable_destroy(events);
 }
 
 /*
