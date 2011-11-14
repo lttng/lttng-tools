@@ -70,10 +70,10 @@ static struct poptOption long_options[] = {
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
-	{"probe",         0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
+	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
 	{"function:entry", 0,   POPT_ARG_STRING, &opt_function_entry_symbol, OPT_FUNCTION_ENTRY, 0, 0},
-	{"syscall",        0,     POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
+	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
