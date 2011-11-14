@@ -38,7 +38,7 @@ static int send_channel_streams(int sock,
 {
 	int ret, fd;
 	struct lttcomm_consumer_msg lum;
-	struct ltt_ust_stream *stream;
+	struct ltt_ust_stream *stream, *tmp;
 
 	DBG("Sending streams of channel %s to UST consumer", uchan->name);
 
@@ -65,7 +65,7 @@ static int send_channel_streams(int sock,
 		goto error;
 	}
 
-	cds_list_for_each_entry(stream, &uchan->streams.head, list) {
+	cds_list_for_each_entry_safe(stream, tmp, &uchan->streams.head, list) {
 		int fds[2];
 
 		if (!stream->obj->shm_fd) {
@@ -97,7 +97,18 @@ static int send_channel_streams(int sock,
 			perror("send consumer stream ancillary data");
 			goto error;
 		}
+
+		/*
+		 * We release the stream object here, as we have passed
+		 * it to the consumer.
+		 */
+		/* Ensure we don't let the app know (sock = -1). */
+		ustctl_release_object(-1, stream->obj);
+		cds_list_del(&stream->list);
+		free(stream);
 	}
+	/* Ensure we don't let the app know (sock = -1). */
+	ustctl_release_object(-1, uchan->obj);
 
 	DBG("consumer channel streams sent");
 
@@ -165,6 +176,10 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 			perror("send consumer stream");
 			goto error;
 		}
+		/* Metadata fds passed to consumer, release them. */
+		/* Ensure we don't let the app know (sock = -1). */
+		ustctl_release_object(-1, usess->metadata->stream_obj);
+		ustctl_release_object(-1, usess->metadata->obj);
 	}
 
 	/* Send each channel fd streams of session */

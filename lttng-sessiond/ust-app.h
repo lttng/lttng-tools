@@ -97,6 +97,7 @@ struct ust_app {
 	struct cds_lfht *sessions;
 	struct cds_lfht_node node;
 	struct ust_app_key key;
+	int sock_closed;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

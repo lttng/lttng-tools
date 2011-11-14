@@ -31,9 +31,107 @@
 
 #include "hashtable.h"
 #include "ust-app.h"
-#include "../hashtable/hash.h"
-#include "ust-ctl.h"
 #include "ust-consumer.h"
+#include "ust-ctl.h"
+
+/*
+ * Delete ust app event safely. RCU read lock must be held before calling
+ * this function.
+ */
+static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
+{
+	/* TODO : remove context */
+	//struct ust_app_ctx *ltctx;
+	//cds_lfht_for_each_entry(lte->ctx, &iter, ltctx, node) {
+	//	delete_ust_app_ctx(sock, ltctx);
+	//}
+
+	ustctl_release_object(sock, ua_event->obj);
+	free(ua_event);
+}
+
+/*
+ * Delete ust app stream safely. RCU read lock must be held before calling
+ * this function.
+ */
+static void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
+{
+	//TODO
+	//stream is used for passing to consumer.
+	//send_channel_streams is responsible for freeing the streams.
+	//note that this will not play well with flight recorder mode:
+	//we might need a criterion to discard the streams.
+}
+
+/*
+ * Delete ust app channel safely. RCU read lock must be held before calling
+ * this function.
+ */
+static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
+{
+	int ret;
+	struct cds_lfht_iter iter;
+	struct ust_app_event *ua_event;
+	struct ltt_ust_stream *stream, *stmp;
+
+	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
+		delete_ust_app_stream(sock, stream);
+	}
+
+	/* TODO : remove channel context */
+	//cds_lfht_for_each_entry(ltc->ctx, &iter, ltctx, node) {
+	//	hashtable_del(ltc->ctx, &iter);
+	//	delete_ust_app_ctx(sock, ltctx);
+	//}
+	//ret = hashtable_destroy(ltc->ctx);
+
+	cds_lfht_for_each_entry(ua_chan->events, &iter, ua_event, node) {
+		hashtable_del(ua_chan->events, &iter);
+		delete_ust_app_event(sock, ua_event);
+	}
+
+	ret = hashtable_destroy(ua_chan->events);
+	if (ret < 0) {
+		ERR("UST app destroy session hashtable failed");
+		goto error;
+	}
+
+error:
+	return;
+}
+
+/*
+ * Delete ust app session safely. RCU read lock must be held before calling
+ * this function.
+ */
+static void delete_ust_app_session(int sock,
+		struct ust_app_session *ua_sess)
+{
+	int ret;
+	struct cds_lfht_iter iter;
+	struct ust_app_channel *ua_chan;
+
+	if (ua_sess->metadata) {
+		/*
+		 * We do NOT release the stream object and metadata object since they
+		 * are release when fds are sent to the consumer.
+		 */
+	}
+
+	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
+		hashtable_del(ua_sess->channels, &iter);
+		delete_ust_app_channel(sock, ua_chan);
+	}
+
+	ret = hashtable_destroy(ua_sess->channels);
+	if (ret < 0) {
+		ERR("UST app destroy session hashtable failed");
+		goto error;
+	}
+
+error:
+	return;
+}
 
 /*
  * Delete a traceable application structure from the global list.
@@ -43,18 +141,16 @@ static void delete_ust_app(struct ust_app *lta)
 	int ret;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
+	struct ust_app_session *lts;
 
 	rcu_read_lock();
-
-	/* TODO: clean session hashtable */
-	free(lta->sessions);
-	close(lta->key.sock);
 
 	/* Remove from apps hash table */
 	node = hashtable_lookup(ust_app_ht,
 			(void *) ((unsigned long) lta->key.pid), sizeof(void *), &iter);
 	if (node == NULL) {
 		ERR("UST app pid %d not found in hash table", lta->key.pid);
+		goto end;
 	} else {
 		ret = hashtable_del(ust_app_ht, &iter);
 		if (ret) {
@@ -70,6 +166,7 @@ static void delete_ust_app(struct ust_app *lta)
 			(void *) ((unsigned long) lta->key.sock), sizeof(void *), &iter);
 	if (node == NULL) {
 		ERR("UST app key %d not found in key hash table", lta->key.sock);
+		goto end;
 	} else {
 		ret = hashtable_del(ust_app_sock_key_map, &iter);
 		if (ret) {
@@ -81,8 +178,30 @@ static void delete_ust_app(struct ust_app *lta)
 		}
 	}
 
-	free(lta);
+	/* Socket is already closed at this point */
 
+	/* Delete ust app sessions info */
+	if (lta->sock_closed) {
+		lta->key.sock = -1;
+	}
+
+	cds_lfht_for_each_entry(lta->sessions, &iter, lts, node) {
+		hashtable_del(lta->sessions, &iter);
+		delete_ust_app_session(lta->key.sock, lts);
+	}
+
+	ret = hashtable_destroy(lta->sessions);
+	if (ret < 0) {
+		ERR("UST app destroy session hashtable failed");
+		goto end;
+	}
+
+	if (lta->key.sock >= 0) {
+		close(lta->key.sock);
+	}
+
+	free(lta);
+end:
 	rcu_read_unlock();
 }
 
@@ -124,7 +243,6 @@ static struct ust_app *find_app_by_sock(int sock)
 		DBG2("UST app find by sock %d not found", sock);
 		goto error;
 	}
-
 	return caa_container_of(node, struct ust_app, node);
 
 error:
@@ -175,7 +293,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 {
 	struct ust_app *lta;
 
-	lta = malloc(sizeof(struct ust_app));
+	lta = zmalloc(sizeof(struct ust_app));
 	if (lta == NULL) {
 		PERROR("malloc");
 		return -ENOMEM;
@@ -241,8 +359,11 @@ void ust_app_unregister(int sock)
 		goto error;
 	}
 
+	/* We got called because the socket was closed on the remote end. */
+	close(sock);
+	/* Using a flag because we still need "sock" as a key. */
+	lta->sock_closed = 1;
 	call_rcu(&node->head, delete_ust_app_rcu);
-
 error:
 	rcu_read_unlock();
 	return;
