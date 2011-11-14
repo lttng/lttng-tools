@@ -2047,7 +2047,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	DBG("Enabling channel %s for session %s", session->name, attr->name);
+	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
