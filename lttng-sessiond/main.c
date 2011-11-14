@@ -1098,7 +1098,7 @@ static void *thread_manage_apps(void *data)
 						goto error;
 					}
 
-					/* Socket closed */
+					/* Socket closed on remote end. */
 					ust_app_unregister(pollfd);
 					break;
 				}
@@ -2493,10 +2493,11 @@ static int cmd_start_trace(struct ltt_session *session)
 {
 	int ret;
 	struct ltt_kernel_session *ksession;
-	struct ltt_ust_session *usess = session->ust_session;
+	struct ltt_ust_session *usess;
 
 	/* Short cut */
 	ksession = session->kernel_session;
+	usess = session->ust_session;
 
 	/* Kernel tracing */
 	if (ksession != NULL) {
@@ -2553,12 +2554,14 @@ static int cmd_start_trace(struct ltt_session *session)
 	}
 
 	/* Flag session that trace should start automatically */
-	usess->start_trace = 1;
+	if (usess) {
+		usess->start_trace = 1;
 
-	ret = ust_app_start_trace_all(usess);
-	if (ret < 0) {
-		ret = LTTCOMM_UST_START_FAIL;
-		goto error;
+		ret = ust_app_start_trace_all(usess);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_START_FAIL;
+			goto error;
+		}
 	}
 
 	ret = LTTCOMM_OK;
