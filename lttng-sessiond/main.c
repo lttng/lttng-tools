@@ -2085,6 +2085,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 				ret = LTTCOMM_UST_CHAN_FAIL;
 				goto error;
 			}
+
 			rcu_read_lock();
 			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
 			rcu_read_unlock();
@@ -2353,6 +2354,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 				ret = LTTCOMM_FATAL;
 				goto error;
 			}
+
 		}
 
 		ret = ust_app_add_event_all(usess, uchan, uevent);
@@ -2361,9 +2363,13 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
+		/* Add ltt ust event to channel */
 		rcu_read_lock();
 		hashtable_add_unique(uchan->events, &uevent->node);
 		rcu_read_unlock();
+
+		DBG3("UST ltt event %s added to channel %s", uevent->attr.name,
+				uchan->name);
 		break;
 	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
