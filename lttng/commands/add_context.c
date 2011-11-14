@@ -42,6 +42,7 @@ static int opt_pid_all;
 static int opt_userspace;
 static char *opt_cmd_name;
 static pid_t opt_pid;
+static char *opt_type;
 
 enum {
 	OPT_HELP = 1,
@@ -143,7 +144,7 @@ static struct poptOption long_options[] = {
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-	{"type",           't', POPT_ARG_STRING, 0, OPT_TYPE, 0, 0},
+	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -416,7 +417,6 @@ error:
 int cmd_add_context(int argc, const char **argv)
 {
 	int index, opt, ret = CMD_SUCCESS;
-	char *tmp;
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
 	char *session_name = NULL;
@@ -436,32 +436,23 @@ int cmd_add_context(int argc, const char **argv)
 			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TYPE:
-			/* Mandatory field */
-			tmp = poptGetOptArg(pc);
-			if (tmp == NULL) {
-				usage(stderr);
-				ret = CMD_ERROR;
-				free(tmp);
-				goto end;
-			}
 			type = malloc(sizeof(struct ctx_type));
 			if (type == NULL) {
 				perror("malloc ctx_type");
 				ret = -1;
 				goto end;
 			}
-			index = find_ctx_type_idx(tmp);
+			index = find_ctx_type_idx(opt_type);
 			if (index < 0) {
-				ERR("Unknown context type %s", tmp);
+				ERR("Unknown context type %s", opt_type);
 				goto end;
 			}
 			type->opt = &ctx_opts[index];
 			if (type->opt->ctx_type == -1) {
-				ERR("Unknown context type %s", tmp);
+				ERR("Unknown context type %s", opt_type);
 			} else {
 				cds_list_add(&type->list, &ctx_type_list.head);
 			}
-			free(tmp);
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;

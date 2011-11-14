@@ -53,7 +53,7 @@ static struct poptOption long_options[] = {
 	{"all-events",     'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -182,7 +182,6 @@ int cmd_disable_events(int argc, const char **argv)
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);
