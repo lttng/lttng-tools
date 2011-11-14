@@ -297,14 +297,14 @@ static void destroy_context(struct cds_lfht *ht)
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 
-	hashtable_get_first(ht, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+	cds_lfht_for_each(ht, &iter, node) {
 		ret = hashtable_del(ht, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_context_rcu);
 		}
-		hashtable_get_next(ht, &iter);
 	}
+
+	hashtable_destroy(ht);
 }
 
 /*
@@ -314,6 +314,7 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 	DBG2("Trace destroy UST event %s", event->attr.name);
 	destroy_context(event->ctx);
+
 	free(event);
 }
 
@@ -330,6 +331,22 @@ static void destroy_event_rcu(struct rcu_head *head)
 	trace_ust_destroy_event(event);
 }
 
+static void destroy_event(struct cds_lfht *ht)
+{
+	int ret;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+
+	cds_lfht_for_each(ht, &iter, node) {
+		ret = hashtable_del(ht, &iter);
+		if (!ret) {
+			call_rcu(&node->head, destroy_event_rcu);
+		}
+	}
+
+	hashtable_destroy(ht);
+}
+
 /*
  * Cleanup ust channel structure.
  */
@@ -343,16 +360,13 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 
 	rcu_read_lock();
 
-	hashtable_get_first(channel->events, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+	cds_lfht_for_each(channel->events, &iter, node) {
 		ret = hashtable_del(channel->events, &iter);
 		if (!ret) {
-			call_rcu(&node->head, destroy_event_rcu);
+			destroy_event(channel->events);
 		}
-		hashtable_get_next(channel->events, &iter);
 	}
 
-	free(channel->events);
 	destroy_context(channel->ctx);
 	free(channel);
 
@@ -391,14 +405,14 @@ static void destroy_channels(struct cds_lfht *channels)
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 
-	hashtable_get_first(channels, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+	cds_lfht_for_each(channels, &iter, node) {
 		ret = hashtable_del(channels, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_channel_rcu);
 		}
-		hashtable_get_next(channels, &iter);
 	}
+
+	hashtable_destroy(channels);
 }
 
 /*
@@ -407,19 +421,17 @@ static void destroy_channels(struct cds_lfht *channels)
 static void destroy_domain_pid(struct cds_lfht *ht)
 {
 	int ret;
-	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
-	struct ltt_ust_domain_pid *d;
+	struct ltt_ust_domain_pid *dpid;
 
-	hashtable_get_first(ht, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+	cds_lfht_for_each_entry(ht, &iter, dpid, node) {
 		ret = hashtable_del(ht , &iter);
 		if (!ret) {
-			d = caa_container_of(node, struct ltt_ust_domain_pid, node);
-			destroy_channels(d->channels);
+			destroy_channels(dpid->channels);
 		}
-		hashtable_get_next(ht, &iter);
 	}
+
+	hashtable_destroy(ht);
 }
 
 /*
@@ -428,19 +440,17 @@ static void destroy_domain_pid(struct cds_lfht *ht)
 static void destroy_domain_exec(struct cds_lfht *ht)
 {
 	int ret;
-	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
-	struct ltt_ust_domain_exec *d;
+	struct ltt_ust_domain_exec *dexec;
 
-	hashtable_get_first(ht, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
+	cds_lfht_for_each_entry(ht, &iter, dexec, node) {
 		ret = hashtable_del(ht , &iter);
 		if (!ret) {
-			d = caa_container_of(node, struct ltt_ust_domain_exec, node);
-			destroy_channels(d->channels);
+			destroy_channels(dexec->channels);
 		}
-		hashtable_get_next(ht, &iter);
 	}
+
+	hashtable_destroy(ht);
 }
 
 /*
@@ -456,7 +466,7 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
-	/* Extra safety */
+	/* Extra protection */
 	if (session == NULL) {
 		return;
 	}
@@ -464,10 +474,6 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	rcu_read_lock();
 
 	DBG2("Trace UST destroy session %d", session->uid);
-
-	//if (session->metadata != NULL) {
-	//	trace_ust_destroy_metadata(session->metadata);
-	//}
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
