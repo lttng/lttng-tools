@@ -105,9 +105,9 @@ struct ust_app {
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
 void ust_app_unregister(int sock);
-int ust_app_add_channel_all(struct ltt_ust_session *usess,
+int ust_app_create_channel_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
-int ust_app_add_event_all(struct ltt_ust_session *usess,
+int ust_app_create_event_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);

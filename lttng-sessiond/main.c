@@ -2097,7 +2097,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 		}
 
 		/* Add channel to all registered applications */
-		ret = ust_app_add_channel_all(usess, uchan);
+		ret = ust_app_create_channel_all(usess, uchan);
 		if (ret != 0) {
 			goto error;
 		}
@@ -2360,7 +2360,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 
 		}
 
-		ret = ust_app_add_event_all(usess, uchan, uevent);
+		ret = ust_app_create_event_all(usess, uchan, uevent);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_ENABLE_FAIL;
 			goto error;
