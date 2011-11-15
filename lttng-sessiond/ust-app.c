@@ -1141,7 +1141,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	/* Setup UST consumer socket and send fds to it */
-	ret = ust_consumer_send_session(usess->consumer_fd, ua_sess);
+	ret = ust_consumer_send_session(ust_consumer_fd, ua_sess);
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}

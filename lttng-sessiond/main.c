@@ -157,6 +157,8 @@ static struct ust_cmd_queue ust_cmd_queue;
  */
 static struct ltt_session_list *session_list_ptr;
 
+int ust_consumer_fd;
+
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
@@ -3010,8 +3012,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					goto error;
 				}
 
-				cmd_ctx->session->ust_session->consumer_fd =
-					ustconsumer_data.cmd_sock;
+				ust_consumer_fd = ustconsumer_data.cmd_sock;
 			}
 			pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
 		}

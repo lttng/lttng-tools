@@ -100,8 +100,6 @@ struct ltt_ust_domain_exec {
 /* UST session */
 struct ltt_ust_session {
 	int uid;   /* Unique identifier of session */
-	int consumer_fds_sent;
-	int consumer_fd;
 	int start_trace;
 	char pathname[PATH_MAX];
 	struct ltt_ust_domain_global domain_global;

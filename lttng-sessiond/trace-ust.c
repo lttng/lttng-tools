@@ -98,7 +98,6 @@ struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 	}
 
 	/* Init data structure */
-	lus->consumer_fds_sent = 0;
 	lus->uid = uid;
 	lus->start_trace = 0;
 

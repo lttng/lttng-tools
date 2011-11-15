@@ -26,6 +26,8 @@
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
+extern int ust_consumer_fd;
+
 /*
  * Application registration data structure.
  */
