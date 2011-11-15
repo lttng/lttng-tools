@@ -57,7 +57,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	/* This *must* be freed by using lttng_poll_free() */
 	events->events = zmalloc(size * sizeof(struct epoll_event));
 	if (events->events == NULL) {
-		perror("malloc epoll set");
+		perror("zmalloc epoll set");
 		goto error_close;
 	}
 

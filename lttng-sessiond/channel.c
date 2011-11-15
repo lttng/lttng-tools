@@ -37,7 +37,7 @@ struct lttng_channel *channel_new_default_attr(int dom)
 
 	chan = zmalloc(sizeof(struct lttng_channel));
 	if (chan == NULL) {
-		perror("malloc channel init");
+		perror("zmalloc channel init");
 		goto error_alloc;
 	}
 
@@ -88,9 +88,9 @@ int channel_ust_copy(struct ltt_ust_channel *dst,
 
 	/*
 	cds_list_for_each_entry(uevent, &src->events.head, list) {
-		new_uevent = malloc(sizeof(struct ltt_ust_event));
+		new_uevent = zmalloc(sizeof(struct ltt_ust_event));
 		if (new_uevent == NULL) {
-			perror("malloc ltt_ust_event");
+			perror("zmalloc ltt_ust_event");
 			goto error;
 		}
 

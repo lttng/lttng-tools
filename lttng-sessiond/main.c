@@ -588,9 +588,9 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 
 	buf_size = size;
 
-	cmd_ctx->llm = malloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
+	cmd_ctx->llm = zmalloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
 	if (cmd_ctx->llm == NULL) {
-		perror("malloc");
+		perror("zmalloc");
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -1260,9 +1260,9 @@ static void *thread_registration_apps(void *data)
 					}
 
 					/* Create UST registration command for enqueuing */
-					ust_cmd = malloc(sizeof(struct ust_command));
+					ust_cmd = zmalloc(sizeof(struct ust_command));
 					if (ust_cmd == NULL) {
-						perror("ust command malloc");
+						perror("ust command zmalloc");
 						goto error;
 					}
 
@@ -3344,16 +3344,16 @@ static void *thread_manage_clients(void *data)
 		}
 
 		/* Allocate context command to process the client request */
-		cmd_ctx = malloc(sizeof(struct command_ctx));
+		cmd_ctx = zmalloc(sizeof(struct command_ctx));
 		if (cmd_ctx == NULL) {
-			perror("malloc cmd_ctx");
+			perror("zmalloc cmd_ctx");
 			goto error;
 		}
 
 		/* Allocate data buffer for reception */
-		cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
+		cmd_ctx->lsm = zmalloc(sizeof(struct lttcomm_session_msg));
 		if (cmd_ctx->lsm == NULL) {
-			perror("malloc cmd_ctx->lsm");
+			perror("zmalloc cmd_ctx->lsm");
 			goto error;
 		}
 
@@ -3390,7 +3390,7 @@ static void *thread_manage_clients(void *data)
 		if (ret < 0) {
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
-			 * this point, ret < 0 means that a malloc failed
+			 * this point, ret < 0 means that a zmalloc failed
 			 * (ENOMEM). Error detected but still accept command.
 			 */
 			clean_command_ctx(&cmd_ctx);

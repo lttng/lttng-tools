@@ -49,9 +49,9 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		goto error;
 	}
 
-	chan->ctx = malloc(sizeof(struct lttng_kernel_context));
+	chan->ctx = zmalloc(sizeof(struct lttng_kernel_context));
 	if (chan->ctx == NULL) {
-		perror("malloc event context");
+		perror("zmalloc event context");
 		goto error;
 	}
 
@@ -78,9 +78,9 @@ int kernel_add_event_context(struct ltt_kernel_event *event,
 		goto error;
 	}
 
-	event->ctx = malloc(sizeof(struct lttng_kernel_context));
+	event->ctx = zmalloc(sizeof(struct lttng_kernel_context));
 	if (event->ctx == NULL) {
-		perror("malloc event context");
+		perror("zmalloc event context");
 		goto error;
 	}
 
@@ -574,7 +574,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	 * See kernel-ctl.h for explanation of this value
 	 */
 	nbmem = KERNEL_EVENT_LIST_SIZE;
-	elist = malloc(sizeof(struct lttng_event) * nbmem);
+	elist = zmalloc(sizeof(struct lttng_event) * nbmem);
 
 	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
 		if (count > nbmem) {

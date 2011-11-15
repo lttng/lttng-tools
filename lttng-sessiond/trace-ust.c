@@ -91,9 +91,9 @@ struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
-	lus = malloc(sizeof(struct ltt_ust_session));
+	lus = zmalloc(sizeof(struct ltt_ust_session));
 	if (lus == NULL) {
-		PERROR("create ust session malloc");
+		PERROR("create ust session zmalloc");
 		goto error;
 	}
 
@@ -139,7 +139,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {
-		perror("ltt_ust_channel malloc");
+		perror("ltt_ust_channel zmalloc");
 		goto error;
 	}
 
@@ -196,7 +196,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 
 	lue = zmalloc(sizeof(struct ltt_ust_event));
 	if (lue == NULL) {
-		PERROR("ust event malloc");
+		PERROR("ust event zmalloc");
 		goto error;
 	}
 
@@ -250,7 +250,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 	lum = zmalloc(sizeof(struct ltt_ust_metadata));
 	if (lum == NULL) {
-		perror("ust metadata malloc");
+		perror("ust metadata zmalloc");
 		goto error;
 	}
 
