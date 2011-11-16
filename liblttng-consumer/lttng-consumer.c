@@ -63,6 +63,9 @@ static struct lttng_consumer_stream *consumer_find_stream(int key)
 {
 	struct lttng_consumer_stream *iter;
 
+	/* Negative keys are lookup failures */
+	if (key < 0)
+		return NULL;
 	cds_list_for_each_entry(iter, &consumer_data.stream_list.head, list) {
 		if (iter->key == key) {
 			DBG("Found stream key %d", key);
@@ -72,10 +75,22 @@ static struct lttng_consumer_stream *consumer_find_stream(int key)
 	return NULL;
 }
 
+static void consumer_steal_stream_key(int key)
+{
+	struct lttng_consumer_stream *stream;
+
+	stream = consumer_find_stream(key);
+	if (stream)
+		stream->key = -1;
+}
+
 static struct lttng_consumer_channel *consumer_find_channel(int key)
 {
 	struct lttng_consumer_channel *iter;
 
+	/* Negative keys are lookup failures */
+	if (key < 0)
+		return NULL;
 	cds_list_for_each_entry(iter, &consumer_data.channel_list.head, list) {
 		if (iter->key == key) {
 			DBG("Found channel key %d", key);
@@ -83,6 +98,15 @@ static struct lttng_consumer_channel *consumer_find_channel(int key)
 		}
 	}
 	return NULL;
+}
+
+static void consumer_steal_channel_key(int key)
+{
+	struct lttng_consumer_channel *channel;
+
+	channel = consumer_find_channel(key);
+	if (channel)
+		channel->key = -1;
 }
 
 /*
@@ -211,11 +235,8 @@ int consumer_add_stream(struct lttng_consumer_stream *stream)
 	int ret = 0;
 
 	pthread_mutex_lock(&consumer_data.lock);
-	/* Check if already exist */
-	if (consumer_find_stream(stream->key)) {
-		ret = -1;
-		goto end;
-	}
+	/* Steal stream identifier, for UST */
+	consumer_steal_stream_key(stream->key);
 	cds_list_add(&stream->list, &consumer_data.stream_list.head);
 	consumer_data.stream_count++;
 	consumer_data.need_update = 1;
@@ -350,18 +371,12 @@ end:
  */
 int consumer_add_channel(struct lttng_consumer_channel *channel)
 {
-	int ret = 0;
-
 	pthread_mutex_lock(&consumer_data.lock);
-	/* Check if already exist */
-	if (consumer_find_channel(channel->key)) {
-		ret = -1;
-		goto end;
-	}
+	/* Steal channel identifier, for UST */
+	consumer_steal_channel_key(channel->key);
 	cds_list_add(&channel->list, &consumer_data.channel_list.head);
-end:
 	pthread_mutex_unlock(&consumer_data.lock);
-	return ret;
+	return 0;
 }
 
 /*

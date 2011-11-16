@@ -46,8 +46,11 @@ static int send_channel_streams(int sock,
 	lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 
 	/*
-	 * We need to keep shm_fd open to make sure this key stays unique within
-	 * the session daemon.
+	 * We need to keep shm_fd open while we transfer the stream file
+	 * descriptors to make sure this key stays unique within the
+	 * session daemon. We can free the channel shm_fd without
+	 * problem after we finished sending stream fds for that
+	 * channel.
 	 */
 	lum.u.channel.channel_key = uchan->obj->shm_fd;
 	lum.u.channel.max_sb_size = uchan->attr.subbuf_size;

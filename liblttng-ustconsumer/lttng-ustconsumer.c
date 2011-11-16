@@ -209,7 +209,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		DBG("consumer_add_stream %s (%d,%d)", msg.u.stream.path_name,
 			fds[0], fds[1]);
 		assert(msg.u.stream.output == LTTNG_EVENT_MMAP);
-		new_stream = consumer_allocate_stream(msg.u.stream.channel_key,
+		new_stream = consumer_allocate_stream(msg.u.channel.channel_key,
 				msg.u.stream.stream_key,
 				fds[0], fds[1],
 				msg.u.stream.state,
@@ -234,6 +234,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
 	{
+		return -ENOSYS;
+#if 0
 		if (ctx->on_update_stream != NULL) {
 			ret = ctx->on_update_stream(msg.u.stream.stream_key, msg.u.stream.state);
 			if (ret == 0) {
@@ -245,6 +247,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_change_stream_state(msg.u.stream.stream_key,
 				msg.u.stream.state);
 		}
+#endif
 		break;
 	}
 	default:
