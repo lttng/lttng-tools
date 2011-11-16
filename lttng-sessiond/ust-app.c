@@ -479,8 +479,11 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 
 	/* Copy all events from ltt ust channel to ust app channel */
 	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_event_node = hashtable_lookup(ua_chan->events,
-				(void *) uevent->attr.name, strlen(uevent->attr.name), &iter);
+				(void *) uevent->attr.name, strlen(uevent->attr.name),
+				&uiter);
 		if (ua_event_node == NULL) {
 			DBG2("UST event %s not found on shadow copy channel",
 					uevent->attr.name);
@@ -516,8 +519,11 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	/* Iterate over all channels in global domain. */
 	cds_lfht_for_each_entry(usess->domain_global.channels, &iter,
 			uchan, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &iter);
+				(void *)uchan->name, strlen(uchan->name),
+				&uiter);
 		if (ua_chan_node != NULL) {
 			continue;
 		}
@@ -1054,6 +1060,8 @@ int ust_app_create_event_all(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		/* Create session on the tracer side and add it to app session HT */
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
@@ -1062,7 +1070,8 @@ int ust_app_create_event_all(struct ltt_ust_session *usess,
 
 		/* Lookup channel in the ust app session */
 		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &iter);
+				(void *)uchan->name, strlen(uchan->name),
+				&uiter);
 		if (ua_chan_node == NULL) {
 			ERR("Channel %s not found in session uid %d. Skipping",
 					uchan->name, usess->uid);
