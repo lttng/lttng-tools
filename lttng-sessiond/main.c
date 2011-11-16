@@ -1790,6 +1790,7 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 		sessions[i].path[PATH_MAX - 1] = '\0';
 		strncpy(sessions[i].name, session->name, NAME_MAX);
 		sessions[i].name[NAME_MAX - 1] = '\0';
+		sessions[i].enabled = session->enabled;
 		i++;
 	}
 }
@@ -2512,6 +2513,10 @@ static int cmd_start_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
+	if (session->enabled)
+		return LTTCOMM_UST_START_FAIL;
+	session->enabled = 1;
+
 	/* Kernel tracing */
 	if (ksession != NULL) {
 		struct ltt_kernel_channel *kchan;
@@ -2596,6 +2601,10 @@ static int cmd_stop_trace(struct ltt_session *session)
 
 	/* Short cut */
 	ksession = session->kernel_session;
+
+	if (!session->enabled)
+		return LTTCOMM_UST_START_FAIL;
+	session->enabled = 0;
 
 	/* Kernel tracer */
 	if (ksession != NULL) {

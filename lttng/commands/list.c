@@ -109,6 +109,28 @@ end:
 	return cmdline;
 }
 
+static
+const char *active_string(int value)
+{
+	switch (value) {
+	case 0:	return " [active]";
+	case 1: return " [inactive]";
+	case -1: return "";
+	default: return NULL;
+	}
+}
+
+static
+const char *enabled_string(int value)
+{
+	switch (value) {
+	case 0:	return " [enabled]";
+	case 1: return " [disabled]";
+	case -1: return "";
+	default: return NULL;
+	}
+}
+
 /*
  * Pretty print single event.
  */
@@ -116,12 +138,12 @@ static void print_events(struct lttng_event *event)
 {
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
-		MSG("%s%s (type: tracepoint) [enabled: %d]", indent6,
-				event->name, event->enabled);
+		MSG("%s%s (type: tracepoint)%s", indent6,
+				event->name, enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_PROBE:
-		MSG("%s%s (type: probe) [enabled: %d]", indent6,
-				event->name, event->enabled);
+		MSG("%s%s (type: probe)%s", indent6,
+				event->name, enabled_string(event->enabled));
 		if (event->attr.probe.addr != 0) {
 			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
 		} else {
@@ -131,17 +153,17 @@ static void print_events(struct lttng_event *event)
 		break;
 	case LTTNG_EVENT_FUNCTION:
 	case LTTNG_EVENT_FUNCTION_ENTRY:
-		MSG("%s%s (type: function) [enabled: %d]", indent6,
-				event->name, event->enabled);
+		MSG("%s%s (type: function)%s", indent6,
+				event->name, enabled_string(event->enabled));
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%s (type: syscall) [enabled: %d]", indent6,
-				event->enabled);
+		MSG("%s (type: syscall)%s", indent6,
+				enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_NOOP:
-		MSG("%s (type: noop) [enabled: %d]", indent6,
-				event->enabled);
+		MSG("%s (type: noop)%s", indent6,
+				enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */
@@ -282,7 +304,7 @@ error:
  */
 static void print_channel(struct lttng_channel *channel)
 {
-	MSG("- %s (enabled: %d):\n", channel->name, channel->enabled);
+	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
 
 	MSG("%sAttributes:", indent4);
 	MSG("%soverwrite mode: %d", indent6, channel->attr.overwrite);
@@ -385,14 +407,14 @@ static int list_sessions(const char *session_name)
 		if (session_name != NULL) {
 			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
 				session_found = 1;
-				MSG("Tracing session %s:", session_name);
+				MSG("Tracing session %s:%s", session_name, active_string(sessions[i].enabled));
 				MSG("%sTrace path: %s\n", indent4, sessions[i].path);
 				break;
 			}
 			continue;
 		}
 
-		MSG("  %d) %s (%s)", i + 1, sessions[i].name, sessions[i].path);
+		MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path, active_string(sessions[i].enabled));
 
 		if (session_found) {
 			break;
