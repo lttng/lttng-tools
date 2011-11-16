@@ -84,6 +84,7 @@ struct ust_app_session {
 	struct lttng_ust_object_data *obj;
 	struct cds_lfht *channels; /* Registered channels */
 	struct cds_lfht_node node;
+	char path[PATH_MAX];
 };
 
 /*

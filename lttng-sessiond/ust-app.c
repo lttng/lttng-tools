@@ -503,16 +503,36 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
  * Copy data between a UST app session and a regular LTT session.
  */
 static void shadow_copy_session(struct ust_app_session *ua_sess,
-		struct ltt_ust_session *usess)
+		struct ltt_ust_session *usess,
+		struct ust_app *app)
 {
 	struct cds_lfht_node *ua_chan_node;
 	struct cds_lfht_iter iter;
 	struct ltt_ust_channel *uchan;
 	struct ust_app_channel *ua_chan;
+	time_t rawtime;
+	struct tm *timeinfo;
+	char datetime[16];
+	int ret;
+
+	/* Get date and time for unique app path */
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
 
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
 
 	ua_sess->uid = usess->uid;
+
+	ret = snprintf(ua_sess->path, PATH_MAX,
+			"%s/%s-%d-%s",
+			usess->pathname, app->name, app->key.pid,
+			datetime);
+	if (ret < 0) {
+		PERROR("asprintf UST shadow copy session");
+		/* TODO: We cannot return an error from here.. */
+		assert(0);
+	}
 
 	/* TODO: support all UST domain */
 
@@ -585,7 +605,7 @@ static struct ust_app_session *create_ust_app_session(
 			/* Only malloc can failed so something is really wrong */
 			goto error;
 		}
-		shadow_copy_session(ua_sess, usess);
+		shadow_copy_session(ua_sess, usess, app);
 	}
 
 	if (ua_sess->handle == -1) {
@@ -727,21 +747,14 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			goto error;
 		}
 
-		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s-%d",
-				pathname, app->name, app->key.pid);
-		if (ret < 0) {
-			PERROR("asprintf UST create stream");
-			goto error;
-		}
-
-		ret = mkdir(ua_sess->metadata->pathname, S_IRWXU | S_IRWXG);
+		ret = mkdir(ua_sess->path, S_IRWXU | S_IRWXG);
 		if (ret < 0) {
 			PERROR("mkdir UST metadata");
 			goto error;
 		}
 
-		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX, "%s/%s-%d/metadata",
-				pathname, app->name, app->key.pid);
+		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
+				"%s/metadata", ua_sess->path);
 		if (ret < 0) {
 			PERROR("asprintf UST create stream");
 			goto error;
@@ -1137,9 +1150,9 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 			/* Order is important */
 			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
-			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s-%d/%s_%u",
-					usess->pathname, app->name, app->key.pid,
-					ua_chan->name, ua_chan->streams.count++);
+			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%u",
+					ua_sess->path, ua_chan->name,
+					ua_chan->streams.count++);
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
 				continue;
