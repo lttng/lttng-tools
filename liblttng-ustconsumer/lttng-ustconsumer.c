@@ -287,6 +287,7 @@ int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 {
 	ustctl_flush_buffer(stream->chan->handle, stream->buf, 0);
+	stream->hangup_flush_done = 1;
 }
 
 void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
@@ -343,12 +344,14 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		stream->wait_fd, stream->key);
 
 	/* We can consume the 1 byte written into the wait_fd by UST */
-	do {
-		readlen = read(stream->wait_fd, &dummy, 1);
-	} while (readlen == -1 && errno == -EINTR);
-	if (readlen == -1) {
-		ret = readlen;
-		goto end;
+	if (!stream->hangup_flush_done) {
+		do {
+			readlen = read(stream->wait_fd, &dummy, 1);
+		} while (readlen == -1 && errno == -EINTR);
+		if (readlen == -1) {
+			ret = readlen;
+			goto end;
+		}
 	}
 
 	buf = stream->buf;
@@ -356,7 +359,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = ustctl_get_next_subbuf(handle, buf);
 	if (err != 0) {
-		ret = errno;
+		ret = -ret;	/* ustctl_get_next_subbuf returns negative, caller expect positive. */
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -370,11 +373,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	assert(stream->output == LTTNG_EVENT_MMAP);
 	/* read the used subbuffer size */
 	err = ustctl_get_padded_subbuf_size(handle, buf, &len);
-	if (err != 0) {
-		ret = errno;
-		perror("Getting sub-buffer len failed.");
-		goto end;
-	}
+	assert(err == 0);
 	/* write the subbuffer to the tracefile */
 	ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len);
 	if (ret < 0) {
@@ -385,16 +384,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		ERR("Error writing to tracefile");
 	}
 	err = ustctl_put_next_subbuf(handle, buf);
-	if (err != 0) {
-		ret = errno;
-		if (errno == EFAULT) {
-			perror("Error in unreserving sub buffer\n");
-		} else if (errno == EIO) {
-			/* Should never happen with newer LTTng versions */
-			perror("Reader has been pushed by the writer, last sub-buffer corrupted.");
-		}
-		goto end;
-	}
+	assert(err == 0);
 end:
 	return ret;
 }

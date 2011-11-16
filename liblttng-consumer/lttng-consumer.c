@@ -178,7 +178,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	struct lttng_consumer_stream *stream;
 	int ret;
 
-	stream = malloc(sizeof(*stream));
+	stream = zmalloc(sizeof(*stream));
 	if (stream == NULL) {
 		perror("malloc struct lttng_consumer_stream");
 		goto end;
@@ -574,7 +574,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		consumer_data.type == type);
 	consumer_data.type = type;
 
-	ctx = malloc(sizeof(struct lttng_consumer_local_data));
+	ctx = zmalloc(sizeof(struct lttng_consumer_local_data));
 	if (ctx == NULL) {
 		perror("allocating context");
 		goto error;
@@ -760,7 +760,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 	int tmp2;
 	struct lttng_consumer_local_data *ctx = data;
 
-	local_stream = malloc(sizeof(struct lttng_consumer_stream));
+	local_stream = zmalloc(sizeof(struct lttng_consumer_stream));
 
 	while (1) {
 		high_prio = 0;
@@ -782,7 +782,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 			}
 
 			/* allocate for all fds + 1 for the consumer_poll_pipe */
-			pollfd = malloc((consumer_data.stream_count + 1) * sizeof(struct pollfd));
+			pollfd = zmalloc((consumer_data.stream_count + 1) * sizeof(struct pollfd));
 			if (pollfd == NULL) {
 				perror("pollfd malloc");
 				pthread_mutex_unlock(&consumer_data.lock);
@@ -790,7 +790,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 			}
 
 			/* allocate for all fds + 1 for the consumer_poll_pipe */
-			local_stream = malloc((consumer_data.stream_count + 1) *
+			local_stream = zmalloc((consumer_data.stream_count + 1) *
 					sizeof(struct lttng_consumer_stream));
 			if (local_stream == NULL) {
 				perror("local_stream malloc");
@@ -867,12 +867,10 @@ void *lttng_consumer_thread_poll_fds(void *data)
 						pollfd[i].fd);
 					if (!local_stream[i]->hangup_flush_done) {
 						lttng_ustconsumer_on_stream_hangup(local_stream[i]);
-						/* try reading after flush */
-						ret = ctx->on_buffer_ready(local_stream[i], ctx);
-						/* it's ok to have an unavailable sub-buffer */
-						if (ret == EAGAIN) {
-							ret = 0;
-						}
+						/* read after flush */
+						do {
+							ret = ctx->on_buffer_ready(local_stream[i], ctx);
+						} while (ret == EAGAIN);
 					}
 				} else {
 					DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
