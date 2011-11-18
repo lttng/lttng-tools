@@ -143,6 +143,7 @@ static void delete_ust_app(struct ust_app *app)
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	struct ust_app_session *ua_sess;
+	int sock;
 
 	rcu_read_lock();
 
@@ -167,9 +168,8 @@ static void delete_ust_app(struct ust_app *app)
 	/* Socket is already closed at this point */
 
 	/* Delete ust app sessions info */
-	if (app->sock_closed) {
-		app->key.sock = -1;
-	}
+	sock = app->key.sock;
+	app->key.sock = -1;
 
 	cds_lfht_for_each_entry(app->sessions, &iter, ua_sess, node) {
 		hashtable_del(app->sessions, &iter);
@@ -182,9 +182,13 @@ static void delete_ust_app(struct ust_app *app)
 		goto end;
 	}
 
-	if (!app->sock_closed) {
-		close(app->key.sock);
-	}
+	/*
+	 * Wait until we have removed the key from the sock hash table
+	 * before closing this socket, otherwise an application could
+	 * re-use the socket ID and race with the teardown, using the
+	 * same hash table entry.
+	 */
+	close(sock);
 
 	DBG2("UST app pid %d deleted", app->key.pid);
 	free(app);
@@ -881,10 +885,6 @@ void ust_app_unregister(int sock)
 		goto error;
 	}
 
-	/* We got called because the socket was closed on the remote end. */
-	close(sock);
-	/* Using a flag because we still need "sock" as a key. */
-	lta->sock_closed = 1;
 	hashtable_del(ust_app_ht, &iter);
 	call_rcu(&node->head, delete_ust_app_rcu);
 error:
@@ -983,8 +983,6 @@ void ust_app_clean_list(void)
 
 	cds_lfht_for_each(ust_app_ht, &iter, node) {
 		app = caa_container_of(node, struct ust_app, node);
-		close(app->key.sock);
-		app->sock_closed = 1;
 
 		ret = hashtable_del(ust_app_ht, &iter);
 		if (!ret) {
