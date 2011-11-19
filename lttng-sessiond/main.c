@@ -3007,8 +3007,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CONSUMER_FAIL;
 					goto error;
 				}
+			} else {
+				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 			}
-			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
@@ -3033,8 +3034,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 
 				ust_consumer_fd = ustconsumer_data.cmd_sock;
+			} else {
+				pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
 			}
-			pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
 		}
 		break;
 	}
