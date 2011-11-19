@@ -841,7 +841,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	 * to specific compat32 consumer.
 	 */
 	if (msg->bits_per_long != CAA_BITS_PER_LONG) {
-		ERR("Registration failed: application %s (pid: %d) has "
+		ERR("Registration failed: application \"%s\" (pid: %d) has "
 			"%d-bit long, but only "
 			"%d-bit lttng-consumerd is available.\n",
 			msg->name, msg->pid, msg->bits_per_long,
