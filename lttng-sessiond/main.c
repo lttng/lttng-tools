@@ -1060,9 +1060,10 @@ static void *thread_manage_apps(void *data)
 					/* Register applicaton to the session daemon */
 					ret = ust_app_register(&ust_cmd.reg_msg,
 							ust_cmd.sock);
-					if (ret < 0) {
-						/* Only critical ENOMEM error can be returned here */
+					if (ret == -ENOMEM) {
 						goto error;
+					} else if (ret < 0) {
+						break;
 					}
 
 					/*

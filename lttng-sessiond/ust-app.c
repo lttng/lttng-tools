@@ -846,6 +846,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 			"%d-bit lttng-consumerd is available.\n",
 			msg->name, msg->pid, msg->bits_per_long,
 			CAA_BITS_PER_LONG);
+		close(sock);
 		return -EINVAL;
 	}
 
