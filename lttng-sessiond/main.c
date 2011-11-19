@@ -159,6 +159,24 @@ static struct ltt_session_list *session_list_ptr;
 
 int ust_consumer_fd;
 
+static const char *compat32_consumer_bindir =
+	__stringify(CONFIG_COMPAT_BIN_DIR);
+static const char *compat32_consumer_prog = "lttng-consumerd";
+
+static
+void setup_compat32_consumer(void)
+{
+	const char *bindir;
+
+	/*
+	 * runtime env. var. overrides the build default.
+	 */
+	bindir = getenv("LTTNG_TOOLS_COMPAT_BIN_DIR");
+	if (bindir) {
+		compat32_consumer_bindir = bindir;
+	}
+}
+
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
@@ -3441,6 +3459,7 @@ static void usage(void)
 	fprintf(stderr, "      --kconsumerd-cmd-sock PATH     Specify path for the kernel consumer command socket\n");
 	fprintf(stderr, "      --ustconsumerd-err-sock PATH   Specify path for the UST consumer error socket\n");
 	fprintf(stderr, "      --ustconsumerd-cmd-sock PATH   Specify path for the UST consumer command socket\n");
+	fprintf(stderr, "      --ustconsumerd-compat32 PATH   Specify path for the 32-bit UST consumer daemon binary\n");
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
@@ -3464,6 +3483,7 @@ static int parse_args(int argc, char **argv)
 		{ "kconsumerd-err-sock", 1, 0, 'E' },
 		{ "ustconsumerd-cmd-sock", 1, 0, 'D' },
 		{ "ustconsumerd-err-sock", 1, 0, 'F' },
+		{ "ustconsumerd-compat32", 1, 0, 'u' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
@@ -3477,7 +3497,7 @@ static int parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z",
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z:u",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3500,7 +3520,7 @@ static int parse_args(int argc, char **argv)
 			opt_daemon = 1;
 			break;
 		case 'g':
-			opt_tracing_group = strdup(optarg);
+			opt_tracing_group = optarg;
 			break;
 		case 'h':
 			usage();
@@ -3532,6 +3552,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'Z':
 			opt_verbose_consumer += 1;
+			break;
+		case 'u':
+			compat32_consumer_bindir = optarg;
 			break;
 		default:
 			/* Unknown option or other error.
@@ -3858,6 +3881,8 @@ int main(int argc, char **argv)
 	if ((ret = init_thread_quit_pipe()) < 0) {
 		goto error;
 	}
+
+	setup_compat32_consumer();
 
 	/* Parse arguments */
 	progname = argv[0];
