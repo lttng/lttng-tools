@@ -454,9 +454,9 @@ unsigned long hash_key(void *_key, size_t length, unsigned long seed)
  */
 unsigned long hash_key(void *_key, size_t length, unsigned long seed)
 {
-	unsigned long key = (unsigned long) _key;
+	uint32_t key = (uint32_t) _key;
 
-	assert(length == sizeof(unsigned long));
+	assert(length == sizeof(uint32_t));
 	return hashword(&key, 1, seed);
 }
 #endif
