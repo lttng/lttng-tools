@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <urcu/compiler.h>
 #include <lttngerr.h>
 #include <lttng-share.h>
 
@@ -827,11 +828,26 @@ error:
  * Using pid and uid (of the app), allocate a new ust_app struct and
  * add it to the global traceable app list.
  *
- * On success, return 0, else return malloc ENOMEM.
+ * On success, return 0, else return malloc -ENOMEM, or -EINVAL if app
+ * bitness is not supported.
  */
 int ust_app_register(struct ust_register_msg *msg, int sock)
 {
 	struct ust_app *lta;
+
+	/*
+	 * Currently support only tracing of application which share the
+	 * same bitness as the consumer. Eventually implement dispatch
+	 * to specific compat32 consumer.
+	 */
+	if (msg->bits_per_long != CAA_BITS_PER_LONG) {
+		ERR("Registration failed: application %s (pid: %d) has "
+			"%d-bit long, but only "
+			"%d-bit lttng-consumerd is available.\n",
+			msg->name, msg->pid, msg->bits_per_long,
+			CAA_BITS_PER_LONG);
+		return -EINVAL;
+	}
 
 	lta = zmalloc(sizeof(struct ust_app));
 	if (lta == NULL) {

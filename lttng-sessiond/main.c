@@ -2822,14 +2822,14 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		if (session->kernel_session != NULL) {
 			nb_chan = session->kernel_session->channel_count;
 		}
-		DBG3("Number of kernel channels %ld", nb_chan);
+		DBG3("Number of kernel channels %zd", nb_chan);
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (session->ust_session != NULL) {
 			nb_chan = hashtable_get_count(
 					session->ust_session->domain_global.channels);
 		}
-		DBG3("Number of UST global channels %ld", nb_chan);
+		DBG3("Number of UST global channels %zd", nb_chan);
 		break;
 	default:
 		*channels = NULL;

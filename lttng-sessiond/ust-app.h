@@ -38,6 +38,7 @@ struct ust_register_msg {
 	pid_t ppid;
 	uid_t uid;
 	gid_t gid;
+	uint32_t bits_per_long;
 	char name[16];
 };
 
