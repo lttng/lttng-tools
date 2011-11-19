@@ -305,8 +305,14 @@ static void teardown_kernel_session(struct ltt_session *session)
  */
 static void teardown_ust_session(struct ltt_session *session)
 {
+	int ret;
+
 	DBG("Tearing down UST session(s)");
 
+	ret = ust_app_destroy_trace_all(session->ust_session);
+	if (ret) {
+		ERR("Error in ust_app_destroy_trace_all");
+	}
 	trace_ust_destroy_session(session->ust_session);
 }
 
@@ -2676,6 +2682,8 @@ static int cmd_destroy_session(struct ltt_session *session, char *name)
 
 	/* Clean kernel session teardown */
 	teardown_kernel_session(session);
+	/* UST session teardown */
+	teardown_ust_session(session);
 
 	/*
 	 * Must notify the kernel thread here to update it's poll setin order

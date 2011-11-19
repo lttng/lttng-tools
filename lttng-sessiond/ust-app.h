@@ -83,7 +83,6 @@ struct ust_app_session {
 	int handle;   /* Used has unique identifier */
 	unsigned int uid;
 	struct ltt_ust_metadata *metadata;
-	struct lttng_ust_object_data *obj;
 	struct cds_lfht *channels; /* Registered channels */
 	struct cds_lfht_node node;
 	char path[PATH_MAX];
@@ -118,6 +117,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
 int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
+int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app);
+int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 

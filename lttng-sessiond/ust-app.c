@@ -47,6 +47,7 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 	//}
 
 	ustctl_release_object(sock, ua_event->obj);
+	free(ua_event->obj);
 	free(ua_event);
 }
 
@@ -56,11 +57,9 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
  */
 static void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
 {
-	//TODO
-	//stream is used for passing to consumer.
-	//send_channel_streams is responsible for freeing the streams.
-	//note that this will not play well with flight recorder mode:
-	//we might need a criterion to discard the streams.
+	ustctl_release_object(sock, stream->obj);
+	free(stream->obj);
+	free(stream);
 }
 
 /*
@@ -75,6 +74,7 @@ static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 	struct ltt_ust_stream *stream, *stmp;
 
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
+		cds_list_del(&stream->list);
 		delete_ust_app_stream(sock, stream);
 	}
 
@@ -95,6 +95,9 @@ static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 		ERR("UST app destroy session hashtable failed");
 		goto error;
 	}
+	ustctl_release_object(sock, ua_chan->obj);
+	free(ua_chan->obj);
+	free(ua_chan);
 
 error:
 	return;
@@ -112,10 +115,10 @@ static void delete_ust_app_session(int sock,
 	struct ust_app_channel *ua_chan;
 
 	if (ua_sess->metadata) {
-		/*
-		 * We do NOT release the stream object and metadata object since they
-		 * are release when fds are sent to the consumer.
-		 */
+		ustctl_release_object(sock, ua_sess->metadata->stream_obj);
+		free(ua_sess->metadata->stream_obj);
+		ustctl_release_object(sock, ua_sess->metadata->obj);
+		free(ua_sess->metadata->obj);
 	}
 
 	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
@@ -565,6 +568,16 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	}
 }
 
+static
+void __lookup_session_by_app(struct ltt_ust_session *usess,
+			struct ust_app *app, struct cds_lfht_iter *iter)
+{
+	/* Get right UST app session from app */
+	(void) hashtable_lookup(app->sessions,
+			(void *) ((unsigned long) usess->uid), sizeof(void *),
+			iter);
+}
+
 /*
  * Return ust app session from the app session hashtable using the UST session
  * uid.
@@ -575,9 +588,8 @@ static struct ust_app_session *lookup_session_by_app(
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
 
-	/* Get right UST app session from app */
-	node = hashtable_lookup(app->sessions,
-			(void *) ((unsigned long) usess->uid), sizeof(void *), &iter);
+	__lookup_session_by_app(usess, app, &iter);
+	node = hashtable_iter_get_node(&iter);
 	if (node == NULL) {
 		goto error;
 	}
@@ -1245,6 +1257,47 @@ error_rcu_unlock:
 }
 
 /*
+ * Destroy a specific UST session in apps.
+ */
+int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
+{
+	struct ust_app_session *ua_sess;
+	struct lttng_ust_object_data obj;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+
+	DBG("Destroy tracing for ust app pid %d", app->key.pid);
+
+	rcu_read_lock();
+
+	__lookup_session_by_app(usess, app, &iter);
+	node = hashtable_iter_get_node(&iter);
+	if (node == NULL) {
+		/* Only malloc can failed so something is really wrong */
+		goto error_rcu_unlock;
+	}
+	ua_sess = caa_container_of(node, struct ust_app_session, node);
+	hashtable_del(app->sessions, &iter);
+	delete_ust_app_session(app->key.sock, ua_sess);
+	obj.handle = ua_sess->handle;
+	obj.shm_fd = -1;
+	obj.wait_fd = -1;
+	obj.memory_map_size = 0;
+	ustctl_release_object(app->key.sock, &obj);
+
+	rcu_read_unlock();
+
+	/* Quiescent wait after stopping trace */
+	ustctl_wait_quiescent(app->key.sock);
+
+	return 0;
+
+error_rcu_unlock:
+	rcu_read_unlock();
+	return -1;
+}
+
+/*
  * Start tracing for the UST session.
  */
 int ust_app_start_trace_all(struct ltt_ust_session *usess)
@@ -1285,6 +1338,32 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
 		ret = ust_app_stop_trace(usess, app);
+		if (ret < 0) {
+			/* Continue to next apps even on error */
+			continue;
+		}
+	}
+
+	rcu_read_unlock();
+
+	return 0;
+}
+
+/*
+ * Destroy app UST session.
+ */
+int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct ust_app *app;
+
+	DBG("Destroy all UST traces");
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ret = ust_app_destroy_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
 			continue;

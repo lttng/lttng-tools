@@ -100,18 +100,7 @@ static int send_channel_streams(int sock,
 			perror("send consumer stream ancillary data");
 			goto error;
 		}
-
-		/*
-		 * We release the stream object here, as we have passed
-		 * it to the consumer.
-		 */
-		/* Ensure we don't let the app know (sock = -1). */
-		ustctl_release_object(-1, stream->obj);
-		cds_list_del(&stream->list);
-		free(stream);
 	}
-	/* Ensure we don't let the app know (sock = -1). */
-	ustctl_release_object(-1, uchan->obj);
 
 	DBG("consumer channel streams sent");
 
@@ -179,10 +168,6 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 			perror("send consumer stream");
 			goto error;
 		}
-		/* Metadata fds passed to consumer, release them. */
-		/* Ensure we don't let the app know (sock = -1). */
-		ustctl_release_object(-1, usess->metadata->stream_obj);
-		ustctl_release_object(-1, usess->metadata->obj);
 	}
 
 	/* Send each channel fd streams of session */
