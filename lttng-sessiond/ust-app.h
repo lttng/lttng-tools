@@ -78,6 +78,8 @@ struct ust_app_channel {
 
 struct ust_app_session {
 	int enabled;
+	/* started: has the session been in started state at any time ? */
+	int started;  /* allows detection of start vs restart. */
 	int handle;   /* Used has unique identifier */
 	unsigned int uid;
 	struct ltt_ust_metadata *metadata;
@@ -113,7 +115,9 @@ int ust_app_create_event_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
+int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
+int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 

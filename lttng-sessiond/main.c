@@ -2596,11 +2596,11 @@ static int cmd_stop_trace(struct ltt_session *session)
 	int ret;
 	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_session *ksession;
-	//struct ltt_ust_session *usess;
-	//struct ltt_ust_channel *ustchan;
+	struct ltt_ust_session *usess;
 
 	/* Short cut */
 	ksession = session->kernel_session;
+	usess = session->ust_session;
 
 	if (!session->enabled)
 		return LTTCOMM_UST_START_FAIL;
@@ -2632,32 +2632,16 @@ static int cmd_stop_trace(struct ltt_session *session)
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
 
-#ifdef DISABLE
-	/* Stop each UST session */
-	DBG("Stop UST tracing");
-	cds_list_for_each_entry(usess, &session->ust_session_list.head, list) {
-		/* Flush all buffers before stopping */
-		ret = ustctl_flush_buffer(usess->sock, usess->metadata->obj);
-		if (ret < 0) {
-			ERR("UST metadata flush failed");
-		}
+	/* Flag session that trace should start automatically */
+	if (usess) {
+		usess->start_trace = 0;
 
-		cds_list_for_each_entry(ustchan, &usess->channels.head, list) {
-			ret = ustctl_flush_buffer(usess->sock, ustchan->obj);
-			if (ret < 0) {
-				ERR("UST flush buffer error");
-			}
-		}
-
-		ret = ustctl_stop_session(usess->sock, usess->handle);
+		ret = ust_app_stop_trace_all(usess);
 		if (ret < 0) {
-			ret = LTTCOMM_KERN_STOP_FAIL;
+			ret = LTTCOMM_UST_START_FAIL;
 			goto error;
 		}
-
-		ustctl_wait_quiescent(usess->sock);
 	}
-#endif
 
 	ret = LTTCOMM_OK;
 

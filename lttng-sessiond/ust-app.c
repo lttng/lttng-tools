@@ -1122,6 +1122,10 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
+	/* upon restart, we skip the setup, already done */
+	if (ua_sess->started)
+		goto skip_setup;
+
 	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
 	if (ret < 0) {
 		goto error_rcu_unlock;
@@ -1165,7 +1169,9 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}
+	ua_sess->started = 1;
 
+skip_setup:
 	/* This start the UST tracing */
 	ret = ustctl_start_session(app->key.sock, ua_sess->handle);
 	if (ret < 0) {
@@ -1176,6 +1182,59 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	rcu_read_unlock();
 
 	/* Quiescent wait after starting trace */
+	ustctl_wait_quiescent(app->key.sock);
+
+	return 0;
+
+error_rcu_unlock:
+	rcu_read_unlock();
+	return -1;
+}
+
+/*
+ * Stop tracing for a specific UST session and app.
+ */
+int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
+{
+	int ret = 0;
+	struct ust_app_session *ua_sess;
+
+	DBG("Stopping tracing for ust app pid %d", app->key.pid);
+
+	rcu_read_lock();
+
+	ua_sess = lookup_session_by_app(usess, app);
+	if (ua_sess == NULL) {
+		/* Only malloc can failed so something is really wrong */
+		goto error_rcu_unlock;
+	}
+
+#if 0	/* only useful when periodical flush will be supported */
+	/* need to keep a handle on shm in session for this. */
+	/* Flush all buffers before stopping */
+	ret = ustctl_flush_buffer(usess->sock, usess->metadata->obj);
+	if (ret < 0) {
+		ERR("UST metadata flush failed");
+	}
+
+	cds_list_for_each_entry(ustchan, &usess->channels.head, list) {
+		ret = ustctl_flush_buffer(usess->sock, ustchan->obj);
+		if (ret < 0) {
+			ERR("UST flush buffer error");
+		}
+	}
+#endif
+
+	/* This inhibits UST tracing */
+	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);
+	if (ret < 0) {
+		ERR("Error stopping tracing for app pid: %d", app->key.pid);
+		goto error_rcu_unlock;
+	}
+
+	rcu_read_unlock();
+
+	/* Quiescent wait after stopping trace */
 	ustctl_wait_quiescent(app->key.sock);
 
 	return 0;
@@ -1200,6 +1259,32 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
 		ret = ust_app_start_trace(usess, app);
+		if (ret < 0) {
+			/* Continue to next apps even on error */
+			continue;
+		}
+	}
+
+	rcu_read_unlock();
+
+	return 0;
+}
+
+/*
+ * Start tracing for the UST session.
+ */
+int ust_app_stop_trace_all(struct ltt_ust_session *usess)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct ust_app *app;
+
+	DBG("Stopping all UST traces");
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ret = ust_app_stop_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
 			continue;
