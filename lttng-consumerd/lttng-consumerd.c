@@ -38,6 +38,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <config.h>
+#include <urcu/compiler.h>
 
 #include <lttng-consumerd.h>
 #include <lttng-kernel-ctl.h>
@@ -63,7 +64,7 @@ static char command_sock_path[PATH_MAX]; /* Global command socket path */
 static char error_sock_path[PATH_MAX]; /* Global error path */
 static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
-/* the liblttngkconsumerd context */
+/* the liblttngconsumerd context */
 static struct lttng_consumer_local_data *ctx;
 
 /*
@@ -123,9 +124,9 @@ static void usage(void)
 	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(stderr, "  -h, --help                         "
 			"Display this usage.\n");
-	fprintf(stderr, "  -c, --kconsumerd-cmd-sock PATH     "
+	fprintf(stderr, "  -c, --consumerd-cmd-sock PATH     "
 			"Specify path for the command socket\n");
-	fprintf(stderr, "  -e, --kconsumerd-err-sock PATH     "
+	fprintf(stderr, "  -e, --consumerd-err-sock PATH     "
 			"Specify path for the error socket\n");
 	fprintf(stderr, "  -d, --daemonize                    "
 			"Start as a daemon.\n");
@@ -155,8 +156,8 @@ static void parse_args(int argc, char **argv)
 	int c;
 
 	static struct option long_options[] = {
-		{ "kconsumerd-cmd-sock", 1, 0, 'c' },
-		{ "kconsumerd-err-sock", 1, 0, 'e' },
+		{ "consumerd-cmd-sock", 1, 0, 'c' },
+		{ "consumerd-err-sock", 1, 0, 'e' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "help", 0, 0, 'h' },
 		{ "quiet", 0, 0, 'q' },
@@ -209,7 +210,13 @@ static void parse_args(int argc, char **argv)
 			break;
 #ifdef HAVE_LIBLTTNG_UST_CTL
 		case 'u':
-			opt_type = LTTNG_CONSUMER_UST;
+# if (CAA_BITS_PER_LONG == 64)
+			opt_type = LTTNG_CONSUMER64_UST;
+# elif (CAA_BITS_PER_LONG == 32)
+			opt_type = LTTNG_CONSUMER32_UST;
+# else
+#  error "Unknown bitness"
+# endif
 			break;
 #endif
 		default:
@@ -242,10 +249,20 @@ int main(int argc, char **argv)
 	}
 
 	if (strlen(command_sock_path) == 0) {
-		snprintf(command_sock_path, PATH_MAX,
-			opt_type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_CMD_SOCK_PATH :
-				USTCONSUMERD_CMD_SOCK_PATH);
+		switch (opt_type) {
+		case LTTNG_CONSUMER_KERNEL:
+			strcpy(command_sock_path, KCONSUMERD_CMD_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER64_UST:
+			strcpy(command_sock_path, USTCONSUMERD64_CMD_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER32_UST:
+			strcpy(command_sock_path, USTCONSUMERD32_CMD_SOCK_PATH);
+			break;
+		default:
+			WARN("Unknown consumerd type");
+			goto error;
+		}
 	}
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
@@ -256,10 +273,20 @@ int main(int argc, char **argv)
 
 	lttng_consumer_set_command_sock_path(ctx, command_sock_path);
 	if (strlen(error_sock_path) == 0) {
-		snprintf(error_sock_path, PATH_MAX,
-			opt_type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_ERR_SOCK_PATH :
-				USTCONSUMERD_ERR_SOCK_PATH);
+		switch (opt_type) {
+		case LTTNG_CONSUMER_KERNEL:
+			strcpy(error_sock_path, KCONSUMERD_ERR_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER64_UST:
+			strcpy(error_sock_path, USTCONSUMERD64_ERR_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER32_UST:
+			strcpy(error_sock_path, USTCONSUMERD32_ERR_SOCK_PATH);
+			break;
+		default:
+			WARN("Unknown consumerd type");
+			goto error;
+		}
 	}
 
 	if (set_signal_handler() < 0) {

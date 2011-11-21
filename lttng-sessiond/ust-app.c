@@ -835,21 +835,14 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 {
 	struct ust_app *lta;
 
-	/*
-	 * Currently support only tracing of application which share the
-	 * same bitness as the consumer. Eventually implement dispatch
-	 * to specific compat32 consumer.
-	 */
-	if (msg->bits_per_long != CAA_BITS_PER_LONG) {
+	if ((msg->bits_per_long == 64 && ust_consumerd64_fd == -EINVAL)
+			|| (msg->bits_per_long == 32 && ust_consumerd32_fd == -EINVAL)) {
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
-			"%d-bit long, but only "
-			"%d-bit lttng-consumerd is available.\n",
-			msg->name, msg->pid, msg->bits_per_long,
-			CAA_BITS_PER_LONG);
+			"%d-bit long, but no consumerd for this long size is available.\n",
+			msg->name, msg->pid, msg->bits_per_long);
 		close(sock);
 		return -EINVAL;
 	}
-
 	lta = zmalloc(sizeof(struct ust_app));
 	if (lta == NULL) {
 		PERROR("malloc");
@@ -859,6 +852,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	lta->ppid = msg->ppid;
 	lta->uid = msg->uid;
 	lta->gid = msg->gid;
+	lta->bits_per_long = msg->bits_per_long;
 	lta->v_major = msg->major;
 	lta->v_minor = msg->minor;
 	strncpy(lta->name, msg->name, sizeof(lta->name));
@@ -1140,6 +1134,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ltt_ust_stream *ustream;
+	int consumerd_fd;
 
 	DBG("Starting tracing for ust app pid %d", app->key.pid);
 
@@ -1193,8 +1188,19 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		}
 	}
 
+	switch (app->bits_per_long) {
+	case 64:
+		consumerd_fd = ust_consumerd64_fd;
+		break;
+	case 32:
+		consumerd_fd = ust_consumerd32_fd;
+		break;
+	default:
+		ret = -EINVAL;
+		goto error_rcu_unlock;
+	}
 	/* Setup UST consumer socket and send fds to it */
-	ret = ust_consumer_send_session(ust_consumer_fd, ua_sess);
+	ret = ust_consumer_send_session(consumerd_fd, ua_sess);
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}

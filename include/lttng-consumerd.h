@@ -25,9 +25,14 @@
 #define KCONSUMERD_CMD_SOCK_PATH            KCONSUMERD_PATH "/command"
 #define KCONSUMERD_ERR_SOCK_PATH            KCONSUMERD_PATH "/error"
 
-/* UST consumer path */
-#define USTCONSUMERD_PATH                   LTTNG_RUNDIR "/ustconsumerd"
-#define USTCONSUMERD_CMD_SOCK_PATH          USTCONSUMERD_PATH "/command"
-#define USTCONSUMERD_ERR_SOCK_PATH          USTCONSUMERD_PATH "/error"
+/* UST 64-bit consumer path */
+#define USTCONSUMERD64_PATH                 LTTNG_RUNDIR "/ustconsumerd64"
+#define USTCONSUMERD64_CMD_SOCK_PATH        USTCONSUMERD64_PATH "/command"
+#define USTCONSUMERD64_ERR_SOCK_PATH        USTCONSUMERD64_PATH "/error"
+
+/* UST 32-bit consumer path */
+#define USTCONSUMERD32_PATH                 LTTNG_RUNDIR "/ustconsumerd32"
+#define USTCONSUMERD32_CMD_SOCK_PATH        USTCONSUMERD32_PATH "/command"
+#define USTCONSUMERD32_ERR_SOCK_PATH        USTCONSUMERD32_PATH "/error"
 
 #endif /* _LTTNG_CONSUMERD_H */

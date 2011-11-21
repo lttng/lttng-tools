@@ -129,7 +129,8 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 			}
 		}
 		break;
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		lttng_ustconsumer_del_stream(stream);
 		break;
 	default:
@@ -204,7 +205,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		stream->cpu = stream->chan->cpucount++;
 		ret = lttng_ustconsumer_allocate_stream(stream);
 		if (ret) {
@@ -244,7 +246,8 @@ int consumer_add_stream(struct lttng_consumer_stream *stream)
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		/* Streams are in CPU number order (we rely on this) */
 		stream->cpu = stream->chan->nr_streams++;
 		break;
@@ -289,7 +292,8 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		lttng_ustconsumer_del_channel(channel);
 		break;
 	default:
@@ -344,7 +348,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 		channel->mmap_base = NULL;
 		channel->mmap_len = 0;
 		break;
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		ret = lttng_ustconsumer_allocate_channel(channel);
 		if (ret) {
 			free(channel);
@@ -656,7 +661,8 @@ int lttng_consumer_on_read_subbuffer_mmap(
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_on_read_subbuffer_mmap(ctx, stream, len);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_on_read_subbuffer_mmap(ctx, stream, len);
 	default:
 		ERR("Unknown consumer_data type");
@@ -676,7 +682,8 @@ int lttng_consumer_on_read_subbuffer_splice(
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_on_read_subbuffer_splice(ctx, stream, len);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return -ENOSYS;
 	default:
 		ERR("Unknown consumer_data type");
@@ -697,7 +704,8 @@ int lttng_consumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_take_snapshot(ctx, stream);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_take_snapshot(ctx, stream);
 	default:
 		ERR("Unknown consumer_data type");
@@ -720,7 +728,8 @@ int lttng_consumer_get_produced_snapshot(
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_get_produced_snapshot(ctx, stream, pos);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_get_produced_snapshot(ctx, stream, pos);
 	default:
 		ERR("Unknown consumer_data type");
@@ -735,7 +744,8 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_recv_cmd(ctx, sock, consumer_sockpoll);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_recv_cmd(ctx, sock, consumer_sockpoll);
 	default:
 		ERR("Unknown consumer_data type");
@@ -862,7 +872,8 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				num_hup++;
 			} else if ((pollfd[i].revents & POLLHUP) &&
 					!(pollfd[i].revents & POLLIN)) {
-				if (consumer_data.type == LTTNG_CONSUMER_UST) {
+				if (consumer_data.type == LTTNG_CONSUMER32_UST
+						|| consumer_data.type == LTTNG_CONSUMER64_UST) {
 					DBG("Polling fd %d tells it has hung up. Attempting flush and read.",
 						pollfd[i].fd);
 					if (!local_stream[i]->hangup_flush_done) {
@@ -1034,7 +1045,8 @@ int lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_read_subbuffer(stream, ctx);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_read_subbuffer(stream, ctx);
 	default:
 		ERR("Unknown consumer_data type");
@@ -1048,7 +1060,8 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_on_recv_stream(stream);
-	case LTTNG_CONSUMER_UST:
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_on_recv_stream(stream);
 	default:
 		ERR("Unknown consumer_data type");

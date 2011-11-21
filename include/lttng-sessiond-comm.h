@@ -125,7 +125,8 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_META_FAIL,			/* UST open metadata failed */
 	LTTCOMM_UST_START_FAIL,		/* UST start trace failed */
 	LTTCOMM_UST_STOP_FAIL,			/* UST stop trace failed */
-	LTTCOMM_UST_CONSUMER_FAIL,		/* UST consumer start failed */
+	LTTCOMM_UST_CONSUMER64_FAIL,		/* 64-bit UST consumer start failed */
+	LTTCOMM_UST_CONSUMER32_FAIL,		/* 32-bit UST consumer start failed */
 	LTTCOMM_UST_STREAM_FAIL,		/* UST create stream failed */
 	LTTCOMM_UST_DIR_FAIL,			/* UST trace directory creation failed */
 	LTTCOMM_UST_DIR_EXIST,			/* UST trace directory exist */

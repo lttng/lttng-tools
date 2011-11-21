@@ -68,7 +68,8 @@ struct lttng_consumer_stream_list {
 enum lttng_consumer_type {
 	LTTNG_CONSUMER_UNKNOWN = 0,
 	LTTNG_CONSUMER_KERNEL,
-	LTTNG_CONSUMER_UST,
+	LTTNG_CONSUMER64_UST,
+	LTTNG_CONSUMER32_UST,
 };
 
 struct lttng_consumer_channel {

@@ -14,8 +14,10 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
-AC_ARG_VAR([LTTNG_TOOLS_COMPAT_BIN_DIR], [Search for LTTng Tools 32-bit compatibility binaries in this location.])
-AC_DEFINE_UNQUOTED([CONFIG_COMPAT_BIN_DIR], $LTTNG_TOOLS_COMPAT_BIN_PREFIX, [Search for LTTng Tools 32-bit compatibility binaries in this location.])
+AC_ARG_VAR([LTTNG_TOOLS_32BIT_BINDIR], [Search for LTTng Tools 32-bit binaries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_32BIT_BINDIR], $LTTNG_TOOLS_32BIT_BINDIR, [Search for LTTng Tools 32-bit binaries in this location.])
+AC_ARG_VAR([LTTNG_TOOLS_64BIT_BINDIR], [Search for LTTng Tools 64-bit binaries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_64BIT_BINDIR], $LTTNG_TOOLS_64BIT_BINDIR, [Search for LTTng Tools 64-bit binaries in this location.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],

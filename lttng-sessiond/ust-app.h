@@ -26,7 +26,7 @@
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
-extern int ust_consumer_fd;
+extern int ust_consumerd64_fd, ust_consumerd32_fd;
 
 /*
  * Application registration data structure.
@@ -96,7 +96,8 @@ struct ust_app_session {
 struct ust_app {
 	pid_t ppid;
 	uid_t uid;           /* User ID that owns the apps */
-	gid_t gid;           /* Group ID that owns the apps */
+	gid_t gid;           /* Group ID that owns the apps */	
+	int bits_per_long;
 	uint32_t v_major;    /* Verion major number */
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */

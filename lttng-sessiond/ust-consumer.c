@@ -124,6 +124,11 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 
 	DBG("Sending metadata stream fd");
 
+	if (consumer_fd < 0) {
+		ERR("Consumer has negative file descriptor");
+		return -EINVAL;
+	}
+
 	if (usess->metadata->obj->shm_fd != 0) {
 		int fd;
 		int fds[2];

@@ -96,9 +96,18 @@ static pid_t ppid;          /* Parent PID for --sig-parent option */
 /* Consumer daemon specific control data */
 static struct consumer_data kconsumer_data = {
 	.type = LTTNG_CONSUMER_KERNEL,
+	.err_unix_sock_path = KCONSUMERD_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = KCONSUMERD_CMD_SOCK_PATH,
 };
-static struct consumer_data ustconsumer_data = {
-	.type = LTTNG_CONSUMER_UST,
+static struct consumer_data ustconsumer64_data = {
+	.type = LTTNG_CONSUMER64_UST,
+	.err_unix_sock_path = USTCONSUMERD64_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = USTCONSUMERD64_CMD_SOCK_PATH,
+};
+static struct consumer_data ustconsumer32_data = {
+	.type = LTTNG_CONSUMER32_UST,
+	.err_unix_sock_path = USTCONSUMERD32_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = USTCONSUMERD32_CMD_SOCK_PATH,
 };
 
 static int dispatch_thread_exit;
@@ -157,23 +166,49 @@ static struct ust_cmd_queue ust_cmd_queue;
  */
 static struct ltt_session_list *session_list_ptr;
 
-int ust_consumer_fd;
+int ust_consumerd64_fd = -1;
+int ust_consumerd32_fd = -1;
 
-static const char *compat32_consumer_bindir =
-	__stringify(CONFIG_COMPAT_BIN_DIR);
-static const char *compat32_consumer_prog = "lttng-consumerd";
+static const char *consumerd64_prog = "lttng-consumerd";
+static const char *consumerd32_prog = "lttng-consumerd";
+
+static const char *consumerd64_bindir =
+	__stringify(CONFIG_64BIT_BINDIR);
+static const char *consumerd32_bindir =
+	__stringify(CONFIG_32BIT_BINDIR);
 
 static
-void setup_compat32_consumer(void)
+void setup_consumerd_path(void)
 {
 	const char *bindir;
 
 	/*
+	 * Allow INSTALL_BIN_PATH to be used as a target path for the
+	 * native architecture size consumer if CONFIG_NBIT_BINDIR as
+	 * not been defined.
+	 */
+#if (CAA_BITS_PER_LONG == 64)
+	if (!consumerd64_bindir[0]) {
+		consumerd64_bindir = INSTALL_BIN_PATH;
+	}
+#elif (CAA_BITS_PER_LONG == 32)
+	if (!consumerd32_bindir[0]) {
+		consumerd32_bindir = INSTALL_BIN_PATH;
+	}
+#else
+#error "Unknown bitness"
+#endif
+
+	/*
 	 * runtime env. var. overrides the build default.
 	 */
-	bindir = getenv("LTTNG_TOOLS_COMPAT_BIN_DIR");
+	bindir = getenv("LTTNG_TOOLS_64BIT_BINDIR");
 	if (bindir) {
-		compat32_consumer_bindir = bindir;
+		consumerd64_bindir = bindir;
+	}
+	bindir = getenv("LTTNG_TOOLS_32BIT_BINDIR");
+	if (bindir) {
+		consumerd32_bindir = bindir;
 	}
 }
 
@@ -1466,12 +1501,35 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
 			execl(INSTALL_BIN_PATH "/lttng-consumerd",
-					"lttng-consumerd", verbosity, "-k", NULL);
+					"lttng-consumerd", verbosity, "-k",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
 			break;
-		case LTTNG_CONSUMER_UST:
-			execl(INSTALL_BIN_PATH "/lttng-consumerd",
-					"lttng-consumerd", verbosity, "-u", NULL);
+		case LTTNG_CONSUMER64_UST:
+		{
+			char path[PATH_MAX];
+
+			snprintf(path, PATH_MAX, "%s/%s",
+				consumerd64_bindir, consumerd64_prog);
+			execl(path, verbosity, "-u",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
 			break;
+		}
+		case LTTNG_CONSUMER32_UST:
+		{
+			char path[PATH_MAX];
+
+			snprintf(path, PATH_MAX, "%s/%s",
+				consumerd32_bindir, consumerd32_prog);
+			execl(path, verbosity, "-u",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
+			break;
+		}
 		default:
 			perror("unknown consumer type");
 			exit(EXIT_FAILURE);
@@ -3022,20 +3080,38 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					goto error;
 				}
 			}
-			/* Start the kernel consumer daemon */
-			pthread_mutex_lock(&ustconsumer_data.pid_mutex);
-			if (ustconsumer_data.pid == 0 &&
+			/* Start the UST consumer daemons */
+			/* 64-bit */
+			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
+			if (consumerd64_bindir[0] != '\0' &&
+					ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
-				pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
-				ret = start_consumerd(&ustconsumer_data);
+				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
+				ret = start_consumerd(&ustconsumer64_data);
 				if (ret < 0) {
-					ret = LTTCOMM_KERN_CONSUMER_FAIL;
+					ret = LTTCOMM_UST_CONSUMER64_FAIL;
+					ust_consumerd64_fd = -EINVAL;
 					goto error;
 				}
 
-				ust_consumer_fd = ustconsumer_data.cmd_sock;
+				ust_consumerd64_fd = ustconsumer64_data.cmd_sock;
 			} else {
-				pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
+				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
+			}
+			/* 32-bit */
+			if (consumerd32_bindir[0] != '\0' &&
+					ustconsumer32_data.pid == 0 &&
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
+				ret = start_consumerd(&ustconsumer32_data);
+				if (ret < 0) {
+					ret = LTTCOMM_UST_CONSUMER32_FAIL;
+					ust_consumerd32_fd = -EINVAL;
+					goto error;
+				}
+				ust_consumerd32_fd = ustconsumer32_data.cmd_sock;
+			} else {
+				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
 			}
 		}
 		break;
@@ -3459,9 +3535,12 @@ static void usage(void)
 	fprintf(stderr, "  -a, --apps-sock PATH               Specify path for apps unix socket\n");
 	fprintf(stderr, "      --kconsumerd-err-sock PATH     Specify path for the kernel consumer error socket\n");
 	fprintf(stderr, "      --kconsumerd-cmd-sock PATH     Specify path for the kernel consumer command socket\n");
-	fprintf(stderr, "      --ustconsumerd-err-sock PATH   Specify path for the UST consumer error socket\n");
-	fprintf(stderr, "      --ustconsumerd-cmd-sock PATH   Specify path for the UST consumer command socket\n");
-	fprintf(stderr, "      --ustconsumerd-compat32 PATH   Specify path for the 32-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --ustconsumerd32-err-sock PATH Specify path for the 32-bit UST consumer error socket\n");
+	fprintf(stderr, "      --ustconsumerd64-err-sock PATH Specify path for the 64-bit UST consumer error socket\n");
+	fprintf(stderr, "      --ustconsumerd32-cmd-sock PATH Specify path for the 32-bit UST consumer command socket\n");
+	fprintf(stderr, "      --ustconsumerd64-cmd-sock PATH Specify path for the 64-bit UST consumer command socket\n");
+	fprintf(stderr, "      --ustconsumerd32 PATH          Specify path for the 32-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --ustconsumerd64 PATH          Specify path for the 64-bit UST consumer daemon binary\n");
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
@@ -3483,9 +3562,12 @@ static int parse_args(int argc, char **argv)
 		{ "apps-sock", 1, 0, 'a' },
 		{ "kconsumerd-cmd-sock", 1, 0, 'C' },
 		{ "kconsumerd-err-sock", 1, 0, 'E' },
-		{ "ustconsumerd-cmd-sock", 1, 0, 'D' },
-		{ "ustconsumerd-err-sock", 1, 0, 'F' },
-		{ "ustconsumerd-compat32", 1, 0, 'u' },
+		{ "ustconsumerd64", 1, 0, 't' },
+		{ "ustconsumerd64-cmd-sock", 1, 0, 'D' },
+		{ "ustconsumerd64-err-sock", 1, 0, 'F' },
+		{ "ustconsumerd32", 1, 0, 'u' },
+		{ "ustconsumerd32-cmd-sock", 1, 0, 'G' },
+		{ "ustconsumerd32-err-sock", 1, 0, 'H' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
@@ -3499,7 +3581,7 @@ static int parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z:u",
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z:u:t",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3540,10 +3622,16 @@ static int parse_args(int argc, char **argv)
 			snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'F':
-			snprintf(ustconsumer_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
+			snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'D':
-			snprintf(ustconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'H':
+			snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'G':
+			snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'q':
 			opt_quiet = 1;
@@ -3556,7 +3644,10 @@ static int parse_args(int argc, char **argv)
 			opt_verbose_consumer += 1;
 			break;
 		case 'u':
-			compat32_consumer_bindir = optarg;
+			consumerd32_bindir = optarg;
+			break;
+		case 't':
+			consumerd64_bindir = optarg;
 			break;
 		default:
 			/* Unknown option or other error.
@@ -3681,10 +3772,17 @@ static int set_permissions(void)
 		perror("chown");
 	}
 
-	/* ustconsumer error socket path */
-	ret = chown(ustconsumer_data.err_unix_sock_path, 0, gid);
+	/* 64-bit ustconsumer error socket path */
+	ret = chown(ustconsumer64_data.err_unix_sock_path, 0, gid);
 	if (ret < 0) {
-		ERR("Unable to set group on %s", ustconsumer_data.err_unix_sock_path);
+		ERR("Unable to set group on %s", ustconsumer64_data.err_unix_sock_path);
+		perror("chown");
+	}
+
+	/* 32-bit ustconsumer compat32 error socket path */
+	ret = chown(ustconsumer32_data.err_unix_sock_path, 0, gid);
+	if (ret < 0) {
+		ERR("Unable to set group on %s", ustconsumer32_data.err_unix_sock_path);
 		perror("chown");
 	}
 
@@ -3738,21 +3836,22 @@ error:
 static int set_consumer_sockets(struct consumer_data *consumer_data)
 {
 	int ret;
-	const char *path = consumer_data->type == LTTNG_CONSUMER_KERNEL ?
-			KCONSUMERD_PATH : USTCONSUMERD_PATH;
+	const char *path;
 
-	if (strlen(consumer_data->err_unix_sock_path) == 0) {
-		snprintf(consumer_data->err_unix_sock_path, PATH_MAX,
-			consumer_data->type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_ERR_SOCK_PATH :
-				USTCONSUMERD_ERR_SOCK_PATH);
-	}
-
-	if (strlen(consumer_data->cmd_unix_sock_path) == 0) {
-		snprintf(consumer_data->cmd_unix_sock_path, PATH_MAX,
-			consumer_data->type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_CMD_SOCK_PATH :
-				USTCONSUMERD_CMD_SOCK_PATH);
+	switch (consumer_data->type) {
+	case LTTNG_CONSUMER_KERNEL:
+		path = KCONSUMERD_PATH;
+		break;
+	case LTTNG_CONSUMER64_UST:
+		path = USTCONSUMERD64_PATH;
+		break;
+	case LTTNG_CONSUMER32_UST:
+		path = USTCONSUMERD32_PATH;
+		break;
+	default:
+		ERR("Consumer type unknown");
+		ret = -EINVAL;
+		goto error;
 	}
 
 	ret = mkdir(path, S_IRWXU | S_IRWXG);
@@ -3884,7 +3983,7 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
-	setup_compat32_consumer();
+	setup_consumerd_path();
 
 	/* Parse arguments */
 	progname = argv[0];
@@ -3981,10 +4080,16 @@ int main(int argc, char **argv)
 			goto exit;
 		}
 
-		ret = set_consumer_sockets(&ustconsumer_data);
+		ret = set_consumer_sockets(&ustconsumer64_data);
 		if (ret < 0) {
 			goto exit;
 		}
+
+		ret = set_consumer_sockets(&ustconsumer32_data);
+		if (ret < 0) {
+			goto exit;
+		}
+
 		/* Setup kernel tracer */
 		init_kernel_tracer();
 
