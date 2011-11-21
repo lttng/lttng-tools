@@ -68,6 +68,7 @@ struct ltt_session {
 	pthread_mutex_t lock;
 	struct cds_list_head list;
 	int enabled;	/* enabled/started flag */
+	int uid;
 };
 
 /* Prototypes */

@@ -1780,10 +1780,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	DBG("Creating UST session");
 
-	session_lock_list();
-	uid = session_list_ptr->count;
-	session_unlock_list();
-
+	uid = session->uid;
 	lus = trace_ust_create_session(session->path, uid, domain);
 	if (lus == NULL) {
 		ret = LTTCOMM_UST_SESS_FAIL;
