@@ -113,8 +113,8 @@ static
 const char *active_string(int value)
 {
 	switch (value) {
-	case 0:	return " [active]";
-	case 1: return " [inactive]";
+	case 0:	return " [inactive]";
+	case 1: return " [active]";
 	case -1: return "";
 	default: return NULL;
 	}
@@ -124,8 +124,8 @@ static
 const char *enabled_string(int value)
 {
 	switch (value) {
-	case 0:	return " [enabled]";
-	case 1: return " [disabled]";
+	case 0:	return " [disabled]";
+	case 1: return " [enabled]";
 	case -1: return "";
 	default: return NULL;
 	}
