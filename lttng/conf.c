@@ -102,21 +102,26 @@ error:
  *
  *  Append data to the config file in file_path
  */
-static void write_config(char *file_path, size_t size, char *data)
+static int write_config(char *file_path, size_t size, char *data)
 {
 	FILE *fp;
+	size_t len;
+	int ret = 0;
 
 	fp = open_config(file_path, "a");
 	if (fp == NULL) {
-		goto error;
+		ret = -1;
+		goto end;
 	}
 
 	/* Write session name into config file */
-	fwrite(data, size, 1, fp);
+	len = fwrite(data, size, 1, fp);
+	if (len < 1) {
+		ret = -1;
+	}
 	fclose(fp);
-
-error:
-	return;
+end:
+	return ret;
 }
 
 /*
@@ -209,10 +214,7 @@ int config_add_session_name(char *path, char *name)
 	if (ret < 0) {
 		goto error;
 	}
-
-	write_config(path, ret, session_name);
-	ret = 0;
-
+	ret = write_config(path, ret, session_name);
 error:
 	return ret;
 }
