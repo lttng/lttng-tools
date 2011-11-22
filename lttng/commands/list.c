@@ -482,7 +482,7 @@ error:
 int cmd_list(int argc, const char **argv)
 {
 	int opt, i, ret = CMD_SUCCESS;
-	unsigned int nb_domain;
+	int nb_domain;
 	const char *session_name;
 	static poptContext pc;
 	struct lttng_domain domain;
