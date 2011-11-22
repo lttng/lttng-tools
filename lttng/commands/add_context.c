@@ -58,7 +58,7 @@ static struct lttng_handle *handle;
 enum context_type {
 	CONTEXT_PID          = 0,
 	CONTEXT_PERF_COUNTER = 1,
-	CONTEXT_COMM         = 2,
+	CONTEXT_PROCNAME     = 2,
 	CONTEXT_PRIO         = 3,
 	CONTEXT_NICE         = 4,
 	CONTEXT_VPID         = 5,
@@ -194,7 +194,7 @@ const struct ctx_opts {
 	} u;
 } ctx_opts[] = {
 	{ "pid", CONTEXT_PID },
-	{ "comm", CONTEXT_COMM },
+	{ "procname", CONTEXT_PROCNAME },
 	{ "prio", CONTEXT_PRIO },
 	{ "nice", CONTEXT_NICE },
 	{ "vpid", CONTEXT_VPID },
