@@ -1915,6 +1915,7 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 			channels[i].attr.read_timer_interval =
 				uchan->attr.read_timer_interval;
 			channels[i].attr.output = uchan->attr.output;
+			i++;
 		}
 		break;
 	}
