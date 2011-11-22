@@ -333,7 +333,7 @@ static int list_channels(const char *channel_name)
 	unsigned int chan_found = 0;
 	struct lttng_channel *channels = NULL;
 
-	DBG("Listing channel(s) (%s)", channel_name);
+	DBG("Listing channel(s) (%s)", channel_name ? : "<all>");
 
 	count = lttng_list_channels(handle, &channels);
 	if (count < 0) {
