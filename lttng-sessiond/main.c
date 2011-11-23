@@ -2445,6 +2445,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 				ret = LTTCOMM_FATAL;
 				goto error;
 			}
+			snprintf(attr->name, NAME_MAX, "%s", channel_name);
 
 			/* Use the internal command enable channel */
 			ret = cmd_enable_channel(session, domain, attr);
