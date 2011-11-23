@@ -362,6 +362,8 @@ static void teardown_ust_session(struct ltt_session *session)
 
 	DBG("Tearing down UST session(s)");
 
+	if (!session->ust_session)
+		return;
 	ret = ust_app_destroy_trace_all(session->ust_session);
 	if (ret) {
 		ERR("Error in ust_app_destroy_trace_all");
