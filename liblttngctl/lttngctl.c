@@ -784,10 +784,8 @@ int lttng_list_events(struct lttng_handle *handle,
 }
 
 /*
- *  lttng_set_tracing_group
- *
- *  Set tracing group variable with name. This function
- *  allocate memory pointed by tracing_group.
+ * Set tracing group variable with name. This function allocate memory pointed
+ * by tracing_group.
  */
 int lttng_set_tracing_group(const char *name)
 {
@@ -816,6 +814,46 @@ int lttng_calibrate(struct lttng_handle *handle,
 	memcpy(&lsm.u.calibrate, calibrate, sizeof(lsm.u.calibrate));
 
 	return ask_sessiond(&lsm, NULL);
+}
+
+/*
+ * Set default channel attributes.
+ */
+void lttng_channel_set_default_attr(struct lttng_domain *domain,
+		struct lttng_channel_attr *attr)
+{
+	/* Safety check */
+	if (attr == NULL || domain == NULL) {
+		return;
+	}
+
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+		attr->subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
+		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
+		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		break;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+		attr->subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
+		attr->num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
+		attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
+		break;
+	default:
+		/* Default behavior */
+		memset(attr, 0, sizeof(struct lttng_channel_attr));
+		break;
+	}
 }
 
 /*

@@ -1921,8 +1921,13 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 				uchan->attr.switch_timer_interval;
 			channels[i].attr.read_timer_interval =
 				uchan->attr.read_timer_interval;
-			channels[i].attr.output = uchan->attr.output;
 			channels[i].enabled = uchan->enabled;
+			switch (uchan->attr.output) {
+			case LTTNG_UST_MMAP:
+			default:
+				channels[i].attr.output = LTTNG_EVENT_MMAP;
+				break;
+			}
 			i++;
 		}
 		break;

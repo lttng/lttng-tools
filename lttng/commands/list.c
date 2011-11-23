@@ -279,7 +279,7 @@ static int list_events(const char *channel_name)
 
 	MSG("\n%sEvents:", indent4);
 	if (count == 0) {
-		MSG("%sNone", indent6);
+		MSG("%sNone\n", indent6);
 		goto end;
 	}
 
