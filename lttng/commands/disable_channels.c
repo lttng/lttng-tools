@@ -62,12 +62,12 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng disable-channel NAME[,NAME2,...] [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  -h, --help            Show this help\n");
+	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
-	fprintf(ofp, "  -k, --kernel          Apply for the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace       Apply for the user-space tracer\n");
-	fprintf(ofp, "      --all             If -u, apply on all traceable apps\n");
-	fprintf(ofp, "  -p, --pid PID         If -u, apply on a specific PID\n");
+	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
+	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
 	fprintf(ofp, "\n");
 }
 
@@ -82,6 +82,19 @@ static int disable_channels(char *session_name)
 
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_pid != 0) {
+		dom.type = LTTNG_DOMAIN_UST_PID;
+		dom.attr.pid = opt_pid;
+		DBG("PID %d set to lttng handle", opt_pid);
+	} else if (opt_userspace && opt_cmd_name == NULL) {
+		dom.type = LTTNG_DOMAIN_UST;
+	} else if (opt_userspace && opt_cmd_name != NULL) {
+		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
+		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
+	} else {
+		ERR("Please specify a tracer (--kernel or --userspace)");
+		ret = CMD_NOT_IMPLEMENTED;
+		goto error;
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -93,27 +106,14 @@ static int disable_channels(char *session_name)
 	/* Strip channel list */
 	channel_name = strtok(opt_channels, ",");
 	while (channel_name != NULL) {
-		/* Kernel tracer action */
-		if (opt_kernel) {
-			DBG("Disabling kernel channel %s", channel_name);
-			ret = lttng_disable_channel(handle, channel_name);
-			if (ret < 0) {
-				goto error;
-			} else {
-				MSG("Kernel channel disabled %s", channel_name);
-			}
-		} else if (opt_userspace) {		/* User-space tracer action */
-			/*
-			 * TODO: Waiting on lttng UST 2.0
-			 */
-			if (opt_pid_all) {
-			} else if (opt_pid != 0) {
-			}
-			ret = CMD_NOT_IMPLEMENTED;
+		DBG("Disabling channel %s", channel_name);
+
+		ret = lttng_disable_channel(handle, channel_name);
+		if (ret < 0) {
 			goto error;
 		} else {
-			ERR("Please specify a tracer (--kernel or --userspace)");
-			goto error;
+			MSG("Channel %s disabled for session %s", channel_name,
+					session_name);
 		}
 
 		/* Next channel */

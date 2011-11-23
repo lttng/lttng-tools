@@ -245,6 +245,56 @@ error:
 }
 
 /*
+ * Disable the specified channel on to UST tracer for the UST session.
+ */
+static int disable_ust_channel(struct ust_app *app,
+		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan)
+{
+	int ret;
+
+	ret = ustctl_disable(app->key.sock, ua_chan->obj);
+	if (ret < 0) {
+		ERR("UST app channel %s disable failed for app (pid: %d) "
+				"and session handle %d with ret %d",
+				ua_chan->name, app->key.pid, ua_sess->handle, ret);
+		goto error;
+	}
+
+	ua_chan->enabled = 0;
+
+	DBG2("UST app channel %s disabled successfully for app (pid: %d)",
+			ua_chan->name, app->key.pid);
+
+error:
+	return ret;
+}
+
+/*
+ * Enable the specified channel on to UST tracer for the UST session.
+ */
+static int enable_ust_channel(struct ust_app *app,
+		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan)
+{
+	int ret;
+
+	ret = ustctl_enable(app->key.sock, ua_chan->obj);
+	if (ret < 0) {
+		ERR("UST app channel %s enable failed for app (pid: %d) "
+				"and session handle %d with ret %d",
+				ua_chan->name, app->key.pid, ua_sess->handle, ret);
+		goto error;
+	}
+
+	ua_chan->enabled = 1;
+
+	DBG2("UST app channel %s enabled successfully for app (pid: %d)",
+			ua_chan->name, app->key.pid);
+
+error:
+	return ret;
+}
+
+/*
  * Open metadata onto the UST tracer for a UST session.
  */
 static int open_ust_metadata(struct ust_app *app,
@@ -569,6 +619,9 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	}
 }
 
+/*
+ * Lookup sesison wrapper.
+ */
 static
 void __lookup_session_by_app(struct ltt_ust_session *usess,
 			struct ust_app *app, struct cds_lfht_iter *iter)
@@ -649,6 +702,66 @@ static struct ust_app_session *create_ust_app_session(
 
 error:
 	return NULL;
+}
+
+/*
+ * Lookup ust app channel for session and disable it on the tracer side.
+ */
+static int disable_ust_app_channel(struct ust_app_session *ua_sess,
+		struct ltt_ust_channel *uchan, struct ust_app *app)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ua_chan_node;
+	struct ust_app_channel *ua_chan;
+
+	ua_chan_node = hashtable_lookup(ua_sess->channels,
+			(void *)uchan->name, strlen(uchan->name), &iter);
+	if (ua_chan_node == NULL) {
+		DBG2("Unable to find channel %s in ust session uid %u",
+				uchan->name, ua_sess->uid);
+		goto error;
+	}
+
+	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+	ret = disable_ust_channel(app, ua_sess, ua_chan);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Lookup ust app channel for session and enable it on the tracer side.
+ */
+static int enable_ust_app_channel(struct ust_app_session *ua_sess,
+		struct ltt_ust_channel *uchan, struct ust_app *app)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ua_chan_node;
+	struct ust_app_channel *ua_chan;
+
+	ua_chan_node = hashtable_lookup(ua_sess->channels,
+			(void *)uchan->name, strlen(uchan->name), &iter);
+	if (ua_chan_node == NULL) {
+		DBG2("Unable to find channel %s in ust session uid %u",
+				uchan->name, ua_sess->uid);
+		goto error;
+	}
+
+	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+	ret = enable_ust_channel(app, ua_sess, ua_chan);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
 }
 
 /*
@@ -1026,6 +1139,92 @@ void ust_app_ht_alloc(void)
 {
 	ust_app_ht = hashtable_new(0);
 	ust_app_sock_key_map = hashtable_new(0);
+}
+
+/*
+ * For a specific UST session, disable the channel for all registered apps.
+ */
+int ust_app_disable_channel_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+
+	if (usess == NULL || uchan == NULL) {
+		ERR("Disabling UST global channel with NULL values");
+		ret = -1;
+		goto error;
+	}
+
+	DBG2("UST app disablling channel %s from global domain for session uid %d",
+			uchan->name, usess->uid);
+
+	rcu_read_lock();
+
+	/* For every registered applications */
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			continue;
+		}
+
+		/* Create channel onto application */
+		ret = disable_ust_app_channel(ua_sess, uchan, app);
+		if (ret < 0) {
+			/* XXX: We might want to report this error at some point... */
+			continue;
+		}
+	}
+
+	rcu_read_unlock();
+
+error:
+	return ret;
+}
+
+/*
+ * For a specific UST session, enable the channel for all registered apps.
+ */
+int ust_app_enable_channel_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+
+	if (usess == NULL || uchan == NULL) {
+		ERR("Adding UST global channel to NULL values");
+		ret = -1;
+		goto error;
+	}
+
+	DBG2("UST app enabling channel %s to global domain for session uid %d",
+			uchan->name, usess->uid);
+
+	rcu_read_lock();
+
+	/* For every registered applications */
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			continue;
+		}
+
+		/* Enable channel onto application */
+		ret = enable_ust_app_channel(ua_sess, uchan, app);
+		if (ret < 0) {
+			/* XXX: We might want to report this error at some point... */
+			continue;
+		}
+	}
+
+	rcu_read_unlock();
+
+error:
+	return ret;
 }
 
 /*

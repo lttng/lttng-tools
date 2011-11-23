@@ -2073,22 +2073,52 @@ static int cmd_disable_channel(struct ltt_session *session,
 		int domain, char *channel_name)
 {
 	int ret;
+	struct ltt_ust_session *usess;
+
+	usess = session->ust_session;
 
 	switch (domain) {
-		case LTTNG_DOMAIN_KERNEL:
-			ret = channel_kernel_disable(session->kernel_session,
-					channel_name);
-			if (ret != LTTCOMM_OK) {
-				goto error;
-			}
-
-			kernel_wait_quiescent(kernel_tracer_fd);
-			break;
-		case LTTNG_DOMAIN_UST_PID:
-			break;
-		default:
-			ret = LTTCOMM_UNKNOWN_DOMAIN;
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		ret = channel_kernel_disable(session->kernel_session,
+				channel_name);
+		if (ret != LTTCOMM_OK) {
 			goto error;
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_channel *uchan;
+
+		/* Get channel in global UST domain HT */
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		ret = ust_app_disable_channel_all(usess, uchan);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_DISABLE_FAIL;
+			goto error;
+		}
+
+		uchan->enabled = 0;
+
+		break;
+	}
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	default:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		goto error;
 	}
 
 	ret = LTTCOMM_OK;
@@ -2183,65 +2213,36 @@ static int cmd_enable_channel(struct ltt_session *session,
 			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
 			rcu_read_unlock();
 			DBG2("UST channel %s added to global domain HT", attr->name);
-		} else {
-			ret = LTTCOMM_UST_CHAN_EXIST;
-			goto error;
-		}
 
-		/* Add channel to all registered applications */
-		ret = ust_app_create_channel_all(usess, uchan);
-		if (ret != 0) {
-			goto error;
+			/* Add channel to all registered applications */
+			ret = ust_app_create_channel_all(usess, uchan);
+			if (ret != 0) {
+				ret = LTTCOMM_UST_CHAN_FAIL;
+				goto error;
+			}
+		} else {
+			/* If already enabled, everything is OK */
+			if (uchan->enabled) {
+				ret = LTTCOMM_OK;
+				goto error;
+			}
+
+			ret = ust_app_enable_channel_all(usess, uchan);
+			if (ret < 0) {
+				ret = LTTCOMM_UST_ENABLE_FAIL;
+				goto error;
+			}
 		}
 
 		uchan->enabled = 1;
 
 		break;
 	}
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
-	{
-		/*
-		int sock;
-		struct ltt_ust_channel *uchan;
-		struct ltt_ust_session *usess;
-		struct ust_app *app;
-
-		usess = trace_ust_get_session_by_pid(&session->ust_session_list,
-				domain->attr.pid);
-		if (usess == NULL) {
-			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
-			goto error;
-		}
-
-		app = ust_app_get_by_pid(domain->attr.pid);
-		if (app == NULL) {
-			ret = LTTCOMM_APP_NOT_FOUND;
-			goto error;
-		}
-		sock = app->sock;
-
-		uchan = trace_ust_get_channel_by_name(attr->name, usess);
-		if (uchan == NULL) {
-			ret = channel_ust_create(usess, attr, sock);
-		} else {
-			ret = channel_ust_enable(usess, uchan, sock);
-		}
-
-		if (ret != LTTCOMM_OK) {
-			goto error;
-		}
-
-		ret = copy_ust_channel_to_app(usess, attr, app);
-		if (ret != LTTCOMM_OK) {
-			goto error;
-		}
-
-		DBG("UST channel %s created for app sock %d with pid %d",
-				attr->name, app->sock, domain->attr.pid);
-		*/
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
-	}
 	default:
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
