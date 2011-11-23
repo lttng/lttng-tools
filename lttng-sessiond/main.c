@@ -335,8 +335,11 @@ error:
  */
 static void teardown_kernel_session(struct ltt_session *session)
 {
-	if (!session->kernel_session)
+	if (!session->kernel_session) {
+		DBG3("No kernel session when tearingdown session");
 		return;
+	}
+
 	DBG("Tearing down kernel session");
 
 	/*
@@ -358,13 +361,18 @@ static void teardown_ust_session(struct ltt_session *session)
 {
 	int ret;
 
-	if (!session->ust_session)
+	if (!session->ust_session) {
+		DBG3("No UST session when tearingdown session");
 		return;
+	}
+
 	DBG("Tearing down UST session(s)");
+
 	ret = ust_app_destroy_trace_all(session->ust_session);
 	if (ret) {
 		ERR("Error in ust_app_destroy_trace_all");
 	}
+
 	trace_ust_destroy_session(session->ust_session);
 }
 
