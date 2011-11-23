@@ -1146,9 +1146,10 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-	/* upon restart, we skip the setup, already done */
-	if (ua_sess->started)
+	/* Upon restart, we skip the setup, already done */
+	if (ua_sess->started) {
 		goto skip_setup;
+	}
 
 	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
 	if (ret < 0) {
@@ -1199,6 +1200,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		ret = -EINVAL;
 		goto error_rcu_unlock;
 	}
+
 	/* Setup UST consumer socket and send fds to it */
 	ret = ust_consumer_send_session(consumerd_fd, ua_sess);
 	if (ret < 0) {

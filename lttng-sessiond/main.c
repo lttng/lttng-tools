@@ -1922,6 +1922,7 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 			channels[i].attr.read_timer_interval =
 				uchan->attr.read_timer_interval;
 			channels[i].attr.output = uchan->attr.output;
+			channels[i].enabled = uchan->enabled;
 			i++;
 		}
 		break;
@@ -2134,14 +2135,14 @@ error:
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  */
 static int cmd_enable_channel(struct ltt_session *session,
-		struct lttng_domain *domain, struct lttng_channel *attr)
+		int domain, struct lttng_channel *attr)
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
-	switch (domain->type) {
+	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
@@ -2432,13 +2433,34 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 	{
 		struct ltt_ust_channel *uchan;
 		struct ltt_ust_event *uevent;
+		struct lttng_channel *attr;
 
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
 				channel_name);
 		if (uchan == NULL) {
-			/* TODO: Create default channel */
-			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
-			goto error;
+			/* Create default channel */
+			attr = channel_new_default_attr(domain);
+			if (attr == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+
+			/* Use the internal command enable channel */
+			ret = cmd_enable_channel(session, domain, attr);
+			if (ret < 0) {
+				goto error;
+			}
+
+			free(attr);
+
+			/* Get the newly created channel reference back */
+			uchan = trace_ust_find_channel_by_name(
+					usess->domain_global.channels, channel_name);
+			if (uchan == NULL) {
+				/* Something is really wrong */
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
 		}
 
 		uevent = trace_ust_find_event_by_name(uchan->events, event->name);
@@ -2720,7 +2742,6 @@ static int cmd_stop_trace(struct ltt_session *session)
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
 
-	/* Flag session that trace should start automatically */
 	if (usess) {
 		usess->start_trace = 0;
 
@@ -3159,7 +3180,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(cmd_ctx->session, &cmd_ctx->lsm->domain,
+		ret = cmd_enable_channel(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				&cmd_ctx->lsm->u.channel.chan);
 		break;
 	}
