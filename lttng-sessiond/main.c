@@ -1941,6 +1941,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 	int i = 0, ret = 0;
 	unsigned int nb_event = 0;
 	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
 	struct ltt_ust_channel *uchan;
 	struct ltt_ust_event *uevent;
 	struct lttng_event *tmp;
@@ -1949,10 +1950,16 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 	rcu_read_lock();
 
-	/* Count events in all channels */
-	cds_lfht_for_each_entry(ust_global->channels, &iter, uchan, node) {
-		nb_event += hashtable_get_count(uchan->events);
+	node = hashtable_lookup(ust_global->channels, (void *) channel_name,
+			strlen(channel_name), &iter);
+	if (node == NULL) {
+		ret = -LTTCOMM_UST_CHAN_NOT_FOUND;
+		goto error;
 	}
+
+	uchan = caa_container_of(node, struct ltt_ust_channel, node);
+
+	nb_event += hashtable_get_count(uchan->events);
 
 	if (nb_event == 0) {
 		ret = nb_event;
@@ -1967,24 +1974,22 @@ static int list_lttng_ust_global_events(char *channel_name,
 		goto error;
 	}
 
-	cds_lfht_for_each_entry(ust_global->channels, &iter, uchan, node) {
-		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
-			strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
-			tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-			tmp[i].enabled = uevent->enabled;
-			switch (uevent->attr.instrumentation) {
-			case LTTNG_UST_TRACEPOINT:
-				tmp[i].type = LTTNG_EVENT_TRACEPOINT;
-				break;
-			case LTTNG_UST_PROBE:
-				tmp[i].type = LTTNG_EVENT_PROBE;
-				break;
-			case LTTNG_UST_FUNCTION:
-				tmp[i].type = LTTNG_EVENT_FUNCTION;
-				break;
-			}
-			i++;
+	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+		strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
+		tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+		tmp[i].enabled = uevent->enabled;
+		switch (uevent->attr.instrumentation) {
+		case LTTNG_UST_TRACEPOINT:
+			tmp[i].type = LTTNG_EVENT_TRACEPOINT;
+			break;
+		case LTTNG_UST_PROBE:
+			tmp[i].type = LTTNG_EVENT_PROBE;
+			break;
+		case LTTNG_UST_FUNCTION:
+			tmp[i].type = LTTNG_EVENT_FUNCTION;
+			break;
 		}
+		i++;
 	}
 
 	ret = nb_event;
