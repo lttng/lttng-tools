@@ -335,21 +335,19 @@ error:
  */
 static void teardown_kernel_session(struct ltt_session *session)
 {
-	if (session->kernel_session != NULL) {
-		DBG("Tearing down kernel session");
+	if (!session->kernel_session)
+		return;
+	DBG("Tearing down kernel session");
 
-		/*
-		 * If a custom kernel consumer was registered, close the socket before
-		 * tearing down the complete kernel session structure
-		 */
-		if (session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
-			lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
-		}
-
-		trace_kernel_destroy_session(session->kernel_session);
-		/* Extra precaution */
-		session->kernel_session = NULL;
+	/*
+	 * If a custom kernel consumer was registered, close the socket before
+	 * tearing down the complete kernel session structure
+	 */
+	if (session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
+		lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
 	}
+
+	trace_kernel_destroy_session(session->kernel_session);
 }
 
 /*
@@ -360,10 +358,9 @@ static void teardown_ust_session(struct ltt_session *session)
 {
 	int ret;
 
-	DBG("Tearing down UST session(s)");
-
 	if (!session->ust_session)
 		return;
+	DBG("Tearing down UST session(s)");
 	ret = ust_app_destroy_trace_all(session->ust_session);
 	if (ret) {
 		ERR("Error in ust_app_destroy_trace_all");
