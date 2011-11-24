@@ -2276,15 +2276,17 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
+		struct ltt_kernel_session *ksess;
 
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
+		ksess = session->kernel_session;
+
+		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == NULL) {
 			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 			goto error;
 		}
 
-		ret = event_kernel_disable_tracepoint(session->kernel_session, kchan, event_name);
+		ret = event_kernel_disable_tracepoint(ksess, kchan, event_name);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2293,11 +2295,34 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess;
+		struct ltt_ust_channel *uchan;
+
+		usess = session->ust_session;
+
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		ret = ust_app_disable_event(usess, uchan, event_name);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_DISABLE_FAIL;
+			goto error;
+		}
+
+		DBG2("Disable UST event %s in channel %s completed", event_name,
+				channel_name);
+
+		break;
+	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Other UST domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
