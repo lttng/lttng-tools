@@ -429,7 +429,7 @@ int lttng_start_tracing(struct lttng_handle *handle)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -463,7 +463,8 @@ int lttng_add_context(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. Both are mandatory */
+	if (handle == NULL || ctx == NULL) {
 		return -1;
 	}
 
@@ -478,9 +479,7 @@ int lttng_add_context(struct lttng_handle *handle,
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	if (ctx) {
-		memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
-	}
+	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
 
 	copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -532,7 +531,7 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -593,16 +592,15 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. Both are mandatory */
+	if (handle == NULL || name == NULL) {
 		return -1;
 	}
 
-	if (name) {
-		copy_string(lsm.u.disable.channel_name, name,
-				sizeof(lsm.u.disable.channel_name));
-	}
-
 	lsm.cmd_type = LTTNG_DISABLE_CHANNEL;
+
+	copy_string(lsm.u.disable.channel_name, name,
+			sizeof(lsm.u.disable.channel_name));
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -624,7 +622,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -672,7 +670,7 @@ int lttng_destroy_session(struct lttng_handle *handle)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -712,7 +710,7 @@ int lttng_list_domains(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -738,7 +736,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -765,7 +763,8 @@ int lttng_list_events(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. An handle and channel name are mandatory */
+	if (handle == NULL || channel_name == NULL) {
 		return -1;
 	}
 
@@ -791,6 +790,10 @@ int lttng_list_events(struct lttng_handle *handle,
  */
 int lttng_set_tracing_group(const char *name)
 {
+	if (name == NULL) {
+		return -1;
+	}
+
 	if (asprintf(&tracing_group, "%s", name) < 0) {
 		return -ENOMEM;
 	}
@@ -806,7 +809,8 @@ int lttng_calibrate(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. NULL pointer are forbidden */
+	if (handle == NULL || calibrate == NULL) {
 		return -1;
 	}
 
