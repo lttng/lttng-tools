@@ -245,6 +245,29 @@ error:
 }
 
 /*
+ * Disable the specified event on to UST tracer for the UST session.
+ */
+static int disable_ust_event(struct ust_app *app,
+		struct ust_app_session *ua_sess, struct ust_app_event *ua_event)
+{
+	int ret;
+
+	ret = ustctl_disable(app->key.sock, ua_event->obj);
+	if (ret < 0) {
+		ERR("UST app event %s disable failed for app (pid: %d) "
+				"and session handle %d with ret %d",
+				ua_event->attr.name, app->key.pid, ua_sess->handle, ret);
+		goto error;
+	}
+
+	DBG2("UST app event %s disabled successfully for app (pid: %d)",
+			ua_event->attr.name, app->key.pid);
+
+error:
+	return ret;
+}
+
+/*
  * Disable the specified channel on to UST tracer for the UST session.
  */
 static int disable_ust_channel(struct ust_app *app,
@@ -702,6 +725,26 @@ static struct ust_app_session *create_ust_app_session(
 
 error:
 	return NULL;
+}
+
+/*
+ * Disable on the tracer side a ust app event for the session and channel.
+ */
+static int disable_ust_app_event(struct ust_app_session *ua_sess,
+		struct ust_app_channel *ua_chan, struct ust_app_event *ua_event,
+		struct ust_app *app)
+{
+	int ret;
+
+	ret = disable_ust_event(app, ua_sess, ua_event);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ua_event->enabled = 0;
+
+error:
+	return ret;
 }
 
 /*
@@ -1224,6 +1267,60 @@ int ust_app_enable_channel_all(struct ltt_ust_session *usess,
 	rcu_read_unlock();
 
 error:
+	return ret;
+}
+
+/*
+ * For a specific UST session and UST channel, create the event for all
+ * registered apps.
+ */
+int ust_app_disable_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_node *ua_chan_node;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+	struct ust_app_event *ua_event;
+
+	DBG("UST app disabling all event for all apps in channel "
+			"%s for session uid %d", uchan->name, usess->uid);
+
+	rcu_read_lock();
+
+	/* For all registered applications */
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			/* Next app */
+			continue;
+		}
+
+		/* Lookup channel in the ust app session */
+		ua_chan_node = hashtable_lookup(ua_sess->channels,
+				(void *)uchan->name, strlen(uchan->name),
+				&uiter);
+		if (ua_chan_node == NULL) {
+			DBG2("Channel %s not found in session uid %d for app pid %d."
+					"Skipping", uchan->name, app->key.pid, usess->uid);
+			continue;
+		}
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+		/* Disable each events of channel */
+		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
+			ret = disable_ust_app_event(ua_sess, ua_chan, ua_event, app);
+			if (ret < 0) {
+				/* XXX: Report error someday... */
+				continue;
+			}
+		}
+	}
+
+	rcu_read_unlock();
+
 	return ret;
 }
 

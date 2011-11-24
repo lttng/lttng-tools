@@ -126,6 +126,8 @@ int ust_app_disable_channel_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_enable_channel_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
+int ust_app_disable_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan);
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
