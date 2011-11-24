@@ -496,10 +496,11 @@ int lttng_enable_event(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle || ev == NULL) {
+	if (handle == NULL || ev == NULL) {
 		return -1;
 	}
 
+	/* If no channel name, we put the default name */
 	if (channel_name == NULL) {
 		copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME,
 				sizeof(lsm.u.enable.channel_name));
@@ -566,13 +567,14 @@ int lttng_enable_channel(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/*
+	 * NULL arguments are forbidden. No default values.
+	 */
+	if (handle == NULL || chan == NULL) {
 		return -1;
 	}
 
-	if (chan) {
-		memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
-	}
+	memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
 
