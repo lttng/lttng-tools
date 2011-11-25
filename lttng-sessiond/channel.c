@@ -161,19 +161,19 @@ error:
  * Create kernel channel of the kernel session and notify kernel thread.
  */
 int channel_kernel_create(struct ltt_kernel_session *ksession,
-		struct lttng_channel *chan, int kernel_pipe)
+		struct lttng_channel *attr, int kernel_pipe)
 {
 	int ret;
-	struct lttng_channel *attr = chan;
+	struct lttng_channel *defattr = NULL;
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		/* FIXME: this appears to be a memory leak */
-		attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
-		if (attr == NULL) {
+		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
+		if (defattr == NULL) {
 			ret = LTTCOMM_FATAL;
 			goto error;
 		}
+		attr = defattr;
 	}
 
 	/* Channel not found, creating it */
@@ -191,8 +191,8 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	}
 
 	ret = LTTCOMM_OK;
-
 error:
+	free(defattr);
 	return ret;
 }
 

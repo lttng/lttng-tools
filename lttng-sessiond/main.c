@@ -2474,8 +2474,10 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			ret = channel_kernel_create(session->kernel_session,
 					attr, kernel_poll_pipe[1]);
 			if (ret != LTTCOMM_OK) {
+				free(attr);
 				goto error;
 			}
+			free(attr);
 		}
 
 		/* Get the newly created kernel channel pointer */
@@ -2516,6 +2518,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			/* Use the internal command enable channel */
 			ret = cmd_enable_channel(session, domain, attr);
 			if (ret < 0) {
+				free(attr);
 				goto error;
 			}
 
