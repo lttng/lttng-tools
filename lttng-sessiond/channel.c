@@ -52,19 +52,19 @@ struct lttng_channel *channel_new_default_attr(int dom)
 	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
 
 	switch (dom) {
-		case LTTNG_DOMAIN_KERNEL:
-			chan->attr.subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
-			chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
-			chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
-			break;
-		case LTTNG_DOMAIN_UST:
-		case LTTNG_DOMAIN_UST_PID:
-			chan->attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
-			chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
-			chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
-			break;
-		default:
-			goto error;	/* Not implemented */
+	case LTTNG_DOMAIN_KERNEL:
+		chan->attr.subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
+		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
+		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		break;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_PID:
+		chan->attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
+		chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
+		chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
+		break;
+	default:
+		goto error;	/* Not implemented */
 	}
 
 	return chan;
