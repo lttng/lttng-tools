@@ -110,6 +110,7 @@ static int disable_events(char *session_name)
 	} else if (opt_userspace && opt_cmd_name != NULL) {
 		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
 		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
+		dom.attr.exec_name[NAME_MAX - 1] = '\0';
 	} else {
 		ERR("Please specify a tracer (--kernel or --userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
