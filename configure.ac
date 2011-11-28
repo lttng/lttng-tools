@@ -14,22 +14,38 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
-AC_ARG_WITH([consumer32-bindir],
-	AC_HELP_STRING([--with-consumer32-bindir],
-	[Location of the 32-bit consumer executable]),
-	[LTTNG_TOOLS_32BIT_BINDIR="$withval"],
-	[LTTNG_TOOLS_32BIT_BINDIR=''])
-AC_SUBST([LTTNG_TOOLS_32BIT_BINDIR])
+AC_ARG_WITH([consumerd32-path],
+	AC_HELP_STRING([--with-consumerd32-path],
+	[Location of the 32-bit consumerd executable]),
+	[CONSUMERD32_PATH="$withval"],
+	[CONSUMERD32_PATH=''])
+AC_SUBST([CONSUMERD32_PATH])
 
-AC_ARG_WITH([consumer64-bindir],
-	AC_HELP_STRING([--with-consumer64-bindir],
-	[Location of the 64-bit consumer executable]),
-	[LTTNG_TOOLS_64BIT_BINDIR="$withval"],
-	[LTTNG_TOOLS_64BIT_BINDIR=''])
-AC_SUBST([LTTNG_TOOLS_64BIT_BINDIR])
+AC_ARG_WITH([consumerd64-path],
+	AC_HELP_STRING([--with-consumerd64-path],
+	[Location of the 64-bit consumerd executable]),
+	[CONSUMERD64_PATH="$withval"],
+	[CONSUMERD64_PATH=''])
+AC_SUBST([CONSUMERD64_PATH])
 
-AC_DEFINE_UNQUOTED([CONFIG_32BIT_BINDIR], $LTTNG_TOOLS_32BIT_BINDIR, [Search for LTTng Tools 32-bit binaries in this location.])
-AC_DEFINE_UNQUOTED([CONFIG_64BIT_BINDIR], $LTTNG_TOOLS_64BIT_BINDIR, [Search for LTTng Tools 64-bit binaries in this location.])
+AC_ARG_WITH([consumerd32-libdir],
+	AC_HELP_STRING([--with-consumerd32-libdir],
+	[Location of the 32-bit consumerd libraries]),
+	[CONSUMERD32_LIBDIR="$withval"],
+	[CONSUMERD32_LIBDIR=''])
+AC_SUBST([CONSUMERD32_LIBDIR])
+
+AC_ARG_WITH([consumer64d-libdir],
+	AC_HELP_STRING([--with-consumerd64-libdir],
+	[Location of the 64-bit consumerd libraries]),
+	[CONSUMERD64_LIBDIR="$withval"],
+	[CONSUMERD64_LIBDIR=''])
+AC_SUBST([CONSUMERD64_LIBDIR])
+
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_PATH], $CONSUMERD32_PATH, [Location of the 32-bit consumerd executable.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_PATH], $CONSUMERD64_PATH, [Location of the 64-bit consumerd executable])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], $CONSUMERD32_LIBDIR, [Search for consumerd 32-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], $CONSUMERD64_LIBDIR, [Search for consumerd 64-bit libraries in this location.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
