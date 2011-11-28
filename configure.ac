@@ -14,9 +14,21 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
-AC_ARG_VAR([LTTNG_TOOLS_32BIT_BINDIR], [Search for LTTng Tools 32-bit binaries in this location.])
+AC_ARG_WITH([consumer32-bindir],
+	AC_HELP_STRING([--with-consumer32-bindir],
+	[Location of the 32-bit consumer executable]),
+	[LTTNG_TOOLS_32BIT_BINDIR="$withval"],
+	[LTTNG_TOOLS_32BIT_BINDIR=''])
+AC_SUBST([LTTNG_TOOLS_32BIT_BINDIR])
+
+AC_ARG_WITH([consumer64-bindir],
+	AC_HELP_STRING([--with-consumer64-bindir],
+	[Location of the 64-bit consumer executable]),
+	[LTTNG_TOOLS_64BIT_BINDIR="$withval"],
+	[LTTNG_TOOLS_64BIT_BINDIR=''])
+AC_SUBST([LTTNG_TOOLS_64BIT_BINDIR])
+
 AC_DEFINE_UNQUOTED([CONFIG_32BIT_BINDIR], $LTTNG_TOOLS_32BIT_BINDIR, [Search for LTTng Tools 32-bit binaries in this location.])
-AC_ARG_VAR([LTTNG_TOOLS_64BIT_BINDIR], [Search for LTTng Tools 64-bit binaries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_64BIT_BINDIR], $LTTNG_TOOLS_64BIT_BINDIR, [Search for LTTng Tools 64-bit binaries in this location.])
 
 # Check for pthread
