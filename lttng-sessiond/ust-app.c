@@ -1160,9 +1160,7 @@ void ust_app_clean_list(void)
 
 	rcu_read_lock();
 
-	cds_lfht_for_each(ust_app_ht, &iter, node) {
-		app = caa_container_of(node, struct ust_app, node);
-
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
 		ret = hashtable_del(ust_app_ht, &iter);
 		if (!ret) {
 			call_rcu(&node->head, delete_ust_app_rcu);
