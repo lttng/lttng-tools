@@ -15,28 +15,28 @@ AC_CHECK_HEADERS([ \
 ])
 
 AC_ARG_WITH([consumerd32-path],
-	AC_HELP_STRING([--with-consumerd32-path],
+	AS_HELP_STRING([--with-consumerd32-path],
 	[Location of the 32-bit consumerd executable]),
 	[CONSUMERD32_PATH="$withval"],
 	[CONSUMERD32_PATH=''])
 AC_SUBST([CONSUMERD32_PATH])
 
 AC_ARG_WITH([consumerd64-path],
-	AC_HELP_STRING([--with-consumerd64-path],
+	AS_HELP_STRING([--with-consumerd64-path],
 	[Location of the 64-bit consumerd executable]),
 	[CONSUMERD64_PATH="$withval"],
 	[CONSUMERD64_PATH=''])
 AC_SUBST([CONSUMERD64_PATH])
 
 AC_ARG_WITH([consumerd32-libdir],
-	AC_HELP_STRING([--with-consumerd32-libdir],
+	AS_HELP_STRING([--with-consumerd32-libdir],
 	[Location of the 32-bit consumerd libraries]),
 	[CONSUMERD32_LIBDIR="$withval"],
 	[CONSUMERD32_LIBDIR=''])
 AC_SUBST([CONSUMERD32_LIBDIR])
 
 AC_ARG_WITH([consumer64d-libdir],
-	AC_HELP_STRING([--with-consumerd64-libdir],
+	AS_HELP_STRING([--with-consumerd64-libdir],
 	[Location of the 64-bit consumerd libraries]),
 	[CONSUMERD64_LIBDIR="$withval"],
 	[CONSUMERD64_LIBDIR=''])
