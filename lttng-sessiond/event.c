@@ -260,10 +260,10 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 	{
 		if (to_create) {
 			/* Create event on all UST registered apps for session */
-			ret = ust_app_create_event_all(usess, uchan, uevent);
+			ret = ust_app_create_event_glb(usess, uchan, uevent);
 		} else {
 			/* Enable event on all UST registered apps for session */
-			ret = ust_app_enable_event_all(usess, uchan, uevent);
+			ret = ust_app_enable_event_glb(usess, uchan, uevent);
 		}
 
 		if (ret < 0) {

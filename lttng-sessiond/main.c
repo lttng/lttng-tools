@@ -2191,7 +2191,7 @@ static int cmd_disable_channel(struct ltt_session *session,
 			goto error;
 		}
 
-		ret = ust_app_disable_channel_all(usess, uchan);
+		ret = ust_app_disable_channel_glb(usess, uchan);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_DISABLE_FAIL;
 			goto error;
@@ -2305,7 +2305,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 			DBG2("UST channel %s added to global domain HT", attr->name);
 
 			/* Add channel to all registered applications */
-			ret = ust_app_create_channel_all(usess, uchan);
+			ret = ust_app_create_channel_glb(usess, uchan);
 			if (ret != 0) {
 				ret = LTTCOMM_UST_CHAN_FAIL;
 				goto error;
@@ -2317,7 +2317,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 				goto error;
 			}
 
-			ret = ust_app_enable_channel_all(usess, uchan);
+			ret = ust_app_enable_channel_glb(usess, uchan);
 			if (ret < 0) {
 				ret = LTTCOMM_UST_ENABLE_FAIL;
 				goto error;
@@ -2378,6 +2378,7 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 	{
 		struct ltt_ust_session *usess;
 		struct ltt_ust_channel *uchan;
+		struct ltt_ust_event *uevent;
 
 		usess = session->ust_session;
 
@@ -2388,11 +2389,19 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = ust_app_disable_event(usess, uchan, event_name);
+		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
+		if (uevent == NULL) {
+			ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+			goto error;
+		}
+
+		ret = ust_app_disable_event_glb(usess, uchan, uevent);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_DISABLE_FAIL;
 			goto error;
 		}
+
+		uevent->enabled = 0;
 
 		DBG2("Disable UST event %s in channel %s completed", event_name,
 				channel_name);
@@ -2457,7 +2466,7 @@ static int cmd_disable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = ust_app_disable_event_all(usess, uchan);
+		ret = ust_app_disable_all_event_glb(usess, uchan);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_DISABLE_FAIL;
 			goto error;

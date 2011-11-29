@@ -760,8 +760,7 @@ error:
  */
 static
 int enable_ust_app_event(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan, struct ust_app_event *ua_event,
-		struct ust_app *app)
+		struct ust_app_event *ua_event, struct ust_app *app)
 {
 	int ret;
 
@@ -1238,7 +1237,7 @@ void ust_app_ht_alloc(void)
 /*
  * For a specific UST session, disable the channel for all registered apps.
  */
-int ust_app_disable_channel_all(struct ltt_ust_session *usess,
+int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
@@ -1281,7 +1280,7 @@ error:
 /*
  * For a specific UST session, enable the channel for all registered apps.
  */
-int ust_app_enable_channel_all(struct ltt_ust_session *usess,
+int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
@@ -1324,8 +1323,8 @@ error:
 /*
  * Disable an event in a channel and for a specific session.
  */
-int ust_app_disable_event(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, char *event_name)
+int ust_app_disable_event_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
 	struct cds_lfht_iter iter, uiter;
@@ -1336,7 +1335,7 @@ int ust_app_disable_event(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	DBG("UST app disabling event %s for all apps in channel "
-			"%s for session uid %d", event_name, uchan->name, usess->uid);
+			"%s for session uid %d", uevent->attr.name, uchan->name, usess->uid);
 
 	rcu_read_lock();
 
@@ -1359,10 +1358,10 @@ int ust_app_disable_event(struct ltt_ust_session *usess,
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
 		ua_event_node = hashtable_lookup(ua_chan->events,
-				(void *) event_name, strlen(event_name), &uiter);
+				(void *)uevent->attr.name, strlen(uevent->attr.name), &uiter);
 		if (ua_event_node == NULL) {
 			DBG2("Event %s not found in channel %s for app pid %d."
-					"Skipping", event_name, uchan->name, app->key.pid);
+					"Skipping", uevent->attr.name, uchan->name, app->key.pid);
 			continue;
 		}
 		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
@@ -1383,7 +1382,7 @@ int ust_app_disable_event(struct ltt_ust_session *usess,
  * For a specific UST session and UST channel, the event for all
  * registered apps.
  */
-int ust_app_disable_event_all(struct ltt_ust_session *usess,
+int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
@@ -1431,7 +1430,7 @@ int ust_app_disable_event_all(struct ltt_ust_session *usess,
 /*
  * For a specific UST session, create the channel for all registered apps.
  */
-int ust_app_create_channel_all(struct ltt_ust_session *usess,
+int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
@@ -1479,12 +1478,12 @@ error:
 /*
  * Enable event for a specific session and channel on the tracer.
  */
-int ust_app_enable_event_all(struct ltt_ust_session *usess,
+int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
 	struct cds_lfht_iter iter, uiter;
-	struct cds_lfht_node *ua_chan_node;
+	struct cds_lfht_node *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1515,13 +1514,19 @@ int ust_app_enable_event_all(struct ltt_ust_session *usess,
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		/* Enable each events of channel */
-		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
-			ret = enable_ust_app_event(ua_sess, ua_chan, ua_event, app);
-			if (ret < 0) {
-				/* XXX: Report error someday... */
-				continue;
-			}
+		ua_event_node = hashtable_lookup(ua_sess->channels,
+				(void*)uevent->attr.name, strlen(uevent->attr.name), &uiter);
+		if (ua_event_node == NULL) {
+			DBG3("UST app enable event %s not found. Skipping app",
+					uevent->attr.name);
+			continue;
+		}
+		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
+
+		ret = enable_ust_app_event(ua_sess, ua_event, app);
+		if (ret < 0) {
+			/* XXX: Report error someday... */
+			continue;
 		}
 	}
 
@@ -1534,7 +1539,7 @@ int ust_app_enable_event_all(struct ltt_ust_session *usess,
  * For a specific existing UST session and UST channel, creates the event for
  * all registered apps.
  */
-int ust_app_create_event_all(struct ltt_ust_session *usess,
+int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
