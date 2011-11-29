@@ -1575,7 +1575,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		}
 		case LTTNG_CONSUMER32_UST:
 		{
-			char *tmpnew;
+			char *tmpnew = NULL;
 
 			if (consumerd32_libdir[0] != '\0') {
 				char *tmp;
