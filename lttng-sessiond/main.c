@@ -2191,6 +2191,12 @@ static int cmd_disable_channel(struct ltt_session *session,
 			goto error;
 		}
 
+		/* Already disabled */
+		if (!uchan->enabled) {
+			DBG2("UST channel %s already disabled", channel_name);
+			break;
+		}
+
 		ret = ust_app_disable_channel_glb(usess, uchan);
 		if (ret < 0) {
 			ret = LTTCOMM_UST_DISABLE_FAIL;
@@ -2299,28 +2305,32 @@ static int cmd_enable_channel(struct ltt_session *session,
 				goto error;
 			}
 
-			rcu_read_lock();
-			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
-			rcu_read_unlock();
-			DBG2("UST channel %s added to global domain HT", attr->name);
-
 			/* Add channel to all registered applications */
 			ret = ust_app_create_channel_glb(usess, uchan);
 			if (ret != 0) {
 				ret = LTTCOMM_UST_CHAN_FAIL;
 				goto error;
 			}
+
+			rcu_read_lock();
+			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
+			rcu_read_unlock();
+
+			DBG2("UST channel %s added to global domain HT", attr->name);
 		} else {
 			/* If already enabled, everything is OK */
 			if (uchan->enabled) {
-				ret = LTTCOMM_OK;
-				goto error;
+				break;
 			}
 
 			ret = ust_app_enable_channel_glb(usess, uchan);
 			if (ret < 0) {
-				ret = LTTCOMM_UST_ENABLE_FAIL;
-				goto error;
+				if (ret != -EEXIST) {
+					ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
+					goto error;
+				} else {
+					ret = LTTCOMM_OK;
+				}
 			}
 		}
 

@@ -288,8 +288,6 @@ static int disable_ust_channel(struct ust_app *app,
 		goto error;
 	}
 
-	ua_chan->enabled = 0;
-
 	DBG2("UST app channel %s disabled successfully for app (pid: %d)",
 			ua_chan->name, app->key.pid);
 
@@ -422,6 +420,14 @@ static int create_ust_channel(struct ust_app *app,
 	DBG2("UST app channel %s created successfully for pid:%d and sock:%d",
 			ua_chan->name, app->key.pid, app->key.sock);
 
+	/* If channel is not enabled, disable it on the tracer */
+	if (!ua_chan->enabled) {
+		ret = disable_ust_channel(app, ua_sess, ua_chan);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
 error:
 	return ret;
 }
@@ -445,10 +451,17 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	}
 
 	ua_event->handle = ua_event->obj->handle;
-	ua_event->enabled = 1;
 
 	DBG2("UST app event %s created successfully for pid:%d",
 			ua_event->attr.name, app->key.pid);
+
+	/* If event not enabled, disable it on the tracer */
+	if (!ua_event->enabled) {
+		ret = disable_ust_event(app, ua_sess, ua_event);
+		if (ret < 0) {
+			goto error;
+		}
+	}
 
 error:
 	return ret;
@@ -496,6 +509,7 @@ static struct ust_app_channel *alloc_ust_app_channel(char *name,
 	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
 
+	ua_chan->enabled = 1;
 	ua_chan->handle = -1;
 	ua_chan->ctx = hashtable_new(0);
 	ua_chan->events = hashtable_new_str(0);
@@ -532,6 +546,7 @@ static struct ust_app_event *alloc_ust_app_event(char *name,
 		goto error;
 	}
 
+	ua_event->enabled = 1;
 	strncpy(ua_event->name, name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 	ua_event->ctx = hashtable_new(0);
@@ -798,28 +813,18 @@ error:
 /*
  * Lookup ust app channel for session and disable it on the tracer side.
  */
-static int disable_ust_app_channel(struct ust_app_session *ua_sess,
-		struct ltt_ust_channel *uchan, struct ust_app *app)
+static
+int disable_ust_app_channel(struct ust_app_session *ua_sess,
+		struct ust_app_channel *ua_chan, struct ust_app *app)
 {
-	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node;
-	struct ust_app_channel *ua_chan;
-
-	ua_chan_node = hashtable_lookup(ua_sess->channels,
-			(void *)uchan->name, strlen(uchan->name), &iter);
-	if (ua_chan_node == NULL) {
-		DBG2("Unable to find channel %s in ust session uid %u",
-				uchan->name, ua_sess->uid);
-		goto error;
-	}
-
-	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+	int ret;
 
 	ret = disable_ust_channel(app, ua_sess, ua_chan);
 	if (ret < 0) {
 		goto error;
 	}
+
+	ua_chan->enabled = 0;
 
 error:
 	return ret;
@@ -932,6 +937,8 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 		delete_ust_app_event(app->key.sock, ua_event);
 		goto error;
 	}
+
+	ua_event->enabled = 1;
 
 	hashtable_add_unique(ua_chan->events, &ua_event->node);
 
@@ -1242,8 +1249,10 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
 
 	if (usess == NULL || uchan == NULL) {
 		ERR("Disabling UST global channel with NULL values");
@@ -1251,7 +1260,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	DBG2("UST app disablling channel %s from global domain for session uid %d",
+	DBG2("UST app disabling channel %s from global domain for session uid %d",
 			uchan->name, usess->uid);
 
 	rcu_read_lock();
@@ -1263,8 +1272,18 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		/* Create channel onto application */
-		ret = disable_ust_app_channel(ua_sess, uchan, app);
+		/* Get channel */
+		ua_chan_node = hashtable_lookup(ua_sess->channels,
+				(void *)uchan->name, strlen(uchan->name), &iter);
+		/* If the session if found for the app, the channel must be there */
+		assert(ua_chan_node);
+
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		/* The channel must not be already disabled */
+		assert(ua_chan->enabled == 1);
+
+		/* Disable channel onto application */
+		ret = disable_ust_app_channel(ua_sess, ua_chan, app);
 		if (ret < 0) {
 			/* XXX: We might want to report this error at some point... */
 			continue;
