@@ -140,12 +140,22 @@ struct ust_app *ust_app_find_by_pid(pid_t pid);
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
+int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
+{
+	return 0;
+}
+static inline
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	return 0;
 }
 static inline
 int ust_app_start_trace_all(struct ltt_ust_session *usess)
+{
+	return 0;
+}
+static inline
+int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 {
 	return 0;
 }
@@ -209,11 +219,45 @@ struct cds_lfht *ust_app_get_ht(void)
 }
 static inline
 void ust_app_ht_alloc(void)
-{
-}
+{}
 static inline
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
+{}
+static inline
+int ust_app_disable_channel_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
 {
+	return 0;
+}
+static inline
+int ust_app_enable_channel_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	return 0;
+}
+static inline
+int ust_app_disable_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	return 0;
+}
+static inline
+int ust_app_disable_event(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, char *event_name)
+{
+	return 0;
+}
+static inline
+int ust_app_create_channel_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	return 0;
+}
+static inline
+int ust_app_create_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
+{
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
