@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools], [2.0-pre14], [david.goulet@polymtl.ca], ,[http://lttng.org])
+AC_INIT([lttng-tools],[2.0-pre14],[david.goulet@polymtl.ca],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -118,7 +118,7 @@ AX_CONFIG_FEATURE(
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 AC_PROG_CC
-AC_PROG_LIBTOOL
+LT_INIT
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
