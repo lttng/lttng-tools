@@ -30,15 +30,6 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 int channel_kernel_create(struct ltt_kernel_session *ksession,
 		struct lttng_channel *chan, int kernel_pipe);
 
-int channel_ust_create(struct ltt_ust_session *usession,
-		struct lttng_channel *chan);
-int channel_ust_copy(struct ltt_ust_channel *dst,
-		struct ltt_ust_channel *src);
-int channel_ust_disable(struct ltt_ust_session *usession,
-		struct ltt_ust_channel *uchan, int sock);
-int channel_ust_enable(struct ltt_ust_session *usession,
-		struct ltt_ust_channel *uchan, int sock);
-
 struct lttng_channel *channel_new_default_attr(int domain);
 
 #endif /* _LTT_CHANNEL_H */
