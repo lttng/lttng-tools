@@ -26,7 +26,7 @@
 #include "channel.h"
 #include "event.h"
 #include "hashtable.h"
-#include "kernel-ctl.h"
+#include "kernel.h"
 #include "ust-ctl.h"
 
 /*

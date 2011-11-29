@@ -27,7 +27,7 @@
 #include <lttng-kernel-ctl.h>
 #include <lttngerr.h>
 
-#include "kernel-ctl.h"
+#include "kernel.h"
 
 /*
  * Add context on a kernel channel.

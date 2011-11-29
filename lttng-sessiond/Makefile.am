@@ -16,7 +16,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        hashtable.c hashtable.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
-                       kernel-ctl.c kernel-ctl.h \
+                       kernel.c kernel.h \
                        ust-ctl.h ust-app.h trace-ust.h \
                        context.c context.h \
                        channel.c channel.h \

@@ -50,7 +50,7 @@
 #include "event.h"
 #include "futex.h"
 #include "hashtable.h"
-#include "kernel-ctl.h"
+#include "kernel.h"
 #include "lttng-sessiond.h"
 #include "shm.h"
 #include "ust-app.h"

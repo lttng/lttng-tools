@@ -27,7 +27,7 @@
 
 #include "context.h"
 #include "hashtable.h"
-#include "kernel-ctl.h"
+#include "kernel.h"
 
 /*
  * Add kernel context to an event of a specific channel.
