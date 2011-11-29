@@ -133,6 +133,7 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_NO_SESSION,		/* No UST session found */
 	LTTCOMM_UST_LIST_FAIL,			/* UST listing events failed */
 	LTTCOMM_UST_EVENT_EXIST,        /* UST event exist */
+	LTTCOMM_UST_EVENT_NOT_FOUND,    /* UST event not found */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
