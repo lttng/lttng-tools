@@ -83,13 +83,15 @@ static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 
 	/* TODO : remove channel context */
 	//cds_lfht_for_each_entry(ltc->ctx, &iter, ltctx, node) {
-	//	hashtable_del(ltc->ctx, &iter);
+	//	ret = hashtable_del(ltc->ctx, &iter);
+	//	assert(!ret);
 	//	delete_ust_app_ctx(sock, ltctx);
 	//}
 	//ret = hashtable_destroy(ltc->ctx);
 
 	cds_lfht_for_each_entry(ua_chan->events, &iter, ua_event, node) {
-		hashtable_del(ua_chan->events, &iter);
+		ret = hashtable_del(ua_chan->events, &iter);
+		assert(!ret);
 		delete_ust_app_event(sock, ua_event);
 	}
 
@@ -128,7 +130,8 @@ static void delete_ust_app_session(int sock,
 	}
 
 	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
-		hashtable_del(ua_sess->channels, &iter);
+		ret = hashtable_del(ua_sess->channels, &iter);
+		assert(!ret);
 		delete_ust_app_channel(sock, ua_chan);
 	}
 
@@ -181,7 +184,8 @@ static void delete_ust_app(struct ust_app *app)
 	app->key.sock = -1;
 
 	cds_lfht_for_each_entry(app->sessions, &iter, ua_sess, node) {
-		hashtable_del(app->sessions, &iter);
+		ret = hashtable_del(app->sessions, &iter);
+		assert(!ret);
 		delete_ust_app_session(app->key.sock, ua_sess);
 	}
 
@@ -1105,6 +1109,7 @@ void ust_app_unregister(int sock)
 	struct ust_app *lta;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
+	int ret;
 
 	rcu_read_lock();
 	lta = find_app_by_sock(sock);
@@ -1123,7 +1128,8 @@ void ust_app_unregister(int sock)
 		goto error;
 	}
 
-	hashtable_del(ust_app_ht, &iter);
+	ret = hashtable_del(ust_app_ht, &iter);
+	assert(!ret);
 	call_rcu(&node->head, delete_ust_app_rcu);
 error:
 	rcu_read_unlock();
@@ -1221,9 +1227,8 @@ void ust_app_clean_list(void)
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
 		ret = hashtable_del(ust_app_ht, &iter);
-		if (!ret) {
-			call_rcu(&node->head, delete_ust_app_rcu);
-		}
+		assert(!ret);
+		call_rcu(&node->head, delete_ust_app_rcu);
 	}
 
 	hashtable_destroy(ust_app_ht);
@@ -1769,6 +1774,7 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	struct lttng_ust_object_data obj;
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
+	int ret;
 
 	DBG("Destroy tracing for ust app pid %d", app->key.pid);
 
@@ -1781,7 +1787,8 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 	ua_sess = caa_container_of(node, struct ust_app_session, node);
-	hashtable_del(app->sessions, &iter);
+	ret = hashtable_del(app->sessions, &iter);
+	assert(!ret);
 	delete_ust_app_session(app->key.sock, ua_sess);
 	obj.handle = ua_sess->handle;
 	obj.shm_fd = -1;
