@@ -1532,18 +1532,88 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
-			execl(consumerd64_path, verbosity, "-u",
+			char *tmpnew;
+
+			if (consumerd64_libdir[0] != '\0') {
+				char *tmp;
+				size_t tmplen;
+
+				tmp = getenv("LD_LIBRARY_PATH");
+				if (!tmp) {
+					tmp = "";
+				}
+				tmplen = strlen("LD_LIBRARY_PATH=")
+					+ strlen(consumerd64_libdir) + 1 /* : */ + strlen(tmp);
+				tmpnew = zmalloc(tmplen + 1 /* \0 */);
+				if (!tmpnew) {
+					ret = -ENOMEM;
+					goto error;
+				}
+				strcpy(tmpnew, "LD_LIBRARY_PATH=");
+				strcat(tmpnew, consumerd64_libdir);
+				if (tmp[0] != '\0') {
+					strcat(tmpnew, ":");
+					strcat(tmpnew, tmp);
+				}
+				ret = putenv(tmpnew);
+				if (ret) {
+					ret = -errno;
+					goto error;
+				}
+			}
+			ret = execl(consumerd64_path, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
+			if (consumerd64_libdir[0] != '\0') {
+				free(tmpnew);
+			}
+			if (ret) {
+				goto error;
+			}
 			break;
 		}
 		case LTTNG_CONSUMER32_UST:
 		{
-			execl(consumerd32_path, verbosity, "-u",
+			char *tmpnew;
+
+			if (consumerd32_libdir[0] != '\0') {
+				char *tmp;
+				size_t tmplen;
+
+				tmp = getenv("LD_LIBRARY_PATH");
+				if (!tmp) {
+					tmp = "";
+				}
+				tmplen = strlen("LD_LIBRARY_PATH=")
+					+ strlen(consumerd32_libdir) + 1 /* : */ + strlen(tmp);
+				tmpnew = zmalloc(tmplen + 1 /* \0 */);
+				if (!tmpnew) {
+					ret = -ENOMEM;
+					goto error;
+				}
+				strcpy(tmpnew, "LD_LIBRARY_PATH=");
+				strcat(tmpnew, consumerd32_libdir);
+				if (tmp[0] != '\0') {
+					strcat(tmpnew, ":");
+					strcat(tmpnew, tmp);
+				}
+				ret = putenv(tmpnew);
+				if (ret) {
+					ret = -errno;
+					goto error;
+				}
+			}
+			ret = execl(consumerd32_path, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
+			if (consumerd32_libdir[0] != '\0') {
+				free(tmpnew);
+			}
+			if (ret) {
+				goto error;
+			}
 			break;
 		}
 		default:
@@ -1560,6 +1630,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		perror("start consumer fork");
 		ret = -errno;
 	}
+error:
 	return ret;
 }
 
