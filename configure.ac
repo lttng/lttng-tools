@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools], [2.0-pre14], [david.goulet@polymtl.ca], ,[http://lttng.org])
+AC_INIT([lttng-tools],[2.0-pre14],[david.goulet@polymtl.ca],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -15,28 +15,28 @@ AC_CHECK_HEADERS([ \
 ])
 
 AC_ARG_WITH([consumerd32-path],
-	AC_HELP_STRING([--with-consumerd32-path],
+	AS_HELP_STRING([--with-consumerd32-path],
 	[Location of the 32-bit consumerd executable]),
 	[CONSUMERD32_PATH="$withval"],
 	[CONSUMERD32_PATH=''])
 AC_SUBST([CONSUMERD32_PATH])
 
 AC_ARG_WITH([consumerd64-path],
-	AC_HELP_STRING([--with-consumerd64-path],
+	AS_HELP_STRING([--with-consumerd64-path],
 	[Location of the 64-bit consumerd executable]),
 	[CONSUMERD64_PATH="$withval"],
 	[CONSUMERD64_PATH=''])
 AC_SUBST([CONSUMERD64_PATH])
 
 AC_ARG_WITH([consumerd32-libdir],
-	AC_HELP_STRING([--with-consumerd32-libdir],
+	AS_HELP_STRING([--with-consumerd32-libdir],
 	[Location of the 32-bit consumerd libraries]),
 	[CONSUMERD32_LIBDIR="$withval"],
 	[CONSUMERD32_LIBDIR=''])
 AC_SUBST([CONSUMERD32_LIBDIR])
 
 AC_ARG_WITH([consumer64d-libdir],
-	AC_HELP_STRING([--with-consumerd64-libdir],
+	AS_HELP_STRING([--with-consumerd64-libdir],
 	[Location of the 64-bit consumerd libraries]),
 	[CONSUMERD64_LIBDIR="$withval"],
 	[CONSUMERD64_LIBDIR=''])
@@ -86,7 +86,7 @@ AC_CHECK_DECL([caa_likely], [],
 # Check liblttng-ust-ctl library
 AC_ARG_ENABLE(lttng-ust,
 	[  --disable-lttng-ust     build without LTTng-UST (Userspace Tracing) support.],
-	lttng_ust_support=no, lttng_ust_support=yes)
+	lttng_ust_support=$enableval, lttng_ust_support=yes)
 
 [
 if test "x$lttng_ust_support" = "xno"; then
@@ -118,7 +118,7 @@ AX_CONFIG_FEATURE(
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 AC_PROG_CC
-AC_PROG_LIBTOOL
+LT_INIT
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
