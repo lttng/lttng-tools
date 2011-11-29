@@ -1217,7 +1217,6 @@ error:
 void ust_app_clean_list(void)
 {
 	int ret;
-	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	struct ust_app *app;
 
@@ -1228,7 +1227,7 @@ void ust_app_clean_list(void)
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
 		ret = hashtable_del(ust_app_ht, &iter);
 		assert(!ret);
-		call_rcu(&node->head, delete_ust_app_rcu);
+		call_rcu(&iter.node->head, delete_ust_app_rcu);
 	}
 
 	hashtable_destroy(ust_app_ht);
