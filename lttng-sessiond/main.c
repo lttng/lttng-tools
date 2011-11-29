@@ -2580,10 +2580,10 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_channel *uchan;
-		struct ltt_ust_event *uevent;
 		struct lttng_channel *attr;
+		struct ltt_ust_channel *uchan;
 
+		/* Get channel from global UST domain */
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
 				channel_name);
 		if (uchan == NULL) {
@@ -2594,14 +2594,14 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 				goto error;
 			}
 			snprintf(attr->name, NAME_MAX, "%s", channel_name);
+			attr->name[NAME_MAX - 1] = '\0';
 
 			/* Use the internal command enable channel */
 			ret = cmd_enable_channel(session, domain, attr);
-			if (ret < 0) {
+			if (ret != LTTCOMM_OK) {
 				free(attr);
 				goto error;
 			}
-
 			free(attr);
 
 			/* Get the newly created channel reference back */
@@ -2614,31 +2614,12 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			}
 		}
 
-		uevent = trace_ust_find_event_by_name(uchan->events, event->name);
-		if (uevent == NULL) {
-			uevent = trace_ust_create_event(event);
-			if (uevent == NULL) {
-				ret = LTTCOMM_FATAL;
-				goto error;
-			}
+		/* At this point, the session and channel exist on the tracer */
 
-		}
-
-		ret = ust_app_create_event_all(usess, uchan, uevent);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_ENABLE_FAIL;
+		ret = event_ust_enable_tracepoint(usess, domain, uchan, event);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
-
-		/* Add ltt ust event to channel */
-		rcu_read_lock();
-		hashtable_add_unique(uchan->events, &uevent->node);
-		rcu_read_unlock();
-
-		uevent->enabled = 1;
-
-		DBG3("UST ltt event %s added to channel %s", uevent->attr.name,
-				uchan->name);
 		break;
 	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:

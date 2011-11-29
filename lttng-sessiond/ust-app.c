@@ -47,8 +47,10 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 	//	delete_ust_app_ctx(sock, ltctx);
 	//}
 
-	ustctl_release_object(sock, ua_event->obj);
-	free(ua_event->obj);
+	if (ua_event->obj != NULL) {
+		ustctl_release_object(sock, ua_event->obj);
+		free(ua_event->obj);
+	}
 	free(ua_event);
 }
 
@@ -96,8 +98,11 @@ static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 		ERR("UST app destroy session hashtable failed");
 		goto error;
 	}
-	ustctl_release_object(sock, ua_chan->obj);
-	free(ua_chan->obj);
+
+	if (ua_chan->obj != NULL) {
+		ustctl_release_object(sock, ua_chan->obj);
+		free(ua_chan->obj);
+	}
 	free(ua_chan);
 
 error:
@@ -318,6 +323,29 @@ error:
 }
 
 /*
+ * Enable the specified event on to UST tracer for the UST session.
+ */
+static int enable_ust_event(struct ust_app *app,
+		struct ust_app_session *ua_sess, struct ust_app_event *ua_event)
+{
+	int ret;
+
+	ret = ustctl_enable(app->key.sock, ua_event->obj);
+	if (ret < 0) {
+		ERR("UST app event %s enable failed for app (pid: %d) "
+				"and session handle %d with ret %d",
+				ua_event->attr.name, app->key.pid, ua_sess->handle, ret);
+		goto error;
+	}
+
+	DBG2("UST app event %s enabled successfully for app (pid: %d)",
+			ua_event->attr.name, app->key.pid);
+
+error:
+	return ret;
+}
+
+/*
  * Open metadata onto the UST tracer for a UST session.
  */
 static int open_ust_metadata(struct ust_app *app,
@@ -401,9 +429,9 @@ error:
 /*
  * Create the specified event onto the UST tracer for a UST session.
  */
-static int create_ust_event(struct ust_app *app,
-		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
-		struct ust_app_event *ua_event)
+static
+int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
+		struct ust_app_channel *ua_chan, struct ust_app_event *ua_event)
 {
 	int ret = 0;
 
@@ -728,6 +756,27 @@ error:
 }
 
 /*
+ * Enable on the tracer side a ust app event for the session and channel.
+ */
+static
+int enable_ust_app_event(struct ust_app_session *ua_sess,
+		struct ust_app_channel *ua_chan, struct ust_app_event *ua_event,
+		struct ust_app *app)
+{
+	int ret;
+
+	ret = enable_ust_event(app, ua_sess, ua_event);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ua_event->enabled = 1;
+
+error:
+	return ret;
+}
+
+/*
  * Disable on the tracer side a ust app event for the session and channel.
  */
 static int disable_ust_app_event(struct ust_app_session *ua_sess,
@@ -850,11 +899,12 @@ error:
 /*
  * Create UST app event and create it on the tracer side.
  */
-static struct ust_app_event *create_ust_app_event(
-		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
-		struct ltt_ust_event *uevent, struct ust_app *app)
+static
+int create_ust_app_event(struct ust_app_session *ua_sess,
+		struct ust_app_channel *ua_chan, struct ltt_ust_event *uevent,
+		struct ust_app *app)
 {
-	int ret;
+	int ret = 0;
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *ua_event_node;
 	struct ust_app_event *ua_event;
@@ -862,30 +912,33 @@ static struct ust_app_event *create_ust_app_event(
 	/* Get event node */
 	ua_event_node = hashtable_lookup(ua_chan->events,
 			(void *)uevent->attr.name, strlen(uevent->attr.name), &iter);
-	if (ua_event_node == NULL) {
-		DBG2("UST app event %s not found, creating it", uevent->attr.name);
-		/* Does not exist so create one */
-		ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
-		if (ua_event == NULL) {
-			/* Only malloc can failed so something is really wrong */
-			goto error;
-		}
-		shadow_copy_event(ua_event, uevent);
-
-		hashtable_add_unique(ua_chan->events, &ua_event->node);
-	} else {
-		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
+	if (ua_event_node != NULL) {
+		ERR("UST app event %s already exist. Stopping creation.",
+				uevent->attr.name);
+		goto end;
 	}
 
+	/* Does not exist so create one */
+	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
+	if (ua_event == NULL) {
+		/* Only malloc can failed so something is really wrong */
+		ret = -ENOMEM;
+		goto error;
+	}
+	shadow_copy_event(ua_event, uevent);
+
+	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 	if (ret < 0) {
+		delete_ust_app_event(app->key.sock, ua_event);
 		goto error;
 	}
 
-	return ua_event;
+	hashtable_add_unique(ua_chan->events, &ua_event->node);
 
+end:
 error:
-	return NULL;
+	return ret;
 }
 
 /*
@@ -1327,7 +1380,7 @@ int ust_app_disable_event(struct ltt_ust_session *usess,
 }
 
 /*
- * For a specific UST session and UST channel, create the event for all
+ * For a specific UST session and UST channel, the event for all
  * registered apps.
  */
 int ust_app_disable_event_all(struct ltt_ust_session *usess,
@@ -1349,20 +1402,15 @@ int ust_app_disable_event_all(struct ltt_ust_session *usess,
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
 		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
-			/* Next app */
-			continue;
-		}
+		/* If ua_sess is NULL, there is a code flow error */
+		assert(ua_sess);
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name),
-				&uiter);
-		if (ua_chan_node == NULL) {
-			DBG2("Channel %s not found in session uid %d for app pid %d."
-					"Skipping", uchan->name, app->key.pid, usess->uid);
-			continue;
-		}
+		ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
+				strlen(uchan->name), &uiter);
+		/* If the channel is not found, there is a code flow error */
+		assert(ua_chan_node);
+
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
 		/* Disable each events of channel */
@@ -1405,7 +1453,11 @@ int ust_app_create_channel_all(struct ltt_ust_session *usess,
 
 	/* For every registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		/* Create session on the tracer side and add it to app session HT */
+		/*
+		 * Create session on the tracer side and add it to app session HT. Note
+		 * that if session exist, it will simply return a pointer to the ust
+		 * app session.
+		 */
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -1425,48 +1477,100 @@ error:
 }
 
 /*
- * For a specific UST session and UST channel, create the event for all
- * registered apps.
+ * Enable event for a specific session and channel on the tracer.
  */
-int ust_app_create_event_all(struct ltt_ust_session *usess,
+int ust_app_enable_event_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct cds_lfht_iter iter, uiter;
 	struct cds_lfht_node *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	DBG("UST app creating event %s for all apps for session uid %d",
+	DBG("UST app enabling event %s for all apps for session uid %d",
 			uevent->attr.name, usess->uid);
+
+	/*
+	 * NOTE: At this point, this function is called only if the session and
+	 * channel passed are already created for all apps. and enabled on the
+	 * tracer also.
+	 */
 
 	rcu_read_lock();
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
-		/* Create session on the tracer side and add it to app session HT */
-		ua_sess = create_ust_app_session(usess, app);
-		if (ua_sess == NULL) {
-			continue;
-		}
+		ua_sess = lookup_session_by_app(usess, app);
+		/* If ua_sess is NULL, there is a code flow error */
+		assert(ua_sess);
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name),
-				&uiter);
-		if (ua_chan_node == NULL) {
-			ERR("Channel %s not found in session uid %d. Skipping",
-					uchan->name, usess->uid);
-			continue;
-		}
+		ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
+				strlen(uchan->name), &uiter);
+		/* If the channel is not found, there is a code flow error */
+		assert(ua_chan_node);
+
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		ua_event = create_ust_app_event(ua_sess, ua_chan, uevent, app);
-		if (ua_event == NULL) {
+		/* Enable each events of channel */
+		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
+			ret = enable_ust_app_event(ua_sess, ua_chan, ua_event, app);
+			if (ret < 0) {
+				/* XXX: Report error someday... */
+				continue;
+			}
+		}
+	}
+
+	rcu_read_unlock();
+
+	return ret;
+}
+
+/*
+ * For a specific existing UST session and UST channel, creates the event for
+ * all registered apps.
+ */
+int ust_app_create_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_node *ua_chan_node;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+
+	DBG("UST app creating event %s for all apps for session uid %d",
+			uevent->attr.name, usess->uid);
+
+	/*
+	 * NOTE: At this point, this function is called only if the session and
+	 * channel passed are already created for all apps. and enabled on the
+	 * tracer also.
+	 */
+
+	rcu_read_lock();
+
+	/* For all registered applications */
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ua_sess = lookup_session_by_app(usess, app);
+		/* If ua_sess is NULL, there is a code flow error */
+		assert(ua_sess);
+
+		/* Lookup channel in the ust app session */
+		ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
+				strlen(uchan->name), &uiter);
+		/* If the channel is not found, there is a code flow error */
+		assert(ua_chan_node);
+
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
+		if (ret < 0) {
 			continue;
 		}
 	}
@@ -1494,7 +1598,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
-		/* Only malloc can failed so something is really wrong */
 		goto error_rcu_unlock;
 	}
 

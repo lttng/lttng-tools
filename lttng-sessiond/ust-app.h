@@ -126,6 +126,8 @@ int ust_app_disable_channel_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_enable_channel_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
+int ust_app_enable_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 int ust_app_disable_event_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_disable_event(struct ltt_ust_session *usess,
@@ -255,6 +257,12 @@ int ust_app_create_channel_all(struct ltt_ust_session *usess,
 }
 static inline
 int ust_app_create_event_all(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
+{
+	return 0;
+}
+static inline
+int ust_app_enable_event_all(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	return 0;
