@@ -57,6 +57,8 @@
 #include "ust-ctl.h"
 #include "utils.h"
 
+#define CONSUMERD_FILE	"lttng-consumerd"
+
 struct consumer_data {
 	enum lttng_consumer_type type;
 
@@ -169,31 +171,38 @@ static struct ltt_session_list *session_list_ptr;
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
 
-static const char *consumerd64_prog = "lttng-consumerd";
-static const char *consumerd32_prog = "lttng-consumerd";
-
-static const char *consumerd64_bindir =
-	__stringify(CONFIG_64BIT_BINDIR);
-static const char *consumerd32_bindir =
-	__stringify(CONFIG_32BIT_BINDIR);
+static const char *consumerd32_path =
+	__stringify(CONFIG_CONSUMERD32_PATH);
+static const char *consumerd64_path =
+	__stringify(CONFIG_CONSUMERD64_PATH);
+static const char *consumerd32_libdir =
+	__stringify(CONFIG_CONSUMERD32_LIBDIR);
+static const char *consumerd64_libdir =
+	__stringify(CONFIG_CONSUMERD64_LIBDIR);
 
 static
 void setup_consumerd_path(void)
 {
-	const char *bindir;
+	const char *path, *libdir;
 
 	/*
 	 * Allow INSTALL_BIN_PATH to be used as a target path for the
-	 * native architecture size consumer if CONFIG_NBIT_BINDIR as
-	 * not been defined.
+	 * native architecture size consumer if CONFIG_CONSUMER*_PATH
+	 * has not been defined.
 	 */
-#if (CAA_BITS_PER_LONG == 64)
-	if (!consumerd64_bindir[0]) {
-		consumerd64_bindir = INSTALL_BIN_PATH;
+#if (CAA_BITS_PER_LONG == 32)
+	if (!consumerd32_path[0]) {
+		consumerd32_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 	}
-#elif (CAA_BITS_PER_LONG == 32)
-	if (!consumerd32_bindir[0]) {
-		consumerd32_bindir = INSTALL_BIN_PATH;
+	if (!consumerd32_libdir[0]) {
+		consumerd32_libdir = INSTALL_LIB_PATH;
+	}
+#elif (CAA_BITS_PER_LONG == 64)
+	if (!consumerd64_path[0]) {
+		consumerd64_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	}
+	if (!consumerd64_libdir[0]) {
+		consumerd64_libdir = INSTALL_LIB_PATH;
 	}
 #else
 #error "Unknown bitness"
@@ -202,13 +211,21 @@ void setup_consumerd_path(void)
 	/*
 	 * runtime env. var. overrides the build default.
 	 */
-	bindir = getenv("LTTNG_TOOLS_64BIT_BINDIR");
-	if (bindir) {
-		consumerd64_bindir = bindir;
+	path = getenv("LTTNG_CONSUMERD32_PATH");
+	if (path) {
+		consumerd32_path = path;
 	}
-	bindir = getenv("LTTNG_TOOLS_32BIT_BINDIR");
-	if (bindir) {
-		consumerd32_bindir = bindir;
+	path = getenv("LTTNG_CONSUMERD64_PATH");
+	if (path) {
+		consumerd64_path = path;
+	}
+	libdir = getenv("LTTNG_TOOLS_CONSUMERD32_LIBDIR");
+	if (libdir) {
+		consumerd32_libdir = libdir;
+	}
+	libdir = getenv("LTTNG_TOOLS_CONSUMERD64_LIBDIR");
+	if (libdir) {
+		consumerd64_libdir = libdir;
 	}
 }
 
@@ -1515,26 +1532,88 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
-			char path[PATH_MAX];
+			char *tmpnew;
 
-			snprintf(path, PATH_MAX, "%s/%s",
-				consumerd64_bindir, consumerd64_prog);
-			execl(path, verbosity, "-u",
+			if (consumerd64_libdir[0] != '\0') {
+				char *tmp;
+				size_t tmplen;
+
+				tmp = getenv("LD_LIBRARY_PATH");
+				if (!tmp) {
+					tmp = "";
+				}
+				tmplen = strlen("LD_LIBRARY_PATH=")
+					+ strlen(consumerd64_libdir) + 1 /* : */ + strlen(tmp);
+				tmpnew = zmalloc(tmplen + 1 /* \0 */);
+				if (!tmpnew) {
+					ret = -ENOMEM;
+					goto error;
+				}
+				strcpy(tmpnew, "LD_LIBRARY_PATH=");
+				strcat(tmpnew, consumerd64_libdir);
+				if (tmp[0] != '\0') {
+					strcat(tmpnew, ":");
+					strcat(tmpnew, tmp);
+				}
+				ret = putenv(tmpnew);
+				if (ret) {
+					ret = -errno;
+					goto error;
+				}
+			}
+			ret = execl(consumerd64_path, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
+			if (consumerd64_libdir[0] != '\0') {
+				free(tmpnew);
+			}
+			if (ret) {
+				goto error;
+			}
 			break;
 		}
 		case LTTNG_CONSUMER32_UST:
 		{
-			char path[PATH_MAX];
+			char *tmpnew;
 
-			snprintf(path, PATH_MAX, "%s/%s",
-				consumerd32_bindir, consumerd32_prog);
-			execl(path, verbosity, "-u",
+			if (consumerd32_libdir[0] != '\0') {
+				char *tmp;
+				size_t tmplen;
+
+				tmp = getenv("LD_LIBRARY_PATH");
+				if (!tmp) {
+					tmp = "";
+				}
+				tmplen = strlen("LD_LIBRARY_PATH=")
+					+ strlen(consumerd32_libdir) + 1 /* : */ + strlen(tmp);
+				tmpnew = zmalloc(tmplen + 1 /* \0 */);
+				if (!tmpnew) {
+					ret = -ENOMEM;
+					goto error;
+				}
+				strcpy(tmpnew, "LD_LIBRARY_PATH=");
+				strcat(tmpnew, consumerd32_libdir);
+				if (tmp[0] != '\0') {
+					strcat(tmpnew, ":");
+					strcat(tmpnew, tmp);
+				}
+				ret = putenv(tmpnew);
+				if (ret) {
+					ret = -errno;
+					goto error;
+				}
+			}
+			ret = execl(consumerd32_path, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
+			if (consumerd32_libdir[0] != '\0') {
+				free(tmpnew);
+			}
+			if (ret) {
+				goto error;
+			}
 			break;
 		}
 		default:
@@ -1551,6 +1630,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		perror("start consumer fork");
 		ret = -errno;
 	}
+error:
 	return ret;
 }
 
@@ -3180,7 +3260,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			/* Start the UST consumer daemons */
 			/* 64-bit */
 			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
-			if (consumerd64_bindir[0] != '\0' &&
+			if (consumerd64_path[0] != '\0' &&
 					ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
@@ -3196,7 +3276,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 			}
 			/* 32-bit */
-			if (consumerd32_bindir[0] != '\0' &&
+			if (consumerd32_path[0] != '\0' &&
 					ustconsumer32_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
@@ -3636,8 +3716,10 @@ static void usage(void)
 	fprintf(stderr, "      --ustconsumerd64-err-sock PATH Specify path for the 64-bit UST consumer error socket\n");
 	fprintf(stderr, "      --ustconsumerd32-cmd-sock PATH Specify path for the 32-bit UST consumer command socket\n");
 	fprintf(stderr, "      --ustconsumerd64-cmd-sock PATH Specify path for the 64-bit UST consumer command socket\n");
-	fprintf(stderr, "      --ustconsumerd32 PATH          Specify path for the 32-bit UST consumer daemon binary\n");
-	fprintf(stderr, "      --ustconsumerd64 PATH          Specify path for the 64-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --consumerd32-path PATH     Specify path for the 32-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --consumerd32-libdir PATH   Specify path for the 32-bit UST consumer daemon libraries\n");
+	fprintf(stderr, "      --consumerd64-path PATH     Specify path for the 64-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --consumerd64-libdir PATH   Specify path for the 64-bit UST consumer daemon libraries\n");
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
@@ -3659,12 +3741,14 @@ static int parse_args(int argc, char **argv)
 		{ "apps-sock", 1, 0, 'a' },
 		{ "kconsumerd-cmd-sock", 1, 0, 'C' },
 		{ "kconsumerd-err-sock", 1, 0, 'E' },
-		{ "ustconsumerd64", 1, 0, 't' },
-		{ "ustconsumerd64-cmd-sock", 1, 0, 'D' },
-		{ "ustconsumerd64-err-sock", 1, 0, 'F' },
-		{ "ustconsumerd32", 1, 0, 'u' },
 		{ "ustconsumerd32-cmd-sock", 1, 0, 'G' },
 		{ "ustconsumerd32-err-sock", 1, 0, 'H' },
+		{ "ustconsumerd64-cmd-sock", 1, 0, 'D' },
+		{ "ustconsumerd64-err-sock", 1, 0, 'F' },
+		{ "consumerd32-path", 1, 0, 'u' },
+		{ "consumerd32-libdir", 1, 0, 'U' },
+		{ "consumerd64-path", 1, 0, 't' },
+		{ "consumerd64-libdir", 1, 0, 'T' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
@@ -3741,10 +3825,16 @@ static int parse_args(int argc, char **argv)
 			opt_verbose_consumer += 1;
 			break;
 		case 'u':
-			consumerd32_bindir = optarg;
+			consumerd32_path= optarg;
+			break;
+		case 'U':
+			consumerd32_libdir = optarg;
 			break;
 		case 't':
-			consumerd64_bindir = optarg;
+			consumerd64_path = optarg;
+			break;
+		case 'T':
+			consumerd64_libdir = optarg;
 			break;
 		default:
 			/* Unknown option or other error.
