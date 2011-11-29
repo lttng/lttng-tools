@@ -86,7 +86,7 @@ AC_CHECK_DECL([caa_likely], [],
 # Check liblttng-ust-ctl library
 AC_ARG_ENABLE(lttng-ust,
 	[  --disable-lttng-ust     build without LTTng-UST (Userspace Tracing) support.],
-	lttng_ust_support=no, lttng_ust_support=yes)
+	lttng_ust_support=$enableval, lttng_ust_support=yes)
 
 [
 if test "x$lttng_ust_support" = "xno"; then
