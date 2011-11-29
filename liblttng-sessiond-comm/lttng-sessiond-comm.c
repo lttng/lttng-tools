@@ -92,6 +92,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_DIR_EXIST) ] = "UST trace directory already exist",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_NO_SESSION) ] = "No UST session found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_LIST_FAIL) ] = "Listing UST events failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_EVENT_EXIST) ] = "UST event already exist",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_COMMAND_SOCK_READY) ] = "consumerd command socket ready",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SUCCESS_RECV_FD) ] = "consumerd success on receiving fds",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_ERROR_RECV_FD) ] = "consumerd error on receiving fds",
