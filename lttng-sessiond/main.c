@@ -192,7 +192,7 @@ void setup_consumerd_path(void)
 	 */
 #if (CAA_BITS_PER_LONG == 32)
 	if (!consumerd32_path[0]) {
-		consumerd32_bindir = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+		consumerd32_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 	}
 	if (!consumerd32_libdir[0]) {
 		consumerd32_libdir = INSTALL_LIB_PATH;
