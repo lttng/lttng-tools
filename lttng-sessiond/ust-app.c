@@ -1136,7 +1136,9 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 	if (ret < 0) {
+		rcu_read_lock();
 		delete_ust_app_event(app->key.sock, ua_event);
+		rcu_read_unlock();
 		goto error;
 	}
 
