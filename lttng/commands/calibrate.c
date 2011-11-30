@@ -63,7 +63,13 @@ static struct poptOption long_options[] = {
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
 	{"probe",          0,   POPT_ARG_NONE, 0, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_NONE, 0, OPT_FUNCTION, 0, 0},
+#if 0
+	/*
+	 * Removed from options to discourage its use. Not in kernel
+	 * tracer anymore.
+	 */
 	{"function:entry", 0,   POPT_ARG_NONE, 0, OPT_FUNCTION_ENTRY, 0, 0},
+#endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -87,8 +93,10 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "    --function\n");
 	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
+#if 0
 	fprintf(ofp, "    --function:entry symbol\n");
 	fprintf(ofp, "                           Function tracer event\n");
+#endif
 	fprintf(ofp, "    --syscall              System call eventl\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
