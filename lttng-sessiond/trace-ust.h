@@ -201,6 +201,12 @@ static inline
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 }
+static inline
+struct ltt_ust_context *trace_ust_create_context(
+		struct lttng_event_context *ctx)
+{
+	return NULL;
+}
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

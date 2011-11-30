@@ -29,6 +29,7 @@
 #include "hashtable.h"
 #include "kernel.h"
 #include "ust-app.h"
+#include "trace-ust.h"
 
 /*
  * Add kernel context to an event of a specific channel.
