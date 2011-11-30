@@ -53,7 +53,8 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx)
  * Delete ust app event safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
+static
+void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 {
 	int ret;
 	struct cds_lfht_iter iter;
@@ -78,10 +79,13 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
  * Delete ust app stream safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
+static
+void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
 {
-	ustctl_release_object(sock, stream->obj);
-	free(stream->obj);
+	if (stream->obj) {
+		ustctl_release_object(sock, stream->obj);
+		free(stream->obj);
+	}
 	free(stream);
 }
 
@@ -89,7 +93,8 @@ static void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
  * Delete ust app channel safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
+static
+void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 {
 	int ret;
 	struct cds_lfht_iter iter;
@@ -132,18 +137,22 @@ static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
  * Delete ust app session safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_session(int sock,
-		struct ust_app_session *ua_sess)
+static
+void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 {
 	int ret;
 	struct cds_lfht_iter iter;
 	struct ust_app_channel *ua_chan;
 
 	if (ua_sess->metadata) {
-		ustctl_release_object(sock, ua_sess->metadata->stream_obj);
-		free(ua_sess->metadata->stream_obj);
-		ustctl_release_object(sock, ua_sess->metadata->obj);
-		free(ua_sess->metadata->obj);
+		if (ua_sess->metadata->stream_obj) {
+			ustctl_release_object(sock, ua_sess->metadata->stream_obj);
+			free(ua_sess->metadata->stream_obj);
+		}
+		if (ua_sess->metadata->obj) {
+			ustctl_release_object(sock, ua_sess->metadata->obj);
+			free(ua_sess->metadata->obj);
+		}
 	}
 
 	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
@@ -151,28 +160,23 @@ static void delete_ust_app_session(int sock,
 		assert(!ret);
 		delete_ust_app_channel(sock, ua_chan);
 	}
-
 	ret = hashtable_destroy(ua_sess->channels);
-	if (ret < 0) {
-		ERR("UST app destroy session hashtable failed");
-		goto error;
-	}
+	assert(!ret);
 
-error:
-	return;
+	free(ua_sess);
 }
 
 /*
  * Delete a traceable application structure from the global list. Never call
  * this function outside of a call_rcu call.
  */
-static void delete_ust_app(struct ust_app *app)
+static
+void delete_ust_app(struct ust_app *app)
 {
-	int ret;
+	int ret, sock;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	struct ust_app_session *ua_sess;
-	int sock;
 
 	rcu_read_lock();
 
@@ -200,17 +204,14 @@ static void delete_ust_app(struct ust_app *app)
 	sock = app->key.sock;
 	app->key.sock = -1;
 
+	/* Wipe sessions */
 	cds_lfht_for_each_entry(app->sessions, &iter, ua_sess, node) {
 		ret = hashtable_del(app->sessions, &iter);
 		assert(!ret);
 		delete_ust_app_session(app->key.sock, ua_sess);
 	}
-
 	ret = hashtable_destroy(app->sessions);
-	if (ret < 0) {
-		ERR("UST app destroy session hashtable failed");
-		goto end;
-	}
+	assert(!ret);
 
 	/*
 	 * Wait until we have removed the key from the sock hash table
@@ -229,7 +230,8 @@ end:
 /*
  * URCU intermediate call to delete an UST app.
  */
-static void delete_ust_app_rcu(struct rcu_head *head)
+static
+void delete_ust_app_rcu(struct rcu_head *head)
 {
 	struct cds_lfht_node *node =
 		caa_container_of(head, struct cds_lfht_node, head);
@@ -240,10 +242,136 @@ static void delete_ust_app_rcu(struct rcu_head *head)
 }
 
 /*
+ * Alloc new UST app session.
+ */
+static
+struct ust_app_session *alloc_ust_app_session(void)
+{
+	struct ust_app_session *ua_sess;
+
+	/* Init most of the default value by allocating and zeroing */
+	ua_sess = zmalloc(sizeof(struct ust_app_session));
+	if (ua_sess == NULL) {
+		PERROR("malloc");
+		goto error;
+	}
+
+	ua_sess->handle = -1;
+	ua_sess->channels = hashtable_new_str(0);
+
+	return ua_sess;
+
+error:
+	return NULL;
+}
+
+/*
+ * Alloc new UST app channel.
+ */
+static
+struct ust_app_channel *alloc_ust_app_channel(char *name,
+		struct lttng_ust_channel *attr)
+{
+	struct ust_app_channel *ua_chan;
+
+	/* Init most of the default value by allocating and zeroing */
+	ua_chan = zmalloc(sizeof(struct ust_app_channel));
+	if (ua_chan == NULL) {
+		PERROR("malloc");
+		goto error;
+	}
+
+	/* Setup channel name */
+	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
+	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
+
+	ua_chan->enabled = 1;
+	ua_chan->handle = -1;
+	ua_chan->ctx = hashtable_new(0);
+	ua_chan->events = hashtable_new_str(0);
+	hashtable_node_init(&ua_chan->node, (void *) ua_chan->name,
+			strlen(ua_chan->name));
+
+	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
+
+	/* Copy attributes */
+	if (attr) {
+		memcpy(&ua_chan->attr, attr, sizeof(ua_chan->attr));
+	}
+
+	DBG3("UST app channel %s allocated", ua_chan->name);
+
+	return ua_chan;
+
+error:
+	return NULL;
+}
+
+/*
+ * Alloc new UST app event.
+ */
+static
+struct ust_app_event *alloc_ust_app_event(char *name,
+		struct lttng_ust_event *attr)
+{
+	struct ust_app_event *ua_event;
+
+	/* Init most of the default value by allocating and zeroing */
+	ua_event = zmalloc(sizeof(struct ust_app_event));
+	if (ua_event == NULL) {
+		PERROR("malloc");
+		goto error;
+	}
+
+	ua_event->enabled = 1;
+	strncpy(ua_event->name, name, sizeof(ua_event->name));
+	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
+	ua_event->ctx = hashtable_new(0);
+	hashtable_node_init(&ua_event->node, (void *) ua_event->name,
+			strlen(ua_event->name));
+
+	/* Copy attributes */
+	if (attr) {
+		memcpy(&ua_event->attr, attr, sizeof(ua_event->attr));
+	}
+
+	DBG3("UST app event %s allocated", ua_event->name);
+
+	return ua_event;
+
+error:
+	return NULL;
+}
+
+/*
+ * Alloc new UST app context.
+ */
+static
+struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
+{
+	struct ust_app_ctx *ua_ctx;
+
+	ua_ctx = zmalloc(sizeof(struct ust_app_ctx));
+	if (ua_ctx == NULL) {
+		goto error;
+	}
+
+	if (uctx) {
+		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
+	}
+
+	DBG3("UST app context %d allocated", ua_ctx->ctx.ctx);
+
+error:
+	return ua_ctx;
+}
+
+/*
  * Find an ust_app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
-static struct ust_app *find_app_by_sock(int sock)
+static
+struct ust_app *find_app_by_sock(int sock)
 {
 	struct cds_lfht_node *node;
 	struct ust_app_key *key;
@@ -532,128 +660,6 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 
 error:
 	return ret;
-}
-
-/*
- * Alloc new UST app session.
- */
-static struct ust_app_session *alloc_ust_app_session(void)
-{
-	struct ust_app_session *ua_sess;
-
-	/* Init most of the default value by allocating and zeroing */
-	ua_sess = zmalloc(sizeof(struct ust_app_session));
-	if (ua_sess == NULL) {
-		PERROR("malloc");
-		goto error;
-	}
-
-	ua_sess->handle = -1;
-	ua_sess->channels = hashtable_new_str(0);
-
-	return ua_sess;
-
-error:
-	return NULL;
-}
-
-/*
- * Alloc new UST app channel.
- */
-static struct ust_app_channel *alloc_ust_app_channel(char *name,
-		struct lttng_ust_channel *attr)
-{
-	struct ust_app_channel *ua_chan;
-
-	/* Init most of the default value by allocating and zeroing */
-	ua_chan = zmalloc(sizeof(struct ust_app_channel));
-	if (ua_chan == NULL) {
-		PERROR("malloc");
-		goto error;
-	}
-
-	/* Setup channel name */
-	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
-	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
-
-	ua_chan->enabled = 1;
-	ua_chan->handle = -1;
-	ua_chan->ctx = hashtable_new(0);
-	ua_chan->events = hashtable_new_str(0);
-	hashtable_node_init(&ua_chan->node, (void *) ua_chan->name,
-			strlen(ua_chan->name));
-
-	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
-
-	/* Copy attributes */
-	if (attr) {
-		memcpy(&ua_chan->attr, attr, sizeof(ua_chan->attr));
-	}
-
-	DBG3("UST app channel %s allocated", ua_chan->name);
-
-	return ua_chan;
-
-error:
-	return NULL;
-}
-
-/*
- * Alloc new UST app event.
- */
-static struct ust_app_event *alloc_ust_app_event(char *name,
-		struct lttng_ust_event *attr)
-{
-	struct ust_app_event *ua_event;
-
-	/* Init most of the default value by allocating and zeroing */
-	ua_event = zmalloc(sizeof(struct ust_app_event));
-	if (ua_event == NULL) {
-		PERROR("malloc");
-		goto error;
-	}
-
-	ua_event->enabled = 1;
-	strncpy(ua_event->name, name, sizeof(ua_event->name));
-	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
-	ua_event->ctx = hashtable_new(0);
-	hashtable_node_init(&ua_event->node, (void *) ua_event->name,
-			strlen(ua_event->name));
-
-	/* Copy attributes */
-	if (attr) {
-		memcpy(&ua_event->attr, attr, sizeof(ua_event->attr));
-	}
-
-	DBG3("UST app event %s allocated", ua_event->name);
-
-	return ua_event;
-
-error:
-	return NULL;
-}
-
-/*
- * Alloc new UST app context.
- */
-static
-struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
-{
-	struct ust_app_ctx *ua_ctx;
-
-	ua_ctx = zmalloc(sizeof(struct ust_app_ctx));
-	if (ua_ctx == NULL) {
-		goto error;
-	}
-
-	if (uctx) {
-		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
-	}
-
-	DBG3("UST app context %d allocated", ua_ctx->ctx.ctx);
-
-error:
-	return ua_ctx;
 }
 
 /*
