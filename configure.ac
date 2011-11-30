@@ -85,21 +85,14 @@ AC_CHECK_DECL([caa_likely], [],
 
 # Check liblttng-ust-ctl library
 AC_ARG_ENABLE(lttng-ust,
-	[  --disable-lttng-ust     build without LTTng-UST (Userspace Tracing) support.],
+	AS_HELP_STRING([--disable-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
 	lttng_ust_support=$enableval, lttng_ust_support=yes)
 
-[
-if test "x$lttng_ust_support" = "xno"; then
-	echo "LTTng-UST support disabled."
-else
-]
+AS_IF([test "x$lttng_ust_support" = "xyes"], [
 	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_create_session], [],
 		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])]
 	)
-[
-	echo "LTTng-UST support enabled."
-fi
-]
+])
 
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl_create_session" = "xyes" ])
 
@@ -146,3 +139,13 @@ AC_CONFIG_FILES([
 ])
 
 AC_OUTPUT
+
+# Mini-report on what will be built
+AS_ECHO("")
+
+AS_ECHO_N("Lttng-UST support: ")
+AS_IF([test "x$lttng_ust_support" = "xyes"], [AS_ECHO("Enabled")],
+	[AS_ECHO("Disabled")])
+
+AS_ECHO("")
+
