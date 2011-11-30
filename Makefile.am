@@ -5,10 +5,14 @@ SUBDIRS = liblttng-sessiond-comm \
 		  liblttng-kconsumer \
 		  liblttng-ustconsumer \
 		  liblttng-consumer \
-		  lttng-consumerd \
-		  liblttngctl \
-		  lttng \
-		  lttng-sessiond \
-		  tests \
-		  include \
-		  doc
+		  lttng-consumerd
+
+if ! BUILD_CONSUMERD_ONLY
+SUBDIRS += liblttngctl \
+           lttng \
+           lttng-sessiond
+endif
+
+SUBDIRS += tests \
+           include \
+           doc

@@ -98,6 +98,13 @@ AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
 
+# Option to only build the consumer daemon and its libraries
+AC_ARG_WITH([consumerd-only],
+	AS_HELP_STRING([--with-consumerd-only],[Only build the consumer daemon [default=no]]),
+	[consumerd_only=$withval],
+	[consumerd_only=no])
+AM_CONDITIONAL([BUILD_CONSUMERD_ONLY], [test "x$consumerd_only" = "xyes"])
+
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
 	[AX_CONFIG_FEATURE_ENABLE(epoll)],
@@ -145,7 +152,13 @@ AS_ECHO("")
 
 AS_ECHO_N("Lttng-UST support: ")
 AS_IF([test "x$lttng_ust_support" = "xyes"], [AS_ECHO("Enabled")],
-	[AS_ECHO("Disabled")])
+	[AS_ECHO("Disabled")]
+)
+
+AS_IF([test "x$consumerd_only" = "xyes"],
+	[AS_ECHO("Only the consumerd daemon will be built.")],
+	[AS_ECHO("All binaries will be built.")]
+)
 
 AS_ECHO("")
 
