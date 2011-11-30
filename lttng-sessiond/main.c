@@ -2519,21 +2519,18 @@ static int cmd_add_context(struct ltt_session *session, int domain,
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
-		/*
-		struct ltt_ust_session *usess;
+		struct ltt_ust_session *usess = session->ust_session;
 
-		cds_list_for_each_entry(usess, &session->ust_session_list.head, list) {
-			ret = context_ust_add(usess, ctx,
-					event_name, channel_name, domain);
-			if (ret != LTTCOMM_OK) {
-				goto error;
-			}
+		ret = context_ust_add(usess, domain, ctx, event_name, channel_name);
+		if (ret != LTTCOMM_OK) {
+			goto error;
 		}
 		break;
-		*/
 	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: UST other domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}

@@ -36,16 +36,36 @@
 #include "ust-ctl.h"
 
 /*
+ * Delete ust context safely. RCU read lock must be held before calling
+ * this function.
+ */
+static
+void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx)
+{
+	if (ua_ctx->obj) {
+		ustctl_release_object(sock, ua_ctx->obj);
+		free(ua_ctx->obj);
+	}
+	free(ua_ctx);
+}
+
+/*
  * Delete ust app event safely. RCU read lock must be held before calling
  * this function.
  */
 static void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 {
-	/* TODO : remove context */
-	//struct ust_app_ctx *ltctx;
-	//cds_lfht_for_each_entry(lte->ctx, &iter, ltctx, node) {
-	//	delete_ust_app_ctx(sock, ltctx);
-	//}
+	int ret;
+	struct cds_lfht_iter iter;
+	struct ust_app_ctx *ua_ctx;
+
+	cds_lfht_for_each_entry(ua_event->ctx, &iter, ua_ctx, node) {
+		ret = hashtable_del(ua_event->ctx, &iter);
+		assert(!ret);
+		delete_ust_app_ctx(sock, ua_ctx);
+	}
+	ret = hashtable_destroy(ua_event->ctx);
+	assert(!ret);
 
 	if (ua_event->obj != NULL) {
 		ustctl_release_object(sock, ua_event->obj);
@@ -74,41 +94,38 @@ static void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 	int ret;
 	struct cds_lfht_iter iter;
 	struct ust_app_event *ua_event;
+	struct ust_app_ctx *ua_ctx;
 	struct ltt_ust_stream *stream, *stmp;
 
+	/* Wipe stream */
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
 		cds_list_del(&stream->list);
 		delete_ust_app_stream(sock, stream);
 	}
 
-	/* TODO : remove channel context */
-	//cds_lfht_for_each_entry(ltc->ctx, &iter, ltctx, node) {
-	//	ret = hashtable_del(ltc->ctx, &iter);
-	//	assert(!ret);
-	//	delete_ust_app_ctx(sock, ltctx);
-	//}
-	//ret = hashtable_destroy(ltc->ctx);
+	/* Wipe context */
+	cds_lfht_for_each_entry(ua_chan->ctx, &iter, ua_ctx, node) {
+		ret = hashtable_del(ua_chan->ctx, &iter);
+		assert(!ret);
+		delete_ust_app_ctx(sock, ua_ctx);
+	}
+	ret = hashtable_destroy(ua_chan->ctx);
+	assert(!ret);
 
+	/* Wipe events */
 	cds_lfht_for_each_entry(ua_chan->events, &iter, ua_event, node) {
 		ret = hashtable_del(ua_chan->events, &iter);
 		assert(!ret);
 		delete_ust_app_event(sock, ua_event);
 	}
-
 	ret = hashtable_destroy(ua_chan->events);
-	if (ret < 0) {
-		ERR("UST app destroy session hashtable failed");
-		goto error;
-	}
+	assert(!ret);
 
 	if (ua_chan->obj != NULL) {
 		ustctl_release_object(sock, ua_chan->obj);
 		free(ua_chan->obj);
 	}
 	free(ua_chan);
-
-error:
-	return;
 }
 
 /*
@@ -251,6 +268,52 @@ static struct ust_app *find_app_by_sock(int sock)
 
 error:
 	return NULL;
+}
+
+/*
+ * Create the channel context on the tracer.
+ */
+static
+int create_ust_channel_context(struct ust_app_channel *ua_chan,
+		struct ust_app_ctx *ua_ctx, struct ust_app *app)
+{
+	int ret;
+
+	ret = ustctl_add_context(app->key.sock, &ua_ctx->ctx,
+			ua_chan->obj, &ua_ctx->obj);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ua_ctx->handle = ua_ctx->obj->handle;
+
+	DBG2("UST app context added to channel %s successfully", ua_chan->name);
+
+error:
+	return ret;
+}
+
+/*
+ * Create the event context on the tracer.
+ */
+static
+int create_ust_event_context(struct ust_app_event *ua_event,
+		struct ust_app_ctx *ua_ctx, struct ust_app *app)
+{
+	int ret;
+
+	ret = ustctl_add_context(app->key.sock, &ua_ctx->ctx,
+			ua_event->obj, &ua_ctx->obj);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ua_ctx->handle = ua_ctx->obj->handle;
+
+	DBG2("UST app context added to event %s successfully", ua_event->name);
+
+error:
+	return ret;
 }
 
 /*
@@ -571,18 +634,53 @@ error:
 }
 
 /*
+ * Alloc new UST app context.
+ */
+static
+struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
+{
+	struct ust_app_ctx *ua_ctx;
+
+	ua_ctx = zmalloc(sizeof(struct ust_app_ctx));
+	if (ua_ctx == NULL) {
+		goto error;
+	}
+
+	if (uctx) {
+		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
+	}
+
+	DBG3("UST app context %d allocated", ua_ctx->ctx.ctx);
+
+error:
+	return ua_ctx;
+}
+
+/*
  * Copy data between an UST app event and a LTT event.
  */
 static void shadow_copy_event(struct ust_app_event *ua_event,
 		struct ltt_ust_event *uevent)
 {
+	struct cds_lfht_iter iter;
+	struct ltt_ust_context *uctx;
+	struct ust_app_ctx *ua_ctx;
+
 	strncpy(ua_event->name, uevent->attr.name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 
 	/* Copy event attributes */
 	memcpy(&ua_event->attr, &uevent->attr, sizeof(ua_event->attr));
 
-	/* TODO: support copy context */
+	cds_lfht_for_each_entry(uevent->ctx, &iter, uctx, node) {
+		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
+		if (ua_ctx == NULL) {
+			continue;
+		}
+		hashtable_node_init(&ua_ctx->node,
+				(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
+		hashtable_add_unique(ua_event->ctx, &ua_ctx->node);
+	}
 }
 
 /*
@@ -594,7 +692,9 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *ua_event_node;
 	struct ltt_ust_event *uevent;
+	struct ltt_ust_context *uctx;
 	struct ust_app_event *ua_event;
+	struct ust_app_ctx *ua_ctx;
 
 	DBG2("Shadow copy of UST app channel %s", ua_chan->name);
 
@@ -603,7 +703,15 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	/* Copy event attributes */
 	memcpy(&ua_chan->attr, &uchan->attr, sizeof(ua_chan->attr));
 
-	/* TODO: support copy context */
+	cds_lfht_for_each_entry(uchan->ctx, &iter, uctx, node) {
+		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
+		if (ua_ctx == NULL) {
+			continue;
+		}
+		hashtable_node_init(&ua_ctx->node,
+				(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
+		hashtable_add_unique(ua_chan->ctx, &ua_ctx->node);
+	}
 
 	/* Copy all events from ltt ust channel to ust app channel */
 	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
@@ -772,6 +880,90 @@ static struct ust_app_session *create_ust_app_session(
 
 error:
 	return NULL;
+}
+
+/*
+ * Create a context for the channel on the tracer.
+ */
+static
+int create_ust_app_channel_context(struct ust_app_session *ua_sess,
+		struct ust_app_channel *ua_chan, struct lttng_ust_context *uctx,
+		struct ust_app *app)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	struct ust_app_ctx *ua_ctx;
+
+	DBG2("UST app adding context to channel %s", ua_chan->name);
+
+	node = hashtable_lookup(ua_chan->ctx, (void *)((unsigned long)uctx->ctx),
+			sizeof(void *), &iter);
+	if (node != NULL) {
+		ret = -EEXIST;
+		goto error;
+	}
+
+	ua_ctx = alloc_ust_app_ctx(uctx);
+	if (ua_ctx == NULL) {
+		/* malloc failed */
+		ret = -1;
+		goto error;
+	}
+
+	hashtable_node_init(&ua_ctx->node,
+			(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
+	hashtable_add_unique(ua_chan->ctx, &ua_ctx->node);
+
+	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Create an UST context and enable it for the event on the tracer.
+ */
+static
+int create_ust_app_event_context(struct ust_app_session *ua_sess,
+		struct ust_app_event *ua_event, struct lttng_ust_context *uctx,
+		struct ust_app *app)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	struct ust_app_ctx *ua_ctx;
+
+	DBG2("UST app adding context to event %s", ua_event->name);
+
+	node = hashtable_lookup(ua_event->ctx, (void *)((unsigned long)uctx->ctx),
+			sizeof(void *), &iter);
+	if (node != NULL) {
+		ret = -EEXIST;
+		goto error;
+	}
+
+	ua_ctx = alloc_ust_app_ctx(uctx);
+	if (ua_ctx == NULL) {
+		/* malloc failed */
+		ret = -1;
+		goto error;
+	}
+
+	hashtable_node_init(&ua_ctx->node,
+			(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
+	hashtable_add_unique(ua_event->ctx, &ua_ctx->node);
+
+	ret = create_ust_event_context(ua_event, ua_ctx, app);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
 }
 
 /*
@@ -1952,4 +2144,100 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 error:
 	rcu_read_unlock();
 	return;
+}
+
+/*
+ * Add context to a specific channel for global UST domain.
+ */
+int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx)
+{
+	int ret = 0;
+	struct cds_lfht_node *ua_chan_node;
+	struct cds_lfht_iter iter, uiter;
+	struct ust_app_channel *ua_chan = NULL;
+	struct ust_app_session *ua_sess;
+	struct ust_app *app;
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			continue;
+		}
+
+		/* Lookup channel in the ust app session */
+		ua_chan_node = hashtable_lookup(ua_sess->channels,
+				(void *)uchan->name, strlen(uchan->name), &uiter);
+		if (ua_chan_node == NULL) {
+			continue;
+		}
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
+				node);
+
+		ret = create_ust_app_channel_context(ua_sess, ua_chan, &uctx->ctx, app);
+		if (ret < 0) {
+			continue;
+		}
+	}
+
+	/* Add ltt UST context node to ltt UST channel */
+	hashtable_add_unique(uchan->ctx, &uctx->node);
+
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Add context to a specific event in a channel for global UST domain.
+ */
+int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct ltt_ust_context *uctx)
+{
+	int ret = 0;
+	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct cds_lfht_iter iter, uiter;
+	struct ust_app_session *ua_sess;
+	struct ust_app_event *ua_event;
+	struct ust_app_channel *ua_chan = NULL;
+	struct ust_app *app;
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			continue;
+		}
+
+		/* Lookup channel in the ust app session */
+		ua_chan_node = hashtable_lookup(ua_sess->channels,
+				(void *)uchan->name, strlen(uchan->name), &uiter);
+		if (ua_chan_node == NULL) {
+			continue;
+		}
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
+				node);
+
+		ua_event_node = hashtable_lookup(ua_chan->events,
+				(void *)uevent->attr.name, strlen(uevent->attr.name), &uiter);
+		if (ua_event_node == NULL) {
+			continue;
+		}
+		ua_event = caa_container_of(ua_event_node, struct ust_app_event,
+				node);
+
+		ret = create_ust_app_event_context(ua_sess, ua_event, &uctx->ctx, app);
+		if (ret < 0) {
+			continue;
+		}
+	}
+
+	/* Add ltt UST context node to ltt UST event */
+	hashtable_add_unique(uevent->ctx, &uctx->node);
+
+	rcu_read_unlock();
+	return ret;
 }

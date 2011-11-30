@@ -165,7 +165,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	hashtable_node_init(&luc->node, (void *) luc->name, strlen(luc->name));
 	/* Alloc hash tables */
 	luc->events = hashtable_new_str(0);
-	luc->ctx = hashtable_new_str(0);
+	luc->ctx = hashtable_new(0);
 
 	/* Set trace output path */
 	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
@@ -225,7 +225,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	hashtable_node_init(&lue->node, (void *) lue->attr.name,
 			strlen(lue->attr.name));
 	/* Alloc context hash tables */
-	lue->ctx = hashtable_new_str(0);
+	lue->ctx = hashtable_new(0);
 
 	DBG2("Trace UST event %s created", lue->attr.name);
 
@@ -273,6 +273,32 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 error_free_metadata:
 	free(lum);
+error:
+	return NULL;
+}
+
+/*
+ * Allocate and initialize an UST context.
+ *
+ * Return pointer to structure or NULL.
+ */
+struct ltt_ust_context *trace_ust_create_context(
+		struct lttng_event_context *ctx)
+{
+	struct ltt_ust_context *uctx;
+
+	uctx = zmalloc(sizeof(struct ltt_ust_context));
+	if (uctx == NULL) {
+		PERROR("zmalloc ltt_ust_context");
+		goto error;
+	}
+
+	uctx->ctx.ctx = ctx->ctx;
+	hashtable_node_init(&uctx->node, (void *)((unsigned long) uctx->ctx.ctx),
+				sizeof(void *));
+
+	return uctx;
+
 error:
 	return NULL;
 }

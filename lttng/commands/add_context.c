@@ -37,7 +37,7 @@
 static char *opt_event_name;
 static char *opt_channel_name;
 static char *opt_session_name;
-static int *opt_kernel;
+static int opt_kernel;
 static int opt_pid_all;
 static int opt_userspace;
 static char *opt_cmd_name;
@@ -141,7 +141,7 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
@@ -297,10 +297,9 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng add-context -t TYPE\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "If no event name is given (-e), the context will be added to\n");
-	fprintf(ofp, "all events in the channel.\n");
+	fprintf(ofp, "If no event name is given (-e), the context will be added to the channel\n");
 	fprintf(ofp, "If no channel and no event is given (-c/-e), the context\n");
-	fprintf(ofp, "will be added to all events in all channels.\n");
+	fprintf(ofp, "will be added to all events and all channels.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -308,7 +307,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -c, --channel NAME       Apply on channel\n");
 	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
 	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
 	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
@@ -356,6 +355,19 @@ static int add_context(char *session_name)
 
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_pid != 0) {
+		dom.type = LTTNG_DOMAIN_UST_PID;
+		dom.attr.pid = opt_pid;
+		DBG("PID %d set to lttng handle", opt_pid);
+	} else if (opt_userspace && opt_cmd_name == NULL) {
+		dom.type = LTTNG_DOMAIN_UST;
+	} else if (opt_userspace && opt_cmd_name != NULL) {
+		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
+		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
+	} else {
+		ERR("Please specify a tracer (--kernel or --userspace)");
+		ret = CMD_NOT_IMPLEMENTED;
+		goto error;
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -366,7 +378,6 @@ static int add_context(char *session_name)
 
 	/* Iterate over all context type given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
-
 		context.ctx = type->opt->ctx_type;
 		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
 			context.u.perf_counter.type = type->opt->u.perf.type;
@@ -380,28 +391,18 @@ static int add_context(char *session_name)
 				*ptr = '_';
 			}
 		}
-		if (opt_kernel) {
-			DBG("Adding kernel context");
-			ret = lttng_add_context(handle, &context, opt_event_name,
-					opt_channel_name);
-			if (ret < 0) {
-				fprintf(stderr, "%s: ", type->opt->symbol);
-				continue;
-			} else {
-				MSG("Kernel context %s added", type->opt->symbol);
-			}
-		} else if (opt_userspace) {		/* User-space tracer action */
-			/*
-			 * TODO: Waiting on lttng UST 2.0
-			 */
-			if (opt_pid_all) {
-			} else if (opt_pid != 0) {
-			}
-			ret = CMD_NOT_IMPLEMENTED;
-			goto error;
+		DBG("Adding context...");
+
+		ret = lttng_add_context(handle, &context, opt_event_name,
+				opt_channel_name);
+		if (ret < 0) {
+			fprintf(stderr, "%s: ", type->opt->symbol);
+			continue;
 		} else {
-			ERR("Please specify a tracer (--kernel or --userspace)");
-			goto error;
+			MSG("%s context %s added to %s event in %s",
+					opt_kernel ? "kernel" : "UST", type->opt->symbol,
+					opt_event_name ? opt_event_name : "all",
+					opt_channel_name ? opt_channel_name : "all channels");
 		}
 	}
 

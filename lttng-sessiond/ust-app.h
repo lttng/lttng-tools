@@ -55,6 +55,13 @@ struct ust_app_key {
 	struct cds_lfht_node node;
 };
 
+struct ust_app_ctx {
+	int handle;
+	struct lttng_ust_context ctx;
+	struct lttng_ust_object_data *obj;
+	struct cds_lfht_node node;
+};
+
 struct ust_app_event {
 	int enabled;
 	int handle;
@@ -134,6 +141,11 @@ int ust_app_enable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
+int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct ltt_ust_context *uctx);
+int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx);
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
@@ -260,6 +272,19 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 static inline
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
+{
+	return 0;
+}
+static inline
+int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct ltt_ust_context *uctx)
+{
+	return 0;
+}
+static inline
+int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx)
 {
 	return 0;
 }
