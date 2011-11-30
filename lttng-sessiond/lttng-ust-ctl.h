@@ -54,7 +54,7 @@ int ustctl_tracepoint_list(int sock);
  * handle. End is iteration is reached when -ENOENT is returned.
  */
 int ustctl_tracepoint_list_get(int sock, int tp_list_handle,
-		char iter[LTTNG_UST_SYM_NAME_LEN]);
+		struct lttng_ust_tracepoint_iter *iter);
 
 int ustctl_tracer_version(int sock, struct lttng_ust_tracer_version *v);
 int ustctl_wait_quiescent(int sock);
@@ -130,6 +130,6 @@ void ustctl_flush_buffer(struct lttng_ust_shm_handle *handle,
 		int producer_active);
 
 /* Release object created by members of this API */
-void ustctl_release_object(int sock, struct lttng_ust_object_data *data);
+int ustctl_release_object(int sock, struct lttng_ust_object_data *data);
 
 #endif /* _LTTNG_UST_CTL_H */

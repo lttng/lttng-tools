@@ -19,9 +19,10 @@
 #define LTTNG_UST_COMM_VERSION_MINOR		1
 
 enum lttng_ust_instrumentation {
-	LTTNG_UST_TRACEPOINT	= 0,
-	LTTNG_UST_PROBE		= 1,
-	LTTNG_UST_FUNCTION	= 2,
+	LTTNG_UST_TRACEPOINT		= 0,
+	LTTNG_UST_PROBE			= 1,
+	LTTNG_UST_FUNCTION		= 2,
+	LTTNG_UST_TRACEPOINT_LOGLEVEL	= 3,
 };
 
 enum lttng_ust_output {
@@ -88,6 +89,12 @@ struct lttng_ust_channel_attr {
 	unsigned int switch_timer_interval;	/* usec */
 	unsigned int read_timer_interval;	/* usec */
 	enum lttng_ust_output output;		/* splice, mmap */
+};
+
+struct lttng_ust_tracepoint_iter {
+	char name[LTTNG_UST_SYM_NAME_LEN];	/* provider:name */
+	char loglevel[LTTNG_UST_SYM_NAME_LEN];	/* loglevel */
+	int64_t loglevel_value;
 };
 
 struct lttng_ust_object_data {
