@@ -1372,6 +1372,8 @@ int ust_app_list_events(struct lttng_event **events)
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct lttng_ust_tracepoint_iter iter;
+
 		handle = ustctl_tracepoint_list(app->key.sock);
 		if (handle < 0) {
 			ERR("UST app list events getting handle failed for app pid %d",
@@ -1380,7 +1382,9 @@ int ust_app_list_events(struct lttng_event **events)
 		}
 
 		while ((ret = ustctl_tracepoint_list_get(app->key.sock, handle,
-						tmp[count].name)) != -ENOENT) {
+						&iter)) != -ENOENT) {
+			memcpy(tmp[count].name, iter.name, LTTNG_UST_SYM_NAME_LEN);
+			/* TODO : get loglevel too */
 			if (count > nbmem) {
 				DBG2("Reallocating event list from %zu to %zu bytes", nbmem,
 						nbmem + UST_APP_EVENT_LIST_SIZE);

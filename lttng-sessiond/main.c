@@ -2073,6 +2073,11 @@ static int list_lttng_ust_global_events(char *channel_name,
 		case LTTNG_UST_FUNCTION:
 			tmp[i].type = LTTNG_EVENT_FUNCTION;
 			break;
+		case LTTNG_UST_TRACEPOINT_LOGLEVEL:
+			/* TODO */
+			ret = -LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
+			break;
 		}
 		i++;
 	}
