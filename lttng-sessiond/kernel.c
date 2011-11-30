@@ -582,7 +582,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 					nbmem + KERNEL_EVENT_LIST_SIZE);
 			/* Adding the default size again */
 			nbmem += KERNEL_EVENT_LIST_SIZE;
-			elist = realloc(elist, nbmem);
+			elist = realloc(elist, nbmem * sizeof(struct lttng_event));
 			if (elist == NULL) {
 				perror("realloc list events");
 				count = -ENOMEM;

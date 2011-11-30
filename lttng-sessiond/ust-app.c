@@ -1185,7 +1185,7 @@ int ust_app_list_events(struct lttng_event **events)
 				DBG2("Reallocating event list from %zu to %zu bytes", nbmem,
 						nbmem + UST_APP_EVENT_LIST_SIZE);
 				nbmem += UST_APP_EVENT_LIST_SIZE;
-				tmp = realloc(tmp, nbmem);
+				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event));
 				if (tmp == NULL) {
 					PERROR("realloc ust app events");
 					ret = -ENOMEM;
