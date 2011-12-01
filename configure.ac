@@ -118,7 +118,7 @@ AX_CONFIG_FEATURE(
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 AC_PROG_CC
-m4_ifdef([LT_INIT], [LT_INIT], [AC_PROG_LIBTOOL])
+LT_INIT
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
