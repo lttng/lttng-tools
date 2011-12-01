@@ -19,7 +19,7 @@ REQUIREMENTS:
       * Git : git://git.lttng.org/userspace-rcu.git
       * Website:  http://lttng.org/urcu
 
-    - libpopt
+    - libpopt >= 1.8
       Library for parsing command line parameters
 
       * Debian/Ubuntu package: libpopt-dev
