@@ -34,8 +34,18 @@ else
 	echo "PID session daemon: $PID_SESSIOND"
 fi
 
+# Session daemon need to boot up and run benchmark
+echo -n "Waiting."
+sleep 1
+echo -n "."
+sleep 1
+echo "."
+sleep 1
+
 kill $PID_SESSIOND
 
 wait $PID_SESSIOND
+
+echo "Benchmarks done in $RESULTS_PATH"
 
 exit 0

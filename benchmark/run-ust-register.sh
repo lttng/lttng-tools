@@ -33,8 +33,13 @@ else
 	echo "PID session daemon: $PID_SESSIOND"
 fi
 
-# Wait for sessiond to settle
-sleep 2
+# Session daemon need to boot up and run benchmark
+echo -n "Waiting."
+sleep 1
+echo -n "."
+sleep 1
+echo "."
+sleep 1
 
 # Start libust instrumented application to register.
 UST_AUTOPROBE=1 UST_TRACE=1 ./$BASEDIR/hello
@@ -42,5 +47,7 @@ UST_AUTOPROBE=1 UST_TRACE=1 ./$BASEDIR/hello
 kill $PID_SESSIOND
 
 wait $PID_SESSIOND
+
+echo "Benchmarks done in $RESULTS_PATH"
 
 exit 0
