@@ -161,14 +161,16 @@ int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 {
 	int size, i, ret;
 	struct ltt_kernel_event *kevent;
-	struct lttng_event *event_list;
+	struct lttng_event *event_list = NULL;
 
 	/* For each event in the kernel session */
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
-		ret = kernel_enable_event(kevent);
-		if (ret < 0) {
-			/* Enable failed but still continue */
-			continue;
+		if (kevent->enabled == 0) {
+			ret = kernel_enable_event(kevent);
+			if (ret < 0) {
+				/* Enable failed but still continue */
+				continue;
+			}
 		}
 	}
 
@@ -191,6 +193,7 @@ int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 		}
 	}
 	free(event_list);
+
 	ret = LTTCOMM_OK;
 end:
 	return ret;
@@ -212,8 +215,14 @@ int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
 
 	ret = kernel_create_event(&event, kchan);
 	if (ret < 0) {
+		if (ret == -EEXIST) {
+			ret = LTTCOMM_KERN_EVENT_EXIST;
+		} else {
+			ret = LTTCOMM_KERN_ENABLE_FAIL;
+		}
 		goto end;
 	}
+
 	ret = LTTCOMM_OK;
 end:
 	return ret;

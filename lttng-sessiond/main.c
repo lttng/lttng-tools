@@ -2677,15 +2677,16 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			if (ret != LTTCOMM_OK) {
 				goto error;
 			}
-		}
 
-		/* Get the newly created kernel channel pointer */
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
-		if (kchan == NULL) {
-			/* This sould not happen... */
-			ret = LTTCOMM_FATAL;
-			goto error;
+			/* Get the newly created kernel channel pointer */
+			kchan = trace_kernel_get_channel_by_name(channel_name,
+					session->kernel_session);
+			if (kchan == NULL) {
+				/* This sould not happen... */
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+
 		}
 
 		switch (event_type) {
@@ -2710,6 +2711,8 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
 			goto error;
 		}
+
+		/* Manage return value */
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
