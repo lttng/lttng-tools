@@ -17,13 +17,13 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 
-SESSIOND_BIN="ltt-sessiond"
+SESSIOND_BIN="lttng-sessiond"
 RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
 echo "Starting session daemon"
 
-BENCH_BOOT_PROCESS=1 $BASEDIR/../ltt-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
+BENCH_BOOT_PROCESS=1 $BASEDIR/../lttng-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
 
 PID_SESSIOND=$!
 if [ -z $PID_SESSIOND ]; then
