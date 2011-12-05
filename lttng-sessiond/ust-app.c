@@ -1383,12 +1383,11 @@ int ust_app_list_events(struct lttng_event **events)
 
 		while ((ret = ustctl_tracepoint_list_get(app->key.sock, handle,
 						&iter)) != -ENOENT) {
-			memcpy(tmp[count].name, iter.name, LTTNG_UST_SYM_NAME_LEN);
 			/* TODO : get loglevel too */
-			if (count > nbmem) {
-				DBG2("Reallocating event list from %zu to %zu bytes", nbmem,
-						nbmem + UST_APP_EVENT_LIST_SIZE);
-				nbmem += UST_APP_EVENT_LIST_SIZE;
+			if (count >= nbmem) {
+				DBG2("Reallocating event list from %zu to %zu entries", nbmem,
+						2 * nbmem);
+				nbmem *= 2;
 				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event));
 				if (tmp == NULL) {
 					PERROR("realloc ust app events");
@@ -1396,7 +1395,7 @@ int ust_app_list_events(struct lttng_event **events)
 					goto rcu_error;
 				}
 			}
-
+			memcpy(tmp[count].name, iter.name, LTTNG_UST_SYM_NAME_LEN);
 			tmp[count].type = LTTNG_UST_TRACEPOINT;
 			tmp[count].pid = app->key.pid;
 			tmp[count].enabled = -1;
