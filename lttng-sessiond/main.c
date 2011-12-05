@@ -1508,7 +1508,9 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 	pid_t pid;
+	const char *consumer_to_use;
 	const char *verbosity;
+	struct stat st;
 
 	DBG("Spawning consumerd");
 
@@ -1524,11 +1526,26 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		}
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
-			execl(INSTALL_BIN_PATH "/" CONSUMERD_FILE,
-					"lttng-consumerd", verbosity, "-k",
-					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					NULL);
+			/*
+			 * Find out which consumerd to execute. We will first
+			 * try the 64-bit path, then the 32-bit one, then
+			 * fallback on sessiond's installation directory.
+			 */
+			if (stat(consumerd64_bin, &st) == 0) {
+				consumer_to_use = consumerd64_bin;
+			} else if (stat(consumerd32_bin, &st) == 0) {
+				consumer_to_use = consumerd32_bin;
+			} else if (stat(INSTALL_BIN_PATH "/" CONSUMERD_FILE, &st) == 0) {
+				consumer_to_use = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+			} else {
+				break;
+			}
+			DBG("Using kernel consumer at: %s",  consumer_to_use);
+			execl(consumer_to_use,
+				"lttng-consumerd", verbosity, "-k",
+				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+				NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
@@ -1561,6 +1578,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
+			DBG("Using 64-bit UST consumer at: %s",  consumerd64_bin);
 			ret = execl(consumerd64_bin, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
@@ -1604,6 +1622,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
+			DBG("Using 32-bit UST consumer at: %s",  consumerd32_bin);
 			ret = execl(consumerd32_bin, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
