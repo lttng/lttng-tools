@@ -34,20 +34,20 @@
 
 static int opt_event_type;
 static char *opt_kernel;
-static char *opt_cmd_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static pid_t opt_pid;
 
 enum {
 	OPT_HELP = 1,
-	OPT_USERSPACE,
 	OPT_TRACEPOINT,
 	OPT_MARKER,
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
+	OPT_USERSPACE,
 };
 
 static struct lttng_handle *handle;
@@ -56,14 +56,20 @@ static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
 	{"probe",          0,   POPT_ARG_NONE, 0, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_NONE, 0, OPT_FUNCTION, 0, 0},
+#if 0
+	/*
+	 * Removed from options to discourage its use. Not in kernel
+	 * tracer anymore.
+	 */
 	{"function:entry", 0,   POPT_ARG_NONE, 0, OPT_FUNCTION_ENTRY, 0, 0},
+#endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -87,8 +93,10 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "    --function\n");
 	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
+#if 0
 	fprintf(ofp, "    --function:entry symbol\n");
 	fprintf(ofp, "                           Function tracer event\n");
+#endif
 	fprintf(ofp, "    --syscall              System call eventl\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
@@ -181,10 +189,6 @@ int cmd_calibrate(int argc, const char **argv)
 			usage(stderr);
 			ret = CMD_SUCCESS;
 			goto end;
-		case OPT_USERSPACE:
-			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
-			break;
 		case OPT_TRACEPOINT:
 			ret = CMD_NOT_IMPLEMENTED;
 			break;
@@ -202,6 +206,9 @@ int cmd_calibrate(int argc, const char **argv)
 			break;
 		case OPT_SYSCALL:
 			ret = CMD_NOT_IMPLEMENTED;
+			break;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
 			break;
 		default:
 			usage(stderr);

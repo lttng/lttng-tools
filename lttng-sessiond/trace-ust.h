@@ -43,6 +43,7 @@ struct ltt_ust_context {
 
 /* UST event */
 struct ltt_ust_event {
+	unsigned int enabled;
 	struct lttng_ust_event attr;
 	struct cds_lfht *ctx;
 	struct cds_lfht_node node;
@@ -53,11 +54,13 @@ struct ltt_ust_stream {
 	int handle;
 	char pathname[PATH_MAX];
 	struct lttng_ust_object_data *obj;
-	struct cds_lfht_node node;
+	/* Using a list of streams to keep order. */
+	struct cds_list_head list;
 };
 
 /* UST channel */
 struct ltt_ust_channel {
+	unsigned int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char pathname[PATH_MAX];
 	struct lttng_ust_channel attr;
@@ -97,8 +100,7 @@ struct ltt_ust_domain_exec {
 /* UST session */
 struct ltt_ust_session {
 	int uid;   /* Unique identifier of session */
-	int consumer_fds_sent;
-	int consumer_fd;
+	int start_trace;
 	char pathname[PATH_MAX];
 	struct ltt_ust_domain_global domain_global;
 	/*
@@ -110,7 +112,7 @@ struct ltt_ust_session {
 	struct cds_lfht *domain_exec;
 };
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 /*
  * Lookup functions. NULL is returned if not found.
@@ -129,6 +131,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		char *path);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev);
 struct ltt_ust_metadata *trace_ust_create_metadata(char *path);
+struct ltt_ust_context *trace_ust_create_context(
+		struct lttng_event_context *ctx);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if
@@ -139,7 +143,7 @@ void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
 
-#else
+#else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
 struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
@@ -197,7 +201,13 @@ static inline
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 }
+static inline
+struct ltt_ust_context *trace_ust_create_context(
+		struct lttng_event_context *ctx)
+{
+	return NULL;
+}
 
-#endif /* CONFIG_CONFIG_LTTNG_TOOLS_HAVE_UST */
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_TRACE_UST_H */

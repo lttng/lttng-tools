@@ -1,5 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/benchmark \
-			  -DINSTALL_BIN_PATH=\"$(bindir)\"
+			  -DINSTALL_BIN_PATH=\""$(bindir)"\" \
+			  -DINSTALL_LIB_PATH=\""$(libdir)"\"
 
 AM_CFLAGS = -fno-strict-aliasing
 
@@ -15,7 +16,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        hashtable.c hashtable.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
-                       kernel-ctl.c kernel-ctl.h \
+                       kernel.c kernel.h \
                        ust-ctl.h ust-app.h trace-ust.h \
                        context.c context.h \
                        channel.c channel.h \
@@ -27,7 +28,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        ../hashtable/rculfhash.h \
                        ../hashtable/hash.c ../hashtable/hash.h
 
-if LTTNG_TOOLS_HAVE_UST
+if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h
 endif
 
@@ -35,12 +36,12 @@ endif
 lttng_sessiond_SOURCES += lttng-sessiond.h main.c
 
 # link on liblttngctl for check if sessiond is already alive.
-lttng_sessiond_LDADD = -lrt -lurcu-cds -lurcu \
+lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la \
 		 $(top_builddir)/benchmark/liblttng-benchmark.la
 
-if LTTNG_TOOLS_HAVE_UST
-lttng_sessiond_LDADD += -llttng-ust-comm -lustctl
+if HAVE_LIBLTTNG_UST_CTL
+lttng_sessiond_LDADD += -llttng-ust-ctl
 endif

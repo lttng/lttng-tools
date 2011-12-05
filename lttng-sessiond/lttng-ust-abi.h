@@ -2,7 +2,7 @@
 #define _LTTNG_UST_ABI_H
 
 /*
- * lttng-ust-abi.h
+ * lttng/ust-abi.h
  *
  * Copyright 2010-2011 (c) - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
@@ -19,9 +19,10 @@
 #define LTTNG_UST_COMM_VERSION_MINOR		1
 
 enum lttng_ust_instrumentation {
-	LTTNG_UST_TRACEPOINT	= 0,
-	LTTNG_UST_PROBE		= 1,
-	LTTNG_UST_FUNCTION	= 2,
+	LTTNG_UST_TRACEPOINT		= 0,
+	LTTNG_UST_PROBE			= 1,
+	LTTNG_UST_FUNCTION		= 2,
+	LTTNG_UST_TRACEPOINT_LOGLEVEL	= 3,
 };
 
 enum lttng_ust_output {
@@ -90,6 +91,12 @@ struct lttng_ust_channel_attr {
 	enum lttng_ust_output output;		/* splice, mmap */
 };
 
+struct lttng_ust_tracepoint_iter {
+	char name[LTTNG_UST_SYM_NAME_LEN];	/* provider:name */
+	char loglevel[LTTNG_UST_SYM_NAME_LEN];	/* loglevel */
+	int64_t loglevel_value;
+};
+
 struct lttng_ust_object_data {
 	int handle;
 	int shm_fd;
@@ -137,11 +144,14 @@ struct lttng_ust_object_data {
 #define LTTNG_UST_ENABLE			_UST_CMD(0x80)
 #define LTTNG_UST_DISABLE			_UST_CMD(0x81)
 
+/* Tracepoint list commands */
+#define LTTNG_UST_TRACEPOINT_LIST_GET		_UST_CMD(0x90)
+
 #define LTTNG_UST_ROOT_HANDLE	0
 
-struct obj;
+struct lttng_ust_obj;
 
-struct objd_ops {
+struct lttng_ust_objd_ops {
 	long (*cmd)(int objd, unsigned int cmd, unsigned long arg);
 	int (*release)(int objd);
 };
@@ -149,10 +159,10 @@ struct objd_ops {
 /* Create root handle. Always ID 0. */
 int lttng_abi_create_root_handle(void);
 
-const struct objd_ops *objd_ops(int id);
-int objd_unref(int id);
+const struct lttng_ust_objd_ops *objd_ops(int id);
+int lttng_ust_objd_unref(int id);
 
 void lttng_ust_abi_exit(void);
-void ltt_events_exit(void);
+void lttng_ust_events_exit(void);
 
 #endif /* _LTTNG_UST_ABI_H */

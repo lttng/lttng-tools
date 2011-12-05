@@ -36,11 +36,9 @@
 static int send_channel_streams(int sock,
 		struct ust_app_channel *uchan)
 {
-	int ret, fds[2];
-	struct ltt_ust_stream *stream;
+	int ret, fd;
 	struct lttcomm_consumer_msg lum;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct ltt_ust_stream *stream, *tmp;
 
 	DBG("Sending streams of channel %s to UST consumer", uchan->name);
 
@@ -48,8 +46,11 @@ static int send_channel_streams(int sock,
 	lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 
 	/*
-	 * We need to keep shm_fd open to make sure this key stays unique within
-	 * the session daemon.
+	 * We need to keep shm_fd open while we transfer the stream file
+	 * descriptors to make sure this key stays unique within the
+	 * session daemon. We can free the channel shm_fd without
+	 * problem after we finished sending stream fds for that
+	 * channel.
 	 */
 	lum.u.channel.channel_key = uchan->obj->shm_fd;
 	lum.u.channel.max_sb_size = uchan->attr.subbuf_size;
@@ -60,31 +61,28 @@ static int send_channel_streams(int sock,
 		perror("send consumer channel");
 		goto error;
 	}
-	fds[0] = uchan->obj->shm_fd;
-	fds[1] = uchan->obj->wait_fd;
-	ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+	fd = uchan->obj->shm_fd;
+	ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 	if (ret < 0) {
 		perror("send consumer channel ancillary data");
 		goto error;
 	}
 
-
-	rcu_read_lock();
-	hashtable_get_first(uchan->streams, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
-		stream = caa_container_of(node, struct ltt_ust_stream, node);
-
+	cds_list_for_each_entry_safe(stream, tmp, &uchan->streams.head, list) {
 		int fds[2];
 
 		if (!stream->obj->shm_fd) {
-			goto next;
+			continue;
 		}
-
 		lum.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
 		lum.u.stream.channel_key = uchan->obj->shm_fd;
 		lum.u.stream.stream_key = stream->obj->shm_fd;
 		lum.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
-		lum.u.stream.output = uchan->attr.output;
+		/*
+		 * FIXME Hack alert! we force MMAP for now. Mixup
+		 * between EVENT and UST enums elsewhere.
+		 */
+		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		lum.u.stream.mmap_len = stream->obj->memory_map_size;
 		strncpy(lum.u.stream.path_name, stream->pathname, PATH_MAX - 1);
 		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
@@ -102,11 +100,7 @@ static int send_channel_streams(int sock,
 			perror("send consumer stream ancillary data");
 			goto error;
 		}
-
-next:
-		hashtable_get_next(uchan->streams, &iter);
 	}
-	rcu_read_unlock();
 
 	DBG("consumer channel streams sent");
 
@@ -130,23 +124,28 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 
 	DBG("Sending metadata stream fd");
 
+	if (consumer_fd < 0) {
+		ERR("Consumer has negative file descriptor");
+		return -EINVAL;
+	}
+
 	if (usess->metadata->obj->shm_fd != 0) {
+		int fd;
 		int fds[2];
 
 		/* Send metadata channel fd */
 		lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 		lum.u.channel.channel_key = usess->metadata->obj->shm_fd;
 		lum.u.channel.max_sb_size = usess->metadata->attr.subbuf_size;
-		lum.u.channel.mmap_len = 0;	/* for kernel */
-		DBG("Sending metadata channel %d to consumer", lum.u.stream.stream_key);
+		lum.u.channel.mmap_len = usess->metadata->obj->memory_map_size;
+		DBG("Sending metadata channel %d to consumer", lum.u.channel.channel_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
 			perror("send consumer channel");
 			goto error;
 		}
-		fds[0] = usess->metadata->obj->shm_fd;
-		fds[1] = usess->metadata->obj->wait_fd;
-		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+		fd = usess->metadata->obj->shm_fd;
+		ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 		if (ret < 0) {
 			perror("send consumer metadata channel");
 			goto error;
@@ -184,6 +183,7 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 
 		ret = send_channel_streams(sock, uchan);
 		if (ret < 0) {
+			rcu_read_unlock();
 			goto error;
 		}
 		hashtable_get_next(usess->channels, &iter);

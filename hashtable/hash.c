@@ -1,6 +1,7 @@
 /*
  * Copyright (C) - Bob Jenkins, May 2006, Public Domain.
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 -  Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * These are functions for producing 32-bit hashes for hash table lookup.
  * hashword(), hashlittle(), hashlittle2(), hashbig(), mix(), and final() are
@@ -40,6 +41,7 @@
 #include <endian.h>    /* attempt to define endianness */
 #include <string.h>
 #include <assert.h>
+#include <urcu/compiler.h>
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may
@@ -151,13 +153,49 @@
   c ^= b; c -= rot(b,24); \
 }
 
+static __attribute__((unused))
+uint32_t hashword(
+	const uint32_t *k,	/* the key, an array of uint32_t values */
+	size_t length,		/* the length of the key, in uint32_ts */
+	uint32_t initval)	/* the previous hash, or an arbitrary value */
+{
+	uint32_t a, b, c;
+
+	/* Set up the internal state */
+	a = b = c = 0xdeadbeef + (((uint32_t) length) << 2) + initval;
+
+	/*----------------------------------------- handle most of the key */
+	while (length > 3) {
+		a += k[0];
+		b += k[1];
+		c += k[2];
+		mix(a, b, c);
+		length -= 3;
+		k += 3;
+	}
+
+	/*----------------------------------- handle the last 3 uint32_t's */
+	switch (length) {	/* all the case statements fall through */
+	case 3: c += k[2];
+	case 2: b += k[1];
+	case 1: a += k[0];
+		final(a, b, c);
+	case 0:			/* case 0: nothing left to add */
+		break;
+	}
+	/*---------------------------------------------- report the result */
+	return c;
+}
+
+
 /*
  * hashword2() -- same as hashword(), but take two seeds and return two 32-bit
  * values.  pc and pb must both be nonnull, and *pc and *pb must both be
  * initialized with seeds.  If you pass in (*pb)==0, the output (*pc) will be
  * the same as the return value from hashword().
  */
-static void hashword2(const uint32_t *k, size_t length,
+static __attribute__((unused))
+void hashword2(const uint32_t *k, size_t length,
 		uint32_t *pc, uint32_t *pb)
 {
 	uint32_t a, b, c;
@@ -389,26 +427,39 @@ static uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
 	return c;
 }
 
+#if (CAA_BITS_PER_LONG == 64)
 /*
  * Hash function for number value.
  */
 unsigned long hash_key(void *_key, size_t length, unsigned long seed)
 {
-    union {
-        uint64_t v64;
-        uint32_t v32[2];
-    } v;
-    union {
-        uint64_t v64;
-        uint32_t v32[2];
-    } key;
+	union {
+		uint64_t v64;
+		uint32_t v32[2];
+	} v;
+	union {
+		uint64_t v64;
+		uint32_t v32[2];
+	} key;
 
-    assert(length == sizeof(unsigned long));
-    v.v64 = (uint64_t) seed;
-    key.v64 = (uint64_t) _key;
-    hashword2(key.v32, 2, &v.v32[0], &v.v32[1]);
-    return v.v64;
+	assert(length == sizeof(unsigned long));
+	v.v64 = (uint64_t) seed;
+	key.v64 = (uint64_t) _key;
+	hashword2(key.v32, 2, &v.v32[0], &v.v32[1]);
+	return v.v64;
 }
+#else
+/*
+ * Hash function for number value.
+ */
+unsigned long hash_key(void *_key, size_t length, unsigned long seed)
+{
+	uint32_t key = (uint32_t) _key;
+
+	assert(length == sizeof(uint32_t));
+	return hashword(&key, 1, seed);
+}
+#endif
 
 /*
  * Hash function for string.

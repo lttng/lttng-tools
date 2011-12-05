@@ -1,14 +1,12 @@
-AC_INIT([lttng-tools], [2.0-pre14], [david.goulet@polymtl.ca], ,[http://lttng.org])
+AC_INIT([lttng-tools],[2.0-pre14],[david.goulet@polymtl.ca],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
-AM_SILENT_RULES([yes])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CONFIG_HEADERS([include/config.h])
-
-AH_TEMPLATE([CONFIG_LTTNG_TOOLS_HAVE_UST], [Defined on systems where UST headers can be found.])
 
 AC_CHECK_HEADERS([ \
 	sys/types.h unistd.h fcntl.h string.h pthread.h limits.h \
@@ -16,8 +14,38 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
-# URCU library version needed or newer
-liburcu_version=">= 0.6.5"
+AC_ARG_WITH([consumerd32-path],
+	AS_HELP_STRING([--with-consumerd32-path],
+	[Location of the 32-bit consumerd executable]),
+	[CONSUMERD32_PATH="$withval"],
+	[CONSUMERD32_PATH=''])
+AC_SUBST([CONSUMERD32_PATH])
+
+AC_ARG_WITH([consumerd64-path],
+	AS_HELP_STRING([--with-consumerd64-path],
+	[Location of the 64-bit consumerd executable]),
+	[CONSUMERD64_PATH="$withval"],
+	[CONSUMERD64_PATH=''])
+AC_SUBST([CONSUMERD64_PATH])
+
+AC_ARG_WITH([consumerd32-libdir],
+	AS_HELP_STRING([--with-consumerd32-libdir],
+	[Location of the 32-bit consumerd libraries]),
+	[CONSUMERD32_LIBDIR="$withval"],
+	[CONSUMERD32_LIBDIR=''])
+AC_SUBST([CONSUMERD32_LIBDIR])
+
+AC_ARG_WITH([consumer64d-libdir],
+	AS_HELP_STRING([--with-consumerd64-libdir],
+	[Location of the 64-bit consumerd libraries]),
+	[CONSUMERD64_LIBDIR="$withval"],
+	[CONSUMERD64_LIBDIR=''])
+AC_SUBST([CONSUMERD64_LIBDIR])
+
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_PATH], $CONSUMERD32_PATH, [Location of the 32-bit consumerd executable.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_PATH], $CONSUMERD64_PATH, [Location of the 64-bit consumerd executable])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], $CONSUMERD32_LIBDIR, [Search for consumerd 32-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], $CONSUMERD64_LIBDIR, [Search for consumerd 64-bit libraries in this location.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
@@ -34,12 +62,18 @@ AC_CHECK_DECL([caa_get_cycles], [],
 	[AC_MSG_ERROR([liburcu liburcu_version or newer is needed])], [[#include <urcu/arch.h>]]
 )
 
+# URCU library version needed or newer
+liburcu_version=">= 0.6.6"
+
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
 )
 AC_CHECK_DECL([cds_wfq_init], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
+)
+AC_CHECK_DECL([cds_wfq_dequeue_blocking], [],
+    [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfqueue.h>]]
 )
 AC_CHECK_DECL([futex_async], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
@@ -50,21 +84,31 @@ AC_CHECK_DECL([rcu_thread_offline], [],
 AC_CHECK_DECL([rcu_thread_online], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
-AC_CHECK_DECL([ustctl_create_session],
-	[
-		AC_DEFINE([CONFIG_LTTNG_TOOLS_HAVE_UST], 1)
-		have_ust_test=1
-	],
-	[
-		AC_MSG_WARN([UST header not found. Building without UST support.])
-		have_ust_test=0
-	],
-	[[#include <ust/lttng-ust-ctl.h>]]
+AC_CHECK_DECL([caa_likely], [],
+	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 
-AM_CONDITIONAL([LTTNG_TOOLS_HAVE_UST], [ test "x$have_ust_test" = "x1" ])
+# Check liblttng-ust-ctl library
+AC_ARG_ENABLE(lttng-ust,
+	AS_HELP_STRING([--disable-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
+	lttng_ust_support=$enableval, lttng_ust_support=yes)
+
+AS_IF([test "x$lttng_ust_support" = "xyes"], [
+	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_create_session], [],
+		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])]
+	)
+])
+
+AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl_create_session" = "xyes" ])
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
+
+# Option to only build the consumer daemon and its libraries
+AC_ARG_WITH([consumerd-only],
+	AS_HELP_STRING([--with-consumerd-only],[Only build the consumer daemon [default=no]]),
+	[consumerd_only=$withval],
+	[consumerd_only=no])
+AM_CONDITIONAL([BUILD_CONSUMERD_ONLY], [test "x$consumerd_only" = "xyes"])
 
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
@@ -79,7 +123,7 @@ AX_CONFIG_FEATURE(
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 AC_PROG_CC
-AC_PROG_LIBTOOL
+LT_INIT
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
@@ -108,3 +152,19 @@ AC_CONFIG_FILES([
 ])
 
 AC_OUTPUT
+
+# Mini-report on what will be built
+AS_ECHO("")
+
+AS_ECHO_N("Lttng-UST support: ")
+AS_IF([test "x$lttng_ust_support" = "xyes"], [AS_ECHO("Enabled")],
+	[AS_ECHO("Disabled")]
+)
+
+AS_IF([test "x$consumerd_only" = "xyes"],
+	[AS_ECHO("Only the consumerd daemon will be built.")],
+	[AS_ECHO("All binaries will be built.")]
+)
+
+AS_ECHO("")
+

@@ -145,6 +145,7 @@ struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	enum lttng_event_type type;
 	uint32_t enabled;
+	pid_t pid;
 	/* Per event type configuration */
 	union {
 		struct lttng_event_probe_attr probe;
@@ -188,6 +189,7 @@ struct lttng_session {
 	char name[NAME_MAX];
 	/* The path where traces are written */
 	char path[PATH_MAX];
+	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
 };
 
 /*
@@ -367,5 +369,12 @@ extern int lttng_disable_channel(struct lttng_handle *handle,
  */
 extern int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate);
+
+/*
+ * Set the default channel attributes for a specific domain and an allocated
+ * lttng_channel_attr pointer.
+ */
+extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
+		struct lttng_channel_attr *attr);
 
 #endif /* _LTTNG_H */

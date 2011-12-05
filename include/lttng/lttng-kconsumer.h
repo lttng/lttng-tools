@@ -61,4 +61,9 @@ int lttng_kconsumer_get_produced_snapshot(
 int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
 
+
+int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx);
+int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
+
 #endif /* _LTTNG_KCONSUMER_H */

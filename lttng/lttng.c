@@ -380,7 +380,7 @@ static int parse_args(int argc, char **argv)
 			usage(stderr);
 			goto error;
 		case 'v':
-			opt_verbose = 1;
+			opt_verbose += 1;
 			break;
 		case 'q':
 			opt_quiet = 1;

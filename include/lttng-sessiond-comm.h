@@ -125,12 +125,16 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_META_FAIL,			/* UST open metadata failed */
 	LTTCOMM_UST_START_FAIL,		/* UST start trace failed */
 	LTTCOMM_UST_STOP_FAIL,			/* UST stop trace failed */
-	LTTCOMM_UST_CONSUMER_FAIL,		/* UST consumer start failed */
+	LTTCOMM_UST_CONSUMER64_FAIL,		/* 64-bit UST consumer start failed */
+	LTTCOMM_UST_CONSUMER32_FAIL,		/* 32-bit UST consumer start failed */
 	LTTCOMM_UST_STREAM_FAIL,		/* UST create stream failed */
 	LTTCOMM_UST_DIR_FAIL,			/* UST trace directory creation failed */
 	LTTCOMM_UST_DIR_EXIST,			/* UST trace directory exist */
 	LTTCOMM_UST_NO_SESSION,		/* No UST session found */
 	LTTCOMM_UST_LIST_FAIL,			/* UST listing events failed */
+	LTTCOMM_UST_EVENT_EXIST,        /* UST event exist */
+	LTTCOMM_UST_EVENT_NOT_FOUND,    /* UST event not found */
+	LTTCOMM_UST_CONTEXT_EXIST,      /* UST context exist */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
@@ -227,9 +231,9 @@ struct lttcomm_consumer_msg {
 	} u;
 };
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
-#include <ust/lttng-ust-abi.h>
+#include <lttng/ust-abi.h>
 
 /*
  * Data structure for the commands sent from sessiond to UST.
@@ -266,7 +270,7 @@ struct lttcomm_ust_reply {
 	} u;
 };
 
-#endif /* CONFIG_LTTNG_TOOLS_HAVE_UST */
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 extern int lttcomm_create_unix_sock(const char *pathname);
 extern int lttcomm_connect_unix_sock(const char *pathname);

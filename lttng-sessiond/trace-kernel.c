@@ -88,9 +88,9 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	struct ltt_kernel_session *lks;
 
 	/* Allocate a new ltt kernel session */
-	lks = malloc(sizeof(struct ltt_kernel_session));
+	lks = zmalloc(sizeof(struct ltt_kernel_session));
 	if (lks == NULL) {
-		perror("create kernel session malloc");
+		perror("create kernel session zmalloc");
 		goto error;
 	}
 
@@ -126,15 +126,15 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	int ret;
 	struct ltt_kernel_channel *lkc;
 
-	lkc = malloc(sizeof(struct ltt_kernel_channel));
+	lkc = zmalloc(sizeof(struct ltt_kernel_channel));
 	if (lkc == NULL) {
-		perror("ltt_kernel_channel malloc");
+		perror("ltt_kernel_channel zmalloc");
 		goto error;
 	}
 
-	lkc->channel = malloc(sizeof(struct lttng_channel));
+	lkc->channel = zmalloc(sizeof(struct lttng_channel));
 	if (lkc->channel == NULL) {
-		perror("lttng_channel malloc");
+		perror("lttng_channel zmalloc");
 		goto error;
 	}
 	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
@@ -170,10 +170,10 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	struct ltt_kernel_event *lke;
 	struct lttng_kernel_event *attr;
 
-	lke = malloc(sizeof(struct ltt_kernel_event));
-	attr = malloc(sizeof(struct lttng_kernel_event));
+	lke = zmalloc(sizeof(struct ltt_kernel_event));
+	attr = zmalloc(sizeof(struct lttng_kernel_event));
 	if (lke == NULL || attr == NULL) {
-		perror("kernel event malloc");
+		perror("kernel event zmalloc");
 		goto error;
 	}
 
@@ -242,10 +242,10 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	struct ltt_kernel_metadata *lkm;
 	struct lttng_channel *chan;
 
-	lkm = malloc(sizeof(struct ltt_kernel_metadata));
-	chan = malloc(sizeof(struct lttng_channel));
+	lkm = zmalloc(sizeof(struct ltt_kernel_metadata));
+	chan = zmalloc(sizeof(struct lttng_channel));
 	if (lkm == NULL || chan == NULL) {
-		perror("kernel metadata malloc");
+		perror("kernel metadata zmalloc");
 		goto error;
 	}
 
@@ -283,9 +283,9 @@ struct ltt_kernel_stream *trace_kernel_create_stream(void)
 {
 	struct ltt_kernel_stream *lks;
 
-	lks = malloc(sizeof(struct ltt_kernel_stream));
+	lks = zmalloc(sizeof(struct ltt_kernel_stream));
 	if (lks == NULL) {
-		perror("kernel stream malloc");
+		perror("kernel stream zmalloc");
 		goto error;
 	}
 

@@ -24,7 +24,7 @@
 #include <lttng/lttng-consumer.h>
 #include <errno.h>
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile.
@@ -66,8 +66,13 @@ extern void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan);
 extern int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream);
 extern void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream);
 
+int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx);
+int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
-#else /* CONFIG_LTTNG_TOOLS_HAVE_UST */
+void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
+
+#else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
 int lttng_ustconsumer_on_read_subbuffer_mmap(
@@ -130,6 +135,24 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 {
 }
 
-#endif /* CONFIG_LTTNG_TOOLS_HAVE_UST */
+static inline
+int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	return -ENOSYS;
+}
+
+static inline
+int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
+{
+	return -ENOSYS;
+}
+
+static inline
+void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
+{
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTTNG_USTCONSUMER_H */

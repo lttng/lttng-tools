@@ -38,6 +38,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <config.h>
+#include <urcu/compiler.h>
 
 #include <lttng-consumerd.h>
 #include <lttng-kernel-ctl.h>
@@ -63,7 +64,7 @@ static char command_sock_path[PATH_MAX]; /* Global command socket path */
 static char error_sock_path[PATH_MAX]; /* Global error path */
 static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
-/* the liblttngkconsumerd context */
+/* the liblttngconsumerd context */
 static struct lttng_consumer_local_data *ctx;
 
 /*
@@ -123,9 +124,9 @@ static void usage(void)
 	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(stderr, "  -h, --help                         "
 			"Display this usage.\n");
-	fprintf(stderr, "  -c, --kconsumerd-cmd-sock PATH     "
+	fprintf(stderr, "  -c, --consumerd-cmd-sock PATH     "
 			"Specify path for the command socket\n");
-	fprintf(stderr, "  -e, --kconsumerd-err-sock PATH     "
+	fprintf(stderr, "  -e, --consumerd-err-sock PATH     "
 			"Specify path for the error socket\n");
 	fprintf(stderr, "  -d, --daemonize                    "
 			"Start as a daemon.\n");
@@ -139,7 +140,7 @@ static void usage(void)
 			"Consumer kernel buffers (default).\n");
 	fprintf(stderr, "  -u, --ust                          "
 			"Consumer UST buffers.%s\n",
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 			""
 #else
 			" (support not compiled in)"
@@ -155,15 +156,15 @@ static void parse_args(int argc, char **argv)
 	int c;
 
 	static struct option long_options[] = {
-		{ "kconsumerd-cmd-sock", 1, 0, 'c' },
-		{ "kconsumerd-err-sock", 1, 0, 'e' },
+		{ "consumerd-cmd-sock", 1, 0, 'c' },
+		{ "consumerd-err-sock", 1, 0, 'e' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "help", 0, 0, 'h' },
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
 		{ "version", 0, 0, 'V' },
 		{ "kernel", 0, 0, 'k' },
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 		{ "ust", 0, 0, 'u' },
 #endif
 		{ NULL, 0, 0, 0 }
@@ -207,9 +208,15 @@ static void parse_args(int argc, char **argv)
 		case 'k':
 			opt_type = LTTNG_CONSUMER_KERNEL;
 			break;
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
+#ifdef HAVE_LIBLTTNG_UST_CTL
 		case 'u':
-			opt_type = LTTNG_CONSUMER_UST;
+# if (CAA_BITS_PER_LONG == 64)
+			opt_type = LTTNG_CONSUMER64_UST;
+# elif (CAA_BITS_PER_LONG == 32)
+			opt_type = LTTNG_CONSUMER32_UST;
+# else
+#  error "Unknown bitness"
+# endif
 			break;
 #endif
 		default:
@@ -217,142 +224,6 @@ static void parse_args(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
-}
-
-/*
- * Consume data on a file descriptor and write it on a trace file.
- */
-static int read_subbuffer(struct lttng_consumer_stream *stream)
-{
-	unsigned long len;
-	int err;
-	long ret = 0;
-	int infd = stream->wait_fd;
-
-	DBG("In read_subbuffer (infd : %d)", infd);
-	/* Get the next subbuffer */
-	err = kernctl_get_next_subbuf(infd);
-	if (err != 0) {
-		ret = errno;
-		/*
-		 * This is a debug message even for single-threaded consumer,
-		 * because poll() have more relaxed criterions than get subbuf,
-		 * so get_subbuf may fail for short race windows where poll()
-		 * would issue wakeups.
-		 */
-		DBG("Reserving sub buffer failed (everything is normal, "
-				"it is due to concurrency)");
-		goto end;
-	}
-
-	switch (stream->output) {
-		case LTTNG_EVENT_SPLICE:
-			/* read the whole subbuffer */
-			err = kernctl_get_padded_subbuf_size(infd, &len);
-			if (err != 0) {
-				ret = errno;
-				perror("Getting sub-buffer len failed.");
-				goto end;
-			}
-
-			/* splice the subbuffer to the tracefile */
-			ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream, len);
-			if (ret < 0) {
-				/*
-				 * display the error but continue processing to try
-				 * to release the subbuffer
-				 */
-				ERR("Error splicing to tracefile");
-			}
-			break;
-		case LTTNG_EVENT_MMAP:
-			/* read the used subbuffer size */
-			err = kernctl_get_padded_subbuf_size(infd, &len);
-			if (err != 0) {
-				ret = errno;
-				perror("Getting sub-buffer len failed.");
-				goto end;
-			}
-			/* write the subbuffer to the tracefile */
-			ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len);
-			if (ret < 0) {
-				/*
-				 * display the error but continue processing to try
-				 * to release the subbuffer
-				 */
-				ERR("Error writing to tracefile");
-			}
-			break;
-		default:
-			ERR("Unknown output method");
-			ret = -1;
-	}
-
-	err = kernctl_put_next_subbuf(infd);
-	if (err != 0) {
-		ret = errno;
-		if (errno == EFAULT) {
-			perror("Error in unreserving sub buffer\n");
-		} else if (errno == EIO) {
-			/* Should never happen with newer LTTng versions */
-			perror("Reader has been pushed by the writer, last sub-buffer corrupted.");
-		}
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-static int on_recv_stream(struct lttng_consumer_stream *stream)
-{
-	int ret;
-
-	/* Opening the tracefile in write mode */
-	if (stream->path_name != NULL) {
-		ret = open(stream->path_name,
-				O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
-		if (ret < 0) {
-			ERR("Opening %s", stream->path_name);
-			perror("open");
-			goto error;
-		}
-		stream->out_fd = ret;
-	}
-
-	if (stream->output == LTTNG_EVENT_MMAP) {
-		/* get the len of the mmap region */
-		unsigned long mmap_len;
-
-		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
-		if (ret != 0) {
-			ret = errno;
-			perror("kernctl_get_mmap_len");
-			goto error_close_fd;
-		}
-		stream->mmap_len = (size_t) mmap_len;
-
-		stream->mmap_base = mmap(NULL, stream->mmap_len,
-				PROT_READ, MAP_PRIVATE, stream->wait_fd, 0);
-		if (stream->mmap_base == MAP_FAILED) {
-			perror("Error mmaping");
-			ret = -1;
-			goto error_close_fd;
-		}
-	}
-
-	/* we return 0 to let the library handle the FD internally */
-	return 0;
-
-error_close_fd:
-	{
-		int err;
-
-		err = close(stream->out_fd);
-		assert(!err);
-	}
-error:
-	return ret;
 }
 
 /*
@@ -378,23 +249,44 @@ int main(int argc, char **argv)
 	}
 
 	if (strlen(command_sock_path) == 0) {
-		snprintf(command_sock_path, PATH_MAX,
-			opt_type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_CMD_SOCK_PATH :
-				USTCONSUMERD_CMD_SOCK_PATH);
+		switch (opt_type) {
+		case LTTNG_CONSUMER_KERNEL:
+			strcpy(command_sock_path, KCONSUMERD_CMD_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER64_UST:
+			strcpy(command_sock_path, USTCONSUMERD64_CMD_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER32_UST:
+			strcpy(command_sock_path, USTCONSUMERD32_CMD_SOCK_PATH);
+			break;
+		default:
+			WARN("Unknown consumerd type");
+			goto error;
+		}
 	}
 	/* create the consumer instance with and assign the callbacks */
-	ctx = lttng_consumer_create(opt_type, read_subbuffer, NULL, on_recv_stream, NULL);
+	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
+		NULL, lttng_consumer_on_recv_stream, NULL);
 	if (ctx == NULL) {
 		goto error;
 	}
 
 	lttng_consumer_set_command_sock_path(ctx, command_sock_path);
 	if (strlen(error_sock_path) == 0) {
-		snprintf(error_sock_path, PATH_MAX,
-			opt_type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_ERR_SOCK_PATH :
-				USTCONSUMERD_ERR_SOCK_PATH);
+		switch (opt_type) {
+		case LTTNG_CONSUMER_KERNEL:
+			strcpy(error_sock_path, KCONSUMERD_ERR_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER64_UST:
+			strcpy(error_sock_path, USTCONSUMERD64_ERR_SOCK_PATH);
+			break;
+		case LTTNG_CONSUMER32_UST:
+			strcpy(error_sock_path, USTCONSUMERD32_ERR_SOCK_PATH);
+			break;
+		default:
+			WARN("Unknown consumerd type");
+			goto error;
+		}
 	}
 
 	if (set_signal_handler() < 0) {

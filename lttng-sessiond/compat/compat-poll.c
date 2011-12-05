@@ -43,7 +43,7 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 	/* This *must* be freed by using lttng_poll_free() */
 	events->events = zmalloc(size * sizeof(struct pollfd));
 	if (events->events == NULL) {
-		perror("malloc struct pollfd");
+		perror("zmalloc struct pollfd");
 		goto error;
 	}
 
@@ -117,7 +117,7 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 
 	new = zmalloc(new_size * sizeof(struct pollfd));
 	if (new == NULL) {
-		perror("malloc poll del");
+		perror("zmalloc poll del");
 		goto error;
 	}
 

@@ -55,11 +55,12 @@ static struct ltt_session_list ltt_session_list = {
  * Add a ltt_session structure to the global list.
  *
  * The caller MUST acquire the session list lock before.
+ * Returns the unique identifier for the session.
  */
-static void add_session_list(struct ltt_session *ls)
+static int add_session_list(struct ltt_session *ls)
 {
 	cds_list_add(&ls->list, &ltt_session_list.head);
-	ltt_session_list.count++;
+	return ++ltt_session_list.count;
 }
 
 /*
@@ -175,9 +176,9 @@ int session_create(char *name, char *path)
 	}
 
 	/* Allocate session data structure */
-	new_session = malloc(sizeof(struct ltt_session));
+	new_session = zmalloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
-		perror("malloc");
+		perror("zmalloc");
 		ret = LTTCOMM_FATAL;
 		goto error_malloc;
 	}
@@ -215,10 +216,10 @@ int session_create(char *name, char *path)
 
 	/* Add new session to the session list */
 	session_lock_list();
-	add_session_list(new_session);
+	new_session->uid = add_session_list(new_session);
 	session_unlock_list();
 
-	DBG("Tracing session %s created in %s", name, path);
+	DBG("Tracing session %s created in %s with UID %d", name, path, new_session->uid);
 
 	return LTTCOMM_OK;
 

@@ -9,6 +9,6 @@ lttng_consumerd_LDADD = \
 	   $(top_builddir)/liblttng-consumer/liblttng-consumer.la \
 	   $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la
 
-if LTTNG_TOOLS_HAVE_UST
-lttng_consumerd_LDADD += -lustctl
+if HAVE_LIBLTTNG_UST_CTL
+lttng_consumerd_LDADD += -llttng-ust-ctl
 endif

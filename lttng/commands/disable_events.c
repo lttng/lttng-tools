@@ -30,12 +30,12 @@
 #include "../utils.h"
 
 static char *opt_event_list;
-static char *opt_kernel;
-static char *opt_cmd_name;
+static int opt_kernel;
 static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static int opt_disable_all;
 static pid_t opt_pid;
 
@@ -53,7 +53,7 @@ static struct poptOption long_options[] = {
 	{"all-events",     'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -69,7 +69,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
-	fprintf(ofp, "  -a, --all-events         Enable all tracepoints\n");
+	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
 	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
@@ -100,6 +100,21 @@ static int disable_events(char *session_name)
 
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_pid != 0) {
+		dom.type = LTTNG_DOMAIN_UST_PID;
+		dom.attr.pid = opt_pid;
+		DBG("PID %d set to lttng handle", opt_pid);
+	} else if (opt_userspace && opt_cmd_name == NULL) {
+		dom.type = LTTNG_DOMAIN_UST;
+		DBG("UST global domain selected");
+	} else if (opt_userspace && opt_cmd_name != NULL) {
+		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
+		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
+		dom.attr.exec_name[NAME_MAX - 1] = '\0';
+	} else {
+		ERR("Please specify a tracer (--kernel or --userspace)");
+		ret = CMD_NOT_IMPLEMENTED;
+		goto error;
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -109,12 +124,14 @@ static int disable_events(char *session_name)
 	}
 
 	if (opt_disable_all) {
-		if (opt_kernel) {
-			ret = lttng_disable_event(handle, NULL, channel_name);
+		ret = lttng_disable_event(handle, NULL, channel_name);
+		if (ret < 0) {
 			goto error;
 		}
 
-		/* TODO: User-space tracer */
+		MSG("All %s events are disabled in channel %s",
+				opt_kernel ? "kernel" : "UST", channel_name);
+		goto end;
 	}
 
 	/* Strip event list */
@@ -122,35 +139,37 @@ static int disable_events(char *session_name)
 	while (event_name != NULL) {
 		/* Kernel tracer action */
 		if (opt_kernel) {
-			DBG("Disabling kernel event %s for channel %s",
+			DBG("Disabling kernel event %s in channel %s",
 					event_name, channel_name);
-
-			ret = lttng_disable_event(handle, event_name, channel_name);
-			if (ret < 0) {
-				MSG("Unable to disable event %s for channel %s",
-						event_name, channel_name);
-			} else {
-				MSG("Kernel event %s disabled for channel %s",
-						event_name, channel_name);
-			}
 		} else if (opt_userspace) {		/* User-space tracer action */
-			/*
-			 * TODO: Waiting on lttng UST 2.0
-			 */
-			if (opt_pid_all) {
-			} else if (opt_pid != 0) {
+			if (!opt_pid_all) {
+				MSG("Only supporting tracing all UST processes (-u --all) for now.");
+				ret = CMD_NOT_IMPLEMENTED;
+				goto error;
 			}
-			ret = CMD_NOT_IMPLEMENTED;
-			goto error;
+			DBG("Disabling UST event %s in channel %s",
+					event_name, channel_name);
 		} else {
 			ERR("Please specify a tracer (--kernel or --userspace)");
 			goto error;
+		}
+
+		ret = lttng_disable_event(handle, event_name, channel_name);
+		if (ret < 0) {
+			MSG("Unable to disable %s event %s in channel %s",
+					opt_kernel ? "kernel" : "UST", event_name,
+					channel_name);
+		} else {
+			MSG("%s event %s disabled in channel %s",
+					opt_kernel ? "kernel" : "UST", event_name,
+					channel_name);
 		}
 
 		/* Next event */
 		event_name = strtok(NULL, ",");
 	}
 
+end:
 error:
 	if (opt_channel_name == NULL) {
 		free(channel_name);
@@ -182,7 +201,6 @@ int cmd_disable_events(int argc, const char **argv)
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
 			break;
 		default:
 			usage(stderr);

@@ -9,7 +9,7 @@ liblttng_consumer_la_LIBADD = \
 		$(top_builddir)/liblttng-kconsumer/liblttng-kconsumer.la
 
 
-if LTTNG_TOOLS_HAVE_UST
+if HAVE_LIBLTTNG_UST_CTL
 liblttng_consumer_la_LIBADD += \
 		$(top_builddir)/liblttng-ustconsumer/liblttng-ustconsumer.la
 endif

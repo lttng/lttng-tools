@@ -334,6 +334,10 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 
 	size = llm.data_size;
 	if (size == 0) {
+		/* If client free with size 0 */
+		if (buf != NULL) {
+			*buf = NULL;
+		}
 		ret = 0;
 		goto end;
 	}
@@ -425,7 +429,7 @@ int lttng_start_tracing(struct lttng_handle *handle)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -459,7 +463,8 @@ int lttng_add_context(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. Both are mandatory */
+	if (handle == NULL || ctx == NULL) {
 		return -1;
 	}
 
@@ -474,9 +479,7 @@ int lttng_add_context(struct lttng_handle *handle,
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	if (ctx) {
-		memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
-	}
+	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
 
 	copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -492,10 +495,11 @@ int lttng_enable_event(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle || ev == NULL) {
+	if (handle == NULL || ev == NULL) {
 		return -1;
 	}
 
+	/* If no channel name, we put the default name */
 	if (channel_name == NULL) {
 		copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME,
 				sizeof(lsm.u.enable.channel_name));
@@ -527,7 +531,7 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -562,13 +566,14 @@ int lttng_enable_channel(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/*
+	 * NULL arguments are forbidden. No default values.
+	 */
+	if (handle == NULL || chan == NULL) {
 		return -1;
 	}
 
-	if (chan) {
-		memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
-	}
+	memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
 
@@ -587,16 +592,15 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. Both are mandatory */
+	if (handle == NULL || name == NULL) {
 		return -1;
 	}
 
-	if (name) {
-		copy_string(lsm.u.disable.channel_name, name,
-				sizeof(lsm.u.disable.channel_name));
-	}
-
 	lsm.cmd_type = LTTNG_DISABLE_CHANNEL;
+
+	copy_string(lsm.u.disable.channel_name, name,
+			sizeof(lsm.u.disable.channel_name));
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -618,7 +622,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -666,7 +670,7 @@ int lttng_destroy_session(struct lttng_handle *handle)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -706,7 +710,7 @@ int lttng_list_domains(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -732,7 +736,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	if (handle == NULL) {
 		return -1;
 	}
 
@@ -759,7 +763,8 @@ int lttng_list_events(struct lttng_handle *handle,
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. An handle and channel name are mandatory */
+	if (handle == NULL || channel_name == NULL) {
 		return -1;
 	}
 
@@ -780,13 +785,15 @@ int lttng_list_events(struct lttng_handle *handle,
 }
 
 /*
- *  lttng_set_tracing_group
- *
- *  Set tracing group variable with name. This function
- *  allocate memory pointed by tracing_group.
+ * Set tracing group variable with name. This function allocate memory pointed
+ * by tracing_group.
  */
 int lttng_set_tracing_group(const char *name)
 {
+	if (name == NULL) {
+		return -1;
+	}
+
 	if (asprintf(&tracing_group, "%s", name) < 0) {
 		return -ENOMEM;
 	}
@@ -802,7 +809,8 @@ int lttng_calibrate(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
-	if (!handle) {
+	/* Safety check. NULL pointer are forbidden */
+	if (handle == NULL || calibrate == NULL) {
 		return -1;
 	}
 
@@ -812,6 +820,46 @@ int lttng_calibrate(struct lttng_handle *handle,
 	memcpy(&lsm.u.calibrate, calibrate, sizeof(lsm.u.calibrate));
 
 	return ask_sessiond(&lsm, NULL);
+}
+
+/*
+ * Set default channel attributes.
+ */
+void lttng_channel_set_default_attr(struct lttng_domain *domain,
+		struct lttng_channel_attr *attr)
+{
+	/* Safety check */
+	if (attr == NULL || domain == NULL) {
+		return;
+	}
+
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+		attr->subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
+		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
+		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		break;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+
+		attr->subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
+		attr->num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
+		attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
+		break;
+	default:
+		/* Default behavior */
+		memset(attr, 0, sizeof(struct lttng_channel_attr));
+		break;
+	}
 }
 
 /*

@@ -34,10 +34,10 @@
 static char *opt_event_list;
 static int opt_event_type;
 static char *opt_kernel;
-static char *opt_cmd_name;
 static char *opt_session_name;
 static int opt_pid_all;
 static int opt_userspace;
+static char *opt_cmd_name;
 static int opt_enable_all;
 static pid_t opt_pid;
 static char *opt_probe;
@@ -47,13 +47,13 @@ static char *opt_channel_name;
 
 enum {
 	OPT_HELP = 1,
-	OPT_USERSPACE,
 	OPT_TRACEPOINT,
 	OPT_MARKER,
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
+	OPT_USERSPACE,
 };
 
 static struct lttng_handle *handle;
@@ -65,15 +65,21 @@ static struct poptOption long_options[] = {
 	{"all-events",     'a', POPT_ARG_VAL, &opt_enable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, 0, OPT_USERSPACE, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
-	{"probe",         0,   POPT_ARG_STRING, 0, OPT_PROBE, 0, 0},
-	{"function",       0,   POPT_ARG_STRING, 0, OPT_FUNCTION, 0, 0},
-	{"function:entry", 0,   POPT_ARG_STRING, 0, OPT_FUNCTION_ENTRY, 0, 0},
-	{"syscall",        0,     POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
+	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
+	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
+#if 0
+	/*
+	 * Currently removed from lttng kernel tracer. Removed from
+	 * lttng UI to discourage its use.
+	 */
+	{"function:entry", 0,   POPT_ARG_STRING, &opt_function_entry_symbol, OPT_FUNCTION_ENTRY, 0, 0},
+#endif
+	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -103,8 +109,10 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
+#if 0
 	fprintf(ofp, "    --function:entry symbol\n");
 	fprintf(ofp, "                           Function tracer event\n");
+#endif
 	fprintf(ofp, "    --syscall              System call event\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
@@ -393,10 +401,6 @@ int cmd_enable_events(int argc, const char **argv)
 			usage(stderr);
 			ret = CMD_SUCCESS;
 			goto end;
-		case OPT_USERSPACE:
-			opt_userspace = 1;
-			opt_cmd_name = poptGetOptArg(pc);
-			break;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
 			break;
@@ -405,18 +409,18 @@ int cmd_enable_events(int argc, const char **argv)
 			goto end;
 		case OPT_PROBE:
 			opt_event_type = LTTNG_EVENT_PROBE;
-			opt_probe = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
-			opt_function = poptGetOptArg(pc);
 			break;
 		case OPT_FUNCTION_ENTRY:
 			opt_event_type = LTTNG_EVENT_FUNCTION_ENTRY;
-			opt_function_entry_symbol = poptGetOptArg(pc);
 			break;
 		case OPT_SYSCALL:
 			opt_event_type = LTTNG_EVENT_SYSCALL;
+			break;
+		case OPT_USERSPACE:
+			opt_userspace = 1;
 			break;
 		default:
 			usage(stderr);

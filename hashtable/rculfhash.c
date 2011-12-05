@@ -605,7 +605,7 @@ int ht_get_split_count_index(unsigned long hash)
 
 	assert(split_count_mask >= 0);
 	cpu = sched_getcpu();
-	if (unlikely(cpu < 0))
+	if (caa_unlikely(cpu < 0))
 		return hash & split_count_mask;
 	else
 		return cpu & split_count_mask;
@@ -624,11 +624,11 @@ void ht_count_add(struct cds_lfht *ht, unsigned long size, unsigned long hash)
 	unsigned long split_count;
 	int index;
 
-	if (unlikely(!ht->split_count))
+	if (caa_unlikely(!ht->split_count))
 		return;
 	index = ht_get_split_count_index(hash);
 	split_count = uatomic_add_return(&ht->split_count[index].add, 1);
-	if (unlikely(!(split_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
+	if (caa_unlikely(!(split_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
 		long count;
 
 		dbg_printf("add split count %lu\n", split_count);
@@ -651,11 +651,11 @@ void ht_count_del(struct cds_lfht *ht, unsigned long size, unsigned long hash)
 	unsigned long split_count;
 	int index;
 
-	if (unlikely(!ht->split_count))
+	if (caa_unlikely(!ht->split_count))
 		return;
 	index = ht_get_split_count_index(hash);
 	split_count = uatomic_add_return(&ht->split_count[index].del, 1);
-	if (unlikely(!(split_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
+	if (caa_unlikely(!(split_count & ((1UL << COUNT_COMMIT_ORDER) - 1)))) {
 		long count;
 
 		dbg_printf("del split count %lu\n", split_count);
@@ -807,12 +807,12 @@ void _cds_lfht_gc_bucket(struct cds_lfht_node *dummy, struct cds_lfht_node *node
 		 */
 		assert(dummy != node);
 		for (;;) {
-			if (unlikely(is_end(iter)))
+			if (caa_unlikely(is_end(iter)))
 				return;
-			if (likely(clear_flag(iter)->p.reverse_hash > node->p.reverse_hash))
+			if (caa_likely(clear_flag(iter)->p.reverse_hash > node->p.reverse_hash))
 				return;
 			next = rcu_dereference(clear_flag(iter)->p.next);
-			if (likely(is_removed(next)))
+			if (caa_likely(is_removed(next)))
 				break;
 			iter_prev = clear_flag(iter);
 			iter = next;
@@ -916,9 +916,9 @@ void _cds_lfht_add(struct cds_lfht *ht,
 		iter = rcu_dereference(iter_prev->p.next);
 		assert(iter_prev->p.reverse_hash <= node->p.reverse_hash);
 		for (;;) {
-			if (unlikely(is_end(iter)))
+			if (caa_unlikely(is_end(iter)))
 				goto insert;
-			if (likely(clear_flag(iter)->p.reverse_hash > node->p.reverse_hash))
+			if (caa_likely(clear_flag(iter)->p.reverse_hash > node->p.reverse_hash))
 				goto insert;
 
 			/* dummy node is the first node of the identical-hash-value chain */
@@ -926,7 +926,7 @@ void _cds_lfht_add(struct cds_lfht *ht,
 				goto insert;
 
 			next = rcu_dereference(clear_flag(iter)->p.next);
-			if (unlikely(is_removed(next)))
+			if (caa_unlikely(is_removed(next)))
 				goto gc_node;
 
 			/* uniquely add */
@@ -1016,7 +1016,7 @@ int _cds_lfht_del(struct cds_lfht *ht, unsigned long size,
 		struct cds_lfht_node *new_next;
 
 		next = old;
-		if (unlikely(is_removed(next)))
+		if (caa_unlikely(is_removed(next)))
 			return -ENOENT;
 		if (dummy_removal)
 			assert(is_dummy(next));
@@ -1409,20 +1409,20 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
 	node = rcu_dereference(dummy_node->p.next);
 	node = clear_flag(node);
 	for (;;) {
-		if (unlikely(is_end(node))) {
+		if (caa_unlikely(is_end(node))) {
 			node = next = NULL;
 			break;
 		}
-		if (unlikely(node->p.reverse_hash > reverse_hash)) {
+		if (caa_unlikely(node->p.reverse_hash > reverse_hash)) {
 			node = next = NULL;
 			break;
 		}
 		next = rcu_dereference(node->p.next);
 		assert(node == clear_flag(node));
-		if (likely(!is_removed(next))
+		if (caa_likely(!is_removed(next))
 		    && !is_dummy(next)
 		    && node->p.reverse_hash == reverse_hash
-		    && likely(!ht->compare_fct(node->key, node->key_len, key, key_len))) {
+		    && caa_likely(!ht->compare_fct(node->key, node->key_len, key, key_len))) {
 				break;
 		}
 		node = clear_flag(next);
@@ -1447,18 +1447,18 @@ void cds_lfht_next_duplicate(struct cds_lfht *ht, struct cds_lfht_iter *iter)
 	node = clear_flag(next);
 
 	for (;;) {
-		if (unlikely(is_end(node))) {
+		if (caa_unlikely(is_end(node))) {
 			node = next = NULL;
 			break;
 		}
-		if (unlikely(node->p.reverse_hash > reverse_hash)) {
+		if (caa_unlikely(node->p.reverse_hash > reverse_hash)) {
 			node = next = NULL;
 			break;
 		}
 		next = rcu_dereference(node->p.next);
-		if (likely(!is_removed(next))
+		if (caa_likely(!is_removed(next))
 		    && !is_dummy(next)
-		    && likely(!ht->compare_fct(node->key, node->key_len, key, key_len))) {
+		    && caa_likely(!ht->compare_fct(node->key, node->key_len, key, key_len))) {
 				break;
 		}
 		node = clear_flag(next);
@@ -1474,12 +1474,12 @@ void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter)
 
 	node = clear_flag(iter->next);
 	for (;;) {
-		if (unlikely(is_end(node))) {
+		if (caa_unlikely(is_end(node))) {
 			node = next = NULL;
 			break;
 		}
 		next = rcu_dereference(node->p.next);
-		if (likely(!is_removed(next))
+		if (caa_likely(!is_removed(next))
 		    && !is_dummy(next)) {
 				break;
 		}

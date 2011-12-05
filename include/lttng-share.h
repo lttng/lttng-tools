@@ -56,7 +56,7 @@
 /* Must be a power of 2 */
 #define DEFAULT_UST_CHANNEL_SUBBUF_NUM      4
 /* See lttng-ust.h enum lttng_ust_output */
-#define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_UST_MMAP
+#define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
 
 /*
  * Default timeout value for the sem_timedwait() call. Blocking forever is not

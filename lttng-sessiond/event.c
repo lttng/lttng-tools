@@ -23,16 +23,14 @@
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
-#ifdef CONFIG_LTTNG_TOOLS_HAVE_UST
-#include <ust/lttng-ust-ctl.h>
-#else
-#include "lttng-ust-ctl.h"
-#endif
-
 #include "channel.h"
 #include "event.h"
 #include "hashtable.h"
-#include "kernel-ctl.h"
+#include "kernel.h"
+#include "ust-ctl.h"
+#include "ust-app.h"
+#include "trace-kernel.h"
+#include "trace-ust.h"
 
 /*
  * Setup a lttng_event used to enable *all* syscall tracing.
@@ -163,14 +161,16 @@ int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 {
 	int size, i, ret;
 	struct ltt_kernel_event *kevent;
-	struct lttng_event *event_list;
+	struct lttng_event *event_list = NULL;
 
 	/* For each event in the kernel session */
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
-		ret = kernel_enable_event(kevent);
-		if (ret < 0) {
-			/* Enable failed but still continue */
-			continue;
+		if (kevent->enabled == 0) {
+			ret = kernel_enable_event(kevent);
+			if (ret < 0) {
+				/* Enable failed but still continue */
+				continue;
+			}
 		}
 	}
 
@@ -193,6 +193,7 @@ int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 		}
 	}
 	free(event_list);
+
 	ret = LTTCOMM_OK;
 end:
 	return ret;
@@ -214,8 +215,14 @@ int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
 
 	ret = kernel_create_event(&event, kchan);
 	if (ret < 0) {
+		if (ret == -EEXIST) {
+			ret = LTTCOMM_KERN_EVENT_EXIST;
+		} else {
+			ret = LTTCOMM_KERN_ENABLE_FAIL;
+		}
 		goto end;
 	}
+
 	ret = LTTCOMM_OK;
 end:
 	return ret;
@@ -241,35 +248,66 @@ end:
 /*
  * Enable UST tracepoint event for a channel from a UST session.
  */
-#ifdef DISABLE
-int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
+int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan, struct lttng_event *event)
 {
-	int ret;
-	struct lttng_ust_event ltt_uevent;
-	struct object_data *obj_event;
+	int ret, to_create = 0;
+	struct ltt_ust_event *uevent;
 
-	strncpy(ltt_uevent.name, uevent->attr.name, sizeof(ltt_uevent.name));
-	ltt_uevent.name[sizeof(ltt_uevent.name) - 1] = '\0';
-	/* TODO: adjust to other instrumentation types */
-	ltt_uevent.instrumentation = LTTNG_UST_TRACEPOINT;
-
-	ret = ustctl_create_event(app->key.sock, &ltt_uevent,
-			uchan->obj, &obj_event);
-	if (ret < 0) {
-		DBG("Error ustctl create event %s for app pid: %d, sock: %d ret %d",
-				uevent->attr.name, app->key.pid, app->key.sock, ret);
-		goto next;
+	uevent = trace_ust_find_event_by_name(uchan->events, event->name);
+	if (uevent == NULL) {
+		uevent = trace_ust_create_event(event);
+		if (uevent == NULL) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+		to_create = 1;
 	}
 
-	uevent->obj = obj_event;
-	uevent->handle = obj_event->handle;
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+	{
+		if (to_create) {
+			/* Create event on all UST registered apps for session */
+			ret = ust_app_create_event_glb(usess, uchan, uevent);
+		} else {
+			/* Enable event on all UST registered apps for session */
+			ret = ust_app_enable_event_glb(usess, uchan, uevent);
+		}
+
+		if (ret < 0) {
+			if (ret == -EEXIST) {
+				ret = LTTCOMM_UST_EVENT_EXIST;
+			} else {
+				ret = LTTCOMM_UST_ENABLE_FAIL;
+			}
+			goto error;
+		}
+
+		DBG("Event UST %s added to channel %s", uevent->attr.name,
+				uchan->name);
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
 	uevent->enabled = 1;
-	ret = LTTCOMM_OK;
-end:
+	/* Add ltt ust event to channel */
+	rcu_read_lock();
+	hashtable_add_unique(uchan->events, &uevent->node);
+	rcu_read_unlock();
+
+	return LTTCOMM_OK;
+
+error:
+	trace_ust_destroy_event(uevent);
 	return ret;
 }
-#endif
 
 #ifdef DISABLE
 int event_ust_disable_tracepoint(struct ltt_ust_session *ustsession,

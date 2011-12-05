@@ -50,12 +50,14 @@
 #include "event.h"
 #include "futex.h"
 #include "hashtable.h"
-#include "kernel-ctl.h"
+#include "kernel.h"
 #include "lttng-sessiond.h"
 #include "shm.h"
 #include "ust-app.h"
 #include "ust-ctl.h"
 #include "utils.h"
+
+#define CONSUMERD_FILE	"lttng-consumerd"
 
 struct consumer_data {
 	enum lttng_consumer_type type;
@@ -98,9 +100,18 @@ static pid_t ppid;          /* Parent PID for --sig-parent option */
 /* Consumer daemon specific control data */
 static struct consumer_data kconsumer_data = {
 	.type = LTTNG_CONSUMER_KERNEL,
+	.err_unix_sock_path = KCONSUMERD_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = KCONSUMERD_CMD_SOCK_PATH,
 };
-static struct consumer_data ustconsumer_data = {
-	.type = LTTNG_CONSUMER_UST,
+static struct consumer_data ustconsumer64_data = {
+	.type = LTTNG_CONSUMER64_UST,
+	.err_unix_sock_path = USTCONSUMERD64_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = USTCONSUMERD64_CMD_SOCK_PATH,
+};
+static struct consumer_data ustconsumer32_data = {
+	.type = LTTNG_CONSUMER32_UST,
+	.err_unix_sock_path = USTCONSUMERD32_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = USTCONSUMERD32_CMD_SOCK_PATH,
 };
 
 static int dispatch_thread_exit;
@@ -158,6 +169,67 @@ static struct ust_cmd_queue ust_cmd_queue;
  * session_lock_list and session_unlock_list for lock acquisition.
  */
 static struct ltt_session_list *session_list_ptr;
+
+int ust_consumerd64_fd = -1;
+int ust_consumerd32_fd = -1;
+
+static const char *consumerd32_path =
+	__stringify(CONFIG_CONSUMERD32_PATH);
+static const char *consumerd64_path =
+	__stringify(CONFIG_CONSUMERD64_PATH);
+static const char *consumerd32_libdir =
+	__stringify(CONFIG_CONSUMERD32_LIBDIR);
+static const char *consumerd64_libdir =
+	__stringify(CONFIG_CONSUMERD64_LIBDIR);
+
+static
+void setup_consumerd_path(void)
+{
+	const char *path, *libdir;
+
+	/*
+	 * Allow INSTALL_BIN_PATH to be used as a target path for the
+	 * native architecture size consumer if CONFIG_CONSUMER*_PATH
+	 * has not been defined.
+	 */
+#if (CAA_BITS_PER_LONG == 32)
+	if (!consumerd32_path[0]) {
+		consumerd32_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	}
+	if (!consumerd32_libdir[0]) {
+		consumerd32_libdir = INSTALL_LIB_PATH;
+	}
+#elif (CAA_BITS_PER_LONG == 64)
+	if (!consumerd64_path[0]) {
+		consumerd64_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	}
+	if (!consumerd64_libdir[0]) {
+		consumerd64_libdir = INSTALL_LIB_PATH;
+	}
+#else
+#error "Unknown bitness"
+#endif
+
+	/*
+	 * runtime env. var. overrides the build default.
+	 */
+	path = getenv("LTTNG_CONSUMERD32_PATH");
+	if (path) {
+		consumerd32_path = path;
+	}
+	path = getenv("LTTNG_CONSUMERD64_PATH");
+	if (path) {
+		consumerd64_path = path;
+	}
+	libdir = getenv("LTTNG_TOOLS_CONSUMERD32_LIBDIR");
+	if (libdir) {
+		consumerd32_libdir = libdir;
+	}
+	libdir = getenv("LTTNG_TOOLS_CONSUMERD64_LIBDIR");
+	if (libdir) {
+		consumerd64_libdir = libdir;
+	}
+}
 
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
@@ -282,21 +354,22 @@ error:
  */
 static void teardown_kernel_session(struct ltt_session *session)
 {
-	if (session->kernel_session != NULL) {
-		DBG("Tearing down kernel session");
-
-		/*
-		 * If a custom kernel consumer was registered, close the socket before
-		 * tearing down the complete kernel session structure
-		 */
-		if (session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
-			lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
-		}
-
-		trace_kernel_destroy_session(session->kernel_session);
-		/* Extra precaution */
-		session->kernel_session = NULL;
+	if (!session->kernel_session) {
+		DBG3("No kernel session when tearingdown session");
+		return;
 	}
+
+	DBG("Tearing down kernel session");
+
+	/*
+	 * If a custom kernel consumer was registered, close the socket before
+	 * tearing down the complete kernel session structure
+	 */
+	if (session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
+		lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
+	}
+
+	trace_kernel_destroy_session(session->kernel_session);
 }
 
 /*
@@ -305,7 +378,19 @@ static void teardown_kernel_session(struct ltt_session *session)
  */
 static void teardown_ust_session(struct ltt_session *session)
 {
+	int ret;
+
+	if (!session->ust_session) {
+		DBG3("No UST session when tearingdown session");
+		return;
+	}
+
 	DBG("Tearing down UST session(s)");
+
+	ret = ust_app_destroy_trace_all(session->ust_session);
+	if (ret) {
+		ERR("Error in ust_app_destroy_trace_all");
+	}
 
 	trace_ust_destroy_session(session->ust_session);
 }
@@ -339,12 +424,6 @@ static void cleanup(void)
 	struct ltt_session *sess, *stmp;
 
 	DBG("Cleaning up");
-
-	/* <fun> */
-	MSG("%c[%d;%dm*** assert failed *** ==> %c[%dm%c[%d;%dm"
-		"Matthew, BEET driven development works!%c[%dm",
-		27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
-	/* </fun> */
 
 	if (is_root) {
 		DBG("Removing %s directory", LTTNG_RUNDIR);
@@ -409,6 +488,12 @@ static void cleanup(void)
 
 	bench_close();
 	/* END BENCHMARK */
+
+	/* <fun> */
+	MSG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
+			"Matthew, BEET driven development works!%c[%dm",
+			27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
+	/* </fun> */
 }
 
 /*
@@ -613,9 +698,9 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
 
 	buf_size = size;
 
-	cmd_ctx->llm = malloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
+	cmd_ctx->llm = zmalloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
 	if (cmd_ctx->llm == NULL) {
-		perror("malloc");
+		perror("zmalloc");
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -734,6 +819,21 @@ error:
 	session_unlock(session);
 	session_unlock_list();
 	return ret;
+}
+
+/*
+ * For each tracing session, update newly registered apps.
+ */
+static void update_ust_app(int app_sock)
+{
+	struct ltt_session *sess, *stmp;
+
+	/* For all tracing session(s) */
+	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
+		if (sess->ust_session) {
+			ust_app_global_update(sess->ust_session, app_sock);
+		}
+	}
 }
 
 /*
@@ -1077,13 +1177,20 @@ static void *thread_manage_apps(void *data)
 					/* Register applicaton to the session daemon */
 					ret = ust_app_register(&ust_cmd.reg_msg,
 							ust_cmd.sock);
-					if (ret < 0) {
-						/* Only critical ENOMEM error can be returned here */
+					if (ret == -ENOMEM) {
 						goto error;
+					} else if (ret < 0) {
+						break;
 					}
 					tracepoint(ust_register_add_stop);
 
 					tracepoint(ust_register_done_start);
+					/*
+					 * Add channel(s) and event(s) to newly registered apps
+					 * from lttng global UST domain.
+					 */
+					update_ust_app(ust_cmd.sock);
+
 					ret = ustctl_register_done(ust_cmd.sock);
 					if (ret < 0) {
 						/*
@@ -1119,7 +1226,7 @@ static void *thread_manage_apps(void *data)
 						goto error;
 					}
 
-					/* Socket closed */
+					/* Socket closed on remote end. */
 					ust_app_unregister(pollfd);
 					break;
 				}
@@ -1296,9 +1403,9 @@ static void *thread_registration_apps(void *data)
 					}
 
 					/* Create UST registration command for enqueuing */
-					ust_cmd = malloc(sizeof(struct ust_command));
+					ust_cmd = zmalloc(sizeof(struct ust_command));
 					if (ust_cmd == NULL) {
-						perror("ust command malloc");
+						perror("ust command zmalloc");
 						goto error;
 					}
 
@@ -1477,12 +1584,97 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
 			execl(INSTALL_BIN_PATH "/lttng-consumerd",
-					"lttng-consumerd", verbosity, "-k", NULL);
+					"lttng-consumerd", verbosity, "-k",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
 			break;
-		case LTTNG_CONSUMER_UST:
-			execl(INSTALL_BIN_PATH "/lttng-consumerd",
-					"lttng-consumerd", verbosity, "-u", NULL);
+		case LTTNG_CONSUMER64_UST:
+		{
+			char *tmpnew = NULL;
+
+			if (consumerd64_libdir[0] != '\0') {
+				char *tmp;
+				size_t tmplen;
+
+				tmp = getenv("LD_LIBRARY_PATH");
+				if (!tmp) {
+					tmp = "";
+				}
+				tmplen = strlen("LD_LIBRARY_PATH=")
+					+ strlen(consumerd64_libdir) + 1 /* : */ + strlen(tmp);
+				tmpnew = zmalloc(tmplen + 1 /* \0 */);
+				if (!tmpnew) {
+					ret = -ENOMEM;
+					goto error;
+				}
+				strcpy(tmpnew, "LD_LIBRARY_PATH=");
+				strcat(tmpnew, consumerd64_libdir);
+				if (tmp[0] != '\0') {
+					strcat(tmpnew, ":");
+					strcat(tmpnew, tmp);
+				}
+				ret = putenv(tmpnew);
+				if (ret) {
+					ret = -errno;
+					goto error;
+				}
+			}
+			ret = execl(consumerd64_path, verbosity, "-u",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
+			if (consumerd64_libdir[0] != '\0') {
+				free(tmpnew);
+			}
+			if (ret) {
+				goto error;
+			}
 			break;
+		}
+		case LTTNG_CONSUMER32_UST:
+		{
+			char *tmpnew = NULL;
+
+			if (consumerd32_libdir[0] != '\0') {
+				char *tmp;
+				size_t tmplen;
+
+				tmp = getenv("LD_LIBRARY_PATH");
+				if (!tmp) {
+					tmp = "";
+				}
+				tmplen = strlen("LD_LIBRARY_PATH=")
+					+ strlen(consumerd32_libdir) + 1 /* : */ + strlen(tmp);
+				tmpnew = zmalloc(tmplen + 1 /* \0 */);
+				if (!tmpnew) {
+					ret = -ENOMEM;
+					goto error;
+				}
+				strcpy(tmpnew, "LD_LIBRARY_PATH=");
+				strcat(tmpnew, consumerd32_libdir);
+				if (tmp[0] != '\0') {
+					strcat(tmpnew, ":");
+					strcat(tmpnew, tmp);
+				}
+				ret = putenv(tmpnew);
+				if (ret) {
+					ret = -errno;
+					goto error;
+				}
+			}
+			ret = execl(consumerd32_path, verbosity, "-u",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
+			if (consumerd32_libdir[0] != '\0') {
+				free(tmpnew);
+			}
+			if (ret) {
+				goto error;
+			}
+			break;
+		}
 		default:
 			perror("unknown consumer type");
 			exit(EXIT_FAILURE);
@@ -1497,6 +1689,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		perror("start consumer fork");
 		ret = -errno;
 	}
+error:
 	return ret;
 }
 
@@ -1733,10 +1926,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	DBG("Creating UST session");
 
-	session_lock_list();
-	uid = session_list_ptr->count;
-	session_unlock_list();
-
+	uid = session->uid;
 	lus = trace_ust_create_session(session->path, uid, domain);
 	if (lus == NULL) {
 		ret = LTTCOMM_UST_SESS_FAIL;
@@ -1759,6 +1949,7 @@ static int create_ust_session(struct ltt_session *session,
 		/* No ustctl for the global UST domain */
 		break;
 	default:
+		ERR("Unknown UST domain on create session %d", domain->type);
 		goto error;
 	}
 	session->ust_session = lus;
@@ -1825,6 +2016,7 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 		sessions[i].path[PATH_MAX - 1] = '\0';
 		strncpy(sessions[i].name, session->name, NAME_MAX);
 		sessions[i].name[NAME_MAX - 1] = '\0';
+		sessions[i].enabled = session->enabled;
 		i++;
 	}
 }
@@ -1832,7 +2024,7 @@ static void list_lttng_sessions(struct lttng_session *sessions)
 /*
  * Fill lttng_channel array of all channels.
  */
-static void list_lttng_channels(struct ltt_session *session,
+static void list_lttng_channels(int domain, struct ltt_session *session,
 		struct lttng_channel *channels)
 {
 	int i = 0;
@@ -1840,59 +2032,180 @@ static void list_lttng_channels(struct ltt_session *session,
 
 	DBG("Listing channels for session %s", session->name);
 
-	/* Kernel channels */
-	if (session->kernel_session != NULL) {
-		cds_list_for_each_entry(kchan,
-				&session->kernel_session->channel_list.head, list) {
-			/* Copy lttng_channel struct to array */
-			memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
-			channels[i].enabled = kchan->enabled;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		/* Kernel channels */
+		if (session->kernel_session != NULL) {
+			cds_list_for_each_entry(kchan,
+					&session->kernel_session->channel_list.head, list) {
+				/* Copy lttng_channel struct to array */
+				memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
+				channels[i].enabled = kchan->enabled;
+				i++;
+			}
+		}
+		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		struct cds_lfht_iter iter;
+		struct ltt_ust_channel *uchan;
+
+		cds_lfht_for_each_entry(session->ust_session->domain_global.channels,
+				&iter, uchan, node) {
+			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
+			channels[i].attr.overwrite = uchan->attr.overwrite;
+			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
+			channels[i].attr.num_subbuf = uchan->attr.num_subbuf;
+			channels[i].attr.switch_timer_interval =
+				uchan->attr.switch_timer_interval;
+			channels[i].attr.read_timer_interval =
+				uchan->attr.read_timer_interval;
+			channels[i].enabled = uchan->enabled;
+			switch (uchan->attr.output) {
+			case LTTNG_UST_MMAP:
+			default:
+				channels[i].attr.output = LTTNG_EVENT_MMAP;
+				break;
+			}
 			i++;
 		}
+		break;
 	}
-
-	/* TODO: Missing UST listing */
+	default:
+		break;
+	}
 }
 
 /*
- * Fill lttng_event array of all events in the channel.
+ * Create a list of ust global domain events.
  */
-static void list_lttng_events(struct ltt_kernel_channel *kchan,
-		struct lttng_event *events)
+static int list_lttng_ust_global_events(char *channel_name,
+		struct ltt_ust_domain_global *ust_global, struct lttng_event **events)
 {
-	/*
-	 * TODO: This is ONLY kernel. Need UST support.
-	 */
-	int i = 0;
+	int i = 0, ret = 0;
+	unsigned int nb_event = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	struct ltt_ust_channel *uchan;
+	struct ltt_ust_event *uevent;
+	struct lttng_event *tmp;
+
+	DBG("Listing UST global events for channel %s", channel_name);
+
+	rcu_read_lock();
+
+	node = hashtable_lookup(ust_global->channels, (void *) channel_name,
+			strlen(channel_name), &iter);
+	if (node == NULL) {
+		ret = -LTTCOMM_UST_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	uchan = caa_container_of(node, struct ltt_ust_channel, node);
+
+	nb_event += hashtable_get_count(uchan->events);
+
+	if (nb_event == 0) {
+		ret = nb_event;
+		goto error;
+	}
+
+	DBG3("Listing UST global %d events", nb_event);
+
+	tmp = zmalloc(nb_event * sizeof(struct lttng_event));
+	if (tmp == NULL) {
+		ret = -LTTCOMM_FATAL;
+		goto error;
+	}
+
+	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+		strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
+		tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+		tmp[i].enabled = uevent->enabled;
+		switch (uevent->attr.instrumentation) {
+		case LTTNG_UST_TRACEPOINT:
+			tmp[i].type = LTTNG_EVENT_TRACEPOINT;
+			break;
+		case LTTNG_UST_PROBE:
+			tmp[i].type = LTTNG_EVENT_PROBE;
+			break;
+		case LTTNG_UST_FUNCTION:
+			tmp[i].type = LTTNG_EVENT_FUNCTION;
+			break;
+		case LTTNG_UST_TRACEPOINT_LOGLEVEL:
+			/* TODO */
+			ret = -LTTCOMM_NOT_IMPLEMENTED;
+			goto error;
+			break;
+		}
+		i++;
+	}
+
+	ret = nb_event;
+	*events = tmp;
+
+error:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Fill lttng_event array of all kernel events in the channel.
+ */
+static int list_lttng_kernel_events(char *channel_name,
+		struct ltt_kernel_session *kernel_session, struct lttng_event **events)
+{
+	int i = 0, ret;
+	unsigned int nb_event;
 	struct ltt_kernel_event *event;
+	struct ltt_kernel_channel *kchan;
+
+	kchan = trace_kernel_get_channel_by_name(channel_name, kernel_session);
+	if (kchan == NULL) {
+		ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	nb_event = kchan->event_count;
 
 	DBG("Listing events for channel %s", kchan->channel->name);
 
+	if (nb_event == 0) {
+		ret = nb_event;
+		goto error;
+	}
+
+	*events = zmalloc(nb_event * sizeof(struct lttng_event));
+	if (*events == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
 	/* Kernel channels */
 	cds_list_for_each_entry(event, &kchan->events_list.head , list) {
-		strncpy(events[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
-		events[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-		events[i].enabled = event->enabled;
+		strncpy((*events)[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
+		(*events)[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+		(*events)[i].enabled = event->enabled;
 		switch (event->event->instrumentation) {
 			case LTTNG_KERNEL_TRACEPOINT:
-				events[i].type = LTTNG_EVENT_TRACEPOINT;
+				(*events)[i].type = LTTNG_EVENT_TRACEPOINT;
 				break;
 			case LTTNG_KERNEL_KPROBE:
 			case LTTNG_KERNEL_KRETPROBE:
-				events[i].type = LTTNG_EVENT_PROBE;
-				memcpy(&events[i].attr.probe, &event->event->u.kprobe,
+				(*events)[i].type = LTTNG_EVENT_PROBE;
+				memcpy(&(*events)[i].attr.probe, &event->event->u.kprobe,
 						sizeof(struct lttng_kernel_kprobe));
 				break;
 			case LTTNG_KERNEL_FUNCTION:
-				events[i].type = LTTNG_EVENT_FUNCTION;
-				memcpy(&events[i].attr.ftrace, &event->event->u.ftrace,
+				(*events)[i].type = LTTNG_EVENT_FUNCTION;
+				memcpy(&((*events)[i].attr.ftrace), &event->event->u.ftrace,
 						sizeof(struct lttng_kernel_function));
 				break;
 			case LTTNG_KERNEL_NOOP:
-				events[i].type = LTTNG_EVENT_NOOP;
+				(*events)[i].type = LTTNG_EVENT_NOOP;
 				break;
 			case LTTNG_KERNEL_SYSCALL:
-				events[i].type = LTTNG_EVENT_SYSCALL;
+				(*events)[i].type = LTTNG_EVENT_SYSCALL;
 				break;
 			case LTTNG_KERNEL_ALL:
 				assert(0);
@@ -1900,6 +2213,11 @@ static void list_lttng_events(struct ltt_kernel_channel *kchan,
 		}
 		i++;
 	}
+
+	return nb_event;
+
+error:
+	return ret;
 }
 
 /*
@@ -1909,22 +2227,58 @@ static int cmd_disable_channel(struct ltt_session *session,
 		int domain, char *channel_name)
 {
 	int ret;
+	struct ltt_ust_session *usess;
+
+	usess = session->ust_session;
 
 	switch (domain) {
-		case LTTNG_DOMAIN_KERNEL:
-			ret = channel_kernel_disable(session->kernel_session,
-					channel_name);
-			if (ret != LTTCOMM_OK) {
-				goto error;
-			}
-
-			kernel_wait_quiescent(kernel_tracer_fd);
-			break;
-		case LTTNG_DOMAIN_UST_PID:
-			break;
-		default:
-			ret = LTTCOMM_UNKNOWN_DOMAIN;
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		ret = channel_kernel_disable(session->kernel_session,
+				channel_name);
+		if (ret != LTTCOMM_OK) {
 			goto error;
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_channel *uchan;
+
+		/* Get channel in global UST domain HT */
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		/* Already disabled */
+		if (!uchan->enabled) {
+			DBG2("UST channel %s already disabled", channel_name);
+			break;
+		}
+
+		ret = ust_app_disable_channel_glb(usess, uchan);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_DISABLE_FAIL;
+			goto error;
+		}
+
+		uchan->enabled = 0;
+
+		break;
+	}
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	default:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		goto error;
 	}
 
 	ret = LTTCOMM_OK;
@@ -1971,14 +2325,14 @@ error:
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  */
 static int cmd_enable_channel(struct ltt_session *session,
-		struct lttng_domain *domain, struct lttng_channel *attr)
+		int domain, struct lttng_channel *attr)
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	DBG("Enabling channel %s for session %s", session->name, attr->name);
+	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
-	switch (domain->type) {
+	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
@@ -2014,66 +2368,45 @@ static int cmd_enable_channel(struct ltt_session *session,
 				ret = LTTCOMM_UST_CHAN_FAIL;
 				goto error;
 			}
+
+			/* Add channel to all registered applications */
+			ret = ust_app_create_channel_glb(usess, uchan);
+			if (ret != 0) {
+				ret = LTTCOMM_UST_CHAN_FAIL;
+				goto error;
+			}
+
 			rcu_read_lock();
 			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
 			rcu_read_unlock();
+
 			DBG2("UST channel %s added to global domain HT", attr->name);
 		} else {
-			ret = LTTCOMM_UST_CHAN_EXIST;
-			goto error;
+			/* If already enabled, everything is OK */
+			if (uchan->enabled) {
+				break;
+			}
+
+			ret = ust_app_enable_channel_glb(usess, uchan);
+			if (ret < 0) {
+				if (ret != -EEXIST) {
+					ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
+					goto error;
+				} else {
+					ret = LTTCOMM_OK;
+				}
+			}
 		}
 
-		ret = ust_app_add_channel(usess, uchan);
-		if (ret != LTTCOMM_OK) {
-			goto error;
-		}
+		uchan->enabled = 1;
 
 		break;
 	}
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
-	{
-		/*
-		int sock;
-		struct ltt_ust_channel *uchan;
-		struct ltt_ust_session *usess;
-		struct ust_app *app;
-
-		usess = trace_ust_get_session_by_pid(&session->ust_session_list,
-				domain->attr.pid);
-		if (usess == NULL) {
-			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
-			goto error;
-		}
-
-		app = ust_app_get_by_pid(domain->attr.pid);
-		if (app == NULL) {
-			ret = LTTCOMM_APP_NOT_FOUND;
-			goto error;
-		}
-		sock = app->sock;
-
-		uchan = trace_ust_get_channel_by_name(attr->name, usess);
-		if (uchan == NULL) {
-			ret = channel_ust_create(usess, attr, sock);
-		} else {
-			ret = channel_ust_enable(usess, uchan, sock);
-		}
-
-		if (ret != LTTCOMM_OK) {
-			goto error;
-		}
-
-		ret = copy_ust_channel_to_app(usess, attr, app);
-		if (ret != LTTCOMM_OK) {
-			goto error;
-		}
-
-		DBG("UST channel %s created for app sock %d with pid %d",
-				attr->name, app->sock, domain->attr.pid);
-		*/
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
-	}
 	default:
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
@@ -2097,15 +2430,17 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
+		struct ltt_kernel_session *ksess;
 
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
+		ksess = session->kernel_session;
+
+		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == NULL) {
 			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 			goto error;
 		}
 
-		ret = event_kernel_disable_tracepoint(session->kernel_session, kchan, event_name);
+		ret = event_kernel_disable_tracepoint(ksess, kchan, event_name);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2114,11 +2449,43 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess;
+		struct ltt_ust_channel *uchan;
+		struct ltt_ust_event *uevent;
+
+		usess = session->ust_session;
+
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
+		if (uevent == NULL) {
+			ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+			goto error;
+		}
+
+		ret = ust_app_disable_event_glb(usess, uchan, uevent);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_DISABLE_FAIL;
+			goto error;
+		}
+
+		uevent->enabled = 0;
+
+		DBG2("Disable UST event %s in channel %s completed", event_name,
+				channel_name);
+
+		break;
+	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Other UST domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2136,26 +2503,57 @@ static int cmd_disable_event_all(struct ltt_session *session, int domain,
 		char *channel_name)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
+	{
+		struct ltt_kernel_session *ksess;
+		struct ltt_kernel_channel *kchan;
+
+		ksess = session->kernel_session;
+
+		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == NULL) {
 			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
 			goto error;
 		}
 
-		ret = event_kernel_disable_all(session->kernel_session, kchan);
+		ret = event_kernel_disable_all(ksess, kchan);
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
 
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess;
+		struct ltt_ust_channel *uchan;
+
+		usess = session->ust_session;
+
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+
+		ret = ust_app_disable_all_event_glb(usess, uchan);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_DISABLE_FAIL;
+			goto error;
+		}
+
+		DBG2("Disable all UST event in channel %s completed", channel_name);
+
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Userspace tracing */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2185,21 +2583,18 @@ static int cmd_add_context(struct ltt_session *session, int domain,
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
-		/*
-		struct ltt_ust_session *usess;
+		struct ltt_ust_session *usess = session->ust_session;
 
-		cds_list_for_each_entry(usess, &session->ust_session_list.head, list) {
-			ret = context_ust_add(usess, ctx,
-					event_name, channel_name, domain);
-			if (ret != LTTCOMM_OK) {
-				goto error;
-			}
+		ret = context_ust_add(usess, domain, ctx, event_name, channel_name);
+		if (ret != LTTCOMM_OK) {
+			goto error;
 		}
 		break;
-		*/
 	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: UST other domains */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2239,8 +2634,10 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			ret = channel_kernel_create(session->kernel_session,
 					attr, kernel_poll_pipe[1]);
 			if (ret != LTTCOMM_OK) {
+				free(attr);
 				goto error;
 			}
+			free(attr);
 		}
 
 		/* Get the newly created kernel channel pointer */
@@ -2263,29 +2660,44 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
+		struct lttng_channel *attr;
 		struct ltt_ust_channel *uchan;
-		struct ltt_ust_event *uevent;
 
+		/* Get channel from global UST domain */
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
 				channel_name);
 		if (uchan == NULL) {
-			/* TODO: Create default channel */
-			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
-			goto error;
-		}
+			/* Create default channel */
+			attr = channel_new_default_attr(domain);
+			if (attr == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+			snprintf(attr->name, NAME_MAX, "%s", channel_name);
+			attr->name[NAME_MAX - 1] = '\0';
 
-		uevent = trace_ust_find_event_by_name(uchan->events, event->name);
-		if (uevent == NULL) {
-			uevent = trace_ust_create_event(event);
-			if (uevent == NULL) {
+			/* Use the internal command enable channel */
+			ret = cmd_enable_channel(session, domain, attr);
+			if (ret != LTTCOMM_OK) {
+				free(attr);
+				goto error;
+			}
+			free(attr);
+
+			/* Get the newly created channel reference back */
+			uchan = trace_ust_find_channel_by_name(
+					usess->domain_global.channels, channel_name);
+			if (uchan == NULL) {
+				/* Something is really wrong */
 				ret = LTTCOMM_FATAL;
 				goto error;
 			}
 		}
 
-		ret = ust_app_add_event(usess, uchan, uevent);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_ENABLE_FAIL;
+		/* At this point, the session and channel exist on the tracer */
+
+		ret = event_ust_enable_tracepoint(usess, domain, uchan, event);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
 		break;
@@ -2324,15 +2736,16 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			if (ret != LTTCOMM_OK) {
 				goto error;
 			}
-		}
 
-		/* Get the newly created kernel channel pointer */
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
-		if (kchan == NULL) {
-			/* This sould not happen... */
-			ret = LTTCOMM_FATAL;
-			goto error;
+			/* Get the newly created kernel channel pointer */
+			kchan = trace_kernel_get_channel_by_name(channel_name,
+					session->kernel_session);
+			if (kchan == NULL) {
+				/* This sould not happen... */
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+
 		}
 
 		switch (event_type) {
@@ -2357,6 +2770,8 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
 			goto error;
 		}
+
+		/* Manage return value */
 		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
@@ -2391,8 +2806,14 @@ static ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 			goto error;
 		}
 		break;
+	case LTTNG_DOMAIN_UST:
+		nb_events = ust_app_list_events(events);
+		if (nb_events < 0) {
+			ret = LTTCOMM_UST_LIST_FAIL;
+			goto error;
+		}
+		break;
 	default:
-		/* TODO: Userspace listing */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -2411,10 +2832,15 @@ static int cmd_start_trace(struct ltt_session *session)
 {
 	int ret;
 	struct ltt_kernel_session *ksession;
-	struct ltt_ust_session *usess = session->ust_session;
+	struct ltt_ust_session *usess;
 
 	/* Short cut */
 	ksession = session->kernel_session;
+	usess = session->ust_session;
+
+	if (session->enabled)
+		return LTTCOMM_UST_START_FAIL;
+	session->enabled = 1;
 
 	/* Kernel tracing */
 	if (ksession != NULL) {
@@ -2470,10 +2896,15 @@ static int cmd_start_trace(struct ltt_session *session)
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
 
-	ret = ust_app_start_trace(usess);
-	if (ret < 0) {
-		ret = LTTCOMM_UST_START_FAIL;
-		goto error;
+	/* Flag session that trace should start automatically */
+	if (usess) {
+		usess->start_trace = 1;
+
+		ret = ust_app_start_trace_all(usess);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_START_FAIL;
+			goto error;
+		}
 	}
 
 	ret = LTTCOMM_OK;
@@ -2490,11 +2921,15 @@ static int cmd_stop_trace(struct ltt_session *session)
 	int ret;
 	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_session *ksession;
-	//struct ltt_ust_session *usess;
-	//struct ltt_ust_channel *ustchan;
+	struct ltt_ust_session *usess;
 
 	/* Short cut */
 	ksession = session->kernel_session;
+	usess = session->ust_session;
+
+	if (!session->enabled)
+		return LTTCOMM_UST_START_FAIL;
+	session->enabled = 0;
 
 	/* Kernel tracer */
 	if (ksession != NULL) {
@@ -2522,32 +2957,15 @@ static int cmd_stop_trace(struct ltt_session *session)
 		kernel_wait_quiescent(kernel_tracer_fd);
 	}
 
-#ifdef DISABLE
-	/* Stop each UST session */
-	DBG("Stop UST tracing");
-	cds_list_for_each_entry(usess, &session->ust_session_list.head, list) {
-		/* Flush all buffers before stopping */
-		ret = ustctl_flush_buffer(usess->sock, usess->metadata->obj);
-		if (ret < 0) {
-			ERR("UST metadata flush failed");
-		}
+	if (usess) {
+		usess->start_trace = 0;
 
-		cds_list_for_each_entry(ustchan, &usess->channels.head, list) {
-			ret = ustctl_flush_buffer(usess->sock, ustchan->obj);
-			if (ret < 0) {
-				ERR("UST flush buffer error");
-			}
-		}
-
-		ret = ustctl_stop_session(usess->sock, usess->handle);
+		ret = ust_app_stop_trace_all(usess);
 		if (ret < 0) {
-			ret = LTTCOMM_KERN_STOP_FAIL;
+			ret = LTTCOMM_UST_START_FAIL;
 			goto error;
 		}
-
-		ustctl_wait_quiescent(usess->sock);
 	}
-#endif
 
 	ret = LTTCOMM_OK;
 
@@ -2582,6 +3000,8 @@ static int cmd_destroy_session(struct ltt_session *session, char *name)
 
 	/* Clean kernel session teardown */
 	teardown_kernel_session(session);
+	/* UST session teardown */
+	teardown_ust_session(session);
 
 	/*
 	 * Must notify the kernel thread here to update it's poll setin order
@@ -2671,22 +3091,34 @@ error:
 static ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains)
 {
-	int ret;
+	int ret, index = 0;
 	ssize_t nb_dom = 0;
 
 	if (session->kernel_session != NULL) {
+		DBG3("Listing domains found kernel domain");
 		nb_dom++;
 	}
 
-	/* TODO: User-space tracer domain support */
+	if (session->ust_session != NULL) {
+		DBG3("Listing domains found UST global domain");
+		nb_dom++;
+	}
 
-	*domains = malloc(nb_dom * sizeof(struct lttng_domain));
+	*domains = zmalloc(nb_dom * sizeof(struct lttng_domain));
 	if (*domains == NULL) {
 		ret = -LTTCOMM_FATAL;
 		goto error;
 	}
 
-	(*domains)[0].type = LTTNG_DOMAIN_KERNEL;
+	if (session->kernel_session != NULL) {
+		(*domains)[index].type = LTTNG_DOMAIN_KERNEL;
+		index++;
+	}
+
+	if (session->ust_session != NULL) {
+		(*domains)[index].type = LTTNG_DOMAIN_UST;
+		index++;
+	}
 
 	return nb_dom;
 
@@ -2697,25 +3129,43 @@ error:
 /*
  * Command LTTNG_LIST_CHANNELS processed by the client thread.
  */
-static ssize_t cmd_list_channels(struct ltt_session *session,
+static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		struct lttng_channel **channels)
 {
 	int ret;
 	ssize_t nb_chan = 0;
 
-	if (session->kernel_session != NULL) {
-		nb_chan += session->kernel_session->channel_count;
-	}
-
-	*channels = malloc(nb_chan * sizeof(struct lttng_channel));
-	if (*channels == NULL) {
-		ret = -LTTCOMM_FATAL;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (session->kernel_session != NULL) {
+			nb_chan = session->kernel_session->channel_count;
+		}
+		DBG3("Number of kernel channels %zd", nb_chan);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (session->ust_session != NULL) {
+			nb_chan = hashtable_get_count(
+					session->ust_session->domain_global.channels);
+		}
+		DBG3("Number of UST global channels %zd", nb_chan);
+		break;
+	default:
+		*channels = NULL;
+		ret = -LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
 
-	list_lttng_channels(session, *channels);
+	if (nb_chan > 0) {
+		*channels = zmalloc(nb_chan * sizeof(struct lttng_channel));
+		if (*channels == NULL) {
+			ret = -LTTCOMM_FATAL;
+			goto error;
+		}
 
-	/* TODO UST support */
+		list_lttng_channels(domain, session, *channels);
+	} else {
+		*channels = NULL;
+	}
 
 	return nb_chan;
 
@@ -2726,34 +3176,33 @@ error:
 /*
  * Command LTTNG_LIST_EVENTS processed by the client thread.
  */
-static ssize_t cmd_list_events(struct ltt_session *session,
+static ssize_t cmd_list_events(int domain, struct ltt_session *session,
 		char *channel_name, struct lttng_event **events)
 {
-	int ret;
+	int ret = 0;
 	ssize_t nb_event = 0;
-	struct ltt_kernel_channel *kchan = NULL;
 
-	if (session->kernel_session != NULL) {
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
-		if (kchan == NULL) {
-			ret = -LTTCOMM_KERN_CHAN_NOT_FOUND;
-			goto error;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (session->kernel_session != NULL) {
+			nb_event = list_lttng_kernel_events(channel_name,
+					session->kernel_session, events);
 		}
-		nb_event += kchan->event_count;
+		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		if (session->ust_session != NULL) {
+			nb_event = list_lttng_ust_global_events(channel_name,
+					&session->ust_session->domain_global, events);
+		}
+		break;
 	}
-
-	*events = malloc(nb_event * sizeof(struct lttng_event));
-	if (*events == NULL) {
-		ret = -LTTCOMM_FATAL;
+	default:
+		ret = -LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
 
-	list_lttng_events(kchan, *events);
-
-	/* TODO: User-space tracer support */
-
-	return nb_event;
+	ret = nb_event;
 
 error:
 	return ret;
@@ -2857,8 +3306,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CONSUMER_FAIL;
 					goto error;
 				}
+			} else {
+				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 			}
-			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
@@ -2871,21 +3321,39 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					goto error;
 				}
 			}
-			/* Start the kernel consumer daemon */
-			pthread_mutex_lock(&ustconsumer_data.pid_mutex);
-			if (ustconsumer_data.pid == 0 &&
+			/* Start the UST consumer daemons */
+			/* 64-bit */
+			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
+			if (consumerd64_path[0] != '\0' &&
+					ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
-				pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
-				ret = start_consumerd(&ustconsumer_data);
+				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
+				ret = start_consumerd(&ustconsumer64_data);
 				if (ret < 0) {
-					ret = LTTCOMM_KERN_CONSUMER_FAIL;
+					ret = LTTCOMM_UST_CONSUMER64_FAIL;
+					ust_consumerd64_fd = -EINVAL;
 					goto error;
 				}
 
-				cmd_ctx->session->ust_session->consumer_fd =
-					ustconsumer_data.cmd_sock;
+				ust_consumerd64_fd = ustconsumer64_data.cmd_sock;
+			} else {
+				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 			}
-			pthread_mutex_unlock(&ustconsumer_data.pid_mutex);
+			/* 32-bit */
+			if (consumerd32_path[0] != '\0' &&
+					ustconsumer32_data.pid == 0 &&
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
+				ret = start_consumerd(&ustconsumer32_data);
+				if (ret < 0) {
+					ret = LTTCOMM_UST_CONSUMER32_FAIL;
+					ust_consumerd32_fd = -EINVAL;
+					goto error;
+				}
+				ust_consumerd32_fd = ustconsumer32_data.cmd_sock;
+			} else {
+				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
+			}
 		}
 		break;
 	}
@@ -2927,7 +3395,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(cmd_ctx->session, &cmd_ctx->lsm->domain,
+		ret = cmd_enable_channel(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				&cmd_ctx->lsm->u.channel.chan);
 		break;
 	}
@@ -3033,7 +3501,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		size_t nb_chan;
 		struct lttng_channel *channels;
 
-		nb_chan = cmd_list_channels(cmd_ctx->session, &channels);
+		nb_chan = cmd_list_channels(cmd_ctx->lsm->domain.type,
+				cmd_ctx->session, &channels);
 		if (nb_chan < 0) {
 			ret = -nb_chan;
 			goto error;
@@ -3055,10 +3524,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_LIST_EVENTS:
 	{
-		size_t nb_event;
+		ssize_t nb_event;
 		struct lttng_event *events = NULL;
 
-		nb_event = cmd_list_events(cmd_ctx->session,
+		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type, cmd_ctx->session,
 				cmd_ctx->lsm->u.list.channel_name, &events);
 		if (nb_event < 0) {
 			ret = -nb_event;
@@ -3223,16 +3692,16 @@ static void *thread_manage_clients(void *data)
 		}
 
 		/* Allocate context command to process the client request */
-		cmd_ctx = malloc(sizeof(struct command_ctx));
+		cmd_ctx = zmalloc(sizeof(struct command_ctx));
 		if (cmd_ctx == NULL) {
-			perror("malloc cmd_ctx");
+			perror("zmalloc cmd_ctx");
 			goto error;
 		}
 
 		/* Allocate data buffer for reception */
-		cmd_ctx->lsm = malloc(sizeof(struct lttcomm_session_msg));
+		cmd_ctx->lsm = zmalloc(sizeof(struct lttcomm_session_msg));
 		if (cmd_ctx->lsm == NULL) {
-			perror("malloc cmd_ctx->lsm");
+			perror("zmalloc cmd_ctx->lsm");
 			goto error;
 		}
 
@@ -3269,7 +3738,7 @@ static void *thread_manage_clients(void *data)
 		if (ret < 0) {
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
-			 * this point, ret < 0 means that a malloc failed
+			 * this point, ret < 0 means that a zmalloc failed
 			 * (ENOMEM). Error detected but still accept command.
 			 */
 			clean_command_ctx(&cmd_ctx);
@@ -3315,8 +3784,14 @@ static void usage(void)
 	fprintf(stderr, "  -a, --apps-sock PATH               Specify path for apps unix socket\n");
 	fprintf(stderr, "      --kconsumerd-err-sock PATH     Specify path for the kernel consumer error socket\n");
 	fprintf(stderr, "      --kconsumerd-cmd-sock PATH     Specify path for the kernel consumer command socket\n");
-	fprintf(stderr, "      --ustconsumerd-err-sock PATH   Specify path for the UST consumer error socket\n");
-	fprintf(stderr, "      --ustconsumerd-cmd-sock PATH   Specify path for the UST consumer command socket\n");
+	fprintf(stderr, "      --ustconsumerd32-err-sock PATH Specify path for the 32-bit UST consumer error socket\n");
+	fprintf(stderr, "      --ustconsumerd64-err-sock PATH Specify path for the 64-bit UST consumer error socket\n");
+	fprintf(stderr, "      --ustconsumerd32-cmd-sock PATH Specify path for the 32-bit UST consumer command socket\n");
+	fprintf(stderr, "      --ustconsumerd64-cmd-sock PATH Specify path for the 64-bit UST consumer command socket\n");
+	fprintf(stderr, "      --consumerd32-path PATH     Specify path for the 32-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --consumerd32-libdir PATH   Specify path for the 32-bit UST consumer daemon libraries\n");
+	fprintf(stderr, "      --consumerd64-path PATH     Specify path for the 64-bit UST consumer daemon binary\n");
+	fprintf(stderr, "      --consumerd64-libdir PATH   Specify path for the 64-bit UST consumer daemon libraries\n");
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
@@ -3338,8 +3813,14 @@ static int parse_args(int argc, char **argv)
 		{ "apps-sock", 1, 0, 'a' },
 		{ "kconsumerd-cmd-sock", 1, 0, 'C' },
 		{ "kconsumerd-err-sock", 1, 0, 'E' },
-		{ "ustconsumerd-cmd-sock", 1, 0, 'D' },
-		{ "ustconsumerd-err-sock", 1, 0, 'F' },
+		{ "ustconsumerd32-cmd-sock", 1, 0, 'G' },
+		{ "ustconsumerd32-err-sock", 1, 0, 'H' },
+		{ "ustconsumerd64-cmd-sock", 1, 0, 'D' },
+		{ "ustconsumerd64-err-sock", 1, 0, 'F' },
+		{ "consumerd32-path", 1, 0, 'u' },
+		{ "consumerd32-libdir", 1, 0, 'U' },
+		{ "consumerd64-path", 1, 0, 't' },
+		{ "consumerd64-libdir", 1, 0, 'T' },
 		{ "daemonize", 0, 0, 'd' },
 		{ "sig-parent", 0, 0, 'S' },
 		{ "help", 0, 0, 'h' },
@@ -3353,7 +3834,7 @@ static int parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z",
+		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z:u:t",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3376,7 +3857,7 @@ static int parse_args(int argc, char **argv)
 			opt_daemon = 1;
 			break;
 		case 'g':
-			opt_tracing_group = strdup(optarg);
+			opt_tracing_group = optarg;
 			break;
 		case 'h':
 			usage();
@@ -3394,10 +3875,16 @@ static int parse_args(int argc, char **argv)
 			snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'F':
-			snprintf(ustconsumer_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
+			snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'D':
-			snprintf(ustconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'H':
+			snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'G':
+			snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
 			break;
 		case 'q':
 			opt_quiet = 1;
@@ -3408,6 +3895,18 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'Z':
 			opt_verbose_consumer += 1;
+			break;
+		case 'u':
+			consumerd32_path= optarg;
+			break;
+		case 'U':
+			consumerd32_libdir = optarg;
+			break;
+		case 't':
+			consumerd64_path = optarg;
+			break;
+		case 'T':
+			consumerd64_libdir = optarg;
 			break;
 		default:
 			/* Unknown option or other error.
@@ -3532,10 +4031,17 @@ static int set_permissions(void)
 		perror("chown");
 	}
 
-	/* ustconsumer error socket path */
-	ret = chown(ustconsumer_data.err_unix_sock_path, 0, gid);
+	/* 64-bit ustconsumer error socket path */
+	ret = chown(ustconsumer64_data.err_unix_sock_path, 0, gid);
 	if (ret < 0) {
-		ERR("Unable to set group on %s", ustconsumer_data.err_unix_sock_path);
+		ERR("Unable to set group on %s", ustconsumer64_data.err_unix_sock_path);
+		perror("chown");
+	}
+
+	/* 32-bit ustconsumer compat32 error socket path */
+	ret = chown(ustconsumer32_data.err_unix_sock_path, 0, gid);
+	if (ret < 0) {
+		ERR("Unable to set group on %s", ustconsumer32_data.err_unix_sock_path);
 		perror("chown");
 	}
 
@@ -3589,21 +4095,22 @@ error:
 static int set_consumer_sockets(struct consumer_data *consumer_data)
 {
 	int ret;
-	const char *path = consumer_data->type == LTTNG_CONSUMER_KERNEL ?
-			KCONSUMERD_PATH : USTCONSUMERD_PATH;
+	const char *path;
 
-	if (strlen(consumer_data->err_unix_sock_path) == 0) {
-		snprintf(consumer_data->err_unix_sock_path, PATH_MAX,
-			consumer_data->type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_ERR_SOCK_PATH :
-				USTCONSUMERD_ERR_SOCK_PATH);
-	}
-
-	if (strlen(consumer_data->cmd_unix_sock_path) == 0) {
-		snprintf(consumer_data->cmd_unix_sock_path, PATH_MAX,
-			consumer_data->type == LTTNG_CONSUMER_KERNEL ?
-				KCONSUMERD_CMD_SOCK_PATH :
-				USTCONSUMERD_CMD_SOCK_PATH);
+	switch (consumer_data->type) {
+	case LTTNG_CONSUMER_KERNEL:
+		path = KCONSUMERD_PATH;
+		break;
+	case LTTNG_CONSUMER64_UST:
+		path = USTCONSUMERD64_PATH;
+		break;
+	case LTTNG_CONSUMER32_UST:
+		path = USTCONSUMERD32_PATH;
+		break;
+	default:
+		ERR("Consumer type unknown");
+		ret = -EINVAL;
+		goto error;
 	}
 
 	ret = mkdir(path, S_IRWXU | S_IRWXG);
@@ -3736,6 +4243,8 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
+	setup_consumerd_path();
+
 	/* Parse arguments */
 	progname = argv[0];
 	if ((ret = parse_args(argc, argv) < 0)) {
@@ -3831,10 +4340,16 @@ int main(int argc, char **argv)
 			goto exit;
 		}
 
-		ret = set_consumer_sockets(&ustconsumer_data);
+		ret = set_consumer_sockets(&ustconsumer64_data);
 		if (ret < 0) {
 			goto exit;
 		}
+
+		ret = set_consumer_sockets(&ustconsumer32_data);
+		if (ret < 0) {
+			goto exit;
+		}
+
 		/* Setup kernel tracer */
 		init_kernel_tracer();
 
