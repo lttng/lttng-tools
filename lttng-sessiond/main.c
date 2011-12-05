@@ -1220,6 +1220,8 @@ static void *thread_manage_apps(void *data)
 				 * the event at poll_wait.
 				 */
 				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					tracepoint(ust_unregister_start);
+
 					/* Removing from the poll set */
 					ret = lttng_poll_del(&events, pollfd);
 					if (ret < 0) {
@@ -1228,6 +1230,8 @@ static void *thread_manage_apps(void *data)
 
 					/* Socket closed on remote end. */
 					ust_app_unregister(pollfd);
+
+					tracepoint(ust_unregister_stop);
 					break;
 				}
 			}
