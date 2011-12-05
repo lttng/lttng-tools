@@ -171,10 +171,10 @@ static struct ltt_session_list *session_list_ptr;
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
 
-static const char *consumerd32_path =
-	__stringify(CONFIG_CONSUMERD32_PATH);
-static const char *consumerd64_path =
-	__stringify(CONFIG_CONSUMERD64_PATH);
+static const char *consumerd32_bin =
+	__stringify(CONFIG_CONSUMERD32_BIN);
+static const char *consumerd64_bin =
+	__stringify(CONFIG_CONSUMERD64_BIN);
 static const char *consumerd32_libdir =
 	__stringify(CONFIG_CONSUMERD32_LIBDIR);
 static const char *consumerd64_libdir =
@@ -183,7 +183,7 @@ static const char *consumerd64_libdir =
 static
 void setup_consumerd_path(void)
 {
-	const char *path, *libdir;
+	const char *bin, *libdir;
 
 	/*
 	 * Allow INSTALL_BIN_PATH to be used as a target path for the
@@ -191,15 +191,15 @@ void setup_consumerd_path(void)
 	 * has not been defined.
 	 */
 #if (CAA_BITS_PER_LONG == 32)
-	if (!consumerd32_path[0]) {
-		consumerd32_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	if (!consumerd32_bin[0]) {
+		consumerd32_bin = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 	}
 	if (!consumerd32_libdir[0]) {
 		consumerd32_libdir = INSTALL_LIB_PATH;
 	}
 #elif (CAA_BITS_PER_LONG == 64)
-	if (!consumerd64_path[0]) {
-		consumerd64_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	if (!consumerd64_bin[0]) {
+		consumerd64_bin = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 	}
 	if (!consumerd64_libdir[0]) {
 		consumerd64_libdir = INSTALL_LIB_PATH;
@@ -211,13 +211,13 @@ void setup_consumerd_path(void)
 	/*
 	 * runtime env. var. overrides the build default.
 	 */
-	path = getenv("LTTNG_CONSUMERD32_PATH");
-	if (path) {
-		consumerd32_path = path;
+	bin = getenv("LTTNG_CONSUMERD32_BIN");
+	if (bin) {
+		consumerd32_bin = bin;
 	}
-	path = getenv("LTTNG_CONSUMERD64_PATH");
-	if (path) {
-		consumerd64_path = path;
+	bin = getenv("LTTNG_CONSUMERD64_BIN");
+	if (bin) {
+		consumerd64_bin = bin;
 	}
 	libdir = getenv("LTTNG_TOOLS_CONSUMERD32_LIBDIR");
 	if (libdir) {
@@ -1524,7 +1524,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		}
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
-			execl(INSTALL_BIN_PATH "/lttng-consumerd",
+			execl(INSTALL_BIN_PATH "/" CONSUMERD_FILE,
 					"lttng-consumerd", verbosity, "-k",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
@@ -1561,7 +1561,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			ret = execl(consumerd64_path, verbosity, "-u",
+			ret = execl(consumerd64_bin, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
@@ -1604,7 +1604,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			ret = execl(consumerd32_path, verbosity, "-u",
+			ret = execl(consumerd32_bin, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
@@ -3265,7 +3265,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			/* Start the UST consumer daemons */
 			/* 64-bit */
 			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
-			if (consumerd64_path[0] != '\0' &&
+			if (consumerd64_bin[0] != '\0' &&
 					ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
@@ -3281,7 +3281,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 			}
 			/* 32-bit */
-			if (consumerd32_path[0] != '\0' &&
+			if (consumerd32_bin[0] != '\0' &&
 					ustconsumer32_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
@@ -3830,13 +3830,13 @@ static int parse_args(int argc, char **argv)
 			opt_verbose_consumer += 1;
 			break;
 		case 'u':
-			consumerd32_path= optarg;
+			consumerd32_bin= optarg;
 			break;
 		case 'U':
 			consumerd32_libdir = optarg;
 			break;
 		case 't':
-			consumerd64_path = optarg;
+			consumerd64_bin = optarg;
 			break;
 		case 'T':
 			consumerd64_libdir = optarg;
