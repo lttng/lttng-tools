@@ -256,7 +256,7 @@ extern int lttng_list_sessions(struct lttng_session **sessions);
  *
  * Return the size of the "lttng_domain" array. Caller must free(3).
  */
-extern int lttng_list_domains(struct lttng_handle *handle,
+extern int lttng_list_domains(const char *session_name,
 		struct lttng_domain **domains);
 
 /*

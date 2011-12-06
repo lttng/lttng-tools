@@ -482,14 +482,14 @@ error:
 /*
  * List available domain(s) for a session.
  */
-static int list_domains(void)
+static int list_domains(const char *session_name)
 {
 	int i, count, ret = CMD_SUCCESS;
 	struct lttng_domain *domains = NULL;
 
 	MSG("Domains:\n-------------");
 
-	count = lttng_list_domains(handle, &domains);
+	count = lttng_list_domains(session_name, &domains);
 	if (count < 0) {
 		ret = count;
 		goto error;
@@ -601,7 +601,7 @@ int cmd_list(int argc, const char **argv)
 
 		/* Domain listing */
 		if (opt_domain) {
-			ret = list_domains();
+			ret = list_domains(session_name);
 			goto end;
 		}
 
@@ -613,7 +613,7 @@ int cmd_list(int argc, const char **argv)
 			}
 		} else {
 			/* We want all domain(s) */
-			nb_domain = lttng_list_domains(handle, &domains);
+			nb_domain = lttng_list_domains(session_name, &domains);
 			if (nb_domain < 0) {
 				ret = nb_domain;
 				goto end;
