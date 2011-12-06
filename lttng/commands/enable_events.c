@@ -335,19 +335,21 @@ static int enable_events(char *session_name)
 			}
 			DBG("Enabling UST event %s for channel %s",
 					event_name, channel_name);
-			/* Copy name and type of the event */
-			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
-			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-			ev.type = opt_event_type;
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
-				ev.type = LTTNG_EVENT_TRACEPOINT;
 				/* Fall-through */
 			case LTTNG_EVENT_TRACEPOINT:
+				/* Copy name and type of the event */
+				ev.type = LTTNG_EVENT_TRACEPOINT;
+				strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+				ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
 			case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+				/* Copy name and type of the event */
 				ev.type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
+				strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+				ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
 			case LTTNG_EVENT_PROBE:
 			case LTTNG_EVENT_FUNCTION:
