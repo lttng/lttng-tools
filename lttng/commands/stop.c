@@ -35,8 +35,6 @@ enum {
 	OPT_HELP = 1,
 };
 
-static struct lttng_handle *handle;
-
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -75,13 +73,7 @@ static int stop_tracing(void)
 		session_name = opt_session_name;
 	}
 
-	handle = lttng_create_handle(session_name, NULL);
-	if (handle == NULL) {
-		ret = -1;
-		goto error;
-	}
-
-	ret = lttng_stop_tracing(handle);
+	ret = lttng_stop_tracing(session_name);
 	if (ret < 0) {
 		goto free_name;
 	}
@@ -94,8 +86,6 @@ free_name:
 	}
 
 error:
-	lttng_destroy_handle(handle);
-
 	return ret;
 }
 

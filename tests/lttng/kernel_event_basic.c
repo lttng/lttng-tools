@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Start tracing: ");
-	if ((ret = lttng_start_tracing(handle)) < 0) {
+	if ((ret = lttng_start_tracing(session_name)) < 0) {
 		printf("error starting tracing: %s\n", lttng_strerror(ret));
 		goto start_fail;
 	}
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 	sleep(2);
 
 	printf("Stop tracing: ");
-	if ((ret = lttng_stop_tracing(handle)) < 0) {
+	if ((ret = lttng_stop_tracing(session_name)) < 0) {
 		printf("error stopping tracing: %s\n", lttng_strerror(ret));
 		goto stop_fail;
 	}

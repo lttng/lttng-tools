@@ -314,12 +314,12 @@ extern int lttng_register_consumer(struct lttng_handle *handle,
 /*
  * Start tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_start_tracing(struct lttng_handle *handle);
+extern int lttng_start_tracing(const char *session_name);
 
 /*
  * Stop tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_stop_tracing(struct lttng_handle *handle);
+extern int lttng_stop_tracing(const char *session_name);
 
 /*
  * Add context to event for a specific channel.
