@@ -145,6 +145,7 @@ struct lttng_event_function_attr {
 struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	char loglevel[LTTNG_SYMBOL_NAME_LEN];
+	int64_t loglevel_value;
 	enum lttng_event_type type;
 	uint32_t enabled;
 	pid_t pid;
