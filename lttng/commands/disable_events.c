@@ -33,7 +33,6 @@ static char *opt_event_list;
 static int opt_kernel;
 static char *opt_channel_name;
 static char *opt_session_name;
-static int opt_pid_all;
 static int opt_userspace;
 static char *opt_cmd_name;
 static int opt_disable_all;
@@ -54,7 +53,6 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -72,8 +70,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
-	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
-	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
+	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
+	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
+	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 	fprintf(ofp, "\n");
 }
 
@@ -98,6 +97,12 @@ static int disable_events(char *session_name)
 		channel_name = opt_channel_name;
 	}
 
+	if (opt_kernel && opt_userspace) {
+		ERR("Can't use -k/--kernel and -u/--userspace together");
+		ret = CMD_FATAL;
+		goto error;
+	}
+
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	} else if (opt_pid != 0) {
@@ -112,7 +117,7 @@ static int disable_events(char *session_name)
 		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
 		dom.attr.exec_name[NAME_MAX - 1] = '\0';
 	} else {
-		ERR("Please specify a tracer (--kernel or --userspace)");
+		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -142,15 +147,15 @@ static int disable_events(char *session_name)
 			DBG("Disabling kernel event %s in channel %s",
 					event_name, channel_name);
 		} else if (opt_userspace) {		/* User-space tracer action */
-			if (!opt_pid_all) {
-				MSG("Only supporting tracing all UST processes (-u --all) for now.");
+			if (opt_cmd_name != NULL || opt_pid) {
+				MSG("Only supporting tracing all UST processes (-u) for now.");
 				ret = CMD_NOT_IMPLEMENTED;
 				goto error;
 			}
 			DBG("Disabling UST event %s in channel %s",
 					event_name, channel_name);
 		} else {
-			ERR("Please specify a tracer (--kernel or --userspace)");
+			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 			goto error;
 		}
 
