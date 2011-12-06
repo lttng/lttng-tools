@@ -100,6 +100,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
+	fprintf(ofp, "                           - userspace tracer supports wildcards at end of string.\n");
+	fprintf(ofp, "                             Don't forget to quote to deal with bash expansion.\n");
+	fprintf(ofp, "                             e.g.:\n");
+	fprintf(ofp, "                               \"*\"\n");
+	fprintf(ofp, "                               \"app_component:na*\"\n");
 	fprintf(ofp, "    --loglevel             Tracepoint loglevel\n");
 	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
