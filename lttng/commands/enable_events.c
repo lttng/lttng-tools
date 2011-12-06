@@ -48,12 +48,12 @@ static char *opt_channel_name;
 enum {
 	OPT_HELP = 1,
 	OPT_TRACEPOINT,
-	OPT_MARKER,
 	OPT_PROBE,
 	OPT_FUNCTION,
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
+	OPT_TRACEPOINT_LOGLEVEL,
 };
 
 static struct lttng_handle *handle;
@@ -69,7 +69,6 @@ static struct poptOption long_options[] = {
 	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
-	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
 #if 0
@@ -80,6 +79,7 @@ static struct poptOption long_options[] = {
 	{"function:entry", 0,   POPT_ARG_STRING, &opt_function_entry_symbol, OPT_FUNCTION_ENTRY, 0, 0},
 #endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
+	{"loglevel",     0,     POPT_ARG_NONE, 0, OPT_TRACEPOINT_LOGLEVEL, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -101,6 +101,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
+	fprintf(ofp, "    --loglevel             Tracepoint loglevel\n");
 	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
@@ -114,7 +115,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Function tracer event\n");
 #endif
 	fprintf(ofp, "    --syscall              System call event\n");
-	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
 	fprintf(ofp, "\n");
 }
 
@@ -346,6 +346,9 @@ static int enable_events(char *session_name)
 				/* Fall-through */
 			case LTTNG_EVENT_TRACEPOINT:
 				break;
+			case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+				ev.type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
+				break;
 			case LTTNG_EVENT_PROBE:
 			case LTTNG_EVENT_FUNCTION:
 			case LTTNG_EVENT_FUNCTION_ENTRY:
@@ -404,9 +407,6 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
 			break;
-		case OPT_MARKER:
-			ret = CMD_NOT_IMPLEMENTED;
-			goto end;
 		case OPT_PROBE:
 			opt_event_type = LTTNG_EVENT_PROBE;
 			break;
@@ -421,6 +421,9 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
+			break;
+		case OPT_TRACEPOINT_LOGLEVEL:
+			opt_event_type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
 			break;
 		default:
 			usage(stderr);

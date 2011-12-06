@@ -212,6 +212,9 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	case LTTNG_EVENT_TRACEPOINT:
 		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 		break;
+	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT_LOGLEVEL;
+		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
 		goto error_free_event;

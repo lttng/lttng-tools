@@ -2567,6 +2567,12 @@ error:
 
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
+ *
+ * TODO: currently, both events and loglevels are kept within the same
+ * namespace for UST global registry/app registery, so if an event
+ * happen to have the same name as the loglevel (very unlikely though),
+ * and an attempt is made to enable/disable both in the same session,
+ * the first to be created will be the only one allowed to exist.
  */
 static int cmd_enable_event(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event)
