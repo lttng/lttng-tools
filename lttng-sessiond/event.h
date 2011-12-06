@@ -44,5 +44,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan, struct lttng_event *event);
 int event_ust_disable_tracepoint(struct ltt_ust_session *ustsession,
 		struct ltt_ust_channel *ustchan, char *event_name);
+int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan);
 
 #endif /* _LTT_EVENT_H */

@@ -2715,11 +2715,11 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 		}
 
 		switch (event_type) {
-		case LTTNG_KERNEL_SYSCALL:
+		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_enable_all_syscalls(session->kernel_session,
 					kchan, kernel_tracer_fd);
 			break;
-		case LTTNG_KERNEL_TRACEPOINT:
+		case LTTNG_EVENT_TRACEPOINT:
 			/*
 			 * This call enables all LTTNG_KERNEL_TRACEPOINTS and
 			 * events already registered to the channel.
@@ -2727,7 +2727,7 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			ret = event_kernel_enable_all_tracepoints(session->kernel_session,
 					kchan, kernel_tracer_fd);
 			break;
-		case LTTNG_KERNEL_ALL:
+		case LTTNG_EVENT_ALL:
 			/* Enable syscalls and tracepoints */
 			ret = event_kernel_enable_all(session->kernel_session,
 					kchan, kernel_tracer_fd);
@@ -2744,8 +2744,69 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		struct lttng_channel *attr;
+		struct ltt_ust_channel *uchan;
+		struct ltt_ust_session *usess = session->ust_session;
+
+		/* Get channel from global UST domain */
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			/* Create default channel */
+			attr = channel_new_default_attr(domain);
+			if (attr == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+			snprintf(attr->name, NAME_MAX, "%s", channel_name);
+			attr->name[NAME_MAX - 1] = '\0';
+
+			/* Use the internal command enable channel */
+			ret = cmd_enable_channel(session, domain, attr);
+			if (ret != LTTCOMM_OK) {
+				free(attr);
+				goto error;
+			}
+			free(attr);
+
+			/* Get the newly created channel reference back */
+			uchan = trace_ust_find_channel_by_name(
+					usess->domain_global.channels, channel_name);
+			if (uchan == NULL) {
+				/* Something is really wrong */
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+		}
+
+		/* At this point, the session and channel exist on the tracer */
+
+		switch (event_type) {
+		case LTTNG_EVENT_ALL:
+		case LTTNG_EVENT_TRACEPOINT:
+			ret = event_ust_enable_all_tracepoints(usess, domain, uchan);
+			if (ret != LTTCOMM_OK) {
+				goto error;
+			}
+			break;
+		default:
+			ret = LTTCOMM_UST_ENABLE_FAIL;
+			goto error;
+		}
+
+		/* Manage return value */
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Userspace tracing */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}

@@ -2252,3 +2252,61 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 	rcu_read_unlock();
 	return ret;
 }
+
+/*
+ * Enable event for a channel from a UST session for a specific PID.
+ */
+int ust_app_enable_event_pid(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent, pid_t pid)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+	struct ust_app_event *ua_event;
+
+	DBG("UST app enabling event %s for PID %d", uevent->attr.name, pid);
+
+	rcu_read_lock();
+
+	app = ust_app_find_by_pid(pid);
+	if (app == NULL) {
+		ERR("UST app enable event per PID %d not found", pid);
+		ret = -1;
+		goto error;
+	}
+
+	ua_sess = lookup_session_by_app(usess, app);
+	/* If ua_sess is NULL, there is a code flow error */
+	assert(ua_sess);
+
+	/* Lookup channel in the ust app session */
+	ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
+			strlen(uchan->name), &iter);
+	/* If the channel is not found, there is a code flow error */
+	assert(ua_chan_node);
+
+	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+	ua_event_node = hashtable_lookup(ua_sess->channels,
+			(void*)uevent->attr.name, strlen(uevent->attr.name), &iter);
+	if (ua_event_node == NULL) {
+		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
+		if (ret < 0) {
+			goto error;
+		}
+	} else {
+		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
+
+		ret = enable_ust_app_event(ua_sess, ua_event, app);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+error:
+	rcu_read_unlock();
+	return ret;
+}
