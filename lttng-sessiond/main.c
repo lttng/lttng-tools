@@ -1527,9 +1527,10 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
 			/*
-			 * Find out which consumerd to execute. We will first
-			 * try the 64-bit path, then the 32-bit one, then
-			 * fallback on sessiond's installation directory.
+			 * Find out which consumerd to execute. We will
+			 * first try the 64-bit path, then the
+			 * sessiond's installation directory, and
+			 * fallback on the 32-bit one, 
 			 */
 			if (stat(consumerd64_bin, &st) == 0) {
 				consumer_to_use = consumerd64_bin;
