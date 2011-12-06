@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Destroy tracing session: ");
-	if ((ret = lttng_destroy_session(handle)) < 0) {
+	if ((ret = lttng_destroy_session("test")) < 0) {
 		printf("error destroying session: %s\n", lttng_strerror(ret));
 	}
 	PRINT_OK();
@@ -108,7 +108,7 @@ handle_fail:
 stop_fail:
 start_fail:
 enable_fail:
-	lttng_destroy_session(handle);
+	lttng_destroy_session("test");
 	lttng_destroy_handle(handle);
 
     return 1;

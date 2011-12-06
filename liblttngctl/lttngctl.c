@@ -666,17 +666,17 @@ int lttng_create_session(const char *name, const char *path)
 /*
  *  Destroy session using name.
  */
-int lttng_destroy_session(struct lttng_handle *handle)
+int lttng_destroy_session(const char *session_name)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (handle == NULL) {
+	if (session_name == NULL) {
 		return -1;
 	}
 
 	lsm.cmd_type = LTTNG_DESTROY_SESSION;
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+
+	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 
 	return ask_sessiond(&lsm, NULL);
 }

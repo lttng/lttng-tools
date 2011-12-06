@@ -30,7 +30,6 @@
 #include "../utils.h"
 
 static char *opt_session_name;
-static struct lttng_handle *handle;
 
 enum {
 	OPT_HELP = 1,
@@ -57,10 +56,8 @@ static void usage(FILE *ofp)
 }
 
 /*
- *  destroy_session
- *
- *  Destroy a session removing the config directory and unregistering to the
- *  session daemon.
+ * Destroy a session removing the config directory and unregistering to the
+ * session daemon.
  */
 static int destroy_session()
 {
@@ -77,13 +74,7 @@ static int destroy_session()
 		session_name = opt_session_name;
 	}
 
-	handle = lttng_create_handle(session_name, NULL);
-	if (handle == NULL) {
-		ret = -1;
-		goto error;
-	}
-
-	ret = lttng_destroy_session(handle);
+	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
 		goto free_name;
 	}
@@ -108,15 +99,11 @@ free_name:
 		free(session_name);
 	}
 error:
-	lttng_destroy_handle(handle);
-
 	return ret;
 }
 
 /*
- *  cmd_destroy
- *
- *  The 'destroy <options>' first level command
+ * The 'destroy <options>' first level command
  */
 int cmd_destroy(int argc, const char **argv)
 {

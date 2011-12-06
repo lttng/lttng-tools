@@ -242,7 +242,7 @@ extern int lttng_create_session(const char *name, const char *path);
  * The session will not be useable anymore, tracing will stopped for all
  * registered trace and tracing buffers will be flushed.
  */
-extern int lttng_destroy_session(struct lttng_handle *handle);
+extern int lttng_destroy_session(const char *name);
 
 /*
  * List all tracing sessions.
