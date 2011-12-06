@@ -131,6 +131,24 @@ const char *enabled_string(int value)
 	}
 }
 
+static
+const char *loglevel_string_pre(const char *loglevel)
+{
+	if (loglevel[0] == '\0')
+		return "";
+	else
+		return " (loglevel: ";
+}
+
+static
+const char *loglevel_string_post(const char *loglevel)
+{
+	if (loglevel[0] == '\0')
+		return "";
+	else
+		return ")";
+}
+
 /*
  * Pretty print single event.
  */
@@ -138,8 +156,12 @@ static void print_events(struct lttng_event *event)
 {
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
-		MSG("%s%s (type: tracepoint)%s", indent6,
-				event->name, enabled_string(event->enabled));
+		MSG("%s%s%s%s%s (type: tracepoint)%s", indent6,
+				event->name,
+				loglevel_string_pre(event->loglevel),
+				event->loglevel,
+				loglevel_string_post(event->loglevel),
+				enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_PROBE:
 		MSG("%s%s (type: probe)%s", indent6,
@@ -164,6 +186,10 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s", indent6,
 				enabled_string(event->enabled));
+		break;
+	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+		MSG("%s%s (type: tracepoint loglevel)%s", indent6,
+				event->name, enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */

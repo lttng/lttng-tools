@@ -1383,7 +1383,6 @@ int ust_app_list_events(struct lttng_event **events)
 
 		while ((ret = ustctl_tracepoint_list_get(app->key.sock, handle,
 						&iter)) != -ENOENT) {
-			/* TODO : get loglevel too */
 			if (count >= nbmem) {
 				DBG2("Reallocating event list from %zu to %zu entries", nbmem,
 						2 * nbmem);
@@ -1396,6 +1395,7 @@ int ust_app_list_events(struct lttng_event **events)
 				}
 			}
 			memcpy(tmp[count].name, iter.name, LTTNG_UST_SYM_NAME_LEN);
+			memcpy(tmp[count].loglevel, iter.loglevel, LTTNG_UST_SYM_NAME_LEN);
 			tmp[count].type = LTTNG_UST_TRACEPOINT;
 			tmp[count].pid = app->key.pid;
 			tmp[count].enabled = -1;

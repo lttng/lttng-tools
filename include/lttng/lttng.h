@@ -68,6 +68,7 @@ enum lttng_event_type {
 	LTTNG_EVENT_FUNCTION_ENTRY            = 3,
 	LTTNG_EVENT_NOOP                      = 4,
 	LTTNG_EVENT_SYSCALL                   = 5,
+	LTTNG_EVENT_TRACEPOINT_LOGLEVEL       = 6,
 };
 
 /*
@@ -143,6 +144,7 @@ struct lttng_event_function_attr {
  */
 struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
+	char loglevel[LTTNG_SYMBOL_NAME_LEN];
 	enum lttng_event_type type;
 	uint32_t enabled;
 	pid_t pid;
