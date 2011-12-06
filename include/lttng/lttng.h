@@ -39,7 +39,7 @@
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
-#define LTTNG_SYMBOL_NAME_LEN 128
+#define LTTNG_SYMBOL_NAME_LEN 256
 
 /*
  * Every lttng_event_* structure both apply to kernel event and user-space
