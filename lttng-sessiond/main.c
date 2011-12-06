@@ -1533,10 +1533,10 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 */
 			if (stat(consumerd64_bin, &st) == 0) {
 				consumer_to_use = consumerd64_bin;
-			} else if (stat(consumerd32_bin, &st) == 0) {
-				consumer_to_use = consumerd32_bin;
 			} else if (stat(INSTALL_BIN_PATH "/" CONSUMERD_FILE, &st) == 0) {
 				consumer_to_use = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+			} else if (stat(consumerd32_bin, &st) == 0) {
+				consumer_to_use = consumerd32_bin;
 			} else {
 				break;
 			}
