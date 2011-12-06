@@ -165,7 +165,7 @@ static void print_events(struct lttng_event *event)
 			int ret;
 
 			ret = snprintf(ll_value, LTTNG_SYMBOL_NAME_LEN,
-				", %lld", (long long) event->loglevel_value);
+				" (%lld)", (long long) event->loglevel_value);
 			if (ret < 0)
 				ERR("snprintf error");
 		}
