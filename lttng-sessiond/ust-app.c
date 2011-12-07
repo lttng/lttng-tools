@@ -996,8 +996,7 @@ error:
  * Disable on the tracer side a ust app event for the session and channel.
  */
 static int disable_ust_app_event(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan, struct ust_app_event *ua_event,
-		struct ust_app *app)
+		struct ust_app_event *ua_event, struct ust_app *app)
 {
 	int ret;
 
@@ -1145,6 +1144,9 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	ua_event->enabled = 1;
 
 	hashtable_add_unique(ua_chan->events, &ua_event->node);
+
+	DBG2("UST app create event %s for PID %d completed",
+			ua_event->name, app->key.pid);
 
 end:
 error:
@@ -1593,7 +1595,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		}
 		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
 
-		ret = disable_ust_app_event(ua_sess, ua_chan, ua_event, app);
+		ret = disable_ust_app_event(ua_sess, ua_event, app);
 		if (ret < 0) {
 			/* XXX: Report error someday... */
 			continue;
@@ -1641,7 +1643,7 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 
 		/* Disable each events of channel */
 		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
-			ret = disable_ust_app_event(ua_sess, ua_chan, ua_event, app);
+			ret = disable_ust_app_event(ua_sess, ua_event, app);
 			if (ret < 0) {
 				/* XXX: Report error someday... */
 				continue;
@@ -1741,24 +1743,23 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		ua_event_node = hashtable_lookup(ua_sess->channels,
+		ua_event_node = hashtable_lookup(ua_chan->events,
 				(void*)uevent->attr.name, strlen(uevent->attr.name), &uiter);
 		if (ua_event_node == NULL) {
-			DBG3("UST app enable event %s not found. Skipping app",
-					uevent->attr.name);
+			DBG3("UST app enable event %s not found for app PID %d."
+					"Skipping app", uevent->attr.name, app->key.pid);
 			continue;
 		}
 		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
 
 		ret = enable_ust_app_event(ua_sess, ua_event, app);
 		if (ret < 0) {
-			/* XXX: Report error someday... */
-			continue;
+			goto error;
 		}
 	}
 
+error:
 	rcu_read_unlock();
-
 	return ret;
 }
 
@@ -2291,7 +2292,7 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 
 	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-	ua_event_node = hashtable_lookup(ua_sess->channels,
+	ua_event_node = hashtable_lookup(ua_chan->events,
 			(void*)uevent->attr.name, strlen(uevent->attr.name), &iter);
 	if (ua_event_node == NULL) {
 		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
@@ -2305,6 +2306,62 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 		if (ret < 0) {
 			goto error;
 		}
+	}
+
+error:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Disable event for a channel from a UST session for a specific PID.
+ */
+int ust_app_disable_event_pid(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent, pid_t pid)
+{
+	int ret = 0;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+	struct ust_app_event *ua_event;
+
+	DBG("UST app disabling event %s for PID %d", uevent->attr.name, pid);
+
+	rcu_read_lock();
+
+	app = ust_app_find_by_pid(pid);
+	if (app == NULL) {
+		ERR("UST app disable event per PID %d not found", pid);
+		ret = -1;
+		goto error;
+	}
+
+	ua_sess = lookup_session_by_app(usess, app);
+	/* If ua_sess is NULL, there is a code flow error */
+	assert(ua_sess);
+
+	/* Lookup channel in the ust app session */
+	ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
+			strlen(uchan->name), &iter);
+	if (ua_chan_node == NULL) {
+		/* Channel does not exist, skip disabling */
+		goto error;
+	}
+	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+	ua_event_node = hashtable_lookup(ua_chan->events,
+			(void*)uevent->attr.name, strlen(uevent->attr.name), &iter);
+	if (ua_event_node == NULL) {
+		/* Event does not exist, skip disabling */
+		goto error;
+	}
+	ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
+
+	ret = disable_ust_app_event(ua_sess, ua_event, app);
+	if (ret < 0) {
+		goto error;
 	}
 
 error:

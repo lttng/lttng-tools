@@ -129,6 +129,9 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
+int ust_app_disable_event_pid(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		pid_t pid);
 int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
 		pid_t pid);
@@ -293,6 +296,13 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 }
 static inline
 int ust_app_enable_event_pid(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		pid_t pid)
+{
+	return 0;
+}
+static inline
+int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
 		pid_t pid)
 {

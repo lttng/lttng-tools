@@ -63,7 +63,7 @@ struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
 	struct cds_lfht_iter iter;
 
 	rcu_read_lock();
-	node = hashtable_lookup(ht, (void *) name, strlen(name), &iter);
+	node = hashtable_lookup(ht, (void *)name, strlen(name), &iter);
 	if (node == NULL) {
 		rcu_read_unlock();
 		goto error;

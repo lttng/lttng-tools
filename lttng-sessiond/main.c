@@ -2409,9 +2409,8 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_session *usess;
 		struct ltt_ust_channel *uchan;
-		struct ltt_ust_event *uevent;
+		struct ltt_ust_session *usess;
 
 		usess = session->ust_session;
 
@@ -2422,23 +2421,13 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
-		if (uevent == NULL) {
-			ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+		ret = event_ust_disable_tracepoint(usess, domain, uchan, event_name);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
 
-		ret = ust_app_disable_event_glb(usess, uchan, uevent);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_DISABLE_FAIL;
-			goto error;
-		}
-
-		uevent->enabled = 0;
-
-		DBG2("Disable UST event %s in channel %s completed", event_name,
+		DBG3("Disable UST event %s in channel %s completed", event_name,
 				channel_name);
-
 		break;
 	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
@@ -2499,13 +2488,12 @@ static int cmd_disable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = ust_app_disable_all_event_glb(usess, uchan);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_DISABLE_FAIL;
+		ret = event_ust_disable_all_tracepoints(usess, domain, uchan);
+		if (ret != 0) {
 			goto error;
 		}
 
-		DBG2("Disable all UST event in channel %s completed", channel_name);
+		DBG3("Disable all UST events in channel %s completed", channel_name);
 
 		break;
 	}
