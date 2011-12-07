@@ -241,8 +241,14 @@ static int enable_events(char *session_name)
 
 	if (opt_enable_all) {
 		/* Default setup for enable all */
-		ev.name[0] = '\0';
-		ev.type = opt_event_type;
+
+		if (opt_kernel) {
+			ev.type = opt_event_type;
+			ev.name[0] = '\0';
+		} else {
+			ev.type = LTTNG_EVENT_TRACEPOINT;
+			strcpy(ev.name, "*");
+		}
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
