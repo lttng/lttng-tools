@@ -158,7 +158,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	}
 
 	/* Copy channel name */
-	strncpy(luc->name, chan->name, sizeof(&luc->name));
+	strncpy(luc->name, chan->name, sizeof(luc->name));
 	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */
