@@ -172,7 +172,7 @@ struct lttng_channel_attr {
  * Channel information structure. For both kernel and user-space.
  */
 struct lttng_channel {
-	char name[NAME_MAX];
+	char name[LTTNG_SYMBOL_NAME_LEN];
 	uint32_t enabled;
 	struct lttng_channel_attr attr;
 };
