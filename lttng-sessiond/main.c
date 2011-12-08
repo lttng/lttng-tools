@@ -2205,29 +2205,20 @@ static int cmd_disable_channel(struct ltt_session *session,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_channel *uchan;
+		struct cds_lfht *chan_ht;
 
-		/* Get channel in global UST domain HT */
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-				channel_name);
+		chan_ht = usess->domain_global.channels;
+
+		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == NULL) {
 			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
 
-		/* Already disabled */
-		if (!uchan->enabled) {
-			DBG2("UST channel %s already disabled", channel_name);
-			break;
-		}
-
-		ret = ust_app_disable_channel_glb(usess, uchan);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_DISABLE_FAIL;
+		ret = channel_ust_disable(usess, domain, uchan);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
-
-		uchan->enabled = 0;
-
 		break;
 	}
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
@@ -2247,40 +2238,6 @@ error:
 }
 
 /*
- * Copy channel from attributes and set it in the application channel list.
- */
-/*
-static int copy_ust_channel_to_app(struct ltt_ust_session *usess,
-		struct lttng_channel *attr, struct ust_app *app)
-{
-	int ret;
-	struct ltt_ust_channel *uchan, *new_chan;
-
-	uchan = trace_ust_get_channel_by_key(usess->channels, attr->name);
-	if (uchan == NULL) {
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
-	new_chan = trace_ust_create_channel(attr, usess->path);
-	if (new_chan == NULL) {
-		PERROR("malloc ltt_ust_channel");
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
-	ret = channel_ust_copy(new_chan, uchan);
-	if (ret < 0) {
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
-error:
-	return ret;
-}
-*/
-
-/*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  */
 static int cmd_enable_channel(struct ltt_session *session,
@@ -2288,6 +2245,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
+	struct cds_lfht *chan_ht;
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
@@ -2316,49 +2274,14 @@ static int cmd_enable_channel(struct ltt_session *session,
 	{
 		struct ltt_ust_channel *uchan;
 
-		DBG2("Enabling channel for LTTNG_DOMAIN_UST");
+		chan_ht = usess->domain_global.channels;
 
-		/* Get channel in global UST domain HT */
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-				attr->name);
+		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
-			uchan = trace_ust_create_channel(attr, usess->pathname);
-			if (uchan == NULL) {
-				ret = LTTCOMM_UST_CHAN_FAIL;
-				goto error;
-			}
-
-			/* Add channel to all registered applications */
-			ret = ust_app_create_channel_glb(usess, uchan);
-			if (ret != 0) {
-				ret = LTTCOMM_UST_CHAN_FAIL;
-				goto error;
-			}
-
-			rcu_read_lock();
-			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
-			rcu_read_unlock();
-
-			DBG2("UST channel %s added to global domain HT", attr->name);
+			ret = channel_ust_create(usess, domain, attr);
 		} else {
-			/* If already enabled, everything is OK */
-			if (uchan->enabled) {
-				break;
-			}
-
-			ret = ust_app_enable_channel_glb(usess, uchan);
-			if (ret < 0) {
-				if (ret != -EEXIST) {
-					ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
-					goto error;
-				} else {
-					ret = LTTCOMM_OK;
-				}
-			}
+			ret = channel_ust_enable(usess, domain, uchan);
 		}
-
-		uchan->enabled = 1;
-
 		break;
 	}
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
@@ -2370,8 +2293,6 @@ static int cmd_enable_channel(struct ltt_session *session,
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
 	}
-
-	ret = LTTCOMM_OK;
 
 error:
 	return ret;
@@ -2629,8 +2550,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			snprintf(attr->name, NAME_MAX, "%s", channel_name);
 			attr->name[NAME_MAX - 1] = '\0';
 
-			/* Use the internal command enable channel */
-			ret = cmd_enable_channel(session, domain, attr);
+			ret = channel_ust_create(usess, domain, attr);
 			if (ret != LTTCOMM_OK) {
 				free(attr);
 				goto error;
@@ -2751,7 +2671,7 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			attr->name[NAME_MAX - 1] = '\0';
 
 			/* Use the internal command enable channel */
-			ret = cmd_enable_channel(session, domain, attr);
+			ret = channel_ust_create(usess, domain, attr);
 			if (ret != LTTCOMM_OK) {
 				free(attr);
 				goto error;

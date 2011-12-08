@@ -181,8 +181,9 @@ static int enable_channel(char *session_name)
 		if (ret < 0) {
 			goto error;
 		} else {
-			MSG("Channel enabled %s for session %s",
-					channel_name, session_name);
+			MSG("%s channel %s enabled for session %s",
+					opt_kernel ? "Kernel" : "UST", channel_name,
+					session_name);
 		}
 
 		/* Next event */

@@ -15,6 +15,7 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#define _GNU_SOURCE
 #include <string.h>
 #include <unistd.h>
 
@@ -27,6 +28,7 @@
 #include "kernel.h"
 #include "ust-ctl.h"
 #include "utils.h"
+#include "ust-app.h"
 
 /*
  * Return allocated channel attributes.
@@ -37,13 +39,13 @@ struct lttng_channel *channel_new_default_attr(int dom)
 
 	chan = zmalloc(sizeof(struct lttng_channel));
 	if (chan == NULL) {
-		perror("zmalloc channel init");
+		PERROR("zmalloc channel init");
 		goto error_alloc;
 	}
 
 	if (snprintf(chan->name, sizeof(chan->name), "%s",
 				DEFAULT_CHANNEL_NAME) < 0) {
-		perror("snprintf default channel name");
+		PERROR("snprintf default channel name");
 		goto error;
 	}
 
@@ -90,10 +92,8 @@ int channel_kernel_disable(struct ltt_kernel_session *ksession,
 		goto error;
 	} else if (kchan->enabled == 1) {
 		ret = kernel_disable_channel(kchan);
-		if (ret < 0) {
-			if (ret != EEXIST) {
-				ret = LTTCOMM_KERN_CHAN_DISABLE_FAIL;
-			}
+		if (ret < 0 && ret != -EEXIST) {
+			ret = LTTCOMM_KERN_CHAN_DISABLE_FAIL;
 			goto error;
 		}
 	}
@@ -162,5 +162,159 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	ret = LTTCOMM_OK;
 error:
 	free(defattr);
+	return ret;
+}
+
+/*
+ * Enable UST channel for session and domain.
+ */
+int channel_ust_enable(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan)
+{
+	int ret = LTTCOMM_OK;
+
+	/* If already enabled, everything is OK */
+	if (uchan->enabled) {
+		DBG3("Channel %s already enabled. Skipping", uchan->name);
+		goto end;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		DBG2("Channel %s being enabled in UST global domain", uchan->name);
+		/* Enable channel for global domain */
+		ret = ust_app_enable_channel_glb(usess, uchan);
+		break;
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
+			goto error;
+		} else {
+			ret = LTTCOMM_OK;
+		}
+	}
+
+	uchan->enabled = 1;
+	DBG2("Channel %s enabled successfully", uchan->name);
+
+end:
+error:
+	return ret;
+}
+
+/*
+ * Create UST channel for session and domain.
+ */
+int channel_ust_create(struct ltt_ust_session *usess, int domain,
+		struct lttng_channel *attr)
+{
+	int ret = LTTCOMM_OK;
+	struct cds_lfht *chan_ht;
+	struct ltt_ust_channel *uchan = NULL;
+	struct lttng_channel *defattr = NULL;
+
+	/* Creating channel attributes if needed */
+	if (attr == NULL) {
+		defattr = channel_new_default_attr(domain);
+		if (defattr == NULL) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+		attr = defattr;
+	}
+
+	/* Create UST channel */
+	uchan = trace_ust_create_channel(attr, usess->pathname);
+	if (uchan == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		DBG2("Channel %s being created in UST global domain", uchan->name);
+		chan_ht = usess->domain_global.channels;
+
+		/* Enable channel for global domain */
+		ret = ust_app_create_channel_glb(usess, uchan);
+		break;
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error_free_chan;
+	}
+
+	if (ret < 0 && ret != -EEXIST) {
+		ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
+		goto error_free_chan;
+	}
+
+	uchan->enabled = 1;
+	hashtable_add_unique(chan_ht, &uchan->node);
+	DBG2("Channel %s created successfully", uchan->name);
+
+	free(defattr);
+	return LTTCOMM_OK;
+
+error_free_chan:
+	trace_ust_destroy_channel(uchan);
+error:
+	free(defattr);
+	return ret;
+}
+
+/*
+ * Disable UST channel for session and domain.
+ */
+int channel_ust_disable(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan)
+{
+	int ret = LTTCOMM_OK;
+	struct cds_lfht *chan_ht;
+
+	/* Already disabled */
+	if (uchan->enabled == 0) {
+		DBG2("Channel UST %s already disabled", uchan->name);
+		goto end;
+	}
+
+	/* Get the right channel's hashtable */
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		DBG2("Channel %s being disabled in UST global domain", uchan->name);
+		chan_ht = usess->domain_global.channels;
+
+		/* Disable channel for global domain */
+		ret = ust_app_disable_channel_glb(usess, uchan);
+		break;
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
+	if (ret < 0 && ret != -EEXIST) {
+		ret = LTTCOMM_UST_DISABLE_FAIL;
+		goto error;
+	}
+
+	uchan->enabled = 0;
+
+	DBG2("Channel %s disabled successfully", uchan->name);
+
+	return LTTCOMM_OK;
+
+end:
+error:
 	return ret;
 }

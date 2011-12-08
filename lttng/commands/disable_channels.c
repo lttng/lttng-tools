@@ -111,7 +111,8 @@ static int disable_channels(char *session_name)
 		if (ret < 0) {
 			goto error;
 		} else {
-			MSG("Channel %s disabled for session %s", channel_name,
+			MSG("%s channel %s disabled for session %s",
+					opt_kernel ? "Kernel" : "UST", channel_name,
 					session_name);
 		}
 
