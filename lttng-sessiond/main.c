@@ -173,10 +173,10 @@ static struct ltt_session_list *session_list_ptr;
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
 
-static const char *consumerd32_path =
-	__stringify(CONFIG_CONSUMERD32_PATH);
-static const char *consumerd64_path =
-	__stringify(CONFIG_CONSUMERD64_PATH);
+static const char *consumerd32_bin =
+	__stringify(CONFIG_CONSUMERD32_BIN);
+static const char *consumerd64_bin =
+	__stringify(CONFIG_CONSUMERD64_BIN);
 static const char *consumerd32_libdir =
 	__stringify(CONFIG_CONSUMERD32_LIBDIR);
 static const char *consumerd64_libdir =
@@ -185,7 +185,7 @@ static const char *consumerd64_libdir =
 static
 void setup_consumerd_path(void)
 {
-	const char *path, *libdir;
+	const char *bin, *libdir;
 
 	/*
 	 * Allow INSTALL_BIN_PATH to be used as a target path for the
@@ -193,15 +193,15 @@ void setup_consumerd_path(void)
 	 * has not been defined.
 	 */
 #if (CAA_BITS_PER_LONG == 32)
-	if (!consumerd32_path[0]) {
-		consumerd32_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	if (!consumerd32_bin[0]) {
+		consumerd32_bin = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 	}
 	if (!consumerd32_libdir[0]) {
 		consumerd32_libdir = INSTALL_LIB_PATH;
 	}
 #elif (CAA_BITS_PER_LONG == 64)
-	if (!consumerd64_path[0]) {
-		consumerd64_path = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+	if (!consumerd64_bin[0]) {
+		consumerd64_bin = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 	}
 	if (!consumerd64_libdir[0]) {
 		consumerd64_libdir = INSTALL_LIB_PATH;
@@ -213,13 +213,13 @@ void setup_consumerd_path(void)
 	/*
 	 * runtime env. var. overrides the build default.
 	 */
-	path = getenv("LTTNG_CONSUMERD32_PATH");
-	if (path) {
-		consumerd32_path = path;
+	bin = getenv("LTTNG_CONSUMERD32_BIN");
+	if (bin) {
+		consumerd32_bin = bin;
 	}
-	path = getenv("LTTNG_CONSUMERD64_PATH");
-	if (path) {
-		consumerd64_path = path;
+	bin = getenv("LTTNG_CONSUMERD64_BIN");
+	if (bin) {
+		consumerd64_bin = bin;
 	}
 	libdir = getenv("LTTNG_TOOLS_CONSUMERD32_LIBDIR");
 	if (libdir) {
@@ -1571,7 +1571,9 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 	pid_t pid;
+	const char *consumer_to_use;
 	const char *verbosity;
+	struct stat st;
 
 	DBG("Spawning consumerd");
 
@@ -1587,11 +1589,27 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		}
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
-			execl(INSTALL_BIN_PATH "/lttng-consumerd",
-					"lttng-consumerd", verbosity, "-k",
-					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					NULL);
+			/*
+			 * Find out which consumerd to execute. We will
+			 * first try the 64-bit path, then the
+			 * sessiond's installation directory, and
+			 * fallback on the 32-bit one, 
+			 */
+			if (stat(consumerd64_bin, &st) == 0) {
+				consumer_to_use = consumerd64_bin;
+			} else if (stat(INSTALL_BIN_PATH "/" CONSUMERD_FILE, &st) == 0) {
+				consumer_to_use = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
+			} else if (stat(consumerd32_bin, &st) == 0) {
+				consumer_to_use = consumerd32_bin;
+			} else {
+				break;
+			}
+			DBG("Using kernel consumer at: %s",  consumer_to_use);
+			execl(consumer_to_use,
+				"lttng-consumerd", verbosity, "-k",
+				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+				NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
@@ -1624,7 +1642,8 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			ret = execl(consumerd64_path, verbosity, "-u",
+			DBG("Using 64-bit UST consumer at: %s",  consumerd64_bin);
+			ret = execl(consumerd64_bin, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
@@ -1667,7 +1686,8 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			ret = execl(consumerd32_path, verbosity, "-u",
+			DBG("Using 32-bit UST consumer at: %s",  consumerd32_bin);
+			ret = execl(consumerd32_bin, verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
@@ -2137,9 +2157,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 			tmp[i].type = LTTNG_EVENT_FUNCTION;
 			break;
 		case LTTNG_UST_TRACEPOINT_LOGLEVEL:
-			/* TODO */
-			ret = -LTTCOMM_NOT_IMPLEMENTED;
-			goto error;
+			tmp[i].type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
 			break;
 		}
 		i++;
@@ -2250,29 +2268,20 @@ static int cmd_disable_channel(struct ltt_session *session,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_channel *uchan;
+		struct cds_lfht *chan_ht;
 
-		/* Get channel in global UST domain HT */
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-				channel_name);
+		chan_ht = usess->domain_global.channels;
+
+		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == NULL) {
 			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
 
-		/* Already disabled */
-		if (!uchan->enabled) {
-			DBG2("UST channel %s already disabled", channel_name);
-			break;
-		}
-
-		ret = ust_app_disable_channel_glb(usess, uchan);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_DISABLE_FAIL;
+		ret = channel_ust_disable(usess, domain, uchan);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
-
-		uchan->enabled = 0;
-
 		break;
 	}
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
@@ -2292,40 +2301,6 @@ error:
 }
 
 /*
- * Copy channel from attributes and set it in the application channel list.
- */
-/*
-static int copy_ust_channel_to_app(struct ltt_ust_session *usess,
-		struct lttng_channel *attr, struct ust_app *app)
-{
-	int ret;
-	struct ltt_ust_channel *uchan, *new_chan;
-
-	uchan = trace_ust_get_channel_by_key(usess->channels, attr->name);
-	if (uchan == NULL) {
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
-	new_chan = trace_ust_create_channel(attr, usess->path);
-	if (new_chan == NULL) {
-		PERROR("malloc ltt_ust_channel");
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
-	ret = channel_ust_copy(new_chan, uchan);
-	if (ret < 0) {
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
-error:
-	return ret;
-}
-*/
-
-/*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  */
 static int cmd_enable_channel(struct ltt_session *session,
@@ -2333,6 +2308,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
+	struct cds_lfht *chan_ht;
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
@@ -2361,49 +2337,14 @@ static int cmd_enable_channel(struct ltt_session *session,
 	{
 		struct ltt_ust_channel *uchan;
 
-		DBG2("Enabling channel for LTTNG_DOMAIN_UST");
+		chan_ht = usess->domain_global.channels;
 
-		/* Get channel in global UST domain HT */
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-				attr->name);
+		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
-			uchan = trace_ust_create_channel(attr, usess->pathname);
-			if (uchan == NULL) {
-				ret = LTTCOMM_UST_CHAN_FAIL;
-				goto error;
-			}
-
-			/* Add channel to all registered applications */
-			ret = ust_app_create_channel_glb(usess, uchan);
-			if (ret != 0) {
-				ret = LTTCOMM_UST_CHAN_FAIL;
-				goto error;
-			}
-
-			rcu_read_lock();
-			hashtable_add_unique(usess->domain_global.channels, &uchan->node);
-			rcu_read_unlock();
-
-			DBG2("UST channel %s added to global domain HT", attr->name);
+			ret = channel_ust_create(usess, domain, attr);
 		} else {
-			/* If already enabled, everything is OK */
-			if (uchan->enabled) {
-				break;
-			}
-
-			ret = ust_app_enable_channel_glb(usess, uchan);
-			if (ret < 0) {
-				if (ret != -EEXIST) {
-					ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
-					goto error;
-				} else {
-					ret = LTTCOMM_OK;
-				}
-			}
+			ret = channel_ust_enable(usess, domain, uchan);
 		}
-
-		uchan->enabled = 1;
-
 		break;
 	}
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
@@ -2415,8 +2356,6 @@ static int cmd_enable_channel(struct ltt_session *session,
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
 	}
-
-	ret = LTTCOMM_OK;
 
 error:
 	return ret;
@@ -2454,9 +2393,8 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_session *usess;
 		struct ltt_ust_channel *uchan;
-		struct ltt_ust_event *uevent;
+		struct ltt_ust_session *usess;
 
 		usess = session->ust_session;
 
@@ -2467,23 +2405,13 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
-		if (uevent == NULL) {
-			ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+		ret = event_ust_disable_tracepoint(usess, domain, uchan, event_name);
+		if (ret != LTTCOMM_OK) {
 			goto error;
 		}
 
-		ret = ust_app_disable_event_glb(usess, uchan, uevent);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_DISABLE_FAIL;
-			goto error;
-		}
-
-		uevent->enabled = 0;
-
-		DBG2("Disable UST event %s in channel %s completed", event_name,
+		DBG3("Disable UST event %s in channel %s completed", event_name,
 				channel_name);
-
 		break;
 	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
@@ -2544,13 +2472,12 @@ static int cmd_disable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = ust_app_disable_all_event_glb(usess, uchan);
-		if (ret < 0) {
-			ret = LTTCOMM_UST_DISABLE_FAIL;
+		ret = event_ust_disable_all_tracepoints(usess, domain, uchan);
+		if (ret != 0) {
 			goto error;
 		}
 
-		DBG2("Disable all UST event in channel %s completed", channel_name);
+		DBG3("Disable all UST events in channel %s completed", channel_name);
 
 		break;
 	}
@@ -2611,6 +2538,12 @@ error:
 
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
+ *
+ * TODO: currently, both events and loglevels are kept within the same
+ * namespace for UST global registry/app registery, so if an event
+ * happen to have the same name as the loglevel (very unlikely though),
+ * and an attempt is made to enable/disable both in the same session,
+ * the first to be created will be the only one allowed to exist.
  */
 static int cmd_enable_event(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event)
@@ -2680,8 +2613,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 			snprintf(attr->name, NAME_MAX, "%s", channel_name);
 			attr->name[NAME_MAX - 1] = '\0';
 
-			/* Use the internal command enable channel */
-			ret = cmd_enable_channel(session, domain, attr);
+			ret = channel_ust_create(usess, domain, attr);
 			if (ret != LTTCOMM_OK) {
 				free(attr);
 				goto error;
@@ -2753,11 +2685,11 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 		}
 
 		switch (event_type) {
-		case LTTNG_KERNEL_SYSCALL:
+		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_enable_all_syscalls(session->kernel_session,
 					kchan, kernel_tracer_fd);
 			break;
-		case LTTNG_KERNEL_TRACEPOINT:
+		case LTTNG_EVENT_TRACEPOINT:
 			/*
 			 * This call enables all LTTNG_KERNEL_TRACEPOINTS and
 			 * events already registered to the channel.
@@ -2765,7 +2697,7 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 			ret = event_kernel_enable_all_tracepoints(session->kernel_session,
 					kchan, kernel_tracer_fd);
 			break;
-		case LTTNG_KERNEL_ALL:
+		case LTTNG_EVENT_ALL:
 			/* Enable syscalls and tracepoints */
 			ret = event_kernel_enable_all(session->kernel_session,
 					kchan, kernel_tracer_fd);
@@ -2782,8 +2714,69 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		struct lttng_channel *attr;
+		struct ltt_ust_channel *uchan;
+		struct ltt_ust_session *usess = session->ust_session;
+
+		/* Get channel from global UST domain */
+		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+				channel_name);
+		if (uchan == NULL) {
+			/* Create default channel */
+			attr = channel_new_default_attr(domain);
+			if (attr == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+			snprintf(attr->name, NAME_MAX, "%s", channel_name);
+			attr->name[NAME_MAX - 1] = '\0';
+
+			/* Use the internal command enable channel */
+			ret = channel_ust_create(usess, domain, attr);
+			if (ret != LTTCOMM_OK) {
+				free(attr);
+				goto error;
+			}
+			free(attr);
+
+			/* Get the newly created channel reference back */
+			uchan = trace_ust_find_channel_by_name(
+					usess->domain_global.channels, channel_name);
+			if (uchan == NULL) {
+				/* Something is really wrong */
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+		}
+
+		/* At this point, the session and channel exist on the tracer */
+
+		switch (event_type) {
+		case LTTNG_EVENT_ALL:
+		case LTTNG_EVENT_TRACEPOINT:
+			ret = event_ust_enable_all_tracepoints(usess, domain, uchan);
+			if (ret != LTTCOMM_OK) {
+				goto error;
+			}
+			break;
+		default:
+			ret = LTTCOMM_UST_ENABLE_FAIL;
+			goto error;
+		}
+
+		/* Manage return value */
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	default:
-		/* TODO: Userspace tracing */
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -3328,7 +3321,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			/* Start the UST consumer daemons */
 			/* 64-bit */
 			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
-			if (consumerd64_path[0] != '\0' &&
+			if (consumerd64_bin[0] != '\0' &&
 					ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
@@ -3344,7 +3337,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 			}
 			/* 32-bit */
-			if (consumerd32_path[0] != '\0' &&
+			if (consumerd32_bin[0] != '\0' &&
 					ustconsumer32_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
@@ -3901,13 +3894,13 @@ static int parse_args(int argc, char **argv)
 			opt_verbose_consumer += 1;
 			break;
 		case 'u':
-			consumerd32_path= optarg;
+			consumerd32_bin= optarg;
 			break;
 		case 'U':
 			consumerd32_libdir = optarg;
 			break;
 		case 't':
-			consumerd64_path = optarg;
+			consumerd64_bin = optarg;
 			break;
 		case 'T':
 			consumerd64_libdir = optarg;

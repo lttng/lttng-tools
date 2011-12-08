@@ -38,7 +38,6 @@ static char *opt_event_name;
 static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_kernel;
-static int opt_pid_all;
 static int opt_userspace;
 static char *opt_cmd_name;
 static pid_t opt_pid;
@@ -142,7 +141,6 @@ static struct poptOption long_options[] = {
 	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -308,8 +306,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
-	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
-	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
+	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
+	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
+	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
 	fprintf(ofp, "                           the command line.\n");
 	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
@@ -365,7 +364,7 @@ static int add_context(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
 		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
 	} else {
-		ERR("Please specify a tracer (--kernel or --userspace)");
+		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
 		goto error;
 	}

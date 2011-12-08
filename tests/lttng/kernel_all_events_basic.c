@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Start tracing: ");
-    if ((ret = lttng_start_tracing(handle)) < 0) {
+    if ((ret = lttng_start_tracing("test")) < 0) {
         printf("error starting tracing: %s\n", lttng_strerror(ret));
 		goto start_fail;
     }
@@ -86,14 +86,14 @@ int main(int argc, char **argv)
     sleep(2);
 
 	printf("Stop tracing: ");
-	if ((ret = lttng_stop_tracing(handle)) < 0) {
+	if ((ret = lttng_stop_tracing("test")) < 0) {
 		printf("error stopping tracing: %s\n", lttng_strerror(ret));
 		goto stop_fail;
 	}
 	PRINT_OK();
 
 	printf("Destroy tracing session: ");
-	if ((ret = lttng_destroy_session(handle)) < 0) {
+	if ((ret = lttng_destroy_session("test")) < 0) {
 		printf("error destroying session: %s\n", lttng_strerror(ret));
 	}
 	PRINT_OK();
@@ -108,7 +108,7 @@ handle_fail:
 stop_fail:
 start_fail:
 enable_fail:
-	lttng_destroy_session(handle);
+	lttng_destroy_session("test");
 	lttng_destroy_handle(handle);
 
     return 1;

@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-#define LTTNG_UST_SYM_NAME_LEN	128
+#define LTTNG_UST_SYM_NAME_LEN	256
 
 #define LTTNG_UST_COMM_VERSION_MAJOR		0
 #define LTTNG_UST_COMM_VERSION_MINOR		1

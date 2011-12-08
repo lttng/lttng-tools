@@ -25,7 +25,7 @@
 
 #include <lttng-share.h>
 
-#define LTTNG_SYM_NAME_LEN  128
+#define LTTNG_SYM_NAME_LEN  256
 
 /*
  * LTTng DebugFS ABI structures.

@@ -246,6 +246,112 @@ end:
 }
 
 /*
+ * ============================
+ * UST : The Ultimate Frontier!
+ * ============================
+ */
+
+/*
+ * Enable all UST tracepoints for a channel from a UST session.
+ */
+int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan)
+{
+	int ret, i;
+	size_t size;
+	struct cds_lfht_iter iter;
+	struct ltt_ust_event *uevent = NULL;
+	struct lttng_event *events = NULL;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+	{
+		/* Enable existing events */
+		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+			if (uevent->enabled == 0) {
+				ret = ust_app_enable_event_glb(usess, uchan, uevent);
+				if (ret < 0) {
+					continue;
+				}
+				uevent->enabled = 1;
+			}
+		}
+
+		/* Get all UST available events */
+		size = ust_app_list_events(&events);
+		if (size < 0) {
+			ret = LTTCOMM_UST_LIST_FAIL;
+			goto error;
+		}
+
+		for (i = 0; i < size; i++) {
+			/*
+			 * Check if event exist and if so, continue since it was enable
+			 * previously.
+			 */
+			uevent = trace_ust_find_event_by_name(uchan->events,
+					events[i].name);
+			if (uevent != NULL) {
+				ret = ust_app_enable_event_pid(usess, uchan, uevent,
+						events[i].pid);
+				if (ret < 0) {
+					if (ret != -EEXIST) {
+						ret = LTTCOMM_UST_ENABLE_FAIL;
+						goto error;
+					}
+				}
+				continue;
+			}
+
+			/* Create ust event */
+			uevent = trace_ust_create_event(&events[i]);
+			if (uevent == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error_destroy;
+			}
+
+			/* Create event for the specific PID */
+			ret = ust_app_enable_event_pid(usess, uchan, uevent,
+					events[i].pid);
+			if (ret < 0) {
+				if (ret == -EEXIST) {
+					ret = LTTCOMM_UST_EVENT_EXIST;
+					goto error;
+				} else {
+					ret = LTTCOMM_UST_ENABLE_FAIL;
+					goto error_destroy;
+				}
+			}
+
+			uevent->enabled = 1;
+			/* Add ltt ust event to channel */
+			rcu_read_lock();
+			hashtable_add_unique(uchan->events, &uevent->node);
+			rcu_read_unlock();
+		}
+
+		free(events);
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
+	return LTTCOMM_OK;
+
+error_destroy:
+	trace_ust_destroy_event(uevent);
+
+error:
+	free(events);
+	return ret;
+}
+
+/*
  * Enable UST tracepoint event for a channel from a UST session.
  */
 int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
@@ -264,6 +370,11 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		to_create = 1;
 	}
 
+	if (uevent->enabled) {
+		/* It's already enabled so everything is OK */
+		goto end;
+	}
+
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 	{
@@ -278,14 +389,138 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		if (ret < 0) {
 			if (ret == -EEXIST) {
 				ret = LTTCOMM_UST_EVENT_EXIST;
+				goto end;
 			} else {
 				ret = LTTCOMM_UST_ENABLE_FAIL;
+				goto error;
 			}
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto end;
+	}
+
+	uevent->enabled = 1;
+	/* Add ltt ust event to channel */
+	if (to_create) {
+		rcu_read_lock();
+		hashtable_add_unique(uchan->events, &uevent->node);
+		rcu_read_unlock();
+	}
+
+	DBG("Event UST %s %s in channel %s", uevent->attr.name,
+			to_create ? "created" : "enabled", uchan->name);
+
+end:
+	return LTTCOMM_OK;
+
+error:
+	trace_ust_destroy_event(uevent);
+	return ret;
+}
+
+/*
+ * Disable UST tracepoint of a channel from a UST session.
+ */
+int event_ust_disable_tracepoint(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan, char *event_name)
+{
+	int ret;
+	struct ltt_ust_event *uevent;
+
+	uevent = trace_ust_find_event_by_name(uchan->events, event_name);
+	if (uevent == NULL) {
+		ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+		goto error;
+	}
+
+	if (uevent->enabled == 0) {
+		/* It's already enabled so everything is OK */
+		ret = LTTCOMM_OK;
+		goto end;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		ret = ust_app_disable_event_glb(usess, uchan, uevent);
+		if (ret < 0 && ret != -EEXIST) {
+			ret = LTTCOMM_UST_DISABLE_FAIL;
+			goto error;
+		}
+		break;
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
+	uevent->enabled = 0;
+	ret = LTTCOMM_OK;
+
+end:
+	DBG2("Event UST %s disabled in channel %s", uevent->attr.name,
+			uchan->name);
+
+error:
+	return ret;
+}
+
+/*
+ * Disable all UST tracepoints for a channel from a UST session.
+ */
+int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan)
+{
+	int ret, i;
+	size_t size;
+	struct cds_lfht_iter iter;
+	struct ltt_ust_event *uevent = NULL;
+	struct lttng_event *events = NULL;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+	{
+		/* Disabling existing events */
+		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+			if (uevent->enabled == 1) {
+				ret = ust_app_disable_event_glb(usess, uchan, uevent);
+				if (ret < 0) {
+					continue;
+				}
+				uevent->enabled = 0;
+			}
+		}
+
+		/* Get all UST available events */
+		size = ust_app_list_events(&events);
+		if (size < 0) {
+			ret = LTTCOMM_UST_LIST_FAIL;
 			goto error;
 		}
 
-		DBG("Event UST %s added to channel %s", uevent->attr.name,
-				uchan->name);
+		for (i = 0; i < size; i++) {
+			uevent = trace_ust_find_event_by_name(uchan->events,
+					events[i].name);
+			if (uevent != NULL && uevent->enabled == 1) {
+				ret = ust_app_disable_event_pid(usess, uchan, uevent,
+						events[i].pid);
+				if (ret < 0 && ret != -EEXIST) {
+					ret = LTTCOMM_UST_DISABLE_FAIL;
+					goto error;
+				}
+				uevent->enabled = 0;
+				continue;
+			}
+		}
+
+		free(events);
 		break;
 	}
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
@@ -296,39 +531,9 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 
-	uevent->enabled = 1;
-	/* Add ltt ust event to channel */
-	rcu_read_lock();
-	hashtable_add_unique(uchan->events, &uevent->node);
-	rcu_read_unlock();
-
 	return LTTCOMM_OK;
 
 error:
-	trace_ust_destroy_event(uevent);
+	free(events);
 	return ret;
 }
-
-#ifdef DISABLE
-int event_ust_disable_tracepoint(struct ltt_ust_session *ustsession,
-		struct ltt_ust_channel *ustchan, char *event_name)
-{
-	int ret;
-	struct ltt_ust_event *ustevent;
-
-	ustevent = trace_ust_find_event_by_name(ustchan->events, event_name);
-	if (ustevent == NULL) {
-		ret = LTTCOMM_NO_EVENT;
-		goto end;
-	}
-	//ret = ustctl_disable(ustsession->sock, ustevent->obj);
-	if (ret < 0) {
-		ret = LTTCOMM_UST_ENABLE_FAIL;
-		goto end;
-	}
-	ustevent->enabled = 0;
-	ret = LTTCOMM_OK;
-end:
-	return ret;
-}
-#endif

@@ -131,6 +131,26 @@ const char *enabled_string(int value)
 	}
 }
 
+static
+const char *loglevel_string_pre(const char *loglevel)
+{
+	if (loglevel[0] == '\0') {
+		return "";
+	} else {
+		return " (loglevel: ";
+	}
+}
+
+static
+const char *loglevel_string_post(const char *loglevel)
+{
+	if (loglevel[0] == '\0') {
+		return "";
+	} else {
+		return ")";
+	}
+}
+
 /*
  * Pretty print single event.
  */
@@ -138,9 +158,26 @@ static void print_events(struct lttng_event *event)
 {
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
-		MSG("%s%s (type: tracepoint)%s", indent6,
-				event->name, enabled_string(event->enabled));
+	{
+		char ll_value[LTTNG_SYMBOL_NAME_LEN] = "";
+
+		if (event->loglevel[0] != '\0') {
+			int ret;
+
+			ret = snprintf(ll_value, LTTNG_SYMBOL_NAME_LEN,
+				" (%lld)", (long long) event->loglevel_value);
+			if (ret < 0)
+				ERR("snprintf error");
+		}
+		MSG("%s%s%s%s%s%s (type: tracepoint)%s", indent6,
+				event->name,
+				loglevel_string_pre(event->loglevel),
+				event->loglevel,
+				ll_value,
+				loglevel_string_post(event->loglevel),
+				enabled_string(event->enabled));
 		break;
+	}
 	case LTTNG_EVENT_PROBE:
 		MSG("%s%s (type: probe)%s", indent6,
 				event->name, enabled_string(event->enabled));
@@ -164,6 +201,11 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s", indent6,
 				enabled_string(event->enabled));
+		break;
+	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+		MSG("%s%s (type: tracepoint loglevel)%s", indent6,
+			event->name,
+			enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */
@@ -440,14 +482,14 @@ error:
 /*
  * List available domain(s) for a session.
  */
-static int list_domains(void)
+static int list_domains(const char *session_name)
 {
 	int i, count, ret = CMD_SUCCESS;
 	struct lttng_domain *domains = NULL;
 
 	MSG("Domains:\n-------------");
 
-	count = lttng_list_domains(handle, &domains);
+	count = lttng_list_domains(session_name, &domains);
 	if (count < 0) {
 		ret = count;
 		goto error;
@@ -559,7 +601,7 @@ int cmd_list(int argc, const char **argv)
 
 		/* Domain listing */
 		if (opt_domain) {
-			ret = list_domains();
+			ret = list_domains(session_name);
 			goto end;
 		}
 
@@ -571,7 +613,7 @@ int cmd_list(int argc, const char **argv)
 			}
 		} else {
 			/* We want all domain(s) */
-			nb_domain = lttng_list_domains(handle, &domains);
+			nb_domain = lttng_list_domains(session_name, &domains);
 			if (nb_domain < 0) {
 				ret = nb_domain;
 				goto end;

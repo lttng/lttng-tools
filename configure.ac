@@ -14,36 +14,36 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
-AC_ARG_WITH([consumerd32-path],
-	AS_HELP_STRING([--with-consumerd32-path],
-	[Location of the 32-bit consumerd executable]),
-	[CONSUMERD32_PATH="$withval"],
-	[CONSUMERD32_PATH=''])
-AC_SUBST([CONSUMERD32_PATH])
+AC_ARG_WITH([consumerd32-bin],
+	AS_HELP_STRING([--with-consumerd32-bin],
+	[Location of the 32-bit consumerd executable (including the filename)]),
+	[CONSUMERD32_BIN="$withval"],
+	[CONSUMERD32_BIN=''])
+AC_SUBST([CONSUMERD32_BIN])
 
-AC_ARG_WITH([consumerd64-path],
-	AS_HELP_STRING([--with-consumerd64-path],
-	[Location of the 64-bit consumerd executable]),
-	[CONSUMERD64_PATH="$withval"],
-	[CONSUMERD64_PATH=''])
-AC_SUBST([CONSUMERD64_PATH])
+AC_ARG_WITH([consumerd64-bin],
+	AS_HELP_STRING([--with-consumerd64-bin],
+	[Location of the 64-bit consumerd executable (including the filename)]),
+	[CONSUMERD64_BIN="$withval"],
+	[CONSUMERD64_BIN=''])
+AC_SUBST([CONSUMERD64_BIN])
 
 AC_ARG_WITH([consumerd32-libdir],
 	AS_HELP_STRING([--with-consumerd32-libdir],
-	[Location of the 32-bit consumerd libraries]),
+	[Directory containing the 32-bit consumerd libraries]),
 	[CONSUMERD32_LIBDIR="$withval"],
 	[CONSUMERD32_LIBDIR=''])
 AC_SUBST([CONSUMERD32_LIBDIR])
 
 AC_ARG_WITH([consumer64d-libdir],
 	AS_HELP_STRING([--with-consumerd64-libdir],
-	[Location of the 64-bit consumerd libraries]),
+	[Directory containing the 64-bit consumerd libraries]),
 	[CONSUMERD64_LIBDIR="$withval"],
 	[CONSUMERD64_LIBDIR=''])
 AC_SUBST([CONSUMERD64_LIBDIR])
 
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_PATH], $CONSUMERD32_PATH, [Location of the 32-bit consumerd executable.])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_PATH], $CONSUMERD64_PATH, [Location of the 64-bit consumerd executable])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], $CONSUMERD32_BIN, [Location of the 32-bit consumerd executable.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], $CONSUMERD64_BIN, [Location of the 64-bit consumerd executable])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], $CONSUMERD32_LIBDIR, [Search for consumerd 32-bit libraries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], $CONSUMERD64_LIBDIR, [Search for consumerd 64-bit libraries in this location.])
 

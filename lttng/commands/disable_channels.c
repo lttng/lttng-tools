@@ -30,9 +30,8 @@
 #include "../utils.h"
 
 static char *opt_channels;
-static char *opt_kernel;
+static int opt_kernel;
 static char *opt_session_name;
-static int opt_pid_all;
 static int opt_userspace;
 static char *opt_cmd_name;
 static pid_t opt_pid;
@@ -50,7 +49,6 @@ static struct poptOption long_options[] = {
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"all",            0,   POPT_ARG_VAL, &opt_pid_all, 1, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -66,8 +64,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
-	fprintf(ofp, "      --all                If -u, apply on all traceable apps\n");
-	fprintf(ofp, "  -p, --pid PID            If -u, apply on a specific PID\n");
+	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
+	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
+	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 	fprintf(ofp, "\n");
 }
 
@@ -92,7 +91,7 @@ static int disable_channels(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
 		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
 	} else {
-		ERR("Please specify a tracer (--kernel or --userspace)");
+		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -112,7 +111,8 @@ static int disable_channels(char *session_name)
 		if (ret < 0) {
 			goto error;
 		} else {
-			MSG("Channel %s disabled for session %s", channel_name,
+			MSG("%s channel %s disabled for session %s",
+					opt_kernel ? "Kernel" : "UST", channel_name,
 					session_name);
 		}
 

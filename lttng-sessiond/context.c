@@ -152,6 +152,83 @@ error:
 }
 
 /*
+ * Add UST context to channel.
+ */
+static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan, struct lttng_event_context *ctx)
+{
+	int ret;
+	struct ltt_ust_context *uctx;
+
+	/* Create ltt UST context */
+	uctx = trace_ust_create_context(ctx);
+	if (uctx == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
+		if (ret < 0) {
+			goto error;
+		}
+		break;
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
+	/* Add ltt UST context node to ltt UST channel */
+	hashtable_add_unique(uchan->ctx, &uctx->node);
+
+	return LTTCOMM_OK;
+
+error:
+	free(uctx);
+	return ret;
+}
+
+/*
+ * Add UST context to event.
+ */
+static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct lttng_event_context *ctx)
+{
+	int ret;
+	struct ltt_ust_context *uctx;
+
+	/* Create ltt UST context */
+	uctx = trace_ust_create_context(ctx);
+	if (uctx == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto error;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		ret = ust_app_add_ctx_event_glb(usess, uchan, uevent, uctx);
+		if (ret < 0) {
+			goto error;
+		}
+		break;
+	default:
+		ret = LTTCOMM_NOT_IMPLEMENTED;
+		goto error;
+	}
+
+	/* Add ltt UST context node to ltt UST event */
+	hashtable_add_unique(uevent->ctx, &uctx->node);
+
+	return LTTCOMM_OK;
+
+error:
+	free(uctx);
+	return ret;
+}
+
+/*
  * Add kernel context to tracer.
  */
 int context_kernel_add(struct ltt_kernel_session *ksession,
@@ -207,8 +284,11 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	struct cds_lfht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct ltt_ust_event *uevent = NULL;
-	struct ltt_ust_context *uctx;
 
+	/*
+	 * Define which channel's hashtable to use from the domain or quit if
+	 * unknown domain.
+	 */
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		chan_ht = usess->domain_global.channels;
@@ -221,6 +301,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 
+	/* Do we have an event name */
 	if (strlen(event_name) != 0) {
 		have_event = 1;
 	}
@@ -243,59 +324,45 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		}
 	}
 
-	/* Create ltt UST context */
-	uctx = trace_ust_create_context(ctx);
-	if (uctx == NULL) {
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
 	/* At this point, we have 4 possibilities */
 
-	if (uchan && uevent) {			/* Add ctx to event in channel */
-		ret = ust_app_add_ctx_event_glb(usess, uchan, uevent, uctx);
+	if (uchan && uevent) {				/* Add ctx to event in channel */
+		ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
 	} else if (uchan && !have_event) {	/* Add ctx to channel */
-		ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
+		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 	} else if (!uchan && have_event) {	/* Add ctx to event */
+		/* Add context to event without having the channel name */
 		cds_lfht_for_each_entry(chan_ht, &iter, uchan, node) {
 			uevent = trace_ust_find_event_by_name(uchan->events, event_name);
 			if (uevent != NULL) {
-				ret = ust_app_add_ctx_event_glb(usess, uchan, uevent, uctx);
+				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
 				/*
 				 * LTTng UST does not allowed the same event to be registered
 				 * multiple time in different or the same channel. So, if we
-				 * found our event in the first place, no need to continue.
+				 * found our event, we stop.
 				 */
 				goto end;
 			}
 		}
 		ret = LTTCOMM_UST_EVENT_NOT_FOUND;
-		goto error_free_ctx;
-	} else if (!uchan && !have_event) {	/* Add ctx to all events, all channels */
+		goto error;
+	} else if (!uchan && !have_event) {	/* Add ctx all events, all channels */
+		/* For all channels */
 		cds_lfht_for_each_entry(chan_ht, &iter, uchan, node) {
-			ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
+			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret < 0) {
-				/* Add failed so uctx was not added. We can keep it. */
+				ERR("Context added to channel %s failed", uchan->name);
 				continue;
 			}
+
+			/* For all events in channel */
 			cds_lfht_for_each_entry(uchan->events, &uiter, uevent, node) {
-				ret = ust_app_add_ctx_event_glb(usess, uchan, uevent, uctx);
+				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
 				if (ret < 0) {
-					/* Add failed so uctx was not added. We can keep it. */
+					ERR("Context add to event %s in channel %s failed",
+							uevent->attr.name, uchan->name);
 					continue;
 				}
-				/* Create ltt UST context */
-				uctx = trace_ust_create_context(ctx);
-				if (uctx == NULL) {
-					ret = LTTCOMM_FATAL;
-					goto error;
-				}
-			}
-			/* Create ltt UST context */
-			uctx = trace_ust_create_context(ctx);
-			if (uctx == NULL) {
-				ret = LTTCOMM_FATAL;
-				goto error;
 			}
 		}
 	}
@@ -304,16 +371,14 @@ end:
 	switch (ret) {
 	case -EEXIST:
 		ret = LTTCOMM_UST_CONTEXT_EXIST;
-		goto error_free_ctx;
+		goto error;
 	case -ENOMEM:
 		ret = LTTCOMM_FATAL;
-		goto error_free_ctx;
+		goto error;
 	}
 
 	return LTTCOMM_OK;
 
-error_free_ctx:
-	free(uctx);
 error:
 	return ret;
 }

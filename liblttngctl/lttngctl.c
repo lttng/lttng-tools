@@ -425,17 +425,17 @@ int lttng_register_consumer(struct lttng_handle *handle,
 /*
  *  Start tracing for all trace of the session.
  */
-int lttng_start_tracing(struct lttng_handle *handle)
+int lttng_start_tracing(const char *session_name)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (handle == NULL) {
+	if (session_name == NULL) {
 		return -1;
 	}
 
 	lsm.cmd_type = LTTNG_START_TRACE;
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+
+	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 
 	return ask_sessiond(&lsm, NULL);
 }
@@ -443,13 +443,17 @@ int lttng_start_tracing(struct lttng_handle *handle)
 /*
  *  Stop tracing for all trace of the session.
  */
-int lttng_stop_tracing(struct lttng_handle *handle)
+int lttng_stop_tracing(const char *session_name)
 {
 	struct lttcomm_session_msg lsm;
 
+	if (session_name == NULL) {
+		return -1;
+	}
+
 	lsm.cmd_type = LTTNG_STOP_TRACE;
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+
+	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 
 	return ask_sessiond(&lsm, NULL);
 }
@@ -666,17 +670,17 @@ int lttng_create_session(const char *name, const char *path)
 /*
  *  Destroy session using name.
  */
-int lttng_destroy_session(struct lttng_handle *handle)
+int lttng_destroy_session(const char *session_name)
 {
 	struct lttcomm_session_msg lsm;
 
-	if (handle == NULL) {
+	if (session_name == NULL) {
 		return -1;
 	}
 
 	lsm.cmd_type = LTTNG_DESTROY_SESSION;
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+
+	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 
 	return ask_sessiond(&lsm, NULL);
 }
@@ -704,20 +708,19 @@ int lttng_list_sessions(struct lttng_session **sessions)
 /*
  * List domain of a session.
  */
-int lttng_list_domains(struct lttng_handle *handle,
+int lttng_list_domains(const char *session_name,
 		struct lttng_domain **domains)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (handle == NULL) {
+	if (session_name == NULL) {
 		return -1;
 	}
 
 	lsm.cmd_type = LTTNG_LIST_DOMAINS;
 
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 
 	ret = ask_sessiond(&lsm, (void**) domains);
 	if (ret < 0) {

@@ -63,7 +63,7 @@ struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
 	struct cds_lfht_iter iter;
 
 	rcu_read_lock();
-	node = hashtable_lookup(ht, (void *) name, strlen(name), &iter);
+	node = hashtable_lookup(ht, (void *)name, strlen(name), &iter);
 	if (node == NULL) {
 		rcu_read_unlock();
 		goto error;
@@ -158,7 +158,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	}
 
 	/* Copy channel name */
-	strncpy(luc->name, chan->name, sizeof(&luc->name));
+	strncpy(luc->name, chan->name, sizeof(luc->name));
 	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */
@@ -211,6 +211,9 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 		break;
 	case LTTNG_EVENT_TRACEPOINT:
 		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT;
+		break;
+	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT_LOGLEVEL;
 		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);

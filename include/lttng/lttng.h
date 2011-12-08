@@ -39,7 +39,7 @@
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
-#define LTTNG_SYMBOL_NAME_LEN 128
+#define LTTNG_SYMBOL_NAME_LEN 256
 
 /*
  * Every lttng_event_* structure both apply to kernel event and user-space
@@ -68,6 +68,7 @@ enum lttng_event_type {
 	LTTNG_EVENT_FUNCTION_ENTRY            = 3,
 	LTTNG_EVENT_NOOP                      = 4,
 	LTTNG_EVENT_SYSCALL                   = 5,
+	LTTNG_EVENT_TRACEPOINT_LOGLEVEL       = 6,
 };
 
 /*
@@ -143,6 +144,8 @@ struct lttng_event_function_attr {
  */
 struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
+	char loglevel[LTTNG_SYMBOL_NAME_LEN];
+	int64_t loglevel_value;
 	enum lttng_event_type type;
 	uint32_t enabled;
 	pid_t pid;
@@ -169,7 +172,7 @@ struct lttng_channel_attr {
  * Channel information structure. For both kernel and user-space.
  */
 struct lttng_channel {
-	char name[NAME_MAX];
+	char name[LTTNG_SYMBOL_NAME_LEN];
 	uint32_t enabled;
 	struct lttng_channel_attr attr;
 };
@@ -239,7 +242,7 @@ extern int lttng_create_session(const char *name, const char *path);
  * The session will not be useable anymore, tracing will stopped for all
  * registered trace and tracing buffers will be flushed.
  */
-extern int lttng_destroy_session(struct lttng_handle *handle);
+extern int lttng_destroy_session(const char *name);
 
 /*
  * List all tracing sessions.
@@ -253,7 +256,7 @@ extern int lttng_list_sessions(struct lttng_session **sessions);
  *
  * Return the size of the "lttng_domain" array. Caller must free(3).
  */
-extern int lttng_list_domains(struct lttng_handle *handle,
+extern int lttng_list_domains(const char *session_name,
 		struct lttng_domain **domains);
 
 /*
@@ -311,12 +314,12 @@ extern int lttng_register_consumer(struct lttng_handle *handle,
 /*
  * Start tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_start_tracing(struct lttng_handle *handle);
+extern int lttng_start_tracing(const char *session_name);
 
 /*
  * Stop tracing for *all* registered trace (kernel and user-space).
  */
-extern int lttng_stop_tracing(struct lttng_handle *handle);
+extern int lttng_stop_tracing(const char *session_name);
 
 /*
  * Add context to event for a specific channel.
