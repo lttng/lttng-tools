@@ -94,6 +94,7 @@ static int opt_sig_parent;
 static int opt_daemon;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
+static char *rundir;
 
 /* Consumer daemon specific control data */
 static struct consumer_data kconsumer_data = {
@@ -423,19 +424,18 @@ static void cleanup(void)
 
 	DBG("Cleaning up");
 
-	if (is_root) {
-		DBG("Removing %s directory", LTTNG_RUNDIR);
-		ret = asprintf(&cmd, "rm -rf " LTTNG_RUNDIR);
-		if (ret < 0) {
-			ERR("asprintf failed. Something is really wrong!");
-		}
-
-		/* Remove lttng run directory */
-		ret = system(cmd);
-		if (ret < 0) {
-			ERR("Unable to clean " LTTNG_RUNDIR);
-		}
+	DBG("Removing %s directory", rundir);
+	ret = asprintf(&cmd, "rm -rf %s", rundir);
+	if (ret < 0) {
+		ERR("asprintf failed. Something is really wrong!");
 	}
+
+	/* Remove lttng run directory */
+	ret = system(cmd);
+	if (ret < 0) {
+		ERR("Unable to clean %s", rundir);
+	}
+	free(cmd);
 
 	DBG("Cleaning up all session");
 
@@ -3996,14 +3996,16 @@ static int create_apps_cmd_pipe(void)
 /*
  * Create the lttng run directory needed for all global sockets and pipe.
  */
-static int create_lttng_rundir(void)
+static int create_lttng_rundir(const char *rundir)
 {
 	int ret;
 
-	ret = mkdir(LTTNG_RUNDIR, S_IRWXU | S_IRWXG );
+	DBG3("Creating LTTng run directory: %s", rundir);
+
+	ret = mkdir(rundir, S_IRWXU | S_IRWXG );
 	if (ret < 0) {
 		if (errno != EEXIST) {
-			ERR("Unable to create " LTTNG_RUNDIR);
+			ERR("Unable to create %s", rundir);
 			goto error;
 		} else {
 			ret = 0;
@@ -4018,26 +4020,29 @@ error:
  * Setup sockets and directory needed by the kconsumerd communication with the
  * session daemon.
  */
-static int set_consumer_sockets(struct consumer_data *consumer_data)
+static int set_consumer_sockets(struct consumer_data *consumer_data,
+		const char *rundir)
 {
 	int ret;
-	const char *path;
+	char path[PATH_MAX];
 
-	switch (consumer_data->type) {
+    switch (consumer_data->type) {
 	case LTTNG_CONSUMER_KERNEL:
-		path = KCONSUMERD_PATH;
+		snprintf(path, PATH_MAX, KCONSUMERD_PATH, rundir);
 		break;
 	case LTTNG_CONSUMER64_UST:
-		path = USTCONSUMERD64_PATH;
+		snprintf(path, PATH_MAX, USTCONSUMERD64_PATH, rundir);
 		break;
 	case LTTNG_CONSUMER32_UST:
-		path = USTCONSUMERD32_PATH;
+		snprintf(path, PATH_MAX, USTCONSUMERD32_PATH, rundir);
 		break;
 	default:
 		ERR("Consumer type unknown");
 		ret = -EINVAL;
 		goto error;
 	}
+
+	DBG2("Creating consumer directory: %s", path);
 
 	ret = mkdir(path, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
@@ -4062,7 +4067,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data)
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
 		ERR("Set file permissions failed: %s", consumer_data->err_unix_sock_path);
-		perror("chmod");
+		PERROR("chmod");
 		goto error;
 	}
 
@@ -4189,7 +4194,10 @@ int main(int argc, char **argv)
 	is_root = !getuid();
 
 	if (is_root) {
-		ret = create_lttng_rundir();
+		rundir = strdup(LTTNG_RUNDIR);
+
+		/* Create global run dir with root access */
+		ret = create_lttng_rundir(rundir);
 		if (ret < 0) {
 			goto error;
 		}
@@ -4209,12 +4217,38 @@ int main(int argc, char **argv)
 			snprintf(wait_shm_path, PATH_MAX,
 					DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
 		}
+
+		/* Setup kernel consumerd path */
+		snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX,
+				KCONSUMERD_ERR_SOCK_PATH, rundir);
+		snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX,
+				KCONSUMERD_CMD_SOCK_PATH, rundir);
+
+		DBG2("Kernel consumer err path: %s",
+				kconsumer_data.err_unix_sock_path);
+		DBG2("Kernel consumer cmd path: %s",
+				kconsumer_data.cmd_unix_sock_path);
 	} else {
 		home_path = get_home_dir();
 		if (home_path == NULL) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");
 			ret = -EPERM;
+			goto error;
+		}
+
+		/*
+		 * Create rundir from home path. This will create something like
+		 * $HOME/.lttng
+		 */
+		ret = asprintf(&rundir, LTTNG_HOME_RUNDIR, home_path);
+		if (ret < 0) {
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		ret = create_lttng_rundir(rundir);
+		if (ret < 0) {
 			goto error;
 		}
 
@@ -4238,6 +4272,29 @@ int main(int argc, char **argv)
 
 	DBG("Client socket path %s", client_unix_sock_path);
 	DBG("Application socket path %s", apps_unix_sock_path);
+	DBG("LTTng run directory path: %s", rundir);
+
+	/* 32 bits consumerd path setup */
+	snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX,
+			USTCONSUMERD32_ERR_SOCK_PATH, rundir);
+	snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX,
+			USTCONSUMERD32_CMD_SOCK_PATH, rundir);
+
+	DBG2("UST consumer 32 bits err path: %s",
+			ustconsumer32_data.err_unix_sock_path);
+	DBG2("UST consumer 32 bits cmd path: %s",
+			ustconsumer32_data.cmd_unix_sock_path);
+
+	/* 64 bits consumerd path setup */
+	snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX,
+			USTCONSUMERD64_ERR_SOCK_PATH, rundir);
+	snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX,
+			USTCONSUMERD64_CMD_SOCK_PATH, rundir);
+
+	DBG2("UST consumer 64 bits err path: %s",
+			ustconsumer64_data.err_unix_sock_path);
+	DBG2("UST consumer 64 bits cmd path: %s",
+			ustconsumer64_data.cmd_unix_sock_path);
 
 	/*
 	 * See if daemon already exist.
@@ -4260,17 +4317,7 @@ int main(int argc, char **argv)
 	 * kernel tracer.
 	 */
 	if (is_root) {
-		ret = set_consumer_sockets(&kconsumer_data);
-		if (ret < 0) {
-			goto exit;
-		}
-
-		ret = set_consumer_sockets(&ustconsumer64_data);
-		if (ret < 0) {
-			goto exit;
-		}
-
-		ret = set_consumer_sockets(&ustconsumer32_data);
+		ret = set_consumer_sockets(&kconsumer_data, rundir);
 		if (ret < 0) {
 			goto exit;
 		}
@@ -4280,6 +4327,16 @@ int main(int argc, char **argv)
 
 		/* Set ulimit for open files */
 		set_ulimit();
+	}
+
+	ret = set_consumer_sockets(&ustconsumer64_data, rundir);
+	if (ret < 0) {
+		goto exit;
+	}
+
+	ret = set_consumer_sockets(&ustconsumer32_data, rundir);
+	if (ret < 0) {
+		goto exit;
 	}
 
 	if ((ret = set_signal_handler()) < 0) {
@@ -4415,8 +4472,9 @@ exit:
 	cleanup();
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	if (!ret)
+	if (!ret) {
 		exit(EXIT_SUCCESS);
+	}
 error:
 	exit(EXIT_FAILURE);
 }

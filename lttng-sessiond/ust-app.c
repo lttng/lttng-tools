@@ -1160,6 +1160,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		char *pathname, struct ust_app *app)
 {
 	int ret = 0;
+	mode_t old_umask;
 
 	if (ua_sess->metadata == NULL) {
 		/* Allocate UST metadata */
@@ -1185,11 +1186,13 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			goto error;
 		}
 
+		old_umask = umask(0);
 		ret = mkdir(ua_sess->path, S_IRWXU | S_IRWXG);
 		if (ret < 0) {
 			PERROR("mkdir UST metadata");
 			goto error;
 		}
+		umask(old_umask);
 
 		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
 				"%s/metadata", ua_sess->path);
