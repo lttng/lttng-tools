@@ -372,7 +372,6 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 
 	if (uevent->enabled) {
 		/* It's already enabled so everything is OK */
-		ret = LTTCOMM_OK;
 		goto end;
 	}
 
@@ -414,13 +413,11 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		rcu_read_unlock();
 	}
 
-	ret = LTTCOMM_OK;
-
-end:
 	DBG("Event UST %s %s in channel %s", uevent->attr.name,
 			to_create ? "created" : "enabled", uchan->name);
 
-	return ret;
+end:
+	return LTTCOMM_OK;
 
 error:
 	trace_ust_destroy_event(uevent);
