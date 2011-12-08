@@ -2195,9 +2195,6 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		}
 	}
 
-	/* Add ltt UST context node to ltt UST channel */
-	hashtable_add_unique(uchan->ctx, &uctx->node);
-
 	rcu_read_unlock();
 	return ret;
 }
@@ -2247,9 +2244,6 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 	}
-
-	/* Add ltt UST context node to ltt UST event */
-	hashtable_add_unique(uevent->ctx, &uctx->node);
 
 	rcu_read_unlock();
 	return ret;
