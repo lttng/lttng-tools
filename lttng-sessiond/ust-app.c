@@ -565,6 +565,8 @@ static int open_ust_metadata(struct ust_app *app,
 		goto error;
 	}
 
+	ua_sess->metadata->handle = ua_sess->metadata->obj->handle;
+
 error:
 	return ret;
 }
@@ -1160,6 +1162,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		char *pathname, struct ust_app *app)
 {
 	int ret = 0;
+	mode_t old_umask;
 
 	if (ua_sess->metadata == NULL) {
 		/* Allocate UST metadata */
@@ -1185,11 +1188,13 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			goto error;
 		}
 
+		old_umask = umask(0);
 		ret = mkdir(ua_sess->path, S_IRWXU | S_IRWXG);
 		if (ret < 0) {
 			PERROR("mkdir UST metadata");
 			goto error;
 		}
+		umask(old_umask);
 
 		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
 				"%s/metadata", ua_sess->path);
@@ -1922,7 +1927,9 @@ error_rcu_unlock:
 int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
+	struct cds_lfht_iter iter;
 	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
 
 	DBG("Stopping tracing for ust app pid %d", app->key.pid);
 
@@ -1934,21 +1941,23 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-#if 0	/* only useful when periodical flush will be supported */
-	/* need to keep a handle on shm in session for this. */
 	/* Flush all buffers before stopping */
-	ret = ustctl_flush_buffer(usess->sock, usess->metadata->obj);
+	ret = ustctl_sock_flush_buffer(app->key.sock, ua_sess->metadata->obj);
 	if (ret < 0) {
-		ERR("UST metadata flush failed");
+		ERR("UST app PID %d metadata flush failed", app->key.pid);
+		ERR("Ended with ret %d", ret);
 	}
 
-	cds_list_for_each_entry(ustchan, &usess->channels.head, list) {
-		ret = ustctl_flush_buffer(usess->sock, ustchan->obj);
+	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
+		ret = ustctl_sock_flush_buffer(app->key.sock, ua_chan->obj);
 		if (ret < 0) {
-			ERR("UST flush buffer error");
+			ERR("UST app PID %d channel %s flush failed",
+					app->key.pid, ua_chan->name);
+			ERR("Ended with ret %d", ret);
+			/* Continuing flushing all buffers */
+			continue;
 		}
 	}
-#endif
 
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);

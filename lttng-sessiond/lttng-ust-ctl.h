@@ -59,6 +59,8 @@ int ustctl_tracepoint_list_get(int sock, int tp_list_handle,
 int ustctl_tracer_version(int sock, struct lttng_ust_tracer_version *v);
 int ustctl_wait_quiescent(int sock);
 
+int ustctl_sock_flush_buffer(int sock, struct lttng_ust_object_data *object);
+
 /* not implemented yet */
 struct lttng_ust_calibrate;
 int ustctl_calibrate(int sock, struct lttng_ust_calibrate *calibrate);

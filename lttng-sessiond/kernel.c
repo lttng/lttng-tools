@@ -591,6 +591,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 		}
 		strncpy(elist[count].name, event, LTTNG_SYMBOL_NAME_LEN);
 		elist[count].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+		elist[count].enabled = -1;
 		count++;
 	}
 

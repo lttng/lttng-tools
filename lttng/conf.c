@@ -63,7 +63,6 @@ static FILE *open_config(char *path, const char *mode)
 
 	fp = fopen(file_path, mode);
 	if (fp == NULL) {
-		perror("config file");
 		goto error;
 	}
 
@@ -171,6 +170,7 @@ char *config_read_session_name(char *path)
 	fp = open_config(path, "r");
 	if (fp == NULL) {
 		ERR("Can't find valid lttng config %s/.lttngrc", path);
+		MSG("Did you create a session? (lttng create <my_sesion>)");
 		goto error;
 	}
 
