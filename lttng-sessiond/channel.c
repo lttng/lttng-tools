@@ -279,7 +279,6 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = LTTCOMM_OK;
-	struct cds_lfht *chan_ht;
 
 	/* Already disabled */
 	if (uchan->enabled == 0) {
@@ -291,8 +290,6 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		DBG2("Channel %s being disabled in UST global domain", uchan->name);
-		chan_ht = usess->domain_global.channels;
-
 		/* Disable channel for global domain */
 		ret = ust_app_disable_channel_glb(usess, uchan);
 		break;
