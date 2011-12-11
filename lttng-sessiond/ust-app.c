@@ -163,6 +163,9 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 	ret = hashtable_destroy(ua_sess->channels);
 	assert(!ret);
 
+	if (ua_sess->handle != -1) {
+		ustctl_release_handle(sock, ua_sess->handle);
+	}
 	free(ua_sess);
 }
 
