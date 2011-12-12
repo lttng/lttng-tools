@@ -2772,8 +2772,11 @@ static int cmd_start_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	if (session->enabled)
-		return LTTCOMM_UST_START_FAIL;
+	if (session->enabled) {
+		ret = LTTCOMM_UST_START_FAIL;
+		goto error;
+	}
+
 	session->enabled = 1;
 
 	/* Kernel tracing */
@@ -2861,8 +2864,11 @@ static int cmd_stop_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	if (!session->enabled)
-		return LTTCOMM_UST_START_FAIL;
+	if (!session->enabled) {
+		ret = LTTCOMM_UST_START_FAIL;
+		goto error;
+	}
+
 	session->enabled = 0;
 
 	/* Kernel tracer */
