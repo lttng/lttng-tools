@@ -133,5 +133,7 @@ void ustctl_flush_buffer(struct lttng_ust_shm_handle *handle,
 
 /* Release object created by members of this API */
 int ustctl_release_object(int sock, struct lttng_ust_object_data *data);
+/* Release handle returned by create session. */
+int ustctl_release_handle(int sock, int handle);
 
 #endif /* _LTTNG_UST_CTL_H */
