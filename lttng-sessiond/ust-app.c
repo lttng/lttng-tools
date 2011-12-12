@@ -1944,6 +1944,17 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
+	/* This inhibits UST tracing */
+	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);
+	if (ret < 0) {
+		ERR("Error stopping tracing for app pid: %d", app->key.pid);
+		goto error_rcu_unlock;
+	}
+
+	/* Quiescent wait after stopping trace */
+	ustctl_wait_quiescent(app->key.sock);
+
+	/* Flushing buffers */
 	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
 		ret = ustctl_sock_flush_buffer(app->key.sock, ua_chan->obj);
 		if (ret < 0) {
@@ -1955,24 +1966,14 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		}
 	}
 
-	/* This inhibits UST tracing */
-	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);
-	if (ret < 0) {
-		ERR("Error stopping tracing for app pid: %d", app->key.pid);
-		goto error_rcu_unlock;
-	}
-
-	rcu_read_unlock();
-
-	/* Quiescent wait after stopping trace */
-	ustctl_wait_quiescent(app->key.sock);
-
 	/* Flush all buffers before stopping */
 	ret = ustctl_sock_flush_buffer(app->key.sock, ua_sess->metadata->obj);
 	if (ret < 0) {
 		ERR("UST app PID %d metadata flush failed", app->key.pid);
 		ERR("Ended with ret %d", ret);
 	}
+
+	rcu_read_unlock();
 
 	return 0;
 
