@@ -24,6 +24,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \
+                       lttng-ust-ctl.h lttng-ust-abi.h \
                        ../hashtable/rculfhash.c \
                        ../hashtable/rculfhash.h \
                        ../hashtable/hash.c ../hashtable/hash.h
