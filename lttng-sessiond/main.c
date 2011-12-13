@@ -3000,7 +3000,7 @@ static int cmd_register_consumer(struct ltt_session *session, int domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		/* Can't register a consumer if there is already one */
-		if (session->kernel_session->consumer_fd != 0) {
+		if (session->kernel_session->consumer_fds_sent != 0) {
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
 			goto error;
 		}
