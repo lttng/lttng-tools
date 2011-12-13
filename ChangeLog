@@ -1,3 +1,20 @@
+2011-12-13 lttng-tools 2.0-pre15
+	* (MAJOR) User-space tracing support for global domain (lttng-ust 2.0)
+	* UST consumer 32/64 bit support
+	* Multiple bug fixes
+	* Multiple segfault, race and double lock fixes
+	* API change for lttng_list_domains, lttng_start/stop and lttng_destroy
+	* UST loglevel support
+	* ABIs now support 256 char event names
+	* Dependency on libpopt >= 1.13
+	* Dependency on URCU >= 0.6.7
+	* Rename kernel-ctl.c/.h to kernel.c/.h
+	* Change malloc to zmalloc in lttng-sessiond code
+	* RCU hashtable support for all UST data structure
+	* New libconsumer for UST, kernel and one generic
+	* Change "--all" option from lttng command line
+	* Remove function entry option to discourage its use
+
 2011-09-30 lttng-tools 2.0-pre14
 	* Syscall tracing support
 	* Multiple bug fixes (nothing critical)
