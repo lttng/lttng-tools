@@ -58,7 +58,7 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 )
 
 # URCU library version needed or newer
-liburcu_version=">= 0.6.6"
+liburcu_version=">= 0.6.7"
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
