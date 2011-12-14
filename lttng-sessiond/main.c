@@ -92,6 +92,7 @@ const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
 static int opt_daemon;
+static int opt_no_kernel;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static char *rundir;
@@ -457,10 +458,9 @@ static void cleanup(void)
 
 	pthread_mutex_destroy(&kconsumer_data.pid_mutex);
 
-	DBG("Closing kernel fd");
-	close(kernel_tracer_fd);
-
-	if (is_root) {
+	if (is_root && !opt_no_kernel) {
+		DBG2("Closing kernel fd");
+		close(kernel_tracer_fd);
 		DBG("Unloading kernel modules");
 		modprobe_remove_kernel_modules();
 	}
@@ -3162,6 +3162,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
+	if (opt_no_kernel && cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
+		ret = LTTCOMM_KERN_NA;
+		goto error;
+	}
+
 	/*
 	 * Check for command that don't needs to allocate a returned payload. We do
 	 * this here so we don't have to make the call for no payload at each
@@ -3731,6 +3736,7 @@ static void usage(void)
 	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
+	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
 }
 
 /*
@@ -3761,12 +3767,13 @@ static int parse_args(int argc, char **argv)
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
 		{ "verbose-consumer", 0, 0, 'Z' },
+		{ "no-kernel", 0, 0, 'N' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z:u:t",
+		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3817,6 +3824,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'G':
 			snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'N':
+			opt_no_kernel = 1;
 			break;
 		case 'q':
 			opt_quiet = 1;
@@ -4329,7 +4339,9 @@ int main(int argc, char **argv)
 		}
 
 		/* Setup kernel tracer */
-		init_kernel_tracer();
+		if (!opt_no_kernel) {
+			init_kernel_tracer();
+		}
 
 		/* Set ulimit for open files */
 		set_ulimit();
