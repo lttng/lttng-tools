@@ -1382,7 +1382,7 @@ int ust_app_list_events(struct lttng_event **events)
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct lttng_ust_tracepoint_iter iter;
+		struct lttng_ust_tracepoint_iter uiter;
 
 		handle = ustctl_tracepoint_list(app->key.sock);
 		if (handle < 0) {
@@ -1392,7 +1392,7 @@ int ust_app_list_events(struct lttng_event **events)
 		}
 
 		while ((ret = ustctl_tracepoint_list_get(app->key.sock, handle,
-						&iter)) != -ENOENT) {
+						&uiter)) != -ENOENT) {
 			if (count >= nbmem) {
 				DBG2("Reallocating event list from %zu to %zu entries", nbmem,
 						2 * nbmem);
@@ -1404,9 +1404,9 @@ int ust_app_list_events(struct lttng_event **events)
 					goto rcu_error;
 				}
 			}
-			memcpy(tmp[count].name, iter.name, LTTNG_UST_SYM_NAME_LEN);
-			memcpy(tmp[count].loglevel, iter.loglevel, LTTNG_UST_SYM_NAME_LEN);
-			tmp[count].loglevel_value = iter.loglevel_value;
+			memcpy(tmp[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
+			memcpy(tmp[count].loglevel, uiter.loglevel, LTTNG_UST_SYM_NAME_LEN);
+			tmp[count].loglevel_value = uiter.loglevel_value;
 			tmp[count].type = LTTNG_UST_TRACEPOINT;
 			tmp[count].pid = app->key.pid;
 			tmp[count].enabled = -1;
@@ -1485,6 +1485,8 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 
 	/* For every registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -1492,7 +1494,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 
 		/* Get channel */
 		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &iter);
+				(void *)uchan->name, strlen(uchan->name), &uiter);
 		/* If the session if found for the app, the channel must be there */
 		assert(ua_chan_node);
 
@@ -1564,7 +1566,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct cds_lfht_node *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
@@ -1578,6 +1580,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			/* Next app */
@@ -1623,7 +1627,7 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct cds_lfht_node *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
@@ -1637,6 +1641,8 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
@@ -1719,7 +1725,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct cds_lfht_node *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
@@ -1739,6 +1745,8 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
@@ -1779,7 +1787,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct cds_lfht_node *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
@@ -1798,6 +1806,8 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
@@ -2142,6 +2152,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	 * ltt ust session.
 	 */
 	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
+		struct cds_lfht_iter uiter;
+
 		ret = create_ust_channel(app, ua_sess, ua_chan);
 		if (ret < 0) {
 			/* FIXME: Should we quit here or continue... */
@@ -2149,7 +2161,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		}
 
 		/* For each events */
-		cds_lfht_for_each_entry(ua_chan->events, &iter, ua_event, node) {
+		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
 			ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 			if (ret < 0) {
 				/* FIXME: Should we quit here or continue... */
@@ -2180,7 +2192,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct cds_lfht_node *ua_chan_node;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct ust_app_channel *ua_chan = NULL;
 	struct ust_app_session *ua_sess;
 	struct ust_app *app;
@@ -2188,6 +2200,8 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -2221,7 +2235,7 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct cds_lfht_node *ua_chan_node, *ua_event_node;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct ust_app_session *ua_sess;
 	struct ust_app_event *ua_event;
 	struct ust_app_channel *ua_chan = NULL;
@@ -2230,6 +2244,8 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+		struct cds_lfht_iter uiter;
+
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;

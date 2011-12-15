@@ -280,7 +280,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		char *channel_name)
 {
 	int ret = LTTCOMM_OK, have_event = 0;
-	struct cds_lfht_iter iter, uiter;
+	struct cds_lfht_iter iter;
 	struct cds_lfht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct ltt_ust_event *uevent = NULL;
@@ -349,6 +349,8 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	} else if (!uchan && !have_event) {	/* Add ctx all events, all channels */
 		/* For all channels */
 		cds_lfht_for_each_entry(chan_ht, &iter, uchan, node) {
+			struct cds_lfht_iter uiter;
+
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret < 0) {
 				ERR("Context added to channel %s failed", uchan->name);
