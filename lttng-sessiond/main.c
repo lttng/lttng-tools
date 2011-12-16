@@ -469,7 +469,7 @@ static void cleanup(void)
 	close(thread_quit_pipe[1]);
 
 	/* <fun> */
-	MSG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
+	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
 			"Matthew, BEET driven development works!%c[%dm",
 			27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
 	/* </fun> */
