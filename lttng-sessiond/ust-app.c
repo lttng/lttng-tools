@@ -28,11 +28,12 @@
 #include <runas.h>
 
 #include <urcu/compiler.h>
+
 #include <lttngerr.h>
+#include <lttng-ht.h>
 #include <lttng-share.h>
 #include <runas.h>
 
-#include "../common/hashtable.h"
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"
@@ -59,16 +60,16 @@ static
 void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 {
 	int ret;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app_ctx *ua_ctx;
 
-	cds_lfht_for_each_entry(ua_event->ctx, &iter, ua_ctx, node) {
-		ret = hashtable_del(ua_event->ctx, &iter);
+	cds_lfht_for_each_entry(ua_event->ctx->ht, &iter.iter, ua_ctx,
+			node.node) {
+		ret = lttng_ht_del(ua_event->ctx, &iter);
 		assert(!ret);
 		delete_ust_app_ctx(sock, ua_ctx);
 	}
-	ret = hashtable_destroy(ua_event->ctx);
-	assert(!ret);
+	lttng_ht_destroy(ua_event->ctx);
 
 	if (ua_event->obj != NULL) {
 		ustctl_release_object(sock, ua_event->obj);
@@ -99,7 +100,7 @@ static
 void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 {
 	int ret;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
 	struct ltt_ust_stream *stream, *stmp;
@@ -111,22 +112,21 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 	}
 
 	/* Wipe context */
-	cds_lfht_for_each_entry(ua_chan->ctx, &iter, ua_ctx, node) {
-		ret = hashtable_del(ua_chan->ctx, &iter);
+	cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter.iter, ua_ctx, node.node) {
+		ret = lttng_ht_del(ua_chan->ctx, &iter);
 		assert(!ret);
 		delete_ust_app_ctx(sock, ua_ctx);
 	}
-	ret = hashtable_destroy(ua_chan->ctx);
-	assert(!ret);
+	lttng_ht_destroy(ua_chan->ctx);
 
 	/* Wipe events */
-	cds_lfht_for_each_entry(ua_chan->events, &iter, ua_event, node) {
-		ret = hashtable_del(ua_chan->events, &iter);
+	cds_lfht_for_each_entry(ua_chan->events->ht, &iter.iter, ua_event,
+			node.node) {
+		ret = lttng_ht_del(ua_chan->events, &iter);
 		assert(!ret);
 		delete_ust_app_event(sock, ua_event);
 	}
-	ret = hashtable_destroy(ua_chan->events);
-	assert(!ret);
+	lttng_ht_destroy(ua_chan->events);
 
 	if (ua_chan->obj != NULL) {
 		ustctl_release_object(sock, ua_chan->obj);
@@ -143,7 +143,7 @@ static
 void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 {
 	int ret;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app_channel *ua_chan;
 
 	if (ua_sess->metadata) {
@@ -157,13 +157,13 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 		}
 	}
 
-	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
-		ret = hashtable_del(ua_sess->channels, &iter);
+	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
+			node.node) {
+		ret = lttng_ht_del(ua_sess->channels, &iter);
 		assert(!ret);
 		delete_ust_app_channel(sock, ua_chan);
 	}
-	ret = hashtable_destroy(ua_sess->channels);
-	assert(!ret);
+	lttng_ht_destroy(ua_sess->channels);
 
 	if (ua_sess->handle != -1) {
 		ustctl_release_handle(sock, ua_sess->handle);
@@ -179,56 +179,34 @@ static
 void delete_ust_app(struct ust_app *app)
 {
 	int ret, sock;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
 
 	rcu_read_lock();
-
-	/* Remove from key hash table */
-	node = hashtable_lookup(ust_app_sock_key_map,
-			(void *) ((unsigned long) app->key.sock), sizeof(void *), &iter);
-	if (node == NULL) {
-		/* Not suppose to happen */
-		ERR("UST app key %d not found in key hash table", app->key.sock);
-		goto end;
-	}
-
-	ret = hashtable_del(ust_app_sock_key_map, &iter);
-	if (ret) {
-		ERR("UST app unable to delete app sock %d from key hash table",
-				app->key.sock);
-	} else {
-		DBG2("UST app pair sock %d key %d deleted",
-				app->key.sock, app->key.pid);
-	}
-
-	/* Socket is already closed at this point */
 
 	/* Delete ust app sessions info */
 	sock = app->key.sock;
 	app->key.sock = -1;
 
 	/* Wipe sessions */
-	cds_lfht_for_each_entry(app->sessions, &iter, ua_sess, node) {
-		ret = hashtable_del(app->sessions, &iter);
+	cds_lfht_for_each_entry(app->sessions->ht, &iter.iter, ua_sess,
+			node.node) {
+		ret = lttng_ht_del(app->sessions, &iter);
 		assert(!ret);
 		delete_ust_app_session(app->key.sock, ua_sess);
 	}
-	ret = hashtable_destroy(app->sessions);
-	assert(!ret);
+	lttng_ht_destroy(app->sessions);
 
 	/*
-	 * Wait until we have removed the key from the sock hash table
-	 * before closing this socket, otherwise an application could
-	 * re-use the socket ID and race with the teardown, using the
-	 * same hash table entry.
+	 * Wait until we have removed the key from the sock hash table before
+	 * closing this socket, otherwise an application could re-use the socket ID
+	 * and race with the teardown, using the same hash table entry.
 	 */
 	close(sock);
 
 	DBG2("UST app pid %d deleted", app->key.pid);
 	free(app);
-end:
+
 	rcu_read_unlock();
 }
 
@@ -238,11 +216,12 @@ end:
 static
 void delete_ust_app_rcu(struct rcu_head *head)
 {
-	struct cds_lfht_node *node =
-		caa_container_of(head, struct cds_lfht_node, head);
+	struct lttng_ht_node_ulong *node =
+		caa_container_of(head, struct lttng_ht_node_ulong, head);
 	struct ust_app *app =
 		caa_container_of(node, struct ust_app, node);
 
+	DBG3("Call RCU deleting app PID %d", app->key.pid);
 	delete_ust_app(app);
 }
 
@@ -262,7 +241,7 @@ struct ust_app_session *alloc_ust_app_session(void)
 	}
 
 	ua_sess->handle = -1;
-	ua_sess->channels = hashtable_new_str(0);
+	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 
 	return ua_sess;
 
@@ -292,10 +271,9 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 
 	ua_chan->enabled = 1;
 	ua_chan->handle = -1;
-	ua_chan->ctx = hashtable_new(0);
-	ua_chan->events = hashtable_new_str(0);
-	hashtable_node_init(&ua_chan->node, (void *) ua_chan->name,
-			strlen(ua_chan->name));
+	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
 
@@ -331,9 +309,8 @@ struct ust_app_event *alloc_ust_app_event(char *name,
 	ua_event->enabled = 1;
 	strncpy(ua_event->name, name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
-	ua_event->ctx = hashtable_new(0);
-	hashtable_node_init(&ua_event->node, (void *) ua_event->name,
-			strlen(ua_event->name));
+	ua_event->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
 
 	/* Copy attributes */
 	if (attr) {
@@ -378,21 +355,21 @@ error:
 static
 struct ust_app *find_app_by_sock(int sock)
 {
-	struct cds_lfht_node *node;
+	struct lttng_ht_node_ulong *node;
 	struct ust_app_key *key;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 
-	node = hashtable_lookup(ust_app_sock_key_map,
-			(void *)((unsigned long) sock), sizeof(void *), &iter);
+	lttng_ht_lookup(ust_app_sock_key_map, (void *)((unsigned long) sock),
+			&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		DBG2("UST app find by sock %d key not found", sock);
 		goto error;
 	}
-
 	key = caa_container_of(node, struct ust_app_key, node);
 
-	node = hashtable_lookup(ust_app_ht,
-			(void *)((unsigned long) key->pid), sizeof(void *), &iter);
+	lttng_ht_lookup(ust_app_ht, (void *)((unsigned long) key->pid), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		DBG2("UST app find by sock %d not found", sock);
 		goto error;
@@ -675,7 +652,7 @@ error:
 static void shadow_copy_event(struct ust_app_event *ua_event,
 		struct ltt_ust_event *uevent)
 {
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ltt_ust_context *uctx;
 	struct ust_app_ctx *ua_ctx;
 
@@ -685,14 +662,14 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 	/* Copy event attributes */
 	memcpy(&ua_event->attr, &uevent->attr, sizeof(ua_event->attr));
 
-	cds_lfht_for_each_entry(uevent->ctx, &iter, uctx, node) {
+	cds_lfht_for_each_entry(uevent->ctx->ht, &iter.iter, uctx, node.node) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
 		if (ua_ctx == NULL) {
 			continue;
 		}
-		hashtable_node_init(&ua_ctx->node,
-				(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
-		hashtable_add_unique(ua_event->ctx, &ua_ctx->node);
+		lttng_ht_node_init_ulong(&ua_ctx->node,
+				(unsigned long) ua_ctx->ctx.ctx);
+		lttng_ht_add_unique_ulong(ua_event->ctx, &ua_ctx->node);
 	}
 }
 
@@ -702,8 +679,8 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 		struct ltt_ust_channel *uchan)
 {
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_event_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_event_node;
 	struct ltt_ust_event *uevent;
 	struct ltt_ust_context *uctx;
 	struct ust_app_event *ua_event;
@@ -716,23 +693,22 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	/* Copy event attributes */
 	memcpy(&ua_chan->attr, &uchan->attr, sizeof(ua_chan->attr));
 
-	cds_lfht_for_each_entry(uchan->ctx, &iter, uctx, node) {
+	cds_lfht_for_each_entry(uchan->ctx->ht, &iter.iter, uctx, node.node) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
 		if (ua_ctx == NULL) {
 			continue;
 		}
-		hashtable_node_init(&ua_ctx->node,
-				(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
-		hashtable_add_unique(ua_chan->ctx, &ua_ctx->node);
+		lttng_ht_node_init_ulong(&ua_ctx->node,
+				(unsigned long) ua_ctx->ctx.ctx);
+		lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
 	}
 
 	/* Copy all events from ltt ust channel to ust app channel */
-	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
-		struct cds_lfht_iter uiter;
+	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
+		struct lttng_ht_iter uiter;
 
-		ua_event_node = hashtable_lookup(ua_chan->events,
-				(void *) uevent->attr.name, strlen(uevent->attr.name),
-				&uiter);
+		lttng_ht_lookup(ua_chan->events, (void *) uevent->attr.name, &uiter);
+		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_event_node == NULL) {
 			DBG2("UST event %s not found on shadow copy channel",
 					uevent->attr.name);
@@ -741,7 +717,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 				continue;
 			}
 			shadow_copy_event(ua_event, uevent);
-			hashtable_add_unique(ua_chan->events, &ua_event->node);
+			lttng_ht_add_unique_str(ua_chan->events, &ua_event->node);
 		}
 	}
 
@@ -752,11 +728,10 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
  * Copy data between a UST app session and a regular LTT session.
  */
 static void shadow_copy_session(struct ust_app_session *ua_sess,
-		struct ltt_ust_session *usess,
-		struct ust_app *app)
+		struct ltt_ust_session *usess, struct ust_app *app)
 {
-	struct cds_lfht_node *ua_chan_node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node;
+	struct lttng_ht_iter iter;
 	struct ltt_ust_channel *uchan;
 	struct ust_app_channel *ua_chan;
 	time_t rawtime;
@@ -788,13 +763,12 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	/* TODO: support all UST domain */
 
 	/* Iterate over all channels in global domain. */
-	cds_lfht_for_each_entry(usess->domain_global.channels, &iter,
-			uchan, node) {
-		struct cds_lfht_iter uiter;
+	cds_lfht_for_each_entry(usess->domain_global.channels->ht, &iter.iter,
+			uchan, node.node) {
+		struct lttng_ht_iter uiter;
 
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name),
-				&uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_chan_node != NULL) {
 			continue;
 		}
@@ -808,7 +782,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 		}
 
 		shadow_copy_channel(ua_chan, uchan);
-		hashtable_add_unique(ua_sess->channels, &ua_chan->node);
+		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 	}
 }
 
@@ -817,12 +791,10 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
  */
 static
 void __lookup_session_by_app(struct ltt_ust_session *usess,
-			struct ust_app *app, struct cds_lfht_iter *iter)
+			struct ust_app *app, struct lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
-	(void) hashtable_lookup(app->sessions,
-			(void *) ((unsigned long) usess->id), sizeof(void *),
-			iter);
+	lttng_ht_lookup(app->sessions, (void *)((unsigned long) usess->uid), iter);
 }
 
 /*
@@ -832,11 +804,11 @@ void __lookup_session_by_app(struct ltt_ust_session *usess,
 static struct ust_app_session *lookup_session_by_app(
 		struct ltt_ust_session *usess, struct ust_app *app)
 {
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
 
 	__lookup_session_by_app(usess, app, &iter);
-	node = hashtable_iter_get_node(&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		goto error;
 	}
@@ -884,9 +856,8 @@ static struct ust_app_session *create_ust_app_session(
 		ua_sess->handle = ret;
 
 		/* Add ust app session to app's HT */
-		hashtable_node_init(&ua_sess->node,
-				(void *)((unsigned long) ua_sess->id), sizeof(void *));
-		hashtable_add_unique(app->sessions, &ua_sess->node);
+		lttng_ht_node_init_ulong(&ua_sess->node, (unsigned long) ua_sess->uid);
+		lttng_ht_add_unique_ulong(app->sessions, &ua_sess->node);
 
 		DBG2("UST app session created successfully with handle %d", ret);
 	}
@@ -906,14 +877,14 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
 	struct ust_app_ctx *ua_ctx;
 
 	DBG2("UST app adding context to channel %s", ua_chan->name);
 
-	node = hashtable_lookup(ua_chan->ctx, (void *)((unsigned long)uctx->ctx),
-			sizeof(void *), &iter);
+	lttng_ht_lookup(ua_chan->ctx, (void *)((unsigned long)uctx->ctx), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node != NULL) {
 		ret = -EEXIST;
 		goto error;
@@ -926,9 +897,8 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	hashtable_node_init(&ua_ctx->node,
-			(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
-	hashtable_add_unique(ua_chan->ctx, &ua_ctx->node);
+	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
+	lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 	if (ret < 0) {
@@ -948,14 +918,14 @@ int create_ust_app_event_context(struct ust_app_session *ua_sess,
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
 	struct ust_app_ctx *ua_ctx;
 
 	DBG2("UST app adding context to event %s", ua_event->name);
 
-	node = hashtable_lookup(ua_event->ctx, (void *)((unsigned long)uctx->ctx),
-			sizeof(void *), &iter);
+	lttng_ht_lookup(ua_event->ctx, (void *)((unsigned long)uctx->ctx), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node != NULL) {
 		ret = -EEXIST;
 		goto error;
@@ -968,9 +938,8 @@ int create_ust_app_event_context(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	hashtable_node_init(&ua_ctx->node,
-			(void *)((unsigned long) ua_ctx->ctx.ctx), sizeof(void *));
-	hashtable_add_unique(ua_event->ctx, &ua_ctx->node);
+	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
+	lttng_ht_add_unique_ulong(ua_event->ctx, &ua_ctx->node);
 
 	ret = create_ust_event_context(ua_event, ua_ctx, app);
 	if (ret < 0) {
@@ -1047,12 +1016,12 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 		struct ltt_ust_channel *uchan, struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app_channel *ua_chan;
 
-	ua_chan_node = hashtable_lookup(ua_sess->channels,
-			(void *)uchan->name, strlen(uchan->name), &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
+	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_chan_node == NULL) {
 		DBG2("Unable to find channel %s in ust session id %u",
 				uchan->name, ua_sess->id);
@@ -1078,13 +1047,13 @@ static struct ust_app_channel *create_ust_app_channel(
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app_channel *ua_chan;
 
 	/* Lookup channel in the ust app session */
-	ua_chan_node = hashtable_lookup(ua_sess->channels,
-			(void *)uchan->name, strlen(uchan->name), &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
+	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_chan_node == NULL) {
 		DBG2("Unable to find channel %s in ust session id %u",
 				uchan->name, ua_sess->id);
@@ -1094,7 +1063,7 @@ static struct ust_app_channel *create_ust_app_channel(
 		}
 		shadow_copy_channel(ua_chan, uchan);
 
-		hashtable_add_unique(ua_sess->channels, &ua_chan->node);
+		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 	} else {
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 	}
@@ -1119,13 +1088,13 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_event_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_event_node;
 	struct ust_app_event *ua_event;
 
 	/* Get event node */
-	ua_event_node = hashtable_lookup(ua_chan->events,
-			(void *)uevent->attr.name, strlen(uevent->attr.name), &iter);
+	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
+	ua_event_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_event_node != NULL) {
 		ERR("UST app event %s already exist. Stopping creation.",
 				uevent->attr.name);
@@ -1152,7 +1121,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 
 	ua_event->enabled = 1;
 
-	hashtable_add_unique(ua_chan->events, &ua_event->node);
+	lttng_ht_add_unique_str(ua_chan->events, &ua_event->node);
 
 	DBG2("UST app create event %s for PID %d completed",
 			ua_event->name, app->key.pid);
@@ -1224,7 +1193,7 @@ error:
 /*
  * Return pointer to traceable apps list.
  */
-struct cds_lfht *ust_app_get_ht(void)
+struct lttng_ht *ust_app_get_ht(void)
 {
 	return ust_app_ht;
 }
@@ -1234,12 +1203,12 @@ struct cds_lfht *ust_app_get_ht(void)
  */
 struct ust_app *ust_app_find_by_pid(pid_t pid)
 {
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
 
 	rcu_read_lock();
-	node = hashtable_lookup(ust_app_ht,
-			(void *)((unsigned long) pid), sizeof(void *), &iter);
+	lttng_ht_lookup(ust_app_ht, (void *)((unsigned long) pid), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		DBG2("UST app no found with pid %d", pid);
 		goto error;
@@ -1288,19 +1257,17 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	lta->v_minor = msg->minor;
 	strncpy(lta->name, msg->name, sizeof(lta->name));
 	lta->name[16] = '\0';
-	lta->sessions = hashtable_new(0);
+	lta->sessions = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	/* Set key map */
 	lta->key.pid = msg->pid;
-	hashtable_node_init(&lta->node, (void *)((unsigned long)lta->key.pid),
-			sizeof(void *));
+	lttng_ht_node_init_ulong(&lta->node, (unsigned long)lta->key.pid);
 	lta->key.sock = sock;
-	hashtable_node_init(&lta->key.node, (void *)((unsigned long)lta->key.sock),
-			sizeof(void *));
+	lttng_ht_node_init_ulong(&lta->key.node, (unsigned long)lta->key.sock);
 
 	rcu_read_lock();
-	hashtable_add_unique(ust_app_sock_key_map, &lta->key.node);
-	hashtable_add_unique(ust_app_ht, &lta->node);
+	lttng_ht_add_unique_ulong(ust_app_sock_key_map, &lta->key.node);
+	lttng_ht_add_unique_ulong(ust_app_ht, &lta->node);
 	rcu_read_unlock();
 
 	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock:%d name:%s"
@@ -1319,8 +1286,8 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 void ust_app_unregister(int sock)
 {
 	struct ust_app *lta;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
 	int ret;
 
 	rcu_read_lock();
@@ -1333,14 +1300,14 @@ void ust_app_unregister(int sock)
 	DBG("PID %d unregistering with sock %d", lta->key.pid, sock);
 
 	/* Get the node reference for a call_rcu */
-	node = hashtable_lookup(ust_app_ht,
-			(void *)((unsigned long) lta->key.pid), sizeof(void *), &iter);
+	lttng_ht_lookup(ust_app_ht, (void *)((unsigned long) lta->key.pid), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		ERR("Unable to find app sock %d by pid %d", sock, lta->key.pid);
 		goto error;
 	}
 
-	ret = hashtable_del(ust_app_ht, &iter);
+	ret = lttng_ht_del(ust_app_ht, &iter);
 	assert(!ret);
 	call_rcu(&node->head, delete_ust_app_rcu);
 error:
@@ -1356,7 +1323,7 @@ unsigned long ust_app_list_count(void)
 	unsigned long count;
 
 	rcu_read_lock();
-	count = hashtable_get_count(ust_app_ht);
+	count = lttng_ht_get_count(ust_app_ht);
 	rcu_read_unlock();
 
 	return count;
@@ -1369,7 +1336,7 @@ int ust_app_list_events(struct lttng_event **events)
 {
 	int ret, handle;
 	size_t nbmem, count = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct lttng_event *tmp;
 
@@ -1383,7 +1350,7 @@ int ust_app_list_events(struct lttng_event **events)
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		struct lttng_ust_tracepoint_iter uiter;
 
 		handle = ustctl_tracepoint_list(app->key.sock);
@@ -1433,21 +1400,27 @@ error:
 void ust_app_clean_list(void)
 {
 	int ret;
-	struct cds_lfht_iter iter;
-	struct ust_app *app;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
 
 	DBG2("UST app cleaning registered apps hash table");
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		ret = hashtable_del(ust_app_ht, &iter);
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, node, node) {
+		ret = lttng_ht_del(ust_app_ht, &iter);
 		assert(!ret);
-		call_rcu(&iter.node->head, delete_ust_app_rcu);
+		call_rcu(&node->head, delete_ust_app_rcu);
 	}
+	/* Destroy is done only when the ht is empty */
+	lttng_ht_destroy(ust_app_ht);
 
-	hashtable_destroy(ust_app_ht);
-	hashtable_destroy(ust_app_sock_key_map);
+	cds_lfht_for_each_entry(ust_app_sock_key_map->ht, &iter.iter, node, node) {
+		ret = lttng_ht_del(ust_app_sock_key_map, &iter);
+		assert(!ret);
+	}
+	/* Destroy is done only when the ht is empty */
+	lttng_ht_destroy(ust_app_sock_key_map);
 
 	rcu_read_unlock();
 }
@@ -1457,8 +1430,8 @@ void ust_app_clean_list(void)
  */
 void ust_app_ht_alloc(void)
 {
-	ust_app_ht = hashtable_new(0);
-	ust_app_sock_key_map = hashtable_new(0);
+	ust_app_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	ust_app_sock_key_map = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 }
 
 /*
@@ -1468,8 +1441,8 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1486,17 +1459,16 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For every registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		struct lttng_ht_iter uiter;
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
 		}
 
 		/* Get channel */
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the session if found for the app, the channel must be there */
 		assert(ua_chan_node);
 
@@ -1525,7 +1497,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 
@@ -1541,7 +1513,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For every registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -1568,8 +1540,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1581,9 +1553,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For all registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			/* Next app */
@@ -1591,8 +1561,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		}
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_chan_node == NULL) {
 			DBG2("Channel %s not found in session id %d for app pid %d."
 					"Skipping", uchan->name, usess->id, app->key.pid);
@@ -1600,8 +1570,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		ua_event_node = hashtable_lookup(ua_chan->events,
-				(void *)uevent->attr.name, strlen(uevent->attr.name), &uiter);
+		lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &uiter);
+		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_event_node == NULL) {
 			DBG2("Event %s not found in channel %s for app pid %d."
 					"Skipping", uevent->attr.name, uchan->name, app->key.pid);
@@ -1629,8 +1599,8 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node;
+	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1642,23 +1612,22 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For all registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
-				strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the channel is not found, there is a code flow error */
 		assert(ua_chan_node);
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
 		/* Disable each events of channel */
-		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
+		cds_lfht_for_each_entry(ua_chan->events->ht, &uiter.iter, ua_event,
+				node.node) {
 			ret = disable_ust_app_event(ua_sess, ua_event, app);
 			if (ret < 0) {
 				/* XXX: Report error someday... */
@@ -1679,7 +1648,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1696,7 +1665,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For every registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		/*
 		 * Create session on the tracer side and add it to app session HT. Note
 		 * that if session exist, it will simply return a pointer to the ust
@@ -1727,8 +1696,8 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1746,23 +1715,21 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For all registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
-				strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the channel is not found, there is a code flow error */
 		assert(ua_chan_node);
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		ua_event_node = hashtable_lookup(ua_chan->events,
-				(void*)uevent->attr.name, strlen(uevent->attr.name), &uiter);
+		lttng_ht_lookup(ua_chan->events, (void*)uevent->attr.name, &uiter);
+		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_event_node == NULL) {
 			DBG3("UST app enable event %s not found for app PID %d."
 					"Skipping app", uevent->attr.name, app->key.pid);
@@ -1789,8 +1756,8 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node;
+	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1807,16 +1774,14 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	/* For all registered applications */
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
-				strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the channel is not found, there is a code flow error */
 		assert(ua_chan_node);
 
@@ -1839,7 +1804,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ltt_ust_stream *ustream;
@@ -1865,7 +1830,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	/* For each channel */
-	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
+	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
+			node.node) {
 		/* Create all streams */
 		while (1) {
 			/* Create UST stream */
@@ -1942,7 +1908,7 @@ error_rcu_unlock:
 int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
@@ -1967,7 +1933,8 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	ustctl_wait_quiescent(app->key.sock);
 
 	/* Flushing buffers */
-	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
+	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
+			node.node) {
 		ret = ustctl_sock_flush_buffer(app->key.sock, ua_chan->obj);
 		if (ret < 0) {
 			ERR("UST app PID %d channel %s flush failed",
@@ -2001,8 +1968,8 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	struct ust_app_session *ua_sess;
 	struct lttng_ust_object_data obj;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
 	int ret;
 
 	DBG("Destroy tracing for ust app pid %d", app->key.pid);
@@ -2010,13 +1977,13 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	rcu_read_lock();
 
 	__lookup_session_by_app(usess, app, &iter);
-	node = hashtable_iter_get_node(&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		/* Only malloc can failed so something is really wrong */
 		goto error_rcu_unlock;
 	}
 	ua_sess = caa_container_of(node, struct ust_app_session, node);
-	ret = hashtable_del(app->sessions, &iter);
+	ret = lttng_ht_del(app->sessions, &iter);
 	assert(!ret);
 	delete_ust_app_session(app->key.sock, ua_sess);
 	obj.handle = ua_sess->handle;
@@ -2043,14 +2010,14 @@ error_rcu_unlock:
 int ust_app_start_trace_all(struct ltt_ust_session *usess)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app *app;
 
 	DBG("Starting all UST traces");
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ret = ust_app_start_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
@@ -2069,14 +2036,14 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app *app;
 
 	DBG("Stopping all UST traces");
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ret = ust_app_stop_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
@@ -2095,14 +2062,14 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ust_app *app;
 
 	DBG("Destroy all UST traces");
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ret = ust_app_destroy_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
@@ -2121,7 +2088,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter, uiter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -2153,9 +2120,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	 * app session above made a shadow copy of the UST global domain from the
 	 * ltt ust session.
 	 */
-	cds_lfht_for_each_entry(ua_sess->channels, &iter, ua_chan, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
+			node.node) {
 		ret = create_ust_channel(app, ua_sess, ua_chan);
 		if (ret < 0) {
 			/* FIXME: Should we quit here or continue... */
@@ -2163,7 +2129,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		}
 
 		/* For each events */
-		cds_lfht_for_each_entry(ua_chan->events, &uiter, ua_event, node) {
+		cds_lfht_for_each_entry(ua_chan->events->ht, &uiter.iter, ua_event,
+				node.node) {
 			ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 			if (ret < 0) {
 				/* FIXME: Should we quit here or continue... */
@@ -2193,25 +2160,23 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx)
 {
 	int ret = 0;
-	struct cds_lfht_node *ua_chan_node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node;
+	struct lttng_ht_iter iter, uiter;
 	struct ust_app_channel *ua_chan = NULL;
 	struct ust_app_session *ua_sess;
 	struct ust_app *app;
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
 		}
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_chan_node == NULL) {
 			continue;
 		}
@@ -2236,8 +2201,8 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_context *uctx)
 {
 	int ret = 0;
-	struct cds_lfht_node *ua_chan_node, *ua_event_node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
+	struct lttng_ht_iter iter, uiter;
 	struct ust_app_session *ua_sess;
 	struct ust_app_event *ua_event;
 	struct ust_app_channel *ua_chan = NULL;
@@ -2245,25 +2210,23 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht, &iter, app, node) {
-		struct cds_lfht_iter uiter;
-
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
 		}
 
 		/* Lookup channel in the ust app session */
-		ua_chan_node = hashtable_lookup(ua_sess->channels,
-				(void *)uchan->name, strlen(uchan->name), &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_chan_node == NULL) {
 			continue;
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
 				node);
 
-		ua_event_node = hashtable_lookup(ua_chan->events,
-				(void *)uevent->attr.name, strlen(uevent->attr.name), &uiter);
+		lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &uiter);
+		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_event_node == NULL) {
 			continue;
 		}
@@ -2287,8 +2250,8 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent, pid_t pid)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -2310,15 +2273,15 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 	assert(ua_sess);
 
 	/* Lookup channel in the ust app session */
-	ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
-			strlen(uchan->name), &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
+	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
 	/* If the channel is not found, there is a code flow error */
 	assert(ua_chan_node);
 
 	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-	ua_event_node = hashtable_lookup(ua_chan->events,
-			(void*)uevent->attr.name, strlen(uevent->attr.name), &iter);
+	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
+	ua_event_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_event_node == NULL) {
 		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
 		if (ret < 0) {
@@ -2345,8 +2308,8 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent, pid_t pid)
 {
 	int ret = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *ua_chan_node, *ua_event_node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -2368,16 +2331,16 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 	assert(ua_sess);
 
 	/* Lookup channel in the ust app session */
-	ua_chan_node = hashtable_lookup(ua_sess->channels, (void *)uchan->name,
-			strlen(uchan->name), &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
+	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_chan_node == NULL) {
 		/* Channel does not exist, skip disabling */
 		goto error;
 	}
 	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-	ua_event_node = hashtable_lookup(ua_chan->events,
-			(void*)uevent->attr.name, strlen(uevent->attr.name), &iter);
+	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
+	ua_event_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_event_node == NULL) {
 		/* Event does not exist, skip disabling */
 		goto error;

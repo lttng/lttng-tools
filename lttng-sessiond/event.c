@@ -21,12 +21,12 @@
 #include <string.h>
 
 #include <lttng/lttng.h>
+#include <lttng-ht.h>
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
 #include "channel.h"
 #include "event.h"
-#include "../common/hashtable.h"
 #include "kernel.h"
 #include "ust-ctl.h"
 #include "ust-app.h"
@@ -260,7 +260,7 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 {
 	int ret, i;
 	size_t size;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
 
@@ -268,7 +268,8 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST:
 	{
 		/* Enable existing events */
-		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+		cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent,
+				node.node) {
 			if (uevent->enabled == 0) {
 				ret = ust_app_enable_event_glb(usess, uchan, uevent);
 				if (ret < 0) {
@@ -327,7 +328,7 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 			uevent->enabled = 1;
 			/* Add ltt ust event to channel */
 			rcu_read_lock();
-			hashtable_add_unique(uchan->events, &uevent->node);
+			lttng_ht_add_unique_str(uchan->events, &uevent->node);
 			rcu_read_unlock();
 		}
 
@@ -410,7 +411,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 	/* Add ltt ust event to channel */
 	if (to_create) {
 		rcu_read_lock();
-		hashtable_add_unique(uchan->events, &uevent->node);
+		lttng_ht_add_unique_str(uchan->events, &uevent->node);
 		rcu_read_unlock();
 	}
 
@@ -481,7 +482,7 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 {
 	int ret, i;
 	size_t size;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
 
@@ -489,7 +490,8 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST:
 	{
 		/* Disabling existing events */
-		cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+		cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent,
+				node.node) {
 			if (uevent->enabled == 1) {
 				ret = ust_app_disable_event_glb(usess, uchan, uevent);
 				if (ret < 0) {

@@ -23,11 +23,11 @@
 #include <limits.h>
 #include <urcu.h>
 #include <urcu/list.h>
+
 #include <lttng/lttng.h>
+#include <lttng-ht.h>
 
 #include "ust-ctl.h"
-
-#include "../common/hashtable.h"
 
 /* UST Stream list */
 struct ltt_ust_stream_list {
@@ -38,15 +38,15 @@ struct ltt_ust_stream_list {
 /* Context hash table nodes */
 struct ltt_ust_context {
 	struct lttng_ust_context ctx;
-	struct cds_lfht_node node;
+	struct lttng_ht_node_ulong node;
 };
 
 /* UST event */
 struct ltt_ust_event {
 	unsigned int enabled;
 	struct lttng_ust_event attr;
-	struct cds_lfht *ctx;
-	struct cds_lfht_node node;
+	struct lttng_ht *ctx;
+	struct lttng_ht_node_str node;
 };
 
 /* UST stream */
@@ -64,9 +64,9 @@ struct ltt_ust_channel {
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char pathname[PATH_MAX];
 	struct lttng_ust_channel attr;
-	struct cds_lfht *ctx;
-	struct cds_lfht *events;
-	struct cds_lfht_node node;
+	struct lttng_ht *ctx;
+	struct lttng_ht *events;
+	struct lttng_ht_node_str node;
 };
 
 /* UST Metadata */
@@ -80,21 +80,21 @@ struct ltt_ust_metadata {
 
 /* UST domain global (LTTNG_DOMAIN_UST) */
 struct ltt_ust_domain_global {
-	struct cds_lfht *channels;
+	struct lttng_ht *channels;
 };
 
 /* UST domain pid (LTTNG_DOMAIN_UST_PID) */
 struct ltt_ust_domain_pid {
 	pid_t pid;
-	struct cds_lfht *channels;
-	struct cds_lfht_node node;
+	struct lttng_ht *channels;
+	struct lttng_ht_node_ulong node;
 };
 
 /* UST domain exec name (LTTNG_DOMAIN_UST_EXEC_NAME) */
 struct ltt_ust_domain_exec {
 	char exec_name[LTTNG_UST_SYM_NAME_LEN];
-	struct cds_lfht *channels;
-	struct cds_lfht_node node;
+	struct lttng_ht *channels;
+	struct lttng_ht_node_str node;
 };
 
 /* UST session */
@@ -108,8 +108,8 @@ struct ltt_ust_session {
 	 * contains a HT of channels. See ltt_ust_domain_exec and
 	 * ltt_ust_domain_pid data structures.
 	 */
-	struct cds_lfht *domain_pid;
-	struct cds_lfht *domain_exec;
+	struct lttng_ht *domain_pid;
+	struct lttng_ht *domain_exec;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
@@ -120,9 +120,9 @@ struct ltt_ust_session {
 /*
  * Lookup functions. NULL is returned if not found.
  */
-struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
+struct ltt_ust_event *trace_ust_find_event_by_name(struct lttng_ht *ht,
 		char *name);
-struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
+struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name);
 
 /*
@@ -149,14 +149,14 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
-struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
+struct ltt_ust_event *trace_ust_find_event_by_name(struct lttng_ht *ht,
 		char *name)
 {
 	return NULL;
 }
 
 static inline
-struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
+struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name)
 {
 	return NULL;

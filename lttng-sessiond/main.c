@@ -39,6 +39,7 @@
 #include <config.h>
 
 #include <lttng-consumerd.h>
+#include <lttng-ht.h>
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-consumer.h>
 
@@ -50,7 +51,6 @@
 #include "context.h"
 #include "event.h"
 #include "futex.h"
-#include "../common/hashtable.h"
 #include "kernel.h"
 #include "lttng-sessiond.h"
 #include "shm.h"
@@ -2060,11 +2060,11 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
-		struct cds_lfht_iter iter;
+		struct lttng_ht_iter iter;
 		struct ltt_ust_channel *uchan;
 
-		cds_lfht_for_each_entry(session->ust_session->domain_global.channels,
-				&iter, uchan, node) {
+		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
+				&iter.iter, uchan, node.node) {
 			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
 			channels[i].attr.overwrite = uchan->attr.overwrite;
 			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
@@ -2097,8 +2097,8 @@ static int list_lttng_ust_global_events(char *channel_name,
 {
 	int i = 0, ret = 0;
 	unsigned int nb_event = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *node;
 	struct ltt_ust_channel *uchan;
 	struct ltt_ust_event *uevent;
 	struct lttng_event *tmp;
@@ -2107,16 +2107,16 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 	rcu_read_lock();
 
-	node = hashtable_lookup(ust_global->channels, (void *) channel_name,
-			strlen(channel_name), &iter);
+	lttng_ht_lookup(ust_global->channels, (void *)channel_name, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		ret = -LTTCOMM_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
 
-	uchan = caa_container_of(node, struct ltt_ust_channel, node);
+	uchan = caa_container_of(&node->node, struct ltt_ust_channel, node.node);
 
-	nb_event += hashtable_get_count(uchan->events);
+	nb_event += lttng_ht_get_count(uchan->events);
 
 	if (nb_event == 0) {
 		ret = nb_event;
@@ -2131,7 +2131,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 		goto error;
 	}
 
-	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
 		strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
 		tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		tmp[i].enabled = uevent->enabled;
@@ -2257,7 +2257,7 @@ static int cmd_disable_channel(struct ltt_session *session,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_channel *uchan;
-		struct cds_lfht *chan_ht;
+		struct lttng_ht *chan_ht;
 
 		chan_ht = usess->domain_global.channels;
 
@@ -2297,7 +2297,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
-	struct cds_lfht *chan_ht;
+	struct lttng_ht *chan_ht;
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
@@ -2620,7 +2620,6 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 		}
 
 		/* At this point, the session and channel exist on the tracer */
-
 		ret = event_ust_enable_tracepoint(usess, domain, uchan, event);
 		if (ret != LTTCOMM_OK) {
 			goto error;
@@ -3136,7 +3135,7 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (session->ust_session != NULL) {
-			nb_chan = hashtable_get_count(
+			nb_chan = lttng_ht_get_count(
 					session->ust_session->domain_global.channels);
 		}
 		DBG3("Number of UST global channels %zd", nb_chan);

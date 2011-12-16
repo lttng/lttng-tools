@@ -1,7 +1,7 @@
 /*
  * Copyright (C) - Bob Jenkins, May 2006, Public Domain.
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
- * Copyright (C) 2011 -  Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * These are functions for producing 32-bit hashes for hash table lookup.
  * hashword(), hashlittle(), hashlittle2(), hashbig(), mix(), and final() are
@@ -34,14 +34,16 @@
  * byte), but shoehorning those bytes into integers efficiently is messy.
  */
 
-#include <stdio.h>      /* defines printf for tests */
-#include <time.h>       /* defines time_t for timings in the test */
-#include <stdint.h>     /* defines uint32_t etc */
-#include <sys/param.h>  /* attempt to define endianness */
-#include <endian.h>    /* attempt to define endianness */
-#include <string.h>
 #include <assert.h>
+#include <endian.h>    /* attempt to define endianness */
+#include <stdint.h>     /* defines uint32_t etc */
+#include <stdio.h>      /* defines printf for tests */
+#include <string.h>
+#include <sys/param.h>  /* attempt to define endianness */
+#include <time.h>       /* defines time_t for timings in the test */
 #include <urcu/compiler.h>
+
+#include "utils.h"
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may
@@ -153,11 +155,13 @@
   c ^= b; c -= rot(b,24); \
 }
 
-static __attribute__((unused))
-uint32_t hashword(
-	const uint32_t *k,	/* the key, an array of uint32_t values */
-	size_t length,		/* the length of the key, in uint32_ts */
-	uint32_t initval)	/* the previous hash, or an arbitrary value */
+/*
+ * k - the key, an array of uint32_t values
+ * length - the length of the key, in uint32_ts
+ * initval - the previous hash, or an arbitrary value
+ */
+static uint32_t __attribute__((unused)) hashword(const uint32_t *k,
+		size_t length, uint32_t initval)
 {
 	uint32_t a, b, c;
 
@@ -194,8 +198,7 @@ uint32_t hashword(
  * initialized with seeds.  If you pass in (*pb)==0, the output (*pc) will be
  * the same as the return value from hashword().
  */
-static __attribute__((unused))
-void hashword2(const uint32_t *k, size_t length,
+static void __attribute__((unused)) hashword2(const uint32_t *k, size_t length,
 		uint32_t *pc, uint32_t *pb)
 {
 	uint32_t a, b, c;
@@ -253,8 +256,8 @@ void hashword2(const uint32_t *k, size_t length,
  * Use for hash table lookup, or anything where one collision in 2^^32 is
  * acceptable.  Do NOT use for cryptographic purposes.
  */
-
-static uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
+static uint32_t __attribute__((unused)) hashlittle(const void *key,
+		size_t length, uint32_t initval)
 {
 	uint32_t a,b,c;
 	union {
@@ -431,7 +434,7 @@ static uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
 /*
  * Hash function for number value.
  */
-unsigned long hash_key(void *_key, size_t length, unsigned long seed)
+unsigned long hash_key_ulong(void *_key, unsigned long seed)
 {
 	union {
 		uint64_t v64;
@@ -442,7 +445,6 @@ unsigned long hash_key(void *_key, size_t length, unsigned long seed)
 		uint32_t v32[2];
 	} key;
 
-	assert(length == sizeof(unsigned long));
 	v.v64 = (uint64_t) seed;
 	key.v64 = (uint64_t) _key;
 	hashword2(key.v32, 2, &v.v32[0], &v.v32[1]);
@@ -452,53 +454,42 @@ unsigned long hash_key(void *_key, size_t length, unsigned long seed)
 /*
  * Hash function for number value.
  */
-unsigned long hash_key(void *_key, size_t length, unsigned long seed)
+unsigned long hash_key_ulong(void *_key, unsigned long seed)
 {
 	uint32_t key = (uint32_t) _key;
 
-	assert(length == sizeof(uint32_t));
 	return hashword(&key, 1, seed);
 }
-#endif
+#endif /* CAA_BITS_PER_LONG */
 
 /*
  * Hash function for string.
  */
-unsigned long hash_key_str(void *key, size_t length, unsigned long seed)
+unsigned long hash_key_str(void *key, unsigned long seed)
 {
-	return hashlittle(key, length, seed);
+	return hashlittle(key, strlen((char *) key), seed);
 }
 
 /*
  * Hash function compare for number value.
  */
-unsigned long hash_compare_key(void *key1, size_t key1_len,
-		void *key2, size_t key2_len)
+int hash_match_key_ulong(void *key1, void *key2)
 {
-	if (key1_len != key2_len) {
-		return -1;
-	}
-
 	if (key1 == key2) {
-		return 0;
+		return 1;
 	}
 
-	return 1;
+	return 0;
 }
 
 /*
  * Hash compare function for string.
  */
-unsigned long hash_compare_key_str(void *key1, size_t key1_len,
-		void *key2, size_t key2_len)
+int hash_match_key_str(void *key1, void *key2)
 {
-	if (key1_len != key2_len) {
-		return -1;
+	if (strcmp(key1, key2) == 0) {
+		return 1;
 	}
 
-	if (strncmp(key1, key2, key1_len) == 0) {
-		return 0;
-	}
-
-	return 1;
+	return 0;
 }

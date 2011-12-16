@@ -22,11 +22,11 @@
 #include <unistd.h>
 #include <urcu/list.h>
 
+#include <lttng-ht.h>
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
 #include "context.h"
-#include "../common/hashtable.h"
 #include "kernel.h"
 #include "ust-app.h"
 #include "trace-ust.h"
@@ -180,7 +180,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 	}
 
 	/* Add ltt UST context node to ltt UST channel */
-	hashtable_add_unique(uchan->ctx, &uctx->node);
+	lttng_ht_add_unique_ulong(uchan->ctx, &uctx->node);
 
 	return LTTCOMM_OK;
 
@@ -219,7 +219,7 @@ static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
 	}
 
 	/* Add ltt UST context node to ltt UST event */
-	hashtable_add_unique(uevent->ctx, &uctx->node);
+	lttng_ht_add_unique_ulong(uevent->ctx, &uctx->node);
 
 	return LTTCOMM_OK;
 
@@ -280,8 +280,8 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		char *channel_name)
 {
 	int ret = LTTCOMM_OK, have_event = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht *chan_ht;
+	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct ltt_ust_event *uevent = NULL;
 
@@ -332,7 +332,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 	} else if (!uchan && have_event) {	/* Add ctx to event */
 		/* Add context to event without having the channel name */
-		cds_lfht_for_each_entry(chan_ht, &iter, uchan, node) {
+		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
 			uevent = trace_ust_find_event_by_name(uchan->events, event_name);
 			if (uevent != NULL) {
 				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
@@ -348,9 +348,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		goto error;
 	} else if (!uchan && !have_event) {	/* Add ctx all events, all channels */
 		/* For all channels */
-		cds_lfht_for_each_entry(chan_ht, &iter, uchan, node) {
-			struct cds_lfht_iter uiter;
-
+		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret < 0) {
 				ERR("Context added to channel %s failed", uchan->name);
@@ -358,7 +356,8 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 			}
 
 			/* For all events in channel */
-			cds_lfht_for_each_entry(uchan->events, &uiter, uevent, node) {
+			cds_lfht_for_each_entry(uchan->events->ht, &uiter.iter, uevent,
+					node.node) {
 				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
 				if (ret < 0) {
 					ERR("Context add to event %s in channel %s failed",

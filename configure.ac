@@ -139,6 +139,7 @@ AC_CONFIG_FILES([
 	liblttng-ustconsumer/Makefile
 	liblttngctl/Makefile
 	liblttng-sessiond-comm/Makefile
+	liblttng-ht/Makefile
 	lttng-consumerd/Makefile
 	lttng-sessiond/Makefile
 	lttng/Makefile

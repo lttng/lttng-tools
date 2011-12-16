@@ -23,11 +23,11 @@
 #include <unistd.h>
 
 #include <lttngerr.h>
+#include <lttng-ht.h>
 #include <lttng-share.h>
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-consumer.h>
 
-#include "../common/hashtable.h"
 #include "ust-consumer.h"
 
 /*
@@ -120,10 +120,9 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 {
 	int ret = 0;
 	int sock = consumer_fd;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
 	struct lttcomm_consumer_msg lum;
-	struct ust_app_channel *uchan;
+	struct ust_app_channel *ua_chan;
 
 	DBG("Sending metadata stream fd");
 
@@ -182,17 +181,13 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 
 	/* Send each channel fd streams of session */
 	rcu_read_lock();
-	hashtable_get_first(usess->channels, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
-		uchan = caa_container_of(node, struct ust_app_channel, node);
-
-		ret = send_channel_streams(sock, uchan, usess->uid,
-				usess->gid);
+	cds_lfht_for_each_entry(usess->channels->ht, &iter.iter, ua_chan,
+			node.node) {
+		ret = send_channel_streams(sock, ua_chan, usess->uid, usess->gid);
 		if (ret < 0) {
 			rcu_read_unlock();
 			goto error;
 		}
-		hashtable_get_next(usess->channels, &iter);
 	}
 	rcu_read_unlock();
 
