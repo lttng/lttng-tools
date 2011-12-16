@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -181,13 +180,9 @@ int lttcomm_accept_unix_sock(int sock)
 	new_fd = accept(sock, (struct sockaddr *) &sun, &len);
 	if (new_fd < 0) {
 		perror("accept");
-		goto error;
 	}
 
 	return new_fd;
-
-error:
-	return -1;
 }
 
 /*
@@ -407,5 +402,132 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	memcpy(fds, CMSG_DATA(cmsg), sizeof_fds);
 	ret = sizeof_fds;
 end:
+	return ret;
+}
+
+/*
+ * Send a message with credentials over a unix socket.
+ *
+ * Returns the size of data sent, or negative error value.
+ */
+ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
+{
+	struct msghdr msg = { 0 };
+	struct cmsghdr *cmptr;
+	struct iovec iov[1];
+	ssize_t ret = -1;
+	struct ucred *creds;
+	size_t sizeof_cred = sizeof(struct ucred);
+	char anc_buf[CMSG_SPACE(sizeof_cred)];
+
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+	msg.msg_control = (caddr_t) anc_buf;
+	msg.msg_controllen = CMSG_LEN(sizeof_cred);
+
+	cmptr = CMSG_FIRSTHDR(&msg);
+	cmptr->cmsg_level = SOL_SOCKET;
+	cmptr->cmsg_type = SCM_CREDENTIALS;
+	cmptr->cmsg_len = CMSG_LEN(sizeof_cred);
+
+	creds = (struct ucred *) CMSG_DATA(cmptr);
+
+	creds->uid = geteuid();
+	creds->gid = getegid();
+	creds->pid = getpid();
+
+	ret = sendmsg(sock, &msg, 0);
+	if (ret < 0) {
+		perror("sendmsg");
+	}
+
+	return ret;
+}
+
+/*
+ * Recv a message accompanied with credentials from a unix socket.
+ *
+ * Returns the size of received data, or negative error value.
+ */
+ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
+		struct ucred *creds)
+{
+	struct msghdr msg = { 0 };
+	struct cmsghdr *cmptr;
+	struct iovec iov[1];
+	ssize_t ret;
+	size_t sizeof_cred = sizeof(struct ucred);
+	char anc_buf[CMSG_SPACE(sizeof_cred)];
+
+	/* Not allowed */
+	if (creds == NULL) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Prepare to receive the structures */
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+	msg.msg_control = anc_buf;
+	msg.msg_controllen = sizeof(anc_buf);
+
+	ret = recvmsg(sock, &msg, 0);
+	if (ret < 0) {
+		perror("recvmsg fds");
+		goto end;
+	}
+
+	if (msg.msg_flags & MSG_CTRUNC) {
+		fprintf(stderr, "Error: Control message truncated.\n");
+		ret = -1;
+		goto end;
+	}
+
+	cmptr = CMSG_FIRSTHDR(&msg);
+	if (cmptr == NULL) {
+		fprintf(stderr, "Error: Invalid control message header\n");
+		ret = -1;
+		goto end;
+	}
+
+	if (cmptr->cmsg_level != SOL_SOCKET ||
+			cmptr->cmsg_type != SCM_CREDENTIALS) {
+		fprintf(stderr, "Didn't received any credentials\n");
+		ret = -1;
+		goto end;
+	}
+
+	if (cmptr->cmsg_len != CMSG_LEN(sizeof_cred)) {
+		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
+				cmptr->cmsg_len, CMSG_LEN(sizeof_cred));
+		ret = -1;
+		goto end;
+	}
+
+	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
+
+end:
+	return ret;
+}
+
+/*
+ * Set socket option to use credentials passing.
+ */
+int lttcomm_setsockopt_creds_unix_sock(int sock)
+{
+	int ret, on = 1;
+
+	/* Set socket for credentials retrieval */
+	ret = setsockopt(sock, SOL_SOCKET, SO_PASSCRED, &on, sizeof(on));
+	if (ret < 0) {
+		perror("setsockopt creds unix sock");
+	}
+
 	return ret;
 }
