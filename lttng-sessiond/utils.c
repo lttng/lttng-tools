@@ -65,6 +65,9 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	size_t len;
 	mode_t old_umask;
 
+	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d", path, mode,
+			uid, gid);
+
 	ret = snprintf(tmp, sizeof(tmp), "%s", path);
 	if (ret < 0) {
 		PERROR("snprintf mkdir");
