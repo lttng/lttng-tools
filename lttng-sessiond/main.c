@@ -1871,10 +1871,11 @@ error:
  * Create an UST session and add it to the session ust list.
  */
 static int create_ust_session(struct ltt_session *session,
-		struct lttng_domain *domain)
+		struct lttng_domain *domain, struct ucred *creds)
 {
 	int ret;
-	unsigned int uid;
+	unsigned int sess_uid;
+	gid_t gid;
 	struct ltt_ust_session *lus = NULL;
 
 	switch (domain->type) {
@@ -1887,15 +1888,23 @@ static int create_ust_session(struct ltt_session *session,
 
 	DBG("Creating UST session");
 
-	uid = session->uid;
-	lus = trace_ust_create_session(session->path, uid, domain);
+	sess_uid = session->uid;
+	lus = trace_ust_create_session(session->path, sess_uid, domain);
 	if (lus == NULL) {
 		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
 	}
 
-	ret = mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG,
-			geteuid(), allowed_group());
+	/*
+	 * Get the right group ID. To use the tracing group, the daemon must be
+	 * running with root credentials or else it's the user GID used.
+	 */
+	gid = allowed_group();
+	if (gid < 0 || !is_root) {
+		gid = creds->gid;
+	}
+
+	ret = mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG, creds->uid, gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
@@ -1925,9 +1934,11 @@ error:
 /*
  * Create a kernel tracer session then create the default channel.
  */
-static int create_kernel_session(struct ltt_session *session)
+static int create_kernel_session(struct ltt_session *session,
+		struct ucred *creds)
 {
 	int ret;
+	gid_t gid;
 
 	DBG("Creating kernel session");
 
@@ -1942,8 +1953,17 @@ static int create_kernel_session(struct ltt_session *session)
 		session->kernel_session->consumer_fd = kconsumer_data.cmd_sock;
 	}
 
+	gid = allowed_group();
+	if (gid < 0) {
+		/*
+		 * Use GID 0 has a fallback since kernel session is only allowed under
+		 * root or the gid of the calling user
+		 */
+		is_root ? (gid = 0) : (gid = creds->gid);
+	}
+
 	ret = mkdir_recursive(session->kernel_session->trace_path,
-			S_IRWXU | S_IRWXG, geteuid(), allowed_group());
+			S_IRWXU | S_IRWXG, creds->uid, gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
@@ -3234,7 +3254,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
 			if (cmd_ctx->session->kernel_session == NULL) {
-				ret = create_kernel_session(cmd_ctx->session);
+				ret = create_kernel_session(cmd_ctx->session, &cmd_ctx->creds);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_SESS_FAIL;
 					goto error;
@@ -3261,7 +3281,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		if (need_tracing_session) {
 			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
-						&cmd_ctx->lsm->domain);
+						&cmd_ctx->lsm->domain, &cmd_ctx->creds);
 				if (ret != LTTCOMM_OK) {
 					goto error;
 				}
@@ -3628,6 +3648,12 @@ static void *thread_manage_clients(void *data)
 			goto error;
 		}
 
+		/* Set socket option for credentials retrieval */
+		ret = lttcomm_setsockopt_creds_unix_sock(sock);
+		if (ret < 0) {
+			goto error;
+		}
+
 		/* Allocate context command to process the client request */
 		cmd_ctx = zmalloc(sizeof(struct command_ctx));
 		if (cmd_ctx == NULL) {
@@ -3651,8 +3677,8 @@ static void *thread_manage_clients(void *data)
 		 * the client.
 		 */
 		DBG("Receiving data from client ...");
-		ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm,
-				sizeof(struct lttcomm_session_msg));
+		ret = lttcomm_recv_creds_unix_sock(sock, cmd_ctx->lsm,
+				sizeof(struct lttcomm_session_msg), &cmd_ctx->creds);
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
 			close(sock);
@@ -3690,10 +3716,10 @@ static void *thread_manage_clients(void *data)
 			ERR("Failed to send data back to client");
 		}
 
-		clean_command_ctx(&cmd_ctx);
-
 		/* End of transmission */
 		close(sock);
+
+		clean_command_ctx(&cmd_ctx);
 	}
 
 error:
@@ -3935,27 +3961,22 @@ static int check_existing_daemon(void)
  * Race window between mkdir and chown is OK because we are going from more
  * permissive (root.root) to les permissive (root.tracing).
  */
-static int set_permissions(void)
+static int set_permissions(char *rundir)
 {
 	int ret;
 	gid_t gid;
 
 	gid = allowed_group();
 	if (gid < 0) {
-		if (is_root) {
-			WARN("No tracing group detected");
-			ret = 0;
-		} else {
-			ERR("Missing tracing group. Aborting execution.");
-			ret = -1;
-		}
+		WARN("No tracing group detected");
+		ret = 0;
 		goto end;
 	}
 
 	/* Set lttng run dir */
-	ret = chown(LTTNG_RUNDIR, 0, gid);
+	ret = chown(rundir, 0, gid);
 	if (ret < 0) {
-		ERR("Unable to set group on " LTTNG_RUNDIR);
+		ERR("Unable to set group on %s", rundir);
 		perror("chown");
 	}
 
@@ -4367,7 +4388,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Set credentials to socket */
-	if (is_root && ((ret = set_permissions()) < 0)) {
+	if (is_root && ((ret = set_permissions(rundir)) < 0)) {
 		goto exit;
 	}
 
