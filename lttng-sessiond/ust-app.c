@@ -769,7 +769,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
 
-	ua_sess->uid = usess->uid;
+	ua_sess->id = usess->id;
 
 	ret = snprintf(ua_sess->path, PATH_MAX,
 			"%s/%s-%d-%s",
@@ -817,13 +817,13 @@ void __lookup_session_by_app(struct ltt_ust_session *usess,
 {
 	/* Get right UST app session from app */
 	(void) hashtable_lookup(app->sessions,
-			(void *) ((unsigned long) usess->uid), sizeof(void *),
+			(void *) ((unsigned long) usess->id), sizeof(void *),
 			iter);
 }
 
 /*
  * Return ust app session from the app session hashtable using the UST session
- * uid.
+ * id.
  */
 static struct ust_app_session *lookup_session_by_app(
 		struct ltt_ust_session *usess, struct ust_app *app)
@@ -857,8 +857,8 @@ static struct ust_app_session *create_ust_app_session(
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
-		DBG2("UST app pid: %d session uid %d not found, creating it",
-				app->key.pid, usess->uid);
+		DBG2("UST app pid: %d session id %d not found, creating it",
+				app->key.pid, usess->id);
 		ua_sess = alloc_ust_app_session();
 		if (ua_sess == NULL) {
 			/* Only malloc can failed so something is really wrong */
@@ -881,7 +881,7 @@ static struct ust_app_session *create_ust_app_session(
 
 		/* Add ust app session to app's HT */
 		hashtable_node_init(&ua_sess->node,
-				(void *)((unsigned long) ua_sess->uid), sizeof(void *));
+				(void *)((unsigned long) ua_sess->id), sizeof(void *));
 		hashtable_add_unique(app->sessions, &ua_sess->node);
 
 		DBG2("UST app session created successfully with handle %d", ret);
@@ -1050,8 +1050,8 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 	ua_chan_node = hashtable_lookup(ua_sess->channels,
 			(void *)uchan->name, strlen(uchan->name), &iter);
 	if (ua_chan_node == NULL) {
-		DBG2("Unable to find channel %s in ust session uid %u",
-				uchan->name, ua_sess->uid);
+		DBG2("Unable to find channel %s in ust session id %u",
+				uchan->name, ua_sess->id);
 		goto error;
 	}
 
@@ -1082,8 +1082,8 @@ static struct ust_app_channel *create_ust_app_channel(
 	ua_chan_node = hashtable_lookup(ua_sess->channels,
 			(void *)uchan->name, strlen(uchan->name), &iter);
 	if (ua_chan_node == NULL) {
-		DBG2("Unable to find channel %s in ust session uid %u",
-				uchan->name, ua_sess->uid);
+		DBG2("Unable to find channel %s in ust session id %u",
+				uchan->name, ua_sess->id);
 		ua_chan = alloc_ust_app_channel(uchan->name, &uchan->attr);
 		if (ua_chan == NULL) {
 			goto error;
@@ -1478,8 +1478,8 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	DBG2("UST app disabling channel %s from global domain for session uid %d",
-			uchan->name, usess->uid);
+	DBG2("UST app disabling channel %s from global domain for session id %d",
+			uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -1533,8 +1533,8 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	DBG2("UST app enabling channel %s to global domain for session uid %d",
-			uchan->name, usess->uid);
+	DBG2("UST app enabling channel %s to global domain for session id %d",
+			uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -1574,7 +1574,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	DBG("UST app disabling event %s for all apps in channel "
-			"%s for session uid %d", uevent->attr.name, uchan->name, usess->uid);
+			"%s for session id %d", uevent->attr.name, uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -1592,8 +1592,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		ua_chan_node = hashtable_lookup(ua_sess->channels,
 				(void *)uchan->name, strlen(uchan->name), &uiter);
 		if (ua_chan_node == NULL) {
-			DBG2("Channel %s not found in session uid %d for app pid %d."
-					"Skipping", uchan->name, usess->uid, app->key.pid);
+			DBG2("Channel %s not found in session id %d for app pid %d."
+					"Skipping", uchan->name, usess->id, app->key.pid);
 			continue;
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
@@ -1635,7 +1635,7 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	DBG("UST app disabling all event for all apps in channel "
-			"%s for session uid %d", uchan->name, usess->uid);
+			"%s for session id %d", uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -1688,8 +1688,8 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	DBG2("UST app adding channel %s to global domain for session uid %d",
-			uchan->name, usess->uid);
+	DBG2("UST app adding channel %s to global domain for session id %d",
+			uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -1732,8 +1732,8 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	DBG("UST app enabling event %s for all apps for session uid %d",
-			uevent->attr.name, usess->uid);
+	DBG("UST app enabling event %s for all apps for session id %d",
+			uevent->attr.name, usess->id);
 
 	/*
 	 * NOTE: At this point, this function is called only if the session and
@@ -1793,8 +1793,8 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	DBG("UST app creating event %s for all apps for session uid %d",
-			uevent->attr.name, usess->uid);
+	DBG("UST app creating event %s for all apps for session id %d",
+			uevent->attr.name, usess->id);
 
 	/*
 	 * NOTE: At this point, this function is called only if the session and
@@ -2130,8 +2130,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		goto error;
 	}
 
-	DBG2("UST app global update for app sock %d for session uid %d", sock,
-			usess->uid);
+	DBG2("UST app global update for app sock %d for session id %d", sock,
+			usess->id);
 
 	rcu_read_lock();
 

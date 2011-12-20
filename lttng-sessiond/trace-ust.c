@@ -84,7 +84,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
+struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
 		struct lttng_domain *domain)
 {
 	int ret;
@@ -98,7 +98,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 	}
 
 	/* Init data structure */
-	lus->uid = uid;
+	lus->id = session_id;
 	lus->start_trace = 0;
 
 	/* Alloc UST domain hash tables */
@@ -507,7 +507,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	rcu_read_lock();
 
-	DBG2("Trace UST destroy session %d", session->uid);
+	DBG2("Trace UST destroy session %d", session->id);
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);

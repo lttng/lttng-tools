@@ -88,8 +88,8 @@ struct ust_app_session {
 	int enabled;
 	/* started: has the session been in started state at any time ? */
 	int started;  /* allows detection of start vs restart. */
-	int handle;   /* Used has unique identifier */
-	unsigned int uid;
+	int handle;   /* used has unique identifier for app session */
+	int id;       /* session unique identifier */
 	struct ltt_ust_metadata *metadata;
 	struct cds_lfht *channels; /* Registered channels */
 	struct cds_lfht_node node;

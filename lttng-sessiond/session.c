@@ -216,10 +216,10 @@ int session_create(char *name, char *path)
 
 	/* Add new session to the session list */
 	session_lock_list();
-	new_session->uid = add_session_list(new_session);
+	new_session->id = add_session_list(new_session);
 	session_unlock_list();
 
-	DBG("Tracing session %s created in %s with UID %d", name, path, new_session->uid);
+	DBG("Tracing session %s created in %s with ID %d", name, path, new_session->id);
 
 	return LTTCOMM_OK;
 

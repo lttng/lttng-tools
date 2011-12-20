@@ -99,7 +99,7 @@ struct ltt_ust_domain_exec {
 
 /* UST session */
 struct ltt_ust_session {
-	int uid;   /* Unique identifier of session */
+	int id;    /* Unique identifier of session */
 	int start_trace;
 	char pathname[PATH_MAX];
 	struct ltt_ust_domain_global domain_global;
@@ -125,7 +125,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
+struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
 		struct lttng_domain *domain);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		char *path);

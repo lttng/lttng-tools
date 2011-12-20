@@ -1874,7 +1874,6 @@ static int create_ust_session(struct ltt_session *session,
 		struct lttng_domain *domain, struct ucred *creds)
 {
 	int ret;
-	unsigned int sess_uid;
 	gid_t gid;
 	struct ltt_ust_session *lus = NULL;
 
@@ -1888,8 +1887,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	DBG("Creating UST session");
 
-	sess_uid = session->uid;
-	lus = trace_ust_create_session(session->path, sess_uid, domain);
+	lus = trace_ust_create_session(session->path, session->id, domain);
 	if (lus == NULL) {
 		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
