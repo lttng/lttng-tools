@@ -34,6 +34,7 @@
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"
+#include "utils.h"
 
 /*
  * Delete ust context safely. RCU read lock must be held before calling
@@ -1167,7 +1168,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		char *pathname, struct ust_app *app)
 {
 	int ret = 0;
-	mode_t old_umask;
 
 	if (ua_sess->metadata == NULL) {
 		/* Allocate UST metadata */
@@ -1193,18 +1193,12 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			goto error;
 		}
 
-		old_umask = umask(0);
-		ret = mkdir(ua_sess->path, S_IRWXU | S_IRWXG);
+		ret = mkdir_run_as(ua_sess->path, S_IRWXU | S_IRWXG,
+				ua_sess->uid, ua_sess->gid);
 		if (ret < 0) {
 			PERROR("mkdir UST metadata");
 			goto error;
 		}
-		ret = chown(ua_sess->path, ua_sess->uid, ua_sess->gid);
-		if (ret < 0) {
-			ERR("Unable to change owner of %s", ua_sess->path);
-			perror("chown");
-		}
-		umask(old_umask);
 
 		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
 				"%s/metadata", ua_sess->path);

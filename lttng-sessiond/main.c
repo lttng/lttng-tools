@@ -1744,7 +1744,7 @@ static int mount_debugfs(char *path)
 	int ret;
 	char *type = "debugfs";
 
-	ret = mkdir_recursive(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
+	ret = mkdir_recursive_run_as(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
 	if (ret < 0) {
 		PERROR("Cannot create debugfs path");
 		goto error;
@@ -1899,7 +1899,7 @@ static int create_ust_session(struct ltt_session *session,
 		goto error;
 	}
 
-	ret = mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG,
+	ret = mkdir_recursive_run_as(lus->pathname, S_IRWXU | S_IRWXG,
 			session->uid, session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
@@ -1949,7 +1949,7 @@ static int create_kernel_session(struct ltt_session *session)
 		session->kernel_session->consumer_fd = kconsumer_data.cmd_sock;
 	}
 
-	ret = mkdir_recursive(session->kernel_session->trace_path,
+	ret = mkdir_recursive_run_as(session->kernel_session->trace_path,
 			S_IRWXU | S_IRWXG, session->uid, session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {

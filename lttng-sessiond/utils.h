@@ -25,7 +25,10 @@
 #define __stringify(x)	__stringify1(x)
 #endif
 
-int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
+int mkdir_recursive_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid);
+int mkdir_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid);
+int open_run_as(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
+
 const char *get_home_dir(void);
 int notify_thread_pipe(int wpipe);
 

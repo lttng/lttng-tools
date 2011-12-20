@@ -26,10 +26,22 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <lttngerr.h>
 
 #include "utils.h"
+
+struct mkdir_data {
+	const char *path;
+	mode_t mode;
+};
+
+struct open_data {
+	const char *path;
+	int flags;
+	mode_t mode;
+};
 
 /*
  * Write to writable pipe used to notify a thread.
@@ -60,12 +72,18 @@ const char *get_home_dir(void)
  * Create recursively directory using the FULL path.
  */
 static
-int _mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
+int _mkdir_recursive(void *_data)
 {
-	int ret;
+	struct mkdir_data *data = _data;
+	const char *path;
 	char *p, tmp[PATH_MAX];
+	struct stat statbuf;
+	mode_t mode;
 	size_t len;
-	mode_t old_umask;
+	int ret;
+
+	path = data->path;
+	mode = data->mode;
 
 	ret = snprintf(tmp, sizeof(tmp), "%s", path);
 	if (ret < 0) {
@@ -78,16 +96,18 @@ int _mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 		tmp[len - 1] = 0;
 	}
 
-	old_umask = umask(0);
 	for (p = tmp + 1; *p; p++) {
 		if (*p == '/') {
 			*p = 0;
-			ret = mkdir(tmp, mode);
+			ret = stat(tmp, &statbuf);
 			if (ret < 0) {
-				if (!(errno == EEXIST)) {
-					PERROR("mkdir recursive");
-					ret = -errno;
-					goto umask_error;
+				ret = mkdir(tmp, mode);
+				if (ret < 0) {
+					if (!(errno == EEXIST)) {
+						PERROR("mkdir recursive");
+						ret = -errno;
+						goto error;
+					}
 				}
 			}
 			*p = '/';
@@ -104,15 +124,26 @@ int _mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 		}
 	}
 
-umask_error:
-	umask(old_umask);
 error:
 	return ret;
 }
 
 static
-int run_as(int (*cmd)(const char *path, mode_t mode, uid_t uid, gid_t gid),
-	const char *path, mode_t mode, uid_t uid, gid_t gid)
+int _mkdir(void *_data)
+{
+	struct mkdir_data *data = _data;
+	return mkdir(data->path, data->mode);
+}
+
+static
+int _open(void *_data)
+{
+	struct open_data *data = _data;
+	return open(data->path, data->flags, data->mode);
+}
+
+static
+int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
 	int ret = 0;
 	pid_t pid;
@@ -126,7 +157,7 @@ int run_as(int (*cmd)(const char *path, mode_t mode, uid_t uid, gid_t gid),
 				uid, geteuid());
 			return -EPERM;
 		}
-		return (*cmd)(path, mode, uid, gid);
+		return (*cmd)(data);
 	}
 
 	pid = fork();
@@ -155,7 +186,8 @@ int run_as(int (*cmd)(const char *path, mode_t mode, uid_t uid, gid_t gid),
 			perror("seteuid");
 			exit(EXIT_FAILURE);
 		}
-		ret = (*cmd)(path, mode, uid, gid);
+		umask(0);
+		ret = (*cmd)(data);
 		if (!ret)
 			exit(EXIT_SUCCESS);
 		else
@@ -167,9 +199,36 @@ end:
 	return ret;
 }
 
-int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
+int mkdir_recursive_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
+	struct mkdir_data data;
+
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
 			path, mode, uid, gid);
-	return run_as(_mkdir_recursive, path, mode, uid, gid);
+	data.path = path;
+	data.mode = mode;
+	return run_as(_mkdir_recursive, &data, uid, gid);
+}
+
+int mkdir_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
+{
+	struct mkdir_data data;
+
+	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
+			path, mode, uid, gid);
+	data.path = path;
+	data.mode = mode;
+	return run_as(_mkdir, &data, uid, gid);
+}
+
+int open_run_as(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
+{
+	struct open_data data;
+
+	DBG3("open() %s with flags %d mode %d for uid %d and gid %d",
+			path, flags, mode, uid, gid);
+	data.path = path;
+	data.flags = flags;
+	data.mode = mode;
+	return run_as(_open, &data, uid, gid);
 }
