@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -58,15 +59,13 @@ const char *get_home_dir(void)
 /*
  * Create recursively directory using the FULL path.
  */
-int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
+static
+int _mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	int ret;
 	char *p, tmp[PATH_MAX];
 	size_t len;
 	mode_t old_umask;
-
-	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d", path, mode,
-			uid, gid);
 
 	ret = snprintf(tmp, sizeof(tmp), "%s", path);
 	if (ret < 0) {
@@ -90,17 +89,6 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 					ret = -errno;
 					goto umask_error;
 				}
-			} else if (ret == 0) {
-				/*
-				 * We created the directory. Set its ownership to the
-				 * user/group specified.
-				 */
-				ret = chown(tmp, uid, gid);
-				if (ret < 0) {
-					PERROR("chown in mkdir recursive");
-					ret = -errno;
-					goto umask_error;
-				}
 			}
 			*p = '/';
 		}
@@ -114,21 +102,74 @@ int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 		} else {
 			ret = 0;
 		}
-	} else if (ret == 0) {
-		/*
-		 * We created the directory. Set its ownership to the user/group
-		 * specified.
-		 */
-		ret = chown(tmp, uid, gid);
-		if (ret < 0) {
-			PERROR("chown in mkdir recursive");
-			ret = -errno;
-			goto umask_error;
-		}
 	}
 
 umask_error:
 	umask(old_umask);
 error:
 	return ret;
+}
+
+static
+int run_as(int (*cmd)(const char *path, mode_t mode, uid_t uid, gid_t gid),
+	const char *path, mode_t mode, uid_t uid, gid_t gid)
+{
+	int ret = 0;
+	pid_t pid;
+
+	/*
+	 * If we are non-root, we can only deal with our own uid.
+	 */
+	if (geteuid() != 0) {
+		if (uid != geteuid()) {
+			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
+				uid, geteuid());
+			return -EPERM;
+		}
+		return (*cmd)(path, mode, uid, gid);
+	}
+
+	pid = fork();
+	if (pid > 0) {
+		int status;
+
+		/*
+		 * Parent: wait for child to return, in which case the
+		 * shared memory map will have been created.
+		 */
+		pid = wait(&status);
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+			ret = -1;
+			goto end;
+		}
+		goto end;
+	} else if (pid == 0) {
+		/* Child */
+		setegid(gid);
+		if (ret < 0) {
+			perror("setegid");
+			exit(EXIT_FAILURE);
+		}
+		ret = seteuid(uid);
+		if (ret < 0) {
+			perror("seteuid");
+			exit(EXIT_FAILURE);
+		}
+		ret = (*cmd)(path, mode, uid, gid);
+		if (!ret)
+			exit(EXIT_SUCCESS);
+		else
+			exit(EXIT_FAILURE);
+	} else {
+		return -1;
+	}
+end:
+	return ret;
+}
+
+int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
+{
+	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
+			path, mode, uid, gid);
+	return run_as(_mkdir_recursive, path, mode, uid, gid);
 }
