@@ -33,6 +33,7 @@
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-kconsumer.h>
 #include <lttngerr.h>
+#include <runas.h>
 
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;
@@ -395,19 +396,16 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 	/* Opening the tracefile in write mode */
 	if (stream->path_name != NULL) {
-		ret = open(stream->path_name,
-				O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU|S_IRWXG|S_IRWXO);
+		ret = open_run_as(stream->path_name,
+				O_WRONLY|O_CREAT|O_TRUNC,
+				S_IRWXU|S_IRWXG|S_IRWXO,
+				stream->uid, stream->gid);
 		if (ret < 0) {
 			ERR("Opening %s", stream->path_name);
 			perror("open");
 			goto error;
 		}
 		stream->out_fd = ret;
-		ret = chown(stream->path_name, stream->uid, stream->gid);
-		if (ret < 0) {
-			ERR("Changing ownership of %s", stream->path_name);
-			perror("chown");
-		}
 	}
 
 	if (stream->output == LTTNG_EVENT_MMAP) {

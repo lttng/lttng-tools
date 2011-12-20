@@ -2,6 +2,7 @@ ACLOCAL_AMFLAGS = -I config
 
 SUBDIRS = liblttng-sessiond-comm \
 		  libkernelctl \
+		  librunas \
 		  liblttng-kconsumer \
 		  liblttng-ustconsumer \
 		  liblttng-consumer \
