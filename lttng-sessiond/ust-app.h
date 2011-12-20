@@ -93,6 +93,9 @@ struct ust_app_session {
 	struct ltt_ust_metadata *metadata;
 	struct cds_lfht *channels; /* Registered channels */
 	struct cds_lfht_node node;
+	/* UID/GID of the user owning the session */
+	uid_t uid;
+	gid_t gid;
 	char path[PATH_MAX];
 };
 

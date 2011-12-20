@@ -97,6 +97,9 @@ struct ltt_kernel_session {
 	char *trace_path;
 	struct ltt_kernel_metadata *metadata;
 	struct ltt_kernel_channel_list channel_list;
+	/* UID/GID of the user owning the session */
+	uid_t uid;
+	gid_t gid;
 };
 
 /*

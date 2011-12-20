@@ -34,7 +34,8 @@
  * Send all stream fds of UST channel to the consumer.
  */
 static int send_channel_streams(int sock,
-		struct ust_app_channel *uchan)
+		struct ust_app_channel *uchan,
+		uid_t uid, gid_t gid)
 {
 	int ret, fd;
 	struct lttcomm_consumer_msg lum;
@@ -84,6 +85,8 @@ static int send_channel_streams(int sock,
 		 */
 		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		lum.u.stream.mmap_len = stream->obj->memory_map_size;
+		lum.u.stream.uid = uid;
+		lum.u.stream.gid = gid;
 		strncpy(lum.u.stream.path_name, stream->pathname, PATH_MAX - 1);
 		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending stream %d to consumer", lum.u.stream.stream_key);
@@ -158,6 +161,8 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		lum.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
 		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		lum.u.stream.mmap_len = usess->metadata->stream_obj->memory_map_size;
+		lum.u.stream.uid = usess->uid;
+		lum.u.stream.gid = usess->gid;
 		strncpy(lum.u.stream.path_name, usess->metadata->pathname, PATH_MAX - 1);
 		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending metadata stream %d to consumer", lum.u.stream.stream_key);
@@ -181,7 +186,8 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
 		uchan = caa_container_of(node, struct ust_app_channel, node);
 
-		ret = send_channel_streams(sock, uchan);
+		ret = send_channel_streams(sock, uchan, usess->uid,
+				usess->gid);
 		if (ret < 0) {
 			rcu_read_unlock();
 			goto error;

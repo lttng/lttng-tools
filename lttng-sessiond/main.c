@@ -512,7 +512,8 @@ static void clean_command_ctx(struct command_ctx **cmd_ctx)
  * Send all stream fds of kernel channel to the consumer.
  */
 static int send_kconsumer_channel_streams(struct consumer_data *consumer_data,
-		int sock, struct ltt_kernel_channel *channel)
+		int sock, struct ltt_kernel_channel *channel,
+		uid_t uid, gid_t gid)
 {
 	int ret;
 	struct ltt_kernel_stream *stream;
@@ -544,6 +545,8 @@ static int send_kconsumer_channel_streams(struct consumer_data *consumer_data,
 		lkm.u.stream.state = stream->state;
 		lkm.u.stream.output = channel->channel->attr.output;
 		lkm.u.stream.mmap_len = 0;	/* for kernel */
+		lkm.u.stream.uid = uid;
+		lkm.u.stream.gid = gid;
 		strncpy(lkm.u.stream.path_name, stream->pathname, PATH_MAX - 1);
 		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending stream %d to consumer", lkm.u.stream.stream_key);
@@ -605,6 +608,8 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 		lkm.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
 		lkm.u.stream.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		lkm.u.stream.mmap_len = 0;	/* for kernel */
+		lkm.u.stream.uid = session->uid;
+		lkm.u.stream.gid = session->gid;
 		strncpy(lkm.u.stream.path_name, session->metadata->pathname, PATH_MAX - 1);
 		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending metadata stream %d to consumer", lkm.u.stream.stream_key);
@@ -621,7 +626,8 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 	}
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = send_kconsumer_channel_streams(consumer_data, sock, chan);
+		ret = send_kconsumer_channel_streams(consumer_data, sock, chan,
+				session->uid, session->gid);
 		if (ret < 0) {
 			goto error;
 		}
@@ -777,7 +783,8 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 				 */
 				if (session->kernel_session->consumer_fds_sent == 1) {
 					ret = send_kconsumer_channel_streams(consumer_data,
-							session->kernel_session->consumer_fd, channel);
+							session->kernel_session->consumer_fd, channel,
+							session->uid, session->gid);
 					if (ret < 0) {
 						goto error;
 					}
@@ -1871,11 +1878,10 @@ error:
  * Create an UST session and add it to the session ust list.
  */
 static int create_ust_session(struct ltt_session *session,
-		struct lttng_domain *domain, struct ucred *creds)
+		struct lttng_domain *domain)
 {
-	int ret;
-	gid_t gid;
 	struct ltt_ust_session *lus = NULL;
+	int ret;
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_UST:
@@ -1893,16 +1899,8 @@ static int create_ust_session(struct ltt_session *session,
 		goto error;
 	}
 
-	/*
-	 * Get the right group ID. To use the tracing group, the daemon must be
-	 * running with root credentials or else it's the user GID used.
-	 */
-	gid = allowed_group();
-	if (gid < 0 || !is_root) {
-		gid = creds->gid;
-	}
-
-	ret = mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG, creds->uid, gid);
+	ret = mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG,
+			session->uid, session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
@@ -1920,6 +1918,8 @@ static int create_ust_session(struct ltt_session *session,
 		ERR("Unknown UST domain on create session %d", domain->type);
 		goto error;
 	}
+	lus->uid = session->uid;
+	lus->gid = session->gid;
 	session->ust_session = lus;
 
 	return LTTCOMM_OK;
@@ -1932,11 +1932,9 @@ error:
 /*
  * Create a kernel tracer session then create the default channel.
  */
-static int create_kernel_session(struct ltt_session *session,
-		struct ucred *creds)
+static int create_kernel_session(struct ltt_session *session)
 {
 	int ret;
-	gid_t gid;
 
 	DBG("Creating kernel session");
 
@@ -1951,23 +1949,16 @@ static int create_kernel_session(struct ltt_session *session,
 		session->kernel_session->consumer_fd = kconsumer_data.cmd_sock;
 	}
 
-	gid = allowed_group();
-	if (gid < 0) {
-		/*
-		 * Use GID 0 has a fallback since kernel session is only allowed under
-		 * root or the gid of the calling user
-		 */
-		is_root ? (gid = 0) : (gid = creds->gid);
-	}
-
 	ret = mkdir_recursive(session->kernel_session->trace_path,
-			S_IRWXU | S_IRWXG, creds->uid, gid);
+			S_IRWXU | S_IRWXG, session->uid, session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
 			goto error;
 		}
 	}
+	session->kernel_session->uid = session->uid;
+	session->kernel_session->gid = session->gid;
 
 error:
 	return ret;
@@ -2934,11 +2925,11 @@ error:
 /*
  * Command LTTNG_CREATE_SESSION processed by the client thread.
  */
-static int cmd_create_session(char *name, char *path)
+static int cmd_create_session(char *name, char *path, struct ucred *creds)
 {
 	int ret;
 
-	ret = session_create(name, path);
+	ret = session_create(name, path, creds->uid, creds->gid);
 	if (ret != LTTCOMM_OK) {
 		goto error;
 	}
@@ -3252,7 +3243,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
 			if (cmd_ctx->session->kernel_session == NULL) {
-				ret = create_kernel_session(cmd_ctx->session, &cmd_ctx->creds);
+				ret = create_kernel_session(cmd_ctx->session);
 				if (ret < 0) {
 					ret = LTTCOMM_KERN_SESS_FAIL;
 					goto error;
@@ -3279,7 +3270,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		if (need_tracing_session) {
 			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
-						&cmd_ctx->lsm->domain, &cmd_ctx->creds);
+						&cmd_ctx->lsm->domain);
 				if (ret != LTTCOMM_OK) {
 					goto error;
 				}
@@ -3421,7 +3412,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_CREATE_SESSION:
 	{
 		ret = cmd_create_session(cmd_ctx->lsm->session.name,
-				cmd_ctx->lsm->session.path);
+				cmd_ctx->lsm->session.path, &cmd_ctx->creds);
 		break;
 	}
 	case LTTNG_DESTROY_SESSION:

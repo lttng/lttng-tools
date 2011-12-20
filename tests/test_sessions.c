@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/types.h>
 
 #include <lttng-sessiond-comm.h>
 
@@ -118,7 +119,7 @@ static int create_one_session(char *name, char *path)
 {
 	int ret;
 
-	ret = session_create(name, path);
+	ret = session_create(name, path, geteuid(), getegid());
 	if (ret == LTTCOMM_OK) {
 		/* Validate */
 		ret = find_session_name(name);

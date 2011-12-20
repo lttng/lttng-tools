@@ -229,6 +229,8 @@ struct lttcomm_consumer_msg {
 			uint32_t state;    /* enum lttcomm_consumer_fd_state */
 			enum lttng_event_output output; /* use splice or mmap to consume this fd */
 			uint64_t mmap_len;
+			uid_t uid;         /* User ID owning the session */
+			gid_t gid;         /* Group ID owning the session */
 			char path_name[PATH_MAX];
 		} stream;
 	} u;

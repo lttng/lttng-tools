@@ -164,7 +164,7 @@ int session_destroy(struct ltt_session *session)
 /*
  * Create a brand new session and add it to the session list.
  */
-int session_create(char *name, char *path)
+int session_create(char *name, char *path, uid_t uid, gid_t gid)
 {
 	int ret;
 	struct ltt_session *new_session;
@@ -214,12 +214,17 @@ int session_create(char *name, char *path)
 	/* Init lock */
 	pthread_mutex_init(&new_session->lock, NULL);
 
+	new_session->uid = uid;
+	new_session->gid = gid;
+
 	/* Add new session to the session list */
 	session_lock_list();
 	new_session->id = add_session_list(new_session);
 	session_unlock_list();
 
-	DBG("Tracing session %s created in %s with ID %d", name, path, new_session->id);
+	DBG("Tracing session %s created in %s with ID %d by UID %d GID %d",
+		name, path, new_session->id,
+		new_session->uid, new_session->gid);
 
 	return LTTCOMM_OK;
 

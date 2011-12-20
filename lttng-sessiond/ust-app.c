@@ -770,6 +770,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
 
 	ua_sess->id = usess->id;
+	ua_sess->uid = usess->uid;
+	ua_sess->gid = usess->gid;
 
 	ret = snprintf(ua_sess->path, PATH_MAX,
 			"%s/%s-%d-%s",
@@ -1196,6 +1198,11 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		if (ret < 0) {
 			PERROR("mkdir UST metadata");
 			goto error;
+		}
+		ret = chown(ua_sess->path, ua_sess->uid, ua_sess->gid);
+		if (ret < 0) {
+			ERR("Unable to change owner of %s", ua_sess->path);
+			perror("chown");
 		}
 		umask(old_umask);
 

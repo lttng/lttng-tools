@@ -215,7 +215,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.state,
 				msg.u.stream.mmap_len,
 				msg.u.stream.output,
-				msg.u.stream.path_name);
+				msg.u.stream.path_name,
+				msg.u.stream.uid,
+				msg.u.stream.gid);
 		if (new_stream == NULL) {
 			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
 			goto end;
@@ -403,6 +405,11 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 			goto error;
 		}
 		stream->out_fd = ret;
+		ret = chown(stream->path_name, stream->uid, stream->gid);
+		if (ret < 0) {
+			ERR("Changing ownership of %s", stream->path_name);
+			perror("chown");
+		}
 	}
 
 	/* we return 0 to let the library handle the FD internally */

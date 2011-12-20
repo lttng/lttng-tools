@@ -20,6 +20,7 @@
 #define _LTT_SESSION_H
 
 #include <pthread.h>
+#include <unistd.h>
 #include <urcu/list.h>
 
 #include "trace-kernel.h"
@@ -69,10 +70,13 @@ struct ltt_session {
 	struct cds_list_head list;
 	int enabled;	/* enabled/started flag */
 	int id;		/* session unique identifier */
+	/* UID/GID of the user owning the session */
+	uid_t uid;
+	gid_t gid;
 };
 
 /* Prototypes */
-int session_create(char *name, char *path);
+int session_create(char *name, char *path, uid_t uid, gid_t gid);
 int session_destroy(struct ltt_session *session);
 
 void session_lock(struct ltt_session *session);

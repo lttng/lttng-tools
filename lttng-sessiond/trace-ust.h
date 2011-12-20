@@ -110,6 +110,9 @@ struct ltt_ust_session {
 	 */
 	struct cds_lfht *domain_pid;
 	struct cds_lfht *domain_exec;
+	/* UID/GID of the user owning the session */
+	uid_t uid;
+	gid_t gid;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
