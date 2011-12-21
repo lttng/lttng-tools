@@ -28,14 +28,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sched.h>
+#include <sys/mman.h>
 
 #include <lttngerr.h>
 
-/*
- * We allocate a stack of twice this size and point in the middle of it
- * to support archs with stack growing up and down.
- */
-#define CHILD_STACK_SIZE 2048
+#define CHILD_STACK_SIZE	10485760
 
 struct run_as_data {
 	int (*cmd)(void *data);
@@ -191,9 +188,9 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	int ret = 0;
 	int status;
 	pid_t pid;
-	char *child_stack;
 	int retval_pipe[2];
 	ssize_t readlen, readleft, index;
+	void *child_stack;
 	union {
 		int i;
 		char c[sizeof(int)];
@@ -210,10 +207,6 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		}
 	}
 
-	child_stack = malloc(CHILD_STACK_SIZE * 2);
-	if (!child_stack) {
-		return -ENOMEM;
-	}
 	ret = pipe(retval_pipe);
 	if (ret < 0) {
 		perror("pipe");
@@ -224,13 +217,26 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	run_as_data.uid = uid;
 	run_as_data.gid = gid;
 	run_as_data.retval_pipe = retval_pipe[1];	/* write end */
-
-	pid = clone(child_run_as, child_stack + CHILD_STACK_SIZE,
-		CLONE_FILES | SIGCHLD, &run_as_data, NULL);
+	child_stack = mmap(NULL, CHILD_STACK_SIZE,
+		PROT_WRITE | PROT_READ,
+		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | MAP_STACK,
+		-1, 0);
+	if (child_stack == MAP_FAILED) {
+		perror("mmap");
+		ret = -ENOMEM;
+		goto close_pipe;
+	}
+	/*
+	 * Pointing to the middle of the stack to support architectures
+	 * where the stack grows up (HPPA).
+	 */
+	pid = clone(child_run_as, child_stack + (CHILD_STACK_SIZE / 2),
+		CLONE_FILES | SIGCHLD,
+		&run_as_data, NULL);
 	if (pid < 0) {
 		perror("clone");
 		ret = pid;
-		goto close_pipe;
+		goto unmap_stack;
 	}
 	/* receive return value */
 	readleft = sizeof(retval);
@@ -255,11 +261,15 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		perror("wait");
 		ret = -1;
 	}
+unmap_stack:
+	ret = munmap(child_stack, CHILD_STACK_SIZE);
+	if (ret < 0) {
+		perror("munmap");
+	}
 close_pipe:
 	close(retval_pipe[0]);
 	close(retval_pipe[1]);
 end:
-	free(child_stack);
 	return retval.i;
 }
 
