@@ -21,10 +21,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <urcu.h>
 
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
+#include <runas.h>
 
 #include "hashtable.h"
 #include "session.h"
@@ -216,6 +219,16 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 
 	new_session->uid = uid;
 	new_session->gid = gid;
+
+	ret = mkdir_recursive_run_as(new_session->path, S_IRWXU | S_IRWXG,
+			new_session->uid, new_session->gid);
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ERR("Trace directory creation error");
+			ret = LTTCOMM_CREATE_FAIL;
+			goto error;
+		}
+	}
 
 	/* Add new session to the session list */
 	session_lock_list();
