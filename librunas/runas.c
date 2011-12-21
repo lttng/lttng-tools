@@ -204,7 +204,6 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 				uid, geteuid());
 			return -EPERM;
 		}
-		return (*cmd)(data);
 	}
 
 	child_stack = malloc(CHILD_STACK_SIZE * 2);
