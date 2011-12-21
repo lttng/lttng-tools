@@ -97,6 +97,7 @@ enum lttcomm_return_code {
 	LTTCOMM_NO_EVENT,				/* No event found */
 	LTTCOMM_CONNECT_FAIL,           /* Unable to connect to unix socket */
 	LTTCOMM_APP_NOT_FOUND,          /* App not found in traceable app list */
+	LTTCOMM_EPERM,			/* Permission denied */
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */

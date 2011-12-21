@@ -1966,23 +1966,65 @@ error:
 }
 
 /*
+ * Check if the UID or GID match the session. Root user has access to
+ * all sessions.
+ */
+static int session_access_ok(struct ltt_session *session,
+	 uid_t uid, gid_t gid)
+{
+	if (uid != session->uid && gid != session->gid
+			&& uid != 0) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
+{
+	unsigned int i = 0;
+	struct ltt_session *session;
+
+	DBG("Counting number of available session for UID %d GID %d",
+		uid, gid);
+	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		/*
+		 * Only list the sessions the user can control.
+		 */
+		if (!session_access_ok(session, uid, gid)) {
+			continue;
+		}
+		i++;
+	}
+	return i;
+}
+
+/*
  * Using the session list, filled a lttng_session array to send back to the
  * client for session listing.
  *
  * The session list lock MUST be acquired before calling this function. Use
  * session_lock_list() and session_unlock_list().
  */
-static void list_lttng_sessions(struct lttng_session *sessions)
+static void list_lttng_sessions(struct lttng_session *sessions,
+		uid_t uid, gid_t gid)
 {
-	int i = 0;
+	unsigned int i = 0;
 	struct ltt_session *session;
 
-	DBG("Getting all available session");
+	DBG("Getting all available session for UID %d GID %d",
+		uid, gid);
 	/*
 	 * Iterate over session list and append data after the control struct in
 	 * the buffer.
 	 */
 	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		/*
+		 * Only list the sessions the user can control.
+		 */
+		if (!session_access_ok(session, uid, gid)) {
+			continue;
+		}
 		strncpy(sessions[i].path, session->path, PATH_MAX);
 		sessions[i].path[PATH_MAX - 1] = '\0';
 		strncpy(sessions[i].name, session->name, NAME_MAX);
@@ -3316,6 +3358,18 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 
+	/*
+	 * Check that the UID or GID match that of the tracing session.
+	 * The root user can interact with all sessions.
+	 */
+	if (need_tracing_session) {
+		if (!session_access_ok(cmd_ctx->session,
+				cmd_ctx->creds.uid, cmd_ctx->creds.gid)) {
+			ret = LTTCOMM_EPERM;
+			goto error;
+		}
+	}
+
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_ADD_CONTEXT:
@@ -3501,23 +3555,24 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_LIST_SESSIONS:
 	{
-		session_lock_list();
+		unsigned int nr_sessions;
 
-		if (session_list_ptr->count == 0) {
+		session_lock_list();
+		nr_sessions = lttng_sessions_count(cmd_ctx->creds.uid, cmd_ctx->creds.gid);
+		if (nr_sessions == 0) {
 			ret = LTTCOMM_NO_SESSION;
 			session_unlock_list();
 			goto error;
 		}
-
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) *
-				session_list_ptr->count);
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
 		if (ret < 0) {
 			session_unlock_list();
 			goto setup_error;
 		}
 
 		/* Filled the session array */
-		list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload));
+		list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload),
+			cmd_ctx->creds.uid, cmd_ctx->creds.gid);
 
 		session_unlock_list();
 

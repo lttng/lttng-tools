@@ -53,6 +53,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_EXIST_SESS) ] = "Session name already exist",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONNECT_FAIL) ] = "Unable to connect to Unix socket",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_APP_NOT_FOUND) ] = "Application not found",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_EPERM) ] = "Permission denied",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_NA) ] = "Kernel tracer not available",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_EVENT_EXIST) ] = "Kernel event already exists",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_SESS_FAIL) ] = "Kernel create session failed",
