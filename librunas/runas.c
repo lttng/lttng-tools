@@ -148,15 +148,19 @@ int child_run_as(void *_data)
 	 * cannot attach to this process with, e.g. ptrace, nor map this
 	 * process memory.
 	 */
-	ret = setegid(data->gid);
-	if (ret < 0) {
-		perror("setegid");
-		exit(EXIT_FAILURE);
+	if (data->gid != getegid()) {
+		ret = setegid(data->gid);
+		if (ret < 0) {
+			perror("setegid");
+			exit(EXIT_FAILURE);
+		}
 	}
-	ret = seteuid(data->uid);
-	if (ret < 0) {
-		perror("seteuid");
-		exit(EXIT_FAILURE);
+	if (data->uid != geteuid()) {
+		ret = seteuid(data->uid);
+		if (ret < 0) {
+			perror("seteuid");
+			exit(EXIT_FAILURE);
+		}
 	}
 	/*
 	 * Also set umask to 0 for mkdir executable bit.
