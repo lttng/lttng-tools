@@ -27,8 +27,23 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sched.h>
 
 #include <lttngerr.h>
+
+/*
+ * We allocate a stack of twice this size and point in the middle of it
+ * to support archs with stack growing up and down.
+ */
+#define CHILD_STACK_SIZE 2048
+
+struct run_as_data {
+	int (*cmd)(void *data);
+	void *data;
+	uid_t uid;
+	gid_t gid;
+	int retval_pipe;
+};
 
 struct mkdir_data {
 	const char *path;
@@ -116,10 +131,69 @@ int _open(void *_data)
 }
 
 static
+int child_run_as(void *_data)
+{
+	struct run_as_data *data = _data;
+	size_t writelen, writeleft, index;
+	union {
+		int i;
+		char c[sizeof(int)];
+	} sendret;
+	int ret;
+
+	/*
+	 * Child: it is safe to drop egid and euid while sharing the
+	 * file descriptors with the parent process, since we do not
+	 * drop "uid": therefore, the user we are dropping egid/euid to
+	 * cannot attach to this process with, e.g. ptrace, nor map this
+	 * process memory.
+	 */
+	ret = setegid(data->gid);
+	if (ret < 0) {
+		perror("setegid");
+		exit(EXIT_FAILURE);
+	}
+	ret = seteuid(data->uid);
+	if (ret < 0) {
+		perror("seteuid");
+		exit(EXIT_FAILURE);
+	}
+	/*
+	 * Also set umask to 0 for mkdir executable bit.
+	 */
+	umask(0);
+	sendret.i = (*data->cmd)(data->data);
+	/* send back return value */
+	writeleft = sizeof(sendret);
+	index = 0;
+	do {
+		writelen = write(data->retval_pipe, &sendret.c[index],
+				writeleft);
+		if (writelen < 0) {
+			perror("write");
+			exit(EXIT_FAILURE);
+		}
+		writeleft -= writelen;
+		index += writelen;
+	} while (writeleft > 0);
+
+	exit(EXIT_SUCCESS);
+}
+
+static
 int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
+	struct run_as_data run_as_data;
 	int ret = 0;
+	int status;
 	pid_t pid;
+	char *child_stack;
+	int retval_pipe[2];
+	ssize_t readlen, readleft, index;
+	union {
+		int i;
+		char c[sizeof(int)];
+	} retval;
 
 	/*
 	 * If we are non-root, we can only deal with our own uid.
@@ -133,43 +207,57 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		return (*cmd)(data);
 	}
 
-	pid = fork();
-	if (pid > 0) {
-		int status;
- 
-		/*
-		 * Parent: wait for child to return, in which case the
-		 * shared memory map will have been created.
-		 */
-		pid = wait(&status);
-		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-			ret = -1;
-			goto end;
-		}
-		goto end;
-	} else if (pid == 0) {
-		/* Child */
-		setegid(gid);
-		if (ret < 0) {
-			perror("setegid");
-			exit(EXIT_FAILURE);
-		}
-		ret = seteuid(uid);
-		if (ret < 0) {
-			perror("seteuid");
-			exit(EXIT_FAILURE);
-		}
-		umask(0);
-		ret = (*cmd)(data);
-		if (!ret)
-			exit(EXIT_SUCCESS);
-		else
-			exit(EXIT_FAILURE);
-	} else {
-		return -1;
+	child_stack = malloc(CHILD_STACK_SIZE * 2);
+	if (!child_stack) {
+		return -ENOMEM;
 	}
+	ret = pipe(retval_pipe);
+	if (ret < 0) {
+		perror("pipe");
+		goto end;
+	}
+	run_as_data.data = data;
+	run_as_data.cmd = cmd;
+	run_as_data.uid = uid;
+	run_as_data.gid = gid;
+	run_as_data.retval_pipe = retval_pipe[1];	/* write end */
+
+	pid = clone(child_run_as, child_stack + CHILD_STACK_SIZE,
+		CLONE_FILES | SIGCHLD, &run_as_data, NULL);
+	if (pid < 0) {
+		perror("clone");
+		ret = pid;
+		goto close_pipe;
+	}
+	/* receive return value */
+	readleft = sizeof(retval);
+	index = 0;
+	do {
+		readlen = read(retval_pipe[0], &retval.c[index], readleft);
+		if (readlen < 0) {
+			perror("read");
+			ret = -1;
+			break;
+		}
+		readleft -= readlen;
+		index += readlen;
+	} while (readleft > 0);
+
+	/*
+	 * Parent: wait for child to return, in which case the
+	 * shared memory map will have been created.
+	 */
+	pid = wait(&status);
+	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		perror("wait");
+		ret = -1;
+	}
+close_pipe:
+	close(retval_pipe[0]);
+	close(retval_pipe[1]);
 end:
-	return ret;
+	free(child_stack);
+	return retval.i;
 }
 
 int mkdir_recursive_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
@@ -200,27 +288,10 @@ int mkdir_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
  */
 int open_run_as(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
-	//struct open_data data;
-	int fd, ret;
+	struct open_data data;
 
-	DBG3("open() %s with flags %d mode %d for uid %d and gid %d",
-			path, flags, mode, uid, gid);
-	fd = open(path, flags, mode);
-	if (fd < 0) {
-		perror("open");
-		return fd;
-	}
-	ret = fchown(fd, uid, gid);
-	if (ret < 0) {
-		perror("fchown");
-		close(fd);
-		return ret;
-	}
-	return fd;
-#if 0
 	data.path = path;
 	data.flags = flags;
 	data.mode = mode;
 	return run_as(_open, &data, uid, gid);
-#endif
 }
