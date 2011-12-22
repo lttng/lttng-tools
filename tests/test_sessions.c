@@ -252,6 +252,7 @@ int main(int argc, char **argv)
 	}
 
 	printf("Create 1 session %s: ", SESSION1);
+	fflush(stdout);
 	ret = create_one_session(SESSION1, PATH1);
 	if (ret < 0) {
 		return -1;
@@ -259,6 +260,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Validating created session %s: ", SESSION1);
+	fflush(stdout);
 	tmp = session_find_by_name(SESSION1);
 	if (tmp == NULL) {
 		return -1;
@@ -273,6 +275,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Destroy 1 session %s: ", SESSION1);
+	fflush(stdout);
 	ret = destroy_one_session(tmp);
 	if (ret < 0) {
 		return -1;
@@ -280,6 +283,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Two session with same name: ");
+	fflush(stdout);
 	ret = two_session_same_name();
 	if (ret < 0) {
 		return -1;
@@ -289,6 +293,7 @@ int main(int argc, char **argv)
 	empty_session_list();
 
 	printf("Fuzzing create_session arguments: ");
+	fflush(stdout);
 	ret = fuzzing_create_args();
 	if (ret < 0) {
 		return -1;
@@ -296,6 +301,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Fuzzing destroy_session argument: ");
+	fflush(stdout);
 	ret = fuzzing_destroy_args();
 	if (ret < 0) {
 		return -1;
@@ -303,6 +309,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Creating %d sessions: ", MAX_SESSIONS);
+	fflush(stdout);
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		tmp_name = get_random_string();
 		ret = create_one_session(tmp_name, PATH1);
@@ -315,6 +322,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Destroying %d sessions: ", MAX_SESSIONS);
+	fflush(stdout);
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
 			ret = destroy_one_session(iter);
