@@ -149,14 +149,14 @@ int child_run_as(void *_data)
 		ret = setegid(data->gid);
 		if (ret < 0) {
 			perror("setegid");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 	}
 	if (data->uid != geteuid()) {
 		ret = seteuid(data->uid);
 		if (ret < 0) {
 			perror("seteuid");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 	}
 	/*
@@ -172,13 +172,12 @@ int child_run_as(void *_data)
 				writeleft);
 		if (writelen < 0) {
 			perror("write");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 		writeleft -= writelen;
 		index += writelen;
 	} while (writeleft > 0);
-
-	exit(EXIT_SUCCESS);
+	return EXIT_SUCCESS;
 }
 
 static
