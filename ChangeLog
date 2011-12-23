@@ -1,3 +1,13 @@
+2011-12-23 lttng-tools 2.0-pre16
+	* Per-user lttng-sessiond now fully functionnal
+	* Fix nested double usage of hashtable iterators
+	* Support creds passing between lttng and sessiond
+	* Rename sessiond internal "uid" fields to "id"
+	* Create all trace directories and files with client user credentials
+	* Create output directory at session creation command
+	* Only allow the user or group owning the session (or root) to control a session
+	* Add disable kernel tracing option to sessiond
+
 2011-12-13 lttng-tools 2.0-pre15
 	* (MAJOR) User-space tracing support for global domain (lttng-ust 2.0)
 	* UST consumer 32/64 bit support
