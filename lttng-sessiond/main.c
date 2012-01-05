@@ -1157,7 +1157,7 @@ static void *thread_manage_apps(void *data)
 					 */
 					update_ust_app(ust_cmd.sock);
 
-					ret = ustctl_register_done(ust_cmd.sock);
+					ret = ust_app_register_done(ust_cmd.sock);
 					if (ret < 0) {
 						/*
 						 * If the registration is not possible, we simply

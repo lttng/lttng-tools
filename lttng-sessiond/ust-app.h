@@ -119,6 +119,11 @@ struct ust_app {
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
+static inline
+int ust_app_register_done(int sock)
+{
+	return ustctl_register_done(sock);
+}
 void ust_app_unregister(int sock);
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
@@ -191,6 +196,11 @@ int ust_app_list_events(struct lttng_event **events)
 }
 static inline
 int ust_app_register(struct ust_register_msg *msg, int sock)
+{
+	return -ENOSYS;
+}
+static inline
+int ust_app_register_done(int sock)
 {
 	return -ENOSYS;
 }
