@@ -255,7 +255,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	 * Parent: wait for child to return, in which case the
 	 * shared memory map will have been created.
 	 */
-	pid = wait(&status);
+	pid = waitpid(pid, &status, 0);
 	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		perror("wait");
 		ret = -1;
@@ -302,6 +302,8 @@ int open_run_as(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct open_data data;
 
+	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
+			path, flags, mode, uid, gid);
 	data.path = path;
 	data.flags = flags;
 	data.mode = mode;
