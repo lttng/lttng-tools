@@ -20,8 +20,8 @@
 #include <lttng-share.h>
 
 #include "hashtable.h"
-#include "../hashtable/rculfhash.h"
-#include "../hashtable/hash.h"
+#include "hashtable/rculfhash.h"
+#include "hashtable/hash.h"
 
 struct cds_lfht *hashtable_new(unsigned long size)
 {

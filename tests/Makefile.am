@@ -7,14 +7,13 @@ noinst_PROGRAMS = test_sessions test_kernel_data_trace kernel_all_events_basic \
 				  kernel_event_basic
 
 UTILS=utils.h
-SESSIONS=$(top_srcdir)/lttng-sessiond/session.c $(top_srcdir)/lttng-sessiond/hashtable.c \
-		 $(top_srcdir)/hashtable/rculfhash.c $(top_srcdir)/hashtable/hash.c
+SESSIONS=$(top_srcdir)/lttng-sessiond/session.c
 KERN_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-kernel.c
 LIBLTTNG=$(top_srcdir)/liblttngctl/lttngctl.c \
 		 $(top_srcdir)/liblttng-sessiond-comm/lttng-sessiond-comm.c
 
 test_sessions_SOURCES = test_sessions.c $(UTILS) $(SESSIONS)
-test_sessions_LDADD = $(top_builddir)/librunas/librunas.la
+test_sessions_LDADD = $(top_builddir)/common/libcommon.la $(top_builddir)/librunas/librunas.la
 
 test_kernel_data_trace_SOURCES = test_kernel_data_trace.c $(UTILS) $(KERN_DATA_TRACE)
 

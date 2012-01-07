@@ -26,7 +26,7 @@
 #include <lttngerr.h>
 
 #include "context.h"
-#include "hashtable.h"
+#include "../common/hashtable.h"
 #include "kernel.h"
 #include "ust-app.h"
 #include "trace-ust.h"

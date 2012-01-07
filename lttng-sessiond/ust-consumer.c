@@ -27,7 +27,7 @@
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-consumer.h>
 
-#include "hashtable.h"
+#include "../common/hashtable.h"
 #include "ust-consumer.h"
 
 /*

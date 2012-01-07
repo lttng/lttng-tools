@@ -32,7 +32,7 @@
 #include <lttng-share.h>
 #include <runas.h>
 
-#include "hashtable.h"
+#include "../common/hashtable.h"
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"

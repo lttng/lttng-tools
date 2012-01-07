@@ -29,10 +29,8 @@
 #include <lttngerr.h>
 #include <runas.h>
 
-#include "hashtable.h"
+#include "../common/hashtable.h"
 #include "session.h"
-
-#include "../hashtable/hash.h"
 
 /*
  * NOTES:

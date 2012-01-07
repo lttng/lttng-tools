@@ -27,7 +27,7 @@
 
 #include "ust-ctl.h"
 
-#include "../hashtable/rculfhash.h"
+#include "../common/hashtable.h"
 
 /* UST Stream list */
 struct ltt_ust_stream_list {

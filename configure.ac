@@ -132,6 +132,7 @@ AC_SUBST(DEFAULT_INCLUDES)
 AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
+	common/Makefile
 	libkernelctl/Makefile
 	liblttng-consumer/Makefile
 	liblttng-kconsumer/Makefile

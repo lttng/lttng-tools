@@ -19,7 +19,7 @@
 #define _LTT_HASHTABLE_H
 
 #include <urcu.h>
-#include "../hashtable/rculfhash.h"
+#include "hashtable/rculfhash.h"
 
 struct cds_lfht *hashtable_new(unsigned long size);
 struct cds_lfht *hashtable_new_str(unsigned long size);

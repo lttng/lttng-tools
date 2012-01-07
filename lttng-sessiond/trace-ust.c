@@ -24,7 +24,7 @@
 #include <lttngerr.h>
 #include <lttng-share.h>
 
-#include "hashtable.h"
+#include "../common/hashtable.h"
 #include "trace-ust.h"
 
 /*
