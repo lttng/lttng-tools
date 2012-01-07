@@ -37,7 +37,6 @@ lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la \
-		 $(top_builddir)/librunas/librunas.la \
 		 $(top_builddir)/common/libcommon.la
 
 if HAVE_LIBLTTNG_UST_CTL

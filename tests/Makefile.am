@@ -13,7 +13,7 @@ LIBLTTNG=$(top_srcdir)/liblttngctl/lttngctl.c \
 		 $(top_srcdir)/liblttng-sessiond-comm/lttng-sessiond-comm.c
 
 test_sessions_SOURCES = test_sessions.c $(UTILS) $(SESSIONS)
-test_sessions_LDADD = $(top_builddir)/common/libcommon.la $(top_builddir)/librunas/librunas.la
+test_sessions_LDADD = $(top_builddir)/common/libcommon.la
 
 test_kernel_data_trace_SOURCES = test_kernel_data_trace.c $(UTILS) $(KERN_DATA_TRACE)
 
