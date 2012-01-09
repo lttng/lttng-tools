@@ -45,21 +45,21 @@ struct ust_register_msg {
 /*
  * Global applications HT used by the session daemon.
  */
-struct cds_lfht *ust_app_ht;
+struct lttng_ht *ust_app_ht;
 
-struct cds_lfht *ust_app_sock_key_map;
+struct lttng_ht *ust_app_sock_key_map;
 
 struct ust_app_key {
 	pid_t pid;
 	int sock;
-	struct cds_lfht_node node;
+	struct lttng_ht_node_ulong node;
 };
 
 struct ust_app_ctx {
 	int handle;
 	struct lttng_ust_context ctx;
 	struct lttng_ust_object_data *obj;
-	struct cds_lfht_node node;
+	struct lttng_ht_node_ulong node;
 };
 
 struct ust_app_event {
@@ -68,8 +68,8 @@ struct ust_app_event {
 	struct lttng_ust_object_data *obj;
 	struct lttng_ust_event attr;
 	char name[LTTNG_UST_SYM_NAME_LEN];
-	struct cds_lfht *ctx;
-	struct cds_lfht_node node;
+	struct lttng_ht *ctx;
+	struct lttng_ht_node_str node;
 };
 
 struct ust_app_channel {
@@ -79,21 +79,24 @@ struct ust_app_channel {
 	struct lttng_ust_channel attr;
 	struct lttng_ust_object_data *obj;
 	struct ltt_ust_stream_list streams;
-	struct cds_lfht *ctx;
-	struct cds_lfht *events;
-	struct cds_lfht_node node;
+	struct lttng_ht *ctx;
+	struct lttng_ht *events;
+	struct lttng_ht_node_str node;
 };
 
 struct ust_app_session {
 	int enabled;
 	/* started: has the session been in started state at any time ? */
 	int started;  /* allows detection of start vs restart. */
-	int handle;   /* Used has unique identifier */
-	unsigned int uid;
+	int handle;   /* used has unique identifier for app session */
+	int id;       /* session unique identifier */
 	struct ltt_ust_metadata *metadata;
-	struct cds_lfht *channels; /* Registered channels */
-	struct cds_lfht_node node;
+	struct lttng_ht *channels; /* Registered channels */
+	struct lttng_ht_node_ulong node;
 	char path[PATH_MAX];
+	/* UID/GID of the user owning the session */
+	uid_t uid;
+	gid_t gid;
 };
 
 /*
@@ -108,14 +111,19 @@ struct ust_app {
 	uint32_t v_major;    /* Verion major number */
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */
-	struct cds_lfht *sessions;
-	struct cds_lfht_node node;
+	struct lttng_ht *sessions;
+	struct lttng_ht_node_ulong node;
 	struct ust_app_key key;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
+static inline
+int ust_app_register_done(int sock)
+{
+	return ustctl_register_done(sock);
+}
 void ust_app_unregister(int sock);
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
@@ -156,7 +164,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
 void ust_app_ht_alloc(void);
-struct cds_lfht *ust_app_get_ht(void);
+struct lttng_ht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
@@ -192,6 +200,11 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	return -ENOSYS;
 }
 static inline
+int ust_app_register_done(int sock)
+{
+	return -ENOSYS;
+}
+static inline
 void ust_app_unregister(int sock)
 {
 }
@@ -223,7 +236,7 @@ struct ust_app *ust_app_get_by_pid(pid_t pid)
 	return NULL;
 }
 static inline
-struct cds_lfht *ust_app_get_ht(void)
+struct lttng_ht *ust_app_get_ht(void)
 {
 	return NULL;
 }

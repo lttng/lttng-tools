@@ -22,22 +22,23 @@
 #include <unistd.h>
 
 #include <lttngerr.h>
+#include <lttng-ht.h>
 #include <lttng-share.h>
 
-#include "hashtable.h"
 #include "trace-ust.h"
 
 /*
  * Find the channel in the hashtable.
  */
-struct ltt_ust_channel *trace_ust_find_channel_by_name(struct cds_lfht *ht,
+struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name)
 {
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
 
 	rcu_read_lock();
-	node = hashtable_lookup(ht, (void *) name, strlen(name), &iter);
+	lttng_ht_lookup(ht, (void *)name, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		rcu_read_unlock();
 		goto error;
@@ -56,14 +57,15 @@ error:
 /*
  * Find the event in the hashtable.
  */
-struct ltt_ust_event *trace_ust_find_event_by_name(struct cds_lfht *ht,
+struct ltt_ust_event *trace_ust_find_event_by_name(struct lttng_ht *ht,
 		char *name)
 {
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
 
 	rcu_read_lock();
-	node = hashtable_lookup(ht, (void *)name, strlen(name), &iter);
+	lttng_ht_lookup(ht, (void *) name, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		rcu_read_unlock();
 		goto error;
@@ -84,7 +86,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
+struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
 		struct lttng_domain *domain)
 {
 	int ret;
@@ -98,15 +100,15 @@ struct ltt_ust_session *trace_ust_create_session(char *path, unsigned int uid,
 	}
 
 	/* Init data structure */
-	lus->uid = uid;
+	lus->id = session_id;
 	lus->start_trace = 0;
 
 	/* Alloc UST domain hash tables */
-	lus->domain_pid = hashtable_new(0);
-	lus->domain_exec = hashtable_new_str(0);
+	lus->domain_pid = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	lus->domain_exec = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	/* Alloc UST global domain channels' HT */
-	lus->domain_global.channels = hashtable_new_str(0);
+	lus->domain_global.channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 
 	/* Set session path */
 	ret = snprintf(lus->pathname, PATH_MAX, "%s/ust", path);
@@ -162,10 +164,10 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */
-	hashtable_node_init(&luc->node, (void *) luc->name, strlen(luc->name));
+	lttng_ht_node_init_str(&luc->node, luc->name);
 	/* Alloc hash tables */
-	luc->events = hashtable_new_str(0);
-	luc->ctx = hashtable_new(0);
+	luc->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	/* Set trace output path */
 	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
@@ -225,10 +227,9 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	lue->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */
-	hashtable_node_init(&lue->node, (void *) lue->attr.name,
-			strlen(lue->attr.name));
+	lttng_ht_node_init_str(&lue->node, lue->attr.name);
 	/* Alloc context hash tables */
-	lue->ctx = hashtable_new(0);
+	lue->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	DBG2("Trace UST event %s created", lue->attr.name);
 
@@ -297,8 +298,7 @@ struct ltt_ust_context *trace_ust_create_context(
 	}
 
 	uctx->ctx.ctx = ctx->ctx;
-	hashtable_node_init(&uctx->node, (void *)((unsigned long) uctx->ctx.ctx),
-				sizeof(void *));
+	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
 
 	return uctx;
 
@@ -311,8 +311,8 @@ error:
  */
 static void destroy_context_rcu(struct rcu_head *head)
 {
-	struct cds_lfht_node *node =
-		caa_container_of(head, struct cds_lfht_node, head);
+	struct lttng_ht_node_ulong *node =
+		caa_container_of(head, struct lttng_ht_node_ulong, head);
 	struct ltt_ust_context *ctx =
 		caa_container_of(node, struct ltt_ust_context, node);
 
@@ -322,20 +322,20 @@ static void destroy_context_rcu(struct rcu_head *head)
 /*
  * Cleanup UST context hash table.
  */
-static void destroy_context(struct cds_lfht *ht)
+static void destroy_context(struct lttng_ht *ht)
 {
 	int ret;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
 
-	cds_lfht_for_each(ht, &iter, node) {
-		ret = hashtable_del(ht, &iter);
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
+		ret = lttng_ht_del(ht, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_context_rcu);
 		}
 	}
 
-	hashtable_destroy(ht);
+	lttng_ht_destroy(ht);
 }
 
 /*
@@ -354,8 +354,8 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
  */
 static void destroy_event_rcu(struct rcu_head *head)
 {
-	struct cds_lfht_node *node =
-		caa_container_of(head, struct cds_lfht_node, head);
+	struct lttng_ht_node_str *node =
+		caa_container_of(head, struct lttng_ht_node_str, head);
 	struct ltt_ust_event *event =
 		caa_container_of(node, struct ltt_ust_event, node);
 
@@ -365,20 +365,20 @@ static void destroy_event_rcu(struct rcu_head *head)
 /*
  * Cleanup UST events hashtable.
  */
-static void destroy_event(struct cds_lfht *events)
+static void destroy_event(struct lttng_ht *events)
 {
 	int ret;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
 
-	cds_lfht_for_each(events, &iter, node) {
-		ret = hashtable_del(events, &iter);
+	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
+		ret = lttng_ht_del(events, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_event_rcu);
 		}
 	}
 
-	hashtable_destroy(events);
+	lttng_ht_destroy(events);
 }
 
 /*
@@ -387,15 +387,15 @@ static void destroy_event(struct cds_lfht *events)
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
 	int ret;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
 
 	DBG2("Trace destroy UST channel %s", channel->name);
 
 	rcu_read_lock();
 
-	cds_lfht_for_each(channel->events, &iter, node) {
-		ret = hashtable_del(channel->events, &iter);
+	cds_lfht_for_each_entry(channel->events->ht, &iter.iter, node, node) {
+		ret = lttng_ht_del(channel->events, &iter);
 		if (!ret) {
 			destroy_event(channel->events);
 		}
@@ -412,8 +412,8 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
  */
 static void destroy_channel_rcu(struct rcu_head *head)
 {
-	struct cds_lfht_node *node =
-		caa_container_of(head, struct cds_lfht_node, head);
+	struct lttng_ht_node_str *node =
+		caa_container_of(head, struct lttng_ht_node_str, head);
 	struct ltt_ust_channel *channel =
 		caa_container_of(node, struct ltt_ust_channel, node);
 
@@ -433,58 +433,58 @@ void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 /*
  * Iterate over a hash table containing channels and cleanup safely.
  */
-static void destroy_channels(struct cds_lfht *channels)
+static void destroy_channels(struct lttng_ht *channels)
 {
 	int ret;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
 
-	cds_lfht_for_each(channels, &iter, node) {
-		ret = hashtable_del(channels, &iter);
+	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
+		ret = lttng_ht_del(channels, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_channel_rcu);
 		}
 	}
 
-	hashtable_destroy(channels);
+	lttng_ht_destroy(channels);
 }
 
 /*
  * Cleanup UST pid domain.
  */
-static void destroy_domain_pid(struct cds_lfht *ht)
+static void destroy_domain_pid(struct lttng_ht *ht)
 {
 	int ret;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ltt_ust_domain_pid *dpid;
 
-	cds_lfht_for_each_entry(ht, &iter, dpid, node) {
-		ret = hashtable_del(ht , &iter);
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, dpid, node.node) {
+		ret = lttng_ht_del(ht , &iter);
 		if (!ret) {
 			destroy_channels(dpid->channels);
 		}
 	}
 
-	hashtable_destroy(ht);
+	lttng_ht_destroy(ht);
 }
 
 /*
  * Cleanup UST exec name domain.
  */
-static void destroy_domain_exec(struct cds_lfht *ht)
+static void destroy_domain_exec(struct lttng_ht *ht)
 {
 	int ret;
-	struct cds_lfht_iter iter;
+	struct lttng_ht_iter iter;
 	struct ltt_ust_domain_exec *dexec;
 
-	cds_lfht_for_each_entry(ht, &iter, dexec, node) {
-		ret = hashtable_del(ht , &iter);
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, dexec, node.node) {
+		ret = lttng_ht_del(ht , &iter);
 		if (!ret) {
 			destroy_channels(dexec->channels);
 		}
 	}
 
-	hashtable_destroy(ht);
+	lttng_ht_destroy(ht);
 }
 
 /*
@@ -507,7 +507,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	rcu_read_lock();
 
-	DBG2("Trace UST destroy session %d", session->uid);
+	DBG2("Trace UST destroy session %d", session->id);
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);

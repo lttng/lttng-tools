@@ -21,15 +21,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <urcu.h>
 
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
+#include <runas.h>
 
-#include "hashtable.h"
 #include "session.h"
-
-#include "../hashtable/hash.h"
 
 /*
  * NOTES:
@@ -164,7 +164,7 @@ int session_destroy(struct ltt_session *session)
 /*
  * Create a brand new session and add it to the session list.
  */
-int session_create(char *name, char *path)
+int session_create(char *name, char *path, uid_t uid, gid_t gid)
 {
 	int ret;
 	struct ltt_session *new_session;
@@ -214,12 +214,27 @@ int session_create(char *name, char *path)
 	/* Init lock */
 	pthread_mutex_init(&new_session->lock, NULL);
 
+	new_session->uid = uid;
+	new_session->gid = gid;
+
+	ret = mkdir_recursive_run_as(new_session->path, S_IRWXU | S_IRWXG,
+			new_session->uid, new_session->gid);
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ERR("Trace directory creation error");
+			ret = LTTCOMM_CREATE_FAIL;
+			goto error;
+		}
+	}
+
 	/* Add new session to the session list */
 	session_lock_list();
-	new_session->uid = add_session_list(new_session);
+	new_session->id = add_session_list(new_session);
 	session_unlock_list();
 
-	DBG("Tracing session %s created in %s with UID %d", name, path, new_session->uid);
+	DBG("Tracing session %s created in %s with ID %d by UID %d GID %d",
+		name, path, new_session->id,
+		new_session->uid, new_session->gid);
 
 	return LTTCOMM_OK;
 

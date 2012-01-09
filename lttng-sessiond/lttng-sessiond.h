@@ -71,6 +71,7 @@ extern const char default_home_dir[],
 struct command_ctx {
 	int ust_sock;
 	unsigned int lttng_msg_size;
+	struct ucred creds;
 	struct ltt_session *session;
 	struct lttcomm_lttng_msg *llm;
 	struct lttcomm_session_msg *lsm;

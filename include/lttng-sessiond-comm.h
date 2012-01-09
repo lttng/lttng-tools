@@ -26,8 +26,10 @@
  * These declarations should NOT be considered stable API.
  */
 
+#define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
+#include <sys/socket.h>
 
 #define LTTNG_RUNDIR                        "/var/run/lttng"
 #define LTTNG_HOME_RUNDIR                   "%s/.lttng"
@@ -95,6 +97,7 @@ enum lttcomm_return_code {
 	LTTCOMM_NO_EVENT,				/* No event found */
 	LTTCOMM_CONNECT_FAIL,           /* Unable to connect to unix socket */
 	LTTCOMM_APP_NOT_FOUND,          /* App not found in traceable app list */
+	LTTCOMM_EPERM,			/* Permission denied */
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
@@ -227,6 +230,8 @@ struct lttcomm_consumer_msg {
 			uint32_t state;    /* enum lttcomm_consumer_fd_state */
 			enum lttng_event_output output; /* use splice or mmap to consume this fd */
 			uint64_t mmap_len;
+			uid_t uid;         /* User ID owning the session */
+			gid_t gid;         /* Group ID owning the session */
 			char path_name[PATH_MAX];
 		} stream;
 	} u;
@@ -287,6 +292,12 @@ extern ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
 
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
+
+extern ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);
+extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
+		struct ucred *creds);
+
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
+extern int lttcomm_setsockopt_creds_unix_sock(int sock);
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */

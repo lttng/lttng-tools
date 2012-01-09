@@ -22,8 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <lttngerr.h>
@@ -53,79 +51,4 @@ int notify_thread_pipe(int wpipe)
 const char *get_home_dir(void)
 {
 	return ((const char *) getenv("HOME"));
-}
-
-/*
- * Create recursively directory using the FULL path.
- */
-int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
-{
-	int ret;
-	char *p, tmp[PATH_MAX];
-	size_t len;
-	mode_t old_umask;
-
-	ret = snprintf(tmp, sizeof(tmp), "%s", path);
-	if (ret < 0) {
-		PERROR("snprintf mkdir");
-		goto error;
-	}
-
-	len = ret;
-	if (tmp[len - 1] == '/') {
-		tmp[len - 1] = 0;
-	}
-
-	old_umask = umask(0);
-	for (p = tmp + 1; *p; p++) {
-		if (*p == '/') {
-			*p = 0;
-			ret = mkdir(tmp, mode);
-			if (ret < 0) {
-				if (!(errno == EEXIST)) {
-					PERROR("mkdir recursive");
-					ret = -errno;
-					goto umask_error;
-				}
-			} else if (ret == 0) {
-				/*
-				 * We created the directory. Set its ownership to the
-				 * user/group specified.
-				 */
-				ret = chown(tmp, uid, gid);
-				if (ret < 0) {
-					PERROR("chown in mkdir recursive");
-					ret = -errno;
-					goto umask_error;
-				}
-			}
-			*p = '/';
-		}
-	}
-
-	ret = mkdir(tmp, mode);
-	if (ret < 0) {
-		if (!(errno == EEXIST)) {
-			PERROR("mkdir recursive last piece");
-			ret = -errno;
-		} else {
-			ret = 0;
-		}
-	} else if (ret == 0) {
-		/*
-		 * We created the directory. Set its ownership to the user/group
-		 * specified.
-		 */
-		ret = chown(tmp, uid, gid);
-		if (ret < 0) {
-			PERROR("chown in mkdir recursive");
-			ret = -errno;
-			goto umask_error;
-		}
-	}
-
-umask_error:
-	umask(old_umask);
-error:
-	return ret;
 }

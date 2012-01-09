@@ -6,4 +6,5 @@ noinst_LTLIBRARIES = liblttng-ustconsumer.la
 liblttng_ustconsumer_la_SOURCES = lttng-ustconsumer.c
 
 liblttng_ustconsumer_la_LIBADD = -llttng-ust-ctl
+
 endif

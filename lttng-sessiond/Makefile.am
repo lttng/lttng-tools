@@ -13,7 +13,6 @@ COMPAT=compat/compat-poll.c
 endif
 
 lttng_sessiond_SOURCES = utils.c utils.h \
-                       hashtable.c hashtable.h \
                        compat/poll.h $(COMPAT) \
                        trace-kernel.c trace-kernel.h \
                        kernel.c kernel.h \
@@ -24,9 +23,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \
-                       ../hashtable/rculfhash.c \
-                       ../hashtable/rculfhash.h \
-                       ../hashtable/hash.c ../hashtable/hash.h
+                       lttng-ust-ctl.h lttng-ust-abi.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h
@@ -40,7 +37,9 @@ lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		 $(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
 		 $(top_builddir)/libkernelctl/libkernelctl.la \
 		 $(top_builddir)/liblttngctl/liblttngctl.la \
-		 $(top_builddir)/benchmark/liblttng-benchmark.la
+		 $(top_builddir)/benchmark/liblttng-benchmark.la \
+		 $(top_builddir)/common/libcommon.la \
+		 $(top_builddir)/liblttng-ht/liblttng-ht.la
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_LDADD += -llttng-ust-ctl

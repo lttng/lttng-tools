@@ -24,7 +24,7 @@
 #include <lttng/lttng.h>
 
 /* Default size of a hash table */
-#define DEFAULT_HT_SIZE                 32
+#define DEFAULT_HT_SIZE                 4
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"

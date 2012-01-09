@@ -22,6 +22,7 @@
 
 #include <limits.h>
 #include <poll.h>
+#include <unistd.h>
 #include <urcu/list.h>
 #include <lttng/lttng.h>
 
@@ -120,6 +121,9 @@ struct lttng_consumer_stream {
 	struct lttng_ust_lib_ring_buffer *buf;
 	int cpu;
 	int hangup_flush_done;
+	/* UID/GID of the user owning the session to which stream belongs */
+	uid_t uid;
+	gid_t gid;
 };
 
 /*
@@ -265,7 +269,9 @@ extern struct lttng_consumer_stream *consumer_allocate_stream(
 		enum lttng_consumer_stream_state state,
 		uint64_t mmap_len,
 		enum lttng_event_output output,
-		const char *path_name);
+		const char *path_name,
+		uid_t uid,
+		gid_t gid);
 extern int consumer_add_stream(struct lttng_consumer_stream *stream);
 extern void consumer_del_stream(struct lttng_consumer_stream *stream);
 extern void consumer_change_stream_state(int stream_key,

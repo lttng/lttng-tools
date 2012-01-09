@@ -18,14 +18,11 @@
 #ifndef _LTT_UTILS_H
 #define _LTT_UTILS_H
 
-#include <unistd.h>
-
 #ifndef __stringify
 #define __stringify1(x)	#x
 #define __stringify(x)	__stringify1(x)
 #endif
 
-int mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 const char *get_home_dir(void);
 int notify_thread_pipe(int wpipe);
 

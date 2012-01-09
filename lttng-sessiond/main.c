@@ -39,17 +39,18 @@
 #include <config.h>
 
 #include <lttng-consumerd.h>
+#include <lttng-ht.h>
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-consumer.h>
 
 #include <lttngerr.h>
+#include <runas.h>
 
 #include "channel.h"
 #include "compat/poll.h"
 #include "context.h"
 #include "event.h"
 #include "futex.h"
-#include "hashtable.h"
 #include "kernel.h"
 #include "lttng-sessiond.h"
 #include "shm.h"
@@ -94,6 +95,7 @@ const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
 static int opt_daemon;
+static int opt_no_kernel;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static char *rundir;
@@ -459,10 +461,9 @@ static void cleanup(void)
 
 	pthread_mutex_destroy(&kconsumer_data.pid_mutex);
 
-	DBG("Closing kernel fd");
-	close(kernel_tracer_fd);
-
-	if (is_root) {
+	if (is_root && !opt_no_kernel) {
+		DBG2("Closing kernel fd");
+		close(kernel_tracer_fd);
 		DBG("Unloading kernel modules");
 		modprobe_remove_kernel_modules();
 	}
@@ -490,7 +491,7 @@ static void cleanup(void)
 	/* END BENCHMARK */
 
 	/* <fun> */
-	MSG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
+	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
 			"Matthew, BEET driven development works!%c[%dm",
 			27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
 	/* </fun> */
@@ -533,7 +534,8 @@ static void clean_command_ctx(struct command_ctx **cmd_ctx)
  * Send all stream fds of kernel channel to the consumer.
  */
 static int send_kconsumer_channel_streams(struct consumer_data *consumer_data,
-		int sock, struct ltt_kernel_channel *channel)
+		int sock, struct ltt_kernel_channel *channel,
+		uid_t uid, gid_t gid)
 {
 	int ret;
 	struct ltt_kernel_stream *stream;
@@ -565,6 +567,8 @@ static int send_kconsumer_channel_streams(struct consumer_data *consumer_data,
 		lkm.u.stream.state = stream->state;
 		lkm.u.stream.output = channel->channel->attr.output;
 		lkm.u.stream.mmap_len = 0;	/* for kernel */
+		lkm.u.stream.uid = uid;
+		lkm.u.stream.gid = gid;
 		strncpy(lkm.u.stream.path_name, stream->pathname, PATH_MAX - 1);
 		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending stream %d to consumer", lkm.u.stream.stream_key);
@@ -626,6 +630,8 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 		lkm.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
 		lkm.u.stream.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		lkm.u.stream.mmap_len = 0;	/* for kernel */
+		lkm.u.stream.uid = session->uid;
+		lkm.u.stream.gid = session->gid;
 		strncpy(lkm.u.stream.path_name, session->metadata->pathname, PATH_MAX - 1);
 		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending metadata stream %d to consumer", lkm.u.stream.stream_key);
@@ -642,7 +648,8 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 	}
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = send_kconsumer_channel_streams(consumer_data, sock, chan);
+		ret = send_kconsumer_channel_streams(consumer_data, sock, chan,
+				session->uid, session->gid);
 		if (ret < 0) {
 			goto error;
 		}
@@ -802,7 +809,8 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 				 */
 				if (session->kernel_session->consumer_fds_sent == 1) {
 					ret = send_kconsumer_channel_streams(consumer_data,
-							session->kernel_session->consumer_fd, channel);
+							session->kernel_session->consumer_fd, channel,
+							session->uid, session->gid);
 					if (ret < 0) {
 						goto error;
 					}
@@ -1191,7 +1199,7 @@ static void *thread_manage_apps(void *data)
 					 */
 					update_ust_app(ust_cmd.sock);
 
-					ret = ustctl_register_done(ust_cmd.sock);
+					ret = ust_app_register_done(ust_cmd.sock);
 					if (ret < 0) {
 						/*
 						 * If the registration is not possible, we simply
@@ -1643,7 +1651,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 64-bit UST consumer at: %s",  consumerd64_bin);
-			ret = execl(consumerd64_bin, verbosity, "-u",
+			ret = execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
@@ -1687,7 +1695,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 32-bit UST consumer at: %s",  consumerd32_bin);
-			ret = execl(consumerd32_bin, verbosity, "-u",
+			ret = execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					NULL);
@@ -1800,7 +1808,7 @@ static int mount_debugfs(char *path)
 	int ret;
 	char *type = "debugfs";
 
-	ret = mkdir_recursive(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
+	ret = mkdir_recursive_run_as(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
 	if (ret < 0) {
 		PERROR("Cannot create debugfs path");
 		goto error;
@@ -1936,9 +1944,8 @@ error:
 static int create_ust_session(struct ltt_session *session,
 		struct lttng_domain *domain)
 {
-	int ret;
-	unsigned int uid;
 	struct ltt_ust_session *lus = NULL;
+	int ret;
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_UST:
@@ -1950,15 +1957,14 @@ static int create_ust_session(struct ltt_session *session,
 
 	DBG("Creating UST session");
 
-	uid = session->uid;
-	lus = trace_ust_create_session(session->path, uid, domain);
+	lus = trace_ust_create_session(session->path, session->id, domain);
 	if (lus == NULL) {
 		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
 	}
 
-	ret = mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG,
-			geteuid(), allowed_group());
+	ret = mkdir_recursive_run_as(lus->pathname, S_IRWXU | S_IRWXG,
+			session->uid, session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
@@ -1976,6 +1982,8 @@ static int create_ust_session(struct ltt_session *session,
 		ERR("Unknown UST domain on create session %d", domain->type);
 		goto error;
 	}
+	lus->uid = session->uid;
+	lus->gid = session->gid;
 	session->ust_session = lus;
 
 	return LTTCOMM_OK;
@@ -2005,17 +2013,53 @@ static int create_kernel_session(struct ltt_session *session)
 		session->kernel_session->consumer_fd = kconsumer_data.cmd_sock;
 	}
 
-	ret = mkdir_recursive(session->kernel_session->trace_path,
-			S_IRWXU | S_IRWXG, geteuid(), allowed_group());
+	ret = mkdir_recursive_run_as(session->kernel_session->trace_path,
+			S_IRWXU | S_IRWXG, session->uid, session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
 			goto error;
 		}
 	}
+	session->kernel_session->uid = session->uid;
+	session->kernel_session->gid = session->gid;
 
 error:
 	return ret;
+}
+
+/*
+ * Check if the UID or GID match the session. Root user has access to
+ * all sessions.
+ */
+static int session_access_ok(struct ltt_session *session,
+	 uid_t uid, gid_t gid)
+{
+	if (uid != session->uid && gid != session->gid
+			&& uid != 0) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
+{
+	unsigned int i = 0;
+	struct ltt_session *session;
+
+	DBG("Counting number of available session for UID %d GID %d",
+		uid, gid);
+	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		/*
+		 * Only list the sessions the user can control.
+		 */
+		if (!session_access_ok(session, uid, gid)) {
+			continue;
+		}
+		i++;
+	}
+	return i;
 }
 
 /*
@@ -2025,17 +2069,25 @@ error:
  * The session list lock MUST be acquired before calling this function. Use
  * session_lock_list() and session_unlock_list().
  */
-static void list_lttng_sessions(struct lttng_session *sessions)
+static void list_lttng_sessions(struct lttng_session *sessions,
+		uid_t uid, gid_t gid)
 {
-	int i = 0;
+	unsigned int i = 0;
 	struct ltt_session *session;
 
-	DBG("Getting all available session");
+	DBG("Getting all available session for UID %d GID %d",
+		uid, gid);
 	/*
 	 * Iterate over session list and append data after the control struct in
 	 * the buffer.
 	 */
 	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+		/*
+		 * Only list the sessions the user can control.
+		 */
+		if (!session_access_ok(session, uid, gid)) {
+			continue;
+		}
 		strncpy(sessions[i].path, session->path, PATH_MAX);
 		sessions[i].path[PATH_MAX - 1] = '\0';
 		strncpy(sessions[i].name, session->name, NAME_MAX);
@@ -2071,11 +2123,11 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
-		struct cds_lfht_iter iter;
+		struct lttng_ht_iter iter;
 		struct ltt_ust_channel *uchan;
 
-		cds_lfht_for_each_entry(session->ust_session->domain_global.channels,
-				&iter, uchan, node) {
+		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
+				&iter.iter, uchan, node.node) {
 			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
 			channels[i].attr.overwrite = uchan->attr.overwrite;
 			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
@@ -2108,8 +2160,8 @@ static int list_lttng_ust_global_events(char *channel_name,
 {
 	int i = 0, ret = 0;
 	unsigned int nb_event = 0;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *node;
 	struct ltt_ust_channel *uchan;
 	struct ltt_ust_event *uevent;
 	struct lttng_event *tmp;
@@ -2118,16 +2170,16 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 	rcu_read_lock();
 
-	node = hashtable_lookup(ust_global->channels, (void *) channel_name,
-			strlen(channel_name), &iter);
+	lttng_ht_lookup(ust_global->channels, (void *)channel_name, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		ret = -LTTCOMM_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
 
-	uchan = caa_container_of(node, struct ltt_ust_channel, node);
+	uchan = caa_container_of(&node->node, struct ltt_ust_channel, node.node);
 
-	nb_event += hashtable_get_count(uchan->events);
+	nb_event += lttng_ht_get_count(uchan->events);
 
 	if (nb_event == 0) {
 		ret = nb_event;
@@ -2142,7 +2194,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 		goto error;
 	}
 
-	cds_lfht_for_each_entry(uchan->events, &iter, uevent, node) {
+	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
 		strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
 		tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		tmp[i].enabled = uevent->enabled;
@@ -2268,7 +2320,7 @@ static int cmd_disable_channel(struct ltt_session *session,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_channel *uchan;
-		struct cds_lfht *chan_ht;
+		struct lttng_ht *chan_ht;
 
 		chan_ht = usess->domain_global.channels;
 
@@ -2308,7 +2360,7 @@ static int cmd_enable_channel(struct ltt_session *session,
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
-	struct cds_lfht *chan_ht;
+	struct lttng_ht *chan_ht;
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
@@ -2631,7 +2683,6 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 		}
 
 		/* At this point, the session and channel exist on the tracer */
-
 		ret = event_ust_enable_tracepoint(usess, domain, uchan, event);
 		if (ret != LTTCOMM_OK) {
 			goto error;
@@ -2835,8 +2886,11 @@ static int cmd_start_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	if (session->enabled)
-		return LTTCOMM_UST_START_FAIL;
+	if (session->enabled) {
+		ret = LTTCOMM_UST_START_FAIL;
+		goto error;
+	}
+
 	session->enabled = 1;
 
 	/* Kernel tracing */
@@ -2924,8 +2978,11 @@ static int cmd_stop_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	if (!session->enabled)
-		return LTTCOMM_UST_START_FAIL;
+	if (!session->enabled) {
+		ret = LTTCOMM_UST_START_FAIL;
+		goto error;
+	}
+
 	session->enabled = 0;
 
 	/* Kernel tracer */
@@ -2973,11 +3030,11 @@ error:
 /*
  * Command LTTNG_CREATE_SESSION processed by the client thread.
  */
-static int cmd_create_session(char *name, char *path)
+static int cmd_create_session(char *name, char *path, struct ucred *creds)
 {
 	int ret;
 
-	ret = session_create(name, path);
+	ret = session_create(name, path, creds->uid, creds->gid);
 	if (ret != LTTCOMM_OK) {
 		goto error;
 	}
@@ -3057,7 +3114,7 @@ static int cmd_register_consumer(struct ltt_session *session, int domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		/* Can't register a consumer if there is already one */
-		if (session->kernel_session->consumer_fd != 0) {
+		if (session->kernel_session->consumer_fds_sent != 0) {
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
 			goto error;
 		}
@@ -3141,7 +3198,7 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (session->ust_session != NULL) {
-			nb_chan = hashtable_get_count(
+			nb_chan = lttng_ht_get_count(
 					session->ust_session->domain_global.channels);
 		}
 		DBG3("Number of UST global channels %zd", nb_chan);
@@ -3218,6 +3275,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	int need_tracing_session = 1;
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
+
+	if (opt_no_kernel && cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
+		ret = LTTCOMM_KERN_NA;
+		goto error;
+	}
 
 	/*
 	 * Check for command that don't needs to allocate a returned payload. We do
@@ -3358,6 +3420,18 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 
+	/*
+	 * Check that the UID or GID match that of the tracing session.
+	 * The root user can interact with all sessions.
+	 */
+	if (need_tracing_session) {
+		if (!session_access_ok(cmd_ctx->session,
+				cmd_ctx->creds.uid, cmd_ctx->creds.gid)) {
+			ret = LTTCOMM_EPERM;
+			goto error;
+		}
+	}
+
 	/* Process by command type */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_ADD_CONTEXT:
@@ -3456,7 +3530,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	{
 		tracepoint(create_session_start);
 		ret = cmd_create_session(cmd_ctx->lsm->session.name,
-				cmd_ctx->lsm->session.path);
+				cmd_ctx->lsm->session.path, &cmd_ctx->creds);
 		tracepoint(create_session_end);
 		break;
 	}
@@ -3547,23 +3621,24 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	}
 	case LTTNG_LIST_SESSIONS:
 	{
-		session_lock_list();
+		unsigned int nr_sessions;
 
-		if (session_list_ptr->count == 0) {
+		session_lock_list();
+		nr_sessions = lttng_sessions_count(cmd_ctx->creds.uid, cmd_ctx->creds.gid);
+		if (nr_sessions == 0) {
 			ret = LTTCOMM_NO_SESSION;
 			session_unlock_list();
 			goto error;
 		}
-
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) *
-				session_list_ptr->count);
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
 		if (ret < 0) {
 			session_unlock_list();
 			goto setup_error;
 		}
 
 		/* Filled the session array */
-		list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload));
+		list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload),
+			cmd_ctx->creds.uid, cmd_ctx->creds.gid);
 
 		session_unlock_list();
 
@@ -3688,6 +3763,12 @@ static void *thread_manage_clients(void *data)
 			goto error;
 		}
 
+		/* Set socket option for credentials retrieval */
+		ret = lttcomm_setsockopt_creds_unix_sock(sock);
+		if (ret < 0) {
+			goto error;
+		}
+
 		/* Allocate context command to process the client request */
 		cmd_ctx = zmalloc(sizeof(struct command_ctx));
 		if (cmd_ctx == NULL) {
@@ -3711,8 +3792,8 @@ static void *thread_manage_clients(void *data)
 		 * the client.
 		 */
 		DBG("Receiving data from client ...");
-		ret = lttcomm_recv_unix_sock(sock, cmd_ctx->lsm,
-				sizeof(struct lttcomm_session_msg));
+		ret = lttcomm_recv_creds_unix_sock(sock, cmd_ctx->lsm,
+				sizeof(struct lttcomm_session_msg), &cmd_ctx->creds);
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
 			close(sock);
@@ -3750,10 +3831,10 @@ static void *thread_manage_clients(void *data)
 			ERR("Failed to send data back to client");
 		}
 
-		clean_command_ctx(&cmd_ctx);
-
 		/* End of transmission */
 		close(sock);
+
+		clean_command_ctx(&cmd_ctx);
 	}
 
 error:
@@ -3796,6 +3877,7 @@ static void usage(void)
 	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
+	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
 }
 
 /*
@@ -3826,12 +3908,13 @@ static int parse_args(int argc, char **argv)
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
 		{ "verbose-consumer", 0, 0, 'Z' },
+		{ "no-kernel", 0, 0, 'N' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVS" "a:c:g:s:C:E:D:F:Z:u:t",
+		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3882,6 +3965,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'G':
 			snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
+			break;
+		case 'N':
+			opt_no_kernel = 1;
 			break;
 		case 'q':
 			opt_quiet = 1;
@@ -3990,27 +4076,22 @@ static int check_existing_daemon(void)
  * Race window between mkdir and chown is OK because we are going from more
  * permissive (root.root) to les permissive (root.tracing).
  */
-static int set_permissions(void)
+static int set_permissions(char *rundir)
 {
 	int ret;
 	gid_t gid;
 
 	gid = allowed_group();
 	if (gid < 0) {
-		if (is_root) {
-			WARN("No tracing group detected");
-			ret = 0;
-		} else {
-			ERR("Missing tracing group. Aborting execution.");
-			ret = -1;
-		}
+		WARN("No tracing group detected");
+		ret = 0;
 		goto end;
 	}
 
 	/* Set lttng run dir */
-	ret = chown(LTTNG_RUNDIR, 0, gid);
+	ret = chown(rundir, 0, gid);
 	if (ret < 0) {
-		ERR("Unable to set group on " LTTNG_RUNDIR);
+		ERR("Unable to set group on %s", rundir);
 		perror("chown");
 	}
 
@@ -4395,7 +4476,9 @@ int main(int argc, char **argv)
 		}
 
 		/* Setup kernel tracer */
-		init_kernel_tracer();
+		if (!opt_no_kernel) {
+			init_kernel_tracer();
+		}
 
 		/* Set ulimit for open files */
 		set_ulimit();
@@ -4421,7 +4504,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Set credentials to socket */
-	if (is_root && ((ret = set_permissions()) < 0)) {
+	if (is_root && ((ret = set_permissions(rundir)) < 0)) {
 		goto exit;
 	}
 

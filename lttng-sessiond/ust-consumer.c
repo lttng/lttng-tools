@@ -23,18 +23,19 @@
 #include <unistd.h>
 
 #include <lttngerr.h>
+#include <lttng-ht.h>
 #include <lttng-share.h>
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-consumer.h>
 
-#include "hashtable.h"
 #include "ust-consumer.h"
 
 /*
  * Send all stream fds of UST channel to the consumer.
  */
 static int send_channel_streams(int sock,
-		struct ust_app_channel *uchan)
+		struct ust_app_channel *uchan,
+		uid_t uid, gid_t gid)
 {
 	int ret, fd;
 	struct lttcomm_consumer_msg lum;
@@ -84,6 +85,8 @@ static int send_channel_streams(int sock,
 		 */
 		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		lum.u.stream.mmap_len = stream->obj->memory_map_size;
+		lum.u.stream.uid = uid;
+		lum.u.stream.gid = gid;
 		strncpy(lum.u.stream.path_name, stream->pathname, PATH_MAX - 1);
 		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending stream %d to consumer", lum.u.stream.stream_key);
@@ -117,10 +120,9 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 {
 	int ret = 0;
 	int sock = consumer_fd;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
+	struct lttng_ht_iter iter;
 	struct lttcomm_consumer_msg lum;
-	struct ust_app_channel *uchan;
+	struct ust_app_channel *ua_chan;
 
 	DBG("Sending metadata stream fd");
 
@@ -158,6 +160,8 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		lum.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
 		lum.u.stream.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		lum.u.stream.mmap_len = usess->metadata->stream_obj->memory_map_size;
+		lum.u.stream.uid = usess->uid;
+		lum.u.stream.gid = usess->gid;
 		strncpy(lum.u.stream.path_name, usess->metadata->pathname, PATH_MAX - 1);
 		lum.u.stream.path_name[PATH_MAX - 1] = '\0';
 		DBG("Sending metadata stream %d to consumer", lum.u.stream.stream_key);
@@ -177,16 +181,13 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 
 	/* Send each channel fd streams of session */
 	rcu_read_lock();
-	hashtable_get_first(usess->channels, &iter);
-	while ((node = hashtable_iter_get_node(&iter)) != NULL) {
-		uchan = caa_container_of(node, struct ust_app_channel, node);
-
-		ret = send_channel_streams(sock, uchan);
+	cds_lfht_for_each_entry(usess->channels->ht, &iter.iter, ua_chan,
+			node.node) {
+		ret = send_channel_streams(sock, ua_chan, usess->uid, usess->gid);
 		if (ret < 0) {
 			rcu_read_unlock();
 			goto error;
 		}
-		hashtable_get_next(usess->channels, &iter);
 	}
 	rcu_read_unlock();
 

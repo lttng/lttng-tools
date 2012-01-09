@@ -174,7 +174,9 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 		enum lttng_consumer_stream_state state,
 		uint64_t mmap_len,
 		enum lttng_event_output output,
-		const char *path_name)
+		const char *path_name,
+		uid_t uid,
+		gid_t gid)
 {
 	struct lttng_consumer_stream *stream;
 	int ret;
@@ -199,6 +201,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	stream->mmap_len = mmap_len;
 	stream->mmap_base = NULL;
 	stream->output = output;
+	stream->uid = uid;
+	stream->gid = gid;
 	strncpy(stream->path_name, path_name, PATH_MAX - 1);
 	stream->path_name[PATH_MAX - 1] = '\0';
 

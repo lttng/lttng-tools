@@ -93,7 +93,7 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 		goto end;
 	}
 
-	ret = lttcomm_send_unix_sock(sessiond_socket, lsm,
+	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
 			sizeof(struct lttcomm_session_msg));
 
 end:

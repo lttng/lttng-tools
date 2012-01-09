@@ -20,11 +20,11 @@
 #include <unistd.h>
 
 #include <lttng/lttng.h>
+#include <lttng-ht.h>
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
 
 #include "channel.h"
-#include "hashtable.h"
 #include "kernel.h"
 #include "ust-ctl.h"
 #include "utils.h"
@@ -216,7 +216,7 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		struct lttng_channel *attr)
 {
 	int ret = LTTCOMM_OK;
-	struct cds_lfht *chan_ht;
+	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
 
@@ -259,7 +259,7 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	}
 
 	uchan->enabled = 1;
-	hashtable_add_unique(chan_ht, &uchan->node);
+	lttng_ht_add_unique_str(chan_ht, &uchan->node);
 	DBG2("Channel %s created successfully", uchan->name);
 
 	free(defattr);

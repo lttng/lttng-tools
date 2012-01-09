@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.0-pre14],[david.goulet@polymtl.ca],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0-pre16],[david.goulet@polymtl.ca],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -63,7 +63,7 @@ AC_CHECK_DECL([caa_get_cycles], [],
 )
 
 # URCU library version needed or newer
-liburcu_version=">= 0.6.6"
+liburcu_version=">= 0.6.7"
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
@@ -138,12 +138,14 @@ AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
 	benchmark/Makefile
+	common/Makefile
 	libkernelctl/Makefile
 	liblttng-consumer/Makefile
 	liblttng-kconsumer/Makefile
 	liblttng-ustconsumer/Makefile
 	liblttngctl/Makefile
 	liblttng-sessiond-comm/Makefile
+	liblttng-ht/Makefile
 	lttng-consumerd/Makefile
 	lttng-sessiond/Makefile
 	lttng/Makefile

@@ -15,17 +15,14 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTT_HASH_H
-#define _LTT_HASH_H
+#ifndef _LTT_HT_UTILS_H
+#define _LTT_HT_UTILS_H
 
-unsigned long hash_key(void *_key, size_t length, unsigned long seed);
+#include <stdint.h>
 
-unsigned long hash_key_str(void *_key, size_t length, unsigned long seed);
+unsigned long hash_key_ulong(void *_key, unsigned long seed);
+unsigned long hash_key_str(void *key, unsigned long seed);
+int hash_match_key_ulong(void *key1, void *key2);
+int hash_match_key_str(void *key1, void *key2);
 
-unsigned long hash_compare_key(void *key1, size_t key1_len,
-		void *key2, size_t key2_len);
-
-unsigned long hash_compare_key_str(void *key1, size_t key1_len,
-		void *key2, size_t key2_len);
-
-#endif /* _LTT_HASH_H */
+#endif /* _LTT_HT_UTILS_H */

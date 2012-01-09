@@ -1,7 +1,10 @@
 NOTES:
 --------------
-2011-07-21 : User-space tracer is not released. Tracing in user-space at this
-point is not possible with lttng-tools.
+
+2011-12-12: For user-space tracing, only the global UST domain ("-u" alone) is
+supported meaning that if you enable a tracepoint for user-space it will be
+enabled for all applications for the current tracing session you are working
+on.
 
 QUICKSTART
 --------------
@@ -13,15 +16,16 @@ trace.
 See the README file for installation procedure or use the various Linux
 distribution packages.
 
-In order to trace the kernel, you'll need the lttng-modules >= 2.0 compiled and
+In order to trace the kernel, you'll need the lttng-modules 2.0 compiled and
 installed. See http://lttng.org/lttng2.0 for more instructions for that part.
-For user-space tracing, you'll need an instrumented application, please see
-http://lttng.org/ust.
+For user-space tracing, you'll need an instrumented application with lttng-ust
+2.0.
 
 lttng-tools provide a session daemon (lttng-sessiond) that acts as a tracing
 registry. To trace any instrumented applications or the kernel, a registered
 tracing session is needed beforehand. To interact with the session daemon and a
-tracing session, you should use the lttng command line UI (lttng).
+tracing session, you should use the lttng command line UI (lttng). It is also
+possible to use the liblttngctl library for tracing control (lttng.h).
 
 Here is a list of some powerful features the LTTng 2.0 kernel tracer offers:
 
@@ -31,23 +35,31 @@ Here is a list of some powerful features the LTTng 2.0 kernel tracer offers:
 	* Perf counter support
 	* Tracepoint support
 
-The next sections explain how to do tracing :)
+And for the LTTng UST 2.0 tracer:
+
+	* Applications registration
+	* Automatic tracepoints activation upon app. registration
+	* Context information support
+	* Safe buffers after application crash
+	* Per-user tracing (root access *not* mandatory)
+
+The next sections explains how to do tracing :)
 
 Kernel Tracing
 --------------
 
-You can start the session daemon by invoking the command "lttng-sessiond",
-or let the lttng command line tool do it for you. The session daemon
-loads the LTTng tracer modules for you if those modules can be found on
-your system. If they are not found, the kernel tracing feature will be
-unavailable.
+You can start the session daemon by invoking the command "lttng-sessiond", or
+let the lttng command line tool do it for you. The session daemon loads the
+LTTng tracer modules for you if those modules can be found on your system. If
+they are not found, the kernel tracing feature will be unavailable.
 
 List available kernel events:
 
 # lttng list -k
 
-1) Create a tracing session. A .lttngrc will be created in $HOME containing
-the session name (here 'mysession') you are working on.
+1) Create a tracing session. The .lttng directory will be created with .lttngrc
+file in $HOME containing the session name (here 'mysession') you are working
+on.
 
 # lttng create mysession
 
@@ -99,7 +111,7 @@ event. For example, you can add the PID along with the event information:
 # lttng add-context -k -e sched_switch -t pid
 
 At this point, you will have to look at 'lttng add-context --help' for all
-possible context type which are integer values.
+possible context type.
 
 You can on the same line activate multiple context:
 
@@ -122,12 +134,15 @@ You'll have to use the add-context help for all possible perf counter values.
 Tracing is in progress at this point and traces will be written in
 $HOME/lttng-traces/mysession-<date>-<time>
 
+NOTE: It will start tracing for *all* domain(s).
+
 9) Stop tracing:
 
 # lttng stop
 
-Note: At this point, you can restart the trace (lttng start), enable/disable
+NOTE: At this point, you can restart the trace (lttng start), enable/disable
 events or just go take a break and come back 3 days later to start it again :).
+You can also read the trace since the buffers are flushed on stop command.
 
 10) Destroy your session after you are done with tracing
 
@@ -138,21 +153,89 @@ See Reading a trace section below to read you trace(s).
 User-space Tracing
 --------------
 
-User-space tracer 2.0 not released at this point. For the 0.x versions,
-you need to use 'ustctl' to control user-space tracing.
+Like kernel tracing, you can start the session daemon by invoking the command
+"lttng-sessiond", or let the lttng command line tool do it for you.
+
+NOTE: You do *not* need root credentials in order to tracer user-space
+applications. However, if you run the session daemon under non-root user
+rights, only applications of that user will be traced.
+
+So, after instrumenting you applications with LTTng-ust 2.0
+(http://lttng.org/lttng2.0), upon startup, it will automatically register to
+the session daemon. If there is none running, it will simply wait on a seperate
+thread for a session daemon to appear and then register.
+
+Start your instrumented application at any time but at least before starting
+tracing :).
+
+List available registered applications:
+
+$ lttng list -u
+
+1) Create a tracing session. The .lttng directory will be created with a
+.lttngrc file in $HOME containing the session name (here 'mysession') you are
+working on.
+
+$ lttng create mysession
+
+If you have multiple sessions, you can change the current session by using:
+
+$ lttng set-session myothersession
+
+2) Enable all tracepoints for the global UST domain ("-u" alone).
+
+$ lttng enable-event -a -u
+
+or enable a single tracepoint event.
+
+$ lttng enable-event ust_tests_hello:tptest -u
+
+3) This is also a new feature which allows you to add context information to an
+event. For example, you can add the PID along with the event information:
+
+$ lttng add-context -t pid -e ust_tests_hello:tptest -u
+
+At this point, you will have to look at 'lttng add-context --help' for all
+possible context type.
+
+You can on the same line activate multiple context:
+
+$ lttng add-context -u -e ust_tests_hello:tptest -t pid -t nice -t tid
+
+4) Start tracing:
+
+$ lttng start
+
+Tracing is in progress at this point and traces will be written in
+$HOME/lttng-traces/mysession-<date>-<time>/ust/<procname>-<pid>-<date>-<time>
+
+NOTE: It will start tracing for *all* domain(s).
+
+5) Stop tracing:
+
+$ lttng stop
+
+NOTE: At this point, you can restart the trace (lttng start), enable/disable
+events or just go take a break and come back 3 days later to start it again :).
+You can also read the trace since the buffers are flushed on stop command.
+
+6) Destroy your session after you are done with tracing
+
+$ lttng destroy
+
+See "Reading a trace" section below to read you trace(s).
+
 
 Reading a trace
 --------------
 
 The tool "Babeltrace" can be used to dump your binary trace into a
-human-readable text format. Please see
-http://www.efficios.com/babeltrace and git tree
-http://git.efficios.com/?p=babeltrace.git
+human-readable text format. Please see http://www.efficios.com/babeltrace and
+git tree http://git.efficios.com/?p=babeltrace.git
 
 # babeltrace $HOME/lttng-traces/mysession-<date>-<time> | less
 
 Voilà!
 
-Please report any bugs/comments on our mailing list
-(ltt-dev@lists.casi.polymtl.ca) or you can go on our IRC channel at
-irc.oftc.net, channel #lttng
+Please report any bugs/comments on our mailing list (lttng-dev@lists.lttng.org)
+or you can go on our IRC channel at irc.oftc.net, channel #lttng

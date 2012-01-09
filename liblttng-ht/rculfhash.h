@@ -7,6 +7,7 @@
  * Userspace RCU library - Lock-Free RCU Hash Table
  *
  * Copyright 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright 2011 - Lai Jiangshan <laijs@cn.fujitsu.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,45 +27,41 @@
  */
 
 #include <stdint.h>
+#include <urcu/compiler.h>
 #include <urcu-call-rcu.h>
+
+#include "urcu-flavor.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /*
- * struct cds_lfht_node and struct _cds_lfht_node should be aligned on
- * 4-bytes boundaries because the two lower bits are used as flags.
- */
-
-/*
- * _cds_lfht_node: Contains the internal pointers and reverse-hash
+ * cds_lfht_node: Contains the next pointers and reverse-hash
  * value required for lookup and traversal of the hash table.
- */
-struct _cds_lfht_node {
-	struct cds_lfht_node *next;	/* ptr | DUMMY_FLAG | REMOVED_FLAG */
-	unsigned long reverse_hash;
-} __attribute__((aligned(4)));
-
-/*
- * cds_lfht_node: Contains the full key and length required to check for
- * an actual match, and also contains an rcu_head structure that is used
- * by RCU to track a node through a given RCU grace period.  There is an
- * instance of _cds_lfht_node enclosed as a field within each
- * _cds_lfht_node structure.
+ *
+ * struct cds_lfht_node should be aligned on 8-bytes boundaries because
+ * the three lower bits are used as flags. It is worth noting that the
+ * information contained within these three bits could be represented on
+ * two bits by re-using the same bit for REMOVAL_OWNER_FLAG and
+ * BUCKET_FLAG. This can be done if we ensure that no iterator nor
+ * updater check the BUCKET_FLAG after it detects that the REMOVED_FLAG
+ * is set. Given the minimum size of struct cds_lfht_node is 8 bytes on
+ * 32-bit architectures, we choose to go for simplicity and reserve
+ * three bits.
  *
  * struct cds_lfht_node can be embedded into a structure (as a field).
  * caa_container_of() can be used to get the structure from the struct
  * cds_lfht_node after a lookup.
+ *
+ * The structure which embeds it typically holds the key (or key-value
+ * pair) of the object. The caller code is responsible for calculation
+ * of the hash value for cds_lfht APIs.
  */
 struct cds_lfht_node {
-	/* cache-hot for iteration */
-	struct _cds_lfht_node p;          /* needs to be first field */
-	void *key;
-	unsigned int key_len;
-	/* cache-cold for iteration */
-	struct rcu_head head;
-};
+	struct cds_lfht_node *next;	/* ptr | REMOVAL_OWNER_FLAG | BUCKET_FLAG | REMOVED_FLAG */
+	unsigned long reverse_hash;
+} __attribute__((aligned(8)));
 
 /* cds_lfht_iter: Used to track state while traversing a hash chain. */
 struct cds_lfht_iter {
@@ -84,20 +81,18 @@ struct cds_lfht;
  * Ensure reader and writer threads are registered as urcu readers.
  */
 
-typedef unsigned long (*cds_lfht_hash_fct)(void *key, size_t length,
-					unsigned long seed);
-typedef unsigned long (*cds_lfht_compare_fct)(void *key1, size_t key1_len,
-					void *key2, size_t key2_len);
+typedef int (*cds_lfht_match_fct)(struct cds_lfht_node *node, const void *key);
 
 /*
  * cds_lfht_node_init - initialize a hash table node
+ * @node: the node to initialize.
+ *
+ * This function is kept to be eventually used for debugging purposes
+ * (detection of memory corruption).
  */
 static inline
-void cds_lfht_node_init(struct cds_lfht_node *node, void *key,
-			size_t key_len)
+void cds_lfht_node_init(struct cds_lfht_node *node)
 {
-	node->key = key;
-	node->key_len = key_len;
 }
 
 /*
@@ -108,36 +103,42 @@ enum {
 	CDS_LFHT_ACCOUNTING = (1U << 1),
 };
 
+struct cds_lfht_mm_type {
+	struct cds_lfht *(*alloc_cds_lfht)(unsigned long min_nr_alloc_buckets,
+			unsigned long max_nr_buckets);
+	void (*alloc_bucket_table)(struct cds_lfht *ht, unsigned long order);
+	void (*free_bucket_table)(struct cds_lfht *ht, unsigned long order);
+	struct cds_lfht_node *(*bucket_at)(struct cds_lfht *ht,
+			unsigned long index);
+};
+
+extern const struct cds_lfht_mm_type cds_lfht_mm_order;
+extern const struct cds_lfht_mm_type cds_lfht_mm_chunk;
+extern const struct cds_lfht_mm_type cds_lfht_mm_mmap;
+
 /*
  * _cds_lfht_new - API used by cds_lfht_new wrapper. Do not use directly.
  */
-struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
-			cds_lfht_compare_fct compare_fct,
-			unsigned long hash_seed,
-			unsigned long init_size,
-			unsigned long min_alloc_size,
+struct cds_lfht *_cds_lfht_new(unsigned long init_size,
+			unsigned long min_nr_alloc_buckets,
+			unsigned long max_nr_buckets,
 			int flags,
-			void (*cds_lfht_call_rcu)(struct rcu_head *head,
-				void (*func)(struct rcu_head *head)),
-			void (*cds_lfht_synchronize_rcu)(void),
-			void (*cds_lfht_rcu_read_lock)(void),
-			void (*cds_lfht_rcu_read_unlock)(void),
-			void (*cds_lfht_rcu_thread_offline)(void),
-			void (*cds_lfht_rcu_thread_online)(void),
-			void (*cds_lfht_rcu_register_thread)(void),
-			void (*cds_lfht_rcu_unregister_thread)(void),
+			const struct cds_lfht_mm_type *mm,
+			const struct rcu_flavor_struct *flavor,
 			pthread_attr_t *attr);
 
 /*
  * cds_lfht_new - allocate a hash table.
- * @hash_fct: the hashing function.
- * @compare_fct: the key comparison function.
- * @hash_seed: the seed for hash function.
- * @init_size: number of nodes to allocate initially. Must be power of two.
- * @min_alloc_size: the smallest allocation size to use. Must be power of two.
+ * @init_size: number of buckets to allocate initially. Must be power of two.
+ * @min_nr_alloc_buckets: the minimum number of allocated buckets.
+ *                        (must be power of two)
+ * @max_nr_buckets: the maximum number of hash table buckets allowed.
+ *                  (must be power of two)
  * @flags: hash table creation flags (can be combined with bitwise or: '|').
  *           0: no flags.
  *           CDS_LFHT_AUTO_RESIZE: automatically resize hash table.
+ *           CDS_LFHT_ACCOUNTING: count the number of node addition
+ *                                and removal in the table
  * @attr: optional resize worker thread attributes. NULL for default.
  *
  * Return NULL on error.
@@ -150,23 +151,18 @@ struct cds_lfht *_cds_lfht_new(cds_lfht_hash_fct hash_fct,
  * this priority level. Having lower priority for call_rcu and resize threads
  * does not pose any correctness issue, but the resize operations could be
  * starved by updates, thus leading to long hash table bucket chains.
- * Threads calling this API need to be registered RCU read-side threads.
+ * Threads calling this API are NOT required to be registered RCU read-side
+ * threads. It can be called very early.(before rcu is initialized ...etc.)
  */
 static inline
-struct cds_lfht *cds_lfht_new(cds_lfht_hash_fct hash_fct,
-			cds_lfht_compare_fct compare_fct,
-			unsigned long hash_seed,
-			unsigned long init_size,
-			unsigned long min_alloc_size,
+struct cds_lfht *cds_lfht_new(unsigned long init_size,
+			unsigned long min_nr_alloc_buckets,
+			unsigned long max_nr_buckets,
 			int flags,
 			pthread_attr_t *attr)
 {
-	return _cds_lfht_new(hash_fct, compare_fct, hash_seed,
-			init_size, min_alloc_size, flags,
-			call_rcu, synchronize_rcu, rcu_read_lock,
-			rcu_read_unlock, rcu_thread_offline,
-			rcu_thread_online, rcu_register_thread,
-			rcu_unregister_thread, attr);
+	return _cds_lfht_new(init_size, min_nr_alloc_buckets, max_nr_buckets,
+			flags, NULL, &rcu_flavor, attr);
 }
 
 /*
@@ -187,29 +183,37 @@ int cds_lfht_destroy(struct cds_lfht *ht, pthread_attr_t **attr);
  * @ht: the hash table.
  * @split_count_before: Sample the node count split-counter before traversal.
  * @count: Traverse the hash table, count the number of nodes observed.
- * @removed: Number of logically removed nodes observed during traversal.
  * @split_count_after: Sample the node count split-counter after traversal.
+ *
  * Call with rcu_read_lock held.
  * Threads calling this API need to be registered RCU read-side threads.
  */
 void cds_lfht_count_nodes(struct cds_lfht *ht,
 		long *split_count_before,
 		unsigned long *count,
-		unsigned long *removed,
 		long *split_count_after);
 
 /*
  * cds_lfht_lookup - lookup a node by key.
+ * @ht: the hash table.
+ * @hash: the key hash.
+ * @match: the key match function.
+ * @key: the current node key.
+ * @iter: Node, if found (output). *iter->node set to NULL if not found.
  *
- * Output in "*iter". *iter->node set to NULL if not found.
  * Call with rcu_read_lock held.
  * Threads calling this API need to be registered RCU read-side threads.
  */
-void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
+void cds_lfht_lookup(struct cds_lfht *ht, unsigned long hash,
+		cds_lfht_match_fct match, const void *key,
 		struct cds_lfht_iter *iter);
 
 /*
  * cds_lfht_next_duplicate - get the next item with same key (after a lookup).
+ * @ht: the hash table.
+ * @match: the key match function.
+ * @key: the current node key.
+ * @iter: Node, if found (output). *iter->node set to NULL if not found.
  *
  * Uses an iterator initialized by a lookup.
  * Sets *iter-node to the following node with same key.
@@ -220,10 +224,14 @@ void cds_lfht_lookup(struct cds_lfht *ht, void *key, size_t key_len,
  * Call with rcu_read_lock held.
  * Threads calling this API need to be registered RCU read-side threads.
  */
-void cds_lfht_next_duplicate(struct cds_lfht *ht, struct cds_lfht_iter *iter);
+void cds_lfht_next_duplicate(struct cds_lfht *ht,
+		cds_lfht_match_fct match, const void *key,
+		struct cds_lfht_iter *iter);
 
 /*
  * cds_lfht_first - get the first node in the table.
+ * @ht: the hash table.
+ * @iter: First node, if exists (output). *iter->node set to NULL if not found.
  *
  * Output in "*iter". *iter->node set to NULL if table is empty.
  * Call with rcu_read_lock held.
@@ -233,6 +241,8 @@ void cds_lfht_first(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 
 /*
  * cds_lfht_next - get the next node in the table.
+ * @ht: the hash table.
+ * @iter: Next node, if exists (output). *iter->node set to NULL if not found.
  *
  * Input/Output in "*iter". *iter->node set to NULL if *iter was
  * pointing to the last table node.
@@ -243,15 +253,24 @@ void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter);
 
 /*
  * cds_lfht_add - add a node to the hash table.
+ * @ht: the hash table.
+ * @hash: the key hash.
+ * @node: the node to add.
  *
  * This function supports adding redundant keys into the table.
  * Call with rcu_read_lock held.
  * Threads calling this API need to be registered RCU read-side threads.
  */
-void cds_lfht_add(struct cds_lfht *ht, struct cds_lfht_node *node);
+void cds_lfht_add(struct cds_lfht *ht, unsigned long hash,
+		struct cds_lfht_node *node);
 
 /*
  * cds_lfht_add_unique - add a node to hash table, if key is not present.
+ * @ht: the hash table.
+ * @hash: the node's hash.
+ * @match: the key match function.
+ * @key: the node's key.
+ * @node: the node to try adding.
  *
  * Return the node added upon success.
  * Return the unique node already present upon failure. If
@@ -266,10 +285,18 @@ void cds_lfht_add(struct cds_lfht *ht, struct cds_lfht_node *node);
  * add_unique and add_replace (see below).
  */
 struct cds_lfht_node *cds_lfht_add_unique(struct cds_lfht *ht,
+		unsigned long hash,
+		cds_lfht_match_fct match,
+		const void *key,
 		struct cds_lfht_node *node);
 
 /*
  * cds_lfht_add_replace - replace or add a node within hash table.
+ * @ht: the hash table.
+ * @hash: the node's hash.
+ * @match: the key match function.
+ * @key: the node's key.
+ * @node: the node to add.
  *
  * Return the node replaced upon success. If no node matching the key
  * was present, return NULL, which also means the operation succeeded.
@@ -290,14 +317,25 @@ struct cds_lfht_node *cds_lfht_add_unique(struct cds_lfht *ht,
  * will never generate duplicated keys.
  */
 struct cds_lfht_node *cds_lfht_add_replace(struct cds_lfht *ht,
+		unsigned long hash,
+		cds_lfht_match_fct match,
+		const void *key,
 		struct cds_lfht_node *node);
 
 /*
  * cds_lfht_replace - replace a node pointer to by iter within hash table.
+ * @ht: the hash table.
+ * @old_iter: the iterator position of the node to replace.
+ * @hash: the node's hash.
+ * @match: the key match function.
+ * @key: the node's key.
+ * @new_node: the new node to use as replacement.
  *
  * Return 0 if replacement is successful, negative value otherwise.
- * Replacing a NULL old node or an already removed node will fail with a
- * negative value.
+ * Replacing a NULL old node or an already removed node will fail with
+ * -ENOENT.
+ * If the hash or value of the node to replace and the new node differ,
+ * this function returns -EINVAL without proceeding to the replacement.
  * Old node can be looked up with cds_lfht_lookup and cds_lfht_next.
  * RCU read-side lock must be held between lookup and replacement.
  * Call with rcu_read_lock held.
@@ -316,18 +354,24 @@ struct cds_lfht_node *cds_lfht_add_replace(struct cds_lfht *ht,
  * guarantee that a combination of add_replace and add_unique updates
  * will never generate duplicated keys.
  */
-int cds_lfht_replace(struct cds_lfht *ht, struct cds_lfht_iter *old_iter,
+int cds_lfht_replace(struct cds_lfht *ht,
+		struct cds_lfht_iter *old_iter,
+		unsigned long hash,
+		cds_lfht_match_fct match,
+		const void *key,
 		struct cds_lfht_node *new_node);
 
 /*
  * cds_lfht_del - remove node pointed to by iterator from hash table.
+ * @ht: the hash table.
+ * @node: the node to delete.
  *
  * Return 0 if the node is successfully removed, negative value
  * otherwise.
- * Replacing a NULL node or an already removed node will fail with a
+ * Deleting a NULL node or an already removed node will fail with a
  * negative value.
- * Node can be looked up with cds_lfht_lookup and cds_lfht_next.
- * cds_lfht_iter_get_node.
+ * Node can be looked up with cds_lfht_lookup and cds_lfht_next,
+ * followed by use of cds_lfht_iter_get_node.
  * RCU read-side lock must be held between lookup and removal.
  * Call with rcu_read_lock held.
  * Threads calling this API need to be registered RCU read-side threads.
@@ -335,10 +379,11 @@ int cds_lfht_replace(struct cds_lfht *ht, struct cds_lfht_iter *old_iter,
  * freeing the memory reserved for old node (which can be accessed with
  * cds_lfht_iter_get_node).
  */
-int cds_lfht_del(struct cds_lfht *ht, struct cds_lfht_iter *iter);
+int cds_lfht_del(struct cds_lfht *ht, struct cds_lfht_node *node);
 
 /*
  * cds_lfht_resize - Force a hash table resize
+ * @ht: the hash table.
  * @new_size: update to this hash table size.
  *
  * Threads calling this API need to be registered RCU read-side threads.
@@ -352,35 +397,35 @@ void cds_lfht_resize(struct cds_lfht *ht, unsigned long new_size);
 #define cds_lfht_for_each(ht, iter, node)				\
 	for (cds_lfht_first(ht, iter),					\
 			node = cds_lfht_iter_get_node(iter);		\
-			node != NULL;						\
-			cds_lfht_next(ht, iter),				\
+		node != NULL;						\
+		cds_lfht_next(ht, iter),				\
 			node = cds_lfht_iter_get_node(iter))
 
-#define cds_lfht_for_each_duplicate(ht, match, hash, key, iter, node)	\
-	for (cds_lfht_lookup(ht, match, hash, key, iter),		\
+#define cds_lfht_for_each_duplicate(ht, hash, match, key, iter, node)	\
+	for (cds_lfht_lookup(ht, hash, match, key, iter),		\
 			node = cds_lfht_iter_get_node(iter);		\
-			node != NULL;						\
-			cds_lfht_next_duplicate(ht, match, key, iter),		\
+		node != NULL;						\
+		cds_lfht_next_duplicate(ht, match, key, iter),		\
 			node = cds_lfht_iter_get_node(iter))
 
 #define cds_lfht_for_each_entry(ht, iter, pos, member)			\
 	for (cds_lfht_first(ht, iter),					\
 			pos = caa_container_of(cds_lfht_iter_get_node(iter), \
-				typeof(*(pos)), member);	\
-			&(pos)->member != NULL;					\
-			cds_lfht_next(ht, iter),				\
+					typeof(*(pos)), member);	\
+		&(pos)->member != NULL;					\
+		cds_lfht_next(ht, iter),				\
 			pos = caa_container_of(cds_lfht_iter_get_node(iter), \
-				typeof(*(pos)), member))
+					typeof(*(pos)), member))
 
-#define cds_lfht_for_each_entry_duplicate(ht, match, hash, key,		\
-		iter, pos, member)			\
-for (cds_lfht_lookup(ht, match, hash, key, iter),		\
-		pos = caa_container_of(cds_lfht_iter_get_node(iter), \
-			typeof(*(pos)), member);	\
+#define cds_lfht_for_each_entry_duplicate(ht, hash, match, key,		\
+				iter, pos, member)			\
+	for (cds_lfht_lookup(ht, hash, match, key, iter),		\
+			pos = caa_container_of(cds_lfht_iter_get_node(iter), \
+					typeof(*(pos)), member);	\
 		&(pos)->member != NULL;					\
 		cds_lfht_next_duplicate(ht, match, key, iter),		\
-		pos = caa_container_of(cds_lfht_iter_get_node(iter), \
-			typeof(*(pos)), member))
+			pos = caa_container_of(cds_lfht_iter_get_node(iter), \
+					typeof(*(pos)), member))
 
 #ifdef __cplusplus
 }
