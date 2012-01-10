@@ -1299,6 +1299,11 @@ void ust_app_unregister(int sock)
 
 	DBG("PID %d unregistering with sock %d", lta->key.pid, sock);
 
+	/* Remove application from socket hash table */
+	lttng_ht_lookup(ust_app_sock_key_map, (void *)((unsigned long) sock), &iter);
+	ret = lttng_ht_del(ust_app_sock_key_map, &iter);
+	assert(!ret);
+
 	/* Get the node reference for a call_rcu */
 	lttng_ht_lookup(ust_app_ht, (void *)((unsigned long) lta->key.pid), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
@@ -1307,6 +1312,7 @@ void ust_app_unregister(int sock)
 		goto error;
 	}
 
+	/* Remove application from PID hash table */
 	ret = lttng_ht_del(ust_app_ht, &iter);
 	assert(!ret);
 	call_rcu(&node->head, delete_ust_app_rcu);
