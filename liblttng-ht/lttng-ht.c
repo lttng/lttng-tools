@@ -160,7 +160,6 @@ void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 {
 	assert(ht);
 	assert(ht->ht);
-	assert(key);
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct(key, HASH_SEED),
 			ht->match_fct, key, &iter->iter);
