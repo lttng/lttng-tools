@@ -794,7 +794,7 @@ void __lookup_session_by_app(struct ltt_ust_session *usess,
 			struct ust_app *app, struct lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
-	lttng_ht_lookup(app->sessions, (void *)((unsigned long) usess->uid), iter);
+	lttng_ht_lookup(app->sessions, (void *)((unsigned long) usess->id), iter);
 }
 
 /*
@@ -856,7 +856,7 @@ static struct ust_app_session *create_ust_app_session(
 		ua_sess->handle = ret;
 
 		/* Add ust app session to app's HT */
-		lttng_ht_node_init_ulong(&ua_sess->node, (unsigned long) ua_sess->uid);
+		lttng_ht_node_init_ulong(&ua_sess->node, (unsigned long) ua_sess->id);
 		lttng_ht_add_unique_ulong(app->sessions, &ua_sess->node);
 
 		DBG2("UST app session created successfully with handle %d", ret);
