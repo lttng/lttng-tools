@@ -396,9 +396,8 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 
 	cds_lfht_for_each_entry(channel->events->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(channel->events, &iter);
-		if (!ret) {
-			destroy_event(channel->events);
-		}
+		assert(!ret);
+		destroy_event(channel->events);
 	}
 
 	destroy_context(channel->ctx);
@@ -439,6 +438,8 @@ static void destroy_channels(struct lttng_ht *channels)
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	rcu_read_lock();
+
 	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(channels, &iter);
 		if (!ret) {
@@ -447,6 +448,8 @@ static void destroy_channels(struct lttng_ht *channels)
 	}
 
 	lttng_ht_destroy(channels);
+
+	rcu_read_unlock();
 }
 
 /*

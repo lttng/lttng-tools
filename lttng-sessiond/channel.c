@@ -266,6 +266,10 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	return LTTCOMM_OK;
 
 error_free_chan:
+	/*
+	 * No need to remove the channel from the hash table because at this point
+	 * it was not added hence the direct call and no call_rcu().
+	 */
 	trace_ust_destroy_channel(uchan);
 error:
 	free(defattr);
