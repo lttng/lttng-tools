@@ -6,8 +6,8 @@ liblttng_consumer_la_SOURCES = lttng-consumer.c
 
 liblttng_consumer_la_LIBADD = \
 		$(top_builddir)/liblttng-sessiond-comm/liblttng-sessiond-comm.la \
-		$(top_builddir)/liblttng-kconsumer/liblttng-kconsumer.la
-
+		$(top_builddir)/liblttng-kconsumer/liblttng-kconsumer.la \
+		$(top_builddir)/liblttng-ht/liblttng-ht.la
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_consumer_la_LIBADD += \

@@ -267,6 +267,10 @@ int main(int argc, char **argv)
 			goto error;
 		}
 	}
+
+	/* Init */
+	lttng_consumer_init();
+
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
 		NULL, lttng_consumer_on_recv_stream, NULL);
