@@ -184,9 +184,10 @@ struct lttng_consumer_global_data {
 	/*
 	 * At this time, this lock is used to ensure coherence between the count
 	 * and number of element in the hash table. It's also a protection for
-	 * concurrent read/write between threads. Although hash table used are
-	 * lockless data structure, appropriate RCU lock mechanism are not yet
-	 * implemented in the consumer.
+	 * concurrent read/write between threads.
+	 *
+	 * XXX: We need to see if this lock is still needed with the lockless RCU
+	 * hash tables.
 	 */
 	pthread_mutex_t lock;
 
