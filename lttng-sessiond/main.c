@@ -1527,7 +1527,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		/*
 		 * Exec consumerd.
 		 */
-		if (opt_verbose > 1 || opt_verbose_consumer) {
+		if (opt_verbose_consumer) {
 			verbosity = "--verbose";
 		} else {
 			verbosity = "--quiet";
