@@ -1540,13 +1540,21 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 * sessiond's installation directory, and
 			 * fallback on the 32-bit one, 
 			 */
+			DBG3("Looking for a kernel consumer at these locations:");
+			DBG3("	1) %s", consumerd64_bin);
+			DBG3("	2) %s/%s", INSTALL_BIN_PATH, CONSUMERD_FILE);
+			DBG3("	3) %s", consumerd32_bin);
 			if (stat(consumerd64_bin, &st) == 0) {
+				DBG3("Found location #1");
 				consumer_to_use = consumerd64_bin;
 			} else if (stat(INSTALL_BIN_PATH "/" CONSUMERD_FILE, &st) == 0) {
+				DBG3("Found location #2");
 				consumer_to_use = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 			} else if (stat(consumerd32_bin, &st) == 0) {
+				DBG3("Found location #3");
 				consumer_to_use = consumerd32_bin;
 			} else {
+				DBG("Could not find any valid consumerd executable");
 				break;
 			}
 			DBG("Using kernel consumer at: %s",  consumer_to_use);
