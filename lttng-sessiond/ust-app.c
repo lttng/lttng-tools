@@ -584,7 +584,7 @@ static int create_ust_channel(struct ust_app *app,
 	ret = ustctl_create_channel(app->key.sock, ua_sess->handle,
 			(struct lttng_ust_channel_attr *)&ua_chan->attr, &ua_chan->obj);
 	if (ret < 0) {
-		DBG("Error creating channel %s for app (pid: %d, sock: %d) "
+		ERR("Creating channel %s for app (pid: %d, sock: %d) "
 				"and session handle %d with ret %d",
 				ua_chan->name, app->key.pid, app->key.sock,
 				ua_sess->handle, ret);
@@ -1062,8 +1062,6 @@ static struct ust_app_channel *create_ust_app_channel(
 			goto error;
 		}
 		shadow_copy_channel(ua_chan, uchan);
-
-		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 	} else {
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 	}
@@ -1072,6 +1070,8 @@ static struct ust_app_channel *create_ust_app_channel(
 	if (ret < 0) {
 		goto error;
 	}
+
+	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 
 	return ua_chan;
 
