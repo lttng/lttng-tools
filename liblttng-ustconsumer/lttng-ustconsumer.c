@@ -278,11 +278,8 @@ int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
 	if (!chan->handle) {
 		return -ENOMEM;
 	}
-	/*
-	 * The channel fds are passed to ustctl, we only keep a copy.
-	 */
-	chan->shm_fd_is_copy = 1;
 	chan->wait_fd_is_copy = 1;
+	chan->shm_fd = -1;
 
 	return 0;
 }
@@ -313,15 +310,14 @@ int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 	stream->buf = ustctl_open_stream_read(stream->chan->handle, stream->cpu);
 	if (!stream->buf)
 		return -EBUSY;
+	/* ustctl_open_stream_read has closed the shm fd. */
+	stream->wait_fd_is_copy = 1;
+	stream->shm_fd = -1;
+
 	stream->mmap_base = ustctl_get_mmap_base(stream->chan->handle, stream->buf);
 	if (!stream->mmap_base) {
 		return -EINVAL;
 	}
-	/*
-	 * The stream fds are passed to ustctl, we only keep a copy.
-	 */
-	stream->shm_fd_is_copy = 1;
-	stream->wait_fd_is_copy = 1;
 
 	return 0;
 }
