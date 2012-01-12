@@ -183,6 +183,13 @@ AS_IF([test "x$consumerd_only" = "xyes"],[
 	AS_ECHO("All binaries will be built.")
 ])
 
+# Print the bindir and libdir this `make install' will install into.
+AS_ECHO()
+AS_ECHO_N("Binaries will be installed in:  ")
+AS_ECHO("`eval eval echo $bindir`")
+AS_ECHO_N("Libraries will be installed in: ")
+AS_ECHO("`eval eval echo $libdir`")
+
 # If we build the sessiond, print the paths it will use
 AS_IF([test "x$consumerd_only" = "xno"],[
 	AS_ECHO()
