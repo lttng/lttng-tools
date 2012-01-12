@@ -845,6 +845,8 @@ void *lttng_consumer_thread_poll_fds(void *data)
 	int tmp2;
 	struct lttng_consumer_local_data *ctx = data;
 
+	rcu_register_thread();
+
 	local_stream = zmalloc(sizeof(struct lttng_consumer_stream));
 
 	while (1) {
@@ -1005,6 +1007,7 @@ end:
 		free(local_stream);
 		local_stream = NULL;
 	}
+	rcu_unregister_thread();
 	return NULL;
 }
 
@@ -1021,6 +1024,8 @@ void *lttng_consumer_thread_receive_fds(void *data)
 	 */
 	struct pollfd consumer_sockpoll[2];
 	struct lttng_consumer_local_data *ctx = data;
+
+	rcu_register_thread();
 
 	DBG("Creating command socket %s", ctx->consumer_command_sock_path);
 	unlink(ctx->consumer_command_sock_path);
@@ -1117,6 +1122,7 @@ end:
 	if (ret < 0) {
 		perror("poll pipe write");
 	}
+	rcu_unregister_thread();
 	return NULL;
 }
 
