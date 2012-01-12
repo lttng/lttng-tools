@@ -592,9 +592,6 @@ static int create_ust_channel(struct ust_app *app,
 	}
 
 	ua_chan->handle = ua_chan->obj->handle;
-	ua_chan->attr.shm_fd = ua_chan->obj->shm_fd;
-	ua_chan->attr.wait_fd = ua_chan->obj->wait_fd;
-	ua_chan->attr.memory_map_size = ua_chan->obj->memory_map_size;
 
 	DBG2("UST app channel %s created successfully for pid:%d and sock:%d",
 			ua_chan->name, app->key.pid, app->key.sock);
