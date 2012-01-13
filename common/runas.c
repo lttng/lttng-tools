@@ -230,7 +230,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	 * where the stack grows up (HPPA).
 	 */
 	pid = clone(child_run_as, child_stack + (CHILD_STACK_SIZE / 2),
-		CLONE_FILES | SIGCHLD | CLONE_VM,
+		CLONE_FILES | SIGCHLD,
 		&run_as_data, NULL);
 	if (pid < 0) {
 		perror("clone");
