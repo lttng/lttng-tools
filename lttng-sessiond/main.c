@@ -174,14 +174,10 @@ static struct ltt_session_list *session_list_ptr;
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
 
-static const char *consumerd32_bin =
-	__stringify(CONFIG_CONSUMERD32_BIN);
-static const char *consumerd64_bin =
-	__stringify(CONFIG_CONSUMERD64_BIN);
-static const char *consumerd32_libdir =
-	__stringify(CONFIG_CONSUMERD32_LIBDIR);
-static const char *consumerd64_libdir =
-	__stringify(CONFIG_CONSUMERD64_LIBDIR);
+static const char *consumerd32_bin = CONFIG_CONSUMERD32_BIN;
+static const char *consumerd64_bin = CONFIG_CONSUMERD64_BIN;
+static const char *consumerd32_libdir = CONFIG_CONSUMERD32_LIBDIR;
+static const char *consumerd64_libdir = CONFIG_CONSUMERD64_LIBDIR;
 
 static
 void setup_consumerd_path(void)

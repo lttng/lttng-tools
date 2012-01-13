@@ -42,10 +42,10 @@ AC_ARG_WITH([consumer64d-libdir],
 	[CONSUMERD64_LIBDIR=''])
 AC_SUBST([CONSUMERD64_LIBDIR])
 
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], $CONSUMERD32_BIN, [Location of the 32-bit consumerd executable.])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], $CONSUMERD64_BIN, [Location of the 64-bit consumerd executable])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], $CONSUMERD32_LIBDIR, [Search for consumerd 32-bit libraries in this location.])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], $CONSUMERD64_LIBDIR, [Search for consumerd 64-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], "$CONSUMERD32_BIN", [Location of the 32-bit consumerd executable.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of the 64-bit consumerd executable])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], "$CONSUMERD64_LIBDIR", [Search for consumerd 64-bit libraries in this location.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
