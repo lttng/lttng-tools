@@ -359,7 +359,7 @@ error:
 int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan, struct lttng_event *event)
 {
-	int ret, to_create = 0;
+	int ret = LTTCOMM_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
 
 	uevent = trace_ust_find_event_by_name(uchan->events, event->name);
@@ -369,6 +369,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 			ret = LTTCOMM_FATAL;
 			goto error;
 		}
+		/* Valid to set it after the goto error since uevent is still NULL */
 		to_create = 1;
 	}
 
@@ -376,6 +377,8 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		/* It's already enabled so everything is OK */
 		goto end;
 	}
+
+	uevent->enabled = 1;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -407,10 +410,9 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		goto end;
 	}
 
-	uevent->enabled = 1;
-	/* Add ltt ust event to channel */
 	if (to_create) {
 		rcu_read_lock();
+		/* Add ltt ust event to channel */
 		lttng_ht_add_unique_str(uchan->events, &uevent->node);
 		rcu_read_unlock();
 	}
@@ -418,11 +420,23 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 	DBG("Event UST %s %s in channel %s", uevent->attr.name,
 			to_create ? "created" : "enabled", uchan->name);
 
+	ret = LTTCOMM_OK;
+
 end:
-	return LTTCOMM_OK;
+	return ret;
 
 error:
-	trace_ust_destroy_event(uevent);
+	/*
+	 * Only destroy event on creation time (not enabling time) because if the
+	 * event is found in the channel (to_create == 0), it means that at some
+	 * point the enable_event worked and it's thus valid to keep it alive.
+	 * Destroying it also implies that we also destroy it's shadow copy to sync
+	 * everyone up.
+	 */
+	if (to_create) {
+		/* In this code path, the uevent was not added to the hash table */
+		trace_ust_destroy_event(uevent);
+	}
 	return ret;
 }
 
