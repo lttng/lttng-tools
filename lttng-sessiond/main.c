@@ -2916,7 +2916,7 @@ static int cmd_stop_trace(struct ltt_session *session)
 	usess = session->ust_session;
 
 	if (!session->enabled) {
-		ret = LTTCOMM_UST_START_FAIL;
+		ret = LTTCOMM_UST_STOP_FAIL;
 		goto error;
 	}
 
@@ -2953,7 +2953,7 @@ static int cmd_stop_trace(struct ltt_session *session)
 
 		ret = ust_app_stop_trace_all(usess);
 		if (ret < 0) {
-			ret = LTTCOMM_UST_START_FAIL;
+			ret = LTTCOMM_UST_STOP_FAIL;
 			goto error;
 		}
 	}

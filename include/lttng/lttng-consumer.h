@@ -78,7 +78,6 @@ struct lttng_consumer_channel {
 	size_t mmap_len;
 	struct lttng_ust_shm_handle *handle;
 	int nr_streams;
-	int shm_fd_is_copy;
 	int wait_fd_is_copy;
 	int cpucount;
 };

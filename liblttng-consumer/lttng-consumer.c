@@ -178,8 +178,7 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 	if (stream->wait_fd >= 0 && !stream->wait_fd_is_copy) {
 		close(stream->wait_fd);
 	}
-	if (stream->shm_fd >= 0 && stream->wait_fd != stream->shm_fd
-			&& !stream->shm_fd_is_copy) {
+	if (stream->shm_fd >= 0 && stream->wait_fd != stream->shm_fd) {
 		close(stream->shm_fd);
 	}
 	if (!--stream->chan->refcount)
@@ -363,8 +362,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	if (channel->wait_fd >= 0 && !channel->wait_fd_is_copy) {
 		close(channel->wait_fd);
 	}
-	if (channel->shm_fd >= 0 && channel->wait_fd != channel->shm_fd
-			&& !channel->shm_fd_is_copy) {
+	if (channel->shm_fd >= 0 && channel->wait_fd != channel->shm_fd) {
 		close(channel->shm_fd);
 	}
 	free(channel);
