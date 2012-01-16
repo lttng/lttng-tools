@@ -144,6 +144,7 @@ AC_CONFIG_FILES([
 	lttng-sessiond/Makefile
 	lttng/Makefile
 	tests/Makefile
+	tests/ust-nevents/Makefile
 	doc/Makefile
 ])
 

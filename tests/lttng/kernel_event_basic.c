@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 
     int ret = 0;
 
-	char *session_name = "kernel_event";
+	char *session_name = "kernel_event_basic";
 
     dom.type = LTTNG_DOMAIN_KERNEL;
 

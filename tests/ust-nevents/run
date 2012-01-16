@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TESTDIR=$(dirname $0)/..
+NR_ITER=100
+SESSION_NAME="ust-nevents"
+EVENT_NAME="ust_gen_nevents:tptest"
+TRACE_PATH=$(mktemp -d)
+
+source $TESTDIR/utils.sh
+
+echo -e "\n-----------------------------------"
+echo -e "UST tracer - Generate $NR_ITER events"
+echo -e "-------------------------------------"
+
+# MUST set TESTDIR before calling those functions
+
+create_lttng_session $SESSION_NAME $TRACE_PATH
+
+enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+start_tracing $SESSION_NAME
+
+# Start test
+./$(dirname $0)/gen-nevents $NR_ITER
+
+stop_tracing $SESSION_NAME
+destroy_lttng_session $SESSION_NAME
+
+trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+
+rm -rf $TRACE_PATH

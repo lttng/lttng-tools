@@ -42,5 +42,6 @@ tests/kernel_all_events_basic
 tests/kernel_event_basic
 tests/ust_global_all_events_basic
 tests/ust_global_event_basic
+tests/ust-nevents/gen-nevents
 
 benchmark/

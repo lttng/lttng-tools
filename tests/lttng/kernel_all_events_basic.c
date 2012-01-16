@@ -35,6 +35,7 @@ int main(int argc, char **argv)
     struct lttng_domain dom;
 	struct lttng_event event;
     char *channel_name = "channel0";
+	char *session_name = "kernel_all_events_basic";
     int ret = 0;
 
     dom.type = LTTNG_DOMAIN_KERNEL;
@@ -56,14 +57,14 @@ int main(int argc, char **argv)
 	}
 
 	printf("Creating tracing session (%s): ", argv[1]);
-    if ((ret = lttng_create_session("test", argv[1])) < 0) {
+    if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
         printf("error creating the session : %s\n", lttng_strerror(ret));
 		goto create_fail;
     }
 	PRINT_OK();
 
 	printf("Creating session handle: ");
-	if ((handle = lttng_create_handle("test", &dom)) == NULL) {
+	if ((handle = lttng_create_handle(session_name, &dom)) == NULL) {
 		printf("error creating handle: %s\n", lttng_strerror(ret));
 		goto handle_fail;
 	}
@@ -77,7 +78,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Start tracing: ");
-    if ((ret = lttng_start_tracing("test")) < 0) {
+    if ((ret = lttng_start_tracing(session_name)) < 0) {
         printf("error starting tracing: %s\n", lttng_strerror(ret));
 		goto start_fail;
     }
@@ -86,14 +87,14 @@ int main(int argc, char **argv)
     sleep(2);
 
 	printf("Stop tracing: ");
-	if ((ret = lttng_stop_tracing("test")) < 0) {
+	if ((ret = lttng_stop_tracing(session_name)) < 0) {
 		printf("error stopping tracing: %s\n", lttng_strerror(ret));
 		goto stop_fail;
 	}
 	PRINT_OK();
 
 	printf("Destroy tracing session: ");
-	if ((ret = lttng_destroy_session("test")) < 0) {
+	if ((ret = lttng_destroy_session(session_name)) < 0) {
 		printf("error destroying session: %s\n", lttng_strerror(ret));
 	}
 	PRINT_OK();
@@ -108,7 +109,7 @@ handle_fail:
 stop_fail:
 start_fail:
 enable_fail:
-	lttng_destroy_session("test");
+	lttng_destroy_session(session_name);
 	lttng_destroy_handle(handle);
 
     return 1;

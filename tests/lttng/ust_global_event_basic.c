@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
     int ret = 0;
 
-	char *session_name = "ust_event_basic";
+	char *session_name = "ust_global_event_basic";
 
     dom.type = LTTNG_DOMAIN_UST;
 

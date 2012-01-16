@@ -19,9 +19,19 @@
 
 #### ADD TESTS HERE ####
 
-test_suite=( test_sessions test_kernel_data_trace test_ust_data_trace lttng/runall.sh )
+test_suite=( test_sessions test_kernel_data_trace test_ust_data_trace
+			lttng/runall.sh ust-nevents/run )
 
 #### END TESTS HERE ####
+
+TESTDIR=$(dirname $0)
+
+source $TESTDIR/utils.sh
+
+start_sessiond
+if [ $? -ne 0 ]; then
+	exit 1
+fi
 
 for bin in ${test_suite[@]};
 do
@@ -30,9 +40,11 @@ do
 	if [ $? -ne 0 ]; then
 		echo -e '\e[1;31mFAIL\e[0m'
 		echo ""
+		stop_sessiond
 		exit 1
 	fi
 done
 
 echo ""
+stop_sessiond
 exit 0
