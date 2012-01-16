@@ -27,8 +27,8 @@
 
 #include <lttng-sessiond-comm.h>
 #include <lttngerr.h>
-#include <runas.h>
 
+#include "common/runas.h"
 #include "session.h"
 
 /*

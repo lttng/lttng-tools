@@ -44,7 +44,7 @@
 #include <lttng/lttng-consumer.h>
 
 #include <lttngerr.h>
-#include <runas.h>
+#include "common/runas.h"
 
 #include "channel.h"
 #include "compat/poll.h"

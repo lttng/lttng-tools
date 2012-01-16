@@ -25,15 +25,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <runas.h>
 
 #include <urcu/compiler.h>
 
 #include <lttngerr.h>
 #include <lttng-ht.h>
 #include <lttng-share.h>
-#include <runas.h>
 
+#include "common/runas.h"
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"

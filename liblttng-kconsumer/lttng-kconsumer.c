@@ -33,7 +33,8 @@
 #include <lttng-sessiond-comm.h>
 #include <lttng/lttng-kconsumer.h>
 #include <lttngerr.h>
-#include <runas.h>
+
+#include "common/runas.h"
 
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;

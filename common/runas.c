@@ -32,6 +32,8 @@
 
 #include <lttngerr.h>
 
+#include "runas.h"
+
 #define CHILD_STACK_SIZE	10485760
 
 struct run_as_data {
