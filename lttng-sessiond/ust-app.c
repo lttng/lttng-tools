@@ -63,6 +63,7 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 	struct lttng_ht_iter iter;
 	struct ust_app_ctx *ua_ctx;
 
+	/* Destroy each context of event */
 	cds_lfht_for_each_entry(ua_event->ctx->ht, &iter.iter, ua_ctx,
 			node.node) {
 		ret = lttng_ht_del(ua_event->ctx, &iter);
@@ -542,8 +543,8 @@ static int open_ust_metadata(struct ust_app *app,
 	ret = ustctl_open_metadata(app->key.sock, ua_sess->handle, &uattr,
 			&ua_sess->metadata->obj);
 	if (ret < 0) {
-		ERR("UST app open metadata failed for app pid:%d",
-				app->key.pid);
+		ERR("UST app open metadata failed for app pid:%d with ret %d",
+				app->key.pid, ret);
 		goto error;
 	}
 
@@ -584,7 +585,7 @@ static int create_ust_channel(struct ust_app *app,
 	ret = ustctl_create_channel(app->key.sock, ua_sess->handle,
 			(struct lttng_ust_channel_attr *)&ua_chan->attr, &ua_chan->obj);
 	if (ret < 0) {
-		DBG("Error creating channel %s for app (pid: %d, sock: %d) "
+		ERR("Creating channel %s for app (pid: %d, sock: %d) "
 				"and session handle %d with ret %d",
 				ua_chan->name, app->key.pid, app->key.sock,
 				ua_sess->handle, ret);
@@ -592,9 +593,6 @@ static int create_ust_channel(struct ust_app *app,
 	}
 
 	ua_chan->handle = ua_chan->obj->handle;
-	ua_chan->attr.shm_fd = ua_chan->obj->shm_fd;
-	ua_chan->attr.wait_fd = ua_chan->obj->wait_fd;
-	ua_chan->attr.memory_map_size = ua_chan->obj->memory_map_size;
 
 	DBG2("UST app channel %s created successfully for pid:%d and sock:%d",
 			ua_chan->name, app->key.pid, app->key.sock);
@@ -624,6 +622,10 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	ret = ustctl_create_event(app->key.sock, &ua_event->attr, ua_chan->obj,
 			&ua_event->obj);
 	if (ret < 0) {
+		if (ret == -EEXIST) {
+			ret = 0;
+			goto error;
+		}
 		ERR("Error ustctl create event %s for app pid: %d with ret %d",
 				ua_event->attr.name, app->key.pid, ret);
 		goto error;
@@ -635,9 +637,25 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			ua_event->attr.name, app->key.pid);
 
 	/* If event not enabled, disable it on the tracer */
-	if (!ua_event->enabled) {
+	if (ua_event->enabled == 0) {
 		ret = disable_ust_event(app, ua_sess, ua_event);
 		if (ret < 0) {
+			/*
+			 * If we hit an EPERM, something is wrong with our disable call. If
+			 * we get an EEXIST, there is a problem on the tracer side since we
+			 * just created it.
+			 */
+			switch (ret) {
+			case -EPERM:
+				/* Code flow problem */
+				assert(0);
+			case -EEXIST:
+				/* It's OK for our use case. */
+				ret = 0;
+				break;
+			default:
+				break;
+			}
 			goto error;
 		}
 	}
@@ -659,14 +677,18 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 	strncpy(ua_event->name, uevent->attr.name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 
+	ua_event->enabled = uevent->enabled;
+
 	/* Copy event attributes */
 	memcpy(&ua_event->attr, &uevent->attr, sizeof(ua_event->attr));
 
 	cds_lfht_for_each_entry(uevent->ctx->ht, &iter.iter, uctx, node.node) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
 		if (ua_ctx == NULL) {
-			continue;
+			/* malloc() failed. We should simply stop */
+			return;
 		}
+
 		lttng_ht_node_init_ulong(&ua_ctx->node,
 				(unsigned long) ua_ctx->ctx.ctx);
 		lttng_ht_add_unique_ulong(ua_event->ctx, &ua_ctx->node);
@@ -686,12 +708,14 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
 
-	DBG2("Shadow copy of UST app channel %s", ua_chan->name);
+	DBG2("UST app shadow copy of channel %s started", ua_chan->name);
 
 	strncpy(ua_chan->name, uchan->name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
 	/* Copy event attributes */
 	memcpy(&ua_chan->attr, &uchan->attr, sizeof(ua_chan->attr));
+
+	ua_chan->enabled = uchan->enabled;
 
 	cds_lfht_for_each_entry(uchan->ctx->ht, &iter.iter, uctx, node.node) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
@@ -721,7 +745,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 		}
 	}
 
-	DBG3("Shadow copy channel done");
+	DBG3("UST app shadow copy of channel %s done", ua_chan->name);
 }
 
 /*
@@ -750,10 +774,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->uid = usess->uid;
 	ua_sess->gid = usess->gid;
 
-	ret = snprintf(ua_sess->path, PATH_MAX,
-			"%s/%s-%d-%s",
-			usess->pathname, app->name, app->key.pid,
-			datetime);
+	ret = snprintf(ua_sess->path, PATH_MAX, "%s/%s-%d-%s", usess->pathname,
+			app->name, app->key.pid, datetime);
 	if (ret < 0) {
 		PERROR("asprintf UST shadow copy session");
 		/* TODO: We cannot return an error from here.. */
@@ -770,6 +792,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_chan_node != NULL) {
+			/* Session exist. Contiuing. */
 			continue;
 		}
 
@@ -777,7 +800,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 				uchan->name);
 		ua_chan = alloc_ust_app_channel(uchan->name, &uchan->attr);
 		if (ua_chan == NULL) {
-			/* malloc failed... continuing */
+			/* malloc failed FIXME: Might want to do handle ENOMEM .. */
 			continue;
 		}
 
@@ -794,7 +817,7 @@ void __lookup_session_by_app(struct ltt_ust_session *usess,
 			struct ust_app *app, struct lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
-	lttng_ht_lookup(app->sessions, (void *)((unsigned long) usess->uid), iter);
+	lttng_ht_lookup(app->sessions, (void *)((unsigned long) usess->id), iter);
 }
 
 /*
@@ -838,7 +861,7 @@ static struct ust_app_session *create_ust_app_session(
 		ua_sess = alloc_ust_app_session();
 		if (ua_sess == NULL) {
 			/* Only malloc can failed so something is really wrong */
-			goto error;
+			goto end;
 		}
 		shadow_copy_session(ua_sess, usess, app);
 	}
@@ -846,25 +869,24 @@ static struct ust_app_session *create_ust_app_session(
 	if (ua_sess->handle == -1) {
 		ret = ustctl_create_session(app->key.sock);
 		if (ret < 0) {
-			ERR("Error creating session for app pid %d, sock %d",
-					app->key.pid, app->key.sock);
-			/* TODO: free() ua_sess */
+			ERR("Creating session for app pid %d", app->key.pid);
 			goto error;
 		}
 
-		DBG2("UST app ustctl create session handle %d", ret);
 		ua_sess->handle = ret;
 
 		/* Add ust app session to app's HT */
-		lttng_ht_node_init_ulong(&ua_sess->node, (unsigned long) ua_sess->uid);
+		lttng_ht_node_init_ulong(&ua_sess->node, (unsigned long) ua_sess->id);
 		lttng_ht_add_unique_ulong(app->sessions, &ua_sess->node);
 
 		DBG2("UST app session created successfully with handle %d", ret);
 	}
 
+end:
 	return ua_sess;
 
 error:
+	delete_ust_app_session(-1, ua_sess);
 	return NULL;
 }
 
@@ -1054,28 +1076,35 @@ static struct ust_app_channel *create_ust_app_channel(
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_chan_node == NULL) {
-		DBG2("Unable to find channel %s in ust session id %u",
-				uchan->name, ua_sess->id);
-		ua_chan = alloc_ust_app_channel(uchan->name, &uchan->attr);
-		if (ua_chan == NULL) {
-			goto error;
-		}
-		shadow_copy_channel(ua_chan, uchan);
-
-		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
-	} else {
+	if (ua_chan_node != NULL) {
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		goto end;
 	}
+
+	ua_chan = alloc_ust_app_channel(uchan->name, &uchan->attr);
+	if (ua_chan == NULL) {
+		/* Only malloc can fail here */
+		goto error;
+	}
+	shadow_copy_channel(ua_chan, uchan);
 
 	ret = create_ust_channel(app, ua_sess, ua_chan);
 	if (ret < 0) {
+		/* Not found previously means that it does not exist on the tracer */
+		assert(ret != -EEXIST);
 		goto error;
 	}
 
+	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
+
+	DBG2("UST app create channel %s for PID %d completed", ua_chan->name,
+			app->key.pid);
+
+end:
 	return ua_chan;
 
 error:
+	delete_ust_app_channel(-1, ua_chan);
 	return NULL;
 }
 
@@ -1096,8 +1125,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
 	ua_event_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_event_node != NULL) {
-		ERR("UST app event %s already exist. Stopping creation.",
-				uevent->attr.name);
+		ret = -EEXIST;
 		goto end;
 	}
 
@@ -1106,28 +1134,29 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	if (ua_event == NULL) {
 		/* Only malloc can failed so something is really wrong */
 		ret = -ENOMEM;
-		goto error;
+		goto end;
 	}
 	shadow_copy_event(ua_event, uevent);
 
 	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 	if (ret < 0) {
-		rcu_read_lock();
-		delete_ust_app_event(app->key.sock, ua_event);
-		rcu_read_unlock();
+		/* Not found previously means that it does not exist on the tracer */
+		assert(ret != -EEXIST);
 		goto error;
 	}
 
-	ua_event->enabled = 1;
-
 	lttng_ht_add_unique_str(ua_chan->events, &ua_event->node);
 
-	DBG2("UST app create event %s for PID %d completed",
-			ua_event->name, app->key.pid);
+	DBG2("UST app create event %s for PID %d completed", ua_event->name,
+			app->key.pid);
 
 end:
+	return ret;
+
 error:
+	/* Valid. Calling here is already in a read side lock */
+	delete_ust_app_event(-1, ua_event);
 	return ret;
 }
 
@@ -1143,13 +1172,14 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		/* Allocate UST metadata */
 		ua_sess->metadata = trace_ust_create_metadata(pathname);
 		if (ua_sess->metadata == NULL) {
-			ERR("UST app session %d creating metadata failed",
-					ua_sess->handle);
+			/* malloc() failed */
 			goto error;
 		}
 
 		ret = open_ust_metadata(app, ua_sess);
 		if (ret < 0) {
+			/* Cleanup failed metadata struct */
+			free(ua_sess->metadata);
 			goto error;
 		}
 
@@ -1299,6 +1329,11 @@ void ust_app_unregister(int sock)
 
 	DBG("PID %d unregistering with sock %d", lta->key.pid, sock);
 
+	/* Remove application from socket hash table */
+	lttng_ht_lookup(ust_app_sock_key_map, (void *)((unsigned long) sock), &iter);
+	ret = lttng_ht_del(ust_app_sock_key_map, &iter);
+	assert(!ret);
+
 	/* Get the node reference for a call_rcu */
 	lttng_ht_lookup(ust_app_ht, (void *)((unsigned long) lta->key.pid), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
@@ -1307,6 +1342,7 @@ void ust_app_unregister(int sock)
 		goto error;
 	}
 
+	/* Remove application from PID hash table */
 	ret = lttng_ht_del(ust_app_ht, &iter);
 	assert(!ret);
 	call_rcu(&node->head, delete_ust_app_rcu);
@@ -1647,17 +1683,14 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
-	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	if (usess == NULL || uchan == NULL) {
-		ERR("Adding UST global channel to NULL values");
-		ret = -1;
-		goto error;
-	}
+	/* Very wrong code flow */
+	assert(usess);
+	assert(uchan);
 
 	DBG2("UST app adding channel %s to global domain for session id %d",
 			uchan->name, usess->id);
@@ -1673,20 +1706,24 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		 */
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
-			continue;
+			/* Major problem here and it's maybe the tracer or malloc() */
+			goto error;
 		}
 
 		/* Create channel onto application */
 		ua_chan = create_ust_app_channel(ua_sess, uchan, app);
 		if (ua_chan == NULL) {
-			continue;
+			/* Major problem here and it's maybe the tracer or malloc() */
+			goto error;
 		}
 	}
 
 	rcu_read_unlock();
 
+	return 0;
+
 error:
-	return ret;
+	return -1;
 }
 
 /*
@@ -1765,12 +1802,6 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	DBG("UST app creating event %s for all apps for session id %d",
 			uevent->attr.name, usess->id);
 
-	/*
-	 * NOTE: At this point, this function is called only if the session and
-	 * channel passed are already created for all apps. and enabled on the
-	 * tracer also.
-	 */
-
 	rcu_read_lock();
 
 	/* For all registered applications */
@@ -1789,6 +1820,12 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
 		if (ret < 0) {
+			if (ret != -EEXIST) {
+				/* Possible value at this point: -ENOMEM. If so, we stop! */
+				break;
+			}
+			DBG2("UST app event %s already exist on app PID %d",
+					uevent->attr.name, app->key.pid);
 			continue;
 		}
 	}

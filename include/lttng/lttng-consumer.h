@@ -23,8 +23,9 @@
 #include <limits.h>
 #include <poll.h>
 #include <unistd.h>
-#include <urcu/list.h>
+
 #include <lttng/lttng.h>
+#include <lttng-ht.h>
 
 /*
  * When the receiving thread dies, we need to have a way to make the polling
@@ -58,14 +59,6 @@ enum lttng_consumer_stream_state {
 	LTTNG_CONSUMER_DELETE_STREAM,
 };
 
-struct lttng_consumer_channel_list {
-	struct cds_list_head head;
-};
-
-struct lttng_consumer_stream_list {
-	struct cds_list_head head;
-};
-
 enum lttng_consumer_type {
 	LTTNG_CONSUMER_UNKNOWN = 0,
 	LTTNG_CONSUMER_KERNEL,
@@ -74,7 +67,7 @@ enum lttng_consumer_type {
 };
 
 struct lttng_consumer_channel {
-	struct cds_list_head list;
+	struct lttng_ht_node_ulong node;
 	int key;
 	uint64_t max_sb_size; /* the subbuffer size for this channel */
 	int refcount; /* Number of streams referencing this channel */
@@ -85,7 +78,6 @@ struct lttng_consumer_channel {
 	size_t mmap_len;
 	struct lttng_ust_shm_handle *handle;
 	int nr_streams;
-	int shm_fd_is_copy;
 	int wait_fd_is_copy;
 	int cpucount;
 };
@@ -98,7 +90,7 @@ struct lttng_ust_lib_ring_buffer;
  * uniquely a stream.
  */
 struct lttng_consumer_stream {
-	struct cds_list_head list;
+	struct lttng_ht_node_ulong node;
 	struct lttng_consumer_channel *chan;	/* associated channel */
 	/*
 	 * key is the key used by the session daemon to refer to the
@@ -187,26 +179,26 @@ struct lttng_consumer_local_data {
  * Library-level data. One instance per process.
  */
 struct lttng_consumer_global_data {
+
 	/*
-	 * consumer_data.lock protects consumer_data.fd_list,
-	 * consumer_data.stream_count, and consumer_data.need_update. It
-	 * ensures the count matches the number of items in the fd_list.
-	 * It ensures the list updates *always* trigger an fd_array
-	 * update (therefore need to make list update vs
-	 * consumer_data.need_update flag update atomic, and also flag
-	 * read, fd array and flag clear atomic).
+	 * At this time, this lock is used to ensure coherence between the count
+	 * and number of element in the hash table. It's also a protection for
+	 * concurrent read/write between threads.
+	 *
+	 * XXX: We need to see if this lock is still needed with the lockless RCU
+	 * hash tables.
 	 */
 	pthread_mutex_t lock;
+
 	/*
-	 * Number of streams in the list below. Protected by
-	 * consumer_data.lock.
+	 * Number of streams in the hash table. Protected by consumer_data.lock.
 	 */
 	int stream_count;
 	/*
-	 * Lists of streams and channels. Protected by consumer_data.lock.
+	 * Hash tables of streams and channels. Protected by consumer_data.lock.
 	 */
-	struct lttng_consumer_stream_list stream_list;
-	struct lttng_consumer_channel_list channel_list;
+	struct lttng_ht *stream_ht;
+	struct lttng_ht *channel_ht;
 	/*
 	 * Flag specifying if the local array of FDs needs update in the
 	 * poll function. Protected by consumer_data.lock.
@@ -214,6 +206,11 @@ struct lttng_consumer_global_data {
 	unsigned int need_update;
 	enum lttng_consumer_type type;
 };
+
+/*
+ * Init consumer data structures.
+ */
+extern void lttng_consumer_init(void);
 
 /*
  * Set the error socket for communication with a session daemon.

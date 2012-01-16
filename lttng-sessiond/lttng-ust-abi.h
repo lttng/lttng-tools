@@ -42,20 +42,6 @@ struct lttng_ust_channel {
 	unsigned int switch_timer_interval;	/* usecs */
 	unsigned int read_timer_interval;	/* usecs */
 	enum lttng_ust_output output;		/* output mode */
-	/* The following fields are used internally within UST. */
-	int shm_fd;
-	int wait_fd;
-	uint64_t memory_map_size;
-};
-
-/*
- * This structure is only used internally within UST. It is not per-se
- * part of the communication between sessiond and UST.
- */
-struct lttng_ust_stream {
-	int shm_fd;
-	int wait_fd;
-	uint64_t memory_map_size;
 };
 
 struct lttng_ust_event {
@@ -151,8 +137,22 @@ struct lttng_ust_object_data {
 
 struct lttng_ust_obj;
 
+union ust_args {
+	struct {
+		int *shm_fd;
+		int *wait_fd;
+		uint64_t *memory_map_size;
+	} channel;
+	struct {
+		int *shm_fd;
+		int *wait_fd;
+		uint64_t *memory_map_size;
+	} stream;
+};
+
 struct lttng_ust_objd_ops {
-	long (*cmd)(int objd, unsigned int cmd, unsigned long arg);
+	long (*cmd)(int objd, unsigned int cmd, unsigned long arg,
+		union ust_args *args);
 	int (*release)(int objd);
 };
 

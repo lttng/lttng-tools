@@ -216,7 +216,6 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		struct lttng_channel *attr)
 {
 	int ret = LTTCOMM_OK;
-	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
 
@@ -236,11 +235,11 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		ret = LTTCOMM_FATAL;
 		goto error;
 	}
+	uchan->enabled = 1;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		DBG2("Channel %s being created in UST global domain", uchan->name);
-		chan_ht = usess->domain_global.channels;
 
 		/* Enable channel for global domain */
 		ret = ust_app_create_channel_glb(usess, uchan);
@@ -258,14 +257,21 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		goto error_free_chan;
 	}
 
-	uchan->enabled = 1;
-	lttng_ht_add_unique_str(chan_ht, &uchan->node);
+	/* Adding the channel to the channel hash table. */
+	rcu_read_lock();
+	lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
+	rcu_read_unlock();
+
 	DBG2("Channel %s created successfully", uchan->name);
 
 	free(defattr);
 	return LTTCOMM_OK;
 
 error_free_chan:
+	/*
+	 * No need to remove the channel from the hash table because at this point
+	 * it was not added hence the direct call and no call_rcu().
+	 */
 	trace_ust_destroy_channel(uchan);
 error:
 	free(defattr);

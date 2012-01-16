@@ -62,7 +62,8 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 	struct lttng_ht *ht;
 
 	/* Test size */
-	size != 0 ? : (size = DEFAULT_HT_SIZE);
+	if (!size)
+		size = DEFAULT_HT_SIZE;
 
 	ht = zmalloc(sizeof(*ht));
 	if (ht == NULL) {
@@ -160,7 +161,6 @@ void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 {
 	assert(ht);
 	assert(ht->ht);
-	assert(key);
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct(key, HASH_SEED),
 			ht->match_fct, key, &iter->iter);

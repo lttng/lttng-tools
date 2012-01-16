@@ -42,10 +42,10 @@ AC_ARG_WITH([consumer64d-libdir],
 	[CONSUMERD64_LIBDIR=''])
 AC_SUBST([CONSUMERD64_LIBDIR])
 
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], $CONSUMERD32_BIN, [Location of the 32-bit consumerd executable.])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], $CONSUMERD64_BIN, [Location of the 64-bit consumerd executable])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], $CONSUMERD32_LIBDIR, [Search for consumerd 32-bit libraries in this location.])
-AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], $CONSUMERD64_LIBDIR, [Search for consumerd 64-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], "$CONSUMERD32_BIN", [Location of the 32-bit consumerd executable.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of the 64-bit consumerd executable])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], "$CONSUMERD64_LIBDIR", [Search for consumerd 64-bit libraries in this location.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
@@ -155,18 +155,81 @@ AC_CONFIG_FILES([
 
 AC_OUTPUT
 
+#
 # Mini-report on what will be built
-AS_ECHO("")
+#
+AS_ECHO()
 
+# Target architecture we're building for
+target_arch=$host_cpu
+[
+for f in $CFLAGS; do
+        if test $f = "-m32"; then
+			target_arch="32-bit"
+        elif test $f = "-m64"; then
+			target_arch="64-bit"
+        fi
+done
+]
+AS_ECHO_N("Target architecture: ")
+AS_ECHO($target_arch)
+
+# LTTng-UST enabled/disabled
 AS_ECHO_N("Lttng-UST support: ")
-AS_IF([test "x$lttng_ust_support" = "xyes"], [AS_ECHO("Enabled")],
-	[AS_ECHO("Disabled")]
-)
+AS_IF([test "x$lttng_ust_support" = "xyes"],[
+	AS_ECHO("Enabled")
+],[
+	AS_ECHO("Disabled")
+])
 
-AS_IF([test "x$consumerd_only" = "xyes"],
-	[AS_ECHO("Only the consumerd daemon will be built.")],
-	[AS_ECHO("All binaries will be built.")]
-)
+# Do we build only the consumerd, or everything
+AS_IF([test "x$consumerd_only" = "xyes"],[
+	AS_ECHO("Only the consumerd daemon will be built.")
+],[
+	AS_ECHO("All binaries will be built.")
+])
 
-AS_ECHO("")
+# Print the bindir and libdir this `make install' will install into.
+AS_ECHO()
+AS_ECHO_N("Binaries will be installed in:  ")
+AS_ECHO("`eval eval echo $bindir`")
+AS_ECHO_N("Libraries will be installed in: ")
+AS_ECHO("`eval eval echo $libdir`")
+
+# If we build the sessiond, print the paths it will use
+AS_IF([test "x$consumerd_only" = "xno"],[
+	AS_ECHO()
+	AS_ECHO("The sessiond daemon will look in the following directories: ")
+	AS_ECHO_N("32-bit consumerd executable at: ")
+	AS_IF([test "$CONSUMERD32_BIN" = ""],[
+		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO("/lttng-consumerd")
+	],[
+		AS_ECHO("$CONSUMERD32_BIN")
+	])
+
+	AS_ECHO_N("32-bit consumer libraries in:   ")
+	AS_IF([test "$CONSUMERD32_LIBDIR" = ""],[
+		AS_ECHO("`eval eval echo $libdir`")
+	],[
+		AS_ECHO("$CONSUMERD32_LIBDIR")
+	])
+
+	AS_ECHO_N("64-bit consumerd executable at: ")
+	AS_IF([test "$CONSUMERD64_BIN" = ""],[
+		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO("/lttng-consumerd")
+	],[
+		AS_ECHO("$CONSUMERD64_BIN")
+	])
+
+	AS_ECHO_N("64-bit consumer libraries in:   ")
+	AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
+		AS_ECHO("`eval eval echo $libdir`")
+	],[
+		AS_ECHO("$CONSUMERD64_LIBDIR")
+	])
+])
+
+AS_ECHO()
 

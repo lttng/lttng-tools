@@ -176,14 +176,10 @@ static struct ltt_session_list *session_list_ptr;
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
 
-static const char *consumerd32_bin =
-	__stringify(CONFIG_CONSUMERD32_BIN);
-static const char *consumerd64_bin =
-	__stringify(CONFIG_CONSUMERD64_BIN);
-static const char *consumerd32_libdir =
-	__stringify(CONFIG_CONSUMERD32_LIBDIR);
-static const char *consumerd64_libdir =
-	__stringify(CONFIG_CONSUMERD64_LIBDIR);
+static const char *consumerd32_bin = CONFIG_CONSUMERD32_BIN;
+static const char *consumerd64_bin = CONFIG_CONSUMERD64_BIN;
+static const char *consumerd32_libdir = CONFIG_CONSUMERD32_LIBDIR;
+static const char *consumerd64_libdir = CONFIG_CONSUMERD64_LIBDIR;
 
 static
 void setup_consumerd_path(void)
@@ -1590,7 +1586,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		/*
 		 * Exec consumerd.
 		 */
-		if (opt_verbose > 1 || opt_verbose_consumer) {
+		if (opt_verbose_consumer) {
 			verbosity = "--verbose";
 		} else {
 			verbosity = "--quiet";
@@ -1603,13 +1599,21 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 * sessiond's installation directory, and
 			 * fallback on the 32-bit one, 
 			 */
+			DBG3("Looking for a kernel consumer at these locations:");
+			DBG3("	1) %s", consumerd64_bin);
+			DBG3("	2) %s/%s", INSTALL_BIN_PATH, CONSUMERD_FILE);
+			DBG3("	3) %s", consumerd32_bin);
 			if (stat(consumerd64_bin, &st) == 0) {
+				DBG3("Found location #1");
 				consumer_to_use = consumerd64_bin;
 			} else if (stat(INSTALL_BIN_PATH "/" CONSUMERD_FILE, &st) == 0) {
+				DBG3("Found location #2");
 				consumer_to_use = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
 			} else if (stat(consumerd32_bin, &st) == 0) {
+				DBG3("Found location #3");
 				consumer_to_use = consumerd32_bin;
 			} else {
+				DBG("Could not find any valid consumerd executable");
 				break;
 			}
 			DBG("Using kernel consumer at: %s",  consumer_to_use);
@@ -2979,7 +2983,7 @@ static int cmd_stop_trace(struct ltt_session *session)
 	usess = session->ust_session;
 
 	if (!session->enabled) {
-		ret = LTTCOMM_UST_START_FAIL;
+		ret = LTTCOMM_UST_STOP_FAIL;
 		goto error;
 	}
 
@@ -3016,7 +3020,7 @@ static int cmd_stop_trace(struct ltt_session *session)
 
 		ret = ust_app_stop_trace_all(usess);
 		if (ret < 0) {
-			ret = LTTCOMM_UST_START_FAIL;
+			ret = LTTCOMM_UST_STOP_FAIL;
 			goto error;
 		}
 	}

@@ -37,8 +37,6 @@
 #include <lttngerr.h>
 
 struct lttng_consumer_global_data consumer_data = {
-	.stream_list.head = CDS_LIST_HEAD_INIT(consumer_data.stream_list.head),
-	.channel_list.head = CDS_LIST_HEAD_INIT(consumer_data.channel_list.head),
 	.stream_count = 0,
 	.need_update = 1,
 	.type = LTTNG_CONSUMER_UNKNOWN,
@@ -61,18 +59,26 @@ volatile int consumer_quit = 0;
  */
 static struct lttng_consumer_stream *consumer_find_stream(int key)
 {
-	struct lttng_consumer_stream *iter;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_consumer_stream *stream = NULL;
 
 	/* Negative keys are lookup failures */
 	if (key < 0)
 		return NULL;
-	cds_list_for_each_entry(iter, &consumer_data.stream_list.head, list) {
-		if (iter->key == key) {
-			DBG("Found stream key %d", key);
-			return iter;
-		}
+
+	rcu_read_lock();
+
+	lttng_ht_lookup(consumer_data.stream_ht, (void *)((unsigned long) key),
+			&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node != NULL) {
+		stream = caa_container_of(node, struct lttng_consumer_stream, node);
 	}
-	return NULL;
+
+	rcu_read_unlock();
+
+	return stream;
 }
 
 static void consumer_steal_stream_key(int key)
@@ -86,18 +92,26 @@ static void consumer_steal_stream_key(int key)
 
 static struct lttng_consumer_channel *consumer_find_channel(int key)
 {
-	struct lttng_consumer_channel *iter;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_consumer_channel *channel = NULL;
 
 	/* Negative keys are lookup failures */
 	if (key < 0)
 		return NULL;
-	cds_list_for_each_entry(iter, &consumer_data.channel_list.head, list) {
-		if (iter->key == key) {
-			DBG("Found channel key %d", key);
-			return iter;
-		}
+
+	rcu_read_lock();
+
+	lttng_ht_lookup(consumer_data.channel_ht, (void *)((unsigned long) key),
+			&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node != NULL) {
+		channel = caa_container_of(node, struct lttng_consumer_channel, node);
 	}
-	return NULL;
+
+	rcu_read_unlock();
+
+	return channel;
 }
 
 static void consumer_steal_channel_key(int key)
@@ -116,6 +130,7 @@ static void consumer_steal_channel_key(int key)
 void consumer_del_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
+	struct lttng_ht_iter iter;
 	struct lttng_consumer_channel *free_chan = NULL;
 
 	pthread_mutex_lock(&consumer_data.lock);
@@ -139,7 +154,17 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 		goto end;
 	}
 
-	cds_list_del(&stream->list);
+	rcu_read_lock();
+
+	/* Get stream node from hash table */
+	lttng_ht_lookup(consumer_data.stream_ht,
+			(void *)((unsigned long) stream->key), &iter);
+	/* Remove stream node from hash table */
+	ret = lttng_ht_del(consumer_data.stream_ht, &iter);
+	assert(!ret);
+
+	rcu_read_unlock();
+
 	if (consumer_data.stream_count <= 0) {
 		goto end;
 	}
@@ -153,8 +178,7 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 	if (stream->wait_fd >= 0 && !stream->wait_fd_is_copy) {
 		close(stream->wait_fd);
 	}
-	if (stream->shm_fd >= 0 && stream->wait_fd != stream->shm_fd
-			&& !stream->shm_fd_is_copy) {
+	if (stream->shm_fd >= 0 && stream->wait_fd != stream->shm_fd) {
 		close(stream->shm_fd);
 	}
 	if (!--stream->chan->refcount)
@@ -166,6 +190,16 @@ end:
 
 	if (free_chan)
 		consumer_del_channel(free_chan);
+}
+
+static void consumer_del_stream_rcu(struct rcu_head *head)
+{
+	struct lttng_ht_node_ulong *node =
+		caa_container_of(head, struct lttng_ht_node_ulong, head);
+	struct lttng_consumer_stream *stream =
+		caa_container_of(node, struct lttng_consumer_stream, node);
+
+	consumer_del_stream(stream);
 }
 
 struct lttng_consumer_stream *consumer_allocate_stream(
@@ -205,6 +239,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	stream->gid = gid;
 	strncpy(stream->path_name, path_name, PATH_MAX - 1);
 	stream->path_name[PATH_MAX - 1] = '\0';
+	lttng_ht_node_init_ulong(&stream->node, stream->key);
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -243,7 +278,9 @@ int consumer_add_stream(struct lttng_consumer_stream *stream)
 	pthread_mutex_lock(&consumer_data.lock);
 	/* Steal stream identifier, for UST */
 	consumer_steal_stream_key(stream->key);
-	cds_list_add(&stream->list, &consumer_data.stream_list.head);
+	rcu_read_lock();
+	lttng_ht_add_unique_ulong(consumer_data.stream_ht, &stream->node);
+	rcu_read_unlock();
 	consumer_data.stream_count++;
 	consumer_data.need_update = 1;
 
@@ -290,6 +327,7 @@ void consumer_change_stream_state(int stream_key,
 void consumer_del_channel(struct lttng_consumer_channel *channel)
 {
 	int ret;
+	struct lttng_ht_iter iter;
 
 	pthread_mutex_lock(&consumer_data.lock);
 
@@ -306,7 +344,15 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		goto end;
 	}
 
-	cds_list_del(&channel->list);
+	rcu_read_lock();
+
+	lttng_ht_lookup(consumer_data.channel_ht,
+			(void *)((unsigned long) channel->key), &iter);
+	ret = lttng_ht_del(consumer_data.channel_ht, &iter);
+	assert(!ret);
+
+	rcu_read_unlock();
+
 	if (channel->mmap_base != NULL) {
 		ret = munmap(channel->mmap_base, channel->mmap_len);
 		if (ret != 0) {
@@ -316,13 +362,22 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	if (channel->wait_fd >= 0 && !channel->wait_fd_is_copy) {
 		close(channel->wait_fd);
 	}
-	if (channel->shm_fd >= 0 && channel->wait_fd != channel->shm_fd
-			&& !channel->shm_fd_is_copy) {
+	if (channel->shm_fd >= 0 && channel->wait_fd != channel->shm_fd) {
 		close(channel->shm_fd);
 	}
 	free(channel);
 end:
 	pthread_mutex_unlock(&consumer_data.lock);
+}
+
+static void consumer_del_channel_rcu(struct rcu_head *head)
+{
+	struct lttng_ht_node_ulong *node =
+		caa_container_of(head, struct lttng_ht_node_ulong, head);
+	struct lttng_consumer_channel *channel=
+		caa_container_of(node, struct lttng_consumer_channel, node);
+
+	consumer_del_channel(channel);
 }
 
 struct lttng_consumer_channel *consumer_allocate_channel(
@@ -346,6 +401,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	channel->max_sb_size = max_sb_size;
 	channel->refcount = 0;
 	channel->nr_streams = 0;
+	lttng_ht_node_init_ulong(&channel->node, channel->key);
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -383,7 +439,9 @@ int consumer_add_channel(struct lttng_consumer_channel *channel)
 	pthread_mutex_lock(&consumer_data.lock);
 	/* Steal channel identifier, for UST */
 	consumer_steal_channel_key(channel->key);
-	cds_list_add(&channel->list, &consumer_data.channel_list.head);
+	rcu_read_lock();
+	lttng_ht_add_unique_ulong(consumer_data.channel_ht, &channel->node);
+	rcu_read_unlock();
 	pthread_mutex_unlock(&consumer_data.lock);
 	return 0;
 }
@@ -399,18 +457,20 @@ int consumer_update_poll_array(
 		struct lttng_consumer_local_data *ctx, struct pollfd **pollfd,
 		struct lttng_consumer_stream **local_stream)
 {
-	struct lttng_consumer_stream *iter;
 	int i = 0;
+	struct lttng_ht_iter iter;
+	struct lttng_consumer_stream *stream;
 
 	DBG("Updating poll fd array");
-	cds_list_for_each_entry(iter, &consumer_data.stream_list.head, list) {
-		if (iter->state != LTTNG_CONSUMER_ACTIVE_STREAM) {
+	cds_lfht_for_each_entry(consumer_data.stream_ht->ht, &iter.iter, stream,
+			node.node) {
+		if (stream->state != LTTNG_CONSUMER_ACTIVE_STREAM) {
 			continue;
 		}
-		DBG("Active FD %d", iter->wait_fd);
-		(*pollfd)[i].fd = iter->wait_fd;
+		DBG("Active FD %d", stream->wait_fd);
+		(*pollfd)[i].fd = stream->wait_fd;
 		(*pollfd)[i].events = POLLIN | POLLPRI;
-		local_stream[i] = iter;
+		local_stream[i] = stream;
 		i++;
 	}
 
@@ -486,22 +546,31 @@ int lttng_consumer_send_error(
  */
 void lttng_consumer_cleanup(void)
 {
-	struct lttng_consumer_stream *iter, *tmp;
-	struct lttng_consumer_channel *citer, *ctmp;
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
+
+	rcu_read_lock();
 
 	/*
-	 * close all outfd. Called when there are no more threads
-	 * running (after joining on the threads), no need to protect
-	 * list iteration with mutex.
+	 * close all outfd. Called when there are no more threads running (after
+	 * joining on the threads), no need to protect list iteration with mutex.
 	 */
-	cds_list_for_each_entry_safe(iter, tmp,
-			&consumer_data.stream_list.head, list) {
-		consumer_del_stream(iter);
+	cds_lfht_for_each_entry(consumer_data.stream_ht->ht, &iter.iter, node,
+			node) {
+		ret = lttng_ht_del(consumer_data.stream_ht, &iter);
+		assert(!ret);
+		call_rcu(&node->head, consumer_del_stream_rcu);
 	}
-	cds_list_for_each_entry_safe(citer, ctmp,
-			&consumer_data.channel_list.head, list) {
-		consumer_del_channel(citer);
+
+	cds_lfht_for_each_entry(consumer_data.channel_ht->ht, &iter.iter, node,
+			node) {
+		ret = lttng_ht_del(consumer_data.channel_ht, &iter);
+		assert(!ret);
+		call_rcu(&node->head, consumer_del_channel_rcu);
 	}
+
+	rcu_read_unlock();
 }
 
 /*
@@ -759,7 +828,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 }
 
 /*
- * This thread polls the fds in the ltt_fd_list to consume the data and write
+ * This thread polls the fds in the set to consume the data and write
  * it to tracefile if necessary.
  */
 void *lttng_consumer_thread_poll_fds(void *data)
@@ -774,6 +843,8 @@ void *lttng_consumer_thread_poll_fds(void *data)
 	int tmp2;
 	struct lttng_consumer_local_data *ctx = data;
 
+	rcu_register_thread();
+
 	local_stream = zmalloc(sizeof(struct lttng_consumer_stream));
 
 	while (1) {
@@ -781,7 +852,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 		num_hup = 0;
 
 		/*
-		 * the ltt_fd_list has been updated, we need to update our
+		 * the fds set has been updated, we need to update our
 		 * local array as well
 		 */
 		pthread_mutex_lock(&consumer_data.lock);
@@ -868,11 +939,15 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				}
 			} else if (pollfd[i].revents & POLLERR) {
 				ERR("Error returned in polling fd %d.", pollfd[i].fd);
-				consumer_del_stream(local_stream[i]);
+				rcu_read_lock();
+				consumer_del_stream_rcu(&local_stream[i]->node.head);
+				rcu_read_unlock();
 				num_hup++;
 			} else if (pollfd[i].revents & POLLNVAL) {
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
-				consumer_del_stream(local_stream[i]);
+				rcu_read_lock();
+				consumer_del_stream_rcu(&local_stream[i]->node.head);
+				rcu_read_unlock();
 				num_hup++;
 			} else if ((pollfd[i].revents & POLLHUP) &&
 					!(pollfd[i].revents & POLLIN)) {
@@ -890,7 +965,9 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				} else {
 					DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
 				}
-				consumer_del_stream(local_stream[i]);
+				rcu_read_lock();
+				consumer_del_stream_rcu(&local_stream[i]->node.head);
+				rcu_read_unlock();
 				num_hup++;
 			}
 		}
@@ -928,6 +1005,7 @@ end:
 		free(local_stream);
 		local_stream = NULL;
 	}
+	rcu_unregister_thread();
 	return NULL;
 }
 
@@ -944,6 +1022,8 @@ void *lttng_consumer_thread_receive_fds(void *data)
 	 */
 	struct pollfd consumer_sockpoll[2];
 	struct lttng_consumer_local_data *ctx = data;
+
+	rcu_register_thread();
 
 	DBG("Creating command socket %s", ctx->consumer_command_sock_path);
 	unlink(ctx->consumer_command_sock_path);
@@ -1040,6 +1120,7 @@ end:
 	if (ret < 0) {
 		perror("poll pipe write");
 	}
+	rcu_unregister_thread();
 	return NULL;
 }
 
@@ -1073,3 +1154,13 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
 		return -ENOSYS;
 	}
 }
+
+/*
+ * Allocate and set consumer data hash tables.
+ */
+void lttng_consumer_init(void)
+{
+	consumer_data.stream_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+}
+

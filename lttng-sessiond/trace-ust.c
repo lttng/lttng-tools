@@ -322,7 +322,7 @@ static void destroy_context_rcu(struct rcu_head *head)
 /*
  * Cleanup UST context hash table.
  */
-static void destroy_context(struct lttng_ht *ht)
+static void destroy_contexts(struct lttng_ht *ht)
 {
 	int ret;
 	struct lttng_ht_node_ulong *node;
@@ -344,7 +344,7 @@ static void destroy_context(struct lttng_ht *ht)
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 	DBG2("Trace destroy UST event %s", event->attr.name);
-	destroy_context(event->ctx);
+	destroy_contexts(event->ctx);
 
 	free(event);
 }
@@ -365,7 +365,7 @@ static void destroy_event_rcu(struct rcu_head *head)
 /*
  * Cleanup UST events hashtable.
  */
-static void destroy_event(struct lttng_ht *events)
+static void destroy_events(struct lttng_ht *events)
 {
 	int ret;
 	struct lttng_ht_node_str *node;
@@ -373,9 +373,8 @@ static void destroy_event(struct lttng_ht *events)
 
 	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(events, &iter);
-		if (!ret) {
-			call_rcu(&node->head, destroy_event_rcu);
-		}
+		assert(!ret);
+		call_rcu(&node->head, destroy_event_rcu);
 	}
 
 	lttng_ht_destroy(events);
@@ -386,22 +385,15 @@ static void destroy_event(struct lttng_ht *events)
  */
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
-	int ret;
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
-
 	DBG2("Trace destroy UST channel %s", channel->name);
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(channel->events->ht, &iter.iter, node, node) {
-		ret = lttng_ht_del(channel->events, &iter);
-		if (!ret) {
-			destroy_event(channel->events);
-		}
-	}
+	/* Destroying all events of the channel */
+	destroy_events(channel->events);
+	/* Destroying all context of the channel */
+	destroy_contexts(channel->ctx);
 
-	destroy_context(channel->ctx);
 	free(channel);
 
 	rcu_read_unlock();
@@ -439,14 +431,17 @@ static void destroy_channels(struct lttng_ht *channels)
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	rcu_read_lock();
+
 	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(channels, &iter);
-		if (!ret) {
-			call_rcu(&node->head, destroy_channel_rcu);
-		}
+		assert(!ret);
+		call_rcu(&node->head, destroy_channel_rcu);
 	}
 
 	lttng_ht_destroy(channels);
+
+	rcu_read_unlock();
 }
 
 /*
@@ -460,9 +455,8 @@ static void destroy_domain_pid(struct lttng_ht *ht)
 
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, dpid, node.node) {
 		ret = lttng_ht_del(ht , &iter);
-		if (!ret) {
-			destroy_channels(dpid->channels);
-		}
+		assert(!ret);
+		destroy_channels(dpid->channels);
 	}
 
 	lttng_ht_destroy(ht);
@@ -479,9 +473,8 @@ static void destroy_domain_exec(struct lttng_ht *ht)
 
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, dexec, node.node) {
 		ret = lttng_ht_del(ht , &iter);
-		if (!ret) {
-			destroy_channels(dexec->channels);
-		}
+		assert(!ret);
+		destroy_channels(dexec->channels);
 	}
 
 	lttng_ht_destroy(ht);
