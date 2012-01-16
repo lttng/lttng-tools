@@ -1192,7 +1192,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			goto error;
 		}
 
-		ret = mkdir_run_as(ua_sess->path, S_IRWXU | S_IRWXG,
+		ret = run_as_mkdir(ua_sess->path, S_IRWXU | S_IRWXG,
 				ua_sess->uid, ua_sess->gid);
 		if (ret < 0) {
 			PERROR("mkdir UST metadata");

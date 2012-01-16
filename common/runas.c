@@ -34,7 +34,7 @@
 
 #include "runas.h"
 
-#define CHILD_STACK_SIZE	10485760
+#define RUNAS_CHILD_STACK_SIZE	10485760
 
 struct run_as_data {
 	int (*cmd)(void *data);
@@ -44,12 +44,12 @@ struct run_as_data {
 	int retval_pipe;
 };
 
-struct mkdir_data {
+struct run_as_mkdir_data {
 	const char *path;
 	mode_t mode;
 };
 
-struct open_data {
+struct run_as_open_data {
 	const char *path;
 	int flags;
 	mode_t mode;
@@ -61,7 +61,7 @@ struct open_data {
 static
 int _mkdir_recursive(void *_data)
 {
-	struct mkdir_data *data = _data;
+	struct run_as_mkdir_data *data = _data;
 	const char *path;
 	char *p, tmp[PATH_MAX];
 	struct stat statbuf;
@@ -118,14 +118,14 @@ error:
 static
 int _mkdir(void *_data)
 {
-	struct mkdir_data *data = _data;
+	struct run_as_mkdir_data *data = _data;
 	return mkdir(data->path, data->mode);
 }
 
 static
 int _open(void *_data)
 {
-	struct open_data *data = _data;
+	struct run_as_open_data *data = _data;
 	return open(data->path, data->flags, data->mode);
 }
 
@@ -218,7 +218,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	run_as_data.uid = uid;
 	run_as_data.gid = gid;
 	run_as_data.retval_pipe = retval_pipe[1];	/* write end */
-	child_stack = mmap(NULL, CHILD_STACK_SIZE,
+	child_stack = mmap(NULL, RUNAS_CHILD_STACK_SIZE,
 		PROT_WRITE | PROT_READ,
 		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | MAP_STACK,
 		-1, 0);
@@ -231,7 +231,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	 * Pointing to the middle of the stack to support architectures
 	 * where the stack grows up (HPPA).
 	 */
-	pid = clone(child_run_as, child_stack + (CHILD_STACK_SIZE / 2),
+	pid = clone(child_run_as, child_stack + (RUNAS_CHILD_STACK_SIZE / 2),
 		CLONE_FILES | SIGCHLD,
 		&run_as_data, NULL);
 	if (pid < 0) {
@@ -263,7 +263,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		ret = -1;
 	}
 unmap_stack:
-	ret = munmap(child_stack, CHILD_STACK_SIZE);
+	ret = munmap(child_stack, RUNAS_CHILD_STACK_SIZE);
 	if (ret < 0) {
 		perror("munmap");
 	}
@@ -274,9 +274,9 @@ end:
 	return retval.i;
 }
 
-int mkdir_recursive_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
+int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct mkdir_data data;
+	struct run_as_mkdir_data data;
 
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
 			path, mode, uid, gid);
@@ -285,9 +285,9 @@ int mkdir_recursive_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	return run_as(_mkdir_recursive, &data, uid, gid);
 }
 
-int mkdir_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
+int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct mkdir_data data;
+	struct run_as_mkdir_data data;
 
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
 			path, mode, uid, gid);
@@ -300,9 +300,9 @@ int mkdir_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid)
  * Note: open_run_as is currently not working. We'd need to pass the fd
  * opened in the child to the parent.
  */
-int open_run_as(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
+int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct open_data data;
+	struct run_as_open_data data;
 
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
 			path, flags, mode, uid, gid);

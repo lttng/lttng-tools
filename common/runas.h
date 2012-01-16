@@ -22,8 +22,8 @@
 
 #include <unistd.h>
 
-int mkdir_recursive_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid);
-int mkdir_run_as(const char *path, mode_t mode, uid_t uid, gid_t gid);
-int open_run_as(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
+int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
+int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid);
+int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
 
 #endif /* _RUNAS_H */

@@ -397,7 +397,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 	/* Opening the tracefile in write mode */
 	if (stream->path_name != NULL) {
-		ret = open_run_as(stream->path_name,
+		ret = run_as_open(stream->path_name,
 				O_WRONLY|O_CREAT|O_TRUNC,
 				S_IRWXU|S_IRWXG|S_IRWXO,
 				stream->uid, stream->gid);

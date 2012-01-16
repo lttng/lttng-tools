@@ -217,7 +217,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	new_session->uid = uid;
 	new_session->gid = gid;
 
-	ret = mkdir_recursive_run_as(new_session->path, S_IRWXU | S_IRWXG,
+	ret = run_as_mkdir_recursive(new_session->path, S_IRWXU | S_IRWXG,
 			new_session->uid, new_session->gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
