@@ -3,19 +3,26 @@ AM_CFLAGS=-I$(top_srcdir)/include -I$(top_srcdir)/libkernelctl \
 
 EXTRA_DIST = runall.sh lttng/runall.sh lttng/run-kernel-tests.sh lttng/run-ust-tests.sh
 
-noinst_PROGRAMS = test_sessions test_kernel_data_trace kernel_all_events_basic \
-				  kernel_event_basic ust_global_event_basic ust_global_all_events_basic
+noinst_PROGRAMS = test_sessions test_kernel_data_trace test_ust_data_trace \
+				  kernel_all_events_basic kernel_event_basic \
+				  ust_global_event_basic ust_global_all_events_basic
 
 UTILS=utils.h
 SESSIONS=$(top_srcdir)/lttng-sessiond/session.c
 KERN_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-kernel.c
+UST_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-ust.c
 LIBLTTNG=$(top_srcdir)/liblttngctl/lttngctl.c \
 		 $(top_srcdir)/liblttng-sessiond-comm/lttng-sessiond-comm.c
 
 test_sessions_SOURCES = test_sessions.c $(UTILS) $(SESSIONS)
-test_sessions_LDADD = $(top_builddir)/common/libcommon.la
+test_sessions_LDADD = $(top_builddir)/common/libcommon.la \
+					  $(top_builddir)/liblttng-ht/liblttng-ht.la
 
 test_kernel_data_trace_SOURCES = test_kernel_data_trace.c $(UTILS) $(KERN_DATA_TRACE)
+
+test_ust_data_trace_SOURCES = test_ust_data_trace.c $(UTILS) $(UST_DATA_TRACE)
+test_ust_data_trace_LDADD = $(top_builddir)/common/libcommon.la \
+							$(top_builddir)/liblttng-ht/liblttng-ht.la
 
 kernel_all_events_basic_SOURCES = lttng/kernel_all_events_basic.c $(UTILS) $(LIBLTTNG)
 
