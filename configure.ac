@@ -145,6 +145,7 @@ AC_CONFIG_FILES([
 	lttng/Makefile
 	tests/Makefile
 	tests/ust-nevents/Makefile
+	tests/ust-nprocesses/Makefile
 	doc/Makefile
 ])
 

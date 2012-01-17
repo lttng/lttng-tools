@@ -1,4 +1,4 @@
-SUBDIRS = . ust-nevents
+SUBDIRS = . ust-nevents ust-nprocesses
 
 AM_CFLAGS=-I$(top_srcdir)/include -I$(top_srcdir)/libkernelctl \
 		  -I$(top_srcdir)/liblttngctl -g -Wall -lurcu -lurcu-cds

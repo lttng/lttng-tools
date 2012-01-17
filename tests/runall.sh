@@ -20,7 +20,7 @@
 #### ADD TESTS HERE ####
 
 test_suite=( test_sessions test_kernel_data_trace test_ust_data_trace
-			lttng/runall.sh ust-nevents/run )
+			lttng/runall.sh ust-nevents/run ust-nprocesses/run )
 
 #### END TESTS HERE ####
 
