@@ -1,18 +1,16 @@
-SUBDIRS = . ust-nevents ust-nprocesses
+SUBDIRS = .
 
 AM_CFLAGS=-I$(top_srcdir)/include -I$(top_srcdir)/libkernelctl \
 		  -I$(top_srcdir)/liblttngctl -g -Wall -lurcu -lurcu-cds
 
-EXTRA_DIST = runall.sh lttng/runall.sh lttng/run-kernel-tests.sh lttng/run-ust-tests.sh
+EXTRA_DIST = runall.sh lttng/runall.sh lttng/run-kernel-tests.sh
 
-noinst_PROGRAMS = test_sessions test_kernel_data_trace test_ust_data_trace \
-				  kernel_all_events_basic kernel_event_basic \
-				  ust_global_event_basic ust_global_all_events_basic
+noinst_PROGRAMS = test_sessions test_kernel_data_trace \
+				  kernel_all_events_basic kernel_event_basic
 
 UTILS=utils.h
 SESSIONS=$(top_srcdir)/lttng-sessiond/session.c
 KERN_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-kernel.c
-UST_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-ust.c
 LIBLTTNG=$(top_srcdir)/liblttngctl/lttngctl.c \
 		 $(top_srcdir)/liblttng-sessiond-comm/lttng-sessiond-comm.c
 
@@ -22,17 +20,26 @@ test_sessions_LDADD = $(top_builddir)/common/libcommon.la \
 
 test_kernel_data_trace_SOURCES = test_kernel_data_trace.c $(UTILS) $(KERN_DATA_TRACE)
 
-test_ust_data_trace_SOURCES = test_ust_data_trace.c $(UTILS) $(UST_DATA_TRACE)
-test_ust_data_trace_LDADD = $(top_builddir)/common/libcommon.la \
-							$(top_builddir)/liblttng-ht/liblttng-ht.la
 
 kernel_all_events_basic_SOURCES = lttng/kernel_all_events_basic.c $(UTILS) $(LIBLTTNG)
 
 kernel_event_basic_SOURCES = lttng/kernel_event_basic.c $(UTILS) $(LIBLTTNG)
 
+if HAVE_LIBLTTNG_UST_CTL
+SUBDIRS += ust-nevents ust-nprocesses
+EXTRA_DIST += lttng/run-ust-tests.sh
+noinst_PROGRAMS += ust_global_event_basic ust_global_all_events_basic test_ust_data_trace
+
+UST_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-ust.c
+
+test_ust_data_trace_SOURCES = test_ust_data_trace.c $(UTILS) $(UST_DATA_TRACE)
+test_ust_data_trace_LDADD = $(top_builddir)/common/libcommon.la \
+							$(top_builddir)/liblttng-ht/liblttng-ht.la
+
 ust_global_all_events_basic_SOURCES = lttng/ust_global_all_events_basic.c $(UTILS) $(LIBLTTNG)
 
 ust_global_event_basic_SOURCES = lttng/ust_global_event_basic.c $(UTILS) $(LIBLTTNG)
+endif # HAVE_LIBLTTNG_UST_CTL
 
 check-am:
 	./runall.sh

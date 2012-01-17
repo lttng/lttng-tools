@@ -15,17 +15,24 @@
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
-TESTDIR=$(dirname $0)/..
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/..
 NR_ITER=100
 SESSION_NAME="ust-nevents"
 EVENT_NAME="ust_gen_nevents:tptest"
-TRACE_PATH=$(mktemp -d)
 
 source $TESTDIR/utils.sh
 
 echo -e "\n-----------------------------------"
 echo -e "UST tracer - Generate $NR_ITER events"
 echo -e "-------------------------------------"
+
+if [ ! -e "$CURDIR/gen-nevents" ]; then
+	echo -e "No UST nevents binary detected. Passing."
+	exit 0
+fi
+
+TRACE_PATH=$(mktemp -d)
 
 # MUST set TESTDIR before calling those functions
 
@@ -35,7 +42,7 @@ enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_tracing $SESSION_NAME
 
 # Start test
-./$(dirname $0)/gen-nevents $NR_ITER
+./$CURDIR/gen-nevents $NR_ITER
 
 stop_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME

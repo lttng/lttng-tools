@@ -35,6 +35,11 @@ fi
 
 for bin in ${test_suite[@]};
 do
+	if [ ! -e $bin ]; then
+		echo -e "$bin not found, passing"
+		continue
+	fi
+
 	./$bin
 	# Test must return 0 to pass.
 	if [ $? -ne 0 ]; then

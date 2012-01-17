@@ -13,6 +13,11 @@ function start_tests ()
 {
     for bin in ${tests[@]};
     do
+		if [ ! -e $bin ]; then
+			echo -e "$bin not found, passing"
+			continue
+		fi
+
         ./$bin $tmpdir
         # Test must return 0 to pass.
         if [ $? -ne 0 ]; then

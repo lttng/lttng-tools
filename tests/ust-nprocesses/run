@@ -15,12 +15,12 @@
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
-TESTDIR=$(dirname $0)/..
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/..
 NR_ITER=100
 TEST_BIN_NAME="gen-events-time"
 SESSION_NAME="ust-nprocesses"
 EVENT_NAME="ust_gen_event:tptest"
-TRACE_PATH=$(mktemp -d)
 TEST_WAIT_SEC=3
 
 source $TESTDIR/utils.sh
@@ -29,13 +29,18 @@ echo -e "\n-------------------------------------"
 echo -e "UST tracer - Generate $NR_ITER process"
 echo -e "---------------------------------------"
 
+if [ ! -e "$CURDIR/$TEST_BIN_NAME" ]; then
+	echo -e "No UST $TEST_BIN_NAME binary detected. Passing."
+	exit 0
+fi
+
 # MUST set TESTDIR before calling those functions
 
 # Start test for 1000 seconds
 
 for i in `seq 1 $NR_ITER`
 do
-	./$(dirname $0)/$TEST_BIN_NAME 1000 >/dev/null 2>&1 &
+	./$CURDIR/$TEST_BIN_NAME 1000 >/dev/null 2>&1 &
 done
 
 echo -n "Validating registered apps: "
@@ -47,6 +52,8 @@ if [ "$reg_app_count" -ne "$NR_ITER" ]; then
 else
 	echo -e "\e[1;32mOK\e[0m"
 fi
+
+TRACE_PATH=$(mktemp -d)
 
 create_lttng_session $SESSION_NAME $TRACE_PATH
 
