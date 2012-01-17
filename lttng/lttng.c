@@ -360,6 +360,23 @@ end:
 }
 
 /*
+ * Check for the "help" option in the argv. If found, return 1 else return 0.
+ */
+static int check_help_command(int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		if ((strncmp(argv[i], "-h", 2) == 0) ||
+				strncmp(argv[i], "--h", 3)) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/*
  *  parse_args
  *
  *  Parse command line arguments.
@@ -414,7 +431,8 @@ static int parse_args(int argc, char **argv)
 	}
 
 	/* Spawn session daemon if needed */
-	if (opt_no_sessiond == 0 && (check_sessiond() < 0)) {
+	if (opt_no_sessiond == 0 && check_help_command(argc, argv) == 0 &&
+			(check_sessiond() < 0)) {
 		goto error;
 	}
 
