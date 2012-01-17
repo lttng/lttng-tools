@@ -1177,8 +1177,15 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 
 		ret = open_ust_metadata(app, ua_sess);
 		if (ret < 0) {
+			DBG3("Opening metadata failed. Cleaning up memory");
+
 			/* Cleanup failed metadata struct */
 			free(ua_sess->metadata);
+			/*
+			 * This is very important because delete_ust_app_session check if
+			 * the pointer is null or not in order to delete the metadata.
+			 */
+			ua_sess->metadata = NULL;
 			goto error;
 		}
 
@@ -1958,6 +1965,11 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
+	/* Not started, continuing. */
+	if (ua_sess->started == 0) {
+		goto end;
+	}
+
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);
 	if (ret < 0) {
@@ -1973,9 +1985,8 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			node.node) {
 		ret = ustctl_sock_flush_buffer(app->key.sock, ua_chan->obj);
 		if (ret < 0) {
-			ERR("UST app PID %d channel %s flush failed",
-					app->key.pid, ua_chan->name);
-			ERR("Ended with ret %d", ret);
+			ERR("UST app PID %d channel %s flush failed with ret %d",
+					app->key.pid, ua_chan->name, ret);
 			/* Continuing flushing all buffers */
 			continue;
 		}
@@ -1984,12 +1995,14 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	/* Flush all buffers before stopping */
 	ret = ustctl_sock_flush_buffer(app->key.sock, ua_sess->metadata->obj);
 	if (ret < 0) {
-		ERR("UST app PID %d metadata flush failed", app->key.pid);
-		ERR("Ended with ret %d", ret);
+		ERR("UST app PID %d metadata flush failed with ret %d", app->key.pid,
+				ret);
 	}
 
-	rcu_read_unlock();
+	ua_sess->started = 0;
 
+end:
+	rcu_read_unlock();
 	return 0;
 
 error_rcu_unlock:
@@ -2021,12 +2034,13 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	ua_sess = caa_container_of(node, struct ust_app_session, node);
 	ret = lttng_ht_del(app->sessions, &iter);
 	assert(!ret);
-	delete_ust_app_session(app->key.sock, ua_sess);
 	obj.handle = ua_sess->handle;
 	obj.shm_fd = -1;
 	obj.wait_fd = -1;
 	obj.memory_map_size = 0;
 	ustctl_release_object(app->key.sock, &obj);
+
+	delete_ust_app_session(app->key.sock, ua_sess);
 
 	rcu_read_unlock();
 
