@@ -1531,10 +1531,9 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
 			/*
-			 * Find out which consumerd to execute. We will
-			 * first try the 64-bit path, then the
-			 * sessiond's installation directory, and
-			 * fallback on the 32-bit one, 
+			 * Find out which consumerd to execute. We will first try the
+			 * 64-bit path, then the sessiond's installation directory, and
+			 * fallback on the 32-bit one,
 			 */
 			DBG3("Looking for a kernel consumer at these locations:");
 			DBG3("	1) %s", consumerd64_bin);
@@ -1970,14 +1969,12 @@ error:
 }
 
 /*
- * Check if the UID or GID match the session. Root user has access to
- * all sessions.
+ * Check if the UID or GID match the session. Root user has access to all
+ * sessions.
  */
-static int session_access_ok(struct ltt_session *session,
-	 uid_t uid, gid_t gid)
+static int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid)
 {
-	if (uid != session->uid && gid != session->gid
-			&& uid != 0) {
+	if (uid != session->uid && gid != session->gid && uid != 0) {
 		return 0;
 	} else {
 		return 1;
@@ -2010,8 +2007,8 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
  * The session list lock MUST be acquired before calling this function. Use
  * session_lock_list() and session_unlock_list().
  */
-static void list_lttng_sessions(struct lttng_session *sessions,
-		uid_t uid, gid_t gid)
+static void list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
+		gid_t gid)
 {
 	unsigned int i = 0;
 	struct ltt_session *session;
