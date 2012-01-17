@@ -43,8 +43,9 @@ extern int opt_verbose;
 #define __lttng_print(type, fmt, args...)                                 \
 	do {                                                                  \
 		if (opt_quiet == 0) {                                             \
-			if (type == PRINT_MSG ||                                      \
-					((type & PRINT_DBG) && opt_verbose == 1) ||           \
+			if (type == PRINT_MSG) {                                      \
+				fprintf(stdout, fmt, ## args);                            \
+			} else if (((type & PRINT_DBG) && opt_verbose == 1) ||        \
 					((type & (PRINT_DBG | PRINT_DBG2)) &&                 \
 						opt_verbose == 2) ||                              \
 					((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&    \
