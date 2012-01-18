@@ -368,7 +368,7 @@ static int check_help_command(int argc, char **argv)
 
 	for (i = 0; i < argc; i++) {
 		if ((strncmp(argv[i], "-h", 2) == 0) ||
-				strncmp(argv[i], "--h", 3)) {
+				strncmp(argv[i], "--h", 3) == 0) {
 			return 1;
 		}
 	}
