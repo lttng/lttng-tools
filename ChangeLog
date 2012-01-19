@@ -1,3 +1,15 @@
+2012-01-19 lttng-tools 2.0-pre17
+	* Add and support the new hash table library
+	* Add lttng hash table support to liblttng-consumer
+	* RCU support for consumer's hash tables
+	* UST consumer close shm fd after mapping it
+	* Remove CLONE_VM flag for runas making gdb debugging impossible
+	* Make MSG() print on stdout instead of stderr
+	* Don't init kernel tracer if not root (UID=0)
+	* Multiple fixes found when reaching max. number of open files
+	* Add some UST tests
+	* Multiple segfaults and assert error fixed
+
 2011-12-23 lttng-tools 2.0-pre16
 	* Per-user lttng-sessiond now fully functionnal
 	* Fix nested double usage of hashtable iterators
