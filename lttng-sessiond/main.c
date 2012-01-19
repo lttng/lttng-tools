@@ -3273,6 +3273,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	 */
 	switch (cmd_ctx->lsm->domain.type) {
 	case LTTNG_DOMAIN_KERNEL:
+		if (!is_root) {
+			ret = LTTCOMM_KERN_NA;
+			goto error;
+		}
+
 		/* Kernel tracer check */
 		if (kernel_tracer_fd == 0) {
 			/* Basically, load kernel tracer modules */
