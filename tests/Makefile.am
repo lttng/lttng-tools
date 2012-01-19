@@ -3,7 +3,7 @@ SUBDIRS = .
 AM_CFLAGS=-I$(top_srcdir)/include -I$(top_srcdir)/libkernelctl \
 		  -I$(top_srcdir)/liblttngctl -g -Wall -lurcu -lurcu-cds
 
-EXTRA_DIST = runall.sh lttng/runall.sh lttng/run-kernel-tests.sh
+EXTRA_DIST = runall.sh utils.sh lttng/runall.sh lttng/run-kernel-tests.sh
 
 noinst_PROGRAMS = test_sessions test_kernel_data_trace \
 				  kernel_all_events_basic kernel_event_basic
@@ -27,7 +27,7 @@ kernel_event_basic_SOURCES = lttng/kernel_event_basic.c $(UTILS) $(LIBLTTNG)
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust-nevents ust-nprocesses
-EXTRA_DIST += lttng/run-ust-tests.sh
+EXTRA_DIST += lttng/run-ust-global-tests.sh
 noinst_PROGRAMS += ust_global_event_basic ust_global_all_events_basic test_ust_data_trace
 
 UST_DATA_TRACE=$(top_srcdir)/lttng-sessiond/trace-ust.c

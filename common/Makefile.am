@@ -4,4 +4,4 @@ AM_CFLAGS = -fno-strict-aliasing
 
 noinst_LTLIBRARIES = libcommon.la
 
-libcommon_la_SOURCES = runas.c
+libcommon_la_SOURCES = runas.c runas.h
