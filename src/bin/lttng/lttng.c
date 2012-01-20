@@ -170,15 +170,15 @@ static void sighandler(int sig)
 {
 	switch (sig) {
 		case SIGTERM:
-			DBG("SIGTERM catched");
+			DBG("SIGTERM caugth");
 			clean_exit(EXIT_FAILURE);
 			break;
 		case SIGCHLD:
 			/* Notify is done */
-			DBG("SIGCHLD catched");
+			DBG("SIGCHLD caugth");
 			break;
 		default:
-			DBG("Unknown signal %d catched", sig);
+			DBG("Unknown signal %d caugth", sig);
 			break;
 	}
 
