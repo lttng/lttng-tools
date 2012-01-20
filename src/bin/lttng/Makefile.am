@@ -2,7 +2,7 @@ AM_CPPFLAGS = -DINSTALL_BIN_PATH=\""$(bindir)"\"
 
 bin_PROGRAMS = lttng
 
-lttng_SOURCES = cmd.h conf.c conf.h commands/start.c \
+lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/list.c commands/create.c commands/destroy.c \
 				commands/stop.c commands/enable_events.c \
 				commands/disable_events.c commands/enable_channels.c \

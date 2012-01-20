@@ -4,7 +4,7 @@ SUBDIRS = hashtable kernel-ctl sessiond-comm kernel-consumer ust-consumer
 
 AM_CFLAGS = -fno-strict-aliasing
 
-noinst_HEADERS = lttng-kernel.h defaults.h macros.h
+noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h
 
 noinst_LTLIBRARIES = libcommon.la
 
