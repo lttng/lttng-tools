@@ -38,7 +38,6 @@
 #include <unistd.h>
 #include <config.h>
 
-#include <bin/lttng-consumerd/lttng-consumerd.h>
 #include <common/common.h>
 #include <common/compat/poll.h>
 #include <common/defaults.h>
@@ -98,18 +97,18 @@ static char *rundir;
 /* Consumer daemon specific control data */
 static struct consumer_data kconsumer_data = {
 	.type = LTTNG_CONSUMER_KERNEL,
-	.err_unix_sock_path = KCONSUMERD_ERR_SOCK_PATH,
-	.cmd_unix_sock_path = KCONSUMERD_CMD_SOCK_PATH,
+	.err_unix_sock_path = DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
 };
 static struct consumer_data ustconsumer64_data = {
 	.type = LTTNG_CONSUMER64_UST,
-	.err_unix_sock_path = USTCONSUMERD64_ERR_SOCK_PATH,
-	.cmd_unix_sock_path = USTCONSUMERD64_CMD_SOCK_PATH,
+	.err_unix_sock_path = DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
 };
 static struct consumer_data ustconsumer32_data = {
 	.type = LTTNG_CONSUMER32_UST,
-	.err_unix_sock_path = USTCONSUMERD32_ERR_SOCK_PATH,
-	.cmd_unix_sock_path = USTCONSUMERD32_CMD_SOCK_PATH,
+	.err_unix_sock_path = DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
+	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
 };
 
 static int dispatch_thread_exit;
@@ -4112,13 +4111,13 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 
     switch (consumer_data->type) {
 	case LTTNG_CONSUMER_KERNEL:
-		snprintf(path, PATH_MAX, KCONSUMERD_PATH, rundir);
+		snprintf(path, PATH_MAX, DEFAULT_KCONSUMERD_PATH, rundir);
 		break;
 	case LTTNG_CONSUMER64_UST:
-		snprintf(path, PATH_MAX, USTCONSUMERD64_PATH, rundir);
+		snprintf(path, PATH_MAX, DEFAULT_USTCONSUMERD64_PATH, rundir);
 		break;
 	case LTTNG_CONSUMER32_UST:
-		snprintf(path, PATH_MAX, USTCONSUMERD32_PATH, rundir);
+		snprintf(path, PATH_MAX, DEFAULT_USTCONSUMERD32_PATH, rundir);
 		break;
 	default:
 		ERR("Consumer type unknown");
@@ -4304,9 +4303,9 @@ int main(int argc, char **argv)
 
 		/* Setup kernel consumerd path */
 		snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX,
-				KCONSUMERD_ERR_SOCK_PATH, rundir);
+				DEFAULT_KCONSUMERD_ERR_SOCK_PATH, rundir);
 		snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX,
-				KCONSUMERD_CMD_SOCK_PATH, rundir);
+				DEFAULT_KCONSUMERD_CMD_SOCK_PATH, rundir);
 
 		DBG2("Kernel consumer err path: %s",
 				kconsumer_data.err_unix_sock_path);
@@ -4360,9 +4359,9 @@ int main(int argc, char **argv)
 
 	/* 32 bits consumerd path setup */
 	snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX,
-			USTCONSUMERD32_ERR_SOCK_PATH, rundir);
+			DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH, rundir);
 	snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX,
-			USTCONSUMERD32_CMD_SOCK_PATH, rundir);
+			DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH, rundir);
 
 	DBG2("UST consumer 32 bits err path: %s",
 			ustconsumer32_data.err_unix_sock_path);
@@ -4371,9 +4370,9 @@ int main(int argc, char **argv)
 
 	/* 64 bits consumerd path setup */
 	snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX,
-			USTCONSUMERD64_ERR_SOCK_PATH, rundir);
+			DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH, rundir);
 	snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX,
-			USTCONSUMERD64_CMD_SOCK_PATH, rundir);
+			DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH, rundir);
 
 	DBG2("UST consumer 64 bits err path: %s",
 			ustconsumer64_data.err_unix_sock_path);

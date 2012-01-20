@@ -20,17 +20,45 @@
 #define _DEFAULTS_H
 
 /* Default size of a hash table */
-#define DEFAULT_HT_SIZE                 4
+#define DEFAULT_HT_SIZE                         4
+
+/* Default session daemon paths */
+#define DEFAULT_HOME_DIR						"/tmp"
+#define DEFAULT_UST_SOCK_DIR                    DEFAULT_HOME_DIR "/ust-app-socks"
+#define DEFAULT_GLOBAL_APPS_PIPE                DEFAULT_UST_SOCK_DIR "/global"
+#define DEFAULT_TRACE_OUTPUT                    DEFAULT_HOME_DIR "/lttng"
+
+#define DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH       "/lttng-ust-apps-wait"
+#define DEFAULT_HOME_APPS_WAIT_SHM_PATH         "/lttng-ust-apps-wait-%u"
+
+/* Default consumer paths */
+#define DEFAULT_CONSUMERD_RUNDIR                "%s"
+
+/* Kernel consumer path */
+#define DEFAULT_KCONSUMERD_PATH                 DEFAULT_CONSUMERD_RUNDIR "/kconsumerd"
+#define DEFAULT_KCONSUMERD_CMD_SOCK_PATH        DEFAULT_KCONSUMERD_PATH "/command"
+#define DEFAULT_KCONSUMERD_ERR_SOCK_PATH        DEFAULT_KCONSUMERD_PATH "/error"
+
+/* UST 64-bit consumer path */
+#define DEFAULT_USTCONSUMERD64_PATH             DEFAULT_CONSUMERD_RUNDIR "/ustconsumerd64"
+#define DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH    DEFAULT_USTCONSUMERD64_PATH "/command"
+#define DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH    DEFAULT_USTCONSUMERD64_PATH "/error"
+
+/* UST 32-bit consumer path */
+#define DEFAULT_USTCONSUMERD32_PATH             DEFAULT_CONSUMERD_RUNDIR "/ustconsumerd32"
+#define DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/command"
+#define DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/error"
+
 
 /* Default lttng run directory */
-#define DEFAULT_LTTNG_RUNDIR                "/var/run/lttng"
-#define DEFAULT_LTTNG_HOME_RUNDIR           "%s/.lttng"
+#define DEFAULT_LTTNG_RUNDIR                    "/var/run/lttng"
+#define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
 
 /* Default unix socket path */
-#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK     DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK       DEFAULT_LTTNG_RUNDIR "/apps-lttng-sessiond"
-#define DEFAULT_HOME_APPS_UNIX_SOCK         DEFAULT_LTTNG_HOME_RUNDIR "/apps-lttng-sessiond"
-#define DEFAULT_HOME_CLIENT_UNIX_SOCK       DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
+#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK           DEFAULT_LTTNG_RUNDIR "/apps-lttng-sessiond"
+#define DEFAULT_HOME_APPS_UNIX_SOCK             DEFAULT_LTTNG_HOME_RUNDIR "/apps-lttng-sessiond"
+#define DEFAULT_HOME_CLIENT_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
 
 /*
  * Value taken from the hard limit allowed by the kernel when using setrlimit

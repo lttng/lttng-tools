@@ -20,21 +20,4 @@
 #ifndef _LTTNG_CONSUMERD_H
 #define _LTTNG_CONSUMERD_H
 
-#define CONSUMERD_RUNDIR                    "%s"
-
-/* Kernel consumer path */
-#define KCONSUMERD_PATH                     CONSUMERD_RUNDIR "/kconsumerd"
-#define KCONSUMERD_CMD_SOCK_PATH            KCONSUMERD_PATH "/command"
-#define KCONSUMERD_ERR_SOCK_PATH            KCONSUMERD_PATH "/error"
-
-/* UST 64-bit consumer path */
-#define USTCONSUMERD64_PATH                 CONSUMERD_RUNDIR "/ustconsumerd64"
-#define USTCONSUMERD64_CMD_SOCK_PATH        USTCONSUMERD64_PATH "/command"
-#define USTCONSUMERD64_ERR_SOCK_PATH        USTCONSUMERD64_PATH "/error"
-
-/* UST 32-bit consumer path */
-#define USTCONSUMERD32_PATH                 CONSUMERD_RUNDIR "/ustconsumerd32"
-#define USTCONSUMERD32_CMD_SOCK_PATH        USTCONSUMERD32_PATH "/command"
-#define USTCONSUMERD32_ERR_SOCK_PATH        USTCONSUMERD32_PATH "/error"
-
 #endif /* _LTTNG_CONSUMERD_H */

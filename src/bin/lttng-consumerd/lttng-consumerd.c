@@ -253,16 +253,16 @@ int main(int argc, char **argv)
 	if (strlen(command_sock_path) == 0) {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
-			snprintf(command_sock_path, PATH_MAX, KCONSUMERD_CMD_SOCK_PATH,
+			snprintf(command_sock_path, PATH_MAX, DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
 					DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER64_UST:
 			snprintf(command_sock_path, PATH_MAX,
-					USTCONSUMERD64_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+					DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER32_UST:
 			snprintf(command_sock_path, PATH_MAX,
-					USTCONSUMERD32_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+					DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		default:
 			WARN("Unknown consumerd type");
@@ -284,16 +284,16 @@ int main(int argc, char **argv)
 	if (strlen(error_sock_path) == 0) {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
-			snprintf(error_sock_path, PATH_MAX, KCONSUMERD_ERR_SOCK_PATH,
+			snprintf(error_sock_path, PATH_MAX, DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
 					DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER64_UST:
 			snprintf(error_sock_path, PATH_MAX,
-					USTCONSUMERD64_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+					DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER32_UST:
 			snprintf(error_sock_path, PATH_MAX,
-					USTCONSUMERD32_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+					DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		default:
 			WARN("Unknown consumerd type");
