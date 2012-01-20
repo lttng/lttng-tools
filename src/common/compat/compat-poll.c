@@ -20,6 +20,7 @@
 #include <sys/time.h>
 
 #include <lttngerr.h>
+#include <common/defaults.h>
 
 #include "poll.h"
 
@@ -177,7 +178,7 @@ void compat_poll_set_max_size(void)
 	struct rlimit lim;
 
 	/* Default value */
-	poll_max_size = LTTNG_POLL_DEFAULT_SIZE;
+	poll_max_size = DEFAULT_POLL_SIZE;
 
 	ret = getrlimit(RLIMIT_NOFILE, &lim);
 	if (ret < 0) {
@@ -188,7 +189,7 @@ void compat_poll_set_max_size(void)
 	poll_max_size = lim.rlim_cur;
 	if (poll_max_size <= 0) {
 		/* Extra precaution */
-		poll_max_size = LTTNG_POLL_DEFAULT_SIZE;
+		poll_max_size = DEFAULT_POLL_SIZE;
 	}
 
 	DBG("poll set max size set to %u", poll_max_size);

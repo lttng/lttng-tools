@@ -26,7 +26,7 @@
 #include <time.h>
 
 #include <bin/lttng-sessiond/trace-kernel.h>
-#include <common/lttng-share.h>
+#include <common/defaults.h>
 
 #include "utils.h"
 

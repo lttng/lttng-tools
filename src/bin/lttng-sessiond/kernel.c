@@ -26,7 +26,7 @@
 
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/lttngerr.h>
-#include <common/lttng-share.h>
+#include <common/common.h>
 
 #include "kernel.h"
 

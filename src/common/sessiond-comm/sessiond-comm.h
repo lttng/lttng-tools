@@ -1,47 +1,40 @@
-#ifndef _LTTNG_SESSIOND_COMM_H
-#define _LTTNG_SESSIOND_COMM_H
-
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; only version 2 of the License.
  * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
  * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 /*
- * This header is meant for liblttng and libust internal use ONLY.
- * These declarations should NOT be considered stable API.
+ * This header is meant for liblttng and libust internal use ONLY. These
+ * declarations should NOT be considered stable API.
  */
+
+#ifndef _LTTNG_SESSIOND_COMM_H
+#define _LTTNG_SESSIOND_COMM_H
 
 #define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
 #include <sys/socket.h>
 
-#define LTTNG_RUNDIR                        "/var/run/lttng"
-#define LTTNG_HOME_RUNDIR                   "%s/.lttng"
-
-/* Default unix socket path */
-#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK     LTTNG_RUNDIR "/client-lttng-sessiond"
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK       LTTNG_RUNDIR "/apps-lttng-sessiond"
-#define DEFAULT_HOME_APPS_UNIX_SOCK         LTTNG_HOME_RUNDIR "/apps-lttng-sessiond"
-#define DEFAULT_HOME_CLIENT_UNIX_SOCK       LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
-
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
+
+/* Maximum number of FDs that can be sent over a Unix socket */
+#define LTTCOMM_MAX_SEND_FDS           4
 
 /*
  * Get the error code index from 0 since LTTCOMM_OK start at 1000
@@ -284,7 +277,6 @@ extern int lttcomm_accept_unix_sock(int sock);
 extern int lttcomm_listen_unix_sock(int sock);
 extern int lttcomm_close_unix_sock(int sock);
 
-#define LTTCOMM_MAX_SEND_FDS	4
 /* Send a message accompanied by fd(s) over a unix socket. */
 extern ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd);
 /* Recv a message accompanied by fd(s) from a unix socket */

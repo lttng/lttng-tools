@@ -42,7 +42,8 @@
 #include <common/lttngerr.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>
-#include <common/runas.h>
+#include <common/common.h>
+#include <common/defaults.h>
 #include <common/compat/poll.h>
 
 #include "lttng-sessiond.h"
@@ -4278,7 +4279,7 @@ int main(int argc, char **argv)
 	is_root = !getuid();
 
 	if (is_root) {
-		rundir = strdup(LTTNG_RUNDIR);
+		rundir = strdup(DEFAULT_LTTNG_RUNDIR);
 
 		/* Create global run dir with root access */
 		ret = create_lttng_rundir(rundir);
@@ -4325,7 +4326,7 @@ int main(int argc, char **argv)
 		 * Create rundir from home path. This will create something like
 		 * $HOME/.lttng
 		 */
-		ret = asprintf(&rundir, LTTNG_HOME_RUNDIR, home_path);
+		ret = asprintf(&rundir, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
 		if (ret < 0) {
 			ret = -ENOMEM;
 			goto error;

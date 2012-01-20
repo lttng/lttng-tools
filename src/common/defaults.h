@@ -16,13 +16,27 @@
  * Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _LTTNG_SHARE_H
-#define _LTTNG_SHARE_H
-
-#include <stdlib.h>
+#ifndef _DEFAULTS_H
+#define _DEFAULTS_H
 
 /* Default size of a hash table */
 #define DEFAULT_HT_SIZE                 4
+
+/* Default lttng run directory */
+#define DEFAULT_LTTNG_RUNDIR                "/var/run/lttng"
+#define DEFAULT_LTTNG_HOME_RUNDIR           "%s/.lttng"
+
+/* Default unix socket path */
+#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK     DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK       DEFAULT_LTTNG_RUNDIR "/apps-lttng-sessiond"
+#define DEFAULT_HOME_APPS_UNIX_SOCK         DEFAULT_LTTNG_HOME_RUNDIR "/apps-lttng-sessiond"
+#define DEFAULT_HOME_CLIENT_UNIX_SOCK       DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
+
+/*
+ * Value taken from the hard limit allowed by the kernel when using setrlimit
+ * with RLIMIT_NOFILE on an Intel i7 CPU and Linux 3.0.3.
+ */
+#define DEFAULT_POLL_SIZE 65535
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
@@ -63,36 +77,4 @@
  */
 #define DEFAULT_SEM_WAIT_TIMEOUT            30    /* in seconds */
 
-/*
- * Takes a pointer x and transform it so we can use it to access members
- * without a function call. Here an example:
- *
- *    #define GET_SIZE(x) LTTNG_REF(x)->size
- *
- *    struct { int size; } s;
- *
- *    printf("size : %d\n", GET_SIZE(&s));
- *
- * For this example we can't use something like this for compatibility purpose
- * since this will fail:
- *
- *    #define GET_SIZE(x) x->size;
- *
- * This is mostly use for the compatibility layer of lttng-tools. See
- * poll/epoll for a good example. Since x can be on the stack or allocated
- * memory using malloc(), we must use generic accessors for compat in order to
- * *not* use a function to access members and not the variable name.
- */
-#define LTTNG_REF(x) ((typeof(*x) *)(x))
-
-/*
- * Memory allocation zeroed
- */
-#define zmalloc(x) calloc(1, x)
-
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
-#endif
-
-
-#endif /* _LTTNG_SHARE_H */
+#endif /* _DEFAULTS_H */

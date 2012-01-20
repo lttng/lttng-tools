@@ -28,8 +28,7 @@
 #include <urcu/compiler.h>
 
 #include <common/lttngerr.h>
-#include <common/lttng-share.h>
-#include <common/runas.h>
+#include <common/common.h>
 
 #include "ust-app.h"
 #include "ust-consumer.h"

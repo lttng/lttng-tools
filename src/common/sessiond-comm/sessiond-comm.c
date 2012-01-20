@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <common/defaults.h>
+
 #include "sessiond-comm.h"
 
 /*

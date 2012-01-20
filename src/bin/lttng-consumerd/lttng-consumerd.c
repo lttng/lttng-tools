@@ -45,6 +45,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>
+#include <common/defaults.h>
 
 #include "lttng-consumerd.h"
 
@@ -253,15 +254,15 @@ int main(int argc, char **argv)
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
 			snprintf(command_sock_path, PATH_MAX, KCONSUMERD_CMD_SOCK_PATH,
-					LTTNG_RUNDIR);
+					DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER64_UST:
 			snprintf(command_sock_path, PATH_MAX,
-					USTCONSUMERD64_CMD_SOCK_PATH, LTTNG_RUNDIR);
+					USTCONSUMERD64_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER32_UST:
 			snprintf(command_sock_path, PATH_MAX,
-					USTCONSUMERD32_CMD_SOCK_PATH, LTTNG_RUNDIR);
+					USTCONSUMERD32_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		default:
 			WARN("Unknown consumerd type");
@@ -284,15 +285,15 @@ int main(int argc, char **argv)
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
 			snprintf(error_sock_path, PATH_MAX, KCONSUMERD_ERR_SOCK_PATH,
-					LTTNG_RUNDIR);
+					DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER64_UST:
 			snprintf(error_sock_path, PATH_MAX,
-					USTCONSUMERD64_ERR_SOCK_PATH, LTTNG_RUNDIR);
+					USTCONSUMERD64_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		case LTTNG_CONSUMER32_UST:
 			snprintf(error_sock_path, PATH_MAX,
-					USTCONSUMERD32_ERR_SOCK_PATH, LTTNG_RUNDIR);
+					USTCONSUMERD32_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
 			break;
 		default:
 			WARN("Unknown consumerd type");

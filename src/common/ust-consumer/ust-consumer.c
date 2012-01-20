@@ -30,8 +30,7 @@
 #include <unistd.h>
 #include <lttng/ust-ctl.h>
 
-#include <common/lttngerr.h>
-#include <common/runas.h>
+#include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "ust-consumer.h"

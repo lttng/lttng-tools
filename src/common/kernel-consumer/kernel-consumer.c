@@ -29,9 +29,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
-#include <common/lttngerr.h>
-#include <common/runas.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "kernel-consumer.h"

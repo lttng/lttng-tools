@@ -21,13 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/lttng-share.h>
-
-/*
- * Value taken from the hard limit allowed by the kernel when using setrlimit
- * with RLIMIT_NOFILE on an Intel i7 CPU and Linux 3.0.3.
- */
-#define LTTNG_POLL_DEFAULT_SIZE 65535
+#include <common/common.h>
 
 /*
  * Maximum number of fd we can monitor.
@@ -58,7 +52,7 @@ static inline void __lttng_poll_free(void *events)
 #include <sys/epoll.h>
 
 /* See man epoll(7) for this define path */
-#define LTTNG_EPOLL_PROC_PATH "/proc/sys/fs/epoll/max_user_watches"
+#define COMPAT_EPOLL_PROC_PATH "/proc/sys/fs/epoll/max_user_watches"
 
 enum {
 	/* Polling variables compatibility for epoll */

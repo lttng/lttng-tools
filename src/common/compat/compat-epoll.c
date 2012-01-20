@@ -24,6 +24,7 @@
 #include <config.h>
 
 #include <common/lttngerr.h>
+#include <common/defaults.h>
 
 #include "poll.h"
 
@@ -195,9 +196,9 @@ void compat_epoll_set_max_size(void)
 	int ret, fd;
 	char buf[64];
 
-	poll_max_size = LTTNG_POLL_DEFAULT_SIZE;
+	poll_max_size = DEFAULT_POLL_SIZE;
 
-	fd = open(LTTNG_EPOLL_PROC_PATH, O_RDONLY);
+	fd = open(COMPAT_EPOLL_PROC_PATH, O_RDONLY);
 	if (fd < 0) {
 		return;
 	}
@@ -211,7 +212,7 @@ void compat_epoll_set_max_size(void)
 	poll_max_size = atoi(buf);
 	if (poll_max_size <= 0) {
 		/* Extra precaution */
-		poll_max_size = LTTNG_POLL_DEFAULT_SIZE;
+		poll_max_size = DEFAULT_POLL_SIZE;
 	}
 
 	DBG("epoll set max size is %d", poll_max_size);

@@ -4,11 +4,11 @@ SUBDIRS = hashtable kernel-ctl sessiond-comm kernel-consumer ust-consumer
 
 AM_CFLAGS = -fno-strict-aliasing
 
-noinst_HEADERS = lttng-share.h lttngerr.h lttng-kernel.h
+noinst_HEADERS = lttngerr.h lttng-kernel.h defaults.h macros.h
 
 noinst_LTLIBRARIES = libcommon.la
 
-libcommon_la_SOURCES = runas.c runas.h
+libcommon_la_SOURCES = runas.c runas.h common.h
 
 # Consumer library
 noinst_LTLIBRARIES += libconsumer.la

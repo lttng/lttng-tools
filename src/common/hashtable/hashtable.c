@@ -21,8 +21,8 @@
 #include <urcu.h>
 #include <urcu/compiler.h>
 
-#include <common/lttng-share.h>
-#include <common/lttngerr.h>
+#include <common/common.h>
+#include <common/defaults.h>
 
 #include "hashtable.h"
 #include "utils.h"

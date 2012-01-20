@@ -26,9 +26,8 @@
 #include <urcu.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/runas.h>
 #include <common/lttngerr.h>
-#include <common/lttng-share.h>
+#include <common/common.h>
 
 #include "session.h"
 

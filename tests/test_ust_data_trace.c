@@ -27,7 +27,7 @@
 
 #include <lttng/lttng.h>
 #include <bin/lttng-sessiond/lttng-ust-abi.h>
-#include <common/lttng-share.h>
+#include <common/defaults.h>
 #include <bin/lttng-sessiond/trace-ust.h>
 
 #include "utils.h"
