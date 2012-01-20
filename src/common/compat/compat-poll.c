@@ -19,8 +19,8 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 
-#include <lttngerr.h>
 #include <common/defaults.h>
+#include <common/error.h>
 
 #include "poll.h"
 

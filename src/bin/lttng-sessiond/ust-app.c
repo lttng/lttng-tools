@@ -27,7 +27,6 @@
 #include <unistd.h>
 #include <urcu/compiler.h>
 
-#include <common/lttngerr.h>
 #include <common/common.h>
 
 #include "ust-app.h"

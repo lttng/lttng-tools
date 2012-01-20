@@ -21,8 +21,8 @@
 #include <string.h>
 
 #include <lttng/lttng.h>
+#include <common/error.h>
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/lttngerr.h>
 
 #include "channel.h"
 #include "event.h"

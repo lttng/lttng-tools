@@ -18,7 +18,7 @@
 
 #include <stdlib.h>
 
-#include <common/lttngerr.h>
+#include <common/error.h>
 
 #include "conf.h"
 

@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <config.h>
 
-#include <common/lttngerr.h>
+#include <common/error.h>
 #include <common/defaults.h>
 
 #include "poll.h"

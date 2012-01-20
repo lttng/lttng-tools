@@ -26,7 +26,7 @@
 #include <config.h>
 
 #include <lttng/lttng.h>
-#include <common/lttngerr.h>
+#include <common/error.h>
 
 #include "command.h"
 

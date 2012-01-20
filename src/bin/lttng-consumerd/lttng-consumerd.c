@@ -40,12 +40,12 @@
 #include <config.h>
 #include <urcu/compiler.h>
 
-#include <common/lttngerr.h>
+#include <common/defaults.h>
+#include <common/common.h>
+#include <common/kernel-consumer/kernel-consumer.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>
-#include <common/defaults.h>
 
 #include "lttng-consumerd.h"
 

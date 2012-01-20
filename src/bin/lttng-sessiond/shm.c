@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <urcu.h>
 
-#include <common/lttngerr.h>
+#include <common/error.h>
 
 #include "shm.h"
 

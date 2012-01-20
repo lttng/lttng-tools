@@ -24,7 +24,7 @@
 #include <urcu.h>
 #include <urcu/futex.h>
 
-#include <common/lttngerr.h>
+#include <common/error.h>
 
 #include "futex.h"
 

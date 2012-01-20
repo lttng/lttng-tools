@@ -20,7 +20,6 @@
 #define _LTTNG_CMD_H
 
 #include <lttng/lttng.h>
-#include <common/lttngerr.h>
 #include <common/common.h>
 #include <common/defaults.h>
 

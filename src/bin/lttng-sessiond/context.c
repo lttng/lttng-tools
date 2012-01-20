@@ -22,8 +22,8 @@
 #include <unistd.h>
 #include <urcu/list.h>
 
+#include <common/error.h>
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/lttngerr.h>
 
 #include "context.h"
 #include "kernel.h"

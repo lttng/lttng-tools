@@ -24,7 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/lttngerr.h>
+#include <common/error.h>
 
 #include "utils.h"
 

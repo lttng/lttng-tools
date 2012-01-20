@@ -19,7 +19,7 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
-#include "lttngerr.h"
+#include "error.h"
 #include "macros.h"
 #include "runas.h"
 

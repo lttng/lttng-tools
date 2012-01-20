@@ -30,7 +30,7 @@
 #include <sched.h>
 #include <sys/mman.h>
 
-#include <common/lttngerr.h>
+#include <common/error.h>
 
 #include "runas.h"
 

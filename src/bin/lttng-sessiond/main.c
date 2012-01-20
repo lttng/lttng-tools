@@ -39,12 +39,11 @@
 #include <config.h>
 
 #include <bin/lttng-consumerd/lttng-consumerd.h>
-#include <common/lttngerr.h>
+#include <common/common.h>
+#include <common/compat/poll.h>
+#include <common/defaults.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/compat/poll.h>
 
 #include "lttng-sessiond.h"
 #include "channel.h"

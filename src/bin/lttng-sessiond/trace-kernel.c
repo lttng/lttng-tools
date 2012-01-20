@@ -22,7 +22,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/lttngerr.h>
 #include <common/common.h>
 #include <common/defaults.h>
 

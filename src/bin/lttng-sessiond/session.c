@@ -25,9 +25,8 @@
 #include <sys/types.h>
 #include <urcu.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/lttngerr.h>
 #include <common/common.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 
 #include "session.h"
 
