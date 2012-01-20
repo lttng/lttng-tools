@@ -43,10 +43,10 @@
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>
 #include <common/runas.h>
+#include <common/compat/poll.h>
 
 #include "lttng-sessiond.h"
 #include "channel.h"
-#include "compat/poll.h"
 #include "context.h"
 #include "event.h"
 #include "futex.h"
