@@ -574,15 +574,15 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	 * Init memory size counter
 	 * See kernel-ctl.h for explanation of this value
 	 */
-	nbmem = KERNEL_EVENT_LIST_SIZE;
+	nbmem = KERNEL_EVENT_INIT_LIST_SIZE;
 	elist = zmalloc(sizeof(struct lttng_event) * nbmem);
 
 	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
-		if (count > nbmem) {
+		if (count >= nbmem) {
 			DBG("Reallocating event list from %zu to %zu bytes", nbmem,
-					nbmem + KERNEL_EVENT_LIST_SIZE);
-			/* Adding the default size again */
-			nbmem += KERNEL_EVENT_LIST_SIZE;
+					nbmem * 2);
+			/* Double the size */
+			nbmem <<= 1;
 			elist = realloc(elist, nbmem * sizeof(struct lttng_event));
 			if (elist == NULL) {
 				perror("realloc list events");

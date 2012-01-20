@@ -29,7 +29,7 @@
  * This is NOT an upper bound because if the real event list size is bigger,
  * dynamic reallocation is performed.
  */
-#define KERNEL_EVENT_LIST_SIZE 80
+#define KERNEL_EVENT_INIT_LIST_SIZE 64
 
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct lttng_kernel_context *ctx);
