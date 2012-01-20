@@ -25,10 +25,11 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "lttng/lttng.h"
-#include "lttng-sessiond/lttng-ust-abi.h"
-#include "lttng-share.h"
-#include "lttng-sessiond/trace-ust.h"
+#include <lttng/lttng.h>
+#include <bin/lttng-sessiond/lttng-ust-abi.h>
+#include <common/lttng-share.h>
+#include <bin/lttng-sessiond/trace-ust.h>
+
 #include "utils.h"
 
 /* This path will NEVER be created in this test */
@@ -176,7 +177,7 @@ static void create_ust_context(void)
 	PRINT_OK();
 
 	printf("Validating UST context: ");
-	assert(ctx.ctx == uctx->ctx.ctx);
+	assert((int) ctx.ctx == (int)uctx->ctx.ctx);
 	PRINT_OK();
 }
 

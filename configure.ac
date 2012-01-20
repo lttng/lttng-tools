@@ -122,7 +122,7 @@ LT_INIT
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
-DEFAULT_INCLUDES="-I\$(top_srcdir) -I\$(top_builddir)"
+DEFAULT_INCLUDES="-I\$(top_srcdir) -I\$(top_builddir) -I\$(top_builddir)/src -I\$(top_builddir)/include"
 
 lttngincludedir="${includedir}/lttng"
 
@@ -131,22 +131,24 @@ AC_SUBST(DEFAULT_INCLUDES)
 
 AC_CONFIG_FILES([
 	Makefile
+	doc/Makefile
 	include/Makefile
-	common/Makefile
-	libkernelctl/Makefile
-	liblttng-consumer/Makefile
-	liblttng-kconsumer/Makefile
-	liblttng-ustconsumer/Makefile
-	liblttngctl/Makefile
-	liblttng-sessiond-comm/Makefile
-	liblttng-ht/Makefile
-	lttng-consumerd/Makefile
-	lttng-sessiond/Makefile
-	lttng/Makefile
+	src/Makefile
+	src/common/Makefile
+	src/common/kernel-ctl/Makefile
+	src/common/kernel-consumer/Makefile
+	src/common/ust-consumer/Makefile
+	src/common/hashtable/Makefile
+	src/common/sessiond-comm/Makefile
+	src/lib/Makefile
+	src/lib/lttng-ctl/Makefile
+	src/bin/Makefile
+	src/bin/lttng-consumerd/Makefile
+	src/bin/lttng-sessiond/Makefile
+	src/bin/lttng/Makefile
 	tests/Makefile
 	tests/ust-nevents/Makefile
 	tests/ust-nprocesses/Makefile
-	doc/Makefile
 ])
 
 AC_OUTPUT

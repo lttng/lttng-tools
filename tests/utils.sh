@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/src/bin/bash
 #
 # Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
 #
@@ -23,7 +23,7 @@ function start_sessiond ()
 {
 	if [ -z $(pidof $SESSIOND_BIN) ]; then
 		echo -n "Starting session daemon... "
-		$TESTDIR/../lttng-sessiond/$SESSIOND_BIN --daemonize --quiet
+		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet
 		if [ $? -eq 1 ]; then
 			echo -e "\e[1;31mFAILED\e[0m"
 			return 1
@@ -53,7 +53,7 @@ function create_lttng_session ()
 	trace_path=$2
 
 	echo -n "Creating lttng session $SESSION_NAME in $TRACE_PATH "
-	$TESTDIR/../lttng/$LTTNG_BIN create $sess_name -o $trace_path >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e "\e[1;31mFAILED\e[0m"
 		return 1
@@ -69,7 +69,7 @@ function enable_ust_lttng_event ()
 	event_name=$2
 
 	echo -n "Enabling lttng event $event_name for session $sess_name "
-	$TESTDIR/../lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e '\e[1;31mFAILED\e[0m'
 		return 1
@@ -83,7 +83,7 @@ function start_tracing ()
 	sess_name=$1
 
 	echo -n "Start lttng tracing for session $sess_name "
-	$TESTDIR/../lttng/$LTTNG_BIN start $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e '\e[1;31mFAILED\e[0m'
 		return 1
@@ -97,7 +97,7 @@ function stop_tracing ()
 	sess_name=$1
 
 	echo -n "Stop lttng tracing for session $sess_name "
-	$TESTDIR/../lttng/$LTTNG_BIN stop $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e '\e[1;31mFAILED\e[0m'
 		return 1
@@ -111,7 +111,7 @@ function destroy_lttng_session ()
 	sess_name=$1
 
 	echo -n "Destroy lttng session $sess_name "
-	$TESTDIR/../lttng/$LTTNG_BIN destroy $sess_name >/dev/null 2>&1 
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e '\e[1;31mFAILED\e[0m'
 		return 1
