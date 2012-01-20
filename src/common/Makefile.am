@@ -4,6 +4,8 @@ SUBDIRS = hashtable kernel-ctl sessiond-comm kernel-consumer ust-consumer
 
 AM_CFLAGS = -fno-strict-aliasing
 
+noinst_HEADERS = lttng-share.h lttngerr.h lttng-kernel.h
+
 noinst_LTLIBRARIES = libcommon.la
 
 libcommon_la_SOURCES = runas.c runas.h
@@ -11,7 +13,7 @@ libcommon_la_SOURCES = runas.c runas.h
 # Consumer library
 noinst_LTLIBRARIES += libconsumer.la
 
-libconsumer_la_SOURCES = consumer.c
+libconsumer_la_SOURCES = consumer.c consumer.h
 
 libconsumer_la_LIBADD = \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \

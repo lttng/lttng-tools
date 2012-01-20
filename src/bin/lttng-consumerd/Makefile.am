@@ -1,8 +1,8 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
+AM_CPPFLAGS =
 
 bin_PROGRAMS = lttng-consumerd
 
-lttng_consumerd_SOURCES = lttng-consumerd.c
+lttng_consumerd_SOURCES = lttng-consumerd.c lttng-consumerd.h
 
 lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \

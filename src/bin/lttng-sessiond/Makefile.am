@@ -1,5 +1,4 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
-			  -DINSTALL_BIN_PATH=\""$(bindir)"\" \
+AM_CPPFLAGS = -DINSTALL_BIN_PATH=\""$(bindir)"\" \
 			  -DINSTALL_LIB_PATH=\""$(libdir)"\"
 
 AM_CFLAGS = -fno-strict-aliasing
