@@ -23,6 +23,9 @@
 #include <common/lttngerr.h>
 #include <common/lttng-share.h>
 
+#include "conf.h"
+#include "utils.h"
+
 enum cmd_error_code {
 	CMD_SUCCESS,
 	CMD_ERROR,

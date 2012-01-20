@@ -28,8 +28,7 @@
 #include <lttng/lttng.h>
 #include <common/lttngerr.h>
 
-#include "cmd.h"
-#include "conf.h"
+#include "command.h"
 
 /* Variables */
 static char *progname;

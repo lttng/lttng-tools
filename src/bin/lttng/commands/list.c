@@ -24,7 +24,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../cmd.h"
+#include "../command.h"
 
 static int opt_pid;
 static int opt_userspace;

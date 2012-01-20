@@ -28,9 +28,7 @@
 
 #include <urcu/list.h>
 
-#include "../cmd.h"
-#include "../conf.h"
-#include "../utils.h"
+#include "../command.h"
 
 #define PRINT_LINE_LEN	80
 

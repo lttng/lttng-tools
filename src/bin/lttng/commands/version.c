@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <config.h>
 
-#include "../cmd.h"
+#include "../command.h"
 
 enum {
 	OPT_HELP = 1,

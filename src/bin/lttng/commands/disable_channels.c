@@ -25,9 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../cmd.h"
-#include "../conf.h"
-#include "../utils.h"
+#include "../command.h"
 
 static char *opt_channels;
 static int opt_kernel;

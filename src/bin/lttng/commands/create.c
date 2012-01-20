@@ -26,9 +26,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../cmd.h"
-#include "../conf.h"
-#include "../utils.h"
+#include "../command.h"
 
 static char *opt_output_path;
 static char *opt_session_name;

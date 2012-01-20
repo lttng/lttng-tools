@@ -28,9 +28,7 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include "../cmd.h"
-#include "../conf.h"
-#include "../utils.h"
+#include "../command.h"
 
 static int opt_event_type;
 static char *opt_kernel;
