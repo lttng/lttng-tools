@@ -15,6 +15,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \
+                       modprobe.c modprobe.h kern-modules.h \
                        lttng-ust-ctl.h lttng-ust-abi.h
 
 if HAVE_LIBLTTNG_UST_CTL

@@ -50,6 +50,7 @@
 #include "event.h"
 #include "futex.h"
 #include "kernel.h"
+#include "modprobe.h"
 #include "shm.h"
 #include "ust-ctl.h"
 #include "utils.h"
@@ -269,41 +270,6 @@ static int check_thread_quit_pipe(int fd, uint32_t events)
 }
 
 /*
- * Remove modules in reverse load order.
- */
-static int modprobe_remove_kernel_modules(void)
-{
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = ARRAY_SIZE(kernel_modules_list) - 1; i >= 0; i--) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe -r -q %s",
-				kernel_modules_list[i].name);
-		if (ret < 0) {
-			perror("snprintf modprobe -r");
-			goto error;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe -r for module %s",
-					kernel_modules_list[i].name);
-		} else if (kernel_modules_list[i].required
-				&& WEXITSTATUS(ret) != 0) {
-			ERR("Unable to remove module %s",
-					kernel_modules_list[i].name);
-		} else {
-			DBG("Modprobe removal successful %s",
-					kernel_modules_list[i].name);
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
  * Return group ID of the tracing group or -1 if not found.
  */
 static gid_t allowed_group(void)
@@ -455,7 +421,7 @@ static void cleanup(void)
 		DBG2("Closing kernel fd");
 		close(kernel_tracer_fd);
 		DBG("Unloading kernel modules");
-		modprobe_remove_kernel_modules();
+		modprobe_remove_lttng_all();
 	}
 
 	close(thread_quit_pipe[0]);
@@ -1701,147 +1667,64 @@ error:
 }
 
 /*
- * modprobe_kernel_modules
+ * Check version of the lttng-modules.
  */
-static int modprobe_kernel_modules(void)
+static int validate_lttng_modules_version(void)
 {
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = 0; i < ARRAY_SIZE(kernel_modules_list); i++) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-			"/sbin/modprobe %s%s",
-			kernel_modules_list[i].required ? "" : "-q ",
-			kernel_modules_list[i].name);
-		if (ret < 0) {
-			perror("snprintf modprobe");
-			goto error;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe for module %s",
-				kernel_modules_list[i].name);
-		} else if (kernel_modules_list[i].required
-				&& WEXITSTATUS(ret) != 0) {
-			ERR("Unable to load module %s",
-				kernel_modules_list[i].name);
-		} else {
-			DBG("Modprobe successfully %s",
-				kernel_modules_list[i].name);
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * mount_debugfs
- */
-static int mount_debugfs(char *path)
-{
-	int ret;
-	char *type = "debugfs";
-
-	ret = run_as_mkdir_recursive(path, S_IRWXU | S_IRWXG, geteuid(), getegid());
-	if (ret < 0) {
-		PERROR("Cannot create debugfs path");
-		goto error;
-	}
-
-	ret = mount(type, path, type, 0, NULL);
-	if (ret < 0) {
-		PERROR("Cannot mount debugfs");
-		goto error;
-	}
-
-	DBG("Mounted debugfs successfully at %s", path);
-
-error:
-	return ret;
+	return kernel_validate_version(kernel_tracer_fd);
 }
 
 /*
  * Setup necessary data for kernel tracer action.
  */
-static void init_kernel_tracer(void)
+static int init_kernel_tracer(void)
 {
 	int ret;
-	char *proc_mounts = "/proc/mounts";
-	char line[256];
-	char *debugfs_path = NULL, *lttng_path = NULL;
-	FILE *fp;
-
-	/* Detect debugfs */
-	fp = fopen(proc_mounts, "r");
-	if (fp == NULL) {
-		ERR("Unable to probe %s", proc_mounts);
-		goto error;
-	}
-
-	while (fgets(line, sizeof(line), fp) != NULL) {
-		if (strstr(line, "debugfs") != NULL) {
-			/* Remove first string */
-			strtok(line, " ");
-			/* Dup string here so we can reuse line later on */
-			debugfs_path = strdup(strtok(NULL, " "));
-			DBG("Got debugfs path : %s", debugfs_path);
-			break;
-		}
-	}
-
-	fclose(fp);
-
-	/* Mount debugfs if needded */
-	if (debugfs_path == NULL) {
-		ret = asprintf(&debugfs_path, "/mnt/debugfs");
-		if (ret < 0) {
-			perror("asprintf debugfs path");
-			goto error;
-		}
-		ret = mount_debugfs(debugfs_path);
-		if (ret < 0) {
-			perror("Cannot mount debugfs");
-			goto error;
-		}
-	}
 
 	/* Modprobe lttng kernel modules */
-	ret = modprobe_kernel_modules();
+	ret = modprobe_lttng_control();
 	if (ret < 0) {
-		goto error;
-	}
-
-	/* Setup lttng kernel path */
-	ret = asprintf(&lttng_path, "%s/lttng", debugfs_path);
-	if (ret < 0) {
-		perror("asprintf lttng path");
 		goto error;
 	}
 
 	/* Open debugfs lttng */
-	kernel_tracer_fd = open(lttng_path, O_RDWR);
+	kernel_tracer_fd = open(module_proc_lttng, O_RDWR);
 	if (kernel_tracer_fd < 0) {
-		DBG("Failed to open %s", lttng_path);
-		goto error;
+		DBG("Failed to open %s", module_proc_lttng);
+		ret = -1;
+		goto error_open;
 	}
 
-	free(lttng_path);
-	free(debugfs_path);
+	/* Validate kernel version */
+	ret = validate_lttng_modules_version();
+	if (ret < 0) {
+		goto error_version;
+	}
+
+	ret = modprobe_lttng_data();
+	if (ret < 0) {
+		goto error_modules;
+	}
+
 	DBG("Kernel tracer fd %d", kernel_tracer_fd);
-	return;
+	return 0;
+
+error_version:
+	modprobe_remove_lttng_control();
+	close(kernel_tracer_fd);
+	kernel_tracer_fd = 0;
+	return LTTCOMM_KERN_VERSION;
+
+error_modules:
+	close(kernel_tracer_fd);
+
+error_open:
+	modprobe_remove_lttng_control();
 
 error:
-	if (lttng_path) {
-		free(lttng_path);
-	}
-	if (debugfs_path) {
-		free(debugfs_path);
-	}
 	WARN("No kernel tracer available");
 	kernel_tracer_fd = 0;
-	return;
+	return LTTCOMM_KERN_NA;
 }
 
 /*
@@ -3277,9 +3160,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		/* Kernel tracer check */
 		if (kernel_tracer_fd == 0) {
 			/* Basically, load kernel tracer modules */
-			init_kernel_tracer();
-			if (kernel_tracer_fd == 0) {
-				ret = LTTCOMM_KERN_NA;
+			ret = init_kernel_tracer();
+			if (ret != 0) {
 				goto error;
 			}
 		}

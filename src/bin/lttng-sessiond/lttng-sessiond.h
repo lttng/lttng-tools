@@ -28,31 +28,7 @@
 #include "session.h"
 #include "ust-app.h"
 
-struct module_param {
-	const char *name;
-	int required;
-};
-
-/* LTTng kernel tracer modules list */
-const struct module_param kernel_modules_list[] = {
-	{ "lttng-ftrace", 0 },
-	{ "lttng-kprobes", 0 },
-	{ "lttng-kretprobes", 0 },
-	{ "lib-ring-buffer", 1 },
-	{ "ltt-relay", 1 },
-	{ "ltt-ring-buffer-client-discard", 1 },
-	{ "ltt-ring-buffer-client-overwrite", 1 },
-	{ "ltt-ring-buffer-metadata-client", 1 },
-	{ "ltt-ring-buffer-client-mmap-discard", 1 },
-	{ "ltt-ring-buffer-client-mmap-overwrite", 1 },
-	{ "ltt-ring-buffer-metadata-mmap-client", 1 },
-	{ "lttng-probe-lttng", 1 },
-	{ "lttng-types", 0 },
-	{ "lttng-probe-block", 0 },
-	{ "lttng-probe-irq", 0 },
-	{ "lttng-probe-kvm", 0 },
-	{ "lttng-probe-sched", 0 },
-};
+const char *module_proc_lttng = "/proc/lttng";
 
 extern const char default_home_dir[],
 	default_tracing_group[],

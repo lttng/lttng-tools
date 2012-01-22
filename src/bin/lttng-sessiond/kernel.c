@@ -28,6 +28,7 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 
 #include "kernel.h"
+#include "kern-modules.h"
 
 /*
  * Add context on a kernel channel.
@@ -605,4 +606,48 @@ error_fp:
 	close(fd);
 error:
 	return -1;
+}
+
+/*
+ * Get kernel version and validate it.
+ */
+int kernel_validate_version(int tracer_fd)
+{
+	int ret;
+	struct lttng_kernel_tracer_version version;
+
+	ret = kernctl_tracer_version(tracer_fd, &version);
+	if (ret < 0) {
+		ERR("Failed at getting the lttng-modules version");
+		goto error;
+	}
+
+	/* Validate version */
+	if (version.version > KERN_MODULES_VERSION) {
+		goto error_version;
+	} else {
+		if (version.patchlevel > KERN_MODULES_PATCHLEVEL) {
+			goto error_version;
+		}
+		else {
+			if (version.sublevel > KERN_MODULES_SUBLEVEL) {
+				goto error_version;
+			}
+		}
+	}
+
+	DBG2("Kernel tracer version validated (%d.%d.%d)", version.version,
+			version.patchlevel, version.sublevel);
+
+	return 0;
+
+error_version:
+	ERR("Kernel version is not compatible %d.%d.%d (supporting <= %d.%d.%d)",
+			version.version, version.patchlevel, version.sublevel,
+			KERN_MODULES_VERSION, KERN_MODULES_PATCHLEVEL,
+			KERN_MODULES_SUBLEVEL);
+	ret = -1;
+
+error:
+	return ret;
 }

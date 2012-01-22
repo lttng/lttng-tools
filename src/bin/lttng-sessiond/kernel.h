@@ -53,5 +53,6 @@ int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(int tracer_fd, struct lttng_event **event_list);
 void kernel_wait_quiescent(int fd);
 int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);
+int kernel_validate_version(int tracer_fd);
 
 #endif /* _LTT_KERNEL_CTL_H */
