@@ -20,6 +20,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 /* Stringify the expansion of a define */
 #define XSTR(d) STR(d)
