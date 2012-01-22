@@ -92,6 +92,7 @@ enum lttcomm_return_code {
 	LTTCOMM_APP_NOT_FOUND,          /* App not found in traceable app list */
 	LTTCOMM_EPERM,			/* Permission denied */
 	LTTCOMM_KERN_NA,				/* Kernel tracer unavalable */
+	LTTCOMM_KERN_VERSION,           /* Kernel tracer version is not compatible */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
