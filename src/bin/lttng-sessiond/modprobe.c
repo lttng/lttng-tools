@@ -27,7 +27,7 @@
 
 /* MUST be loaded first */
 const struct kern_modules_param kern_modules_control[] = {
-	{ "ltt-relay", 1 },
+	{ "lttng-tracer", 1 },
 };
 
 /* LTTng kernel tracer modules list */
@@ -35,13 +35,13 @@ const struct kern_modules_param kern_modules_list[] = {
 	{ "lttng-ftrace", 0 },
 	{ "lttng-kprobes", 0 },
 	{ "lttng-kretprobes", 0 },
-	{ "lib-ring-buffer", 1 },
-	{ "ltt-ring-buffer-client-discard", 1 },
-	{ "ltt-ring-buffer-client-overwrite", 1 },
-	{ "ltt-ring-buffer-metadata-client", 1 },
-	{ "ltt-ring-buffer-client-mmap-discard", 1 },
-	{ "ltt-ring-buffer-client-mmap-overwrite", 1 },
-	{ "ltt-ring-buffer-metadata-mmap-client", 1 },
+	{ "lttng-lib-ring-buffer", 1 },
+	{ "lttng-ring-buffer-client-discard", 1 },
+	{ "lttng-ring-buffer-client-overwrite", 1 },
+	{ "lttng-ring-buffer-metadata-client", 1 },
+	{ "lttng-ring-buffer-client-mmap-discard", 1 },
+	{ "lttng-ring-buffer-client-mmap-overwrite", 1 },
+	{ "lttng-ring-buffer-metadata-mmap-client", 1 },
 	{ "lttng-probe-lttng", 1 },
 	{ "lttng-types", 0 },
 	{ "lttng-probe-block", 0 },
