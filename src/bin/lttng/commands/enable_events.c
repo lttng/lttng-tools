@@ -34,13 +34,16 @@ static int opt_event_type;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
-static char *opt_cmd_name;
 static int opt_enable_all;
-static pid_t opt_pid;
 static char *opt_probe;
 static char *opt_function;
 static char *opt_function_entry_symbol;
 static char *opt_channel_name;
+#if 0
+/* Not implemented yet */
+static char *opt_cmd_name;
+static pid_t opt_pid;
+#endif
 
 enum {
 	OPT_HELP = 1,
@@ -62,8 +65,13 @@ static struct poptOption long_options[] = {
 	{"all",            'a', POPT_ARG_VAL, &opt_enable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
+#if 0
+	/* Not implemented yet */
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
+#else
+	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+#endif
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
@@ -91,10 +99,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
 	fprintf(ofp, "  -a, --all                Enable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+#if 0
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
+#else
+	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+#endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
@@ -216,15 +228,8 @@ static int enable_events(char *session_name)
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
-	} else if (opt_pid != 0) {
-		dom.type = LTTNG_DOMAIN_UST_PID;
-		dom.attr.pid = opt_pid;
-		DBG("PID %d set to lttng handle", opt_pid);
-	} else if (opt_userspace && opt_cmd_name == NULL) {
+	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
-	} else if (opt_userspace && opt_cmd_name != NULL) {
-		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
-		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
@@ -326,11 +331,13 @@ static int enable_events(char *session_name)
 				goto error;
 			}
 		} else if (opt_userspace) {		/* User-space tracer action */
+#if 0
 			if (opt_cmd_name != NULL || opt_pid) {
 				MSG("Only supporting tracing all UST processes (-u) for now.");
 				ret = CMD_NOT_IMPLEMENTED;
 				goto error;
 			}
+#endif
 
 			DBG("Enabling UST event %s for channel %s", event_name,
 					channel_name);

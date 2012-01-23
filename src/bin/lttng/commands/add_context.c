@@ -37,9 +37,12 @@ static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_kernel;
 static int opt_userspace;
+static char *opt_type;
+#if 0
+/* Not implemented yet */
 static char *opt_cmd_name;
 static pid_t opt_pid;
-static char *opt_type;
+#endif
 
 enum {
 	OPT_HELP = 1,
@@ -138,8 +141,13 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
+#if 0
+	/* Not implemented yet */
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
+#else
+	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+#endif
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -303,10 +311,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -c, --channel NAME       Apply on channel\n");
 	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+#if 0
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
+#else
+	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+#endif
 	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
 	fprintf(ofp, "                           the command line.\n");
 	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
@@ -352,15 +364,8 @@ static int add_context(char *session_name)
 
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
-	} else if (opt_pid != 0) {
-		dom.type = LTTNG_DOMAIN_UST_PID;
-		dom.attr.pid = opt_pid;
-		DBG("PID %d set to lttng handle", opt_pid);
-	} else if (opt_userspace && opt_cmd_name == NULL) {
+	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
-	} else if (opt_userspace && opt_cmd_name != NULL) {
-		dom.type = LTTNG_DOMAIN_UST_EXEC_NAME;
-		strncpy(dom.attr.exec_name, opt_cmd_name, NAME_MAX);
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_NOT_IMPLEMENTED;
@@ -454,7 +459,9 @@ int cmd_add_context(int argc, const char **argv)
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
+#if 0
 			opt_cmd_name = poptGetOptArg(pc);
+#endif
 			break;
 		default:
 			usage(stderr);

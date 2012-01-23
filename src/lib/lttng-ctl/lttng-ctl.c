@@ -66,9 +66,11 @@ static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src
 		switch (src->type) {
 			case LTTNG_DOMAIN_KERNEL:
 			case LTTNG_DOMAIN_UST:
+			/*
 			case LTTNG_DOMAIN_UST_EXEC_NAME:
 			case LTTNG_DOMAIN_UST_PID:
 			case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+			*/
 				memcpy(dst, src, sizeof(struct lttng_domain));
 				break;
 			default:
@@ -847,9 +849,11 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		break;
 	case LTTNG_DOMAIN_UST:
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
 		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;

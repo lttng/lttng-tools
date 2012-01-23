@@ -26,12 +26,15 @@
 
 #include "../command.h"
 
-static int opt_pid;
 static int opt_userspace;
-static char *opt_cmd_name;
 static int opt_kernel;
 static char *opt_channel;
 static int opt_domain;
+#if 0
+/* Not implemented yet */
+static char *opt_cmd_name;
+static pid_t opt_pid;
+#endif
 
 const char *indent4 = "    ";
 const char *indent6 = "      ";
@@ -48,8 +51,13 @@ static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"kernel",    'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace", 'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"pid",       'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
+#if 0
+	/* Not implemented yet */
+	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
+	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
+#else
+	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+#endif
 	{"channel",   'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
 	{"domain",    'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -70,7 +78,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help              Show this help\n");
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
+#if 0
 	fprintf(ofp, "  -p, --pid PID           List user-space events by PID\n");
+#endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
@@ -551,10 +561,6 @@ int cmd_list(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
-	}
-
-	if (opt_pid != 0) {
-		MSG("*** Userspace tracing not implemented for PID ***\n");
 	}
 
 	/* Get session name (trailing argument) */

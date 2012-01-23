@@ -334,9 +334,11 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 		free(events);
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
@@ -401,9 +403,11 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto end;
@@ -468,9 +472,11 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess, int domain,
 			goto error;
 		}
 		break;
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
@@ -539,9 +545,11 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 		free(events);
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;

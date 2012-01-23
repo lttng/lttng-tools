@@ -292,9 +292,11 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST:
 		chan_ht = usess->domain_global.channels;
 		break;
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;

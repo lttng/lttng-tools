@@ -52,9 +52,16 @@
 enum lttng_domain_type {
 	LTTNG_DOMAIN_KERNEL                   = 1,
 	LTTNG_DOMAIN_UST                      = 2,
+
+	/*
+	 * For now, the domains below are not implemented. However, we keep them
+	 * here in order to retain their enum values for future development. Note
+	 * that it is on the roadmap to implement them.
+	 *
 	LTTNG_DOMAIN_UST_EXEC_NAME            = 3,
 	LTTNG_DOMAIN_UST_PID                  = 4,
 	LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN  = 5,
+	*/
 };
 
 /*
@@ -75,26 +82,26 @@ enum lttng_event_type {
  * LTTng consumer mode
  */
 enum lttng_event_output {
-	LTTNG_EVENT_SPLICE = 0,
-	LTTNG_EVENT_MMAP   = 1,
+	LTTNG_EVENT_SPLICE                    = 0,
+	LTTNG_EVENT_MMAP                      = 1,
 };
 
 /* Event context possible type */
 enum lttng_event_context_type {
-	LTTNG_EVENT_CONTEXT_PID                = 0,
-	LTTNG_EVENT_CONTEXT_PERF_COUNTER       = 1,
-	LTTNG_EVENT_CONTEXT_COMM               = 2,
-	LTTNG_EVENT_CONTEXT_PRIO               = 3,
-	LTTNG_EVENT_CONTEXT_NICE               = 4,
-	LTTNG_EVENT_CONTEXT_VPID               = 5,
-	LTTNG_EVENT_CONTEXT_TID                = 6,
-	LTTNG_EVENT_CONTEXT_VTID               = 7,
-	LTTNG_EVENT_CONTEXT_PPID               = 8,
-	LTTNG_EVENT_CONTEXT_VPPID              = 9,
+	LTTNG_EVENT_CONTEXT_PID               = 0,
+	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
+	LTTNG_EVENT_CONTEXT_COMM              = 2,
+	LTTNG_EVENT_CONTEXT_PRIO              = 3,
+	LTTNG_EVENT_CONTEXT_NICE              = 4,
+	LTTNG_EVENT_CONTEXT_VPID              = 5,
+	LTTNG_EVENT_CONTEXT_TID               = 6,
+	LTTNG_EVENT_CONTEXT_VTID              = 7,
+	LTTNG_EVENT_CONTEXT_PPID              = 8,
+	LTTNG_EVENT_CONTEXT_VPPID             = 9,
 };
 
 enum lttng_calibrate_type {
-	LTTNG_CALIBRATE_FUNCTION               = 0,
+	LTTNG_CALIBRATE_FUNCTION              = 0,
 };
 
 struct lttng_domain {

@@ -59,7 +59,11 @@ struct lttng_channel *channel_new_default_attr(int dom)
 		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		break;
 	case LTTNG_DOMAIN_UST:
+#if 0
 	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+#endif
 		chan->attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
 		chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
 		chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
@@ -184,9 +188,12 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 		/* Enable channel for global domain */
 		ret = ust_app_enable_channel_glb(usess, uchan);
 		break;
+#if 0
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
+#endif
+	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}
@@ -243,9 +250,11 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		/* Enable channel for global domain */
 		ret = ust_app_create_channel_glb(usess, uchan);
 		break;
+#if 0
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error_free_chan;
@@ -298,9 +307,12 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 		/* Disable channel for global domain */
 		ret = ust_app_disable_channel_glb(usess, uchan);
 		break;
+#if 0
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
+#endif
+	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
 	}

@@ -2159,11 +2159,11 @@ static int cmd_disable_channel(struct ltt_session *session,
 		}
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
-		goto error;
+#endif
 	default:
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
@@ -2222,11 +2222,11 @@ static int cmd_enable_channel(struct ltt_session *session,
 		}
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
-		goto error;
+#endif
 	default:
 		ret = LTTCOMM_UNKNOWN_DOMAIN;
 		goto error;
@@ -2289,9 +2289,11 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 				channel_name);
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
@@ -2356,9 +2358,11 @@ static int cmd_disable_event_all(struct ltt_session *session, int domain,
 
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
@@ -2397,9 +2401,11 @@ static int cmd_add_context(struct ltt_session *session, int domain,
 		}
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
@@ -2512,9 +2518,11 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 		}
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
@@ -2647,9 +2655,11 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 
 		break;
 	}
+#if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
 	default:
 		ret = LTTCOMM_NOT_IMPLEMENTED;
 		goto error;
