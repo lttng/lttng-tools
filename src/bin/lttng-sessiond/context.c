@@ -174,7 +174,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -213,7 +213,7 @@ static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -298,7 +298,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 

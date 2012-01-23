@@ -120,7 +120,7 @@ static int disable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-		ret = CMD_NOT_IMPLEMENTED;
+		ret = CMD_UNDEFINED;
 		goto error;
 	}
 
@@ -152,7 +152,7 @@ static int disable_events(char *session_name)
 #if 0
 			if (opt_cmd_name != NULL || opt_pid) {
 				MSG("Only supporting tracing all UST processes (-u) for now.");
-				ret = CMD_NOT_IMPLEMENTED;
+				ret = CMD_UNDEFINED;
 				goto error;
 			}
 #endif

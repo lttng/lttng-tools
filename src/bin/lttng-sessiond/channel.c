@@ -194,7 +194,7 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -256,7 +256,7 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error_free_chan;
 	}
 
@@ -313,7 +313,7 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_PID:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 

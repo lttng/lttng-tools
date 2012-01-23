@@ -154,11 +154,11 @@ static int calibrate_lttng(void)
 			DBG("Calibrating kernel syscall");
 			break;
 		default:
-			ret = CMD_NOT_IMPLEMENTED;
+			ret = CMD_UNDEFINED;
 			goto end;
 		}
 	} else if (opt_userspace) {		/* User-space tracer action */
-		ret = CMD_NOT_IMPLEMENTED;
+		ret = CMD_UNDEFINED;
 		goto end;
 	} else {
 		ERR("Please specify a tracer (--kernel or --userspace)");
@@ -193,22 +193,22 @@ int cmd_calibrate(int argc, const char **argv)
 			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TRACEPOINT:
-			ret = CMD_NOT_IMPLEMENTED;
+			ret = CMD_UNDEFINED;
 			break;
 		case OPT_MARKER:
-			ret = CMD_NOT_IMPLEMENTED;
+			ret = CMD_UNDEFINED;
 			goto end;
 		case OPT_PROBE:
-			ret = CMD_NOT_IMPLEMENTED;
+			ret = CMD_UNDEFINED;
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
 			break;
 		case OPT_FUNCTION_ENTRY:
-			ret = CMD_NOT_IMPLEMENTED;
+			ret = CMD_UNDEFINED;
 			break;
 		case OPT_SYSCALL:
-			ret = CMD_NOT_IMPLEMENTED;
+			ret = CMD_UNDEFINED;
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;

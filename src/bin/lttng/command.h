@@ -30,7 +30,6 @@ enum cmd_error_code {
 	CMD_SUCCESS,
 	CMD_ERROR,
 	CMD_UNDEFINED,
-	CMD_NOT_IMPLEMENTED,
 	CMD_FATAL,
 };
 

@@ -2295,7 +2295,7 @@ static int cmd_disable_event(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2364,7 +2364,7 @@ static int cmd_disable_event_all(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2407,7 +2407,7 @@ static int cmd_add_context(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2524,7 +2524,7 @@ static int cmd_enable_event(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2661,7 +2661,7 @@ static int cmd_enable_event_all(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2695,7 +2695,7 @@ static ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 		}
 		break;
 	default:
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2926,7 +2926,7 @@ static int cmd_calibrate(int domain, struct lttng_calibrate *calibrate)
 	}
 	default:
 		/* TODO: Userspace tracing */
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -2962,7 +2962,7 @@ static int cmd_register_consumer(struct ltt_session *session, int domain,
 		break;
 	default:
 		/* TODO: Userspace tracing */
-		ret = LTTCOMM_NOT_IMPLEMENTED;
+		ret = LTTCOMM_UND;
 		goto error;
 	}
 
@@ -3038,7 +3038,7 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		break;
 	default:
 		*channels = NULL;
-		ret = -LTTCOMM_NOT_IMPLEMENTED;
+		ret = -LTTCOMM_UND;
 		goto error;
 	}
 
@@ -3085,7 +3085,7 @@ static ssize_t cmd_list_events(int domain, struct ltt_session *session,
 		break;
 	}
 	default:
-		ret = -LTTCOMM_NOT_IMPLEMENTED;
+		ret = -LTTCOMM_UND;
 		goto error;
 	}
 

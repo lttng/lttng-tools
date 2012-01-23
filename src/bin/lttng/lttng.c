@@ -263,9 +263,6 @@ static int handle_command(int argc, char **argv)
 			case CMD_ERROR:
 				ERR("Command error");
 				break;
-			case CMD_NOT_IMPLEMENTED:
-				ERR("Options not implemented");
-				break;
 			case CMD_UNDEFINED:
 				ERR("Undefined command");
 				break;
