@@ -1284,6 +1284,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	lta->ppid = msg->ppid;
 	lta->uid = msg->uid;
 	lta->gid = msg->gid;
+	lta->compatible = 0;  /* Not compatible until proven */
 	lta->bits_per_long = msg->bits_per_long;
 	lta->v_major = msg->major;
 	lta->v_minor = msg->minor;
@@ -1391,6 +1392,13 @@ int ust_app_list_events(struct lttng_event **events)
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		struct lttng_ust_tracepoint_iter uiter;
 
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		handle = ustctl_tracepoint_list(app->key.sock);
 		if (handle < 0) {
 			ERR("UST app list events getting handle failed for app pid %d",
@@ -1499,6 +1507,13 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 	/* For every registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
 		struct lttng_ht_iter uiter;
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -1552,6 +1567,13 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 
 	/* For every registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -1592,6 +1614,13 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			/* Next app */
@@ -1651,6 +1680,13 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
@@ -1701,6 +1737,13 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 
 	/* For every registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		/*
 		 * Create session on the tracer side and add it to app session HT. Note
 		 * that if session exist, it will simply return a pointer to the ust
@@ -1755,6 +1798,13 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
@@ -1808,6 +1858,13 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 	/* For all registered applications */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		/* If ua_sess is NULL, there is a code flow error */
 		assert(ua_sess);
@@ -1852,6 +1909,10 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	DBG("Starting tracing for ust app pid %d", app->key.pid);
 
 	rcu_read_lock();
+
+	if (!app->compatible) {
+		goto end;
+	}
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
@@ -1929,11 +1990,11 @@ skip_setup:
 		goto error_rcu_unlock;
 	}
 
-	rcu_read_unlock();
-
 	/* Quiescent wait after starting trace */
 	ustctl_wait_quiescent(app->key.sock);
 
+end:
+	rcu_read_unlock();
 	return 0;
 
 error_rcu_unlock:
@@ -1954,6 +2015,10 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	DBG("Stopping tracing for ust app pid %d", app->key.pid);
 
 	rcu_read_lock();
+
+	if (!app->compatible) {
+		goto end;
+	}
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
@@ -2021,6 +2086,10 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	rcu_read_lock();
 
+	if (!app->compatible) {
+		goto end;
+	}
+
 	__lookup_session_by_app(usess, app, &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
@@ -2038,11 +2107,11 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	delete_ust_app_session(app->key.sock, ua_sess);
 
-	rcu_read_unlock();
-
 	/* Quiescent wait after stopping trace */
 	ustctl_wait_quiescent(app->key.sock);
 
+end:
+	rcu_read_unlock();
 	return 0;
 
 error_rcu_unlock:
@@ -2156,6 +2225,10 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		goto error;
 	}
 
+	if (!app->compatible) {
+		goto error;
+	}
+
 	ua_sess = create_ust_app_session(usess, app);
 	if (ua_sess == NULL) {
 		goto error;
@@ -2215,6 +2288,13 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -2257,6 +2337,13 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 		ua_sess = lookup_session_by_app(usess, app);
 		if (ua_sess == NULL) {
 			continue;
@@ -2311,6 +2398,11 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 	if (app == NULL) {
 		ERR("UST app enable event per PID %d not found", pid);
 		ret = -1;
+		goto error;
+	}
+
+	if (!app->compatible) {
+		ret = 0;
 		goto error;
 	}
 
@@ -2372,6 +2464,11 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 		goto error;
 	}
 
+	if (!app->compatible) {
+		ret = 0;
+		goto error;
+	}
+
 	ua_sess = lookup_session_by_app(usess, app);
 	/* If ua_sess is NULL, there is a code flow error */
 	assert(ua_sess);
@@ -2401,4 +2498,43 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 error:
 	rcu_read_unlock();
 	return ret;
+}
+
+/*
+ * Validate version of UST apps and set the compatible bit.
+ */
+int ust_app_validate_version(int sock)
+{
+	int ret;
+	struct ust_app *app;
+
+	rcu_read_lock();
+
+	app = find_app_by_sock(sock);
+	assert(app);
+
+	ret = ustctl_tracer_version(sock, &app->version);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Validate version */
+	if (app->version.major > UST_APP_MAJOR_VERSION) {
+		goto error;
+	}
+
+	DBG2("UST app PID %d is compatible with major version %d "
+			"(supporting <= %d)", app->key.pid, app->version.major,
+			UST_APP_MAJOR_VERSION);
+	app->compatible = 1;
+	rcu_read_unlock();
+	return 0;
+
+error:
+	DBG2("UST app PID %d is not compatible with major version %d "
+			"(supporting <= %d)", app->key.pid, app->version.major,
+			UST_APP_MAJOR_VERSION);
+	app->compatible = 0;
+	rcu_read_unlock();
+	return -1;
 }

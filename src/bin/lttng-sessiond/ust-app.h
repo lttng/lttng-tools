@@ -23,6 +23,9 @@
 
 #include "trace-ust.h"
 
+/* lttng-ust supported version. */
+#define UST_APP_MAJOR_VERSION         1
+
 #define UST_APP_EVENT_LIST_SIZE 32
 
 extern int ust_consumerd64_fd, ust_consumerd32_fd;
@@ -107,6 +110,10 @@ struct ust_app {
 	uid_t uid;           /* User ID that owns the apps */
 	gid_t gid;           /* Group ID that owns the apps */
 	int bits_per_long;
+	int compatible; /* If the lttng-ust tracer version does not match the
+					   supported version of the session daemon, this flag is
+					   set to 0 (NOT compatible) else 1. */
+	struct lttng_ust_tracer_version version;
 	uint32_t v_major;    /* Verion major number */
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */
@@ -165,6 +172,7 @@ void ust_app_clean_list(void);
 void ust_app_ht_alloc(void);
 struct lttng_ht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
+int ust_app_validate_version(int sock);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -317,6 +325,11 @@ static inline
 int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
 		pid_t pid)
+{
+	return 0;
+}
+static inline
+int ust_app_validate_version(int sock)
 {
 	return 0;
 }

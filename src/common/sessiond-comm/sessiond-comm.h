@@ -111,6 +111,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_DIR_EXIST,			/* Kernel trace directory exist */
 	LTTCOMM_KERN_NO_SESSION,		/* No kernel session found */
 	LTTCOMM_KERN_LIST_FAIL,			/* Kernel listing events failed */
+	LTTCOMM_UST_VERSION,            /* UST tracer version is not compatible */
 	LTTCOMM_UST_SESS_FAIL,			/* UST create session failed */
 	LTTCOMM_UST_CHAN_EXIST,         /* UST channel already exist */
 	LTTCOMM_UST_CHAN_FAIL,			/* UST create channel failed */

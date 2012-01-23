@@ -1110,10 +1110,16 @@ static void *thread_manage_apps(void *data)
 					}
 
 					/*
-					 * Add channel(s) and event(s) to newly registered apps
-					 * from lttng global UST domain.
+					 * Validate UST version compatibility.
 					 */
-					update_ust_app(ust_cmd.sock);
+					ret = ust_app_validate_version(ust_cmd.sock);
+					if (ret >= 0) {
+						/*
+						 * Add channel(s) and event(s) to newly registered apps
+						 * from lttng global UST domain.
+						 */
+						update_ust_app(ust_cmd.sock);
+					}
 
 					ret = ust_app_register_done(ust_cmd.sock);
 					if (ret < 0) {
