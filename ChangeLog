@@ -1,3 +1,12 @@
+2012-01-23 lttng-tools 2.0-pre18
+	* Complete change of the source directory tree
+	* Move compat to common and create an internal lib
+	* Rename lttngerr.h to error.h
+	* Add kernel module version validation
+	* Add UST version validation
+	* Change SIGCHLD to SIGUSR1 when lttng waiting on sessiond
+	* Fix off-by-one and double list size instead of steady increment
+
 2012-01-19 lttng-tools 2.0-pre17
 	* Add and support the new hash table library
 	* Add lttng hash table support to liblttng-consumer
