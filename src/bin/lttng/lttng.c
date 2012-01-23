@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <config.h>
 
@@ -37,6 +39,7 @@ int opt_quiet;
 int opt_verbose;
 static int opt_no_sessiond;
 static char *opt_sessiond_path;
+static pid_t sessiond_pid;
 
 enum {
 	OPT_SESSION_PATH,
@@ -168,14 +171,23 @@ static void clean_exit(int code)
  */
 static void sighandler(int sig)
 {
+	int status;
+
 	switch (sig) {
 		case SIGTERM:
 			DBG("SIGTERM caugth");
 			clean_exit(EXIT_FAILURE);
 			break;
 		case SIGCHLD:
-			/* Notify is done */
 			DBG("SIGCHLD caugth");
+			waitpid(sessiond_pid, &status, 0);
+			/* Indicate that the session daemon died */
+			sessiond_pid = 0;
+			ERR("Session daemon died (exit status %d)", WEXITSTATUS(status));
+			break;
+		case SIGUSR1:
+			/* Notify is done */
+			DBG("SIGUSR1 caugth");
 			break;
 		default:
 			DBG("Unknown signal %d caugth", sig);
@@ -204,12 +216,17 @@ static int set_signal_handler(void)
 	sa.sa_handler = sighandler;
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
-	if ((ret = sigaction(SIGCHLD, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
 		perror("sigaction");
 		goto end;
 	}
 
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+		perror("sigaction");
+		goto end;
+	}
+
+	if ((ret = sigaction(SIGCHLD, &sa, NULL)) < 0) {
 		perror("sigaction");
 		goto end;
 	}
@@ -296,8 +313,12 @@ static int spawn_sessiond(char *pathname)
 		kill(getppid(), SIGTERM);	/* unpause parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
+		sessiond_pid = pid;
 		/* Wait for lttng-sessiond to start */
 		pause();
+		if (!sessiond_pid) {
+			exit(EXIT_FAILURE);
+		}
 		goto end;
 	} else {
 		perror("fork");

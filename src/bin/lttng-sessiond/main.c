@@ -3541,7 +3541,7 @@ static void *thread_manage_clients(void *data)
 	 * Notify parent pid that we are ready to accept command for client side.
 	 */
 	if (opt_sig_parent) {
-		kill(ppid, SIGCHLD);
+		kill(ppid, SIGUSR1);
 	}
 
 	while (1) {
