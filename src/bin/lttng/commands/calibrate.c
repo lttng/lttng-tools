@@ -60,13 +60,13 @@ static struct poptOption long_options[] = {
 	/* Not implemented yet */
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
 	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-#else
-	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-#endif
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
 	{"probe",          0,   POPT_ARG_NONE, 0, OPT_PROBE, 0, 0},
+#else
+	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"function",       0,   POPT_ARG_NONE, 0, OPT_FUNCTION, 0, 0},
+#endif
 #if 0
 	/*
 	 * Removed from options to discourage its use. Not in kernel
@@ -97,17 +97,19 @@ static void usage(FILE *ofp)
 #endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Calibrate options:\n");
+#if 0
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
 	fprintf(ofp, "    --probe\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
-	fprintf(ofp, "    --function\n");
-	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
 #if 0
 	fprintf(ofp, "    --function:entry symbol\n");
 	fprintf(ofp, "                           Function tracer event\n");
 #endif
 	fprintf(ofp, "    --syscall              System call eventl\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
+#else
+	fprintf(ofp, "    --function             Dynamic function entry/return probe (default)\n");
+#endif
 	fprintf(ofp, "\n");
 }
 
@@ -125,46 +127,48 @@ static int calibrate_lttng(void)
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_userspace) {
+		dom.type = LTTNG_DOMAIN_UST;
+	} else {
+		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		ret = CMD_UNDEFINED;
+		goto error;
 	}
 
 	handle = lttng_create_handle(NULL, &dom);
 	if (handle == NULL) {
 		ret = -1;
-		goto end;
+		goto error;
 	}
 
-	/* Kernel tracer action */
-	if (opt_kernel) {
-		switch (opt_event_type) {
-		case LTTNG_EVENT_TRACEPOINT:
-			DBG("Calibrating kernel tracepoints");
-			break;
-		case LTTNG_EVENT_PROBE:
-			DBG("Calibrating kernel probes");
-			break;
-		case LTTNG_EVENT_FUNCTION:
-			DBG("Calibrating kernel functions");
-			calibrate.type = LTTNG_CALIBRATE_FUNCTION;
-			ret = lttng_calibrate(handle, &calibrate);
-			break;
-		case LTTNG_EVENT_FUNCTION_ENTRY:
-			DBG("Calibrating kernel function entry");
-			break;
-		case LTTNG_EVENT_SYSCALL:
-			DBG("Calibrating kernel syscall");
-			break;
-		default:
-			ret = CMD_UNDEFINED;
-			goto end;
+	switch (opt_event_type) {
+	case LTTNG_EVENT_TRACEPOINT:
+		DBG("Calibrating kernel tracepoints");
+		break;
+	case LTTNG_EVENT_PROBE:
+		DBG("Calibrating kernel probes");
+		break;
+	case LTTNG_EVENT_FUNCTION:
+		DBG("Calibrating kernel functions");
+		calibrate.type = LTTNG_CALIBRATE_FUNCTION;
+		ret = lttng_calibrate(handle, &calibrate);
+		if (ret < 0) {
+			goto error;
 		}
-	} else if (opt_userspace) {		/* User-space tracer action */
+		MSG("%s calibration done", opt_kernel ? "Kernel" : "UST");
+		break;
+	case LTTNG_EVENT_FUNCTION_ENTRY:
+		DBG("Calibrating kernel function entry");
+		break;
+	case LTTNG_EVENT_SYSCALL:
+		DBG("Calibrating kernel syscall");
+		break;
+	default:
 		ret = CMD_UNDEFINED;
-		goto end;
-	} else {
-		ERR("Please specify a tracer (--kernel or --userspace)");
-		goto end;
+		goto error;
 	}
-end:
+
+error:
 	lttng_destroy_handle(handle);
 
 	return ret;
@@ -184,7 +188,7 @@ int cmd_calibrate(int argc, const char **argv)
 	poptReadDefaultConfig(pc, 0);
 
 	/* Default event type */
-	opt_event_type = LTTNG_EVENT_TRACEPOINT;
+	opt_event_type = LTTNG_EVENT_FUNCTION;
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -194,7 +198,7 @@ int cmd_calibrate(int argc, const char **argv)
 			goto end;
 		case OPT_TRACEPOINT:
 			ret = CMD_UNDEFINED;
-			break;
+			goto end;
 		case OPT_MARKER:
 			ret = CMD_UNDEFINED;
 			goto end;
@@ -206,10 +210,10 @@ int cmd_calibrate(int argc, const char **argv)
 			break;
 		case OPT_FUNCTION_ENTRY:
 			ret = CMD_UNDEFINED;
-			break;
+			goto end;
 		case OPT_SYSCALL:
 			ret = CMD_UNDEFINED;
-			break;
+			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;

@@ -2538,3 +2538,46 @@ error:
 	rcu_read_unlock();
 	return -1;
 }
+
+/*
+ * Calibrate registered applications.
+ */
+int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, node.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+
+		ret = ustctl_calibrate(app->key.sock, calibrate);
+		if (ret < 0) {
+			switch (ret) {
+			case -ENOSYS:
+				/* Means that it's not implemented on the tracer side. */
+				ret = 0;
+				break;
+			default:
+				/* TODO: Report error to user */
+				DBG2("Calibrate app PID %d returned with error %d",
+						app->key.pid, ret);
+				break;
+			}
+		}
+	}
+
+	DBG("UST app global domain calibration finished");
+
+	rcu_read_unlock();
+
+	return ret;
+}

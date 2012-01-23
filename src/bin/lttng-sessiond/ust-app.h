@@ -173,6 +173,7 @@ void ust_app_ht_alloc(void);
 struct lttng_ht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
 int ust_app_validate_version(int sock);
+int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -330,6 +331,11 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 }
 static inline
 int ust_app_validate_version(int sock)
+{
+	return 0;
+}
+static inline
+int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 {
 	return 0;
 }

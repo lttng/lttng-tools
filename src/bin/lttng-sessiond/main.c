@@ -2924,8 +2924,19 @@ static int cmd_calibrate(int domain, struct lttng_calibrate *calibrate)
 		}
 		break;
 	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct lttng_ust_calibrate ucalibrate;
+
+		ucalibrate.type = calibrate->type;
+		ret = ust_app_calibrate_glb(&ucalibrate);
+		if (ret < 0) {
+			ret = LTTCOMM_UST_CALIBRATE_FAIL;
+			goto error;
+		}
+		break;
+	}
 	default:
-		/* TODO: Userspace tracing */
 		ret = LTTCOMM_UND;
 		goto error;
 	}
