@@ -625,27 +625,14 @@ int kernel_validate_version(int tracer_fd)
 	/* Validate version */
 	if (version.version > KERN_MODULES_VERSION) {
 		goto error_version;
-	} else {
-		if (version.patchlevel > KERN_MODULES_PATCHLEVEL) {
-			goto error_version;
-		}
-		else {
-			if (version.sublevel > KERN_MODULES_SUBLEVEL) {
-				goto error_version;
-			}
-		}
 	}
 
-	DBG2("Kernel tracer version validated (%d.%d.%d)", version.version,
-			version.patchlevel, version.sublevel);
-
+	DBG2("Kernel tracer version validated (major version %d)", version.version);
 	return 0;
 
 error_version:
-	ERR("Kernel version is not compatible %d.%d.%d (supporting <= %d.%d.%d)",
-			version.version, version.patchlevel, version.sublevel,
-			KERN_MODULES_VERSION, KERN_MODULES_PATCHLEVEL,
-			KERN_MODULES_SUBLEVEL);
+	ERR("Kernel major version %d is not compatible (supporting <= %d)",
+			version.version, KERN_MODULES_VERSION)
 	ret = -1;
 
 error:
