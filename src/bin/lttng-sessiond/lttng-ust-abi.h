@@ -90,6 +90,14 @@ struct lttng_ust_object_data {
 	uint64_t memory_map_size;
 };
 
+enum lttng_ust_calibrate_type {
+	LTTNG_UST_CALIBRATE_TRACEPOINT,
+};
+
+struct lttng_ust_calibrate {
+   enum lttng_ust_calibrate_type type;     /* type (input) */
+};
+
 #define _UST_CMD(minor)				(minor)
 #define _UST_CMDR(minor, type)			(minor)
 #define _UST_CMDW(minor, type)			(minor)
