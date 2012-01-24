@@ -494,8 +494,9 @@ int main(int argc, char *argv[])
 	progname = argv[0] ? argv[0] : "lttng";
 
 	/* For Mathieu Desnoyers aka Dr Tracing */
-	if (strncmp(progname, "drtrace", 7) == 0) {
-		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n\n", 27,1,33,27,0);
+	if (strncmp(progname, "drtrace", 7) == 0 ||
+			strncmp("compudj", getenv("USER"), 7) == 0) {
+		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);
 	}
 
 	ret = set_signal_handler();
