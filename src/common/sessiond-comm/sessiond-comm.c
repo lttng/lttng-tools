@@ -258,7 +258,7 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	ret = recvmsg(sock, &msg, 0);
+	ret = recvmsg(sock, &msg, MSG_WAITALL);
 	if (ret < 0) {
 		perror("recvmsg");
 	}
