@@ -1,0 +1,178 @@
+.TH "LTTNG-SESSIOND" "8" "January 31, 2012" "" ""
+
+.SH "NAME"
+lttng-sessiond \(em LTTng 2.0 central tracing registry session daemon.
+
+.SH "SYNOPSIS"
+
+.PP
+.nf
+lttng-sessiond [OPTIONS]
+.fi
+.SH "DESCRIPTION"
+
+.PP
+The LTTng project aims at providing highly efficient tracing tools for Linux.
+It's tracers help tracking down performance issues and debugging problems
+involving multiple concurrent processes and threads. Tracing across multiple
+systems is also possible.
+
+The session daemon,  acting as a tracing registry, allow you to interact with
+multiple tracers (kernel and user-space) inside the same container, a tracing
+session. Trace can be gathered from the kernel and/or instrumented applications
+(lttng-ust(3)). Aggregating those traces is done using the babeltrace(1) text
+viewer.
+
+In order to trace the kernel, the session daemon needs to be running as root.
+LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
+in that group can interact with the root session daemon and thus trace the
+kernel. Session daemons can co-exist meaning that you can have a session daemon
+running as Alice that can be use to trace her applications along side with a
+root daemon or even a Bob daemon. We highly recommand to start the session
+daemon at boot time for stable and long term tracing.
+
+The session daemon is in charge of managing trace data consumers by spawning
+one when the time as come. The user don't need to manage the lttng-consumerd.
+.SH "OPTIONS"
+
+.PP
+This program follow the usual GNU command line syntax with long options starting with
+two dashes. Below is a summary of the available options.
+.PP
+
+.TP
+.BR "-h, --help"
+Show summary of possible options and commands
+.TP
+.BR "-v, --verbose"
+Increase verbosity
+
+There is three debugging level which will print on stderr. Maximum verbosity is
+\fB-vvv\fP.
+.TP
+.BR "    --verbose-consumer"
+Verbose mode for consumer. Activate DBG() macro.
+.TP
+.BR "-d, --daemonize"
+Start as a daemon
+.TP
+.BR "-g, --group=NAME"
+Specify the tracing group name. (default: tracing)
+.TP
+.BR "-V, --version"
+Show version number
+.TP
+.BR "-S, --sig-parent"
+Send SIGCHLD to parent pid to notify readiness.
+
+This is used by \fBlttng(1)\fP to get notified when the session daemon is ready
+to accept command. By building a third part tool over liblttng-ctl, this option
+can be very handy to synchronize the control tool and the session daemon.
+.TP
+.BR "-q, --quiet"
+No output at all.
+.TP
+.BR "    --no-kernel"
+No kernel tracer support
+.TP
+.BR "-c, --client-sock=PATH"
+Specify path for the client unix socket
+.TP
+.BR "-a, --apps-sock PATH"
+Specify path for apps unix socket
+.TP
+.BR "    --kconsumerd-err-sock=PATH"
+Specify path for the kernel consumer error socket
+.TP
+.BR "    --kconsumerd-cmd-sock=PATH
+Specify path for the kernel consumer command socket
+.TP
+.BR "    --ustconsumerd32-err-sock=PATH
+Specify path for the 32-bit UST consumer error socket
+.TP
+.BR "    --ustconsumerd64-err-sock=PATH
+Specify path for the 64-bit UST consumer error socket
+.TP
+.BR "    --ustconsumerd32-cmd-sock=PATH
+Specify path for the 32-bit UST consumer command socket
+.TP
+.BR "    --ustconsumerd64-cmd-sock=PATH
+Specify path for the 64-bit UST consumer command socket
+.TP
+.BR "    --consumerd32-path=PATH
+Specify path for the 32-bit UST consumer daemon binary
+.TP
+.BR "    --consumerd32-libdir=PATH
+Specify path for the 32-bit UST consumer daemon libraries
+.TP
+.BR "    --consumerd64-path=PATH
+Specify path for the 64-bit UST consumer daemon binary
+.TP
+.BR "    --consumerd64-libdir=PATH
+Specify path for the 64-bit UST consumer daemon libraries
+.SH "ENVIRONMENT VARIABLES"
+
+.PP
+Note that all command line options will override environmenal variables.
+.PP
+
+.PP
+.IP "LTTNG_CONSUMERD32_BIN"
+Allow to specify the 32-bit consumer binary path. \fB--consumerd32-path\fP
+override this variable.
+.IP "LTTNG_CONSUMERD64_BIN"
+Allow to specify the 64-bit consumer binary path. \fB--consumerd64-path\fP
+override this variable.
+.IP "LTTNG_CONSUMERD32_LIBDIR"
+Allow to specifiy the 64-bit library path containing libconsumer.so.
+\fB--consumerd32-libdir\fP override this variable.
+.IP "LTTNG_CONSUMERD64_LIBDIR"
+Allow to specifiy the 32-bit library path containing libconsumer.so.
+\fB--consumerd64-libdir\fP override this variable.
+.SH "SEE ALSO"
+
+.PP
+babeltrace(1), lttng-ust(3), lttng(1)
+.PP
+.SH "BUGS"
+
+.PP
+No show stopper bugs known yet at this stable version.
+
+If you encounter any issues or usability problem, please report it on our
+mailing list <lttng-dev@lists.lttng.org> to help improve this project.
+.SH "CREDITS"
+
+.PP
+lttng-sessiond is distributed under the GNU public license version 2. See the
+file COPYING for details.
+.PP
+A Web site is available at http://lttng.org for more information on the LTTng
+project.
+.PP
+You can also find our git tree at http://git.lttng.org.
+.PP
+Mailing lists for support and development: <lttng-dev@lists.lttng.org>.
+.PP
+You can find us on IRC server irc.oftc.net (OFTC) in #lttng.
+.PP
+.SH "THANKS"
+
+.PP
+Thanks to Yannick Brosseau without whom this project would never have been so
+lean and mean! Also thanks to the Ericsson teams working on tracing which help
+us greatly with detailled bug reports and unsual use cases.
+
+Thanks to our beloved packager Alexandre Montplaisir-Goncalves (Ubuntu and PPA
+maintainer) and Jon Bernard for our Debian packages.
+
+Special thanks to Michel Dagenais and the DORSAL laboratory at Polytechnique de
+Montreal for the LTTng journey.
+.pp
+.SH "AUTHORS"
+
+.PP
+lttng-tools was originally written by Mathieu Desnoyers, Julien Desfossez and
+David Goulet. More people have since contributed to it. It is currently
+maintained by David Goulet <dgoulet@efficios.com>.
+.PP

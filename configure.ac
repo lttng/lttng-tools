@@ -150,6 +150,7 @@ AC_SUBST(DEFAULT_INCLUDES)
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
+	doc/man/Makefile
 	include/Makefile
 	src/Makefile
 	src/common/Makefile
