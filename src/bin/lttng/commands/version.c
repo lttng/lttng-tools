@@ -30,11 +30,13 @@
 
 enum {
 	OPT_HELP = 1,
+	OPT_LIST_OPTIONS,
 };
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
+	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -46,6 +48,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng version\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "\n");
 }
 
@@ -64,6 +67,10 @@ int cmd_version(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stderr);
+			ret = CMD_SUCCESS;
+			goto end;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
 			ret = CMD_SUCCESS;
 			goto end;
 		default:

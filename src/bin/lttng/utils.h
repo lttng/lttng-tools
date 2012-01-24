@@ -19,8 +19,11 @@
 #ifndef _LTTNG_UTILS_H
 #define _LTTNG_UTILS_H
 
+#include <popt.h>
+
 char *get_config_file_path(void);
 char *get_session_name(void);
 int set_session_name(char *name);
+void list_cmd_options(FILE *ofp, struct poptOption *options);
 
 #endif /* _LTTNG_UTILS_H */

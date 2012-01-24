@@ -27,18 +27,21 @@
 #include <unistd.h>
 
 #include "../command.h"
+#include "../utils.h"
 
 static char *opt_output_path;
 static char *opt_session_name;
 
 enum {
 	OPT_HELP = 1,
+	OPT_LIST_OPTIONS,
 };
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"output",    'o', POPT_ARG_STRING, &opt_output_path, 0, 0, 0},
+	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL},
+	{"output", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL},
+	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -50,6 +53,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng create [options] [NAME]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
 	fprintf(ofp, "\n");
 }
@@ -159,6 +163,10 @@ int cmd_create(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stderr);
+			goto end;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);

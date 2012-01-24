@@ -17,10 +17,12 @@
  */
 
 #include <stdlib.h>
+#include <ctype.h>
 
 #include <common/error.h>
 
 #include "conf.h"
+#include "utils.h"
 
 /*
  *  get_session_name
@@ -47,4 +49,27 @@ char *get_session_name(void)
 error:
 	DBG("Session name found: %s", session_name);
 	return session_name;
+}
+
+
+/*
+ * list_cmd_options
+ *
+ * Prints a simple list of the options available to a command. This is intended
+ * to be easily parsed for bash completion.
+ */
+void list_cmd_options(FILE *ofp, struct poptOption *options)
+{
+	int i;
+	struct poptOption *option = NULL;
+
+	for (i = 0; options[i].longName != NULL; i++) {
+		option = &options[i];
+
+		fprintf(ofp, "--%s\n", option->longName);
+
+		if (isprint(option->shortName)) {
+			fprintf(ofp, "-%c\n", option->shortName);
+		}
+	}
 }

@@ -377,15 +377,19 @@ end:
 }
 
 /*
- * Check for the "help" option in the argv. If found, return 1 else return 0.
+ * Check args for specific options that *must* not trigger a session daemon
+ * execution.
+ *
+ * Return 1 if match else 0.
  */
-static int check_help_command(int argc, char **argv)
+static int check_args_no_sessiond(int argc, char **argv)
 {
 	int i;
 
 	for (i = 0; i < argc; i++) {
 		if ((strncmp(argv[i], "-h", 2) == 0) ||
-				strncmp(argv[i], "--h", 3) == 0) {
+				strncmp(argv[i], "--h", 3) == 0 ||
+				strncmp(argv[i], "--list-options", 14)) {
 			return 1;
 		}
 	}
@@ -448,7 +452,7 @@ static int parse_args(int argc, char **argv)
 	}
 
 	/* Spawn session daemon if needed */
-	if (opt_no_sessiond == 0 && check_help_command(argc, argv) == 0 &&
+	if (opt_no_sessiond == 0 && check_args_no_sessiond(argc, argv) == 0 &&
 			(check_sessiond() < 0)) {
 		goto error;
 	}

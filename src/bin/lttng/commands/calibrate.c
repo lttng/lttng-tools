@@ -48,6 +48,7 @@ enum {
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
+	OPT_LIST_OPTIONS,
 };
 
 static struct lttng_handle *handle;
@@ -75,6 +76,7 @@ static struct poptOption long_options[] = {
 	{"function:entry", 0,   POPT_ARG_NONE, 0, OPT_FUNCTION_ENTRY, 0, 0},
 #endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
+	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -86,6 +88,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng calibrate [options] [calibrate_options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 #if 0
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
@@ -217,6 +220,10 @@ int cmd_calibrate(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

@@ -43,6 +43,7 @@ const char *indent8 = "        ";
 enum {
 	OPT_HELP = 1,
 	OPT_USERSPACE,
+	OPT_LIST_OPTIONS,
 };
 
 static struct lttng_handle *handle;
@@ -60,6 +61,7 @@ static struct poptOption long_options[] = {
 #endif
 	{"channel",   'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
 	{"domain",    'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
+	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -76,6 +78,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "With -u alone, list available userspace events\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help              Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
 #if 0
@@ -556,6 +559,10 @@ int cmd_list(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

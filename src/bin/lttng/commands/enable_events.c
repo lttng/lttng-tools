@@ -54,6 +54,7 @@ enum {
 	OPT_SYSCALL,
 	OPT_USERSPACE,
 	OPT_TRACEPOINT_LOGLEVEL,
+	OPT_LIST_OPTIONS,
 };
 
 static struct lttng_handle *handle;
@@ -84,6 +85,7 @@ static struct poptOption long_options[] = {
 #endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{"loglevel",     0,     POPT_ARG_NONE, 0, OPT_TRACEPOINT_LOGLEVEL, 0, 0},
+	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -95,6 +97,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng enable-event NAME[,NAME2,...] [options] [event_options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
 	fprintf(ofp, "  -a, --all                Enable all tracepoints\n");
@@ -432,6 +435,10 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_TRACEPOINT_LOGLEVEL:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

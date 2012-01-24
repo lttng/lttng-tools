@@ -42,6 +42,7 @@ static pid_t opt_pid;
 enum {
 	OPT_HELP = 1,
 	OPT_USERSPACE,
+	OPT_LIST_OPTIONS,
 };
 
 static struct lttng_handle *handle;
@@ -60,6 +61,7 @@ static struct poptOption long_options[] = {
 #else
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 #endif
+	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -71,6 +73,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] [options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
 	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
@@ -211,6 +214,10 @@ int cmd_disable_events(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

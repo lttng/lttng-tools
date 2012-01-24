@@ -48,6 +48,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_TYPE,
 	OPT_USERSPACE,
+	OPT_LIST_OPTIONS,
 };
 
 static struct lttng_handle *handle;
@@ -149,6 +150,7 @@ static struct poptOption long_options[] = {
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 #endif
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
+	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -307,6 +309,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -c, --channel NAME       Apply on channel\n");
 	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
@@ -463,6 +466,10 @@ int cmd_add_context(int argc, const char **argv)
 			opt_cmd_name = poptGetOptArg(pc);
 #endif
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

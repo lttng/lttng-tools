@@ -48,6 +48,7 @@ enum {
 	OPT_SWITCH_TIMER,
 	OPT_READ_TIMER,
 	OPT_USERSPACE,
+	OPT_LIST_OPTIONS,
 };
 
 static struct lttng_handle *handle;
@@ -70,6 +71,7 @@ static struct poptOption long_options[] = {
 	{"num-subbuf",     0,   POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0},
 	{"switch-timer",   0,   POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0},
 	{"read-timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
+	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -81,6 +83,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng enable-channel NAME[,NAME2,...] [options] [channel_options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -s, --session            Apply on session name\n");
 	fprintf(ofp, "  -k, --kernel             Apply on the kernel tracer\n");
 #if 0
@@ -258,6 +261,10 @@ int cmd_enable_channels(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, long_options);
+			ret = CMD_SUCCESS;
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;
