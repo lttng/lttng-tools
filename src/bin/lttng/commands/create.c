@@ -147,9 +147,9 @@ error:
 }
 
 /*
- *  cmd_list
+ *  cmd_create
  *
- *  The 'list <options>' first level command
+ *  The 'create <options>' first level command
  */
 int cmd_create(int argc, const char **argv)
 {
