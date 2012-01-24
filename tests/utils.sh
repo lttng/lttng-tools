@@ -19,8 +19,34 @@ SESSIOND_BIN="lttng-sessiond"
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
 
+# Minimal kernel version supported for session daemon tests
+KERNEL_MAJOR_VERSION=2
+KERNEL_MINOR_VERSION=6
+KERNEL_PATCHLEVEL_VERSION=27
+
+function validate_kernel_version ()
+{
+	kern_version=($(uname -r | awk -F. '{ printf("%d.%d.%d\n",$1,$2,$3); }' | tr '.' '\n'))
+	if [ ${kern_version[0]} -gt $KERNEL_MAJOR_VERSION ]; then
+		return 0
+	fi
+	if [ ${kern_version[1]} -gt $KERNEL_MINOR_VERSION ]; then
+		return 0
+	fi
+	if [ ${kern_version[2]} -ge $KERNEL_PATCHLEVEL_VERSION ]; then
+		return 0
+	fi
+	return 1
+}
+
 function start_sessiond ()
 {
+	validate_kernel_version
+	if [ $? -ne 0 ]; then
+		echo -e "\n*** Kernel to old for session daemon tests ***\n"
+		return 2
+	fi
+
 	if [ -z $(pidof $SESSIOND_BIN) ]; then
 		echo -n "Starting session daemon... "
 		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet
@@ -31,6 +57,8 @@ function start_sessiond ()
 			echo -e "\e[1;32mOK\e[0m"
 		fi
 	fi
+
+	return 0
 }
 
 function stop_sessiond ()
