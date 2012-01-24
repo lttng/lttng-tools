@@ -171,7 +171,7 @@ char *config_read_session_name(char *path)
 	fp = open_config(path, "r");
 	if (fp == NULL) {
 		ERR("Can't find valid lttng config %s/.lttngrc", path);
-		MSG("Did you create a session? (lttng create <my_sesion>)");
+		MSG("Did you create a session? (lttng create <my_session>)");
 		goto error;
 	}
 
@@ -180,7 +180,7 @@ char *config_read_session_name(char *path)
 		if ((ret = fscanf(fp, "%[^'=']=%s\n", var, session_name)) != 2) {
 			if (ret == -1) {
 				ERR("Missing session=NAME in config file.");
-				goto error;
+				goto error_close;
 			}
 			continue;
 		}
@@ -190,6 +190,7 @@ char *config_read_session_name(char *path)
 		}
 	}
 
+error_close:
 	fclose(fp);
 
 error:
