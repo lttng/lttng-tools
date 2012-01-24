@@ -77,7 +77,7 @@ struct consumer_data {
 
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
-const char default_tracing_group[] = LTTNG_DEFAULT_TRACING_GROUP;
+const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
 const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
 const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 

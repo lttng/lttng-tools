@@ -19,6 +19,15 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
 
+/* Default unix group name for tracing. */
+#define DEFAULT_TRACING_GROUP                   "tracing"
+
+/* Environment variable to set session daemon binary path. */
+#define DEFAULT_SESSIOND_PATH_ENV               "LTTNG_SESSIOND_PATH"
+
+/* Default trace output directory name */
+#define DEFAULT_TRACE_DIR_NAME                  "lttng-traces"
+
 /* Default size of a hash table */
 #define DEFAULT_HT_SIZE                         4
 

@@ -351,7 +351,7 @@ static int check_sessiond(void)
 			pathname = opt_sessiond_path;
 		} else {
 			/* Try LTTNG_SESSIOND_PATH env variable */
-			pathname = getenv(LTTNG_SESSIOND_PATH_ENV);
+			pathname = getenv(DEFAULT_SESSIOND_PATH_ENV);
 		}
 
 		/* Let's rock and roll */

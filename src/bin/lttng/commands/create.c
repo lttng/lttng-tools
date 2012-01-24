@@ -101,10 +101,10 @@ static int create_session()
 		}
 
 		if (have_name) {
-			ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME
+			ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
 					"/%s-%s", alloc_path, session_name, datetime);
 		} else {
-			ret = asprintf(&traces_path, "%s/" LTTNG_DEFAULT_TRACE_DIR_NAME
+			ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
 					"/%s", alloc_path, session_name);
 		}
 
