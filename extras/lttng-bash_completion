@@ -1,0 +1,339 @@
+#
+# Copyright (c) - 2012 Simon Marchi <simon.marchi@polymtl.ca>
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by as published by
+# the Free Software Foundation; only version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
+_lttng_complete_sessions() {
+	# TODO, maybe have a lttng list --simple or something like that
+	return
+}
+
+_lttng_cmd_add_context() {
+	local add_context_opts
+	add_context_opts=$(lttng add-context --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	--channel|-c)
+		return
+		;;
+	--event|-e)
+		return
+		;;
+	--type|-t)
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${add_context_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_create() {
+	local create_opts
+	create_opts=$(lttng create --list-options)
+
+	case $prev in
+	--output|-o)
+		_filedir -d
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${create_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_destroy() {
+	local destroy_opts
+	destroy_opts=$(lttng destroy --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${destroy_opts}" -- $cur) )
+		;;
+	*)
+		_lttng_complete_sessions
+		;;
+	esac
+}
+
+_lttng_cmd_enablechannel() {
+	local enable_channel_opts
+	enable_channel_opts=$(lttng enable-channel --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${enable_channel_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_enableevent() {
+	local enable_event_opts
+	enable_event_opts=$(lttng enable-event --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	--channel|-c)
+		return
+		;;
+	--probe)
+		return
+		;;
+	--function)
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${enable_event_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_disablechannel() {
+	local disable_channel_opts
+	disable_channel_opts=$(lttng disable-channel --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${disable_channel_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_disable_event() {
+	local disable_event_opts
+	disable_channel_opts=$(lttng disable-event --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	--channel|-c)
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${disable_event_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_list() {
+	local list_opts
+	disable_channel_opts=$(lttng list --list-options)
+
+	case $prev in
+	--channel|-c)
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${list_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_set_session() {
+	local set_session_opts
+	set_session_opts=$(lttng set-session --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${set_session_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+
+_lttng_cmd_start() {
+	local start_opts
+	start_opts=$(lttng start --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${start_opts}" -- $cur) )
+		;;
+	*)
+		_lttng_complete_sessions
+		;;
+	esac
+}
+
+_lttng_cmd_stop() {
+	local stop_opts
+	stop_opts=$(lttng stop --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${stop_opts}" -- $cur) )
+		;;
+	*)
+		_lttng_complete_sessions
+		;;
+	esac
+}
+
+_lttng_cmd_version() {
+	local version_opts
+	version_opts=$(lttng version --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${version_opts}" -- $cur) )
+		;;
+	esac
+}
+
+_lttng_cmd_calibrate() {
+	local calibrate_opts
+	calibrate_opts=$(lttng calibrate --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${calibrate_opts}" -- $cur) )
+		;;
+	esac
+}
+
+_lttng_opts() {
+	local opts
+	opts=$(lttng --list-options)
+
+	COMPREPLY=( $(compgen -W "${opts}" -- $cur) )
+}
+
+_lttng_commands() {
+	COMPREPLY=( $(compgen -W "$commands" -- $cur) )
+}
+
+_lttng_before_command() {
+	# Check if the previous word should alter the behavior
+	case $prev in
+	--group|-g)
+		COMPREPLY=( $(compgen -g -- $cur) )
+		return
+		;;
+	--sessiond-path)
+		_filedir
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		# If the current word starts with a dash, complete with options
+		_lttng_opts
+		;;
+	*)
+		# Otherwise complete with commands
+		_lttng_commands
+		;;
+	esac
+}
+
+_lttng_after_command() {
+	local cmd_name
+
+	cmd_name=_lttng_cmd_${command//-/}
+
+	type -t $cmd_name | grep -q 'function' && $cmd_name
+}
+
+_lttng_is_command() {
+	for command in $commands; do
+		if [ "$1" == "$command" ]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+_lttng() {
+	local cur prev commands command_found command_found_index
+
+	# Get the current and previous word
+	_get_comp_words_by_ref cur prev
+
+	# Get the valid LTTng commands
+	commands=$(lttng --list-commands)
+
+	# The text of the found command
+	command_found=""
+
+	# The index of the found command in COMP_WORDS
+	command_found_index=-1
+
+	for (( i = 1 ; i < ${#COMP_WORDS[@]} ; i++ )); do
+		_lttng_is_command ${COMP_WORDS[$i]}
+		if [ $? -eq 0 ]; then
+			command_found=${COMP_WORDS[$i]}
+			command_found_index=$i
+			break
+		fi
+
+	done
+
+	# Check if the cursor is before or after the command keyword
+	if [ -n "$command_found" ] && [ "$COMP_CWORD" -gt "$command_found_index" ]; then
+		_lttng_after_command
+	else
+		_lttng_before_command
+	fi
+}
+
+complete -F _lttng lttng
