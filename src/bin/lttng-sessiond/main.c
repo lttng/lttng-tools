@@ -215,11 +215,11 @@ void setup_consumerd_path(void)
 	if (bin) {
 		consumerd64_bin = bin;
 	}
-	libdir = getenv("LTTNG_TOOLS_CONSUMERD32_LIBDIR");
+	libdir = getenv("LTTNG_CONSUMERD32_LIBDIR");
 	if (libdir) {
 		consumerd32_libdir = libdir;
 	}
-	libdir = getenv("LTTNG_TOOLS_CONSUMERD64_LIBDIR");
+	libdir = getenv("LTTNG_CONSUMERD64_LIBDIR");
 	if (libdir) {
 		consumerd64_libdir = libdir;
 	}
