@@ -10,6 +10,10 @@ Latest development can be found at:
 
 REQUIREMENTS:
 
+	- Linux kernel >= 2.6.27
+	  pipe2(), epoll_create1() and SOCK_CLOEXEC are needed to run the session
+	  daemon. There were introduce in the Linux 2.6.27
+
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
