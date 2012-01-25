@@ -387,9 +387,9 @@ static int check_args_no_sessiond(int argc, char **argv)
 	int i;
 
 	for (i = 0; i < argc; i++) {
-		if ((strncmp(argv[i], "-h", 2) == 0) ||
-				strncmp(argv[i], "--h", 3) == 0 ||
-				strncmp(argv[i], "--list-options", 14)) {
+		if ((strncmp(argv[i], "-h", sizeof("-h")) == 0) ||
+				strncmp(argv[i], "--h", sizeof("--h")) == 0 ||
+				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0) {
 			return 1;
 		}
 	}
