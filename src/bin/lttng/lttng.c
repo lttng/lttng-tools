@@ -40,6 +40,7 @@ int opt_verbose;
 static int opt_no_sessiond;
 static char *opt_sessiond_path;
 static pid_t sessiond_pid;
+static volatile int recv_child_signal;
 
 enum {
 	OPT_SESSION_PATH,
@@ -181,12 +182,14 @@ static void sighandler(int sig)
 		case SIGCHLD:
 			DBG("SIGCHLD caugth");
 			waitpid(sessiond_pid, &status, 0);
+			recv_child_signal = 1;
 			/* Indicate that the session daemon died */
 			sessiond_pid = 0;
 			ERR("Session daemon died (exit status %d)", WEXITSTATUS(status));
 			break;
 		case SIGUSR1:
 			/* Notify is done */
+			recv_child_signal = 1;
 			DBG("SIGUSR1 caugth");
 			break;
 		default:
@@ -294,6 +297,7 @@ static int spawn_sessiond(char *pathname)
 	pid_t pid;
 
 	MSG("Spawning a session daemon");
+	recv_child_signal = 0;
 	pid = fork();
 	if (pid == 0) {
 		/*
@@ -307,12 +311,24 @@ static int spawn_sessiond(char *pathname)
 		} else {
 			perror("execlp");
 		}
-		kill(getppid(), SIGTERM);	/* unpause parent */
+		kill(getppid(), SIGTERM);	/* wake parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		sessiond_pid = pid;
-		/* Wait for lttng-sessiond to start */
-		pause();
+		/*
+		 * Wait for lttng-sessiond to start. We need to use a
+		 * flag to check if the signal has been sent to us,
+		 * because the child can be scheduled before the parent,
+		 * and thus send the signal before this check. In the
+		 * signal handler, we set the recv_child_signal flag, so
+		 * anytime we check it after the fork is fine. Note that
+		 * sleep() is interrupted before the 1 second delay as
+		 * soon as the signal is received, so it will not cause
+		 * visible delay for the user.
+		 */
+		while (!recv_child_signal) {
+			sleep(1);
+		}
 		if (!sessiond_pid) {
 			exit(EXIT_FAILURE);
 		}
