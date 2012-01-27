@@ -82,23 +82,23 @@ static struct cmd_struct commands[] =  {
 static void usage(FILE *ofp)
 {
 	fprintf(ofp, "LTTng Trace Control " VERSION"\n\n");
-	fprintf(ofp, "usage: lttng [options] <command>\n");
+	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND>\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help             Show this help\n");
-	fprintf(ofp, "  -g, --group NAME       Unix tracing group name. (default: tracing)\n");
-	fprintf(ofp, "  -v, --verbose          Verbose mode\n");
-	fprintf(ofp, "  -q, --quiet            Quiet mode\n");
-	fprintf(ofp, "  -n, --no-sessiond      Don't spawn a session daemon\n");
-	fprintf(ofp, "      --sessiond-path    Session daemon full path\n");
 	fprintf(ofp, "      --list-options     Simple listing of lttng options\n");
 	fprintf(ofp, "      --list-commands    Simple listing of lttng commands\n");
+	fprintf(ofp, "  -v, --verbose          Increase verbosity\n");
+	fprintf(ofp, "  -q, --quiet            Quiet mode\n");
+	fprintf(ofp, "  -g, --group NAME       Unix tracing group name. (default: tracing)\n");
+	fprintf(ofp, "  -n, --no-sessiond      Don't spawn a session daemon\n");
+	fprintf(ofp, "      --sessiond-path    Session daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
-	fprintf(ofp, "    add-context     Add context to event or/and channel\n");
+	fprintf(ofp, "    add-context     Add context to event and/or channel\n");
 	fprintf(ofp, "    calibrate       Quantify LTTng overhead\n");
 	fprintf(ofp, "    create          Create tracing session\n");
-	fprintf(ofp, "    destroy         Teardown tracing session\n");
+	fprintf(ofp, "    destroy         Tear down tracing session\n");
 	fprintf(ofp, "    enable-channel  Enable tracing channel\n");
 	fprintf(ofp, "    enable-event    Enable tracing event\n");
 	fprintf(ofp, "    disable-channel Disable tracing channel\n");
