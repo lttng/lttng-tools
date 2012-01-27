@@ -4077,14 +4077,14 @@ static void sighandler(int sig)
 {
 	switch (sig) {
 	case SIGPIPE:
-		DBG("SIGPIPE caugth");
+		DBG("SIGPIPE caught");
 		return;
 	case SIGINT:
-		DBG("SIGINT caugth");
+		DBG("SIGINT caught");
 		stop_threads();
 		break;
 	case SIGTERM:
-		DBG("SIGTERM caugth");
+		DBG("SIGTERM caught");
 		stop_threads();
 		break;
 	default:

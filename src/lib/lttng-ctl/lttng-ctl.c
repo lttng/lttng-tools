@@ -302,7 +302,7 @@ static int disconnect_sessiond(void)
 /*
  * Ask the session daemon a specific command and put the data into buf.
  *
- * Return size of data (only payload, not header).
+ * Return size of data (only payload, not header) or a negative error code.
  */
 static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 {
@@ -462,6 +462,8 @@ int lttng_stop_tracing(const char *session_name)
 
 /*
  * Add context to event or/and channel.
+ *
+ * Returns the size of the returned payload data or a negative error code.
  */
 int lttng_add_context(struct lttng_handle *handle,
 		struct lttng_event_context *ctx, const char *event_name,
@@ -807,7 +809,7 @@ int lttng_set_tracing_group(const char *name)
 }
 
 /*
- *  lttng_calibrate
+ * Returns size of returned session payload data or a negative error code.
  */
 int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate)

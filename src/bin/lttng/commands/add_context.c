@@ -303,33 +303,35 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng add-context -t TYPE\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "If no event name is given (-e), the context will be added to the channel\n");
 	fprintf(ofp, "If no channel and no event is given (-c/-e), the context\n");
 	fprintf(ofp, "will be added to all events and all channels.\n");
+	fprintf(ofp, "Otherwise the context will be added only to the channel (-c)\n");
+	fprintf(ofp, "and/or event (-e) indicated.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply on session name\n");
+	fprintf(ofp, "  -s, --session NAME       Apply on session name\n");
 	fprintf(ofp, "  -c, --channel NAME       Apply on channel\n");
 	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
-	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
-	fprintf(ofp, "                           the command line.\n");
+	fprintf(ofp, "                           the command line to specify multiple contexts at once.\n");
+	fprintf(ofp, "                           (--kernel preempts --userspace)\n");
 	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
 	print_ctx_type(ofp);
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Example:\n");
 	fprintf(ofp, "This command will add the context information 'prio' and two perf\n"
-			"counters: hardware branch misses and cache misses, to all events\n"
+			"counters (hardware branch misses and cache misses), to all events\n"
 			"in the trace data output:\n");
 	fprintf(ofp, "# lttng add-context -k -t prio -t perf:branch-misses -t perf:cache-misses\n");
 	fprintf(ofp, "\n");
@@ -377,7 +379,7 @@ static int add_context(char *session_name)
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
-		ret = -1;
+		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -401,7 +403,7 @@ static int add_context(char *session_name)
 		ret = lttng_add_context(handle, &context, opt_event_name,
 				opt_channel_name);
 		if (ret < 0) {
-			fprintf(stderr, "%s: ", type->opt->symbol);
+			ERR("%s: ", type->opt->symbol);
 			continue;
 		} else {
 			MSG("%s context %s added to %s event in %s",
@@ -410,6 +412,8 @@ static int add_context(char *session_name)
 					opt_channel_name ? opt_channel_name : "all channels");
 		}
 	}
+
+	ret = CMD_SUCCESS;
 
 error:
 	lttng_destroy_handle(handle);
@@ -448,6 +452,11 @@ int cmd_add_context(int argc, const char **argv)
 				ret = -1;
 				goto end;
 			}
+
+			/*
+			 * Look up the index of opt_type in ctx_opts[] first, so we don't
+			 * have to free(type) on failure.
+			 */
 			index = find_ctx_type_idx(opt_type);
 			if (index < 0) {
 				ERR("Unknown context type %s", opt_type);

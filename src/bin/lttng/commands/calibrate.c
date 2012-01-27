@@ -89,14 +89,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
-	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
-	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer (domain: UST\n");
+	fprintf(ofp, "                           EXEC_NAME). If no CMD, the domain is UST global.\n";
+	fprintf(ofp, "                           (-k preempts -u)\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Calibrate options:\n");
@@ -117,9 +117,9 @@ static void usage(FILE *ofp)
 }
 
 /*
- *  calibrate_lttng
+ * Calibrate LTTng.
  *
- *  Calibrate LTTng.
+ * Returns a CMD_* error.
  */
 static int calibrate_lttng(void)
 {
@@ -140,7 +140,7 @@ static int calibrate_lttng(void)
 
 	handle = lttng_create_handle(NULL, &dom);
 	if (handle == NULL) {
-		ret = -1;
+		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -156,6 +156,7 @@ static int calibrate_lttng(void)
 		calibrate.type = LTTNG_CALIBRATE_FUNCTION;
 		ret = lttng_calibrate(handle, &calibrate);
 		if (ret < 0) {
+			ret = CMD_ERROR;
 			goto error;
 		}
 		MSG("%s calibration done", opt_kernel ? "Kernel" : "UST");
@@ -171,6 +172,8 @@ static int calibrate_lttng(void)
 		goto error;
 	}
 
+	ret = CMD_SUCCESS;
+
 error:
 	lttng_destroy_handle(handle);
 
@@ -178,9 +181,7 @@ error:
 }
 
 /*
- *  cmd_calibrate
- *
- *  Calibrate LTTng tracer.
+ * Calibrate LTTng tracer.
  */
 int cmd_calibrate(int argc, const char **argv)
 {
@@ -196,7 +197,7 @@ int cmd_calibrate(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TRACEPOINT:

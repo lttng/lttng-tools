@@ -316,19 +316,20 @@ static int spawn_sessiond(char *pathname)
 	} else if (pid > 0) {
 		sessiond_pid = pid;
 		/*
-		 * Wait for lttng-sessiond to start. We need to use a
-		 * flag to check if the signal has been sent to us,
-		 * because the child can be scheduled before the parent,
-		 * and thus send the signal before this check. In the
-		 * signal handler, we set the recv_child_signal flag, so
-		 * anytime we check it after the fork is fine. Note that
-		 * sleep() is interrupted before the 1 second delay as
-		 * soon as the signal is received, so it will not cause
-		 * visible delay for the user.
+		 * Wait for lttng-sessiond to start. We need to use a flag to check if
+		 * the signal has been sent to us, because the child can be scheduled
+		 * before the parent, and thus send the signal before this check. In
+		 * the signal handler, we set the recv_child_signal flag, so anytime we
+		 * check it after the fork is fine. Note that sleep() is interrupted
+		 * before the 1 second delay as soon as the signal is received, so it
+		 * will not cause visible delay for the user.
 		 */
 		while (!recv_child_signal) {
 			sleep(1);
 		}
+		/*
+		 * The signal handler will nullify sessiond_pid on SIGCHLD
+		 */
 		if (!sessiond_pid) {
 			exit(EXIT_FAILURE);
 		}
