@@ -263,6 +263,9 @@ static int handle_command(int argc, char **argv)
 		if (strcmp(argv[0], cmd->name) == 0) {
 			ret = cmd->func(argc, (const char**) argv);
 			switch (ret) {
+			case CMD_WARNING:
+				WARN("Some command(s) went wrong");
+				break;
 			case CMD_ERROR:
 				ERR("Command error");
 				break;

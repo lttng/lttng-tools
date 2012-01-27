@@ -134,7 +134,7 @@ static int calibrate_lttng(void)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-		ret = CMD_UNDEFINED;
+		ret = CMD_ERROR;
 		goto error;
 	}
 

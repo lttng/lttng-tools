@@ -361,7 +361,7 @@ end:
  */
 static int add_context(char *session_name)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, warn = 0;
 	struct lttng_event_context context;
 	struct lttng_domain dom;
 	struct ctx_type *type;
@@ -373,7 +373,7 @@ static int add_context(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-		ret = CMD_UNDEFINED;
+		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -404,6 +404,7 @@ static int add_context(char *session_name)
 				opt_channel_name);
 		if (ret < 0) {
 			ERR("%s: ", type->opt->symbol);
+			warn = 1;
 			continue;
 		} else {
 			MSG("%s context %s added to %s event in %s",
@@ -418,6 +419,13 @@ static int add_context(char *session_name)
 error:
 	lttng_destroy_handle(handle);
 
+	/*
+	 * This means that at least one add_context failed and tells the user to
+	 * look on stderr for error(s).
+	 */
+	if (warn) {
+		ret = CMD_WARNING;
+	}
 	return ret;
 }
 
