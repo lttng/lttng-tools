@@ -313,7 +313,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		char *channel_name)
 {
 	int ret = LTTCOMM_OK, have_event = 0;
-	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct ltt_ust_event *uevent = NULL;
@@ -388,17 +388,6 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 			if (ret < 0) {
 				ERR("Context added to channel %s failed", uchan->name);
 				continue;
-			}
-
-			/* For all events in channel */
-			cds_lfht_for_each_entry(uchan->events->ht, &uiter.iter, uevent,
-					node.node) {
-				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
-				if (ret < 0) {
-					ERR("Context add to event %s in channel %s failed",
-							uevent->attr.name, uchan->name);
-					continue;
-				}
 			}
 		}
 	}
