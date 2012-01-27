@@ -4,6 +4,6 @@ TODOS:
 * Add --socket option if no HOME found (sessiond)
 * Use realloc() in ask_sessiond() (liblttngctl)
 * perror() --> PERROR() (everywhere in the code)
-* Use lockfree hashtable for tracing session list (session.h/.c)
-* Complete lttng ust 2.0 support (all features) (in progress David G. et Mathieu D. - 03/11/2011)
 * Add a command to "lttng" to consume data when the tracer is in flightrecorder mode
+* Fix error handling for UST support when enabling events on all applications.
+* Support for UST remaining domains (PID, EXEC_NAME, FOLLOW_CHILDREN).

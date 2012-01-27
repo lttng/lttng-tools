@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tests=( lttng/run-kernel-tests.sh )
+tests=( lttng/run-kernel-tests.sh lttng/run-ust-global-tests.sh )
 exit_code=0
 
 function start_tests ()

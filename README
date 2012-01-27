@@ -10,6 +10,10 @@ Latest development can be found at:
 
 REQUIREMENTS:
 
+	- Linux kernel >= 2.6.27
+	  pipe2(), epoll_create1() and SOCK_CLOEXEC are needed to run the session
+	  daemon. There were introduce in the Linux 2.6.27
+
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
@@ -39,7 +43,6 @@ If you get the tree from the repository, you will need to use the "bootstrap"
 script in the root of the tree. It calls all the GNU tools needed to prepare the
 tree configuration.
 
-
 INSTALLATION INSTRUCTIONS:
 
   - Download, compile and install the prerequisites.
@@ -65,18 +68,27 @@ PACKAGE CONTENTS:
     - liblttngctl
       The LTTng tracing control library.
 
-    - liblttng-sessiond-comm
-      The lttng-sessiond communication library. In order to talk with lttng-sessiond,
-      this library must be used.
+    - libsessiond-comm (internal)
+	  The lttng-sessiond communication library. In order to talk with
+	  lttng-sessiond, this library must be used.
 
-    - libkernelctl
+    - libkernel-ctl (internal)
       Kernel tracer control and ioctl definitions.
 
-    - liblttng-consumer
+    - libconsumer (internal)
       Library for Kernel and (optionally) UST trace consumer.
 
+	- libkernel-consumer (internal)
+	  Library for Kernel consumer control
+
+	- libust-consumer (internal)
+	  Library for UST consumer control
+
+	- libhashtable (internal)
+	  Library wrapper over URCU hashtables.
+
     - lttng-consumerd
-      The consumer daemon which uses liblttng-consumer.
+      The consumer daemon which uses libconsumer.
 
     - lttng-sessiond
       The LTTng session daemon binary.
@@ -89,3 +101,6 @@ PACKAGE CONTENTS:
 
     - tests
       Various test programs.
+
+	- doc
+	  Various documentations and quickstart guide.

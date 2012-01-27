@@ -26,9 +26,9 @@
 #include <time.h>
 #include <sys/types.h>
 
-#include <lttng-sessiond-comm.h>
+#include <bin/lttng-sessiond/session.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 
-#include <lttng-sessiond/session.h>
 #include "utils.h"
 
 #define SESSION1 "test1"

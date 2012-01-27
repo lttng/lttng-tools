@@ -30,14 +30,18 @@ config/
 !config/epoll.m4
 !config/config_feature.m4
 
-lttng-sessiond/lttng-sessiond
-lttng/lttng
-lttng-kconsumerd/lttng-kconsumerd
-lttng-consumerd/lttng-consumerd
+src/bin/lttng-sessiond/lttng-sessiond
+src/bin/lttng/lttng
+src/bin/lttng-consumerd/lttng-consumerd
 
 tests/test_sessions
 tests/test_kernel_data_trace
+tests/test_ust_data_trace
 tests/kernel_all_events_basic
 tests/kernel_event_basic
+tests/ust_global_all_events_basic
+tests/ust_global_event_basic
+tests/ust-nevents/gen-nevents
+tests/ust-nprocesses/gen-events-time
 
 benchmark/bench_sessions
