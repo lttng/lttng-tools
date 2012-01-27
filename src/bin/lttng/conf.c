@@ -32,7 +32,8 @@
 /*
  *  config_get_file_path
  *
- *  Return the path with '/CONFIG_FILENAME' added to it.
+ *  Returns the path with '/CONFIG_FILENAME' added to it;
+ *  path will be NULL if an error occurs.
  */
 char *config_get_file_path(char *path)
 {
@@ -50,7 +51,8 @@ char *config_get_file_path(char *path)
 /*
  *  open_config
  *
- *  Return an open FILE pointer to the config file.
+ *  Returns an open FILE pointer to the config file;
+ *  on error, NULL is returned.
  */
 static FILE *open_config(char *path, const char *mode)
 {
@@ -77,7 +79,9 @@ error:
 /*
  *  create_config_file
  *
- *  Create the empty config file a the path.
+ *  Creates the empty config file at the path.
+ *  On success, returns 0;
+ *  on error, returns -1.
  */
 static int create_config_file(char *path)
 {
@@ -101,6 +105,8 @@ error:
  *  write_config
  *
  *  Append data to the config file in file_path
+ *  On success, returns 0;
+ *  on error, returns -1.
  */
 static int write_config(char *file_path, size_t size, char *data)
 {
@@ -116,7 +122,7 @@ static int write_config(char *file_path, size_t size, char *data)
 
 	/* Write session name into config file */
 	len = fwrite(data, size, 1, fp);
-	if (len < 1) {
+	if (len != 1) {
 		ret = -1;
 	}
 	fclose(fp);
@@ -127,7 +133,7 @@ end:
 /*
  *  config_get_default_path
  *
- *  Return the HOME directory path. Caller MUST NOT free(3) the return pointer.
+ *  Returns the HOME directory path. Caller MUST NOT free(3) the return pointer.
  */
 char *config_get_default_path(void)
 {
@@ -137,7 +143,7 @@ char *config_get_default_path(void)
 /*
  *  config_destroy
  *
- *  Destroy directory config and file config.
+ *  Destroys directory config and file config.
  */
 void config_destroy(char *path)
 {
@@ -160,13 +166,21 @@ void config_destroy(char *path)
 /*
  *  config_read_session_name
  *
- *  Return sesson name from the config file.
+ *  Returns the session name from the config file.
+ *  The caller is responsible for freeing the returned string.
+ *  On error, NULL is returned.
  */
 char *config_read_session_name(char *path)
 {
 	int ret;
 	FILE *fp;
 	char var[NAME_MAX], *session_name;
+
+	session_name = malloc(NAME_MAX);
+	if (session_name == NULL) {
+		ERR("Out of memory");
+		goto error;
+	}
 
 	fp = open_config(path, "r");
 	if (fp == NULL) {
@@ -175,7 +189,6 @@ char *config_read_session_name(char *path)
 		goto error;
 	}
 
-	session_name = malloc(NAME_MAX);
 	while (!feof(fp)) {
 		if ((ret = fscanf(fp, "%[^'=']=%s\n", var, session_name)) != 2) {
 			if (ret == -1) {
@@ -206,14 +219,21 @@ found:
  *  config_add_session_name
  *
  *  Write session name option to the config file.
+ *  On success, returns 0;
+ *  on error, returns -1.
  */
 int config_add_session_name(char *path, char *name)
 {
 	int ret;
 	char session_name[NAME_MAX];
 
+	/*
+	 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
+	 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
+	 */
 	ret = snprintf(session_name, NAME_MAX, "session=%s\n", name);
-	if (ret < 0) {
+	if ((ret < 0) || (ret >= NAME_MAX)) {
+		ret = -1;
 		goto error;
 	}
 	ret = write_config(path, ret, session_name);
@@ -225,6 +245,8 @@ error:
  *  config_init
  *
  *  Init configuration directory and file.
+ *  On success, returns 0;
+ *  on error, returns -1.
  */
 int config_init(char *session_name)
 {

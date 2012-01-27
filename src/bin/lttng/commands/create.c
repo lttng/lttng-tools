@@ -115,15 +115,14 @@ static int create_session()
 
 	ret = lttng_create_session(session_name, traces_path);
 	if (ret < 0) {
+		ret = CMD_ERROR;
 		goto error;
 	}
 
 	/* Init lttng session config */
 	ret = config_init(session_name);
 	if (ret < 0) {
-		if (ret == -1) {
-			ret = CMD_ERROR;
-		}
+		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -159,11 +158,10 @@ int cmd_create(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
