@@ -81,7 +81,7 @@ enum lttng_event_output {
 enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PID               = 0,
 	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
-	LTTNG_EVENT_CONTEXT_COMM              = 2,
+	LTTNG_EVENT_CONTEXT_PROCNAME          = 2,
 	LTTNG_EVENT_CONTEXT_PRIO              = 3,
 	LTTNG_EVENT_CONTEXT_NICE              = 4,
 	LTTNG_EVENT_CONTEXT_VPID              = 5,
@@ -89,6 +89,7 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_VTID              = 7,
 	LTTNG_EVENT_CONTEXT_PPID              = 8,
 	LTTNG_EVENT_CONTEXT_VPPID             = 9,
+	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
 };
 
 enum lttng_calibrate_type {

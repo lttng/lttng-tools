@@ -239,7 +239,41 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	struct lttng_kernel_context kctx;
 
 	/* Setup kernel context structure */
-	kctx.ctx = ctx->ctx;
+	switch (ctx->ctx) {
+	case LTTNG_EVENT_CONTEXT_PID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PID;
+		break;
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_COUNTER;
+		break;
+	case LTTNG_EVENT_CONTEXT_PROCNAME:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PROCNAME;
+		break;
+	case LTTNG_EVENT_CONTEXT_PRIO:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PRIO;
+		break;
+	case LTTNG_EVENT_CONTEXT_NICE:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_NICE;
+		break;
+	case LTTNG_EVENT_CONTEXT_VPID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_VPID;
+		break;
+	case LTTNG_EVENT_CONTEXT_TID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_TID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VTID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_VTID;
+		break;
+	case LTTNG_EVENT_CONTEXT_PPID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PPID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VPPID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_VPPID;
+		break;
+	default:
+		return LTTCOMM_KERN_CONTEXT_FAIL;
+	}
+
 	kctx.u.perf_counter.type = ctx->u.perf_counter.type;
 	kctx.u.perf_counter.config = ctx->u.perf_counter.config;
 	strncpy(kctx.u.perf_counter.name, ctx->u.perf_counter.name,

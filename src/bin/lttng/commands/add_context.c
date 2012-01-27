@@ -67,6 +67,7 @@ enum context_type {
 	CONTEXT_VTID         = 7,
 	CONTEXT_PPID         = 8,
 	CONTEXT_VPPID        = 9,
+	CONTEXT_PTHREAD_ID   = 10,
 };
 
 /*
@@ -205,6 +206,7 @@ const struct ctx_opts {
 	{ "nice", CONTEXT_NICE },
 	{ "vpid", CONTEXT_VPID },
 	{ "tid", CONTEXT_TID },
+	{ "pthread_id", CONTEXT_PTHREAD_ID },
 	{ "vtid", CONTEXT_VTID },
 	{ "ppid", CONTEXT_PPID },
 	{ "vppid", CONTEXT_VPPID },
