@@ -362,7 +362,7 @@ static int check_sessiond(void)
 		if (opt_sessiond_path != NULL) {
 			ret = access(opt_sessiond_path, F_OK | X_OK);
 			if (ret < 0) {
-				ERR("No such file: %s", opt_sessiond_path);
+				ERR("No such file or access denied: %s", opt_sessiond_path);
 				goto end;
 			}
 			pathname = opt_sessiond_path;
@@ -384,7 +384,7 @@ static int check_sessiond(void)
 		ret = spawn_sessiond(pathname);
 		free(alloc_pathname);
 		if (ret < 0) {
-			ERR("Problem occurs when starting %s", pathname);
+			ERR("Problem occurred when starting %s", pathname);
 			goto end;
 		}
 	}
@@ -406,7 +406,8 @@ static int check_args_no_sessiond(int argc, char **argv)
 	for (i = 0; i < argc; i++) {
 		if ((strncmp(argv[i], "-h", sizeof("-h")) == 0) ||
 				strncmp(argv[i], "--h", sizeof("--h")) == 0 ||
-				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0) {
+				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0 ||
+				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0) {
 			return 1;
 		}
 	}
@@ -415,10 +416,9 @@ static int check_args_no_sessiond(int argc, char **argv)
 }
 
 /*
- *  parse_args
+ * Parse command line arguments.
  *
- *  Parse command line arguments.
- *  Return 0 if OK, else -1
+ * Return 0 if OK, else -1
  */
 static int parse_args(int argc, char **argv)
 {
@@ -432,8 +432,8 @@ static int parse_args(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "+hnvqg:", long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
-			usage(stderr);
-			goto error;
+			usage(stdout);
+			goto end;
 		case 'v':
 			opt_verbose += 1;
 			break;
@@ -452,11 +452,11 @@ static int parse_args(int argc, char **argv)
 		case OPT_DUMP_OPTIONS:
 			list_options(stdout);
 			ret = 0;
-			goto error;
+			goto end;
 		case OPT_DUMP_COMMANDS:
 			list_commands(stdout);
 			ret = 0;
-			goto error;
+			goto end;
 		default:
 			usage(stderr);
 			goto error;
@@ -494,6 +494,7 @@ static int parse_args(int argc, char **argv)
 		goto error;
 	}
 
+end:
 	return 0;
 
 error:

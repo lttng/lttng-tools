@@ -46,9 +46,12 @@ char *get_session_name(void)
 		goto error;
 	}
 
-error:
+	DBG2("Config file path found: %s", path);
 	DBG("Session name found: %s", session_name);
 	return session_name;
+
+error:
+	return NULL;
 }
 
 

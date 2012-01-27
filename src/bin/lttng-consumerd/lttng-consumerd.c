@@ -49,12 +49,12 @@
 
 #include "lttng-consumerd.h"
 
-/* TODO : support UST (all direct kernctl accesses). */
+/* TODO : support UST (all direct kern-ctl accesses). */
 
 /* the two threads (receive fd and poll) */
 static pthread_t threads[2];
 
-/* to count the number of time the user pressed ctrl+c */
+/* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
 
 /* Argument variables */
@@ -119,28 +119,28 @@ static int set_signal_handler(void)
 }
 
 /*
- * usage function on stderr
+ * Usage function on stream file.
  */
-static void usage(void)
+static void usage(FILE *fp)
 {
-	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
-	fprintf(stderr, "  -h, --help                         "
+	fprintf(fp, "Usage: %s OPTIONS\n\nOptions:\n", progname);
+	fprintf(fp, "  -h, --help                         "
 			"Display this usage.\n");
-	fprintf(stderr, "  -c, --consumerd-cmd-sock PATH     "
+	fprintf(fp, "  -c, --consumerd-cmd-sock PATH     "
 			"Specify path for the command socket\n");
-	fprintf(stderr, "  -e, --consumerd-err-sock PATH     "
+	fprintf(fp, "  -e, --consumerd-err-sock PATH     "
 			"Specify path for the error socket\n");
-	fprintf(stderr, "  -d, --daemonize                    "
+	fprintf(fp, "  -d, --daemonize                    "
 			"Start as a daemon.\n");
-	fprintf(stderr, "  -q, --quiet                        "
+	fprintf(fp, "  -q, --quiet                        "
 			"No output at all.\n");
-	fprintf(stderr, "  -v, --verbose                      "
+	fprintf(fp, "  -v, --verbose                      "
 			"Verbose mode. Activate DBG() macro.\n");
-	fprintf(stderr, "  -V, --version                      "
+	fprintf(fp, "  -V, --version                      "
 			"Show version number.\n");
-	fprintf(stderr, "  -k, --kernel                       "
+	fprintf(fp, "  -k, --kernel                       "
 			"Consumer kernel buffers (default).\n");
-	fprintf(stderr, "  -u, --ust                          "
+	fprintf(fp, "  -u, --ust                          "
 			"Consumer UST buffers.%s\n",
 #ifdef HAVE_LIBLTTNG_UST_CTL
 			""
@@ -196,8 +196,8 @@ static void parse_args(int argc, char **argv)
 			opt_daemon = 1;
 			break;
 		case 'h':
-			usage();
-			exit(EXIT_FAILURE);
+			usage(stdout);
+			exit(EXIT_SUCCESS);
 		case 'q':
 			opt_quiet = 1;
 			break;
@@ -222,7 +222,7 @@ static void parse_args(int argc, char **argv)
 			break;
 #endif
 		default:
-			usage();
+			usage(stderr);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 	ret = lttcomm_connect_unix_sock(error_sock_path);
 	/* not a fatal error, but all communication with lttng-sessiond will fail */
 	if (ret < 0) {
-		WARN("Cannot connect to error socket, is lttng-sessiond started ?");
+		WARN("Cannot connect to error socket (is lttng-sessiond started ?)");
 	}
 	lttng_consumer_set_error_sock(ctx, ret);
 
