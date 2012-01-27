@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "lttng-sessiond/session.h"
+#include <bin/lttng-sessiond/session.h>
 #include "utils.h"
 #include "benchmark.h"
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 		names[i] = get_random_string();
 		ret = system("echo 3 >/proc/sys/vm/drop_caches");
 		tracepoint(create_session_start);
-		ret = session_create(names[i], PATH1);
+		ret = session_create(names[i], PATH1, getuid(), getgid());
 		tracepoint(create_session_end);
 		if (ret < 0) {
 			printf("Create session went wrong. Aborting\n");

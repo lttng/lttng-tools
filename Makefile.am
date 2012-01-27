@@ -1,9 +1,10 @@
 ACLOCAL_AMFLAGS = -I config
 
-SUBDIRS = src \
+SUBDIRS = src/common/ \
+		  benchmark \
+		  src \
 		  tests \
 		  include \
-		  benchmark \
 		  doc
 
 bench:
