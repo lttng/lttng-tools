@@ -227,35 +227,33 @@ static int set_session_daemon_path(void)
 		in_tgroup = check_tracing_group(tracing_group);
 	}
 
-	if (uid == 0) {
-		/* Root */
-		copy_string(sessiond_sock_path,
-				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+	if ((uid == 0) || in_tgroup) {
+		copy_string(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
 				sizeof(sessiond_sock_path));
-	} else if (in_tgroup) {
-		/* Tracing group */
-		copy_string(sessiond_sock_path,
-				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				sizeof(sessiond_sock_path));
+	}
 
-		ret = try_connect_sessiond(sessiond_sock_path);
-		if (ret < 0) {
-			/* Global session daemon not available */
-			if (snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
-						DEFAULT_HOME_CLIENT_UNIX_SOCK,
-						getenv("HOME")) < 0) {
-				return -ENOMEM;
+	if (uid != 0) {
+		if (in_tgroup) {
+			/* Tracing group */
+			ret = try_connect_sessiond(sessiond_sock_path);
+			if (ret >= 0) {
+				goto end;
 			}
+			/* Global session daemon not available... */
 		}
-	} else {
-		/* Not in tracing group and not root, default */
-		if (snprintf(sessiond_sock_path, PATH_MAX,
-					DEFAULT_HOME_CLIENT_UNIX_SOCK,
-					getenv("HOME")) < 0) {
+		/* ...or not in tracing group (and not root), default */
+
+		/*
+		 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
+		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
+		 */
+		ret = snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
+				DEFAULT_HOME_CLIENT_UNIX_SOCK, getenv("HOME"));
+		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
 			return -ENOMEM;
 		}
 	}
-
+end:
 	return 0;
 }
 
