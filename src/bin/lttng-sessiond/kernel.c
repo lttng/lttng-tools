@@ -644,6 +644,7 @@ error:
  */
 int init_kernel_workarounds(void)
 {
+	int ret;
 	FILE *fp;
 
 	/*
@@ -658,7 +659,10 @@ int init_kernel_workarounds(void)
 	while (!feof(fp)) {
 		char buf[37] = "";
 
-		(void) fread(buf, 1, sizeof(buf), fp);
+		ret = fread(buf, 1, sizeof(buf), fp);
+		if (ret < 0) {
+			/* Ignore error, we don't really care */
+		}
 	}
 	fclose(fp);
 end_boot_id:
