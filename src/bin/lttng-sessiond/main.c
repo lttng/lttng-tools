@@ -4158,6 +4158,8 @@ int main(int argc, char **argv)
 	void *status;
 	const char *home_path;
 
+	init_kernel_workarounds();
+
 	rcu_register_thread();
 
 	/* Create thread quit pipe */
