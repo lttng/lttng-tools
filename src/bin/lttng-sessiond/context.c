@@ -158,11 +158,13 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 {
 	int ret;
 	struct ltt_ust_context *uctx;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *uctx_node;
 
 	/* Create ltt UST context */
 	uctx = trace_ust_create_context(ctx);
 	if (uctx == NULL) {
-		ret = LTTCOMM_FATAL;
+		ret = -EINVAL;
 		goto error;
 	}
 
@@ -174,14 +176,24 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	default:
-		ret = LTTCOMM_UND;
+		ret = -ENOSYS;
+		goto error;
+	}
+
+	/* Lookup context before adding it */
+	lttng_ht_lookup(uchan->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
+	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
+	if (uctx_node != NULL) {
+		ret = -EEXIST;
 		goto error;
 	}
 
 	/* Add ltt UST context node to ltt UST channel */
 	lttng_ht_add_unique_ulong(uchan->ctx, &uctx->node);
 
-	return LTTCOMM_OK;
+	DBG("Context UST %d added to channel %s", uctx->ctx.ctx, uchan->name);
+
+	return 0;
 
 error:
 	free(uctx);
@@ -197,11 +209,14 @@ static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
 {
 	int ret;
 	struct ltt_ust_context *uctx;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *uctx_node;
 
 	/* Create ltt UST context */
 	uctx = trace_ust_create_context(ctx);
 	if (uctx == NULL) {
-		ret = LTTCOMM_FATAL;
+		/* Context values are invalid. */
+		ret = -EINVAL;
 		goto error;
 	}
 
@@ -213,14 +228,24 @@ static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	default:
-		ret = LTTCOMM_UND;
+		ret = -ENOSYS;
+		goto error;
+	}
+
+	/* Lookup context before adding it */
+	lttng_ht_lookup(uevent->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
+	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
+	if (uctx_node != NULL) {
+		ret = -EEXIST;
 		goto error;
 	}
 
 	/* Add ltt UST context node to ltt UST event */
 	lttng_ht_add_unique_ulong(uevent->ctx, &uctx->node);
 
-	return LTTCOMM_OK;
+	DBG("Context UST %d added to event %s", uctx->ctx.ctx, uevent->attr.name);
+
+	return 0;
 
 error:
 	free(uctx);
@@ -239,7 +264,41 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	struct lttng_kernel_context kctx;
 
 	/* Setup kernel context structure */
-	kctx.ctx = ctx->ctx;
+	switch (ctx->ctx) {
+	case LTTNG_EVENT_CONTEXT_PID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PID;
+		break;
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_COUNTER;
+		break;
+	case LTTNG_EVENT_CONTEXT_PROCNAME:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PROCNAME;
+		break;
+	case LTTNG_EVENT_CONTEXT_PRIO:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PRIO;
+		break;
+	case LTTNG_EVENT_CONTEXT_NICE:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_NICE;
+		break;
+	case LTTNG_EVENT_CONTEXT_VPID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_VPID;
+		break;
+	case LTTNG_EVENT_CONTEXT_TID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_TID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VTID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_VTID;
+		break;
+	case LTTNG_EVENT_CONTEXT_PPID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PPID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VPPID:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_VPPID;
+		break;
+	default:
+		return LTTCOMM_KERN_CONTEXT_FAIL;
+	}
+
 	kctx.u.perf_counter.type = ctx->u.perf_counter.type;
 	kctx.u.perf_counter.config = ctx->u.perf_counter.config;
 	strncpy(kctx.u.perf_counter.name, ctx->u.perf_counter.name,
@@ -279,7 +338,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		char *channel_name)
 {
 	int ret = LTTCOMM_OK, have_event = 0;
-	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 	struct ltt_ust_event *uevent = NULL;
@@ -355,17 +414,6 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 				ERR("Context added to channel %s failed", uchan->name);
 				continue;
 			}
-
-			/* For all events in channel */
-			cds_lfht_for_each_entry(uchan->events->ht, &uiter.iter, uevent,
-					node.node) {
-				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
-				if (ret < 0) {
-					ERR("Context add to event %s in channel %s failed",
-							uevent->attr.name, uchan->name);
-					continue;
-				}
-			}
 		}
 	}
 
@@ -373,13 +421,20 @@ end:
 	switch (ret) {
 	case -EEXIST:
 		ret = LTTCOMM_UST_CONTEXT_EXIST;
-		goto error;
+		break;
 	case -ENOMEM:
 		ret = LTTCOMM_FATAL;
-		goto error;
+		break;
+	case -EINVAL:
+		ret = LTTCOMM_UST_CONTEXT_FAIL;
+		break;
+	case -ENOSYS:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		break;
+	default:
+		ret = LTTCOMM_OK;
+		break;
 	}
-
-	return LTTCOMM_OK;
 
 error:
 	return ret;

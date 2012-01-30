@@ -99,7 +99,7 @@ static int disable_channels(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-		ret = CMD_UNDEFINED;
+		ret = CMD_ERROR;
 		goto error;
 	}
 

@@ -67,6 +67,7 @@ enum context_type {
 	CONTEXT_VTID         = 7,
 	CONTEXT_PPID         = 8,
 	CONTEXT_VPPID        = 9,
+	CONTEXT_PTHREAD_ID   = 10,
 };
 
 /*
@@ -205,6 +206,7 @@ const struct ctx_opts {
 	{ "nice", CONTEXT_NICE },
 	{ "vpid", CONTEXT_VPID },
 	{ "tid", CONTEXT_TID },
+	{ "pthread_id", CONTEXT_PTHREAD_ID },
 	{ "vtid", CONTEXT_VTID },
 	{ "ppid", CONTEXT_PPID },
 	{ "vppid", CONTEXT_VPPID },
@@ -361,7 +363,7 @@ end:
  */
 static int add_context(char *session_name)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, warn = 0;
 	struct lttng_event_context context;
 	struct lttng_domain dom;
 	struct ctx_type *type;
@@ -373,7 +375,7 @@ static int add_context(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-		ret = CMD_UNDEFINED;
+		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -403,13 +405,26 @@ static int add_context(char *session_name)
 		ret = lttng_add_context(handle, &context, opt_event_name,
 				opt_channel_name);
 		if (ret < 0) {
-			ERR("%s: ", type->opt->symbol);
+			ERR("%s: %s", type->opt->symbol, lttng_strerror(ret));
+			warn = 1;
 			continue;
 		} else {
-			MSG("%s context %s added to %s event in %s",
-					opt_kernel ? "kernel" : "UST", type->opt->symbol,
-					opt_event_name ? opt_event_name : "all",
-					opt_channel_name ? opt_channel_name : "all channels");
+			if (opt_channel_name && opt_event_name) {
+				MSG("%s context %s added to event %s channel %s",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						opt_channel_name, opt_event_name);
+			} else if (opt_channel_name && !opt_event_name) {
+				MSG("%s context %s added to channel %s",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						opt_channel_name);
+			} else if (!opt_channel_name && opt_event_name) {
+				MSG("%s context %s added to event %s",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						opt_event_name);
+			} else {
+				MSG("%s context %s added to all channels",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol)
+			}
 		}
 	}
 
@@ -418,6 +433,13 @@ static int add_context(char *session_name)
 error:
 	lttng_destroy_handle(handle);
 
+	/*
+	 * This means that at least one add_context failed and tells the user to
+	 * look on stderr for error(s).
+	 */
+	if (warn) {
+		ret = CMD_WARNING;
+	}
 	return ret;
 }
 

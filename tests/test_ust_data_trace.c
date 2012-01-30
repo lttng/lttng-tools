@@ -168,16 +168,18 @@ static void create_ust_event(void)
 
 static void create_ust_context(void)
 {
-	struct lttng_event_context ctx;
+	struct lttng_event_context ectx;
 	struct ltt_ust_context *uctx;
 
+	ectx.ctx = LTTNG_EVENT_CONTEXT_VTID;
+
 	printf("Creating UST context: ");
-	uctx = trace_ust_create_context(&ctx);
+	uctx = trace_ust_create_context(&ectx);
 	assert(uctx != NULL);
 	PRINT_OK();
 
 	printf("Validating UST context: ");
-	assert((int) ctx.ctx == (int)uctx->ctx.ctx);
+	assert((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID);
 	PRINT_OK();
 }
 

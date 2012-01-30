@@ -638,3 +638,34 @@ error_version:
 error:
 	return ret;
 }
+
+/*
+ * Kernel work-arounds called at the start of sessiond main().
+ */
+int init_kernel_workarounds(void)
+{
+	int ret;
+	FILE *fp;
+
+	/*
+	 * boot_id needs to be read once before being used concurrently
+	 * to deal with a Linux kernel race. A fix is proposed for
+	 * upstream, but the work-around is needed for older kernels.
+	 */
+	fp = fopen("/proc/sys/kernel/random/boot_id", "r");
+	if (!fp) {
+		goto end_boot_id;
+	}
+	while (!feof(fp)) {
+		char buf[37] = "";
+
+		ret = fread(buf, 1, sizeof(buf), fp);
+		if (ret < 0) {
+			/* Ignore error, we don't really care */
+		}
+	}
+	fclose(fp);
+end_boot_id:
+
+	return 0;
+}

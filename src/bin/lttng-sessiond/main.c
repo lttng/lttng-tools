@@ -4230,6 +4230,9 @@ int main(int argc, char **argv)
 	const char *home_path;
 
 	tracepoint(sessiond_boot_start);
+
+	init_kernel_workarounds();
+
 	rcu_register_thread();
 
 	/* Create thread quit pipe */

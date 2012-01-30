@@ -289,6 +289,25 @@ struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx)
 {
 	struct ltt_ust_context *uctx;
+	enum lttng_ust_context_type utype;
+
+	switch (ctx->ctx) {
+	case LTTNG_EVENT_CONTEXT_VTID:
+		utype = LTTNG_UST_CONTEXT_VTID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VPID:
+		utype = LTTNG_UST_CONTEXT_VPID;
+		break;
+	case LTTNG_EVENT_CONTEXT_PTHREAD_ID:
+		utype = LTTNG_UST_CONTEXT_PTHREAD_ID;
+		break;
+	case LTTNG_EVENT_CONTEXT_PROCNAME:
+		utype = LTTNG_UST_CONTEXT_PROCNAME;
+		break;
+	default:
+		ERR("Invalid UST context");
+		return NULL;
+	}
 
 	uctx = zmalloc(sizeof(struct ltt_ust_context));
 	if (uctx == NULL) {
@@ -296,7 +315,7 @@ struct ltt_ust_context *trace_ust_create_context(
 		goto error;
 	}
 
-	uctx->ctx.ctx = ctx->ctx;
+	uctx->ctx.ctx = utype;
 	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
 
 	return uctx;

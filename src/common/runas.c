@@ -36,6 +36,10 @@
 
 #define RUNAS_CHILD_STACK_SIZE	10485760
 
+#ifndef MAP_STACK
+#define MAP_STACK		0
+#endif
+
 struct run_as_data {
 	int (*cmd)(void *data);
 	void *data;
