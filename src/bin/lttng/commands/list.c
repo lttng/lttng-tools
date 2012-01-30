@@ -70,7 +70,7 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng list [[-k] [-u] [-p PID] [SESSION [<options>]]]\n");
+	fprintf(ofp, "usage: lttng list [SESSION [<OPTIONS>]]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
 	fprintf(ofp, "\n");
