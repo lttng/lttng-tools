@@ -2202,7 +2202,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
  */
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {
-	int ret = 0, ctx_on_chan = 0;
+	int ret = 0;
 	struct lttng_ht_iter iter, uiter, iter_ctx;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
@@ -2277,9 +2277,6 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 				}
 			}
 		}
-
-		/* Reset flag */
-		ctx_on_chan = 0;
 	}
 
 	if (usess->start_trace) {
