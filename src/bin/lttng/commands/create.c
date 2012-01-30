@@ -52,17 +52,18 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng create [options] [NAME]\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "  The default NAME is 'auto-yyyymmdd-hhmmss'\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
 	fprintf(ofp, "\n");
 }
 
 /*
- *  create_session
+ *  Create a tracing session.
+ *  If no name is specified, a default name is generated.
  *
- *  Create a tracing session. If no name specified, a default name will be
- *  generated.
+ *  Returns one of the CMD_* result constants.
  */
 static int create_session()
 {
@@ -147,9 +148,9 @@ error:
 }
 
 /*
- *  cmd_create
- *
  *  The 'create <options>' first level command
+ *
+ *  Returns one of the CMD_* result constants.
  */
 int cmd_create(int argc, const char **argv)
 {

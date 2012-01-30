@@ -182,6 +182,8 @@ error:
 
 /*
  * Calibrate LTTng tracer.
+ *
+ * Returns a CMD_* error.
  */
 int cmd_calibrate(int argc, const char **argv)
 {
