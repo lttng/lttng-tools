@@ -85,14 +85,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND>\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help             Show this help\n");
-	fprintf(ofp, "      --list-options     Simple listing of lttng options\n");
-	fprintf(ofp, "      --list-commands    Simple listing of lttng commands\n");
-	fprintf(ofp, "  -v, --verbose          Increase verbosity\n");
-	fprintf(ofp, "  -q, --quiet            Quiet mode\n");
-	fprintf(ofp, "  -g, --group NAME       Unix tracing group name. (default: tracing)\n");
-	fprintf(ofp, "  -n, --no-sessiond      Don't spawn a session daemon\n");
-	fprintf(ofp, "      --sessiond-path    Session daemon full path\n");
+	fprintf(ofp, "  -h, --help                 Show this help\n");
+	fprintf(ofp, "      --list-options         Simple listing of lttng options\n");
+	fprintf(ofp, "      --list-commands        Simple listing of lttng commands\n");
+	fprintf(ofp, "  -v, --verbose              Increase verbosity\n");
+	fprintf(ofp, "  -q, --quiet                Quiet mode\n");
+	fprintf(ofp, "  -g, --group NAME           Unix tracing group name. (default: tracing)\n");
+	fprintf(ofp, "  -n, --no-sessiond          Don't spawn a session daemon\n");
+	fprintf(ofp, "      --sessiond-path PATH   Session daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
 	fprintf(ofp, "    add-context     Add context to event and/or channel\n");
@@ -108,6 +108,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    start           Start tracing\n");
 	fprintf(ofp, "    stop            Stop tracing\n");
 	fprintf(ofp, "    version         Show version information\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Each command also has its own -h, --help option.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
 	fprintf(ofp, "See http://lttng.org for updates, bug reports and news.\n");
@@ -176,11 +178,11 @@ static void sighandler(int sig)
 
 	switch (sig) {
 		case SIGTERM:
-			DBG("SIGTERM caugth");
+			DBG("SIGTERM caught");
 			clean_exit(EXIT_FAILURE);
 			break;
 		case SIGCHLD:
-			DBG("SIGCHLD caugth");
+			DBG("SIGCHLD caught");
 			waitpid(sessiond_pid, &status, 0);
 			recv_child_signal = 1;
 			/* Indicate that the session daemon died */
@@ -190,10 +192,10 @@ static void sighandler(int sig)
 		case SIGUSR1:
 			/* Notify is done */
 			recv_child_signal = 1;
-			DBG("SIGUSR1 caugth");
+			DBG("SIGUSR1 caught");
 			break;
 		default:
-			DBG("Unknown signal %d caugth", sig);
+			DBG("Unknown signal %d caught", sig);
 			break;
 	}
 
@@ -514,7 +516,7 @@ int main(int argc, char *argv[])
 
 	progname = argv[0] ? argv[0] : "lttng";
 
-	/* For Mathieu Desnoyers aka Dr Tracing */
+	/* For Mathieu Desnoyers a.k.a. Dr. Tracing */
 	if (strncmp(progname, "drtrace", 7) == 0 ||
 			strncmp("compudj", getenv("USER"), 7) == 0) {
 		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);

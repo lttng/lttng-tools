@@ -49,7 +49,7 @@
 
 #include "lttng-consumerd.h"
 
-/* TODO : support UST (all direct kern-ctl accesses). */
+/* TODO : support UST (all direct kernel-ctl accesses). */
 
 /* the two threads (receive fd and poll) */
 static pthread_t threads[2];
@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 	ret = lttcomm_connect_unix_sock(error_sock_path);
 	/* not a fatal error, but all communication with lttng-sessiond will fail */
 	if (ret < 0) {
-		WARN("Cannot connect to error socket (is lttng-sessiond started ?)");
+		WARN("Cannot connect to error socket (is lttng-sessiond started?)");
 	}
 	lttng_consumer_set_error_sock(ctx, ret);
 

@@ -314,7 +314,7 @@ error:
 static void teardown_kernel_session(struct ltt_session *session)
 {
 	if (!session->kernel_session) {
-		DBG3("No kernel session when tearingdown session");
+		DBG3("No kernel session when tearing down session");
 		return;
 	}
 
@@ -340,7 +340,7 @@ static void teardown_ust_session(struct ltt_session *session)
 	int ret;
 
 	if (!session->ust_session) {
-		DBG3("No UST session when tearingdown session");
+		DBG3("No UST session when tearing down session");
 		return;
 	}
 
@@ -397,7 +397,7 @@ static void cleanup(void)
 	}
 	free(cmd);
 
-	DBG("Cleaning up all session");
+	DBG("Cleaning up all sessions");
 
 	/* Destroy session list mutex */
 	if (session_list_ptr != NULL) {
