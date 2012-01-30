@@ -67,7 +67,7 @@ static void usage(FILE *ofp)
  */
 static int create_session()
 {
-	int ret, have_name = 0;
+	int ret;
 	char datetime[16];
 	char *session_name, *traces_path = NULL, *alloc_path = NULL;
 	time_t rawtime;
@@ -80,37 +80,33 @@ static int create_session()
 
 	/* Auto session name creation */
 	if (opt_session_name == NULL) {
-		ret = asprintf(&session_name, "auto-%s", datetime);
+		ret = asprintf(&session_name, "auto");
 		if (ret < 0) {
 			perror("asprintf session name");
+			ret = CMD_ERROR;
 			goto error;
 		}
 		DBG("Auto session name set to %s", session_name);
 	} else {
 		session_name = opt_session_name;
-		have_name = 1;
 	}
 
 	/* Auto output path */
 	if (opt_output_path == NULL) {
 		alloc_path = strdup(config_get_default_path());
 		if (alloc_path == NULL) {
-			ERR("Home path not found.\n \
-				 Please specify an output path using -o, --output PATH");
+			ERR("Home path not found.\n"
+				"Please specify an output path using -o, --output PATH\n");
 			ret = CMD_FATAL;
 			goto error;
 		}
 
-		if (have_name) {
-			ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
+		ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
 					"/%s-%s", alloc_path, session_name, datetime);
-		} else {
-			ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
-					"/%s", alloc_path, session_name);
-		}
 
 		if (ret < 0) {
 			perror("asprintf trace dir name");
+			ret = CMD_ERROR;
 			goto error;
 		}
 	} else {
