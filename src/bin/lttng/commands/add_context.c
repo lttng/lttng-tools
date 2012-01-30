@@ -313,14 +313,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply on session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply on channel\n");
-	fprintf(ofp, "  -e, --event NAME         Apply on event\n");
+	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
+	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
+	fprintf(ofp, "  -e, --event NAME         Apply to event\n");
 	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 #if 0
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
-	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
+	fprintf(ofp, "                           otherwise the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
@@ -385,7 +385,7 @@ static int add_context(char *session_name)
 		goto error;
 	}
 
-	/* Iterate over all context type given */
+	/* Iterate over all the context types given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
 		context.ctx = type->opt->ctx_type;
 		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
@@ -444,7 +444,7 @@ error:
 }
 
 /*
- * Add context on channel or event.
+ * Add context to channel or event.
  */
 int cmd_add_context(int argc, const char **argv)
 {
@@ -455,6 +455,7 @@ int cmd_add_context(int argc, const char **argv)
 
 	if (argc < 2) {
 		usage(stderr);
+		ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -464,17 +465,10 @@ int cmd_add_context(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TYPE:
-			type = malloc(sizeof(struct ctx_type));
-			if (type == NULL) {
-				perror("malloc ctx_type");
-				ret = -1;
-				goto end;
-			}
-
 			/*
 			 * Look up the index of opt_type in ctx_opts[] first, so we don't
 			 * have to free(type) on failure.
@@ -482,11 +476,23 @@ int cmd_add_context(int argc, const char **argv)
 			index = find_ctx_type_idx(opt_type);
 			if (index < 0) {
 				ERR("Unknown context type %s", opt_type);
+				ret = CMD_ERROR;
 				goto end;
 			}
+
+			type = malloc(sizeof(struct ctx_type));
+			if (type == NULL) {
+				perror("malloc ctx_type");
+				ret = CMD_FATAL;
+				goto end;
+			}
+
 			type->opt = &ctx_opts[index];
 			if (type->opt->ctx_type == -1) {
 				ERR("Unknown context type %s", opt_type);
+				free(type);
+				ret = CMD_ERROR;
+				goto end;
 			} else {
 				cds_list_add(&type->list, &ctx_type_list.head);
 			}
@@ -511,7 +517,7 @@ int cmd_add_context(int argc, const char **argv)
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -520,11 +526,11 @@ int cmd_add_context(int argc, const char **argv)
 
 	ret = add_context(session_name);
 
+end:
 	/* Cleanup allocated memory */
 	cds_list_for_each_entry_safe(type, tmptype, &ctx_type_list.head, list) {
 		free(type);
 	}
 
-end:
 	return ret;
 }
