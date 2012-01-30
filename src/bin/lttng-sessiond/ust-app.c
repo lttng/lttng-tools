@@ -393,7 +393,7 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 
 	ua_ctx->handle = ua_ctx->obj->handle;
 
-	DBG2("UST app context added to channel %s successfully", ua_chan->name);
+	DBG2("UST app context created successfully for channel %s", ua_chan->name);
 
 error:
 	return ret;
@@ -416,7 +416,7 @@ int create_ust_event_context(struct ust_app_event *ua_event,
 
 	ua_ctx->handle = ua_ctx->obj->handle;
 
-	DBG2("UST app context added to event %s successfully", ua_event->name);
+	DBG2("UST app context created successfully for event %s", ua_event->name);
 
 error:
 	return ret;
@@ -2202,12 +2202,13 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
  */
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {
-	int ret = 0;
-	struct lttng_ht_iter iter, uiter;
+	int ret = 0, ctx_on_chan = 0;
+	struct lttng_ht_iter iter, uiter, iter_ctx;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
+	struct ust_app_ctx *ua_ctx;
 
 	if (usess == NULL) {
 		ERR("No UST session on global update. Returning");
@@ -2247,6 +2248,16 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 			continue;
 		}
 
+		cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter_ctx.iter, ua_ctx,
+				node.node) {
+			ret = create_ust_channel_context(ua_chan, ua_ctx, app);
+			if (ret < 0) {
+				/* FIXME: Should we quit here or continue... */
+				continue;
+			}
+		}
+
+
 		/* For each events */
 		cds_lfht_for_each_entry(ua_chan->events->ht, &uiter.iter, ua_event,
 				node.node) {
@@ -2255,7 +2266,20 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 				/* FIXME: Should we quit here or continue... */
 				continue;
 			}
+
+			/* Add context on events. */
+			cds_lfht_for_each_entry(ua_event->ctx->ht, &iter_ctx.iter,
+					ua_ctx, node.node) {
+				ret = create_ust_event_context(ua_event, ua_ctx, app);
+				if (ret < 0) {
+					/* FIXME: Should we quit here or continue... */
+					continue;
+				}
+			}
 		}
+
+		/* Reset flag */
+		ctx_on_chan = 0;
 	}
 
 	if (usess->start_trace) {

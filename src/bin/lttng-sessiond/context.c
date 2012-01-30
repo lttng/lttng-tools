@@ -158,11 +158,13 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 {
 	int ret;
 	struct ltt_ust_context *uctx;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *uctx_node;
 
 	/* Create ltt UST context */
 	uctx = trace_ust_create_context(ctx);
 	if (uctx == NULL) {
-		ret = LTTCOMM_FATAL;
+		ret = -EINVAL;
 		goto error;
 	}
 
@@ -174,14 +176,24 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	default:
-		ret = LTTCOMM_UND;
+		ret = -ENOSYS;
+		goto error;
+	}
+
+	/* Lookup context before adding it */
+	lttng_ht_lookup(uchan->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
+	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
+	if (uctx_node != NULL) {
+		ret = -EEXIST;
 		goto error;
 	}
 
 	/* Add ltt UST context node to ltt UST channel */
 	lttng_ht_add_unique_ulong(uchan->ctx, &uctx->node);
 
-	return LTTCOMM_OK;
+	DBG("Context UST %d added to channel %s", uctx->ctx.ctx, uchan->name);
+
+	return 0;
 
 error:
 	free(uctx);
@@ -197,11 +209,14 @@ static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
 {
 	int ret;
 	struct ltt_ust_context *uctx;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *uctx_node;
 
 	/* Create ltt UST context */
 	uctx = trace_ust_create_context(ctx);
 	if (uctx == NULL) {
-		ret = LTTCOMM_FATAL;
+		/* Context values are invalid. */
+		ret = -EINVAL;
 		goto error;
 	}
 
@@ -213,14 +228,24 @@ static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
 		}
 		break;
 	default:
-		ret = LTTCOMM_UND;
+		ret = -ENOSYS;
+		goto error;
+	}
+
+	/* Lookup context before adding it */
+	lttng_ht_lookup(uevent->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
+	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
+	if (uctx_node != NULL) {
+		ret = -EEXIST;
 		goto error;
 	}
 
 	/* Add ltt UST context node to ltt UST event */
 	lttng_ht_add_unique_ulong(uevent->ctx, &uctx->node);
 
-	return LTTCOMM_OK;
+	DBG("Context UST %d added to event %s", uctx->ctx.ctx, uevent->attr.name);
+
+	return 0;
 
 error:
 	free(uctx);
@@ -396,13 +421,20 @@ end:
 	switch (ret) {
 	case -EEXIST:
 		ret = LTTCOMM_UST_CONTEXT_EXIST;
-		goto error;
+		break;
 	case -ENOMEM:
 		ret = LTTCOMM_FATAL;
-		goto error;
+		break;
+	case -EINVAL:
+		ret = LTTCOMM_UST_CONTEXT_FAIL;
+		break;
+	case -ENOSYS:
+		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		break;
+	default:
+		ret = LTTCOMM_OK;
+		break;
 	}
-
-	return LTTCOMM_OK;
 
 error:
 	return ret;
