@@ -405,14 +405,26 @@ static int add_context(char *session_name)
 		ret = lttng_add_context(handle, &context, opt_event_name,
 				opt_channel_name);
 		if (ret < 0) {
-			ERR("%s: ", type->opt->symbol);
+			ERR("%s: %s", type->opt->symbol, lttng_strerror(ret));
 			warn = 1;
 			continue;
 		} else {
-			MSG("%s context %s added to %s event in %s",
-					opt_kernel ? "kernel" : "UST", type->opt->symbol,
-					opt_event_name ? opt_event_name : "all",
-					opt_channel_name ? opt_channel_name : "all channels");
+			if (opt_channel_name && opt_event_name) {
+				MSG("%s context %s added to event %s channel %s",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						opt_channel_name, opt_event_name);
+			} else if (opt_channel_name && !opt_event_name) {
+				MSG("%s context %s added to channel %s",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						opt_channel_name);
+			} else if (!opt_channel_name && opt_event_name) {
+				MSG("%s context %s added to event %s",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						opt_event_name);
+			} else {
+				MSG("%s context %s added to all channels",
+						opt_kernel ? "kernel" : "UST", type->opt->symbol)
+			}
 		}
 	}
 
