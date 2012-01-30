@@ -1,4 +1,5 @@
-AM_CPPFLAGS = -ldl -I. -O2
+AM_CFLAGS = -I. -O2
+AM_LDFLAGS = -llttng-ust -ldl
 
 noinst_PROGRAMS = gen-events-time
 gen_events_time_SOURCES = gen-events-time.c tp.c ust_gen_event.h
