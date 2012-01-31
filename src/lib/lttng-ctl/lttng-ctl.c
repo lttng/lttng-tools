@@ -466,7 +466,10 @@ int lttng_stop_tracing(const char *session_name)
 }
 
 /*
- * Add context to event or/and channel.
+ * Add context to event and/or channel.
+ * If event_name is NULL, the context is applied to all events of the channel.
+ * If channel_name is NULL, a lookup of the event's channel is done.
+ * If both are NULL, the context is applied to all events of all channels.
  *
  * Returns the size of the returned payload data or a negative error code.
  */

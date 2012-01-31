@@ -5,19 +5,18 @@
  *
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; only
- * version 2.1 of the License.
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation; only version 2.1 of the License.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+ * for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef _LTTNG_H
@@ -38,7 +37,7 @@
  */
 
 /*
- * Domain type are the different possible tracers.
+ * Domain types: the different possible tracers.
  */
 enum lttng_domain_type {
 	LTTNG_DOMAIN_KERNEL                   = 1,
@@ -215,104 +214,117 @@ struct lttng_handle {
 /*
  * Public LTTng control API
  *
- * For functions having a lttng domain type as parameter, if a bad value is
+ * For functions having an lttng domain type as parameter, if a bad value is
  * given, NO default is applied and an error is returned.
  *
  * On success, all functions of the API return 0 or the size of the allocated
- * array.
+ * array (in bytes).
  *
  * On error, a negative value is returned being a specific lttng-tools error
  * code which can be humanly interpreted with lttng_strerror(err).
+ *
+ * Exceptions to this are noted below.
  */
 
 /*
- * Create an handle used as a context for every request made to the library.
+ * Create a handle used as a context for every request made to the library.
  *
  * This handle contains the session name and lttng domain on which the command
- * will be executed on.
+ * will be executed.
+ * The returned pointer will be NULL in case of malloc() error.
  */
 extern struct lttng_handle *lttng_create_handle(const char *session_name,
 		struct lttng_domain *domain);
 
 /*
- * Destroy an handle. This will simply free(3) the data pointer returned by
- * lttng_create_handle() and rendering it unsuable.
+ * Destroy a handle. This will simply free(3) the data pointer returned by
+ * lttng_create_handle(), rendering it unusable.
  */
 extern void lttng_destroy_handle(struct lttng_handle *handle);
 
 /*
- * Create tracing session using a name and a path where trace will be written.
+ * Create a tracing session using a name and a path where the trace will be
+ * written.
  */
 extern int lttng_create_session(const char *name, const char *path);
 
 /*
- * Destroy tracing session.
+ * Destroy a tracing session.
  *
- * The session will not be useable anymore, tracing will stopped for all
- * registered trace and tracing buffers will be flushed.
+ * The session will not be usable anymore, tracing will be stopped for all
+ * registered traces, and the tracing buffers will be flushed.
  */
 extern int lttng_destroy_session(const char *name);
 
 /*
- * List all tracing sessions.
+ * List all the tracing sessions.
  *
- * Return the size of the "lttng_session" array. Caller must free(3).
+ * Return the size (number of entries) of the "lttng_session" array. Caller
+ * must free(3).
  */
 extern int lttng_list_sessions(struct lttng_session **sessions);
 
 /*
- * List registered domain(s) of a session.
+ * List the registered domain(s) of a session.
  *
- * Return the size of the "lttng_domain" array. Caller must free(3).
+ * Return the size (number of entries) of the "lttng_domain" array. Caller
+ * must free(3).
  */
 extern int lttng_list_domains(const char *session_name,
 		struct lttng_domain **domains);
 
 /*
- * List channel(s) of a session.
+ * List the channel(s) of a session.
  *
- * Return the size of the "lttng_channel" array. Caller must free(3).
+ * Return the size (number of entries) of the "lttng_channel" array. Caller
+ * must free(3).
  */
 extern int lttng_list_channels(struct lttng_handle *handle,
 		struct lttng_channel **channels);
 
 /*
- * List event(s) of a session channel.
+ * List the event(s) of a session channel.
  *
- * Return the size of the "lttng_event" array. Caller must free(3).
+ * Return the size (number of entries) of the "lttng_event" array.
+ * Caller must free(3).
  */
 extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
 
 /*
- * List available tracepoints of a specific lttng domain.
+ * List the available tracepoints of a specific lttng domain.
  *
- * Return the size of the "lttng_event" array. Caller must free(3).
+ * Return the size (number of entries) of the "lttng_event" array.
+ * Caller must free(3).
  */
 extern int lttng_list_tracepoints(struct lttng_handle *handle,
 		struct lttng_event **events);
 
 /*
  * Check if a session daemon is alive.
+ *
+ * Return 1 if alive or 0 if not. On error returns a negative value.
  */
 extern int lttng_session_daemon_alive(void);
 
 /*
- * Set tracing group for the *current* flow of execution.
+ * Set the tracing group for the *current* flow of execution.
+ *
+ * On success, returns 0, on error, returns -1 (null name) or -ENOMEM.
  */
 extern int lttng_set_tracing_group(const char *name);
 
 /*
- * Return a human readable error message of a lttng-tools error code.
+ * Return a human-readable error message for an lttng-tools error code.
  *
  * Parameter MUST be a negative value or else you'll get a generic message.
  */
 extern const char *lttng_strerror(int code);
 
 /*
- * This call permits to register an "outside consumer" to a session and a lttng
- * domain. No consumer will be spawned and all fds/commands will go through the
- * socket path given (socket_path).
+ * This call registers an "outside consumer" for a session and an lttng domain.
+ * No consumer will be spawned and all fds/commands will go through the socket
+ * path given (socket_path).
  *
  * NOTE: At the moment, if you use the liblttng-kconsumer, you can only use the
  * command socket. The error socket is not supported yet for roaming consumers.
@@ -321,32 +333,32 @@ extern int lttng_register_consumer(struct lttng_handle *handle,
 		const char *socket_path);
 
 /*
- * Start tracing for *all* registered trace (kernel and user-space).
+ * Start tracing for *all* registered traces (kernel and user-space).
  */
 extern int lttng_start_tracing(const char *session_name);
 
 /*
- * Stop tracing for *all* registered trace (kernel and user-space).
+ * Stop tracing for *all* registered traces (kernel and user-space).
  */
 extern int lttng_stop_tracing(const char *session_name);
 
 /*
- * Add context to event for a specific channel.
+ * Add context to event(s) for a specific channel (or for all).
  *
- * If event_name is NULL, the context is applied to all event of the channel.
+ * If event_name is NULL, the context is applied to all events of the channel.
  * If channel_name is NULL, a lookup of the event's channel is done.
- * If both are NULL, the context is applied on all events of all channels.
+ * If both are NULL, the context is applied to all events of all channels.
  */
 extern int lttng_add_context(struct lttng_handle *handle,
 		struct lttng_event_context *ctx, const char *event_name,
 		const char *channel_name);
 
 /*
- * Create or enable a kernel event.
+ * Create or enable a kernel event (or events) for a channel.
  *
  * If the event you are trying to enable does not exist, it will be created,
  * else it is enabled.
- *
+ * If event_name is NULL, all events are enabled.
  * If channel_name is NULL, the default channel is used (channel0).
  */
 extern int lttng_enable_event(struct lttng_handle *handle,
@@ -354,15 +366,15 @@ extern int lttng_enable_event(struct lttng_handle *handle,
 
 /*
  * Create or enable a kernel channel.
- *
- * If name is NULL, the default channel is enabled (channel0).
+ * The channel name cannot be NULL.
  */
 extern int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *chan);
 
 /*
- * Disable kernel event.
+ * Disable kernel event(s) of a channel and domain.
  *
+ * If event_name is NULL, all events are disabled.
  * If channel_name is NULL, the default channel is used (channel0).
  */
 extern int lttng_disable_event(struct lttng_handle *handle,
@@ -371,7 +383,7 @@ extern int lttng_disable_event(struct lttng_handle *handle,
 /*
  * Disable kernel channel.
  *
- * If channel_name is NULL, the default channel is disabled (channel0).
+ * The channel name cannot be NULL.
  */
 extern int lttng_disable_channel(struct lttng_handle *handle,
 		const char *name);
@@ -385,6 +397,8 @@ extern int lttng_calibrate(struct lttng_handle *handle,
 /*
  * Set the default channel attributes for a specific domain and an allocated
  * lttng_channel_attr pointer.
+ *
+ * If either or both of the arguments are NULL, nothing happens.
  */
 extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr);
