@@ -101,9 +101,8 @@ static int create_session()
 			goto error;
 		}
 
-		ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
-					"/%s-%s", alloc_path, session_name, datetime);
-
+		ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME "/%s-%s",
+				alloc_path, session_name, datetime);
 		if (ret < 0) {
 			perror("asprintf trace dir name");
 			ret = CMD_ERROR;
@@ -132,6 +131,10 @@ static int create_session()
 	ret = CMD_SUCCESS;
 
 error:
+	if (opt_session_name == NULL) {
+		free(session_name);
+	}
+
 	if (alloc_path) {
 		free(alloc_path);
 	}
