@@ -65,7 +65,14 @@ enum lttng_event_type {
 	LTTNG_EVENT_FUNCTION_ENTRY            = 3,
 	LTTNG_EVENT_NOOP                      = 4,
 	LTTNG_EVENT_SYSCALL                   = 5,
-	LTTNG_EVENT_TRACEPOINT_LOGLEVEL       = 6,
+};
+
+/*
+ * Loglevel information.
+ */
+enum lttng_loglevel_type {
+	LTTNG_EVENT_LOGLEVEL                  = 0,
+	LTTNG_EVENT_LOGLEVEL_ONLY             = 1,
 };
 
 /*
@@ -141,10 +148,13 @@ struct lttng_event_function_attr {
  * Generic lttng event
  */
 struct lttng_event {
-	char name[LTTNG_SYMBOL_NAME_LEN];
-	char loglevel[LTTNG_SYMBOL_NAME_LEN];
-	int64_t loglevel_value;
 	enum lttng_event_type type;
+	char name[LTTNG_SYMBOL_NAME_LEN];
+
+	enum lttng_loglevel_type loglevel_type;
+	char loglevel[LTTNG_SYMBOL_NAME_LEN];
+	int64_t loglevel_value;		/* for printing */
+
 	uint32_t enabled;
 	pid_t pid;
 	/* Per event type configuration */

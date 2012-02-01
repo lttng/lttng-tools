@@ -179,8 +179,9 @@ static void print_events(struct lttng_event *event)
 
 			ret = snprintf(ll_value, LTTNG_SYMBOL_NAME_LEN,
 				" (%lld)", (long long) event->loglevel_value);
-			if (ret < 0)
+			if (ret < 0) {
 				ERR("snprintf error");
+			}
 		}
 		MSG("%s%s%s%s%s%s (type: tracepoint)%s", indent6,
 				event->name,
@@ -214,11 +215,6 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s", indent6,
 				enabled_string(event->enabled));
-		break;
-	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
-		MSG("%s%s (type: tracepoint loglevel)%s", indent6,
-			event->name,
-			enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */
