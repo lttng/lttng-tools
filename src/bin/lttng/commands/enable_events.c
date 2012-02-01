@@ -341,7 +341,7 @@ static int enable_events(char *session_name)
 				goto error;
 			}
 
-			if (opt_loglevel[0] != '\0') {
+			if (opt_loglevel) {
 				MSG("Kernel loglevels are not supported.");
 				ret = CMD_UNDEFINED;
 				goto error;
@@ -381,8 +381,12 @@ static int enable_events(char *session_name)
 			}
 
 			ev.loglevel_type = opt_loglevel_type;
-			strncpy(ev.loglevel, opt_loglevel, LTTNG_SYMBOL_NAME_LEN);
-			ev.loglevel[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+			if (opt_loglevel) {
+				strncpy(ev.loglevel, opt_loglevel, LTTNG_SYMBOL_NAME_LEN);
+				ev.loglevel[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+			} else {
+				ev.loglevel[0] = '\0';
+			}
 		} else {
 			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 			goto error;

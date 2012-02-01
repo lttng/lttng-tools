@@ -152,9 +152,9 @@ struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
 	enum lttng_loglevel_type loglevel_type;
-	char loglevel[LTTNG_SYMBOL_NAME_LEN];
-	int64_t loglevel_value;		/* for printing */
+	char loglevel[LTTNG_SYMBOL_NAME_LEN];	/* '\0' for all loglevels */
 
+	int64_t loglevel_value;		/* for printing */
 	uint32_t enabled;
 	pid_t pid;
 	/* Per event type configuration */

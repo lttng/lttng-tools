@@ -52,12 +52,18 @@ int main(int argc, char **argv)
 
 	strcpy(ev1.name, "tp1");
 	ev1.type = LTTNG_EVENT_TRACEPOINT;
+	ev1.loglevel[0] = '\0';
+	ev1.loglevel_type = LTTNG_EVENT_LOGLEVEL;
 
 	strcpy(ev2.name, "ev2");
 	ev2.type = LTTNG_EVENT_TRACEPOINT;
+	ev2.loglevel[0] = '\0';
+	ev2.loglevel_type = LTTNG_EVENT_LOGLEVEL;
 
 	strcpy(ev3.name, "ev3");
 	ev3.type = LTTNG_EVENT_TRACEPOINT;
+	ev3.loglevel[0] = '\0';
+	ev3.loglevel_type = LTTNG_EVENT_LOGLEVEL;
 
 	printf("\nTesting tracing UST events:\n");
 	printf("-----------\n");
