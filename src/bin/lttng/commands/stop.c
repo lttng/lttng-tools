@@ -61,7 +61,7 @@ static void usage(FILE *ofp)
  */
 static int stop_tracing(void)
 {
-	int ret = CMD_SUCCESS;
+	int ret;
 	char *session_name;
 
 	if (opt_session_name == NULL) {
@@ -76,8 +76,11 @@ static int stop_tracing(void)
 
 	ret = lttng_stop_tracing(session_name);
 	if (ret < 0) {
+		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto free_name;
 	}
+
+	ret = CMD_SUCCESS;
 
 	MSG("Tracing stopped for session %s", session_name);
 

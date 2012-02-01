@@ -151,7 +151,7 @@ static void set_default_attr(struct lttng_domain *dom)
  */
 static int enable_channel(char *session_name)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -185,7 +185,9 @@ static int enable_channel(char *session_name)
 
 		ret = lttng_enable_channel(handle, &chan);
 		if (ret < 0) {
-			goto error;
+			ERR("Channel %s: %s (session %s)", channel_name,
+					lttng_strerror(ret), session_name);
+			warn = 1;
 		} else {
 			MSG("%s channel %s enabled for session %s",
 					opt_kernel ? "Kernel" : "UST", channel_name,
@@ -196,7 +198,13 @@ static int enable_channel(char *session_name)
 		channel_name = strtok(NULL, ",");
 	}
 
+	ret = CMD_SUCCESS;
+
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
+
 	lttng_destroy_handle(handle);
 
 	return ret;

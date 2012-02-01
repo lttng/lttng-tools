@@ -512,6 +512,13 @@ int cmd_add_context(int argc, const char **argv)
 		}
 	}
 
+	if (!opt_type) {
+		ERR("Missing mandatory -t TYPE");
+		usage(stderr);
+		ret = CMD_ERROR;
+		goto end;
+	}
+
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {

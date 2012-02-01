@@ -77,6 +77,7 @@ static int destroy_session()
 
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
+		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto free_name;
 	}
 

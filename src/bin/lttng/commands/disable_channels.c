@@ -88,7 +88,7 @@ static void usage(FILE *ofp)
  */
 static int disable_channels(char *session_name)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -116,18 +116,25 @@ static int disable_channels(char *session_name)
 
 		ret = lttng_disable_channel(handle, channel_name);
 		if (ret < 0) {
-			goto error;
+			ERR("Channel %s: %s (session %s)", channel_name,
+					lttng_strerror(ret), session_name);
+			warn = 1;
 		} else {
 			MSG("%s channel %s disabled for session %s",
-					opt_kernel ? "Kernel" : "UST", channel_name,
-					session_name);
+					opt_kernel ? "Kernel" : "UST", channel_name, session_name);
 		}
 
 		/* Next channel */
 		channel_name = strtok(NULL, ",");
 	}
 
+	ret = CMD_SUCCESS;
+
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
+
 	lttng_destroy_handle(handle);
 
 	return ret;

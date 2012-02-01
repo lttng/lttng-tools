@@ -96,25 +96,9 @@ static void usage(FILE *ofp)
  */
 static int disable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS;
+	int err, ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_domain dom;
-
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
-
-	if (opt_kernel && opt_userspace) {
-		ERR("Can't use -k/--kernel and -u/--userspace together");
-		ret = CMD_FATAL;
-		goto error;
-	}
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -127,6 +111,17 @@ static int disable_events(char *session_name)
 		goto error;
 	}
 
+	/* Get channel name */
+	if (opt_channel_name == NULL) {
+		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
+		if (err < 0) {
+			ret = CMD_FATAL;
+			goto error;
+		}
+	} else {
+		channel_name = opt_channel_name;
+	}
+
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = -1;
@@ -136,6 +131,7 @@ static int disable_events(char *session_name)
 	if (opt_disable_all) {
 		ret = lttng_disable_event(handle, NULL, channel_name);
 		if (ret < 0) {
+			/* Don't set ret so lttng can interpret the sessiond error. */
 			goto error;
 		}
 
@@ -147,42 +143,30 @@ static int disable_events(char *session_name)
 	/* Strip event list */
 	event_name = strtok(opt_event_list, ",");
 	while (event_name != NULL) {
-		/* Kernel tracer action */
-		if (opt_kernel) {
-			DBG("Disabling kernel event %s in channel %s",
-					event_name, channel_name);
-		} else if (opt_userspace) {		/* User-space tracer action */
-#if 0
-			if (opt_cmd_name != NULL || opt_pid) {
-				MSG("Only supporting tracing all UST processes (-u) for now.");
-				ret = CMD_UNDEFINED;
-				goto error;
-			}
-#endif
-			DBG("Disabling UST event %s in channel %s",
-					event_name, channel_name);
-		} else {
-			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-			goto error;
-		}
+		DBG("Disabling event %s", event_name);
 
 		ret = lttng_disable_event(handle, event_name, channel_name);
 		if (ret < 0) {
-			MSG("Unable to disable %s event %s in channel %s",
-					opt_kernel ? "kernel" : "UST", event_name,
-					channel_name);
+			ERR("Event %s: %s (channel %s, session %s)", event_name,
+					lttng_strerror(ret), channel_name, session_name);
+			warn = 1;
 		} else {
-			MSG("%s event %s disabled in channel %s",
-					opt_kernel ? "kernel" : "UST", event_name,
-					channel_name);
+			MSG("%s event %s disabled in channel %s for session %s",
+					opt_kernel ? "kernel" : "UST", event_name, channel_name,
+					session_name);
 		}
 
 		/* Next event */
 		event_name = strtok(NULL, ",");
 	}
 
+	ret = CMD_SUCCESS;
+
 end:
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
 	if (opt_channel_name == NULL) {
 		free(channel_name);
 	}

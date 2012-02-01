@@ -264,20 +264,6 @@ static int handle_command(int argc, char **argv)
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
 			ret = cmd->func(argc, (const char**) argv);
-			switch (ret) {
-			case CMD_WARNING:
-				WARN("Some command(s) went wrong");
-				break;
-			case CMD_ERROR:
-				ERR("Command error");
-				break;
-			case CMD_UNDEFINED:
-				ERR("Undefined command");
-				break;
-			case CMD_FATAL:
-				ERR("Fatal error");
-				break;
-			}
 			goto end;
 		}
 		i++;
@@ -439,6 +425,7 @@ static int parse_args(int argc, char **argv)
 		switch (opt) {
 		case 'h':
 			usage(stdout);
+			ret = 0;
 			goto end;
 		case 'v':
 			opt_verbose += 1;
@@ -465,6 +452,7 @@ static int parse_args(int argc, char **argv)
 			goto end;
 		default:
 			usage(stderr);
+			ret = 1;
 			goto error;
 		}
 	}
@@ -491,20 +479,33 @@ static int parse_args(int argc, char **argv)
 	 * options.
 	 */
 	ret = handle_command(argc - optind, argv + optind);
-	if (ret < 0) {
-		if (ret == -1) {
-			usage(stderr);
-		} else {
-			ERR("%s", lttng_strerror(ret));
-		}
-		goto error;
+	switch (ret) {
+	case CMD_WARNING:
+		WARN("Some command(s) went wrong");
+		break;
+	case CMD_ERROR:
+		ERR("Command error");
+		break;
+	case CMD_UNDEFINED:
+		ERR("Undefined command");
+		break;
+	case CMD_FATAL:
+		ERR("Fatal error");
+		break;
+	case -1:
+		usage(stderr);
+		ret = 1;
+		break;
+	case 0:
+		break;
+	default:
+		ERR("%s", lttng_strerror(ret));
+		break;
 	}
 
 end:
-	return 0;
-
 error:
-	return -1;
+	return ret;
 }
 
 
@@ -529,8 +530,8 @@ int main(int argc, char *argv[])
 	}
 
 	ret = parse_args(argc, argv);
-	if (ret < 0) {
-		clean_exit(EXIT_FAILURE);
+	if (ret != 0) {
+		clean_exit(ret);
 	}
 
 	return 0;

@@ -389,10 +389,10 @@ static int list_channels(const char *channel_name)
 	count = lttng_list_channels(handle, &channels);
 	if (count < 0) {
 		ret = count;
-		goto error;
+		goto error_channels;
 	} else if (count == 0) {
-		MSG("No channel found");
-		goto end;
+		ERR("Channel %s not found", channel_name);
+		goto error;
 	}
 
 	if (channel_name == NULL) {
@@ -421,14 +421,16 @@ static int list_channels(const char *channel_name)
 	}
 
 	if (!chan_found && channel_name != NULL) {
-		MSG("Channel %s not found", channel_name);
+		ERR("Channel %s not found", channel_name);
+		goto error;
 	}
 
-end:
-	free(channels);
 	ret = CMD_SUCCESS;
 
 error:
+	free(channels);
+
+error_channels:
 	return ret;
 }
 
@@ -475,7 +477,7 @@ static int list_sessions(const char *session_name)
 	free(sessions);
 
 	if (!session_found && session_name != NULL) {
-		MSG("Session %s not found", session_name);
+		ERR("Session %s not found", session_name);
 	}
 
 	if (session_name == NULL) {

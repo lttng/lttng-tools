@@ -214,26 +214,10 @@ end:
  */
 static int enable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS;
+	int err, ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
-
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
-
-	if (opt_kernel && opt_userspace) {
-		ERR("Can't use -k/--kernel and -u/--userspace together");
-		ret = CMD_FATAL;
-		goto error;
-	}
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -246,6 +230,16 @@ static int enable_events(char *session_name)
 		goto error;
 	}
 
+	if (opt_channel_name == NULL) {
+		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
+		if (err < 0) {
+			ret = CMD_FATAL;
+			goto error;
+		}
+	} else {
+		channel_name = opt_channel_name;
+	}
+
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = -1;
@@ -254,7 +248,6 @@ static int enable_events(char *session_name)
 
 	if (opt_enable_all) {
 		/* Default setup for enable all */
-
 		if (opt_kernel) {
 			ev.type = opt_event_type;
 			ev.name[0] = '\0';
@@ -393,7 +386,11 @@ static int enable_events(char *session_name)
 		}
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
-		if (ret == 0) {
+		if (ret < 0) {
+			ERR("Event %s: %s (channel %s, session %s)", event_name,
+					lttng_strerror(ret), channel_name, session_name);
+			warn = 1;
+		} else {
 			MSG("%s event %s created in channel %s",
 					opt_kernel ? "kernel": "UST", event_name, channel_name);
 		}
@@ -404,6 +401,9 @@ static int enable_events(char *session_name)
 
 end:
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
 	if (opt_channel_name == NULL) {
 		free(channel_name);
 	}

@@ -3302,7 +3302,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = cmd_disable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.disable.channel_name,
 				cmd_ctx->lsm->u.disable.name);
-		ret = LTTCOMM_OK;
 		break;
 	}
 	case LTTNG_DISABLE_ALL_EVENT:

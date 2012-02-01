@@ -156,7 +156,6 @@ static int calibrate_lttng(void)
 		calibrate.type = LTTNG_CALIBRATE_FUNCTION;
 		ret = lttng_calibrate(handle, &calibrate);
 		if (ret < 0) {
-			ret = CMD_ERROR;
 			goto error;
 		}
 		MSG("%s calibration done", opt_kernel ? "Kernel" : "UST");

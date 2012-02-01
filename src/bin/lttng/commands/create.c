@@ -114,7 +114,7 @@ static int create_session()
 
 	ret = lttng_create_session(session_name, traces_path);
 	if (ret < 0) {
-		ret = CMD_ERROR;
+		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto error;
 	}
 
