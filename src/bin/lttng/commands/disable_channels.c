@@ -193,6 +193,9 @@ int cmd_disable_channels(int argc, const char **argv)
 	ret = disable_channels(session_name);
 
 end:
+	if (!opt_session_name && session_name) {
+		free(session_name);
+	}
 	poptFreeContext(pc);
 	return ret;
 }

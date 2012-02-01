@@ -228,6 +228,9 @@ int cmd_disable_events(int argc, const char **argv)
 	ret = disable_events(session_name);
 
 end:
+	if (!opt_session_name && session_name) {
+		free(session_name);
+	}
 	poptFreeContext(pc);
 	return ret;
 }

@@ -303,6 +303,9 @@ int cmd_enable_channels(int argc, const char **argv)
 	ret = enable_channel(session_name);
 
 end:
+	if (!opt_session_name && session_name) {
+		free(session_name);
+	}
 	poptFreeContext(pc);
 	return ret;
 }
