@@ -412,7 +412,8 @@ static int check_args_no_sessiond(int argc, char **argv)
 		if ((strncmp(argv[i], "-h", sizeof("-h")) == 0) ||
 				strncmp(argv[i], "--h", sizeof("--h")) == 0 ||
 				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0 ||
-				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0) {
+				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0 ||
+				strncmp(argv[i], "version", sizeof("version"))) {
 			return 1;
 		}
 	}
