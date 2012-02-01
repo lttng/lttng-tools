@@ -31,8 +31,6 @@
 
 static char *opt_event_list;
 static int opt_event_type;
-static const char *opt_loglevel;
-static int opt_loglevel_type;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
@@ -55,8 +53,7 @@ enum {
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
-	OPT_LOGLEVEL,
-	OPT_LOGLEVEL_ONLY,
+	OPT_TRACEPOINT_LOGLEVEL,
 	OPT_LIST_OPTIONS,
 };
 
@@ -87,8 +84,7 @@ static struct poptOption long_options[] = {
 	{"function:entry", 0,   POPT_ARG_STRING, &opt_function_entry_symbol, OPT_FUNCTION_ENTRY, 0, 0},
 #endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
-	{"loglevel",       0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL, 0, 0},
-	{"loglevel-only",  0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL_ONLY, 0, 0},
+	{"loglevel",     0,     POPT_ARG_NONE, 0, OPT_TRACEPOINT_LOGLEVEL, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -122,10 +118,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                             e.g.:\n");
 	fprintf(ofp, "                               \"*\"\n");
 	fprintf(ofp, "                               \"app_component:na*\"\n");
-	fprintf(ofp, "    --loglevel name\n");
-	fprintf(ofp, "                           Tracepoint loglevel (range: 0 to loglevel)\n");
-	fprintf(ofp, "    --loglevel-only name\n");
-	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
+	fprintf(ofp, "    --loglevel             Tracepoint loglevel\n");
 	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
@@ -340,16 +333,6 @@ static int enable_events(char *session_name)
 				ret = CMD_UNDEFINED;
 				goto error;
 			}
-
-			if (opt_loglevel[0] != '\0') {
-				MSG("Kernel loglevels are not supported.");
-				ret = CMD_UNDEFINED;
-				goto error;
-			}
-
-			/* kernel loglevels not implemented */
-			ev.loglevel_type = opt_loglevel_type;
-			ev.loglevel[0] = '\0';
 		} else if (opt_userspace) {		/* User-space tracer action */
 #if 0
 			if (opt_cmd_name != NULL || opt_pid) {
@@ -371,6 +354,12 @@ static int enable_events(char *session_name)
 				strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
 				ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
+			case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
+				/* Copy name and type of the event */
+				ev.type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
+				strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+				ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+				break;
 			case LTTNG_EVENT_PROBE:
 			case LTTNG_EVENT_FUNCTION:
 			case LTTNG_EVENT_FUNCTION_ENTRY:
@@ -379,10 +368,6 @@ static int enable_events(char *session_name)
 				ret = CMD_UNDEFINED;
 				goto error;
 			}
-
-			ev.loglevel_type = opt_loglevel_type;
-			strncpy(ev.loglevel, opt_loglevel, LTTNG_SYMBOL_NAME_LEN);
-			ev.loglevel[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		} else {
 			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 			goto error;
@@ -447,13 +432,8 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
-		case OPT_LOGLEVEL:
-			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL;
-			opt_loglevel = poptGetOptArg(pc);
-			break;
-		case OPT_LOGLEVEL_ONLY:
-			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_ONLY;
-			opt_loglevel = poptGetOptArg(pc);
+		case OPT_TRACEPOINT_LOGLEVEL:
+			opt_event_type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);

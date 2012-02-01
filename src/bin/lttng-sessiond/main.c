@@ -2031,15 +2031,8 @@ static int list_lttng_ust_global_events(char *channel_name,
 		case LTTNG_UST_FUNCTION:
 			tmp[i].type = LTTNG_EVENT_FUNCTION;
 			break;
-		}
-		strncpy(tmp[i].loglevel, uevent->attr.loglevel, LTTNG_SYMBOL_NAME_LEN);
-		tmp[i].loglevel[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-		switch (uevent->attr.loglevel_type) {
-		case LTTNG_UST_LOGLEVEL:
-			tmp[i].type = LTTNG_EVENT_LOGLEVEL;
-			break;
-		case LTTNG_UST_LOGLEVEL_ONLY:
-			tmp[i].type = LTTNG_EVENT_LOGLEVEL_ONLY;
+		case LTTNG_UST_TRACEPOINT_LOGLEVEL:
+			tmp[i].type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
 			break;
 		}
 		i++;

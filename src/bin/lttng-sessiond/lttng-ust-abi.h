@@ -22,11 +22,7 @@ enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT		= 0,
 	LTTNG_UST_PROBE			= 1,
 	LTTNG_UST_FUNCTION		= 2,
-};
-
-enum lttng_ust_loglevel_type {
-	LTTNG_UST_LOGLEVEL		= 0,
-	LTTNG_UST_LOGLEVEL_ONLY		= 1,
+	LTTNG_UST_TRACEPOINT_LOGLEVEL	= 3,
 };
 
 enum lttng_ust_output {
@@ -49,12 +45,8 @@ struct lttng_ust_channel {
 };
 
 struct lttng_ust_event {
-	enum lttng_ust_instrumentation instrumentation;
 	char name[LTTNG_UST_SYM_NAME_LEN];	/* event name */
-
-	enum lttng_ust_loglevel_type loglevel_type;
-	char loglevel[LTTNG_UST_SYM_NAME_LEN];	/* loglevel name */
-
+	enum lttng_ust_instrumentation instrumentation;
 	/* Per instrumentation type configuration */
 	union {
 	} u;
