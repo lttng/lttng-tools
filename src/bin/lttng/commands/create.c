@@ -178,5 +178,6 @@ int cmd_create(int argc, const char **argv)
 	ret = create_session();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

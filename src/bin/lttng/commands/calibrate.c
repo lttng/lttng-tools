@@ -187,7 +187,7 @@ error:
  */
 int cmd_calibrate(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -200,7 +200,6 @@ int cmd_calibrate(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stdout);
-			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TRACEPOINT:
 			ret = CMD_UNDEFINED;
@@ -225,7 +224,6 @@ int cmd_calibrate(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -237,5 +235,6 @@ int cmd_calibrate(int argc, const char **argv)
 	ret = calibrate_lttng();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

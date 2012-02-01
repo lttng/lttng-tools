@@ -140,7 +140,7 @@ error:
  */
 int cmd_disable_channels(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -150,15 +150,13 @@ int cmd_disable_channels(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -171,14 +169,14 @@ int cmd_disable_channels(int argc, const char **argv)
 	if (opt_channels == NULL) {
 		ERR("Missing channel name(s).\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -188,5 +186,6 @@ int cmd_disable_channels(int argc, const char **argv)
 	ret = disable_channels(session_name);
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

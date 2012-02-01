@@ -466,7 +466,6 @@ int cmd_add_context(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stdout);
-			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TYPE:
 			/*
@@ -505,7 +504,6 @@ int cmd_add_context(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -532,5 +530,6 @@ end:
 		free(type);
 	}
 
+	poptFreeContext(pc);
 	return ret;
 }

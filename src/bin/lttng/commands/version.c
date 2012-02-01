@@ -66,12 +66,10 @@ int cmd_version(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -85,5 +83,6 @@ int cmd_version(int argc, const char **argv)
 	MSG("\nlttng is free software and under the GPL license.");
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

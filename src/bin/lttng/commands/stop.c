@@ -97,7 +97,7 @@ error:
  */
 int cmd_stop(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -106,12 +106,10 @@ int cmd_stop(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -125,5 +123,6 @@ int cmd_stop(int argc, const char **argv)
 	ret = stop_tracing();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

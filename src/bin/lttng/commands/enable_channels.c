@@ -219,7 +219,7 @@ static void init_channel_config(void)
  */
 int cmd_enable_channels(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -231,8 +231,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_DISCARD:
 			chan.attr.overwrite = 0;
@@ -243,18 +242,22 @@ int cmd_enable_channels(int argc, const char **argv)
 			DBG("Channel set to overwrite");
 			break;
 		case OPT_SUBBUF_SIZE:
+			/* TODO Replace atol with strtol and check for errors */
 			chan.attr.subbuf_size = atol(poptGetOptArg(pc));
 			DBG("Channel subbuf size set to %" PRIu64, chan.attr.subbuf_size);
 			break;
 		case OPT_NUM_SUBBUF:
+			/* TODO Replace atoi with strtol and check for errors */
 			chan.attr.num_subbuf = atoi(poptGetOptArg(pc));
 			DBG("Channel subbuf num set to %" PRIu64, chan.attr.num_subbuf);
 			break;
 		case OPT_SWITCH_TIMER:
+			/* TODO Replace atoi with strtol and check for errors */
 			chan.attr.switch_timer_interval = atoi(poptGetOptArg(pc));
 			DBG("Channel switch timer interval set to %d", chan.attr.switch_timer_interval);
 			break;
 		case OPT_READ_TIMER:
+			/* TODO Replace atoi with strtol and check for errors */
 			chan.attr.read_timer_interval = atoi(poptGetOptArg(pc));
 			DBG("Channel read timer interval set to %d", chan.attr.read_timer_interval);
 			break;
@@ -263,7 +266,6 @@ int cmd_enable_channels(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -276,14 +278,14 @@ int cmd_enable_channels(int argc, const char **argv)
 	if (opt_channels == NULL) {
 		ERR("Missing channel name.\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -293,5 +295,6 @@ int cmd_enable_channels(int argc, const char **argv)
 	ret = enable_channel(session_name);
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

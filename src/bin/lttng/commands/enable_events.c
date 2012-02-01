@@ -417,7 +417,7 @@ error:
  */
 int cmd_enable_events(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -430,8 +430,7 @@ int cmd_enable_events(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
@@ -461,7 +460,6 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -474,14 +472,14 @@ int cmd_enable_events(int argc, const char **argv)
 	if (opt_event_list == NULL && opt_enable_all == 0) {
 		ERR("Missing event name(s).\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -495,5 +493,6 @@ end:
 		free(session_name);
 	}
 
+	poptFreeContext(pc);
 	return ret;
 }

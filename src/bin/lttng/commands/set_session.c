@@ -89,12 +89,10 @@ int cmd_set_session(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -107,11 +105,13 @@ int cmd_set_session(int argc, const char **argv)
 	if (opt_session_name == NULL) {
 		ERR("Missing session name");
 		usage(stderr);
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	ret = set_session();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

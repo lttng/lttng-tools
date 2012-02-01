@@ -541,6 +541,7 @@ int cmd_list(int argc, const char **argv)
 
 	if (argc < 1) {
 		usage(stderr);
+		ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -550,14 +551,13 @@ int cmd_list(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -579,6 +579,7 @@ int cmd_list(int argc, const char **argv)
 
 	handle = lttng_create_handle(session_name, &domain);
 	if (handle == NULL) {
+		ret = CMD_FATAL;
 		goto end;
 	}
 
@@ -586,18 +587,21 @@ int cmd_list(int argc, const char **argv)
 		if (!opt_kernel && !opt_userspace) {
 			ret = list_sessions(NULL);
 			if (ret < 0) {
+				ret = CMD_ERROR;
 				goto end;
 			}
 		}
 		if (opt_kernel) {
 			ret = list_kernel_events();
 			if (ret < 0) {
+				ret = CMD_ERROR;
 				goto end;
 			}
 		}
 		if (opt_userspace) {
 			ret = list_ust_events();
 			if (ret < 0) {
+				ret = CMD_ERROR;
 				goto end;
 			}
 		}
@@ -605,12 +609,16 @@ int cmd_list(int argc, const char **argv)
 		/* List session attributes */
 		ret = list_sessions(session_name);
 		if (ret < 0) {
+			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Domain listing */
 		if (opt_domain) {
 			ret = list_domains(session_name);
+			if (ret < 0) {
+				ret = CMD_ERROR;
+			}
 			goto end;
 		}
 
@@ -618,13 +626,14 @@ int cmd_list(int argc, const char **argv)
 			/* Channel listing */
 			ret = list_channels(opt_channel);
 			if (ret < 0) {
+				ret = CMD_ERROR;
 				goto end;
 			}
 		} else {
 			/* We want all domain(s) */
 			nb_domain = lttng_list_domains(session_name, &domains);
 			if (nb_domain < 0) {
-				ret = nb_domain;
+				ret = CMD_ERROR;
 				goto end;
 			}
 
@@ -646,11 +655,13 @@ int cmd_list(int argc, const char **argv)
 
 				handle = lttng_create_handle(session_name, &domains[i]);
 				if (handle == NULL) {
+					ret = CMD_FATAL;
 					goto end;
 				}
 
 				ret = list_channels(opt_channel);
 				if (ret < 0) {
+					ret = CMD_ERROR;
 					goto end;
 				}
 			}
@@ -663,5 +674,6 @@ end:
 	}
 	lttng_destroy_handle(handle);
 
+	poptFreeContext(pc);
 	return ret;
 }
