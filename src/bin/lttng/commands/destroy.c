@@ -52,7 +52,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "get it from the configuration directory (.lttng).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "\n");
 }
 

@@ -102,17 +102,17 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply on session name\n");
-	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
+	fprintf(ofp, "  -s, --session            Apply to session name\n");
+	fprintf(ofp, "  -c, --channel            Apply to this channel\n");
 	fprintf(ofp, "  -a, --all                Enable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");

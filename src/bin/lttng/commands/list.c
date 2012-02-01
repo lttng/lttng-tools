@@ -70,22 +70,22 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng list [SESSION [<OPTIONS>]]\n");
+	fprintf(ofp, "usage: lttng list [OPTIONS] [SESSION [<OPTIONS>]]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "With -k alone, list available kernel events\n");
-	fprintf(ofp, "With -u alone, list available userspace events\n");
+	fprintf(ofp, "Without a session, -k lists available kernel events\n");
+	fprintf(ofp, "Without a session, -u lists available userspace events\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help              Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "      --list-options      Simple listing of options\n");
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
 #if 0
 	fprintf(ofp, "  -p, --pid PID           List user-space events by PID\n");
 #endif
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
+	fprintf(ofp, "Session Options:\n");
 	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
 	fprintf(ofp, "  -d, --domain            List available domain(s)\n");
 	fprintf(ofp, "\n");
