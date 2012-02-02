@@ -93,6 +93,8 @@ int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_event
 	if (ret < 0) {
 		switch (errno) {
 		case EEXIST:
+			/* If exist, it's OK. */
+			goto end;
 		case ENOSPC:
 		case EPERM:
 			/* Print perror and goto end not failing. Show must go on. */
