@@ -141,7 +141,7 @@ static void create_kernel_event(void)
 	struct ltt_kernel_event *event;
 	struct lttng_event ev;
 
-	strncpy(ev.name, get_random_string(), LTTNG_SYM_NAME_LEN);
+	strncpy(ev.name, get_random_string(), LTTNG_KERNEL_SYM_NAME_LEN);
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 
 	printf("Creating kernel event: ");

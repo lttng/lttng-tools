@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-#define LTTNG_SYM_NAME_LEN  256
+#define LTTNG_KERNEL_SYM_NAME_LEN  256
 
 /*
  * LTTng DebugFS ABI structures.
@@ -58,14 +58,19 @@ enum lttng_kernel_context_type {
 struct lttng_kernel_perf_counter_ctx {
 	uint32_t type;
 	uint64_t config;
-	char name[LTTNG_SYM_NAME_LEN];
+	char name[LTTNG_KERNEL_SYM_NAME_LEN];
 };
 
 /* Event/Channel context */
+#define LTTNG_KERNEL_CONTEXT_PADDING1  16
+#define LTTNG_KERNEL_CONTEXT_PADDING2  LTTNG_KERNEL_SYM_NAME_LEN + 32
 struct lttng_kernel_context {
 	enum lttng_kernel_context_type ctx;
+	char padding[LTTNG_KERNEL_CONTEXT_PADDING1];
+
 	union {
 		struct lttng_kernel_perf_counter_ctx perf_counter;
+		char padding[LTTNG_KERNEL_CONTEXT_PADDING2];
 	} u;
 };
 
@@ -73,7 +78,7 @@ struct lttng_kernel_kretprobe {
 	uint64_t addr;
 
 	uint64_t offset;
-	char symbol_name[LTTNG_SYM_NAME_LEN];
+	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
 };
 
 /*
@@ -83,22 +88,27 @@ struct lttng_kernel_kprobe {
 	uint64_t addr;
 
 	uint64_t offset;
-	char symbol_name[LTTNG_SYM_NAME_LEN];
+	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
 };
 
 /* Function tracer */
 struct lttng_kernel_function {
-	char symbol_name[LTTNG_SYM_NAME_LEN];
+	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
 };
 
+#define LTTNG_KERNEL_EVENT_PADDING1    16
+#define LTTNG_KERNEL_EVENT_PADDING2    LTTNG_KERNEL_SYM_NAME_LEN + 32
 struct lttng_kernel_event {
-	char name[LTTNG_SYM_NAME_LEN];
+	char name[LTTNG_KERNEL_SYM_NAME_LEN];
 	enum lttng_kernel_instrumentation instrumentation;
+	char padding[LTTNG_KERNEL_EVENT_PADDING1];
+
 	/* Per instrumentation type configuration */
 	union {
 		struct lttng_kernel_kretprobe kretprobe;
 		struct lttng_kernel_kprobe kprobe;
 		struct lttng_kernel_function ftrace;
+		char padding[LTTNG_KERNEL_EVENT_PADDING2];
 	} u;
 };
 

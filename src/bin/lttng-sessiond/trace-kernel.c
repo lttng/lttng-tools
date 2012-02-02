@@ -184,8 +184,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 		attr->u.kprobe.addr = ev->attr.probe.addr;
 		attr->u.kprobe.offset = ev->attr.probe.offset;
 		strncpy(attr->u.kprobe.symbol_name,
-				ev->attr.probe.symbol_name, LTTNG_SYM_NAME_LEN);
-		attr->u.kprobe.symbol_name[LTTNG_SYM_NAME_LEN - 1] = '\0';
+				ev->attr.probe.symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
+		attr->u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 		break;
 	case LTTNG_EVENT_FUNCTION:
 		attr->instrumentation = LTTNG_KERNEL_KRETPROBE;
@@ -193,14 +193,14 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 		attr->u.kretprobe.offset = ev->attr.probe.offset;
 		attr->u.kretprobe.offset = ev->attr.probe.offset;
 		strncpy(attr->u.kretprobe.symbol_name,
-				ev->attr.probe.symbol_name, LTTNG_SYM_NAME_LEN);
-		attr->u.kretprobe.symbol_name[LTTNG_SYM_NAME_LEN - 1] = '\0';
+				ev->attr.probe.symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
+		attr->u.kretprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		attr->instrumentation = LTTNG_KERNEL_FUNCTION;
 		strncpy(attr->u.ftrace.symbol_name,
-				ev->attr.ftrace.symbol_name, LTTNG_SYM_NAME_LEN);
-		attr->u.ftrace.symbol_name[LTTNG_SYM_NAME_LEN - 1] = '\0';
+				ev->attr.ftrace.symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
+		attr->u.ftrace.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 		break;
 	case LTTNG_EVENT_TRACEPOINT:
 		attr->instrumentation = LTTNG_KERNEL_TRACEPOINT;
@@ -217,8 +217,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	}
 
 	/* Copy event name */
-	strncpy(attr->name, ev->name, LTTNG_SYM_NAME_LEN);
-	attr->name[LTTNG_SYM_NAME_LEN - 1] = '\0';
+	strncpy(attr->name, ev->name, LTTNG_KERNEL_SYM_NAME_LEN);
+	attr->name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 
 	/* Setting up a kernel event */
 	lke->fd = 0;
