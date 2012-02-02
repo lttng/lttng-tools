@@ -602,7 +602,6 @@ int cmd_list(int argc, const char **argv)
 		if (!opt_kernel && !opt_userspace) {
 			ret = list_sessions(NULL);
 			if (ret < 0) {
-				ret = CMD_ERROR;
 				goto end;
 			}
 		}
@@ -624,7 +623,6 @@ int cmd_list(int argc, const char **argv)
 		/* List session attributes */
 		ret = list_sessions(session_name);
 		if (ret < 0) {
-			ret = CMD_ERROR;
 			goto end;
 		}
 
