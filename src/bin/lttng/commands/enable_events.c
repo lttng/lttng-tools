@@ -122,10 +122,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                             e.g.:\n");
 	fprintf(ofp, "                               \"*\"\n");
 	fprintf(ofp, "                               \"app_component:na*\"\n");
-	fprintf(ofp, "    --loglevel name\n");
-	fprintf(ofp, "                           Tracepoint loglevel (range: 0 to loglevel)\n");
-	fprintf(ofp, "    --loglevel-only name\n");
-	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
 	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
@@ -139,6 +135,31 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Function tracer event\n");
 #endif
 	fprintf(ofp, "    --syscall              System call event\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "    --loglevel name\n");
+	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel\n");
+	fprintf(ofp, "    --loglevel-only name\n");
+	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                    The loglevel or loglevel-only options should be combined\n");
+	fprintf(ofp, "                    with a tracepoint name (or tracepoint wildcard).\n");
+	fprintf(ofp, "                    Available loglevels: (higher value means more verbose)\n");
+	fprintf(ofp, "                               TRACE_EMERG    = 0\n");
+	fprintf(ofp, "                               TRACE_ALERT    = 1\n");
+	fprintf(ofp, "                               TRACE_CRIT     = 2\n");
+	fprintf(ofp, "                               TRACE_ERR      = 3\n");
+	fprintf(ofp, "                               TRACE_WARNING  = 4\n");
+	fprintf(ofp, "                               TRACE_NOTICE   = 5\n");
+	fprintf(ofp, "                               TRACE_INFO     = 6\n");
+	fprintf(ofp, "                               TRACE_SYSTEM   = 7\n");
+	fprintf(ofp, "                               TRACE_PROCESS  = 8\n");
+	fprintf(ofp, "                               TRACE_MODULE   = 9\n");
+	fprintf(ofp, "                               TRACE_UNIT     = 10\n");
+	fprintf(ofp, "                               TRACE_CLASS    = 11\n");
+	fprintf(ofp, "                               TRACE_OBJECT   = 12\n");
+	fprintf(ofp, "                               TRACE_FUNCTION = 13\n");
+	fprintf(ofp, "                               TRACE_PRINTF   = 14\n");
+	fprintf(ofp, "                               TRACE_DEBUG    = 15\n");
 	fprintf(ofp, "\n");
 }
 
@@ -311,9 +332,20 @@ static int enable_events(char *session_name)
 		if (opt_kernel) {
 			ev.type = opt_event_type;
 			ev.name[0] = '\0';
+			/* kernel loglevels not implemented */
+			ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else {
 			ev.type = LTTNG_EVENT_TRACEPOINT;
 			strcpy(ev.name, "*");
+			ev.loglevel_type = opt_loglevel_type;
+			if (opt_loglevel) {
+				ev.loglevel = loglevel_str_to_value(opt_loglevel);
+				if (ev.loglevel == -1) {
+					ERR("Unknown loglevel %s", opt_loglevel);
+					ret = -1;
+					goto error;
+				}
+			}
 		}
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
@@ -323,8 +355,9 @@ static int enable_events(char *session_name)
 
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
-			MSG("All %s tracepoints are enabled in channel %s",
-				opt_kernel ? "kernel" : "UST", channel_name);
+			MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
+				opt_kernel ? "kernel" : "UST", channel_name,
+				opt_loglevel ? : "<all>");
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
@@ -333,8 +366,9 @@ static int enable_events(char *session_name)
 			}
 			break;
 		case LTTNG_EVENT_ALL:
-			MSG("All %s events are enabled in channel %s",
-				opt_kernel ? "kernel" : "UST", channel_name);
+			MSG("All %s events are enabled in channel %s for loglevel %s",
+				opt_kernel ? "kernel" : "UST", channel_name,
+				opt_loglevel ? : "<all>");
 			break;
 		default:
 			/*
@@ -411,8 +445,8 @@ static int enable_events(char *session_name)
 			}
 #endif
 
-			DBG("Enabling UST event %s for channel %s", event_name,
-					channel_name);
+			DBG("Enabling UST event %s for channel %s, loglevel %s", event_name,
+					channel_name, opt_loglevel ? : "<all>");
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
@@ -438,11 +472,13 @@ static int enable_events(char *session_name)
 				ev.loglevel = loglevel_str_to_value(opt_loglevel);
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
+					ret = -1;
 					goto error;
 				}
 			}
 		} else {
 			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+			ret = CMD_ERROR;
 			goto error;
 		}
 

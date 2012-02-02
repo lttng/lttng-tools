@@ -245,7 +245,9 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	/* Alloc context hash tables */
 	lue->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
-	DBG2("Trace UST event %s created", lue->attr.name);
+	DBG2("Trace UST event %s, loglevel (%d,%d) created",
+		lue->attr.name, lue->attr.loglevel_type,
+		lue->attr.loglevel);
 
 	return lue;
 
