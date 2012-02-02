@@ -480,7 +480,8 @@ static int list_sessions(const char *session_name)
 			continue;
 		}
 
-		MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path, active_string(sessions[i].enabled));
+		MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path,
+				active_string(sessions[i].enabled));
 
 		if (session_found) {
 			break;
@@ -490,7 +491,9 @@ static int list_sessions(const char *session_name)
 	free(sessions);
 
 	if (!session_found && session_name != NULL) {
-		ERR("Session %s not found", session_name);
+		ERR("Session '%s' not found", session_name);
+		ret = CMD_ERROR;
+		goto error;
 	}
 
 	if (session_name == NULL) {
@@ -601,7 +604,7 @@ int cmd_list(int argc, const char **argv)
 	if (session_name == NULL) {
 		if (!opt_kernel && !opt_userspace) {
 			ret = list_sessions(NULL);
-			if (ret < 0) {
+			if (ret != 0) {
 				goto end;
 			}
 		}
@@ -620,7 +623,7 @@ int cmd_list(int argc, const char **argv)
 	} else {
 		/* List session attributes */
 		ret = list_sessions(session_name);
-		if (ret < 0) {
+		if (ret != 0) {
 			goto end;
 		}
 
