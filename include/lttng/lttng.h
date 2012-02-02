@@ -71,8 +71,9 @@ enum lttng_event_type {
  * Loglevel information.
  */
 enum lttng_loglevel_type {
-	LTTNG_EVENT_LOGLEVEL                  = 0,
-	LTTNG_EVENT_LOGLEVEL_ONLY             = 1,
+	LTTNG_EVENT_LOGLEVEL_ALL              = 0,
+	LTTNG_EVENT_LOGLEVEL_RANGE            = 1,
+	LTTNG_EVENT_LOGLEVEL_SINGLE           = 2,
 };
 
 /*
@@ -152,9 +153,8 @@ struct lttng_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
 	enum lttng_loglevel_type loglevel_type;
-	char loglevel[LTTNG_SYMBOL_NAME_LEN];	/* '\0' for all loglevels */
+	int loglevel;
 
-	int64_t loglevel_value;		/* for printing */
 	uint32_t enabled;
 	pid_t pid;
 	/* Per event type configuration */

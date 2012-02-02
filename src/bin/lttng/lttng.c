@@ -465,12 +465,14 @@ static int parse_args(int argc, char **argv)
 	/* Spawn session daemon if needed */
 	if (opt_no_sessiond == 0 && check_args_no_sessiond(argc, argv) == 0 &&
 			(check_sessiond() < 0)) {
+		ret = 1;
 		goto error;
 	}
 
 	/* No leftovers, print usage and quit */
 	if ((argc - optind) == 0) {
 		usage(stderr);
+		ret = 1;
 		goto error;
 	}
 

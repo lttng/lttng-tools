@@ -42,8 +42,7 @@ int main(int argc, char **argv)
 
 	memset(&event, 0, sizeof(struct lttng_event));
 	event.type = LTTNG_EVENT_TRACEPOINT;
-	event.loglevel[0] = '\0';
-	event.loglevel_type = LTTNG_EVENT_LOGLEVEL;
+	event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("\nTesting tracing all UST events:\n");
 	printf("-----------\n");

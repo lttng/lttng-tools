@@ -210,6 +210,66 @@ end:
 }
 
 /*
+ * Maps this from string to value
+ *
+ * TRACE_EMERG = 0,
+ * TRACE_ALERT = 1,
+ * TRACE_CRIT = 2,
+ * TRACE_ERR = 3,
+ * TRACE_WARNING = 4,
+ * TRACE_NOTICE = 5,
+ * TRACE_INFO = 6,
+ * TRACE_SYSTEM = 7,
+ * TRACE_PROCESS = 8,
+ * TRACE_MODULE = 9,
+ * TRACE_UNIT = 10,
+ * TRACE_CLASS = 11,
+ * TRACE_OBJECT = 12,
+ * TRACE_FUNCTION = 13,
+ * TRACE_PRINTF = 14,
+ * TRACE_DEBUG = 15,
+ */
+static
+int loglevel_str_to_value(const char *str)
+{
+	if (!strcmp(str, "TRACE_EMERG")) {
+		return 0;
+	} else if (!strcmp(str, "TRACE_ALERT")) {
+		return 1;
+	} else if (!strcmp(str, "TRACE_CRIT")) {
+		return 2;
+	} else if (!strcmp(str, "TRACE_ERR")) {
+		return 3;
+	} else if (!strcmp(str, "TRACE_WARNING")) {
+		return 4;
+	} else if (!strcmp(str, "TRACE_NOTICE")) {
+		return 5;
+	} else if (!strcmp(str, "TRACE_INFO")) {
+		return 6;
+	} else if (!strcmp(str, "TRACE_SYSTEM")) {
+		return 7;
+	} else if (!strcmp(str, "TRACE_PROCESS")) {
+		return 8;
+	} else if (!strcmp(str, "TRACE_MODULE")) {
+		return 9;
+	} else if (!strcmp(str, "TRACE_UNIT")) {
+		return 10;
+	} else if (!strcmp(str, "TRACE_CLASS")) {
+		return 11;
+	} else if (!strcmp(str, "TRACE_OBJECT")) {
+		return 12;
+	} else if (!strcmp(str, "TRACE_FUNCTION")) {
+		return 13;
+	} else if (!strcmp(str, "TRACE_PRINTF")) {
+		return 14;
+	} else if (!strcmp(str, "TRACE_DEBUG")) {
+		return 15;
+	} else {
+		return -1;
+	}
+}
+
+/*
  * Enabling event using the lttng API.
  */
 static int enable_events(char *session_name)
@@ -341,8 +401,7 @@ static int enable_events(char *session_name)
 			}
 
 			/* kernel loglevels not implemented */
-			ev.loglevel_type = opt_loglevel_type;
-			ev.loglevel[0] = '\0';
+			ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else if (opt_userspace) {		/* User-space tracer action */
 #if 0
 			if (opt_cmd_name != NULL || opt_pid) {
@@ -376,10 +435,11 @@ static int enable_events(char *session_name)
 
 			ev.loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
-				strncpy(ev.loglevel, opt_loglevel, LTTNG_SYMBOL_NAME_LEN);
-				ev.loglevel[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-			} else {
-				ev.loglevel[0] = '\0';
+				ev.loglevel = loglevel_str_to_value(opt_loglevel);
+				if (ev.loglevel == -1) {
+					ERR("Unknown loglevel %s", opt_loglevel);
+					goto error;
+				}
 			}
 		} else {
 			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
@@ -452,11 +512,11 @@ int cmd_enable_events(int argc, const char **argv)
 			opt_userspace = 1;
 			break;
 		case OPT_LOGLEVEL:
-			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL;
+			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
 			opt_loglevel = poptGetOptArg(pc);
 			break;
 		case OPT_LOGLEVEL_ONLY:
-			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_ONLY;
+			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
 			opt_loglevel = poptGetOptArg(pc);
 			break;
 		case OPT_LIST_OPTIONS:

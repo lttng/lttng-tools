@@ -145,9 +145,9 @@ const char *enabled_string(int value)
 }
 
 static
-const char *loglevel_string_pre(const char *loglevel)
+const char *loglevel_string_pre(int loglevel)
 {
-	if (loglevel[0] == '\0') {
+	if (loglevel == -1) {
 		return "";
 	} else {
 		return " (loglevel: ";
@@ -155,12 +155,36 @@ const char *loglevel_string_pre(const char *loglevel)
 }
 
 static
-const char *loglevel_string_post(const char *loglevel)
+const char *loglevel_string_post(int loglevel)
 {
-	if (loglevel[0] == '\0') {
+	if (loglevel == -1) {
 		return "";
 	} else {
 		return ")";
+	}
+}
+
+static const char *loglevel_string(int value)
+{
+	switch (value) {
+	case -1: return "";
+	case 0: return "TRACE_EMERG";
+	case 1: return "TRACE_ALERT";
+	case 2: return "TRACE_CRIT";
+	case 3: return "TRACE_ERR";
+	case 4: return "TRACE_WARNING";
+	case 5: return "TRACE_NOTICE";
+	case 6: return "TRACE_INFO";
+	case 7: return "TRACE_SYSTEM";
+	case 8: return "TRACE_PROCESS";
+	case 9: return "TRACE_MODULE";
+	case 10: return "TRACE_UNIT";
+	case 11: return "TRACE_CLASS";
+	case 12: return "TRACE_OBJECT";
+	case 13: return "TRACE_FUNCTION";
+	case 14: return "TRACE_PRINTF";
+	case 15: return "TRACE_DEBUG";
+	default: return "<<UNKNOWN>>";
 	}
 }
 
@@ -172,22 +196,11 @@ static void print_events(struct lttng_event *event)
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
-		char ll_value[LTTNG_SYMBOL_NAME_LEN] = "";
-
-		if (event->loglevel[0] != '\0') {
-			int ret;
-
-			ret = snprintf(ll_value, LTTNG_SYMBOL_NAME_LEN,
-				" (%lld)", (long long) event->loglevel_value);
-			if (ret < 0) {
-				ERR("snprintf error");
-			}
-		}
-		MSG("%s%s%s%s%s%s (type: tracepoint)%s", indent6,
+		MSG("%s%s%s%s%d%s (type: tracepoint)%s", indent6,
 				event->name,
 				loglevel_string_pre(event->loglevel),
+				loglevel_string(event->loglevel),
 				event->loglevel,
-				ll_value,
 				loglevel_string_post(event->loglevel),
 				enabled_string(event->enabled));
 		break;
