@@ -176,13 +176,13 @@ static const char *loglevel_string(int value)
 	case 5: return "TRACE_NOTICE";
 	case 6: return "TRACE_INFO";
 	case 7: return "TRACE_SYSTEM";
-	case 8: return "TRACE_PROCESS";
-	case 9: return "TRACE_MODULE";
-	case 10: return "TRACE_UNIT";
-	case 11: return "TRACE_CLASS";
-	case 12: return "TRACE_OBJECT";
-	case 13: return "TRACE_FUNCTION";
-	case 14: return "TRACE_PRINTF";
+	case 8: return "TRACE_PROGRAM";
+	case 9: return "TRACE_PROCESS";
+	case 10: return "TRACE_MODULE";
+	case 11: return "TRACE_UNIT";
+	case 12: return "TRACE_FUNCTION";
+	case 13: return "TRACE_DEFAULT";
+	case 14: return "TRACE_VERBOSE";
 	case 15: return "TRACE_DEBUG";
 	default: return "<<UNKNOWN>>";
 	}

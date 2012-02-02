@@ -141,9 +141,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    --loglevel-only name\n");
 	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "                    The loglevel or loglevel-only options should be combined\n");
-	fprintf(ofp, "                    with a tracepoint name (or tracepoint wildcard).\n");
-	fprintf(ofp, "                    Available loglevels: (higher value means more verbose)\n");
+	fprintf(ofp, "                           The loglevel or loglevel-only options should be\n");
+	fprintf(ofp, "                           combined with a tracepoint name or tracepoint\n");
+	fprintf(ofp, "                           wildcard.\n");
+	fprintf(ofp, "                           Available loglevels:\n");
+	fprintf(ofp, "                                              (higher value is more verbose)\n");
 	fprintf(ofp, "                               TRACE_EMERG    = 0\n");
 	fprintf(ofp, "                               TRACE_ALERT    = 1\n");
 	fprintf(ofp, "                               TRACE_CRIT     = 2\n");
@@ -152,13 +154,13 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               TRACE_NOTICE   = 5\n");
 	fprintf(ofp, "                               TRACE_INFO     = 6\n");
 	fprintf(ofp, "                               TRACE_SYSTEM   = 7\n");
-	fprintf(ofp, "                               TRACE_PROCESS  = 8\n");
-	fprintf(ofp, "                               TRACE_MODULE   = 9\n");
-	fprintf(ofp, "                               TRACE_UNIT     = 10\n");
-	fprintf(ofp, "                               TRACE_CLASS    = 11\n");
-	fprintf(ofp, "                               TRACE_OBJECT   = 12\n");
-	fprintf(ofp, "                               TRACE_FUNCTION = 13\n");
-	fprintf(ofp, "                               TRACE_PRINTF   = 14\n");
+	fprintf(ofp, "                               TRACE_PROGRAM  = 8\n");
+	fprintf(ofp, "                               TRACE_PROCESS  = 9\n");
+	fprintf(ofp, "                               TRACE_MODULE   = 10\n");
+	fprintf(ofp, "                               TRACE_UNIT     = 11\n");
+	fprintf(ofp, "                               TRACE_FUNCTION = 12\n");
+	fprintf(ofp, "                               TRACE_DEFAULT  = 13\n");
+	fprintf(ofp, "                               TRACE_VERBOSE  = 14\n");
 	fprintf(ofp, "                               TRACE_DEBUG    = 15\n");
 	fprintf(ofp, "\n");
 }
@@ -231,24 +233,7 @@ end:
 }
 
 /*
- * Maps this from string to value
- *
- * TRACE_EMERG = 0,
- * TRACE_ALERT = 1,
- * TRACE_CRIT = 2,
- * TRACE_ERR = 3,
- * TRACE_WARNING = 4,
- * TRACE_NOTICE = 5,
- * TRACE_INFO = 6,
- * TRACE_SYSTEM = 7,
- * TRACE_PROCESS = 8,
- * TRACE_MODULE = 9,
- * TRACE_UNIT = 10,
- * TRACE_CLASS = 11,
- * TRACE_OBJECT = 12,
- * TRACE_FUNCTION = 13,
- * TRACE_PRINTF = 14,
- * TRACE_DEBUG = 15,
+ * Maps loglevel from string to value
  */
 static
 int loglevel_str_to_value(const char *str)
@@ -269,19 +254,19 @@ int loglevel_str_to_value(const char *str)
 		return 6;
 	} else if (!strcmp(str, "TRACE_SYSTEM")) {
 		return 7;
-	} else if (!strcmp(str, "TRACE_PROCESS")) {
+	} else if (!strcmp(str, "TRACE_PROGRAM")) {
 		return 8;
-	} else if (!strcmp(str, "TRACE_MODULE")) {
+	} else if (!strcmp(str, "TRACE_PROCESS")) {
 		return 9;
-	} else if (!strcmp(str, "TRACE_UNIT")) {
+	} else if (!strcmp(str, "TRACE_MODULE")) {
 		return 10;
-	} else if (!strcmp(str, "TRACE_CLASS")) {
+	} else if (!strcmp(str, "TRACE_UNIT")) {
 		return 11;
-	} else if (!strcmp(str, "TRACE_OBJECT")) {
-		return 12;
 	} else if (!strcmp(str, "TRACE_FUNCTION")) {
+		return 12;
+	} else if (!strcmp(str, "TRACE_DEFAULT")) {
 		return 13;
-	} else if (!strcmp(str, "TRACE_PRINTF")) {
+	} else if (!strcmp(str, "TRACE_VERBOSE")) {
 		return 14;
 	} else if (!strcmp(str, "TRACE_DEBUG")) {
 		return 15;
