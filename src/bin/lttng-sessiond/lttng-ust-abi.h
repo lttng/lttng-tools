@@ -8,15 +8,22 @@
  *
  * LTTng-UST ABI header
  *
- * Dual LGPL v2.1/GPL v2 license.
+ * THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
+ * OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
+ *
+ * Permission is hereby granted to use or copy this program
+ * for any purpose,  provided the above notices are retained on all copies.
+ * Permission to modify the code and to distribute modified code is granted,
+ * provided the above notices are retained, and a notice that the code was
+ * modified is included with the above copyright notice.
  */
 
 #include <stdint.h>
 
 #define LTTNG_UST_SYM_NAME_LEN	256
 
-#define LTTNG_UST_COMM_VERSION_MAJOR		0
-#define LTTNG_UST_COMM_VERSION_MINOR		1
+#define LTTNG_UST_COMM_VERSION_MAJOR		2
+#define LTTNG_UST_COMM_VERSION_MINOR		0
 
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT		= 0,
@@ -35,11 +42,12 @@ enum lttng_ust_output {
 };
 
 struct lttng_ust_tracer_version {
-	uint32_t version;
+	uint32_t major;
+	uint32_t minor;
 	uint32_t patchlevel;
-	uint32_t sublevel;
 };
 
+#define LTTNG_UST_CHANNEL_PADDING	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_channel {
 	int overwrite;				/* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;			/* in bytes */
@@ -47,17 +55,32 @@ struct lttng_ust_channel {
 	unsigned int switch_timer_interval;	/* usecs */
 	unsigned int read_timer_interval;	/* usecs */
 	enum lttng_ust_output output;		/* output mode */
+	char padding[LTTNG_UST_CHANNEL_PADDING];
 };
 
+#define LTTNG_UST_STREAM_PADDING1	16
+#define LTTNG_UST_STREAM_PADDING2	LTTNG_UST_SYM_NAME_LEN + 32
+struct lttng_ust_stream {
+	char padding[LTTNG_UST_STREAM_PADDING1];
+
+	union {
+		char padding[LTTNG_UST_STREAM_PADDING2];
+	} u;
+};
+
+#define LTTNG_UST_EVENT_PADDING1	16
+#define LTTNG_UST_EVENT_PADDING2	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_event {
 	enum lttng_ust_instrumentation instrumentation;
 	char name[LTTNG_UST_SYM_NAME_LEN];	/* event name */
 
 	enum lttng_ust_loglevel_type loglevel_type;
 	int loglevel;	/* value, -1: all */
+	char padding[LTTNG_UST_EVENT_PADDING1];
 
 	/* Per instrumentation type configuration */
 	union {
+		char padding[LTTNG_UST_EVENT_PADDING2];
 	} u;
 };
 
@@ -68,15 +91,21 @@ enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_PROCNAME		= 3,
 };
 
+#define LTTNG_UST_CONTEXT_PADDING1	16
+#define LTTNG_UST_CONTEXT_PADDING2	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_context {
 	enum lttng_ust_context_type ctx;
+	char padding[LTTNG_UST_CONTEXT_PADDING1];
+
 	union {
+		char padding[LTTNG_UST_CONTEXT_PADDING2];
 	} u;
 };
 
 /*
  * Tracer channel attributes.
  */
+#define LTTNG_UST_CHANNEL_ATTR_PADDING	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_channel_attr {
 	int overwrite;				/* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;			/* bytes */
@@ -84,26 +113,38 @@ struct lttng_ust_channel_attr {
 	unsigned int switch_timer_interval;	/* usec */
 	unsigned int read_timer_interval;	/* usec */
 	enum lttng_ust_output output;		/* splice, mmap */
+	char padding[LTTNG_UST_CHANNEL_ATTR_PADDING];
 };
 
+#define LTTNG_UST_TRACEPOINT_ITER_PADDING	16
 struct lttng_ust_tracepoint_iter {
 	char name[LTTNG_UST_SYM_NAME_LEN];	/* provider:name */
 	int loglevel;
+	char padding[LTTNG_UST_TRACEPOINT_ITER_PADDING];
 };
 
+#define LTTNG_UST_OBJECT_DATA_PADDING		LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_object_data {
 	int handle;
 	int shm_fd;
 	int wait_fd;
 	uint64_t memory_map_size;
+	char padding[LTTNG_UST_OBJECT_DATA_PADDING];
 };
 
 enum lttng_ust_calibrate_type {
 	LTTNG_UST_CALIBRATE_TRACEPOINT,
 };
 
+#define LTTNG_UST_CALIBRATE_PADDING1	16
+#define LTTNG_UST_CALIBRATE_PADDING2	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_calibrate {
-   enum lttng_ust_calibrate_type type;     /* type (input) */
+	enum lttng_ust_calibrate_type type;	/* type (input) */
+	char padding[LTTNG_UST_CALIBRATE_PADDING1];
+
+	union {
+		char padding[LTTNG_UST_CALIBRATE_PADDING2];
+	} u;
 };
 
 #define _UST_CMD(minor)				(minor)
