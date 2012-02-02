@@ -608,14 +608,12 @@ int cmd_list(int argc, const char **argv)
 		if (opt_kernel) {
 			ret = list_kernel_events();
 			if (ret < 0) {
-				ret = CMD_ERROR;
 				goto end;
 			}
 		}
 		if (opt_userspace) {
 			ret = list_ust_events();
 			if (ret < 0) {
-				ret = CMD_ERROR;
 				goto end;
 			}
 		}
@@ -629,9 +627,6 @@ int cmd_list(int argc, const char **argv)
 		/* Domain listing */
 		if (opt_domain) {
 			ret = list_domains(session_name);
-			if (ret < 0) {
-				ret = CMD_ERROR;
-			}
 			goto end;
 		}
 
@@ -639,14 +634,13 @@ int cmd_list(int argc, const char **argv)
 			/* Channel listing */
 			ret = list_channels(opt_channel);
 			if (ret < 0) {
-				ret = CMD_ERROR;
 				goto end;
 			}
 		} else {
 			/* We want all domain(s) */
 			nb_domain = lttng_list_domains(session_name, &domains);
 			if (nb_domain < 0) {
-				ret = CMD_ERROR;
+				ret = nb_domain;
 				goto end;
 			}
 
@@ -674,7 +668,6 @@ int cmd_list(int argc, const char **argv)
 
 				ret = list_channels(opt_channel);
 				if (ret < 0) {
-					ret = CMD_ERROR;
 					goto end;
 				}
 			}
