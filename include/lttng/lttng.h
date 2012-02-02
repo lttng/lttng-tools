@@ -29,7 +29,7 @@
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
-#define LTTNG_SYMBOL_NAME_LEN 256
+#define LTTNG_SYMBOL_NAME_LEN             256
 
 /*
  * Every lttng_event_* structure both apply to kernel event and user-space
@@ -103,26 +103,39 @@ enum lttng_calibrate_type {
 	LTTNG_CALIBRATE_FUNCTION              = 0,
 };
 
+#define LTTNG_DOMAIN_PADDING1              16
+#define LTTNG_DOMAIN_PADDING2              LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_domain {
 	enum lttng_domain_type type;
+	char padding[LTTNG_DOMAIN_PADDING1];
+
 	union {
 		pid_t pid;
 		char exec_name[NAME_MAX];
+		char padding[LTTNG_DOMAIN_PADDING2];
 	} attr;
 };
 
 /* Perf counter attributes */
+#define LTTNG_PERF_EVENT_PADDING1          16
 struct lttng_event_perf_counter_ctx {
 	uint32_t type;
 	uint64_t config;
 	char name[LTTNG_SYMBOL_NAME_LEN];
+
+	char padding[LTTNG_PERF_EVENT_PADDING1];
 };
 
 /* Event/Channel context */
+#define LTTNG_EVENT_CONTEXT_PADDING1       16
+#define LTTNG_EVENT_CONTEXT_PADDING2       LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event_context {
 	enum lttng_event_context_type ctx;
+	char padding[LTTNG_EVENT_CONTEXT_PADDING1];
+
 	union {
 		struct lttng_event_perf_counter_ctx perf_counter;
+		char padding[LTTNG_EVENT_CONTEXT_PADDING2];
 	} u;
 };
 
@@ -131,23 +144,31 @@ struct lttng_event_context {
  *
  * Either addr is used or symbol_name and offset.
  */
+#define LTTNG_EVENT_PROBE_PADDING1         16
 struct lttng_event_probe_attr {
 	uint64_t addr;
 
 	uint64_t offset;
 	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+
+	char padding[LTTNG_EVENT_PROBE_PADDING1];
 };
 
 /*
  * Function tracer
  */
+#define LTTNG_EVENT_FUNCTION_PADDING1      16
 struct lttng_event_function_attr {
 	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+
+	char padding[LTTNG_EVENT_FUNCTION_PADDING1];
 };
 
 /*
  * Generic lttng event
  */
+#define LTTNG_EVENT_PADDING1               16
+#define LTTNG_EVENT_PADDING2               LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event {
 	enum lttng_event_type type;
 	char name[LTTNG_SYMBOL_NAME_LEN];
@@ -157,16 +178,22 @@ struct lttng_event {
 
 	uint32_t enabled;
 	pid_t pid;
+
+	char padding[LTTNG_EVENT_PADDING1];
+
 	/* Per event type configuration */
 	union {
 		struct lttng_event_probe_attr probe;
 		struct lttng_event_function_attr ftrace;
+
+		char padding[LTTNG_EVENT_PADDING2];
 	} attr;
 };
 
 /*
  * Tracer channel attributes. For both kernel and user-space.
  */
+#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_channel_attr {
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes */
@@ -174,19 +201,27 @@ struct lttng_channel_attr {
 	unsigned int switch_timer_interval; /* usec */
 	unsigned int read_timer_interval;   /* usec */
 	enum lttng_event_output output;     /* splice, mmap */
+
+	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
 };
 
 /*
  * Channel information structure. For both kernel and user-space.
  */
+#define LTTNG_CHANNEL_PADDING1             16
 struct lttng_channel {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	uint32_t enabled;
 	struct lttng_channel_attr attr;
+
+	char padding[LTTNG_CHANNEL_PADDING1];
 };
 
+#define LTTNG_CALIBRATE_PADDING1           16
 struct lttng_calibrate {
 	enum lttng_calibrate_type type;
+
+	char padding[LTTNG_CALIBRATE_PADDING1];
 };
 
 /*
@@ -196,19 +231,25 @@ struct lttng_calibrate {
  * daemon *to* the lttng client. It's basically a 'human' representation of
  * tracing entities (here a session).
  */
+#define LTTNG_SESSION_PADDING1             16
 struct lttng_session {
 	char name[NAME_MAX];
 	/* The path where traces are written */
 	char path[PATH_MAX];
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
+
+	char padding[LTTNG_SESSION_PADDING1];
 };
 
 /*
  * Handle used as a context for commands.
  */
+#define LTTNG_HANDLE_PADDING1              16
 struct lttng_handle {
 	char session_name[NAME_MAX];
 	struct lttng_domain domain;
+
+	char padding[LTTNG_HANDLE_PADDING1];
 };
 
 /*
