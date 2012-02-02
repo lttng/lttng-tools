@@ -623,7 +623,8 @@ int kernel_validate_version(int tracer_fd)
 	}
 
 	/* Validate version */
-	if (version.version > KERN_MODULES_VERSION) {
+	if (version.version != KERN_MODULES_PRE_VERSION
+		&& version.version != KERN_MODULES_VERSION) {
 		goto error_version;
 	}
 

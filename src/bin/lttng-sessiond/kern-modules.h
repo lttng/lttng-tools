@@ -21,9 +21,12 @@
 /*
  * Compatible lttng-modules version.
  */
-#define KERN_MODULES_VERSION       0
-#define KERN_MODULES_PATCHLEVEL    9
-#define KERN_MODULES_SUBLEVEL      1
+#define KERN_MODULES_PRE_VERSION       1
+#define KERN_MODULES_PRE_PATCHLEVEL    9
+
+#define KERN_MODULES_VERSION       2
+#define KERN_MODULES_PATCHLEVEL    0
+#define KERN_MODULES_SUBLEVEL      0
 
 struct kern_modules_param {
 	const char *name;
