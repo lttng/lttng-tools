@@ -24,7 +24,8 @@
 #include "trace-ust.h"
 
 /* lttng-ust supported version. */
-#define UST_APP_MAJOR_VERSION         1
+#define LTTNG_UST_COMM_MAJOR          2	/* comm protocol major version */
+#define UST_APP_MAJOR_VERSION         2 /* UST version supported */
 
 #define UST_APP_EVENT_LIST_SIZE 32
 

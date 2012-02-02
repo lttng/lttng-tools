@@ -1275,6 +1275,13 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 		close(sock);
 		return -EINVAL;
 	}
+	if (msg->major != LTTNG_UST_COMM_MAJOR) {
+		ERR("Registration failed: application \"%s\" (pid: %d) has "
+			"communication protocol version %u.%u, but sessiond supports 2.x.\n",
+			msg->name, msg->pid, msg->major, msg->minor);
+		close(sock);
+		return -EINVAL;
+	}
 	lta = zmalloc(sizeof(struct ust_app));
 	if (lta == NULL) {
 		PERROR("malloc");
