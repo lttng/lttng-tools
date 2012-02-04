@@ -196,11 +196,10 @@ static void print_events(struct lttng_event *event)
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
-		MSG("%s%s%s%s%d%s (type: tracepoint)%s", indent6,
+		MSG("%s%s%s%s%s (type: tracepoint)%s", indent6,
 				event->name,
 				loglevel_string_pre(event->loglevel),
 				loglevel_string(event->loglevel),
-				event->loglevel,
 				loglevel_string_post(event->loglevel),
 				enabled_string(event->enabled));
 		break;
