@@ -2035,13 +2035,13 @@ static int list_lttng_ust_global_events(char *channel_name,
 		tmp[i].loglevel = uevent->attr.loglevel;
 		switch (uevent->attr.loglevel_type) {
 		case LTTNG_UST_LOGLEVEL_ALL:
-			tmp[i].type = LTTNG_EVENT_LOGLEVEL_ALL;
+			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 			break;
 		case LTTNG_UST_LOGLEVEL_RANGE:
-			tmp[i].type = LTTNG_EVENT_LOGLEVEL_RANGE;
+			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
 			break;
 		case LTTNG_UST_LOGLEVEL_SINGLE:
-			tmp[i].type = LTTNG_EVENT_LOGLEVEL_SINGLE;
+			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
 			break;
 		}
 		i++;

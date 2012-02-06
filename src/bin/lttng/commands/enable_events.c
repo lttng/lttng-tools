@@ -330,6 +330,8 @@ static int enable_events(char *session_name)
 					ret = -1;
 					goto error;
 				}
+			} else {
+				ev.loglevel = -1;
 			}
 		}
 
@@ -460,6 +462,8 @@ static int enable_events(char *session_name)
 					ret = -1;
 					goto error;
 				}
+			} else {
+				ev.loglevel = -1;
 			}
 		} else {
 			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");

@@ -225,20 +225,21 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	switch (ev->loglevel_type) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
 		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		lue->attr.loglevel = -1;	/* Force to -1 */
 		break;
 	case LTTNG_EVENT_LOGLEVEL_RANGE:
 		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		lue->attr.loglevel = ev->loglevel;
 		break;
 	case LTTNG_EVENT_LOGLEVEL_SINGLE:
 		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		lue->attr.loglevel = ev->loglevel;
 		break;
 	default:
 		ERR("Unknown ust loglevel type (%d)", ev->type);
 		goto error_free_event;
 	}
 
-	/* Copy loglevel */
-	lue->attr.loglevel = ev->loglevel;
 
 	/* Init node */
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);
