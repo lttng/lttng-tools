@@ -313,13 +313,11 @@ int main(int argc, char **argv)
 	printf("Creating %d sessions: ", MAX_SESSIONS);
 	fflush(stdout);
 	for (i = 0; i < MAX_SESSIONS; i++) {
-		tmp_name = get_random_string();
-		ret = create_one_session(tmp_name, PATH1);
+		ret = create_one_session(get_random_string(), PATH1);
 		if (ret < 0) {
 			printf("session %d (name: %s) creation failed\n", i, tmp_name);
 			return -1;
 		}
-		free(tmp_name);
 	}
 	PRINT_OK();
 
