@@ -146,22 +146,22 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           wildcard.\n");
 	fprintf(ofp, "                           Available loglevels:\n");
 	fprintf(ofp, "                                              (higher value is more verbose)\n");
-	fprintf(ofp, "                               TRACE_EMERG    = 0\n");
-	fprintf(ofp, "                               TRACE_ALERT    = 1\n");
-	fprintf(ofp, "                               TRACE_CRIT     = 2\n");
-	fprintf(ofp, "                               TRACE_ERR      = 3\n");
-	fprintf(ofp, "                               TRACE_WARNING  = 4\n");
-	fprintf(ofp, "                               TRACE_NOTICE   = 5\n");
-	fprintf(ofp, "                               TRACE_INFO     = 6\n");
-	fprintf(ofp, "                               TRACE_SYSTEM   = 7\n");
-	fprintf(ofp, "                               TRACE_PROGRAM  = 8\n");
-	fprintf(ofp, "                               TRACE_PROCESS  = 9\n");
-	fprintf(ofp, "                               TRACE_MODULE   = 10\n");
-	fprintf(ofp, "                               TRACE_UNIT     = 11\n");
-	fprintf(ofp, "                               TRACE_FUNCTION = 12\n");
-	fprintf(ofp, "                               TRACE_DEFAULT  = 13\n");
-	fprintf(ofp, "                               TRACE_VERBOSE  = 14\n");
-	fprintf(ofp, "                               TRACE_DEBUG    = 15\n");
+	fprintf(ofp, "                               TRACE_EMERG          = 0\n");
+	fprintf(ofp, "                               TRACE_ALERT          = 1\n");
+	fprintf(ofp, "                               TRACE_CRIT           = 2\n");
+	fprintf(ofp, "                               TRACE_ERR            = 3\n");
+	fprintf(ofp, "                               TRACE_WARNING        = 4\n");
+	fprintf(ofp, "                               TRACE_NOTICE         = 5\n");
+	fprintf(ofp, "                               TRACE_INFO           = 6\n");
+	fprintf(ofp, "                               TRACE_DEBUG_SYSTEM   = 7\n");
+	fprintf(ofp, "                               TRACE_DEBUG_PROGRAM  = 8\n");
+	fprintf(ofp, "                               TRACE_DEBUG_PROCESS  = 9\n");
+	fprintf(ofp, "                               TRACE_DEBUG_MODULE   = 10\n");
+	fprintf(ofp, "                               TRACE_DEBUG_UNIT     = 11\n");
+	fprintf(ofp, "                               TRACE_DEBUG_FUNCTION = 12\n");
+	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
+	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
+	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
 	fprintf(ofp, "\n");
 }
 
@@ -236,40 +236,46 @@ end:
  * Maps loglevel from string to value
  */
 static
-int loglevel_str_to_value(const char *str)
+int loglevel_str_to_value(const char *inputstr)
 {
-	if (!strcmp(str, "TRACE_EMERG")) {
-		return 0;
-	} else if (!strcmp(str, "TRACE_ALERT")) {
-		return 1;
-	} else if (!strcmp(str, "TRACE_CRIT")) {
-		return 2;
-	} else if (!strcmp(str, "TRACE_ERR")) {
-		return 3;
-	} else if (!strcmp(str, "TRACE_WARNING")) {
-		return 4;
-	} else if (!strcmp(str, "TRACE_NOTICE")) {
-		return 5;
-	} else if (!strcmp(str, "TRACE_INFO")) {
-		return 6;
-	} else if (!strcmp(str, "TRACE_SYSTEM")) {
-		return 7;
-	} else if (!strcmp(str, "TRACE_PROGRAM")) {
-		return 8;
-	} else if (!strcmp(str, "TRACE_PROCESS")) {
-		return 9;
-	} else if (!strcmp(str, "TRACE_MODULE")) {
-		return 10;
-	} else if (!strcmp(str, "TRACE_UNIT")) {
-		return 11;
-	} else if (!strcmp(str, "TRACE_FUNCTION")) {
-		return 12;
-	} else if (!strcmp(str, "TRACE_DEFAULT")) {
-		return 13;
-	} else if (!strcmp(str, "TRACE_VERBOSE")) {
-		return 14;
-	} else if (!strcmp(str, "TRACE_DEBUG")) {
-		return 15;
+	int i = 0;
+	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	while (inputstr[i] != '\0' && i < LTTNG_SYMBOL_NAME_LEN) {
+		str[i] = toupper(inputstr[i]);
+		i++;
+	}
+	str[i] = '\0';
+	if (!strcmp(str, "TRACE_EMERG") || !strcmp(str, "EMERG")) {
+		return LTTNG_LOGLEVEL_EMERG;
+	} else if (!strcmp(str, "TRACE_ALERT") || !strcmp(str, "ALERT")) {
+		return LTTNG_LOGLEVEL_ALERT;
+	} else if (!strcmp(str, "TRACE_CRIT") || !strcmp(str, "CRIT")) {
+		return LTTNG_LOGLEVEL_CRIT;
+	} else if (!strcmp(str, "TRACE_ERR") || !strcmp(str, "ERR")) {
+		return LTTNG_LOGLEVEL_ERR;
+	} else if (!strcmp(str, "TRACE_WARNING") || !strcmp(str, "WARNING")) {
+		return LTTNG_LOGLEVEL_WARNING;
+	} else if (!strcmp(str, "TRACE_NOTICE") || !strcmp(str, "NOTICE")) {
+		return LTTNG_LOGLEVEL_NOTICE;
+	} else if (!strcmp(str, "TRACE_INFO") || !strcmp(str, "INFO")) {
+		return LTTNG_LOGLEVEL_INFO;
+	} else if (!strcmp(str, "TRACE_DEBUG_SYSTEM") || !strcmp(str, "DEBUG_SYSTEM") || !strcmp(str, "SYSTEM")) {
+		return LTTNG_LOGLEVEL_DEBUG_SYSTEM;
+	} else if (!strcmp(str, "TRACE_DEBUG_PROGRAM") || !strcmp(str, "DEBUG_PROGRAM") || !strcmp(str, "PROGRAM")) {
+		return LTTNG_LOGLEVEL_DEBUG_PROGRAM;
+	} else if (!strcmp(str, "TRACE_DEBUG_PROCESS") || !strcmp(str, "DEBUG_PROCESS") || !strcmp(str, "PROCESS")) {
+		return LTTNG_LOGLEVEL_DEBUG_PROCESS;
+	} else if (!strcmp(str, "TRACE_DEBUG_MODULE") || !strcmp(str, "DEBUG_MODULE") || !strcmp(str, "MODULE")) {
+		return LTTNG_LOGLEVEL_DEBUG_MODULE;
+	} else if (!strcmp(str, "TRACE_DEBUG_UNIT") || !strcmp(str, "DEBUG_UNIT") || !strcmp(str, "UNIT")) {
+		return LTTNG_LOGLEVEL_DEBUG_UNIT;
+	} else if (!strcmp(str, "TRACE_DEBUG_FUNCTION") || !strcmp(str, "DEBUG_FUNCTION") || !strcmp(str, "FUNCTION")) {
+		return LTTNG_LOGLEVEL_DEBUG_FUNCTION;
+	} else if (!strcmp(str, "TRACE_DEBUG_LINE") || !strcmp(str, "DEBUG_LINE") || !strcmp(str, "LINE")) {
+		return LTTNG_LOGLEVEL_DEBUG_LINE;
+	} else if (!strcmp(str, "TRACE_DEBUG") || !strcmp(str, "DEBUG")) {
+		return LTTNG_LOGLEVEL_DEBUG;
 	} else {
 		return -1;
 	}

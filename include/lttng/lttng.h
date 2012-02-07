@@ -77,6 +77,27 @@ enum lttng_loglevel_type {
 };
 
 /*
+ * Available loglevels.
+ */
+enum lttng_loglevel {
+        LTTNG_LOGLEVEL_EMERG                  = 0,
+        LTTNG_LOGLEVEL_ALERT                  = 1,
+        LTTNG_LOGLEVEL_CRIT                   = 2,
+        LTTNG_LOGLEVEL_ERR                    = 3,
+        LTTNG_LOGLEVEL_WARNING                = 4,
+        LTTNG_LOGLEVEL_NOTICE                 = 5,
+        LTTNG_LOGLEVEL_INFO                   = 6,
+        LTTNG_LOGLEVEL_DEBUG_SYSTEM           = 7,
+        LTTNG_LOGLEVEL_DEBUG_PROGRAM          = 8,
+        LTTNG_LOGLEVEL_DEBUG_PROCESS          = 9,
+        LTTNG_LOGLEVEL_DEBUG_MODULE           = 10,
+        LTTNG_LOGLEVEL_DEBUG_UNIT             = 11,
+        LTTNG_LOGLEVEL_DEBUG_FUNCTION         = 12,
+        LTTNG_LOGLEVEL_DEBUG_LINE             = 13,
+        LTTNG_LOGLEVEL_DEBUG                  = 14,
+};
+
+/*
  * LTTng consumer mode
  */
 enum lttng_event_output {
