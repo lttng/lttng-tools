@@ -48,7 +48,7 @@ static struct poptOption long_options[] = {
 /*
  * This is needed for each viewer since we are using execvp().
  */
-static const char *babeltrace_opts[] = { "babeltrace", "-n", "all", };
+static const char *babeltrace_opts[] = { "babeltrace" };
 //static const char *lttv_gui_opts[] = { "lttv-gui", "-t", };
 
 /*
