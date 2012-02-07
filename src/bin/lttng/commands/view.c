@@ -329,6 +329,7 @@ static int view_trace(void)
 
 	if (!found) {
 		MSG("Session name %s not found", session_name);
+		ret = CMD_ERROR;
 		goto free_sessions;
 	}
 
