@@ -82,10 +82,10 @@ int main(int argc, char **argv)
 	}
 
 	printf("Creating tracing session (%s): ", argv[1]);
-    if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
-        printf("error creating the session : %s\n", lttng_strerror(ret));
+	if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
+		printf("error creating the session : %s\n", lttng_strerror(ret));
 		goto create_fail;
-    }
+	}
 	PRINT_OK();
 
 	printf("Creating session handle: ");
@@ -102,10 +102,10 @@ int main(int argc, char **argv)
 	}
 
 	printf("Enabling %s kernel event: ", sched_switch.name);
-    if ((ret = lttng_enable_event(handle, &sched_switch, channel.name)) < 0) {
-        printf("error enabling event: %s\n", lttng_strerror(ret));
+	if ((ret = lttng_enable_event(handle, &sched_switch, channel.name)) < 0) {
+		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
-    }
+	}
 	PRINT_OK();
 
 	printf("Enabling %s kernel event: ", sched_process_exit.name);
@@ -185,5 +185,5 @@ enable_fail:
 	lttng_destroy_session(session_name);
 	lttng_destroy_handle(handle);
 
-    return 1;
+	return 1;
 }
