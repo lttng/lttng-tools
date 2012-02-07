@@ -52,5 +52,6 @@ extern int cmd_add_context(int argc, const char **argv);
 extern int cmd_set_session(int argc, const char **argv);
 extern int cmd_version(int argc, const char **argv);
 extern int cmd_calibrate(int argc, const char **argv);
+extern int cmd_view(int argc, const char **argv);
 
 #endif /* _LTTNG_CMD_H */

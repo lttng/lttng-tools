@@ -76,6 +76,7 @@ static struct cmd_struct commands[] =  {
 	{ "set-session", cmd_set_session},
 	{ "version", cmd_version},
 	{ "calibrate", cmd_calibrate},
+	{ "view", cmd_view},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -108,6 +109,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    start           Start tracing\n");
 	fprintf(ofp, "    stop            Stop tracing\n");
 	fprintf(ofp, "    version         Show version information\n");
+	fprintf(ofp, "    view            Start trace viewer\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Each command also has its own -h, --help option.\n");
 	fprintf(ofp, "\n");
@@ -381,6 +383,7 @@ static int check_sessiond(void)
 	}
 
 end:
+	printf("HIT essiond %d\n", ret);
 	return ret;
 }
 
@@ -399,7 +402,8 @@ static int check_args_no_sessiond(int argc, char **argv)
 				strncmp(argv[i], "--h", sizeof("--h")) == 0 ||
 				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0 ||
 				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0 ||
-				strncmp(argv[i], "version", sizeof("version")) == 0) {
+				strncmp(argv[i], "version", sizeof("version")) == 0 ||
+				strncmp(argv[i], "view", sizeof("view")) == 0) {
 			return 1;
 		}
 	}

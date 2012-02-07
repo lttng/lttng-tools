@@ -249,6 +249,17 @@ _lttng_cmd_calibrate() {
 	esac
 }
 
+_lttng_cmd_view() {
+	local view_opts
+		view_opts=$(lttng view --list-options)
+
+		case $cur in
+		-*)
+		COMPREPLY=( $(compgen -W "${view_opts}" -- $cur) )
+		;;
+	esac
+}
+
 _lttng_opts() {
 	local opts
 	opts=$(lttng --list-options)
