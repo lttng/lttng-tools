@@ -598,6 +598,10 @@ int cmd_list(int argc, const char **argv)
 	} else if (opt_userspace) {
 		DBG2("Listing userspace global domain");
 		domain.type = LTTNG_DOMAIN_UST;
+	} else {
+		usage(stderr);
+		ret = CMD_UNDEFINED;
+		goto end;
 	}
 
 	handle = lttng_create_handle(session_name, &domain);
