@@ -383,7 +383,6 @@ static int check_sessiond(void)
 	}
 
 end:
-	printf("HIT essiond %d\n", ret);
 	return ret;
 }
 
