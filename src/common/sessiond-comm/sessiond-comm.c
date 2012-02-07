@@ -250,9 +250,11 @@ int lttcomm_listen_unix_sock(int sock)
  */
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
+
+	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -274,9 +276,11 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
  */
 ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
+
+	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -314,13 +318,15 @@ int lttcomm_close_unix_sock(int sock)
  */
 ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
+
+	memset(&msg, 0, sizeof(msg));
 
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
@@ -363,8 +369,10 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	struct cmsghdr *cmsg;
 	size_t sizeof_fds = nb_fd * sizeof(int);
 	char recv_fd[CMSG_SPACE(sizeof_fds)];
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	char dummy;
+
+	memset(&msg, 0, sizeof(msg));
 
 	/* Prepare to receive the structures */
 	iov[0].iov_base = &dummy;
@@ -419,13 +427,15 @@ end:
  */
 ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	struct ucred *creds;
 	size_t sizeof_cred = sizeof(struct ucred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+
+	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -462,12 +472,14 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		struct ucred *creds)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret;
 	size_t sizeof_cred = sizeof(struct ucred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+
+	memset(&msg, 0, sizeof(msg));
 
 	/* Not allowed */
 	if (creds == NULL) {
