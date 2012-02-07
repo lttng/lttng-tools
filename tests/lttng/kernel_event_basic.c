@@ -31,18 +31,22 @@
 
 int main(int argc, char **argv)
 {
-    struct lttng_handle *handle = NULL;
-    struct lttng_domain dom;
+	struct lttng_handle *handle = NULL;
+	struct lttng_domain dom;
 	struct lttng_channel channel;
 	struct lttng_event sched_switch;
 	struct lttng_event sched_process_exit;
 	struct lttng_event sched_process_free;
-
-    int ret = 0;
-
 	char *session_name = "kernel_event_basic";
+	int ret = 0;
 
-    dom.type = LTTNG_DOMAIN_KERNEL;
+	memset(&dom, 0, sizeof(dom));
+	memset(&channel, 0, sizeof(channel));
+	memset(&sched_switch, 0, sizeof(sched_switch));
+	memset(&sched_process_exit, 0, sizeof(sched_process_exit));
+	memset(&sched_process_free, 0, sizeof(sched_process_free));
+
+	dom.type = LTTNG_DOMAIN_KERNEL;
 
 	strcpy(channel.name, "mychan");
 	channel.attr.overwrite = 0;
@@ -54,12 +58,15 @@ int main(int argc, char **argv)
 
 	strcpy(sched_switch.name, "sched_switch");
 	sched_switch.type = LTTNG_EVENT_TRACEPOINT;
+	sched_switch.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	strcpy(sched_process_exit.name, "sched_process_exit");
 	sched_process_exit.type = LTTNG_EVENT_TRACEPOINT;
+	sched_process_exit.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	strcpy(sched_process_free.name, "sched_process_free");
 	sched_process_free.type = LTTNG_EVENT_TRACEPOINT;
+	sched_process_free.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("\nTesting tracing kernel events:\n");
 	printf("-----------\n");

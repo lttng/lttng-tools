@@ -246,6 +246,8 @@ static int list_ust_events(void)
 	struct lttng_event *event_list;
 	pid_t cur_pid = 0;
 
+	memset(&domain, 0, sizeof(domain));
+
 	DBG("Getting UST tracing events");
 
 	domain.type = LTTNG_DOMAIN_UST;
@@ -294,6 +296,8 @@ static int list_kernel_events(void)
 	struct lttng_domain domain;
 	struct lttng_handle *handle;
 	struct lttng_event *event_list;
+
+	memset(&domain, 0, sizeof(domain));
 
 	DBG("Getting kernel tracing events");
 
@@ -555,6 +559,8 @@ int cmd_list(int argc, const char **argv)
 	static poptContext pc;
 	struct lttng_domain domain;
 	struct lttng_domain *domains = NULL;
+
+	memset(&domain, 0, sizeof(domain));
 
 	if (argc < 1) {
 		usage(stderr);

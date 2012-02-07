@@ -31,16 +31,16 @@
 
 int main(int argc, char **argv)
 {
-    struct lttng_handle *handle = NULL;
-    struct lttng_domain dom;
+	struct lttng_handle *handle = NULL;
+	struct lttng_domain dom;
 	struct lttng_event event;
-    char *channel_name = "channel0";
+	char *channel_name = "channel0";
 	char *session_name = "ust_global_all_events_basic";
-    int ret = 0;
+	int ret = 0;
 
-    dom.type = LTTNG_DOMAIN_UST;
-
-	memset(&event, 0, sizeof(struct lttng_event));
+	memset(&dom, 0, sizeof(dom));
+	memset(&event, 0, sizeof(event));
+	dom.type = LTTNG_DOMAIN_UST;
 	event.type = LTTNG_EVENT_TRACEPOINT;
 	event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 

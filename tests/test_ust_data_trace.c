@@ -122,6 +122,8 @@ static void create_ust_channel(void)
 	struct ltt_ust_channel *uchan;
 	struct lttng_channel attr;
 
+	memset(&attr, 0, sizeof(attr));
+
 	strncpy(attr.name, "channel0", 8);
 
 	printf("Creating UST channel: ");
@@ -147,8 +149,10 @@ static void create_ust_event(void)
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
 
+	memset(&ev, 0, sizeof(ev));
 	strncpy(ev.name, get_random_string(), LTTNG_SYMBOL_NAME_LEN);
 	ev.type = LTTNG_EVENT_TRACEPOINT;
+	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("Creating UST event: ");
 	event = trace_ust_create_event(&ev);

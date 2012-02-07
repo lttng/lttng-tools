@@ -127,6 +127,9 @@ static int calibrate_lttng(void)
 	struct lttng_domain dom;
 	struct lttng_calibrate calibrate;
 
+	memset(&dom, 0, sizeof(dom));
+	memset(&calibrate, 0, sizeof(calibrate));
+
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;

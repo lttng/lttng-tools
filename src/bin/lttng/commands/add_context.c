@@ -369,6 +369,9 @@ static int add_context(char *session_name)
 	struct ctx_type *type;
 	char *ptr;
 
+	memset(&context, 0, sizeof(context));
+	memset(&dom, 0, sizeof(dom));
+
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	} else if (opt_userspace) {

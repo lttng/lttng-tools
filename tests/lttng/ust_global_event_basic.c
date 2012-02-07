@@ -31,17 +31,20 @@
 
 int main(int argc, char **argv)
 {
-    struct lttng_handle *handle = NULL;
-    struct lttng_domain dom;
+	struct lttng_handle *handle = NULL;
+	struct lttng_domain dom;
 	struct lttng_channel channel;
 	struct lttng_event ev1, ev2, ev3;
-
-    int ret = 0;
-
 	char *session_name = "ust_global_event_basic";
+	int ret = 0;
 
-    dom.type = LTTNG_DOMAIN_UST;
+	memset(&dom, 0, sizeof(dom));
+	memset(&channel, 0, sizeof(channel));
+	memset(&ev1, 0, sizeof(ev1));
+	memset(&ev2, 0, sizeof(ev2));
+	memset(&ev3, 0, sizeof(ev3));
 
+	dom.type = LTTNG_DOMAIN_UST;
 	strcpy(channel.name, "mychan");
 	channel.attr.overwrite = 0;
 	channel.attr.subbuf_size = 4096;

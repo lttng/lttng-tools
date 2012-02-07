@@ -92,6 +92,8 @@ static int disable_channels(char *session_name)
 	char *channel_name;
 	struct lttng_domain dom;
 
+	memset(&dom, 0, sizeof(dom));
+
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;

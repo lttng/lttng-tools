@@ -117,6 +117,8 @@ static void create_kernel_channel(void)
 	struct ltt_kernel_channel *chan;
 	struct lttng_channel attr;
 
+	memset(&attr, 0, sizeof(attr));
+
 	printf("Creating kernel channel: ");
 	chan = trace_kernel_create_channel(&attr, PATH1);
 	assert(chan != NULL);
@@ -141,8 +143,10 @@ static void create_kernel_event(void)
 	struct ltt_kernel_event *event;
 	struct lttng_event ev;
 
+	memset(&ev, 0, sizeof(ev));
 	strncpy(ev.name, get_random_string(), LTTNG_KERNEL_SYM_NAME_LEN);
 	ev.type = LTTNG_EVENT_TRACEPOINT;
+	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("Creating kernel event: ");
 	event = trace_kernel_create_event(&ev);

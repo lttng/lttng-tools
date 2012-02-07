@@ -74,6 +74,7 @@ static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src
 				memcpy(dst, src, sizeof(struct lttng_domain));
 				break;
 			default:
+				memset(dst, 0, sizeof(struct lttng_domain));
 				dst->type = LTTNG_DOMAIN_KERNEL;
 				break;
 		}
@@ -484,6 +485,8 @@ int lttng_add_context(struct lttng_handle *handle,
 		return -1;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
+
 	lsm.cmd_type = LTTNG_ADD_CONTEXT;
 
 	/* Copy channel name */
@@ -517,6 +520,8 @@ int lttng_enable_event(struct lttng_handle *handle,
 	if (handle == NULL || ev == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	/* If no channel name, we put the default name */
 	if (channel_name == NULL) {
@@ -557,6 +562,8 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 		return -1;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
+
 	if (channel_name) {
 		copy_string(lsm.u.disable.channel_name, channel_name,
 				sizeof(lsm.u.disable.channel_name));
@@ -596,6 +603,8 @@ int lttng_enable_channel(struct lttng_handle *handle,
 		return -1;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
+
 	memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
@@ -620,6 +629,8 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 	if (handle == NULL || name == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_DISABLE_CHANNEL;
 
@@ -861,11 +872,13 @@ int lttng_calibrate(struct lttng_handle *handle,
 
 /*
  * Set default channel attributes.
- * If either or both of the arguments are null, nothing happens.
+ * If either or both of the arguments are null, attr content is zeroe'd.
  */
 void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr)
 {
+	memset(attr, 0, sizeof(struct lttng_channel_attr));
+
 	/* Safety check */
 	if (attr == NULL || domain == NULL) {
 		return;
@@ -896,8 +909,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
 		break;
 	default:
-		/* Default behavior */
-		memset(attr, 0, sizeof(struct lttng_channel_attr));
+		/* Default behavior: leave set to 0. */
 		break;
 	}
 }

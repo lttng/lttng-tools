@@ -285,6 +285,9 @@ static int enable_events(char *session_name)
 	struct lttng_event ev;
 	struct lttng_domain dom;
 
+	memset(&ev, 0, sizeof(ev));
+	memset(&dom, 0, sizeof(dom));
+
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;

@@ -100,6 +100,8 @@ static int disable_events(char *session_name)
 	char *event_name, *channel_name = NULL;
 	struct lttng_domain dom;
 
+	memset(&dom, 0, sizeof(dom));
+
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
