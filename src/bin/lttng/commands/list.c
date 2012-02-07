@@ -260,6 +260,7 @@ static int list_ust_events(void)
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
 		ERR("Unable to list UST events");
+		lttng_destroy_handle(handle);
 		return size;
 	}
 
@@ -280,10 +281,12 @@ static int list_ust_events(void)
 	MSG("");
 
 	free(event_list);
+	lttng_destroy_handle(handle);
 
 	return CMD_SUCCESS;
 
 error:
+	lttng_destroy_handle(handle);
 	return -1;
 }
 
@@ -311,6 +314,7 @@ static int list_kernel_events(void)
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
 		ERR("Unable to list kernel events");
+		lttng_destroy_handle(handle);
 		return size;
 	}
 
@@ -324,9 +328,11 @@ static int list_kernel_events(void)
 
 	free(event_list);
 
+	lttng_destroy_handle(handle);
 	return CMD_SUCCESS;
 
 error:
+	lttng_destroy_handle(handle);
 	return -1;
 }
 
