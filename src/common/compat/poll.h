@@ -95,7 +95,7 @@ struct compat_epoll_event {
 extern int compat_epoll_create(struct lttng_poll_event *events,
 		int size, int flags);
 #define lttng_poll_create(events, size, flags) \
-	compat_epoll_create(events, size, flags);
+	compat_epoll_create(events, size, flags)
 
 /*
  * Wait on epoll set with the number of fd registered to the lttng_poll_event
@@ -103,7 +103,7 @@ extern int compat_epoll_create(struct lttng_poll_event *events,
  */
 extern int compat_epoll_wait(struct lttng_poll_event *events, int timeout);
 #define lttng_poll_wait(events, timeout) \
-	compat_epoll_wait(events, timeout);
+	compat_epoll_wait(events, timeout)
 
 /*
  * Add a fd to the epoll set and resize the epoll_event structure if needed.
@@ -111,21 +111,21 @@ extern int compat_epoll_wait(struct lttng_poll_event *events, int timeout);
 extern int compat_epoll_add(struct lttng_poll_event *events,
 		int fd, uint32_t req_events);
 #define lttng_poll_add(events, fd, req_events) \
-	compat_epoll_add(events, fd, req_events);
+	compat_epoll_add(events, fd, req_events)
 
 /*
  * Remove a fd from the epoll set.
  */
 extern int compat_epoll_del(struct lttng_poll_event *events, int fd);
 #define lttng_poll_del(events, fd) \
-	compat_epoll_del(events, fd);
+	compat_epoll_del(events, fd)
 
 /*
  * Set up the poll set limits variable poll_max_size
  */
 extern void compat_epoll_set_max_size(void);
-#define lttng_poll_set_max_size(void) \
-	compat_epoll_set_max_size(void);
+#define lttng_poll_set_max_size() \
+	compat_epoll_set_max_size()
 
 /*
  * This function memset with zero the structure since it can be reused at each
@@ -208,7 +208,7 @@ struct compat_poll_event {
  */
 extern int compat_poll_create(struct lttng_poll_event *events, int size);
 #define lttng_poll_create(events, size, flags) \
-	compat_poll_create(events, size);
+	compat_poll_create(events, size)
 
 /*
  * Wait on poll(2) event with nb_fd registered to the lttng_poll_event data
@@ -216,7 +216,7 @@ extern int compat_poll_create(struct lttng_poll_event *events, int size);
  */
 extern int compat_poll_wait(struct lttng_poll_event *events, int timeout);
 #define lttng_poll_wait(events, timeout) \
-	compat_poll_wait(events, timeout);
+	compat_poll_wait(events, timeout)
 
 /*
  * Add the fd to the pollfd structure. Resize if needed.
@@ -224,7 +224,7 @@ extern int compat_poll_wait(struct lttng_poll_event *events, int timeout);
 extern int compat_poll_add(struct lttng_poll_event *events,
 		int fd, uint32_t req_events);
 #define lttng_poll_add(events, fd, req_events) \
-	compat_poll_add(events, fd, req_events);
+	compat_poll_add(events, fd, req_events)
 
 /*
  * Remove the fd from the pollfd. Memory allocation is done to recreate a new
@@ -233,14 +233,14 @@ extern int compat_poll_add(struct lttng_poll_event *events,
  */
 extern int compat_poll_del(struct lttng_poll_event *events, int fd);
 #define lttng_poll_del(events, fd) \
-	compat_poll_del(events, fd);
+	compat_poll_del(events, fd)
 
 /*
  * Set up the poll set limits variable poll_max_size
  */
 extern void compat_poll_set_max_size(void);
-#define lttng_poll_set_max_size(void) \
-	compat_poll_set_max_size(void);
+#define lttng_poll_set_max_size() \
+	compat_poll_set_max_size()
 
 /*
  * No need to reset a pollfd structure for poll(2)
