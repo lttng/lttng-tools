@@ -288,9 +288,11 @@ static int view_trace(void)
 	if (getuid() != 0) {
 		if (getuid() != geteuid()) {
 			ERR("UID does not match effective UID.");
+			ret = CMD_ERROR;
 			goto error;
 		} else if (getgid() != getegid()) {
 			ERR("GID does not match effective GID.");
+			ret = CMD_ERROR;
 			goto error;
 		}
 	}
