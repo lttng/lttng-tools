@@ -204,12 +204,11 @@ int kernel_create_event(struct lttng_event *ev,
 	}
 
 	/*
-	 * LTTNG_KERNEL_SYSCALL event creation will return 0 on success. However
-	 * this FD must not be added to the event list.
+	 * LTTNG_KERNEL_SYSCALL event creation will return 0 on success.
 	 */
 	if (ret == 0 && event->event->instrumentation == LTTNG_KERNEL_SYSCALL) {
 		DBG2("Kernel event syscall creation success");
-		goto end;
+		goto add_list;
 	}
 
 	event->fd = ret;
@@ -219,13 +218,13 @@ int kernel_create_event(struct lttng_event *ev,
 		perror("fcntl session fd");
 	}
 
+add_list:
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
 	channel->event_count++;
 
 	DBG("Event %s created (fd: %d)", ev->name, event->fd);
 
-end:
 	return 0;
 
 free_event:

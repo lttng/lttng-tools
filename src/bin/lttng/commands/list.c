@@ -221,7 +221,7 @@ static void print_events(struct lttng_event *event)
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%s (type: syscall)%s", indent6,
+		MSG("%ssyscalls (type: syscall)%s", indent6,
 				enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_NOOP:
