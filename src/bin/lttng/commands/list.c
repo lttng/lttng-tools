@@ -604,16 +604,14 @@ int cmd_list(int argc, const char **argv)
 	} else if (opt_userspace) {
 		DBG2("Listing userspace global domain");
 		domain.type = LTTNG_DOMAIN_UST;
-	} else {
-		usage(stderr);
-		ret = CMD_UNDEFINED;
-		goto end;
 	}
 
-	handle = lttng_create_handle(session_name, &domain);
-	if (handle == NULL) {
-		ret = CMD_FATAL;
-		goto end;
+	if (opt_kernel || opt_userspace) {
+		handle = lttng_create_handle(session_name, &domain);
+		if (handle == NULL) {
+			ret = CMD_FATAL;
+			goto end;
+		}
 	}
 
 	if (session_name == NULL) {
@@ -676,7 +674,9 @@ int cmd_list(int argc, const char **argv)
 				}
 
 				/* Clean handle before creating a new one */
-				lttng_destroy_handle(handle);
+				if (handle) {
+					lttng_destroy_handle(handle);
+				}
 
 				handle = lttng_create_handle(session_name, &domains[i]);
 				if (handle == NULL) {
@@ -696,7 +696,9 @@ end:
 	if (domains) {
 		free(domains);
 	}
-	lttng_destroy_handle(handle);
+	if (handle) {
+		lttng_destroy_handle(handle);
+	}
 
 	poptFreeContext(pc);
 	return ret;
