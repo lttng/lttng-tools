@@ -241,7 +241,6 @@ static int two_session_same_name(void)
 int main(int argc, char **argv)
 {
 	int ret, i;
-	char *tmp_name;
 	struct ltt_session *iter, *tmp;
 
 	srand(time(NULL));
@@ -313,7 +312,9 @@ int main(int argc, char **argv)
 	printf("Creating %d sessions: ", MAX_SESSIONS);
 	fflush(stdout);
 	for (i = 0; i < MAX_SESSIONS; i++) {
-		ret = create_one_session(get_random_string(), PATH1);
+		char *tmp_name = get_random_string();
+
+		ret = create_one_session(tmp_name, PATH1);
 		if (ret < 0) {
 			printf("session %d (name: %s) creation failed\n", i, tmp_name);
 			return -1;
