@@ -21,7 +21,7 @@ NR_ITER=100
 TEST_BIN_NAME="gen-events-time"
 SESSION_NAME="ust-nprocesses"
 EVENT_NAME="ust_gen_event:tptest"
-TEST_WAIT_SEC=3
+TEST_WAIT_SEC=5
 
 source $TESTDIR/utils.sh
 
