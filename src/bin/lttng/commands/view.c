@@ -29,6 +29,7 @@
 
 static char *opt_session_name;
 static char *opt_viewer;
+static char *opt_trace_path;
 static const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;
 //static const char *lttv_gui_bin = CONFIG_LTTV_GUI_BIN;
 
@@ -42,6 +43,7 @@ static struct poptOption long_options[] = {
 	{"help",        'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"list-options", 0,  POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{"viewer",      'e', POPT_ARG_STRING, &opt_viewer, 0, 0, 0},
+	{"trace-path",  't', POPT_ARG_STRING, &opt_trace_path, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -88,9 +90,12 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "  -t, --trace-path PATH    Trace directory path for the viewer\n");
 	fprintf(ofp, "  -e, --viewer CMD         Specify viewer and/or options to use\n");
 	fprintf(ofp, "                           This will completely override the default viewers so\n");
-	fprintf(ofp, "                           please make sure to specify the full command.\n");
+	fprintf(ofp, "                           please make sure to specify the full command. The trace\n");
+	fprintf(ofp, "                           directory path of the session will be appended at the end\n");
+	fprintf(ofp, "                           to the arguments\n");
 	fprintf(ofp, "\n");
 }
 
@@ -269,12 +274,12 @@ error:
 static int view_trace(void)
 {
 	int ret, count, i, found = 0;
-	char *session_name;
+	char *session_name, *trace_path;
 	struct lttng_session *sessions = NULL;
 
 	/*
 	 * Safety net. If lttng is suid at some point for *any* useless reasons,
-	 * this prevent any bad execution of binraries.
+	 * this prevent any bad execution of binaries.
 	 */
 	if (getuid() != 0) {
 		if (getuid() != geteuid()) {
@@ -288,7 +293,10 @@ static int view_trace(void)
 		}
 	}
 
-	if (opt_session_name == NULL) {
+	/* User define trace path override the session name */
+	if (opt_trace_path) {
+		session_name = NULL;
+	} else if(opt_session_name == NULL) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
 			ret = CMD_ERROR;
@@ -300,33 +308,39 @@ static int view_trace(void)
 
 	DBG("Viewing trace for session %s", session_name);
 
-	/* Getting all sessions */
-	count = lttng_list_sessions(&sessions);
-	if (count < 0) {
-		ERR("Unable to list sessions. Session name %s not found.",
-				session_name);
-		MSG("Is there a session daemon running?");
-		ret = CMD_ERROR;
-		goto free_error;
-	}
-
-	/* Find our session listed by the session daemon */
-	for (i = 0; i < count; i++) {
-		if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-			found = 1;
-			break;
+	if (session_name) {
+		/* Getting all sessions */
+		count = lttng_list_sessions(&sessions);
+		if (count < 0) {
+			ERR("Unable to list sessions. Session name %s not found.",
+					session_name);
+			MSG("Is there a session daemon running?");
+			ret = CMD_ERROR;
+			goto free_error;
 		}
+
+		/* Find our session listed by the session daemon */
+		for (i = 0; i < count; i++) {
+			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			MSG("Session name %s not found", session_name);
+			ret = CMD_ERROR;
+			goto free_sessions;
+		}
+
+		trace_path = sessions[i].path;
+	} else {
+		trace_path = opt_trace_path;
 	}
 
-	if (!found) {
-		MSG("Session name %s not found", session_name);
-		ret = CMD_ERROR;
-		goto free_sessions;
-	}
+	MSG("Trace directory: %s\n", trace_path);
 
-	MSG("Trace directory: %s\n", sessions[i].path);
-
-	ret = spawn_viewer(sessions[i].path);
+	ret = spawn_viewer(trace_path);
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto free_sessions;
