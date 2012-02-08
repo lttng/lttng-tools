@@ -198,7 +198,6 @@ error:
 static int spawn_viewer(const char *trace_path)
 {
 	int ret = 0;
-	pid_t pid;
 	struct stat status;
 	const char *viewer_bin = NULL;
 	struct viewers *viewer;
@@ -211,61 +210,53 @@ static int spawn_viewer(const char *trace_path)
 		goto error;
 	}
 
-	pid = fork();
-	if (pid == 0) {
-		switch (viewer->type) {
-		case VIEWER_BABELTRACE:
-			if (stat(babeltrace_bin, &status) == 0) {
-				viewer_bin = babeltrace_bin;
-			} else {
-				viewer_bin = viewer->exec_name;
-			}
-			argv = alloc_argv_from_local_opts(babeltrace_opts,
-					ARRAY_SIZE(babeltrace_opts), trace_path);
-			break;
+	switch (viewer->type) {
+	case VIEWER_BABELTRACE:
+		if (stat(babeltrace_bin, &status) == 0) {
+			viewer_bin = babeltrace_bin;
+		} else {
+			viewer_bin = viewer->exec_name;
+		}
+		argv = alloc_argv_from_local_opts(babeltrace_opts,
+				ARRAY_SIZE(babeltrace_opts), trace_path);
+		break;
 #if 0
-		case VIEWER_LTTV_GUI:
-			if (stat(lttv_gui_bin, &status) == 0) {
-				viewer_bin = lttv_gui_bin;
-			} else {
-				viewer_bin = viewer->exec_name;
-			}
-			argv = alloc_argv_from_local_opts(lttv_gui_opts,
-					ARRAY_SIZE(lttv_gui_opts), trace_path);
-			break;
+	case VIEWER_LTTV_GUI:
+		if (stat(lttv_gui_bin, &status) == 0) {
+			viewer_bin = lttv_gui_bin;
+		} else {
+			viewer_bin = viewer->exec_name;
+		}
+		argv = alloc_argv_from_local_opts(lttv_gui_opts,
+				ARRAY_SIZE(lttv_gui_opts), trace_path);
+		break;
 #endif
-		case VIEWER_USER_DEFINED:
-			argv = alloc_argv_from_user_opts(opt_viewer, trace_path);
-			if (argv) {
-				viewer_bin = argv[0];
-			}
-			break;
-		default:
-			viewer_bin = viewers[VIEWER_BABELTRACE].exec_name;
-			argv = alloc_argv_from_local_opts(babeltrace_opts,
-					ARRAY_SIZE(babeltrace_opts), trace_path);
-			break;
+	case VIEWER_USER_DEFINED:
+		argv = alloc_argv_from_user_opts(opt_viewer, trace_path);
+		if (argv) {
+			viewer_bin = argv[0];
 		}
+		break;
+	default:
+		viewer_bin = viewers[VIEWER_BABELTRACE].exec_name;
+		argv = alloc_argv_from_local_opts(babeltrace_opts,
+				ARRAY_SIZE(babeltrace_opts), trace_path);
+		break;
+	}
 
-		if (argv == NULL) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-
-		DBG("Using %s viewer", viewer_bin);
-
-		ret = execvp(viewer_bin, argv);
-		if (ret) {
-			PERROR("exec: %s", viewer_bin);
-			free(argv);
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else if (pid > 0) {
-		ret = CMD_SUCCESS;
-	} else {
-		PERROR("Fork trace viewer");
+	if (argv == NULL) {
 		ret = CMD_FATAL;
+		goto error;
+	}
+
+	DBG("Using %s viewer", viewer_bin);
+
+	ret = execvp(viewer_bin, argv);
+	if (ret) {
+		PERROR("exec: %s", viewer_bin);
+		free(argv);
+		ret = CMD_FATAL;
+		goto error;
 	}
 
 error:
