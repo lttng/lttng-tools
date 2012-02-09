@@ -1,8 +1,23 @@
 /*
- * Copyright (C) - Bob Jenkins, May 2006, Public Domain.
+ * Copyright (C) - Bob Jenkins, May 2006
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; only version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
+/*
  * These are functions for producing 32-bit hashes for hash table lookup.
  * hashword(), hashlittle(), hashlittle2(), hashbig(), mix(), and final() are
  * externally useful functions.  Routines to test the hash are included if
