@@ -351,9 +351,15 @@ static int enable_events(char *session_name)
 
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
-			MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
-				opt_kernel ? "kernel" : "UST", channel_name,
-				opt_loglevel ? : "<all>");
+			if (opt_loglevel) {
+				MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
+					opt_kernel ? "kernel" : "UST", channel_name,
+					opt_loglevel);
+			} else {
+				MSG("All %s tracepoints are enabled in channel %s",
+					opt_kernel ? "kernel" : "UST", channel_name);
+
+			}
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
@@ -362,9 +368,14 @@ static int enable_events(char *session_name)
 			}
 			break;
 		case LTTNG_EVENT_ALL:
-			MSG("All %s events are enabled in channel %s for loglevel %s",
-				opt_kernel ? "kernel" : "UST", channel_name,
-				opt_loglevel ? : "<all>");
+			if (opt_loglevel) {
+				MSG("All %s events are enabled in channel %s for loglevel %s",
+					opt_kernel ? "kernel" : "UST", channel_name,
+					opt_loglevel);
+			} else {
+				MSG("All %s events are enabled in channel %s",
+					opt_kernel ? "kernel" : "UST", channel_name);
+			}
 			break;
 		default:
 			/*
