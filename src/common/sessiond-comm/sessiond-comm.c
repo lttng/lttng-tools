@@ -47,7 +47,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_SESS_NOT_FOUND) ] = "Session name not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_TRACE) ] = "No trace found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_FATAL) ] = "Fatal error of the session daemon",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CREATE_FAIL) ] = "Create trace failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_CREATE_DIR_FAIL) ] = "Create directory failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_START_FAIL) ] = "Start trace failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_STOP_FAIL) ] = "Stop trace failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_TRACEABLE) ] = "App is not traceable",
@@ -100,6 +100,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_EVENT_EXIST) ] = "UST event already exist",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_EVENT_NOT_FOUND)] = "UST event not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_EXIST)] = "UST context already exist",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_INVAL)] = "UST invalid context",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_COMMAND_SOCK_READY) ] = "consumerd command socket ready",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SUCCESS_RECV_FD) ] = "consumerd success on receiving fds",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_ERROR_RECV_FD) ] = "consumerd error on receiving fds",
@@ -249,9 +250,11 @@ int lttcomm_listen_unix_sock(int sock)
  */
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
+
+	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -273,9 +276,11 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
  */
 ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
+
+	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -313,13 +318,15 @@ int lttcomm_close_unix_sock(int sock)
  */
 ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
+
+	memset(&msg, 0, sizeof(msg));
 
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
@@ -362,8 +369,10 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	struct cmsghdr *cmsg;
 	size_t sizeof_fds = nb_fd * sizeof(int);
 	char recv_fd[CMSG_SPACE(sizeof_fds)];
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	char dummy;
+
+	memset(&msg, 0, sizeof(msg));
 
 	/* Prepare to receive the structures */
 	iov[0].iov_base = &dummy;
@@ -418,13 +427,15 @@ end:
  */
 ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	struct ucred *creds;
 	size_t sizeof_cred = sizeof(struct ucred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+
+	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -461,12 +472,14 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		struct ucred *creds)
 {
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret;
 	size_t sizeof_cred = sizeof(struct ucred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+
+	memset(&msg, 0, sizeof(msg));
 
 	/* Not allowed */
 	if (creds == NULL) {

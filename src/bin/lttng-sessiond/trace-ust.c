@@ -213,9 +213,6 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	case LTTNG_EVENT_TRACEPOINT:
 		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 		break;
-	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
-		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT_LOGLEVEL;
-		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
 		goto error_free_event;
@@ -225,12 +222,33 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	strncpy(lue->attr.name, ev->name, LTTNG_UST_SYM_NAME_LEN);
 	lue->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
+	switch (ev->loglevel_type) {
+	case LTTNG_EVENT_LOGLEVEL_ALL:
+		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		lue->attr.loglevel = -1;	/* Force to -1 */
+		break;
+	case LTTNG_EVENT_LOGLEVEL_RANGE:
+		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		lue->attr.loglevel = ev->loglevel;
+		break;
+	case LTTNG_EVENT_LOGLEVEL_SINGLE:
+		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		lue->attr.loglevel = ev->loglevel;
+		break;
+	default:
+		ERR("Unknown ust loglevel type (%d)", ev->type);
+		goto error_free_event;
+	}
+
+
 	/* Init node */
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);
 	/* Alloc context hash tables */
 	lue->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
-	DBG2("Trace UST event %s created", lue->attr.name);
+	DBG2("Trace UST event %s, loglevel (%d,%d) created",
+		lue->attr.name, lue->attr.loglevel_type,
+		lue->attr.loglevel);
 
 	return lue;
 

@@ -52,7 +52,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "get it from the configuration directory (.lttng).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "\n");
 }
 
@@ -77,6 +77,7 @@ static int destroy_session()
 
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
+		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto free_name;
 	}
 
@@ -117,11 +118,10 @@ int cmd_destroy(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -135,5 +135,6 @@ int cmd_destroy(int argc, const char **argv)
 	ret = destroy_session();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

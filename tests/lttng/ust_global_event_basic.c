@@ -31,17 +31,20 @@
 
 int main(int argc, char **argv)
 {
-    struct lttng_handle *handle = NULL;
-    struct lttng_domain dom;
+	struct lttng_handle *handle = NULL;
+	struct lttng_domain dom;
 	struct lttng_channel channel;
 	struct lttng_event ev1, ev2, ev3;
-
-    int ret = 0;
-
 	char *session_name = "ust_global_event_basic";
+	int ret = 0;
 
-    dom.type = LTTNG_DOMAIN_UST;
+	memset(&dom, 0, sizeof(dom));
+	memset(&channel, 0, sizeof(channel));
+	memset(&ev1, 0, sizeof(ev1));
+	memset(&ev2, 0, sizeof(ev2));
+	memset(&ev3, 0, sizeof(ev3));
 
+	dom.type = LTTNG_DOMAIN_UST;
 	strcpy(channel.name, "mychan");
 	channel.attr.overwrite = 0;
 	channel.attr.subbuf_size = 4096;
@@ -52,12 +55,15 @@ int main(int argc, char **argv)
 
 	strcpy(ev1.name, "tp1");
 	ev1.type = LTTNG_EVENT_TRACEPOINT;
+	ev1.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	strcpy(ev2.name, "ev2");
 	ev2.type = LTTNG_EVENT_TRACEPOINT;
+	ev2.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	strcpy(ev3.name, "ev3");
 	ev3.type = LTTNG_EVENT_TRACEPOINT;
+	ev3.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("\nTesting tracing UST events:\n");
 	printf("-----------\n");
@@ -68,10 +74,10 @@ int main(int argc, char **argv)
 	}
 
 	printf("Creating tracing session (%s): ", argv[1]);
-    if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
-        printf("error creating the session : %s\n", lttng_strerror(ret));
+	if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
+		printf("error creating the session : %s\n", lttng_strerror(ret));
 		goto create_fail;
-    }
+	}
 	PRINT_OK();
 
 	printf("Creating session handle: ");
@@ -89,10 +95,10 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Enabling %s UST event: ", ev1.name);
-    if ((ret = lttng_enable_event(handle, &ev1, channel.name)) < 0) {
-        printf("error enabling event: %s\n", lttng_strerror(ret));
+	if ((ret = lttng_enable_event(handle, &ev1, channel.name)) < 0) {
+		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
-    }
+	}
 	PRINT_OK();
 
 	printf("Enabling %s UST event: ", ev2.name);
@@ -172,5 +178,5 @@ enable_fail:
 	lttng_destroy_session(session_name);
 	lttng_destroy_handle(handle);
 
-    return 1;
+	return 1;
 }

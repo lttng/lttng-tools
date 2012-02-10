@@ -1275,6 +1275,13 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 		close(sock);
 		return -EINVAL;
 	}
+	if (msg->major != LTTNG_UST_COMM_MAJOR) {
+		ERR("Registration failed: application \"%s\" (pid: %d) has "
+			"communication protocol version %u.%u, but sessiond supports 2.x.\n",
+			msg->name, msg->pid, msg->major, msg->minor);
+		close(sock);
+		return -EINVAL;
+	}
 	lta = zmalloc(sizeof(struct ust_app));
 	if (lta == NULL) {
 		PERROR("malloc");
@@ -1420,8 +1427,7 @@ int ust_app_list_events(struct lttng_event **events)
 				}
 			}
 			memcpy(tmp[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
-			memcpy(tmp[count].loglevel, uiter.loglevel, LTTNG_UST_SYM_NAME_LEN);
-			tmp[count].loglevel_value = uiter.loglevel_value;
+			tmp[count].loglevel = uiter.loglevel;
 			tmp[count].type = LTTNG_UST_TRACEPOINT;
 			tmp[count].pid = app->key.pid;
 			tmp[count].enabled = -1;

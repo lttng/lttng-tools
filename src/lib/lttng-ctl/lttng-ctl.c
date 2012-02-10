@@ -74,6 +74,7 @@ static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src
 				memcpy(dst, src, sizeof(struct lttng_domain));
 				break;
 			default:
+				memset(dst, 0, sizeof(struct lttng_domain));
 				dst->type = LTTNG_DOMAIN_KERNEL;
 				break;
 		}
@@ -83,8 +84,8 @@ static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src
 /*
  * Send lttcomm_session_msg to the session daemon.
  *
- * On success, return 0
- * On error, return error code
+ * On success, returns the number of bytes sent (>=0)
+ * On error, returns -1
  */
 static int send_session_msg(struct lttcomm_session_msg *lsm)
 {
@@ -105,8 +106,8 @@ end:
 /*
  * Receive data from the sessiond socket.
  *
- * On success, return 0
- * On error, return recv() error code
+ * On success, returns the number of bytes received (>=0)
+ * On error, returns -1 (recvmsg() error) or -ENOTCONN
  */
 static int recv_data_sessiond(void *buf, size_t len)
 {
@@ -124,7 +125,7 @@ end:
 }
 
 /*
- *  Check if the specified group name exist.
+ *  Check if we are in the specified group.
  *
  *  If yes return 1, else return -1.
  */
@@ -155,11 +156,11 @@ static int check_tracing_group(const char *grp_name)
 	/* Alloc group list of the right size */
 	grp_list = malloc(grp_list_size * sizeof(gid_t));
 	if (!grp_list) {
-		ret = -1;
+		perror("malloc");
 		goto end;
 	}
 	grp_id = getgroups(grp_list_size, grp_list);
-	if (grp_id < -1) {
+	if (grp_id < 0) {
 		perror("getgroups");
 		goto free_list;
 	}
@@ -209,8 +210,10 @@ static int try_connect_sessiond(const char *sock_path)
 }
 
 /*
- * Set sessiond socket path by putting it in the global sessiond_sock_path
- * variable.
+ * Set sessiond socket path by putting it in the global
+ * sessiond_sock_path variable.
+ * Returns 0 on success,
+ * -ENOMEM on failure (the sessiond socket path is somehow too long)
  */
 static int set_session_daemon_path(void)
 {
@@ -225,35 +228,33 @@ static int set_session_daemon_path(void)
 		in_tgroup = check_tracing_group(tracing_group);
 	}
 
-	if (uid == 0) {
-		/* Root */
-		copy_string(sessiond_sock_path,
-				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+	if ((uid == 0) || in_tgroup) {
+		copy_string(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
 				sizeof(sessiond_sock_path));
-	} else if (in_tgroup) {
-		/* Tracing group */
-		copy_string(sessiond_sock_path,
-				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				sizeof(sessiond_sock_path));
+	}
 
-		ret = try_connect_sessiond(sessiond_sock_path);
-		if (ret < 0) {
-			/* Global session daemon not available */
-			if (snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
-						DEFAULT_HOME_CLIENT_UNIX_SOCK,
-						getenv("HOME")) < 0) {
-				return -ENOMEM;
+	if (uid != 0) {
+		if (in_tgroup) {
+			/* Tracing group */
+			ret = try_connect_sessiond(sessiond_sock_path);
+			if (ret >= 0) {
+				goto end;
 			}
+			/* Global session daemon not available... */
 		}
-	} else {
-		/* Not in tracing group and not root, default */
-		if (snprintf(sessiond_sock_path, PATH_MAX,
-					DEFAULT_HOME_CLIENT_UNIX_SOCK,
-					getenv("HOME")) < 0) {
+		/* ...or not in tracing group (and not root), default */
+
+		/*
+		 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
+		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
+		 */
+		ret = snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
+				DEFAULT_HOME_CLIENT_UNIX_SOCK, getenv("HOME"));
+		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
 			return -ENOMEM;
 		}
 	}
-
+end:
 	return 0;
 }
 
@@ -268,7 +269,7 @@ static int connect_sessiond(void)
 
 	ret = set_session_daemon_path();
 	if (ret < 0) {
-		return ret;
+		return -1; /* set_session_daemon_path() returns -ENOMEM */
 	}
 
 	/* Connect to the sesssion daemon */
@@ -284,7 +285,8 @@ static int connect_sessiond(void)
 }
 
 /*
- *  Clean disconnect the session daemon.
+ *  Clean disconnect from the session daemon.
+ *  On success, return 0. On error, return -1.
  */
 static int disconnect_sessiond(void)
 {
@@ -373,6 +375,7 @@ end:
 
 /*
  * Create lttng handle and return pointer.
+ * The returned pointer will be NULL in case of malloc() error.
  */
 struct lttng_handle *lttng_create_handle(const char *session_name,
 		struct lttng_domain *domain)
@@ -408,6 +411,7 @@ void lttng_destroy_handle(struct lttng_handle *handle)
 
 /*
  * Register an outside consumer.
+ * Returns size of returned session payload data or a negative error code.
  */
 int lttng_register_consumer(struct lttng_handle *handle,
 		const char *socket_path)
@@ -425,7 +429,8 @@ int lttng_register_consumer(struct lttng_handle *handle,
 }
 
 /*
- *  Start tracing for all trace of the session.
+ *  Start tracing for all traces of the session.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_start_tracing(const char *session_name)
 {
@@ -443,7 +448,8 @@ int lttng_start_tracing(const char *session_name)
 }
 
 /*
- *  Stop tracing for all trace of the session.
+ *  Stop tracing for all traces of the session.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_stop_tracing(const char *session_name)
 {
@@ -461,7 +467,10 @@ int lttng_stop_tracing(const char *session_name)
 }
 
 /*
- * Add context to event or/and channel.
+ * Add context to event and/or channel.
+ * If event_name is NULL, the context is applied to all events of the channel.
+ * If channel_name is NULL, a lookup of the event's channel is done.
+ * If both are NULL, the context is applied to all events of all channels.
  *
  * Returns the size of the returned payload data or a negative error code.
  */
@@ -475,6 +484,8 @@ int lttng_add_context(struct lttng_handle *handle,
 	if (handle == NULL || ctx == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_ADD_CONTEXT;
 
@@ -496,7 +507,10 @@ int lttng_add_context(struct lttng_handle *handle,
 }
 
 /*
- * Enable event
+ *  Enable event(s) for a channel.
+ *  If no event name is specified, all events are enabled.
+ *  If no channel name is specified, the default 'channel0' is used.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_enable_event(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name)
@@ -506,6 +520,8 @@ int lttng_enable_event(struct lttng_handle *handle,
 	if (handle == NULL || ev == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	/* If no channel name, we put the default name */
 	if (channel_name == NULL) {
@@ -532,7 +548,10 @@ int lttng_enable_event(struct lttng_handle *handle,
 }
 
 /*
- * Disable event of a channel and domain.
+ *  Disable event(s) of a channel and domain.
+ *  If no event name is specified, all events are disabled.
+ *  If no channel name is specified, the default 'channel0' is used.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_disable_event(struct lttng_handle *handle, const char *name,
 		const char *channel_name)
@@ -542,6 +561,8 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 	if (handle == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	if (channel_name) {
 		copy_string(lsm.u.disable.channel_name, channel_name,
@@ -567,7 +588,8 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 }
 
 /*
- * Enable channel per domain
+ *  Enable channel per domain
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *chan)
@@ -580,6 +602,8 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	if (handle == NULL || chan == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
 
@@ -594,7 +618,8 @@ int lttng_enable_channel(struct lttng_handle *handle,
 }
 
 /*
- * All tracing will be stopped for registered events of the channel.
+ *  All tracing will be stopped for registered events of the channel.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 {
@@ -604,6 +629,8 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 	if (handle == NULL || name == NULL) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_DISABLE_CHANNEL;
 
@@ -619,10 +646,10 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 }
 
 /*
- * List all available tracepoints of domain.
- *
- * Return the size (bytes) of the list and set the events array.
- * On error, return negative value.
+ *  Lists all available tracepoints of domain.
+ *  Sets the contents of the events array.
+ *  Returns the number of lttng_event entries in events;
+ *  on error, returns a negative value.
  */
 int lttng_list_tracepoints(struct lttng_handle *handle,
 		struct lttng_event **events)
@@ -646,10 +673,12 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 }
 
 /*
- *  Return a human readable string of code
+ *  Returns a human readable string describing
+ *  the error code (a negative value).
  */
 const char *lttng_strerror(int code)
 {
+	/* lttcomm error codes range from -LTTCOMM_OK down to -LTTCOMM_NR */
 	if (code > -LTTCOMM_OK) {
 		return "Ended with errors";
 	}
@@ -658,7 +687,8 @@ const char *lttng_strerror(int code)
 }
 
 /*
- *  Create a brand new session using name.
+ *  Create a brand new session using name and path.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_create_session(const char *name, const char *path)
 {
@@ -673,6 +703,7 @@ int lttng_create_session(const char *name, const char *path)
 
 /*
  *  Destroy session using name.
+ *  Returns size of returned session payload data or a negative error code.
  */
 int lttng_destroy_session(const char *session_name)
 {
@@ -691,9 +722,9 @@ int lttng_destroy_session(const char *session_name)
 
 /*
  *  Ask the session daemon for all available sessions.
- *
- *  Return number of session.
- *  On error, return negative value.
+ *  Sets the contents of the sessions array.
+ *  Returns the number of lttng_session entries in sessions;
+ *  on error, returns a negative value.
  */
 int lttng_list_sessions(struct lttng_session **sessions)
 {
@@ -710,7 +741,10 @@ int lttng_list_sessions(struct lttng_session **sessions)
 }
 
 /*
- * List domain of a session.
+ *  Ask the session daemon for all available domains of a session.
+ *  Sets the contents of the domains array.
+ *  Returns the number of lttng_domain entries in domains;
+ *  on error, returns a negative value.
  */
 int lttng_list_domains(const char *session_name,
 		struct lttng_domain **domains)
@@ -735,7 +769,10 @@ int lttng_list_domains(const char *session_name,
 }
 
 /*
- * List channels of a session
+ *  Ask the session daemon for all available channels of a session.
+ *  Sets the contents of the channels array.
+ *  Returns the number of lttng_channel entries in channels;
+ *  on error, returns a negative value.
  */
 int lttng_list_channels(struct lttng_handle *handle,
 		struct lttng_channel **channels)
@@ -762,7 +799,10 @@ int lttng_list_channels(struct lttng_handle *handle,
 }
 
 /*
- * List events of a session channel.
+ *  Ask the session daemon for all available events of a session channel.
+ *  Sets the contents of the events array.
+ *  Returns the number of lttng_event entries in events;
+ *  on error, returns a negative value.
  */
 int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events)
@@ -792,8 +832,9 @@ int lttng_list_events(struct lttng_handle *handle,
 }
 
 /*
- * Set tracing group variable with name. This function allocate memory pointed
- * by tracing_group.
+ * Sets the tracing_group variable with name.
+ * This function allocates memory pointed to by tracing_group.
+ * On success, returns 0, on error, returns -1 (null name) or -ENOMEM.
  */
 int lttng_set_tracing_group(const char *name)
 {
@@ -831,10 +872,13 @@ int lttng_calibrate(struct lttng_handle *handle,
 
 /*
  * Set default channel attributes.
+ * If either or both of the arguments are null, attr content is zeroe'd.
  */
 void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr)
 {
+	memset(attr, 0, sizeof(struct lttng_channel_attr));
+
 	/* Safety check */
 	if (attr == NULL || domain == NULL) {
 		return;
@@ -865,8 +909,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
 		break;
 	default:
-		/* Default behavior */
-		memset(attr, 0, sizeof(struct lttng_channel_attr));
+		/* Default behavior: leave set to 0. */
 		break;
 	}
 }
@@ -875,7 +918,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
  * Check if session daemon is alive.
  *
  * Return 1 if alive or 0 if not.
- * On error return -1
+ * On error returns a negative value.
  */
 int lttng_session_daemon_alive(void)
 {

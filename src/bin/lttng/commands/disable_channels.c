@@ -70,15 +70,15 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply on session name\n");
-	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+	fprintf(ofp, "  -s, --session            Apply to session name\n");
+	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "\n");
 }
@@ -88,9 +88,11 @@ static void usage(FILE *ofp)
  */
 static int disable_channels(char *session_name)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *channel_name;
 	struct lttng_domain dom;
+
+	memset(&dom, 0, sizeof(dom));
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -116,18 +118,25 @@ static int disable_channels(char *session_name)
 
 		ret = lttng_disable_channel(handle, channel_name);
 		if (ret < 0) {
-			goto error;
+			ERR("Channel %s: %s (session %s)", channel_name,
+					lttng_strerror(ret), session_name);
+			warn = 1;
 		} else {
 			MSG("%s channel %s disabled for session %s",
-					opt_kernel ? "Kernel" : "UST", channel_name,
-					session_name);
+					opt_kernel ? "Kernel" : "UST", channel_name, session_name);
 		}
 
 		/* Next channel */
 		channel_name = strtok(NULL, ",");
 	}
 
+	ret = CMD_SUCCESS;
+
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
+
 	lttng_destroy_handle(handle);
 
 	return ret;
@@ -140,7 +149,7 @@ error:
  */
 int cmd_disable_channels(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -150,15 +159,13 @@ int cmd_disable_channels(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -171,14 +178,14 @@ int cmd_disable_channels(int argc, const char **argv)
 	if (opt_channels == NULL) {
 		ERR("Missing channel name(s).\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -188,5 +195,9 @@ int cmd_disable_channels(int argc, const char **argv)
 	ret = disable_channels(session_name);
 
 end:
+	if (!opt_session_name && session_name) {
+		free(session_name);
+	}
+	poptFreeContext(pc);
 	return ret;
 }

@@ -70,22 +70,22 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng list [[-k] [-u] [-p PID] [SESSION [<options>]]]\n");
+	fprintf(ofp, "usage: lttng list [OPTIONS] [SESSION [<OPTIONS>]]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "With -k alone, list available kernel events\n");
-	fprintf(ofp, "With -u alone, list available userspace events\n");
+	fprintf(ofp, "Without a session, -k lists available kernel events\n");
+	fprintf(ofp, "Without a session, -u lists available userspace events\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help              Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "      --list-options      Simple listing of options\n");
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
 #if 0
 	fprintf(ofp, "  -p, --pid PID           List user-space events by PID\n");
 #endif
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
+	fprintf(ofp, "Session Options:\n");
 	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
 	fprintf(ofp, "  -d, --domain            List available domain(s)\n");
 	fprintf(ofp, "\n");
@@ -144,23 +144,43 @@ const char *enabled_string(int value)
 	}
 }
 
-static
-const char *loglevel_string_pre(const char *loglevel)
+static const char *loglevel_string(int value)
 {
-	if (loglevel[0] == '\0') {
+	switch (value) {
+	case -1:
 		return "";
-	} else {
-		return " (loglevel: ";
-	}
-}
-
-static
-const char *loglevel_string_post(const char *loglevel)
-{
-	if (loglevel[0] == '\0') {
-		return "";
-	} else {
-		return ")";
+	case LTTNG_LOGLEVEL_EMERG:
+		return "TRACE_EMERG";
+	case LTTNG_LOGLEVEL_ALERT:
+		return "TRACE_ALERT";
+	case LTTNG_LOGLEVEL_CRIT:
+		return "TRACE_CRIT";
+	case LTTNG_LOGLEVEL_ERR:
+		return "TRACE_ERR";
+	case LTTNG_LOGLEVEL_WARNING:
+		return "TRACE_WARNING";
+	case LTTNG_LOGLEVEL_NOTICE:
+		return "TRACE_NOTICE";
+	case LTTNG_LOGLEVEL_INFO:
+		return "TRACE_INFO";
+	case LTTNG_LOGLEVEL_DEBUG_SYSTEM:
+		return "TRACE_DEBUG_SYSTEM";
+	case LTTNG_LOGLEVEL_DEBUG_PROGRAM:
+		return "TRACE_DEBUG_PROGRAM";
+	case LTTNG_LOGLEVEL_DEBUG_PROCESS:
+		return "TRACE_DEBUG_PROCESS";
+	case LTTNG_LOGLEVEL_DEBUG_MODULE:
+		return "TRACE_DEBUG_MODULE";
+	case LTTNG_LOGLEVEL_DEBUG_UNIT:
+		return "TRACE_DEBUG_UNIT";
+	case LTTNG_LOGLEVEL_DEBUG_FUNCTION:
+		return "TRACE_DEBUG_FUNCTION";
+	case LTTNG_LOGLEVEL_DEBUG_LINE:
+		return "TRACE_DEBUG_LINE";
+	case LTTNG_LOGLEVEL_DEBUG:
+		return "TRACE_DEBUG";
+	default:
+		return "<<UNKNOWN>>";
 	}
 }
 
@@ -172,23 +192,19 @@ static void print_events(struct lttng_event *event)
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
-		char ll_value[LTTNG_SYMBOL_NAME_LEN] = "";
-
-		if (event->loglevel[0] != '\0') {
-			int ret;
-
-			ret = snprintf(ll_value, LTTNG_SYMBOL_NAME_LEN,
-				" (%lld)", (long long) event->loglevel_value);
-			if (ret < 0)
-				ERR("snprintf error");
-		}
-		MSG("%s%s%s%s%s%s (type: tracepoint)%s", indent6,
+		if (event->loglevel != -1) {
+			MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)%s",
+				indent6,
 				event->name,
-				loglevel_string_pre(event->loglevel),
+				loglevel_string(event->loglevel),
 				event->loglevel,
-				ll_value,
-				loglevel_string_post(event->loglevel),
 				enabled_string(event->enabled));
+		} else {
+			MSG("%s%s (type: tracepoint)%s",
+				indent6,
+				event->name,
+				enabled_string(event->enabled));
+		}
 		break;
 	}
 	case LTTNG_EVENT_PROBE:
@@ -208,17 +224,12 @@ static void print_events(struct lttng_event *event)
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%s (type: syscall)%s", indent6,
+		MSG("%ssyscalls (type: syscall)%s", indent6,
 				enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s", indent6,
 				enabled_string(event->enabled));
-		break;
-	case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
-		MSG("%s%s (type: tracepoint loglevel)%s", indent6,
-			event->name,
-			enabled_string(event->enabled));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */
@@ -238,6 +249,8 @@ static int list_ust_events(void)
 	struct lttng_event *event_list;
 	pid_t cur_pid = 0;
 
+	memset(&domain, 0, sizeof(domain));
+
 	DBG("Getting UST tracing events");
 
 	domain.type = LTTNG_DOMAIN_UST;
@@ -250,6 +263,7 @@ static int list_ust_events(void)
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
 		ERR("Unable to list UST events");
+		lttng_destroy_handle(handle);
 		return size;
 	}
 
@@ -270,10 +284,12 @@ static int list_ust_events(void)
 	MSG("");
 
 	free(event_list);
+	lttng_destroy_handle(handle);
 
 	return CMD_SUCCESS;
 
 error:
+	lttng_destroy_handle(handle);
 	return -1;
 }
 
@@ -287,6 +303,8 @@ static int list_kernel_events(void)
 	struct lttng_handle *handle;
 	struct lttng_event *event_list;
 
+	memset(&domain, 0, sizeof(domain));
+
 	DBG("Getting kernel tracing events");
 
 	domain.type = LTTNG_DOMAIN_KERNEL;
@@ -299,6 +317,7 @@ static int list_kernel_events(void)
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
 		ERR("Unable to list kernel events");
+		lttng_destroy_handle(handle);
 		return size;
 	}
 
@@ -312,9 +331,11 @@ static int list_kernel_events(void)
 
 	free(event_list);
 
+	lttng_destroy_handle(handle);
 	return CMD_SUCCESS;
 
 error:
+	lttng_destroy_handle(handle);
 	return -1;
 }
 
@@ -393,10 +414,10 @@ static int list_channels(const char *channel_name)
 	count = lttng_list_channels(handle, &channels);
 	if (count < 0) {
 		ret = count;
-		goto error;
+		goto error_channels;
 	} else if (count == 0) {
-		MSG("No channel found");
-		goto end;
+		ERR("Channel %s not found", channel_name);
+		goto error;
 	}
 
 	if (channel_name == NULL) {
@@ -425,14 +446,16 @@ static int list_channels(const char *channel_name)
 	}
 
 	if (!chan_found && channel_name != NULL) {
-		MSG("Channel %s not found", channel_name);
+		ERR("Channel %s not found", channel_name);
+		goto error;
 	}
 
-end:
-	free(channels);
 	ret = CMD_SUCCESS;
 
 error:
+	free(channels);
+
+error_channels:
 	return ret;
 }
 
@@ -469,7 +492,8 @@ static int list_sessions(const char *session_name)
 			continue;
 		}
 
-		MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path, active_string(sessions[i].enabled));
+		MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path,
+				active_string(sessions[i].enabled));
 
 		if (session_found) {
 			break;
@@ -479,7 +503,9 @@ static int list_sessions(const char *session_name)
 	free(sessions);
 
 	if (!session_found && session_name != NULL) {
-		MSG("Session %s not found", session_name);
+		ERR("Session '%s' not found", session_name);
+		ret = CMD_ERROR;
+		goto error;
 	}
 
 	if (session_name == NULL) {
@@ -543,8 +569,11 @@ int cmd_list(int argc, const char **argv)
 	struct lttng_domain domain;
 	struct lttng_domain *domains = NULL;
 
+	memset(&domain, 0, sizeof(domain));
+
 	if (argc < 1) {
 		usage(stderr);
+		ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -554,14 +583,13 @@ int cmd_list(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -581,15 +609,18 @@ int cmd_list(int argc, const char **argv)
 		domain.type = LTTNG_DOMAIN_UST;
 	}
 
-	handle = lttng_create_handle(session_name, &domain);
-	if (handle == NULL) {
-		goto end;
+	if (opt_kernel || opt_userspace) {
+		handle = lttng_create_handle(session_name, &domain);
+		if (handle == NULL) {
+			ret = CMD_FATAL;
+			goto end;
+		}
 	}
 
 	if (session_name == NULL) {
 		if (!opt_kernel && !opt_userspace) {
 			ret = list_sessions(NULL);
-			if (ret < 0) {
+			if (ret != 0) {
 				goto end;
 			}
 		}
@@ -608,7 +639,7 @@ int cmd_list(int argc, const char **argv)
 	} else {
 		/* List session attributes */
 		ret = list_sessions(session_name);
-		if (ret < 0) {
+		if (ret != 0) {
 			goto end;
 		}
 
@@ -646,10 +677,13 @@ int cmd_list(int argc, const char **argv)
 				}
 
 				/* Clean handle before creating a new one */
-				lttng_destroy_handle(handle);
+				if (handle) {
+					lttng_destroy_handle(handle);
+				}
 
 				handle = lttng_create_handle(session_name, &domains[i]);
 				if (handle == NULL) {
+					ret = CMD_FATAL;
 					goto end;
 				}
 
@@ -665,7 +699,10 @@ end:
 	if (domains) {
 		free(domains);
 	}
-	lttng_destroy_handle(handle);
+	if (handle) {
+		lttng_destroy_handle(handle);
+	}
 
+	poptFreeContext(pc);
 	return ret;
 }

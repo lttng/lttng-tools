@@ -1,3 +1,29 @@
+2012-02-09 lttng-tools 2.0-pre20
+	* New lttng view command
+	* Multiple loglevel fixes
+	* Fix list command
+	* Fix session syscall listing
+	* Multiple fixes across the code base
+
+2012-02-02 lttng-tools 2.0-pre19
+	* Update lttng ust ABI/API copy
+	* Implement UST calibrate and change default
+	* Add MSG_WAITALL to recvmsg of sessiond-comm
+	* Check kernel version for tests
+	* Add a '--list-options' option to each command.
+	* First import of extras/ with lttng bash completion
+	* Remove default defines from lttng.h
+	* Fix lttng sessiond spawn wait race
+	* Add CMD_WARNING error code
+	* Fix context mapping for UST and kernel
+	* Add kernel work-around for boot_id
+	* Rewrites lttng-ctl's set_session_daemon_path
+	* Fix memory lean in all lttng cli commands
+	* Update loglevel ABI
+	* Add padding to all ABIs for future development.
+	* Improve error handling of lttng cli
+	* Multiple fixes across the code base (nothing critical)
+
 2012-01-23 lttng-tools 2.0-pre18
 	* Complete change of the source directory tree
 	* Move compat to common and create an internal lib

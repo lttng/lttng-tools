@@ -221,7 +221,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	if (ret < 0) {
 		if (ret != -EEXIST) {
 			ERR("Trace directory creation error");
-			ret = LTTCOMM_CREATE_FAIL;
+			ret = LTTCOMM_CREATE_DIR_FAIL;
 			goto error;
 		}
 	}

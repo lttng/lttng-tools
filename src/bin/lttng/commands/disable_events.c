@@ -74,17 +74,17 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply on session name\n");
-	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
+	fprintf(ofp, "  -s, --session            Apply to session name\n");
+	fprintf(ofp, "  -c, --channel            Apply to this channel\n");
 	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "\n");
 }
@@ -96,25 +96,11 @@ static void usage(FILE *ofp)
  */
 static int disable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS;
+	int err, ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_domain dom;
 
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
-
-	if (opt_kernel && opt_userspace) {
-		ERR("Can't use -k/--kernel and -u/--userspace together");
-		ret = CMD_FATAL;
-		goto error;
-	}
+	memset(&dom, 0, sizeof(dom));
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -127,6 +113,17 @@ static int disable_events(char *session_name)
 		goto error;
 	}
 
+	/* Get channel name */
+	if (opt_channel_name == NULL) {
+		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
+		if (err < 0) {
+			ret = CMD_FATAL;
+			goto error;
+		}
+	} else {
+		channel_name = opt_channel_name;
+	}
+
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = -1;
@@ -136,6 +133,7 @@ static int disable_events(char *session_name)
 	if (opt_disable_all) {
 		ret = lttng_disable_event(handle, NULL, channel_name);
 		if (ret < 0) {
+			/* Don't set ret so lttng can interpret the sessiond error. */
 			goto error;
 		}
 
@@ -147,42 +145,30 @@ static int disable_events(char *session_name)
 	/* Strip event list */
 	event_name = strtok(opt_event_list, ",");
 	while (event_name != NULL) {
-		/* Kernel tracer action */
-		if (opt_kernel) {
-			DBG("Disabling kernel event %s in channel %s",
-					event_name, channel_name);
-		} else if (opt_userspace) {		/* User-space tracer action */
-#if 0
-			if (opt_cmd_name != NULL || opt_pid) {
-				MSG("Only supporting tracing all UST processes (-u) for now.");
-				ret = CMD_UNDEFINED;
-				goto error;
-			}
-#endif
-			DBG("Disabling UST event %s in channel %s",
-					event_name, channel_name);
-		} else {
-			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-			goto error;
-		}
+		DBG("Disabling event %s", event_name);
 
 		ret = lttng_disable_event(handle, event_name, channel_name);
 		if (ret < 0) {
-			MSG("Unable to disable %s event %s in channel %s",
-					opt_kernel ? "kernel" : "UST", event_name,
-					channel_name);
+			ERR("Event %s: %s (channel %s, session %s)", event_name,
+					lttng_strerror(ret), channel_name, session_name);
+			warn = 1;
 		} else {
-			MSG("%s event %s disabled in channel %s",
-					opt_kernel ? "kernel" : "UST", event_name,
-					channel_name);
+			MSG("%s event %s disabled in channel %s for session %s",
+					opt_kernel ? "kernel" : "UST", event_name, channel_name,
+					session_name);
 		}
 
 		/* Next event */
 		event_name = strtok(NULL, ",");
 	}
 
+	ret = CMD_SUCCESS;
+
 end:
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
 	if (opt_channel_name == NULL) {
 		free(channel_name);
 	}
@@ -198,7 +184,7 @@ error:
  */
 int cmd_disable_events(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -208,15 +194,13 @@ int cmd_disable_events(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -229,14 +213,14 @@ int cmd_disable_events(int argc, const char **argv)
 	if (opt_event_list == NULL && opt_disable_all == 0) {
 		ERR("Missing event name(s).\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -246,5 +230,9 @@ int cmd_disable_events(int argc, const char **argv)
 	ret = disable_events(session_name);
 
 end:
+	if (!opt_session_name && session_name) {
+		free(session_name);
+	}
+	poptFreeContext(pc);
 	return ret;
 }

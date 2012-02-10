@@ -75,7 +75,7 @@ enum lttcomm_return_code {
 	LTTCOMM_UNKNOWN_DOMAIN,         /* Tracing domain not known */
 	LTTCOMM_ALLOC_FAIL,				/* Trace allocation fail */
 	LTTCOMM_NO_SESSION,				/* No session found */
-	LTTCOMM_CREATE_FAIL,			/* Create trace fail */
+	LTTCOMM_CREATE_DIR_FAIL,        /* Create directory fail */
 	LTTCOMM_SESSION_FAIL,			/* Create session fail */
 	LTTCOMM_START_FAIL,				/* Start tracing fail */
 	LTTCOMM_STOP_FAIL,				/* Stop tracing fail */
@@ -135,6 +135,7 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_EVENT_EXIST,        /* UST event exist */
 	LTTCOMM_UST_EVENT_NOT_FOUND,    /* UST event not found */
 	LTTCOMM_UST_CONTEXT_EXIST,      /* UST context exist */
+	LTTCOMM_UST_CONTEXT_INVAL,      /* UST context invalid */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */

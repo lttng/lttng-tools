@@ -127,6 +127,9 @@ static int calibrate_lttng(void)
 	struct lttng_domain dom;
 	struct lttng_calibrate calibrate;
 
+	memset(&dom, 0, sizeof(dom));
+	memset(&calibrate, 0, sizeof(calibrate));
+
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
@@ -156,7 +159,6 @@ static int calibrate_lttng(void)
 		calibrate.type = LTTNG_CALIBRATE_FUNCTION;
 		ret = lttng_calibrate(handle, &calibrate);
 		if (ret < 0) {
-			ret = CMD_ERROR;
 			goto error;
 		}
 		MSG("%s calibration done", opt_kernel ? "Kernel" : "UST");
@@ -182,10 +184,12 @@ error:
 
 /*
  * Calibrate LTTng tracer.
+ *
+ * Returns a CMD_* error.
  */
 int cmd_calibrate(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -198,7 +202,6 @@ int cmd_calibrate(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stdout);
-			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_TRACEPOINT:
 			ret = CMD_UNDEFINED;
@@ -223,7 +226,6 @@ int cmd_calibrate(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -235,5 +237,6 @@ int cmd_calibrate(int argc, const char **argv)
 	ret = calibrate_lttng();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

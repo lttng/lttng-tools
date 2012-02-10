@@ -76,6 +76,7 @@ static struct cmd_struct commands[] =  {
 	{ "set-session", cmd_set_session},
 	{ "version", cmd_version},
 	{ "calibrate", cmd_calibrate},
+	{ "view", cmd_view},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -85,14 +86,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND>\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help             Show this help\n");
-	fprintf(ofp, "      --list-options     Simple listing of lttng options\n");
-	fprintf(ofp, "      --list-commands    Simple listing of lttng commands\n");
-	fprintf(ofp, "  -v, --verbose          Increase verbosity\n");
-	fprintf(ofp, "  -q, --quiet            Quiet mode\n");
-	fprintf(ofp, "  -g, --group NAME       Unix tracing group name. (default: tracing)\n");
-	fprintf(ofp, "  -n, --no-sessiond      Don't spawn a session daemon\n");
-	fprintf(ofp, "      --sessiond-path    Session daemon full path\n");
+	fprintf(ofp, "  -h, --help                 Show this help\n");
+	fprintf(ofp, "      --list-options         Simple listing of lttng options\n");
+	fprintf(ofp, "      --list-commands        Simple listing of lttng commands\n");
+	fprintf(ofp, "  -v, --verbose              Increase verbosity\n");
+	fprintf(ofp, "  -q, --quiet                Quiet mode\n");
+	fprintf(ofp, "  -g, --group NAME           Unix tracing group name. (default: tracing)\n");
+	fprintf(ofp, "  -n, --no-sessiond          Don't spawn a session daemon\n");
+	fprintf(ofp, "      --sessiond-path PATH   Session daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
 	fprintf(ofp, "    add-context     Add context to event and/or channel\n");
@@ -108,6 +109,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    start           Start tracing\n");
 	fprintf(ofp, "    stop            Stop tracing\n");
 	fprintf(ofp, "    version         Show version information\n");
+	fprintf(ofp, "    view            Start trace viewer\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Each command also has its own -h, --help option.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
 	fprintf(ofp, "See http://lttng.org for updates, bug reports and news.\n");
@@ -176,11 +180,11 @@ static void sighandler(int sig)
 
 	switch (sig) {
 		case SIGTERM:
-			DBG("SIGTERM caugth");
+			DBG("SIGTERM caught");
 			clean_exit(EXIT_FAILURE);
 			break;
 		case SIGCHLD:
-			DBG("SIGCHLD caugth");
+			DBG("SIGCHLD caught");
 			waitpid(sessiond_pid, &status, 0);
 			recv_child_signal = 1;
 			/* Indicate that the session daemon died */
@@ -190,10 +194,10 @@ static void sighandler(int sig)
 		case SIGUSR1:
 			/* Notify is done */
 			recv_child_signal = 1;
-			DBG("SIGUSR1 caugth");
+			DBG("SIGUSR1 caught");
 			break;
 		default:
-			DBG("Unknown signal %d caugth", sig);
+			DBG("Unknown signal %d caught", sig);
 			break;
 	}
 
@@ -262,20 +266,6 @@ static int handle_command(int argc, char **argv)
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
 			ret = cmd->func(argc, (const char**) argv);
-			switch (ret) {
-			case CMD_WARNING:
-				WARN("Some command(s) went wrong");
-				break;
-			case CMD_ERROR:
-				ERR("Command error");
-				break;
-			case CMD_UNDEFINED:
-				ERR("Undefined command");
-				break;
-			case CMD_FATAL:
-				ERR("Fatal error");
-				break;
-			}
 			goto end;
 		}
 		i++;
@@ -410,7 +400,9 @@ static int check_args_no_sessiond(int argc, char **argv)
 		if ((strncmp(argv[i], "-h", sizeof("-h")) == 0) ||
 				strncmp(argv[i], "--h", sizeof("--h")) == 0 ||
 				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0 ||
-				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0) {
+				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0 ||
+				strncmp(argv[i], "version", sizeof("version")) == 0 ||
+				strncmp(argv[i], "view", sizeof("view")) == 0) {
 			return 1;
 		}
 	}
@@ -436,6 +428,7 @@ static int parse_args(int argc, char **argv)
 		switch (opt) {
 		case 'h':
 			usage(stdout);
+			ret = 0;
 			goto end;
 		case 'v':
 			opt_verbose += 1;
@@ -462,6 +455,7 @@ static int parse_args(int argc, char **argv)
 			goto end;
 		default:
 			usage(stderr);
+			ret = 1;
 			goto error;
 		}
 	}
@@ -474,12 +468,14 @@ static int parse_args(int argc, char **argv)
 	/* Spawn session daemon if needed */
 	if (opt_no_sessiond == 0 && check_args_no_sessiond(argc, argv) == 0 &&
 			(check_sessiond() < 0)) {
+		ret = 1;
 		goto error;
 	}
 
 	/* No leftovers, print usage and quit */
 	if ((argc - optind) == 0) {
 		usage(stderr);
+		ret = 1;
 		goto error;
 	}
 
@@ -488,20 +484,33 @@ static int parse_args(int argc, char **argv)
 	 * options.
 	 */
 	ret = handle_command(argc - optind, argv + optind);
-	if (ret < 0) {
-		if (ret == -1) {
-			usage(stderr);
-		} else {
-			ERR("%s", lttng_strerror(ret));
-		}
-		goto error;
+	switch (ret) {
+	case CMD_WARNING:
+		WARN("Some command(s) went wrong");
+		break;
+	case CMD_ERROR:
+		ERR("Command error");
+		break;
+	case CMD_UNDEFINED:
+		ERR("Undefined command");
+		break;
+	case CMD_FATAL:
+		ERR("Fatal error");
+		break;
+	case -1:
+		usage(stderr);
+		ret = 1;
+		break;
+	case 0:
+		break;
+	default:
+		ERR("%s", lttng_strerror(ret));
+		break;
 	}
 
 end:
-	return 0;
-
 error:
-	return -1;
+	return ret;
 }
 
 
@@ -514,7 +523,7 @@ int main(int argc, char *argv[])
 
 	progname = argv[0] ? argv[0] : "lttng";
 
-	/* For Mathieu Desnoyers aka Dr Tracing */
+	/* For Mathieu Desnoyers a.k.a. Dr. Tracing */
 	if (strncmp(progname, "drtrace", 7) == 0 ||
 			strncmp("compudj", getenv("USER"), 7) == 0) {
 		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);
@@ -526,8 +535,8 @@ int main(int argc, char *argv[])
 	}
 
 	ret = parse_args(argc, argv);
-	if (ret < 0) {
-		clean_exit(EXIT_FAILURE);
+	if (ret != 0) {
+		clean_exit(ret);
 	}
 
 	return 0;

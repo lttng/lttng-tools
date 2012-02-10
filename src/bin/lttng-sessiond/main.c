@@ -316,7 +316,7 @@ error:
 static void teardown_kernel_session(struct ltt_session *session)
 {
 	if (!session->kernel_session) {
-		DBG3("No kernel session when tearingdown session");
+		DBG3("No kernel session when tearing down session");
 		return;
 	}
 
@@ -342,7 +342,7 @@ static void teardown_ust_session(struct ltt_session *session)
 	int ret;
 
 	if (!session->ust_session) {
-		DBG3("No UST session when tearingdown session");
+		DBG3("No UST session when tearing down session");
 		return;
 	}
 
@@ -399,7 +399,7 @@ static void cleanup(void)
 	}
 	free(cmd);
 
-	DBG("Cleaning up all session");
+	DBG("Cleaning up all sessions");
 
 	/* Destroy session list mutex */
 	if (session_list_ptr != NULL) {
@@ -2094,8 +2094,17 @@ static int list_lttng_ust_global_events(char *channel_name,
 		case LTTNG_UST_FUNCTION:
 			tmp[i].type = LTTNG_EVENT_FUNCTION;
 			break;
-		case LTTNG_UST_TRACEPOINT_LOGLEVEL:
-			tmp[i].type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
+		}
+		tmp[i].loglevel = uevent->attr.loglevel;
+		switch (uevent->attr.loglevel_type) {
+		case LTTNG_UST_LOGLEVEL_ALL:
+			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+			break;
+		case LTTNG_UST_LOGLEVEL_RANGE:
+			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
+			break;
+		case LTTNG_UST_LOGLEVEL_SINGLE:
+			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
 			break;
 		}
 		i++;
@@ -2482,12 +2491,6 @@ error:
 
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
- *
- * TODO: currently, both events and loglevels are kept within the same
- * namespace for UST global registry/app registery, so if an event
- * happen to have the same name as the loglevel (very unlikely though),
- * and an attempt is made to enable/disable both in the same session,
- * the first to be created will be the only one allowed to exist.
  */
 static int cmd_enable_event(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event)
@@ -3364,7 +3367,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		ret = cmd_disable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.disable.channel_name,
 				cmd_ctx->lsm->u.disable.name);
-		ret = LTTCOMM_OK;
 		break;
 	}
 	case LTTNG_DISABLE_ALL_EVENT:

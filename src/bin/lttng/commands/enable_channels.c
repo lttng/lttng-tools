@@ -84,15 +84,15 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply on session name\n");
-	fprintf(ofp, "  -k, --kernel             Apply on the kernel tracer\n");
+	fprintf(ofp, "  -s, --session            Apply to session name\n");
+	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Channel options:\n");
@@ -100,17 +100,17 @@ static void usage(FILE *ofp)
 		DEFAULT_CHANNEL_OVERWRITE ? "" : " (default)");
 	fprintf(ofp, "      --overwrite          Flight recorder mode%s\n",
 		DEFAULT_CHANNEL_OVERWRITE ? " (default)" : "");
-	fprintf(ofp, "      --subbuf-size        Subbuffer size in bytes\n");
+	fprintf(ofp, "      --subbuf-size SIZE   Subbuffer size in bytes\n");
 	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
 		DEFAULT_CHANNEL_SUBBUF_SIZE,
 		DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE);
-	fprintf(ofp, "      --num-subbuf         Number of subbufers\n");
+	fprintf(ofp, "      --num-subbuf NUM     Number of subbufers\n");
 	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
 		DEFAULT_CHANNEL_SUBBUF_NUM,
 		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM);
-	fprintf(ofp, "      --switch-timer       Switch timer interval in usec (default: %u)\n",
+	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec (default: %u)\n",
 		DEFAULT_CHANNEL_SWITCH_TIMER);
-	fprintf(ofp, "      --read-timer         Read timer interval in usec (default: %u)\n",
+	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (default: %u)\n",
 		DEFAULT_CHANNEL_READ_TIMER);
 	fprintf(ofp, "\n");
 }
@@ -151,9 +151,11 @@ static void set_default_attr(struct lttng_domain *dom)
  */
 static int enable_channel(char *session_name)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *channel_name;
 	struct lttng_domain dom;
+
+	memset(&dom, 0, sizeof(dom));
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -185,7 +187,9 @@ static int enable_channel(char *session_name)
 
 		ret = lttng_enable_channel(handle, &chan);
 		if (ret < 0) {
-			goto error;
+			ERR("Channel %s: %s (session %s)", channel_name,
+					lttng_strerror(ret), session_name);
+			warn = 1;
 		} else {
 			MSG("%s channel %s enabled for session %s",
 					opt_kernel ? "Kernel" : "UST", channel_name,
@@ -196,7 +200,13 @@ static int enable_channel(char *session_name)
 		channel_name = strtok(NULL, ",");
 	}
 
+	ret = CMD_SUCCESS;
+
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
+
 	lttng_destroy_handle(handle);
 
 	return ret;
@@ -219,7 +229,7 @@ static void init_channel_config(void)
  */
 int cmd_enable_channels(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -231,8 +241,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_DISCARD:
 			chan.attr.overwrite = 0;
@@ -243,18 +252,22 @@ int cmd_enable_channels(int argc, const char **argv)
 			DBG("Channel set to overwrite");
 			break;
 		case OPT_SUBBUF_SIZE:
+			/* TODO Replace atol with strtol and check for errors */
 			chan.attr.subbuf_size = atol(poptGetOptArg(pc));
 			DBG("Channel subbuf size set to %" PRIu64, chan.attr.subbuf_size);
 			break;
 		case OPT_NUM_SUBBUF:
+			/* TODO Replace atoi with strtol and check for errors */
 			chan.attr.num_subbuf = atoi(poptGetOptArg(pc));
 			DBG("Channel subbuf num set to %" PRIu64, chan.attr.num_subbuf);
 			break;
 		case OPT_SWITCH_TIMER:
+			/* TODO Replace atoi with strtol and check for errors */
 			chan.attr.switch_timer_interval = atoi(poptGetOptArg(pc));
 			DBG("Channel switch timer interval set to %d", chan.attr.switch_timer_interval);
 			break;
 		case OPT_READ_TIMER:
+			/* TODO Replace atoi with strtol and check for errors */
 			chan.attr.read_timer_interval = atoi(poptGetOptArg(pc));
 			DBG("Channel read timer interval set to %d", chan.attr.read_timer_interval);
 			break;
@@ -263,7 +276,6 @@ int cmd_enable_channels(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -276,14 +288,14 @@ int cmd_enable_channels(int argc, const char **argv)
 	if (opt_channels == NULL) {
 		ERR("Missing channel name.\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -293,5 +305,9 @@ int cmd_enable_channels(int argc, const char **argv)
 	ret = enable_channel(session_name);
 
 end:
+	if (!opt_session_name && session_name) {
+		free(session_name);
+	}
+	poptFreeContext(pc);
 	return ret;
 }

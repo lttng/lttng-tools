@@ -37,6 +37,7 @@
 #define PATH1 "/tmp/.test-junk-lttng"
 
 #define MAX_SESSIONS 10000
+#define RANDOM_STRING_LEN	11
 
 /*
  * String of 263 caracters. NAME_MAX + "OVERFLOW". If OVERFLOW appears in the
@@ -61,22 +62,23 @@ static const char alphanum[] =
 	"0123456789"
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	"abcdefghijklmnopqrstuvwxyz";
+static char random_string[RANDOM_STRING_LEN];
 
 /*
  * Return random string of 10 characters.
+ * Not thread-safe.
  */
 static char *get_random_string(void)
 {
 	int i;
-	char *str = malloc(11);
 
-	for (i = 0; i < 10; i++) {
-		str[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+	for (i = 0; i < RANDOM_STRING_LEN - 1; i++) {
+		random_string[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
 	}
 
-	str[10] = '\0';
+	random_string[RANDOM_STRING_LEN - 1] = '\0';
 
-	return str;
+	return random_string;
 }
 
 /*
@@ -239,7 +241,6 @@ static int two_session_same_name(void)
 int main(int argc, char **argv)
 {
 	int ret, i;
-	char *tmp_name;
 	struct ltt_session *iter, *tmp;
 
 	srand(time(NULL));
@@ -311,13 +312,13 @@ int main(int argc, char **argv)
 	printf("Creating %d sessions: ", MAX_SESSIONS);
 	fflush(stdout);
 	for (i = 0; i < MAX_SESSIONS; i++) {
-		tmp_name = get_random_string();
+		char *tmp_name = get_random_string();
+
 		ret = create_one_session(tmp_name, PATH1);
 		if (ret < 0) {
 			printf("session %d (name: %s) creation failed\n", i, tmp_name);
 			return -1;
 		}
-		free(tmp_name);
 	}
 	PRINT_OK();
 

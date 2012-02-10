@@ -9,3 +9,5 @@ SUBDIRS = src/common/ \
 
 bench:
 	./benchmark/runall.sh
+
+dist_doc_DATA = ChangeLog

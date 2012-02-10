@@ -33,6 +33,8 @@
 /* This path will NEVER be created in this test */
 #define PATH1 "/tmp/.test-junk-lttng"
 
+#define RANDOM_STRING_LEN	11
+
 /* For lttngerr.h */
 int opt_quiet = 1;
 int opt_verbose = 0;
@@ -43,22 +45,23 @@ static const char alphanum[] =
 	"abcdefghijklmnopqrstuvwxyz";
 
 static struct ltt_kernel_session *kern;
+static char random_string[RANDOM_STRING_LEN];
 
 /*
  * Return random string of 10 characters.
+ * Not thread-safe.
  */
 static char *get_random_string(void)
 {
 	int i;
-	char *str = malloc(11);
 
-	for (i = 0; i < 10; i++) {
-		str[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+	for (i = 0; i < RANDOM_STRING_LEN - 1; i++) {
+		random_string[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
 	}
 
-	str[10] = '\0';
+	random_string[RANDOM_STRING_LEN - 1] = '\0';
 
-	return str;
+	return random_string;
 }
 
 static void create_one_kernel_session(void)
@@ -117,6 +120,8 @@ static void create_kernel_channel(void)
 	struct ltt_kernel_channel *chan;
 	struct lttng_channel attr;
 
+	memset(&attr, 0, sizeof(attr));
+
 	printf("Creating kernel channel: ");
 	chan = trace_kernel_create_channel(&attr, PATH1);
 	assert(chan != NULL);
@@ -141,8 +146,10 @@ static void create_kernel_event(void)
 	struct ltt_kernel_event *event;
 	struct lttng_event ev;
 
-	strncpy(ev.name, get_random_string(), LTTNG_SYM_NAME_LEN);
+	memset(&ev, 0, sizeof(ev));
+	strncpy(ev.name, get_random_string(), LTTNG_KERNEL_SYM_NAME_LEN);
 	ev.type = LTTNG_EVENT_TRACEPOINT;
+	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("Creating kernel event: ");
 	event = trace_kernel_create_event(&ev);

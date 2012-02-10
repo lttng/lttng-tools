@@ -31,6 +31,8 @@
 
 static char *opt_event_list;
 static int opt_event_type;
+static const char *opt_loglevel;
+static int opt_loglevel_type;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
@@ -53,7 +55,8 @@ enum {
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
-	OPT_TRACEPOINT_LOGLEVEL,
+	OPT_LOGLEVEL,
+	OPT_LOGLEVEL_ONLY,
 	OPT_LIST_OPTIONS,
 };
 
@@ -84,7 +87,8 @@ static struct poptOption long_options[] = {
 	{"function:entry", 0,   POPT_ARG_STRING, &opt_function_entry_symbol, OPT_FUNCTION_ENTRY, 0, 0},
 #endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
-	{"loglevel",     0,     POPT_ARG_NONE, 0, OPT_TRACEPOINT_LOGLEVEL, 0, 0},
+	{"loglevel",       0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL, 0, 0},
+	{"loglevel-only",  0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL_ONLY, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -98,17 +102,17 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply on session name\n");
-	fprintf(ofp, "  -c, --channel            Apply on this channel\n");
+	fprintf(ofp, "  -s, --session            Apply to session name\n");
+	fprintf(ofp, "  -c, --channel            Apply to this channel\n");
 	fprintf(ofp, "  -a, --all                Enable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 #if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
 	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
 	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
 	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
 #else
-	fprintf(ofp, "  -u, --userspace          Apply for the user-space tracer\n");
+	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 #endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
@@ -118,7 +122,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                             e.g.:\n");
 	fprintf(ofp, "                               \"*\"\n");
 	fprintf(ofp, "                               \"app_component:na*\"\n");
-	fprintf(ofp, "    --loglevel             Tracepoint loglevel\n");
 	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
@@ -132,6 +135,33 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Function tracer event\n");
 #endif
 	fprintf(ofp, "    --syscall              System call event\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "    --loglevel name\n");
+	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel\n");
+	fprintf(ofp, "    --loglevel-only name\n");
+	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                           The loglevel or loglevel-only options should be\n");
+	fprintf(ofp, "                           combined with a tracepoint name or tracepoint\n");
+	fprintf(ofp, "                           wildcard.\n");
+	fprintf(ofp, "                           Available loglevels:\n");
+	fprintf(ofp, "                                              (higher value is more verbose)\n");
+	fprintf(ofp, "                               TRACE_EMERG          = 0\n");
+	fprintf(ofp, "                               TRACE_ALERT          = 1\n");
+	fprintf(ofp, "                               TRACE_CRIT           = 2\n");
+	fprintf(ofp, "                               TRACE_ERR            = 3\n");
+	fprintf(ofp, "                               TRACE_WARNING        = 4\n");
+	fprintf(ofp, "                               TRACE_NOTICE         = 5\n");
+	fprintf(ofp, "                               TRACE_INFO           = 6\n");
+	fprintf(ofp, "                               TRACE_DEBUG_SYSTEM   = 7\n");
+	fprintf(ofp, "                               TRACE_DEBUG_PROGRAM  = 8\n");
+	fprintf(ofp, "                               TRACE_DEBUG_PROCESS  = 9\n");
+	fprintf(ofp, "                               TRACE_DEBUG_MODULE   = 10\n");
+	fprintf(ofp, "                               TRACE_DEBUG_UNIT     = 11\n");
+	fprintf(ofp, "                               TRACE_DEBUG_FUNCTION = 12\n");
+	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
+	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
+	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
 	fprintf(ofp, "\n");
 }
 
@@ -203,30 +233,66 @@ end:
 }
 
 /*
+ * Maps loglevel from string to value
+ */
+static
+int loglevel_str_to_value(const char *inputstr)
+{
+	int i = 0;
+	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	while (inputstr[i] != '\0' && i < LTTNG_SYMBOL_NAME_LEN) {
+		str[i] = toupper(inputstr[i]);
+		i++;
+	}
+	str[i] = '\0';
+	if (!strcmp(str, "TRACE_EMERG") || !strcmp(str, "EMERG")) {
+		return LTTNG_LOGLEVEL_EMERG;
+	} else if (!strcmp(str, "TRACE_ALERT") || !strcmp(str, "ALERT")) {
+		return LTTNG_LOGLEVEL_ALERT;
+	} else if (!strcmp(str, "TRACE_CRIT") || !strcmp(str, "CRIT")) {
+		return LTTNG_LOGLEVEL_CRIT;
+	} else if (!strcmp(str, "TRACE_ERR") || !strcmp(str, "ERR")) {
+		return LTTNG_LOGLEVEL_ERR;
+	} else if (!strcmp(str, "TRACE_WARNING") || !strcmp(str, "WARNING")) {
+		return LTTNG_LOGLEVEL_WARNING;
+	} else if (!strcmp(str, "TRACE_NOTICE") || !strcmp(str, "NOTICE")) {
+		return LTTNG_LOGLEVEL_NOTICE;
+	} else if (!strcmp(str, "TRACE_INFO") || !strcmp(str, "INFO")) {
+		return LTTNG_LOGLEVEL_INFO;
+	} else if (!strcmp(str, "TRACE_DEBUG_SYSTEM") || !strcmp(str, "DEBUG_SYSTEM") || !strcmp(str, "SYSTEM")) {
+		return LTTNG_LOGLEVEL_DEBUG_SYSTEM;
+	} else if (!strcmp(str, "TRACE_DEBUG_PROGRAM") || !strcmp(str, "DEBUG_PROGRAM") || !strcmp(str, "PROGRAM")) {
+		return LTTNG_LOGLEVEL_DEBUG_PROGRAM;
+	} else if (!strcmp(str, "TRACE_DEBUG_PROCESS") || !strcmp(str, "DEBUG_PROCESS") || !strcmp(str, "PROCESS")) {
+		return LTTNG_LOGLEVEL_DEBUG_PROCESS;
+	} else if (!strcmp(str, "TRACE_DEBUG_MODULE") || !strcmp(str, "DEBUG_MODULE") || !strcmp(str, "MODULE")) {
+		return LTTNG_LOGLEVEL_DEBUG_MODULE;
+	} else if (!strcmp(str, "TRACE_DEBUG_UNIT") || !strcmp(str, "DEBUG_UNIT") || !strcmp(str, "UNIT")) {
+		return LTTNG_LOGLEVEL_DEBUG_UNIT;
+	} else if (!strcmp(str, "TRACE_DEBUG_FUNCTION") || !strcmp(str, "DEBUG_FUNCTION") || !strcmp(str, "FUNCTION")) {
+		return LTTNG_LOGLEVEL_DEBUG_FUNCTION;
+	} else if (!strcmp(str, "TRACE_DEBUG_LINE") || !strcmp(str, "DEBUG_LINE") || !strcmp(str, "LINE")) {
+		return LTTNG_LOGLEVEL_DEBUG_LINE;
+	} else if (!strcmp(str, "TRACE_DEBUG") || !strcmp(str, "DEBUG")) {
+		return LTTNG_LOGLEVEL_DEBUG;
+	} else {
+		return -1;
+	}
+}
+
+/*
  * Enabling event using the lttng API.
  */
 static int enable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS;
+	int err, ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
 
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
-
-	if (opt_kernel && opt_userspace) {
-		ERR("Can't use -k/--kernel and -u/--userspace together");
-		ret = CMD_FATAL;
-		goto error;
-	}
+	memset(&ev, 0, sizeof(ev));
+	memset(&dom, 0, sizeof(dom));
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -239,6 +305,16 @@ static int enable_events(char *session_name)
 		goto error;
 	}
 
+	if (opt_channel_name == NULL) {
+		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
+		if (err < 0) {
+			ret = CMD_FATAL;
+			goto error;
+		}
+	} else {
+		channel_name = opt_channel_name;
+	}
+
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = -1;
@@ -247,13 +323,25 @@ static int enable_events(char *session_name)
 
 	if (opt_enable_all) {
 		/* Default setup for enable all */
-
 		if (opt_kernel) {
 			ev.type = opt_event_type;
 			ev.name[0] = '\0';
+			/* kernel loglevels not implemented */
+			ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else {
 			ev.type = LTTNG_EVENT_TRACEPOINT;
 			strcpy(ev.name, "*");
+			ev.loglevel_type = opt_loglevel_type;
+			if (opt_loglevel) {
+				ev.loglevel = loglevel_str_to_value(opt_loglevel);
+				if (ev.loglevel == -1) {
+					ERR("Unknown loglevel %s", opt_loglevel);
+					ret = -1;
+					goto error;
+				}
+			} else {
+				ev.loglevel = -1;
+			}
 		}
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
@@ -263,8 +351,15 @@ static int enable_events(char *session_name)
 
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
-			MSG("All %s tracepoints are enabled in channel %s",
-				opt_kernel ? "kernel" : "UST", channel_name);
+			if (opt_loglevel) {
+				MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
+					opt_kernel ? "kernel" : "UST", channel_name,
+					opt_loglevel);
+			} else {
+				MSG("All %s tracepoints are enabled in channel %s",
+					opt_kernel ? "kernel" : "UST", channel_name);
+
+			}
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			if (opt_kernel) {
@@ -273,8 +368,14 @@ static int enable_events(char *session_name)
 			}
 			break;
 		case LTTNG_EVENT_ALL:
-			MSG("All %s events are enabled in channel %s",
-				opt_kernel ? "kernel" : "UST", channel_name);
+			if (opt_loglevel) {
+				MSG("All %s events are enabled in channel %s for loglevel %s",
+					opt_kernel ? "kernel" : "UST", channel_name,
+					opt_loglevel);
+			} else {
+				MSG("All %s events are enabled in channel %s",
+					opt_kernel ? "kernel" : "UST", channel_name);
+			}
 			break;
 		default:
 			/*
@@ -333,6 +434,15 @@ static int enable_events(char *session_name)
 				ret = CMD_UNDEFINED;
 				goto error;
 			}
+
+			if (opt_loglevel) {
+				MSG("Kernel loglevels are not supported.");
+				ret = CMD_UNDEFINED;
+				goto error;
+			}
+
+			/* kernel loglevels not implemented */
+			ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else if (opt_userspace) {		/* User-space tracer action */
 #if 0
 			if (opt_cmd_name != NULL || opt_pid) {
@@ -342,8 +452,8 @@ static int enable_events(char *session_name)
 			}
 #endif
 
-			DBG("Enabling UST event %s for channel %s", event_name,
-					channel_name);
+			DBG("Enabling UST event %s for channel %s, loglevel %s", event_name,
+					channel_name, opt_loglevel ? : "<all>");
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
@@ -354,27 +464,39 @@ static int enable_events(char *session_name)
 				strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
 				ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
-			case LTTNG_EVENT_TRACEPOINT_LOGLEVEL:
-				/* Copy name and type of the event */
-				ev.type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
-				strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
-				ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-				break;
 			case LTTNG_EVENT_PROBE:
 			case LTTNG_EVENT_FUNCTION:
 			case LTTNG_EVENT_FUNCTION_ENTRY:
 			case LTTNG_EVENT_SYSCALL:
 			default:
+				ERR("Event type not available for user-space tracing");
 				ret = CMD_UNDEFINED;
 				goto error;
 			}
+
+			ev.loglevel_type = opt_loglevel_type;
+			if (opt_loglevel) {
+				ev.loglevel = loglevel_str_to_value(opt_loglevel);
+				if (ev.loglevel == -1) {
+					ERR("Unknown loglevel %s", opt_loglevel);
+					ret = -1;
+					goto error;
+				}
+			} else {
+				ev.loglevel = -1;
+			}
 		} else {
 			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+			ret = CMD_ERROR;
 			goto error;
 		}
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
-		if (ret == 0) {
+		if (ret < 0) {
+			ERR("Event %s: %s (channel %s, session %s)", event_name,
+					lttng_strerror(ret), channel_name, session_name);
+			warn = 1;
+		} else {
 			MSG("%s event %s created in channel %s",
 					opt_kernel ? "kernel": "UST", event_name, channel_name);
 		}
@@ -385,6 +507,9 @@ static int enable_events(char *session_name)
 
 end:
 error:
+	if (warn) {
+		ret = CMD_WARNING;
+	}
 	if (opt_channel_name == NULL) {
 		free(channel_name);
 	}
@@ -398,7 +523,7 @@ error:
  */
 int cmd_enable_events(int argc, const char **argv)
 {
-	int opt, ret;
+	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -411,8 +536,7 @@ int cmd_enable_events(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
-			ret = CMD_SUCCESS;
+			usage(stdout);
 			goto end;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
@@ -432,12 +556,16 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
-		case OPT_TRACEPOINT_LOGLEVEL:
-			opt_event_type = LTTNG_EVENT_TRACEPOINT_LOGLEVEL;
+		case OPT_LOGLEVEL:
+			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
+			opt_loglevel = poptGetOptArg(pc);
+			break;
+		case OPT_LOGLEVEL_ONLY:
+			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
+			opt_loglevel = poptGetOptArg(pc);
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -450,14 +578,14 @@ int cmd_enable_events(int argc, const char **argv)
 	if (opt_event_list == NULL && opt_enable_all == 0) {
 		ERR("Missing event name(s).\n");
 		usage(stderr);
-		ret = CMD_SUCCESS;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -471,5 +599,6 @@ end:
 		free(session_name);
 	}
 
+	poptFreeContext(pc);
 	return ret;
 }

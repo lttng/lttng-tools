@@ -35,6 +35,8 @@
 /* This path will NEVER be created in this test */
 #define PATH1 "/tmp/.test-junk-lttng"
 
+#define RANDOM_STRING_LEN	11
+
 /* For lttngerr.h */
 int opt_quiet = 1;
 int opt_verbose = 0;
@@ -43,25 +45,26 @@ static const char alphanum[] =
 	"0123456789"
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	"abcdefghijklmnopqrstuvwxyz";
+static char random_string[RANDOM_STRING_LEN];
 
 static struct ltt_ust_session *usess;
 static struct lttng_domain dom;
 
 /*
  * Return random string of 10 characters.
+ * Not thread-safe.
  */
 static char *get_random_string(void)
 {
 	int i;
-	char *str = malloc(11);
 
-	for (i = 0; i < 10; i++) {
-		str[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+	for (i = 0; i < RANDOM_STRING_LEN - 1; i++) {
+		random_string[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
 	}
 
-	str[10] = '\0';
+	random_string[RANDOM_STRING_LEN - 1] = '\0';
 
-	return str;
+	return random_string;
 }
 
 static void create_one_ust_session(void)
@@ -122,6 +125,8 @@ static void create_ust_channel(void)
 	struct ltt_ust_channel *uchan;
 	struct lttng_channel attr;
 
+	memset(&attr, 0, sizeof(attr));
+
 	strncpy(attr.name, "channel0", 8);
 
 	printf("Creating UST channel: ");
@@ -147,8 +152,10 @@ static void create_ust_event(void)
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
 
+	memset(&ev, 0, sizeof(ev));
 	strncpy(ev.name, get_random_string(), LTTNG_SYMBOL_NAME_LEN);
 	ev.type = LTTNG_EVENT_TRACEPOINT;
+	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("Creating UST event: ");
 	event = trace_ust_create_event(&ev);

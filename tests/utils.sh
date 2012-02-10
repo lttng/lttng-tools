@@ -41,15 +41,16 @@ function validate_kernel_version ()
 
 function start_sessiond ()
 {
+	echo ""
+	echo -n "Starting session daemon... "
 	validate_kernel_version
 	if [ $? -ne 0 ]; then
 		echo -e "\n*** Kernel to old for session daemon tests ***\n"
 		return 2
 	fi
 
-	if [ -z $(pidof $SESSIOND_BIN) ]; then
-		echo -n "Starting session daemon... "
-		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet
+	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
+		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$(pwd)/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$(pwd)/../src/bin/lttng-consumerd/lttng-consumerd"
 		if [ $? -eq 1 ]; then
 			echo -e "\e[1;31mFAILED\e[0m"
 			return 1
@@ -153,6 +154,12 @@ function trace_matches ()
 	event_name=$1
 	nr_iter=$2
 	trace_path=$3
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -eq 1 ]; then
+		echo "Babeltrace binary not found. Skipping trace matches"
+		return 0
+	fi
 
 	echo -n "Looking for $nr_iter $event_name in $trace_path "
 

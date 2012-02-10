@@ -52,17 +52,18 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng create [options] [NAME]\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "  The default NAME is 'auto-yyyymmdd-hhmmss'\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
 	fprintf(ofp, "\n");
 }
 
 /*
- *  create_session
+ *  Create a tracing session.
+ *  If no name is specified, a default name is generated.
  *
- *  Create a tracing session. If no name specified, a default name will be
- *  generated.
+ *  Returns one of the CMD_* result constants.
  */
 static int create_session()
 {
@@ -118,15 +119,14 @@ static int create_session()
 
 	ret = lttng_create_session(session_name, traces_path);
 	if (ret < 0) {
+		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto error;
 	}
 
 	/* Init lttng session config */
 	ret = config_init(session_name);
 	if (ret < 0) {
-		if (ret == -1) {
-			ret = CMD_ERROR;
-		}
+		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -136,6 +136,10 @@ static int create_session()
 	ret = CMD_SUCCESS;
 
 error:
+	if (opt_session_name == NULL) {
+		free(session_name);
+	}
+
 	if (alloc_path) {
 		free(alloc_path);
 	}
@@ -147,9 +151,9 @@ error:
 }
 
 /*
- *  cmd_create
- *
  *  The 'create <options>' first level command
+ *
+ *  Returns one of the CMD_* result constants.
  */
 int cmd_create(int argc, const char **argv)
 {
@@ -162,11 +166,10 @@ int cmd_create(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stderr);
+			usage(stdout);
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			ret = CMD_SUCCESS;
 			goto end;
 		default:
 			usage(stderr);
@@ -180,5 +183,6 @@ int cmd_create(int argc, const char **argv)
 	ret = create_session();
 
 end:
+	poptFreeContext(pc);
 	return ret;
 }

@@ -31,17 +31,18 @@
 
 int main(int argc, char **argv)
 {
-    struct lttng_handle *handle = NULL;
-    struct lttng_domain dom;
+	struct lttng_handle *handle = NULL;
+	struct lttng_domain dom;
 	struct lttng_event event;
-    char *channel_name = "channel0";
+	char *channel_name = "channel0";
 	char *session_name = "ust_global_all_events_basic";
-    int ret = 0;
+	int ret = 0;
 
-    dom.type = LTTNG_DOMAIN_UST;
-
-	memset(&event, 0, sizeof(struct lttng_event));
+	memset(&dom, 0, sizeof(dom));
+	memset(&event, 0, sizeof(event));
+	dom.type = LTTNG_DOMAIN_UST;
 	event.type = LTTNG_EVENT_TRACEPOINT;
+	event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("\nTesting tracing all UST events:\n");
 	printf("-----------\n");
@@ -52,10 +53,10 @@ int main(int argc, char **argv)
 	}
 
 	printf("Creating tracing session (%s): ", argv[1]);
-    if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
-        printf("error creating the session : %s\n", lttng_strerror(ret));
+	if ((ret = lttng_create_session(session_name, argv[1])) < 0) {
+		printf("error creating the session : %s\n", lttng_strerror(ret));
 		goto create_fail;
-    }
+	}
 	PRINT_OK();
 
 	printf("Creating session handle: ");
@@ -66,20 +67,20 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Enabling all UST events: ");
-    if ((ret = lttng_enable_event(handle, &event, channel_name)) < 0) {
-        printf("error enabling event: %s\n", lttng_strerror(ret));
+	if ((ret = lttng_enable_event(handle, &event, channel_name)) < 0) {
+		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
-    }
+	}
 	PRINT_OK();
 
 	printf("Start tracing: ");
-    if ((ret = lttng_start_tracing(session_name)) < 0) {
-        printf("error starting tracing: %s\n", lttng_strerror(ret));
+	if ((ret = lttng_start_tracing(session_name)) < 0) {
+		printf("error starting tracing: %s\n", lttng_strerror(ret));
 		goto start_fail;
-    }
+	}
 	PRINT_OK();
 
-    sleep(2);
+	sleep(2);
 
 	printf("Stop tracing: ");
 	if ((ret = lttng_stop_tracing(session_name)) < 0) {
@@ -107,5 +108,5 @@ enable_fail:
 	lttng_destroy_session(session_name);
 	lttng_destroy_handle(handle);
 
-    return 1;
+	return 1;
 }

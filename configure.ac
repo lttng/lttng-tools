@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.0-pre18],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0-pre20],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -13,6 +13,22 @@ AC_CHECK_HEADERS([ \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
+
+# Babeltrace viewer check
+AC_ARG_WITH([babeltrace-bin],
+	AS_HELP_STRING([--with-babeltrace-bin],
+	[Location of the babeltrace viewer executable (including the filename)]),
+	[BABELTRACE_BIN="$withval"],
+	[BABELTRACE_BIN=''])
+AC_SUBST([BABELTRACE_BIN])
+
+# lttv-gui
+AC_ARG_WITH([lttv-gui-bin],
+	AS_HELP_STRING([--with-lttv-gui-bin],
+   [Location of the lttv GUI viewer executable (including the filename)]),
+   [LTTV_GUI_BIN="$withval"],
+   [LTTV_GUI_BIN=''])
+AC_SUBST([LTTV_GUI_BIN])
 
 AC_ARG_WITH([consumerd32-bin],
 	AS_HELP_STRING([--with-consumerd32-bin],
@@ -46,6 +62,8 @@ AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], "$CONSUMERD32_BIN", [Location of th
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of the 64-bit consumerd executable])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], "$CONSUMERD64_LIBDIR", [Search for consumerd 64-bit libraries in this location.])
+AC_DEFINE_UNQUOTED([CONFIG_BABELTRACE_BIN], "$BABELTRACE_BIN", [Location of the babeltrace viewer executable.])
+AC_DEFINE_UNQUOTED([CONFIG_LTTV_GUI_BIN], "$LTTV_GUI_BIN", [Location of the lttv GUI viewer executable.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
@@ -137,6 +155,7 @@ AC_SUBST(DEFAULT_INCLUDES)
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
+	doc/man/Makefile
 	include/Makefile
 	benchmark/Makefile
 	src/Makefile
