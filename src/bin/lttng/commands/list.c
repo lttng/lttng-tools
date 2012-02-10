@@ -144,26 +144,6 @@ const char *enabled_string(int value)
 	}
 }
 
-static
-const char *loglevel_string_pre(int loglevel)
-{
-	if (loglevel == -1) {
-		return "";
-	} else {
-		return " (loglevel: ";
-	}
-}
-
-static
-const char *loglevel_string_post(int loglevel)
-{
-	if (loglevel == -1) {
-		return "";
-	} else {
-		return ")";
-	}
-}
-
 static const char *loglevel_string(int value)
 {
 	switch (value) {
@@ -212,12 +192,19 @@ static void print_events(struct lttng_event *event)
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
-		MSG("%s%s%s%s%s (type: tracepoint)%s", indent6,
+		if (event->loglevel != -1) {
+			MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)%s",
+				indent6,
 				event->name,
-				loglevel_string_pre(event->loglevel),
 				loglevel_string(event->loglevel),
-				loglevel_string_post(event->loglevel),
+				event->loglevel,
 				enabled_string(event->enabled));
+		} else {
+			MSG("%s%s (type: tracepoint)%s",
+				indent6,
+				event->name,
+				enabled_string(event->enabled));
+		}
 		break;
 	}
 	case LTTNG_EVENT_PROBE:
