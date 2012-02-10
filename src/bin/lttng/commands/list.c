@@ -167,23 +167,40 @@ const char *loglevel_string_post(int loglevel)
 static const char *loglevel_string(int value)
 {
 	switch (value) {
-	case -1: return "";
-	case 0: return "TRACE_EMERG";
-	case 1: return "TRACE_ALERT";
-	case 2: return "TRACE_CRIT";
-	case 3: return "TRACE_ERR";
-	case 4: return "TRACE_WARNING";
-	case 5: return "TRACE_NOTICE";
-	case 6: return "TRACE_INFO";
-	case 7: return "TRACE_DEBUG_SYSTEM";
-	case 8: return "TRACE_DEBUG_PROGRAM";
-	case 9: return "TRACE_DEBUG_PROCESS";
-	case 10: return "TRACE_DEBUG_MODULE";
-	case 11: return "TRACE_DEBUG_UNIT";
-	case 12: return "TRACE_DEBUG_FUNCTION";
-	case 13: return "TRACE_DEBUG_LINE";
-	case 14: return "TRACE_DEBUG";
-	default: return "<<UNKNOWN>>";
+	case -1:
+		return "";
+	case LTTNG_LOGLEVEL_EMERG:
+		return "TRACE_EMERG";
+	case LTTNG_LOGLEVEL_ALERT:
+		return "TRACE_ALERT";
+	case LTTNG_LOGLEVEL_CRIT:
+		return "TRACE_CRIT";
+	case LTTNG_LOGLEVEL_ERR:
+		return "TRACE_ERR";
+	case LTTNG_LOGLEVEL_WARNING:
+		return "TRACE_WARNING";
+	case LTTNG_LOGLEVEL_NOTICE:
+		return "TRACE_NOTICE";
+	case LTTNG_LOGLEVEL_INFO:
+		return "TRACE_INFO";
+	case LTTNG_LOGLEVEL_DEBUG_SYSTEM:
+		return "TRACE_DEBUG_SYSTEM";
+	case LTTNG_LOGLEVEL_DEBUG_PROGRAM:
+		return "TRACE_DEBUG_PROGRAM";
+	case LTTNG_LOGLEVEL_DEBUG_PROCESS:
+		return "TRACE_DEBUG_PROCESS";
+	case LTTNG_LOGLEVEL_DEBUG_MODULE:
+		return "TRACE_DEBUG_MODULE";
+	case LTTNG_LOGLEVEL_DEBUG_UNIT:
+		return "TRACE_DEBUG_UNIT";
+	case LTTNG_LOGLEVEL_DEBUG_FUNCTION:
+		return "TRACE_DEBUG_FUNCTION";
+	case LTTNG_LOGLEVEL_DEBUG_LINE:
+		return "TRACE_DEBUG_LINE";
+	case LTTNG_LOGLEVEL_DEBUG:
+		return "TRACE_DEBUG";
+	default:
+		return "<<UNKNOWN>>";
 	}
 }
 
