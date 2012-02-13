@@ -309,6 +309,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "will be added to all events and all channels.\n");
 	fprintf(ofp, "Otherwise the context will be added only to the channel (-c)\n");
 	fprintf(ofp, "and/or event (-e) indicated.\n");
+	fprintf(ofp, "Exactly one domain (-k/--kernel or -u/--userspace) must be specified.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -533,6 +534,10 @@ int cmd_add_context(int argc, const char **argv)
 	}
 
 	ret = add_context(session_name);
+
+	if (!opt_session_name) {
+		free(session_name);
+	}
 
 end:
 	/* Cleanup allocated memory */
