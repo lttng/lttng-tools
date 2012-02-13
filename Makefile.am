@@ -6,3 +6,5 @@ SUBDIRS = src \
 		  doc
 
 dist_doc_DATA = ChangeLog
+
+EXTRA_DIST = extras/lttng-bash_completion
