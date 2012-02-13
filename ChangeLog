@@ -1,3 +1,10 @@
+2012-02-13 lttng-tools 2.0-pre21
+	* Fix licensing for hashtable/utils.c
+	* Print loglevel value in list -u
+	* Remove "<all> from MSG() when no loglevel is selected
+	* Initial import of man lttng.1 and lttng-sessiond.8
+	* Fix memory leak  master
+
 2012-02-09 lttng-tools 2.0-pre20
 	* New lttng view command
 	* Multiple loglevel fixes
