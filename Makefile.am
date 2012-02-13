@@ -5,6 +5,7 @@ SUBDIRS = src \
 		  include \
 		  doc
 
-dist_doc_DATA = ChangeLog
+dist_doc_DATA = LICENSE \
+                ChangeLog
 
 EXTRA_DIST = extras/lttng-bash_completion
