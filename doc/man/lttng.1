@@ -48,29 +48,29 @@ two dashes. Below is a summary of the available options.
 .PP
 
 .TP
-.BR "-h, --help"
+.BR "\-h, \-\-help"
 Show summary of possible options and commands.
 .TP
-.BR "-v, --verbose"
+.BR "\-v, \-\-verbose"
 Increase verbosity.
-FIXME : details (-v : sessiond verbose, -vv : consumerd verbose, etc) ?
+FIXME : details (\-v : sessiond verbose, \-vv : consumerd verbose, etc) ?
 .TP
-.BR "-q, --quiet"
+.BR "\-q, \-\-quiet"
 Suppress all messages (even errors).
 .TP
-.BR "-g, --group NAME"
+.BR "\-g, \-\-group NAME"
 Set unix tracing group name. (default: tracing)
 .TP
-.BR "-n, --no-sessiond"
+.BR "\-n, \-\-no-sessiond"
 Don't automatically spawn a session daemon.
 .TP
-.BR "--sessiond-path"
+.BR "\-\-sessiond\-path"
 Set session daemon full binary path.
 .TP
-.BR "--list-options"
+.BR "\-\-list\-options"
 Simple listing of lttng options.
 .TP
-.BR "--list-commands"
+.BR "\-\-list\-commands"
 Simple listing of lttng commands.
 .SH "COMMANDS"
 
@@ -88,37 +88,37 @@ For example, this command will add the context information 'prio' and two perf
 counters (hardware branch misses and cache misses), to all events in the trace
 data output:
 
-# lttng add-context -k -t prio -t perf:branch-misses -t perf:cache-misses
+# lttng add-context \-k \-t prio \-t perf:branch-misses \-t perf:cache-misses
 
-Please take a look at the help (-h/--help) for a detailed list of available
+Please take a look at the help (\-h/\-\-help) for a detailed list of available
 contexts.
 
-If no channel and no event is given (-c/-e), the context is added to all
+If no channel and no event is given (\-c/\-e), the context is added to all
 channels (which applies automatically to all events in that channel). Otherwise
-the context will be added only to the channel (-c) and/or event (-e) indicated.
+the context will be added only to the channel (\-c) and/or event (\-e) indicated.
 
-If \fB-s, --session\fP is omitted, the session name is taken from the .lttngrc
+If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 .fi
 
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
--s, --session NAME
+\-s, \-\-session NAME
         Apply on session name.
--c, --channel NAME
+\-c, \-\-channel NAME
         Apply on channel name.
--e, --event NAME
+\-e, \-\-event NAME
         Apply on event name.
--k, --kernel
+\-k, \-\-kernel
         Apply for the kernel tracer
--u, --userspace
+\-u, \-\-userspace
         Apply for the user-space tracer
--t, --type TYPE
+\-t, \-\-type TYPE
         Context type. You can repeat this option on the command line. Please
-        use "lttng add-context -h" to list all available types.
+        use "lttng add-context \-h" to list all available types.
 .fi
 
 .IP
@@ -143,19 +143,19 @@ looking for "generic registers".
 
 This sequence of commands will gather a trace executing a kretprobe hooked on
 an empty function, gathering PMU counters LLC (Last Level Cache) misses
-information (see lttng add-context --help to see the list of available PMU
+information (see lttng add-context \-\-help to see the list of available PMU
 counters).
 
 # lttng create calibrate-function
-# lttng enable-event calibrate --kernel --function lttng_calibrate_kretprobe
-# lttng add-context --kernel -t perf:LLC-load-misses -t perf:LLC-store-misses \\
-                  -t perf:LLC-prefetch-misses
+# lttng enable-event calibrate \-\-kernel \-\-function lttng_calibrate_kretprobe
+# lttng add-context \-\-kernel \-t perf:LLC-load-misses \-t perf:LLC-store-misses \\
+                  \-t perf:LLC-prefetch-misses
 # lttng start
 # for a in $(seq 1 10); do \\
-        lttng calibrate --kernel --function;
+        lttng calibrate \-\-kernel \-\-function;
   done
 # lttng destroy
-# babeltrace $(ls -1drt ~/lttng-traces/calibrate-function-* | tail -n 1)
+# babeltrace $(ls \-1drt ~/lttng-traces/calibrate-function-* | tail \-n 1)
 
 The output from babeltrace can be saved to a text file and opened in a
 spreadsheet (e.g. oocalc) to focus on the per-PMU counter delta between
@@ -182,13 +182,13 @@ prefetch activity) to be accounted for.
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
--k, --kernel
+\-k, \-\-kernel
         Apply for the kernel tracer
--u, --userspace
+\-u, \-\-userspace
         Apply for the user-space tracer
---function
+\-\-function
         Dynamic function entry/return probe (default)
 .fi
 
@@ -207,18 +207,18 @@ On creation, a \fB.lttngrc\fP file is created in your $HOME directory
 containing the current session name. If NAME is omitted, a session name is
 automatically created having this form: 'auto-yyyymmdd-hhmms'.
 
-If no \fB-o, --output\fP is specified, the traces will be written in
+If no \fB\-o, \-\-output\fP is specified, the traces will be written in
 $HOME/lttng-traces.
 .fi
 
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
--o, --output PATH
+\-o, \-\-output PATH
         Specify output path for traces
 .fi
 
@@ -236,9 +236,9 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
 .fi
 
@@ -248,35 +248,35 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 .nf
 Enable tracing channel
 
-If \fB-s, --session\fP is omitted, the session name is taken from the .lttngrc
+If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 .fi
 
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show this help
---list-options
+\-\-list-options
         Simple listing of options
--s, --session
+\-s, \-\-session
         Apply on session name
--k, --kernel
+\-k, \-\-kernel
         Apply to the kernel tracer
--u, --userspace
+\-u, \-\-userspace
         Apply to the user-space tracer
 
---discard
+\-\-discard
         Discard event when subbuffers are full (default)
---overwrite
+\-\-overwrite
         Flight recorder mode : overwrites events when subbuffers are full
---subbuf-size
+\-\-subbuf-size
         Subbuffer size in bytes (default: 4096, kernel default: 262144)
---num-subbuf
+\-\-num-subbuf
         Number of subbufers (default: 8, kernel default: 4)
---switch-timer
+\-\-switch-timer
         Switch subbuffer timer interval in usec (default: 0)
---read-timer
+\-\-read-timer
         Read timer interval in usec (default: 200)
 .fi
 
@@ -286,117 +286,117 @@ file.
 .nf
 Enable tracing event
 
-A tracing event is always assigned to a channel. If \fB-c, --channel\fP is
+A tracing event is always assigned to a channel. If \fB\-c, \-\-channel\fP is
 omitted, a default channel named '\fBchannel0\fP' is created and the event is
-added to it. For the user-space tracer, using \fB-a, --all\fP is the same as
+added to it. For the user-space tracer, using \fB\-a, \-\-all\fP is the same as
 using the wildcard "*".
 
-If \fB-s, --session\fP is omitted, the session name is taken from the .lttngrc
+If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 .fi
 
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
--s, --session
+\-s, \-\-session
         Apply on session name
--c, --channel
+\-c, \-\-channel
         Apply on channel name
--a, --all
+\-a, \-\-all
         Enable all tracepoints
--k, --kernel
+\-k, \-\-kernel
         Apply for the kernel tracer
--u, --userspace
+\-u, \-\-userspace
         Apply for the user-space tracer
 
---tracepoint
+\-\-tracepoint
         Tracepoint event (default)
         - userspace tracer supports wildcards at end of string. Don't forget to
         quote to deal with bash expansion.
         e.g.:
         "*"
         "app_component:na*"
---loglevel
+\-\-loglevel
         Tracepoint loglevel
---probe [addr | symbol | symbol+offset]
+\-\-probe [addr | symbol | symbol+offset]
         Dynamic probe. Addr and offset can be octal (0NNN...), decimal (NNN...)
         or hexadecimal (0xNNN...)
---function [addr | symbol | symbol+offset]
+\-\-function [addr | symbol | symbol+offset]
         Dynamic function entry/return probe. Addr and offset can be octal
         (0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
---syscall
+\-\-syscall
         System call event
         Enabling syscalls tracing (kernel tracer), you will not be able to disable them
         with disable-event. This is a known limitation. You can disable the entire
         channel to do the trick.
 .fi
 
-.IP "\fBdisable-channel\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
+.IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
 .nf
 Disable tracing channel
 
 Disabling a channel makes all event(s) in that channel to stop tracing. You can
 enable it back by calling \fBlttng enable-channel NAME\fP again.
 
-If \fB-s, --session\fP is omitted, the session name is taken from the .lttngrc
+If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 .fi
 
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
--s, --session
+\-s, \-\-session
         Apply on session name
--k, --kernel
+\-k, \-\-kernel
         Apply for the kernel tracer
--u, --userspace
+\-u, \-\-userspace
         Apply for the user-space tracer
 .fi
 
-.IP "\fBdisable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
+.IP "\fBdisable-event\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
 .nf
 Disable tracing event
 
 The event, once disabled, can be re-enabled by calling \fBlttng enable-event
 NAME\fP again.
 
-If \fB-s, --session\fP is omitted, the session name is taken from the .lttngrc
+If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 .fi
 
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
--s, --session
+\-s, \-\-session
         Apply on session name
--k, --kernel
+\-k, \-\-kernel
         Apply for the kernel tracer
--u, --userspace
+\-u, \-\-userspace
         Apply for the user-space tracer
 .fi
 
-.IP "\fBlist\fP [-k|-u] [SESSION [SESSION_OPTIONS]]"
+.IP "\fBlist\fP [\-k|\-u] [SESSION [SESSION_OPTIONS]]"
 .nf
-List tracing session informations.
+List tracing session information.
 
 With no arguments, it will list available tracing session(s).
 
-With -k alone, it will list all available kernel events (except the system
+With \-k alone, it will list all available kernel events (except the system
 calls events).
-With -u alone, it will list all available user-space events from registered
-applications. Here is an example of 'lttng list -u':
+With \-u alone, it will list all available user-space events from registered
+applications. Here is an example of 'lttng list \-u':
 
 PID: 7448 - Name: /tmp/lttng-ust/tests/hello/.libs/lt-hello
       ust_tests_hello:tptest_sighandler (type: tracepoint)
@@ -409,19 +409,19 @@ You can now enable any event listed by using the name :
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
--k, --kernel
+\-k, \-\-kernel
         Select kernel domain (FIXME : apparition de la notion de "domain" ici)
--u, --userspace
+\-u, \-\-userspace
         Select user-space domain.
 
 Session options:
--c, --channel NAME
+\-c, \-\-channel NAME
         List details of a channel
--d, --domain
+\-d, \-\-domain
         List available domain(s)
 .fi
 
@@ -435,9 +435,9 @@ Will change the session name in the .lttngrc file.
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
 .fi
 
@@ -455,9 +455,9 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
 .fi
 
@@ -475,9 +475,9 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
 .fi
 
@@ -491,9 +491,9 @@ Show version information
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show summary of possible options and commands.
---list-options
+\-\-list-options
         Simple listing of options
 .fi
 
@@ -512,13 +512,13 @@ it from the configuration file (.lttngrc).
 .B OPTIONS:
 
 .nf
--h, --help
+\-h, \-\-help
         Show this help
---list-options
+\-\-list-options
         Simple listing of options
--t, --trace-path PATH
+\-t, \-\-trace-path PATH
         Trace directory path for the viewer
--e, --viewer CMD
+\-e, \-\-viewer CMD
         Specify viewer and/or options to use
         This will completely override the default viewers so
         please make sure to specify the full command. The trace
@@ -534,8 +534,8 @@ Note that all command line options override environment variables.
 
 .PP
 .IP "LTTNG_SESSIOND_PATH_ENV"
-Allows to specify the full session daemon binary path to lttng command line
-tool. You can also use --sessiond-path option having the same effect.
+Allows one to specify the full session daemon binary path to lttng command line
+tool. You can also use \-\-sessiond-path option having the same effect.
 .SH "SEE ALSO"
 
 .PP
@@ -551,7 +551,7 @@ mailing list <lttng-dev@lists.lttng.org> to help improve this project.
 .SH "CREDITS"
 
 .PP
-lttng is distributed under the GNU public license version 2. See the file
+lttng is distributed under the GNU General Public License version 2. See the file
 COPYING for details.
 .PP
 A Web site is available at http://lttng.org for more information on the LTTng
@@ -575,7 +575,7 @@ maintainer) and Jon Bernard for our Debian packages.
 
 Special thanks to Michel Dagenais and the DORSAL laboratory at Polytechnique de
 Montreal for the LTTng journey.
-.pp
+.PP
 .SH "AUTHORS"
 
 .PP
