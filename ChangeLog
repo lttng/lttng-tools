@@ -1,3 +1,8 @@
+2012-02-14 lttng-tools 2.0-pre22
+	* Add the bash-completion file to the dist tarball
+	* Add the LICENSE file too
+	* Package used for the Ubuntu LTS (feature freeze)
+
 2012-02-13 lttng-tools 2.0-pre21
 	* Fix licensing for hashtable/utils.c
 	* Print loglevel value in list -u
