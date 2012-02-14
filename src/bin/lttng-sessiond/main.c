@@ -3899,17 +3899,12 @@ end:
  */
 static int check_existing_daemon(void)
 {
-	if (access(client_unix_sock_path, F_OK) < 0 &&
-			access(apps_unix_sock_path, F_OK) < 0) {
-		return 0;
-	}
-
 	/* Is there anybody out there ? */
 	if (lttng_session_daemon_alive()) {
 		return -EEXIST;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 /*
