@@ -3477,11 +3477,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		session_lock_list();
 		nr_sessions = lttng_sessions_count(cmd_ctx->creds.uid, cmd_ctx->creds.gid);
-		if (nr_sessions == 0) {
-			ret = LTTCOMM_NO_SESSION;
-			session_unlock_list();
-			goto error;
-		}
+
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
 		if (ret < 0) {
 			session_unlock_list();
