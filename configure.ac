@@ -51,7 +51,7 @@ AC_ARG_WITH([consumerd32-libdir],
 	[CONSUMERD32_LIBDIR=''])
 AC_SUBST([CONSUMERD32_LIBDIR])
 
-AC_ARG_WITH([consumer64d-libdir],
+AC_ARG_WITH([consumerd64-libdir],
 	AS_HELP_STRING([--with-consumerd64-libdir],
 	[Directory containing the 64-bit consumerd libraries]),
 	[CONSUMERD64_LIBDIR="$withval"],
