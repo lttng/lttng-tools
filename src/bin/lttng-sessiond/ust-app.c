@@ -865,6 +865,8 @@ static struct ust_app_session *create_ust_app_session(
 		ret = ustctl_create_session(app->key.sock);
 		if (ret < 0) {
 			ERR("Creating session for app pid %d", app->key.pid);
+			/* This means that the tracer is gone... */
+			ua_sess = (void*) -1UL;
 			goto error;
 		}
 
@@ -1757,8 +1759,11 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		 */
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
-			/* Major problem here and it's maybe the tracer or malloc() */
+			/* The malloc() failed. */
 			goto error;
+		} else if (ua_sess == (void *) -1UL) {
+			/* The application's socket is not valid. Contiuing */
+			continue;
 		}
 
 		/* Create channel onto application */
