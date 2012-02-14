@@ -769,12 +769,18 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 
+	session_lock_list();
+
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
+		session_lock(sess);
 		if (sess->ust_session) {
 			ust_app_global_update(sess->ust_session, app_sock);
 		}
+		session_unlock(sess);
 	}
+
+	session_unlock_list();
 }
 
 /*
