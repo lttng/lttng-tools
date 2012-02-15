@@ -2037,10 +2037,12 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-	/* Not started, continuing. */
-	if (ua_sess->started == 0) {
-		goto end;
-	}
+	/*
+	 * If started = 0, it means that stop trace has been called for a session
+	 * that was never started. This is a code flow error and should never
+	 * happen.
+	 */
+	assert(ua_sess->started == 1);
 
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);
@@ -2070,8 +2072,6 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		ERR("UST app PID %d metadata flush failed with ret %d", app->key.pid,
 				ret);
 	}
-
-	ua_sess->started = 0;
 
 end:
 	rcu_read_unlock();
