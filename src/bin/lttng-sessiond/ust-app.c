@@ -1935,6 +1935,9 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto skip_setup;
 	}
 
+	/* Indicate that the session has been started once */
+	ua_sess->started = 1;
+
 	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
 	if (ret < 0) {
 		goto error_rcu_unlock;
@@ -1991,7 +1994,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}
-	ua_sess->started = 1;
 
 skip_setup:
 	/* This start the UST tracing */

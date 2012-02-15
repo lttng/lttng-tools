@@ -159,6 +159,22 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
+	printf("Restart tracing: ");
+	if ((ret = lttng_start_tracing(session_name)) < 0) {
+		printf("error starting tracing: %s\n", lttng_strerror(ret));
+		goto start_fail;
+	}
+	PRINT_OK();
+
+	sleep(2);
+
+	printf("Stop tracing: ");
+	if ((ret = lttng_stop_tracing(session_name)) < 0) {
+		printf("error stopping tracing: %s\n", lttng_strerror(ret));
+		goto stop_fail;
+	}
+	PRINT_OK();
+
 	printf("Destroy tracing session: ");
 	if ((ret = lttng_destroy_session(session_name)) < 0) {
 		printf("error destroying session: %s\n", lttng_strerror(ret));
