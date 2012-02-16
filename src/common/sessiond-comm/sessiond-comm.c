@@ -308,6 +308,8 @@ int lttcomm_close_unix_sock(int sock)
 		perror("shutdown");
 	}
 
+	close(sock);
+
 	return ret;
 }
 
