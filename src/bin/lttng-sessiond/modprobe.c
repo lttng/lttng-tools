@@ -48,6 +48,7 @@ const struct kern_modules_param kern_modules_list[] = {
 	{ "lttng-probe-irq", 0 },
 	{ "lttng-probe-kvm", 0 },
 	{ "lttng-probe-sched", 0 },
+	{ "lttng-probe-signal", 0 },
 	{ "lttng-probe-statedump", 0 },
 };
 
