@@ -3913,7 +3913,7 @@ static int check_existing_daemon(void)
  * Set the tracing group gid onto the client socket.
  *
  * Race window between mkdir and chown is OK because we are going from more
- * permissive (root.root) to les permissive (root.tracing).
+ * permissive (root.root) to less permissive (root.tracing).
  */
 static int set_permissions(char *rundir)
 {
@@ -3932,6 +3932,13 @@ static int set_permissions(char *rundir)
 	if (ret < 0) {
 		ERR("Unable to set group on %s", rundir);
 		perror("chown");
+	}
+
+	/* Ensure tracing group can search the run dir */
+	ret = chmod(rundir, S_IRWXU | S_IXGRP);
+	if (ret < 0) {
+		ERR("Unable to set permissions on %s", rundir);
+		perror("chmod");
 	}
 
 	/* lttng client socket path */
@@ -3993,7 +4000,7 @@ static int create_lttng_rundir(const char *rundir)
 
 	DBG3("Creating LTTng run directory: %s", rundir);
 
-	ret = mkdir(rundir, S_IRWXU | S_IRWXG );
+	ret = mkdir(rundir, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			ERR("Unable to create %s", rundir);
@@ -4035,7 +4042,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 
 	DBG2("Creating consumer directory: %s", path);
 
-	ret = mkdir(path, S_IRWXU | S_IRWXG);
+	ret = mkdir(path, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			ERR("Failed to create %s", path);
