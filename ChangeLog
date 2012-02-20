@@ -1,3 +1,7 @@
+2012-02-20 lttng-tools 2.0.0-rc1
+	* Fix lttcomm_close_unix_sock to actually close the socket
+	* lttng-sessiond: Set group permissions explicitly
+
 2012-02-16 lttng-tools 2.0-pre23
 	* configure.ac: Fix consumerd64-libdir typo
 	* Fix existing session daemon check
