@@ -17,7 +17,6 @@
  */
 
 #define _GNU_SOURCE
-#include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
@@ -295,12 +294,20 @@ static gid_t allowed_group(void)
  */
 static int init_thread_quit_pipe(void)
 {
-	int ret;
+	int ret, i;
 
-	ret = pipe2(thread_quit_pipe, O_CLOEXEC);
+	ret = pipe(thread_quit_pipe);
 	if (ret < 0) {
-		perror("thread quit pipe");
+		PERROR("thread quit pipe");
 		goto error;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(thread_quit_pipe[i], F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			PERROR("fcntl");
+			goto error;
+		}
 	}
 
 error:
@@ -2872,11 +2879,12 @@ error:
 /*
  * Command LTTNG_CREATE_SESSION processed by the client thread.
  */
-static int cmd_create_session(char *name, char *path, struct ucred *creds)
+static int cmd_create_session(char *name, char *path, lttng_sock_cred *creds)
 {
 	int ret;
 
-	ret = session_create(name, path, creds->uid, creds->gid);
+	ret = session_create(name, path, LTTNG_SOCK_GET_UID_CRED(creds),
+			LTTNG_SOCK_GET_GID_CRED(creds));
 	if (ret != LTTCOMM_OK) {
 		goto error;
 	}
@@ -3283,7 +3291,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	 */
 	if (need_tracing_session) {
 		if (!session_access_ok(cmd_ctx->session,
-				cmd_ctx->creds.uid, cmd_ctx->creds.gid)) {
+				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
+				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds))) {
 			ret = LTTCOMM_EPERM;
 			goto error;
 		}
@@ -3476,7 +3485,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		unsigned int nr_sessions;
 
 		session_lock_list();
-		nr_sessions = lttng_sessions_count(cmd_ctx->creds.uid, cmd_ctx->creds.gid);
+		nr_sessions = lttng_sessions_count(
+				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
+				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
 		if (ret < 0) {
@@ -3486,7 +3497,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		/* Filled the session array */
 		list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload),
-			cmd_ctx->creds.uid, cmd_ctx->creds.gid);
+			LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
+			LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 
 		session_unlock_list();
 
@@ -3980,7 +3992,24 @@ end:
  */
 static int create_kernel_poll_pipe(void)
 {
-	return pipe2(kernel_poll_pipe, O_CLOEXEC);
+	int ret, i;
+
+	ret = pipe(kernel_poll_pipe);
+	if (ret < 0) {
+		PERROR("kernel poll pipe");
+		goto error;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(kernel_poll_pipe[i], F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			PERROR("fcntl kernel_poll_pipe");
+			goto error;
+		}
+	}
+
+error:
+	return ret;
 }
 
 /*
@@ -3988,7 +4017,24 @@ static int create_kernel_poll_pipe(void)
  */
 static int create_apps_cmd_pipe(void)
 {
-	return pipe2(apps_cmd_pipe, O_CLOEXEC);
+	int ret, i;
+
+	ret = pipe(apps_cmd_pipe);
+	if (ret < 0) {
+		PERROR("apps cmd pipe");
+		goto error;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(apps_cmd_pipe[i], F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			PERROR("fcntl apps_cmd_pipe");
+			goto error;
+		}
+	}
+
+error:
+	return ret;
 }
 
 /*
