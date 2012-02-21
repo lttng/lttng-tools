@@ -19,7 +19,6 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
