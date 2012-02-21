@@ -19,19 +19,21 @@
 #define _COMPAT_FCNTL_H
 
 #include <fcntl.h>
-
-#define lttng_sync_file_range(fd, offset, nbytes, flags) \
-	compat_sync_file_range(fd, offset, nbytes, flags)
+#include <sys/types.h>
 
 #ifdef __linux__
 
-int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
-		unsigned int flags)
-{
-	return sync_file_range(fd, offset, nbytes, flags);
-}
+extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
+		unsigned int flags);
+#define lttng_sync_file_range(fd, offset, nbytes, flags) \
+	compat_sync_file_range(fd, offset, nbytes, flags)
 
 #elif __FreeBSD__
+
+typedef long int off64_t;
+typedef off64_t loff_t;
+
+#include <sys/errno.h>
 
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrapper.
@@ -39,15 +41,6 @@ int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 #define SYNC_FILE_RANGE_WAIT_AFTER    0
 #define SYNC_FILE_RANGE_WAIT_BEFORE   0
 #define SYNC_FILE_RANGE_WRITE         0
-
-typedef long int off64_t;
-typedef off64_t loff_t;
-
-int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
-		unsigned int flags)
-{
-	return 0;
-}
 
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrappers.
@@ -57,8 +50,21 @@ int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 #define SPLICE_F_MORE       0
 #define SPLICE_F_GIFT       0
 
-ssize_t splice(int fd_in, loff_t *off_in, int fd_out,
-		loff_t *off_out, size_t len, unsigned int flags)
+#define POSIX_FADV_DONTNEED 0
+
+static inline int lttng_sync_file_range(int fd, off64_t offset,
+		off64_t nbytes, unsigned int flags)
+{
+	return -ENOSYS;
+}
+
+static inline ssize_t splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
+		size_t len, unsigned int flags)
+{
+	return -ENOSYS;
+}
+
+static inline int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 {
 	return -ENOSYS;
 }
