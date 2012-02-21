@@ -30,9 +30,13 @@
 
 typedef struct ucred lttng_sock_cred;
 
-#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u;
-#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g;
-#define LTTNG_SOCK_SET_PID_CRED(c, p) LTTNG_REF(c)->pid = p;
+#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
+#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g
+#define LTTNG_SOCK_SET_PID_CRED(c, p) LTTNG_REF(c)->pid = p
+
+#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
+#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
+#define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->pid
 
 #elif __FreeBSD__
 
@@ -44,9 +48,13 @@ typedef struct ucred lttng_sock_cred;
 
 typedef struct cmsgcred lttng_sock_cred;
 
-#define LTTNG_SOCK_SET_UID_CRED(c, uid) LTTNG_REF(c)->cmcred_uid = uid;
-#define LTTNG_SOCK_SET_GID_CRED(c, gid) LTTNG_REF(c)->cmcred_gid = gid;
-#define LTTNG_SOCK_SET_PID_CRED(c, pid) LTTNG_REF(c)->cmcred_pid = pid;
+#define LTTNG_SOCK_SET_UID_CRED(c, uid) LTTNG_REF(c)->cmcred_uid = uid
+#define LTTNG_SOCK_SET_GID_CRED(c, gid) LTTNG_REF(c)->cmcred_gid = gid
+#define LTTNG_SOCK_SET_PID_CRED(c, pid) LTTNG_REF(c)->cmcred_pid = pid
+
+#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->cmcred_uid
+#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->cmcred_gid
+#define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->cmcred_pid
 
 #else
 #error "Please add support for your OS into lttng/ust-endian.h."
