@@ -24,7 +24,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/un.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -412,7 +411,7 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	}
 	if (cmsg->cmsg_len != CMSG_LEN(sizeof_fds)) {
 		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
-				cmsg->cmsg_len, CMSG_LEN(sizeof_fds));
+				(size_t) cmsg->cmsg_len, (size_t) CMSG_LEN(sizeof_fds));
 		ret = -1;
 		goto end;
 	}
@@ -433,9 +432,9 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
-	struct ucred *creds;
-	size_t sizeof_cred = sizeof(struct ucred);
+	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+	lttng_sock_cred *creds;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -449,14 +448,14 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 
 	cmptr = CMSG_FIRSTHDR(&msg);
 	cmptr->cmsg_level = SOL_SOCKET;
-	cmptr->cmsg_type = SCM_CREDENTIALS;
+	cmptr->cmsg_type = LTTNG_SOCK_CREDS;
 	cmptr->cmsg_len = CMSG_LEN(sizeof_cred);
 
-	creds = (struct ucred *) CMSG_DATA(cmptr);
+	creds = (lttng_sock_cred*) CMSG_DATA(cmptr);
 
-	creds->uid = geteuid();
-	creds->gid = getegid();
-	creds->pid = getpid();
+	LTTNG_SOCK_SET_UID_CRED(creds, geteuid());
+	LTTNG_SOCK_SET_GID_CRED(creds, getegid());
+	LTTNG_SOCK_SET_PID_CRED(creds, getpid());
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
@@ -472,13 +471,13 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
  * Returns the size of received data, or negative error value.
  */
 ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		struct ucred *creds)
+		lttng_sock_cred *creds)
 {
 	struct msghdr msg;
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret;
-	size_t sizeof_cred = sizeof(struct ucred);
+	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 
 	memset(&msg, 0, sizeof(msg));
@@ -518,7 +517,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 
 	if (cmptr->cmsg_level != SOL_SOCKET ||
-			cmptr->cmsg_type != SCM_CREDENTIALS) {
+			cmptr->cmsg_type != LTTNG_SOCK_CREDS) {
 		fprintf(stderr, "Didn't received any credentials\n");
 		ret = -1;
 		goto end;
@@ -526,7 +525,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 
 	if (cmptr->cmsg_len != CMSG_LEN(sizeof_cred)) {
 		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
-				cmptr->cmsg_len, CMSG_LEN(sizeof_cred));
+				(size_t) cmptr->cmsg_len, (size_t) CMSG_LEN(sizeof_cred));
 		ret = -1;
 		goto end;
 	}
