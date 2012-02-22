@@ -50,6 +50,7 @@
  */
 
 #include <assert.h>
+#include <endian.h>    /* attempt to define endianness */
 #include <stdint.h>     /* defines uint32_t etc */
 #include <stdio.h>      /* defines printf for tests */
 #include <string.h>
@@ -58,7 +59,6 @@
 #include <urcu/compiler.h>
 
 #include "utils.h"
-#include <common/compat/endian.h>    /* attempt to define endianness */
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may

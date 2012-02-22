@@ -77,27 +77,12 @@ extern int opt_verbose;
 #define _PERROR(fmt, args...) \
 	__lttng_print(PRINT_ERR, "perror " fmt "\n", ## args)
 
-#if !defined(__linux__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
-/*
- * Version using XSI strerror_r.
- */
 #define PERROR(call, args...) \
-	do { \
-		char buf[200]; \
-		strerror_r(errno, buf, sizeof(buf)); \
-		_PERROR(call ": %s", ## args, buf); \
-	} while(0);
-#else
-/*
- * Version using GNU strerror_r, for linux with appropriate defines.
- */
-#define PERROR(call, args...) \
-	do { \
+    do { \
 		char *buf; \
 		char tmp[200]; \
 		buf = strerror_r(errno, tmp, sizeof(tmp)); \
 		_PERROR(call ": %s", ## args, buf); \
 	} while(0);
-#endif
 
 #endif /* _ERROR_H */

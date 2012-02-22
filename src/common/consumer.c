@@ -19,6 +19,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -600,7 +601,7 @@ void lttng_consumer_sync_trace_file(
 	if (orig_offset < stream->chan->max_sb_size) {
 		return;
 	}
-	lttng_sync_file_range(outfd, orig_offset - stream->chan->max_sb_size,
+	sync_file_range(outfd, orig_offset - stream->chan->max_sb_size,
 			stream->chan->max_sb_size,
 			SYNC_FILE_RANGE_WAIT_BEFORE
 			| SYNC_FILE_RANGE_WRITE
@@ -741,8 +742,6 @@ int lttng_consumer_on_read_subbuffer_mmap(
 		ERR("Unknown consumer_data type");
 		assert(0);
 	}
-
-	return 0;
 }
 
 /*

@@ -26,8 +26,7 @@
 
 #include <lttng/lttng.h>
 
-#include <common/hashtable/hashtable.h>
-#include <common/compat/fcntl.h>
+#include "src/common/hashtable/hashtable.h"
 
 /*
  * When the receiving thread dies, we need to have a way to make the polling

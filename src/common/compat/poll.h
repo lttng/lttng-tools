@@ -179,15 +179,10 @@ enum {
 	LPOLLRDBAND = POLLRDBAND,
 	LPOLLWRNORM = POLLWRNORM,
 	LPOLLWRBAND = POLLWRBAND,
-#if __linux__
 	LPOLLMSG = POLLMSG,
-	LPOLLRDHUP = POLLRDHUP,
-#elif __FreeBSD__
-	LPOLLMSG = 0,
-	LPOLLRDHUP = 0,
-#endif /* __linux__ */
 	LPOLLERR = POLLERR,
 	LPOLLHUP = POLLHUP | POLLNVAL,
+	LPOLLRDHUP = POLLRDHUP,
 	/* Close on exec feature does not exist for poll(2) */
 	LTTNG_CLOEXEC = 0xdead,
 };

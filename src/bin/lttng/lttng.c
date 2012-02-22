@@ -26,7 +26,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <config.h>
-#include <ctype.h>
 
 #include <lttng/lttng.h>
 #include <common/error.h>

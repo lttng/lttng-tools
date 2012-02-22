@@ -28,11 +28,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sched.h>
-#include <sys/signal.h>
+#include <sys/mman.h>
 
 #include <common/error.h>
-#include <common/compat/mman.h>
-#include <common/compat/clone.h>
 
 #include "runas.h"
 

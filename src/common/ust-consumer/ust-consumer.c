@@ -19,20 +19,19 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <lttng/ust-ctl.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/compat/fcntl.h>
 
 #include "ust-consumer.h"
 
@@ -72,7 +71,7 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 			goto end;
 		}
 		/* This won't block, but will start writeout asynchronously */
-		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
+		sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}

@@ -28,7 +28,7 @@
 #define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
-#include <common/compat/socket.h>
+#include <sys/socket.h>
 
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
@@ -291,7 +291,7 @@ extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 
 extern ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		lttng_sock_cred *creds);
+		struct ucred *creds);
 
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
 extern int lttcomm_setsockopt_creds_unix_sock(int sock);
