@@ -7,7 +7,10 @@ SUBDIRS = src/common/ \
 		  include \
 		  doc
 
+dist_doc_DATA = LICENSE \
+                ChangeLog
+
+EXTRA_DIST = extras/lttng-bash_completion
+
 bench:
 	./benchmark/runall.sh
-
-dist_doc_DATA = ChangeLog

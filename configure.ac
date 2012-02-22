@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.0-pre20],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0.0-rc1],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -51,7 +51,7 @@ AC_ARG_WITH([consumerd32-libdir],
 	[CONSUMERD32_LIBDIR=''])
 AC_SUBST([CONSUMERD32_LIBDIR])
 
-AC_ARG_WITH([consumer64d-libdir],
+AC_ARG_WITH([consumerd64-libdir],
 	AS_HELP_STRING([--with-consumerd64-libdir],
 	[Directory containing the 64-bit consumerd libraries]),
 	[CONSUMERD64_LIBDIR="$withval"],

@@ -319,6 +319,11 @@ int main(int argc, char **argv)
 			printf("session %d (name: %s) creation failed\n", i, tmp_name);
 			return -1;
 		}
+
+		if ((i % 1000) == 0) {
+			fprintf(stdout, "%d..", i);
+			fflush(stdout);
+		}
 	}
 	PRINT_OK();
 

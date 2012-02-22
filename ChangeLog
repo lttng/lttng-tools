@@ -1,3 +1,29 @@
+2012-02-20 lttng-tools 2.0.0-rc1
+	* Fix lttcomm_close_unix_sock to actually close the socket
+	* lttng-sessiond: Set group permissions explicitly
+
+2012-02-16 lttng-tools 2.0-pre23
+	* configure.ac: Fix consumerd64-libdir typo
+	* Fix existing session daemon check
+	* Fix missing session locks
+	* Fix return value on ust app session create
+	* Fix double start/stop trace
+	* Fix ust app session started state on start trace
+	* modprobe statedump, signal and timer lttng module
+	* Fix hyphens in man pages
+
+2012-02-14 lttng-tools 2.0-pre22
+	* Add the bash-completion file to the dist tarball
+	* Add the LICENSE file too
+	* Package used for the Ubuntu LTS (feature freeze)
+
+2012-02-13 lttng-tools 2.0-pre21
+	* Fix licensing for hashtable/utils.c
+	* Print loglevel value in list -u
+	* Remove "<all> from MSG() when no loglevel is selected
+	* Initial import of man lttng.1 and lttng-sessiond.8
+	* Fix memory leak  master
+
 2012-02-09 lttng-tools 2.0-pre20
 	* New lttng view command
 	* Multiple loglevel fixes

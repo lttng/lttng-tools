@@ -794,12 +794,18 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 
+	session_lock_list();
+
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
+		session_lock(sess);
 		if (sess->ust_session) {
 			ust_app_global_update(sess->ust_session, app_sock);
 		}
+		session_unlock(sess);
 	}
+
+	session_unlock_list();
 }
 
 /*
@@ -3538,11 +3544,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		session_lock_list();
 		nr_sessions = lttng_sessions_count(cmd_ctx->creds.uid, cmd_ctx->creds.gid);
-		if (nr_sessions == 0) {
-			ret = LTTCOMM_NO_SESSION;
-			session_unlock_list();
-			goto error;
-		}
+
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
 		if (ret < 0) {
 			session_unlock_list();
@@ -3970,24 +3972,19 @@ end:
  */
 static int check_existing_daemon(void)
 {
-	if (access(client_unix_sock_path, F_OK) < 0 &&
-			access(apps_unix_sock_path, F_OK) < 0) {
-		return 0;
-	}
-
 	/* Is there anybody out there ? */
 	if (lttng_session_daemon_alive()) {
 		return -EEXIST;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 /*
  * Set the tracing group gid onto the client socket.
  *
  * Race window between mkdir and chown is OK because we are going from more
- * permissive (root.root) to les permissive (root.tracing).
+ * permissive (root.root) to less permissive (root.tracing).
  */
 static int set_permissions(char *rundir)
 {
@@ -4006,6 +4003,13 @@ static int set_permissions(char *rundir)
 	if (ret < 0) {
 		ERR("Unable to set group on %s", rundir);
 		perror("chown");
+	}
+
+	/* Ensure tracing group can search the run dir */
+	ret = chmod(rundir, S_IRWXU | S_IXGRP);
+	if (ret < 0) {
+		ERR("Unable to set permissions on %s", rundir);
+		perror("chmod");
 	}
 
 	/* lttng client socket path */
@@ -4067,7 +4071,7 @@ static int create_lttng_rundir(const char *rundir)
 
 	DBG3("Creating LTTng run directory: %s", rundir);
 
-	ret = mkdir(rundir, S_IRWXU | S_IRWXG );
+	ret = mkdir(rundir, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			ERR("Unable to create %s", rundir);
@@ -4109,7 +4113,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 
 	DBG2("Creating consumer directory: %s", path);
 
-	ret = mkdir(path, S_IRWXU | S_IRWXG);
+	ret = mkdir(path, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			ERR("Failed to create %s", path);
