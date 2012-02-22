@@ -81,7 +81,7 @@
 /* DEFAULT_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
 #define DEFAULT_CHANNEL_SUBBUF_SIZE     4096    /* bytes */
 /* DEFAULT_CHANNEL_SUBBUF_NUM must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_NUM      8
+#define DEFAULT_CHANNEL_SUBBUF_NUM      4
 #define DEFAULT_CHANNEL_SWITCH_TIMER    0       /* usec */
 #define DEFAULT_CHANNEL_READ_TIMER		200     /* usec */
 #define DEFAULT_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
@@ -93,8 +93,11 @@
 
 /* DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
 #define DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE  262144    /* bytes */
-/* DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM must always be a power of 2 */
-#define DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM   4
+/*
+ * DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM must always be a power of 2.
+ * Update help manually if override.
+ */
+#define DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM   DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-kernel.h enum lttng_kernel_output for channel output */
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
 
@@ -102,8 +105,8 @@
 
 /* Must be a power of 2 */
 #define DEFAULT_UST_CHANNEL_SUBBUF_SIZE     4096    /* bytes */
-/* Must be a power of 2 */
-#define DEFAULT_UST_CHANNEL_SUBBUF_NUM      4
+/* Must be a power of 2. Update help manuall if override. */
+#define DEFAULT_UST_CHANNEL_SUBBUF_NUM      DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-ust.h enum lttng_ust_output */
 #define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
 
