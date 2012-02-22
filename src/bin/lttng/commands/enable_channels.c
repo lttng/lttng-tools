@@ -104,10 +104,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
 		DEFAULT_CHANNEL_SUBBUF_SIZE,
 		DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE);
+	fprintf(ofp, "                               Needs to be a power of 2 for\n");
+        fprintf(ofp, "                               kernel and ust tracers\n");
 	fprintf(ofp, "      --num-subbuf NUM     Number of subbufers\n");
 	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
 		DEFAULT_CHANNEL_SUBBUF_NUM,
 		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM);
+	fprintf(ofp, "                               Needs to be a power of 2 for\n");
+        fprintf(ofp, "                               kernel and ust tracers\n");
 	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec (default: %u)\n",
 		DEFAULT_CHANNEL_SWITCH_TIMER);
 	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (default: %u)\n",
