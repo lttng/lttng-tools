@@ -182,9 +182,11 @@ enum {
 #if __linux__
 	LPOLLMSG = POLLMSG,
 	LPOLLRDHUP = POLLRDHUP,
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 	LPOLLMSG = 0,
 	LPOLLRDHUP = 0,
+#else
+#error "Please add support for your OS."
 #endif /* __linux__ */
 	LPOLLERR = POLLERR,
 	LPOLLHUP = POLLHUP | POLLNVAL,
