@@ -116,6 +116,24 @@ AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
 
+# check for dlopen
+AC_CHECK_LIB([dl], [dlopen],
+[
+	have_libdl=yes
+],
+[
+	#libdl not found, check for dlopen in libc.
+	AC_CHECK_LIB([c], [dlopen],
+	[
+		have_libc_dl=yes
+	],
+	[
+		AC_MSG_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
+	])
+])
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBDL], [test "x$have_libdl" = "xyes"])
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBC_DL], [test "x$have_libc_dl" = "xyes"])
+
 # Option to only build the consumer daemon and its libraries
 AC_ARG_WITH([consumerd-only],
 	AS_HELP_STRING([--with-consumerd-only],[Only build the consumer daemon [default=no]]),

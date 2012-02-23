@@ -1,5 +1,12 @@
 AM_CFLAGS = -I. -O2
-AM_LDFLAGS = -llttng-ust -ldl
+AM_LDFLAGS = -llttng-ust
+
+if LTTNG_TOOLS_BUILD_WITH_LIBDL
+AM_CFLAGS += -ldl
+endif
+if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
+AM_CFLAGS += -lc
+endif
 
 noinst_PROGRAMS = gen-events-time
 gen_events_time_SOURCES = gen-events-time.c tp.c ust_gen_event.h
