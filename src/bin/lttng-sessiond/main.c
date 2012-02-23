@@ -39,6 +39,7 @@
 
 #include <common/common.h>
 #include <common/compat/poll.h>
+#include <common/compat/socket.h>
 #include <common/defaults.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>

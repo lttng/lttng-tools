@@ -429,12 +429,14 @@ end:
 ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 {
 	struct msghdr msg;
-	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
+#ifdef __linux__
+	struct cmsghdr *cmptr;
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 	lttng_sock_cred *creds;
+#endif /* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -443,6 +445,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
+#ifdef __linux__
 	msg.msg_control = (caddr_t) anc_buf;
 	msg.msg_controllen = CMSG_LEN(sizeof_cred);
 
@@ -456,6 +459,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	LTTNG_SOCK_SET_UID_CRED(creds, geteuid());
 	LTTNG_SOCK_SET_GID_CRED(creds, getegid());
 	LTTNG_SOCK_SET_PID_CRED(creds, getpid());
+#endif /* __linux__ */
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
@@ -474,11 +478,13 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		lttng_sock_cred *creds)
 {
 	struct msghdr msg;
-	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret;
+#ifdef __linux__
+	struct cmsghdr *cmptr;
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+#endif	/* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -494,8 +500,10 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
+#ifdef __linux__
 	msg.msg_control = anc_buf;
 	msg.msg_controllen = sizeof(anc_buf);
+#endif /* __linux__ */
 
 	ret = recvmsg(sock, &msg, 0);
 	if (ret < 0) {
@@ -503,6 +511,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		goto end;
 	}
 
+#ifdef __linux__
 	if (msg.msg_flags & MSG_CTRUNC) {
 		fprintf(stderr, "Error: Control message truncated.\n");
 		ret = -1;
@@ -531,6 +540,14 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 
 	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
+#elif defined(__FreeBSD__)
+	ret = getpeereid(sock, &creds->uid, &creds->gid);
+	if (ret != 0) {
+		return ret;
+	}
+#else
+#error "Please implement credential support for your OS."
+#endif	/* __linux__ */
 
 end:
 	return ret;
@@ -539,6 +556,7 @@ end:
 /*
  * Set socket option to use credentials passing.
  */
+#ifdef __linux__
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
 	int ret, on = 1;
@@ -548,6 +566,13 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	if (ret < 0) {
 		perror("setsockopt creds unix sock");
 	}
-
 	return ret;
 }
+#elif defined(__FreeBSD__)
+int lttcomm_setsockopt_creds_unix_sock(int sock)
+{
+	return 0;
+}
+#else
+#error "Please implement credential support for your OS."
+#endif /* __linux__ */

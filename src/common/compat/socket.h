@@ -26,7 +26,6 @@
 #ifdef __linux__
 
 #define LTTNG_SOCK_CREDS SCM_CREDENTIALS
-#define LTTNG_SOCK_FDS   SCM_RIGHTS
 
 typedef struct ucred lttng_sock_cred;
 
@@ -40,21 +39,16 @@ typedef struct ucred lttng_sock_cred;
 
 #elif defined(__FreeBSD__)
 
-#undef SO_PASSCRED
-#define SO_PASSCRED 0
+struct lttng_sock_cred {
+	uid_t uid;
+	gid_t gid;
+};
 
-#define LTTNG_SOCK_CREDS SCM_CREDS
-#define LTTNG_SOCK_FDS   SCM_RIGHTS
+typedef struct lttng_sock_cred lttng_sock_cred;
 
-typedef struct cmsgcred lttng_sock_cred;
-
-#define LTTNG_SOCK_SET_UID_CRED(c, uid) LTTNG_REF(c)->cmcred_uid = uid
-#define LTTNG_SOCK_SET_GID_CRED(c, gid) LTTNG_REF(c)->cmcred_gid = gid
-#define LTTNG_SOCK_SET_PID_CRED(c, pid) LTTNG_REF(c)->cmcred_pid = pid
-
-#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->cmcred_uid
-#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->cmcred_gid
-#define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->cmcred_pid
+#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
+#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
+#define LTTNG_SOCK_GET_PID_CRED(c) -1
 
 #else
 #error "Please add support for your OS."
