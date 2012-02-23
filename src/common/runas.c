@@ -237,9 +237,8 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	 * Pointing to the middle of the stack to support architectures
 	 * where the stack grows up (HPPA).
 	 */
-	pid = clone(child_run_as, child_stack + (RUNAS_CHILD_STACK_SIZE / 2),
-		CLONE_FILES | SIGCHLD,
-		&run_as_data, NULL);
+	pid = lttng_clone_files(child_run_as, child_stack + (RUNAS_CHILD_STACK_SIZE / 2),
+		&run_as_data);
 	if (pid < 0) {
 		perror("clone");
 		ret = pid;

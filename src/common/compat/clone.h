@@ -22,19 +22,20 @@
 
 #include <sched.h>
 
+static inline
+int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
+{
+	return clone(fn, child_stack, CLONE_FILES | SIGCHLD, arg);
+}
+
 #elif __FreeBSD__
 
 #include <unistd.h>
 
-#define CLONE_FILES 0
-
-#define clone(fct_ptr, child_stack, flags, arg, args...) \
-	compat_clone(fct_ptr, child_stack, flags, arg)
-
-int compat_clone(int (*fn)(void *), void *child_stack, int flags,
-		void *arg)
+static inline
+int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 {
-	return -ENOSYS;
+	return rfork(RFPROC | RFTHREAD);
 }
 
 #else
