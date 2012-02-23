@@ -437,10 +437,6 @@ end:
 		break;
 	}
 
-	if (no_chan) {
-		ret = LTTCOMM_UST_CHAN_NOT_FOUND;
-	}
-
 error:
 	return ret;
 }
