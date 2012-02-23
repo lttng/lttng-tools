@@ -23,7 +23,7 @@
 #include <sched.h>
 
 static inline
-int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
+pid_t lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 {
 	return clone(fn, child_stack, CLONE_FILES | SIGCHLD, arg);
 }
@@ -33,9 +33,27 @@ int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 #include <unistd.h>
 
 static inline
-int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
+pid_t lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 {
-	return rfork(RFPROC | RFTHREAD);
+	pid_t pid;
+
+	pid = rfork(RFPROC | RFTHREAD);
+	if (pid == 0) {
+		/* child */
+		int ret;
+
+		ret = fn(arg);
+		exit(ret);
+	} else if (pid > 0) {
+		/* parent */
+		/*
+		 * Just return, the caller will wait for the child.
+		 */
+		return pid;
+	} else {
+		/* Error */
+		return pid;
+	}
 }
 
 #else
