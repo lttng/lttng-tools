@@ -104,11 +104,15 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		exit(EXIT_FAILURE);
 	}
 
+#ifndef __FreeBSD__
 	ret = fchmod(wait_shm_fd, mode);
 	if (ret < 0) {
 		perror("fchmod");
 		exit(EXIT_FAILURE);
 	}
+#else
+#warning "FreeBSD does not support setting file mode on shm FD. Remember that for secure use, lttng-sessiond should be started before applications linked on lttng-ust."
+#endif
 
 	DBG("Got the wait shm fd %d", wait_shm_fd);
 
