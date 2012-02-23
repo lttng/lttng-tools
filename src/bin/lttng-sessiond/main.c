@@ -3135,10 +3135,24 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 {
 	int ret = LTTCOMM_OK;
 	int need_tracing_session = 1;
+	int need_domain;
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
-	if (opt_no_kernel && cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
+	switch (cmd_ctx->lsm->cmd_type) {
+	case LTTNG_CREATE_SESSION:
+	case LTTNG_DESTROY_SESSION:
+	case LTTNG_LIST_SESSIONS:
+	case LTTNG_LIST_DOMAINS:
+	case LTTNG_START_TRACE:
+	case LTTNG_STOP_TRACE:
+		need_domain = 0;
+	default:
+		need_domain = 1;
+	}
+
+	if (opt_no_kernel && need_domain
+			&& cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
 		ret = LTTCOMM_KERN_NA;
 		goto error;
 	}
@@ -3166,8 +3180,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_CALIBRATE:
 	case LTTNG_CREATE_SESSION:
+	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
 		need_tracing_session = 0;
@@ -3192,6 +3206,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 
+	if (!need_domain) {
+		goto skip_domain;
+	}
 	/*
 	 * Check domain type for specific "pre-action".
 	 */
@@ -3285,6 +3302,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	default:
 		break;
 	}
+skip_domain:
 
 	/*
 	 * Check that the UID or GID match that of the tracing session.
