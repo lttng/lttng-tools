@@ -548,6 +548,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		if (peer_ret != 0) {
 			return peer_ret;
 		}
+	}
 #else
 #error "Please implement credential support for your OS."
 #endif	/* __linux__ */
