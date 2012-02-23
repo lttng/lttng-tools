@@ -38,12 +38,11 @@
 
 #define RUNAS_CHILD_STACK_SIZE	10485760
 
-#ifndef __FreeBSD__
-# ifndef MAP_STACK
-#  define MAP_STACK		0
-# endif
-#else	/* FreeBSD MAP_STACK always return -ENOMEM */
-# define MAP_STACK		0
+#ifdef __FreeBSD__
+/* FreeBSD MAP_STACK always return -ENOMEM */
+#define LTTNG_MAP_STACK		0
+#else
+#define LTTNG_MAP_STACK		MAP_STACK
 #endif
 
 #ifndef MAP_GROWSDOWN
@@ -239,7 +238,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	run_as_data.retval_pipe = retval_pipe[1];	/* write end */
 	child_stack = mmap(NULL, RUNAS_CHILD_STACK_SIZE,
 		PROT_WRITE | PROT_READ,
-		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | MAP_STACK,
+		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | LTTNG_MAP_STACK,
 		-1, 0);
 	if (child_stack == MAP_FAILED) {
 		perror("mmap");
