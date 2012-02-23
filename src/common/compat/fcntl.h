@@ -28,7 +28,7 @@ extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 #define lttng_sync_file_range(fd, offset, nbytes, flags) \
 	compat_sync_file_range(fd, offset, nbytes, flags)
 
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 
 typedef long int off64_t;
 typedef off64_t loff_t;
@@ -70,7 +70,7 @@ static inline int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 }
 
 #else
-#error "Please add support for your OS into compat/fcntl.h."
+#error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__ */
 
 #endif /* _COMPAT_FCNTL_H */

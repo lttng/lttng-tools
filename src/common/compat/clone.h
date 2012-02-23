@@ -28,7 +28,7 @@ int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 	return clone(fn, child_stack, CLONE_FILES | SIGCHLD, arg);
 }
 
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 
 #include <unistd.h>
 
@@ -39,7 +39,7 @@ int lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 }
 
 #else
-#error "Please add support for your OS into compat/clone.h."
+#error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__ */
 
 #endif /* _COMPAT_CLONE_H */

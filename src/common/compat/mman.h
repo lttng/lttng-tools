@@ -22,13 +22,13 @@
 
 #ifdef __linux__
 
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 
 #define MAP_GROWSDOWN 0
 #define MAP_ANONYMOUS MAP_ANON
 
 #else
-#error "Please add support for your OS into compat/mman.h."
+#error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__ */
 
 #endif /* _COMPAT_MMAN_H */
