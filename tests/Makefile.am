@@ -1,6 +1,7 @@
 SUBDIRS = .
 
-AM_CFLAGS=-g -Wall -lurcu -lurcu-cds
+AM_CFLAGS = -g -Wall
+AM_LDFLAGS = -lurcu -lurcu-cds
 
 EXTRA_DIST = runall.sh utils.sh lttng/runall.sh lttng/run-kernel-tests.sh
 
