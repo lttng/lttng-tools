@@ -42,6 +42,14 @@
 #define MAP_STACK		0
 #endif
 
+#ifndef MAP_GROWSDOWN
+#define GROWSDOWN		0
+#endif
+
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS		MAP_ANON
+#endif
+
 struct run_as_data {
 	int (*cmd)(void *data);
 	void *data;
