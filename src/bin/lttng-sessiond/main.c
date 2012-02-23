@@ -3138,6 +3138,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_START_TRACE:
 	case LTTNG_STOP_TRACE:
 		need_domain = 0;
+		break;
 	default:
 		need_domain = 1;
 	}
