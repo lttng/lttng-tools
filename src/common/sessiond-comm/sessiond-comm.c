@@ -541,10 +541,13 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 
 	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
 #elif defined(__FreeBSD__)
-	ret = getpeereid(sock, &creds->uid, &creds->gid);
-	if (ret != 0) {
-		return ret;
-	}
+	{
+		int peer_ret;
+
+		peer_ret = getpeereid(sock, &creds->uid, &creds->gid);
+		if (peer_ret != 0) {
+			return peer_ret;
+		}
 #else
 #error "Please implement credential support for your OS."
 #endif	/* __linux__ */
