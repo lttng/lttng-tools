@@ -200,7 +200,7 @@ int child_run_as(void *_data)
 }
 
 static
-int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
+int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
 	struct run_as_data run_as_data;
 	int ret = 0;
@@ -290,6 +290,29 @@ close_pipe:
 	close(retval_pipe[1]);
 end:
 	return retval.i;
+}
+
+/*
+ * To be used on setups where gdb has issues debugging programs using
+ * clone/rfork. Note that this is for debuging ONLY, and should not be
+ * considered secure.
+ */
+static
+int run_as_noclone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
+{
+	return cmd(data);
+}
+
+static
+int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
+{
+	if (!getenv("LTTNG_DEBUG_NOCLONE")) {
+		DBG("Using run_as_clone");
+		return run_as_clone(cmd, data, uid, gid);
+	} else {
+		DBG("Using run_as_noclone");
+		return run_as_noclone(cmd, data, uid, gid);
+	}
 }
 
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
