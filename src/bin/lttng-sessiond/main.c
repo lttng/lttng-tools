@@ -839,8 +839,15 @@ static void *thread_manage_kernel(void *data)
 		lttng_poll_reset(&events);
 
 		/* Poll infinite value of time */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		} else if (ret == 0) {
 			/* Should not happen since timeout is infinite */
@@ -930,8 +937,15 @@ static void *thread_manage_consumer(void *data)
 	nb_fd = LTTNG_POLL_GETNB(&events);
 
 	/* Inifinite blocking call, waiting for transmission */
+restart:
 	ret = lttng_poll_wait(&events, -1);
 	if (ret < 0) {
+		/*
+		 * Restart interrupted system call.
+		 */
+		if (errno == EINTR) {
+			goto restart;
+		}
 		goto error;
 	}
 
@@ -1001,8 +1015,15 @@ static void *thread_manage_consumer(void *data)
 	nb_fd = LTTNG_POLL_GETNB(&events);
 
 	/* Inifinite blocking call, waiting for transmission */
+restart_poll:
 	ret = lttng_poll_wait(&events, -1);
 	if (ret < 0) {
+		/*
+		 * Restart interrupted system call.
+		 */
+		if (errno == EINTR) {
+			goto restart_poll;
+		}
 		goto error;
 	}
 
@@ -1085,8 +1106,15 @@ static void *thread_manage_apps(void *data)
 		DBG("Apps thread polling on %d fds", nb_fd);
 
 		/* Inifinite blocking call, waiting for transmission */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		}
 
@@ -1304,8 +1332,15 @@ static void *thread_registration_apps(void *data)
 		nb_fd = LTTNG_POLL_GETNB(&events);
 
 		/* Inifinite blocking call, waiting for transmission */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		}
 
@@ -3607,8 +3642,15 @@ static void *thread_manage_clients(void *data)
 		nb_fd = LTTNG_POLL_GETNB(&events);
 
 		/* Inifinite blocking call, waiting for transmission */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		}
 

@@ -491,8 +491,15 @@ int lttng_consumer_poll_socket(struct pollfd *consumer_sockpoll)
 {
 	int num_rdy;
 
+restart:
 	num_rdy = poll(consumer_sockpoll, 2, -1);
 	if (num_rdy == -1) {
+		/*
+		 * Restart interrupted system call.
+		 */
+		if (errno == EINTR) {
+			goto restart;
+		}
 		perror("Poll error");
 		goto exit;
 	}
@@ -897,10 +904,17 @@ void *lttng_consumer_thread_poll_fds(void *data)
 		pthread_mutex_unlock(&consumer_data.lock);
 
 		/* poll on the array of fds */
+	restart:
 		DBG("polling on %d fd", nb_fd + 1);
 		num_rdy = poll(pollfd, nb_fd + 1, consumer_poll_timeout);
 		DBG("poll num_rdy : %d", num_rdy);
 		if (num_rdy == -1) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			perror("Poll error");
 			lttng_consumer_send_error(ctx, CONSUMERD_POLL_ERROR);
 			goto end;
