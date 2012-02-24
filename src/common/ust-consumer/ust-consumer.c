@@ -57,7 +57,7 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 	ret = ustctl_get_mmap_read_offset(stream->chan->handle,
 		stream->buf, &mmap_offset);
 	if (ret != 0) {
-		ret = -errno;
+		errno = -ret;
 		perror("ustctl_get_mmap_read_offset");
 		goto end;
 	}
@@ -66,7 +66,7 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 		if (ret >= len) {
 			len = 0;
 		} else if (ret < 0) {
-			ret = -errno;
+			errno = -ret;
 			perror("Error in file write");
 			goto end;
 		}
@@ -108,7 +108,7 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 
 	ret = ustctl_snapshot(stream->chan->handle, stream->buf);
 	if (ret != 0) {
-		ret = errno;
+		errno = -ret;
 		perror("Getting sub-buffer snapshot.");
 	}
 
@@ -130,7 +130,7 @@ int lttng_ustconsumer_get_produced_snapshot(
 	ret = ustctl_snapshot_get_produced(stream->chan->handle,
 			stream->buf, pos);
 	if (ret != 0) {
-		ret = errno;
+		errno = -ret;
 		perror("kernctl_snapshot_get_produced");
 	}
 
@@ -346,7 +346,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	if (!stream->hangup_flush_done) {
 		do {
 			readlen = read(stream->wait_fd, &dummy, 1);
-		} while (readlen == -1 && errno == -EINTR);
+		} while (readlen == -1 && errno == EINTR);
 		if (readlen == -1) {
 			ret = readlen;
 			goto end;
