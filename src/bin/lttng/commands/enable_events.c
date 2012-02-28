@@ -104,7 +104,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -s, --session            Apply to session name\n");
 	fprintf(ofp, "  -c, --channel            Apply to this channel\n");
-	fprintf(ofp, "  -a, --all                Enable all tracepoints\n");
+	fprintf(ofp, "  -a, --all                Enable all tracepoints and syscalls\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 #if 0
 	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");

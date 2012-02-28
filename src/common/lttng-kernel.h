@@ -113,9 +113,9 @@ struct lttng_kernel_event {
 };
 
 struct lttng_kernel_tracer_version {
-	uint32_t version;
+	uint32_t major;
+	uint32_t minor;
 	uint32_t patchlevel;
-	uint32_t sublevel;
 };
 
 enum lttng_kernel_calibrate_type {

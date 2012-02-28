@@ -57,7 +57,7 @@ int lttng_kconsumer_on_read_subbuffer_mmap(
 	/* get the offset inside the fd to mmap */
 	ret = kernctl_get_mmap_read_offset(fd, &mmap_offset);
 	if (ret != 0) {
-		ret = -errno;
+		errno = -ret;
 		perror("kernctl_get_mmap_read_offset");
 		goto end;
 	}
@@ -67,7 +67,7 @@ int lttng_kconsumer_on_read_subbuffer_mmap(
 		if (ret >= len) {
 			len = 0;
 		} else if (ret < 0) {
-			ret = -errno;
+			errno = -ret;
 			perror("Error in file write");
 			goto end;
 		}
@@ -107,7 +107,7 @@ int lttng_kconsumer_on_read_subbuffer_splice(
 				SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice chan to pipe ret %ld", ret);
 		if (ret < 0) {
-			ret = errno;
+			errno = -ret;
 			perror("Error in relay splice");
 			goto splice_error;
 		}
@@ -116,7 +116,7 @@ int lttng_kconsumer_on_read_subbuffer_splice(
 				SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice pipe to file %ld", ret);
 		if (ret < 0) {
-			ret = errno;
+			errno = -ret;
 			perror("Error in file splice");
 			goto splice_error;
 		}
@@ -164,7 +164,7 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 
 	ret = kernctl_snapshot(infd);
 	if (ret != 0) {
-		ret = errno;
+		errno = -ret;
 		perror("Getting sub-buffer snapshot.");
 	}
 
@@ -186,7 +186,7 @@ int lttng_kconsumer_get_produced_snapshot(
 
 	ret = kernctl_snapshot_get_produced(infd, pos);
 	if (ret != 0) {
-		ret = errno;
+		errno = -ret;
 		perror("kernctl_snapshot_get_produced");
 	}
 
@@ -319,7 +319,6 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
-		ret = errno;
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -336,7 +335,7 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			/* read the whole subbuffer */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
-				ret = errno;
+				errno = -ret;
 				perror("Getting sub-buffer len failed.");
 				goto end;
 			}
@@ -355,7 +354,7 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			/* read the used subbuffer size */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
-				ret = errno;
+				errno = -ret;
 				perror("Getting sub-buffer len failed.");
 				goto end;
 			}
@@ -376,7 +375,7 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 	err = kernctl_put_next_subbuf(infd);
 	if (err != 0) {
-		ret = errno;
+		errno = -ret;
 		if (errno == EFAULT) {
 			perror("Error in unreserving sub buffer\n");
 		} else if (errno == EIO) {
@@ -414,7 +413,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
 		if (ret != 0) {
-			ret = errno;
+			errno = -ret;
 			perror("kernctl_get_mmap_len");
 			goto error_close_fd;
 		}

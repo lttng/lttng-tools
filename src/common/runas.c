@@ -215,6 +215,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	ret = pipe(retval_pipe);
 	if (ret < 0) {
 		perror("pipe");
+		retval.i = ret;
 		goto end;
 	}
 	run_as_data.data = data;
@@ -228,7 +229,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		-1, 0);
 	if (child_stack == MAP_FAILED) {
 		perror("mmap");
-		ret = -ENOMEM;
+		retval.i = -ENOMEM;
 		goto close_pipe;
 	}
 	/*
@@ -240,7 +241,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		&run_as_data, NULL);
 	if (pid < 0) {
 		perror("clone");
-		ret = pid;
+		retval.i = pid;
 		goto unmap_stack;
 	}
 	/* receive return value */
@@ -264,12 +265,13 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	pid = waitpid(pid, &status, 0);
 	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		perror("wait");
-		ret = -1;
+		retval.i = -1;
 	}
 unmap_stack:
 	ret = munmap(child_stack, RUNAS_CHILD_STACK_SIZE);
 	if (ret < 0) {
 		perror("munmap");
+		retval.i = ret;
 	}
 close_pipe:
 	close(retval_pipe[0]);

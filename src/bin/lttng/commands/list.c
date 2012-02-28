@@ -475,6 +475,9 @@ static int list_sessions(const char *session_name)
 	if (count < 0) {
 		ret = count;
 		goto error;
+	} else if (count == 0) {
+		MSG("Currently no available tracing session");
+		goto end;
 	}
 
 	if (session_name == NULL) {
@@ -512,6 +515,7 @@ static int list_sessions(const char *session_name)
 		MSG("\nUse lttng list <session_name> for more details");
 	}
 
+end:
 	return CMD_SUCCESS;
 
 error:

@@ -182,6 +182,14 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(usess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
+		/*
+		 * Indicate that the channel was not created on the tracer side so skip
+		 * sending unexisting streams.
+		 */
+		if (ua_chan->obj == NULL) {
+			continue;
+		}
+
 		ret = send_channel_streams(sock, ua_chan, usess->uid, usess->gid);
 		if (ret < 0) {
 			rcu_read_unlock();

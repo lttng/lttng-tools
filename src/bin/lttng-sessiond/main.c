@@ -794,12 +794,18 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 
+	session_lock_list();
+
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
+		session_lock(sess);
 		if (sess->ust_session) {
 			ust_app_global_update(sess->ust_session, app_sock);
 		}
+		session_unlock(sess);
 	}
+
+	session_unlock_list();
 }
 
 /*
@@ -854,8 +860,15 @@ static void *thread_manage_kernel(void *data)
 		tracepoint(sessiond_th_kern_poll);
 
 		/* Poll infinite value of time */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		} else if (ret == 0) {
 			/* Should not happen since timeout is infinite */
@@ -949,8 +962,15 @@ static void *thread_manage_consumer(void *data)
 	tracepoint(sessiond_th_kcon_poll);
 
 	/* Inifinite blocking call, waiting for transmission */
+restart:
 	ret = lttng_poll_wait(&events, -1);
 	if (ret < 0) {
+		/*
+		 * Restart interrupted system call.
+		 */
+		if (errno == EINTR) {
+			goto restart;
+		}
 		goto error;
 	}
 
@@ -1020,8 +1040,15 @@ static void *thread_manage_consumer(void *data)
 	nb_fd = LTTNG_POLL_GETNB(&events);
 
 	/* Inifinite blocking call, waiting for transmission */
+restart_poll:
 	ret = lttng_poll_wait(&events, -1);
 	if (ret < 0) {
+		/*
+		 * Restart interrupted system call.
+		 */
+		if (errno == EINTR) {
+			goto restart_poll;
+		}
 		goto error;
 	}
 
@@ -1108,8 +1135,15 @@ static void *thread_manage_apps(void *data)
 		tracepoint(sessiond_th_apps_poll);
 
 		/* Inifinite blocking call, waiting for transmission */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		}
 
@@ -1348,8 +1382,15 @@ static void *thread_registration_apps(void *data)
 		nb_fd = LTTNG_POLL_GETNB(&events);
 
 		/* Inifinite blocking call, waiting for transmission */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		}
 
@@ -3183,10 +3224,25 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 {
 	int ret = LTTCOMM_OK;
 	int need_tracing_session = 1;
+	int need_domain;
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
-	if (opt_no_kernel && cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
+	switch (cmd_ctx->lsm->cmd_type) {
+	case LTTNG_CREATE_SESSION:
+	case LTTNG_DESTROY_SESSION:
+	case LTTNG_LIST_SESSIONS:
+	case LTTNG_LIST_DOMAINS:
+	case LTTNG_START_TRACE:
+	case LTTNG_STOP_TRACE:
+		need_domain = 0;
+		break;
+	default:
+		need_domain = 1;
+	}
+
+	if (opt_no_kernel && need_domain
+			&& cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
 		ret = LTTCOMM_KERN_NA;
 		goto error;
 	}
@@ -3214,8 +3270,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_CALIBRATE:
 	case LTTNG_CREATE_SESSION:
+	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
 		need_tracing_session = 0;
@@ -3240,6 +3296,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 
+	if (!need_domain) {
+		goto skip_domain;
+	}
 	/*
 	 * Check domain type for specific "pre-action".
 	 */
@@ -3333,6 +3392,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	default:
 		break;
 	}
+skip_domain:
 
 	/*
 	 * Check that the UID or GID match that of the tracing session.
@@ -3538,11 +3598,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 		session_lock_list();
 		nr_sessions = lttng_sessions_count(cmd_ctx->creds.uid, cmd_ctx->creds.gid);
-		if (nr_sessions == 0) {
-			ret = LTTCOMM_NO_SESSION;
-			session_unlock_list();
-			goto error;
-		}
+
 		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
 		if (ret < 0) {
 			session_unlock_list();
@@ -3644,8 +3700,15 @@ static void *thread_manage_clients(void *data)
 		nb_fd = LTTNG_POLL_GETNB(&events);
 
 		/* Inifinite blocking call, waiting for transmission */
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
+			/*
+			 * Restart interrupted system call.
+			 */
+			if (errno == EINTR) {
+				goto restart;
+			}
 			goto error;
 		}
 
@@ -3970,24 +4033,19 @@ end:
  */
 static int check_existing_daemon(void)
 {
-	if (access(client_unix_sock_path, F_OK) < 0 &&
-			access(apps_unix_sock_path, F_OK) < 0) {
-		return 0;
-	}
-
 	/* Is there anybody out there ? */
 	if (lttng_session_daemon_alive()) {
 		return -EEXIST;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 /*
  * Set the tracing group gid onto the client socket.
  *
  * Race window between mkdir and chown is OK because we are going from more
- * permissive (root.root) to les permissive (root.tracing).
+ * permissive (root.root) to less permissive (root.tracing).
  */
 static int set_permissions(char *rundir)
 {
@@ -4006,6 +4064,13 @@ static int set_permissions(char *rundir)
 	if (ret < 0) {
 		ERR("Unable to set group on %s", rundir);
 		perror("chown");
+	}
+
+	/* Ensure tracing group can search the run dir */
+	ret = chmod(rundir, S_IRWXU | S_IXGRP);
+	if (ret < 0) {
+		ERR("Unable to set permissions on %s", rundir);
+		perror("chmod");
 	}
 
 	/* lttng client socket path */
@@ -4067,7 +4132,7 @@ static int create_lttng_rundir(const char *rundir)
 
 	DBG3("Creating LTTng run directory: %s", rundir);
 
-	ret = mkdir(rundir, S_IRWXU | S_IRWXG );
+	ret = mkdir(rundir, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			ERR("Unable to create %s", rundir);
@@ -4109,7 +4174,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 
 	DBG2("Creating consumer directory: %s", path);
 
-	ret = mkdir(path, S_IRWXU | S_IRWXG);
+	ret = mkdir(path, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			ERR("Failed to create %s", path);

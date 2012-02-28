@@ -138,11 +138,8 @@ static int check_tracing_group(const char *grp_name)
 
 	/* Get GID of group 'tracing' */
 	grp_tracing = getgrnam(grp_name);
-	if (grp_tracing == NULL) {
-		/* NULL means not found also. getgrnam(3) */
-		if (errno != 0) {
-			perror("getgrnam");
-		}
+	if (!grp_tracing) {
+		/* If grp_tracing is NULL, the group does not exist. */
 		goto end;
 	}
 

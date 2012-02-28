@@ -865,6 +865,8 @@ static struct ust_app_session *create_ust_app_session(
 		ret = ustctl_create_session(app->key.sock);
 		if (ret < 0) {
 			ERR("Creating session for app pid %d", app->key.pid);
+			/* This means that the tracer is gone... */
+			ua_sess = (void*) -1UL;
 			goto error;
 		}
 
@@ -1757,8 +1759,11 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		 */
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
-			/* Major problem here and it's maybe the tracer or malloc() */
+			/* The malloc() failed. */
 			goto error;
+		} else if (ua_sess == (void *) -1UL) {
+			/* The application's socket is not valid. Contiuing */
+			continue;
 		}
 
 		/* Create channel onto application */
@@ -1930,6 +1935,9 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto skip_setup;
 	}
 
+	/* Indicate that the session has been started once */
+	ua_sess->started = 1;
+
 	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
 	if (ret < 0) {
 		goto error_rcu_unlock;
@@ -1986,7 +1994,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}
-	ua_sess->started = 1;
 
 skip_setup:
 	/* This start the UST tracing */
@@ -2032,10 +2039,12 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-	/* Not started, continuing. */
-	if (ua_sess->started == 0) {
-		goto end;
-	}
+	/*
+	 * If started = 0, it means that stop trace has been called for a session
+	 * that was never started. This is a code flow error and should never
+	 * happen.
+	 */
+	assert(ua_sess->started == 1);
 
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->key.sock, ua_sess->handle);
@@ -2065,8 +2074,6 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		ERR("UST app PID %d metadata flush failed with ret %d", app->key.pid,
 				ret);
 	}
-
-	ua_sess->started = 0;
 
 end:
 	rcu_read_unlock();
