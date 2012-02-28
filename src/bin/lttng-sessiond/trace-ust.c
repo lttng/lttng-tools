@@ -236,7 +236,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 		lue->attr.loglevel = ev->loglevel;
 		break;
 	default:
-		ERR("Unknown ust loglevel type (%d)", ev->type);
+		ERR("Unknown ust loglevel type (%d)", ev->loglevel_type);
 		goto error_free_event;
 	}
 
