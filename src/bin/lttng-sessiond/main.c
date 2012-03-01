@@ -1174,8 +1174,10 @@ static void *thread_manage_apps(void *data)
 						/*
 						 * We just need here to monitor the close of the UST
 						 * socket and poll set monitor those by default.
+						 * Listen on POLLIN (even if we never expect any
+						 * data) to ensure that hangup wakes us.
 						 */
-						ret = lttng_poll_add(&events, ust_cmd.sock, 0);
+						ret = lttng_poll_add(&events, ust_cmd.sock, LPOLLIN);
 						if (ret < 0) {
 							goto error;
 						}
