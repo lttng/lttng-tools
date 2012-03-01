@@ -42,9 +42,9 @@ extern volatile int consumer_quit;
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile.
  *
- * Returns the number of bytes written
+ * Returns the number of bytes written, else negative value on error.
  */
-int lttng_ustconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
@@ -89,7 +89,7 @@ end:
  *
  * Returns the number of bytes spliced.
  */
-int lttng_ustconsumer_on_read_subbuffer_splice(
+ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
