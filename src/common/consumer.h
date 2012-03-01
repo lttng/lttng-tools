@@ -114,6 +114,7 @@ struct lttng_consumer_stream {
 	/* For UST */
 	struct lttng_ust_lib_ring_buffer *buf;
 	int cpu;
+	int data_read;
 	int hangup_flush_done;
 	/* UID/GID of the user owning the session to which stream belongs */
 	uid_t uid;
@@ -125,8 +126,11 @@ struct lttng_consumer_stream {
  * process.
  */
 struct lttng_consumer_local_data {
-	/* function to call when data is available on a buffer */
-	int (*on_buffer_ready)(struct lttng_consumer_stream *stream,
+	/*
+	 * Function to call when data is available on a buffer.
+	 * Returns the number of bytes read, or negative error value.
+	 */
+	ssize_t (*on_buffer_ready)(struct lttng_consumer_stream *stream,
 			struct lttng_consumer_local_data *ctx);
 	/*
 	 * function to call when we receive a new channel, it receives a
@@ -285,16 +289,16 @@ int consumer_add_channel(struct lttng_consumer_channel *channel);
 
 extern struct lttng_consumer_local_data *lttng_consumer_create(
 		enum lttng_consumer_type type,
-		int (*buffer_ready)(struct lttng_consumer_stream *stream,
+		ssize_t (*buffer_ready)(struct lttng_consumer_stream *stream,
 			struct lttng_consumer_local_data *ctx),
 		int (*recv_channel)(struct lttng_consumer_channel *channel),
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
 		int (*update_stream)(int sessiond_key, uint32_t state));
 extern void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
-extern int lttng_consumer_on_read_subbuffer_mmap(
+extern ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len);
-extern int lttng_consumer_on_read_subbuffer_splice(
+extern ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len);
 extern int lttng_consumer_take_snapshot(struct lttng_consumer_local_data *ctx,
@@ -308,7 +312,7 @@ extern void *lttng_consumer_thread_receive_fds(void *data);
 extern int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
 
-int lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
+ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 

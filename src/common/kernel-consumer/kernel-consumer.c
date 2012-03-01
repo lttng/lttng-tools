@@ -45,12 +45,12 @@ extern volatile int consumer_quit;
  *
  * Returns the number of bytes written
  */
-int lttng_kconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
 	unsigned long mmap_offset;
-	long ret = 0;
+	ssize_t ret = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int fd = stream->wait_fd;
 	int outfd = stream->out_fd;
@@ -91,11 +91,11 @@ end:
  *
  * Returns the number of bytes spliced.
  */
-int lttng_kconsumer_on_read_subbuffer_splice(
+ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
-	long ret = 0;
+	ssize_t ret = 0;
 	loff_t offset = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int fd = stream->wait_fd;
@@ -308,12 +308,12 @@ end_nosignal:
 /*
  * Consume data on a file descriptor and write it on a trace file.
  */
-int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	unsigned long len;
 	int err;
-	long ret = 0;
+	ssize_t ret = 0;
 	int infd = stream->wait_fd;
 
 	DBG("In read_subbuffer (infd : %d)", infd);
