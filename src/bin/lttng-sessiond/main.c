@@ -3996,7 +3996,7 @@ static int set_permissions(char *rundir)
 	}
 
 	/* Ensure tracing group can search the run dir */
-	ret = chmod(rundir, S_IRWXU | S_IXGRP);
+	ret = chmod(rundir, S_IRWXU | S_IXGRP | S_IXOTH);
 	if (ret < 0) {
 		ERR("Unable to set permissions on %s", rundir);
 		perror("chmod");
