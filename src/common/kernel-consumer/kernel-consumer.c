@@ -106,7 +106,7 @@ ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 				(unsigned long)offset, fd);
 		ret = splice(fd, &offset, ctx->consumer_thread_pipe[1], NULL, len,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("splice chan to pipe ret %ld", ret);
+		DBG("splice chan to pipe ret %zd", ret);
 		if (ret < 0) {
 			errno = -ret;
 			perror("Error in relay splice");
@@ -115,7 +115,7 @@ ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 
 		ret = splice(ctx->consumer_thread_pipe[0], NULL, outfd, NULL, ret,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("splice pipe to file %ld", ret);
+		DBG("splice pipe to file %zd", ret);
 		if (ret < 0) {
 			errno = -ret;
 			perror("Error in file splice");
