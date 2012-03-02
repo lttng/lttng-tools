@@ -122,9 +122,9 @@ static char client_unix_sock_path[PATH_MAX];
 static char wait_shm_path[PATH_MAX];
 
 /* Sockets and FDs */
-static int client_sock;
-static int apps_sock;
-static int kernel_tracer_fd;
+static int client_sock = -1;
+static int apps_sock = -1;
+static int kernel_tracer_fd = -1;
 static int kernel_poll_pipe[2];
 
 /*
@@ -419,7 +419,9 @@ static void cleanup(void)
 
 	if (is_root && !opt_no_kernel) {
 		DBG2("Closing kernel fd");
-		close(kernel_tracer_fd);
+		if (kernel_tracer_fd >= 0) {
+			close(kernel_tracer_fd);
+		}
 		DBG("Unloading kernel modules");
 		modprobe_remove_lttng_all();
 	}
@@ -1281,7 +1283,7 @@ error:
  */
 static void *thread_registration_apps(void *data)
 {
-	int sock = 0, i, ret, pollfd;
+	int sock = -1, i, ret, pollfd;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	/*
@@ -1415,8 +1417,12 @@ error:
 	/* Notify that the registration thread is gone */
 	notify_ust_apps(0);
 
-	close(apps_sock);
-	close(sock);
+	if (apps_sock >= 0) {
+		close(apps_sock);
+	}
+	if (clock >= 0) {
+		close(sock);
+	}
 	unlink(apps_unix_sock_path);
 
 	lttng_poll_clean(&events);
@@ -1772,7 +1778,7 @@ error_open:
 
 error:
 	WARN("No kernel tracer available");
-	kernel_tracer_fd = 0;
+	kernel_tracer_fd = -1;
 	return LTTCOMM_KERN_NA;
 }
 
@@ -3249,7 +3255,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		}
 
 		/* Kernel tracer check */
-		if (kernel_tracer_fd == 0) {
+		if (kernel_tracer_fd == -1) {
 			/* Basically, load kernel tracer modules */
 			ret = init_kernel_tracer();
 			if (ret != 0) {
@@ -3589,7 +3595,7 @@ init_setup_error:
  */
 static void *thread_manage_clients(void *data)
 {
-	int sock = 0, ret, i, pollfd;
+	int sock = -1, ret, i, pollfd;
 	uint32_t revents, nb_fd;
 	struct command_ctx *cmd_ctx = NULL;
 	struct lttng_poll_event events;
@@ -3747,8 +3753,12 @@ static void *thread_manage_clients(void *data)
 error:
 	DBG("Client thread dying");
 	unlink(client_unix_sock_path);
-	close(client_sock);
-	close(sock);
+	if (sock >= 0) {
+		close(client_sock);
+	}
+	if (sock >= 0) {
+		close(sock);
+	}
 
 	lttng_poll_clean(&events);
 	clean_command_ctx(&cmd_ctx);
