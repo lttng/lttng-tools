@@ -100,16 +100,22 @@ static struct consumer_data kconsumer_data = {
 	.type = LTTNG_CONSUMER_KERNEL,
 	.err_unix_sock_path = DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
 	.cmd_unix_sock_path = DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
+	.err_sock = -1,
+	.cmd_sock = -1,
 };
 static struct consumer_data ustconsumer64_data = {
 	.type = LTTNG_CONSUMER64_UST,
 	.err_unix_sock_path = DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
 	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
+	.err_sock = -1,
+	.cmd_sock = -1,
 };
 static struct consumer_data ustconsumer32_data = {
 	.type = LTTNG_CONSUMER32_UST,
 	.err_unix_sock_path = DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
 	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
+	.err_sock = -1,
+	.cmd_sock = -1,
 };
 
 static int dispatch_thread_exit;
@@ -324,7 +330,8 @@ static void teardown_kernel_session(struct ltt_session *session)
 	 * If a custom kernel consumer was registered, close the socket before
 	 * tearing down the complete kernel session structure
 	 */
-	if (session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
+	if (kconsumer_data.cmd_sock >= 0 &&
+			session->kernel_session->consumer_fd != kconsumer_data.cmd_sock) {
 		lttcomm_close_unix_sock(session->kernel_session->consumer_fd);
 	}
 
@@ -573,12 +580,12 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 
 	DBG("Sending metadata stream fd");
 
-	/* Extra protection. It's NOT supposed to be set to 0 at this point */
-	if (session->consumer_fd == 0) {
+	/* Extra protection. It's NOT supposed to be set to -1 at this point */
+	if (session->consumer_fd < 0) {
 		session->consumer_fd = consumer_data->cmd_sock;
 	}
 
-	if (session->metadata_stream_fd != 0) {
+	if (session->metadata_stream_fd >= 0) {
 		/* Send metadata channel fd */
 		lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 		lkm.u.channel.channel_key = session->metadata->fd;
@@ -752,8 +759,8 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 			continue;
 		}
 
-		/* This is not suppose to be 0 but this is an extra security check */
-		if (session->kernel_session->consumer_fd == 0) {
+		/* This is not suppose to be -1 but this is an extra security check */
+		if (session->kernel_session->consumer_fd < 0) {
 			session->kernel_session->consumer_fd = consumer_data->cmd_sock;
 		}
 
@@ -1851,10 +1858,10 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 	if (session->consumer_fds_sent == 0) {
 		/*
 		 * Assign default kernel consumer socket if no consumer assigned to the
-		 * kernel session. At this point, it's NOT suppose to be 0 but this is
+		 * kernel session. At this point, it's NOT supposed to be -1 but this is
 		 * an extra security check.
 		 */
-		if (session->consumer_fd == 0) {
+		if (session->consumer_fd < 0) {
 			session->consumer_fd = kconsumer_data.cmd_sock;
 		}
 
@@ -1942,7 +1949,7 @@ static int create_kernel_session(struct ltt_session *session)
 	}
 
 	/* Set kernel consumer socket fd */
-	if (kconsumer_data.cmd_sock) {
+	if (kconsumer_data.cmd_sock >= 0) {
 		session->kernel_session->consumer_fd = kconsumer_data.cmd_sock;
 	}
 
@@ -2851,7 +2858,7 @@ static int cmd_start_trace(struct ltt_session *session)
 		}
 
 		/* Open kernel metadata stream */
-		if (ksession->metadata_stream_fd == 0) {
+		if (ksession->metadata_stream_fd < 0) {
 			ret = kernel_open_metadata_stream(ksession);
 			if (ret < 0) {
 				ERR("Kernel create metadata stream failed");
