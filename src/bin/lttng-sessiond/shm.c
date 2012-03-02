@@ -51,7 +51,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = chown(shm_path, 0, 0);
 		if (ret < 0) {
 			if (errno != ENOENT) {
-				perror("chown wait shm");
+				PERROR("chown wait shm");
 				goto error;
 			}
 		}
@@ -65,7 +65,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = chown(shm_path, getuid(), getgid());
 		if (ret < 0) {
 			if (errno != ENOENT) {
-				perror("chown wait shm");
+				PERROR("chown wait shm");
 				goto error;
 			}
 		}
@@ -77,7 +77,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	ret = chmod(shm_path, mode);
 	if (ret < 0) {
 		if (errno != ENOENT) {
-			perror("chmod wait shm");
+			PERROR("chmod wait shm");
 			goto error;
 		}
 	}
@@ -94,20 +94,20 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	 */
 	wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
 	if (wait_shm_fd < 0) {
-		perror("shm_open wait shm");
+		PERROR("shm_open wait shm");
 		goto error;
 	}
 
 	ret = ftruncate(wait_shm_fd, mmap_size);
 	if (ret < 0) {
-		perror("ftruncate wait shm");
+		PERROR("ftruncate wait shm");
 		exit(EXIT_FAILURE);
 	}
 
 #ifndef __FreeBSD__
 	ret = fchmod(wait_shm_fd, mode);
 	if (ret < 0) {
-		perror("fchmod");
+		PERROR("fchmod");
 		exit(EXIT_FAILURE);
 	}
 #else
@@ -149,7 +149,7 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 	/* close shm fd immediately after taking the mmap reference */
 	ret = close(wait_shm_fd);
 	if (ret) {
-		perror("Error closing fd");
+		PERROR("Error closing fd");
 	}
 
 	if (wait_shm_mmap == MAP_FAILED) {

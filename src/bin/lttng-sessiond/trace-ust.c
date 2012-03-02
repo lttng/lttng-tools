@@ -139,7 +139,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {
-		perror("ltt_ust_channel zmalloc");
+		PERROR("ltt_ust_channel zmalloc");
 		goto error;
 	}
 
@@ -171,7 +171,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	/* Set trace output path */
 	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
 	if (ret < 0) {
-		perror("asprintf ust create channel");
+		PERROR("asprintf ust create channel");
 		goto error_free_channel;
 	}
 
@@ -270,7 +270,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 	lum = zmalloc(sizeof(struct ltt_ust_metadata));
 	if (lum == NULL) {
-		perror("ust metadata zmalloc");
+		PERROR("ust metadata zmalloc");
 		goto error;
 	}
 
@@ -286,7 +286,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	/* Set metadata trace path */
 	ret = snprintf(lum->pathname, PATH_MAX, "%s/metadata", path);
 	if (ret < 0) {
-		perror("asprintf ust metadata");
+		PERROR("asprintf ust metadata");
 		goto error_free_metadata;
 	}
 

@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef _GNU_SOURCE
+#error "lttng-tools error.h needs _GNU_SOURCE"
+#endif
+
 /* Stringify the expansion of a define */
 #define XSTR(d) STR(d)
 #define STR(s) #s
@@ -40,21 +44,22 @@ extern int opt_verbose;
 /*
  * Macro for printing message depending on command line option and verbosity.
  */
-#define __lttng_print(type, fmt, args...)                                 \
-	do {                                                                  \
-		if (opt_quiet == 0) {                                             \
-			if (type == PRINT_MSG) {                                      \
-				fprintf(stdout, fmt, ## args);                            \
-			} else if (((type & PRINT_DBG) && opt_verbose == 1) ||        \
-					((type & (PRINT_DBG | PRINT_DBG2)) &&                 \
-						opt_verbose == 2) ||                              \
-					((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&    \
-						opt_verbose == 3)) {                              \
-				fprintf(stderr, fmt, ## args);                            \
-			} else if (type & (PRINT_ERR | PRINT_WARN | PRINT_BUG)) {     \
-				fprintf(stderr, fmt, ## args);                            \
-			}                                                             \
-		}                                                                 \
+#define __lttng_print(type, fmt, args...)					\
+	do {									\
+		if (opt_quiet == 0 && type == PRINT_MSG) {			\
+			fprintf(stdout, fmt, ## args);				\
+		} else if (opt_quiet == 0 &&					\
+				(((type & PRINT_DBG) && opt_verbose == 1) ||	\
+				((type & (PRINT_DBG | PRINT_DBG2)) &&		\
+					opt_verbose == 2) ||			\
+				((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&	\
+					opt_verbose == 3))) {			\
+			fprintf(stderr, fmt, ## args);				\
+		} else if (opt_quiet == 0 && (type & (PRINT_WARN))) {		\
+			fprintf(stderr, fmt, ## args);				\
+		} else if (type & (PRINT_ERR | PRINT_BUG)) {			\
+			fprintf(stderr, fmt, ## args);				\
+		}								\
 	} while (0);
 
 #define MSG(fmt, args...) \
@@ -75,7 +80,8 @@ extern int opt_verbose;
 		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
 
 #define _PERROR(fmt, args...) \
-	__lttng_print(PRINT_ERR, "perror " fmt "\n", ## args)
+	__lttng_print(PRINT_ERR, "PERROR: " fmt \
+		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
 
 #if !defined(__linux__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
 /*

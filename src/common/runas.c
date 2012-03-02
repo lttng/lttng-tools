@@ -167,14 +167,14 @@ int child_run_as(void *_data)
 	if (data->gid != getegid()) {
 		ret = setegid(data->gid);
 		if (ret < 0) {
-			perror("setegid");
+			PERROR("setegid");
 			return EXIT_FAILURE;
 		}
 	}
 	if (data->uid != geteuid()) {
 		ret = seteuid(data->uid);
 		if (ret < 0) {
-			perror("seteuid");
+			PERROR("seteuid");
 			return EXIT_FAILURE;
 		}
 	}
@@ -190,7 +190,7 @@ int child_run_as(void *_data)
 		writelen = write(data->retval_pipe, &sendret.c[index],
 				writeleft);
 		if (writelen < 0) {
-			perror("write");
+			PERROR("write");
 			return EXIT_FAILURE;
 		}
 		writeleft -= writelen;
@@ -227,7 +227,7 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 
 	ret = pipe(retval_pipe);
 	if (ret < 0) {
-		perror("pipe");
+		PERROR("pipe");
 		retval.i = ret;
 		goto end;
 	}
@@ -241,7 +241,7 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | LTTNG_MAP_STACK,
 		-1, 0);
 	if (child_stack == MAP_FAILED) {
-		perror("mmap");
+		PERROR("mmap");
 		retval.i = -ENOMEM;
 		goto close_pipe;
 	}
@@ -252,7 +252,7 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	pid = lttng_clone_files(child_run_as, child_stack + (RUNAS_CHILD_STACK_SIZE / 2),
 		&run_as_data);
 	if (pid < 0) {
-		perror("clone");
+		PERROR("clone");
 		retval.i = pid;
 		goto unmap_stack;
 	}
@@ -262,7 +262,7 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	do {
 		readlen = read(retval_pipe[0], &retval.c[index], readleft);
 		if (readlen < 0) {
-			perror("read");
+			PERROR("read");
 			ret = -1;
 			break;
 		}
@@ -276,18 +276,24 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	 */
 	pid = waitpid(pid, &status, 0);
 	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		perror("wait");
+		PERROR("wait");
 		retval.i = -1;
 	}
 unmap_stack:
 	ret = munmap(child_stack, RUNAS_CHILD_STACK_SIZE);
 	if (ret < 0) {
-		perror("munmap");
+		PERROR("munmap");
 		retval.i = ret;
 	}
 close_pipe:
-	close(retval_pipe[0]);
-	close(retval_pipe[1]);
+	ret = close(retval_pipe[0]);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(retval_pipe[1]);
+	if (ret) {
+		PERROR("close");
+	}
 end:
 	return retval.i;
 }

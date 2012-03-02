@@ -28,6 +28,7 @@
 #include <errno.h>
 
 #include <common/defaults.h>
+#include <common/error.h>
 
 #include "sessiond-comm.h"
 
@@ -140,12 +141,11 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 int lttcomm_connect_unix_sock(const char *pathname)
 {
 	struct sockaddr_un sun;
-	int fd;
-	int ret;
+	int fd, ret, closeret;
 
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
-		perror("socket");
+		PERROR("socket");
 		ret = fd;
 		goto error;
 	}
@@ -167,7 +167,10 @@ int lttcomm_connect_unix_sock(const char *pathname)
 	return fd;
 
 error_connect:
-	close(fd);
+	closeret = close(fd);
+	if (closeret) {
+		PERROR("close");
+	}
 error:
 	return ret;
 }
@@ -185,7 +188,7 @@ int lttcomm_accept_unix_sock(int sock)
 	/* Blocking call */
 	new_fd = accept(sock, (struct sockaddr *) &sun, &len);
 	if (new_fd < 0) {
-		perror("accept");
+		PERROR("accept");
 	}
 
 	return new_fd;
@@ -203,7 +206,7 @@ int lttcomm_create_unix_sock(const char *pathname)
 
 	/* Create server socket */
 	if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
+		PERROR("socket");
 		goto error;
 	}
 
@@ -216,7 +219,7 @@ int lttcomm_create_unix_sock(const char *pathname)
 	(void) unlink(pathname);
 	ret = bind(fd, (struct sockaddr *) &sun, sizeof(sun));
 	if (ret < 0) {
-		perror("bind");
+		PERROR("bind");
 		goto error;
 	}
 
@@ -235,7 +238,7 @@ int lttcomm_listen_unix_sock(int sock)
 
 	ret = listen(sock, LTTNG_SESSIOND_COMM_MAX_LISTEN);
 	if (ret < 0) {
-		perror("listen");
+		PERROR("listen");
 	}
 
 	return ret;
@@ -262,7 +265,7 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 
 	ret = recvmsg(sock, &msg, MSG_WAITALL);
 	if (ret < 0) {
-		perror("recvmsg");
+		PERROR("recvmsg");
 	}
 
 	return ret;
@@ -288,7 +291,7 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		perror("sendmsg");
+		PERROR("sendmsg");
 	}
 
 	return ret;
@@ -299,15 +302,18 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
  */
 int lttcomm_close_unix_sock(int sock)
 {
-	int ret;
+	int ret, closeret;
 
 	/* Shutdown receptions and transmissions */
 	ret = shutdown(sock, SHUT_RDWR);
 	if (ret < 0) {
-		perror("shutdown");
+		PERROR("shutdown");
 	}
 
-	close(sock);
+	closeret = close(sock);
+	if (closeret) {
+		PERROR("close");
+	}
 
 	return ret;
 }
@@ -350,7 +356,7 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		perror("sendmsg");
+		PERROR("sendmsg");
 	}
 	return ret;
 }
@@ -385,7 +391,7 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 
 	ret = recvmsg(sock, &msg, 0);
 	if (ret < 0) {
-		perror("recvmsg fds");
+		PERROR("recvmsg fds");
 		goto end;
 	}
 	if (ret != 1) {
@@ -463,7 +469,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		perror("sendmsg");
+		PERROR("sendmsg");
 	}
 
 	return ret;
@@ -507,7 +513,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 
 	ret = recvmsg(sock, &msg, 0);
 	if (ret < 0) {
-		perror("recvmsg fds");
+		PERROR("recvmsg fds");
 		goto end;
 	}
 
@@ -568,7 +574,7 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	/* Set socket for credentials retrieval */
 	ret = setsockopt(sock, SOL_SOCKET, SO_PASSCRED, &on, sizeof(on));
 	if (ret < 0) {
-		perror("setsockopt creds unix sock");
+		PERROR("setsockopt creds unix sock");
 	}
 	return ret;
 }

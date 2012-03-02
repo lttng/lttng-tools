@@ -91,7 +91,7 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	/* Allocate a new ltt kernel session */
 	lks = zmalloc(sizeof(struct ltt_kernel_session));
 	if (lks == NULL) {
-		perror("create kernel session zmalloc");
+		PERROR("create kernel session zmalloc");
 		goto error;
 	}
 
@@ -107,7 +107,7 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	/* Set session path */
 	ret = asprintf(&lks->trace_path, "%s/kernel", path);
 	if (ret < 0) {
-		perror("asprintf kernel traces path");
+		PERROR("asprintf kernel traces path");
 		goto error;
 	}
 
@@ -129,13 +129,13 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 
 	lkc = zmalloc(sizeof(struct ltt_kernel_channel));
 	if (lkc == NULL) {
-		perror("ltt_kernel_channel zmalloc");
+		PERROR("ltt_kernel_channel zmalloc");
 		goto error;
 	}
 
 	lkc->channel = zmalloc(sizeof(struct lttng_channel));
 	if (lkc->channel == NULL) {
-		perror("lttng_channel zmalloc");
+		PERROR("lttng_channel zmalloc");
 		goto error;
 	}
 	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
@@ -151,7 +151,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	/* Set default trace output path */
 	ret = asprintf(&lkc->pathname, "%s", path);
 	if (ret < 0) {
-		perror("asprintf kernel create channel");
+		PERROR("asprintf kernel create channel");
 		goto error;
 	}
 
@@ -174,7 +174,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	lke = zmalloc(sizeof(struct ltt_kernel_event));
 	attr = zmalloc(sizeof(struct lttng_kernel_event));
 	if (lke == NULL || attr == NULL) {
-		perror("kernel event zmalloc");
+		PERROR("kernel event zmalloc");
 		goto error;
 	}
 
@@ -246,7 +246,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	lkm = zmalloc(sizeof(struct ltt_kernel_metadata));
 	chan = zmalloc(sizeof(struct lttng_channel));
 	if (lkm == NULL || chan == NULL) {
-		perror("kernel metadata zmalloc");
+		PERROR("kernel metadata zmalloc");
 		goto error;
 	}
 
@@ -264,7 +264,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	/* Set default metadata path */
 	ret = asprintf(&lkm->pathname, "%s/metadata", path);
 	if (ret < 0) {
-		perror("asprintf kernel metadata");
+		PERROR("asprintf kernel metadata");
 		goto error;
 	}
 
@@ -286,7 +286,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(void)
 
 	lks = zmalloc(sizeof(struct ltt_kernel_stream));
 	if (lks == NULL) {
-		perror("kernel stream zmalloc");
+		PERROR("kernel stream zmalloc");
 		goto error;
 	}
 
@@ -306,9 +306,14 @@ error:
  */
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 {
+	int ret;
+
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
-	close(stream->fd);
+	ret = close(stream->fd);
+	if (ret) {
+		PERROR("close");
+	}
 	/* Remove from stream list */
 	cds_list_del(&stream->list);
 
@@ -321,9 +326,18 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
  */
 void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
-	DBG("[trace] Closing event fd %d", event->fd);
-	/* Close kernel fd */
-	close(event->fd);
+	int ret;
+
+	if (event->fd >= 0) {
+		DBG("[trace] Closing event fd %d", event->fd);
+		/* Close kernel fd */
+		ret = close(event->fd);
+		if (ret) {
+			PERROR("close");
+		}
+	} else {
+		DBG("[trace] Tearing down event (no associated fd)");
+	}
 
 	/* Remove from event list */
 	cds_list_del(&event->list);
@@ -340,10 +354,14 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
 	struct ltt_kernel_event *event, *etmp;
+	int ret;
 
 	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
-	close(channel->fd);
+	ret = close(channel->fd);
+	if (ret) {
+		PERROR("close");
+	}
 
 	/* For each stream in the channel list */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->stream_list.head, list) {
@@ -369,9 +387,14 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
  */
 void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 {
+	int ret;
+
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
-	close(metadata->fd);
+	ret = close(metadata->fd);
+	if (ret) {
+		PERROR("close");
+	}
 
 	free(metadata->conf);
 	free(metadata->pathname);
@@ -384,14 +407,21 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel, *ctmp;
+	int ret;
 
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */
-	close(session->fd);
+	ret = close(session->fd);
+	if (ret) {
+		PERROR("close");
+	}
 
 	if (session->metadata_stream_fd != 0) {
 		DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
-		close(session->metadata_stream_fd);
+		ret = close(session->metadata_stream_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 
 	if (session->metadata != NULL) {
