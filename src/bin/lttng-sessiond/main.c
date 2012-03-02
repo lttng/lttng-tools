@@ -1465,7 +1465,7 @@ error:
 			PERROR("close");
 		}
 	}
-	if (clock >= 0) {
+	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {
 			PERROR("close");
