@@ -58,7 +58,7 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		stream->buf, &mmap_offset);
 	if (ret != 0) {
 		errno = -ret;
-		perror("ustctl_get_mmap_read_offset");
+		PERROR("ustctl_get_mmap_read_offset");
 		goto end;
 	}
 	while (len > 0) {
@@ -67,7 +67,7 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 			len = 0;
 		} else if (ret < 0) {
 			errno = -ret;
-			perror("Error in file write");
+			PERROR("Error in file write");
 			goto end;
 		}
 		/* This won't block, but will start writeout asynchronously */
@@ -109,7 +109,7 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 	ret = ustctl_snapshot(stream->chan->handle, stream->buf);
 	if (ret != 0) {
 		errno = -ret;
-		perror("Getting sub-buffer snapshot.");
+		PERROR("Getting sub-buffer snapshot.");
 	}
 
 	return ret;
@@ -131,7 +131,7 @@ int lttng_ustconsumer_get_produced_snapshot(
 			stream->buf, pos);
 	if (ret != 0) {
 		errno = -ret;
-		perror("kernctl_snapshot_get_produced");
+		PERROR("kernctl_snapshot_get_produced");
 	}
 
 	return ret;
@@ -260,7 +260,7 @@ end:
 	/* signal the poll thread */
 	ret = write(ctx->consumer_poll_pipe[1], "4", 1);
 	if (ret < 0) {
-		perror("write consumer poll");
+		PERROR("write consumer poll");
 	}
 end_nosignal:
 	return 0;
@@ -400,7 +400,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 				stream->uid, stream->gid);
 		if (ret < 0) {
 			ERR("Opening %s", stream->path_name);
-			perror("open");
+			PERROR("open");
 			goto error;
 		}
 		stream->out_fd = ret;

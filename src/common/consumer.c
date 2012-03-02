@@ -174,13 +174,22 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 		goto end;
 	}
 	if (stream->out_fd >= 0) {
-		close(stream->out_fd);
+		ret = close(stream->out_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 	if (stream->wait_fd >= 0 && !stream->wait_fd_is_copy) {
-		close(stream->wait_fd);
+		ret = close(stream->wait_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 	if (stream->shm_fd >= 0 && stream->wait_fd != stream->shm_fd) {
-		close(stream->shm_fd);
+		ret = close(stream->shm_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 	if (!--stream->chan->refcount)
 		free_chan = stream->chan;
@@ -361,10 +370,16 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		}
 	}
 	if (channel->wait_fd >= 0 && !channel->wait_fd_is_copy) {
-		close(channel->wait_fd);
+		ret = close(channel->wait_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 	if (channel->shm_fd >= 0 && channel->wait_fd != channel->shm_fd) {
-		close(channel->shm_fd);
+		ret = close(channel->shm_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 	free(channel);
 end:
@@ -699,14 +714,18 @@ error_thread_pipe:
 		int err;
 
 		err = close(ctx->consumer_should_quit[i]);
-		assert(!err);
+		if (err) {
+			PERROR("close");
+		}
 	}
 error_quit_pipe:
 	for (i = 0; i < 2; i++) {
 		int err;
 
 		err = close(ctx->consumer_poll_pipe[i]);
-		assert(!err);
+		if (err) {
+			PERROR("close");
+		}
 	}
 error_poll_pipe:
 	free(ctx);
@@ -719,13 +738,36 @@ error:
  */
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 {
-	close(ctx->consumer_error_socket);
-	close(ctx->consumer_thread_pipe[0]);
-	close(ctx->consumer_thread_pipe[1]);
-	close(ctx->consumer_poll_pipe[0]);
-	close(ctx->consumer_poll_pipe[1]);
-	close(ctx->consumer_should_quit[0]);
-	close(ctx->consumer_should_quit[1]);
+	int ret;
+
+	ret = close(ctx->consumer_error_socket);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_thread_pipe[0]);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_thread_pipe[1]);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_poll_pipe[0]);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_poll_pipe[1]);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_should_quit[0]);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_should_quit[1]);
+	if (ret) {
+		PERROR("close");
+	}
 	unlink(ctx->consumer_command_sock_path);
 	free(ctx);
 }
