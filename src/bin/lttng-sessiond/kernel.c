@@ -208,6 +208,11 @@ int kernel_create_event(struct lttng_event *ev,
 	 */
 	if (ret == 0 && event->event->instrumentation == LTTNG_KERNEL_SYSCALL) {
 		DBG2("Kernel event syscall creation success");
+		/*
+		 * We use fd == -1 to ensure that we never trigger a close of fd
+		 * 0.
+		 */
+		event->fd = -1;
 		goto add_list;
 	}
 

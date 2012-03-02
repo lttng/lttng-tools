@@ -321,9 +321,13 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
  */
 void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
-	DBG("[trace] Closing event fd %d", event->fd);
-	/* Close kernel fd */
-	close(event->fd);
+	if (event->fd >= 0) {
+		DBG("[trace] Closing event fd %d", event->fd);
+		/* Close kernel fd */
+		close(event->fd);
+	} else {
+		DBG("[trace] Tearing down event (no associated fd)");
+	}
 
 	/* Remove from event list */
 	cds_list_del(&event->list);
