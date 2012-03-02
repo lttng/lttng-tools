@@ -200,6 +200,28 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 }
 
 /*
+ * Add replace unsigned long node to hashtable.
+ */
+struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
+		struct lttng_ht_node_ulong *node)
+{
+	struct cds_lfht_node *node_ptr;
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	node_ptr = cds_lfht_add_replace(ht->ht,
+			ht->hash_fct((void *) node->key, HASH_SEED), ht->match_fct,
+			(void *) node->key, &node->node);
+	if (!node_ptr) {
+		return NULL;
+	} else {
+		return caa_container_of(node_ptr, struct lttng_ht_node_ulong, node);
+	}
+	assert(node_ptr == &node->node);
+}
+
+/*
  * Delete node from hashtable.
  */
 int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter)
