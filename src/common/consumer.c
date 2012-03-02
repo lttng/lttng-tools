@@ -86,9 +86,18 @@ static void consumer_steal_stream_key(int key)
 {
 	struct lttng_consumer_stream *stream;
 
+	rcu_read_lock();
 	stream = consumer_find_stream(key);
-	if (stream)
+	if (stream) {
 		stream->key = -1;
+		/*
+		 * We don't want the lookup to match, but we still need
+		 * to iterate on this stream when iterating over the hash table. Just
+		 * change the node key.
+		 */
+		stream->node.key = -1;
+	}
+	rcu_read_unlock();
 }
 
 static struct lttng_consumer_channel *consumer_find_channel(int key)
@@ -119,9 +128,18 @@ static void consumer_steal_channel_key(int key)
 {
 	struct lttng_consumer_channel *channel;
 
+	rcu_read_lock();
 	channel = consumer_find_channel(key);
-	if (channel)
+	if (channel) {
 		channel->key = -1;
+		/*
+		 * We don't want the lookup to match, but we still need
+		 * to iterate on this channel when iterating over the hash table. Just
+		 * change the node key.
+		 */
+		channel->node.key = -1;
+	}
+	rcu_read_unlock();
 }
 
 static
@@ -167,15 +185,9 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 	}
 
 	rcu_read_lock();
-
-	/* Get stream node from hash table */
-	lttng_ht_lookup(consumer_data.stream_ht,
-			(void *)((unsigned long) stream->key), &iter);
-	/*
-	 * Remove stream node from hash table. It can fail if it's been
-	 * replaced due to key reuse.
-	 */
-	(void) lttng_ht_del(consumer_data.stream_ht, &iter);
+	iter.iter.node = &stream->node.node;
+	ret = lttng_ht_del(consumer_data.stream_ht, &iter);
+	assert(!ret);
 
 	rcu_read_unlock();
 
@@ -293,12 +305,7 @@ int consumer_add_stream(struct lttng_consumer_stream *stream)
 	/* Steal stream identifier, for UST */
 	consumer_steal_stream_key(stream->key);
 	rcu_read_lock();
-	/*
-	 * We simply remove the old channel from the hash table. It's
-	 * ok, since we know for sure the sessiond wants to replace it
-	 * with the new version, because the key has been reused.
-	 */
-	(void) lttng_ht_add_replace_ulong(consumer_data.stream_ht, &stream->node);
+	lttng_ht_add_unique_ulong(consumer_data.stream_ht, &stream->node);
 	rcu_read_unlock();
 	consumer_data.stream_count++;
 	consumer_data.need_update = 1;
@@ -376,16 +383,9 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	}
 
 	rcu_read_lock();
-
-	lttng_ht_lookup(consumer_data.channel_ht,
-			(void *)((unsigned long) channel->key), &iter);
-
-	/*
-	 * Remove channel node from hash table. It can fail if it's been
-	 * replaced due to key reuse.
-	 */
-	(void) lttng_ht_del(consumer_data.channel_ht, &iter);
-
+	iter.iter.node = &channel->node.node;
+	ret = lttng_ht_del(consumer_data.channel_ht, &iter);
+	assert(!ret);
 	rcu_read_unlock();
 
 	if (channel->mmap_base != NULL) {
@@ -472,12 +472,7 @@ int consumer_add_channel(struct lttng_consumer_channel *channel)
 	/* Steal channel identifier, for UST */
 	consumer_steal_channel_key(channel->key);
 	rcu_read_lock();
-	/*
-	 * We simply remove the old channel from the hash table. It's
-	 * ok, since we know for sure the sessiond wants to replace it
-	 * with the new version, because the key has been reused.
-	 */
-	(void) lttng_ht_add_replace_ulong(consumer_data.channel_ht, &channel->node);
+	lttng_ht_add_unique_ulong(consumer_data.channel_ht, &channel->node);
 	rcu_read_unlock();
 	pthread_mutex_unlock(&consumer_data.lock);
 
@@ -1037,8 +1032,6 @@ void *lttng_consumer_thread_poll_fds(void *data)
 					local_stream[i]->hangup_flush_done) {
 				ssize_t len;
 
-				assert(!(pollfd[i].revents & POLLERR));
-				assert(!(pollfd[i].revents & POLLNVAL));
 				DBG("Normal read on fd %d", pollfd[i].fd);
 				len = ctx->on_buffer_ready(local_stream[i], ctx);
 				/* it's ok to have an unavailable sub-buffer */
