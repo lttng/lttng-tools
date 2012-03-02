@@ -500,6 +500,7 @@ int consumer_update_poll_array(
 	struct lttng_consumer_stream *stream;
 
 	DBG("Updating poll fd array");
+	rcu_read_lock();
 	cds_lfht_for_each_entry(consumer_data.stream_ht->ht, &iter.iter, stream,
 			node.node) {
 		if (stream->state != LTTNG_CONSUMER_ACTIVE_STREAM) {
@@ -511,6 +512,7 @@ int consumer_update_poll_array(
 		local_stream[i] = stream;
 		i++;
 	}
+	rcu_read_unlock();
 
 	/*
 	 * Insert the consumer_poll_pipe at the end of the array and don't
