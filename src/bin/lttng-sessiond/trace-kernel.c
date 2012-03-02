@@ -91,7 +91,7 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	/* Allocate a new ltt kernel session */
 	lks = zmalloc(sizeof(struct ltt_kernel_session));
 	if (lks == NULL) {
-		perror("create kernel session zmalloc");
+		PERROR("create kernel session zmalloc");
 		goto error;
 	}
 
@@ -107,7 +107,7 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	/* Set session path */
 	ret = asprintf(&lks->trace_path, "%s/kernel", path);
 	if (ret < 0) {
-		perror("asprintf kernel traces path");
+		PERROR("asprintf kernel traces path");
 		goto error;
 	}
 
@@ -129,13 +129,13 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 
 	lkc = zmalloc(sizeof(struct ltt_kernel_channel));
 	if (lkc == NULL) {
-		perror("ltt_kernel_channel zmalloc");
+		PERROR("ltt_kernel_channel zmalloc");
 		goto error;
 	}
 
 	lkc->channel = zmalloc(sizeof(struct lttng_channel));
 	if (lkc->channel == NULL) {
-		perror("lttng_channel zmalloc");
+		PERROR("lttng_channel zmalloc");
 		goto error;
 	}
 	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
@@ -151,7 +151,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	/* Set default trace output path */
 	ret = asprintf(&lkc->pathname, "%s", path);
 	if (ret < 0) {
-		perror("asprintf kernel create channel");
+		PERROR("asprintf kernel create channel");
 		goto error;
 	}
 
@@ -174,7 +174,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	lke = zmalloc(sizeof(struct ltt_kernel_event));
 	attr = zmalloc(sizeof(struct lttng_kernel_event));
 	if (lke == NULL || attr == NULL) {
-		perror("kernel event zmalloc");
+		PERROR("kernel event zmalloc");
 		goto error;
 	}
 
@@ -246,7 +246,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	lkm = zmalloc(sizeof(struct ltt_kernel_metadata));
 	chan = zmalloc(sizeof(struct lttng_channel));
 	if (lkm == NULL || chan == NULL) {
-		perror("kernel metadata zmalloc");
+		PERROR("kernel metadata zmalloc");
 		goto error;
 	}
 
@@ -264,7 +264,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	/* Set default metadata path */
 	ret = asprintf(&lkm->pathname, "%s/metadata", path);
 	if (ret < 0) {
-		perror("asprintf kernel metadata");
+		PERROR("asprintf kernel metadata");
 		goto error;
 	}
 
@@ -286,7 +286,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(void)
 
 	lks = zmalloc(sizeof(struct ltt_kernel_stream));
 	if (lks == NULL) {
-		perror("kernel stream zmalloc");
+		PERROR("kernel stream zmalloc");
 		goto error;
 	}
 

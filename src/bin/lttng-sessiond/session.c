@@ -177,7 +177,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	/* Allocate session data structure */
 	new_session = zmalloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
-		perror("zmalloc");
+		PERROR("zmalloc");
 		ret = LTTCOMM_FATAL;
 		goto error_malloc;
 	}
