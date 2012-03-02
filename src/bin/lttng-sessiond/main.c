@@ -1845,7 +1845,11 @@ error_open:
 error:
 	WARN("No kernel tracer available");
 	kernel_tracer_fd = -1;
-	return LTTCOMM_KERN_NA;
+	if (!is_root) {
+		return LTTCOMM_NEED_ROOT_SESSIOND;
+	} else {
+		return LTTCOMM_KERN_NA;
+	}
 }
 
 /*
@@ -3254,7 +3258,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 
 	if (opt_no_kernel && need_domain
 			&& cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
-		ret = LTTCOMM_KERN_NA;
+		if (!is_root) {
+			ret = LTTCOMM_NEED_ROOT_SESSIOND;
+		} else {
+			ret = LTTCOMM_KERN_NA;
+		}
 		goto error;
 	}
 
@@ -3316,7 +3324,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch (cmd_ctx->lsm->domain.type) {
 	case LTTNG_DOMAIN_KERNEL:
 		if (!is_root) {
-			ret = LTTCOMM_KERN_NA;
+			ret = LTTCOMM_NEED_ROOT_SESSIOND;
 			goto error;
 		}
 
