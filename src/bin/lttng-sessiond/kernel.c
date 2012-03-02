@@ -483,7 +483,7 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	int ret;
 	struct ltt_kernel_stream *lks;
 
-	while ((ret = kernctl_create_stream(channel->fd)) > 0) {
+	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
 		lks = trace_kernel_create_stream();
 		if (lks == NULL) {
 			close(ret);
