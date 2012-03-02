@@ -1431,6 +1431,7 @@ static void *thread_registration_apps(void *data)
 					}
 
 					ust_cmd->sock = sock;
+					sock = -1;
 
 					DBG("UST registration received with pid:%d ppid:%d uid:%d"
 							" gid:%d sock:%d name:%s (version %d.%d)",
