@@ -306,9 +306,14 @@ error:
  */
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 {
+	int ret;
+
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
-	close(stream->fd);
+	ret = close(stream->fd);
+	if (ret) {
+		PERROR("close");
+	}
 	/* Remove from stream list */
 	cds_list_del(&stream->list);
 
@@ -321,10 +326,15 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
  */
 void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
+	int ret;
+
 	if (event->fd >= 0) {
 		DBG("[trace] Closing event fd %d", event->fd);
 		/* Close kernel fd */
-		close(event->fd);
+		ret = close(event->fd);
+		if (ret) {
+			PERROR("close");
+		}
 	} else {
 		DBG("[trace] Tearing down event (no associated fd)");
 	}
@@ -344,10 +354,14 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
 	struct ltt_kernel_event *event, *etmp;
+	int ret;
 
 	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
-	close(channel->fd);
+	ret = close(channel->fd);
+	if (ret) {
+		PERROR("close");
+	}
 
 	/* For each stream in the channel list */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->stream_list.head, list) {
@@ -373,9 +387,14 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
  */
 void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 {
+	int ret;
+
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
-	close(metadata->fd);
+	ret = close(metadata->fd);
+	if (ret) {
+		PERROR("close");
+	}
 
 	free(metadata->conf);
 	free(metadata->pathname);
@@ -388,14 +407,21 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel, *ctmp;
+	int ret;
 
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */
-	close(session->fd);
+	ret = close(session->fd);
+	if (ret) {
+		PERROR("close");
+	}
 
 	if (session->metadata_stream_fd != 0) {
 		DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
-		close(session->metadata_stream_fd);
+		ret = close(session->metadata_stream_fd);
+		if (ret) {
+			PERROR("close");
+		}
 	}
 
 	if (session->metadata != NULL) {

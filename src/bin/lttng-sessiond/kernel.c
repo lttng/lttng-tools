@@ -491,7 +491,10 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
 		lks = trace_kernel_create_stream();
 		if (lks == NULL) {
-			close(ret);
+			ret = close(ret);
+			if (ret) {
+				PERROR("close");
+			}
 			goto error;
 		}
 
@@ -555,7 +558,7 @@ error:
  */
 ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 {
-	int fd, pos;
+	int fd, pos, ret;
 	char *event;
 	size_t nbmem, count = 0;
 	ssize_t size;
@@ -603,11 +606,17 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	*events = elist;
 	DBG("Kernel list events done (%zu events)", count);
 end:
-	fclose(fp);	/* closes both fp and fd */
+	ret = fclose(fp);	/* closes both fp and fd */
+	if (ret) {
+		PERROR("fclose");
+	}
 	return count;
 
 error_fp:
-	close(fd);
+	ret = close(fd);
+	if (ret) {
+		PERROR("close");
+	}
 error:
 	return -1;
 }
@@ -669,8 +678,10 @@ int init_kernel_workarounds(void)
 			/* Ignore error, we don't really care */
 		}
 	}
-	fclose(fp);
+	ret = fclose(fp);
+	if (ret) {
+		PERROR("fclose");
+	}
 end_boot_id:
-
 	return 0;
 }
