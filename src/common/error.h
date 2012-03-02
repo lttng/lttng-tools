@@ -75,7 +75,8 @@ extern int opt_verbose;
 		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
 
 #define _PERROR(fmt, args...) \
-	__lttng_print(PRINT_ERR, "perror " fmt "\n", ## args)
+	__lttng_print(PRINT_ERR, "PERROR: " fmt \
+		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
 
 #define PERROR(call, args...) \
     do { \

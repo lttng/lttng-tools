@@ -50,6 +50,7 @@ static inline void __lttng_poll_free(void *events)
  */
 #ifdef HAVE_EPOLL
 #include <sys/epoll.h>
+#include <stdio.h>
 
 /* See man epoll(7) for this define path */
 #define COMPAT_EPOLL_PROC_PATH "/proc/sys/fs/epoll/max_user_watches"
@@ -146,8 +147,13 @@ static inline void lttng_poll_reset(struct lttng_poll_event *events)
  */
 static inline void lttng_poll_clean(struct lttng_poll_event *events)
 {
+	int ret;
+
 	if (events) {
-		close(events->epfd);
+		ret = close(events->epfd);
+		if (ret) {
+			perror("close");
+		}
 		__lttng_poll_free((void *) events->events);
 	}
 }
