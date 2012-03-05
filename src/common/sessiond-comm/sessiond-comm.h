@@ -136,6 +136,9 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_EVENT_NOT_FOUND,    /* UST event not found */
 	LTTCOMM_UST_CONTEXT_EXIST,      /* UST context exist */
 	LTTCOMM_UST_CONTEXT_INVAL,      /* UST context invalid */
+	LTTCOMM_NEED_ROOT_SESSIOND,		/* root sessiond is needed */
+	LTTCOMM_TRACE_ALREADY_STARTED,  /* Tracing already started */
+	LTTCOMM_TRACE_ALREADY_STOPPED,  /* Tracing already stopped */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
@@ -151,7 +154,7 @@ enum lttcomm_return_code {
 	CONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
 	CONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
 	CONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
-	LTTCOMM_NEED_ROOT_SESSIOND,		/* root sessiond is needed */
+
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
 };

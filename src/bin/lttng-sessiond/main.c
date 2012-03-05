@@ -2850,7 +2850,8 @@ static int cmd_start_trace(struct ltt_session *session)
 	usess = session->ust_session;
 
 	if (session->enabled) {
-		ret = LTTCOMM_UST_START_FAIL;
+		/* Already started. */
+		ret = LTTCOMM_TRACE_ALREADY_STARTED;
 		goto error;
 	}
 
@@ -2942,7 +2943,7 @@ static int cmd_stop_trace(struct ltt_session *session)
 	usess = session->ust_session;
 
 	if (!session->enabled) {
-		ret = LTTCOMM_UST_STOP_FAIL;
+		ret = LTTCOMM_TRACE_ALREADY_STOPPED;
 		goto error;
 	}
 
