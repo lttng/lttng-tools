@@ -116,6 +116,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ENOMEM) ] = "consumerd splice ENOMEM",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ESPIPE) ] = "consumerd splice ESPIPE",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "Event not found",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NEED_ROOT_SESSIOND) ] = "A root lttng-sessiond needs to be running, and client user part of the \"tracing\" group, to interact with kernel tracing",
 };
 
 /*
@@ -291,7 +292,13 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		PERROR("sendmsg");
+		/*
+		 * Only warn about EPIPE when quiet mode is deactivated.
+		 * We consider EPIPE as expected.
+		 */
+		if (errno != EPIPE || !opt_quiet) {
+			PERROR("sendmsg");
+		}
 	}
 
 	return ret;
@@ -356,7 +363,13 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		PERROR("sendmsg");
+		/*
+		 * Only warn about EPIPE when quiet mode is deactivated.
+		 * We consider EPIPE as expected.
+		 */
+		if (errno != EPIPE || !opt_quiet) {
+			PERROR("sendmsg");
+		}
 	}
 	return ret;
 }
@@ -469,9 +482,14 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		PERROR("sendmsg");
+		/*
+		 * Only warn about EPIPE when quiet mode is deactivated.
+		 * We consider EPIPE as expected.
+		 */
+		if (errno != EPIPE || !opt_quiet) {
+			PERROR("sendmsg");
+		}
 	}
-
 	return ret;
 }
 

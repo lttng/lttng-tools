@@ -72,13 +72,13 @@ static void create_one_kernel_session(void)
 	PRINT_OK();
 
 	printf("Validating kernel session: ");
-	assert(kern->fd == 0);
-	assert(kern->metadata_stream_fd == 0);
+	assert(kern->fd == -1);
+	assert(kern->metadata_stream_fd == -1);
 	assert(kern->consumer_fds_sent == 0);
 	assert(kern->channel_count == 0);
 	assert(kern->stream_count_global == 0);
 	assert(kern->metadata == NULL);
-	assert(kern->consumer_fd == 0);
+	assert(kern->consumer_fd == -1);
 	PRINT_OK();
 
 	/* Init list in order to avoid sefaults from cds_list_del */
@@ -95,7 +95,7 @@ static void create_kernel_metadata(void)
 	PRINT_OK();
 
 	printf("Validating kernel session metadata: ");
-	assert(kern->metadata->fd == 0);
+	assert(kern->metadata->fd == -1);
 	assert(strlen(kern->metadata->pathname));
 	assert(kern->metadata->conf != NULL);
 	assert(kern->metadata->conf->attr.overwrite
@@ -128,7 +128,7 @@ static void create_kernel_channel(void)
 	PRINT_OK();
 
 	printf("Validating kernel channel: ");
-	assert(chan->fd == 0);
+	assert(chan->fd == -1);
 	assert(chan->enabled == 1);
 	assert(strcmp(PATH1, chan->pathname) == 0);
 	assert(chan->stream_count == 0);
@@ -157,7 +157,7 @@ static void create_kernel_event(void)
 	PRINT_OK();
 
 	printf("Validating kernel event: ");
-	assert(event->fd == 0);
+	assert(event->fd == -1);
 	assert(event->enabled == 1);
 	assert(event->ctx == NULL);
 	assert(event->event->instrumentation == LTTNG_KERNEL_TRACEPOINT);
@@ -179,7 +179,7 @@ static void create_kernel_stream(void)
 	PRINT_OK();
 
 	printf("Validating kernel stream: ");
-	assert(stream->fd == 0);
+	assert(stream->fd == -1);
 	assert(stream->pathname == NULL);
 	assert(stream->state == 0);
 	PRINT_OK();

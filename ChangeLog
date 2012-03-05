@@ -1,3 +1,40 @@
+2012-03-02 lttng-tools 2.0.0-rc2
+	* Fix: meaningful error message
+	* Fix: UST consumer need to iterate on streams, just change their key
+	* Fix: add missing rcu read lock across RCU HT iteration
+	* Fix: kernel session closes fd 0 after create
+	* Fix: sendmsg EPIPE should be quiet by default (expected)
+	* Fix: thread_registration_apps should set its local sock to -1 when passing it
+	* Fix: clock -> sock typo
+	* Fix: consumer race: should allow reuse of FD key
+	* Fix: Use PERROR all across lttng-tools, never make it quiet
+	* Fix: test all close return values in sessiond
+	* Fix: All perror turned into PERROR to show file and line number
+	* Fix: large audit of close() use in sessiond main.c
+	* Fix: main.c client/apps sockets and kernel_trace_fd close(0)
+	* Fix: incorrect close of fd 0 for syscall kernel event destroy
+	* Fix: sessiond has incorrect missing 0 value in FD check
+	* Fix: sessiond app listening: use posix-compliant poll flags
+	* Fix: consumer printf type should match ssize_t (%zd)
+	* Fix: make ust consumer posix compliant for poll flags
+	* Fix security permission on lttng run directory
+	* Fix: Display right loglevel_type in error message
+	* Fix documentation in lttng.h
+	* Fix: lttng UST and kernel consumer: fix ret vs errno mixup
+	* Fix: restart consumerd and sessiond when interrupted in poll()
+	* Fix: handling bad channel when sending to consumer
+	* Fix useless variable
+	* Fix add-context returned error
+	* fix: add missing break in command handling
+	* fix: command handling: do not check domain for commands not requiring domain
+	* fix: if tracing group does not exist, do not report a client error
+	* Fix: run_as error handling
+	* Fix usage note on -a
+	* Revert FreeBSD compatibility layer
+	* Fix: documented number of subbuffers is incorrect
+	* Document that num-subbuf and subbuf-size need to be power of 2
+	* Merge branch 'master' of git://git.lttng.org/lttng-tools
+
 2012-02-20 lttng-tools 2.0.0-rc1
 	* Fix lttcomm_close_unix_sock to actually close the socket
 	* lttng-sessiond: Set group permissions explicitly
