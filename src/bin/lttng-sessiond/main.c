@@ -81,14 +81,10 @@ const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
 const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
 const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
-/* Variables */
-int opt_verbose;    /* Not static for lttngerr.h */
-int opt_verbose_consumer;    /* Not static for lttngerr.h */
-int opt_quiet;      /* Not static for lttngerr.h */
-
 const char *progname;
 const char *opt_tracing_group;
 static int opt_sig_parent;
+static int opt_verbose_consumer;
 static int opt_daemon;
 static int opt_no_kernel;
 static int is_root;			/* Set to 1 if the daemon is running as root */
@@ -3989,11 +3985,11 @@ static int parse_args(int argc, char **argv)
 			opt_no_kernel = 1;
 			break;
 		case 'q':
-			opt_quiet = 1;
+			lttng_opt_quiet = 1;
 			break;
 		case 'v':
 			/* Verbose level can increase using multiple -v */
-			opt_verbose += 1;
+			lttng_opt_verbose += 1;
 			break;
 		case 'Z':
 			opt_verbose_consumer += 1;

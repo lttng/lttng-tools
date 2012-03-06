@@ -299,7 +299,7 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 		 * Only warn about EPIPE when quiet mode is deactivated.
 		 * We consider EPIPE as expected.
 		 */
-		if (errno != EPIPE || !opt_quiet) {
+		if (errno != EPIPE || !lttng_opt_quiet) {
 			PERROR("sendmsg");
 		}
 	}
@@ -370,7 +370,7 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 		 * Only warn about EPIPE when quiet mode is deactivated.
 		 * We consider EPIPE as expected.
 		 */
-		if (errno != EPIPE || !opt_quiet) {
+		if (errno != EPIPE || !lttng_opt_quiet) {
 			PERROR("sendmsg");
 		}
 	}
@@ -489,7 +489,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 		 * Only warn about EPIPE when quiet mode is deactivated.
 		 * We consider EPIPE as expected.
 		 */
-		if (errno != EPIPE || !opt_quiet) {
+		if (errno != EPIPE || !lttng_opt_quiet) {
 			PERROR("sendmsg");
 		}
 	}

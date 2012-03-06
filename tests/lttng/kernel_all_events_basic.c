@@ -29,7 +29,7 @@
 
 #include "../utils.h"
 
-int opt_quiet = 0;
+int lttng_opt_quiet;
 
 int main(int argc, char **argv)
 {

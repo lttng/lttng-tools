@@ -55,8 +55,8 @@
 static struct ltt_session_list *session_list;
 
 /* For lttngerr.h */
-int opt_quiet = 1;
-int opt_verbose = 0;
+int lttng_opt_quiet = 1;
+int lttng_opt_verbose = 0;
 
 static const char alphanum[] =
 	"0123456789"

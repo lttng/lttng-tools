@@ -41,6 +41,18 @@ static char sessiond_sock_path[PATH_MAX];
 static char *tracing_group;
 static int connected;
 
+/* Global */
+
+/*
+ * Those two variables are used by error.h to silent or control the verbosity of
+ * error message. They are global to the library so application linking with it
+ * are able to compile correctly and also control verbosity of the library.
+ *
+ * Note that it is *not* possible to silent ERR() and PERROR() macros.
+ */
+int lttng_opt_quiet;
+int lttng_opt_verbose;
+
 /*
  * Copy string from src to dst and enforce null terminated byte.
  */

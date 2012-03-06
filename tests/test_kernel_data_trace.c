@@ -36,8 +36,8 @@
 #define RANDOM_STRING_LEN	11
 
 /* For lttngerr.h */
-int opt_quiet = 1;
-int opt_verbose = 0;
+int lttng_opt_quiet = 1;
+int lttng_opt_verbose;
 
 static const char alphanum[] =
 	"0123456789"

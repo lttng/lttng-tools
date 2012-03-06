@@ -35,9 +35,6 @@
 
 /* Variables */
 static char *progname;
-
-int opt_quiet;
-int opt_verbose;
 static int opt_no_sessiond;
 static char *opt_sessiond_path;
 static pid_t sessiond_pid;
@@ -432,10 +429,10 @@ static int parse_args(int argc, char **argv)
 			ret = 0;
 			goto end;
 		case 'v':
-			opt_verbose += 1;
+			lttng_opt_verbose += 1;
 			break;
 		case 'q':
-			opt_quiet = 1;
+			lttng_opt_quiet = 1;
 			break;
 		case 'g':
 			lttng_set_tracing_group(optarg);
@@ -462,8 +459,8 @@ static int parse_args(int argc, char **argv)
 	}
 
 	/* If both options are specified, quiet wins */
-	if (opt_verbose && opt_quiet) {
-		opt_verbose = 0;
+	if (lttng_opt_verbose && lttng_opt_quiet) {
+		lttng_opt_verbose = 0;
 	}
 
 	/* Spawn session daemon if needed */

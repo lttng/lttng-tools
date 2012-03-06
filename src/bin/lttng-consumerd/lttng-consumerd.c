@@ -58,8 +58,8 @@ static pthread_t threads[2];
 static int sigintcount = 0;
 
 /* Argument variables */
-int opt_quiet;
-int opt_verbose;
+int lttng_opt_quiet;    /* not static in error.h */
+int lttng_opt_verbose;  /* not static in error.h */
 static int opt_daemon;
 static const char *progname;
 static char command_sock_path[PATH_MAX]; /* Global command socket path */
@@ -199,10 +199,10 @@ static void parse_args(int argc, char **argv)
 			usage(stdout);
 			exit(EXIT_SUCCESS);
 		case 'q':
-			opt_quiet = 1;
+			lttng_opt_quiet = 1;
 			break;
 		case 'v':
-			opt_verbose = 1;
+			lttng_opt_verbose = 1;
 			break;
 		case 'V':
 			fprintf(stdout, "%s\n", VERSION);

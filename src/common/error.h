@@ -30,8 +30,8 @@
 #define XSTR(d) STR(d)
 #define STR(s) #s
 
-extern int opt_quiet;
-extern int opt_verbose;
+extern int lttng_opt_quiet;
+extern int lttng_opt_verbose;
 
 #define PRINT_ERR   0x1
 #define PRINT_WARN  0x2
@@ -44,22 +44,22 @@ extern int opt_verbose;
 /*
  * Macro for printing message depending on command line option and verbosity.
  */
-#define __lttng_print(type, fmt, args...)					\
-	do {									\
-		if (opt_quiet == 0 && type == PRINT_MSG) {			\
-			fprintf(stdout, fmt, ## args);				\
-		} else if (opt_quiet == 0 &&					\
-				(((type & PRINT_DBG) && opt_verbose == 1) ||	\
-				((type & (PRINT_DBG | PRINT_DBG2)) &&		\
-					opt_verbose == 2) ||			\
-				((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&	\
-					opt_verbose == 3))) {			\
-			fprintf(stderr, fmt, ## args);				\
-		} else if (opt_quiet == 0 && (type & (PRINT_WARN))) {		\
-			fprintf(stderr, fmt, ## args);				\
-		} else if (type & (PRINT_ERR | PRINT_BUG)) {			\
-			fprintf(stderr, fmt, ## args);				\
-		}								\
+#define __lttng_print(type, fmt, args...)                           \
+	do {                                                            \
+		if (lttng_opt_quiet == 0 && type == PRINT_MSG) {            \
+			fprintf(stdout, fmt, ## args);                          \
+		} else if (lttng_opt_quiet == 0 &&                          \
+				(((type & PRINT_DBG) && lttng_opt_verbose == 1) ||  \
+				((type & (PRINT_DBG | PRINT_DBG2)) &&               \
+					lttng_opt_verbose == 2) ||                      \
+				((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&  \
+					lttng_opt_verbose == 3))) {                     \
+			fprintf(stderr, fmt, ## args);                          \
+		} else if (lttng_opt_quiet == 0 && (type & (PRINT_WARN))) { \
+			fprintf(stderr, fmt, ## args);                          \
+		} else if (type & (PRINT_ERR | PRINT_BUG)) {                \
+			fprintf(stderr, fmt, ## args);                          \
+		}                                                           \
 	} while (0);
 
 #define MSG(fmt, args...) \
@@ -84,6 +84,7 @@ extern int opt_verbose;
 		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
 
 #if !defined(__linux__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
+
 /*
  * Version using XSI strerror_r.
  */
