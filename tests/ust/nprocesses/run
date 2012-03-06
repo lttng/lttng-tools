@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+NR_ITER=100
+
+source $TESTDIR/utils.sh
+
+echo -e "\n-------------------------------------"
+echo -e "UST tracer - Generate $NR_ITER process"
+echo -e "---------------------------------------"
+
+if [ ! -e "$CURDIR/$TEST_BIN_NAME" ]; then
+	echo -e "No UST $TEST_BIN_NAME binary detected. Passing."
+	exit 0
+fi
+
+# MUST set TESTDIR before calling those functions
+
+start_sessiond
+
+./$CURDIR/ust-nprocesses $NR_ITER
+
+stop_sessiond
+
+exit 0

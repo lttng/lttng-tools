@@ -13,12 +13,16 @@ function start_tests ()
 {
     for bin in ${tests[@]};
     do
+		start_sessiond
+
         ./$bin $tmpdir
         # Test must return 0 to pass.
         if [ $? -ne 0 ]; then
             exit_code=1
+			stop_sessiond
             break
         fi
+		stop_sessiond
     done
 
 	# Cleaning up
@@ -36,16 +40,12 @@ function check_lttng_modules ()
 	fi
 }
 
-echo -e "\n--------------------------------------------------"
-echo -e "Kernel tracer - Testing lttng client (liblttngctl)"
-echo -e "--------------------------------------------------"
+echo -e "\n---------------------"
+echo -e "Testing Kernel tracer"
+echo -e "---------------------"
 
 # Detect lttng-modules installed
-
 check_lttng_modules
-
-# Simply wait for the session daemon bootstrap
-sleep 1
 
 start_tests
 

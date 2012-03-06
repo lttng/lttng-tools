@@ -1,6 +1,8 @@
 #!/bin/bash
 
-tests=( lttng/run-kernel-tests.sh lttng/run-ust-global-tests.sh )
+DIR=$(dirname $0)
+
+tests=( $DIR/run-kernel-tests.sh )
 exit_code=0
 
 function start_tests ()

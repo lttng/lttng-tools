@@ -3,6 +3,7 @@
 *.swp
 *.o
 *.swo
+*.pyc
 Makefile
 .libs/
 .deps/
@@ -34,14 +35,15 @@ src/bin/lttng-sessiond/lttng-sessiond
 src/bin/lttng/lttng
 src/bin/lttng-consumerd/lttng-consumerd
 
-tests/test_sessions
-tests/test_kernel_data_trace
-tests/test_ust_data_trace
-tests/kernel_all_events_basic
-tests/kernel_event_basic
-tests/ust_global_all_events_basic
-tests/ust_global_event_basic
-tests/ust-nevents/gen-nevents
-tests/ust-nprocesses/gen-events-time
+# Tests
+test_sessions
+test_kernel_data_trace
+test_ust_data_trace
+kernel_all_events_basic
+kernel_event_basic
+ust_global_all_events_basic
+ust_global_event_basic
+gen-nevents
+gen-events-time
 
 benchmark/
