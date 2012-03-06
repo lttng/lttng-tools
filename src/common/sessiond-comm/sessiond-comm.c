@@ -267,7 +267,9 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	ret = recvmsg(sock, &msg, MSG_WAITALL);
+	do {
+		ret = recvmsg(sock, &msg, MSG_WAITALL);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		PERROR("recvmsg");
 	}
@@ -405,7 +407,9 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_control = recv_fd;
 	msg.msg_controllen = sizeof(recv_fd);
 
-	ret = recvmsg(sock, &msg, 0);
+	do {
+		ret = recvmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		PERROR("recvmsg fds");
 		goto end;
@@ -532,7 +536,9 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	msg.msg_controllen = sizeof(anc_buf);
 #endif /* __linux__ */
 
-	ret = recvmsg(sock, &msg, 0);
+	do {
+		ret = recvmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		PERROR("recvmsg fds");
 		goto end;
