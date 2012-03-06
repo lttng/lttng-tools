@@ -101,7 +101,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_EVENT_NOT_FOUND)] = "UST event not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_EXIST)] = "UST context already exist",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_INVAL)] = "UST invalid context",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_NEED_ROOT_SESSIOND) ] = "A root lttng-sessiond needs to be running, and client user part of the \"tracing\" group, to interact with kernel tracing",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NEED_ROOT_SESSIOND) ] = "Tracing the kernel requires a root lttng-sessiond daemon and \"tracing\" group user membership",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_TRACE_ALREADY_STARTED) ] = "Tracing already started",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_TRACE_ALREADY_STOPPED) ] = "Tracing already stopped",
 
