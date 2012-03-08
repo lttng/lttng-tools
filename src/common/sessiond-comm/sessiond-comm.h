@@ -28,7 +28,7 @@
 #define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
-#include <sys/socket.h>
+#include <common/compat/socket.h>
 
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
@@ -136,6 +136,9 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_EVENT_NOT_FOUND,    /* UST event not found */
 	LTTCOMM_UST_CONTEXT_EXIST,      /* UST context exist */
 	LTTCOMM_UST_CONTEXT_INVAL,      /* UST context invalid */
+	LTTCOMM_NEED_ROOT_SESSIOND,		/* root sessiond is needed */
+	LTTCOMM_TRACE_ALREADY_STARTED,  /* Tracing already started */
+	LTTCOMM_TRACE_ALREADY_STOPPED,  /* Tracing already stopped */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
@@ -151,6 +154,8 @@ enum lttcomm_return_code {
 	CONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
 	CONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
 	CONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
+	LTTCOMM_INVALID,			/* Invalid parameter */
+
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
 };
@@ -291,7 +296,7 @@ extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 
 extern ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		struct ucred *creds);
+		lttng_sock_cred *creds);
 
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
 extern int lttcomm_setsockopt_creds_unix_sock(int sock);

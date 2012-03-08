@@ -30,14 +30,14 @@
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile.
  *
- * Returns the number of bytes written.
+ * Returns the number of bytes written, else negative value on error.
  */
-extern int lttng_ustconsumer_on_read_subbuffer_mmap(
+extern ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len);
 
 /* Not implemented */
-extern int lttng_ustconsumer_on_read_subbuffer_splice(
+extern ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len);
 
@@ -76,7 +76,7 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
-int lttng_ustconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
@@ -84,7 +84,7 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 }
 
 static inline
-int lttng_ustconsumer_on_read_subbuffer_splice(
+ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *uststream, unsigned long len)
 {

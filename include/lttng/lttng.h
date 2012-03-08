@@ -416,7 +416,7 @@ extern int lttng_add_context(struct lttng_handle *handle,
 		const char *channel_name);
 
 /*
- * Create or enable a kernel event (or events) for a channel.
+ * Create or enable an event (or events) for a channel.
  *
  * If the event you are trying to enable does not exist, it will be created,
  * else it is enabled.
@@ -427,14 +427,14 @@ extern int lttng_enable_event(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name);
 
 /*
- * Create or enable a kernel channel.
+ * Create or enable a channel.
  * The channel name cannot be NULL.
  */
 extern int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *chan);
 
 /*
- * Disable kernel event(s) of a channel and domain.
+ * Disable event(s) of a channel and domain.
  *
  * If event_name is NULL, all events are disabled.
  * If channel_name is NULL, the default channel is used (channel0).
@@ -443,7 +443,7 @@ extern int lttng_disable_event(struct lttng_handle *handle,
 		const char *name, const char *channel_name);
 
 /*
- * Disable kernel channel.
+ * Disable channel.
  *
  * The channel name cannot be NULL.
  */

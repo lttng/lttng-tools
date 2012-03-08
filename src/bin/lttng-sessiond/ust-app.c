@@ -198,7 +198,10 @@ void delete_ust_app(struct ust_app *app)
 	 * closing this socket, otherwise an application could re-use the socket ID
 	 * and race with the teardown, using the same hash table entry.
 	 */
-	close(sock);
+	ret = close(sock);
+	if (ret) {
+		PERROR("close");
+	}
 
 	DBG2("UST app pid %d deleted", app->key.pid);
 	free(app);
@@ -1268,20 +1271,27 @@ error:
 int ust_app_register(struct ust_register_msg *msg, int sock)
 {
 	struct ust_app *lta;
+	int ret;
 
 	if ((msg->bits_per_long == 64 && ust_consumerd64_fd == -EINVAL)
 			|| (msg->bits_per_long == 32 && ust_consumerd32_fd == -EINVAL)) {
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
 			"%d-bit long, but no consumerd for this long size is available.\n",
 			msg->name, msg->pid, msg->bits_per_long);
-		close(sock);
+		ret = close(sock);
+		if (ret) {
+			PERROR("close");
+		}
 		return -EINVAL;
 	}
 	if (msg->major != LTTNG_UST_COMM_MAJOR) {
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
 			"communication protocol version %u.%u, but sessiond supports 2.x.\n",
 			msg->name, msg->pid, msg->major, msg->minor);
-		close(sock);
+		ret = close(sock);
+		if (ret) {
+			PERROR("close");
+		}
 		return -EINVAL;
 	}
 	lta = zmalloc(sizeof(struct ust_app));

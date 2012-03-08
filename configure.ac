@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.0.0-rc1],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0.0-rc2],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -120,6 +120,24 @@ AS_IF([test "x$lttng_ust_support" = "xyes"], [
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl_create_session" = "xyes" ])
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
+
+# check for dlopen
+AC_CHECK_LIB([dl], [dlopen],
+[
+	have_libdl=yes
+],
+[
+	#libdl not found, check for dlopen in libc.
+	AC_CHECK_LIB([c], [dlopen],
+	[
+		have_libc_dl=yes
+	],
+	[
+		AC_MSG_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
+	])
+])
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBDL], [test "x$have_libdl" = "xyes"])
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBC_DL], [test "x$have_libc_dl" = "xyes"])
 
 # Option to only build the consumer daemon and its libraries
 AC_ARG_WITH([consumerd-only],

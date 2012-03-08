@@ -129,6 +129,9 @@ Allow to specifiy the 64-bit library path containing libconsumer.so.
 .IP "LTTNG_CONSUMERD64_LIBDIR"
 Allow to specifiy the 32-bit library path containing libconsumer.so.
 \fB--consumerd64-libdir\fP override this variable.
+.IP "LTTNG_DEBUG_NOCLONE"
+Debug-mode disabling use of clone/fork. Insecure, but required to allow
+debuggers to work with sessiond on some operating systems.
 .SH "SEE ALSO"
 
 .PP

@@ -19,19 +19,20 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <lttng/ust-ctl.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/compat/fcntl.h>
 
 #include "ust-consumer.h"
 
@@ -42,9 +43,9 @@ extern volatile int consumer_quit;
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile.
  *
- * Returns the number of bytes written
+ * Returns the number of bytes written, else negative value on error.
  */
-int lttng_ustconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
@@ -58,7 +59,7 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 		stream->buf, &mmap_offset);
 	if (ret != 0) {
 		errno = -ret;
-		perror("ustctl_get_mmap_read_offset");
+		PERROR("ustctl_get_mmap_read_offset");
 		goto end;
 	}
 	while (len > 0) {
@@ -67,11 +68,11 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 			len = 0;
 		} else if (ret < 0) {
 			errno = -ret;
-			perror("Error in file write");
+			PERROR("Error in file write");
 			goto end;
 		}
 		/* This won't block, but will start writeout asynchronously */
-		sync_file_range(outfd, stream->out_fd_offset, ret,
+		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}
@@ -89,7 +90,7 @@ end:
  *
  * Returns the number of bytes spliced.
  */
-int lttng_ustconsumer_on_read_subbuffer_splice(
+ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
@@ -109,7 +110,7 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 	ret = ustctl_snapshot(stream->chan->handle, stream->buf);
 	if (ret != 0) {
 		errno = -ret;
-		perror("Getting sub-buffer snapshot.");
+		PERROR("Getting sub-buffer snapshot.");
 	}
 
 	return ret;
@@ -131,7 +132,7 @@ int lttng_ustconsumer_get_produced_snapshot(
 			stream->buf, pos);
 	if (ret != 0) {
 		errno = -ret;
-		perror("kernctl_snapshot_get_produced");
+		PERROR("kernctl_snapshot_get_produced");
 	}
 
 	return ret;
@@ -260,7 +261,7 @@ end:
 	/* signal the poll thread */
 	ret = write(ctx->consumer_poll_pipe[1], "4", 1);
 	if (ret < 0) {
-		perror("write consumer poll");
+		PERROR("write consumer poll");
 	}
 end_nosignal:
 	return 0;
@@ -400,7 +401,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 				stream->uid, stream->gid);
 		if (ret < 0) {
 			ERR("Opening %s", stream->path_name);
-			perror("open");
+			PERROR("open");
 			goto error;
 		}
 		stream->out_fd = ret;

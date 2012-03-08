@@ -58,13 +58,13 @@ static int send_channel_streams(int sock,
 	DBG("Sending channel %d to consumer", lum.u.channel.channel_key);
 	ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 	if (ret < 0) {
-		perror("send consumer channel");
+		PERROR("send consumer channel");
 		goto error;
 	}
 	fd = uchan->obj->shm_fd;
 	ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 	if (ret < 0) {
-		perror("send consumer channel ancillary data");
+		PERROR("send consumer channel ancillary data");
 		goto error;
 	}
 
@@ -91,7 +91,7 @@ static int send_channel_streams(int sock,
 		DBG("Sending stream %d to consumer", lum.u.stream.stream_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
-			perror("send consumer stream");
+			PERROR("send consumer stream");
 			goto error;
 		}
 
@@ -99,7 +99,7 @@ static int send_channel_streams(int sock,
 		fds[1] = stream->obj->wait_fd;
 		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
 		if (ret < 0) {
-			perror("send consumer stream ancillary data");
+			PERROR("send consumer stream ancillary data");
 			goto error;
 		}
 	}
@@ -142,13 +142,13 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		DBG("Sending metadata channel %d to consumer", lum.u.channel.channel_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
-			perror("send consumer channel");
+			PERROR("send consumer channel");
 			goto error;
 		}
 		fd = usess->metadata->obj->shm_fd;
 		ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 		if (ret < 0) {
-			perror("send consumer metadata channel");
+			PERROR("send consumer metadata channel");
 			goto error;
 		}
 
@@ -166,14 +166,14 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		DBG("Sending metadata stream %d to consumer", lum.u.stream.stream_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
-			perror("send consumer metadata stream");
+			PERROR("send consumer metadata stream");
 			goto error;
 		}
 		fds[0] = usess->metadata->stream_obj->shm_fd;
 		fds[1] = usess->metadata->stream_obj->wait_fd;
 		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
 		if (ret < 0) {
-			perror("send consumer stream");
+			PERROR("send consumer stream");
 			goto error;
 		}
 	}

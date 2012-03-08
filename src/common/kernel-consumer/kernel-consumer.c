@@ -19,7 +19,6 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -28,10 +27,12 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/compat/fcntl.h>
 
 #include "kernel-consumer.h"
 
@@ -44,12 +45,12 @@ extern volatile int consumer_quit;
  *
  * Returns the number of bytes written
  */
-int lttng_kconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
 	unsigned long mmap_offset;
-	long ret = 0;
+	ssize_t ret = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int fd = stream->wait_fd;
 	int outfd = stream->out_fd;
@@ -72,7 +73,7 @@ int lttng_kconsumer_on_read_subbuffer_mmap(
 			goto end;
 		}
 		/* This won't block, but will start writeout asynchronously */
-		sync_file_range(outfd, stream->out_fd_offset, ret,
+		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}
@@ -90,11 +91,11 @@ end:
  *
  * Returns the number of bytes spliced.
  */
-int lttng_kconsumer_on_read_subbuffer_splice(
+ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
-	long ret = 0;
+	ssize_t ret = 0;
 	loff_t offset = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int fd = stream->wait_fd;
@@ -105,7 +106,7 @@ int lttng_kconsumer_on_read_subbuffer_splice(
 				(unsigned long)offset, fd);
 		ret = splice(fd, &offset, ctx->consumer_thread_pipe[1], NULL, len,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("splice chan to pipe ret %ld", ret);
+		DBG("splice chan to pipe ret %zd", ret);
 		if (ret < 0) {
 			errno = -ret;
 			perror("Error in relay splice");
@@ -114,7 +115,7 @@ int lttng_kconsumer_on_read_subbuffer_splice(
 
 		ret = splice(ctx->consumer_thread_pipe[0], NULL, outfd, NULL, ret,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("splice pipe to file %ld", ret);
+		DBG("splice pipe to file %zd", ret);
 		if (ret < 0) {
 			errno = -ret;
 			perror("Error in file splice");
@@ -122,7 +123,7 @@ int lttng_kconsumer_on_read_subbuffer_splice(
 		}
 		len -= ret;
 		/* This won't block, but will start writeout asynchronously */
-		sync_file_range(outfd, stream->out_fd_offset, ret,
+		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}
@@ -307,12 +308,12 @@ end_nosignal:
 /*
  * Consume data on a file descriptor and write it on a trace file.
  */
-int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	unsigned long len;
 	int err;
-	long ret = 0;
+	ssize_t ret = 0;
 	int infd = stream->wait_fd;
 
 	DBG("In read_subbuffer (infd : %d)", infd);

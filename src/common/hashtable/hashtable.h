@@ -72,6 +72,8 @@ extern void lttng_ht_add_unique_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node);
 extern void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
+struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
+		struct lttng_ht_node_ulong *node);
 
 extern int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter);
 

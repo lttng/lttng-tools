@@ -101,7 +101,7 @@ void modprobe_remove_lttng_data(void)
 				"/sbin/modprobe -r -q %s",
 				kern_modules_list[i].name);
 		if (ret < 0) {
-			perror("snprintf modprobe -r");
+			PERROR("snprintf modprobe -r");
 			goto error;
 		}
 		modprobe[sizeof(modprobe) - 1] = '\0';
@@ -182,7 +182,7 @@ int modprobe_lttng_data(void)
 				kern_modules_list[i].required ? "" : "-q ",
 				kern_modules_list[i].name);
 		if (ret < 0) {
-			perror("snprintf modprobe");
+			PERROR("snprintf modprobe");
 			goto error;
 		}
 		modprobe[sizeof(modprobe) - 1] = '\0';
