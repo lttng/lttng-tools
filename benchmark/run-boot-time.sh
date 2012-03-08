@@ -23,7 +23,7 @@ BASEDIR=`dirname $0`
 
 echo "Starting session daemon"
 
-BENCH_BOOT_PROCESS=1 $BASEDIR/../lttng-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
+BENCH_BOOT_PROCESS=1 $BASEDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
 
 PID_SESSIOND=$!
 if [ -z $PID_SESSIOND ]; then

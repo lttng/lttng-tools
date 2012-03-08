@@ -22,7 +22,7 @@ RESULTS_PATH="/tmp/lttng-bench-results.txt"
 BASEDIR=`dirname $0`
 
 echo "Session daemon boot"
-BENCH_UST_REGISTER=1 $BASEDIR/../lttng-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
+BENCH_UST_REGISTER=1 $BASEDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN -v >/dev/null 2>&1 &
 
 PID_SESSIOND=$!
 if [ -z $PID_SESSIOND ]; then
