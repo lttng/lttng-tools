@@ -4252,10 +4252,11 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 	ret = mkdir(path, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
+			PERROR("mkdir");
 			ERR("Failed to create %s", path);
 			goto error;
 		}
-		ret = 0;
+		ret = -1;
 	}
 
 	/* Create the kconsumerd error unix socket */
