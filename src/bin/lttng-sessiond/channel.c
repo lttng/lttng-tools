@@ -235,6 +235,21 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		attr = defattr;
 	}
 
+	/*
+	 * Validate UST buffer size and number of buffers: must both be
+	 * power of 2 and nonzero. We validate right here for UST,
+	 * because applications will not report the error to the user
+	 * (unlike kernel tracing).
+	 */
+	if (!attr->attr.subbuf_size || (attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
+		ret = LTTCOMM_INVALID;
+		goto error;
+	}
+	if (!attr->attr.num_subbuf || (attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
+		ret = LTTCOMM_INVALID;
+		goto error;
+	}
+
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, usess->pathname);
 	if (uchan == NULL) {

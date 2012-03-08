@@ -154,6 +154,7 @@ enum lttcomm_return_code {
 	CONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
 	CONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
 	CONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
+	LTTCOMM_INVALID,			/* Invalid parameter */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
