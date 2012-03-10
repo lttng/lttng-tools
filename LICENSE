@@ -7,8 +7,8 @@ July 18, 2011
 The library part is distributed under LGPLv2.1. See lgpl-2.1.txt for details.
 This applies to:
 
--) lttng.h
--) liblttngctl.c
+-) include/lttng/lttng.h
+-) src/lib/lttng-ctl/lttng-ctl.c
 
 LGPL-compatible source code can statically use the library header using:
 
