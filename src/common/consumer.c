@@ -298,11 +298,23 @@ end:
 int consumer_add_stream(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
 
 	pthread_mutex_lock(&consumer_data.lock);
 	/* Steal stream identifier, for UST */
 	consumer_steal_stream_key(stream->key);
 	rcu_read_lock();
+
+	lttng_ht_lookup(consumer_data.stream_ht,
+			(void *)((unsigned long) stream->key), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node != NULL) {
+		rcu_read_unlock();
+		/* Stream already exist. Ignore the insertion */
+		goto end;
+	}
+
 	lttng_ht_add_unique_ulong(consumer_data.stream_ht, &stream->node);
 	rcu_read_unlock();
 	consumer_data.stream_count++;
@@ -466,11 +478,25 @@ end:
  */
 int consumer_add_channel(struct lttng_consumer_channel *channel)
 {
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+
 	pthread_mutex_lock(&consumer_data.lock);
 	/* Steal channel identifier, for UST */
 	consumer_steal_channel_key(channel->key);
 	rcu_read_lock();
+
+	lttng_ht_lookup(consumer_data.channel_ht,
+			(void *)((unsigned long) channel->key), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node != NULL) {
+		/* Channel already exist. Ignore the insertion */
+		goto end;
+	}
+
 	lttng_ht_add_unique_ulong(consumer_data.channel_ht, &channel->node);
+
+end:
 	rcu_read_unlock();
 	pthread_mutex_unlock(&consumer_data.lock);
 
