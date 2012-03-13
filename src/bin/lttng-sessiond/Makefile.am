@@ -32,7 +32,7 @@ lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		$(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
 		$(top_builddir)/src/common/libcommon.la \
-		$(top_builddir)/src/common/libcompat.la
+		$(top_builddir)/src/common/compat/libcompat.la
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_LDADD += -llttng-ust-ctl
