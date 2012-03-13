@@ -45,17 +45,16 @@ struct ust_register_msg {
 };
 
 /*
- * Global applications HT used by the session daemon.
+ * Global applications HT used by the session daemon. This table is indexed by
+ * PID using the pid_n node and pid value of an ust_app.
  */
 struct lttng_ht *ust_app_ht;
 
-struct lttng_ht *ust_app_sock_key_map;
-
-struct ust_app_key {
-	pid_t pid;
-	int sock;
-	struct lttng_ht_node_ulong node;
-};
+/*
+ * Global applications HT used by the session daemon. This table is indexed by
+ * socket using the sock_n node and sock value of an ust_app.
+ */
+struct lttng_ht *ust_app_ht_by_sock;
 
 struct ust_app_ctx {
 	int handle;
@@ -106,6 +105,8 @@ struct ust_app_session {
  * and a linked list is kept of all running traceable app.
  */
 struct ust_app {
+	int sock;
+	pid_t pid;
 	pid_t ppid;
 	uid_t uid;           /* User ID that owns the apps */
 	gid_t gid;           /* Group ID that owns the apps */
@@ -118,8 +119,8 @@ struct ust_app {
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */
 	struct lttng_ht *sessions;
-	struct lttng_ht_node_ulong node;
-	struct ust_app_key key;
+	struct lttng_ht_node_ulong pid_n;
+	struct lttng_ht_node_ulong sock_n;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
