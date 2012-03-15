@@ -165,6 +165,9 @@ lttngincludedir="${includedir}/lttng"
 AC_SUBST(lttngincludedir)
 AC_SUBST(DEFAULT_INCLUDES)
 
+lttnglibexecdir="${libdir}/lttng/libexec"
+AC_SUBST(lttnglibexecdir)
+
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
@@ -238,7 +241,7 @@ AS_IF([test "x$consumerd_only" = "xno"],[
 	AS_ECHO("The sessiond daemon will look in the following directories: ")
 	AS_ECHO_N("32-bit consumerd executable at: ")
 	AS_IF([test "$CONSUMERD32_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
 		AS_ECHO("/lttng-consumerd")
 	],[
 		AS_ECHO("$CONSUMERD32_BIN")
@@ -253,7 +256,7 @@ AS_IF([test "x$consumerd_only" = "xno"],[
 
 	AS_ECHO_N("64-bit consumerd executable at: ")
 	AS_IF([test "$CONSUMERD64_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
 		AS_ECHO("/lttng-consumerd")
 	],[
 		AS_ECHO("$CONSUMERD64_BIN")

@@ -1,6 +1,6 @@
 AM_CPPFLAGS =
 
-bin_PROGRAMS = lttng-consumerd
+lttnglibexec_PROGRAMS = lttng-consumerd
 
 lttng_consumerd_SOURCES = lttng-consumerd.c lttng-consumerd.h
 

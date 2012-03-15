@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -DINSTALL_BIN_PATH=\""$(bindir)"\" \
+AM_CPPFLAGS = -DINSTALL_BIN_PATH=\""$(lttnglibexecdir)"\" \
 			  -DINSTALL_LIB_PATH=\""$(libdir)"\"
 
 AM_CFLAGS = -fno-strict-aliasing
