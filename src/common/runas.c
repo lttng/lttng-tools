@@ -38,6 +38,10 @@
 
 #define RUNAS_CHILD_STACK_SIZE	10485760
 
+#ifndef MAP_STACK
+#define MAP_STACK		0
+#endif
+
 #ifdef __FreeBSD__
 /* FreeBSD MAP_STACK always return -ENOMEM */
 #define LTTNG_MAP_STACK		0
