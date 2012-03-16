@@ -8,5 +8,5 @@ else
 COMPAT=compat-poll.c
 endif
 
-libcompat_la_SOURCES = poll.h fcntl.h splice.h endian.h \
+libcompat_la_SOURCES = poll.h fcntl.h endian.h mman.h clone.h \
                        socket.h compat-fcntl.c $(COMPAT)
