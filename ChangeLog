@@ -1,3 +1,20 @@
+2012-03-16 lttng-tools 2.0.0-rc3
+	* Fix: missing headers for make dist
+	* Fix: install lttng-consumerd in lib/lttng/libexec/
+	* Fix: Redefine MAP_STACK to 0 if not defined by the architecture
+	* Fix: consumer CPU hotplug support
+	* Fix: double PID registration race
+	* Make libcompat independent not to confuse automake
+	* Clarify the license of lttng-ust-abi.h
+	* Fix: License header
+	* Fix: wrong return value on consumer socket creation
+	* Fix: test for UST invalid channel parameters at channel creation
+	* Fix: recvmsg should handle EINTR
+	* Fix: error.h non-static variables for liblttng-ctl
+	* Fix: missing _GNU_SOURCE define
+	* Fix: improve need root for kernel tracing error message
+	* Fix: start/stop lttng message error
+
 2012-03-02 lttng-tools 2.0.0-rc2
 	* Fix: meaningful error message
 	* Fix: UST consumer need to iterate on streams, just change their key
