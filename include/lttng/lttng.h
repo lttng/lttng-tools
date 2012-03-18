@@ -124,6 +124,9 @@ enum lttng_calibrate_type {
 	LTTNG_CALIBRATE_FUNCTION              = 0,
 };
 
+/*
+ * The structures should be initialized to zero before use.
+ */
 #define LTTNG_DOMAIN_PADDING1              16
 #define LTTNG_DOMAIN_PADDING2              LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_domain {
@@ -137,7 +140,11 @@ struct lttng_domain {
 	} attr;
 };
 
-/* Perf counter attributes */
+/*
+ * Perf counter attributes
+ *
+ * The structures should be initialized to zero before use.
+ */
 #define LTTNG_PERF_EVENT_PADDING1          16
 struct lttng_event_perf_counter_ctx {
 	uint32_t type;
@@ -147,7 +154,11 @@ struct lttng_event_perf_counter_ctx {
 	char padding[LTTNG_PERF_EVENT_PADDING1];
 };
 
-/* Event/Channel context */
+/*
+ * Event/channel context
+ *
+ * The structures should be initialized to zero before use.
+ */
 #define LTTNG_EVENT_CONTEXT_PADDING1       16
 #define LTTNG_EVENT_CONTEXT_PADDING2       LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event_context {
@@ -164,6 +175,8 @@ struct lttng_event_context {
  * Event probe.
  *
  * Either addr is used or symbol_name and offset.
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_EVENT_PROBE_PADDING1         16
 struct lttng_event_probe_attr {
@@ -177,6 +190,8 @@ struct lttng_event_probe_attr {
 
 /*
  * Function tracer
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_EVENT_FUNCTION_PADDING1      16
 struct lttng_event_function_attr {
@@ -187,6 +202,8 @@ struct lttng_event_function_attr {
 
 /*
  * Generic lttng event
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_EVENT_PADDING1               16
 #define LTTNG_EVENT_PADDING2               LTTNG_SYMBOL_NAME_LEN + 32
@@ -213,6 +230,8 @@ struct lttng_event {
 
 /*
  * Tracer channel attributes. For both kernel and user-space.
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_channel_attr {
@@ -228,6 +247,8 @@ struct lttng_channel_attr {
 
 /*
  * Channel information structure. For both kernel and user-space.
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_CHANNEL_PADDING1             16
 struct lttng_channel {
@@ -251,6 +272,8 @@ struct lttng_calibrate {
  * This is an 'output data' meaning that it only comes *from* the session
  * daemon *to* the lttng client. It's basically a 'human' representation of
  * tracing entities (here a session).
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_SESSION_PADDING1             16
 struct lttng_session {
@@ -264,6 +287,8 @@ struct lttng_session {
 
 /*
  * Handle used as a context for commands.
+ *
+ * The structures should be initialized to zero before use.
  */
 #define LTTNG_HANDLE_PADDING1              16
 struct lttng_handle {
