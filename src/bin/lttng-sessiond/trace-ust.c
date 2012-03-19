@@ -459,8 +459,10 @@ static void destroy_channel_rcu(struct rcu_head *head)
  */
 void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 {
+	if (!metadata->handle) {
+		return;
+	}
 	DBG2("Trace UST destroy metadata %d", metadata->handle);
-
 	free(metadata);
 }
 
