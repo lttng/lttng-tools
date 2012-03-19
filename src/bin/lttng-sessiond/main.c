@@ -4516,6 +4516,12 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
+	/*
+	 * Init UST app hash table. Alloc hash table before this point since
+	 * cleanup() can get called after that point.
+	 */
+	ust_app_ht_alloc();
+
 	/* After this point, we can safely call cleanup() with "goto exit" */
 
 	/*
@@ -4580,9 +4586,6 @@ int main(int argc, char **argv)
 
 	/* Init UST command queue. */
 	cds_wfq_init(&ust_cmd_queue.queue);
-
-	/* Init UST app hash table */
-	ust_app_ht_alloc();
 
 	/*
 	 * Get session list pointer. This pointer MUST NOT be free(). This list is
