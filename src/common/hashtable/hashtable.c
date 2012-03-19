@@ -110,6 +110,7 @@ void lttng_ht_destroy(struct lttng_ht *ht)
 
 	ret = cds_lfht_destroy(ht->ht, NULL);
 	assert(!ret);
+	free(ht);
 }
 
 /*
