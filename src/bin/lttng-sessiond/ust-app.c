@@ -150,6 +150,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 			ustctl_release_object(sock, ua_sess->metadata->obj);
 			free(ua_sess->metadata->obj);
 		}
+		trace_ust_destroy_metadata(ua_sess->metadata);
 	}
 
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
@@ -1980,6 +1981,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 					&ustream->obj);
 			if (ret < 0) {
 				/* Got all streams */
+				free(ustream);
 				break;
 			}
 			ustream->handle = ustream->obj->handle;
@@ -1991,6 +1993,10 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 					ua_chan->streams.count++);
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
+				/*
+				 * XXX what should we do here with the
+				 * stream ?
+				 */
 				continue;
 			}
 			DBG2("UST stream %d ready at %s", ua_chan->streams.count,

@@ -3798,7 +3798,7 @@ static void *thread_manage_clients(void *data)
 				PERROR("close");
 			}
 			sock = -1;
-			free(cmd_ctx);
+			clean_command_ctx(&cmd_ctx);
 			continue;
 		}
 

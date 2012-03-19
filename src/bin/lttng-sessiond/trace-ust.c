@@ -121,6 +121,9 @@ struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
 	return lus;
 
 error_free_session:
+	lttng_ht_destroy(lus->domain_global.channels);
+	lttng_ht_destroy(lus->domain_exec);
+	lttng_ht_destroy(lus->domain_pid);
 	free(lus);
 error:
 	return NULL;
@@ -180,6 +183,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	return luc;
 
 error_free_channel:
+	lttng_ht_destroy(luc->ctx);
+	lttng_ht_destroy(luc->events);
 	free(luc);
 error:
 	return NULL;
@@ -253,6 +258,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	return lue;
 
 error_free_event:
+	lttng_ht_destroy(lue->ctx);
 	free(lue);
 error:
 	return NULL;

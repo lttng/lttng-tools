@@ -228,6 +228,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	return lke;
 
 error:
+	free(lke);
+	free(attr);
 	return NULL;
 }
 
@@ -270,6 +272,8 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	return lkm;
 
 error:
+	free(lkm);
+	free(chan);
 	return NULL;
 }
 
