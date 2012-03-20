@@ -31,6 +31,7 @@
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"
+#include "fd-limit.h"
 
 /*
  * Delete ust context safely. RCU read lock must be held before calling
@@ -82,6 +83,7 @@ void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
 {
 	if (stream->obj) {
 		ustctl_release_object(sock, stream->obj);
+		lttng_fd_put(LTTNG_FD_APPS, 2);
 		free(stream->obj);
 	}
 	free(stream);
@@ -125,6 +127,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 
 	if (ua_chan->obj != NULL) {
 		ustctl_release_object(sock, ua_chan->obj);
+		lttng_fd_put(LTTNG_FD_APPS, 2);
 		free(ua_chan->obj);
 	}
 	free(ua_chan);
@@ -144,10 +147,12 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 	if (ua_sess->metadata) {
 		if (ua_sess->metadata->stream_obj) {
 			ustctl_release_object(sock, ua_sess->metadata->stream_obj);
+			lttng_fd_put(LTTNG_FD_APPS, 2);
 			free(ua_sess->metadata->stream_obj);
 		}
 		if (ua_sess->metadata->obj) {
 			ustctl_release_object(sock, ua_sess->metadata->obj);
+			lttng_fd_put(LTTNG_FD_APPS, 2);
 			free(ua_sess->metadata->obj);
 		}
 		trace_ust_destroy_metadata(ua_sess->metadata);
@@ -210,6 +215,7 @@ void delete_ust_app(struct ust_app *app)
 	if (ret) {
 		PERROR("close");
 	}
+	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	DBG2("UST app pid %d deleted", app->pid);
 	free(app);
@@ -536,6 +542,12 @@ static int open_ust_metadata(struct ust_app *app,
 		ua_sess->metadata->attr.read_timer_interval;
 	uattr.output = ua_sess->metadata->attr.output;
 
+	/* We are going to receive 2 fds, we need to reserve them. */
+	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+	if (ret < 0) {
+		ERR("Exhausted number of available FD upon metadata open");
+		goto error;
+	}
 	/* UST tracer metadata creation */
 	ret = ustctl_open_metadata(app->sock, ua_sess->handle, &uattr,
 			&ua_sess->metadata->obj);
@@ -559,6 +571,12 @@ static int create_ust_stream(struct ust_app *app,
 {
 	int ret;
 
+	/* We are going to receive 2 fds, we need to reserve them. */
+	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+	if (ret < 0) {
+		ERR("Exhausted number of available FD upon metadata stream create");
+		goto error;
+	}
 	ret = ustctl_create_stream(app->sock, ua_sess->metadata->obj,
 			&ua_sess->metadata->stream_obj);
 	if (ret < 0) {
@@ -579,6 +597,13 @@ static int create_ust_channel(struct ust_app *app,
 	int ret;
 
 	/* TODO: remove cast and use lttng-ust-abi.h */
+
+	/* We are going to receive 2 fds, we need to reserve them. */
+	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+	if (ret < 0) {
+		ERR("Exhausted number of available FD upon create channel");
+		goto error;
+	}
 	ret = ustctl_create_channel(app->sock, ua_sess->handle,
 			(struct lttng_ust_channel_attr *)&ua_chan->attr, &ua_chan->obj);
 	if (ret < 0) {
@@ -586,6 +611,7 @@ static int create_ust_channel(struct ust_app *app,
 				"and session handle %d with ret %d",
 				ua_chan->name, app->pid, app->sock,
 				ua_sess->handle, ret);
+		lttng_fd_put(LTTNG_FD_APPS, 2);
 		goto error;
 	}
 
@@ -1281,6 +1307,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 		if (ret) {
 			PERROR("close");
 		}
+		lttng_fd_put(LTTNG_FD_APPS, 1);
 		return -EINVAL;
 	}
 	if (msg->major != LTTNG_UST_COMM_MAJOR) {
@@ -1291,6 +1318,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 		if (ret) {
 			PERROR("close");
 		}
+		lttng_fd_put(LTTNG_FD_APPS, 1);
 		return -EINVAL;
 	}
 	lta = zmalloc(sizeof(struct ust_app));
@@ -1977,10 +2005,18 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				goto error_rcu_unlock;
 			}
 
+			/* We are going to receive 2 fds, we need to reserve them. */
+			ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+			if (ret < 0) {
+				ERR("Exhausted number of available FD upon stream create");
+				free(ustream);
+				goto error_rcu_unlock;
+			}
 			ret = ustctl_create_stream(app->sock, ua_chan->obj,
 					&ustream->obj);
 			if (ret < 0) {
 				/* Got all streams */
+				lttng_fd_put(LTTNG_FD_APPS, 2);
 				free(ustream);
 				break;
 			}

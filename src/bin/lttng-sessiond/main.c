@@ -54,6 +54,7 @@
 #include "shm.h"
 #include "ust-ctl.h"
 #include "utils.h"
+#include "fd-limit.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -1424,6 +1425,17 @@ static void *thread_registration_apps(void *data)
 					 * Using message-based transmissions to ensure we don't
 					 * have to deal with partially received messages.
 					 */
+					ret = lttng_fd_get(LTTNG_FD_APPS, 1);
+					if (ret < 0) {
+						ERR("Exhausted file descriptors allowed for applications.");
+						free(ust_cmd);
+						ret = close(sock);
+						if (ret) {
+							PERROR("close");
+						}
+						sock = -1;
+						continue;
+					}
 					ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
 							sizeof(struct ust_register_msg));
 					if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
@@ -1437,6 +1449,7 @@ static void *thread_registration_apps(void *data)
 						if (ret) {
 							PERROR("close");
 						}
+						lttng_fd_put(LTTNG_FD_APPS, 1);
 						sock = -1;
 						continue;
 					}
@@ -1482,6 +1495,7 @@ error:
 		if (ret) {
 			PERROR("close");
 		}
+		lttng_fd_put(LTTNG_FD_APPS, 1);
 	}
 	unlink(apps_unix_sock_path);
 
@@ -4556,6 +4570,8 @@ int main(int argc, char **argv)
 		/* Set ulimit for open files */
 		set_ulimit();
 	}
+	/* init lttng_fd tracking must be done after set_ulimit. */
+	lttng_fd_init();
 
 	ret = set_consumer_sockets(&ustconsumer64_data, rundir);
 	if (ret < 0) {
