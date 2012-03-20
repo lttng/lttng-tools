@@ -533,6 +533,111 @@ If SESSION_NAME is omitted, the session name is taken from the .lttngrc file.
         to the arguments
 .fi
 
+.SH "EXIT VALUES"
+
+.IP "0"
+Success
+
+.IP "1"
+Command error
+
+.IP "2"
+Undefined command
+
+.IP "3"
+Fatal error
+
+.IP "4"
+Command warning
+
+.IP "16"
+No session found by the name given
+
+.IP "18"
+Error in session creation
+
+.IP "21"
+Error in application(s) listing
+
+.IP "28"
+Session name already exists
+
+.IP "33"
+Kernel tracer unavailable
+
+.IP "35"
+Kernel event exists
+
+.IP "37"
+Kernel channel exists
+
+.IP "38"
+Kernel channel creation failed
+
+.IP "39"
+Kernel channel not found
+
+.IP "40"
+Kernel channel disable failed
+
+.IP "41"
+Kernel channel enable failed
+
+.IP "42"
+Kernel context failed
+
+.IP "43"
+Kernel enable event failed
+
+.IP "44"
+Kernel disable event failed
+
+.IP "53"
+Kernel listing events failed
+
+.IP "60"
+UST channel disable failed
+
+.IP "61"
+UST channel enable failed
+
+.IP "62"
+UST adding context failed
+
+.IP "63"
+UST event enable failed
+
+.IP "64"
+UST event disable failed
+
+.IP "66"
+UST start failed
+
+.IP "67"
+UST stop failed
+
+.IP "75"
+UST event exists
+
+.IP "76"
+UST event not found
+
+.IP "77"
+UST context exists
+
+.IP "78"
+UST invalid context
+
+.IP "79"
+Tracing the kernel requires a root lttng-sessiond daemon and "tracing" group
+user membership.
+
+.IP "80"
+Tracing already started
+
+.IP "81"
+Tracing already stopped
+.PP
 .SH "ENVIRONMENT VARIABLES"
 
 .PP
