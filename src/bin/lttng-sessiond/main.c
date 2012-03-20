@@ -595,7 +595,7 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 		lkm.u.channel.channel_key = session->metadata->fd;
 		lkm.u.channel.max_sb_size = session->metadata->conf->attr.subbuf_size;
 		lkm.u.channel.mmap_len = 0;	/* for kernel */
-		DBG("Sending metadata channel %d to consumer", lkm.u.stream.stream_key);
+		DBG("Sending metadata channel %d to consumer", lkm.u.channel.channel_key);
 		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
 		if (ret < 0) {
 			PERROR("send consumer channel");
