@@ -20,7 +20,7 @@ systems is also possible.
 The session daemon, acting as a tracing registry, allow you to interact with
 multiple tracers (kernel and user-space) inside the same container, a tracing
 session. Trace can be gathered from the kernel and/or instrumented applications
-(lttng-ust(3)). Aggregating those traces is done using a viewer, like the 
+(lttng-ust(3)). Aggregating those traces is done using a viewer, like the
 babeltrace(1) text viewer.
 
 In order to trace the kernel, the session daemon needs to be running as root.
@@ -137,6 +137,19 @@ debuggers to work with sessiond on some operating systems.
 .PP
 babeltrace(1), lttng-ust(3), lttng(1)
 .PP
+
+.SH "LIMITATIONS"
+
+.PP
+For unprivileged user running lttng-sessiond, the maximum number of file
+descriptors per process is usually 1024. This limits the number of traceable
+applications since for each instrumented application there is two file
+descriptors per-CPU and one more socktet for bidirectional communication.
+
+For the root user, the limit is bumped to 65535. Future version will deal with
+this limitation.
+.PP
+
 .SH "BUGS"
 
 .PP
@@ -163,8 +176,8 @@ You can find us on IRC server irc.oftc.net (OFTC) in #lttng.
 
 .PP
 Thanks to Yannick Brosseau without whom this project would never have been so
-lean and mean! Also thanks to the Ericsson teams working on tracing which 
-helped us greatly with detailed bug reports and unusual test cases.
+lean and mean! Also thanks to the Ericsson teams working on tracing which helped
+us greatly with detailed bug reports and unusual test cases.
 
 Thanks to our beloved packager Alexandre Montplaisir-Goncalves (Ubuntu and PPA
 maintainer) and Jon Bernard for our Debian packages.
