@@ -77,9 +77,9 @@ int cmd_version(int argc, const char **argv)
 		}
 	}
 
-	MSG("lttng version " VERSION);
+	MSG("lttng version " VERSION " - " VERSION_NAME);
 	MSG("Web site: http://lttng.org/");
-	MSG("\nlttng is free software and under the GPL license.");
+	MSG("\nlttng is free software and under the GPL license and part LGPL");
 
 end:
 	poptFreeContext(pc);

@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.0.0-rc4],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0.0],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -6,8 +6,11 @@ AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-AC_DEFINE_UNQUOTED([VERSION_NAME], "TBD", "")
-AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], "TBD", "")
+version_name="Annedd'ale"
+version_description="New type of beer, 100% from Quebec, flavored with sapin beaumier needles, with a touch of hops."
+
+AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
+AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description"], "")
 
 AC_CONFIG_HEADERS([include/config.h])
 
@@ -200,6 +203,11 @@ AC_OUTPUT
 #
 # Mini-report on what will be built
 #
+AS_ECHO()
+
+AS_ECHO("Version name: $version_name")
+AS_ECHO("$version_description")
+
 AS_ECHO()
 
 # Target architecture we're building for

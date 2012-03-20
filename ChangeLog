@@ -1,3 +1,7 @@
+2012-03-20 lttng-tools 2.0.0
+	* Fist STABLE version
+	* Add version name: Annedd'ale
+
 2012-03-20 lttng-tools 2.0.0-rc4
 	* Fix: add small detail to enable-channel man page
 	* Fix: warned of arbitrary time for ust-nprocesses test
