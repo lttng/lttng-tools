@@ -352,7 +352,7 @@ static int enable_events(char *session_name)
 						channel_name, session_name);
 				goto end;
 			default:
-				ERR("Event %s: %s (channel %s, session %s)", event_name,
+				ERR("Events: %s (channel %s, session %s)",
 						lttng_strerror(ret), channel_name, session_name);
 				break;
 			}
