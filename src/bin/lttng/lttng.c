@@ -501,7 +501,9 @@ static int parse_args(int argc, char **argv)
 	case 0:
 		break;
 	default:
-		ERR("%s", lttng_strerror(ret));
+		if (ret < 0) {
+			ret = -ret;
+		}
 		break;
 	}
 

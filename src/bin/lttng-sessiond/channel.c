@@ -121,6 +121,9 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 			ret = LTTCOMM_KERN_CHAN_ENABLE_FAIL;
 			goto error;
 		}
+	} else {
+		ret = LTTCOMM_KERN_CHAN_EXIST;
+		goto error;
 	}
 
 	ret = LTTCOMM_OK;
@@ -179,6 +182,7 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 	/* If already enabled, everything is OK */
 	if (uchan->enabled) {
 		DBG3("Channel %s already enabled. Skipping", uchan->name);
+		ret = LTTCOMM_UST_CHAN_EXIST;
 		goto end;
 	}
 

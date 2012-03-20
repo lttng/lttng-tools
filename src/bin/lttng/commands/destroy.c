@@ -26,6 +26,8 @@
 
 #include "../command.h"
 
+#include <common/sessiond-comm/sessiond-comm.h>
+
 static char *opt_session_name;
 
 enum {
@@ -76,7 +78,13 @@ static int destroy_session()
 
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
-		/* Don't set ret so lttng can interpret the sessiond error. */
+		switch (-ret) {
+		case LTTCOMM_SESS_NOT_FOUND:
+			WARN("Session name %s not found", session_name);
+			break;
+		default:
+			break;
+		}
 		goto free_name;
 	}
 

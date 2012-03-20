@@ -147,7 +147,12 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
 			ret = LTTCOMM_KERN_ENABLE_FAIL;
 			goto end;
 		}
+	} else {
+		/* At this point, the event is considered enabled */
+		ret = LTTCOMM_KERN_EVENT_EXIST;
+		goto end;
 	}
+
 	ret = LTTCOMM_OK;
 end:
 	return ret;

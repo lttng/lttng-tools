@@ -27,6 +27,8 @@
 
 #include "../command.h"
 
+#include <src/common/sessiond-comm/sessiond-comm.h>
+
 static char *opt_channels;
 static int opt_kernel;
 static char *opt_session_name;
@@ -189,8 +191,17 @@ static int enable_channel(char *session_name)
 
 		ret = lttng_enable_channel(handle, &chan);
 		if (ret < 0) {
-			ERR("Channel %s: %s (session %s)", channel_name,
-					lttng_strerror(ret), session_name);
+			switch (-ret) {
+			case LTTCOMM_KERN_CHAN_EXIST:
+			case LTTCOMM_UST_CHAN_EXIST:
+				WARN("Channel %s: %s (session %s", channel_name,
+						lttng_strerror(ret), session_name);
+				goto error;
+			default:
+				ERR("Channel %s: %s (session %s)", channel_name,
+						lttng_strerror(ret), session_name);
+				break;
+			}
 			warn = 1;
 		} else {
 			MSG("%s channel %s enabled for session %s",

@@ -26,7 +26,7 @@
 #include "utils.h"
 
 enum cmd_error_code {
-	CMD_SUCCESS,
+	CMD_SUCCESS = 0,
 	CMD_ERROR,
 	CMD_UNDEFINED,
 	CMD_FATAL,

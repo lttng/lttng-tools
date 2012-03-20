@@ -27,6 +27,7 @@
 #include <ctype.h>
 
 #include "../command.h"
+#include <src/common/sessiond-comm/sessiond-comm.h>
 
 static char *opt_event_list;
 static int opt_event_type;
@@ -345,7 +346,16 @@ static int enable_events(char *session_name)
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
-			goto error;
+			switch (-ret) {
+			case LTTCOMM_KERN_EVENT_EXIST:
+				WARN("Kernel events already enabled (channel %s, session %s)",
+						channel_name, session_name);
+				goto end;
+			default:
+				ERR("Event %s: %s (channel %s, session %s)", event_name,
+						lttng_strerror(ret), channel_name, session_name);
+				break;
+			}
 		}
 
 		switch (opt_event_type) {
@@ -492,8 +502,17 @@ static int enable_events(char *session_name)
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
-			ERR("Event %s: %s (channel %s, session %s)", event_name,
-					lttng_strerror(ret), channel_name, session_name);
+			/* Turn ret to positive value to handle the positive error code */
+			switch (-ret) {
+			case LTTCOMM_KERN_EVENT_EXIST:
+				WARN("Kernel event %s already enabled (channel %s, session %s)",
+						event_name, channel_name, session_name);
+				break;
+			default:
+				ERR("Event %s: %s (channel %s, session %s)", event_name,
+						lttng_strerror(ret), channel_name, session_name);
+				break;
+			}
 			warn = 1;
 		} else {
 			MSG("%s event %s created in channel %s",

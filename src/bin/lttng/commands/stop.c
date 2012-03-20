@@ -26,6 +26,8 @@
 
 #include "../command.h"
 
+#include <common/sessiond-comm/sessiond-comm.h>
+
 static char *opt_session_name;
 
 enum {
@@ -75,7 +77,14 @@ static int stop_tracing(void)
 
 	ret = lttng_stop_tracing(session_name);
 	if (ret < 0) {
-		/* Don't set ret so lttng can interpret the sessiond error. */
+		switch (-ret) {
+		case LTTCOMM_TRACE_ALREADY_STOPPED:
+			WARN("Tracing already stopped for session %s", session_name);
+			break;
+		default:
+			ERR("%s", lttng_strerror(ret));
+			break;
+		}
 		goto free_name;
 	}
 

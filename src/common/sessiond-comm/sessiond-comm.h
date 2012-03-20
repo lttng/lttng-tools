@@ -68,7 +68,7 @@ enum lttcomm_sessiond_command {
  * lttcomm error code.
  */
 enum lttcomm_return_code {
-	LTTCOMM_OK = 1000,				/* Ok */
+	LTTCOMM_OK = 10,				/* Ok */
 	LTTCOMM_ERR,					/* Unknown Error */
 	LTTCOMM_UND,					/* Undefine command */
 	LTTCOMM_NOT_IMPLEMENTED,        /* Command not implemented */
@@ -95,6 +95,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_VERSION,           /* Kernel tracer version is not compatible */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
+	LTTCOMM_KERN_CHAN_EXIST,        /* Kernel channel already exists */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
 	LTTCOMM_KERN_CHAN_NOT_FOUND,	/* Kernel channel not found */
 	LTTCOMM_KERN_CHAN_DISABLE_FAIL, /* Kernel disable channel failed */

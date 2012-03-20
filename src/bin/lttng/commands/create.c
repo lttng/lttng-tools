@@ -28,6 +28,8 @@
 #include "../command.h"
 #include "../utils.h"
 
+#include <common/sessiond-comm/sessiond-comm.h>
+
 static char *opt_output_path;
 static char *opt_session_name;
 
@@ -119,6 +121,11 @@ static int create_session()
 	ret = lttng_create_session(session_name, traces_path);
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
+		switch (-ret) {
+		case LTTCOMM_EXIST_SESS:
+			WARN("Session %s already exists", session_name);
+			break;
+		}
 		goto error;
 	}
 

@@ -25,6 +25,7 @@
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 
 #include "kernel.h"
 #include "kern-modules.h"
@@ -290,8 +291,15 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 	int ret;
 
 	ret = kernctl_enable(event->fd);
-	if (ret < 0 && errno != EEXIST) {
-		PERROR("enable kernel event");
+	if (ret < 0) {
+		switch (errno) {
+		case EEXIST:
+			ret = LTTCOMM_KERN_EVENT_EXIST;
+			break;
+		default:
+			PERROR("enable kernel event");
+			break;
+		}
 		goto error;
 	}
 
@@ -312,8 +320,15 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 	int ret;
 
 	ret = kernctl_disable(event->fd);
-	if (ret < 0 && errno != EEXIST) {
-		PERROR("disable kernel event");
+	if (ret < 0) {
+		switch (errno) {
+		case EEXIST:
+			ret = LTTCOMM_KERN_EVENT_EXIST;
+			break;
+		default:
+			PERROR("disable kernel event");
+			break;
+		}
 		goto error;
 	}
 
