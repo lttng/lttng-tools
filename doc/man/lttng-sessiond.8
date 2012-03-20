@@ -17,22 +17,22 @@ It's tracers help tracking down performance issues and debugging problems
 involving multiple concurrent processes and threads. Tracing across multiple
 systems is also possible.
 
-The session daemon,  acting as a tracing registry, allow you to interact with
+The session daemon, acting as a tracing registry, allow you to interact with
 multiple tracers (kernel and user-space) inside the same container, a tracing
 session. Trace can be gathered from the kernel and/or instrumented applications
-(lttng-ust(3)). Aggregating those traces is done using the babeltrace(1) text
-viewer.
+(lttng-ust(3)). Aggregating those traces is done using a viewer, like the 
+babeltrace(1) text viewer.
 
 In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
 in that group can interact with the root session daemon and thus trace the
 kernel. Session daemons can co-exist meaning that you can have a session daemon
-running as Alice that can be use to trace her applications along side with a
-root daemon or even a Bob daemon. We highly recommand to start the session
+running as Alice that can be used to trace her applications along side with a
+root daemon or even a Bob daemon. We highly recommend to start the session
 daemon at boot time for stable and long term tracing.
 
 The session daemon is in charge of managing trace data consumers by spawning
-one when the time as come. The user don't need to manage the lttng-consumerd.
+them when the time has come. The user don't need to manage the lttng-consumerd.
 .SH "OPTIONS"
 
 .PP
@@ -66,7 +66,7 @@ Show version number
 Send SIGCHLD to parent pid to notify readiness.
 
 This is used by \fBlttng(1)\fP to get notified when the session daemon is ready
-to accept command. By building a third part tool over liblttng-ctl, this option
+to accept command. When building a third party tool over liblttng-ctl, this option
 can be very handy to synchronize the control tool and the session daemon.
 .TP
 .BR "-q, --quiet"
@@ -113,21 +113,21 @@ Specify path for the 64-bit UST consumer daemon libraries
 .SH "ENVIRONMENT VARIABLES"
 
 .PP
-Note that all command line options will override environmenal variables.
+Note that all command line options will override environment variables.
 .PP
 
 .PP
 .IP "LTTNG_CONSUMERD32_BIN"
-Allow to specify the 32-bit consumer binary path. \fB--consumerd32-path\fP
+Specify the 32-bit consumer binary path. \fB--consumerd32-path\fP
 override this variable.
 .IP "LTTNG_CONSUMERD64_BIN"
-Allow to specify the 64-bit consumer binary path. \fB--consumerd64-path\fP
+Specify the 64-bit consumer binary path. \fB--consumerd64-path\fP
 override this variable.
 .IP "LTTNG_CONSUMERD32_LIBDIR"
-Allow to specifiy the 64-bit library path containing libconsumer.so.
+Specifiy the 64-bit library path containing libconsumer.so.
 \fB--consumerd32-libdir\fP override this variable.
 .IP "LTTNG_CONSUMERD64_LIBDIR"
-Allow to specifiy the 32-bit library path containing libconsumer.so.
+Specifiy the 32-bit library path containing libconsumer.so.
 \fB--consumerd64-libdir\fP override this variable.
 .IP "LTTNG_DEBUG_NOCLONE"
 Debug-mode disabling use of clone/fork. Insecure, but required to allow
@@ -140,7 +140,7 @@ babeltrace(1), lttng-ust(3), lttng(1)
 .SH "BUGS"
 
 .PP
-No show stopper bugs known yet at this stable version.
+No show stopper bugs are known yet in this version.
 
 If you encounter any issues or usability problem, please report it on our
 mailing list <lttng-dev@lists.lttng.org> to help improve this project.
@@ -163,8 +163,8 @@ You can find us on IRC server irc.oftc.net (OFTC) in #lttng.
 
 .PP
 Thanks to Yannick Brosseau without whom this project would never have been so
-lean and mean! Also thanks to the Ericsson teams working on tracing which help
-us greatly with detailled bug reports and unsual use cases.
+lean and mean! Also thanks to the Ericsson teams working on tracing which 
+helped us greatly with detailed bug reports and unusual test cases.
 
 Thanks to our beloved packager Alexandre Montplaisir-Goncalves (Ubuntu and PPA
 maintainer) and Jon Bernard for our Debian packages.

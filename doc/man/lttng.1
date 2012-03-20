@@ -17,7 +17,7 @@ It's tracers help tracking down performance issues and debugging problems
 involving multiple concurrent processes and threads. Tracing across multiple
 systems is also possible.
 
-The \fBlttng\fP command line tool from lttng-tools package is used to control
+The \fBlttng\fP command line tool from the lttng-tools package is used to control
 both kernel and user-space tracing. Every interactions with the tracer should
 be done by this tool or by the liblttng-ctl provided with the lttng-tools
 package.
@@ -32,8 +32,8 @@ In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
 in that group can interact with the root session daemon and thus trace the
 kernel. Session daemons can co-exist meaning that you can have a session daemon
-running as Alice that can be use to trace her applications along side with a
-root daemon or even a Bob daemon. We highly recommand to start the session
+running as Alice that can be used to trace her applications along side with a
+root daemon or even a Bob daemon. We highly recommend to start the session
 daemon at boot time for stable and long term tracing.
 
 Every user-space applications instrumented with lttng-ust(3), will
@@ -53,7 +53,8 @@ Show summary of possible options and commands.
 .TP
 .BR "\-v, \-\-verbose"
 Increase verbosity.
-FIXME : details (\-v : sessiond verbose, \-vv : consumerd verbose, etc) ?
+Three levels of verbosity are available which are triggered by putting additionnal v to 
+the option (\-vv or \-vvv)
 .TP
 .BR "\-q, \-\-quiet"
 Suppress all messages (even errors).
@@ -205,7 +206,7 @@ aggregating multiple tracing sources.
 
 On creation, a \fB.lttngrc\fP file is created in your $HOME directory
 containing the current session name. If NAME is omitted, a session name is
-automatically created having this form: 'auto-yyyymmdd-hhmms'.
+automatically created having this form: 'auto-yyyymmdd-hhmmss'.
 
 If no \fB\-o, \-\-output\fP is specified, the traces will be written in
 $HOME/lttng-traces.
@@ -395,6 +396,10 @@ List tracing session information.
 
 With no arguments, it will list available tracing session(s).
 
+With the session name, it will display the details of the session including
+the trace file path, the associated channels and their state (activated
+and deactivated), the activated events and more. 
+
 With \-k alone, it will list all available kernel events (except the system
 calls events).
 With \-u alone, it will list all available user-space events from registered
@@ -507,8 +512,8 @@ View traces of a tracing session
 
 By default, the babeltrace viewer will be used for text viewing.
 
-The SESSION_NAME is an optional session name. If not specified, lttng will get
-it from the configuration file (.lttngrc).
+If SESSION_NAME is omitted, the session name is taken from the .lttngrc file.
+
 .fi
 
 .B OPTIONS:
@@ -546,7 +551,7 @@ babeltrace(1), lttng-ust(3), lttng-sessiond(8)
 .SH "BUGS"
 
 .PP
-No show stopper bugs known yet at this stable version.
+No show stopper bugs are known yet in this version.
 
 If you encounter any issues or usability problem, please report it on our
 mailing list <lttng-dev@lists.lttng.org> to help improve this project.
@@ -570,7 +575,7 @@ You can find us on IRC server irc.oftc.net (OFTC) in #lttng.
 .PP
 Thanks to Yannick Brosseau without whom this project would never have been so
 lean and mean! Also thanks to the Ericsson teams working on tracing which
-helped us greatly with detailled bug reports and unusual test cases.
+helped us greatly with detailed bug reports and unusual test cases.
 
 Thanks to our beloved packager Alexandre Montplaisir-Goncalves (Ubuntu and PPA
 maintainer) and Jon Bernard for our Debian packages.
