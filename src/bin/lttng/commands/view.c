@@ -258,7 +258,11 @@ static int spawn_viewer(const char *trace_path)
 
 	ret = execvp(viewer_bin, argv);
 	if (ret) {
-		PERROR("exec: %s", viewer_bin);
+		if (errno == ENOENT) {
+			ERR("%s not found on the system", viewer_bin);
+		} else {
+			PERROR("exec: %s", viewer_bin);
+		}
 		free(argv);
 		ret = CMD_FATAL;
 		goto error;
@@ -345,8 +349,6 @@ static int view_trace(void)
 		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto free_sessions;
 	}
-
-	ret = CMD_SUCCESS;
 
 free_sessions:
 	if (sessions) {
