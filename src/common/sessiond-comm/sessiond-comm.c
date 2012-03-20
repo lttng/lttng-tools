@@ -368,7 +368,9 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	ret = sendmsg(sock, &msg, 0);
+	do {
+		ret = sendmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		/*
 		 * Only warn about EPIPE when quiet mode is deactivated.
@@ -489,7 +491,9 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	LTTNG_SOCK_SET_PID_CRED(creds, getpid());
 #endif /* __linux__ */
 
-	ret = sendmsg(sock, &msg, 0);
+	do {
+		ret = sendmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		/*
 		 * Only warn about EPIPE when quiet mode is deactivated.
