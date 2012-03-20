@@ -1,10 +1,13 @@
-AC_INIT([lttng-tools],[2.0.0-rc3],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0.0-rc4],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+AC_DEFINE_UNQUOTED([VERSION_NAME], "TBD", "")
+AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], "TBD", "")
 
 AC_CONFIG_HEADERS([include/config.h])
 
