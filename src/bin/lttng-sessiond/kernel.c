@@ -582,24 +582,35 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	 */
 	nbmem = KERNEL_EVENT_INIT_LIST_SIZE;
 	elist = zmalloc(sizeof(struct lttng_event) * nbmem);
+	if (elist == NULL) {
+		PERROR("alloc list events");
+		count = -ENOMEM;
+		goto end;
+	}
 
 	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
 		if (count >= nbmem) {
+			struct lttng_event *new_elist;
+
 			DBG("Reallocating event list from %zu to %zu bytes", nbmem,
 					nbmem * 2);
 			/* Double the size */
 			nbmem <<= 1;
-			elist = realloc(elist, nbmem * sizeof(struct lttng_event));
-			if (elist == NULL) {
+			new_elist = realloc(elist, nbmem * sizeof(struct lttng_event));
+			if (new_elist == NULL) {
 				PERROR("realloc list events");
+				free(event);
+				free(elist);
 				count = -ENOMEM;
 				goto end;
 			}
+			elist = new_elist;
 		}
 		strncpy(elist[count].name, event, LTTNG_SYMBOL_NAME_LEN);
 		elist[count].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		elist[count].enabled = -1;
 		count++;
+		free(event);
 	}
 
 	*events = elist;
