@@ -595,7 +595,7 @@ static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
 		lkm.u.channel.channel_key = session->metadata->fd;
 		lkm.u.channel.max_sb_size = session->metadata->conf->attr.subbuf_size;
 		lkm.u.channel.mmap_len = 0;	/* for kernel */
-		DBG("Sending metadata channel %d to consumer", lkm.u.stream.stream_key);
+		DBG("Sending metadata channel %d to consumer", lkm.u.channel.channel_key);
 		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
 		if (ret < 0) {
 			PERROR("send consumer channel");
@@ -3303,9 +3303,13 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm->session.name);
+		/*
+		 * We keep the session list lock across _all_ commands
+		 * for now, because the per-session lock does not
+		 * handle teardown properly.
+		 */
 		session_lock_list();
 		cmd_ctx->session = session_find_by_name(cmd_ctx->lsm->session.name);
-		session_unlock_list();
 		if (cmd_ctx->session == NULL) {
 			if (cmd_ctx->lsm->session.name != NULL) {
 				ret = LTTCOMM_SESS_NOT_FOUND;
@@ -3535,6 +3539,11 @@ skip_domain:
 	{
 		ret = cmd_destroy_session(cmd_ctx->session,
 				cmd_ctx->lsm->session.name);
+		/*
+		 * Set session to NULL so we do not unlock it after
+		 * free.
+		 */
+		cmd_ctx->session = NULL;
 		break;
 	}
 	case LTTNG_LIST_DOMAINS:
@@ -3668,6 +3677,9 @@ error:
 setup_error:
 	if (cmd_ctx->session) {
 		session_unlock(cmd_ctx->session);
+	}
+	if (need_tracing_session) {
+		session_unlock_list();
 	}
 init_setup_error:
 	return ret;
