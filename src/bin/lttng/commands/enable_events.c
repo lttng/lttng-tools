@@ -350,12 +350,13 @@ static int enable_events(char *session_name)
 			case LTTCOMM_KERN_EVENT_EXIST:
 				WARN("Kernel events already enabled (channel %s, session %s)",
 						channel_name, session_name);
-				goto end;
+				break;
 			default:
 				ERR("Events: %s (channel %s, session %s)",
 						lttng_strerror(ret), channel_name, session_name);
 				break;
 			}
+			goto end;
 		}
 
 		switch (opt_event_type) {
