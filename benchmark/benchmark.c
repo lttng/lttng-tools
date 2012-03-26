@@ -37,6 +37,7 @@ static double calibrate_cpu_freq(void)
 	for (i = 0; i < nb_calib; i++) {
 		freq += (double) get_cpu_freq();
 	}
+
 	return (freq / (double)nb_calib);
 }
 
@@ -137,6 +138,17 @@ void bench_print_ust_notification(void)
 	res = get_bench_time(time_ust_notify_shm_start,
 			time_ust_notify_shm_stop);
 	fprintf(fp, "shm_open/ftruncate/fchmod\n");
+	fprintf(fp, "Time: %.20f sec.\n", res);
+
+	total += res;
+
+	if (time_ust_notify_apps_start == 0 || time_ust_notify_apps_stop == 0) {
+		goto no_data;
+	}
+
+	res = get_bench_time(time_ust_notify_apps_start,
+			time_ust_notify_apps_stop);
+	fprintf(fp, "futex wake\n");
 	fprintf(fp, "Time: %.20f sec.\n", res);
 
 	total += res;

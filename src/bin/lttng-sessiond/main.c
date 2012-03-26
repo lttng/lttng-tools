@@ -673,13 +673,13 @@ static int notify_ust_apps(int active)
 
 	DBG("Notifying applications of session daemon state: %d", active);
 
-	tracepoint(ust_notify_apps_start);
-
 	/* See shm.c for this call implying mmap, shm and futex calls */
 	wait_shm_mmap = shm_ust_get_mmap(wait_shm_path, is_root);
 	if (wait_shm_mmap == NULL) {
 		goto error;
 	}
+
+	tracepoint(ust_notify_apps_start);
 
 	/* Wake waiting process */
 	futex_wait_update((int32_t *) wait_shm_mmap, active);
@@ -1221,6 +1221,7 @@ static void *thread_manage_apps(void *data)
 					ERR("Apps command pipe error");
 					goto error;
 				} else if (revents & LPOLLIN) {
+					system("sysctl vm.drop_caches=3");
 					tracepoint(ust_register_read_start);
 					/* Empty pipe */
 					ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
@@ -1241,7 +1242,6 @@ static void *thread_manage_apps(void *data)
 					}
 					tracepoint(ust_register_add_stop);
 
-					tracepoint(ust_register_done_start);
 					/*
 					 * Validate UST version compatibility.
 					 */
@@ -1254,6 +1254,7 @@ static void *thread_manage_apps(void *data)
 						update_ust_app(ust_cmd.sock);
 					}
 
+					tracepoint(ust_register_done_start);
 					ret = ust_app_register_done(ust_cmd.sock);
 					if (ret < 0) {
 						/*
@@ -1262,6 +1263,7 @@ static void *thread_manage_apps(void *data)
 						 */
 						ust_app_unregister(ust_cmd.sock);
 					} else {
+						tracepoint(ust_register_done_stop);
 						/*
 						 * We just need here to monitor the close of the UST
 						 * socket and poll set monitor those by default.
@@ -1276,7 +1278,6 @@ static void *thread_manage_apps(void *data)
 						DBG("Apps with sock %d added to poll set",
 								ust_cmd.sock);
 					}
-					tracepoint(ust_register_done_stop);
 					break;
 				}
 			} else {
