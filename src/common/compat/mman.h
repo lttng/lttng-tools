@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
- *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2011 - David Goulet <dgoulet@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -16,11 +15,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef _COMPAT_MMAN_H
+#define _COMPAT_MMAN_H
 
-#include "error.h"
-#include "macros.h"
-#include "runas.h"
+#include <sys/mman.h>
 
-#endif /* _COMMON_H */
+#ifdef __linux__
+
+#elif defined(__FreeBSD__)
+
+#define MAP_GROWSDOWN 0
+#define MAP_ANONYMOUS MAP_ANON
+
+#else
+#error "Please add support for your OS."
+#endif /* __linux__ , __FreeBSD__ */
+
+#endif /* _COMPAT_MMAN_H */

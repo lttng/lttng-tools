@@ -2,24 +2,22 @@
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -28,10 +26,12 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/compat/fcntl.h>
 
 #include "kernel-consumer.h"
 
@@ -44,12 +44,12 @@ extern volatile int consumer_quit;
  *
  * Returns the number of bytes written
  */
-int lttng_kconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
 	unsigned long mmap_offset;
-	long ret = 0;
+	ssize_t ret = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int fd = stream->wait_fd;
 	int outfd = stream->out_fd;
@@ -57,7 +57,7 @@ int lttng_kconsumer_on_read_subbuffer_mmap(
 	/* get the offset inside the fd to mmap */
 	ret = kernctl_get_mmap_read_offset(fd, &mmap_offset);
 	if (ret != 0) {
-		ret = -errno;
+		errno = -ret;
 		perror("kernctl_get_mmap_read_offset");
 		goto end;
 	}
@@ -67,12 +67,12 @@ int lttng_kconsumer_on_read_subbuffer_mmap(
 		if (ret >= len) {
 			len = 0;
 		} else if (ret < 0) {
-			ret = -errno;
+			errno = -ret;
 			perror("Error in file write");
 			goto end;
 		}
 		/* This won't block, but will start writeout asynchronously */
-		sync_file_range(outfd, stream->out_fd_offset, ret,
+		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}
@@ -90,11 +90,11 @@ end:
  *
  * Returns the number of bytes spliced.
  */
-int lttng_kconsumer_on_read_subbuffer_splice(
+ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
-	long ret = 0;
+	ssize_t ret = 0;
 	loff_t offset = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int fd = stream->wait_fd;
@@ -105,24 +105,24 @@ int lttng_kconsumer_on_read_subbuffer_splice(
 				(unsigned long)offset, fd);
 		ret = splice(fd, &offset, ctx->consumer_thread_pipe[1], NULL, len,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("splice chan to pipe ret %ld", ret);
+		DBG("splice chan to pipe ret %zd", ret);
 		if (ret < 0) {
-			ret = errno;
+			errno = -ret;
 			perror("Error in relay splice");
 			goto splice_error;
 		}
 
 		ret = splice(ctx->consumer_thread_pipe[0], NULL, outfd, NULL, ret,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("splice pipe to file %ld", ret);
+		DBG("splice pipe to file %zd", ret);
 		if (ret < 0) {
-			ret = errno;
+			errno = -ret;
 			perror("Error in file splice");
 			goto splice_error;
 		}
 		len -= ret;
 		/* This won't block, but will start writeout asynchronously */
-		sync_file_range(outfd, stream->out_fd_offset, ret,
+		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}
@@ -164,7 +164,7 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 
 	ret = kernctl_snapshot(infd);
 	if (ret != 0) {
-		ret = errno;
+		errno = -ret;
 		perror("Getting sub-buffer snapshot.");
 	}
 
@@ -186,7 +186,7 @@ int lttng_kconsumer_get_produced_snapshot(
 
 	ret = kernctl_snapshot_get_produced(infd, pos);
 	if (ret != 0) {
-		ret = errno;
+		errno = -ret;
 		perror("kernctl_snapshot_get_produced");
 	}
 
@@ -307,19 +307,18 @@ end_nosignal:
 /*
  * Consume data on a file descriptor and write it on a trace file.
  */
-int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
+ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	unsigned long len;
 	int err;
-	long ret = 0;
+	ssize_t ret = 0;
 	int infd = stream->wait_fd;
 
 	DBG("In read_subbuffer (infd : %d)", infd);
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
-		ret = errno;
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -336,7 +335,7 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			/* read the whole subbuffer */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
-				ret = errno;
+				errno = -ret;
 				perror("Getting sub-buffer len failed.");
 				goto end;
 			}
@@ -355,7 +354,7 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			/* read the used subbuffer size */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
-				ret = errno;
+				errno = -ret;
 				perror("Getting sub-buffer len failed.");
 				goto end;
 			}
@@ -376,7 +375,7 @@ int lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 	err = kernctl_put_next_subbuf(infd);
 	if (err != 0) {
-		ret = errno;
+		errno = -ret;
 		if (errno == EFAULT) {
 			perror("Error in unreserving sub buffer\n");
 		} else if (errno == EIO) {
@@ -414,7 +413,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
 		if (ret != 0) {
-			ret = errno;
+			errno = -ret;
 			perror("kernctl_get_mmap_len");
 			goto error_close_fd;
 		}

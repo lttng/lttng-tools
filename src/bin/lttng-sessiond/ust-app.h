@@ -1,19 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef _LTT_UST_APP_H 
@@ -46,17 +45,16 @@ struct ust_register_msg {
 };
 
 /*
- * Global applications HT used by the session daemon.
+ * Global applications HT used by the session daemon. This table is indexed by
+ * PID using the pid_n node and pid value of an ust_app.
  */
 struct lttng_ht *ust_app_ht;
 
-struct lttng_ht *ust_app_sock_key_map;
-
-struct ust_app_key {
-	pid_t pid;
-	int sock;
-	struct lttng_ht_node_ulong node;
-};
+/*
+ * Global applications HT used by the session daemon. This table is indexed by
+ * socket using the sock_n node and sock value of an ust_app.
+ */
+struct lttng_ht *ust_app_ht_by_sock;
 
 struct ust_app_ctx {
 	int handle;
@@ -107,6 +105,8 @@ struct ust_app_session {
  * and a linked list is kept of all running traceable app.
  */
 struct ust_app {
+	int sock;
+	pid_t pid;
 	pid_t ppid;
 	uid_t uid;           /* User ID that owns the apps */
 	gid_t gid;           /* Group ID that owns the apps */
@@ -119,8 +119,8 @@ struct ust_app {
 	uint32_t v_minor;    /* Verion minor number */
 	char name[17];       /* Process name (short) */
 	struct lttng_ht *sessions;
-	struct lttng_ht_node_ulong node;
-	struct ust_app_key key;
+	struct lttng_ht_node_ulong pid_n;
+	struct lttng_ht_node_ulong sock_n;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

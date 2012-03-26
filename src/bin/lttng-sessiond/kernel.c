@@ -1,19 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -26,6 +25,7 @@
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 
 #include "kernel.h"
 #include "kern-modules.h"
@@ -42,7 +42,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 	ret = kernctl_add_context(chan->fd, ctx);
 	if (ret < 0) {
 		if (errno != EEXIST) {
-			perror("add context ioctl");
+			PERROR("add context ioctl");
 		} else {
 			/* If EEXIST, we just ignore the error */
 			ret = 0;
@@ -52,7 +52,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 
 	chan->ctx = zmalloc(sizeof(struct lttng_kernel_context));
 	if (chan->ctx == NULL) {
-		perror("zmalloc event context");
+		PERROR("zmalloc event context");
 		goto error;
 	}
 
@@ -75,13 +75,13 @@ int kernel_add_event_context(struct ltt_kernel_event *event,
 	DBG("Adding context to event %s", event->event->name);
 	ret = kernctl_add_context(event->fd, ctx);
 	if (ret < 0) {
-		perror("add context ioctl");
+		PERROR("add context ioctl");
 		goto error;
 	}
 
 	event->ctx = zmalloc(sizeof(struct lttng_kernel_context));
 	if (event->ctx == NULL) {
-		perror("zmalloc event context");
+		PERROR("zmalloc event context");
 		goto error;
 	}
 
@@ -112,7 +112,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	/* Kernel tracer session creation */
 	ret = kernctl_create_session(tracer_fd);
 	if (ret < 0) {
-		perror("ioctl kernel create session");
+		PERROR("ioctl kernel create session");
 		goto error;
 	}
 
@@ -120,7 +120,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(lks->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		perror("fcntl session fd");
+		PERROR("fcntl session fd");
 	}
 
 	lks->consumer_fds_sent = 0;
@@ -153,7 +153,7 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	/* Kernel tracer channel creation */
 	ret = kernctl_create_channel(session->fd, &lkc->channel->attr);
 	if (ret < 0) {
-		perror("ioctl kernel create channel");
+		PERROR("ioctl kernel create channel");
 		goto error;
 	}
 
@@ -162,7 +162,7 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(lkc->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		perror("fcntl session fd");
+		PERROR("fcntl session fd");
 	}
 
 	/* Add channel to session */
@@ -208,6 +208,11 @@ int kernel_create_event(struct lttng_event *ev,
 	 */
 	if (ret == 0 && event->event->instrumentation == LTTNG_KERNEL_SYSCALL) {
 		DBG2("Kernel event syscall creation success");
+		/*
+		 * We use fd == -1 to ensure that we never trigger a close of fd
+		 * 0.
+		 */
+		event->fd = -1;
 		goto add_list;
 	}
 
@@ -215,7 +220,7 @@ int kernel_create_event(struct lttng_event *ev,
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		perror("fcntl session fd");
+		PERROR("fcntl session fd");
 	}
 
 add_list:
@@ -242,7 +247,7 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 
 	ret = kernctl_disable(chan->fd);
 	if (ret < 0) {
-		perror("disable chan ioctl");
+		PERROR("disable chan ioctl");
 		ret = errno;
 		goto error;
 	}
@@ -265,7 +270,7 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 
 	ret = kernctl_enable(chan->fd);
 	if (ret < 0 && errno != EEXIST) {
-		perror("Enable kernel chan");
+		PERROR("Enable kernel chan");
 		goto error;
 	}
 
@@ -286,8 +291,15 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 	int ret;
 
 	ret = kernctl_enable(event->fd);
-	if (ret < 0 && errno != EEXIST) {
-		perror("enable kernel event");
+	if (ret < 0) {
+		switch (errno) {
+		case EEXIST:
+			ret = LTTCOMM_KERN_EVENT_EXIST;
+			break;
+		default:
+			PERROR("enable kernel event");
+			break;
+		}
 		goto error;
 	}
 
@@ -308,8 +320,15 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 	int ret;
 
 	ret = kernctl_disable(event->fd);
-	if (ret < 0 && errno != EEXIST) {
-		perror("disable kernel event");
+	if (ret < 0) {
+		switch (errno) {
+		case EEXIST:
+			ret = LTTCOMM_KERN_EVENT_EXIST;
+			break;
+		default:
+			PERROR("disable kernel event");
+			break;
+		}
 		goto error;
 	}
 
@@ -347,7 +366,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session, char *path)
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(lkm->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		perror("fcntl session fd");
+		PERROR("fcntl session fd");
 	}
 
 	session->metadata = lkm;
@@ -369,7 +388,7 @@ int kernel_start_session(struct ltt_kernel_session *session)
 
 	ret = kernctl_start_session(session->fd);
 	if (ret < 0) {
-		perror("ioctl start session");
+		PERROR("ioctl start session");
 		goto error;
 	}
 
@@ -392,7 +411,7 @@ void kernel_wait_quiescent(int fd)
 
 	ret = kernctl_wait_quiescent(fd);
 	if (ret < 0) {
-		perror("wait quiescent ioctl");
+		PERROR("wait quiescent ioctl");
 		ERR("Kernel quiescent wait failed");
 	}
 }
@@ -406,7 +425,7 @@ int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 
 	ret = kernctl_calibrate(fd, calibrate);
 	if (ret < 0) {
-		perror("calibrate ioctl");
+		PERROR("calibrate ioctl");
 		return -1;
 	}
 
@@ -443,7 +462,7 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 		DBG("Flushing channel stream %d", stream->fd);
 		ret = kernctl_buffer_flush(stream->fd);
 		if (ret < 0) {
-			perror("ioctl");
+			PERROR("ioctl");
 			ERR("Fail to flush buffer for stream %d (ret: %d)",
 					stream->fd, ret);
 		}
@@ -483,10 +502,13 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	int ret;
 	struct ltt_kernel_stream *lks;
 
-	while ((ret = kernctl_create_stream(channel->fd)) > 0) {
+	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
 		lks = trace_kernel_create_stream();
 		if (lks == NULL) {
-			close(ret);
+			ret = close(ret);
+			if (ret) {
+				PERROR("close");
+			}
 			goto error;
 		}
 
@@ -494,13 +516,13 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 		/* Prevent fd duplication after execlp() */
 		ret = fcntl(lks->fd, F_SETFD, FD_CLOEXEC);
 		if (ret < 0) {
-			perror("fcntl session fd");
+			PERROR("fcntl session fd");
 		}
 
 		ret = asprintf(&lks->pathname, "%s/%s_%d",
 				channel->pathname, channel->channel->name, channel->stream_count);
 		if (ret < 0) {
-			perror("asprintf kernel create stream");
+			PERROR("asprintf kernel create stream");
 			goto error;
 		}
 
@@ -527,7 +549,7 @@ int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 
 	ret = kernctl_create_stream(session->metadata->fd);
 	if (ret < 0) {
-		perror("kernel create metadata stream");
+		PERROR("kernel create metadata stream");
 		goto error;
 	}
 
@@ -536,7 +558,7 @@ int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(session->metadata_stream_fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		perror("fcntl session fd");
+		PERROR("fcntl session fd");
 	}
 
 	return 0;
@@ -550,7 +572,7 @@ error:
  */
 ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 {
-	int fd, pos;
+	int fd, pos, ret;
 	char *event;
 	size_t nbmem, count = 0;
 	ssize_t size;
@@ -559,13 +581,13 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 
 	fd = kernctl_tracepoint_list(tracer_fd);
 	if (fd < 0) {
-		perror("kernel tracepoint list");
+		PERROR("kernel tracepoint list");
 		goto error;
 	}
 
 	fp = fdopen(fd, "r");
 	if (fp == NULL) {
-		perror("kernel tracepoint list fdopen");
+		PERROR("kernel tracepoint list fdopen");
 		goto error_fp;
 	}
 
@@ -575,34 +597,51 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	 */
 	nbmem = KERNEL_EVENT_INIT_LIST_SIZE;
 	elist = zmalloc(sizeof(struct lttng_event) * nbmem);
+	if (elist == NULL) {
+		PERROR("alloc list events");
+		count = -ENOMEM;
+		goto end;
+	}
 
 	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
 		if (count >= nbmem) {
+			struct lttng_event *new_elist;
+
 			DBG("Reallocating event list from %zu to %zu bytes", nbmem,
 					nbmem * 2);
 			/* Double the size */
 			nbmem <<= 1;
-			elist = realloc(elist, nbmem * sizeof(struct lttng_event));
-			if (elist == NULL) {
-				perror("realloc list events");
+			new_elist = realloc(elist, nbmem * sizeof(struct lttng_event));
+			if (new_elist == NULL) {
+				PERROR("realloc list events");
+				free(event);
+				free(elist);
 				count = -ENOMEM;
 				goto end;
 			}
+			elist = new_elist;
 		}
 		strncpy(elist[count].name, event, LTTNG_SYMBOL_NAME_LEN);
 		elist[count].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		elist[count].enabled = -1;
 		count++;
+		free(event);
 	}
 
 	*events = elist;
 	DBG("Kernel list events done (%zu events)", count);
 end:
-	fclose(fp);	/* closes both fp and fd */
+	ret = fclose(fp);	/* closes both fp and fd */
+	if (ret) {
+		PERROR("fclose");
+	}
 	return count;
 
 error_fp:
-	close(fd);
+	ret = close(fd);
+	if (ret) {
+		PERROR("close");
+	}
 error:
 	return -1;
 }
@@ -664,8 +703,10 @@ int init_kernel_workarounds(void)
 			/* Ignore error, we don't really care */
 		}
 	}
-	fclose(fp);
+	ret = fclose(fp);
+	if (ret) {
+		PERROR("fclose");
+	}
 end_boot_id:
-
 	return 0;
 }

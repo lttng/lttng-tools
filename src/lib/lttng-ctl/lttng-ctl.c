@@ -5,19 +5,18 @@
  *
  * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; only
- * version 2.1 of the License.
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License, version 2.1 only,
+ * as published by the Free Software Foundation.
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #define _GNU_SOURCE
@@ -40,6 +39,18 @@ static char sessiond_sock_path[PATH_MAX];
 /* Variables */
 static char *tracing_group;
 static int connected;
+
+/* Global */
+
+/*
+ * Those two variables are used by error.h to silent or control the verbosity of
+ * error message. They are global to the library so application linking with it
+ * are able to compile correctly and also control verbosity of the library.
+ *
+ * Note that it is *not* possible to silent ERR() and PERROR() macros.
+ */
+int lttng_opt_quiet;
+int lttng_opt_verbose;
 
 /*
  * Copy string from src to dst and enforce null terminated byte.
@@ -138,11 +149,8 @@ static int check_tracing_group(const char *grp_name)
 
 	/* Get GID of group 'tracing' */
 	grp_tracing = getgrnam(grp_name);
-	if (grp_tracing == NULL) {
-		/* NULL means not found also. getgrnam(3) */
-		if (errno != 0) {
-			perror("getgrnam");
-		}
+	if (!grp_tracing) {
+		/* If grp_tracing is NULL, the group does not exist. */
 		goto end;
 	}
 

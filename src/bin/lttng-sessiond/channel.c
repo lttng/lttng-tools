@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -121,6 +121,9 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 			ret = LTTCOMM_KERN_CHAN_ENABLE_FAIL;
 			goto error;
 		}
+	} else {
+		ret = LTTCOMM_KERN_CHAN_EXIST;
+		goto error;
 	}
 
 	ret = LTTCOMM_OK;
@@ -179,6 +182,7 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 	/* If already enabled, everything is OK */
 	if (uchan->enabled) {
 		DBG3("Channel %s already enabled. Skipping", uchan->name);
+		ret = LTTCOMM_UST_CHAN_EXIST;
 		goto end;
 	}
 
@@ -233,6 +237,21 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 			goto error;
 		}
 		attr = defattr;
+	}
+
+	/*
+	 * Validate UST buffer size and number of buffers: must both be
+	 * power of 2 and nonzero. We validate right here for UST,
+	 * because applications will not report the error to the user
+	 * (unlike kernel tracing).
+	 */
+	if (!attr->attr.subbuf_size || (attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
+		ret = LTTCOMM_INVALID;
+		goto error;
+	}
+	if (!attr->attr.num_subbuf || (attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
+		ret = LTTCOMM_INVALID;
+		goto error;
 	}
 
 	/* Create UST channel */

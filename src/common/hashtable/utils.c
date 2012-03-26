@@ -3,18 +3,18 @@
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /*
@@ -50,7 +50,6 @@
  */
 
 #include <assert.h>
-#include <endian.h>    /* attempt to define endianness */
 #include <stdint.h>     /* defines uint32_t etc */
 #include <stdio.h>      /* defines printf for tests */
 #include <string.h>
@@ -59,6 +58,7 @@
 #include <urcu/compiler.h>
 
 #include "utils.h"
+#include <common/compat/endian.h>    /* attempt to define endianness */
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may

@@ -29,6 +29,8 @@
 
 #include "../utils.h"
 
+int lttng_opt_quiet;
+
 int main(int argc, char **argv)
 {
 	struct lttng_handle *handle = NULL;

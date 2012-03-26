@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <dgoulet@efficios.com>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -258,7 +258,11 @@ static int spawn_viewer(const char *trace_path)
 
 	ret = execvp(viewer_bin, argv);
 	if (ret) {
-		PERROR("exec: %s", viewer_bin);
+		if (errno == ENOENT) {
+			ERR("%s not found on the system", viewer_bin);
+		} else {
+			PERROR("exec: %s", viewer_bin);
+		}
 		free(argv);
 		ret = CMD_FATAL;
 		goto error;
@@ -345,8 +349,6 @@ static int view_trace(void)
 		/* Don't set ret so lttng can interpret the sessiond error. */
 		goto free_sessions;
 	}
-
-	ret = CMD_SUCCESS;
 
 free_sessions:
 	if (sessions) {

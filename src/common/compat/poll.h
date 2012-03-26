@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef _LTT_POLL_H
@@ -50,6 +50,7 @@ static inline void __lttng_poll_free(void *events)
  */
 #ifdef HAVE_EPOLL
 #include <sys/epoll.h>
+#include <stdio.h>
 
 /* See man epoll(7) for this define path */
 #define COMPAT_EPOLL_PROC_PATH "/proc/sys/fs/epoll/max_user_watches"
@@ -146,8 +147,13 @@ static inline void lttng_poll_reset(struct lttng_poll_event *events)
  */
 static inline void lttng_poll_clean(struct lttng_poll_event *events)
 {
+	int ret;
+
 	if (events) {
-		close(events->epfd);
+		ret = close(events->epfd);
+		if (ret) {
+			perror("close");
+		}
 		__lttng_poll_free((void *) events->events);
 	}
 }
@@ -179,10 +185,17 @@ enum {
 	LPOLLRDBAND = POLLRDBAND,
 	LPOLLWRNORM = POLLWRNORM,
 	LPOLLWRBAND = POLLWRBAND,
+#if __linux__
 	LPOLLMSG = POLLMSG,
+	LPOLLRDHUP = POLLRDHUP,
+#elif defined(__FreeBSD__)
+	LPOLLMSG = 0,
+	LPOLLRDHUP = 0,
+#else
+#error "Please add support for your OS."
+#endif /* __linux__ */
 	LPOLLERR = POLLERR,
 	LPOLLHUP = POLLHUP | POLLNVAL,
-	LPOLLRDHUP = POLLRDHUP,
 	/* Close on exec feature does not exist for poll(2) */
 	LTTNG_CLOEXEC = 0xdead,
 };

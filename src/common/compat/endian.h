@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
- *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2011 - David Goulet <dgoulet@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -16,11 +15,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifdef _COMPAT_ENDIAN_H
+#define _COMPAT_ENDIAN_H
 
-#include "error.h"
-#include "macros.h"
-#include "runas.h"
+#ifdef __linux__
+#include <endian.h>
+#elif defined(__FreeBSD__)
+#include <machine/endian.h>
+#else
+#error "Please add support for your OS."
+#endif
 
-#endif /* _COMMON_H */
+#endif /* _COMPAT_ENDIAN_H */

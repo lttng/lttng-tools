@@ -1,19 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -26,6 +25,8 @@
 #include <unistd.h>
 
 #include "../command.h"
+
+#include <common/sessiond-comm/sessiond-comm.h>
 
 static char *opt_session_name;
 
@@ -77,7 +78,13 @@ static int destroy_session()
 
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
-		/* Don't set ret so lttng can interpret the sessiond error. */
+		switch (-ret) {
+		case LTTCOMM_SESS_NOT_FOUND:
+			WARN("Session name %s not found", session_name);
+			break;
+		default:
+			break;
+		}
 		goto free_name;
 	}
 

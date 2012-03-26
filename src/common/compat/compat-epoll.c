@@ -1,20 +1,21 @@
 /*
  * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -49,7 +50,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	ret = epoll_create1(flags);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
-		perror("epoll_create1");
+		PERROR("epoll_create1");
 		goto error;
 	}
 
@@ -58,7 +59,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	/* This *must* be freed by using lttng_poll_free() */
 	events->events = zmalloc(size * sizeof(struct epoll_event));
 	if (events->events == NULL) {
-		perror("zmalloc epoll set");
+		PERROR("zmalloc epoll set");
 		goto error_close;
 	}
 
@@ -68,7 +69,10 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	return 0;
 
 error_close:
-	close(events->epfd);
+	ret = close(events->epfd);
+	if (ret) {
+		PERROR("close");
+	}
 error:
 	return -1;
 }
@@ -97,11 +101,11 @@ int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_event
 			goto end;
 		case ENOSPC:
 		case EPERM:
-			/* Print perror and goto end not failing. Show must go on. */
-			perror("epoll_ctl ADD");
+			/* Print PERROR and goto end not failing. Show must go on. */
+			PERROR("epoll_ctl ADD");
 			goto end;
 		default:
-			perror("epoll_ctl ADD fatal");
+			PERROR("epoll_ctl ADD fatal");
 			goto error;
 		}
 	}
@@ -112,7 +116,7 @@ int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_event
 		new_size = 2 * events->events_size;
 		ptr = realloc(events->events, new_size * sizeof(struct epoll_event));
 		if (ptr == NULL) {
-			perror("realloc epoll add");
+			PERROR("realloc epoll add");
 			goto error;
 		}
 		events->events = ptr;
@@ -142,14 +146,14 @@ int compat_epoll_del(struct lttng_poll_event *events, int fd)
 		switch (errno) {
 		case ENOENT:
 		case EPERM:
-			/* Print perror and goto end not failing. Show must go on. */
-			perror("epoll_ctl DEL");
+			/* Print PERROR and goto end not failing. Show must go on. */
+			PERROR("epoll_ctl DEL");
 			goto end;
 		default:
-			perror("epoll_ctl DEL fatal");
+			PERROR("epoll_ctl DEL fatal");
 			goto error;
 		}
-		perror("epoll_ctl del");
+		PERROR("epoll_ctl del");
 		goto error;
 	}
 
@@ -180,7 +184,7 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 	} while (ret == -1 && errno == EINTR);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
-		perror("epoll_wait");
+		PERROR("epoll_wait");
 		goto error;
 	}
 
@@ -207,7 +211,7 @@ void compat_epoll_set_max_size(void)
 
 	ret = read(fd, buf, sizeof(buf));
 	if (ret < 0) {
-		perror("read set max size");
+		PERROR("read set max size");
 		goto error;
 	}
 
@@ -220,5 +224,8 @@ void compat_epoll_set_max_size(void)
 	DBG("epoll set max size is %d", poll_max_size);
 
 error:
-	close(fd);
+	ret = close(fd);
+	if (ret) {
+		PERROR("close");
+	}
 }

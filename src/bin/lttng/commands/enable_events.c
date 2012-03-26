@@ -1,19 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -28,6 +27,7 @@
 #include <ctype.h>
 
 #include "../command.h"
+#include <src/common/sessiond-comm/sessiond-comm.h>
 
 static char *opt_event_list;
 static int opt_event_type;
@@ -346,7 +346,17 @@ static int enable_events(char *session_name)
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
-			goto error;
+			switch (-ret) {
+			case LTTCOMM_KERN_EVENT_EXIST:
+				WARN("Kernel events already enabled (channel %s, session %s)",
+						channel_name, session_name);
+				break;
+			default:
+				ERR("Events: %s (channel %s, session %s)",
+						lttng_strerror(ret), channel_name, session_name);
+				break;
+			}
+			goto end;
 		}
 
 		switch (opt_event_type) {
@@ -493,8 +503,17 @@ static int enable_events(char *session_name)
 
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
-			ERR("Event %s: %s (channel %s, session %s)", event_name,
-					lttng_strerror(ret), channel_name, session_name);
+			/* Turn ret to positive value to handle the positive error code */
+			switch (-ret) {
+			case LTTCOMM_KERN_EVENT_EXIST:
+				WARN("Kernel event %s already enabled (channel %s, session %s)",
+						event_name, channel_name, session_name);
+				break;
+			default:
+				ERR("Event %s: %s (channel %s, session %s)", event_name,
+						lttng_strerror(ret), channel_name, session_name);
+				break;
+			}
 			warn = 1;
 		} else {
 			MSG("%s event %s created in channel %s",

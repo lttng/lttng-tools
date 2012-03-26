@@ -1,18 +1,18 @@
 /*
  * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -337,7 +337,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		struct lttng_event_context *ctx, char *event_name,
 		char *channel_name)
 {
-	int ret = LTTCOMM_OK, have_event = 0, no_chan = 1;
+	int ret = LTTCOMM_OK, have_event = 0;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
@@ -409,7 +409,6 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	} else if (!uchan && !have_event) {	/* Add ctx all events, all channels */
 		/* For all channels */
 		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
-			no_chan = 0;
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret < 0) {
 				ERR("Context failed for channel %s", uchan->name);
@@ -435,10 +434,6 @@ end:
 	default:
 		ret = LTTCOMM_OK;
 		break;
-	}
-
-	if (no_chan) {
-		ret = LTTCOMM_UST_CHAN_NOT_FOUND;
 	}
 
 error:

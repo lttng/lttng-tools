@@ -2,19 +2,18 @@
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -58,8 +57,8 @@ static pthread_t threads[2];
 static int sigintcount = 0;
 
 /* Argument variables */
-int opt_quiet;
-int opt_verbose;
+int lttng_opt_quiet;    /* not static in error.h */
+int lttng_opt_verbose;  /* not static in error.h */
 static int opt_daemon;
 static const char *progname;
 static char command_sock_path[PATH_MAX]; /* Global command socket path */
@@ -199,10 +198,10 @@ static void parse_args(int argc, char **argv)
 			usage(stdout);
 			exit(EXIT_SUCCESS);
 		case 'q':
-			opt_quiet = 1;
+			lttng_opt_quiet = 1;
 			break;
 		case 'v':
-			opt_verbose = 1;
+			lttng_opt_verbose = 1;
 			break;
 		case 'V':
 			fprintf(stdout, "%s\n", VERSION);

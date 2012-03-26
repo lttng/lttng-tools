@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef _LTT_HT_H
@@ -72,6 +72,8 @@ extern void lttng_ht_add_unique_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node);
 extern void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
+extern struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(
+		struct lttng_ht *ht, struct lttng_ht_node_ulong *node);
 
 extern int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter);
 

@@ -3,18 +3,18 @@
  *                      Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  * 
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  * 
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA 02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /*
@@ -28,7 +28,7 @@
 #define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
-#include <sys/socket.h>
+#include <common/compat/socket.h>
 
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
@@ -68,7 +68,7 @@ enum lttcomm_sessiond_command {
  * lttcomm error code.
  */
 enum lttcomm_return_code {
-	LTTCOMM_OK = 1000,				/* Ok */
+	LTTCOMM_OK = 10,				/* Ok */
 	LTTCOMM_ERR,					/* Unknown Error */
 	LTTCOMM_UND,					/* Undefine command */
 	LTTCOMM_NOT_IMPLEMENTED,        /* Command not implemented */
@@ -95,6 +95,7 @@ enum lttcomm_return_code {
 	LTTCOMM_KERN_VERSION,           /* Kernel tracer version is not compatible */
 	LTTCOMM_KERN_EVENT_EXIST,       /* Kernel event already exists */
 	LTTCOMM_KERN_SESS_FAIL,			/* Kernel create session failed */
+	LTTCOMM_KERN_CHAN_EXIST,        /* Kernel channel already exists */
 	LTTCOMM_KERN_CHAN_FAIL,			/* Kernel create channel failed */
 	LTTCOMM_KERN_CHAN_NOT_FOUND,	/* Kernel channel not found */
 	LTTCOMM_KERN_CHAN_DISABLE_FAIL, /* Kernel disable channel failed */
@@ -136,6 +137,9 @@ enum lttcomm_return_code {
 	LTTCOMM_UST_EVENT_NOT_FOUND,    /* UST event not found */
 	LTTCOMM_UST_CONTEXT_EXIST,      /* UST context exist */
 	LTTCOMM_UST_CONTEXT_INVAL,      /* UST context invalid */
+	LTTCOMM_NEED_ROOT_SESSIOND,		/* root sessiond is needed */
+	LTTCOMM_TRACE_ALREADY_STARTED,  /* Tracing already started */
+	LTTCOMM_TRACE_ALREADY_STOPPED,  /* Tracing already stopped */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */
@@ -151,6 +155,8 @@ enum lttcomm_return_code {
 	CONSUMERD_SPLICE_EINVAL,		/* EINVAL from splice(2) */
 	CONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
 	CONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
+	LTTCOMM_INVALID,			/* Invalid parameter */
+
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
 };
@@ -291,7 +297,7 @@ extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 
 extern ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		struct ucred *creds);
+		lttng_sock_cred *creds);
 
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
 extern int lttcomm_setsockopt_creds_unix_sock(int sock);

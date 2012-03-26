@@ -2,36 +2,36 @@
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <lttng/ust-ctl.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/compat/fcntl.h>
 
 #include "ust-consumer.h"
 
@@ -42,9 +42,9 @@ extern volatile int consumer_quit;
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile.
  *
- * Returns the number of bytes written
+ * Returns the number of bytes written, else negative value on error.
  */
-int lttng_ustconsumer_on_read_subbuffer_mmap(
+ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
@@ -57,8 +57,8 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 	ret = ustctl_get_mmap_read_offset(stream->chan->handle,
 		stream->buf, &mmap_offset);
 	if (ret != 0) {
-		ret = -errno;
-		perror("ustctl_get_mmap_read_offset");
+		errno = -ret;
+		PERROR("ustctl_get_mmap_read_offset");
 		goto end;
 	}
 	while (len > 0) {
@@ -66,12 +66,12 @@ int lttng_ustconsumer_on_read_subbuffer_mmap(
 		if (ret >= len) {
 			len = 0;
 		} else if (ret < 0) {
-			ret = -errno;
-			perror("Error in file write");
+			errno = -ret;
+			PERROR("Error in file write");
 			goto end;
 		}
 		/* This won't block, but will start writeout asynchronously */
-		sync_file_range(outfd, stream->out_fd_offset, ret,
+		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
 	}
@@ -89,7 +89,7 @@ end:
  *
  * Returns the number of bytes spliced.
  */
-int lttng_ustconsumer_on_read_subbuffer_splice(
+ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
@@ -108,8 +108,8 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 
 	ret = ustctl_snapshot(stream->chan->handle, stream->buf);
 	if (ret != 0) {
-		ret = errno;
-		perror("Getting sub-buffer snapshot.");
+		errno = -ret;
+		PERROR("Getting sub-buffer snapshot.");
 	}
 
 	return ret;
@@ -130,8 +130,8 @@ int lttng_ustconsumer_get_produced_snapshot(
 	ret = ustctl_snapshot_get_produced(stream->chan->handle,
 			stream->buf, pos);
 	if (ret != 0) {
-		ret = errno;
-		perror("kernctl_snapshot_get_produced");
+		errno = -ret;
+		PERROR("kernctl_snapshot_get_produced");
 	}
 
 	return ret;
@@ -260,7 +260,7 @@ end:
 	/* signal the poll thread */
 	ret = write(ctx->consumer_poll_pipe[1], "4", 1);
 	if (ret < 0) {
-		perror("write consumer poll");
+		PERROR("write consumer poll");
 	}
 end_nosignal:
 	return 0;
@@ -346,7 +346,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	if (!stream->hangup_flush_done) {
 		do {
 			readlen = read(stream->wait_fd, &dummy, 1);
-		} while (readlen == -1 && errno == -EINTR);
+		} while (readlen == -1 && errno == EINTR);
 		if (readlen == -1) {
 			ret = readlen;
 			goto end;
@@ -400,7 +400,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 				stream->uid, stream->gid);
 		if (ret < 0) {
 			ERR("Opening %s", stream->path_name);
-			perror("open");
+			PERROR("open");
 			goto error;
 		}
 		stream->out_fd = ret;

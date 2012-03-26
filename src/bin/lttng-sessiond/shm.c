@@ -2,18 +2,18 @@
  * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
  *                       Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -55,7 +55,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = chown(shm_path, 0, 0);
 		if (ret < 0) {
 			if (errno != ENOENT) {
-				perror("chown wait shm");
+				PERROR("chown wait shm");
 				goto error;
 			}
 		}
@@ -69,7 +69,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = chown(shm_path, getuid(), getgid());
 		if (ret < 0) {
 			if (errno != ENOENT) {
-				perror("chown wait shm");
+				PERROR("chown wait shm");
 				goto error;
 			}
 		}
@@ -81,7 +81,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	ret = chmod(shm_path, mode);
 	if (ret < 0) {
 		if (errno != ENOENT) {
-			perror("chmod wait shm");
+			PERROR("chmod wait shm");
 			goto error;
 		}
 	}
@@ -101,21 +101,25 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	 */
 	wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
 	if (wait_shm_fd < 0) {
-		perror("shm_open wait shm");
+		PERROR("shm_open wait shm");
 		goto error;
 	}
 
 	ret = ftruncate(wait_shm_fd, mmap_size);
 	if (ret < 0) {
-		perror("ftruncate wait shm");
+		PERROR("ftruncate wait shm");
 		exit(EXIT_FAILURE);
 	}
 
+#ifndef __FreeBSD__
 	ret = fchmod(wait_shm_fd, mode);
 	if (ret < 0) {
-		perror("fchmod");
+		PERROR("fchmod");
 		exit(EXIT_FAILURE);
 	}
+#else
+#warning "FreeBSD does not support setting file mode on shm FD. Remember that for secure use, lttng-sessiond should be started before applications linked on lttng-ust."
+#endif
 
 	tracepoint(ust_notify_shm_stop);
 
@@ -157,7 +161,7 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 	/* close shm fd immediately after taking the mmap reference */
 	ret = close(wait_shm_fd);
 	if (ret) {
-		perror("Error closing fd");
+		PERROR("Error closing fd");
 	}
 
 	if (wait_shm_mmap == MAP_FAILED) {

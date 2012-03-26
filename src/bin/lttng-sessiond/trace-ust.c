@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -121,6 +121,9 @@ struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
 	return lus;
 
 error_free_session:
+	lttng_ht_destroy(lus->domain_global.channels);
+	lttng_ht_destroy(lus->domain_exec);
+	lttng_ht_destroy(lus->domain_pid);
 	free(lus);
 error:
 	return NULL;
@@ -139,7 +142,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {
-		perror("ltt_ust_channel zmalloc");
+		PERROR("ltt_ust_channel zmalloc");
 		goto error;
 	}
 
@@ -171,7 +174,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	/* Set trace output path */
 	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
 	if (ret < 0) {
-		perror("asprintf ust create channel");
+		PERROR("asprintf ust create channel");
 		goto error_free_channel;
 	}
 
@@ -180,6 +183,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	return luc;
 
 error_free_channel:
+	lttng_ht_destroy(luc->ctx);
+	lttng_ht_destroy(luc->events);
 	free(luc);
 error:
 	return NULL;
@@ -236,7 +241,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 		lue->attr.loglevel = ev->loglevel;
 		break;
 	default:
-		ERR("Unknown ust loglevel type (%d)", ev->type);
+		ERR("Unknown ust loglevel type (%d)", ev->loglevel_type);
 		goto error_free_event;
 	}
 
@@ -253,6 +258,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	return lue;
 
 error_free_event:
+	lttng_ht_destroy(lue->ctx);
 	free(lue);
 error:
 	return NULL;
@@ -270,7 +276,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 	lum = zmalloc(sizeof(struct ltt_ust_metadata));
 	if (lum == NULL) {
-		perror("ust metadata zmalloc");
+		PERROR("ust metadata zmalloc");
 		goto error;
 	}
 
@@ -286,7 +292,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	/* Set metadata trace path */
 	ret = snprintf(lum->pathname, PATH_MAX, "%s/metadata", path);
 	if (ret < 0) {
-		perror("asprintf ust metadata");
+		PERROR("asprintf ust metadata");
 		goto error_free_metadata;
 	}
 
@@ -453,8 +459,10 @@ static void destroy_channel_rcu(struct rcu_head *head)
  */
 void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 {
+	if (!metadata->handle) {
+		return;
+	}
 	DBG2("Trace UST destroy metadata %d", metadata->handle);
-
 	free(metadata);
 }
 

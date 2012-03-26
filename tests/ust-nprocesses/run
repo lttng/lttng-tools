@@ -43,7 +43,9 @@ do
 	./$CURDIR/$TEST_BIN_NAME 1000 >/dev/null 2>&1 &
 done
 
-echo -n "Validating registered apps: "
+echo -n "Validating registered apps in 3 seconds..."
+
+sleep 3
 
 listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
 reg_app_count=$(echo -n $listing | sed "s/$TEST_BIN_NAME/$TEST_BIN_NAME\n/g" | grep "$TEST_BIN_NAME" | wc -l)
@@ -61,6 +63,7 @@ enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_tracing $SESSION_NAME
 
 echo "Sleeping $TEST_WAIT_SEC seconds for tracing to start everywhere"
+echo "Warning: this arbitrary time can make the test fail on slower system"
 sleep $TEST_WAIT_SEC
 
 stop_tracing $SESSION_NAME

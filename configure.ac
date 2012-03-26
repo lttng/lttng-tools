@@ -1,10 +1,16 @@
-AC_INIT([lttng-tools],[2.0.0-rc1],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0.0],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+version_name="Annedd'ale"
+version_description="New type of beer, 100% from Quebec, flavored with sapin beaumier needles, with a touch of hops."
+
+AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
+AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description"], "")
 
 AC_CONFIG_HEADERS([include/config.h])
 
@@ -121,6 +127,24 @@ AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl
 
 AC_CHECK_FUNCS([sched_getcpu sysconf])
 
+# check for dlopen
+AC_CHECK_LIB([dl], [dlopen],
+[
+	have_libdl=yes
+],
+[
+	#libdl not found, check for dlopen in libc.
+	AC_CHECK_LIB([c], [dlopen],
+	[
+		have_libc_dl=yes
+	],
+	[
+		AC_MSG_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
+	])
+])
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBDL], [test "x$have_libdl" = "xyes"])
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBC_DL], [test "x$have_libc_dl" = "xyes"])
+
 # Option to only build the consumer daemon and its libraries
 AC_ARG_WITH([consumerd-only],
 	AS_HELP_STRING([--with-consumerd-only],[Only build the consumer daemon [default=no]]),
@@ -152,6 +176,9 @@ lttngincludedir="${includedir}/lttng"
 AC_SUBST(lttngincludedir)
 AC_SUBST(DEFAULT_INCLUDES)
 
+lttnglibexecdir="${libdir}/lttng/libexec"
+AC_SUBST(lttnglibexecdir)
+
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
@@ -165,6 +192,7 @@ AC_CONFIG_FILES([
 	src/common/ust-consumer/Makefile
 	src/common/hashtable/Makefile
 	src/common/sessiond-comm/Makefile
+	src/common/compat/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/bin/Makefile
@@ -181,6 +209,11 @@ AC_OUTPUT
 #
 # Mini-report on what will be built
 #
+AS_ECHO()
+
+AS_ECHO("Version name: $version_name")
+AS_ECHO("$version_description")
+
 AS_ECHO()
 
 # Target architecture we're building for
@@ -225,7 +258,7 @@ AS_IF([test "x$consumerd_only" = "xno"],[
 	AS_ECHO("The sessiond daemon will look in the following directories: ")
 	AS_ECHO_N("32-bit consumerd executable at: ")
 	AS_IF([test "$CONSUMERD32_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
 		AS_ECHO("/lttng-consumerd")
 	],[
 		AS_ECHO("$CONSUMERD32_BIN")
@@ -240,7 +273,7 @@ AS_IF([test "x$consumerd_only" = "xno"],[
 
 	AS_ECHO_N("64-bit consumerd executable at: ")
 	AS_IF([test "$CONSUMERD64_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
 		AS_ECHO("/lttng-consumerd")
 	],[
 		AS_ECHO("$CONSUMERD64_BIN")

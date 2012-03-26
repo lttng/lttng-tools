@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -58,13 +58,13 @@ static int send_channel_streams(int sock,
 	DBG("Sending channel %d to consumer", lum.u.channel.channel_key);
 	ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 	if (ret < 0) {
-		perror("send consumer channel");
+		PERROR("send consumer channel");
 		goto error;
 	}
 	fd = uchan->obj->shm_fd;
 	ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 	if (ret < 0) {
-		perror("send consumer channel ancillary data");
+		PERROR("send consumer channel ancillary data");
 		goto error;
 	}
 
@@ -91,7 +91,7 @@ static int send_channel_streams(int sock,
 		DBG("Sending stream %d to consumer", lum.u.stream.stream_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
-			perror("send consumer stream");
+			PERROR("send consumer stream");
 			goto error;
 		}
 
@@ -99,7 +99,7 @@ static int send_channel_streams(int sock,
 		fds[1] = stream->obj->wait_fd;
 		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
 		if (ret < 0) {
-			perror("send consumer stream ancillary data");
+			PERROR("send consumer stream ancillary data");
 			goto error;
 		}
 	}
@@ -142,13 +142,13 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		DBG("Sending metadata channel %d to consumer", lum.u.channel.channel_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
-			perror("send consumer channel");
+			PERROR("send consumer channel");
 			goto error;
 		}
 		fd = usess->metadata->obj->shm_fd;
 		ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 		if (ret < 0) {
-			perror("send consumer metadata channel");
+			PERROR("send consumer metadata channel");
 			goto error;
 		}
 
@@ -166,14 +166,14 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 		DBG("Sending metadata stream %d to consumer", lum.u.stream.stream_key);
 		ret = lttcomm_send_unix_sock(sock, &lum, sizeof(lum));
 		if (ret < 0) {
-			perror("send consumer metadata stream");
+			PERROR("send consumer metadata stream");
 			goto error;
 		}
 		fds[0] = usess->metadata->stream_obj->shm_fd;
 		fds[1] = usess->metadata->stream_obj->wait_fd;
 		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
 		if (ret < 0) {
-			perror("send consumer stream");
+			PERROR("send consumer stream");
 			goto error;
 		}
 	}
@@ -182,6 +182,14 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(usess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
+		/*
+		 * Indicate that the channel was not created on the tracer side so skip
+		 * sending unexisting streams.
+		 */
+		if (ua_chan->obj == NULL) {
+			continue;
+		}
+
 		ret = send_channel_streams(sock, ua_chan, usess->uid, usess->gid);
 		if (ret < 0) {
 			rcu_read_unlock();

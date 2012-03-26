@@ -1,18 +1,18 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -110,6 +110,7 @@ void lttng_ht_destroy(struct lttng_ht *ht)
 
 	ret = cds_lfht_destroy(ht->ht, NULL);
 	assert(!ret);
+	free(ht);
 }
 
 /*
@@ -196,6 +197,28 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct((void *) node->key, HASH_SEED), ht->match_fct,
 			(void *) node->key, &node->node);
+	assert(node_ptr == &node->node);
+}
+
+/*
+ * Add replace unsigned long node to hashtable.
+ */
+struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
+		struct lttng_ht_node_ulong *node)
+{
+	struct cds_lfht_node *node_ptr;
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	node_ptr = cds_lfht_add_replace(ht->ht,
+			ht->hash_fct((void *) node->key, HASH_SEED), ht->match_fct,
+			(void *) node->key, &node->node);
+	if (!node_ptr) {
+		return NULL;
+	} else {
+		return caa_container_of(node_ptr, struct lttng_ht_node_ulong, node);
+	}
 	assert(node_ptr == &node->node);
 }
 

@@ -2,9 +2,8 @@
  * Copyright (c)  2011 David Goulet <david.goulet@polymtl.ca>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * as published by the Free Software Foundation; only version 2
- * of the License.
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,6 +25,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <config.h>
+#include <ctype.h>
 
 #include <lttng/lttng.h>
 #include <common/error.h>
@@ -34,9 +34,6 @@
 
 /* Variables */
 static char *progname;
-
-int opt_quiet;
-int opt_verbose;
 static int opt_no_sessiond;
 static char *opt_sessiond_path;
 static pid_t sessiond_pid;
@@ -82,7 +79,7 @@ static struct cmd_struct commands[] =  {
 
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "LTTng Trace Control " VERSION"\n\n");
+	fprintf(ofp, "LTTng Trace Control " VERSION" - " VERSION_NAME"\n\n");
 	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND>\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
@@ -431,10 +428,10 @@ static int parse_args(int argc, char **argv)
 			ret = 0;
 			goto end;
 		case 'v':
-			opt_verbose += 1;
+			lttng_opt_verbose += 1;
 			break;
 		case 'q':
-			opt_quiet = 1;
+			lttng_opt_quiet = 1;
 			break;
 		case 'g':
 			lttng_set_tracing_group(optarg);
@@ -461,8 +458,8 @@ static int parse_args(int argc, char **argv)
 	}
 
 	/* If both options are specified, quiet wins */
-	if (opt_verbose && opt_quiet) {
-		opt_verbose = 0;
+	if (lttng_opt_verbose && lttng_opt_quiet) {
+		lttng_opt_verbose = 0;
 	}
 
 	/* Spawn session daemon if needed */
@@ -504,7 +501,9 @@ static int parse_args(int argc, char **argv)
 	case 0:
 		break;
 	default:
-		ERR("%s", lttng_strerror(ret));
+		if (ret < 0) {
+			ret = -ret;
+		}
 		break;
 	}
 

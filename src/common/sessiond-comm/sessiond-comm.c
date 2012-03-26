@@ -2,18 +2,18 @@
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; only version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2 only,
+ * as published by the Free Software Foundation.
  * 
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  * 
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place - Suite 330, Boston, MA  02111-1307, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #define _GNU_SOURCE
@@ -24,11 +24,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/un.h>
 #include <unistd.h>
 #include <errno.h>
 
 #include <common/defaults.h>
+#include <common/error.h>
 
 #include "sessiond-comm.h"
 
@@ -60,6 +60,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_VERSION) ] = "Kernel tracer version is not compatible",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_EVENT_EXIST) ] = "Kernel event already exists",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_SESS_FAIL) ] = "Kernel create session failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_EXIST) ] = "Kernel channel already exists",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_FAIL) ] = "Kernel create channel failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_NOT_FOUND) ] = "Kernel channel not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_KERN_CHAN_DISABLE_FAIL) ] = "Disable kernel channel failed",
@@ -101,6 +102,10 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_EVENT_NOT_FOUND)] = "UST event not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_EXIST)] = "UST context already exist",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_UST_CONTEXT_INVAL)] = "UST invalid context",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NEED_ROOT_SESSIOND) ] = "Tracing the kernel requires a root lttng-sessiond daemon and \"tracing\" group user membership",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_TRACE_ALREADY_STARTED) ] = "Tracing already started",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_TRACE_ALREADY_STOPPED) ] = "Tracing already stopped",
+
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_COMMAND_SOCK_READY) ] = "consumerd command socket ready",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SUCCESS_RECV_FD) ] = "consumerd success on receiving fds",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_ERROR_RECV_FD) ] = "consumerd error on receiving fds",
@@ -116,6 +121,7 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ENOMEM) ] = "consumerd splice ENOMEM",
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ESPIPE) ] = "consumerd splice ESPIPE",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "Event not found",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_INVALID) ] = "Invalid parameter",
 };
 
 /*
@@ -141,12 +147,11 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 int lttcomm_connect_unix_sock(const char *pathname)
 {
 	struct sockaddr_un sun;
-	int fd;
-	int ret;
+	int fd, ret, closeret;
 
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
-		perror("socket");
+		PERROR("socket");
 		ret = fd;
 		goto error;
 	}
@@ -168,7 +173,10 @@ int lttcomm_connect_unix_sock(const char *pathname)
 	return fd;
 
 error_connect:
-	close(fd);
+	closeret = close(fd);
+	if (closeret) {
+		PERROR("close");
+	}
 error:
 	return ret;
 }
@@ -186,7 +194,7 @@ int lttcomm_accept_unix_sock(int sock)
 	/* Blocking call */
 	new_fd = accept(sock, (struct sockaddr *) &sun, &len);
 	if (new_fd < 0) {
-		perror("accept");
+		PERROR("accept");
 	}
 
 	return new_fd;
@@ -204,7 +212,7 @@ int lttcomm_create_unix_sock(const char *pathname)
 
 	/* Create server socket */
 	if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
+		PERROR("socket");
 		goto error;
 	}
 
@@ -217,7 +225,7 @@ int lttcomm_create_unix_sock(const char *pathname)
 	(void) unlink(pathname);
 	ret = bind(fd, (struct sockaddr *) &sun, sizeof(sun));
 	if (ret < 0) {
-		perror("bind");
+		PERROR("bind");
 		goto error;
 	}
 
@@ -236,7 +244,7 @@ int lttcomm_listen_unix_sock(int sock)
 
 	ret = listen(sock, LTTNG_SESSIOND_COMM_MAX_LISTEN);
 	if (ret < 0) {
-		perror("listen");
+		PERROR("listen");
 	}
 
 	return ret;
@@ -261,9 +269,11 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	ret = recvmsg(sock, &msg, MSG_WAITALL);
+	do {
+		ret = recvmsg(sock, &msg, MSG_WAITALL);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
-		perror("recvmsg");
+		PERROR("recvmsg");
 	}
 
 	return ret;
@@ -289,7 +299,13 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		perror("sendmsg");
+		/*
+		 * Only warn about EPIPE when quiet mode is deactivated.
+		 * We consider EPIPE as expected.
+		 */
+		if (errno != EPIPE || !lttng_opt_quiet) {
+			PERROR("sendmsg");
+		}
 	}
 
 	return ret;
@@ -300,15 +316,18 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
  */
 int lttcomm_close_unix_sock(int sock)
 {
-	int ret;
+	int ret, closeret;
 
 	/* Shutdown receptions and transmissions */
 	ret = shutdown(sock, SHUT_RDWR);
 	if (ret < 0) {
-		perror("shutdown");
+		PERROR("shutdown");
 	}
 
-	close(sock);
+	closeret = close(sock);
+	if (closeret) {
+		PERROR("close");
+	}
 
 	return ret;
 }
@@ -349,9 +368,17 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	ret = sendmsg(sock, &msg, 0);
+	do {
+		ret = sendmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
-		perror("sendmsg");
+		/*
+		 * Only warn about EPIPE when quiet mode is deactivated.
+		 * We consider EPIPE as expected.
+		 */
+		if (errno != EPIPE || !lttng_opt_quiet) {
+			PERROR("sendmsg");
+		}
 	}
 	return ret;
 }
@@ -384,9 +411,11 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_control = recv_fd;
 	msg.msg_controllen = sizeof(recv_fd);
 
-	ret = recvmsg(sock, &msg, 0);
+	do {
+		ret = recvmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
-		perror("recvmsg fds");
+		PERROR("recvmsg fds");
 		goto end;
 	}
 	if (ret != 1) {
@@ -412,7 +441,7 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	}
 	if (cmsg->cmsg_len != CMSG_LEN(sizeof_fds)) {
 		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
-				cmsg->cmsg_len, CMSG_LEN(sizeof_fds));
+				(size_t) cmsg->cmsg_len, (size_t) CMSG_LEN(sizeof_fds));
 		ret = -1;
 		goto end;
 	}
@@ -430,12 +459,14 @@ end:
 ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 {
 	struct msghdr msg;
-	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
-	struct ucred *creds;
-	size_t sizeof_cred = sizeof(struct ucred);
+#ifdef __linux__
+	struct cmsghdr *cmptr;
+	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+	lttng_sock_cred *creds;
+#endif /* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -444,25 +475,34 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
+#ifdef __linux__
 	msg.msg_control = (caddr_t) anc_buf;
 	msg.msg_controllen = CMSG_LEN(sizeof_cred);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
 	cmptr->cmsg_level = SOL_SOCKET;
-	cmptr->cmsg_type = SCM_CREDENTIALS;
+	cmptr->cmsg_type = LTTNG_SOCK_CREDS;
 	cmptr->cmsg_len = CMSG_LEN(sizeof_cred);
 
-	creds = (struct ucred *) CMSG_DATA(cmptr);
+	creds = (lttng_sock_cred*) CMSG_DATA(cmptr);
 
-	creds->uid = geteuid();
-	creds->gid = getegid();
-	creds->pid = getpid();
+	LTTNG_SOCK_SET_UID_CRED(creds, geteuid());
+	LTTNG_SOCK_SET_GID_CRED(creds, getegid());
+	LTTNG_SOCK_SET_PID_CRED(creds, getpid());
+#endif /* __linux__ */
 
-	ret = sendmsg(sock, &msg, 0);
+	do {
+		ret = sendmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
-		perror("sendmsg");
+		/*
+		 * Only warn about EPIPE when quiet mode is deactivated.
+		 * We consider EPIPE as expected.
+		 */
+		if (errno != EPIPE || !lttng_opt_quiet) {
+			PERROR("sendmsg");
+		}
 	}
-
 	return ret;
 }
 
@@ -472,14 +512,16 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
  * Returns the size of received data, or negative error value.
  */
 ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		struct ucred *creds)
+		lttng_sock_cred *creds)
 {
 	struct msghdr msg;
-	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret;
-	size_t sizeof_cred = sizeof(struct ucred);
+#ifdef __linux__
+	struct cmsghdr *cmptr;
+	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
+#endif	/* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -495,15 +537,20 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
+#ifdef __linux__
 	msg.msg_control = anc_buf;
 	msg.msg_controllen = sizeof(anc_buf);
+#endif /* __linux__ */
 
-	ret = recvmsg(sock, &msg, 0);
+	do {
+		ret = recvmsg(sock, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
-		perror("recvmsg fds");
+		PERROR("recvmsg fds");
 		goto end;
 	}
 
+#ifdef __linux__
 	if (msg.msg_flags & MSG_CTRUNC) {
 		fprintf(stderr, "Error: Control message truncated.\n");
 		ret = -1;
@@ -518,7 +565,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 
 	if (cmptr->cmsg_level != SOL_SOCKET ||
-			cmptr->cmsg_type != SCM_CREDENTIALS) {
+			cmptr->cmsg_type != LTTNG_SOCK_CREDS) {
 		fprintf(stderr, "Didn't received any credentials\n");
 		ret = -1;
 		goto end;
@@ -526,12 +573,24 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 
 	if (cmptr->cmsg_len != CMSG_LEN(sizeof_cred)) {
 		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
-				cmptr->cmsg_len, CMSG_LEN(sizeof_cred));
+				(size_t) cmptr->cmsg_len, (size_t) CMSG_LEN(sizeof_cred));
 		ret = -1;
 		goto end;
 	}
 
 	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
+#elif defined(__FreeBSD__)
+	{
+		int peer_ret;
+
+		peer_ret = getpeereid(sock, &creds->uid, &creds->gid);
+		if (peer_ret != 0) {
+			return peer_ret;
+		}
+	}
+#else
+#error "Please implement credential support for your OS."
+#endif	/* __linux__ */
 
 end:
 	return ret;
@@ -540,6 +599,7 @@ end:
 /*
  * Set socket option to use credentials passing.
  */
+#ifdef __linux__
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
 	int ret, on = 1;
@@ -547,8 +607,15 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	/* Set socket for credentials retrieval */
 	ret = setsockopt(sock, SOL_SOCKET, SO_PASSCRED, &on, sizeof(on));
 	if (ret < 0) {
-		perror("setsockopt creds unix sock");
+		PERROR("setsockopt creds unix sock");
 	}
-
 	return ret;
 }
+#elif defined(__FreeBSD__)
+int lttcomm_setsockopt_creds_unix_sock(int sock)
+{
+	return 0;
+}
+#else
+#error "Please implement credential support for your OS."
+#endif /* __linux__ */
