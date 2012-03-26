@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 AM_CPPFLAGS = -I$(top_srcdir)/benchmark \
 			  -DINSTALL_BIN_PATH=\""$(lttnglibexecdir)"\" \
 			  -DINSTALL_LIB_PATH=\""$(libdir)"\"

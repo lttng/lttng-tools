@@ -12,6 +12,6 @@ liblttng_benchmark_la_SOURCES = benchmark.c benchmark.h cpu.c cpu.h
 bench_sessions_SOURCES = bench-sessions.c $(SESSIONS) $(UTILS)
 bench_sessions_LDADD = $(top_builddir)/benchmark/liblttng-benchmark.la \
 					   $(top_builddir)/src/common/libcommon.la
-
+#					   $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 bench:
 	./runall.sh
