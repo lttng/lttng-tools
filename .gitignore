@@ -45,5 +45,6 @@ ust_global_all_events_basic
 ust_global_event_basic
 gen-nevents
 gen-events-time
+gen-events
 
 benchmark/

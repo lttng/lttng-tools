@@ -1,4 +1,4 @@
-SUBDIRS = nevents nprocesses
+SUBDIRS = nevents nprocesses high-throughput
 
 AM_CFLAGS = -g -Wall -I../
 AM_LDFLAGS = -lurcu -lurcu-cds

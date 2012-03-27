@@ -199,6 +199,7 @@ AC_CONFIG_FILES([
 	tests/ust/Makefile
 	tests/ust/nevents/Makefile
 	tests/ust/nprocesses/Makefile
+	tests/ust/high-throughput/Makefile
 ])
 
 AC_OUTPUT

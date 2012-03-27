@@ -46,4 +46,10 @@ Tests = \
     'desc': "Test multiple events during tracing",
     'success': 0, 'enabled': True
     },
+    {
+    'bin': "ust/high-throughput/run", 'daemon': True, 'kern': False,
+    'name': "UST tracer - Testing high events throughput",
+    'desc': "Test multiple large number of events with concurrent application",
+    'success': 0, 'enabled': True
+    },
 ]

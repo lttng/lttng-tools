@@ -2,7 +2,8 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/run-ust-global-tests.sh $DIR/nevents/run $DIR/nprocesses/run )
+tests=( $DIR/run-ust-global-tests.sh $DIR/nevents/run $DIR/nprocesses/run \
+		$DIR/high-throughput/run )
 exit_code=0
 
 function start_tests ()
