@@ -39,18 +39,15 @@ static void *th_event_minute(void *data)
 		/* 20 minutes tracepoint */
 		if ((i % 20) == 0) {
 			tracepoint(tp, slow, i, "twenty");
-			printf("Twenty: %d\n", i);
 		}
 
 		/* 10 minutes tracepoint */
 		if ((i % 10) == 0) {
 			tracepoint(tp, slow, i, "ten");
-			printf("Ten: %d\n", i);
 		}
 
 		/* 1 minute tracepoint */
 		tracepoint(tp, slow, i, "one");
-		printf("One: %d\n", i);
 	}
 
 	return NULL;
