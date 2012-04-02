@@ -52,4 +52,11 @@ Tests = \
     'desc': "Test multiple large number of events with concurrent application",
     'success': 0, 'enabled': True
     },
+    {
+    'bin': "ust/low-throughput/run", 'daemon': True, 'kern': False,
+    'name': "UST tracer - Testing high events throughput",
+    'desc': "Test low throughput of events",
+    'success': 0, 'enabled': False
+    # Deactivated. This test last 20 minutes...
+    },
 ]

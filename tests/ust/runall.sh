@@ -4,6 +4,10 @@ DIR=$(dirname $0)
 
 tests=( $DIR/run-ust-global-tests.sh $DIR/nevents/run $DIR/nprocesses/run \
 		$DIR/high-throughput/run )
+
+# $DIR/low-throughput/run --> DEACTIVATED.
+# Use only for release. This test last 20 minutes
+
 exit_code=0
 
 function start_tests ()
