@@ -1,5 +1,5 @@
 if HAVE_LIBLTTNG_UST_CTL
-SUBDIRS = nevents nprocesses high-throughput low-throughput before-after
+SUBDIRS = nprocesses high-throughput low-throughput before-after
 
 AM_CFLAGS = -g -Wall -I../
 AM_LDFLAGS = -lurcu -lurcu-cds
