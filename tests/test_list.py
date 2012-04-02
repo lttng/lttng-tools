@@ -59,4 +59,10 @@ Tests = \
     'success': 0, 'enabled': False
     # Deactivated. This test last 20 minutes...
     },
+    {
+    'bin': "ust/before-after/run", 'daemon': True, 'kern': False,
+    'name': "UST tracer - Tracing before and after app execution",
+    'desc': "Test tracing before and after app execution",
+    'success': 0, 'enabled': True
+    },
 ]
