@@ -18,6 +18,7 @@
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
 NR_ITER=100
+TEST_BIN_NAME="gen-events-time"
 
 source $TESTDIR/utils.sh
 
@@ -25,7 +26,7 @@ echo -e "\n-------------------------------------"
 echo -e "UST tracer - Generate $NR_ITER process"
 echo -e "---------------------------------------"
 
-if [ ! -e "$CURDIR/$TEST_BIN_NAME" ]; then
+if [ ! -x "$CURDIR/$TEST_BIN_NAME" ]; then
 	echo -e "No UST $TEST_BIN_NAME binary detected. Passing."
 	exit 0
 fi

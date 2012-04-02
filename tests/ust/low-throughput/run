@@ -27,7 +27,7 @@ echo -e "\n-------------------------------------------"
 echo -e "UST tracer - Testing low events throughput"
 echo -e "-------------------------------------------"
 
-if [ ! -e "$CURDIR/$BIN_NAME" ]; then
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	echo -e "No UST nevents binary detected. Passing."
 	exit 0
 fi

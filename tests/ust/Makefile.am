@@ -1,3 +1,4 @@
+if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS = nevents nprocesses high-throughput
 
 AM_CFLAGS = -g -Wall -I../
@@ -14,3 +15,4 @@ LIBLTTNG=$(top_srcdir)/src/lib/lttng-ctl/lttng-ctl.c \
 ust_global_all_events_basic_SOURCES = ust_global_all_events_basic.c $(UTILS) $(LIBLTTNG)
 
 ust_global_event_basic_SOURCES = ust_global_event_basic.c $(UTILS) $(LIBLTTNG)
+endif

@@ -25,7 +25,7 @@ echo -e "\n-----------------------------------"
 echo -e "UST tracer - Generate $NR_ITER events"
 echo -e "-------------------------------------"
 
-if [ ! -e "$CURDIR/gen-nevents" ]; then
+if [ ! -x "$CURDIR/gen-nevents" ]; then
 	echo -e "No UST nevents binary detected. Passing."
 	exit 0
 fi
