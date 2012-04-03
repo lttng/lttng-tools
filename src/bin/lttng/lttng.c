@@ -519,14 +519,17 @@ error:
 int main(int argc, char *argv[])
 {
 	int ret;
+	char *user;
 
 	progname = argv[0] ? argv[0] : "lttng";
 
 	/* For Mathieu Desnoyers a.k.a. Dr. Tracing */
-	if (strncmp(progname, "drtrace", 7) == 0 ||
-			strncmp("compudj", getenv("USER"), 7) == 0) {
+	user = getenv("USER");
+	if (user != NULL && ((strncmp(progname, "drtrace", 7) == 0 ||
+				strncmp("compudj", user, 7) == 0))) {
 		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);
 	}
+	/* Thanks Mathieu */
 
 	ret = set_signal_handler();
 	if (ret < 0) {
