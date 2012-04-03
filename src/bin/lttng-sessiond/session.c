@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <urcu.h>
 
 #include <common/common.h>
@@ -55,7 +54,7 @@ static struct ltt_session_list ltt_session_list = {
  * The caller MUST acquire the session list lock before.
  * Returns the unique identifier for the session.
  */
-static int add_session_list(struct ltt_session *ls)
+static unsigned int add_session_list(struct ltt_session *ls)
 {
 	cds_list_add(&ls->list, &ltt_session_list.head);
 	return ++ltt_session_list.count;
@@ -230,7 +229,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	new_session->id = add_session_list(new_session);
 	session_unlock_list();
 
-	DBG("Tracing session %s created in %s with ID %d by UID %d GID %d",
+	DBG("Tracing session %s created in %s with ID %u by UID %d GID %d",
 		name, path, new_session->id,
 		new_session->uid, new_session->gid);
 

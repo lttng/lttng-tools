@@ -20,7 +20,6 @@
 
 #include <config.h>
 #include <limits.h>
-#include <urcu.h>
 #include <urcu/list.h>
 
 #include <lttng/lttng.h>
@@ -127,8 +126,8 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
-		struct lttng_domain *domain);
+struct ltt_ust_session *trace_ust_create_session(char *path,
+		unsigned int session_id, struct lttng_domain *domain);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		char *path);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev);
