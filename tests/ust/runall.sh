@@ -2,7 +2,7 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/run-ust-global-tests.sh $DIR/nevents/run $DIR/nprocesses/run \
+tests=( $DIR/run-ust-global-tests.sh $DIR/nprocesses/run \
 		$DIR/high-throughput/run $DIR/before-after/run )
 
 # $DIR/low-throughput/run --> DEACTIVATED.
