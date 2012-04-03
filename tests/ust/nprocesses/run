@@ -16,37 +16,27 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/..
+TESTDIR=$CURDIR/../..
 NR_ITER=100
-SESSION_NAME="ust-nevents"
-EVENT_NAME="ust_gen_nevents:tptest"
+TEST_BIN_NAME="gen-events-time"
 
 source $TESTDIR/utils.sh
 
-echo -e "\n-----------------------------------"
-echo -e "UST tracer - Generate $NR_ITER events"
-echo -e "-------------------------------------"
+echo -e "\n-------------------------------------"
+echo -e "UST tracer - Generate $NR_ITER process"
+echo -e "---------------------------------------"
 
-if [ ! -e "$CURDIR/gen-nevents" ]; then
-	echo -e "No UST nevents binary detected. Passing."
+if [ ! -x "$CURDIR/$TEST_BIN_NAME" ]; then
+	echo -e "No UST $TEST_BIN_NAME binary detected. Passing."
 	exit 0
 fi
 
-TRACE_PATH=$(mktemp -d)
-
 # MUST set TESTDIR before calling those functions
 
-create_lttng_session $SESSION_NAME $TRACE_PATH
+start_sessiond
 
-enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-start_tracing $SESSION_NAME
+./$CURDIR/ust-nprocesses $NR_ITER
 
-# Start test
-./$CURDIR/gen-nevents $NR_ITER
+stop_sessiond
 
-stop_tracing $SESSION_NAME
-destroy_lttng_session $SESSION_NAME
-
-trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
-
-rm -rf $TRACE_PATH
+exit 0

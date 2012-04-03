@@ -27,7 +27,7 @@
 
 #include <lttng/lttng.h>
 
-#include "../utils.h"
+#include "utils.h"
 
 int lttng_opt_quiet;
 
@@ -37,17 +37,22 @@ int main(int argc, char **argv)
 	struct lttng_domain dom;
 	struct lttng_event event;
 	char *channel_name = "channel0";
-	char *session_name = "ust_global_all_events_basic";
+	char *session_name = "kernel_all_events_basic";
 	int ret = 0;
 
 	memset(&dom, 0, sizeof(dom));
 	memset(&event, 0, sizeof(event));
-	dom.type = LTTNG_DOMAIN_UST;
+	dom.type = LTTNG_DOMAIN_KERNEL;
 	event.type = LTTNG_EVENT_TRACEPOINT;
 	event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	printf("\nTesting tracing all UST events:\n");
+	printf("\nTesting tracing all kernel events:\n");
 	printf("-----------\n");
+	/* Check if root */
+	if (getuid() != 0) {
+		printf("Root access is needed.\nPlease run 'sudo make check' -- Aborting!\n");
+		return 0;
+	}
 
 	if (argc < 2) {
 		printf("Missing session trace path\n");
@@ -68,7 +73,7 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
-	printf("Enabling all UST events: ");
+	printf("Enabling all kernel events: ");
 	if ((ret = lttng_enable_event(handle, &event, channel_name)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;

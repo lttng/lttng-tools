@@ -24,6 +24,8 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
+alias realpath='readlink -f'
+
 function validate_kernel_version ()
 {
 	kern_version=($(uname -r | awk -F. '{ printf("%d.%d.%d\n",$1,$2,$3); }' | tr '.' '\n'))
@@ -39,7 +41,7 @@ function validate_kernel_version ()
 	return 1
 }
 
-function start_sessiond ()
+function spawn_sessiond ()
 {
 	echo ""
 	echo -n "Starting session daemon... "
@@ -49,8 +51,10 @@ function start_sessiond ()
 		return 2
 	fi
 
+	DIR=$(realpath $TESTDIR)
+
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
-		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$(pwd)/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$(pwd)/../src/bin/lttng-consumerd/lttng-consumerd"
+		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 		if [ $? -eq 1 ]; then
 			echo -e "\e[1;31mFAILED\e[0m"
 			return 1
@@ -62,8 +66,35 @@ function start_sessiond ()
 	return 0
 }
 
+function start_sessiond()
+{
+	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
+		# Env variable requested no session daemon
+		return
+	fi
+
+	spawn_sessiond
+	out=$?
+	if [ $out -eq 2 ]; then
+		# Kernel version is not compatible.
+		exit 0
+	elif [ $out -ne 0 ]; then
+		echo "NOT bad $?"
+		exit 1
+	fi
+
+	# Simply wait for the session daemon bootstrap
+	echo "Waiting for the session daemon to bootstrap (2 secs)"
+	sleep 2
+}
+
 function stop_sessiond ()
 {
+	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
+		# Env variable requested no session daemon
+		return
+	fi
+
 	PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
 
 	echo -e -n "Killing session daemon... "

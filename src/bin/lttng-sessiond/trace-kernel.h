@@ -18,7 +18,6 @@
 #ifndef _LTT_TRACE_KERNEL_H
 #define _LTT_TRACE_KERNEL_H
 
-#include <limits.h>
 #include <urcu/list.h>
 
 #include <lttng/lttng.h>

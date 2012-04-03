@@ -1,6 +1,13 @@
 #!/bin/bash
 
-tests=( lttng/run-kernel-tests.sh lttng/run-ust-global-tests.sh )
+DIR=$(dirname $0)
+
+tests=( $DIR/run-ust-global-tests.sh $DIR/nprocesses/run \
+		$DIR/high-throughput/run $DIR/before-after/run )
+
+# $DIR/low-throughput/run --> DEACTIVATED.
+# Use only for release. This test last 20 minutes
+
 exit_code=0
 
 function start_tests ()

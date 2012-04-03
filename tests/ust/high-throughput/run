@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+NR_ITER=20
+BIN_NAME="gen-events"
+SESSION_NAME="high-throughput"
+EVENT_NAME="tp:tptest"
+
+source $TESTDIR/utils.sh
+
+echo -e "\n-------------------------------------------"
+echo -e "UST tracer - Testing high events throughput"
+echo -e "-------------------------------------------"
+
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	echo -e "No UST nevents binary detected. Passing."
+	exit 0
+fi
+
+TRACE_PATH=$(mktemp -d)
+
+# MUST set TESTDIR before calling those functions
+
+start_sessiond
+
+create_lttng_session $SESSION_NAME $TRACE_PATH
+
+enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+start_tracing $SESSION_NAME
+
+for i in `seq 1 $NR_ITER`; do
+	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
+done
+
+echo "Waiting for all tracing to settle"
+sleep 5
+
+stop_tracing $SESSION_NAME
+destroy_lttng_session $SESSION_NAME
+
+stop_sessiond
+
+# Validate test
+
+TEMP_FILE=$(mktemp)
+TEMP_FILE_2=$(mktemp)
+
+traced=$(babeltrace $TRACE_PATH 2>/dev/null | wc -l)
+babeltrace $TRACE_PATH >/dev/null 2>$TEMP_FILE_2
+
+cat $TEMP_FILE_2 | cut -f4 -d " " >$TEMP_FILE
+
+dropped=0
+while read line;
+do
+	let dropped=$dropped+$line
+done < $TEMP_FILE
+
+let total=$dropped+$traced
+let wanted=$NR_ITER*1000000
+
+if [ $wanted -ne $total ]; then
+	echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
+	echo -e "\e[1;31mFAILED\e[0m"
+	out=1
+else
+	echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
+	echo -e "\e[1;32mOK\e[0m"
+	out=0
+fi
+
+rm -rf $TRACE_PATH
+rm $TEMP_FILE $TEMP_FILE_2
+
+exit $out

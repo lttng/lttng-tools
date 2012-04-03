@@ -49,6 +49,7 @@ int main(int argc, char **argv)
 		netint = htonl(i);
 		tracepoint(ust_gen_nevents, tptest, i, netint, values, text,
 				strlen(text), dbl, flt);
+		usleep(100000);
 	}
 
 	return 0;

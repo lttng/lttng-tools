@@ -51,6 +51,6 @@ TRACEPOINT_EVENT(ust_gen_event, tptest,
 /* This part must be outside ifdef protection */
 #include <lttng/tracepoint-event.h>
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 }
 #endif

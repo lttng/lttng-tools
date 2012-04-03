@@ -200,8 +200,13 @@ AC_CONFIG_FILES([
 	src/bin/lttng-sessiond/Makefile
 	src/bin/lttng/Makefile
 	tests/Makefile
-	tests/ust-nevents/Makefile
-	tests/ust-nprocesses/Makefile
+	tests/kernel/Makefile
+	tests/tools/Makefile
+	tests/ust/Makefile
+	tests/ust/nprocesses/Makefile
+	tests/ust/high-throughput/Makefile
+	tests/ust/low-throughput/Makefile
+	tests/ust/before-after/Makefile
 ])
 
 AC_OUTPUT

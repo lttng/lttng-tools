@@ -27,7 +27,7 @@
 
 #include <lttng/lttng.h>
 
-#include "../utils.h"
+#include "utils.h"
 
 int lttng_opt_quiet;
 

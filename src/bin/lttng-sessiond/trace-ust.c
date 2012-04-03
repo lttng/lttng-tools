@@ -85,8 +85,8 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path, int session_id,
-		struct lttng_domain *domain)
+struct ltt_ust_session *trace_ust_create_session(char *path,
+		unsigned int session_id, struct lttng_domain *domain)
 {
 	int ret;
 	struct ltt_ust_session *lus;
@@ -544,7 +544,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	rcu_read_lock();
 
-	DBG2("Trace UST destroy session %d", session->id);
+	DBG2("Trace UST destroy session %u", session->id);
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
