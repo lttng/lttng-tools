@@ -115,7 +115,11 @@ static int create_session()
 			goto error;
 		}
 	} else {
-		traces_path = opt_output_path;
+		traces_path = expand_full_path(opt_output_path);
+		if (traces_path == NULL) {
+			ret = CMD_ERROR;
+			goto error;
+		}
 	}
 
 	ret = lttng_create_session(session_name, traces_path);
