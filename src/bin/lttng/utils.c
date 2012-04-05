@@ -18,11 +18,60 @@
 #define _GNU_SOURCE
 #include <stdlib.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include <common/error.h>
 
 #include "conf.h"
 #include "utils.h"
+
+/*
+ * Return the realpath(3) of the path even if the last directory token does not
+ * exist. For example, with /tmp/test1/test2, if test2/ does not exist but the
+ * /tmp/test1 does, the real path is returned. In normal time, realpath(3)
+ * fails if the end point directory does not exist.
+ */
+char *expand_full_path(const char *path)
+{
+	const char *end_path = path;
+	char *next, *cut_path, *expanded_path;
+
+	/* Find last token delimited by '/' */
+	while ((next = strpbrk(end_path + 1, "/"))) {
+		end_path = next;
+	}
+
+	/* Cut last token from original path */
+	cut_path = strndup(path, end_path - path);
+
+	expanded_path = malloc(PATH_MAX);
+	if (expanded_path == NULL) {
+		goto error;
+	}
+
+	expanded_path = realpath((char *)cut_path, expanded_path);
+	if (expanded_path == NULL) {
+		switch (errno) {
+		case ENOENT:
+			ERR("%s: No such file or directory", cut_path);
+			break;
+		default:
+			perror("realpath");
+			break;
+		}
+		goto error;
+	}
+
+	/* Add end part to expanded path */
+	strcat(expanded_path, end_path);
+
+	free(cut_path);
+	return expanded_path;
+
+error:
+	free(cut_path);
+	return NULL;
+}
 
 /*
  *  get_session_name

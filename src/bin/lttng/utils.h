@@ -20,6 +20,7 @@
 
 #include <popt.h>
 
+char *expand_full_path(const char *path);
 char *get_config_file_path(void);
 char *get_session_name(void);
 int set_session_name(char *name);
