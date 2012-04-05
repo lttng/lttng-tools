@@ -35,18 +35,24 @@ int main(int argc, char **argv)
 {
 	struct lttng_handle *handle = NULL;
 	struct lttng_domain dom;
-	struct lttng_channel channel;
+	struct lttng_channel channel, channel2;
 	struct lttng_event ev1, ev2, ev3;
+	struct lttng_event_context context;
 	char *session_name = "ust_global_event_basic";
+	char *session_name2 = "ust_global_event_basic2";
 	int ret = 0;
 
 	memset(&dom, 0, sizeof(dom));
 	memset(&channel, 0, sizeof(channel));
+	memset(&channel2, 0, sizeof(channel2));
 	memset(&ev1, 0, sizeof(ev1));
 	memset(&ev2, 0, sizeof(ev2));
 	memset(&ev3, 0, sizeof(ev3));
+	memset(&context, 0, sizeof(context));
 
 	dom.type = LTTNG_DOMAIN_UST;
+
+	/* Setup channel 1 */
 	strcpy(channel.name, "mychan");
 	channel.attr.overwrite = 0;
 	channel.attr.subbuf_size = 4096;
@@ -54,6 +60,15 @@ int main(int argc, char **argv)
 	channel.attr.switch_timer_interval = 0;
 	channel.attr.read_timer_interval = 200;
 	channel.attr.output = LTTNG_EVENT_MMAP;
+
+	/* Setup channel 2 */
+	strcpy(channel2.name, "mychan2");
+	channel2.attr.overwrite = 0;
+	channel2.attr.subbuf_size = 8192;
+	channel2.attr.num_subbuf = 8;
+	channel2.attr.switch_timer_interval = 0;
+	channel2.attr.read_timer_interval = 500;
+	channel2.attr.output = LTTNG_EVENT_MMAP;
 
 	strcpy(ev1.name, "tp1");
 	ev1.type = LTTNG_EVENT_TRACEPOINT;
@@ -82,6 +97,13 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
+	printf("Creating tracing session 2 (%s): ", argv[1]);
+	if ((ret = lttng_create_session(session_name2, argv[1])) < 0) {
+		printf("error creating the session : %s\n", lttng_strerror(ret));
+		goto create_fail;
+	}
+	PRINT_OK();
+
 	printf("Creating session handle: ");
 	if ((handle = lttng_create_handle(session_name, &dom)) == NULL) {
 		printf("error creating handle: %s\n", lttng_strerror(ret));
@@ -96,24 +118,86 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
-	printf("Enabling %s UST event: ", ev1.name);
+	printf("Enabling %s UST channel2: ", channel2.name);
+	if ((ret = lttng_enable_channel(handle, &channel2)) < 0) {
+		printf("error enable channel: %s\n", lttng_strerror(ret));
+		goto enable_fail;
+	}
+	PRINT_OK();
+
+	printf("Enabling %s UST event in channel %s: ", ev1.name, channel.name);
 	if ((ret = lttng_enable_event(handle, &ev1, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
 	}
 	PRINT_OK();
 
-	printf("Enabling %s UST event: ", ev2.name);
+	printf("Enabling %s UST event in channel %s: ", ev2.name, channel.name);
 	if ((ret = lttng_enable_event(handle, &ev2, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
 	}
 	PRINT_OK();
 
-	printf("Enabling %s UST event: ", ev3.name);
-	if ((ret = lttng_enable_event(handle, &ev3, channel.name)) < 0) {
+	printf("Enabling %s UST event in channel %s: ", ev3.name, channel2.name);
+	if ((ret = lttng_enable_event(handle, &ev3, channel2.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
+	}
+	PRINT_OK();
+
+	context.ctx = LTTNG_EVENT_CONTEXT_VPID;
+
+	printf("Adding context VPID to UST event %s in channel %s: ", ev1.name,
+			channel.name);
+	if ((ret = lttng_add_context(handle, &context, ev1.name,
+					channel.name)) < 0) {
+		printf("error adding context VPID: %s\n", lttng_strerror(ret));
+		goto context_fail;
+	}
+	PRINT_OK();
+
+	context.ctx = LTTNG_EVENT_CONTEXT_VTID;
+
+	printf("Adding context VTID to UST event %s in channel %s: ", ev1.name,
+			channel.name);
+	if ((ret = lttng_add_context(handle, &context, ev1.name,
+					channel.name)) < 0) {
+		printf("error adding context VTID: %s\n", lttng_strerror(ret));
+		goto context_fail;
+	}
+	PRINT_OK();
+
+	context.ctx = LTTNG_EVENT_CONTEXT_PTHREAD_ID;
+
+	printf("Adding context PTHREAD_ID to UST event %s in channel %s: ",
+			ev1.name, channel.name);
+	if ((ret = lttng_add_context(handle, &context, ev1.name,
+					channel.name)) < 0) {
+		printf("error adding context PTHREAD_ID: %s\n", lttng_strerror(ret));
+		goto context_fail;
+	}
+	PRINT_OK();
+
+	context.ctx = LTTNG_EVENT_CONTEXT_PROCNAME;
+
+	printf("Adding context PROCNAME to UST event %s in channel %s: ",
+			ev1.name, channel.name);
+	if ((ret = lttng_add_context(handle, &context, ev1.name,
+					channel.name)) < 0) {
+		printf("error adding context PROCNAME: %s\n", lttng_strerror(ret));
+		goto context_fail;
+	}
+	PRINT_OK();
+
+	context.ctx = LTTNG_EVENT_CONTEXT_PROCNAME;
+
+	printf("Adding context PROCNAME to UST event %s in channel %s: ",
+			ev3.name, channel2.name);
+	if ((ret = lttng_add_context(handle, &context, ev3.name,
+					channel2.name)) < 0) {
+		printf("error adding context PROCNAME: %s\n", lttng_strerror(ret));
+		goto context_fail;
 	}
 	PRINT_OK();
 
@@ -125,7 +209,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	printf("Disabling %s UST event: ", ev3.name);
-	if ((ret = lttng_disable_event(handle, ev3.name, channel.name)) < 0) {
+	if ((ret = lttng_disable_event(handle, ev3.name, channel2.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
 	}
@@ -141,6 +225,13 @@ int main(int argc, char **argv)
 	printf("Renabling %s UST event: ", ev3.name);
 	if ((ret = lttng_enable_event(handle, &ev3, channel.name)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
+		goto enable_fail;
+	}
+	PRINT_OK();
+
+	printf("Disabling channel %s: ", channel2.name);
+	if ((ret = lttng_disable_channel(handle, channel2.name)) < 0) {
+		printf("error disabling channel: %s\n", lttng_strerror(ret));
 		goto enable_fail;
 	}
 	PRINT_OK();
@@ -192,6 +283,7 @@ handle_fail:
 
 stop_fail:
 start_fail:
+context_fail:
 enable_fail:
 	lttng_destroy_session(session_name);
 	lttng_destroy_handle(handle);
