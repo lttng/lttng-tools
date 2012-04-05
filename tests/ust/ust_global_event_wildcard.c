@@ -35,16 +35,26 @@ int main(int argc, char **argv)
 {
 	struct lttng_handle *handle = NULL;
 	struct lttng_domain dom;
-	struct lttng_event event;
+	struct lttng_event event, ev2;
 	char *channel_name = "channel0";
+	char *channel_name2 = "channel2";
 	char *session_name = "ust_global_all_events_basic";
 	int ret = 0;
 
 	memset(&dom, 0, sizeof(dom));
 	memset(&event, 0, sizeof(event));
+	memset(&ev2, 0, sizeof(ev2));
+
 	dom.type = LTTNG_DOMAIN_UST;
+
 	event.type = LTTNG_EVENT_TRACEPOINT;
 	event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+	strcpy(event.name, "*");
+
+	ev2.type = LTTNG_EVENT_TRACEPOINT;
+	ev2.loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
+	ev2.loglevel = LTTNG_LOGLEVEL_NOTICE;
+	strcpy(ev2.name, "abc*");
 
 	printf("\nTesting tracing all UST events:\n");
 	printf("-----------\n");
@@ -68,8 +78,15 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
-	printf("Enabling all UST events: ");
+	printf("Enabling '*' UST events: ");
 	if ((ret = lttng_enable_event(handle, &event, channel_name)) < 0) {
+		printf("error enabling event: %s\n", lttng_strerror(ret));
+		goto enable_fail;
+	}
+	PRINT_OK();
+
+	printf("Enabling 'abc*' UST events: ");
+	if ((ret = lttng_enable_event(handle, &ev2, channel_name2)) < 0) {
 		printf("error enabling event: %s\n", lttng_strerror(ret));
 		goto enable_fail;
 	}
