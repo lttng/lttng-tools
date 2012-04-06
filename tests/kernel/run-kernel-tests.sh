@@ -1,18 +1,24 @@
 #!/bin/bash
 
 SESSIOND_BIN="lttng-sessiond"
-TESTDIR=$(dirname $0)/..
+CURDIR=$(dirname $0)
+TESTDIR=$CURDIR/..
 
 source $TESTDIR/utils.sh
 
 tmpdir=`mktemp -d`
-tests=( kernel_event_basic kernel_all_events_basic )
+tests=( $CURDIR/kernel_event_basic $CURDIR/kernel_all_events_basic )
 exit_code=0
 
 function start_tests ()
 {
     for bin in ${tests[@]};
     do
+		if [ ! -e $bin ]; then
+			echo -e "$bin not found, passing"
+			continue
+		fi
+
 		start_sessiond
 
         ./$bin $tmpdir

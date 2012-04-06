@@ -24,8 +24,6 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
-alias realpath='readlink -f'
-
 function validate_kernel_version ()
 {
 	kern_version=($(uname -r | awk -F. '{ printf("%d.%d.%d\n",$1,$2,$3); }' | tr '.' '\n'))
@@ -51,7 +49,7 @@ function spawn_sessiond ()
 		return 2
 	fi
 
-	DIR=$(realpath $TESTDIR)
+	DIR=$(readlink -f $TESTDIR)
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
 		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
