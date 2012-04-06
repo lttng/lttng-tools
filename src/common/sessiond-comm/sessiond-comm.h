@@ -140,6 +140,7 @@ enum lttcomm_return_code {
 	LTTCOMM_NEED_ROOT_SESSIOND,		/* root sessiond is needed */
 	LTTCOMM_TRACE_ALREADY_STARTED,  /* Tracing already started */
 	LTTCOMM_TRACE_ALREADY_STOPPED,  /* Tracing already stopped */
+	LTTCOMM_KERN_EVENT_ENOSYS,      /* Kernel event type not supported */
 
 	CONSUMERD_COMMAND_SOCK_READY,		/* when consumerd command socket ready */
 	CONSUMERD_SUCCESS_RECV_FD,		/* success on receiving fds */

@@ -196,7 +196,13 @@ int kernel_create_event(struct lttng_event *ev,
 
 	ret = kernctl_create_event(channel->fd, event->event);
 	if (ret < 0) {
-		if (errno != EEXIST) {
+		switch (errno) {
+		case EEXIST:
+			break;
+		case ENOSYS:
+			WARN("Event type not implemented");
+			break;
+		default:
 			PERROR("create event ioctl");
 		}
 		ret = -errno;
