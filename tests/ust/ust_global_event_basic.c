@@ -268,6 +268,12 @@ int main(int argc, char **argv)
 	}
 	PRINT_OK();
 
+	printf("Destroy tracing session 2: ");
+	if ((ret = lttng_destroy_session(session_name2)) < 0) {
+		printf("error destroying session 2: %s\n", lttng_strerror(ret));
+	}
+	PRINT_OK();
+
 	printf("Destroy tracing session: ");
 	if ((ret = lttng_destroy_session(session_name)) < 0) {
 		printf("error destroying session: %s\n", lttng_strerror(ret));
@@ -285,6 +291,7 @@ stop_fail:
 start_fail:
 context_fail:
 enable_fail:
+	lttng_destroy_session(session_name2);
 	lttng_destroy_session(session_name);
 	lttng_destroy_handle(handle);
 
