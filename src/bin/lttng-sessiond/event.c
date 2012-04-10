@@ -134,10 +134,16 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
 	if (kevent == NULL) {
 		ret = kernel_create_event(event, kchan);
 		if (ret < 0) {
-			if (ret == -EEXIST) {
+			switch (-ret) {
+			case EEXIST:
 				ret = LTTCOMM_KERN_EVENT_EXIST;
-			} else {
+				break;
+			case ENOSYS:
+				ret = LTTCOMM_KERN_EVENT_ENOSYS;
+				break;
+			default:
 				ret = LTTCOMM_KERN_ENABLE_FAIL;
+				break;
 			}
 			goto end;
 		}
@@ -239,15 +245,26 @@ end:
 int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
 {
-	int ret;
+	int tp_ret;
 
-	ret = event_kernel_enable_all_tracepoints(ksession, kchan, kernel_tracer_fd);
-	if (ret != LTTCOMM_OK) {
+	tp_ret = event_kernel_enable_all_tracepoints(ksession, kchan, kernel_tracer_fd);
+	if (tp_ret != LTTCOMM_OK) {
 		goto end;
 	}
-	ret = event_kernel_enable_all_syscalls(ksession, kchan, kernel_tracer_fd);
+
+	/*
+	 * Reaching this code path means that all tracepoints were enabled without
+	 * errors so we ignore the error value of syscalls.
+	 *
+	 * At the moment, failing to enable syscalls on "lttng enable-event -a -k"
+	 * is not considered an error that need to be returned to the client since
+	 * tracepoints did not fail. Future work will allow us to send back
+	 * multiple errors to the client in one API call.
+	 */
+	(void) event_kernel_enable_all_syscalls(ksession, kchan, kernel_tracer_fd);
+
 end:
-	return ret;
+	return tp_ret;
 }
 
 /*

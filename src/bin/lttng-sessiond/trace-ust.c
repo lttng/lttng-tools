@@ -250,6 +250,10 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);
 	/* Alloc context hash tables */
 	lue->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (lue->ctx == NULL) {
+		ERR("Unable to create context hash table for event %s", ev->name);
+		goto error_free_event;
+	}
 
 	DBG2("Trace UST event %s, loglevel (%d,%d) created",
 		lue->attr.name, lue->attr.loglevel_type,
@@ -258,7 +262,6 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 	return lue;
 
 error_free_event:
-	lttng_ht_destroy(lue->ctx);
 	free(lue);
 error:
 	return NULL;

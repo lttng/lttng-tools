@@ -24,8 +24,6 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
-alias realpath='readlink -f'
-
 function validate_kernel_version ()
 {
 	kern_version=($(uname -r | awk -F. '{ printf("%d.%d.%d\n",$1,$2,$3); }' | tr '.' '\n'))
@@ -51,7 +49,7 @@ function spawn_sessiond ()
 		return 2
 	fi
 
-	DIR=$(realpath $TESTDIR)
+	DIR=$(readlink -f $TESTDIR)
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
 		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
@@ -103,6 +101,11 @@ function stop_sessiond ()
 		echo -e "\e[1;31mFAILED\e[0m"
 		return 1
 	else
+		out=1
+		while [ -n "$out" ]; do
+			out=$(pidof lt-$SESSIOND_BIN)
+			sleep 0.5
+		done
 		echo -e "\e[1;32mOK\e[0m"
 	fi
 }
@@ -112,14 +115,43 @@ function create_lttng_session ()
 	sess_name=$1
 	trace_path=$2
 
-	echo -n "Creating lttng session $SESSION_NAME in $TRACE_PATH "
+	echo -n "Creating lttng session $sess_name in $trace_path"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e "\e[1;31mFAILED\e[0m"
 		return 1
 	else
 		echo -e "\e[1;32mOK\e[0m"
-		#echo $out | grep "written in" | cut -d' ' -f6
+	fi
+}
+
+function enable_lttng_channel()
+{
+	sess_name=$1
+	channel_name=$2
+
+	echo -n "Enabling lttng channel $channel_name for session $sess_name"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel $channel_name -s $sess_name >/dev/null 2>&1
+	if [ $? -eq 1 ]; then
+		echo -e "\e[1;31mFAILED\e[0m"
+		return 1
+	else
+		echo -e "\e[1;32mOK\e[0m"
+	fi
+}
+
+function disable_lttng_channel()
+{
+	sess_name=$1
+	channel_name=$2
+
+	echo -n "Disabling lttng channel $channel_name for session $sess_name"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel $channel_name -s $sess_name >/dev/null 2>&1
+	if [ $? -eq 1 ]; then
+		echo -e "\e[1;31mFAILED\e[0m"
+		return 1
+	else
+		echo -e "\e[1;32mOK\e[0m"
 	fi
 }
 

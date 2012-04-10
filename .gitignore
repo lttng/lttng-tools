@@ -41,7 +41,7 @@ test_kernel_data_trace
 test_ust_data_trace
 kernel_all_events_basic
 kernel_event_basic
-ust_global_all_events_basic
+ust_global_event_wildcard
 ust_global_event_basic
 gen-nevents
 gen-events-time

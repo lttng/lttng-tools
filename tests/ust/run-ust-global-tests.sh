@@ -7,7 +7,7 @@ TESTDIR=$CURDIR/..
 source $TESTDIR/utils.sh
 
 tmpdir=`mktemp -d`
-tests=( $CURDIR/ust_global_event_basic $CURDIR/ust_global_all_events_basic )
+tests=( $CURDIR/ust_global_event_basic $CURDIR/ust_global_event_wildcard )
 exit_code=0
 
 function start_tests ()
