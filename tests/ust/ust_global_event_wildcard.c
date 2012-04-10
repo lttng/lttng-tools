@@ -116,10 +116,10 @@ int main(int argc, char **argv)
 
 	return 0;
 
-create_fail:
-	assert(ret != 0);
 handle_fail:
 	assert(handle != NULL);
+create_fail:
+	assert(ret != 0);
 
 stop_fail:
 start_fail:
