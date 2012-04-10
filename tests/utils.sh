@@ -72,6 +72,11 @@ function stop_sessiond ()
 		echo -e "\e[1;31mFAILED\e[0m"
 		return 1
 	else
+		out=1
+		while [ -n "$out" ]; do
+			out=$(pidof lt-$SESSIOND_BIN)
+			sleep 0.5
+		done
 		echo -e "\e[1;32mOK\e[0m"
 	fi
 }
