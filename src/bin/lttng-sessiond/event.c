@@ -245,7 +245,7 @@ end:
 int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
 {
-	int tp_ret, syscall_ret;
+	int tp_ret;
 
 	tp_ret = event_kernel_enable_all_tracepoints(ksession, kchan, kernel_tracer_fd);
 	if (tp_ret != LTTCOMM_OK) {
@@ -261,8 +261,7 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 	 * tracepoints did not fail. Future work will allow us to send back
 	 * multiple errors to the client in one API call.
 	 */
-	syscall_ret = event_kernel_enable_all_syscalls(ksession, kchan,
-			kernel_tracer_fd);
+	(void) event_kernel_enable_all_syscalls(ksession, kchan, kernel_tracer_fd);
 
 end:
 	return tp_ret;
