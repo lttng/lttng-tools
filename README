@@ -28,6 +28,8 @@ REQUIREMENTS:
 
       * Debian/Ubuntu package: libpopt-dev
 
+    - For kernel tracing: modprobe
+
 For developers using the git tree:
 
 This source tree is based on the autotools suite from GNU to simplify
