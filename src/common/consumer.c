@@ -562,7 +562,7 @@ restart:
 		perror("Poll error");
 		goto exit;
 	}
-	if (consumer_sockpoll[0].revents == POLLIN) {
+	if (consumer_sockpoll[0].revents & POLLIN) {
 		DBG("consumer_should_quit wake up");
 		goto exit;
 	}
