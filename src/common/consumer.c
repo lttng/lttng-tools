@@ -538,7 +538,7 @@ int consumer_update_poll_array(
 	 * increment i so nb_fd is the number of real FD.
 	 */
 	(*pollfd)[i].fd = ctx->consumer_poll_pipe[0];
-	(*pollfd)[i].events = POLLIN;
+	(*pollfd)[i].events = POLLIN | POLLPRI;
 	return i;
 }
 
@@ -562,7 +562,7 @@ restart:
 		perror("Poll error");
 		goto exit;
 	}
-	if (consumer_sockpoll[0].revents & POLLIN) {
+	if (consumer_sockpoll[0].revents & (POLLIN | POLLPRI)) {
 		DBG("consumer_should_quit wake up");
 		goto exit;
 	}
@@ -1018,7 +1018,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 		 * array. We want to prioritize array update over
 		 * low-priority reads.
 		 */
-		if (pollfd[nb_fd].revents & POLLIN) {
+		if (pollfd[nb_fd].revents & (POLLIN | POLLPRI)) {
 			DBG("consumer_poll_pipe wake up");
 			tmp2 = read(ctx->consumer_poll_pipe[0], &tmp, 1);
 			if (tmp2 < 0) {
