@@ -452,7 +452,7 @@ static void cleanup(void)
 			if (ret) {
 				PERROR("close");
 			}
-			
+
 		}
 	}
 	for (i = 0; i < 2; i++) {
@@ -473,7 +473,7 @@ static void cleanup(void)
 	}
 
 	/* OUTPUT BENCHMARK RESULTS */
-	bench_init();
+	//bench_init();
 
 	if (getenv("BENCH_UST_NOTIFY")) {
 		bench_print_ust_notification();
@@ -486,6 +486,10 @@ static void cleanup(void)
 
 	if (getenv("BENCH_BOOT_PROCESS")) {
 		bench_print_boot_process();
+	}
+
+	if (getenv("BENCH_COMMANDS")) {
+		bench_print_enable_ust_event();
 	}
 
 	bench_close();
@@ -3547,24 +3551,31 @@ skip_domain:
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
+		tracepoint(enable_ust_channel_start);
 		ret = cmd_enable_channel(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				&cmd_ctx->lsm->u.channel.chan);
+		tracepoint(enable_ust_channel_end);
+		bench_print_enable_ust_channel();
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:
 	{
+		tracepoint(enable_ust_event_start);
 		ret = cmd_enable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.enable.channel_name,
 				&cmd_ctx->lsm->u.enable.event);
+		tracepoint(enable_ust_event_end);
 		break;
 	}
 	case LTTNG_ENABLE_ALL_EVENT:
 	{
 		DBG("Enabling all events");
 
+		tracepoint(enable_ust_event_start);
 		ret = cmd_enable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.enable.channel_name,
 				cmd_ctx->lsm->u.enable.event.type);
+		tracepoint(enable_ust_event_end);
 		break;
 	}
 	case LTTNG_LIST_TRACEPOINTS:
@@ -3599,7 +3610,10 @@ skip_domain:
 	}
 	case LTTNG_START_TRACE:
 	{
+		tracepoint(start_ust_start);
 		ret = cmd_start_trace(cmd_ctx->session);
+		tracepoint(start_ust_end);
+		bench_print_start_ust();
 		break;
 	}
 	case LTTNG_STOP_TRACE:
@@ -3613,6 +3627,7 @@ skip_domain:
 		ret = cmd_create_session(cmd_ctx->lsm->session.name,
 				cmd_ctx->lsm->session.path, &cmd_ctx->creds);
 		tracepoint(create_session_end);
+		bench_print_create_session();
 		break;
 	}
 	case LTTNG_DESTROY_SESSION:
@@ -4697,6 +4712,8 @@ int main(int argc, char **argv)
 
 	/* Set up max poll set size */
 	lttng_poll_set_max_size();
+
+	bench_init();
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&client_thread, NULL,

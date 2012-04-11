@@ -31,10 +31,17 @@ extern FILE *fp;
 
 void bench_init(void);
 void bench_close(void);
+
+void bench_print_create_session(void);
+void bench_print_enable_ust_event(void);
+void bench_print_enable_ust_channel(void);
+void bench_print_start_ust(void);
+
 void bench_print_boot_process(void);
 void bench_print_ust_register(void);
 void bench_print_ust_unregister(void);
 void bench_print_ust_notification(void);
+
 double bench_get_create_session(void);
 double bench_get_destroy_session(void);
 

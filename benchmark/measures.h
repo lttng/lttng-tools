@@ -55,6 +55,18 @@ cycles_t time_create_session_end;
 cycles_t time_destroy_session_start;
 cycles_t time_destroy_session_end;
 
+/* Enable an UST channel values */
+cycles_t time_enable_ust_channel_start;
+cycles_t time_enable_ust_channel_end;
+
+/* Enable an UST event values */
+cycles_t time_enable_ust_event_start;
+cycles_t time_enable_ust_event_end;
+
+/* Start UST tracing */
+cycles_t time_start_ust_start;
+cycles_t time_start_ust_end;
+
 /*
  * UST registration time
  *

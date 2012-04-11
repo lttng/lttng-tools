@@ -29,7 +29,7 @@ static double g_freq;
 static double calibrate_cpu_freq(void)
 {
 	int i, nb_calib = 10;
-	double freq;
+	double freq = 0;
 
 	printf("CPU frequency calibration, this should take 10 seconds\n");
 
@@ -98,6 +98,58 @@ double bench_get_destroy_session(void)
 	}
 
 	return get_bench_time(time_destroy_session_start, time_destroy_session_end);
+}
+
+void bench_print_create_session(void)
+{
+	fprintf(fp, "Create session time:\n");
+	fprintf(fp, "  %.20f sec.\n", bench_get_create_session());
+}
+
+void bench_print_enable_ust_channel(void)
+{
+	double res;
+
+	if ((time_enable_ust_channel_start == 0) &&
+			(time_enable_ust_channel_end == 0)) {
+		fprintf(fp, "NO DATA\n");
+		return;
+	}
+
+	res = get_bench_time(time_enable_ust_channel_start,
+			time_enable_ust_channel_end);
+	fprintf(fp, "Enable lttng-ust channel time:\n");
+	fprintf(fp, "  %.20f sec.\n", res);
+}
+
+void bench_print_enable_ust_event(void)
+{
+	double res;
+
+	if ((time_enable_ust_event_start== 0) &&
+			(time_enable_ust_event_end == 0)) {
+		fprintf(fp, "NO DATA\n");
+		return;
+	}
+
+	res = get_bench_time(time_enable_ust_event_start,
+			time_enable_ust_event_end);
+	fprintf(fp, "Enable lttng-ust event time:\n");
+	fprintf(fp, "  %.20f sec.\n", res);
+}
+
+void bench_print_start_ust(void)
+{
+	double res;
+
+	if ((time_start_ust_start== 0) && (time_start_ust_end == 0)) {
+		fprintf(fp, "NO DATA\n");
+		return;
+	}
+
+	res = get_bench_time(time_start_ust_start, time_start_ust_end);
+	fprintf(fp, "Start lttng-ust tracing time:\n");
+	fprintf(fp, "  %.20f sec.\n", res);
 }
 
 /*
