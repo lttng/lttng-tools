@@ -317,8 +317,13 @@ static
 int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
 	if (!getenv("LTTNG_DEBUG_NOCLONE")) {
+		int ret;
+
 		DBG("Using run_as_clone");
-		return run_as_clone(cmd, data, uid, gid);
+		pthread_mutex_lock(&lttng_libc_state_lock);
+		ret = run_as_clone(cmd, data, uid, gid);
+		pthread_mutex_unlock(&lttng_libc_state_lock);
+		return ret;
 	} else {
 		DBG("Using run_as_noclone");
 		return run_as_noclone(cmd, data, uid, gid);

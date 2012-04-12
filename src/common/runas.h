@@ -20,9 +20,16 @@
  */
 
 #include <unistd.h>
+#include <pthread.h>
 
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
+
+/*
+ * We need to lock pthread exit, which deadlocks __nptl_setxid in the
+ * clone.
+ */
+extern pthread_mutex_t lttng_libc_state_lock;
 
 #endif /* _RUNAS_H */
