@@ -48,9 +48,12 @@ for i in `seq 1 $NR_ITER`; do
 	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
 done
 
-echo "Waiting for all tracing to settle (7 secs)"
-echo "Warning: this arbitrary time can make the test fail on slower system"
-sleep 7
+echo "Waiting for applications to end"
+while [ -n "$(pidof $BIN_NAME)" ]; do
+	echo -n "."
+	sleep 0.5
+done
+echo ""
 
 stop_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
