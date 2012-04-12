@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
+#include <sys/resource.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -38,6 +39,7 @@
 #include <assert.h>
 #include <config.h>
 #include <urcu/compiler.h>
+#include <ulimit.h>
 
 #include <common/defaults.h>
 #include <common/common.h>
@@ -228,6 +230,25 @@ static void parse_args(int argc, char **argv)
 }
 
 /*
+ * Set open files limit to unlimited. This daemon can open a large number of
+ * file descriptors in order to consumer multiple kernel traces.
+ */
+static void set_ulimit(void)
+{
+	int ret;
+	struct rlimit lim;
+
+	/* The kernel does not allowed an infinite limit for open files */
+	lim.rlim_cur = 65535;
+	lim.rlim_max = 65535;
+
+	ret = setrlimit(RLIMIT_NOFILE, &lim);
+	if (ret < 0) {
+		PERROR("failed to set open files limit");
+	}
+}
+
+/*
  * main
  */
 int main(int argc, char **argv)
@@ -271,6 +292,11 @@ int main(int argc, char **argv)
 
 	/* Init */
 	lttng_consumer_init();
+
+	if (!getuid()) {
+		/* Set limit for open files */
+		set_ulimit();
+	}
 
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
