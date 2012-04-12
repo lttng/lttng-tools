@@ -636,6 +636,9 @@ void lttng_consumer_cleanup(void)
 	}
 
 	rcu_read_unlock();
+
+	lttng_ht_destroy(consumer_data.stream_ht);
+	lttng_ht_destroy(consumer_data.channel_ht);
 }
 
 /*
