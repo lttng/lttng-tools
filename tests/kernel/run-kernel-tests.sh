@@ -37,7 +37,7 @@ function start_tests ()
 
 function check_lttng_modules ()
 {
-	local out=`lsmod | grep lttng`
+	local out=`ls /lib/modules/$(uname -r)/extra | grep lttng`
 	if [ -z "$out" ]; then
 		echo "LTTng modules not detected. Aborting kernel tests!"
 		echo ""
