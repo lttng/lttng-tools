@@ -157,6 +157,8 @@ enum lttcomm_return_code {
 	CONSUMERD_SPLICE_ENOMEM,		/* ENOMEM from splice(2) */
 	CONSUMERD_SPLICE_ESPIPE,		/* ESPIPE from splice(2) */
 	LTTCOMM_INVALID,			/* Invalid parameter */
+	LTTCOMM_NO_USTCONSUMERD,        /* No UST consumer detected */
+	LTTCOMM_NO_KERNCONSUMERD,       /* No Kernel consumer detected */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
