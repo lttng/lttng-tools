@@ -3,7 +3,8 @@
 DIR=$(dirname $0)
 
 tests=( $DIR/run-ust-global-tests.sh $DIR/nprocesses/run \
-		$DIR/high-throughput/run $DIR/before-after/run )
+		$DIR/high-throughput/run $DIR/before-after/run \
+		$DIR/multi-session/run )
 
 # $DIR/low-throughput/run --> DEACTIVATED.
 # Use only for release. This test last 20 minutes

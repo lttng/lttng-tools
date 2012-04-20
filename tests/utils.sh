@@ -115,7 +115,7 @@ function create_lttng_session ()
 	sess_name=$1
 	trace_path=$2
 
-	echo -n "Creating lttng session $sess_name in $trace_path"
+	echo -n "Creating lttng session $sess_name in $trace_path "
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo -e "\e[1;31mFAILED\e[0m"

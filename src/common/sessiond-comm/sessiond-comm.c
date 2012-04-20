@@ -123,6 +123,8 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(CONSUMERD_SPLICE_ESPIPE) ] = "consumerd splice ESPIPE",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_EVENT) ] = "Event not found",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_INVALID) ] = "Invalid parameter",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_USTCONSUMERD) ] = "No UST consumer detected",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_KERNCONSUMERD) ] = "No kernel consumer detected",
 };
 
 /*

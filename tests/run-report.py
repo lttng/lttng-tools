@@ -288,7 +288,7 @@ def run_test(test):
         return 0
 
     if not os.path.isfile(test['bin']):
-        print "Unable to find test file '%s'. Skipping"
+        print "Unable to find test file '%s'. Skipping" % (test['bin'])
         return 0
 
     # No session daemon needed

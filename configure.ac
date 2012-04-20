@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.0.0],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.0.1],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -207,6 +207,7 @@ AC_CONFIG_FILES([
 	tests/ust/high-throughput/Makefile
 	tests/ust/low-throughput/Makefile
 	tests/ust/before-after/Makefile
+	tests/ust/multi-session/Makefile
 ])
 
 AC_OUTPUT

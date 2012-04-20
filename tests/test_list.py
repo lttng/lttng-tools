@@ -41,28 +41,28 @@ Tests = \
     'success': 0, 'enabled': True
     },
     {
-    'bin': "ust/nevents/run", 'daemon': True, 'kern': False,
-    'name': "UST tracer - Generate multiple events",
-    'desc': "Test multiple events during tracing",
-    'success': 0, 'enabled': True
-    },
-    {
     'bin': "ust/high-throughput/run", 'daemon': True, 'kern': False,
     'name': "UST tracer - Testing high events throughput",
     'desc': "Test multiple large number of events with concurrent application",
     'success': 0, 'enabled': True
     },
     {
+    # Deactivated. This test last 20 minutes...
     'bin': "ust/low-throughput/run", 'daemon': True, 'kern': False,
     'name': "UST tracer - Testing high events throughput",
     'desc': "Test low throughput of events",
     'success': 0, 'enabled': False
-    # Deactivated. This test last 20 minutes...
     },
     {
     'bin': "ust/before-after/run", 'daemon': True, 'kern': False,
     'name': "UST tracer - Tracing before and after app execution",
     'desc': "Test tracing before and after app execution",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "ust/multi-session/run", 'daemon': True, 'kern': False,
+    'name': "UST tracer - Multi-session",
+    'desc': "Test tracing with 4 sessions for one application",
     'success': 0, 'enabled': True
     },
 ]

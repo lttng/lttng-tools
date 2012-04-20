@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <urcu/futex.h>
+#include <urcu/uatomic.h>
 #include <unistd.h>
 #include <config.h>
 
@@ -180,6 +181,40 @@ static const char *consumerd32_bin = CONFIG_CONSUMERD32_BIN;
 static const char *consumerd64_bin = CONFIG_CONSUMERD64_BIN;
 static const char *consumerd32_libdir = CONFIG_CONSUMERD32_LIBDIR;
 static const char *consumerd64_libdir = CONFIG_CONSUMERD64_LIBDIR;
+
+/*
+ * Consumer daemon state which is changed when spawning it, killing it or in
+ * case of a fatal error.
+ */
+enum consumerd_state {
+	CONSUMER_STARTED = 1,
+	CONSUMER_STOPPED = 2,
+	CONSUMER_ERROR   = 3,
+};
+
+/*
+ * This consumer daemon state is used to validate if a client command will be
+ * able to reach the consumer. If not, the client is informed. For instance,
+ * doing a "lttng start" when the consumer state is set to ERROR will return an
+ * error to the client.
+ *
+ * The following example shows a possible race condition of this scheme:
+ *
+ * consumer thread error happens
+ *                                    client cmd arrives
+ *                                    client cmd checks state -> still OK
+ * consumer thread exit, sets error
+ *                                    client cmd try to talk to consumer
+ *                                    ...
+ *
+ * However, since the consumer is a different daemon, we have no way of making
+ * sure the command will reach it safely even with this state flag. This is why
+ * we consider that up to the state validation during command processing, the
+ * command is safe. After that, we can not guarantee the correctness of the
+ * client request vis-a-vis the consumer.
+ */
+static enum consumerd_state ust_consumerd_state;
+static enum consumerd_state kernel_consumerd_state;
 
 static
 void setup_consumerd_path(void)
@@ -452,7 +487,6 @@ static void cleanup(void)
 			if (ret) {
 				PERROR("close");
 			}
-
 		}
 	}
 	for (i = 0; i < 2; i++) {
@@ -1127,6 +1161,17 @@ restart_poll:
 	ERR("consumer return code : %s", lttcomm_get_readable_code(-code));
 
 error:
+	/* Immediately set the consumerd state to stopped */
+	if (consumer_data->type == LTTNG_CONSUMER_KERNEL) {
+		uatomic_set(&kernel_consumerd_state, CONSUMER_ERROR);
+	} else if (consumer_data->type == LTTNG_CONSUMER64_UST ||
+			consumer_data->type == LTTNG_CONSUMER32_UST) {
+		uatomic_set(&ust_consumerd_state, CONSUMER_ERROR);
+	} else {
+		/* Code flow error... */
+		assert(0);
+	}
+
 	if (consumer_data->err_sock >= 0) {
 		ret = close(consumer_data->err_sock);
 		if (ret) {
@@ -3429,6 +3474,12 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 			}
 		}
 
+		/* Consumer is in an ERROR state. Report back to client */
+		if (uatomic_read(&kernel_consumerd_state) == CONSUMER_ERROR) {
+			ret = LTTCOMM_NO_KERNCONSUMERD;
+			goto error;
+		}
+
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
 			if (cmd_ctx->session->kernel_session == NULL) {
@@ -3449,13 +3500,21 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ret = LTTCOMM_KERN_CONSUMER_FAIL;
 					goto error;
 				}
+				uatomic_set(&kernel_consumerd_state, CONSUMER_STARTED);
 			} else {
 				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 			}
 		}
+
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
+		/* Consumer is in an ERROR state. Report back to client */
+		if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
+			ret = LTTCOMM_NO_USTCONSUMERD;
+			goto error;
+		}
+
 		if (need_tracing_session) {
 			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
@@ -3479,6 +3538,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 				}
 
 				ust_consumerd64_fd = ustconsumer64_data.cmd_sock;
+				uatomic_set(&ust_consumerd_state, CONSUMER_STARTED);
 			} else {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 			}
@@ -3493,7 +3553,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 					ust_consumerd32_fd = -EINVAL;
 					goto error;
 				}
+
 				ust_consumerd32_fd = ustconsumer32_data.cmd_sock;
+				uatomic_set(&ust_consumerd_state, CONSUMER_STARTED);
 			} else {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
 			}
@@ -3504,6 +3566,25 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 		break;
 	}
 skip_domain:
+
+	/* Validate consumer daemon state when start/stop trace command */
+	if (cmd_ctx->lsm->cmd_type == LTTNG_START_TRACE ||
+			cmd_ctx->lsm->cmd_type == LTTNG_STOP_TRACE) {
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_UST:
+			if (uatomic_read(&ust_consumerd_state) != CONSUMER_STARTED) {
+				ret = LTTCOMM_NO_USTCONSUMERD;
+				goto error;
+			}
+			break;
+		case LTTNG_DOMAIN_KERNEL:
+			if (uatomic_read(&kernel_consumerd_state) != CONSUMER_STARTED) {
+				ret = LTTCOMM_NO_KERNCONSUMERD;
+				goto error;
+			}
+			break;
+		}
+	}
 
 	/*
 	 * Check that the UID or GID match that of the tracing session.
@@ -4592,6 +4673,10 @@ int main(int argc, char **argv)
 					DEFAULT_HOME_APPS_WAIT_SHM_PATH, geteuid());
 		}
 	}
+
+	/* Set consumer initial state */
+	kernel_consumerd_state = CONSUMER_STOPPED;
+	ust_consumerd_state = CONSUMER_STOPPED;
 
 	DBG("Client socket path %s", client_unix_sock_path);
 	DBG("Application socket path %s", apps_unix_sock_path);

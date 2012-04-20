@@ -1,3 +1,22 @@
+2012-04-19 lttng-tools 2.0.1
+	* Fix: test script for kernel module validation
+	* Fix: report error to client on consumerd error
+	* Fix: add missing ht_destroy at consumer teardown
+	* Fix: consumer fd recv thread should write into non-blocking pipe
+	* Fix: work-around glibc __nptl_setxid vs clone hang
+	* Fix: consumer fd recv poll should be sensitive to POLLPRI too
+	* Fix consumer lttng_consumer_poll_socket poll revents check bug
+	* Fix: increase consumer open files limit
+	* Update README: document dep on modprobe for kernel tracing
+	* Fix: wait for sessiond to stop in tests
+	* Fix: remove unused return variable
+	* Don't report back error on syscalls fail for -a -k
+	* Fix: destroy context hash table being NULL
+	* Fix: make lttng expand path for trace output opt
+	* Fix: return value signedness
+	* Fix: man page environment variable name error
+	* Fix: check return value on getenv USER
+
 2012-03-20 lttng-tools 2.0.0
 	* Fist STABLE version
 	* Add version name: Annedd'ale
