@@ -33,7 +33,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <urcu/futex.h>
 #include <urcu/uatomic.h>
 #include <unistd.h>
 #include <config.h>
@@ -44,12 +43,12 @@
 #include <common/defaults.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/ust-consumer/ust-consumer.h>
+#include <common/futex.h>
 
 #include "lttng-sessiond.h"
 #include "channel.h"
 #include "context.h"
 #include "event.h"
-#include "futex.h"
 #include "kernel.h"
 #include "modprobe.h"
 #include "shm.h"

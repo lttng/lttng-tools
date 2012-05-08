@@ -12,7 +12,6 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        context.c context.h \
                        channel.c channel.h \
                        event.c event.h \
-                       futex.c futex.h \
                        shm.c shm.h \
                        session.c session.h \
                        modprobe.c modprobe.h kern-modules.h \
