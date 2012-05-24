@@ -583,7 +583,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 
 	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
-#elif defined(__FreeBSD__)
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
 	{
 		int peer_ret;
 
@@ -615,7 +615,7 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	}
 	return ret;
 }
-#elif defined(__FreeBSD__)
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
 	return 0;

@@ -37,7 +37,7 @@ typedef struct ucred lttng_sock_cred;
 #define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
 #define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->pid
 
-#elif defined(__FreeBSD__)
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
 
 struct lttng_sock_cred {
 	uid_t uid;
