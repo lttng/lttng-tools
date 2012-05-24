@@ -28,7 +28,7 @@ extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 #define lttng_sync_file_range(fd, offset, nbytes, flags) \
 	compat_sync_file_range(fd, offset, nbytes, flags)
 
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__)
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
 
 typedef long int off64_t;
 typedef off64_t loff_t;
