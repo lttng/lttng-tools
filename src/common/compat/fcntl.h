@@ -30,10 +30,13 @@ extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 
 #elif (defined(__FreeBSD__) || defined(__CYGWIN__))
 
-typedef long int off64_t;
-typedef off64_t loff_t;
-
 #include <errno.h>
+
+typedef long long off64_t;
+#ifdef __FreeBSD__
+typedef off64_t loff_t;
+#endif
+
 
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrapper.
