@@ -16,6 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define __USE_LINUX_IOCTL_DEFS
 #include <sys/ioctl.h>
 
 #include "kernel-ctl.h"
