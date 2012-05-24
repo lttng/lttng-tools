@@ -27,6 +27,10 @@
 #define MAP_GROWSDOWN 0
 #define MAP_ANONYMOUS MAP_ANON
 
+#elif defined(__CYGWIN__)
+
+#define MAP_GROWSDOWN 0
+
 #else
 #error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__ */
