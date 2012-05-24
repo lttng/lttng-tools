@@ -19,25 +19,26 @@
 #define _COMPAT_FCNTL_H
 
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/types.h>
 
-#ifdef __linux__
+#if (defined(__FreeBSD__) || defined(__CYGWIN__))
+typedef long long off64_t;
+#endif
 
+#ifdef __FreeBSD__
+typedef off64_t loff_t;
+#endif
+
+#ifdef __linux__
 extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 		unsigned int flags);
 #define lttng_sync_file_range(fd, offset, nbytes, flags) \
 	compat_sync_file_range(fd, offset, nbytes, flags)
 
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
+#endif /* __linux__ */
 
-#include <errno.h>
-
-typedef long long off64_t;
-#ifdef __FreeBSD__
-typedef off64_t loff_t;
-#endif
-
-
+#if (defined(__FreeBSD__) || defined(__CYGWIN__))
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrapper.
  */
@@ -45,6 +46,14 @@ typedef off64_t loff_t;
 #define SYNC_FILE_RANGE_WAIT_BEFORE   0
 #define SYNC_FILE_RANGE_WRITE         0
 
+static inline int lttng_sync_file_range(int fd, off64_t offset,
+		off64_t nbytes, unsigned int flags)
+{
+	return -ENOSYS;
+}
+#endif
+
+#if (defined(__FreeBSD__) || defined(__CYGWIN__))
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrappers.
  */
@@ -53,26 +62,23 @@ typedef off64_t loff_t;
 #define SPLICE_F_MORE       0
 #define SPLICE_F_GIFT       0
 
-#define POSIX_FADV_DONTNEED 0
-
-static inline int lttng_sync_file_range(int fd, off64_t offset,
-		off64_t nbytes, unsigned int flags)
-{
-	return -ENOSYS;
-}
-
 static inline ssize_t splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
 		size_t len, unsigned int flags)
 {
 	return -ENOSYS;
 }
+#endif
+
+#ifdef __FreeBSD__
+#define POSIX_FADV_DONTNEED 0
 
 static inline int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 {
 	return -ENOSYS;
 }
+#endif
 
-#else
+#if !(defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__))
 #error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__, __CYGWIN__ */
 
