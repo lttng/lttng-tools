@@ -188,7 +188,7 @@ enum {
 #if __linux__
 	LPOLLMSG = POLLMSG,
 	LPOLLRDHUP = POLLRDHUP,
-#elif defined(__FreeBSD__)
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
 	LPOLLMSG = 0,
 	LPOLLRDHUP = 0,
 #else
