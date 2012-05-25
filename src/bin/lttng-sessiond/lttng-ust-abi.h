@@ -88,6 +88,23 @@ struct lttng_ust_event {
 	} u;
 };
 
+enum lttng_ust_field_type {
+	LTTNG_UST_FIELD_OTHER			= 0,
+	LTTNG_UST_FIELD_INTEGER			= 1,
+	LTTNG_UST_FIELD_ENUM			= 2,
+	LTTNG_UST_FIELD_FLOAT			= 3,
+	LTTNG_UST_FIELD_STRING			= 4,
+};
+
+#define LTTNG_UST_FIELD_ITER_PADDING		LTTNG_UST_SYM_NAME_LEN + 32
+struct lttng_ust_field_iter {
+	char event_name[LTTNG_UST_SYM_NAME_LEN];
+	char field_name[LTTNG_UST_SYM_NAME_LEN];
+	enum lttng_ust_field_type type;
+	int loglevel;				/* event loglevel */
+	char padding[LTTNG_UST_FIELD_ITER_PADDING];
+};
+
 enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_VTID			= 0,
 	LTTNG_UST_CONTEXT_VPID			= 1,
@@ -167,6 +184,7 @@ struct lttng_ust_calibrate {
 #define LTTNG_UST_TRACEPOINT_LIST		_UST_CMD(0x42)
 #define LTTNG_UST_WAIT_QUIESCENT		_UST_CMD(0x43)
 #define LTTNG_UST_REGISTER_DONE			_UST_CMD(0x44)
+#define LTTNG_UST_TRACEPOINT_FIELD_LIST		_UST_CMD(0x45)
 
 /* Session FD commands */
 #define LTTNG_UST_METADATA			\
@@ -193,6 +211,7 @@ struct lttng_ust_calibrate {
 
 /* Tracepoint list commands */
 #define LTTNG_UST_TRACEPOINT_LIST_GET		_UST_CMD(0x90)
+#define LTTNG_UST_TRACEPOINT_FIELD_LIST_GET	_UST_CMD(0x91)
 
 #define LTTNG_UST_ROOT_HANDLE	0
 
