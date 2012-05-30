@@ -1498,6 +1498,82 @@ error:
 }
 
 /*
+ * Fill events array with all events name of all registered apps.
+ */
+int ust_app_list_event_fields(struct lttng_event_field **fields)
+{
+	int ret, handle;
+	size_t nbmem, count = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+	struct lttng_event_field *tmp;
+
+	nbmem = UST_APP_EVENT_LIST_SIZE;
+	tmp = zmalloc(nbmem * sizeof(struct lttng_event_field));
+	if (tmp == NULL) {
+		PERROR("zmalloc ust app event fields");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		struct lttng_ust_field_iter uiter;
+
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+		handle = ustctl_tracepoint_field_list(app->sock);
+		if (handle < 0) {
+			ERR("UST app list event fields getting handle failed for app pid %d",
+					app->pid);
+			continue;
+		}
+
+		while ((ret = ustctl_tracepoint_field_list_get(app->sock, handle,
+						&uiter)) != -ENOENT) {
+			if (count >= nbmem) {
+				DBG2("Reallocating event field list from %zu to %zu entries", nbmem,
+						2 * nbmem);
+				nbmem *= 2;
+				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event_field));
+				if (tmp == NULL) {
+					PERROR("realloc ust app event fields");
+					ret = -ENOMEM;
+					goto rcu_error;
+				}
+			}
+			
+
+			memcpy(tmp[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
+			tmp[count].type = uiter.type;
+
+			memcpy(tmp[count].event.name, uiter.event_name, LTTNG_UST_SYM_NAME_LEN);
+			tmp[count].event.loglevel = uiter.loglevel;
+			tmp[count].event.type = LTTNG_UST_TRACEPOINT;
+			tmp[count].event.pid = app->pid;
+			tmp[count].event.enabled = -1;
+			count++;
+		}
+	}
+
+	ret = count;
+	*fields = tmp;
+
+	DBG2("UST app list event fields done (%zu events)", count);
+
+rcu_error:
+	rcu_read_unlock();
+error:
+	return ret;
+}
+
+/*
  * Free and clean all traceable apps of the global list.
  */
 void ust_app_clean_list(void)

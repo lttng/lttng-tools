@@ -2891,6 +2891,36 @@ error:
 }
 
 /*
+ * Command LTTNG_LIST_TRACEPOINT_FIELDS processed by the client thread.
+ */
+static ssize_t cmd_list_tracepoint_fields(int domain,
+			struct lttng_event_field **fields)
+{
+	int ret;
+	ssize_t nb_fields = 0;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		nb_fields = ust_app_list_event_fields(fields);
+		if (nb_fields < 0) {
+			ret = LTTCOMM_UST_LIST_FAIL;
+			goto error;
+		}
+		break;
+	case LTTNG_DOMAIN_KERNEL:
+	default:	/* fall-through */
+		ret = LTTCOMM_UND;
+		goto error;
+	}
+
+	return nb_fields;
+
+error:
+	/* Return negative value to differentiate return code */
+	return -ret;
+}
+
+/*
  * Command LTTNG_START_TRACE processed by the client thread.
  */
 static int cmd_start_trace(struct ltt_session *session)
@@ -3338,6 +3368,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	switch(cmd_ctx->lsm->cmd_type) {
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
+	case LTTNG_LIST_TRACEPOINT_FIELDS:
 	case LTTNG_LIST_DOMAINS:
 	case LTTNG_LIST_CHANNELS:
 	case LTTNG_LIST_EVENTS:
@@ -3357,6 +3388,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx)
 	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
+	case LTTNG_LIST_TRACEPOINT_FIELDS:
 		need_tracing_session = 0;
 		break;
 	default:
@@ -3613,6 +3645,37 @@ skip_domain:
 		ret = LTTCOMM_OK;
 		break;
 	}
+	case LTTNG_LIST_TRACEPOINT_FIELDS:
+	{
+		struct lttng_event_field *fields;
+		ssize_t nb_fields;
+
+		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm->domain.type, &fields);
+		if (nb_fields < 0) {
+			ret = -nb_fields;
+			goto error;
+		}
+
+		/*
+		 * Setup lttng message with payload size set to the event list size in
+		 * bytes and then copy list into the llm payload.
+		 */
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event_field) * nb_fields);
+		if (ret < 0) {
+			free(fields);
+			goto setup_error;
+		}
+
+		/* Copy event list into message payload */
+		memcpy(cmd_ctx->llm->payload, fields,
+				sizeof(struct lttng_event_field) * nb_fields);
+
+		free(fields);
+
+		ret = LTTCOMM_OK;
+		break;
+	}
+
 	case LTTNG_START_TRACE:
 	{
 		ret = cmd_start_trace(cmd_ctx->session);

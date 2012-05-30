@@ -228,6 +228,22 @@ struct lttng_event {
 	} attr;
 };
 
+enum lttng_event_field_type {
+	LTTNG_EVENT_FIELD_OTHER			= 0,
+	LTTNG_EVENT_FIELD_INTEGER		= 1,
+	LTTNG_EVENT_FIELD_ENUM			= 2,
+	LTTNG_EVENT_FIELD_FLOAT			= 3,
+	LTTNG_EVENT_FIELD_STRING		= 4,
+};
+
+#define LTTNG_EVENT_FIELD_PADDING	LTTNG_SYMBOL_NAME_LEN + 32
+struct lttng_event_field {
+	char field_name[LTTNG_SYMBOL_NAME_LEN];
+	enum lttng_event_field_type type;
+	char padding[LTTNG_EVENT_FIELD_PADDING];
+	struct lttng_event event;
+};
+
 /*
  * Tracer channel attributes. For both kernel and user-space.
  *
@@ -386,6 +402,15 @@ extern int lttng_list_events(struct lttng_handle *handle,
  */
 extern int lttng_list_tracepoints(struct lttng_handle *handle,
 		struct lttng_event **events);
+
+/*
+ * List the available tracepoints fields of a specific lttng domain.
+ *
+ * Return the size (number of entries) of the "lttng_event_field" array.
+ * Caller must free(3).
+ */
+extern int lttng_list_tracepoint_fields(struct lttng_handle *handle,
+		struct lttng_event_field **fields);
 
 /*
  * Check if a session daemon is alive.

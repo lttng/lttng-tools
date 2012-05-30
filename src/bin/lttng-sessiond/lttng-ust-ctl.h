@@ -55,6 +55,19 @@ int ustctl_tracepoint_list(int sock);
 int ustctl_tracepoint_list_get(int sock, int tp_list_handle,
 		struct lttng_ust_tracepoint_iter *iter);
 
+/*
+ * ustctl_tracepoint_field_list returns a tracepoint field list handle,
+ * or negative error value.
+ */
+int ustctl_tracepoint_field_list(int sock);
+
+/*
+ * ustctl_tracepoint_field_list_get is used to iterate on the tp field
+ * list handle. End is iteration is reached when -ENOENT is returned.
+ */
+int ustctl_tracepoint_field_list_get(int sock, int tp_field_list_handle,
+		struct lttng_ust_field_iter *iter);
+
 int ustctl_tracer_version(int sock, struct lttng_ust_tracer_version *v);
 int ustctl_wait_quiescent(int sock);
 

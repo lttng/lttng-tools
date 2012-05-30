@@ -64,6 +64,8 @@ extern int lttng_opt_verbose;
 
 #define MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt "\n", ## args)
+#define _MSG(fmt, args...) \
+	__lttng_print(PRINT_MSG, fmt, ## args)
 #define ERR(fmt, args...) \
 	__lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
 #define WARN(fmt, args...) \

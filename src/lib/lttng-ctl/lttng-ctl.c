@@ -681,6 +681,33 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 }
 
 /*
+ *  Lists all available tracepoint fields of domain.
+ *  Sets the contents of the event field array.
+ *  Returns the number of lttng_event_field entries in events;
+ *  on error, returns a negative value.
+ */
+int lttng_list_tracepoint_fields(struct lttng_handle *handle,
+		struct lttng_event_field **fields)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+
+	if (handle == NULL) {
+		return -1;
+	}
+
+	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
+	copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	ret = ask_sessiond(&lsm, (void **) fields);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret / sizeof(struct lttng_event_field);
+}
+
+/*
  *  Returns a human readable string describing
  *  the error code (a negative value).
  */

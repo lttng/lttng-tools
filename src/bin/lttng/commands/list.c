@@ -29,6 +29,7 @@ static int opt_userspace;
 static int opt_kernel;
 static char *opt_channel;
 static int opt_domain;
+static int opt_fields;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -60,6 +61,7 @@ static struct poptOption long_options[] = {
 #endif
 	{"channel",   'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
 	{"domain",    'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
+	{"fields",    'f', POPT_ARG_VAL, &opt_fields, 1, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -80,6 +82,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-options      Simple listing of options\n");
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
+	fprintf(ofp, "  -f, --fields            List event fields.\n");
 #if 0
 	fprintf(ofp, "  -p, --pid PID           List user-space events by PID\n");
 #endif
@@ -237,6 +240,35 @@ static void print_events(struct lttng_event *event)
 	}
 }
 
+static const char *field_type(struct lttng_event_field *field)
+{
+	switch(field->type) {
+	case LTTNG_EVENT_FIELD_INTEGER:
+		return "integer";
+	case LTTNG_EVENT_FIELD_ENUM:
+		return "enum";
+	case LTTNG_EVENT_FIELD_FLOAT:
+		return "float";
+	case LTTNG_EVENT_FIELD_STRING:
+		return "string";
+	case LTTNG_EVENT_FIELD_OTHER:
+	default:	/* fall-through */
+		return "unknown";
+	}
+}
+
+/*
+ * Pretty print single event fields.
+ */
+static void print_event_field(struct lttng_event_field *field)
+{
+	if (!field->field_name[0]) {
+		return;
+	}
+	MSG("%sfield: %s (%s)", indent6, field->field_name,
+		field_type(field));
+}
+
 /*
  * Ask session daemon for all user space tracepoints available.
  */
@@ -283,6 +315,68 @@ static int list_ust_events(void)
 	MSG("");
 
 	free(event_list);
+	lttng_destroy_handle(handle);
+
+	return CMD_SUCCESS;
+
+error:
+	lttng_destroy_handle(handle);
+	return -1;
+}
+
+/*
+ * Ask session daemon for all user space tracepoint fields available.
+ */
+static int list_ust_event_fields(void)
+{
+	int i, size;
+	struct lttng_domain domain;
+	struct lttng_handle *handle;
+	struct lttng_event_field *event_field_list;
+	pid_t cur_pid = 0;
+	struct lttng_event cur_event;
+
+	memset(&domain, 0, sizeof(domain));
+	memset(&cur_event, 0, sizeof(cur_event));
+
+	DBG("Getting UST tracing event fields");
+
+	domain.type = LTTNG_DOMAIN_UST;
+
+	handle = lttng_create_handle(NULL, &domain);
+	if (handle == NULL) {
+		goto error;
+	}
+
+	size = lttng_list_tracepoint_fields(handle, &event_field_list);
+	if (size < 0) {
+		ERR("Unable to list UST event fields");
+		lttng_destroy_handle(handle);
+		return size;
+	}
+
+	MSG("UST events:\n-------------");
+
+	if (size == 0) {
+		MSG("None");
+	}
+
+	for (i = 0; i < size; i++) {
+		if (cur_pid != event_field_list[i].event.pid) {
+			cur_pid = event_field_list[i].event.pid;
+			MSG("\nPID: %d - Name: %s", cur_pid, get_cmdline_by_pid(cur_pid));
+		}
+		if (strcmp(cur_event.name, event_field_list[i].event.name) != 0) {
+			print_events(&event_field_list[i].event);
+			memcpy(&cur_event, &event_field_list[i].event,
+				sizeof(cur_event));
+		}
+		print_event_field(&event_field_list[i]);
+	}
+
+	MSG("");
+
+	free(event_field_list);
 	lttng_destroy_handle(handle);
 
 	return CMD_SUCCESS;
@@ -634,7 +728,11 @@ int cmd_list(int argc, const char **argv)
 			}
 		}
 		if (opt_userspace) {
-			ret = list_ust_events();
+			if (opt_fields) {
+				ret = list_ust_event_fields();
+			} else {
+				ret = list_ust_events();
+			}
 			if (ret < 0) {
 				goto end;
 			}
