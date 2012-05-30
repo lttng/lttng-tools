@@ -1,0 +1,11 @@
+LTTng-Tools Coding Style
+
+The coding style used for this project follows the the Linux kernel
+guide lines, except that brackets "{", "}" should typically be used even
+for single-line if/else statements. Please refer to:
+
+- Linux kernel Documentation/CodingStyle document for details,
+- Linux kernel scripts/checkpatch.pl for a script which verify the patch
+  coding style.
+
+Mathieu Desnoyers, May 30, 2012
