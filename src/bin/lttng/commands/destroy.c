@@ -28,7 +28,7 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 
-static char *opt_session_name;
+static int opt_destroy_all;
 
 enum {
 	OPT_HELP = 1,
@@ -38,6 +38,7 @@ enum {
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
+	{"all",       'a', POPT_ARG_VAL, &opt_destroy_all, 1, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -53,28 +54,20 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "get it from the configuration directory (.lttng).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
+	fprintf(ofp, "  -a, --all            Destroy all sessions\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "\n");
 }
 
 /*
- * Destroy a session removing the config directory and unregistering to the
- * session daemon.
+ * destroy_session
+ *
+ * Unregister the provided session to the session daemon. On success, removes
+ * the default configuration.
  */
-static int destroy_session()
+static int destroy_session(const char *session_name)
 {
 	int ret;
-	char *session_name, *path;
-
-	if (opt_session_name == NULL) {
-		session_name = get_session_name();
-		if (session_name == NULL) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-	} else {
-		session_name = opt_session_name;
-	}
 
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
@@ -85,30 +78,53 @@ static int destroy_session()
 		default:
 			break;
 		}
-		goto free_name;
+		goto error;
 	}
 
-	path = config_get_default_path();
-	if (path == NULL) {
-		ret = CMD_FATAL;
-		goto free_name;
-	}
-
-	if (opt_session_name == NULL) {
-		config_destroy(path);
-		MSG("Session %s destroyed at %s", session_name, path);
-	} else {
-		MSG("Session %s destroyed", session_name);
-	}
-
+	MSG("Session %s destroyed", session_name);
+	config_destroy_default();
 	ret = CMD_SUCCESS;
+error:
+	return ret;
+}
 
-free_name:
-	if (opt_session_name == NULL) {
-		free(session_name);
+/*
+ * destroy_all_sessions
+ *
+ * Call destroy_sessions for each registered sessions
+ */
+static int destroy_all_sessions()
+{
+	int count, i, ret = CMD_SUCCESS;
+	struct lttng_session *sessions;
+
+	count = lttng_list_sessions(&sessions);
+	if (count == 0) {
+		MSG("No session found, nothing to do.");
+	}
+	for (i = 0; i < count; i++) {
+		ret = destroy_session(sessions[i].name);
+		if (ret < 0) {
+			goto error;
+		}
 	}
 error:
 	return ret;
+}
+
+/*
+ * get_default_session_name
+ *
+ * Returns the default sessions name, if any
+ */
+static int get_default_session_name(char **name)
+{
+	char *session_name = get_session_name();
+	if (session_name == NULL) {
+		return CMD_ERROR;
+	}
+	*name = session_name;
+	return CMD_SUCCESS;
 }
 
 /*
@@ -116,8 +132,10 @@ error:
  */
 int cmd_destroy(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt;
+	int ret = CMD_SUCCESS;
 	static poptContext pc;
+	char *session_name = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -126,22 +144,40 @@ int cmd_destroy(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stdout);
-			goto end;
+			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			goto end;
+			break;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;
+			break;
+		}
+		goto end;
+	}
+
+	session_name = (char *) poptGetArg(pc);
+
+	/*
+	 * ignore session name in case all
+	 * sessions are to be destroyed
+	 */
+	if (opt_destroy_all) {
+		ret = destroy_all_sessions();
+		goto end;
+	}
+	if (session_name == NULL) {
+		ret = get_default_session_name(&session_name);
+		if (ret < 0 || session_name == NULL) {
 			goto end;
 		}
 	}
-
-	opt_session_name = (char*) poptGetArg(pc);
-
-	ret = destroy_session();
+	ret = destroy_session(session_name);
 
 end:
 	poptFreeContext(pc);
+	if (session_name != NULL) {
+		free(session_name);
+	}
 	return ret;
 }
