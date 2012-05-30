@@ -154,12 +154,49 @@ void config_destroy(char *path)
 		return;
 	}
 
+	if (!config_exists(config_path)) {
+		goto end;
+	}
+
+	DBG("Removing %s\n", config_path);
 	ret = remove(config_path);
 	if (ret < 0) {
 		perror("remove config file");
 	}
-
+end:
 	free(config_path);
+}
+
+/*
+ *  config_destroy_default
+ *
+ *  Destroys the default config
+ */
+
+void config_destroy_default(void)
+{
+	char *path = config_get_default_path();
+	if (path == NULL) {
+		return;
+	}
+	config_destroy(path);
+}
+
+/*
+ *  config_exists
+ *
+ *  Returns 1 if config exists, 0 otherwise
+ */
+int config_exists(const char *path)
+{
+	int ret;
+	struct stat info;
+
+	ret = stat(path, &info);
+	if (ret < 0) {
+		return 0;
+	}
+	return S_ISREG(info.st_mode) || S_ISDIR(info.st_mode);
 }
 
 /*
