@@ -265,7 +265,7 @@ static void print_event_field(struct lttng_event_field *field)
 	if (!field->field_name[0]) {
 		return;
 	}
-	MSG("%sfield: %s (%s)", indent6, field->field_name,
+	MSG("%sfield: %s (%s)", indent8, field->field_name,
 		field_type(field));
 }
 
