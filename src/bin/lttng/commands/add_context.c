@@ -390,7 +390,7 @@ static int add_context(char *session_name)
 
 	/* Iterate over all the context types given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
-		context.ctx = type->opt->ctx_type;
+		context.ctx = (enum lttng_event_context_type) type->opt->ctx_type;
 		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
 			context.u.perf_counter.type = type->opt->u.perf.type;
 			context.u.perf_counter.config = type->opt->u.perf.config;

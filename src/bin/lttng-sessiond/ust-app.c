@@ -1479,7 +1479,7 @@ int ust_app_list_events(struct lttng_event **events)
 			}
 			memcpy(tmp[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
 			tmp[count].loglevel = uiter.loglevel;
-			tmp[count].type = LTTNG_UST_TRACEPOINT;
+			tmp[count].type = (enum lttng_event_type) LTTNG_UST_TRACEPOINT;
 			tmp[count].pid = app->pid;
 			tmp[count].enabled = -1;
 			count++;

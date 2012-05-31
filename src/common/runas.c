@@ -153,13 +153,14 @@ int _open(void *_data)
 static
 int child_run_as(void *_data)
 {
+	int ret;
 	struct run_as_data *data = _data;
-	size_t writelen, writeleft, index;
+	ssize_t writelen;
+	size_t writeleft, index;
 	union {
 		int i;
 		char c[sizeof(int)];
 	} sendret;
-	int ret;
 
 	/*
 	 * Child: it is safe to drop egid and euid while sharing the
