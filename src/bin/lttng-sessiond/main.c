@@ -3668,7 +3668,7 @@ skip_domain:
 	}
 	case LTTNG_LIST_CHANNELS:
 	{
-		size_t nb_chan;
+		int nb_chan;
 		struct lttng_channel *channels;
 
 		nb_chan = cmd_list_channels(cmd_ctx->lsm->domain.type,
@@ -4198,12 +4198,14 @@ static int set_permissions(char *rundir)
 	int ret;
 	gid_t gid;
 
-	gid = allowed_group();
-	if (gid < 0) {
+	ret = allowed_group();
+	if (ret < 0) {
 		WARN("No tracing group detected");
 		ret = 0;
 		goto end;
 	}
+
+	gid = ret;
 
 	/* Set lttng run dir */
 	ret = chown(rundir, 0, gid);

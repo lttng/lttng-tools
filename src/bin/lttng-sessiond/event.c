@@ -279,8 +279,7 @@ end:
 int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
-	int ret, i;
-	size_t size;
+	int ret, i, size;
 	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
@@ -521,8 +520,7 @@ error:
 int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
-	int ret, i;
-	size_t size;
+	int ret, i, size;
 	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
