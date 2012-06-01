@@ -205,6 +205,11 @@ int ust_app_list_events(struct lttng_event **events)
 	return -ENOSYS;
 }
 static inline
+int ust_app_list_event_fields(struct lttng_event_field **fields)
+{
+	return -ENOSYS;
+}
+static inline
 int ust_app_register(struct ust_register_msg *msg, int sock)
 {
 	return -ENOSYS;

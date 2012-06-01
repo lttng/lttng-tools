@@ -228,6 +228,9 @@ union ust_args {
 		int *wait_fd;
 		uint64_t *memory_map_size;
 	} stream;
+	struct {
+		struct lttng_ust_field_iter entry;
+	} field_list;
 };
 
 struct lttng_ust_objd_ops {
