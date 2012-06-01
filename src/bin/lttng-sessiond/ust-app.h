@@ -202,7 +202,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 static inline
 int ust_app_list_events(struct lttng_event **events)
 {
-	return 0;
+	return -ENOSYS;
 }
 static inline
 int ust_app_register(struct ust_register_msg *msg, int sock)
