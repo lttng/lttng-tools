@@ -263,10 +263,25 @@ int main(int argc, char **argv)
 
 	/* Daemonize */
 	if (opt_daemon) {
+		int i;
+
+		/*
+		 * fork
+		 * child: setsid, close FD 0, 1, 2, chdir /
+		 * parent: exit (if fork is successful)
+		 */
 		ret = daemon(0, 0);
 		if (ret < 0) {
-			perror("daemon");
+			PERROR("daemon");
 			goto error;
+		}
+		/*
+		 * We are in the child. Make sure all other file
+		 * descriptors are closed, in case we are called with
+		 * more opened file descriptors than the standard ones.
+		 */
+		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+			(void) close(i);
 		}
 	}
 
