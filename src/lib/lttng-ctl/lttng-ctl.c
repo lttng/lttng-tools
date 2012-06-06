@@ -885,12 +885,12 @@ int lttng_calibrate(struct lttng_handle *handle,
 void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr)
 {
-	memset(attr, 0, sizeof(struct lttng_channel_attr));
-
 	/* Safety check */
 	if (attr == NULL || domain == NULL) {
 		return;
 	}
+
+	memset(attr, 0, sizeof(struct lttng_channel_attr));
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
