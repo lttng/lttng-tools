@@ -16,7 +16,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        session.c session.h \
                        modprobe.c modprobe.h kern-modules.h \
                        lttng-ust-ctl.h lttng-ust-abi.h \
-                       fd-limit.c fd-limit.h
+                       fd-limit.c fd-limit.h \
+                       kernel-consumer.c kernel-consumer.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h

@@ -50,6 +50,7 @@
 #include "context.h"
 #include "event.h"
 #include "kernel.h"
+#include "kernel-consumer.h"
 #include "modprobe.h"
 #include "shm.h"
 #include "ust-ctl.h"
@@ -57,24 +58,6 @@
 #include "fd-limit.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
-
-struct consumer_data {
-	enum lttng_consumer_type type;
-
-	pthread_t thread;	/* Worker thread interacting with the consumer */
-	sem_t sem;
-
-	/* Mutex to control consumerd pid assignation */
-	pthread_mutex_t pid_mutex;
-	pid_t pid;
-
-	int err_sock;
-	int cmd_sock;
-
-	/* consumer error and command Unix socket path */
-	char err_unix_sock_path[PATH_MAX];
-	char cmd_unix_sock_path[PATH_MAX];
-};
 
 /* Const values */
 const char default_home_dir[] = DEFAULT_HOME_DIR;
@@ -544,139 +527,6 @@ static void clean_command_ctx(struct command_ctx **cmd_ctx)
 }
 
 /*
- * Send all stream fds of kernel channel to the consumer.
- */
-static int send_kconsumer_channel_streams(struct consumer_data *consumer_data,
-		int sock, struct ltt_kernel_channel *channel,
-		uid_t uid, gid_t gid)
-{
-	int ret;
-	struct ltt_kernel_stream *stream;
-	struct lttcomm_consumer_msg lkm;
-
-	DBG("Sending streams of channel %s to kernel consumer",
-			channel->channel->name);
-
-	/* Send channel */
-	lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
-	lkm.u.channel.channel_key = channel->fd;
-	lkm.u.channel.max_sb_size = channel->channel->attr.subbuf_size;
-	lkm.u.channel.mmap_len = 0;	/* for kernel */
-	DBG("Sending channel %d to consumer", lkm.u.channel.channel_key);
-	ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
-	if (ret < 0) {
-		PERROR("send consumer channel");
-		goto error;
-	}
-
-	/* Send streams */
-	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
-		if (!stream->fd) {
-			continue;
-		}
-		lkm.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
-		lkm.u.stream.channel_key = channel->fd;
-		lkm.u.stream.stream_key = stream->fd;
-		lkm.u.stream.state = stream->state;
-		lkm.u.stream.output = channel->channel->attr.output;
-		lkm.u.stream.mmap_len = 0;	/* for kernel */
-		lkm.u.stream.uid = uid;
-		lkm.u.stream.gid = gid;
-		strncpy(lkm.u.stream.path_name, stream->pathname, PATH_MAX - 1);
-		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
-		DBG("Sending stream %d to consumer", lkm.u.stream.stream_key);
-		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
-		if (ret < 0) {
-			PERROR("send consumer stream");
-			goto error;
-		}
-		ret = lttcomm_send_fds_unix_sock(sock, &stream->fd, 1);
-		if (ret < 0) {
-			PERROR("send consumer stream ancillary data");
-			goto error;
-		}
-	}
-
-	DBG("consumer channel streams sent");
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- * Send all stream fds of the kernel session to the consumer.
- */
-static int send_kconsumer_session_streams(struct consumer_data *consumer_data,
-		struct ltt_kernel_session *session)
-{
-	int ret;
-	struct ltt_kernel_channel *chan;
-	struct lttcomm_consumer_msg lkm;
-	int sock = session->consumer_fd;
-
-	DBG("Sending metadata stream fd");
-
-	/* Extra protection. It's NOT supposed to be set to -1 at this point */
-	if (session->consumer_fd < 0) {
-		session->consumer_fd = consumer_data->cmd_sock;
-	}
-
-	if (session->metadata_stream_fd >= 0) {
-		/* Send metadata channel fd */
-		lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
-		lkm.u.channel.channel_key = session->metadata->fd;
-		lkm.u.channel.max_sb_size = session->metadata->conf->attr.subbuf_size;
-		lkm.u.channel.mmap_len = 0;	/* for kernel */
-		DBG("Sending metadata channel %d to consumer", lkm.u.channel.channel_key);
-		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
-		if (ret < 0) {
-			PERROR("send consumer channel");
-			goto error;
-		}
-
-		/* Send metadata stream fd */
-		lkm.cmd_type = LTTNG_CONSUMER_ADD_STREAM;
-		lkm.u.stream.channel_key = session->metadata->fd;
-		lkm.u.stream.stream_key = session->metadata_stream_fd;
-		lkm.u.stream.state = LTTNG_CONSUMER_ACTIVE_STREAM;
-		lkm.u.stream.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
-		lkm.u.stream.mmap_len = 0;	/* for kernel */
-		lkm.u.stream.uid = session->uid;
-		lkm.u.stream.gid = session->gid;
-		strncpy(lkm.u.stream.path_name, session->metadata->pathname, PATH_MAX - 1);
-		lkm.u.stream.path_name[PATH_MAX - 1] = '\0';
-		DBG("Sending metadata stream %d to consumer", lkm.u.stream.stream_key);
-		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
-		if (ret < 0) {
-			PERROR("send consumer stream");
-			goto error;
-		}
-		ret = lttcomm_send_fds_unix_sock(sock, &session->metadata_stream_fd, 1);
-		if (ret < 0) {
-			PERROR("send consumer stream");
-			goto error;
-		}
-	}
-
-	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = send_kconsumer_channel_streams(consumer_data, sock, chan,
-				session->uid, session->gid);
-		if (ret < 0) {
-			goto error;
-		}
-	}
-
-	DBG("consumer fds (metadata and channel streams) sent");
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
  * Notify UST applications using the shm mmap futex.
  */
 static int notify_ust_apps(int active)
@@ -817,7 +667,7 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 				 * stream fds.
 				 */
 				if (session->kernel_session->consumer_fds_sent == 1) {
-					ret = send_kconsumer_channel_streams(consumer_data,
+					ret = kernel_consumer_send_channel_stream(consumer_data,
 							session->kernel_session->consumer_fd, channel,
 							session->uid, session->gid);
 					if (ret < 0) {
@@ -1931,7 +1781,7 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 			session->consumer_fd = kconsumer_data.cmd_sock;
 		}
 
-		ret = send_kconsumer_session_streams(&kconsumer_data, session);
+		ret = kernel_consumer_send_session(&kconsumer_data, session);
 		if (ret < 0) {
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
 			goto error;
