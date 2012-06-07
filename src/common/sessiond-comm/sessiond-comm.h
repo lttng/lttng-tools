@@ -30,6 +30,8 @@
 #include <lttng/lttng.h>
 #include <common/compat/socket.h>
 
+#include "unix.h"
+
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
 
@@ -285,25 +287,6 @@ struct lttcomm_ust_reply {
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
-extern int lttcomm_create_unix_sock(const char *pathname);
-extern int lttcomm_connect_unix_sock(const char *pathname);
-extern int lttcomm_accept_unix_sock(int sock);
-extern int lttcomm_listen_unix_sock(int sock);
-extern int lttcomm_close_unix_sock(int sock);
-
-/* Send a message accompanied by fd(s) over a unix socket. */
-extern ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd);
-/* Recv a message accompanied by fd(s) from a unix socket */
-extern ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
-
-extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
-extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
-
-extern ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);
-extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		lttng_sock_cred *creds);
-
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
-extern int lttcomm_setsockopt_creds_unix_sock(int sock);
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */
