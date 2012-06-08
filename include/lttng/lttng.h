@@ -214,7 +214,7 @@ struct lttng_event {
 	enum lttng_loglevel_type loglevel_type;
 	int loglevel;
 
-	uint32_t enabled;
+	int32_t enabled;	/* Does not apply: -1 */
 	pid_t pid;
 
 	char padding[LTTNG_EVENT_PADDING1];
