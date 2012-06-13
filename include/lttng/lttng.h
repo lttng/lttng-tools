@@ -23,6 +23,7 @@
 #define _LTTNG_H
 
 #include <limits.h>
+#include <netinet/in.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -30,6 +31,12 @@
  * Event symbol length. Copied from LTTng kernel ABI.
  */
 #define LTTNG_SYMBOL_NAME_LEN             256
+
+/*
+ * Maximum length of a domain name. This is the limit for the total length of a
+ * domain name specified by the RFC 1035 (https://www.ietf.org/rfc/rfc1035.txt)
+ */
+#define LTTNG_MAX_DNNAME                  255
 
 /*
  * Every lttng_event_* structure both apply to kernel event and user-space
@@ -122,6 +129,62 @@ enum lttng_event_context_type {
 
 enum lttng_calibrate_type {
 	LTTNG_CALIBRATE_FUNCTION              = 0,
+};
+
+/* Destination type of lttng URI */
+enum lttng_dst_type {
+	LTTNG_DST_IPV4,		/* IPv4 protocol */
+	LTTNG_DST_IPV6,		/* IPv6 protocol */
+	LTTNG_DST_PATH,		/* Local file system */
+};
+
+/* Type of lttng URI where it is a final destination or a hop */
+enum lttng_uri_type {
+	LTTNG_URI_DST,	/* The URI is a final destination */
+	/*
+	 * Hop are not supported yet but planned for a future release.
+	 *
+	LTTNG_URI_HOP,
+	*/
+};
+
+/* Communication stream type of a lttng URI */
+enum lttng_stream_type {
+	LTTNG_STREAM_CONTROL,
+	LTTNG_STREAM_DATA,
+};
+
+/*
+ * Protocol type of a lttng URI. The value 0 indicate that the proto_type field
+ * should be ignored.
+ */
+enum lttng_proto_type {
+	LTTNG_TCP                             = 1,
+	/*
+	 * UDP protocol is not supported for now.
+	 *
+	LTTNG_UDP                             = 2,
+	*/
+};
+
+/*
+ * Structure representing an URI supported by lttng.
+ */
+#define LTTNG_URI_PADDING1_LEN         16
+#define LTTNG_URI_PADDING2_LEN         LTTNG_SYMBOL_NAME_LEN + 32
+struct lttng_uri {
+	enum lttng_dst_type dtype;
+	enum lttng_uri_type utype;
+	enum lttng_stream_type stype;
+	enum lttng_proto_type proto;
+	in_port_t port;
+	char padding[LTTNG_URI_PADDING1_LEN];
+	union {
+		char ipv4[INET_ADDRSTRLEN];
+		char ipv6[INET6_ADDRSTRLEN];
+		char path[PATH_MAX];
+		char padding[LTTNG_URI_PADDING2_LEN];
+	} dst;
 };
 
 /*

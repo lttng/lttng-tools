@@ -4,11 +4,11 @@ SUBDIRS = compat hashtable kernel-ctl sessiond-comm kernel-consumer ust-consumer
 
 AM_CFLAGS = -fno-strict-aliasing
 
-noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h
+noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h uri.h
 
 noinst_LTLIBRARIES = libcommon.la
 
-libcommon_la_SOURCES = runas.c runas.h common.h futex.c futex.h
+libcommon_la_SOURCES = runas.c runas.h common.h futex.c futex.h uri.c uri.h
 
 # Consumer library
 noinst_LTLIBRARIES += libconsumer.la

@@ -117,4 +117,8 @@
  */
 #define DEFAULT_SEM_WAIT_TIMEOUT            30    /* in seconds */
 
+/* Default network ports for trace streaming support */
+#define DEFAULT_NETWORK_CONTROL_PORT        5342
+#define DEFAULT_NETWORK_DATA_PORT           5343
+
 #endif /* _DEFAULTS_H */
