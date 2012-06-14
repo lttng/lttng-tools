@@ -30,6 +30,12 @@
 #include <lttng/lttng.h>
 #include <common/compat/socket.h>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/un.h>
+
+#include "inet.h"
+#include "inet6.h"
 #include "unix.h"
 
 /* Queue size of listen(2) */
@@ -288,6 +294,62 @@ struct lttcomm_ust_reply {
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
+/* lttng socket protocol. */
+enum lttcomm_sock_proto {
+	LTTCOMM_SOCK_UDP,
+	LTTCOMM_SOCK_TCP,
+};
+
+/*
+ * Index in the net_families array below. Please keep in sync!
+ */
+enum lttcomm_sock_domain {
+	LTTCOMM_INET,
+	LTTCOMM_INET6,
+};
+
+struct lttcomm_sockaddr {
+	enum lttcomm_sock_domain type;
+	union {
+		struct sockaddr_in sin;
+		struct sockaddr_in6 sin6;
+	} addr;
+};
+
+struct lttcomm_sock {
+	int fd;
+	enum lttcomm_sock_proto proto;
+	struct lttcomm_sockaddr sockaddr;
+	const struct lttcomm_proto_ops *ops;
+};
+
+struct lttcomm_net_family {
+	int family;
+	int (*create) (struct lttcomm_sock *sock, int type, int proto);
+};
+
+struct lttcomm_proto_ops {
+	int (*bind) (struct lttcomm_sock *sock);
+	int (*close) (struct lttcomm_sock *sock);
+	int (*connect) (struct lttcomm_sock *sock);
+	struct lttcomm_sock *(*accept) (struct lttcomm_sock *sock);
+	int (*listen) (struct lttcomm_sock *sock, int backlog);
+	ssize_t (*recvmsg) (struct lttcomm_sock *sock, void *buf, size_t len,
+			int flags);
+	ssize_t (*sendmsg) (struct lttcomm_sock *sock, void *buf, size_t len,
+			int flags);
+};
+
 extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
+
+extern int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
+		const char *ip, unsigned int port);
+extern int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
+		const char *ip, unsigned int port);
+
+extern struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_domain domain,
+		enum lttcomm_sock_proto proto);
+extern int lttcomm_create_sock(struct lttcomm_sock *sock,
+		enum lttcomm_sock_domain domain, enum lttcomm_sock_proto proto);
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */

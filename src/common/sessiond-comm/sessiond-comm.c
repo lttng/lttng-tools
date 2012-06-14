@@ -32,6 +32,18 @@
 
 #include "sessiond-comm.h"
 
+/* For Unix socket */
+#include "unix.h"
+/* For Inet socket */
+#include "inet.h"
+/* For Inet6 socket */
+#include "inet6.h"
+
+struct lttcomm_net_family net_families[] = {
+	{ LTTCOMM_INET, lttcomm_create_inet_sock },
+	{ LTTCOMM_INET6, lttcomm_create_inet6_sock },
+};
+
 /*
  * Human readable error message.
  */
@@ -143,4 +155,142 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 	}
 
 	return "Unknown error code";
+}
+
+/*
+ * Alloc lttcomm socket and set protocol.
+ */
+static struct lttcomm_sock *alloc_sock(enum lttcomm_sock_proto proto)
+{
+	struct lttcomm_sock *sock;
+
+	sock = zmalloc(sizeof(struct lttcomm_sock));
+	if (sock == NULL) {
+		PERROR("zmalloc create sock");
+		goto end;
+	}
+
+	sock->proto = proto;
+
+end:
+	return sock;
+}
+
+/*
+ * Create socket from an already allocated lttcomm socket structure.
+ */
+int lttcomm_create_sock(struct lttcomm_sock *sock,
+		enum lttcomm_sock_domain domain, enum lttcomm_sock_proto proto)
+{
+	int ret, _sock_type, _sock_proto;
+
+	assert(sock);
+
+	switch (proto) {
+		case LTTCOMM_SOCK_UDP:
+			_sock_type = SOCK_DGRAM;
+			_sock_proto = IPPROTO_UDP;
+			break;
+		case LTTCOMM_SOCK_TCP:
+			_sock_type = SOCK_STREAM;
+			_sock_proto = IPPROTO_TCP;
+			break;
+		default:
+			ret = -1;
+			goto error;
+	}
+
+	ret = net_families[domain].create(sock, _sock_type, _sock_proto);
+	if (ret < 0) {
+		goto error;
+	}
+
+	sock->proto = proto;
+
+error:
+	return ret;
+}
+
+/*
+ * Return allocated lttcomm socket structure.
+ */
+struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_domain domain,
+		enum lttcomm_sock_proto proto)
+{
+	int ret;
+	struct lttcomm_sock *sock;
+
+	sock = alloc_sock(proto);
+	if (sock == NULL) {
+		goto alloc_error;
+	}
+
+	ret = lttcomm_create_sock(sock, domain, proto);
+	if (ret < 0) {
+		goto error;
+	}
+
+	return sock;
+
+error:
+	free(sock);
+alloc_error:
+	return NULL;
+}
+
+/*
+ * Init IPv4 sockaddr structure.
+ */
+int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
+		const char *ip, unsigned int port)
+{
+	int ret;
+
+	assert(sockaddr);
+	assert(ip);
+	assert(port > 0 && port <= 65535);
+
+	memset(sockaddr, 0, sizeof(struct lttcomm_sockaddr));
+
+	sockaddr->type = LTTCOMM_INET;
+	sockaddr->addr.sin.sin_family = AF_INET;
+	sockaddr->addr.sin.sin_port = htons(port);
+	ret = inet_pton(sockaddr->addr.sin.sin_family, ip,
+			&sockaddr->addr.sin.sin_addr);
+	if (ret < 1) {
+		ret = -1;
+		goto error;
+	}
+	memset(sockaddr->addr.sin.sin_zero, 0, sizeof(sockaddr->addr.sin.sin_zero));
+
+error:
+	return ret;
+}
+
+/*
+ * Init IPv6 sockaddr structure.
+ */
+int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
+		const char *ip, unsigned int port)
+{
+	int ret;
+
+	assert(sockaddr);
+	assert(ip);
+	assert(port > 0 && port <= 65535);
+
+	memset(sockaddr, 0, sizeof(struct lttcomm_sockaddr));
+
+	sockaddr->type = LTTCOMM_INET6;
+	sockaddr->addr.sin6.sin6_family = AF_INET6;
+	sockaddr->addr.sin6.sin6_port = htons(port);
+	ret = inet_pton(sockaddr->addr.sin6.sin6_family, ip,
+			&sockaddr->addr.sin6.sin6_addr);
+	if (ret < 1) {
+		ret = -1;
+		goto error;
+	}
+
+error:
+	return ret;
 }

@@ -8,7 +8,9 @@ noinst_PROGRAMS = kernel_all_events_basic kernel_event_basic
 UTILS=utils.h
 LIBLTTNG=$(top_srcdir)/src/lib/lttng-ctl/lttng-ctl.c \
 		 $(top_srcdir)/src/common/sessiond-comm/sessiond-comm.c \
-		 $(top_srcdir)/src/common/sessiond-comm/unix.c
+		 $(top_srcdir)/src/common/sessiond-comm/unix.c \
+		 $(top_srcdir)/src/common/sessiond-comm/inet.c \
+		 $(top_srcdir)/src/common/sessiond-comm/inet6.c
 
 kernel_all_events_basic_SOURCES = kernel_all_events_basic.c $(UTILS) $(LIBLTTNG)
 

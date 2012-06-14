@@ -11,7 +11,9 @@ noinst_PROGRAMS = ust_global_event_basic ust_global_event_wildcard
 UTILS=utils.h
 LIBLTTNG=$(top_srcdir)/src/lib/lttng-ctl/lttng-ctl.c \
 		 $(top_srcdir)/src/common/sessiond-comm/sessiond-comm.c \
-		 $(top_srcdir)/src/common/sessiond-comm/unix.c
+		 $(top_srcdir)/src/common/sessiond-comm/unix.c \
+		 $(top_srcdir)/src/common/sessiond-comm/inet.c \
+		 $(top_srcdir)/src/common/sessiond-comm/inet6.c
 
 ust_global_event_wildcard_SOURCES = ust_global_event_wildcard.c $(UTILS) $(LIBLTTNG)
 
