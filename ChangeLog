@@ -1,3 +1,11 @@
+2012-06-14 lttng-tools 2.0.2
+	* Fix: enable event with different loglevel error
+	* Fix: move memset in channel_set_attr after NULL check
+	* Fix: close all file descriptors when executed as daemon
+	* Fix: clang llvm warnings
+	* Add CodingStyle to tarball
+	* Add coding style document
+
 2012-04-19 lttng-tools 2.0.1
 	* Fix: test script for kernel module validation
 	* Fix: report error to client on consumerd error
