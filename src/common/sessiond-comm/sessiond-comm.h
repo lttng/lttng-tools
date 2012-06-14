@@ -162,6 +162,7 @@ enum lttcomm_return_code {
 	LTTCOMM_INVALID,			/* Invalid parameter */
 	LTTCOMM_NO_USTCONSUMERD,        /* No UST consumer detected */
 	LTTCOMM_NO_KERNCONSUMERD,       /* No Kernel consumer detected */
+	LTTCOMM_EVENT_EXIST_LOGLEVEL,   /* Event already enabled with different loglevel */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
