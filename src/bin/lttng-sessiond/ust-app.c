@@ -645,7 +645,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	ret = ustctl_create_event(app->sock, &ua_event->attr, ua_chan->obj,
 			&ua_event->obj);
 	if (ret < 0) {
-		if (ret == -EEXIST) {
+		if (ret == -EEXIST || ret == -EPERM) {
 			ret = 0;
 			goto error;
 		}

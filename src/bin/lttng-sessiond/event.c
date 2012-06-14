@@ -46,6 +46,23 @@ static void init_syscalls_kernel_event(struct lttng_event *event)
 }
 
 /*
+ * Return 1 if loglevels match or 0 on failure.
+ */
+static int loglevel_match(struct ltt_ust_event *uevent,
+		enum lttng_ust_loglevel_type log_type, int loglevel)
+{
+	if (uevent == NULL || uevent->attr.loglevel_type != log_type ||
+			uevent->attr.loglevel != loglevel) {
+		goto no_match;
+	}
+
+	return 1;
+
+no_match:
+	return 0;
+}
+
+/*
  * Disable kernel tracepoint event for a channel from the kernel session.
  */
 int event_kernel_disable_tracepoint(struct ltt_kernel_session *ksession,
@@ -395,8 +412,23 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		to_create = 1;
 	}
 
+	/* Check loglevels */
+	ret = loglevel_match(uevent, event->loglevel_type, event->loglevel);
+	if (ret == 0) {
+		/*
+		 * No match meaning that the user tried to enable a known event but
+		 * with a different loglevel.
+		 */
+		DBG("Enable event %s does not match existing event %s with loglevel "
+				"respectively of %d and %d", event->name, uevent->attr.name,
+				uevent->attr.loglevel, event->loglevel);
+		ret = LTTCOMM_EVENT_EXIST_LOGLEVEL;
+		goto error;
+	}
+
 	if (uevent->enabled) {
 		/* It's already enabled so everything is OK */
+		ret = LTTCOMM_OK;
 		goto end;
 	}
 
