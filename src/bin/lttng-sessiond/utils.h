@@ -20,5 +20,8 @@
 
 const char *get_home_dir(void);
 int notify_thread_pipe(int wpipe);
+int utils_create_pipe_cloexec(int *dst);
+int utils_create_pipe(int *dst);
+void utils_close_pipe(int *src);
 
 #endif /* _LTT_UTILS_H */

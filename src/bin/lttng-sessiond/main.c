@@ -407,7 +407,7 @@ static void stop_threads(void)
  */
 static void cleanup(void)
 {
-	int ret, i;
+	int ret;
 	char *cmd;
 	struct ltt_session *sess, *stmp;
 
@@ -457,34 +457,9 @@ static void cleanup(void)
 		DBG("Unloading kernel modules");
 		modprobe_remove_lttng_all();
 	}
-
-	/*
-	 * Closing all pipes used for communication between threads.
-	 */
-	for (i = 0; i < 2; i++) {
-		if (kernel_poll_pipe[i] >= 0) {
-			ret = close(kernel_poll_pipe[i]);
-			if (ret) {
-				PERROR("close");
-			}
-		}
-	}
-	for (i = 0; i < 2; i++) {
-		if (thread_quit_pipe[i] >= 0) {
-			ret = close(thread_quit_pipe[i]);
-			if (ret) {
-				PERROR("close");
-			}
-		}
-	}
-	for (i = 0; i < 2; i++) {
-		if (apps_cmd_pipe[i] >= 0) {
-			ret = close(apps_cmd_pipe[i]);
-			if (ret) {
-				PERROR("close");
-			}
-		}
-	}
+	utils_close_pipe(kernel_poll_pipe);
+	utils_close_pipe(thread_quit_pipe);
+	utils_close_pipe(apps_cmd_pipe);
 
 	/* <fun> */
 	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
@@ -4168,58 +4143,6 @@ end:
 }
 
 /*
- * Create the pipe used to wake up the kernel thread.
- * Closed in cleanup().
- */
-static int create_kernel_poll_pipe(void)
-{
-	int ret, i;
-
-	ret = pipe(kernel_poll_pipe);
-	if (ret < 0) {
-		PERROR("kernel poll pipe");
-		goto error;
-	}
-
-	for (i = 0; i < 2; i++) {
-		ret = fcntl(kernel_poll_pipe[i], F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl kernel_poll_pipe");
-			goto error;
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Create the application command pipe to wake thread_manage_apps.
- * Closed in cleanup().
- */
-static int create_apps_cmd_pipe(void)
-{
-	int ret, i;
-
-	ret = pipe(apps_cmd_pipe);
-	if (ret < 0) {
-		PERROR("apps cmd pipe");
-		goto error;
-	}
-
-	for (i = 0; i < 2; i++) {
-		ret = fcntl(apps_cmd_pipe[i], F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl apps_cmd_pipe");
-			goto error;
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
  * Create the lttng run directory needed for all global sockets and pipe.
  */
 static int create_lttng_rundir(const char *rundir)
@@ -4617,12 +4540,12 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the kernel pipe for waking up the kernel thread */
-	if ((ret = create_kernel_poll_pipe()) < 0) {
+	if ((ret = utils_create_pipe_cloexec(kernel_poll_pipe)) < 0) {
 		goto exit;
 	}
 
 	/* Setup the thread apps communication pipe. */
-	if ((ret = create_apps_cmd_pipe()) < 0) {
+	if ((ret = utils_create_pipe_cloexec(apps_cmd_pipe)) < 0) {
 		goto exit;
 	}
 
