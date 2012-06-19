@@ -94,13 +94,14 @@ static int create_session()
 
 	/* Auto output path */
 	if (opt_output_path == NULL) {
-		alloc_path = strdup(config_get_default_path());
+		alloc_path = config_get_default_path();
 		if (alloc_path == NULL) {
-			ERR("Home path not found.\n \
+			ERR("HOME path not found.\n \
 				 Please specify an output path using -o, --output PATH");
 			ret = CMD_FATAL;
 			goto error;
 		}
+		alloc_path = strdup(alloc_path);
 
 		if (have_name) {
 			ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
