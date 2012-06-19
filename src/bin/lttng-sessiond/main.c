@@ -643,8 +643,7 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 				 */
 				if (session->kernel_session->consumer_fds_sent == 1) {
 					ret = kernel_consumer_send_channel_stream(consumer_data,
-							session->kernel_session->consumer_fd, channel,
-							session->uid, session->gid);
+							channel, session->uid, session->gid);
 					if (ret < 0) {
 						goto error;
 					}

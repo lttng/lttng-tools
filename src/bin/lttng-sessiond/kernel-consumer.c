@@ -32,14 +32,16 @@
  * Send all stream fds of kernel channel to the consumer.
  */
 int kernel_consumer_send_channel_stream(struct consumer_data *consumer_data,
-		int sock, struct ltt_kernel_channel *channel, uid_t uid, gid_t gid)
+		struct ltt_kernel_channel *channel, uid_t uid, gid_t gid)
 {
-	int ret, count = 0;
+	int ret, count = 0, consumer_sock;
 	struct ltt_kernel_stream *stream;
 	struct lttcomm_consumer_msg lkm;
 
 	DBG("Sending streams of channel %s to kernel consumer",
 			channel->channel->name);
+
+	consumer_sock = consumer_data->cmd_sock;
 
 	/* Send channel */
 	lkm.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
@@ -47,7 +49,7 @@ int kernel_consumer_send_channel_stream(struct consumer_data *consumer_data,
 	lkm.u.channel.max_sb_size = channel->channel->attr.subbuf_size;
 	lkm.u.channel.mmap_len = 0;	/* for kernel */
 	DBG("Sending channel %d to consumer", lkm.u.channel.channel_key);
-	ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
+	ret = lttcomm_send_unix_sock(consumer_sock, &lkm, sizeof(lkm));
 	if (ret < 0) {
 		PERROR("send consumer channel");
 		goto error;
@@ -73,12 +75,12 @@ int kernel_consumer_send_channel_stream(struct consumer_data *consumer_data,
 		count++;
 
 		DBG("Sending stream %d to consumer", lkm.u.stream.stream_key);
-		ret = lttcomm_send_unix_sock(sock, &lkm, sizeof(lkm));
+		ret = lttcomm_send_unix_sock(consumer_sock, &lkm, sizeof(lkm));
 		if (ret < 0) {
 			PERROR("send consumer stream");
 			goto error;
 		}
-		ret = lttcomm_send_fds_unix_sock(sock, &stream->fd, 1);
+		ret = lttcomm_send_fds_unix_sock(consumer_sock, &stream->fd, 1);
 		if (ret < 0) {
 			PERROR("send consumer stream ancillary data");
 			goto error;
@@ -151,7 +153,7 @@ int kernel_consumer_send_session(struct consumer_data *consumer_data,
 	}
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
-		ret = kernel_consumer_send_channel_stream(consumer_data, sock, chan,
+		ret = kernel_consumer_send_channel_stream(consumer_data, chan,
 				session->uid, session->gid);
 		if (ret < 0) {
 			goto error;
