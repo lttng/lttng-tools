@@ -145,17 +145,17 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	/* Size of the uris array. Default is 1 */
 	ssize_t size = 1;
 	char net[6], dst[LTTNG_MAX_DNNAME + 1];
-	unsigned int ctrl_port = DEFAULT_NETWORK_CONTROL_PORT;
-	unsigned int data_port = DEFAULT_NETWORK_DATA_PORT;
+	unsigned int ctrl_port = 0;
+	unsigned int data_port = 0;
 	struct lttng_uri *uri;
 	const struct uri_proto *proto;
 
 	/*
 	 * The first part is the protocol portion of a maximum of 5 bytes for now.
-	 * (tcp, tcp6, udp, udp6, file, net). The second part is the hostname or IP
-	 * address. The 255 bytes size is the limit found in the RFC 1035 for the
-	 * total length of a domain name (https://www.ietf.org/rfc/rfc1035.txt).
-	 * Finally, with the net:// protocol, two ports can be specified.
+	 * The second part is the hostname or IP address. The 255 bytes size is the
+	 * limit found in the RFC 1035 for the total length of a domain name
+	 * (https://www.ietf.org/rfc/rfc1035.txt). Finally, for the net://
+	 * protocol, two ports CAN be specified.
 	 */
 
 	ret = sscanf(str_uri, "%5[^:]://", net);
