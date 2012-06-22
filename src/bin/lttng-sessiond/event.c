@@ -51,6 +51,15 @@ static void init_syscalls_kernel_event(struct lttng_event *event)
 static int loglevel_match(struct ltt_ust_event *uevent,
 		enum lttng_ust_loglevel_type log_type, int loglevel)
 {
+	/*
+	 * For the loglevel type ALL, the loglevel is set to -1 but the event
+	 * received by the session daemon is 0 which does not match the negative
+	 * value in the existing event.
+	 */
+	if (log_type == LTTNG_UST_LOGLEVEL_ALL) {
+		loglevel = -1;
+	}
+
 	if (uevent == NULL || uevent->attr.loglevel_type != log_type ||
 			uevent->attr.loglevel != loglevel) {
 		goto no_match;
