@@ -1,3 +1,8 @@
+2012-06-22 lttng-tools 2.0.3
+	* Fix: enable event loglevel match function
+	* Fix: unchecked pointer from getenv() for lttng create
+	* Ship license text file with the release archive
+
 2012-06-14 lttng-tools 2.0.2
 	* Fix: enable event with different loglevel error
 	* Fix: move memset in channel_set_attr after NULL check
