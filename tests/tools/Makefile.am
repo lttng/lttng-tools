@@ -5,7 +5,7 @@ EXTRA_DIST = runall.sh
 
 noinst_PROGRAMS = test_sessions test_kernel_data_trace
 
-UTILS=utils.h
+UTILS=../utils.h
 SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.c
 KERN_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-kernel.c
 COMMON=$(top_builddir)/src/common/libcommon.la
