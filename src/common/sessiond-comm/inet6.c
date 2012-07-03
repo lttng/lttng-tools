@@ -272,15 +272,15 @@ ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
  */
 int lttcomm_close_inet6_sock(struct lttcomm_sock *sock)
 {
-	int ret, closeret;
+	int ret;
 
 	/* Don't try to close an invalid mark socket */
 	if (sock->fd == -1) {
 		return 0;
 	}
 
-	closeret = close(sock->fd);
-	if (closeret) {
+	ret = close(sock->fd);
+	if (ret) {
 		PERROR("close inet6");
 	}
 
