@@ -49,7 +49,7 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_stream *stream, unsigned long len)
 {
 	unsigned long mmap_offset;
-	long ret = 0;
+	long ret = 0, written = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	int outfd = stream->out_fd;
 
@@ -59,29 +59,39 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 	if (ret != 0) {
 		errno = -ret;
 		PERROR("ustctl_get_mmap_read_offset");
+		written = ret;
 		goto end;
 	}
 	while (len > 0) {
 		ret = write(outfd, stream->mmap_base + mmap_offset, len);
-		if (ret >= len) {
-			len = 0;
-		} else if (ret < 0) {
-			errno = -ret;
+		if (ret < 0) {
+			if (errno == EINTR) {
+				/* restart the interrupted system call */
+				continue;
+			} else {
+				PERROR("Error in file write");
+				if (written == 0) {
+					written = ret;
+				}
+				goto end;
+			}
+		} else if (ret > len) {
 			PERROR("Error in file write");
+			written += ret;
 			goto end;
+		} else {
+			len -= ret;
+			mmap_offset += ret;
 		}
 		/* This won't block, but will start writeout asynchronously */
 		lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += ret;
+		written += ret;
 	}
-
 	lttng_consumer_sync_trace_file(stream, orig_offset);
-
-	goto end;
-
 end:
-	return ret;
+	return written;
 }
 
 /*
@@ -384,7 +394,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	assert(err == 0);
 	/* write the subbuffer to the tracefile */
 	ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len);
-	if (ret < 0) {
+	if (ret != len) {
 		/*
 		 * display the error but continue processing to try
 		 * to release the subbuffer
