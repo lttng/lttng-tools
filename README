@@ -92,6 +92,9 @@ PACKAGE CONTENTS:
 	- libhashtable (internal)
 	  Library wrapper over URCU hashtables.
 
+	- lttng-relayd
+	  The relay daemon used for network streaming
+
     - lttng-consumerd
       The consumer daemon which uses libconsumer.
 

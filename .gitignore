@@ -34,6 +34,7 @@ config/
 src/bin/lttng-sessiond/lttng-sessiond
 src/bin/lttng/lttng
 src/bin/lttng-consumerd/lttng-consumerd
+src/bin/lttng-relayd/lttng-relayd
 
 # Tests
 test_sessions

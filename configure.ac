@@ -193,6 +193,7 @@ AC_CONFIG_FILES([
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile
 	src/bin/lttng-sessiond/Makefile
+	src/bin/lttng-relayd/Makefile
 	src/bin/lttng/Makefile
 	tests/Makefile
 	tests/kernel/Makefile
