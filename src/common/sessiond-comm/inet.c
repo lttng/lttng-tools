@@ -49,7 +49,7 @@ static const struct lttcomm_proto_ops inet_ops = {
  */
 int lttcomm_create_inet_sock(struct lttcomm_sock *sock, int type, int proto)
 {
-	int val, ret;
+	int val = 1, ret;
 
 	/* Create server socket */
 	if ((sock->fd = socket(PF_INET, type, proto)) < 0) {
@@ -136,7 +136,7 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 		goto end;
 	}
 
-	new_sock = lttcomm_alloc_sock(LTTCOMM_INET, sock->proto);
+	new_sock = lttcomm_alloc_sock(sock->proto);
 	if (new_sock == NULL) {
 		goto error;
 	}
@@ -150,6 +150,7 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 	}
 
 	new_sock->fd = new_fd;
+	new_sock->ops = &inet_ops;
 
 end:
 	return new_sock;
@@ -274,7 +275,7 @@ int lttcomm_close_inet_sock(struct lttcomm_sock *sock)
 {
 	int ret;
 
-	/* Don't try to close an invalid mark socket */
+	/* Don't try to close an invalid marked socket */
 	if (sock->fd == -1) {
 		return 0;
 	}

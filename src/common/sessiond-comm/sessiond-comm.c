@@ -138,6 +138,11 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_USTCONSUMERD) ] = "No UST consumer detected",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_KERNCONSUMERD) ] = "No kernel consumer detected",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_EVENT_EXIST_LOGLEVEL) ] = "Event already enabled with different loglevel",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_URI_DATA_MISS) ] = "Missing data path URI",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_URI_CTRL_MISS) ] = "Missing control data path URI",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_ENABLE_CONSUMER_FAIL) ] = "Enabling consumer failed",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_RELAYD_SESSION_FAIL) ] = "Unable to create session on lttng-relayd",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_RELAYD_VERSION_FAIL) ] = "Relay daemon not compatible",
 };
 
 /*
@@ -158,9 +163,49 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 }
 
 /*
- * Alloc lttcomm socket and set protocol.
+ * Create socket from an already allocated lttcomm socket structure and init
+ * sockaddr in the lttcomm sock.
  */
-static struct lttcomm_sock *alloc_sock(enum lttcomm_sock_proto proto)
+int lttcomm_create_sock(struct lttcomm_sock *sock)
+{
+	int ret, _sock_type, _sock_proto, domain;
+
+	assert(sock);
+
+	domain = sock->sockaddr.type;
+	if (domain != LTTCOMM_INET && domain != LTTCOMM_INET6) {
+		ERR("Create socket of unknown domain %d", domain);
+		ret = -1;
+		goto error;
+	}
+
+	switch (sock->proto) {
+	case LTTCOMM_SOCK_UDP:
+		_sock_type = SOCK_DGRAM;
+		_sock_proto = IPPROTO_UDP;
+		break;
+	case LTTCOMM_SOCK_TCP:
+		_sock_type = SOCK_STREAM;
+		_sock_proto = IPPROTO_TCP;
+		break;
+	default:
+		ret = -1;
+		goto error;
+	}
+
+	ret = net_families[domain].create(sock, _sock_type, _sock_proto);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Return allocated lttcomm socket structure.
+ */
+struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto)
 {
 	struct lttcomm_sock *sock;
 
@@ -171,71 +216,54 @@ static struct lttcomm_sock *alloc_sock(enum lttcomm_sock_proto proto)
 	}
 
 	sock->proto = proto;
+	sock->fd = -1;
 
 end:
 	return sock;
 }
 
 /*
- * Create socket from an already allocated lttcomm socket structure.
+ * Return an allocated lttcomm socket structure and copy src content into
+ * the newly created socket.
+ *
+ * This is mostly useful when lttcomm_sock are passed between process where the
+ * fd and ops have to be changed within the correct address space.
  */
-int lttcomm_create_sock(struct lttcomm_sock *sock,
-		enum lttcomm_sock_domain domain, enum lttcomm_sock_proto proto)
+struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src)
 {
-	int ret, _sock_type, _sock_proto;
-
-	assert(sock);
-
-	switch (proto) {
-		case LTTCOMM_SOCK_UDP:
-			_sock_type = SOCK_DGRAM;
-			_sock_proto = IPPROTO_UDP;
-			break;
-		case LTTCOMM_SOCK_TCP:
-			_sock_type = SOCK_STREAM;
-			_sock_proto = IPPROTO_TCP;
-			break;
-		default:
-			ret = -1;
-			goto error;
-	}
-
-	ret = net_families[domain].create(sock, _sock_type, _sock_proto);
-	if (ret < 0) {
-		goto error;
-	}
-
-	sock->proto = proto;
-
-error:
-	return ret;
-}
-
-/*
- * Return allocated lttcomm socket structure.
- */
-struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_domain domain,
-		enum lttcomm_sock_proto proto)
-{
-	int ret;
 	struct lttcomm_sock *sock;
 
-	sock = alloc_sock(proto);
+	/* Safety net */
+	assert(src);
+
+	sock = lttcomm_alloc_sock(src->proto);
 	if (sock == NULL) {
 		goto alloc_error;
 	}
 
-	ret = lttcomm_create_sock(sock, domain, proto);
-	if (ret < 0) {
-		goto error;
-	}
+	lttcomm_copy_sock(sock, src);
 
-	return sock;
-
-error:
-	free(sock);
 alloc_error:
-	return NULL;
+	return sock;
+}
+
+/*
+ * Create and copy socket from an allocated lttcomm socket structure.
+ *
+ * This is mostly useful when lttcomm_sock are passed between process where the
+ * fd and ops have to be changed within the correct address space.
+ */
+void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
+{
+	/* Safety net */
+	assert(dst);
+	assert(src);
+
+	dst->proto = src->proto;
+	dst->fd = src->fd;
+	dst->ops = src->ops;
+	/* Copy sockaddr information from original socket */
+	memcpy(&dst->sockaddr, &src->sockaddr, sizeof(dst->sockaddr));
 }
 
 /*
@@ -259,6 +287,7 @@ int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
 			&sockaddr->addr.sin.sin_addr);
 	if (ret < 1) {
 		ret = -1;
+		ERR("%s with port %d: unrecognized IPv4 address", ip, port);
 		goto error;
 	}
 	memset(sockaddr->addr.sin.sin_zero, 0, sizeof(sockaddr->addr.sin.sin_zero));
@@ -293,4 +322,66 @@ int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 
 error:
 	return ret;
+}
+
+/*
+ * Return allocated lttcomm socket structure from lttng URI.
+ */
+struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
+{
+	int ret;
+	int _sock_proto;
+	struct lttcomm_sock *sock = NULL;
+
+	/* Safety net */
+	assert(uri);
+
+	/* Check URI protocol */
+	if (uri->proto == LTTNG_TCP) {
+		_sock_proto = LTTCOMM_SOCK_TCP;
+	} else {
+		ERR("Relayd invalid URI proto: %d", uri->proto);
+		goto alloc_error;
+	}
+
+	sock = lttcomm_alloc_sock(_sock_proto);
+	if (sock == NULL) {
+		goto alloc_error;
+	}
+
+	/* Check destination type */
+	if (uri->dtype == LTTNG_DST_IPV4) {
+		ret = lttcomm_init_inet_sockaddr(&sock->sockaddr, uri->dst.ipv4,
+				uri->port);
+		if (ret < 0) {
+			goto error;
+		}
+	} else if (uri->dtype == LTTNG_DST_IPV6) {
+		ret = lttcomm_init_inet6_sockaddr(&sock->sockaddr, uri->dst.ipv6,
+				uri->port);
+		if (ret < 0) {
+			goto error;
+		}
+	} else {
+		/* Command URI is invalid */
+		ERR("Relayd invalid URI dst type: %d", uri->dtype);
+		goto error;
+	}
+
+	return sock;
+
+error:
+	lttcomm_destroy_sock(sock);
+alloc_error:
+	return NULL;
+}
+
+/*
+ * Destroy and free lttcomm socket.
+ */
+void lttcomm_destroy_sock(struct lttcomm_sock *sock)
+{
+	if (sock != NULL) {
+		free(sock);
+	}
 }
