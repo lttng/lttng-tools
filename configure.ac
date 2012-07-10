@@ -162,6 +162,10 @@ AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 AC_SYS_LARGEFILE
 AC_PROG_CC
 LT_INIT
+AC_PROG_YACC
+AC_PROG_LEX
+
+AC_DEFUN([AC_PROG_BISON], [AC_CHECK_PROGS(BISON, bison, bison)])
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
