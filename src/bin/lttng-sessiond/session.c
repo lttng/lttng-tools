@@ -64,14 +64,12 @@ static unsigned int add_session_list(struct ltt_session *ls)
  * Delete a ltt_session structure to the global list.
  *
  * The caller MUST acquire the session list lock before.
+ * The session list count CANNOT be decremented, as it is used as unique
+ * identifier for the session in UST app hash table lookups.
  */
 static void del_session_list(struct ltt_session *ls)
 {
 	cds_list_del(&ls->list);
-	/* Sanity check */
-	if (ltt_session_list.count > 0) {
-		ltt_session_list.count--;
-	}
 }
 
 /*
