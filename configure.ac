@@ -188,6 +188,7 @@ AC_CONFIG_FILES([
 	src/common/hashtable/Makefile
 	src/common/sessiond-comm/Makefile
 	src/common/compat/Makefile
+	src/common/relayd/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/bin/Makefile

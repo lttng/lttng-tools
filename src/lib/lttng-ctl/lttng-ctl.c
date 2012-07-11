@@ -75,19 +75,19 @@ static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src
 {
 	if (src && dst) {
 		switch (src->type) {
-			case LTTNG_DOMAIN_KERNEL:
-			case LTTNG_DOMAIN_UST:
-			/*
-			case LTTNG_DOMAIN_UST_EXEC_NAME:
-			case LTTNG_DOMAIN_UST_PID:
-			case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-			*/
-				memcpy(dst, src, sizeof(struct lttng_domain));
-				break;
-			default:
-				memset(dst, 0, sizeof(struct lttng_domain));
-				dst->type = LTTNG_DOMAIN_KERNEL;
-				break;
+		case LTTNG_DOMAIN_KERNEL:
+		case LTTNG_DOMAIN_UST:
+		/*
+		case LTTNG_DOMAIN_UST_EXEC_NAME:
+		case LTTNG_DOMAIN_UST_PID:
+		case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+		*/
+			memcpy(dst, src, sizeof(struct lttng_domain));
+			break;
+		default:
+			memset(dst, 0, sizeof(struct lttng_domain));
+			dst->type = LTTNG_DOMAIN_KERNEL;
+			break;
 		}
 	}
 }
@@ -737,6 +737,39 @@ int lttng_create_session(const char *name, const char *path)
 }
 
 /*
+ * Create a new tracing session using a name, URIs and a consumer enable flag.
+ */
+int lttng_create_session_uri(const char *name, struct lttng_uri *ctrl_uri,
+		struct lttng_uri *data_uri, unsigned int enable_consumer)
+{
+	struct lttcomm_session_msg lsm;
+
+	/* Name and ctrl_uri are mandatory */
+	if (name == NULL || ctrl_uri == NULL) {
+		return -1;
+	}
+
+	lsm.cmd_type = LTTNG_CREATE_SESSION_URI;
+
+	copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+	/* Anything bigger than zero, the consumer(s) will be enabled */
+	lsm.u.create_uri.enable_consumer = enable_consumer;
+	memcpy(&lsm.u.create_uri.ctrl_uri, ctrl_uri,
+			sizeof(lsm.u.create_uri.ctrl_uri));
+	if (data_uri) {
+		/*
+		 * The only possible scenario where data_uri is NULL is for a local
+		 * consumer where the output is at a specified path name on the
+		 * filesystem.
+		 */
+		memcpy(&lsm.u.create_uri.data_uri, data_uri,
+				sizeof(lsm.u.create_uri.data_uri));
+	}
+
+	return ask_sessiond(&lsm, NULL);
+}
+
+/*
  *  Destroy session using name.
  *  Returns size of returned session payload data or a negative error code.
  */
@@ -978,6 +1011,74 @@ int lttng_session_daemon_alive(void)
 
 	/* Is alive */
 	return 1;
+}
+
+/*
+ * Set URI for a consumer for a session and domain.
+ *
+ * Return 0 on success, else a negative value.
+ */
+int lttng_set_consumer_uri(struct lttng_handle *handle, struct lttng_uri *uri)
+{
+	struct lttcomm_session_msg lsm;
+
+	if (handle == NULL || uri == NULL) {
+		return -1;
+	}
+
+	lsm.cmd_type = LTTNG_SET_CONSUMER_URI;
+
+	copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	memcpy(&lsm.u.uri, uri, sizeof(lsm.u.uri));
+
+	return ask_sessiond(&lsm, NULL);
+}
+
+/*
+ * Enable consumer for a session and domain.
+ *
+ * Return 0 on success, else a negative value.
+ */
+int lttng_enable_consumer(struct lttng_handle *handle)
+{
+	struct lttcomm_session_msg lsm;
+
+	if (handle == NULL) {
+		return -1;
+	}
+
+	lsm.cmd_type = LTTNG_ENABLE_CONSUMER;
+
+	copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	return ask_sessiond(&lsm, NULL);
+}
+
+/*
+ * Disable consumer for a session and domain.
+ *
+ * Return 0 on success, else a negative value.
+ */
+int lttng_disable_consumer(struct lttng_handle *handle)
+{
+	struct lttcomm_session_msg lsm;
+
+	if (handle == NULL) {
+		return -1;
+	}
+
+	lsm.cmd_type = LTTNG_DISABLE_CONSUMER;
+
+	copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	return ask_sessiond(&lsm, NULL);
 }
 
 /*

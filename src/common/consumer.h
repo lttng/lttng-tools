@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
- * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *               2012 - David Goulet <dgoulet@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -27,6 +28,7 @@
 
 #include <common/hashtable/hashtable.h>
 #include <common/compat/fcntl.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 
 /*
  * When the receiving thread dies, we need to have a way to make the polling
@@ -51,6 +53,7 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_UPDATE_STREAM,
 	/* inform the consumer to quit when all fd has hang up */
 	LTTNG_CONSUMER_STOP,
+	LTTNG_CONSUMER_ADD_RELAYD_SOCKET,
 };
 
 /* State of each fd in consumer */
@@ -92,6 +95,7 @@ struct lttng_ust_lib_ring_buffer;
  */
 struct lttng_consumer_stream {
 	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_ulong waitfd_node;
 	struct lttng_consumer_channel *chan;	/* associated channel */
 	/*
 	 * key is the key used by the session daemon to refer to the
@@ -118,6 +122,27 @@ struct lttng_consumer_stream {
 	/* UID/GID of the user owning the session to which stream belongs */
 	uid_t uid;
 	gid_t gid;
+	/* Network sequence number. Indicating on which relayd socket it goes. */
+	int net_seq_idx;
+	/* Identify if the stream is the metadata */
+	unsigned int metadata_flag;
+	/* Used when the stream is set for network streaming */
+	uint64_t relayd_stream_id;
+};
+
+/*
+ * Internal representation of a relayd socket pair.
+ */
+struct consumer_relayd_sock_pair {
+	/* Network sequence number. */
+	int net_seq_idx;
+	/* Number of stream associated with this relayd */
+	unsigned int refcount;
+	pthread_mutex_t ctrl_sock_mutex;
+	/* Sockets information */
+	struct lttcomm_sock control_sock;
+	struct lttcomm_sock data_sock;
+	struct lttng_ht_node_ulong node;
 };
 
 /*
@@ -184,7 +209,6 @@ struct lttng_consumer_local_data {
  * Library-level data. One instance per process.
  */
 struct lttng_consumer_global_data {
-
 	/*
 	 * At this time, this lock is used to ensure coherence between the count
 	 * and number of element in the hash table. It's also a protection for
@@ -210,6 +234,12 @@ struct lttng_consumer_global_data {
 	 */
 	unsigned int need_update;
 	enum lttng_consumer_type type;
+
+	/*
+	 * Relayd socket(s) hashtable indexed by network sequence number. Each
+	 * stream has an index which associate the right relayd socket to use.
+	 */
+	struct lttng_ht *relayd_ht;
 };
 
 /*
@@ -263,7 +293,8 @@ extern int lttng_consumer_poll_socket(struct pollfd *kconsumer_sockpoll);
 
 extern int consumer_update_poll_array(
 		struct lttng_consumer_local_data *ctx, struct pollfd **pollfd,
-		struct lttng_consumer_stream **local_consumer_streams);
+		struct lttng_consumer_stream **local_consumer_streams,
+		struct lttng_ht *metadata_ht);
 
 extern struct lttng_consumer_stream *consumer_allocate_stream(
 		int channel_key, int stream_key,
@@ -273,7 +304,9 @@ extern struct lttng_consumer_stream *consumer_allocate_stream(
 		enum lttng_event_output output,
 		const char *path_name,
 		uid_t uid,
-		gid_t gid);
+		gid_t gid,
+		int net_index,
+		int metadata_flag);
 extern int consumer_add_stream(struct lttng_consumer_stream *stream);
 extern void consumer_del_stream(struct lttng_consumer_stream *stream);
 extern void consumer_change_stream_state(int stream_key,
@@ -285,6 +318,14 @@ extern struct lttng_consumer_channel *consumer_allocate_channel(
 		uint64_t mmap_len,
 		uint64_t max_sb_size);
 int consumer_add_channel(struct lttng_consumer_channel *channel);
+
+/* lttng-relayd consumer command */
+int consumer_add_relayd(struct consumer_relayd_sock_pair *relayd);
+struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
+		int net_seq_idx);
+struct consumer_relayd_sock_pair *consumer_find_relayd(int key);
+int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,
+		size_t data_size);
 
 extern struct lttng_consumer_local_data *lttng_consumer_create(
 		enum lttng_consumer_type type,

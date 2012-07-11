@@ -15,17 +15,24 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _KERNEL_CONSUMER_H
-#define _KERNEL_CONSUMER_H
-
 #include <sys/types.h>
 
-#include "consumer.h"
+#include <common/sessiond-comm/sessiond-comm.h>
+
 #include "trace-kernel.h"
 
-int kernel_consumer_send_channel_stream(struct consumer_data *consumer_data,
-		struct ltt_kernel_channel *channel, uid_t uid, gid_t gid);
-int kernel_consumer_send_session(struct consumer_data *consumer_data,
-		struct ltt_kernel_session *session);
+int kernel_consumer_send_channel_stream(int sock,
+		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session);
 
-#endif /* _KERNEL_CONSUMER_H */
+int kernel_consumer_send_session(int sock, struct ltt_kernel_session *session);
+
+int kernel_consumer_send_relayd_socket(int consumer_sock,
+		struct lttcomm_sock *sock, struct consumer_output *consumer,
+		enum lttng_stream_type type);
+
+int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
+		struct ltt_kernel_stream *stream, struct ltt_kernel_session *session);
+
+int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session);
+
+int kernel_consumer_add_channel(int sock, struct ltt_kernel_channel *channel);

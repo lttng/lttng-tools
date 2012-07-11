@@ -46,6 +46,9 @@
 #define RING_BUFFER_GET_MMAP_READ_OFFSET    _IOR(0xF6, 0x0B, unsigned long)
 /* flush the current sub-buffer */
 #define RING_BUFFER_FLUSH                   _IO(0xF6, 0x0C)
+/* map stream to stream id for network streaming */
+#define RING_BUFFER_SET_STREAM_ID           _IOW(0xF6, 0x0D, unsigned long)
+
 
 /* LTTng file descriptor ioctl */
 #define LTTNG_KERNEL_SESSION                _IO(0xF6, 0x40)
@@ -68,6 +71,8 @@
 #define LTTNG_KERNEL_STREAM                 _IO(0xF6, 0x60)
 #define LTTNG_KERNEL_EVENT                  \
 		_IOW(0xF6, 0x61, struct lttng_kernel_event)
+#define LTTNG_KERNEL_STREAM_ID_OFFSET       \
+		_IOR(0xF6, 0x62, unsigned long)
 
 /* Event and Channel FD ioctl */
 #define LTTNG_KERNEL_CONTEXT                \

@@ -75,6 +75,39 @@ end:
 }
 
 /*
+ * Set network address from string into dst. Supports both IP string and
+ * hostname.
+ */
+static int set_ip_address(const char *addr, int af, char *dst, size_t size)
+{
+	int ret;
+	unsigned char buf[sizeof(struct in6_addr)];
+	struct hostent *record;
+
+	/* Network protocol */
+	ret = inet_pton(af, addr, buf);
+	if (ret < 1) {
+		/* We consider the dst to be an hostname or an invalid IP char */
+		record = gethostbyname2(addr, af);
+		if (record == NULL) {
+			/* At this point, the IP or the hostname is bad */
+			printf("bad hostname\n");
+			goto error;
+		}
+
+		/* Translate IP to string */
+		(void) inet_ntop(af, record->h_addr_list[0], dst, size);
+	} else {
+		memcpy(dst, addr, size);
+	}
+
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
  * Compare two URIs.
  *
  * Return 0 if equal else 1.
@@ -110,41 +143,23 @@ struct lttng_uri *uri_create(void)
 	return uri;
 }
 
-static int set_ip_address(const char *addr, int af, char *dst, size_t size)
-{
-	int ret;
-	unsigned char buf[sizeof(struct in6_addr)];
-	struct hostent *record;
-
-	/* Network protocol */
-	ret = inet_pton(af, addr, buf);
-	if (ret < 1) {
-		/* We consider the dst to be an hostname or an invalid IP char */
-		record = gethostbyname2(addr, af);
-		if (record == NULL) {
-			/* At this point, the IP or the hostname is bad */
-			printf("bad hostname\n");
-			goto error;
-		}
-
-		/* Translate IP to string */
-		(void) inet_ntop(af, record->h_addr_list[0], dst, size);
-	} else {
-		memcpy(dst, addr, size);
-	}
-
-	return 0;
-
-error:
-	return -1;
-}
-
+/*
+ * Parses a string URI to a lttng_uri. This function can potentially return
+ * more than one URI in uris so the size of the array is returned and uris is
+ * allocated and populated. Caller must free(3) the array.
+ *
+ * This function can not detect the stream type of the URI so the caller has to
+ * make sure the correct type (stype) is set on the return URI(s). The default
+ * port must also be set by the caller if the returned URI has its port set to
+ * zero.
+ */
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 {
 	int ret;
+	size_t str_offset = 0;
 	/* Size of the uris array. Default is 1 */
 	ssize_t size = 1;
-	char net[6], dst[LTTNG_MAX_DNNAME + 1];
+	char net[6], dst[LTTNG_MAX_DNNAME + 1], subdir[PATH_MAX];
 	unsigned int ctrl_port = 0;
 	unsigned int data_port = 0;
 	struct lttng_uri *uri;
@@ -164,7 +179,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		goto error;
 	}
 
-	DBG3("URI protocol : %s", str_uri);
+	DBG3("URI string: %s", str_uri);
 
 	proto = validate_protocol(net);
 	if (proto == NULL) {
@@ -178,12 +193,27 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		size = 2;
 	}
 
+	memset(subdir, 0, sizeof(subdir));
+	str_offset += strlen(net);
+
 	/* Parse the rest of the URI */
-	ret = sscanf(str_uri + strlen(net), "://%255[^:]:%u:%u", dst,
-			&ctrl_port, &data_port);
-	if (ret < 0) {
-		printf("bad URI\n");
-		goto error;
+	if (sscanf(str_uri + str_offset, "://%255[^:]:%u:%u/%s", dst, &ctrl_port,
+			&data_port, subdir) == 4) {
+		/* All set */
+	} else if (sscanf(str_uri + str_offset, "://%255[^:]:%u:%u", dst,
+				&ctrl_port, &data_port) == 3) {
+	} else if (sscanf(str_uri + str_offset, "://%255[^:]:%u/%s", dst,
+				&ctrl_port, subdir) == 3) {
+	} else if (sscanf(str_uri + str_offset, "://%255[^:]:%u", dst,
+				&ctrl_port) == 2) {
+	} else if (sscanf(str_uri + str_offset, "://%255[^/]/%s", dst,
+				subdir) == 2) {
+	} else {
+		ret = sscanf(str_uri + str_offset, "://%255[^:]", dst);
+		if (ret < 0) {
+			ERR("Bad URI");
+			goto error;
+		}
 	}
 
 	/* We have enough valid information to create URI(s) object */
@@ -199,9 +229,10 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	uri[0].dtype = proto->dtype;
 	uri[0].proto = proto->type;
 	uri[0].port = ctrl_port;
+	strncpy(uri[0].subdir, subdir, sizeof(uri[0].subdir));
 
-	DBG3("URI dtype: %d, proto: %d, port: %d", proto->dtype, proto->type,
-			ctrl_port);
+	DBG3("URI dtype: %d, proto: %d, host: %s, subdir: %s, ctrl: %d, data: %d",
+			proto->dtype, proto->type, dst, subdir, ctrl_port, data_port);
 
 	switch (proto->code) {
 	case P_FILE:

@@ -70,6 +70,18 @@ struct ltt_session {
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
+	/*
+	 * Network session handle. A value of 0 means that there is no remote
+	 * session established.
+	 */
+	uint64_t net_handle;
+	/*
+	 * This consumer is only set when the create_session_uri call is made.
+	 * This contains the temporary information for a consumer output. Upon
+	 * creation of the UST or kernel session, this consumer, if available, is
+	 * copied into those sessions.
+	 */
+	struct consumer_output *consumer;
 };
 
 /* Prototypes */

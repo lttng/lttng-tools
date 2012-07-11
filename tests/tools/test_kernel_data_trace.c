@@ -96,7 +96,6 @@ static void create_kernel_metadata(void)
 
 	printf("Validating kernel session metadata: ");
 	assert(kern->metadata->fd == -1);
-	assert(strlen(kern->metadata->pathname));
 	assert(kern->metadata->conf != NULL);
 	assert(kern->metadata->conf->attr.overwrite
 			== DEFAULT_CHANNEL_OVERWRITE);
@@ -130,7 +129,6 @@ static void create_kernel_channel(void)
 	printf("Validating kernel channel: ");
 	assert(chan->fd == -1);
 	assert(chan->enabled == 1);
-	assert(strcmp(PATH1, chan->pathname) == 0);
 	assert(chan->stream_count == 0);
 	assert(chan->ctx == NULL);
 	assert(chan->channel->attr.overwrite  == attr.attr.overwrite);
@@ -174,13 +172,12 @@ static void create_kernel_stream(void)
 	struct ltt_kernel_stream *stream;
 
 	printf("Creating kernel stream: ");
-	stream = trace_kernel_create_stream();
+	stream = trace_kernel_create_stream("stream1", 0);
 	assert(stream != NULL);
 	PRINT_OK();
 
 	printf("Validating kernel stream: ");
 	assert(stream->fd == -1);
-	assert(stream->pathname == NULL);
 	assert(stream->state == 0);
 	PRINT_OK();
 

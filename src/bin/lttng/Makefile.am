@@ -9,6 +9,8 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/disable_channels.c commands/add_context.c \
 				commands/set_session.c commands/version.c \
 				commands/calibrate.c commands/view.c \
+				commands/enable_consumer.c commands/disable_consumer.c \
 				utils.c utils.h lttng.c
 
-lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
+lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
+			  $(top_builddir)/src/common/libcommon.la

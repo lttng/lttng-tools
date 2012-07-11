@@ -23,6 +23,8 @@
 #include <lttng/lttng.h>
 #include <common/lttng-kernel.h>
 
+#include "consumer.h"
+
 /* Kernel event list */
 struct ltt_kernel_event_list {
 	struct cds_list_head head;
@@ -55,7 +57,6 @@ struct ltt_kernel_event {
 struct ltt_kernel_channel {
 	int fd;
 	int enabled;
-	char *pathname;
 	unsigned int stream_count;
 	unsigned int event_count;
 	/*
@@ -72,15 +73,15 @@ struct ltt_kernel_channel {
 /* Metadata */
 struct ltt_kernel_metadata {
 	int fd;
-	char *pathname;
 	struct lttng_channel *conf;
 };
 
 /* Channel stream */
 struct ltt_kernel_stream {
 	int fd;
-	char *pathname;
 	int state;
+	/* Format is %s_%d respectively channel name and CPU number. */
+	char name[LTTNG_SYMBOL_NAME_LEN];
 	struct cds_list_head list;
 };
 
@@ -98,6 +99,14 @@ struct ltt_kernel_session {
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
+	/*
+	 * Two consumer_output object are needed where one is needed for the
+	 * current output object and the second one is the temporary object used to
+	 * store URI being set by the lttng_set_consumer_uri call. Once
+	 * lttng_enable_consumer is called, the two pointers are swapped.
+	 */
+	struct consumer_output *consumer;
+	struct consumer_output *tmp_consumer;
 };
 
 /*
@@ -115,7 +124,8 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path);
 struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan, char *path);
 struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev);
 struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path);
-struct ltt_kernel_stream *trace_kernel_create_stream(void);
+struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
+		unsigned int count);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if

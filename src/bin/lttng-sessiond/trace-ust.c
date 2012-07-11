@@ -109,6 +109,26 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 	/* Alloc UST global domain channels' HT */
 	lus->domain_global.channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 
+	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
+	if (lus->consumer == NULL) {
+		goto error;
+	}
+
+	/*
+	 * The tmp_consumer stays NULL until a set_consumer_uri command is
+	 * executed. At this point, the consumer should be nullify until an
+	 * enable_consumer command. This assignment is symbolic since we've zmalloc
+	 * the struct.
+	 */
+	lus->tmp_consumer = NULL;
+
+	/* Use the default consumer output which is the tracing session path. */
+	ret = snprintf(lus->consumer->dst.trace_path, PATH_MAX, "%s/ust", path);
+	if (ret < 0) {
+		PERROR("snprintf UST consumer trace path");
+		goto error;
+	}
+
 	/* Set session path */
 	ret = snprintf(lus->pathname, PATH_MAX, "%s/ust", path);
 	if (ret < 0) {

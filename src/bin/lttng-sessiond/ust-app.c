@@ -797,8 +797,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->uid = usess->uid;
 	ua_sess->gid = usess->gid;
 
-	ret = snprintf(ua_sess->path, PATH_MAX, "%s/%s-%d-%s", usess->pathname,
-			app->name, app->pid, datetime);
+	ret = snprintf(ua_sess->path, PATH_MAX, "%s-%d-%s/", app->name, app->pid,
+			datetime);
 	if (ret < 0) {
 		PERROR("asprintf UST shadow copy session");
 		/* TODO: We cannot return an error from here.. */
@@ -1225,13 +1225,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			goto error;
 		}
 
-		ret = run_as_mkdir(ua_sess->path, S_IRWXU | S_IRWXG,
-				ua_sess->uid, ua_sess->gid);
-		if (ret < 0) {
-			PERROR("mkdir UST metadata");
-			goto error;
-		}
-
 		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
 				"%s/metadata", ua_sess->path);
 		if (ret < 0) {
@@ -1548,7 +1541,6 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					goto rcu_error;
 				}
 			}
-			
 
 			memcpy(tmp[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
 			tmp[count].type = uiter.type;
@@ -2100,9 +2092,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 			/* Order is important */
 			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
-			ret = snprintf(ustream->pathname, PATH_MAX, "%s/%s_%u",
-					ua_sess->path, ua_chan->name,
-					ua_chan->streams.count++);
+			ret = snprintf(ustream->name, sizeof(ustream->name), "%s_%u",
+					ua_chan->name, ua_chan->streams.count++);
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
 				/*
@@ -2111,8 +2102,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				 */
 				continue;
 			}
-			DBG2("UST stream %d ready at %s", ua_chan->streams.count,
-					ustream->pathname);
+			DBG2("UST stream %d ready (handle: %d)", ua_chan->streams.count,
+					ustream->handle);
 		}
 	}
 
@@ -2129,7 +2120,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	/* Setup UST consumer socket and send fds to it */
-	ret = ust_consumer_send_session(consumerd_fd, ua_sess);
+	ret = ust_consumer_send_session(consumerd_fd, ua_sess, usess->consumer);
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}

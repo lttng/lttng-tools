@@ -40,6 +40,10 @@
 #define DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH       "/lttng-ust-apps-wait"
 #define DEFAULT_HOME_APPS_WAIT_SHM_PATH         "/lttng-ust-apps-wait-%u"
 
+/* Default directory where the trace are written in per domain */
+#define DEFAULT_KERNEL_TRACE_DIR                "/kernel"
+#define DEFAULT_UST_TRACE_DIR                   "/ust"
+
 /* Default consumer paths */
 #define DEFAULT_CONSUMERD_RUNDIR                "%s"
 

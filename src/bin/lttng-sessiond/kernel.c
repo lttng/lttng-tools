@@ -169,8 +169,7 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
 
-	DBG("Kernel channel %s created (fd: %d and path: %s)",
-			lkc->channel->name, lkc->fd, lkc->pathname);
+	DBG("Kernel channel %s created (fd: %d)", lkc->channel->name, lkc->fd);
 
 	return 0;
 
@@ -377,7 +376,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session, char *path)
 
 	session->metadata = lkm;
 
-	DBG("Kernel metadata opened (fd: %d and path: %s)", lkm->fd, lkm->pathname);
+	DBG("Kernel metadata opened (fd: %d)", lkm->fd);
 
 	return 0;
 
@@ -448,7 +447,7 @@ int kernel_metadata_flush_buffer(int fd)
 
 	ret = kernctl_buffer_flush(fd);
 	if (ret < 0) {
-		ERR("Fail to flush metadata buffers %d (ret: %d", fd, ret);
+		ERR("Fail to flush metadata buffers %d (ret: %d)", fd, ret);
 	}
 
 	return 0;
@@ -505,11 +504,11 @@ error:
  */
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 {
-	int ret;
+	int ret, count = 0;
 	struct ltt_kernel_stream *lks;
 
 	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
-		lks = trace_kernel_create_stream();
+		lks = trace_kernel_create_stream(channel->channel->name, count);
 		if (lks == NULL) {
 			ret = close(ret);
 			if (ret) {
@@ -525,19 +524,15 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 			PERROR("fcntl session fd");
 		}
 
-		ret = asprintf(&lks->pathname, "%s/%s_%d",
-				channel->pathname, channel->channel->name, channel->stream_count);
-		if (ret < 0) {
-			PERROR("asprintf kernel create stream");
-			goto error;
-		}
-
 		/* Add stream to channe stream list */
 		cds_list_add(&lks->list, &channel->stream_list.head);
 		channel->stream_count++;
 
-		DBG("Kernel stream %d created (fd: %d, state: %d, path: %s)",
-				channel->stream_count, lks->fd, lks->state, lks->pathname);
+		/* Increment counter which represent CPU number. */
+		count++;
+
+		DBG("Kernel stream %s created (fd: %d, state: %d)", lks->name, lks->fd,
+				lks->state);
 	}
 
 	return channel->stream_count;

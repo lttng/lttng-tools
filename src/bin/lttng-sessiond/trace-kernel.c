@@ -24,6 +24,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 
+#include "consumer.h"
 #include "trace-kernel.h"
 
 /*
@@ -103,6 +104,27 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	lks->consumer_fd = -1;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
+	/* Create default consumer output object */
+	lks->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
+	if (lks->consumer == NULL) {
+		goto error;
+	}
+
+	/*
+	 * The tmp_consumer stays NULL until a set_consumer_uri command is
+	 * executed. At this point, the consumer should be nullify until an
+	 * enable_consumer command. This assignment is symbolic since we've zmalloc
+	 * the struct.
+	 */
+	lks->tmp_consumer = NULL;
+
+	/* Use the default consumer output which is the tracing session path. */
+	ret = snprintf(lks->consumer->dst.trace_path, PATH_MAX, "%s/kernel", path);
+	if (ret < 0) {
+		PERROR("snprintf consumer trace path");
+		goto error;
+	}
+
 	/* Set session path */
 	ret = asprintf(&lks->trace_path, "%s/kernel", path);
 	if (ret < 0) {
@@ -121,9 +143,9 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan, char *path)
+struct ltt_kernel_channel *trace_kernel_create_channel(
+		struct lttng_channel *chan, char *path)
 {
-	int ret;
 	struct ltt_kernel_channel *lkc;
 
 	lkc = zmalloc(sizeof(struct ltt_kernel_channel));
@@ -147,12 +169,6 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
-	/* Set default trace output path */
-	ret = asprintf(&lkc->pathname, "%s", path);
-	if (ret < 0) {
-		PERROR("asprintf kernel create channel");
-		goto error;
-	}
 
 	return lkc;
 
@@ -240,7 +256,6 @@ error:
  */
 struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 {
-	int ret;
 	struct ltt_kernel_metadata *lkm;
 	struct lttng_channel *chan;
 
@@ -262,12 +277,6 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
 	/* Init metadata */
 	lkm->fd = -1;
 	lkm->conf = chan;
-	/* Set default metadata path */
-	ret = asprintf(&lkm->pathname, "%s/metadata", path);
-	if (ret < 0) {
-		PERROR("asprintf kernel metadata");
-		goto error;
-	}
 
 	return lkm;
 
@@ -283,8 +292,10 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_stream *trace_kernel_create_stream(void)
+struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
+		unsigned int count)
 {
+	int ret;
 	struct ltt_kernel_stream *lks;
 
 	lks = zmalloc(sizeof(struct ltt_kernel_stream));
@@ -293,9 +304,16 @@ struct ltt_kernel_stream *trace_kernel_create_stream(void)
 		goto error;
 	}
 
+	/* Set name */
+	ret = snprintf(lks->name, sizeof(lks->name), "%s_%d", name, count);
+	if (ret < 0) {
+		PERROR("snprintf stream name");
+		goto error;
+	}
+	lks->name[sizeof(lks->name) - 1] = '\0';
+
 	/* Init stream */
 	lks->fd = -1;
-	lks->pathname = NULL;
 	lks->state = 0;
 
 	return lks;
@@ -322,7 +340,6 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 	/* Remove from stream list */
 	cds_list_del(&stream->list);
 
-	free(stream->pathname);
 	free(stream);
 }
 
@@ -383,7 +400,6 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	/* Remove from channel list */
 	cds_list_del(&channel->list);
 
-	free(channel->pathname);
 	free(channel->channel);
 	free(channel->ctx);
 	free(channel);
@@ -406,7 +422,6 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 	}
 
 	free(metadata->conf);
-	free(metadata->pathname);
 	free(metadata);
 }
 
@@ -442,6 +457,10 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	cds_list_for_each_entry_safe(channel, ctmp, &session->channel_list.head, list) {
 		trace_kernel_destroy_channel(channel);
 	}
+
+	/* Wipe consumer output object */
+	consumer_destroy_output(session->consumer);
+	consumer_destroy_output(session->tmp_consumer);
 
 	free(session->trace_path);
 	free(session);

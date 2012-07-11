@@ -221,6 +221,7 @@ static int fuzzing_destroy_args(void)
 static int two_session_same_name(void)
 {
 	int ret;
+	struct ltt_session *sess;
 
 	ret = create_one_session(SESSION1, PATH1);
 	if (ret < 0) {
@@ -228,8 +229,8 @@ static int two_session_same_name(void)
 		return -1;
 	}
 
-	ret = create_one_session(SESSION1, PATH1);
-	if (ret < 0) {
+	sess = session_find_by_name(SESSION1);
+	if (sess) {
 		/* Success */
 		return 0;
 	}

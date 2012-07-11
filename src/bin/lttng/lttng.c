@@ -74,6 +74,8 @@ static struct cmd_struct commands[] =  {
 	{ "version", cmd_version},
 	{ "calibrate", cmd_calibrate},
 	{ "view", cmd_view},
+	{ "enable-consumer", cmd_enable_consumer},
+	{ "disable-consumer", cmd_disable_consumer},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -93,20 +95,22 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --sessiond-path PATH   Session daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
-	fprintf(ofp, "    add-context     Add context to event and/or channel\n");
-	fprintf(ofp, "    calibrate       Quantify LTTng overhead\n");
-	fprintf(ofp, "    create          Create tracing session\n");
-	fprintf(ofp, "    destroy         Tear down tracing session\n");
-	fprintf(ofp, "    enable-channel  Enable tracing channel\n");
-	fprintf(ofp, "    enable-event    Enable tracing event\n");
-	fprintf(ofp, "    disable-channel Disable tracing channel\n");
-	fprintf(ofp, "    disable-event   Disable tracing event\n");
-	fprintf(ofp, "    list            List possible tracing options\n");
-	fprintf(ofp, "    set-session     Set current session name\n");
-	fprintf(ofp, "    start           Start tracing\n");
-	fprintf(ofp, "    stop            Stop tracing\n");
-	fprintf(ofp, "    version         Show version information\n");
-	fprintf(ofp, "    view            Start trace viewer\n");
+	fprintf(ofp, "    add-context       Add context to event and/or channel\n");
+	fprintf(ofp, "    calibrate         Quantify LTTng overhead\n");
+	fprintf(ofp, "    create            Create tracing session\n");
+	fprintf(ofp, "    destroy           Tear down tracing session\n");
+	fprintf(ofp, "    enable-channel    Enable tracing channel\n");
+	fprintf(ofp, "    enable-event      Enable tracing event\n");
+	fprintf(ofp, "    disable-channel   Disable tracing channel\n");
+	fprintf(ofp, "    disable-event     Disable tracing event\n");
+	fprintf(ofp, "    enable-consumer   Enable local or streaming consumer\n");
+	fprintf(ofp, "    disable-consumer  Disable consumer\n");
+	fprintf(ofp, "    list              List possible tracing options\n");
+	fprintf(ofp, "    set-session       Set current session name\n");
+	fprintf(ofp, "    start             Start tracing\n");
+	fprintf(ofp, "    stop              Stop tracing\n");
+	fprintf(ofp, "    version           Show version information\n");
+	fprintf(ofp, "    view              Start trace viewer\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Each command also has its own -h, --help option.\n");
 	fprintf(ofp, "\n");

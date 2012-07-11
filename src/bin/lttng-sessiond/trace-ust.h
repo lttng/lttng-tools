@@ -25,6 +25,7 @@
 #include <lttng/lttng.h>
 #include <common/hashtable/hashtable.h>
 
+#include "consumer.h"
 #include "ust-ctl.h"
 
 /* UST Stream list */
@@ -51,6 +52,8 @@ struct ltt_ust_event {
 struct ltt_ust_stream {
 	int handle;
 	char pathname[PATH_MAX];
+	/* Format is %s_%d respectively channel name and CPU number. */
+	char name[LTTNG_SYMBOL_NAME_LEN];
 	struct lttng_ust_object_data *obj;
 	/* Using a list of streams to keep order. */
 	struct cds_list_head list;
@@ -111,6 +114,14 @@ struct ltt_ust_session {
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
+	/*
+	 * Two consumer_output object are needed where one is for the current
+	 * output object and the second one is the temporary object used to store
+	 * URI being set by the lttng_set_consumer_uri call. Once
+	 * lttng_enable_consumer is called, the two pointers are swapped.
+	 */
+	struct consumer_output *consumer;
+	struct consumer_output *tmp_consumer;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

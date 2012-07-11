@@ -87,21 +87,21 @@ enum lttng_loglevel_type {
  * Available loglevels.
  */
 enum lttng_loglevel {
-        LTTNG_LOGLEVEL_EMERG                  = 0,
-        LTTNG_LOGLEVEL_ALERT                  = 1,
-        LTTNG_LOGLEVEL_CRIT                   = 2,
-        LTTNG_LOGLEVEL_ERR                    = 3,
-        LTTNG_LOGLEVEL_WARNING                = 4,
-        LTTNG_LOGLEVEL_NOTICE                 = 5,
-        LTTNG_LOGLEVEL_INFO                   = 6,
-        LTTNG_LOGLEVEL_DEBUG_SYSTEM           = 7,
-        LTTNG_LOGLEVEL_DEBUG_PROGRAM          = 8,
-        LTTNG_LOGLEVEL_DEBUG_PROCESS          = 9,
-        LTTNG_LOGLEVEL_DEBUG_MODULE           = 10,
-        LTTNG_LOGLEVEL_DEBUG_UNIT             = 11,
-        LTTNG_LOGLEVEL_DEBUG_FUNCTION         = 12,
-        LTTNG_LOGLEVEL_DEBUG_LINE             = 13,
-        LTTNG_LOGLEVEL_DEBUG                  = 14,
+	LTTNG_LOGLEVEL_EMERG                  = 0,
+	LTTNG_LOGLEVEL_ALERT                  = 1,
+	LTTNG_LOGLEVEL_CRIT                   = 2,
+	LTTNG_LOGLEVEL_ERR                    = 3,
+	LTTNG_LOGLEVEL_WARNING                = 4,
+	LTTNG_LOGLEVEL_NOTICE                 = 5,
+	LTTNG_LOGLEVEL_INFO                   = 6,
+	LTTNG_LOGLEVEL_DEBUG_SYSTEM           = 7,
+	LTTNG_LOGLEVEL_DEBUG_PROGRAM          = 8,
+	LTTNG_LOGLEVEL_DEBUG_PROCESS          = 9,
+	LTTNG_LOGLEVEL_DEBUG_MODULE           = 10,
+	LTTNG_LOGLEVEL_DEBUG_UNIT             = 11,
+	LTTNG_LOGLEVEL_DEBUG_FUNCTION         = 12,
+	LTTNG_LOGLEVEL_DEBUG_LINE             = 13,
+	LTTNG_LOGLEVEL_DEBUG                  = 14,
 };
 
 /*
@@ -133,9 +133,9 @@ enum lttng_calibrate_type {
 
 /* Destination type of lttng URI */
 enum lttng_dst_type {
-	LTTNG_DST_IPV4,		/* IPv4 protocol */
-	LTTNG_DST_IPV6,		/* IPv6 protocol */
-	LTTNG_DST_PATH,		/* Local file system */
+	LTTNG_DST_IPV4                        = 1,
+	LTTNG_DST_IPV6                        = 2,
+	LTTNG_DST_PATH                        = 3,
 };
 
 /* Type of lttng URI where it is a final destination or a hop */
@@ -179,6 +179,7 @@ struct lttng_uri {
 	enum lttng_proto_type proto;
 	in_port_t port;
 	char padding[LTTNG_URI_PADDING1_LEN];
+	char subdir[PATH_MAX];
 	union {
 		char ipv4[INET_ADDRSTRLEN];
 		char ipv6[INET6_ADDRSTRLEN];
@@ -415,6 +416,14 @@ extern void lttng_destroy_handle(struct lttng_handle *handle);
 extern int lttng_create_session(const char *name, const char *path);
 
 /*
+ * Create a tracing sessioin using a name, URIs and a consumer enable flag.
+ * The control URI is mandatory for consumer local or network.
+ */
+extern int lttng_create_session_uri(const char *name,
+		struct lttng_uri *ctrl_uri, struct lttng_uri *data_uri,
+		unsigned int enable_consumer);
+
+/*
  * Destroy a tracing session.
  *
  * The session will not be usable anymore, tracing will be stopped for all
@@ -577,5 +586,25 @@ extern int lttng_calibrate(struct lttng_handle *handle,
  */
 extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr);
+
+/*
+ * Set URI for a consumer for a session and domain.
+ *
+ * For network streaming, both data and control stream type MUST be defined
+ * with a specific URIs. Default port are 5342 and 5343 respectively for
+ * control and data which uses the TCP protocol.
+ */
+extern int lttng_set_consumer_uri(struct lttng_handle *handle,
+		struct lttng_uri *uri);
+
+/*
+ * Enable the consumer for a session and domain.
+ */
+extern int lttng_enable_consumer(struct lttng_handle *handle);
+
+/*
+ * Disable consumer for a session and domain.
+ */
+extern int lttng_disable_consumer(struct lttng_handle *handle);
 
 #endif /* _LTTNG_H */

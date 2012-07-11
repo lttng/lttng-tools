@@ -166,12 +166,6 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	int ret;
 	struct ltt_session *new_session;
 
-	new_session = session_find_by_name(name);
-	if (new_session != NULL) {
-		ret = LTTCOMM_EXIST_SESS;
-		goto error_exist;
-	}
-
 	/* Allocate session data structure */
 	new_session = zmalloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
@@ -214,13 +208,16 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	new_session->uid = uid;
 	new_session->gid = gid;
 
-	ret = run_as_mkdir_recursive(new_session->path, S_IRWXU | S_IRWXG,
-			new_session->uid, new_session->gid);
-	if (ret < 0) {
-		if (ret != -EEXIST) {
-			ERR("Trace directory creation error");
-			ret = LTTCOMM_CREATE_DIR_FAIL;
-			goto error;
+	/* Mkdir if we have a valid path length */
+	if (strlen(new_session->path) > 0) {
+		ret = run_as_mkdir_recursive(new_session->path, S_IRWXU | S_IRWXG,
+				new_session->uid, new_session->gid);
+		if (ret < 0) {
+			if (ret != -EEXIST) {
+				ERR("Trace directory creation error");
+				ret = LTTCOMM_CREATE_DIR_FAIL;
+				goto error;
+			}
 		}
 	}
 
@@ -241,7 +238,6 @@ error_asprintf:
 		free(new_session);
 	}
 
-error_exist:
 error_malloc:
 	return ret;
 }
