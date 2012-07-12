@@ -37,6 +37,8 @@ int ustctl_create_event(int sock, struct lttng_ust_event *ev,
 int ustctl_add_context(int sock, struct lttng_ust_context *ctx,
 		struct lttng_ust_object_data *obj_data,
 		struct lttng_ust_object_data **context_data);
+int ustctl_set_filter(int sock, struct lttng_ust_filter_bytecode *bytecode,
+		struct lttng_ust_object_data *obj_data);
 
 int ustctl_enable(int sock, struct lttng_ust_object_data *object);
 int ustctl_disable(int sock, struct lttng_ust_object_data *object);

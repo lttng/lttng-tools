@@ -58,6 +58,7 @@
 #include "ust-consumer.h"
 #include "utils.h"
 #include "fd-limit.h"
+#include "filter.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -2732,6 +2733,46 @@ error:
 }
 
 /*
+ * Command LTTNG_SET_FILTER processed by the client thread.
+ */
+static int cmd_set_filter(struct ltt_session *session, int domain,
+		char *channel_name, char *event_name,
+		struct lttng_filter_bytecode *bytecode)
+{
+	int ret;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		ret = LTTCOMM_FATAL;
+		break;
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess = session->ust_session;
+
+		ret = filter_ust_set(usess, domain, bytecode, event_name, channel_name);
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+		break;
+	}
+#if 0
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+#endif
+	default:
+		ret = LTTCOMM_UND;
+		goto error;
+	}
+
+	ret = LTTCOMM_OK;
+
+error:
+	return ret;
+
+}
+
+/*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
  */
 static int cmd_enable_event(struct ltt_session *session, int domain,
@@ -3928,14 +3969,19 @@ error:
  * is set and ready for transmission before returning.
  *
  * Return any error encountered or 0 for success.
+ *
+ * "sock" is only used for special-case var. len data.
  */
-static int process_client_msg(struct command_ctx *cmd_ctx)
+static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
+		int *sock_error)
 {
 	int ret = LTTCOMM_OK;
 	int need_tracing_session = 1;
 	int need_domain;
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
+
+	*sock_error = 0;
 
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
@@ -4447,6 +4493,43 @@ skip_domain:
 				cmd_ctx->lsm->u.reg.path);
 		break;
 	}
+	case LTTNG_SET_FILTER:
+	{
+		struct lttng_filter_bytecode *bytecode;
+
+		if (cmd_ctx->lsm->u.filter.bytecode_len > 65336) {
+			ret = LTTCOMM_FILTER_INVAL;
+			goto error;
+		}
+		bytecode = zmalloc(cmd_ctx->lsm->u.filter.bytecode_len);
+		if (!bytecode) {
+			ret = LTTCOMM_FILTER_NOMEM;
+			goto error;
+		}
+		/* Receive var. len. data */
+		DBG("Receiving var len data from client ...");
+		ret = lttcomm_recv_unix_sock(sock, bytecode,
+				cmd_ctx->lsm->u.filter.bytecode_len);
+		if (ret <= 0) {
+			DBG("Nothing recv() from client var len data... continuing");
+			*sock_error = 1;
+			ret = LTTCOMM_FILTER_INVAL;
+			goto error;
+		}
+
+		if (bytecode->len + sizeof(*bytecode)
+				!= cmd_ctx->lsm->u.filter.bytecode_len) {
+			free(bytecode);
+			ret = LTTCOMM_FILTER_INVAL;
+			goto error;
+		}
+
+		ret = cmd_set_filter(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+				cmd_ctx->lsm->u.filter.channel_name,
+				cmd_ctx->lsm->u.filter.event_name,
+				bytecode);
+		break;
+	}
 	default:
 		ret = LTTCOMM_UND;
 		break;
@@ -4479,6 +4562,7 @@ init_setup_error:
 static void *thread_manage_clients(void *data)
 {
 	int sock = -1, ret, i, pollfd;
+	int sock_error;
 	uint32_t revents, nb_fd;
 	struct command_ctx *cmd_ctx = NULL;
 	struct lttng_poll_event events;
@@ -4611,13 +4695,22 @@ static void *thread_manage_clients(void *data)
 		 * informations for the client. The command context struct contains
 		 * everything this function may needs.
 		 */
-		ret = process_client_msg(cmd_ctx);
+		ret = process_client_msg(cmd_ctx, sock, &sock_error);
 		rcu_thread_offline();
 		if (ret < 0) {
+			if (sock_error) {
+				ret = close(sock);
+				if (ret) {
+					PERROR("close");
+				}
+				sock = -1;
+			}
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
 			 * this point, ret < 0 means that a zmalloc failed
-			 * (ENOMEM). Error detected but still accept command.
+			 * (ENOMEM). Error detected but still accept
+			 * command, unless a socket error has been
+			 * detected.
 			 */
 			clean_command_ctx(&cmd_ctx);
 			continue;

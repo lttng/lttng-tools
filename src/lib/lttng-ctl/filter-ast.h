@@ -152,15 +152,14 @@ struct filter_ast {
 const char *node_type(struct filter_node *node);
 
 struct ir_op;
-struct filter_bytecode;
 
 struct filter_parser_ctx {
 	yyscan_t scanner;
 	struct filter_ast *ast;
 	struct cds_list_head allocated_strings;
 	struct ir_op *ir_root;
-	struct filter_bytecode_alloc *bytecode;
-	struct filter_bytecode_alloc *bytecode_reloc;
+	struct lttng_filter_bytecode_alloc *bytecode;
+	struct lttng_filter_bytecode_alloc *bytecode_reloc;
 };
 
 struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input);

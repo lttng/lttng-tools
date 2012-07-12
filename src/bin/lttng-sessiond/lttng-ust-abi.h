@@ -168,6 +168,13 @@ struct lttng_ust_calibrate {
 	} u;
 };
 
+#define FILTER_BYTECODE_MAX_LEN		65535
+struct lttng_ust_filter_bytecode {
+	uint16_t len;
+	uint16_t reloc_offset;
+	char data[0];
+};
+
 #define _UST_CMD(minor)				(minor)
 #define _UST_CMDR(minor, type)			(minor)
 #define _UST_CMDW(minor, type)			(minor)

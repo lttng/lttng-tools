@@ -72,6 +72,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_START_TRACE,
 	LTTNG_STOP_TRACE,
 	LTTNG_LIST_TRACEPOINT_FIELDS,
+
 	/* Consumer */
 	LTTNG_DISABLE_CONSUMER,
 	LTTNG_ENABLE_CONSUMER,
@@ -83,6 +84,9 @@ enum lttcomm_sessiond_command {
 	RELAYD_UPDATE_SYNC_INFO,
 	RELAYD_VERSION,
 	RELAYD_SEND_METADATA,
+
+	/* Other tracer commands */
+	LTTNG_SET_FILTER,
 };
 
 /*
@@ -186,6 +190,9 @@ enum lttcomm_return_code {
 	LTTCOMM_ENABLE_CONSUMER_FAIL,   /* Enabling consumer failed */
 	LTTCOMM_RELAYD_SESSION_FAIL,    /* lttng-relayd create session failed */
 	LTTCOMM_RELAYD_VERSION_FAIL,    /* lttng-relayd not compatible */
+	LTTCOMM_FILTER_INVAL,		/* Invalid filter bytecode */
+	LTTCOMM_FILTER_NOMEM,		/* Lack of memory for filter bytecode */
+	LTTCOMM_FILTER_EXIST,		/* Filter already exist */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -280,7 +287,26 @@ struct lttcomm_session_msg {
 			struct lttng_uri ctrl_uri;
 			struct lttng_uri data_uri;
 		} create_uri;
+		struct {
+			char channel_name[NAME_MAX];
+			char event_name[NAME_MAX];
+			/* Length of following bytecode */
+			uint32_t bytecode_len;
+		} filter;
 	} u;
+};
+
+#define LTTNG_FILTER_MAX_LEN	65336
+
+/*
+ * Filter bytecode data. The reloc table is located at the end of the
+ * bytecode. It is made of tuples: (uint16_t, var. len. string). It
+ * starts at reloc_table_offset.
+ */
+struct lttng_filter_bytecode {
+	uint16_t len;	/* len of data */
+	uint16_t reloc_table_offset;
+	char data[0];
 };
 
 /*

@@ -15,7 +15,8 @@ liblttng_ctl_la_SOURCES = lttng-ctl.c \
 	align.h \
 	filter-ast.h \
 	filter-bytecode.h \
-	filter-ir.h
+	filter-ir.h \
+	memstream.h
 
 filter_grammar_test_SOURCES = filter-grammar-test.c
 filter_grammar_test_LDADD = liblttng-ctl.la

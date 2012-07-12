@@ -140,6 +140,20 @@ AC_CHECK_LIB([dl], [dlopen],
 AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBDL], [test "x$have_libdl" = "xyes"])
 AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBC_DL], [test "x$have_libc_dl" = "xyes"])
 
+# Check for fmemopen
+AC_CHECK_LIB([c], [fmemopen],
+[
+	AC_DEFINE_UNQUOTED([LTTNG_HAVE_FMEMOPEN], 1, [Has fmemopen support.])
+]
+)
+
+# Check for open_memstream
+AC_CHECK_LIB([c], [open_memstream],
+[
+	AC_DEFINE_UNQUOTED([LTTNG_HAVE_OPEN_MEMSTREAM], 1, [Has open_memstream support.])
+]
+)
+
 # Option to only build the consumer daemon and its libraries
 AC_ARG_WITH([consumerd-only],
 	AS_HELP_STRING([--with-consumerd-only],[Only build the consumer daemon [default=no]]),

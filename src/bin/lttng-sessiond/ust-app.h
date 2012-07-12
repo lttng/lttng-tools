@@ -28,6 +28,9 @@
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
+struct lttng_filter_bytecode;
+struct lttng_ust_filter_bytecode;
+
 extern int ust_consumerd64_fd, ust_consumerd32_fd;
 
 /*
@@ -71,6 +74,7 @@ struct ust_app_event {
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ht *ctx;
 	struct lttng_ht_node_str node;
+	struct lttng_ust_filter_bytecode *filter;
 };
 
 struct ust_app_channel {
@@ -168,6 +172,9 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_context *uctx);
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx);
+int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
+                struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct lttng_filter_bytecode *bytecode);
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);

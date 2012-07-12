@@ -32,6 +32,7 @@
 #include "ust-consumer.h"
 #include "ust-ctl.h"
 #include "fd-limit.h"
+#include "../../common/sessiond-comm/sessiond-comm.h"
 
 /*
  * Delete ust context safely. RCU read lock must be held before calling
@@ -65,6 +66,7 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 		assert(!ret);
 		delete_ust_app_ctx(sock, ua_ctx);
 	}
+	free(ua_event->filter);
 	lttng_ht_destroy(ua_event->ctx);
 
 	if (ua_event->obj != NULL) {
@@ -431,6 +433,31 @@ error:
 }
 
 /*
+ * Set the filter on the tracer.
+ */
+static
+int set_ust_event_filter(struct ust_app_event *ua_event,
+		struct ust_app *app)
+{
+	int ret;
+
+	if (!ua_event->filter) {
+		return 0;
+	}
+
+	ret = ustctl_set_filter(app->sock, ua_event->filter,
+			ua_event->obj);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG2("UST filter set successfully for event %s", ua_event->name);
+
+error:
+	return ret;
+}
+
+/*
  * Disable the specified event on to UST tracer for the UST session.
  */
 static int disable_ust_event(struct ust_app *app,
@@ -705,6 +732,16 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 	/* Copy event attributes */
 	memcpy(&ua_event->attr, &uevent->attr, sizeof(ua_event->attr));
 
+	/* Copy filter bytecode */
+	if (uevent->filter) {
+		ua_event->filter = zmalloc(sizeof(*ua_event->filter) +
+			uevent->filter->len);
+		if (!ua_event->filter) {
+			return;
+		}
+		memcpy(ua_event->filter, uevent->filter,
+			sizeof(*ua_event->filter) + uevent->filter->len);
+	}
 	cds_lfht_for_each_entry(uevent->ctx->ht, &iter.iter, uctx, node.node) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
 		if (ua_ctx == NULL) {
@@ -989,6 +1026,35 @@ int create_ust_app_event_context(struct ust_app_session *ua_sess,
 	lttng_ht_add_unique_ulong(ua_event->ctx, &ua_ctx->node);
 
 	ret = create_ust_event_context(ua_event, ua_ctx, app);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Set UST filter for the event on the tracer.
+ */
+static
+int set_ust_app_event_filter(struct ust_app_session *ua_sess,
+		struct ust_app_event *ua_event,
+		struct lttng_filter_bytecode *bytecode,
+		struct ust_app *app)
+{
+	int ret = 0;
+
+	DBG2("UST app adding context to event %s", ua_event->name);
+
+	/* Copy filter bytecode */
+	ua_event->filter = zmalloc(sizeof(*ua_event->filter) + bytecode->len);
+	if (!ua_event->filter) {
+		return -ENOMEM;
+	}
+	memcpy(ua_event->filter, bytecode,
+		sizeof(*ua_event->filter) + bytecode->len);
+	ret = set_ust_event_filter(ua_event, app);
 	if (ret < 0) {
 		goto error;
 	}
@@ -2419,6 +2485,11 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 					continue;
 				}
 			}
+			ret = set_ust_event_filter(ua_event, app);
+			if (ret < 0) {
+				/* FIXME: Should we quit here or continue... */
+				continue;
+			}
 		}
 	}
 
@@ -2531,6 +2602,63 @@ int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
 				node);
 
 		ret = create_ust_app_event_context(ua_sess, ua_event, &uctx->ctx, app);
+		if (ret < 0) {
+			continue;
+		}
+	}
+
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Add context to a specific event in a channel for global UST domain.
+ */
+int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct lttng_filter_bytecode *bytecode)
+{
+	int ret = 0;
+	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
+	struct lttng_ht_iter iter, uiter;
+	struct ust_app_session *ua_sess;
+	struct ust_app_event *ua_event;
+	struct ust_app_channel *ua_chan = NULL;
+	struct ust_app *app;
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			continue;
+		}
+
+		/* Lookup channel in the ust app session */
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+		if (ua_chan_node == NULL) {
+			continue;
+		}
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
+				node);
+
+		lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &uiter);
+		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
+		if (ua_event_node == NULL) {
+			continue;
+		}
+		ua_event = caa_container_of(ua_event_node, struct ust_app_event,
+				node);
+
+		ret = set_ust_app_event_filter(ua_sess, ua_event, bytecode, app);
 		if (ret < 0) {
 			continue;
 		}

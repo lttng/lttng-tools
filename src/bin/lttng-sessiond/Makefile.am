@@ -19,7 +19,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        fd-limit.c fd-limit.h \
                        consumer.c consumer.h \
                        kernel-consumer.c kernel-consumer.h \
-                       consumer.h
+                       consumer.h filter.c filter.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h

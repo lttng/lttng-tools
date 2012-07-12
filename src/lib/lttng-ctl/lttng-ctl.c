@@ -32,6 +32,26 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/lttng.h>
 
+#include "filter-parser.h"
+#include "filter-ast.h"
+#include "filter-bytecode.h"
+#include "memstream.h"
+
+#ifdef DEBUG
+const int print_xml = 1;
+#define dbg_printf(fmt, args...)	\
+	printf("[debug liblttng-ctl] " fmt, ## args)
+#else
+const int print_xml = 0;
+#define dbg_printf(fmt, args...)				\
+do {								\
+	/* do nothing but check printf format */		\
+	if (0)							\
+		printf("[debug liblttnctl] " fmt, ## args);	\
+} while (0)
+#endif
+
+
 /* Socket to session daemon for communication */
 static int sessiond_socket;
 static char sessiond_sock_path[PATH_MAX];
@@ -109,6 +129,31 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 
 	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
 			sizeof(struct lttcomm_session_msg));
+
+end:
+	return ret;
+}
+
+/*
+ * Send var len data to the session daemon.
+ *
+ * On success, returns the number of bytes sent (>=0)
+ * On error, returns -1
+ */
+static int send_session_varlen(void *data, size_t len)
+{
+	int ret;
+
+	if (!connected) {
+		ret = -ENOTCONN;
+		goto end;
+	}
+	if (!data || !len) {
+		ret = 0;
+		goto end;
+	}
+
+	ret = lttcomm_send_unix_sock(sessiond_socket, data, len);
 
 end:
 	return ret;
@@ -311,10 +356,14 @@ static int disconnect_sessiond(void)
 
 /*
  * Ask the session daemon a specific command and put the data into buf.
+ * Takes extra var. len. data as input to send to the session daemon.
  *
  * Return size of data (only payload, not header) or a negative error code.
  */
-static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
+static int ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
+		void *vardata,
+		size_t varlen,
+		void **buf)
 {
 	int ret;
 	size_t size;
@@ -328,6 +377,11 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 
 	/* Send command to session daemon */
 	ret = send_session_msg(lsm);
+	if (ret < 0) {
+		goto end;
+	}
+	/* Send var len data */
+	ret = send_session_varlen(vardata, varlen);
 	if (ret < 0) {
 		goto end;
 	}
@@ -379,6 +433,16 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 end:
 	disconnect_sessiond();
 	return ret;
+}
+
+/*
+ * Ask the session daemon a specific command and put the data into buf.
+ *
+ * Return size of data (only payload, not header) or a negative error code.
+ */
+static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
+{
+	return ask_sessiond_varlen(lsm, NULL, 0, buf);
 }
 
 /*
@@ -553,6 +617,139 @@ int lttng_enable_event(struct lttng_handle *handle,
 			sizeof(lsm.session.name));
 
 	return ask_sessiond(&lsm, NULL);
+}
+
+/*
+ * set filter for an event
+ * Return negative error value on error.
+ * Return size of returned session payload data if OK.
+ */
+
+int lttng_set_event_filter(struct lttng_handle *handle,
+		const char *event_name, const char *channel_name,
+		const char *filter_expression)
+{
+	struct lttcomm_session_msg lsm;
+	struct filter_parser_ctx *ctx;
+	FILE *fmem;
+	int ret = 0;
+
+	/* Safety check. */
+	if (handle == NULL) {
+		return -1;
+	}
+
+	if (!filter_expression) {
+		return 0;
+	}
+
+	/*
+	 * casting const to non-const, as the underlying function will
+	 * use it in read-only mode.
+	 */
+	fmem = lttng_fmemopen((void *) filter_expression,
+			strlen(filter_expression), "r");
+	if (!fmem) {
+		fprintf(stderr, "Error opening memory as stream\n");
+		return -ENOMEM;
+	}
+	ctx = filter_parser_ctx_alloc(fmem);
+	if (!ctx) {
+		fprintf(stderr, "Error allocating parser\n");
+		ret = -ENOMEM;
+		goto alloc_error;
+	}
+	ret = filter_parser_ctx_append_ast(ctx);
+	if (ret) {
+		fprintf(stderr, "Parse error\n");
+		ret = -EINVAL;
+		goto parse_error;
+	}
+	ret = filter_visitor_set_parent(ctx);
+	if (ret) {
+		fprintf(stderr, "Set parent error\n");
+		ret = -EINVAL;
+		goto parse_error;
+	}
+	if (print_xml) {
+		ret = filter_visitor_print_xml(ctx, stdout, 0);
+		if (ret) {
+			fflush(stdout);
+			fprintf(stderr, "XML print error\n");
+			ret = -EINVAL;
+			goto parse_error;
+		}
+	}
+
+	dbg_printf("Generating IR... ");
+	fflush(stdout);
+	ret = filter_visitor_ir_generate(ctx);
+	if (ret) {
+		fprintf(stderr, "Generate IR error\n");
+		ret = -EINVAL;
+		goto parse_error;
+	}
+	dbg_printf("done\n");
+
+	dbg_printf("Validating IR... ");
+	fflush(stdout);
+	ret = filter_visitor_ir_check_binary_op_nesting(ctx);
+	if (ret) {
+		ret = -EINVAL;
+		goto parse_error;
+	}
+	dbg_printf("done\n");
+
+	dbg_printf("Generating bytecode... ");
+	fflush(stdout);
+	ret = filter_visitor_bytecode_generate(ctx);
+	if (ret) {
+		fprintf(stderr, "Generate bytecode error\n");
+		ret = -EINVAL;
+		goto parse_error;
+	}
+	dbg_printf("done\n");
+	dbg_printf("Size of bytecode generated: %u bytes.\n",
+		bytecode_get_len(&ctx->bytecode->b));
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_SET_FILTER;
+
+	/* Copy channel name */
+	copy_string(lsm.u.filter.channel_name, channel_name,
+			sizeof(lsm.u.filter.channel_name));
+	/* Copy event name */
+	copy_string(lsm.u.filter.event_name, event_name,
+			sizeof(lsm.u.filter.event_name));
+	lsm.u.filter.bytecode_len = sizeof(ctx->bytecode->b)
+			+ bytecode_get_len(&ctx->bytecode->b);
+
+	copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+
+	ret = ask_sessiond_varlen(&lsm, &ctx->bytecode->b,
+				lsm.u.filter.bytecode_len, NULL);
+
+	filter_bytecode_free(ctx);
+	filter_ir_free(ctx);
+	filter_parser_ctx_free(ctx);
+	if (fclose(fmem) != 0) {
+		perror("fclose");
+	}
+	return ret;
+
+parse_error:
+	filter_bytecode_free(ctx);
+	filter_ir_free(ctx);
+	filter_parser_ctx_free(ctx);
+alloc_error:
+	if (fclose(fmem) != 0) {
+		perror("fclose");
+	}
+	return ret;
 }
 
 /*

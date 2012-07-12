@@ -41,6 +41,7 @@ static char *opt_probe;
 static char *opt_function;
 static char *opt_function_entry_symbol;
 static char *opt_channel_name;
+static char *opt_filter;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -58,6 +59,7 @@ enum {
 	OPT_LOGLEVEL,
 	OPT_LOGLEVEL_ONLY,
 	OPT_LIST_OPTIONS,
+	OPT_FILTER,
 };
 
 static struct lttng_handle *handle;
@@ -90,6 +92,7 @@ static struct poptOption long_options[] = {
 	{"loglevel",       0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL, 0, 0},
 	{"loglevel-only",  0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL_ONLY, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
+	{"filter",         'f', POPT_ARG_STRING, &opt_filter, OPT_FILTER, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -162,6 +165,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
 	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
 	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
+	fprintf(ofp, "    --filter \'expression\'\n");
+	fprintf(ofp, "                           Filter expression on event fields,\n");
+	fprintf(ofp, "                           event recording depends on evaluation.\n");
 	fprintf(ofp, "\n");
 }
 
@@ -294,6 +300,14 @@ static int enable_events(char *session_name)
 	memset(&ev, 0, sizeof(ev));
 	memset(&dom, 0, sizeof(dom));
 
+	if (opt_kernel) {
+		if (opt_filter) {
+			ERR("Filter not implement for kernel tracing yet");
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
+
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
@@ -357,6 +371,15 @@ static int enable_events(char *session_name)
 				break;
 			}
 			goto end;
+		}
+		if (opt_filter) {
+			ret = lttng_set_event_filter(handle, ev.name, channel_name,
+						opt_filter);
+			if (ret < 0) {
+				ERR("Error setting filter");
+				ret = -1;
+				goto error;
+			}
 		}
 
 		switch (opt_event_type) {
@@ -519,6 +542,15 @@ static int enable_events(char *session_name)
 			MSG("%s event %s created in channel %s",
 					opt_kernel ? "kernel": "UST", event_name, channel_name);
 		}
+		if (opt_filter) {
+			ret = lttng_set_event_filter(handle, ev.name,
+				channel_name, opt_filter);
+			if (ret < 0) {
+				ERR("Error setting filter");
+				ret = -1;
+				goto error;
+			}
+		}
 
 		/* Next event */
 		event_name = strtok(NULL, ",");
@@ -586,6 +618,8 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
+		case OPT_FILTER:
+			break;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

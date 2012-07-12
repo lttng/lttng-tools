@@ -410,7 +410,7 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 	DBG2("Trace destroy UST event %s", event->attr.name);
 	destroy_contexts(event->ctx);
-
+	free(event->filter);
 	free(event);
 }
 

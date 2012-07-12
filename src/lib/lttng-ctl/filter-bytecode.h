@@ -23,6 +23,7 @@
  */
 
 #include "filter-ast.h"
+#include "../../common/sessiond-comm/sessiond-comm.h"
 
 /*
  * offsets are absolute from start of bytecode.
@@ -123,24 +124,13 @@ struct return_op {
 	filter_opcode_t op;
 } __attribute__((packed));
 
-/*
- * The reloc table is located at the end of the bytecode. It is made of
- * tuples: (uint16_t, var. len. string). It starts at
- * reloc_table_offset.
- */
-struct filter_bytecode {
-	uint16_t len;
-	uint16_t reloc_table_offset;
-	char data[0];
-};
-
-struct filter_bytecode_alloc {
+struct lttng_filter_bytecode_alloc {
 	uint16_t alloc_len;
-	struct filter_bytecode b;
+	struct lttng_filter_bytecode b;
 };
 
 static inline
-unsigned int bytecode_get_len(struct filter_bytecode *bytecode)
+unsigned int bytecode_get_len(struct lttng_filter_bytecode *bytecode)
 {
 	return bytecode->len;
 }

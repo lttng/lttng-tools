@@ -39,9 +39,9 @@ int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 		struct ir_op *node);
 
 static
-int bytecode_init(struct filter_bytecode_alloc **fb)
+int bytecode_init(struct lttng_filter_bytecode_alloc **fb)
 {
-	*fb = calloc(sizeof(struct filter_bytecode_alloc) + INIT_ALLOC_SIZE, 1);
+	*fb = calloc(sizeof(struct lttng_filter_bytecode_alloc) + INIT_ALLOC_SIZE, 1);
 	if (!*fb) {
 		return -ENOMEM;
 	} else {
@@ -51,7 +51,7 @@ int bytecode_init(struct filter_bytecode_alloc **fb)
 }
 
 static
-int32_t bytecode_reserve(struct filter_bytecode_alloc **fb, uint32_t align, uint32_t len)
+int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align, uint32_t len)
 {
 	int32_t ret;
 	uint32_t padding = offset_align((*fb)->b.len, align);
@@ -64,7 +64,7 @@ int32_t bytecode_reserve(struct filter_bytecode_alloc **fb, uint32_t align, uint
 
 		if (new_len > 0xFFFF)
 			return -EINVAL;
-		*fb = realloc(*fb, sizeof(struct filter_bytecode_alloc) + new_len);
+		*fb = realloc(*fb, sizeof(struct lttng_filter_bytecode_alloc) + new_len);
 		if (!*fb)
 			return -ENOMEM;
 		memset(&(*fb)->b.data[old_len], 0, new_len - old_len);
@@ -77,7 +77,7 @@ int32_t bytecode_reserve(struct filter_bytecode_alloc **fb, uint32_t align, uint
 }
 
 static
-int bytecode_push(struct filter_bytecode_alloc **fb, const void *data,
+int bytecode_push(struct lttng_filter_bytecode_alloc **fb, const void *data,
 		uint32_t align, uint32_t len)
 {
 	int32_t offset;
@@ -90,7 +90,7 @@ int bytecode_push(struct filter_bytecode_alloc **fb, const void *data,
 }
 
 static
-int bytecode_push_logical(struct filter_bytecode_alloc **fb,
+int bytecode_push_logical(struct lttng_filter_bytecode_alloc **fb,
 		struct logical_op *data,
 		uint32_t align, uint32_t len,
 		uint16_t *skip_offset)
@@ -108,7 +108,7 @@ int bytecode_push_logical(struct filter_bytecode_alloc **fb,
 }
 
 static
-int bytecode_patch(struct filter_bytecode_alloc **fb,
+int bytecode_patch(struct lttng_filter_bytecode_alloc **fb,
 		const void *data,
 		uint16_t offset,
 		uint32_t len)
