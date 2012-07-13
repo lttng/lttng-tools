@@ -2350,6 +2350,9 @@ static int list_lttng_ust_global_events(char *channel_name,
 			tmp[i].loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
 			break;
 		}
+		if (uevent->filter) {
+			tmp[i].filter = 1;
+		}
 		i++;
 	}
 

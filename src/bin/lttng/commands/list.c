@@ -146,6 +146,15 @@ const char *enabled_string(int value)
 	}
 }
 
+static
+const char *filter_string(int value)
+{
+	switch (value) {
+	case 1:	return " [with filter]";
+	default: return "";
+	}
+}
+
 static const char *loglevel_string(int value)
 {
 	switch (value) {
@@ -195,23 +204,26 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_TRACEPOINT:
 	{
 		if (event->loglevel != -1) {
-			MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)%s",
+			MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)%s%s",
 				indent6,
 				event->name,
 				loglevel_string(event->loglevel),
 				event->loglevel,
-				enabled_string(event->enabled));
+				enabled_string(event->enabled),
+				filter_string(event->filter));
 		} else {
-			MSG("%s%s (type: tracepoint)%s",
+			MSG("%s%s (type: tracepoint)%s%s",
 				indent6,
 				event->name,
-				enabled_string(event->enabled));
+				enabled_string(event->enabled),
+				filter_string(event->filter));
 		}
 		break;
 	}
 	case LTTNG_EVENT_PROBE:
-		MSG("%s%s (type: probe)%s", indent6,
-				event->name, enabled_string(event->enabled));
+		MSG("%s%s (type: probe)%s%s", indent6,
+				event->name, enabled_string(event->enabled),
+				filter_string(event->filter));
 		if (event->attr.probe.addr != 0) {
 			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
 		} else {
@@ -221,17 +233,20 @@ static void print_events(struct lttng_event *event)
 		break;
 	case LTTNG_EVENT_FUNCTION:
 	case LTTNG_EVENT_FUNCTION_ENTRY:
-		MSG("%s%s (type: function)%s", indent6,
-				event->name, enabled_string(event->enabled));
+		MSG("%s%s (type: function)%s%s", indent6,
+				event->name, enabled_string(event->enabled),
+				filter_string(event->filter));
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%ssyscalls (type: syscall)%s", indent6,
-				enabled_string(event->enabled));
+		MSG("%ssyscalls (type: syscall)%s%s", indent6,
+				enabled_string(event->enabled),
+				filter_string(event->filter));
 		break;
 	case LTTNG_EVENT_NOOP:
-		MSG("%s (type: noop)%s", indent6,
-				enabled_string(event->enabled));
+		MSG("%s (type: noop)%s%s", indent6,
+				enabled_string(event->enabled),
+				filter_string(event->filter));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */

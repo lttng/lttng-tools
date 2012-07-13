@@ -269,7 +269,7 @@ struct lttng_event_function_attr {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_EVENT_PADDING1               16
+#define LTTNG_EVENT_PADDING1               15
 #define LTTNG_EVENT_PADDING2               LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event {
 	enum lttng_event_type type;
@@ -280,6 +280,7 @@ struct lttng_event {
 
 	int32_t enabled;	/* Does not apply: -1 */
 	pid_t pid;
+	unsigned char filter;	/* filter enabled ? */
 
 	char padding[LTTNG_EVENT_PADDING1];
 
