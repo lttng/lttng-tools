@@ -340,6 +340,13 @@ file.
         Enabling syscalls tracing (kernel tracer), you will not be able to disable them
         with disable-event. This is a known limitation. You can disable the entire
         channel to do the trick.
+\-\-filter 'expression'
+	Set a filter on a newly enabled event.
+        Filter expression on event fields event recording
+        depends on evaluation. Only specify on first activation
+        of a given event within a session. Filter only allowed
+        when enabling events within a session before tracing is
+        started.
 .fi
 
 .IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"

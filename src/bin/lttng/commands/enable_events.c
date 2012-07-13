@@ -168,6 +168,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    --filter \'expression\'\n");
 	fprintf(ofp, "                           Filter expression on event fields,\n");
 	fprintf(ofp, "                           event recording depends on evaluation.\n");
+	fprintf(ofp, "                           Only specify on first activation of\n");
+	fprintf(ofp, "                           a given event within a session.\n");
+	fprintf(ofp, "                           Filter only allowed when enabling\n");
+	fprintf(ofp, "                           events within a session before tracing\n");
+	fprintf(ofp, "                           is started.\n");
 	fprintf(ofp, "\n");
 }
 
