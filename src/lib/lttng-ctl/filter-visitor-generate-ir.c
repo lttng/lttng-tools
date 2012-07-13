@@ -101,6 +101,22 @@ struct ir_op *make_op_load_numeric(int64_t v, enum ir_side side)
 }
 
 static
+struct ir_op *make_op_load_float(double v, enum ir_side side)
+{
+	struct ir_op *op;
+
+	op = calloc(sizeof(struct ir_op), 1);
+	if (!op)
+		return NULL;
+	op->op = IR_OP_LOAD;
+	op->data_type = IR_DATA_FLOAT;
+	op->signedness = IR_SIGN_UNKNOWN;
+	op->side = side;
+	op->u.load.u.flt = v;
+	return op;
+}
+
+static
 struct ir_op *make_op_load_field_ref(char *string, enum ir_side side)
 {
 	struct ir_op *op;
@@ -314,8 +330,8 @@ struct ir_op *make_op_binary_compare(enum op_type bin_op_type,
 
 	}
 	if ((left->data_type == IR_DATA_STRING
-		&& right->data_type == IR_DATA_NUMERIC)
-		|| (left->data_type == IR_DATA_NUMERIC &&
+		&& (right->data_type == IR_DATA_NUMERIC || right->data_type == IR_DATA_FLOAT))
+		|| ((left->data_type == IR_DATA_NUMERIC || left->data_type == IR_DATA_FLOAT) &&
 			right->data_type == IR_DATA_STRING)) {
 		fprintf(stderr, "[error] binary operation '%s' operand type mismatch\n", op_str);
 		goto error;
@@ -491,6 +507,9 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 		return make_op_load_string(node->u.expression.u.string, side);
 	case AST_EXP_CONSTANT:
 		return make_op_load_numeric(node->u.expression.u.constant,
+					side);
+	case AST_EXP_FLOAT_CONSTANT:
+		return make_op_load_float(node->u.expression.u.float_constant,
 					side);
 	case AST_EXP_IDENTIFIER:
 		if (node->u.expression.pre_op != AST_LINK_UNKNOWN) {

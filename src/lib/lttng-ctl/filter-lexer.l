@@ -33,6 +33,15 @@ static int input (yyscan_t yyscanner) __attribute__((unused));
 %option reentrant yylineno noyywrap bison-bridge
 %option extra-type="struct filter_parser_ctx *"
 	/* bison-locations */
+
+D				[0-9]
+L				[a-zA-Z_]
+H				[a-fA-F0-9]
+E				([Ee][+-]?{D}+)
+P				([Pp][+-]?{D}+)
+FS				(f|F|l|L)
+IS				((u|U)|(u|U)?(l|L|ll|LL)|(l|L|ll|LL)(u|U))
+
 INTEGER_SUFFIX			[ \n\t]*(U|UL|ULL|LU|LLU|Ul|Ull|lU|llU|u|uL|uLL|Lu|LLu|ul|ull|lu|llu)
 DIGIT				[0-9]
 NONDIGIT			[a-zA-Z_]
@@ -70,6 +79,18 @@ L\"				BEGIN(string_lit); return STRING_LITERAL_START;
 <char_const,string_lit>ESCSEQ	return ESCSEQ;
 <char_const,string_lit>\n	; /* ignore */
 <char_const,string_lit>.	setstring(yyextra, yylval, yytext); return CHAR_STRING_TOKEN;
+
+
+0[xX]{H}+{IS}?			setstring(yyextra, yylval, yytext); return HEXADECIMAL_CONSTANT;
+0[0-7]*{IS}?			setstring(yyextra, yylval, yytext); return OCTAL_CONSTANT;
+[1-9]{D}*{IS}?			setstring(yyextra, yylval, yytext); return DECIMAL_CONSTANT;
+
+{D}+{E}{FS}?			setstring(yyextra, yylval, yytext); return FLOAT_CONSTANT;
+{D}*"."{D}+{E}?{FS}?		setstring(yyextra, yylval, yytext); return FLOAT_CONSTANT;
+{D}+"."{D}*{E}?{FS}?		setstring(yyextra, yylval, yytext); return FLOAT_CONSTANT;
+0[xX]{H}+{P}{FS}?		setstring(yyextra, yylval, yytext); return FLOAT_CONSTANT;
+0[xX]{H}*"."{H}+{P}?{FS}?  	setstring(yyextra, yylval, yytext); return FLOAT_CONSTANT;
+0[xX]{H}+"."{H}*{P}?{FS}?     	setstring(yyextra, yylval, yytext); return FLOAT_CONSTANT;
 
 "["				return LSBRAC;
 "]"				return RSBRAC;
@@ -109,9 +130,6 @@ L\"				BEGIN(string_lit); return STRING_LITERAL_START;
 "&"				return AND_BIN;
 "|"				return OR_BIN;
 "~"				return NOT_BIN;
-[1-9]{DIGIT}*{INTEGER_SUFFIX}?	setstring(yyextra, yylval, yytext); return DECIMAL_CONSTANT;
-0{OCTALDIGIT}*{INTEGER_SUFFIX}?	setstring(yyextra, yylval, yytext); return OCTAL_CONSTANT;
-0[xX]{HEXDIGIT}+{INTEGER_SUFFIX}?	setstring(yyextra, yylval, yytext); return HEXADECIMAL_CONSTANT;
 {IDENTIFIER}			printf_debug("<IDENTIFIER %s>\n", yytext); setstring(yyextra, yylval, yytext); return IDENTIFIER;
 [ \t\n]+			; /* ignore */
 .				return ERROR;

@@ -66,6 +66,11 @@ int recursive_visit_print_expression(struct filter_node *node,
 		fprintf(stream, "<constant value=\"%" PRIu64 "\"/>\n",
 			node->u.expression.u.constant);
 		break;
+	case AST_EXP_FLOAT_CONSTANT:
+		print_tabs(stream, indent);
+		fprintf(stream, "<float_constant value=\"%lg\"/>\n",
+			node->u.expression.u.float_constant);
+		break;
 	case AST_EXP_IDENTIFIER:
 		print_tabs(stream, indent);
 		fprintf(stream, "<identifier value=\"%s\"/>\n",

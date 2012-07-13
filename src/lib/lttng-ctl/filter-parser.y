@@ -287,7 +287,7 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 %start translation_unit
 %token CHARACTER_CONSTANT_START SQUOTE STRING_LITERAL_START DQUOTE
 %token ESCSEQ CHAR_STRING_TOKEN
-%token DECIMAL_CONSTANT OCTAL_CONSTANT HEXADECIMAL_CONSTANT
+%token DECIMAL_CONSTANT OCTAL_CONSTANT HEXADECIMAL_CONSTANT FLOAT_CONSTANT
 %token LSBRAC RSBRAC LPAREN RPAREN LBRAC RBRAC RARROW
 %token STAR PLUS MINUS
 %token MOD_OP DIV_OP RIGHT_OP LEFT_OP
@@ -389,6 +389,13 @@ primary_expression
 			$$->u.expression.type = AST_EXP_CONSTANT;
 			sscanf(yylval.gs->s, "0x%" PRIx64,
 			       &$$->u.expression.u.constant);
+		}
+	|	FLOAT_CONSTANT
+		{
+			$$ = make_node(parser_ctx, NODE_EXPRESSION);
+			$$->u.expression.type = AST_EXP_FLOAT_CONSTANT;
+			sscanf(yylval.gs->s, "%lg",
+			       &$$->u.expression.u.float_constant);
 		}
 	|	STRING_LITERAL_START DQUOTE
 		{

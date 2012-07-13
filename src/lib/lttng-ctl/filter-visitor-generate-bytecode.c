@@ -200,6 +200,24 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		free(insn);
 		return ret;
 	}
+	case IR_DATA_FLOAT:
+	{
+		struct load_op *insn;
+		uint32_t insn_len = sizeof(struct load_op)
+			+ sizeof(struct literal_double);
+
+		insn = calloc(insn_len, 1);
+		if (!insn)
+			return -ENOMEM;
+		insn->op = FILTER_OP_LOAD_DOUBLE;
+		insn->reg = reg_sel(node);
+		if (insn->reg == REG_ERROR)
+			return -EINVAL;
+		*(double *) insn->data = node->u.load.u.flt;
+		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+		free(insn);
+		return ret;
+	}
 	case IR_DATA_FIELD_REF:
 	{
 		struct load_op *insn;

@@ -117,6 +117,7 @@ int recursive_visit_set_parent(struct filter_node *node,
 					return ret;
 			}
 		case AST_EXP_CONSTANT:
+		case AST_EXP_FLOAT_CONSTANT:
 		case AST_EXP_STRING:
 			break;
 		}

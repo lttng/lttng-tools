@@ -35,6 +35,7 @@ enum ir_data_type {
 	IR_DATA_UNKNOWN = 0,
 	IR_DATA_STRING,
 	IR_DATA_NUMERIC,	/* numeric and boolean */
+	IR_DATA_FLOAT,
 	IR_DATA_FIELD_REF,
 };
 
@@ -62,6 +63,7 @@ struct ir_op_load {
 	union {
 		char *string;
 		int64_t num;
+		double flt;
 		char *ref;
 	} u;
 };

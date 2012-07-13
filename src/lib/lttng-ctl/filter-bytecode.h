@@ -40,6 +40,7 @@ enum field_ref_type {
 	FIELD_REF_STRING,
 	FIELD_REF_SEQUENCE,
 	FIELD_REF_S64,
+	FIELD_REF_DOUBLE,
 };
 
 struct field_ref {
@@ -50,6 +51,10 @@ struct field_ref {
 
 struct literal_numeric {
 	int64_t v;
+} __attribute__((packed));
+
+struct literal_double {
+	double v;
 } __attribute__((packed));
 
 struct literal_string {
@@ -92,6 +97,7 @@ enum filter_op {
 	FILTER_OP_LOAD_FIELD_REF,
 	FILTER_OP_LOAD_STRING,
 	FILTER_OP_LOAD_S64,
+	FILTER_OP_LOAD_DOUBLE,
 
 	NR_FILTER_OPS,
 };

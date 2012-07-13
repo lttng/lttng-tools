@@ -114,6 +114,7 @@ struct filter_node {
 				AST_EXP_UNKNOWN = 0,
 				AST_EXP_STRING,
 				AST_EXP_CONSTANT,
+				AST_EXP_FLOAT_CONSTANT,
 				AST_EXP_IDENTIFIER,
 				AST_EXP_NESTED,
 			} type;
@@ -122,6 +123,7 @@ struct filter_node {
 			union {
 				char *string;
 				uint64_t constant;
+				double float_constant;
 				char *identifier;
 				/*
 				 * child can be nested.
