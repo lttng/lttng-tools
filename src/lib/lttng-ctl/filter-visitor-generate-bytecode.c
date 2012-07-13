@@ -235,9 +235,8 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		memcpy(insn->data, &ref_offset, sizeof(ref_offset));
 		if (insn->reg == REG_ERROR)
 			return -EINVAL;
-		/* reloc_offset points to struct field_ref */
+		/* reloc_offset points to struct load_op */
 		reloc_offset = bytecode_get_len(&ctx->bytecode->b);
-		reloc_offset += sizeof(struct load_op);
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		if (ret) {
 			free(insn);

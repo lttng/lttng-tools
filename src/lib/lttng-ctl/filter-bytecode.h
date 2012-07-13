@@ -35,18 +35,9 @@ enum filter_register {
 	REG_ERROR,
 };
 
-enum field_ref_type {
-	FIELD_REF_UNKNOWN = 0,
-	FIELD_REF_STRING,
-	FIELD_REF_SEQUENCE,
-	FIELD_REF_S64,
-	FIELD_REF_DOUBLE,
-};
-
 struct field_ref {
 	/* Initially, symbol offset. After link, field offset. */
 	uint16_t offset;
-	uint8_t type;	/* enum field_ref_type */
 } __attribute__((packed));
 
 struct literal_numeric {
@@ -95,6 +86,11 @@ enum filter_op {
 
 	/* load */
 	FILTER_OP_LOAD_FIELD_REF,
+	FILTER_OP_LOAD_FIELD_REF_STRING,
+	FILTER_OP_LOAD_FIELD_REF_SEQUENCE,
+	FILTER_OP_LOAD_FIELD_REF_S64,
+	FILTER_OP_LOAD_FIELD_REF_DOUBLE,
+
 	FILTER_OP_LOAD_STRING,
 	FILTER_OP_LOAD_S64,
 	FILTER_OP_LOAD_DOUBLE,
