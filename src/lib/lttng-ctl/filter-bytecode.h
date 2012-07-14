@@ -115,10 +115,6 @@ enum filter_op {
 	/* logical */
 	FILTER_OP_AND,
 	FILTER_OP_OR,
-	FILTER_OP_AND_S64,
-	FILTER_OP_OR_S64,
-	FILTER_OP_AND_DOUBLE,
-	FILTER_OP_OR_DOUBLE,
 
 	/* load */
 	FILTER_OP_LOAD_FIELD_REF,
@@ -130,6 +126,11 @@ enum filter_op {
 	FILTER_OP_LOAD_STRING,
 	FILTER_OP_LOAD_S64,
 	FILTER_OP_LOAD_DOUBLE,
+
+	/* cast */
+	FILTER_OP_CAST_TO_S64,
+	FILTER_OP_CAST_DOUBLE_TO_S64,
+	FILTER_OP_CAST_NOP,
 
 	NR_FILTER_OPS,
 };
@@ -156,6 +157,11 @@ struct unary_op {
 struct logical_op {
 	filter_opcode_t op;
 	uint16_t skip_offset;	/* bytecode insn, if skip second test */
+} __attribute__((packed));
+
+struct cast_op {
+	filter_opcode_t op;
+	uint8_t reg;		/* enum filter_register */
 } __attribute__((packed));
 
 struct return_op {

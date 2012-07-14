@@ -377,6 +377,9 @@ int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 	return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 }
 
+/*
+ * A logical op always return a s64 (1 or 0).
+ */
 static
 int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
@@ -389,6 +392,18 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	ret = recursive_visit_gen_bytecode(ctx, node->u.binary.left);
 	if (ret)
 		return ret;
+	/* Cast to s64 if float or field ref */
+	if (node->u.binary.left->data_type == IR_DATA_FIELD_REF
+			|| node->u.binary.left->data_type == IR_DATA_FLOAT) {
+		struct cast_op cast_insn;
+
+		cast_insn.op = FILTER_OP_CAST_TO_S64;
+		cast_insn.reg = REG_R0;
+		ret = bytecode_push(&ctx->bytecode, &cast_insn,
+					1, sizeof(cast_insn));
+		if (ret)
+			return ret;
+	}
 	switch (node->u.logical.type) {
 	default:
 		fprintf(stderr, "[error] Unknown node type in %s\n",
@@ -411,6 +426,18 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	ret = recursive_visit_gen_bytecode(ctx, node->u.binary.right);
 	if (ret)
 		return ret;
+	/* Cast to s64 if float or field ref */
+	if (node->u.binary.right->data_type == IR_DATA_FIELD_REF
+			|| node->u.binary.right->data_type == IR_DATA_FLOAT) {
+		struct cast_op cast_insn;
+
+		cast_insn.op = FILTER_OP_CAST_TO_S64;
+		cast_insn.reg = REG_R0;
+		ret = bytecode_push(&ctx->bytecode, &cast_insn,
+					1, sizeof(cast_insn));
+		if (ret)
+			return ret;
+	}
 	/* We now know where the logical op can skip. */
 	target_loc = (uint16_t) bytecode_get_len(&ctx->bytecode->b);
 	ret = bytecode_patch(&ctx->bytecode,
