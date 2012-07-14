@@ -397,7 +397,11 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 			|| node->u.binary.left->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
-		cast_insn.op = FILTER_OP_CAST_TO_S64;
+		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF) {
+			cast_insn.op = FILTER_OP_CAST_TO_S64;
+		} else {
+			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
+		}
 		cast_insn.reg = REG_R0;
 		ret = bytecode_push(&ctx->bytecode, &cast_insn,
 					1, sizeof(cast_insn));
@@ -431,7 +435,11 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 			|| node->u.binary.right->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
-		cast_insn.op = FILTER_OP_CAST_TO_S64;
+		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF) {
+			cast_insn.op = FILTER_OP_CAST_TO_S64;
+		} else {
+			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
+		}
 		cast_insn.reg = REG_R0;
 		ret = bytecode_push(&ctx->bytecode, &cast_insn,
 					1, sizeof(cast_insn));
