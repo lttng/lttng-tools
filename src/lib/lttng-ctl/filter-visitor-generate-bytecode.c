@@ -137,22 +137,6 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 }
 
 static
-enum filter_register reg_sel(struct ir_op *node)
-{
-	switch (node->side) {
-	case IR_SIDE_UNKNOWN:
-	default:
-		fprintf(stderr, "[error] Unknown node side in %s\n",
-			__func__);
-		return REG_ERROR;
-	case IR_LEFT:
-		return REG_R0;
-	case IR_RIGHT:
-		return REG_R1;
-	}
-}
-
-static
 int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
@@ -174,9 +158,6 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (!insn)
 			return -ENOMEM;
 		insn->op = FILTER_OP_LOAD_STRING;
-		insn->reg = reg_sel(node);
-		if (insn->reg == REG_ERROR)
-			return -EINVAL;
 		strcpy(insn->data, node->u.load.u.string);
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
@@ -192,9 +173,6 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (!insn)
 			return -ENOMEM;
 		insn->op = FILTER_OP_LOAD_S64;
-		insn->reg = reg_sel(node);
-		if (insn->reg == REG_ERROR)
-			return -EINVAL;
 		*(int64_t *) insn->data = node->u.load.u.num;
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
@@ -210,9 +188,6 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (!insn)
 			return -ENOMEM;
 		insn->op = FILTER_OP_LOAD_DOUBLE;
-		insn->reg = reg_sel(node);
-		if (insn->reg == REG_ERROR)
-			return -EINVAL;
 		*(double *) insn->data = node->u.load.u.flt;
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
@@ -230,11 +205,8 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (!insn)
 			return -ENOMEM;
 		insn->op = FILTER_OP_LOAD_FIELD_REF;
-		insn->reg = reg_sel(node);
 		ref_offset.offset = (uint16_t) -1U;
 		memcpy(insn->data, &ref_offset, sizeof(ref_offset));
-		if (insn->reg == REG_ERROR)
-			return -EINVAL;
 		/* reloc_offset points to struct load_op */
 		reloc_offset = bytecode_get_len(&ctx->bytecode->b);
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
@@ -280,15 +252,9 @@ int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
 		return 0;
 	case AST_UNARY_MINUS:
 		insn.op = FILTER_OP_UNARY_MINUS;
-		insn.reg = reg_sel(node);
-		if (insn.reg == REG_ERROR)
-			return -EINVAL;
 		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 	case AST_UNARY_NOT:
 		insn.op = FILTER_OP_UNARY_NOT;
-		insn.reg = reg_sel(node);
-		if (insn.reg == REG_ERROR)
-			return -EINVAL;
 		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 	}
 }
@@ -402,7 +368,6 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 		} else {
 			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
 		}
-		cast_insn.reg = REG_R0;
 		ret = bytecode_push(&ctx->bytecode, &cast_insn,
 					1, sizeof(cast_insn));
 		if (ret)
@@ -440,7 +405,6 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 		} else {
 			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
 		}
-		cast_insn.reg = REG_R0;
 		ret = bytecode_push(&ctx->bytecode, &cast_insn,
 					1, sizeof(cast_insn));
 		if (ret)
