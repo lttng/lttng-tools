@@ -1,4 +1,4 @@
-.TH "LTTNG" "1" "February 9, 2012" "" ""
+.TH "LTTNG" "1" "July 17, 2012" "" ""
 
 .SH "NAME"
 lttng \(em LTTng 2.0 tracer control command line tool
@@ -340,13 +340,29 @@ file.
         Enabling syscalls tracing (kernel tracer), you will not be able to disable them
         with disable-event. This is a known limitation. You can disable the entire
         channel to do the trick.
+
 \-\-filter 'expression'
 	Set a filter on a newly enabled event.
-        Filter expression on event fields event recording
-        depends on evaluation. Only specify on first activation
-        of a given event within a session. Filter only allowed
-        when enabling events within a session before tracing is
-        started.
+	Filter expression on event fields, event recording
+	depends on evaluation. Only specify on first activation
+	of a given event within a session. Filter only allowed
+	when enabling events within a session before tracing is
+	started. If the filter fails to link with the event
+	within the traced domain, the event will be discarded.
+	Currently, filter is only implemented for the user-space 
+	tracer.
+	Expression examples:
+
+	'intfield > 500 && intfield < 503'
+	'(stringfield == "test" || intfield != 10) && intfield > 33'
+	'doublefield > 1.1 && intfield < 5.3'
+
+	Wildcards are allowed at the end of strings:
+	'seqfield1 == "te*"'
+	In string literals, the escape character is a '\\'.
+	Use '\\*' for the '*' character, and '\\\\' for the
+	'\\' character.
+
 .fi
 
 .IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"

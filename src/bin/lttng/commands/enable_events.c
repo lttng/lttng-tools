@@ -172,7 +172,22 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           a given event within a session.\n");
 	fprintf(ofp, "                           Filter only allowed when enabling\n");
 	fprintf(ofp, "                           events within a session before tracing\n");
-	fprintf(ofp, "                           is started.\n");
+	fprintf(ofp, "                           is started. If the filter fails to link\n");
+	fprintf(ofp, "                           with the event within the traced domain,\n");
+	fprintf(ofp, "                           the event will be discarded. Currently,\n");
+	fprintf(ofp, "                           filter is only implemented for the user-space\n");
+	fprintf(ofp, "                           tracer.\n");
+	fprintf(ofp, "                           Expression examples:.\n");
+	fprintf(ofp, "                           \n");
+	fprintf(ofp, "                           'intfield > 500 && intfield < 503'\n");
+	fprintf(ofp, "                           '(stringfield == \"test\" || intfield != 10) && intfield > 33'\n");
+	fprintf(ofp, "                           'doublefield > 1.1 && intfield < 5.3'\n");
+	fprintf(ofp, "                           \n");
+	fprintf(ofp, "                           Wildcards are allowed at the end of strings:\n");
+	fprintf(ofp, "                           'seqfield1 == \"te*\"'\n");
+	fprintf(ofp, "                           In string literals, the escape character is '\\'.\n");
+	fprintf(ofp, "                           Use '\\*' for the '*' character, and '\\\\' for\n");
+	fprintf(ofp, "                           the '\\' character.\n");
 	fprintf(ofp, "\n");
 }
 
