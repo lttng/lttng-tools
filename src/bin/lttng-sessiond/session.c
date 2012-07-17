@@ -45,7 +45,7 @@
 static struct ltt_session_list ltt_session_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
 	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.count = 0,
+	.next_uuid = 0,
 };
 
 /*
@@ -57,15 +57,13 @@ static struct ltt_session_list ltt_session_list = {
 static unsigned int add_session_list(struct ltt_session *ls)
 {
 	cds_list_add(&ls->list, &ltt_session_list.head);
-	return ++ltt_session_list.count;
+	return ltt_session_list.next_uuid++;
 }
 
 /*
  * Delete a ltt_session structure to the global list.
  *
  * The caller MUST acquire the session list lock before.
- * The session list count CANNOT be decremented, as it is used as unique
- * identifier for the session in UST app hash table lookups.
  */
 static void del_session_list(struct ltt_session *ls)
 {
