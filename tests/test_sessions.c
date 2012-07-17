@@ -97,6 +97,17 @@ static int find_session_name(char *name)
 	return -1;
 }
 
+static int session_list_count(void)
+{
+	int count = 0;
+	struct ltt_session *iter;
+
+	cds_list_for_each_entry(iter, &session_list->head, list) {
+		count++;
+	}
+	return count;
+}
+
 /*
  * Empty session list manually.
  */
@@ -106,12 +117,11 @@ static void empty_session_list(void)
 
 	cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
 		cds_list_del(&iter->list);
-		session_list->count--;
 		free(iter);
 	}
 
 	/* Session list must be 0 */
-	assert(!session_list->count);
+	assert(!session_list_count());
 }
 
 /*
@@ -193,7 +203,7 @@ static int fuzzing_create_args(void)
 	}
 
 	/* Session list must be 0 */
-	assert(!session_list->count);
+	assert(!session_list_count());
 
 	return 0;
 }
@@ -209,7 +219,7 @@ static int fuzzing_destroy_args(void)
 	}
 
 	/* Session list must be 0 */
-	assert(!session_list->count);
+	assert(!session_list_count());
 
 	return 0;
 }
@@ -341,7 +351,7 @@ int main(int argc, char **argv)
 	PRINT_OK();
 
 	/* Session list must be 0 */
-	assert(!session_list->count);
+	assert(!session_list_count());
 
 	/* Success */
 	return 0;
