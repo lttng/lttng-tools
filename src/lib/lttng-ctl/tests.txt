@@ -21,3 +21,4 @@ asdfas < 2332 || asdf + 1 > 1
 asdf.asdfsd.sadf < 4
 asdfasdf->asdfasdf < 2
 0 || ("abc" != "def")) && (3 < 4)
+(intfield>500 && intfield<503 && intfield<502) && (intfield<503 && intfield < 504)
