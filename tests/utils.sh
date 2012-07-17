@@ -45,7 +45,7 @@ function start_sessiond ()
 	echo -n "Starting session daemon... "
 	validate_kernel_version
 	if [ $? -ne 0 ]; then
-		echo -e "\n*** Kernel to old for session daemon tests ***\n"
+		echo -e "\n*** Kernel too old for session daemon tests ***\n"
 		return 2
 	fi
 
