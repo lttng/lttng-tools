@@ -36,6 +36,12 @@ src/bin/lttng/lttng
 src/bin/lttng-consumerd/lttng-consumerd
 src/bin/lttng-relayd/lttng-relayd
 
+src/lib/lttng-ctl/filter-grammar-test
+src/lib/lttng-ctl/filter-lexer.c
+src/lib/lttng-ctl/filter-parser.c
+src/lib/lttng-ctl/filter-parser.h
+src/lib/lttng-ctl/filter-parser.output
+
 # Tests
 test_sessions
 test_kernel_data_trace
