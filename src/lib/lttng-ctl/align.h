@@ -17,7 +17,7 @@
  * all copies or substantial portions of the Software.
  */
 
-#include <lttng/bug.h>
+#include "bug.h"
 #include <unistd.h>
 #include <limits.h>
 
