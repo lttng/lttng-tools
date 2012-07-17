@@ -68,6 +68,9 @@ Please see doc/quickstart.txt to help you start tracing. You can also use the
 -h/--help command on 'lttng' and all other commands offered in this tool (Ex:
 lttng enable-event -h).
 
+A network streaming HOWTO can be found in doc/streaming-howto.txt which quickly
+helps you understand how to stream a LTTng 2.0 trace.
+
 PACKAGE CONTENTS:
 
     This package contains the following elements:
