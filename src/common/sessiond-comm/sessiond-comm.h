@@ -84,9 +84,8 @@ enum lttcomm_sessiond_command {
 	RELAYD_UPDATE_SYNC_INFO,
 	RELAYD_VERSION,
 	RELAYD_SEND_METADATA,
-
-	/* Other tracer commands */
 	LTTNG_SET_FILTER,
+	LTTNG_HEALTH_CHECK,
 };
 
 /*
@@ -319,6 +318,15 @@ struct lttcomm_lttng_msg {
 	uint32_t data_size;
 	/* Contains: trace_name + data */
 	char payload[];
+};
+
+struct lttcomm_health_msg {
+	uint32_t component;
+	uint32_t cmd;
+};
+
+struct lttcomm_health_data {
+	uint32_t ret_code;
 };
 
 /*

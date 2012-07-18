@@ -23,6 +23,8 @@
 #include <common/consumer.h>
 #include <lttng/lttng.h>
 
+#include "health.h"
+
 enum consumer_dst_type {
 	CONSUMER_DST_LOCAL,
 	CONSUMER_DST_NET,
@@ -44,6 +46,9 @@ struct consumer_data {
 	/* consumer error and command Unix socket path */
 	char err_unix_sock_path[PATH_MAX];
 	char cmd_unix_sock_path[PATH_MAX];
+
+	/* Health check of the thread */
+	struct health_state health;
 };
 
 /*

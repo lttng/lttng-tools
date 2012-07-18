@@ -20,6 +20,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <grp.h>
 #include <errno.h>
 #include <stdio.h>
@@ -55,6 +56,7 @@ do {								\
 /* Socket to session daemon for communication */
 static int sessiond_socket;
 static char sessiond_sock_path[PATH_MAX];
+static char health_sock_path[PATH_MAX];
 
 /* Variables */
 static char *tracing_group;
@@ -1279,10 +1281,104 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 }
 
 /*
+ * Set health socket path by putting it in the global health_sock_path
+ * variable.
+ *
+ * Returns 0 on success or assert(0) on ENOMEM.
+ */
+static int set_health_socket_path(void)
+{
+	int ret;
+	int in_tgroup = 0;	/* In tracing group */
+	uid_t uid;
+	const char *home;
+
+	uid = getuid();
+
+	if (uid != 0) {
+		/* Are we in the tracing group ? */
+		in_tgroup = check_tracing_group(tracing_group);
+	}
+
+	if ((uid == 0) || in_tgroup) {
+		copy_string(health_sock_path, DEFAULT_GLOBAL_HEALTH_UNIX_SOCK,
+				sizeof(health_sock_path));
+	}
+
+	if (uid != 0) {
+		/*
+		 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
+		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
+		 */
+		home = getenv("HOME");
+		if (home == NULL) {
+			/* Fallback in /tmp .. */
+			home = "/tmp";
+		}
+
+		ret = snprintf(health_sock_path, sizeof(health_sock_path),
+				DEFAULT_HOME_HEALTH_UNIX_SOCK, home);
+		if ((ret < 0) || (ret >= sizeof(health_sock_path))) {
+			/* ENOMEM at this point... just kill the control lib. */
+			assert(0);
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Check session daemon health for a specific health component.
+ *
+ * Return 0 if health is OK or else 1 if BAD. A return value of -1 indicate
+ * that the control library was not able to connect to the session daemon
+ * health socket.
+ *
+ * Any other positive value is an lttcomm error which can be translate with
+ * lttng_strerror().
+ */
+int lttng_health_check(enum lttng_health_component c)
+{
+	int sock, ret;
+	struct lttcomm_health_msg msg;
+	struct lttcomm_health_data reply;
+
+	/* Connect to the sesssion daemon */
+	sock = lttcomm_connect_unix_sock(health_sock_path);
+	if (sock < 0) {
+		ret = -1;
+		goto error;
+	}
+
+	msg.cmd = LTTNG_HEALTH_CHECK;
+	msg.component = c;
+
+	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));
+	if (ret < 0) {
+		goto close_error;
+	}
+
+	ret = lttcomm_recv_unix_sock(sock, (void *)&reply, sizeof(reply));
+	if (ret < 0) {
+		goto close_error;
+	}
+
+	ret = reply.ret_code;
+
+close_error:
+	close(sock);
+
+error:
+	return ret;
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()
 {
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
+	/* Set socket for health check */
+	(void) set_health_socket_path();
 }

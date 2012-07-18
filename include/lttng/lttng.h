@@ -131,6 +131,15 @@ enum lttng_calibrate_type {
 	LTTNG_CALIBRATE_FUNCTION              = 0,
 };
 
+/* Health component for the health check function. */
+enum lttng_health_component {
+	LTTNG_HEALTH_CMD,
+	LTTNG_HEALTH_APP_REG,
+	LTTNG_HEALTH_KERNEL,
+	LTTNG_HEALTH_CONSUMER,
+	LTTNG_HEALTH_ALL,
+};
+
 /* Destination type of lttng URI */
 enum lttng_dst_type {
 	LTTNG_DST_IPV4                        = 1,
@@ -618,5 +627,17 @@ extern int lttng_enable_consumer(struct lttng_handle *handle);
  * Disable consumer for a session and domain.
  */
 extern int lttng_disable_consumer(struct lttng_handle *handle);
+
+/*
+ * Check session daemon health for a specific component.
+ *
+ * Return 0 if health is OK or 1 if BAD. A returned value of -1 indicate that
+ * the control library was not able to connect to the session daemon health
+ * socket.
+ *
+ * Any other positive value is an lttcomm error which can be translate with
+ * lttng_strerror().
+ */
+extern int lttng_health_check(enum lttng_health_component c);
 
 #endif /* _LTTNG_H */
