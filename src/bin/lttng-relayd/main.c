@@ -49,6 +49,7 @@
 #include <common/hashtable/hashtable.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/uri.h>
+#include <common/utils.h>
 
 #include "lttng-relayd.h"
 
@@ -228,18 +229,13 @@ exit:
 static
 void cleanup(void)
 {
-	int i, ret;
-
 	DBG("Cleaning up");
 
-	for (i = 0; i < 2; i++) {
-		if (thread_quit_pipe[i] >= 0) {
-			ret = close(thread_quit_pipe[i]);
-			if (ret) {
-				PERROR("close");
-			}
-		}
-	}
+	/* Close thread quit pipes */
+	utils_close_pipe(thread_quit_pipe);
+
+	/* Close relay cmd pipes */
+	utils_close_pipe(relay_cmd_pipe);
 }
 
 /*
@@ -351,23 +347,10 @@ int set_signal_handler(void)
 static
 int init_thread_quit_pipe(void)
 {
-	int ret, i;
+	int ret;
 
-	ret = pipe(thread_quit_pipe);
-	if (ret < 0) {
-		PERROR("thread quit pipe");
-		goto error;
-	}
+	ret = utils_create_pipe_cloexec(thread_quit_pipe);
 
-	for (i = 0; i < 2; i++) {
-		ret = fcntl(thread_quit_pipe[i], F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl");
-			goto error;
-		}
-	}
-
-error:
 	return ret;
 }
 
@@ -1444,23 +1427,10 @@ error_poll_create:
  */
 static int create_relay_cmd_pipe(void)
 {
-	int ret, i;
+	int ret;
 
-	ret = pipe(relay_cmd_pipe);
-	if (ret < 0) {
-		PERROR("relay cmd pipe");
-		goto error;
-	}
+	ret = utils_create_pipe_cloexec(relay_cmd_pipe);
 
-	for (i = 0; i < 2; i++) {
-		ret = fcntl(relay_cmd_pipe[i], F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl relay_cmd_pipe");
-			goto error;
-		}
-	}
-
-error:
 	return ret;
 }
 
@@ -1480,7 +1450,7 @@ int main(int argc, char **argv)
 	/* Parse arguments */
 	progname = argv[0];
 	if ((ret = parse_args(argc, argv) < 0)) {
-		goto error;
+		goto exit;
 	}
 
 	if ((ret = set_signal_handler()) < 0) {
@@ -1492,7 +1462,7 @@ int main(int argc, char **argv)
 		ret = daemon(0, 0);
 		if (ret < 0) {
 			PERROR("daemon");
-			goto error;
+			goto exit;
 		}
 	}
 
@@ -1503,7 +1473,7 @@ int main(int argc, char **argv)
 		if (control_uri->port < 1024 || data_uri->port < 1024) {
 			ERR("Need to be root to use ports < 1024");
 			ret = -1;
-			goto error;
+			goto exit;
 		}
 	}
 
@@ -1568,6 +1538,7 @@ exit:
 	if (!ret) {
 		exit(EXIT_SUCCESS);
 	}
+
 error:
 	exit(EXIT_FAILURE);
 }
