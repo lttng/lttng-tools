@@ -105,6 +105,7 @@ void usage(void)
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -C, --control-port                 Control port listening (URI)\n");
 	fprintf(stderr, "  -D, --data-port                    Data port listening (URI)\n");
+	fprintf(stderr, "  -o, --output                       Output path for traces (PATH)\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
 }
 
@@ -119,6 +120,7 @@ int parse_args(int argc, char **argv)
 		{ "control-port", 1, 0, 'C' },
 		{ "data-port", 1, 0, 'D' },
 		{ "daemonize", 0, 0, 'd' },
+		{ "help", 0, 0, 'h' },
 		{ "output", 1, 0, 'o' },
 		{ "verbose", 0, 0, 'v' },
 		{ NULL, 0, 0, 0 }
