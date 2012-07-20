@@ -1,0 +1,110 @@
+.TH "LTTNG-RELAYD" "8" "July 15, 2012" "" ""
+
+.SH "NAME"
+lttng-relayd \(em LTTng remote trace collection daemon
+
+.SH "SYNOPSIS"
+
+.PP
+.nf
+lttng-relayd [OPTIONS]
+.fi
+.SH "DESCRIPTION"
+
+.PP
+The LTTng project aims at providing highly efficient tracing tools for Linux.
+It's tracers help tracking down performance issues and debugging problems
+involving multiple concurrent processes and threads. Tracing across multiple
+systems is also possible.
+
+The relay daemon listens on the network and receives traces streamed by a
+remote consumer. This daemon does not require any particular permissions as
+long as it can write in the output folder and listen on the ports.
+
+Once a trace has been streamed completely, the trace can be processed by any
+tool that can process a local LTTng CTF trace.
+
+By default, the relayd outputs the traces in :
+~/lttng-traces/hostname/session-name/domain-name
+
+The prefix (~/lttng-traces) can be configured on the relayd side (see below for
+the option), the other folders can be configured when creating the trace on the
+sessiond side.
+.SH "OPTIONS"
+
+.PP
+This program follow the usual GNU command line syntax with long options starting with
+two dashes. Below is a summary of the available options.
+.PP
+
+.TP
+.BR "-h, --help"
+Show summary of possible options and commands
+.TP
+.BR "-v, --verbose"
+Increase verbosity
+
+There is three debugging level which will print on stderr. Maximum verbosity is
+\fB-vvv\fP.
+.TP
+.BR "-d, --daemonize"
+Start as a daemon
+.TP
+.BR "-C, --control-port"
+Control port URI (tcp://0.0.0.0:5342 is the default)
+.TP
+.BR "-D, --data-port"
+Data port URI (tcp://0.0.0.0:5343 is the default)
+.TP
+.BR "-o, --output"
+Output base directory (~/lttng-traces is the default)
+.TP
+.BR "-V, --version"
+Show version number
+.SH "SEE ALSO"
+
+.PP
+babeltrace(1), lttng-sessiond(8), lttng-ust(3), lttng(1)
+.PP
+
+.SH "LIMITATIONS"
+
+.PP
+For now only TCP is supported on both control and data port.
+Control will always remain TCP-only since it is low-volume and needs absolutely
+to be reliable, but eventually the data connection could support UDP.
+
+For unprivileged user running lttng-relayd, the maximum number of file
+descriptors per process is usually 1024. This limits the number of connections
+and tracefiles opened. This limit can be configured see ulimit(3).
+.PP
+
+.SH "BUGS"
+
+.PP
+No show stopper bugs are known yet in this version.
+
+If you encounter any issues or usability problem, please report it on our
+mailing list <lttng-dev@lists.lttng.org> to help improve this project.
+.SH "CREDITS"
+
+.PP
+lttng-relayd is distributed under the GNU General Public License version 2. See the
+file COPYING for details.
+.PP
+A Web site is available at http://lttng.org for more information on the LTTng
+project.
+.PP
+You can also find our git tree at http://git.lttng.org.
+.PP
+Mailing lists for support and development: <lttng-dev@lists.lttng.org>.
+.PP
+You can find us on IRC server irc.oftc.net (OFTC) in #lttng.
+.PP
+.SH "AUTHORS"
+
+.PP
+lttng-relay was originally written by Julien Desfossez and
+David Goulet. More people have since contributed to it. It is currently
+maintained by Julien Desfossez <jdesfossez@efficios.com>.
+.PP
