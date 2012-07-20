@@ -17,12 +17,7 @@
  */
 
 #define _GNU_SOURCE
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <common/error.h>
@@ -52,78 +47,4 @@ int notify_thread_pipe(int wpipe)
 const char *get_home_dir(void)
 {
 	return ((const char *) getenv("HOME"));
-}
-
-/*
- * Create a pipe in dst.
- */
-int utils_create_pipe(int *dst)
-{
-	int ret;
-
-	if (dst == NULL) {
-		return -1;
-	}
-
-	ret = pipe(dst);
-	if (ret < 0) {
-		PERROR("create pipe");
-	}
-
-	return ret;
-}
-
-/*
- * Create pipe and set CLOEXEC flag to both fd.
- *
- * Make sure the pipe opened by this function are closed at some point. Use
- * utils_close_pipe().
- */
-int utils_create_pipe_cloexec(int *dst)
-{
-	int ret, i;
-
-	if (dst == NULL) {
-		return -1;
-	}
-
-	ret = utils_create_pipe(dst);
-	if (ret < 0) {
-		goto error;
-	}
-
-	for (i = 0; i < 2; i++) {
-		ret = fcntl(dst[i], F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl pipe cloexec");
-			goto error;
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Close both read and write side of the pipe.
- */
-void utils_close_pipe(int *src)
-{
-	int i, ret;
-
-	if (src == NULL) {
-		return;
-	}
-
-	for (i = 0; i < 2; i++) {
-		/* Safety check */
-		if (src[i] < 0) {
-			continue;
-		}
-
-		ret = close(src[i]);
-		if (ret) {
-			PERROR("close pipe");
-		}
-	}
 }

@@ -31,6 +31,7 @@
 #include <common/defaults.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
+#include <common/utils.h>
 
 static char *opt_output_path;
 static char *opt_session_name;
@@ -177,7 +178,7 @@ static int create_session()
 	}
 
 	if (opt_output_path != NULL) {
-		traces_path = expand_full_path(opt_output_path);
+		traces_path = utils_expand_path(opt_output_path);
 		if (traces_path == NULL) {
 			ret = CMD_ERROR;
 			goto error;

@@ -44,6 +44,7 @@
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/futex.h>
 #include <common/relayd/relayd.h>
+#include <common/utils.h>
 
 #include "lttng-sessiond.h"
 #include "channel.h"
