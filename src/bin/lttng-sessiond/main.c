@@ -103,6 +103,7 @@ static struct consumer_data ustconsumer32_data = {
 	.cmd_sock = -1,
 };
 
+/* Shared between threads */
 static int dispatch_thread_exit;
 
 /* Global application Unix socket path */
@@ -420,7 +421,7 @@ static void stop_threads(void)
 	}
 
 	/* Dispatch thread */
-	dispatch_thread_exit = 1;
+	CMM_STORE_SHARED(dispatch_thread_exit, 1);
 	futex_nto1_wake(&ust_cmd_queue.futex);
 }
 
@@ -1219,7 +1220,7 @@ static void *thread_dispatch_ust_registration(void *data)
 
 	DBG("[thread] Dispatch UST command started");
 
-	while (!dispatch_thread_exit) {
+	while (!CMM_LOAD_SHARED(dispatch_thread_exit)) {
 		/* Atomically prepare the queue futex */
 		futex_nto1_prepare(&ust_cmd_queue.futex);
 

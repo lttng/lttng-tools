@@ -74,6 +74,7 @@ static int thread_quit_pipe[2] = { -1, -1 };
  */
 static int relay_cmd_pipe[2] = { -1, -1 };
 
+/* Shared between threads */
 static int dispatch_thread_exit;
 
 static pthread_t listener_thread;
@@ -272,7 +273,7 @@ void stop_threads(void)
 	}
 
 	/* Dispatch thread */
-	dispatch_thread_exit = 1;
+	CMM_STORE_SHARED(dispatch_thread_exit, 1);
 	futex_nto1_wake(&relay_cmd_queue.futex);
 }
 
@@ -608,7 +609,7 @@ void *relay_thread_dispatcher(void *data)
 
 	DBG("[thread] Relay dispatcher started");
 
-	while (!dispatch_thread_exit) {
+	while (!CMM_LOAD_SHARED(dispatch_thread_exit)) {
 		/* Atomically prepare the queue futex */
 		futex_nto1_prepare(&relay_cmd_queue.futex);
 
