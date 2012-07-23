@@ -1,7 +1,7 @@
 
-******** DEPRECATED **********
-* Kept for historic purposes *
-******** DEPRECATED **********
+******** DEPRECATED ************
+* Kept for historical purposes *
+******** DEPRECATED ************
 
 lttng-tools command line interface
 
@@ -52,7 +52,7 @@ lttng version command_name # show lttng versions for app by command
 * Tracing session control
 
 lttng create [--session] name # create a tracing session (default name provided)
-             [--output path]  # optionally specify the output path 
+             [--output path]  # optionally specify the output path
 
 ---> This command prints
      "Working directory of created session is /path/to/name. Change your"

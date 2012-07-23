@@ -1,0 +1,202 @@
+RFC - Network consumer
+
+Author: David Goulet <david.goulet@efficios.com>
+
+Contributors:
+    * Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+    * Julien Desfossez <julien.desfossez@efficios.com>
+
+Version:
+    - v0.1: 16/04/2012
+        * Initial proposal
+	- v0.2: 04/05/2012
+		* Add snapshot description
+		* Propose a new API and lttng cli command
+	- v0.3: 23/07/2012
+		* Remove snapshot and focus only on network consumer for straming.
+
+Introduction
+-----------------
+
+This RFC proposes a way for the lttng 2.0 session daemon to handle network
+session for streaming purposes and eventually remote control.
+
+The next sections introduce the concept of network session and how it is
+envisioned in the lttng 2.0 toolchain.
+
+Please note that this RFC is neither final nor complete without the community
+feedbacks. The text below is a proposal.
+
+Network consumer
+-----------------
+
+For version 2.1 of lttngt-tools, we propose to add a network consumer which will
+be used for streaming.
+
+We allow to pass a full URI to the enable consumer command to override the
+current consumer or define a new one.
+
+We should at least support the following protocols:
+
+* net://HOST[:PORT_CTRL[:PORT_DATA]]
+* tcp://HOST:PORT
+* tcp6://HOST:PORT
+* udp://HOST:PORT
+* udp6://HOST:PORT
+* file://
+
+The net:// URI scheme makes the control and data stream use the default
+transport protocol which is TCP. The same remote host is also
+used for both. The ports can be specified and if not the defaults are used which
+are 5342 for control and 5343 for data.
+
+If URI not recognized, we use the arguments as a file name (same behavior as
+using file:///).
+
+The control and data stream are two separate arguments of the API since we allow
+the user to control the protocol and path (address). However, for a transfer to
+succeed, the lttng-sessiond and the remote end must establish a session for the
+control _and_ data path. If one fails to do so, the procedure is aborted. Thus,
+a different address for the control path from the data path is allowed but the
+user has to make sure that both communication channels end up at the same
+physical destination.
+
+Note that the control path is a crucial and high priority channel of
+communication so for now we only allow it to use the TCP protocol.
+
+Session with Network Transport
+-----------------
+
+In order to tell the session daemon where to send the data for streaming, a
+tracing session has to be aware of some information of the remote target.
+
+    * Remote end network address (Ex: IP or Hostname)
+    * Destination control port
+    * Destination data port
+
+Streaming can be initiated by telling the session daemon that a specific session
+is set for network streaming. This will make the session daemon establish a
+connection with the remote end.  Once tracing starts, the local consumer will be
+made aware of this information and will start sending data following a strict
+protocol defined in the streaming RFC written by Julien Desfossez.
+
+Finally, a trace received by a network consumer will have a new "namespace"
+prepended to the trace output directory hierarchy: the hostname from _where_ the
+trace is coming from.
+
+host01
+\-- my_session1
+    \-- ust
+        \-- my_app1[...]
+            \-- trace data...
+    \-- kernel
+        \-- trace data...
+
+Client API integration
+-----------------
+
+Adding an API call to set attributes such as network information to a session.
+Since lttng_create_session only takes a name and a path, a new call is required
+to pass this information. The naming convention is NOT final and can be
+improved.
+
+struct lttng_handle handle;
+
+enum lttng_dst_type {
+	LTTNG_DST_IPV4,
+	LTTNG_DST_IPV6,
+	LTTNG_DST_HOST,
+	LTTNG_DST_PATH,
+};
+
+enum lttng_uri_type {
+	LTTNG_URI_HOP,
+	LTTNG_URI_DST,
+};
+
+enum lttng_stream_type {
+	LTTNG_STREAM_CONTROL,
+	LTTNG_STREAM_DATA
+};
+
+enum lttng_proto_type {
+	LTTNG_UDP,
+	LTTNG_TCP,
+};
+
+#define LTTNG_NETWORK_PADDING1_LEN	32
+#define LTTNG_NETWORK_PADDING2_LEN	128
+struct lttng_uri {
+	enum lttng_dst_type dtype;
+	enum lttng_uri_type utype;
+	enum lttng_stream_type stype;
+	enum lttng_proto proto;
+	in_port_t port;
+	char padding[LTTNG_NETWORK_PADDING1_LEN];
+	char subdir[PATH_MAX];
+	union {
+		char ipv4[INET_ADDRSTRLEN];
+		char ipv6[INET6_ADDRSTRLEN];
+		char path[PATH_NAME];
+		char padding[LTTNG_NETWORK_PADDING2_LEN];
+	} dst;
+};
+
+/* Set URI in the consumer template*/
+lttng_set_consumer_uri(handle, struct lttng_uri *u);
+
+
+/*
+ * Enable consumer template for the session. Once enabled, no more URI setting
+ * are possible for that specific consumer.
+ */
+lttng_enable_consumer(handle);
+
+/*
+ * Disable the consumer means that the consumer will stop consuming but will
+ * still be exist. Executing the enable_consumer call again will simply re
+ * enable it.
+ */
+lttng_disable_consumer(handle);
+
+If lttng_set_consumer_uri is executed on a session which already has a network
+consumer attached to it, the present consumer is freed and a new template is
+added.
+
+We propose to add two commands to the lttng command line actions:
+
+i) lttng enable-consumer [URI] [OPTIONS]
+	-s SESSION_NAME
+	-C, --control-uri=[HOP1,]URI
+	-D, --data-uri=[HOP1,]URI
+
+ii) lttng disable-consumer
+	-s SESSION_NAME
+
+Each option defining URI(s) can contains a list of hops preceeding the final
+destination. However, the proxy feature is still not supported but we prefer to
+inform the community of is future existence.
+
+So, the regular chain of command to enable a network consumer would be:
+
+# lttng create session1
+// The command sets the destination but uses the default protocols and ports.
+# lttng enable-consumer net://192.168.1.10
+# lttng enable-event -a -k
+# lttng start
+(tracing...)
+# lttng stop
+
+(This example considers that there is a lttng-relayd on the remote end.)
+
+Session daemon integration
+-----------------
+
+As mentioned earlier, the session daemon will be in charge of establishing a
+streaming session with the target over the network i.e. creating the control and
+data path bidirectional socket. Once done, a network consumer is spawned and
+those sockets are passed over.
+
+From there, the session daemon can interact with the consumer by stopping the
+network streaming or re-establishing a local trace collection with a non network
+consumer.

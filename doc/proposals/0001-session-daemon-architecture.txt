@@ -1,4 +1,8 @@
-RFC - New processes model for UST and LTTng
+RFC - LTTng session daemon architecture
+
+WARNING:
+  Parts of the proposal are obselete but we keep this version for historical
+  purposes.
 
 Author: David Goulet <david.goulet@polymtl.ca>
 
@@ -13,7 +17,7 @@ Version:
     - v0.1: 17/01/2011
         * Initial proposal
 
-    - v0.2: 19/01/2011 
+    - v0.2: 19/01/2011
         After multiple reply from all the contributors above, here is the list
         of what has changed:
         * Change/Add Terminology elements from the initial model
@@ -22,7 +26,7 @@ Version:
         * LTTng kernel tracer support proposition
         * More details for the Model and Components
         * Improve the basic model. Quite different from the last one
-    
+
     - v0.3: 28/01/2011
         In response from Michel Dagenais and Nils Carlson comments:
         * Add scaling to reasons of this re-engineering
@@ -34,7 +38,7 @@ Version:
     - v0.4: 01/02/2011
         After Mathieu Desnoyers and Michel Dagenais comments:
         * Add section Introduction
-        * Define the global and per-user ltt-sessiond 
+        * Define the global and per-user ltt-sessiond
         * Add details for ltt-sessiond in the inprocess lib section
         * Session ID are now UUID
         * Add buffer snapshot schema for ust-consumerd
@@ -42,6 +46,10 @@ Version:
         * ltt-sessiond socket validation by the inprocess lib.
         * Add lttng definition
         * Add consumer to the Model section
+	- v0.5: 23/07/2012
+		* Please refer to the thesis of David Goulet for the complete
+		and up to date specifications of the architecture and algorithms used.
+		(http://publications.polymtl.ca/842/1/2012_DavidGoulet.pdf)
 
 Terminology
 -----------------
@@ -211,9 +219,9 @@ daemon that the buffers are ready for consumption.
 
 Here is a flow of action to illustrate the ust-consumerd life span:
 
-1) 
+1)
 +-----------+    ops     +--------------+
-| lttng A |<---------->| ltt-sessiond |
+| lttng A   |<---------->| ltt-sessiond |
 +-----------+            +--------------+
 
 lttng ask for tracing an application using the PID and the session UUID. The
@@ -222,11 +230,11 @@ socket if ust-consumerd already exist.
 
 2a) If ust-consumerd EXIST
 
-+-----------+        
-| lttng A |        
-+-----------+        
-    | mem ref.               
-    |   +---------------+   read   +------------+    
++-----------+
+| lttng A   |
++-----------+
+    | mem ref.
+    |   +---------------+   read   +------------+
     +-->| ust-consumerd |--------->| shared mem |
         +---------------+          +------------+
 
@@ -236,7 +244,7 @@ the reference it previously got from ltt-sessiond.
 2b) If ust-consumerd DOES NOT EXIST
 
 +-----------+              +--------------+
-| lttng A |        +---->| ltt-sessiond |
+| lttng A   |        +---->| ltt-sessiond |
 +-----------+        |     +--------------+
     | ID             |
     | mem ref.       | register
@@ -252,18 +260,18 @@ Quick buffer snapshot:
 
 1) Here, lttng will request a buffer snapshot for an already running session.
 
-+-----------+                     +--------------+          
-| lttng A |-------- ops ------->| ltt-sessiond |          
-+-----------+                     +--------------+          
++-----------+                     +--------------+
+| lttng A   |-------- ops ------->| ltt-sessiond |
++-----------+                     +--------------+
  |                                      | command
  |  +-----------------+     +-------+<--+
  |  | ust-consumerd 1 |<----| app_1 |-+
  |  +-----------------+     +-------+ | write
- |    1   |                           v  
+ |    1   |                           v
  |        |               +-------------+
  |        +--- read ----->| shared mem. |
- |                        +-------------+ 
- |                               ^                 
+ |                        +-------------+
+ |                               ^
  |  +-----------------+          |
  +->| ust-consumerd 2 |----------+
     +-----------------+  snapshot
@@ -282,7 +290,7 @@ tracing data will also be set to UID/GID of the lttng client. No setuid or
 setgid is used, we only use the credentials of the user.
 
 The roles of ust-consumerd:
-    
+
     Register to ltt-sessiond - Using a session UUID and credentials (UID/GID)
 
     Consume buffers - Write data to a file descriptor (on disk, network, ...)
@@ -293,7 +301,7 @@ ust-consumerd when to consume.
 LTT-CONSUMERD:
 
 The purpose of this daemon is to consume the LTTng trace buffers for only a
-specific session. 
+specific session.
 
 For that kernel consumer, ltt-sessiond will pass different anonymous file
 descriptors to the ltt-consumerd using a Unix socket. From these file
@@ -365,7 +373,7 @@ The ltt-sessiond daemon SHOULD be up and running at all time in order to trace
 a tracable application.
 
 The new lttng library API MUST be used to interact with the
-ltt-sessiond registry daemon for every trace action needed by the user. 
+ltt-sessiond registry daemon for every trace action needed by the user.
 
 A tracing group MUST be created. Whoever is in that group is able to access the
 tracing data of any buffers and is able to trace any application or the kernel.
@@ -440,7 +448,7 @@ Scenario 2 - Single user tracing already running app_1
 +-----------+    ops     +--------------+
 | lttng A   |<---------->| ltt-sessiond |
 +-----------+            +--------------+
-                           ^ 
+                           ^
         +-------+   read   |
         | app_1 |----------+
         +-------+
@@ -477,21 +485,21 @@ Scenario 3 - Multiple users tracing the same running application
 before, the shared memory and consumers are created. Two users, two sessions,
 two consumers and two shared memories for the same application.
 
-+-----------+                     +--------------+          
-| lttng A   |-------- ops ------->| ltt-sessiond |          
-+-----------+      ^              +--------------+          
++-----------+                     +--------------+
+| lttng A   |-------- ops ------->| ltt-sessiond |
++-----------+      ^              +--------------+
                    |                           ^ commands
 +-----------+      |               +-------+<--+
 | lttng B   |------+          +--->| app_1 |------- write -----+
-+-----------+                 |    +-------+                   | 
-                              |                                | 
++-----------+                 |    +-------+                   |
+                              |                                |
          +-----------------+  |               +-------------+  |
          | ust-consumerd A |--O--- read ----->| shared mem. |<-+
-         +-----------------+  |               +-------------+  |  
-                              |                                |    
+         +-----------------+  |               +-------------+  |
+                              |                                |
          +-----------------+  v               +-------------+  |
          | ust-consumerd B |--+--- read ----->| shared mem. |<-+
-         +-----------------+                  +-------------+    
+         +-----------------+                  +-------------+
 
 ust-consumerd A - UID: user A (rw-), GID: tracing (r--)
 ust-consumerd B - UID: user B (rw-), GID: tracing (r--)

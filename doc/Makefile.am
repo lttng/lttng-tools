@@ -1,4 +1,4 @@
 SUBDIRS = man
-EXTRA_DIST = quickstart.txt session-daemon-model.txt
+EXTRA_DIST = quickstart.txt streaming-howto.txt
 
-dist_doc_DATA = quickstart.txt
+dist_doc_DATA = quickstart.txt streaming-howto.txt
