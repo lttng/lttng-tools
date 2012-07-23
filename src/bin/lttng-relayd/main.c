@@ -246,7 +246,9 @@ int notify_thread_pipe(int wpipe)
 {
 	int ret;
 
-	ret = write(wpipe, "!", 1);
+	do {
+		ret = write(wpipe, "!", 1);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		PERROR("write poll pipe");
 	}
@@ -627,8 +629,10 @@ void *relay_thread_dispatcher(void *data)
 			 * call is blocking so we can be assured that the data will be read
 			 * at some point in time or wait to the end of the world :)
 			 */
-			ret = write(relay_cmd_pipe[1], relay_cmd,
-					sizeof(struct relay_command));
+			do {
+				ret = write(relay_cmd_pipe[1], relay_cmd,
+						sizeof(struct relay_command));
+			} while (ret < 0 && errno == EINTR);
 			free(relay_cmd);
 			if (ret < 0) {
 				PERROR("write cmd pipe");
@@ -1054,8 +1058,10 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	ret = write(metadata_stream->fd, metadata_struct->payload,
-			payload_size);
+	do {
+		ret = write(metadata_stream->fd, metadata_struct->payload,
+				payload_size);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < (payload_size)) {
 		ERR("Relay error writing metadata on file");
 		ret = -1;
@@ -1189,7 +1195,9 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 		goto end;
 	}
 
-	ret = write(stream->fd, data_buffer, data_size);
+	do {
+		ret = write(stream->fd, data_buffer, data_size);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < data_size) {
 		ERR("Relay error writing data to file");
 		ret = -1;

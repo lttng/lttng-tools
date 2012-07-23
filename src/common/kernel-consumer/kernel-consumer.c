@@ -101,12 +101,12 @@ ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 				do {
 					ret = write(outfd, (void *) &metadata_id,
 							sizeof(stream->relayd_stream_id));
-					if (ret < 0) {
-						PERROR("write metadata stream id");
-						written = ret;
-						goto end;
-					}
-				} while (errno == EINTR);
+				} while (ret < 0 && errno == EINTR);
+				if (ret < 0) {
+					PERROR("write metadata stream id");
+					written = ret;
+					goto end;
+				}
 				DBG("Metadata stream id %zu written before data",
 						stream->relayd_stream_id);
 				/*
@@ -120,18 +120,15 @@ ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 	}
 
 	while (len > 0) {
-		ret = write(outfd, stream->mmap_base + mmap_offset, len);
+		do {
+			ret = write(outfd, stream->mmap_base + mmap_offset, len);
+		} while (ret < 0 && errno == EINTR);
 		if (ret < 0) {
-			if (errno == EINTR) {
-				/* restart the interrupted system call */
-				continue;
-			} else {
-				perror("Error in file write");
-				if (written == 0) {
-					written = ret;
-				}
-				goto end;
+			perror("Error in file write");
+			if (written == 0) {
+				written = ret;
 			}
+			goto end;
 		} else if (ret > len) {
 			perror("Error in file write");
 			written += ret;
@@ -200,17 +197,17 @@ ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 		 */
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 
+		metadata_id = htobe64(stream->relayd_stream_id);
 		do {
-			metadata_id = htobe64(stream->relayd_stream_id);
 			ret = write(ctx->consumer_thread_pipe[1],
 					(void *) &metadata_id,
 					sizeof(stream->relayd_stream_id));
-			if (ret < 0) {
-				PERROR("write metadata stream id");
-				written = ret;
-				goto end;
-			}
-		} while (errno == EINTR);
+		} while (ret < 0 && errno == EINTR);
+		if (ret < 0) {
+			PERROR("write metadata stream id");
+			written = ret;
+			goto end;
+		}
 		DBG("Metadata stream id %zu written before data",
 				stream->relayd_stream_id);
 	}
@@ -581,7 +578,7 @@ end:
 	 */
 	do {
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
-	} while (ret == -1UL && errno == EINTR);
+	} while (ret < 0 && errno == EINTR);
 end_nosignal:
 	return 0;
 }

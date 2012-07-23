@@ -875,7 +875,9 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	consumer_quit = 1;
-	ret = write(ctx->consumer_should_quit[1], "4", 1);
+	do {
+		ret = write(ctx->consumer_should_quit[1], "4", 1);
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
 		perror("write consumer quit");
 	}
@@ -1522,7 +1524,7 @@ end:
 	 */
 	do {
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
-	} while (ret == -1UL && errno == EINTR);
+	} while (ret < 0 && errno == EINTR);
 	rcu_unregister_thread();
 	return NULL;
 }

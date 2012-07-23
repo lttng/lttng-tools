@@ -192,8 +192,10 @@ int child_run_as(void *_data)
 	writeleft = sizeof(sendret);
 	index = 0;
 	do {
-		writelen = write(data->retval_pipe, &sendret.c[index],
-				writeleft);
+		do {
+			writelen = write(data->retval_pipe, &sendret.c[index],
+					writeleft);
+		} while (writelen < 0 && errno == EINTR);
 		if (writelen < 0) {
 			PERROR("write");
 			return EXIT_FAILURE;

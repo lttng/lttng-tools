@@ -91,12 +91,12 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 				do {
 					ret = write(outfd, (void *) &metadata_id,
 							sizeof(stream->relayd_stream_id));
-					if (ret < 0) {
-						PERROR("write metadata stream id");
-						written = ret;
-						goto end;
-					}
-				} while (errno == EINTR);
+				} while (ret < 0 && errno == EINTR);
+				if (ret < 0) {
+					PERROR("write metadata stream id");
+					written = ret;
+					goto end;
+				}
 				DBG("Metadata stream id %zu written before data",
 						stream->relayd_stream_id);
 			}
@@ -105,18 +105,15 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 	}
 
 	while (len > 0) {
-		ret = write(outfd, stream->mmap_base + mmap_offset, len);
+		do {
+			ret = write(outfd, stream->mmap_base + mmap_offset, len);
+		} while (ret < 0 && errno == EINTR);
 		if (ret < 0) {
-			if (errno == EINTR) {
-				/* restart the interrupted system call */
-				continue;
-			} else {
-				PERROR("Error in file write");
-				if (written == 0) {
-					written = ret;
-				}
-				goto end;
+			PERROR("Error in file write");
+			if (written == 0) {
+				written = ret;
 			}
+			goto end;
 		} else if (ret > len) {
 			PERROR("ret %ld > len %lu", ret, len);
 			written += ret;
@@ -434,7 +431,7 @@ end:
 	 */
 	do {
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
-	} while (ret == -1UL && errno == EINTR);
+	} while (ret < 0 && errno == EINTR);
 end_nosignal:
 	return 0;
 }
