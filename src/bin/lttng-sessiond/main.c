@@ -216,6 +216,7 @@ static unsigned int relayd_net_seq_idx;
 
 /* Used for the health monitoring of the session daemon. See health.h */
 struct health_state health_thread_cmd;
+struct health_state health_thread_app_manage;
 struct health_state health_thread_app_reg;
 struct health_state health_thread_kernel;
 
@@ -716,7 +717,7 @@ static void update_ust_app(int app_sock)
  */
 static void *thread_manage_kernel(void *data)
 {
-	int ret, i, pollfd, update_poll_flag = 1;
+	int ret, i, pollfd, update_poll_flag = 1, err = -1;
 	uint32_t revents, nb_fd;
 	char tmp;
 	struct lttng_poll_event events;
@@ -789,7 +790,8 @@ static void *thread_manage_kernel(void *data)
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			/* Check for data on kernel pipe */
@@ -817,10 +819,15 @@ static void *thread_manage_kernel(void *data)
 		}
 	}
 
+exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
-	health_reset(&health_thread_kernel);
+	if (err) {
+		health_error(&health_thread_kernel);
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_exit(&health_thread_kernel);
 	DBG("Kernel thread dying");
 	return NULL;
 }
@@ -830,7 +837,7 @@ error_poll_create:
  */
 static void *thread_manage_consumer(void *data)
 {
-	int sock = -1, i, ret, pollfd;
+	int sock = -1, i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	enum lttcomm_return_code code;
 	struct lttng_poll_event events;
@@ -888,7 +895,8 @@ restart:
 		/* Thread quit pipe has been closed. Killing thread. */
 		ret = check_thread_quit_pipe(pollfd, revents);
 		if (ret) {
-			goto error;
+			err = 0;
+			goto exit;
 		}
 
 		/* Event on the registration socket */
@@ -976,7 +984,8 @@ restart_poll:
 		/* Thread quit pipe has been closed. Killing thread. */
 		ret = check_thread_quit_pipe(pollfd, revents);
 		if (ret) {
-			goto error;
+			err = 0;
+			goto exit;
 		}
 
 		/* Event on the kconsumerd socket */
@@ -1000,6 +1009,7 @@ restart_poll:
 
 	ERR("consumer return code : %s", lttcomm_get_readable_code(-code));
 
+exit:
 error:
 	/* Immediately set the consumerd state to stopped */
 	if (consumer_data->type == LTTNG_CONSUMER_KERNEL) {
@@ -1038,7 +1048,11 @@ error:
 	lttng_poll_clean(&events);
 error_poll:
 error_listen:
-	health_reset(&consumer_data->health);
+	if (err) {
+		health_error(&consumer_data->health);
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_exit(&consumer_data->health);
 	DBG("consumer thread cleanup completed");
 
 	return NULL;
@@ -1049,7 +1063,7 @@ error_listen:
  */
 static void *thread_manage_apps(void *data)
 {
-	int i, ret, pollfd;
+	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct ust_command ust_cmd;
 	struct lttng_poll_event events;
@@ -1059,7 +1073,7 @@ static void *thread_manage_apps(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_code_update(&health_thread_app_reg);
+	health_code_update(&health_thread_app_manage);
 
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
@@ -1071,7 +1085,7 @@ static void *thread_manage_apps(void *data)
 		goto error;
 	}
 
-	health_code_update(&health_thread_app_reg);
+	health_code_update(&health_thread_app_manage);
 
 	while (1) {
 		/* Zeroed the events structure */
@@ -1083,9 +1097,9 @@ static void *thread_manage_apps(void *data)
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
-		health_poll_update(&health_thread_app_reg);
+		health_poll_update(&health_thread_app_manage);
 		ret = lttng_poll_wait(&events, -1);
-		health_poll_update(&health_thread_app_reg);
+		health_poll_update(&health_thread_app_manage);
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -1101,12 +1115,13 @@ static void *thread_manage_apps(void *data)
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			health_code_update(&health_thread_app_reg);
+			health_code_update(&health_thread_app_manage);
 
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			/* Inspect the apps cmd pipe */
@@ -1122,7 +1137,7 @@ static void *thread_manage_apps(void *data)
 						goto error;
 					}
 
-					health_code_update(&health_thread_app_reg);
+					health_code_update(&health_thread_app_manage);
 
 					/* Register applicaton to the session daemon */
 					ret = ust_app_register(&ust_cmd.reg_msg,
@@ -1133,7 +1148,7 @@ static void *thread_manage_apps(void *data)
 						break;
 					}
 
-					health_code_update(&health_thread_app_reg);
+					health_code_update(&health_thread_app_manage);
 
 					/*
 					 * Validate UST version compatibility.
@@ -1147,7 +1162,7 @@ static void *thread_manage_apps(void *data)
 						update_ust_app(ust_cmd.sock);
 					}
 
-					health_code_update(&health_thread_app_reg);
+					health_code_update(&health_thread_app_manage);
 
 					ret = ust_app_register_done(ust_cmd.sock);
 					if (ret < 0) {
@@ -1172,7 +1187,7 @@ static void *thread_manage_apps(void *data)
 								ust_cmd.sock);
 					}
 
-					health_code_update(&health_thread_app_reg);
+					health_code_update(&health_thread_app_manage);
 
 					break;
 				}
@@ -1194,14 +1209,19 @@ static void *thread_manage_apps(void *data)
 				}
 			}
 
-			health_code_update(&health_thread_app_reg);
+			health_code_update(&health_thread_app_manage);
 		}
 	}
 
+exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
-	health_reset(&health_thread_app_reg);
+	if (err) {
+		health_error(&health_thread_app_manage);
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_exit(&health_thread_app_manage);
 	DBG("Application communication apps thread cleanup complete");
 	rcu_thread_offline();
 	rcu_unregister_thread();
@@ -1277,7 +1297,7 @@ error:
  */
 static void *thread_registration_apps(void *data)
 {
-	int sock = -1, i, ret, pollfd;
+	int sock = -1, i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	/*
@@ -1323,7 +1343,9 @@ static void *thread_registration_apps(void *data)
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
+		health_poll_update(&health_thread_app_reg);
 		ret = lttng_poll_wait(&events, -1);
+		health_poll_update(&health_thread_app_reg);
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -1335,6 +1357,8 @@ static void *thread_registration_apps(void *data)
 		}
 
 		for (i = 0; i < nb_fd; i++) {
+			health_code_update(&health_thread_app_reg);
+
 			/* Fetch once the poll data */
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
@@ -1342,7 +1366,8 @@ static void *thread_registration_apps(void *data)
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			/* Event on the registration socket */
@@ -1378,6 +1403,7 @@ static void *thread_registration_apps(void *data)
 						sock = -1;
 						continue;
 					}
+					health_code_update(&health_thread_app_reg);
 					ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
 							sizeof(struct ust_register_msg));
 					if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
@@ -1395,6 +1421,7 @@ static void *thread_registration_apps(void *data)
 						sock = -1;
 						continue;
 					}
+					health_code_update(&health_thread_app_reg);
 
 					ust_cmd->sock = sock;
 					sock = -1;
@@ -1422,7 +1449,14 @@ static void *thread_registration_apps(void *data)
 		}
 	}
 
+exit:
 error:
+	if (err) {
+		health_error(&health_thread_app_reg);
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_exit(&health_thread_app_reg);
+
 	/* Notify that the registration thread is gone */
 	notify_ust_apps(0);
 
@@ -1742,15 +1776,15 @@ error:
 }
 
 /*
- * Compute health status of each consumer.
+ * Compute health status of each consumer. If one of them is zero (bad
+ * state), we return 0.
  */
 static int check_consumer_health(void)
 {
 	int ret;
 
-	ret =
-		health_check_state(&kconsumer_data.health) &
-		health_check_state(&ustconsumer32_data.health) &
+	ret = health_check_state(&kconsumer_data.health) &&
+		health_check_state(&ustconsumer32_data.health) &&
 		health_check_state(&ustconsumer64_data.health);
 
 	DBG3("Health consumer check %d", ret);
@@ -4627,7 +4661,7 @@ init_setup_error:
  */
 static void *thread_manage_health(void *data)
 {
-	int sock = -1, new_sock, ret, i, pollfd;
+	int sock = -1, new_sock, ret, i, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	struct lttcomm_health_msg msg;
@@ -4691,7 +4725,8 @@ restart:
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			/* Event on the registration socket */
@@ -4726,6 +4761,9 @@ restart:
 		case LTTNG_HEALTH_CMD:
 			reply.ret_code = health_check_state(&health_thread_cmd);
 			break;
+		case LTTNG_HEALTH_APP_MANAGE:
+			reply.ret_code = health_check_state(&health_thread_app_manage);
+			break;
 		case LTTNG_HEALTH_APP_REG:
 			reply.ret_code = health_check_state(&health_thread_app_reg);
 			break;
@@ -4736,13 +4774,12 @@ restart:
 			reply.ret_code = check_consumer_health();
 			break;
 		case LTTNG_HEALTH_ALL:
-			ret = check_consumer_health();
-
 			reply.ret_code =
-				health_check_state(&health_thread_app_reg) &
-				health_check_state(&health_thread_cmd) &
-				health_check_state(&health_thread_kernel) &
-				ret;
+				health_check_state(&health_thread_app_manage) &&
+				health_check_state(&health_thread_app_reg) &&
+				health_check_state(&health_thread_cmd) &&
+				health_check_state(&health_thread_kernel) &&
+				check_consumer_health();
 			break;
 		default:
 			reply.ret_code = LTTCOMM_UND;
@@ -4774,7 +4811,11 @@ restart:
 		new_sock = -1;
 	}
 
+exit:
 error:
+	if (err) {
+		ERR("Health error occurred in %s", __func__);
+	}
 	DBG("Health check thread dying");
 	unlink(health_unix_sock_path);
 	if (sock >= 0) {
@@ -4802,7 +4843,7 @@ error:
  */
 static void *thread_manage_clients(void *data)
 {
-	int sock = -1, ret, i, pollfd;
+	int sock = -1, ret, i, pollfd, err = -1;
 	int sock_error;
 	uint32_t revents, nb_fd;
 	struct command_ctx *cmd_ctx = NULL;
@@ -4873,7 +4914,8 @@ static void *thread_manage_clients(void *data)
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			/* Event on the registration socket */
@@ -4993,8 +5035,13 @@ static void *thread_manage_clients(void *data)
 		health_code_update(&health_thread_cmd);
 	}
 
+exit:
 error:
-	health_reset(&health_thread_cmd);
+	if (err) {
+		health_error(&health_thread_cmd);
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_exit(&health_thread_cmd);
 
 	DBG("Client thread dying");
 	unlink(client_unix_sock_path);
@@ -5740,6 +5787,7 @@ int main(int argc, char **argv)
 	/* Init all health thread counters. */
 	health_init(&health_thread_cmd);
 	health_init(&health_thread_kernel);
+	health_init(&health_thread_app_manage);
 	health_init(&health_thread_app_reg);
 
 	/*

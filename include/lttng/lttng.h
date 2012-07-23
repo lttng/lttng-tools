@@ -134,6 +134,7 @@ enum lttng_calibrate_type {
 /* Health component for the health check function. */
 enum lttng_health_component {
 	LTTNG_HEALTH_CMD,
+	LTTNG_HEALTH_APP_MANAGE,
 	LTTNG_HEALTH_APP_REG,
 	LTTNG_HEALTH_KERNEL,
 	LTTNG_HEALTH_CONSUMER,

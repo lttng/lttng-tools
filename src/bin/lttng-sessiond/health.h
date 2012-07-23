@@ -25,19 +25,34 @@
  * These are the value added to the current state depending of the position in
  * the thread where is either waiting on a poll() or running in the code.
  */
-#define HEALTH_POLL_VALUE 1
-#define HEALTH_CODE_VALUE 2
+#define HEALTH_POLL_VALUE 	(1UL << 0)
+#define HEALTH_CODE_VALUE	(1UL << 1)
 
-#define HEALTH_IS_IN_POLL(x) (x % HEALTH_CODE_VALUE)
-#define HEALTH_IS_IN_CODE(x) (x % HEALTH_POLL_VALUE)
+#define HEALTH_IS_IN_POLL(x)	((x) & HEALTH_POLL_VALUE)
+
+enum health_flags {
+	HEALTH_EXIT = (1U << 0),
+	HEALTH_ERROR = (1U << 1),
+};
 
 struct health_state {
-	uint64_t last;
-	uint64_t current;
+	/*
+	 * last counter is only read and updated by the health_check
+	 * thread (single updater).
+	 */
+	unsigned long last;
+	/*
+	 * current and flags are updated by multiple threads concurrently.
+	 */
+	unsigned long current;		/* progress counter, updated atomically */
+	enum health_flags flags;	/* other flags, updated atomically */
 };
 
 /* Health state counters for the client command thread */
 extern struct health_state health_thread_cmd;
+
+/* Health state counters for the application management thread */
+extern struct health_state health_thread_app_manage;
 
 /* Health state counters for the application registration thread */
 extern struct health_state health_thread_app_reg;
@@ -46,36 +61,41 @@ extern struct health_state health_thread_app_reg;
 extern struct health_state health_thread_kernel;
 
 /*
- * Update current counter by 1 to indicate that the thread is in a blocking
- * state cause by a poll().
+ * Update current counter by 1 to indicate that the thread entered or
+ * left a blocking state caused by a poll().
  */
 static inline void health_poll_update(struct health_state *state)
 {
 	assert(state);
-
 	uatomic_add(&state->current, HEALTH_POLL_VALUE);
 }
 
 /*
- * Update current counter by 2 which indicates that we are currently running in
- * a thread and NOT blocked at a poll().
+ * Update current counter by 2 indicates progress in execution of a
+ * thread.
  */
 static inline void health_code_update(struct health_state *state)
 {
 	assert(state);
-
 	uatomic_add(&state->current, HEALTH_CODE_VALUE);
 }
 
 /*
- * Reset health state. A value of zero indicate a bad health state.
+ * Set health "exit" flag.
  */
-static inline void health_reset(struct health_state *state)
+static inline void health_exit(struct health_state *state)
 {
 	assert(state);
+	uatomic_or(&state->flags, HEALTH_EXIT);
+}
 
-	uatomic_set(&state->current, 0);
-	uatomic_set(&state->last, 0);
+/*
+ * Set health "error" flag.
+ */
+static inline void health_error(struct health_state *state)
+{
+	assert(state);
+	uatomic_or(&state->flags, HEALTH_ERROR);
 }
 
 /*
@@ -84,9 +104,9 @@ static inline void health_reset(struct health_state *state)
 static inline void health_init(struct health_state *state)
 {
 	assert(state);
-
 	uatomic_set(&state->last, 0);
-	uatomic_set(&state->current, HEALTH_CODE_VALUE);
+	uatomic_set(&state->current, 0);
+	uatomic_set(&state->flags, 0);
 }
 
 int health_check_state(struct health_state *state);

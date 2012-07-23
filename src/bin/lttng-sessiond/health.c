@@ -32,33 +32,33 @@
  */
 int health_check_state(struct health_state *state)
 {
-	int ret;
-	uint64_t current;
-	uint64_t last;
+	unsigned long current, last;
+	int ret = 1;
 
 	assert(state);
 
+	last = state->last;
 	current = uatomic_read(&state->current);
-	last = uatomic_read(&state->last);
 
 	/*
-	 * Here are the conditions for a bad health. Current state set to 0 or the
-	 * current state is the same as the last one and we are NOT waiting for a
-	 * poll() call.
+	 * Here are the conditions for a bad health. Either flag HEALTH_ERROR is
+	 * set, or the progress counter is the same as the last one and we are NOT
+	 * waiting for a poll() call.
 	 */
-	if (current == 0 || (current == last && HEALTH_IS_IN_CODE(current))) {
+	if ((uatomic_read(&state->flags) & HEALTH_ERROR) ||
+			(current == last && !HEALTH_IS_IN_POLL(current))) {
+		/* error */
 		ret = 0;
-		goto error;
 	}
 
-	/* All good */
-	ret = 1;
-
-error:
 	DBG("Health state current %" PRIu64 ", last %" PRIu64 ", ret %d",
 			current, last, ret);
 
-	/* Exchange current state counter into last one */
-	uatomic_xchg(&state->last, state->current);
+	/*
+	 * Update last counter. This value is and MUST be access only in this
+	 * function.
+	 */
+	state->last = current;
+
 	return ret;
 }
