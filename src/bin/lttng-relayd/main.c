@@ -118,13 +118,13 @@ int parse_args(int argc, char **argv)
 	char *default_address;
 
 	static struct option long_options[] = {
-		{ "control-port", 1, 0, 'C' },
-		{ "data-port", 1, 0, 'D' },
-		{ "daemonize", 0, 0, 'd' },
-		{ "help", 0, 0, 'h' },
-		{ "output", 1, 0, 'o' },
-		{ "verbose", 0, 0, 'v' },
-		{ NULL, 0, 0, 0 }
+		{ "control-port", 1, 0, 'C', },
+		{ "data-port", 1, 0, 'D', },
+		{ "daemonize", 0, 0, 'd', },
+		{ "help", 0, 0, 'h', },
+		{ "output", 1, 0, 'o', },
+		{ "verbose", 0, 0, 'v', },
+		{ NULL, 0, 0, 0 },
 	};
 
 	while (1) {
