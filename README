@@ -75,7 +75,7 @@ PACKAGE CONTENTS:
 
     This package contains the following elements:
 
-    - liblttngctl
+    - liblttng-ctl
       The LTTng tracing control library.
 
     - libsessiond-comm (internal)
@@ -97,6 +97,15 @@ PACKAGE CONTENTS:
 	- libhashtable (internal)
 	  Library wrapper over URCU hashtables.
 
+	- libcommon (internal)
+	  Contains multiple useful function call used by the whole tree.
+
+	- libcompat (internal)
+	  Compatibility library mostly for FreeBSD and Linux.
+	
+	- librelayd (internal)
+	  Library for all relayd interactions over the network.
+
 	- lttng-relayd
 	  The relay daemon used for network streaming
 
@@ -117,3 +126,6 @@ PACKAGE CONTENTS:
 
 	- doc
 	  Various documentations and quickstart guide.
+
+	- extras
+	  Contains extra data such as bash completion file.
