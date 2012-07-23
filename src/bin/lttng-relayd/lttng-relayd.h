@@ -16,8 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _LTT_RELAYD_H
-#define _LTT_RELAYD_H
+#ifndef LTTNG_RELAYD_H
+#define LTTNG_RELAYD_H
 
 #define _LGPL_SOURCE
 #include <urcu.h>
@@ -27,8 +27,8 @@
  * Queue used to enqueue relay requests
  */
 struct relay_cmd_queue {
-	int32_t futex;
 	struct cds_wfq_queue queue;
+	int32_t futex;
 };
 
 enum connection_type {
@@ -50,10 +50,10 @@ struct relay_session {
  */
 struct relay_stream {
 	uint64_t stream_handle;
-	struct lttng_ht_node_ulong stream_n;
-	int fd;
 	uint64_t seq;
+	struct lttng_ht_node_ulong stream_n;
 	struct relay_session *session;
+	int fd;
 };
 
 /*
@@ -62,10 +62,10 @@ struct relay_stream {
  */
 struct relay_command {
 	struct lttcomm_sock *sock;
+	struct relay_session *session;
 	struct cds_wfq_node node;
 	struct lttng_ht_node_ulong sock_n;
 	enum connection_type type;
-	struct relay_session *session;
 };
 
-#endif
+#endif /* LTTNG_RELAYD_H */
