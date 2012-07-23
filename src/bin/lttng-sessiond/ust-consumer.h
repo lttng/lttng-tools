@@ -18,15 +18,17 @@
 #ifndef _UST_CONSUMER_H
 #define _UST_CONSUMER_H
 
-#include <common/sessiond-comm/sessiond-comm.h>
-
 #include "consumer.h"
 #include "ust-app.h"
 
 int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess,
 		struct consumer_output *consumer);
-int ust_consumer_send_relayd_socket(int consumer_sock,
-		struct lttcomm_sock *sock, struct consumer_output *consumer,
-		enum lttng_stream_type type);
+
+int ust_consumer_send_metadata(int sock, struct ust_app_session *usess,
+		struct consumer_output *consumer);
+
+int ust_consumer_send_channel_streams(int sock,
+		struct ust_app_channel *uchan, struct ust_app_session *usess,
+		struct consumer_output *consumer);
 
 #endif /* _UST_CONSUMER_H */

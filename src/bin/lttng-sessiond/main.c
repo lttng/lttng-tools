@@ -1957,25 +1957,12 @@ static int send_socket_relayd_consumer(int domain, struct ltt_session *session,
 		session->net_handle = 1;
 	}
 
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		/* Send relayd socket to consumer. */
-		ret = kernel_consumer_send_relayd_socket(consumer_fd, sock,
-				consumer, relayd_uri->stype);
-		if (ret < 0) {
-			ret = LTTCOMM_ENABLE_CONSUMER_FAIL;
-			goto close_sock;
-		}
-		break;
-	case LTTNG_DOMAIN_UST:
-		/* Send relayd socket to consumer. */
-		ret = ust_consumer_send_relayd_socket(consumer_fd, sock,
-				consumer, relayd_uri->stype);
-		if (ret < 0) {
-			ret = LTTCOMM_ENABLE_CONSUMER_FAIL;
-			goto close_sock;
-		}
-		break;
+	/* Send relayd socket to consumer. */
+	ret = consumer_send_relayd_socket(consumer_fd, sock,
+			consumer, relayd_uri->stype);
+	if (ret < 0) {
+		ret = LTTCOMM_ENABLE_CONSUMER_FAIL;
+		goto close_sock;
 	}
 
 	ret = LTTCOMM_OK;

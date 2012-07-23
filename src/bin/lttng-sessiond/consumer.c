@@ -331,3 +331,54 @@ int consumer_send_stream(int sock, struct consumer_output *dst,
 error:
 	return ret;
 }
+
+/*
+ * Send relayd socket to consumer associated with a session name.
+ *
+ * On success return positive value. On error, negative value.
+ */
+int consumer_send_relayd_socket(int consumer_sock,
+		struct lttcomm_sock *sock, struct consumer_output *consumer,
+		enum lttng_stream_type type)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	/* Code flow error. Safety net. */
+	assert(sock);
+	assert(consumer);
+
+	/* Bail out if consumer is disabled */
+	if (!consumer->enabled) {
+		ret = LTTCOMM_OK;
+		goto error;
+	}
+
+	msg.cmd_type = LTTNG_CONSUMER_ADD_RELAYD_SOCKET;
+	/*
+	 * Assign network consumer output index using the temporary consumer since
+	 * this call should only be made from within a set_consumer_uri() function
+	 * call in the session daemon.
+	 */
+	msg.u.relayd_sock.net_index = consumer->net_seq_index;
+	msg.u.relayd_sock.type = type;
+	memcpy(&msg.u.relayd_sock.sock, sock, sizeof(msg.u.relayd_sock.sock));
+
+	DBG3("Sending relayd sock info to consumer");
+	ret = lttcomm_send_unix_sock(consumer_sock, &msg, sizeof(msg));
+	if (ret < 0) {
+		PERROR("send consumer relayd socket info");
+		goto error;
+	}
+
+	DBG3("Sending relayd socket file descriptor to consumer");
+	ret = consumer_send_fds(consumer_sock, &sock->fd, 1);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG2("Consumer relayd socket sent");
+
+error:
+	return ret;
+}

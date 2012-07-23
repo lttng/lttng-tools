@@ -26,10 +26,6 @@ int kernel_consumer_send_channel_stream(int sock,
 
 int kernel_consumer_send_session(int sock, struct ltt_kernel_session *session);
 
-int kernel_consumer_send_relayd_socket(int consumer_sock,
-		struct lttcomm_sock *sock, struct consumer_output *consumer,
-		enum lttng_stream_type type);
-
 int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
 		struct ltt_kernel_stream *stream, struct ltt_kernel_session *session);
 

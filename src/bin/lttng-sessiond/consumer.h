@@ -108,6 +108,10 @@ int consumer_send_fds(int sock, int *fds, size_t nb_fd);
 int consumer_send_stream(int sock, struct consumer_output *dst,
 		struct lttcomm_consumer_msg *msg, int *fds, size_t nb_fd);
 int consumer_send_channel(int sock, struct lttcomm_consumer_msg *msg);
+int consumer_send_relayd_socket(int consumer_sock,
+		struct lttcomm_sock *sock, struct consumer_output *consumer,
+		enum lttng_stream_type type);
+
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		int channel_key,
