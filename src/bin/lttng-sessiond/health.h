@@ -18,7 +18,7 @@
 #ifndef _HEALTH_H
 #define _HEALTH_H
 
-#include <stdint.h>
+#include <assert.h>
 #include <time.h>
 #include <urcu/uatomic.h>
 
