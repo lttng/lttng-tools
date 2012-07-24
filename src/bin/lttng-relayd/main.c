@@ -1111,7 +1111,7 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	DBG2("Relay metadata written");
 
 end_unlock:
-	rcu_read_lock();
+	rcu_read_unlock();
 end:
 	return ret;
 }
