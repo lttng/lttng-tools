@@ -53,6 +53,7 @@ struct relay_stream {
 	uint64_t seq;
 	struct lttng_ht_node_ulong stream_n;
 	struct relay_session *session;
+	struct rcu_head rcu_node;
 	int fd;
 };
 
@@ -65,6 +66,7 @@ struct relay_command {
 	struct relay_session *session;
 	struct cds_wfq_node node;
 	struct lttng_ht_node_ulong sock_n;
+	struct rcu_head rcu_node;
 	enum connection_type type;
 };
 
