@@ -1,5 +1,5 @@
 lib_LTLIBRARIES = liblttng-ctl.la
-bin_PROGRAMS = filter-grammar-test
+noinst_PROGRAMS = filter-grammar-test
 
 BUILT_SOURCES = filter-parser.h
 AM_YFLAGS = -t -d -v
