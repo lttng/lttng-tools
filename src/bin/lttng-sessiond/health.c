@@ -43,7 +43,7 @@ static void time_diff(const struct timespec *time_a,
 		res->tv_nsec = 1000000000L + time_a->tv_sec - time_b->tv_sec;
 	} else {
 		res->tv_sec = time_a->tv_sec - time_b->tv_sec;
-		res->tv_nsec = time_a->tv_sec - time_b->tv_sec;
+		res->tv_nsec = time_a->tv_nsec - time_b->tv_nsec;
 	}
 }
 
@@ -84,7 +84,7 @@ int health_check_state(struct health_state *state)
 	current = uatomic_read(&state->current);
 
 	ret = clock_gettime(CLOCK_MONOTONIC, &current_time);
-	if (ret) {
+	if (ret < 0) {
 		PERROR("Error reading time\n");
 		/* error */
 		retval = 0;
