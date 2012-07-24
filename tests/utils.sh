@@ -16,6 +16,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 SESSIOND_BIN="lttng-sessiond"
+RELAYD_BIN="lttng-relayd"
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
 
@@ -37,6 +38,16 @@ function validate_kernel_version ()
 		return 0
 	fi
 	return 1
+}
+
+# Generate a random string 
+#  $1 = number of characters; defaults to 16
+#  $2 = include special characters; 1 = yes, 0 = no; defaults to yes
+function randstring() 
+{
+	[ "$2" == "0" ] && CHAR="[:alnum:]" || CHAR="[:graph:]"
+	cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-16}
+	echo
 }
 
 function spawn_sessiond ()
@@ -62,6 +73,64 @@ function spawn_sessiond ()
 	fi
 
 	return 0
+}
+
+function lttng_enable_kernel_event
+{
+	sess_name=$1
+	event_name=$2
+
+	if [ -z $event_name ]; then
+		# Enable all event if no event name specified
+		$event_name="-a"
+	fi
+
+	echo -n "Enabling kernel event $event_name for session $sess_name"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -k >/dev/null 2>&1
+	if [ $? -eq 1 ]; then
+		echo -e '\e[1;31mFAILED\e[0m'
+		return 1
+	else
+		echo -e "\e[1;32mOK\e[0m"
+	fi
+}
+
+function lttng_start_relayd
+{
+	echo -e -n "Starting lttng-relayd... "
+	DIR=$(readlink -f $TESTDIR)
+
+	if [ -z $(pidof lt-$RELAYD_BIN) ]; then
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN >/dev/null 2>&1 &
+		if [ $? -eq 1 ]; then
+			echo -e "\e[1;31mFAILED\e[0m"
+			return 1
+		else
+			echo -e "\e[1;32mOK\e[0m"
+		fi
+	else
+		echo -e "\e[1;32mOK\e[0m"
+	fi
+}
+
+function lttng_stop_relayd
+{
+	PID_RELAYD=`pidof lt-$RELAYD_BIN`
+
+	echo -e -n "Killing lttng-relayd (pid: $PID_RELAYD)... "
+	kill $PID_RELAYD >/dev/null 2>&1
+	if [ $? -eq 1 ]; then
+		echo -e "\e[1;31mFAILED\e[0m"
+		return 1
+	else
+		out=1
+		while [ -n "$out" ]; do
+			out=$(pidof lt-$RELAYD_BIN)
+			sleep 0.5
+		done
+		echo -e "\e[1;32mOK\e[0m"
+		return 0
+	fi
 }
 
 function start_sessiond()
@@ -232,6 +301,28 @@ function trace_matches ()
 		return 1
 	else
 		echo -e "Trace is coherent \e[1;32mOK\e[0m"
+		return 0
+	fi
+}
+
+function validate_trace
+{
+	event_name=$1
+	trace_path=$2
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -eq 1 ]; then
+		echo "Babeltrace binary not found. Skipping trace matches"
+		return 0
+	fi
+
+	echo -n "Validating trace for event $event_name... "
+	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $event_name | wc -l)
+	if [ $traced -eq 0 ]; then
+		echo -e "\e[1;31mFAILED\e[0m"
+		return 1
+	else
+		echo -e "\e[1;32mOK\e[0m"
 		return 0
 	fi
 }

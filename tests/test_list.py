@@ -18,6 +18,18 @@ Tests = \
     'desc': "Test UST data structures and methods.",
     'success': 0, 'enabled': True
     },
+    {
+    'bin': "tools/streaming/run-ust", 'daemon': True, 'kern': False,
+    'name': "UST network streaming",
+    'desc': "Test user space tracing network streaming support",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/streaming/run-kernel", 'daemon': True, 'kern': True,
+    'name': "Kernel network streaming",
+    'desc': "Test kernel tracing network streaming support",
+    'success': 0, 'enabled': True
+    },
 
     #### KERNEL ####
     {

@@ -1,3 +1,5 @@
+SUBDIR = . streaming
+
 AM_CFLAGS = -g -Wall -I../
 AM_LDFLAGS = -lurcu -lurcu-cds
 
