@@ -20,10 +20,52 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
+#include <common/defaults.h>
 #include <common/error.h>
 
 #include "health.h"
+
+static const struct timespec time_delta = {
+	.tv_sec = DEFAULT_HEALTH_CHECK_DELTA_S,
+	.tv_nsec = DEFAULT_HEALTH_CHECK_DELTA_NS,
+};
+
+/*
+ * Set time difference in res from time_a and time_b.
+ */
+static void time_diff(const struct timespec *time_a,
+		const struct timespec *time_b, struct timespec *res)
+{
+	if (time_a->tv_nsec - time_b->tv_nsec < 0) {
+		res->tv_sec = time_a->tv_sec - time_b->tv_sec - 1;
+		res->tv_nsec = 1000000000L + time_a->tv_sec - time_b->tv_sec;
+	} else {
+		res->tv_sec = time_a->tv_sec - time_b->tv_sec;
+		res->tv_nsec = time_a->tv_sec - time_b->tv_sec;
+	}
+}
+
+/*
+ * Return true if time_a - time_b > diff, else false.
+ */
+static int time_diff_gt(const struct timespec *time_a,
+		const struct timespec *time_b, const struct timespec *diff)
+{
+	struct timespec res;
+
+	time_diff(time_a, time_b, &res);
+	time_diff(&res, diff, &res);
+
+	if (res.tv_sec > 0) {
+		return 1;
+	} else if (res.tv_sec == 0 && res.tv_nsec > 0) {
+		return 1;
+	}
+
+	return 0;
+}
 
 /*
  * Check health of a specific health state counter.
@@ -32,33 +74,57 @@
  */
 int health_check_state(struct health_state *state)
 {
+	int retval = 1, ret;
 	unsigned long current, last;
-	int ret = 1;
+	struct timespec current_time;
 
 	assert(state);
 
 	last = state->last;
 	current = uatomic_read(&state->current);
 
-	/*
-	 * Here are the conditions for a bad health. Either flag HEALTH_ERROR is
-	 * set, or the progress counter is the same as the last one and we are NOT
-	 * waiting for a poll() call.
-	 */
-	if ((uatomic_read(&state->flags) & HEALTH_ERROR) ||
-			(current == last && !HEALTH_IS_IN_POLL(current))) {
+	ret = clock_gettime(CLOCK_MONOTONIC, &current_time);
+	if (ret) {
+		PERROR("Error reading time\n");
 		/* error */
-		ret = 0;
+		retval = 0;
+		goto end;
 	}
 
+	/*
+	 * Thread is in bad health if flag HEALTH_ERROR is set. It is also in bad
+	 * health if, after the delta delay has passed, its the progress counter
+	 * has not moved and it has NOT been waiting for a poll() call.
+	 */
+	if (uatomic_read(&state->flags) & HEALTH_ERROR) {
+		retval = 0;
+		goto end;
+	}
+
+	/*
+	 * Initial condition need to update the last counter and sample time, but
+	 * should not check health in this initial case, because we don't know how
+	 * much time has passed.
+	 */
+	if (state->last_time.tv_sec == 0 && state->last_time.tv_nsec == 0) {
+		/* update last counter and last sample time */
+		state->last = current;
+		memcpy(&state->last_time, &current_time, sizeof(current_time));
+	} else {
+		if (time_diff_gt(&current_time, &state->last_time, &time_delta)) {
+			if (current == last && !HEALTH_IS_IN_POLL(current)) {
+				/* error */
+				retval = 0;
+			}
+			/* update last counter and last sample time */
+			state->last = current;
+			memcpy(&state->last_time, &current_time, sizeof(current_time));
+		}
+	}
+
+end:
 	DBG("Health state current %" PRIu64 ", last %" PRIu64 ", ret %d",
 			current, last, ret);
 
-	/*
-	 * Update last counter. This value is and MUST be access only in this
-	 * function.
-	 */
-	state->last = current;
-
-	return ret;
+	return retval;
 }

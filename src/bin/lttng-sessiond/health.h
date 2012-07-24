@@ -19,6 +19,7 @@
 #define _HEALTH_H
 
 #include <stdint.h>
+#include <time.h>
 #include <urcu/uatomic.h>
 
 /*
@@ -31,16 +32,18 @@
 #define HEALTH_IS_IN_POLL(x)	((x) & HEALTH_POLL_VALUE)
 
 enum health_flags {
-	HEALTH_EXIT = (1U << 0),
+	HEALTH_EXIT =  (1U << 0),
 	HEALTH_ERROR = (1U << 1),
 };
 
 struct health_state {
 	/*
-	 * last counter is only read and updated by the health_check
+	 * last counter and last_time are only read and updated by the health_check
 	 * thread (single updater).
 	 */
 	unsigned long last;
+	struct timespec last_time;
+
 	/*
 	 * current and flags are updated by multiple threads concurrently.
 	 */
@@ -104,7 +107,9 @@ static inline void health_error(struct health_state *state)
 static inline void health_init(struct health_state *state)
 {
 	assert(state);
-	uatomic_set(&state->last, 0);
+	state->last = 0;
+	state->last_time.tv_sec = 0;
+	state->last_time.tv_nsec = 0;
 	uatomic_set(&state->current, 0);
 	uatomic_set(&state->flags, 0);
 }

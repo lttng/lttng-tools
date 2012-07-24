@@ -127,4 +127,11 @@
 #define DEFAULT_NETWORK_CONTROL_PORT        5342
 #define DEFAULT_NETWORK_DATA_PORT           5343
 
+/*
+ * If a thread stalls for this amount of time, it will be considered bogus (bad
+ * health).
+ */
+#define DEFAULT_HEALTH_CHECK_DELTA_S        20
+#define DEFAULT_HEALTH_CHECK_DELTA_NS       0
+
 #endif /* _DEFAULTS_H */
