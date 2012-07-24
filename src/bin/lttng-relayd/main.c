@@ -56,8 +56,8 @@
 /* command line options */
 static int opt_daemon;
 static char *opt_output_path;
-static struct lttng_uri *control_uri = NULL;
-static struct lttng_uri *data_uri = NULL;
+static struct lttng_uri *control_uri;
+static struct lttng_uri *data_uri;
 
 const char *progname;
 static int is_root;			/* Set to 1 if the daemon is running as root */
@@ -81,8 +81,8 @@ static pthread_t listener_thread;
 static pthread_t dispatcher_thread;
 static pthread_t worker_thread;
 
-static uint64_t last_relay_stream_id = 0;
-static uint64_t last_relay_session_id = 0;
+static uint64_t last_relay_stream_id;
+static uint64_t last_relay_session_id;
 
 /*
  * Relay command queue.
@@ -93,8 +93,8 @@ static uint64_t last_relay_session_id = 0;
 static struct relay_cmd_queue relay_cmd_queue;
 
 /* buffer allocated at startup, used to store the trace data */
-static char *data_buffer = NULL;
-static unsigned int data_buffer_size = 0;
+static char *data_buffer;
+static unsigned int data_buffer_size;
 
 /*
  * usage function on stderr
@@ -125,7 +125,7 @@ int parse_args(int argc, char **argv)
 		{ "help", 0, 0, 'h', },
 		{ "output", 1, 0, 'o', },
 		{ "verbose", 0, 0, 'v', },
-		{ NULL, 0, 0, 0 },
+		{ NULL, 0, 0, 0, },
 	};
 
 	while (1) {
@@ -231,6 +231,9 @@ static
 void cleanup(void)
 {
 	DBG("Cleaning up");
+
+	/* free the dynamically allocated opt_output_path */
+	free(opt_output_path);
 
 	/* Close thread quit pipes */
 	utils_close_pipe(thread_quit_pipe);
@@ -449,7 +452,7 @@ error:
 static
 void *relay_thread_listener(void *data)
 {
-	int i, ret, pollfd;
+	int i, ret, pollfd, err = -1;
 	int val = 1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
@@ -465,12 +468,12 @@ void *relay_thread_listener(void *data)
 
 	control_sock = relay_init_sock(control_uri);
 	if (!control_sock) {
-		goto error_sock;
+		goto error_sock_control;
 	}
 
 	data_sock = relay_init_sock(data_uri);
 	if (!data_sock) {
-		goto error_sock;
+		goto error_sock_relay;
 	}
 
 	/*
@@ -519,7 +522,8 @@ restart:
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
@@ -572,28 +576,32 @@ restart:
 		}
 	}
 
+exit:
 error:
 error_poll_add:
 	lttng_poll_clean(&events);
 error_create_poll:
-	if (control_sock->fd >= 0) {
-		ret = control_sock->ops->close(control_sock);
-		if (ret) {
-			PERROR("close");
-		}
-		lttcomm_destroy_sock(control_sock);
-	}
 	if (data_sock->fd >= 0) {
 		ret = data_sock->ops->close(data_sock);
 		if (ret) {
 			PERROR("close");
 		}
-		lttcomm_destroy_sock(data_sock);
 	}
-
+	lttcomm_destroy_sock(data_sock);
+error_sock_relay:
+	if (control_sock->fd >= 0) {
+		ret = control_sock->ops->close(control_sock);
+		if (ret) {
+			PERROR("close");
+		}
+	}
+	lttcomm_destroy_sock(control_sock);
+error_sock_control:
+	if (err) {
+		DBG("Thread exited with error");
+	}
 	DBG("Relay listener thread cleanup complete");
 	stop_threads();
-error_sock:
 	return NULL;
 }
 
@@ -661,7 +669,7 @@ static
 char *expand_full_path(const char *path)
 {
 	const char *end_path = path;
-	char *next, *cut_path, *expanded_path;
+	char *next, *cut_path, *expanded_path, *respath;
 
 	/* Find last token delimited by '/' */
 	while ((next = strpbrk(end_path + 1, "/"))) {
@@ -673,11 +681,12 @@ char *expand_full_path(const char *path)
 
 	expanded_path = malloc(PATH_MAX);
 	if (expanded_path == NULL) {
-		goto error;
+		respath = NULL;
+		goto end;
 	}
 
-	expanded_path = realpath((char *)cut_path, expanded_path);
-	if (expanded_path == NULL) {
+	respath = realpath(cut_path, expanded_path);
+	if (respath == NULL) {
 		switch (errno) {
 		case ENOENT:
 			ERR("%s: No such file or directory", cut_path);
@@ -686,18 +695,14 @@ char *expand_full_path(const char *path)
 			PERROR("realpath");
 			break;
 		}
-		goto error;
+		free(expanded_path);
+	} else {
+		/* Add end part to expanded path */
+		strcat(respath, end_path);
 	}
-
-	/* Add end part to expanded path */
-	strcat(expanded_path, end_path);
-
+end:
 	free(cut_path);
-	return expanded_path;
-
-error:
-	free(cut_path);
-	return NULL;
+	return respath;
 }
 
 
@@ -749,7 +754,7 @@ int mkdir_recursive(char *path, mode_t mode)
 			if (ret < 0) {
 				ret = mkdir(tmp, mode);
 				if (ret < 0) {
-					if (!(errno == EEXIST)) {
+					if (errno != EEXIST) {
 						PERROR("mkdir recursive");
 						ret = -errno;
 						goto error;
@@ -762,7 +767,7 @@ int mkdir_recursive(char *path, mode_t mode)
 
 	ret = mkdir(tmp, mode);
 	if (ret < 0) {
-		if (!(errno == EEXIST)) {
+		if (errno != EEXIST) {
 			PERROR("mkdir recursive last piece");
 			ret = -errno;
 		} else {
@@ -774,46 +779,65 @@ error:
 	return ret;
 }
 
+static
+char *create_output_path_auto(char *path_name)
+{
+	int ret;
+	char *traces_path = NULL;
+	char *alloc_path = NULL;
+	char *default_path;
+
+	default_path = config_get_default_path();
+	if (default_path == NULL) {
+		ERR("Home path not found.\n \
+				Please specify an output path using -o, --output PATH");
+		goto exit;
+	}
+	alloc_path = strdup(default_path);
+	if (alloc_path == NULL) {
+		PERROR("Path allocation");
+		goto exit;
+	}
+	ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
+			"/%s", alloc_path, path_name);
+	if (ret < 0) {
+		PERROR("asprintf trace dir name");
+		goto exit;
+	}
+exit:
+	free(alloc_path);
+	return traces_path;
+}
+
+static
+char *create_output_path_noauto(char *path_name)
+{
+	int ret;
+	char *traces_path = NULL;
+	char *full_path;
+
+	full_path = expand_full_path(opt_output_path);
+	ret = asprintf(&traces_path, "%s/%s", full_path, path_name);
+	if (ret < 0) {
+		PERROR("asprintf trace dir name");
+		goto exit;
+	}
+exit:
+	free(full_path);
+	return traces_path;
+}
+
 /*
  * create_output_path: create the output trace directory
  */
 static
 char *create_output_path(char *path_name)
 {
-	int ret = 0;
-	char *alloc_path = NULL;
-	char *traces_path = NULL;
-	char *full_path = NULL;
-
-	/* Auto output path */
 	if (opt_output_path == NULL) {
-		alloc_path = strdup(config_get_default_path());
-		if (alloc_path == NULL) {
-			ERR("Home path not found.\n \
-					Please specify an output path using -o, --output PATH");
-			ret = -1;
-			goto exit;
-		}
-
-		ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
-				"/%s", alloc_path, path_name);
-		if (ret < 0) {
-			PERROR("asprintf trace dir name");
-			goto exit;
-		}
+		return create_output_path_auto(path_name);
 	} else {
-		full_path = expand_full_path(opt_output_path);
-		ret = asprintf(&traces_path, "%s/%s", full_path, path_name);
-		if (ret < 0) {
-			PERROR("asprintf trace dir name");
-			goto exit;
-		}
+		return create_output_path_noauto(path_name);
 	}
-	free(alloc_path);
-	free(full_path);
-
-exit:
-	return traces_path;
 }
 
 /*
@@ -828,8 +852,9 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 	struct relay_stream *stream;
 	int ret;
 
-	if (!cmd->session)
+	if (!cmd->session) {
 		return;
+	}
 
 	DBG("Relay deleting session %lu", cmd->session->id);
 	free(cmd->session->sock);
@@ -895,7 +920,6 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	ret = mkdir_recursive(root_path, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
-		free(root_path);
 		ERR("relay creating output directory");
 		goto end;
 	}
@@ -1264,7 +1288,7 @@ end:
 static
 void *relay_thread_worker(void *data)
 {
-	int i, ret, pollfd;
+	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct relay_command *relay_connection;
 	struct lttng_poll_event events;
@@ -1278,9 +1302,15 @@ void *relay_thread_worker(void *data)
 
 	/* table of connections indexed on socket */
 	relay_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!relay_connections_ht) {
+		goto relay_connections_ht_error;
+	}
 
 	/* tables of streams indexed by stream ID */
 	streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!streams_ht) {
+		goto streams_ht_error;
+	}
 
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
@@ -1319,7 +1349,8 @@ void *relay_thread_worker(void *data)
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
-				goto error;
+				err = 0;
+				goto exit;
 			}
 
 			/* Inspect the relay cmd pipe for new connection */
@@ -1351,6 +1382,9 @@ void *relay_thread_worker(void *data)
 					ERR("POLL ERROR");
 					relay_cleanup_connection(relay_connections_ht,
 							&events, streams_ht, pollfd, &iter);
+					if (relay_connection->type == RELAY_CONTROL) {
+						relay_delete_session(relay_connection, streams_ht);
+					}
 					free(relay_connection);
 				} else if (revents & (LPOLLHUP | LPOLLRDHUP)) {
 					DBG("Socket %d hung up", pollfd);
@@ -1388,6 +1422,7 @@ void *relay_thread_worker(void *data)
 							if (ret < 0) {
 								relay_cleanup_connection(relay_connections_ht,
 										&events, streams_ht, pollfd, &iter);
+								relay_delete_session(relay_connection, streams_ht);
 								free(relay_connection);
 								DBG("Connection closed with %d", pollfd);
 							}
@@ -1400,6 +1435,7 @@ void *relay_thread_worker(void *data)
 							relay_cleanup_connection(relay_connections_ht,
 									&events, streams_ht, pollfd, &iter);
 							relay_delete_session(relay_connection, streams_ht);
+							free(relay_connection);
 							DBG("Data connection closed with %d", pollfd);
 						}
 					}
@@ -1408,6 +1444,7 @@ void *relay_thread_worker(void *data)
 		}
 	}
 
+exit:
 error:
 	lttng_poll_clean(&events);
 
@@ -1417,15 +1454,24 @@ error:
 		if (node) {
 			relay_connection = caa_container_of(node,
 					struct relay_command, sock_n);
+			if (relay_connection->type == RELAY_CONTROL) {
+				relay_delete_session(relay_connection, streams_ht);
+			}
 			free(relay_connection);
 		}
 		ret = lttng_ht_del(relay_connections_ht, &iter);
 		assert(!ret);
 	}
 error_poll_create:
-	free(data_buffer);
+	lttng_ht_destroy(streams_ht);
+streams_ht_error:
 	lttng_ht_destroy(relay_connections_ht);
+relay_connections_ht_error:
+	if (err) {
+		DBG("Thread exited with error");
+	}
 	DBG("Worker thread cleanup complete");
+	free(data_buffer);
 	stop_threads();
 	return NULL;
 }
