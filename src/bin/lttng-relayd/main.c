@@ -1071,7 +1071,12 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	data_size = be64toh(recv_hdr->data_size);
-	payload_size = data_size - sizeof(uint64_t);
+	payload_size = data_size;
+	/*
+	 * Add 8 bytes (uint64_t) to the data size which is the value of the
+	 * stream_id and the payload size.
+	 */
+	data_size +=  sizeof(uint64_t);
 	if (data_buffer_size < data_size) {
 		data_buffer = realloc(data_buffer, data_size);
 		if (!data_buffer) {
@@ -1083,7 +1088,8 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	memset(data_buffer, 0, data_size);
 	DBG2("Relay receiving metadata, waiting for %lu bytes", data_size);
-	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, MSG_WAITALL);
+	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size,
+			MSG_WAITALL);
 	if (ret < 0 || ret != data_size) {
 		ret = -1;
 		ERR("Relay didn't receive the whole metadata");
@@ -1103,7 +1109,7 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = write(metadata_stream->fd, metadata_struct->payload,
 				payload_size);
 	} while (ret < 0 && errno == EINTR);
-	if (ret < (payload_size)) {
+	if (ret < payload_size) {
 		ERR("Relay error writing metadata on file");
 		ret = -1;
 		goto end_unlock;
@@ -1234,6 +1240,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 	}
 	memset(data_buffer, 0, data_size);
 
+	DBG3("Receiving data of size %u for stream id %zu", data_size, stream_id);
 	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, MSG_WAITALL);
 	if (ret <= 0) {
 		ret = -1;
@@ -1377,6 +1384,7 @@ void *relay_thread_worker(void *data)
 
 		/* Infinite blocking call, waiting for transmission */
 	restart:
+		DBG3("Relayd worker thread polling...");
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
 			/*

@@ -63,7 +63,8 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 	if (stream->net_seq_idx != -1) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
-			ERR("Cannot find relay for network stream\n");
+			ERR("UST consumer mmap(), unable to find relay for index %d",
+					stream->net_seq_idx);
 			goto end;
 		}
 	}
