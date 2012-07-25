@@ -54,5 +54,6 @@ gen-nevents
 gen-events-time
 gen-events
 gen-ust-events
+unit_tests
 
 benchmark/
