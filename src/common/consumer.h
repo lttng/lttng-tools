@@ -138,9 +138,22 @@ struct consumer_relayd_sock_pair {
 	int net_seq_idx;
 	/* Number of stream associated with this relayd */
 	unsigned int refcount;
+	/*
+	 * Mutex protecting the control socket to avoid out of order packets
+	 * between threads sending data to the relayd. Since metadata data is sent
+	 * over that socket, at least two sendmsg() are needed (header + data)
+	 * creating a race for packets to overlap between threads using it.
+	 */
 	pthread_mutex_t ctrl_sock_mutex;
-	/* Sockets information */
+
+	/* Control socket. Command and metadata are passed over it */
 	struct lttcomm_sock control_sock;
+
+	/*
+	 * We don't need a mutex at this point since we only splice or write single
+	 * large chunk of data with a header appended at the begining. Moreover,
+	 * this socket is for now only used in a single thread.
+	 */
 	struct lttcomm_sock data_sock;
 	struct lttng_ht_node_ulong node;
 };
