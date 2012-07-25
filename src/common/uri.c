@@ -91,7 +91,7 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 		record = gethostbyname2(addr, af);
 		if (record == NULL) {
 			/* At this point, the IP or the hostname is bad */
-			printf("bad hostname\n");
+			ERR("URI parse bad hostname %s for af %d", addr, af);
 			goto error;
 		}
 
@@ -175,7 +175,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 
 	ret = sscanf(str_uri, "%5[^:]://", net);
 	if (ret < 1) {
-		printf("bad protocol\n");
+		ERR("URI parse bad protocol %s", str_uri);
 		goto error;
 	}
 
@@ -183,7 +183,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 
 	proto = validate_protocol(net);
 	if (proto == NULL) {
-		printf("no protocol\n");
+		ERR("URI parse unknown protocol %s", net);
 		ret = -1;
 		goto error;
 	}
