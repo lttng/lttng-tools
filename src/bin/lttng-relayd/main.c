@@ -1070,13 +1070,14 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	data_size = be64toh(recv_hdr->data_size);
-	payload_size = data_size;
-	/*
-	 * Add 8 bytes (uint64_t) to the data size which is the value of the
-	 * stream_id and the payload size.
-	 */
-	data_size +=  sizeof(uint64_t);
+	data_size = payload_size = be64toh(recv_hdr->data_size);
+	if (data_size < sizeof(struct lttcomm_relayd_metadata_payload)) {
+		ERR("Incorrect data size");
+		ret = -1;
+		goto end;
+	}
+	payload_size -= sizeof(struct lttcomm_relayd_metadata_payload);
+
 	if (data_buffer_size < data_size) {
 		data_buffer = realloc(data_buffer, data_size);
 		if (!data_buffer) {

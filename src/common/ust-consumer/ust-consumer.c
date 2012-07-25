@@ -81,12 +81,15 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 
 	/* Handle stream on the relayd if the output is on the network */
 	if (relayd) {
+		unsigned long netlen = len;
+
 		if (stream->metadata_flag) {
 			/* Only lock if metadata since we use the control socket. */
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+			netlen += sizeof(stream->relayd_stream_id);
 		}
 
-		ret = consumer_handle_stream_before_relayd(stream, len);
+		ret = consumer_handle_stream_before_relayd(stream, netlen);
 		if (ret >= 0) {
 			outfd = ret;
 

@@ -81,6 +81,8 @@ ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 
 	/* Handle stream on the relayd if the output is on the network */
 	if (relayd) {
+		unsigned long netlen = len;
+
 		/*
 		 * Lock the control socket for the complete duration of the function
 		 * since from this point on we will use the socket.
@@ -88,9 +90,10 @@ ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 		if (stream->metadata_flag) {
 			/* Metadata requires the control socket. */
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+			netlen += sizeof(stream->relayd_stream_id);
 		}
 
-		ret = consumer_handle_stream_before_relayd(stream, len);
+		ret = consumer_handle_stream_before_relayd(stream, netlen);
 		if (ret >= 0) {
 			/* Use the returned socket. */
 			outfd = ret;
