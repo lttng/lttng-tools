@@ -1,3 +1,10 @@
+2012-07-25 lttng-tools 2.0.4
+	* Fix: support large files on 32-bit systems
+	* Fix: mmap write() for large subbuffers and handle EINTR (v2)
+	* Fix: The session list count should provide unique identifiers
+	* Fix: test: session list count cannot use "count" unique id
+	* Fix typo: utils.sh
+
 2012-06-22 lttng-tools 2.0.3
 	* Fix: enable event loglevel match function
 	* Fix: unchecked pointer from getenv() for lttng create
