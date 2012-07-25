@@ -59,6 +59,9 @@ ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 	uint64_t metadata_id;
 	struct consumer_relayd_sock_pair *relayd = NULL;
 
+	/* RCU lock for the relayd pointer */
+	rcu_read_lock();
+
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != -1) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
@@ -75,9 +78,6 @@ ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
 		written = ret;
 		goto end;
 	}
-
-	/* RCU lock for the relayd pointer */
-	rcu_read_lock();
 
 	/* Handle stream on the relayd if the output is on the network */
 	if (relayd) {
@@ -178,6 +178,9 @@ ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 	uint64_t metadata_id;
 	struct consumer_relayd_sock_pair *relayd = NULL;
 
+	/* RCU lock for the relayd pointer */
+	rcu_read_lock();
+
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != -1) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
@@ -185,9 +188,6 @@ ssize_t lttng_kconsumer_on_read_subbuffer_splice(
 			goto end;
 		}
 	}
-
-	/* RCU lock for the relayd pointer */
-	rcu_read_lock();
 
 	/* Write metadata stream id before payload */
 	if (stream->metadata_flag && relayd) {
@@ -373,6 +373,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
 		return -ENOENT;
 	}
+
+	/* relayd needs RCU read-side protection */
+	rcu_read_lock();
 
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
@@ -580,6 +583,7 @@ end:
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
 	} while (ret < 0 && errno == EINTR);
 end_nosignal:
+	rcu_read_unlock();
 	return 0;
 }
 

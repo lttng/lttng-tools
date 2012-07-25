@@ -56,10 +56,14 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 	uint64_t metadata_id;
 	struct consumer_relayd_sock_pair *relayd = NULL;
 
+	/* RCU lock for the relayd pointer */
+	rcu_read_lock();
+
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != -1) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
+			ERR("Cannot find relay for network stream\n");
 			goto end;
 		}
 	}
@@ -139,6 +143,7 @@ end:
 	if (relayd && stream->metadata_flag) {
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	}
+	rcu_read_unlock();
 	return written;
 }
 
@@ -209,6 +214,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
 		return -ENOENT;
 	}
+
+	/* relayd need RCU read-side lock */
+	rcu_read_lock();
 
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
@@ -433,6 +441,7 @@ end:
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
 	} while (ret < 0 && errno == EINTR);
 end_nosignal:
+	rcu_read_unlock();
 	return 0;
 }
 
