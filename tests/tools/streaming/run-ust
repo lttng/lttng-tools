@@ -42,7 +42,7 @@ function lttng_create_session
 function lttng_enable_consumer
 {
 	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u net://localhost/test >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u net://localhost >/dev/null 2>&1
 }
 
 function wait_apps
