@@ -385,3 +385,50 @@ int relayd_send_data_hdr(struct lttcomm_sock *sock,
 error:
 	return ret;
 }
+
+/*
+ * Send close stream command to the relayd.
+ */
+int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
+		uint64_t last_net_seq_num)
+{
+	int ret;
+	struct lttcomm_relayd_close_stream msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(sock);
+
+	DBG("Relayd closing stream id %zu", stream_id);
+
+	msg.stream_id = htobe64(stream_id);
+	msg.last_net_seq_num = htobe64(last_net_seq_num);
+
+	/* Send command */
+	ret = send_command(sock, RELAYD_CLOSE_STREAM, (void *) &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Recevie response */
+	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTCOMM_OK) {
+		ret = -reply.ret_code;
+		ERR("Relayd close stream replied error %d", ret);
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd close stream id %zu successfully", stream_id);
+
+error:
+	return ret;
+}

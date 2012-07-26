@@ -97,11 +97,14 @@ function lttng_enable_kernel_event
 
 function lttng_start_relayd
 {
-	echo -e -n "Starting lttng-relayd... "
+	local opt="$1"
+
+	echo -e -n "Starting lttng-relayd (opt: $opt)... "
+
 	DIR=$(readlink -f $TESTDIR)
 
 	if [ -z $(pidof lt-$RELAYD_BIN) ]; then
-		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN >/dev/null 2>&1 &
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1 &
 		if [ $? -eq 1 ]; then
 			echo -e "\e[1;31mFAILED\e[0m"
 			return 1

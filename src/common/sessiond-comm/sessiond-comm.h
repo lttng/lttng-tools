@@ -84,6 +84,7 @@ enum lttcomm_sessiond_command {
 	RELAYD_UPDATE_SYNC_INFO,
 	RELAYD_VERSION,
 	RELAYD_SEND_METADATA,
+	RELAYD_CLOSE_STREAM,
 	LTTNG_SET_FILTER,
 	LTTNG_HEALTH_CHECK,
 };
@@ -364,6 +365,9 @@ struct lttcomm_consumer_msg {
 			/* Open socket to the relayd */
 			struct lttcomm_sock sock;
 		} relayd_sock;
+		struct {
+			uint64_t net_seq_idx;
+		} destroy_relayd;
 	} u;
 };
 

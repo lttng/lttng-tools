@@ -90,7 +90,6 @@ struct ltt_kernel_session {
 	int fd;
 	int metadata_stream_fd;
 	int consumer_fds_sent;
-	int consumer_fd;
 	unsigned int channel_count;
 	unsigned int stream_count_global;
 	char *trace_path;

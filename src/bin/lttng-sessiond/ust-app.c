@@ -1405,8 +1405,10 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	struct ust_app *lta;
 	int ret;
 
-	if ((msg->bits_per_long == 64 && ust_consumerd64_fd == -EINVAL)
-			|| (msg->bits_per_long == 32 && ust_consumerd32_fd == -EINVAL)) {
+	if ((msg->bits_per_long == 64 &&
+				(uatomic_read(&ust_consumerd64_fd) == -EINVAL))
+			|| (msg->bits_per_long == 32 &&
+				(uatomic_read(&ust_consumerd32_fd) == -EINVAL))) {
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
 			"%d-bit long, but no consumerd for this long size is available.\n",
 			msg->name, msg->pid, msg->bits_per_long);
@@ -2155,7 +2157,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ltt_ust_stream *ustream;
-	int consumerd_fd;
+	struct consumer_socket *socket;
 
 	DBG("Starting tracing for ust app pid %d", app->pid);
 
@@ -2238,10 +2240,18 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	switch (app->bits_per_long) {
 	case 64:
-		consumerd_fd = ust_consumerd64_fd;
+		socket = consumer_find_socket(uatomic_read(&ust_consumerd64_fd),
+				usess->consumer);
+		if (socket == NULL) {
+			goto skip_setup;
+		}
 		break;
 	case 32:
-		consumerd_fd = ust_consumerd32_fd;
+		socket = consumer_find_socket(uatomic_read(&ust_consumerd32_fd),
+				usess->consumer);
+		if (socket == NULL) {
+			goto skip_setup;
+		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -2249,7 +2259,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	/* Setup UST consumer socket and send fds to it */
-	ret = ust_consumer_send_session(consumerd_fd, ua_sess, usess->consumer);
+	ret = ust_consumer_send_session(ua_sess, usess->consumer, socket);
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}

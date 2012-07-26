@@ -44,19 +44,9 @@ struct lttcomm_relayd_data_hdr {
 	/* Circuit ID not used for now so always ignored */
 	uint64_t circuit_id;
 	uint64_t stream_id;     /* Stream ID known by the relayd */
-	uint64_t net_seq_num;   /* Network seq. number for UDP. */
+	uint64_t net_seq_num;   /* Network sequence number, per stream. */
 	uint32_t data_size;     /* data size following this header */
 } __attribute__ ((__packed__));
-
-#if 0
-/*
- * Used to create a session between the relay and the sessiond.
- */
-struct lttcomm_relayd_create_session {
-	char hostname[LTTNG_MAX_DNNAME];
-	char session_name[NAME_MAX];
-};
-#endif
 
 /*
  * Used to add a stream on the relay daemon.
@@ -85,7 +75,7 @@ struct lttcomm_relayd_generic_reply {
  * Used to update synchronization information.
  */
 struct lttcomm_relayd_update_sync_info {
-	/* TODO: fill the structure */
+	/* TODO: fill the structure. Feature not implemented yet */
 } __attribute__ ((__packed__));
 
 /*
@@ -102,6 +92,14 @@ struct lttcomm_relayd_version {
 struct lttcomm_relayd_metadata_payload {
 	uint64_t stream_id;
 	char payload[];
+} __attribute__ ((__packed__));
+
+/*
+ * Used to indicate that a specific stream id can now be closed.
+ */
+struct lttcomm_relayd_close_stream {
+	uint64_t stream_id;
+	uint64_t last_net_seq_num;	/* sequence number of last packet */
 } __attribute__ ((__packed__));
 
 #endif	/* _RELAYD_COMM */

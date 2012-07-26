@@ -101,7 +101,6 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	lks->channel_count = 0;
 	lks->stream_count_global = 0;
 	lks->metadata = NULL;
-	lks->consumer_fd = -1;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
 	/* Create default consumer output object */

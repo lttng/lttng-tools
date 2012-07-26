@@ -117,7 +117,7 @@ error:
 /*
  * Send all stream fds of UST channel to the consumer.
  */
-int ust_consumer_send_channel_streams(int sock,
+static int send_channel_streams(int sock,
 		struct ust_app_channel *uchan, struct ust_app_session *usess,
 		struct consumer_output *consumer)
 {
@@ -178,7 +178,7 @@ error:
 /*
  * Sending metadata to the consumer with command ADD_CHANNEL and ADD_STREAM.
  */
-int ust_consumer_send_metadata(int sock, struct ust_app_session *usess,
+static int send_metadata(int sock, struct ust_app_session *usess,
 		struct consumer_output *consumer)
 {
 	int ret, fd, fds[2];
@@ -281,23 +281,23 @@ error:
 /*
  * Send all stream fds of the UST session to the consumer.
  */
-int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess,
-		struct consumer_output *consumer)
+int ust_consumer_send_session(struct ust_app_session *usess,
+		struct consumer_output *consumer, struct consumer_socket *sock)
 {
 	int ret = 0;
-	int sock = consumer_fd;
 	struct lttng_ht_iter iter;
 	struct ust_app_channel *ua_chan;
 
-	DBG("Sending metadata stream fd");
+	assert(usess);
+	assert(consumer);
+	assert(sock);
 
-	if (consumer_fd < 0) {
-		ERR("Consumer has negative file descriptor");
-		return -EINVAL;
-	}
+	DBG("Sending metadata stream fd to consumer on %d", sock->fd);
+
+	pthread_mutex_lock(sock->lock);
 
 	/* Sending metadata information to the consumer */
-	ret = ust_consumer_send_metadata(consumer_fd, usess, consumer);
+	ret = send_metadata(sock->fd, usess, consumer);
 	if (ret < 0) {
 		goto error;
 	}
@@ -314,7 +314,7 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess,
 			continue;
 		}
 
-		ret = ust_consumer_send_channel_streams(sock, ua_chan, usess, consumer);
+		ret = send_channel_streams(sock->fd, ua_chan, usess, consumer);
 		if (ret < 0) {
 			rcu_read_unlock();
 			goto error;
@@ -324,8 +324,10 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess,
 
 	DBG("consumer fds (metadata and channel streams) sent");
 
-	return 0;
+	/* All good! */
+	ret = 0;
 
 error:
+	pthread_mutex_unlock(sock->lock);
 	return ret;
 }

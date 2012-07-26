@@ -21,6 +21,8 @@ EVENT_NAME="sched_switch"
 PID_RELAYD=0
 SESSION_NAME=""
 
+TRACE_PATH=$(mktemp -d)
+
 source $TESTDIR/utils.sh
 
 echo -e "\n---------------------------"
@@ -81,6 +83,8 @@ function test_kernel_before_start ()
 	destroy_lttng_session $SESSION_NAME
 }
 
+# Deactivated since this feature is not yet available where we can enable
+# an event AFTERE tracing has started.
 function test_kernel_after_start ()
 {
 	echo -e "\n=== Testing kernel streaming with event enable AFTER start\n"
@@ -95,9 +99,9 @@ function test_kernel_after_start ()
 }
 
 start_sessiond
-lttng_start_relayd
+lttng_start_relayd "-o $TRACE_PATH"
 
-tests=( test_kernel_before_start test_kernel_after_start )
+tests=( test_kernel_before_start )
 
 for fct_test in ${tests[@]};
 do
@@ -105,11 +109,10 @@ do
 	${fct_test}
 
 	# Validate test
-	validate_trace $EVENT_NAME ~/lttng-traces/$HOSTNAME/$SESSION_NAME*
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
-		rm -rf ~/lttng-traces/$HOSTNAME/$SESSION_NAME*
-		rm -rf ~/lttng-traces/$SESSION_NAME*
+		rm -rf $TRACE_PATH
 	else
 		break
 	fi

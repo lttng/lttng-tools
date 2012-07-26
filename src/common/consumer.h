@@ -54,6 +54,8 @@ enum lttng_consumer_command {
 	/* inform the consumer to quit when all fd has hang up */
 	LTTNG_CONSUMER_STOP,
 	LTTNG_CONSUMER_ADD_RELAYD_SOCKET,
+	/* Inform the consumer to kill a specific relayd connection */
+	LTTNG_CONSUMER_DESTROY_RELAYD,
 };
 
 /* State of each fd in consumer */
@@ -128,6 +130,8 @@ struct lttng_consumer_stream {
 	unsigned int metadata_flag;
 	/* Used when the stream is set for network streaming */
 	uint64_t relayd_stream_id;
+	/* Next sequence number to use for trace packet */
+	uint64_t next_net_seq_num;
 };
 
 /*
@@ -138,6 +142,14 @@ struct consumer_relayd_sock_pair {
 	int net_seq_idx;
 	/* Number of stream associated with this relayd */
 	unsigned int refcount;
+
+	/*
+	 * This flag indicates whether or not we should destroy this object. The
+	 * destruction should ONLY occurs when this flag is set and the refcount is
+	 * set to zero.
+	 */
+	unsigned int destroy_flag;
+
 	/*
 	 * Mutex protecting the control socket to avoid out of order packets
 	 * between threads sending data to the relayd. Since metadata data is sent
@@ -339,6 +351,7 @@ struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 struct consumer_relayd_sock_pair *consumer_find_relayd(int key);
 int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,
 		size_t data_size);
+void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
 
 extern struct lttng_consumer_local_data *lttng_consumer_create(
 		enum lttng_consumer_type type,

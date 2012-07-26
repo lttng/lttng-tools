@@ -21,6 +21,7 @@
 #include <semaphore.h>
 
 #include <common/consumer.h>
+#include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
 
 #include "health.h"
@@ -28,6 +29,16 @@
 enum consumer_dst_type {
 	CONSUMER_DST_LOCAL,
 	CONSUMER_DST_NET,
+};
+
+struct consumer_socket {
+	/* File descriptor */
+	int fd;
+	/*
+	 * To use this socket (send/recv), this lock MUST be acquired.
+	 */
+	pthread_mutex_t *lock;
+	struct lttng_ht_node_ulong node;
 };
 
 struct consumer_data {
@@ -49,6 +60,9 @@ struct consumer_data {
 
 	/* Health check of the thread */
 	struct health_state health;
+
+	/* communication lock */
+	pthread_mutex_t lock;
 };
 
 /*
@@ -78,26 +92,43 @@ struct consumer_net {
  * Consumer output object describing where and how to send data.
  */
 struct consumer_output {
-	/* Consumer socket file descriptor */
-	int sock;
 	/* If the consumer is enabled meaning that should be used */
 	unsigned int enabled;
 	enum consumer_dst_type type;
+
 	/*
 	 * The net_seq_index is the index of the network stream on the consumer
 	 * side. It's basically the relayd socket file descriptor value so the
 	 * consumer can identify which streams goes with which socket.
 	 */
 	int net_seq_index;
+
 	/*
 	 * Subdirectory path name used for both local and network consumer.
 	 */
 	char subdir[PATH_MAX];
+
+	/*
+	 * Hashtable of consumer_socket index by the file descriptor value. For
+	 * multiarch consumer support, we can have more than one consumer (ex: 32
+	 * and 64 bit).
+	 */
+	struct lttng_ht *socks;
+
 	union {
 		char trace_path[PATH_MAX];
 		struct consumer_net net;
 	} dst;
 };
+
+struct consumer_socket *consumer_find_socket(int key,
+		struct consumer_output *consumer);
+struct consumer_socket *consumer_allocate_socket(int fd);
+void consumer_add_socket(struct consumer_socket *sock,
+		struct consumer_output *consumer);
+void consumer_del_socket(struct consumer_socket *sock,
+		struct consumer_output *consumer);
+void consumer_destroy_socket(struct consumer_socket *sock);
 
 struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
@@ -111,6 +142,8 @@ int consumer_send_channel(int sock, struct lttcomm_consumer_msg *msg);
 int consumer_send_relayd_socket(int consumer_sock,
 		struct lttcomm_sock *sock, struct consumer_output *consumer,
 		enum lttng_stream_type type);
+int consumer_send_destroy_relayd(struct consumer_socket *sock,
+		struct consumer_output *consumer);
 
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,

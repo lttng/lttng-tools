@@ -50,11 +50,15 @@ struct relay_session {
  */
 struct relay_stream {
 	uint64_t stream_handle;
-	uint64_t seq;
+	uint64_t prev_seq;	/* previous data sequence number encountered */
 	struct lttng_ht_node_ulong stream_n;
 	struct relay_session *session;
 	struct rcu_head rcu_node;
 	int fd;
+
+	/* Information telling us when to close the stream  */
+	unsigned int close_flag:1;
+	uint64_t last_net_seq_num;
 };
 
 /*

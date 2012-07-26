@@ -21,14 +21,7 @@
 #include "consumer.h"
 #include "ust-app.h"
 
-int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess,
-		struct consumer_output *consumer);
-
-int ust_consumer_send_metadata(int sock, struct ust_app_session *usess,
-		struct consumer_output *consumer);
-
-int ust_consumer_send_channel_streams(int sock,
-		struct ust_app_channel *uchan, struct ust_app_session *usess,
-		struct consumer_output *consumer);
+int ust_consumer_send_session(struct ust_app_session *usess,
+		struct consumer_output *consumer, struct consumer_socket *sock);
 
 #endif /* _UST_CONSUMER_H */

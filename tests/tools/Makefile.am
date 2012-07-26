@@ -22,7 +22,7 @@ test_sessions_LDADD = $(COMMON) $(HASHTABLE)
 
 # Kernel trace data unit tests
 test_kernel_data_trace_SOURCES = test_kernel_data_trace.c $(UTILS) $(KERN_DATA_TRACE)
-test_kernel_data_trace_LDADD = $(SESSIOND_COMM)
+test_kernel_data_trace_LDADD = $(SESSIOND_COMM) $(HASHTABLE)
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data_trace
