@@ -18,6 +18,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <lttng/ust-ctl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -27,7 +28,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <lttng/ust-ctl.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -41,127 +41,14 @@ extern int consumer_poll_timeout;
 extern volatile int consumer_quit;
 
 /*
- * Mmap the ring buffer, read it and write the data to the tracefile.
- *
- * Returns the number of bytes written, else negative value on error.
+ * Wrapper over the mmap() read offset from ust-ctl library. Since this can be
+ * compiled out, we isolate it in this library.
  */
-ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len)
+int lttng_ustctl_get_mmap_read_offset(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off)
 {
-	unsigned long mmap_offset;
-	long ret = 0, written = 0;
-	off_t orig_offset = stream->out_fd_offset;
-	int outfd = stream->out_fd;
-	uint64_t metadata_id;
-	struct consumer_relayd_sock_pair *relayd = NULL;
-
-	/* RCU lock for the relayd pointer */
-	rcu_read_lock();
-
-	/* Flag that the current stream if set for network streaming. */
-	if (stream->net_seq_idx != -1) {
-		relayd = consumer_find_relayd(stream->net_seq_idx);
-		if (relayd == NULL) {
-			ERR("UST consumer mmap(), unable to find relay for index %d",
-					stream->net_seq_idx);
-			goto end;
-		}
-	}
-
-	/* get the offset inside the fd to mmap */
-	ret = ustctl_get_mmap_read_offset(stream->chan->handle,
-		stream->buf, &mmap_offset);
-	if (ret != 0) {
-		errno = -ret;
-		PERROR("ustctl_get_mmap_read_offset");
-		written = ret;
-		goto end;
-	}
-
-	/* Handle stream on the relayd if the output is on the network */
-	if (relayd) {
-		unsigned long netlen = len;
-
-		if (stream->metadata_flag) {
-			/* Only lock if metadata since we use the control socket. */
-			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-			netlen += sizeof(stream->relayd_stream_id);
-		}
-
-		ret = consumer_handle_stream_before_relayd(stream, netlen);
-		if (ret >= 0) {
-			outfd = ret;
-
-			/* Write metadata stream id before payload */
-			if (stream->metadata_flag) {
-				metadata_id = htobe64(stream->relayd_stream_id);
-				do {
-					ret = write(outfd, (void *) &metadata_id,
-							sizeof(stream->relayd_stream_id));
-				} while (ret < 0 && errno == EINTR);
-				if (ret < 0) {
-					PERROR("write metadata stream id");
-					written = ret;
-					goto end;
-				}
-				DBG("Metadata stream id %zu written before data",
-						stream->relayd_stream_id);
-			}
-		}
-		/* Else, use the default set before which is the filesystem. */
-	}
-
-	while (len > 0) {
-		do {
-			ret = write(outfd, stream->mmap_base + mmap_offset, len);
-		} while (ret < 0 && errno == EINTR);
-		if (ret < 0) {
-			PERROR("Error in file write");
-			if (written == 0) {
-				written = ret;
-			}
-			goto end;
-		} else if (ret > len) {
-			PERROR("ret %ld > len %lu", ret, len);
-			written += ret;
-			goto end;
-		} else {
-			len -= ret;
-			mmap_offset += ret;
-		}
-		DBG("UST mmap write() ret %ld (len %lu)", ret, len);
-
-		/* This call is useless on a socket so better save a syscall. */
-		if (!relayd) {
-			/* This won't block, but will start writeout asynchronously */
-			lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
-					SYNC_FILE_RANGE_WRITE);
-			stream->out_fd_offset += ret;
-		}
-		written += ret;
-	}
-	lttng_consumer_sync_trace_file(stream, orig_offset);
-
-end:
-	if (relayd && stream->metadata_flag) {
-		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-	}
-	rcu_read_unlock();
-	return written;
-}
-
-/*
- * Splice the data from the ring buffer to the tracefile.
- *
- * Returns the number of bytes spliced.
- */
-ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len)
-{
-	return -ENOSYS;
-}
+	return ustctl_get_mmap_read_offset(handle, buf, off);
+};
 
 /*
  * Take a snapshot for a specific fd

@@ -22,6 +22,8 @@ SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
 PID_RELAYD=0
 
+TRACE_PATH=$(mktemp -d)
+
 source $TESTDIR/utils.sh
 
 echo -e "\n-------------------------------"
@@ -91,7 +93,7 @@ function test_ust_after_start ()
 }
 
 start_sessiond
-lttng_start_relayd
+lttng_start_relayd "-o $TRACE_PATH"
 
 tests=( test_ust_before_start test_ust_after_start )
 
@@ -101,11 +103,10 @@ do
 	${fct_test}
 
 	# Validate test
-	validate_trace $EVENT_NAME ~/lttng-traces/$HOSTNAME/$SESSION_NAME*
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
-		rm -rf ~/lttng-traces/$HOSTNAME/$SESSION_NAME*
-		rm -rf ~/lttng-traces/$SESSION_NAME*
+		rm -rf $TRACE_PATH
 	else
 		break
 	fi

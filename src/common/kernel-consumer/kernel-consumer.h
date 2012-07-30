@@ -22,25 +22,6 @@
 #include <common/consumer.h>
 
 /*
- * Mmap the ring buffer, read it and write the data to the tracefile.
- *
- * Returns the number of bytes written, or negative value on error.
- */
-extern ssize_t lttng_kconsumer_on_read_subbuffer_mmap(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len);
-
-/*
- * Splice the data from the ring buffer to the tracefile.
- *
- * Returns the number of bytes spliced, or negative error value on
- * error.
- */
-extern ssize_t lttng_kconsumer_on_read_subbuffer_splice(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len);
-
-/*
  * Take a snapshot for a specific fd
  *
  * Returns 0 on success, < 0 on error

@@ -17,8 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _LTTNG_CONSUMER_H
-#define _LTTNG_CONSUMER_H
+#ifndef LIB_CONSUMER_H
+#define LIB_CONSUMER_H
 
 #include <limits.h>
 #include <poll.h>
@@ -382,4 +382,4 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
-#endif /* _LTTNG_CONSUMER_H */
+#endif /* LIB_CONSUMER_H */

@@ -27,20 +27,6 @@
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 /*
- * Mmap the ring buffer, read it and write the data to the tracefile.
- *
- * Returns the number of bytes written, else negative value on error.
- */
-extern ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len);
-
-/* Not implemented */
-extern ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len);
-
-/*
  * Take a snapshot for a specific fd
  *
  * Returns 0 on success, < 0 on error
@@ -71,6 +57,10 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
+
+extern int lttng_ustctl_get_mmap_read_offset(
+		struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -153,6 +143,12 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 {
 }
 
+static inline
+int lttng_ustctl_get_mmap_read_offset(struct lttng_ust_shm_handle *handle,
+		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off)
+{
+	return -ENOSYS;
+}
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTTNG_USTCONSUMER_H */
