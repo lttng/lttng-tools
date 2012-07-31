@@ -1,0 +1,73 @@
+RFC - LTTng address API proposal
+
+Author: David Goulet <david.goulet@efficios.com>
+
+Contributors:
+    * Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+	* Yannick Brosseau <yannick.brosseau@polymtl.ca>
+
+Version:
+    - v0.1: 31/07/2012
+        * Initial proposal
+
+Introduction
+-----------------
+
+This document proposes the use of string URLs to the command line interface and
+API which will deprecate a function and propose new ones.
+
+The purpose of this proposal is to support network streaming using URL string
+format that you can find in proposal doc/proposals/0003-network.consumer.txt,
+remove the lttng_uri structure from the API and integrate the URL string to the
+API.
+
+API
+-----------------
+
+In order not to expose the new lttng_uri structure used to identify trace
+location for lttng consumer, the public API will only use string address where
+it will be converted in a lttng_uri and sent to the session daemon.
+
+[*] Create session:
+
+With the introduction of the enable-consumer command used for network streaming,
+the create session command has been modified so the user could define a consumer
+location either on the network or local with the command. This change deprecates
+the old API function and adds a new one.
+
+Deprecated:
+--> lttng_create_session(const char *name, const char *path);
+
+Proposed:
+--> lttng_create_session_addr(const char *name, const char *addr,
+								int enable_consumer);
+
+The _name_ argument is the session name and _addr_ is a string representing the
+URL specified by the user which looks like this:
+
+PROTO://[HOST|IP][:PORT][/PATH]
+
+Examples:
+
+* net://myhostname
+* net://myhostname:9888
+* net://myhostname/foo/bar
+* net://X.X.X.X:9888/foo/bar
+
+The enable_consumer option will disable the use of the consumer for the tracing
+session. This will be useful with the to come snapshot feature. The motivation
+behing this flag is to offer the same options as the enable-consumer command
+where you can only set the URI for the consumer and not enable it.
+
+[*] Consumer:
+
+The current lttng_set_consumer_uri(...) call will be changed to:
+
+lttng_set_consumer_addr(struct lttng_handle *handle,
+				const char *addr);
+
+For both functions (consumer and create), the addr will be translate to a
+lttng_uri in the liblttng-ctl and sent to the session daemon.
+
+With all this, the lttng_uri data structure will not be exposed to the public
+API and the user command line interface.
