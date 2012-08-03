@@ -138,13 +138,16 @@ AC_ARG_ENABLE(lttng-ust,
 	lttng_ust_support=$enableval, lttng_ust_support=yes)
 
 AS_IF([test "x$lttng_ust_support" = "xyes"], [
-	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_create_session], [],
-		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])]
+	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_create_session],
+		[
+			AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1], [has LTTng-UST control support])
+			lttng_ust_ctl_found=yes
+		],
+		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])],
+		[-lurcu-common -lurcu-bp -lurcu-cds]
 	)
 ])
-
-AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [ test "x$ac_cv_lib_lttng_ust_ctl_ustctl_create_session" = "xyes" ])
-
+AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$lttng_ust_ctl_found" = xyes])
 AC_CHECK_FUNCS([sched_getcpu sysconf])
 
 # check for dlopen
