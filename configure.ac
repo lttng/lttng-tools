@@ -14,6 +14,31 @@ AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description"], "")
 
 AC_CONFIG_HEADERS([include/config.h])
 
+AC_PROG_GREP
+# libtool link_all_deplibs fixup. See http://bugs.lttng.org/issues/321.
+AC_ARG_ENABLE(libtool-linkdep-fixup,
+	AS_HELP_STRING([--disable-libtool-linkdep-fixup],
+			[disable the libtool fixup for linking all dependent libraries (link_all_deplibs)]),
+	libtool_fixup=$enableval,
+	libtool_fixup=yes)
+
+AS_IF([test "x$libtool_fixup" = "xyes"],
+	    [
+	    libtool_m4="$srcdir/config/libtool.m4"
+	    libtool_flag_pattern=".*link_all_deplibs\s*,\s*\$1\s*)"
+	    AC_MSG_CHECKING([for occurence(s) of link_all_deplibs = no in $libtool_m4])
+	    libtool_flag_pattern_count=$(grep -c "$libtool_flag_pattern\s*=\s*no" $libtool_m4)
+	    AS_IF([test $libtool_flag_pattern_count -ne 0],
+	    [
+		  AC_MSG_RESULT([$libtool_flag_pattern_count])
+		  AC_MSG_WARN([the detected libtool will not link all dependencies, forcing link_all_deplibs = unknown])
+		  sed -i "s/\($libtool_flag_pattern\)\s*=\s*no/\1=unknown/g" $libtool_m4
+		  ],
+		  [
+		  AC_MSG_RESULT([none])
+		  ])
+	    ])
+
 AC_CHECK_HEADERS([ \
 	sys/types.h unistd.h fcntl.h string.h pthread.h limits.h \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
