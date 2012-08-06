@@ -1629,7 +1629,8 @@ static int join_consumer_thread(struct consumer_data *consumer_data)
 	void *status;
 	int ret;
 
-	if (consumer_data->pid != 0) {
+	/* Consumer pid must be a real one. */
+	if (consumer_data->pid > 0) {
 		ret = kill(consumer_data->pid, SIGTERM);
 		if (ret) {
 			ERR("Error killing consumer daemon");
@@ -3630,9 +3631,21 @@ static int cmd_register_consumer(struct ltt_session *session, int domain,
 			goto error;
 		}
 
+		socket->lock = zmalloc(sizeof(pthread_mutex_t));
+		if (socket->lock == NULL) {
+			PERROR("zmalloc pthread mutex");
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+		pthread_mutex_init(socket->lock, NULL);
+
 		rcu_read_lock();
 		consumer_add_socket(socket, session->kernel_session->consumer);
 		rcu_read_unlock();
+
+		pthread_mutex_lock(&kconsumer_data.pid_mutex);
+		kconsumer_data.pid = -1;
+		pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 
 		break;
 	default:
