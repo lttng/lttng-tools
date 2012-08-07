@@ -26,8 +26,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include "filter-parser.h"
 #include "filter-ast.h"
+#include "filter-parser.h"
 
 static
 int update_child(struct filter_node *parent,

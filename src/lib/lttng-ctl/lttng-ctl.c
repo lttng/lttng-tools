@@ -33,8 +33,8 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/lttng.h>
 
-#include "filter-parser.h"
 #include "filter-ast.h"
+#include "filter-parser.h"
 #include "filter-bytecode.h"
 #include "memstream.h"
 

@@ -26,8 +26,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include "filter-parser.h"
 #include "filter-ast.h"
+#include "filter-parser.h"
 
 #define fprintf_dbg(fd, fmt, args...)	fprintf(fd, "%s: " fmt, __func__, ## args)
 

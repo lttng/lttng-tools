@@ -22,6 +22,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+/*
+ * Note: filter-ast.h should be included before filter-parser.h.
+ */
+
 #include <urcu/list.h>
 #include <stdint.h>
 
