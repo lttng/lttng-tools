@@ -157,7 +157,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "config.h"
 #include <urcu.h>
 #include <urcu-call-rcu.h>
 #include <urcu/arch.h>
