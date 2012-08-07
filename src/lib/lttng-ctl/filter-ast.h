@@ -35,13 +35,6 @@
 			fprintf(stdout, "[debug] " fmt, ## args);	\
 	} while (0)
 
-// the parameter name (of the reentrant 'yyparse' function)
-// data is a pointer to a 'SParserParam' structure
-//#define YYPARSE_PARAM	parser_ctx
-
-// the argument for the 'yylex' function
-#define YYLEX_PARAM	((struct filter_parser_ctx *) parser_ctx)->scanner
-
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void* yyscan_t;
