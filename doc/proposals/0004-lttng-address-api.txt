@@ -9,6 +9,10 @@ Contributors:
 Version:
     - v0.1: 31/07/2012
         * Initial proposal
+	- v0.2: 07/08/2012
+		* Remove lttng_create_session_addr
+		* Describe URL string format
+		* Add set_consumer_url examples
 
 Introduction
 -----------------
@@ -24,50 +28,86 @@ API.
 API
 -----------------
 
-In order not to expose the new lttng_uri structure used to identify trace
+In order NOT to expose the new lttng_uri structure used to identify trace
 location for lttng consumer, the public API will only use string address where
 it will be converted in a lttng_uri and sent to the session daemon.
 
 [*] Create session:
 
-With the introduction of the enable-consumer command used for network streaming,
-the create session command has been modified so the user could define a consumer
-location either on the network or local with the command. This change deprecates
-the old API function and adds a new one.
+With the introduction of the enable-consumer command used for network
+streaming, the create session command has been modified so the user could
+define a consumer location either on the network or local with the command.
 
-Deprecated:
+This does NOT change the current API call but rather simply rename _path_ to
+_url_ and how it is used in the lttng-ctl library.
+
+Call changed from:
 --> lttng_create_session(const char *name, const char *path);
 
-Proposed:
---> lttng_create_session_addr(const char *name, const char *addr,
-								int enable_consumer);
+To:
+--> lttng_create_session(const char *name, const char *url);
 
-The _name_ argument is the session name and _addr_ is a string representing the
-URL specified by the user which looks like this:
+The _name_ argument is the session name and _url_ is a string representing the
+URL specified by the user which is define like so:
 
-PROTO://[HOST|IP][:PORT][/PATH]
+PROTO://[HOSTNAME|IP][:PORT][/PATH]
 
-Examples:
+The proto supported at this stage are (6 means IPv6):
 
-* net://myhostname
-* net://myhostname:9888
-* net://myhostname/foo/bar
-* net://X.X.X.X:9888/foo/bar
+	* net, net6, tcp, tcp6, file
 
-The enable_consumer option will disable the use of the consumer for the tracing
-session. This will be useful with the to come snapshot feature. The motivation
-behing this flag is to offer the same options as the enable-consumer command
-where you can only set the URI for the consumer and not enable it.
+If the proto is NOT recognized, the string is considered to be a simple path on
+the local filesystem relative to the process CWD unless it starts with a "/".
+
+The PATH is relative to a subdirectory "hostname", under the remote relayd
+"virtual" root directory. This directory can be changed with the -o, --output
+option when starting the lttng-relayd. This default is at:
+
+	* $USER/lttng-traces
+
+For example, this URL results in writing the trace data in
+"$USER/lttng-traces/<target_hostname>/foo/bar".
+
+	* net://hostname/foo/bar
+
+The PATH part can not be bigger than PATH_MAX (define in limits.h) which is
+4096 bytes at the time of this proposal. Moreover, "../" is ignored and
+removed. For instance, using "net://localhost/../../" will set the path to the
+default one.
+
+The <net(6)> protocol has a special case where the user can input two ports
+respectively being the control and data port.
+
+	* net://[HOSTNAME|IP][:CTRL_PORT][:DATA_PORT][/PATH]
+
+If _url_ is not NULL, in addition to creating the session, the
+lttng_create_session will use the two following API calls:
+
+	1) lttng_set_consumer_url(handle, url);
+	2) lttng_enable_consumer(handle);
+
+If _url_ is NULL, then NO consumer is created for this tracing session and
+subsequent calls are needed to set up a consumer (i.e lttng_enable_consumer and
+lttng_set_consumer_url).
 
 [*] Consumer:
 
-The current lttng_set_consumer_uri(...) call will be changed to:
+This call is simply renamed.
 
-lttng_set_consumer_addr(struct lttng_handle *handle,
-				const char *addr);
+From:
+--> lttng_set_consumer_uri(...)
 
-For both functions (consumer and create), the addr will be translate to a
+To:
+--> lttng_set_consumer_url(struct lttng_handle *handle,
+				const char *url);
+
+For both functions (consumer and create), the _url_ will be parsed into a
 lttng_uri in the liblttng-ctl and sent to the session daemon.
 
-With all this, the lttng_uri data structure will not be exposed to the public
+Example:
+
+	lttng_set_consumer_url(handle, "net://42.42.42.2");
+
+
+With all this, the lttng_uri data structure will NOT be exposed to the public
 API and the user command line interface.
