@@ -278,8 +278,12 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 				stream->relayd_stream_id,
 				stream->next_net_seq_num - 1);
 		if (ret < 0) {
-			ERR("Unable to close stream on the relayd. Continuing");
-			/* Continue here. There is nothing we can do for the relayd.*/
+			DBG("Unable to close stream on the relayd. Continuing");
+			/*
+			 * Continue here. There is nothing we can do for the relayd.
+			 * Chances are that the relayd has closed the socket so we just
+			 * continue cleaning up.
+			 */
 		}
 
 		/* Both conditions are met, we destroy the relayd. */

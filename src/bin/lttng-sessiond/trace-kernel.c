@@ -86,13 +86,13 @@ error:
 struct ltt_kernel_session *trace_kernel_create_session(char *path)
 {
 	int ret;
-	struct ltt_kernel_session *lks;
+	struct ltt_kernel_session *lks = NULL;
 
 	/* Allocate a new ltt kernel session */
 	lks = zmalloc(sizeof(struct ltt_kernel_session));
 	if (lks == NULL) {
 		PERROR("create kernel session zmalloc");
-		goto error;
+		goto alloc_error;
 	}
 
 	/* Init data structure */
@@ -103,7 +103,6 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	lks->metadata = NULL;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
-	/* Create default consumer output object */
 	lks->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lks->consumer == NULL) {
 		goto error;
@@ -117,23 +116,29 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	 */
 	lks->tmp_consumer = NULL;
 
-	/* Use the default consumer output which is the tracing session path. */
-	ret = snprintf(lks->consumer->dst.trace_path, PATH_MAX, "%s/kernel", path);
-	if (ret < 0) {
-		PERROR("snprintf consumer trace path");
-		goto error;
-	}
+	if (path && strlen(path) > 0) {
+		/* Use the default consumer output which is the tracing session path. */
+		ret = snprintf(lks->consumer->dst.trace_path, PATH_MAX,
+				"%s" DEFAULT_KERNEL_TRACE_DIR, path);
+		if (ret < 0) {
+			PERROR("snprintf consumer trace path");
+			goto error;
+		}
 
-	/* Set session path */
-	ret = asprintf(&lks->trace_path, "%s/kernel", path);
-	if (ret < 0) {
-		PERROR("asprintf kernel traces path");
-		goto error;
+		/* Set session path */
+		ret = asprintf(&lks->trace_path, "%s" DEFAULT_KERNEL_TRACE_DIR, path);
+		if (ret < 0) {
+			PERROR("asprintf kernel traces path");
+			goto error;
+		}
 	}
 
 	return lks;
 
 error:
+	free(lks);
+
+alloc_error:
 	return NULL;
 }
 
@@ -253,7 +258,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_metadata *trace_kernel_create_metadata(char *path)
+struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 {
 	struct ltt_kernel_metadata *lkm;
 	struct lttng_channel *chan;

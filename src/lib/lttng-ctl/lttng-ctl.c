@@ -31,6 +31,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/uri.h>
 #include <lttng/lttng.h>
 
 #include "filter-ast.h"
@@ -74,6 +75,134 @@ static int connected;
 int lttng_opt_quiet;
 int lttng_opt_verbose;
 
+static void set_default_url_attr(struct lttng_uri *uri,
+		enum lttng_stream_type stype)
+{
+	uri->stype = stype;
+	if (uri->dtype != LTTNG_DST_PATH && uri->port == 0) {
+		uri->port = (stype == LTTNG_STREAM_CONTROL) ?
+			DEFAULT_NETWORK_CONTROL_PORT : DEFAULT_NETWORK_DATA_PORT;
+	}
+}
+
+/*
+ * Parse a string URL and creates URI(s) returning the size of the populated
+ * array.
+ */
+static ssize_t parse_str_urls_to_uri(const char *ctrl_url, const char *data_url,
+		struct lttng_uri **uris)
+{
+	int ret;
+	unsigned int equal = 1, idx = 0;
+	/* Add the "file://" size to the URL maximum size */
+	char url[PATH_MAX + 7];
+	ssize_t size_ctrl = 0, size_data = 0, size;
+	struct lttng_uri *ctrl_uris = NULL, *data_uris = NULL;
+	struct lttng_uri *tmp_uris = NULL;
+
+	/* No URL(s) is allowed. This means that the consumer will be disabled. */
+	if (ctrl_url == NULL && data_url == NULL) {
+		return 0;
+	}
+
+	/* Check if URLs are equal and if so, only use the control URL */
+	if (ctrl_url && data_url) {
+		equal = !strcmp(ctrl_url, data_url);
+	}
+
+	/*
+	 * Since we allow the str_url to be a full local filesystem path, we are
+	 * going to create a valid file:// URL if it's the case.
+	 *
+	 * Check if first character is a '/' or else reject the URL.
+	 */
+	if (ctrl_url && ctrl_url[0] == '/') {
+		ret = snprintf(url, sizeof(url), "file://%s", ctrl_url);
+		if (ret < 0) {
+			PERROR("snprintf file url");
+			goto parse_error;
+		}
+		ctrl_url = url;
+	}
+
+	/* Parse the control URL if there is one */
+	if (ctrl_url) {
+		size_ctrl = uri_parse(ctrl_url, &ctrl_uris);
+		if (size_ctrl < 1) {
+			ERR("Unable to parse the URL %s", ctrl_url);
+			goto parse_error;
+		}
+
+		/* At this point, we know there is at least one URI in the array */
+		set_default_url_attr(&ctrl_uris[0], LTTNG_STREAM_CONTROL);
+
+		if (ctrl_uris[0].dtype == LTTNG_DST_PATH && data_url) {
+			ERR("Can not have a data URL when destination is file://");
+			goto error;
+		}
+
+		/* URL are not equal but the control URL uses a net:// protocol */
+		if (size_ctrl == 2) {
+			if (!equal) {
+				ERR("Control URL uses the net:// protocol and the data URL is "
+						"different. Not allowed.");
+				goto error;
+			} else {
+				set_default_url_attr(&ctrl_uris[1], LTTNG_STREAM_DATA);
+				/*
+				 * The data_url and ctrl_url are equal and the ctrl_url
+				 * contains a net:// protocol so we just skip the data part.
+				 */
+				data_url = NULL;
+			}
+		}
+	}
+
+	if (data_url) {
+		/* We have to parse the data URL in this case */
+		size_data = uri_parse(data_url, &data_uris);
+		if (size_data < 1) {
+			ERR("Unable to parse the URL %s", data_url);
+			goto error;
+		} else if (size_data == 2) {
+			ERR("Data URL can not be set with the net[4|6]:// protocol");
+			goto error;
+		}
+
+		set_default_url_attr(&data_uris[0], LTTNG_STREAM_DATA);
+	}
+
+	/* Compute total size */
+	size = size_ctrl + size_data;
+
+	tmp_uris = zmalloc(sizeof(struct lttng_uri) * size);
+	if (tmp_uris == NULL) {
+		PERROR("zmalloc uris");
+		goto error;
+	}
+
+	if (ctrl_uris) {
+		/* It's possible the control URIs array contains more than one URI */
+		memcpy(tmp_uris, ctrl_uris, sizeof(struct lttng_uri) * size_ctrl);
+		++idx;
+	}
+
+	if (data_uris) {
+		memcpy(&tmp_uris[idx], data_uris, sizeof(struct lttng_uri));
+	}
+
+	*uris = tmp_uris;
+
+	return size;
+
+error:
+	free(ctrl_uris);
+	free(data_uris);
+	free(tmp_uris);
+parse_error:
+	return -1;
+}
+
 /*
  * Copy string from src to dst and enforce null terminated byte.
  */
@@ -108,7 +237,6 @@ static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src
 			break;
 		default:
 			memset(dst, 0, sizeof(struct lttng_domain));
-			dst->type = LTTNG_DOMAIN_KERNEL;
 			break;
 		}
 	}
@@ -128,6 +256,8 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 		ret = -ENOTCONN;
 		goto end;
 	}
+
+	DBG("LSM cmd type : %d", lsm->cmd_type);
 
 	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
 			sizeof(struct lttcomm_session_msg));
@@ -150,6 +280,7 @@ static int send_session_varlen(void *data, size_t len)
 		ret = -ENOTCONN;
 		goto end;
 	}
+
 	if (!data || !len) {
 		ret = 0;
 		goto end;
@@ -363,9 +494,7 @@ static int disconnect_sessiond(void)
  * Return size of data (only payload, not header) or a negative error code.
  */
 static int ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		void *vardata,
-		size_t varlen,
-		void **buf)
+		void *vardata, size_t varlen, void **buf)
 {
 	int ret;
 	size_t size;
@@ -921,51 +1050,35 @@ const char *lttng_strerror(int code)
 }
 
 /*
- *  Create a brand new session using name and path.
- *  Returns size of returned session payload data or a negative error code.
+ * Create a brand new session using name and url for destination.
+ *
+ * Returns LTTCOMM_OK on success or a negative error code.
  */
-int lttng_create_session(const char *name, const char *path)
+int lttng_create_session(const char *name, const char *url)
 {
+	ssize_t size;
 	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
 
-	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-	copy_string(lsm.session.path, path, sizeof(lsm.session.path));
-
-	return ask_sessiond(&lsm, NULL);
-}
-
-/*
- * Create a new tracing session using a name, URIs and a consumer enable flag.
- */
-int lttng_create_session_uri(const char *name, struct lttng_uri *ctrl_uri,
-		struct lttng_uri *data_uri, unsigned int enable_consumer)
-{
-	struct lttcomm_session_msg lsm;
-
-	/* Name and ctrl_uri are mandatory */
-	if (name == NULL || ctrl_uri == NULL) {
+	if (name == NULL) {
 		return -1;
 	}
 
-	lsm.cmd_type = LTTNG_CREATE_SESSION_URI;
+	memset(&lsm, 0, sizeof(lsm));
 
+	lsm.cmd_type = LTTNG_CREATE_SESSION;
 	copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-	/* Anything bigger than zero, the consumer(s) will be enabled */
-	lsm.u.create_uri.enable_consumer = enable_consumer;
-	memcpy(&lsm.u.create_uri.ctrl_uri, ctrl_uri,
-			sizeof(lsm.u.create_uri.ctrl_uri));
-	if (data_uri) {
-		/*
-		 * The only possible scenario where data_uri is NULL is for a local
-		 * consumer where the output is at a specified path name on the
-		 * filesystem.
-		 */
-		memcpy(&lsm.u.create_uri.data_uri, data_uri,
-				sizeof(lsm.u.create_uri.data_uri));
+
+	/* There should never be a data URL */
+	size = parse_str_urls_to_uri(url, NULL, &uris);
+	if (size < 0) {
+		return LTTCOMM_INVALID;
 	}
 
-	return ask_sessiond(&lsm, NULL);
+	lsm.u.uri.size = size;
+
+	return ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
+			NULL);
 }
 
 /*
@@ -1213,17 +1326,22 @@ int lttng_session_daemon_alive(void)
 }
 
 /*
- * Set URI for a consumer for a session and domain.
+ * Set URL for a consumer for a session and domain.
  *
  * Return 0 on success, else a negative value.
  */
-int lttng_set_consumer_uri(struct lttng_handle *handle, struct lttng_uri *uri)
+int lttng_set_consumer_url(struct lttng_handle *handle,
+		const char *control_url, const char *data_url)
 {
+	ssize_t size;
 	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
 
-	if (handle == NULL || uri == NULL) {
+	if (handle == NULL || (control_url == NULL && data_url == NULL)) {
 		return -1;
 	}
+
+	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_SET_CONSUMER_URI;
 
@@ -1231,9 +1349,15 @@ int lttng_set_consumer_uri(struct lttng_handle *handle, struct lttng_uri *uri)
 			sizeof(lsm.session.name));
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	memcpy(&lsm.u.uri, uri, sizeof(lsm.u.uri));
+	size = parse_str_urls_to_uri(control_url, data_url, &uris);
+	if (size < 0) {
+		return LTTCOMM_INVALID;
+	}
 
-	return ask_sessiond(&lsm, NULL);
+	lsm.u.uri.size = size;
+
+	return ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
+			NULL);
 }
 
 /*

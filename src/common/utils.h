@@ -22,5 +22,6 @@ char *utils_expand_path(const char *path);
 int utils_create_pipe(int *dst);
 int utils_create_pipe_cloexec(int *dst);
 void utils_close_pipe(int *src);
+char *utils_strdupdelim(const char *begin, const char *end);
 
 #endif /* _COMMON_UTILS_H */

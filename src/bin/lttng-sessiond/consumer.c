@@ -31,6 +31,51 @@
 #include "consumer.h"
 
 /*
+ * From a consumer_data structure, allocate and add a consumer socket to the
+ * consumer output.
+ *
+ * Return 0 on success, else negative value on error
+ */
+int consumer_create_socket(struct consumer_data *data,
+		struct consumer_output *output)
+{
+	int ret = 0;
+	struct consumer_socket *socket;
+
+	assert(data);
+
+	if (output == NULL || data->cmd_sock < 0) {
+		/*
+		 * Not an error. Possible there is simply not spawned consumer or it's
+		 * disabled for the tracing session asking the socket.
+		 */
+		goto error;
+	}
+
+	rcu_read_lock();
+	socket = consumer_find_socket(data->cmd_sock, output);
+	rcu_read_unlock();
+	if (socket == NULL) {
+		socket = consumer_allocate_socket(data->cmd_sock);
+		if (socket == NULL) {
+			ret = -1;
+			goto error;
+		}
+
+		socket->lock = &data->lock;
+		rcu_read_lock();
+		consumer_add_socket(socket, output);
+		rcu_read_unlock();
+	}
+
+	DBG3("Consumer socket created (fd: %d) and added to output",
+			data->cmd_sock);
+
+error:
+	return ret;
+}
+
+/*
  * Find a consumer_socket in a consumer_output hashtable. Read side lock must
  * be acquired before calling this function and across use of the
  * returned consumer_socket.
@@ -43,7 +88,7 @@ struct consumer_socket *consumer_find_socket(int key,
 	struct consumer_socket *socket = NULL;
 
 	/* Negative keys are lookup failures */
-	if (key < 0) {
+	if (key < 0 || consumer == NULL) {
 		return NULL;
 	}
 

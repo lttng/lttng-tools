@@ -188,10 +188,11 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 			ret = LTTCOMM_FATAL;
 			goto error_asprintf;
 		}
+		new_session->start_consumer = 1;
 	} else {
-		ERR("No session path given");
-		ret = LTTCOMM_FATAL;
-		goto error;
+		/* No path indicates that there is no use for a consumer. */
+		new_session->start_consumer = 0;
+		new_session->path[0] = '\0';
 	}
 
 	/* Init kernel session */
@@ -204,7 +205,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	new_session->uid = uid;
 	new_session->gid = gid;
 
-	/* Mkdir if we have a valid path length */
+	/* Mkdir if we have a valid path and length */
 	if (strlen(new_session->path) > 0) {
 		ret = run_as_mkdir_recursive(new_session->path, S_IRWXU | S_IRWXG,
 				new_session->uid, new_session->gid);
@@ -222,9 +223,13 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	new_session->id = add_session_list(new_session);
 	session_unlock_list();
 
-	DBG("Tracing session %s created in %s with ID %u by UID %d GID %d",
-		name, path, new_session->id,
-		new_session->uid, new_session->gid);
+	/*
+	 * Consumer is let to NULL since the create_session_uri command will set it
+	 * up and, if valid, assign it to the session.
+	 */
+
+	DBG("Tracing session %s created in %s with ID %u by UID %d GID %d", name,
+			path, new_session->id, new_session->uid, new_session->gid);
 
 	return LTTCOMM_OK;
 

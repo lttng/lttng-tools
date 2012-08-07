@@ -138,14 +138,15 @@ static const char *lttcomm_readable_code[] = {
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_USTCONSUMERD) ] = "No UST consumer detected",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_KERNCONSUMERD) ] = "No kernel consumer detected",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_EVENT_EXIST_LOGLEVEL) ] = "Event already enabled with different loglevel",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_URI_DATA_MISS) ] = "Missing data path URI",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_URI_CTRL_MISS) ] = "Missing control data path URI",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_URL_DATA_MISS) ] = "Missing data path URL",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_URL_CTRL_MISS) ] = "Missing control data path URL",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_ENABLE_CONSUMER_FAIL) ] = "Enabling consumer failed",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_RELAYD_SESSION_FAIL) ] = "Unable to create session on lttng-relayd",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_RELAYD_VERSION_FAIL) ] = "Relay daemon not compatible",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_FILTER_INVAL) ] = "Invalid filter bytecode",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_FILTER_NOMEM) ] = "Not enough memory for filter bytecode",
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_FILTER_EXIST) ] = "Filter already exist",
+	[ LTTCOMM_ERR_INDEX(LTTCOMM_NO_CONSUMER) ] = "Consumer not found for tracing session",
 };
 
 /*

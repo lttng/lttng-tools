@@ -111,7 +111,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lus->consumer == NULL) {
-		goto error;
+		goto error_free_session;
 	}
 
 	/*
@@ -123,17 +123,21 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 	lus->tmp_consumer = NULL;
 
 	/* Use the default consumer output which is the tracing session path. */
-	ret = snprintf(lus->consumer->dst.trace_path, PATH_MAX, "%s/ust", path);
-	if (ret < 0) {
-		PERROR("snprintf UST consumer trace path");
-		goto error;
-	}
+	if (path && strlen(path) > 0) {
+		ret = snprintf(lus->consumer->dst.trace_path, PATH_MAX,
+				"%s" DEFAULT_UST_TRACE_DIR, path);
+		if (ret < 0) {
+			PERROR("snprintf UST consumer trace path");
+			goto error;
+		}
 
-	/* Set session path */
-	ret = snprintf(lus->pathname, PATH_MAX, "%s/ust", path);
-	if (ret < 0) {
-		PERROR("snprintf kernel traces path");
-		goto error_free_session;
+		/* Set session path */
+		ret = snprintf(lus->pathname, PATH_MAX, "%s" DEFAULT_UST_TRACE_DIR,
+				path);
+		if (ret < 0) {
+			PERROR("snprintf kernel traces path");
+			goto error_free_session;
+		}
 	}
 
 	DBG2("UST trace session create successful");

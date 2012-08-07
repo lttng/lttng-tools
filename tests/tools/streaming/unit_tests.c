@@ -37,7 +37,7 @@
 
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
-int lttng_opt_verbose = 0;
+int lttng_opt_verbose = 3;
 
 /*
  * Test string URI and if uri_parse works well.
@@ -138,7 +138,7 @@ int test_uri(void)
 	assert(strcmp(uri[0].dst.ipv4, "42.42.42.42") == 0);
 	PRINT_OK();
 
-	s_uri1 = "tcp6://fe80::f66d:4ff:fe53:d220/my/test/path";
+	s_uri1 = "tcp6://[fe80::f66d:4ff:fe53:d220]/my/test/path";
 	fprintf(stdout, " [+] URI set to %s ", s_uri1);
 	size = uri_parse(s_uri1, &uri);
 	assert(size == 1);
@@ -169,12 +169,6 @@ int test_uri(void)
 	PRINT_OK();
 
 	s_uri1 = "net://:8999";
-	fprintf(stdout, " [+] Bad URI set to %s ", s_uri1);
-	size = uri_parse(s_uri1, &uri);
-	assert(size == -1);
-	PRINT_OK();
-
-	s_uri1 = "net://localhost/";
 	fprintf(stdout, " [+] Bad URI set to %s ", s_uri1);
 	size = uri_parse(s_uri1, &uri);
 	assert(size == -1);

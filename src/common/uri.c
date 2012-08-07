@@ -24,6 +24,7 @@
 
 #include <common/common.h>
 #include <common/defaults.h>
+#include <common/utils.h>
 
 #include "uri.h"
 
@@ -32,7 +33,8 @@ enum uri_proto_code {
 };
 
 struct uri_proto {
-	char *name;
+	const char *name;
+	const char *leading_string;
 	enum uri_proto_code code;
 	enum lttng_proto_type type;
 	enum lttng_dst_type dtype;
@@ -40,29 +42,46 @@ struct uri_proto {
 
 /* Supported protocols */
 static const struct uri_proto proto_uri[] = {
-	{ .name = "file", .code = P_FILE, .type = 0, .dtype = LTTNG_DST_PATH},
-	{ .name = "net", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
-	{ .name = "net6", .code = P_NET6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
-	{ .name = "tcp", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
-	{ .name = "tcp6", .code = P_TCP6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
-	{ .name = NULL }
+	{ .name = "file", .leading_string = "file://", .code = P_FILE, .type = 0, .dtype = LTTNG_DST_PATH },
+	{ .name = "net", .leading_string = "net://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
+	{ .name = "net6", .leading_string = "net6://", .code = P_NET6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
+	{ .name = "tcp", .leading_string = "tcp://", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
+	{ .name = "tcp6", .leading_string = "tcp6://", .code = P_TCP6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
+	/* Invalid proto marking the end of the array. */
+	{ NULL, NULL, 0, 0, 0 }
 };
+
+/*
+ * Return pointer to the character in s matching one of the characters in
+ * accept. If nothing is found, return pointer to the end of string (eos).
+ */
+const inline char *strpbrk_or_eos(const char *s, const char *accept)
+{
+	char *p = strpbrk(s, accept);
+	if (p == NULL) {
+		p = strchr(s, '\0');
+	}
+
+	return p;
+}
+
 
 /*
  * Validate if proto is a supported protocol from proto_uri array.
  */
-static const struct uri_proto *validate_protocol(char *proto)
+static const struct uri_proto *get_uri_proto(const char *uri_str)
 {
-	const struct uri_proto *supported;
+	const struct uri_proto *supported = NULL;
 
 	/* Safety net */
-	if (proto == NULL) {
+	if (uri_str == NULL) {
 		goto end;
 	}
 
 	for (supported = &proto_uri[0];
-			supported->name != NULL; ++supported) {
-		if (strncmp(proto, supported->name, strlen(proto)) == 0) {
+			supported->leading_string != NULL; ++supported) {
+		if (strncasecmp(uri_str, supported->leading_string,
+					strlen(supported->leading_string)) == 0) {
 			goto end;
 		}
 	}
@@ -100,6 +119,8 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 	} else {
 		memcpy(dst, addr, size);
 	}
+
+	DBG2("IP address resolved to %s", dst);
 
 	return 0;
 
@@ -152,18 +173,26 @@ struct lttng_uri *uri_create(void)
  * make sure the correct type (stype) is set on the return URI(s). The default
  * port must also be set by the caller if the returned URI has its port set to
  * zero.
+ *
+ * NOTE: A good part of the following code was inspired from the "wget" source
+ * tree from the src/url.c file and url_parse() function. Also, the
+ * strpbrk_or_eos() function found above is also inspired by the same code.
+ * This code was originally licensed GPLv2 so we acknolwedge the Free Software
+ * Foundation here for the work and to make sure we are compliant with it.
  */
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 {
-	int ret;
-	size_t str_offset = 0;
+	int ret, i = 0;
 	/* Size of the uris array. Default is 1 */
 	ssize_t size = 1;
-	char net[6], dst[LTTNG_MAX_DNNAME + 1], subdir[PATH_MAX];
+	char subdir[PATH_MAX];
 	unsigned int ctrl_port = 0;
 	unsigned int data_port = 0;
-	struct lttng_uri *uri;
+	struct lttng_uri *tmp_uris;
+	char *addr_f = NULL;
 	const struct uri_proto *proto;
+	const char *purl, *addr_e, *addr_b, *subdir_b = NULL;
+	const char *seps = ":/\0";
 
 	/*
 	 * The first part is the protocol portion of a maximum of 5 bytes for now.
@@ -173,110 +202,208 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	 * protocol, two ports CAN be specified.
 	 */
 
-	ret = sscanf(str_uri, "%5[^:]://", net);
-	if (ret < 1) {
-		ERR("URI parse bad protocol %s", str_uri);
-		goto error;
-	}
-
 	DBG3("URI string: %s", str_uri);
 
-	proto = validate_protocol(net);
+	proto = get_uri_proto(str_uri);
 	if (proto == NULL) {
-		ERR("URI parse unknown protocol %s", net);
-		ret = -1;
+		ERR("URI parse unknown protocol %s", str_uri);
 		goto error;
 	}
 
+	purl = str_uri;
+
 	if (proto->code == P_NET || proto->code == P_NET6) {
-		/* Special case for net:// which requires two URI object */
+		/* Special case for net:// which requires two URI objects */
 		size = 2;
 	}
 
-	memset(subdir, 0, sizeof(subdir));
-	str_offset += strlen(net);
-
-	/* Parse the rest of the URI */
-	if (sscanf(str_uri + str_offset, "://%255[^:]:%u:%u/%s", dst, &ctrl_port,
-			&data_port, subdir) == 4) {
-		/* All set */
-	} else if (sscanf(str_uri + str_offset, "://%255[^:]:%u:%u", dst,
-				&ctrl_port, &data_port) == 3) {
-	} else if (sscanf(str_uri + str_offset, "://%255[^:]:%u/%s", dst,
-				&ctrl_port, subdir) == 3) {
-	} else if (sscanf(str_uri + str_offset, "://%255[^:]:%u", dst,
-				&ctrl_port) == 2) {
-	} else if (sscanf(str_uri + str_offset, "://%255[^/]/%s", dst,
-				subdir) == 2) {
-	} else {
-		ret = sscanf(str_uri + str_offset, "://%255[^:]", dst);
-		if (ret < 0) {
-			ERR("Bad URI");
-			goto error;
-		}
-	}
-
-	/* We have enough valid information to create URI(s) object */
-
 	/* Allocate URI array */
-	uri = zmalloc(sizeof(struct lttng_uri) * size);
-	if (uri == NULL) {
+	tmp_uris = zmalloc(sizeof(struct lttng_uri) * size);
+	if (tmp_uris == NULL) {
 		PERROR("zmalloc uri");
 		goto error;
 	}
 
-	/* Copy generic information */
-	uri[0].dtype = proto->dtype;
-	uri[0].proto = proto->type;
-	uri[0].port = ctrl_port;
-	strncpy(uri[0].subdir, subdir, sizeof(uri[0].subdir));
+	memset(subdir, 0, sizeof(subdir));
+	purl += strlen(proto->leading_string);
 
-	DBG3("URI dtype: %d, proto: %d, host: %s, subdir: %s, ctrl: %d, data: %d",
-			proto->dtype, proto->type, dst, subdir, ctrl_port, data_port);
+	/* Copy known value to the first URI. */
+	tmp_uris[0].dtype = proto->dtype;
+	tmp_uris[0].proto = proto->type;
+
+	if (proto->code == P_FILE) {
+		if (*purl != '/') {
+			ERR("Missing destination full path.");
+			goto free_error;
+		}
+
+		strncpy(tmp_uris[0].dst.path, purl, sizeof(tmp_uris[0].dst.path));
+		tmp_uris[0].dst.path[sizeof(tmp_uris[0].dst.path) - 1] = '\0';
+		DBG3("URI file destination: %s", purl);
+		goto end;
+	}
+
+	/* Assume we are at the beginning of an address or host of some sort. */
+	addr_b = purl;
+
+	/*
+	 * Handle IPv6 address inside square brackets as mention by RFC 2732. IPv6
+	 * address that does not start AND end with brackets will be rejected even
+	 * if valid.
+	 *
+	 * proto://[<addr>]...
+	 *         ^
+	 */
+	if (*purl == '[') {
+		/* Address begins after '[' */
+		addr_b = purl + 1;
+		addr_e = strchr(addr_b, ']');
+		if (addr_e == NULL || addr_b == addr_e) {
+			ERR("Broken IPv6 address %s", addr_b);
+			goto free_error;
+		}
+
+		/* Moving parsed URL pointer after the final bracket ']' */
+		purl = addr_e + 1;
+
+		/*
+		 * The closing bracket must be followed by a seperator or NULL char.
+		 */
+		if (strchr(seps, *purl) == NULL) {
+			ERR("Unknown symbol after IPv6 address: %s", purl);
+			goto free_error;
+		}
+	} else {
+		purl = strpbrk_or_eos(purl, seps);
+		addr_e = purl;
+	}
+
+	/* Check if we at least have a char for the addr or hostname. */
+	if (addr_b == addr_e) {
+		ERR("No address or hostname detected.");
+		goto free_error;
+	}
+
+	addr_f = utils_strdupdelim(addr_b, addr_e);
+	if (addr_f == NULL) {
+		goto free_error;
+	}
+
+	/*
+	 * Detect PORT after address. The net/net6 protocol allows up to two port
+	 * so we can define the control and data port.
+	 */
+	while (*purl == ':') {
+		int port;
+		const char *port_b, *port_e;
+		char *port_f;
+
+		/* Update pass counter */
+		i++;
+
+		/*
+		 * Maximum of two ports is possible if P_NET/NET6. Bigger than that,
+		 * two much stuff.
+		 */
+		if ((i == 2 && (proto->code != P_NET && proto->code != P_NET6))
+				|| i > 2) {
+			break;
+		}
+
+		/*
+		 * Move parsed URL to port value.
+		 * proto://addr_host:PORT1:PORT2/foo/bar
+		 *                   ^
+		 */
+		++purl;
+		port_b = purl;
+		purl = strpbrk_or_eos(purl, seps);
+		port_e = purl;
+
+		if (port_b != port_e) {
+			port_f = utils_strdupdelim(port_b, port_e);
+			if (port_f == NULL) {
+				goto free_error;
+			}
+
+			port = atoi(port_f);
+			if (port > 0xffff || port <= 0x0) {
+				ERR("Invalid port number %d", port);
+				free(port_f);
+				goto free_error;
+			}
+			free(port_f);
+
+			if (i == 1) {
+				ctrl_port = port;
+			} else {
+				data_port = port;
+			}
+		}
+	};
+
+	/* Check for a valid subdir or trailing garbage */
+	if (*purl == '/') {
+		/*
+		 * Move to subdir value.
+		 * proto://addr_host:PORT1:PORT2/foo/bar
+		 *                               ^
+		 */
+		++purl;
+		subdir_b = purl;
+	} else if (*purl != '\0') {
+		ERR("Trailing characters not recognized: %s", purl);
+		goto free_error;
+	}
+
+	/* We have enough valid information to create URI(s) object */
+
+	/* Copy generic information */
+	tmp_uris[0].port = ctrl_port;
+
+	/* Copy subdirectory if one. */
+	if (subdir_b) {
+		strncpy(tmp_uris[0].subdir, subdir_b, sizeof(tmp_uris[0].subdir));
+		tmp_uris[0].subdir[sizeof(tmp_uris[0].subdir) - 1] = '\0';
+	}
 
 	switch (proto->code) {
-	case P_FILE:
-		memcpy(uri[0].dst.path, dst, sizeof(uri[0].dst.path));
-		/* Reset port for the file:// URI */
-		uri[0].port = 0;
-		DBG3("URI file destination: %s", dst);
-		break;
 	case P_NET:
-		ret = set_ip_address(dst, AF_INET, uri[0].dst.ipv4,
-				sizeof(uri[0].dst.ipv4));
+		ret = set_ip_address(addr_f, AF_INET, tmp_uris[0].dst.ipv4,
+				sizeof(tmp_uris[0].dst.ipv4));
 		if (ret < 0) {
 			goto free_error;
 		}
 
-		memcpy(uri[1].dst.ipv4, uri[0].dst.ipv4, sizeof(uri[1].dst.ipv4));
+		memcpy(tmp_uris[1].dst.ipv4, tmp_uris[0].dst.ipv4, sizeof(tmp_uris[1].dst.ipv4));
 
-		uri[1].dtype = proto->dtype;
-		uri[1].proto = proto->type;
-		uri[1].port = data_port;
+		tmp_uris[1].dtype = proto->dtype;
+		tmp_uris[1].proto = proto->type;
+		tmp_uris[1].port = data_port;
 		break;
 	case P_NET6:
-		ret = set_ip_address(dst, AF_INET6, uri[0].dst.ipv6,
-				sizeof(uri[0].dst.ipv6));
+		ret = set_ip_address(addr_f, AF_INET6, tmp_uris[0].dst.ipv6,
+				sizeof(tmp_uris[0].dst.ipv6));
 		if (ret < 0) {
 			goto free_error;
 		}
 
-		memcpy(uri[1].dst.ipv6, uri[0].dst.ipv6, sizeof(uri[1].dst.ipv6));
+		memcpy(tmp_uris[1].dst.ipv6, tmp_uris[0].dst.ipv6, sizeof(tmp_uris[1].dst.ipv6));
 
-		uri[1].dtype = proto->dtype;
-		uri[1].proto = proto->type;
-		uri[1].port = data_port;
+		tmp_uris[1].dtype = proto->dtype;
+		tmp_uris[1].proto = proto->type;
+		tmp_uris[1].port = data_port;
 		break;
 	case P_TCP:
-		ret = set_ip_address(dst, AF_INET, uri[0].dst.ipv4,
-				sizeof(uri[0].dst.ipv4));
+		ret = set_ip_address(addr_f, AF_INET, tmp_uris[0].dst.ipv4,
+				sizeof(tmp_uris[0].dst.ipv4));
 		if (ret < 0) {
 			goto free_error;
 		}
 		break;
 	case P_TCP6:
-		ret = set_ip_address(dst, AF_INET6, uri[0].dst.ipv6,
-				sizeof(uri[0].dst.ipv6));
+		ret = set_ip_address(addr_f, AF_INET6, tmp_uris[0].dst.ipv6,
+				sizeof(tmp_uris[0].dst.ipv6));
 		if (ret < 0) {
 			goto free_error;
 		}
@@ -285,12 +412,19 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		goto free_error;
 	}
 
-	*uris = uri;
+end:
+	DBG3("URI dtype: %d, proto: %d, host: %s, subdir: %s, ctrl: %d, data: %d",
+			proto->dtype, proto->type, (addr_f == NULL) ? "" : addr_f,
+			(subdir_b == NULL) ? "" : subdir_b, ctrl_port, data_port);
 
+	free(addr_f);
+
+	*uris = tmp_uris;
 	return size;
 
 free_error:
-	free(uri);
+	free(addr_f);
+	free(tmp_uris);
 error:
 	return -1;
 }

@@ -356,13 +356,13 @@ error:
  * Create kernel metadata, open from the kernel tracer and add it to the
  * kernel session.
  */
-int kernel_open_metadata(struct ltt_kernel_session *session, char *path)
+int kernel_open_metadata(struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
 
 	/* Allocate kernel metadata */
-	lkm = trace_kernel_create_metadata(path);
+	lkm = trace_kernel_create_metadata();
 	if (lkm == NULL) {
 		goto error;
 	}

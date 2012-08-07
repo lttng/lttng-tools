@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <lttng/lttng.h>
 #include <common/compat/socket.h>
+#include <common/uri.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -61,7 +62,6 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_ALL_EVENT,
 	/* Session daemon command */
 	LTTNG_CREATE_SESSION,
-	LTTNG_CREATE_SESSION_URI,
 	LTTNG_DESTROY_SESSION,
 	LTTNG_LIST_CHANNELS,
 	LTTNG_LIST_DOMAINS,
@@ -185,14 +185,15 @@ enum lttcomm_return_code {
 	LTTCOMM_NO_USTCONSUMERD,        /* No UST consumer detected */
 	LTTCOMM_NO_KERNCONSUMERD,       /* No Kernel consumer detected */
 	LTTCOMM_EVENT_EXIST_LOGLEVEL,   /* Event already enabled with different loglevel */
-	LTTCOMM_URI_DATA_MISS,          /* Missing network data URI */
-	LTTCOMM_URI_CTRL_MISS,          /* Missing network control URI */
+	LTTCOMM_URL_DATA_MISS,          /* Missing network data URL */
+	LTTCOMM_URL_CTRL_MISS,          /* Missing network control URL */
 	LTTCOMM_ENABLE_CONSUMER_FAIL,   /* Enabling consumer failed */
 	LTTCOMM_RELAYD_SESSION_FAIL,    /* lttng-relayd create session failed */
 	LTTCOMM_RELAYD_VERSION_FAIL,    /* lttng-relayd not compatible */
 	LTTCOMM_FILTER_INVAL,		/* Invalid filter bytecode */
 	LTTCOMM_FILTER_NOMEM,		/* Lack of memory for filter bytecode */
 	LTTCOMM_FILTER_EXIST,		/* Filter already exist */
+	LTTCOMM_NO_CONSUMER,            /* No consumer exist for the tracing session */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -280,13 +281,11 @@ struct lttcomm_session_msg {
 			char channel_name[NAME_MAX];
 		} list;
 		struct lttng_calibrate calibrate;
-		/* Used by the set_consumer_uri call */
-		struct lttng_uri uri;
+		/* Used by the set_consumer_url and used by create_session also call */
 		struct {
-			uint32_t enable_consumer;
-			struct lttng_uri ctrl_uri;
-			struct lttng_uri data_uri;
-		} create_uri;
+			/* Number of lttng_uri following */
+			uint32_t size;
+		} uri;
 		struct {
 			char channel_name[NAME_MAX];
 			char event_name[NAME_MAX];

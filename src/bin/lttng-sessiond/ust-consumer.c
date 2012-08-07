@@ -136,8 +136,8 @@ static int send_channel_streams(int sock,
 	/* Get the right path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
-				consumer->dst.trace_path, usess->path);
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s/%s",
+				consumer->dst.trace_path, consumer->subdir, usess->path);
 		if (ret < 0) {
 			PERROR("snprintf stream path");
 			goto error;
@@ -225,8 +225,8 @@ static int send_metadata(int sock, struct ust_app_session *usess,
 	/* Get correct path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
-				consumer->dst.trace_path, usess->path);
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s/%s",
+				consumer->dst.trace_path, consumer->subdir, usess->path);
 		if (ret < 0) {
 			PERROR("snprintf stream path");
 			goto error;
@@ -289,8 +289,12 @@ int ust_consumer_send_session(struct ust_app_session *usess,
 	struct ust_app_channel *ua_chan;
 
 	assert(usess);
-	assert(consumer);
-	assert(sock);
+
+	if (consumer == NULL || sock == NULL) {
+		/* There is no consumer so just ignoring the command. */
+		DBG("UST consumer does not exist. Not sending streams");
+		return 0;
+	}
 
 	DBG("Sending metadata stream fd to consumer on %d", sock->fd);
 

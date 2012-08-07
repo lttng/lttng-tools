@@ -154,3 +154,23 @@ void utils_close_pipe(int *src)
 		}
 	}
 }
+
+/*
+ * Create a new string using two strings range.
+ */
+char *utils_strdupdelim(const char *begin, const char *end)
+{
+	char *str;
+
+	str = zmalloc(end - begin + 1);
+	if (str == NULL) {
+		PERROR("zmalloc strdupdelim");
+		goto error;
+	}
+
+	memcpy(str, begin, end - begin);
+	str[end - begin] = '\0';
+
+error:
+	return str;
+}

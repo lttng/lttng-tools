@@ -483,7 +483,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 * display the error but continue processing to try
 		 * to release the subbuffer
 		 */
-		ERR("Error writing to tracefile");
+		ERR("Error writing to tracefile (expected: %ld, got: %ld)", ret, len);
 	}
 	err = ustctl_put_next_subbuf(handle, buf);
 	assert(err == 0);

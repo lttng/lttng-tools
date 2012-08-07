@@ -36,10 +36,10 @@ static int opt_kernel;
 static int opt_userspace;
 static int opt_enable;
 static char *opt_session_name;
-static char *opt_uris;
-static char *opt_ctrl_uris;
-static char *opt_data_uris;
-static char *opt_uris_arg;
+static char *opt_url;
+static char *opt_ctrl_url;
+static char *opt_data_url;
+static char *opt_url_arg;
 
 static struct lttng_handle *handle;
 
@@ -55,9 +55,9 @@ static struct poptOption long_options[] = {
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0},
-	{"set-uri",        'U', POPT_ARG_STRING, &opt_uris, 0, 0, 0},
-	{"ctrl-uri",       'C', POPT_ARG_STRING, &opt_ctrl_uris, 0, 0, 0},
-	{"data-uri",       'D', POPT_ARG_STRING, &opt_data_uris, 0, 0, 0},
+	{"set-uri",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
+	{"ctrl-uri",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
+	{"data-uri",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
 	{"enable",         'e', POPT_ARG_VAL, &opt_enable, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -67,28 +67,13 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng enable-consumer [-u|-k] [URI] [OPTIONS]\n");
+	fprintf(ofp, "usage: lttng enable-consumer [-u|-k] [URL] [OPTIONS]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "The default behavior is to enable a consumer to the current URI.\n");
-	fprintf(ofp, "The default URI is the local filesystem at the path of the session.\n");
+	fprintf(ofp, "The default behavior is to enable a consumer to the current URL.\n");
+	fprintf(ofp, "The default URL is the local filesystem at the path of the session.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "The enable-consumer feature supports both local and network transport.\n");
 	fprintf(ofp, "You must have a running lttng-relayd for network transmission.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "You can optionally specify two URIs for respectively the\n");
-	fprintf(ofp, "control and data channel. URI supported:\n");
-	fprintf(ofp, "  > file://PATH\n");
-	fprintf(ofp, "    Local file full system path.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  > net://DST[:CTRL_PORT[:DATA_PORT]] and net6://...\n");
-	fprintf(ofp, "    This will use the default network transport layer which is\n");
-	fprintf(ofp, "    TCP for both control and data port. The default ports are\n");
-	fprintf(ofp, "    respectively 5342 and 5343.\n");
-	fprintf(ofp, "    Example:\n");
-	fprintf(ofp, "    # lttng enable-consumer net://192.168.1.42 -k\n");
-	fprintf(ofp, "    Uses TCP and default ports for the given destination.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  > tcp://DST:PORT and tcp6://DST:PORT\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
@@ -96,125 +81,46 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -s, --session=NAME   Apply to session name\n");
 	fprintf(ofp, "  -k, --kernel         Apply to the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace      Apply to the user-space tracer\n");
-	//fprintf(ofp, "  -U, --set-uri=URI1[,URI2,...]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Extended Options:\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Using these options, each API call is controlled individually.\n");
+	fprintf(ofp, "Using these options, each API call can be controlled individually.\n");
 	fprintf(ofp, "For instance, -C does not enable the consumer automatically.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  -U, --set-uri=URI    Set URI for the enable-consumer destination.\n");
+	fprintf(ofp, "  -U, --set-uri=URL    Set URL for the enable-consumer destination.\n");
 	fprintf(ofp, "                       It is persistent for the session lifetime.\n");
 	fprintf(ofp, "                       Redo the command to change it.\n");
-	fprintf(ofp, "                       This will set both data and control URI for network.\n");
-	//fprintf(ofp, "  -C, --ctrl-uri=URI1[,URI2,...]\n");
-	fprintf(ofp, "  -C, --ctrl-uri=URI   Set control path URI.\n");
-	//fprintf(ofp, "  -D, --data-uri=URI1[,URI2,...]\n");
-	fprintf(ofp, "  -D, --data-uri=URI   Set data path URI.\n");
+	fprintf(ofp, "                       This will set both data and control URL for network.\n");
+	fprintf(ofp, "  -C, --ctrl-url=URL   Set control path URL. (Must use -D also)\n");
+	fprintf(ofp, "  -D, --data-url=URL   Set data path URL. (Must use -C also)\n");
 	fprintf(ofp, "  -e, --enable         Enable consumer\n");
 	fprintf(ofp, "\n");
-}
-
-/*
- * Print URI message.
- */
-static void print_uri_msg(struct lttng_uri *uri)
-{
-	char *dst;
-
-	switch (uri->dtype) {
-	case LTTNG_DST_IPV4:
-		dst = uri->dst.ipv4;
-		break;
-	case LTTNG_DST_IPV6:
-		dst = uri->dst.ipv6;
-		break;
-	case LTTNG_DST_PATH:
-		dst = uri->dst.path;
-		MSG("Consumer destination set to %s", dst);
-		goto end;
-	default:
-		DBG("Unknown URI destination");
-		goto end;
-	}
-
-	MSG("Consumer %s stream set to %s with the %s protocol on port %d",
-			uri->stype == LTTNG_STREAM_CONTROL ? "control" : "data",
-			dst, uri->proto == LTTNG_TCP ? "TCP" : "UNK", uri->port);
-
-end:
-	return;
-}
-
-/*
- * Setting URIs taking from the command line arguments. There is some
- * manipulations and special cases using the default args.
- */
-static int set_consumer_arg_uris(struct lttng_uri *uri, size_t size)
-{
-	int ret, i;
-
-	if (size == 2) {
-		/* URIs are the control and data stream respectively for net:// */
-		uri[0].stype = LTTNG_STREAM_CONTROL;
-		uri[1].stype = LTTNG_STREAM_DATA;
-
-		for (i = 0; i < size; i++) {
-			ret = lttng_set_consumer_uri(handle, &uri[i]);
-			if (ret < 0) {
-				ERR("Setting %s stream URI: %s",
-						uri[i].stype == LTTNG_STREAM_DATA ? "data" : "control",
-						lttng_strerror(ret));
-				goto error;
-			}
-			/* Set default port if none was given */
-			if (uri[i].port == 0) {
-				if (uri[i].stype == LTTNG_STREAM_CONTROL) {
-					uri[i].port = DEFAULT_NETWORK_CONTROL_PORT;
-				} else {
-					uri[i].port = DEFAULT_NETWORK_DATA_PORT;
-				}
-			}
-			print_uri_msg(&uri[i]);
-		}
-	} else if (size == 1 && uri[0].dtype == LTTNG_DST_PATH) {
-		/* Set URI if it's file:// */
-		ret = lttng_set_consumer_uri(handle, &uri[0]);
-		if (ret < 0) {
-			ERR("Failed to set URI %s: %s", opt_uris_arg,
-					lttng_strerror(ret));
-			goto error;
-		}
-		print_uri_msg(&uri[0]);
-	} else {
-		ERR("Only net:// and file:// are supported. "
-				"Use -D or -U for more fine grained control");
-		ret = CMD_ERROR;
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Parse URI from string to lttng_uri object array.
- */
-static ssize_t parse_uri_from_str(const char *str_uri, struct lttng_uri **uris)
-{
-	ssize_t size;
-
-	if (*uris != NULL) {
-		free(*uris);
-	}
-
-	size = uri_parse(str_uri, uris);
-	if (size < 1) {
-		ERR("Bad URI %s. Either the hostname or IP is invalid", str_uri);
-		size = -1;
-	}
-
-	return size;
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Please refer to the man page (lttng(1)) for more information on network\n");
+	fprintf(ofp, "streaming mechanisms and explanation of the control and data port\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "URL format is has followed:\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "  proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "  Supported protocols are (proto):\n");
+	fprintf(ofp, "  > file://...\n");
+	fprintf(ofp, "    Local filesystem full path.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "  > net[4|6]://...\n");
+	fprintf(ofp, "    This will use the default network transport layer which is\n");
+	fprintf(ofp, "    TCP for both control (PORT1) and data port (PORT2).\n");
+	fprintf(ofp, "    The default ports are respectively 5342 and 5343.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "  > tcp[4|6]://...\n");
+	fprintf(ofp, "    Can only be used with -C and -D together\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Examples:\n");
+	fprintf(ofp, "    # lttng enable-consumer -u net://192.168.1.42\n");
+	fprintf(ofp, "    Uses TCP and default ports for user space tracing (-u).\n");
+	fprintf(ofp, "\n");
 }
 
 /*
@@ -224,9 +130,7 @@ static int enable_consumer(char *session_name)
 {
 	int ret = CMD_SUCCESS;
 	int run_enable_cmd = 1;
-	ssize_t size;
 	struct lttng_domain dom;
-	struct lttng_uri *uri = NULL;
 
 	memset(&dom, 0, sizeof(dom));
 
@@ -236,9 +140,14 @@ static int enable_consumer(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
-		ret = CMD_ERROR;
-		goto error;
+		/*
+		 * Set handle with domain set to 0. This means to the session daemon
+		 * that the next action applies on the tracing session rather then the
+		 * domain specific session.
+		 *
+		 * XXX: This '0' value should be a domain enum value.
+		 */
+		dom.type = 0;
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -248,88 +157,49 @@ static int enable_consumer(char *session_name)
 	}
 
 	/* Handle trailing arguments */
-	if (opt_uris_arg) {
-		size = parse_uri_from_str(opt_uris_arg, &uri);
-		if (size < 1) {
-			ret = CMD_ERROR;
+	if (opt_url_arg) {
+		ret = lttng_set_consumer_url(handle, opt_url_arg, NULL);
+		if (ret < 0) {
+			ERR("%s", lttng_strerror(ret));
 			goto error;
 		}
 
-		ret = set_consumer_arg_uris(uri, size);
-		if (ret < 0) {
-			goto free_uri;
-		}
+		MSG("URL %s set for session %s.", opt_url_arg, session_name);
 	}
 
-	/* Handling URIs (-U opt) */
-	if (opt_uris) {
-		size = parse_uri_from_str(opt_uris, &uri);
-		if (size < 1) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-
-		ret = set_consumer_arg_uris(uri, size);
+	/* Handling URLs (-U opt) */
+	if (opt_url) {
+		ret = lttng_set_consumer_url(handle, opt_url, NULL);
 		if (ret < 0) {
-			goto free_uri;
+			ERR("%s", lttng_strerror(ret));
+			goto error;
 		}
 
 		/* opt_enable will tell us to run or not the enable_consumer cmd. */
 		run_enable_cmd = 0;
+
+		MSG("URL %s set for session %s.", opt_url, session_name);
 	}
 
-	/* Setting up control URI (-C opt) */
-	if (opt_ctrl_uris) {
-		size = parse_uri_from_str(opt_ctrl_uris, &uri);
-		if (size < 1) {
-			ret = CMD_ERROR;
+	/* Setting up control URL (-C or/and -D opt) */
+	if (opt_ctrl_url || opt_data_url) {
+		ret = lttng_set_consumer_url(handle, opt_ctrl_url, opt_data_url);
+		if (ret < 0) {
+			ERR("%s", lttng_strerror(ret));
 			goto error;
 		}
 
-		/* Set default port if none specified */
-		if (uri[0].port == 0) {
-			uri[0].port = DEFAULT_NETWORK_CONTROL_PORT;
-		}
-
-		uri[0].stype = LTTNG_STREAM_CONTROL;
-
-		ret = lttng_set_consumer_uri(handle, &uri[0]);
-		if (ret < 0) {
-			ERR("Failed to set control URI %s: %s", opt_ctrl_uris,
-					lttng_strerror(ret));
-			goto free_uri;
-		}
-		print_uri_msg(&uri[0]);
-
 		/* opt_enable will tell us to run or not the enable_consumer cmd. */
 		run_enable_cmd = 0;
-	}
 
-	/* Setting up data URI (-D opt) */
-	if (opt_data_uris) {
-		size = parse_uri_from_str(opt_data_uris, &uri);
-		if (size < 1) {
-			ret = CMD_ERROR;
-			goto error;
+		if (opt_ctrl_url) {
+			MSG("Control URL %s set for session %s.", opt_ctrl_url,
+					session_name);
 		}
 
-		/* Set default port if none specified */
-		if (uri[0].port == 0) {
-			uri[0].port = DEFAULT_NETWORK_DATA_PORT;
+		if (opt_data_url) {
+			MSG("Data URL %s set for session %s.", opt_data_url, session_name);
 		}
-
-		uri[0].stype = LTTNG_STREAM_DATA;
-
-		ret = lttng_set_consumer_uri(handle, &uri[0]);
-		if (ret < 0) {
-			ERR("Failed to set data URI %s: %s", opt_data_uris,
-					lttng_strerror(ret));
-			goto free_uri;
-		}
-		print_uri_msg(&uri[0]);
-
-		/* opt_enable will tell us to run or not the enable_consumer cmd. */
-		run_enable_cmd = 0;
 	}
 
 	/* Enable consumer (-e opt) */
@@ -341,14 +211,11 @@ static int enable_consumer(char *session_name)
 			if (ret == -LTTCOMM_ENABLE_CONSUMER_FAIL) {
 				ERR("Perhaps the session was previously started?");
 			}
-			goto free_uri;
+			goto error;
 		}
 
 		MSG("Consumer enabled successfully");
 	}
-
-free_uri:
-	free(uri);
 
 error:
 	lttng_destroy_handle(handle);
@@ -384,8 +251,8 @@ int cmd_enable_consumer(int argc, const char **argv)
 		}
 	}
 
-	opt_uris_arg = (char *) poptGetArg(pc);
-	DBG("URIs: %s", opt_uris_arg);
+	opt_url_arg = (char *) poptGetArg(pc);
+	DBG("URLs: %s", opt_url_arg);
 
 	/* Get session name */
 	if (!opt_session_name) {

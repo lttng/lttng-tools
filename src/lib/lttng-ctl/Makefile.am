@@ -23,4 +23,6 @@ filter_grammar_test_SOURCES = filter-grammar-test.c
 filter_grammar_test_LDADD = liblttng-ctl.la
 
 liblttng_ctl_la_LIBADD = \
-		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
+		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
+		$(top_builddir)/src/common/libcommon.la \
+		$(top_builddir)/src/common/hashtable/libhashtable.la

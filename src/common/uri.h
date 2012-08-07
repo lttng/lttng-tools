@@ -15,10 +15,64 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _LTT_URI_H
-#define _LTT_URI_H
+#ifndef URI_H
+#define URI_H
 
+#include <netinet/in.h>
 #include <lttng/lttng.h>
+
+/* Destination type of lttng URI */
+enum lttng_dst_type {
+	LTTNG_DST_IPV4                        = 1,
+	LTTNG_DST_IPV6                        = 2,
+	LTTNG_DST_PATH                        = 3,
+};
+
+/* Type of lttng URI where it is a final destination or a hop */
+enum lttng_uri_type {
+	LTTNG_URI_DST,	/* The URI is a final destination */
+	/*
+	 * Hops are not supported yet but planned for a future release.
+	 *
+	 LTTNG_URI_HOP,
+	 */
+};
+
+/* Communication stream type of a lttng URI */
+enum lttng_stream_type {
+	LTTNG_STREAM_CONTROL,
+	LTTNG_STREAM_DATA,
+};
+
+/*
+ * Protocol type of a lttng URI. The value 0 indicate that the proto_type field
+ * should be ignored.
+ */
+enum lttng_proto_type {
+	LTTNG_TCP                             = 1,
+	/*
+	 * UDP protocol is not supported for now.
+	 *
+	 LTTNG_UDP                             = 2,
+	 */
+};
+
+/*
+ * Structure representing an URI supported by lttng.
+ */
+struct lttng_uri {
+	enum lttng_dst_type dtype;
+	enum lttng_uri_type utype;
+	enum lttng_stream_type stype;
+	enum lttng_proto_type proto;
+	in_port_t port;
+	char subdir[PATH_MAX];
+	union {
+		char ipv4[INET_ADDRSTRLEN];
+		char ipv6[INET6_ADDRSTRLEN];
+		char path[PATH_MAX];
+	} dst;
+};
 
 int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2);
 void uri_free(struct lttng_uri *uri);

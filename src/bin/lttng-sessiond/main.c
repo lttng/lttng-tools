@@ -2135,8 +2135,8 @@ static int setup_relayd(struct ltt_session *session)
 
 	DBG2("Setting relayd for session %s", session->name);
 
-	if (usess && usess->consumer->type == CONSUMER_DST_NET &&
-			usess->consumer->enabled) {
+	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET
+			&& usess->consumer->enabled) {
 		/* For each consumer socket, send relayd sockets */
 		cds_lfht_for_each_entry(usess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
@@ -2151,8 +2151,10 @@ static int setup_relayd(struct ltt_session *session)
 				goto error;
 			}
 		}
-	} else if (ksess && ksess->consumer->type == CONSUMER_DST_NET &&
-			ksess->consumer->enabled) {
+	}
+
+	if (ksess && ksess->consumer && ksess->consumer->type == CONSUMER_DST_NET
+			&& ksess->consumer->enabled) {
 		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			/* Code flow error */
@@ -2183,6 +2185,9 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	const char *dir_name;
 	struct consumer_output *consumer;
 
+	assert(session);
+	assert(session->consumer);
+
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		DBG3("Copying tracing session consumer output in kernel session");
@@ -2209,12 +2214,6 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	strncat(consumer->subdir, dir_name, sizeof(consumer->subdir));
 	DBG3("Copy session consumer subdir %s", consumer->subdir);
 
-	/* Add default trace directory name */
-	if (consumer->type == CONSUMER_DST_LOCAL) {
-		strncat(consumer->dst.trace_path, dir_name,
-				sizeof(consumer->dst.trace_path));
-	}
-
 	ret = LTTCOMM_OK;
 
 error:
@@ -2231,6 +2230,7 @@ static int create_ust_session(struct ltt_session *session,
 	struct ltt_ust_session *lus = NULL;
 
 	assert(session);
+	assert(domain);
 	assert(session->consumer);
 
 	switch (domain->type) {
@@ -2248,18 +2248,6 @@ static int create_ust_session(struct ltt_session *session,
 	if (lus == NULL) {
 		ret = LTTCOMM_UST_SESS_FAIL;
 		goto error;
-	}
-
-	if (session->consumer->type == CONSUMER_DST_LOCAL) {
-		ret = run_as_mkdir_recursive(lus->pathname, S_IRWXU | S_IRWXG,
-				session->uid, session->gid);
-		if (ret < 0) {
-			if (ret != -EEXIST) {
-				ERR("Trace directory creation error");
-				ret = LTTCOMM_UST_SESS_FAIL;
-				goto error;
-			}
-		}
 	}
 
 	lus->uid = session->uid;
@@ -2295,6 +2283,9 @@ static int create_kernel_session(struct ltt_session *session)
 		goto error;
 	}
 
+	/* Code flow safety */
+	assert(session->kernel_session);
+
 	/* Copy session output to the newly created Kernel session */
 	ret = copy_session_consumer(LTTNG_DOMAIN_KERNEL, session);
 	if (ret != LTTCOMM_OK) {
@@ -2302,7 +2293,8 @@ static int create_kernel_session(struct ltt_session *session)
 	}
 
 	/* Create directory(ies) on local filesystem. */
-	if (session->consumer->type == CONSUMER_DST_LOCAL) {
+	if (session->kernel_session->consumer->type == CONSUMER_DST_LOCAL &&
+			strlen(session->kernel_session->consumer->dst.trace_path) > 0) {
 		ret = run_as_mkdir_recursive(
 				session->kernel_session->consumer->dst.trace_path,
 				S_IRWXU | S_IRWXG, session->uid, session->gid);
@@ -2599,6 +2591,77 @@ static int list_lttng_kernel_events(char *channel_name,
 	}
 
 	return nb_event;
+
+error:
+	return ret;
+}
+
+
+/*
+ * Add URI so the consumer output object. Set the correct path depending on the
+ * domain adding the default trace directory.
+ */
+static int add_uri_to_consumer(struct consumer_output *consumer,
+		struct lttng_uri *uri, int domain)
+{
+	int ret;
+	const char *default_trace_dir;
+
+	assert(uri);
+
+	if (consumer == NULL) {
+		DBG("No consumer detected. Don't add URI. Stopping.");
+		ret = LTTCOMM_NO_CONSUMER;
+		goto error;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		default_trace_dir = DEFAULT_KERNEL_TRACE_DIR;
+		break;
+	case LTTNG_DOMAIN_UST:
+		default_trace_dir = DEFAULT_UST_TRACE_DIR;
+		break;
+	default:
+		/*
+		 * This case is possible is we try to add the URI to the global tracing
+		 * session consumer object which in this case there is no subdir.
+		 */
+		default_trace_dir = "";
+	}
+
+	switch (uri->dtype) {
+	case LTTNG_DST_IPV4:
+	case LTTNG_DST_IPV6:
+		DBG2("Setting network URI to consumer");
+
+		/* Set URI into consumer output object */
+		ret = consumer_set_network_uri(consumer, uri);
+		if (ret < 0) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+
+		/* On a new subdir, reappend the default trace dir. */
+		if (strlen(uri->subdir) != 0) {
+			strncat(consumer->subdir, default_trace_dir,
+					sizeof(consumer->subdir));
+		}
+
+		break;
+	case LTTNG_DST_PATH:
+		DBG2("Setting trace directory path from URI to %s", uri->dst.path);
+		memset(consumer->dst.trace_path, 0,
+				sizeof(consumer->dst.trace_path));
+		strncpy(consumer->dst.trace_path, uri->dst.path,
+				sizeof(consumer->dst.trace_path));
+		/* Append default trace dir */
+		strncat(consumer->dst.trace_path, default_trace_dir,
+				sizeof(consumer->dst.trace_path));
+		/* Flag consumer as local. */
+		consumer->type = CONSUMER_DST_LOCAL;
+		break;
+	}
 
 error:
 	return ret;
@@ -3289,8 +3352,7 @@ static int cmd_start_trace(struct ltt_session *session)
 	if (ksession != NULL) {
 		/* Open kernel metadata */
 		if (ksession->metadata == NULL) {
-			ret = kernel_open_metadata(ksession,
-					ksession->consumer->dst.trace_path);
+			ret = kernel_open_metadata(ksession);
 			if (ret < 0) {
 				ret = LTTCOMM_KERN_META_FAIL;
 				goto error;
@@ -3422,38 +3484,102 @@ error:
 }
 
 /*
- * Command LTTNG_CREATE_SESSION_URI processed by the client thread.
+ * Command LTTNG_CREATE_SESSION processed by the client thread.
  */
-static int cmd_create_session_uri(char *name, struct lttng_uri *ctrl_uri,
-		struct lttng_uri *data_uri, unsigned int enable_consumer,
-		lttng_sock_cred *creds)
+static int cmd_create_session_uri(char *name, struct lttng_uri *uris,
+		size_t nb_uri, lttng_sock_cred *creds)
 {
-	int ret;
-	char *path = NULL;
+	int ret, have_default_name = 0;
+	char *path = NULL, datetime[16];
 	struct ltt_session *session;
-	struct consumer_output *consumer;
+	struct consumer_output *consumer = NULL;
+	struct lttng_uri *ctrl_uri, *data_uri = NULL;
+	time_t rawtime;
+	struct tm *timeinfo;
 
-	/* Verify if the session already exist */
+	assert(name);
+
+	/* Flag if we have a default session. */
+	if (strncmp(name, DEFAULT_SESSION_NAME,
+				strlen(DEFAULT_SESSION_NAME)) == 0) {
+		have_default_name = 1;
+	} else {
+		/* Get date and time for session path */
+		time(&rawtime);
+		timeinfo = localtime(&rawtime);
+		strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+	}
+
+	/*
+	 * Verify if the session already exist
+	 *
+	 * XXX: There is no need for the session lock list here since the caller
+	 * (process_client_msg) is holding it. We might want to change that so a
+	 * single command does not lock the entire session list.
+	 */
 	session = session_find_by_name(name);
 	if (session != NULL) {
 		ret = LTTCOMM_EXIST_SESS;
+		goto consumer_error;
+	}
+
+	/* Create default consumer output for the session not yet created. */
+	consumer = consumer_create_output(CONSUMER_DST_LOCAL);
+	if (consumer == NULL) {
+		ret = LTTCOMM_FATAL;
+		goto consumer_error;
+	}
+
+	/* Add session name and data to the consumer subdir */
+	if (have_default_name) {
+		ret = snprintf(consumer->subdir, sizeof(consumer->subdir), "/%s",
+				name);
+	} else {
+		ret = snprintf(consumer->subdir, sizeof(consumer->subdir), "/%s-%s",
+				name, datetime);
+	}
+	if (ret < 0) {
+		PERROR("snprintf consumer subdir");
 		goto error;
+	}
+	DBG2("Consumer subdir set to '%s'", consumer->subdir);
+
+	/*
+	 * This means that the lttng_create_session call was called with the _path_
+	 * argument set to NULL.
+	 */
+	if (uris == NULL) {
+		/*
+		 * At this point, we'll skip the consumer URI setup and create a
+		 * session with a NULL path which will flag the session to NOT spawn a
+		 * consumer.
+		 */
+		DBG("Create session %s with NO uri, skipping consumer setup", name);
+		goto skip_consumer;
 	}
 
 	/* TODO: validate URIs */
 
-	/* Create default consumer output */
-	consumer = consumer_create_output(CONSUMER_DST_LOCAL);
-	if (consumer == NULL) {
-		ret = LTTCOMM_FATAL;
-		goto error;
+	ctrl_uri = &uris[0];
+	if (nb_uri > 1) {
+		data_uri = &uris[1];
 	}
-	strncpy(consumer->subdir, ctrl_uri->subdir, sizeof(consumer->subdir));
-	DBG2("Consumer subdir set to %s", consumer->subdir);
+
+	/* Set subdirectory from the ctrl_uri received. */
+	if (strlen(ctrl_uri->subdir) > 0) {
+		strncpy(consumer->subdir, ctrl_uri->subdir, sizeof(consumer->subdir));
+		DBG2("Consumer subdir copy from ctrl_uri '%s'", consumer->subdir);
+	}
 
 	switch (ctrl_uri->dtype) {
 	case LTTNG_DST_IPV4:
 	case LTTNG_DST_IPV6:
+		/*
+		 * We MUST have a data_uri set at this point or else there is a code
+		 * flow error. The caller should check that.
+		 */
+		assert(data_uri);
+
 		/* Set control URI into consumer output object */
 		ret = consumer_set_network_uri(consumer, ctrl_uri);
 		if (ret < 0) {
@@ -3479,53 +3605,50 @@ static int cmd_create_session_uri(char *name, struct lttng_uri *ctrl_uri,
 		break;
 	}
 
-	/* Set if the consumer is enabled or not */
-	consumer->enabled = enable_consumer;
+	consumer->enabled = 1;
 
+skip_consumer:
+	/* Create tracing session in the registry */
 	ret = session_create(name, path, LTTNG_SOCK_GET_UID_CRED(creds),
 			LTTNG_SOCK_GET_GID_CRED(creds));
 	if (ret != LTTCOMM_OK) {
-		goto consumer_error;
+		goto error;
 	}
 
-	/* Get the newly created session pointer back */
+	/*
+	 * Get the newly created session pointer back
+	 *
+	 * XXX: There is no need for the session lock list here since the caller
+	 * (process_client_msg) is holding it. We might want to change that so a
+	 * single command does not lock the entire session list.
+	 */
 	session = session_find_by_name(name);
 	assert(session);
 
 	/* Assign consumer to session */
 	session->consumer = consumer;
 
-	return LTTCOMM_OK;
-
-consumer_error:
-	consumer_destroy_output(consumer);
-error:
-	return ret;
-}
-
-/*
- * Command LTTNG_CREATE_SESSION processed by the client thread.
- */
-static int cmd_create_session(char *name, char *path, lttng_sock_cred *creds)
-{
-	int ret;
-	struct lttng_uri uri;
-
-	/* Zeroed temporary URI */
-	memset(&uri, 0, sizeof(uri));
-
-	uri.dtype = LTTNG_DST_PATH;
-	uri.utype = LTTNG_URI_DST;
-	strncpy(uri.dst.path, path, sizeof(uri.dst.path));
-
-	/* TODO: Strip date-time from path and put it in uri's subdir */
-
-	ret = cmd_create_session_uri(name, &uri, NULL, 1, creds);
-	if (ret != LTTCOMM_OK) {
-		goto error;
+	/* Set correct path to session */
+	if (have_default_name) {
+		/* We have the default session so the date-time is already appended */
+		ret = snprintf(session->path, sizeof(session->path), "%s/%s",
+				path, name);
+	} else {
+		ret = snprintf(session->path, sizeof(session->path), "%s/%s-%s",
+				path, name, datetime);
+	}
+	if (ret < 0) {
+		PERROR("snprintf session path");
+		goto session_error;
 	}
 
+	return LTTCOMM_OK;
+
+session_error:
+	session_destroy(session);
 error:
+	consumer_destroy_output(consumer);
+consumer_error:
 	return ret;
 }
 
@@ -3787,12 +3910,16 @@ error:
  * Command LTTNG_SET_CONSUMER_URI processed by the client thread.
  */
 static int cmd_set_consumer_uri(int domain, struct ltt_session *session,
-		struct lttng_uri *uri)
+		size_t nb_uri, struct lttng_uri *uris)
 {
-	int ret;
+	int ret, i;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
-	struct consumer_output *consumer;
+	struct consumer_output *consumer = NULL;
+
+	assert(session);
+	assert(uris);
+	assert(nb_uri > 0);
 
 	/* Can't enable consumer after session started. */
 	if (session->enabled) {
@@ -3800,14 +3927,29 @@ static int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 		goto error;
 	}
 
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct lttng_ht_iter iter;
-		struct consumer_socket *socket;
+	if (!session->start_consumer) {
+		ret = LTTCOMM_NO_CONSUMER;
+		goto error;
+	}
 
+	/*
+	 * This case switch makes sure the domain session has a temporary consumer
+	 * so the URL can be set.
+	 */
+	switch (domain) {
+	case 0:
+		/* Code flow error. A session MUST always have a consumer object */
+		assert(session->consumer);
+		/*
+		 * The URL will be added to the tracing session consumer instead of a
+		 * specific domain consumer.
+		 */
+		consumer = session->consumer;
+		break;
+	case LTTNG_DOMAIN_KERNEL:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(ksess);
+		assert(ksess->consumer);
 
 		/* Create consumer output if none exists */
 		consumer = ksess->tmp_consumer;
@@ -3817,58 +3959,10 @@ static int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 				ret = LTTCOMM_FATAL;
 				goto error;
 			}
-			/* Reassign new pointer */
 			ksess->tmp_consumer = consumer;
 		}
 
-		switch (uri->dtype) {
-		case LTTNG_DST_IPV4:
-		case LTTNG_DST_IPV6:
-			DBG2("Setting network URI for kernel session %s", session->name);
-
-			/* Set URI into consumer output object */
-			ret = consumer_set_network_uri(consumer, uri);
-			if (ret < 0) {
-				ret = LTTCOMM_FATAL;
-				goto error;
-			}
-
-			/* On a new subdir, reappend the default trace dir. */
-			if (strlen(uri->subdir) != 0) {
-				strncat(consumer->subdir, DEFAULT_KERNEL_TRACE_DIR,
-						sizeof(consumer->subdir));
-			}
-
-			cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter,
-					socket, node.node) {
-				/* Code flow error */
-				assert(socket->fd >= 0);
-
-				pthread_mutex_lock(socket->lock);
-				ret = send_socket_relayd_consumer(domain, session, uri, consumer,
-						socket->fd);
-				pthread_mutex_unlock(socket->lock);
-				if (ret != LTTCOMM_OK) {
-					goto error;
-				}
-			}
-
-			break;
-		case LTTNG_DST_PATH:
-			DBG2("Setting trace directory path from URI to %s", uri->dst.path);
-			memset(consumer->dst.trace_path, 0,
-					sizeof(consumer->dst.trace_path));
-			strncpy(consumer->dst.trace_path, uri->dst.path,
-					sizeof(consumer->dst.trace_path));
-			/* Append default kernel trace dir */
-			strncat(consumer->dst.trace_path, DEFAULT_KERNEL_TRACE_DIR,
-					sizeof(consumer->dst.trace_path));
-			break;
-		}
-
-		/* All good! */
 		break;
-	}
 	case LTTNG_DOMAIN_UST:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(usess);
@@ -3881,70 +3975,41 @@ static int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 				ret = LTTCOMM_FATAL;
 				goto error;
 			}
-			/* Reassign new pointer */
 			usess->tmp_consumer = consumer;
 		}
 
-		switch (uri->dtype) {
-		case LTTNG_DST_IPV4:
-		case LTTNG_DST_IPV6:
-		{
-			struct consumer_socket *socket;
+		break;
+	}
 
-			DBG2("Setting network URI for UST session %s", session->name);
+	for (i = 0; i < nb_uri; i++) {
+		struct consumer_socket *socket;
+		struct lttng_ht_iter iter;
 
-			/* Set URI into consumer object */
-			ret = consumer_set_network_uri(consumer, uri);
-			if (ret < 0) {
-				ret = LTTCOMM_FATAL;
+		ret = add_uri_to_consumer(consumer, &uris[i], domain);
+		if (ret < 0) {
+			goto error;
+		}
+
+		/* Don't send relayd socket if URI is NOT remote */
+		if (uris[i].dtype == LTTNG_DST_PATH) {
+			continue;
+		}
+
+		/* Try to send relayd URI to the consumer if exist. */
+		cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter,
+				socket, node.node) {
+
+			/* A socket in the HT should never have a negative fd */
+			assert(socket->fd >= 0);
+
+			pthread_mutex_lock(socket->lock);
+			ret = send_socket_relayd_consumer(domain, session, &uris[i],
+					consumer, socket->fd);
+			pthread_mutex_unlock(socket->lock);
+			if (ret != LTTCOMM_OK) {
 				goto error;
 			}
-
-			/* On a new subdir, reappend the default trace dir. */
-			if (strlen(uri->subdir) != 0) {
-				strncat(consumer->subdir, DEFAULT_UST_TRACE_DIR,
-						sizeof(consumer->subdir));
-			}
-
-			rcu_read_lock();
-			socket = consumer_find_socket(uatomic_read(&ust_consumerd64_fd),
-					consumer);
-			if (socket != NULL) {
-				pthread_mutex_lock(socket->lock);
-				ret = send_socket_relayd_consumer(domain, session, uri,
-						consumer, socket->fd);
-				pthread_mutex_unlock(socket->lock);
-				if (ret != LTTCOMM_OK) {
-					goto error;
-				}
-			}
-
-			socket = consumer_find_socket(uatomic_read(&ust_consumerd32_fd),
-					consumer);
-			if (socket != NULL) {
-				pthread_mutex_lock(socket->lock);
-				ret = send_socket_relayd_consumer(domain, session, uri,
-						consumer, socket->fd);
-				pthread_mutex_unlock(socket->lock);
-				if (ret != LTTCOMM_OK) {
-					goto error;
-				}
-			}
-			rcu_read_unlock();
-			break;
 		}
-		case LTTNG_DST_PATH:
-			DBG2("Setting trace directory path from URI to %s", uri->dst.path);
-			memset(consumer->dst.trace_path, 0,
-					sizeof(consumer->dst.trace_path));
-			strncpy(consumer->dst.trace_path, uri->dst.path,
-					sizeof(consumer->dst.trace_path));
-			/* Append default UST trace dir */
-			strncat(consumer->dst.trace_path, DEFAULT_UST_TRACE_DIR,
-					sizeof(consumer->dst.trace_path));
-			break;
-		}
-		break;
 	}
 
 	/* All good! */
@@ -3964,13 +4029,24 @@ static int cmd_disable_consumer(int domain, struct ltt_session *session)
 	struct ltt_ust_session *usess = session->ust_session;
 	struct consumer_output *consumer;
 
+	assert(session);
+
 	if (session->enabled) {
 		/* Can't disable consumer on an already started session */
 		ret = LTTCOMM_TRACE_ALREADY_STARTED;
 		goto error;
 	}
 
+	if (!session->start_consumer) {
+		ret = LTTCOMM_NO_CONSUMER;
+		goto error;
+	}
+
 	switch (domain) {
+	case 0:
+		DBG("Disable tracing session %s consumer", session->name);
+		consumer = session->consumer;
+		break;
 	case LTTNG_DOMAIN_KERNEL:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(ksess);
@@ -3992,11 +4068,13 @@ static int cmd_disable_consumer(int domain, struct ltt_session *session)
 		goto error;
 	}
 
-	assert(consumer);
-	consumer->enabled = 0;
-
-	/* Success at this point */
-	ret = LTTCOMM_OK;
+	if (consumer) {
+		consumer->enabled = 0;
+		/* Success at this point */
+		ret = LTTCOMM_OK;
+	} else {
+		ret = LTTCOMM_NO_CONSUMER;
+	}
 
 error:
 	return ret;
@@ -4010,7 +4088,9 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 	int ret;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
-	struct consumer_output *tmp_out;
+	struct consumer_output *consumer = NULL;
+
+	assert(session);
 
 	/* Can't enable consumer after session started. */
 	if (session->enabled) {
@@ -4018,7 +4098,16 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		goto error;
 	}
 
+	if (!session->start_consumer) {
+		ret = LTTCOMM_NO_CONSUMER;
+		goto error;
+	}
+
 	switch (domain) {
+	case 0:
+		assert(session->consumer);
+		consumer = session->consumer;
+		break;
 	case LTTNG_DOMAIN_KERNEL:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(ksess);
@@ -4033,20 +4122,21 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 			goto error;
 		}
 
-		tmp_out = ksess->tmp_consumer;
-		if (tmp_out == NULL) {
+		consumer = ksess->tmp_consumer;
+		if (consumer == NULL) {
+			ret = LTTCOMM_OK;
 			/* No temp. consumer output exists. Using the current one. */
 			DBG3("No temporary consumer. Using default");
-			ret = LTTCOMM_OK;
+			consumer = ksess->consumer;
 			goto error;
 		}
 
-		switch (tmp_out->type) {
+		switch (consumer->type) {
 		case CONSUMER_DST_LOCAL:
 			DBG2("Consumer output is local. Creating directory(ies)");
 
 			/* Create directory(ies) */
-			ret = run_as_mkdir_recursive(tmp_out->dst.trace_path,
+			ret = run_as_mkdir_recursive(consumer->dst.trace_path,
 					S_IRWXU | S_IRWXG, session->uid, session->gid);
 			if (ret < 0) {
 				if (ret != -EEXIST) {
@@ -4059,13 +4149,13 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		case CONSUMER_DST_NET:
 			DBG2("Consumer output is network. Validating URIs");
 			/* Validate if we have both control and data path set. */
-			if (!tmp_out->dst.net.control_isset) {
-				ret = LTTCOMM_URI_CTRL_MISS;
+			if (!consumer->dst.net.control_isset) {
+				ret = LTTCOMM_URL_CTRL_MISS;
 				goto error;
 			}
 
-			if (!tmp_out->dst.net.data_isset) {
-				ret = LTTCOMM_URI_DATA_MISS;
+			if (!consumer->dst.net.data_isset) {
+				ret = LTTCOMM_URL_DATA_MISS;
 				goto error;
 			}
 
@@ -4091,7 +4181,7 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		 * is valid.
 		 */
 		consumer_destroy_output(ksess->consumer);
-		ksess->consumer = tmp_out;
+		ksess->consumer = consumer;
 		ksess->tmp_consumer = NULL;
 
 		break;
@@ -4109,20 +4199,21 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 			goto error;
 		}
 
-		tmp_out = usess->tmp_consumer;
-		if (tmp_out == NULL) {
+		consumer = usess->tmp_consumer;
+		if (consumer == NULL) {
+			ret = LTTCOMM_OK;
 			/* No temp. consumer output exists. Using the current one. */
 			DBG3("No temporary consumer. Using default");
-			ret = LTTCOMM_OK;
+			consumer = usess->consumer;
 			goto error;
 		}
 
-		switch (tmp_out->type) {
+		switch (consumer->type) {
 		case CONSUMER_DST_LOCAL:
 			DBG2("Consumer output is local. Creating directory(ies)");
 
 			/* Create directory(ies) */
-			ret = run_as_mkdir_recursive(tmp_out->dst.trace_path,
+			ret = run_as_mkdir_recursive(consumer->dst.trace_path,
 					S_IRWXU | S_IRWXG, session->uid, session->gid);
 			if (ret < 0) {
 				if (ret != -EEXIST) {
@@ -4135,13 +4226,13 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		case CONSUMER_DST_NET:
 			DBG2("Consumer output is network. Validating URIs");
 			/* Validate if we have both control and data path set. */
-			if (!tmp_out->dst.net.control_isset) {
-				ret = LTTCOMM_URI_CTRL_MISS;
+			if (!consumer->dst.net.control_isset) {
+				ret = LTTCOMM_URL_CTRL_MISS;
 				goto error;
 			}
 
-			if (!tmp_out->dst.net.data_isset) {
-				ret = LTTCOMM_URI_DATA_MISS;
+			if (!consumer->dst.net.data_isset) {
+				ret = LTTCOMM_URL_DATA_MISS;
 				goto error;
 			}
 
@@ -4152,7 +4243,7 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 				goto error;
 			}
 
-			if (tmp_out->net_seq_index == -1) {
+			if (consumer->net_seq_index == -1) {
 				ret = LTTCOMM_ENABLE_CONSUMER_FAIL;
 				DBG2("Network index is not set on the consumer");
 				goto error;
@@ -4173,14 +4264,21 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		 * is valid.
 		 */
 		consumer_destroy_output(usess->consumer);
-		usess->consumer = tmp_out;
+		usess->consumer = consumer;
 		usess->tmp_consumer = NULL;
 
 		break;
 	}
 
-	/* Success at this point */
-	ret = LTTCOMM_OK;
+	/* Enable it */
+	if (consumer) {
+		consumer->enabled = 1;
+		/* Success at this point */
+		ret = LTTCOMM_OK;
+	} else {
+		/* Should not really happend... */
+		ret = LTTCOMM_NO_CONSUMER;
+	}
 
 error:
 	return ret;
@@ -4208,7 +4306,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
-	case LTTNG_CREATE_SESSION_URI:
 	case LTTNG_DESTROY_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_DOMAINS:
@@ -4255,7 +4352,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
-	case LTTNG_CREATE_SESSION_URI:
 	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
@@ -4289,6 +4385,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	if (!need_domain) {
 		goto skip_domain;
 	}
+
 	/*
 	 * Check domain type for specific "pre-action".
 	 */
@@ -4316,8 +4413,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
-			struct consumer_socket *socket;
-
 			if (cmd_ctx->session->kernel_session == NULL) {
 				ret = create_kernel_session(cmd_ctx->session);
 				if (ret < 0) {
@@ -4329,7 +4424,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			/* Start the kernel consumer daemon */
 			pthread_mutex_lock(&kconsumer_data.pid_mutex);
 			if (kconsumer_data.pid == 0 &&
-					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER &&
+					cmd_ctx->session->start_consumer) {
 				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 				ret = start_consumerd(&kconsumer_data);
 				if (ret < 0) {
@@ -4341,24 +4437,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 			}
 
-			/* Set kernel consumer socket fd */
-			if (kconsumer_data.cmd_sock >= 0) {
-				rcu_read_lock();
-				socket = consumer_find_socket(kconsumer_data.cmd_sock,
-						cmd_ctx->session->kernel_session->consumer);
-				rcu_read_unlock();
-				if (socket == NULL) {
-					socket = consumer_allocate_socket(kconsumer_data.cmd_sock);
-					if (socket == NULL) {
-						goto error;
-					}
-
-					socket->lock = &kconsumer_data.lock;
-					rcu_read_lock();
-					consumer_add_socket(socket,
-							cmd_ctx->session->kernel_session->consumer);
-					rcu_read_unlock();
-				}
+			/*
+			 * The consumer was just spawned so we need to add the socket to
+			 * the consumer output of the session if exist.
+			 */
+			ret = consumer_create_socket(&kconsumer_data,
+					cmd_ctx->session->kernel_session->consumer);
+			if (ret < 0) {
+				goto error;
 			}
 		}
 
@@ -4372,8 +4458,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		}
 
 		if (need_tracing_session) {
-			struct consumer_socket *socket;
-
+			/* Create UST session if none exist. */
 			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
 						&cmd_ctx->lsm->domain);
@@ -4387,7 +4472,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
 			if (consumerd64_bin[0] != '\0' &&
 					ustconsumer64_data.pid == 0 &&
-					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER &&
+					cmd_ctx->session->start_consumer) {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 				ret = start_consumerd(&ustconsumer64_data);
 				if (ret < 0) {
@@ -4406,30 +4492,17 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			 * Setup socket for consumer 64 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
-			if (ust_consumerd64_fd >= 0) {
-				rcu_read_lock();
-				socket = consumer_find_socket(uatomic_read(&ust_consumerd64_fd),
-						cmd_ctx->session->ust_session->consumer);
-				rcu_read_unlock();
-				if (socket == NULL) {
-					socket = consumer_allocate_socket(ust_consumerd64_fd);
-					if (socket == NULL) {
-						goto error;
-					}
-					socket->lock = &ustconsumer32_data.lock;
-
-					rcu_read_lock();
-					consumer_add_socket(socket,
-							cmd_ctx->session->ust_session->consumer);
-					rcu_read_unlock();
-				}
-				DBG3("UST consumer 64 bit socket set to %d", socket->fd);
+			ret = consumer_create_socket(&ustconsumer64_data,
+					cmd_ctx->session->ust_session->consumer);
+			if (ret < 0) {
+				goto error;
 			}
 
 			/* 32-bit */
 			if (consumerd32_bin[0] != '\0' &&
 					ustconsumer32_data.pid == 0 &&
-					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER &&
+					cmd_ctx->session->start_consumer) {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
 				ret = start_consumerd(&ustconsumer32_data);
 				if (ret < 0) {
@@ -4448,24 +4521,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			 * Setup socket for consumer 64 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
-			if (ust_consumerd32_fd >= 0) {
-				rcu_read_lock();
-				socket = consumer_find_socket(uatomic_read(&ust_consumerd64_fd),
-						cmd_ctx->session->ust_session->consumer);
-				rcu_read_unlock();
-				if (socket == NULL) {
-					socket = consumer_allocate_socket(ust_consumerd32_fd);
-					if (socket == NULL) {
-						goto error;
-					}
-					socket->lock = &ustconsumer32_data.lock;
-
-					rcu_read_lock();
-					consumer_add_socket(socket,
-							cmd_ctx->session->ust_session->consumer);
-					rcu_read_unlock();
-				}
-				DBG3("UST consumer 32 bit socket set to %d", socket->fd);
+			ret = consumer_create_socket(&ustconsumer32_data,
+					cmd_ctx->session->ust_session->consumer);
+			if (ret < 0) {
+				goto error;
 			}
 		}
 		break;
@@ -4551,7 +4610,26 @@ skip_domain:
 	}
 	case LTTNG_ENABLE_CONSUMER:
 	{
+		/*
+		 * XXX: 0 means that this URI should be applied on the session. Should
+		 * be a DOMAIN enuam.
+		 */
 		ret = cmd_enable_consumer(cmd_ctx->lsm->domain.type, cmd_ctx->session);
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+
+		if (cmd_ctx->lsm->domain.type == 0) {
+			/* Add the URI for the UST session if a consumer is present. */
+			if (cmd_ctx->session->ust_session &&
+					cmd_ctx->session->ust_session->consumer) {
+				ret = cmd_enable_consumer(LTTNG_DOMAIN_UST, cmd_ctx->session);
+			} else if (cmd_ctx->session->kernel_session &&
+					cmd_ctx->session->kernel_session->consumer) {
+				ret = cmd_enable_consumer(LTTNG_DOMAIN_KERNEL,
+						cmd_ctx->session);
+			}
+		}
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:
@@ -4605,7 +4683,8 @@ skip_domain:
 		struct lttng_event_field *fields;
 		ssize_t nb_fields;
 
-		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm->domain.type, &fields);
+		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm->domain.type,
+				&fields);
 		if (nb_fields < 0) {
 			ret = -nb_fields;
 			goto error;
@@ -4615,7 +4694,8 @@ skip_domain:
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event_field) * nb_fields);
+		ret = setup_lttng_msg(cmd_ctx,
+				sizeof(struct lttng_event_field) * nb_fields);
 		if (ret < 0) {
 			free(fields);
 			goto setup_error;
@@ -4632,8 +4712,56 @@ skip_domain:
 	}
 	case LTTNG_SET_CONSUMER_URI:
 	{
+		size_t nb_uri, len;
+		struct lttng_uri *uris;
+
+		nb_uri = cmd_ctx->lsm->u.uri.size;
+		len = nb_uri * sizeof(struct lttng_uri);
+
+		if (nb_uri == 0) {
+			ret = LTTCOMM_INVALID;
+			goto error;
+		}
+
+		uris = zmalloc(len);
+		if (uris == NULL) {
+			ret = LTTCOMM_FATAL;
+			goto error;
+		}
+
+		/* Receive variable len data */
+		DBG("Receiving %lu URI(s) from client ...", nb_uri);
+		ret = lttcomm_recv_unix_sock(sock, uris, len);
+		if (ret <= 0) {
+			DBG("No URIs received from client... continuing");
+			*sock_error = 1;
+			ret = LTTCOMM_SESSION_FAIL;
+			goto error;
+		}
+
 		ret = cmd_set_consumer_uri(cmd_ctx->lsm->domain.type, cmd_ctx->session,
-				&cmd_ctx->lsm->u.uri);
+				nb_uri, uris);
+		if (ret != LTTCOMM_OK) {
+			goto error;
+		}
+
+		/*
+		 * XXX: 0 means that this URI should be applied on the session. Should
+		 * be a DOMAIN enuam.
+		 */
+		if (cmd_ctx->lsm->domain.type == 0) {
+			/* Add the URI for the UST session if a consumer is present. */
+			if (cmd_ctx->session->ust_session &&
+					cmd_ctx->session->ust_session->consumer) {
+				ret = cmd_set_consumer_uri(LTTNG_DOMAIN_UST, cmd_ctx->session,
+						nb_uri, uris);
+			} else if (cmd_ctx->session->kernel_session &&
+					cmd_ctx->session->kernel_session->consumer) {
+				ret = cmd_set_consumer_uri(LTTNG_DOMAIN_KERNEL,
+						cmd_ctx->session, nb_uri, uris);
+			}
+		}
+
 		break;
 	}
 	case LTTNG_START_TRACE:
@@ -4648,26 +4776,47 @@ skip_domain:
 	}
 	case LTTNG_CREATE_SESSION:
 	{
-		ret = cmd_create_session(cmd_ctx->lsm->session.name,
-				cmd_ctx->lsm->session.path, &cmd_ctx->creds);
-		break;
-	}
-	case LTTNG_CREATE_SESSION_URI:
-	{
-		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name,
-				&cmd_ctx->lsm->u.create_uri.ctrl_uri,
-				&cmd_ctx->lsm->u.create_uri.data_uri,
-				cmd_ctx->lsm->u.create_uri.enable_consumer, &cmd_ctx->creds);
+		size_t nb_uri, len;
+		struct lttng_uri *uris = NULL;
+
+		nb_uri = cmd_ctx->lsm->u.uri.size;
+		len = nb_uri * sizeof(struct lttng_uri);
+
+		if (nb_uri > 0) {
+			uris = zmalloc(len);
+			if (uris == NULL) {
+				ret = LTTCOMM_FATAL;
+				goto error;
+			}
+
+			/* Receive variable len data */
+			DBG("Waiting for %lu URIs from client ...", nb_uri);
+			ret = lttcomm_recv_unix_sock(sock, uris, len);
+			if (ret <= 0) {
+				DBG("No URIs received from client... continuing");
+				*sock_error = 1;
+				ret = LTTCOMM_SESSION_FAIL;
+				goto error;
+			}
+
+			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
+				DBG("Creating session with ONE network URI is a bad call");
+				ret = LTTCOMM_SESSION_FAIL;
+				goto error;
+			}
+		}
+
+		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris, nb_uri,
+			&cmd_ctx->creds);
+
 		break;
 	}
 	case LTTNG_DESTROY_SESSION:
 	{
 		ret = cmd_destroy_session(cmd_ctx->session,
 				cmd_ctx->lsm->session.name);
-		/*
-		 * Set session to NULL so we do not unlock it after
-		 * free.
-		 */
+
+		/* Set session to NULL so we do not unlock it after free. */
 		cmd_ctx->session = NULL;
 		break;
 	}

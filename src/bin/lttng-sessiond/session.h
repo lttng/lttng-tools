@@ -82,6 +82,9 @@ struct ltt_session {
 	 * copied into those sessions.
 	 */
 	struct consumer_output *consumer;
+
+	/* Indicates whether or not we have to spawn consumer(s) */
+	unsigned int start_consumer;
 };
 
 /* Prototypes */

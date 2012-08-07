@@ -89,7 +89,7 @@ static void create_kernel_metadata(void)
 	assert(kern != NULL);
 
 	printf("Create kernel metadata: ");
-	kern->metadata = trace_kernel_create_metadata(PATH1);
+	kern->metadata = trace_kernel_create_metadata();
 	assert(kern->metadata != NULL);
 	PRINT_OK();
 

@@ -196,12 +196,6 @@ static int fuzzing_create_args(void)
 		return -1;
 	}
 
-	ret = create_one_session(SESSION1, NULL);
-	if (ret > 0) {
-		printf("Session created with %s, (null)\n", SESSION1);
-		return -1;
-	}
-
 	/* Session list must be 0 */
 	assert(!session_list_count());
 

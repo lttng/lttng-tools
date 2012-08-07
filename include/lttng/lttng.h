@@ -23,7 +23,6 @@
 #define _LTTNG_H
 
 #include <limits.h>
-#include <netinet/in.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -139,63 +138,6 @@ enum lttng_health_component {
 	LTTNG_HEALTH_KERNEL,
 	LTTNG_HEALTH_CONSUMER,
 	LTTNG_HEALTH_ALL,
-};
-
-/* Destination type of lttng URI */
-enum lttng_dst_type {
-	LTTNG_DST_IPV4                        = 1,
-	LTTNG_DST_IPV6                        = 2,
-	LTTNG_DST_PATH                        = 3,
-};
-
-/* Type of lttng URI where it is a final destination or a hop */
-enum lttng_uri_type {
-	LTTNG_URI_DST,	/* The URI is a final destination */
-	/*
-	 * Hop are not supported yet but planned for a future release.
-	 *
-	LTTNG_URI_HOP,
-	*/
-};
-
-/* Communication stream type of a lttng URI */
-enum lttng_stream_type {
-	LTTNG_STREAM_CONTROL,
-	LTTNG_STREAM_DATA,
-};
-
-/*
- * Protocol type of a lttng URI. The value 0 indicate that the proto_type field
- * should be ignored.
- */
-enum lttng_proto_type {
-	LTTNG_TCP                             = 1,
-	/*
-	 * UDP protocol is not supported for now.
-	 *
-	LTTNG_UDP                             = 2,
-	*/
-};
-
-/*
- * Structure representing an URI supported by lttng.
- */
-#define LTTNG_URI_PADDING1_LEN         16
-#define LTTNG_URI_PADDING2_LEN         LTTNG_SYMBOL_NAME_LEN + 32
-struct lttng_uri {
-	enum lttng_dst_type dtype;
-	enum lttng_uri_type utype;
-	enum lttng_stream_type stype;
-	enum lttng_proto_type proto;
-	in_port_t port;
-	char padding[LTTNG_URI_PADDING1_LEN];
-	char subdir[PATH_MAX];
-	union {
-		char ipv4[INET_ADDRSTRLEN];
-		char ipv6[INET6_ADDRSTRLEN];
-		char path[PATH_MAX];
-		char padding[LTTNG_URI_PADDING2_LEN];
-	} dst;
 };
 
 /*
@@ -421,18 +363,11 @@ extern struct lttng_handle *lttng_create_handle(const char *session_name,
 extern void lttng_destroy_handle(struct lttng_handle *handle);
 
 /*
- * Create a tracing session using a name and a path where the trace will be
- * written.
+ * Create a tracing session using a name and an optional URL.
+ *
+ * If _url_ is NULL, no consumer is created for the session.
  */
-extern int lttng_create_session(const char *name, const char *path);
-
-/*
- * Create a tracing sessioin using a name, URIs and a consumer enable flag.
- * The control URI is mandatory for consumer local or network.
- */
-extern int lttng_create_session_uri(const char *name,
-		struct lttng_uri *ctrl_uri, struct lttng_uri *data_uri,
-		unsigned int enable_consumer);
+extern int lttng_create_session(const char *name, const char *url);
 
 /*
  * Destroy a tracing session.
@@ -610,14 +545,16 @@ extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr);
 
 /*
- * Set URI for a consumer for a session and domain.
+ * Set URL for a consumer for a session and domain.
  *
- * For network streaming, both data and control stream type MUST be defined
- * with a specific URIs. Default port are 5342 and 5343 respectively for
- * control and data which uses the TCP protocol.
+ * Both data and control URL must be defined. If both URLs are the same, only
+ * the control URL is used even for network streaming.
+ *
+ * Default port are 5342 and 5343 respectively for control and data which uses
+ * the TCP protocol.
  */
-extern int lttng_set_consumer_uri(struct lttng_handle *handle,
-		struct lttng_uri *uri);
+extern int lttng_set_consumer_url(struct lttng_handle *handle,
+		const char *control_url, const char *data_url);
 
 /*
  * Enable the consumer for a session and domain.

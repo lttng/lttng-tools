@@ -144,6 +144,8 @@ int consumer_send_relayd_socket(int consumer_sock,
 		enum lttng_stream_type type);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
+int consumer_create_socket(struct consumer_data *data,
+		struct consumer_output *output);
 
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,

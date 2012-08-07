@@ -2177,6 +2177,20 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto skip_setup;
 	}
 
+	/* Create directories if consumer is LOCAL and has a path defined. */
+	if (usess->consumer->type == CONSUMER_DST_LOCAL &&
+			strlen(usess->consumer->dst.trace_path) > 0) {
+		ret = run_as_mkdir_recursive(usess->consumer->dst.trace_path,
+				S_IRWXU | S_IRWXG, usess->uid, usess->gid);
+		if (ret < 0) {
+			if (ret != -EEXIST) {
+				ERR("Trace directory creation error");
+				ret = -1;
+				goto error_rcu_unlock;
+			}
+		}
+	}
+
 	/* Indicate that the session has been started once */
 	ua_sess->started = 1;
 
