@@ -28,6 +28,16 @@ REQUIREMENTS:
 
       * Debian/Ubuntu package: libpopt-dev
 
+    - SWIG >= 2.0 (optional)
+      Needed for Python bindings
+
+      * Debian/Ubuntu package: swig2.0
+
+    - python-dev (optional)
+      Python headers
+
+      * Debian/Ubuntu package: python-dev
+
     - For kernel tracing: modprobe
 
 For developers using the git tree:
@@ -62,6 +72,8 @@ INSTALLATION INSTRUCTIONS:
   If compiling from the git repository, run ./bootstrap before running
   the configure script, to generate it.
 
+  If you want Python bindings, run ./configure --enable-python-bindings.
+
 USAGE:
 
 Please see doc/quickstart.txt to help you start tracing. You can also use the
@@ -70,6 +82,9 @@ lttng enable-event -h).
 
 A network streaming HOWTO can be found in doc/streaming-howto.txt which quickly
 helps you understand how to stream a LTTng 2.0 trace.
+
+A Python HOWTO can be found in doc/python-howto.txt which quickly
+helps you understand how to use the Python module to control the LTTng API.
 
 PACKAGE CONTENTS:
 

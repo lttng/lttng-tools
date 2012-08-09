@@ -1,0 +1,70 @@
+PYTHON BINDINGS
+----------------
+
+This is a brief howto for using the lttng-tools Python module.
+
+By default, the Python bindings are not installed.
+If you wish the Python bindings, you can configure with the
+--enable-python-bindings option during the installation procedure:
+
+  $ ./configure --enable-python-bindings
+
+The Python module is automatically generated using SWIG, therefore the
+swig2.0 package on Debian/Ubuntu is requied.
+
+Once installed, the Python module can be used by importing it in Python.
+In the Python interpreter:
+
+  >>> import lttng
+
+Example:
+----------------
+
+Quick example using Python to trace with LTTng.
+
+1) Run python
+
+  $ python
+
+2) Import the lttng module
+
+  >>> import lttng
+
+3) Create a session
+
+  >>> lttng.create("session-name", "path/to/trace")
+
+4) Create a handle for the tracing session and domain
+
+  >>> domain = lttng.Domain()
+  >>> domain.type = lttng.DOMAIN_KERNEL			*
+  >>> handle = lttng.Handle("session-name", domain)
+
+* This line is somewhat useless since domain.type is set to 0
+  by default, the corresponding value of lttng.DOMAIN_KERNEL
+
+5) Enable all Kernel events
+
+  >>> event = lttng.Event()
+  >>> event.type = lttng.EVENT_TRACEPOINT		*
+  >>> event.loglevel_type = lttng.EVENT_LOGLEVEL_ALL	*
+  >>> lttng.enable_event(handle, event, None)
+
+* These two lines are somewhat useless since event.type
+  and event.loglevel_type are by default set to 0, the
+  corresponding value of lttng.EVENT_TRACEPOINT and
+  lttng.EVENT_LOGLEVEL_ALL
+
+5) Start tracing
+
+  >>> lttng.start("session-name")
+
+6) Stop tracing
+
+  >>> lttng.stop("session-name")
+
+7) Destroy the tracing session
+
+  >>> lttng.destroy("session-name")
+
+For an example script with more details, see extras/bindings/swig/python/tests/example.py

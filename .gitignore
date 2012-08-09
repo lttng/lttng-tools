@@ -42,6 +42,10 @@ src/lib/lttng-ctl/filter/filter-parser.c
 src/lib/lttng-ctl/filter/filter-parser.h
 src/lib/lttng-ctl/filter/filter-parser.output
 
+extras/bindings/swig/python/lttng.i
+extras/bindings/swig/python/lttng.py
+extras/bindings/swig/python/lttng_wrap.c
+
 # Tests
 test_sessions
 test_kernel_data_trace

@@ -1,0 +1,1029 @@
+%define DOCSTRING
+"LTTNG_VERSION_STR
+
+The  LTTng  project  aims at providing highly efficient tracing tools for Linux.
+It's tracers help tracking down performance issues and debugging problems involving
+multiple concurrent processes and threads. Tracing across multiple systems is also possible."
+%enddef
+
+%module(docstring=DOCSTRING) lttng
+
+%include "typemaps.i"
+%include "pyabc.i"
+%{
+#define SWIG_FILE_WITH_INIT
+#include <lttng/lttng.h>
+%}
+
+typedef unsigned int uint32_t;
+typedef int int32_t;
+typedef unsigned long long uint64_t;
+typedef long pid_t;
+
+
+// =============================================
+//		ENUMS
+// These are directly taken from lttng.h.
+// Any change to these enums must also be
+// made here.
+// =============================================
+
+%rename("DOMAIN_KERNEL") LTTNG_DOMAIN_KERNEL;
+%rename("DOMAIN_UST") LTTNG_DOMAIN_UST;
+enum lttng_domain_type {
+	LTTNG_DOMAIN_KERNEL                   = 1,
+	LTTNG_DOMAIN_UST                      = 2,
+};
+
+%rename("EVENT_ALL") LTTNG_EVENT_ALL;
+%rename("EVENT_TRACEPOINT") LTTNG_EVENT_TRACEPOINT;
+%rename("EVENT_PROBE") LTTNG_EVENT_PROBE;
+%rename("EVENT_FUNCTION")LTTNG_EVENT_FUNCTION;
+%rename("EVENT_FUNCTION_ENTRY") LTTNG_EVENT_FUNCTION_ENTRY;
+%rename("EVENT_NOOP") LTTNG_EVENT_NOOP;
+%rename("EVENT_SYSCALL") LTTNG_EVENT_SYSCALL;
+enum lttng_event_type {
+	LTTNG_EVENT_ALL                       = -1,
+	LTTNG_EVENT_TRACEPOINT                = 0,
+	LTTNG_EVENT_PROBE                     = 1,
+	LTTNG_EVENT_FUNCTION                  = 2,
+	LTTNG_EVENT_FUNCTION_ENTRY            = 3,
+	LTTNG_EVENT_NOOP                      = 4,
+	LTTNG_EVENT_SYSCALL                   = 5,
+};
+
+%rename("EVENT_LOGLEVEL_ALL") LTTNG_EVENT_LOGLEVEL_ALL;
+%rename("EVENT_LOGLEVEL_RANGE") LTTNG_EVENT_LOGLEVEL_RANGE;
+%rename("EVENT_LOGLEVEL_SINGLE") LTTNG_EVENT_LOGLEVEL_SINGLE;
+enum lttng_loglevel_type {
+	LTTNG_EVENT_LOGLEVEL_ALL              = 0,
+	LTTNG_EVENT_LOGLEVEL_RANGE            = 1,
+	LTTNG_EVENT_LOGLEVEL_SINGLE           = 2,
+};
+
+%rename("LOGLEVEL_EMERG") LTTNG_LOGLEVEL_EMERG;
+%rename("LOGLEVEL_ALERT") LTTNG_LOGLEVEL_ALERT;
+%rename("LOGLEVEL_CRIT") LTTNG_LOGLEVEL_CRIT;
+%rename("LOGLEVEL_ERR") LTTNG_LOGLEVEL_ERR;
+%rename("LOGLEVEL_WARNING") LTTNG_LOGLEVEL_WARNING;
+%rename("LOGLEVEL_NOTICE") LTTNG_LOGLEVEL_NOTICE;
+%rename("LOGLEVEL_INFO") LTTNG_LOGLEVEL_INFO;
+%rename("LOGLEVEL_DEBUG_SYSTEM") LTTNG_LOGLEVEL_DEBUG_SYSTEM;
+%rename("LOGLEVEL_DEBUG_PROGRAM") LTTNG_LOGLEVEL_DEBUG_PROGRAM;
+%rename("LOGLEVEL_DEBUG_PROCESS") LTTNG_LOGLEVEL_DEBUG_PROCESS;
+%rename("LOGLEVEL_DEBUG_MODULE") LTTNG_LOGLEVEL_DEBUG_MODULE;
+%rename("LOGLEVEL_DEBUG_UNIT") LTTNG_LOGLEVEL_DEBUG_UNIT;
+%rename("LOGLEVEL_DEBUG_FUNCTION") LTTNG_LOGLEVEL_DEBUG_FUNCTION;
+%rename("LOGLEVEL_DEBUG_LINE") LTTNG_LOGLEVEL_DEBUG_LINE;
+%rename("LOGLEVEL_DEBUG") LTTNG_LOGLEVEL_DEBUG;
+enum lttng_loglevel {
+        LTTNG_LOGLEVEL_EMERG                  = 0,
+        LTTNG_LOGLEVEL_ALERT                  = 1,
+        LTTNG_LOGLEVEL_CRIT                   = 2,
+        LTTNG_LOGLEVEL_ERR                    = 3,
+        LTTNG_LOGLEVEL_WARNING                = 4,
+        LTTNG_LOGLEVEL_NOTICE                 = 5,
+        LTTNG_LOGLEVEL_INFO                   = 6,
+        LTTNG_LOGLEVEL_DEBUG_SYSTEM           = 7,
+        LTTNG_LOGLEVEL_DEBUG_PROGRAM          = 8,
+        LTTNG_LOGLEVEL_DEBUG_PROCESS          = 9,
+        LTTNG_LOGLEVEL_DEBUG_MODULE           = 10,
+        LTTNG_LOGLEVEL_DEBUG_UNIT             = 11,
+        LTTNG_LOGLEVEL_DEBUG_FUNCTION         = 12,
+        LTTNG_LOGLEVEL_DEBUG_LINE             = 13,
+        LTTNG_LOGLEVEL_DEBUG                  = 14,
+};
+
+%rename("EVENT_SPLICE") LTTNG_EVENT_SPLICE;
+%rename("EVENT_MMAP") LTTNG_EVENT_MMAP;
+enum lttng_event_output {
+	LTTNG_EVENT_SPLICE                    = 0,
+	LTTNG_EVENT_MMAP                      = 1,
+};
+
+%rename("EVENT_CONTEXT_PID") LTTNG_EVENT_CONTEXT_PID;
+%rename("EVENT_CONTEXT_PERF_COUNTER") LTTNG_EVENT_CONTEXT_PERF_COUNTER;
+%rename("EVENT_CONTEXT_PROCNAME") LTTNG_EVENT_CONTEXT_PROCNAME;
+%rename("EVENT_CONTEXT_PRIO") LTTNG_EVENT_CONTEXT_PRIO;
+%rename("EVENT_CONTEXT_NICE") LTTNG_EVENT_CONTEXT_NICE;
+%rename("EVENT_CONTEXT_VPID") LTTNG_EVENT_CONTEXT_VPID;
+%rename("EVENT_CONTEXT_TID") LTTNG_EVENT_CONTEXT_TID;
+%rename("EVENT_CONTEXT_VTID") LTTNG_EVENT_CONTEXT_VTID;
+%rename("EVENT_CONTEXT_PPID") LTTNG_EVENT_CONTEXT_PPID;
+%rename("EVENT_CONTEXT_VPPID") LTTNG_EVENT_CONTEXT_VPPID;
+%rename("EVENT_CONTEXT_PTHREAD_ID") LTTNG_EVENT_CONTEXT_PTHREAD_ID;
+enum lttng_event_context_type {
+	LTTNG_EVENT_CONTEXT_PID               = 0,
+	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
+	LTTNG_EVENT_CONTEXT_PROCNAME          = 2,
+	LTTNG_EVENT_CONTEXT_PRIO              = 3,
+	LTTNG_EVENT_CONTEXT_NICE              = 4,
+	LTTNG_EVENT_CONTEXT_VPID              = 5,
+	LTTNG_EVENT_CONTEXT_TID               = 6,
+	LTTNG_EVENT_CONTEXT_VTID              = 7,
+	LTTNG_EVENT_CONTEXT_PPID              = 8,
+	LTTNG_EVENT_CONTEXT_VPPID             = 9,
+	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
+};
+
+%rename("CALIBRATE_FUNCTION") LTTNG_CALIBRATE_FUNCTION;
+enum lttng_calibrate_type {
+	LTTNG_CALIBRATE_FUNCTION              = 0,
+};
+
+
+
+// =============================================
+//		TYPEMAPS
+// =============================================
+
+//list_sessions
+%typemap(argout) struct lttng_session **sessions{
+
+	int l = PyInt_AsSsize_t($result);
+	if (l >= 0)
+	{
+		PyObject *sessions = PyList_New(0);
+		int i;
+		for(i=0; i<l; i++)
+		{
+			PyObject *tmp = PyTuple_New(4);
+			PyObject *name = PyString_FromString((*$1)[i].name);
+			PyObject *path = PyString_FromString((*$1)[i].path);
+			PyObject *enabled = PyInt_FromSize_t((*$1)[i].enabled);
+			PyObject *padding = PyString_FromString((*$1)[i].padding);
+
+			PyTuple_SetItem(tmp, 0, name);
+			PyTuple_SetItem(tmp, 1, path);
+			PyTuple_SetItem(tmp, 2, enabled);
+			PyTuple_SetItem(tmp, 3, padding);
+			PyList_Append(sessions, tmp);
+		}
+		$result = sessions;
+	}
+}
+%typemap(in,numinputs=0) struct lttng_session **sessions (struct lttng_session *temp){
+	$1=&temp;
+}
+
+//list_domains
+%typemap(argout) struct lttng_domain **domains{
+
+	int l = PyInt_AsSsize_t($result);
+	if (l >= 0)
+	{
+		PyObject *dom = PyList_New(0);
+		int i;
+		for(i=0; i<l; i++)
+		{
+			PyObject *tmp = PyTuple_New(5);
+			PyObject *type = PyInt_FromSize_t((*$1)[i].type);
+			PyObject *execname = PyString_FromString((*$1)[i].attr.exec_name);
+			PyObject *pid = PyInt_FromSize_t((*$1)[i].attr.pid);
+			PyObject *padding = PyString_FromString((*$1)[i].padding);
+			PyObject *attrpadding = PyString_FromString((*$1)[i].attr.padding);
+
+			PyTuple_SetItem(tmp, 0, type);
+			PyTuple_SetItem(tmp, 1, padding);
+			PyTuple_SetItem(tmp, 2, pid);
+			PyTuple_SetItem(tmp, 3, execname);
+			PyTuple_SetItem(tmp, 4, attrpadding);
+			PyList_Append(dom, tmp);
+		}
+		$result = dom;
+	}
+}
+%typemap(in,numinputs=0) struct lttng_domain **domains (struct lttng_domain *temp){
+	$1=&temp;
+}
+
+//list_channels
+%typemap(argout) struct lttng_channel **channels{
+
+	int l = PyInt_AsSsize_t($result);
+	if (l >= 0)
+	{
+		PyObject *chan = PyList_New(0);
+		int i;
+		for(i=0; i<l; i++)
+		{
+			PyObject *tmp = PyTuple_New(4);
+			PyObject *name = PyString_FromString((*$1)[i].name);
+			PyObject *enabled = PyInt_FromSize_t((*$1)[i].enabled);
+			PyObject *padding = PyString_FromString((*$1)[i].padding);
+
+			PyObject *attrtmp = PyTuple_New(7);
+			PyObject *overwrite = PyInt_FromLong((*$1)[i].attr.overwrite);
+			PyObject *subbuf = PyInt_FromSize_t((*$1)[i].attr.subbuf_size);
+			PyObject *num = PyInt_FromSize_t((*$1)[i].attr.num_subbuf);
+			PyObject *switchtimer = PyInt_FromSize_t((*$1)[i].attr.switch_timer_interval);
+			PyObject *readtimer = PyInt_FromSize_t((*$1)[i].attr.read_timer_interval);
+			PyObject *output = PyInt_FromSize_t((*$1)[i].attr.output);
+			PyObject *attrpad = PyString_FromString((*$1)[i].attr.padding);
+
+			PyTuple_SetItem(attrtmp, 0, overwrite);
+			PyTuple_SetItem(attrtmp, 1, subbuf);
+			PyTuple_SetItem(attrtmp, 2, num);
+			PyTuple_SetItem(attrtmp, 3, switchtimer);
+			PyTuple_SetItem(attrtmp, 4, readtimer);
+			PyTuple_SetItem(attrtmp, 5, output);
+			PyTuple_SetItem(attrtmp, 6, attrpad);
+
+			PyTuple_SetItem(tmp, 0, name);
+			PyTuple_SetItem(tmp, 1, enabled);
+			PyTuple_SetItem(tmp, 2, padding);
+			PyTuple_SetItem(tmp, 3, attrtmp);
+			PyList_Append(chan, tmp);
+		}
+		$result = chan;
+	}
+}
+%typemap(in,numinputs=0) struct lttng_channel **channels (struct lttng_channel *temp){
+	$1=&temp;
+}
+
+//list_events & list_tracepoints
+%typemap(argout) struct lttng_event **events{
+
+	int l = PyInt_AsSsize_t($result);
+	if (l >= 0)
+	{
+		PyObject *events = PyList_New(0);
+		int i;
+		for(i=0; i<l; i++)
+		{
+			PyObject *tmp = PyTuple_New(10);
+			PyObject *name = PyString_FromString((*$1)[i].name);
+			PyObject *type = PyInt_FromSize_t((*$1)[i].type);
+			PyObject *logleveltype = PyInt_FromSize_t((*$1)[i].loglevel_type);
+			PyObject *loglevel = PyInt_FromLong((*$1)[i].loglevel);
+			PyObject *enabled = PyInt_FromLong((*$1)[i].enabled);
+			PyObject *pid = PyInt_FromSize_t((*$1)[i].pid);
+			PyObject *padding = PyString_FromString((*$1)[i].padding);
+			PyObject *attrpadding = PyString_FromString((*$1)[i].attr.padding);
+
+			PyObject *probe = PyTuple_New(4);
+			PyObject *addr = PyInt_FromSize_t((*$1)[i].attr.probe.addr);
+			PyObject *offset = PyInt_FromSize_t((*$1)[i].attr.probe.offset);
+			PyObject *symbolname = PyString_FromString((*$1)[i].attr.probe.symbol_name);
+			PyObject *probepad = PyString_FromString((*$1)[i].attr.probe.padding);
+
+			PyObject *function = PyTuple_New(2);
+			PyObject *f_symbolname = PyString_FromString((*$1)[i].attr.ftrace.symbol_name);
+			PyObject *f_pad = PyString_FromString((*$1)[i].attr.ftrace.padding);
+
+			PyTuple_SetItem(function, 0, f_symbolname);
+			PyTuple_SetItem(function, 1, f_pad);
+
+			PyTuple_SetItem(probe, 0, addr);
+			PyTuple_SetItem(probe, 1, offset);
+			PyTuple_SetItem(probe, 2, symbolname);
+			PyTuple_SetItem(probe, 3, probepad);
+
+			PyTuple_SetItem(tmp, 0, name);
+			PyTuple_SetItem(tmp, 1, type);
+			PyTuple_SetItem(tmp, 2, logleveltype);
+			PyTuple_SetItem(tmp, 3, loglevel);
+			PyTuple_SetItem(tmp, 4, enabled);
+			PyTuple_SetItem(tmp, 5, pid);
+			PyTuple_SetItem(tmp, 6, padding);
+			PyTuple_SetItem(tmp, 7, probe);
+			PyTuple_SetItem(tmp, 8, function);
+			PyTuple_SetItem(tmp, 9, attrpadding);
+			PyList_Append(events, tmp);
+		}
+		$result = events;
+	}
+}
+%typemap(in,numinputs=0) struct lttng_event **events (struct lttng_event *temp){
+	$1=&temp;
+}
+
+
+
+// =============================================
+//		FUNCTIONS
+// =============================================
+
+%rename("create") lttng_create_session(const char *name, const char *path);
+%rename("destroy") lttng_destroy_session(const char *name);
+%rename("_lttng_create_handle") lttng_create_handle(const char *session_name, struct lttng_domain *domain);
+%rename("_lttng_destroy_handle") lttng_destroy_handle(struct lttng_handle *handle);
+%rename("_lttng_list_sessions") lttng_list_sessions(struct lttng_session **sessions);
+%rename("_lttng_list_domains") lttng_list_domains(const char *session_name, struct lttng_domain **domains);
+%rename("_lttng_list_channels") lttng_list_channels(struct lttng_handle *handle,struct lttng_channel **channels);
+%rename("_lttng_list_events") lttng_list_events(struct lttng_handle *handle, const char *channel_name, struct lttng_event **events);
+%rename("_lttng_list_tracepoints") lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **events);
+%rename("session_daemon_alive") lttng_session_daemon_alive(void);
+%rename("set_tracing_group") lttng_set_tracing_group(const char *name);
+%rename("strerror") lttng_strerror(int code);
+%rename("_lttng_register_consumer") lttng_register_consumer(struct lttng_handle *handle, const char *socket_path);
+%rename("start") lttng_start_tracing(const char *session_name);
+%rename("stop") lttng_stop_tracing(const char *session_name);
+%rename("_lttng_add_context") lttng_add_context(struct lttng_handle *handle, struct lttng_event_context *ctx, const char *event_name, const char *channel_name);
+%rename("_lttng_enable_event") lttng_enable_event(struct lttng_handle *handle,	struct lttng_event *ev, const char *channel_name);
+%rename("_lttng_enable_channel") lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *chan);
+%rename("_lttng_disable_event") lttng_disable_event(struct lttng_handle *handle, const char *name, const char *channel_name);
+%rename("_lttng_disable_channel") lttng_disable_channel(struct lttng_handle *handle, const char *name);
+%rename("_lttng_calibrate") lttng_calibrate(struct lttng_handle *handle, struct lttng_calibrate *calibrate);
+%rename("channel_set_default_attr") lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_channel_attr *attr);
+
+//Redefined functions
+struct lttng_handle *lttng_create_handle(const char *session_name,
+		struct lttng_domain *domain);
+void lttng_destroy_handle(struct lttng_handle *handle);
+int lttng_list_channels(struct lttng_handle *handle,struct lttng_channel **channels);
+int lttng_list_events(struct lttng_handle *handle,
+		const char *channel_name, struct lttng_event **events);
+int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **events);
+int lttng_add_context(struct lttng_handle *handle, struct lttng_event_context *ctx,
+		const char *event_name,	const char *channel_name);
+int lttng_enable_event(struct lttng_handle *handle,
+		struct lttng_event *ev, const char *channel_name);
+int lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *chan);
+int lttng_disable_event(struct lttng_handle *handle,
+		const char *name, const char *channel_name);
+int lttng_disable_channel(struct lttng_handle *handle, const char *name);
+int lttng_calibrate(struct lttng_handle *handle, struct lttng_calibrate *calibrate);
+int lttng_register_consumer(struct lttng_handle *handle, const char *socket_path);
+int lttng_list_sessions(struct lttng_session **sessions);
+int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
+
+//Functions not needing redefinition
+%feature("docstring")"create(str name, str path) -> int
+
+Create a new tracing session using name and path.
+Returns size of returned session payload data or a negative error code."
+int lttng_create_session(const char *name, const char *path);
+
+
+%feature("docstring")"destroy(str name) -> int
+
+Tear down tracing session using name.
+Returns size of returned session payload data or a negative error code."
+int lttng_destroy_session(const char *name);
+
+
+%feature("docstring")"session_daemon_alive() -> int
+
+Check if session daemon is alive.
+Return 1 if alive or 0 if not.
+On error returns a negative value."
+int lttng_session_daemon_alive(void);
+
+
+%feature("docstring")"set_tracing_group(str name) -> int
+
+Sets the tracing_group variable with name.
+This function allocates memory pointed to by tracing_group.
+On success, returns 0, on error, returns -1 (null name) or -ENOMEM."
+int lttng_set_tracing_group(const char *name);
+
+
+%feature("docstring")"strerror(int code) -> char
+
+Returns a human readable string describing
+the error code (a negative value)."
+const char *lttng_strerror(int code);
+
+
+%feature("docstring")"start(str session_name) -> int
+
+Start tracing for all traces of the session.
+Returns size of returned session payload data or a negative error code."
+int lttng_start_tracing(const char *session_name);
+
+
+%feature("docstring")"stop(str session_name) -> int
+
+Stop tracing for all traces of the session.
+Returns size of returned session payload data or a negative error code."
+int lttng_stop_tracing(const char *session_name);
+
+
+%feature("docstring")"channel_set_default_attr(Domain domain, ChannelAttr attr)
+
+Set default channel attributes.
+If either or both of the arguments are null, attr content is zeroe'd."
+void lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_channel_attr *attr);
+
+
+// =============================================
+//	Python redefinition of some functions
+//	(List and Handle-related)
+// =============================================
+
+%feature("docstring")""
+%pythoncode %{
+
+def list_sessions():
+	"""
+	list_sessions() -> dict
+
+	Ask the session daemon for all available sessions.
+	Returns a dict of Session instances, the key is the name;
+	on error, returns a negative value.
+	"""
+
+	ses_list = _lttng_list_sessions()
+	if type(ses_list) is int:
+		return ses_list
+
+	sessions = {}
+
+	for ses_elements in ses_list:
+		ses = Session()
+		ses.name = ses_elements[0]
+		ses.path = ses_elements[1]
+		ses.enabled = ses_elements[2]
+		ses.padding = ses_elements[3]
+
+		sessions[ses.name] = ses
+
+	return sessions
+
+
+def list_domains(session_name):
+	"""
+	list_domains(str session_name) -> list
+
+	Ask the session daemon for all available domains of a session.
+	Returns a list of Domain instances;
+	on error, returns a negative value.
+	"""
+
+	dom_list = _lttng_list_domains(session_name)
+	if type(dom_list) is int:
+		return dom_list
+
+	domains = []
+
+	for dom_elements in dom_list:
+		dom = Domain()
+		dom.type = dom_elements[0]
+		dom.paddinf = dom_elements[1]
+		dom.attr.pid = dom_elements[2]
+		dom.attr.exec_name = dom_elements[3]
+		dom.attr.padding = dom_elements[4]
+
+		domains.append(dom)
+
+	return domains
+
+
+def list_channels(handle):
+	"""
+	list_channels(Handle handle) -> dict
+
+	Ask the session daemon for all available channels of a session.
+	Returns a dict of Channel instances, the key is the name;
+	on error, returns a negative value.
+	"""
+
+	try:
+		chan_list = _lttng_list_channels(handle._h)
+	except AttributeError:
+		raise TypeError("in method 'list_channels', argument 1 must be a Handle instance")
+
+	if type(chan_list) is int:
+		return chan_list
+
+	channels = {}
+
+	for channel_elements in chan_list:
+		chan = Channel()
+		chan.name = channel_elements[0]
+		chan.enabled = channel_elements[1]
+		chan.padding = channel_elements[2]
+		chan.attr.overwrite = channel_elements[3][0]
+		chan.attr.subbuf_size = channel_elements[3][1]
+		chan.attr.num_subbuf = channel_elements[3][2]
+		chan.attr.switch_timer_interval = channel_elements[3][3]
+		chan.attr.read_timer_interval = channel_elements[3][4]
+		chan.attr.output = channel_elements[3][5]
+		chan.attr.padding = channel_elements[3][6]
+
+		channels[chan.name] = chan
+
+	return channels
+
+
+def list_events(handle, channel_name):
+	"""
+	list_events(Handle handle, str channel_name) -> dict
+
+	Ask the session daemon for all available events of a session channel.
+	Returns a dict of Event instances, the key is the name;
+	on error, returns a negative value.
+	"""
+
+	try:
+		ev_list = _lttng_list_events(handle._h, channel_name)
+	except AttributeError:
+		raise TypeError("in method 'list_events', argument 1 must be a Handle instance")
+
+	if type(ev_list) is int:
+		return ev_list
+
+	events = {}
+
+	for ev_elements in ev_list:
+		ev = Event()
+		ev.name = ev_elements[0]
+		ev.type = ev_elements[1]
+		ev.loglevel_type = ev_elements[2]
+		ev.loglevel = ev_elements[3]
+		ev.enabled = ev_elements[4]
+		ev.pid = ev_elements[5]
+		ev.attr.padding = ev_elements[6]
+		ev.attr.probe.addr = ev_elements[7][0]
+		ev.attr.probe.offset = ev_elements[7][1]
+		ev.attr.probe.symbol_name = ev_elements[7][2]
+		ev.attr.probe.padding = ev_elements[7][3]
+		ev.attr.ftrace.symbol_name = ev_elements[8][0]
+		ev.attr.ftrace.padding = ev_elements[8][1]
+		ev.attr.padding = ev_elements[9]
+
+		events[ev.name] = ev
+
+	return events
+
+
+def list_tracepoints(handle):
+	"""
+	list_tracepoints(Handle handle) -> dict
+
+	Returns a dict of Event instances, the key is the name;
+	on error, returns a negative value.
+	"""
+
+	try:
+		ev_list = _lttng_list_tracepoints(handle._h)
+	except AttributeError:
+		raise TypeError("in method 'list_tracepoints', argument 1 must be a Handle instance")
+
+	if type(ev_list) is int:
+		return ev_list
+
+	events = {}
+
+	for ev_elements in ev_list:
+		ev = Event()
+		ev.name = ev_elements[0]
+		ev.type = ev_elements[1]
+		ev.loglevel_type = ev_elements[2]
+		ev.loglevel = ev_elements[3]
+		ev.enabled = ev_elements[4]
+		ev.pid = ev_elements[5]
+		ev.attr.padding = ev_elements[6]
+		ev.attr.probe.addr = ev_elements[7][0]
+		ev.attr.probe.offset = ev_elements[7][1]
+		ev.attr.probe.symbol_name = ev_elements[7][2]
+		ev.attr.probe.padding = ev_elements[7][3]
+		ev.attr.ftrace.symbol_name = ev_elements[8][0]
+		ev.attr.ftrace.padding = ev_elements[8][1]
+		ev.attr.padding = ev_elements[9]
+
+		events[ev.name] = ev
+
+	return events
+
+
+def register_consumer(handle, socket_path):
+	"""
+	register_consumer(Handle handle, str socket_path) -> int
+
+	Register an outside consumer.
+	Returns size of returned session payload data or a negative error code.
+	"""
+
+	try:
+		return _lttng_register_consumer(handle._h, socket_path)
+	except AttributeError:
+		raise TypeError("in method 'register_consumer', argument 1 must be a Handle instance")
+
+
+def add_context(handle, event_context, event_name, channel_name):
+	"""
+	add_context(Handle handle, EventContext ctx,
+		    str event_name, str channel_name) -> int
+
+	Add context to event and/or channel.
+	If event_name is None, the context is applied to all events of the channel.
+	If channel_name is None, a lookup of the event's channel is done.
+	If both are None, the context is applied to all events of all channels.
+	Returns the size of the returned payload data or a negative error code.
+	"""
+
+	try:
+		return _lttng_add_context(handle._h, event_context, event_name, channel_name)
+	except AttributeError:
+		raise TypeError("in method 'add_context', argument 1 must be a Handle instance")
+
+
+def enable_event(handle, event, channel_name):
+	"""
+	enable_event(Handle handle, Event event,
+		    str channel_name) -> int
+
+	Enable event(s) for a channel.
+	If no event name is specified, all events are enabled.
+	If no channel name is specified, the default 'channel0' is used.
+	Returns size of returned session payload data or a negative error code.
+	"""
+
+	try:
+		return _lttng_enable_event(handle._h, event, channel_name)
+	except AttributeError:
+		raise TypeError("in method 'enable_event', argument 1 must be a Handle instance")
+
+
+def enable_channel(handle, channel):
+	"""
+	enable_channel(Handle handle, Channel channel -> int
+
+	Enable channel per domain
+	Returns size of returned session payload data or a negative error code.
+	"""
+
+	try:
+		return _lttng_enable_channel(handle._h, channel)
+	except AttributeError:
+		raise TypeError("in method 'enable_channel', argument 1 must be a Handle instance")
+
+
+def disable_event(handle, name, channel_name):
+	"""
+	disable_event(Handle handle, str name, str channel_name) -> int
+
+	Disable event(s) of a channel and domain.
+	If no event name is specified, all events are disabled.
+	If no channel name is specified, the default 'channel0' is used.
+	Returns size of returned session payload data or a negative error code
+	"""
+
+	try:
+		return _lttng_disable_event(handle._h, name, channel_name)
+	except AttributeError:
+		raise TypeError("in method 'disable_event', argument 1 must be a Handle instance")
+
+
+def disable_channel(handle, name):
+	"""
+	disable_channel(Handle handle, str name) -> int
+
+	All tracing will be stopped for registered events of the channel.
+	Returns size of returned session payload data or a negative error code.
+	"""
+
+	try:
+		return _lttng_disable_channel(handle._h, name)
+	except AttributeError:
+		raise TypeError("in method 'disable_channel', argument 1 must be a Handle instance")
+
+
+def calibrate(handle, calibrate):
+	"""
+	calibrate(Handle handle, Calibrate calibrate) -> int
+
+	Quantify LTTng overhead.
+	Returns size of returned session payload data or a negative error code.
+	"""
+
+	try:
+		return _lttng_calibrate(handle._h, calibrate)
+	except AttributeError:
+		raise TypeError("in method 'calibrate', argument 1 must be a Handle instance")
+%}
+
+
+// =============================================
+//		Handle class
+//   Used to prevent freeing unallocated memory
+// =============================================
+
+%feature("docstring")""
+%feature("autodoc", "1");
+
+%pythoncode %{
+class Handle:
+        """
+	Manages a handle.
+	Takes two arguments: (str session_name, Domain domain)
+	"""
+
+	__frozen = False
+
+	def __init__(self, session_name, domain):
+		if type(session_name) is not str:
+			raise TypeError("in method '__init__', argument 2 of type 'str'")
+		if type(domain) is not Domain and domain is not None:
+			raise TypeError("in method '__init__', argument 3 of type 'lttng.Domain'")
+
+		self._sname = session_name
+		if domain is None:
+			self._domtype = None
+		else:
+			self._domtype = domain.type
+		self._h = _lttng_create_handle(session_name, domain)
+		self.__frozen = True
+
+	def __del__(self):
+		_lttng_destroy_handle(self._h)
+
+	def __repr__(self):
+		if self._domtype == 1:
+			domstr = "DOMAIN_KERNEL"
+		elif self._domtype == 2:
+			domstr = "DOMAIN_UST"
+		else:
+			domstr = self._domtype
+
+		return "lttng.Handle; session('{}'), domain.type({})".format(
+			self._sname, domstr)
+
+	def __setattr__(self, attr, val):
+		if self.__frozen:
+			raise NotImplementedError("cannot modify attributes")
+		else:
+			self.__dict__[attr] = val
+%}
+
+
+// =============================================
+//		STRUCTURES
+// These are directly taken from lttng.h.
+// Any change to these structures must also be
+// made here.
+// =============================================
+
+%rename("Domain") lttng_domain;
+%rename("EventContext") lttng_event_context;
+%rename("Event") lttng_event;
+%rename("Calibrate") lttng_calibrate;
+%rename("ChannelAttr") lttng_channel_attr;
+%rename("Channel") lttng_channel;
+%rename("Session") lttng_session;
+
+struct lttng_domain{
+	enum lttng_domain_type type;
+	char padding[LTTNG_DOMAIN_PADDING1];
+
+	union {
+		pid_t pid;
+		char exec_name[NAME_MAX];
+		char padding[LTTNG_DOMAIN_PADDING2];
+	} attr;
+
+	%extend {
+		char *__repr__() {
+			static char temp[256];
+			switch ( $self->type ) {
+			case 1:
+				sprintf(temp, "lttng.Domain; type(DOMAIN_KERNEL)");
+				break;
+			case 2:
+				sprintf(temp, "lttng.Domain; type(DOMAIN_UST)");
+				break;
+			default:
+				sprintf(temp, "lttng.Domain; type(%i)", $self->type);
+				break;
+			}
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_event_context {
+	enum lttng_event_context_type ctx;
+	char padding[LTTNG_EVENT_CONTEXT_PADDING1];
+
+	union {
+		struct lttng_event_perf_counter_ctx perf_counter;
+		char padding[LTTNG_EVENT_CONTEXT_PADDING2];
+	} u;
+
+	%extend {
+		char *__repr__() {
+			static char temp[256];
+			switch ( $self->ctx ) {
+			case 0:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PID)");
+				break;
+			case 1:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PERF_COUNTER)");
+				break;
+			case 2:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PROCNAME)");
+				break;
+			case 3:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PRIO)");
+				break;
+			case 4:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_NICE)");
+				break;
+			case 5:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VPID)");
+				break;
+			case 6:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_TID)");
+				break;
+			case 7:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VTID)");
+				break;
+			case 8:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PPID)");
+				break;
+			case 9:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VPPID)");
+				break;
+			case 10:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PTHREAD_ID)");
+				break;
+			default:
+				sprintf(temp, "lttng.EventContext; type(%i)", $self->ctx);
+				break;
+			}
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_event_probe_attr {
+	uint64_t addr;
+	uint64_t offset;
+	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+	char padding[LTTNG_EVENT_PROBE_PADDING1];
+};
+
+struct lttng_event_function_attr {
+	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+	char padding[LTTNG_EVENT_FUNCTION_PADDING1];
+};
+
+struct lttng_event {
+	enum lttng_event_type type;
+	char name[LTTNG_SYMBOL_NAME_LEN];
+
+	enum lttng_loglevel_type loglevel_type;
+	int loglevel;
+
+	int32_t enabled;
+	pid_t pid;
+
+	char padding[LTTNG_EVENT_PADDING1];
+
+	union {
+		struct lttng_event_probe_attr probe;
+		struct lttng_event_function_attr ftrace;
+
+		char padding[LTTNG_EVENT_PADDING2];
+	} attr;
+
+	%extend {
+		char *__repr__() {
+			static char temp[512];
+			char evtype[50];
+			char logtype[50];
+
+			switch ( $self->type ) {
+			case -1:
+				sprintf(evtype, "EVENT_ALL");
+				break;
+			case 0:
+				sprintf(evtype, "EVENT_TRACEPOINT");
+				break;
+			case 1:
+				sprintf(evtype, "EVENT_PROBE");
+				break;
+			case 2:
+				sprintf(evtype, "EVENT_FUNCTION");
+				break;
+			case 3:
+				sprintf(evtype, "EVENT_FUNCTION_ENTRY");
+				break;
+			case 4:
+				sprintf(evtype, "EVENT_NOOP");
+				break;
+			case 5:
+				sprintf(evtype, "EVENT_SYSCALL");
+				break;
+			default:
+				sprintf(evtype, "%i", $self->type);
+				break;
+			}
+
+			switch ( $self->loglevel_type ) {
+			case 0:
+				sprintf(logtype, "EVENT_LOGLEVEL_ALL");
+				break;
+			case 1:
+				sprintf(logtype, "EVENT_LOGLEVEL_RANGE");
+				break;
+			case 2:
+				sprintf(logtype, "EVENT_LOGLEVEL_SINGLE");
+				break;
+			default:
+				sprintf(logtype, "%i", $self->loglevel_type);
+				break;
+			}
+
+			sprintf(temp, "lttng.Event; name('%s'), type(%s), "
+				"loglevel_type(%s), loglevel(%i), "
+				"enabled(%s), pid(%i)",
+				$self->name, evtype, logtype, $self->loglevel,
+				$self->enabled ? "True" : "False", $self->pid);
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_calibrate {
+	enum lttng_calibrate_type type;
+	char padding[LTTNG_CALIBRATE_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[256];
+			switch ( $self->type ) {
+			case 0:
+				sprintf(temp, "lttng.Calibrate; type(CALIBRATE_FUNCTION)");
+				break;
+			default:
+				sprintf(temp, "lttng.Calibrate; type(%i)", $self->type);
+				break;
+			}
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_channel_attr {
+	int overwrite;
+	uint64_t subbuf_size;
+	uint64_t num_subbuf;
+	unsigned int switch_timer_interval;
+	unsigned int read_timer_interval;
+	enum lttng_event_output output;
+
+	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[256];
+			char evout[25];
+
+			switch ( $self->output ) {
+			case 0:
+				sprintf(evout, "EVENT_SPLICE");
+				break;
+			case 1:
+				sprintf(evout, "EVENT_MMAP");
+				break;
+			default:
+				sprintf(evout, "%i", $self->output);
+				break;
+			}
+			sprintf(temp, "lttng.ChannelAttr; overwrite(%i), subbuf_size(%lu), "
+				"num_subbuf(%lu), switch_timer_interval(%u), "
+				"read_timer_interval(%u), output(%s)",
+				$self->overwrite, $self->subbuf_size, $self->num_subbuf,
+				$self->switch_timer_interval, $self->read_timer_interval,
+				evout);
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_channel {
+	char name[LTTNG_SYMBOL_NAME_LEN];
+	uint32_t enabled;
+	struct lttng_channel_attr attr;
+	char padding[LTTNG_CHANNEL_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[512];
+			sprintf(temp, "lttng.Channel; name('%s'), enabled(%s)",
+				$self->name, $self->enabled ? "True" : "False");
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_session {
+	char name[NAME_MAX];
+	char path[PATH_MAX];
+	uint32_t enabled;
+	char padding[LTTNG_SESSION_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[512];
+			sprintf(temp, "lttng.Session; name('%s'), path('%s'), enabled(%s)",
+				$self->name, $self->path,
+				$self->enabled ? "True" : "False");
+			return &temp[0];
+		}
+	}
+};
