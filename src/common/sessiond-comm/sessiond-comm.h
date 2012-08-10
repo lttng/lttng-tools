@@ -208,8 +208,8 @@ enum lttcomm_sock_proto {
  * Index in the net_families array below. Please keep in sync!
  */
 enum lttcomm_sock_domain {
-	LTTCOMM_INET      = 1,
-	LTTCOMM_INET6     = 2,
+	LTTCOMM_INET      = 0,
+	LTTCOMM_INET6     = 1,
 };
 
 struct lttcomm_sockaddr {
