@@ -32,13 +32,19 @@
 #include "filter-ast.h"
 #include "filter-parser.h"
 
+__attribute__((visibility("protected")))
 int yydebug;
 int filter_parser_debug = 0;
 
+__attribute__((visibility("protected")))
 int yyparse(struct filter_parser_ctx *parser_ctx);
+__attribute__((visibility("protected")))
 int yylex(union YYSTYPE *yyval, struct filter_parser_ctx *parser_ctx);
+__attribute__((visibility("protected")))
 int yylex_init_extra(struct filter_parser_ctx *parser_ctx, yyscan_t * ptr_yy_globals);
+__attribute__((visibility("protected")))
 int yylex_destroy(yyscan_t yyparser_ctx);
+__attribute__((visibility("protected")))
 void yyrestart(FILE * in_str, yyscan_t parser_ctx);
 
 struct gc_string {
@@ -55,6 +61,7 @@ static const char *node_type_to_str[] = {
 	[ NODE_UNARY_OP ] = "NODE_UNARY_OP",
 };
 
+__attribute__((visibility("protected")))
 const char *node_type(struct filter_node *node)
 {
 	if (node->type < NR_NODE_TYPES)
@@ -85,6 +92,7 @@ static struct gc_string *gc_string_alloc(struct filter_parser_ctx *parser_ctx,
  * gsrc will be garbage collected immediately, and gstr might be.
  * Should only be used to append characters to a string literal or constant.
  */
+__attribute__((visibility("protected")))
 struct gc_string *gc_string_append(struct filter_parser_ctx *parser_ctx,
 				   struct gc_string *gstr,
 				   struct gc_string *gsrc)
@@ -114,6 +122,7 @@ struct gc_string *gc_string_append(struct filter_parser_ctx *parser_ctx,
 	return gstr;
 }
 
+__attribute__((visibility("protected")))
 void setstring(struct filter_parser_ctx *parser_ctx, YYSTYPE *lvalp, const char *src)
 {
 	lvalp->gs = gc_string_alloc(parser_ctx, strlen(src) + 1);
@@ -175,11 +184,13 @@ static struct filter_node *make_op_node(struct filter_parser_ctx *scanner,
 	return node;
 }
 
+__attribute__((visibility("protected")))
 void yyerror(struct filter_parser_ctx *parser_ctx, const char *str)
 {
 	fprintf(stderr, "error %s\n", str);
 }
  
+__attribute__((visibility("protected")))
 int yywrap(void)
 {
 	return 1;
