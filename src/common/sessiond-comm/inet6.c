@@ -52,7 +52,7 @@ int lttcomm_create_inet6_sock(struct lttcomm_sock *sock, int type, int proto)
 	int val = 1, ret;
 
 	/* Create server socket */
-	if ((sock->fd = socket(PF_INET, type, proto)) < 0) {
+	if ((sock->fd = socket(PF_INET6, type, proto)) < 0) {
 		PERROR("socket inet6");
 		goto error;
 	}
