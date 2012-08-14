@@ -2,10 +2,8 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/test_kernel_data_trace $DIR/test_sessions $DIR/test_ust_data_trace )
-
-# Disable for now until they all pass and the problem are fixed
-# 	$DIR/streaming/runall
+tests=( $DIR/test_kernel_data_trace $DIR/test_sessions $DIR/test_ust_data_trace \
+		$DIR/streaming/runall )
 
 exit_code=0
 
