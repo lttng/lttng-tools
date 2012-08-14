@@ -1,0 +1,221 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+#                      David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+BIN_NAME="gen-ust-events"
+SESSION_NAME="stream"
+EVENT_NAME="tp:tptest"
+PID_RELAYD=0
+
+TRACE_PATH=$(mktemp -d)
+
+source $TESTDIR/utils.sh
+
+echo -e "\n"
+echo -e "---------------------------"
+echo -e " Streaming - URI switching "
+echo -e "---------------------------"
+
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	echo -e "No UST nevents binary detected. Skipping."
+	exit 0
+fi
+
+function lttng_create_session
+{
+	URI=$1
+	# Create session with custom URI
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create -U $URI $SESSION_NAME >/dev/null 2>&1
+}
+
+function lttng_enable_consumer
+{
+	URI=$1
+	# Create session with custom URI
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u $URI >/dev/null 2>&1
+}
+
+function run_apps
+{
+    # Run 5 times with a 1 second delay
+    COUNT=5
+    APP_DELAY=1000000
+    ./$CURDIR/$BIN_NAME $COUNT $APP_DELAY >/dev/null 2>&1 &
+
+}
+
+function wait_apps
+{
+	echo -n "Waiting for applications to end"
+	while [ -n "$(pidof $BIN_NAME)" ]; do
+		echo -n "."
+		sleep 0.5
+	done
+	echo ""
+}
+
+function test_uri_switch_localhost_folder
+{
+	IPVER=$1
+	echo -e "\n=== Testing switch of localhost folder ($IPVER)\n"
+
+	if [ "$IPVER" == "IPv6" ]; then
+	    BASE_URI="net6://localhost"
+	else
+	    BASE_URI="net://localhost"
+	fi
+
+	RANDCOUNT=10
+	RAND=""
+	i=1
+
+	lttng_create_session $BASE_URI
+
+	echo -e "Randomizing output folder on $BASE_URI..."
+	while [ "$i" -le $RANDCOUNT ]
+	do
+	    RAND=$(randstring 16 0)
+	    lttng_enable_consumer "$BASE_URI/$RAND"
+	    let "i += 1"
+	done
+
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_tracing $SESSION_NAME
+	run_apps
+	wait_apps
+	stop_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$RAND
+
+	if [ $? -eq 0 ]; then
+	# Only delete if successful
+	    rm -rf $TRACE_PATH
+	else
+	    break
+	fi
+}
+
+function test_uri_switch_file_network
+{
+	IPVER=$1
+	echo ""
+	echo -e "=== Testing switch file -> network ($IPVER)"
+
+	TMP_PATH=$(mktemp -d)
+	FILE_URI="file://$TMP_PATH"
+
+	if [ "$IPVER" == "IPv6" ]; then
+	    NETWORK_URIS=("net6://localhost" "net6://[::1]")
+	else
+	    NETWORK_URIS=("net://localhost" "net://127.0.0.1")
+	fi
+
+	NET_PATHS=("foo/bar" "OohEehOohAhAahTingTangWallaWallaBingBang" ".")
+
+	for NETWORK_URI in ${NETWORK_URIS[@]};
+	do
+	    for NET_PATH in ${NET_PATHS[@]};
+	    do
+		SESSION_NAME=$(randstring 16 0)
+		echo ""
+		echo "$FILE_URI -> $NETWORK_URI/$NET_PATH"
+
+		lttng_create_session $FILE_URI
+		lttng_enable_consumer "$NETWORK_URI/$NET_PATH"
+		enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+		start_tracing $SESSION_NAME
+		run_apps
+		wait_apps
+		stop_tracing $SESSION_NAME
+		destroy_lttng_session $SESSION_NAME
+		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$NET_PATH
+
+		if [ $? -eq 0 ]; then
+		# Only delete if successful
+		    rm -rf $TRACE_PATH
+		else
+		    break
+		fi
+	    done
+	done
+	rm -rf $TMP_PATH
+}
+
+function test_uri_switch_network_file
+{
+IPVER=$1
+	echo ""
+	echo -e "=== Testing switch network ($IPVER) -> file"
+
+	if [ "$IPVER" == "IPv6" ]; then
+	    NETWORK_URI="net6://localhost"
+	else
+	    NETWORK_URI="net://localhost"
+	fi
+
+	FILE_PATHS=("." "foo/bar" "42")
+
+	for FILE_PATH in ${FILE_PATHS[@]};
+	do
+	    TMP_PATH=$(mktemp -d)
+	    FILE_URI="file://$TMP_PATH"
+	    SESSION_NAME=$(randstring 16 0)
+
+	    echo ""
+	    echo "$NETWORK_URI -> $FILE_URI/$FILE_PATH"
+
+	    lttng_create_session $NETWORK_URI
+	    lttng_enable_consumer "$FILE_URI/$FILE_PATH"
+	    enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	    start_tracing $SESSION_NAME
+	    run_apps
+	    wait_apps
+	    stop_tracing $SESSION_NAME
+	    destroy_lttng_session $SESSION_NAME
+	    validate_trace $EVENT_NAME $TMP_PATH/$FILE_PATH
+
+	    if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TMP_PATH
+	    else
+		break
+	    fi
+	done
+}
+
+
+start_sessiond
+
+echo ""
+echo "=== Testing with IPv4"
+lttng_start_relayd "-o $TRACE_PATH"
+test_uri_switch_localhost_folder "IPv4"
+test_uri_switch_file_network "IPv4"
+test_uri_switch_network_file "IPv4"
+lttng_stop_relayd
+
+echo ""
+echo "=== Testing with IPv6"
+lttng_start_relayd "-o $TRACE_PATH -C tcp6://localhost:5342 -D tcp6://localhost:5343"
+test_uri_switch_localhost_folder "IPv6"
+test_uri_switch_file_network "IPv6"
+test_uri_switch_network_file "IPv6"
+lttng_stop_relayd
+
+stop_sessiond
