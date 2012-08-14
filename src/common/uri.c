@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdlib.h>
@@ -103,6 +104,11 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 	unsigned char buf[sizeof(struct in6_addr)];
 	struct hostent *record;
 
+	assert(addr);
+	assert(dst);
+
+	memset(dst, 0, size);
+
 	/* Network protocol */
 	ret = inet_pton(af, addr, buf);
 	if (ret < 1) {
@@ -117,7 +123,10 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 		/* Translate IP to string */
 		(void) inet_ntop(af, record->h_addr_list[0], dst, size);
 	} else {
-		memcpy(dst, addr, size);
+		if (size > 0) {
+			strncpy(dst, addr, size);
+			dst[size - 1] = '\0';
+		}
 	}
 
 	DBG2("IP address resolved to %s", dst);
