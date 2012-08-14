@@ -13,6 +13,8 @@ Version:
 		* Remove lttng_create_session_addr
 		* Describe URL string format
 		* Add set_consumer_url examples
+	- v0.3: 14/08/2012
+		* Change set_consumer_url by adding both control and data url.
 
 Introduction
 -----------------
@@ -78,12 +80,12 @@ default one.
 The <net(6)> protocol has a special case where the user can input two ports
 respectively being the control and data port.
 
-	* net://[HOSTNAME|IP][:CTRL_PORT][:DATA_PORT][/PATH]
+	* net://[HOSTNAME|IP][:CTRL_PORT[:DATA_PORT]][/PATH]
 
 If _url_ is not NULL, in addition to creating the session, the
 lttng_create_session will use the two following API calls:
 
-	1) lttng_set_consumer_url(handle, url);
+	1) lttng_set_consumer_url(handle, url, url);
 	2) lttng_enable_consumer(handle);
 
 If _url_ is NULL, then NO consumer is created for this tracing session and
@@ -99,14 +101,22 @@ From:
 
 To:
 --> lttng_set_consumer_url(struct lttng_handle *handle,
-				const char *url);
+				const char *ctrl_url, const char *data_url);
 
-For both functions (consumer and create), the _url_ will be parsed into a
+For network streaming, we need two URL for the control and data stream. Using
+the net(6) protocol for the ctrl_url, the data_url argument is ignored. The
+_ctrl_url_ MUST never be NULL or else an error is returned. If the _data_url_
+is NULL, the ctrl url is used.
+
+For both functions (consumer and create), the _*url_ will be parsed into a
 lttng_uri in the liblttng-ctl and sent to the session daemon.
 
 Example:
 
-	lttng_set_consumer_url(handle, "net://42.42.42.2");
+	lttng_set_consumer_url(handle, "net://42.42.42.2", NULL);
+
+	lttng_set_consumer_url(handle, "tcp://42.42.42.2:8888",
+								"tcp://5.5.5.5:8812");
 
 
 With all this, the lttng_uri data structure will NOT be exposed to the public
