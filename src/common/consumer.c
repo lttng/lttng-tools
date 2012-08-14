@@ -1095,7 +1095,11 @@ end:
 }
 
 /*
- * Mmap the ring buffer, read it and write the data to the tracefile.
+ * Mmap the ring buffer, read it and write the data to the tracefile. This is a
+ * core function for writing trace buffers to either the local filesystem or
+ * the network.
+ *
+ * Careful review MUST be put if any changes occur!
  *
  * Returns the number of bytes written
  */
@@ -1168,12 +1172,6 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 					written = ret;
 					goto end;
 				}
-
-				/*
-				 * We do this so the return value can match the len passed as
-				 * argument to this function.
-				 */
-				written -= sizeof(stream->relayd_stream_id);
 			}
 		}
 		/* Else, use the default set before which is the filesystem. */
