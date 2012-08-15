@@ -448,8 +448,8 @@ static void teardown_ust_session(struct ltt_session *session)
 	 * lock. This means that there CAN NOT be stream(s) being sent to a
 	 * consumer since this action also requires the session lock at any time.
 	 *
-	 * At this point, we are sure that not streams data will be lost after this
-	 * command is issued.
+	 * At this point, we are sure that no data will be lost after this command
+	 * is issued.
 	 */
 	if (usess->consumer && usess->consumer->type == CONSUMER_DST_NET) {
 		cds_lfht_for_each_entry(usess->consumer->socks->ht, &iter.iter, socket,
@@ -2097,6 +2097,15 @@ static int send_sockets_relayd_consumer(int domain,
 {
 	int ret;
 
+	assert(session);
+	assert(consumer);
+
+	/* Don't resend the sockets to the consumer. */
+	if (consumer->dst.net.relayd_socks_sent) {
+		ret = LTTCOMM_OK;
+		goto error;
+	}
+
 	/* Sending control relayd socket. */
 	ret = send_socket_relayd_consumer(domain, session,
 			&consumer->dst.net.control, consumer, fd);
@@ -2110,6 +2119,9 @@ static int send_sockets_relayd_consumer(int domain,
 	if (ret != LTTCOMM_OK) {
 		goto error;
 	}
+
+	/* Flag that all relayd sockets were sent to the consumer. */
+	consumer->dst.net.relayd_socks_sent = 1;
 
 error:
 	return ret;
@@ -3647,7 +3659,9 @@ skip_consumer:
 session_error:
 	session_destroy(session);
 error:
+	rcu_read_lock();
 	consumer_destroy_output(consumer);
+	rcu_read_unlock();
 consumer_error:
 	return ret;
 }
@@ -3949,7 +3963,6 @@ static int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 	case LTTNG_DOMAIN_KERNEL:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(ksess);
-		assert(ksess->consumer);
 
 		/* Create consumer output if none exists */
 		consumer = ksess->tmp_consumer;
@@ -3990,8 +4003,12 @@ static int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 			goto error;
 		}
 
-		/* Don't send relayd socket if URI is NOT remote */
-		if (uris[i].dtype == LTTNG_DST_PATH) {
+		/*
+		 * Don't send relayd socket if URI is NOT remote or if the relayd
+		 * sockets for the session are already sent.
+		 */
+		if (uris[i].dtype == LTTNG_DST_PATH ||
+				consumer->dst.net.relayd_socks_sent) {
 			continue;
 		}
 
@@ -4180,7 +4197,9 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		 * session without this lock hence freeing the consumer output object
 		 * is valid.
 		 */
+		rcu_read_lock();
 		consumer_destroy_output(ksess->consumer);
+		rcu_read_unlock();
 		ksess->consumer = consumer;
 		ksess->tmp_consumer = NULL;
 
@@ -4263,7 +4282,9 @@ static int cmd_enable_consumer(int domain, struct ltt_session *session)
 		 * session without this lock hence freeing the consumer output object
 		 * is valid.
 		 */
+		rcu_read_lock();
 		consumer_destroy_output(usess->consumer);
+		rcu_read_unlock();
 		usess->consumer = consumer;
 		usess->tmp_consumer = NULL;
 

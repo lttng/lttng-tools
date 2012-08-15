@@ -86,6 +86,9 @@ struct consumer_net {
 
 	/* Data path for network streaming. */
 	struct lttng_uri data;
+
+	/* Flag if network sockets were sent to the consumer. */
+	unsigned int relayd_socks_sent;
 };
 
 /*
@@ -98,8 +101,8 @@ struct consumer_output {
 
 	/*
 	 * The net_seq_index is the index of the network stream on the consumer
-	 * side. It's basically the relayd socket file descriptor value so the
-	 * consumer can identify which streams goes with which socket.
+	 * side. It tells the consumer which streams goes to which relayd with this
+	 * index. The relayd sockets are index with it on the consumer side.
 	 */
 	int net_seq_index;
 

@@ -578,6 +578,9 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	destroy_domain_pid(session->domain_pid);
 	destroy_domain_exec(session->domain_exec);
 
+	consumer_destroy_output(session->consumer);
+	consumer_destroy_output(session->tmp_consumer);
+
 	free(session);
 
 	rcu_read_unlock();

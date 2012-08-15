@@ -274,9 +274,12 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 		uatomic_dec(&relayd->refcount);
 		assert(uatomic_read(&relayd->refcount) >= 0);
 
+		/* Closing streams requires to lock the control socket. */
+		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_send_close_stream(&relayd->control_sock,
 				stream->relayd_stream_id,
 				stream->next_net_seq_num - 1);
+		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 		if (ret < 0) {
 			DBG("Unable to close stream on the relayd. Continuing");
 			/*
@@ -438,8 +441,10 @@ end:
 }
 
 /*
- * Add relayd socket to global consumer data hashtable.
+ * Add relayd socket to global consumer data hashtable. RCU read side lock MUST
+ * be acquired before calling this.
  */
+
 int consumer_add_relayd(struct consumer_relayd_sock_pair *relayd)
 {
 	int ret = 0;
@@ -451,19 +456,14 @@ int consumer_add_relayd(struct consumer_relayd_sock_pair *relayd)
 		goto end;
 	}
 
-	rcu_read_lock();
-
 	lttng_ht_lookup(consumer_data.relayd_ht,
 			(void *)((unsigned long) relayd->net_seq_idx), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node != NULL) {
-		rcu_read_unlock();
 		/* Relayd already exist. Ignore the insertion */
 		goto end;
 	}
 	lttng_ht_add_unique_ulong(consumer_data.relayd_ht, &relayd->node);
-
-	rcu_read_unlock();
 
 end:
 	return ret;

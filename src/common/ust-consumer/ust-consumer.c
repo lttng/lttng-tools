@@ -108,7 +108,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		return -ENOENT;
 	}
 
-	/* relayd need RCU read-side lock */
+	/* relayd needs RCU read-side lock */
 	rcu_read_lock();
 
 	switch (msg.cmd_type) {
@@ -133,6 +133,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Poll on consumer socket. */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+			rcu_read_unlock();
 			return -EINTR;
 		}
 
@@ -200,11 +201,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* block */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+			rcu_read_unlock();
 			return -EINTR;
 		}
 		ret = lttcomm_recv_fds_unix_sock(sock, fds, nb_fd);
 		if (ret != sizeof(fds)) {
 			lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
+			rcu_read_unlock();
 			return ret;
 		}
 
@@ -241,11 +244,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* block */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+			rcu_read_unlock();
 			return -EINTR;
 		}
 		ret = lttcomm_recv_fds_unix_sock(sock, fds, nb_fd);
 		if (ret != sizeof(fds)) {
 			lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
+			rcu_read_unlock();
 			return ret;
 		}
 
@@ -267,7 +272,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.metadata_flag);
 		if (new_stream == NULL) {
 			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
-			goto end;
+			goto end_nosignal;
 		}
 
 		/* The stream is not metadata. Get relayd reference if exists. */
@@ -280,13 +285,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					&new_stream->relayd_stream_id);
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 			if (ret < 0) {
-				goto end;
+				goto end_nosignal;
 			}
 		} else if (msg.u.stream.net_index != -1) {
 			ERR("Network sequence index %d unknown. Not adding stream.",
 					msg.u.stream.net_index);
 			free(new_stream);
-			goto end;
+			goto end_nosignal;
 		}
 
 		if (ctx->on_recv_stream != NULL) {
@@ -294,7 +299,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			if (ret == 0) {
 				consumer_add_stream(new_stream);
 			} else if (ret < 0) {
-				goto end;
+				goto end_nosignal;
 			}
 		} else {
 			consumer_add_stream(new_stream);
@@ -315,8 +320,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Get relayd reference if exists. */
 		relayd = consumer_find_relayd(msg.u.destroy_relayd.net_seq_idx);
 		if (relayd == NULL) {
-			ERR("Unable to find relayd %zu",
-					msg.u.destroy_relayd.net_seq_idx);
+			ERR("Unable to find relayd %zu", msg.u.destroy_relayd.net_seq_idx);
+			goto end_nosignal;
 		}
 
 		/* Set destroy flag for this object */
@@ -326,10 +331,11 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (uatomic_read(&relayd->refcount) == 0) {
 			consumer_destroy_relayd(relayd);
 		}
-		break;
+		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
 	{
+		rcu_read_unlock();
 		return -ENOSYS;
 #if 0
 		if (ctx->on_update_stream != NULL) {
@@ -343,20 +349,20 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_change_stream_state(msg.u.stream.stream_key,
 				msg.u.stream.state);
 		}
-#endif
 		break;
+#endif
 	}
 	default:
 		break;
 	}
-end:
+
 	/*
-	 * Wake-up the other end by writing a null byte in the pipe
-	 * (non-blocking). Important note: Because writing into the
-	 * pipe is non-blocking (and therefore we allow dropping wakeup
-	 * data, as long as there is wakeup data present in the pipe
-	 * buffer to wake up the other end), the other end should
-	 * perform the following sequence for waiting:
+	 * Wake-up the other end by writing a null byte in the pipe (non-blocking).
+	 * Important note: Because writing into the pipe is non-blocking (and
+	 * therefore we allow dropping wakeup data, as long as there is wakeup data
+	 * present in the pipe buffer to wake up the other end), the other end
+	 * should perform the following sequence for waiting:
+	 *
 	 * 1) empty the pipe (reads).
 	 * 2) perform update operation.
 	 * 3) wait on the pipe (poll).
