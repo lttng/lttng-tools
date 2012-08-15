@@ -28,6 +28,7 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 
+static char *opt_session_name;
 static int opt_destroy_all;
 
 enum {
@@ -156,28 +157,32 @@ int cmd_destroy(int argc, const char **argv)
 		goto end;
 	}
 
-	session_name = (char *) poptGetArg(pc);
-
-	/*
-	 * ignore session name in case all
-	 * sessions are to be destroyed
-	 */
+	/* Ignore session name in case all sessions are to be destroyed */
 	if (opt_destroy_all) {
 		ret = destroy_all_sessions();
 		goto end;
 	}
-	if (session_name == NULL) {
-		ret = get_default_session_name(&session_name);
-		if (ret < 0 || session_name == NULL) {
+
+	opt_session_name = (char *) poptGetArg(pc);
+
+	if (opt_session_name == NULL) {
+		/* No session name specified, lookup default */
+		session_name = get_session_name();
+		if (session_name == NULL) {
+			ret = CMD_ERROR;
 			goto end;
 		}
+	} else {
+		session_name = opt_session_name;
 	}
+
 	ret = destroy_session(session_name);
 
 end:
-	poptFreeContext(pc);
-	if (session_name != NULL) {
+	if (opt_session_name == NULL) {
 		free(session_name);
 	}
+
+	poptFreeContext(pc);
 	return ret;
 }
