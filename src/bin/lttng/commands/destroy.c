@@ -114,21 +114,6 @@ error:
 }
 
 /*
- * get_default_session_name
- *
- * Returns the default sessions name, if any
- */
-static int get_default_session_name(char **name)
-{
-	char *session_name = get_session_name();
-	if (session_name == NULL) {
-		return CMD_ERROR;
-	}
-	*name = session_name;
-	return CMD_SUCCESS;
-}
-
-/*
  * The 'destroy <options>' first level command
  */
 int cmd_destroy(int argc, const char **argv)
