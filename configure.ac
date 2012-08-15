@@ -138,7 +138,7 @@ AC_ARG_ENABLE(lttng-ust,
 	lttng_ust_support=$enableval, lttng_ust_support=yes)
 
 AS_IF([test "x$lttng_ust_support" = "xyes"], [
-	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_create_session],
+	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_set_filter],
 		[
 			AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1], [has LTTng-UST control support])
 			lttng_ust_ctl_found=yes
