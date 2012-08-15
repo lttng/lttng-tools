@@ -34,24 +34,31 @@
  * implementation:
  *
  * - RCU read-side critical section allows readers to perform hash
- *   table lookups and use the returned objects safely by delaying
- *   memory reclaim of a grace period.
+ *   table lookups, as well as traversals, and use the returned objects
+ *   safely by allowing memory reclaim to take place only after a grace
+ *   period.
  * - Add and remove operations are lock-free, and do not need to
  *   allocate memory. They need to be executed within RCU read-side
  *   critical section to ensure the objects they read are valid and to
  *   deal with the cmpxchg ABA problem.
  * - add and add_unique operations are supported. add_unique checks if
- *   the node key already exists in the hash table. It ensures no key
- *   duplicata exists.
- * - The resize operation executes concurrently with add/remove/lookup.
+ *   the node key already exists in the hash table. It ensures not to
+ *   populate a duplicate key if the node key already exists in the hash
+ *   table.
+ * - The resize operation executes concurrently with
+ *   add/add_unique/add_replace/remove/lookup/traversal.
  * - Hash table nodes are contained within a split-ordered list. This
  *   list is ordered by incrementing reversed-bits-hash value.
  * - An index of bucket nodes is kept. These bucket nodes are the hash
- *   table "buckets", and they are also chained together in the
- *   split-ordered list, which allows recursive expansion.
- * - The resize operation for small tables only allows expanding the hash table.
- *   It is triggered automatically by detecting long chains in the add
- *   operation.
+ *   table "buckets". These buckets are internal nodes that allow to
+ *   perform a fast hash lookup, similarly to a skip list. These
+ *   buckets are chained together in the split-ordered list, which
+ *   allows recursive expansion by inserting new buckets between the
+ *   existing buckets. The split-ordered list allows adding new buckets
+ *   between existing buckets as the table needs to grow.
+ * - The resize operation for small tables only allows expanding the
+ *   hash table. It is triggered automatically by detecting long chains
+ *   in the add operation.
  * - The resize operation for larger tables (and available through an
  *   API) allows both expanding and shrinking the hash table.
  * - Split-counters are used to keep track of the number of
@@ -71,32 +78,131 @@
  *   (not visible to lookups anymore) before the RCU read-side critical
  *   section held across removal ends. Furthermore, this ensures that
  *   the node with "removed" flag set is removed from the linked-list
- *   before its memory is reclaimed. Only the thread which removal
- *   successfully set the "removed" flag (with a cmpxchg) into a node's
- *   next pointer is considered to have succeeded its removal (and thus
- *   owns the node to reclaim). Because we garbage-collect starting from
- *   an invariant node (the start-of-bucket bucket node) up to the
- *   "removed" node (or find a reverse-hash that is higher), we are sure
- *   that a successful traversal of the chain leads to a chain that is
- *   present in the linked-list (the start node is never removed) and
- *   that is does not contain the "removed" node anymore, even if
- *   concurrent delete/add operations are changing the structure of the
- *   list concurrently.
- * - The add operation performs gargage collection of buckets if it
- *   encounters nodes with removed flag set in the bucket where it wants
- *   to add its new node. This ensures lock-freedom of add operation by
+ *   before its memory is reclaimed. After setting the "removal" flag,
+ *   only the thread which removal is the first to set the "removal
+ *   owner" flag (with an xchg) into a node's next pointer is considered
+ *   to have succeeded its removal (and thus owns the node to reclaim).
+ *   Because we garbage-collect starting from an invariant node (the
+ *   start-of-bucket bucket node) up to the "removed" node (or find a
+ *   reverse-hash that is higher), we are sure that a successful
+ *   traversal of the chain leads to a chain that is present in the
+ *   linked-list (the start node is never removed) and that it does not
+ *   contain the "removed" node anymore, even if concurrent delete/add
+ *   operations are changing the structure of the list concurrently.
+ * - The add operations perform garbage collection of buckets if they
+ *   encounter nodes with removed flag set in the bucket where they want
+ *   to add their new node. This ensures lock-freedom of add operation by
  *   helping the remover unlink nodes from the list rather than to wait
  *   for it do to so.
- * - A RCU "order table" indexed by log2(hash index) is copied and
- *   expanded by the resize operation. This order table allows finding
- *   the "bucket node" tables.
- * - There is one bucket node table per hash index order. The size of
- *   each bucket node table is half the number of hashes contained in
- *   this order (except for order 0).
- * - synchronzie_rcu is used to garbage-collect the old bucket node table.
- * - The per-order bucket node tables contain a compact version of the
- *   hash table nodes. These tables are invariant after they are
- *   populated into the hash table.
+ * - There are three memory backends for the hash table buckets: the
+ *   "order table", the "chunks", and the "mmap".
+ * - These bucket containers contain a compact version of the hash table
+ *   nodes.
+ * - The RCU "order table":
+ *   -  has a first level table indexed by log2(hash index) which is
+ *      copied and expanded by the resize operation. This order table
+ *      allows finding the "bucket node" tables.
+ *   - There is one bucket node table per hash index order. The size of
+ *     each bucket node table is half the number of hashes contained in
+ *     this order (except for order 0).
+ * - The RCU "chunks" is best suited for close interaction with a page
+ *   allocator. It uses a linear array as index to "chunks" containing
+ *   each the same number of buckets.
+ * - The RCU "mmap" memory backend uses a single memory map to hold
+ *   all buckets.
+ * - synchronize_rcu is used to garbage-collect the old bucket node table.
+ *
+ * Ordering Guarantees:
+ *
+ * To discuss these guarantees, we first define "read" operation as any
+ * of the the basic cds_lfht_lookup, cds_lfht_next_duplicate,
+ * cds_lfht_first, cds_lfht_next operation, as well as
+ * cds_lfht_add_unique (failure).
+ *
+ * We define "read traversal" operation as any of the following
+ * group of operations
+ *  - cds_lfht_lookup followed by iteration with cds_lfht_next_duplicate
+ *    (and/or cds_lfht_next, although less common).
+ *  - cds_lfht_add_unique (failure) followed by iteration with
+ *    cds_lfht_next_duplicate (and/or cds_lfht_next, although less
+ *    common).
+ *  - cds_lfht_first followed iteration with cds_lfht_next (and/or
+ *    cds_lfht_next_duplicate, although less common).
+ *
+ * We define "write" operations as any of cds_lfht_add,
+ * cds_lfht_add_unique (success), cds_lfht_add_replace, cds_lfht_del.
+ *
+ * When cds_lfht_add_unique succeeds (returns the node passed as
+ * parameter), it acts as a "write" operation. When cds_lfht_add_unique
+ * fails (returns a node different from the one passed as parameter), it
+ * acts as a "read" operation. A cds_lfht_add_unique failure is a
+ * cds_lfht_lookup "read" operation, therefore, any ordering guarantee
+ * referring to "lookup" imply any of "lookup" or cds_lfht_add_unique
+ * (failure).
+ *
+ * We define "prior" and "later" node as nodes observable by reads and
+ * read traversals respectively before and after a write or sequence of
+ * write operations.
+ *
+ * Hash-table operations are often cascaded, for example, the pointer
+ * returned by a cds_lfht_lookup() might be passed to a cds_lfht_next(),
+ * whose return value might in turn be passed to another hash-table
+ * operation. This entire cascaded series of operations must be enclosed
+ * by a pair of matching rcu_read_lock() and rcu_read_unlock()
+ * operations.
+ *
+ * The following ordering guarantees are offered by this hash table:
+ *
+ * A.1) "read" after "write": if there is ordering between a write and a
+ *      later read, then the read is guaranteed to see the write or some
+ *      later write.
+ * A.2) "read traversal" after "write": given that there is dependency
+ *      ordering between reads in a "read traversal", if there is
+ *      ordering between a write and the first read of the traversal,
+ *      then the "read traversal" is guaranteed to see the write or
+ *      some later write.
+ * B.1) "write" after "read": if there is ordering between a read and a
+ *      later write, then the read will never see the write.
+ * B.2) "write" after "read traversal": given that there is dependency
+ *      ordering between reads in a "read traversal", if there is
+ *      ordering between the last read of the traversal and a later
+ *      write, then the "read traversal" will never see the write.
+ * C)   "write" while "read traversal": if a write occurs during a "read
+ *      traversal", the traversal may, or may not, see the write.
+ * D.1) "write" after "write": if there is ordering between a write and
+ *      a later write, then the later write is guaranteed to see the
+ *      effects of the first write.
+ * D.2) Concurrent "write" pairs: The system will assign an arbitrary
+ *      order to any pair of concurrent conflicting writes.
+ *      Non-conflicting writes (for example, to different keys) are
+ *      unordered.
+ * E)   If a grace period separates a "del" or "replace" operation
+ *      and a subsequent operation, then that subsequent operation is
+ *      guaranteed not to see the removed item.
+ * F)   Uniqueness guarantee: given a hash table that does not contain
+ *      duplicate items for a given key, there will only be one item in
+ *      the hash table after an arbitrary sequence of add_unique and/or
+ *      add_replace operations. Note, however, that a pair of
+ *      concurrent read operations might well access two different items
+ *      with that key.
+ * G.1) If a pair of lookups for a given key are ordered (e.g. by a
+ *      memory barrier), then the second lookup will return the same
+ *      node as the previous lookup, or some later node.
+ * G.2) A "read traversal" that starts after the end of a prior "read
+ *      traversal" (ordered by memory barriers) is guaranteed to see the
+ *      same nodes as the previous traversal, or some later nodes.
+ * G.3) Concurrent "read" pairs: concurrent reads are unordered. For
+ *      example, if a pair of reads to the same key run concurrently
+ *      with an insertion of that same key, the reads remain unordered
+ *      regardless of their return values. In other words, you cannot
+ *      rely on the values returned by the reads to deduce ordering.
+ *
+ * Progress guarantees:
+ *
+ * * Reads are wait-free. These operations always move forward in the
+ *   hash table linked list, and this list has no loop.
+ * * Writes are lock-free. Any retry loop performed by a write operation
+ *   is triggered by progress made within another update operation.
  *
  * Bucket node tables:
  *
@@ -120,8 +226,8 @@
  *
  * A bit of ascii art explanation:
  *
- * Order index is the off-by-one compare to the actual power of 2 because
- * we use index 0 to deal with the 0 special-case.
+ * The order index is the off-by-one compared to the actual power of 2
+ * because we use index 0 to deal with the 0 special-case.
  *
  * This shows the nodes for a small table ordered by reversed bits:
  *
@@ -150,13 +256,16 @@
  */
 
 #define _LGPL_SOURCE
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <sched.h>
 
+#include "config.h"
 #include <urcu.h>
 #include <urcu-call-rcu.h>
 #include <urcu/arch.h>
@@ -170,11 +279,10 @@
 #include "urcu-flavor.h"
 
 /*
- * We need to lock pthread exit, which deadlocks __nptl_setxid in the
- * runas clone.
- * This work-around will be allowed to be removed when runas.c gets
- * changed to do an exec() before issuing seteuid/setegid.
- * See http://sourceware.org/bugzilla/show_bug.cgi?id=10184 for details.
+ * We need to lock pthread exit, which deadlocks __nptl_setxid in the runas
+ * clone.  This work-around will be allowed to be removed when runas.c gets
+ * changed to do an exec() before issuing seteuid/setegid. See
+ * http://sourceware.org/bugzilla/show_bug.cgi?id=10184 for details.
  */
 pthread_mutex_t lttng_libc_state_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -207,6 +315,11 @@ pthread_mutex_t lttng_libc_state_lock = PTHREAD_MUTEX_INITIALIZER;
  * removal, and that node garbage collection must be performed.
  * The bucket flag does not require to be updated atomically with the
  * pointer, but it is added as a pointer low bit flag to save space.
+ * The "removal owner" flag is used to detect which of the "del"
+ * operation that has set the "removed flag" gets to return the removed
+ * node to its caller. Note that the replace operation does not need to
+ * iteract with the "removal owner" flag, because it validates that
+ * the "removed" flag is not set before performing its cmpxchg.
  */
 #define REMOVED_FLAG		(1UL << 0)
 #define BUCKET_FLAG		(1UL << 1)
@@ -215,8 +328,6 @@ pthread_mutex_t lttng_libc_state_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Value of the end pointer. Should not interact with flags. */
 #define END_VALUE		NULL
-
-DEFINE_RCU_FLAVOR(rcu_flavor);
 
 /*
  * ht_items_count: Split-counters counting the number of node addition
@@ -633,12 +744,6 @@ int is_removed(struct cds_lfht_node *node)
 }
 
 static
-struct cds_lfht_node *flag_removed(struct cds_lfht_node *node)
-{
-	return (struct cds_lfht_node *) (((unsigned long) node) | REMOVED_FLAG);
-}
-
-static
 int is_bucket(struct cds_lfht_node *node)
 {
 	return ((unsigned long) node) & BUCKET_FLAG;
@@ -660,6 +765,12 @@ static
 struct cds_lfht_node *flag_removal_owner(struct cds_lfht_node *node)
 {
 	return (struct cds_lfht_node *) (((unsigned long) node) | REMOVAL_OWNER_FLAG);
+}
+
+static
+struct cds_lfht_node *flag_removed_or_removal_owner(struct cds_lfht_node *node)
+{
+	return (struct cds_lfht_node *) (((unsigned long) node) | REMOVED_FLAG | REMOVAL_OWNER_FLAG);
 }
 
 static
@@ -792,6 +903,12 @@ int _cds_lfht_replace(struct cds_lfht *ht, unsigned long size,
 		}
 		assert(old_next == clear_flag(old_next));
 		assert(new_node != old_next);
+		/*
+		 * REMOVAL_OWNER flag is _NEVER_ set before the REMOVED
+		 * flag. It is either set atomically at the same time
+		 * (replace) or after (del).
+		 */
+		assert(!is_removal_owner(old_next));
 		new_node->next = old_next;
 		/*
 		 * Here is the whole trick for lock-free replace: we add
@@ -804,10 +921,12 @@ int _cds_lfht_replace(struct cds_lfht *ht, unsigned long size,
 		 * the old node, but will not see the new one.
 		 * This is a replacement of a node with another node
 		 * that has the same value: we are therefore not
-		 * removing a value from the hash table.
+		 * removing a value from the hash table. We set both the
+		 * REMOVED and REMOVAL_OWNER flags atomically so we own
+		 * the node after successful cmpxchg.
 		 */
 		ret_next = uatomic_cmpxchg(&old_node->next,
-			      old_next, flag_removed(new_node));
+			old_next, flag_removed_or_removal_owner(new_node));
 		if (ret_next == old_next)
 			break;		/* We performed the replacement. */
 		old_next = ret_next;
@@ -821,7 +940,7 @@ int _cds_lfht_replace(struct cds_lfht *ht, unsigned long size,
 	bucket = lookup_bucket(ht, size, bit_reverse_ulong(old_node->reverse_hash));
 	_cds_lfht_gc_bucket(bucket, new_node);
 
-	assert(is_removed(rcu_dereference(old_node->next)));
+	assert(is_removed(CMM_LOAD_SHARED(old_node->next)));
 	return 0;
 }
 
@@ -883,8 +1002,8 @@ void _cds_lfht_add(struct cds_lfht *ht,
 				 *
 				 * This semantic ensures no duplicated keys
 				 * should ever be observable in the table
-				 * (including observe one node by one node
-				 * by forward iterations)
+				 * (including traversing the table node by
+				 * node by forward iterations)
 				 */
 				cds_lfht_next_duplicate(ht, match, key, &d_iter);
 				if (!d_iter.node)
@@ -959,10 +1078,15 @@ int _cds_lfht_del(struct cds_lfht *ht, unsigned long size,
 	 * logical removal flag). Return -ENOENT if the node had
 	 * previously been removed.
 	 */
-	next = rcu_dereference(node->next);
+	next = CMM_LOAD_SHARED(node->next);	/* next is not dereferenced */
 	if (caa_unlikely(is_removed(next)))
 		return -ENOENT;
 	assert(!is_bucket(next));
+	/*
+	 * The del operation semantic guarantees a full memory barrier
+	 * before the uatomic_or atomic commit of the deletion flag.
+	 */
+	cmm_smp_mb__before_uatomic_or();
 	/*
 	 * We set the REMOVED_FLAG unconditionally. Note that there may
 	 * be more than one concurrent thread setting this flag.
@@ -980,7 +1104,7 @@ int _cds_lfht_del(struct cds_lfht *ht, unsigned long size,
 	bucket = lookup_bucket(ht, size, bit_reverse_ulong(node->reverse_hash));
 	_cds_lfht_gc_bucket(bucket, node);
 
-	assert(is_removed(rcu_dereference(node->next)));
+	assert(is_removed(CMM_LOAD_SHARED(node->next)));
 	/*
 	 * Last phase: atomically exchange node->next with a version
 	 * having "REMOVAL_OWNER_FLAG" set. If the returned node->next
@@ -1036,7 +1160,6 @@ void partition_resize_helper(struct cds_lfht *ht, unsigned long i,
 	partition_len = len >> cds_lfht_get_count_order_ulong(nr_threads);
 	work = calloc(nr_threads, sizeof(*work));
 	assert(work);
-	pthread_mutex_lock(&lttng_libc_state_lock);
 	for (thread = 0; thread < nr_threads; thread++) {
 		work[thread].ht = ht;
 		work[thread].i = i;
@@ -1051,7 +1174,6 @@ void partition_resize_helper(struct cds_lfht *ht, unsigned long i,
 		ret = pthread_join(work[thread].thread_id, NULL);
 		assert(!ret);
 	}
-	pthread_mutex_unlock(&lttng_libc_state_lock);
 	free(work);
 }
 
@@ -1156,8 +1278,8 @@ void init_table(struct cds_lfht *ht,
  * removed nodes have been garbage-collected (unlinked) before call_rcu is
  * invoked to free a hole level of bucket nodes (after a grace period).
  *
- * Logical removal and garbage collection can therefore be done in batch or on a
- * node-per-node basis, as long as the guarantee above holds.
+ * Logical removal and garbage collection can therefore be done in batch
+ * or on a node-per-node basis, as long as the guarantee above holds.
  *
  * When we reach a certain length, we can split this removal over many worker
  * threads, based on the number of CPUs available in the system. This should
@@ -1410,7 +1532,7 @@ void cds_lfht_lookup(struct cds_lfht *ht, unsigned long hash,
 		}
 		node = clear_flag(next);
 	}
-	assert(!node || !is_bucket(rcu_dereference(node->next)));
+	assert(!node || !is_bucket(CMM_LOAD_SHARED(node->next)));
 	iter->node = node;
 	iter->next = next;
 }
@@ -1443,7 +1565,7 @@ void cds_lfht_next_duplicate(struct cds_lfht *ht, cds_lfht_match_fct match,
 		}
 		node = clear_flag(next);
 	}
-	assert(!node || !is_bucket(rcu_dereference(node->next)));
+	assert(!node || !is_bucket(CMM_LOAD_SHARED(node->next)));
 	iter->node = node;
 	iter->next = next;
 }
@@ -1465,7 +1587,7 @@ void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter)
 		}
 		node = clear_flag(next);
 	}
-	assert(!node || !is_bucket(rcu_dereference(node->next)));
+	assert(!node || !is_bucket(CMM_LOAD_SHARED(node->next)));
 	iter->node = node;
 	iter->next = next;
 }
@@ -1566,6 +1688,11 @@ int cds_lfht_del(struct cds_lfht *ht, struct cds_lfht_node *node)
 	return ret;
 }
 
+int cds_lfht_is_node_deleted(struct cds_lfht_node *node)
+{
+	return is_removed(CMM_LOAD_SHARED(node->next));
+}
+
 static
 int cds_lfht_delete_bucket(struct cds_lfht *ht)
 {
@@ -1585,7 +1712,7 @@ int cds_lfht_delete_bucket(struct cds_lfht *ht)
 	 * being destroyed.
 	 */
 	size = ht->size;
-	/* Internal sanity check: all nodes left should be bucket */
+	/* Internal sanity check: all nodes left should be buckets */
 	for (i = 0; i < size; i++) {
 		node = bucket_at(ht, i);
 		dbg_printf("delete bucket: index %lu expected hash %lu hash %lu\n",
@@ -1788,6 +1915,11 @@ void __cds_lfht_resize_lazy_launch(struct cds_lfht *ht)
 			return;
 		}
 		work = malloc(sizeof(*work));
+		if (work == NULL) {
+			dbg_printf("error allocating resize work, bailing out\n");
+			uatomic_dec(&ht->in_progress_resize);
+			return;
+		}
 		work->ht = ht;
 		ht->flavor->update_call_rcu(&work->head, do_resize_cb);
 		CMM_STORE_SHARED(ht->resize_initiated, 1);

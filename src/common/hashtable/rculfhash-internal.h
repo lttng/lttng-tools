@@ -1,5 +1,5 @@
-#ifndef _URCU_RCULFHASH_INTERNAL_H
-#define _URCU_RCULFHASH_INTERNAL_H
+#ifndef URCU_RCULFHASH_INTERNAL_H
+#define URCU_RCULFHASH_INTERNAL_H
 
 /*
  * urcu/rculfhash-internal.h
@@ -24,12 +24,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdio.h>
+
 #include "rculfhash.h"
 
 #ifdef DEBUG
 #define dbg_printf(fmt, args...)     printf("[debug rculfhash] " fmt, ## args)
 #else
-#define dbg_printf(fmt, args...)
+#define dbg_printf(fmt, args...)				\
+do {								\
+	/* do nothing but check printf format */		\
+	if (0)							\
+		printf("[debug rculfhash] " fmt, ## args);	\
+} while (0)
 #endif
 
 #if (CAA_BITS_PER_LONG == 32)
