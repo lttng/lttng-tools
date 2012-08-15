@@ -106,8 +106,6 @@ function test_uri_switch_localhost_folder
 	if [ $? -eq 0 ]; then
 	# Only delete if successful
 	    rm -rf $TRACE_PATH
-	else
-	    break
 	fi
 }
 
@@ -191,10 +189,10 @@ IPVER=$1
 	    validate_trace $EVENT_NAME $TMP_PATH/$FILE_PATH
 
 	    if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TMP_PATH
+			# Only delete if successful
+			rm -rf $TMP_PATH
 	    else
-		break
+			break
 	    fi
 	done
 }
