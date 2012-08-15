@@ -64,6 +64,7 @@ function spawn_sessiond ()
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
 		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1 &
 		if [ $? -eq 1 ]; then
 			echo -e "\e[1;31mFAILED\e[0m"
 			return 1
@@ -105,6 +106,7 @@ function lttng_start_relayd
 
 	if [ -z $(pidof lt-$RELAYD_BIN) ]; then
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1 &
+		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
 			echo -e "\e[1;31mFAILED\e[0m"
 			return 1
