@@ -27,6 +27,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
@@ -1091,7 +1092,7 @@ static int write_relayd_metadata_id(int fd,
 		PERROR("write metadata stream id");
 		goto end;
 	}
-	DBG("Metadata stream id %zu written before data",
+	DBG("Metadata stream id %" PRIu64 " written before data",
 			stream->relayd_stream_id);
 
 end:
@@ -1192,14 +1193,14 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			}
 			goto end;
 		} else if (ret > len) {
-			PERROR("Error in file write (ret %ld > len %lu)", ret, len);
+			PERROR("Error in file write (ret %zd > len %lu)", ret, len);
 			written += ret;
 			goto end;
 		} else {
 			len -= ret;
 			mmap_offset += ret;
 		}
-		DBG("Consumer mmap write() ret %ld (len %lu)", ret, len);
+		DBG("Consumer mmap write() ret %zd (len %lu)", ret, len);
 
 		/* This call is useless on a socket so better save a syscall. */
 		if (!relayd) {

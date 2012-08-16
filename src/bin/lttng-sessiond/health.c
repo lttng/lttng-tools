@@ -123,7 +123,7 @@ int health_check_state(struct health_state *state)
 	}
 
 end:
-	DBG("Health state current %" PRIu64 ", last %" PRIu64 ", ret %d",
+	DBG("Health state current %lu, last %lu, ret %d",
 			current, last, ret);
 
 	return retval;

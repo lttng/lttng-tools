@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
@@ -196,7 +197,8 @@ int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
 		*stream_id = reply.handle;
 	}
 
-	DBG("Relayd stream added successfully with handle %zu", reply.handle);
+	DBG("Relayd stream added successfully with handle %" PRIu64,
+		reply.handle);
 
 error:
 	return ret;
@@ -306,7 +308,7 @@ int relayd_send_metadata(struct lttcomm_sock *sock, size_t len)
 	/* Code flow error. Safety net. */
 	assert(sock);
 
-	DBG("Relayd sending metadata of size %lu", len);
+	DBG("Relayd sending metadata of size %zu", len);
 
 	/* Send command */
 	ret = send_command(sock, RELAYD_SEND_METADATA, NULL, len, 0);
@@ -399,7 +401,7 @@ int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
 	/* Code flow error. Safety net. */
 	assert(sock);
 
-	DBG("Relayd closing stream id %zu", stream_id);
+	DBG("Relayd closing stream id %" PRIu64, stream_id);
 
 	msg.stream_id = htobe64(stream_id);
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
@@ -427,7 +429,7 @@ int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
 		ret = 0;
 	}
 
-	DBG("Relayd close stream id %zu successfully", stream_id);
+	DBG("Relayd close stream id %" PRIu64 " successfully", stream_id);
 
 error:
 	return ret;

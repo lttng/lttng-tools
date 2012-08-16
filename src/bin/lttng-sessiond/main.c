@@ -4751,7 +4751,7 @@ skip_domain:
 		}
 
 		/* Receive variable len data */
-		DBG("Receiving %lu URI(s) from client ...", nb_uri);
+		DBG("Receiving %zu URI(s) from client ...", nb_uri);
 		ret = lttcomm_recv_unix_sock(sock, uris, len);
 		if (ret <= 0) {
 			DBG("No URIs received from client... continuing");
@@ -4811,7 +4811,7 @@ skip_domain:
 			}
 
 			/* Receive variable len data */
-			DBG("Waiting for %lu URIs from client ...", nb_uri);
+			DBG("Waiting for %zu URIs from client ...", nb_uri);
 			ret = lttcomm_recv_unix_sock(sock, uris, len);
 			if (ret <= 0) {
 				DBG("No URIs received from client... continuing");

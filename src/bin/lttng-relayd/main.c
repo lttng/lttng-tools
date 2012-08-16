@@ -878,7 +878,7 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 		return;
 	}
 
-	DBG("Relay deleting session %lu", cmd->session->id);
+	DBG("Relay deleting session %" PRIu64, cmd->session->id);
 	free(cmd->session->sock);
 
 	rcu_read_lock();
@@ -1030,7 +1030,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 			&iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
-		DBG("Relay stream %lu not found", be64toh(stream_info.stream_id));
+		DBG("Relay stream %" PRIu64 " not found", be64toh(stream_info.stream_id));
 		ret = -1;
 		goto end_unlock;
 	}
@@ -1133,7 +1133,7 @@ struct relay_stream *relay_stream_from_stream_id(uint64_t stream_id,
 			&iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
-		DBG("Relay stream %lu not found", stream_id);
+		DBG("Relay stream %" PRIu64 " not found", stream_id);
 		ret = NULL;
 		goto end;
 	}
@@ -1181,7 +1181,7 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		data_buffer_size = data_size;
 	}
 	memset(data_buffer, 0, data_size);
-	DBG2("Relay receiving metadata, waiting for %lu bytes", data_size);
+	DBG2("Relay receiving metadata, waiting for %" PRIu64 " bytes", data_size);
 	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size,
 			MSG_WAITALL);
 	if (ret < 0 || ret != data_size) {
@@ -1235,7 +1235,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 			goto end;
 		}
 		session->id = ++last_relay_session_id;
-		DBG("Created session %lu", session->id);
+		DBG("Created session %" PRIu64, session->id);
 		cmd->session = session;
 	}
 	session->version_check_done = 1;
@@ -1340,7 +1340,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 
 	net_seq_num = be64toh(data_hdr.net_seq_num);
 
-	DBG3("Receiving data of size %u for stream id %zu seqnum %" PRIu64,
+	DBG3("Receiving data of size %u for stream id %" PRIu64 " seqnum %" PRIu64,
 		data_size, stream_id, net_seq_num);
 	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, MSG_WAITALL);
 	if (ret <= 0) {
@@ -1356,7 +1356,8 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 		ret = -1;
 		goto end_unlock;
 	}
-	DBG2("Relay wrote %d bytes to tracefile for stream id %lu", ret, stream->stream_handle);
+	DBG2("Relay wrote %d bytes to tracefile for stream id %" PRIu64,
+		ret, stream->stream_handle);
 
 	stream->prev_seq = net_seq_num;
 
@@ -1578,7 +1579,7 @@ void *relay_thread_worker(void *data)
 							DBG("Control connection closed with %d", pollfd);
 						} else {
 							if (relay_connection->session) {
-								DBG2("Relay worker receiving data for session : %lu",
+								DBG2("Relay worker receiving data for session : %" PRIu64,
 										relay_connection->session->id);
 							}
 							ret = relay_process_control(&recv_hdr,

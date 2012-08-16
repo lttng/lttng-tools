@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
@@ -150,7 +151,7 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 		goto error;
 	}
 
-	DBG3("Kernel create channel %s in %s with attr: %d, %zu, %zu, %u, %u, %d",
+	DBG3("Kernel create channel %s in %s with attr: %d, %" PRIu64 ", %" PRIu64 ", %u, %u, %d",
 			chan->name, path, lkc->channel->attr.overwrite,
 			lkc->channel->attr.subbuf_size, lkc->channel->attr.num_subbuf,
 			lkc->channel->attr.switch_timer_interval, lkc->channel->attr.read_timer_interval,

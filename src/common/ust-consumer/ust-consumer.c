@@ -27,6 +27,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <inttypes.h>
 #include <unistd.h>
 
 #include <common/common.h>
@@ -305,7 +306,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_add_stream(new_stream);
 		}
 
-		DBG("UST consumer_add_stream %s (%d,%d) with relayd id %lu",
+		DBG("UST consumer_add_stream %s (%d,%d) with relayd id %" PRIu64,
 				msg.u.stream.path_name, fds[0], fds[1],
 				new_stream->relayd_stream_id);
 		break;
@@ -314,13 +315,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		struct consumer_relayd_sock_pair *relayd;
 
-		DBG("UST consumer destroying relayd %zu",
+		DBG("UST consumer destroying relayd %" PRIu64,
 				msg.u.destroy_relayd.net_seq_idx);
 
 		/* Get relayd reference if exists. */
 		relayd = consumer_find_relayd(msg.u.destroy_relayd.net_seq_idx);
 		if (relayd == NULL) {
-			ERR("Unable to find relayd %zu", msg.u.destroy_relayd.net_seq_idx);
+			ERR("Unable to find relayd %" PRIu64, msg.u.destroy_relayd.net_seq_idx);
 			goto end_nosignal;
 		}
 

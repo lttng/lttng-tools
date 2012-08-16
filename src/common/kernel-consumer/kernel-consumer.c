@@ -25,6 +25,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -285,13 +286,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		struct consumer_relayd_sock_pair *relayd;
 
-		DBG("Kernel consumer destroying relayd %zu",
+		DBG("Kernel consumer destroying relayd %" PRIu64,
 				msg.u.destroy_relayd.net_seq_idx);
 
 		/* Get relayd reference if exists. */
 		relayd = consumer_find_relayd(msg.u.destroy_relayd.net_seq_idx);
 		if (relayd == NULL) {
-			ERR("Unable to find relayd %zu", msg.u.destroy_relayd.net_seq_idx);
+			ERR("Unable to find relayd %" PRIu64,
+					msg.u.destroy_relayd.net_seq_idx);
 			goto end_nosignal;
 		}
 
@@ -370,7 +372,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 				 * display the error but continue processing to try
 				 * to release the subbuffer
 				 */
-				ERR("Error splicing to tracefile (ret: %ld != len: %ld)",
+				ERR("Error splicing to tracefile (ret: %zd != len: %lu)",
 						ret, len);
 			}
 
