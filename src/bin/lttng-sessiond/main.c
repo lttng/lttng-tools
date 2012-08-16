@@ -4328,6 +4328,16 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		goto error;
 	}
 
+	/* Deny register consumer if we already have a spawned consumer. */
+	if (cmd_ctx->lsm->cmd_type == LTTNG_REGISTER_CONSUMER) {
+		pthread_mutex_lock(&kconsumer_data.pid_mutex);
+		if (kconsumer_data.pid > 0) {
+			ret = LTTCOMM_KERN_CONSUMER_FAIL;
+			goto error;
+		}
+		pthread_mutex_unlock(&kconsumer_data.pid_mutex);
+	}
+
 	/*
 	 * Check for command that don't needs to allocate a returned payload. We do
 	 * this here so we don't have to make the call for no payload at each
