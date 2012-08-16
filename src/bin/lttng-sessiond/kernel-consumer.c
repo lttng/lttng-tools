@@ -65,9 +65,10 @@ error:
 int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
 {
 	int ret;
+	char tmp_path[PATH_MAX];
 	const char *pathname;
 	struct lttcomm_consumer_msg lkm;
-	struct consumer_output *output;
+	struct consumer_output *consumer;
 
 	/* Safety net */
 	assert(session);
@@ -76,13 +77,37 @@ int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
 	DBG("Sending metadata %d to kernel consumer", session->metadata_stream_fd);
 
 	/* Get consumer output pointer */
-	output = session->consumer;
+	consumer = session->consumer;
 
-	/* Get correct path name destination */
-	if (output->type == CONSUMER_DST_LOCAL) {
-		pathname = output->dst.trace_path;
+	/* Get the right path name destination */
+	if (consumer->type == CONSUMER_DST_LOCAL) {
+		/* Set application path to the destination path */
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
+				consumer->dst.trace_path, consumer->subdir);
+		if (ret < 0) {
+			PERROR("snprintf metadata path");
+			goto error;
+		}
+		pathname = tmp_path;
+
+		/* Create directory */
+		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG,
+				session->uid, session->gid);
+		if (ret < 0) {
+			if (ret != -EEXIST) {
+				ERR("Trace directory creation error");
+				goto error;
+			}
+		}
+		DBG3("Kernel local consumer tracefile path: %s", pathname);
 	} else {
-		pathname = output->subdir;
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s", consumer->subdir);
+		if (ret < 0) {
+			PERROR("snprintf metadata path");
+			goto error;
+		}
+		pathname = tmp_path;
+		DBG3("Kernel network consumer subdir path: %s", pathname);
 	}
 
 	/* Prep channel message structure */
@@ -108,13 +133,13 @@ int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
 			0, /* Kernel */
 			session->uid,
 			session->gid,
-			output->net_seq_index,
+			consumer->net_seq_index,
 			1, /* Metadata flag set */
 			"metadata",
 			pathname);
 
 	/* Send stream and file descriptor */
-	ret = consumer_send_stream(sock, output, &lkm,
+	ret = consumer_send_stream(sock, consumer, &lkm,
 			&session->metadata_stream_fd, 1);
 	if (ret < 0) {
 		goto error;
@@ -131,9 +156,10 @@ int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
 		struct ltt_kernel_stream *stream, struct ltt_kernel_session *session)
 {
 	int ret;
+	char tmp_path[PATH_MAX];
 	const char *pathname;
 	struct lttcomm_consumer_msg lkm;
-	struct consumer_output *output;
+	struct consumer_output *consumer;
 
 	assert(channel);
 	assert(stream);
@@ -144,15 +170,27 @@ int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
 			stream->fd, channel->channel->name);
 
 	/* Get consumer output pointer */
-	output = session->consumer;
+	consumer = session->consumer;
 
-	/* Get correct path name destination */
-	if (output->type == CONSUMER_DST_LOCAL) {
-		pathname = output->dst.trace_path;
-		DBG3("Consumer is local to %s", pathname);
+	/* Get the right path name destination */
+	if (consumer->type == CONSUMER_DST_LOCAL) {
+		/* Set application path to the destination path */
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
+				consumer->dst.trace_path, consumer->subdir);
+		if (ret < 0) {
+			PERROR("snprintf stream path");
+			goto error;
+		}
+		pathname = tmp_path;
+		DBG3("Kernel local consumer tracefile path: %s", pathname);
 	} else {
-		pathname = output->subdir;
-		DBG3("Consumer is network to subdir %s", pathname);
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s", consumer->subdir);
+		if (ret < 0) {
+			PERROR("snprintf stream path");
+			goto error;
+		}
+		pathname = tmp_path;
+		DBG3("Kernel network consumer subdir path: %s", pathname);
 	}
 
 	/* Prep stream consumer message */
@@ -164,13 +202,13 @@ int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
 			0, /* Kernel */
 			session->uid,
 			session->gid,
-			output->net_seq_index,
+			consumer->net_seq_index,
 			0, /* Metadata flag unset */
 			stream->name,
 			pathname);
 
 	/* Send stream and file descriptor */
-	ret = consumer_send_stream(sock, output, &lkm, &stream->fd, 1);
+	ret = consumer_send_stream(sock, consumer, &lkm, &stream->fd, 1);
 	if (ret < 0) {
 		goto error;
 	}
