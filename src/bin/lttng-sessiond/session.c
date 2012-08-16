@@ -149,6 +149,10 @@ int session_destroy(struct ltt_session *session)
 	DBG("Destroying session %s", session->name);
 	del_session_list(session);
 	pthread_mutex_destroy(&session->lock);
+
+	rcu_read_lock();
+	consumer_destroy_output(session->consumer);
+	rcu_read_unlock();
 	free(session);
 
 	return LTTCOMM_OK;

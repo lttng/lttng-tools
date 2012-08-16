@@ -1497,6 +1497,71 @@ error:
 }
 
 /*
+ * This is an extension of create session that is ONLY and SHOULD only be used
+ * by the lttng command line program. It exists to avoid using URI parsing in
+ * the lttng client.
+ *
+ * We need the date and time for the trace path subdirectory for the case where
+ * the user does NOT define one using either -o or -U. Using the normal
+ * lttng_create_session API call, we have no clue on the session daemon side if
+ * the URL was generated automatically by the client or define by the user.
+ *
+ * So this function "wrapper" is hidden from the public API, takes the datetime
+ * string and appends it if necessary to the URI subdirectory before sending it
+ * to the session daemon.
+ *
+ * With this extra function, the lttng_create_session call behavior is not
+ * changed and the timestamp is appended to the URI on the session daemon side
+ * if necessary.
+ */
+int _lttng_create_session_ext(const char *name, const char *url,
+		const char *datetime)
+{
+	int ret;
+	ssize_t size;
+	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
+
+	if (name == NULL || datetime == NULL) {
+		return -1;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_CREATE_SESSION;
+	if (!strncmp(name, DEFAULT_SESSION_NAME, strlen(DEFAULT_SESSION_NAME))) {
+		ret = snprintf(lsm.session.name, sizeof(lsm.session.name), "%s-%s",
+				name, datetime);
+		if (ret < 0) {
+			PERROR("snprintf session name datetime");
+			return -1;
+		}
+	} else {
+		copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+	}
+
+	/* There should never be a data URL */
+	size = parse_str_urls_to_uri(url, NULL, &uris);
+	if (size < 0) {
+		return LTTCOMM_INVALID;
+	}
+
+	lsm.u.uri.size = size;
+
+	if (uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
+		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "/%s-%s", name,
+				datetime);
+		if (ret < 0) {
+			PERROR("snprintf uri subdir");
+			return -1;
+		}
+	}
+
+	return ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
+			NULL);
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()

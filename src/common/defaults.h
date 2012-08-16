@@ -48,7 +48,7 @@
  * Default session name for the lttng command line. This default value will
  * get the date and time appended (%Y%m%d-%H%M%S) to it.
  */
-#define DEFAULT_SESSION_NAME                    "auto-"
+#define DEFAULT_SESSION_NAME                    "auto"
 
 /* Default consumer paths */
 #define DEFAULT_CONSUMERD_RUNDIR                "%s"

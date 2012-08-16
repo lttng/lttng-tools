@@ -13,11 +13,11 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        channel.c channel.h \
                        event.c event.h \
                        shm.c shm.h \
+                       consumer.c consumer.h \
                        session.c session.h \
                        modprobe.c modprobe.h kern-modules.h \
                        lttng-ust-ctl.h lttng-ust-abi.h \
                        fd-limit.c fd-limit.h \
-                       consumer.c consumer.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h filter.c filter.h \
                        health.c health.h

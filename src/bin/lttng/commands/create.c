@@ -60,6 +60,10 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
+/* HACK */
+extern int _lttng_create_session_ext(const char *name, const char *url,
+		const char *datetime);
+
 /*
  * usage
  */
@@ -245,8 +249,9 @@ error:
 static int create_session(void)
 {
 	int ret;
-	char *session_name, *traces_path = NULL, *alloc_path = NULL;
+	char *session_name = NULL, *traces_path = NULL, *alloc_path = NULL;
 	char *alloc_url = NULL, *url = NULL, datetime[16];
+	char session_name_date[NAME_MAX];
 	time_t rawtime;
 	struct tm *timeinfo;
 
@@ -257,14 +262,26 @@ static int create_session(void)
 
 	/* Auto session name creation */
 	if (opt_session_name == NULL) {
-		ret = asprintf(&session_name, DEFAULT_SESSION_NAME "%s", datetime);
+		ret = snprintf(session_name_date, sizeof(session_name_date),
+				DEFAULT_SESSION_NAME "-%s", datetime);
 		if (ret < 0) {
-			PERROR("asprintf session name");
+			PERROR("snprintf session name");
 			goto error;
 		}
-		DBG("Auto session name set to %s", session_name);
+		session_name = strdup(DEFAULT_SESSION_NAME);
+		if (session_name == NULL) {
+			PERROR("strdup session name");
+			goto error;
+		}
+		DBG("Auto session name set to %s", session_name_date);
 	} else {
 		session_name = opt_session_name;
+		ret = snprintf(session_name_date, sizeof(session_name_date),
+				"%s-%s", session_name, datetime);
+		if (ret < 0) {
+			PERROR("snprintf session name");
+			goto error;
+		}
 	}
 
 	if (opt_no_consumer) {
@@ -300,8 +317,9 @@ static int create_session(void)
 		}
 		alloc_path = strdup(alloc_path);
 
-		ret = asprintf(&alloc_url, "file://%s/" DEFAULT_TRACE_DIR_NAME,
-				alloc_path);
+		ret = asprintf(&alloc_url,
+				"file://%s/" DEFAULT_TRACE_DIR_NAME "/%s",
+				alloc_path, session_name_date);
 		if (ret < 0) {
 			PERROR("asprintf trace dir name");
 			ret = CMD_FATAL;
@@ -312,7 +330,7 @@ static int create_session(void)
 		MSG("Trace(s) output set to %s", alloc_url + strlen("file://"));
 	}
 
-	ret = lttng_create_session(session_name, url);
+	ret = _lttng_create_session_ext(session_name, url, datetime);
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
 		switch (-ret) {
@@ -324,7 +342,7 @@ static int create_session(void)
 	}
 
 	if (opt_session_name == NULL) {
-		MSG("Session created with default name %s", session_name);
+		MSG("Session created with default name %s", session_name_date);
 	} else {
 		MSG("Session %s created.", session_name);
 	}
@@ -349,6 +367,11 @@ static int create_session(void)
 		}
 	}
 
+	if (opt_session_name == NULL) {
+		free(session_name);
+		session_name = session_name_date;
+	}
+
 	/* Init lttng session config */
 	ret = config_init(session_name);
 	if (ret < 0) {
@@ -356,10 +379,11 @@ static int create_session(void)
 		goto error;
 	}
 
+
 	ret = CMD_SUCCESS;
 
 error:
-	if (opt_session_name == NULL) {
+	if (opt_session_name == NULL && session_name != session_name_date) {
 		free(session_name);
 	}
 
