@@ -2001,7 +2001,8 @@ static int create_connect_relayd(struct consumer_output *output,
 		DBG3("Creating relayd stream socket from URI");
 
 		/* Check relayd version */
-		ret = relayd_version_check(sock, LTTNG_UST_COMM_MAJOR, 0);
+		ret = relayd_version_check(sock, RELAYD_VERSION_COMM_MAJOR,
+				RELAYD_VERSION_COMM_MINOR);
 		if (ret < 0) {
 			ret = LTTCOMM_RELAYD_VERSION_FAIL;
 			goto close_sock;

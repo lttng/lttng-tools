@@ -1248,7 +1248,8 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	if (ret < 0) {
 		ERR("Relay sending version");
 	}
-	DBG("Version check done");
+	DBG("Version check done (%u.%u)", be32toh(reply.major),
+			be32toh(reply.minor));
 
 end:
 	return ret;

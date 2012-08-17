@@ -97,58 +97,6 @@ error:
 	return ret;
 }
 
-#if 0
-/*
- * Create session on the relayd.
- *
- * On error, return ret_code negative value else return 0.
- */
-int relayd_create_session(struct lttcomm_sock *sock, const char *hostname,
-		const char *session_name)
-{
-	int ret;
-	struct lttcomm_relayd_create_session msg;
-	struct lttcomm_relayd_generic_reply reply;
-
-	/* Code flow error. Safety net. */
-	assert(sock);
-	assert(hostname);
-	assert(session_name);
-
-	DBG("Relayd creating session for hostname %s and session name %s",
-			hostname, session_name);
-
-	strncpy(msg.hostname, hostname, sizeof(msg.hostname));
-	strncpy(msg.session_name, session_name, sizeof(msg.session_name));
-
-	/* Send command */
-	ret = send_command(sock, RELAYD_CREATE_SESSION, (void *) &msg,
-			sizeof(msg), 0);
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Recevie response */
-	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Return session id or negative ret code. */
-	if (reply.ret_code != LTTCOMM_OK) {
-		ret = -reply.ret_code;
-	} else {
-		/* Success */
-		ret = 0;
-	}
-
-	DBG2("Relayd created session for %s", session_name);
-
-error:
-	return ret;
-}
-#endif
-
 /*
  * Add stream on the relayd and assign stream handle to the stream_id argument.
  *
@@ -254,47 +202,6 @@ int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
 error:
 	return ret;
 }
-
-#if 0
-/*
- * Start data command on the relayd.
- *
- * On success return 0 else return ret_code negative value.
- */
-int relayd_start_data(struct lttcomm_sock *sock)
-{
-	int ret;
-	struct lttcomm_relayd_generic_reply reply;
-
-	/* Code flow error. Safety net. */
-	assert(sock);
-
-	DBG("Relayd start data command");
-
-	/* Send command */
-	ret = send_command(sock, RELAYD_START_DATA, NULL, 0, 0);
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Recevie response */
-	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Return session id or negative ret code. */
-	if (reply.ret_code != LTTCOMM_OK) {
-		ret = -reply.ret_code;
-	} else {
-		/* Success */
-		ret = 0;
-	}
-
-error:
-	return ret;
-}
-#endif
 
 /*
  * Add stream on the relayd and assign stream handle to the stream_id argument.
