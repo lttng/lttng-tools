@@ -23,5 +23,5 @@ gen_ust_events_SOURCES = gen-ust-events.c tp.c tp.h
 gen_ust_events_LDADD = -llttng-ust
 endif
 
-noinst_SCRIPTS = runall run-ust run-kernel
-EXTRA_DIST = runall run-ust run-kernel
+noinst_SCRIPTS = runall run-ust run-kernel uri_switch
+EXTRA_DIST = runall run-ust run-kernel uri_switch
