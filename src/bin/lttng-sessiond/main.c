@@ -2513,13 +2513,17 @@ static void list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 			continue;
 		}
 
-		if (session->consumer->type == CONSUMER_DST_LOCAL &&
-				(!session->kernel_session && !session->ust_session)) {
-			ret = snprintf(sessions[i].path, sizeof(session[i].path), "%s",
-					session->consumer->dst.trace_path);
-		} else {
+		struct ltt_kernel_session *ksess = session->kernel_session;
+		struct ltt_ust_session *usess = session->ust_session;
+
+		if (session->consumer->type == CONSUMER_DST_NET ||
+				(ksess && ksess->consumer->type == CONSUMER_DST_NET) ||
+				(usess && usess->consumer->type == CONSUMER_DST_NET)) {
 			ret = build_network_session_path(sessions[i].path,
 					sizeof(session[i].path), session);
+		} else {
+			ret = snprintf(sessions[i].path, sizeof(session[i].path), "%s",
+				session->consumer->dst.trace_path);
 		}
 		if (ret < 0) {
 			PERROR("snprintf session path");
