@@ -1549,7 +1549,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	lsm.u.uri.size = size;
 
 	if (uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
-		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "/%s-%s", name,
+		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s-%s", name,
 				datetime);
 		if (ret < 0) {
 			PERROR("snprintf uri subdir");

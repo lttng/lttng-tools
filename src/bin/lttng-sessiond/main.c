@@ -2419,6 +2419,73 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 }
 
 /*
+ * Create a session path used by list_lttng_sessions for the case that the
+ * session consumer is on the network.
+ */
+static int build_network_session_path(char *dst, size_t size,
+		struct ltt_session *session)
+{
+	int ret, kdata_port, udata_port;
+	struct lttng_uri *kuri = NULL, *uuri = NULL, *uri = NULL;
+	char tmp_uurl[PATH_MAX], tmp_urls[PATH_MAX];
+
+	assert(session);
+	assert(dst);
+
+	memset(tmp_urls, 0, sizeof(tmp_urls));
+	memset(tmp_uurl, 0, sizeof(tmp_uurl));
+
+	kdata_port = udata_port = DEFAULT_NETWORK_DATA_PORT;
+
+	if (session->kernel_session && session->kernel_session->consumer) {
+		kuri = &session->kernel_session->consumer->dst.net.control;
+		kdata_port = session->kernel_session->consumer->dst.net.data.port;
+	}
+
+	if (session->ust_session && session->ust_session->consumer) {
+		uuri = &session->ust_session->consumer->dst.net.control;
+		udata_port = session->ust_session->consumer->dst.net.data.port;
+	}
+
+	if (uuri == NULL && kuri == NULL) {
+		uri = &session->consumer->dst.net.control;
+		kdata_port = session->consumer->dst.net.data.port;
+	} else if (kuri && uuri) {
+		ret = uri_compare(kuri, uuri);
+		if (ret) {
+			/* Not Equal */
+			uri = kuri;
+			/* Build uuri URL string */
+			ret = uri_to_str_url(uuri, tmp_uurl, sizeof(tmp_uurl));
+			if (ret < 0) {
+				goto error;
+			}
+		} else {
+			uri = kuri;
+		}
+	} else if (kuri && uuri == NULL) {
+		uri = kuri;
+	} else if (uuri && kuri == NULL) {
+		uri = uuri;
+	}
+
+	ret = uri_to_str_url(uri, tmp_urls, sizeof(tmp_urls));
+	if (ret < 0) {
+		goto error;
+	}
+
+	if (strlen(tmp_uurl) > 0) {
+		ret = snprintf(dst, size, "[K]: %s [data: %d] -- [U]: %s [data: %d]",
+				tmp_urls, kdata_port, tmp_uurl, udata_port);
+	} else {
+		ret = snprintf(dst, size, "%s [data: %d]", tmp_urls, kdata_port);
+	}
+
+error:
+	return ret;
+}
+
+/*
  * Using the session list, filled a lttng_session array to send back to the
  * client for session listing.
  *
@@ -2428,6 +2495,7 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 static void list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		gid_t gid)
 {
+	int ret;
 	unsigned int i = 0;
 	struct ltt_session *session;
 
@@ -2444,8 +2512,20 @@ static void list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		if (!session_access_ok(session, uid, gid)) {
 			continue;
 		}
-		strncpy(sessions[i].path, session->path, PATH_MAX);
-		sessions[i].path[PATH_MAX - 1] = '\0';
+
+		if (session->consumer->type == CONSUMER_DST_LOCAL &&
+				(!session->kernel_session && !session->ust_session)) {
+			ret = snprintf(sessions[i].path, sizeof(session[i].path), "%s",
+					session->consumer->dst.trace_path);
+		} else {
+			ret = build_network_session_path(sessions[i].path,
+					sizeof(session[i].path), session);
+		}
+		if (ret < 0) {
+			PERROR("snprintf session path");
+			continue;
+		}
+
 		strncpy(sessions[i].name, session->name, NAME_MAX);
 		sessions[i].name[NAME_MAX - 1] = '\0';
 		sessions[i].enabled = session->enabled;
@@ -2705,6 +2785,12 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 		ret = consumer_set_network_uri(consumer, uri);
 		if (ret < 0) {
 			ret = LTTCOMM_FATAL;
+			goto error;
+		} else if (ret == 1) {
+			/*
+			 * URI was the same in the consumer so we do not append the subdir
+			 * again so to not duplicate output dir.
+			 */
 			goto error;
 		}
 
@@ -3687,8 +3773,6 @@ static int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	int ret;
 	char *path = NULL;
 	struct ltt_session *session;
-	//struct consumer_output *consumer = NULL;
-	//struct lttng_uri *ctrl_uri, *data_uri = NULL;
 
 	assert(name);
 

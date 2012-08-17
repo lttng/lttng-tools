@@ -138,6 +138,40 @@ error:
 }
 
 /*
+ * Build a string URL from a lttng_uri object.
+ */
+int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
+{
+	int ipver, ret;
+	const char *addr;
+	char proto[4], port[7];
+
+	assert(uri);
+	assert(dst);
+
+	if (uri->dtype == LTTNG_DST_PATH) {
+		ipver = 0;
+		addr = uri->dst.path;
+		(void) snprintf(proto, sizeof(proto), "file");
+		(void) snprintf(port, sizeof(port), "%s", "");
+	} else {
+		ipver = (uri->dtype == LTTNG_DST_IPV4) ? 4 : 6;
+		addr = (ipver == 4) ?  uri->dst.ipv4 : uri->dst.ipv6;
+		(void) snprintf(proto, sizeof(proto), "net%d", ipver);
+		(void) snprintf(port, sizeof(port), ":%d", uri->port);
+	}
+
+	ret = snprintf(dst, size, "%s://%s%s%s%s/%s", proto,
+			(ipver == 6) ? "[" : "", addr, (ipver == 6) ? "]" : "",
+			port, uri->subdir);
+	if (ret < 0) {
+		PERROR("snprintf uri to url");
+	}
+
+	return ret;
+}
+
+/*
  * Compare two URIs.
  *
  * Return 0 if equal else 1.

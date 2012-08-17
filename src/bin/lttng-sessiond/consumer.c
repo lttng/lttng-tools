@@ -272,7 +272,8 @@ malloc_error:
 /*
  * Set network URI to the consumer output object.
  *
- * Return 0 on success. Negative value on error.
+ * Return 0 on success. Return 1 if the URI were equal. Else, negative value on
+ * error.
  */
 int consumer_set_network_uri(struct consumer_output *obj,
 		struct lttng_uri *uri)
@@ -294,6 +295,7 @@ int consumer_set_network_uri(struct consumer_output *obj,
 			/* Assign default port. */
 			uri->port = DEFAULT_NETWORK_CONTROL_PORT;
 		}
+		DBG3("Consumer control URI set with port %d", uri->port);
 		break;
 	case LTTNG_STREAM_DATA:
 		dst_uri = &obj->dst.net.data;
@@ -302,6 +304,7 @@ int consumer_set_network_uri(struct consumer_output *obj,
 			/* Assign default port. */
 			uri->port = DEFAULT_NETWORK_DATA_PORT;
 		}
+		DBG3("Consumer data URI set with port %d", uri->port);
 		break;
 	default:
 		ERR("Set network uri type unknown %d", uri->stype);
@@ -312,7 +315,7 @@ int consumer_set_network_uri(struct consumer_output *obj,
 	if (!ret) {
 		/* Same URI, don't touch it and return success. */
 		DBG3("URI network compare are the same");
-		goto end;
+		goto equal;
 	}
 
 	/* URIs were not equal, replacing it. */
@@ -347,9 +350,9 @@ int consumer_set_network_uri(struct consumer_output *obj,
 		DBG3("Consumer set network uri subdir path %s", tmp_path);
 	}
 
-end:
 	return 0;
-
+equal:
+	return 1;
 error:
 	return -1;
 }
