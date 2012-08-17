@@ -2921,12 +2921,12 @@ int ust_app_validate_version(int sock)
 	}
 
 	/* Validate version */
-	if (app->version.major > UST_APP_MAJOR_VERSION) {
+	if (app->version.major != UST_APP_MAJOR_VERSION) {
 		goto error;
 	}
 
 	DBG2("UST app PID %d is compatible with major version %d "
-			"(supporting <= %d)", app->pid, app->version.major,
+			"(supporting == %d)", app->pid, app->version.major,
 			UST_APP_MAJOR_VERSION);
 	app->compatible = 1;
 	rcu_read_unlock();
@@ -2935,7 +2935,7 @@ int ust_app_validate_version(int sock)
 
 error:
 	DBG2("UST app PID %d is not compatible with major version %d "
-			"(supporting <= %d)", app->pid, app->version.major,
+			"(supporting == %d)", app->pid, app->version.major,
 			UST_APP_MAJOR_VERSION);
 	app->compatible = 0;
 	rcu_read_unlock();
