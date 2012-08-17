@@ -353,6 +353,13 @@ int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 {
 	return 0;
 }
+static inline
+int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
+		struct lttng_filter_bytecode *bytecode)
+{
+	return 0;
+}
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
