@@ -107,7 +107,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  > file://...\n");
 	fprintf(ofp, "    Local filesystem full path.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  > net[4|6]://...\n");
+	fprintf(ofp, "  > net[6]://...\n");
 	fprintf(ofp, "    This will use the default network transport layer which is\n");
 	fprintf(ofp, "    TCP for both control (PORT1) and data port (PORT2).\n");
 	fprintf(ofp, "    The default ports are respectively 5342 and 5343.\n");

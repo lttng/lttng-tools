@@ -60,7 +60,10 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-/* HACK */
+/*
+ * Please have a look at src/lib/lttng-ctl/lttng-ctl.c for more information on
+ * why this declaration exists and used ONLY in for this command.
+ */
 extern int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime);
 
@@ -104,7 +107,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  > file://...\n");
 	fprintf(ofp, "    Local filesystem full path.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  > net[4|6]://...\n");
+	fprintf(ofp, "  > net[6]://...\n");
 	fprintf(ofp, "    This will use the default network transport layer which is\n");
 	fprintf(ofp, "    TCP for both control (PORT1) and data port (PORT2).\n");
 	fprintf(ofp, "    The default ports are respectively 5342 and 5343.\n");
