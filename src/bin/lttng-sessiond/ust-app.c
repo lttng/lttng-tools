@@ -2925,7 +2925,7 @@ int ust_app_validate_version(int sock)
 		goto error;
 	}
 
-	DBG2("UST app PID %d is compatible with major version %d "
+	DBG2("UST app PID %d is compatible with internal major version %d "
 			"(supporting == %d)", app->pid, app->version.major,
 			UST_APP_MAJOR_VERSION);
 	app->compatible = 1;
@@ -2934,7 +2934,7 @@ int ust_app_validate_version(int sock)
 	return 0;
 
 error:
-	DBG2("UST app PID %d is not compatible with major version %d "
+	DBG2("UST app PID %d is not compatible with internal major version %d "
 			"(supporting == %d)", app->pid, app->version.major,
 			UST_APP_MAJOR_VERSION);
 	app->compatible = 0;

@@ -24,7 +24,7 @@
 
 /* lttng-ust supported version. */
 #define LTTNG_UST_COMM_MAJOR          2	/* comm protocol major version */
-#define UST_APP_MAJOR_VERSION         2 /* UST version supported */
+#define UST_APP_MAJOR_VERSION         3 /* Internal UST version supported */
 
 #define UST_APP_EVENT_LIST_SIZE 32
 

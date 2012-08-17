@@ -1,3 +1,9 @@
+2012-08-17 lttng-tools 2.1.0-rc1
+	* Feature: Network Streaming
+	* Add the lttng-relayd binary for network streaming
+	* Support user space tracer filtering
+	* Multiple fixes
+
 2012-04-19 lttng-tools 2.0.1
 	* Fix: test script for kernel module validation
 	* Fix: report error to client on consumerd error
