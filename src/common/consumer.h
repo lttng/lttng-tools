@@ -381,5 +381,8 @@ extern int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
+int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
+		struct lttng_consumer_local_data *ctx, int sock,
+		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock);
 
 #endif /* LIB_CONSUMER_H */

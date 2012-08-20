@@ -115,81 +115,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
 	{
-		int fd;
-		struct consumer_relayd_sock_pair *relayd;
-
-		DBG("UST Consumer adding relayd socket");
-
-		/* Get relayd reference if exists. */
-		relayd = consumer_find_relayd(msg.u.relayd_sock.net_index);
-		if (relayd == NULL) {
-			/* Not found. Allocate one. */
-			relayd = consumer_allocate_relayd_sock_pair(
-					msg.u.relayd_sock.net_index);
-			if (relayd == NULL) {
-				lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
-				goto end_nosignal;
-			}
-		}
-
-		/* Poll on consumer socket. */
-		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
-			rcu_read_unlock();
-			return -EINTR;
-		}
-
-		/* Get relayd socket from session daemon */
-		ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
-		if (ret != sizeof(fd)) {
-			lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
-			goto end_nosignal;
-		}
-
-		/* Copy socket information and received FD */
-		switch (msg.u.relayd_sock.type) {
-		case LTTNG_STREAM_CONTROL:
-			/* Copy received lttcomm socket */
-			lttcomm_copy_sock(&relayd->control_sock, &msg.u.relayd_sock.sock);
-			ret = lttcomm_create_sock(&relayd->control_sock);
-			if (ret < 0) {
-				goto end_nosignal;
-			}
-
-			/* Close the created socket fd which is useless */
-			close(relayd->control_sock.fd);
-
-			/* Assign new file descriptor */
-			relayd->control_sock.fd = fd;
-			break;
-		case LTTNG_STREAM_DATA:
-			/* Copy received lttcomm socket */
-			lttcomm_copy_sock(&relayd->data_sock, &msg.u.relayd_sock.sock);
-			ret = lttcomm_create_sock(&relayd->data_sock);
-			if (ret < 0) {
-				goto end_nosignal;
-			}
-
-			/* Close the created socket fd which is useless */
-			close(relayd->data_sock.fd);
-
-			/* Assign new file descriptor */
-			relayd->data_sock.fd = fd;
-			break;
-		default:
-			ERR("Unknown relayd socket type");
-			goto end_nosignal;
-		}
-
-		DBG("Consumer %s socket created successfully with net idx %d (fd: %d)",
-				msg.u.relayd_sock.type == LTTNG_STREAM_CONTROL ? "control" : "data",
-				relayd->net_seq_idx, fd);
-
-		/*
-		 * Add relayd socket pair to consumer data hashtable. If object already
-		 * exists or on error, the function gracefully returns.
-		 */
-		consumer_add_relayd(relayd);
-
+		ret = consumer_add_relayd_socket(msg.u.relayd_sock.net_index,
+				msg.u.relayd_sock.type, ctx, sock, consumer_sockpoll,
+				&msg.u.relayd_sock.sock);
 		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_ADD_CHANNEL:
@@ -372,6 +300,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
 	} while (ret < 0 && errno == EINTR);
 end_nosignal:
+	/* XXX: At some point we might want to return something else than zero */
 	rcu_read_unlock();
 	return 0;
 }
