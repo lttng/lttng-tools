@@ -202,6 +202,25 @@ void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 }
 
 /*
+ * Flag a relayd socket pair for destruction. Destroy it if the refcount
+ * reaches zero.
+ *
+ * RCU read side lock MUST be aquired before calling this function.
+ */
+void consumer_flag_relayd_for_destroy(struct consumer_relayd_sock_pair *relayd)
+{
+	assert(relayd);
+
+	/* Set destroy flag for this object */
+	uatomic_set(&relayd->destroy_flag, 1);
+
+	/* Destroy the relayd if refcount is 0 */
+	if (uatomic_read(&relayd->refcount) == 0) {
+		consumer_destroy_relayd(relayd);
+	}
+}
+
+/*
  * Remove a stream from the global list protected by a mutex. This
  * function is also responsible for freeing its data structures.
  */

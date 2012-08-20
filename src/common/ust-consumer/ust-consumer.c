@@ -241,25 +241,30 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DESTROY_RELAYD:
 	{
+		uint64_t index = msg.u.destroy_relayd.net_seq_idx;
 		struct consumer_relayd_sock_pair *relayd;
 
-		DBG("UST consumer destroying relayd %" PRIu64,
-				msg.u.destroy_relayd.net_seq_idx);
+		DBG("UST consumer destroying relayd %" PRIu64, index);
 
 		/* Get relayd reference if exists. */
-		relayd = consumer_find_relayd(msg.u.destroy_relayd.net_seq_idx);
+		relayd = consumer_find_relayd(index);
 		if (relayd == NULL) {
-			ERR("Unable to find relayd %" PRIu64, msg.u.destroy_relayd.net_seq_idx);
+			ERR("Unable to find relayd %" PRIu64, index);
 			goto end_nosignal;
 		}
 
-		/* Set destroy flag for this object */
-		uatomic_set(&relayd->destroy_flag, 1);
+		/*
+		 * Each relayd socket pair has a refcount of stream attached to it
+		 * which tells if the relayd is still active or not depending on the
+		 * refcount value.
+		 *
+		 * This will set the destroy flag of the relayd object and destroy it
+		 * if the refcount reaches zero when called.
+		 *
+		 * The destroy can happen either here or when a stream fd hangs up.
+		 */
+		consumer_flag_relayd_for_destroy(relayd);
 
-		/* Destroy the relayd if refcount is 0 else set the destroy flag. */
-		if (uatomic_read(&relayd->refcount) == 0) {
-			consumer_destroy_relayd(relayd);
-		}
 		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
