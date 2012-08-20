@@ -560,9 +560,12 @@ int consumer_send_stream(int sock, struct consumer_output *dst,
 		break;
 	case CONSUMER_DST_LOCAL:
 		/* Add stream file name to stream path */
-		strncat(msg->u.stream.path_name, "/", sizeof(msg->u.stream.path_name));
+		strncat(msg->u.stream.path_name, "/",
+				sizeof(msg->u.stream.path_name) -
+				strlen(msg->u.stream.path_name) - 1);
 		strncat(msg->u.stream.path_name, msg->u.stream.name,
-				sizeof(msg->u.stream.path_name));
+				sizeof(msg->u.stream.path_name) -
+				strlen(msg->u.stream.path_name) - 1);
 		msg->u.stream.path_name[sizeof(msg->u.stream.path_name) - 1] = '\0';
 		/* Indicate that the stream is NOT network */
 		msg->u.stream.net_index = -1;

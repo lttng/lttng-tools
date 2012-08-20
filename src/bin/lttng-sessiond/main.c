@@ -1856,7 +1856,8 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	}
 
 	/* Append correct directory to subdir */
-	strncat(consumer->subdir, dir_name, sizeof(consumer->subdir));
+	strncat(consumer->subdir, dir_name,
+			sizeof(consumer->subdir) - strlen(consumer->subdir) - 1);
 	DBG3("Copy session consumer subdir %s", consumer->subdir);
 
 	ret = LTTCOMM_OK;

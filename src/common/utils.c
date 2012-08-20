@@ -70,7 +70,7 @@ char *utils_expand_path(const char *path)
 	}
 
 	/* Add end part to expanded path */
-	strncat(expanded_path, end_path, PATH_MAX);
+	strncat(expanded_path, end_path, PATH_MAX - strlen(expanded_path) - 1);
 
 	free(cut_path);
 	return expanded_path;

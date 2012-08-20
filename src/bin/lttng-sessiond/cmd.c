@@ -385,7 +385,8 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 
 		if (uri->stype == LTTNG_STREAM_CONTROL) {
 			/* On a new subdir, reappend the default trace dir. */
-			strncat(consumer->subdir, default_trace_dir, sizeof(consumer->subdir));
+			strncat(consumer->subdir, default_trace_dir,
+					sizeof(consumer->subdir) - strlen(consumer->subdir) - 1);
 			DBG3("Append domain trace name to subdir %s", consumer->subdir);
 		}
 
@@ -398,7 +399,8 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 				sizeof(consumer->dst.trace_path));
 		/* Append default trace dir */
 		strncat(consumer->dst.trace_path, default_trace_dir,
-				sizeof(consumer->dst.trace_path));
+				sizeof(consumer->dst.trace_path) -
+				strlen(consumer->dst.trace_path) - 1);
 		/* Flag consumer as local. */
 		consumer->type = CONSUMER_DST_LOCAL;
 		break;
@@ -2196,7 +2198,8 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 
 		/* Append default kernel trace dir to subdir */
 		strncat(ksess->consumer->subdir, DEFAULT_KERNEL_TRACE_DIR,
-				sizeof(ksess->consumer->subdir));
+				sizeof(ksess->consumer->subdir) -
+				strlen(ksess->consumer->subdir) - 1);
 
 		/*
 		 * @session-lock
@@ -2281,7 +2284,8 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 
 		/* Append default kernel trace dir to subdir */
 		strncat(usess->consumer->subdir, DEFAULT_UST_TRACE_DIR,
-				sizeof(usess->consumer->subdir));
+				sizeof(usess->consumer->subdir) -
+				strlen(usess->consumer->subdir) - 1);
 
 		/*
 		 * @session-lock
