@@ -28,6 +28,7 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
+#include "consumer.h"
 #include "kernel.h"
 #include "kern-modules.h"
 
@@ -717,4 +718,22 @@ int init_kernel_workarounds(void)
 	}
 end_boot_id:
 	return 0;
+}
+
+/*
+ * Complete teardown of a kernel session.
+ */
+void kernel_destroy_session(struct ltt_kernel_session *ksess)
+{
+	if (ksess == NULL) {
+		DBG3("No kernel session when tearing down session");
+		return;
+	}
+
+	DBG("Tearing down kernel session");
+
+	/* Close any relayd session */
+	consumer_output_send_destroy_relayd(ksess->consumer);
+
+	trace_kernel_destroy_session(ksess);
 }

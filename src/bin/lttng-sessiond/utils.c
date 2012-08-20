@@ -31,6 +31,11 @@ int notify_thread_pipe(int wpipe)
 {
 	int ret;
 
+	/* Ignore if the pipe is invalid. */
+	if (wpipe < 0) {
+		return 0;
+	}
+
 	do {
 		ret = write(wpipe, "!", 1);
 	} while (ret < 0 && errno == EINTR);

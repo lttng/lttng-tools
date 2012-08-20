@@ -28,12 +28,13 @@
 #include "session.h"
 #include "ust-app.h"
 
-const char *module_proc_lttng = "/proc/lttng";
-
 extern const char default_home_dir[],
 	default_tracing_group[],
 	default_ust_sock_dir[],
 	default_global_apps_pipe[];
+
+/* Set in main.c at boot time of the daemon */
+extern int kernel_tracer_fd;
 
 /*
  * This contains extra data needed for processing a command received by the

@@ -38,6 +38,15 @@ struct consumer_socket {
 	 * To use this socket (send/recv), this lock MUST be acquired.
 	 */
 	pthread_mutex_t *lock;
+
+	/*
+	 * Indicates if the socket was registered by a third part
+	 * (REGISTER_CONSUMER) or is the spawn consumer of the session daemon.
+	 * During the destroy phase of a consumer output, we close the socket if
+	 * this flag is set to 1 since we don't need the fd anymore.
+	 */
+	unsigned int registered;
+
 	struct lttng_ht_node_ulong node;
 };
 
@@ -147,8 +156,11 @@ int consumer_send_relayd_socket(int consumer_sock,
 		enum lttng_stream_type type);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
+void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
 int consumer_create_socket(struct consumer_data *data,
 		struct consumer_output *output);
+int consumer_set_subdir(struct consumer_output *consumer,
+		const char *session_name);
 
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
