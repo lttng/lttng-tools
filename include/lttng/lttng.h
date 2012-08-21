@@ -32,12 +32,6 @@
 #define LTTNG_SYMBOL_NAME_LEN             256
 
 /*
- * Maximum length of a domain name. This is the limit for the total length of a
- * domain name specified by the RFC 1035 (https://www.ietf.org/rfc/rfc1035.txt)
- */
-#define LTTNG_MAX_DNNAME                  255
-
-/*
  * Every lttng_event_* structure both apply to kernel event and user-space
  * event.
  */
