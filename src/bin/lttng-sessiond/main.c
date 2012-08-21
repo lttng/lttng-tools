@@ -2033,6 +2033,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		pthread_mutex_lock(&kconsumer_data.pid_mutex);
 		if (kconsumer_data.pid > 0) {
 			ret = LTTCOMM_KERN_CONSUMER_FAIL;
+			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 			goto error;
 		}
 		pthread_mutex_unlock(&kconsumer_data.pid_mutex);
