@@ -19,8 +19,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef _LTTNG_H
-#define _LTTNG_H
+#ifndef LTTNG_H
+#define LTTNG_H
 
 #include <limits.h>
 #include <stdint.h>
@@ -572,4 +572,4 @@ extern int lttng_disable_consumer(struct lttng_handle *handle);
  */
 extern int lttng_health_check(enum lttng_health_component c);
 
-#endif /* _LTTNG_H */
+#endif /* LTTNG_H */
