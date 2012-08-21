@@ -88,6 +88,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Where SESSION_NAME is an optional session name. If not specified, lttng will\n");
 	fprintf(ofp, "get it from the configuration file (.lttngrc).\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -t, --trace-path PATH    Trace directory path for the viewer\n");

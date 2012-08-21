@@ -142,13 +142,7 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-#if 0
-	/* Not implemented yet */
-	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-#else
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-#endif
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -302,13 +296,15 @@ static void print_ctx_type(FILE *ofp)
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng add-context -t TYPE\n");
+	fprintf(ofp, "usage: lttng add-context -t TYPE [-k|-u] [OPTIONS]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "If no channel and no event is given (-c/-e), the context\n");
-	fprintf(ofp, "will be added to all events and all channels.\n");
-	fprintf(ofp, "Otherwise the context will be added only to the channel (-c)\n");
+	fprintf(ofp, "is added to all events and all channels.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Otherwise the context is added only to the channel (-c)\n");
 	fprintf(ofp, "and/or event (-e) indicated.\n");
-	fprintf(ofp, "Exactly one domain (-k/--kernel or -u/--userspace) must be specified.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Exactly one domain (-k or -u) must be specified.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -317,14 +313,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
 	fprintf(ofp, "  -e, --event NAME         Apply to event\n");
 	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-#if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
-	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
-	fprintf(ofp, "                           otherwise the domain is UST EXEC_NAME\n");
-	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
-#else
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-#endif
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Context:\n");
 	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
 	fprintf(ofp, "                           the command line to specify multiple contexts at once.\n");
 	fprintf(ofp, "                           (--kernel preempts --userspace)\n");

@@ -81,20 +81,14 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng enable-channel NAME[,NAME2,...] [options] [channel_options]\n");
+	fprintf(ofp, "usage: lttng enable-channel NAME[,NAME2,...] [-u|-k] [OPTIONS]\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session            Apply to session name\n");
+	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
 	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-#if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer\n");
-	fprintf(ofp, "                           If no CMD, the domain used is UST global\n");
-	fprintf(ofp, "                           or else the domain is UST EXEC_NAME\n");
-	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
-#else
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-#endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Channel options:\n");
 	fprintf(ofp, "      --discard            Discard event when buffers are full%s\n",

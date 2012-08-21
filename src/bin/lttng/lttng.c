@@ -82,7 +82,7 @@ static struct cmd_struct commands[] =  {
 static void usage(FILE *ofp)
 {
 	fprintf(ofp, "LTTng Trace Control " VERSION" - " VERSION_NAME"\n\n");
-	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND>\n");
+	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND> [<ARGS>]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help                 Show this help\n");

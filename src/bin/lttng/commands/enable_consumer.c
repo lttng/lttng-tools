@@ -78,7 +78,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
-	fprintf(ofp, "  -s, --session=NAME   Apply to session name\n");
+	fprintf(ofp, "  -s, --session NAME   Apply to session name\n");
 	fprintf(ofp, "  -k, --kernel         Apply to the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace      Apply to the user-space tracer\n");
 	fprintf(ofp, "\n");

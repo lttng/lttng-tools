@@ -44,8 +44,9 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng version\n");
+	fprintf(ofp, "usage: lttng version [OPTIONS]\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "\n");
@@ -78,7 +79,8 @@ int cmd_version(int argc, const char **argv)
 	}
 
 	MSG("lttng version " VERSION " - " VERSION_NAME);
-	MSG("Web site: http://lttng.org/");
+	MSG("\n" VERSION_DESCRIPTION "\n");
+	MSG("Web site: http://lttng.org");
 	MSG("\nlttng is free software and under the GPL license and part LGPL");
 
 end:

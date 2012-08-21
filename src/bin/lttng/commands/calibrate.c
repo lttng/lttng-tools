@@ -84,21 +84,16 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng calibrate [options] [calibrate_options]\n");
+	fprintf(ofp, "usage: lttng calibrate [-k|-u] [OPTIONS]\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-#if 0
-	fprintf(ofp, "  -u, --userspace [CMD]    Apply to the user-space tracer (domain: UST\n");
-	fprintf(ofp, "                           EXEC_NAME). If no CMD, the domain is UST global.\n";
-	fprintf(ofp, "                           (-k preempts -u)\n");
-	fprintf(ofp, "  -p, --pid PID            If -u, apply to specific PID (domain: UST PID)\n");
-#else
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-#endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Calibrate options:\n");
+	fprintf(ofp, "    --function             Dynamic function entry/return probe (default)\n");
 #if 0
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
 	fprintf(ofp, "    --probe\n");
@@ -109,8 +104,6 @@ static void usage(FILE *ofp)
 #endif
 	fprintf(ofp, "    --syscall              System call eventl\n");
 	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
-#else
-	fprintf(ofp, "    --function             Dynamic function entry/return probe (default)\n");
 #endif
 	fprintf(ofp, "\n");
 }
