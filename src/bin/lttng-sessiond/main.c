@@ -1849,12 +1849,6 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		goto error;
 	}
 
-	ret = consumer_set_subdir(session->consumer, session->name);
-	if (ret < 0) {
-		ret = LTTCOMM_FATAL;
-		goto error;
-	}
-
 	/* Append correct directory to subdir */
 	strncat(consumer->subdir, dir_name,
 			sizeof(consumer->subdir) - strlen(consumer->subdir) - 1);
