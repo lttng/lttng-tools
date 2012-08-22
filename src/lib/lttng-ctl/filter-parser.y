@@ -481,6 +481,11 @@ unary_operator
 			$$ = make_node(parser_ctx, NODE_UNARY_OP);
 			$$->u.unary_op.type = AST_UNARY_NOT;
 		}
+	| NOT_BIN
+		{
+			$$ = make_node(parser_ctx, NODE_UNARY_OP);
+			$$->u.unary_op.type = AST_UNARY_BIN_NOT;
+		}
 	;
 
 multiplicative_expression

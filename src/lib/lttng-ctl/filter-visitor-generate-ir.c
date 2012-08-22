@@ -652,6 +652,8 @@ static
 struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 		struct filter_node *node, enum ir_side side)
 {
+	const char *op_str = "?";
+
 	switch (node->u.unary_op.type) {
 	case AST_UNARY_UNKNOWN:
 	default:
@@ -703,7 +705,17 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 		}
 		return op;
 	}
+	case AST_UNARY_BIN_NOT:
+	{
+		op_str = "~";
+		goto error_not_supported;
 	}
+	}
+
+error_not_supported:
+	fprintf(stderr, "[error] %s: unary operation '%s' not supported\n",
+		__func__, op_str);
+	return NULL;
 }
 
 static

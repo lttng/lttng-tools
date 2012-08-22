@@ -91,6 +91,7 @@ enum unary_op_type {
 	AST_UNARY_PLUS,
 	AST_UNARY_MINUS,
 	AST_UNARY_NOT,
+	AST_UNARY_BIN_NOT,
 };
 
 enum ast_link_type {
