@@ -186,8 +186,8 @@ static int enable_channel(char *session_name)
 		ret = lttng_enable_channel(handle, &chan);
 		if (ret < 0) {
 			switch (-ret) {
-			case LTTCOMM_KERN_CHAN_EXIST:
-			case LTTCOMM_UST_CHAN_EXIST:
+			case LTTNG_ERR_KERN_CHAN_EXIST:
+			case LTTNG_ERR_UST_CHAN_EXIST:
 				WARN("Channel %s: %s (session %s", channel_name,
 						lttng_strerror(ret), session_name);
 				goto error;

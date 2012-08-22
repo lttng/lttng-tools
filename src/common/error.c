@@ -1,0 +1,121 @@
+/*
+ * Copyright (C) 2012 - David Goulet <dgoulet@efficios.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License, version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
+#define _GNU_SOURCE
+#include <assert.h>
+
+#include <lttng/lttng-error.h>
+
+#include "error.h"
+
+#define ERROR_INDEX(code) (code - LTTNG_OK)
+
+/*
+ * Human readable error message.
+ */
+static const char *error_string_array[] = {
+	/* LTTNG_OK code MUST be at the top for the ERROR_INDEX macro to work */
+	[ ERROR_INDEX(LTTNG_OK) ] = "Success",
+	[ ERROR_INDEX(LTTNG_ERR_UNK) ] = "Unknown error",
+	[ ERROR_INDEX(LTTNG_ERR_UND) ] = "Undefined command",
+	[ ERROR_INDEX(LTTNG_ERR_UNKNOWN_DOMAIN) ] = "Unknown tracing domain",
+	[ ERROR_INDEX(LTTNG_ERR_NO_SESSION) ] = "No session found",
+	[ ERROR_INDEX(LTTNG_ERR_CREATE_DIR_FAIL) ] = "Create directory failed",
+	[ ERROR_INDEX(LTTNG_ERR_SESSION_FAIL) ] = "Create session failed",
+	[ ERROR_INDEX(LTTNG_ERR_SESS_NOT_FOUND) ] = "Session name not found",
+	[ ERROR_INDEX(LTTNG_ERR_FATAL) ] = "Fatal error of the session daemon",
+	[ ERROR_INDEX(LTTNG_ERR_SELECT_SESS) ] = "A session MUST be selected",
+	[ ERROR_INDEX(LTTNG_ERR_EXIST_SESS) ] = "Session name already exist",
+	[ ERROR_INDEX(LTTNG_ERR_NO_EVENT) ] = "Event not found",
+	[ ERROR_INDEX(LTTNG_ERR_CONNECT_FAIL) ] = "Unable to connect to Unix socket",
+	[ ERROR_INDEX(LTTNG_ERR_EPERM) ] = "Permission denied",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_NA) ] = "Kernel tracer not available",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_VERSION) ] = "Kernel tracer version is not compatible",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_EVENT_EXIST) ] = "Kernel event already exists",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_SESS_FAIL) ] = "Kernel create session failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CHAN_EXIST) ] = "Kernel channel already exists",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CHAN_FAIL) ] = "Kernel create channel failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CHAN_NOT_FOUND) ] = "Kernel channel not found",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CHAN_DISABLE_FAIL) ] = "Disable kernel channel failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CHAN_ENABLE_FAIL) ] = "Enable kernel channel failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CONTEXT_FAIL) ] = "Add kernel context failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_ENABLE_FAIL) ] = "Enable kernel event failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_DISABLE_FAIL) ] = "Disable kernel event failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_META_FAIL) ] = "Opening metadata failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_START_FAIL) ] = "Starting kernel trace failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_STOP_FAIL) ] = "Stoping kernel trace failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_CONSUMER_FAIL) ] = "Kernel consumer start failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_STREAM_FAIL) ] = "Kernel create stream failed",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_LIST_FAIL) ] = "Listing kernel events failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CALIBRATE_FAIL) ] = "UST calibration failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_SESS_FAIL) ] = "UST create session failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CHAN_FAIL) ] = "UST create channel failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CHAN_EXIST) ] = "UST channel already exist",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CHAN_NOT_FOUND) ] = "UST channel not found",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CHAN_DISABLE_FAIL) ] = "Disable UST channel failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CHAN_ENABLE_FAIL) ] = "Enable UST channel failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_ENABLE_FAIL) ] = "Enable UST event failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_DISABLE_FAIL) ] = "Disable UST event failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_META_FAIL) ] = "Opening metadata failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_START_FAIL) ] = "Starting UST trace failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_STOP_FAIL) ] = "Stoping UST trace failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CONSUMER64_FAIL) ] = "64-bit UST consumer start failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CONSUMER32_FAIL) ] = "32-bit UST consumer start failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_STREAM_FAIL) ] = "UST create stream failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_LIST_FAIL) ] = "Listing UST events failed",
+	[ ERROR_INDEX(LTTNG_ERR_UST_EVENT_EXIST) ] = "UST event already exist",
+	[ ERROR_INDEX(LTTNG_ERR_UST_EVENT_NOT_FOUND)] = "UST event not found",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CONTEXT_EXIST)] = "UST context already exist",
+	[ ERROR_INDEX(LTTNG_ERR_UST_CONTEXT_INVAL)] = "UST invalid context",
+	[ ERROR_INDEX(LTTNG_ERR_NEED_ROOT_SESSIOND) ] = "Tracing the kernel requires a root lttng-sessiond daemon and \"tracing\" group user membership",
+	[ ERROR_INDEX(LTTNG_ERR_TRACE_ALREADY_STARTED) ] = "Tracing already started",
+	[ ERROR_INDEX(LTTNG_ERR_TRACE_ALREADY_STOPPED) ] = "Tracing already stopped",
+	[ ERROR_INDEX(LTTNG_ERR_KERN_EVENT_ENOSYS) ] = "Kernel event type not supported",
+	[ ERROR_INDEX(LTTNG_ERR_INVALID) ] = "Invalid parameter",
+	[ ERROR_INDEX(LTTNG_ERR_NO_USTCONSUMERD) ] = "No UST consumer detected",
+	[ ERROR_INDEX(LTTNG_ERR_NO_KERNCONSUMERD) ] = "No kernel consumer detected",
+	[ ERROR_INDEX(LTTNG_ERR_EVENT_EXIST_LOGLEVEL) ] = "Event already enabled with different loglevel",
+	[ ERROR_INDEX(LTTNG_ERR_URL_DATA_MISS) ] = "Missing data path URL",
+	[ ERROR_INDEX(LTTNG_ERR_URL_CTRL_MISS) ] = "Missing control data path URL",
+	[ ERROR_INDEX(LTTNG_ERR_ENABLE_CONSUMER_FAIL) ] = "Enabling consumer failed",
+	[ ERROR_INDEX(LTTNG_ERR_RELAYD_CONNECT_FAIL) ] = "Unable to connect to lttng-relayd",
+	[ ERROR_INDEX(LTTNG_ERR_RELAYD_VERSION_FAIL) ] = "Relay daemon not compatible",
+	[ ERROR_INDEX(LTTNG_ERR_FILTER_INVAL) ] = "Invalid filter bytecode",
+	[ ERROR_INDEX(LTTNG_ERR_FILTER_NOMEM) ] = "Not enough memory for filter bytecode",
+	[ ERROR_INDEX(LTTNG_ERR_FILTER_EXIST) ] = "Filter already exist",
+	[ ERROR_INDEX(LTTNG_ERR_NO_CONSUMER) ] = "Consumer not found for tracing session",
+
+	/* Last element */
+	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
+};
+
+/*
+ * Return ptr to string representing a human readable error code from the
+ * lttng_error_code enum.
+ *
+ * These code MUST be negative in other to treat that as an error value.
+ */
+const char *error_get_str(int32_t code)
+{
+	code = -code;
+
+	if (code < LTTNG_OK || code > LTTNG_ERR_NR) {
+		code = LTTNG_ERR_NR;
+	}
+
+	return error_string_array[ERROR_INDEX(code)];
+}

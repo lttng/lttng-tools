@@ -48,7 +48,7 @@ int consumer_send_destroy_relayd(struct consumer_socket *sock,
 
 	/* Bail out if consumer is disabled */
 	if (!consumer->enabled) {
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		DBG3("Consumer is disabled");
 		goto error;
 	}
@@ -611,7 +611,7 @@ int consumer_send_relayd_socket(int consumer_sock,
 
 	/* Bail out if consumer is disabled */
 	if (!consumer->enabled) {
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		goto error;
 	}
 

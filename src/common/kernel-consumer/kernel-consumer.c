@@ -92,7 +92,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
-		lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_CMD);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
@@ -120,7 +120,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.channel.mmap_len,
 				msg.u.channel.max_sb_size);
 		if (new_channel == NULL) {
-			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
 		}
 		if (ctx->on_recv_channel != NULL) {
@@ -150,7 +150,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Get stream file descriptor from socket */
 		ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 		if (ret != sizeof(fd)) {
-			lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 			rcu_read_unlock();
 			return ret;
 		}
@@ -167,7 +167,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.net_index,
 				msg.u.stream.metadata_flag);
 		if (new_stream == NULL) {
-			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
 		}
 

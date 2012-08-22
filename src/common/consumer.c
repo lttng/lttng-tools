@@ -1376,16 +1376,16 @@ splice_error:
 	/* send the appropriate error description to sessiond */
 	switch (ret) {
 	case EBADF:
-		lttng_consumer_send_error(ctx, CONSUMERD_SPLICE_EBADF);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_EBADF);
 		break;
 	case EINVAL:
-		lttng_consumer_send_error(ctx, CONSUMERD_SPLICE_EINVAL);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_EINVAL);
 		break;
 	case ENOMEM:
-		lttng_consumer_send_error(ctx, CONSUMERD_SPLICE_ENOMEM);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_ENOMEM);
 		break;
 	case ESPIPE:
-		lttng_consumer_send_error(ctx, CONSUMERD_SPLICE_ESPIPE);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_ESPIPE);
 		break;
 	}
 
@@ -1523,7 +1523,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 					metadata_ht);
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
-				lttng_consumer_send_error(ctx, CONSUMERD_POLL_ERROR);
+				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
 				pthread_mutex_unlock(&consumer_data.lock);
 				goto end;
 			}
@@ -1549,7 +1549,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				goto restart;
 			}
 			perror("Poll error");
-			lttng_consumer_send_error(ctx, CONSUMERD_POLL_ERROR);
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
 			goto end;
 		} else if (num_rdy == 0) {
 			DBG("Polling thread timed out");
@@ -1726,7 +1726,7 @@ void *lttng_consumer_thread_receive_fds(void *data)
 	}
 
 	DBG("Sending ready command to lttng-sessiond");
-	ret = lttng_consumer_send_error(ctx, CONSUMERD_COMMAND_SOCK_READY);
+	ret = lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_COMMAND_SOCK_READY);
 	/* return < 0 on error, but == 0 is not fatal */
 	if (ret < 0) {
 		ERR("Error sending ready command to lttng-sessiond");
@@ -1882,7 +1882,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
-			lttng_consumer_send_error(ctx, CONSUMERD_OUTFD_ERROR);
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto error;
 		}
 	}
@@ -1896,7 +1896,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 	/* Get relayd socket from session daemon */
 	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 	if (ret != sizeof(fd)) {
-		lttng_consumer_send_error(ctx, CONSUMERD_ERROR_RECV_FD);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 		ret = -1;
 		goto error;
 	}

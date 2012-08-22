@@ -79,7 +79,7 @@ static int stop_tracing(void)
 	ret = lttng_stop_tracing(session_name);
 	if (ret < 0) {
 		switch (-ret) {
-		case LTTCOMM_TRACE_ALREADY_STOPPED:
+		case LTTNG_ERR_TRACE_ALREADY_STOPPED:
 			WARN("Tracing already stopped for session %s", session_name);
 			break;
 		default:

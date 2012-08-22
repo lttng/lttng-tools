@@ -338,7 +338,7 @@ static int create_session(void)
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
 		switch (-ret) {
-		case LTTCOMM_EXIST_SESS:
+		case LTTNG_ERR_EXIST_SESS:
 			WARN("Session %s already exists", session_name);
 			break;
 		}

@@ -136,7 +136,7 @@ int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
 	reply.ret_code = be32toh(reply.ret_code);
 
 	/* Return session id or negative ret code. */
-	if (reply.ret_code != LTTCOMM_OK) {
+	if (reply.ret_code != LTTNG_OK) {
 		ret = -reply.ret_code;
 		ERR("Relayd add stream replied error %d", ret);
 	} else {
@@ -328,7 +328,7 @@ int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
 	reply.ret_code = be32toh(reply.ret_code);
 
 	/* Return session id or negative ret code. */
-	if (reply.ret_code != LTTCOMM_OK) {
+	if (reply.ret_code != LTTNG_OK) {
 		ret = -reply.ret_code;
 		ERR("Relayd close stream replied error %d", ret);
 	} else {

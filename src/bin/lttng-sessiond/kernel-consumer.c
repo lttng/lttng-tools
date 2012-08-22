@@ -233,7 +233,7 @@ int kernel_consumer_send_channel_stream(int sock,
 
 	/* Bail out if consumer is disabled */
 	if (!session->consumer->enabled) {
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		goto error;
 	}
 
@@ -276,7 +276,7 @@ int kernel_consumer_send_session(int sock, struct ltt_kernel_session *session)
 
 	/* Bail out if consumer is disabled */
 	if (!session->consumer->enabled) {
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		goto error;
 	}
 

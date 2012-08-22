@@ -11,7 +11,8 @@ UTILS=../utils.h
 SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.c \
 		 $(top_srcdir)/src/bin/lttng-sessiond/consumer.c \
 		 $(top_srcdir)/src/common/uri.c \
-		 $(top_srcdir)/src/common/utils.c
+		 $(top_srcdir)/src/common/utils.c \
+		 $(top_srcdir)/src/common/error.c
 KERN_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-kernel.c \
 				$(top_srcdir)/src/bin/lttng-sessiond/consumer.c \
 				$(top_srcdir)/src/common/uri.c \

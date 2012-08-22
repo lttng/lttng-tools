@@ -74,7 +74,7 @@ static int destroy_session(const char *session_name)
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
 		switch (-ret) {
-		case LTTCOMM_SESS_NOT_FOUND:
+		case LTTNG_ERR_SESS_NOT_FOUND:
 			WARN("Session name %s not found", session_name);
 			break;
 		default:

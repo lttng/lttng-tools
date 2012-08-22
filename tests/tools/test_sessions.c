@@ -28,6 +28,7 @@
 
 #include <bin/lttng-sessiond/session.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/common.h>
 
 #include "utils.h"
 
@@ -132,7 +133,7 @@ static int create_one_session(char *name, char *path)
 	int ret;
 
 	ret = session_create(name, path, geteuid(), getegid());
-	if (ret == LTTCOMM_OK) {
+	if (ret == LTTNG_OK) {
 		/* Validate */
 		ret = find_session_name(name);
 		if (ret < 0) {
@@ -144,7 +145,7 @@ static int create_one_session(char *name, char *path)
 			return 0;
 		}
 	} else {
-		if (ret == LTTCOMM_EXIST_SESS) {
+		if (ret == LTTNG_ERR_EXIST_SESS) {
 			printf("(session already exists) ");
 		}
 		return -1;
@@ -162,7 +163,7 @@ static int destroy_one_session(struct ltt_session *session)
 
 	ret = session_destroy(session);
 
-	if (ret == LTTCOMM_OK) {
+	if (ret == LTTNG_OK) {
 		/* Validate */
 		if (session == NULL) {
 			return 0;

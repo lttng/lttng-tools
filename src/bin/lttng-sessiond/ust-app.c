@@ -2196,6 +2196,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
 	if (ret < 0) {
+		ret = LTTNG_ERR_UST_META_FAIL;
 		goto error_rcu_unlock;
 	}
 
@@ -2227,6 +2228,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				/* Got all streams */
 				lttng_fd_put(LTTNG_FD_APPS, 2);
 				free(ustream);
+				ret = LTTNG_ERR_UST_STREAM_FAIL;
 				break;
 			}
 			ustream->handle = ustream->obj->handle;

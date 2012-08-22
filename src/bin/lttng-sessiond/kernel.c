@@ -307,7 +307,7 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 	if (ret < 0) {
 		switch (errno) {
 		case EEXIST:
-			ret = LTTCOMM_KERN_EVENT_EXIST;
+			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
 		default:
 			PERROR("enable kernel event");
@@ -336,7 +336,7 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 	if (ret < 0) {
 		switch (errno) {
 		case EEXIST:
-			ret = LTTCOMM_KERN_EVENT_EXIST;
+			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
 		default:
 			PERROR("disable kernel event");

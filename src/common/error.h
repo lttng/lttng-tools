@@ -20,11 +20,14 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"
 #endif
+
+#include <lttng/lttng-error.h>
 
 /* Stringify the expansion of a define */
 #define XSTR(d) STR(d)
@@ -108,5 +111,7 @@ extern int lttng_opt_verbose;
 		_PERROR(call ": %s", ## args, buf); \
 	} while(0);
 #endif
+
+const char *error_get_str(int32_t code);
 
 #endif /* _ERROR_H */

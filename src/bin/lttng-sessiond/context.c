@@ -78,13 +78,13 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 		if (no_event) {
 			ret = kernel_add_channel_context(kchan, kctx);
 			if (ret < 0) {
-				ret = LTTCOMM_KERN_CONTEXT_FAIL;
+				ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 				goto error;
 			}
 		} else {
 			ret = add_kctx_to_event(kctx, kchan, event_name);
 			if (ret < 0) {
-				ret = LTTCOMM_KERN_CONTEXT_FAIL;
+				ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 				goto error;
 			} else if (ret == 1) {
 				/* Event found and context added */
@@ -95,11 +95,11 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 	}
 
 	if (!found && !no_event) {
-		ret = LTTCOMM_NO_EVENT;
+		ret = LTTNG_ERR_NO_EVENT;
 		goto error;
 	}
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -125,13 +125,13 @@ static int add_kctx_to_channel(struct lttng_kernel_context *kctx,
 	if (no_event) {
 		ret = kernel_add_channel_context(kchan, kctx);
 		if (ret < 0) {
-			ret = LTTCOMM_KERN_CONTEXT_FAIL;
+			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 			goto error;
 		}
 	} else {
 		ret = add_kctx_to_event(kctx, kchan, event_name);
 		if (ret < 0) {
-			ret = LTTCOMM_KERN_CONTEXT_FAIL;
+			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 			goto error;
 		} else if (ret == 1) {
 			/* Event found and context added */
@@ -140,11 +140,11 @@ static int add_kctx_to_channel(struct lttng_kernel_context *kctx,
 	}
 
 	if (!found && !no_event) {
-		ret = LTTCOMM_NO_EVENT;
+		ret = LTTNG_ERR_NO_EVENT;
 		goto error;
 	}
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -299,7 +299,7 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 		kctx.ctx = LTTNG_KERNEL_CONTEXT_HOSTNAME;
 		break;
 	default:
-		return LTTCOMM_KERN_CONTEXT_FAIL;
+		return LTTNG_ERR_KERN_CONTEXT_FAIL;
 	}
 
 	kctx.u.perf_counter.type = ctx->u.perf_counter.type;
@@ -310,24 +310,24 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 
 	if (strlen(channel_name) == 0) {
 		ret = add_kctx_all_channels(ksession, &kctx, event_name);
-		if (ret != LTTCOMM_OK) {
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 	} else {
 		/* Get kernel channel */
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
 		if (kchan == NULL) {
-			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 			goto error;
 		}
 
 		ret = add_kctx_to_channel(&kctx, kchan, event_name);
-		if (ret != LTTCOMM_OK) {
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 	}
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -340,7 +340,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		struct lttng_event_context *ctx, char *event_name,
 		char *channel_name)
 {
-	int ret = LTTCOMM_OK, have_event = 0;
+	int ret = LTTNG_OK, have_event = 0;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
@@ -360,7 +360,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_UND;
+		ret = LTTNG_ERR_UND;
 		goto error;
 	}
 
@@ -373,7 +373,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	if (strlen(channel_name) != 0) {
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == NULL) {
-			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
 	}
@@ -382,7 +382,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	if (uchan && have_event) {
 		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
 		if (uevent == NULL) {
-			ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+			ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
 		}
 	}
@@ -407,7 +407,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 				goto end;
 			}
 		}
-		ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
 	} else if (!uchan && !have_event) {	/* Add ctx all events, all channels */
 		/* For all channels */
@@ -423,19 +423,19 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 end:
 	switch (ret) {
 	case -EEXIST:
-		ret = LTTCOMM_UST_CONTEXT_EXIST;
+		ret = LTTNG_ERR_UST_CONTEXT_EXIST;
 		break;
 	case -ENOMEM:
-		ret = LTTCOMM_FATAL;
+		ret = LTTNG_ERR_FATAL;
 		break;
 	case -EINVAL:
-		ret = LTTCOMM_UST_CONTEXT_INVAL;
+		ret = LTTNG_ERR_UST_CONTEXT_INVAL;
 		break;
 	case -ENOSYS:
-		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		break;
 	default:
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 

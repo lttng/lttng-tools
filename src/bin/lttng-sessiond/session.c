@@ -143,7 +143,7 @@ int session_destroy(struct ltt_session *session)
 	/* Safety check */
 	if (session == NULL) {
 		ERR("Session pointer was null on session destroy");
-		return LTTCOMM_OK;
+		return LTTNG_OK;
 	}
 
 	DBG("Destroying session %s", session->name);
@@ -155,7 +155,7 @@ int session_destroy(struct ltt_session *session)
 	rcu_read_unlock();
 	free(session);
 
-	return LTTCOMM_OK;
+	return LTTNG_OK;
 }
 
 /*
@@ -170,26 +170,26 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	new_session = zmalloc(sizeof(struct ltt_session));
 	if (new_session == NULL) {
 		PERROR("zmalloc");
-		ret = LTTCOMM_FATAL;
+		ret = LTTNG_ERR_FATAL;
 		goto error_malloc;
 	}
 
 	/* Define session name */
 	if (name != NULL) {
 		if (snprintf(new_session->name, NAME_MAX, "%s", name) < 0) {
-			ret = LTTCOMM_FATAL;
+			ret = LTTNG_ERR_FATAL;
 			goto error_asprintf;
 		}
 	} else {
 		ERR("No session name given");
-		ret = LTTCOMM_FATAL;
+		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
 
 	/* Define session system path */
 	if (path != NULL) {
 		if (snprintf(new_session->path, PATH_MAX, "%s", path) < 0) {
-			ret = LTTCOMM_FATAL;
+			ret = LTTNG_ERR_FATAL;
 			goto error_asprintf;
 		}
 		new_session->start_consumer = 1;
@@ -216,7 +216,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 		if (ret < 0) {
 			if (ret != -EEXIST) {
 				ERR("Trace directory creation error");
-				ret = LTTCOMM_CREATE_DIR_FAIL;
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
 				goto error;
 			}
 		}
@@ -235,7 +235,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	DBG("Tracing session %s created in %s with ID %u by UID %d GID %d", name,
 			path, new_session->id, new_session->uid, new_session->gid);
 
-	return LTTCOMM_OK;
+	return LTTNG_OK;
 
 error:
 error_asprintf:

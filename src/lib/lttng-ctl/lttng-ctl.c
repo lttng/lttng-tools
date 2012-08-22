@@ -524,7 +524,7 @@ static int ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 	}
 
 	/* Check error code if OK */
-	if (llm.ret_code != LTTCOMM_OK) {
+	if (llm.ret_code != LTTNG_OK) {
 		ret = -llm.ret_code;
 		goto end;
 	}
@@ -1041,18 +1041,13 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
  */
 const char *lttng_strerror(int code)
 {
-	/* lttcomm error codes range from -LTTCOMM_OK down to -LTTCOMM_NR */
-	if (code > -LTTCOMM_OK) {
-		return "Ended with errors";
-	}
-
-	return lttcomm_get_readable_code(code);
+	return error_get_str(code);
 }
 
 /*
  * Create a brand new session using name and url for destination.
  *
- * Returns LTTCOMM_OK on success or a negative error code.
+ * Returns LTTNG_OK on success or a negative error code.
  */
 int lttng_create_session(const char *name, const char *url)
 {
@@ -1072,7 +1067,7 @@ int lttng_create_session(const char *name, const char *url)
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
 	if (size < 0) {
-		return LTTCOMM_INVALID;
+		return LTTNG_ERR_INVALID;
 	}
 
 	lsm.u.uri.size = size;
@@ -1351,7 +1346,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	size = parse_str_urls_to_uri(control_url, data_url, &uris);
 	if (size < 0) {
-		return LTTCOMM_INVALID;
+		return LTTNG_ERR_INVALID;
 	}
 
 	lsm.u.uri.size = size;
@@ -1543,7 +1538,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
 	if (size < 0) {
-		return LTTCOMM_INVALID;
+		return LTTNG_ERR_INVALID;
 	}
 
 	lsm.u.uri.size = size;

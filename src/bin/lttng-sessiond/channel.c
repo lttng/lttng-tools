@@ -91,17 +91,17 @@ int channel_kernel_disable(struct ltt_kernel_session *ksession,
 
 	kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
 	if (kchan == NULL) {
-		ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 		goto error;
 	} else if (kchan->enabled == 1) {
 		ret = kernel_disable_channel(kchan);
 		if (ret < 0 && ret != -EEXIST) {
-			ret = LTTCOMM_KERN_CHAN_DISABLE_FAIL;
+			ret = LTTNG_ERR_KERN_CHAN_DISABLE_FAIL;
 			goto error;
 		}
 	}
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -118,15 +118,15 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 	if (kchan->enabled == 0) {
 		ret = kernel_enable_channel(kchan);
 		if (ret < 0) {
-			ret = LTTCOMM_KERN_CHAN_ENABLE_FAIL;
+			ret = LTTNG_ERR_KERN_CHAN_ENABLE_FAIL;
 			goto error;
 		}
 	} else {
-		ret = LTTCOMM_KERN_CHAN_EXIST;
+		ret = LTTNG_ERR_KERN_CHAN_EXIST;
 		goto error;
 	}
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -145,7 +145,7 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	if (attr == NULL) {
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
 		if (defattr == NULL) {
-			ret = LTTCOMM_FATAL;
+			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
 		attr = defattr;
@@ -154,18 +154,18 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	/* Channel not found, creating it */
 	ret = kernel_create_channel(ksession, attr, ksession->trace_path);
 	if (ret < 0) {
-		ret = LTTCOMM_KERN_CHAN_FAIL;
+		ret = LTTNG_ERR_KERN_CHAN_FAIL;
 		goto error;
 	}
 
 	/* Notify kernel thread that there is a new channel */
 	ret = notify_thread_pipe(kernel_pipe);
 	if (ret < 0) {
-		ret = LTTCOMM_FATAL;
+		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 error:
 	free(defattr);
 	return ret;
@@ -177,12 +177,12 @@ error:
 int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
-	int ret = LTTCOMM_OK;
+	int ret = LTTNG_OK;
 
 	/* If already enabled, everything is OK */
 	if (uchan->enabled) {
 		DBG3("Channel %s already enabled. Skipping", uchan->name);
-		ret = LTTCOMM_UST_CHAN_EXIST;
+		ret = LTTNG_ERR_UST_CHAN_EXIST;
 		goto end;
 	}
 
@@ -198,16 +198,16 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 #endif
 	default:
-		ret = LTTCOMM_UND;
+		ret = LTTNG_ERR_UND;
 		goto error;
 	}
 
 	if (ret < 0) {
 		if (ret != -EEXIST) {
-			ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
+			ret = LTTNG_ERR_UST_CHAN_ENABLE_FAIL;
 			goto error;
 		} else {
-			ret = LTTCOMM_OK;
+			ret = LTTNG_OK;
 		}
 	}
 
@@ -225,7 +225,7 @@ error:
 int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		struct lttng_channel *attr)
 {
-	int ret = LTTCOMM_OK;
+	int ret = LTTNG_OK;
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
 
@@ -233,7 +233,7 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	if (attr == NULL) {
 		defattr = channel_new_default_attr(domain);
 		if (defattr == NULL) {
-			ret = LTTCOMM_FATAL;
+			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
 		attr = defattr;
@@ -246,18 +246,18 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	 * (unlike kernel tracing).
 	 */
 	if (!attr->attr.subbuf_size || (attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
-		ret = LTTCOMM_INVALID;
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 	if (!attr->attr.num_subbuf || (attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
-		ret = LTTCOMM_INVALID;
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, usess->pathname);
 	if (uchan == NULL) {
-		ret = LTTCOMM_FATAL;
+		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
 	uchan->enabled = 1;
@@ -275,12 +275,12 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 #endif
 	default:
-		ret = LTTCOMM_UND;
+		ret = LTTNG_ERR_UND;
 		goto error_free_chan;
 	}
 
 	if (ret < 0 && ret != -EEXIST) {
-		ret = LTTCOMM_UST_CHAN_ENABLE_FAIL;
+		ret = LTTNG_ERR_UST_CHAN_FAIL;
 		goto error_free_chan;
 	}
 
@@ -292,7 +292,7 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	DBG2("Channel %s created successfully", uchan->name);
 
 	free(defattr);
-	return LTTCOMM_OK;
+	return LTTNG_OK;
 
 error_free_chan:
 	/*
@@ -311,7 +311,7 @@ error:
 int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
-	int ret = LTTCOMM_OK;
+	int ret = LTTNG_OK;
 
 	/* Already disabled */
 	if (uchan->enabled == 0) {
@@ -332,12 +332,12 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_PID:
 #endif
 	default:
-		ret = LTTCOMM_UND;
+		ret = LTTNG_ERR_UND;
 		goto error;
 	}
 
 	if (ret < 0 && ret != -EEXIST) {
-		ret = LTTCOMM_UST_DISABLE_FAIL;
+		ret = LTTNG_ERR_UST_CHAN_DISABLE_FAIL;
 		goto error;
 	}
 
@@ -345,7 +345,7 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 
 	DBG2("Channel %s disabled successfully", uchan->name);
 
-	return LTTCOMM_OK;
+	return LTTNG_OK;
 
 end:
 error:

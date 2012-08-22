@@ -208,7 +208,7 @@ static int enable_consumer(char *session_name)
 		if (ret < 0) {
 			ERR("Enabling consumer for session %s: %s", session_name,
 					lttng_strerror(ret));
-			if (ret == -LTTCOMM_ENABLE_CONSUMER_FAIL) {
+			if (ret == -LTTNG_ERR_ENABLE_CONSUMER_FAIL) {
 				ERR("Perhaps the session was previously started?");
 			}
 			goto error;

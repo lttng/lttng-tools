@@ -76,7 +76,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 		struct lttng_filter_bytecode *bytecode, char *event_name,
 		char *channel_name)
 {
-	int ret = LTTCOMM_OK, have_event = 0;
+	int ret = LTTNG_OK, have_event = 0;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
@@ -96,7 +96,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 #endif
 	default:
-		ret = LTTCOMM_UND;
+		ret = LTTNG_ERR_UND;
 		goto error;
 	}
 
@@ -109,7 +109,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 	if (strlen(channel_name) != 0) {
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == NULL) {
-			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
 	}
@@ -118,7 +118,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 	if (uchan && have_event) {
 		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
 		if (uevent == NULL) {
-			ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+			ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
 		}
 	}
@@ -130,7 +130,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 					bytecode);
 	} else if (uchan && !have_event) {	/* Add filter to channel */
 		ERR("Cannot add filter to channel");
-		ret = LTTCOMM_FATAL;	/* not supported. */
+		ret = LTTNG_ERR_FATAL;	/* not supported. */
 		goto error;
 	} else if (!uchan && have_event) {	/* Add filter to event */
 		/* Add context to event without having the channel name */
@@ -146,30 +146,30 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 				goto end;
 			}
 		}
-		ret = LTTCOMM_UST_EVENT_NOT_FOUND;
+		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
 	} else if (!uchan && !have_event) {	/* Add filter all events, all channels */
 		ERR("Cannot add filter to channel");
-		ret = LTTCOMM_FATAL;	/* not supported. */
+		ret = LTTNG_ERR_FATAL;	/* not supported. */
 		goto error;
 	}
 
 end:
 	switch (ret) {
 	case -EEXIST:
-		ret = LTTCOMM_FILTER_EXIST;
+		ret = LTTNG_ERR_FILTER_EXIST;
 		break;
 	case -ENOMEM:
-		ret = LTTCOMM_FATAL;
+		ret = LTTNG_ERR_FATAL;
 		break;
 	case -EINVAL:
-		ret = LTTCOMM_FILTER_INVAL;
+		ret = LTTNG_ERR_FILTER_INVAL;
 		break;
 	case -ENOSYS:
-		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		break;
 	default:
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 

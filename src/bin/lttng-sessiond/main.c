@@ -882,7 +882,7 @@ restart:
 
 	health_code_update(&consumer_data->health);
 
-	if (code == CONSUMERD_COMMAND_SOCK_READY) {
+	if (code == LTTCOMM_CONSUMERD_COMMAND_SOCK_READY) {
 		consumer_data->cmd_sock =
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
 		if (consumer_data->cmd_sock < 0) {
@@ -1791,7 +1791,7 @@ error_version:
 		PERROR("close");
 	}
 	kernel_tracer_fd = -1;
-	return LTTCOMM_KERN_VERSION;
+	return LTTNG_ERR_KERN_VERSION;
 
 error_modules:
 	ret = close(kernel_tracer_fd);
@@ -1806,9 +1806,9 @@ error:
 	WARN("No kernel tracer available");
 	kernel_tracer_fd = -1;
 	if (!is_root) {
-		return LTTCOMM_NEED_ROOT_SESSIOND;
+		return LTTNG_ERR_NEED_ROOT_SESSIOND;
 	} else {
-		return LTTCOMM_KERN_NA;
+		return LTTNG_ERR_KERN_NA;
 	}
 }
 
@@ -1845,7 +1845,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		dir_name = DEFAULT_UST_TRACE_DIR;
 		break;
 	default:
-		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
 	}
 
@@ -1854,7 +1854,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 			sizeof(consumer->subdir) - strlen(consumer->subdir) - 1);
 	DBG3("Copy session consumer subdir %s", consumer->subdir);
 
-	ret = LTTCOMM_OK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -1878,7 +1878,7 @@ static int create_ust_session(struct ltt_session *session,
 		break;
 	default:
 		ERR("Unknown UST domain on create session %d", domain->type);
-		ret = LTTCOMM_UNKNOWN_DOMAIN;
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
 	}
 
@@ -1886,7 +1886,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	lus = trace_ust_create_session(session->path, session->id, domain);
 	if (lus == NULL) {
-		ret = LTTCOMM_UST_SESS_FAIL;
+		ret = LTTNG_ERR_UST_SESS_FAIL;
 		goto error;
 	}
 
@@ -1896,11 +1896,11 @@ static int create_ust_session(struct ltt_session *session,
 
 	/* Copy session output to the newly created UST session */
 	ret = copy_session_consumer(domain->type, session);
-	if (ret != LTTCOMM_OK) {
+	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
-	return LTTCOMM_OK;
+	return LTTNG_OK;
 
 error:
 	free(lus);
@@ -1919,7 +1919,7 @@ static int create_kernel_session(struct ltt_session *session)
 
 	ret = kernel_create_session(session, kernel_tracer_fd);
 	if (ret < 0) {
-		ret = LTTCOMM_KERN_SESS_FAIL;
+		ret = LTTNG_ERR_KERN_SESS_FAIL;
 		goto error;
 	}
 
@@ -1928,7 +1928,7 @@ static int create_kernel_session(struct ltt_session *session)
 
 	/* Copy session output to the newly created Kernel session */
 	ret = copy_session_consumer(LTTNG_DOMAIN_KERNEL, session);
-	if (ret != LTTCOMM_OK) {
+	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
@@ -1949,7 +1949,7 @@ static int create_kernel_session(struct ltt_session *session)
 	session->kernel_session->uid = session->uid;
 	session->kernel_session->gid = session->gid;
 
-	return LTTCOMM_OK;
+	return LTTNG_OK;
 
 error:
 	trace_kernel_destroy_session(session->kernel_session);
@@ -1991,7 +1991,7 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		int *sock_error)
 {
-	int ret = LTTCOMM_OK;
+	int ret = LTTNG_OK;
 	int need_tracing_session = 1;
 	int need_domain;
 
@@ -2015,9 +2015,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	if (opt_no_kernel && need_domain
 			&& cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
 		if (!is_root) {
-			ret = LTTCOMM_NEED_ROOT_SESSIOND;
+			ret = LTTNG_ERR_NEED_ROOT_SESSIOND;
 		} else {
-			ret = LTTCOMM_KERN_NA;
+			ret = LTTNG_ERR_KERN_NA;
 		}
 		goto error;
 	}
@@ -2026,7 +2026,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	if (cmd_ctx->lsm->cmd_type == LTTNG_REGISTER_CONSUMER) {
 		pthread_mutex_lock(&kconsumer_data.pid_mutex);
 		if (kconsumer_data.pid > 0) {
-			ret = LTTCOMM_KERN_CONSUMER_FAIL;
+			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 			goto error;
 		}
@@ -2075,10 +2075,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		cmd_ctx->session = session_find_by_name(cmd_ctx->lsm->session.name);
 		if (cmd_ctx->session == NULL) {
 			if (cmd_ctx->lsm->session.name != NULL) {
-				ret = LTTCOMM_SESS_NOT_FOUND;
+				ret = LTTNG_ERR_SESS_NOT_FOUND;
 			} else {
 				/* If no session name specified */
-				ret = LTTCOMM_SELECT_SESS;
+				ret = LTTNG_ERR_SELECT_SESS;
 			}
 			goto error;
 		} else {
@@ -2098,7 +2098,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	switch (cmd_ctx->lsm->domain.type) {
 	case LTTNG_DOMAIN_KERNEL:
 		if (!is_root) {
-			ret = LTTCOMM_NEED_ROOT_SESSIOND;
+			ret = LTTNG_ERR_NEED_ROOT_SESSIOND;
 			goto error;
 		}
 
@@ -2113,7 +2113,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 		/* Consumer is in an ERROR state. Report back to client */
 		if (uatomic_read(&kernel_consumerd_state) == CONSUMER_ERROR) {
-			ret = LTTCOMM_NO_KERNCONSUMERD;
+			ret = LTTNG_ERR_NO_KERNCONSUMERD;
 			goto error;
 		}
 
@@ -2122,7 +2122,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			if (cmd_ctx->session->kernel_session == NULL) {
 				ret = create_kernel_session(cmd_ctx->session);
 				if (ret < 0) {
-					ret = LTTCOMM_KERN_SESS_FAIL;
+					ret = LTTNG_ERR_KERN_SESS_FAIL;
 					goto error;
 				}
 			}
@@ -2135,7 +2135,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 				ret = start_consumerd(&kconsumer_data);
 				if (ret < 0) {
-					ret = LTTCOMM_KERN_CONSUMER_FAIL;
+					ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 					goto error;
 				}
 				uatomic_set(&kernel_consumerd_state, CONSUMER_STARTED);
@@ -2159,7 +2159,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	{
 		/* Consumer is in an ERROR state. Report back to client */
 		if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
-			ret = LTTCOMM_NO_USTCONSUMERD;
+			ret = LTTNG_ERR_NO_USTCONSUMERD;
 			goto error;
 		}
 
@@ -2168,7 +2168,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
 						&cmd_ctx->lsm->domain);
-				if (ret != LTTCOMM_OK) {
+				if (ret != LTTNG_OK) {
 					goto error;
 				}
 			}
@@ -2183,7 +2183,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 				ret = start_consumerd(&ustconsumer64_data);
 				if (ret < 0) {
-					ret = LTTCOMM_UST_CONSUMER64_FAIL;
+					ret = LTTNG_ERR_UST_CONSUMER64_FAIL;
 					uatomic_set(&ust_consumerd64_fd, -EINVAL);
 					goto error;
 				}
@@ -2212,7 +2212,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
 				ret = start_consumerd(&ustconsumer32_data);
 				if (ret < 0) {
-					ret = LTTCOMM_UST_CONSUMER32_FAIL;
+					ret = LTTNG_ERR_UST_CONSUMER32_FAIL;
 					uatomic_set(&ust_consumerd32_fd, -EINVAL);
 					goto error;
 				}
@@ -2246,13 +2246,13 @@ skip_domain:
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_UST:
 			if (uatomic_read(&ust_consumerd_state) != CONSUMER_STARTED) {
-				ret = LTTCOMM_NO_USTCONSUMERD;
+				ret = LTTNG_ERR_NO_USTCONSUMERD;
 				goto error;
 			}
 			break;
 		case LTTNG_DOMAIN_KERNEL:
 			if (uatomic_read(&kernel_consumerd_state) != CONSUMER_STARTED) {
-				ret = LTTCOMM_NO_KERNCONSUMERD;
+				ret = LTTNG_ERR_NO_KERNCONSUMERD;
 				goto error;
 			}
 			break;
@@ -2267,7 +2267,7 @@ skip_domain:
 		if (!session_access_ok(cmd_ctx->session,
 				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds))) {
-			ret = LTTCOMM_EPERM;
+			ret = LTTNG_ERR_EPERM;
 			goto error;
 		}
 	}
@@ -2321,7 +2321,7 @@ skip_domain:
 		 * be a DOMAIN enuam.
 		 */
 		ret = cmd_enable_consumer(cmd_ctx->lsm->domain.type, cmd_ctx->session);
-		if (ret != LTTCOMM_OK) {
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
@@ -2361,6 +2361,7 @@ skip_domain:
 
 		nb_events = cmd_list_tracepoints(cmd_ctx->lsm->domain.type, &events);
 		if (nb_events < 0) {
+			/* Return value is a negative lttng_error_code. */
 			ret = -nb_events;
 			goto error;
 		}
@@ -2381,7 +2382,7 @@ skip_domain:
 
 		free(events);
 
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_LIST_TRACEPOINT_FIELDS:
@@ -2392,6 +2393,7 @@ skip_domain:
 		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm->domain.type,
 				&fields);
 		if (nb_fields < 0) {
+			/* Return value is a negative lttng_error_code. */
 			ret = -nb_fields;
 			goto error;
 		}
@@ -2413,7 +2415,7 @@ skip_domain:
 
 		free(fields);
 
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_SET_CONSUMER_URI:
@@ -2425,13 +2427,13 @@ skip_domain:
 		len = nb_uri * sizeof(struct lttng_uri);
 
 		if (nb_uri == 0) {
-			ret = LTTCOMM_INVALID;
+			ret = LTTNG_ERR_INVALID;
 			goto error;
 		}
 
 		uris = zmalloc(len);
 		if (uris == NULL) {
-			ret = LTTCOMM_FATAL;
+			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
 
@@ -2441,13 +2443,13 @@ skip_domain:
 		if (ret <= 0) {
 			DBG("No URIs received from client... continuing");
 			*sock_error = 1;
-			ret = LTTCOMM_SESSION_FAIL;
+			ret = LTTNG_ERR_SESSION_FAIL;
 			goto error;
 		}
 
 		ret = cmd_set_consumer_uri(cmd_ctx->lsm->domain.type, cmd_ctx->session,
 				nb_uri, uris);
-		if (ret != LTTCOMM_OK) {
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
@@ -2491,7 +2493,7 @@ skip_domain:
 		if (nb_uri > 0) {
 			uris = zmalloc(len);
 			if (uris == NULL) {
-				ret = LTTCOMM_FATAL;
+				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
 
@@ -2501,13 +2503,13 @@ skip_domain:
 			if (ret <= 0) {
 				DBG("No URIs received from client... continuing");
 				*sock_error = 1;
-				ret = LTTCOMM_SESSION_FAIL;
+				ret = LTTNG_ERR_SESSION_FAIL;
 				goto error;
 			}
 
 			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
 				DBG("Creating session with ONE network URI is a bad call");
-				ret = LTTCOMM_SESSION_FAIL;
+				ret = LTTNG_ERR_SESSION_FAIL;
 				goto error;
 			}
 		}
@@ -2532,6 +2534,7 @@ skip_domain:
 
 		nb_dom = cmd_list_domains(cmd_ctx->session, &domains);
 		if (nb_dom < 0) {
+			/* Return value is a negative lttng_error_code. */
 			ret = -nb_dom;
 			goto error;
 		}
@@ -2547,7 +2550,7 @@ skip_domain:
 
 		free(domains);
 
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_LIST_CHANNELS:
@@ -2558,6 +2561,7 @@ skip_domain:
 		nb_chan = cmd_list_channels(cmd_ctx->lsm->domain.type,
 				cmd_ctx->session, &channels);
 		if (nb_chan < 0) {
+			/* Return value is a negative lttng_error_code. */
 			ret = -nb_chan;
 			goto error;
 		}
@@ -2573,7 +2577,7 @@ skip_domain:
 
 		free(channels);
 
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_LIST_EVENTS:
@@ -2584,6 +2588,7 @@ skip_domain:
 		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type, cmd_ctx->session,
 				cmd_ctx->lsm->u.list.channel_name, &events);
 		if (nb_event < 0) {
+			/* Return value is a negative lttng_error_code. */
 			ret = -nb_event;
 			goto error;
 		}
@@ -2599,7 +2604,7 @@ skip_domain:
 
 		free(events);
 
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_LIST_SESSIONS:
@@ -2624,7 +2629,7 @@ skip_domain:
 
 		session_unlock_list();
 
-		ret = LTTCOMM_OK;
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_CALIBRATE:
@@ -2642,7 +2647,7 @@ skip_domain:
 			cdata = &kconsumer_data;
 			break;
 		default:
-			ret = LTTCOMM_UND;
+			ret = LTTNG_ERR_UND;
 			goto error;
 		}
 
@@ -2655,12 +2660,12 @@ skip_domain:
 		struct lttng_filter_bytecode *bytecode;
 
 		if (cmd_ctx->lsm->u.filter.bytecode_len > 65336) {
-			ret = LTTCOMM_FILTER_INVAL;
+			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
 		bytecode = zmalloc(cmd_ctx->lsm->u.filter.bytecode_len);
 		if (!bytecode) {
-			ret = LTTCOMM_FILTER_NOMEM;
+			ret = LTTNG_ERR_FILTER_NOMEM;
 			goto error;
 		}
 		/* Receive var. len. data */
@@ -2670,14 +2675,14 @@ skip_domain:
 		if (ret <= 0) {
 			DBG("Nothing recv() from client var len data... continuing");
 			*sock_error = 1;
-			ret = LTTCOMM_FILTER_INVAL;
+			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
 
 		if (bytecode->len + sizeof(*bytecode)
 				!= cmd_ctx->lsm->u.filter.bytecode_len) {
 			free(bytecode);
-			ret = LTTCOMM_FILTER_INVAL;
+			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
 
@@ -2688,7 +2693,7 @@ skip_domain:
 		break;
 	}
 	default:
-		ret = LTTCOMM_UND;
+		ret = LTTNG_ERR_UND;
 		break;
 	}
 
@@ -2838,7 +2843,7 @@ restart:
 				check_consumer_health();
 			break;
 		default:
-			reply.ret_code = LTTCOMM_UND;
+			reply.ret_code = LTTNG_ERR_UND;
 			break;
 		}
 

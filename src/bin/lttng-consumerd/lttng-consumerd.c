@@ -376,12 +376,12 @@ int main(int argc, char **argv)
 		}
 	}
 	ret = EXIT_SUCCESS;
-	lttng_consumer_send_error(ctx, CONSUMERD_EXIT_SUCCESS);
+	lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_SUCCESS);
 	goto end;
 
 error:
 	ret = EXIT_FAILURE;
-	lttng_consumer_send_error(ctx, CONSUMERD_EXIT_FAILURE);
+	lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_FAILURE);
 
 end:
 	lttng_consumer_destroy(ctx);

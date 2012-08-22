@@ -83,7 +83,7 @@ static int start_tracing(void)
 	ret = lttng_start_tracing(session_name);
 	if (ret < 0) {
 		switch (-ret) {
-		case LTTCOMM_TRACE_ALREADY_STARTED:
+		case LTTNG_ERR_TRACE_ALREADY_STARTED:
 			WARN("Tracing already started for session %s", session_name);
 			break;
 		default:
