@@ -254,7 +254,7 @@ static int create_session(void)
 	int ret;
 	char *session_name = NULL, *traces_path = NULL, *alloc_path = NULL;
 	char *alloc_url = NULL, *url = NULL, datetime[16];
-	char session_name_date[NAME_MAX];
+	char session_name_date[NAME_MAX], *print_str_url = NULL;
 	time_t rawtime;
 	struct tm *timeinfo;
 
@@ -289,6 +289,7 @@ static int create_session(void)
 
 	if (opt_no_consumer) {
 		url = NULL;
+		print_str_url = "";
 	} else if (opt_output_path != NULL) {
 		traces_path = utils_expand_path(opt_output_path);
 		if (traces_path == NULL) {
@@ -305,10 +306,10 @@ static int create_session(void)
 		}
 		/* URL to use in the lttng_create_session() call */
 		url = alloc_url;
-		MSG("Trace(s) output set to %s", traces_path);
+		print_str_url = traces_path;
 	} else if (opt_url) { /* Handling URL (-U opt) */
 		url = opt_url;
-		MSG("Trace(s) output set to %s", url);
+		print_str_url = url;
 	} else if (opt_ctrl_url == NULL && opt_data_url == NULL) {
 		/* Auto output path */
 		alloc_path = config_get_default_path();
@@ -330,7 +331,7 @@ static int create_session(void)
 		}
 
 		url = alloc_url;
-		MSG("Trace(s) output set to %s", alloc_url + strlen("file://"));
+		print_str_url = alloc_url + strlen("file://");
 	}
 
 	ret = _lttng_create_session_ext(session_name, url, datetime);
@@ -345,10 +346,11 @@ static int create_session(void)
 	}
 
 	if (opt_session_name == NULL) {
-		MSG("Session created with default name %s", session_name_date);
+		MSG("Session %s created.", session_name_date);
 	} else {
 		MSG("Session %s created.", session_name);
 	}
+	MSG("Traces will be written in %s", print_str_url);
 
 	if (opt_ctrl_url || opt_data_url) {
 		/* Setting up control URI (-C or/and -D opt) */
