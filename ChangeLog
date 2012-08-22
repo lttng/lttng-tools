@@ -1,3 +1,16 @@
+2012-08-22 lttng-tools 2.1.0-rc2
+	* Fix: put back 2.0 output text for lttng create cmd
+	* Fix: remove set subdir call that uses bad ptr
+	* Filter: Handle the unary bitwise not operator (~) with an unsupported
+	* Fix: missing mutex unlock on register consumer err
+	* Remove underscore from ifndef of lttng.h
+	* Remove unused define in lttng.h
+	* Standardize lttng command line usage text
+	* Merge duplicate code in consumer for destroy relayd
+	* Merge duplicate code in consumer for add relayd
+	* Fix: Possible buffer overflows in strncat() usage
+	* Move code out of main.c and fix some issues
+
 2012-08-17 lttng-tools 2.1.0-rc1
 	* Feature: Network Streaming
 	* Add the lttng-relayd binary for network streaming
