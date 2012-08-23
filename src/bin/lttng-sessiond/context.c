@@ -295,6 +295,9 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_VPPID:
 		kctx.ctx = LTTNG_KERNEL_CONTEXT_VPPID;
 		break;
+	case LTTNG_EVENT_CONTEXT_HOSTNAME:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_HOSTNAME;
+		break;
 	default:
 		return LTTCOMM_KERN_CONTEXT_FAIL;
 	}

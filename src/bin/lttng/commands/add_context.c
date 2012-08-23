@@ -67,6 +67,7 @@ enum context_type {
 	CONTEXT_PPID         = 8,
 	CONTEXT_VPPID        = 9,
 	CONTEXT_PTHREAD_ID   = 10,
+	CONTEXT_HOSTNAME     = 11,
 };
 
 /*
@@ -203,6 +204,7 @@ const struct ctx_opts {
 	{ "vtid", CONTEXT_VTID },
 	{ "ppid", CONTEXT_PPID },
 	{ "vppid", CONTEXT_VPPID },
+	{ "hostname", CONTEXT_HOSTNAME },
 	/* Perf options */
 	PERF_HW(cpu-cycles, CPU_CYCLES),
 	PERF_HW(cycles, CPU_CYCLES),

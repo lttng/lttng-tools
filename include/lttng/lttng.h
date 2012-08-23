@@ -118,6 +118,7 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PPID              = 8,
 	LTTNG_EVENT_CONTEXT_VPPID             = 9,
 	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
+	LTTNG_EVENT_CONTEXT_HOSTNAME          = 11,
 };
 
 enum lttng_calibrate_type {

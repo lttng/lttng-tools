@@ -51,6 +51,7 @@ enum lttng_kernel_context_type {
 	LTTNG_KERNEL_CONTEXT_VTID           = 7,
 	LTTNG_KERNEL_CONTEXT_PPID           = 8,
 	LTTNG_KERNEL_CONTEXT_VPPID          = 9,
+	LTTNG_KERNEL_CONTEXT_HOSTNAME       = 10,
 };
 
 /* Perf counter attributes */
