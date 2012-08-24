@@ -133,6 +133,7 @@ int recursive_visit_set_parent(struct filter_node *node,
 	return 0;
 }
 
+__attribute__((visibility("hidden")))
 int filter_visitor_set_parent(struct filter_parser_ctx *ctx)
 {
 	return recursive_visit_set_parent(&ctx->ast->root, NULL);

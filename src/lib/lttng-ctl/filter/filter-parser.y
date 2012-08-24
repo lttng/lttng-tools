@@ -34,6 +34,7 @@
 
 __attribute__((visibility("hidden")))
 int yydebug;
+__attribute__((visibility("hidden")))
 int filter_parser_debug = 0;
 
 __attribute__((visibility("hidden")))
@@ -231,11 +232,13 @@ static void filter_ast_free(struct filter_ast *ast)
 		free(node);
 }
 
+__attribute__((visibility("hidden")))
 int filter_parser_ctx_append_ast(struct filter_parser_ctx *parser_ctx)
 {
 	return yyparse(parser_ctx);
 }
 
+__attribute__((visibility("hidden")))
 struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input)
 {
 	struct filter_parser_ctx *parser_ctx;
@@ -277,6 +280,7 @@ cleanup_parser_ctx:
 	return NULL;
 }
 
+__attribute__((visibility("hidden")))
 void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 {
 	int ret;

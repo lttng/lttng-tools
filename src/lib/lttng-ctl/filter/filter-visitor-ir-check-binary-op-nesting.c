@@ -76,6 +76,7 @@ int check_bin_op_nesting_recursive(struct ir_op *node, int nesting)
 	}
 }
 
+__attribute__((visibility("hidden")))
 int filter_visitor_ir_check_binary_op_nesting(struct filter_parser_ctx *ctx)
 {
 	return check_bin_op_nesting_recursive(ctx->ir_root, 0);

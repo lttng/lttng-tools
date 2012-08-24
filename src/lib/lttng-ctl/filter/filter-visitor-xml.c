@@ -246,6 +246,7 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 	return 0;
 }
 
+__attribute__((visibility("hidden")))
 int filter_visitor_print_xml(struct filter_parser_ctx *ctx, FILE *stream,
 			int indent)
 {

@@ -237,6 +237,7 @@ AC_CONFIG_FILES([
 	src/common/relayd/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
+	src/lib/lttng-ctl/filter/Makefile
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile
 	src/bin/lttng-sessiond/Makefile

@@ -447,6 +447,7 @@ int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 	}
 }
 
+__attribute__((visibility("hidden")))
 void filter_bytecode_free(struct filter_parser_ctx *ctx)
 {
 	free(ctx->bytecode);
@@ -455,6 +456,7 @@ void filter_bytecode_free(struct filter_parser_ctx *ctx)
 	ctx->bytecode_reloc = NULL;
 }
 
+__attribute__((visibility("hidden")))
 int filter_visitor_bytecode_generate(struct filter_parser_ctx *ctx)
 {
 	int ret;

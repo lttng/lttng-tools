@@ -34,17 +34,17 @@
 #include <common/uri.h>
 #include <lttng/lttng.h>
 
-#include "filter-ast.h"
-#include "filter-parser.h"
-#include "filter-bytecode.h"
-#include "memstream.h"
+#include "filter/filter-ast.h"
+#include "filter/filter-parser.h"
+#include "filter/filter-bytecode.h"
+#include "filter/memstream.h"
 
 #ifdef DEBUG
-const int print_xml = 1;
+static const int print_xml = 1;
 #define dbg_printf(fmt, args...)	\
 	printf("[debug liblttng-ctl] " fmt, ## args)
 #else
-const int print_xml = 0;
+static const int print_xml = 0;
 #define dbg_printf(fmt, args...)				\
 do {								\
 	/* do nothing but check printf format */		\
