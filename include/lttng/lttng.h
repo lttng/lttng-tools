@@ -26,6 +26,9 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+/* Error codes that can be returned by API calls */
+#include <lttng/lttng-error.h>
+
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
