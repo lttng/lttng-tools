@@ -32,6 +32,7 @@
  * /tmp/test1 does, the real path is returned. In normal time, realpath(3)
  * fails if the end point directory does not exist.
  */
+__attribute__((visibility("hidden")))
 char *utils_expand_path(const char *path)
 {
 	const char *end_path = path;
@@ -84,6 +85,7 @@ error:
 /*
  * Create a pipe in dst.
  */
+__attribute__((visibility("hidden")))
 int utils_create_pipe(int *dst)
 {
 	int ret;
@@ -106,6 +108,7 @@ int utils_create_pipe(int *dst)
  * Make sure the pipe opened by this function are closed at some point. Use
  * utils_close_pipe().
  */
+__attribute__((visibility("hidden")))
 int utils_create_pipe_cloexec(int *dst)
 {
 	int ret, i;
@@ -134,6 +137,7 @@ error:
 /*
  * Close both read and write side of the pipe.
  */
+__attribute__((visibility("hidden")))
 void utils_close_pipe(int *src)
 {
 	int i, ret;
@@ -158,6 +162,7 @@ void utils_close_pipe(int *src)
 /*
  * Create a new string using two strings range.
  */
+__attribute__((visibility("hidden")))
 char *utils_strdupdelim(const char *begin, const char *end)
 {
 	char *str;

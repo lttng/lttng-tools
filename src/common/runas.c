@@ -333,6 +333,7 @@ int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	}
 }
 
+__attribute__((visibility("hidden")))
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_mkdir_data data;
@@ -344,6 +345,7 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	return run_as(_mkdir_recursive, &data, uid, gid);
 }
 
+__attribute__((visibility("hidden")))
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_mkdir_data data;
@@ -359,6 +361,7 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
  * Note: open_run_as is currently not working. We'd need to pass the fd
  * opened in the child to the parent.
  */
+__attribute__((visibility("hidden")))
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_open_data data;

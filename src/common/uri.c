@@ -56,7 +56,7 @@ static const struct uri_proto proto_uri[] = {
  * Return pointer to the character in s matching one of the characters in
  * accept. If nothing is found, return pointer to the end of string (eos).
  */
-const inline char *strpbrk_or_eos(const char *s, const char *accept)
+static const inline char *strpbrk_or_eos(const char *s, const char *accept)
 {
 	char *p = strpbrk(s, accept);
 	if (p == NULL) {
@@ -140,6 +140,7 @@ error:
 /*
  * Build a string URL from a lttng_uri object.
  */
+__attribute__((visibility("hidden")))
 int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 {
 	int ipver, ret;
@@ -176,6 +177,7 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
  *
  * Return 0 if equal else 1.
  */
+__attribute__((visibility("hidden")))
 int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 {
 	return memcmp(uri1, uri2, sizeof(struct lttng_uri));
@@ -184,6 +186,7 @@ int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 /*
  * Free URI memory.
  */
+__attribute__((visibility("hidden")))
 void uri_free(struct lttng_uri *uri)
 {
 	/* Safety check */
@@ -195,6 +198,7 @@ void uri_free(struct lttng_uri *uri)
 /*
  * Return an allocated URI.
  */
+__attribute__((visibility("hidden")))
 struct lttng_uri *uri_create(void)
 {
 	struct lttng_uri *uri;
@@ -223,6 +227,7 @@ struct lttng_uri *uri_create(void)
  * This code was originally licensed GPLv2 so we acknolwedge the Free Software
  * Foundation here for the work and to make sure we are compliant with it.
  */
+__attribute__((visibility("hidden")))
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 {
 	int ret, i = 0;

@@ -109,6 +109,7 @@ static const char *error_string_array[] = {
  *
  * These code MUST be negative in other to treat that as an error value.
  */
+__attribute__((visibility("hidden")))
 const char *error_get_str(int32_t code)
 {
 	code = -code;
