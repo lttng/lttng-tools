@@ -176,7 +176,7 @@ struct return_op {
 } __attribute__((packed));
 
 struct lttng_filter_bytecode_alloc {
-	uint16_t alloc_len;
+	uint32_t alloc_len;
 	struct lttng_filter_bytecode b;
 };
 

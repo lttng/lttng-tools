@@ -95,14 +95,15 @@ int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align
 	int32_t ret;
 	uint32_t padding = offset_align((*fb)->b.len, align);
 
+	if ((*fb)->b.len + padding + len > LTTNG_FILTER_MAX_LEN)
+		return -EINVAL;
+
 	if ((*fb)->b.len + padding + len > (*fb)->alloc_len) {
 		uint32_t new_len =
 			max_t(uint32_t, 1U << get_count_order((*fb)->b.len + padding + len),
 				(*fb)->alloc_len << 1);
 		uint32_t old_len = (*fb)->alloc_len;
 
-		if (new_len > 0xFFFF)
-			return -EINVAL;
 		*fb = realloc(*fb, sizeof(struct lttng_filter_bytecode_alloc) + new_len);
 		if (!*fb)
 			return -ENOMEM;
