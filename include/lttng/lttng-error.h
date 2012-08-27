@@ -25,6 +25,10 @@
 #ifndef LTTNG_ERROR_H
 #define LTTNG_ERROR_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum lttng_error_code {
 	LTTNG_OK                         = 10,  /* Ok */
 	LTTNG_ERR_UNK                    = 11,  /* Unknown Error */
@@ -130,5 +134,9 @@ enum lttng_error_code {
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_ERROR_H */
