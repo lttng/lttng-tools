@@ -208,7 +208,7 @@ struct lttcomm_session_msg {
 	} u;
 };
 
-#define LTTNG_FILTER_MAX_LEN	65336
+#define LTTNG_FILTER_MAX_LEN	65536
 
 /*
  * Filter bytecode data. The reloc table is located at the end of the
@@ -216,8 +216,8 @@ struct lttcomm_session_msg {
  * starts at reloc_table_offset.
  */
 struct lttng_filter_bytecode {
-	uint16_t len;	/* len of data */
-	uint16_t reloc_table_offset;
+	uint32_t len;	/* len of data */
+	uint32_t reloc_table_offset;
 	char data[0];
 };
 

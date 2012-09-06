@@ -168,10 +168,10 @@ struct lttng_ust_calibrate {
 	} u;
 };
 
-#define FILTER_BYTECODE_MAX_LEN		65535
+#define FILTER_BYTECODE_MAX_LEN		65536
 struct lttng_ust_filter_bytecode {
-	uint16_t len;
-	uint16_t reloc_offset;
+	uint32_t len;
+	uint32_t reloc_offset;
 	char data[0];
 };
 

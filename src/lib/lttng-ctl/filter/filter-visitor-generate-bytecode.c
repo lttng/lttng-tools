@@ -239,7 +239,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		uint32_t insn_len = sizeof(struct load_op)
 			+ sizeof(struct field_ref);
 		struct field_ref ref_offset;
-		uint16_t reloc_offset;
+		uint32_t reloc_offset;
 
 		insn = calloc(insn_len, 1);
 		if (!insn)

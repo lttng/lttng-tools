@@ -2659,7 +2659,7 @@ skip_domain:
 	{
 		struct lttng_filter_bytecode *bytecode;
 
-		if (cmd_ctx->lsm->u.filter.bytecode_len > 65336) {
+		if (cmd_ctx->lsm->u.filter.bytecode_len > LTTNG_FILTER_MAX_LEN) {
 			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
