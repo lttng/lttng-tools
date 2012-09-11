@@ -228,14 +228,29 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 
-		if (ctx->on_recv_stream != NULL) {
-			ret = ctx->on_recv_stream(new_stream);
-			if (ret == 0) {
-				consumer_add_stream(new_stream);
-			} else if (ret < 0) {
-				goto end_nosignal;
+		/* Send stream to the metadata thread */
+		if (new_stream->metadata_flag) {
+			if (ctx->on_recv_stream) {
+				ret = ctx->on_recv_stream(new_stream);
+				if (ret < 0) {
+					goto end_nosignal;
+				}
+			}
+
+			do {
+				ret = write(ctx->consumer_metadata_pipe[1], new_stream,
+						sizeof(struct lttng_consumer_stream));
+			} while (ret < 0 && errno == EINTR);
+			if (ret < 0) {
+				PERROR("write metadata pipe");
 			}
 		} else {
+			if (ctx->on_recv_stream) {
+				ret = ctx->on_recv_stream(new_stream);
+				if (ret < 0) {
+					goto end_nosignal;
+				}
+			}
 			consumer_add_stream(new_stream);
 		}
 

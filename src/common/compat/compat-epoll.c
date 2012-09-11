@@ -43,7 +43,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	}
 
 	/* Don't bust the limit here */
-	if (size > poll_max_size) {
+	if (size > poll_max_size && poll_max_size != 0) {
 		size = poll_max_size;
 	}
 

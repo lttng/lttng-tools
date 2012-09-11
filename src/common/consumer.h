@@ -83,7 +83,6 @@ struct lttng_consumer_channel {
 	void *mmap_base;
 	size_t mmap_len;
 	struct lttng_ust_shm_handle *handle;
-	int nr_streams;
 	int wait_fd_is_copy;
 	int cpucount;
 };
@@ -224,10 +223,13 @@ struct lttng_consumer_local_data {
 	char *consumer_command_sock_path;
 	/* communication with splice */
 	int consumer_thread_pipe[2];
+	int consumer_splice_metadata_pipe[2];
 	/* pipe to wake the poll thread when necessary */
 	int consumer_poll_pipe[2];
 	/* to let the signal handler wake up the fd receiver thread */
 	int consumer_should_quit[2];
+	/* Metadata poll thread pipe. Transfer metadata stream to it */
+	int consumer_metadata_pipe[2];
 };
 
 /*
@@ -318,8 +320,7 @@ extern int lttng_consumer_poll_socket(struct pollfd *kconsumer_sockpoll);
 
 extern int consumer_update_poll_array(
 		struct lttng_consumer_local_data *ctx, struct pollfd **pollfd,
-		struct lttng_consumer_stream **local_consumer_streams,
-		struct lttng_ht *metadata_ht);
+		struct lttng_consumer_stream **local_consumer_streams);
 
 extern struct lttng_consumer_stream *consumer_allocate_stream(
 		int channel_key, int stream_key,

@@ -30,6 +30,8 @@
 #include <inttypes.h>
 
 #include <common/common.h>
+#include <common/utils.h>
+#include <common/compat/poll.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -440,20 +442,6 @@ int consumer_add_stream(struct lttng_consumer_stream *stream)
 	consumer_data.stream_count++;
 	consumer_data.need_update = 1;
 
-	switch (consumer_data.type) {
-	case LTTNG_CONSUMER_KERNEL:
-		break;
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		/* Streams are in CPU number order (we rely on this) */
-		stream->cpu = stream->chan->nr_streams++;
-		break;
-	default:
-		ERR("Unknown consumer_data type");
-		assert(0);
-		goto end;
-	}
-
 end:
 	pthread_mutex_unlock(&consumer_data.lock);
 
@@ -698,7 +686,6 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	channel->mmap_len = mmap_len;
 	channel->max_sb_size = max_sb_size;
 	channel->refcount = 0;
-	channel->nr_streams = 0;
 	lttng_ht_node_init_ulong(&channel->node, channel->key);
 
 	switch (consumer_data.type) {
@@ -766,8 +753,7 @@ end:
  */
 int consumer_update_poll_array(
 		struct lttng_consumer_local_data *ctx, struct pollfd **pollfd,
-		struct lttng_consumer_stream **local_stream,
-		struct lttng_ht *metadata_ht)
+		struct lttng_consumer_stream **local_stream)
 {
 	int i = 0;
 	struct lttng_ht_iter iter;
@@ -783,10 +769,6 @@ int consumer_update_poll_array(
 		DBG("Active FD %d", stream->wait_fd);
 		(*pollfd)[i].fd = stream->wait_fd;
 		(*pollfd)[i].events = POLLIN | POLLPRI;
-		if (stream->metadata_flag && metadata_ht) {
-			lttng_ht_add_unique_ulong(metadata_ht, &stream->waitfd_node);
-			DBG("Active FD added to metadata hash table");
-		}
 		local_stream[i] = stream;
 		i++;
 	}
@@ -1025,9 +1007,22 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		goto error_thread_pipe;
 	}
 
+	ret = utils_create_pipe(ctx->consumer_metadata_pipe);
+	if (ret < 0) {
+		goto error_metadata_pipe;
+	}
+
+	ret = utils_create_pipe(ctx->consumer_splice_metadata_pipe);
+	if (ret < 0) {
+		goto error_splice_pipe;
+	}
+
 	return ctx;
 
-
+error_splice_pipe:
+	utils_close_pipe(ctx->consumer_metadata_pipe);
+error_metadata_pipe:
+	utils_close_pipe(ctx->consumer_thread_pipe);
 error_thread_pipe:
 	for (i = 0; i < 2; i++) {
 		int err;
@@ -1088,6 +1083,8 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	if (ret) {
 		PERROR("close");
 	}
+	utils_close_pipe(ctx->consumer_splice_metadata_pipe);
+
 	unlink(ctx->consumer_command_sock_path);
 	free(ctx);
 }
@@ -1258,6 +1255,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 	/* Default is on the disk */
 	int outfd = stream->out_fd;
 	struct consumer_relayd_sock_pair *relayd = NULL;
+	int *splice_pipe;
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -1282,6 +1280,17 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		}
 	}
 
+	/*
+	 * Choose right pipe for splice. Metadata and trace data are handled by
+	 * different threads hence the use of two pipes in order not to race or
+	 * corrupt the written data.
+	 */
+	if (stream->metadata_flag) {
+		splice_pipe = ctx->consumer_splice_metadata_pipe;
+	} else {
+		splice_pipe = ctx->consumer_thread_pipe;
+	}
+
 	/* Write metadata stream id before payload */
 	if (stream->metadata_flag && relayd) {
 		/*
@@ -1290,8 +1299,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		 */
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 
-		ret = write_relayd_metadata_id(ctx->consumer_thread_pipe[1],
-				stream, relayd);
+		ret = write_relayd_metadata_id(splice_pipe[1], stream, relayd);
 		if (ret < 0) {
 			written = ret;
 			goto end;
@@ -1301,7 +1309,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 	while (len > 0) {
 		DBG("splice chan to pipe offset %lu of len %lu (fd : %d)",
 				(unsigned long)offset, len, fd);
-		ret_splice = splice(fd, &offset, ctx->consumer_thread_pipe[1], NULL, len,
+		ret_splice = splice(fd, &offset, splice_pipe[1], NULL, len,
 				SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice chan to pipe, ret %zd", ret_splice);
 		if (ret_splice < 0) {
@@ -1337,7 +1345,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		}
 
 		/* Splice data out */
-		ret_splice = splice(ctx->consumer_thread_pipe[0], NULL, outfd, NULL,
+		ret_splice = splice(splice_pipe[0], NULL, outfd, NULL,
 				ret_splice, SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("Kernel consumer splice pipe to file, ret %zd", ret_splice);
 		if (ret_splice < 0) {
@@ -1460,6 +1468,331 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 }
 
 /*
+ * Iterate over all stream element of the hashtable and free them. This is race
+ * free since the hashtable received MUST be in a race free synchronization
+ * state. It's the caller responsability to make sure of that.
+ */
+static void destroy_stream_ht(struct lttng_ht *ht)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttng_consumer_stream *stream;
+
+	if (ht == NULL) {
+		return;
+	}
+
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
+		ret = lttng_ht_del(ht, &iter);
+		assert(!ret);
+
+		free(stream);
+	}
+
+	lttng_ht_destroy(ht);
+}
+
+/*
+ * Clean up a metadata stream and free its memory.
+ */
+static void consumer_del_metadata_stream(struct lttng_consumer_stream *stream)
+{
+	int ret;
+	struct lttng_consumer_channel *free_chan = NULL;
+	struct consumer_relayd_sock_pair *relayd;
+
+	assert(stream);
+	/*
+	 * This call should NEVER receive regular stream. It must always be
+	 * metadata stream and this is crucial for data structure synchronization.
+	 */
+	assert(stream->metadata_flag);
+
+	pthread_mutex_lock(&consumer_data.lock);
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		if (stream->mmap_base != NULL) {
+			ret = munmap(stream->mmap_base, stream->mmap_len);
+			if (ret != 0) {
+				PERROR("munmap metadata stream");
+			}
+		}
+		break;
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		lttng_ustconsumer_del_stream(stream);
+		break;
+	default:
+		ERR("Unknown consumer_data type");
+		assert(0);
+	}
+	pthread_mutex_unlock(&consumer_data.lock);
+
+	if (stream->out_fd >= 0) {
+		ret = close(stream->out_fd);
+		if (ret) {
+			PERROR("close");
+		}
+	}
+
+	if (stream->wait_fd >= 0 && !stream->wait_fd_is_copy) {
+		ret = close(stream->wait_fd);
+		if (ret) {
+			PERROR("close");
+		}
+	}
+
+	if (stream->shm_fd >= 0 && stream->wait_fd != stream->shm_fd) {
+		ret = close(stream->shm_fd);
+		if (ret) {
+			PERROR("close");
+		}
+	}
+
+	/* Check and cleanup relayd */
+	rcu_read_lock();
+	relayd = consumer_find_relayd(stream->net_seq_idx);
+	if (relayd != NULL) {
+		uatomic_dec(&relayd->refcount);
+		assert(uatomic_read(&relayd->refcount) >= 0);
+
+		/* Closing streams requires to lock the control socket. */
+		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+		ret = relayd_send_close_stream(&relayd->control_sock,
+				stream->relayd_stream_id, stream->next_net_seq_num - 1);
+		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		if (ret < 0) {
+			DBG("Unable to close stream on the relayd. Continuing");
+			/*
+			 * Continue here. There is nothing we can do for the relayd.
+			 * Chances are that the relayd has closed the socket so we just
+			 * continue cleaning up.
+			 */
+		}
+
+		/* Both conditions are met, we destroy the relayd. */
+		if (uatomic_read(&relayd->refcount) == 0 &&
+				uatomic_read(&relayd->destroy_flag)) {
+			consumer_destroy_relayd(relayd);
+		}
+	}
+	rcu_read_unlock();
+
+	/* Atomically decrement channel refcount since other threads can use it. */
+	uatomic_dec(&stream->chan->refcount);
+	if (!uatomic_read(&stream->chan->refcount)) {
+		free_chan = stream->chan;
+	}
+
+	if (free_chan) {
+		consumer_del_channel(free_chan);
+	}
+
+	free(stream);
+}
+
+/*
+ * Action done with the metadata stream when adding it to the consumer internal
+ * data structures to handle it.
+ */
+static void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
+{
+	struct consumer_relayd_sock_pair *relayd;
+
+	/* Find relayd and, if one is found, increment refcount. */
+	rcu_read_lock();
+	relayd = consumer_find_relayd(stream->net_seq_idx);
+	if (relayd != NULL) {
+		uatomic_inc(&relayd->refcount);
+	}
+	rcu_read_unlock();
+}
+
+/*
+ * Thread polls on metadata file descriptor and write them on disk or on the
+ * network.
+ */
+void *lttng_consumer_thread_poll_metadata(void *data)
+{
+	int ret, i, pollfd;
+	uint32_t revents, nb_fd;
+	struct lttng_consumer_stream *stream;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht *metadata_ht = NULL;
+	struct lttng_poll_event events;
+	struct lttng_consumer_local_data *ctx = data;
+	ssize_t len;
+
+	rcu_register_thread();
+
+	DBG("Thread metadata poll started");
+
+	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (metadata_ht == NULL) {
+		goto end;
+	}
+
+	/* Size is set to 1 for the consumer_metadata pipe */
+	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
+	if (ret < 0) {
+		ERR("Poll set creation failed");
+		goto end;
+	}
+
+	ret = lttng_poll_add(&events, ctx->consumer_metadata_pipe[0], LPOLLIN);
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Main loop */
+	DBG("Metadata main loop started");
+
+	while (1) {
+		lttng_poll_reset(&events);
+
+		nb_fd = LTTNG_POLL_GETNB(&events);
+
+		/* Only the metadata pipe is set */
+		if (nb_fd == 0 && consumer_quit == 1) {
+			goto end;
+		}
+
+restart:
+		DBG("Metadata poll wait with %d fd(s)", nb_fd);
+		ret = lttng_poll_wait(&events, -1);
+		DBG("Metadata event catched in thread");
+		if (ret < 0) {
+			if (errno == EINTR) {
+				goto restart;
+			}
+			goto error;
+		}
+
+		for (i = 0; i < nb_fd; i++) {
+			revents = LTTNG_POLL_GETEV(&events, i);
+			pollfd = LTTNG_POLL_GETFD(&events, i);
+
+			/* Check the metadata pipe for incoming metadata. */
+			if (pollfd == ctx->consumer_metadata_pipe[0]) {
+				if (revents & (LPOLLERR | LPOLLHUP | LPOLLNVAL)) {
+					DBG("Metadata thread pipe hung up");
+					/*
+					 * Remove the pipe from the poll set and continue the loop
+					 * since their might be data to consume.
+					 */
+					lttng_poll_del(&events, ctx->consumer_metadata_pipe[0]);
+					close(ctx->consumer_metadata_pipe[0]);
+					continue;
+				} else if (revents & LPOLLIN) {
+					stream = zmalloc(sizeof(struct lttng_consumer_stream));
+					if (stream == NULL) {
+						PERROR("zmalloc metadata consumer stream");
+						goto error;
+					}
+
+					do {
+						/* Get the stream and add it to the local hash table */
+						ret = read(pollfd, stream,
+								sizeof(struct lttng_consumer_stream));
+					} while (ret < 0 && errno == EINTR);
+					if (ret < 0 || ret < sizeof(struct lttng_consumer_stream)) {
+						PERROR("read metadata stream");
+						free(stream);
+						/*
+						 * Let's continue here and hope we can still work
+						 * without stopping the consumer. XXX: Should we?
+						 */
+						continue;
+					}
+
+					DBG("Adding metadata stream %d to poll set",
+							stream->wait_fd);
+
+					/* The node should be init at this point */
+					lttng_ht_add_unique_ulong(metadata_ht,
+							&stream->waitfd_node);
+
+					/* Add metadata stream to the global poll events list */
+					lttng_poll_add(&events, stream->wait_fd,
+							LPOLLIN | LPOLLPRI);
+
+					consumer_add_metadata_stream(stream);
+				}
+
+				/* Metadata pipe handled. Continue handling the others */
+				continue;
+			}
+
+			/* From here, the event is a metadata wait fd */
+
+			lttng_ht_lookup(metadata_ht, (void *)((unsigned long) pollfd),
+					&iter);
+			node = lttng_ht_iter_get_node_ulong(&iter);
+			if (node == NULL) {
+				/* FD not found, continue loop */
+				continue;
+			}
+
+			stream = caa_container_of(node, struct lttng_consumer_stream,
+					waitfd_node);
+
+			/* Get the data out of the metadata file descriptor */
+			if (revents & (LPOLLIN | LPOLLPRI)) {
+				DBG("Metadata available on fd %d", pollfd);
+				assert(stream->wait_fd == pollfd);
+
+				len = ctx->on_buffer_ready(stream, ctx);
+				/* It's ok to have an unavailable sub-buffer */
+				if (len < 0 && len != -EAGAIN) {
+					goto end;
+				} else if (len > 0) {
+					stream->data_read = 1;
+				}
+			}
+
+			/*
+			 * Remove the stream from the hash table since there is no data
+			 * left on the fd because we previously did a read on the buffer.
+			 */
+			if (revents & (LPOLLERR | LPOLLHUP | LPOLLNVAL)) {
+				DBG("Metadata fd %d is hup|err|nval.", pollfd);
+				if (!stream->hangup_flush_done
+						&& (consumer_data.type == LTTNG_CONSUMER32_UST
+							|| consumer_data.type == LTTNG_CONSUMER64_UST)) {
+					DBG("Attempting to flush and consume the UST buffers");
+					lttng_ustconsumer_on_stream_hangup(stream);
+
+					/* We just flushed the stream now read it. */
+					len = ctx->on_buffer_ready(stream, ctx);
+					/* It's ok to have an unavailable sub-buffer */
+					if (len < 0 && len != -EAGAIN) {
+						goto end;
+					}
+				}
+
+				/* Removing it from hash table, poll set and free memory */
+				lttng_ht_del(metadata_ht, &iter);
+				lttng_poll_del(&events, stream->wait_fd);
+				consumer_del_metadata_stream(stream);
+			}
+		}
+	}
+
+error:
+end:
+	DBG("Metadata poll thread exiting");
+	lttng_poll_clean(&events);
+
+	if (metadata_ht) {
+		destroy_stream_ht(metadata_ht);
+	}
+
+	rcu_unregister_thread();
+	return NULL;
+}
+
+/*
  * This thread polls the fds in the set to consume the data and write
  * it to tracefile if necessary.
  */
@@ -1472,15 +1805,19 @@ void *lttng_consumer_thread_poll_fds(void *data)
 	/* local view of consumer_data.fds_count */
 	int nb_fd = 0;
 	struct lttng_consumer_local_data *ctx = data;
-	struct lttng_ht *metadata_ht;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
-	struct lttng_consumer_stream *metadata_stream;
 	ssize_t len;
-
-	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	pthread_t metadata_thread;
+	void *status;
 
 	rcu_register_thread();
+
+	/* Start metadata polling thread */
+	ret = pthread_create(&metadata_thread, NULL,
+			lttng_consumer_thread_poll_metadata, (void *) ctx);
+	if (ret < 0) {
+		PERROR("pthread_create metadata thread");
+		goto end;
+	}
 
 	local_stream = zmalloc(sizeof(struct lttng_consumer_stream));
 
@@ -1519,8 +1856,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				pthread_mutex_unlock(&consumer_data.lock);
 				goto end;
 			}
-			ret = consumer_update_poll_array(ctx, &pollfd, local_stream,
-					metadata_ht);
+			ret = consumer_update_poll_array(ctx, &pollfd, local_stream);
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
 				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
@@ -1575,24 +1911,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 
 		/* Take care of high priority channels first. */
 		for (i = 0; i < nb_fd; i++) {
-			/* Lookup for metadata which is the highest priority */
-			lttng_ht_lookup(metadata_ht,
-					(void *)((unsigned long) pollfd[i].fd), &iter);
-			node = lttng_ht_iter_get_node_ulong(&iter);
-			if (node != NULL &&
-					(pollfd[i].revents & (POLLIN | POLLPRI))) {
-				DBG("Urgent metadata read on fd %d", pollfd[i].fd);
-				metadata_stream = caa_container_of(node,
-						struct lttng_consumer_stream, waitfd_node);
-				high_prio = 1;
-				len = ctx->on_buffer_ready(metadata_stream, ctx);
-				/* it's ok to have an unavailable sub-buffer */
-				if (len < 0 && len != -EAGAIN) {
-					goto end;
-				} else if (len > 0) {
-					metadata_stream->data_read = 1;
-				}
-			} else if (pollfd[i].revents & POLLPRI) {
+			if (pollfd[i].revents & POLLPRI) {
 				DBG("Urgent read on fd %d", pollfd[i].fd);
 				high_prio = 1;
 				len = ctx->on_buffer_ready(local_stream[i], ctx);
@@ -1648,33 +1967,18 @@ void *lttng_consumer_thread_poll_fds(void *data)
 			if ((pollfd[i].revents & POLLHUP)) {
 				DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
 				if (!local_stream[i]->data_read) {
-					if (local_stream[i]->metadata_flag) {
-						iter.iter.node = &local_stream[i]->waitfd_node.node;
-						ret = lttng_ht_del(metadata_ht, &iter);
-						assert(!ret);
-					}
 					consumer_del_stream(local_stream[i]);
 					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLERR) {
 				ERR("Error returned in polling fd %d.", pollfd[i].fd);
 				if (!local_stream[i]->data_read) {
-					if (local_stream[i]->metadata_flag) {
-						iter.iter.node = &local_stream[i]->waitfd_node.node;
-						ret = lttng_ht_del(metadata_ht, &iter);
-						assert(!ret);
-					}
 					consumer_del_stream(local_stream[i]);
 					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLNVAL) {
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
 				if (!local_stream[i]->data_read) {
-					if (local_stream[i]->metadata_flag) {
-						iter.iter.node = &local_stream[i]->waitfd_node.node;
-						ret = lttng_ht_del(metadata_ht, &iter);
-						assert(!ret);
-					}
 					consumer_del_stream(local_stream[i]);
 					num_hup++;
 				}
@@ -1692,6 +1996,23 @@ end:
 		free(local_stream);
 		local_stream = NULL;
 	}
+
+	/*
+	 * Close the write side of the pipe so epoll_wait() in
+	 * lttng_consumer_thread_poll_metadata can catch it. The thread is
+	 * monitoring the read side of the pipe. If we close them both, epoll_wait
+	 * strangely does not return and could create a endless wait period if the
+	 * pipe is the only tracked fd in the poll set. The thread will take care
+	 * of closing the read side.
+	 */
+	close(ctx->consumer_metadata_pipe[1]);
+	if (ret) {
+		ret = pthread_join(metadata_thread, &status);
+		if (ret < 0) {
+			PERROR("pthread_join metadata thread");
+		}
+	}
+
 	rcu_unregister_thread();
 	return NULL;
 }

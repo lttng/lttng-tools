@@ -171,6 +171,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 
+		/*
+		 * The buffer flush is done on the session daemon side for the kernel
+		 * so no need for the stream "hangup_flush_done" variable to be
+		 * tracked. This is important for a kernel stream since we don't rely
+		 * on the flush state of the stream to read data. It's not the case for
+		 * user space tracing.
+		 */
+		new_stream->hangup_flush_done = 0;
+
 		/* The stream is not metadata. Get relayd reference if exists. */
 		relayd = consumer_find_relayd(msg.u.stream.net_index);
 		if (relayd != NULL) {
@@ -190,14 +199,29 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 
-		if (ctx->on_recv_stream != NULL) {
-			ret = ctx->on_recv_stream(new_stream);
-			if (ret == 0) {
-				consumer_add_stream(new_stream);
-			} else if (ret < 0) {
-				goto end_nosignal;
+		/* Send stream to the metadata thread */
+		if (new_stream->metadata_flag) {
+			if (ctx->on_recv_stream) {
+				ret = ctx->on_recv_stream(new_stream);
+				if (ret < 0) {
+					goto end_nosignal;
+				}
+			}
+
+			do {
+				ret = write(ctx->consumer_metadata_pipe[1], new_stream,
+						sizeof(struct lttng_consumer_stream));
+			} while (ret < 0 && errno == EINTR);
+			if (ret < 0) {
+				PERROR("write metadata pipe");
 			}
 		} else {
+			if (ctx->on_recv_stream) {
+				ret = ctx->on_recv_stream(new_stream);
+				if (ret < 0) {
+					goto end_nosignal;
+				}
+			}
 			consumer_add_stream(new_stream);
 		}
 

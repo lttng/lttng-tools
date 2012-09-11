@@ -44,14 +44,15 @@
 #include <common/defaults.h>
 #include <common/common.h>
 #include <common/consumer.h>
+#include <common/compat/poll.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "lttng-consumerd.h"
 
 /* TODO : support UST (all direct kernel-ctl accesses). */
 
-/* the two threads (receive fd and poll) */
-static pthread_t threads[2];
+/* the two threads (receive fd, poll and metadata) */
+static pthread_t threads[3];
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -282,6 +283,9 @@ int main(int argc, char **argv)
 			(void) close(i);
 		}
 	}
+
+	/* Set up max poll set size */
+	lttng_poll_set_max_size();
 
 	if (strlen(command_sock_path) == 0) {
 		switch (opt_type) {
