@@ -282,7 +282,12 @@ end:
 		ret = write(ctx->consumer_poll_pipe[1], "", 1);
 	} while (ret == -1UL && errno == EINTR);
 end_nosignal:
-	return 0;
+
+	/*
+	 * Return 1 to indicate success since the 0 value can be a socket shutdown
+	 * during the recv() or send() call.
+	 */
+	return 1;
 }
 
 int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
