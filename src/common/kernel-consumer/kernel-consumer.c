@@ -257,7 +257,12 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	} while (ret < 0 && errno == EINTR);
 end_nosignal:
 	rcu_read_unlock();
-	return 0;
+
+	/*
+	 * Return 1 to indicate success since the 0 value can be a socket
+	 * shutdown during the recv() or send() call.
+	 */
+	return 1;
 }
 
 /*

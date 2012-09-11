@@ -1776,8 +1776,12 @@ void *lttng_consumer_thread_receive_fds(void *data)
 			DBG("Received STOP command");
 			goto end;
 		}
-		if (ret < 0) {
-			ERR("Communication interrupted on command socket");
+		if (ret <= 0) {
+			/*
+			 * This could simply be a session daemon quitting. Don't output
+			 * ERR() here.
+			 */
+			DBG("Communication interrupted on command socket");
 			goto end;
 		}
 		if (consumer_quit) {
