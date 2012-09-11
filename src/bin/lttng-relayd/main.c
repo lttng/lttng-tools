@@ -1407,7 +1407,7 @@ int relay_add_connection(int fd, struct lttng_poll_event *events,
 		goto error;
 	}
 	ret = read(fd, relay_connection, sizeof(struct relay_command));
-	if (ret < 0 || ret < sizeof(relay_connection)) {
+	if (ret < 0 || ret < sizeof(struct relay_command)) {
 		PERROR("read relay cmd pipe");
 		goto error_read;
 	}
