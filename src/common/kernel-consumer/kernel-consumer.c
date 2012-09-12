@@ -304,6 +304,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
+		ret = -err;
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -320,8 +321,9 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			/* read the whole subbuffer */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
-				errno = -ret;
+				errno = -err;
 				perror("Getting sub-buffer len failed.");
+				ret = -err;
 				goto end;
 			}
 
@@ -341,8 +343,9 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			/* read the used subbuffer size */
 			err = kernctl_get_padded_subbuf_size(infd, &len);
 			if (err != 0) {
-				errno = -ret;
+				errno = -err;
 				perror("Getting sub-buffer len failed.");
+				ret = -err;
 				goto end;
 			}
 			/* write the subbuffer to the tracefile */
@@ -362,13 +365,15 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 	err = kernctl_put_next_subbuf(infd);
 	if (err != 0) {
-		errno = -ret;
+		errno = -err;
 		if (errno == EFAULT) {
 			perror("Error in unreserving sub buffer\n");
 		} else if (errno == EIO) {
 			/* Should never happen with newer LTTng versions */
 			perror("Reader has been pushed by the writer, last sub-buffer corrupted.");
 		}
+
+		ret = -err;
 		goto end;
 	}
 

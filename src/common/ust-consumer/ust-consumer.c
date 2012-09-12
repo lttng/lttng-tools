@@ -426,7 +426,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = ustctl_get_next_subbuf(handle, buf);
 	if (err != 0) {
-		ret = -ret;	/* ustctl_get_next_subbuf returns negative, caller expect positive. */
+		ret = -err;	/* ustctl_get_next_subbuf returns negative, caller expect positive. */
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
