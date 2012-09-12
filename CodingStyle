@@ -14,11 +14,32 @@ single-line if/else statements. Please refer to:
 - Linux kernel scripts/checkpatch.pl for a script which verify the patch
   coding style.
 
+Error handling:
+-------------
+
+We ask to use one single return point in a function. For that, we uses the
+"goto" statement for the error handling creating one single point for error
+handling and return code. See the following example:
+
+int some_function(...)
+{
+	int ret;
+	[...]
+
+	if (ret != 0) {
+		goto error;
+	}
+
+	[...]
+error:
+	return ret;
+}
+
 Commenting:
 -------------
 
 Every function MUST have a comment above it even if the function is trivial.
 
-Please add non-trivial comments/documentation as much you can in the code. Poor
-comments WILL be rejected upon merging so please pay attention to this details
-because we do!
+Please add non-trivial comments/documentation as much as you can in the code.
+Poor comments WILL be rejected upon merging so please pay attention to this
+details because we do!
