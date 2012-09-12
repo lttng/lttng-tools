@@ -1,3 +1,21 @@
+2012-09-12 lttng-tools 2.1.0-rc3
+	* Fix: Relayd fix ret value when adding a connection
+	* Add new thread in consumer for metadata handling
+	* Fix: consumer recv command error path
+	* Fix filter: fix recent regressions
+	* Update lttng-ust-abi.h from upstream lttng-ust
+	* Fix: Accept bytecode of length 65536 bytes
+	* Fix: Generation of bytecode longer than 32768 bytes fails
+	* Fix: Filter bytecode alloc buffer size must be a power of 2
+	* Add lttng-ctl SWIG python bindings
+	* Add C++ support to API header files
+	* Librarify filter in liblttng-ctl and hide symbols
+	* Set hidden visibility for calls used in lttng-ctl
+	* Notify the user if a filter is already enabled
+	* Install lttng-error.h and include it in lttng.h
+	* Add lttng-error.h containing every API err. code
+	* Fix: missing hostname context
+
 2012-08-22 lttng-tools 2.1.0-rc2
 	* Fix: put back 2.0 output text for lttng create cmd
 	* Fix: remove set subdir call that uses bad ptr
