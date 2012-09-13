@@ -364,10 +364,12 @@ extern struct lttng_consumer_local_data *lttng_consumer_create(
 extern void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 extern ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len);
+		struct lttng_consumer_stream *stream, unsigned long len,
+		unsigned long padding);
 extern ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len);
+		struct lttng_consumer_stream *stream, unsigned long len,
+		unsigned long padding);
 extern int lttng_consumer_take_snapshot(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream);
 extern int lttng_consumer_get_produced_snapshot(

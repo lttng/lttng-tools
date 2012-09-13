@@ -67,7 +67,8 @@ extern int lttng_ustctl_get_mmap_read_offset(
 static inline
 ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len)
+		struct lttng_consumer_stream *stream, unsigned long len,
+		unsigned long padding)
 {
 	return -ENOSYS;
 }
@@ -75,7 +76,8 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
 static inline
 ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *uststream, unsigned long len)
+		struct lttng_consumer_stream *uststream, unsigned long len,
+		unsigned long padding)
 {
 	return -ENOSYS;
 }

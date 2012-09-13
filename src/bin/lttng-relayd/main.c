@@ -1145,6 +1145,36 @@ end:
 }
 
 /*
+ * Append padding to the file pointed by the file descriptor fd.
+ */
+static int write_padding_to_file(int fd, uint32_t size)
+{
+	int ret = 0;
+	char *zeros;
+
+	if (size == 0) {
+		goto end;
+	}
+
+	zeros = zmalloc(size);
+	if (zeros == NULL) {
+		PERROR("zmalloc zeros for padding");
+		ret = -1;
+		goto end;
+	}
+
+	do {
+		ret = write(fd, zeros, size);
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0) {
+		PERROR("write padding to file");
+	}
+
+end:
+	return ret;
+}
+
+/*
  * relay_recv_metadata: receive the metada for the session.
  */
 static
@@ -1208,6 +1238,13 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto end_unlock;
 	}
+
+	ret = write_padding_to_file(metadata_stream->fd,
+			be32toh(metadata_struct->padding_size));
+	if (ret < 0) {
+		goto end_unlock;
+	}
+
 	DBG2("Relay metadata written");
 
 end_unlock:
@@ -1357,6 +1394,12 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 		ret = -1;
 		goto end_unlock;
 	}
+
+	ret = write_padding_to_file(stream->fd, be32toh(data_hdr.padding_size));
+	if (ret < 0) {
+		goto end_unlock;
+	}
+
 	DBG2("Relay wrote %d bytes to tracefile for stream id %" PRIu64,
 		ret, stream->stream_handle);
 

@@ -295,7 +295,7 @@ end_nosignal:
 ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
-	unsigned long len;
+	unsigned long len, subbuf_size, padding;
 	int err;
 	ssize_t ret = 0;
 	int infd = stream->wait_fd;
@@ -304,7 +304,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
-		ret = -err;
+		ret = err;
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -316,51 +316,68 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
+	/* Get the full subbuffer size including padding */
+	err = kernctl_get_padded_subbuf_size(infd, &len);
+	if (err != 0) {
+		errno = -err;
+		perror("Getting sub-buffer len failed.");
+		ret = err;
+		goto end;
+	}
+
 	switch (stream->output) {
-		case LTTNG_EVENT_SPLICE:
-			/* read the whole subbuffer */
-			err = kernctl_get_padded_subbuf_size(infd, &len);
-			if (err != 0) {
-				errno = -err;
-				perror("Getting sub-buffer len failed.");
-				ret = -err;
-				goto end;
-			}
+	case LTTNG_EVENT_SPLICE:
 
-			/* splice the subbuffer to the tracefile */
-			ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream, len);
-			if (ret != len) {
-				/*
-				 * display the error but continue processing to try
-				 * to release the subbuffer
-				 */
-				ERR("Error splicing to tracefile (ret: %zd != len: %lu)",
-						ret, len);
-			}
+		/*
+		 * XXX: The lttng-modules splice "actor" does not handle copying
+		 * partial pages hence only using the subbuffer size without the
+		 * padding makes the splice fail.
+		 */
+		subbuf_size = len;
+		padding = 0;
 
-			break;
-		case LTTNG_EVENT_MMAP:
-			/* read the used subbuffer size */
-			err = kernctl_get_padded_subbuf_size(infd, &len);
-			if (err != 0) {
-				errno = -err;
-				perror("Getting sub-buffer len failed.");
-				ret = -err;
-				goto end;
-			}
-			/* write the subbuffer to the tracefile */
-			ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len);
-			if (ret != len) {
-				/*
-				 * display the error but continue processing to try
-				 * to release the subbuffer
-				 */
-				ERR("Error writing to tracefile");
-			}
-			break;
-		default:
-			ERR("Unknown output method");
-			ret = -1;
+		/* splice the subbuffer to the tracefile */
+		ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream,
+				subbuf_size, padding);
+		if (ret != subbuf_size) {
+			/*
+			 * display the error but continue processing to try
+			 * to release the subbuffer
+			 */
+			ERR("Error splicing to tracefile (ret: %zd != len: %lu)",
+					ret, subbuf_size);
+		}
+		break;
+	case LTTNG_EVENT_MMAP:
+		/* Get subbuffer size without padding */
+		err = kernctl_get_subbuf_size(infd, &subbuf_size);
+		if (err != 0) {
+			errno = -err;
+			perror("Getting sub-buffer len failed.");
+			ret = err;
+			goto end;
+		}
+
+		/* Make sure the tracer is not gone mad on us! */
+		assert(len >= subbuf_size);
+
+		padding = len - subbuf_size;
+
+		/* write the subbuffer to the tracefile */
+		ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream,
+				subbuf_size, padding);
+		if (ret != subbuf_size) {
+			/*
+			 * display the error but continue processing to try
+			 * to release the subbuffer
+			 */
+			ERR("Error writing to tracefile (ret: %zd != len: %lu",
+					ret, subbuf_size);
+		}
+		break;
+	default:
+		ERR("Unknown output method");
+		ret = -1;
 	}
 
 	err = kernctl_put_next_subbuf(infd);

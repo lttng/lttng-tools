@@ -49,6 +49,7 @@ struct lttcomm_relayd_data_hdr {
 	uint64_t stream_id;     /* Stream ID known by the relayd */
 	uint64_t net_seq_num;   /* Network sequence number, per stream. */
 	uint32_t data_size;     /* data size following this header */
+	uint32_t padding_size;  /* Size of 0 padding the data */
 } __attribute__ ((__packed__));
 
 /*
@@ -94,6 +95,7 @@ struct lttcomm_relayd_version {
  */
 struct lttcomm_relayd_metadata_payload {
 	uint64_t stream_id;
+	uint32_t padding_size;
 	char payload[];
 } __attribute__ ((__packed__));
 
