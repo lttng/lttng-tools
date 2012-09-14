@@ -275,6 +275,7 @@ AC_CONFIG_FILES([
 	src/common/sessiond-comm/Makefile
 	src/common/compat/Makefile
 	src/common/relayd/Makefile
+	src/common/testpoint/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/filter/Makefile
