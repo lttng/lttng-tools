@@ -261,6 +261,7 @@ struct lttng_event_field {
 	enum lttng_event_field_type type;
 	char padding[LTTNG_EVENT_FIELD_PADDING];
 	struct lttng_event event;
+	int written;
 };
 
 /*
