@@ -105,7 +105,7 @@ struct lttng_ust_field_iter {
 	char field_name[LTTNG_UST_SYM_NAME_LEN];
 	enum lttng_ust_field_type type;
 	int loglevel;				/* event loglevel */
-	int written;
+	int nowrite;
 	char padding[LTTNG_UST_FIELD_ITER_PADDING];
 };
 

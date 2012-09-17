@@ -1667,7 +1667,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 
 			memcpy(tmp[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
 			tmp[count].type = uiter.type;
-			tmp[count].written = uiter.written;
+			tmp[count].nowrite = uiter.nowrite;
 
 			memcpy(tmp[count].event.name, uiter.event_name, LTTNG_UST_SYM_NAME_LEN);
 			tmp[count].event.loglevel = uiter.loglevel;
