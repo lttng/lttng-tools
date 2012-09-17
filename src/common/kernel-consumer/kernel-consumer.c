@@ -337,8 +337,12 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		padding = 0;
 
 		/* splice the subbuffer to the tracefile */
-		ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream,
-				subbuf_size, padding);
+		ret = lttng_consumer_on_read_subbuffer_splice(ctx, stream, subbuf_size,
+				padding);
+		/*
+		 * XXX: Splice does not support network streaming so the return value
+		 * is simply checked against subbuf_size and not like the mmap() op.
+		 */
 		if (ret != subbuf_size) {
 			/*
 			 * display the error but continue processing to try
@@ -364,15 +368,22 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		padding = len - subbuf_size;
 
 		/* write the subbuffer to the tracefile */
-		ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream,
-				subbuf_size, padding);
-		if (ret != subbuf_size) {
+		ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, subbuf_size,
+				padding);
+		/*
+		 * The mmap operation should write subbuf_size amount of data when
+		 * network streaming or the full padding (len) size when we are _not_
+		 * streaming.
+		 */
+		if ((ret != subbuf_size && stream->net_seq_idx != -1) ||
+				(ret != len && stream->net_seq_idx == -1)) {
 			/*
-			 * display the error but continue processing to try
-			 * to release the subbuffer
+			 * Display the error but continue processing to try to release the
+			 * subbuffer
 			 */
-			ERR("Error writing to tracefile (ret: %zd != len: %lu",
-					ret, subbuf_size);
+			ERR("Error writing to tracefile "
+					"(ret: %zd != len: %lu != subbuf_size: %lu)",
+					ret, len, subbuf_size);
 		}
 		break;
 	default:
