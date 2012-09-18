@@ -1696,7 +1696,7 @@ restart:
 
 			/* Check the metadata pipe for incoming metadata. */
 			if (pollfd == ctx->consumer_metadata_pipe[0]) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLNVAL)) {
+				if (revents & (LPOLLERR | LPOLLHUP )) {
 					DBG("Metadata thread pipe hung up");
 					/*
 					 * Remove the pipe from the poll set and continue the loop
@@ -1776,7 +1776,7 @@ restart:
 			 * Remove the stream from the hash table since there is no data
 			 * left on the fd because we previously did a read on the buffer.
 			 */
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLNVAL)) {
+			if (revents & (LPOLLERR | LPOLLHUP)) {
 				DBG("Metadata fd %d is hup|err|nval.", pollfd);
 				if (!stream->hangup_flush_done
 						&& (consumer_data.type == LTTNG_CONSUMER32_UST
