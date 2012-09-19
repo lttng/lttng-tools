@@ -18,8 +18,6 @@
 #ifndef _CONSUMER_H
 #define _CONSUMER_H
 
-#include <semaphore.h>
-
 #include <common/consumer.h>
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
@@ -54,7 +52,24 @@ struct consumer_data {
 	enum lttng_consumer_type type;
 
 	pthread_t thread;	/* Worker thread interacting with the consumer */
-	sem_t sem;
+
+	/* Conditions used by the consumer thread to indicate readiness. */
+	pthread_cond_t cond;
+	pthread_condattr_t condattr;
+	pthread_mutex_t cond_mutex;
+
+	/*
+	 * This is a flag condition indicating that the consumer thread is ready
+	 * and connected to the lttng-consumerd daemon. This flag MUST only be
+	 * updated by locking the condition mutex above or before spawning a
+	 * consumer thread.
+	 *
+	 * A value of 0 means that the thread is NOT ready. A value of 1 means that
+	 * the thread consumer did connect successfully to the lttng-consumerd
+	 * daemon. A negative value indicates that there is been an error and the
+	 * thread has likely quit.
+	 */
+	int consumer_thread_is_ready;
 
 	/* Mutex to control consumerd pid assignation */
 	pthread_mutex_t pid_mutex;
