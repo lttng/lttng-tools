@@ -195,7 +195,7 @@ prefetch activity) to be accounted for.
 
 .IP
 
-.IP "\fBcreate\fP [OPTIONS] [NAME]
+.IP "\fBcreate\fP [NAME] [OPTIONS]
 .nf
 Create tracing session.
 
@@ -221,6 +221,36 @@ $HOME/lttng-traces.
         Simple listing of options
 \-o, \-\-output PATH
         Specify output path for traces
+
+Using these options, each API call can be controlled individually. For
+instance, \-C does not enable the consumer automatically. You'll need the \-e
+option for that.
+
+\-U, \-\-set-uri=URL
+        Set URL for the enable-consumer destination. It is persistent for the
+        session lifetime. Redo the command to change it. This will set both
+        data and control URL for network.
+\-C, \-\-ctrl-url=URL
+        Set control path URL. (Must use -D also)
+\-D, \-\-data-url=URL
+        Set data path URL. (Must use -C also)
+     \-\-no-consumer
+        Don't activate a consumer for this session.
+     \-\-disable-consumer
+        Disable consumer for this session.
+
+See \fBenable-consumer\fP command below for the supported URL format.
+
+.B EXAMPLES:
+
+# lttng create -U net://192.168.1.42
+Uses TCP and default ports for the given destination.
+
+# lttng create -U net6://[fe80::f66d:4ff:fe53:d220]
+Uses TCP, default ports and IPv6.
+
+# lttng create s1 -U net://myhost.com:3229
+Create session s1 and set its consumer to myhost.com on port 3229 for control.
 .fi
 
 .IP
@@ -289,6 +319,80 @@ file.
 
 .IP
 
+.IP "\fBenable-consumer\fP [-u|-k] [URL] [OPTIONS]"
+.nf
+Enable a consumer for the tracing session and domain.
+
+By default, every tracing session has a consumer attached to it using the local
+filesystem as output. The trace is written in $HOME/lttng-traces. This command
+allows the user to specify a specific URL after the session was created for a
+specific domain. If no domain is specified, the consumer is applied on all
+domains.
+
+Without options, the behavior is to enable a consumer to the current URL. The
+default URL is the local filesystem at the path of the session mentioned above.
+
+The enable-consumer feature supports both local and network transport. You must
+have a running \fBlttng-relayd(8)\fP for network transmission or any other daemon
+that can understand the streaming protocol of LTTng.
+.fi
+
+.B OPTIONS:
+
+.nf
+\-h, \-\-help
+        Show summary of possible options and commands.
+\-\-list-options
+        Simple listing of options
+\-s, \-\-session
+        Apply on session name
+\-k, \-\-kernel
+        Apply for the kernel tracer
+\-u, \-\-userspace
+        Apply for the user-space tracer
+
+Using these options, each API call can be controlled individually. For
+instance, \-C does not enable the consumer automatically. You'll need the \-e
+option for that.
+
+\-U, \-\-set-uri=URL
+        Set URL for the enable-consumer destination. It is persistent for the
+        session lifetime. Redo the command to change it. This will set both
+        data and control URL for network.
+\-C, \-\-ctrl-url=URL
+        Set control path URL. (Must use -D also)
+\-D, \-\-data-url=URL
+        Set data path URL. (Must use -C also)
+\-e, \-\-enable
+        Enable consumer
+
+.B URL FORMAT:
+
+proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]
+
+Supported protocols are (proto):
+> file://...
+        Local filesystem full path.
+
+> net[6]://...
+        This will use the default network transport layer which is TCP for both
+        control (PORT1) and data port (PORT2). The default ports are
+        respectively 5342 and 5343.
+
+> tcp[6]://...
+        Can only be used with -C and -D together
+
+NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)
+
+.B EXAMPLES:
+
+$ lttng enable-consumer -u net://192.168.1.42
+
+Uses TCP and default ports for user space tracing (-u) where the IP address
+above is the destination machine where the traces will be streamed and a
+\fBlttng-relayd(8)\fP is listening.
+.fi
+
 .IP "\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
 .nf
 Enable tracing event
@@ -336,33 +440,29 @@ file.
         Dynamic function entry/return probe. Addr and offset can be octal
         (0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
 \-\-syscall
-        System call event
-        Enabling syscalls tracing (kernel tracer), you will not be able to disable them
-        with disable-event. This is a known limitation. You can disable the entire
-        channel to do the trick.
+        System call event. Enabling syscalls tracing (kernel tracer), you will
+        not be able to disable them with disable-event. This is a known
+        limitation. You can disable the entire channel to do the trick.
 
 \-\-filter 'expression'
-	Set a filter on a newly enabled event.
-	Filter expression on event fields, event recording
-	depends on evaluation. Only specify on first activation
-	of a given event within a session. Filter only allowed
-	when enabling events within a session before tracing is
-	started. If the filter fails to link with the event
-	within the traced domain, the event will be discarded.
-	Currently, filter is only implemented for the user-space 
-	tracer.
-	Expression examples:
+        Set a filter on a newly enabled event. Filter expression on event
+        fields, event recording depends on evaluation. Only specify on first
+        activation of a given event within a session. Filter only allowed when
+        enabling events within a session before tracing is started. If the
+        filter fails to link with the event within the traced domain, the event
+        will be discarded. Currently, filter is only implemented for the
+        user-space tracer.
 
-	'intfield > 500 && intfield < 503'
-	'(stringfield == "test" || intfield != 10) && intfield > 33'
-	'doublefield > 1.1 && intfield < 5.3'
+        Expression examples:
 
-	Wildcards are allowed at the end of strings:
-	'seqfield1 == "te*"'
-	In string literals, the escape character is a '\\'.
-	Use '\\*' for the '*' character, and '\\\\' for the
-	'\\' character.
+        'intfield > 500 && intfield < 503'
+        '(stringfield == "test" || intfield != 10) && intfield > 33'
+        'doublefield > 1.1 && intfield < 5.3'
 
+        Wildcards are allowed at the end of strings:
+        'seqfield1 == "te*"'
+        In string literals, the escape character is a '\\'. Use '\\*' for
+        the '*' character, and '\\\\' for the '\\' character.
 .fi
 
 .IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
@@ -383,7 +483,29 @@ file.
         Show summary of possible options and commands.
 \-\-list-options
         Simple listing of options
-\-s, \-\-session
+\-s, \-\-session NAME
+        Apply on session name
+\-k, \-\-kernel
+        Apply for the kernel tracer
+\-u, \-\-userspace
+        Apply for the user-space tracer
+.fi
+
+.IP "\fBdisable-consumer\fP [\-k|\-u] [OPTIONS]"
+.nf
+Disable the consumer of a tracing session.
+
+This call MUST be done BEFORE tracing has started.
+.fi
+
+.B OPTIONS:
+
+.nf
+\-h, \-\-help
+        Show summary of possible options and commands.
+\-\-list-options
+        Simple listing of options
+\-s, \-\-session NAME
         Apply on session name
 \-k, \-\-kernel
         Apply for the kernel tracer
@@ -452,7 +574,8 @@ You can now enable any event listed by using the name :
 \-u, \-\-userspace
         Select user-space domain.
 
-Session options:
+.B SESSION OPTIONS:
+
 \-c, \-\-channel NAME
         List details of a channel
 \-d, \-\-domain
@@ -477,7 +600,7 @@ Will change the session name in the .lttngrc file.
 
 .IP
 
-.IP "\fBstart\fP [OPTIONS] [NAME]"
+.IP "\fBstart\fP [NAME] [OPTIONS]"
 .nf
 Start tracing
 
@@ -497,7 +620,7 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 
 .IP
 
-.IP "\fBstop\fP [OPTIONS] [NAME]"
+.IP "\fBstop\fP [NAME] [OPTIONS]"
 .nf
 Stop tracing
 
@@ -561,118 +684,15 @@ If SESSION_NAME is omitted, the session name is taken from the .lttngrc file.
 .fi
 
 .SH "EXIT VALUES"
+On success 0 is returned and a positive value on error. Value of 1 means a command
+error, 2 an undefined command, 3 a fatal error and 4 a command warning meaning that
+something went wrong during the command.
 
-.IP "0"
-Success
+Any other value above 10, please refer to
+.BR <lttng/lttng-error.h>
+for a detailed list or use lttng_strerror() to get a human readable string of
+the error code.
 
-.IP "1"
-Command error
-
-.IP "2"
-Undefined command
-
-.IP "3"
-Fatal error
-
-.IP "4"
-Command warning
-
-.IP "16"
-No session found by the name given
-
-.IP "18"
-Error in session creation
-
-.IP "21"
-Error in application(s) listing
-
-.IP "28"
-Session name already exists
-
-.IP "33"
-Kernel tracer unavailable
-
-.IP "35"
-Kernel event exists
-
-.IP "37"
-Kernel channel exists
-
-.IP "38"
-Kernel channel creation failed
-
-.IP "39"
-Kernel channel not found
-
-.IP "40"
-Kernel channel disable failed
-
-.IP "41"
-Kernel channel enable failed
-
-.IP "42"
-Kernel context failed
-
-.IP "43"
-Kernel enable event failed
-
-.IP "44"
-Kernel disable event failed
-
-.IP "53"
-Kernel listing events failed
-
-.IP "60"
-UST channel disable failed
-
-.IP "61"
-UST channel enable failed
-
-.IP "62"
-UST adding context failed
-
-.IP "63"
-UST event enable failed
-
-.IP "64"
-UST event disable failed
-
-.IP "66"
-UST start failed
-
-.IP "67"
-UST stop failed
-
-.IP "75"
-UST event exists
-
-.IP "76"
-UST event not found
-
-.IP "77"
-UST context exists
-
-.IP "78"
-UST invalid context
-
-.IP "79"
-Tracing the kernel requires a root lttng-sessiond daemon and "tracing" group
-user membership.
-
-.IP "80"
-Tracing already started
-
-.IP "81"
-Tracing already stopped
-
-.IP "98"
-No UST consumer detected
-
-.IP "99"
-No Kernel consumer detected
-
-.IP "100"
-Event already enabled with different loglevel
 .PP
 .SH "ENVIRONMENT VARIABLES"
 
@@ -685,17 +705,20 @@ Note that all command line options override environment variables.
 Allows one to specify the full session daemon binary path to lttng command line
 tool. You can also use \-\-sessiond-path option having the same effect.
 .SH "SEE ALSO"
-
-.PP
-babeltrace(1), lttng-ust(3), lttng-sessiond(8)
-.PP
+.BR babeltrace(1),
+.BR lttng-ust(3),
+.BR lttng-sessiond(8),
+.BR lttng-relayd(8),
+.BR lttng-health-check(3)
 .SH "BUGS"
 
-.PP
-No show stopper bugs are known yet in this version.
+With version 2.1 and earlier, if you start a tracing session and than enable
+kernel events, they are not recorded and the tracing session fails to stop.  To
+fix this, simply enable events before starting the session.
 
 If you encounter any issues or usability problem, please report it on our
-mailing list <lttng-dev@lists.lttng.org> to help improve this project.
+mailing list <lttng-dev@lists.lttng.org> to help improve this project or
+at https://bugs.lttng.org which is a bugtracker.
 .SH "CREDITS"
 
 .PP
