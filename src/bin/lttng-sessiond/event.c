@@ -414,7 +414,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 	if (uevent == NULL) {
 		uevent = trace_ust_create_event(event);
 		if (uevent == NULL) {
-			ret = LTTCOMM_FATAL;
+			ret = LTTCOMM_UST_ENABLE_FAIL;
 			goto error;
 		}
 		/* Valid to set it after the goto error since uevent is still NULL */
