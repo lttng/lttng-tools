@@ -16,10 +16,28 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 
 #define BRIGHT 1
 #define GREEN 32
 #define RED 31
 
-#define PRINT_OK() printf("%c[%d;%dmOK%c[%dm\n", 0x1B, BRIGHT, GREEN, 0x1B, 0);
-#define PRINT_FAIL() printf("%c[%d;%dmFAIL%c[%dm\n", 0x1B, BRIGHT, RED, 0x1B, 0);
+#define PRINT_OK()							\
+do {									\
+	/* Check for color support */					\
+	if (isatty(STDOUT_FILENO)) {					\
+		printf("%c[%d;%dmOK%c[%dm\n", 0x1B, BRIGHT, GREEN, 0x1B, 0); \
+	} else {							\
+		printf("OK\n");					\
+	}								\
+} while (0)
+
+#define PRINT_FAIL() \
+do {									\
+	/* Check for color support */					\
+	if (isatty(STDOUT_FILENO)) {					\
+		printf("%c[%d;%dmFAIL%c[%dm\n", 0x1B, BRIGHT, RED, 0x1B, 0); \
+	} else {							\
+		printf("FAIL\n");					\
+	}								\
+} while (0)
