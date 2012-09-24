@@ -422,10 +422,13 @@ static int enable_events(char *session_name)
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					ERR("Filter on events is already enabled"
+					WARN("Filter on events is already enabled"
 							" (channel %s, session %s)",
 						channel_name, session_name);
 					break;
+				case LTTNG_ERR_FILTER_INVAL:
+				case LTTNG_ERR_FILTER_NOMEM:
+					ERR("%s", lttng_strerror(ret));
 				default:
 					ERR("Setting filter: '%s'", opt_filter);
 					/*
@@ -579,10 +582,13 @@ static int enable_events(char *session_name)
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					ERR("Filter on event %s is already enabled"
+					WARN("Filter on event %s is already enabled"
 							" (channel %s, session %s)",
 						event_name, channel_name, session_name);
 					break;
+				case LTTNG_ERR_FILTER_INVAL:
+				case LTTNG_ERR_FILTER_NOMEM:
+					ERR("%s", lttng_strerror(ret));
 				default:
 					ERR("Setting filter for event %s: '%s'", ev.name,
 							opt_filter);

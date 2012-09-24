@@ -782,24 +782,24 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 			strlen(filter_expression), "r");
 	if (!fmem) {
 		fprintf(stderr, "Error opening memory as stream\n");
-		return -ENOMEM;
+		return -LTTNG_ERR_FILTER_NOMEM;
 	}
 	ctx = filter_parser_ctx_alloc(fmem);
 	if (!ctx) {
 		fprintf(stderr, "Error allocating parser\n");
-		ret = -ENOMEM;
+		ret = -LTTNG_ERR_FILTER_NOMEM;
 		goto alloc_error;
 	}
 	ret = filter_parser_ctx_append_ast(ctx);
 	if (ret) {
 		fprintf(stderr, "Parse error\n");
-		ret = -EINVAL;
+		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
 	ret = filter_visitor_set_parent(ctx);
 	if (ret) {
 		fprintf(stderr, "Set parent error\n");
-		ret = -EINVAL;
+		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
 	if (print_xml) {
@@ -807,7 +807,7 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 		if (ret) {
 			fflush(stdout);
 			fprintf(stderr, "XML print error\n");
-			ret = -EINVAL;
+			ret = -LTTNG_ERR_FILTER_INVAL;
 			goto parse_error;
 		}
 	}
@@ -817,7 +817,7 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 	ret = filter_visitor_ir_generate(ctx);
 	if (ret) {
 		fprintf(stderr, "Generate IR error\n");
-		ret = -EINVAL;
+		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
 	dbg_printf("done\n");
@@ -826,7 +826,7 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 	fflush(stdout);
 	ret = filter_visitor_ir_check_binary_op_nesting(ctx);
 	if (ret) {
-		ret = -EINVAL;
+		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
 	dbg_printf("done\n");
@@ -836,7 +836,7 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 	ret = filter_visitor_bytecode_generate(ctx);
 	if (ret) {
 		fprintf(stderr, "Generate bytecode error\n");
-		ret = -EINVAL;
+		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
 	dbg_printf("done\n");
