@@ -281,7 +281,7 @@ static void print_event_field(struct lttng_event_field *field)
 		return;
 	}
 	MSG("%sfield: %s (%s)%s", indent8, field->field_name,
-		field_type(field), field->nowrite ? "" : " [no write]");
+		field_type(field), field->nowrite ? " [no write]" : "");
 }
 
 /*
