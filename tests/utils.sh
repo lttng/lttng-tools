@@ -25,6 +25,38 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
+function print_ok ()
+{
+	# Check if we are a terminal
+	if [ -t 1 ]; then
+		echo -e "\e[1;32mOK\e[0m"
+	else
+		echo -e "OK"
+	fi
+}
+
+function print_fail ()
+{
+	# Check if we are a terminal
+	if [ -t 1 ]; then
+		echo -e "\e[1;31mFAIL\e[0m"
+	else
+		echo -e "FAIL"
+	fi
+}
+
+function print_test_banner ()
+{
+	desc="$1"
+
+	count=$((${#desc}+2))
+	str=$(printf "%${count}s");
+	echo -e "\n"
+	echo -e ${str// /-}
+	echo -e " $desc "
+	echo -e ${str// /-}
+}
+
 function validate_kernel_version ()
 {
 	kern_version=($(uname -r | awk -F. '{ printf("%d.%d.%d\n",$1,$2,$3); }' | tr '.' '\n'))
