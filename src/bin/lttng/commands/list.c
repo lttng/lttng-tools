@@ -521,11 +521,17 @@ static int list_channels(const char *channel_name)
 
 	count = lttng_list_channels(handle, &channels);
 	if (count < 0) {
-		ret = count;
+		switch (-count) {
+		case LTTNG_ERR_KERN_CHAN_NOT_FOUND:
+			ret = CMD_SUCCESS;
+			WARN("No kernel channel");
+			break;
+		default:
+			/* We had a real error */
+			ret = count;
+			ERR("%s", lttng_strerror(ret));
+		}
 		goto error_channels;
-	} else if (count == 0) {
-		ERR("Channel %s not found", channel_name);
-		goto error;
 	}
 
 	if (channel_name == NULL) {
