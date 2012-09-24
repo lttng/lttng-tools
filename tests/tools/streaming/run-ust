@@ -68,10 +68,10 @@ function test_ust_before_start ()
 	# Run 5 times with a 1 second delay
 	./$CURDIR/$BIN_NAME 5 1000000 >/dev/null 2>&1 &
 
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 
 	wait_apps
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
@@ -81,18 +81,18 @@ function test_ust_after_start ()
 	lttng_create_session
 	lttng_enable_consumer
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	./$CURDIR/$BIN_NAME 5 1000000 >/dev/null 2>&1 &
 
 	wait_apps
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
-start_sessiond
-lttng_start_relayd "-o $TRACE_PATH"
+start_lttng_sessiond
+start_lttng_relayd "-o $TRACE_PATH"
 
 tests=( test_ust_before_start test_ust_after_start )
 
@@ -112,7 +112,7 @@ do
 done
 
 echo ""
-stop_sessiond
-lttng_stop_relayd
+stop_lttng_sessiond
+stop_lttng_relayd
 
 exit $out

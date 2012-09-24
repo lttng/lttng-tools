@@ -36,12 +36,12 @@ TRACE_PATH=$(mktemp -d)
 
 # MUST set TESTDIR before calling those functions
 
-start_sessiond
+start_lttng_sessiond
 
 create_lttng_session $SESSION_NAME $TRACE_PATH
 
 enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-start_tracing $SESSION_NAME
+start_lttng_tracing $SESSION_NAME
 
 for i in `seq 1 $NR_ITER`; do
 	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
@@ -54,10 +54,10 @@ while [ -n "$(pidof $BIN_NAME)" ]; do
 done
 echo ""
 
-stop_tracing $SESSION_NAME
+stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
 
-stop_sessiond
+stop_lttng_sessiond
 
 # Validate test
 

@@ -19,16 +19,16 @@ function start_tests ()
 			continue
 		fi
 
-		start_sessiond
+		start_lttng_sessiond
 
         ./$bin $tmpdir
         # Test must return 0 to pass.
         if [ $? -ne 0 ]; then
             exit_code=1
-			stop_sessiond
+			stop_lttng_sessiond
             break
         fi
-		stop_sessiond
+		stop_lttng_sessiond
     done
 
 	# Cleaning up

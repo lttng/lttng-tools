@@ -32,10 +32,10 @@ fi
 
 # MUST set TESTDIR before calling those functions
 
-start_sessiond
+start_lttng_sessiond
 
 ./$CURDIR/ust-nprocesses $NR_ITER
 
-stop_sessiond
+stop_lttng_sessiond
 
 exit 0

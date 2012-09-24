@@ -128,7 +128,7 @@ function lttng_enable_kernel_event
 	fi
 }
 
-function lttng_start_relayd
+function start_lttng_relayd
 {
 	local opt="$1"
 
@@ -150,7 +150,7 @@ function lttng_start_relayd
 	fi
 }
 
-function lttng_stop_relayd
+function stop_lttng_relayd
 {
 	PID_RELAYD=`pidof lt-$RELAYD_BIN`
 
@@ -170,7 +170,7 @@ function lttng_stop_relayd
 	fi
 }
 
-function start_sessiond()
+function start_lttng_sessiond()
 {
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
@@ -192,7 +192,7 @@ function start_sessiond()
 	sleep 2
 }
 
-function stop_sessiond ()
+function stop_lttng_sessiond ()
 {
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
@@ -276,7 +276,7 @@ function enable_ust_lttng_event ()
 	fi
 }
 
-function start_tracing ()
+function start_lttng_tracing ()
 {
 	sess_name=$1
 
@@ -290,7 +290,7 @@ function start_tracing ()
 	fi
 }
 
-function stop_tracing ()
+function stop_lttng_tracing ()
 {
 	sess_name=$1
 

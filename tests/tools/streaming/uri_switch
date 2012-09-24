@@ -94,10 +94,10 @@ function test_uri_switch_localhost_folder
 	done
 
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 	run_apps
 	wait_apps
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$RAND
 
@@ -135,10 +135,10 @@ function test_uri_switch_file_network
 		lttng_create_session $FILE_URI
 		lttng_enable_consumer "$NETWORK_URI/$NET_PATH"
 		enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-		start_tracing $SESSION_NAME
+		start_lttng_tracing $SESSION_NAME
 		run_apps
 		wait_apps
-		stop_tracing $SESSION_NAME
+		stop_lttng_tracing $SESSION_NAME
 		destroy_lttng_session $SESSION_NAME
 		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$NET_PATH
 
@@ -179,10 +179,10 @@ IPVER=$1
 	    lttng_create_session $NETWORK_URI
 	    lttng_enable_consumer "$FILE_URI/$FILE_PATH"
 	    enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-	    start_tracing $SESSION_NAME
+	    start_lttng_tracing $SESSION_NAME
 	    run_apps
 	    wait_apps
-	    stop_tracing $SESSION_NAME
+	    stop_lttng_tracing $SESSION_NAME
 	    destroy_lttng_session $SESSION_NAME
 	    validate_trace $EVENT_NAME $TMP_PATH/$FILE_PATH
 
@@ -196,22 +196,22 @@ IPVER=$1
 }
 
 
-start_sessiond
+start_lttng_sessiond
 
 echo ""
 echo "=== Testing with IPv4"
-lttng_start_relayd "-o $TRACE_PATH"
+start_lttng_relayd "-o $TRACE_PATH"
 test_uri_switch_localhost_folder "IPv4"
 test_uri_switch_file_network "IPv4"
 test_uri_switch_network_file "IPv4"
-lttng_stop_relayd
+stop_lttng_relayd
 
 echo ""
 echo "=== Testing with IPv6"
-lttng_start_relayd "-o $TRACE_PATH -C tcp6://localhost:5342 -D tcp6://localhost:5343"
+start_lttng_relayd "-o $TRACE_PATH -C tcp6://localhost:5342 -D tcp6://localhost:5343"
 test_uri_switch_localhost_folder "IPv6"
 test_uri_switch_file_network "IPv6"
 test_uri_switch_network_file "IPv6"
-lttng_stop_relayd
+stop_lttng_relayd
 
-stop_sessiond
+stop_lttng_sessiond

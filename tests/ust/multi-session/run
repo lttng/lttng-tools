@@ -40,7 +40,7 @@ test_multi_session() {
 	for i in `seq 0 3`; do
 		create_lttng_session "$SESSION_NAME-$i" "$TRACE_PATH/$i"
 		enable_ust_lttng_event "$SESSION_NAME-$i" "$EVENT_NAME$i"
-		start_tracing "$SESSION_NAME-$i"
+		start_lttng_tracing "$SESSION_NAME-$i"
 	done
 
 	echo -n "Starting application generating $NR_ITER events... "
@@ -56,7 +56,7 @@ test_multi_session() {
 	print_ok
 
 	for i in `seq 0 3`; do
-		stop_tracing "$SESSION_NAME-$i"
+		stop_lttng_tracing "$SESSION_NAME-$i"
 		destroy_lttng_session "$SESSION_NAME-$i"
 		out=$(babeltrace "$TRACE_PATH/$i" | grep "$EVENT_NAMEi$i" | wc -l)
 		if [ $out -ne $NR_ITER ]; then
@@ -75,17 +75,17 @@ test_multi_session() {
 
 # MUST set TESTDIR before calling those functions
 
-start_sessiond
+start_lttng_sessiond
 
 TRACE_PATH=$(mktemp -d)
 
 test_multi_session
 out=$?
 if [ $out -ne 0 ]; then
-	stop_sessiond
+	stop_lttng_sessiond
 	exit $out
 fi
 
-stop_sessiond
+stop_lttng_sessiond
 
 rm -rf "$TRACE_PATH"

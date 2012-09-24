@@ -52,13 +52,13 @@ TRACE_PATH=$(mktemp -d)
 create_lttng_session $SESSION_NAME $TRACE_PATH
 
 enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-start_tracing $SESSION_NAME
+start_lttng_tracing $SESSION_NAME
 
 echo "Sleeping $TEST_WAIT_SEC seconds for tracing to start everywhere"
 echo "Warning: this arbitrary time can make the test fail on slower system"
 sleep $TEST_WAIT_SEC
 
-stop_tracing $SESSION_NAME
+stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
 
 rm -rf $TRACE_PATH

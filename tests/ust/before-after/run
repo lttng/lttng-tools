@@ -39,13 +39,13 @@ test_before_apps() {
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 	# Start test
 	echo -n "Starting application... "
 	./$CURDIR/gen-nevents $NR_ITER
 	echo -n "Ended "
 	print_ok
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
@@ -63,12 +63,12 @@ test_after_apps() {
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 
 	# At least hit one event
 	sleep 2
 
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	out=$(babeltrace $TRACE_PATH | grep $EVENT_NAME | wc -l)
@@ -87,7 +87,7 @@ test_after_apps() {
 
 # MUST set TESTDIR before calling those functions
 
-start_sessiond
+start_lttng_sessiond
 
 echo ""
 echo "=== Start application BEFORE tracing was started ==="
@@ -97,7 +97,7 @@ TRACE_PATH=$(mktemp -d)
 test_before_apps
 out=$?
 if [ $out -ne 0 ]; then
-	stop_sessiond
+	stop_lttng_sessiond
 	exit $out
 fi
 
@@ -111,10 +111,10 @@ TRACE_PATH=$(mktemp -d)
 test_after_apps
 out=$?
 if [ $out -ne 0 ]; then
-	stop_sessiond
+	stop_lttng_sessiond
 	exit $out
 fi
 
-stop_sessiond
+stop_lttng_sessiond
 
 rm -rf $TRACE_PATH

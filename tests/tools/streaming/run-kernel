@@ -75,10 +75,10 @@ function test_kernel_before_start ()
 	lttng_create_session
 	lttng_enable_consumer_localhost
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 	# Give a second
 	sleep 1
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
@@ -89,16 +89,16 @@ function test_kernel_after_start ()
 	echo -e "\n=== Testing kernel streaming with event enable AFTER start\n"
 	lttng_create_session
 	lttng_enable_consumer_localhost
-	start_tracing $SESSION_NAME
+	start_lttng_tracing $SESSION_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	# Give a second
 	sleep 1
-	stop_tracing $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
-start_sessiond
-lttng_start_relayd "-o $TRACE_PATH"
+start_lttng_sessiond
+start_lttng_relayd "-o $TRACE_PATH"
 
 tests=( test_kernel_before_start )
 
@@ -118,8 +118,8 @@ do
 done
 
 echo ""
-stop_sessiond
-lttng_stop_relayd
+stop_lttng_sessiond
+stop_lttng_relayd
 
 
 exit $out
