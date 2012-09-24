@@ -253,7 +253,7 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 	int ret;
 
 	if (!connected) {
-		ret = -ENOTCONN;
+		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto end;
 	}
 
@@ -261,6 +261,9 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 
 	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
 			sizeof(struct lttcomm_session_msg));
+	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
+	}
 
 end:
 	return ret;
@@ -277,7 +280,7 @@ static int send_session_varlen(void *data, size_t len)
 	int ret;
 
 	if (!connected) {
-		ret = -ENOTCONN;
+		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto end;
 	}
 
@@ -287,6 +290,9 @@ static int send_session_varlen(void *data, size_t len)
 	}
 
 	ret = lttcomm_send_unix_sock(sessiond_socket, data, len);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
+	}
 
 end:
 	return ret;
@@ -303,11 +309,14 @@ static int recv_data_sessiond(void *buf, size_t len)
 	int ret;
 
 	if (!connected) {
-		ret = -ENOTCONN;
+		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto end;
 	}
 
 	ret = lttcomm_recv_unix_sock(sessiond_socket, buf, len);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
+	}
 
 end:
 	return ret;
@@ -378,13 +387,13 @@ static int try_connect_sessiond(const char *sock_path)
 	ret = access(sock_path, F_OK);
 	if (ret < 0) {
 		/* Not alive */
-		return -1;
+		goto error;
 	}
 
 	ret = lttcomm_connect_unix_sock(sock_path);
 	if (ret < 0) {
 		/* Not alive */
-		return -1;
+		goto error;
 	}
 
 	ret = lttcomm_close_unix_sock(ret);
@@ -393,13 +402,17 @@ static int try_connect_sessiond(const char *sock_path)
 	}
 
 	return 0;
+
+error:
+	return -1;
 }
 
 /*
- * Set sessiond socket path by putting it in the global
- * sessiond_sock_path variable.
- * Returns 0 on success,
- * -ENOMEM on failure (the sessiond socket path is somehow too long)
+ * Set sessiond socket path by putting it in the global sessiond_sock_path
+ * variable.
+ *
+ * Returns 0 on success, negative value on failure (the sessiond socket path
+ * is somehow too long or ENOMEM).
  */
 static int set_session_daemon_path(void)
 {
@@ -437,11 +450,14 @@ static int set_session_daemon_path(void)
 		ret = snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
 				DEFAULT_HOME_CLIENT_UNIX_SOCK, getenv("HOME"));
 		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
-			return -ENOMEM;
+			goto error;
 		}
 	}
 end:
 	return 0;
+
+error:
+	return -1;
 }
 
 /*
@@ -455,19 +471,22 @@ static int connect_sessiond(void)
 
 	ret = set_session_daemon_path();
 	if (ret < 0) {
-		return -1; /* set_session_daemon_path() returns -ENOMEM */
+		goto error;
 	}
 
 	/* Connect to the sesssion daemon */
 	ret = lttcomm_connect_unix_sock(sessiond_sock_path);
 	if (ret < 0) {
-		return ret;
+		goto error;
 	}
 
 	sessiond_socket = ret;
 	connected = 1;
 
 	return 0;
+
+error:
+	return -1;
 }
 
 /*
@@ -503,23 +522,27 @@ static int ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 
 	ret = connect_sessiond();
 	if (ret < 0) {
+		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto end;
 	}
 
 	/* Send command to session daemon */
 	ret = send_session_msg(lsm);
 	if (ret < 0) {
+		/* Ret value is a valid lttng error code. */
 		goto end;
 	}
 	/* Send var len data */
 	ret = send_session_varlen(vardata, varlen);
 	if (ret < 0) {
+		/* Ret value is a valid lttng error code. */
 		goto end;
 	}
 
 	/* Get header from data transmission */
 	ret = recv_data_sessiond(&llm, sizeof(llm));
 	if (ret < 0) {
+		/* Ret value is a valid lttng error code. */
 		goto end;
 	}
 
@@ -553,7 +576,7 @@ static int ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 	 * this point, an error is returned and data is freed.
 	 */
 	if (buf == NULL) {
-		ret = -1;
+		ret = -LTTNG_ERR_INVALID;
 		free(data);
 		goto end;
 	}
@@ -583,11 +606,15 @@ static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 struct lttng_handle *lttng_create_handle(const char *session_name,
 		struct lttng_domain *domain)
 {
-	struct lttng_handle *handle;
+	struct lttng_handle *handle = NULL;
+
+	if (domain == NULL) {
+		goto end;
+	}
 
 	handle = malloc(sizeof(struct lttng_handle));
 	if (handle == NULL) {
-		perror("malloc handle");
+		PERROR("malloc handle");
 		goto end;
 	}
 
@@ -621,6 +648,10 @@ int lttng_register_consumer(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 
+	if (handle == NULL || socket_path == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
 	lsm.cmd_type = LTTNG_REGISTER_CONSUMER;
 	copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -640,7 +671,7 @@ int lttng_start_tracing(const char *session_name)
 	struct lttcomm_session_msg lsm;
 
 	if (session_name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_START_TRACE;
@@ -659,7 +690,7 @@ int lttng_stop_tracing(const char *session_name)
 	struct lttcomm_session_msg lsm;
 
 	if (session_name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_STOP_TRACE;
@@ -685,7 +716,7 @@ int lttng_add_context(struct lttng_handle *handle,
 
 	/* Safety check. Both are mandatory */
 	if (handle == NULL || ctx == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -721,7 +752,7 @@ int lttng_enable_event(struct lttng_handle *handle,
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL || ev == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -767,7 +798,7 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 
 	/* Safety check. */
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	if (!filter_expression) {
@@ -895,7 +926,7 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -936,7 +967,7 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	 * NULL arguments are forbidden. No default values.
 	 */
 	if (handle == NULL || chan == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -963,7 +994,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 
 	/* Safety check. Both are mandatory */
 	if (handle == NULL || name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -994,7 +1025,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINTS;
@@ -1021,7 +1052,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
@@ -1056,7 +1087,7 @@ int lttng_create_session(const char *name, const char *url)
 	struct lttng_uri *uris = NULL;
 
 	if (name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -1067,7 +1098,7 @@ int lttng_create_session(const char *name, const char *url)
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
 	if (size < 0) {
-		return LTTNG_ERR_INVALID;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.u.uri.size = size;
@@ -1085,7 +1116,7 @@ int lttng_destroy_session(const char *session_name)
 	struct lttcomm_session_msg lsm;
 
 	if (session_name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_DESTROY_SESSION;
@@ -1128,7 +1159,7 @@ int lttng_list_domains(const char *session_name,
 	struct lttcomm_session_msg lsm;
 
 	if (session_name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_LIST_DOMAINS;
@@ -1156,7 +1187,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_LIST_CHANNELS;
@@ -1187,7 +1218,7 @@ int lttng_list_events(struct lttng_handle *handle,
 
 	/* Safety check. An handle and channel name are mandatory */
 	if (handle == NULL || channel_name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_LIST_EVENTS;
@@ -1214,11 +1245,11 @@ int lttng_list_events(struct lttng_handle *handle,
 int lttng_set_tracing_group(const char *name)
 {
 	if (name == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	if (asprintf(&tracing_group, "%s", name) < 0) {
-		return -ENOMEM;
+		return -LTTNG_ERR_FATAL;
 	}
 
 	return 0;
@@ -1234,7 +1265,7 @@ int lttng_calibrate(struct lttng_handle *handle,
 
 	/* Safety check. NULL pointer are forbidden */
 	if (handle == NULL || calibrate == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_CALIBRATE;
@@ -1306,8 +1337,11 @@ int lttng_session_daemon_alive(void)
 	}
 
 	if (strlen(sessiond_sock_path) == 0) {
-		/* No socket path set. Weird error */
-		return -1;
+		/*
+		 * No socket path set. Weird error which means the constructor was not
+		 * called.
+		 */
+		assert(0);
 	}
 
 	ret = try_connect_sessiond(sessiond_sock_path);
@@ -1333,7 +1367,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 	struct lttng_uri *uris = NULL;
 
 	if (handle == NULL || (control_url == NULL && data_url == NULL)) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -1346,7 +1380,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	size = parse_str_urls_to_uri(control_url, data_url, &uris);
 	if (size < 0) {
-		return LTTNG_ERR_INVALID;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.u.uri.size = size;
@@ -1365,7 +1399,7 @@ int lttng_enable_consumer(struct lttng_handle *handle)
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_ENABLE_CONSUMER;
@@ -1387,7 +1421,7 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 	struct lttcomm_session_msg lsm;
 
 	if (handle == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.cmd_type = LTTNG_DISABLE_CONSUMER;
@@ -1449,11 +1483,9 @@ static int set_health_socket_path(void)
 /*
  * Check session daemon health for a specific health component.
  *
- * Return 0 if health is OK or else 1 if BAD. A return value of -1 indicate
- * that the control library was not able to connect to the session daemon
- * health socket.
+ * Return 0 if health is OK or else 1 if BAD.
  *
- * Any other positive value is an lttcomm error which can be translate with
+ * Any other negative value is a lttng error code which can be translated with
  * lttng_strerror().
  */
 int lttng_health_check(enum lttng_health_component c)
@@ -1465,7 +1497,7 @@ int lttng_health_check(enum lttng_health_component c)
 	/* Connect to the sesssion daemon */
 	sock = lttcomm_connect_unix_sock(health_sock_path);
 	if (sock < 0) {
-		ret = -1;
+		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto error;
 	}
 
@@ -1474,11 +1506,13 @@ int lttng_health_check(enum lttng_health_component c)
 
 	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));
 	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
 		goto close_error;
 	}
 
 	ret = lttcomm_recv_unix_sock(sock, (void *)&reply, sizeof(reply));
 	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
 		goto close_error;
 	}
 
@@ -1518,7 +1552,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	struct lttng_uri *uris = NULL;
 
 	if (name == NULL || datetime == NULL) {
-		return -1;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -1529,7 +1563,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 				name, datetime);
 		if (ret < 0) {
 			PERROR("snprintf session name datetime");
-			return -1;
+			return -LTTNG_ERR_FATAL;
 		}
 	} else {
 		copy_string(lsm.session.name, name, sizeof(lsm.session.name));
@@ -1538,7 +1572,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
 	if (size < 0) {
-		return LTTNG_ERR_INVALID;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	lsm.u.uri.size = size;
@@ -1548,7 +1582,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 				datetime);
 		if (ret < 0) {
 			PERROR("snprintf uri subdir");
-			return -1;
+			return -LTTNG_ERR_FATAL;
 		}
 	}
 

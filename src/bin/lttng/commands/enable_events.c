@@ -358,7 +358,7 @@ static int enable_events(char *session_name)
 				ev.loglevel = loglevel_str_to_value(opt_loglevel);
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
-					ret = -1;
+					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
 			} else {
@@ -546,7 +546,7 @@ static int enable_events(char *session_name)
 				ev.loglevel = loglevel_str_to_value(opt_loglevel);
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
-					ret = -1;
+					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
 			} else {

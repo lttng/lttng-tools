@@ -98,6 +98,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_FILTER_NOMEM) ] = "Not enough memory for filter bytecode",
 	[ ERROR_INDEX(LTTNG_ERR_FILTER_EXIST) ] = "Filter already exist",
 	[ ERROR_INDEX(LTTNG_ERR_NO_CONSUMER) ] = "Consumer not found for tracing session",
+	[ ERROR_INDEX(LTTNG_ERR_NO_SESSIOND) ] = "No session daemon is available",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

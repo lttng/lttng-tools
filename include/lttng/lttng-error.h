@@ -39,7 +39,7 @@ enum lttng_error_code {
 	LTTNG_ERR_NO_SESSION             = 16,  /* No session found */
 	LTTNG_ERR_CREATE_DIR_FAIL        = 17,  /* Create directory fail */
 	LTTNG_ERR_SESSION_FAIL           = 18,  /* Create session fail */
-	/* 19 */
+	LTTNG_ERR_NO_SESSIOND            = 19,  /* No session daemon available */
 	/* 20 */
 	/* 21 */
 	/* 22 */
