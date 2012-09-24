@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Multi-session"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
@@ -23,9 +24,7 @@ EVENT_NAME="ust_gen_nevents:tptest"
 
 source $TESTDIR/utils.sh
 
-echo -e "\n--------------------------"
-echo -e "UST tracer - Multi-session"
-echo -e "--------------------------"
+print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/gen-nevents" ]; then
 	echo -e "No UST nevents binary detected. Passing."
@@ -46,7 +45,7 @@ test_multi_session() {
 
 	echo -n "Starting application generating $NR_ITER events... "
 	./$CURDIR/gen-nevents $NR_ITER &
-	echo -e "\e[1;32mOK\e[0m"
+	print_ok
 
 	# At least hit one event
 	echo -n "Waiting for events to record "
@@ -54,7 +53,7 @@ test_multi_session() {
 		echo -n "."
 		sleep 0.1
 	done
-	echo -e "\e[1;32m OK\e[0m"
+	print_ok
 
 	for i in `seq 0 3`; do
 		stop_tracing "$SESSION_NAME-$i"
@@ -62,11 +61,11 @@ test_multi_session() {
 		out=$(babeltrace "$TRACE_PATH/$i" | grep "$EVENT_NAMEi$i" | wc -l)
 		if [ $out -ne $NR_ITER ]; then
 			echo -n "No event found. Suppose to have at least one... "
-			echo -e "\e[1;31mFAILED\e[0m"
+			print_fail
 			out=1
 		else
 			echo -n "Found $out event(s) for $SESSION_NAME-$i. Coherent... "
-			echo -e "\e[1;32mOK\e[0m"
+			print_ok
 			out=0
 		fi
 	done

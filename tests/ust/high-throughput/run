@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Testing high events throughput"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
@@ -24,9 +25,7 @@ EVENT_NAME="tp:tptest"
 
 source $TESTDIR/utils.sh
 
-echo -e "\n-------------------------------------------"
-echo -e "UST tracer - Testing high events throughput"
-echo -e "-------------------------------------------"
+print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	echo -e "No UST nevents binary detected. Passing."
@@ -81,11 +80,11 @@ let wanted=$NR_ITER*1000000
 
 if [ $wanted -ne $total ]; then
 	echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-	echo -e "\e[1;31mFAILED\e[0m"
+	print_fail
 	out=1
 else
 	echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-	echo -e "\e[1;32mOK\e[0m"
+	print_ok
 	out=0
 fi
 

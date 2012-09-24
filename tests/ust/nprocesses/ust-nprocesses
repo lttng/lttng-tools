@@ -41,9 +41,10 @@ sleep 3
 listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
 reg_app_count=$(echo -n $listing | sed "s/$TEST_BIN_NAME/$TEST_BIN_NAME\n/g" | grep "$TEST_BIN_NAME" | wc -l)
 if [ "$reg_app_count" -ne "$NR_ITER" ]; then
-	echo -e "$reg_app_count apps listed. Expected $NR_ITER \e[1;31mFAILED\e[0m"
+	echo -e "$reg_app_count apps listed. Expected $NR_ITER "
+	print_fail
 else
-	echo -e "\e[1;32mOK\e[0m"
+	print_ok
 fi
 
 TRACE_PATH=$(mktemp -d)
@@ -64,5 +65,5 @@ rm -rf $TRACE_PATH
 
 echo -e -n "Killing all spawned applications..."
 killall -q $TEST_BIN_NAME >/dev/null 2>&1 &
-echo -e "\e[1;32mOK\e[0m"
+print_ok
 exit 0

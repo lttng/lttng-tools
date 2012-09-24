@@ -35,9 +35,9 @@ function start_tests ()
 	rm -rf $tmpdir
 }
 
-echo -e "\n-------------------------------------------"
-echo -e "UST tracer - Global domain (LTTNG_DOMAIN_UST)"
-echo -e "---------------------------------------------"
+TEST_DESC="UST tracer - Global domain (LTTNG_DOMAIN_UST)"
+
+print_test_banner "$TEST_DESC"
 
 start_tests
 

@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Testing low events throughput"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
@@ -23,9 +24,7 @@ EVENT_NAME="tp:slow"
 
 source $TESTDIR/utils.sh
 
-echo -e "\n-------------------------------------------"
-echo -e "UST tracer - Testing low events throughput"
-echo -e "-------------------------------------------"
+print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	echo -e "No UST nevents binary detected. Passing."
@@ -92,9 +91,9 @@ done
 
 if [ $out -eq 0 ]; then
 	echo -n "Trace is coherent... "
-	echo -e "\e[1;32mOK\e[0m"
+	print_ok
 else
-	echo -e "\e[1;31mFAILED\e[0m"
+	print_fail
 fi
 
 rm -rf $TRACE_PATH
