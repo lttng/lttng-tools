@@ -380,35 +380,16 @@ static int enable_events(char *session_name)
 			}
 			goto end;
 		}
-		if (opt_filter) {
-			ret = lttng_set_event_filter(handle, ev.name, channel_name,
-						opt_filter);
-			if (ret < 0) {
-				switch (-ret) {
-				case LTTNG_ERR_FILTER_EXIST:
-					ERR("Filter on events is already enabled"
-							" (channel %s, session %s)",
-						channel_name, session_name);
-					break;
-				default:
-					ERR("Error setting filter");
-					break;
-				}
-
-				ret = -1;
-				goto error;
-			}
-		}
 
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
 			if (opt_loglevel) {
 				MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
-					opt_kernel ? "kernel" : "UST", channel_name,
-					opt_loglevel);
+						opt_kernel ? "kernel" : "UST", channel_name,
+						opt_loglevel);
 			} else {
 				MSG("All %s tracepoints are enabled in channel %s",
-					opt_kernel ? "kernel" : "UST", channel_name);
+						opt_kernel ? "kernel" : "UST", channel_name);
 
 			}
 			break;
@@ -421,11 +402,11 @@ static int enable_events(char *session_name)
 		case LTTNG_EVENT_ALL:
 			if (opt_loglevel) {
 				MSG("All %s events are enabled in channel %s for loglevel %s",
-					opt_kernel ? "kernel" : "UST", channel_name,
-					opt_loglevel);
+						opt_kernel ? "kernel" : "UST", channel_name,
+						opt_loglevel);
 			} else {
 				MSG("All %s events are enabled in channel %s",
-					opt_kernel ? "kernel" : "UST", channel_name);
+						opt_kernel ? "kernel" : "UST", channel_name);
 			}
 			break;
 		default:
@@ -434,6 +415,38 @@ static int enable_events(char *session_name)
 			 * failed on the event type.
 			 */
 			goto error;
+		}
+		if (opt_filter) {
+			ret = lttng_set_event_filter(handle, ev.name, channel_name,
+						opt_filter);
+			if (ret < 0) {
+				switch (-ret) {
+				case LTTNG_ERR_FILTER_EXIST:
+					ERR("Filter on events is already enabled"
+							" (channel %s, session %s)",
+						channel_name, session_name);
+					break;
+				default:
+					ERR("Setting filter: '%s'", opt_filter);
+					/*
+					 * The event was successfully enabled before so when
+					 * failing to set a filter, disable the event. This has
+					 * been discussed in bug #343 on why we do that.
+					 */
+					err = lttng_disable_event(handle, ev.name, channel_name);
+					if (err < 0) {
+						ERR("Disabling all events after filter error: %s",
+								lttng_strerror(err));
+					} else {
+						WARN("All events of channel %s have been disabled due "
+								"to a filter error", channel_name);
+					}
+					break;
+				}
+				goto error;
+			} else {
+				MSG("Filter '%s' successfully set", opt_filter);
+			}
 		}
 		goto end;
 	}
@@ -561,8 +574,8 @@ static int enable_events(char *session_name)
 					opt_kernel ? "kernel": "UST", event_name, channel_name);
 		}
 		if (opt_filter) {
-			ret = lttng_set_event_filter(handle, ev.name,
-				channel_name, opt_filter);
+			ret = lttng_set_event_filter(handle, ev.name, channel_name,
+					opt_filter);
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
@@ -571,12 +584,26 @@ static int enable_events(char *session_name)
 						event_name, channel_name, session_name);
 					break;
 				default:
-					ERR("Error setting filter");
+					ERR("Setting filter for event %s: '%s'", ev.name,
+							opt_filter);
+					/*
+					 * The event was successfully enabled before so when
+					 * failing to set a filter, disable the event. This has
+					 * been discussed in bug #343 on why we do that.
+					 */
+					err = lttng_disable_event(handle, ev.name, channel_name);
+					if (err < 0) {
+						ERR("Disabling event %s after filter error: %s",
+								ev.name, lttng_strerror(err));
+					} else {
+						WARN("Event %s of channel %s has been disabled due "
+								"to a filter error", ev.name, channel_name);
+					}
 					break;
 				}
-
-				ret = -1;
 				goto error;
+			} else {
+				MSG("Filter '%s' successfully set", opt_filter);
 			}
 		}
 
