@@ -54,6 +54,7 @@ kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard
 ust_global_event_basic
+ust_global_all_events_basic
 gen-nevents
 gen-events-time
 gen-events
