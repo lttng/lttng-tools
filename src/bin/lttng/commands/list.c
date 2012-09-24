@@ -25,6 +25,8 @@
 
 #include "../command.h"
 
+#include <common/sessiond-comm/sessiond-comm.h>
+
 static int opt_userspace;
 static int opt_kernel;
 static char *opt_channel;
@@ -412,11 +414,21 @@ static int list_channels(const char *channel_name)
 
 	count = lttng_list_channels(handle, &channels);
 	if (count < 0) {
-		ret = count;
+		switch (-count) {
+		case LTTCOMM_KERN_CHAN_NOT_FOUND:
+			ret = CMD_SUCCESS;
+			WARN("No kernel channel");
+			break;
+		case LTTCOMM_UST_CHAN_NOT_FOUND:
+			ret = CMD_SUCCESS;
+			WARN("No UST channel");
+			break;
+		default:
+			/* We had a real error */
+			ret = count;
+			ERR("%s", lttng_strerror(ret));
+		}
 		goto error_channels;
-	} else if (count == 0) {
-		ERR("Channel %s not found", channel_name);
-		goto error;
 	}
 
 	if (channel_name == NULL) {

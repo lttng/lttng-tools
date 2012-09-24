@@ -3226,6 +3226,9 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 			nb_chan = session->kernel_session->channel_count;
 		}
 		DBG3("Number of kernel channels %zd", nb_chan);
+		if (nb_chan <= 0) {
+			ret = LTTCOMM_KERN_CHAN_NOT_FOUND;
+		}
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (session->ust_session != NULL) {
@@ -3233,6 +3236,9 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 					session->ust_session->domain_global.channels);
 		}
 		DBG3("Number of UST global channels %zd", nb_chan);
+		if (nb_chan <= 0) {
+			ret = LTTCOMM_UST_CHAN_NOT_FOUND;
+		}
 		break;
 	default:
 		*channels = NULL;
@@ -3250,6 +3256,8 @@ static ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		list_lttng_channels(domain, session, *channels);
 	} else {
 		*channels = NULL;
+		/* Ret value was set in the domain switch case */
+		goto error;
 	}
 
 	return nb_chan;
