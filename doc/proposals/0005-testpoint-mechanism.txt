@@ -1,0 +1,107 @@
+RFC - Testpoint mechanism
+
+Author: Christian Babeux <christian.babeux@efficios.com>
+
+Contributors:
+	* Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+
+Version:
+	- v0.1: 11/09/2012
+		* Initial proposal
+
+Motivation
+----------
+
+The main goal behind the testpoint mechanism is to be able to test and
+validate failure cases in different portion of the LTTng codebase. It
+could also be used by developers as a debugging aid.
+
+By injecting code at runtime in the lttng daemons/processes/executables,
+we can painlessly trigger faulty behavior, test errors paths or even
+reproduce race conditions by introducing or exacerbating delays between
+threads.
+
+Requirements
+------------
+
+The testpoint mechanism should be able to be triggered via scripts to
+automate testing efforts.
+
+Ideally, the testpoint mechanism should *NOT* incur a significant
+performance hit if we want to leave it always on, in a similar fashion
+to the assert() macros.
+
+By leaving it always on, any user is able to use our tests and validate
+the behavior of his installation via a simple 'make check' execution.
+
+Proposed solution
+-----------------
+
+This patch introduce two new macros: TESTPOINT_DECL(name)
+and testpoint(name).
+
+Here a quick example that shows how to use the testpoint mechanism:
+
+file: main.c
+#include <stdio.h>
+#include <common/testpoint/testpoint/testpoint.h>
+
+/* Testpoint declaration */
+TESTPOINT_DECL(interesting_function)
+
+void interesting_function(void)
+{
+	testpoint(interesting_function);
+	/* Some processing that can fail */
+	...
+}
+
+int main(int argc, char *argv[])
+{
+	interesting_function();
+	...
+	printf("End");
+}
+
+file: testpoint.c
+#include <stdio.h>
+void __testpoint_interesting_function(void)
+{
+	printf("In testpoint of interesting function!");
+}
+
+Compile:
+gcc -o test main.c
+gcc -fPIC -shared -o testpoint.so testpoint.c
+
+Run:
+> ./test
+  End
+> export LTTNG_TESTPOINT_ENABLE=1
+> LD_PRELOAD=testpoint.so ./test
+  In testpoint of interesting function!
+  End
+> export LTTNG_TESTPOINT_ENABLE=0
+> LD_PRELOAD=testpoint.so ./test
+  End
+
+The testpoint mechanism is triggered via the preloading of a shared
+object containing the appropriate testpoint symbols and by setting the
+LTTNG_TESTPOINT_ENABLE environment variable.
+
+The check on this environment variable is done on the application
+startup with the help of a constructor (lttng_testpoint_check) which
+toggle a global state variable indicating whether or not the testpoints
+should be activated.
+
+When enabled, the testpoint() macro calls an underlying wrapper specific
+to the testpoint and simply try to lookup the testpoint symbol via a
+dlsym() call.
+
+When disabled, the testpoint() call will only incur an additionnal test
+per testpoint on a global variable. This performance 'hit' should be
+acceptable for production use.
+
+As stated previously, the testpoint mechanism should be *always on*.  It
+can be explicitly disabled via CFLAGS="-DNTESTPOINT" in a way similar to
+NDEBUG and assert().
