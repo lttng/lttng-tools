@@ -80,11 +80,14 @@ static inline int get_count_order(unsigned int count)
 static
 int bytecode_init(struct lttng_filter_bytecode_alloc **fb)
 {
-	*fb = calloc(sizeof(struct lttng_filter_bytecode_alloc) + INIT_ALLOC_SIZE, 1);
+	uint32_t alloc_len;
+
+	alloc_len = sizeof(struct lttng_filter_bytecode_alloc) + INIT_ALLOC_SIZE;
+	*fb = calloc(alloc_len, 1);
 	if (!*fb) {
 		return -ENOMEM;
 	} else {
-		(*fb)->alloc_len = INIT_ALLOC_SIZE;
+		(*fb)->alloc_len = alloc_len;
 		return 0;
 	}
 }
@@ -95,7 +98,7 @@ int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align
 	int32_t ret;
 	uint32_t padding = offset_align((*fb)->b.len, align);
 	uint32_t new_len = (*fb)->b.len + padding + len;
-	uint32_t new_alloc_len = sizeof(struct lttng_filter_bytecode) + new_len;
+	uint32_t new_alloc_len = sizeof(struct lttng_filter_bytecode_alloc) + new_len;
 	uint32_t old_alloc_len = (*fb)->alloc_len;
 
 	if (new_len > LTTNG_FILTER_MAX_LEN)
@@ -107,6 +110,7 @@ int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align
 		*fb = realloc(*fb, new_alloc_len);
 		if (!*fb)
 			return -ENOMEM;
+		/* We zero directly the memory from start of allocation. */
 		memset(&((char *) *fb)[old_alloc_len], 0, new_alloc_len - old_alloc_len);
 		(*fb)->alloc_len = new_alloc_len;
 	}
