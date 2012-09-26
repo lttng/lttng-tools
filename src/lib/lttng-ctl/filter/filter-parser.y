@@ -230,6 +230,7 @@ static void filter_ast_free(struct filter_ast *ast)
 
 	cds_list_for_each_entry_safe(node, tmp, &ast->allocated_nodes, gc)
 		free(node);
+	free(ast);
 }
 
 __attribute__((visibility("hidden")))
