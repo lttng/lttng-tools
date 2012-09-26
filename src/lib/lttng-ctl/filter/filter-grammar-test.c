@@ -34,7 +34,8 @@ int main(int argc, char **argv)
 {
 	struct filter_parser_ctx *ctx;
 	int ret;
-	int print_xml = 0, generate_ir = 0, generate_bytecode = 0;
+	int print_xml = 0, generate_ir = 0, generate_bytecode = 0,
+		print_bytecode = 0;
 	int i;
 
 	for (i = 1; i < argc; i++) {
@@ -46,6 +47,8 @@ int main(int argc, char **argv)
 			generate_bytecode = 1;
 		else if (strcmp(argv[i], "-d") == 0)
 			filter_parser_debug = 1;
+		else if (strcmp(argv[i], "-B") == 0)
+			print_bytecode = 1;
 	}
 
 	ctx = filter_parser_ctx_alloc(stdin);
@@ -118,6 +121,28 @@ int main(int argc, char **argv)
 		printf("done\n");
 	}
 #endif //0
+
+	if (print_bytecode) {
+		unsigned int bytecode_len, len, i;
+
+		len = bytecode_get_len(&ctx->bytecode->b);
+		bytecode_len = ctx->bytecode->b.reloc_table_offset;
+		printf("Bytecode:\n");
+		for (i = 0; i < bytecode_len; i++) {
+			printf("0x%X ",
+				((uint8_t *) ctx->bytecode->b.data)[i]);
+		}
+		printf("\n");
+		printf("Reloc table:\n");
+		for (i = bytecode_len; i < len;) {
+			printf("{ 0x%X, ",
+				*(uint16_t *) &ctx->bytecode->b.data[i]);
+			i += sizeof(uint16_t);
+			printf("%s } ", &((char *) ctx->bytecode->b.data)[i]);
+			i += strlen(&((char *) ctx->bytecode->b.data)[i]) + 1;
+		}
+		printf("\n");
+	}
 
 	filter_bytecode_free(ctx);
 	filter_ir_free(ctx);
