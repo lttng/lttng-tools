@@ -1265,7 +1265,7 @@ static
 int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_command *cmd)
 {
-	int ret = htobe32(LTTNG_OK);
+	int ret;
 	struct lttcomm_relayd_version reply;
 	struct relay_session *session;
 
@@ -1284,7 +1284,12 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	session->version_check_done = 1;
 
-	sscanf(VERSION, "%u.%u", &reply.major, &reply.minor);
+	ret = sscanf(VERSION, "%u.%u", &reply.major, &reply.minor);
+	if (ret < 2) {
+		ERR("Error in scanning version");
+		ret = -1;
+		goto end;
+	}
 	reply.major = htobe32(reply.major);
 	reply.minor = htobe32(reply.minor);
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
