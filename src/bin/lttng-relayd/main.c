@@ -472,12 +472,6 @@ void *relay_thread_listener(void *data)
 	struct lttng_poll_event events;
 	struct lttcomm_sock *control_sock, *data_sock;
 
-	/*
-	 * Get allocated in this thread, enqueued to a global queue, dequeued and
-	 * freed in the worker thread.
-	 */
-	struct relay_command *relay_cmd = NULL;
-
 	DBG("[thread] Relay listener started");
 
 	control_sock = relay_init_sock(control_uri);
@@ -544,7 +538,13 @@ restart:
 				ERR("socket poll error");
 				goto error;
 			} else if (revents & LPOLLIN) {
-				struct lttcomm_sock *newsock = NULL;
+				/*
+				 * Get allocated in this thread,
+				 * enqueued to a global queue, dequeued
+				 * and freed in the worker thread.
+				 */
+				struct relay_command *relay_cmd;
+				struct lttcomm_sock *newsock;
 
 				relay_cmd = zmalloc(sizeof(struct relay_command));
 				if (relay_cmd == NULL) {
@@ -554,16 +554,19 @@ restart:
 
 				if (pollfd == data_sock->fd) {
 					newsock = data_sock->ops->accept(data_sock);
-					if (newsock < 0) {
+					if (!newsock) {
 						PERROR("accepting data sock");
+						free(relay_cmd);
 						goto error;
 					}
 					relay_cmd->type = RELAY_DATA;
 					DBG("Relay data connection accepted, socket %d", newsock->fd);
-				} else if (pollfd == control_sock->fd) {
+				} else {
+					assert(pollfd == control_sock->fd);
 					newsock = control_sock->ops->accept(control_sock);
-					if (newsock < 0) {
+					if (!newsock) {
 						PERROR("accepting control sock");
+						free(relay_cmd);
 						goto error;
 					}
 					relay_cmd->type = RELAY_CONTROL;
@@ -573,6 +576,8 @@ restart:
 						&val, sizeof(int));
 				if (ret < 0) {
 					PERROR("setsockopt inet");
+					lttcomm_destroy_sock(newsock);
+					free(relay_cmd);
 					goto error;
 				}
 				relay_cmd->sock = newsock;
