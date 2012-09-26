@@ -1267,7 +1267,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 {
 	int ret = htobe32(LTTNG_OK);
 	struct lttcomm_relayd_version reply;
-	struct relay_session *session = NULL;
+	struct relay_session *session;
 
 	if (cmd->session == NULL) {
 		session = zmalloc(sizeof(struct relay_session));
@@ -1279,6 +1279,8 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		session->id = ++last_relay_session_id;
 		DBG("Created session %" PRIu64, session->id);
 		cmd->session = session;
+	} else {
+		session = cmd->session;
 	}
 	session->version_check_done = 1;
 
