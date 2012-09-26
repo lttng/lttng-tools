@@ -1,3 +1,32 @@
+2012-09-26 lttng-tools 2.1.0-rc4
+	* Fix: Change sempahore to pthread conditions
+	* Fix: relayd relay_send_version: handle sscanf return code
+	* Fix relayd: NULL ptr deref
+	* Fix: relayd: possible NULL ptr deref, memory leak, accept fd leak
+	* Tests: add print bytecode to filter grammar test
+	* Cleanup: assign values to bytecode opcodes
+	* Fix: Filter: Fix allocation length error
+	* Fix: Filter: add missing ast free
+	* Tests: Add high throughput with bandwidth limits test
+	* Fix: Returned code when listing kernel channel
+	* Tests: Rename helper functions to have consistent names
+	* Tests: Cleanup redundant code and use printing helper functions
+	* Tests: Add helper functions for printing status and banner
+	* Tests: Add a check for color support when printing status
+	* Fix: Lib lttng-ctl on error returns lttng code
+	* Fix: lttng_set_event_filter() was returning bad error code
+	* Fix: printing [no write] on lttng list -uf
+	* Fix: Disable event on filter error with lttng
+	* Fix: Wrong returned error code on UST enable event
+	* Add consumer commands to lttng.1 man page
+	* Add lttng_health_check(3) man page
+	* Fix: Remove LPOLLNVAL from consumer metadata revents
+	* Fix: Mismatch of field name between ust and tools
+	* Add the written value when listing fields
+	* Fix: Consumer return value check after mmap/splice
+	* Don't send the subbuffer padding for streaming
+	* Fix: Returned error code in consumer on read buffer
+
 2012-09-12 lttng-tools 2.1.0-rc3
 	* Fix: Relayd fix ret value when adding a connection
 	* Add new thread in consumer for metadata handling
