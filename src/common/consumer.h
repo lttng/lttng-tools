@@ -346,13 +346,11 @@ extern struct lttng_consumer_channel *consumer_allocate_channel(
 int consumer_add_channel(struct lttng_consumer_channel *channel);
 
 /* lttng-relayd consumer command */
-int consumer_add_relayd(struct consumer_relayd_sock_pair *relayd);
 struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		int net_seq_idx);
 struct consumer_relayd_sock_pair *consumer_find_relayd(int key);
 int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,
 		size_t data_size);
-void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
 
 extern struct lttng_consumer_local_data *lttng_consumer_create(
 		enum lttng_consumer_type type,

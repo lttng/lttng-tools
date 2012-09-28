@@ -175,7 +175,7 @@ static void consumer_rcu_free_relayd(struct rcu_head *head)
  *
  * This function MUST be called with the consumer_data lock acquired.
  */
-void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd)
+static void destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -218,7 +218,7 @@ void consumer_flag_relayd_for_destroy(struct consumer_relayd_sock_pair *relayd)
 
 	/* Destroy the relayd if refcount is 0 */
 	if (uatomic_read(&relayd->refcount) == 0) {
-		consumer_destroy_relayd(relayd);
+		destroy_relayd(relayd);
 	}
 }
 
@@ -314,7 +314,7 @@ void consumer_del_stream(struct lttng_consumer_stream *stream)
 		/* Both conditions are met, we destroy the relayd. */
 		if (uatomic_read(&relayd->refcount) == 0 &&
 				uatomic_read(&relayd->destroy_flag)) {
-			consumer_destroy_relayd(relayd);
+			destroy_relayd(relayd);
 		}
 	}
 	rcu_read_unlock();
@@ -452,8 +452,7 @@ end:
  * Add relayd socket to global consumer data hashtable. RCU read side lock MUST
  * be acquired before calling this.
  */
-
-int consumer_add_relayd(struct consumer_relayd_sock_pair *relayd)
+static int add_relayd(struct consumer_relayd_sock_pair *relayd)
 {
 	int ret = 0;
 	struct lttng_ht_node_ulong *node;
@@ -1503,12 +1502,14 @@ static void destroy_stream_ht(struct lttng_ht *ht)
 		return;
 	}
 
+	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
 		ret = lttng_ht_del(ht, &iter);
 		assert(!ret);
 
 		free(stream);
 	}
+	rcu_read_unlock();
 
 	lttng_ht_destroy(ht);
 }
@@ -1594,7 +1595,7 @@ static void consumer_del_metadata_stream(struct lttng_consumer_stream *stream)
 		/* Both conditions are met, we destroy the relayd. */
 		if (uatomic_read(&relayd->refcount) == 0 &&
 				uatomic_read(&relayd->destroy_flag)) {
-			consumer_destroy_relayd(relayd);
+			destroy_relayd(relayd);
 		}
 	}
 	rcu_read_unlock();
@@ -1730,9 +1731,11 @@ restart:
 					DBG("Adding metadata stream %d to poll set",
 							stream->wait_fd);
 
+					rcu_read_lock();
 					/* The node should be init at this point */
 					lttng_ht_add_unique_ulong(metadata_ht,
 							&stream->waitfd_node);
+					rcu_read_unlock();
 
 					/* Add metadata stream to the global poll events list */
 					lttng_poll_add(&events, stream->wait_fd,
@@ -1747,11 +1750,13 @@ restart:
 
 			/* From here, the event is a metadata wait fd */
 
+			rcu_read_lock();
 			lttng_ht_lookup(metadata_ht, (void *)((unsigned long) pollfd),
 					&iter);
 			node = lttng_ht_iter_get_node_ulong(&iter);
 			if (node == NULL) {
 				/* FD not found, continue loop */
+				rcu_read_unlock();
 				continue;
 			}
 
@@ -1766,6 +1771,7 @@ restart:
 				len = ctx->on_buffer_ready(stream, ctx);
 				/* It's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN) {
+					rcu_read_unlock();
 					goto end;
 				} else if (len > 0) {
 					stream->data_read = 1;
@@ -1788,15 +1794,18 @@ restart:
 					len = ctx->on_buffer_ready(stream, ctx);
 					/* It's ok to have an unavailable sub-buffer */
 					if (len < 0 && len != -EAGAIN) {
+						rcu_read_unlock();
 						goto end;
 					}
 				}
 
 				/* Removing it from hash table, poll set and free memory */
 				lttng_ht_del(metadata_ht, &iter);
+
 				lttng_poll_del(&events, stream->wait_fd);
 				consumer_del_metadata_stream(stream);
 			}
+			rcu_read_unlock();
 		}
 	}
 
@@ -2290,7 +2299,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 	 * Add relayd socket pair to consumer data hashtable. If object already
 	 * exists or on error, the function gracefully returns.
 	 */
-	consumer_add_relayd(relayd);
+	add_relayd(relayd);
 
 	/* All good! */
 	ret = 0;
