@@ -1723,20 +1723,13 @@ restart:
 					close(ctx->consumer_metadata_pipe[0]);
 					continue;
 				} else if (revents & LPOLLIN) {
-					stream = zmalloc(sizeof(struct lttng_consumer_stream));
-					if (stream == NULL) {
-						PERROR("zmalloc metadata consumer stream");
-						goto error;
-					}
-
 					do {
-						/* Get the stream and add it to the local hash table */
-						ret = read(pollfd, stream,
-								sizeof(struct lttng_consumer_stream));
+						/* Get the stream pointer received */
+						ret = read(pollfd, &stream, sizeof(stream));
 					} while (ret < 0 && errno == EINTR);
-					if (ret < 0 || ret < sizeof(struct lttng_consumer_stream)) {
+					if (ret < 0 ||
+							ret < sizeof(struct lttng_consumer_stream *)) {
 						PERROR("read metadata stream");
-						free(stream);
 						/*
 						 * Let's continue here and hope we can still work
 						 * without stopping the consumer. XXX: Should we?

@@ -70,7 +70,7 @@ static int send_command(struct lttcomm_sock *sock,
 		goto error;
 	}
 
-	DBG3("Relayd sending command %d", cmd);
+	DBG3("Relayd sending command %d of size %" PRIu64, cmd, buf_size);
 
 error:
 	free(buf);
@@ -86,7 +86,7 @@ static int recv_reply(struct lttcomm_sock *sock, void *data, size_t size)
 {
 	int ret;
 
-	DBG3("Relayd waiting for reply...");
+	DBG3("Relayd waiting for reply of size %ld", size);
 
 	ret = sock->ops->recvmsg(sock, data, size, 0);
 	if (ret < 0) {
@@ -125,7 +125,7 @@ int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Waiting for reply */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
@@ -228,7 +228,7 @@ int relayd_send_metadata(struct lttcomm_sock *sock, size_t len)
 	/*
 	 * After that call, the metadata data MUST be sent to the relayd so the
 	 * receive size on the other end matches the len of the metadata packet
-	 * header.
+	 * header. This is why we don't wait for a reply here.
 	 */
 
 error:
@@ -273,7 +273,7 @@ int relayd_send_data_hdr(struct lttcomm_sock *sock,
 	assert(sock);
 	assert(hdr);
 
-	DBG3("Relayd sending data header...");
+	DBG3("Relayd sending data header of size %ld", size);
 
 	/* Again, safety net */
 	if (size == 0) {
