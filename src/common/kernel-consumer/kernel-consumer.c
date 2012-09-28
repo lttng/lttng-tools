@@ -118,7 +118,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
 				-1, -1,
 				msg.u.channel.mmap_len,
-				msg.u.channel.max_sb_size);
+				msg.u.channel.max_sb_size,
+				msg.u.channel.nb_init_streams);
 		if (new_channel == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;

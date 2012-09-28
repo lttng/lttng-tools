@@ -77,6 +77,12 @@ struct lttng_consumer_channel {
 	int key;
 	uint64_t max_sb_size; /* the subbuffer size for this channel */
 	int refcount; /* Number of streams referencing this channel */
+	/*
+	 * The number of streams to receive initially. Used to guarantee that we do
+	 * not destroy a channel before receiving all its associated streams.
+	 */
+	unsigned int nb_init_streams;
+
 	/* For UST */
 	int shm_fd;
 	int wait_fd;
@@ -342,7 +348,8 @@ extern struct lttng_consumer_channel *consumer_allocate_channel(
 		int channel_key,
 		int shm_fd, int wait_fd,
 		uint64_t mmap_len,
-		uint64_t max_sb_size);
+		uint64_t max_sb_size,
+		unsigned int nb_init_streams);
 int consumer_add_channel(struct lttng_consumer_channel *channel);
 
 /* lttng-relayd consumer command */

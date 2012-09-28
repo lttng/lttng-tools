@@ -52,7 +52,8 @@ static int send_channel(int sock, struct ust_app_channel *uchan)
 			uchan->obj->shm_fd,
 			uchan->attr.subbuf_size,
 			uchan->obj->memory_map_size,
-			uchan->name);
+			uchan->name,
+			uchan->streams.count);
 
 	ret = consumer_send_channel(sock, &msg);
 	if (ret < 0) {
@@ -208,7 +209,8 @@ static int send_metadata(int sock, struct ust_app_session *usess,
 			usess->metadata->obj->shm_fd,
 			usess->metadata->attr.subbuf_size,
 			usess->metadata->obj->memory_map_size,
-			"metadata");
+			"metadata",
+			1);
 
 	ret = consumer_send_channel(sock, &msg);
 	if (ret < 0) {

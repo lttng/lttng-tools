@@ -2239,7 +2239,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			/* Order is important */
 			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
 			ret = snprintf(ustream->name, sizeof(ustream->name), "%s_%u",
-					ua_chan->name, ua_chan->streams.count++);
+					ua_chan->name, ua_chan->streams.count);
+			ua_chan->streams.count++;
 			if (ret < 0) {
 				PERROR("asprintf UST create stream");
 				/*

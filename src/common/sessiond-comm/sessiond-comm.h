@@ -255,6 +255,8 @@ struct lttcomm_consumer_msg {
 			uint64_t max_sb_size; /* the subbuffer size for this channel */
 			/* shm_fd and wait_fd are sent as ancillary data */
 			uint64_t mmap_len;
+			/* nb_init_streams is the number of streams open initially. */
+			unsigned int nb_init_streams;
 			char name[LTTNG_SYMBOL_NAME_LEN];
 		} channel;
 		struct {

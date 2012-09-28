@@ -195,6 +195,7 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int channel_key,
 		uint64_t max_sb_size,
 		uint64_t mmap_len,
-		const char *name);
+		const char *name,
+		unsigned int nb_init_streams);
 
 #endif /* _CONSUMER_H */

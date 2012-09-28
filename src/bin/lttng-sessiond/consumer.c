@@ -486,7 +486,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int channel_key,
 		uint64_t max_sb_size,
 		uint64_t mmap_len,
-		const char *name)
+		const char *name,
+		unsigned int nb_init_streams)
 {
 	assert(msg);
 
@@ -500,6 +501,7 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.channel.channel_key = channel_key;
 	msg->u.channel.max_sb_size = max_sb_size;
 	msg->u.channel.mmap_len = mmap_len;
+	msg->u.channel.nb_init_streams = nb_init_streams;
 }
 
 /*

@@ -48,7 +48,8 @@ int kernel_consumer_add_channel(int sock, struct ltt_kernel_channel *channel)
 			channel->fd,
 			channel->channel->attr.subbuf_size,
 			0, /* Kernel */
-			channel->channel->name);
+			channel->channel->name,
+			channel->stream_count);
 
 	ret = consumer_send_channel(sock, &lkm);
 	if (ret < 0) {
@@ -116,7 +117,8 @@ int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
 			session->metadata->fd,
 			session->metadata->conf->attr.subbuf_size,
 			0, /* for kernel */
-			"metadata");
+			"metadata",
+			1);
 
 	ret = consumer_send_channel(sock, &lkm);
 	if (ret < 0) {
