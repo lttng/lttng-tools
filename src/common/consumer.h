@@ -338,7 +338,8 @@ extern struct lttng_consumer_stream *consumer_allocate_stream(
 		uid_t uid,
 		gid_t gid,
 		int net_index,
-		int metadata_flag);
+		int metadata_flag,
+		int *alloc_ret);
 extern int consumer_add_stream(struct lttng_consumer_stream *stream);
 extern void consumer_del_stream(struct lttng_consumer_stream *stream);
 extern void consumer_change_stream_state(int stream_key,

@@ -345,7 +345,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 		uid_t uid,
 		gid_t gid,
 		int net_index,
-		int metadata_flag)
+		int metadata_flag,
+		int *alloc_ret)
 {
 	struct lttng_consumer_stream *stream;
 	int ret;
@@ -353,12 +354,13 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	stream = zmalloc(sizeof(*stream));
 	if (stream == NULL) {
 		perror("malloc struct lttng_consumer_stream");
-		goto end;
+		*alloc_ret = -ENOMEM;
+		return NULL;
 	}
 	stream->chan = consumer_find_channel(channel_key);
 	if (!stream->chan) {
-		perror("Unable to find channel key");
-		goto end;
+		*alloc_ret = -ENOENT;
+		goto error;
 	}
 	stream->chan->refcount++;
 	stream->key = stream_key;
@@ -387,14 +389,14 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 		stream->cpu = stream->chan->cpucount++;
 		ret = lttng_ustconsumer_allocate_stream(stream);
 		if (ret) {
-			free(stream);
-			return NULL;
+			*alloc_ret = -EINVAL;
+			goto error;
 		}
 		break;
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
-		goto end;
+		*alloc_ret = -EINVAL;
+		goto error;
 	}
 
 	/*
@@ -413,9 +415,11 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 			stream->shm_fd, stream->wait_fd,
 			(unsigned long long) stream->mmap_len, stream->out_fd,
 			stream->net_seq_idx);
-
-end:
 	return stream;
+
+error:
+	free(stream);
+	return NULL;
 }
 
 /*

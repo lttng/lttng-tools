@@ -141,6 +141,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int fd;
 		struct consumer_relayd_sock_pair *relayd = NULL;
 		struct lttng_consumer_stream *new_stream;
+		int alloc_ret = 0;
 
 		/* block */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
@@ -166,9 +167,23 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.uid,
 				msg.u.stream.gid,
 				msg.u.stream.net_index,
-				msg.u.stream.metadata_flag);
+				msg.u.stream.metadata_flag,
+				&alloc_ret);
 		if (new_stream == NULL) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			switch (alloc_ret) {
+			case -ENOMEM:
+			case -EINVAL:
+			default:
+				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+				break;
+			case -ENOENT:
+				/*
+				 * We could not find the channel. Can happen if cpu hotplug
+				 * happens while tearing down.
+				 */
+				DBG3("Could not find channel");
+				break;
+			}
 			goto end_nosignal;
 		}
 
