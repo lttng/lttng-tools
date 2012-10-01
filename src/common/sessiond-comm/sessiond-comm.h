@@ -167,12 +167,12 @@ struct lttcomm_session_msg {
 	struct lttng_domain domain;
 	union {
 		struct {
-			char channel_name[NAME_MAX];
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 			char name[NAME_MAX];
 		} disable;
 		/* Event data */
 		struct {
-			char channel_name[NAME_MAX];
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 			struct lttng_event event;
 		} enable;
 		/* Create channel */
@@ -181,8 +181,8 @@ struct lttcomm_session_msg {
 		} channel;
 		/* Context */
 		struct {
-			char channel_name[NAME_MAX];
-			char event_name[NAME_MAX];
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+			char event_name[LTTNG_SYMBOL_NAME_LEN];
 			struct lttng_event_context ctx;
 		} context;
 		/* Use by register_consumer */
@@ -191,7 +191,7 @@ struct lttcomm_session_msg {
 		} reg;
 		/* List */
 		struct {
-			char channel_name[NAME_MAX];
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 		} list;
 		struct lttng_calibrate calibrate;
 		/* Used by the set_consumer_url and used by create_session also call */
@@ -200,8 +200,8 @@ struct lttcomm_session_msg {
 			uint32_t size;
 		} uri;
 		struct {
-			char channel_name[NAME_MAX];
-			char event_name[NAME_MAX];
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+			char event_name[LTTNG_SYMBOL_NAME_LEN];
 			/* Length of following bytecode */
 			uint32_t bytecode_len;
 		} filter;
