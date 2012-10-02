@@ -1,3 +1,6 @@
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
+			  -I$(srcdir) -I$(builddir)
+
 noinst_PROGRAMS = filter-grammar-test
 noinst_LTLIBRARIES = libfilter.la
 noinst_HEADERS = filter-ast.h

@@ -1,3 +1,5 @@
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
+
 # Kernel consumer library
 noinst_LTLIBRARIES = libkernel-consumer.la
 

@@ -1,4 +1,4 @@
-AM_CFLAGS = -I. -O2 -g -I../../
+AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/tests -I$(srcdir) -O2 -g
 AM_LDFLAGS =
 
 if LTTNG_TOOLS_BUILD_WITH_LIBDL

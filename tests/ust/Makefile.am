@@ -1,7 +1,7 @@
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS = nprocesses high-throughput low-throughput before-after multi-session
 
-AM_CFLAGS = -g -Wall -I../
+AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/tests -I$(top_srcdir)/src -g -Wall 
 AM_LDFLAGS = -lurcu -lurcu-cds
 
 EXTRA_DIST = runall.sh run-ust-global-tests.sh

@@ -1,3 +1,5 @@
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
+
 # Session daemon communication lib
 noinst_LTLIBRARIES = libsessiond-comm.la
 
