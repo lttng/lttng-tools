@@ -10,11 +10,15 @@ endif
 
 UTILS=
 
-lib_LTLIBRARIES=libhealthexit.la
+lib_LTLIBRARIES=libhealthexit.la libhealthstall.la
 
 # Health thread exit ld_preloaded test lib
 libhealthexit_la_SOURCES=health_exit.c
 libhealthexit_la_LDFLAGS= -module
+
+# Health thread stall ld_preloaded test lib
+libhealthstall_la_SOURCES=health_stall.c
+libhealthstall_la_LDFLAGS= -module
 
 noinst_PROGRAMS = health_check
 
