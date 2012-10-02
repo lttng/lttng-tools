@@ -10,6 +10,12 @@ endif
 
 UTILS=
 
+lib_LTLIBRARIES=libhealthexit.la
+
+# Health thread exit ld_preloaded test lib
+libhealthexit_la_SOURCES=health_exit.c
+libhealthexit_la_LDFLAGS= -module
+
 noinst_PROGRAMS = health_check
 
 health_check_SOURCES = health_check.c $(UTILS)
