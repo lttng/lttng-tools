@@ -21,7 +21,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h filter.c filter.h \
                        health.c health.h \
-                       cmd.c cmd.h
+                       cmd.c cmd.h \
+                       testpoint.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-app.c ust-consumer.c ust-consumer.h
@@ -38,7 +39,8 @@ lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
 		$(top_builddir)/src/common/libcommon.la \
 		$(top_builddir)/src/common/compat/libcompat.la \
-		$(top_builddir)/src/common/relayd/librelayd.la
+		$(top_builddir)/src/common/relayd/librelayd.la \
+		$(top_builddir)/src/common/testpoint/libtestpoint.la
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_LDADD += -llttng-ust-ctl

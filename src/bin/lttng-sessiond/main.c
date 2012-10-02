@@ -61,6 +61,7 @@
 #include "fd-limit.h"
 #include "filter.h"
 #include "health.h"
+#include "testpoint.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -688,7 +689,11 @@ static void *thread_manage_kernel(void *data)
 
 	DBG("Thread manage kernel started");
 
+	testpoint(thread_manage_kernel);
+
 	health_code_update(&health_thread_kernel);
+
+	testpoint(thread_manage_kernel_before_loop);
 
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
@@ -860,6 +865,9 @@ static void *thread_manage_consumer(void *data)
 	/* Inifinite blocking call, waiting for transmission */
 restart:
 	health_poll_update(&consumer_data->health);
+
+	testpoint(thread_manage_consumer);
+
 	ret = lttng_poll_wait(&events, -1);
 	health_poll_update(&consumer_data->health);
 	if (ret < 0) {
@@ -1057,6 +1065,8 @@ static void *thread_manage_apps(void *data)
 
 	DBG("[thread] Manage application started");
 
+	testpoint(thread_manage_apps);
+
 	rcu_register_thread();
 	rcu_thread_online();
 
@@ -1071,6 +1081,8 @@ static void *thread_manage_apps(void *data)
 	if (ret < 0) {
 		goto error;
 	}
+
+	testpoint(thread_manage_apps_before_loop);
 
 	health_code_update(&health_thread_app_manage);
 
@@ -1294,6 +1306,8 @@ static void *thread_registration_apps(void *data)
 	struct ust_command *ust_cmd = NULL;
 
 	DBG("[thread] Manage application registration started");
+
+	testpoint(thread_registration_apps);
 
 	ret = lttcomm_listen_unix_sock(apps_sock);
 	if (ret < 0) {
@@ -2994,6 +3008,8 @@ static void *thread_manage_clients(void *data)
 
 	DBG("[thread] Manage client started");
 
+	testpoint(thread_manage_clients);
+
 	rcu_register_thread();
 
 	health_code_update(&health_thread_cmd);
@@ -3024,6 +3040,8 @@ static void *thread_manage_clients(void *data)
 	if (opt_sig_parent) {
 		kill(ppid, SIGUSR1);
 	}
+
+	testpoint(thread_manage_clients_before_loop);
 
 	health_code_update(&health_thread_cmd);
 
