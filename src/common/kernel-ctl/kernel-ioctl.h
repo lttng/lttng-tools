@@ -49,37 +49,69 @@
 /* map stream to stream id for network streaming */
 #define RING_BUFFER_SET_STREAM_ID           _IOW(0xF6, 0x0D, unsigned long)
 
-
+/* Old ABI (without support for 32/64 bits compat) */
 /* LTTng file descriptor ioctl */
-#define LTTNG_KERNEL_SESSION                _IO(0xF6, 0x40)
-#define LTTNG_KERNEL_TRACER_VERSION         \
-		_IOR(0xF6, 0x41, struct lttng_kernel_tracer_version)
-#define LTTNG_KERNEL_TRACEPOINT_LIST        _IO(0xF6, 0x42)
-#define LTTNG_KERNEL_WAIT_QUIESCENT         _IO(0xF6, 0x43)
-#define LTTNG_KERNEL_CALIBRATE			\
-	_IOWR(0xF6, 0x44, struct lttng_kernel_calibrate)
+#define LTTNG_KERNEL_OLD_SESSION                _IO(0xF6, 0x40)
+#define LTTNG_KERNEL_OLD_TRACER_VERSION         \
+		_IOR(0xF6, 0x41, struct lttng_kernel_old_tracer_version)
+#define LTTNG_KERNEL_OLD_TRACEPOINT_LIST        _IO(0xF6, 0x42)
+#define LTTNG_KERNEL_OLD_WAIT_QUIESCENT         _IO(0xF6, 0x43)
+#define LTTNG_KERNEL_OLD_CALIBRATE		\
+	_IOWR(0xF6, 0x44, struct lttng_kernel_old_calibrate)
 
 /* Session FD ioctl */
-#define LTTNG_KERNEL_METADATA               \
-		_IOW(0xF6, 0x50, struct lttng_channel_attr)
-#define LTTNG_KERNEL_CHANNEL                \
-		_IOW(0xF6, 0x51, struct lttng_channel_attr)
-#define LTTNG_KERNEL_SESSION_START          _IO(0xF6, 0x52)
-#define LTTNG_KERNEL_SESSION_STOP           _IO(0xF6, 0x53)
+#define LTTNG_KERNEL_OLD_METADATA               \
+		_IOW(0xF6, 0x50, struct lttng_kernel_old_channel)
+#define LTTNG_KERNEL_OLD_CHANNEL                \
+		_IOW(0xF6, 0x51, struct lttng_kernel_old_channel)
+#define LTTNG_KERNEL_OLD_SESSION_START          _IO(0xF6, 0x52)
+#define LTTNG_KERNEL_OLD_SESSION_STOP           _IO(0xF6, 0x53)
 
 /* Channel FD ioctl */
-#define LTTNG_KERNEL_STREAM                 _IO(0xF6, 0x60)
-#define LTTNG_KERNEL_EVENT                  \
-		_IOW(0xF6, 0x61, struct lttng_kernel_event)
-#define LTTNG_KERNEL_STREAM_ID_OFFSET       \
+#define LTTNG_KERNEL_OLD_STREAM                 _IO(0xF6, 0x60)
+#define LTTNG_KERNEL_OLD_EVENT                  \
+		_IOW(0xF6, 0x61, struct lttng_kernel_old_event)
+#define LTTNG_KERNEL_OLD_STREAM_ID_OFFSET       \
 		_IOR(0xF6, 0x62, unsigned long)
 
 /* Event and Channel FD ioctl */
-#define LTTNG_KERNEL_CONTEXT                \
-		_IOW(0xF6, 0x70, struct lttng_kernel_context)
+#define LTTNG_KERNEL_OLD_CONTEXT                \
+		_IOW(0xF6, 0x70, struct lttng_kernel_old_context)
 
 /* Event, Channel and Session ioctl */
-#define LTTNG_KERNEL_ENABLE                 _IO(0xF6, 0x80)
-#define LTTNG_KERNEL_DISABLE                _IO(0xF6, 0x81)
+#define LTTNG_KERNEL_OLD_ENABLE                 _IO(0xF6, 0x80)
+#define LTTNG_KERNEL_OLD_DISABLE                _IO(0xF6, 0x81)
+
+
+/* Current ABI (with suport for 32/64 bits compat) */
+/* LTTng file descriptor ioctl */
+#define LTTNG_KERNEL_SESSION			_IO(0xF6, 0x45)
+#define LTTNG_KERNEL_TRACER_VERSION		\
+	_IOR(0xF6, 0x46, struct lttng_kernel_tracer_version)
+#define LTTNG_KERNEL_TRACEPOINT_LIST		_IO(0xF6, 0x47)
+#define LTTNG_KERNEL_WAIT_QUIESCENT		_IO(0xF6, 0x48)
+#define LTTNG_KERNEL_CALIBRATE			\
+	_IOWR(0xF6, 0x49, struct lttng_kernel_calibrate)
+
+/* Session FD ioctl */
+#define LTTNG_KERNEL_METADATA			\
+	_IOW(0xF6, 0x54, struct lttng_kernel_channel)
+#define LTTNG_KERNEL_CHANNEL			\
+	_IOW(0xF6, 0x55, struct lttng_kernel_channel)
+#define LTTNG_KERNEL_SESSION_START		_IO(0xF6, 0x56)
+#define LTTNG_KERNEL_SESSION_STOP		_IO(0xF6, 0x57)
+
+/* Channel FD ioctl */
+#define LTTNG_KERNEL_STREAM			_IO(0xF6, 0x62)
+#define LTTNG_KERNEL_EVENT			\
+	_IOW(0xF6, 0x63, struct lttng_kernel_event)
+
+/* Event and Channel FD ioctl */
+#define LTTNG_KERNEL_CONTEXT			\
+	_IOW(0xF6, 0x71, struct lttng_kernel_context)
+
+/* Event, Channel and Session ioctl */
+#define LTTNG_KERNEL_ENABLE			_IO(0xF6, 0x82)
+#define LTTNG_KERNEL_DISABLE			_IO(0xF6, 0x83)
 
 #endif /* _LTT_KERNEL_IOCTL_H */

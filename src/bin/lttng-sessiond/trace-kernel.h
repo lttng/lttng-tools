@@ -22,6 +22,7 @@
 
 #include <lttng/lttng.h>
 #include <common/lttng-kernel.h>
+#include <common/lttng-kernel-old.h>
 
 #include "consumer.h"
 
