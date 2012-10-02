@@ -60,5 +60,6 @@ gen-events-time
 gen-events
 gen-ust-events
 unit_tests
+health_check
 
 benchmark/

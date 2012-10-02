@@ -1,4 +1,4 @@
-SUBDIRS = streaming
+SUBDIRS = streaming health
 
 AM_CFLAGS = -g -Wall -I../
 AM_LDFLAGS = -lurcu -lurcu-cds
