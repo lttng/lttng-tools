@@ -190,9 +190,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			return ret;
 		}
 
-		DBG("consumer_add_stream chan %d stream %d",
-				msg.u.stream.channel_key,
-				msg.u.stream.stream_key);
+		DBG("Consumer command ADD_STREAM chan %d stream %d",
+				msg.u.stream.channel_key, msg.u.stream.stream_key);
 
 		assert(msg.u.stream.output == LTTNG_EVENT_MMAP);
 		new_stream = consumer_allocate_stream(msg.u.stream.channel_key,
@@ -384,17 +383,24 @@ int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 	obj.wait_fd = stream->wait_fd;
 	obj.memory_map_size = stream->mmap_len;
 	ret = ustctl_add_stream(stream->chan->handle, &obj);
-	if (ret)
+	if (ret) {
+		ERR("UST ctl add_stream failed with ret %d", ret);
 		return ret;
+	}
+
 	stream->buf = ustctl_open_stream_read(stream->chan->handle, stream->cpu);
-	if (!stream->buf)
+	if (!stream->buf) {
+		ERR("UST ctl open_stream_read failed");
 		return -EBUSY;
+	}
+
 	/* ustctl_open_stream_read has closed the shm fd. */
 	stream->wait_fd_is_copy = 1;
 	stream->shm_fd = -1;
 
 	stream->mmap_base = ustctl_get_mmap_base(stream->chan->handle, stream->buf);
 	if (!stream->mmap_base) {
+		ERR("UST ctl get_mmap_base failed");
 		return -EINVAL;
 	}
 
