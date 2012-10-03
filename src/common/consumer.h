@@ -341,7 +341,10 @@ extern struct lttng_consumer_stream *consumer_allocate_stream(
 		int metadata_flag,
 		int *alloc_ret);
 extern int consumer_add_stream(struct lttng_consumer_stream *stream);
-extern void consumer_del_stream(struct lttng_consumer_stream *stream);
+extern void consumer_del_stream(struct lttng_consumer_stream *stream,
+		struct lttng_ht *ht);
+extern void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
+		struct lttng_ht *ht);
 extern void consumer_change_stream_state(int stream_key,
 		enum lttng_consumer_stream_state state);
 extern void consumer_del_channel(struct lttng_consumer_channel *channel);

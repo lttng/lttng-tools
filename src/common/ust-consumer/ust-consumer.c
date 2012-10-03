@@ -234,12 +234,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					&new_stream->relayd_stream_id);
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 			if (ret < 0) {
+				consumer_del_stream(new_stream, NULL);
 				goto end_nosignal;
 			}
 		} else if (msg.u.stream.net_index != -1) {
 			ERR("Network sequence index %d unknown. Not adding stream.",
 					msg.u.stream.net_index);
-			free(new_stream);
+			consumer_del_stream(new_stream, NULL);
 			goto end_nosignal;
 		}
 
@@ -247,6 +248,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ctx->on_recv_stream) {
 			ret = ctx->on_recv_stream(new_stream);
 			if (ret < 0) {
+				consumer_del_stream(new_stream, NULL);
 				goto end_nosignal;
 			}
 		}
@@ -259,9 +261,21 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			} while (ret < 0 && errno == EINTR);
 			if (ret < 0) {
 				PERROR("write metadata pipe");
+				consumer_del_metadata_stream(new_stream, NULL);
+				goto end_nosignal;
 			}
 		} else {
-			consumer_add_stream(new_stream);
+			ret = consumer_add_stream(new_stream);
+			if (ret) {
+				ERR("Consumer add stream %d failed. Continuing",
+						new_stream->key);
+				/*
+				 * At this point, if the add_stream fails, it is not in the
+				 * hash table thus passing the NULL value here.
+				 */
+				consumer_del_stream(new_stream, NULL);
+				goto end_nosignal;
+			}
 		}
 
 		DBG("UST consumer_add_stream %s (%d,%d) with relayd id %" PRIu64,
@@ -373,7 +387,7 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 	ustctl_unmap_channel(chan->handle);
 }
 
-int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
+int lttng_ustconsumer_add_stream(struct lttng_consumer_stream *stream)
 {
 	struct lttng_ust_object_data obj;
 	int ret;
@@ -385,13 +399,14 @@ int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 	ret = ustctl_add_stream(stream->chan->handle, &obj);
 	if (ret) {
 		ERR("UST ctl add_stream failed with ret %d", ret);
-		return ret;
+		goto error;
 	}
 
 	stream->buf = ustctl_open_stream_read(stream->chan->handle, stream->cpu);
 	if (!stream->buf) {
 		ERR("UST ctl open_stream_read failed");
-		return -EBUSY;
+		ret = -EBUSY;
+		goto error;
 	}
 
 	/* ustctl_open_stream_read has closed the shm fd. */
@@ -401,10 +416,16 @@ int lttng_ustconsumer_allocate_stream(struct lttng_consumer_stream *stream)
 	stream->mmap_base = ustctl_get_mmap_base(stream->chan->handle, stream->buf);
 	if (!stream->mmap_base) {
 		ERR("UST ctl get_mmap_base failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto mmap_error;
 	}
 
 	return 0;
+
+mmap_error:
+	ustctl_close_stream_read(stream->chan->handle, stream->buf);
+error:
+	return ret;
 }
 
 void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
