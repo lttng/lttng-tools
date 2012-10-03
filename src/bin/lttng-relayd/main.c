@@ -1407,13 +1407,13 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 		goto end_unlock;
 	}
 
+	DBG2("Relay wrote %d bytes to tracefile for stream id %" PRIu64,
+			ret, stream->stream_handle);
+
 	ret = write_padding_to_file(stream->fd, be32toh(data_hdr.padding_size));
 	if (ret < 0) {
 		goto end_unlock;
 	}
-
-	DBG2("Relay wrote %d bytes to tracefile for stream id %" PRIu64,
-		ret, stream->stream_handle);
 
 	stream->prev_seq = net_seq_num;
 
