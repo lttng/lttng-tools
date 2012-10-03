@@ -29,7 +29,7 @@ source $TESTDIR/utils.sh
 
 print_test_banner "$TEST_DESC"
 
-if [ ! -f "$SESSIOND_PRELOAD" ]; then
+if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
 	echo -e "libhealthstall.so not available for this test. Skipping."
 	exit 0
 fi
