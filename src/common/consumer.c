@@ -1516,9 +1516,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 }
 
 /*
- * Iterate over all stream element of the hashtable and free them. This is race
- * free since the hashtable received MUST be in a race free synchronization
- * state. It's the caller responsability to make sure of that.
+ * Iterate over all streams of the hashtable and free them properly.
  */
 static void destroy_stream_ht(struct lttng_ht *ht)
 {
@@ -1535,7 +1533,7 @@ static void destroy_stream_ht(struct lttng_ht *ht)
 		ret = lttng_ht_del(ht, &iter);
 		assert(!ret);
 
-		free(stream);
+		call_rcu(&stream->node.head, consumer_free_stream);
 	}
 	rcu_read_unlock();
 
@@ -1635,7 +1633,7 @@ static void consumer_del_metadata_stream(struct lttng_consumer_stream *stream)
 		consumer_del_channel(stream->chan);
 	}
 
-	free(stream);
+	call_rcu(&stream->node.head, consumer_free_stream);
 }
 
 /*
