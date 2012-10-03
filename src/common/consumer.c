@@ -62,11 +62,14 @@ volatile int consumer_quit = 0;
  * Find a stream. The consumer_data.lock must be locked during this
  * call.
  */
-static struct lttng_consumer_stream *consumer_find_stream(int key)
+static struct lttng_consumer_stream *consumer_find_stream(int key,
+		struct lttng_ht *ht)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_consumer_stream *stream = NULL;
+
+	assert(ht);
 
 	/* Negative keys are lookup failures */
 	if (key < 0) {
@@ -75,8 +78,7 @@ static struct lttng_consumer_stream *consumer_find_stream(int key)
 
 	rcu_read_lock();
 
-	lttng_ht_lookup(consumer_data.stream_ht, (void *)((unsigned long) key),
-			&iter);
+	lttng_ht_lookup(ht, (void *)((unsigned long) key), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node != NULL) {
 		stream = caa_container_of(node, struct lttng_consumer_stream, node);
@@ -87,12 +89,12 @@ static struct lttng_consumer_stream *consumer_find_stream(int key)
 	return stream;
 }
 
-static void consumer_steal_stream_key(int key)
+static void consumer_steal_stream_key(int key, struct lttng_ht *ht)
 {
 	struct lttng_consumer_stream *stream;
 
 	rcu_read_lock();
-	stream = consumer_find_stream(key);
+	stream = consumer_find_stream(key, ht);
 	if (stream) {
 		stream->key = -1;
 		/*
@@ -443,7 +445,7 @@ int consumer_add_stream(struct lttng_consumer_stream *stream)
 
 	pthread_mutex_lock(&consumer_data.lock);
 	/* Steal stream identifier, for UST */
-	consumer_steal_stream_key(stream->key);
+	consumer_steal_stream_key(stream->key, consumer_data.stream_ht);
 
 	rcu_read_lock();
 	lttng_ht_lookup(consumer_data.stream_ht,
@@ -620,7 +622,7 @@ void consumer_change_stream_state(int stream_key,
 	struct lttng_consumer_stream *stream;
 
 	pthread_mutex_lock(&consumer_data.lock);
-	stream = consumer_find_stream(stream_key);
+	stream = consumer_find_stream(stream_key, consumer_data.stream_ht);
 	if (stream) {
 		stream->state = state;
 	}
