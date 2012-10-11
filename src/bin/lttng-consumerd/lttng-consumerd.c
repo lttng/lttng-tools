@@ -356,23 +356,31 @@ int main(int argc, char **argv)
 	}
 	lttng_consumer_set_error_sock(ctx, ret);
 
+	/* Create thread to manage the polling/writing of trace metadata */
+	ret = pthread_create(&threads[0], NULL, consumer_thread_metadata_poll,
+			(void *) ctx);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto error;
+	}
+
+	/* Create thread to manage the polling/writing of trace data */
+	ret = pthread_create(&threads[1], NULL, consumer_thread_data_poll,
+			(void *) ctx);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto error;
+	}
+
 	/* Create the thread to manage the receive of fd */
-	ret = pthread_create(&threads[0], NULL, lttng_consumer_thread_receive_fds,
+	ret = pthread_create(&threads[2], NULL, consumer_thread_sessiond_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
 		goto error;
 	}
 
-	/* Create thread to manage the polling/writing of traces */
-	ret = pthread_create(&threads[1], NULL, lttng_consumer_thread_poll_fds,
-			(void *) ctx);
-	if (ret != 0) {
-		perror("pthread_create");
-		goto error;
-	}
-
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 3; i++) {
 		ret = pthread_join(threads[i], &status);
 		if (ret != 0) {
 			perror("pthread_join");

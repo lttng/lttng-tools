@@ -385,8 +385,9 @@ extern int lttng_consumer_get_produced_snapshot(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream,
 		unsigned long *pos);
-extern void *lttng_consumer_thread_poll_fds(void *data);
-extern void *lttng_consumer_thread_receive_fds(void *data);
+extern void *consumer_thread_metadata_poll(void *data);
+extern void *consumer_thread_data_poll(void *data);
+extern void *consumer_thread_sessiond_poll(void *data);
 extern int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
 
