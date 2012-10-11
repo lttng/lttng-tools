@@ -233,12 +233,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			if (ret < 0) {
 				PERROR("write metadata pipe");
 				consumer_del_stream(new_stream, NULL);
+				goto end_nosignal;
 			}
 		} else {
-			ret = consumer_add_stream(new_stream);
-			if (ret) {
-				ERR("Consumer add stream %d failed. Continuing",
-						new_stream->key);
+			do {
+				ret = write(ctx->consumer_poll_pipe[1], &new_stream,
+						sizeof(new_stream));
+			} while (ret < 0 && errno == EINTR);
+			if (ret < 0) {
+				PERROR("write data pipe");
 				consumer_del_stream(new_stream, NULL);
 				goto end_nosignal;
 			}
@@ -284,20 +287,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		goto end_nosignal;
 	}
 
-	/*
-	 * Wake-up the other end by writing a null byte in the pipe (non-blocking).
-	 * Important note: Because writing into the pipe is non-blocking (and
-	 * therefore we allow dropping wakeup data, as long as there is wakeup data
-	 * present in the pipe buffer to wake up the other end), the other end
-	 * should perform the following sequence for waiting:
-	 *
-	 * 1) empty the pipe (reads).
-	 * 2) perform update operation.
-	 * 3) wait on the pipe (poll).
-	 */
-	do {
-		ret = write(ctx->consumer_poll_pipe[1], "", 1);
-	} while (ret < 0 && errno == EINTR);
 end_nosignal:
 	rcu_read_unlock();
 
