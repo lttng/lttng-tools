@@ -275,6 +275,10 @@ struct lttng_consumer_global_data {
 	struct lttng_ht *relayd_ht;
 };
 
+/* Defined in consumer.c and coupled with explanations */
+extern struct lttng_ht *metadata_ht;
+extern struct lttng_ht *data_ht;
+
 /*
  * Init consumer data structures.
  */
@@ -324,10 +328,6 @@ extern void lttng_consumer_sync_trace_file(
  */
 extern int lttng_consumer_poll_socket(struct pollfd *kconsumer_sockpoll);
 
-extern int consumer_update_poll_array(
-		struct lttng_consumer_local_data *ctx, struct pollfd **pollfd,
-		struct lttng_consumer_stream **local_consumer_streams);
-
 extern struct lttng_consumer_stream *consumer_allocate_stream(
 		int channel_key, int stream_key,
 		int shm_fd, int wait_fd,
@@ -340,7 +340,6 @@ extern struct lttng_consumer_stream *consumer_allocate_stream(
 		int net_index,
 		int metadata_flag,
 		int *alloc_ret);
-extern int consumer_add_stream(struct lttng_consumer_stream *stream);
 extern void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 extern void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
