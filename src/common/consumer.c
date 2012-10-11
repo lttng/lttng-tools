@@ -172,17 +172,6 @@ void consumer_free_stream(struct rcu_head *head)
 	free(stream);
 }
 
-static
-void consumer_free_metadata_stream(struct rcu_head *head)
-{
-	struct lttng_ht_node_ulong *node =
-		caa_container_of(head, struct lttng_ht_node_ulong, head);
-	struct lttng_consumer_stream *stream =
-		caa_container_of(node, struct lttng_consumer_stream, waitfd_node);
-
-	free(stream);
-}
-
 /*
  * RCU protected relayd socket pair free.
  */
@@ -417,8 +406,17 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	stream->metadata_flag = metadata_flag;
 	strncpy(stream->path_name, path_name, sizeof(stream->path_name));
 	stream->path_name[sizeof(stream->path_name) - 1] = '\0';
-	lttng_ht_node_init_ulong(&stream->waitfd_node, stream->wait_fd);
-	lttng_ht_node_init_ulong(&stream->node, stream->key);
+
+	/*
+	 * Index differently the metadata node because the thread is using an
+	 * internal hash table to match streams in the metadata_ht to the epoll set
+	 * file descriptor.
+	 */
+	if (metadata_flag) {
+		lttng_ht_node_init_ulong(&stream->node, stream->wait_fd);
+	} else {
+		lttng_ht_node_init_ulong(&stream->node, stream->key);
+	}
 
 	/*
 	 * The cpu number is needed before using any ustctl_* actions. Ignored for
@@ -1576,11 +1574,11 @@ static void destroy_stream_ht(struct lttng_ht *ht)
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, waitfd_node.node) {
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
 		ret = lttng_ht_del(ht, &iter);
 		assert(!ret);
 
-		call_rcu(&stream->waitfd_node.head, consumer_free_metadata_stream);
+		call_rcu(&stream->node.head, consumer_free_stream);
 	}
 	rcu_read_unlock();
 
@@ -1633,7 +1631,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	}
 
 	rcu_read_lock();
-	iter.iter.node = &stream->waitfd_node.node;
+	iter.iter.node = &stream->node.node;
 	ret = lttng_ht_del(ht, &iter);
 	assert(!ret);
 	rcu_read_unlock();
@@ -1704,7 +1702,7 @@ end:
 	}
 
 free_stream:
-	call_rcu(&stream->waitfd_node.head, consumer_free_metadata_stream);
+	call_rcu(&stream->node.head, consumer_free_stream);
 }
 
 /*
@@ -1753,7 +1751,7 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 	/* Steal stream identifier to avoid having streams with the same key */
 	consumer_steal_stream_key(stream->key, ht);
 
-	lttng_ht_add_unique_ulong(ht, &stream->waitfd_node);
+	lttng_ht_add_unique_ulong(ht, &stream->node);
 	rcu_read_unlock();
 
 	pthread_mutex_unlock(&consumer_data.lock);
@@ -1878,7 +1876,7 @@ restart:
 			assert(node);
 
 			stream = caa_container_of(node, struct lttng_consumer_stream,
-					waitfd_node);
+					node);
 
 			/* Check for error event */
 			if (revents & (LPOLLERR | LPOLLHUP)) {
