@@ -288,6 +288,7 @@ AC_CONFIG_FILES([
 	tests/kernel/Makefile
 	tests/tools/Makefile
 	tests/tools/streaming/Makefile
+	tests/tools/filtering/Makefile
 	tests/tools/health/Makefile
 	tests/ust/Makefile
 	tests/ust/nprocesses/Makefile
