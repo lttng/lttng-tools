@@ -281,6 +281,11 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 	iter.iter.node = &stream->node.node;
 	ret = lttng_ht_del(ht, &iter);
 	assert(!ret);
+
+	/* Remove node session id from the consumer_data stream ht */
+	iter.iter.node = &stream->node_session_id.node;
+	ret = lttng_ht_del(consumer_data.stream_list_ht, &iter);
+	assert(!ret);
 	rcu_read_unlock();
 
 	assert(consumer_data.stream_count > 0);
@@ -461,6 +466,13 @@ static int consumer_add_stream(struct lttng_consumer_stream *stream,
 	consumer_steal_stream_key(stream->key, ht);
 
 	lttng_ht_add_unique_ulong(ht, &stream->node);
+
+	/*
+	 * Add stream to the stream_list_ht of the consumer data. No need to steal
+	 * the key since the HT does not use it and we allow to add redundant keys
+	 * into this table.
+	 */
+	lttng_ht_add_ulong(consumer_data.stream_list_ht, &stream->node_session_id);
 
 	/* Check and cleanup relayd */
 	relayd = consumer_find_relayd(stream->net_seq_idx);
@@ -1606,6 +1618,11 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	iter.iter.node = &stream->node.node;
 	ret = lttng_ht_del(ht, &iter);
 	assert(!ret);
+
+	/* Remove node session id from the consumer_data stream ht */
+	iter.iter.node = &stream->node_session_id.node;
+	ret = lttng_ht_del(consumer_data.stream_list_ht, &iter);
+	assert(!ret);
 	rcu_read_unlock();
 
 	if (stream->out_fd >= 0) {
@@ -1724,6 +1741,14 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 	consumer_steal_stream_key(stream->key, ht);
 
 	lttng_ht_add_unique_ulong(ht, &stream->node);
+
+	/*
+	 * Add stream to the stream_list_ht of the consumer data. No need to steal
+	 * the key since the HT does not use it and we allow to add redundant keys
+	 * into this table.
+	 */
+	lttng_ht_add_ulong(consumer_data.stream_list_ht, &stream->node_session_id);
+
 	rcu_read_unlock();
 
 	pthread_mutex_unlock(&consumer_data.lock);
@@ -2412,4 +2437,67 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 error:
 	return ret;
+}
+
+/*
+ * Check if for a given session id there is still data needed to be extract
+ * from the buffers.
+ *
+ * Return 1 if data is in fact available to be read or else 0.
+ */
+int consumer_data_available(uint64_t id)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttng_ht *ht;
+	struct lttng_consumer_stream *stream;
+	int (*data_available)(struct lttng_consumer_stream *);
+
+	DBG("Consumer data available command on session id %" PRIu64, id);
+
+	pthread_mutex_lock(&consumer_data.lock);
+
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		data_available = lttng_kconsumer_data_available;
+		break;
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		data_available = lttng_ustconsumer_data_available;
+		break;
+	default:
+		ERR("Unknown consumer data type");
+		assert(0);
+	}
+
+	/* Ease our life a bit */
+	ht = consumer_data.stream_list_ht;
+
+	cds_lfht_for_each_entry_duplicate(ht->ht, (long unsigned int) ht->hash_fct,
+			ht->match_fct, (void *)((unsigned long) id),
+			&iter.iter, stream, node_session_id.node) {
+		/* Check the stream for data. */
+		ret = data_available(stream);
+		if (ret == 0) {
+			goto data_not_available;
+		}
+	}
+
+	/* TODO: Support to ask the relayd if the streams are remote */
+
+	/*
+	 * Finding _no_ node in the hash table means that the stream(s) have been
+	 * removed thus data is guaranteed to be available for analysis from the
+	 * trace files. This is *only* true for local consumer and not network
+	 * streaming.
+	 */
+
+	/* Data is available to be read by a viewer. */
+	pthread_mutex_unlock(&consumer_data.lock);
+	return 1;
+
+data_not_available:
+	/* Data is still being extracted from buffers. */
+	pthread_mutex_unlock(&consumer_data.lock);
+	return 0;
 }

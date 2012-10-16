@@ -190,7 +190,8 @@ void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		int net_index,
 		unsigned int metadata_flag,
 		const char *name,
-		const char *pathname);
+		const char *pathname,
+		unsigned int session_id);
 void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		int channel_key,

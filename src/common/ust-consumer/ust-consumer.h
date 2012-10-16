@@ -61,6 +61,7 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
 extern int lttng_ustctl_get_mmap_read_offset(
 		struct lttng_ust_shm_handle *handle,
 		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off);
+int lttng_ustconsumer_data_available(struct lttng_consumer_stream *stream);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -148,6 +149,11 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 static inline
 int lttng_ustctl_get_mmap_read_offset(struct lttng_ust_shm_handle *handle,
 		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off)
+{
+	return -ENOSYS;
+}
+static inline
+int lttng_ustconsumer_data_available(struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }

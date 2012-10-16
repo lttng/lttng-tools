@@ -138,7 +138,8 @@ int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
 			consumer->net_seq_index,
 			1, /* Metadata flag set */
 			"metadata",
-			pathname);
+			pathname,
+			session->id);
 
 	/* Send stream and file descriptor */
 	ret = consumer_send_stream(sock, consumer, &lkm,
@@ -207,7 +208,8 @@ int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
 			consumer->net_seq_index,
 			0, /* Metadata flag unset */
 			stream->name,
-			pathname);
+			pathname,
+			session->id);
 
 	/* Send stream and file descriptor */
 	ret = consumer_send_stream(sock, consumer, &lkm, &stream->fd, 1);

@@ -519,7 +519,8 @@ void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		int net_index,
 		unsigned int metadata_flag,
 		const char *name,
-		const char *pathname)
+		const char *pathname,
+		unsigned int session_id)
 {
 	assert(msg);
 
@@ -537,6 +538,7 @@ void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.stream.gid = gid;
 	msg->u.stream.net_index = net_index;
 	msg->u.stream.metadata_flag = metadata_flag;
+	msg->u.stream.session_id = (uint64_t) session_id;
 	strncpy(msg->u.stream.name, name, sizeof(msg->u.stream.name));
 	msg->u.stream.name[sizeof(msg->u.stream.name) - 1] = '\0';
 	strncpy(msg->u.stream.path_name, pathname,

@@ -101,7 +101,8 @@ static int send_channel_stream(int sock, struct ust_app_channel *uchan,
 			consumer->net_seq_index,
 			0, /* Metadata flag unset */
 			stream->name,
-			pathname);
+			pathname,
+			usess->id);
 
 	/* Send stream and file descriptor */
 	fds[0] = stream->obj->shm_fd;
@@ -266,7 +267,8 @@ static int send_metadata(int sock, struct ust_app_session *usess,
 			consumer->net_seq_index,
 			1, /* Flag metadata set */
 			"metadata",
-			pathname);
+			pathname,
+			usess->id);
 
 	/* Send stream and file descriptor */
 	fds[0] = usess->metadata->stream_obj->shm_fd;
