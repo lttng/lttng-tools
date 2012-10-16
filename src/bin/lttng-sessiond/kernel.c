@@ -125,6 +125,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 		PERROR("fcntl session fd");
 	}
 
+	lks->id = session->id;
 	lks->consumer_fds_sent = 0;
 	session->kernel_session = lks;
 

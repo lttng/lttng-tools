@@ -364,6 +364,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 		gid_t gid,
 		int net_index,
 		int metadata_flag,
+		uint64_t session_id,
 		int *alloc_ret)
 {
 	struct lttng_consumer_stream *stream;
@@ -399,8 +400,10 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	stream->gid = gid;
 	stream->net_seq_idx = net_index;
 	stream->metadata_flag = metadata_flag;
+	stream->session_id = session_id;
 	strncpy(stream->path_name, path_name, sizeof(stream->path_name));
 	stream->path_name[sizeof(stream->path_name) - 1] = '\0';
+	pthread_mutex_init(&stream->lock, NULL);
 
 	/*
 	 * Index differently the metadata node because the thread is using an
@@ -413,6 +416,9 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 		lttng_ht_node_init_ulong(&stream->node, stream->key);
 	}
 
+	/* Init session id node with the stream session id */
+	lttng_ht_node_init_ulong(&stream->node_session_id, stream->session_id);
+
 	/*
 	 * The cpu number is needed before using any ustctl_* actions. Ignored for
 	 * the kernel so the value does not matter.
@@ -422,10 +428,10 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	DBG3("Allocated stream %s (key %d, shm_fd %d, wait_fd %d, mmap_len %llu,"
-			" out_fd %d, net_seq_idx %d)", stream->path_name, stream->key,
-			stream->shm_fd, stream->wait_fd,
+			" out_fd %d, net_seq_idx %d, session_id %" PRIu64,
+			stream->path_name, stream->key, stream->shm_fd, stream->wait_fd,
 			(unsigned long long) stream->mmap_len, stream->out_fd,
-			stream->net_seq_idx);
+			stream->net_seq_idx, stream->session_id);
 	return stream;
 
 error:
@@ -2308,6 +2314,7 @@ void lttng_consumer_init(void)
 {
 	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	consumer_data.stream_list_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	assert(metadata_ht);

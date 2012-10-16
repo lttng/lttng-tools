@@ -56,6 +56,8 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_ADD_RELAYD_SOCKET,
 	/* Inform the consumer to kill a specific relayd connection */
 	LTTNG_CONSUMER_DESTROY_RELAYD,
+	/* Return to the sessiond if there is data pending for a session */
+	LTTNG_CONSUMER_DATA_AVAILABLE,
 };
 
 /* State of each fd in consumer */
@@ -101,8 +103,10 @@ struct lttng_ust_lib_ring_buffer;
  * uniquely a stream.
  */
 struct lttng_consumer_stream {
-	/* Hash table node for both metadata and data type */
+	/* HT node used by the data_ht and metadata_ht */
 	struct lttng_ht_node_ulong node;
+	/* HT node used in consumer_data.stream_list_ht */
+	struct lttng_ht_node_ulong node_session_id;
 	struct lttng_consumer_channel *chan;	/* associated channel */
 	/*
 	 * key is the key used by the session daemon to refer to the
@@ -137,6 +141,10 @@ struct lttng_consumer_stream {
 	uint64_t relayd_stream_id;
 	/* Next sequence number to use for trace packet */
 	uint64_t next_net_seq_num;
+	/* Lock to use the stream FDs since they are used between threads. */
+	pthread_mutex_t lock;
+	/* Tracing session id */
+	uint64_t session_id;
 };
 
 /*
@@ -272,6 +280,15 @@ struct lttng_consumer_global_data {
 	 * stream has an index which associate the right relayd socket to use.
 	 */
 	struct lttng_ht *relayd_ht;
+
+	/*
+	 * This hash table contains all streams (metadata and data) indexed by
+	 * session id. In other words, the ht is indexed by session id and each
+	 * bucket contains the list of associated streams.
+	 *
+	 * This HT uses the "node_session_id" of the consumer stream.
+	 */
+	struct lttng_ht *stream_list_ht;
 };
 
 /* Defined in consumer.c and coupled with explanations */
@@ -338,6 +355,7 @@ extern struct lttng_consumer_stream *consumer_allocate_stream(
 		gid_t gid,
 		int net_index,
 		int metadata_flag,
+		uint64_t session_id,
 		int *alloc_ret);
 extern void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);

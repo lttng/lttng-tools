@@ -272,6 +272,7 @@ struct lttcomm_consumer_msg {
 			int net_index;
 			unsigned int metadata_flag;
 			char name[LTTNG_SYMBOL_NAME_LEN];  /* Name string of the stream */
+			uint64_t session_id;   /* Tracing session id of the stream */
 		} stream;
 		struct {
 			int net_index;
@@ -282,6 +283,9 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t net_seq_idx;
 		} destroy_relayd;
+		struct {
+			uint64_t session_id;
+		} data_available;
 	} u;
 };
 

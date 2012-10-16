@@ -168,6 +168,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.gid,
 				msg.u.stream.net_index,
 				msg.u.stream.metadata_flag,
+				msg.u.stream.session_id,
 				&alloc_ret);
 		if (new_stream == NULL) {
 			switch (alloc_ret) {
@@ -278,6 +279,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		consumer_flag_relayd_for_destroy(relayd);
 
 		goto end_nosignal;
+	}
+	case LTTNG_CONSUMER_DATA_AVAILABLE:
+	{
+		rcu_read_unlock();
+		return -ENOSYS;
 	}
 	default:
 		goto end_nosignal;
