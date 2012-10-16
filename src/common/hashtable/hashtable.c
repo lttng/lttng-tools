@@ -184,6 +184,19 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 }
 
 /*
+ * Add unsigned long node to hashtable.
+ */
+void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
+{
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	cds_lfht_add(ht->ht, ht->hash_fct((void *) node->key, HASH_SEED),
+			&node->node);
+}
+
+/*
  * Add unique unsigned long node to hashtable.
  */
 void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
