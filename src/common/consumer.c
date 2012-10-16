@@ -623,23 +623,6 @@ error:
 	return outfd;
 }
 
-/*
- * Update a stream according to what we just received.
- */
-void consumer_change_stream_state(int stream_key,
-		enum lttng_consumer_stream_state state)
-{
-	struct lttng_consumer_stream *stream;
-
-	pthread_mutex_lock(&consumer_data.lock);
-	stream = consumer_find_stream(stream_key, consumer_data.stream_ht);
-	if (stream) {
-		stream->state = state;
-	}
-	consumer_data.need_update = 1;
-	pthread_mutex_unlock(&consumer_data.lock);
-}
-
 static
 void consumer_free_channel(struct rcu_head *head)
 {
@@ -897,17 +880,6 @@ void lttng_consumer_cleanup(void)
 
 	rcu_read_lock();
 
-	/*
-	 * close all outfd. Called when there are no more threads running (after
-	 * joining on the threads), no need to protect list iteration with mutex.
-	 */
-	cds_lfht_for_each_entry(consumer_data.stream_ht->ht, &iter.iter, node,
-			node) {
-		struct lttng_consumer_stream *stream =
-			caa_container_of(node, struct lttng_consumer_stream, node);
-		consumer_del_stream(stream, consumer_data.stream_ht);
-	}
-
 	cds_lfht_for_each_entry(consumer_data.channel_ht->ht, &iter.iter, node,
 			node) {
 		struct lttng_consumer_channel *channel =
@@ -917,7 +889,6 @@ void lttng_consumer_cleanup(void)
 
 	rcu_read_unlock();
 
-	lttng_ht_destroy(consumer_data.stream_ht);
 	lttng_ht_destroy(consumer_data.channel_ht);
 }
 
@@ -2335,7 +2306,6 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
  */
 void lttng_consumer_init(void)
 {
-	consumer_data.stream_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 

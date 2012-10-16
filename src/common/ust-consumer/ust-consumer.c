@@ -308,20 +308,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		rcu_read_unlock();
 		return -ENOSYS;
-#if 0
-		if (ctx->on_update_stream != NULL) {
-			ret = ctx->on_update_stream(msg.u.stream.stream_key, msg.u.stream.state);
-			if (ret == 0) {
-				consumer_change_stream_state(msg.u.stream.stream_key, msg.u.stream.state);
-			} else if (ret < 0) {
-				goto end;
-			}
-		} else {
-			consumer_change_stream_state(msg.u.stream.stream_key,
-				msg.u.stream.state);
-		}
-		break;
-#endif
 	}
 	default:
 		break;

@@ -101,8 +101,8 @@ struct lttng_ust_lib_ring_buffer;
  * uniquely a stream.
  */
 struct lttng_consumer_stream {
+	/* Hash table node for both metadata and data type */
 	struct lttng_ht_node_ulong node;
-	struct lttng_ht_node_ulong waitfd_node;
 	struct lttng_consumer_channel *chan;	/* associated channel */
 	/*
 	 * key is the key used by the session daemon to refer to the
@@ -253,13 +253,12 @@ struct lttng_consumer_global_data {
 	pthread_mutex_t lock;
 
 	/*
-	 * Number of streams in the hash table. Protected by consumer_data.lock.
+	 * Number of streams in the data stream hash table declared outside.
+	 * Protected by consumer_data.lock.
 	 */
 	int stream_count;
-	/*
-	 * Hash tables of streams and channels. Protected by consumer_data.lock.
-	 */
-	struct lttng_ht *stream_ht;
+
+	/* Channel hash table protected by consumer_data.lock. */
 	struct lttng_ht *channel_ht;
 	/*
 	 * Flag specifying if the local array of FDs needs update in the
@@ -344,8 +343,6 @@ extern void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 extern void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
-extern void consumer_change_stream_state(int stream_key,
-		enum lttng_consumer_stream_state state);
 extern void consumer_del_channel(struct lttng_consumer_channel *channel);
 extern struct lttng_consumer_channel *consumer_allocate_channel(
 		int channel_key,
