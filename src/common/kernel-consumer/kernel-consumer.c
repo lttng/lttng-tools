@@ -138,7 +138,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_ADD_STREAM:
 	{
-		int fd;
+		int fd, stream_pipe;
 		struct consumer_relayd_sock_pair *relayd = NULL;
 		struct lttng_consumer_stream *new_stream;
 		int alloc_ret = 0;
@@ -224,30 +224,26 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 		}
 
-		/* Send stream to the metadata thread */
+		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
-			do {
-				ret = write(ctx->consumer_metadata_pipe[1], &new_stream,
-						sizeof(new_stream));
-			} while (ret < 0 && errno == EINTR);
-			if (ret < 0) {
-				PERROR("write metadata pipe");
-				consumer_del_stream(new_stream, NULL);
-				goto end_nosignal;
-			}
+			stream_pipe = ctx->consumer_metadata_pipe[1];
 		} else {
-			do {
-				ret = write(ctx->consumer_poll_pipe[1], &new_stream,
-						sizeof(new_stream));
-			} while (ret < 0 && errno == EINTR);
-			if (ret < 0) {
-				PERROR("write data pipe");
-				consumer_del_stream(new_stream, NULL);
-				goto end_nosignal;
-			}
+			stream_pipe = ctx->consumer_data_pipe[1];
 		}
 
-		DBG("Kernel consumer_add_stream (%d)", fd);
+		do {
+			ret = write(stream_pipe, &new_stream, sizeof(new_stream));
+		} while (ret < 0 && errno == EINTR);
+		if (ret < 0) {
+			PERROR("Consumer write %s stream to pipe %d",
+					new_stream->metadata_flag ? "metadata" : "data",
+					stream_pipe);
+			consumer_del_stream(new_stream, NULL);
+			goto end_nosignal;
+		}
+
+		DBG("Kernel consumer ADD_STREAM %s (fd: %d) with relayd id %" PRIu64,
+				msg.u.stream.path_name, fd, new_stream->relayd_stream_id);
 		break;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:

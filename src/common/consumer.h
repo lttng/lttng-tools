@@ -230,8 +230,8 @@ struct lttng_consumer_local_data {
 	/* communication with splice */
 	int consumer_thread_pipe[2];
 	int consumer_splice_metadata_pipe[2];
-	/* pipe to wake the poll thread when necessary */
-	int consumer_poll_pipe[2];
+	/* Data stream poll thread pipe. To transfer data stream to the thread */
+	int consumer_data_pipe[2];
 	/* to let the signal handler wake up the fd receiver thread */
 	int consumer_should_quit[2];
 	/* Metadata poll thread pipe. Transfer metadata stream to it */
