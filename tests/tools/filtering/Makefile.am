@@ -1,2 +1,2 @@
-noinst_SCRIPTS = unsupported-ops
-EXTRA_DIST = unsupported-ops
+noinst_SCRIPTS = unsupported-ops invalid-filters
+EXTRA_DIST = unsupported-ops invalid-filters
