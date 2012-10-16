@@ -1888,12 +1888,15 @@ restart:
 					lttng_ustconsumer_on_stream_hangup(stream);
 
 					/* We just flushed the stream now read it. */
-					len = ctx->on_buffer_ready(stream, ctx);
-					/* It's ok to have an unavailable sub-buffer */
-					if (len < 0 && len != -EAGAIN) {
-						rcu_read_unlock();
-						goto end;
-					}
+					do {
+						len = ctx->on_buffer_ready(stream, ctx);
+						/*
+						 * We don't check the return value here since if we get
+						 * a negative len, it means an error occured thus we
+						 * simply remove it from the poll set and free the
+						 * stream.
+						 */
+					} while (len > 0);
 				}
 
 				lttng_poll_del(&events, stream->wait_fd);
