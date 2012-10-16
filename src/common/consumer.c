@@ -1912,7 +1912,7 @@ restart:
 
 				len = ctx->on_buffer_ready(stream, ctx);
 				/* It's ok to have an unavailable sub-buffer */
-				if (len < 0 && len != -EAGAIN) {
+				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					rcu_read_unlock();
 					goto end;
 				} else if (len > 0) {
@@ -2062,7 +2062,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				high_prio = 1;
 				len = ctx->on_buffer_ready(local_stream[i], ctx);
 				/* it's ok to have an unavailable sub-buffer */
-				if (len < 0 && len != -EAGAIN) {
+				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					goto end;
 				} else if (len > 0) {
 					local_stream[i]->data_read = 1;
@@ -2085,7 +2085,7 @@ void *lttng_consumer_thread_poll_fds(void *data)
 				DBG("Normal read on fd %d", pollfd[i].fd);
 				len = ctx->on_buffer_ready(local_stream[i], ctx);
 				/* it's ok to have an unavailable sub-buffer */
-				if (len < 0 && len != -EAGAIN) {
+				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					goto end;
 				} else if (len > 0) {
 					local_stream[i]->data_read = 1;
