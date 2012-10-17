@@ -1591,6 +1591,38 @@ int _lttng_create_session_ext(const char *name, const char *url,
 }
 
 /*
+ * For a given session name, this call checks if the data is ready to be read
+ * or is still being extracted by the consumer(s) hence not ready to be used by
+ * any readers.
+ */
+int lttng_data_available(const char *session_name)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+
+	if (session_name == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	lsm.cmd_type = LTTNG_DATA_AVAILABLE;
+
+	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
+
+	ret = ask_sessiond(&lsm, NULL);
+
+	/*
+	 * The ask_sessiond function negate the return code if it's not LTTNG_OK so
+	 * getting -1 means that the reply ret_code was 1 thus meaning that the
+	 * data is available. Yes it is hackish but for now this is the only way.
+	 */
+	if (ret == -1) {
+		ret = 1;
+	}
+
+	return ret;
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()

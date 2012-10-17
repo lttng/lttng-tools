@@ -695,3 +695,66 @@ int consumer_set_subdir(struct consumer_output *consumer,
 error:
 	return ret;
 }
+
+/*
+ * Ask the consumer if the data is ready to bread (available) for the specific
+ * session id.
+ *
+ * This function has a different behavior with the consumer i.e. that it waits
+ * for a reply from the consumer if yes or no the data is available.
+ */
+int consumer_is_data_available(unsigned int id,
+		struct consumer_output *consumer)
+{
+	int ret;
+	int32_t ret_code;
+	struct consumer_socket *socket;
+	struct lttng_ht_iter iter;
+	struct lttcomm_consumer_msg msg;
+
+	assert(consumer);
+
+	msg.cmd_type = LTTNG_CONSUMER_DATA_AVAILABLE;
+
+	msg.u.data_available.session_id = (uint64_t) id;
+
+	DBG3("Consumer data available for id %u", id);
+
+	cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
+			node.node) {
+		/* Code flow error */
+		assert(socket->fd >= 0);
+
+		pthread_mutex_lock(socket->lock);
+
+		ret = lttcomm_send_unix_sock(socket->fd, &msg, sizeof(msg));
+		if (ret < 0) {
+			PERROR("send consumer data available command");
+			pthread_mutex_unlock(socket->lock);
+			goto error;
+		}
+
+		/*
+		 * Waiting for the reply code where 0 the data is not available and 1
+		 * it is for trace reading.
+		 */
+		ret = lttcomm_recv_unix_sock(socket->fd, &ret_code, sizeof(ret_code));
+		if (ret < 0) {
+			PERROR("recv consumer data available status");
+			pthread_mutex_unlock(socket->lock);
+			goto error;
+		}
+
+		pthread_mutex_unlock(socket->lock);
+
+		if (ret_code == 0) {
+			break;
+		}
+	}
+
+	DBG("Consumer data available ret %d", ret_code);
+	return ret_code;
+
+error:
+	return -1;
+}

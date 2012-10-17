@@ -2335,6 +2335,47 @@ error:
 }
 
 /*
+ * Command LTTNG_DATA_AVAILABLE returning 0 if the data is NOT ready to be read
+ * or else 1 if the data is available for trace analysis.
+ */
+int cmd_data_available(struct ltt_session *session)
+{
+	int ret;
+	struct ltt_kernel_session *ksess = session->kernel_session;
+	struct ltt_ust_session *usess = session->ust_session;
+
+	assert(session);
+
+	/* Session MUST be stopped to ask for data availability. */
+	if (session->enabled) {
+		ret = LTTNG_ERR_SESSION_STARTED;
+		goto error;
+	}
+
+	if (ksess && ksess->consumer) {
+		ret = consumer_is_data_available(ksess->id, ksess->consumer);
+		if (ret == 0) {
+			/* Data is still being extracted for the kernel. */
+			goto error;
+		}
+	}
+
+	if (usess && usess->consumer) {
+		ret = consumer_is_data_available(usess->id, usess->consumer);
+		if (ret == 0) {
+			/* Data is still being extracted for the kernel. */
+			goto error;
+		}
+	}
+
+	/* Data is ready to be read by a viewer */
+	ret = 1;
+
+error:
+	return ret;
+}
+
+/*
  * Init command subsystem.
  */
 void cmd_init(void)

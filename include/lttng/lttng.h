@@ -581,6 +581,16 @@ extern int lttng_disable_consumer(struct lttng_handle *handle);
  */
 extern int lttng_health_check(enum lttng_health_component c);
 
+/*
+ * For a given session name, this call checks if the data is ready to be read
+ * or is still being extracted by the consumer(s) hence not ready to be used by
+ * any readers.
+ *
+ * Return 0 if the data is _NOT_ available else 1 if the data is ready. On
+ * error, a negative value is returned and readable by lttng_strerror().
+ */
+extern int lttng_data_available(const char *session_name);
+
 #ifdef __cplusplus
 }
 #endif

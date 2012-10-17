@@ -99,6 +99,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_FILTER_EXIST) ] = "Filter already exist",
 	[ ERROR_INDEX(LTTNG_ERR_NO_CONSUMER) ] = "Consumer not found for tracing session",
 	[ ERROR_INDEX(LTTNG_ERR_NO_SESSIOND) ] = "No session daemon is available",
+	[ ERROR_INDEX(LTTNG_ERR_SESSION_STARTED) ] = "Session is running",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

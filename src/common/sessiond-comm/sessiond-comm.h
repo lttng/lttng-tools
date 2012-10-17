@@ -87,6 +87,7 @@ enum lttcomm_sessiond_command {
 	RELAYD_CLOSE_STREAM,
 	LTTNG_SET_FILTER,
 	LTTNG_HEALTH_CHECK,
+	LTTNG_DATA_AVAILABLE,
 };
 
 /*

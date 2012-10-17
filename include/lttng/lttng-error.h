@@ -33,7 +33,7 @@ enum lttng_error_code {
 	LTTNG_OK                         = 10,  /* Ok */
 	LTTNG_ERR_UNK                    = 11,  /* Unknown Error */
 	LTTNG_ERR_UND                    = 12,  /* Undefine command */
-	/* 13 */
+	LTTNG_ERR_SESSION_STARTED        = 13,  /* Session is running */
 	LTTNG_ERR_UNKNOWN_DOMAIN         = 14,  /* Tracing domain not known */
 	/* 15 */
 	LTTNG_ERR_NO_SESSION             = 16,  /* No session found */
