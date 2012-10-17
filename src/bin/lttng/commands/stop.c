@@ -29,6 +29,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 
 static char *opt_session_name;
+static int opt_no_wait;
 
 enum {
 	OPT_HELP = 1,
@@ -39,6 +40,7 @@ static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
+	{"no-wait",   'n', POPT_ARG_VAL, &opt_no_wait, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -55,6 +57,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
+	fprintf(ofp, "  -n, --no-wait            Don't wait for data availability\n");
 	fprintf(ofp, "\n");
 }
 
@@ -76,7 +79,11 @@ static int stop_tracing(void)
 		session_name = opt_session_name;
 	}
 
-	ret = lttng_stop_tracing(session_name);
+	if (opt_no_wait) {
+		ret = lttng_stop_tracing_no_wait(session_name);
+	} else {
+		ret = lttng_stop_tracing(session_name);
+	}
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_TRACE_ALREADY_STOPPED:

@@ -69,8 +69,6 @@ static int connected;
  * Those two variables are used by error.h to silent or control the verbosity of
  * error message. They are global to the library so application linking with it
  * are able to compile correctly and also control verbosity of the library.
- *
- * Note that it is *not* possible to silent ERR() and PERROR() macros.
  */
 int lttng_opt_quiet;
 int lttng_opt_verbose;
@@ -682,11 +680,11 @@ int lttng_start_tracing(const char *session_name)
 }
 
 /*
- *  Stop tracing for all traces of the session.
- *  Returns size of returned session payload data or a negative error code.
+ * Stop tracing for all traces of the session.
  */
-int lttng_stop_tracing(const char *session_name)
+static int _lttng_stop_tracing(const char *session_name, int wait)
 {
+	int ret, data_ret;
 	struct lttcomm_session_msg lsm;
 
 	if (session_name == NULL) {
@@ -697,7 +695,57 @@ int lttng_stop_tracing(const char *session_name)
 
 	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	ret = ask_sessiond(&lsm, NULL);
+	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
+		goto error;
+	}
+
+	if (!wait) {
+		goto end;
+	}
+
+	_MSG("Waiting for data availability");
+
+	/* Check for data availability */
+	do {
+		data_ret = lttng_data_available(session_name);
+		if (data_ret < 0) {
+			/* Return the data available call error. */
+			ret = data_ret;
+			goto error;
+		}
+
+		/*
+		 * Data sleep time before retrying (in usec). Don't sleep if the call
+		 * returned value indicates availability.
+		 */
+		if (!data_ret) {
+			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+			_MSG(".");
+		}
+	} while (data_ret != 1);
+
+	MSG("");
+
+end:
+error:
+	return ret;
+}
+
+/*
+ * Stop tracing and wait for data availability.
+ */
+int lttng_stop_tracing(const char *session_name)
+{
+	return _lttng_stop_tracing(session_name, 1);
+}
+
+/*
+ * Stop tracing but _don't_ wait for data availability.
+ */
+int lttng_stop_tracing_no_wait(const char *session_name)
+{
+	return _lttng_stop_tracing(session_name, 0);
 }
 
 /*

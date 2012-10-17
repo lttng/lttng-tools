@@ -472,8 +472,19 @@ extern int lttng_start_tracing(const char *session_name);
 
 /*
  * Stop tracing for *all* registered traces (kernel and user-space).
+ *
+ * This call will wait for data availability for each domain of the session so
+ * this can take an abritrary amount of time. However, when returning you have
+ * the guarantee that the data is ready to be read and analyse. Use the
+ * _no_wait call below to avoid this behavior.
  */
 extern int lttng_stop_tracing(const char *session_name);
+
+/*
+ * Behave exactly like lttng_stop_tracing but does not wait for data
+ * availability.
+ */
+extern int lttng_stop_tracing_no_wait(const char *session_name);
 
 /*
  * Add context to event(s) for a specific channel (or for all).
