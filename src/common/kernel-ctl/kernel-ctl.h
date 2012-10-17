@@ -66,7 +66,5 @@ int kernctl_get_subbuf(int fd, unsigned long *pos);
 int kernctl_put_subbuf(int fd);
 
 int kernctl_buffer_flush(int fd);
-int kernctl_set_stream_id(int fd, unsigned long *stream_id);
-int kernctl_get_net_stream_id_offset(int fd, unsigned long *offset);
 
 #endif /* _LTTNG_KERNEL_CTL_H */

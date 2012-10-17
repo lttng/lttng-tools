@@ -378,9 +378,3 @@ int kernctl_put_subbuf(int fd)
 {
 	return ioctl(fd, RING_BUFFER_PUT_SUBBUF);
 }
-
-/* Set the stream_id */
-int kernctl_set_stream_id(int fd, unsigned long *stream_id)
-{
-	return ioctl(fd, RING_BUFFER_SET_STREAM_ID, stream_id);
-}
