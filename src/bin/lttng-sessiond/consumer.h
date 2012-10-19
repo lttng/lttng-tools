@@ -112,7 +112,8 @@ struct consumer_net {
 	struct lttng_uri data;
 
 	/* Flag if network sockets were sent to the consumer. */
-	unsigned int relayd_socks_sent;
+	unsigned int control_sock_sent;
+	unsigned int data_sock_sent;
 };
 
 /*

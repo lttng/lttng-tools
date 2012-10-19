@@ -522,12 +522,6 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	int ret;
 	struct lttcomm_sock *sock = NULL;
 
-	/* Don't resend the sockets to the consumer. */
-	if (consumer->dst.net.relayd_socks_sent) {
-		ret = LTTNG_OK;
-		goto error;
-	}
-
 	/* Set the network sequence index if not set. */
 	if (consumer->net_seq_index == -1) {
 		/*
@@ -559,6 +553,13 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 		goto close_sock;
 	}
 
+	/* Flag that the corresponding socket was sent. */
+	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
+		consumer->dst.net.control_sock_sent = 1;
+	} else if (relayd_uri->stype == LTTNG_STREAM_DATA) {
+		consumer->dst.net.data_sock_sent = 1;
+	}
+
 	ret = LTTNG_OK;
 
 	/*
@@ -572,7 +573,6 @@ close_sock:
 		lttcomm_destroy_sock(sock);
 	}
 
-error:
 	return ret;
 }
 
@@ -589,28 +589,23 @@ static int send_consumer_relayd_sockets(int domain,
 	assert(session);
 	assert(consumer);
 
-	/* Don't resend the sockets to the consumer. */
-	if (consumer->dst.net.relayd_socks_sent) {
-		ret = LTTNG_OK;
-		goto error;
-	}
-
 	/* Sending control relayd socket. */
-	ret = send_consumer_relayd_socket(domain, session,
-			&consumer->dst.net.control, consumer, fd);
-	if (ret != LTTNG_OK) {
-		goto error;
+	if (!consumer->dst.net.control_sock_sent) {
+		ret = send_consumer_relayd_socket(domain, session,
+				&consumer->dst.net.control, consumer, fd);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
 	}
 
 	/* Sending data relayd socket. */
-	ret = send_consumer_relayd_socket(domain, session,
-			&consumer->dst.net.data, consumer, fd);
-	if (ret != LTTNG_OK) {
-		goto error;
+	if (!consumer->dst.net.data_sock_sent) {
+		ret = send_consumer_relayd_socket(domain, session,
+				&consumer->dst.net.data, consumer, fd);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
 	}
-
-	/* Flag that all relayd sockets were sent to the consumer. */
-	consumer->dst.net.relayd_socks_sent = 1;
 
 error:
 	return ret;
@@ -1601,10 +1596,13 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 
 		/*
 		 * Don't send relayd socket if URI is NOT remote or if the relayd
-		 * sockets for the session are already sent.
+		 * socket for the session was already sent.
 		 */
 		if (uris[i].dtype == LTTNG_DST_PATH ||
-				consumer->dst.net.relayd_socks_sent) {
+				(uris[i].stype == LTTNG_STREAM_CONTROL &&
+				consumer->dst.net.control_sock_sent) ||
+				(uris[i].stype == LTTNG_STREAM_DATA &&
+				consumer->dst.net.data_sock_sent)) {
 			continue;
 		}
 
