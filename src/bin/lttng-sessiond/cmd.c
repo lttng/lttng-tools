@@ -522,6 +522,12 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	int ret;
 	struct lttcomm_sock *sock = NULL;
 
+	/* Don't resend the sockets to the consumer. */
+	if (consumer->dst.net.relayd_socks_sent) {
+		ret = LTTNG_OK;
+		goto error;
+	}
+
 	/* Set the network sequence index if not set. */
 	if (consumer->net_seq_index == -1) {
 		/*
@@ -566,6 +572,7 @@ close_sock:
 		lttcomm_destroy_sock(sock);
 	}
 
+error:
 	return ret;
 }
 
