@@ -1046,6 +1046,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_unlock;
 	}
 
+	stream->last_net_seq_num = be64toh(stream_info.last_net_seq_num);
 	stream->close_flag = 1;
 
 	if (close_stream_check(stream)) {
