@@ -282,8 +282,19 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DATA_AVAILABLE:
 	{
-		rcu_read_unlock();
-		return -ENOSYS;
+		int32_t ret;
+		uint64_t id = msg.u.data_available.session_id;
+
+		DBG("Kernel consumer data available command for id %" PRIu64, id);
+
+		ret = consumer_data_available(id);
+
+		/* Send back returned value to session daemon */
+		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		if (ret < 0) {
+			PERROR("send data available ret code");
+		}
+		break;
 	}
 	default:
 		goto end_nosignal;

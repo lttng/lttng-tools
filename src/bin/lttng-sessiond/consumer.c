@@ -720,6 +720,7 @@ int consumer_is_data_available(unsigned int id,
 
 	DBG3("Consumer data available for id %u", id);
 
+	/* Send command for each consumer */
 	cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
 			node.node) {
 		/* Code flow error */

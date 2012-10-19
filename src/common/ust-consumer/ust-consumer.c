@@ -537,6 +537,8 @@ int lttng_ustconsumer_data_available(struct lttng_consumer_stream *stream)
 
 	assert(stream);
 
+	DBG("UST consumer checking data availability");
+
 	/*
 	 * Try to lock the stream mutex. On failure, we know that the stream is
 	 * being used else where hence there is data still being extracted.

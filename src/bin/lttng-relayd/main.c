@@ -1306,6 +1306,102 @@ end:
 }
 
 /*
+ * Check for data availability for a given stream id from the session daemon.
+ */
+static
+int relay_data_available(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_command *cmd, struct lttng_ht *streams_ht)
+{
+	struct relay_session *session = cmd->session;
+	struct lttcomm_relayd_data_available msg;
+	struct lttcomm_relayd_generic_reply reply;
+	struct relay_stream *stream;
+	int ret;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+	uint64_t last_net_seq_num, stream_id;
+
+	DBG("Data available command received");
+
+	if (!session || session->version_check_done == 0) {
+		ERR("Trying to check for data before version check");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), MSG_WAITALL);
+	if (ret < sizeof(msg)) {
+		ERR("Relay didn't receive valid data_available struct size : %d", ret);
+		ret = -1;
+		goto end_no_session;
+	}
+
+	stream_id = be64toh(msg.stream_id);
+	last_net_seq_num = be64toh(msg.last_net_seq_num);
+
+	rcu_read_lock();
+	lttng_ht_lookup(streams_ht, (void *)((unsigned long) stream_id), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node == NULL) {
+		DBG("Relay stream %" PRIu64 " not found", stream_id);
+		ret = -1;
+		goto end_unlock;
+	}
+
+	stream = caa_container_of(node, struct relay_stream, stream_n);
+	assert(stream);
+
+	DBG("Data available for stream id %" PRIu64 " prev_seq %" PRIu64
+			" and last_seq %" PRIu64, stream_id, stream->prev_seq,
+			last_net_seq_num);
+
+	if (stream->prev_seq == -1UL || stream->prev_seq <= last_net_seq_num) {
+		/* Data has in fact been written and is available */
+		ret = 1;
+	} else {
+		/* Data still being streamed. */
+		ret = 0;
+	}
+
+end_unlock:
+	rcu_read_unlock();
+
+	reply.ret_code = htobe32(ret);
+	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	if (ret < 0) {
+		ERR("Relay data available ret code failed");
+	}
+
+end_no_session:
+	return ret;
+}
+
+/*
+ * Wait for the control socket to reach a quiescent state.
+ *
+ * Note that for now, when receiving this command from the session daemon, this
+ * means that every subsequent commands or data received on the control socket
+ * has been handled. So, this is why we simply return OK here.
+ */
+static
+int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_command *cmd)
+{
+	int ret;
+	struct lttcomm_relayd_generic_reply reply;
+
+	DBG("Checking quiescent state on control socket");
+
+	reply.ret_code = htobe32(LTTNG_OK);
+	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	if (ret < 0) {
+		ERR("Relay data available ret code failed");
+	}
+
+	return ret;
+}
+
+/*
  * relay_process_control: Process the commands received on the control socket
  */
 static
@@ -1334,6 +1430,12 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case RELAYD_CLOSE_STREAM:
 		ret = relay_close_stream(recv_hdr, cmd, streams_ht);
+		break;
+	case RELAYD_DATA_AVAILABLE:
+		ret = relay_data_available(recv_hdr, cmd, streams_ht);
+		break;
+	case RELAYD_QUIESCENT_CONTROL:
+		ret = relay_quiescent_control(recv_hdr, cmd);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:
