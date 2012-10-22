@@ -1528,11 +1528,6 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 		goto error;
 	}
 
-	if (!session->start_consumer) {
-		ret = LTTNG_ERR_NO_CONSUMER;
-		goto error;
-	}
-
 	/*
 	 * This case switch makes sure the domain session has a temporary consumer
 	 * so the URL can be set.
@@ -2142,11 +2137,6 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 		goto error;
 	}
 
-	if (!session->start_consumer) {
-		ret = LTTNG_ERR_NO_CONSUMER;
-		goto error;
-	}
-
 	switch (domain) {
 	case 0:
 		assert(session->consumer);
@@ -2319,6 +2309,8 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 
 		break;
 	}
+
+	session->start_consumer = 1;
 
 	/* Enable it */
 	if (consumer) {
