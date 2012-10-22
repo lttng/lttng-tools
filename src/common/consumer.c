@@ -1266,11 +1266,11 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	lttng_consumer_sync_trace_file(stream, orig_offset);
 
 end:
-	pthread_mutex_unlock(&stream->lock);
 	/* Unlock only if ctrl socket used */
 	if (relayd && stream->metadata_flag) {
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	}
+	pthread_mutex_unlock(&stream->lock);
 
 	rcu_read_unlock();
 	return written;
@@ -1451,10 +1451,10 @@ splice_error:
 	}
 
 end:
-	pthread_mutex_unlock(&stream->lock);
 	if (relayd && stream->metadata_flag) {
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	}
+	pthread_mutex_unlock(&stream->lock);
 
 	rcu_read_unlock();
 	return written;
@@ -2462,6 +2462,7 @@ int consumer_data_available(uint64_t id)
 
 	DBG("Consumer data available command on session id %" PRIu64, id);
 
+	rcu_read_lock();
 	pthread_mutex_lock(&consumer_data.lock);
 
 	switch (consumer_data.type) {
@@ -2476,8 +2477,6 @@ int consumer_data_available(uint64_t id)
 		ERR("Unknown consumer data type");
 		assert(0);
 	}
-
-	rcu_read_lock();
 
 	/* Ease our life a bit */
 	ht = consumer_data.stream_list_ht;
