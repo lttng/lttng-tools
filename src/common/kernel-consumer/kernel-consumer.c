@@ -502,7 +502,9 @@ int lttng_kconsumer_data_available(struct lttng_consumer_stream *stream)
 	 */
 	ret = pthread_mutex_trylock(&stream->lock);
 	if (ret == EBUSY) {
-		goto data_not_available;
+		/* Data not available */
+		ret = 0;
+		goto end;
 	}
 	/* The stream is now locked so we can do our ustctl calls */
 
@@ -511,14 +513,14 @@ int lttng_kconsumer_data_available(struct lttng_consumer_stream *stream)
 		/* There is still data so let's put back this subbuffer. */
 		ret = kernctl_put_subbuf(stream->wait_fd);
 		assert(ret == 0);
-		pthread_mutex_unlock(&stream->lock);
-		goto data_not_available;
+		goto end_unlock;
 	}
 
 	/* Data is available to be read for this stream. */
-	pthread_mutex_unlock(&stream->lock);
-	return 1;
+	ret = 1;
 
-data_not_available:
-	return 0;
+end_unlock:
+	pthread_mutex_unlock(&stream->lock);
+end:
+	return ret;
 }
