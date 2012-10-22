@@ -584,7 +584,7 @@ close_sock:
 static int send_consumer_relayd_sockets(int domain,
 		struct ltt_session *session, struct consumer_output *consumer, int fd)
 {
-	int ret;
+	int ret = LTTNG_OK;
 
 	assert(session);
 	assert(consumer);
@@ -640,7 +640,7 @@ static int setup_relayd(struct ltt_session *session)
 			assert(socket->fd >= 0);
 
 			pthread_mutex_lock(socket->lock);
-			send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session,
+			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session,
 					usess->consumer, socket->fd);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
@@ -657,7 +657,7 @@ static int setup_relayd(struct ltt_session *session)
 			assert(socket->fd >= 0);
 
 			pthread_mutex_lock(socket->lock);
-			send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session,
+			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session,
 					ksess->consumer, socket->fd);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
