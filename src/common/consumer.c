@@ -56,7 +56,7 @@ int consumer_poll_timeout = -1;
  * Also updated by the signal handler (consumer_should_exit()). Read by the
  * polling threads.
  */
-volatile int consumer_quit = 0;
+volatile int consumer_quit;
 
 /*
  * The following two hash tables are visible by all threads which are separated
@@ -66,8 +66,8 @@ volatile int consumer_quit = 0;
  * stream element in this ht should only be updated by the metadata poll thread
  * for the metadata and the data poll thread for the data.
  */
-struct lttng_ht *metadata_ht = NULL;
-struct lttng_ht *data_ht = NULL;
+struct lttng_ht *metadata_ht;
+struct lttng_ht *data_ht;
 
 /*
  * Find a stream. The consumer_data.lock must be locked during this
