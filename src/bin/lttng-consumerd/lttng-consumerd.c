@@ -52,7 +52,7 @@
 /* TODO : support UST (all direct kernel-ctl accesses). */
 
 /* the two threads (receive fd, poll and metadata) */
-static pthread_t threads[3];
+static pthread_t data_thread, metadata_thread, sessiond_thread;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -252,7 +252,6 @@ static void set_ulimit(void)
  */
 int main(int argc, char **argv)
 {
-	int i;
 	int ret = 0;
 	void *status;
 
@@ -357,7 +356,7 @@ int main(int argc, char **argv)
 	lttng_consumer_set_error_sock(ctx, ret);
 
 	/* Create thread to manage the polling/writing of trace metadata */
-	ret = pthread_create(&threads[0], NULL, consumer_thread_metadata_poll,
+	ret = pthread_create(&metadata_thread, NULL, consumer_thread_metadata_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
@@ -365,31 +364,46 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of trace data */
-	ret = pthread_create(&threads[1], NULL, consumer_thread_data_poll,
+	ret = pthread_create(&data_thread, NULL, consumer_thread_data_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
-		goto error;
+		goto data_error;
 	}
 
 	/* Create the thread to manage the receive of fd */
-	ret = pthread_create(&threads[2], NULL, consumer_thread_sessiond_poll,
+	ret = pthread_create(&sessiond_thread, NULL, consumer_thread_sessiond_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
+		goto sessiond_error;
+	}
+
+	ret = pthread_join(sessiond_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
 		goto error;
 	}
 
-	for (i = 0; i < 3; i++) {
-		ret = pthread_join(threads[i], &status);
-		if (ret != 0) {
-			perror("pthread_join");
-			goto error;
-		}
+sessiond_error:
+	ret = pthread_join(data_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;
 	}
-	ret = EXIT_SUCCESS;
-	lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_SUCCESS);
-	goto end;
+
+data_error:
+	ret = pthread_join(metadata_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;
+	}
+
+	if (!ret) {
+		ret = EXIT_SUCCESS;
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_SUCCESS);
+		goto end;
+	}
 
 error:
 	ret = EXIT_FAILURE;
