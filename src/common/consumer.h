@@ -141,7 +141,12 @@ struct lttng_consumer_stream {
 	uint64_t relayd_stream_id;
 	/* Next sequence number to use for trace packet */
 	uint64_t next_net_seq_num;
-	/* Lock to use the stream FDs since they are used between threads. */
+	/*
+	 * Lock to use the stream FDs since they are used between threads. Using
+	 * this lock with network streaming, when using the control mutex of a
+	 * consumer_relayd_sock_pair, make sure to acquire this lock BEFORE locking
+	 * it and releasing it AFTER the control mutex unlock.
+	 */
 	pthread_mutex_t lock;
 	/* Tracing session id */
 	uint64_t session_id;
