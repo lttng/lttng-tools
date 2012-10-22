@@ -1355,7 +1355,8 @@ int relay_data_available(struct lttcomm_relayd_hdr *recv_hdr,
 			" and last_seq %" PRIu64, stream_id, stream->prev_seq,
 			last_net_seq_num);
 
-	if (stream->prev_seq == -1UL || stream->prev_seq <= last_net_seq_num) {
+	/* Avoid wrapping issue */
+	if (((int64_t) (stream->prev_seq - last_net_seq_num)) <= 0) {
 		/* Data has in fact been written and is available */
 		ret = 1;
 	} else {
