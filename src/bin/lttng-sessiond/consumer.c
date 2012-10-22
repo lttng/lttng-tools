@@ -707,7 +707,7 @@ int consumer_is_data_available(unsigned int id,
 		struct consumer_output *consumer)
 {
 	int ret;
-	int32_t ret_code;
+	int32_t ret_code = 1;  /* Default is that the data is available */
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct lttcomm_consumer_msg msg;
