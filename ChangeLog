@@ -1,3 +1,40 @@
+2012-10-22 lttng-tools 2.1.0-rc5
+	* Fix: Remove network stream ID ABI calls
+	* Tests: Add filtering tests
+	* Wait for data availability when stopping a session
+	* Relayd data available command support
+	* Lib lttng-ctl data available command support
+	* Consumer daemon data available command support
+	* Add data structure for the data available command
+	* Change the metadata hash table node
+	* Make stream hash tables global to the consumer
+	* Move add data stream to the data thread
+	* Rename consumer threads and spawn them in daemon
+	* Fix: relayd close stream command was not working
+	* Fix: Relayd and consumerd socket leaks
+	* Fix: Missing -ENODATA handling in the consumer
+	* Fix: Empty metadata buffer(s) on HUP|ERR
+	* ABI with support for compat 32/64 bits
+	* Fix: Stream allocation and insertion consistency
+	* Fix: output number of bytes written by relayd
+	* Add hash table argument to helper functions
+	* Fix: Add missing call rcu and read side lock
+	* Tests: Fix LD_PRELOAD library lookup path for health tests
+	* Fix: Add arbitrary wait period for kernel streaming test
+	* Fix coding style and add/change debug statements
+	* Fix: Build out of src tree
+	* Tests: Add health check tests to configure
+	* Tests: Add health check thread stall test
+	* Tests: Add health check thread exit test
+	* Tests: Add a health check utility program
+	* Add testpoints in lttng-sessiond for each threads
+	* New testpoint mechanism to instrument binaries for testing
+	* Fix: off-by-one in comm proto between lttng-ctl and sessiond
+	* Fix: Metadata stream leak when received in consumer
+	* Fix: consumer_allocate_stream error handling
+	* Fix: consumer should await for initial streams
+	* Fix: Missing rcu read side lock in consumer
+
 2012-09-26 lttng-tools 2.1.0-rc4
 	* Fix: Change sempahore to pthread conditions
 	* Fix: relayd relay_send_version: handle sscanf return code
