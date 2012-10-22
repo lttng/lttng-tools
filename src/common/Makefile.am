@@ -5,7 +5,8 @@ SUBDIRS = compat hashtable kernel-ctl sessiond-comm relayd \
 
 AM_CFLAGS = -fno-strict-aliasing
 
-noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h uri.h utils.h
+noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
+				 uri.h utils.h lttng-kernel-old.h
 
 # Common library
 noinst_LTLIBRARIES = libcommon.la
