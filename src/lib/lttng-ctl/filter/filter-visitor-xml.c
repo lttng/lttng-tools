@@ -235,6 +235,9 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 		case AST_UNARY_NOT:
 			fprintf(stream, "\"!\"");
 			break;
+		case AST_UNARY_BIN_NOT:
+			fprintf(stream, "\"~\"");
+			break;
 		}
 		fprintf(stream, ">\n");
 		ret = recursive_visit_print(node->u.unary_op.child,
