@@ -46,9 +46,11 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 	case IR_DATA_UNKNOWN:
 	default:
 		fprintf(stderr, "[error] Unknown root child data type\n");
+		free(op);
 		return NULL;
 	case IR_DATA_STRING:
 		fprintf(stderr, "[error] String cannot be root data type\n");
+		free(op);
 		return NULL;
 	case IR_DATA_NUMERIC:
 	case IR_DATA_FIELD_REF:
