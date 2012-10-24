@@ -923,6 +923,8 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 	if (ret < 0) {
 		PERROR("write consumer quit");
 	}
+
+	DBG("Consumer flag that it should quit");
 }
 
 void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
@@ -1083,6 +1085,8 @@ error:
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 {
 	int ret;
+
+	DBG("Consumer destroying it. Closing everything.");
 
 	ret = close(ctx->consumer_error_socket);
 	if (ret) {
@@ -1916,8 +1920,9 @@ restart:
 				len = ctx->on_buffer_ready(stream, ctx);
 				/* It's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
-					rcu_read_unlock();
-					goto end;
+					/* Clean up stream from consumer and free it. */
+					lttng_poll_del(&events, stream->wait_fd);
+					consumer_del_metadata_stream(stream, metadata_ht);
 				} else if (len > 0) {
 					stream->data_read = 1;
 				}
@@ -2084,7 +2089,8 @@ void *consumer_thread_data_poll(void *data)
 				len = ctx->on_buffer_ready(local_stream[i], ctx);
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
-					goto end;
+					/* Clean the stream and free it. */
+					consumer_del_stream(local_stream[i], data_ht);
 				} else if (len > 0) {
 					local_stream[i]->data_read = 1;
 				}
@@ -2107,7 +2113,8 @@ void *consumer_thread_data_poll(void *data)
 				len = ctx->on_buffer_ready(local_stream[i], ctx);
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
-					goto end;
+					/* Clean the stream and free it. */
+					consumer_del_stream(local_stream[i], data_ht);
 				} else if (len > 0) {
 					local_stream[i]->data_read = 1;
 				}

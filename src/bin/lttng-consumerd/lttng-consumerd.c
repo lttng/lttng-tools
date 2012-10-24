@@ -79,6 +79,14 @@ static void sighandler(int sig)
 		return;
 	}
 
+	/*
+	 * Ignore SIGPIPE because it should not stop the consumer whenever a
+	 * SIGPIPE is catched through a FD operation.
+	 */
+	if (sig == SIGPIPE) {
+		return;
+	}
+
 	lttng_consumer_should_exit(ctx);
 }
 
