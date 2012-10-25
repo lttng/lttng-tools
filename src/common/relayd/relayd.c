@@ -67,6 +67,7 @@ static int send_command(struct lttcomm_sock *sock,
 
 	ret = sock->ops->sendmsg(sock, buf, buf_size, flags);
 	if (ret < 0) {
+		ret = -errno;
 		goto error;
 	}
 
@@ -90,6 +91,7 @@ static int recv_reply(struct lttcomm_sock *sock, void *data, size_t size)
 
 	ret = sock->ops->recvmsg(sock, data, size, 0);
 	if (ret < 0) {
+		ret = -errno;
 		goto error;
 	}
 
@@ -283,6 +285,7 @@ int relayd_send_data_hdr(struct lttcomm_sock *sock,
 	/* Only send data header. */
 	ret = sock->ops->sendmsg(sock, hdr, size, 0);
 	if (ret < 0) {
+		ret = -errno;
 		goto error;
 	}
 

@@ -74,6 +74,11 @@ enum lttng_consumer_type {
 	LTTNG_CONSUMER32_UST,
 };
 
+enum consumer_endpoint_status {
+	CONSUMER_ENDPOINT_ACTIVE,
+	CONSUMER_ENDPOINT_INACTIVE,
+};
+
 struct lttng_consumer_channel {
 	struct lttng_ht_node_ulong node;
 	int key;
@@ -150,6 +155,13 @@ struct lttng_consumer_stream {
 	pthread_mutex_t lock;
 	/* Tracing session id */
 	uint64_t session_id;
+	/*
+	 * Indicates if the stream end point is still active or not (network
+	 * streaming or local file system). The thread "owning" the stream is
+	 * handling this status and can be notified of a state change through the
+	 * consumer data appropriate pipe.
+	 */
+	enum consumer_endpoint_status endpoint_status;
 };
 
 /*
