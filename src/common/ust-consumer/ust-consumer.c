@@ -526,7 +526,8 @@ error:
 
 /*
  * Check if data is still being extracted from the buffers for a specific
- * stream. Consumer data lock MUST be acquired before calling this function.
+ * stream. Consumer data lock MUST be acquired before calling this function
+ * and the stream lock.
  *
  * Return 0 if the traced data are still getting read else 1 meaning that the
  * data is available for trace viewer reading.
@@ -539,31 +540,17 @@ int lttng_ustconsumer_data_available(struct lttng_consumer_stream *stream)
 
 	DBG("UST consumer checking data availability");
 
-	/*
-	 * Try to lock the stream mutex. On failure, we know that the stream is
-	 * being used else where hence there is data still being extracted.
-	 */
-	ret = pthread_mutex_trylock(&stream->lock);
-	if (ret == EBUSY) {
-		/* Data not available */
-		ret = 0;
-		goto end;
-	}
-	/* The stream is now locked so we can do our ustctl calls */
-
 	ret = ustctl_get_next_subbuf(stream->chan->handle, stream->buf);
 	if (ret == 0) {
 		/* There is still data so let's put back this subbuffer. */
 		ret = ustctl_put_subbuf(stream->chan->handle, stream->buf);
 		assert(ret == 0);
-		goto end_unlock;
+		goto end;
 	}
 
 	/* Data is available to be read for this stream. */
 	ret = 1;
 
-end_unlock:
-	pthread_mutex_unlock(&stream->lock);
 end:
 	return ret;
 }
