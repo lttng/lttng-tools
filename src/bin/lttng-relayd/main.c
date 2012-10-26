@@ -1176,6 +1176,8 @@ static int write_padding_to_file(int fd, uint32_t size)
 		PERROR("write padding to file");
 	}
 
+	free(zeros);
+
 end:
 	return ret;
 }
