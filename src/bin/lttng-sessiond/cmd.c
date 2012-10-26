@@ -2203,11 +2203,6 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 			break;
 		}
 
-		/* Append default kernel trace dir to subdir */
-		strncat(ksess->consumer->subdir, DEFAULT_KERNEL_TRACE_DIR,
-				sizeof(ksess->consumer->subdir) -
-				strlen(ksess->consumer->subdir) - 1);
-
 		/*
 		 * @session-lock
 		 * This is race free for now since the session lock is acquired before
@@ -2216,6 +2211,7 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 		 * is valid.
 		 */
 		rcu_read_lock();
+		/* Destroy current consumer. We are about to replace it */
 		consumer_destroy_output(ksess->consumer);
 		rcu_read_unlock();
 		ksess->consumer = consumer;
@@ -2289,11 +2285,6 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 			break;
 		}
 
-		/* Append default kernel trace dir to subdir */
-		strncat(usess->consumer->subdir, DEFAULT_UST_TRACE_DIR,
-				sizeof(usess->consumer->subdir) -
-				strlen(usess->consumer->subdir) - 1);
-
 		/*
 		 * @session-lock
 		 * This is race free for now since the session lock is acquired before
@@ -2302,6 +2293,7 @@ int cmd_enable_consumer(int domain, struct ltt_session *session)
 		 * is valid.
 		 */
 		rcu_read_lock();
+		/* Destroy current consumer. We are about to replace it */
 		consumer_destroy_output(usess->consumer);
 		rcu_read_unlock();
 		usess->consumer = consumer;
