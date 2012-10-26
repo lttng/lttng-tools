@@ -1680,3 +1680,11 @@ static void __attribute__((constructor)) init()
 	/* Set socket for health check */
 	(void) set_health_socket_path();
 }
+
+/*
+ * lib destructor
+ */
+static void __attribute__((destructor)) lttng_ctl_exit()
+{
+	free(tracing_group);
+}
