@@ -1208,9 +1208,12 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	payload_size -= sizeof(struct lttcomm_relayd_metadata_payload);
 
 	if (data_buffer_size < data_size) {
+		/* In case the realloc fails, we can free the memory */
+		char *tmp_data_ptr = data_buffer;
 		data_buffer = realloc(data_buffer, data_size);
 		if (!data_buffer) {
 			ERR("Allocating data buffer");
+			free(tmp_data_ptr);
 			ret = -1;
 			goto end;
 		}
@@ -1482,9 +1485,11 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 
 	data_size = be32toh(data_hdr.data_size);
 	if (data_buffer_size < data_size) {
+		char *tmp_data_ptr = data_buffer;
 		data_buffer = realloc(data_buffer, data_size);
 		if (!data_buffer) {
 			ERR("Allocating data buffer");
+			free(tmp_data_ptr);
 			ret = -1;
 			goto end_unlock;
 		}

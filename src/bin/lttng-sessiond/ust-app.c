@@ -1579,12 +1579,15 @@ int ust_app_list_events(struct lttng_event **events)
 						&uiter)) != -ENOENT) {
 			health_code_update(&health_thread_cmd);
 			if (count >= nbmem) {
+				/* In case the realloc fails, we free the memory */
+				void *tmp_ptr = (void *) tmp;
 				DBG2("Reallocating event list from %zu to %zu entries", nbmem,
 						2 * nbmem);
 				nbmem *= 2;
 				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event));
 				if (tmp == NULL) {
 					PERROR("realloc ust app events");
+					free(tmp_ptr);
 					ret = -ENOMEM;
 					goto rcu_error;
 				}
@@ -1654,12 +1657,15 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 						&uiter)) != -ENOENT) {
 			health_code_update(&health_thread_cmd);
 			if (count >= nbmem) {
+				/* In case the realloc fails, we free the memory */
+				void *tmp_ptr = (void *) tmp;
 				DBG2("Reallocating event field list from %zu to %zu entries", nbmem,
 						2 * nbmem);
 				nbmem *= 2;
 				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event_field));
 				if (tmp == NULL) {
 					PERROR("realloc ust app event fields");
+					free(tmp_ptr);
 					ret = -ENOMEM;
 					goto rcu_error;
 				}
