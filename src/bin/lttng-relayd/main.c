@@ -884,7 +884,8 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 	}
 
 	DBG("Relay deleting session %" PRIu64, cmd->session->id);
-	free(cmd->session->sock);
+
+	lttcomm_destroy_sock(cmd->session->sock);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(streams_ht->ht, &iter.iter, node, node) {
@@ -902,6 +903,8 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 		}
 	}
 	rcu_read_unlock();
+
+	free(cmd->session);
 }
 
 /*
@@ -1599,6 +1602,8 @@ void deferred_free_connection(struct rcu_head *head)
 {
 	struct relay_command *relay_connection =
 		caa_container_of(head, struct relay_command, rcu_node);
+
+	lttcomm_destroy_sock(relay_connection->sock);
 	free(relay_connection);
 }
 
@@ -1614,6 +1619,7 @@ void relay_del_connection(struct lttng_ht *relay_connections_ht,
 	if (relay_connection->type == RELAY_CONTROL) {
 		relay_delete_session(relay_connection, streams_ht);
 	}
+
 	call_rcu(&relay_connection->rcu_node,
 		deferred_free_connection);
 }
