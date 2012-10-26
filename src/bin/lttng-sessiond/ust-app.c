@@ -1702,21 +1702,22 @@ error:
 void ust_app_clean_list(void)
 {
 	int ret;
+	struct ust_app *app;
 	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
 
 	DBG2("UST app cleaning registered apps hash table");
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		ret = lttng_ht_del(ust_app_ht, &iter);
 		assert(!ret);
-		call_rcu(&node->head, delete_ust_app_rcu);
+		call_rcu(&app->pid_n.head, delete_ust_app_rcu);
 	}
 
 	/* Cleanup socket hash table */
-	cds_lfht_for_each_entry(ust_app_ht_by_sock->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry(ust_app_ht_by_sock->ht, &iter.iter, app,
+			sock_n.node) {
 		ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
 		assert(!ret);
 	}
