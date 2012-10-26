@@ -111,7 +111,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lus->consumer == NULL) {
-		goto error_free_session;
+		goto error_consumer;
 	}
 
 	/*
@@ -128,7 +128,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 				"%s" DEFAULT_UST_TRACE_DIR, path);
 		if (ret < 0) {
 			PERROR("snprintf UST consumer trace path");
-			goto error;
+			goto error_path;
 		}
 
 		/* Set session path */
@@ -136,7 +136,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 				path);
 		if (ret < 0) {
 			PERROR("snprintf kernel traces path");
-			goto error_free_session;
+			goto error_path;
 		}
 	}
 
@@ -144,7 +144,9 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 
 	return lus;
 
-error_free_session:
+error_path:
+	consumer_destroy_output(lus->consumer);
+error_consumer:
 	lttng_ht_destroy(lus->domain_global.channels);
 	lttng_ht_destroy(lus->domain_exec);
 	lttng_ht_destroy(lus->domain_pid);

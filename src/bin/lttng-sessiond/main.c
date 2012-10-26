@@ -1926,6 +1926,15 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		DBG3("Copying tracing session consumer output in kernel session");
+		/*
+		 * XXX: We should audit the session creation and what this function
+		 * does "extra" in order to avoid a destroy since this function is used
+		 * in the domain session creation (kernel and ust) only. Same for UST
+		 * domain.
+		 */
+		if (session->kernel_session->consumer) {
+			consumer_destroy_output(session->kernel_session->consumer);
+		}
 		session->kernel_session->consumer =
 			consumer_copy_output(session->consumer);
 		/* Ease our life a bit for the next part */
@@ -1934,6 +1943,9 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		break;
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
+		if (session->ust_session->consumer) {
+			consumer_destroy_output(session->ust_session->consumer);
+		}
 		session->ust_session->consumer =
 			consumer_copy_output(session->consumer);
 		/* Ease our life a bit for the next part */

@@ -314,6 +314,7 @@ void consumer_destroy_output(struct consumer_output *obj)
  */
 struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 {
+	struct lttng_ht *tmp_ht_ptr;
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket, *copy_sock;
 	struct consumer_output *output;
@@ -324,11 +325,13 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 	if (output == NULL) {
 		goto error;
 	}
+	/* Avoid losing the HT reference after the memcpy() */
+	tmp_ht_ptr = output->socks;
 
 	memcpy(output, obj, sizeof(struct consumer_output));
 
-	/* Copy sockets */
-	output->socks = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	/* Putting back the HT pointer and start copying socket(s). */
+	output->socks = tmp_ht_ptr;
 
 	cds_lfht_for_each_entry(obj->socks->ht, &iter.iter, socket, node.node) {
 		/* Create new socket object. */
@@ -337,6 +340,7 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 			goto malloc_error;
 		}
 
+		copy_sock->registered = socket->registered;
 		copy_sock->lock = socket->lock;
 		consumer_add_socket(copy_sock, output);
 	}
