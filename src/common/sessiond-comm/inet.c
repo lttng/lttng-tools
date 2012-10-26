@@ -129,7 +129,7 @@ __attribute__((visibility("hidden")))
 struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 {
 	int new_fd;
-	socklen_t len = 0;
+	socklen_t len;
 	struct lttcomm_sock *new_sock;
 
 	if (sock->proto == LTTCOMM_SOCK_UDP) {
@@ -144,6 +144,8 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 	if (new_sock == NULL) {
 		goto error;
 	}
+
+	len = sizeof(new_sock->sockaddr.addr.sin);
 
 	/* Blocking call */
 	new_fd = accept(sock->fd, (struct sockaddr *) &new_sock->sockaddr.addr.sin,
