@@ -399,6 +399,7 @@ error:
 	if (traces_path) {
 		free(traces_path);
 	}
+	free(alloc_path);
 
 	if (ret < 0) {
 		ERR("%s", lttng_strerror(ret));
