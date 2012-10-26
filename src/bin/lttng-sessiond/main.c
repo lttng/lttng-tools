@@ -2553,12 +2553,14 @@ skip_domain:
 			DBG("No URIs received from client... continuing");
 			*sock_error = 1;
 			ret = LTTNG_ERR_SESSION_FAIL;
+			free(uris);
 			goto error;
 		}
 
 		ret = cmd_set_consumer_uri(cmd_ctx->lsm->domain.type, cmd_ctx->session,
 				nb_uri, uris);
 		if (ret != LTTNG_OK) {
+			free(uris);
 			goto error;
 		}
 
@@ -2578,6 +2580,8 @@ skip_domain:
 						cmd_ctx->session, nb_uri, uris);
 			}
 		}
+
+		free(uris);
 
 		break;
 	}
@@ -2613,18 +2617,22 @@ skip_domain:
 				DBG("No URIs received from client... continuing");
 				*sock_error = 1;
 				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
 				goto error;
 			}
 
 			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
 				DBG("Creating session with ONE network URI is a bad call");
 				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
 				goto error;
 			}
 		}
 
 		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris, nb_uri,
 			&cmd_ctx->creds);
+
+		free(uris);
 
 		break;
 	}
