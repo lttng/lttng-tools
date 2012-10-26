@@ -3985,6 +3985,9 @@ int main(int argc, char **argv)
 	health_init(&ustconsumer64_data.health);
 	health_poll_update(&ustconsumer64_data.health);
 
+	/* Not needed anymore. */
+	free(rundir);
+
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,
 			thread_manage_health, (void *) NULL);
