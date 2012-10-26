@@ -241,6 +241,9 @@ void cleanup(void)
 
 	/* Close relay cmd pipes */
 	utils_close_pipe(relay_cmd_pipe);
+
+	uri_free(control_uri);
+	uri_free(data_uri);
 }
 
 /*
