@@ -4076,7 +4076,25 @@ exit_dispatch:
 		goto error;	/* join error, exit without cleanup */
 	}
 
+	ret = join_consumer_thread(&ustconsumer32_data);
+	if (ret != 0) {
+		PERROR("join_consumer ust32");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+	ret = join_consumer_thread(&ustconsumer64_data);
+	if (ret != 0) {
+		PERROR("join_consumer ust64");
+		goto error;	/* join error, exit without cleanup */
+	}
+
 exit_client:
+	ret = pthread_join(health_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join health thread");
+		goto error;	/* join error, exit without cleanup */
+	}
+
 exit_health:
 exit:
 	/*
