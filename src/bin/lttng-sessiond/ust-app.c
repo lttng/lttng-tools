@@ -976,9 +976,10 @@ static struct ust_app_session *create_ust_app_session(
 		ret = ustctl_create_session(app->sock);
 		if (ret < 0) {
 			ERR("Creating session for app pid %d", app->pid);
+			delete_ust_app_session(-1, ua_sess);
 			/* This means that the tracer is gone... */
 			ua_sess = (void*) -1UL;
-			goto error;
+			goto end;
 		}
 
 		ua_sess->handle = ret;
@@ -993,11 +994,6 @@ static struct ust_app_session *create_ust_app_session(
 end:
 	health_code_update(&health_thread_cmd);
 	return ua_sess;
-
-error:
-	delete_ust_app_session(-1, ua_sess);
-	health_code_update(&health_thread_cmd);
-	return NULL;
 }
 
 /*
