@@ -1506,8 +1506,16 @@ void ust_app_unregister(int sock)
 	/* Assign second node for deletion */
 	iter.iter.node = &lta->pid_n.node;
 
+	/*
+	 * Ignore return value since the node might have been removed before by an
+	 * add replace during app registration because the PID can be reassigned by
+	 * the OS.
+	 */
 	ret = lttng_ht_del(ust_app_ht, &iter);
-	assert(!ret);
+	if (ret) {
+		DBG3("Unregister app by PID %d failed. This can happen on pid reuse",
+				lta->pid);
+	}
 
 	/* Free memory */
 	call_rcu(&lta->pid_n.head, delete_ust_app_rcu);
@@ -2555,7 +2563,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	}
 
 	ua_sess = create_ust_app_session(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == NULL || ua_sess == (void *) -1UL) {
+		/* Tracer is gone for this session and has been freed */
 		goto error;
 	}
 
