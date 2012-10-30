@@ -412,6 +412,7 @@ static void cleanup(void)
 		ERR("Unable to clean %s", rundir);
 	}
 	free(cmd);
+	free(rundir);
 
 	DBG("Cleaning up all sessions");
 
@@ -3984,9 +3985,6 @@ int main(int argc, char **argv)
 	health_poll_update(&ustconsumer32_data.health);
 	health_init(&ustconsumer64_data.health);
 	health_poll_update(&ustconsumer64_data.health);
-
-	/* Not needed anymore. */
-	free(rundir);
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,
