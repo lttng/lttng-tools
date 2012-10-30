@@ -30,7 +30,7 @@
 #define HASH_SEED            0x42UL		/* The answer to life */
 
 static unsigned long min_hash_alloc_size = 1;
-static unsigned long max_hash_buckets_size = (1UL << 20);
+static unsigned long max_hash_buckets_size = 0;
 
 /*
  * Match function for string node.
@@ -72,7 +72,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 	}
 
 	ht->ht = cds_lfht_new(size, min_hash_alloc_size, max_hash_buckets_size,
-			CDS_LFHT_AUTO_RESIZE, NULL);
+			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	/*
 	 * There is already an assert in the RCU hashtable code so if the ht is
 	 * NULL here there is a *huge* problem.
