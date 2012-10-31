@@ -118,6 +118,21 @@ INVALID_FILTERS=(
 		"!a.f.d"
 		"asdf.asdfsd.sadf < 4"
 		"asdfasdf->asdfasdf < 2"
+		# String can't be root node
+		"\"somestring\""
+		# Unary op on string not allowed
+		"!\"somestring\""
+		# Comparison with string type not allowed
+		"\"somestring\" > 42"
+		"\"somestring\" > 42.0"
+		"42 > \"somestring\""
+		"42.0 > \"somestring\""
+		# Logical operator with string type not allowed
+		"\"somestring\" || 1"
+		"1 || \"somestring\""
+		# Nesting of binary operator not allowed
+		"1 | (1 | (1 | 1))"
+		"1 > (1 > (1 > 1))"
 		)
 
 start_lttng_sessiond

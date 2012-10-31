@@ -361,6 +361,8 @@ FILTERS=("intfield"                                                     #1
 	 "intfield < 0x2"                                               #24
 	 "intfield < 02"                                                #25
 	 "stringfield2 == \"\\\*\""                                     #26
+	 "1.0 || intfield || 1.0"                                       #27
+	 "1 < intfield"                                                 #28
 )
 
 VALIDATOR=("validator_intfield"                     #1
@@ -389,6 +391,8 @@ VALIDATOR=("validator_intfield"                     #1
 	   "validator_intfield_lt"                  #24
 	   "validator_intfield_lt"                  #25
 	   "validator_true_statement"               #26
+	   "validator_true_statement"               #27
+	   "validator_intfield_gt"                  #28
 )
 
 FILTER_COUNT=${#FILTERS[@]}
