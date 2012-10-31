@@ -838,6 +838,25 @@ static void *thread_manage_consumer(void *data)
 
 	DBG("[thread] Manage consumer started");
 
+	/*
+	 * Since the consumer thread can be spawned at any moment in time, we init
+	 * the health to a poll status (1, which is a valid health over time).
+	 * When the thread starts, we update here the health to a "code" path being
+	 * an even value so this thread, when reaching a poll wait, does not
+	 * trigger an error with an even value.
+	 *
+	 * Here is the use case we avoid.
+	 *
+	 * +1: the first poll update during initialization (main())
+	 * +2 * x: multiple code update once in this thread.
+	 * +1: poll wait in this thread (being a good health state).
+	 * == even number which after the wait period shows as a bad health.
+	 *
+	 * In a nutshell, the following poll update to the health state brings back
+	 * the state to an even value meaning a code path.
+	 */
+	health_poll_update(&consumer_data->health);
+
 	health_code_update(&consumer_data->health);
 
 	ret = lttcomm_listen_unix_sock(consumer_data->err_sock);
@@ -3977,7 +3996,9 @@ int main(int argc, char **argv)
 	/*
 	 * Init health counters of the consumer thread. We do a quick hack here to
 	 * the state of the consumer health is fine even if the thread is not
-	 * started.  This is simply to ease our life and has no cost what so ever.
+	 * started. Once the thread starts, the health state is updated with a poll
+	 * value to set a health code path. This is simply to ease our life and has
+	 * no cost what so ever.
 	 */
 	health_init(&kconsumer_data.health);
 	health_poll_update(&kconsumer_data.health);
