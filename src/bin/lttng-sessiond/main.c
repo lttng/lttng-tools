@@ -928,6 +928,12 @@ restart:
 		goto error;
 	}
 
+	/*
+	 * Set the CLOEXEC flag. Return code is useless because either way, the
+	 * show must go on.
+	 */
+	(void) utils_set_fd_cloexec(sock);
+
 	health_code_update(&consumer_data->health);
 
 	DBG2("Receiving code from consumer err_sock");
@@ -1401,6 +1407,12 @@ static void *thread_registration_apps(void *data)
 					if (sock < 0) {
 						goto error;
 					}
+
+					/*
+					 * Set the CLOEXEC flag. Return code is useless because
+					 * either way, the show must go on.
+					 */
+					(void) utils_set_fd_cloexec(sock);
 
 					/* Create UST registration command for enqueuing */
 					ust_cmd = zmalloc(sizeof(struct ust_command));
@@ -2882,6 +2894,12 @@ static void *thread_manage_health(void *data)
 		goto error;
 	}
 
+	/*
+	 * Set the CLOEXEC flag. Return code is useless because either way, the
+	 * show must go on.
+	 */
+	(void) utils_set_fd_cloexec(sock);
+
 	ret = lttcomm_listen_unix_sock(sock);
 	if (ret < 0) {
 		goto error;
@@ -2945,6 +2963,12 @@ restart:
 		if (new_sock < 0) {
 			goto error;
 		}
+
+		/*
+		 * Set the CLOEXEC flag. Return code is useless because either way, the
+		 * show must go on.
+		 */
+		(void) utils_set_fd_cloexec(new_sock);
 
 		DBG("Receiving data from client for health...");
 		ret = lttcomm_recv_unix_sock(new_sock, (void *)&msg, sizeof(msg));
@@ -3142,6 +3166,12 @@ static void *thread_manage_clients(void *data)
 		if (sock < 0) {
 			goto error;
 		}
+
+		/*
+		 * Set the CLOEXEC flag. Return code is useless because either way, the
+		 * show must go on.
+		 */
+		(void) utils_set_fd_cloexec(sock);
 
 		/* Set socket option for credentials retrieval */
 		ret = lttcomm_setsockopt_creds_unix_sock(sock);
@@ -3443,6 +3473,14 @@ static int init_daemon_socket(void)
 		goto end;
 	}
 
+	/* Set the cloexec flag */
+	ret = utils_set_fd_cloexec(client_sock);
+	if (ret < 0) {
+		ERR("Unable to set CLOEXEC flag to the client Unix socket (fd: %d). "
+				"Continuing but note that the consumer daemon will have a "
+				"reference to this socket on exec()", client_sock);
+	}
+
 	/* File permission MUST be 660 */
 	ret = chmod(client_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
@@ -3459,6 +3497,14 @@ static int init_daemon_socket(void)
 		goto end;
 	}
 
+	/* Set the cloexec flag */
+	ret = utils_set_fd_cloexec(apps_sock);
+	if (ret < 0) {
+		ERR("Unable to set CLOEXEC flag to the app Unix socket (fd: %d). "
+				"Continuing but note that the consumer daemon will have a "
+				"reference to this socket on exec()", apps_sock);
+	}
+
 	/* File permission MUST be 666 */
 	ret = chmod(apps_unix_sock_path,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
@@ -3467,6 +3513,9 @@ static int init_daemon_socket(void)
 		PERROR("chmod");
 		goto end;
 	}
+
+	DBG3("Session daemon client socket %d and application socket %d created",
+			client_sock, apps_sock);
 
 end:
 	umask(old_umask);

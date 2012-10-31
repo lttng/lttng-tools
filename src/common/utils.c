@@ -179,3 +179,26 @@ char *utils_strdupdelim(const char *begin, const char *end)
 error:
 	return str;
 }
+
+/*
+ * Set CLOEXEC flag to the give file descriptor.
+ */
+__attribute__((visibility("hidden")))
+int utils_set_fd_cloexec(int fd)
+{
+	int ret;
+
+	if (fd < 0) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	ret = fcntl(fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		PERROR("fcntl cloexec");
+		ret = -errno;
+	}
+
+end:
+	return ret;
+}
