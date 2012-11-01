@@ -85,11 +85,11 @@ enum lttcomm_sessiond_command {
 	RELAYD_VERSION,
 	RELAYD_SEND_METADATA,
 	RELAYD_CLOSE_STREAM,
-	RELAYD_DATA_AVAILABLE,
+	RELAYD_DATA_PENDING,
 	RELAYD_QUIESCENT_CONTROL,
 	LTTNG_SET_FILTER,
 	LTTNG_HEALTH_CHECK,
-	LTTNG_DATA_AVAILABLE,
+	LTTNG_DATA_PENDING,
 };
 
 /*
@@ -288,7 +288,7 @@ struct lttcomm_consumer_msg {
 		} destroy_relayd;
 		struct {
 			uint64_t session_id;
-		} data_available;
+		} data_pending;
 	} u;
 };
 

@@ -2134,7 +2134,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_DOMAINS:
 	case LTTNG_START_TRACE:
 	case LTTNG_STOP_TRACE:
-	case LTTNG_DATA_AVAILABLE:
+	case LTTNG_DATA_PENDING:
 		need_domain = 0;
 		break;
 	default:
@@ -2829,9 +2829,9 @@ skip_domain:
 				bytecode);
 		break;
 	}
-	case LTTNG_DATA_AVAILABLE:
+	case LTTNG_DATA_PENDING:
 	{
-		ret = cmd_data_available(cmd_ctx->session);
+		ret = cmd_data_pending(cmd_ctx->session);
 		break;
 	}
 	default:

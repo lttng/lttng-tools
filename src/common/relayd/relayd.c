@@ -348,25 +348,25 @@ error:
 /*
  * Check for data availability for a given stream id.
  *
- * Return 0 if NOT available, 1 if so and a negative value on error.
+ * Return 0 if NOT pending, 1 if so and a negative value on error.
  */
-int relayd_data_available(struct lttcomm_sock *sock, uint64_t stream_id,
+int relayd_data_pending(struct lttcomm_sock *sock, uint64_t stream_id,
 		uint64_t last_net_seq_num)
 {
 	int ret;
-	struct lttcomm_relayd_data_available msg;
+	struct lttcomm_relayd_data_pending msg;
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
 	assert(sock);
 
-	DBG("Relayd data available for stream id %" PRIu64, stream_id);
+	DBG("Relayd data pending for stream id %" PRIu64, stream_id);
 
 	msg.stream_id = htobe64(stream_id);
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
 
 	/* Send command */
-	ret = send_command(sock, RELAYD_DATA_AVAILABLE, (void *) &msg,
+	ret = send_command(sock, RELAYD_DATA_PENDING, (void *) &msg,
 			sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
@@ -383,14 +383,14 @@ int relayd_data_available(struct lttcomm_sock *sock, uint64_t stream_id,
 	/* Return session id or negative ret code. */
 	if (reply.ret_code >= LTTNG_OK) {
 		ret = -reply.ret_code;
-		ERR("Relayd data available replied error %d", ret);
+		ERR("Relayd data pending replied error %d", ret);
 	}
 
 	/* At this point, the ret code is either 1 or 0 */
 	ret = reply.ret_code;
 
-	DBG("Relayd data is %s available for stream id %" PRIu64,
-			ret == 1 ? "" : "NOT", stream_id);
+	DBG("Relayd data is %s pending for stream id %" PRIu64,
+			ret == 1 ? "NOT" : "", stream_id);
 
 error:
 	return ret;
@@ -431,7 +431,7 @@ int relayd_quiescent_control(struct lttcomm_sock *sock)
 	}
 
 	/* Control socket is quiescent */
-	return 1;
+	return 0;
 
 error:
 	return ret;

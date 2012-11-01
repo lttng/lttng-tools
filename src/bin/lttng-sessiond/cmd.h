@@ -82,6 +82,6 @@ ssize_t cmd_list_tracepoint_fields(int domain,
 ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events);
 
 int cmd_calibrate(int domain, struct lttng_calibrate *calibrate);
-int cmd_data_available(struct ltt_session *session);
+int cmd_data_pending(struct ltt_session *session);
 
 #endif /* CMD_H */

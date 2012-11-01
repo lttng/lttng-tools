@@ -46,6 +46,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
-int lttng_kconsumer_data_available(struct lttng_consumer_stream *stream);
+int lttng_kconsumer_data_pending(struct lttng_consumer_stream *stream);
 
 #endif /* _LTTNG_KCONSUMER_H */

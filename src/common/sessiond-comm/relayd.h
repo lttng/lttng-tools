@@ -108,10 +108,10 @@ struct lttcomm_relayd_close_stream {
 } __attribute__ ((__packed__));
 
 /*
- * Used to test if for a given stream id the data is available on the relayd
- * side for reading.
+ * Used to test if for a given stream id the data is pending on the relayd side
+ * for reading.
  */
-struct lttcomm_relayd_data_available {
+struct lttcomm_relayd_data_pending {
 	uint64_t stream_id;
 	uint64_t last_net_seq_num; /* Sequence number of the last packet */
 } __attribute__ ((__packed__));

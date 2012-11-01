@@ -141,7 +141,7 @@
 #define DEFAULT_HEALTH_CHECK_DELTA_NS       0
 
 /*
- * Wait period before retrying the lttng_data_available command in the lttng
+ * Wait period before retrying the lttng_data_pending command in the lttng
  * stop command of liblttng-ctl.
  */
 #define DEFAULT_DATA_AVAILABILITY_WAIT_TIME 200000  /* usec */

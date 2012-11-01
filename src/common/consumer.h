@@ -57,7 +57,7 @@ enum lttng_consumer_command {
 	/* Inform the consumer to kill a specific relayd connection */
 	LTTNG_CONSUMER_DESTROY_RELAYD,
 	/* Return to the sessiond if there is data pending for a session */
-	LTTNG_CONSUMER_DATA_AVAILABLE,
+	LTTNG_CONSUMER_DATA_PENDING,
 };
 
 /* State of each fd in consumer */
@@ -431,6 +431,6 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock);
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);
-int consumer_data_available(uint64_t id);
+int consumer_data_pending(uint64_t id);
 
 #endif /* LIB_CONSUMER_H */

@@ -1317,14 +1317,14 @@ end:
 }
 
 /*
- * Check for data availability for a given stream id from the session daemon.
+ * Check for data pending for a given stream id from the session daemon.
  */
 static
-int relay_data_available(struct lttcomm_relayd_hdr *recv_hdr,
+int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_command *cmd, struct lttng_ht *streams_ht)
 {
 	struct relay_session *session = cmd->session;
-	struct lttcomm_relayd_data_available msg;
+	struct lttcomm_relayd_data_pending msg;
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	int ret;
@@ -1332,7 +1332,7 @@ int relay_data_available(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttng_ht_iter iter;
 	uint64_t last_net_seq_num, stream_id;
 
-	DBG("Data available command received");
+	DBG("Data pending command received");
 
 	if (!session || session->version_check_done == 0) {
 		ERR("Trying to check for data before version check");
@@ -1342,7 +1342,7 @@ int relay_data_available(struct lttcomm_relayd_hdr *recv_hdr,
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), MSG_WAITALL);
 	if (ret < sizeof(msg)) {
-		ERR("Relay didn't receive valid data_available struct size : %d", ret);
+		ERR("Relay didn't receive valid data_pending struct size : %d", ret);
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1362,17 +1362,17 @@ int relay_data_available(struct lttcomm_relayd_hdr *recv_hdr,
 	stream = caa_container_of(node, struct relay_stream, stream_n);
 	assert(stream);
 
-	DBG("Data available for stream id %" PRIu64 " prev_seq %" PRIu64
+	DBG("Data pending for stream id %" PRIu64 " prev_seq %" PRIu64
 			" and last_seq %" PRIu64, stream_id, stream->prev_seq,
 			last_net_seq_num);
 
 	/* Avoid wrapping issue */
 	if (((int64_t) (stream->prev_seq - last_net_seq_num)) <= 0) {
-		/* Data has in fact been written and is available */
-		ret = 1;
-	} else {
-		/* Data still being streamed. */
+		/* Data has in fact been written and is NOT pending */
 		ret = 0;
+	} else {
+		/* Data still being streamed thus pending */
+		ret = 1;
 	}
 
 end_unlock:
@@ -1381,7 +1381,7 @@ end_unlock:
 	reply.ret_code = htobe32(ret);
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
-		ERR("Relay data available ret code failed");
+		ERR("Relay data pending ret code failed");
 	}
 
 end_no_session:
@@ -1407,7 +1407,7 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 	reply.ret_code = htobe32(LTTNG_OK);
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
-		ERR("Relay data available ret code failed");
+		ERR("Relay data quiescent control ret code failed");
 	}
 
 	return ret;
@@ -1443,8 +1443,8 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 	case RELAYD_CLOSE_STREAM:
 		ret = relay_close_stream(recv_hdr, cmd, streams_ht);
 		break;
-	case RELAYD_DATA_AVAILABLE:
-		ret = relay_data_available(recv_hdr, cmd, streams_ht);
+	case RELAYD_DATA_PENDING:
+		ret = relay_data_pending(recv_hdr, cmd, streams_ht);
 		break;
 	case RELAYD_QUIESCENT_CONTROL:
 		ret = relay_quiescent_control(recv_hdr, cmd);

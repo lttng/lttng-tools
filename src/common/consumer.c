@@ -2703,29 +2703,29 @@ end:
  * Check if for a given session id there is still data needed to be extract
  * from the buffers.
  *
- * Return 1 if data is in fact available to be read or else 0.
+ * Return 1 if data is pending or else 0 meaning ready to be read.
  */
-int consumer_data_available(uint64_t id)
+int consumer_data_pending(uint64_t id)
 {
 	int ret;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
 	struct lttng_consumer_stream *stream;
 	struct consumer_relayd_sock_pair *relayd;
-	int (*data_available)(struct lttng_consumer_stream *);
+	int (*data_pending)(struct lttng_consumer_stream *);
 
-	DBG("Consumer data available command on session id %" PRIu64, id);
+	DBG("Consumer data pending command on session id %" PRIu64, id);
 
 	rcu_read_lock();
 	pthread_mutex_lock(&consumer_data.lock);
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
-		data_available = lttng_kconsumer_data_available;
+		data_pending = lttng_kconsumer_data_pending;
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		data_available = lttng_ustconsumer_data_available;
+		data_pending = lttng_ustconsumer_data_pending;
 		break;
 	default:
 		ERR("Unknown consumer data type");
@@ -2742,7 +2742,7 @@ int consumer_data_available(uint64_t id)
 		/* If this call fails, the stream is being used hence data pending. */
 		ret = stream_try_lock(stream);
 		if (!ret) {
-			goto data_not_available;
+			goto data_not_pending;
 		}
 
 		/*
@@ -2754,10 +2754,10 @@ int consumer_data_available(uint64_t id)
 		ret = cds_lfht_is_node_deleted(&stream->node.node);
 		if (!ret) {
 			/* Check the stream if there is data in the buffers. */
-			ret = data_available(stream);
-			if (ret == 0) {
+			ret = data_pending(stream);
+			if (ret == 1) {
 				pthread_mutex_unlock(&stream->lock);
-				goto data_not_available;
+				goto data_not_pending;
 			}
 		}
 
@@ -2772,20 +2772,20 @@ int consumer_data_available(uint64_t id)
 				 * are or will be marked for deletion hence no data pending.
 				 */
 				pthread_mutex_unlock(&stream->lock);
-				goto data_not_available;
+				goto data_not_pending;
 			}
 
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 			if (stream->metadata_flag) {
 				ret = relayd_quiescent_control(&relayd->control_sock);
 			} else {
-				ret = relayd_data_available(&relayd->control_sock,
+				ret = relayd_data_pending(&relayd->control_sock,
 						stream->relayd_stream_id, stream->next_net_seq_num);
 			}
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-			if (ret == 0) {
+			if (ret == 1) {
 				pthread_mutex_unlock(&stream->lock);
-				goto data_not_available;
+				goto data_not_pending;
 			}
 		}
 		pthread_mutex_unlock(&stream->lock);
@@ -2801,11 +2801,11 @@ int consumer_data_available(uint64_t id)
 	/* Data is available to be read by a viewer. */
 	pthread_mutex_unlock(&consumer_data.lock);
 	rcu_read_unlock();
-	return 1;
+	return 0;
 
-data_not_available:
+data_not_pending:
 	/* Data is still being extracted from buffers. */
 	pthread_mutex_unlock(&consumer_data.lock);
 	rcu_read_unlock();
-	return 0;
+	return 1;
 }

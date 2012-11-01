@@ -2319,10 +2319,10 @@ error:
 }
 
 /*
- * Command LTTNG_DATA_AVAILABLE returning 0 if the data is NOT ready to be read
- * or else 1 if the data is available for trace analysis.
+ * Command LTTNG_DATA_PENDING returning 0 if the data is NOT pending meaning
+ * ready for trace analysis (or anykind of reader) or else 1 for pending data.
  */
-int cmd_data_available(struct ltt_session *session)
+int cmd_data_pending(struct ltt_session *session)
 {
 	int ret;
 	struct ltt_kernel_session *ksess = session->kernel_session;
@@ -2337,23 +2337,23 @@ int cmd_data_available(struct ltt_session *session)
 	}
 
 	if (ksess && ksess->consumer) {
-		ret = consumer_is_data_available(ksess->id, ksess->consumer);
-		if (ret == 0) {
+		ret = consumer_is_data_pending(ksess->id, ksess->consumer);
+		if (ret == 1) {
 			/* Data is still being extracted for the kernel. */
 			goto error;
 		}
 	}
 
 	if (usess && usess->consumer) {
-		ret = consumer_is_data_available(usess->id, usess->consumer);
-		if (ret == 0) {
+		ret = consumer_is_data_pending(usess->id, usess->consumer);
+		if (ret == 1) {
 			/* Data is still being extracted for the kernel. */
 			goto error;
 		}
 	}
 
 	/* Data is ready to be read by a viewer */
-	ret = 1;
+	ret = 0;
 
 error:
 	return ret;

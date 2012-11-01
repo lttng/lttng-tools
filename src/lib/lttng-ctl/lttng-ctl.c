@@ -708,7 +708,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 
 	/* Check for data availability */
 	do {
-		data_ret = lttng_data_available(session_name);
+		data_ret = lttng_data_pending(session_name);
 		if (data_ret < 0) {
 			/* Return the data available call error. */
 			ret = data_ret;
@@ -719,11 +719,11 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		 * Data sleep time before retrying (in usec). Don't sleep if the call
 		 * returned value indicates availability.
 		 */
-		if (!data_ret) {
+		if (data_ret) {
 			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
 			_MSG(".");
 		}
-	} while (data_ret != 1);
+	} while (data_ret != 0);
 
 	MSG("");
 
@@ -1643,7 +1643,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
  * or is still being extracted by the consumer(s) hence not ready to be used by
  * any readers.
  */
-int lttng_data_available(const char *session_name)
+int lttng_data_pending(const char *session_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -1652,7 +1652,7 @@ int lttng_data_available(const char *session_name)
 		return -LTTNG_ERR_INVALID;
 	}
 
-	lsm.cmd_type = LTTNG_DATA_AVAILABLE;
+	lsm.cmd_type = LTTNG_DATA_PENDING;
 
 	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
 

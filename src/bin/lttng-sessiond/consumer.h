@@ -199,7 +199,7 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t mmap_len,
 		const char *name,
 		unsigned int nb_init_streams);
-int consumer_is_data_available(unsigned int id,
+int consumer_is_data_pending(unsigned int id,
 		struct consumer_output *consumer);
 
 #endif /* _CONSUMER_H */
