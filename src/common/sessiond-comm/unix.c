@@ -523,3 +523,45 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 #else
 #error "Please implement credential support for your OS."
 #endif /* __linux__ */
+
+/*
+ * Set socket reciving timeout.
+ */
+__attribute__((visibility("hidden")))
+int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int sec)
+{
+	int ret;
+	struct timeval tv;
+
+	tv.tv_sec = sec;
+	tv.tv_usec = 0;
+
+	ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	if (ret < 0) {
+		PERROR("setsockopt SO_RCVTIMEO");
+		ret = -errno;
+	}
+
+	return ret;
+}
+
+/*
+ * Set socket sending timeout.
+ */
+__attribute__((visibility("hidden")))
+int lttcomm_setsockopt_snd_timeout(int sock, unsigned int sec)
+{
+	int ret;
+	struct timeval tv;
+
+	tv.tv_sec = sec;
+	tv.tv_usec = 0;
+
+	ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+	if (ret < 0) {
+		PERROR("setsockopt SO_SNDTIMEO");
+		ret = -errno;
+	}
+
+	return ret;
+}

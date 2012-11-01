@@ -228,6 +228,11 @@ struct health_state health_thread_app_manage;
 struct health_state health_thread_app_reg;
 struct health_state health_thread_kernel;
 
+/*
+ * Socket timeout for receiving and sending in seconds.
+ */
+static int app_socket_timeout;
+
 static
 void setup_consumerd_path(void)
 {
@@ -1204,6 +1209,12 @@ static void *thread_manage_apps(void *data)
 						if (ret < 0) {
 							goto error;
 						}
+
+						/* Set socket timeout for both receiving and ending */
+						(void) lttcomm_setsockopt_rcv_timeout(ust_cmd.sock,
+								app_socket_timeout);
+						(void) lttcomm_setsockopt_snd_timeout(ust_cmd.sock,
+								app_socket_timeout);
 
 						DBG("Apps with sock %d added to poll set",
 								ust_cmd.sock);
@@ -3790,7 +3801,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0;
 	void *status;
-	const char *home_path;
+	const char *home_path, *env_app_timeout;
 
 	init_kernel_workarounds();
 
@@ -4069,6 +4080,14 @@ int main(int argc, char **argv)
 	health_poll_update(&ustconsumer32_data.health);
 	health_init(&ustconsumer64_data.health);
 	health_poll_update(&ustconsumer64_data.health);
+
+	/* Check for the application socket timeout env variable. */
+	env_app_timeout = getenv(DEFAULT_APP_SOCKET_TIMEOUT_ENV);
+	if (env_app_timeout) {
+		app_socket_timeout = atoi(env_app_timeout);
+	} else {
+		app_socket_timeout = DEFAULT_APP_SOCKET_RW_TIMEOUT;
+	}
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,

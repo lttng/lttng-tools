@@ -154,4 +154,10 @@
  */
 #define DEFAULT_DATA_AVAILABILITY_WAIT_TIME 200000  /* usec */
 
+/*
+ * Default receiving and sending timeout for an application socket.
+ */
+#define DEFAULT_APP_SOCKET_RW_TIMEOUT       5  /* sec */
+#define DEFAULT_APP_SOCKET_TIMEOUT_ENV      "LTTNG_APP_SOCKET_TIMEOUT"
+
 #endif /* _DEFAULTS_H */
