@@ -288,6 +288,8 @@ static void cleanup_relayd(struct consumer_relayd_sock_pair *relayd,
 
 	assert(relayd);
 
+	DBG("Cleaning up relayd sockets");
+
 	/* Save the net sequence index before destroying the object */
 	netidx = relayd->net_seq_idx;
 
@@ -1941,7 +1943,7 @@ static void validate_endpoint_status_data_stream(void)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(data_ht->ht, &iter.iter, stream, node.node) {
 		/* Validate delete flag of the stream */
-		if (!stream->endpoint_status) {
+		if (stream->endpoint_status != CONSUMER_ENDPOINT_INACTIVE) {
 			continue;
 		}
 		/* Delete it right now */
@@ -2307,6 +2309,9 @@ void *consumer_thread_data_poll(void *data)
 
 		/* Take care of high priority channels first. */
 		for (i = 0; i < nb_fd; i++) {
+			if (local_stream[i] == NULL) {
+				continue;
+			}
 			if (pollfd[i].revents & POLLPRI) {
 				DBG("Urgent read on fd %d", pollfd[i].fd);
 				high_prio = 1;
@@ -2315,6 +2320,7 @@ void *consumer_thread_data_poll(void *data)
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
 					consumer_del_stream(local_stream[i], data_ht);
+					local_stream[i] = NULL;
 				} else if (len > 0) {
 					local_stream[i]->data_read = 1;
 				}
@@ -2331,6 +2337,9 @@ void *consumer_thread_data_poll(void *data)
 
 		/* Take care of low priority channels. */
 		for (i = 0; i < nb_fd; i++) {
+			if (local_stream[i] == NULL) {
+				continue;
+			}
 			if ((pollfd[i].revents & POLLIN) ||
 					local_stream[i]->hangup_flush_done) {
 				DBG("Normal read on fd %d", pollfd[i].fd);
@@ -2339,6 +2348,7 @@ void *consumer_thread_data_poll(void *data)
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
 					consumer_del_stream(local_stream[i], data_ht);
+					local_stream[i] = NULL;
 				} else if (len > 0) {
 					local_stream[i]->data_read = 1;
 				}
@@ -2347,12 +2357,15 @@ void *consumer_thread_data_poll(void *data)
 
 		/* Handle hangup and errors */
 		for (i = 0; i < nb_fd; i++) {
+			if (local_stream[i] == NULL) {
+				continue;
+			}
 			if (!local_stream[i]->hangup_flush_done
 					&& (pollfd[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 					&& (consumer_data.type == LTTNG_CONSUMER32_UST
 						|| consumer_data.type == LTTNG_CONSUMER64_UST)) {
 				DBG("fd %d is hup|err|nval. Attempting flush and read.",
-					pollfd[i].fd);
+						pollfd[i].fd);
 				lttng_ustconsumer_on_stream_hangup(local_stream[i]);
 				/* Attempt read again, for the data we just flushed. */
 				local_stream[i]->data_read = 1;
@@ -2366,22 +2379,27 @@ void *consumer_thread_data_poll(void *data)
 				DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
 				if (!local_stream[i]->data_read) {
 					consumer_del_stream(local_stream[i], data_ht);
+					local_stream[i] = NULL;
 					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLERR) {
 				ERR("Error returned in polling fd %d.", pollfd[i].fd);
 				if (!local_stream[i]->data_read) {
 					consumer_del_stream(local_stream[i], data_ht);
+					local_stream[i] = NULL;
 					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLNVAL) {
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
 				if (!local_stream[i]->data_read) {
 					consumer_del_stream(local_stream[i], data_ht);
+					local_stream[i] = NULL;
 					num_hup++;
 				}
 			}
-			local_stream[i]->data_read = 0;
+			if (local_stream[i] != NULL) {
+				local_stream[i]->data_read = 0;
+			}
 		}
 	}
 end:
