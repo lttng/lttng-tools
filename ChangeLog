@@ -1,3 +1,40 @@
+2012-11-02 lttng-tools 2.1.0-rc6
+	* Tests: Add filtering tests for uncovered cases
+	* Fix: Sync issue when deleting a data stream
+	* Rename data_available to data_pending
+	* Fix: consumer health state
+	* Fix: Add the ACCOUNTING flag to ht creation and set bucket size to 0
+	* Fix: Bad return error code handling
+	* Fix: Use after free() of the rundir string
+	* Fix: Cleanup UST app session on ustctl create session error
+	* Fix: add missing pthread_join in sessiond
+	* Fix: free running directory string
+	* Fix: UST app clean list node usage
+	* Add liblttng-ctl destructor to cleanup memory
+	* Fix: Cleanup URIs on teardown
+	* Fix: relayd memleaks
+	* Fix: Memory leaks of allocated URIs
+	* Fix: consumer output memory leak on creation
+	* Fix: missing addrlen initialization before accept(2)
+	* Fix: relayd trace file padding memleak
+	* Fix: Remove useless consumer subdir string concatenation
+	* Fix: lttng create allocated path memleak
+	* Fix: Cppcheck memleakOnRealloc mistake
+	* Fix: Synchronization issue for data available command
+	* Fix: consumer relayd cleanup on disconnect
+	* Fix: Handle the unary bitwise negation operator (~) in the XML printer
+	* Fix: Possible memory leaks when creating filter IR root node
+	* Fix: Delete stream on write error in consumer
+	* Fix: Error handling when sending relayd sockets to consumer
+	* Add stream lock comment for nesting
+	* Fix: Mutex and RCU lock nesting in consumer
+	* Fix: Uninitialized ret code
+	* Fix: Remove bad condition and fix overflow issue
+	* Fix: consumerd pthread error flow
+	* Fix: Set a single return point and mutex unlock
+	* Fix: Remove useless NULL and zero assignment
+	* Fix: segfault on create session with two URLs
+
 2012-10-22 lttng-tools 2.1.0-rc5
 	* Fix: Remove network stream ID ABI calls
 	* Tests: Add filtering tests
