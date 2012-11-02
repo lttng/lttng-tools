@@ -87,6 +87,14 @@
  */
 #define DEFAULT_POLL_SIZE 65535
 
+/*
+ * Format is %s_%d respectively channel name and CPU number. Eigth bytes
+ * are added here to add space for the CPU number. I guess 2^8 CPUs is more
+ * than enough. We might end up with quantum computing in a cell phone when
+ * reaching this limit.
+ */
+#define DEFAULT_STREAM_NAME_LEN        LTTNG_SYMBOL_NAME_LEN + 8
+
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
 #define DEFAULT_CHANNEL_OVERWRITE       0       /* usec */

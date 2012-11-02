@@ -24,6 +24,7 @@
 
 #include <lttng/lttng.h>
 #include <common/hashtable/hashtable.h>
+#include <common/defaults.h>
 
 #include "consumer.h"
 #include "ust-ctl.h"
@@ -54,7 +55,7 @@ struct ltt_ust_stream {
 	int handle;
 	char pathname[PATH_MAX];
 	/* Format is %s_%d respectively channel name and CPU number. */
-	char name[LTTNG_SYMBOL_NAME_LEN];
+	char name[DEFAULT_STREAM_NAME_LEN];
 	struct lttng_ust_object_data *obj;
 	/* Using a list of streams to keep order. */
 	struct cds_list_head list;

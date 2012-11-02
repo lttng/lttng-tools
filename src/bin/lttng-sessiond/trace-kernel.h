@@ -23,6 +23,7 @@
 #include <lttng/lttng.h>
 #include <common/lttng-kernel.h>
 #include <common/lttng-kernel-old.h>
+#include <common/defaults.h>
 
 #include "consumer.h"
 
@@ -82,7 +83,7 @@ struct ltt_kernel_stream {
 	int fd;
 	int state;
 	/* Format is %s_%d respectively channel name and CPU number. */
-	char name[LTTNG_SYMBOL_NAME_LEN];
+	char name[DEFAULT_STREAM_NAME_LEN];
 	struct cds_list_head list;
 };
 

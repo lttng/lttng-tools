@@ -25,6 +25,7 @@
 #include <stdint.h>
 
 #include <lttng/lttng.h>
+#include <common/defaults.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             2
 #define RELAYD_VERSION_COMM_MINOR             1
@@ -56,7 +57,7 @@ struct lttcomm_relayd_data_hdr {
  * Used to add a stream on the relay daemon.
  */
 struct lttcomm_relayd_add_stream {
-	char channel_name[LTTNG_SYMBOL_NAME_LEN];
+	char channel_name[DEFAULT_STREAM_NAME_LEN];
 	char pathname[PATH_MAX];
 } __attribute__ ((__packed__));
 

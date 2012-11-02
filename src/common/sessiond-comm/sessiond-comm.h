@@ -30,6 +30,7 @@
 #include <lttng/lttng.h>
 #include <common/compat/socket.h>
 #include <common/uri.h>
+#include <common/defaults.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -274,7 +275,7 @@ struct lttcomm_consumer_msg {
 			char path_name[PATH_MAX];
 			int net_index;
 			unsigned int metadata_flag;
-			char name[LTTNG_SYMBOL_NAME_LEN];  /* Name string of the stream */
+			char name[DEFAULT_STREAM_NAME_LEN];  /* Name string of the stream */
 			uint64_t session_id;   /* Tracing session id of the stream */
 		} stream;
 		struct {
