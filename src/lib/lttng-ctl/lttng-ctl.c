@@ -1606,17 +1606,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	if (!strncmp(name, DEFAULT_SESSION_NAME, strlen(DEFAULT_SESSION_NAME))
-			&& strlen(name) == strlen(DEFAULT_SESSION_NAME)) {
-		ret = snprintf(lsm.session.name, sizeof(lsm.session.name), "%s-%s",
-				name, datetime);
-		if (ret < 0) {
-			PERROR("snprintf session name datetime");
-			return -LTTNG_ERR_FATAL;
-		}
-	} else {
-		copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-	}
+	copy_string(lsm.session.name, name, sizeof(lsm.session.name));
 
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);

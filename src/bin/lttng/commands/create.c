@@ -271,11 +271,7 @@ static int create_session(void)
 			PERROR("snprintf session name");
 			goto error;
 		}
-		session_name = strdup(DEFAULT_SESSION_NAME);
-		if (session_name == NULL) {
-			PERROR("strdup session name");
-			goto error;
-		}
+		session_name = session_name_date;
 		DBG("Auto session name set to %s", session_name_date);
 	} else {
 		if (strncmp(opt_session_name, DEFAULT_SESSION_NAME,
@@ -353,11 +349,7 @@ static int create_session(void)
 		goto error;
 	}
 
-	if (opt_session_name == NULL) {
-		MSG("Session %s created.", session_name_date);
-	} else {
-		MSG("Session %s created.", session_name);
-	}
+	MSG("Session %s created.", session_name);
 	MSG("Traces will be written in %s", print_str_url);
 
 	if (opt_ctrl_url || opt_data_url) {
@@ -380,11 +372,6 @@ static int create_session(void)
 		}
 	}
 
-	if (opt_session_name == NULL) {
-		free(session_name);
-		session_name = session_name_date;
-	}
-
 	/* Init lttng session config */
 	ret = config_init(session_name);
 	if (ret < 0) {
@@ -396,10 +383,6 @@ static int create_session(void)
 	ret = CMD_SUCCESS;
 
 error:
-	if (opt_session_name == NULL && session_name != session_name_date) {
-		free(session_name);
-	}
-
 	if (alloc_url) {
 		free(alloc_url);
 	}
