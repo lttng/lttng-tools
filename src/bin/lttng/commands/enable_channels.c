@@ -34,6 +34,7 @@ static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
 static struct lttng_channel chan;
+static char *opt_output;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -54,6 +55,9 @@ enum {
 
 static struct lttng_handle *handle;
 
+const char *output_mmap = "mmap";
+const char *output_splice = "splice";
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -73,6 +77,7 @@ static struct poptOption long_options[] = {
 	{"switch-timer",   0,   POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0},
 	{"read-timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
+	{"output",         0,   POPT_ARG_STRING, &opt_output, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -110,6 +115,8 @@ static void usage(FILE *ofp)
 		DEFAULT_CHANNEL_SWITCH_TIMER);
 	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (default: %u)\n",
 		DEFAULT_CHANNEL_READ_TIMER);
+	fprintf(ofp, "      --output TYPE        Channel output type (Values: %s, %s)\n",
+			output_mmap, output_splice);
 	fprintf(ofp, "\n");
 }
 
@@ -167,6 +174,21 @@ static int enable_channel(char *session_name)
 	}
 
 	set_default_attr(&dom);
+
+	/* Setting channel output */
+	if (opt_output) {
+		if (!strncmp(output_mmap, opt_output, strlen(output_mmap))) {
+			chan.attr.output = LTTNG_EVENT_MMAP;
+		} else if (!strncmp(output_splice, opt_output, strlen(output_splice))) {
+			chan.attr.output = LTTNG_EVENT_SPLICE;
+		} else {
+			ERR("Unknown output type %s. Possible values are: %s, %s\n",
+					opt_output, output_mmap, output_splice);
+			usage(stderr);
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {

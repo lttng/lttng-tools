@@ -254,6 +254,11 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 
+	if (attr->attr.output != LTTNG_EVENT_MMAP) {
+		ret = LTTNG_ERR_NOT_SUPPORTED;
+		goto error;
+	}
+
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, usess->pathname);
 	if (uchan == NULL) {

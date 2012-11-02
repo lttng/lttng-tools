@@ -35,7 +35,7 @@ enum lttng_error_code {
 	LTTNG_ERR_UND                    = 12,  /* Undefine command */
 	LTTNG_ERR_SESSION_STARTED        = 13,  /* Session is running */
 	LTTNG_ERR_UNKNOWN_DOMAIN         = 14,  /* Tracing domain not known */
-	/* 15 */
+	LTTNG_ERR_NOT_SUPPORTED          = 15,  /* Operation not supported */
 	LTTNG_ERR_NO_SESSION             = 16,  /* No session found */
 	LTTNG_ERR_CREATE_DIR_FAIL        = 17,  /* Create directory fail */
 	LTTNG_ERR_SESSION_FAIL           = 18,  /* Create session fail */
