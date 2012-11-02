@@ -144,7 +144,7 @@ AS_IF([test "x$lttng_ust_support" = "xyes"], [
 			lttng_ust_ctl_found=yes
 		],
 		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])],
-		[-lurcu-common -lurcu-bp -lurcu-cds]
+		[-lurcu-common -lurcu-bp -lurcu-cds -lrt]
 	)
 ])
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$lttng_ust_ctl_found" = xyes])
