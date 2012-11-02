@@ -1606,7 +1606,8 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	if (!strncmp(name, DEFAULT_SESSION_NAME, strlen(DEFAULT_SESSION_NAME))) {
+	if (!strncmp(name, DEFAULT_SESSION_NAME, strlen(DEFAULT_SESSION_NAME))
+			&& strlen(name) == strlen(DEFAULT_SESSION_NAME)) {
 		ret = snprintf(lsm.session.name, sizeof(lsm.session.name), "%s-%s",
 				name, datetime);
 		if (ret < 0) {

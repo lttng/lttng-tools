@@ -278,6 +278,14 @@ static int create_session(void)
 		}
 		DBG("Auto session name set to %s", session_name_date);
 	} else {
+		if (strncmp(opt_session_name, DEFAULT_SESSION_NAME,
+					strlen(DEFAULT_SESSION_NAME)) == 0 &&
+				strlen(opt_session_name) == strlen(DEFAULT_SESSION_NAME)) {
+			ERR("%s is a reserved keyword for default session(s)",
+					DEFAULT_SESSION_NAME);
+			ret = CMD_ERROR;
+			goto error;
+		}
 		session_name = opt_session_name;
 		ret = snprintf(session_name_date, sizeof(session_name_date),
 				"%s-%s", session_name, datetime);
