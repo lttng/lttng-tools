@@ -1983,6 +1983,7 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
+	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
@@ -2014,9 +2015,11 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
 			/* The malloc() failed. */
+			ret = -1;
 			goto error;
 		} else if (ua_sess == (void *) -1UL) {
 			/* The application's socket is not valid. Contiuing */
+			ret = -1;
 			continue;
 		}
 
@@ -2024,16 +2027,15 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		ua_chan = create_ust_app_channel(ua_sess, uchan, app);
 		if (ua_chan == NULL) {
 			/* Major problem here and it's maybe the tracer or malloc() */
+			ret = -1;
 			goto error;
 		}
 	}
 
 	rcu_read_unlock();
 
-	return 0;
-
 error:
-	return -1;
+	return ret;
 }
 
 /*
