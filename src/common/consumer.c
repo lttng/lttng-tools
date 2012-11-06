@@ -47,9 +47,6 @@ struct lttng_consumer_global_data consumer_data = {
 	.type = LTTNG_CONSUMER_UNKNOWN,
 };
 
-/* timeout parameter, to control the polling thread grace period. */
-int consumer_poll_timeout = -1;
-
 /*
  * Flag to inform the polling thread to quit when all fd hung up. Updated by
  * the consumer_thread_receive_fds when it notices that all fds has hung up.
@@ -2250,7 +2247,7 @@ void *consumer_thread_data_poll(void *data)
 		/* poll on the array of fds */
 	restart:
 		DBG("polling on %d fd", nb_fd + 1);
-		num_rdy = poll(pollfd, nb_fd + 1, consumer_poll_timeout);
+		num_rdy = poll(pollfd, nb_fd + 1, -1);
 		DBG("poll num_rdy : %d", num_rdy);
 		if (num_rdy == -1) {
 			/*
@@ -2533,13 +2530,6 @@ end:
 	 * can exit cleanly
 	 */
 	consumer_quit = 1;
-
-	/*
-	 * 2s of grace period, if no polling events occur during
-	 * this period, the polling thread will exit even if there
-	 * are still open FDs (should not happen, but safety mechanism).
-	 */
-	consumer_poll_timeout = LTTNG_CONSUMER_POLL_TIMEOUT;
 
 	/*
 	 * Notify the data poll thread to poll back again and test the

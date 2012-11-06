@@ -30,21 +30,6 @@
 #include <common/compat/fcntl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
-/*
- * When the receiving thread dies, we need to have a way to make the polling
- * thread exit eventually. If all FDs hang up (normal case when the
- * lttng-sessiond stops), we can exit cleanly, but if there is a problem and
- * for whatever reason some FDs remain open, the consumer should still exit
- * eventually.
- *
- * If the timeout is reached, it means that during this period no events
- * occurred on the FDs so we need to force an exit. This case should not happen
- * but it is a safety to ensure we won't block the consumer indefinitely.
- *
- * The value of 2 seconds is an arbitrary choice.
- */
-#define LTTNG_CONSUMER_POLL_TIMEOUT 2000
-
 /* Commands for consumer */
 enum lttng_consumer_command {
 	LTTNG_CONSUMER_ADD_CHANNEL,
