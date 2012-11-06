@@ -39,6 +39,8 @@ AS_IF([test "x$libtool_fixup" = "xyes"],
 		  ])
 	    ])
 
+AM_CONDITIONAL([NO_SHARED], [test x$enable_shared = xno])
+
 AC_CHECK_HEADERS([ \
 	sys/types.h unistd.h fcntl.h string.h pthread.h limits.h \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
