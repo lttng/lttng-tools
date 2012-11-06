@@ -939,12 +939,23 @@ error:
  * Command LTTNG_ADD_CONTEXT processed by the client thread.
  */
 int cmd_add_context(struct ltt_session *session, int domain,
-		char *channel_name, char *event_name, struct lttng_event_context *ctx)
+		char *channel_name, char *event_name, struct lttng_event_context *ctx,
+		int kwpipe)
 {
 	int ret;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+		assert(session->kernel_session);
+
+		if (session->kernel_session->channel_count == 0) {
+			/* Create default channel */
+			ret = channel_kernel_create(session->kernel_session, NULL, kwpipe);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+		}
+
 		/* Add kernel context to kernel tracer */
 		ret = context_kernel_add(session->kernel_session, ctx,
 				event_name, channel_name);
@@ -955,8 +966,27 @@ int cmd_add_context(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_session *usess = session->ust_session;
-
 		assert(usess);
+
+		unsigned int chan_count =
+			lttng_ht_get_count(usess->domain_global.channels);
+		if (chan_count == 0) {
+			struct lttng_channel *attr;
+			/* Create default channel */
+			attr = channel_new_default_attr(domain);
+			if (attr == NULL) {
+				ret = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			ret = channel_ust_create(usess, domain, attr);
+			if (ret != LTTNG_OK) {
+				free(attr);
+				goto error;
+			}
+			free(attr);
+		}
+
 
 		ret = context_ust_add(usess, domain, ctx, event_name, channel_name);
 		if (ret != LTTNG_OK) {

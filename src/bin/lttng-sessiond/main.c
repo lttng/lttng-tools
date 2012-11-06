@@ -2408,7 +2408,7 @@ skip_domain:
 		ret = cmd_add_context(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.context.channel_name,
 				cmd_ctx->lsm->u.context.event_name,
-				&cmd_ctx->lsm->u.context.ctx);
+				&cmd_ctx->lsm->u.context.ctx, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_DISABLE_CHANNEL:
