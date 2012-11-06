@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <urcu/compiler.h>
+#include <lttng/ust-error.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -1580,7 +1581,7 @@ int ust_app_list_events(struct lttng_event **events)
 		}
 
 		while ((ret = ustctl_tracepoint_list_get(app->sock, handle,
-						&uiter)) != -ENOENT) {
+					&uiter)) != -LTTNG_UST_ERR_NOENT) {
 			health_code_update(&health_thread_cmd);
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
@@ -1658,7 +1659,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 		}
 
 		while ((ret = ustctl_tracepoint_field_list_get(app->sock, handle,
-						&uiter)) != -ENOENT) {
+					&uiter)) != -LTTNG_UST_ERR_NOENT) {
 			health_code_update(&health_thread_cmd);
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
