@@ -2754,7 +2754,7 @@ int consumer_data_pending(uint64_t id)
 	ht = consumer_data.stream_list_ht;
 
 	cds_lfht_for_each_entry_duplicate(ht->ht,
-			ht->hash_fct((void *)((unsigned long) id), 0x42UL),
+			ht->hash_fct((void *)((unsigned long) id), lttng_ht_seed),
 			ht->match_fct, (void *)((unsigned long) id),
 			&iter.iter, stream, node_session_id.node) {
 		/* If this call fails, the stream is being used hence data pending. */

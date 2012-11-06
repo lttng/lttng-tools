@@ -27,7 +27,7 @@
 #include "hashtable.h"
 #include "utils.h"
 
-#define HASH_SEED            0x42UL		/* The answer to life */
+unsigned long lttng_ht_seed;
 
 static unsigned long min_hash_alloc_size = 1;
 static unsigned long max_hash_buckets_size = 0;
@@ -163,7 +163,7 @@ void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 	assert(ht);
 	assert(ht->ht);
 
-	cds_lfht_lookup(ht->ht, ht->hash_fct(key, HASH_SEED),
+	cds_lfht_lookup(ht->ht, ht->hash_fct(key, lttng_ht_seed),
 			ht->match_fct, key, &iter->iter);
 }
 
@@ -178,7 +178,7 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 	assert(ht->ht);
 	assert(node);
 
-	node_ptr = cds_lfht_add_unique(ht->ht, ht->hash_fct(node->key, HASH_SEED),
+	node_ptr = cds_lfht_add_unique(ht->ht, ht->hash_fct(node->key, lttng_ht_seed),
 			ht->match_fct, node->key, &node->node);
 	assert(node_ptr == &node->node);
 }
@@ -192,7 +192,7 @@ void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 	assert(ht->ht);
 	assert(node);
 
-	cds_lfht_add(ht->ht, ht->hash_fct((void *) node->key, HASH_SEED),
+	cds_lfht_add(ht->ht, ht->hash_fct((void *) node->key, lttng_ht_seed),
 			&node->node);
 }
 
@@ -208,7 +208,7 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 	assert(node);
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
-			ht->hash_fct((void *) node->key, HASH_SEED), ht->match_fct,
+			ht->hash_fct((void *) node->key, lttng_ht_seed), ht->match_fct,
 			(void *) node->key, &node->node);
 	assert(node_ptr == &node->node);
 }
@@ -225,7 +225,7 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 	assert(node);
 
 	node_ptr = cds_lfht_add_replace(ht->ht,
-			ht->hash_fct((void *) node->key, HASH_SEED), ht->match_fct,
+			ht->hash_fct((void *) node->key, lttng_ht_seed), ht->match_fct,
 			(void *) node->key, &node->node);
 	if (!node_ptr) {
 		return NULL;
@@ -317,4 +317,13 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 		return NULL;
 	}
 	return caa_container_of(node, struct lttng_ht_node_ulong, node);
+}
+
+/*
+ * lib constructor
+ */
+static void __attribute__((constructor)) _init()
+{
+	/* Init hash table seed */
+	lttng_ht_seed = (unsigned long) time(NULL);
 }

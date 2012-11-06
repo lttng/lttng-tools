@@ -23,6 +23,8 @@
 #include "rculfhash.h"
 #include "rculfhash-internal.h"
 
+extern unsigned long lttng_ht_seed;
+
 typedef unsigned long (*hash_fct)(void *_key, unsigned long seed);
 typedef cds_lfht_match_fct hash_match_fct;
 
