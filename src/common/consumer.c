@@ -1559,7 +1559,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 				written = ret_splice;
 			}
 			/* Socket operation failed. We consider the relayd dead */
-			if (errno == EBADF) {
+			if (errno == EBADF || errno == EPIPE) {
 				WARN("Remote relayd disconnected. Stopping");
 				relayd_hang_up = 1;
 				goto write_error;
