@@ -857,13 +857,6 @@ static void *thread_manage_consumer(void *data)
 	 */
 	health_poll_update(&consumer_data->health);
 
-	health_code_update(&consumer_data->health);
-
-	ret = lttcomm_listen_unix_sock(consumer_data->err_sock);
-	if (ret < 0) {
-		goto error_listen;
-	}
-
 	/*
 	 * Pass 2 as size here for the thread quit pipe and kconsumerd_err_sock.
 	 * Nothing more will be added to this poll set.
@@ -873,6 +866,11 @@ static void *thread_manage_consumer(void *data)
 		goto error_poll;
 	}
 
+	/*
+	 * The error socket here is already in a listening state which was done
+	 * just before spawning this thread to avoid a race between the consumer
+	 * daemon exec trying to connect and the listen() call.
+	 */
 	ret = lttng_poll_add(&events, consumer_data->err_sock, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
@@ -1068,7 +1066,6 @@ error:
 
 	lttng_poll_clean(&events);
 error_poll:
-error_listen:
 	if (err) {
 		health_error(&consumer_data->health);
 		ERR("Health error occurred in %s", __func__);
@@ -1826,7 +1823,17 @@ error:
  */
 static int start_consumerd(struct consumer_data *consumer_data)
 {
-	int ret;
+	int ret, err;
+
+	/*
+	 * Set the listen() state on the socket since there is a possible race
+	 * between the exec() of the consumer daemon and this call if place in the
+	 * consumer thread. See bug #366 for more details.
+	 */
+	ret = lttcomm_listen_unix_sock(consumer_data->err_sock);
+	if (ret < 0) {
+		goto error;
+	}
 
 	pthread_mutex_lock(&consumer_data->pid_mutex);
 	if (consumer_data->pid != 0) {
@@ -1857,6 +1864,13 @@ end:
 	return 0;
 
 error:
+	/* Cleanup already created socket on error. */
+	if (consumer_data->err_sock >= 0) {
+		err = close(consumer_data->err_sock);
+		if (err < 0) {
+			PERROR("close consumer data error socket");
+		}
+	}
 	return ret;
 }
 
