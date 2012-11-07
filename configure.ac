@@ -313,7 +313,7 @@ AS_ECHO("$version_description")
 AS_ECHO()
 
 # Target architecture we're building for
-target_arch=$host_cpu
+target_arch=$target_cpu
 [
 for f in $CFLAGS; do
         if test $f = "-m32"; then
