@@ -110,6 +110,8 @@ struct ltt_kernel_session {
 	struct consumer_output *tmp_consumer;
 	/* Tracing session id */
 	unsigned int id;
+	/* Session is started and active */
+	unsigned int started;
 };
 
 /*
