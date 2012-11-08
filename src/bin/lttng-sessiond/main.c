@@ -3111,7 +3111,7 @@ static void *thread_manage_clients(void *data)
 
 	ret = lttcomm_listen_unix_sock(client_sock);
 	if (ret < 0) {
-		goto error;
+		goto error_listen;
 	}
 
 	/*
@@ -3120,7 +3120,7 @@ static void *thread_manage_clients(void *data)
 	 */
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
-		goto error;
+		goto error_create_poll;
 	}
 
 	/* Add the application registration socket */
@@ -3299,20 +3299,6 @@ static void *thread_manage_clients(void *data)
 
 exit:
 error:
-	if (err) {
-		health_error(&health_thread_cmd);
-		ERR("Health error occurred in %s", __func__);
-	}
-	health_exit(&health_thread_cmd);
-
-	DBG("Client thread dying");
-	unlink(client_unix_sock_path);
-	if (client_sock >= 0) {
-		ret = close(client_sock);
-		if (ret) {
-			PERROR("close");
-		}
-	}
 	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {
@@ -3322,6 +3308,25 @@ error:
 
 	lttng_poll_clean(&events);
 	clean_command_ctx(&cmd_ctx);
+
+error_listen:
+error_create_poll:
+	unlink(client_unix_sock_path);
+	if (client_sock >= 0) {
+		ret = close(client_sock);
+		if (ret) {
+			PERROR("close");
+		}
+	}
+
+	if (err) {
+		health_error(&health_thread_cmd);
+		ERR("Health error occurred in %s", __func__);
+	}
+
+	health_exit(&health_thread_cmd);
+
+	DBG("Client thread dying");
 
 	rcu_unregister_thread();
 	return NULL;
