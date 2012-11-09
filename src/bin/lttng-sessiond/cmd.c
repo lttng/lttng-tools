@@ -736,7 +736,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	}
 
 	/* Quiescent wait after starting trace */
-	kernel_wait_quiescent(wpipe);
+	kernel_wait_quiescent(kernel_tracer_fd);
 
 	ksess->started = 1;
 
@@ -841,7 +841,7 @@ int cmd_enable_channel(struct ltt_session *session,
 			goto error;
 		}
 
-		kernel_wait_quiescent(wpipe);
+		kernel_wait_quiescent(kernel_tracer_fd);
 
 		/*
 		 * If the session was previously started, start as well this newly
