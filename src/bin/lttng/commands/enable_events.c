@@ -301,6 +301,7 @@ int loglevel_str_to_value(const char *inputstr)
 static int enable_events(char *session_name)
 {
 	int err, ret = CMD_SUCCESS, warn = 0;
+	unsigned int event_enabled = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
@@ -366,6 +367,9 @@ static int enable_events(char *session_name)
 			}
 		}
 
+		/* Reset flag before enabling a new event. */
+		event_enabled = 0;
+
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
 			switch (-ret) {
@@ -380,6 +384,7 @@ static int enable_events(char *session_name)
 			}
 			goto end;
 		}
+		event_enabled = 1;
 
 		switch (opt_event_type) {
 		case LTTNG_EVENT_TRACEPOINT:
@@ -416,10 +421,11 @@ static int enable_events(char *session_name)
 			 */
 			goto error;
 		}
-		if (opt_filter) {
+		if (opt_filter && event_enabled) {
 			ret = lttng_set_event_filter(handle, ev.name, channel_name,
 						opt_filter);
 			if (ret < 0) {
+				fprintf(stderr, "Ret filter: %d\n", ret);
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on events is already enabled"
@@ -558,6 +564,9 @@ static int enable_events(char *session_name)
 			goto error;
 		}
 
+		/* Reset flag before enabling a new event. */
+		event_enabled = 0;
+
 		ret = lttng_enable_event(handle, &ev, channel_name);
 		if (ret < 0) {
 			/* Turn ret to positive value to handle the positive error code */
@@ -575,8 +584,9 @@ static int enable_events(char *session_name)
 		} else {
 			MSG("%s event %s created in channel %s",
 					opt_kernel ? "kernel": "UST", event_name, channel_name);
+			event_enabled = 1;
 		}
-		if (opt_filter) {
+		if (opt_filter && event_enabled) {
 			ret = lttng_set_event_filter(handle, ev.name, channel_name,
 					opt_filter);
 			if (ret < 0) {
