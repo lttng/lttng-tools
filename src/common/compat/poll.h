@@ -42,7 +42,9 @@ extern unsigned int poll_max_size;
  */
 static inline void __lttng_poll_free(void *events)
 {
-	free(events);
+	if (events) {
+		free(events);
+	}
 }
 
 /*
