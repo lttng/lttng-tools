@@ -343,7 +343,7 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 				ret = ust_app_enable_event_pid(usess, uchan, uevent,
 						events[i].pid);
 				if (ret < 0) {
-					if (ret != -EEXIST) {
+					if (ret != -LTTNG_UST_ERR_EXIST) {
 						ret = LTTNG_ERR_UST_ENABLE_FAIL;
 						goto error;
 					}
@@ -362,7 +362,7 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 			ret = ust_app_enable_event_pid(usess, uchan, uevent,
 					events[i].pid);
 			if (ret < 0) {
-				if (ret == -EEXIST) {
+				if (ret == -LTTNG_UST_ERR_EXIST) {
 					ret = LTTNG_ERR_UST_EVENT_EXIST;
 					goto error;
 				} else {
@@ -455,7 +455,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 		}
 
 		if (ret < 0) {
-			if (ret == -EEXIST) {
+			if (ret == -LTTNG_UST_ERR_EXIST) {
 				ret = LTTNG_ERR_UST_EVENT_EXIST;
 				goto end;
 			} else {
@@ -529,7 +529,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess, int domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		ret = ust_app_disable_event_glb(usess, uchan, uevent);
-		if (ret < 0 && ret != -EEXIST) {
+		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;
 		}
@@ -594,7 +594,7 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 			if (uevent != NULL && uevent->enabled == 1) {
 				ret = ust_app_disable_event_pid(usess, uchan, uevent,
 						events[i].pid);
-				if (ret < 0 && ret != -EEXIST) {
+				if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 					ret = LTTNG_ERR_UST_DISABLE_FAIL;
 					goto error;
 				}

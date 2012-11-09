@@ -155,17 +155,21 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 	}
 
 end:
+	/* Must handle both local internal error and UST code. */
 	switch (ret) {
 	case -EEXIST:
+	case -LTTNG_UST_ERR_EXIST:
 		ret = LTTNG_ERR_FILTER_EXIST;
 		break;
 	case -ENOMEM:
 		ret = LTTNG_ERR_FATAL;
 		break;
 	case -EINVAL:
+	case -LTTNG_UST_ERR_INVAL:
 		ret = LTTNG_ERR_FILTER_INVAL;
 		break;
 	case -ENOSYS:
+	case -LTTNG_UST_ERR_NOSYS:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		break;
 	default:

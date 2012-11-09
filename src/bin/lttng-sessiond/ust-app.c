@@ -734,10 +734,10 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			 * just created it.
 			 */
 			switch (ret) {
-			case -EPERM:
+			case -LTTNG_UST_ERR_PERM:
 				/* Code flow problem */
 				assert(0);
-			case -EEXIST:
+			case -LTTNG_UST_ERR_EXIST:
 				/* It's OK for our use case. */
 				ret = 0;
 				break;
@@ -1223,7 +1223,7 @@ static struct ust_app_channel *create_ust_app_channel(
 	ret = create_ust_channel(app, ua_sess, ua_chan);
 	if (ret < 0) {
 		/* Not found previously means that it does not exist on the tracer */
-		assert(ret != -EEXIST);
+		assert(ret != -LTTNG_UST_ERR_EXIST);
 		goto error;
 	}
 
@@ -1274,7 +1274,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 	if (ret < 0) {
 		/* Not found previously means that it does not exist on the tracer */
-		assert(ret != -EEXIST);
+		assert(ret == -LTTNG_UST_ERR_EXIST);
 		goto error;
 	}
 
@@ -2143,7 +2143,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (ret != -LTTNG_UST_ERR_EXIST) {
 				/* Possible value at this point: -ENOMEM. If so, we stop! */
 				break;
 			}

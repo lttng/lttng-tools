@@ -33,9 +33,11 @@
 #ifdef HAVE_LIBLTTNG_UST_CTL
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-abi.h>
+#include <lttng/ust-error.h>
 #else
 #include "lttng-ust-ctl.h"
 #include "lttng-ust-abi.h"
+#include "lttng-ust-error.h"
 #endif
 
 #endif /* _LTT_UST_CTL_H */
