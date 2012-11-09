@@ -397,7 +397,7 @@ static void stop_threads(void)
 static void cleanup(void)
 {
 	int ret;
-	char *cmd;
+	char *cmd = NULL;
 	struct ltt_session *sess, *stmp;
 
 	DBG("Cleaning up");
@@ -446,9 +446,6 @@ static void cleanup(void)
 		DBG("Unloading kernel modules");
 		modprobe_remove_lttng_all();
 	}
-
-	utils_close_pipe(kernel_poll_pipe);
-	utils_close_pipe(apps_cmd_pipe);
 
 	/* <fun> */
 	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
@@ -798,9 +795,13 @@ exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
+	utils_close_pipe(kernel_poll_pipe);
+	kernel_poll_pipe[0] = kernel_poll_pipe[1] = -1;
 	if (err) {
 		health_error(&health_thread_kernel);
 		ERR("Health error occurred in %s", __func__);
+		WARN("Kernel thread died unexpectedly. "
+				"Kernel tracing can continue but CPU hotplug is disabled.");
 	}
 	health_exit(&health_thread_kernel);
 	DBG("Kernel thread dying");
@@ -1250,6 +1251,15 @@ exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
+	utils_close_pipe(apps_cmd_pipe);
+	apps_cmd_pipe[0] = apps_cmd_pipe[1] = -1;
+
+	/*
+	 * We don't clean the UST app hash table here since already registered
+	 * applications can still be controlled so let them be until the session
+	 * daemon dies or the applications stop.
+	 */
+
 	if (err) {
 		health_error(&health_thread_app_manage);
 		ERR("Health error occurred in %s", __func__);
@@ -1299,18 +1309,26 @@ static void *thread_dispatch_ust_registration(void *data)
 			 * call is blocking so we can be assured that the data will be read
 			 * at some point in time or wait to the end of the world :)
 			 */
-			ret = write(apps_cmd_pipe[1], ust_cmd,
-					sizeof(struct ust_command));
-			if (ret < 0) {
-				PERROR("write apps cmd pipe");
-				if (errno == EBADF) {
-					/*
-					 * We can't inform the application thread to process
-					 * registration. We will exit or else application
-					 * registration will not occur and tracing will never
-					 * start.
-					 */
-					goto error;
+			if (apps_cmd_pipe[1] >= 0) {
+				ret = write(apps_cmd_pipe[1], ust_cmd,
+						sizeof(struct ust_command));
+				if (ret < 0) {
+					PERROR("write apps cmd pipe");
+					if (errno == EBADF) {
+						/*
+						 * We can't inform the application thread to process
+						 * registration. We will exit or else application
+						 * registration will not occur and tracing will never
+						 * start.
+						 */
+						goto error;
+					}
+				}
+			} else {
+				/* Application manager thread is not available. */
+				ret = close(ust_cmd->sock);
+				if (ret < 0) {
+					PERROR("close ust_cmd sock");
 				}
 			}
 			free(ust_cmd);
@@ -4043,8 +4061,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the kernel pipe for waking up the kernel thread */
-	if ((ret = utils_create_pipe_cloexec(kernel_poll_pipe)) < 0) {
-		goto exit;
+	if (is_root && !opt_no_kernel) {
+		if ((ret = utils_create_pipe_cloexec(kernel_poll_pipe)) < 0) {
+			goto exit;
+		}
 	}
 
 	/* Setup the thread apps communication pipe. */
@@ -4134,18 +4154,21 @@ int main(int argc, char **argv)
 		goto exit_apps;
 	}
 
-	/* Create kernel thread to manage kernel event */
-	ret = pthread_create(&kernel_thread, NULL,
-			thread_manage_kernel, (void *) NULL);
-	if (ret != 0) {
-		PERROR("pthread_create kernel");
-		goto exit_kernel;
-	}
+	/* Don't start this thread if kernel tracing is not requested nor root */
+	if (is_root && !opt_no_kernel) {
+		/* Create kernel thread to manage kernel event */
+		ret = pthread_create(&kernel_thread, NULL,
+				thread_manage_kernel, (void *) NULL);
+		if (ret != 0) {
+			PERROR("pthread_create kernel");
+			goto exit_kernel;
+		}
 
-	ret = pthread_join(kernel_thread, &status);
-	if (ret != 0) {
-		PERROR("pthread_join");
-		goto error;	/* join error, exit without cleanup */
+		ret = pthread_join(kernel_thread, &status);
+		if (ret != 0) {
+			PERROR("pthread_join");
+			goto error;	/* join error, exit without cleanup */
+		}
 	}
 
 exit_kernel:

@@ -239,9 +239,6 @@ void cleanup(void)
 	/* Close thread quit pipes */
 	utils_close_pipe(thread_quit_pipe);
 
-	/* Close relay cmd pipes */
-	utils_close_pipe(relay_cmd_pipe);
-
 	uri_free(control_uri);
 	uri_free(data_uri);
 }
@@ -1813,6 +1810,8 @@ error_poll_create:
 streams_ht_error:
 	lttng_ht_destroy(relay_connections_ht);
 relay_connections_ht_error:
+	/* Close relay cmd pipes */
+	utils_close_pipe(relay_cmd_pipe);
 	if (err) {
 		DBG("Thread exited with error");
 	}

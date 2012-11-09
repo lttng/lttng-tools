@@ -826,9 +826,6 @@ int cmd_enable_channel(struct ltt_session *session,
 	{
 		struct ltt_kernel_channel *kchan;
 
-		/* Mandatory for a kernel channel. */
-		assert(wpipe > 0);
-
 		kchan = trace_kernel_get_channel_by_name(attr->name,
 				session->kernel_session);
 		if (kchan == NULL) {
