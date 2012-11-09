@@ -101,11 +101,22 @@ static int build_network_session_path(char *dst, size_t size,
 		goto error;
 	}
 
+	/*
+	 * Do we have a UST url set. If yes, this means we have both kernel and UST
+	 * to print.
+	 */
 	if (strlen(tmp_uurl) > 0) {
 		ret = snprintf(dst, size, "[K]: %s [data: %d] -- [U]: %s [data: %d]",
 				tmp_urls, kdata_port, tmp_uurl, udata_port);
 	} else {
-		ret = snprintf(dst, size, "%s [data: %d]", tmp_urls, kdata_port);
+		int dport;
+		if (kuri) {
+			dport = kdata_port;
+		} else {
+			/* No kernel URI, use the UST port. */
+			dport = udata_port;
+		}
+		ret = snprintf(dst, size, "%s [data: %d]", tmp_urls, dport);
 	}
 
 error:
