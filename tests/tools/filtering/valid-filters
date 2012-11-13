@@ -96,6 +96,8 @@ function test_valid_filter
 	echo -n "Validating filter output "
 	stats=`babeltrace $trace_path | $CURDIR/$STATS_BIN --tracepoint $EVENT_NAME`
 
+	rm -rf $trace_path
+
 	$validator "$stats"
 
 	if [ $? -eq 0 ]; then
