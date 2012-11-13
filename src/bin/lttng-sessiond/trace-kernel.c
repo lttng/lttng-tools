@@ -272,7 +272,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 
 	/* Set default attributes */
 	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	chan->attr.subbuf_size = DEFAULT_METADATA_SUBBUF_SIZE;
+	chan->attr.subbuf_size = default_get_metadata_subbuf_size();
 	chan->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
 	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
