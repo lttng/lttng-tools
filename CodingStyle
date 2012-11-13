@@ -1,6 +1,58 @@
 LTTng-Tools Coding Style
 
-Last Update: 23/07/2012
+Author: David Goulet
+Last Update: 13/11/2012
+
+Tabs VS Spaces:
+-------------
+
+Right, so our two cents in this endless war! This project uses TABS for one
+simple reason, the coder can choose whatever size or type his/her indentation
+is and can set the prefered coding style by replacing the tabs which each
+normally respected IDE/editor can do.
+
+For vim, here is what I used:
+
+  set shiftwidth=4
+  set noexpandtab
+
+There is one exception for which  we use space in this project is for enum,
+defines and macros values indentation. For instance:
+
+Use space to indent the the value so they fit when reading them all. Same goes
+for the #define below.
+
+enum my_enum {
+	value1     = 1,
+	value289   = 289,
+	...
+};
+
+#define DEFAULT_VALUE_OF_SOME_SORT   6
+#define THE_ANSWER                   42
+
+Use space to indent the '\' at the end but tabs at the beginning.
+
+#define a_macro(x)      \
+	do {                \
+		fsync();        \
+	} while (0);        \
+
+It's really the only time we use spaces. For everything else, there is TABS! :)
+
+Here is a pretty cool vim macro that will highlight your whitespaces and spaces
+before tab. This helps a *LOT* when coding.
+
+" Show trailing whitepace and spaces before a tab:
+function MyTrail()
+    let no_hl_trail = ["man", "help"]
+    if index(no_hl_trail, &ft) >= 0
+        return
+    endif
+    syn match ErrorMsg /\s\+$\| \+\ze\t\|\t\+\ze / containedin=@NoTrail
+endfunction
+syn cluster NoTrail contains=ALL remove=cComment
+autocmd Syntax * call MyTrail()
 
 C Style:
 -------------
@@ -13,6 +65,22 @@ single-line if/else statements. Please refer to:
 
 - Linux kernel scripts/checkpatch.pl for a script which verify the patch
   coding style.
+
+For header files, please declare the following in this order:
+
+1) #defines
+	- Default values should go in: src/common/defaults.h
+	- Macros used across the project: src/common/macros.h
+
+2) Variables
+	- No _static_ in a header file! This is madness.
+	- Use _extern_ if the global variable is set else where.
+
+3) Function prototype
+
+Furthermore, respect the name spacing of files for each non-static symbol
+visiable outside the scope of the C file. For instance, for the utils.c file in
+libcommon, every call should be prefixed by "utils_*".
 
 Error handling:
 -------------
@@ -43,3 +111,14 @@ Every function MUST have a comment above it even if the function is trivial.
 Please add non-trivial comments/documentation as much as you can in the code.
 Poor comments WILL be rejected upon merging so please pay attention to this
 details because we do!
+
+If the comments requires more than one line, please format like so:
+
+/*
+ * Some comments which requires multiple
+ * lines [...]
+ */
+
+and on a single line:
+
+/* My comment on a single line. */
