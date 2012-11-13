@@ -1,3 +1,30 @@
+2012-11-13 lttng-tools 2.1.0-rc7
+	* Fix: Add pointer check when freeing poll events
+	* Fix: FD leak on thread error
+	* Fix: Wrong fd used by kernel_wait_quiescent
+	* Support new lttng-ust error code
+	* Fix: Don't set filter if enable event fails
+	* Fix: Wrong data port when listing session
+	* Fix: Enable event after start command
+	* Fix: Teardown of thread_manage_clients on failure of listen/create_poll
+	* Add a timeout to UST application socket
+	* Fix: Consumerd error socket connect race
+	* Fix: Set CLOEXEC flag on every created sockets
+	* Remove consumer poll timeout in data thread
+	* Fix: RCU hash table seed
+	* Fix: Do not install health tests helper libraries
+	* Fix: Create default channel on add-context if none
+	* Support new liblttng-ust-ctl error code
+	* Fix: Add EPIPE error handling on buffer splice
+	* Fix: Channel creation error return code was not set
+	* Fix: Wrong poll events on UST application socket
+	* Fix: Remove dependency to urcu-cds in tools tests
+	* Fix: Missing librt dependency in configure check for lttng-ust-ctl
+	* Fix: Don't append datetime to default session name
+	* Fix: Deny session creation name 'auto'
+	* Fix: Add space for stream name CPU number
+	* Fix: Add output option to enable-channel command
+
 2012-11-02 lttng-tools 2.1.0-rc6
 	* Tests: Add filtering tests for uncovered cases
 	* Fix: Sync issue when deleting a data stream
