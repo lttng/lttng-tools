@@ -117,4 +117,58 @@
  */
 #define DEFAULT_SEM_WAIT_TIMEOUT            30    /* in seconds */
 
+extern size_t default_channel_subbuf_size;
+extern size_t default_metadata_subbuf_size;
+extern size_t default_ust_channel_subbuf_size;
+extern size_t default_kernel_channel_subbuf_size;
+
+
+/*
+ * Returns the default subbuf size.
+ *
+ * This function depends on a value that is set at constructor time, so it is
+ * unsafe to call it from another constructor.
+ */
+static inline
+size_t default_get_channel_subbuf_size(void)
+{
+	return default_channel_subbuf_size;
+}
+
+/*
+ * Returns the default metadata subbuf size.
+ *
+ * This function depends on a value that is set at constructor time, so it is
+ * unsafe to call it from another constructor.
+ */
+static inline
+size_t default_get_metadata_subbuf_size(void)
+{
+	return default_metadata_subbuf_size;
+}
+
+/*
+ * Returns the default subbuf size for the kernel domain.
+ *
+ * This function depends on a value that is set at constructor time, so it is
+ * unsafe to call it from another constructor.
+ */
+static inline
+size_t default_get_kernel_channel_subbuf_size(void)
+{
+	return default_kernel_channel_subbuf_size;
+}
+
+/*
+ * Returns the default subbuf size for the UST domain.
+ *
+ * This function depends on a value that is set at constructor time, so it is
+ * unsafe to call it from another constructor.
+ */
+static inline
+size_t default_get_ust_channel_subbuf_size(void)
+{
+	return default_ust_channel_subbuf_size;
+}
+
 #endif /* _DEFAULTS_H */

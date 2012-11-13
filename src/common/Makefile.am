@@ -8,7 +8,7 @@ noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h
 
 noinst_LTLIBRARIES = libcommon.la
 
-libcommon_la_SOURCES = runas.c runas.h common.h
+libcommon_la_SOURCES = runas.c runas.h common.h defaults.c
 
 # Consumer library
 noinst_LTLIBRARIES += libconsumer.la
