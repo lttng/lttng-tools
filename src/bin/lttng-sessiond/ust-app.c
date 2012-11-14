@@ -1274,7 +1274,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 	if (ret < 0) {
 		/* Not found previously means that it does not exist on the tracer */
-		assert(ret == -LTTNG_UST_ERR_EXIST);
+		assert(ret != -LTTNG_UST_ERR_EXIST);
 		goto error;
 	}
 
