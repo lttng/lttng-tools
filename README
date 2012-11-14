@@ -40,6 +40,9 @@ REQUIREMENTS:
 
     - For kernel tracing: modprobe
 
+	- bash
+	  Needed for running "make check".
+
 For developers using the git tree:
 
 This source tree is based on the autotools suite from GNU to simplify
