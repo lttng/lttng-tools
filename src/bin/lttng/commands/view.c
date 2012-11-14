@@ -343,6 +343,13 @@ static int view_trace(void)
 		trace_path = opt_trace_path;
 	}
 
+	if (sessions[i].enabled) {
+		WARN("Session %s is running. Please stop it before reading it.",
+				session_name);
+		ret = CMD_ERROR;
+		goto free_sessions;
+	}
+
 	MSG("Trace directory: %s\n", trace_path);
 
 	ret = spawn_viewer(trace_path);
