@@ -23,10 +23,17 @@ be done by this tool or by the liblttng-ctl provided with the lttng-tools
 package.
 
 LTTng uses a session daemon (lttng-sessiond(8)), acting as a tracing registry,
-which permits you to interact with multiple tracers (kernel and user-space)
+which allows you to interact with multiple tracers (kernel and user-space)
 inside the same container, a tracing session. Traces can be gathered from the
 kernel and/or instrumented applications (lttng-ust(3)). Aggregating and reading
 those traces is done using the babeltrace(1) text viewer.
+
+We introduce the notion of \fBtracing domains\fP which is essentially a type of
+tracer (kernel or user space for now). In the future, we could see a third
+tracer being for instance an hypervisor. For some commands, you'll need to
+specify on which domain the command applies (-u or -k). For instance, enabling
+a kernel event, you must specify the kernel domain to the command so we know
+for which tracer this event is for.
 
 In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
