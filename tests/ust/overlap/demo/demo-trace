@@ -1,0 +1,3 @@
+#!/bin/sh
+
+LD_PRELOAD=.libs/liblttng-ust-provider-ust-tests-demo.so:.libs/liblttng-ust-provider-ust-tests-demo3.so ./demo ${*}

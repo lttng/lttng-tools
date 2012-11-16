@@ -61,5 +61,6 @@ gen-events
 gen-ust-events
 unit_tests
 health_check
+tests/ust/overlap/demo/demo
 
 benchmark/

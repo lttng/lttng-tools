@@ -298,6 +298,8 @@ AC_CONFIG_FILES([
 	tests/ust/low-throughput/Makefile
 	tests/ust/before-after/Makefile
 	tests/ust/multi-session/Makefile
+	tests/ust/overlap/Makefile
+	tests/ust/overlap/demo/Makefile
 ])
 
 AC_OUTPUT
