@@ -222,6 +222,7 @@ struct lttcomm_session_msg {
 struct lttng_filter_bytecode {
 	uint32_t len;	/* len of data */
 	uint32_t reloc_table_offset;
+	uint64_t seqnum;
 	char data[0];
 };
 

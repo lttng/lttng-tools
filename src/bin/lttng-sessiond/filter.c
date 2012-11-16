@@ -46,6 +46,7 @@ static int add_ufilter_to_event(struct ltt_ust_session *usess, int domain,
 	}
 	/* Same layout. */
 	uevent->filter = (struct lttng_ust_filter_bytecode *) bytecode;
+	uevent->filter->seqnum = usess->filter_seq_num;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -54,6 +55,7 @@ static int add_ufilter_to_event(struct ltt_ust_session *usess, int domain,
 		if (ret < 0) {
 			goto error;
 		}
+		usess->filter_seq_num++;
 		break;
 	default:
 		ret = -ENOSYS;

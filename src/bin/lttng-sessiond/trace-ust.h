@@ -124,6 +124,8 @@ struct ltt_ust_session {
 	 */
 	struct consumer_output *consumer;
 	struct consumer_output *tmp_consumer;
+	/* Sequence number for filters so the tracer knows the ordering. */
+	uint64_t filter_seq_num;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
