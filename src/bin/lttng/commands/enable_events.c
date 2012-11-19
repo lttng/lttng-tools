@@ -422,7 +422,7 @@ static int enable_events(char *session_name)
 			goto error;
 		}
 		if (opt_filter && event_enabled) {
-			ret = lttng_set_event_filter(handle, ev.name, channel_name,
+			ret = lttng_set_event_filter(handle, &ev, channel_name,
 						opt_filter);
 			if (ret < 0) {
 				fprintf(stderr, "Ret filter: %d\n", ret);
@@ -587,7 +587,7 @@ static int enable_events(char *session_name)
 			event_enabled = 1;
 		}
 		if (opt_filter && event_enabled) {
-			ret = lttng_set_event_filter(handle, ev.name, channel_name,
+			ret = lttng_set_event_filter(handle, &ev, channel_name,
 					opt_filter);
 			if (ret < 0) {
 				switch (-ret) {

@@ -827,13 +827,13 @@ int lttng_enable_event(struct lttng_handle *handle,
 }
 
 /*
- * set filter for an event
+ * Set filter for an event
+ *
  * Return negative error value on error.
  * Return size of returned session payload data if OK.
  */
-
 int lttng_set_event_filter(struct lttng_handle *handle,
-		const char *event_name, const char *channel_name,
+		struct lttng_event *event, const char *channel_name,
 		const char *filter_expression)
 {
 	struct lttcomm_session_msg lsm;
@@ -927,8 +927,10 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 	copy_string(lsm.u.filter.channel_name, channel_name,
 			sizeof(lsm.u.filter.channel_name));
 	/* Copy event name */
-	copy_string(lsm.u.filter.event_name, event_name,
-			sizeof(lsm.u.filter.event_name));
+	if (event) {
+		memcpy(&lsm.u.enable.event, event, sizeof(lsm.u.enable.event));
+	}
+
 	lsm.u.filter.bytecode_len = sizeof(ctx->bytecode->b)
 			+ bytecode_get_len(&ctx->bytecode->b);
 

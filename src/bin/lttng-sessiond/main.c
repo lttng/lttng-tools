@@ -2879,7 +2879,7 @@ skip_domain:
 
 		ret = cmd_set_filter(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.filter.channel_name,
-				cmd_ctx->lsm->u.filter.event_name,
+				&cmd_ctx->lsm->u.filter.event,
 				bytecode);
 		break;
 	}

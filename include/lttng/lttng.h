@@ -511,14 +511,14 @@ extern int lttng_enable_event(struct lttng_handle *handle,
 /*
  * Apply a filter expression to an event.
  *
- * If event_name is NULL, the filter is applied to all events of the channel.
+ * If event is NULL, the filter is applied to all events of the channel.
  * If channel_name is NULL, a lookup of the event's channel is done.
  * If both are NULL, the filter is applied to all events of all channels.
  */
 extern int lttng_set_event_filter(struct lttng_handle *handle,
-		const char *event_name,
-		const char *channel_name,
+		struct lttng_event *event, const char *channel_name,
 		const char *filter_expression);
+
 /*
  * Create or enable a channel.
  * The channel name cannot be NULL.

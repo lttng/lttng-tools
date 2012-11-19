@@ -75,7 +75,7 @@ error:
  * Add UST context to tracer.
  */
 int filter_ust_set(struct ltt_ust_session *usess, int domain,
-		struct lttng_filter_bytecode *bytecode, char *event_name,
+		struct lttng_filter_bytecode *bytecode, struct lttng_event *event,
 		char *channel_name)
 {
 	int ret = LTTNG_OK, have_event = 0;
@@ -102,8 +102,8 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 
-	/* Do we have an event name */
-	if (strlen(event_name) != 0) {
+	/* Do we have a valid event. */
+	if (event && event->name[0] != '\0') {
 		have_event = 1;
 	}
 
@@ -118,7 +118,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 
 	/* If UST channel specified and event name, get UST event ref */
 	if (uchan && have_event) {
-		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
+		uevent = trace_ust_find_event_by_name(uchan->events, event->name);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
@@ -137,7 +137,7 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 	} else if (!uchan && have_event) {	/* Add filter to event */
 		/* Add context to event without having the channel name */
 		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
-			uevent = trace_ust_find_event_by_name(uchan->events, event_name);
+			uevent = trace_ust_find_event_by_name(uchan->events, event->name);
 			if (uevent != NULL) {
 				ret = add_ufilter_to_event(usess, domain, uchan, uevent, bytecode);
 				/*

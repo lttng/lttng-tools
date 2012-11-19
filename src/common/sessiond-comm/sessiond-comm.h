@@ -204,7 +204,7 @@ struct lttcomm_session_msg {
 		} uri;
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			char event_name[LTTNG_SYMBOL_NAME_LEN];
+			struct lttng_event event;
 			/* Length of following bytecode */
 			uint32_t bytecode_len;
 		} filter;

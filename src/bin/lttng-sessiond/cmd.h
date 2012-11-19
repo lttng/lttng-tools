@@ -47,7 +47,7 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 int cmd_add_context(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event_context *ctx, int kwpipe);
 int cmd_set_filter(struct ltt_session *session, int domain,
-		char *channel_name, char *event_name,
+		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode);
 int cmd_enable_event(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event, int wpipe);

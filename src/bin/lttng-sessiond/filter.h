@@ -28,7 +28,7 @@
 struct lttng_filter_bytecode;
 
 int filter_ust_set(struct ltt_ust_session *usess, int domain,
-		struct lttng_filter_bytecode *bytecode, char *event_name,
+		struct lttng_filter_bytecode *bytecode, struct lttng_event *event,
 		char *channel_name);
 
 #endif /* _LTT_FILTER_H */

@@ -1107,7 +1107,7 @@ error:
  * Command LTTNG_SET_FILTER processed by the client thread.
  */
 int cmd_set_filter(struct ltt_session *session, int domain,
-		char *channel_name, char *event_name,
+		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode)
 {
 	int ret;
@@ -1120,7 +1120,7 @@ int cmd_set_filter(struct ltt_session *session, int domain,
 	{
 		struct ltt_ust_session *usess = session->ust_session;
 
-		ret = filter_ust_set(usess, domain, bytecode, event_name, channel_name);
+		ret = filter_ust_set(usess, domain, bytecode, event, channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
