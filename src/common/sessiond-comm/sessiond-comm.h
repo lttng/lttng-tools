@@ -186,7 +186,6 @@ struct lttcomm_session_msg {
 		/* Context */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			char event_name[LTTNG_SYMBOL_NAME_LEN];
 			struct lttng_event_context ctx;
 		} context;
 		/* Use by register_consumer */

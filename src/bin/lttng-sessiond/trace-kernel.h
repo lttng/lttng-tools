@@ -46,11 +46,6 @@ struct ltt_kernel_channel_list {
 struct ltt_kernel_event {
 	int fd;
 	int enabled;
-	/*
-	 * TODO: need internal representation to support more than a
-	 * single context.
-	 */
-	struct lttng_kernel_context *ctx;
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
 };

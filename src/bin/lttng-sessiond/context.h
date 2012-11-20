@@ -25,9 +25,8 @@
 #include "ust-ctl.h"
 
 int context_kernel_add(struct ltt_kernel_session *ksession,
-		struct lttng_event_context *ctx, char *event_name, char *channel_name);
+		struct lttng_event_context *ctx, char *channel_name);
 int context_ust_add(struct ltt_ust_session *usess, int domain,
-		struct lttng_event_context *ctx, char *event_name,
-		char *channel_name);
+		struct lttng_event_context *ctx, char *channel_name);
 
 #endif /* _LTT_CONTEXT_H */

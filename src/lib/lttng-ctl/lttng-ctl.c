@@ -749,10 +749,10 @@ int lttng_stop_tracing_no_wait(const char *session_name)
 }
 
 /*
- * Add context to event and/or channel.
- * If event_name is NULL, the context is applied to all events of the channel.
- * If channel_name is NULL, a lookup of the event's channel is done.
- * If both are NULL, the context is applied to all events of all channels.
+ * Add context to a channel.
+ *
+ * If the given channel is NULL, add the contexts to all channels.
+ * The event_name param is ignored.
  *
  * Returns the size of the returned payload data or a negative error code.
  */
@@ -774,9 +774,6 @@ int lttng_add_context(struct lttng_handle *handle,
 	/* Copy channel name */
 	copy_string(lsm.u.context.channel_name, channel_name,
 			sizeof(lsm.u.context.channel_name));
-	/* Copy event name */
-	copy_string(lsm.u.context.event_name, event_name,
-			sizeof(lsm.u.context.event_name));
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
 

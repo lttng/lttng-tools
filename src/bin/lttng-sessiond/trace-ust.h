@@ -45,7 +45,6 @@ struct ltt_ust_context {
 struct ltt_ust_event {
 	unsigned int enabled;
 	struct lttng_ust_event attr;
-	struct lttng_ht *ctx;
 	struct lttng_ht_node_str node;
 	struct lttng_ust_filter_bytecode *filter;
 };

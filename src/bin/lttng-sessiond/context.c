@@ -31,72 +31,23 @@
 #include "trace-ust.h"
 
 /*
- * Add kernel context to an event of a specific channel.
- */
-static int add_kctx_to_event(struct lttng_kernel_context *kctx,
-		struct ltt_kernel_channel *kchan, char *event_name)
-{
-	int ret, found = 0;
-	struct ltt_kernel_event *kevent;
-
-	DBG("Add kernel context to event %s", event_name);
-
-	kevent = trace_kernel_get_event_by_name(event_name, kchan);
-	if (kevent != NULL) {
-		ret = kernel_add_event_context(kevent, kctx);
-		if (ret < 0) {
-			goto error;
-		}
-		found = 1;
-	}
-
-	ret = found;
-
-error:
-	return ret;
-}
-
-/*
  * Add kernel context to all channel.
- *
- * If event_name is specified, add context to event instead.
  */
 static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
-		struct lttng_kernel_context *kctx, char *event_name)
+		struct lttng_kernel_context *kctx)
 {
-	int ret, no_event = 0, found = 0;
+	int ret;
 	struct ltt_kernel_channel *kchan;
 
-	if (strlen(event_name) == 0) {
-		no_event = 1;
-	}
-
-	DBG("Adding kernel context to all channels (event: %s)", event_name);
+	DBG("Adding kernel context to all channels");
 
 	/* Go over all channels */
 	cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
-		if (no_event) {
-			ret = kernel_add_channel_context(kchan, kctx);
-			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
-				goto error;
-			}
-		} else {
-			ret = add_kctx_to_event(kctx, kchan, event_name);
-			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
-				goto error;
-			} else if (ret == 1) {
-				/* Event found and context added */
-				found = 1;
-				break;
-			}
+		ret = kernel_add_channel_context(kchan, kctx);
+		if (ret < 0) {
+			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
+			goto error;
 		}
-	}
-
-	if (!found && !no_event) {
-		ret = LTTNG_ERR_NO_EVENT;
-		goto error;
 	}
 
 	ret = LTTNG_OK;
@@ -107,40 +58,17 @@ error:
 
 /*
  * Add kernel context to a specific channel.
- *
- * If event_name is specified, add context to that event.
  */
 static int add_kctx_to_channel(struct lttng_kernel_context *kctx,
-		struct ltt_kernel_channel *kchan, char *event_name)
+		struct ltt_kernel_channel *kchan)
 {
-	int ret, no_event = 0, found = 0;
+	int ret;
 
-	if (strlen(event_name) == 0) {
-		no_event = 1;
-	}
+	DBG("Add kernel context to channel '%s'", kchan->channel->name);
 
-	DBG("Add kernel context to channel '%s', event '%s'",
-			kchan->channel->name, event_name);
-
-	if (no_event) {
-		ret = kernel_add_channel_context(kchan, kctx);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
-			goto error;
-		}
-	} else {
-		ret = add_kctx_to_event(kctx, kchan, event_name);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
-			goto error;
-		} else if (ret == 1) {
-			/* Event found and context added */
-			found = 1;
-		}
-	}
-
-	if (!found && !no_event) {
-		ret = LTTNG_ERR_NO_EVENT;
+	ret = kernel_add_channel_context(kchan, kctx);
+	if (ret < 0) {
+		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 		goto error;
 	}
 
@@ -201,63 +129,10 @@ error:
 }
 
 /*
- * Add UST context to event.
- */
-static int add_uctx_to_event(struct ltt_ust_session *usess, int domain,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
-		struct lttng_event_context *ctx)
-{
-	int ret;
-	struct ltt_ust_context *uctx;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *uctx_node;
-
-	/* Create ltt UST context */
-	uctx = trace_ust_create_context(ctx);
-	if (uctx == NULL) {
-		/* Context values are invalid. */
-		ret = -EINVAL;
-		goto error;
-	}
-
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		ret = ust_app_add_ctx_event_glb(usess, uchan, uevent, uctx);
-		if (ret < 0) {
-			goto error;
-		}
-		break;
-	default:
-		ret = -ENOSYS;
-		goto error;
-	}
-
-	/* Lookup context before adding it */
-	lttng_ht_lookup(uevent->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
-	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
-	if (uctx_node != NULL) {
-		ret = -EEXIST;
-		goto error;
-	}
-
-	/* Add ltt UST context node to ltt UST event */
-	lttng_ht_add_unique_ulong(uevent->ctx, &uctx->node);
-
-	DBG("Context UST %d added to event %s", uctx->ctx.ctx, uevent->attr.name);
-
-	return 0;
-
-error:
-	free(uctx);
-	return ret;
-}
-
-/*
  * Add kernel context to tracer.
  */
 int context_kernel_add(struct ltt_kernel_session *ksession,
-		struct lttng_event_context *ctx, char *event_name,
-		char *channel_name)
+		struct lttng_event_context *ctx, char *channel_name)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -309,7 +184,7 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	kctx.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 
 	if (strlen(channel_name) == 0) {
-		ret = add_kctx_all_channels(ksession, &kctx, event_name);
+		ret = add_kctx_all_channels(ksession, &kctx);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -321,7 +196,7 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 			goto error;
 		}
 
-		ret = add_kctx_to_channel(&kctx, kchan, event_name);
+		ret = add_kctx_to_channel(&kctx, kchan);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -337,14 +212,12 @@ error:
  * Add UST context to tracer.
  */
 int context_ust_add(struct ltt_ust_session *usess, int domain,
-		struct lttng_event_context *ctx, char *event_name,
-		char *channel_name)
+		struct lttng_event_context *ctx, char *channel_name)
 {
-	int ret = LTTNG_OK, have_event = 0;
+	int ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
-	struct ltt_ust_event *uevent = NULL;
 
 	/*
 	 * Define which channel's hashtable to use from the domain or quit if
@@ -364,11 +237,6 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 
-	/* Do we have an event name */
-	if (strlen(event_name) != 0) {
-		have_event = 1;
-	}
-
 	/* Get UST channel if defined */
 	if (strlen(channel_name) != 0) {
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
@@ -378,39 +246,11 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		}
 	}
 
-	/* If UST channel specified and event name, get UST event ref */
-	if (uchan && have_event) {
-		uevent = trace_ust_find_event_by_name(uchan->events, event_name);
-		if (uevent == NULL) {
-			ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
-			goto error;
-		}
-	}
-
-	/* At this point, we have 4 possibilities */
-
-	if (uchan && uevent) {				/* Add ctx to event in channel */
-		ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
-	} else if (uchan && !have_event) {	/* Add ctx to channel */
+	if (uchan) {
+		/* Add ctx to channel */
 		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
-	} else if (!uchan && have_event) {	/* Add ctx to event */
-		/* Add context to event without having the channel name */
-		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
-			uevent = trace_ust_find_event_by_name(uchan->events, event_name);
-			if (uevent != NULL) {
-				ret = add_uctx_to_event(usess, domain, uchan, uevent, ctx);
-				/*
-				 * LTTng UST does not allowed the same event to be registered
-				 * multiple time in different or the same channel. So, if we
-				 * found our event, we stop.
-				 */
-				goto end;
-			}
-		}
-		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
-		goto error;
-	} else if (!uchan && !have_event) {	/* Add ctx all events, all channels */
-		/* For all channels */
+	} else {
+		/* Add ctx all events, all channels */
 		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret < 0) {
@@ -420,7 +260,6 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		}
 	}
 
-end:
 	switch (ret) {
 	case -EEXIST:
 		ret = LTTNG_ERR_UST_CONTEXT_EXIST;

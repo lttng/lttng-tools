@@ -1035,8 +1035,7 @@ error:
  * Command LTTNG_ADD_CONTEXT processed by the client thread.
  */
 int cmd_add_context(struct ltt_session *session, int domain,
-		char *channel_name, char *event_name, struct lttng_event_context *ctx,
-		int kwpipe)
+		char *channel_name, struct lttng_event_context *ctx, int kwpipe)
 {
 	int ret;
 
@@ -1053,8 +1052,7 @@ int cmd_add_context(struct ltt_session *session, int domain,
 		}
 
 		/* Add kernel context to kernel tracer */
-		ret = context_kernel_add(session->kernel_session, ctx,
-				event_name, channel_name);
+		ret = context_kernel_add(session->kernel_session, ctx, channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1083,8 +1081,7 @@ int cmd_add_context(struct ltt_session *session, int domain,
 			free(attr);
 		}
 
-
-		ret = context_ust_add(usess, domain, ctx, event_name, channel_name);
+		ret = context_ust_add(usess, domain, ctx, channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}

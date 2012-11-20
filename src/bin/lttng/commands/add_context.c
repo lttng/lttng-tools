@@ -31,7 +31,6 @@
 
 #define PRINT_LINE_LEN	80
 
-static char *opt_event_name;
 static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_kernel;
@@ -141,7 +140,6 @@ static struct poptOption long_options[] = {
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
-	{"event",          'e', POPT_ARG_STRING, &opt_event_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
@@ -300,11 +298,10 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "usage: lttng add-context -t TYPE [-k|-u] [OPTIONS]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "If no channel and no event is given (-c/-e), the context\n");
-	fprintf(ofp, "is added to all events and all channels.\n");
+	fprintf(ofp, "If no channel is given (-c), the context is added to\n");
+	fprintf(ofp, "all channels.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Otherwise the context is added only to the channel (-c)\n");
-	fprintf(ofp, "and/or event (-e) indicated.\n");
+	fprintf(ofp, "Otherwise the context is added only to the channel (-c).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Exactly one domain (-k or -u) must be specified.\n");
 	fprintf(ofp, "\n");
@@ -313,7 +310,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
 	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
-	fprintf(ofp, "  -e, --event NAME         Apply to event\n");
 	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "\n");
@@ -326,7 +322,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Example:\n");
 	fprintf(ofp, "This command will add the context information 'prio' and two perf\n"
-			"counters (hardware branch misses and cache misses), to all events\n"
+			"counters (hardware branch misses and cache misses), to all channels\n"
 			"in the trace data output:\n");
 	fprintf(ofp, "# lttng add-context -k -t prio -t perf:branch-misses -t perf:cache-misses\n");
 	fprintf(ofp, "\n");
@@ -398,25 +394,16 @@ static int add_context(char *session_name)
 		}
 		DBG("Adding context...");
 
-		ret = lttng_add_context(handle, &context, opt_event_name,
-				opt_channel_name);
+		ret = lttng_add_context(handle, &context, NULL, opt_channel_name);
 		if (ret < 0) {
 			ERR("%s: %s", type->opt->symbol, lttng_strerror(ret));
 			warn = 1;
 			continue;
 		} else {
-			if (opt_channel_name && opt_event_name) {
-				MSG("%s context %s added to event %s channel %s",
-						opt_kernel ? "kernel" : "UST", type->opt->symbol,
-						opt_channel_name, opt_event_name);
-			} else if (opt_channel_name && !opt_event_name) {
+			if (opt_channel_name) {
 				MSG("%s context %s added to channel %s",
 						opt_kernel ? "kernel" : "UST", type->opt->symbol,
 						opt_channel_name);
-			} else if (!opt_channel_name && opt_event_name) {
-				MSG("%s context %s added to event %s",
-						opt_kernel ? "kernel" : "UST", type->opt->symbol,
-						opt_event_name);
 			} else {
 				MSG("%s context %s added to all channels",
 						opt_kernel ? "kernel" : "UST", type->opt->symbol)

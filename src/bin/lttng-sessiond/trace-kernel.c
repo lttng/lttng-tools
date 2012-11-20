@@ -243,7 +243,6 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	lke->fd = -1;
 	lke->event = attr;
 	lke->enabled = 1;
-	lke->ctx = NULL;
 
 	return lke;
 
@@ -369,7 +368,6 @@ void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 	cds_list_del(&event->list);
 
 	free(event->event);
-	free(event->ctx);
 	free(event);
 }
 

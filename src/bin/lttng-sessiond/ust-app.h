@@ -72,7 +72,6 @@ struct ust_app_event {
 	struct lttng_ust_object_data *obj;
 	struct lttng_ust_event attr;
 	char name[LTTNG_UST_SYM_NAME_LEN];
-	struct lttng_ht *ctx;
 	struct lttng_ht_node_str node;
 	struct lttng_ust_filter_bytecode *filter;
 };
@@ -167,9 +166,6 @@ int ust_app_enable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
-int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
-		struct ltt_ust_context *uctx);
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx);
 int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
@@ -313,13 +309,6 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 static inline
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent)
-{
-	return 0;
-}
-static inline
-int ust_app_add_ctx_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
-		struct ltt_ust_context *uctx)
 {
 	return 0;
 }

@@ -274,12 +274,6 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 
 	/* Init node */
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);
-	/* Alloc context hash tables */
-	lue->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	if (lue->ctx == NULL) {
-		ERR("Unable to create context hash table for event %s", ev->name);
-		goto error_free_event;
-	}
 
 	DBG2("Trace UST event %s, loglevel (%d,%d) created",
 		lue->attr.name, lue->attr.loglevel_type,
@@ -415,7 +409,6 @@ static void destroy_contexts(struct lttng_ht *ht)
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 	DBG2("Trace destroy UST event %s", event->attr.name);
-	destroy_contexts(event->ctx);
 	free(event->filter);
 	free(event);
 }

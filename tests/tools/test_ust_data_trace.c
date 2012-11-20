@@ -164,7 +164,6 @@ static void create_ust_event(void)
 
 	printf("Validating UST event: ");
 	assert(event->enabled == 0);
-	assert(event->ctx != NULL);
 	assert(event->attr.instrumentation == LTTNG_UST_TRACEPOINT);
 	assert(strcmp(event->attr.name, ev.name) == 0);
 	assert(event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0');

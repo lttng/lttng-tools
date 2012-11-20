@@ -67,35 +67,6 @@ error:
 }
 
 /*
- * Add context on a kernel event.
- */
-int kernel_add_event_context(struct ltt_kernel_event *event,
-		struct lttng_kernel_context *ctx)
-{
-	int ret;
-
-	DBG("Adding context to event %s", event->event->name);
-	ret = kernctl_add_context(event->fd, ctx);
-	if (ret < 0) {
-		PERROR("add context ioctl");
-		goto error;
-	}
-
-	event->ctx = zmalloc(sizeof(struct lttng_kernel_context));
-	if (event->ctx == NULL) {
-		PERROR("zmalloc event context");
-		goto error;
-	}
-
-	memcpy(event->ctx, ctx, sizeof(struct lttng_kernel_context));
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
  * Create a new kernel session, register it to the kernel tracer and add it to
  * the session daemon session.
  */

@@ -156,7 +156,6 @@ static void create_kernel_event(void)
 	printf("Validating kernel event: ");
 	assert(event->fd == -1);
 	assert(event->enabled == 1);
-	assert(event->ctx == NULL);
 	assert(event->event->instrumentation == LTTNG_KERNEL_TRACEPOINT);
 	assert(strlen(event->event->name));
 	PRINT_OK();
