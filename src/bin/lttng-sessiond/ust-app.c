@@ -36,6 +36,74 @@
 #include "ust-consumer.h"
 #include "ust-ctl.h"
 
+static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
+{
+	struct ust_app_event *event;
+	const struct ust_app_ht_key *key;
+
+	assert(node);
+	assert(_key);
+
+	event = caa_container_of(node, struct ust_app_event, node.node);
+	key = _key;
+
+	/* Match the 3 elements of the key: name, filter and loglevel. */
+
+	/* Event name */
+	if (strncmp(event->attr.name, key->name, sizeof(event->attr.name)) != 0) {
+		goto no_match;
+	}
+
+	/* Event loglevel. */
+	if (event->attr.loglevel != key->loglevel) {
+		goto no_match;
+	}
+
+	/* One of the filters is NULL, fail. */
+	if ((key->filter && !event->filter) || (!key->filter && event->filter)) {
+		goto no_match;
+	}
+
+	/* Both filters are NULL, success. */
+	if (!key->filter && !event->filter) {
+		goto match;
+	}
+
+	/* Both filters exists, check length followed by the bytecode. */
+	if (event->filter->len == key->filter->len &&
+			memcmp(event->filter->data, key->filter->data,
+				event->filter->len) == 0) {
+		goto match;
+	}
+
+match:
+	return 1;
+
+no_match:
+	return 0;
+
+}
+
+static void add_unique_ust_app_event(struct lttng_ht *ht,
+		struct ust_app_event *event)
+{
+	struct cds_lfht_node *node_ptr;
+	struct ust_app_ht_key key;
+
+	assert(ht);
+	assert(ht->ht);
+	assert(event);
+
+	key.name = event->attr.name;
+	key.filter = event->filter;
+	key.loglevel = event->attr.loglevel;
+
+	node_ptr = cds_lfht_add_unique(ht->ht,
+			ht->hash_fct(event->node.key, lttng_ht_seed),
+			ht_match_ust_app_event, &key, &event->node.node);
+	assert(node_ptr == &event->node.node);
+}
+
 /*
  * Delete ust context safely. RCU read lock must be held before calling
  * this function.
@@ -373,6 +441,41 @@ struct ust_app *find_app_by_sock(int sock)
 
 error:
 	return NULL;
+}
+
+static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
+		char *name, struct lttng_ust_filter_bytecode *filter, int loglevel)
+{
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *node;
+	struct ust_app_event *event = NULL;
+	struct ust_app_ht_key key;
+	void *orig_match_fct;
+
+	assert(name);
+	assert(ht);
+
+	/* Setup key for event lookup. */
+	key.name = name;
+	key.filter = filter;
+	key.loglevel = loglevel;
+
+	/* Save match function so we can use the ust app event match. */
+	orig_match_fct = (void *) ht->match_fct;
+	ht->match_fct = ht_match_ust_app_event;
+
+	lttng_ht_lookup(ht, (void *) &key, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (node == NULL) {
+		goto end;
+	}
+
+	event = caa_container_of(node, struct ust_app_event, node);
+
+end:
+	/* Put back original match function. */
+	ht->match_fct = orig_match_fct;
+	return event;
 }
 
 /*
@@ -747,7 +850,6 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 		struct ltt_ust_channel *uchan)
 {
 	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_event_node;
 	struct ltt_ust_event *uevent;
 	struct ltt_ust_context *uctx;
 	struct ust_app_event *ua_event;
@@ -774,11 +876,9 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 
 	/* Copy all events from ltt ust channel to ust app channel */
 	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
-		struct lttng_ht_iter uiter;
-
-		lttng_ht_lookup(ua_chan->events, (void *) uevent->attr.name, &uiter);
-		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_event_node == NULL) {
+		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
+				uevent->filter, uevent->attr.loglevel);
+		if (ua_event == NULL) {
 			DBG2("UST event %s not found on shadow copy channel",
 					uevent->attr.name);
 			ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
@@ -786,7 +886,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 				continue;
 			}
 			shadow_copy_event(ua_event, uevent);
-			lttng_ht_add_unique_str(ua_chan->events, &ua_event->node);
+			add_unique_ust_app_event(ua_chan->events, ua_event);
 		}
 	}
 
@@ -1154,14 +1254,12 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_event_node;
 	struct ust_app_event *ua_event;
 
 	/* Get event node */
-	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
-	ua_event_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_event_node != NULL) {
+	ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
+			uevent->filter, uevent->attr.loglevel);
+	if (ua_event != NULL) {
 		ret = -EEXIST;
 		goto end;
 	}
@@ -1183,7 +1281,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	lttng_ht_add_unique_str(ua_chan->events, &ua_event->node);
+	add_unique_ust_app_event(ua_chan->events, ua_event);
 
 	DBG2("UST app create event %s for PID %d completed", ua_event->name,
 			app->pid);
@@ -1948,7 +2046,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct lttng_ht_iter iter, uiter;
-	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -1986,14 +2084,14 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		lttng_ht_lookup(ua_chan->events, (void*)uevent->attr.name, &uiter);
-		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_event_node == NULL) {
+		/* Get event node */
+		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
+				uevent->filter, uevent->attr.loglevel);
+		if (ua_event == NULL) {
 			DBG3("UST app enable event %s not found for app PID %d."
 					"Skipping app", uevent->attr.name, app->pid);
 			continue;
 		}
-		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
 
 		ret = enable_ust_app_event(ua_sess, ua_event, app);
 		if (ret < 0) {
@@ -2581,7 +2679,7 @@ int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
 		struct lttng_filter_bytecode *bytecode)
 {
 	int ret = 0;
-	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct lttng_ht_iter iter, uiter;
 	struct ust_app_session *ua_sess;
 	struct ust_app_event *ua_event;
@@ -2612,13 +2710,12 @@ int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
 				node);
 
-		lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &uiter);
-		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_event_node == NULL) {
+		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
+				(struct lttng_ust_filter_bytecode *) bytecode,
+				uevent->attr.loglevel);
+		if (ua_event == NULL) {
 			continue;
 		}
-		ua_event = caa_container_of(ua_event_node, struct ust_app_event,
-				node);
 
 		ret = set_ust_app_event_filter(ua_sess, ua_event, bytecode, app);
 		if (ret < 0) {
@@ -2638,7 +2735,7 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -2672,16 +2769,14 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 
 	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
-	ua_event_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_event_node == NULL) {
+	ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
+			uevent->filter, uevent->attr.loglevel);
+	if (ua_event == NULL) {
 		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
 		if (ret < 0) {
 			goto error;
 		}
 	} else {
-		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
-
 		ret = enable_ust_app_event(ua_sess, ua_event, app);
 		if (ret < 0) {
 			goto error;

@@ -33,6 +33,12 @@ struct lttng_ust_filter_bytecode;
 
 extern int ust_consumerd64_fd, ust_consumerd32_fd;
 
+struct ust_app_ht_key {
+	const char *name;
+	const struct lttng_ust_filter_bytecode *filter;
+	enum lttng_ust_loglevel_type loglevel;
+};
+
 /*
  * Application registration data structure.
  */

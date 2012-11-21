@@ -26,6 +26,96 @@
 
 #include "trace-ust.h"
 
+int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
+		const void *_key)
+{
+	struct ltt_ust_event *event;
+	const char *name;
+
+	assert(node);
+	assert(_key);
+
+	event = caa_container_of(node, struct ltt_ust_event, node.node);
+	name = _key;
+
+	/* Event name */
+	if (strncmp(event->attr.name, name, sizeof(event->attr.name)) != 0) {
+		goto no_match;
+	}
+
+	/* Match. */
+	return 1;
+
+no_match:
+	return 0;
+}
+
+int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
+{
+	struct ltt_ust_event *event;
+	const struct ltt_ust_ht_key *key;
+
+	assert(node);
+	assert(_key);
+
+	event = caa_container_of(node, struct ltt_ust_event, node.node);
+	key = _key;
+
+	/* Match the 3 elements of the key: name, filter and loglevel. */
+
+	/* Event name */
+	if (strncmp(event->attr.name, key->name, sizeof(event->attr.name)) != 0) {
+		DBG3("[Match] name failed: %s and %s",
+				event->attr.name, key->name);
+		goto no_match;
+	}
+
+	/* Event loglevel. */
+	if (event->attr.loglevel != key->loglevel) {
+		if (event->attr.loglevel_type == 0 && key->loglevel == 0 &&
+				event->attr.loglevel == -1) {
+			/*
+			 * This is because on event creation, the loglevel is set to -1 if
+			 * the event loglevel type is ALL so 0 and -1 are accepted for this
+			 * loglevel type.
+			 */
+		} else {
+			DBG3("[Match] loglevel failed: %d and %d",
+					event->attr.loglevel, key->loglevel);
+			goto no_match;
+		}
+	}
+
+	/* Only one of the filters is NULL, fail. */
+	if ((key->filter && !event->filter) || (!key->filter && event->filter)) {
+		DBG3("[Match] filters failed: k:%p and e:%p",
+				key->filter, event->filter);
+		goto no_match;
+	}
+
+	/* Both filters are NULL, success. */
+	if (!key->filter && !event->filter) {
+		goto match;
+	}
+
+	/* Both filters exists, check length followed by the bytecode. */
+	if (event->filter->len == key->filter->len &&
+			memcmp(event->filter->data, key->filter->data,
+				event->filter->len) == 0) {
+		goto match;
+	}
+
+	DBG3("[Match] filters failed: k:%p and e:%p",
+			key->filter, event->filter);
+
+no_match:
+	return 0;
+
+match:
+	DBG3("[MATCH] %s", key->name);
+	return 1;
+}
+
 /*
  * Find the channel in the hashtable.
  */
@@ -56,27 +146,40 @@ error:
 /*
  * Find the event in the hashtable.
  */
-struct ltt_ust_event *trace_ust_find_event_by_name(struct lttng_ht *ht,
-		char *name)
+struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
+		char *name, struct lttng_filter_bytecode *filter, int loglevel)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
+	struct ltt_ust_ht_key key;
+	void *orig_match_fct;
 
-	rcu_read_lock();
-	lttng_ht_lookup(ht, (void *) name, &iter);
+	assert(name);
+	assert(ht);
+
+	key.name = name;
+	key.filter = filter;
+	key.loglevel = loglevel;
+
+	/* Save match function so we can use the ust app event match. */
+	orig_match_fct = (void *) ht->match_fct;
+	ht->match_fct = trace_ust_ht_match_event;
+
+	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
+			trace_ust_ht_match_event, &key, &iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
-		rcu_read_unlock();
 		goto error;
 	}
-	rcu_read_unlock();
 
-	DBG2("Trace UST event found by name %s", name);
+	DBG2("Trace UST event %s found", key.name);
 
 	return caa_container_of(node, struct ltt_ust_event, node);
 
 error:
-	DBG2("Trace UST event NOT found by name %s", name);
+	DBG2("Trace UST event %s NOT found", key.name);
+	/* Put back original match function. */
+	ht->match_fct = orig_match_fct;
 	return NULL;
 }
 

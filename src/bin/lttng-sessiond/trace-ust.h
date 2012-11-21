@@ -29,6 +29,12 @@
 #include "consumer.h"
 #include "ust-ctl.h"
 
+struct ltt_ust_ht_key {
+	const char *name;
+	const struct lttng_filter_bytecode *filter;
+	enum lttng_ust_loglevel_type loglevel;
+};
+
 /* UST Stream list */
 struct ltt_ust_stream_list {
 	unsigned int count;
@@ -129,11 +135,15 @@ struct ltt_ust_session {
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
+int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key);
+int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
+		const void *_key);
+
 /*
  * Lookup functions. NULL is returned if not found.
  */
-struct ltt_ust_event *trace_ust_find_event_by_name(struct lttng_ht *ht,
-		char *name);
+struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
+		char *name, struct lttng_filter_bytecode *filter, int loglevel);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name);
 
@@ -159,13 +169,6 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
-
-static inline
-struct ltt_ust_event *trace_ust_find_event_by_name(struct lttng_ht *ht,
-		char *name)
-{
-	return NULL;
-}
 
 static inline
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,

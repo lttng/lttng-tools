@@ -118,7 +118,8 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 
 	/* If UST channel specified and event name, get UST event ref */
 	if (uchan && have_event) {
-		uevent = trace_ust_find_event_by_name(uchan->events, event->name);
+		uevent = trace_ust_find_event(uchan->events, event->name, bytecode,
+				event->loglevel);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
@@ -137,7 +138,8 @@ int filter_ust_set(struct ltt_ust_session *usess, int domain,
 	} else if (!uchan && have_event) {	/* Add filter to event */
 		/* Add context to event without having the channel name */
 		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
-			uevent = trace_ust_find_event_by_name(uchan->events, event->name);
+			uevent = trace_ust_find_event(uchan->events, event->name, bytecode,
+					event->loglevel);
 			if (uevent != NULL) {
 				ret = add_ufilter_to_event(usess, domain, uchan, uevent, bytecode);
 				/*
