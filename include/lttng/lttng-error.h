@@ -75,7 +75,7 @@ enum lttng_error_code {
 	/* 52 */
 	LTTNG_ERR_KERN_LIST_FAIL         = 53,  /* Kernel listing events failed */
 	LTTNG_ERR_UST_CALIBRATE_FAIL     = 54,  /* UST calibration failed */
-	/* 55 */
+	LTTNG_ERR_UST_EVENT_ENABLED      = 55,  /* UST event already enabled. */
 	LTTNG_ERR_UST_SESS_FAIL          = 56,  /* UST create session failed */
 	LTTNG_ERR_UST_CHAN_EXIST         = 57,  /* UST channel already exist */
 	LTTNG_ERR_UST_CHAN_FAIL          = 58,  /* UST create channel failed */

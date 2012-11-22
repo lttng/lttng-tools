@@ -101,6 +101,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_NO_SESSIOND) ] = "No session daemon is available",
 	[ ERROR_INDEX(LTTNG_ERR_SESSION_STARTED) ] = "Session is running",
 	[ ERROR_INDEX(LTTNG_ERR_NOT_SUPPORTED) ] = "Operation not supported",
+	[ ERROR_INDEX(LTTNG_ERR_UST_EVENT_ENABLED) ] = "UST event already enabled",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
