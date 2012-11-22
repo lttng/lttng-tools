@@ -301,7 +301,6 @@ int loglevel_str_to_value(const char *inputstr)
 static int enable_events(char *session_name)
 {
 	int err, ret = CMD_SUCCESS, warn = 0;
-	unsigned int event_enabled = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
@@ -367,62 +366,60 @@ static int enable_events(char *session_name)
 			}
 		}
 
-		/* Reset flag before enabling a new event. */
-		event_enabled = 0;
+		if (!opt_filter) {
+			ret = lttng_enable_event(handle, &ev, channel_name);
+			if (ret < 0) {
+				switch (-ret) {
+				case LTTNG_ERR_KERN_EVENT_EXIST:
+					WARN("Kernel events already enabled (channel %s, session %s)",
+							channel_name, session_name);
+					break;
+				default:
+					ERR("Events: %s (channel %s, session %s)",
+							lttng_strerror(ret), channel_name, session_name);
+					break;
+				}
+				goto end;
+			}
 
-		ret = lttng_enable_event(handle, &ev, channel_name);
-		if (ret < 0) {
-			switch (-ret) {
-			case LTTNG_ERR_KERN_EVENT_EXIST:
-				WARN("Kernel events already enabled (channel %s, session %s)",
-						channel_name, session_name);
+			switch (opt_event_type) {
+			case LTTNG_EVENT_TRACEPOINT:
+				if (opt_loglevel) {
+					MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
+							opt_kernel ? "kernel" : "UST", channel_name,
+							opt_loglevel);
+				} else {
+					MSG("All %s tracepoints are enabled in channel %s",
+							opt_kernel ? "kernel" : "UST", channel_name);
+
+				}
+				break;
+			case LTTNG_EVENT_SYSCALL:
+				if (opt_kernel) {
+					MSG("All kernel system calls are enabled in channel %s",
+							channel_name);
+				}
+				break;
+			case LTTNG_EVENT_ALL:
+				if (opt_loglevel) {
+					MSG("All %s events are enabled in channel %s for loglevel %s",
+							opt_kernel ? "kernel" : "UST", channel_name,
+							opt_loglevel);
+				} else {
+					MSG("All %s events are enabled in channel %s",
+							opt_kernel ? "kernel" : "UST", channel_name);
+				}
 				break;
 			default:
-				ERR("Events: %s (channel %s, session %s)",
-						lttng_strerror(ret), channel_name, session_name);
-				break;
+				/*
+				 * We should not be here since lttng_enable_event should have
+				 * failed on the event type.
+				 */
+				goto error;
 			}
-			goto end;
 		}
-		event_enabled = 1;
-
-		switch (opt_event_type) {
-		case LTTNG_EVENT_TRACEPOINT:
-			if (opt_loglevel) {
-				MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
-						opt_kernel ? "kernel" : "UST", channel_name,
-						opt_loglevel);
-			} else {
-				MSG("All %s tracepoints are enabled in channel %s",
-						opt_kernel ? "kernel" : "UST", channel_name);
-
-			}
-			break;
-		case LTTNG_EVENT_SYSCALL:
-			if (opt_kernel) {
-				MSG("All kernel system calls are enabled in channel %s",
-						channel_name);
-			}
-			break;
-		case LTTNG_EVENT_ALL:
-			if (opt_loglevel) {
-				MSG("All %s events are enabled in channel %s for loglevel %s",
-						opt_kernel ? "kernel" : "UST", channel_name,
-						opt_loglevel);
-			} else {
-				MSG("All %s events are enabled in channel %s",
-						opt_kernel ? "kernel" : "UST", channel_name);
-			}
-			break;
-		default:
-			/*
-			 * We should not be here since lttng_enable_event should have
-			 * failed on the event type.
-			 */
-			goto error;
-		}
-		if (opt_filter && event_enabled) {
-			ret = lttng_set_event_filter(handle, &ev, channel_name,
+		if (opt_filter) {
+			ret = lttng_enable_event_with_filter(handle, &ev, channel_name,
 						opt_filter);
 			if (ret < 0) {
 				fprintf(stderr, "Ret filter: %d\n", ret);
@@ -437,19 +434,6 @@ static int enable_events(char *session_name)
 					ERR("%s", lttng_strerror(ret));
 				default:
 					ERR("Setting filter: '%s'", opt_filter);
-					/*
-					 * The event was successfully enabled before so when
-					 * failing to set a filter, disable the event. This has
-					 * been discussed in bug #343 on why we do that.
-					 */
-					err = lttng_disable_event(handle, ev.name, channel_name);
-					if (err < 0) {
-						ERR("Disabling all events after filter error: %s",
-								lttng_strerror(err));
-					} else {
-						WARN("All events of channel %s have been disabled due "
-								"to a filter error", channel_name);
-					}
 					break;
 				}
 				goto error;
@@ -564,30 +548,29 @@ static int enable_events(char *session_name)
 			goto error;
 		}
 
-		/* Reset flag before enabling a new event. */
-		event_enabled = 0;
-
-		ret = lttng_enable_event(handle, &ev, channel_name);
-		if (ret < 0) {
-			/* Turn ret to positive value to handle the positive error code */
-			switch (-ret) {
-			case LTTNG_ERR_KERN_EVENT_EXIST:
-				WARN("Kernel event %s already enabled (channel %s, session %s)",
-						event_name, channel_name, session_name);
-				break;
-			default:
-				ERR("Event %s: %s (channel %s, session %s)", event_name,
-						lttng_strerror(ret), channel_name, session_name);
-				break;
+		if (!opt_filter) {
+			ret = lttng_enable_event(handle, &ev, channel_name);
+			if (ret < 0) {
+				/* Turn ret to positive value to handle the positive error code */
+				switch (-ret) {
+				case LTTNG_ERR_KERN_EVENT_EXIST:
+					WARN("Kernel event %s already enabled (channel %s, session %s)",
+							event_name, channel_name, session_name);
+					break;
+				default:
+					ERR("Event %s: %s (channel %s, session %s)", event_name,
+							lttng_strerror(ret), channel_name, session_name);
+					break;
+				}
+				warn = 1;
+			} else {
+				MSG("%s event %s created in channel %s",
+						opt_kernel ? "kernel": "UST", event_name, channel_name);
 			}
-			warn = 1;
-		} else {
-			MSG("%s event %s created in channel %s",
-					opt_kernel ? "kernel": "UST", event_name, channel_name);
-			event_enabled = 1;
 		}
-		if (opt_filter && event_enabled) {
-			ret = lttng_set_event_filter(handle, &ev, channel_name,
+
+		if (opt_filter) {
+			ret = lttng_enable_event_with_filter(handle, &ev, channel_name,
 					opt_filter);
 			if (ret < 0) {
 				switch (-ret) {
@@ -602,19 +585,6 @@ static int enable_events(char *session_name)
 				default:
 					ERR("Setting filter for event %s: '%s'", ev.name,
 							opt_filter);
-					/*
-					 * The event was successfully enabled before so when
-					 * failing to set a filter, disable the event. This has
-					 * been discussed in bug #343 on why we do that.
-					 */
-					err = lttng_disable_event(handle, ev.name, channel_name);
-					if (err < 0) {
-						ERR("Disabling event %s after filter error: %s",
-								ev.name, lttng_strerror(err));
-					} else {
-						WARN("Event %s of channel %s has been disabled due "
-								"to a filter error", ev.name, channel_name);
-					}
 					break;
 				}
 				goto error;

@@ -1104,51 +1104,11 @@ error:
 }
 
 /*
- * Command LTTNG_SET_FILTER processed by the client thread.
- */
-int cmd_set_filter(struct ltt_session *session, int domain,
-		char *channel_name, struct lttng_event *event,
-		struct lttng_filter_bytecode *bytecode)
-{
-	int ret;
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		ret = LTTNG_ERR_FATAL;
-		break;
-	case LTTNG_DOMAIN_UST:
-	{
-		struct ltt_ust_session *usess = session->ust_session;
-
-		ret = filter_ust_set(usess, domain, bytecode, event, channel_name);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-		break;
-	}
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-
-}
-
-
-/*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
  */
 int cmd_enable_event(struct ltt_session *session, int domain,
-		char *channel_name, struct lttng_event *event, int wpipe)
+		char *channel_name, struct lttng_event *event,
+		struct lttng_filter_bytecode *filter, int wpipe)
 {
 	int ret;
 	struct lttng_channel *attr;
@@ -1231,7 +1191,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 		}
 
 		/* At this point, the session and channel exist on the tracer */
-		ret = event_ust_enable_tracepoint(usess, domain, uchan, event);
+		ret = event_ust_enable_tracepoint(usess, domain, uchan, event, filter);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1257,7 +1217,8 @@ error:
  * Command LTTNG_ENABLE_ALL_EVENT processed by the client thread.
  */
 int cmd_enable_event_all(struct ltt_session *session, int domain,
-		char *channel_name, int event_type, int wpipe)
+		char *channel_name, int event_type,
+		struct lttng_filter_bytecode *filter, int wpipe)
 {
 	int ret;
 	struct lttng_channel *attr;
@@ -1364,7 +1325,8 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 		switch (event_type) {
 		case LTTNG_EVENT_ALL:
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_ust_enable_all_tracepoints(usess, domain, uchan);
+			ret = event_ust_enable_all_tracepoints(usess, domain, uchan,
+					filter);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}

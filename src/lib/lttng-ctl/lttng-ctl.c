@@ -827,12 +827,12 @@ int lttng_enable_event(struct lttng_handle *handle,
 }
 
 /*
- * Set filter for an event
+ * Create or enable an event with a filter expression.
  *
  * Return negative error value on error.
  * Return size of returned session payload data if OK.
  */
-int lttng_set_event_filter(struct lttng_handle *handle,
+int lttng_enable_event_with_filter(struct lttng_handle *handle,
 		struct lttng_event *event, const char *channel_name,
 		const char *filter_expression)
 {
@@ -842,12 +842,8 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 	int ret = 0;
 
 	/* Safety check. */
-	if (handle == NULL) {
+	if (handle == NULL || !filter_expression) {
 		return -LTTNG_ERR_INVALID;
-	}
-
-	if (!filter_expression) {
-		return 0;
 	}
 
 	/*
@@ -921,17 +917,17 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	lsm.cmd_type = LTTNG_SET_FILTER;
+	lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_FILTER;
 
 	/* Copy channel name */
-	copy_string(lsm.u.filter.channel_name, channel_name,
-			sizeof(lsm.u.filter.channel_name));
+	copy_string(lsm.u.enable.channel_name, channel_name,
+			sizeof(lsm.u.enable.channel_name));
 	/* Copy event name */
 	if (event) {
 		memcpy(&lsm.u.enable.event, event, sizeof(lsm.u.enable.event));
 	}
 
-	lsm.u.filter.bytecode_len = sizeof(ctx->bytecode->b)
+	lsm.u.enable.bytecode_len = sizeof(ctx->bytecode->b)
 			+ bytecode_get_len(&ctx->bytecode->b);
 
 	copy_lttng_domain(&lsm.domain, &handle->domain);
@@ -940,7 +936,7 @@ int lttng_set_event_filter(struct lttng_handle *handle,
 			sizeof(lsm.session.name));
 
 	ret = ask_sessiond_varlen(&lsm, &ctx->bytecode->b,
-				lsm.u.filter.bytecode_len, NULL);
+				lsm.u.enable.bytecode_len, NULL);
 
 	filter_bytecode_free(ctx);
 	filter_ir_free(ctx);

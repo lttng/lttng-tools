@@ -158,7 +158,7 @@ static void create_ust_event(void)
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	printf("Creating UST event: ");
-	event = trace_ust_create_event(&ev);
+	event = trace_ust_create_event(&ev, NULL);
 	assert(event != NULL);
 	PRINT_OK();
 

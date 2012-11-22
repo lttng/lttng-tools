@@ -26,6 +26,11 @@
 
 #include "trace-ust.h"
 
+/*
+ * Match function for the events hash table lookup.
+ *
+ * Matches by name only. Used by the disable command.
+ */
 int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
 		const void *_key)
 {
@@ -43,13 +48,19 @@ int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
 		goto no_match;
 	}
 
-	/* Match. */
+	/* Match */
 	return 1;
 
 no_match:
 	return 0;
 }
 
+/*
+ * Match function for the hash table lookup.
+ *
+ * It matches an ust event based on three attributes which are the event name,
+ * the filter bytecode and the loglevel.
+ */
 int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
 	struct ltt_ust_event *event;
@@ -65,55 +76,43 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 
 	/* Event name */
 	if (strncmp(event->attr.name, key->name, sizeof(event->attr.name)) != 0) {
-		DBG3("[Match] name failed: %s and %s",
-				event->attr.name, key->name);
 		goto no_match;
 	}
 
 	/* Event loglevel. */
 	if (event->attr.loglevel != key->loglevel) {
-		if (event->attr.loglevel_type == 0 && key->loglevel == 0 &&
-				event->attr.loglevel == -1) {
+		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
+				&& key->loglevel == 0 && event->attr.loglevel == -1) {
 			/*
-			 * This is because on event creation, the loglevel is set to -1 if
-			 * the event loglevel type is ALL so 0 and -1 are accepted for this
-			 * loglevel type.
+			 * Match is accepted. This is because on event creation, the
+			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
+			 * -1 are accepted for this loglevel type since 0 is the one set by
+			 * the API when receiving an enable event.
 			 */
 		} else {
-			DBG3("[Match] loglevel failed: %d and %d",
-					event->attr.loglevel, key->loglevel);
 			goto no_match;
 		}
 	}
 
 	/* Only one of the filters is NULL, fail. */
 	if ((key->filter && !event->filter) || (!key->filter && event->filter)) {
-		DBG3("[Match] filters failed: k:%p and e:%p",
-				key->filter, event->filter);
 		goto no_match;
 	}
 
-	/* Both filters are NULL, success. */
-	if (!key->filter && !event->filter) {
-		goto match;
+	if (key->filter && event->filter) {
+		/* Both filters exists, check length followed by the bytecode. */
+		if (event->filter->len != key->filter->len ||
+				memcmp(event->filter->data, key->filter->data,
+					event->filter->len) != 0) {
+			goto no_match;
+		}
 	}
 
-	/* Both filters exists, check length followed by the bytecode. */
-	if (event->filter->len == key->filter->len &&
-			memcmp(event->filter->data, key->filter->data,
-				event->filter->len) == 0) {
-		goto match;
-	}
-
-	DBG3("[Match] filters failed: k:%p and e:%p",
-			key->filter, event->filter);
+	/* Match. */
+	return 1;
 
 no_match:
 	return 0;
-
-match:
-	DBG3("[MATCH] %s", key->name);
-	return 1;
 }
 
 /*
@@ -152,7 +151,6 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	struct ltt_ust_ht_key key;
-	void *orig_match_fct;
 
 	assert(name);
 	assert(ht);
@@ -160,10 +158,6 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 	key.name = name;
 	key.filter = filter;
 	key.loglevel = loglevel;
-
-	/* Save match function so we can use the ust app event match. */
-	orig_match_fct = (void *) ht->match_fct;
-	ht->match_fct = trace_ust_ht_match_event;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
 			trace_ust_ht_match_event, &key, &iter.iter);
@@ -178,8 +172,6 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 error:
 	DBG2("Trace UST event %s NOT found", key.name);
-	/* Put back original match function. */
-	ht->match_fct = orig_match_fct;
 	return NULL;
 }
 
@@ -324,7 +316,8 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
+struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+		struct lttng_filter_bytecode *filter)
 {
 	struct ltt_ust_event *lue;
 
@@ -374,6 +367,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev)
 		goto error_free_event;
 	}
 
+	/* Same layout. */
+	lue->filter = (struct lttng_ust_filter_bytecode *) filter;
 
 	/* Init node */
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);

@@ -20,7 +20,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        lttng-ust-ctl.h lttng-ust-abi.h \
                        fd-limit.c fd-limit.h \
                        kernel-consumer.c kernel-consumer.h \
-                       consumer.h filter.c filter.h \
+                       consumer.h \
                        health.c health.h \
                        cmd.c cmd.h \
                        testpoint.h

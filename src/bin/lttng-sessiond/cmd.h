@@ -19,7 +19,6 @@
 #define CMD_H
 
 #include "context.h"
-#include "filter.h"
 #include "session.h"
 
 /*
@@ -50,9 +49,11 @@ int cmd_set_filter(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode);
 int cmd_enable_event(struct ltt_session *session, int domain,
-		char *channel_name, struct lttng_event *event, int wpipe);
+		char *channel_name, struct lttng_event *event,
+		struct lttng_filter_bytecode *filter, int wpipe);
 int cmd_enable_event_all(struct ltt_session *session, int domain,
-		char *channel_name, int event_type, int wpipe);
+		char *channel_name, int event_type,
+		struct lttng_filter_bytecode *filter, int wpipe);
 
 /* Trace session action commands */
 int cmd_start_trace(struct ltt_session *session);

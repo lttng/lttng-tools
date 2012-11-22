@@ -59,7 +59,6 @@
 #include "ust-consumer.h"
 #include "utils.h"
 #include "fd-limit.h"
-#include "filter.h"
 #include "health.h"
 #include "testpoint.h"
 
@@ -2525,7 +2524,7 @@ skip_domain:
 	{
 		ret = cmd_enable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.enable.channel_name,
-				&cmd_ctx->lsm->u.enable.event, kernel_poll_pipe[1]);
+				&cmd_ctx->lsm->u.enable.event, NULL, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_ENABLE_ALL_EVENT:
@@ -2534,7 +2533,7 @@ skip_domain:
 
 		ret = cmd_enable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.enable.channel_name,
-				cmd_ctx->lsm->u.enable.event.type, kernel_poll_pipe[1]);
+				cmd_ctx->lsm->u.enable.event.type, NULL, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_LIST_TRACEPOINTS:
@@ -2846,15 +2845,15 @@ skip_domain:
 				cmd_ctx->lsm->u.reg.path, cdata);
 		break;
 	}
-	case LTTNG_SET_FILTER:
+	case LTTNG_ENABLE_EVENT_WITH_FILTER:
 	{
 		struct lttng_filter_bytecode *bytecode;
 
-		if (cmd_ctx->lsm->u.filter.bytecode_len > LTTNG_FILTER_MAX_LEN) {
+		if (cmd_ctx->lsm->u.enable.bytecode_len > LTTNG_FILTER_MAX_LEN) {
 			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
-		bytecode = zmalloc(cmd_ctx->lsm->u.filter.bytecode_len);
+		bytecode = zmalloc(cmd_ctx->lsm->u.enable.bytecode_len);
 		if (!bytecode) {
 			ret = LTTNG_ERR_FILTER_NOMEM;
 			goto error;
@@ -2862,7 +2861,7 @@ skip_domain:
 		/* Receive var. len. data */
 		DBG("Receiving var len data from client ...");
 		ret = lttcomm_recv_unix_sock(sock, bytecode,
-				cmd_ctx->lsm->u.filter.bytecode_len);
+				cmd_ctx->lsm->u.enable.bytecode_len);
 		if (ret <= 0) {
 			DBG("Nothing recv() from client var len data... continuing");
 			*sock_error = 1;
@@ -2871,16 +2870,15 @@ skip_domain:
 		}
 
 		if (bytecode->len + sizeof(*bytecode)
-				!= cmd_ctx->lsm->u.filter.bytecode_len) {
+				!= cmd_ctx->lsm->u.enable.bytecode_len) {
 			free(bytecode);
 			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
 
-		ret = cmd_set_filter(cmd_ctx->session, cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.filter.channel_name,
-				&cmd_ctx->lsm->u.filter.event,
-				bytecode);
+		ret = cmd_enable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+				cmd_ctx->lsm->u.enable.channel_name,
+				&cmd_ctx->lsm->u.enable.event, bytecode, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_DATA_PENDING:

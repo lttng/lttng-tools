@@ -36,6 +36,12 @@
 #include "ust-consumer.h"
 #include "ust-ctl.h"
 
+/*
+ * Match function for the hash table lookup.
+ *
+ * It matches an ust app event based on three attributes which are the event
+ * name, the filter bytecode and the loglevel.
+ */
 static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 {
 	struct ust_app_event *event;
@@ -56,7 +62,17 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 
 	/* Event loglevel. */
 	if (event->attr.loglevel != key->loglevel) {
-		goto no_match;
+		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
+				&& key->loglevel == 0 && event->attr.loglevel == -1) {
+			/*
+			 * Match is accepted. This is because on event creation, the
+			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
+			 * -1 are accepted for this loglevel type since 0 is the one set by
+			 * the API when receiving an enable event.
+			 */
+		} else {
+			goto no_match;
+		}
 	}
 
 	/* One of the filters is NULL, fail. */
@@ -64,26 +80,26 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 		goto no_match;
 	}
 
-	/* Both filters are NULL, success. */
-	if (!key->filter && !event->filter) {
-		goto match;
+	if (key->filter && event->filter) {
+		/* Both filters exists, check length followed by the bytecode. */
+		if (event->filter->len != key->filter->len ||
+				memcmp(event->filter->data, key->filter->data,
+					event->filter->len) != 0) {
+			goto no_match;
+		}
 	}
 
-	/* Both filters exists, check length followed by the bytecode. */
-	if (event->filter->len == key->filter->len &&
-			memcmp(event->filter->data, key->filter->data,
-				event->filter->len) == 0) {
-		goto match;
-	}
-
-match:
+	/* Match. */
 	return 1;
 
 no_match:
 	return 0;
-
 }
 
+/*
+ * Unique add of an ust app event in the given ht. This uses the custom
+ * ht_match_ust_app_event match function and the event name as hash.
+ */
 static void add_unique_ust_app_event(struct lttng_ht *ht,
 		struct ust_app_event *event)
 {
@@ -421,6 +437,29 @@ error:
 }
 
 /*
+ * Allocate a filter and copy the given original filter.
+ *
+ * Return allocated filter or NULL on error.
+ */
+static struct lttng_ust_filter_bytecode *alloc_copy_ust_app_filter(
+		struct lttng_ust_filter_bytecode *orig_f)
+{
+	struct lttng_ust_filter_bytecode *filter = NULL;
+
+	/* Copy filter bytecode */
+	filter = zmalloc(sizeof(*filter) + orig_f->len);
+	if (!filter) {
+		PERROR("zmalloc alloc ust app filter");
+		goto error;
+	}
+
+	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
+
+error:
+	return filter;
+}
+
+/*
  * Find an ust_app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
@@ -443,6 +482,12 @@ error:
 	return NULL;
 }
 
+/*
+ * Lookup for an ust app event based on event name, filter bytecode and the
+ * event loglevel.
+ *
+ * Return an ust_app_event object or NULL on error.
+ */
 static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 		char *name, struct lttng_ust_filter_bytecode *filter, int loglevel)
 {
@@ -450,7 +495,6 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	struct lttng_ht_node_str *node;
 	struct ust_app_event *event = NULL;
 	struct ust_app_ht_key key;
-	void *orig_match_fct;
 
 	assert(name);
 	assert(ht);
@@ -460,11 +504,9 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	key.filter = filter;
 	key.loglevel = loglevel;
 
-	/* Save match function so we can use the ust app event match. */
-	orig_match_fct = (void *) ht->match_fct;
-	ht->match_fct = ht_match_ust_app_event;
-
-	lttng_ht_lookup(ht, (void *) &key, &iter);
+	/* Lookup using the event name as hash and a custom match fct. */
+	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
+			ht_match_ust_app_event, &key, &iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		goto end;
@@ -473,8 +515,6 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	event = caa_container_of(node, struct ust_app_event, node);
 
 end:
-	/* Put back original match function. */
-	ht->match_fct = orig_match_fct;
 	return event;
 }
 
@@ -788,6 +828,14 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 
 	health_code_update(&health_thread_cmd);
 
+	/* Set filter if one is present. */
+	if (ua_event->filter) {
+		ret = set_ust_event_filter(ua_event, app);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
 	/* If event not enabled, disable it on the tracer */
 	if (ua_event->enabled == 0) {
 		ret = disable_ust_event(app, ua_sess, ua_event);
@@ -833,13 +881,8 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 
 	/* Copy filter bytecode */
 	if (uevent->filter) {
-		ua_event->filter = zmalloc(sizeof(*ua_event->filter) +
-			uevent->filter->len);
-		if (!ua_event->filter) {
-			return;
-		}
-		memcpy(ua_event->filter, uevent->filter,
-			sizeof(*ua_event->filter) + uevent->filter->len);
+		ua_event->filter = alloc_copy_ust_app_filter(uevent->filter);
+		/* Filter might be NULL here in case of ENONEM. */
 	}
 }
 
@@ -1072,35 +1115,6 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 	lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Set UST filter for the event on the tracer.
- */
-static
-int set_ust_app_event_filter(struct ust_app_session *ua_sess,
-		struct ust_app_event *ua_event,
-		struct lttng_filter_bytecode *bytecode,
-		struct ust_app *app)
-{
-	int ret = 0;
-
-	DBG2("UST app adding context to event %s", ua_event->name);
-
-	/* Copy filter bytecode */
-	ua_event->filter = zmalloc(sizeof(*ua_event->filter) + bytecode->len);
-	if (!ua_event->filter) {
-		return -ENOMEM;
-	}
-	memcpy(ua_event->filter, bytecode,
-		sizeof(*ua_event->filter) + bytecode->len);
-	ret = set_ust_event_filter(ua_event, app);
 	if (ret < 0) {
 		goto error;
 	}
@@ -2662,62 +2676,6 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 				node);
 
 		ret = create_ust_app_channel_context(ua_sess, ua_chan, &uctx->ctx, app);
-		if (ret < 0) {
-			continue;
-		}
-	}
-
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
- * Add context to a specific event in a channel for global UST domain.
- */
-int ust_app_set_filter_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
-		struct lttng_filter_bytecode *bytecode)
-{
-	int ret = 0;
-	struct lttng_ht_node_str *ua_chan_node;
-	struct lttng_ht_iter iter, uiter;
-	struct ust_app_session *ua_sess;
-	struct ust_app_event *ua_event;
-	struct ust_app_channel *ua_chan = NULL;
-	struct ust_app *app;
-
-	rcu_read_lock();
-
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		if (!app->compatible) {
-			/*
-			 * TODO: In time, we should notice the caller of this error by
-			 * telling him that this is a version error.
-			 */
-			continue;
-		}
-		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
-			continue;
-		}
-
-		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
-		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_chan_node == NULL) {
-			continue;
-		}
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
-				node);
-
-		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
-				(struct lttng_ust_filter_bytecode *) bytecode,
-				uevent->attr.loglevel);
-		if (ua_event == NULL) {
-			continue;
-		}
-
-		ret = set_ust_app_event_filter(ua_sess, ua_event, bytecode, app);
 		if (ret < 0) {
 			continue;
 		}
