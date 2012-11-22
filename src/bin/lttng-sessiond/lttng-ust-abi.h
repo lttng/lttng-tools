@@ -173,9 +173,12 @@ struct lttng_ust_calibrate {
 };
 
 #define FILTER_BYTECODE_MAX_LEN		65536
+#define LTTNG_UST_FILTER_PADDING	32
 struct lttng_ust_filter_bytecode {
 	uint32_t len;
 	uint32_t reloc_offset;
+	uint64_t seqnum;
+	char padding[LTTNG_UST_FILTER_PADDING];
 	char data[0];
 };
 

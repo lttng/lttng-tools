@@ -214,10 +214,12 @@ struct lttcomm_session_msg {
  * bytecode. It is made of tuples: (uint16_t, var. len. string). It
  * starts at reloc_table_offset.
  */
+#define LTTNG_FILTER_PADDING	32
 struct lttng_filter_bytecode {
 	uint32_t len;	/* len of data */
 	uint32_t reloc_table_offset;
 	uint64_t seqnum;
+	char padding[LTTNG_FILTER_PADDING];
 	char data[0];
 };
 
