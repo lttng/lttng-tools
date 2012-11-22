@@ -1,3 +1,22 @@
+2012-11-22 lttng-tools 2.1.0-rc8
+	* Fix: Uninit. variable in lttng view
+	* Add already enabled UST event error code
+	* lttng.h API update: set filter becomes enable event with filter
+	* Change the UST event hash table match function
+	* Pass lttng_event struct to the set_filter API call
+	* Adding context to an event is no longer possible
+	* Add UST overlap tests
+	* Add filter sequence number to UST
+	* Fix: Typo from a previous patch in an assert()
+	* Fix: Warn if session is running with lttng view
+	* Fix: Add bash requirement to README for make check
+	* Fix: add the notion of domain to lttng.1 man page
+	* Enable additional kernel probes
+	* Update CodingStyle
+	* Use the new functions for default subbuf sizes
+	* Add default subbuf sizes getter functions
+	* Add max() and min() macro in common
+
 2012-11-13 lttng-tools 2.1.0-rc7
 	* Fix: Add pointer check when freeing poll events
 	* Fix: FD leak on thread error
