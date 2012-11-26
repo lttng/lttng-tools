@@ -516,6 +516,8 @@ extern int lttng_enable_event(struct lttng_handle *handle,
  * If event_name is NULL, all events are enabled with that filter.
  * If channel_name is NULL, the default channel is used (channel0) and created
  * if not found.
+ * If filter_expression is NULL, an event without associated filter is
+ * created.
  */
 extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
 		struct lttng_event *event, const char *channel_name,

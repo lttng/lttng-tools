@@ -2853,6 +2853,10 @@ skip_domain:
 			ret = LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
+		if (cmd_ctx->lsm->u.enable.bytecode_len == 0) {
+			ret = LTTNG_ERR_FILTER_INVAL;
+			goto error;
+		}
 		bytecode = zmalloc(cmd_ctx->lsm->u.enable.bytecode_len);
 		if (!bytecode) {
 			ret = LTTNG_ERR_FILTER_NOMEM;

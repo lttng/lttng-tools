@@ -841,8 +841,20 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 	FILE *fmem;
 	int ret = 0;
 
-	/* Safety check. */
-	if (handle == NULL || !filter_expression) {
+	if (!filter_expression) {
+		/*
+		 * Fall back to normal event enabling if no filter
+		 * specified.
+		 */
+		return lttng_enable_event(handle, event, channel_name);
+	}
+
+	/*
+	 * Empty filter string will always be rejected by the parser
+	 * anyway, so treat this corner-case early to eliminate
+	 * lttng_fmemopen error for 0-byte allocation.
+	 */
+	if (handle == NULL || filter_expression[0] == '\0') {
 		return -LTTNG_ERR_INVALID;
 	}
 
