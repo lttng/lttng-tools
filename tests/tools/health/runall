@@ -23,6 +23,11 @@ function start_tests ()
 	done
 }
 
+if [ "$(id -u)" != "0" ]; then
+	echo -e "Need root for health test."
+	exit 0
+fi
+
 start_tests
 
 exit $exit_code
