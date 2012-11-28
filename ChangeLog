@@ -1,3 +1,11 @@
+2012-11-28 lttng-tools 2.0.5
+	* Fix: Change the type of enabled in lttng_event to a signed int
+	* Fix: Returned code when listing kernel channel
+	* Fix: Wrong returned error code on UST enable event
+	* Fix: consumer recv command error path
+	* Fix: Missing libs dependencies in configure check for lttng-ust-ctl
+	* Fix: Libtool fails to find dependent lib when cross-compiling
+
 2012-07-25 lttng-tools 2.0.4
 	* Fix: support large files on 32-bit systems
 	* Fix: mmap write() for large subbuffers and handle EINTR (v2)
