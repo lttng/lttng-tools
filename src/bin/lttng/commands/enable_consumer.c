@@ -126,7 +126,7 @@ static void usage(FILE *ofp)
 /*
  * Enable consumer command.
  */
-static int enable_consumer(char *session_name)
+static int enable_consumer(char *session_name, int domain)
 {
 	int ret = CMD_SUCCESS;
 	int run_enable_cmd = 1;
@@ -134,21 +134,7 @@ static int enable_consumer(char *session_name)
 
 	memset(&dom, 0, sizeof(dom));
 
-	/* Create lttng domain */
-	if (opt_kernel) {
-		dom.type = LTTNG_DOMAIN_KERNEL;
-	} else if (opt_userspace) {
-		dom.type = LTTNG_DOMAIN_UST;
-	} else {
-		/*
-		 * Set handle with domain set to 0. This means to the session daemon
-		 * that the next action applies on the tracing session rather then the
-		 * domain specific session.
-		 *
-		 * XXX: This '0' value should be a domain enum value.
-		 */
-		dom.type = 0;
-	}
+	dom.type = domain;
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
@@ -164,7 +150,9 @@ static int enable_consumer(char *session_name)
 			goto error;
 		}
 
-		MSG("URL %s set for session %s.", opt_url_arg, session_name);
+		MSG("URL %s set for %s session %s.", opt_url_arg,
+				(domain == LTTNG_DOMAIN_KERNEL) ? "kernel" : "UST",
+				session_name);
 	}
 
 	/* Handling URLs (-U opt) */
@@ -178,7 +166,9 @@ static int enable_consumer(char *session_name)
 		/* opt_enable will tell us to run or not the enable_consumer cmd. */
 		run_enable_cmd = 0;
 
-		MSG("URL %s set for session %s.", opt_url, session_name);
+		MSG("URL %s set for %s session %s.", opt_url,
+				(domain == LTTNG_DOMAIN_KERNEL) ? "kernel" : "UST",
+				session_name);
 	}
 
 	/* Setting up control URL (-C or/and -D opt) */
@@ -193,12 +183,15 @@ static int enable_consumer(char *session_name)
 		run_enable_cmd = 0;
 
 		if (opt_ctrl_url) {
-			MSG("Control URL %s set for session %s.", opt_ctrl_url,
+			MSG("Control URL %s set for %s session %s.", opt_ctrl_url,
+					(domain == LTTNG_DOMAIN_KERNEL) ? "kernel" : "UST",
 					session_name);
 		}
 
 		if (opt_data_url) {
-			MSG("Data URL %s set for session %s.", opt_data_url, session_name);
+			MSG("Data URL %s set for %s session %s.", opt_data_url,
+					(domain == LTTNG_DOMAIN_KERNEL) ? "kernel" : "UST",
+					session_name);
 		}
 	}
 
@@ -265,7 +258,19 @@ int cmd_enable_consumer(int argc, const char **argv)
 		session_name = opt_session_name;
 	}
 
-	ret = enable_consumer(session_name);
+	if (opt_kernel || (!opt_kernel && !opt_userspace)) {
+		ret = enable_consumer(session_name, LTTNG_DOMAIN_KERNEL);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	if (opt_userspace || (!opt_kernel && !opt_userspace)) {
+		ret = enable_consumer(session_name, LTTNG_DOMAIN_UST);
+		if (ret < 0) {
+			goto end;
+		}
+	}
 
 end:
 	if (opt_session_name == NULL) {
