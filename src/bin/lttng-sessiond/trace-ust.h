@@ -171,6 +171,16 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
+static inline int trace_ust_ht_match_event(struct cds_lfht_node *node,
+		const void *_key)
+{
+	return 0;
+}
+static inline int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
+		const void *_key)
+{
+	return 0;
+}
 static inline
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name)
@@ -224,6 +234,11 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 static inline
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx)
+{
+	return NULL;
+}
+static inline struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
+		char *name, struct lttng_filter_bytecode *filter, int loglevel)
 {
 	return NULL;
 }
