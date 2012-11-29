@@ -56,8 +56,19 @@ pid_t lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
 	}
 }
 
+#elif defined(__CYGWIN__)
+#warning "Cygwin doesn't support the clone() syscall. You must set the LTTNG_DEBUG_NOCLONE=1 before starting lttng-sessiond"
+#include <assert.h>
+
+static inline
+pid_t lttng_clone_files(int (*fn)(void *), void *child_stack, void *arg)
+{
+       assert(NULL);
+       return -1;
+}
+
 #else
 #error "Please add support for your OS."
-#endif /* __linux__ , __FreeBSD__ */
+#endif /* __linux__ , __FreeBSD__, __CYGWIN__ */
 
 #endif /* _COMPAT_CLONE_H */
