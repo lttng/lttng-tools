@@ -54,7 +54,8 @@ struct lttng_channel *channel_new_default_attr(int dom)
 
 	switch (dom) {
 	case LTTNG_DOMAIN_KERNEL:
-		chan->attr.subbuf_size = DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE;
+		chan->attr.subbuf_size =
+			default_get_kernel_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		break;
@@ -64,7 +65,7 @@ struct lttng_channel *channel_new_default_attr(int dom)
 	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 #endif
-		chan->attr.subbuf_size = DEFAULT_UST_CHANNEL_SUBBUF_SIZE;
+		chan->attr.subbuf_size = default_get_ust_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
 		chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
 		break;

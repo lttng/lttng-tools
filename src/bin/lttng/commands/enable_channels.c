@@ -102,9 +102,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --overwrite          Flight recorder mode%s\n",
 		DEFAULT_CHANNEL_OVERWRITE ? " (default)" : "");
 	fprintf(ofp, "      --subbuf-size SIZE   Subbuffer size in bytes\n");
-	fprintf(ofp, "                               (default: %u, kernel default: %u)\n",
-		DEFAULT_CHANNEL_SUBBUF_SIZE,
-		DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE);
+	fprintf(ofp, "                               (default: %zu, kernel default: %zu)\n",
+		default_get_channel_subbuf_size(),
+		default_get_kernel_channel_subbuf_size());
 	fprintf(ofp, "                               Needs to be a power of 2 for\n");
         fprintf(ofp, "                               kernel and ust tracers\n");
 	fprintf(ofp, "      --num-subbuf NUM     Number of subbufers\n");

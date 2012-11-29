@@ -285,7 +285,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 	/* Set default attributes */
 	lum->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	lum->attr.subbuf_size = DEFAULT_METADATA_SUBBUF_SIZE;
+	lum->attr.subbuf_size = default_get_metadata_subbuf_size();
 	lum->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
 	lum->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
 	lum->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;

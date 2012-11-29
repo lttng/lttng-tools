@@ -19,10 +19,13 @@ test_sessions_LDADD = $(top_builddir)/src/common/libcommon.la \
 					  $(top_builddir)/src/common/hashtable/libhashtable.la
 
 test_kernel_data_trace_SOURCES = test_kernel_data_trace.c $(UTILS) $(KERN_DATA_TRACE)
+test_kernel_data_trace_LDADD = $(top_builddir)/src/common/libcommon.la
 
 kernel_all_events_basic_SOURCES = lttng/kernel_all_events_basic.c $(UTILS) $(LIBLTTNG)
+kernel_all_events_basic_LDADD = $(top_builddir)/src/common/libcommon.la
 
 kernel_event_basic_SOURCES = lttng/kernel_event_basic.c $(UTILS) $(LIBLTTNG)
+kernel_event_basic_LDADD = $(top_builddir)/src/common/libcommon.la
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust-nevents ust-nprocesses
@@ -36,8 +39,10 @@ test_ust_data_trace_LDADD = $(top_builddir)/src/common/libcommon.la \
 							$(top_builddir)/src/common/hashtable/libhashtable.la
 
 ust_global_all_events_basic_SOURCES = lttng/ust_global_all_events_basic.c $(UTILS) $(LIBLTTNG)
+ust_global_all_events_basic_LDADD = $(top_builddir)/src/common/libcommon.la
 
 ust_global_event_basic_SOURCES = lttng/ust_global_event_basic.c $(UTILS) $(LIBLTTNG)
+ust_global_event_basic_LDADD = $(top_builddir)/src/common/libcommon.la
 endif # HAVE_LIBLTTNG_UST_CTL
 
 check-am:

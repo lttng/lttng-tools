@@ -11,4 +11,5 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/calibrate.c commands/view.c \
 				utils.c utils.h lttng.c
 
-lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
+lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
+		$(top_builddir)/src/common/libcommon.la

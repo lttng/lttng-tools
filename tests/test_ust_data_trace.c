@@ -107,7 +107,7 @@ static void create_ust_metadata(void)
 	assert(metadata->attr.overwrite
 			== DEFAULT_CHANNEL_OVERWRITE);
 	assert(metadata->attr.subbuf_size
-			== DEFAULT_METADATA_SUBBUF_SIZE);
+			== default_get_metadata_subbuf_size());
 	assert(metadata->attr.num_subbuf
 			== DEFAULT_METADATA_SUBBUF_NUM);
 	assert(metadata->attr.switch_timer_interval
