@@ -187,6 +187,13 @@ AX_CONFIG_FEATURE(
 )
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
+case "${host}" in
+    # All symbols must be resolved at link time on Cygwin/MinGW/Windows,
+    # else libtool will not be able to build shared libraries.
+    *-*-cygwin*)
+    LDFLAGS="-Wl,-no-undefined $LDFLAGS";;
+esac
+
 AC_SYS_LARGEFILE
 AC_PROG_CC
 LT_INIT
