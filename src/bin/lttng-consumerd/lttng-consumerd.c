@@ -39,7 +39,6 @@
 #include <assert.h>
 #include <config.h>
 #include <urcu/compiler.h>
-#include <ulimit.h>
 
 #include <common/defaults.h>
 #include <common/common.h>
