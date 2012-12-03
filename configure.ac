@@ -109,7 +109,7 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 )
 
 # URCU library version needed or newer
-liburcu_version=">= 0.6.7"
+liburcu_version=">= 0.7.2"
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
@@ -145,7 +145,7 @@ AS_IF([test "x$lttng_ust_support" = "xyes"], [
 			AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1], [has LTTng-UST control support])
 			lttng_ust_ctl_found=yes
 		],
-		[AC_MSG_ERROR([Cannot find LTTng-UST. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])],
+		[AC_MSG_ERROR([Cannot find LTTng-UST 2.1.x. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])],
 		[-lurcu-common -lurcu-bp -lurcu-cds -lrt]
 	)
 ])

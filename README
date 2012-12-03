@@ -17,7 +17,7 @@ REQUIREMENTS:
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
-      -> Tested with liburcu >= v0.6.6
+      -> Tested with liburcu >= v0.7.2
 
       * Debian/Ubuntu package: liburcu-dev
       * Git : git://git.lttng.org/userspace-rcu.git
@@ -29,7 +29,7 @@ REQUIREMENTS:
       * Debian/Ubuntu package: libpopt-dev
 
     - SWIG >= 2.0 (optional)
-      Needed for Python bindings
+      Needed for Python bindings (--enable-python-bindings).
 
       * Debian/Ubuntu package: swig2.0
 
