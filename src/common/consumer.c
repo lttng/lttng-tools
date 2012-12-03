@@ -2051,7 +2051,10 @@ restart:
 					 * since their might be data to consume.
 					 */
 					lttng_poll_del(&events, ctx->consumer_metadata_pipe[0]);
-					close(ctx->consumer_metadata_pipe[0]);
+					ret = close(ctx->consumer_metadata_pipe[0]);
+					if (ret < 0) {
+						PERROR("close metadata pipe");
+					}
 					continue;
 				} else if (revents & LPOLLIN) {
 					do {
@@ -2415,7 +2418,10 @@ end:
 	 * only tracked fd in the poll set. The thread will take care of closing
 	 * the read side.
 	 */
-	close(ctx->consumer_metadata_pipe[1]);
+	ret = close(ctx->consumer_metadata_pipe[1]);
+	if (ret < 0) {
+		PERROR("close data pipe");
+	}
 
 	if (data_ht) {
 		destroy_data_stream_ht(data_ht);
@@ -2635,7 +2641,10 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		}
 
 		/* Close the created socket fd which is useless */
-		close(relayd->control_sock.fd);
+		ret = close(relayd->control_sock.fd);
+		if (ret < 0) {
+			PERROR("close relayd control socket");
+		}
 
 		/* Assign new file descriptor */
 		relayd->control_sock.fd = fd;
@@ -2649,7 +2658,10 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		}
 
 		/* Close the created socket fd which is useless */
-		close(relayd->data_sock.fd);
+		ret = close(relayd->data_sock.fd);
+		if (ret < 0) {
+			PERROR("close relayd control socket");
+		}
 
 		/* Assign new file descriptor */
 		relayd->data_sock.fd = fd;

@@ -894,7 +894,10 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 			stream = caa_container_of(node,
 					struct relay_stream, stream_n);
 			if (stream->session == cmd->session) {
-				close(stream->fd);
+				ret = close(stream->fd);
+				if (ret < 0) {
+					PERROR("close stream fd on delete session");
+				}
 				ret = lttng_ht_del(streams_ht, &iter);
 				assert(!ret);
 				call_rcu(&stream->rcu_node,
@@ -1055,7 +1058,10 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	if (close_stream_check(stream)) {
 		int delret;
 
-		close(stream->fd);
+		delret = close(stream->fd);
+		if (delret < 0) {
+			PERROR("close stream");
+		}
 		delret = lttng_ht_del(streams_ht, &iter);
 		assert(!delret);
 		call_rcu(&stream->rcu_node,
@@ -1533,9 +1539,13 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 
 	/* Check if we need to close the FD */
 	if (close_stream_check(stream)) {
+		int cret;
 		struct lttng_ht_iter iter;
 
-		close(stream->fd);
+		cret = close(stream->fd);
+		if (cret < 0) {
+			PERROR("close stream process data");
+		}
 		iter.iter.node = &stream->stream_n.node;
 		ret = lttng_ht_del(streams_ht, &iter);
 		assert(!ret);

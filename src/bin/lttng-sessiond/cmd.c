@@ -1880,8 +1880,11 @@ int cmd_register_consumer(struct ltt_session *session, int domain,
 
 		socket = consumer_allocate_socket(sock);
 		if (socket == NULL) {
+			ret = close(sock);
+			if (ret < 0) {
+				PERROR("close register consumer");
+			}
 			ret = LTTNG_ERR_FATAL;
-			close(sock);
 			goto error;
 		}
 

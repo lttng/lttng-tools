@@ -116,7 +116,9 @@ static int write_config(char *file_path, size_t size, char *data)
 	if (len != 1) {
 		ret = -1;
 	}
-	fclose(fp);
+	if (fclose(fp)) {
+		PERROR("close write_config");
+	}
 end:
 	return ret;
 }
@@ -221,13 +223,19 @@ char *config_read_session_name(char *path)
 	}
 
 error_close:
-	fclose(fp);
+	ret = fclose(fp);
+	if (ret < 0) {
+		PERROR("close config read session name");
+	}
 
 error:
 	return NULL;
 
 found:
-	fclose(fp);
+	ret = fclose(fp);
+	if (ret < 0) {
+		PERROR("close config read session name found");
+	}
 	return session_name;
 
 }
