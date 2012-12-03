@@ -360,15 +360,18 @@ extern struct lttng_handle *lttng_create_handle(const char *session_name,
 		struct lttng_domain *domain);
 
 /*
- * Destroy a handle. This will simply free(3) the data pointer returned by
- * lttng_create_handle(), rendering it unusable.
+ * Destroy an handle.
+ *
+ * It free(3) the data pointer returned by lttng_create_handle(), rendering it
+ * unusable.
  */
 extern void lttng_destroy_handle(struct lttng_handle *handle);
 
 /*
  * Create a tracing session using a name and an optional URL.
  *
- * If _url_ is NULL, no consumer is created for the session.
+ * If _url_ is NULL, no consumer is created for the session. The name can't be
+ * NULL here.
  */
 extern int lttng_create_session(const char *name, const char *url);
 
@@ -377,6 +380,8 @@ extern int lttng_create_session(const char *name, const char *url);
  *
  * The session will not be usable anymore, tracing will be stopped for all
  * registered traces, and the tracing buffers will be flushed.
+ *
+ * The name can't be NULL here.
  */
 extern int lttng_destroy_session(const char *name);
 
@@ -443,7 +448,8 @@ extern int lttng_session_daemon_alive(void);
 /*
  * Set the tracing group for the *current* flow of execution.
  *
- * On success, returns 0, on error, returns -1 (null name) or -ENOMEM.
+ * On success, returns 0 else a negative value on error being a lttng error
+ * code found in lttng-error.h
  */
 extern int lttng_set_tracing_group(const char *name);
 
@@ -477,6 +483,8 @@ extern int lttng_start_tracing(const char *session_name);
  * this can take an abritrary amount of time. However, when returning you have
  * the guarantee that the data is ready to be read and analyse. Use the
  * _no_wait call below to avoid this behavior.
+ *
+ * The session_name can't be NULL.
  */
 extern int lttng_stop_tracing(const char *session_name);
 
@@ -489,9 +497,11 @@ extern int lttng_stop_tracing_no_wait(const char *session_name);
 /*
  * Add context to event(s) for a specific channel (or for all).
  *
- * If event_name is NULL, the context is applied to all events of the channel.
- * If channel_name is NULL, a lookup of the event's channel is done.
- * If both are NULL, the context is applied to all events of all channels.
+ * If channel_name is NULL, a lookup of the event's channel is done. If both
+ * are NULL, the context is applied to all events of all channels.
+ *
+ * Note that whatever event_name value is, a context can not be added to an
+ * event, so we just ignore it for now.
  */
 extern int lttng_add_context(struct lttng_handle *handle,
 		struct lttng_event_context *ctx, const char *event_name,
@@ -502,8 +512,9 @@ extern int lttng_add_context(struct lttng_handle *handle,
  *
  * If the event you are trying to enable does not exist, it will be created,
  * else it is enabled.
- * If event_name is NULL, all events are enabled.
  * If channel_name is NULL, the default channel is used (channel0).
+ *
+ * The handle and ev params can not be NULL.
  */
 extern int lttng_enable_event(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name);
@@ -513,7 +524,7 @@ extern int lttng_enable_event(struct lttng_handle *handle,
  *
  * If the event you are trying to enable does not exist, it will be created,
  * else it is enabled.
- * If event_name is NULL, all events are enabled with that filter.
+ * If ev is NULL, all events are enabled with that filter.
  * If channel_name is NULL, the default channel is used (channel0) and created
  * if not found.
  * If filter_expression is NULL, an event without associated filter is
@@ -525,7 +536,8 @@ extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
 
 /*
  * Create or enable a channel.
- * The channel name cannot be NULL.
+ *
+ * The chan and handle params can not be NULL.
  */
 extern int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *chan);
@@ -533,7 +545,7 @@ extern int lttng_enable_channel(struct lttng_handle *handle,
 /*
  * Disable event(s) of a channel and domain.
  *
- * If event_name is NULL, all events are disabled.
+ * If name is NULL, all events are disabled.
  * If channel_name is NULL, the default channel is used (channel0).
  */
 extern int lttng_disable_event(struct lttng_handle *handle,
@@ -542,13 +554,14 @@ extern int lttng_disable_event(struct lttng_handle *handle,
 /*
  * Disable channel.
  *
- * The channel name cannot be NULL.
  */
 extern int lttng_disable_channel(struct lttng_handle *handle,
 		const char *name);
 
 /*
  * Calibrate LTTng overhead.
+ *
+ * The chan and handle params can not be NULL.
  */
 extern int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate);
@@ -557,7 +570,7 @@ extern int lttng_calibrate(struct lttng_handle *handle,
  * Set the default channel attributes for a specific domain and an allocated
  * lttng_channel_attr pointer.
  *
- * If either or both of the arguments are NULL, nothing happens.
+ * If one or both arguments are NULL, nothing happens.
  */
 extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr);
@@ -593,6 +606,8 @@ extern int lttng_disable_consumer(struct lttng_handle *handle);
  *
  * Any other positive value is an lttcomm error which can be translate with
  * lttng_strerror().
+ *
+ * Please see lttng-health-check(3) man page for more information.
  */
 extern int lttng_health_check(enum lttng_health_component c);
 
