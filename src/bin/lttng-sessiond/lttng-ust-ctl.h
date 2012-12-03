@@ -26,6 +26,7 @@ int ustctl_create_session(int sock);
 int ustctl_open_metadata(int sock, int session_handle,
 		struct lttng_ust_channel_attr *chops,
 		struct lttng_ust_object_data **metadata_data);
+int ustctl_open_wait_pipe(int sock, struct lttng_ust_object *channel_data);
 int ustctl_create_channel(int sock, int session_handle,
 		struct lttng_ust_channel_attr *chops,
 		struct lttng_ust_object_data **channel_data);

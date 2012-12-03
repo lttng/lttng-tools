@@ -182,7 +182,7 @@ struct lttng_ust_calibrate {
 #define LTTNG_UST_STREAM			_UST_CMD(0x60)
 #define LTTNG_UST_EVENT			\
 	_UST_CMDW(0x61, struct lttng_ust_event)
-
+#define LTTNG_UST_STREAM_PIPE			_UST_CMD(0x62)
 /* Event and Channel FD commands */
 #define LTTNG_UST_CONTEXT			\
 	_UST_CMDW(0x70, struct lttng_ust_context)

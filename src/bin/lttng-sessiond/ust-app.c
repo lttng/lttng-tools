@@ -2055,6 +2055,31 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
+	/* Ask UST to open the write side of the wait pipe */
+	DBG("Asking UST to open metadata stream wait pipe path: %s\n",
+	    ua_sess->metadata->stream_obj->wait_pipe_path);
+
+	ret = ustctl_open_wait_pipe(app->sock, ua_sess->metadata->obj);
+
+	if (ret < 0) {
+		ERR("Asking UST to open wait_pipe failed");
+	}
+
+	/* each channel */
+	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
+				node.node) {
+
+		DBG("Asking UST to open channel wait pipe path: %s\n",
+		    ua_chan->obj->wait_pipe_path);
+
+		ret = ustctl_open_wait_pipe(app->sock, ua_chan->obj);
+
+		if (ret < 0) {
+			ERR("Asking UST to open wait_pipe failed for wait pipe: %s",
+			    ua_chan->obj->wait_pipe_path);
+		}
+	}
+
 skip_setup:
 	/* This start the UST tracing */
 	ret = ustctl_start_session(app->sock, ua_sess->handle);
