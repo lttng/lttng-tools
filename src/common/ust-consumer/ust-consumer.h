@@ -72,6 +72,9 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
 
+int lttng_ustconsumer_check_pipe(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
@@ -151,6 +154,13 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 static inline
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 {
+}
+
+static inline
+int lttng_ustconsumer_check_pipe(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	return -ENOSYS;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

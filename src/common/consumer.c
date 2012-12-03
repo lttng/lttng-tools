@@ -1046,30 +1046,45 @@ void *lttng_consumer_thread_poll_fds(void *data)
 			continue;
 		}
 
-		/* Take care of high priority channels first. */
-		for (i = 0; i < nb_fd; i++) {
-			if (pollfd[i].revents & POLLPRI) {
-				ssize_t len;
 
-				DBG("Urgent read on fd %d", pollfd[i].fd);
-				high_prio = 1;
-				len = ctx->on_buffer_ready(local_stream[i], ctx);
-				/* it's ok to have an unavailable sub-buffer */
-				if (len < 0 && len != -EAGAIN) {
-					goto end;
-				} else if (len > 0) {
-					local_stream[i]->data_read = 1;
+		/* Check if each pipe has data. hack for cygwin. */
+		for (i = 0; i < nb_fd; i++) {
+			if ((pollfd[i].revents & POLLIN) ||
+					local_stream[i]->hangup_flush_done) {
+				int check_ret;
+
+				check_ret = lttng_consumer_check_pipe(local_stream[i], ctx);
+				if (check_ret != 0) {
+					pollfd[i].revents |= POLLHUP;
 				}
 			}
 		}
 
-		/*
-		 * If we read high prio channel in this loop, try again
-		 * for more high prio data.
-		 */
-		if (high_prio) {
-			continue;
-		}
+		/* Take care of high priority channels first. */
+		/* for (i = 0; i < nb_fd; i++) { */
+		/*	DBG("!!! POLL FLAGS: %d", pollfd[i].revents); */
+		/*	if (pollfd[i].revents & POLLPRI) { */
+		/*		ssize_t len; */
+
+		/*		DBG("Urgent read on fd %d", pollfd[i].fd); */
+		/*		high_prio = 1; */
+		/*		len = ctx->on_buffer_ready(local_stream[i], ctx); */
+		/*		/\* it's ok to have an unavailable sub-buffer *\/ */
+		/*		if (len < 0 && len != -EAGAIN) { */
+		/*			goto end; */
+		/*		} else if (len > 0) { */
+		/*			local_stream[i]->data_read = 1; */
+		/*		} */
+		/*	} */
+		/* } */
+
+		/* /\* */
+		/*  * If we read high prio channel in this loop, try again */
+		/*  * for more high prio data. */
+		/*  *\/ */
+		/* if (high_prio) { */
+		/*	continue; */
+		/* } */
 
 		/* Take care of low priority channels. */
 		for (i = 0; i < nb_fd; i++) {
@@ -1278,6 +1293,23 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_read_subbuffer(stream, ctx);
+	default:
+		ERR("Unknown consumer_data type");
+		assert(0);
+		return -ENOSYS;
+	}
+}
+
+int lttng_consumer_check_pipe(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		assert(0);
+		return -ENOSYS;
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		return lttng_ustconsumer_check_pipe(stream, ctx);
 	default:
 		ERR("Unknown consumer_data type");
 		assert(0);

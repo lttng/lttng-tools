@@ -414,6 +414,31 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 }
 
 
+int lttng_ustconsumer_check_pipe(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	ssize_t readlen;
+	char dummy;
+
+	DBG("In check_pipe (wait_fd: %d, stream key: %d)\n",
+		stream->wait_fd, stream->key);
+
+	/* We consume the 1 byte written into the wait_fd by UST */
+	if (!stream->hangup_flush_done) {
+		do {
+			readlen = read(stream->wait_fd, &dummy, 1);
+		} while (readlen == -1 && errno == EINTR);
+		if (readlen == -1) {
+			return -1;	/* error */
+		}
+		DBG("Read %zu byte from pipe: %c\n", readlen, dummy);
+		if (readlen == 0)
+			return 1;	/* POLLHUP */
+	}
+	return 0;	/* no error nor HUP */
+
+}
+
 int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
@@ -437,6 +462,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			ret = readlen;
 			goto end;
 		}
+		DBG("Read %zu byte from pipe: %c\n", readlen, dummy);
 	}
 
 	buf = stream->buf;

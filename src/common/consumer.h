@@ -314,5 +314,7 @@ extern int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
+int lttng_consumer_check_pipe(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx);
 
 #endif /* _LTTNG_CONSUMER_H */
