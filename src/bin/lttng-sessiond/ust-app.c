@@ -894,8 +894,9 @@ static struct ust_app_session *create_ust_app_session(
 		if (ret < 0) {
 			ERR("Creating session for app pid %d", app->pid);
 			/* This means that the tracer is gone... */
+			delete_ust_app_session(-1, ua_sess);
 			ua_sess = (void*) -1UL;
-			goto error;
+			goto end;
 		}
 
 		ua_sess->handle = ret;
@@ -909,10 +910,6 @@ static struct ust_app_session *create_ust_app_session(
 
 end:
 	return ua_sess;
-
-error:
-	delete_ust_app_session(-1, ua_sess);
-	return NULL;
 }
 
 /*
@@ -2307,7 +2304,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	}
 
 	ua_sess = create_ust_app_session(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == NULL || ua_sess == (void *) -1UL) {
 		goto error;
 	}
 
