@@ -424,17 +424,19 @@ int lttng_ustconsumer_check_pipe(struct lttng_consumer_stream *stream,
 		stream->wait_fd, stream->key);
 
 	/* We consume the 1 byte written into the wait_fd by UST */
-	if (!stream->hangup_flush_done) {
-		do {
-			readlen = read(stream->wait_fd, &dummy, 1);
-		} while (readlen == -1 && errno == EINTR);
-		if (readlen == -1) {
-			return -1;	/* error */
-		}
-		DBG("Read %zu byte from pipe: %c\n", readlen, dummy);
-		if (readlen == 0)
-			return 1;	/* POLLHUP */
+
+	do {
+		readlen = read(stream->wait_fd, &dummy, 1);
+	} while (readlen == -1 && errno == EINTR);
+	if (readlen == -1) {
+		return -1;	/* error */
 	}
+
+	DBG("Read %zu byte from pipe: %c\n", readlen, readlen ? dummy : '\0');
+
+	if (readlen == 0)
+		return 1;	/* POLLHUP */
+
 	return 0;	/* no error nor HUP */
 
 }
