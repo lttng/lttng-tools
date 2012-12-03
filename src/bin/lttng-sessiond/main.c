@@ -1287,16 +1287,27 @@ static void *thread_manage_apps(void *data)
 				 * At this point, we know that a registered application made
 				 * the event at poll_wait.
 				 */
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					/* Removing from the poll set */
-					ret = lttng_poll_del(&events, pollfd);
-					if (ret < 0) {
-						goto error;
-					}
 
-					/* Socket closed on remote end. */
-					ust_app_unregister(pollfd);
-					break;
+				if (revents & (LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					ssize_t readlen;
+					char dummy;
+
+					do {
+						readlen = read(pollfd, &dummy, 1);
+					} while (readlen == -1 && errno == EINTR);
+
+					if (readlen == 0) {
+						/* Removing from the poll set */
+						ret = lttng_poll_del(&events, pollfd);
+						if (ret < 0) {
+							goto error;
+						}
+
+						/* Socket closed on remote end. */
+						ust_app_unregister(pollfd);
+						break;
+
+					}
 				}
 			}
 		}
