@@ -132,6 +132,11 @@ Specifiy the 32-bit library path containing libconsumer.so.
 .IP "LTTNG_DEBUG_NOCLONE"
 Debug-mode disabling use of clone/fork. Insecure, but required to allow
 debuggers to work with sessiond on some operating systems.
+.IP "LTTNG_APP_SOCKET_TIMEOUT"
+Control the timeout of application's socket when sending and receiving
+commands. After this period of time, the application is unregistered by the
+session daemon. A value of 0 or -1 means an infinite timeout. Default value is
+5 seconds.
 .SH "SEE ALSO"
 
 .PP
