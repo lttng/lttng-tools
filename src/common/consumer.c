@@ -56,15 +56,12 @@ struct lttng_consumer_global_data consumer_data = {
 volatile int consumer_quit;
 
 /*
- * The following two hash tables are visible by all threads which are separated
- * in different source files.
- *
  * Global hash table containing respectively metadata and data streams. The
  * stream element in this ht should only be updated by the metadata poll thread
  * for the metadata and the data poll thread for the data.
  */
-struct lttng_ht *metadata_ht;
-struct lttng_ht *data_ht;
+static struct lttng_ht *metadata_ht;
+static struct lttng_ht *data_ht;
 
 /*
  * Notify a thread pipe to poll back again. This usually means that some global

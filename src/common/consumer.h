@@ -293,10 +293,6 @@ struct lttng_consumer_global_data {
 	struct lttng_ht *stream_list_ht;
 };
 
-/* Defined in consumer.c and coupled with explanations */
-extern struct lttng_ht *metadata_ht;
-extern struct lttng_ht *data_ht;
-
 /*
  * Init consumer data structures.
  */
