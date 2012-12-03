@@ -1,7 +1,7 @@
-.TH "LTTNG" "1" "July 17, 2012" "" ""
+.TH "LTTNG" "1" "December 3rd, 2012" "" ""
 
 .SH "NAME"
-lttng \(em LTTng 2.0 tracer control command line tool
+lttng \(em LTTng 2.1.x tracer control command line tool
 
 .SH "SYNOPSIS"
 
@@ -72,7 +72,7 @@ Set unix tracing group name. (default: tracing)
 .BR "\-n, \-\-no-sessiond"
 Don't automatically spawn a session daemon.
 .TP
-.BR "\-\-sessiond\-path"
+.BR "\-\-sessiond\-path PATH"
 Set session daemon full binary path.
 .TP
 .BR "\-\-list\-options"
@@ -87,10 +87,10 @@ Simple listing of lttng commands.
 .nf
 Add context to event(s) and/or channel(s).
 
-A context is basically extra information appended to a channel or event. For
-instance, you could ask the tracer to add the PID information within the
-"sched_switch" kernel event. You can also add performance monitoring unit
-counters (perf PMU) using the perf kernel API).
+A context is basically extra information appended to a channel. For instance,
+you could ask the tracer to add the PID information for all events in a
+channel. You can also add performance monitoring unit counters (perf PMU) using
+the perf kernel API).
 
 For example, this command will add the context information 'prio' and two perf
 counters (hardware branch misses and cache misses), to all events in the trace
@@ -101,9 +101,8 @@ data output:
 Please take a look at the help (\-h/\-\-help) for a detailed list of available
 contexts.
 
-If no channel and no event is given (\-c/\-e), the context is added to all
-channels (which applies automatically to all events in that channel). Otherwise
-the context will be added only to the channel (\-c) and/or event (\-e) indicated.
+If no channel is given (\-c), the context is added to all channels. Otherwise
+the context will be added only to the given channel (\-c).
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
@@ -118,8 +117,6 @@ file.
         Apply on session name.
 \-c, \-\-channel NAME
         Apply on channel name.
-\-e, \-\-event NAME
-        Apply on event name.
 \-k, \-\-kernel
         Apply for the kernel tracer
 \-u, \-\-userspace
@@ -301,7 +298,7 @@ file.
         Show this help
 \-\-list-options
         Simple listing of options
-\-s, \-\-session
+\-s, \-\-session NAME
         Apply on session name
 \-k, \-\-kernel
         Apply to the kernel tracer
@@ -312,16 +309,18 @@ file.
         Discard event when subbuffers are full (default)
 \-\-overwrite
         Flight recorder mode : overwrites events when subbuffers are full
-\-\-subbuf-size
+\-\-subbuf-size SIZE
         Subbuffer size in bytes (default: 4096, kernel default: 262144)
-\-\-num-subbuf
+\-\-num-subbuf NUM
         Number of subbuffers (default: 4)
         Needs to be a power of 2 for kernel and ust tracers
-\-\-switch-timer
+\-\-switch-timer USEC
         Switch subbuffer timer interval in usec (default: 0)
         Needs to be a power of 2 for kernel and ust tracers
-\-\-read-timer
+\-\-read-timer USEC
         Read timer interval in usec (default: 200)
+\-\-output TYPE
+        Channel output type. Possible values: mmap, splice
 .fi
 
 .IP
@@ -351,7 +350,7 @@ that can understand the streaming protocol of LTTng.
         Show summary of possible options and commands.
 \-\-list-options
         Simple listing of options
-\-s, \-\-session
+\-s, \-\-session NAME
         Apply on session name
 \-k, \-\-kernel
         Apply for the kernel tracer
@@ -381,10 +380,10 @@ Supported protocols are (proto):
 > file://...
         Local filesystem full path.
 
-> net[6]://...
+> net://...
         This will use the default network transport layer which is TCP for both
         control (PORT1) and data port (PORT2). The default ports are
-        respectively 5342 and 5343.
+        respectively 5342 and 5343. Note that net[6]:// is not yet supported.
 
 > tcp[6]://...
         Can only be used with -C and -D together
@@ -420,9 +419,9 @@ file.
         Show summary of possible options and commands.
 \-\-list-options
         Simple listing of options
-\-s, \-\-session
+\-s, \-\-session NAME
         Apply on session name
-\-c, \-\-channel
+\-c, \-\-channel NAME
         Apply on channel name
 \-a, \-\-all
         Enable all tracepoints and syscalls
@@ -438,8 +437,13 @@ file.
         e.g.:
         "*"
         "app_component:na*"
-\-\-loglevel
-        Tracepoint loglevel
+\-\-loglevel NAME
+        Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
+\-\-loglevel-only NAME
+        Tracepoint loglevel (only this loglevel).
+
+        The loglevel or loglevel-only options should be combined with a
+        tracepoint name or tracepoint wildcard.
 \-\-probe [addr | symbol | symbol+offset]
         Dynamic probe. Addr and offset can be octal (0NNN...), decimal (NNN...)
         or hexadecimal (0xNNN...)
@@ -538,7 +542,7 @@ file.
         Show summary of possible options and commands.
 \-\-list-options
         Simple listing of options
-\-s, \-\-session
+\-s, \-\-session NAME
         Apply on session name
 \-k, \-\-kernel
         Apply for the kernel tracer
@@ -631,7 +635,10 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 .nf
 Stop tracing
 
-It will stop tracing for all tracers for a specific tracing session.
+It will stop tracing for all tracers for a specific tracing session. Before
+returning, the command checks for data availability meaning that it will wait
+until the trace is readable for the session. Use \-\-no-wait to avoid this
+behavior.
 
 If NAME is omitted, the session name is taken from the .lttngrc file.
 .fi
@@ -643,6 +650,8 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
         Show summary of possible options and commands.
 \-\-list-options
         Simple listing of options
+\-\-no-wait
+        Don't wait for data availability.
 .fi
 
 .IP
@@ -718,10 +727,6 @@ tool. You can also use \-\-sessiond-path option having the same effect.
 .BR lttng-relayd(8),
 .BR lttng-health-check(3)
 .SH "BUGS"
-
-With version 2.1 and earlier, if you start a tracing session and than enable
-kernel events, they are not recorded and the tracing session fails to stop.  To
-fix this, simply enable events before starting the session.
 
 If you encounter any issues or usability problem, please report it on our
 mailing list <lttng-dev@lists.lttng.org> to help improve this project or
