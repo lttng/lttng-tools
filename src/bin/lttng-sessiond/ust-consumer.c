@@ -36,7 +36,7 @@ static int send_channel_streams(int sock,
 		struct ust_app_channel *uchan,
 		uid_t uid, gid_t gid)
 {
-	int ret, fd;
+	int ret;
 	struct lttcomm_consumer_msg lum;
 	struct ltt_ust_stream *stream, *tmp;
 
@@ -61,15 +61,17 @@ static int send_channel_streams(int sock,
 		PERROR("send consumer channel");
 		goto error;
 	}
-	fd = uchan->obj->shm_fd;
-	ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
+
+	DBG("Sending channel shm path: %s\n", uchan->obj->shm_path);
+	ret = lttcomm_send_string(sock,
+				  uchan->obj->shm_path,
+				  strlen(uchan->obj->shm_path));
 	if (ret < 0) {
-		PERROR("send consumer channel ancillary data");
+		PERROR("send consumer channel shm path");
 		goto error;
 	}
 
 	cds_list_for_each_entry_safe(stream, tmp, &uchan->streams.head, list) {
-		int fds[2];
 
 		if (!stream->obj->shm_fd) {
 			continue;
@@ -95,11 +97,22 @@ static int send_channel_streams(int sock,
 			goto error;
 		}
 
-		fds[0] = stream->obj->shm_fd;
-		fds[1] = stream->obj->wait_fd;
-		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+		DBG("Sending stream shm path: %s\n", stream->obj->shm_path);
+		ret = lttcomm_send_string(sock,
+					  stream->obj->shm_path,
+					  strlen(stream->obj->shm_path));
 		if (ret < 0) {
-			PERROR("send consumer stream ancillary data");
+			PERROR("send consumer stream shm path");
+			goto error;
+		}
+
+		DBG("Sending stream wait pipe path: %s\n", stream->obj->wait_pipe_path);
+		ret = lttcomm_send_string(sock,
+					  stream->obj->wait_pipe_path,
+					  strlen(stream->obj->wait_pipe_path));
+
+		if (ret < 0) {
+			PERROR("send consumer stream wait pipe path");
 			goto error;
 		}
 	}
@@ -131,9 +144,6 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 	}
 
 	if (usess->metadata->obj->shm_fd != 0) {
-		int fd;
-		int fds[2];
-
 		/* Send metadata channel fd */
 		lum.cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 		lum.u.channel.channel_key = usess->metadata->obj->shm_fd;
@@ -145,8 +155,11 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 			PERROR("send consumer channel");
 			goto error;
 		}
-		fd = usess->metadata->obj->shm_fd;
-		ret = lttcomm_send_fds_unix_sock(sock, &fd, 1);
+
+		DBG("Sending metadata channel shm path: %s\n", usess->metadata->obj->shm_path);
+		ret = lttcomm_send_string(sock,
+					  usess->metadata->obj->shm_path,
+					  strlen(usess->metadata->obj->shm_path));
 		if (ret < 0) {
 			PERROR("send consumer metadata channel");
 			goto error;
@@ -169,13 +182,29 @@ int ust_consumer_send_session(int consumer_fd, struct ust_app_session *usess)
 			PERROR("send consumer metadata stream");
 			goto error;
 		}
-		fds[0] = usess->metadata->stream_obj->shm_fd;
-		fds[1] = usess->metadata->stream_obj->wait_fd;
-		ret = lttcomm_send_fds_unix_sock(sock, fds, 2);
+
+		DBG("Sending metadata stream shm path: %s\n",
+		    usess->metadata->stream_obj->shm_path);
+		ret = lttcomm_send_string(sock,
+					  usess->metadata->stream_obj->shm_path,
+					  strlen(usess->metadata->stream_obj->shm_path));
+
 		if (ret < 0) {
-			PERROR("send consumer stream");
+			PERROR("send consumer shm stream");
 			goto error;
 		}
+
+		DBG("Sending metadata stream wait pipe path: %s\n",
+		    usess->metadata->stream_obj->wait_pipe_path);
+		ret = lttcomm_send_string(sock,
+					  usess->metadata->stream_obj->wait_pipe_path,
+					  strlen(usess->metadata->stream_obj->wait_pipe_path));
+
+		if (ret < 0) {
+			PERROR("send consumer shm stream");
+			goto error;
+		}
+
 	}
 
 	/* Send each channel fd streams of session */

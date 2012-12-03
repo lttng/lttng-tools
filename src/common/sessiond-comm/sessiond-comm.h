@@ -299,6 +299,10 @@ extern ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
 extern ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len);
 
+/* Send/recv string over unix socket */
+extern ssize_t lttcomm_send_string(int sock, char *str, size_t len);
+extern char *lttcomm_recv_string(int sock);
+
 extern ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);
 extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		lttng_sock_cred *creds);

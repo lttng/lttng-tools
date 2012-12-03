@@ -455,6 +455,89 @@ end:
 	return ret;
 }
 
+ssize_t lttcomm_send_string(int sock, char *str, size_t len)
+{
+	ssize_t slen, ret = -1;
+
+	if (!str) {
+		goto end;
+	}
+
+	/* Send string len first */
+	slen = lttcomm_send_unix_sock(sock, &len, sizeof(len));
+
+	if (slen != sizeof(len)) {
+		fprintf(stderr,
+			"Unexpected sent size. Expected %zu got %zu\n",
+			sizeof(len), slen);
+		ret = -1;
+		goto end;
+	}
+
+	/* Send the actual string */
+	slen = lttcomm_send_unix_sock(sock, str, len);
+	if (slen != len) {
+		fprintf(stderr,
+			"Unexpected sent size. Expected %zu got %zu\n",
+			len, slen);
+		ret = -1;
+		goto end;
+	}
+
+	ret = slen;
+
+end:
+	return ret;
+}
+
+/*
+ * Allocate and return the received string.
+ * Return NULL on error.
+ * Caller is responsible of freeing the allocated string.
+ */
+char *lttcomm_recv_string(int sock)
+{
+	ssize_t rlen;
+	size_t len;
+	char *ret;
+
+	/* Get the string len first */
+	rlen = lttcomm_recv_unix_sock(sock, &len, sizeof(len));
+
+	if (rlen != sizeof(len)) {
+		fprintf(stderr,
+			"Unexpected received size. Expected %zu got %zu\n",
+			sizeof(len), rlen);
+		ret = NULL;
+		goto end;
+	}
+
+	/* Account for the NULL byte */
+	ret = malloc(len + 1);
+	if (!ret) {
+		ret = NULL;
+		goto end;
+	}
+
+	/* Get the actual string */
+	rlen = lttcomm_recv_unix_sock(sock, ret, len);
+	if (rlen != len) {
+		fprintf(stderr,
+			"Unexpected received size. Expected %zu got %zu\n",
+			len, rlen);
+		free(ret);
+		ret = NULL;
+		goto end;
+	}
+
+	/* Set terminating NULL byte */
+	ret[len] = '\0';
+
+end:
+	return ret;
+}
+
+
 /*
  * Send a message with credentials over a unix socket.
  *
