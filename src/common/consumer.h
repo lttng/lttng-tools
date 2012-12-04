@@ -132,10 +132,10 @@ struct lttng_consumer_stream {
 	/* Next sequence number to use for trace packet */
 	uint64_t next_net_seq_num;
 	/*
-	 * Lock to use the stream FDs since they are used between threads. Using
-	 * this lock with network streaming, when using the control mutex of a
-	 * consumer_relayd_sock_pair, make sure to acquire this lock BEFORE locking
-	 * it and releasing it AFTER the control mutex unlock.
+	 * Lock to use the stream FDs since they are used between threads.
+	 *
+	 * This is nested INSIDE the consumer_data lock.
+	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;
 	/* Tracing session id */
@@ -170,6 +170,9 @@ struct consumer_relayd_sock_pair {
 	 * between threads sending data to the relayd. Since metadata data is sent
 	 * over that socket, at least two sendmsg() are needed (header + data)
 	 * creating a race for packets to overlap between threads using it.
+	 *
+	 * This is nested INSIDE the consumer_data lock.
+	 * This is nested INSIDE the stream lock.
 	 */
 	pthread_mutex_t ctrl_sock_mutex;
 
@@ -257,8 +260,8 @@ struct lttng_consumer_global_data {
 	 * and number of element in the hash table. It's also a protection for
 	 * concurrent read/write between threads.
 	 *
-	 * XXX: We need to see if this lock is still needed with the lockless RCU
-	 * hash tables.
+	 * This is nested OUTSIDE the stream lock.
+	 * This is nested OUTSIDE the consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;
 

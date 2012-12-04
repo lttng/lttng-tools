@@ -348,8 +348,8 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 		goto free_stream;
 	}
 
-	pthread_mutex_lock(&stream->lock);
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&stream->lock);
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -441,8 +441,8 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 
 end:
 	consumer_data.need_update = 1;
-	pthread_mutex_unlock(&consumer_data.lock);
 	pthread_mutex_unlock(&stream->lock);
+	pthread_mutex_unlock(&consumer_data.lock);
 
 	if (free_chan) {
 		consumer_del_channel(free_chan);
@@ -1280,8 +1280,6 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	/* RCU lock for the relayd pointer */
 	rcu_read_lock();
 
-	pthread_mutex_lock(&stream->lock);
-
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != -1) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
@@ -1406,7 +1404,6 @@ end:
 	if (relayd && stream->metadata_flag) {
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	}
-	pthread_mutex_unlock(&stream->lock);
 
 	rcu_read_unlock();
 	return written;
@@ -1446,8 +1443,6 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 
 	/* RCU lock for the relayd pointer */
 	rcu_read_lock();
-
-	pthread_mutex_lock(&stream->lock);
 
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != -1) {
@@ -1616,7 +1611,6 @@ end:
 	if (relayd && stream->metadata_flag) {
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	}
-	pthread_mutex_unlock(&stream->lock);
 
 	rcu_read_unlock();
 	return written;
@@ -1762,9 +1756,9 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		goto free_stream;
 	}
 
+	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&stream->lock);
 
-	pthread_mutex_lock(&consumer_data.lock);
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		if (stream->mmap_base != NULL) {
@@ -1854,8 +1848,8 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	}
 
 end:
-	pthread_mutex_unlock(&consumer_data.lock);
 	pthread_mutex_unlock(&stream->lock);
+	pthread_mutex_unlock(&consumer_data.lock);
 
 	if (free_chan) {
 		consumer_del_channel(free_chan);
@@ -2559,17 +2553,27 @@ end:
 ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
+	ssize_t ret;
+
+	pthread_mutex_lock(&stream->lock);
+
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
-		return lttng_kconsumer_read_subbuffer(stream, ctx);
+		ret = lttng_kconsumer_read_subbuffer(stream, ctx);
+		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		return lttng_ustconsumer_read_subbuffer(stream, ctx);
+		ret = lttng_ustconsumer_read_subbuffer(stream, ctx);
+		break;
 	default:
 		ERR("Unknown consumer_data type");
 		assert(0);
-		return -ENOSYS;
+		ret = -ENOSYS;
+		break;
 	}
+
+	pthread_mutex_unlock(&stream->lock);
+	return ret;
 }
 
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
