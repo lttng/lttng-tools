@@ -1874,6 +1874,8 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 {
 	int ret = 0;
 	struct consumer_relayd_sock_pair *relayd;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
 
 	assert(stream);
 	assert(ht);
@@ -1889,6 +1891,15 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 	 */
 
 	rcu_read_lock();
+
+	/*
+	 * Lookup the stream just to make sure it does not exist in our internal
+	 * state. This should NEVER happen.
+	 */
+	lttng_ht_lookup(ht, (void *)((unsigned long) stream->wait_fd), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	assert(!node);
+
 	/* Find relayd and, if one is found, increment refcount. */
 	relayd = consumer_find_relayd(stream->net_seq_idx);
 	if (relayd != NULL) {
@@ -1908,9 +1919,6 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 	if (uatomic_read(&stream->chan->nb_init_streams) > 0) {
 		uatomic_dec(&stream->chan->nb_init_streams);
 	}
-
-	/* Steal stream identifier to avoid having streams with the same key */
-	consumer_steal_stream_key(stream->key, ht);
 
 	lttng_ht_add_unique_ulong(ht, &stream->node);
 
