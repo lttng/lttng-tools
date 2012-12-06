@@ -554,6 +554,7 @@ static int consumer_add_stream(struct lttng_consumer_stream *stream,
 	DBG3("Adding consumer stream %d", stream->key);
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&stream->lock);
 	rcu_read_lock();
 
 	/* Steal stream identifier to avoid having streams with the same key */
@@ -593,6 +594,7 @@ static int consumer_add_stream(struct lttng_consumer_stream *stream,
 	consumer_data.need_update = 1;
 
 	rcu_read_unlock();
+	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	return ret;
@@ -1879,6 +1881,7 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 	DBG3("Adding metadata stream %d to hash table", stream->wait_fd);
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&stream->lock);
 
 	/*
 	 * From here, refcounts are updated so be _careful_ when returning an error
@@ -1920,6 +1923,7 @@ static int consumer_add_metadata_stream(struct lttng_consumer_stream *stream,
 
 	rcu_read_unlock();
 
+	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 	return ret;
 }
