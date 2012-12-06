@@ -1293,9 +1293,10 @@ static void *thread_manage_apps(void *data)
 					char dummy;
 
 					do {
-						readlen = read(pollfd, &dummy, 1);
+						readlen = recv(pollfd, &dummy, 1, MSG_PEEK);
 					} while (readlen == -1 && errno == EINTR);
 
+					/* Peer has performed an orderly shutdown */
 					if (readlen == 0) {
 						/* Removing from the poll set */
 						ret = lttng_poll_del(&events, pollfd);
