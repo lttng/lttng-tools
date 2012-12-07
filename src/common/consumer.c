@@ -917,7 +917,7 @@ static int consumer_update_poll_array(
 		 * changed where this function will be called back again.
 		 */
 		if (stream->state != LTTNG_CONSUMER_ACTIVE_STREAM ||
-				stream->endpoint_status) {
+				stream->endpoint_status == CONSUMER_ENDPOINT_INACTIVE) {
 			continue;
 		}
 		DBG("Active FD %d", stream->wait_fd);
@@ -1267,6 +1267,8 @@ end:
  * core function for writing trace buffers to either the local filesystem or
  * the network.
  *
+ * It must be called with the stream lock held.
+ *
  * Careful review MUST be put if any changes occur!
  *
  * Returns the number of bytes written
@@ -1418,6 +1420,8 @@ end:
 
 /*
  * Splice the data from the ring buffer to the tracefile.
+ *
+ * It must be called with the stream lock held.
  *
  * Returns the number of bytes spliced.
  */
@@ -1950,7 +1954,7 @@ static void validate_endpoint_status_data_stream(void)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(data_ht->ht, &iter.iter, stream, node.node) {
 		/* Validate delete flag of the stream */
-		if (stream->endpoint_status != CONSUMER_ENDPOINT_INACTIVE) {
+		if (stream->endpoint_status == CONSUMER_ENDPOINT_ACTIVE) {
 			continue;
 		}
 		/* Delete it right now */
@@ -1975,7 +1979,7 @@ static void validate_endpoint_status_metadata_stream(
 	rcu_read_lock();
 	cds_lfht_for_each_entry(metadata_ht->ht, &iter.iter, stream, node.node) {
 		/* Validate delete flag of the stream */
-		if (!stream->endpoint_status) {
+		if (stream->endpoint_status == CONSUMER_ENDPOINT_ACTIVE) {
 			continue;
 		}
 		/*
