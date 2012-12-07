@@ -269,7 +269,10 @@ void delete_ust_app(struct ust_app *app)
 	cds_lfht_for_each_entry(app->sessions->ht, &iter.iter, ua_sess,
 			node.node) {
 		ret = lttng_ht_del(app->sessions, &iter);
-		assert(!ret);
+		if (ret) {
+			/* The session is already scheduled for teardown. */
+			continue;
+		}
 		delete_ust_app_session(app->sock, ua_sess);
 	}
 	lttng_ht_destroy(app->sessions);
@@ -1964,8 +1967,10 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		/* If ua_sess is NULL, there is a code flow error */
-		assert(ua_sess);
+		if (!ua_sess) {
+			/* The application has problem or is probably dead. */
+			continue;
+		}
 
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
@@ -2087,8 +2092,10 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		/* If ua_sess is NULL, there is a code flow error */
-		assert(ua_sess);
+		if (!ua_sess) {
+			/* The application has problem or is probably dead. */
+			continue;
+		}
 
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
@@ -2147,8 +2154,10 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		/* If ua_sess is NULL, there is a code flow error */
-		assert(ua_sess);
+		if (!ua_sess) {
+			/* The application has problem or is probably dead. */
+			continue;
+		}
 
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
@@ -2442,7 +2451,11 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 	ua_sess = caa_container_of(node, struct ust_app_session, node);
 	ret = lttng_ht_del(app->sessions, &iter);
-	assert(!ret);
+	if (ret) {
+		/* Already scheduled for teardown. */
+		goto end;
+	}
+
 	obj.handle = ua_sess->handle;
 	obj.shm_fd = -1;
 	obj.wait_fd = -1;
@@ -2716,8 +2729,10 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
-	/* If ua_sess is NULL, there is a code flow error */
-	assert(ua_sess);
+	if (!ua_sess) {
+		/* The application has problem or is probably dead. */
+		goto error;
+	}
 
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
@@ -2777,8 +2792,10 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
-	/* If ua_sess is NULL, there is a code flow error */
-	assert(ua_sess);
+	if (!ua_sess) {
+		/* The application has problem or is probably dead. */
+		goto error;
+	}
 
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
