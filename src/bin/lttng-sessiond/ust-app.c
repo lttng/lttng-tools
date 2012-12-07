@@ -256,8 +256,7 @@ static
 void delete_ust_app(struct ust_app *app)
 {
 	int ret, sock;
-	struct lttng_ht_iter iter;
-	struct ust_app_session *ua_sess;
+	struct ust_app_session *ua_sess, *tmp_ua_sess;
 
 	rcu_read_lock();
 
@@ -265,17 +264,14 @@ void delete_ust_app(struct ust_app *app)
 	sock = app->sock;
 	app->sock = -1;
 
-	/* Wipe sessions */
-	cds_lfht_for_each_entry(app->sessions->ht, &iter.iter, ua_sess,
-			node.node) {
-		ret = lttng_ht_del(app->sessions, &iter);
-		if (ret) {
-			/* The session is already scheduled for teardown. */
-			continue;
-		}
-		delete_ust_app_session(app->sock, ua_sess);
-	}
 	lttng_ht_destroy(app->sessions);
+
+	/* Wipe sessions */
+	cds_list_for_each_entry_safe(ua_sess, tmp_ua_sess, &app->teardown_head,
+			teardown_node) {
+		/* Free every object in the session and the session. */
+		delete_ust_app_session(sock, ua_sess);
+	}
 
 	/*
 	 * Wait until we have deleted the application from the sock hash table
@@ -1465,6 +1461,8 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	lta->sock = sock;
 	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long)lta->sock);
 
+	CDS_INIT_LIST_HEAD(&lta->teardown_head);
+
 	rcu_read_lock();
 
 	/*
@@ -1500,6 +1498,7 @@ void ust_app_unregister(int sock)
 	struct ust_app *lta;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
+	struct ust_app_session *ua_sess;
 	int ret;
 
 	rcu_read_lock();
@@ -1532,6 +1531,22 @@ void ust_app_unregister(int sock)
 	if (ret) {
 		DBG3("Unregister app by PID %d failed. This can happen on pid reuse",
 				lta->pid);
+	}
+
+	/* Remove sessions so they are not visible during deletion.*/
+	cds_lfht_for_each_entry(lta->sessions->ht, &iter.iter, ua_sess,
+			node.node) {
+		ret = lttng_ht_del(lta->sessions, &iter);
+		if (ret) {
+			/* The session was already removed so scheduled for teardown. */
+			continue;
+		}
+
+		/*
+		 * Add session to list for teardown. This is safe since at this point we
+		 * are the only one using this list.
+		 */
+		cds_list_add(&ua_sess->teardown_node, &lta->teardown_head);
 	}
 
 	/* Free memory */
@@ -2206,7 +2221,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
-		goto error_rcu_unlock;
+		/* The session is in teardown process. Ignore and continue. */
+		goto end;
 	}
 
 	/* Upon restart, we skip the setup, already done */
@@ -2364,8 +2380,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
-		/* Only malloc can failed so something is really wrong */
-		goto error_rcu_unlock;
+		goto end;
 	}
 
 	/*
@@ -2446,8 +2461,8 @@ int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	__lookup_session_by_app(usess, app, &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
-		/* Only malloc can failed so something is really wrong */
-		goto error_rcu_unlock;
+		/* Session is being or is deleted. */
+		goto end;
 	}
 	ua_sess = caa_container_of(node, struct ust_app_session, node);
 	ret = lttng_ht_del(app->sessions, &iter);
@@ -2473,11 +2488,6 @@ end:
 	rcu_read_unlock();
 	health_code_update(&health_thread_cmd);
 	return 0;
-
-error_rcu_unlock:
-	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
-	return -1;
 }
 
 /*
