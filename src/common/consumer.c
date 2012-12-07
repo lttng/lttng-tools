@@ -127,6 +127,12 @@ void consumer_steal_stream_key(int key, struct lttng_ht *ht)
 	rcu_read_unlock();
 }
 
+/*
+ * Return a channel object for the given key.
+ *
+ * RCU read side lock MUST be acquired before calling this function and
+ * protects the channel ptr.
+ */
 static struct lttng_consumer_channel *consumer_find_channel(int key)
 {
 	struct lttng_ht_iter iter;
@@ -138,16 +144,12 @@ static struct lttng_consumer_channel *consumer_find_channel(int key)
 		return NULL;
 	}
 
-	rcu_read_lock();
-
 	lttng_ht_lookup(consumer_data.channel_ht, (void *)((unsigned long) key),
 			&iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node != NULL) {
 		channel = caa_container_of(node, struct lttng_consumer_channel, node);
 	}
-
-	rcu_read_unlock();
 
 	return channel;
 }
@@ -475,6 +477,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 		goto end;
 	}
 
+	rcu_read_lock();
+
 	/*
 	 * Get stream's channel reference. Needed when adding the stream to the
 	 * global hash table.
@@ -531,9 +535,12 @@ struct lttng_consumer_stream *consumer_allocate_stream(
 			stream->path_name, stream->key, stream->shm_fd, stream->wait_fd,
 			(unsigned long long) stream->mmap_len, stream->out_fd,
 			stream->net_seq_idx, stream->session_id);
+
+	rcu_read_unlock();
 	return stream;
 
 error:
+	rcu_read_unlock();
 	free(stream);
 end:
 	return NULL;
