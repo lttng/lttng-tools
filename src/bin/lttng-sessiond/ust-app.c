@@ -2442,7 +2442,7 @@ error_rcu_unlock:
 /*
  * Destroy a specific UST session in apps.
  */
-int ust_app_destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
+static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	struct ust_app_session *ua_sess;
 	struct lttng_ust_object_data obj;
@@ -2556,7 +2556,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		ret = ust_app_destroy_trace(usess, app);
+		ret = destroy_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
 			continue;
