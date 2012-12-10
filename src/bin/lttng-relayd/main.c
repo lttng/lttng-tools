@@ -1281,7 +1281,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_command *cmd)
 {
 	int ret;
-	struct lttcomm_relayd_version reply;
+	struct lttcomm_relayd_version reply, msg;
 	struct relay_session *session;
 
 	if (cmd->session == NULL) {
@@ -1298,6 +1298,21 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		session = cmd->session;
 	}
 	session->version_check_done = 1;
+
+	/* Get version from the other side. */
+	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), MSG_WAITALL);
+	if (ret < 0 || ret != sizeof(msg)) {
+		ret = -1;
+		ERR("Relay failed to receive the version values.");
+		goto end;
+	}
+
+	/*
+	 * For now, we just ignore the received version but after 2.1 stable
+	 * release, a check must be done to see if we either adapt to the other
+	 * side version (which MUST be lower than us) or keep the latest data
+	 * structure considering that the other side will adapt.
+	 */
 
 	ret = sscanf(VERSION, "%u.%u", &reply.major, &reply.minor);
 	if (ret < 2) {

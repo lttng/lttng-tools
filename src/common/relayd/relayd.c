@@ -163,42 +163,61 @@ int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
 		uint32_t minor)
 {
 	int ret;
-	struct lttcomm_relayd_version reply;
+	struct lttcomm_relayd_version msg;
 
 	/* Code flow error. Safety net. */
 	assert(sock);
 
 	DBG("Relayd version check for major.minor %u.%u", major, minor);
 
+	/* Prepare network byte order before transmission. */
+	msg.major = htobe32(major);
+	msg.minor = htobe32(minor);
+
 	/* Send command */
-	ret = send_command(sock, RELAYD_VERSION, NULL, 0, 0);
+	ret = send_command(sock, RELAYD_VERSION, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Recevie response */
-	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(sock, (void *) &msg, sizeof(msg));
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Set back to host bytes order */
-	reply.major = be32toh(reply.major);
-	reply.minor = be32toh(reply.minor);
+	msg.major = be32toh(msg.major);
+	msg.minor = be32toh(msg.minor);
 
-	/* Validate version */
-	if (reply.major <= major) {
-		if (reply.minor <= minor) {
-			/* Compatible */
-			ret = 0;
-			DBG2("Relayd version is compatible");
-			goto error;
-		}
+	/*
+	 * Only validate the major version. If the other side is higher,
+	 * communication is not possible. Only major version equal can talk to each
+	 * other. If the minor version differs, the lowest version is used by both
+	 * sides.
+	 *
+	 * For now, before 2.1.0 stable release, we don't have to check the minor
+	 * because this new mechanism with the relayd will only be available with
+	 * 2.1 and NOT 2.0.x.
+	 */
+	if (msg.major == major) {
+		/* Compatible */
+		ret = 0;
+		DBG2("Relayd version is compatible");
+		goto error;
 	}
 
+	/*
+	 * After 2.1.0 release, for the 2.2 release, at this point will have to
+	 * check the minor version in order for the session daemon to know which
+	 * structure to use to communicate with the relayd. If the relayd's minor
+	 * version is higher, it will adapt to our version so we can continue to
+	 * use the latest relayd communication data structure.
+	 */
+
 	/* Version number not compatible */
-	DBG2("Relayd version is NOT compatible %u.%u > %u.%u", reply.major,
-			reply.minor, major, minor);
+	DBG2("Relayd version is NOT compatible. Relayd version %u != %u (us)",
+			msg.major, major);
 	ret = -1;
 
 error:
