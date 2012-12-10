@@ -235,6 +235,27 @@ static void destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 }
 
 /*
+ * Iterate over the relayd hash table and destroy each element. Finally,
+ * destroy the whole hash table.
+ */
+static void cleanup_relayd_ht(void)
+{
+	struct lttng_ht_iter iter;
+	struct consumer_relayd_sock_pair *relayd;
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(consumer_data.relayd_ht->ht, &iter.iter, relayd,
+			node.node) {
+		destroy_relayd(relayd);
+	}
+
+	lttng_ht_destroy(consumer_data.relayd_ht);
+
+	rcu_read_unlock();
+}
+
+/*
  * Update the end point status of all streams having the given network sequence
  * index (relayd index).
  *
@@ -1003,8 +1024,8 @@ int lttng_consumer_send_error(
 }
 
 /*
- * Close all the tracefiles and stream fds, should be called when all instances
- * are destroyed.
+ * Close all the tracefiles and stream fds and MUST be called when all
+ * instances are destroyed i.e. when all threads were joined and are ended.
  */
 void lttng_consumer_cleanup(void)
 {
@@ -1023,6 +1044,15 @@ void lttng_consumer_cleanup(void)
 	rcu_read_unlock();
 
 	lttng_ht_destroy(consumer_data.channel_ht);
+
+	cleanup_relayd_ht();
+
+	/*
+	 * This HT contains streams that are freed by either the metadata thread or
+	 * the data thread so we do *nothing* on the hash table and simply destroy
+	 * it.
+	 */
+	lttng_ht_destroy(consumer_data.stream_list_ht);
 }
 
 /*
