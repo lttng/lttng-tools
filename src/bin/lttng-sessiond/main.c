@@ -236,6 +236,9 @@ static int app_socket_timeout;
 /* Set in main() with the current page size. */
 long page_size;
 
+/* If set to nonzero, spawn the consumer with valgrind. */
+static int consumer_debug_valgrind;
+
 static
 void setup_consumerd_path(void)
 {
@@ -2032,11 +2035,21 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				break;
 			}
 			DBG("Using kernel consumer at: %s",  consumer_to_use);
-			execl(consumer_to_use,
-				"lttng-consumerd", verbosity, "-k",
-				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-				NULL);
+			if (consumer_debug_valgrind) {
+				execl("/usr/bin/valgrind",
+					"valgrind", "--leak-check=full", "--show-reachable=yes",
+					"--tool=memcheck", "--track-fds=yes",
+					"--log-file=/tmp/valgrind.kconsumer.log",
+					consumer_to_use, verbosity, "-k",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
+			} else {
+				execl(consumer_to_use, "lttng-consumerd", verbosity, "-k",
+					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					NULL);
+			}
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
@@ -2071,10 +2084,21 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 64-bit UST consumer at: %s",  consumerd64_bin);
-			ret = execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
-					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					NULL);
+			if (consumer_debug_valgrind) {
+				ret = execl("/usr/bin/valgrind",
+						"valgrind", "--leak-check=full", "--show-reachable=yes",
+						"--tool=memcheck", "--track-fds=yes",
+						"--log-file=/tmp/valgrind.ust64consumer.log",
+						consumerd64_bin, verbosity, "-u",
+						"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+						"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+						NULL);
+			} else {
+				ret = execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
+						"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+						"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+						NULL);
+			}
 			if (consumerd64_libdir[0] != '\0') {
 				free(tmpnew);
 			}
@@ -2116,10 +2140,21 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 32-bit UST consumer at: %s",  consumerd32_bin);
-			ret = execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
-					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					NULL);
+			if (consumer_debug_valgrind) {
+				ret = execl("/usr/bin/valgrind",
+						"valgrind", "--leak-check=full", "--show-reachable=yes",
+						"--tool=memcheck", "--track-fds=yes",
+						"--log-file=/tmp/valgrind.ust32consumer.log",
+						consumerd32_bin, verbosity, "-u",
+						"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+						"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+						NULL);
+			} else {
+				ret = execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
+						"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
+						"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+						NULL);
+			}
 			if (consumerd32_libdir[0] != '\0') {
 				free(tmpnew);
 			}
@@ -4273,6 +4308,13 @@ int main(int argc, char **argv)
 		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
 			(void) close(i);
 		}
+	}
+
+	/* Valgrind env. variable setup. */
+	if (getenv(DEFAULT_CONSUMER_DEBUG_VALGRIND_ENV)) {
+		consumer_debug_valgrind = 1;
+		/* Valgrind does not support clone(). */
+		setenv("LTTNG_DEBUG_NOCLONE", "1", 1);
 	}
 
 	/* Create thread quit pipe */

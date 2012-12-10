@@ -206,6 +206,9 @@
 
 #define DEFAULT_SNAPSHOT_NAME				"snapshot"
 
+/* Set to 1 to enable valgrind debugging for consumer. */
+#define DEFAULT_CONSUMER_DEBUG_VALGRIND_ENV "LTTNG_CONSUMER_DEBUG_VALGRIND"
+
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
 extern size_t default_ust_pid_channel_subbuf_size;
