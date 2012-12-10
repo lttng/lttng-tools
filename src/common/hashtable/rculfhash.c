@@ -274,6 +274,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include <common/defaults.h>
 #include "rculfhash.h"
 #include "rculfhash-internal.h"
 #include "urcu-flavor.h"
@@ -631,7 +632,11 @@ int ht_get_split_count_index(unsigned long hash)
 	int cpu;
 
 	assert(split_count_mask >= 0);
-	cpu = sched_getcpu();
+	if (getenv(DEFAULT_CONSUMER_DEBUG_VALGRIND_ENV)) {
+		cpu = 0;
+	} else {
+		cpu = sched_getcpu();
+	}
 	if (caa_unlikely(cpu < 0))
 		return hash & split_count_mask;
 	else
