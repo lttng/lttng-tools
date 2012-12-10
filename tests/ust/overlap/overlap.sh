@@ -45,15 +45,15 @@ run_demo_app()
 {
 	local dir=`pwd`
 
-	cd demo
+	cd $CURDIR/demo
 
 	# Start test
 	echo -n "Starting application... "
-	./$CURDIR/demo-trace >/dev/null 2>&1
+	./demo-trace >/dev/null 2>&1
 	echo -n "Ended "
 	print_ok
 
-	cd $dir
+	cd -
 }
 
 # Ease our life a bit ;)
@@ -315,6 +315,12 @@ test_enable_same_wildcard_filter_2()
 
 	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
 	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	if [ $? -eq 1 ]; then
+		echo -n "FAIL is normal. Same event with same filter is denied by the sessiond "
+		print_ok
+	else
+		print_fail
+	fi
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
