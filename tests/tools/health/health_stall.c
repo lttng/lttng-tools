@@ -43,7 +43,10 @@ void __testpoint_thread_manage_clients_before_loop(void)
 	const char *var = "LTTNG_THREAD_MANAGE_CLIENTS_STALL";
 
 	if (check_env_var(var)) {
-		sleep(STALL_TIME);
+		unsigned int sleep_time = STALL_TIME;
+		while (sleep_time > 0) {
+			sleep_time = sleep(sleep_time);
+		}
 	}
 }
 
@@ -52,7 +55,10 @@ void __testpoint_thread_manage_kernel_before_loop(void)
 	const char *var = "LTTNG_THREAD_MANAGE_KERNEL_STALL";
 
 	if (check_env_var(var)) {
-		sleep(STALL_TIME);
+		unsigned int sleep_time = STALL_TIME;
+		while (sleep_time > 0) {
+			sleep_time = sleep(sleep_time);
+		}
 	}
 }
 
@@ -61,6 +67,9 @@ void __testpoint_thread_manage_apps_before_loop(void)
 	const char *var = "LTTNG_THREAD_MANAGE_APPS_STALL";
 
 	if (check_env_var(var)) {
-		sleep(STALL_TIME);
+		unsigned int sleep_time = STALL_TIME;
+		while (sleep_time > 0) {
+			sleep_time = sleep(sleep_time);
+		}
 	}
 }
