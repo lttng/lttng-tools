@@ -119,7 +119,7 @@ function lttng_enable_kernel_event
 	fi
 
 	echo -n "Enabling kernel event $event_name for session $sess_name"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -k >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -k >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		print_fail
 		return 1
@@ -283,7 +283,7 @@ function enable_ust_lttng_event_filter()
 	filter="$3"
 	echo -n "Enabling lttng event with filtering "
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --filter "$filter" 2>&1 >/dev/null
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --filter "$filter" 2>&1 >/dev/null
 	if [ $? -eq 0 ]; then
 		print_ok
 		return 0
@@ -300,7 +300,7 @@ function enable_ust_lttng_event_loglevel()
 	loglevel="$3"
 	echo -n "Enabling lttng event $event_name with loglevel $loglevel"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --loglevel $loglevel 2>&1 >/dev/null
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel $loglevel 2>&1 >/dev/null
 	if [ $? -eq 0 ]; then
 		print_ok
 		return 0
@@ -317,7 +317,7 @@ function enable_ust_lttng_event_loglevel_only()
 	loglevel="$3"
 	echo -n "Enabling lttng event $event_name with loglevel-only $loglevel"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --loglevel-only $loglevel 2>&1 >/dev/null
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel-only $loglevel 2>&1 >/dev/null
 	if [ $? -eq 0 ]; then
 		print_ok
 		return 0
@@ -329,11 +329,11 @@ function enable_ust_lttng_event_loglevel_only()
 
 function disable_ust_lttng_event ()
 {
-	sess_name=$1
-	event_name=$2
+	sess_name="$1"
+	event_name="$2"
 
 	echo -n "Disabling lttng event $event_name for session $sess_name "
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event $event_name -s $sess_name -u >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -u >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		print_fail
 		return 1

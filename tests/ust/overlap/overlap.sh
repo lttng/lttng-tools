@@ -43,8 +43,6 @@ fi
 
 run_demo_app()
 {
-	local dir=`pwd`
-
 	cd $CURDIR/demo
 
 	# Start test
@@ -59,25 +57,25 @@ run_demo_app()
 # Ease our life a bit ;)
 trace_match_demo1_events()
 {
-	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches $DEMO_EVENT1_2 $NUM_DEMO1_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT1_2" $NUM_DEMO1_EVENT $TRACE_PATH
 }
 
 # Ease our life a bit ;)
 trace_match_all_demo_events()
 {
 	trace_match_demo1_events
-	trace_matches $DEMO_EVENT2 $NUM_DEMO2_EVENT $TRACE_PATH
-	trace_matches $DEMO_EVENT3 $NUM_DEMO3_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT2" $NUM_DEMO2_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT3" $NUM_DEMO3_EVENT $TRACE_PATH
 }
 
 # Ease our life a bit ;)
 trace_match_no_demo_events()
 {
-	trace_matches $DEMO_EVENT1 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT3 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT1" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT1_2" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT2" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT3" 0 $TRACE_PATH
 }
 
 # Expect all "demo" events, no duplicate.
@@ -89,8 +87,8 @@ test_enable_simple_wildcard()
 	echo ""
 	echo "=== Simple wildcard overlap"
 
-	enable_ust_lttng_event $SESSION_NAME $event_wild1
-	enable_ust_lttng_event $SESSION_NAME $event_wild2
+	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -112,8 +110,8 @@ test_enable_wildcard_filter()
 	echo ""
 	echo "=== Wildcard overlap with filter"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==0"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -134,8 +132,8 @@ test_enable_wildcard_filter_2()
 	echo ""
 	echo "=== Wildcard overlap with filter 2"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==0"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -156,8 +154,8 @@ test_enable_wildcard_filter_3()
 	echo ""
 	echo "=== Wildcard overlap with filter 3"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -178,8 +176,8 @@ test_enable_wildcard_filter_4()
 	echo ""
 	echo "=== Wildcard overlap with filter 4"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==0"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==0"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -200,8 +198,8 @@ test_enable_wildcard_filter_5()
 	echo ""
 	echo "=== Wildcard overlap with filter 5"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==0"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -222,8 +220,8 @@ test_enable_wildcard_filter_6()
 	echo ""
 	echo "=== Wildcard overlap with filter 6"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==0"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -247,8 +245,8 @@ test_enable_wildcard_filter_7()
 	echo ""
 	echo "=== Wildcard overlap with filter 7"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -269,8 +267,8 @@ test_enable_wildcard_filter_8()
 	echo ""
 	echo "=== Wildcard overlap with filter 8"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==0"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==0"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -291,8 +289,8 @@ test_enable_same_wildcard_filter()
 	echo ""
 	echo "=== Same wildcard overlap with filter"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1&&1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1&&1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -313,8 +311,8 @@ test_enable_same_wildcard_filter_2()
 	echo ""
 	echo "=== Same wildcard overlap with filter 2"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 	if [ $? -eq 1 ]; then
 		echo -n "FAIL is normal. Same event with same filter is denied by the sessiond "
 		print_ok
@@ -341,8 +339,8 @@ test_enable_same_wildcard_filter_3()
 	echo ""
 	echo "=== Same wildcard overlap with filter 3"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==0"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -363,8 +361,8 @@ test_enable_same_wildcard_filter_4()
 	echo ""
 	echo "=== Same wildcard overlap with filter 4"
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==0&&1==0"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==0&&1==0"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==0"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -385,8 +383,8 @@ test_enable_same_event_filter()
 	echo ""
 	echo "=== Enable same event with filter."
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1&&1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1&&1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	disable_ust_lttng_event $SESSION_NAME "ust*"
 
@@ -412,8 +410,8 @@ test_disable_same_wildcard_filter()
 	echo ""
 	echo "=== Disable same wildcard with filter."
 
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild1 "1==1&&1==1"
-	enable_ust_lttng_event_filter $SESSION_NAME $event_wild2 "1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1&&1==1"
+	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
 
 	disable_ust_lttng_event $SESSION_NAME "ust*"
 
@@ -438,9 +436,9 @@ test_enable_bad_wildcard()
 	echo ""
 	echo "=== Enable bad wildcard"
 
-	enable_ust_lttng_event $SESSION_NAME $event_wild1
-	enable_ust_lttng_event $SESSION_NAME $event_wild2
-	enable_ust_lttng_event $SESSION_NAME $event_wild3
+	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
+	enable_ust_lttng_event $SESSION_NAME "$event_wild3"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -461,8 +459,8 @@ test_enable_simple_wildcard_2()
 	echo ""
 	echo "=== Simple wildcard 2"
 
-	enable_ust_lttng_event $SESSION_NAME $event_wild1
-	enable_ust_lttng_event $SESSION_NAME $event_wild2
+	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -596,11 +594,11 @@ test_disable_simple_wildcard()
 	echo ""
 	echo "=== Disable simple wildcard"
 
-	enable_ust_lttng_event $SESSION_NAME $event_wild1
-	enable_ust_lttng_event $SESSION_NAME $event_wild2
+	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
 
-	disable_ust_lttng_event $SESSION_NAME $event_wild1
-	disable_ust_lttng_event $SESSION_NAME $event_wild2
+	disable_ust_lttng_event $SESSION_NAME "$event_wild1"
+	disable_ust_lttng_event $SESSION_NAME "$event_wild2"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -622,10 +620,10 @@ test_disable_wildcard_overlap()
 	echo ""
 	echo "=== Disable wildcard overlap"
 
-	enable_ust_lttng_event $SESSION_NAME $event_wild1
-	enable_ust_lttng_event $SESSION_NAME $event_wild2
+	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
 
-	disable_ust_lttng_event $SESSION_NAME $event_wild1
+	disable_ust_lttng_event $SESSION_NAME "$event_wild1"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
@@ -634,10 +632,10 @@ test_disable_wildcard_overlap()
 	stop_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 
 	# Expect only "ust_tests_demo" events.
-	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT3 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT1_2" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT2" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT3" 0 $TRACE_PATH
 	return $?
 }
 
