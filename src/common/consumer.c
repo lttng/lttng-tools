@@ -2454,7 +2454,7 @@ end:
  */
 void *consumer_thread_sessiond_poll(void *data)
 {
-	int sock, client_socket, ret;
+	int sock = -1, client_socket, ret;
 	/*
 	 * structure to poll for incoming data on communication socket avoids
 	 * making blocking sockets.
@@ -2514,6 +2514,13 @@ void *consumer_thread_sessiond_poll(void *data)
 		goto end;
 	}
 
+	/* This socket is not useful anymore. */
+	ret = close(client_socket);
+	if (ret < 0) {
+		PERROR("close client_socket");
+	}
+	client_socket = -1;
+
 	/* update the polling structure to poll on the established socket */
 	consumer_sockpoll[1].fd = sock;
 	consumer_sockpoll[1].events = POLLIN | POLLPRI;
@@ -2556,6 +2563,20 @@ end:
 	 * consumer_quit state that we just set so to quit gracefully.
 	 */
 	notify_thread_pipe(ctx->consumer_data_pipe[1]);
+
+	/* Cleaning up possibly open sockets. */
+	if (sock >= 0) {
+		ret = close(sock);
+		if (ret < 0) {
+			PERROR("close sock sessiond poll");
+		}
+	}
+	if (client_socket >= 0) {
+		ret = close(sock);
+		if (ret < 0) {
+			PERROR("close client_socket sessiond poll");
+		}
+	}
 
 	rcu_unregister_thread();
 	return NULL;
