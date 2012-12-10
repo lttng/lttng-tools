@@ -764,6 +764,8 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	int ret;
 	struct lttng_ht_iter iter;
 
+	DBG("Consumer delete channel key %d", channel->key);
+
 	pthread_mutex_lock(&consumer_data.lock);
 
 	switch (consumer_data.type) {
@@ -1695,7 +1697,6 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
  */
 static void destroy_data_stream_ht(struct lttng_ht *ht)
 {
-	int ret;
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
@@ -1705,10 +1706,11 @@ static void destroy_data_stream_ht(struct lttng_ht *ht)
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
-		ret = lttng_ht_del(ht, &iter);
-		assert(!ret);
-
-		call_rcu(&stream->node.head, consumer_free_stream);
+		/*
+		 * Ignore return value since we are currently cleaning up so any error
+		 * can't be handled.
+		 */
+		(void) consumer_del_stream(stream, ht);
 	}
 	rcu_read_unlock();
 
@@ -1722,7 +1724,6 @@ static void destroy_data_stream_ht(struct lttng_ht *ht)
  */
 static void destroy_stream_ht(struct lttng_ht *ht)
 {
-	int ret;
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
@@ -1732,10 +1733,11 @@ static void destroy_stream_ht(struct lttng_ht *ht)
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
-		ret = lttng_ht_del(ht, &iter);
-		assert(!ret);
-
-		call_rcu(&stream->node.head, consumer_free_stream);
+		/*
+		 * Ignore return value since we are currently cleaning up so any error
+		 * can't be handled.
+		 */
+		(void) consumer_del_metadata_stream(stream, ht);
 	}
 	rcu_read_unlock();
 
