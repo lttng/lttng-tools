@@ -313,7 +313,14 @@ end:
 static
 int run_as_noclone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
-	return cmd(data);
+	int ret;
+	mode_t old_mask;
+
+	old_mask = umask(0);
+	ret = cmd(data);
+	umask(old_mask);
+
+	return ret;
 }
 
 static
