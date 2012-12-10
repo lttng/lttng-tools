@@ -2648,7 +2648,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock)
 {
-	int fd, ret = -1;
+	int fd = -1, ret = -1;
 	struct consumer_relayd_sock_pair *relayd;
 
 	DBG("Consumer adding relayd socket (idx: %d)", net_seq_idx);
@@ -2675,6 +2675,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 	if (ret != sizeof(fd)) {
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 		ret = -1;
+		fd = -1;	/* Just in case it gets set with an invalid value. */
 		goto error;
 	}
 
@@ -2684,14 +2685,15 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		/* Copy received lttcomm socket */
 		lttcomm_copy_sock(&relayd->control_sock, relayd_sock);
 		ret = lttcomm_create_sock(&relayd->control_sock);
+		/* Immediately try to close the created socket if valid. */
+		if (relayd->control_sock.fd >= 0) {
+			if (close(relayd->control_sock.fd)) {
+				PERROR("close relayd control socket");
+			}
+		}
+		/* Handle create_sock error. */
 		if (ret < 0) {
 			goto error;
-		}
-
-		/* Close the created socket fd which is useless */
-		ret = close(relayd->control_sock.fd);
-		if (ret < 0) {
-			PERROR("close relayd control socket");
 		}
 
 		/* Assign new file descriptor */
@@ -2701,14 +2703,15 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		/* Copy received lttcomm socket */
 		lttcomm_copy_sock(&relayd->data_sock, relayd_sock);
 		ret = lttcomm_create_sock(&relayd->data_sock);
+		/* Immediately try to close the created socket if valid. */
+		if (relayd->data_sock.fd >= 0) {
+			if (close(relayd->data_sock.fd)) {
+				PERROR("close relayd data socket");
+			}
+		}
+		/* Handle create_sock error. */
 		if (ret < 0) {
 			goto error;
-		}
-
-		/* Close the created socket fd which is useless */
-		ret = close(relayd->data_sock.fd);
-		if (ret < 0) {
-			PERROR("close relayd control socket");
 		}
 
 		/* Assign new file descriptor */
@@ -2730,9 +2733,15 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 	add_relayd(relayd);
 
 	/* All good! */
-	ret = 0;
+	return 0;
 
 error:
+	/* Close received socket if valid. */
+	if (fd >= 0) {
+		if (close(fd)) {
+			PERROR("close received socket");
+		}
+	}
 	return ret;
 }
 
