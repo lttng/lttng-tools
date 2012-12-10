@@ -2013,6 +2013,12 @@ void *consumer_thread_metadata_poll(void *data)
 
 	rcu_register_thread();
 
+	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!metadata_ht) {
+		/* ENOMEM at this point. Better to bail out. */
+		goto error;
+	}
+
 	DBG("Thread metadata poll started");
 
 	/* Size is set to 1 for the consumer_metadata pipe */
@@ -2179,9 +2185,7 @@ end:
 	DBG("Metadata poll thread exiting");
 	lttng_poll_clean(&events);
 
-	if (metadata_ht) {
-		destroy_stream_ht(metadata_ht);
-	}
+	destroy_stream_ht(metadata_ht);
 
 	rcu_unregister_thread();
 	return NULL;
@@ -2206,6 +2210,7 @@ void *consumer_thread_data_poll(void *data)
 
 	data_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (data_ht == NULL) {
+		/* ENOMEM at this point. Better to bail out. */
 		goto end;
 	}
 
@@ -2442,9 +2447,7 @@ end:
 		PERROR("close data pipe");
 	}
 
-	if (data_ht) {
-		destroy_data_stream_ht(data_ht);
-	}
+	destroy_data_stream_ht(data_ht);
 
 	rcu_unregister_thread();
 	return NULL;
@@ -2633,11 +2636,6 @@ void lttng_consumer_init(void)
 	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	consumer_data.stream_list_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-
-	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	assert(metadata_ht);
-	data_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	assert(data_ht);
 }
 
 /*
