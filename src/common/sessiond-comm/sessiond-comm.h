@@ -281,6 +281,8 @@ struct lttcomm_consumer_msg {
 			enum lttng_stream_type type;
 			/* Open socket to the relayd */
 			struct lttcomm_sock sock;
+			/* Tracing session id associated to the relayd. */
+			uint64_t session_id;
 		} relayd_sock;
 		struct {
 			uint64_t net_seq_idx;

@@ -171,7 +171,7 @@ int consumer_send_channel(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg);
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_sock *sock, struct consumer_output *consumer,
-		enum lttng_stream_type type);
+		enum lttng_stream_type type, unsigned int session_id);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);

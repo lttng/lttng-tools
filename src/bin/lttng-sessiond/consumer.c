@@ -658,7 +658,7 @@ error:
  */
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_sock *sock, struct consumer_output *consumer,
-		enum lttng_stream_type type)
+		enum lttng_stream_type type, unsigned int session_id)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -682,6 +682,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	 */
 	msg.u.relayd_sock.net_index = consumer->net_seq_index;
 	msg.u.relayd_sock.type = type;
+	msg.u.relayd_sock.session_id = session_id;
 	memcpy(&msg.u.relayd_sock.sock, sock, sizeof(msg.u.relayd_sock.sock));
 
 	DBG3("Sending relayd sock info to consumer on %d", consumer_sock->fd);

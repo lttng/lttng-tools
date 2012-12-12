@@ -558,7 +558,7 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 
 	/* Send relayd socket to consumer. */
 	ret = consumer_send_relayd_socket(consumer_sock, sock,
-			consumer, relayd_uri->stype);
+			consumer, relayd_uri->stype, session->id);
 	if (ret < 0) {
 		ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;

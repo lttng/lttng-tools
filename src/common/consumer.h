@@ -300,6 +300,15 @@ struct lttng_consumer_global_data {
 };
 
 /*
+ * Session id mapping structure storred in relayd_session_id_ht.
+ */
+struct consumer_relayd_session_id {
+	uint64_t sessiond_id;
+	uint64_t relayd_id;
+	struct lttng_ht_node_ulong node;
+};
+
+/*
  * Init consumer data structures.
  */
 extern void lttng_consumer_init(void);
@@ -415,7 +424,8 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
-		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock);
+		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock,
+		unsigned int sessiond_id);
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);
 int consumer_data_pending(uint64_t id);
