@@ -186,6 +186,9 @@ struct consumer_relayd_sock_pair {
 	 */
 	struct lttcomm_sock data_sock;
 	struct lttng_ht_node_ulong node;
+
+	/* Session id on the relayd side for the sockets. */
+	uint64_t session_id;
 };
 
 /*

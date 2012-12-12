@@ -42,7 +42,6 @@ enum connection_type {
 struct relay_session {
 	uint64_t id;
 	struct lttcomm_sock *sock;
-	unsigned int version_check_done:1;
 };
 
 /*
@@ -72,6 +71,7 @@ struct relay_command {
 	struct lttng_ht_node_ulong sock_n;
 	struct rcu_head rcu_node;
 	enum connection_type type;
+	unsigned int version_check_done:1;
 };
 
 #endif /* LTTNG_RELAYD_H */

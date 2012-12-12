@@ -100,6 +100,54 @@ error:
 }
 
 /*
+ * Send a RELAYD_CREATE_SESSION command to the relayd with the given socket and
+ * set session_id of the relayd if we have a successful reply from the relayd.
+ *
+ * On success, return 0 else a negative value being a lttng_error_code returned
+ * from the relayd.
+ */
+int relayd_create_session(struct lttcomm_sock *sock, uint64_t *session_id)
+{
+	int ret;
+	struct lttcomm_relayd_status_session reply;
+
+	assert(sock);
+	assert(session_id);
+
+	DBG("Relayd create session");
+
+	/* Send command */
+	ret = send_command(sock, RELAYD_CREATE_SESSION, NULL, 0, 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Recevie response */
+	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.session_id = be64toh(reply.session_id);
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -reply.ret_code;
+		ERR("Relayd create session replied error %d", ret);
+		goto error;
+	} else {
+		ret = 0;
+		*session_id = reply.session_id;
+	}
+
+	DBG("Relayd session created with id %" PRIu64, reply.session_id);
+
+error:
+	return ret;
+}
+
+/*
  * Add stream on the relayd and assign stream handle to the stream_id argument.
  *
  * On success return 0 else return ret_code negative value.

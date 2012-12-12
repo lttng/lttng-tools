@@ -885,8 +885,6 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 
 	DBG("Relay deleting session %" PRIu64, cmd->session->id);
 
-	lttcomm_destroy_sock(cmd->session->sock);
-
 	rcu_read_lock();
 	cds_lfht_for_each_entry(streams_ht->ht, &iter.iter, node, node) {
 		node = lttng_ht_iter_get_node_ulong(&iter);
@@ -911,6 +909,54 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 }
 
 /*
+ * Handle the RELAYD_CREATE_SESSION command.
+ *
+ * On success, send back the session id or else return a negative value.
+ */
+static
+int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_command *cmd)
+{
+	int ret = 0, send_ret;
+	struct relay_session *session;
+	struct lttcomm_relayd_status_session reply;
+
+	assert(recv_hdr);
+	assert(cmd);
+
+	memset(&reply, 0, sizeof(reply));
+
+	session = zmalloc(sizeof(struct relay_session));
+	if (session == NULL) {
+		PERROR("relay session zmalloc");
+		ret = -1;
+		goto error;
+	}
+
+	session->id = ++last_relay_session_id;
+	session->sock = cmd->sock;
+	cmd->session = session;
+
+	reply.session_id = htobe64(session->id);
+
+	DBG("Created session %" PRIu64, session->id);
+
+error:
+	if (ret < 0) {
+		reply.ret_code = htobe32(LTTNG_ERR_FATAL);
+	} else {
+		reply.ret_code = htobe32(LTTNG_OK);
+	}
+
+	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	if (send_ret < 0) {
+		ERR("Relayd sending session id");
+	}
+
+	return ret;
+}
+
+/*
  * relay_add_stream: allocate a new stream for a session
  */
 static
@@ -924,7 +970,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	char *path = NULL, *root_path = NULL;
 	int ret, send_ret;
 
-	if (!session || session->version_check_done == 0) {
+	if (!session || cmd->version_check_done == 0) {
 		ERR("Trying to add a stream before version check");
 		ret = -1;
 		goto end_no_session;
@@ -1021,7 +1067,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 
 	DBG("Close stream received");
 
-	if (!session || session->version_check_done == 0) {
+	if (!session || cmd->version_check_done == 0) {
 		ERR("Trying to close a stream before version check");
 		ret = -1;
 		goto end_no_session;
@@ -1281,22 +1327,10 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 {
 	int ret;
 	struct lttcomm_relayd_version reply, msg;
-	struct relay_session *session;
 
-	if (cmd->session == NULL) {
-		session = zmalloc(sizeof(struct relay_session));
-		if (session == NULL) {
-			PERROR("relay session zmalloc");
-			ret = -1;
-			goto end;
-		}
-		session->id = ++last_relay_session_id;
-		DBG("Created session %" PRIu64, session->id);
-		cmd->session = session;
-	} else {
-		session = cmd->session;
-	}
-	session->version_check_done = 1;
+	assert(cmd);
+
+	cmd->version_check_done = 1;
 
 	/* Get version from the other side. */
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
@@ -1351,7 +1385,7 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 
 	DBG("Data pending command received");
 
-	if (!session || session->version_check_done == 0) {
+	if (!session || cmd->version_check_done == 0) {
 		ERR("Trying to check for data before version check");
 		ret = -1;
 		goto end_no_session;
@@ -1440,11 +1474,9 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 	int ret = 0;
 
 	switch (be32toh(recv_hdr->cmd)) {
-		/*
 	case RELAYD_CREATE_SESSION:
 		ret = relay_create_session(recv_hdr, cmd);
 		break;
-		*/
 	case RELAYD_ADD_STREAM:
 		ret = relay_add_stream(recv_hdr, cmd, streams_ht);
 		break;

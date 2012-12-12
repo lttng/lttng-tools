@@ -2743,6 +2743,17 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 		/* Assign new file descriptor */
 		relayd->control_sock.fd = fd;
+
+		/*
+		 * Create a session on the relayd and store the returned id. No need to
+		 * grab the socket lock since the relayd object is not yet visible.
+		 */
+		ret = relayd_create_session(&relayd->control_sock,
+				&relayd->session_id);
+		if (ret < 0) {
+			goto error;
+		}
+
 		break;
 	case LTTNG_STREAM_DATA:
 		/* Copy received lttcomm socket */

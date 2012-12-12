@@ -54,6 +54,14 @@ struct lttcomm_relayd_data_hdr {
 } __attribute__ ((__packed__));
 
 /*
+ * Reply from a create session command.
+ */
+struct lttcomm_relayd_status_session {
+	uint64_t session_id;
+	uint32_t ret_code;
+} __attribute__ ((__packed__));
+
+/*
  * Used to add a stream on the relay daemon.
  */
 struct lttcomm_relayd_add_stream {

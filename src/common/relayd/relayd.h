@@ -25,10 +25,7 @@
 
 int relayd_connect(struct lttcomm_sock *sock);
 int relayd_close(struct lttcomm_sock *sock);
-#if 0
-int relayd_create_session(struct lttcomm_sock *sock, const char *hostname,
-		const char *session_name);
-#endif
+int relayd_create_session(struct lttcomm_sock *sock, uint64_t *session_id);
 int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id);
 int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
