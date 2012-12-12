@@ -416,5 +416,6 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);
 int consumer_data_pending(uint64_t id);
+int consumer_send_status_msg(int sock, int ret_code);
 
 #endif /* LIB_CONSUMER_H */

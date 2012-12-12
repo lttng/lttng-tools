@@ -633,7 +633,7 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 						assert(socket->fd >= 0);
 
 						pthread_mutex_lock(socket->lock);
-						ret = kernel_consumer_send_channel_stream(socket->fd,
+						ret = kernel_consumer_send_channel_stream(socket,
 								channel, ksess);
 						pthread_mutex_unlock(socket->lock);
 						if (ret < 0) {

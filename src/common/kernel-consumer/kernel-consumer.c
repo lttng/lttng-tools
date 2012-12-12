@@ -88,6 +88,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll)
 {
 	ssize_t ret;
+	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttcomm_consumer_msg msg;
 
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
@@ -96,6 +97,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
+		/*
+		 * Notify the session daemon that the command is completed.
+		 *
+		 * On transport layer error, the function call will print an error
+		 * message so handling the returned code is a bit useless since we
+		 * return an error code anyway.
+		 */
+		(void) consumer_send_status_msg(sock, ret_code);
 		return -ENOENT;
 	}
 
@@ -105,6 +114,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
 	{
+		/* Session daemon status message are handled in the following call. */
 		ret = consumer_add_relayd_socket(msg.u.relayd_sock.net_index,
 				msg.u.relayd_sock.type, ctx, sock, consumer_sockpoll,
 				&msg.u.relayd_sock.sock);
@@ -113,6 +123,13 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ADD_CHANNEL:
 	{
 		struct lttng_consumer_channel *new_channel;
+
+		/* First send a status message before receiving the fds. */
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
 
 		DBG("consumer_add_channel %d", msg.u.channel.channel_key);
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
@@ -143,6 +160,13 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *new_stream;
 		int alloc_ret = 0;
 
+		/* First send a status message before receiving the fds. */
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
 		/* block */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
 			rcu_read_unlock();
@@ -155,6 +179,17 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 			rcu_read_unlock();
 			return ret;
+		}
+
+		/*
+		 * Send status code to session daemon only if the recv works. If the
+		 * above recv() failed, the session daemon is notified through the
+		 * error socket and the teardown is eventually done.
+		 */
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
 		}
 
 		new_stream = consumer_allocate_stream(msg.u.stream.channel_key,
@@ -263,7 +298,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		relayd = consumer_find_relayd(index);
 		if (relayd == NULL) {
 			ERR("Unable to find relayd %" PRIu64, index);
-			goto end_nosignal;
+			ret_code = LTTNG_ERR_NO_CONSUMER;
 		}
 
 		/*
@@ -276,7 +311,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 *
 		 * The destroy can happen either here or when a stream fd hangs up.
 		 */
-		consumer_flag_relayd_for_destroy(relayd);
+		if (relayd) {
+			consumer_flag_relayd_for_destroy(relayd);
+		}
+
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
 
 		goto end_nosignal;
 	}
@@ -294,6 +337,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ret < 0) {
 			PERROR("send data pending ret code");
 		}
+
+		/*
+		 * No need to send back a status message since the data pending
+		 * returned value is the response.
+		 */
 		break;
 	}
 	default:

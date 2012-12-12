@@ -32,15 +32,17 @@
 /*
  * Send a single channel to the consumer using command ADD_CHANNEL.
  */
-static int send_channel(int sock, struct ust_app_channel *uchan)
+static int send_channel(struct consumer_socket *sock,
+		struct ust_app_channel *uchan)
 {
 	int ret, fd;
 	struct lttcomm_consumer_msg msg;
 
 	/* Safety net */
 	assert(uchan);
+	assert(sock);
 
-	if (sock < 0) {
+	if (sock->fd < 0) {
 		ret = -EINVAL;
 		goto error;
 	}
@@ -73,9 +75,10 @@ error:
 /*
  * Send a single stream to the consumer using ADD_STREAM command.
  */
-static int send_channel_stream(int sock, struct ust_app_channel *uchan,
-		struct ust_app_session *usess, struct ltt_ust_stream *stream,
-		struct consumer_output *consumer, const char *pathname)
+static int send_channel_stream(struct consumer_socket *sock,
+		struct ust_app_channel *uchan, struct ust_app_session *usess,
+		struct ltt_ust_stream *stream, struct consumer_output *consumer,
+		const char *pathname)
 {
 	int ret, fds[2];
 	struct lttcomm_consumer_msg msg;
@@ -85,6 +88,7 @@ static int send_channel_stream(int sock, struct ust_app_channel *uchan,
 	assert(usess);
 	assert(stream);
 	assert(consumer);
+	assert(sock);
 
 	DBG2("Sending stream %d of channel %s to kernel consumer",
 			stream->obj->shm_fd, uchan->name);
@@ -119,7 +123,7 @@ error:
 /*
  * Send all stream fds of UST channel to the consumer.
  */
-static int send_channel_streams(int sock,
+static int send_channel_streams(struct consumer_socket *sock,
 		struct ust_app_channel *uchan, struct ust_app_session *usess,
 		struct consumer_output *consumer)
 {
@@ -127,6 +131,8 @@ static int send_channel_streams(int sock,
 	char tmp_path[PATH_MAX];
 	const char *pathname;
 	struct ltt_ust_stream *stream, *tmp;
+
+	assert(sock);
 
 	DBG("Sending streams of channel %s to UST consumer", uchan->name);
 
@@ -180,8 +186,8 @@ error:
 /*
  * Sending metadata to the consumer with command ADD_CHANNEL and ADD_STREAM.
  */
-static int send_metadata(int sock, struct ust_app_session *usess,
-		struct consumer_output *consumer)
+static int send_metadata(struct consumer_socket *sock,
+		struct ust_app_session *usess, struct consumer_output *consumer)
 {
 	int ret, fd, fds[2];
 	char tmp_path[PATH_MAX];
@@ -191,9 +197,10 @@ static int send_metadata(int sock, struct ust_app_session *usess,
 	/* Safety net */
 	assert(usess);
 	assert(consumer);
+	assert(sock);
 
-	if (sock < 0) {
-		ERR("Consumer socket is negative (%d)", sock);
+	if (sock->fd < 0) {
+		ERR("Consumer socket is negative (%d)", sock->fd);
 		return -EINVAL;
 	}
 
@@ -305,7 +312,7 @@ int ust_consumer_send_session(struct ust_app_session *usess,
 	pthread_mutex_lock(sock->lock);
 
 	/* Sending metadata information to the consumer */
-	ret = send_metadata(sock->fd, usess, consumer);
+	ret = send_metadata(sock, usess, consumer);
 	if (ret < 0) {
 		goto error;
 	}
@@ -322,7 +329,7 @@ int ust_consumer_send_session(struct ust_app_session *usess,
 			continue;
 		}
 
-		ret = send_channel_streams(sock->fd, ua_chan, usess, consumer);
+		ret = send_channel_streams(sock, ua_chan, usess, consumer);
 		if (ret < 0) {
 			rcu_read_unlock();
 			goto error;

@@ -31,7 +31,8 @@
 /*
  * Sending a single channel to the consumer with command ADD_CHANNEL.
  */
-int kernel_consumer_add_channel(int sock, struct ltt_kernel_channel *channel)
+int kernel_consumer_add_channel(struct consumer_socket *sock,
+		struct ltt_kernel_channel *channel)
 {
 	int ret;
 	struct lttcomm_consumer_msg lkm;
@@ -63,7 +64,8 @@ error:
 /*
  * Sending metadata to the consumer with command ADD_CHANNEL and ADD_STREAM.
  */
-int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
+int kernel_consumer_add_metadata(struct consumer_socket *sock,
+		struct ltt_kernel_session *session)
 {
 	int ret;
 	char tmp_path[PATH_MAX];
@@ -74,6 +76,7 @@ int kernel_consumer_add_metadata(int sock, struct ltt_kernel_session *session)
 	/* Safety net */
 	assert(session);
 	assert(session->consumer);
+	assert(sock);
 
 	DBG("Sending metadata %d to kernel consumer", session->metadata_stream_fd);
 
@@ -155,8 +158,9 @@ error:
 /*
  * Sending a single stream to the consumer with command ADD_STREAM.
  */
-int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
-		struct ltt_kernel_stream *stream, struct ltt_kernel_session *session)
+int kernel_consumer_add_stream(struct consumer_socket *sock,
+		struct ltt_kernel_channel *channel, struct ltt_kernel_stream *stream,
+		struct ltt_kernel_session *session)
 {
 	int ret;
 	char tmp_path[PATH_MAX];
@@ -168,6 +172,7 @@ int kernel_consumer_add_stream(int sock, struct ltt_kernel_channel *channel,
 	assert(stream);
 	assert(session);
 	assert(session->consumer);
+	assert(sock);
 
 	DBG("Sending stream %d of channel %s to kernel consumer",
 			stream->fd, channel->channel->name);
@@ -224,7 +229,7 @@ error:
 /*
  * Send all stream fds of kernel channel to the consumer.
  */
-int kernel_consumer_send_channel_stream(int sock,
+int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session)
 {
 	int ret;
@@ -234,6 +239,7 @@ int kernel_consumer_send_channel_stream(int sock,
 	assert(channel);
 	assert(session);
 	assert(session->consumer);
+	assert(sock);
 
 	/* Bail out if consumer is disabled */
 	if (!session->consumer->enabled) {
@@ -269,7 +275,8 @@ error:
 /*
  * Send all stream fds of the kernel session to the consumer.
  */
-int kernel_consumer_send_session(int sock, struct ltt_kernel_session *session)
+int kernel_consumer_send_session(struct consumer_socket *sock,
+		struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_channel *chan;
@@ -277,6 +284,7 @@ int kernel_consumer_send_session(int sock, struct ltt_kernel_session *session)
 	/* Safety net */
 	assert(session);
 	assert(session->consumer);
+	assert(sock);
 
 	/* Bail out if consumer is disabled */
 	if (!session->consumer->enabled) {

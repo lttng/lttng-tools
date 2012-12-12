@@ -2679,9 +2679,17 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock)
 {
 	int fd = -1, ret = -1;
+	enum lttng_error_code ret_code = LTTNG_OK;
 	struct consumer_relayd_sock_pair *relayd;
 
 	DBG("Consumer adding relayd socket (idx: %d)", net_seq_idx);
+
+	/* First send a status message before receiving the fds. */
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0) {
+		/* Somehow, the session daemon is not responding anymore. */
+		goto error;
+	}
 
 	/* Get relayd reference if exists. */
 	relayd = consumer_find_relayd(net_seq_idx);
@@ -2706,6 +2714,13 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 		ret = -1;
 		fd = -1;	/* Just in case it gets set with an invalid value. */
+		goto error;
+	}
+
+	/* We have the fds without error. Send status back. */
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0) {
+		/* Somehow, the session daemon is not responding anymore. */
 		goto error;
 	}
 
@@ -2912,4 +2927,18 @@ data_not_pending:
 	pthread_mutex_unlock(&consumer_data.lock);
 	rcu_read_unlock();
 	return 1;
+}
+
+/*
+ * Send a ret code status message to the sessiond daemon.
+ *
+ * Return the sendmsg() return value.
+ */
+int consumer_send_status_msg(int sock, int ret_code)
+{
+	struct lttcomm_consumer_status_msg msg;
+
+	msg.ret_code = ret_code;
+
+	return lttcomm_send_unix_sock(sock, &msg, sizeof(msg));
 }

@@ -163,15 +163,18 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj);
 void consumer_destroy_output(struct consumer_output *obj);
 int consumer_set_network_uri(struct consumer_output *obj,
 		struct lttng_uri *uri);
-int consumer_send_fds(int sock, int *fds, size_t nb_fd);
-int consumer_send_stream(int sock, struct consumer_output *dst,
-		struct lttcomm_consumer_msg *msg, int *fds, size_t nb_fd);
-int consumer_send_channel(int sock, struct lttcomm_consumer_msg *msg);
-int consumer_send_relayd_socket(int consumer_sock,
+int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd);
+int consumer_send_stream(struct consumer_socket *sock,
+		struct consumer_output *dst, struct lttcomm_consumer_msg *msg,
+		int *fds, size_t nb_fd);
+int consumer_send_channel(struct consumer_socket *sock,
+		struct lttcomm_consumer_msg *msg);
+int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_sock *sock, struct consumer_output *consumer,
 		enum lttng_stream_type type);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
+int consumer_recv_status_reply(struct consumer_socket *sock);
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
 int consumer_create_socket(struct consumer_data *data,
 		struct consumer_output *output);

@@ -291,6 +291,13 @@ struct lttcomm_consumer_msg {
 	} u;
 };
 
+/*
+ * Status message returned to the sessiond after a received command.
+ */
+struct lttcomm_consumer_status_msg {
+	enum lttng_error_code ret_code;
+};
+
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 #include <lttng/ust-abi.h>
