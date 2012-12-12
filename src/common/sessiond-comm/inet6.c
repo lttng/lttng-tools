@@ -207,6 +207,7 @@ ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
+	size_t len_last;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -218,16 +219,21 @@ ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 	msg.msg_name = (struct sockaddr *) &sock->sockaddr.addr.sin6;
 	msg.msg_namelen = sizeof(sock->sockaddr.addr.sin6);
 
-	if (flags == 0) {
-		flags = MSG_WAITALL;
-	}
-
 	do {
+		len_last = iov[0].iov_len;
 		ret = recvmsg(sock->fd, &msg, flags);
-	} while (ret < 0 && errno == EINTR);
+		if (ret > 0) {
+			iov[0].iov_base += ret;
+			iov[0].iov_len -= ret;
+			assert(ret <= len_last);
+		}
+	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
 	if (ret < 0) {
-		PERROR("recvmsg inet6");
+		PERROR("recvmsg inet");
+	} else if (ret > 0) {
+		ret = len;
 	}
+	/* Else ret = 0 meaning an orderly shutdown. */
 
 	return ret;
 }

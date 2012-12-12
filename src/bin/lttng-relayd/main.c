@@ -932,7 +932,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 
 	/* FIXME : use data_size for something ? */
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &stream_info,
-			sizeof(struct lttcomm_relayd_add_stream), MSG_WAITALL);
+			sizeof(struct lttcomm_relayd_add_stream), 0);
 	if (ret < sizeof(struct lttcomm_relayd_add_stream)) {
 		ERR("Relay didn't receive valid add_stream struct size : %d", ret);
 		ret = -1;
@@ -1028,7 +1028,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &stream_info,
-			sizeof(struct lttcomm_relayd_close_stream), MSG_WAITALL);
+			sizeof(struct lttcomm_relayd_close_stream), 0);
 	if (ret < sizeof(struct lttcomm_relayd_close_stream)) {
 		ERR("Relay didn't receive valid add_stream struct size : %d", ret);
 		ret = -1;
@@ -1232,8 +1232,7 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	memset(data_buffer, 0, data_size);
 	DBG2("Relay receiving metadata, waiting for %" PRIu64 " bytes", data_size);
-	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size,
-			MSG_WAITALL);
+	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, 0);
 	if (ret < 0 || ret != data_size) {
 		ret = -1;
 		ERR("Relay didn't receive the whole metadata");
@@ -1300,7 +1299,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	session->version_check_done = 1;
 
 	/* Get version from the other side. */
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), MSG_WAITALL);
+	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < 0 || ret != sizeof(msg)) {
 		ret = -1;
 		ERR("Relay failed to receive the version values.");
@@ -1358,7 +1357,7 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), MSG_WAITALL);
+	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
 		ERR("Relay didn't receive valid data_pending struct size : %d", ret);
 		ret = -1;
@@ -1493,7 +1492,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 	uint32_t data_size;
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &data_hdr,
-			sizeof(struct lttcomm_relayd_data_hdr), MSG_WAITALL);
+			sizeof(struct lttcomm_relayd_data_hdr), 0);
 	if (ret <= 0) {
 		ERR("Connections seems to be closed");
 		ret = -1;
@@ -1527,7 +1526,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 
 	DBG3("Receiving data of size %u for stream id %" PRIu64 " seqnum %" PRIu64,
 		data_size, stream_id, net_seq_num);
-	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, MSG_WAITALL);
+	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, 0);
 	if (ret <= 0) {
 		ret = -1;
 		goto end_unlock;
@@ -1767,7 +1766,7 @@ void *relay_thread_worker(void *data)
 					if (relay_connection->type == RELAY_CONTROL) {
 						ret = relay_connection->sock->ops->recvmsg(
 								relay_connection->sock, &recv_hdr,
-								sizeof(struct lttcomm_relayd_hdr), MSG_WAITALL);
+								sizeof(struct lttcomm_relayd_hdr), 0);
 						/* connection closed */
 						if (ret <= 0) {
 							relay_cleanup_poll_connection(&events, pollfd);
