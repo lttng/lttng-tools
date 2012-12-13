@@ -53,7 +53,7 @@ function set_bw_limit
 	tc class add dev $DEFAULT_IF parent 1: classid 1:1 htb rate ${limit}kbit ceil ${limit}kbit >/dev/null 2>&1
 
 	# FIXME: Timeout when setting limits on ctrl port.
-	#tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:1 >/dev/null 2>&1
+	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:1 >/dev/null 2>&1
 
 	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:1 >/dev/null 2>&1
 	print_ok
@@ -84,7 +84,7 @@ function enable_lttng_consumer
 function run_apps
 {
 	for i in `seq 1 $NR_APP_ITER`; do
-		./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
+		LTTNG_UST_REGISTER_TIMEOUT=-1 ./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
 	done
 }
 
