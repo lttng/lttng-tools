@@ -38,7 +38,7 @@ int check_env_var(const char *env)
 	return 0;
 }
 
-void __testpoint_thread_manage_clients_before_loop(void)
+int __testpoint_thread_manage_clients_before_loop(void)
 {
 	const char *var = "LTTNG_THREAD_MANAGE_CLIENTS_STALL";
 
@@ -48,9 +48,11 @@ void __testpoint_thread_manage_clients_before_loop(void)
 			sleep_time = sleep(sleep_time);
 		}
 	}
+
+	return 0;
 }
 
-void __testpoint_thread_manage_kernel_before_loop(void)
+int __testpoint_thread_manage_kernel_before_loop(void)
 {
 	const char *var = "LTTNG_THREAD_MANAGE_KERNEL_STALL";
 
@@ -60,9 +62,11 @@ void __testpoint_thread_manage_kernel_before_loop(void)
 			sleep_time = sleep(sleep_time);
 		}
 	}
+
+	return 0;
 }
 
-void __testpoint_thread_manage_apps_before_loop(void)
+int __testpoint_thread_manage_apps_before_loop(void)
 {
 	const char *var = "LTTNG_THREAD_MANAGE_APPS_STALL";
 
@@ -72,4 +76,6 @@ void __testpoint_thread_manage_apps_before_loop(void)
 			sleep_time = sleep(sleep_time);
 		}
 	}
+
+	return 0;
 }

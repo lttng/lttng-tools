@@ -689,13 +689,13 @@ static void *thread_manage_kernel(void *data)
 	char tmp;
 	struct lttng_poll_event events;
 
-	DBG("Thread manage kernel started");
+	DBG("[thread] Thread manage kernel started");
 
-	testpoint(thread_manage_kernel);
+	if (testpoint(thread_manage_kernel)) {
+		goto error_testpoint;
+	}
 
 	health_code_update(&health_thread_kernel);
-
-	testpoint(thread_manage_kernel_before_loop);
 
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
@@ -704,6 +704,10 @@ static void *thread_manage_kernel(void *data)
 
 	ret = lttng_poll_add(&events, kernel_poll_pipe[0], LPOLLIN);
 	if (ret < 0) {
+		goto error;
+	}
+
+	if (testpoint(thread_manage_kernel_before_loop)) {
 		goto error;
 	}
 
@@ -794,6 +798,7 @@ exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
+error_testpoint:
 	utils_close_pipe(kernel_poll_pipe);
 	kernel_poll_pipe[0] = kernel_poll_pipe[1] = -1;
 	if (err) {
@@ -889,7 +894,9 @@ static void *thread_manage_consumer(void *data)
 restart:
 	health_poll_update(&consumer_data->health);
 
-	testpoint(thread_manage_consumer);
+	if (testpoint(thread_manage_consumer)) {
+		goto error;
+	}
 
 	ret = lttng_poll_wait(&events, -1);
 	health_poll_update(&consumer_data->health);
@@ -1093,10 +1100,12 @@ static void *thread_manage_apps(void *data)
 
 	DBG("[thread] Manage application started");
 
-	testpoint(thread_manage_apps);
-
 	rcu_register_thread();
 	rcu_thread_online();
+
+	if (testpoint(thread_manage_apps)) {
+		goto error_testpoint;
+	}
 
 	health_code_update(&health_thread_app_manage);
 
@@ -1110,7 +1119,9 @@ static void *thread_manage_apps(void *data)
 		goto error;
 	}
 
-	testpoint(thread_manage_apps_before_loop);
+	if (testpoint(thread_manage_apps_before_loop)) {
+		goto error;
+	}
 
 	health_code_update(&health_thread_app_manage);
 
@@ -1250,6 +1261,7 @@ exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
+error_testpoint:
 	utils_close_pipe(apps_cmd_pipe);
 	apps_cmd_pipe[0] = apps_cmd_pipe[1] = -1;
 
@@ -1358,7 +1370,9 @@ static void *thread_registration_apps(void *data)
 
 	DBG("[thread] Manage application registration started");
 
-	testpoint(thread_registration_apps);
+	if (testpoint(thread_registration_apps)) {
+		goto error_testpoint;
+	}
 
 	ret = lttcomm_listen_unix_sock(apps_sock);
 	if (ret < 0) {
@@ -1536,6 +1550,7 @@ error_poll_add:
 	lttng_poll_clean(&events);
 error_listen:
 error_create_poll:
+error_testpoint:
 	DBG("UST Registration thread cleanup complete");
 	health_exit(&health_thread_app_reg);
 
@@ -3122,9 +3137,11 @@ static void *thread_manage_clients(void *data)
 
 	DBG("[thread] Manage client started");
 
-	testpoint(thread_manage_clients);
-
 	rcu_register_thread();
+
+	if (testpoint(thread_manage_clients)) {
+		goto error_testpoint;
+	}
 
 	health_code_update(&health_thread_cmd);
 
@@ -3155,7 +3172,9 @@ static void *thread_manage_clients(void *data)
 		kill(ppid, SIGUSR1);
 	}
 
-	testpoint(thread_manage_clients_before_loop);
+	if (testpoint(thread_manage_clients_before_loop)) {
+		goto error;
+	}
 
 	health_code_update(&health_thread_cmd);
 
@@ -3330,6 +3349,7 @@ error:
 
 error_listen:
 error_create_poll:
+error_testpoint:
 	unlink(client_unix_sock_path);
 	if (client_sock >= 0) {
 		ret = close(client_sock);

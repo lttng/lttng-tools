@@ -31,38 +31,38 @@ void *lttng_testpoint_lookup(const char *name);
 /*
  * Testpoint is only active if the global lttng_testpoint_activated flag is
  * set.
+ * Return a non-zero error code to indicate failure.
  */
-#define testpoint(name)					\
-	do {							\
-		if (caa_unlikely(lttng_testpoint_activated)) {	\
-			__testpoint_##name##_wrapper();		\
-		}						\
-	} while (0)
+#define testpoint(name)				\
+	((caa_unlikely(lttng_testpoint_activated))	\
+	? __testpoint_##name##_wrapper() : 0)
 
 /*
  * One wrapper per testpoint is generated. This is to keep track of the symbol
  * lookup status and the corresponding function pointer, if any.
  */
 #define _TESTPOINT_DECL(_name)						\
-	static inline void __testpoint_##_name##_wrapper(void)		\
+	static inline int __testpoint_##_name##_wrapper(void)		\
 	{								\
-		static void (*tp)(void);				\
+		int ret = 0;						\
+		static int (*tp)(void);					\
 		static int found;					\
 		const char *tp_name = "__testpoint_" #_name;		\
 									\
 		if (tp) {						\
-			tp();						\
+			ret = tp();					\
 		} else {						\
 			if (!found) {					\
 				tp = lttng_testpoint_lookup(tp_name);	\
 				if (tp) {				\
 					found = 1;			\
-					tp();				\
+					ret = tp();			\
 				} else {				\
 					found = -1;			\
 				}					\
 			}						\
 		}							\
+		return ret;						\
 	}
 
 /* Testpoint declaration */
