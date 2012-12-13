@@ -240,6 +240,11 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		attr = defattr;
 	}
 
+	if (attr->attr.subbuf_size < DEFAULT_UST_CHANNEL_SUBBUF_SIZE) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
 	/*
 	 * Validate UST buffer size and number of buffers: must both be
 	 * power of 2 and nonzero. We validate right here for UST,

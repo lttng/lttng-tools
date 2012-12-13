@@ -2050,7 +2050,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		if (ua_sess == NULL) {
 			/* The malloc() failed. */
 			ret = -1;
-			goto error;
+			goto error_rcu_unlock;
 		} else if (ua_sess == (void *) -1UL) {
 			/* The application's socket is not valid. Contiuing */
 			ret = -1;
@@ -2062,13 +2062,12 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		if (ua_chan == NULL) {
 			/* Major problem here and it's maybe the tracer or malloc() */
 			ret = -1;
-			goto error;
+			goto error_rcu_unlock;
 		}
 	}
 
+error_rcu_unlock:
 	rcu_read_unlock();
-
-error:
 	return ret;
 }
 
@@ -2581,10 +2580,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
 
-	if (usess == NULL) {
-		ERR("No UST session on global update. Returning");
-		goto error;
-	}
+	assert(usess);
 
 	DBG2("UST app global update for app sock %d for session id %d", sock,
 			usess->id);
