@@ -2,7 +2,7 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/health_thread_exit $DIR/health_thread_stall )
+tests=( $DIR/health_thread_exit $DIR/health_thread_stall $DIR/health_tp_fail)
 exit_code=0
 
 function start_tests ()

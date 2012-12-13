@@ -25,8 +25,12 @@ libhealthexit_la_LDFLAGS= $(FORCE_SHARED_LIB_OPTIONS)
 libhealthstall_la_SOURCES=health_stall.c
 libhealthstall_la_LDFLAGS= $(FORCE_SHARED_LIB_OPTIONS)
 
+# Health thread fail ld_preloaded test lib
+libhealthtpfail_la_SOURCES=health_fail.c
+libhealthtpfail_la_LDFLAGS= $(FORCE_SHARED_LIB_OPTIONS)
+
 noinst_PROGRAMS = health_check
-noinst_LTLIBRARIES = libhealthexit.la libhealthstall.la
+noinst_LTLIBRARIES = libhealthexit.la libhealthstall.la libhealthtpfail.la
 
 health_check_SOURCES = health_check.c $(UTILS)
 health_check_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
