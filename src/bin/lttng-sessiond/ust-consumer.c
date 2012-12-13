@@ -57,16 +57,22 @@ static int send_channel(struct consumer_socket *sock,
 			uchan->name,
 			uchan->streams.count);
 
+	health_code_update(&health_thread_cmd);
+
 	ret = consumer_send_channel(sock, &msg);
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update(&health_thread_cmd);
 
 	fd = uchan->obj->shm_fd;
 	ret = consumer_send_fds(sock, &fd, 1);
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update(&health_thread_cmd);
 
 error:
 	return ret;
@@ -108,6 +114,8 @@ static int send_channel_stream(struct consumer_socket *sock,
 			pathname,
 			usess->id);
 
+	health_code_update(&health_thread_cmd);
+
 	/* Send stream and file descriptor */
 	fds[0] = stream->obj->shm_fd;
 	fds[1] = stream->obj->wait_fd;
@@ -115,6 +123,8 @@ static int send_channel_stream(struct consumer_socket *sock,
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update(&health_thread_cmd);
 
 error:
 	return ret;
@@ -220,10 +230,14 @@ static int send_metadata(struct consumer_socket *sock,
 			"metadata",
 			1);
 
+	health_code_update(&health_thread_cmd);
+
 	ret = consumer_send_channel(sock, &msg);
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update(&health_thread_cmd);
 
 	/* Sending metadata shared memory fd */
 	fd = usess->metadata->obj->shm_fd;
@@ -231,6 +245,8 @@ static int send_metadata(struct consumer_socket *sock,
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update(&health_thread_cmd);
 
 	/* Get correct path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
@@ -277,6 +293,8 @@ static int send_metadata(struct consumer_socket *sock,
 			pathname,
 			usess->id);
 
+	health_code_update(&health_thread_cmd);
+
 	/* Send stream and file descriptor */
 	fds[0] = usess->metadata->stream_obj->shm_fd;
 	fds[1] = usess->metadata->stream_obj->wait_fd;
@@ -284,6 +302,8 @@ static int send_metadata(struct consumer_socket *sock,
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update(&health_thread_cmd);
 
 error:
 	return ret;
