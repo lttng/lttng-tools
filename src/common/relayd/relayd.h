@@ -39,5 +39,8 @@ int relayd_send_data_hdr(struct lttcomm_sock *sock,
 int relayd_data_pending(struct lttcomm_sock *sock, uint64_t stream_id,
 		uint64_t last_net_seq_num);
 int relayd_quiescent_control(struct lttcomm_sock *sock);
+int relayd_begin_data_pending(struct lttcomm_sock *sock, uint64_t id);
+int relayd_end_data_pending(struct lttcomm_sock *sock, uint64_t id,
+		unsigned int *is_data_inflight);
 
 #endif /* _RELAYD_H */

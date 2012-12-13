@@ -455,6 +455,13 @@ int close_stream_check(struct relay_stream *stream)
 {
 
 	if (stream->close_flag && stream->prev_seq == stream->last_net_seq_num) {
+		/*
+		 * We are about to close the stream so set the data pending flag to 1
+		 * which will make the end data pending command skip the stream which
+		 * is now closed and ready. Note that after proceeding to a file close,
+		 * the written file is ready for reading.
+		 */
+		stream->data_pending_check_done = 1;
 		return 1;
 	}
 	return 0;
@@ -1426,6 +1433,9 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = 1;
 	}
 
+	/* Pending check is now done. */
+	stream->data_pending_check_done = 1;
+
 end_unlock:
 	rcu_read_unlock();
 
@@ -1465,6 +1475,141 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 }
 
 /*
+ * Initialize a data pending command. This means that a client is about to ask
+ * for data pending for each stream he/she holds. Simply iterate over all
+ * streams of a session and set the data_pending_check_done flag.
+ *
+ * This command returns to the client a LTTNG_OK code.
+ */
+static
+int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_command *cmd, struct lttng_ht *streams_ht)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttcomm_relayd_begin_data_pending msg;
+	struct lttcomm_relayd_generic_reply reply;
+	struct relay_stream *stream;
+	uint64_t session_id;
+
+	assert(recv_hdr);
+	assert(cmd);
+	assert(streams_ht);
+
+	DBG("Init streams for data pending");
+
+	if (!cmd->session || cmd->version_check_done == 0) {
+		ERR("Trying to check for data before version check");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	if (ret < sizeof(msg)) {
+		ERR("Relay didn't receive valid begin data_pending struct size: %d",
+				ret);
+		ret = -1;
+		goto end_no_session;
+	}
+
+	session_id = be64toh(msg.session_id);
+
+	/*
+	 * Iterate over all streams to set the begin data pending flag. For now, the
+	 * streams are indexed by stream handle so we have to iterate over all
+	 * streams to find the one associated with the right session_id.
+	 */
+	rcu_read_lock();
+	cds_lfht_for_each_entry(streams_ht->ht, &iter.iter, stream, stream_n.node) {
+		if (stream->session->id == session_id) {
+			stream->data_pending_check_done = 0;
+			DBG("Set begin data pending flag to stream %" PRIu64,
+					stream->stream_handle);
+		}
+	}
+	rcu_read_unlock();
+
+	/* All good, send back reply. */
+	reply.ret_code = htobe32(LTTNG_OK);
+
+	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	if (ret < 0) {
+		ERR("Relay begin data pending send reply failed");
+	}
+
+end_no_session:
+	return ret;
+}
+
+/*
+ * End data pending command. This will check, for a given session id, if each
+ * stream associated with it has its data_pending_check_done flag set. If not,
+ * this means that the client lost track of the stream but the data is still
+ * being streamed on our side. In this case, we inform the client that data is
+ * inflight.
+ *
+ * Return to the client if there is data in flight or not with a ret_code.
+ */
+static
+int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_command *cmd, struct lttng_ht *streams_ht)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttcomm_relayd_end_data_pending msg;
+	struct lttcomm_relayd_generic_reply reply;
+	struct relay_stream *stream;
+	uint64_t session_id;
+	uint32_t is_data_inflight = 0;
+
+	assert(recv_hdr);
+	assert(cmd);
+	assert(streams_ht);
+
+	DBG("End data pending command");
+
+	if (!cmd->session || cmd->version_check_done == 0) {
+		ERR("Trying to check for data before version check");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	if (ret < sizeof(msg)) {
+		ERR("Relay didn't receive valid end data_pending struct size: %d",
+				ret);
+		ret = -1;
+		goto end_no_session;
+	}
+
+	session_id = be64toh(msg.session_id);
+
+	/* Iterate over all streams to see if the begin data pending flag is set. */
+	rcu_read_lock();
+	cds_lfht_for_each_entry(streams_ht->ht, &iter.iter, stream, stream_n.node) {
+		if (stream->session->id == session_id &&
+				!stream->data_pending_check_done) {
+			is_data_inflight = 1;
+			DBG("Data is still in flight for stream %" PRIu64,
+					stream->stream_handle);
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+	/* All good, send back reply. */
+	reply.ret_code = htobe32(is_data_inflight);
+
+	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	if (ret < 0) {
+		ERR("Relay end data pending send reply failed");
+	}
+
+end_no_session:
+	return ret;
+}
+
+/*
  * relay_process_control: Process the commands received on the control socket
  */
 static
@@ -1497,6 +1642,12 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case RELAYD_QUIESCENT_CONTROL:
 		ret = relay_quiescent_control(recv_hdr, cmd);
+		break;
+	case RELAYD_BEGIN_DATA_PENDING:
+		ret = relay_begin_data_pending(recv_hdr, cmd, streams_ht);
+		break;
+	case RELAYD_END_DATA_PENDING:
+		ret = relay_end_data_pending(recv_hdr, cmd, streams_ht);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:

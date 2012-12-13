@@ -125,4 +125,12 @@ struct lttcomm_relayd_data_pending {
 	uint64_t last_net_seq_num; /* Sequence number of the last packet */
 } __attribute__ ((__packed__));
 
+struct lttcomm_relayd_begin_data_pending {
+	uint64_t session_id;
+} __attribute__ ((__packed__));
+
+struct lttcomm_relayd_end_data_pending {
+	uint64_t session_id;
+} __attribute__ ((__packed__));
+
 #endif	/* _RELAYD_COMM */

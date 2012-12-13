@@ -91,6 +91,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_EVENT_WITH_FILTER      = 32,
 	LTTNG_HEALTH_CHECK                  = 33,
 	LTTNG_DATA_PENDING                  = 34,
+	RELAYD_BEGIN_DATA_PENDING           = 35,
+	RELAYD_END_DATA_PENDING             = 36,
 };
 
 /*

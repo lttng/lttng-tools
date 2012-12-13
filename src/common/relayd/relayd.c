@@ -503,3 +503,94 @@ int relayd_quiescent_control(struct lttcomm_sock *sock)
 error:
 	return ret;
 }
+
+/*
+ * Begin a data pending command for a specific session id.
+ */
+int relayd_begin_data_pending(struct lttcomm_sock *sock, uint64_t id)
+{
+	int ret;
+	struct lttcomm_relayd_begin_data_pending msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(sock);
+
+	DBG("Relayd begin data pending");
+
+	msg.session_id = htobe64(id);
+
+	/* Send command */
+	ret = send_command(sock, RELAYD_BEGIN_DATA_PENDING, &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Recevie response */
+	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -reply.ret_code;
+		ERR("Relayd begin data pending replied error %d", ret);
+		goto error;
+	}
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ * End a data pending command for a specific session id.
+ *
+ * Return 0 on success and set is_data_inflight to 0 if no data is being
+ * streamed or 1 if it is the case.
+ */
+int relayd_end_data_pending(struct lttcomm_sock *sock, uint64_t id,
+		unsigned int *is_data_inflight)
+{
+	int ret;
+	struct lttcomm_relayd_end_data_pending msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(sock);
+
+	DBG("Relayd end data pending");
+
+	msg.session_id = htobe64(id);
+
+	/* Send command */
+	ret = send_command(sock, RELAYD_END_DATA_PENDING, &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Recevie response */
+	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+	if (reply.ret_code < 0) {
+		ret = reply.ret_code;
+		goto error;
+	}
+
+	*is_data_inflight = reply.ret_code;
+
+	DBG("Relayd end data pending is data inflight: %d", reply.ret_code);
+
+	return 0;
+
+error:
+	return ret;
+}
