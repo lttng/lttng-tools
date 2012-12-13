@@ -1212,11 +1212,12 @@ error:
 }
 
 /*
- * Create UST app channel and create it on the tracer.
+ * Create UST app channel and create it on the tracer. Set ua_chanp of the
+ * newly created channel if not NULL.
  */
-static struct ust_app_channel *create_ust_app_channel(
-		struct ust_app_session *ua_sess, struct ltt_ust_channel *uchan,
-		struct ust_app *app)
+static int create_ust_app_channel(struct ust_app_session *ua_sess,
+		struct ltt_ust_channel *uchan, struct ust_app *app,
+		struct ust_app_channel **ua_chanp)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -1234,6 +1235,7 @@ static struct ust_app_channel *create_ust_app_channel(
 	ua_chan = alloc_ust_app_channel(uchan->name, &uchan->attr);
 	if (ua_chan == NULL) {
 		/* Only malloc can fail here */
+		ret = -ENOMEM;
 		goto error;
 	}
 	shadow_copy_channel(ua_chan, uchan);
@@ -1245,17 +1247,23 @@ static struct ust_app_channel *create_ust_app_channel(
 		goto error;
 	}
 
+	/* Only add the channel if successful on the tracer side. */
 	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 
 	DBG2("UST app create channel %s for PID %d completed", ua_chan->name,
 			app->pid);
 
 end:
-	return ua_chan;
+	if (ua_chanp) {
+		*ua_chanp = ua_chan;
+	}
+
+	/* Everything went well. */
+	return 0;
 
 error:
 	delete_ust_app_channel(-1, ua_chan);
-	return NULL;
+	return ret;
 }
 
 /*
@@ -2021,7 +2029,6 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
 
 	/* Very wrong code flow */
 	assert(usess);
@@ -2049,19 +2056,21 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		ua_sess = create_ust_app_session(usess, app);
 		if (ua_sess == NULL) {
 			/* The malloc() failed. */
-			ret = -1;
+			ret = -ENOMEM;
 			goto error_rcu_unlock;
 		} else if (ua_sess == (void *) -1UL) {
-			/* The application's socket is not valid. Contiuing */
-			ret = -1;
+			/*
+			 * The application's socket is not valid. Either a bad socket or a
+			 * timeout on it. We can't inform yet the caller that for a
+			 * specific app, the session failed so we continue here.
+			 */
 			continue;
 		}
 
-		/* Create channel onto application */
-		ua_chan = create_ust_app_channel(ua_sess, uchan, app);
-		if (ua_chan == NULL) {
-			/* Major problem here and it's maybe the tracer or malloc() */
-			ret = -1;
+		/* Create channel onto application. We don't need the chan ref. */
+		ret = create_ust_app_channel(ua_sess, uchan, app, NULL);
+		if (ret < 0 && ret == -ENOMEM) {
+			/* No more memory is a fatal error. Stop right now. */
 			goto error_rcu_unlock;
 		}
 	}

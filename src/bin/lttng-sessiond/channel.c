@@ -190,8 +190,16 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		DBG2("Channel %s being enabled in UST global domain", uchan->name);
-		/* Enable channel for global domain */
-		ret = ust_app_enable_channel_glb(usess, uchan);
+
+		/*
+		 * Enable channel for UST global domain on all applications. Ignore
+		 * return value here since whatever error we got, it means that the
+		 * channel was not created on one or many registered applications and
+		 * we can not report this to the user yet. However, at this stage, the
+		 * channel was successfully created on the session daemon side so the
+		 * enable-channel command is a success.
+		 */
+		(void) ust_app_create_channel_glb(usess, uchan);
 		break;
 #if 0
 	case LTTNG_DOMAIN_UST_PID:
@@ -201,15 +209,6 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
-	}
-
-	if (ret < 0) {
-		if (ret != -LTTNG_UST_ERR_EXIST) {
-			ret = LTTNG_ERR_UST_CHAN_ENABLE_FAIL;
-			goto error;
-		} else {
-			ret = LTTNG_OK;
-		}
 	}
 
 	uchan->enabled = 1;
