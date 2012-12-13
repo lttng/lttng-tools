@@ -39,7 +39,7 @@ struct lttcomm_relayd_hdr {
 	uint64_t data_size;		/* data size following this header */
 	uint32_t cmd;			/* enum lttcomm_sessiond_command */
 	uint32_t cmd_version;	/* command version */
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * lttng-relayd data header.
@@ -51,7 +51,7 @@ struct lttcomm_relayd_data_hdr {
 	uint64_t net_seq_num;   /* Network sequence number, per stream. */
 	uint32_t data_size;     /* data size following this header */
 	uint32_t padding_size;  /* Size of 0 padding the data */
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Reply from a create session command.
@@ -59,7 +59,7 @@ struct lttcomm_relayd_data_hdr {
 struct lttcomm_relayd_status_session {
 	uint64_t session_id;
 	uint32_t ret_code;
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Used to add a stream on the relay daemon.
@@ -67,7 +67,7 @@ struct lttcomm_relayd_status_session {
 struct lttcomm_relayd_add_stream {
 	char channel_name[DEFAULT_STREAM_NAME_LEN];
 	char pathname[PATH_MAX];
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Answer from an add stream command.
@@ -75,21 +75,21 @@ struct lttcomm_relayd_add_stream {
 struct lttcomm_relayd_status_stream {
 	uint64_t handle;
 	uint32_t ret_code;
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Used to return command code for command not needing special data.
  */
 struct lttcomm_relayd_generic_reply {
 	uint32_t ret_code;
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Used to update synchronization information.
  */
 struct lttcomm_relayd_update_sync_info {
 	/* TODO: fill the structure. Feature not implemented yet */
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Version command.
@@ -97,7 +97,7 @@ struct lttcomm_relayd_update_sync_info {
 struct lttcomm_relayd_version {
 	uint32_t major;
 	uint32_t minor;
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Metadata payload used when metadata command is sent.
@@ -106,7 +106,7 @@ struct lttcomm_relayd_metadata_payload {
 	uint64_t stream_id;
 	uint32_t padding_size;
 	char payload[];
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Used to indicate that a specific stream id can now be closed.
@@ -114,7 +114,7 @@ struct lttcomm_relayd_metadata_payload {
 struct lttcomm_relayd_close_stream {
 	uint64_t stream_id;
 	uint64_t last_net_seq_num;	/* sequence number of last packet */
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 /*
  * Used to test if for a given stream id the data is pending on the relayd side
@@ -123,14 +123,14 @@ struct lttcomm_relayd_close_stream {
 struct lttcomm_relayd_data_pending {
 	uint64_t stream_id;
 	uint64_t last_net_seq_num; /* Sequence number of the last packet */
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 struct lttcomm_relayd_begin_data_pending {
 	uint64_t session_id;
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 struct lttcomm_relayd_end_data_pending {
 	uint64_t session_id;
-} __attribute__ ((__packed__));
+} LTTNG_PACKED;
 
 #endif	/* _RELAYD_COMM */
