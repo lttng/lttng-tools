@@ -33,19 +33,19 @@
 struct field_ref {
 	/* Initially, symbol offset. After link, field offset. */
 	uint16_t offset;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct literal_numeric {
 	int64_t v;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct literal_double {
 	double v;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct literal_string {
 	char string[0];
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 enum filter_op {
 	FILTER_OP_UNKNOWN			= 0,
@@ -151,29 +151,29 @@ struct load_op {
 	filter_opcode_t op;
 	char data[0];
 	/* data to load. Size known by enum filter_opcode and null-term char. */
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct binary_op {
 	filter_opcode_t op;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct unary_op {
 	filter_opcode_t op;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 /* skip_offset is absolute from start of bytecode */
 struct logical_op {
 	filter_opcode_t op;
 	uint16_t skip_offset;	/* bytecode insn, if skip second test */
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct cast_op {
 	filter_opcode_t op;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct return_op {
 	filter_opcode_t op;
-} __attribute__((packed));
+} LTTNG_PACKED;
 
 struct lttng_filter_bytecode_alloc {
 	uint32_t alloc_len;

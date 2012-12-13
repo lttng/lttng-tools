@@ -56,9 +56,9 @@ struct lttng_ust_tracer_version {
 
 #define LTTNG_UST_CHANNEL_PADDING	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_channel {
-	int overwrite;				/* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;			/* in bytes */
 	uint64_t num_subbuf;
+	int overwrite;				/* 1: overwrite, 0: discard */
 	unsigned int switch_timer_interval;	/* usecs */
 	unsigned int read_timer_interval;	/* usecs */
 	enum lttng_ust_output output;		/* output mode */
@@ -132,9 +132,9 @@ struct lttng_ust_context {
  */
 #define LTTNG_UST_CHANNEL_ATTR_PADDING	LTTNG_UST_SYM_NAME_LEN + 32
 struct lttng_ust_channel_attr {
-	int overwrite;				/* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;			/* bytes */
 	uint64_t num_subbuf;			/* power of 2 */
+	int overwrite;				/* 1: overwrite, 0: discard */
 	unsigned int switch_timer_interval;	/* usec */
 	unsigned int read_timer_interval;	/* usec */
 	enum lttng_ust_output output;		/* splice, mmap */
