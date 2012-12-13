@@ -1513,7 +1513,6 @@ error:
 		health_error(&health_thread_app_reg);
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_exit(&health_thread_app_reg);
 
 	/* Notify that the registration thread is gone */
 	notify_ust_apps(0);
@@ -1538,6 +1537,7 @@ error_poll_add:
 error_listen:
 error_create_poll:
 	DBG("UST Registration thread cleanup complete");
+	health_exit(&health_thread_app_reg);
 
 	return NULL;
 }
