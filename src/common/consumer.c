@@ -2714,7 +2714,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock,
 		unsigned int sessiond_id)
 {
-	int fd = -1, ret = -1;
+	int fd = -1, ret = -1, relayd_created = 0;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct consumer_relayd_sock_pair *relayd;
 	struct consumer_relayd_session_id *relayd_id_node;
@@ -2738,6 +2738,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 			goto error;
 		}
 		relayd->sessiond_session_id = (uint64_t) sessiond_id;
+		relayd_created = 1;
 	}
 
 	/* Poll on consumer socket. */
@@ -2853,6 +2854,14 @@ error:
 			PERROR("close received socket");
 		}
 	}
+
+	if (relayd_created) {
+		/* We just want to cleanup. Ignore ret value. */
+		(void) relayd_close(&relayd->control_sock);
+		(void) relayd_close(&relayd->data_sock);
+		free(relayd);
+	}
+
 	return ret;
 }
 
