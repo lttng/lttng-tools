@@ -243,7 +243,7 @@ static void destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 	lttng_ht_lookup(relayd_session_id_ht,
 			(void *)((unsigned long) relayd->sessiond_session_id), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node != NULL) {
+	if (node == NULL) {
 		/* We assume the relayd is being or is destroyed */
 		return;
 	}
