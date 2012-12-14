@@ -60,4 +60,8 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+#ifndef LTTNG_PACKED
+#define LTTNG_PACKED __attribute__((__packed__))
+#endif
+
 #endif /* _MACROS_H */

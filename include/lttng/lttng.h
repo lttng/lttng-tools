@@ -33,10 +33,6 @@
 extern "C" {
 #endif
 
-#ifndef LTTNG_PACKED
-#define LTTNG_PACKED __attribute__((__packed__))
-#endif
-
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
@@ -160,7 +156,7 @@ struct lttng_domain {
 		char exec_name[NAME_MAX];
 		char padding[LTTNG_DOMAIN_PADDING2];
 	} attr;
-} LTTNG_PACKED;
+};
 
 /*
  * Perf counter attributes
@@ -174,7 +170,7 @@ struct lttng_event_perf_counter_ctx {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
 	char padding[LTTNG_PERF_EVENT_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Event/channel context
@@ -191,7 +187,7 @@ struct lttng_event_context {
 		struct lttng_event_perf_counter_ctx perf_counter;
 		char padding[LTTNG_EVENT_CONTEXT_PADDING2];
 	} u;
-} LTTNG_PACKED;
+};
 
 /*
  * Event probe.
@@ -208,7 +204,7 @@ struct lttng_event_probe_attr {
 	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
 
 	char padding[LTTNG_EVENT_PROBE_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Function tracer
@@ -220,7 +216,7 @@ struct lttng_event_function_attr {
 	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
 
 	char padding[LTTNG_EVENT_FUNCTION_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Generic lttng event
@@ -249,7 +245,7 @@ struct lttng_event {
 
 		char padding[LTTNG_EVENT_PADDING2];
 	} attr;
-} LTTNG_PACKED;
+};
 
 enum lttng_event_field_type {
 	LTTNG_EVENT_FIELD_OTHER			= 0,
@@ -266,7 +262,7 @@ struct lttng_event_field {
 	char padding[LTTNG_EVENT_FIELD_PADDING];
 	struct lttng_event event;
 	int nowrite;
-} LTTNG_PACKED;
+};
 
 /*
  * Tracer channel attributes. For both kernel and user-space.
@@ -283,7 +279,7 @@ struct lttng_channel_attr {
 	enum lttng_event_output output;     /* splice, mmap */
 
 	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Channel information structure. For both kernel and user-space.
@@ -297,14 +293,14 @@ struct lttng_channel {
 	struct lttng_channel_attr attr;
 
 	char padding[LTTNG_CHANNEL_PADDING1];
-} LTTNG_PACKED;
+};
 
 #define LTTNG_CALIBRATE_PADDING1           16
 struct lttng_calibrate {
 	enum lttng_calibrate_type type;
 
 	char padding[LTTNG_CALIBRATE_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Basic session information.
@@ -323,7 +319,7 @@ struct lttng_session {
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
 
 	char padding[LTTNG_SESSION_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Handle used as a context for commands.
@@ -336,7 +332,7 @@ struct lttng_handle {
 	struct lttng_domain domain;
 
 	char padding[LTTNG_HANDLE_PADDING1];
-} LTTNG_PACKED;
+};
 
 /*
  * Public LTTng control API
