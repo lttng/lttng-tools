@@ -33,7 +33,7 @@
  * Send command. Fill up the header and append the data.
  */
 static int send_command(struct lttcomm_sock *sock,
-		enum lttcomm_sessiond_command cmd, void *data, size_t size,
+		enum lttcomm_relayd_command cmd, void *data, size_t size,
 		int flags)
 {
 	int ret;

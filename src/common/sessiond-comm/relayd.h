@@ -37,7 +37,7 @@ struct lttcomm_relayd_hdr {
 	/* Circuit ID not used for now so always ignored */
 	uint64_t circuit_id;
 	uint64_t data_size;		/* data size following this header */
-	uint32_t cmd;			/* enum lttcomm_sessiond_command */
+	uint32_t cmd;			/* enum lttcomm_relayd_command */
 	uint32_t cmd_version;	/* command version */
 } LTTNG_PACKED;
 
