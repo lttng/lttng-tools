@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-TEST_DESC="Streaming - High throughput with bandwith limits"
+
+TEST_DESC="Streaming - High throughput with bandwidth limits"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
@@ -40,7 +41,7 @@ if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 fi
 
 if [ "$(id -u)" != "0" ]; then
-	echo "This test must be running as root to set bandwith limits. Aborting"
+	echo "This test must be running as root to set bandwidth limits. Aborting"
 	# Exit status 0 so the tests can continue
 	exit 0
 fi
@@ -48,11 +49,10 @@ fi
 function set_bw_limit
 {
 	limit=$1
-	echo -n "Setting bandwith limits to ${limit}kbits... "
+	echo -n "Setting bandwidth limits to ${limit}kbits... "
 	tc qdisc add dev $DEFAULT_IF root handle 1: htb default 15 >/dev/null 2>&1
 	tc class add dev $DEFAULT_IF parent 1: classid 1:1 htb rate ${limit}kbit ceil ${limit}kbit >/dev/null 2>&1
 
-	# FIXME: Timeout when setting limits on ctrl port.
 	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:1 >/dev/null 2>&1
 
 	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:1 >/dev/null 2>&1
@@ -61,7 +61,7 @@ function set_bw_limit
 
 function reset_bw_limit
 {
-	echo -n "Resetting bandwith limits... "
+	echo -n "Resetting bandwidth limits... "
 	tc qdisc del dev $DEFAULT_IF root >/dev/null 2>&1
 	print_ok
 }
@@ -84,6 +84,10 @@ function enable_lttng_consumer
 function run_apps
 {
 	for i in `seq 1 $NR_APP_ITER`; do
+		# With bandwidth limitation, unfortunately, application easily timeout
+		# due to very slow communication between the consumer and relayd making
+		# the status reply from the consumer quite slow thus delaying the
+		# registration done message.
 		LTTNG_UST_REGISTER_TIMEOUT=-1 ./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
 	done
 }
@@ -107,10 +111,6 @@ function test_high_throughput
 	start_lttng_tracing $SESSION_NAME
 	run_apps
 	wait_apps
-
-	# FIXME: Should not be necessary...
-	#echo "Sleeping..."
-	#sleep 180
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -137,9 +137,6 @@ function validate_event_count
 	let total=$dropped+$traced
 	let wanted=$NR_APP_ITER*$NR_ITER
 
-	rm -rf $TRACE_PATH
-	rm $TEMP_FILE $TEMP_FILE_2
-
 	if [ $wanted -ne $total ]; then
 		echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
 		print_fail
@@ -147,6 +144,11 @@ function validate_event_count
 	else
 		echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
 		print_ok
+
+		# Cleanup only if everything is ok and passes.
+		rm -rf $TRACE_PATH
+		rm $TEMP_FILE $TEMP_FILE_2
+
 		return 0
 	fi
 }
@@ -167,7 +169,7 @@ BW_LIMITS=(3200 1600 800 400 200 100 50 25)
 for BW in ${BW_LIMITS[@]};
 do
 	echo ""
-	echo -e "=== Testing high-throughput with bandwith limit set to ${BW}kbits"
+	echo -e "=== Testing high-throughput with bandwidth limit set to ${BW}kbits"
 	set_bw_limit $BW
 
 	start_lttng_sessiond
