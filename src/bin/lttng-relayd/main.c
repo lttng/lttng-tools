@@ -514,6 +514,9 @@ void *relay_thread_listener(void *data)
 	while (1) {
 		DBG("Listener accepting connections");
 
+		/* Zeroed the events structure */
+		lttng_poll_reset(&events);
+
 		nb_fd = LTTNG_POLL_GETNB(&events);
 
 restart:
