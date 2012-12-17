@@ -164,7 +164,11 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 		goto error;
 	}
 
-	return ret;
+	/*
+	 * poll() should always iterate on all FDs since we handle the pollset in
+	 * user space and after poll returns, we have to try every fd for a match.
+	 */
+	return events->nb_fd;
 
 error:
 	return -1;

@@ -188,6 +188,10 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 		goto error;
 	}
 
+	/*
+	 * Since the returned events are set sequentially in the "events" structure
+	 * we only need to return the epoll_wait value and iterate over it.
+	 */
 	return ret;
 
 error:
