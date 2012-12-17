@@ -278,7 +278,7 @@ error:
  */
 static int view_trace(void)
 {
-	int ret, count, i, found = 0;
+	int ret;
 	char *session_name, *trace_path;
 	struct lttng_session *sessions = NULL;
 
@@ -314,6 +314,8 @@ static int view_trace(void)
 	DBG("Viewing trace for session %s", session_name);
 
 	if (session_name) {
+		int i, count, found = 0;
+
 		/* Getting all sessions */
 		count = lttng_list_sessions(&sessions);
 		if (count < 0) {

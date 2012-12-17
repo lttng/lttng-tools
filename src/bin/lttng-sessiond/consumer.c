@@ -112,7 +112,6 @@ error:
  */
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer)
 {
-	int ret;
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket;
 
@@ -123,6 +122,8 @@ void consumer_output_send_destroy_relayd(struct consumer_output *consumer)
 		rcu_read_lock();
 		cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
 				node.node) {
+			int ret;
+
 			/* Send destroy relayd command */
 			ret = consumer_send_destroy_relayd(socket, consumer);
 			if (ret < 0) {

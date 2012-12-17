@@ -556,7 +556,6 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	int fd, pos, ret;
 	char *event;
 	size_t nbmem, count = 0;
-	ssize_t size;
 	FILE *fp;
 	struct lttng_event *elist;
 
@@ -584,7 +583,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 		goto end;
 	}
 
-	while ((size = fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos)) == 1) {
+	while (fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos) == 1) {
 		if (count >= nbmem) {
 			struct lttng_event *new_elist;
 

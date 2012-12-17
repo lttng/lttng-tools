@@ -484,13 +484,14 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	struct lttng_ust_shm_handle *handle;
 	struct lttng_ust_lib_ring_buffer *buf;
 	char dummy;
-	ssize_t readlen;
 
 	DBG("In read_subbuffer (wait_fd: %d, stream key: %d)",
 		stream->wait_fd, stream->key);
 
 	/* We can consume the 1 byte written into the wait_fd by UST */
 	if (!stream->hangup_flush_done) {
+		ssize_t readlen;
+
 		do {
 			readlen = read(stream->wait_fd, &dummy, 1);
 		} while (readlen == -1 && errno == EINTR);

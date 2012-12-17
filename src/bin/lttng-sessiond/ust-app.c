@@ -1038,7 +1038,6 @@ error:
 static struct ust_app_session *create_ust_app_session(
 		struct ltt_ust_session *usess, struct ust_app *app)
 {
-	int ret;
 	struct ust_app_session *ua_sess;
 
 	health_code_update(&health_thread_cmd);
@@ -1058,6 +1057,8 @@ static struct ust_app_session *create_ust_app_session(
 	health_code_update(&health_thread_cmd);
 
 	if (ua_sess->handle == -1) {
+		int ret;
+
 		ret = ustctl_create_session(app->sock);
 		if (ret < 0) {
 			ERR("Creating session for app pid %d", app->pid);
@@ -1588,11 +1589,11 @@ int ust_app_list_events(struct lttng_event **events)
 	size_t nbmem, count = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
-	struct lttng_event *tmp;
+	struct lttng_event *tmp_event;
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
-	tmp = zmalloc(nbmem * sizeof(struct lttng_event));
-	if (tmp == NULL) {
+	tmp_event = zmalloc(nbmem * sizeof(struct lttng_event));
+	if (tmp_event == NULL) {
 		PERROR("zmalloc ust app events");
 		ret = -ENOMEM;
 		goto error;
@@ -1624,29 +1625,31 @@ int ust_app_list_events(struct lttng_event **events)
 			health_code_update(&health_thread_cmd);
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
-				void *tmp_ptr = (void *) tmp;
+				void *ptr;
+
 				DBG2("Reallocating event list from %zu to %zu entries", nbmem,
 						2 * nbmem);
 				nbmem *= 2;
-				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event));
-				if (tmp == NULL) {
+				ptr = realloc(tmp_event, nbmem * sizeof(struct lttng_event));
+				if (ptr == NULL) {
 					PERROR("realloc ust app events");
-					free(tmp_ptr);
+					free(tmp_event);
 					ret = -ENOMEM;
 					goto rcu_error;
 				}
+				tmp_event = ptr;
 			}
-			memcpy(tmp[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
-			tmp[count].loglevel = uiter.loglevel;
-			tmp[count].type = (enum lttng_event_type) LTTNG_UST_TRACEPOINT;
-			tmp[count].pid = app->pid;
-			tmp[count].enabled = -1;
+			memcpy(tmp_event[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
+			tmp_event[count].loglevel = uiter.loglevel;
+			tmp_event[count].type = (enum lttng_event_type) LTTNG_UST_TRACEPOINT;
+			tmp_event[count].pid = app->pid;
+			tmp_event[count].enabled = -1;
 			count++;
 		}
 	}
 
 	ret = count;
-	*events = tmp;
+	*events = tmp_event;
 
 	DBG2("UST app list events done (%zu events)", count);
 
@@ -1666,11 +1669,11 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 	size_t nbmem, count = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
-	struct lttng_event_field *tmp;
+	struct lttng_event_field *tmp_event;
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
-	tmp = zmalloc(nbmem * sizeof(struct lttng_event_field));
-	if (tmp == NULL) {
+	tmp_event = zmalloc(nbmem * sizeof(struct lttng_event_field));
+	if (tmp_event == NULL) {
 		PERROR("zmalloc ust app event fields");
 		ret = -ENOMEM;
 		goto error;
@@ -1702,34 +1705,36 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 			health_code_update(&health_thread_cmd);
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
-				void *tmp_ptr = (void *) tmp;
+				void *ptr;
+
 				DBG2("Reallocating event field list from %zu to %zu entries", nbmem,
 						2 * nbmem);
 				nbmem *= 2;
-				tmp = realloc(tmp, nbmem * sizeof(struct lttng_event_field));
-				if (tmp == NULL) {
+				ptr = realloc(tmp_event, nbmem * sizeof(struct lttng_event_field));
+				if (ptr == NULL) {
 					PERROR("realloc ust app event fields");
-					free(tmp_ptr);
+					free(tmp_event);
 					ret = -ENOMEM;
 					goto rcu_error;
 				}
+				tmp_event = ptr;
 			}
 
-			memcpy(tmp[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
-			tmp[count].type = uiter.type;
-			tmp[count].nowrite = uiter.nowrite;
+			memcpy(tmp_event[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
+			tmp_event[count].type = uiter.type;
+			tmp_event[count].nowrite = uiter.nowrite;
 
-			memcpy(tmp[count].event.name, uiter.event_name, LTTNG_UST_SYM_NAME_LEN);
-			tmp[count].event.loglevel = uiter.loglevel;
-			tmp[count].event.type = LTTNG_UST_TRACEPOINT;
-			tmp[count].event.pid = app->pid;
-			tmp[count].event.enabled = -1;
+			memcpy(tmp_event[count].event.name, uiter.event_name, LTTNG_UST_SYM_NAME_LEN);
+			tmp_event[count].event.loglevel = uiter.loglevel;
+			tmp_event[count].event.type = LTTNG_UST_TRACEPOINT;
+			tmp_event[count].event.pid = app->pid;
+			tmp_event[count].event.enabled = -1;
 			count++;
 		}
 	}
 
 	ret = count;
-	*fields = tmp;
+	*fields = tmp_event;
 
 	DBG2("UST app list event fields done (%zu events)", count);
 

@@ -183,7 +183,6 @@ error:
 struct ltt_ust_session *trace_ust_create_session(char *path,
 		unsigned int session_id, struct lttng_domain *domain)
 {
-	int ret;
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
@@ -219,6 +218,8 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 
 	/* Use the default consumer output which is the tracing session path. */
 	if (path && strlen(path) > 0) {
+		int ret;
+
 		ret = snprintf(lus->consumer->dst.trace_path, PATH_MAX,
 				"%s" DEFAULT_UST_TRACE_DIR, path);
 		if (ret < 0) {

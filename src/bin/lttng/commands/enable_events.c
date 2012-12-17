@@ -255,7 +255,7 @@ int loglevel_str_to_value(const char *inputstr)
 	int i = 0;
 	char str[LTTNG_SYMBOL_NAME_LEN];
 
-	while (inputstr[i] != '\0' && i < LTTNG_SYMBOL_NAME_LEN) {
+	while (i < LTTNG_SYMBOL_NAME_LEN && inputstr[i] != '\0') {
 		str[i] = toupper(inputstr[i]);
 		i++;
 	}

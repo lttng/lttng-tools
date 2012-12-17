@@ -78,7 +78,7 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 {
 	code = -code;
 
-	if (code < LTTCOMM_CONSUMERD_COMMAND_SOCK_READY && code > LTTCOMM_NR) {
+	if (code < LTTCOMM_CONSUMERD_COMMAND_SOCK_READY || code > LTTCOMM_NR) {
 		code = LTTCOMM_NR;
 	}
 

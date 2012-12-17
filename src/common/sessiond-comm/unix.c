@@ -257,6 +257,7 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	char dummy = 0;
 
 	memset(&msg, 0, sizeof(msg));
+	memset(tmp, 0, CMSG_SPACE(sizeof_fds) * sizeof(char));
 
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
@@ -380,6 +381,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 #endif /* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
+	memset(anc_buf, 0, CMSG_SPACE(sizeof_cred) * sizeof(char));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;

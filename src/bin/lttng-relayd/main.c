@@ -1273,14 +1273,16 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 
 	if (data_buffer_size < data_size) {
 		/* In case the realloc fails, we can free the memory */
-		char *tmp_data_ptr = data_buffer;
-		data_buffer = realloc(data_buffer, data_size);
-		if (!data_buffer) {
+		char *tmp_data_ptr;
+
+		tmp_data_ptr = realloc(data_buffer, data_size);
+		if (!tmp_data_ptr) {
 			ERR("Allocating data buffer");
-			free(tmp_data_ptr);
+			free(data_buffer);
 			ret = -1;
 			goto end;
 		}
+		data_buffer = tmp_data_ptr;
 		data_buffer_size = data_size;
 	}
 	memset(data_buffer, 0, data_size);
@@ -1354,7 +1356,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	 * structure considering that the other side will adapt.
 	 */
 
-	ret = sscanf(VERSION, "%u.%u", &reply.major, &reply.minor);
+	ret = sscanf(VERSION, "%10u.%10u", &reply.major, &reply.minor);
 	if (ret < 2) {
 		ERR("Error in scanning version");
 		ret = -1;
@@ -1693,14 +1695,16 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 
 	data_size = be32toh(data_hdr.data_size);
 	if (data_buffer_size < data_size) {
-		char *tmp_data_ptr = data_buffer;
-		data_buffer = realloc(data_buffer, data_size);
-		if (!data_buffer) {
+		char *tmp_data_ptr;
+
+		tmp_data_ptr = realloc(data_buffer, data_size);
+		if (!tmp_data_ptr) {
 			ERR("Allocating data buffer");
-			free(tmp_data_ptr);
+			free(data_buffer);
 			ret = -1;
 			goto end_unlock;
 		}
+		data_buffer = tmp_data_ptr;
 		data_buffer_size = data_size;
 	}
 	memset(data_buffer, 0, data_size);
@@ -2054,7 +2058,7 @@ int main(int argc, char **argv)
 
 	/* Parse arguments */
 	progname = argv[0];
-	if ((ret = parse_args(argc, argv) < 0)) {
+	if ((ret = parse_args(argc, argv)) < 0) {
 		goto exit;
 	}
 

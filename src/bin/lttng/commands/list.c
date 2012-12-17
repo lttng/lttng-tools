@@ -680,8 +680,7 @@ error:
  */
 int cmd_list(int argc, const char **argv)
 {
-	int opt, i, ret = CMD_SUCCESS;
-	int nb_domain;
+	int opt, ret = CMD_SUCCESS;
 	const char *session_name;
 	static poptContext pc;
 	struct lttng_domain domain;
@@ -778,6 +777,8 @@ int cmd_list(int argc, const char **argv)
 				goto end;
 			}
 		} else {
+			int i, nb_domain;
+
 			/* We want all domain(s) */
 			nb_domain = lttng_list_domains(session_name, &domains);
 			if (nb_domain < 0) {

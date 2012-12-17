@@ -342,7 +342,6 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	 * so we can define the control and data port.
 	 */
 	while (*purl == ':') {
-		int port;
 		const char *port_b, *port_e;
 		char *port_f;
 
@@ -369,6 +368,8 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		port_e = purl;
 
 		if (port_b != port_e) {
+			int port;
+
 			port_f = utils_strdupdelim(port_b, port_e);
 			if (port_f == NULL) {
 				goto free_error;

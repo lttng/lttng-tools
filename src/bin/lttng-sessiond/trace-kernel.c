@@ -85,7 +85,6 @@ error:
  */
 struct ltt_kernel_session *trace_kernel_create_session(char *path)
 {
-	int ret;
 	struct ltt_kernel_session *lks = NULL;
 
 	/* Allocate a new ltt kernel session */
@@ -117,6 +116,8 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	lks->tmp_consumer = NULL;
 
 	if (path && strlen(path) > 0) {
+		int ret;
+
 		/* Use the default consumer output which is the tracing session path. */
 		ret = snprintf(lks->consumer->dst.trace_path, PATH_MAX,
 				"%s" DEFAULT_KERNEL_TRACE_DIR, path);
@@ -330,11 +331,11 @@ error:
  */
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 {
-	int ret;
-
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
 	if (stream->fd >= 0) {
+		int ret;
+
 		ret = close(stream->fd);
 		if (ret) {
 			PERROR("close");
@@ -351,9 +352,9 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
  */
 void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
-	int ret;
-
 	if (event->fd >= 0) {
+		int ret;
+
 		DBG("[trace] Closing event fd %d", event->fd);
 		/* Close kernel fd */
 		ret = close(event->fd);
@@ -412,11 +413,11 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
  */
 void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 {
-	int ret;
-
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
 	if (metadata->fd >= 0) {
+		int ret;
+
 		ret = close(metadata->fd);
 		if (ret) {
 			PERROR("close");

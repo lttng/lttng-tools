@@ -461,7 +461,7 @@ static void cleanup(void)
 static int send_unix_sock(int sock, void *buf, size_t len)
 {
 	/* Check valid length */
-	if (len <= 0) {
+	if (len == 0) {
 		return -1;
 	}
 
@@ -1677,10 +1677,10 @@ error:
 static int join_consumer_thread(struct consumer_data *consumer_data)
 {
 	void *status;
-	int ret;
 
 	/* Consumer pid must be a real one. */
 	if (consumer_data->pid > 0) {
+		int ret;
 		ret = kill(consumer_data->pid, SIGTERM);
 		if (ret) {
 			ERR("Error killing consumer daemon");
@@ -1859,7 +1859,7 @@ error:
  */
 static int start_consumerd(struct consumer_data *consumer_data)
 {
-	int ret, err;
+	int ret;
 
 	/*
 	 * Set the listen() state on the socket since there is a possible race
@@ -1902,6 +1902,8 @@ end:
 error:
 	/* Cleanup already created socket on error. */
 	if (consumer_data->err_sock >= 0) {
+		int err;
+
 		err = close(consumer_data->err_sock);
 		if (err < 0) {
 			PERROR("close consumer data error socket");
@@ -3848,7 +3850,7 @@ int main(int argc, char **argv)
 
 	/* Parse arguments */
 	progname = argv[0];
-	if ((ret = parse_args(argc, argv) < 0)) {
+	if ((ret = parse_args(argc, argv)) < 0) {
 		goto error;
 	}
 
