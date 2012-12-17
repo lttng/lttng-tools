@@ -728,12 +728,7 @@ static void *thread_manage_kernel(void *data)
 			update_poll_flag = 0;
 		}
 
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
-		DBG("Thread kernel polling on %d fds", nb_fd);
-
-		/* Zeroed the poll events */
-		lttng_poll_reset(&events);
+		DBG("Thread kernel polling on %d fds", events.nb_fd);
 
 		/* Poll infinite value of time */
 	restart:
@@ -754,6 +749,8 @@ static void *thread_manage_kernel(void *data)
 				"This should not have happened! Continuing...");
 			continue;
 		}
+
+		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -886,8 +883,6 @@ static void *thread_manage_consumer(void *data)
 		goto error;
 	}
 
-	nb_fd = LTTNG_POLL_GETNB(&events);
-
 	health_code_update(&consumer_data->health);
 
 	/* Inifinite blocking call, waiting for transmission */
@@ -909,6 +904,8 @@ restart:
 		}
 		goto error;
 	}
+
+	nb_fd = ret;
 
 	for (i = 0; i < nb_fd; i++) {
 		/* Fetch once the poll data */
@@ -987,9 +984,6 @@ restart:
 
 	health_code_update(&consumer_data->health);
 
-	/* Update number of fd */
-	nb_fd = LTTNG_POLL_GETNB(&events);
-
 	/* Inifinite blocking call, waiting for transmission */
 restart_poll:
 	health_poll_update(&consumer_data->health);
@@ -1004,6 +998,8 @@ restart_poll:
 		}
 		goto error;
 	}
+
+	nb_fd = ret;
 
 	for (i = 0; i < nb_fd; i++) {
 		/* Fetch once the poll data */
@@ -1126,12 +1122,7 @@ static void *thread_manage_apps(void *data)
 	health_code_update(&health_thread_app_manage);
 
 	while (1) {
-		/* Zeroed the events structure */
-		lttng_poll_reset(&events);
-
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
-		DBG("Apps thread polling on %d fds", nb_fd);
+		DBG("Apps thread polling on %d fds", events.nb_fd);
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
@@ -1147,6 +1138,8 @@ static void *thread_manage_apps(void *data)
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -1405,8 +1398,6 @@ static void *thread_registration_apps(void *data)
 	while (1) {
 		DBG("Accepting application registration");
 
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
 		health_poll_update(&health_thread_app_reg);
@@ -1421,6 +1412,8 @@ static void *thread_registration_apps(void *data)
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
 			health_code_update(&health_thread_app_reg);
@@ -2982,8 +2975,6 @@ static void *thread_manage_health(void *data)
 	while (1) {
 		DBG("Health check ready");
 
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
 		/* Inifinite blocking call, waiting for transmission */
 restart:
 		ret = lttng_poll_wait(&events, -1);
@@ -2996,6 +2987,8 @@ restart:
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -3181,8 +3174,6 @@ static void *thread_manage_clients(void *data)
 	while (1) {
 		DBG("Accepting client command ...");
 
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
 		health_poll_update(&health_thread_cmd);
@@ -3197,6 +3188,8 @@ static void *thread_manage_clients(void *data)
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */

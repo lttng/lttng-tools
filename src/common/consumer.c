@@ -2101,17 +2101,13 @@ void *consumer_thread_metadata_poll(void *data)
 	DBG("Metadata main loop started");
 
 	while (1) {
-		lttng_poll_reset(&events);
-
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
 		/* Only the metadata pipe is set */
-		if (nb_fd == 0 && consumer_quit == 1) {
+		if (events.nb_fd == 0 && consumer_quit == 1) {
 			goto end;
 		}
 
 restart:
-		DBG("Metadata poll wait with %d fd(s)", nb_fd);
+		DBG("Metadata poll wait with %d fd(s)", events.nb_fd);
 		ret = lttng_poll_wait(&events, -1);
 		DBG("Metadata event catched in thread");
 		if (ret < 0) {
@@ -2121,6 +2117,8 @@ restart:
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		/* From here, the event is a metadata wait fd */
 		for (i = 0; i < nb_fd; i++) {

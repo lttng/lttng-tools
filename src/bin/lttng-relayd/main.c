@@ -514,11 +514,6 @@ void *relay_thread_listener(void *data)
 	while (1) {
 		DBG("Listener accepting connections");
 
-		/* Zeroed the events structure */
-		lttng_poll_reset(&events);
-
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
 restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
@@ -530,6 +525,8 @@ restart:
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		DBG("Relay new connection received");
 		for (i = 0; i < nb_fd; i++) {
@@ -1877,11 +1874,6 @@ void *relay_thread_worker(void *data)
 	}
 
 	while (1) {
-		/* Zeroed the events structure */
-		lttng_poll_reset(&events);
-
-		nb_fd = LTTNG_POLL_GETNB(&events);
-
 		/* Infinite blocking call, waiting for transmission */
 	restart:
 		DBG3("Relayd worker thread polling...");
@@ -1895,6 +1887,8 @@ void *relay_thread_worker(void *data)
 			}
 			goto error;
 		}
+
+		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
