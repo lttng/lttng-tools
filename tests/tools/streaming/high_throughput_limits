@@ -49,13 +49,27 @@ fi
 function set_bw_limit
 {
 	limit=$1
-	echo -n "Setting bandwidth limits to ${limit}kbits... "
+	ctrlportlimit=$(($limit/10))
+	# failsafe to have at least 1kbit/s for control (in the case where $1 < 10)
+	[ $ctrlportlimit = 0 ] && ctrlportlimit=1
+	# if $1 < 10, we might bust the limit set here, but the
+	# parent qdisc (1:) will always limit us to the right max value
+	dataportlimit=$((9*${ctrlportlimit}))
+
+	echo -n "Setting bandwidth limits to ${limit}kbits, (${ctrlportlimit} for control and ${dataportlimit} for data)... "
 	tc qdisc add dev $DEFAULT_IF root handle 1: htb default 15 >/dev/null 2>&1
+
+	# the total bandwidth is the limit set by the user
 	tc class add dev $DEFAULT_IF parent 1: classid 1:1 htb rate ${limit}kbit ceil ${limit}kbit >/dev/null 2>&1
+	# 1/10 of the bandwidth guaranteed and traffic prioritized for the control port
+	tc class add dev $DEFAULT_IF parent 1:1 classid 1:10 htb rate ${ctrlportlimit}kbit ceil ${limit}kbit prio 1 >/dev/null 2>&1
+	# 9/10 of the bandwidth guaranteed and can borrow up to the total bandwidth (if unused)
+	tc class add dev $DEFAULT_IF parent 1:1 classid 1:11 htb rate ${dataportlimit}kbit ceil ${limit}kbit prio 2 >/dev/null 2>&1
 
-	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:1 >/dev/null 2>&1
-
-	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:1 >/dev/null 2>&1
+	# filter to assign control traffic to the 1:10 class
+	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:10 >/dev/null 2>&1
+	# filter to assign data traffic to the 1:11 class
+	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:11 >/dev/null 2>&1
 	print_ok
 }
 
