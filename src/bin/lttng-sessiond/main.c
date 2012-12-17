@@ -697,30 +697,28 @@ static void *thread_manage_kernel(void *data)
 
 	health_code_update(&health_thread_kernel);
 
-	ret = create_thread_poll_set(&events, 2);
-	if (ret < 0) {
-		goto error_poll_create;
-	}
-
-	ret = lttng_poll_add(&events, kernel_poll_pipe[0], LPOLLIN);
-	if (ret < 0) {
-		goto error;
-	}
-
 	if (testpoint(thread_manage_kernel_before_loop)) {
-		goto error;
+		goto error_testpoint;
 	}
 
 	while (1) {
 		health_code_update(&health_thread_kernel);
 
 		if (update_poll_flag == 1) {
-			/*
-			 * Reset number of fd in the poll set. Always 2 since there is the thread
-			 * quit pipe and the kernel pipe.
-			 */
-			events.nb_fd = 2;
+			/* Clean events object. We are about to populate it again. */
+			lttng_poll_clean(&events);
 
+			ret = create_thread_poll_set(&events, 2);
+			if (ret < 0) {
+				goto error_poll_create;
+			}
+
+			ret = lttng_poll_add(&events, kernel_poll_pipe[0], LPOLLIN);
+			if (ret < 0) {
+				goto error;
+			}
+
+			/* This will add the available kernel channel if any. */
 			ret = update_kernel_poll(&events);
 			if (ret < 0) {
 				goto error;
@@ -728,7 +726,7 @@ static void *thread_manage_kernel(void *data)
 			update_poll_flag = 0;
 		}
 
-		DBG("Thread kernel polling on %d fds", events.nb_fd);
+		DBG("Thread kernel polling on %d fds", LTTNG_POLL_GETNB(&events));
 
 		/* Poll infinite value of time */
 	restart:
@@ -1122,7 +1120,7 @@ static void *thread_manage_apps(void *data)
 	health_code_update(&health_thread_app_manage);
 
 	while (1) {
-		DBG("Apps thread polling on %d fds", events.nb_fd);
+		DBG("Apps thread polling on %d fds", LTTNG_POLL_GETNB(&events));
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:

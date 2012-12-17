@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <sys/time.h>
@@ -28,10 +29,71 @@
 unsigned int poll_max_size;
 
 /*
+ * Resize the epoll events structure of the new size.
+ *
+ * Return 0 on success or else -1 with the current events pointer untouched.
+ */
+static int resize_poll_event(struct compat_poll_event_array *array,
+		uint32_t new_size)
+{
+	struct pollfd *ptr;
+
+	assert(array);
+
+	ptr = realloc(array->events, new_size * sizeof(*ptr));
+	if (ptr == NULL) {
+		PERROR("realloc epoll add");
+		goto error;
+	}
+	array->events = ptr;
+	array->alloc_size = new_size;
+
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
+ * Update events with the current events object.
+ */
+static int update_current_events(struct lttng_poll_event *events)
+{
+	int ret;
+	struct compat_poll_event_array *current, *wait;
+
+	assert(events);
+
+	current = &events->current;
+	wait = &events->wait;
+
+	wait->nb_fd = current->nb_fd;
+	if (events->need_realloc) {
+		ret = resize_poll_event(wait, current->alloc_size);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+	memcpy(wait->events, current->events,
+			current->nb_fd * sizeof(*current->events));
+
+	/* Update is done and realloc as well. */
+	events->need_update = 0;
+	events->need_realloc = 0;
+
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
  * Create pollfd data structure.
  */
 int compat_poll_create(struct lttng_poll_event *events, int size)
 {
+	struct compat_poll_event_array *current, *wait;
+
 	if (events == NULL || size <= 0) {
 		ERR("Wrong arguments for poll create");
 		goto error;
@@ -42,15 +104,29 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 		size = poll_max_size;
 	}
 
+	/* Reset everything before begining the allocation. */
+	memset(events, 0, sizeof(struct lttng_poll_event));
+
+	/* Ease our life a bit. */
+	current = &events->current;
+	wait = &events->wait;
+
 	/* This *must* be freed by using lttng_poll_free() */
-	events->events = zmalloc(size * sizeof(struct pollfd));
-	if (events->events == NULL) {
+	wait->events = zmalloc(size * sizeof(struct pollfd));
+	if (wait->events == NULL) {
 		perror("zmalloc struct pollfd");
 		goto error;
 	}
 
-	events->events_size = size;
-	events->nb_fd = 0;
+	wait->alloc_size = wait->init_size = size;
+
+	current->events = zmalloc(size * sizeof(struct pollfd));
+	if (current->events == NULL) {
+		perror("zmalloc struct current pollfd");
+		goto error;
+	}
+
+	current->alloc_size = current->init_size = size;
 
 	return 0;
 
@@ -64,31 +140,43 @@ error:
 int compat_poll_add(struct lttng_poll_event *events, int fd,
 		uint32_t req_events)
 {
-	int new_size;
-	struct pollfd *ptr;
+	int new_size, ret, i;
+	struct compat_poll_event_array *current;
 
-	if (events == NULL || events->events == NULL || fd < 0) {
+	if (events == NULL || events->current.events == NULL || fd < 0) {
 		ERR("Bad compat poll add arguments");
 		goto error;
 	}
 
-	/* Reallocate pollfd structure by a factor of 2 if needed. */
-	if (events->nb_fd >= events->events_size) {
-		new_size = 2 * events->events_size;
-		ptr = realloc(events->events, new_size * sizeof(struct pollfd));
-		if (ptr == NULL) {
-			perror("realloc poll add");
+	/* Ease our life a bit. */
+	current = &events->current;
+
+	/* Check if fd we are trying to add is already there. */
+	for (i = 0; i < current->nb_fd; i++) {
+		/* Don't put back the fd we want to delete */
+		if (current->events[i].fd == fd) {
+			errno = EEXIST;
 			goto error;
 		}
-		events->events = ptr;
-		events->events_size = new_size;
 	}
 
-	events->events[events->nb_fd].fd = fd;
-	events->events[events->nb_fd].events = req_events;
-	events->nb_fd++;
+	/* Check for a needed resize of the array. */
+	if (current->nb_fd > current->alloc_size) {
+		/* Expand it by a power of two of the current size. */
+		new_size = current->alloc_size << 1UL;
+		ret = resize_poll_event(current, new_size);
+		if (ret < 0) {
+			goto error;
+		}
+		events->need_realloc = 1;
+	}
 
-	DBG("fd %d of %d added to pollfd", fd, events->nb_fd);
+	current->events[current->nb_fd].fd = fd;
+	current->events[current->nb_fd].events = req_events;
+	current->nb_fd++;
+	events->need_update = 1;
+
+	DBG("fd %d of %d added to pollfd", fd, current->nb_fd);
 
 	return 0;
 
@@ -101,42 +189,48 @@ error:
  */
 int compat_poll_del(struct lttng_poll_event *events, int fd)
 {
-	int new_size, i, count = 0;
-	struct pollfd *old = NULL, *new = NULL;
+	int new_size, i, count = 0, ret;
+	struct compat_poll_event_array *current;
 
-	if (events == NULL || events->events == NULL || fd < 0) {
+	if (events == NULL || events->current.events == NULL || fd < 0) {
 		ERR("Wrong arguments for poll del");
 		goto error;
 	}
 
-	old = events->events;
-	new_size = events->events_size - 1;
+	/* Ease our life a bit. */
+	current = &events->current;
 
 	/* Safety check on size */
 	if (new_size > poll_max_size) {
 		new_size = poll_max_size;
 	}
 
-	new = zmalloc(new_size * sizeof(struct pollfd));
-	if (new == NULL) {
-		perror("zmalloc poll del");
-		goto error;
+	/* Check if we need to shrink it down. */
+	if ((current->nb_fd << 1UL) <= current->alloc_size &&
+			current->nb_fd >= current->init_size) {
+		/*
+		 * Shrink if nb_fd multiplied by two is <= than the actual size and we
+		 * are above the initial size.
+		 */
+		new_size = current->alloc_size >> 1UL;
+		ret = resize_poll_event(current, new_size);
+		if (ret < 0) {
+			goto error;
+		}
+		events->need_realloc = 1;
 	}
 
-	for (i = 0; i < events->events_size; i++) {
+	for (i = 0; i < current->nb_fd; i++) {
 		/* Don't put back the fd we want to delete */
-		if (old[i].fd != fd) {
-			new[count].fd = old[i].fd;
-			new[count].events = old[i].events;
+		if (current->events[i].fd != fd) {
+			current->events[count].fd = current->events[i].fd;
+			current->events[count].events = current->events[i].events;
 			count++;
 		}
 	}
 
-	events->events_size = new_size;
-	events->events = new;
-	events->nb_fd--;
-
-	free(old);
+	current->nb_fd--;
+	events->need_update = 1;
 
 	return 0;
 
@@ -151,13 +245,26 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 {
 	int ret;
 
-	if (events == NULL || events->events == NULL ||
-			events->events_size < events->nb_fd) {
+	if (events == NULL || events->current.events == NULL) {
 		ERR("poll wait arguments error");
 		goto error;
 	}
 
-	ret = poll(events->events, events->nb_fd, timeout);
+	if (events->current.nb_fd == 0) {
+		/* Return an invalid error to be consistent with epoll. */
+		errno = EINVAL;
+		goto error;
+	}
+
+	if (events->need_update) {
+		ret = update_current_events(events);
+		if (ret < 0) {
+			errno = ENOMEM;
+			goto error;
+		}
+	}
+
+	ret = poll(events->wait.events, events->wait.nb_fd, timeout);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
 		perror("poll wait");
@@ -168,7 +275,7 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 	 * poll() should always iterate on all FDs since we handle the pollset in
 	 * user space and after poll returns, we have to try every fd for a match.
 	 */
-	return events->nb_fd;
+	return events->wait.nb_fd;
 
 error:
 	return -1;
@@ -192,7 +299,7 @@ void compat_poll_set_max_size(void)
 	}
 
 	poll_max_size = lim.rlim_cur;
-	if (poll_max_size <= 0) {
+	if (poll_max_size == 0) {
 		/* Extra precaution */
 		poll_max_size = DEFAULT_POLL_SIZE;
 	}
