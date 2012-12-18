@@ -2364,6 +2364,11 @@ void *consumer_thread_data_poll(void *data)
 				pipe_readlen = read(ctx->consumer_data_pipe[0], &new_stream,
 						sizeof(new_stream));
 			} while (pipe_readlen == -1 && errno == EINTR);
+			if (pipe_readlen < 0) {
+				PERROR("read consumer data pipe");
+				/* Continue so we can at least handle the current stream(s). */
+				continue;
+			}
 
 			/*
 			 * If the stream is NULL, just ignore it. It's also possible that
