@@ -130,7 +130,7 @@ function lttng_enable_kernel_event
 
 function start_lttng_relayd
 {
-	local opt="$1"
+	local opt=$1
 
 	echo -e -n "Starting lttng-relayd (opt: $opt)... "
 
