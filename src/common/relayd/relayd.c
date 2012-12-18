@@ -133,8 +133,8 @@ int relayd_create_session(struct lttcomm_sock *sock, uint64_t *session_id)
 
 	/* Return session id or negative ret code. */
 	if (reply.ret_code != LTTNG_OK) {
-		ret = -reply.ret_code;
-		ERR("Relayd create session replied error %d", ret);
+		ret = -1;
+		ERR("Relayd create session replied error %d", reply.ret_code);
 		goto error;
 	} else {
 		ret = 0;
@@ -187,8 +187,8 @@ int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
 
 	/* Return session id or negative ret code. */
 	if (reply.ret_code != LTTNG_OK) {
-		ret = -reply.ret_code;
-		ERR("Relayd add stream replied error %d", ret);
+		ret = -1;
+		ERR("Relayd add stream replied error %d", reply.ret_code);
 	} else {
 		/* Success */
 		ret = 0;
@@ -399,8 +399,8 @@ int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
 
 	/* Return session id or negative ret code. */
 	if (reply.ret_code != LTTNG_OK) {
-		ret = -reply.ret_code;
-		ERR("Relayd close stream replied error %d", ret);
+		ret = -1;
+		ERR("Relayd close stream replied error %d", reply.ret_code);
 	} else {
 		/* Success */
 		ret = 0;
@@ -449,8 +449,7 @@ int relayd_data_pending(struct lttcomm_sock *sock, uint64_t stream_id,
 
 	/* Return session id or negative ret code. */
 	if (reply.ret_code >= LTTNG_OK) {
-		ret = -reply.ret_code;
-		ERR("Relayd data pending replied error %d", ret);
+		ERR("Relayd data pending replied error %d", reply.ret_code);
 	}
 
 	/* At this point, the ret code is either 1 or 0 */
@@ -496,8 +495,8 @@ int relayd_quiescent_control(struct lttcomm_sock *sock,
 
 	/* Return session id or negative ret code. */
 	if (reply.ret_code != LTTNG_OK) {
-		ret = -reply.ret_code;
-		ERR("Relayd quiescent control replied error %d", ret);
+		ret = -1;
+		ERR("Relayd quiescent control replied error %d", reply.ret_code);
 		goto error;
 	}
 
@@ -540,8 +539,8 @@ int relayd_begin_data_pending(struct lttcomm_sock *sock, uint64_t id)
 
 	/* Return session id or negative ret code. */
 	if (reply.ret_code != LTTNG_OK) {
-		ret = -reply.ret_code;
-		ERR("Relayd begin data pending replied error %d", ret);
+		ret = -1;
+		ERR("Relayd begin data pending replied error %d", reply.ret_code);
 		goto error;
 	}
 
