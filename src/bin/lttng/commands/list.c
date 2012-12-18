@@ -744,6 +744,7 @@ int cmd_list(int argc, const char **argv)
 		if (opt_kernel) {
 			ret = list_kernel_events();
 			if (ret < 0) {
+				ret = CMD_ERROR;
 				goto end;
 			}
 		}
@@ -754,6 +755,7 @@ int cmd_list(int argc, const char **argv)
 				ret = list_ust_events();
 			}
 			if (ret < 0) {
+				ret = CMD_ERROR;
 				goto end;
 			}
 		}
