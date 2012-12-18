@@ -18,6 +18,7 @@
 #ifndef _LTT_POLL_H
 #define _LTT_POLL_H
 
+#include <assert.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -84,6 +85,19 @@ struct compat_epoll_event {
 };
 #define lttng_poll_event compat_epoll_event
 
+static inline int __lttng_epoll_get_prev_fd(struct lttng_poll_event *events,
+		int index, uint32_t nb_fd)
+{
+	assert(events);
+	assert(index != nb_fd);
+
+	if (index == 0 || nb_fd == 0) {
+		return -1;
+	} else {
+		return events->events[index - 1].data.fd;
+	}
+}
+
 /*
  * For the following calls, consider 'e' to be a lttng_poll_event pointer and i
  * being the index of the events array.
@@ -92,6 +106,8 @@ struct compat_epoll_event {
 #define LTTNG_POLL_GETEV(e, i) LTTNG_REF(e)->events[i].events
 #define LTTNG_POLL_GETNB(e) LTTNG_REF(e)->nb_fd
 #define LTTNG_POLL_GETSZ(e) LTTNG_REF(e)->events_size
+#define LTTNG_POLL_GET_PREV_FD(e, i, nb_fd) \
+	__lttng_epoll_get_prev_fd(LTTNG_REF(e), i, nb_fd)
 
 /*
  * Create the epoll set. No memory allocation is done here.
@@ -229,6 +245,19 @@ struct compat_poll_event {
 };
 #define lttng_poll_event compat_poll_event
 
+static inline int __lttng_poll_get_prev_fd(struct lttng_poll_event *events,
+		int index, uint32_t nb_fd)
+{
+	assert(events);
+	assert(index != nb_fd);
+
+	if (index == 0 || nb_fd == 0) {
+		return -1;
+	} else {
+		return events->current.events[index - 1].fd;
+	}
+}
+
 /*
  * For the following calls, consider 'e' to be a lttng_poll_event pointer and i
  * being the index of the events array.
@@ -237,6 +266,8 @@ struct compat_poll_event {
 #define LTTNG_POLL_GETEV(e, i) LTTNG_REF(e)->wait.events[i].revents
 #define LTTNG_POLL_GETNB(e) LTTNG_REF(e)->wait.nb_fd
 #define LTTNG_POLL_GETSZ(e) LTTNG_REF(e)->wait.events_size
+#define LTTNG_POLL_GET_PREV_FD(e, i, nb_fd) \
+	__lttng_poll_get_prev_fd(LTTNG_REF(e), i, nb_fd)
 
 /*
  * Create a pollfd structure of size 'size'.
