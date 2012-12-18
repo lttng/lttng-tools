@@ -173,18 +173,16 @@ class SamplingWorker(threading.Thread):
             mem_ret_q.put((count, mem_stat))
 
 class TestWorker(threading.Thread):
-    def __init__(self, path, name):
+    def __init__(self, path, name, env):
         threading.Thread.__init__(self)
         self.path = path
         self.name = name
+        self.env  = env
 
     def run(self):
         bin_path_name = os.path.join(self.path, self.name)
 
-        env = os.environ
-        env['TEST_NO_SESSIOND'] = '1'
-
-        test = subprocess.Popen([bin_path_name], env=env, preexec_fn = lambda: signal(SIGPIPE, SIG_DFL))
+        test = subprocess.Popen([bin_path_name], env=self.env, preexec_fn = lambda: signal(SIGPIPE, SIG_DFL))
         test.wait()
 
         # Send ret value to main thread
@@ -303,10 +301,23 @@ def run_test(test):
         print "Unable to find test file '%s'. Skipping" % (test['bin'])
         return 0
 
-    # No session daemon needed
-    if not test['daemon']:
+    # Session daemon is controlled by the test
+    if test['daemon'] == "test":
+        print PRINT_ARROW + " Session daemon is controlled by the test"
+        env = os.environ
+        env['TEST_NO_SESSIOND'] = '0'
+        tw = TestWorker(".", test['bin'], env)
+        tw.start()
+        ret = test_ret_q.get(True)
+        print_test_success(ret, test['success'])
+        return 0
+    elif test['daemon'] == False:
         print PRINT_ARROW + " No session daemon needed"
-        ret = start_test(test['bin'])
+        env = os.environ
+        env['TEST_NO_SESSIOND'] = '1'
+        tw = TestWorker(".", test['bin'], env)
+        tw.start()
+        ret = test_ret_q.get(True)
         print_test_success(ret, test['success'])
         return 0
     else:
@@ -327,7 +338,12 @@ def run_test(test):
         cpu_count, cpu_stats = get_cpu_usage(pid = dem_pid)
         print_cpu_stats(cpu_stats, cpu_count)
 
-    tw = TestWorker(".", test['bin'])
+    # Sessiond was already spawned, do not let the test spawn
+    # an additional sessiond
+    env = os.environ
+    env['TEST_NO_SESSIOND'] = '1'
+
+    tw = TestWorker(".", test['bin'], env)
     tw.start()
 
     if not no_stats:
