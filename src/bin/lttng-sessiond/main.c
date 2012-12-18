@@ -691,6 +691,12 @@ static void *thread_manage_kernel(void *data)
 
 	DBG("[thread] Thread manage kernel started");
 
+	/*
+	 * This first step of the while is to clean this structure which could free
+	 * non NULL pointers so zero it before the loop.
+	 */
+	memset(&events, 0, sizeof(events));
+
 	if (testpoint(thread_manage_kernel)) {
 		goto error_testpoint;
 	}
