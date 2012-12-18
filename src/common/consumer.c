@@ -3028,9 +3028,11 @@ int consumer_data_pending(uint64_t id)
 		ret = relayd_end_data_pending(&relayd->control_sock,
 				relayd->relayd_session_id, &is_data_inflight);
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-		if (ret < 0 || !is_data_inflight) {
-			/* On error or if NO data inflight, no data is pending. */
+		if (ret < 0) {
 			goto data_not_pending;
+		}
+		if (is_data_inflight) {
+			goto data_pending;
 		}
 	}
 
