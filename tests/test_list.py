@@ -31,7 +31,7 @@ Tests = \
     'success': 0, 'enabled': True
     },
 
-    #### KERNEL ####
+    # Kernel tests
     {
     'bin': "kernel/run-kernel-tests.sh", 'daemon': True, 'kern': True,
     'name': "Kernel tracer - lttng client",
@@ -39,7 +39,7 @@ Tests = \
     'success': 0, 'enabled': True
     },
 
-    #### UST ####
+    # UST tests
     {
     'bin': "ust/run-ust-global-tests.sh", 'daemon': True, 'kern': False,
     'name': "UST tracer - Global domain",
@@ -58,13 +58,13 @@ Tests = \
     'desc': "Test multiple large number of events with concurrent application",
     'success': 0, 'enabled': True
     },
-    {
     # Deactivated. This test last 20 minutes...
-    'bin': "ust/low-throughput/run", 'daemon': True, 'kern': False,
-    'name': "UST tracer - Testing high events throughput",
-    'desc': "Test low throughput of events",
-    'success': 0, 'enabled': False
-    },
+    #{
+    #'bin': "ust/low-throughput/run", 'daemon': True, 'kern': False,
+    #'name': "UST tracer - Testing high events throughput",
+    #'desc': "Test low throughput of events",
+    #'success': 0, 'enabled': False
+    #},
     {
     'bin': "ust/before-after/run", 'daemon': True, 'kern': False,
     'name': "UST tracer - Tracing before and after app execution",
@@ -75,6 +75,72 @@ Tests = \
     'bin': "ust/multi-session/run", 'daemon': True, 'kern': False,
     'name': "UST tracer - Multi-session",
     'desc': "Test tracing with 4 sessions for one application",
+    'success': 0, 'enabled': True
+    },
+
+    # Tools filtering tests
+    {
+    'bin': "tools/filtering/unsupported-ops", 'daemon': True, 'kern': False,
+    'name': "Filtering - Unsupported operators",
+    'desc': "Test the failure of filter with unsupported operators",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/filtering/invalid-filters", 'daemon': True, 'kern': False,
+    'name': "Filtering - Invalid filters",
+    'desc': "Test the failure of invalid filters",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/filtering/valid-filters", 'daemon': True, 'kern': False,
+    'name': "Filtering - Valid filters",
+    'desc': "Validate the expected trace output of valid filters",
+    'success': 0, 'enabled': True
+    },
+
+    # Tools health check tests
+    {
+    'bin': "tools/health/health_thread_exit", 'daemon': "test", 'kern': True,
+    'name': "Health check - Thread exit",
+    'desc': "Call exit in the various lttng-sessiond threads and ensure that health failure is detected",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/health/health_thread_stall", 'daemon': "test", 'kern': True,
+    'name': "Health check - Thread stall",
+    'desc': "Stall the various lttng-sessiond threads and ensure that health failure is detected",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/health/health_tp_fail", 'daemon': "test", 'kern': True,
+    'name': "Health check - Testpoint failure",
+    'desc': "Trigger a failure in the testpoint mechanism in each thread to provoke thread teardown",
+    'success': 0, 'enabled': True
+    },
+
+    # Tools streaming tests
+    {
+    'bin': "tools/streaming/run-kernel", 'daemon': True, 'kern': True,
+    'name': "Streaming - Kernel tracing",
+    'desc': "Stream a kernel trace across the network",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/streaming/run-ust", 'daemon': True, 'kern': False,
+    'name': "Streaming - Userspace tracing",
+    'desc': "Stream a userspace trace across the network",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/streaming/uri_switch", 'daemon': True, 'kern': False,
+    'name': "Streaming - URI switching",
+    'desc': "Switch URI and verify that the trace result are in the proper location",
+    'success': 0, 'enabled': True
+    },
+    {
+    'bin': "tools/streaming/high_throughput_limits", 'daemon': True, 'kern': True,
+    'name': "Streaming - High throughput with bandwith limits",
+    'desc': "Trace streaming with bandwidth limits",
     'success': 0, 'enabled': True
     },
 ]
