@@ -7,7 +7,7 @@ import Queue
 import time
 import shlex
 
-from signal import signal, SIGTERM, SIGINT
+from signal import signal, SIGTERM, SIGINT, SIGPIPE, SIG_DFL
 
 SESSIOND_BIN_NAME = "lttng-sessiond"
 SESSIOND_BIN_PATH = "src/bin/lttng-sessiond/"
@@ -182,7 +182,7 @@ class TestWorker(threading.Thread):
         env = os.environ
         env['TEST_NO_SESSIOND'] = '1'
 
-        test = subprocess.Popen([bin_path_name], env=env)
+        test = subprocess.Popen([bin_path_name], env=env, preexec_fn = lambda: signal(SIGPIPE, SIG_DFL))
         test.wait()
 
         # Send ret value to main thread
