@@ -133,4 +133,8 @@ struct lttcomm_relayd_end_data_pending {
 	uint64_t session_id;
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_quiescent_control {
+	uint64_t stream_id;
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

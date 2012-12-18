@@ -466,9 +466,11 @@ error:
 /*
  * Check on the relayd side for a quiescent state on the control socket.
  */
-int relayd_quiescent_control(struct lttcomm_sock *sock)
+int relayd_quiescent_control(struct lttcomm_sock *sock,
+		uint64_t metadata_stream_id)
 {
 	int ret;
+	struct lttcomm_relayd_quiescent_control msg;
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
@@ -476,8 +478,10 @@ int relayd_quiescent_control(struct lttcomm_sock *sock)
 
 	DBG("Relayd checking quiescent control state");
 
+	msg.stream_id = htobe64(metadata_stream_id);
+
 	/* Send command */
-	ret = send_command(sock, RELAYD_QUIESCENT_CONTROL, NULL, 0, 0);
+	ret = send_command(sock, RELAYD_QUIESCENT_CONTROL, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}

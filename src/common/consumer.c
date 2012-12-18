@@ -3006,7 +3006,8 @@ int consumer_data_pending(uint64_t id)
 		if (relayd) {
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 			if (stream->metadata_flag) {
-				ret = relayd_quiescent_control(&relayd->control_sock);
+				ret = relayd_quiescent_control(&relayd->control_sock,
+						stream->relayd_stream_id);
 			} else {
 				ret = relayd_data_pending(&relayd->control_sock,
 						stream->relayd_stream_id, stream->next_net_seq_num);
