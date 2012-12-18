@@ -1,15 +1,18 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import os, sys
 import subprocess
 import threading
 import Queue
 import time
+import shlex
 
 from signal import signal, SIGTERM, SIGINT
 
 SESSIOND_BIN_NAME = "lttng-sessiond"
-SESSIOND_BIN_PATH = "src/bin/lttng-sessiond/.libs/"
+SESSIOND_BIN_PATH = "src/bin/lttng-sessiond/"
+CONSUMERD_BIN_NAME = "lttng-consumerd"
+CONSUMERD_BIN_PATH = "src/bin/lttng-consumerd/"
 TESTDIR_PATH = ""
 
 PRINT_BRACKET = "\033[1;34m[\033[1;33m+\033[1;34m]\033[00m"
@@ -208,19 +211,26 @@ def spawn_session_daemon():
         os.kill(pid, SIGTERM)
 
     bin_path = os.path.join(TESTDIR_PATH, "..", SESSIOND_BIN_PATH, SESSIOND_BIN_NAME)
+    consumer_path = os.path.join(TESTDIR_PATH, "..", CONSUMERD_BIN_PATH, CONSUMERD_BIN_NAME)
 
     if not os.path.isfile(bin_path):
         print "Error: No session daemon binary found. Compiled?"
         return 0
 
     try:
-        sdaemon_proc = subprocess.Popen([bin_path, "-d"], shell=False,
-                stderr = subprocess.PIPE)
+        args = shlex.split("libtool execute " + bin_path
+                           + " --consumerd32-path=" + consumer_path
+                           + " --consumerd64-path=" + consumer_path)
+
+        sdaemon_proc = subprocess.Popen(args, shell = False, stderr = subprocess.PIPE)
+
     except OSError, e:
         print e
         return 0
 
-    return get_pid(SESSIOND_BIN_NAME)
+    time.sleep(1)
+
+    return get_pid("lt-" + SESSIOND_BIN_NAME)
 
 def start_test(name):
     """
