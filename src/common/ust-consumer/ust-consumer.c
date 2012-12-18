@@ -540,9 +540,13 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			(ret != len && stream->net_seq_idx == -1)) {
 		/*
 		 * Display the error but continue processing to try to release the
-		 * subbuffer
+		 * subbuffer. This is a DBG statement since any unexpected kill or
+		 * signal, the application gets unregistered, relayd gets closed or
+		 * anything that affects the buffer lifetime will trigger this error.
+		 * So, for the sake of the user, don't print this error since it can
+		 * happen and it is OK with the code flow.
 		 */
-		ERR("Error writing to tracefile "
+		DBG("Error writing to tracefile "
 				"(ret: %zd != len: %lu != subbuf_size: %lu)",
 				ret, len, subbuf_size);
 	}

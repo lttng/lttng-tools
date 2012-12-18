@@ -1435,7 +1435,13 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		} while (ret < 0 && errno == EINTR);
 		DBG("Consumer mmap write() ret %zd (len %lu)", ret, len);
 		if (ret < 0) {
-			PERROR("Error in file write");
+			/*
+			 * This is possible if the fd is closed on the other side (outfd)
+			 * or any write problem. It can be verbose a bit for a normal
+			 * execution if for instance the relayd is stopped abruptly. This
+			 * can happen so set this to a DBG statement.
+			 */
+			DBG("Error in file write mmap");
 			if (written == 0) {
 				written = ret;
 			}

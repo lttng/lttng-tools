@@ -91,7 +91,8 @@ int consumer_send_destroy_relayd(struct consumer_socket *sock,
 	pthread_mutex_lock(sock->lock);
 	ret = lttcomm_send_unix_sock(sock->fd, &msg, sizeof(msg));
 	if (ret < 0) {
-		PERROR("send consumer destroy relayd command");
+		/* Indicate that the consumer is probably closing at this point. */
+		DBG("send consumer destroy relayd command");
 		goto error_send;
 	}
 
@@ -127,7 +128,7 @@ void consumer_output_send_destroy_relayd(struct consumer_output *consumer)
 			/* Send destroy relayd command */
 			ret = consumer_send_destroy_relayd(socket, consumer);
 			if (ret < 0) {
-				ERR("Unable to send destroy relayd command to consumer");
+				DBG("Unable to send destroy relayd command to consumer");
 				/* Continue since we MUST delete everything at this point. */
 			}
 		}
