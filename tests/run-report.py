@@ -46,10 +46,12 @@ def cpu_create_usage_dict(top_line):
     top_line = top_line.replace(",","")
     words = top_line.split()[1:]
 
-    for word in words:
-        index = word.find('%')
+
+    for key in top_dict:
+        index = words.index(key)
         # Add the value to the dictionnary
-        top_dict[word[index + 1:]] = float(word[:index])
+        val = words[index-1]
+        top_dict[key] = float(val)
 
     return top_dict
 
@@ -87,7 +89,7 @@ def cpu_sample_usage(pid=None):
     # Spawn top process
     top = subprocess.Popen(args, stdout = subprocess.PIPE)
 
-    grep = subprocess.Popen(["grep", "^Cpu"], stdin = top.stdout,
+    grep = subprocess.Popen(["grep", "Cpu"], stdin = top.stdout,
             stdout = subprocess.PIPE)
     top.stdout.close()
 
