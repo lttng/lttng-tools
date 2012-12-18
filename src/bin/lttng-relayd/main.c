@@ -1818,7 +1818,9 @@ int relay_add_connection(int fd, struct lttng_poll_event *events,
 		PERROR("Relay command zmalloc");
 		goto error;
 	}
-	ret = read(fd, relay_connection, sizeof(struct relay_command));
+	do {
+		ret = read(fd, relay_connection, sizeof(struct relay_command));
+	} while (ret < 0 && errno == EINTR);
 	if (ret < 0 || ret < sizeof(struct relay_command)) {
 		PERROR("read relay cmd pipe");
 		goto error_read;

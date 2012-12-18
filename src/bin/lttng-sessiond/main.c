@@ -772,7 +772,13 @@ static void *thread_manage_kernel(void *data)
 
 			/* Check for data on kernel pipe */
 			if (pollfd == kernel_poll_pipe[0] && (revents & LPOLLIN)) {
-				ret = read(kernel_poll_pipe[0], &tmp, 1);
+				do {
+					ret = read(kernel_poll_pipe[0], &tmp, 1);
+				} while (ret < 0 && errno == EINTR);
+				/*
+				 * Ret value is useless here, if this pipe gets any actions an
+				 * update is required anyway.
+				 */
 				update_poll_flag = 1;
 				continue;
 			} else {
@@ -1166,7 +1172,9 @@ static void *thread_manage_apps(void *data)
 					goto error;
 				} else if (revents & LPOLLIN) {
 					/* Empty pipe */
-					ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
+					do {
+						ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
+					} while (ret < 0 && errno == EINTR);
 					if (ret < 0 || ret < sizeof(ust_cmd)) {
 						PERROR("read apps cmd pipe");
 						goto error;
