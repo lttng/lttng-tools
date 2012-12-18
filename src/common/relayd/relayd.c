@@ -457,7 +457,7 @@ int relayd_data_pending(struct lttcomm_sock *sock, uint64_t stream_id,
 	ret = reply.ret_code;
 
 	DBG("Relayd data is %s pending for stream id %" PRIu64,
-			ret == 1 ? "NOT" : "", stream_id);
+			ret == 1 ? "" : "NOT", stream_id);
 
 error:
 	return ret;
