@@ -2393,10 +2393,13 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	/*
 	 * If started = 0, it means that stop trace has been called for a session
-	 * that was never started. This is a code flow error and should never
-	 * happen.
+	 * that was never started. It's possible since we can have a fail start
+	 * from either the application manager thread or the command thread. Simply
+	 * indicate that this is a stop error.
 	 */
-	assert(ua_sess->started == 1);
+	if (ua_sess->started == 1) {
+		goto error_rcu_unlock;
+	}
 
 	health_code_update(&health_thread_cmd);
 
