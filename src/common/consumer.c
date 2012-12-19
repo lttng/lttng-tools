@@ -782,6 +782,13 @@ static int write_relayd_stream_header(struct lttng_consumer_stream *stream,
 		data_hdr.stream_id = htobe64(stream->relayd_stream_id);
 		data_hdr.data_size = htobe32(data_size);
 		data_hdr.padding_size = htobe32(padding);
+		/*
+		 * Note that net_seq_num below is assigned with the *current* value of
+		 * next_net_seq_num and only after that the next_net_seq_num will be
+		 * increment. This is why when issuing a command on the relayd using
+		 * this next value, 1 should always be substracted in order to compare
+		 * the last seen sequence number on the relayd side to the last sent.
+		 */
 		data_hdr.net_seq_num = htobe64(stream->next_net_seq_num++);
 		/* Other fields are zeroed previously */
 
@@ -3021,7 +3028,8 @@ int consumer_data_pending(uint64_t id)
 						stream->relayd_stream_id);
 			} else {
 				ret = relayd_data_pending(&relayd->control_sock,
-						stream->relayd_stream_id, stream->next_net_seq_num);
+						stream->relayd_stream_id,
+						stream->next_net_seq_num - 1);
 			}
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 			if (ret == 1) {

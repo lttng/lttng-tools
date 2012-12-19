@@ -1427,7 +1427,7 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 			last_net_seq_num);
 
 	/* Avoid wrapping issue */
-	if (((int64_t) (stream->prev_seq - last_net_seq_num)) <= 0) {
+	if (((int64_t) (stream->prev_seq - last_net_seq_num)) >= 0) {
 		/* Data has in fact been written and is NOT pending */
 		ret = 0;
 	} else {
