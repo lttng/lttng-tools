@@ -1325,7 +1325,15 @@ static int write_relayd_metadata_id(int fd,
 		ret = write(fd, (void *) &hdr, sizeof(hdr));
 	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
-		PERROR("write metadata stream id");
+		/*
+		 * This error means that the fd's end is closed so ignore the perror
+		 * not to clubber the error output since this can happen in a normal
+		 * code path.
+		 */
+		if (errno != EPIPE) {
+			PERROR("write metadata stream id");
+		}
+		DBG3("Consumer failed to write relayd metadata id (errno: %d)", errno);
 		goto end;
 	}
 	DBG("Metadata stream id %" PRIu64 " with padding %lu written before data",
