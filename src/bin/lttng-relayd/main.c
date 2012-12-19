@@ -987,7 +987,12 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &stream_info,
 			sizeof(struct lttcomm_relayd_add_stream), 0);
 	if (ret < sizeof(struct lttcomm_relayd_add_stream)) {
-		ERR("Relay didn't receive valid add_stream struct size : %d", ret);
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid add_stream struct size : %d", ret);
+		}
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1083,7 +1088,12 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &stream_info,
 			sizeof(struct lttcomm_relayd_close_stream), 0);
 	if (ret < sizeof(struct lttcomm_relayd_close_stream)) {
-		ERR("Relay didn't receive valid add_stream struct size : %d", ret);
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid add_stream struct size : %d", ret);
+		}
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1289,8 +1299,13 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	DBG2("Relay receiving metadata, waiting for %" PRIu64 " bytes", data_size);
 	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, 0);
 	if (ret < 0 || ret != data_size) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive the whole metadata");
+		}
 		ret = -1;
-		ERR("Relay didn't receive the whole metadata");
 		goto end;
 	}
 	metadata_struct = (struct lttcomm_relayd_metadata_payload *) data_buffer;
@@ -1344,8 +1359,13 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	/* Get version from the other side. */
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < 0 || ret != sizeof(msg)) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay failed to receive the version values.");
+		}
 		ret = -1;
-		ERR("Relay failed to receive the version values.");
 		goto end;
 	}
 
@@ -1402,7 +1422,13 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
-		ERR("Relay didn't receive valid data_pending struct size : %d", ret);
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid data_pending struct size : %d",
+					ret);
+		}
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1479,8 +1505,13 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
-		ERR("Relay didn't receive valid begin data_pending struct size: %d",
-				ret);
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid begin data_pending struct size: %d",
+					ret);
+		}
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1540,8 +1571,13 @@ int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
-		ERR("Relay didn't receive valid begin data_pending struct size: %d",
-				ret);
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid begin data_pending struct size: %d",
+					ret);
+		}
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1610,8 +1646,13 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
-		ERR("Relay didn't receive valid end data_pending struct size: %d",
-				ret);
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid end data_pending struct size: %d",
+					ret);
+		}
 		ret = -1;
 		goto end_no_session;
 	}
@@ -1711,7 +1752,12 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &data_hdr,
 			sizeof(struct lttcomm_relayd_data_hdr), 0);
 	if (ret <= 0) {
-		ERR("Connections seems to be closed");
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		} else {
+			ERR("Unable to receive data header on sock %d", cmd->sock->fd);
+		}
 		ret = -1;
 		goto end;
 	}
@@ -1747,6 +1793,10 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 		data_size, stream_id, net_seq_num);
 	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, 0);
 	if (ret <= 0) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+		}
 		ret = -1;
 		goto end_unlock;
 	}

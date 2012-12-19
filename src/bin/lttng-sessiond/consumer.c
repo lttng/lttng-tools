@@ -45,7 +45,11 @@ int consumer_recv_status_reply(struct consumer_socket *sock)
 	assert(sock);
 
 	ret = lttcomm_recv_unix_sock(sock->fd, &reply, sizeof(reply));
-	if (ret < 0) {
+	if (ret <= 0) {
+		if (ret == 0) {
+			/* Orderly shutdown. Don't return 0 which means success. */
+			ret = -1;
+		}
 		/* The above call will print a PERROR on error. */
 		DBG("Fail to receive status reply on sock %d", sock->fd);
 		goto end;
@@ -810,7 +814,11 @@ int consumer_is_data_pending(unsigned int id,
 		 */
 
 		ret = lttcomm_recv_unix_sock(socket->fd, &ret_code, sizeof(ret_code));
-		if (ret < 0) {
+		if (ret <= 0) {
+			if (ret == 0) {
+				/* Orderly shutdown. Don't return 0 which means success. */
+				ret = -1;
+			}
 			/* The above call will print a PERROR on error. */
 			DBG("Error on recv consumer is data pending on sock %d", socket->fd);
 			pthread_mutex_unlock(socket->lock);
