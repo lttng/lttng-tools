@@ -2350,7 +2350,7 @@ skip_setup:
 	/* This start the UST tracing */
 	ret = ustctl_start_session(app->sock, ua_sess->handle);
 	if (ret < 0) {
-		ERR("Error starting tracing for app pid: %d", app->pid);
+		ERR("Error starting tracing for app pid: %d (ret: %d)", app->pid, ret);
 		goto error_rcu_unlock;
 	}
 
@@ -2411,7 +2411,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->sock, ua_sess->handle);
 	if (ret < 0) {
-		ERR("Error stopping tracing for app pid: %d", app->pid);
+		ERR("Error stopping tracing for app pid: %d (ret: %d)", app->pid, ret);
 		goto error_rcu_unlock;
 	}
 
