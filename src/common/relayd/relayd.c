@@ -90,8 +90,16 @@ static int recv_reply(struct lttcomm_sock *sock, void *data, size_t size)
 	DBG3("Relayd waiting for reply of size %ld", size);
 
 	ret = sock->ops->recvmsg(sock, data, size, 0);
-	if (ret < 0) {
-		ret = -errno;
+	if (ret <= 0 || ret != size) {
+		if (ret == 0) {
+			/* Orderly shutdown. */
+			DBG("Socket %d has performed an orderly shutdown", sock->fd);
+		} else {
+			DBG("Receiving reply failed on sock %d for size %lu with ret %d",
+					sock->fd, size, ret);
+		}
+		/* Always return -1 here and the caller can use errno. */
+		ret = -1;
 		goto error;
 	}
 
@@ -103,8 +111,8 @@ error:
  * Send a RELAYD_CREATE_SESSION command to the relayd with the given socket and
  * set session_id of the relayd if we have a successful reply from the relayd.
  *
- * On success, return 0 else a negative value being a lttng_error_code returned
- * from the relayd.
+ * On success, return 0 else a negative value which is either an errno error or
+ * a lttng error code from the relayd.
  */
 int relayd_create_session(struct lttcomm_sock *sock, uint64_t *session_id)
 {
@@ -122,7 +130,7 @@ int relayd_create_session(struct lttcomm_sock *sock, uint64_t *session_id)
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
@@ -228,7 +236,7 @@ int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &msg, sizeof(msg));
 	if (ret < 0) {
 		goto error;
@@ -389,7 +397,7 @@ int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
@@ -439,7 +447,7 @@ int relayd_data_pending(struct lttcomm_sock *sock, uint64_t stream_id,
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
@@ -485,7 +493,7 @@ int relayd_quiescent_control(struct lttcomm_sock *sock,
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
@@ -529,7 +537,7 @@ int relayd_begin_data_pending(struct lttcomm_sock *sock, uint64_t id)
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
@@ -576,7 +584,7 @@ int relayd_end_data_pending(struct lttcomm_sock *sock, uint64_t id,
 		goto error;
 	}
 
-	/* Recevie response */
+	/* Receive response */
 	ret = recv_reply(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
