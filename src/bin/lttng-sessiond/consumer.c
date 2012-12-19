@@ -46,7 +46,8 @@ int consumer_recv_status_reply(struct consumer_socket *sock)
 
 	ret = lttcomm_recv_unix_sock(sock->fd, &reply, sizeof(reply));
 	if (ret < 0) {
-		PERROR("recv consumer status msg");
+		/* The above call will print a PERROR on error. */
+		DBG("Fail to receive status reply on sock %d", sock->fd);
 		goto end;
 	}
 
@@ -55,7 +56,7 @@ int consumer_recv_status_reply(struct consumer_socket *sock)
 		ret = 0;
 	} else {
 		ret = -reply.ret_code;
-		ERR("Consumer ret code %d", reply.ret_code);
+		DBG("Consumer ret code %d", reply.ret_code);
 	}
 
 end:
@@ -492,7 +493,8 @@ int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd)
 
 	ret = lttcomm_send_fds_unix_sock(sock->fd, fds, nb_fd);
 	if (ret < 0) {
-		PERROR("send consumer fds");
+		/* The above call will print a PERROR on error. */
+		DBG("Error when sending consumer fds on sock %d", sock->fd);
 		goto error;
 	}
 
@@ -517,7 +519,8 @@ int consumer_send_channel(struct consumer_socket *sock,
 	ret = lttcomm_send_unix_sock(sock->fd, msg,
 			sizeof(struct lttcomm_consumer_msg));
 	if (ret < 0) {
-		PERROR("send consumer channel");
+		/* The above call will print a PERROR on error. */
+		DBG("Error when sending consumer channel on sock %d", sock->fd);
 		goto error;
 	}
 
@@ -635,7 +638,8 @@ int consumer_send_stream(struct consumer_socket *sock,
 	ret = lttcomm_send_unix_sock(sock->fd, msg,
 			sizeof(struct lttcomm_consumer_msg));
 	if (ret < 0) {
-		PERROR("send consumer stream");
+		/* The above call will print a PERROR on error. */
+		DBG("Error when sending consumer stream on sock %d", sock->fd);
 		goto error;
 	}
 
@@ -690,7 +694,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	DBG3("Sending relayd sock info to consumer on %d", consumer_sock->fd);
 	ret = lttcomm_send_unix_sock(consumer_sock->fd, &msg, sizeof(msg));
 	if (ret < 0) {
-		PERROR("send consumer relayd socket info");
+		/* The above call will print a PERROR on error. */
+		DBG("Error when sending relayd sockets on sock %d", sock->fd);
 		goto error;
 	}
 
@@ -793,7 +798,8 @@ int consumer_is_data_pending(unsigned int id,
 
 		ret = lttcomm_send_unix_sock(socket->fd, &msg, sizeof(msg));
 		if (ret < 0) {
-			PERROR("send consumer data pending command");
+			/* The above call will print a PERROR on error. */
+			DBG("Error on consumer is data pending on sock %d", socket->fd);
 			pthread_mutex_unlock(socket->lock);
 			goto error;
 		}
@@ -805,7 +811,8 @@ int consumer_is_data_pending(unsigned int id,
 
 		ret = lttcomm_recv_unix_sock(socket->fd, &ret_code, sizeof(ret_code));
 		if (ret < 0) {
-			PERROR("recv consumer data pending status");
+			/* The above call will print a PERROR on error. */
+			DBG("Error on recv consumer is data pending on sock %d", socket->fd);
 			pthread_mutex_unlock(socket->lock);
 			goto error;
 		}
@@ -817,7 +824,8 @@ int consumer_is_data_pending(unsigned int id,
 		}
 	}
 
-	DBG("Consumer data pending ret %d", ret_code);
+	DBG("Consumer data is %s pending for session id %u",
+			ret_code == 1 ? "" : "NOT", id);
 	return ret_code;
 
 error:

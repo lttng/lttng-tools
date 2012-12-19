@@ -333,7 +333,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Get relayd reference if exists. */
 		relayd = consumer_find_relayd(index);
 		if (relayd == NULL) {
-			ERR("Unable to find relayd %" PRIu64, index);
+			DBG("Unable to find relayd %" PRIu64, index);
 			ret_code = LTTNG_ERR_NO_CONSUMER;
 		}
 
