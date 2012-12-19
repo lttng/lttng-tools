@@ -2402,7 +2402,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	 * from either the application manager thread or the command thread. Simply
 	 * indicate that this is a stop error.
 	 */
-	if (ua_sess->started == 1) {
+	if (!ua_sess->started) {
 		goto error_rcu_unlock;
 	}
 
