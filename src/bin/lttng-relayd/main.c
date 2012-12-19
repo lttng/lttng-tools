@@ -254,7 +254,7 @@ int notify_thread_pipe(int wpipe)
 	do {
 		ret = write(wpipe, "!", 1);
 	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	if (ret < 0 || ret != 1) {
 		PERROR("write poll pipe");
 	}
 
@@ -669,7 +669,7 @@ void *relay_thread_dispatcher(void *data)
 						sizeof(struct relay_command));
 			} while (ret < 0 && errno == EINTR);
 			free(relay_cmd);
-			if (ret < 0) {
+			if (ret < 0 || ret != sizeof(struct relay_command)) {
 				PERROR("write cmd pipe");
 				goto error;
 			}
@@ -1244,7 +1244,7 @@ static int write_padding_to_file(int fd, uint32_t size)
 	do {
 		ret = write(fd, zeros, size);
 	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	if (ret < 0 || ret != size) {
 		PERROR("write padding to file");
 	}
 
@@ -1322,7 +1322,7 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = write(metadata_stream->fd, metadata_struct->payload,
 				payload_size);
 	} while (ret < 0 && errno == EINTR);
-	if (ret < payload_size) {
+	if (ret < 0 || ret != payload_size) {
 		ERR("Relay error writing metadata on file");
 		ret = -1;
 		goto end_unlock;
@@ -1804,7 +1804,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 	do {
 		ret = write(stream->fd, data_buffer, data_size);
 	} while (ret < 0 && errno == EINTR);
-	if (ret < data_size) {
+	if (ret < 0 || ret != data_size) {
 		ERR("Relay error writing data to file");
 		ret = -1;
 		goto end_unlock;

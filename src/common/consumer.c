@@ -1106,7 +1106,7 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 	do {
 		ret = write(ctx->consumer_should_quit[1], "4", 1);
 	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	if (ret < 0 || ret != 1) {
 		PERROR("write consumer quit");
 	}
 
@@ -1324,7 +1324,7 @@ static int write_relayd_metadata_id(int fd,
 	do {
 		ret = write(fd, (void *) &hdr, sizeof(hdr));
 	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	if (ret < 0 || ret != sizeof(hdr)) {
 		/*
 		 * This error means that the fd's end is closed so ignore the perror
 		 * not to clubber the error output since this can happen in a normal

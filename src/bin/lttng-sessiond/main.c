@@ -1330,7 +1330,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					ret = write(apps_cmd_pipe[1], ust_cmd,
 							sizeof(struct ust_command));
 				} while (ret < 0 && errno == EINTR);
-				if (ret < 0) {
+				if (ret < 0 || ret != sizeof(struct ust_command)) {
 					PERROR("write apps cmd pipe");
 					if (errno == EBADF) {
 						/*
