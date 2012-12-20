@@ -2759,6 +2759,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			ret = -1;
 			goto error;
 		}
 		relayd->sessiond_session_id = (uint64_t) sessiond_id;
@@ -2808,11 +2809,17 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		relayd->control_sock.fd = fd;
 
 		/*
-		 * Create a session on the relayd and store the returned id. No need to
-		 * grab the socket lock since the relayd object is not yet visible.
+		 * Create a session on the relayd and store the returned id. Lock the
+		 * control socket mutex if the relayd was NOT created before.
 		 */
+		if (!relayd_created) {
+			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+		}
 		ret = relayd_create_session(&relayd->control_sock,
 				&relayd->relayd_session_id);
+		if (!relayd_created) {
+			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		}
 		if (ret < 0) {
 			goto error;
 		}
@@ -2821,6 +2828,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		relayd_id_node = zmalloc(sizeof(struct consumer_relayd_session_id));
 		if (!relayd_id_node) {
 			PERROR("zmalloc relayd id node");
+			ret = -1;
 			goto error;
 		}
 
@@ -2855,6 +2863,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		break;
 	default:
 		ERR("Unknown relayd socket type (%d)", sock_type);
+		ret = -1;
 		goto error;
 	}
 
