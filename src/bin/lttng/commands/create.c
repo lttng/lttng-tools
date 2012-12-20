@@ -112,7 +112,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    TCP for both control (PORT1) and data port (PORT2).\n");
 	fprintf(ofp, "    The default ports are respectively 5342 and 5343.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  > tcp[4|6]://...\n");
+	fprintf(ofp, "  > tcp[6]://...\n");
 	fprintf(ofp, "    Can only be used with -C and -D together\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)\n");
@@ -350,9 +350,11 @@ static int create_session(void)
 	}
 
 	MSG("Session %s created.", session_name);
-	MSG("Traces will be written in %s", print_str_url);
+	if (print_str_url) {
+		MSG("Traces will be written in %s", print_str_url);
+	}
 
-	if (opt_ctrl_url || opt_data_url) {
+	if (opt_ctrl_url && opt_data_url) {
 		/* Setting up control URI (-C or/and -D opt) */
 		ret = set_consumer_url(session_name, opt_ctrl_url, opt_data_url);
 		if (ret < 0) {
@@ -363,6 +365,11 @@ static int create_session(void)
 		if (ret < 0) {
 			goto error;
 		}
+	} else if ((!opt_ctrl_url && opt_data_url) ||
+			(opt_ctrl_url && !opt_data_url)) {
+		ERR("You need both control and data URL.");
+		ret = CMD_ERROR;
+		goto error;
 	}
 
 	if (opt_disable_consumer && !opt_no_consumer) {
