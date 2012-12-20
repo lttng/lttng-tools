@@ -281,6 +281,7 @@ AC_CONFIG_FILES([
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/filter/Makefile
+	src/lib/lttng-ctl/lttng-ctl.pc
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile
 	src/bin/lttng-sessiond/Makefile

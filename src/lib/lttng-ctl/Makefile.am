@@ -11,3 +11,6 @@ liblttng_ctl_la_LIBADD = \
 		$(top_builddir)/src/common/libcommon.la \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
 		$(top_builddir)/src/lib/lttng-ctl/filter/libfilter.la
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = lttng-ctl.pc

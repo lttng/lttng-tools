@@ -35,7 +35,7 @@ src/bin/lttng-sessiond/lttng-sessiond
 src/bin/lttng/lttng
 src/bin/lttng-consumerd/lttng-consumerd
 src/bin/lttng-relayd/lttng-relayd
-
+src/lib/lttng-ctl/lttng-ctl.pc
 src/lib/lttng-ctl/filter/filter-grammar-test
 src/lib/lttng-ctl/filter/filter-lexer.c
 src/lib/lttng-ctl/filter/filter-parser.c

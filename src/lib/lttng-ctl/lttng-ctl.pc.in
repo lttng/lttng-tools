@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: LTTng control library
+Description: The LTTng control and utility library is a library used to control the tracing sessions of a LTTng-session deamon
+Version: @PACKAGE_VERSION@
+Requires:
+Requires.private:
+Libs: -L${libdir} -llttng-ctl
+Cflags: -I${includedir}
+
