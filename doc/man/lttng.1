@@ -424,7 +424,8 @@ file.
 \-c, \-\-channel NAME
         Apply on channel name
 \-a, \-\-all
-        Enable all tracepoints and syscalls
+        Enable all tracepoints and syscalls. This actually enable a single
+        wildcard event "*".
 \-k, \-\-kernel
         Apply for the kernel tracer
 \-u, \-\-userspace
@@ -544,6 +545,9 @@ file.
         Simple listing of options
 \-s, \-\-session NAME
         Apply on session name
+\-a, \-\-all-events
+        Disable all events. This does NOT disable "*" but rather
+        every known events of the session.
 \-k, \-\-kernel
         Apply for the kernel tracer
 \-u, \-\-userspace
