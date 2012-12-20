@@ -1,3 +1,33 @@
+2012-12-20 lttng-tools 2.1.0 (13th Baktun)
+	* STABLE VERSION 2.1.0-stable - "Basse Messe"
+	* Multiple minor fixes
+	* Multiple memory and fd leaks
+	* Fix: Off by one in seq num for data pending command
+	* Fix: flag metadata stream on quiescent control cmd
+	* Fix: prioritize control socket communication in relayd
+	* Fix: poll and epoll fd set reallocation
+	* Fix: add missing goto pending if data is inflight
+	* Fix: remove ua_sess->started assert on stop trace
+	* Set classes of traffic in high_throughput_limit
+	* Fix: use the poll wait ret value when iterating on fd(s)
+	* Fix: force the poll() return value to be nb_fd
+	* Fix: Wrong check of node when cleaning up ht
+	* Fix: set started flag of ust app after ustctl
+	* Fix: memory leak in add relayd socket error path
+	* Fix: add packed attribute to filter structure
+	* Fix: Add missing health code update for consumer command
+	* Add LTTNG_PACKED macro
+	* Fix data pending for inflight streaming
+	* Map session id of relayd and sessiond in consumer
+	* Add the relayd create session command
+	* Make the consumer sends a ACK after each command
+	* Remove MSG_WAITALL on every recvmsg() socket typ
+	* Fix: Add missing relayd ht cleanup and ht destroy
+	* Fix: Relayd and sessiond version check
+	* Fix: protect consumer_find_channel with rcu locking
+	* Fix: don't steal key when adding a metadata stream
+	* Consumer hold stream mutex for add stream
+
 2012-12-03 lttng-tools 2.1.0-rc9
 	* Fix: set the stream ht static in consumer file
 	* Update sessiond man page with new env var
