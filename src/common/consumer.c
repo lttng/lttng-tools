@@ -1334,6 +1334,12 @@ static int write_relayd_metadata_id(int fd,
 			PERROR("write metadata stream id");
 		}
 		DBG3("Consumer failed to write relayd metadata id (errno: %d)", errno);
+		/*
+		 * Set ret to a negative value because if ret != sizeof(hdr), we don't
+		 * handle writting the missing part so report that as an error and
+		 * don't lie to the caller.
+		 */
+		ret = -1;
 		goto end;
 	}
 	DBG("Metadata stream id %" PRIu64 " with padding %lu written before data",
@@ -2597,7 +2603,7 @@ void *consumer_thread_sessiond_poll(void *data)
 
 	/* Blocking call, waiting for transmission */
 	sock = lttcomm_accept_unix_sock(client_socket);
-	if (sock <= 0) {
+	if (sock < 0) {
 		WARN("On accept");
 		goto end;
 	}
