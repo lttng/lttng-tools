@@ -958,6 +958,7 @@ error:
 	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
 	if (send_ret < 0) {
 		ERR("Relayd sending session id");
+		ret = send_ret;
 	}
 
 	return ret;
@@ -983,7 +984,6 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	/* FIXME : use data_size for something ? */
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &stream_info,
 			sizeof(struct lttcomm_relayd_add_stream), 0);
 	if (ret < sizeof(struct lttcomm_relayd_add_stream)) {
@@ -1055,6 +1055,7 @@ end:
 			sizeof(struct lttcomm_relayd_status_stream), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending stream id");
+		ret = send_ret;
 	}
 	rcu_read_unlock();
 
@@ -1144,6 +1145,7 @@ end_unlock:
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending stream id");
+		ret = send_ret;
 	}
 
 end_no_session:
