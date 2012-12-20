@@ -86,7 +86,7 @@ int lttng_ustconsumer_get_produced_snapshot(
 			stream->buf, pos);
 	if (ret != 0) {
 		errno = -ret;
-		PERROR("kernctl_snapshot_get_produced");
+		PERROR("ustctl_snapshot_get_produced");
 	}
 
 	return ret;
@@ -109,6 +109,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		DBG("Consumer received unexpected message size %zd (expects %zu)",
 			ret, sizeof(msg));
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
+		/*
+		 * The ret value might 0 meaning an orderly shutdown but this is ok
+		 * since the caller handles this.
+		 */
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
@@ -159,6 +163,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ret != sizeof(fds)) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 			rcu_read_unlock();
+			/*
+			 * The ret value might 0 meaning an orderly shutdown but this is ok
+			 * since the caller handles this.
+			 */
 			return ret;
 		}
 
@@ -222,6 +230,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ret != sizeof(fds)) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 			rcu_read_unlock();
+			/*
+			 * The ret value might 0 meaning an orderly shutdown but this is ok
+			 * since the caller handles this.
+			 */
 			return ret;
 		}
 
@@ -366,17 +378,18 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DATA_PENDING:
 	{
-		int32_t ret;
+		int ret, is_data_pending;
 		uint64_t id = msg.u.data_pending.session_id;
 
 		DBG("UST consumer data pending command for id %" PRIu64, id);
 
-		ret = consumer_data_pending(id);
+		is_data_pending = consumer_data_pending(id);
 
 		/* Send back returned value to session daemon */
-		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		ret = lttcomm_send_unix_sock(sock, &is_data_pending,
+				sizeof(is_data_pending));
 		if (ret < 0) {
-			PERROR("send data pending ret code");
+			DBG("Error when sending the data pending ret code: %d", ret);
 		}
 
 		/*
