@@ -27,3 +27,6 @@ endif
 if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
 demo_LDADD = -lc
 endif
+
+noinst_SCRIPTS = demo-trace
+EXTRA_DIST = demo-trace

@@ -1,4 +1,4 @@
 SUBDIRS = demo
 
 noinst_SCRIPTS = run
-EXTRA_DIST = run
+EXTRA_DIST = run overlap.sh
