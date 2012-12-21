@@ -1,0 +1,60 @@
+CYGWIN LTTNG-TOOLS PORT INSTALLATION & USAGE INSTRUCTIONS
+---------------------------------------------------------
+
+The Cygwin lttng-tools port is an *experimental* development branch based on
+the lttng-ust 2.0 stable version. This port is a *prototype* and should not be
+deployed in production.
+
+The latest version of the development branch can be found at:
+  * lttng-tools:   git://git.lttng.org/lttng-tools.git -b cygwin-2.0-experimental
+
+PREREQUISITES
+
+- Cygwin 1.7.x available here: http://cygwin.com/setup.exe
+
+- lttng-tools dependencies (Cygwin packages available through setup.exe)
+    * autoconf
+    * automake
+    * gcc4
+    * libpopt0
+    * libtool
+    * popt
+
+INSTALLATION INSTRUCTIONS:
+
+The Cygwin lttng-tools port should be installed by carefully following the
+outlined instructions below:
+
+* lttng-tools
+
+  - Start a Cygwin shell.
+
+  - Download lttng-tools sources:
+
+    git clone git://git.lttng.org/lttng-tools.git -b cygwin-2.0-experimental
+
+  - Change directory and run the bootstrap script:
+
+    cd lttng-tools
+    ./bootstrap
+
+  - Run the configure script with these parameters:
+    LDFLAGS="-no-undefined" ./configure --prefix=/usr
+
+  - Run the make command and install lttng-tools
+    make
+    make install
+
+INSTRUMENTATION:
+
+Refer the to the lttng-ust(3) man page
+(Online version: http://lttng.org/files/doc/man-pages/man3/lttng-ust.3.html).
+
+CYGWIN PORT LIMITATIONS:
+
+- Since Cygwin doesn't support file descriptor passing over UNIX socket,
+  the SHMs (shared memory) and wait pipes are exposed via the filesystem in
+  /tmp/lttng-fds. This is a potential security issue.
+
+  For more information see commit 6684bfa4a76f566ff024d4f2159f59f2e783d8c2
+  in lttng-tools.
