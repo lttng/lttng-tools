@@ -866,6 +866,34 @@ char *create_output_path(char *path_name)
 	}
 }
 
+/*
+ * Get stream from stream id.
+ * Need to be called with RCU read-side lock held.
+ */
+static
+struct relay_stream *relay_stream_from_stream_id(uint64_t stream_id,
+		struct lttng_ht *streams_ht)
+{
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+	struct relay_stream *ret;
+
+	lttng_ht_lookup(streams_ht,
+			(void *)((unsigned long) stream_id),
+			&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node == NULL) {
+		DBG("Relay stream %" PRIu64 " not found", stream_id);
+		ret = NULL;
+		goto end;
+	}
+
+	ret = caa_container_of(node, struct relay_stream, stream_n);
+
+end:
+	return ret;
+}
+
 static
 void deferred_free_stream(struct rcu_head *head)
 {
@@ -1075,7 +1103,6 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	int ret, send_ret;
-	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
 	DBG("Close stream received");
@@ -1100,17 +1127,8 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	rcu_read_lock();
-	lttng_ht_lookup(streams_ht,
-			(void *)((unsigned long) be64toh(stream_info.stream_id)),
-			&iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
-		DBG("Relay stream %" PRIu64 " not found", be64toh(stream_info.stream_id));
-		ret = -1;
-		goto end_unlock;
-	}
-
-	stream = caa_container_of(node, struct relay_stream, stream_n);
+	stream = relay_stream_from_stream_id(be64toh(stream_info.stream_id),
+			streams_ht);
 	if (!stream) {
 		ret = -1;
 		goto end_unlock;
@@ -1126,6 +1144,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		if (delret < 0) {
 			PERROR("close stream");
 		}
+		iter.iter.node = &stream->stream_n.node;
 		delret = lttng_ht_del(streams_ht, &iter);
 		assert(!delret);
 		call_rcu(&stream->rcu_node,
@@ -1193,34 +1212,6 @@ int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
 		ERR("Relay sending start ack");
 	}
 
-	return ret;
-}
-
-/*
- * Get stream from stream id.
- * Need to be called with RCU read-side lock held.
- */
-static
-struct relay_stream *relay_stream_from_stream_id(uint64_t stream_id,
-		struct lttng_ht *streams_ht)
-{
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
-	struct relay_stream *ret;
-
-	lttng_ht_lookup(streams_ht,
-			(void *)((unsigned long) stream_id),
-			&iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
-		DBG("Relay stream %" PRIu64 " not found", stream_id);
-		ret = NULL;
-		goto end;
-	}
-
-	ret = caa_container_of(node, struct relay_stream, stream_n);
-
-end:
 	return ret;
 }
 
@@ -1410,8 +1401,6 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	int ret;
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
 	uint64_t last_net_seq_num, stream_id;
 
 	DBG("Data pending command received");
@@ -1439,16 +1428,11 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	last_net_seq_num = be64toh(msg.last_net_seq_num);
 
 	rcu_read_lock();
-	lttng_ht_lookup(streams_ht, (void *)((unsigned long) stream_id), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
-		DBG("Relay stream %" PRIu64 " not found", stream_id);
+	stream = relay_stream_from_stream_id(stream_id, streams_ht);
+	if (stream == NULL) {
 		ret = -1;
 		goto end_unlock;
 	}
-
-	stream = caa_container_of(node, struct relay_stream, stream_n);
-	assert(stream);
 
 	DBG("Data pending for stream id %" PRIu64 " prev_seq %" PRIu64
 			" and last_seq %" PRIu64, stream_id, stream->prev_seq,
