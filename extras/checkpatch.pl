@@ -3198,7 +3198,7 @@ sub process {
 					$herectx .= raw_line($linenr, $n) . "\n";
 				}
 
-				WARN("BRACES",
+				WARN("BRACES_SINGLE_STMT",
 				     "braces {} are not necessary for single statement blocks\n" . $herectx);
 			}
 		}
