@@ -17,7 +17,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        consumer.c consumer.h \
                        session.c session.h \
                        modprobe.c modprobe.h kern-modules.h \
-                       lttng-ust-ctl.h lttng-ust-abi.h \
+                       lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
                        fd-limit.c fd-limit.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h \
