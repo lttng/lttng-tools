@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# Install the checkpatch pre-commit hook.
+
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+
+PRECOMMIT_HOOK="../.git/hooks/pre-commit"
+PRECOMMIT_SCRIPT="checkpatch-hook"
+CHECKPATCH_CONF=".checkpatch.conf"
+
+if [ -f $PRECOMMIT_HOOK ];
+then
+   echo "File $PRECOMMIT_HOOK already exists. Aborting."
+   exit 1
+else
+    ln -s $DIR/$PRECOMMIT_SCRIPT $PRECOMMIT_HOOK
+fi
+
+if [ -f ../$CHECKPATCH_CONF ];
+then
+   echo "File ../$CHECKPATCH_CONF already exists. Aborting."
+   exit 1
+else
+    ln -s $DIR/$CHECKPATCH_CONF ../$CHECKPATCH_CONF
+fi
+
+echo "Checkpatch pre-commit hook successfully installed!"

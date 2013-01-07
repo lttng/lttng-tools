@@ -46,6 +46,8 @@ extras/bindings/swig/python/lttng.i
 extras/bindings/swig/python/lttng.py
 extras/bindings/swig/python/lttng_wrap.c
 
+.checkpatch.conf
+
 # Tests
 test_sessions
 test_kernel_data_trace
