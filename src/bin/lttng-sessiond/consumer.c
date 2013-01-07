@@ -376,10 +376,12 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 	/* Putting back the HT pointer and start copying socket(s). */
 	output->socks = tmp_ht_ptr;
 
+	rcu_read_lock();
 	cds_lfht_for_each_entry(obj->socks->ht, &iter.iter, socket, node.node) {
 		/* Create new socket object. */
 		copy_sock = consumer_allocate_socket(socket->fd);
 		if (copy_sock == NULL) {
+			rcu_read_unlock();
 			goto malloc_error;
 		}
 
@@ -387,6 +389,7 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 		copy_sock->lock = socket->lock;
 		consumer_add_socket(copy_sock, output);
 	}
+	rcu_read_unlock();
 
 error:
 	return output;
@@ -793,6 +796,7 @@ int consumer_is_data_pending(unsigned int id,
 	DBG3("Consumer data pending for id %u", id);
 
 	/* Send command for each consumer */
+	rcu_read_lock();
 	cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
 			node.node) {
 		/* Code flow error */
@@ -805,7 +809,7 @@ int consumer_is_data_pending(unsigned int id,
 			/* The above call will print a PERROR on error. */
 			DBG("Error on consumer is data pending on sock %d", socket->fd);
 			pthread_mutex_unlock(socket->lock);
-			goto error;
+			goto error_unlock;
 		}
 
 		/*
@@ -822,7 +826,7 @@ int consumer_is_data_pending(unsigned int id,
 			/* The above call will print a PERROR on error. */
 			DBG("Error on recv consumer is data pending on sock %d", socket->fd);
 			pthread_mutex_unlock(socket->lock);
-			goto error;
+			goto error_unlock;
 		}
 
 		pthread_mutex_unlock(socket->lock);
@@ -831,11 +835,13 @@ int consumer_is_data_pending(unsigned int id,
 			break;
 		}
 	}
+	rcu_read_unlock();
 
 	DBG("Consumer data is %s pending for session id %u",
 			ret_code == 1 ? "" : "NOT", id);
 	return ret_code;
 
-error:
+error_unlock:
+	rcu_read_unlock();
 	return -1;
 }
