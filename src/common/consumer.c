@@ -2941,30 +2941,24 @@ end:
 static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 {
 	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
 	struct consumer_relayd_sock_pair *relayd = NULL;
-	struct consumer_relayd_session_id *session_id_map;
-
-	/* Get the session id map. */
-	lttng_ht_lookup(relayd_session_id_ht, (void *)((unsigned long) id), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
-		goto end;
-	}
-
-	session_id_map = caa_container_of(node, struct consumer_relayd_session_id,
-			node);
 
 	/* Iterate over all relayd since they are indexed by net_seq_idx. */
 	cds_lfht_for_each_entry(consumer_data.relayd_ht->ht, &iter.iter, relayd,
 			node.node) {
-		if (relayd->relayd_session_id == session_id_map->relayd_id) {
+		/*
+		 * Check by sessiond id which is unique here where the relayd session
+		 * id might not be when having multiple relayd.
+		 */
+		if (relayd->sessiond_session_id == id) {
 			/* Found the relayd. There can be only one per id. */
-			break;
+			goto found;
 		}
 	}
 
-end:
+	return NULL;
+
+found:
 	return relayd;
 }
 
