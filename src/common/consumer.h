@@ -301,15 +301,6 @@ struct lttng_consumer_global_data {
 };
 
 /*
- * Session id mapping structure storred in relayd_session_id_ht.
- */
-struct consumer_relayd_session_id {
-	uint64_t sessiond_id;
-	uint64_t relayd_id;
-	struct lttng_ht_node_ulong node;
-};
-
-/*
  * Init consumer data structures.
  */
 extern void lttng_consumer_init(void);
