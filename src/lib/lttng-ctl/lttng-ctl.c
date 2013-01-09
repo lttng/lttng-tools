@@ -184,10 +184,12 @@ static ssize_t parse_str_urls_to_uri(const char *ctrl_url, const char *data_url,
 		/* It's possible the control URIs array contains more than one URI */
 		memcpy(tmp_uris, ctrl_uris, sizeof(struct lttng_uri) * size_ctrl);
 		++idx;
+		free(ctrl_uris);
 	}
 
 	if (data_uris) {
 		memcpy(&tmp_uris[idx], data_uris, sizeof(struct lttng_uri));
+		free(data_uris);
 	}
 
 	*uris = tmp_uris;
@@ -1139,6 +1141,7 @@ const char *lttng_strerror(int code)
  */
 int lttng_create_session(const char *name, const char *url)
 {
+	int ret;
 	ssize_t size;
 	struct lttcomm_session_msg lsm;
 	struct lttng_uri *uris = NULL;
@@ -1160,8 +1163,11 @@ int lttng_create_session(const char *name, const char *url)
 
 	lsm.u.uri.size = size;
 
-	return ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
+	ret = ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
 			NULL);
+
+	free(uris);
+	return ret;
 }
 
 /*
@@ -1419,6 +1425,7 @@ int lttng_session_daemon_alive(void)
 int lttng_set_consumer_url(struct lttng_handle *handle,
 		const char *control_url, const char *data_url)
 {
+	int ret;
 	ssize_t size;
 	struct lttcomm_session_msg lsm;
 	struct lttng_uri *uris = NULL;
@@ -1442,8 +1449,11 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lsm.u.uri.size = size;
 
-	return ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
+	ret = ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
 			NULL);
+
+	free(uris);
+	return ret;
 }
 
 /*
@@ -1604,6 +1614,7 @@ error:
 int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime)
 {
+	int ret;
 	ssize_t size;
 	struct lttcomm_session_msg lsm;
 	struct lttng_uri *uris = NULL;
@@ -1620,24 +1631,28 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
 	if (size < 0) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
 	}
 
 	lsm.u.uri.size = size;
 
 	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
-		int ret;
-
 		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s-%s", name,
 				datetime);
 		if (ret < 0) {
 			PERROR("snprintf uri subdir");
-			return -LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
 		}
 	}
 
-	return ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
+	ret = ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
 			NULL);
+
+error:
+	free(uris);
+	return ret;
 }
 
 /*
