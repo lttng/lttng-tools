@@ -755,7 +755,7 @@ static int write_relayd_stream_header(struct lttng_consumer_stream *stream,
 		 * this next value, 1 should always be substracted in order to compare
 		 * the last seen sequence number on the relayd side to the last sent.
 		 */
-		data_hdr.net_seq_num = htobe64(stream->next_net_seq_num++);
+		data_hdr.net_seq_num = htobe64(stream->next_net_seq_num);
 		/* Other fields are zeroed previously */
 
 		ret = relayd_send_data_hdr(&relayd->data_sock, &data_hdr,
@@ -763,6 +763,8 @@ static int write_relayd_stream_header(struct lttng_consumer_stream *stream,
 		if (ret < 0) {
 			goto error;
 		}
+
+		++stream->next_net_seq_num;
 
 		/* Set to go on data socket */
 		outfd = relayd->data_sock.fd;
