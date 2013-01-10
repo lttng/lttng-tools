@@ -129,7 +129,19 @@ struct lttng_consumer_stream {
 	unsigned int metadata_flag;
 	/* Used when the stream is set for network streaming */
 	uint64_t relayd_stream_id;
-	/* Next sequence number to use for trace packet */
+	/*
+	 * When sending a stream packet to a relayd, this number is used to track
+	 * the packet sent by the consumer and seen by the relayd. When sending the
+	 * data header to the relayd, this number is sent and if the transmission
+	 * was successful, it is incremented.
+	 *
+	 * Even if the full data is not fully transmitted it won't matter since
+	 * only two possible error can happen after that where either the relayd
+	 * died or a read error is detected on the stream making this value useless
+	 * after that.
+	 *
+	 * This value SHOULD be read/updated atomically or with the lock acquired.
+	 */
 	uint64_t next_net_seq_num;
 	/*
 	 * Lock to use the stream FDs since they are used between threads.
