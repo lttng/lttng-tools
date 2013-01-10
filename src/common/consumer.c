@@ -2155,7 +2155,7 @@ restart:
 					if (stream == NULL) {
 						/* Check for deleted streams. */
 						validate_endpoint_status_metadata_stream(&events);
-						continue;
+						goto restart;
 					}
 
 					DBG("Adding metadata stream %d to poll set",
