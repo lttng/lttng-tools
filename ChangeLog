@@ -1,3 +1,12 @@
+2013-01-11 lttng-tools 2.1.1
+	* Fix: update next_net_seq_num after sending header
+	* Fix: wrong loop continuation in metadata thread
+	* Fix: lttng create session memleaks
+	* Fix: remove unused session id map
+	* Fix: wrong session id used on relayd lookup
+	* Fix: add missing UST abi header for make dist
+	* Fix: add missing rcu read side lock/unlock
+
 2012-12-20 lttng-tools 2.1.0 (13th Baktun)
 	* STABLE VERSION 2.1.0-stable - "Basse Messe"
 	* Multiple minor fixes
