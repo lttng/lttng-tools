@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -200,5 +201,34 @@ int utils_set_fd_cloexec(int fd)
 	}
 
 end:
+	return ret;
+}
+
+/*
+ * Create pid file to the given path and filename.
+ */
+__attribute__((visibility("hidden")))
+int utils_create_pid_file(pid_t pid, const char *filepath)
+{
+	int ret;
+	FILE *fp;
+
+	assert(filepath);
+
+	fp = fopen(filepath, "w");
+	if (fp == NULL) {
+		PERROR("open pid file %s", filepath);
+		ret = -1;
+		goto error;
+	}
+
+	ret = fprintf(fp, "%d\n", pid);
+	if (ret < 0) {
+		PERROR("fprintf pid file");
+	}
+
+	fclose(fp);
+	DBG("Pid %d written in file %s", pid, filepath);
+error:
 	return ret;
 }

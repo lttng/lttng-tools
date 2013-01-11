@@ -72,6 +72,7 @@
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_RUNDIR                    "/var/run/lttng"
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
+#define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
 
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"

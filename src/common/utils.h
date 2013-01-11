@@ -24,5 +24,6 @@ int utils_create_pipe_cloexec(int *dst);
 void utils_close_pipe(int *src);
 char *utils_strdupdelim(const char *begin, const char *end);
 int utils_set_fd_cloexec(int fd);
+int utils_create_pid_file(pid_t pid, const char *filepath);
 
 #endif /* _COMMON_UTILS_H */

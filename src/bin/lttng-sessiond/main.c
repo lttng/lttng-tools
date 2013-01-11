@@ -72,6 +72,7 @@ const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
 const char *progname;
 const char *opt_tracing_group;
+static const char *opt_pidfile;
 static int opt_sig_parent;
 static int opt_verbose_consumer;
 static int opt_daemon;
@@ -403,6 +404,17 @@ static void cleanup(void)
 
 	/* First thing first, stop all threads */
 	utils_close_pipe(thread_quit_pipe);
+
+	/*
+	 * If opt_pidfile is undefined, the default file will be wiped when
+	 * removing the rundir.
+	 */
+	if (opt_pidfile) {
+		ret = remove(opt_pidfile);
+		if (ret < 0) {
+			PERROR("remove pidfile %s", opt_pidfile);
+		}
+	}
 
 	DBG("Removing %s directory", rundir);
 	ret = asprintf(&cmd, "rm -rf %s", rundir);
@@ -3406,6 +3418,7 @@ static void usage(void)
 	fprintf(stderr, "  -S, --sig-parent                   Send SIGCHLD to parent pid to notify readiness.\n");
 	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
+	fprintf(stderr, "  -p, --pidfile FILE                 Write a pid to FILE name overriding the default value.\n");
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
 	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
 }
@@ -3439,12 +3452,13 @@ static int parse_args(int argc, char **argv)
 		{ "verbose", 0, 0, 'v' },
 		{ "verbose-consumer", 0, 0, 'Z' },
 		{ "no-kernel", 0, 0, 'N' },
+		{ "pidfile", 1, 0, 'p' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t",
+		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3520,6 +3534,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'T':
 			consumerd64_libdir = optarg;
+			break;
+		case 'p':
+			opt_pidfile = optarg;
 			break;
 		default:
 			/* Unknown option or other error.
@@ -3848,6 +3865,38 @@ static void set_ulimit(void)
 }
 
 /*
+ * Write pidfile using the rundir and opt_pidfile.
+ */
+static void write_pidfile(void)
+{
+	int ret;
+	char pidfile_path[PATH_MAX];
+
+	assert(rundir);
+
+	if (opt_pidfile) {
+		strncpy(pidfile_path, opt_pidfile, sizeof(pidfile_path));
+	} else {
+		/* Build pidfile path from rundir and opt_pidfile. */
+		ret = snprintf(pidfile_path, sizeof(pidfile_path), "%s/"
+				DEFAULT_LTTNG_SESSIOND_PIDFILE, rundir);
+		if (ret < 0) {
+			PERROR("snprintf pidfile path");
+			goto error;
+		}
+	}
+
+	/*
+	 * Create pid file in rundir. Return value is of no importance. The
+	 * execution will continue even though we are not able to write the file.
+	 */
+	(void) utils_create_pid_file(getpid(), pidfile_path);
+
+error:
+	return;
+}
+
+/*
  * main
  */
 int main(int argc, char **argv)
@@ -4143,6 +4192,8 @@ int main(int argc, char **argv)
 	} else {
 		app_socket_timeout = DEFAULT_APP_SOCKET_RW_TIMEOUT;
 	}
+
+	write_pidfile();
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,
