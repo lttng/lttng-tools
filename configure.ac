@@ -150,7 +150,7 @@ AS_IF([test "x$lttng_ust_support" = "xyes"], [
 	)
 ])
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$lttng_ust_ctl_found" = xyes])
-AC_CHECK_FUNCS([sched_getcpu sysconf])
+AC_CHECK_FUNCS([sched_getcpu sysconf sync_file_range])
 
 # check for dlopen
 AC_CHECK_LIB([dl], [dlopen],
