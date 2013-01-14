@@ -148,6 +148,7 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	/* Add channel to session */
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
+	lkc->session = session;
 
 	DBG("Kernel channel %s created (fd: %d)", lkc->channel->name, lkc->fd);
 
@@ -707,4 +708,34 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 	consumer_output_send_destroy_relayd(ksess->consumer);
 
 	trace_kernel_destroy_session(ksess);
+}
+
+/*
+ * Destroy a kernel channel object. It does not do anything on the tracer side.
+ */
+void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
+{
+	struct ltt_kernel_session *ksess = NULL;
+
+	assert(kchan);
+	assert(kchan->channel);
+
+	DBG3("Kernel destroy channel %s", kchan->channel->name);
+
+	/* Update channel count of associated session. */
+	if (kchan->session) {
+		/* Keep pointer reference so we can update it after the destroy. */
+		ksess = kchan->session;
+	}
+
+	trace_kernel_destroy_channel(kchan);
+
+	/*
+	 * At this point the kernel channel is not visible anymore. This is safe
+	 * since in order to work on a visible kernel session, the tracing session
+	 * lock (ltt_session.lock) MUST be acquired.
+	 */
+	if (ksess) {
+		ksess->channel_count--;
+	}
 }

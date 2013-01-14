@@ -52,6 +52,7 @@ void kernel_wait_quiescent(int fd);
 int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);
 int kernel_validate_version(int tracer_fd);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
+void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
 
 int init_kernel_workarounds(void);
 

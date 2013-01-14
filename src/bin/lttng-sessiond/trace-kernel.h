@@ -65,6 +65,8 @@ struct ltt_kernel_channel {
 	struct ltt_kernel_event_list events_list;
 	struct ltt_kernel_stream_list stream_list;
 	struct cds_list_head list;
+	/* Session pointer which has a reference to this object. */
+	struct ltt_kernel_session *session;
 };
 
 /* Metadata */
