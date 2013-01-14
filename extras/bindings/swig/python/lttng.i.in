@@ -715,7 +715,7 @@ def calibrate(handle, calibrate):
 
 %pythoncode %{
 class Handle:
-        """
+	"""
 	Manages a handle.
 	Takes two arguments: (str session_name, Domain domain)
 	"""
