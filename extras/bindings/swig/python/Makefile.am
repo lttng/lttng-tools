@@ -24,4 +24,4 @@ lttng_wrap.c: lttng.i
 	sed -i "s/md = d/d/g" lttng_wrap.c
 	sed -i "s/(void)public_symbol;/(void)public_symbol;\n  md = d;/g" lttng_wrap.c
 
-CLEANFILES = lttng.i lttng.py lttng_wrap.c
+CLEANFILES = lttng.i lttng.py lttng_wrap.c lttng.pyc
