@@ -1111,7 +1111,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *filter, int wpipe)
 {
-	int ret;
+	int ret, channel_created = 0;
 	struct lttng_channel *attr;
 
 	assert(session);
@@ -1139,6 +1139,8 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 				goto error;
 			}
 			free(attr);
+
+			channel_created = 1;
 		}
 
 		/* Get the newly created kernel channel pointer */
@@ -1153,6 +1155,10 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 		ret = event_kernel_enable_tracepoint(session->kernel_session, kchan,
 				event);
 		if (ret != LTTNG_OK) {
+			if (channel_created) {
+				/* Let's not leak a useless channel. */
+				kernel_destroy_channel(kchan);
+			}
 			goto error;
 		}
 
@@ -1283,6 +1289,10 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 
 		/* Manage return value */
 		if (ret != LTTNG_OK) {
+			/*
+			 * On error, cmd_enable_channel call will take care of destroying
+			 * the created channel if it was needed.
+			 */
 			goto error;
 		}
 
