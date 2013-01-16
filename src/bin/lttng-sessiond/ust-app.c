@@ -2651,12 +2651,6 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 				/* FIXME: Should we quit here or continue... */
 				continue;
 			}
-
-			ret = set_ust_event_filter(ua_event, app);
-			if (ret < 0) {
-				/* FIXME: Should we quit here or continue... */
-				continue;
-			}
 		}
 	}
 
