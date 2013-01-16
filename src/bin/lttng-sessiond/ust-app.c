@@ -1030,15 +1030,26 @@ error:
 }
 
 /*
- * Create a UST session onto the tracer of app and add it the session
- * hashtable.
+ * Create a session on the tracer side for the given app.
  *
- * Return ust app session or NULL on error.
+ * On success, ua_sess_ptr is populated with the session pointer or else left
+ * untouched. If the session was created, is_created is set to 1. On error,
+ * it's left untouched. Note that ua_sess_ptr is mandatory but is_created can
+ * be NULL.
+ *
+ * Returns 0 on success or else a negative code which is either -ENOMEM or
+ * -ENOTCONN which is the default code if the ustctl_create_session fails.
  */
-static struct ust_app_session *create_ust_app_session(
-		struct ltt_ust_session *usess, struct ust_app *app)
+static int create_ust_app_session(struct ltt_ust_session *usess,
+		struct ust_app *app, struct ust_app_session **ua_sess_ptr,
+		int *is_created)
 {
+	int ret, created = 0;
 	struct ust_app_session *ua_sess;
+
+	assert(usess);
+	assert(app);
+	assert(ua_sess_ptr);
 
 	health_code_update(&health_thread_cmd);
 
@@ -1049,23 +1060,28 @@ static struct ust_app_session *create_ust_app_session(
 		ua_sess = alloc_ust_app_session();
 		if (ua_sess == NULL) {
 			/* Only malloc can failed so something is really wrong */
-			goto end;
+			ret = -ENOMEM;
+			goto error;
 		}
 		shadow_copy_session(ua_sess, usess, app);
+		created = 1;
 	}
 
 	health_code_update(&health_thread_cmd);
 
 	if (ua_sess->handle == -1) {
-		int ret;
-
 		ret = ustctl_create_session(app->sock);
 		if (ret < 0) {
 			ERR("Creating session for app pid %d", app->pid);
 			delete_ust_app_session(-1, ua_sess);
-			/* This means that the tracer is gone... */
-			ua_sess = (void*) -1UL;
-			goto end;
+			if (ret != -ENOMEM) {
+				/*
+				 * Tracer is probably gone or got an internal error so let's
+				 * behave like it will soon unregister or not usable.
+				 */
+				ret = -ENOTCONN;
+			}
+			goto error;
 		}
 
 		ua_sess->handle = ret;
@@ -1077,9 +1093,16 @@ static struct ust_app_session *create_ust_app_session(
 		DBG2("UST app session created successfully with handle %d", ret);
 	}
 
-end:
+	*ua_sess_ptr = ua_sess;
+	if (is_created) {
+		*is_created = created;
+	}
+	/* Everything went well. */
+	ret = 0;
+
+error:
 	health_code_update(&health_thread_cmd);
-	return ua_sess;
+	return ret;
 }
 
 /*
@@ -2030,10 +2053,10 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
-	int ret = 0;
+	int ret = 0, created;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
-	struct ust_app_session *ua_sess;
+	struct ust_app_session *ua_sess = NULL;
 
 	/* Very wrong code flow */
 	assert(usess);
@@ -2058,25 +2081,34 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		 * that if session exist, it will simply return a pointer to the ust
 		 * app session.
 		 */
-		ua_sess = create_ust_app_session(usess, app);
-		if (ua_sess == NULL) {
-			/* The malloc() failed. */
-			ret = -ENOMEM;
-			goto error_rcu_unlock;
-		} else if (ua_sess == (void *) -1UL) {
-			/*
-			 * The application's socket is not valid. Either a bad socket or a
-			 * timeout on it. We can't inform yet the caller that for a
-			 * specific app, the session failed so we continue here.
-			 */
-			continue;
+		ret = create_ust_app_session(usess, app, &ua_sess, &created);
+		if (ret < 0) {
+			switch (ret) {
+			case -ENOTCONN:
+				/*
+				 * The application's socket is not valid. Either a bad socket
+				 * or a timeout on it. We can't inform the caller that for a
+				 * specific app, the session failed so lets continue here.
+				 */
+				continue;
+			case -ENOMEM:
+			default:
+				goto error_rcu_unlock;
+			}
 		}
+		assert(ua_sess);
 
 		/* Create channel onto application. We don't need the chan ref. */
 		ret = create_ust_app_channel(ua_sess, uchan, app, NULL);
-		if (ret < 0 && ret == -ENOMEM) {
-			/* No more memory is a fatal error. Stop right now. */
-			goto error_rcu_unlock;
+		if (ret < 0) {
+			if (ret == -ENOMEM) {
+				/* No more memory is a fatal error. Stop right now. */
+				goto error_rcu_unlock;
+			}
+			/* Cleanup the created session if it's the case. */
+			if (created) {
+				delete_ust_app_session(app->sock, ua_sess);
+			}
 		}
 	}
 
@@ -2592,7 +2624,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	int ret = 0;
 	struct lttng_ht_iter iter, uiter, iter_ctx;
 	struct ust_app *app;
-	struct ust_app_session *ua_sess;
+	struct ust_app_session *ua_sess = NULL;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
@@ -2614,11 +2646,12 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		goto error;
 	}
 
-	ua_sess = create_ust_app_session(usess, app);
-	if (ua_sess == NULL || ua_sess == (void *) -1UL) {
-		/* Tracer is gone for this session and has been freed */
+	ret = create_ust_app_session(usess, app, &ua_sess, NULL);
+	if (ret < 0) {
+		/* Tracer is probably gone or ENOMEM. */
 		goto error;
 	}
+	assert(ua_sess);
 
 	/*
 	 * We can iterate safely here over all UST app session sicne the create ust
