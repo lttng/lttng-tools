@@ -65,6 +65,12 @@ struct lttng_ht *ust_app_ht;
  */
 struct lttng_ht *ust_app_ht_by_sock;
 
+/* Stream list containing ust_app_stream. */
+struct ust_app_stream_list {
+	unsigned int count;
+	struct cds_list_head head;
+};
+
 struct ust_app_ctx {
 	int handle;
 	struct lttng_ust_context ctx;
@@ -82,13 +88,23 @@ struct ust_app_event {
 	struct lttng_ust_filter_bytecode *filter;
 };
 
+struct ust_app_stream {
+	int handle;
+	char pathname[PATH_MAX];
+	/* Format is %s_%d respectively channel name and CPU number. */
+	char name[DEFAULT_STREAM_NAME_LEN];
+	struct lttng_ust_object_data *obj;
+	/* Using a list of streams to keep order. */
+	struct cds_list_head list;
+};
+
 struct ust_app_channel {
 	int enabled;
 	int handle;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_channel attr;
 	struct lttng_ust_object_data *obj;
-	struct ltt_ust_stream_list streams;
+	struct ust_app_stream_list streams;
 	struct lttng_ht *ctx;
 	struct lttng_ht *events;
 	struct lttng_ht_node_str node;

@@ -35,12 +35,6 @@ struct ltt_ust_ht_key {
 	enum lttng_ust_loglevel_type loglevel;
 };
 
-/* UST Stream list */
-struct ltt_ust_stream_list {
-	unsigned int count;
-	struct cds_list_head head;
-};
-
 /* Context hash table nodes */
 struct ltt_ust_context {
 	struct lttng_ust_context ctx;
@@ -53,17 +47,6 @@ struct ltt_ust_event {
 	struct lttng_ust_event attr;
 	struct lttng_ht_node_str node;
 	struct lttng_ust_filter_bytecode *filter;
-};
-
-/* UST stream */
-struct ltt_ust_stream {
-	int handle;
-	char pathname[PATH_MAX];
-	/* Format is %s_%d respectively channel name and CPU number. */
-	char name[DEFAULT_STREAM_NAME_LEN];
-	struct lttng_ust_object_data *obj;
-	/* Using a list of streams to keep order. */
-	struct cds_list_head list;
 };
 
 /* UST channel */

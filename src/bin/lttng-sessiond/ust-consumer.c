@@ -83,7 +83,7 @@ error:
  */
 static int send_channel_stream(struct consumer_socket *sock,
 		struct ust_app_channel *uchan, struct ust_app_session *usess,
-		struct ltt_ust_stream *stream, struct consumer_output *consumer,
+		struct ust_app_stream *stream, struct consumer_output *consumer,
 		const char *pathname)
 {
 	int ret, fds[2];
@@ -140,7 +140,7 @@ static int send_channel_streams(struct consumer_socket *sock,
 	int ret;
 	char tmp_path[PATH_MAX];
 	const char *pathname;
-	struct ltt_ust_stream *stream, *tmp;
+	struct ust_app_stream *stream, *tmp;
 
 	assert(sock);
 

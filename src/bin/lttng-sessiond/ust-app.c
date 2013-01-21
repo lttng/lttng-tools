@@ -155,7 +155,7 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
  * this function.
  */
 static
-void delete_ust_app_stream(int sock, struct ltt_ust_stream *stream)
+void delete_ust_app_stream(int sock, struct ust_app_stream *stream)
 {
 	if (stream->obj) {
 		ustctl_release_object(sock, stream->obj);
@@ -176,7 +176,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 	struct lttng_ht_iter iter;
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
-	struct ltt_ust_stream *stream, *stmp;
+	struct ust_app_stream *stream, *stmp;
 
 	/* Wipe stream */
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
@@ -757,7 +757,7 @@ error:
  * On error, return a negative value.
  */
 static int create_ust_stream(struct ust_app *app,
-		struct ust_app_channel *ua_chan, struct ltt_ust_stream *stream)
+		struct ust_app_channel *ua_chan, struct ust_app_stream *stream)
 {
 	int ret;
 
@@ -2314,7 +2314,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
-	struct ltt_ust_stream *ustream;
+	struct ust_app_stream *ustream;
 	struct consumer_socket *socket;
 
 	DBG("Starting tracing for ust app pid %d", app->pid);
