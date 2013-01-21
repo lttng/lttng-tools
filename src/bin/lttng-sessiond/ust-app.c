@@ -739,6 +739,7 @@ static int create_ust_metadata_stream(struct ust_app *app,
 	ret = ustctl_create_stream(app->sock, ua_sess->metadata->obj,
 			&ua_sess->metadata->stream_obj);
 	if (ret < 0) {
+		lttng_fd_put(LTTNG_FD_APPS, 2);
 		ERR("UST create metadata stream failed");
 		goto error;
 	}
