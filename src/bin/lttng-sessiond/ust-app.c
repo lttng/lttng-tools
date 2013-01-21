@@ -749,6 +749,52 @@ error:
 }
 
 /*
+ * Create stream onto the UST tracer for a given channel.
+ *
+ * Return -ENOENT if no more stream is available for this channel.
+ * On success, return 0.
+ * On error, return a negative value.
+ */
+static int create_ust_stream(struct ust_app *app,
+		struct ust_app_channel *ua_chan, struct ltt_ust_stream *stream)
+{
+	int ret;
+
+	assert(app);
+	assert(ua_chan);
+	assert(ua_chan->obj);
+	assert(stream);
+
+	health_code_update(&health_thread_cmd);
+
+	/* We are going to receive 2 fds, we need to reserve them. */
+	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+	if (ret < 0) {
+		ERR("Exhausted number of available FD on stream creation");
+		/* Just to make sure we never return -ENOENT. */
+		ret = -1;
+		goto error;
+	}
+
+	ret = ustctl_create_stream(app->sock, ua_chan->obj, &stream->obj);
+	if (ret < 0) {
+		lttng_fd_put(LTTNG_FD_APPS, 2);
+		/* Indicates that there is no more stream for that channel. */
+		if (ret != -ENOENT) {
+			ERR("UST create metadata stream failed (ret: %d)", ret);
+		}
+		goto error;
+	}
+
+	/* Set stream handle with the returned value. */
+	stream->handle = stream->obj->handle;
+
+error:
+	health_code_update(&health_thread_cmd);
+	return ret;
+}
+
+/*
  * Create the specified channel onto the UST tracer for a UST session.
  */
 static int create_ust_channel(struct ust_app *app,
@@ -2307,22 +2353,12 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				goto error_rcu_unlock;
 			}
 
-			/* We are going to receive 2 fds, we need to reserve them. */
-			ret = lttng_fd_get(LTTNG_FD_APPS, 2);
-			if (ret < 0) {
-				ERR("Exhausted number of available FD upon stream create");
-				free(ustream);
-				goto error_rcu_unlock;
-			}
-
 			health_code_update(&health_thread_cmd);
 
-			ret = ustctl_create_stream(app->sock, ua_chan->obj,
-					&ustream->obj);
+			ret = create_ust_stream(app, ua_chan, ustream);
 			if (ret < 0) {
-				/* Free unused memory and reset FD states. */
+				/* Free unused memory after this point. */
 				free(ustream);
-				lttng_fd_put(LTTNG_FD_APPS, 2);
 				if (ret == -ENOENT) {
 					/* Got all streams. Continue normal execution. */
 					break;
@@ -2331,7 +2367,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				ret = LTTNG_ERR_UST_STREAM_FAIL;
 				goto error_rcu_unlock;
 			}
-			ustream->handle = ustream->obj->handle;
 
 			health_code_update(&health_thread_cmd);
 
