@@ -777,6 +777,20 @@ static int create_ust_stream(struct ust_app *app,
 		goto error;
 	}
 
+	/*
+	 * Set the stream name before creating it. On error, we don't have to
+	 * delete it on the tracer side.
+	 */
+	ret = snprintf(stream->name, sizeof(stream->name), "%s_%u",
+			ua_chan->name, ua_chan->streams.count);
+	if (ret < 0) {
+		/* Without the stream name we can't continue using it. */
+		PERROR("snprintf UST create stream");
+		/* Just to make sure we never return -ENOENT. */
+		ret = -1;
+		goto error;
+	}
+
 	ret = ustctl_create_stream(app->sock, ua_chan->obj, &stream->obj);
 	if (ret < 0) {
 		lttng_fd_put(LTTNG_FD_APPS, 2);
@@ -2371,19 +2385,10 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 			health_code_update(&health_thread_cmd);
 
-			/* Order is important */
+			/* Order is important this is why a list is used. */
 			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
-			ret = snprintf(ustream->name, sizeof(ustream->name), "%s_%u",
-					ua_chan->name, ua_chan->streams.count);
 			ua_chan->streams.count++;
-			if (ret < 0) {
-				PERROR("asprintf UST create stream");
-				/*
-				 * XXX what should we do here with the
-				 * stream ?
-				 */
-				continue;
-			}
+
 			DBG2("UST stream %d ready (handle: %d)", ua_chan->streams.count,
 					ustream->handle);
 		}
