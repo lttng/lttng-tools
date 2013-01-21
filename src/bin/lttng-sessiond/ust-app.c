@@ -379,6 +379,28 @@ error:
 }
 
 /*
+ * Allocate and initialize a UST app stream.
+ *
+ * Return newly allocated stream pointer or NULL on error.
+ */
+static struct ust_app_stream *alloc_ust_app_stream(void)
+{
+	struct ust_app_stream *stream = NULL;
+
+	stream = zmalloc(sizeof(*stream));
+	if (stream == NULL) {
+		PERROR("zmalloc ust app stream");
+		goto error;
+	}
+
+	/* Zero could be a valid value for a handle so flag it to -1. */
+	stream->handle = -1;
+
+error:
+	return stream;
+}
+
+/*
  * Alloc new UST app event.
  */
 static
@@ -2362,9 +2384,8 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		/* Create all streams */
 		while (1) {
 			/* Create UST stream */
-			ustream = zmalloc(sizeof(*ustream));
+			ustream = alloc_ust_app_stream();
 			if (ustream == NULL) {
-				PERROR("zmalloc ust stream");
 				goto error_rcu_unlock;
 			}
 
