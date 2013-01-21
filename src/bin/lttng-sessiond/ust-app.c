@@ -781,7 +781,7 @@ static int create_ust_stream(struct ust_app *app,
 	if (ret < 0) {
 		lttng_fd_put(LTTNG_FD_APPS, 2);
 		/* Indicates that there is no more stream for that channel. */
-		if (ret != -ENOENT) {
+		if (ret != -LTTNG_UST_ERR_NOENT) {
 			ERR("UST create metadata stream failed (ret: %d)", ret);
 		}
 		goto error;
@@ -2360,7 +2360,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			if (ret < 0) {
 				/* Free unused memory after this point. */
 				free(ustream);
-				if (ret == -ENOENT) {
+				if (ret == -LTTNG_UST_ERR_NOENT) {
 					/* Got all streams. Continue normal execution. */
 					break;
 				}
