@@ -2292,7 +2292,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				/* Free unused memory and reset FD states. */
 				free(ustream);
 				lttng_fd_put(LTTNG_FD_APPS, 2);
-				if (ret == -ENOENT) {
+				if (ret == -LTTNG_UST_ERR_NOENT) {
 					/* Got all streams. Continue normal execution. */
 					break;
 				}
