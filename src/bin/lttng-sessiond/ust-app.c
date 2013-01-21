@@ -721,9 +721,9 @@ error:
 }
 
 /*
- * Create stream onto the UST tracer for a UST session.
+ * Create metadata stream onto the UST tracer for a given session.
  */
-static int create_ust_stream(struct ust_app *app,
+static int create_ust_metadata_stream(struct ust_app *app,
 		struct ust_app_session *ua_sess)
 {
 	int ret;
@@ -1375,7 +1375,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 
 	/* Open UST metadata stream */
 	if (ua_sess->metadata->stream_obj == NULL) {
-		ret = create_ust_stream(app, ua_sess);
+		ret = create_ust_metadata_stream(app, ua_sess);
 		if (ret < 0) {
 			goto error;
 		}
