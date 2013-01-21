@@ -2288,11 +2288,16 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			ret = ustctl_create_stream(app->sock, ua_chan->obj,
 					&ustream->obj);
 			if (ret < 0) {
-				/* Got all streams */
-				lttng_fd_put(LTTNG_FD_APPS, 2);
+				/* Free unused memory and reset FD states. */
 				free(ustream);
+				lttng_fd_put(LTTNG_FD_APPS, 2);
+				if (ret == -ENOENT) {
+					/* Got all streams. Continue normal execution. */
+					break;
+				}
+				/* Error at this point. Stop everything. */
 				ret = LTTNG_ERR_UST_STREAM_FAIL;
-				break;
+				goto error_rcu_unlock;
 			}
 			ustream->handle = ustream->obj->handle;
 
