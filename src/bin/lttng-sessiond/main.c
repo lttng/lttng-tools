@@ -626,7 +626,7 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 					struct lttng_ht_iter iter;
 					struct consumer_socket *socket;
 
-
+					rcu_read_lock();
 					cds_lfht_for_each_entry(ksess->consumer->socks->ht,
 							&iter.iter, socket, node.node) {
 						/* Code flow error */
@@ -637,9 +637,11 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 								channel, ksess);
 						pthread_mutex_unlock(socket->lock);
 						if (ret < 0) {
+							rcu_read_unlock();
 							goto error;
 						}
 					}
+					rcu_read_unlock();
 				}
 				goto error;
 			}
