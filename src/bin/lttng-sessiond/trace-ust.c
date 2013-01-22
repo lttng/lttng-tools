@@ -116,7 +116,8 @@ no_match:
 }
 
 /*
- * Find the channel in the hashtable.
+ * Find the channel in the hashtable and return channel pointer. RCU read side
+ * lock MUST be acquired before calling this.
  */
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name)
@@ -124,14 +125,11 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
-	rcu_read_lock();
 	lttng_ht_lookup(ht, (void *)name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
-		rcu_read_unlock();
 		goto error;
 	}
-	rcu_read_unlock();
 
 	DBG2("Trace UST channel %s found by name", name);
 
@@ -143,7 +141,8 @@ error:
 }
 
 /*
- * Find the event in the hashtable.
+ * Find the event in the hashtable and return event pointer. RCU read side lock
+ * MUST be acquired before calling this.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_filter_bytecode *filter, int loglevel)

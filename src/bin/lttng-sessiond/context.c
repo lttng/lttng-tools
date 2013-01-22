@@ -241,6 +241,8 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	assert(ctx);
 	assert(channel_name);
 
+	rcu_read_lock();
+
 	/*
 	 * Define which channel's hashtable to use from the domain or quit if
 	 * unknown domain.
@@ -303,5 +305,6 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	}
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
