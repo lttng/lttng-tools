@@ -60,6 +60,8 @@ static void add_unique_ust_event(struct lttng_ht *ht,
  */
 static void init_syscalls_kernel_event(struct lttng_event *event)
 {
+	assert(event);
+
 	event->name[0] = '\0';
 	/*
 	 * We use LTTNG_EVENT* here since the trace kernel creation will make the
@@ -76,6 +78,8 @@ int event_kernel_disable_tracepoint(struct ltt_kernel_session *ksession,
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
+
+	assert(kchan);
 
 	kevent = trace_kernel_get_event_by_name(event_name, kchan);
 	if (kevent == NULL) {
@@ -107,6 +111,8 @@ int event_kernel_disable_all_tracepoints(struct ltt_kernel_session *ksession,
 	int ret;
 	struct ltt_kernel_event *kevent;
 
+	assert(kchan);
+
 	/* For each event in the kernel session */
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
 		ret = kernel_disable_event(kevent);
@@ -137,6 +143,9 @@ int event_kernel_disable_all(struct ltt_kernel_session *ksession,
 {
 	int ret;
 
+	assert(ksession);
+	assert(kchan);
+
 	ret = event_kernel_disable_all_tracepoints(ksession, kchan);
 	if (ret != LTTNG_OK)
 		return ret;
@@ -152,6 +161,9 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
+
+	assert(kchan);
+	assert(event);
 
 	kevent = trace_kernel_get_event_by_name(event->name, kchan);
 	if (kevent == NULL) {
@@ -197,6 +209,8 @@ int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 	struct ltt_kernel_event *kevent;
 	struct lttng_event *event_list = NULL;
 
+	assert(kchan);
+
 	/* For each event in the kernel session */
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
 		if (kevent->enabled == 0) {
@@ -231,7 +245,6 @@ int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
 	ret = LTTNG_OK;
 end:
 	return ret;
-
 }
 
 /*
@@ -242,6 +255,8 @@ int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
 {
 	int ret;
 	struct lttng_event event;
+
+	assert(kchan);
 
 	init_syscalls_kernel_event(&event);
 
@@ -270,7 +285,11 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 {
 	int tp_ret;
 
-	tp_ret = event_kernel_enable_all_tracepoints(ksession, kchan, kernel_tracer_fd);
+	assert(ksession);
+	assert(kchan);
+
+	tp_ret = event_kernel_enable_all_tracepoints(ksession, kchan,
+			kernel_tracer_fd);
 	if (tp_ret != LTTNG_OK) {
 		goto end;
 	}
@@ -306,6 +325,9 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
+
+	assert(usess);
+	assert(uchan);
 
 	rcu_read_lock();
 
@@ -412,6 +434,10 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess, int domain,
 	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
 
+	assert(usess);
+	assert(uchan);
+	assert(event);
+
 	rcu_read_lock();
 
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
@@ -509,6 +535,10 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess, int domain,
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
 
+	assert(usess);
+	assert(uchan);
+	assert(event_name);
+
 	ht = uchan->events;
 
 	rcu_read_lock();
@@ -582,6 +612,9 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, int domain,
 	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
+
+	assert(usess);
+	assert(uchan);
 
 	rcu_read_lock();
 

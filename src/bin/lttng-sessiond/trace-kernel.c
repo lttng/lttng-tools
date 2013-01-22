@@ -35,10 +35,8 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 {
 	struct ltt_kernel_channel *chan;
 
-	if (session == NULL) {
-		ERR("Undefine session");
-		goto error;
-	}
+	assert(session);
+	assert(name);
 
 	DBG("Trying to find channel %s", name);
 
@@ -49,7 +47,6 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		}
 	}
 
-error:
 	return NULL;
 }
 
@@ -61,10 +58,8 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(
 {
 	struct ltt_kernel_event *ev;
 
-	if (channel == NULL) {
-		ERR("Undefine channel");
-		goto error;
-	}
+	assert(name);
+	assert(channel);
 
 	cds_list_for_each_entry(ev, &channel->events_list.head, list) {
 		if (strcmp(name, ev->event->name) == 0) {
@@ -74,7 +69,6 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(
 		}
 	}
 
-error:
 	return NULL;
 }
 
@@ -153,6 +147,8 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 {
 	struct ltt_kernel_channel *lkc;
 
+	assert(chan);
+
 	lkc = zmalloc(sizeof(struct ltt_kernel_channel));
 	if (lkc == NULL) {
 		PERROR("ltt_kernel_channel zmalloc");
@@ -190,6 +186,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 {
 	struct ltt_kernel_event *lke;
 	struct lttng_kernel_event *attr;
+
+	assert(ev);
 
 	lke = zmalloc(sizeof(struct ltt_kernel_event));
 	attr = zmalloc(sizeof(struct lttng_kernel_event));
@@ -302,6 +300,8 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 	int ret;
 	struct ltt_kernel_stream *lks;
 
+	assert(name);
+
 	lks = zmalloc(sizeof(struct ltt_kernel_stream));
 	if (lks == NULL) {
 		PERROR("kernel stream zmalloc");
@@ -331,6 +331,8 @@ error:
  */
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 {
+	assert(stream);
+
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
 	if (stream->fd >= 0) {
@@ -352,6 +354,8 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
  */
 void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
+	assert(event);
+
 	if (event->fd >= 0) {
 		int ret;
 
@@ -380,6 +384,8 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	struct ltt_kernel_stream *stream, *stmp;
 	struct ltt_kernel_event *event, *etmp;
 	int ret;
+
+	assert(channel);
 
 	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
@@ -413,6 +419,8 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
  */
 void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 {
+	assert(metadata);
+
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
 	if (metadata->fd >= 0) {
@@ -435,6 +443,8 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel, *ctmp;
 	int ret;
+
+	assert(session);
 
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */

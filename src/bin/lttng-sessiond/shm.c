@@ -43,6 +43,8 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	int wait_shm_fd, ret;
 	mode_t mode;
 
+	assert(shm_path);
+
 	/* Default permissions */
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 
@@ -137,6 +139,8 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 	size_t mmap_size = sysconf(_SC_PAGE_SIZE);
 	int wait_shm_fd, ret;
 	char *wait_shm_mmap;
+
+	assert(shm_path);
 
 	wait_shm_fd = get_wait_shm(shm_path, mmap_size, global);
 	if (wait_shm_fd < 0) {

@@ -203,22 +203,6 @@ static int fuzzing_create_args(void)
 	return 0;
 }
 
-static int fuzzing_destroy_args(void)
-{
-	int ret;
-
-	ret = destroy_one_session(NULL);
-	if (ret > 0) {
-		printf("Session destroyed with (null)\n");
-		return -1;
-	}
-
-	/* Session list must be 0 */
-	assert(!session_list_count());
-
-	return 0;
-}
-
 /*
  * This test is supposed to fail at the second create call. If so, return 0 for
  * test success, else -1.
@@ -302,14 +286,6 @@ int main(int argc, char **argv)
 	printf("Fuzzing create_session arguments: ");
 	fflush(stdout);
 	ret = fuzzing_create_args();
-	if (ret < 0) {
-		return -1;
-	}
-	PRINT_OK();
-
-	printf("Fuzzing destroy_session argument: ");
-	fflush(stdout);
-	ret = fuzzing_destroy_args();
 	if (ret < 0) {
 		return -1;
 	}

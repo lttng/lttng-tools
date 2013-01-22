@@ -56,6 +56,8 @@ static struct ltt_session_list ltt_session_list = {
  */
 static unsigned int add_session_list(struct ltt_session *ls)
 {
+	assert(ls);
+
 	cds_list_add(&ls->list, &ltt_session_list.head);
 	return ltt_session_list.next_uuid++;
 }
@@ -67,6 +69,8 @@ static unsigned int add_session_list(struct ltt_session *ls)
  */
 static void del_session_list(struct ltt_session *ls)
 {
+	assert(ls);
+
 	cds_list_del(&ls->list);
 }
 
@@ -99,6 +103,8 @@ void session_unlock_list(void)
  */
 void session_lock(struct ltt_session *session)
 {
+	assert(session);
+
 	pthread_mutex_lock(&session->lock);
 }
 
@@ -107,6 +113,8 @@ void session_lock(struct ltt_session *session)
  */
 void session_unlock(struct ltt_session *session)
 {
+	assert(session);
+
 	pthread_mutex_unlock(&session->lock);
 }
 
@@ -118,6 +126,8 @@ void session_unlock(struct ltt_session *session)
 struct ltt_session *session_find_by_name(char *name)
 {
 	struct ltt_session *iter;
+
+	assert(name);
 
 	DBG2("Trying to find session by name %s", name);
 
@@ -141,10 +151,7 @@ found:
 int session_destroy(struct ltt_session *session)
 {
 	/* Safety check */
-	if (session == NULL) {
-		ERR("Session pointer was null on session destroy");
-		return LTTNG_OK;
-	}
+	assert(session);
 
 	DBG("Destroying session %s", session->name);
 	del_session_list(session);

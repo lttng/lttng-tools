@@ -90,11 +90,17 @@ int channel_kernel_disable(struct ltt_kernel_session *ksession,
 	int ret;
 	struct ltt_kernel_channel *kchan;
 
+	assert(ksession);
+	assert(channel_name);
+
 	kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
 	if (kchan == NULL) {
 		ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 		goto error;
-	} else if (kchan->enabled == 1) {
+	}
+
+	/* Only if channel is enabled disable it. */
+	if (kchan->enabled == 1) {
 		ret = kernel_disable_channel(kchan);
 		if (ret < 0 && ret != -EEXIST) {
 			ret = LTTNG_ERR_KERN_CHAN_DISABLE_FAIL;
@@ -115,6 +121,9 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan)
 {
 	int ret;
+
+	assert(ksession);
+	assert(kchan);
 
 	if (kchan->enabled == 0) {
 		ret = kernel_enable_channel(kchan);
@@ -141,6 +150,8 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 {
 	int ret;
 	struct lttng_channel *defattr = NULL;
+
+	assert(ksession);
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
@@ -179,6 +190,9 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = LTTNG_OK;
+
+	assert(usess);
+	assert(uchan);
 
 	/* If already enabled, everything is OK */
 	if (uchan->enabled) {
@@ -229,6 +243,8 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
 
+	assert(usess);
+
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
 		defattr = channel_new_default_attr(domain);
@@ -245,16 +261,18 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 	}
 
 	/*
-	 * Validate UST buffer size and number of buffers: must both be
-	 * power of 2 and nonzero. We validate right here for UST,
-	 * because applications will not report the error to the user
-	 * (unlike kernel tracing).
+	 * Validate UST buffer size and number of buffers: must both be power of 2
+	 * and nonzero. We validate right here for UST, because applications will
+	 * not report the error to the user (unlike kernel tracing).
 	 */
-	if (!attr->attr.subbuf_size || (attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
+	if (!attr->attr.subbuf_size ||
+			(attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
 		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
-	if (!attr->attr.num_subbuf || (attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
+
+	if (!attr->attr.num_subbuf ||
+			(attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
 		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -322,6 +340,9 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = LTTNG_OK;
+
+	assert(usess);
+	assert(uchan);
 
 	/* Already disabled */
 	if (uchan->enabled == 0) {

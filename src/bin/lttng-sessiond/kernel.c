@@ -40,6 +40,9 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 {
 	int ret;
 
+	assert(chan);
+	assert(ctx);
+
 	DBG("Adding context to channel %s", chan->channel->name);
 	ret = kernctl_add_context(chan->fd, ctx);
 	if (ret < 0) {
@@ -74,6 +77,8 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 {
 	int ret;
 	struct ltt_kernel_session *lks;
+
+	assert(session);
 
 	/* Allocate data structure */
 	lks = trace_kernel_create_session(session->path);
@@ -117,6 +122,10 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
+
+	assert(session);
+	assert(chan);
+	assert(path);
 
 	/* Allocate kernel channel */
 	lkc = trace_kernel_create_channel(chan, path);
@@ -167,6 +176,9 @@ int kernel_create_event(struct lttng_event *ev,
 {
 	int ret;
 	struct ltt_kernel_event *event;
+
+	assert(ev);
+	assert(channel);
 
 	event = trace_kernel_create_event(ev);
 	if (event == NULL) {
@@ -231,6 +243,8 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 {
 	int ret;
 
+	assert(chan);
+
 	ret = kernctl_disable(chan->fd);
 	if (ret < 0) {
 		PERROR("disable chan ioctl");
@@ -254,6 +268,8 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 {
 	int ret;
 
+	assert(chan);
+
 	ret = kernctl_enable(chan->fd);
 	if (ret < 0 && errno != EEXIST) {
 		PERROR("Enable kernel chan");
@@ -275,6 +291,8 @@ error:
 int kernel_enable_event(struct ltt_kernel_event *event)
 {
 	int ret;
+
+	assert(event);
 
 	ret = kernctl_enable(event->fd);
 	if (ret < 0) {
@@ -304,6 +322,8 @@ error:
 int kernel_disable_event(struct ltt_kernel_event *event)
 {
 	int ret;
+
+	assert(event);
 
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
@@ -335,6 +355,8 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
+
+	assert(session);
 
 	/* Allocate kernel metadata */
 	lkm = trace_kernel_create_metadata();
@@ -371,6 +393,8 @@ error:
 int kernel_start_session(struct ltt_kernel_session *session)
 {
 	int ret;
+
+	assert(session);
 
 	ret = kernctl_start_session(session->fd);
 	if (ret < 0) {
@@ -409,6 +433,8 @@ int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 {
 	int ret;
 
+	assert(calibrate);
+
 	ret = kernctl_calibrate(fd, calibrate);
 	if (ret < 0) {
 		PERROR("calibrate ioctl");
@@ -442,6 +468,8 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 	int ret;
 	struct ltt_kernel_stream *stream;
 
+	assert(channel);
+
 	DBG("Flush buffer for channel %s", channel->channel->name);
 
 	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
@@ -463,6 +491,8 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 int kernel_stop_session(struct ltt_kernel_session *session)
 {
 	int ret;
+
+	assert(session);
 
 	ret = kernctl_stop_session(session->fd);
 	if (ret < 0) {
@@ -487,6 +517,8 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 {
 	int ret, count = 0;
 	struct ltt_kernel_stream *lks;
+
+	assert(channel);
 
 	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
 		lks = trace_kernel_create_stream(channel->channel->name, count);
@@ -529,6 +561,8 @@ int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 {
 	int ret;
 
+	assert(session);
+
 	ret = kernctl_create_stream(session->metadata->fd);
 	if (ret < 0) {
 		PERROR("kernel create metadata stream");
@@ -559,6 +593,8 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 	size_t nbmem, count = 0;
 	FILE *fp;
 	struct lttng_event *elist;
+
+	assert(events);
 
 	fd = kernctl_tracepoint_list(tracer_fd);
 	if (fd < 0) {

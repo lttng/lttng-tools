@@ -262,6 +262,9 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	int ret;
 	struct ltt_ust_channel *luc;
 
+	assert(chan);
+	assert(path);
+
 	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {
 		PERROR("ltt_ust_channel zmalloc");
@@ -321,6 +324,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		struct lttng_filter_bytecode *filter)
 {
 	struct ltt_ust_event *lue;
+
+	assert(ev);
 
 	lue = zmalloc(sizeof(struct ltt_ust_event));
 	if (lue == NULL) {
@@ -396,6 +401,8 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	int ret;
 	struct ltt_ust_metadata *lum;
 
+	assert(path);
+
 	lum = zmalloc(sizeof(struct ltt_ust_metadata));
 	if (lum == NULL) {
 		PERROR("ust metadata zmalloc");
@@ -436,6 +443,8 @@ struct ltt_ust_context *trace_ust_create_context(
 {
 	struct ltt_ust_context *uctx;
 	enum lttng_ust_context_type utype;
+
+	assert(ctx);
 
 	switch (ctx->ctx) {
 	case LTTNG_EVENT_CONTEXT_VTID:
@@ -492,6 +501,8 @@ static void destroy_contexts(struct lttng_ht *ht)
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
+	assert(ht);
+
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(ht, &iter);
 		if (!ret) {
@@ -507,6 +518,8 @@ static void destroy_contexts(struct lttng_ht *ht)
  */
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
+	assert(event);
+
 	DBG2("Trace destroy UST event %s", event->attr.name);
 	free(event->filter);
 	free(event);
@@ -534,6 +547,8 @@ static void destroy_events(struct lttng_ht *events)
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	assert(events);
+
 	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(events, &iter);
 		assert(!ret);
@@ -548,6 +563,8 @@ static void destroy_events(struct lttng_ht *events)
  */
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
+	assert(channel);
+
 	DBG2("Trace destroy UST channel %s", channel->name);
 
 	rcu_read_lock();
@@ -580,6 +597,8 @@ static void destroy_channel_rcu(struct rcu_head *head)
  */
 void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 {
+	assert(metadata);
+
 	if (!metadata->handle) {
 		return;
 	}
@@ -595,6 +614,8 @@ static void destroy_channels(struct lttng_ht *channels)
 	int ret;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
+
+	assert(channels);
 
 	rcu_read_lock();
 
@@ -618,6 +639,8 @@ static void destroy_domain_pid(struct lttng_ht *ht)
 	struct lttng_ht_iter iter;
 	struct ltt_ust_domain_pid *dpid;
 
+	assert(ht);
+
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, dpid, node.node) {
 		ret = lttng_ht_del(ht , &iter);
 		assert(!ret);
@@ -636,6 +659,8 @@ static void destroy_domain_exec(struct lttng_ht *ht)
 	struct lttng_ht_iter iter;
 	struct ltt_ust_domain_exec *dexec;
 
+	assert(ht);
+
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, dexec, node.node) {
 		ret = lttng_ht_del(ht , &iter);
 		assert(!ret);
@@ -650,6 +675,8 @@ static void destroy_domain_exec(struct lttng_ht *ht)
  */
 static void destroy_domain_global(struct ltt_ust_domain_global *dom)
 {
+	assert(dom);
+
 	destroy_channels(dom->channels);
 }
 
@@ -658,10 +685,7 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
-	/* Extra protection */
-	if (session == NULL) {
-		return;
-	}
+	assert(session);
 
 	rcu_read_lock();
 
