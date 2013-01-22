@@ -1399,7 +1399,7 @@ int lttng_session_daemon_alive(void)
 		return ret;
 	}
 
-	if (strlen(sessiond_sock_path) == 0) {
+	if (*sessiond_sock_path == '\0') {
 		/*
 		 * No socket path set. Weird error which means the constructor was not
 		 * called.

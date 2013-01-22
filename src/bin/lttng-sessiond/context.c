@@ -201,7 +201,7 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 			LTTNG_SYMBOL_NAME_LEN);
 	kctx.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 
-	if (strlen(channel_name) == 0) {
+	if (*channel_name == '\0') {
 		ret = add_kctx_all_channels(ksession, &kctx);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -262,7 +262,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	}
 
 	/* Get UST channel if defined */
-	if (strlen(channel_name) != 0) {
+	if (channel_name != '\0') {
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == NULL) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;

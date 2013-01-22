@@ -105,7 +105,7 @@ static int build_network_session_path(char *dst, size_t size,
 	 * Do we have a UST url set. If yes, this means we have both kernel and UST
 	 * to print.
 	 */
-	if (strlen(tmp_uurl) > 0) {
+	if (*tmp_uurl != '\0') {
 		ret = snprintf(dst, size, "[K]: %s [data: %d] -- [U]: %s [data: %d]",
 				tmp_urls, kdata_port, tmp_uurl, udata_port);
 	} else {

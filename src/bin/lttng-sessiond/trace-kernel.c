@@ -109,7 +109,7 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	 */
 	lks->tmp_consumer = NULL;
 
-	if (path && strlen(path) > 0) {
+	if (*path != '\0') {
 		int ret;
 
 		/* Use the default consumer output which is the tracing session path. */

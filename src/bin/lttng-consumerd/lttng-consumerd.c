@@ -294,7 +294,7 @@ int main(int argc, char **argv)
 	/* Set up max poll set size */
 	lttng_poll_set_max_size();
 
-	if (strlen(command_sock_path) == 0) {
+	if (*command_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
 			snprintf(command_sock_path, PATH_MAX, DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
@@ -330,7 +330,7 @@ int main(int argc, char **argv)
 	}
 
 	lttng_consumer_set_command_sock_path(ctx, command_sock_path);
-	if (strlen(error_sock_path) == 0) {
+	if (*error_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
 			snprintf(error_sock_path, PATH_MAX, DEFAULT_KCONSUMERD_ERR_SOCK_PATH,

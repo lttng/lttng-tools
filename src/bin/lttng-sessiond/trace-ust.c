@@ -216,7 +216,7 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 	lus->tmp_consumer = NULL;
 
 	/* Use the default consumer output which is the tracing session path. */
-	if (path && strlen(path) > 0) {
+	if (*path != '\0') {
 		int ret;
 
 		ret = snprintf(lus->consumer->dst.trace_path, PATH_MAX,

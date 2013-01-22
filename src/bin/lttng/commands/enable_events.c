@@ -199,7 +199,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
 		ev->attr.probe.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		DBG("probe symbol %s", ev->attr.probe.symbol_name);
-		if (strlen(s_hex) == 0) {
+		if (*s_hex == '\0') {
 			ERR("Invalid probe offset %s", s_hex);
 			ret = -1;
 			goto end;
@@ -227,7 +227,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	/* Check for address */
 	ret = sscanf(opt, "%s", s_hex);
 	if (ret > 0) {
-		if (strlen(s_hex) == 0) {
+		if (*s_hex == '\0') {
 			ERR("Invalid probe address %s", s_hex);
 			ret = -1;
 			goto end;
