@@ -227,7 +227,7 @@ static int send_metadata(struct consumer_socket *sock,
 			usess->metadata->obj->shm_fd,
 			usess->metadata->attr.subbuf_size,
 			usess->metadata->obj->memory_map_size,
-			"metadata",
+			DEFAULT_METADATA_NAME,
 			1);
 
 	health_code_update(&health_thread_cmd);
@@ -289,7 +289,7 @@ static int send_metadata(struct consumer_socket *sock,
 			usess->gid,
 			consumer->net_seq_index,
 			1, /* Flag metadata set */
-			"metadata",
+			DEFAULT_METADATA_NAME,
 			pathname,
 			usess->id);
 

@@ -124,7 +124,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			session->metadata->fd,
 			session->metadata->conf->attr.subbuf_size,
 			0, /* for kernel */
-			"metadata",
+			DEFAULT_METADATA_NAME,
 			1);
 
 	health_code_update(&health_thread_kernel);
@@ -148,7 +148,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			session->gid,
 			consumer->net_seq_index,
 			1, /* Metadata flag set */
-			"metadata",
+			DEFAULT_METADATA_NAME,
 			pathname,
 			session->id);
 

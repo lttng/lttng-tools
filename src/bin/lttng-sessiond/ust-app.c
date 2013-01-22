@@ -1468,7 +1468,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		}
 
 		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
-				"%s/metadata", ua_sess->path);
+				"%s/" DEFAULT_METADATA_NAME, ua_sess->path);
 		if (ret < 0) {
 			PERROR("asprintf UST create stream");
 			goto error;

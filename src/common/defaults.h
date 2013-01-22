@@ -22,6 +22,13 @@
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"
 
+/*
+ * This value is defined in the CTF specification (see
+ * git://git.efficios.com/ctf.git in the file
+ * common-trace-format-specification.txt.
+ */
+#define DEFAULT_METADATA_NAME                   "metadata"
+
 /* Environment variable to set session daemon binary path. */
 #define DEFAULT_SESSIOND_PATH_ENV               "LTTNG_SESSIOND_PATH"
 

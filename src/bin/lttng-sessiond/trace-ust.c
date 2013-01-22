@@ -418,7 +418,7 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 
 	lum->handle = -1;
 	/* Set metadata trace path */
-	ret = snprintf(lum->pathname, PATH_MAX, "%s/metadata", path);
+	ret = snprintf(lum->pathname, PATH_MAX, "%s/" DEFAULT_METADATA_NAME, path);
 	if (ret < 0) {
 		PERROR("asprintf ust metadata");
 		goto error_free_metadata;
