@@ -152,6 +152,7 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 		struct lttng_ht_iter iter;
 		struct ltt_ust_channel *uchan;
 
+		rcu_read_lock();
 		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 				&iter.iter, uchan, node.node) {
 			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
@@ -171,6 +172,7 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 			}
 			i++;
 		}
+		rcu_read_unlock();
 		break;
 	}
 	default:
@@ -433,6 +435,8 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 
 	assert(session);
 
+	rcu_read_lock();
+
 	if (session->consumer_fds_sent == 0 && session->consumer != NULL) {
 		cds_lfht_for_each_entry(session->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
@@ -450,6 +454,7 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 	}
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -643,6 +648,8 @@ static int setup_relayd(struct ltt_session *session)
 
 	DBG2("Setting relayd for session %s", session->name);
 
+	rcu_read_lock();
+
 	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET
 			&& usess->consumer->enabled) {
 		/* For each consumer socket, send relayd sockets */
@@ -679,6 +686,7 @@ static int setup_relayd(struct ltt_session *session)
 	}
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 

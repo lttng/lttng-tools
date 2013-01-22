@@ -108,16 +108,20 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 
+	rcu_read_lock();
+
 	/* Lookup context before adding it */
 	lttng_ht_lookup(uchan->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
 	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
 	if (uctx_node != NULL) {
 		ret = -EEXIST;
+		rcu_read_unlock();
 		goto error;
 	}
 
 	/* Add ltt UST context node to ltt UST channel */
 	lttng_ht_add_unique_ulong(uchan->ctx, &uctx->node);
+	rcu_read_unlock();
 
 	DBG("Context UST %d added to channel %s", uctx->ctx.ctx, uchan->name);
 
@@ -250,6 +254,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		/* Add ctx to channel */
 		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 	} else {
+		rcu_read_lock();
 		/* Add ctx all events, all channels */
 		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
@@ -258,6 +263,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 				continue;
 			}
 		}
+		rcu_read_unlock();
 	}
 
 	switch (ret) {
