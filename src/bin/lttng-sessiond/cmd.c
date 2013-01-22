@@ -766,6 +766,8 @@ int cmd_disable_channel(struct ltt_session *session, int domain,
 
 	usess = session->ust_session;
 
+	rcu_read_lock();
+
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -810,6 +812,7 @@ int cmd_disable_channel(struct ltt_session *session, int domain,
 	ret = LTTNG_OK;
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -829,6 +832,8 @@ int cmd_enable_channel(struct ltt_session *session,
 	assert(attr);
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
+
+	rcu_read_lock();
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -898,6 +903,7 @@ int cmd_enable_channel(struct ltt_session *session,
 	}
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -909,6 +915,8 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 		char *channel_name, char *event_name)
 {
 	int ret;
+
+	rcu_read_lock();
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -968,6 +976,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 	ret = LTTNG_OK;
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -978,6 +987,8 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 		char *channel_name)
 {
 	int ret;
+
+	rcu_read_lock();
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1037,6 +1048,7 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 	ret = LTTNG_OK;
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -1125,6 +1137,8 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 	assert(session);
 	assert(event);
 	assert(channel_name);
+
+	rcu_read_lock();
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1219,6 +1233,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 	ret = LTTNG_OK;
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -1234,6 +1249,8 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 
 	assert(session);
 	assert(channel_name);
+
+	rcu_read_lock();
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1365,6 +1382,7 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 	ret = LTTNG_OK;
 
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
