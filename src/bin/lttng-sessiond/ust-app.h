@@ -102,7 +102,7 @@ struct ust_app_channel {
 	int enabled;
 	int handle;
 	char name[LTTNG_UST_SYM_NAME_LEN];
-	struct lttng_ust_channel attr;
+	struct lttng_ust_channel_attr attr;
 	struct lttng_ust_object_data *obj;
 	struct ust_app_stream_list streams;
 	struct lttng_ht *ctx;

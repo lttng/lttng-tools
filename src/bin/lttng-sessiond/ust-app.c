@@ -367,7 +367,13 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 
 	/* Copy attributes */
 	if (attr) {
-		memcpy(&ua_chan->attr, attr, sizeof(ua_chan->attr));
+		/* Translate from lttng_ust_channel to lttng_ust_channel_attr.*/
+		ua_chan->attr.subbuf_size = attr->subbuf_size;
+		ua_chan->attr.num_subbuf = attr->num_subbuf;
+		ua_chan->attr.overwrite = attr->overwrite;
+		ua_chan->attr.switch_timer_interval = attr->switch_timer_interval;
+		ua_chan->attr.read_timer_interval = attr->read_timer_interval;
+		ua_chan->attr.output = attr->output;
 	}
 
 	DBG3("UST app channel %s allocated", ua_chan->name);
@@ -841,8 +847,6 @@ static int create_ust_channel(struct ust_app *app,
 
 	health_code_update(&health_thread_cmd);
 
-	/* TODO: remove cast and use lttng-ust-abi.h */
-
 	/* We are going to receive 2 fds, we need to reserve them. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
 	if (ret < 0) {
@@ -852,8 +856,8 @@ static int create_ust_channel(struct ust_app *app,
 
 	health_code_update(&health_thread_cmd);
 
-	ret = ustctl_create_channel(app->sock, ua_sess->handle,
-			(struct lttng_ust_channel_attr *)&ua_chan->attr, &ua_chan->obj);
+	ret = ustctl_create_channel(app->sock, ua_sess->handle, &ua_chan->attr,
+			&ua_chan->obj);
 	if (ret < 0) {
 		ERR("Creating channel %s for app (pid: %d, sock: %d) "
 				"and session handle %d with ret %d",
