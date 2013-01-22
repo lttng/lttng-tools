@@ -164,7 +164,7 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	}
 
 	/* Channel not found, creating it */
-	ret = kernel_create_channel(ksession, attr, ksession->trace_path);
+	ret = kernel_create_channel(ksession, attr);
 	if (ret < 0) {
 		ret = LTTNG_ERR_KERN_CHAN_FAIL;
 		goto error;

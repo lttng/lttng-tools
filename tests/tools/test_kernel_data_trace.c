@@ -121,7 +121,7 @@ static void create_kernel_channel(void)
 	memset(&attr, 0, sizeof(attr));
 
 	printf("Creating kernel channel: ");
-	chan = trace_kernel_create_channel(&attr, PATH1);
+	chan = trace_kernel_create_channel(&attr);
 	assert(chan != NULL);
 	PRINT_OK();
 

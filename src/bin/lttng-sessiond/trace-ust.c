@@ -181,7 +181,7 @@ error:
  * Return pointer to structure or NULL.
  */
 struct ltt_ust_session *trace_ust_create_session(char *path,
-		unsigned int session_id, struct lttng_domain *domain)
+		unsigned int session_id)
 {
 	struct ltt_ust_session *lus;
 

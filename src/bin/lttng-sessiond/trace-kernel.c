@@ -143,7 +143,7 @@ alloc_error:
  * Return pointer to structure or NULL.
  */
 struct ltt_kernel_channel *trace_kernel_create_channel(
-		struct lttng_channel *chan, char *path)
+		struct lttng_channel *chan)
 {
 	struct ltt_kernel_channel *lkc;
 

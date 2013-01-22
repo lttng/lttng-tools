@@ -2104,7 +2104,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	DBG("Creating UST session");
 
-	lus = trace_ust_create_session(session->path, session->id, domain);
+	lus = trace_ust_create_session(session->path, session->id);
 	if (lus == NULL) {
 		ret = LTTNG_ERR_UST_SESS_FAIL;
 		goto error;

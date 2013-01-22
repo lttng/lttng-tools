@@ -73,7 +73,7 @@ static void create_one_ust_session(void)
 
 	dom.type = LTTNG_DOMAIN_UST;
 
-	usess = trace_ust_create_session(PATH1, 42, &dom);
+	usess = trace_ust_create_session(PATH1, 42);
 	assert(usess != NULL);
 	PRINT_OK();
 

@@ -123,7 +123,8 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
  * Create functions malloc() the data structure.
  */
 struct ltt_kernel_session *trace_kernel_create_session(char *path);
-struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan, char *path);
+struct ltt_kernel_channel *trace_kernel_create_channel(
+		struct lttng_channel *chan);
 struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev);
 struct ltt_kernel_metadata *trace_kernel_create_metadata(void);
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,

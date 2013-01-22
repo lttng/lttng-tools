@@ -118,23 +118,22 @@ error:
  * kernel session.
  */
 int kernel_create_channel(struct ltt_kernel_session *session,
-		struct lttng_channel *chan, char *path)
+		struct lttng_channel *chan)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
 
 	assert(session);
 	assert(chan);
-	assert(path);
 
 	/* Allocate kernel channel */
-	lkc = trace_kernel_create_channel(chan, path);
+	lkc = trace_kernel_create_channel(chan);
 	if (lkc == NULL) {
 		goto error;
 	}
 
-	DBG3("Kernel create channel %s in %s with attr: %d, %" PRIu64 ", %" PRIu64 ", %u, %u, %d",
-			chan->name, path, lkc->channel->attr.overwrite,
+	DBG3("Kernel create channel %s with attr: %d, %" PRIu64 ", %" PRIu64 ", %u, %u, %d",
+			chan->name, lkc->channel->attr.overwrite,
 			lkc->channel->attr.subbuf_size, lkc->channel->attr.num_subbuf,
 			lkc->channel->attr.switch_timer_interval, lkc->channel->attr.read_timer_interval,
 			lkc->channel->attr.output);

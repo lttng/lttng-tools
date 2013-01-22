@@ -34,7 +34,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct lttng_kernel_context *ctx);
 int kernel_create_session(struct ltt_session *session, int tracer_fd);
 int kernel_create_channel(struct ltt_kernel_session *session,
-		struct lttng_channel *chan, char *path);
+		struct lttng_channel *chan);
 int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *channel);
 int kernel_disable_channel(struct ltt_kernel_channel *chan);
 int kernel_disable_event(struct ltt_kernel_event *event);
