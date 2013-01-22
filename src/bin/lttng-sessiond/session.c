@@ -246,9 +246,7 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 
 error:
 error_asprintf:
-	if (new_session != NULL) {
-		free(new_session);
-	}
+	free(new_session);
 
 error_malloc:
 	return ret;

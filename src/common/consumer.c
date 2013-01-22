@@ -2283,14 +2283,11 @@ void *consumer_thread_data_poll(void *data)
 		 */
 		pthread_mutex_lock(&consumer_data.lock);
 		if (consumer_data.need_update) {
-			if (pollfd != NULL) {
-				free(pollfd);
-				pollfd = NULL;
-			}
-			if (local_stream != NULL) {
-				free(local_stream);
-				local_stream = NULL;
-			}
+			free(pollfd);
+			pollfd = NULL;
+
+			free(local_stream);
+			local_stream = NULL;
 
 			/* allocate for all fds + 1 for the consumer_data_pipe */
 			pollfd = zmalloc((consumer_data.stream_count + 1) * sizeof(struct pollfd));
@@ -2487,14 +2484,8 @@ void *consumer_thread_data_poll(void *data)
 	}
 end:
 	DBG("polling thread exiting");
-	if (pollfd != NULL) {
-		free(pollfd);
-		pollfd = NULL;
-	}
-	if (local_stream != NULL) {
-		free(local_stream);
-		local_stream = NULL;
-	}
+	free(pollfd);
+	free(local_stream);
 
 	/*
 	 * Close the write side of the pipe so epoll_wait() in

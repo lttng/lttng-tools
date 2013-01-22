@@ -65,9 +65,7 @@ static FILE *open_config(char *path, const char *mode)
 	}
 
 error:
-	if (file_path) {
-		free(file_path);
-	}
+	free(file_path);
 	return fp;
 }
 

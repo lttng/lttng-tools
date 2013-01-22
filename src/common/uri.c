@@ -189,10 +189,7 @@ int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 __attribute__((visibility("hidden")))
 void uri_free(struct lttng_uri *uri)
 {
-	/* Safety check */
-	if (uri != NULL) {
-		free(uri);
-	}
+	free(uri);
 }
 
 /*

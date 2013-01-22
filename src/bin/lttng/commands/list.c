@@ -474,9 +474,7 @@ static int list_events(const char *channel_name)
 	MSG("");
 
 end:
-	if (events) {
-		free(events);
-	}
+	free(events);
 	ret = CMD_SUCCESS;
 
 error:
@@ -821,9 +819,7 @@ int cmd_list(int argc, const char **argv)
 	}
 
 end:
-	if (domains) {
-		free(domains);
-	}
+	free(domains);
 	if (handle) {
 		lttng_destroy_handle(handle);
 	}

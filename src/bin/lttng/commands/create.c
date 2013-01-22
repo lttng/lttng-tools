@@ -390,13 +390,8 @@ static int create_session(void)
 	ret = CMD_SUCCESS;
 
 error:
-	if (alloc_url) {
-		free(alloc_url);
-	}
-
-	if (traces_path) {
-		free(traces_path);
-	}
+	free(alloc_url);
+	free(traces_path);
 	free(alloc_path);
 
 	if (ret < 0) {

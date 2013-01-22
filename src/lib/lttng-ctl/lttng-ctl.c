@@ -636,9 +636,7 @@ end:
  */
 void lttng_destroy_handle(struct lttng_handle *handle)
 {
-	if (handle) {
-		free(handle);
-	}
+	free(handle);
 }
 
 /*

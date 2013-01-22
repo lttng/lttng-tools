@@ -361,9 +361,7 @@ static int view_trace(void)
 	}
 
 free_sessions:
-	if (sessions) {
-		free(sessions);
-	}
+	free(sessions);
 free_error:
 	if (opt_session_name == NULL) {
 		free(session_name);

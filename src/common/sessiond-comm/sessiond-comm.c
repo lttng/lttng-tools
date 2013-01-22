@@ -312,7 +312,5 @@ alloc_error:
 __attribute__((visibility("hidden")))
 void lttcomm_destroy_sock(struct lttcomm_sock *sock)
 {
-	if (sock != NULL) {
-		free(sock);
-	}
+	free(sock);
 }
