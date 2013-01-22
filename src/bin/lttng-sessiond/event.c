@@ -73,8 +73,8 @@ static void init_syscalls_kernel_event(struct lttng_event *event)
 /*
  * Disable kernel tracepoint event for a channel from the kernel session.
  */
-int event_kernel_disable_tracepoint(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan, char *event_name)
+int event_kernel_disable_tracepoint(struct ltt_kernel_channel *kchan,
+		char *event_name)
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
@@ -105,8 +105,7 @@ error:
 /*
  * Disable kernel tracepoint events for a channel from the kernel session.
  */
-int event_kernel_disable_all_tracepoints(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan)
+int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan)
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
@@ -128,8 +127,7 @@ int event_kernel_disable_all_tracepoints(struct ltt_kernel_session *ksession,
 /*
  * Disable kernel syscall events for a channel from the kernel session.
  */
-int event_kernel_disable_all_syscalls(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan)
+int event_kernel_disable_all_syscalls(struct ltt_kernel_channel *kchan)
 {
 	ERR("Cannot disable syscall tracing for existing session. Please destroy session instead.");
 	return LTTNG_OK;	/* Return OK so disable all succeeds */
@@ -138,26 +136,24 @@ int event_kernel_disable_all_syscalls(struct ltt_kernel_session *ksession,
 /*
  * Disable all kernel event for a channel from the kernel session.
  */
-int event_kernel_disable_all(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan)
+int event_kernel_disable_all(struct ltt_kernel_channel *kchan)
 {
 	int ret;
 
-	assert(ksession);
 	assert(kchan);
 
-	ret = event_kernel_disable_all_tracepoints(ksession, kchan);
+	ret = event_kernel_disable_all_tracepoints(kchan);
 	if (ret != LTTNG_OK)
 		return ret;
-	ret = event_kernel_disable_all_syscalls(ksession, kchan);
+	ret = event_kernel_disable_all_syscalls(kchan);
 	return ret;
 }
 
 /*
  * Enable kernel tracepoint event for a channel from the kernel session.
  */
-int event_kernel_enable_tracepoint(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan, struct lttng_event *event)
+int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
+		struct lttng_event *event)
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
@@ -202,8 +198,8 @@ end:
 /*
  * Enable all kernel tracepoint events of a channel of the kernel session.
  */
-int event_kernel_enable_all_tracepoints(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
+int event_kernel_enable_all_tracepoints(struct ltt_kernel_channel *kchan,
+		int kernel_tracer_fd)
 {
 	int size, i, ret;
 	struct ltt_kernel_event *kevent;
@@ -250,8 +246,8 @@ end:
 /*
  * Enable all kernel tracepoint events of a channel of the kernel session.
  */
-int event_kernel_enable_all_syscalls(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
+int event_kernel_enable_all_syscalls(struct ltt_kernel_channel *kchan,
+		int kernel_tracer_fd)
 {
 	int ret;
 	struct lttng_event event;
@@ -280,16 +276,14 @@ end:
 /*
  * Enable all kernel events of a channel of the kernel session.
  */
-int event_kernel_enable_all(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan, int kernel_tracer_fd)
+int event_kernel_enable_all(struct ltt_kernel_channel *kchan,
+		int kernel_tracer_fd)
 {
 	int tp_ret;
 
-	assert(ksession);
 	assert(kchan);
 
-	tp_ret = event_kernel_enable_all_tracepoints(ksession, kchan,
-			kernel_tracer_fd);
+	tp_ret = event_kernel_enable_all_tracepoints(kchan, kernel_tracer_fd);
 	if (tp_ret != LTTNG_OK) {
 		goto end;
 	}
@@ -303,7 +297,7 @@ int event_kernel_enable_all(struct ltt_kernel_session *ksession,
 	 * tracepoints did not fail. Future work will allow us to send back
 	 * multiple errors to the client in one API call.
 	 */
-	(void) event_kernel_enable_all_syscalls(ksession, kchan, kernel_tracer_fd);
+	(void) event_kernel_enable_all_syscalls(kchan, kernel_tracer_fd);
 
 end:
 	return tp_ret;
