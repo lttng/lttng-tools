@@ -2348,7 +2348,7 @@ void *consumer_thread_data_poll(void *data)
 		 * array update over low-priority reads.
 		 */
 		if (pollfd[nb_fd].revents & (POLLIN | POLLPRI)) {
-			size_t pipe_readlen;
+			ssize_t pipe_readlen;
 
 			DBG("consumer_data_pipe wake up");
 			/* Consume 1 byte of pipe data */
