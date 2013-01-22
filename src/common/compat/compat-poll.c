@@ -40,6 +40,11 @@ static int resize_poll_event(struct compat_poll_event_array *array,
 
 	assert(array);
 
+	/* Refuse to resize the array more than the max size. */
+	if (new_size > poll_max_size) {
+		goto error;
+	}
+
 	ptr = realloc(array->events, new_size * sizeof(*ptr));
 	if (ptr == NULL) {
 		PERROR("realloc epoll add");
@@ -199,11 +204,6 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 
 	/* Ease our life a bit. */
 	current = &events->current;
-
-	/* Safety check on size */
-	if (new_size > poll_max_size) {
-		new_size = poll_max_size;
-	}
 
 	/* Check if we need to shrink it down. */
 	if ((current->nb_fd << 1UL) <= current->alloc_size &&
