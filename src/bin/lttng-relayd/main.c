@@ -686,53 +686,6 @@ error:
 }
 
 /*
- * Return the realpath(3) of the path even if the last directory token does not
- * exist. For example, with /tmp/test1/test2, if test2/ does not exist but the
- * /tmp/test1 does, the real path is returned. In normal time, realpath(3)
- * fails if the end point directory does not exist.
- */
-static
-char *expand_full_path(const char *path)
-{
-	const char *end_path = path;
-	char *next, *cut_path, *expanded_path, *respath;
-
-	/* Find last token delimited by '/' */
-	while ((next = strpbrk(end_path + 1, "/"))) {
-		end_path = next;
-	}
-
-	/* Cut last token from original path */
-	cut_path = strndup(path, end_path - path);
-
-	expanded_path = malloc(PATH_MAX);
-	if (expanded_path == NULL) {
-		respath = NULL;
-		goto end;
-	}
-
-	respath = realpath(cut_path, expanded_path);
-	if (respath == NULL) {
-		switch (errno) {
-		case ENOENT:
-			ERR("%s: No such file or directory", cut_path);
-			break;
-		default:
-			PERROR("realpath");
-			break;
-		}
-		free(expanded_path);
-	} else {
-		/* Add end part to expanded path */
-		strcat(respath, end_path);
-	}
-end:
-	free(cut_path);
-	return respath;
-}
-
-
-/*
  *  config_get_default_path
  *
  *  Returns the HOME directory path. Caller MUST NOT free(3) the return pointer.
@@ -741,68 +694,6 @@ static
 char *config_get_default_path(void)
 {
 	return getenv("HOME");
-}
-
-/*
- * Create recursively directory using the FULL path.
- */
-static
-int mkdir_recursive(char *path, mode_t mode)
-{
-	char *p, tmp[PATH_MAX];
-	struct stat statbuf;
-	size_t len;
-	int ret;
-
-	ret = snprintf(tmp, sizeof(tmp), "%s", path);
-	if (ret < 0) {
-		PERROR("snprintf mkdir");
-		goto error;
-	}
-
-	len = ret;
-	if (tmp[len - 1] == '/') {
-		tmp[len - 1] = 0;
-	}
-
-	for (p = tmp + 1; *p; p++) {
-		if (*p == '/') {
-			*p = 0;
-			if (tmp[strlen(tmp) - 1] == '.' &&
-					tmp[strlen(tmp) - 2] == '.' &&
-					tmp[strlen(tmp) - 3] == '/') {
-				ERR("Using '/../' is not permitted in the trace path (%s)",
-						tmp);
-				ret = -1;
-				goto error;
-			}
-			ret = stat(tmp, &statbuf);
-			if (ret < 0) {
-				ret = mkdir(tmp, mode);
-				if (ret < 0) {
-					if (errno != EEXIST) {
-						PERROR("mkdir recursive");
-						ret = -errno;
-						goto error;
-					}
-				}
-			}
-			*p = '/';
-		}
-	}
-
-	ret = mkdir(tmp, mode);
-	if (ret < 0) {
-		if (errno != EEXIST) {
-			PERROR("mkdir recursive last piece");
-			ret = -errno;
-		} else {
-			ret = 0;
-		}
-	}
-
-error:
-	return ret;
 }
 
 static
@@ -842,7 +733,7 @@ char *create_output_path_noauto(char *path_name)
 	char *traces_path = NULL;
 	char *full_path;
 
-	full_path = expand_full_path(opt_output_path);
+	full_path = utils_expand_path(opt_output_path);
 	ret = asprintf(&traces_path, "%s/%s", full_path, path_name);
 	if (ret < 0) {
 		PERROR("asprintf trace dir name");
@@ -1041,7 +932,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto end;
 	}
-	ret = mkdir_recursive(root_path, S_IRWXU | S_IRWXG);
+	ret = utils_mkdir_recursive(root_path, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
 		ERR("relay creating output directory");
 		goto end;
