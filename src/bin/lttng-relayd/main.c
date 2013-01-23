@@ -2107,6 +2107,15 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
+	/* Try to create directory if -o, --output is specified. */
+	if (opt_output_path) {
+		ret = utils_mkdir_recursive(opt_output_path, S_IRWXU | S_IRWXG);
+		if (ret < 0) {
+			ERR("Unable to create %s", opt_output_path);
+			goto exit;
+		}
+	}
+
 	/* Daemonize */
 	if (opt_daemon) {
 		ret = daemon(0, 0);
