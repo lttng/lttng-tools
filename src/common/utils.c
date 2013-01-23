@@ -22,6 +22,9 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <common/common.h>
 
@@ -229,6 +232,72 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 
 	fclose(fp);
 	DBG("Pid %d written in file %s", pid, filepath);
+error:
+	return ret;
+}
+
+/*
+ * Recursively create directory using the given path and mode.
+ *
+ * On success, return 0 else a negative error code.
+ */
+__attribute__((visibility("hidden")))
+int utils_mkdir_recursive(const char *path, mode_t mode)
+{
+	char *p, tmp[PATH_MAX];
+	struct stat statbuf;
+	size_t len;
+	int ret;
+
+	assert(path);
+
+	ret = snprintf(tmp, sizeof(tmp), "%s", path);
+	if (ret < 0) {
+		PERROR("snprintf mkdir");
+		goto error;
+	}
+
+	len = ret;
+	if (tmp[len - 1] == '/') {
+		tmp[len - 1] = 0;
+	}
+
+	for (p = tmp + 1; *p; p++) {
+		if (*p == '/') {
+			*p = 0;
+			if (tmp[strlen(tmp) - 1] == '.' &&
+					tmp[strlen(tmp) - 2] == '.' &&
+					tmp[strlen(tmp) - 3] == '/') {
+				ERR("Using '/../' is not permitted in the trace path (%s)",
+						tmp);
+				ret = -1;
+				goto error;
+			}
+			ret = stat(tmp, &statbuf);
+			if (ret < 0) {
+				ret = mkdir(tmp, mode);
+				if (ret < 0) {
+					if (errno != EEXIST) {
+						PERROR("mkdir recursive");
+						ret = -errno;
+						goto error;
+					}
+				}
+			}
+			*p = '/';
+		}
+	}
+
+	ret = mkdir(tmp, mode);
+	if (ret < 0) {
+		if (errno != EEXIST) {
+			PERROR("mkdir recursive last piece");
+			ret = -errno;
+		} else {
+			ret = 0;
+		}
+	}
+
 error:
 	return ret;
 }

@@ -25,5 +25,6 @@ void utils_close_pipe(int *src);
 char *utils_strdupdelim(const char *begin, const char *end);
 int utils_set_fd_cloexec(int fd);
 int utils_create_pid_file(pid_t pid, const char *filepath);
+int utils_mkdir_recursive(const char *path, mode_t mode);
 
 #endif /* _COMMON_UTILS_H */
