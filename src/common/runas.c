@@ -31,6 +31,7 @@
 #include <sys/signal.h>
 
 #include <common/error.h>
+#include <common/utils.h>
 #include <common/compat/mman.h>
 #include <common/compat/clone.h>
 
@@ -84,56 +85,12 @@ int _mkdir_recursive(void *_data)
 {
 	struct run_as_mkdir_data *data = _data;
 	const char *path;
-	char *p, tmp[PATH_MAX];
-	struct stat statbuf;
 	mode_t mode;
-	size_t len;
-	int ret;
 
 	path = data->path;
 	mode = data->mode;
 
-	ret = snprintf(tmp, sizeof(tmp), "%s", path);
-	if (ret < 0) {
-		PERROR("snprintf mkdir");
-		goto error;
-	}
-
-	len = ret;
-	if (tmp[len - 1] == '/') {
-		tmp[len - 1] = 0;
-	}
-
-	for (p = tmp + 1; *p; p++) {
-		if (*p == '/') {
-			*p = 0;
-			ret = stat(tmp, &statbuf);
-			if (ret < 0) {
-				ret = mkdir(tmp, mode);
-				if (ret < 0) {
-					if (!(errno == EEXIST)) {
-						PERROR("mkdir recursive");
-						ret = -errno;
-						goto error;
-					}
-				}
-			}
-			*p = '/';
-		}
-	}
-
-	ret = mkdir(tmp, mode);
-	if (ret < 0) {
-		if (!(errno == EEXIST)) {
-			PERROR("mkdir recursive last piece");
-			ret = -errno;
-		} else {
-			ret = 0;
-		}
-	}
-
-error:
-	return ret;
+	return utils_mkdir_recursive(path, mode);
 }
 
 static
