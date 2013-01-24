@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <common/compat/fcntl.h>
+#include <unistd.h>
 
 #ifdef __linux__
 
