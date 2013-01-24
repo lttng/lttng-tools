@@ -8,6 +8,7 @@ libhashtable_la_SOURCES = hashtable.c hashtable.h \
                          rculfhash.h rculfhash.c \
                          rculfhash-mm-chunk.c \
                          rculfhash-mm-mmap.c \
-                         rculfhash-mm-order.c
+                         rculfhash-mm-order.c \
+                         hashtable-symbols.h
 
 libhashtable_la_LIBADD = -lurcu-common -lurcu

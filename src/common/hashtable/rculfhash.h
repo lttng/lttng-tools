@@ -26,6 +26,8 @@
  * Include this file _after_ including your URCU flavor.
  */
 
+#include "hashtable-symbols.h"
+
 #include <stdint.h>
 #include <urcu/compiler.h>
 #include <urcu-call-rcu.h>
