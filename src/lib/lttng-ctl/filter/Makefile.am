@@ -3,7 +3,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
 
 noinst_PROGRAMS = filter-grammar-test
 noinst_LTLIBRARIES = libfilter.la
-noinst_HEADERS = filter-ast.h
+noinst_HEADERS = filter-ast.h \
+		filter-symbols.h
 
 BUILT_SOURCES = filter-parser.h
 AM_YFLAGS = -t -d -v
@@ -20,6 +21,7 @@ libfilter_la_SOURCES = filter-lexer.l filter-parser.y \
 	filter-bytecode.h \
 	filter-ir.h \
 	memstream.h
+libfilter_la_CFLAGS = -include filter-symbols.h
 
 filter_grammar_test_SOURCES = filter-grammar-test.c
 filter_grammar_test_LDADD = libfilter.la
