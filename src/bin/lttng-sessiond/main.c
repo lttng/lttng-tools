@@ -693,6 +693,8 @@ static void *thread_manage_kernel(void *data)
 
 	DBG("[thread] Thread manage kernel started");
 
+	health_register(HEALTH_TYPE_KERNEL);
+
 	/*
 	 * This first step of the while is to clean this structure which could free
 	 * non NULL pointers so zero it before the loop.
@@ -816,7 +818,7 @@ error_testpoint:
 		WARN("Kernel thread died unexpectedly. "
 				"Kernel tracing can continue but CPU hotplug is disabled.");
 	}
-	health_exit(&health_thread_kernel);
+	health_unregister();
 	DBG("Kernel thread dying");
 	return NULL;
 }
@@ -856,6 +858,8 @@ static void *thread_manage_consumer(void *data)
 	struct consumer_data *consumer_data = data;
 
 	DBG("[thread] Manage consumer started");
+
+	health_register(HEALTH_TYPE_CONSUMER);
 
 	/*
 	 * Since the consumer thread can be spawned at any moment in time, we init
@@ -1090,7 +1094,7 @@ error_poll:
 		health_error(&consumer_data->health);
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_exit(&consumer_data->health);
+	health_unregister();
 	DBG("consumer thread cleanup completed");
 
 	return NULL;
@@ -1110,6 +1114,8 @@ static void *thread_manage_apps(void *data)
 
 	rcu_register_thread();
 	rcu_thread_online();
+
+	health_register(HEALTH_TYPE_APP_MANAGE);
 
 	if (testpoint(thread_manage_apps)) {
 		goto error_testpoint;
@@ -1282,7 +1288,7 @@ error_testpoint:
 		health_error(&health_thread_app_manage);
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_exit(&health_thread_app_manage);
+	health_unregister();
 	DBG("Application communication apps thread cleanup complete");
 	rcu_thread_offline();
 	rcu_unregister_thread();
@@ -1378,6 +1384,8 @@ static void *thread_registration_apps(void *data)
 	struct ust_command *ust_cmd = NULL;
 
 	DBG("[thread] Manage application registration started");
+
+	health_register(HEALTH_TYPE_APP_REG);
 
 	if (testpoint(thread_registration_apps)) {
 		goto error_testpoint;
@@ -1561,7 +1569,7 @@ error_listen:
 error_create_poll:
 error_testpoint:
 	DBG("UST Registration thread cleanup complete");
-	health_exit(&health_thread_app_reg);
+	health_unregister();
 
 	return NULL;
 }
@@ -1936,9 +1944,7 @@ static int check_consumer_health(void)
 {
 	int ret;
 
-	ret = health_check_state(&kconsumer_data.health) &&
-		health_check_state(&ustconsumer32_data.health) &&
-		health_check_state(&ustconsumer64_data.health);
+	ret = health_check_state(HEALTH_TYPE_CONSUMER);
 
 	DBG3("Health consumer check %d", ret);
 
@@ -3056,26 +3062,26 @@ restart:
 
 		switch (msg.component) {
 		case LTTNG_HEALTH_CMD:
-			reply.ret_code = health_check_state(&health_thread_cmd);
+			reply.ret_code = health_check_state(HEALTH_TYPE_CMD);
 			break;
 		case LTTNG_HEALTH_APP_MANAGE:
-			reply.ret_code = health_check_state(&health_thread_app_manage);
+			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE);
 			break;
 		case LTTNG_HEALTH_APP_REG:
-			reply.ret_code = health_check_state(&health_thread_app_reg);
+			reply.ret_code = health_check_state(HEALTH_TYPE_APP_REG);
 			break;
 		case LTTNG_HEALTH_KERNEL:
-			reply.ret_code = health_check_state(&health_thread_kernel);
+			reply.ret_code = health_check_state(HEALTH_TYPE_KERNEL);
 			break;
 		case LTTNG_HEALTH_CONSUMER:
 			reply.ret_code = check_consumer_health();
 			break;
 		case LTTNG_HEALTH_ALL:
 			reply.ret_code =
-				health_check_state(&health_thread_app_manage) &&
-				health_check_state(&health_thread_app_reg) &&
-				health_check_state(&health_thread_cmd) &&
-				health_check_state(&health_thread_kernel) &&
+				health_check_state(HEALTH_TYPE_APP_MANAGE) &&
+				health_check_state(HEALTH_TYPE_APP_REG) &&
+				health_check_state(HEALTH_TYPE_CMD) &&
+				health_check_state(HEALTH_TYPE_KERNEL) &&
 				check_consumer_health();
 			break;
 		default:
@@ -3149,6 +3155,8 @@ static void *thread_manage_clients(void *data)
 	DBG("[thread] Manage client started");
 
 	rcu_register_thread();
+
+	health_register(HEALTH_TYPE_CMD);
 
 	if (testpoint(thread_manage_clients)) {
 		goto error_testpoint;
@@ -3374,7 +3382,7 @@ error_testpoint:
 		ERR("Health error occurred in %s", __func__);
 	}
 
-	health_exit(&health_thread_cmd);
+	health_unregister();
 
 	DBG("Client thread dying");
 
@@ -4117,26 +4125,6 @@ int main(int argc, char **argv)
 	lttng_poll_set_max_size();
 
 	cmd_init();
-
-	/* Init all health thread counters. */
-	health_init(&health_thread_cmd);
-	health_init(&health_thread_kernel);
-	health_init(&health_thread_app_manage);
-	health_init(&health_thread_app_reg);
-
-	/*
-	 * Init health counters of the consumer thread. We do a quick hack here to
-	 * the state of the consumer health is fine even if the thread is not
-	 * started. Once the thread starts, the health state is updated with a poll
-	 * value to set a health code path. This is simply to ease our life and has
-	 * no cost what so ever.
-	 */
-	health_init(&kconsumer_data.health);
-	health_poll_update(&kconsumer_data.health);
-	health_init(&ustconsumer32_data.health);
-	health_poll_update(&ustconsumer32_data.health);
-	health_init(&ustconsumer64_data.health);
-	health_poll_update(&ustconsumer64_data.health);
 
 	/* Check for the application socket timeout env variable. */
 	env_app_timeout = getenv(DEFAULT_APP_SOCKET_TIMEOUT_ENV);

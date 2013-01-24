@@ -20,7 +20,10 @@
 
 #include <assert.h>
 #include <time.h>
+#include <pthread.h>
+#include <urcu/tls-compat.h>
 #include <urcu/uatomic.h>
+#include <urcu/list.h>
 
 /*
  * These are the value added to the current state depending of the position in
@@ -32,8 +35,21 @@
 #define HEALTH_IS_IN_POLL(x)	((x) & HEALTH_POLL_VALUE)
 
 enum health_flags {
-	HEALTH_EXIT =  (1U << 0),
-	HEALTH_ERROR = (1U << 1),
+	HEALTH_ERROR = (1U << 0),
+};
+
+enum health_type {
+	HEALTH_TYPE_CMD			= 0,
+	HEALTH_TYPE_APP_MANAGE	= 1,
+	HEALTH_TYPE_APP_REG		= 2,
+	HEALTH_TYPE_KERNEL		= 3,
+	HEALTH_TYPE_CONSUMER	= 4,
+
+	HEALTH_NUM_TYPE,
+};
+
+struct health_tls_state_list {
+	struct cds_list_head head;
 };
 
 struct health_state {
@@ -49,7 +65,13 @@ struct health_state {
 	 */
 	unsigned long current;		/* progress counter, updated atomically */
 	enum health_flags flags;	/* other flags, updated atomically */
+	enum health_type type;		/* Indicates the nature of the thread. */
+	/* Node of the global TLS state list. */
+	struct cds_list_head node;
 };
+
+/* Declare TLS health state. */
+extern DECLARE_URCU_TLS(struct health_state, health_state);
 
 /* Health state counters for the client command thread */
 extern struct health_state health_thread_cmd;
@@ -69,8 +91,7 @@ extern struct health_state health_thread_kernel;
  */
 static inline void health_poll_update(struct health_state *state)
 {
-	assert(state);
-	uatomic_add(&state->current, HEALTH_POLL_VALUE);
+	uatomic_add(&URCU_TLS(health_state).current, HEALTH_POLL_VALUE);
 }
 
 /*
@@ -79,17 +100,7 @@ static inline void health_poll_update(struct health_state *state)
  */
 static inline void health_code_update(struct health_state *state)
 {
-	assert(state);
-	uatomic_add(&state->current, HEALTH_CODE_VALUE);
-}
-
-/*
- * Set health "exit" flag.
- */
-static inline void health_exit(struct health_state *state)
-{
-	assert(state);
-	uatomic_or(&state->flags, HEALTH_EXIT);
+	uatomic_add(&URCU_TLS(health_state).current, HEALTH_CODE_VALUE);
 }
 
 /*
@@ -97,23 +108,11 @@ static inline void health_exit(struct health_state *state)
  */
 static inline void health_error(struct health_state *state)
 {
-	assert(state);
-	uatomic_or(&state->flags, HEALTH_ERROR);
+	uatomic_or(&URCU_TLS(health_state).flags, HEALTH_ERROR);
 }
 
-/*
- * Init health state.
- */
-static inline void health_init(struct health_state *state)
-{
-	assert(state);
-	state->last = 0;
-	state->last_time.tv_sec = 0;
-	state->last_time.tv_nsec = 0;
-	uatomic_set(&state->current, 0);
-	uatomic_set(&state->flags, 0);
-}
-
-int health_check_state(struct health_state *state);
+int health_check_state(enum health_type type);
+void health_register(enum health_type type);
+void health_unregister(void);
 
 #endif /* _HEALTH_H */
