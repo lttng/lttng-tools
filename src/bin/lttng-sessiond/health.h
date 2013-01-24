@@ -73,23 +73,11 @@ struct health_state {
 /* Declare TLS health state. */
 extern DECLARE_URCU_TLS(struct health_state, health_state);
 
-/* Health state counters for the client command thread */
-extern struct health_state health_thread_cmd;
-
-/* Health state counters for the application management thread */
-extern struct health_state health_thread_app_manage;
-
-/* Health state counters for the application registration thread */
-extern struct health_state health_thread_app_reg;
-
-/* Health state counters for the kernel thread */
-extern struct health_state health_thread_kernel;
-
 /*
  * Update current counter by 1 to indicate that the thread entered or
  * left a blocking state caused by a poll().
  */
-static inline void health_poll_update(struct health_state *state)
+static inline void health_poll_update(void)
 {
 	uatomic_add(&URCU_TLS(health_state).current, HEALTH_POLL_VALUE);
 }
@@ -98,7 +86,7 @@ static inline void health_poll_update(struct health_state *state)
  * Update current counter by 2 indicates progress in execution of a
  * thread.
  */
-static inline void health_code_update(struct health_state *state)
+static inline void health_code_update(void)
 {
 	uatomic_add(&URCU_TLS(health_state).current, HEALTH_CODE_VALUE);
 }
@@ -106,7 +94,7 @@ static inline void health_code_update(struct health_state *state)
 /*
  * Set health "error" flag.
  */
-static inline void health_error(struct health_state *state)
+static inline void health_error(void)
 {
 	uatomic_or(&URCU_TLS(health_state).flags, HEALTH_ERROR);
 }

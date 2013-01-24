@@ -57,14 +57,14 @@ static int send_channel(struct consumer_socket *sock,
 			uchan->name,
 			uchan->streams.count);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = consumer_send_channel(sock, &msg);
 	if (ret < 0) {
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	fd = uchan->obj->shm_fd;
 	ret = consumer_send_fds(sock, &fd, 1);
@@ -72,7 +72,7 @@ static int send_channel(struct consumer_socket *sock,
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 error:
 	return ret;
@@ -114,7 +114,7 @@ static int send_channel_stream(struct consumer_socket *sock,
 			pathname,
 			usess->id);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Send stream and file descriptor */
 	fds[0] = stream->obj->shm_fd;
@@ -124,7 +124,7 @@ static int send_channel_stream(struct consumer_socket *sock,
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 error:
 	return ret;
@@ -230,14 +230,14 @@ static int send_metadata(struct consumer_socket *sock,
 			"metadata",
 			1);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = consumer_send_channel(sock, &msg);
 	if (ret < 0) {
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Sending metadata shared memory fd */
 	fd = usess->metadata->obj->shm_fd;
@@ -246,7 +246,7 @@ static int send_metadata(struct consumer_socket *sock,
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Get correct path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
@@ -293,7 +293,7 @@ static int send_metadata(struct consumer_socket *sock,
 			pathname,
 			usess->id);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Send stream and file descriptor */
 	fds[0] = usess->metadata->stream_obj->shm_fd;
@@ -303,7 +303,7 @@ static int send_metadata(struct consumer_socket *sock,
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 error:
 	return ret;

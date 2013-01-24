@@ -52,14 +52,14 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			channel->channel->name,
 			channel->stream_count);
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 	ret = consumer_send_channel(sock, &lkm);
 	if (ret < 0) {
 		goto error;
 	}
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 error:
 	return ret;
@@ -127,14 +127,14 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			"metadata",
 			1);
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 	ret = consumer_send_channel(sock, &lkm);
 	if (ret < 0) {
 		goto error;
 	}
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 	/* Prep stream message structure */
 	consumer_init_stream_comm_msg(&lkm,
@@ -152,7 +152,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			pathname,
 			session->id);
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 	/* Send stream and file descriptor */
 	ret = consumer_send_stream(sock, consumer, &lkm,
@@ -161,7 +161,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 		goto error;
 	}
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 error:
 	return ret;
@@ -228,7 +228,7 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 			pathname,
 			session->id);
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 	/* Send stream and file descriptor */
 	ret = consumer_send_stream(sock, consumer, &lkm, &stream->fd, 1);
@@ -236,7 +236,7 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 		goto error;
 	}
 
-	health_code_update(&health_thread_kernel);
+	health_code_update();
 
 error:
 	return ret;

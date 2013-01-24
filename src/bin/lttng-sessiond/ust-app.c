@@ -526,7 +526,7 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_add_context(app->sock, &ua_ctx->ctx,
 			ua_chan->obj, &ua_ctx->obj);
@@ -539,7 +539,7 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 	DBG2("UST app context created successfully for channel %s", ua_chan->name);
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -552,7 +552,7 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	if (!ua_event->filter) {
 		ret = 0;
@@ -568,7 +568,7 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 	DBG2("UST filter set successfully for event %s", ua_event->name);
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -580,7 +580,7 @@ static int disable_ust_event(struct ust_app *app,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_disable(app->sock, ua_event->obj);
 	if (ret < 0) {
@@ -594,7 +594,7 @@ static int disable_ust_event(struct ust_app *app,
 			ua_event->attr.name, app->pid);
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -606,7 +606,7 @@ static int disable_ust_channel(struct ust_app *app,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_disable(app->sock, ua_chan->obj);
 	if (ret < 0) {
@@ -620,7 +620,7 @@ static int disable_ust_channel(struct ust_app *app,
 			ua_chan->name, app->pid);
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -632,7 +632,7 @@ static int enable_ust_channel(struct ust_app *app,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_enable(app->sock, ua_chan->obj);
 	if (ret < 0) {
@@ -648,7 +648,7 @@ static int enable_ust_channel(struct ust_app *app,
 			ua_chan->name, app->pid);
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -660,7 +660,7 @@ static int enable_ust_event(struct ust_app *app,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_enable(app->sock, ua_event->obj);
 	if (ret < 0) {
@@ -674,7 +674,7 @@ static int enable_ust_event(struct ust_app *app,
 			ua_event->attr.name, app->pid);
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -687,7 +687,7 @@ static int open_ust_metadata(struct ust_app *app,
 	int ret;
 	struct lttng_ust_channel_attr uattr;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	uattr.overwrite = ua_sess->metadata->attr.overwrite;
 	uattr.subbuf_size = ua_sess->metadata->attr.subbuf_size;
@@ -716,7 +716,7 @@ static int open_ust_metadata(struct ust_app *app,
 	ua_sess->metadata->handle = ua_sess->metadata->obj->handle;
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -728,7 +728,7 @@ static int create_ust_metadata_stream(struct ust_app *app,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* We are going to receive 2 fds, we need to reserve them. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
@@ -745,7 +745,7 @@ static int create_ust_metadata_stream(struct ust_app *app,
 	}
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -757,7 +757,7 @@ static int create_ust_channel(struct ust_app *app,
 {
 	int ret;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* TODO: remove cast and use lttng-ust-abi.h */
 
@@ -768,7 +768,7 @@ static int create_ust_channel(struct ust_app *app,
 		goto error;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_create_channel(app->sock, ua_sess->handle,
 			(struct lttng_ust_channel_attr *)&ua_chan->attr, &ua_chan->obj);
@@ -786,7 +786,7 @@ static int create_ust_channel(struct ust_app *app,
 	DBG2("UST app channel %s created successfully for pid:%d and sock:%d",
 			ua_chan->name, app->pid, app->sock);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* If channel is not enabled, disable it on the tracer */
 	if (!ua_chan->enabled) {
@@ -797,7 +797,7 @@ static int create_ust_channel(struct ust_app *app,
 	}
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -810,7 +810,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 {
 	int ret = 0;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Create UST event on tracer */
 	ret = ustctl_create_event(app->sock, &ua_event->attr, ua_chan->obj,
@@ -826,7 +826,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	DBG2("UST app event %s created successfully for pid:%d",
 			ua_event->attr.name, app->pid);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Set filter if one is present. */
 	if (ua_event->filter) {
@@ -861,7 +861,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	}
 
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -1041,7 +1041,7 @@ static struct ust_app_session *create_ust_app_session(
 {
 	struct ust_app_session *ua_sess;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
@@ -1055,7 +1055,7 @@ static struct ust_app_session *create_ust_app_session(
 		shadow_copy_session(ua_sess, usess, app);
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	if (ua_sess->handle == -1) {
 		int ret;
@@ -1079,7 +1079,7 @@ static struct ust_app_session *create_ust_app_session(
 	}
 
 end:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ua_sess;
 }
 
@@ -1605,7 +1605,7 @@ int ust_app_list_events(struct lttng_event **events)
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		struct lttng_ust_tracepoint_iter uiter;
 
-		health_code_update(&health_thread_cmd);
+		health_code_update();
 
 		if (!app->compatible) {
 			/*
@@ -1623,7 +1623,7 @@ int ust_app_list_events(struct lttng_event **events)
 
 		while ((ret = ustctl_tracepoint_list_get(app->sock, handle,
 					&uiter)) != -LTTNG_UST_ERR_NOENT) {
-			health_code_update(&health_thread_cmd);
+			health_code_update();
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
 				void *ptr;
@@ -1657,7 +1657,7 @@ int ust_app_list_events(struct lttng_event **events)
 rcu_error:
 	rcu_read_unlock();
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -1685,7 +1685,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		struct lttng_ust_field_iter uiter;
 
-		health_code_update(&health_thread_cmd);
+		health_code_update();
 
 		if (!app->compatible) {
 			/*
@@ -1703,7 +1703,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 
 		while ((ret = ustctl_tracepoint_field_list_get(app->sock, handle,
 					&uiter)) != -LTTNG_UST_ERR_NOENT) {
-			health_code_update(&health_thread_cmd);
+			health_code_update();
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
 				void *ptr;
@@ -1742,7 +1742,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 rcu_error:
 	rcu_read_unlock();
 error:
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return ret;
 }
 
@@ -2284,7 +2284,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				goto error_rcu_unlock;
 			}
 
-			health_code_update(&health_thread_cmd);
+			health_code_update();
 
 			ret = ustctl_create_stream(app->sock, ua_chan->obj,
 					&ustream->obj);
@@ -2302,7 +2302,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			}
 			ustream->handle = ustream->obj->handle;
 
-			health_code_update(&health_thread_cmd);
+			health_code_update();
 
 			/* Order is important */
 			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
@@ -2321,7 +2321,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 					ustream->handle);
 		}
 
-		health_code_update(&health_thread_cmd);
+		health_code_update();
 	}
 
 	switch (app->bits_per_long) {
@@ -2350,7 +2350,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 skip_setup:
 	/* This start the UST tracing */
@@ -2363,19 +2363,19 @@ skip_setup:
 	/* Indicate that the session has been started once */
 	ua_sess->started = 1;
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Quiescent wait after starting trace */
 	ustctl_wait_quiescent(app->sock);
 
 end:
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return 0;
 
 error_rcu_unlock:
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return -1;
 }
 
@@ -2412,7 +2412,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->sock, ua_sess->handle);
@@ -2421,17 +2421,17 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto error_rcu_unlock;
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Quiescent wait after stopping trace */
 	ustctl_wait_quiescent(app->sock);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Flushing buffers */
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
-		health_code_update(&health_thread_cmd);
+		health_code_update();
 		ret = ustctl_sock_flush_buffer(app->sock, ua_chan->obj);
 		if (ret < 0) {
 			ERR("UST app PID %d channel %s flush failed with ret %d",
@@ -2441,7 +2441,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		}
 	}
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	/* Flush all buffers before stopping */
 	ret = ustctl_sock_flush_buffer(app->sock, ua_sess->metadata->obj);
@@ -2452,12 +2452,12 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 end:
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return 0;
 
 error_rcu_unlock:
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return -1;
 }
 
@@ -2497,10 +2497,10 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	obj.shm_fd = -1;
 	obj.wait_fd = -1;
 	obj.memory_map_size = 0;
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	ustctl_release_object(app->sock, &obj);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	delete_ust_app_session(app->sock, ua_sess);
 
 	/* Quiescent wait after stopping trace */
@@ -2508,7 +2508,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 end:
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return 0;
 }
 
@@ -2860,7 +2860,7 @@ int ust_app_validate_version(int sock)
 	app = find_app_by_sock(sock);
 	assert(app);
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	ret = ustctl_tracer_version(sock, &app->version);
 	if (ret < 0) {
@@ -2877,7 +2877,7 @@ int ust_app_validate_version(int sock)
 			UST_APP_MAJOR_VERSION);
 	app->compatible = 1;
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return 0;
 
 error:
@@ -2886,7 +2886,7 @@ error:
 			UST_APP_MAJOR_VERSION);
 	app->compatible = 0;
 	rcu_read_unlock();
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 	return -1;
 }
 
@@ -2910,7 +2910,7 @@ int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 			continue;
 		}
 
-		health_code_update(&health_thread_cmd);
+		health_code_update();
 
 		ret = ustctl_calibrate(app->sock, calibrate);
 		if (ret < 0) {
@@ -2932,7 +2932,7 @@ int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 
 	rcu_read_unlock();
 
-	health_code_update(&health_thread_cmd);
+	health_code_update();
 
 	return ret;
 }
