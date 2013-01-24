@@ -32,6 +32,45 @@ static const struct timespec time_delta = {
 	.tv_nsec = DEFAULT_HEALTH_CHECK_DELTA_NS,
 };
 
+/* Define TLS health state. */
+DEFINE_URCU_TLS(struct health_state, health_state);
+
+/*
+ * It ensures that TLS memory used for the node and its container structure
+ * don't get reclaimed after the TLS owner thread exits until we have finished
+ * using it.
+ */
+static pthread_mutex_t health_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static struct health_tls_state_list health_state_list = {
+	.head = CDS_LIST_HEAD_INIT(health_state_list.head),
+};
+
+/*
+ * This keeps track of the error state for unregistered thread. A thread
+ * reporting a health error, normally unregisters and quits. This makes the TLS
+ * health state not available to the health_check_state() call so on unregister
+ * we update this global error array so we can keep track of which thread was
+ * on error if the TLS health state has been removed.
+ */
+static enum health_flags global_error_state[HEALTH_NUM_TYPE];
+
+/*
+ * Lock health state global list mutex.
+ */
+static void state_lock(void)
+{
+	pthread_mutex_lock(&health_mutex);
+}
+
+/*
+ * Unlock health state global list mutex.
+ */
+static void state_unlock(void)
+{
+	pthread_mutex_unlock(&health_mutex);
+}
+
 /*
  * Set time difference in res from time_a and time_b.
  */
@@ -68,17 +107,51 @@ static int time_diff_gt(const struct timespec *time_a,
 }
 
 /*
- * Check health of a specific health state counter.
+ * Health mutex MUST be held across use of the returned struct health_state to
+ * provide existence guarantee.
+ *
+ * Return the health_state object or NULL if not found.
+ */
+static struct health_state *find_health_state(enum health_type type)
+{
+	struct health_state *state;
+
+	/* Find the right health state in the global TLS list. */
+	cds_list_for_each_entry(state, &health_state_list.head, node) {
+		if (state->type == type) {
+			return state;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Check health of a specific health type. Note that if a thread has not yet
+ * initialize its health subsystem or has quit, it's considered in a good
+ * state.
  *
  * Return 0 if health is bad or else 1.
  */
-int health_check_state(struct health_state *state)
+int health_check_state(enum health_type type)
 {
 	int retval = 1, ret;
 	unsigned long current, last;
 	struct timespec current_time;
+	struct health_state *state;
 
-	assert(state);
+	assert(type < HEALTH_NUM_TYPE);
+
+	state_lock();
+
+	state = find_health_state(type);
+	if (!state) {
+		/* Check the global state since the state is not visiable anymore. */
+		if (global_error_state[type] & HEALTH_ERROR) {
+			retval = 0;
+		}
+		goto not_found;
+	}
 
 	last = state->last;
 	current = uatomic_read(&state->current);
@@ -125,6 +198,56 @@ int health_check_state(struct health_state *state)
 end:
 	DBG("Health state current %lu, last %lu, ret %d",
 			current, last, ret);
+not_found:
+	state_unlock();
 
 	return retval;
+}
+
+/*
+ * Init health state.
+ */
+void health_register(enum health_type type)
+{
+	struct health_state *state;
+
+	assert(type < HEALTH_NUM_TYPE);
+
+	/* Init TLS state. */
+	uatomic_set(&URCU_TLS(health_state).last, 0);
+	uatomic_set(&URCU_TLS(health_state).last_time.tv_sec, 0);
+	uatomic_set(&URCU_TLS(health_state).last_time.tv_nsec, 0);
+	uatomic_set(&URCU_TLS(health_state).current, 0);
+	uatomic_set(&URCU_TLS(health_state).flags, 0);
+	uatomic_set(&URCU_TLS(health_state).type, type);
+
+	/* Add it to the global TLS state list. */
+	state_lock();
+	state = find_health_state(type);
+	/*
+	 * Duplicates are not accepted, since lookups don't handle them at the
+	 * moment.
+	 */
+	assert(!state);
+
+	cds_list_add(&URCU_TLS(health_state).node, &health_state_list.head);
+	state_unlock();
+}
+
+/*
+ * Remove node from global list.
+ */
+void health_unregister(void)
+{
+	state_lock();
+	/*
+	 * On error, set the global_error_state since we are about to remove
+	 * the node from the global list.
+	 */
+	if (uatomic_read(&URCU_TLS(health_state).flags) & HEALTH_ERROR) {
+		uatomic_set(&global_error_state[URCU_TLS(health_state).type],
+				HEALTH_ERROR);
+	}
+	cds_list_del(&URCU_TLS(health_state).node);
+	state_unlock();
 }
