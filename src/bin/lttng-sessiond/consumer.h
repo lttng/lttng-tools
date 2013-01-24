@@ -82,9 +82,6 @@ struct consumer_data {
 	char err_unix_sock_path[PATH_MAX];
 	char cmd_unix_sock_path[PATH_MAX];
 
-	/* Health check of the thread */
-	struct health_state health;
-
 	/* communication lock */
 	pthread_mutex_t lock;
 };
