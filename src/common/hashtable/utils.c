@@ -48,7 +48,7 @@
  * with 12*3 instructions on 3 integers than you can with 3 instructions on 1
  * byte), but shoehorning those bytes into integers efficiently is messy.
  */
-
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdint.h>     /* defines uint32_t etc */
 #include <stdio.h>      /* defines printf for tests */
@@ -59,6 +59,7 @@
 
 #include "utils.h"
 #include <common/compat/endian.h>    /* attempt to define endianness */
+#include <common/common.h>
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may
@@ -449,7 +450,7 @@ static uint32_t __attribute__((unused)) hashlittle(const void *key,
 /*
  * Hash function for number value.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 unsigned long hash_key_ulong(void *_key, unsigned long seed)
 {
 	union {
@@ -470,7 +471,7 @@ unsigned long hash_key_ulong(void *_key, unsigned long seed)
 /*
  * Hash function for number value.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 unsigned long hash_key_ulong(void *_key, unsigned long seed)
 {
 	uint32_t key = (uint32_t) _key;
@@ -482,7 +483,7 @@ unsigned long hash_key_ulong(void *_key, unsigned long seed)
 /*
  * Hash function for string.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 unsigned long hash_key_str(void *key, unsigned long seed)
 {
 	return hashlittle(key, strlen((char *) key), seed);
@@ -491,7 +492,7 @@ unsigned long hash_key_str(void *key, unsigned long seed)
 /*
  * Hash function compare for number value.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int hash_match_key_ulong(void *key1, void *key2)
 {
 	if (key1 == key2) {
@@ -504,7 +505,7 @@ int hash_match_key_ulong(void *key1, void *key2)
 /*
  * Hash compare function for string.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int hash_match_key_str(void *key1, void *key2)
 {
 	if (strcmp(key1, key2) == 0) {

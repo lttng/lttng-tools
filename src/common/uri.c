@@ -140,7 +140,7 @@ error:
 /*
  * Build a string URL from a lttng_uri object.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 {
 	int ipver, ret;
@@ -177,7 +177,7 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
  *
  * Return 0 if equal else 1.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 {
 	return memcmp(uri1, uri2, sizeof(struct lttng_uri));
@@ -186,7 +186,7 @@ int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 /*
  * Free URI memory.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void uri_free(struct lttng_uri *uri)
 {
 	free(uri);
@@ -195,7 +195,7 @@ void uri_free(struct lttng_uri *uri)
 /*
  * Return an allocated URI.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 struct lttng_uri *uri_create(void)
 {
 	struct lttng_uri *uri;
@@ -224,7 +224,7 @@ struct lttng_uri *uri_create(void)
  * This code was originally licensed GPLv2 so we acknolwedge the Free Software
  * Foundation here for the work and to make sure we are compliant with it.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 {
 	int ret, i = 0;

@@ -23,7 +23,7 @@
 #include <urcu.h>
 #include <urcu/futex.h>
 
-#include <common/error.h>
+#include <common/common.h>
 
 #include "futex.h"
 
@@ -49,7 +49,7 @@
  * futex() call. If active, we set the value and wake everyone else we indicate
  * that we are gone (cleanup() case).
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void futex_wait_update(int32_t *futex, int active)
 {
 	if (active) {
@@ -66,7 +66,7 @@ void futex_wait_update(int32_t *futex, int active)
 /*
  * Prepare futex.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void futex_nto1_prepare(int32_t *futex)
 {
 	uatomic_set(futex, -1);
@@ -78,7 +78,7 @@ void futex_nto1_prepare(int32_t *futex)
 /*
  * Wait futex.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void futex_nto1_wait(int32_t *futex)
 {
 	cmm_smp_mb();
@@ -93,7 +93,7 @@ void futex_nto1_wait(int32_t *futex)
 /*
  * Wake 1 futex.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void futex_nto1_wake(int32_t *futex)
 {
 	if (caa_unlikely(uatomic_read(futex) == -1)) {

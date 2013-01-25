@@ -27,8 +27,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
+#include <common/common.h>
 
 #include "sessiond-comm.h"
 
@@ -73,7 +72,7 @@ static const char *lttcomm_readable_code[] = {
  *
  * These code MUST be negative in other to treat that as an error value.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 {
 	code = -code;
@@ -89,7 +88,7 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
  * Create socket from an already allocated lttcomm socket structure and init
  * sockaddr in the lttcomm sock.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int lttcomm_create_sock(struct lttcomm_sock *sock)
 {
 	int ret, _sock_type, _sock_proto, domain;
@@ -129,7 +128,7 @@ error:
 /*
  * Return allocated lttcomm socket structure.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto)
 {
 	struct lttcomm_sock *sock;
@@ -154,7 +153,7 @@ end:
  * This is mostly useful when lttcomm_sock are passed between process where the
  * fd and ops have to be changed within the correct address space.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src)
 {
 	struct lttcomm_sock *sock;
@@ -179,7 +178,7 @@ alloc_error:
  * This is mostly useful when lttcomm_sock are passed between process where the
  * fd and ops have to be changed within the correct address space.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
 {
 	/* Safety net */
@@ -196,7 +195,7 @@ void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
 /*
  * Init IPv4 sockaddr structure.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port)
 {
@@ -227,7 +226,7 @@ error:
 /*
  * Init IPv6 sockaddr structure.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port)
 {
@@ -256,7 +255,7 @@ error:
 /*
  * Return allocated lttcomm socket structure from lttng URI.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 {
 	int ret;
@@ -309,7 +308,7 @@ alloc_error:
 /*
  * Destroy and free lttcomm socket.
  */
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void lttcomm_destroy_sock(struct lttcomm_sock *sock)
 {
 	free(sock);
