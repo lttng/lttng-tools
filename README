@@ -53,20 +53,25 @@ compile the git repository tree :
   (make sure your system wide "automake" points to a recent version!)
 - GNU Libtool >=2.2
   (for more information, go to http://www.gnu.org/software/autoconf/)
-- GNU Gold >= 2.22
-  (Before this version we hit a known bug documented at:
-  http://sourceware.org/bugzilla/show_bug.cgi?id=11317)
 - flex >= 2.5.35
 - bison >= 2.4
 
+If you use GNU gold, which is NOT mandatory, make sure you have this version:
+- GNU gold >= 2.22
+(Before this version we hit a known bug documented at:
+ http://sourceware.org/bugzilla/show_bug.cgi?id=11317)
+Be advise that with GNU gold, you'll might have to specify -L/usr/local/lib in
+LDFLAGS.
+
 If you get the tree from the repository, you will need to use the "bootstrap"
-script in the root of the tree. It calls all the GNU tools needed to prepare the
-tree configuration.
+script in the root of the tree. It calls all the GNU tools needed to prepare
+the tree configuration.
 
 INSTALLATION INSTRUCTIONS:
 
   - Download, compile and install the prerequisites.
   Then:
+  $ ./boostrap
   $ ./configure
   $ make
   $ sudo make install
