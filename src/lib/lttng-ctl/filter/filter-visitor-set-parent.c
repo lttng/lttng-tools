@@ -29,6 +29,8 @@
 #include "filter-ast.h"
 #include "filter-parser.h"
 
+#include <common/macros.h>
+
 static
 int update_child(struct filter_node *parent,
 		struct filter_node *old_child,
@@ -133,7 +135,7 @@ int recursive_visit_set_parent(struct filter_node *node,
 	return 0;
 }
 
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int filter_visitor_set_parent(struct filter_parser_ctx *ctx)
 {
 	return recursive_visit_set_parent(&ctx->ast->root, NULL);

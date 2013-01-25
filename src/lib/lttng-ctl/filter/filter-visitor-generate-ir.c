@@ -30,6 +30,8 @@
 #include "filter-parser.h"
 #include "filter-ir.h"
 
+#include <common/macros.h>
+
 static
 struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,
 		struct filter_node *node, enum ir_side side);
@@ -755,14 +757,14 @@ struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,
 	return 0;
 }
 
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void filter_ir_free(struct filter_parser_ctx *ctx)
 {
 	filter_free_ir_recursive(ctx->ir_root);
 	ctx->ir_root = NULL;
 }
 
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int filter_visitor_ir_generate(struct filter_parser_ctx *ctx)
 {
 	struct ir_op *op;

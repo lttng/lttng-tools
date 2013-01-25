@@ -27,6 +27,8 @@
 #include "filter-ir.h"
 #include "filter-ast.h"
 
+#include <common/macros.h>
+
 #ifndef max_t
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
 #endif
@@ -497,7 +499,7 @@ int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 	}
 }
 
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 void filter_bytecode_free(struct filter_parser_ctx *ctx)
 {
 	free(ctx->bytecode);
@@ -506,7 +508,7 @@ void filter_bytecode_free(struct filter_parser_ctx *ctx)
 	ctx->bytecode_reloc = NULL;
 }
 
-__attribute__((visibility("hidden")))
+LTTNG_HIDDEN
 int filter_visitor_bytecode_generate(struct filter_parser_ctx *ctx)
 {
 	int ret;
