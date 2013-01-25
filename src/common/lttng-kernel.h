@@ -21,6 +21,7 @@
 #define _LTTNG_KERNEL_H
 
 #include <stdint.h>
+#include <common/macros.h>
 
 #define LTTNG_KERNEL_SYM_NAME_LEN  256
 
@@ -59,7 +60,7 @@ struct lttng_kernel_perf_counter_ctx {
 	uint32_t type;
 	uint64_t config;
 	char name[LTTNG_KERNEL_SYM_NAME_LEN];
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 /* Event/Channel context */
 #define LTTNG_KERNEL_CONTEXT_PADDING1  16
@@ -72,14 +73,14 @@ struct lttng_kernel_context {
 		struct lttng_kernel_perf_counter_ctx perf_counter;
 		char padding[LTTNG_KERNEL_CONTEXT_PADDING2];
 	} u;
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 struct lttng_kernel_kretprobe {
 	uint64_t addr;
 
 	uint64_t offset;
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 /*
  * Either addr is used, or symbol_name and offset.
@@ -89,12 +90,12 @@ struct lttng_kernel_kprobe {
 
 	uint64_t offset;
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 /* Function tracer */
 struct lttng_kernel_function {
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 #define LTTNG_KERNEL_EVENT_PADDING1    16
 #define LTTNG_KERNEL_EVENT_PADDING2    LTTNG_KERNEL_SYM_NAME_LEN + 32
@@ -110,13 +111,13 @@ struct lttng_kernel_event {
 		struct lttng_kernel_function ftrace;
 		char padding[LTTNG_KERNEL_EVENT_PADDING2];
 	} u;
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 struct lttng_kernel_tracer_version {
 	uint32_t major;
 	uint32_t minor;
 	uint32_t patchlevel;
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 enum lttng_kernel_calibrate_type {
 	LTTNG_KERNEL_CALIBRATE_KRETPROBE,
@@ -124,7 +125,7 @@ enum lttng_kernel_calibrate_type {
 
 struct lttng_kernel_calibrate {
 	enum lttng_kernel_calibrate_type type;	/* type (input) */
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 /*
  * kernel channel
@@ -139,6 +140,6 @@ struct lttng_kernel_channel {
 
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	char padding[LTTNG_KERNEL_CHANNEL_PADDING1];
-}__attribute__((packed));
+} LTTNG_PACKED;
 
 #endif /* _LTTNG_KERNEL_H */
