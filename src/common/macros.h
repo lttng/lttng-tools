@@ -64,4 +64,8 @@
 #define LTTNG_PACKED __attribute__((__packed__))
 #endif
 
+#ifndef LTTNG_HIDDEN
+#define LTTNG_HIDDEN __attribute__((visibility("hidden")))
+#endif
+
 #endif /* _MACROS_H */
