@@ -867,24 +867,7 @@ static void *thread_manage_consumer(void *data)
 
 	health_register(HEALTH_TYPE_CONSUMER);
 
-	/*
-	 * Since the consumer thread can be spawned at any moment in time, we init
-	 * the health to a poll status (1, which is a valid health over time).
-	 * When the thread starts, we update here the health to a "code" path being
-	 * an even value so this thread, when reaching a poll wait, does not
-	 * trigger an error with an even value.
-	 *
-	 * Here is the use case we avoid.
-	 *
-	 * +1: the first poll update during initialization (main())
-	 * +2 * x: multiple code update once in this thread.
-	 * +1: poll wait in this thread (being a good health state).
-	 * == even number which after the wait period shows as a bad health.
-	 *
-	 * In a nutshell, the following poll update to the health state brings back
-	 * the state to an even value meaning a code path.
-	 */
-	health_poll_update();
+	health_code_update();
 
 	/*
 	 * Pass 2 as size here for the thread quit pipe and kconsumerd_err_sock.
