@@ -107,51 +107,17 @@ static int time_diff_gt(const struct timespec *time_a,
 }
 
 /*
- * Health mutex MUST be held across use of the returned struct health_state to
- * provide existence guarantee.
- *
- * Return the health_state object or NULL if not found.
- */
-static struct health_state *find_health_state(enum health_type type)
-{
-	struct health_state *state;
-
-	/* Find the right health state in the global TLS list. */
-	cds_list_for_each_entry(state, &health_state_list.head, node) {
-		if (state->type == type) {
-			return state;
-		}
-	}
-
-	return NULL;
-}
-
-/*
- * Check health of a specific health type. Note that if a thread has not yet
- * initialize its health subsystem or has quit, it's considered in a good
- * state.
+ * Validate health state. Checks for the error flag or health conditions.
  *
  * Return 0 if health is bad or else 1.
  */
-int health_check_state(enum health_type type)
+static int validate_state(struct health_state *state)
 {
 	int retval = 1, ret;
 	unsigned long current, last;
 	struct timespec current_time;
-	struct health_state *state;
 
-	assert(type < HEALTH_NUM_TYPE);
-
-	state_lock();
-
-	state = find_health_state(type);
-	if (!state) {
-		/* Check the global state since the state is not visiable anymore. */
-		if (global_error_state[type] & HEALTH_ERROR) {
-			retval = 0;
-		}
-		goto not_found;
-	}
+	assert(state);
 
 	last = state->last;
 	current = uatomic_read(&state->current);
@@ -192,15 +158,60 @@ int health_check_state(enum health_type type)
 			/* update last counter and last sample time */
 			state->last = current;
 			memcpy(&state->last_time, &current_time, sizeof(current_time));
+
+			/* On error, stop right now and notify caller. */
+			if (retval == 0) {
+				goto end;
+			}
 		}
 	}
 
 end:
 	DBG("Health state current %lu, last %lu, ret %d",
 			current, last, ret);
-not_found:
+	return retval;
+}
+
+/*
+ * Check health of a specific health type. Note that if a thread has not yet
+ * initialize its health subsystem or has quit, it's considered in a good
+ * state.
+ *
+ * Return 0 if health is bad or else 1.
+ */
+int health_check_state(enum health_type type)
+{
+	int retval = 1;
+	struct health_state *state;
+
+	assert(type < HEALTH_NUM_TYPE);
+
+	state_lock();
+
+	cds_list_for_each_entry(state, &health_state_list.head, node) {
+		int ret;
+
+		if (state->type != type) {
+			continue;
+		}
+
+		ret = validate_state(state);
+		if (!ret) {
+			retval = 0;
+			goto end;
+		}
+	}
+
+	/* Check the global state since some state might not be visible anymore. */
+	if (global_error_state[type] & HEALTH_ERROR) {
+		retval = 0;
+	}
+
+end:
 	state_unlock();
 
+	DBG("Health check for type %d is %s", (int) type,
+			(retval == 0) ? "BAD" : "GOOD");
 	return retval;
 }
 
@@ -209,8 +220,6 @@ not_found:
  */
 void health_register(enum health_type type)
 {
-	struct health_state *state;
-
 	assert(type < HEALTH_NUM_TYPE);
 
 	/* Init TLS state. */
@@ -223,13 +232,6 @@ void health_register(enum health_type type)
 
 	/* Add it to the global TLS state list. */
 	state_lock();
-	state = find_health_state(type);
-	/*
-	 * Duplicates are not accepted, since lookups don't handle them at the
-	 * moment.
-	 */
-	assert(!state);
-
 	cds_list_add(&URCU_TLS(health_state).node, &health_state_list.head);
 	state_unlock();
 }
