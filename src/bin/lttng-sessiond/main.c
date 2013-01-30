@@ -746,9 +746,9 @@ static void *thread_manage_kernel(void *data)
 
 		/* Poll infinite value of time */
 	restart:
-		health_poll_update();
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		health_poll_update();
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -909,14 +909,14 @@ static void *thread_manage_consumer(void *data)
 
 	/* Inifinite blocking call, waiting for transmission */
 restart:
-	health_poll_update();
+	health_poll_entry();
 
 	if (testpoint(thread_manage_consumer)) {
 		goto error;
 	}
 
 	ret = lttng_poll_wait(&events, -1);
-	health_poll_update();
+	health_poll_exit();
 	if (ret < 0) {
 		/*
 		 * Restart interrupted system call.
@@ -1008,9 +1008,9 @@ restart:
 
 	/* Inifinite blocking call, waiting for transmission */
 restart_poll:
-	health_poll_update();
+	health_poll_entry();
 	ret = lttng_poll_wait(&events, -1);
-	health_poll_update();
+	health_poll_exit();
 	if (ret < 0) {
 		/*
 		 * Restart interrupted system call.
@@ -1150,9 +1150,9 @@ static void *thread_manage_apps(void *data)
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
-		health_poll_update();
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		health_poll_update();
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -1430,9 +1430,9 @@ static void *thread_registration_apps(void *data)
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
-		health_poll_update();
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		health_poll_update();
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -3208,9 +3208,9 @@ static void *thread_manage_clients(void *data)
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
-		health_poll_update();
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		health_poll_update();
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
