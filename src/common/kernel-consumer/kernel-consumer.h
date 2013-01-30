@@ -21,28 +21,11 @@
 
 #include <common/consumer.h>
 
-/*
- * Take a snapshot for a specific fd
- *
- * Returns 0 on success, < 0 on error
- */
-int lttng_kconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
-        struct lttng_consumer_stream *stream);
-
-/*
- * Get the produced position
- *
- * Returns 0 on success, < 0 on error
- */
-int lttng_kconsumer_get_produced_snapshot(
-        struct lttng_consumer_local_data *ctx,
-        struct lttng_consumer_stream *stream,
+int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream);
+int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
         unsigned long *pos);
-
 int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
-
-
 ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream);

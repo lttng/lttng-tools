@@ -26,23 +26,10 @@
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-/*
- * Take a snapshot for a specific fd
- *
- * Returns 0 on success, < 0 on error
- */
-int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
-        struct lttng_consumer_stream *stream);
+int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream);
 
-/*
- * Get the produced position
- *
- * Returns 0 on success, < 0 on error
- */
 int lttng_ustconsumer_get_produced_snapshot(
-        struct lttng_consumer_local_data *ctx,
-        struct lttng_consumer_stream *stream,
-        unsigned long *pos);
+		struct lttng_consumer_stream *stream, unsigned long *pos);
 
 int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
@@ -58,9 +45,9 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
 
-extern int lttng_ustctl_get_mmap_read_offset(
-		struct lttng_ust_shm_handle *handle,
-		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off);
+int lttng_ustctl_get_mmap_read_offset(struct lttng_consumer_stream *stream,
+		unsigned long *off);
+void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
@@ -84,17 +71,14 @@ ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
 }
 
 static inline
-int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
-        struct lttng_consumer_stream *stream)
+int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }
 
 static inline
 int lttng_ustconsumer_get_produced_snapshot(
-        struct lttng_consumer_local_data *ctx,
-        struct lttng_consumer_stream *stream,
-        unsigned long *pos)
+		struct lttng_consumer_stream *stream, unsigned long *pos)
 {
 	return -ENOSYS;
 }
@@ -147,8 +131,8 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 }
 
 static inline
-int lttng_ustctl_get_mmap_read_offset(struct lttng_ust_shm_handle *handle,
-		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off)
+int lttng_ustctl_get_mmap_read_offset(struct lttng_consumer_stream *stream,
+		unsigned long *off)
 {
 	return -ENOSYS;
 }
@@ -156,6 +140,11 @@ static inline
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
+}
+static inline
+void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
+{
+	return NULL;
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

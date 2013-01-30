@@ -32,25 +32,68 @@
  * Sending a single channel to the consumer with command ADD_CHANNEL.
  */
 int kernel_consumer_add_channel(struct consumer_socket *sock,
-		struct ltt_kernel_channel *channel)
+		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session)
 {
 	int ret;
+	char tmp_path[PATH_MAX];
+	const char *pathname;
 	struct lttcomm_consumer_msg lkm;
+	struct consumer_output *consumer;
 
 	/* Safety net */
 	assert(channel);
+	assert(session);
+	assert(session->consumer);
+
+	consumer = session->consumer;
 
 	DBG("Kernel consumer adding channel %s to kernel consumer",
 			channel->channel->name);
+
+	/* Get the right path name destination */
+	if (consumer->type == CONSUMER_DST_LOCAL) {
+		/* Set application path to the destination path */
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
+				consumer->dst.trace_path, consumer->subdir);
+		if (ret < 0) {
+			PERROR("snprintf metadata path");
+			goto error;
+		}
+		pathname = tmp_path;
+
+		/* Create directory */
+		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG,
+				session->uid, session->gid);
+		if (ret < 0) {
+			if (ret != -EEXIST) {
+				ERR("Trace directory creation error");
+				goto error;
+			}
+		}
+		DBG3("Kernel local consumer tracefile path: %s", pathname);
+	} else {
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s", consumer->subdir);
+		if (ret < 0) {
+			PERROR("snprintf metadata path");
+			goto error;
+		}
+		pathname = tmp_path;
+		DBG3("Kernel network consumer subdir path: %s", pathname);
+	}
 
 	/* Prep channel message structure */
 	consumer_init_channel_comm_msg(&lkm,
 			LTTNG_CONSUMER_ADD_CHANNEL,
 			channel->fd,
-			channel->channel->attr.subbuf_size,
-			0, /* Kernel */
+			session->id,
+			pathname,
+			session->uid,
+			session->gid,
+			consumer->net_seq_index,
 			channel->channel->name,
-			channel->stream_count);
+			channel->stream_count,
+			channel->channel->attr.output,
+			CONSUMER_CHANNEL_TYPE_DATA);
 
 	health_code_update();
 
@@ -122,10 +165,15 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	consumer_init_channel_comm_msg(&lkm,
 			LTTNG_CONSUMER_ADD_CHANNEL,
 			session->metadata->fd,
-			session->metadata->conf->attr.subbuf_size,
-			0, /* for kernel */
+			session->id,
+			pathname,
+			session->uid,
+			session->gid,
+			consumer->net_seq_index,
 			DEFAULT_METADATA_NAME,
-			1);
+			1,
+			DEFAULT_KERNEL_CHANNEL_OUTPUT,
+			CONSUMER_CHANNEL_TYPE_METADATA);
 
 	health_code_update();
 
@@ -141,16 +189,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			LTTNG_CONSUMER_ADD_STREAM,
 			session->metadata->fd,
 			session->metadata_stream_fd,
-			LTTNG_CONSUMER_ACTIVE_STREAM,
-			DEFAULT_KERNEL_CHANNEL_OUTPUT,
-			0, /* Kernel */
-			session->uid,
-			session->gid,
-			consumer->net_seq_index,
-			1, /* Metadata flag set */
-			DEFAULT_METADATA_NAME,
-			pathname,
-			session->id);
+			0);	/* CPU: 0 for metadata. */
 
 	health_code_update();
 
@@ -175,8 +214,6 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 		struct ltt_kernel_session *session)
 {
 	int ret;
-	char tmp_path[PATH_MAX];
-	const char *pathname;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 
@@ -192,41 +229,12 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	/* Get consumer output pointer */
 	consumer = session->consumer;
 
-	/* Get the right path name destination */
-	if (consumer->type == CONSUMER_DST_LOCAL) {
-		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
-				consumer->dst.trace_path, consumer->subdir);
-		if (ret < 0) {
-			PERROR("snprintf stream path");
-			goto error;
-		}
-		pathname = tmp_path;
-		DBG3("Kernel local consumer tracefile path: %s", pathname);
-	} else {
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s", consumer->subdir);
-		if (ret < 0) {
-			PERROR("snprintf stream path");
-			goto error;
-		}
-		pathname = tmp_path;
-		DBG3("Kernel network consumer subdir path: %s", pathname);
-	}
-
 	/* Prep stream consumer message */
-	consumer_init_stream_comm_msg(&lkm, LTTNG_CONSUMER_ADD_STREAM,
+	consumer_init_stream_comm_msg(&lkm,
+			LTTNG_CONSUMER_ADD_STREAM,
 			channel->fd,
 			stream->fd,
-			stream->state,
-			channel->channel->attr.output,
-			0, /* Kernel */
-			session->uid,
-			session->gid,
-			consumer->net_seq_index,
-			0, /* Metadata flag unset */
-			stream->name,
-			pathname,
-			session->id);
+			stream->cpu);
 
 	health_code_update();
 
@@ -266,7 +274,7 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 	DBG("Sending streams of channel %s to kernel consumer",
 			channel->channel->name);
 
-	ret = kernel_consumer_add_channel(sock, channel);
+	ret = kernel_consumer_add_channel(sock, channel, session);
 	if (ret < 0) {
 		goto error;
 	}

@@ -66,6 +66,7 @@ int cmd_disable_consumer(int domain, struct ltt_session *session);
 int cmd_enable_consumer(int domain, struct ltt_session *session);
 int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 		size_t nb_uri, struct lttng_uri *uris);
+int cmd_setup_relayd(struct ltt_session *session);
 
 /* Listing commands */
 ssize_t cmd_list_domains(struct ltt_session *session,

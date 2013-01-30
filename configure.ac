@@ -108,6 +108,27 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
+# Check for libuuid
+AC_CHECK_LIB([uuid], [uuid_generate],
+[
+	AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
+	have_libuuid=yes
+],
+[
+	# libuuid not found, check for uuid_create in libc.
+	AC_CHECK_LIB([c], [uuid_create],
+	[
+		AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBC_UUID], 1, [Has libc uuid support.])
+		have_libc_uuid=yes
+	],
+	[
+		AC_MSG_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Use [LDFLAGS]=-Ldir to specify their location.])
+	])
+]
+)
+AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$have_libuuid" = "xyes"])
+AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$have_libc_uuid" = "xyes"])
+
 # URCU library version needed or newer
 liburcu_version=">= 0.7.2"
 

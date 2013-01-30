@@ -79,6 +79,7 @@ struct ltt_kernel_metadata {
 struct ltt_kernel_stream {
 	int fd;
 	int state;
+	int cpu;
 	/* Format is %s_%d respectively channel name and CPU number. */
 	char name[DEFAULT_STREAM_NAME_LEN];
 	struct cds_list_head list;

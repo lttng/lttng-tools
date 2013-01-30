@@ -319,6 +319,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 	/* Init stream */
 	lks->fd = -1;
 	lks->state = 0;
+	lks->cpu = count;
 
 	return lks;
 

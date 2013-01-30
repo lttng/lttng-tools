@@ -31,6 +31,7 @@
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
+#include <common/compat/uuid.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -115,6 +116,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_SPLICE_EINVAL,            /* EINVAL from splice(2) */
 	LTTCOMM_CONSUMERD_SPLICE_ENOMEM,            /* ENOMEM from splice(2) */
 	LTTCOMM_CONSUMERD_SPLICE_ESPIPE,            /* ESPIPE from splice(2) */
+	LTTCOMM_CONSUMERD_ENOMEM,                   /* Consumer is out of memory */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -258,28 +260,23 @@ struct lttcomm_consumer_msg {
 	union {
 		struct {
 			int channel_key;
-			uint64_t max_sb_size; /* the subbuffer size for this channel */
-			/* shm_fd and wait_fd are sent as ancillary data */
-			uint64_t mmap_len;
+			uint64_t session_id;
+			char pathname[PATH_MAX];
+			uid_t uid;
+			gid_t gid;
+			int relayd_id;
 			/* nb_init_streams is the number of streams open initially. */
 			unsigned int nb_init_streams;
 			char name[LTTNG_SYMBOL_NAME_LEN];
-		} LTTNG_PACKED channel;
+			/* Use splice or mmap to consume this fd */
+			enum lttng_event_output output;
+			int type; /* Per cpu or metadata. */
+		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
-			int channel_key;
 			int stream_key;
-			/* shm_fd and wait_fd are sent as ancillary data */
-			uint32_t state;    /* enum lttcomm_consumer_fd_state */
-			enum lttng_event_output output; /* use splice or mmap to consume this fd */
-			uint64_t mmap_len;
-			uid_t uid;         /* User ID owning the session */
-			gid_t gid;         /* Group ID owning the session */
-			char path_name[PATH_MAX];
-			int net_index;
-			unsigned int metadata_flag;
-			char name[DEFAULT_STREAM_NAME_LEN];  /* Name string of the stream */
-			uint64_t session_id;   /* Tracing session id of the stream */
-		} LTTNG_PACKED stream;
+			int channel_key;
+			int cpu;	/* On which CPU this stream is assigned. */
+		} LTTNG_PACKED stream;	/* Only used by Kernel. */
 		struct {
 			int net_index;
 			enum lttng_stream_type type;
@@ -294,6 +291,29 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t session_id;
 		} LTTNG_PACKED data_pending;
+		struct {
+			uint64_t subbuf_size;				/* bytes */
+			uint64_t num_subbuf;				/* power of 2 */
+			int overwrite;						/* 1: overwrite, 0: discard */
+			unsigned int switch_timer_interval;	/* usec */
+			unsigned int read_timer_interval;	/* usec */
+			int output;							/* splice, mmap */
+			int type;							/* metadata or per_cpu */
+			uint64_t session_id;				/* Tracing session id */
+			char pathname[PATH_MAX];			/* Channel file path. */
+			char name[LTTNG_SYMBOL_NAME_LEN];	/* Channel name. */
+			uid_t uid;							/* User ID of the session */
+			gid_t gid;							/* Group ID ot the session */
+			int relayd_id;						/* Relayd id if apply. */
+			unsigned long key;					/* Unique channel key. */
+			unsigned char uuid[UUID_STR_LEN];	/* uuid for ust tracer. */
+		} LTTNG_PACKED ask_channel;
+		struct {
+			unsigned long key;
+		} LTTNG_PACKED get_channel;
+		struct {
+			unsigned long key;
+		} LTTNG_PACKED destroy_channel;
 	} u;
 } LTTNG_PACKED;
 
@@ -302,6 +322,12 @@ struct lttcomm_consumer_msg {
  */
 struct lttcomm_consumer_status_msg {
 	enum lttng_error_code ret_code;
+} LTTNG_PACKED;
+
+struct lttcomm_consumer_status_channel {
+	enum lttng_error_code ret_code;
+	unsigned long key;
+	unsigned int stream_count;
 } LTTNG_PACKED;
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

@@ -47,8 +47,7 @@ extern volatile int consumer_quit;
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream)
+int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 	int infd = stream->wait_fd;
@@ -67,9 +66,7 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_get_produced_snapshot(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream,
+int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 		unsigned long *pos)
 {
 	int ret;
@@ -133,14 +130,26 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		DBG("consumer_add_channel %d", msg.u.channel.channel_key);
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
-				-1, -1,
-				msg.u.channel.mmap_len,
-				msg.u.channel.max_sb_size,
-				msg.u.channel.nb_init_streams);
+				msg.u.channel.session_id, msg.u.channel.pathname,
+				msg.u.channel.name, msg.u.channel.uid, msg.u.channel.gid,
+				msg.u.channel.relayd_id, msg.u.channel.output);
 		if (new_channel == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
 		}
+		new_channel->nb_init_stream_left = msg.u.channel.nb_init_streams;
+
+		/* Translate and save channel type. */
+		switch (msg.u.channel.type) {
+		case CONSUMER_CHANNEL_TYPE_DATA:
+		case CONSUMER_CHANNEL_TYPE_METADATA:
+			new_channel->type = msg.u.channel.type;
+			break;
+		default:
+			assert(0);
+			goto end_nosignal;
+		};
+
 		if (ctx->on_recv_channel != NULL) {
 			ret = ctx->on_recv_channel(new_channel);
 			if (ret == 0) {
@@ -158,12 +167,30 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int fd, stream_pipe;
 		struct consumer_relayd_sock_pair *relayd = NULL;
 		struct lttng_consumer_stream *new_stream;
+		struct lttng_consumer_channel *channel;
 		int alloc_ret = 0;
+
+		/*
+		 * Get stream's channel reference. Needed when adding the stream to the
+		 * global hash table.
+		 */
+		channel = consumer_find_channel(msg.u.stream.channel_key);
+		if (!channel) {
+			/*
+			 * We could not find the channel. Can happen if cpu hotplug
+			 * happens while tearing down.
+			 */
+			ERR("Unable to find channel key %d", msg.u.stream.channel_key);
+			ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+		}
 
 		/* First send a status message before receiving the fds. */
 		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
+		if (ret < 0 || ret_code != LTTNG_OK) {
+			/*
+			 * Somehow, the session daemon is not responding anymore or the
+			 * channel was not found.
+			 */
 			goto end_nosignal;
 		}
 
@@ -192,19 +219,17 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 
-		new_stream = consumer_allocate_stream(msg.u.stream.channel_key,
-				msg.u.stream.stream_key,
-				fd, fd,
-				msg.u.stream.state,
-				msg.u.stream.mmap_len,
-				msg.u.stream.output,
-				msg.u.stream.path_name,
-				msg.u.stream.uid,
-				msg.u.stream.gid,
-				msg.u.stream.net_index,
-				msg.u.stream.metadata_flag,
-				msg.u.stream.session_id,
-				&alloc_ret);
+		new_stream = consumer_allocate_stream(channel->key,
+				fd,
+				LTTNG_CONSUMER_ACTIVE_STREAM,
+				channel->name,
+				channel->uid,
+				channel->gid,
+				channel->relayd_id,
+				channel->session_id,
+				msg.u.stream.cpu,
+				&alloc_ret,
+				channel->type);
 		if (new_stream == NULL) {
 			switch (alloc_ret) {
 			case -ENOMEM:
@@ -212,16 +237,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			default:
 				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 				break;
-			case -ENOENT:
-				/*
-				 * We could not find the channel. Can happen if cpu hotplug
-				 * happens while tearing down.
-				 */
-				DBG3("Could not find channel");
-				break;
 			}
 			goto end_nosignal;
 		}
+		new_stream->chan = channel;
+		new_stream->wait_fd = fd;
 
 		/*
 		 * The buffer flush is done on the session daemon side for the kernel
@@ -233,21 +253,21 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		new_stream->hangup_flush_done = 0;
 
 		/* The stream is not metadata. Get relayd reference if exists. */
-		relayd = consumer_find_relayd(msg.u.stream.net_index);
+		relayd = consumer_find_relayd(new_stream->net_seq_idx);
 		if (relayd != NULL) {
 			/* Add stream on the relayd */
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 			ret = relayd_add_stream(&relayd->control_sock,
-					msg.u.stream.name, msg.u.stream.path_name,
+					new_stream->name, new_stream->chan->pathname,
 					&new_stream->relayd_stream_id);
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 			if (ret < 0) {
 				consumer_del_stream(new_stream, NULL);
 				goto end_nosignal;
 			}
-		} else if (msg.u.stream.net_index != -1) {
+		} else if (new_stream->net_seq_idx != -1) {
 			ERR("Network sequence index %d unknown. Not adding stream.",
-					msg.u.stream.net_index);
+					new_stream->net_seq_idx);
 			consumer_del_stream(new_stream, NULL);
 			goto end_nosignal;
 		}
@@ -279,7 +299,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		DBG("Kernel consumer ADD_STREAM %s (fd: %d) with relayd id %" PRIu64,
-				msg.u.stream.path_name, fd, new_stream->relayd_stream_id);
+				new_stream->name, fd, new_stream->relayd_stream_id);
 		break;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
@@ -394,7 +414,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
-	switch (stream->output) {
+	switch (stream->chan->output) {
 	case LTTNG_EVENT_SPLICE:
 
 		/*
@@ -481,16 +501,23 @@ end:
 int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
+	char full_path[PATH_MAX];
+
+	assert(stream);
+
+	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
+			stream->chan->pathname, stream->name);
+	if (ret < 0) {
+		PERROR("snprintf on_recv_stream");
+		goto error;
+	}
 
 	/* Opening the tracefile in write mode */
-	if (strlen(stream->path_name) > 0 && stream->net_seq_idx == -1) {
-		ret = run_as_open(stream->path_name,
-				O_WRONLY|O_CREAT|O_TRUNC,
-				S_IRWXU|S_IRWXG|S_IRWXO,
-				stream->uid, stream->gid);
+	if (stream->net_seq_idx == -1) {
+		ret = run_as_open(full_path, O_WRONLY | O_CREAT | O_TRUNC,
+				S_IRWXU|S_IRWXG|S_IRWXO, stream->uid, stream->gid);
 		if (ret < 0) {
-			ERR("Opening %s", stream->path_name);
-			perror("open");
+			PERROR("open kernel stream path %s", full_path);
 			goto error;
 		}
 		stream->out_fd = ret;
@@ -503,15 +530,15 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
 		if (ret != 0) {
 			errno = -ret;
-			perror("kernctl_get_mmap_len");
+			PERROR("kernctl_get_mmap_len");
 			goto error_close_fd;
 		}
 		stream->mmap_len = (size_t) mmap_len;
 
-		stream->mmap_base = mmap(NULL, stream->mmap_len,
-				PROT_READ, MAP_PRIVATE, stream->wait_fd, 0);
+		stream->mmap_base = mmap(NULL, stream->mmap_len, PROT_READ,
+				MAP_PRIVATE, stream->wait_fd, 0);
 		if (stream->mmap_base == MAP_FAILED) {
-			perror("Error mmaping");
+			PERROR("Error mmaping");
 			ret = -1;
 			goto error_close_fd;
 		}

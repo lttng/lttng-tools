@@ -36,6 +36,48 @@
 #include "ust-consumer.h"
 #include "ust-ctl.h"
 
+/* Next available channel key. */
+static unsigned long next_channel_key;
+
+/*
+ * Return the atomically incremented value of next_channel_key.
+ */
+static inline unsigned long get_next_channel_key(void)
+{
+	return uatomic_add_return(&next_channel_key, 1);
+}
+
+/*
+ * Return the consumer socket from the given consumer output with the right
+ * bitness. On error, returns NULL.
+ *
+ * The caller MUST acquire a rcu read side lock and keep it until the socket
+ * object reference is not needed anymore.
+ */
+static struct consumer_socket *find_consumer_socket_by_bitness(int bits,
+		struct consumer_output *consumer)
+{
+	int consumer_fd;
+	struct consumer_socket *socket = NULL;
+
+	switch (bits) {
+	case 64:
+		consumer_fd = uatomic_read(&ust_consumerd64_fd);
+		break;
+	case 32:
+		consumer_fd = uatomic_read(&ust_consumerd32_fd);
+		break;
+	default:
+		assert(0);
+		goto end;
+	}
+
+	socket = consumer_find_socket(consumer_fd, consumer);
+
+end:
+	return socket;
+}
+
 /*
  * Match function for the hash table lookup.
  *
@@ -127,8 +169,16 @@ static void add_unique_ust_app_event(struct lttng_ht *ht,
 static
 void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx)
 {
+	int ret;
+
+	assert(ua_ctx);
+
 	if (ua_ctx->obj) {
-		ustctl_release_object(sock, ua_ctx->obj);
+		ret = ustctl_release_object(sock, ua_ctx->obj);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app sock %d release context obj failed with ret %d",
+					sock, ret);
+		}
 		free(ua_ctx->obj);
 	}
 	free(ua_ctx);
@@ -141,10 +191,18 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx)
 static
 void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 {
+	int ret;
+
+	assert(ua_event);
+
 	free(ua_event->filter);
 
 	if (ua_event->obj != NULL) {
-		ustctl_release_object(sock, ua_event->obj);
+		ret = ustctl_release_object(sock, ua_event->obj);
+		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app sock %d release event obj failed with ret %d",
+					sock, ret);
+		}
 		free(ua_event->obj);
 	}
 	free(ua_event);
@@ -157,8 +215,16 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 static
 void delete_ust_app_stream(int sock, struct ust_app_stream *stream)
 {
+	int ret;
+
+	assert(stream);
+
 	if (stream->obj) {
-		ustctl_release_object(sock, stream->obj);
+		ret = ustctl_release_object(sock, stream->obj);
+		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app sock %d release stream obj failed with ret %d",
+					sock, ret);
+		}
 		lttng_fd_put(LTTNG_FD_APPS, 2);
 		free(stream->obj);
 	}
@@ -177,6 +243,10 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
 	struct ust_app_stream *stream, *stmp;
+
+	assert(ua_chan);
+
+	DBG3("UST app deleting channel %s", ua_chan->name);
 
 	/* Wipe stream */
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
@@ -202,7 +272,11 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan)
 	lttng_ht_destroy(ua_chan->events);
 
 	if (ua_chan->obj != NULL) {
-		ustctl_release_object(sock, ua_chan->obj);
+		ret = ustctl_release_object(sock, ua_chan->obj);
+		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app sock %d release channel obj failed with ret %d",
+					sock, ret);
+		}
 		lttng_fd_put(LTTNG_FD_APPS, 2);
 		free(ua_chan->obj);
 	}
@@ -221,17 +295,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 	struct ust_app_channel *ua_chan;
 
 	if (ua_sess->metadata) {
-		if (ua_sess->metadata->stream_obj) {
-			ustctl_release_object(sock, ua_sess->metadata->stream_obj);
-			lttng_fd_put(LTTNG_FD_APPS, 2);
-			free(ua_sess->metadata->stream_obj);
-		}
-		if (ua_sess->metadata->obj) {
-			ustctl_release_object(sock, ua_sess->metadata->obj);
-			lttng_fd_put(LTTNG_FD_APPS, 2);
-			free(ua_sess->metadata->obj);
-		}
-		trace_ust_destroy_metadata(ua_sess->metadata);
+		delete_ust_app_channel(sock, ua_sess->metadata);
 	}
 
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
@@ -243,7 +307,11 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess)
 	lttng_ht_destroy(ua_sess->channels);
 
 	if (ua_sess->handle != -1) {
-		ustctl_release_handle(sock, ua_sess->handle);
+		ret = ustctl_release_handle(sock, ua_sess->handle);
+		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app sock %d release session handle failed with ret %d",
+					sock, ret);
+		}
 	}
 	free(ua_sess);
 }
@@ -314,6 +382,33 @@ void delete_ust_app_rcu(struct rcu_head *head)
 }
 
 /*
+ * Delete the session from the application ht and delete the data structure by
+ * freeing every object inside and releasing them.
+ */
+static void destroy_session(struct ust_app *app,
+		struct ust_app_session *ua_sess)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+
+	assert(app);
+	assert(ua_sess);
+
+	iter.iter.node = &ua_sess->node.node;
+	ret = lttng_ht_del(app->sessions, &iter);
+	if (ret) {
+		/* Already scheduled for teardown. */
+		goto end;
+	}
+
+	/* Once deleted, free the data structure. */
+	delete_ust_app_session(app->sock, ua_sess);
+
+end:
+	return;
+}
+
+/*
  * Alloc new UST app session.
  */
 static
@@ -325,15 +420,22 @@ struct ust_app_session *alloc_ust_app_session(void)
 	ua_sess = zmalloc(sizeof(struct ust_app_session));
 	if (ua_sess == NULL) {
 		PERROR("malloc");
-		goto error;
+		goto error_free;
 	}
 
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 
+	if ((lttng_uuid_generate(ua_sess->uuid))) {
+		ERR("Failed to generate UST uuid");
+		goto error;
+	}
+
 	return ua_sess;
 
 error:
+	free(ua_sess);
+error_free:
 	return NULL;
 }
 
@@ -342,7 +444,7 @@ error:
  */
 static
 struct ust_app_channel *alloc_ust_app_channel(char *name,
-		struct lttng_ust_channel *attr)
+		struct lttng_ust_channel_attr *attr)
 {
 	struct ust_app_channel *ua_chan;
 
@@ -359,6 +461,7 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 
 	ua_chan->enabled = 1;
 	ua_chan->handle = -1;
+	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
@@ -367,7 +470,7 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 
 	/* Copy attributes */
 	if (attr) {
-		/* Translate from lttng_ust_channel to lttng_ust_channel_attr.*/
+		/* Translate from lttng_ust_channel to ustctl_consumer_channel_attr. */
 		ua_chan->attr.subbuf_size = attr->subbuf_size;
 		ua_chan->attr.num_subbuf = attr->num_subbuf;
 		ua_chan->attr.overwrite = attr->overwrite;
@@ -375,6 +478,8 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 		ua_chan->attr.read_timer_interval = attr->read_timer_interval;
 		ua_chan->attr.output = attr->output;
 	}
+	/* By default, the channel is a per cpu channel. */
+	ua_chan->attr.type = LTTNG_UST_CHAN_PER_CPU;
 
 	DBG3("UST app channel %s allocated", ua_chan->name);
 
@@ -389,7 +494,7 @@ error:
  *
  * Return newly allocated stream pointer or NULL on error.
  */
-static struct ust_app_stream *alloc_ust_app_stream(void)
+struct ust_app_stream *ust_app_alloc_stream(void)
 {
 	struct ust_app_stream *stream = NULL;
 
@@ -559,6 +664,12 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 	ret = ustctl_add_context(app->sock, &ua_ctx->ctx,
 			ua_chan->obj, &ua_ctx->obj);
 	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app create channel context failed for app (pid: %d) "
+					"with ret %d", app->pid, ret);
+		} else {
+			DBG3("UST app disable event failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -590,6 +701,12 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 	ret = ustctl_set_filter(app->sock, ua_event->filter,
 			ua_event->obj);
 	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app event %s filter failed for app (pid: %d) "
+					"with ret %d", ua_event->attr.name, app->pid, ret);
+		} else {
+			DBG3("UST app filter event failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -612,9 +729,13 @@ static int disable_ust_event(struct ust_app *app,
 
 	ret = ustctl_disable(app->sock, ua_event->obj);
 	if (ret < 0) {
-		ERR("UST app event %s disable failed for app (pid: %d) "
-				"and session handle %d with ret %d",
-				ua_event->attr.name, app->pid, ua_sess->handle, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app event %s disable failed for app (pid: %d) "
+					"and session handle %d with ret %d",
+					ua_event->attr.name, app->pid, ua_sess->handle, ret);
+		} else {
+			DBG3("UST app disable event failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -638,9 +759,13 @@ static int disable_ust_channel(struct ust_app *app,
 
 	ret = ustctl_disable(app->sock, ua_chan->obj);
 	if (ret < 0) {
-		ERR("UST app channel %s disable failed for app (pid: %d) "
-				"and session handle %d with ret %d",
-				ua_chan->name, app->pid, ua_sess->handle, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app channel %s disable failed for app (pid: %d) "
+					"and session handle %d with ret %d",
+					ua_chan->name, app->pid, ua_sess->handle, ret);
+		} else {
+			DBG3("UST app disable channel failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -664,9 +789,13 @@ static int enable_ust_channel(struct ust_app *app,
 
 	ret = ustctl_enable(app->sock, ua_chan->obj);
 	if (ret < 0) {
-		ERR("UST app channel %s enable failed for app (pid: %d) "
-				"and session handle %d with ret %d",
-				ua_chan->name, app->pid, ua_sess->handle, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app channel %s enable failed for app (pid: %d) "
+					"and session handle %d with ret %d",
+					ua_chan->name, app->pid, ua_sess->handle, ret);
+		} else {
+			DBG3("UST app enable channel failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -692,9 +821,13 @@ static int enable_ust_event(struct ust_app *app,
 
 	ret = ustctl_enable(app->sock, ua_event->obj);
 	if (ret < 0) {
-		ERR("UST app event %s enable failed for app (pid: %d) "
-				"and session handle %d with ret %d",
-				ua_event->attr.name, app->pid, ua_sess->handle, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app event %s enable failed for app (pid: %d) "
+					"and session handle %d with ret %d",
+					ua_event->attr.name, app->pid, ua_sess->handle, ret);
+		} else {
+			DBG3("UST app enable event failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -707,170 +840,87 @@ error:
 }
 
 /*
- * Open metadata onto the UST tracer for a UST session.
- */
-static int open_ust_metadata(struct ust_app *app,
-		struct ust_app_session *ua_sess)
-{
-	int ret;
-	struct lttng_ust_channel_attr uattr;
-
-	health_code_update();
-
-	uattr.overwrite = ua_sess->metadata->attr.overwrite;
-	uattr.subbuf_size = ua_sess->metadata->attr.subbuf_size;
-	uattr.num_subbuf = ua_sess->metadata->attr.num_subbuf;
-	uattr.switch_timer_interval =
-		ua_sess->metadata->attr.switch_timer_interval;
-	uattr.read_timer_interval =
-		ua_sess->metadata->attr.read_timer_interval;
-	uattr.output = ua_sess->metadata->attr.output;
-
-	/* We are going to receive 2 fds, we need to reserve them. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD upon metadata open");
-		goto error;
-	}
-	/* UST tracer metadata creation */
-	ret = ustctl_open_metadata(app->sock, ua_sess->handle, &uattr,
-			&ua_sess->metadata->obj);
-	if (ret < 0) {
-		ERR("UST app open metadata failed for app pid:%d with ret %d",
-				app->pid, ret);
-		goto error;
-	}
-
-	ua_sess->metadata->handle = ua_sess->metadata->obj->handle;
-
-error:
-	health_code_update();
-	return ret;
-}
-
-/*
- * Create metadata stream onto the UST tracer for a given session.
- */
-static int create_ust_metadata_stream(struct ust_app *app,
-		struct ust_app_session *ua_sess)
-{
-	int ret;
-
-	health_code_update();
-
-	/* We are going to receive 2 fds, we need to reserve them. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD upon metadata stream create");
-		goto error;
-	}
-	ret = ustctl_create_stream(app->sock, ua_sess->metadata->obj,
-			&ua_sess->metadata->stream_obj);
-	if (ret < 0) {
-		lttng_fd_put(LTTNG_FD_APPS, 2);
-		ERR("UST create metadata stream failed");
-		goto error;
-	}
-
-error:
-	health_code_update();
-	return ret;
-}
-
-/*
- * Create stream onto the UST tracer for a given channel.
+ * Create the specified channel onto the UST tracer for a UST session.
  *
- * Return -ENOENT if no more stream is available for this channel.
- * On success, return 0.
- * On error, return a negative value.
+ * Return 0 on success. On error, a negative value is returned.
  */
-static int create_ust_stream(struct ust_app *app,
-		struct ust_app_channel *ua_chan, struct ust_app_stream *stream)
+static int create_ust_channel(struct ust_app *app,
+		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
+		struct consumer_output *consumer)
 {
 	int ret;
+	unsigned int nb_fd = 0;
+	struct consumer_socket *socket;
+	struct ust_app_stream *stream, *stmp;
 
 	assert(app);
+	assert(ua_sess);
 	assert(ua_chan);
-	assert(ua_chan->obj);
-	assert(stream);
+	assert(consumer);
 
 	health_code_update();
 
-	/* We are going to receive 2 fds, we need to reserve them. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD on stream creation");
-		/* Just to make sure we never return -ENOENT. */
+	/* Get the right consumer socket for the application. */
+	socket = find_consumer_socket_by_bitness(app->bits_per_long, consumer);
+	if (!socket) {
 		ret = -1;
+		goto error;
+	}
+
+	health_code_update();
+
+	/*
+	 * Ask consumer to create channel. The consumer will return the number of
+	 * stream we have to expect.
+	 */
+	ret = ust_consumer_ask_channel(ua_sess, ua_chan, consumer, socket);
+	if (ret < 0) {
 		goto error;
 	}
 
 	/*
-	 * Set the stream name before creating it. On error, we don't have to
-	 * delete it on the tracer side.
+	 * Compute the number of fd needed before receiving them. It must be 2 per
+	 * stream.
 	 */
-	ret = snprintf(stream->name, sizeof(stream->name), "%s_%u",
-			ua_chan->name, ua_chan->streams.count);
-	if (ret < 0) {
-		/* Without the stream name we can't continue using it. */
-		PERROR("snprintf UST create stream");
-		/* Just to make sure we never return -ENOENT. */
-		ret = -1;
-		goto error;
-	}
+	nb_fd = DEFAULT_UST_STREAM_FD_NUM * ua_chan->expected_stream_count;
 
-	ret = ustctl_create_stream(app->sock, ua_chan->obj, &stream->obj);
-	if (ret < 0) {
-		lttng_fd_put(LTTNG_FD_APPS, 2);
-		/* Indicates that there is no more stream for that channel. */
-		if (ret != -LTTNG_UST_ERR_NOENT) {
-			ERR("UST create metadata stream failed (ret: %d)", ret);
-		}
-		goto error;
-	}
-
-	/* Set stream handle with the returned value. */
-	stream->handle = stream->obj->handle;
-
-error:
-	health_code_update();
-	return ret;
-}
-
-/*
- * Create the specified channel onto the UST tracer for a UST session.
- */
-static int create_ust_channel(struct ust_app *app,
-		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan)
-{
-	int ret;
-
-	health_code_update();
-
-	/* We are going to receive 2 fds, we need to reserve them. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+	/* Reserve the amount of file descriptor we need. */
+	ret = lttng_fd_get(LTTNG_FD_APPS, nb_fd);
 	if (ret < 0) {
 		ERR("Exhausted number of available FD upon create channel");
-		goto error;
+		goto error_fd_get;
 	}
 
 	health_code_update();
 
-	ret = ustctl_create_channel(app->sock, ua_sess->handle, &ua_chan->attr,
-			&ua_chan->obj);
+	/*
+	 * Now get the channel from the consumer. This call wil populate the stream
+	 * list of that channel and set the ust object.
+	 */
+	ret = ust_consumer_get_channel(socket, ua_chan);
 	if (ret < 0) {
-		ERR("Creating channel %s for app (pid: %d, sock: %d) "
-				"and session handle %d with ret %d",
-				ua_chan->name, app->pid, app->sock,
-				ua_sess->handle, ret);
-		lttng_fd_put(LTTNG_FD_APPS, 2);
+		goto error_destroy;
+	}
+
+	/* Send channel to the application. */
+	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
+	if (ret < 0) {
 		goto error;
 	}
 
-	ua_chan->handle = ua_chan->obj->handle;
+	/* Send all streams to application. */
+	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
+		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
+		if (ret < 0) {
+			goto error;
+		}
+		/* We don't need the stream anymore once sent to the tracer. */
+		cds_list_del(&stream->list);
+		delete_ust_app_stream(-1, stream);
+	}
 
-	DBG2("UST app channel %s created successfully for pid:%d and sock:%d",
-			ua_chan->name, app->pid, app->sock);
+	/* Flag the channel that it is sent to the application. */
+	ua_chan->is_sent = 1;
 
 	health_code_update();
 
@@ -882,6 +932,18 @@ static int create_ust_channel(struct ust_app *app,
 		}
 	}
 
+	return 0;
+
+error_destroy:
+	lttng_fd_put(LTTNG_FD_APPS, nb_fd);
+error_fd_get:
+	/*
+	 * Initiate a destroy channel on the consumer since we had an error
+	 * handling it on our side. The return value is of no importance since we
+	 * already have a ret value set by the previous error that we need to
+	 * return.
+	 */
+	(void) ust_consumer_destroy_channel(socket, ua_chan);
 error:
 	health_code_update();
 	return ret;
@@ -902,8 +964,12 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	ret = ustctl_create_event(app->sock, &ua_event->attr, ua_chan->obj,
 			&ua_event->obj);
 	if (ret < 0) {
-		ERR("Error ustctl create event %s for app pid: %d with ret %d",
-				ua_event->attr.name, app->pid, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("Error ustctl create event %s for app pid: %d with ret %d",
+					ua_event->attr.name, app->pid, ret);
+		} else {
+			DBG3("UST app create event failed. Application is dead.");
+		}
 		goto error;
 	}
 
@@ -988,8 +1054,18 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 
 	strncpy(ua_chan->name, uchan->name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
-	/* Copy event attributes */
-	memcpy(&ua_chan->attr, &uchan->attr, sizeof(ua_chan->attr));
+
+	/* Copy event attributes since the layout is different. */
+	ua_chan->attr.subbuf_size = uchan->attr.subbuf_size;
+	ua_chan->attr.num_subbuf = uchan->attr.num_subbuf;
+	ua_chan->attr.overwrite = uchan->attr.overwrite;
+	ua_chan->attr.switch_timer_interval = uchan->attr.switch_timer_interval;
+	ua_chan->attr.read_timer_interval = uchan->attr.read_timer_interval;
+	ua_chan->attr.output = uchan->attr.output;
+	/*
+	 * Note that the attribute channel type is not set since the channel on the
+	 * tracing registry side does not have this information.
+	 */
 
 	ua_chan->enabled = uchan->enabled;
 
@@ -1077,8 +1153,14 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 			/* malloc failed FIXME: Might want to do handle ENOMEM .. */
 			continue;
 		}
-
 		shadow_copy_channel(ua_chan, uchan);
+		/*
+		 * The concept of metadata channel does not exist on the tracing
+		 * registry side of the session daemon so this can only be a per CPU
+		 * channel and not metadata.
+		 */
+		ua_chan->attr.type = LTTNG_UST_CHAN_PER_CPU;
+
 		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 	}
 }
@@ -1159,7 +1241,12 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 	if (ua_sess->handle == -1) {
 		ret = ustctl_create_session(app->sock);
 		if (ret < 0) {
-			ERR("Creating session for app pid %d", app->pid);
+			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+				ERR("Creating session for app pid %d with ret %d",
+						app->pid, ret);
+			} else {
+				DBG("UST app creating session failed. Application is dead");
+			}
 			delete_ust_app_session(-1, ua_sess);
 			if (ret != -ENOMEM) {
 				/*
@@ -1328,6 +1415,7 @@ error:
  */
 static int create_ust_app_channel(struct ust_app_session *ua_sess,
 		struct ltt_ust_channel *uchan, struct ust_app *app,
+		struct consumer_output *consumer, enum lttng_ust_chan_type type,
 		struct ust_app_channel **ua_chanp)
 {
 	int ret = 0;
@@ -1351,10 +1439,11 @@ static int create_ust_app_channel(struct ust_app_session *ua_sess,
 	}
 	shadow_copy_channel(ua_chan, uchan);
 
-	ret = create_ust_channel(app, ua_sess, ua_chan);
+	/* Set channel type. */
+	ua_chan->attr.type = type;
+
+	ret = create_ust_channel(app, ua_sess, ua_chan, consumer);
 	if (ret < 0) {
-		/* Not found previously means that it does not exist on the tracer */
-		assert(ret != -LTTNG_UST_ERR_EXIST);
 		goto error;
 	}
 
@@ -1373,7 +1462,7 @@ end:
 	return 0;
 
 error:
-	delete_ust_app_channel(-1, ua_chan);
+	delete_ust_app_channel(ua_chan->is_sent ? app->sock : -1, ua_chan);
 	return ret;
 }
 
@@ -1431,60 +1520,51 @@ error:
  * Create UST metadata and open it on the tracer side.
  */
 static int create_ust_app_metadata(struct ust_app_session *ua_sess,
-		char *pathname, struct ust_app *app)
+		struct ust_app *app, struct consumer_output *consumer)
 {
 	int ret = 0;
+	struct ust_app_channel *metadata;
 
-	if (ua_sess->metadata == NULL) {
-		/* Allocate UST metadata */
-		ua_sess->metadata = trace_ust_create_metadata(pathname);
-		if (ua_sess->metadata == NULL) {
-			/* malloc() failed */
-			goto error;
-		}
+	assert(ua_sess);
+	assert(app);
 
-		ret = open_ust_metadata(app, ua_sess);
-		if (ret < 0) {
-			DBG3("Opening metadata failed. Cleaning up memory");
-
-			/* Cleanup failed metadata struct */
-			free(ua_sess->metadata);
-			/*
-			 * This is very important because delete_ust_app_session check if
-			 * the pointer is null or not in order to delete the metadata.
-			 */
-			ua_sess->metadata = NULL;
-			goto error;
-		}
-
-		DBG2("UST metadata opened for app pid %d", app->pid);
+	if (ua_sess->metadata) {
+		/* Already exist. Return success. */
+		goto end;
 	}
 
-	/* Open UST metadata stream */
-	if (ua_sess->metadata->stream_obj == NULL) {
-		ret = create_ust_metadata_stream(app, ua_sess);
-		if (ret < 0) {
-			goto error;
-		}
-
-		ret = snprintf(ua_sess->metadata->pathname, PATH_MAX,
-				"%s/" DEFAULT_METADATA_NAME, ua_sess->path);
-		if (ret < 0) {
-			PERROR("asprintf UST create stream");
-			goto error;
-		}
-
-		DBG2("UST metadata stream object created for app pid %d",
-				app->pid);
-	} else {
-		ERR("Attempting to create stream without metadata opened");
+	/* Allocate UST metadata */
+	metadata = alloc_ust_app_channel(DEFAULT_METADATA_NAME, NULL);
+	if (!metadata) {
+		/* malloc() failed */
+		ret = -ENOMEM;
 		goto error;
 	}
 
-	return 0;
+	/* Set default attributes for metadata. */
+	metadata->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	metadata->attr.subbuf_size = default_get_metadata_subbuf_size();
+	metadata->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
+	metadata->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
+	metadata->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+	metadata->attr.output = LTTNG_UST_MMAP;
+	metadata->attr.type = LTTNG_UST_CHAN_METADATA;
 
+	ret = create_ust_channel(app, ua_sess, metadata, consumer);
+	if (ret < 0) {
+		goto error_create;
+	}
+
+	ua_sess->metadata = metadata;
+
+	DBG2("UST metadata opened for app pid %d", app->pid);
+
+end:
+	return 0;
+error_create:
+	delete_ust_app_channel(metadata->is_sent ? app->sock : -1, metadata);
 error:
-	return -1;
+	return ret;
 }
 
 /*
@@ -1725,13 +1805,27 @@ int ust_app_list_events(struct lttng_event **events)
 		}
 		handle = ustctl_tracepoint_list(app->sock);
 		if (handle < 0) {
-			ERR("UST app list events getting handle failed for app pid %d",
-					app->pid);
+			if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
+				ERR("UST app list events getting handle failed for app pid %d",
+						app->pid);
+			}
 			continue;
 		}
 
 		while ((ret = ustctl_tracepoint_list_get(app->sock, handle,
 					&uiter)) != -LTTNG_UST_ERR_NOENT) {
+			/* Handle ustctl error. */
+			if (ret < 0) {
+				free(tmp_event);
+				if (ret != -LTTNG_UST_ERR_EXITING || ret != -EPIPE) {
+					ERR("UST app tp list get failed for app %d with ret %d",
+							app->sock, ret);
+				} else {
+					DBG3("UST app tp list get failed. Application is dead");
+				}
+				goto rcu_error;
+			}
+
 			health_code_update();
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
@@ -1805,13 +1899,27 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 		}
 		handle = ustctl_tracepoint_field_list(app->sock);
 		if (handle < 0) {
-			ERR("UST app list event fields getting handle failed for app pid %d",
-					app->pid);
+			if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
+				ERR("UST app list field getting handle failed for app pid %d",
+						app->pid);
+			}
 			continue;
 		}
 
 		while ((ret = ustctl_tracepoint_field_list_get(app->sock, handle,
 					&uiter)) != -LTTNG_UST_ERR_NOENT) {
+			/* Handle ustctl error. */
+			if (ret < 0) {
+				free(tmp_event);
+				if (ret != -LTTNG_UST_ERR_EXITING || ret != -EPIPE) {
+					ERR("UST app tp list field failed for app %d with ret %d",
+							app->sock, ret);
+				} else {
+					DBG3("UST app tp list field failed. Application is dead");
+				}
+				goto rcu_error;
+			}
+
 			health_code_update();
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
@@ -2186,7 +2294,8 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		assert(ua_sess);
 
 		/* Create channel onto application. We don't need the chan ref. */
-		ret = create_ust_app_channel(ua_sess, uchan, app, NULL);
+		ret = create_ust_app_channel(ua_sess, uchan, app, usess->consumer,
+				LTTNG_UST_CHAN_PER_CPU, NULL);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
 				/* No more memory is a fatal error. Stop right now. */
@@ -2194,7 +2303,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 			}
 			/* Cleanup the created session if it's the case. */
 			if (created) {
-				delete_ust_app_session(app->sock, ua_sess);
+				destroy_session(app, ua_sess);
 			}
 		}
 	}
@@ -2337,11 +2446,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-	struct ust_app_stream *ustream;
-	struct consumer_socket *socket;
 
 	DBG("Starting tracing for ust app pid %d", app->pid);
 
@@ -2370,79 +2475,13 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		if (ret < 0) {
 			if (ret != -EEXIST) {
 				ERR("Trace directory creation error");
-				ret = -1;
 				goto error_rcu_unlock;
 			}
 		}
 	}
 
-	ret = create_ust_app_metadata(ua_sess, usess->pathname, app);
-	if (ret < 0) {
-		ret = LTTNG_ERR_UST_META_FAIL;
-		goto error_rcu_unlock;
-	}
-
-	/* For each channel */
-	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
-			node.node) {
-		/* Create all streams */
-		while (1) {
-			/* Create UST stream */
-			ustream = alloc_ust_app_stream();
-			if (ustream == NULL) {
-				goto error_rcu_unlock;
-			}
-
-			health_code_update();
-
-			ret = create_ust_stream(app, ua_chan, ustream);
-			if (ret < 0) {
-				/* Free unused memory after this point. */
-				free(ustream);
-				if (ret == -LTTNG_UST_ERR_NOENT) {
-					/* Got all streams. Continue normal execution. */
-					break;
-				}
-				/* Error at this point. Stop everything. */
-				ret = LTTNG_ERR_UST_STREAM_FAIL;
-				goto error_rcu_unlock;
-			}
-
-			health_code_update();
-
-			/* Order is important this is why a list is used. */
-			cds_list_add_tail(&ustream->list, &ua_chan->streams.head);
-			ua_chan->streams.count++;
-
-			DBG2("UST stream %d ready (handle: %d)", ua_chan->streams.count,
-					ustream->handle);
-		}
-
-		health_code_update();
-	}
-
-	switch (app->bits_per_long) {
-	case 64:
-		socket = consumer_find_socket(uatomic_read(&ust_consumerd64_fd),
-				usess->consumer);
-		if (socket == NULL) {
-			goto skip_setup;
-		}
-		break;
-	case 32:
-		socket = consumer_find_socket(uatomic_read(&ust_consumerd32_fd),
-				usess->consumer);
-		if (socket == NULL) {
-			goto skip_setup;
-		}
-		break;
-	default:
-		ret = -EINVAL;
-		goto error_rcu_unlock;
-	}
-
-	/* Setup UST consumer socket and send fds to it */
-	ret = ust_consumer_send_session(ua_sess, usess->consumer, socket);
+	/* Create the metadata for the application. */
+	ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
 	if (ret < 0) {
 		goto error_rcu_unlock;
 	}
@@ -2453,7 +2492,12 @@ skip_setup:
 	/* This start the UST tracing */
 	ret = ustctl_start_session(app->sock, ua_sess->handle);
 	if (ret < 0) {
-		ERR("Error starting tracing for app pid: %d (ret: %d)", app->pid, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("Error starting tracing for app pid: %d (ret: %d)",
+					app->pid, ret);
+		} else {
+			DBG("UST app start session failed. Application is dead.");
+		}
 		goto error_rcu_unlock;
 	}
 
@@ -2463,7 +2507,11 @@ skip_setup:
 	health_code_update();
 
 	/* Quiescent wait after starting trace */
-	ustctl_wait_quiescent(app->sock);
+	ret = ustctl_wait_quiescent(app->sock);
+	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+		ERR("UST app wait quiescent failed for app pid %d ret %d",
+				app->pid, ret);
+	}
 
 end:
 	rcu_read_unlock();
@@ -2514,14 +2562,23 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	/* This inhibits UST tracing */
 	ret = ustctl_stop_session(app->sock, ua_sess->handle);
 	if (ret < 0) {
-		ERR("Error stopping tracing for app pid: %d (ret: %d)", app->pid, ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("Error stopping tracing for app pid: %d (ret: %d)",
+					app->pid, ret);
+		} else {
+			DBG("UST app stop session failed. Application is dead.");
+		}
 		goto error_rcu_unlock;
 	}
 
 	health_code_update();
 
 	/* Quiescent wait after stopping trace */
-	ustctl_wait_quiescent(app->sock);
+	ret = ustctl_wait_quiescent(app->sock);
+	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+		ERR("UST app wait quiescent failed for app pid %d ret %d",
+				app->pid, ret);
+	}
 
 	health_code_update();
 
@@ -2529,10 +2586,18 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
 		health_code_update();
+		assert(ua_chan->is_sent);
 		ret = ustctl_sock_flush_buffer(app->sock, ua_chan->obj);
 		if (ret < 0) {
-			ERR("UST app PID %d channel %s flush failed with ret %d",
-					app->pid, ua_chan->name, ret);
+			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+				ERR("UST app PID %d channel %s flush failed with ret %d",
+						app->pid, ua_chan->name, ret);
+			} else {
+				DBG3("UST app failed to flush %s. Application is dead.",
+						ua_chan->name);
+				/* No need to continue. */
+				goto end;
+			}
 			/* Continuing flushing all buffers */
 			continue;
 		}
@@ -2540,11 +2605,17 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	health_code_update();
 
+	assert(ua_sess->metadata->is_sent);
 	/* Flush all buffers before stopping */
 	ret = ustctl_sock_flush_buffer(app->sock, ua_sess->metadata->obj);
 	if (ret < 0) {
-		ERR("UST app PID %d metadata flush failed with ret %d", app->pid,
-				ret);
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app PID %d metadata flush failed with ret %d", app->pid,
+					ret);
+			goto error_rcu_unlock;
+		} else {
+			DBG3("UST app failed to flush metadata. Application is dead.");
+		}
 	}
 
 end:
@@ -2563,11 +2634,10 @@ error_rcu_unlock:
  */
 static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
+	int ret;
 	struct ust_app_session *ua_sess;
-	struct lttng_ust_object_data obj;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
-	int ret;
 
 	DBG("Destroy tracing for ust app pid %d", app->pid);
 
@@ -2584,24 +2654,18 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto end;
 	}
 	ua_sess = caa_container_of(node, struct ust_app_session, node);
-	ret = lttng_ht_del(app->sessions, &iter);
-	if (ret) {
-		/* Already scheduled for teardown. */
-		goto end;
-	}
-
-	obj.handle = ua_sess->handle;
-	obj.shm_fd = -1;
-	obj.wait_fd = -1;
-	obj.memory_map_size = 0;
-	health_code_update();
-	ustctl_release_object(app->sock, &obj);
 
 	health_code_update();
-	delete_ust_app_session(app->sock, ua_sess);
+	destroy_session(app, ua_sess);
+
+	health_code_update();
 
 	/* Quiescent wait after stopping trace */
-	ustctl_wait_quiescent(app->sock);
+	ret = ustctl_wait_quiescent(app->sock);
+	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+		ERR("UST app wait quiescent failed for app pid %d ret %d",
+				app->pid, ret);
+	}
 
 end:
 	rcu_read_unlock();
@@ -2701,6 +2765,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	struct ust_app_ctx *ua_ctx;
 
 	assert(usess);
+	assert(sock >= 0);
 
 	DBG2("UST app global update for app sock %d for session id %d", sock,
 			usess->id);
@@ -2709,7 +2774,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 
 	app = find_app_by_sock(sock);
 	if (app == NULL) {
-		ERR("Failed to update app sock %d", sock);
+		ERR("Failed to find app sock %d", sock);
 		goto error;
 	}
 
@@ -2731,18 +2796,21 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	 */
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
-		ret = create_ust_channel(app, ua_sess, ua_chan);
+		ret = create_ust_channel(app, ua_sess, ua_chan, usess->consumer);
 		if (ret < 0) {
-			/* FIXME: Should we quit here or continue... */
-			continue;
+			/*
+			 * Stop everything. On error, the application failed, no more file
+			 * descriptor are available or ENOMEM so stopping here is the only
+			 * thing we can do for now.
+			 */
+			goto error;
 		}
 
 		cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter_ctx.iter, ua_ctx,
 				node.node) {
 			ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 			if (ret < 0) {
-				/* FIXME: Should we quit here or continue... */
-				continue;
+				goto error;
 			}
 		}
 
@@ -2752,8 +2820,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 				node.node) {
 			ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 			if (ret < 0) {
-				/* FIXME: Should we quit here or continue... */
-				continue;
+				goto error;
 			}
 		}
 	}
@@ -2767,7 +2834,14 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 		DBG2("UST trace started for app pid %d", app->pid);
 	}
 
+	/* Everything went well at this point. */
+	rcu_read_unlock();
+	return;
+
 error:
+	if (ua_sess) {
+		destroy_session(app, ua_sess);
+	}
 	rcu_read_unlock();
 	return;
 }
@@ -2962,6 +3036,9 @@ int ust_app_validate_version(int sock)
 
 	ret = ustctl_tracer_version(sock, &app->version);
 	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app tracer version failed for app pid %d", app->pid);
+		}
 		goto error;
 	}
 
@@ -3018,7 +3095,6 @@ int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 				ret = 0;
 				break;
 			default:
-				/* TODO: Report error to user */
 				DBG2("Calibrate app PID %d returned with error %d",
 						app->pid, ret);
 				break;

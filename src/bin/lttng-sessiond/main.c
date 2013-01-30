@@ -664,13 +664,12 @@ error:
 }
 
 /*
- * For each tracing session, update newly registered apps.
+ * For each tracing session, update newly registered apps. The session list
+ * lock MUST be acquired before calling this.
  */
 static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
-
-	session_lock_list();
 
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
@@ -680,8 +679,6 @@ static void update_ust_app(int app_sock)
 		}
 		session_unlock(sess);
 	}
-
-	session_unlock_list();
 }
 
 /*
@@ -1179,12 +1176,22 @@ static void *thread_manage_apps(void *data)
 
 					health_code_update();
 
+					/*
+					 * @session_lock
+					 * Lock the global session list so from the register up to
+					 * the registration done message, no thread can see the
+					 * application and change its state.
+					 */
+					session_lock_list();
+
 					/* Register applicaton to the session daemon */
 					ret = ust_app_register(&ust_cmd.reg_msg,
 							ust_cmd.sock);
 					if (ret == -ENOMEM) {
+						session_unlock_list();
 						goto error;
 					} else if (ret < 0) {
+						session_unlock_list();
 						break;
 					}
 
@@ -1220,6 +1227,7 @@ static void *thread_manage_apps(void *data)
 						ret = lttng_poll_add(&events, ust_cmd.sock,
 								LPOLLERR & LPOLLHUP & LPOLLRDHUP);
 						if (ret < 0) {
+							session_unlock_list();
 							goto error;
 						}
 
@@ -1232,6 +1240,7 @@ static void *thread_manage_apps(void *data)
 						DBG("Apps with sock %d added to poll set",
 								ust_cmd.sock);
 					}
+					session_unlock_list();
 
 					health_code_update();
 
@@ -2472,6 +2481,21 @@ skip_domain:
 				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds))) {
 			ret = LTTNG_ERR_EPERM;
+			goto error;
+		}
+	}
+
+	/*
+	 * Send relayd information to consumer as soon as we have a domain and a
+	 * session defined.
+	 */
+	if (cmd_ctx->session && need_domain) {
+		/*
+		 * Setup relayd if not done yet. If the relayd information was already
+		 * sent to the consumer, this call will gracefully return.
+		 */
+		ret = cmd_setup_relayd(cmd_ctx->session);
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 	}

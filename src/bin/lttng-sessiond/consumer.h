@@ -45,6 +45,10 @@ struct consumer_socket {
 	 */
 	unsigned int registered;
 
+	/* Flag if network sockets were sent to the consumer. */
+	unsigned int control_sock_sent;
+	unsigned int data_sock_sent;
+
 	struct lttng_ht_node_ulong node;
 };
 
@@ -107,10 +111,6 @@ struct consumer_net {
 
 	/* Data path for network streaming. */
 	struct lttng_uri data;
-
-	/* Flag if network sockets were sent to the consumer. */
-	unsigned int control_sock_sent;
-	unsigned int data_sock_sent;
 };
 
 /*
@@ -161,6 +161,8 @@ void consumer_destroy_output(struct consumer_output *obj);
 int consumer_set_network_uri(struct consumer_output *obj,
 		struct lttng_uri *uri);
 int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd);
+int consumer_send_msg(struct consumer_socket *sock,
+		struct lttcomm_consumer_msg *msg);
 int consumer_send_stream(struct consumer_socket *sock,
 		struct consumer_output *dst, struct lttcomm_consumer_msg *msg,
 		int *fds, size_t nb_fd);
@@ -172,33 +174,47 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);
+int consumer_recv_status_channel(struct consumer_socket *sock,
+		unsigned long *key, unsigned int *stream_count);
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
 int consumer_create_socket(struct consumer_data *data,
 		struct consumer_output *output);
 int consumer_set_subdir(struct consumer_output *consumer,
 		const char *session_name);
 
+void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
+		uint64_t subbuf_size,
+		uint64_t num_subbuf,
+		int overwrite,
+		unsigned int switch_timer_interval,
+		unsigned int read_timer_interval,
+		int output,
+		int type,
+		uint64_t session_id,
+		const char *pathname,
+		const char *name,
+		uid_t uid,
+		gid_t gid,
+		int relayd_id,
+		unsigned long key,
+		unsigned char *uuid);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		int channel_key,
 		int stream_key,
-		uint32_t state,
-		enum lttng_event_output output,
-		uint64_t mmap_len,
-		uid_t uid,
-		gid_t gid,
-		int net_index,
-		unsigned int metadata_flag,
-		const char *name,
-		const char *pathname,
-		unsigned int session_id);
+		int cpu);
 void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		int channel_key,
-		uint64_t max_sb_size,
-		uint64_t mmap_len,
+		uint64_t session_id,
+		const char *pathname,
+		uid_t uid,
+		gid_t gid,
+		int relayd_id,
 		const char *name,
-		unsigned int nb_init_streams);
+		unsigned int nb_init_streams,
+		enum lttng_event_output output,
+		int type);
 int consumer_is_data_pending(unsigned int id,
 		struct consumer_output *consumer);
 

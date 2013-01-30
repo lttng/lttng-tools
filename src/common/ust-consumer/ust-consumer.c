@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <urcu/list.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -42,53 +43,432 @@ extern int consumer_poll_timeout;
 extern volatile int consumer_quit;
 
 /*
- * Wrapper over the mmap() read offset from ust-ctl library. Since this can be
- * compiled out, we isolate it in this library.
+ * Free channel object and all streams associated with it. This MUST be used
+ * only and only if the channel has _NEVER_ been added to the global channel
+ * hash table.
  */
-int lttng_ustctl_get_mmap_read_offset(struct lttng_ust_shm_handle *handle,
-		struct lttng_ust_lib_ring_buffer *buf, unsigned long *off)
+static void destroy_channel(struct lttng_consumer_channel *channel)
 {
-	return ustctl_get_mmap_read_offset(handle, buf, off);
-};
+	struct lttng_consumer_stream *stream, *stmp;
+
+	assert(channel);
+
+	DBG("UST consumer cleaning stream list");
+
+	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
+			send_node) {
+		cds_list_del(&stream->send_node);
+		ustctl_destroy_stream(stream->ustream);
+		free(stream);
+	}
+
+	/*
+	 * If a channel is available meaning that was created before the streams
+	 * were, delete it.
+	 */
+	if (channel->uchan) {
+		lttng_ustconsumer_del_channel(channel);
+	}
+	free(channel);
+}
 
 /*
- * Take a snapshot for a specific fd
+ * Add channel to internal consumer state.
  *
- * Returns 0 on success, < 0 on error
+ * Returns 0 on success or else a negative value.
  */
-int lttng_ustconsumer_take_snapshot(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream)
+static int add_channel(struct lttng_consumer_channel *channel,
+		struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
 
-	ret = ustctl_snapshot(stream->chan->handle, stream->buf);
-	if (ret != 0) {
-		errno = -ret;
-		PERROR("Getting sub-buffer snapshot.");
+	assert(channel);
+	assert(ctx);
+
+	if (ctx->on_recv_channel != NULL) {
+		ret = ctx->on_recv_channel(channel);
+		if (ret == 0) {
+			ret = consumer_add_channel(channel);
+		} else if (ret < 0) {
+			/* Most likely an ENOMEM. */
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			goto error;
+		}
+	} else {
+		ret = consumer_add_channel(channel);
+	}
+
+	DBG("UST consumer channel added (key: %u)", channel->key);
+
+error:
+	return ret;
+}
+
+/*
+ * Allocate and return a consumer channel object.
+ */
+static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
+		const char *pathname, const char *name, uid_t uid, gid_t gid,
+		int relayd_id, unsigned long key, enum lttng_event_output output)
+{
+	assert(pathname);
+	assert(name);
+
+	return consumer_allocate_channel(key, session_id, pathname, name, uid, gid,
+			relayd_id, output);
+}
+
+/*
+ * Allocate and return a consumer stream object. If _alloc_ret is not NULL, the
+ * error value if applicable is set in it else it is kept untouched.
+ *
+ * Return NULL on error else the newly allocated stream object.
+ */
+static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
+		struct lttng_consumer_channel *channel,
+		struct lttng_consumer_local_data *ctx, int *_alloc_ret)
+{
+	int alloc_ret;
+	struct lttng_consumer_stream *stream = NULL;
+
+	assert(channel);
+	assert(ctx);
+
+	stream = consumer_allocate_stream(channel->key,
+			key,
+			LTTNG_CONSUMER_ACTIVE_STREAM,
+			channel->name,
+			channel->uid,
+			channel->gid,
+			channel->relayd_id,
+			channel->session_id,
+			cpu,
+			&alloc_ret,
+			channel->type);
+	if (stream == NULL) {
+		switch (alloc_ret) {
+		case -ENOENT:
+			/*
+			 * We could not find the channel. Can happen if cpu hotplug
+			 * happens while tearing down.
+			 */
+			DBG3("Could not find channel");
+			break;
+		case -ENOMEM:
+		case -EINVAL:
+		default:
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			break;
+		}
+		goto error;
+	}
+
+	stream->chan = channel;
+
+error:
+	if (_alloc_ret) {
+		*_alloc_ret = alloc_ret;
+	}
+	return stream;
+}
+
+/*
+ * Send the given stream pointer to the corresponding thread.
+ *
+ * Returns 0 on success else a negative value.
+ */
+static int send_stream_to_thread(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret, stream_pipe;
+
+	/* Get the right pipe where the stream will be sent. */
+	if (stream->metadata_flag) {
+		stream_pipe = ctx->consumer_metadata_pipe[1];
+	} else {
+		stream_pipe = ctx->consumer_data_pipe[1];
+	}
+
+	do {
+		ret = write(stream_pipe, &stream, sizeof(stream));
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0) {
+		PERROR("Consumer write %s stream to pipe %d",
+				stream->metadata_flag ? "metadata" : "data", stream_pipe);
 	}
 
 	return ret;
 }
 
 /*
- * Get the produced position
+ * Search for a relayd object related to the stream. If found, send the stream
+ * to the relayd.
  *
- * Returns 0 on success, < 0 on error
+ * On success, returns 0 else a negative value.
  */
-int lttng_ustconsumer_get_produced_snapshot(
-		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream,
-		unsigned long *pos)
+static int send_stream_to_relayd(struct lttng_consumer_stream *stream)
+{
+	int ret = 0;
+	struct consumer_relayd_sock_pair *relayd;
+
+	assert(stream);
+
+	relayd = consumer_find_relayd(stream->net_seq_idx);
+	if (relayd != NULL) {
+		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+		/* Add stream on the relayd */
+		ret = relayd_add_stream(&relayd->control_sock, stream->name,
+				stream->chan->pathname, &stream->relayd_stream_id);
+		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		if (ret < 0) {
+			goto error;
+		}
+	} else if (stream->net_seq_idx != -1) {
+		ERR("Network sequence index %d unknown. Not adding stream.",
+				stream->net_seq_idx);
+		ret = -1;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+static int create_ust_streams(struct lttng_consumer_channel *channel,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret, cpu = 0;
+	struct ustctl_consumer_stream *ustream;
+	struct lttng_consumer_stream *stream;
+
+	assert(channel);
+	assert(ctx);
+
+	/*
+	 * While a stream is available from ustctl. When NULL is returned, we've
+	 * reached the end of the possible stream for the channel.
+	 */
+	while ((ustream = ustctl_create_stream(channel->uchan, cpu))) {
+		int wait_fd;
+
+		wait_fd = ustctl_get_wait_fd(ustream);
+
+		/* Allocate consumer stream object. */
+		stream = allocate_stream(cpu, wait_fd, channel, ctx, &ret);
+		if (!stream) {
+			goto error_alloc;
+		}
+		stream->ustream = ustream;
+		/*
+		 * Store it so we can save multiple function calls afterwards since
+		 * this value is used heavily in the stream threads. This is UST
+		 * specific so this is why it's done after allocation.
+		 */
+		stream->wait_fd = wait_fd;
+
+		/*
+		 * Order is important this is why a list is used. On error, the caller
+		 * should clean this list.
+		 */
+		cds_list_add_tail(&stream->send_node, &channel->streams.head);
+
+		ret = ustctl_get_max_subbuf_size(stream->ustream,
+				&stream->max_sb_size);
+		if (ret < 0) {
+			ERR("ustctl_get_max_subbuf_size failed for stream %s",
+					stream->name);
+			goto error;
+		}
+
+		/* Do actions once stream has been received. */
+		if (ctx->on_recv_stream) {
+			ret = ctx->on_recv_stream(stream);
+			if (ret < 0) {
+				goto error;
+			}
+		}
+
+		DBG("UST consumer add stream %s (key: %d) with relayd id %" PRIu64,
+				stream->name, stream->key, stream->relayd_stream_id);
+
+		/* Set next CPU stream. */
+		channel->streams.count = ++cpu;
+	}
+
+	return 0;
+
+error:
+error_alloc:
+	return ret;
+}
+
+/*
+ * Create an UST channel with the given attributes and send it to the session
+ * daemon using the ust ctl API.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static int create_ust_channel(struct ustctl_consumer_channel_attr *attr,
+		struct ustctl_consumer_channel **chanp)
+{
+	int ret;
+	struct ustctl_consumer_channel *channel;
+
+	assert(attr);
+	assert(chanp);
+
+	DBG3("Creating channel to ustctl with attr: [overwrite: %d, "
+			"subbuf_size: %" PRIu64 ", num_subbuf: %" PRIu64 ", "
+			"switch_timer_interval: %u, read_timer_interval: %u, "
+			"output: %d, type: %d", attr->overwrite, attr->subbuf_size,
+			attr->num_subbuf, attr->switch_timer_interval,
+			attr->read_timer_interval, attr->output, attr->type);
+
+	channel = ustctl_create_channel(attr);
+	if (!channel) {
+		ret = -1;
+		goto error_create;
+	}
+
+	*chanp = channel;
+
+	return 0;
+
+error_create:
+	return ret;
+}
+
+static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	ret = ustctl_snapshot_get_produced(stream->chan->handle,
-			stream->buf, pos);
-	if (ret != 0) {
-		errno = -ret;
-		PERROR("ustctl_snapshot_get_produced");
+	assert(stream);
+	assert(sock >= 0);
+
+	DBG2("UST consumer sending stream %d to sessiond", stream->key);
+
+	/* Send stream to session daemon. */
+	ret = ustctl_send_stream_to_sessiond(sock, stream->ustream);
+	if (ret < 0) {
+		goto error;
 	}
 
+	ret = ustctl_stream_close_wakeup_fd(stream->ustream);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Send channel to sessiond.
+ *
+ * Return 0 on success or else a negative value. On error, the channel is
+ * destroy using ustctl.
+ */
+static int send_sessiond_channel(int sock,
+		struct lttng_consumer_channel *channel,
+		struct lttng_consumer_local_data *ctx, int *relayd_error)
+{
+	int ret;
+	struct lttng_consumer_stream *stream;
+
+	assert(channel);
+	assert(ctx);
+	assert(sock >= 0);
+
+	DBG("UST consumer sending channel %s to sessiond", channel->name);
+
+	/* Send channel to sessiond. */
+	ret = ustctl_send_channel_to_sessiond(sock, channel->uchan);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* The channel was sent successfully to the sessiond at this point. */
+	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
+		/* Try to send the stream to the relayd if one is available. */
+		ret = send_stream_to_relayd(stream);
+		if (ret < 0) {
+			/*
+			 * Flag that the relayd was the problem here probably due to a
+			 * communicaton error on the socket.
+			 */
+			if (relayd_error) {
+				*relayd_error = 1;
+			}
+			goto error;
+		}
+
+		/* Send stream to session daemon. */
+		ret = send_sessiond_stream(sock, stream);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/* Tell sessiond there is no more stream. */
+	ret = ustctl_send_stream_to_sessiond(sock, NULL);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG("UST consumer NULL stream sent to sessiond");
+
+	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ * Creates a channel and streams and add the channel it to the channel internal
+ * state. The created stream must ONLY be sent once the GET_CHANNEL command is
+ * received.
+ *
+ * Return 0 on success or else, a negative value is returned and the channel
+ * MUST be destroyed by consumer_del_channel().
+ */
+static int ask_channel(struct lttng_consumer_local_data *ctx, int sock,
+		struct lttng_consumer_channel *channel,
+		struct ustctl_consumer_channel_attr *attr)
+{
+	int ret;
+
+	assert(ctx);
+	assert(channel);
+	assert(attr);
+
+	/*
+	 * This value is still used by the kernel consumer since for the kernel,
+	 * the stream ownership is not IN the consumer so we need to have the
+	 * number of left stream that needs to be initialized so we can know when
+	 * to delete the channel (see consumer.c).
+	 *
+	 * As for the user space tracer now, the consumer creates and sends the
+	 * stream to the session daemon which only sends them to the application
+	 * once every stream of a channel is received making this value useless
+	 * because we they will be added to the poll thread before the application
+	 * receives them. This ensures that a stream can not hang up during
+	 * initilization of a channel.
+	 */
+	channel->nb_init_stream_left = 0;
+
+	/* The reply msg status is handled in the following call. */
+	ret = create_ust_channel(attr, &channel->uchan);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Open all streams for this channel. */
+	ret = create_ust_streams(channel, ctx);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
 	return ret;
 }
 
@@ -103,12 +483,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	ssize_t ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttcomm_consumer_msg msg;
+	struct lttng_consumer_channel *channel = NULL;
 
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
 		DBG("Consumer received unexpected message size %zd (expects %zu)",
 			ret, sizeof(msg));
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 		/*
 		 * The ret value might 0 meaning an orderly shutdown but this is ok
 		 * since the caller handles this.
@@ -138,202 +519,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.relayd_sock.type, ctx, sock, consumer_sockpoll,
 				&msg.u.relayd_sock.sock, msg.u.relayd_sock.session_id);
 		goto end_nosignal;
-	}
-	case LTTNG_CONSUMER_ADD_CHANNEL:
-	{
-		struct lttng_consumer_channel *new_channel;
-		int fds[1];
-		size_t nb_fd = 1;
-
-		DBG("UST Consumer adding channel");
-
-		/* First send a status message before receiving the fds. */
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
-		/* block */
-		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
-			rcu_read_unlock();
-			return -EINTR;
-		}
-		ret = lttcomm_recv_fds_unix_sock(sock, fds, nb_fd);
-		if (ret != sizeof(fds)) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
-			rcu_read_unlock();
-			/*
-			 * The ret value might 0 meaning an orderly shutdown but this is ok
-			 * since the caller handles this.
-			 */
-			return ret;
-		}
-
-		/*
-		 * Send status code to session daemon only if the recv works. If the
-		 * above recv() failed, the session daemon is notified through the
-		 * error socket and the teardown is eventually done.
-		 */
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
-		DBG("consumer_add_channel %d", msg.u.channel.channel_key);
-
-		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
-				fds[0], -1,
-				msg.u.channel.mmap_len,
-				msg.u.channel.max_sb_size,
-				msg.u.channel.nb_init_streams);
-		if (new_channel == NULL) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
-			goto end_nosignal;
-		}
-		if (ctx->on_recv_channel != NULL) {
-			ret = ctx->on_recv_channel(new_channel);
-			if (ret == 0) {
-				consumer_add_channel(new_channel);
-			} else if (ret < 0) {
-				goto end_nosignal;
-			}
-		} else {
-			consumer_add_channel(new_channel);
-		}
-		goto end_nosignal;
-	}
-	case LTTNG_CONSUMER_ADD_STREAM:
-	{
-		struct lttng_consumer_stream *new_stream;
-		int fds[2], stream_pipe;
-		size_t nb_fd = 2;
-		struct consumer_relayd_sock_pair *relayd = NULL;
-		int alloc_ret = 0;
-
-		DBG("UST Consumer adding stream");
-
-		/* First send a status message before receiving the fds. */
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
-		/* block */
-		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
-			rcu_read_unlock();
-			return -EINTR;
-		}
-		ret = lttcomm_recv_fds_unix_sock(sock, fds, nb_fd);
-		if (ret != sizeof(fds)) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
-			rcu_read_unlock();
-			/*
-			 * The ret value might 0 meaning an orderly shutdown but this is ok
-			 * since the caller handles this.
-			 */
-			return ret;
-		}
-
-		/*
-		 * Send status code to session daemon only if the recv works. If the
-		 * above recv() failed, the session daemon is notified through the
-		 * error socket and the teardown is eventually done.
-		 */
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
-		DBG("Consumer command ADD_STREAM chan %d stream %d",
-				msg.u.stream.channel_key, msg.u.stream.stream_key);
-
-		assert(msg.u.stream.output == LTTNG_EVENT_MMAP);
-		new_stream = consumer_allocate_stream(msg.u.stream.channel_key,
-				msg.u.stream.stream_key,
-				fds[0], fds[1],
-				msg.u.stream.state,
-				msg.u.stream.mmap_len,
-				msg.u.stream.output,
-				msg.u.stream.path_name,
-				msg.u.stream.uid,
-				msg.u.stream.gid,
-				msg.u.stream.net_index,
-				msg.u.stream.metadata_flag,
-				msg.u.stream.session_id,
-				&alloc_ret);
-		if (new_stream == NULL) {
-			switch (alloc_ret) {
-			case -ENOMEM:
-			case -EINVAL:
-			default:
-				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
-				break;
-			case -ENOENT:
-				/*
-				 * We could not find the channel. Can happen if cpu hotplug
-				 * happens while tearing down.
-				 */
-				DBG3("Could not find channel");
-				break;
-			}
-			goto end_nosignal;
-		}
-
-		/* The stream is not metadata. Get relayd reference if exists. */
-		relayd = consumer_find_relayd(msg.u.stream.net_index);
-		if (relayd != NULL) {
-			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-			/* Add stream on the relayd */
-			ret = relayd_add_stream(&relayd->control_sock,
-					msg.u.stream.name, msg.u.stream.path_name,
-					&new_stream->relayd_stream_id);
-			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-			if (ret < 0) {
-				consumer_del_stream(new_stream, NULL);
-				goto end_nosignal;
-			}
-		} else if (msg.u.stream.net_index != -1) {
-			ERR("Network sequence index %d unknown. Not adding stream.",
-					msg.u.stream.net_index);
-			consumer_del_stream(new_stream, NULL);
-			goto end_nosignal;
-		}
-
-		/* Do actions once stream has been received. */
-		if (ctx->on_recv_stream) {
-			ret = ctx->on_recv_stream(new_stream);
-			if (ret < 0) {
-				consumer_del_stream(new_stream, NULL);
-				goto end_nosignal;
-			}
-		}
-
-		/* Get the right pipe where the stream will be sent. */
-		if (new_stream->metadata_flag) {
-			stream_pipe = ctx->consumer_metadata_pipe[1];
-		} else {
-			stream_pipe = ctx->consumer_data_pipe[1];
-		}
-
-		do {
-			ret = write(stream_pipe, &new_stream, sizeof(new_stream));
-		} while (ret < 0 && errno == EINTR);
-		if (ret < 0) {
-			PERROR("Consumer write %s stream to pipe %d",
-					new_stream->metadata_flag ? "metadata" : "data",
-					stream_pipe);
-			consumer_del_stream(new_stream, NULL);
-			goto end_nosignal;
-		}
-
-		DBG("UST consumer ADD_STREAM %s (%d,%d) with relayd id %" PRIu64,
-				msg.u.stream.path_name, fds[0], fds[1],
-				new_stream->relayd_stream_id);
-		break;
 	}
 	case LTTNG_CONSUMER_DESTROY_RELAYD:
 	{
@@ -398,6 +583,178 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 */
 		break;
 	}
+	case LTTNG_CONSUMER_ASK_CHANNEL_CREATION:
+	{
+		int ret;
+		struct ustctl_consumer_channel_attr attr;
+
+		/* Create a plain object and reserve a channel key. */
+		channel = allocate_channel(msg.u.ask_channel.session_id,
+				msg.u.ask_channel.pathname, msg.u.ask_channel.name,
+				msg.u.ask_channel.uid, msg.u.ask_channel.gid,
+				msg.u.ask_channel.relayd_id, msg.u.ask_channel.key,
+				(enum lttng_event_output) msg.u.ask_channel.output);
+		if (!channel) {
+			goto end_channel_error;
+		}
+
+		/* Build channel attributes from received message. */
+		attr.subbuf_size = msg.u.ask_channel.subbuf_size;
+		attr.num_subbuf = msg.u.ask_channel.num_subbuf;
+		attr.overwrite = msg.u.ask_channel.overwrite;
+		attr.switch_timer_interval = msg.u.ask_channel.switch_timer_interval;
+		attr.read_timer_interval = msg.u.ask_channel.read_timer_interval;
+		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
+
+		/* Translate the event output type to UST. */
+		switch (channel->output) {
+		case LTTNG_EVENT_SPLICE:
+			/* Splice not supported so fallback on mmap(). */
+		case LTTNG_EVENT_MMAP:
+		default:
+			attr.output = CONSUMER_CHANNEL_MMAP;
+			break;
+		};
+
+		/* Translate and save channel type. */
+		switch (msg.u.ask_channel.type) {
+		case LTTNG_UST_CHAN_PER_CPU:
+			channel->type = CONSUMER_CHANNEL_TYPE_DATA;
+			attr.type = LTTNG_UST_CHAN_PER_CPU;
+			break;
+		case LTTNG_UST_CHAN_METADATA:
+			channel->type = CONSUMER_CHANNEL_TYPE_METADATA;
+			attr.type = LTTNG_UST_CHAN_METADATA;
+			break;
+		default:
+			assert(0);
+			goto error_fatal;
+		};
+
+		ret = ask_channel(ctx, sock, channel, &attr);
+		if (ret < 0) {
+			goto end_channel_error;
+		}
+
+		/*
+		 * Add the channel to the internal state AFTER all streams were created
+		 * and successfully sent to session daemon. This way, all streams must
+		 * be ready before this channel is visible to the threads.
+		 */
+		ret = add_channel(channel, ctx);
+		if (ret < 0) {
+			goto end_channel_error;
+		}
+
+		/*
+		 * Channel and streams are now created. Inform the session daemon that
+		 * everything went well and should wait to receive the channel and
+		 * streams with ustctl API.
+		 */
+		ret = consumer_send_status_channel(sock, channel);
+		if (ret < 0) {
+			/*
+			 * There is probably a problem on the socket so the poll will get
+			 * it and clean everything up.
+			 */
+			goto end_nosignal;
+		}
+
+		break;
+	}
+	case LTTNG_CONSUMER_GET_CHANNEL:
+	{
+		int ret, relayd_err = 0;
+		unsigned long key = msg.u.get_channel.key;
+		struct lttng_consumer_channel *channel;
+		struct lttng_consumer_stream *stream, *stmp;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			ERR("UST consumer get channel key %lu not found", key);
+			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto end_msg_sessiond;
+		}
+
+		/* Inform sessiond that we are about to send channel and streams. */
+		ret = consumer_send_status_msg(sock, LTTNG_OK);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
+		/* Send everything to sessiond. */
+		ret = send_sessiond_channel(sock, channel, ctx, &relayd_err);
+		if (ret < 0) {
+			if (relayd_err) {
+				/*
+				 * We were unable to send to the relayd the stream so avoid
+				 * sending back a fatal error to the thread since this is OK
+				 * and the consumer can continue its work.
+				 */
+				ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
+				goto end_msg_sessiond;
+			}
+			/*
+			 * The communicaton was broken hence there is a bad state between
+			 * the consumer and sessiond so stop everything.
+			 */
+			goto error_fatal;
+		}
+
+		/* Send streams to the corresponding thread. */
+		cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
+				send_node) {
+			/* Sending the stream to the thread. */
+			ret = send_stream_to_thread(stream, ctx);
+			if (ret < 0) {
+				/*
+				 * If we are unable to send the stream to the thread, there is
+				 * a big problem so just stop everything.
+				 */
+				goto error_fatal;
+			}
+
+			/* Remove node from the channel stream list. */
+			cds_list_del(&stream->send_node);
+		}
+
+		/* List MUST be empty after or else it could be reused. */
+		assert(cds_list_empty(&channel->streams.head));
+
+		/* Inform sessiond that everything is done and OK on our side. */
+		ret = consumer_send_status_msg(sock, LTTNG_OK);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
+		break;
+	}
+	case LTTNG_CONSUMER_DESTROY_CHANNEL:
+	{
+		int ret;
+		unsigned long key = msg.u.destroy_channel.key;
+		struct lttng_consumer_channel *channel;
+
+		DBG("UST consumer destroy channel key %lu", key);
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			ERR("UST consumer destroy channel %lu not found", key);
+			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		} else {
+			/* Protocol error if the stream list is NOT empty. */
+			assert(!cds_list_empty(&channel->streams.head));
+			consumer_del_channel(channel);
+		}
+
+		ret = consumer_send_status_msg(sock, LTTNG_OK);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+	}
 	default:
 		break;
 	}
@@ -410,83 +767,118 @@ end_nosignal:
 	 * shutdown during the recv() or send() call.
 	 */
 	return 1;
-}
 
-int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan)
-{
-	struct lttng_ust_object_data obj;
-
-	obj.handle = -1;
-	obj.shm_fd = chan->shm_fd;
-	obj.wait_fd = chan->wait_fd;
-	obj.memory_map_size = chan->mmap_len;
-	chan->handle = ustctl_map_channel(&obj);
-	if (!chan->handle) {
-		return -ENOMEM;
+end_msg_sessiond:
+	/*
+	 * The returned value here is not useful since either way we'll return 1 to
+	 * the caller because the session daemon socket management is done
+	 * elsewhere. Returning a negative code or 0 will shutdown the consumer.
+	 */
+	(void) consumer_send_status_msg(sock, ret_code);
+	rcu_read_unlock();
+	return 1;
+end_channel_error:
+	if (channel) {
+		/*
+		 * Free channel here since no one has a reference to it. We don't
+		 * free after that because a stream can store this pointer.
+		 */
+		destroy_channel(channel);
 	}
-	chan->wait_fd_is_copy = 1;
-	chan->shm_fd = -1;
-
-	return 0;
+	/* We have to send a status channel message indicating an error. */
+	ret = consumer_send_status_channel(sock, NULL);
+	if (ret < 0) {
+		/* Stop everything if session daemon can not be notified. */
+		goto error_fatal;
+	}
+	rcu_read_unlock();
+	return 1;
+error_fatal:
+	rcu_read_unlock();
+	/* This will issue a consumer stop. */
+	return -1;
 }
 
+/*
+ * Wrapper over the mmap() read offset from ust-ctl library. Since this can be
+ * compiled out, we isolate it in this library.
+ */
+int lttng_ustctl_get_mmap_read_offset(struct lttng_consumer_stream *stream,
+		unsigned long *off)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	return ustctl_get_mmap_read_offset(stream->ustream, off);
+}
+
+/*
+ * Wrapper over the mmap() read offset from ust-ctl library. Since this can be
+ * compiled out, we isolate it in this library.
+ */
+void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	return ustctl_get_mmap_base(stream->ustream);
+}
+
+/*
+ * Take a snapshot for a specific fd
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	return ustctl_snapshot(stream->ustream);
+}
+
+/*
+ * Get the produced position
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_ustconsumer_get_produced_snapshot(
+		struct lttng_consumer_stream *stream, unsigned long *pos)
+{
+	assert(stream);
+	assert(stream->ustream);
+	assert(pos);
+
+	return ustctl_snapshot_get_produced(stream->ustream, pos);
+}
+
+/*
+ * Called when the stream signal the consumer that it has hang up.
+ */
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 {
-	ustctl_flush_buffer(stream->chan->handle, stream->buf, 0);
+	assert(stream);
+	assert(stream->ustream);
+
+	ustctl_flush_buffer(stream->ustream, 0);
 	stream->hangup_flush_done = 1;
 }
 
 void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 {
-	ustctl_unmap_channel(chan->handle);
-}
+	assert(chan);
+	assert(chan->uchan);
 
-int lttng_ustconsumer_add_stream(struct lttng_consumer_stream *stream)
-{
-	struct lttng_ust_object_data obj;
-	int ret;
-
-	obj.handle = -1;
-	obj.shm_fd = stream->shm_fd;
-	obj.wait_fd = stream->wait_fd;
-	obj.memory_map_size = stream->mmap_len;
-	ret = ustctl_add_stream(stream->chan->handle, &obj);
-	if (ret) {
-		ERR("UST ctl add_stream failed with ret %d", ret);
-		goto error;
-	}
-
-	stream->buf = ustctl_open_stream_read(stream->chan->handle, stream->cpu);
-	if (!stream->buf) {
-		ERR("UST ctl open_stream_read failed");
-		ret = -EBUSY;
-		goto error;
-	}
-
-	/* ustctl_open_stream_read has closed the shm fd. */
-	stream->wait_fd_is_copy = 1;
-	stream->shm_fd = -1;
-
-	stream->mmap_base = ustctl_get_mmap_base(stream->chan->handle, stream->buf);
-	if (!stream->mmap_base) {
-		ERR("UST ctl get_mmap_base failed");
-		ret = -EINVAL;
-		goto mmap_error;
-	}
-
-	return 0;
-
-mmap_error:
-	ustctl_close_stream_read(stream->chan->handle, stream->buf);
-error:
-	return ret;
+	ustctl_destroy_channel(chan->uchan);
 }
 
 void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 {
-	ustctl_close_stream_read(stream->chan->handle, stream->buf);
-}
+	assert(stream);
+	assert(stream->ustream);
 
+	ustctl_destroy_stream(stream->ustream);
+}
 
 int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
@@ -494,12 +886,18 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	unsigned long len, subbuf_size, padding;
 	int err;
 	long ret = 0;
-	struct lttng_ust_shm_handle *handle;
-	struct lttng_ust_lib_ring_buffer *buf;
 	char dummy;
+	struct ustctl_consumer_stream *ustream;
 
-	DBG("In read_subbuffer (wait_fd: %d, stream key: %d)",
-		stream->wait_fd, stream->key);
+	assert(stream);
+	assert(stream->ustream);
+	assert(ctx);
+
+	DBG2("In UST read_subbuffer (wait_fd: %d, name: %s)", stream->wait_fd,
+			stream->name);
+
+	/* Ease our life for what's next. */
+	ustream = stream->ustream;
 
 	/* We can consume the 1 byte written into the wait_fd by UST */
 	if (!stream->hangup_flush_done) {
@@ -514,10 +912,8 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		}
 	}
 
-	buf = stream->buf;
-	handle = stream->chan->handle;
 	/* Get the next subbuffer */
-	err = ustctl_get_next_subbuf(handle, buf);
+	err = ustctl_get_next_subbuf(ustream);
 	if (err != 0) {
 		ret = err;	/* ustctl_get_next_subbuf returns negative, caller expect positive. */
 		/*
@@ -527,16 +923,16 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 * would issue wakeups.
 		 */
 		DBG("Reserving sub buffer failed (everything is normal, "
-				"it is due to concurrency)");
+				"it is due to concurrency) [ret: %d]", err);
 		goto end;
 	}
-	assert(stream->output == LTTNG_EVENT_MMAP);
+	assert(stream->chan->output == CONSUMER_CHANNEL_MMAP);
 	/* Get the full padded subbuffer size */
-	err = ustctl_get_padded_subbuf_size(handle, buf, &len);
+	err = ustctl_get_padded_subbuf_size(ustream, &len);
 	assert(err == 0);
 
 	/* Get subbuffer data size (without padding) */
-	err = ustctl_get_subbuf_size(handle, buf, &subbuf_size);
+	err = ustctl_get_subbuf_size(ustream, &subbuf_size);
 	assert(err == 0);
 
 	/* Make sure we don't get a subbuffer size bigger than the padded */
@@ -563,37 +959,41 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 				"(ret: %zd != len: %lu != subbuf_size: %lu)",
 				ret, len, subbuf_size);
 	}
-	err = ustctl_put_next_subbuf(handle, buf);
+	err = ustctl_put_next_subbuf(ustream);
 	assert(err == 0);
 end:
 	return ret;
 }
 
+/*
+ * Called when a stream is created.
+ */
 int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
+	char full_path[PATH_MAX];
 
 	/* Opening the tracefile in write mode */
-	if (stream->path_name != NULL && stream->net_seq_idx == -1) {
-		ret = run_as_open(stream->path_name,
-				O_WRONLY|O_CREAT|O_TRUNC,
-				S_IRWXU|S_IRWXG|S_IRWXO,
-				stream->uid, stream->gid);
-		if (ret < 0) {
-			ERR("Opening %s", stream->path_name);
-			PERROR("open");
-			goto error;
-		}
-		stream->out_fd = ret;
+	if (stream->net_seq_idx != -1) {
+		goto end;
 	}
 
-	ret = lttng_ustconsumer_add_stream(stream);
-	if (ret) {
-		consumer_del_stream(stream, NULL);
-		ret = -1;
+	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
+			stream->chan->pathname, stream->name);
+	if (ret < 0) {
+		PERROR("snprintf on_recv_stream");
 		goto error;
 	}
 
+	ret = run_as_open(full_path, O_WRONLY | O_CREAT | O_TRUNC,
+			S_IRWXU | S_IRWXG | S_IRWXO, stream->uid, stream->gid);
+	if (ret < 0) {
+		PERROR("open stream path %s", full_path);
+		goto error;
+	}
+	stream->out_fd = ret;
+
+end:
 	/* we return 0 to let the library handle the FD internally */
 	return 0;
 
@@ -614,13 +1014,14 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 	int ret;
 
 	assert(stream);
+	assert(stream->ustream);
 
 	DBG("UST consumer checking data pending");
 
-	ret = ustctl_get_next_subbuf(stream->chan->handle, stream->buf);
+	ret = ustctl_get_next_subbuf(stream->ustream);
 	if (ret == 0) {
 		/* There is still data so let's put back this subbuffer. */
-		ret = ustctl_put_subbuf(stream->chan->handle, stream->buf);
+		ret = ustctl_put_subbuf(stream->ustream);
 		assert(ret == 0);
 		ret = 1;  /* Data is pending */
 		goto end;

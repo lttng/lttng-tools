@@ -54,7 +54,7 @@ struct ltt_ust_channel {
 	unsigned int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char pathname[PATH_MAX];
-	struct lttng_ust_channel attr;
+	struct lttng_ust_channel_attr attr;
 	struct lttng_ht *ctx;
 	struct lttng_ht *events;
 	struct lttng_ht_node_str node;
@@ -65,7 +65,7 @@ struct ltt_ust_metadata {
 	int handle;
 	struct lttng_ust_object_data *obj;
 	char pathname[PATH_MAX];              /* Trace file path name */
-	struct lttng_ust_channel attr;
+	struct lttng_ust_channel_attr attr;
 	struct lttng_ust_object_data *stream_obj;
 };
 
@@ -172,8 +172,8 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 }
 
 static inline
-struct ltt_ust_session *trace_ust_create_session(char *path, pid_t pid,
-		struct lttng_domain *domain)
+struct ltt_ust_session *trace_ust_create_session(char *path,
+		unsigned int session_id)
 {
 	return NULL;
 }

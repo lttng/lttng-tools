@@ -35,4 +35,4 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 		struct ltt_kernel_session *session);
 
 int kernel_consumer_add_channel(struct consumer_socket *sock,
-		struct ltt_kernel_channel *channel);
+		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session);

@@ -28,6 +28,7 @@
 #endif
 
 #include <lttng/lttng-error.h>
+#include <common/compat/tid.h>
 
 /* Stringify the expansion of a define */
 #define XSTR(d) STR(d)
@@ -36,6 +37,7 @@
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
 
+/* Error type. */
 #define PRINT_ERR   0x1
 #define PRINT_WARN  0x2
 #define PRINT_BUG   0x3
@@ -65,6 +67,11 @@ extern int lttng_opt_verbose;
 		}                                                           \
 	} while (0);
 
+/* Three level of debug. Use -v, -vv or -vvv for the levels */
+#define _ERRMSG(msg, type, fmt, args...) __lttng_print(type, msg \
+		" [%ld/%ld]: " fmt " (in %s() at " __FILE__ ":" XSTR(__LINE__) ")\n", \
+			(long) getpid(), (long) gettid(), ## args, __func__)
+
 #define MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt "\n", ## args)
 #define _MSG(fmt, args...) \
@@ -73,20 +80,14 @@ extern int lttng_opt_verbose;
 	__lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
 #define WARN(fmt, args...) \
 	__lttng_print(PRINT_WARN, "Warning: " fmt "\n", ## args)
-#define BUG(fmt, args...) \
-	__lttng_print(PRINT_BUG, "BUG: " fmt "\n", ## args)
 
-/* Three level of debug. Use -v, -vv or -vvv for the levels */
-#define DBG(fmt, args...) __lttng_print(PRINT_DBG, "DEBUG1: " fmt \
-		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
-#define DBG2(fmt, args...) __lttng_print(PRINT_DBG2, "DEBUG2: " fmt \
-		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
-#define DBG3(fmt, args...) __lttng_print(PRINT_DBG3, "DEBUG3: " fmt \
-		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
+#define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ## args)
 
-#define _PERROR(fmt, args...) \
-	__lttng_print(PRINT_ERR, "PERROR: " fmt \
-		" [in %s() at " __FILE__ ":" XSTR(__LINE__) "]\n", ## args, __func__)
+#define DBG(fmt, args...) _ERRMSG("DEBUG1", PRINT_DBG, fmt, ## args)
+#define DBG2(fmt, args...) _ERRMSG("DEBUG2", PRINT_DBG2, fmt, ## args)
+#define DBG3(fmt, args...) _ERRMSG("DEBUG3", PRINT_DBG3, fmt, ## args)
+
+#define _PERROR(fmt, args...) _ERRMSG("PERROR", PRINT_ERR, fmt, ## args)
 
 #if !defined(__linux__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
 

@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include <common/compat/uuid.h>
 #include "trace-ust.h"
 
 /* lttng-ust supported version. */
@@ -96,14 +97,22 @@ struct ust_app_stream {
 	struct lttng_ust_object_data *obj;
 	/* Using a list of streams to keep order. */
 	struct cds_list_head list;
+	struct ustctl_consumer_stream *ustream;
 };
 
 struct ust_app_channel {
 	int enabled;
 	int handle;
+	/* Channel and streams were sent to the UST tracer. */
+	int is_sent;
+	/* Unique key used to identify the channel on the consumer side. */
+	unsigned long key;
+	/* Number of stream that this channel is expected to receive. */
+	unsigned int expected_stream_count;
 	char name[LTTNG_UST_SYM_NAME_LEN];
-	struct lttng_ust_channel_attr attr;
 	struct lttng_ust_object_data *obj;
+	struct ustctl_consumer_channel_attr attr;
+	struct ustctl_consumer_channel *channel;
 	struct ust_app_stream_list streams;
 	struct lttng_ht *ctx;
 	struct lttng_ht *events;
@@ -116,7 +125,7 @@ struct ust_app_session {
 	int started;  /* allows detection of start vs restart. */
 	int handle;   /* used has unique identifier for app session */
 	int id;       /* session unique identifier */
-	struct ltt_ust_metadata *metadata;
+	struct ust_app_channel *metadata;
 	struct lttng_ht *channels; /* Registered channels */
 	struct lttng_ht_node_ulong node;
 	char path[PATH_MAX];
@@ -124,6 +133,8 @@ struct ust_app_session {
 	uid_t uid;
 	gid_t gid;
 	struct cds_list_head teardown_node;
+	/* Universal unique identifier used by the tracer. */
+	unsigned char uuid[UUID_STR_LEN];
 };
 
 /*
@@ -208,6 +219,7 @@ struct lttng_ht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
 int ust_app_validate_version(int sock);
 int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate);
+struct ust_app_stream *ust_app_alloc_stream(void);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 

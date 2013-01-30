@@ -376,6 +376,8 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 	case LTTNG_DST_IPV6:
 		DBG2("Setting network URI to consumer");
 
+		consumer->type = CONSUMER_DST_NET;
+
 		/* Set URI into consumer output object */
 		ret = consumer_set_network_uri(consumer, uri);
 		if (ret < 0) {
@@ -484,8 +486,14 @@ static int create_connect_relayd(struct consumer_output *output,
 		goto error;
 	}
 
-	/* Connect to relayd so we can proceed with a session creation. */
+	/*
+	 * Connect to relayd so we can proceed with a session creation. This call
+	 * can possibly block for an arbitrary amount of time to set the health
+	 * state to be in poll execution.
+	 */
+	health_poll_entry();
 	ret = relayd_connect(sock);
+	health_poll_exit();
 	if (ret < 0) {
 		ERR("Unable to reach lttng-relayd");
 		ret = LTTNG_ERR_RELAYD_CONNECT_FAIL;
@@ -538,6 +546,17 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	int ret;
 	struct lttcomm_sock *sock = NULL;
 
+	/* Connect to relayd and make version check if uri is the control. */
+	ret = create_connect_relayd(consumer, session->name, relayd_uri, &sock);
+	if (ret != LTTNG_OK) {
+		goto close_sock;
+	}
+
+	/* If the control socket is connected, network session is ready */
+	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
+		session->net_handle = 1;
+	}
+
 	/* Set the network sequence index if not set. */
 	if (consumer->net_seq_index == -1) {
 		/*
@@ -550,17 +569,6 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 				uatomic_read(&relayd_net_seq_idx));
 	}
 
-	/* Connect to relayd and make version check if uri is the control. */
-	ret = create_connect_relayd(consumer, session->name, relayd_uri, &sock);
-	if (ret != LTTNG_OK) {
-		goto close_sock;
-	}
-
-	/* If the control socket is connected, network session is ready */
-	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
-		session->net_handle = 1;
-	}
-
 	/* Send relayd socket to consumer. */
 	ret = consumer_send_relayd_socket(consumer_sock, sock,
 			consumer, relayd_uri->stype, session->id);
@@ -571,9 +579,9 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 
 	/* Flag that the corresponding socket was sent. */
 	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
-		consumer->dst.net.control_sock_sent = 1;
+		consumer_sock->control_sock_sent = 1;
 	} else if (relayd_uri->stype == LTTNG_STREAM_DATA) {
-		consumer->dst.net.data_sock_sent = 1;
+		consumer_sock->data_sock_sent = 1;
 	}
 
 	ret = LTTNG_OK;
@@ -587,6 +595,14 @@ close_sock:
 	if (sock) {
 		(void) relayd_close(sock);
 		lttcomm_destroy_sock(sock);
+	}
+
+	if (ret != LTTNG_OK) {
+		/*
+		 * On error, nullify the consumer sequence index so streams are not
+		 * associated with it once sent to the consumer.
+		 */
+		uatomic_set(&consumer->net_seq_index, -1);
 	}
 
 	return ret;
@@ -607,7 +623,7 @@ static int send_consumer_relayd_sockets(int domain,
 	assert(consumer);
 
 	/* Sending control relayd socket. */
-	if (!consumer->dst.net.control_sock_sent) {
+	if (!sock->control_sock_sent) {
 		ret = send_consumer_relayd_socket(domain, session,
 				&consumer->dst.net.control, consumer, sock);
 		if (ret != LTTNG_OK) {
@@ -616,7 +632,7 @@ static int send_consumer_relayd_sockets(int domain,
 	}
 
 	/* Sending data relayd socket. */
-	if (!consumer->dst.net.data_sock_sent) {
+	if (!sock->data_sock_sent) {
 		ret = send_consumer_relayd_socket(domain, session,
 				&consumer->dst.net.data, consumer, sock);
 		if (ret != LTTNG_OK) {
@@ -633,7 +649,7 @@ error:
  * the relayd and send them to the right domain consumer. Consumer type MUST be
  * network.
  */
-static int setup_relayd(struct ltt_session *session)
+int cmd_setup_relayd(struct ltt_session *session)
 {
 	int ret = LTTNG_OK;
 	struct ltt_ust_session *usess;
@@ -1481,12 +1497,6 @@ int cmd_start_trace(struct ltt_session *session)
 
 	session->enabled = 1;
 
-	ret = setup_relayd(session);
-	if (ret != LTTNG_OK) {
-		ERR("Error setting up relayd for session %s", session->name);
-		goto error;
-	}
-
 	/* Kernel tracing */
 	if (ksession != NULL) {
 		ret = start_kernel_session(ksession, kernel_tracer_fd);
@@ -1660,44 +1670,10 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 	}
 
 	for (i = 0; i < nb_uri; i++) {
-		struct consumer_socket *socket;
-		struct lttng_ht_iter iter;
-
 		ret = add_uri_to_consumer(consumer, &uris[i], domain, session->name);
 		if (ret < 0) {
 			goto error;
 		}
-
-		/*
-		 * Don't send relayd socket if URI is NOT remote or if the relayd
-		 * socket for the session was already sent.
-		 */
-		if (uris[i].dtype == LTTNG_DST_PATH ||
-				(uris[i].stype == LTTNG_STREAM_CONTROL &&
-				consumer->dst.net.control_sock_sent) ||
-				(uris[i].stype == LTTNG_STREAM_DATA &&
-				consumer->dst.net.data_sock_sent)) {
-			continue;
-		}
-
-		/* Try to send relayd URI to the consumer if exist. */
-		rcu_read_lock();
-		cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter,
-				socket, node.node) {
-
-			/* A socket in the HT should never have a negative fd */
-			assert(socket->fd >= 0);
-
-			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_socket(domain, session, &uris[i],
-					consumer, socket);
-			pthread_mutex_unlock(socket->lock);
-			if (ret != LTTNG_OK) {
-				rcu_read_unlock();
-				goto error;
-			}
-		}
-		rcu_read_unlock();
 	}
 
 	/* All good! */

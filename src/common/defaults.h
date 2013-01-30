@@ -168,6 +168,7 @@
 #define DEFAULT_APP_SOCKET_RW_TIMEOUT       5  /* sec */
 #define DEFAULT_APP_SOCKET_TIMEOUT_ENV      "LTTNG_APP_SOCKET_TIMEOUT"
 
+#define DEFAULT_UST_STREAM_FD_NUM			2 /* Number of fd per UST stream. */
 
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
