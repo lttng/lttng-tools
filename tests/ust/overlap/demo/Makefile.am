@@ -1,5 +1,10 @@
 AM_CFLAGS=-I$(srcdir)
-
+if NO_SHARED
+# Do not build this test if shared libraries support was
+# explicitly disabled.
+else
+# Force the shared flag on the noinst libraries since they are
+# only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 						   -rpath $(abs_builddir)
 
@@ -30,3 +35,4 @@ endif
 
 noinst_SCRIPTS = demo-trace
 EXTRA_DIST = demo-trace
+endif
