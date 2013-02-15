@@ -199,11 +199,6 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 			ret = LTTNG_ERR_FATAL;
 			goto error_asprintf;
 		}
-		new_session->start_consumer = 1;
-	} else {
-		/* No path indicates that there is no use for a consumer. */
-		new_session->start_consumer = 0;
-		new_session->path[0] = '\0';
 	}
 
 	/* Init kernel session */

@@ -43,24 +43,11 @@ if [ -z "$out" ]; then
 	exit 0
 fi
 
-function lttng_create_session
+function lttng_create_session_uri
 {
 	echo -n "Creating session $SESSION_NAME... "
 	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-		print_ok
-	fi
-}
-
-function lttng_enable_consumer_localhost
-{
-	echo -n "Enabling network consumer... "
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -k net://localhost >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		print_fail
 		return 1
@@ -72,8 +59,7 @@ function lttng_enable_consumer_localhost
 function test_kernel_before_start ()
 {
 	echo -e "\n=== Testing kernel streaming with event enable BEFORE start\n"
-	lttng_create_session
-	lttng_enable_consumer_localhost
+	lttng_create_session_uri
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 	# Give a second
@@ -96,8 +82,7 @@ function test_kernel_before_start ()
 function test_kernel_after_start ()
 {
 	echo -e "\n=== Testing kernel streaming with event enable AFTER start\n"
-	lttng_create_session
-	lttng_enable_consumer_localhost
+	lttng_create_session_uri
 	start_lttng_tracing $SESSION_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	# Give a second

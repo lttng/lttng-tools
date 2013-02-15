@@ -103,6 +103,8 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_SESSION_STARTED) ] = "Session is running",
 	[ ERROR_INDEX(LTTNG_ERR_NOT_SUPPORTED) ] = "Operation not supported",
 	[ ERROR_INDEX(LTTNG_ERR_UST_EVENT_ENABLED) ] = "UST event already enabled",
+	[ ERROR_INDEX(LTTNG_ERR_SET_URL) ] = "Error setting URL",
+	[ ERROR_INDEX(LTTNG_ERR_URL_EXIST) ] = "URL already exists",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

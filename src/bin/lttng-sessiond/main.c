@@ -2343,8 +2343,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			/* Start the kernel consumer daemon */
 			pthread_mutex_lock(&kconsumer_data.pid_mutex);
 			if (kconsumer_data.pid == 0 &&
-					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER &&
-					cmd_ctx->session->start_consumer) {
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
 				ret = start_consumerd(&kconsumer_data);
 				if (ret < 0) {
@@ -2391,8 +2390,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
 			if (consumerd64_bin[0] != '\0' &&
 					ustconsumer64_data.pid == 0 &&
-					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER &&
-					cmd_ctx->session->start_consumer) {
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
 				ret = start_consumerd(&ustconsumer64_data);
 				if (ret < 0) {
@@ -2420,8 +2418,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			/* 32-bit */
 			if (consumerd32_bin[0] != '\0' &&
 					ustconsumer32_data.pid == 0 &&
-					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER &&
-					cmd_ctx->session->start_consumer) {
+					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
 				ret = start_consumerd(&ustconsumer32_data);
 				if (ret < 0) {
@@ -2530,39 +2527,10 @@ skip_domain:
 				cmd_ctx->lsm->u.disable.channel_name);
 		break;
 	}
-	case LTTNG_DISABLE_CONSUMER:
-	{
-		ret = cmd_disable_consumer(cmd_ctx->lsm->domain.type, cmd_ctx->session);
-		break;
-	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
 		ret = cmd_enable_channel(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				&cmd_ctx->lsm->u.channel.chan, kernel_poll_pipe[1]);
-		break;
-	}
-	case LTTNG_ENABLE_CONSUMER:
-	{
-		/*
-		 * XXX: 0 means that this URI should be applied on the session. Should
-		 * be a DOMAIN enuam.
-		 */
-		ret = cmd_enable_consumer(cmd_ctx->lsm->domain.type, cmd_ctx->session);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-
-		if (cmd_ctx->lsm->domain.type == 0) {
-			/* Add the URI for the UST session if a consumer is present. */
-			if (cmd_ctx->session->ust_session &&
-					cmd_ctx->session->ust_session->consumer) {
-				ret = cmd_enable_consumer(LTTNG_DOMAIN_UST, cmd_ctx->session);
-			} else if (cmd_ctx->session->kernel_session &&
-					cmd_ctx->session->kernel_session->consumer) {
-				ret = cmd_enable_consumer(LTTNG_DOMAIN_KERNEL,
-						cmd_ctx->session);
-			}
-		}
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:

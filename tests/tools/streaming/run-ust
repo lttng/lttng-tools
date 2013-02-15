@@ -34,16 +34,10 @@ if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	exit 0
 fi
 
-function lttng_create_session
+function lttng_create_session_uri
 {
 	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME >/dev/null 2>&1
-}
-
-function lttng_enable_consumer
-{
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u net://localhost >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
 }
 
 function wait_apps
@@ -61,8 +55,7 @@ function wait_apps
 function test_ust_before_start ()
 {
 	echo -e "\n=== Testing UST streaming BEFORE tracing starts\n"
-	lttng_create_session
-	lttng_enable_consumer
+	lttng_create_session_uri
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
@@ -78,8 +71,7 @@ function test_ust_before_start ()
 function test_ust_after_start ()
 {
 	echo -e "\n=== Testing UST streaming AFTER tracing starts\n"
-	lttng_create_session
-	lttng_enable_consumer
+	lttng_create_session_uri
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 

@@ -1455,47 +1455,19 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 }
 
 /*
- * Enable consumer for a session and domain.
- *
- * Return 0 on success, else a negative value.
+ * [OBSELETE]
  */
 int lttng_enable_consumer(struct lttng_handle *handle)
 {
-	struct lttcomm_session_msg lsm;
-
-	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	lsm.cmd_type = LTTNG_ENABLE_CONSUMER;
-
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
-	copy_lttng_domain(&lsm.domain, &handle->domain);
-
-	return ask_sessiond(&lsm, NULL);
+	return -ENOSYS;
 }
 
 /*
- * Disable consumer for a session and domain.
- *
- * Return 0 on success, else a negative value.
+ * [OBSELETE]
  */
 int lttng_disable_consumer(struct lttng_handle *handle)
 {
-	struct lttcomm_session_msg lsm;
-
-	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	lsm.cmd_type = LTTNG_DISABLE_CONSUMER;
-
-	copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
-	copy_lttng_domain(&lsm.domain, &handle->domain);
-
-	return ask_sessiond(&lsm, NULL);
+	return -ENOSYS;
 }
 
 /*

@@ -29,6 +29,16 @@
 extern "C" {
 #endif
 
+#ifndef LTTNG_DEPRECATED
+#if defined (__GNUC__) \
+	&& ((__GNUC_MAJOR__ == 4) && (__GNUC_MINOR__ >= 5)  \
+			|| __GNUC_MAJOR__ >= 5)
+#define LTTNG_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#else
+#define LTTNG_DEPRECATED(msg) __attribute__((deprecated))
+#endif /* defined __GNUC__ */
+#endif /* LTTNG_DEPRECATED */
+
 enum lttng_error_code {
 	LTTNG_OK                         = 10,  /* Ok */
 	LTTNG_ERR_UNK                    = 11,  /* Unknown Error */
@@ -40,8 +50,8 @@ enum lttng_error_code {
 	LTTNG_ERR_CREATE_DIR_FAIL        = 17,  /* Create directory fail */
 	LTTNG_ERR_SESSION_FAIL           = 18,  /* Create session fail */
 	LTTNG_ERR_NO_SESSIOND            = 19,  /* No session daemon available */
-	/* 20 */
-	/* 21 */
+	LTTNG_ERR_SET_URL                = 20,  /* Error setting URL */
+	LTTNG_ERR_URL_EXIST              = 21,  /* URL already exists. */
 	/* 22 */
 	LTTNG_ERR_SESS_NOT_FOUND         = 23,  /* Session by name not found */
 	/* 24 */

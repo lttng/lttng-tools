@@ -62,8 +62,6 @@ int cmd_stop_trace(struct ltt_session *session);
 /* Consumer commands */
 int cmd_register_consumer(struct ltt_session *session, int domain,
 		const char *sock_path, struct consumer_data *cdata);
-int cmd_disable_consumer(int domain, struct ltt_session *session);
-int cmd_enable_consumer(int domain, struct ltt_session *session);
 int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 		size_t nb_uri, struct lttng_uri *uris);
 int cmd_setup_relayd(struct ltt_session *session);

@@ -378,6 +378,14 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 
 		consumer->type = CONSUMER_DST_NET;
 
+		if ((uri->stype == LTTNG_STREAM_CONTROL &&
+				consumer->dst.net.control_isset) ||
+				(uri->stype == LTTNG_STREAM_DATA &&
+				consumer->dst.net.data_isset)) {
+			ret = LTTNG_ERR_URL_EXIST;
+			goto error;
+		}
+
 		/* Set URI into consumer output object */
 		ret = consumer_set_network_uri(consumer, uri);
 		if (ret < 0) {
@@ -662,7 +670,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 	usess = session->ust_session;
 	ksess = session->kernel_session;
 
-	DBG2("Setting relayd for session %s", session->name);
+	DBG("Setting relayd for session %s", session->name);
 
 	rcu_read_lock();
 
@@ -1634,38 +1642,14 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 	case LTTNG_DOMAIN_KERNEL:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(ksess);
-
-		/* Create consumer output if none exists */
-		consumer = ksess->tmp_consumer;
-		if (consumer == NULL) {
-			consumer = consumer_copy_output(ksess->consumer);
-			if (consumer == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-			/* Trash the consumer subdir, we are about to set a new one. */
-			memset(consumer->subdir, 0, sizeof(consumer->subdir));
-			ksess->tmp_consumer = consumer;
-		}
-
+		assert(ksess->consumer);
+		consumer = ksess->consumer;
 		break;
 	case LTTNG_DOMAIN_UST:
 		/* Code flow error if we don't have a kernel session here. */
 		assert(usess);
-
-		/* Create consumer output if none exists */
-		consumer = usess->tmp_consumer;
-		if (consumer == NULL) {
-			consumer = consumer_copy_output(usess->consumer);
-			if (consumer == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-			/* Trash the consumer subdir, we are about to set a new one. */
-			memset(consumer->subdir, 0, sizeof(consumer->subdir));
-			usess->tmp_consumer = consumer;
-		}
-
+		assert(usess->consumer);
+		consumer = usess->consumer;
 		break;
 	}
 
@@ -1694,6 +1678,12 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	struct ltt_session *session;
 
 	assert(name);
+
+	/* No URIs is not possible. */
+	if (uris == NULL) {
+		ret = LTTNG_ERR_SESSION_FAIL;
+		goto session_error;
+	}
 
 	/*
 	 * Verify if the session already exist
@@ -1732,22 +1722,6 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 		goto consumer_error;
 	}
 
-	/*
-	 * This means that the lttng_create_session call was called with the _path_
-	 * argument set to NULL.
-	 */
-	if (uris == NULL) {
-		/*
-		 * At this point, we'll skip the consumer URI setup and create a
-		 * session with a NULL path which will flag the session to NOT spawn a
-		 * consumer.
-		 */
-		DBG("Create session %s with NO uri, skipping consumer setup", name);
-		goto end;
-	}
-
-	session->start_consumer = 1;
-
 	ret = cmd_set_consumer_uri(0, session, nb_uri, uris);
 	if (ret != LTTNG_OK) {
 		goto consumer_error;
@@ -1755,7 +1729,6 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 
 	session->consumer->enabled = 1;
 
-end:
 	return LTTNG_OK;
 
 consumer_error:
@@ -2114,266 +2087,6 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		sessions[i].enabled = session->enabled;
 		i++;
 	}
-}
-
-/*
- * Command LTTNG_DISABLE_CONSUMER processed by the client thread.
- */
-int cmd_disable_consumer(int domain, struct ltt_session *session)
-{
-	int ret;
-	struct ltt_kernel_session *ksess = session->kernel_session;
-	struct ltt_ust_session *usess = session->ust_session;
-	struct consumer_output *consumer;
-
-	assert(session);
-
-	if (session->enabled) {
-		/* Can't disable consumer on an already started session */
-		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-		goto error;
-	}
-
-	if (!session->start_consumer) {
-		ret = LTTNG_ERR_NO_CONSUMER;
-		goto error;
-	}
-
-	switch (domain) {
-	case 0:
-		DBG("Disable tracing session %s consumer", session->name);
-		consumer = session->consumer;
-		break;
-	case LTTNG_DOMAIN_KERNEL:
-		/* Code flow error if we don't have a kernel session here. */
-		assert(ksess);
-
-		DBG("Disabling kernel consumer");
-		consumer = ksess->consumer;
-
-		break;
-	case LTTNG_DOMAIN_UST:
-		/* Code flow error if we don't have a UST session here. */
-		assert(usess);
-
-		DBG("Disabling UST consumer");
-		consumer = usess->consumer;
-
-		break;
-	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
-	}
-
-	if (consumer) {
-		consumer->enabled = 0;
-		/* Success at this point */
-		ret = LTTNG_OK;
-	} else {
-		ret = LTTNG_ERR_NO_CONSUMER;
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Command LTTNG_ENABLE_CONSUMER processed by the client thread.
- */
-int cmd_enable_consumer(int domain, struct ltt_session *session)
-{
-	int ret;
-	struct ltt_kernel_session *ksess = session->kernel_session;
-	struct ltt_ust_session *usess = session->ust_session;
-	struct consumer_output *consumer = NULL;
-
-	assert(session);
-
-	/* Can't enable consumer after session started. */
-	if (session->enabled) {
-		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-		goto error;
-	}
-
-	switch (domain) {
-	case 0:
-		assert(session->consumer);
-		consumer = session->consumer;
-		break;
-	case LTTNG_DOMAIN_KERNEL:
-		/* Code flow error if we don't have a kernel session here. */
-		assert(ksess);
-
-		/*
-		 * Check if we have already sent fds to the consumer. In that case,
-		 * the enable-consumer command can't be used because a start trace
-		 * had previously occured.
-		 */
-		if (ksess->consumer_fds_sent) {
-			ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
-			goto error;
-		}
-
-		consumer = ksess->tmp_consumer;
-		if (consumer == NULL) {
-			ret = LTTNG_OK;
-			/* No temp. consumer output exists. Using the current one. */
-			DBG3("No temporary consumer. Using default");
-			consumer = ksess->consumer;
-			goto error;
-		}
-
-		switch (consumer->type) {
-		case CONSUMER_DST_LOCAL:
-			DBG2("Consumer output is local. Creating directory(ies)");
-
-			/* Create directory(ies) */
-			ret = run_as_mkdir_recursive(consumer->dst.trace_path,
-					S_IRWXU | S_IRWXG, session->uid, session->gid);
-			if (ret < 0) {
-				if (ret != -EEXIST) {
-					ERR("Trace directory creation error");
-					ret = LTTNG_ERR_FATAL;
-					goto error;
-				}
-			}
-			break;
-		case CONSUMER_DST_NET:
-			DBG2("Consumer output is network. Validating URIs");
-			/* Validate if we have both control and data path set. */
-			if (!consumer->dst.net.control_isset) {
-				ret = LTTNG_ERR_URL_CTRL_MISS;
-				goto error;
-			}
-
-			if (!consumer->dst.net.data_isset) {
-				ret = LTTNG_ERR_URL_DATA_MISS;
-				goto error;
-			}
-
-			/* Check established network session state */
-			if (session->net_handle == 0) {
-				ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
-				ERR("Session network handle is not set on enable-consumer");
-				goto error;
-			}
-
-			break;
-		}
-
-		/*
-		 * @session-lock
-		 * This is race free for now since the session lock is acquired before
-		 * ending up in this function. No other threads can access this kernel
-		 * session without this lock hence freeing the consumer output object
-		 * is valid.
-		 */
-		rcu_read_lock();
-		/* Destroy current consumer. We are about to replace it */
-		consumer_destroy_output(ksess->consumer);
-		rcu_read_unlock();
-		ksess->consumer = consumer;
-		ksess->tmp_consumer = NULL;
-
-		break;
-	case LTTNG_DOMAIN_UST:
-		/* Code flow error if we don't have a UST session here. */
-		assert(usess);
-
-		/*
-		 * Check if we have already sent fds to the consumer. In that case,
-		 * the enable-consumer command can't be used because a start trace
-		 * had previously occured.
-		 */
-		if (usess->start_trace) {
-			ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
-			goto error;
-		}
-
-		consumer = usess->tmp_consumer;
-		if (consumer == NULL) {
-			ret = LTTNG_OK;
-			/* No temp. consumer output exists. Using the current one. */
-			DBG3("No temporary consumer. Using default");
-			consumer = usess->consumer;
-			goto error;
-		}
-
-		switch (consumer->type) {
-		case CONSUMER_DST_LOCAL:
-			DBG2("Consumer output is local. Creating directory(ies)");
-
-			/* Create directory(ies) */
-			ret = run_as_mkdir_recursive(consumer->dst.trace_path,
-					S_IRWXU | S_IRWXG, session->uid, session->gid);
-			if (ret < 0) {
-				if (ret != -EEXIST) {
-					ERR("Trace directory creation error");
-					ret = LTTNG_ERR_FATAL;
-					goto error;
-				}
-			}
-			break;
-		case CONSUMER_DST_NET:
-			DBG2("Consumer output is network. Validating URIs");
-			/* Validate if we have both control and data path set. */
-			if (!consumer->dst.net.control_isset) {
-				ret = LTTNG_ERR_URL_CTRL_MISS;
-				goto error;
-			}
-
-			if (!consumer->dst.net.data_isset) {
-				ret = LTTNG_ERR_URL_DATA_MISS;
-				goto error;
-			}
-
-			/* Check established network session state */
-			if (session->net_handle == 0) {
-				ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
-				DBG2("Session network handle is not set on enable-consumer");
-				goto error;
-			}
-
-			if (consumer->net_seq_index == -1) {
-				ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
-				DBG2("Network index is not set on the consumer");
-				goto error;
-			}
-
-			break;
-		}
-
-		/*
-		 * @session-lock
-		 * This is race free for now since the session lock is acquired before
-		 * ending up in this function. No other threads can access this kernel
-		 * session without this lock hence freeing the consumer output object
-		 * is valid.
-		 */
-		rcu_read_lock();
-		/* Destroy current consumer. We are about to replace it */
-		consumer_destroy_output(usess->consumer);
-		rcu_read_unlock();
-		usess->consumer = consumer;
-		usess->tmp_consumer = NULL;
-
-		break;
-	}
-
-	session->start_consumer = 1;
-
-	/* Enable it */
-	if (consumer) {
-		consumer->enabled = 1;
-		/* Success at this point */
-		ret = LTTNG_OK;
-	} else {
-		/* Should not really happend... */
-		ret = LTTNG_ERR_NO_CONSUMER;
-	}
-
-error:
-	return ret;
 }
 
 /*

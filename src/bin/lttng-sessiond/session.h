@@ -83,9 +83,6 @@ struct ltt_session {
 	 */
 	struct consumer_output *consumer;
 
-	/* Indicates whether or not we have to spawn consumer(s) */
-	unsigned int start_consumer;
-
 	/* Did a start command occured before the kern/ust session creation? */
 	unsigned int started;
 };

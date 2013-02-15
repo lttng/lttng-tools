@@ -590,12 +590,14 @@ extern int lttng_set_consumer_url(struct lttng_handle *handle,
 /*
  * Enable the consumer for a session and domain.
  */
-extern int lttng_enable_consumer(struct lttng_handle *handle);
+extern LTTNG_DEPRECATED("This call is now obselete.")
+int lttng_enable_consumer(struct lttng_handle *handle);
 
 /*
  * Disable consumer for a session and domain.
  */
-extern int lttng_disable_consumer(struct lttng_handle *handle);
+extern LTTNG_DEPRECATED("This call is now obselete.")
+int lttng_disable_consumer(struct lttng_handle *handle);
 
 /*
  * Check session daemon health for a specific component.

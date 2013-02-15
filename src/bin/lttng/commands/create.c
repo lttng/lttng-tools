@@ -92,8 +92,10 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -C, --ctrl-url=URL   Set control path URL. (Must use -D also)\n");
 	fprintf(ofp, "  -D, --data-url=URL   Set data path URL. (Must use -C also)\n");
 	fprintf(ofp, "      --no-consumer    Don't activate a consumer for this session.\n");
+	fprintf(ofp, "                       OBSELETE\n");
 	fprintf(ofp, "      --disable-consumer\n");
 	fprintf(ofp, "                       Disable consumer for this session.\n");
+	fprintf(ofp, "                       OBSELETE\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please refer to the man page (lttng(1)) for more information on network\n");
 	fprintf(ofp, "streaming mechanisms and explanation of the control and data port\n");
@@ -171,79 +173,6 @@ error:
 }
 
 /*
- * For a session name, enable the consumer.
- */
-static int enable_consumer(const char *session_name)
-{
-	int ret;
-	struct lttng_handle *handle;
-	struct lttng_domain dom;
-
-	assert(session_name);
-
-	/*
-	 * Set handle with the session name and the domain set to 0. This means to
-	 * the session daemon that the next action applies on the tracing session
-	 * rather then the domain specific session.
-	 *
-	 * XXX: This '0' value should be a domain enum value.
-	 */
-	memset(&dom, 0, sizeof(dom));
-
-	handle = lttng_create_handle(session_name, 0);
-	if (handle == NULL) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	ret = lttng_enable_consumer(handle);
-	if (ret < 0) {
-		goto error;
-	}
-
-	MSG("Consumer enabled for session %s", session_name);
-
-error:
-	lttng_destroy_handle(handle);
-	return ret;
-}
-
-/*
- * For a session name, disable the consumer.
- */
-static int disable_consumer(const char *session_name)
-{
-	int ret;
-	struct lttng_handle *handle;
-
-	assert(session_name);
-
-	/*
-	 * Set handle with the session name and the domain set to 0. This means to
-	 * the session daemon that the next action applies on the tracing session
-	 * rather then the domain specific session.
-	 *
-	 * XXX: This '0' value should be a domain enum value.
-	 */
-	handle = lttng_create_handle(session_name, 0);
-	if (handle == NULL) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	ret = lttng_disable_consumer(handle);
-	if (ret < 0) {
-		goto error;
-	}
-	free(handle);
-
-	MSG("Consumer disabled for session %s", session_name);
-
-error:
-	return ret;
-}
-
-/*
  *  Create a tracing session.
  *  If no name is specified, a default name is generated.
  *
@@ -291,10 +220,7 @@ static int create_session(void)
 		}
 	}
 
-	if (opt_no_consumer) {
-		url = NULL;
-		print_str_url = "";
-	} else if (opt_output_path != NULL) {
+	if (opt_output_path != NULL) {
 		traces_path = utils_expand_path(opt_output_path);
 		if (traces_path == NULL) {
 			ret = CMD_ERROR;
@@ -338,6 +264,8 @@ static int create_session(void)
 		print_str_url = alloc_url + strlen("file://");
 	}
 
+	assert(url);
+
 	ret = _lttng_create_session_ext(session_name, url, datetime);
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
@@ -360,23 +288,11 @@ static int create_session(void)
 		if (ret < 0) {
 			goto error;
 		}
-
-		ret = enable_consumer(session_name);
-		if (ret < 0) {
-			goto error;
-		}
 	} else if ((!opt_ctrl_url && opt_data_url) ||
 			(opt_ctrl_url && !opt_data_url)) {
 		ERR("You need both control and data URL.");
 		ret = CMD_ERROR;
 		goto error;
-	}
-
-	if (opt_disable_consumer && !opt_no_consumer) {
-		ret = disable_consumer(session_name);
-		if (ret < 0) {
-			goto error;
-		}
 	}
 
 	/* Init lttng session config */
@@ -426,6 +342,18 @@ int cmd_create(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	if (opt_no_consumer) {
+		MSG("The option --no-consumer is obsolete.");
+		ret = CMD_WARNING;
+		goto end;
+	}
+
+	if (opt_disable_consumer) {
+		MSG("The option --disable-consumer is obsolete.");
+		ret = CMD_WARNING;
+		goto end;
 	}
 
 	opt_session_name = (char*) poptGetArg(pc);

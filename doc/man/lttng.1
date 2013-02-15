@@ -231,19 +231,31 @@ instance, \-C does not enable the consumer automatically. You'll need the \-e
 option for that.
 
 \-U, \-\-set-uri=URL
-        Set URL for the enable-consumer destination. It is persistent for the
+        Set URL for the consumer output destination. It is persistent for the
         session lifetime. Redo the command to change it. This will set both
         data and control URL for network.
 \-C, \-\-ctrl-url=URL
         Set control path URL. (Must use -D also)
 \-D, \-\-data-url=URL
         Set data path URL. (Must use -C also)
-     \-\-no-consumer
-        Don't activate a consumer for this session.
-     \-\-disable-consumer
-        Disable consumer for this session.
 
-See \fBenable-consumer\fP command below for the supported URL format.
+.B URL FORMAT:
+
+proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]
+
+Supported protocols are (proto):
+> file://...
+        Local filesystem full path.
+
+> net://...
+        This will use the default network transport layer which is TCP for both
+        control (PORT1) and data port (PORT2). The default ports are
+        respectively 5342 and 5343. Note that net[6]:// is not yet supported.
+
+> tcp[6]://...
+        Can only be used with -C and -D together
+
+NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)
 
 .B EXAMPLES:
 
@@ -324,80 +336,6 @@ file.
 .fi
 
 .IP
-
-.IP "\fBenable-consumer\fP [-u|-k] [URL] [OPTIONS]"
-.nf
-Enable a consumer for the tracing session and domain.
-
-By default, every tracing session has a consumer attached to it using the local
-filesystem as output. The trace is written in $HOME/lttng-traces. This command
-allows the user to specify a specific URL after the session was created for a
-specific domain. If no domain is specified, the consumer is applied on all
-domains.
-
-Without options, the behavior is to enable a consumer to the current URL. The
-default URL is the local filesystem at the path of the session mentioned above.
-
-The enable-consumer feature supports both local and network transport. You must
-have a running \fBlttng-relayd(8)\fP for network transmission or any other daemon
-that can understand the streaming protocol of LTTng.
-.fi
-
-.B OPTIONS:
-
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-
-Using these options, each API call can be controlled individually. For
-instance, \-C does not enable the consumer automatically. You'll need the \-e
-option for that.
-
-\-U, \-\-set-uri=URL
-        Set URL for the enable-consumer destination. It is persistent for the
-        session lifetime. Redo the command to change it. This will set both
-        data and control URL for network.
-\-C, \-\-ctrl-url=URL
-        Set control path URL. (Must use -D also)
-\-D, \-\-data-url=URL
-        Set data path URL. (Must use -C also)
-\-e, \-\-enable
-        Enable consumer
-
-.B URL FORMAT:
-
-proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]
-
-Supported protocols are (proto):
-> file://...
-        Local filesystem full path.
-
-> net://...
-        This will use the default network transport layer which is TCP for both
-        control (PORT1) and data port (PORT2). The default ports are
-        respectively 5342 and 5343. Note that net[6]:// is not yet supported.
-
-> tcp[6]://...
-        Can only be used with -C and -D together
-
-NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)
-
-.B EXAMPLES:
-
-$ lttng enable-consumer -u net://192.168.1.42
-
-Uses TCP and default ports for user space tracing (-u) where the IP address
-above is the destination machine where the traces will be streamed and a
-\fBlttng-relayd(8)\fP is listening.
-.fi
 
 .IP "\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
 .nf
@@ -486,28 +424,6 @@ enable it back by calling \fBlttng enable-channel NAME\fP again.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
-
-.B OPTIONS:
-
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-.fi
-
-.IP "\fBdisable-consumer\fP [\-k|\-u] [OPTIONS]"
-.nf
-Disable the consumer of a tracing session.
-
-This call MUST be done BEFORE tracing has started.
 .fi
 
 .B OPTIONS:
