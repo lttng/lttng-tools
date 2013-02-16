@@ -4,16 +4,14 @@ lttng.i: lttng.i.in
 AM_CFLAGS = -I$(PYTHON_INCLUDE) -I$(top_srcdir)/lib/lttng-ctl -I../common \
               $(BUDDY_CFLAGS)
 
-EXTRA_DIST = lttng.i
-python_PYTHON = lttng.py
+EXTRA_DIST = lttng.i.in
+nodist_python_PYTHON = lttng.py
 pyexec_LTLIBRARIES = _lttng.la
 
 MAINTAINERCLEANFILES = lttng_wrap.c lttng.py
 
-_lttng_la_SOURCES = lttng_wrap.c
-
+nodist__lttng_la_SOURCES = lttng_wrap.c
 _lttng_la_LDFLAGS = -module
-
 _lttng_la_LIBADD = 	$(top_srcdir)/src/lib/lttng-ctl/liblttng-ctl.la 		\
 			$(top_srcdir)/src/common/sessiond-comm/libsessiond-comm.la
 
