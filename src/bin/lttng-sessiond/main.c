@@ -658,8 +658,6 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 
-	session_lock_list();
-
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
 		session_lock(sess);
@@ -668,8 +666,6 @@ static void update_ust_app(int app_sock)
 		}
 		session_unlock(sess);
 	}
-
-	session_unlock_list();
 }
 
 /*
@@ -1167,12 +1163,22 @@ static void *thread_manage_apps(void *data)
 
 					health_code_update();
 
+					/*
+					 * @session_lock
+					 * Lock the global session list so from the register up to
+					 * the registration done message, no thread can see the
+					 * application and change its state.
+					 */
+					session_lock_list();
+
 					/* Register applicaton to the session daemon */
 					ret = ust_app_register(&ust_cmd.reg_msg,
 							ust_cmd.sock);
 					if (ret == -ENOMEM) {
+						session_unlock_list();
 						goto error;
 					} else if (ret < 0) {
+						session_unlock_list();
 						break;
 					}
 
@@ -1208,6 +1214,7 @@ static void *thread_manage_apps(void *data)
 						ret = lttng_poll_add(&events, ust_cmd.sock,
 								LPOLLERR & LPOLLHUP & LPOLLRDHUP);
 						if (ret < 0) {
+							session_unlock_list();
 							goto error;
 						}
 
@@ -1220,6 +1227,7 @@ static void *thread_manage_apps(void *data)
 						DBG("Apps with sock %d added to poll set",
 								ust_cmd.sock);
 					}
+					session_unlock_list();
 
 					health_code_update();
 
