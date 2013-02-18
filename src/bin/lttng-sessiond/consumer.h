@@ -45,6 +45,13 @@ struct consumer_socket {
 	 */
 	unsigned int registered;
 
+	/*
+	 * Flag if relayd network sockets were sent to the consumer through this
+	 * socket.
+	 */
+	unsigned int control_sock_sent;
+	unsigned int data_sock_sent;
+
 	struct lttng_ht_node_ulong node;
 };
 
@@ -107,10 +114,6 @@ struct consumer_net {
 
 	/* Data path for network streaming. */
 	struct lttng_uri data;
-
-	/* Flag if network sockets were sent to the consumer. */
-	unsigned int control_sock_sent;
-	unsigned int data_sock_sent;
 };
 
 /*

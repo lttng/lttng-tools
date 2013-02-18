@@ -571,9 +571,9 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 
 	/* Flag that the corresponding socket was sent. */
 	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
-		consumer->dst.net.control_sock_sent = 1;
+		consumer_sock->control_sock_sent = 1;
 	} else if (relayd_uri->stype == LTTNG_STREAM_DATA) {
-		consumer->dst.net.data_sock_sent = 1;
+		consumer_sock->data_sock_sent = 1;
 	}
 
 	ret = LTTNG_OK;
@@ -607,7 +607,7 @@ static int send_consumer_relayd_sockets(int domain,
 	assert(consumer);
 
 	/* Sending control relayd socket. */
-	if (!consumer->dst.net.control_sock_sent) {
+	if (!sock->control_sock_sent) {
 		ret = send_consumer_relayd_socket(domain, session,
 				&consumer->dst.net.control, consumer, sock);
 		if (ret != LTTNG_OK) {
@@ -616,7 +616,7 @@ static int send_consumer_relayd_sockets(int domain,
 	}
 
 	/* Sending data relayd socket. */
-	if (!consumer->dst.net.data_sock_sent) {
+	if (!sock->data_sock_sent) {
 		ret = send_consumer_relayd_socket(domain, session,
 				&consumer->dst.net.data, consumer, sock);
 		if (ret != LTTNG_OK) {
@@ -1662,15 +1662,8 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 			goto error;
 		}
 
-		/*
-		 * Don't send relayd socket if URI is NOT remote or if the relayd
-		 * socket for the session was already sent.
-		 */
-		if (uris[i].dtype == LTTNG_DST_PATH ||
-				(uris[i].stype == LTTNG_STREAM_CONTROL &&
-				consumer->dst.net.control_sock_sent) ||
-				(uris[i].stype == LTTNG_STREAM_DATA &&
-				consumer->dst.net.data_sock_sent)) {
+		/* Don't send relayd socket if URI is NOT remote */
+		if (uris[i].dtype == LTTNG_DST_PATH) {
 			continue;
 		}
 
