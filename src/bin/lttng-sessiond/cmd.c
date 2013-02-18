@@ -485,7 +485,9 @@ static int create_connect_relayd(struct consumer_output *output,
 	}
 
 	/* Connect to relayd so we can proceed with a session creation. */
+	health_poll_entry();
 	ret = relayd_connect(sock);
+	health_poll_exit();
 	if (ret < 0) {
 		ERR("Unable to reach lttng-relayd");
 		ret = LTTNG_ERR_RELAYD_CONNECT_FAIL;
