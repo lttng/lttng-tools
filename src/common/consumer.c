@@ -1634,7 +1634,6 @@ int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream)
 		assert(0);
 		return -ENOSYS;
 	}
-
 }
 
 /*

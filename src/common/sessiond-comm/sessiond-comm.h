@@ -172,7 +172,7 @@ struct lttcomm_proto_ops {
  * Data structure received from lttng client to session daemon.
  */
 struct lttcomm_session_msg {
-	uint32_t cmd_type;    /* enum lttcomm_sessiond_command */
+	uint32_t cmd_type;	/* enum lttcomm_sessiond_command */
 	struct lttng_session session;
 	struct lttng_domain domain;
 	union {
@@ -233,9 +233,9 @@ struct lttng_filter_bytecode {
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
-	uint32_t cmd_type;   /* enum lttcomm_sessiond_command */
-	uint32_t ret_code;   /* enum lttcomm_return_code */
-	uint32_t pid;        /* pid_t */
+	uint32_t cmd_type;	/* enum lttcomm_sessiond_command */
+	uint32_t ret_code;	/* enum lttcomm_return_code */
+	uint32_t pid;		/* pid_t */
 	uint32_t data_size;
 	/* Contains: trace_name + data */
 	char payload[];
@@ -292,19 +292,19 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 		} LTTNG_PACKED data_pending;
 		struct {
-			uint64_t subbuf_size;				/* bytes */
-			uint64_t num_subbuf;				/* power of 2 */
+			uint64_t subbuf_size;			/* bytes */
+			uint64_t num_subbuf;			/* power of 2 */
 			int overwrite;						/* 1: overwrite, 0: discard */
 			unsigned int switch_timer_interval;	/* usec */
 			unsigned int read_timer_interval;	/* usec */
-			int output;							/* splice, mmap */
-			int type;							/* metadata or per_cpu */
-			uint64_t session_id;				/* Tracing session id */
-			char pathname[PATH_MAX];			/* Channel file path. */
+			int output;				/* splice, mmap */
+			int type;				/* metadata or per_cpu */
+			uint64_t session_id;			/* Tracing session id */
+			char pathname[PATH_MAX];		/* Channel file path. */
 			char name[LTTNG_SYMBOL_NAME_LEN];	/* Channel name. */
-			uid_t uid;							/* User ID of the session */
-			gid_t gid;							/* Group ID ot the session */
-			int relayd_id;						/* Relayd id if apply. */
+			uid_t uid;				/* User ID of the session */
+			gid_t gid;				/* Group ID ot the session */
+			int relayd_id;				/* Relayd id if apply. */
 			unsigned long key;					/* Unique channel key. */
 			unsigned char uuid[UUID_STR_LEN];	/* uuid for ust tracer. */
 		} LTTNG_PACKED ask_channel;

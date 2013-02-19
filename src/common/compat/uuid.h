@@ -28,10 +28,14 @@
  * Includes final \0.
  */
 #define UUID_STR_LEN		37
+#define UUID_LEN		16
 
 #ifdef LTTNG_HAVE_LIBUUID
 #include <uuid/uuid.h>
 
+/*
+ * uuid_out is of len UUID_LEN.
+ */
 static inline
 int lttng_uuid_generate(unsigned char *uuid_out)
 {
@@ -43,6 +47,9 @@ int lttng_uuid_generate(unsigned char *uuid_out)
 #include <uuid.h>
 #include <stdint.h>
 
+/*
+ * uuid_out is of len UUID_LEN.
+ */
 static inline
 int lttng_uuid_generate(unsigned char *uuid_out)
 {

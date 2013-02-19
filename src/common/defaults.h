@@ -44,9 +44,6 @@
 #define DEFAULT_GLOBAL_APPS_PIPE                DEFAULT_UST_SOCK_DIR "/global"
 #define DEFAULT_TRACE_OUTPUT                    DEFAULT_HOME_DIR "/lttng"
 
-#define DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH       "/lttng-ust-apps-wait"
-#define DEFAULT_HOME_APPS_WAIT_SHM_PATH         "/lttng-ust-apps-wait-%u"
-
 /* Default directory where the trace are written in per domain */
 #define DEFAULT_KERNEL_TRACE_DIR                "/kernel"
 #define DEFAULT_UST_TRACE_DIR                   "/ust"
@@ -83,11 +80,24 @@
 
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK           DEFAULT_LTTNG_RUNDIR "/apps-lttng-sessiond"
-#define DEFAULT_HOME_APPS_UNIX_SOCK             DEFAULT_LTTNG_HOME_RUNDIR "/apps-lttng-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
 #define DEFAULT_GLOBAL_HEALTH_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/health.sock"
 #define DEFAULT_HOME_HEALTH_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/health.sock"
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK \
+	DEFAULT_LTTNG_RUNDIR "/" LTTNG_UST_SOCK_FILENAME
+#define DEFAULT_HOME_APPS_UNIX_SOCK \
+	DEFAULT_LTTNG_HOME_RUNDIR "/" LTTNG_UST_SOCK_FILENAME
+#define DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH \
+	"/" LTTNG_UST_WAIT_FILENAME
+#define DEFAULT_HOME_APPS_WAIT_SHM_PATH \
+	DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH "-%d"
+
+#else
+#define DEFAULT_GLOBAL_APPS_UNIX_SOCK
+#define DEFAULT_HOME_APPS_UNIX_SOCK
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 /*
  * Value taken from the hard limit allowed by the kernel when using setrlimit

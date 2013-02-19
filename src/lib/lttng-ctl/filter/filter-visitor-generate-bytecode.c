@@ -107,11 +107,14 @@ int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align
 		return -EINVAL;
 
 	if (new_alloc_len > old_alloc_len) {
+		struct lttng_filter_bytecode_alloc *newptr;
+
 		new_alloc_len =
 			max_t(uint32_t, 1U << get_count_order(new_alloc_len), old_alloc_len << 1);
-		*fb = realloc(*fb, new_alloc_len);
-		if (!*fb)
+		newptr = realloc(*fb, new_alloc_len);
+		if (!newptr)
 			return -ENOMEM;
+		*fb = newptr;
 		/* We zero directly the memory from start of allocation. */
 		memset(&((char *) *fb)[old_alloc_len], 0, new_alloc_len - old_alloc_len);
 		(*fb)->alloc_len = new_alloc_len;

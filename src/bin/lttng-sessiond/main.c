@@ -37,7 +37,6 @@
 #include <config.h>
 
 #include <common/common.h>
-#include <common/compat/poll.h>
 #include <common/compat/socket.h>
 #include <common/defaults.h>
 #include <common/kernel-consumer/kernel-consumer.h>
@@ -61,14 +60,12 @@
 #include "fd-limit.h"
 #include "health.h"
 #include "testpoint.h"
+#include "ust-thread.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
 /* Const values */
-const char default_home_dir[] = DEFAULT_HOME_DIR;
 const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
-const char default_ust_sock_dir[] = DEFAULT_UST_SOCK_DIR;
-const char default_global_apps_pipe[] = DEFAULT_GLOBAL_APPS_PIPE;
 
 const char *progname;
 const char *opt_tracing_group;
@@ -149,8 +146,11 @@ static int thread_quit_pipe[2] = { -1, -1 };
  */
 static int apps_cmd_pipe[2] = { -1, -1 };
 
+int apps_cmd_notify_pipe[2] = { -1, -1 };
+
 /* Pthread, Mutexes and Semaphores */
 static pthread_t apps_thread;
+static pthread_t apps_notify_thread;
 static pthread_t reg_apps_thread;
 static pthread_t client_thread;
 static pthread_t kernel_thread;
@@ -279,15 +279,11 @@ void setup_consumerd_path(void)
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
-static int create_thread_poll_set(struct lttng_poll_event *events,
-		unsigned int size)
+int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size)
 {
 	int ret;
 
-	if (events == NULL || size == 0) {
-		ret = -1;
-		goto error;
-	}
+	assert(events);
 
 	ret = lttng_poll_create(events, size, LTTNG_CLOEXEC);
 	if (ret < 0) {
@@ -295,7 +291,7 @@ static int create_thread_poll_set(struct lttng_poll_event *events,
 	}
 
 	/* Add quit pipe */
-	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN);
+	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
@@ -311,7 +307,7 @@ error:
  *
  * Return 1 if it was triggered else 0;
  */
-static int check_thread_quit_pipe(int fd, uint32_t events)
+int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 {
 	if (fd == thread_quit_pipe[0] && (events & LPOLLIN)) {
 		return 1;
@@ -721,7 +717,7 @@ static void *thread_manage_kernel(void *data)
 			/* Clean events object. We are about to populate it again. */
 			lttng_poll_clean(&events);
 
-			ret = create_thread_poll_set(&events, 2);
+			ret = sessiond_set_thread_pollset(&events, 2);
 			if (ret < 0) {
 				goto error_poll_create;
 			}
@@ -771,7 +767,7 @@ static void *thread_manage_kernel(void *data)
 			health_code_update();
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
+			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
@@ -870,7 +866,7 @@ static void *thread_manage_consumer(void *data)
 	 * Pass 2 as size here for the thread quit pipe and kconsumerd_err_sock.
 	 * Nothing more will be added to this poll set.
 	 */
-	ret = create_thread_poll_set(&events, 2);
+	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
 		goto error_poll;
 	}
@@ -917,7 +913,7 @@ restart:
 		health_code_update();
 
 		/* Thread quit pipe has been closed. Killing thread. */
-		ret = check_thread_quit_pipe(pollfd, revents);
+		ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 		if (ret) {
 			err = 0;
 			goto exit;
@@ -1011,7 +1007,7 @@ restart_poll:
 		health_code_update();
 
 		/* Thread quit pipe has been closed. Killing thread. */
-		ret = check_thread_quit_pipe(pollfd, revents);
+		ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 		if (ret) {
 			err = 0;
 			goto exit;
@@ -1093,7 +1089,6 @@ static void *thread_manage_apps(void *data)
 {
 	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
-	struct ust_command ust_cmd;
 	struct lttng_poll_event events;
 
 	DBG("[thread] Manage application started");
@@ -1109,7 +1104,7 @@ static void *thread_manage_apps(void *data)
 
 	health_code_update();
 
-	ret = create_thread_poll_set(&events, 2);
+	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
 		goto error_poll_create;
 	}
@@ -1153,7 +1148,7 @@ static void *thread_manage_apps(void *data)
 			health_code_update();
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
+			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
@@ -1165,11 +1160,13 @@ static void *thread_manage_apps(void *data)
 					ERR("Apps command pipe error");
 					goto error;
 				} else if (revents & LPOLLIN) {
+					int sock;
+
 					/* Empty pipe */
 					do {
-						ret = read(apps_cmd_pipe[0], &ust_cmd, sizeof(ust_cmd));
+						ret = read(apps_cmd_pipe[0], &sock, sizeof(sock));
 					} while (ret < 0 && errno == EINTR);
-					if (ret < 0 || ret < sizeof(ust_cmd)) {
+					if (ret < 0 || ret < sizeof(sock)) {
 						PERROR("read apps cmd pipe");
 						goto error;
 					}
@@ -1177,70 +1174,23 @@ static void *thread_manage_apps(void *data)
 					health_code_update();
 
 					/*
-					 * @session_lock
-					 * Lock the global session list so from the register up to
-					 * the registration done message, no thread can see the
-					 * application and change its state.
+					 * We only monitor the error events of the socket. This
+					 * thread does not handle any incoming data from UST
+					 * (POLLIN).
 					 */
-					session_lock_list();
-
-					/* Register applicaton to the session daemon */
-					ret = ust_app_register(&ust_cmd.reg_msg,
-							ust_cmd.sock);
-					if (ret == -ENOMEM) {
-						session_unlock_list();
-						goto error;
-					} else if (ret < 0) {
-						session_unlock_list();
-						break;
-					}
-
-					health_code_update();
-
-					/*
-					 * Validate UST version compatibility.
-					 */
-					ret = ust_app_validate_version(ust_cmd.sock);
-					if (ret >= 0) {
-						/*
-						 * Add channel(s) and event(s) to newly registered apps
-						 * from lttng global UST domain.
-						 */
-						update_ust_app(ust_cmd.sock);
-					}
-
-					health_code_update();
-
-					ret = ust_app_register_done(ust_cmd.sock);
+					ret = lttng_poll_add(&events, sock,
+							LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 					if (ret < 0) {
-						/*
-						 * If the registration is not possible, we simply
-						 * unregister the apps and continue
-						 */
-						ust_app_unregister(ust_cmd.sock);
-					} else {
-						/*
-						 * We only monitor the error events of the socket. This
-						 * thread does not handle any incoming data from UST
-						 * (POLLIN).
-						 */
-						ret = lttng_poll_add(&events, ust_cmd.sock,
-								LPOLLERR & LPOLLHUP & LPOLLRDHUP);
-						if (ret < 0) {
-							session_unlock_list();
-							goto error;
-						}
-
-						/* Set socket timeout for both receiving and ending */
-						(void) lttcomm_setsockopt_rcv_timeout(ust_cmd.sock,
-								app_socket_timeout);
-						(void) lttcomm_setsockopt_snd_timeout(ust_cmd.sock,
-								app_socket_timeout);
-
-						DBG("Apps with sock %d added to poll set",
-								ust_cmd.sock);
+						goto error;
 					}
-					session_unlock_list();
+
+					/* Set socket timeout for both receiving and ending */
+					(void) lttcomm_setsockopt_rcv_timeout(sock,
+							app_socket_timeout);
+					(void) lttcomm_setsockopt_snd_timeout(sock,
+							app_socket_timeout);
+
+					DBG("Apps with sock %d added to poll set", sock);
 
 					health_code_update();
 
@@ -1294,6 +1244,54 @@ error_testpoint:
 }
 
 /*
+ * Send the application sockets (cmd and notify) to the respective threads.
+ * This is called from the dispatch UST registration thread once all sockets
+ * are set for the application.
+ *
+ * On success, return 0 else a negative value being the errno message of the
+ * write().
+ */
+static int send_app_sockets_to_threads(struct ust_app *app)
+{
+	int ret;
+
+	assert(app);
+	/* Sockets MUST be set or else this should not have been called. */
+	assert(app->sock >= 0);
+	assert(app->notify_sock >= 0);
+	assert(apps_cmd_pipe[1] >= 0);
+	assert(apps_cmd_notify_pipe[1] >= 0);
+
+	do {
+		ret = write(apps_cmd_pipe[1], &app->sock, sizeof(app->sock));
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0 || ret != sizeof(app->sock)) {
+		PERROR("write apps cmd pipe %d", apps_cmd_pipe[1]);
+		if (ret < 0) {
+			ret = -errno;
+		}
+		goto error;
+	}
+
+	do {
+		ret = write(apps_cmd_notify_pipe[1], &app->notify_sock,
+				sizeof(app->notify_sock));
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0 || ret != sizeof(app->notify_sock)) {
+		PERROR("write apps notify cmd pipe %d", apps_cmd_notify_pipe[1]);
+		if (ret < 0) {
+			ret = -errno;
+		}
+		goto error;
+	}
+
+	/* All good. Don't send back the write positive ret value. */
+	ret = 0;
+error:
+	return ret;
+}
+
+/*
  * Dispatch request from the registration threads to the application
  * communication thread.
  */
@@ -1302,6 +1300,12 @@ static void *thread_dispatch_ust_registration(void *data)
 	int ret;
 	struct cds_wfq_node *node;
 	struct ust_command *ust_cmd = NULL;
+	struct {
+		struct ust_app *app;
+		struct cds_list_head head;
+	} *wait_node = NULL;
+
+	CDS_LIST_HEAD(wait_queue);
 
 	DBG("[thread] Dispatch UST command started");
 
@@ -1310,6 +1314,8 @@ static void *thread_dispatch_ust_registration(void *data)
 		futex_nto1_prepare(&ust_cmd_queue.futex);
 
 		do {
+			struct ust_app *app = NULL;
+
 			/* Dequeue command for registration */
 			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
 			if (node == NULL) {
@@ -1326,30 +1332,95 @@ static void *thread_dispatch_ust_registration(void *data)
 					ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
 					ust_cmd->sock, ust_cmd->reg_msg.name,
 					ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
-			/*
-			 * Inform apps thread of the new application registration. This
-			 * call is blocking so we can be assured that the data will be read
-			 * at some point in time or wait to the end of the world :)
-			 */
-			if (apps_cmd_pipe[1] >= 0) {
-				do {
-					ret = write(apps_cmd_pipe[1], ust_cmd,
-							sizeof(struct ust_command));
-				} while (ret < 0 && errno == EINTR);
-				if (ret < 0 || ret != sizeof(struct ust_command)) {
-					PERROR("write apps cmd pipe");
-					if (errno == EBADF) {
-						/*
-						 * We can't inform the application thread to process
-						 * registration. We will exit or else application
-						 * registration will not occur and tracing will never
-						 * start.
-						 */
-						goto error;
+
+			if (ust_cmd->reg_msg.type == USTCTL_SOCKET_CMD) {
+				wait_node = zmalloc(sizeof(*wait_node));
+				if (!wait_node) {
+					PERROR("zmalloc wait_node dispatch");
+					goto error;
+				}
+				CDS_INIT_LIST_HEAD(&wait_node->head);
+
+				/* Create application object if socket is CMD. */
+				wait_node->app = ust_app_create(&ust_cmd->reg_msg,
+						ust_cmd->sock);
+				if (!wait_node->app) {
+					ret = close(ust_cmd->sock);
+					if (ret < 0) {
+						PERROR("close ust sock dispatch %d", ust_cmd->sock);
+					}
+					continue;
+				}
+				/*
+				 * Add application to the wait queue so we can set the notify
+				 * socket before putting this object in the global ht.
+				 */
+				cds_list_add(&wait_node->head, &wait_queue);
+
+				/*
+				 * We have to continue here since we don't have the notify
+				 * socket and the application MUST be added to the hash table
+				 * only at that moment.
+				 */
+				continue;
+			} else {
+				/*
+				 * Look for the application in the local wait queue and set the
+				 * notify socket if found.
+				 */
+				cds_list_for_each_entry(wait_node, &wait_queue, head) {
+					if (wait_node->app->pid == ust_cmd->reg_msg.pid) {
+						wait_node->app->notify_sock = ust_cmd->sock;
+						cds_list_del(&wait_node->head);
+						app = wait_node->app;
+						free(wait_node);
+						DBG3("UST app notify socket %d is set", ust_cmd->sock);
+						break;
 					}
 				}
+			}
+
+			if (app) {
+				ret = send_app_sockets_to_threads(app);
+				if (ret < 0) {
+					goto error;
+				}
+				/*
+				 * @session_lock_list
+				 *
+				 * Lock the global session list so from the register up to the
+				 * registration done message, no thread can see the application
+				 * and change its state.
+				 */
+				session_lock_list();
+				rcu_read_lock();
+				/*
+				 * Add application to the global hash table. This needs to be
+				 * done before the update to the UST registry can locate the
+				 * application.
+				 */
+				ust_app_add(app);
+				/*
+				 * Get app version.
+				 */
+				ret = ust_app_version(app);
+				if (ret) {
+					ERR("Unable to get app version");
+				}
+				/*
+				 * Update newly registered application with the tracing
+				 * registry info already enabled information.
+				 */
+				update_ust_app(app->sock);
+				ret = ust_app_register_done(app->sock);
+				if (ret < 0) {
+					/* Remove application from the registry. */
+					ust_app_unregister(app->sock);
+				}
+				rcu_read_unlock();
+				session_unlock_list();
 			} else {
-				/* Application manager thread is not available. */
+				/* Application manager threads are not available. */
 				ret = close(ust_cmd->sock);
 				if (ret < 0) {
 					PERROR("close ust_cmd sock");
@@ -1398,7 +1469,7 @@ static void *thread_registration_apps(void *data)
 	 * Pass 2 as size here for the thread quit pipe and apps socket. Nothing
 	 * more will be added to this poll set.
 	 */
-	ret = create_thread_poll_set(&events, 2);
+	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
 		goto error_create_poll;
 	}
@@ -1445,7 +1516,7 @@ static void *thread_registration_apps(void *data)
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
+			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
@@ -1491,15 +1562,10 @@ static void *thread_registration_apps(void *data)
 						continue;
 					}
 					health_code_update();
-					ret = lttcomm_recv_unix_sock(sock, &ust_cmd->reg_msg,
-							sizeof(struct ust_register_msg));
-					if (ret < 0 || ret < sizeof(struct ust_register_msg)) {
-						if (ret < 0) {
-							PERROR("lttcomm_recv_unix_sock register apps");
-						} else {
-							ERR("Wrong size received on apps register");
-						}
+					ret = ust_app_recv_registration(sock, &ust_cmd->reg_msg);
+					if (ret < 0) {
 						free(ust_cmd);
+						/* Close socket of the application. */
 						ret = close(sock);
 						if (ret) {
 							PERROR("close");
@@ -2966,7 +3032,7 @@ static void *thread_manage_health(void *data)
 	 * Pass 2 as size here for the thread quit pipe and client_sock. Nothing
 	 * more will be added to this poll set.
 	 */
-	ret = create_thread_poll_set(&events, 2);
+	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
 		goto error;
 	}
@@ -3001,7 +3067,7 @@ restart:
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
+			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
@@ -3154,7 +3220,7 @@ static void *thread_manage_clients(void *data)
 	 * Pass 2 as size here for the thread quit pipe and client_sock. Nothing
 	 * more will be added to this poll set.
 	 */
-	ret = create_thread_poll_set(&events, 2);
+	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
 		goto error_create_poll;
 	}
@@ -3206,7 +3272,7 @@ static void *thread_manage_clients(void *data)
 			health_code_update();
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
+			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
@@ -4006,7 +4072,7 @@ int main(int argc, char **argv)
 		/* Set global SHM for ust */
 		if (strlen(wait_shm_path) == 0) {
 			snprintf(wait_shm_path, PATH_MAX,
-					DEFAULT_HOME_APPS_WAIT_SHM_PATH, geteuid());
+					DEFAULT_HOME_APPS_WAIT_SHM_PATH, getuid());
 		}
 
 		/* Set health check Unix path */
@@ -4022,6 +4088,7 @@ int main(int argc, char **argv)
 
 	DBG("Client socket path %s", client_unix_sock_path);
 	DBG("Application socket path %s", apps_unix_sock_path);
+	DBG("Application wait path %s", wait_shm_path);
 	DBG("LTTng run directory path: %s", rundir);
 
 	/* 32 bits consumerd path setup */
@@ -4130,6 +4197,11 @@ int main(int argc, char **argv)
 		goto exit;
 	}
 
+	/* Setup the thread apps notify communication pipe. */
+	if (utils_create_pipe_cloexec(apps_cmd_notify_pipe) < 0) {
+		goto exit;
+	}
+
 	/* Init UST command queue. */
 	cds_wfq_init(&ust_cmd_queue.queue);
 
@@ -4189,6 +4261,14 @@ int main(int argc, char **argv)
 	/* Create thread to manage application socket */
 	ret = pthread_create(&apps_thread, NULL,
 			thread_manage_apps, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create apps");
+		goto exit_apps;
+	}
+
+	/* Create thread to manage application notify socket */
+	ret = pthread_create(&apps_notify_thread, NULL,
+			ust_thread_manage_notify, (void *) NULL);
 	if (ret != 0) {
 		PERROR("pthread_create apps");
 		goto exit_apps;

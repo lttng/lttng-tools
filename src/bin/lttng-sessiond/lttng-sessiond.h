@@ -23,6 +23,7 @@
 #include <urcu/wfqueue.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/compat/poll.h>
 #include <common/compat/socket.h>
 
 #include "session.h"
@@ -63,5 +64,14 @@ struct ust_cmd_queue {
 	int32_t futex;
 	struct cds_wfq_queue queue;
 };
+
+/*
+ * This pipe is used to inform the thread managing application notify
+ * communication that a command is queued and ready to be processed.
+ */
+extern int apps_cmd_notify_pipe[2];
+
+int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
+int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 
 #endif /* _LTT_SESSIOND_H */

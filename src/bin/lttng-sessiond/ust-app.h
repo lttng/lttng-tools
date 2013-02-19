@@ -22,12 +22,16 @@
 
 #include <common/compat/uuid.h>
 #include "trace-ust.h"
+#include "ust-registry.h"
 
 /* lttng-ust supported version. */
-#define LTTNG_UST_COMM_MAJOR          2	/* comm protocol major version */
-#define UST_APP_MAJOR_VERSION         3 /* Internal UST version supported */
+//#define LTTNG_UST_COMM_MAJOR          2	/* comm protocol major version */
+//#define UST_APP_MAJOR_VERSION         3 /* Internal UST version supported */
 
 #define UST_APP_EVENT_LIST_SIZE 32
+
+/* Process name (short). Extra for the NULL byte. */
+#define UST_APP_PROCNAME_LEN 	17
 
 struct lttng_filter_bytecode;
 struct lttng_ust_filter_bytecode;
@@ -44,14 +48,23 @@ struct ust_app_ht_key {
  * Application registration data structure.
  */
 struct ust_register_msg {
+	enum ustctl_socket_type type;
 	uint32_t major;
 	uint32_t minor;
+	uint32_t abi_major;
+	uint32_t abi_minor;
 	pid_t pid;
 	pid_t ppid;
 	uid_t uid;
 	gid_t gid;
 	uint32_t bits_per_long;
-	char name[16];
+	uint32_t uint8_t_alignment;
+	uint32_t uint16_t_alignment;
+	uint32_t uint32_t_alignment;
+	uint32_t uint64_t_alignment;
+	uint32_t long_alignment;
+	int byte_order;		/* BIG_ENDIAN or LITTLE_ENDIAN */
+	char name[LTTNG_UST_ABI_PROCNAME_LEN];
 };
 
 /*
@@ -65,6 +78,12 @@ struct lttng_ht *ust_app_ht;
  * socket using the sock_n node and sock value of an ust_app.
  */
 struct lttng_ht *ust_app_ht_by_sock;
+
+/*
+ * Global applications HT used by the session daemon. This table is indexed by
+ * socket using the notify_sock_n node and notify_sock value of an ust_app.
+ */
+struct lttng_ht *ust_app_ht_by_notify_sock;
 
 /* Stream list containing ust_app_stream. */
 struct ust_app_stream_list {
@@ -97,7 +116,6 @@ struct ust_app_stream {
 	struct lttng_ust_object_data *obj;
 	/* Using a list of streams to keep order. */
 	struct cds_list_head list;
-	struct ustctl_consumer_stream *ustream;
 };
 
 struct ust_app_channel {
@@ -112,20 +130,41 @@ struct ust_app_channel {
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_object_data *obj;
 	struct ustctl_consumer_channel_attr attr;
-	struct ustctl_consumer_channel *channel;
 	struct ust_app_stream_list streams;
+	/* Session pointer that owns this object. */
+	struct ust_app_session *session;
 	struct lttng_ht *ctx;
 	struct lttng_ht *events;
+	/*
+	 * UST event registry. The ONLY writer is the application thread.
+	 */
+	struct ust_registry_channel registry;
+	/*
+	 * Node indexed by channel name in the channels' hash table of a session.
+	 */
 	struct lttng_ht_node_str node;
+	/*
+	 * Node indexed by UST channel object descriptor (handle). Stored in the
+	 * ust_objd hash table in the ust_app object.
+	 */
+	struct lttng_ht_node_ulong ust_objd_node;
 };
 
 struct ust_app_session {
+	/*
+	 * Lock protecting this session's ust app interaction. Held
+	 * across command send/recv to/from app. Never nests within the
+	 * session registry lock.
+	 */
+	pthread_mutex_t lock;
+
 	int enabled;
 	/* started: has the session been in started state at any time ? */
 	int started;  /* allows detection of start vs restart. */
 	int handle;   /* used has unique identifier for app session */
 	int id;       /* session unique identifier */
 	struct ust_app_channel *metadata;
+	struct ust_registry_session registry;
 	struct lttng_ht *channels; /* Registered channels */
 	struct lttng_ht_node_ulong node;
 	char path[PATH_MAX];
@@ -133,8 +172,6 @@ struct ust_app_session {
 	uid_t uid;
 	gid_t gid;
 	struct cds_list_head teardown_node;
-	/* Universal unique identifier used by the tracer. */
-	unsigned char uuid[UUID_STR_LEN];
 };
 
 /*
@@ -143,21 +180,32 @@ struct ust_app_session {
  */
 struct ust_app {
 	int sock;
+	int notify_sock;
 	pid_t pid;
 	pid_t ppid;
 	uid_t uid;           /* User ID that owns the apps */
 	gid_t gid;           /* Group ID that owns the apps */
-	int bits_per_long;
+
+	/* App ABI */
+	uint32_t bits_per_long;
+	uint32_t uint8_t_alignment;
+	uint32_t uint16_t_alignment;
+	uint32_t uint32_t_alignment;
+	uint32_t uint64_t_alignment;
+	uint32_t long_alignment;
+	int byte_order;		/* BIG_ENDIAN or LITTLE_ENDIAN */
+
 	int compatible; /* If the lttng-ust tracer version does not match the
 					   supported version of the session daemon, this flag is
 					   set to 0 (NOT compatible) else 1. */
 	struct lttng_ust_tracer_version version;
-	uint32_t v_major;    /* Verion major number */
-	uint32_t v_minor;    /* Verion minor number */
-	char name[17];       /* Process name (short) */
+	uint32_t v_major;    /* Version major number */
+	uint32_t v_minor;    /* Version minor number */
+	char name[UST_APP_PROCNAME_LEN];
 	struct lttng_ht *sessions;
 	struct lttng_ht_node_ulong pid_n;
 	struct lttng_ht_node_ulong sock_n;
+	struct lttng_ht_node_ulong notify_sock_n;
 	/*
 	 * This is a list of ust app session that, once the app is going into
 	 * teardown mode, in the RCU call, each node in this list is removed and
@@ -168,6 +216,10 @@ struct ust_app {
 	 * when a session is destroyed.
 	 */
 	struct cds_list_head teardown_head;
+	/*
+	 * Hash table containing ust_app_channel indexed by channel objd.
+	 */
+	struct lttng_ht *ust_objd;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
@@ -178,6 +230,7 @@ int ust_app_register_done(int sock)
 {
 	return ustctl_register_done(sock);
 }
+int ust_app_version(struct ust_app *app);
 void ust_app_unregister(int sock);
 unsigned long ust_app_list_count(void);
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
@@ -217,9 +270,12 @@ void ust_app_clean_list(void);
 void ust_app_ht_alloc(void);
 struct lttng_ht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
-int ust_app_validate_version(int sock);
 int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate);
 struct ust_app_stream *ust_app_alloc_stream(void);
+int ust_app_recv_registration(int sock, struct ust_register_msg *msg);
+int ust_app_recv_notify(int sock);
+void ust_app_add(struct ust_app *app);
+struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -260,6 +316,11 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 }
 static inline
 int ust_app_register_done(int sock)
+{
+	return -ENOSYS;
+}
+static inline
+int ust_app_version(struct ust_app *app)
 {
 	return -ENOSYS;
 }
@@ -374,14 +435,28 @@ int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 	return 0;
 }
 static inline
-int ust_app_validate_version(int sock)
+int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 {
 	return 0;
 }
 static inline
-int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
+int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 {
 	return 0;
+}
+static inline
+int ust_app_recv_notify(int sock)
+{
+	return 0;
+}
+static inline
+struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
+{
+	return NULL;
+}
+static inline
+void ust_app_add(struct ust_app *app)
+{
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

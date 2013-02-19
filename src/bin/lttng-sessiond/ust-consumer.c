@@ -132,7 +132,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_sess->gid,
 			consumer->net_seq_index,
 			ua_chan->key,
-			ua_sess->uuid);
+			ua_sess->registry.uuid);
 
 	health_code_update();
 
@@ -228,7 +228,6 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 		}
 		goto error;
 	}
-	ua_chan->handle = ua_chan->obj->handle;
 
 	/* Next, get all streams. */
 	while (1) {
@@ -345,6 +344,7 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 		}
 		goto error;
 	}
+	channel->handle = channel->obj->handle;
 
 error:
 	return ret;
