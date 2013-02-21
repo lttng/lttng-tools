@@ -24,7 +24,7 @@ endif
 
 # URI unit tests
 test_uri_SOURCES = test_uri.c
-test_uri_LDADD = $(LIBCOMMON)
+test_uri_LDADD = $(LIBTAP) $(LIBCOMMON)
 
 # Session unit test
 SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.c 	\

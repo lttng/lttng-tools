@@ -15,171 +15,184 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #include <assert.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
-#include <sys/types.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <tap/tap.h>
+
 #include <common/uri.h>
-
-#include "utils.h"
-
-/* This path will NEVER be created in this test */
-#define PATH1 "tmp/.test-junk-lttng"
-
-#define RANDOM_STRING_LEN 16
 
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 3;
 
-/*
- * Test string URI and if uri_parse works well.
- */
+/* Number of TAP tests in this file */
+#define NUM_TESTS 11
+
 void test_uri_parsing(void)
 {
 	ssize_t size;
 	const char *s_uri1;
-	struct lttng_uri *uri;
-
-	fprintf(stdout, "Testing URIs...\n");
+	struct lttng_uri *uri = NULL;
 
 	s_uri1 = "net://localhost";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
-	size = uri_parse(s_uri1, &uri);
-	assert(size == 2);
-	assert(uri[0].dtype == LTTNG_DST_IPV4);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 0);
-	assert(strlen(uri[0].subdir) == 0);
-	assert(strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0);
 
-	assert(uri[1].dtype == LTTNG_DST_IPV4);
-	assert(uri[1].utype == LTTNG_URI_DST);
-	assert(uri[1].stype == 0);
-	assert(uri[1].port == 0);
-	assert(strlen(uri[1].subdir) == 0);
-	assert(strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0);
-	PRINT_OK();
-	uri_free(uri);
+	size = uri_parse(s_uri1, &uri);
+
+	ok(size == 2 &&
+	   uri[0].dtype == LTTNG_DST_IPV4 &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 0 &&
+	   strlen(uri[0].subdir) == 0 &&
+	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
+	   uri[1].dtype == LTTNG_DST_IPV4 &&
+	   uri[1].utype == LTTNG_URI_DST &&
+	   uri[1].stype == 0 &&
+	   uri[1].port == 0 &&
+	   strlen(uri[1].subdir) == 0 &&
+	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
+	   "URI set to net://localhost");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
 
 	s_uri1 = "net://localhost:8989:4242/my/test/path";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
-	size = uri_parse(s_uri1, &uri);
-	assert(size == 2);
-	assert(uri[0].dtype == LTTNG_DST_IPV4);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 8989);
-	assert(strcmp(uri[0].subdir, "my/test/path") == 0);
-	assert(strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0);
 
-	assert(uri[1].dtype == LTTNG_DST_IPV4);
-	assert(uri[1].utype == LTTNG_URI_DST);
-	assert(uri[1].stype == 0);
-	assert(uri[1].port == 4242);
-	assert(strcmp(uri[0].subdir, "my/test/path") == 0);
-	assert(strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0);
-	PRINT_OK();
-	uri_free(uri);
+	size = uri_parse(s_uri1, &uri);
+
+	ok(size == 2 &&
+	   uri[0].dtype == LTTNG_DST_IPV4 &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 8989 &&
+	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
+	   uri[1].dtype == LTTNG_DST_IPV4 &&
+	   uri[1].utype == LTTNG_URI_DST &&
+	   uri[1].stype == 0 &&
+	   uri[1].port == 4242 &&
+	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
+	   "URI set to net://localhost:8989:4242/my/test/path");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
 
 	s_uri1 = "net://localhost:8989:4242";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
-	size = uri_parse(s_uri1, &uri);
-	assert(size == 2);
-	assert(uri[0].dtype == LTTNG_DST_IPV4);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 8989);
-	assert(strlen(uri[1].subdir) == 0);
-	assert(strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0);
 
-	assert(uri[1].dtype == LTTNG_DST_IPV4);
-	assert(uri[1].utype == LTTNG_URI_DST);
-	assert(uri[1].stype == 0);
-	assert(uri[1].port == 4242);
-	assert(strlen(uri[1].subdir) == 0);
-	assert(strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0);
-	PRINT_OK();
-	uri_free(uri);
+	size = uri_parse(s_uri1, &uri);
+
+	ok(size == 2 &&
+	   uri[0].dtype == LTTNG_DST_IPV4 &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 8989 &&
+	   strlen(uri[1].subdir) == 0 &&
+	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
+	   uri[1].dtype == LTTNG_DST_IPV4 &&
+	   uri[1].utype == LTTNG_URI_DST &&
+	   uri[1].stype == 0 &&
+	   uri[1].port == 4242 &&
+	   strlen(uri[1].subdir) == 0 &&
+	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
+	   "URI set to net://localhost:8989:4242");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
 
 	s_uri1 = "net6://localhost:8989";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
-	size = uri_parse(s_uri1, &uri);
-	assert(size == 2);
-	assert(uri[0].dtype == LTTNG_DST_IPV6);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 8989);
-	assert(strlen(uri[1].subdir) == 0);
-	assert(strcmp(uri[0].dst.ipv6, "::1") == 0);
 
-	assert(uri[1].dtype == LTTNG_DST_IPV6);
-	assert(uri[1].utype == LTTNG_URI_DST);
-	assert(uri[1].stype == 0);
-	assert(uri[1].port == 0);
-	assert(strlen(uri[1].subdir) == 0);
-	assert(strcmp(uri[0].dst.ipv6, "::1") == 0);
-	PRINT_OK();
-	uri_free(uri);
+	size = uri_parse(s_uri1, &uri);
+
+	ok(size == 2 &&
+	   uri[0].dtype == LTTNG_DST_IPV6 &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 8989 &&
+	   strlen(uri[1].subdir) == 0 &&
+	   strcmp(uri[0].dst.ipv6, "::1") == 0 &&
+	   uri[1].dtype == LTTNG_DST_IPV6 &&
+	   uri[1].utype == LTTNG_URI_DST &&
+	   uri[1].stype == 0 &&
+	   uri[1].port == 0 &&
+	   strlen(uri[1].subdir) == 0 &&
+	   strcmp(uri[0].dst.ipv6, "::1") == 0,
+	   "URI set to net6://localhost:8989");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
 
 	s_uri1 = "tcp://42.42.42.42/my/test/path";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
+
 	size = uri_parse(s_uri1, &uri);
-	assert(size == 1);
-	assert(uri[0].dtype == LTTNG_DST_IPV4);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 0);
-	assert(strcmp(uri[0].subdir, "my/test/path") == 0);
-	assert(strcmp(uri[0].dst.ipv4, "42.42.42.42") == 0);
-	PRINT_OK();
-	uri_free(uri);
+
+	ok(size == 1 &&
+	   uri[0].dtype == LTTNG_DST_IPV4 &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 0 &&
+	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+	   strcmp(uri[0].dst.ipv4, "42.42.42.42") == 0,
+	   "URI set to tcp://42.42.42.42/my/test/path");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
 
 	s_uri1 = "tcp6://[fe80::f66d:4ff:fe53:d220]/my/test/path";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
+
 	size = uri_parse(s_uri1, &uri);
-	assert(size == 1);
-	assert(uri[0].dtype == LTTNG_DST_IPV6);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 0);
-	assert(strcmp(uri[0].subdir, "my/test/path") == 0);
-	assert(strcmp(uri[0].dst.ipv6, "fe80::f66d:4ff:fe53:d220") == 0);
-	PRINT_OK();
-	uri_free(uri);
+
+	ok(size == 1 &&
+	   uri[0].dtype == LTTNG_DST_IPV6 &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 0 &&
+	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+	   strcmp(uri[0].dst.ipv6, "fe80::f66d:4ff:fe53:d220") == 0,
+	   "URI set to tcp6://[fe80::f66d:4ff:fe53:d220]/my/test/path");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
 
 	s_uri1 = "file:///my/test/path";
-	fprintf(stdout, " [+] URI set to %s ", s_uri1);
-	size = uri_parse(s_uri1, &uri);
-	assert(size == 1);
-	assert(uri[0].dtype == LTTNG_DST_PATH);
-	assert(uri[0].utype == LTTNG_URI_DST);
-	assert(uri[0].stype == 0);
-	assert(uri[0].port == 0);
-	assert(strlen(uri[0].subdir) == 0);
-	assert(strcmp(uri[0].dst.path, "/my/test/path") == 0);
-	PRINT_OK();
-	uri_free(uri);
 
-	s_uri1 = "file/my/test/path";
-	fprintf(stdout, " [+] Bad URI set to %s ", s_uri1);
 	size = uri_parse(s_uri1, &uri);
-	assert(size == -1);
-	PRINT_OK();
+
+	ok(size == 1 &&
+	   uri[0].dtype == LTTNG_DST_PATH &&
+	   uri[0].utype == LTTNG_URI_DST &&
+	   uri[0].stype == 0 &&
+	   uri[0].port == 0 &&
+	   strlen(uri[0].subdir) == 0 &&
+	   strcmp(uri[0].dst.path, "/my/test/path") == 0,
+	   "URI set to file:///my/test/path");
+
+	if (uri) {
+		uri_free(uri);
+		uri = NULL;
+	}
+
+	/* FIXME: Noisy on stdout */
+	s_uri1 = "file/my/test/path";
+	size = uri_parse(s_uri1, &uri);
+	ok(size == -1, "Bad URI set to file/my/test/path");
 
 	s_uri1 = "net://:8999";
-	fprintf(stdout, " [+] Bad URI set to %s ", s_uri1);
 	size = uri_parse(s_uri1, &uri);
-	assert(size == -1);
-	PRINT_OK();
+	ok(size == -1, "Bad URI set to net://:8999");
 }
 
 void test_uri_cmp()
@@ -223,16 +236,15 @@ void test_uri_cmp()
 	assert(strlen(uri2[1].subdir) == 0);
 	assert(strcmp(uri2[1].dst.ipv4, "127.0.0.1") == 0);
 
-
 	res = uri_compare(uri1, uri1);
-	fprintf(stdout, " [+] %s == %s ", s_uri1, s_uri1);
-	assert(res == 0);
-	PRINT_OK();
+
+	ok(res == 0,
+	   "URI compare net://localhost == net://localhost");
 
 	res = uri_compare(uri1, uri2);
-	fprintf(stdout, " [+] %s != %s ", s_uri1, s_uri2);
-	assert(res != 0);
-	PRINT_OK();
+
+	ok(res != 0,
+	   "URI compare net://localhost != net://localhost:8989:4242");
 
 	uri_free(uri1);
 	uri_free(uri2);
@@ -240,13 +252,13 @@ void test_uri_cmp()
 
 int main(int argc, char **argv)
 {
-	srand(time(NULL));
+	diag("URI unit tests");
 
-	printf("\nStreaming unit tests\n-----------\n");
+	plan_tests(NUM_TESTS);
 
-	/* URI tests */
 	test_uri_parsing();
+
 	test_uri_cmp();
 
-	return 0;
+	return exit_status();
 }
