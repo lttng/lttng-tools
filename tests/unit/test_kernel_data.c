@@ -28,12 +28,15 @@
 #include <bin/lttng-sessiond/trace-kernel.h>
 #include <common/defaults.h>
 
-#include "utils.h"
+#include <tap/tap.h>
 
 /* This path will NEVER be created in this test */
 #define PATH1 "/tmp/.test-junk-lttng"
 
 #define RANDOM_STRING_LEN	11
+
+/* Number of TAP tests in this file */
+#define NUM_TESTS 10
 
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
@@ -64,81 +67,72 @@ static char *get_random_string(void)
 	return random_string;
 }
 
-static void create_one_kernel_session(void)
+static void test_create_one_kernel_session(void)
 {
-	printf("Create kernel session: ");
 	kern = trace_kernel_create_session(PATH1);
-	assert(kern != NULL);
-	PRINT_OK();
+	ok(kern != NULL, "Create kernel session");
 
-	printf("Validating kernel session: ");
-	assert(kern->fd == -1);
-	assert(kern->metadata_stream_fd == -1);
-	assert(kern->consumer_fds_sent == 0);
-	assert(kern->channel_count == 0);
-	assert(kern->stream_count_global == 0);
-	assert(kern->metadata == NULL);
-	PRINT_OK();
+	ok(kern->fd == -1 &&
+	   kern->metadata_stream_fd == -1 &&
+	   kern->consumer_fds_sent == 0 &&
+	   kern->channel_count == 0 &&
+	   kern->stream_count_global == 0 &&
+	   kern->metadata == NULL,
+	   "Validate kernel session");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	trace_kernel_destroy_session(kern);
 }
 
-static void create_kernel_metadata(void)
+static void test_create_kernel_metadata(void)
 {
 	assert(kern != NULL);
 
-	printf("Create kernel metadata: ");
 	kern->metadata = trace_kernel_create_metadata();
-	assert(kern->metadata != NULL);
-	PRINT_OK();
+	ok(kern->metadata != NULL, "Create kernel metadata");
 
-	printf("Validating kernel session metadata: ");
-	assert(kern->metadata->fd == -1);
-	assert(kern->metadata->conf != NULL);
-	assert(kern->metadata->conf->attr.overwrite
-			== DEFAULT_CHANNEL_OVERWRITE);
-	assert(kern->metadata->conf->attr.subbuf_size
-			== default_get_metadata_subbuf_size());
-	assert(kern->metadata->conf->attr.num_subbuf
-			== DEFAULT_METADATA_SUBBUF_NUM);
-	assert(kern->metadata->conf->attr.switch_timer_interval
-			== DEFAULT_CHANNEL_SWITCH_TIMER);
-	assert(kern->metadata->conf->attr.read_timer_interval
-			== DEFAULT_CHANNEL_READ_TIMER);
-	assert(kern->metadata->conf->attr.output
-			== DEFAULT_KERNEL_CHANNEL_OUTPUT);
-	PRINT_OK();
+	ok(kern->metadata->fd == -1 &&
+	   kern->metadata->conf != NULL &&
+	   kern->metadata->conf->attr.overwrite
+			== DEFAULT_CHANNEL_OVERWRITE &&
+	   kern->metadata->conf->attr.subbuf_size
+			== default_get_metadata_subbuf_size() &&
+	   kern->metadata->conf->attr.num_subbuf
+			== DEFAULT_METADATA_SUBBUF_NUM &&
+	   kern->metadata->conf->attr.switch_timer_interval
+			== DEFAULT_CHANNEL_SWITCH_TIMER &&
+	   kern->metadata->conf->attr.read_timer_interval
+			== DEFAULT_CHANNEL_READ_TIMER &&
+	   kern->metadata->conf->attr.output
+	       == DEFAULT_KERNEL_CHANNEL_OUTPUT,
+	   "Validate kernel session metadata");
 
 	trace_kernel_destroy_metadata(kern->metadata);
 }
 
-static void create_kernel_channel(void)
+static void test_create_kernel_channel(void)
 {
 	struct ltt_kernel_channel *chan;
 	struct lttng_channel attr;
 
 	memset(&attr, 0, sizeof(attr));
 
-	printf("Creating kernel channel: ");
 	chan = trace_kernel_create_channel(&attr);
-	assert(chan != NULL);
-	PRINT_OK();
+	ok(chan != NULL, "Create kernel channel");
 
-	printf("Validating kernel channel: ");
-	assert(chan->fd == -1);
-	assert(chan->enabled == 1);
-	assert(chan->stream_count == 0);
-	assert(chan->ctx == NULL);
-	assert(chan->channel->attr.overwrite  == attr.attr.overwrite);
-	PRINT_OK();
+	ok(chan->fd == -1 &&
+	   chan->enabled == 1 &&
+	   chan->stream_count == 0 &&
+	   chan->ctx == NULL &&
+	   chan->channel->attr.overwrite  == attr.attr.overwrite,
+	   "Validate kernel channel");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&chan->list);
 	trace_kernel_destroy_channel(chan);
 }
 
-static void create_kernel_event(void)
+static void test_create_kernel_event(void)
 {
 	struct ltt_kernel_event *event;
 	struct lttng_event ev;
@@ -148,36 +142,30 @@ static void create_kernel_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	printf("Creating kernel event: ");
 	event = trace_kernel_create_event(&ev);
-	assert(event != NULL);
-	PRINT_OK();
+	ok(event != NULL, "Create kernel event");
 
-	printf("Validating kernel event: ");
-	assert(event->fd == -1);
-	assert(event->enabled == 1);
-	assert(event->event->instrumentation == LTTNG_KERNEL_TRACEPOINT);
-	assert(strlen(event->event->name));
-	PRINT_OK();
+	ok(event->fd == -1 &&
+	   event->enabled == 1 &&
+	   event->event->instrumentation == LTTNG_KERNEL_TRACEPOINT &&
+	   strlen(event->event->name),
+	   "Validate kernel event");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&event->list);
 	trace_kernel_destroy_event(event);
 }
 
-static void create_kernel_stream(void)
+static void test_create_kernel_stream(void)
 {
 	struct ltt_kernel_stream *stream;
 
-	printf("Creating kernel stream: ");
 	stream = trace_kernel_create_stream("stream1", 0);
-	assert(stream != NULL);
-	PRINT_OK();
+	ok(stream != NULL, "Create kernel stream");
 
-	printf("Validating kernel stream: ");
-	assert(stream->fd == -1);
-	assert(stream->state == 0);
-	PRINT_OK();
+	ok(stream->fd == -1 &&
+	   stream->state == 0,
+	   "Validate kernel stream");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&stream->list);
@@ -186,17 +174,15 @@ static void create_kernel_stream(void)
 
 int main(int argc, char **argv)
 {
-	printf("\nTesting kernel data structures:\n-----------\n");
+	diag("Kernel data structure unit test");
 
-	create_one_kernel_session();
+	plan_tests(NUM_TESTS);
 
-	create_kernel_metadata();
-	create_kernel_channel();
-
-
-	create_kernel_event();
-
-	create_kernel_stream();
+	test_create_one_kernel_session();
+	test_create_kernel_metadata();
+	test_create_kernel_channel();
+	test_create_kernel_event();
+	test_create_kernel_stream();
 
 	/* Success */
 	return 0;
