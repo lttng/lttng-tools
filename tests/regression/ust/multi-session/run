@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Multi-session"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_ITER=100
+SESSION_NAME="multi-session"
+EVENT_NAME="ust_gen_nevents:tptest"
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+if [ ! -x "$CURDIR/gen-nevents" ]; then
+	echo -e "No UST nevents binary detected. Passing."
+	exit 0
+fi
+
+# MUST set TESTDIR before calling those functions
+
+test_multi_session() {
+	local out
+
+	# BEFORE application is spawned
+	for i in `seq 0 3`; do
+		create_lttng_session "$SESSION_NAME-$i" "$TRACE_PATH/$i"
+		enable_ust_lttng_event "$SESSION_NAME-$i" "$EVENT_NAME$i"
+		start_lttng_tracing "$SESSION_NAME-$i"
+	done
+
+	echo -n "Starting application generating $NR_ITER events... "
+	./$CURDIR/gen-nevents $NR_ITER &
+	print_ok
+
+	# At least hit one event
+	echo -n "Waiting for events to record "
+	while [ -n "$(pidof gen-nevents)" ]; do
+		echo -n "."
+		sleep 0.1
+	done
+	print_ok
+
+	for i in `seq 0 3`; do
+		stop_lttng_tracing "$SESSION_NAME-$i"
+		destroy_lttng_session "$SESSION_NAME-$i"
+		out=$(babeltrace "$TRACE_PATH/$i" | grep "$EVENT_NAMEi$i" | wc -l)
+		if [ $out -ne $NR_ITER ]; then
+			echo -n "No event found. Suppose to have at least one... "
+			print_fail
+			out=1
+		else
+			echo -n "Found $out event(s) for $SESSION_NAME-$i. Coherent... "
+			print_ok
+			out=0
+		fi
+	done
+
+	return $out
+}
+
+# MUST set TESTDIR before calling those functions
+
+start_lttng_sessiond
+
+TRACE_PATH=$(mktemp -d)
+
+test_multi_session
+out=$?
+if [ $out -ne 0 ]; then
+	stop_lttng_sessiond
+	exit $out
+fi
+
+stop_lttng_sessiond
+
+rm -rf "$TRACE_PATH"

@@ -1,0 +1,114 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Filtering - Unsupported operators"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+LTTNG_BIN="lttng"
+SESSION_NAME="filter-unsupported-ops"
+EVENT_NAME="bogus"
+ENABLE_EVENT_STDERR="/tmp/unsupported-ops-enable"
+TRACE_PATH=$(mktemp -d)
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+function enable_ust_lttng_event_filter_unsupported
+{
+	sess_name=$1
+	event_name=$2
+	filter=$3
+
+	echo -n "Enabling lttng event with filtering and unsupported operator "
+	enable_cmd="$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event"
+	$enable_cmd $event_name -s $sess_name -u --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
+
+	# Enable must fail
+	if [ $? -eq 0 ]; then
+		print_fail
+		return 1
+	else
+		print_ok
+		return 0
+	fi
+}
+
+function test_unsupported_op
+{
+	test_op_str=$1
+	test_op_tkn=$2
+
+	echo ""
+	echo -e "=== Testing filter expression with unsupported operator $test_op_str ($test_op_tkn)"
+
+	# Create session
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# Create filter
+	if [ "$test_op_str" == "UNARY_BIN_NOT" ]; then
+		TEST_FILTER="${test_op_tkn}1"
+	else
+		TEST_FILTER="intfield $test_op_tkn 1"
+	fi
+
+	# Apply filter
+	enable_ust_lttng_event_filter_unsupported $SESSION_NAME $EVENT_NAME "$TEST_FILTER"
+
+	# Test stderr for unsupported operator
+	echo -n "Unsupported operator test $test_op_str ($test_op_tkn) "
+	grep -i -q "not[[:space:]]\+supported" $ENABLE_EVENT_STDERR
+
+	if [ $? -eq 1 ]; then
+		print_fail
+		return 1
+	else
+		print_ok
+	fi
+
+	# Destroy session
+	destroy_lttng_session $SESSION_NAME
+	return 0
+}
+
+# Unsupported operators
+OP_STR=("MUL" "DIV" "MOD" "PLUS" "MINUS" "LSHIFT" "RSHIFT"
+	"BIN_AND" "BIN_OR" "BIN_XOR" "UNARY_BIN_NOT")
+
+OP_TKN=("*" "/" "%" "+" "-" "<<" ">>" "&" "|" "^" "~")
+
+OP_COUNT=${#OP_STR[@]}
+i=0
+
+start_lttng_sessiond
+
+while [ "$i" -lt "$OP_COUNT" ]; do
+	test_unsupported_op "${OP_STR[$i]}" "${OP_TKN[$i]}"
+
+	if [ $? -eq 1 ]; then
+		exit 1
+	fi
+
+	let "i++"
+done
+
+stop_lttng_sessiond
+
+# Cleanup
+rm -f $ENABLE_EVENT_STDERR
+rm -rf $TRACE_PATH

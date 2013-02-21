@@ -1,0 +1,101 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Testing low events throughput"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+BIN_NAME="gen-events"
+SESSION_NAME="low-throughput"
+EVENT_NAME="tp:slow"
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	echo -e "No UST nevents binary detected. Passing."
+	exit 0
+fi
+
+TRACE_PATH=$(mktemp -d)
+
+# MUST set TESTDIR before calling those functions
+
+start_lttng_sessiond
+
+create_lttng_session $SESSION_NAME $TRACE_PATH
+
+enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+start_lttng_tracing $SESSION_NAME
+
+# This is going to take 20 minutes
+./$CURDIR/$BIN_NAME >/dev/null 2>&1
+
+stop_lttng_tracing $SESSION_NAME
+destroy_lttng_session $SESSION_NAME
+
+stop_lttng_sessiond
+
+# Validate test
+
+last_val=0
+out=0
+
+babeltrace $TRACE_PATH | while read event;
+do
+	val=$(echo $event | cut -f10 -d" ")
+	val=${val%?}
+	th=$(echo $event | cut -f13 -d " ")
+
+	if [ $th = '"one"' ]; then
+		((last_val++))
+		# We expect here a continous value from 1 to 20
+		if [ $last_val -ne $val ]; then
+			echo -n "[-] One minute event failed ($val) "
+			out=1
+			break
+		fi
+	elif [ $th = '"ten"' ]; then
+		# Test 10 minutes counter
+		if [ $val -ne 10 ]; then
+			# Test 20 minutes counter
+			if [ $val -ne 20 ]; then
+				echo -n "[-] Ten minutes event failed ($val) "
+				out=1
+				break
+			fi
+		fi
+	elif [ $th = '"twenty"' ]; then
+		# Test 20 minutes counter
+		if [ $val -ne 20 ]; then
+			echo -n "[-] Twenty minutes event failed ($val) "
+			out=1
+			break
+		fi
+	fi
+done
+
+if [ $out -eq 0 ]; then
+	echo -n "Trace is coherent... "
+	print_ok
+else
+	print_fail
+fi
+
+rm -rf $TRACE_PATH
+
+exit $out

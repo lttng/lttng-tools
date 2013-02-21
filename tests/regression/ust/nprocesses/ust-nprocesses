@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_ITER=$1
+TEST_BIN_NAME="gen-events-time"
+SESSION_NAME="ust-nprocesses"
+EVENT_NAME="ust_gen_event:tptest"
+TEST_WAIT_SEC=5
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+
+# Start test for 1000 seconds
+
+for i in `seq 1 $NR_ITER`
+do
+	./$CURDIR/$TEST_BIN_NAME 1000 >/dev/null 2>&1 &
+done
+
+echo -n "Validating registered apps in 3 seconds..."
+
+sleep 3
+
+listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
+reg_app_count=$(echo -n $listing | sed "s/$TEST_BIN_NAME/$TEST_BIN_NAME\n/g" | grep "$TEST_BIN_NAME" | wc -l)
+if [ "$reg_app_count" -ne "$NR_ITER" ]; then
+	echo -e "$reg_app_count apps listed. Expected $NR_ITER "
+	print_fail
+else
+	print_ok
+fi
+
+TRACE_PATH=$(mktemp -d)
+
+create_lttng_session $SESSION_NAME $TRACE_PATH
+
+enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+start_lttng_tracing $SESSION_NAME
+
+echo "Sleeping $TEST_WAIT_SEC seconds for tracing to start everywhere"
+echo "Warning: this arbitrary time can make the test fail on slower system"
+sleep $TEST_WAIT_SEC
+
+stop_lttng_tracing $SESSION_NAME
+destroy_lttng_session $SESSION_NAME
+
+rm -rf $TRACE_PATH
+
+echo -e -n "Killing all spawned applications..."
+killall -q $TEST_BIN_NAME >/dev/null 2>&1 &
+print_ok
+exit 0
