@@ -30,12 +30,17 @@
 #include <common/defaults.h>
 #include <bin/lttng-sessiond/trace-ust.h>
 
+#include <tap/tap.h>
+
 #include "utils.h"
 
 /* This path will NEVER be created in this test */
 #define PATH1 "/tmp/.test-junk-lttng"
 
 #define RANDOM_STRING_LEN	11
+
+/* Number of TAP tests in this file */
+#define NUM_TESTS 10
 
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
@@ -67,60 +72,53 @@ static char *get_random_string(void)
 	return random_string;
 }
 
-static void create_one_ust_session(void)
+static void test_create_one_ust_session(void)
 {
-	printf("Create UST session: ");
-
 	dom.type = LTTNG_DOMAIN_UST;
 
 	usess = trace_ust_create_session(PATH1, 42);
-	assert(usess != NULL);
-	PRINT_OK();
+	ok(usess != NULL, "Create UST session");
 
-	printf("Validating UST session: ");
-	assert(usess->id == 42);
-	assert(usess->start_trace == 0);
-	assert(usess->domain_global.channels != NULL);
-	assert(usess->domain_pid != NULL);
-	assert(usess->domain_exec != NULL);
-	assert(usess->uid == 0);
-	assert(usess->gid == 0);
-	PRINT_OK();
+	ok(usess->id == 42 &&
+	   usess->start_trace == 0 &&
+	   usess->domain_global.channels != NULL &&
+	   usess->domain_pid != NULL &&
+	   usess->domain_exec != NULL &&
+	   usess->uid == 0 &&
+	   usess->gid == 0,
+	   "Validate UST session");
 
 	trace_ust_destroy_session(usess);
 }
 
-static void create_ust_metadata(void)
+static void test_create_ust_metadata(void)
 {
 	struct ltt_ust_metadata *metadata;
 
 	assert(usess != NULL);
 
-	printf("Create UST metadata: ");
 	metadata = trace_ust_create_metadata(PATH1);
-	assert(metadata != NULL);
-	PRINT_OK();
+	ok(metadata != NULL, "Create UST metadata");
 
-	printf("Validating UST session metadata: ");
-	assert(metadata->handle == -1);
-	assert(strlen(metadata->pathname));
-	assert(metadata->attr.overwrite
-			== DEFAULT_CHANNEL_OVERWRITE);
-	assert(metadata->attr.subbuf_size
-			== default_get_metadata_subbuf_size());
-	assert(metadata->attr.num_subbuf
-			== DEFAULT_METADATA_SUBBUF_NUM);
-	assert(metadata->attr.switch_timer_interval
-			== DEFAULT_CHANNEL_SWITCH_TIMER);
-	assert(metadata->attr.read_timer_interval
-			== DEFAULT_CHANNEL_READ_TIMER);
-	assert(metadata->attr.output == LTTNG_UST_MMAP);
-	PRINT_OK();
+	ok(metadata->handle == -1 &&
+	   strlen(metadata->pathname) &&
+	   metadata->attr.overwrite
+			== DEFAULT_CHANNEL_OVERWRITE &&
+	   metadata->attr.subbuf_size
+			== default_get_metadata_subbuf_size() &&
+	   metadata->attr.num_subbuf
+			== DEFAULT_METADATA_SUBBUF_NUM &&
+	   metadata->attr.switch_timer_interval
+			== DEFAULT_CHANNEL_SWITCH_TIMER &&
+	   metadata->attr.read_timer_interval
+			== DEFAULT_CHANNEL_READ_TIMER &&
+	   metadata->attr.output == LTTNG_UST_MMAP,
+	   "Validate UST session metadata");
 
 	trace_ust_destroy_metadata(metadata);
 }
 
-static void create_ust_channel(void)
+static void test_create_ust_channel(void)
 {
 	struct ltt_ust_channel *uchan;
 	struct lttng_channel attr;
@@ -129,25 +127,22 @@ static void create_ust_channel(void)
 
 	strncpy(attr.name, "channel0", 8);
 
-	printf("Creating UST channel: ");
 	uchan = trace_ust_create_channel(&attr, PATH1);
-	assert(uchan != NULL);
-	PRINT_OK();
+	ok(uchan != NULL, "Create UST channel");
 
-	printf("Validating UST channel: ");
-	assert(uchan->enabled == 0);
-	assert(strcmp(PATH1, uchan->pathname) == 0);
-	assert(strncmp(uchan->name, "channel0", 8) == 0);
-	assert(uchan->name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0');
-	assert(uchan->ctx != NULL);
-	assert(uchan->events != NULL);
-	assert(uchan->attr.overwrite  == attr.attr.overwrite);
-	PRINT_OK();
+	ok(uchan->enabled == 0 &&
+	   strcmp(PATH1, uchan->pathname) == 0 &&
+	   strncmp(uchan->name, "channel0", 8) == 0 &&
+	   uchan->name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0' &&
+	   uchan->ctx != NULL &&
+	   uchan->events != NULL &&
+	   uchan->attr.overwrite  == attr.attr.overwrite,
+	   "Validate UST channel");
 
 	trace_ust_destroy_channel(uchan);
 }
 
-static void create_ust_event(void)
+static void test_create_ust_event(void)
 {
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
@@ -157,48 +152,44 @@ static void create_ust_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	printf("Creating UST event: ");
 	event = trace_ust_create_event(&ev, NULL);
-	assert(event != NULL);
-	PRINT_OK();
 
-	printf("Validating UST event: ");
-	assert(event->enabled == 0);
-	assert(event->attr.instrumentation == LTTNG_UST_TRACEPOINT);
-	assert(strcmp(event->attr.name, ev.name) == 0);
-	assert(event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0');
-	PRINT_OK();
+	ok(event != NULL, "Create UST event");
+
+	ok(event->enabled == 0 &&
+	   event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
+	   strcmp(event->attr.name, ev.name) == 0 &&
+	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
+	   "Validate UST event");
 
 	trace_ust_destroy_event(event);
 }
 
-static void create_ust_context(void)
+static void test_create_ust_context(void)
 {
 	struct lttng_event_context ectx;
 	struct ltt_ust_context *uctx;
 
 	ectx.ctx = LTTNG_EVENT_CONTEXT_VTID;
 
-	printf("Creating UST context: ");
 	uctx = trace_ust_create_context(&ectx);
-	assert(uctx != NULL);
-	PRINT_OK();
+	ok(uctx != NULL, "Create UST context");
 
-	printf("Validating UST context: ");
-	assert((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID);
-	PRINT_OK();
+	ok((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID,
+	   "Validate UST context");
 }
 
 int main(int argc, char **argv)
 {
-	printf("\nTesting UST data structures:\n-----------\n");
+	diag("UST data structures unit test");
 
-	create_one_ust_session();
-	create_ust_metadata();
-	create_ust_channel();
-	create_ust_event();
-	create_ust_context();
+	plan_tests(NUM_TESTS);
 
-	/* Success */
-	return 0;
+	test_create_one_ust_session();
+	test_create_ust_metadata();
+	test_create_ust_channel();
+	test_create_ust_event();
+	test_create_ust_context();
+
+	return exit_status();
 }

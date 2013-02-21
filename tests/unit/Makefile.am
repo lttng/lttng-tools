@@ -44,7 +44,7 @@ UST_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-ust.c \
 	       $(top_srcdir)/src/common/utils.c
 
 test_ust_data_SOURCES = test_ust_data.c $(UST_DATA_TRACE)
-test_ust_data_LDADD = $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE)
+test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE)
 endif
 
 # Kernel data structures unit test
