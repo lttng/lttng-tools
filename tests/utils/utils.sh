@@ -25,6 +25,8 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
+source $TESTDIR/utils/tap/tap.sh
+
 function print_ok ()
 {
 	# Check if we are a terminal
@@ -48,13 +50,7 @@ function print_fail ()
 function print_test_banner ()
 {
 	desc="$1"
-
-	count=$((${#desc}+2))
-	str=$(printf "%${count}s");
-	echo -e "\n"
-	echo -e ${str// /-}
-	echo -e " $desc "
-	echo -e ${str// /-}
+	diag "$desc"
 }
 
 function validate_kernel_version ()
@@ -82,32 +78,6 @@ function randstring()
 	echo
 }
 
-function spawn_sessiond ()
-{
-	echo ""
-	echo -n "Starting session daemon... "
-	validate_kernel_version
-	if [ $? -ne 0 ]; then
-		echo -e "\n*** Kernel too old for session daemon tests ***\n"
-		return 2
-	fi
-
-	DIR=$(readlink -f $TESTDIR)
-
-	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
-		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
-		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1 &
-		if [ $? -eq 1 ]; then
-		        print_fail
-			return 1
-		else
-		        print_ok
-		fi
-	fi
-
-	return 0
-}
-
 function lttng_enable_kernel_event
 {
 	sess_name=$1
@@ -115,24 +85,16 @@ function lttng_enable_kernel_event
 
 	if [ -z $event_name ]; then
 		# Enable all event if no event name specified
-		$event_name="-a"
+		event_name="-a"
 	fi
 
-	echo -n "Enabling kernel event $event_name for session $sess_name"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -k >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-	        print_ok
-	fi
+	ok $? "Enable kernel event $event_name for session $sess_name"
 }
 
 function start_lttng_relayd
 {
 	local opt=$1
-
-	echo -e -n "Starting lttng-relayd (opt: $opt)... "
 
 	DIR=$(readlink -f $TESTDIR)
 
@@ -140,13 +102,13 @@ function start_lttng_relayd
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1 &
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
-		        print_fail
+			fail "Start lttng-relayd (opt: $opt)"
 			return 1
 		else
-			print_ok
+			pass "Start lttng-relayd (opt: $opt)"
 		fi
 	else
-		print_ok
+		pass "Start lttng-relayd (opt: $opt)"
 	fi
 }
 
@@ -154,10 +116,10 @@ function stop_lttng_relayd
 {
 	PID_RELAYD=`pidof lt-$RELAYD_BIN`
 
-	echo -e -n "Killing lttng-relayd (pid: $PID_RELAYD)... "
 	kill $PID_RELAYD >/dev/null 2>&1
+
 	if [ $? -eq 1 ]; then
-		print_fail
+		fail "Kill lttng-relayd (pid: $PID_RELAYD)"
 		return 1
 	else
 		out=1
@@ -165,7 +127,7 @@ function stop_lttng_relayd
 			out=$(pidof lt-$RELAYD_BIN)
 			sleep 0.5
 		done
-		print_ok
+		pass "Kill lttng-relayd (pid: $PID_RELAYD)"
 		return 0
 	fi
 }
@@ -177,19 +139,22 @@ function start_lttng_sessiond()
 		return
 	fi
 
-	spawn_sessiond
-	out=$?
-	if [ $out -eq 2 ]; then
-		# Kernel version is not compatible.
-		exit 0
-	elif [ $out -ne 0 ]; then
-		echo "NOT bad $?"
-		exit 1
+	validate_kernel_version
+	if [ $? -ne 0 ]; then
+	    fail "Start session daemon"
+	    BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
-	# Simply wait for the session daemon bootstrap
-	echo "Waiting for the session daemon to bootstrap (2 secs)"
-	sleep 2
+	DIR=$(readlink -f $TESTDIR)
+
+	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
+		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1 &
+		status=$?
+		# Wait for sessiond to bootstrap
+		sleep 2
+		ok $status "Start session daemon"
+	fi
 }
 
 function stop_lttng_sessiond ()
@@ -201,10 +166,10 @@ function stop_lttng_sessiond ()
 
 	PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
 
-	echo -e -n "Killing session daemon... "
 	kill $PID_SESSIOND >/dev/null 2>&1
+
 	if [ $? -eq 1 ]; then
-		print_fail
+		fail "Kill sessions daemon"
 		return 1
 	else
 		out=1
@@ -212,7 +177,7 @@ function stop_lttng_sessiond ()
 			out=$(pidof lt-$SESSIOND_BIN)
 			sleep 0.5
 		done
-		print_ok
+		pass "Kill session daemon"
 	fi
 }
 
@@ -221,44 +186,26 @@ function create_lttng_session ()
 	sess_name=$1
 	trace_path=$2
 
-	echo -n "Creating lttng session $sess_name in $trace_path "
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-		print_ok
-	fi
+	ok $? "Create session $sess_name in $trace_path"
 }
 
-function enable_lttng_channel()
+function enable_ust_lttng_channel()
 {
 	sess_name=$1
 	channel_name=$2
 
-	echo -n "Enabling lttng channel $channel_name for session $sess_name"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel $channel_name -s $sess_name >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-		print_ok
-	fi
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name >/dev/null 2>&1
+	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
-function disable_lttng_channel()
+function disable_ust_lttng_channel()
 {
 	sess_name=$1
 	channel_name=$2
 
-	echo -n "Disabling lttng channel $channel_name for session $sess_name"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel $channel_name -s $sess_name >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-	        print_fail
-		return 1
-	else
-	        print_ok
-	fi
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel -u $channel_name -s $sess_name >/dev/null 2>&1
+	ok $? "Disable channel $channel_name for session $sess_name"
 }
 
 function enable_ust_lttng_event ()
@@ -266,14 +213,8 @@ function enable_ust_lttng_event ()
 	sess_name=$1
 	event_name="$2"
 
-	echo -n "Enabling lttng event $event_name for session $sess_name "
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-		print_ok
-	fi
+	ok $? "Enable event $event_name for session $sess_name"
 }
 
 function enable_ust_lttng_event_filter()
@@ -281,16 +222,9 @@ function enable_ust_lttng_event_filter()
 	sess_name="$1"
 	event_name="$2"
 	filter="$3"
-	echo -n "Enabling lttng event with filtering "
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --filter "$filter" 2>&1 >/dev/null
-	if [ $? -eq 0 ]; then
-		print_ok
-		return 0
-	else
-		print_fail
-		return 1
-	fi
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --filter "$filter" >/dev/null 2>&1
+	ok $? "Enable event $event_name with filtering for session $sess_name"
 }
 
 function enable_ust_lttng_event_loglevel()
@@ -298,16 +232,9 @@ function enable_ust_lttng_event_loglevel()
 	sess_name="$1"
 	event_name="$2"
 	loglevel="$3"
-	echo -n "Enabling lttng event $event_name with loglevel $loglevel"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel $loglevel 2>&1 >/dev/null
-	if [ $? -eq 0 ]; then
-		print_ok
-		return 0
-	else
-		print_fail
-		return 1
-	fi
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel $loglevel >/dev/null 2>&1
+	ok $? "Enable event $event_name with loglevel $loglevel"
 }
 
 function enable_ust_lttng_event_loglevel_only()
@@ -315,16 +242,9 @@ function enable_ust_lttng_event_loglevel_only()
 	sess_name="$1"
 	event_name="$2"
 	loglevel="$3"
-	echo -n "Enabling lttng event $event_name with loglevel-only $loglevel"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel-only $loglevel 2>&1 >/dev/null
-	if [ $? -eq 0 ]; then
-		print_ok
-		return 0
-	else
-		print_fail
-		return 1
-	fi
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel-only $loglevel >/dev/null 2>&1
+	ok $? "Enable event $event_name with loglevel-only $loglevel"
 }
 
 function disable_ust_lttng_event ()
@@ -332,56 +252,33 @@ function disable_ust_lttng_event ()
 	sess_name="$1"
 	event_name="$2"
 
-	echo -n "Disabling lttng event $event_name for session $sess_name "
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -u >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-		print_ok
-	fi
+	ok $? "Disable event $event_name for session $sess_name"
 }
 
 function start_lttng_tracing ()
 {
 	sess_name=$1
 
-	echo -n "Start lttng tracing for session $sess_name "
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-	        print_ok
-	fi
+	ok $? "Start tracing for session $sess_name"
 }
 
 function stop_lttng_tracing ()
 {
 	sess_name=$1
 
-	echo -n "Stop lttng tracing for session $sess_name "
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-	        print_ok
-	fi
+	ok $? "Stop lttng tracing for session $sess_name"
 }
 
 function destroy_lttng_session ()
 {
 	sess_name=$1
 
-	echo -n "Destroy lttng session $sess_name "
+
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		print_fail
-		return 1
-	else
-	        print_ok
-	fi
+	ok $? "Destroy lttng session $sess_name"
 }
 
 function trace_matches ()
@@ -391,22 +288,15 @@ function trace_matches ()
 	trace_path=$3
 
 	which $BABELTRACE_BIN >/dev/null
-	if [ $? -eq 1 ]; then
-		echo "Babeltrace binary not found. Skipping trace matches"
-		return 0
-	fi
-
-	echo -n "Looking for $nr_iter $event_name in $trace_path "
+	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
 
 	count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
+
 	if [ "$count" -ne "$nr_iter" ]; then
-		echo -n "$count found in trace "
-		print_fail
-		return 1
+		fail "Trace match"
+		diag "$count events found in trace"
 	else
-		echo -n "Trace is coherent "
-		print_ok
-		return 0
+		pass "Trace match"
 	fi
 }
 
@@ -416,18 +306,15 @@ function validate_trace
 	trace_path=$2
 
 	which $BABELTRACE_BIN >/dev/null
-	if [ $? -eq 1 ]; then
-		echo "Babeltrace binary not found. Skipping trace matches"
-		return 0
+	if [ $? -ne 0 ]; then
+	    skip 0 "Babeltrace binary not found. Skipping trace validation"
 	fi
 
-	echo -n "Validating trace for event $event_name... "
 	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $event_name | wc -l)
-	if [ $traced -eq 0 ]; then
-		print_fail
-		return 1
+	if [ "$traced" -ne 0 ]; then
+	    pass "Validate trace for event $event_name"
 	else
-		print_ok
-		return 0
+	    fail "Validate trace for event $event_name"
+	    diag "Found $traced occurences of $event_name"
 	fi
 }
