@@ -2,8 +2,7 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/test_kernel_data_trace $DIR/test_sessions $DIR/test_ust_data_trace \
-		$DIR/streaming/runall $DIR/health/runall $DIR/filtering/runall)
+tests=( $DIR/streaming/runall $DIR/health/runall $DIR/filtering/runall )
 
 exit_code=0
 

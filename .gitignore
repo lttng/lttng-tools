@@ -49,9 +49,10 @@ extras/bindings/swig/python/lttng_wrap.c
 .checkpatch.conf
 
 # Tests
-test_sessions
-test_kernel_data_trace
-test_ust_data_trace
+tests/unit/test_kernel_data
+tests/unit/test_session
+tests/unit/test_uri
+tests/unit/test_ust_data
 kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard

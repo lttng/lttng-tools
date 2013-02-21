@@ -1,1 +1,1 @@
-SUBDIRS = . regression
+SUBDIRS = regression unit
