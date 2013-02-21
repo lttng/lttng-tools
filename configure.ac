@@ -324,6 +324,8 @@ AC_CONFIG_FILES([
 	tests/regression/ust/overlap/Makefile
 	tests/regression/ust/overlap/demo/Makefile
 	tests/unit/Makefile
+	tests/utils/Makefile
+	tests/utils/tap/Makefile
 ])
 
 AC_OUTPUT
