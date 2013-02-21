@@ -26,11 +26,11 @@
 #include <time.h>
 #include <sys/types.h>
 
+#include <tap/tap.h>
+
 #include <bin/lttng-sessiond/session.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/common.h>
-
-#include "utils.h"
 
 #define SESSION1 "test1"
 
@@ -40,18 +40,8 @@
 #define MAX_SESSIONS 10000
 #define RANDOM_STRING_LEN	11
 
-/*
- * String of 263 caracters. NAME_MAX + "OVERFLOW". If OVERFLOW appears in the
- * session name, we have a problem.
- *
- * NAME_MAX = 255
- */
-#define OVERFLOW_SESSION_NAME \
-	"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd" \
-	"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd" \
-	"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd" \
-	"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabc"  \
-	"OVERFLOW"
+/* Number of TAP tests in this file */
+#define NUM_TESTS 12
 
 static struct ltt_session_list *session_list;
 
@@ -181,28 +171,6 @@ static int destroy_one_session(struct ltt_session *session)
 	return 0;
 }
 
-static int fuzzing_create_args(void)
-{
-	int ret;
-
-	ret = create_one_session(NULL, NULL);
-	if (ret > 0) {
-		printf("Session created with (null),(null)\n");
-		return -1;
-	}
-
-	ret = create_one_session(NULL, PATH1);
-	if (ret > 0) {
-		printf("Session created with (null), %s)\n", PATH1);
-		return -1;
-	}
-
-	/* Session list must be 0 */
-	assert(!session_list_count());
-
-	return 0;
-}
-
 /*
  * This test is supposed to fail at the second create call. If so, return 0 for
  * test success, else -1.
@@ -228,103 +196,126 @@ static int two_session_same_name(void)
 	return -1;
 }
 
-int main(int argc, char **argv)
+void test_session_list(void)
 {
-	int ret, i;
-	struct ltt_session *iter, *tmp;
-
-	srand(time(NULL));
-
-	printf("\nTesting Sessions:\n-----------\n");
-
 	session_list = session_get_list();
-	if (session_list == NULL) {
-		return -1;
-	}
+	ok(session_list != NULL, "Session list: not NULL");
+}
 
-	printf("Create 1 session %s: ", SESSION1);
-	fflush(stdout);
-	ret = create_one_session(SESSION1, PATH1);
-	if (ret < 0) {
-		return -1;
-	}
-	PRINT_OK();
+void test_create_one_session(void)
+{
+	ok(create_one_session(SESSION1, PATH1) == 0,
+	   "Create session: %s",
+	   SESSION1);
+}
 
-	printf("Validating created session %s: ", SESSION1);
-	fflush(stdout);
+void test_validate_session(void)
+{
+	struct ltt_session *tmp;
+
 	tmp = session_find_by_name(SESSION1);
-	if (tmp == NULL) {
-		return -1;
-	}
-	/* Basic init session values */
-	assert(tmp->kernel_session == NULL);
-	assert(strlen(tmp->path));
-	assert(strlen(tmp->name));
+
+	ok(tmp != NULL,
+	   "Validating session: session found");
+
+	ok(tmp->kernel_session == NULL &&
+	   strlen(tmp->path) &&
+	   strlen(tmp->name),
+	   "Validating session: basic sanity check");
+
 	session_lock(tmp);
 	session_unlock(tmp);
+}
 
-	PRINT_OK();
+void test_destroy_session(void)
+{
+	struct ltt_session *tmp;
 
-	printf("Destroy 1 session %s: ", SESSION1);
-	fflush(stdout);
-	ret = destroy_one_session(tmp);
-	if (ret < 0) {
-		return -1;
-	}
-	PRINT_OK();
+	tmp = session_find_by_name(SESSION1);
 
-	printf("Two session with same name: ");
-	fflush(stdout);
-	ret = two_session_same_name();
-	if (ret < 0) {
-		return -1;
-	}
-	PRINT_OK();
+	ok(tmp != NULL,
+	   "Destroying session: session found");
 
-	empty_session_list();
+	ok(destroy_one_session(tmp) == 0,
+	   "Destroying session: %s destroyed",
+	   SESSION1);
+}
 
-	printf("Fuzzing create_session arguments: ");
-	fflush(stdout);
-	ret = fuzzing_create_args();
-	if (ret < 0) {
-		return -1;
-	}
-	PRINT_OK();
+void test_duplicate_session(void)
+{
+	ok(two_session_same_name() == 0,
+	   "Duplicate session creation");
+}
 
-	printf("Creating %d sessions: ", MAX_SESSIONS);
-	fflush(stdout);
+void test_bogus_session_param(void)
+{
+	ok(create_one_session(NULL, NULL) < 0,
+	   "Create session with bogus param: NULL, NULL should fail");
+
+	ok(create_one_session(NULL, PATH1) < 0,
+	   "Create session with bogus param: NULL, %s should fail",
+	   PATH1);
+
+	ok(session_list_count() == 0,
+	   "Create session with bogus param: session list empty");
+}
+
+void test_large_session_number(void)
+{
+	int ret, i, failed = 0;
+	struct ltt_session *iter, *tmp;
+
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		char *tmp_name = get_random_string();
-
 		ret = create_one_session(tmp_name, PATH1);
 		if (ret < 0) {
-			printf("session %d (name: %s) creation failed\n", i, tmp_name);
-			return -1;
-		}
-
-		if ((i % 1000) == 0) {
-			fprintf(stdout, "%d..", i);
-			fflush(stdout);
+			diag("session %d (name: %s) creation failed", i, tmp_name);
+			++failed;
 		}
 	}
-	PRINT_OK();
 
-	printf("Destroying %d sessions: ", MAX_SESSIONS);
-	fflush(stdout);
+	ok(failed == 0,
+	   "Large sessions number: created %u sessions",
+	   MAX_SESSIONS);
+
+	failed = 0;
+
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
 			ret = destroy_one_session(iter);
 			if (ret < 0) {
-				printf("session %d (name: %s) creation failed\n", i, iter->name);
-				return -1;
+				diag("session %d (name: %s) destroy failed", i, iter->name);
+				++failed;
 			}
 		}
 	}
-	PRINT_OK();
 
-	/* Session list must be 0 */
-	assert(!session_list_count());
+	ok(failed == 0 && session_list_count() == 0,
+	   "Large sessions number: destroyed %u sessions",
+	   MAX_SESSIONS);
+}
 
-	/* Success */
-	return 0;
+int main(int argc, char **argv)
+{
+	diag("Sessions unit tests");
+
+	plan_tests(NUM_TESTS);
+
+	test_session_list();
+
+	test_create_one_session();
+
+	test_validate_session();
+
+	test_destroy_session();
+
+	test_duplicate_session();
+
+	empty_session_list();
+
+	test_bogus_session_param();
+
+	test_large_session_number();
+
+	return exit_status();
 }

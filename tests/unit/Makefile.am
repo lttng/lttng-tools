@@ -8,6 +8,8 @@ if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
 AM_LDFLAGS += -lc
 endif
 
+LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
+
 LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
@@ -32,7 +34,7 @@ SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.c 	\
 	 $(top_srcdir)/src/common/error.c
 
 test_session_SOURCES = test_session.c $(SESSIONS)
-test_session_LDADD = $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE)
+test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE)
 
 # UST data structures unit test
 if HAVE_LIBLTTNG_UST_CTL
