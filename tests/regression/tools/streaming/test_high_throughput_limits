@@ -31,19 +31,14 @@ DEFAULT_IF="lo"
 
 TRACE_PATH=$(mktemp -d)
 
+NUM_TESTS=112
+
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	echo -e "No UST nevents binary detected. Passing."
-	exit 0
-fi
-
-if [ "$(id -u)" != "0" ]; then
-	echo "This test must be running as root to set bandwidth limits. Aborting"
-	# Exit status 0 so the tests can continue
-	exit 0
+	BAIL_OUT "No UST nevents binary detected."
 fi
 
 function set_bw_limit
@@ -56,7 +51,7 @@ function set_bw_limit
 	# parent qdisc (1:) will always limit us to the right max value
 	dataportlimit=$((9*${ctrlportlimit}))
 
-	echo -n "Setting bandwidth limits to ${limit}kbits, (${ctrlportlimit} for control and ${dataportlimit} for data)... "
+
 	tc qdisc add dev $DEFAULT_IF root handle 1: htb default 15 >/dev/null 2>&1
 
 	# the total bandwidth is the limit set by the user
@@ -70,14 +65,14 @@ function set_bw_limit
 	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:10 >/dev/null 2>&1
 	# filter to assign data traffic to the 1:11 class
 	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:11 >/dev/null 2>&1
-	print_ok
+
+	ok $? "Set bandwidth limits to ${limit}kbits, ${ctrlportlimit} for control and ${dataportlimit} for data"
 }
 
 function reset_bw_limit
 {
-	echo -n "Resetting bandwidth limits... "
 	tc qdisc del dev $DEFAULT_IF root >/dev/null 2>&1
-	print_ok
+	ok $? "Reset bandwith limits"
 }
 
 function create_lttng_session_with_uri
@@ -86,6 +81,7 @@ function create_lttng_session_with_uri
 	uri=$2
 	# Create session with custom URI
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create -U $uri $sess_name >/dev/null 2>&1
+	ok $? "Create session with uri $uri"
 }
 
 function enable_lttng_consumer
@@ -93,6 +89,7 @@ function enable_lttng_consumer
 	uri=$1
 	# Create session with custom URI
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u $uri >/dev/null 2>&1
+	ok $? "Enable consumer with uri $uri"
 }
 
 function run_apps
@@ -108,12 +105,10 @@ function run_apps
 
 function wait_apps
 {
-	echo "Waiting for applications to end"
 	while [ -n "$(pidof $BIN_NAME)" ]; do
-		echo -n "."
 		sleep 1
 	done
-	echo ""
+	pass "Wait for applications to end"
 }
 
 function test_high_throughput
@@ -125,7 +120,6 @@ function test_high_throughput
 	start_lttng_tracing $SESSION_NAME
 	run_apps
 	wait_apps
-
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 	validate_event_count
@@ -152,14 +146,13 @@ function validate_event_count
 	let wanted=$NR_APP_ITER*$NR_ITER
 
 	if [ $wanted -ne $total ]; then
-		echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-		print_fail
+		fail "Validate trace event count"
+		diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
 		return 1
 	else
-		echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-		print_ok
+		pass "Validate trace event count"
+		diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
 
-		# Cleanup only if everything is ok and passes.
 		rm -rf $TRACE_PATH
 		rm $TEMP_FILE $TEMP_FILE_2
 
@@ -169,32 +162,39 @@ function validate_event_count
 
 function interrupt_cleanup()
 {
-	echo -en "\n*** Exiting ***\n"
+	diag "*** Exiting ***"
 	stop_lttng_relayd
 	stop_lttng_sessiond
 	reset_bw_limit
 	exit 1
 }
 
-# Catch sigint and try to cleanup limits
-trap interrupt_cleanup SIGINT
+plan_tests $NUM_TESTS
 
-BW_LIMITS=(3200 1600 800 400 200 100 50 25)
-for BW in ${BW_LIMITS[@]};
-do
-	echo ""
-	echo -e "=== Testing high-throughput with bandwidth limit set to ${BW}kbits"
-	set_bw_limit $BW
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
 
-	start_lttng_sessiond
-	start_lttng_relayd "-o $TRACE_PATH"
-	test_high_throughput
-	result=$?
-	stop_lttng_relayd
-	stop_lttng_sessiond
-	reset_bw_limit
+skip $isroot "Root access is needed to set bandwith limits. Skipping all tests." $NUM_TESTS ||
+{
 
-	if [ $result -ne 0 ]; then
-		exit 1
-	fi
-done
+	# Catch sigint and try to cleanup limits
+	trap interrupt_cleanup SIGINT
+
+	BW_LIMITS=(3200 1600 800 400 200 100 50 25)
+	for BW in ${BW_LIMITS[@]};
+	do
+		diag "Test high-throughput with bandwidth limit set to ${BW}kbits"
+		set_bw_limit $BW
+
+		start_lttng_sessiond
+		start_lttng_relayd "-o $TRACE_PATH"
+		test_high_throughput
+		result=$?
+		stop_lttng_relayd
+		stop_lttng_sessiond
+		reset_bw_limit
+	done
+}

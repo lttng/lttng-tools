@@ -26,13 +26,14 @@ PID_RELAYD=0
 
 TRACE_PATH=$(mktemp -d)
 
+NUM_TESTS=186
+
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	echo -e "No UST nevents binary detected. Skipping."
-	exit 0
+	BAIL_OUT "No UST nevents binary detected. Skipping."
 fi
 
 function lttng_create_session
@@ -40,6 +41,7 @@ function lttng_create_session
 	URI=$1
 	# Create session with custom URI
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create -U $URI $SESSION_NAME >/dev/null 2>&1
+	ok $? "Create session with uri $URI"
 }
 
 function lttng_enable_consumer
@@ -47,6 +49,7 @@ function lttng_enable_consumer
 	URI=$1
 	# Create session with custom URI
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u $URI >/dev/null 2>&1
+	ok $? "Enable consumer with uri $URI"
 }
 
 function run_apps
@@ -55,23 +58,21 @@ function run_apps
     COUNT=5
     APP_DELAY=1000000
     ./$CURDIR/$BIN_NAME $COUNT $APP_DELAY >/dev/null 2>&1 &
-
 }
 
 function wait_apps
 {
-	echo -n "Waiting for applications to end"
 	while [ -n "$(pidof $BIN_NAME)" ]; do
-		echo -n "."
 		sleep 0.5
 	done
-	echo ""
+	pass "Wait for applications to end"
 }
 
 function test_uri_switch_localhost_folder
 {
 	IPVER=$1
-	echo -e "\n=== Testing switch of localhost folder ($IPVER)\n"
+
+	diag "Test switch of localhost folder ($IPVER)"
 
 	if [ "$IPVER" == "IPv6" ]; then
 	    BASE_URI="net6://localhost"
@@ -85,13 +86,14 @@ function test_uri_switch_localhost_folder
 
 	lttng_create_session $BASE_URI
 
-	echo -e "Randomizing output folder on $BASE_URI..."
 	while [ "$i" -le $RANDCOUNT ]
 	do
 	    RAND=$(randstring 16 0)
 	    lttng_enable_consumer "$BASE_URI/$RAND"
 	    let "i += 1"
 	done
+
+	pass "Randomize output folder on $BASE_URI"
 
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
@@ -102,16 +104,16 @@ function test_uri_switch_localhost_folder
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$RAND
 
 	if [ $? -eq 0 ]; then
-	# Only delete if successful
-	    rm -rf $TRACE_PATH
+		# Only delete if successful
+		rm -rf $TRACE_PATH
 	fi
 }
 
 function test_uri_switch_file_network
 {
 	IPVER=$1
-	echo ""
-	echo -e "=== Testing switch file -> network ($IPVER)"
+
+	diag "Test switch file -> network ($IPVER)"
 
 	TMP_PATH=$(mktemp -d)
 	FILE_URI="file://$TMP_PATH"
@@ -129,8 +131,7 @@ function test_uri_switch_file_network
 	    for NET_PATH in ${NET_PATHS[@]};
 	    do
 		SESSION_NAME=$(randstring 16 0)
-		echo ""
-		echo "$FILE_URI -> $NETWORK_URI/$NET_PATH"
+		diag "$FILE_URI -> $NETWORK_URI/$NET_PATH"
 
 		lttng_create_session $FILE_URI
 		lttng_enable_consumer "$NETWORK_URI/$NET_PATH"
@@ -155,9 +156,8 @@ function test_uri_switch_file_network
 
 function test_uri_switch_network_file
 {
-IPVER=$1
-	echo ""
-	echo -e "=== Testing switch network ($IPVER) -> file"
+	IPVER=$1
+	diag "Test switch network ($IPVER) -> file"
 
 	if [ "$IPVER" == "IPv6" ]; then
 	    NETWORK_URI="net6://localhost"
@@ -173,8 +173,7 @@ IPVER=$1
 	    FILE_URI="file://$TMP_PATH"
 	    SESSION_NAME=$(randstring 16 0)
 
-	    echo ""
-	    echo "$NETWORK_URI -> $FILE_URI/$FILE_PATH"
+	    diag "$NETWORK_URI -> $FILE_URI/$FILE_PATH"
 
 	    lttng_create_session $NETWORK_URI
 	    lttng_enable_consumer "$FILE_URI/$FILE_PATH"
@@ -195,19 +194,18 @@ IPVER=$1
 	done
 }
 
+plan_tests $NUM_TESTS
 
 start_lttng_sessiond
 
-echo ""
-echo "=== Testing with IPv4"
+diag "Test with IPv4"
 start_lttng_relayd "-o $TRACE_PATH"
 test_uri_switch_localhost_folder "IPv4"
 test_uri_switch_file_network "IPv4"
 test_uri_switch_network_file "IPv4"
 stop_lttng_relayd
 
-echo ""
-echo "=== Testing with IPv6"
+diag "Test with IPv6"
 start_lttng_relayd "-o $TRACE_PATH -C tcp6://localhost:5342 -D tcp6://localhost:5343"
 test_uri_switch_localhost_folder "IPv6"
 test_uri_switch_file_network "IPv6"

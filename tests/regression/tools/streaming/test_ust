@@ -25,36 +25,37 @@ PID_RELAYD=0
 
 TRACE_PATH=$(mktemp -d)
 
+NUM_TESTS=20
+
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	echo -e "No UST nevents binary detected. Passing."
-	exit 0
+	BAIL_OUT "No UST nevents binary detected."
 fi
 
 function lttng_create_session_uri
 {
 	# Create session with default path
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
+	ok $? "Create session with default path"
 }
 
 function wait_apps
 {
-	echo -n "Waiting for applications to end"
+
 	while [ -n "$(pidof $BIN_NAME)" ]; do
-		echo -n "."
 		sleep 0.5
 	done
-	echo ""
+	pass "Wait for applications to end"
 }
 
 # MUST set TESTDIR before calling those functions
 
 function test_ust_before_start ()
 {
-	echo -e "\n=== Testing UST streaming BEFORE tracing starts\n"
+	diag "Test UST streaming BEFORE tracing starts"
 	lttng_create_session_uri
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 
@@ -64,13 +65,14 @@ function test_ust_before_start ()
 	start_lttng_tracing $SESSION_NAME
 
 	wait_apps
+
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
 function test_ust_after_start ()
 {
-	echo -e "\n=== Testing UST streaming AFTER tracing starts\n"
+	diag "Test UST streaming AFTER tracing starts"
 	lttng_create_session_uri
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
@@ -79,9 +81,12 @@ function test_ust_after_start ()
 	./$CURDIR/$BIN_NAME 5 1000000 >/dev/null 2>&1 &
 
 	wait_apps
+
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
+
+plan_tests $NUM_TESTS
 
 start_lttng_sessiond
 start_lttng_relayd "-o $TRACE_PATH"
@@ -103,7 +108,6 @@ do
 	fi
 done
 
-echo ""
 stop_lttng_sessiond
 stop_lttng_relayd
 
