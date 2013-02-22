@@ -21,19 +21,21 @@ TESTDIR=$CURDIR/../../..
 BIN_NAME="gen-events"
 SESSION_NAME="low-throughput"
 EVENT_NAME="tp:slow"
+NUM_TESTS=8
 
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	echo -e "No UST nevents binary detected. Passing."
-	exit 0
+	BAIL_OUT "No UST nevents binary detected."
 fi
 
 TRACE_PATH=$(mktemp -d)
 
 # MUST set TESTDIR before calling those functions
+
+plan_tests $NUM_TESTS
 
 start_lttng_sessiond
 
@@ -65,7 +67,7 @@ do
 		((last_val++))
 		# We expect here a continous value from 1 to 20
 		if [ $last_val -ne $val ]; then
-			echo -n "[-] One minute event failed ($val) "
+			diag "One minute event failed ($val)"
 			out=1
 			break
 		fi
@@ -74,7 +76,7 @@ do
 		if [ $val -ne 10 ]; then
 			# Test 20 minutes counter
 			if [ $val -ne 20 ]; then
-				echo -n "[-] Ten minutes event failed ($val) "
+				diag "Ten minutes event failed ($val)"
 				out=1
 				break
 			fi
@@ -82,20 +84,13 @@ do
 	elif [ $th = '"twenty"' ]; then
 		# Test 20 minutes counter
 		if [ $val -ne 20 ]; then
-			echo -n "[-] Twenty minutes event failed ($val) "
+			diag "Twenty minutes event failed ($val)"
 			out=1
 			break
 		fi
 	fi
 done
 
-if [ $out -eq 0 ]; then
-	echo -n "Trace is coherent... "
-	print_ok
-else
-	print_fail
-fi
+ok $out "Trace validation"
 
 rm -rf $TRACE_PATH
-
-exit $out
