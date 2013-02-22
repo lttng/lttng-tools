@@ -21,14 +21,14 @@ TESTDIR=$CURDIR/../../..
 NR_ITER=100
 SESSION_NAME="per-session"
 EVENT_NAME="ust_gen_nevents:tptest"
+NUM_TESTS=16
 
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/gen-nevents" ]; then
-	echo -e "No UST nevents binary detected. Passing."
-	exit 0
+	BAIL_OUT "No UST nevents binary detected."
 fi
 
 # MUST set TESTDIR before calling those functions
@@ -40,11 +40,10 @@ test_before_apps() {
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
-	# Start test
-	echo -n "Starting application... "
+
 	./$CURDIR/gen-nevents $NR_ITER
-	echo -n "Ended "
-	print_ok
+	ok $? "Start application to trace"
+
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
@@ -56,9 +55,8 @@ test_before_apps() {
 test_after_apps() {
 	local out
 
-	echo -n "Starting application... "
 	./$CURDIR/gen-nevents 100 &
-	print_ok
+	ok $? "Start application to trace"
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
@@ -73,12 +71,12 @@ test_after_apps() {
 
 	out=$(babeltrace $TRACE_PATH | grep $EVENT_NAME | wc -l)
 	if [ $out -eq 0 ]; then
-		echo -n "No event found. Suppose to have at least one... "
-		print_fail
+		fail "Trace validation"
+		diag "No event(s) found. We are supposed to have at least one."
 		out=1
 	else
-		echo -n "Found $out event(s). Coherent... "
-		print_ok
+		pass "Trace validation"
+		diag "Found $out event(s). Coherent."
 		out=0
 	fi
 
@@ -86,11 +84,11 @@ test_after_apps() {
 }
 
 # MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
 
 start_lttng_sessiond
 
-echo ""
-echo "=== Start application BEFORE tracing was started ==="
+diag "Start application BEFORE tracing was started"
 
 TRACE_PATH=$(mktemp -d)
 
@@ -103,8 +101,7 @@ fi
 
 rm -rf $TRACE_PATH
 
-echo ""
-echo "=== Start application AFTER tracing was started ==="
+diag "Start application AFTER tracing was started"
 
 TRACE_PATH=$(mktemp -d)
 
