@@ -36,6 +36,3 @@ health_check_SOURCES = health_check.c $(UTILS)
 health_check_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		     $(top_builddir)/src/common/libcommon.la
 endif
-
-noinst_SCRIPTS = runall
-EXTRA_DIST = runall
