@@ -18,23 +18,25 @@ TEST_DESC="UST tracer - Testing high events throughput"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-NR_ITER=20
+NR_APP=20
 BIN_NAME="gen-events"
 SESSION_NAME="high-throughput"
 EVENT_NAME="tp:tptest"
+NUM_TESTS=9
 
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	echo -e "No UST nevents binary detected. Passing."
-	exit 0
+	BAIL_OUT "No UST nevents binary detected."
 fi
 
 TRACE_PATH=$(mktemp -d)
 
 # MUST set TESTDIR before calling those functions
+
+plan_tests $NUM_TESTS
 
 start_lttng_sessiond
 
@@ -43,16 +45,14 @@ create_lttng_session $SESSION_NAME $TRACE_PATH
 enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_lttng_tracing $SESSION_NAME
 
-for i in `seq 1 $NR_ITER`; do
+for i in `seq 1 $NR_APP`; do
 	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
 done
 
-echo "Waiting for applications to end"
 while [ -n "$(pidof $BIN_NAME)" ]; do
-	echo -n "."
 	sleep 0.5
 done
-echo ""
+pass "Wait for application end"
 
 stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
@@ -76,19 +76,15 @@ do
 done < $TEMP_FILE
 
 let total=$dropped+$traced
-let wanted=$NR_ITER*1000000
+let wanted=$NR_APP*1000000
 
 if [ $wanted -ne $total ]; then
-	echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-	print_fail
-	out=1
+	fail "Trace validation"
+	diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total"
 else
-	echo -n "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-	print_ok
-	out=0
+	pass "Trace validation"
+	diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total"
 fi
 
 rm -rf $TRACE_PATH
 rm $TEMP_FILE $TEMP_FILE_2
-
-exit $out
