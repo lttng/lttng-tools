@@ -24,14 +24,14 @@ SESSION_NAME="health_thread_exit"
 EVENT_NAME="bogus"
 HEALTH_CHECK_BIN="health_check"
 SESSIOND_PRELOAD=".libs/libhealthexit.so"
+NUM_TESTS=12
 
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
-	echo -e "libhealthexit.so not available for this test. Skipping."
-	exit 0
+	BAIL_OUT "libhealthexit.so not available for this test."
 fi
 
 function test_thread_exit
@@ -39,8 +39,7 @@ function test_thread_exit
 	test_thread_exit_name="$1"
 	test_thread_exit_code="$2"
 
-	echo ""
-	echo -e "=== Testing health failure with ${test_thread_exit_name}"
+	diag "Test health failure with ${test_thread_exit_name}"
 
 	# Activate testpoints
 	export LTTNG_TESTPOINT_ENABLE=1
@@ -59,8 +58,6 @@ function test_thread_exit
 	# Check initial health status
 	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
 
-	echo -n "Validating thread ${test_thread_exit_name} failure... "
-
 	# Wait
 	sleep 25
 
@@ -70,24 +67,25 @@ function test_thread_exit
 	health_check_exit_code=$?
 
 	if [ $health_check_exit_code -eq $test_thread_exit_code ]; then
-		print_ok
+		pass "Validate thread ${test_thread_exit_name} failure"
 		stop_lttng_sessiond
 	else
-		print_fail
-		echo -e "Health returned: $health_check_exit_code\n"
+		fail "Validate thread ${test_thread_exit_name} failure"
+
+		diag "Health returned: $health_check_exit_code\n"
 
 		stop_lttng_sessiond
 		return 1
 	fi
 }
+plan_tests $NUM_TESTS
 
 THREAD=("LTTNG_THREAD_MANAGE_CLIENTS"
 	"LTTNG_THREAD_MANAGE_APPS"
-	"LTTNG_THREAD_REG_APPS"
-	"LTTNG_THREAD_MANAGE_KERNEL")
+	"LTTNG_THREAD_REG_APPS")
 
 # Exit code value to indicate specific thread failure
-EXIT_CODE=(1 2 4 8)
+EXIT_CODE=(1 2 4)
 
 THREAD_COUNT=${#THREAD[@]}
 i=0
@@ -101,5 +99,18 @@ while [ "$i" -lt "$THREAD_COUNT" ]; do
 	let "i++"
 done
 
-# Special case manage consumer, need to spawn consumer via commands.
+# The manage kernel thread is only spawned if we are root
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping LTTNG_THREAD_MANAGE_KERNEL tests." "3" ||
+{
+	test_thread_exit "LTTNG_THREAD_MANAGE_KERNEL" "8"
+}
+
+
+# TODO: Special case manage consumer, need to spawn consumer via commands.
 #"LTTNG_THREAD_MANAGE_CONSUMER"
