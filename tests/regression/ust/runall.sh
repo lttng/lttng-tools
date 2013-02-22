@@ -2,9 +2,9 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/run-ust-global-tests.sh $DIR/nprocesses/run \
-		$DIR/high-throughput/run $DIR/before-after/run \
-		$DIR/multi-session/run $DIR/overlap/run )
+tests=( $DIR/run-ust-global-tests.sh $DIR/nprocesses/test_nprocesses \
+		$DIR/high-throughput/test_high_throughput $DIR/before-after/test_before_after \
+		$DIR/multi-session/test_multi_session $DIR/overlap/test_overlap )
 
 # $DIR/low-throughput/run --> DEACTIVATED.
 # Use only for release. This test last 20 minutes

@@ -12,5 +12,5 @@ noinst_PROGRAMS = gen-events
 gen_events_SOURCES = main.c tp.c tp.h
 gen_events_LDADD = -llttng-ust
 
-noinst_SCRIPTS = run
-EXTRA_DIST = run
+noinst_SCRIPTS = test_high_throughput
+EXTRA_DIST = test_high_throughput

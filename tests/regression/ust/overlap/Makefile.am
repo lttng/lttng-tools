@@ -1,4 +1,4 @@
 SUBDIRS = demo
 
-noinst_SCRIPTS = run
-EXTRA_DIST = run overlap.sh
+noinst_SCRIPTS = test_overlap
+EXTRA_DIST = test_overlap overlap.sh
