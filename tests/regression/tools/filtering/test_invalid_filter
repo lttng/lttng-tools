@@ -24,6 +24,7 @@ SESSION_NAME="filter-invalid"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
+NUM_TESTS=119
 
 source $TESTDIR/utils/utils.sh
 
@@ -34,16 +35,15 @@ function enable_ust_lttng_event_filter
 	sess_name="$1"
 	event_name="$2"
 	filter="$3"
-	echo -n "Enabling lttng event with filtering and invalid filter "
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
 
 	# Enable must fail
 	if [ $? -eq 0 ]; then
-		print_fail
+		fail "Enable lttng event with filtering and invalid filter"
 		return 1
 	else
-		print_ok
+		pass "Enable lttng event with filtering and invalid filter"
 		return 0
 	fi
 }
@@ -52,9 +52,8 @@ function test_invalid_filter
 {
 	test_invalid_filter="$1"
 
-	echo ""
-	echo -e "=== Testing filter expression with invalid filter"
-	echo -e "Filter: $test_invalid_filter"
+	diag "Test filter expression with invalid filter"
+	diag "Filter: $test_invalid_filter"
 
 	# Create session
 	create_lttng_session $SESSION_NAME $TRACE_PATH
@@ -72,8 +71,7 @@ function test_bytecode_limit
 	# Generate a huge bytecode with some perl-fu
 	BYTECODE_LIMIT=`perl -e 'print "intfield" . " && 1" x5460'`
 
-	echo ""
-	echo -e "=== Testing filter bytecode limits (64KiB)"
+	diag "Test filter bytecode limits (64KiB)"
 
 	# Create session
 	create_lttng_session $SESSION_NAME $TRACE_PATH
@@ -84,6 +82,8 @@ function test_bytecode_limit
 	# Destroy session
 	destroy_lttng_session $SESSION_NAME
 }
+
+plan_tests $NUM_TESTS
 
 IFS=$'\n'
 INVALID_FILTERS=(

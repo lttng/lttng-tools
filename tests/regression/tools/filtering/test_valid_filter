@@ -25,14 +25,14 @@ STATS_BIN="babelstats.pl"
 SESSION_NAME="valid_filter"
 EVENT_NAME="tp:tptest"
 NR_ITER=100
+NUM_TESTS=198
 
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
 
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	echo -e "No UST nevents binary detected. Passing."
-	exit 0
+	BAIL_OUT "No UST nevents binary detected."
 fi
 
 function enable_ust_lttng_event_filter()
@@ -40,17 +40,10 @@ function enable_ust_lttng_event_filter()
 	sess_name="$1"
 	event_name="$2"
 	filter="$3"
-	echo -n "Enabling lttng event with filtering "
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --filter "$filter" 2>&1 >/dev/null
 
-	if [ $? -eq 0 ]; then
-		print_ok
-		return 0
-	else
-		print_fail
-		return 1
-	fi
+	ok $? "Enable lttng event with filtering"
 }
 
 function run_apps
@@ -60,12 +53,10 @@ function run_apps
 
 function wait_apps
 {
-	echo "Waiting for applications to end"
 	while [ -n "$(pidof $BIN_NAME)" ]; do
-		echo -n "."
 		sleep 1
 	done
-	echo ""
+	pass "Wait for application end"
 }
 
 function test_valid_filter
@@ -73,8 +64,7 @@ function test_valid_filter
 	filter="$1"
 	validator="$2"
 
-	echo ""
-	echo -e "=== Testing valid filter: $1"
+	diag "Test valid filter: $1"
 
 	trace_path=$(mktemp -d)
 
@@ -93,21 +83,15 @@ function test_valid_filter
 	# Destroy session
 	destroy_lttng_session $SESSION_NAME
 
-	echo -n "Validating filter output "
 	stats=`babeltrace $trace_path | $CURDIR/$STATS_BIN --tracepoint $EVENT_NAME`
 
 	rm -rf $trace_path
 
 	$validator "$stats"
 
-	if [ $? -eq 0 ]; then
-		print_ok
-#		rm -rf $trace_path
-		return 0
-	else
-		print_fail
-		return 1
-	fi
+	ok $? "Validate trace filter output"
+
+	rm -rf $trace_path
 }
 
 function validate_min_max
@@ -326,6 +310,8 @@ function validator_true_statement
 
 	return $status
 }
+
+plan_tests $NUM_TESTS
 
 IFS=$'\n'
 

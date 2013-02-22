@@ -24,7 +24,7 @@ SESSION_NAME="filter-unsupported-ops"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/unsupported-ops-enable"
 TRACE_PATH=$(mktemp -d)
-
+NUM_TESTS=46
 source $TESTDIR/utils/utils.sh
 
 print_test_banner "$TEST_DESC"
@@ -35,16 +35,15 @@ function enable_ust_lttng_event_filter_unsupported
 	event_name=$2
 	filter=$3
 
-	echo -n "Enabling lttng event with filtering and unsupported operator "
 	enable_cmd="$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event"
 	$enable_cmd $event_name -s $sess_name -u --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
 
 	# Enable must fail
 	if [ $? -eq 0 ]; then
-		print_fail
+		fail "Enable lttng event with filtering and unsupported operator"
 		return 1
 	else
-		print_ok
+		pass "Enable lttng event with filtering and unsupported operator"
 		return 0
 	fi
 }
@@ -54,8 +53,7 @@ function test_unsupported_op
 	test_op_str=$1
 	test_op_tkn=$2
 
-	echo ""
-	echo -e "=== Testing filter expression with unsupported operator $test_op_str ($test_op_tkn)"
+	diag "Test filter expression with unsupported operator $test_op_str ($test_op_tkn)"
 
 	# Create session
 	create_lttng_session $SESSION_NAME $TRACE_PATH
@@ -71,20 +69,22 @@ function test_unsupported_op
 	enable_ust_lttng_event_filter_unsupported $SESSION_NAME $EVENT_NAME "$TEST_FILTER"
 
 	# Test stderr for unsupported operator
-	echo -n "Unsupported operator test $test_op_str ($test_op_tkn) "
+
 	grep -i -q "not[[:space:]]\+supported" $ENABLE_EVENT_STDERR
 
 	if [ $? -eq 1 ]; then
-		print_fail
+		fail "Unsupported operator test $test_op_str ($test_op_tkn)"
 		return 1
 	else
-		print_ok
+		pass "Unsupported operator test $test_op_str ($test_op_tkn)"
 	fi
 
 	# Destroy session
 	destroy_lttng_session $SESSION_NAME
 	return 0
 }
+
+plan_tests $NUM_TESTS
 
 # Unsupported operators
 OP_STR=("MUL" "DIV" "MOD" "PLUS" "MINUS" "LSHIFT" "RSHIFT"
