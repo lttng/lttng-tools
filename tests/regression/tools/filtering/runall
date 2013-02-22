@@ -2,7 +2,7 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/unsupported-ops $DIR/invalid-filters $DIR/valid-filters )
+tests=( $DIR/test_unsupported_op $DIR/test_invalid_filter $DIR/test_valid_filter )
 exit_code=0
 
 function start_tests ()

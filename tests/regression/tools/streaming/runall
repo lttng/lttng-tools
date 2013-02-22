@@ -2,7 +2,7 @@
 
 DIR=$(dirname $0)
 
-tests=( $DIR/unit_tests $DIR/run-kernel $DIR/run-ust )
+tests=( $DIR/test_uri_switch $DIR/test_kernel $DIR/test_ust )
 exit_code=0
 
 function start_tests ()
