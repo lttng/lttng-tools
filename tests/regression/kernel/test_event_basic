@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Kernel tracer - Basic event"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+NUM_TESTS=12
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+function test_event_basic()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_event_basic"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_event $SESSION_NAME "sched_switch"
+	lttng_enable_kernel_event $SESSION_NAME "sched_process_exit"
+	lttng_enable_kernel_event $SESSION_NAME "sched_process_free"
+
+	start_lttng_tracing
+	stop_lttng_tracing
+
+	validate_trace "sched_switch" $TRACE_PATH
+	validate_trace "sched_process_exit" $TRACE_PATH
+	validate_trace "sched_process_free" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_sessiond
+
+	test_event_basic
+
+	stop_lttng_sessiond
+}
