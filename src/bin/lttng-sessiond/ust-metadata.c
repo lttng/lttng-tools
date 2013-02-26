@@ -580,8 +580,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"	tracer_name = \"lttng-ust\";\n"
 		"	tracer_major = %u;\n"
 		"	tracer_minor = %u;\n"
-		"	tracer_patchlevel = %u;\n"
-		"};\n\n",
+		"	tracer_patchlevel = %u;\n",
 		hostname,
 		app->version.major,
 		app->version.minor,
@@ -597,8 +596,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	if (app) {
 		ret = lttng_metadata_printf(session,
 			"	vpid = %d;\n"
-			"	procname = \"%s\";\n"
-			"};\n\n",
+			"	procname = \"%s\";\n",
 			(int) app->pid,
 			app->name
 			);

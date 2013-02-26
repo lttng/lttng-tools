@@ -1244,41 +1244,25 @@ error_testpoint:
 }
 
 /*
- * Send the application sockets (cmd and notify) to the respective threads.
- * This is called from the dispatch UST registration thread once all sockets
- * are set for the application.
+ * Send a socket to a thread This is called from the dispatch UST registration
+ * thread once all sockets are set for the application.
  *
  * On success, return 0 else a negative value being the errno message of the
  * write().
  */
-static int send_app_sockets_to_threads(struct ust_app *app)
+static int send_socket_to_thread(int fd, int sock)
 {
 	int ret;
 
-	assert(app);
 	/* Sockets MUST be set or else this should not have been called. */
-	assert(app->sock >= 0);
-	assert(app->notify_sock >= 0);
-	assert(apps_cmd_pipe[1] >= 0);
-	assert(apps_cmd_notify_pipe[1] >= 0);
+	assert(fd >= 0);
+	assert(sock >= 0);
 
 	do {
-		ret = write(apps_cmd_pipe[1], &app->sock, sizeof(app->sock));
+		ret = write(fd, &sock, sizeof(sock));
 	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != sizeof(app->sock)) {
-		PERROR("write apps cmd pipe %d", apps_cmd_pipe[1]);
-		if (ret < 0) {
-			ret = -errno;
-		}
-		goto error;
-	}
-
-	do {
-		ret = write(apps_cmd_notify_pipe[1], &app->notify_sock,
-				sizeof(app->notify_sock));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != sizeof(app->notify_sock)) {
-		PERROR("write apps notify cmd pipe %d", apps_cmd_notify_pipe[1]);
+	if (ret < 0 || ret != sizeof(sock)) {
+		PERROR("write apps pipe %d", fd);
 		if (ret < 0) {
 			ret = -errno;
 		}
@@ -1303,7 +1287,7 @@ static void *thread_dispatch_ust_registration(void *data)
 	struct {
 		struct ust_app *app;
 		struct cds_list_head head;
-	} *wait_node = NULL;
+	} *wait_node = NULL, *tmp_wait_node;
 
 	CDS_LIST_HEAD(wait_queue);
 
@@ -1349,6 +1333,8 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
+					lttng_fd_put(1, LTTNG_FD_APPS);
+					free(wait_node);
 					continue;
 				}
 				/*
@@ -1368,7 +1354,8 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * Look for the application in the local wait queue and set the
 				 * notify socket if found.
 				 */
-				cds_list_for_each_entry(wait_node, &wait_queue, head) {
+				cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
+						&wait_queue, head) {
 					if (wait_node->app->pid == ust_cmd->reg_msg.pid) {
 						wait_node->app->notify_sock = ust_cmd->sock;
 						cds_list_del(&wait_node->head);
@@ -1381,10 +1368,6 @@ static void *thread_dispatch_ust_registration(void *data)
 			}
 
 			if (app) {
-				ret = send_app_sockets_to_threads(app);
-				if (ret < 0) {
-					goto error;
-				}
 				/*
 				 * @session_lock_list
 				 *
@@ -1394,29 +1377,52 @@ static void *thread_dispatch_ust_registration(void *data)
 				 */
 				session_lock_list();
 				rcu_read_lock();
+
 				/*
 				 * Add application to the global hash table. This needs to be
 				 * done before the update to the UST registry can locate the
 				 * application.
 				 */
 				ust_app_add(app);
-				/*
-				 * Get app version.
-				 */
-				ret = ust_app_version(app);
-				if (ret) {
-					ERR("Unable to get app version");
+
+				/* Set app version. This call will print an error if needed. */
+				(void) ust_app_version(app);
+
+				/* Send notify socket through the notify pipe. */
+				ret = send_socket_to_thread(apps_cmd_notify_pipe[1],
+						app->notify_sock);
+				if (ret < 0) {
+					rcu_read_unlock();
+					session_unlock_list();
+					/* No notify thread, stop the UST tracing. */
+					goto error;
 				}
+
 				/*
 				 * Update newly registered application with the tracing
 				 * registry info already enabled information.
 				 */
 				update_ust_app(app->sock);
-				ret = ust_app_register_done(app->sock);
+
+				/*
+				 * Don't care about return value. Let the manage apps threads
+				 * handle app unregistration upon socket close.
+				 */
+				(void) ust_app_register_done(app->sock);
+
+				/*
+				 * Even if the application socket has been closed, send the app
+				 * to the thread and unregistration will take place at that
+				 * place.
+				 */
+				ret = send_socket_to_thread(apps_cmd_pipe[1], app->sock);
 				if (ret < 0) {
-					/* Remove application from the registry. */
-					ust_app_unregister(app->sock);
+					rcu_read_unlock();
+					session_unlock_list();
+					/* No apps. thread, stop the UST tracing. */
+					goto error;
 				}
+
 				rcu_read_unlock();
 				session_unlock_list();
 			} else {
@@ -1425,6 +1431,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				if (ret < 0) {
 					PERROR("close ust_cmd sock");
 				}
+				lttng_fd_put(1, LTTNG_FD_APPS);
 			}
 			free(ust_cmd);
 		} while (node != NULL);
@@ -1434,6 +1441,13 @@ static void *thread_dispatch_ust_registration(void *data)
 	}
 
 error:
+	/* Clean up wait queue. */
+	cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
+			&wait_queue, head) {
+		cds_list_del(&wait_node->head);
+		free(wait_node);
+	}
+
 	DBG("Dispatch thread dying");
 	return NULL;
 }
@@ -1561,6 +1575,7 @@ static void *thread_registration_apps(void *data)
 						sock = -1;
 						continue;
 					}
+
 					health_code_update();
 					ret = ust_app_recv_registration(sock, &ust_cmd->reg_msg);
 					if (ret < 0) {

@@ -73,6 +73,10 @@ static struct consumer_socket *find_consumer_socket_by_bitness(int bits,
 	}
 
 	socket = consumer_find_socket(consumer_fd, consumer);
+	if (!socket) {
+		ERR("Consumer socket fd %d not found in consumer obj %p",
+				consumer_fd, consumer);
+	}
 
 end:
 	return socket;
@@ -162,6 +166,28 @@ static void add_unique_ust_app_event(struct ust_app_channel *ua_chan,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
 			ht_match_ust_app_event, &key, &event->node.node);
 	assert(node_ptr == &event->node.node);
+}
+
+/*
+ * Close the notify socket from the given RCU head object. This MUST be called
+ * through a call_rcu().
+ */
+static void close_notify_sock_rcu(struct rcu_head *head)
+{
+	int ret;
+	struct ust_app_notify_sock_obj *obj =
+		caa_container_of(head, struct ust_app_notify_sock_obj, head);
+
+	/* Must have a valid fd here. */
+	assert(obj->fd >= 0);
+
+	ret = close(obj->fd);
+	if (ret) {
+		ERR("close notify sock %d RCU", obj->fd);
+	}
+	lttng_fd_put(LTTNG_FD_APPS, 1);
+
+	free(obj);
 }
 
 /*
@@ -293,6 +319,146 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 }
 
 /*
+ * For a given application and session, push metadata to consumer. The session
+ * lock MUST be acquired here before calling this.
+ *
+ * Return 0 on success else a negative error.
+ */
+static int push_metadata(struct ust_app *app, struct ust_app_session *ua_sess)
+{
+	int ret;
+	char *metadata_str = NULL;
+	size_t len, offset;
+	struct consumer_socket *socket;
+
+	assert(app);
+	assert(ua_sess);
+
+	if (!ua_sess->consumer || !ua_sess->metadata) {
+		/* No consumer means no stream associated so just return gracefully. */
+		ret = 0;
+		goto end;
+	}
+
+	rcu_read_lock();
+
+	/* Get consumer socket to use to push the metadata.*/
+	socket = find_consumer_socket_by_bitness(app->bits_per_long,
+			ua_sess->consumer);
+	if (!socket) {
+		ret = -1;
+		goto error_rcu_unlock;
+	}
+
+	/*
+	 * TODO: Currently, we hold the socket lock around sampling of the next
+	 * metadata segment to ensure we send metadata over the consumer socket in
+	 * the correct order. This makes the registry lock nest inside the socket
+	 * lock.
+	 *
+	 * Please note that this is a temporary measure: we should move this lock
+	 * back into ust_consumer_push_metadata() when the consumer gets the
+	 * ability to reorder the metadata it receives.
+	 */
+	pthread_mutex_lock(socket->lock);
+	pthread_mutex_lock(&ua_sess->registry.lock);
+
+	offset = ua_sess->registry.metadata_len_sent;
+	len = ua_sess->registry.metadata_len - ua_sess->registry.metadata_len_sent;
+	if (len == 0) {
+		DBG3("No metadata to push for session id %d", ua_sess->id);
+		ret = 0;
+		goto error_reg_unlock;
+	}
+	assert(len > 0);
+
+	/* Allocate only what we have to send. */
+	metadata_str = zmalloc(len);
+	if (!metadata_str) {
+		PERROR("zmalloc ust app metadata string");
+		ret = -ENOMEM;
+		goto error_reg_unlock;
+	}
+	/* Copy what we haven't send out. */
+	memcpy(metadata_str, ua_sess->registry.metadata + offset, len);
+
+	pthread_mutex_unlock(&ua_sess->registry.lock);
+
+	ret = ust_consumer_push_metadata(socket, ua_sess, metadata_str, len,
+			offset);
+	if (ret < 0) {
+		pthread_mutex_unlock(socket->lock);
+		goto error_rcu_unlock;
+	}
+
+	/* Update len sent of the registry. */
+	pthread_mutex_lock(&ua_sess->registry.lock);
+	ua_sess->registry.metadata_len_sent += len;
+	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_unlock(socket->lock);
+
+	rcu_read_unlock();
+	free(metadata_str);
+	return 0;
+
+error_reg_unlock:
+	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_unlock(socket->lock);
+error_rcu_unlock:
+	rcu_read_unlock();
+	free(metadata_str);
+end:
+	return ret;
+}
+
+/*
+ * Send to the consumer a close metadata command for the given session. Once
+ * done, the metadata channel is deleted and the session metadata pointer is
+ * nullified. The session lock MUST be acquired here unless the application is
+ * in the destroy path.
+ *
+ * Return 0 on success else a negative value.
+ */
+static int close_metadata(struct ust_app *app, struct ust_app_session *ua_sess)
+{
+	int ret;
+	struct consumer_socket *socket;
+
+	assert(app);
+	assert(ua_sess);
+
+	/* Ignore if no metadata. Valid since it can be called on unregister. */
+	if (!ua_sess->metadata) {
+		ret = 0;
+		goto error;
+	}
+
+	rcu_read_lock();
+
+	/* Get consumer socket to use to push the metadata.*/
+	socket = find_consumer_socket_by_bitness(app->bits_per_long,
+			ua_sess->consumer);
+	if (!socket) {
+		ret = -1;
+		goto error_rcu_unlock;
+	}
+
+	ret = ust_consumer_close_metadata(socket, ua_sess->metadata);
+	if (ret < 0) {
+		goto error_rcu_unlock;
+	}
+
+error_rcu_unlock:
+	/* Destroy metadata on our side since we must not use it anymore. */
+	delete_ust_app_channel(-1, ua_sess->metadata, app);
+	ua_sess->metadata = NULL;
+
+	rcu_read_unlock();
+error:
+	return ret;
+}
+
+/*
  * Delete ust app session safely. RCU read lock must be held before calling
  * this function.
  */
@@ -304,8 +470,14 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	struct lttng_ht_iter iter;
 	struct ust_app_channel *ua_chan;
 
+	assert(ua_sess);
+
 	if (ua_sess->metadata) {
-		delete_ust_app_channel(sock, ua_sess->metadata, app);
+		/* Push metadata for application before freeing the application. */
+		(void) push_metadata(app, ua_sess);
+
+		/* And ask to close it for this session. */
+		(void) close_metadata(app, ua_sess);
 	}
 
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
@@ -888,8 +1060,8 @@ error:
 }
 
 /*
- * Create the specified channel onto the UST tracer for a UST session.
- * Called with UST app session lock held.
+ * Create the specified channel onto the UST tracer for a UST session. This
+ * MUST be called with UST app session lock held.
  *
  * Return 0 on success. On error, a negative value is returned.
  */
@@ -907,6 +1079,7 @@ static int create_ust_channel(struct ust_app *app,
 	assert(ua_chan);
 	assert(consumer);
 
+	rcu_read_lock();
 	health_code_update();
 
 	/* Get the right consumer socket for the application. */
@@ -929,7 +1102,7 @@ static int create_ust_channel(struct ust_app *app,
 
 	/*
 	 * Compute the number of fd needed before receiving them. It must be 2 per
-	 * stream.
+	 * stream (2 being the default value here).
 	 */
 	nb_fd = DEFAULT_UST_STREAM_FD_NUM * ua_chan->expected_stream_count;
 
@@ -956,6 +1129,8 @@ static int create_ust_channel(struct ust_app *app,
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update();
 
 	/* Send all streams to application. */
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
@@ -986,6 +1161,7 @@ static int create_ust_channel(struct ust_app *app,
 		}
 	}
 
+	rcu_read_unlock();
 	return 0;
 
 error_destroy:
@@ -1000,6 +1176,7 @@ error_fd_get:
 	(void) ust_consumer_destroy_channel(socket, ua_chan);
 error:
 	health_code_update();
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -1323,10 +1500,19 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 		DBG2("UST app session created successfully with handle %d", ret);
 	}
 
+	/*
+	 * Assign consumer if not already set. For one application, there is only
+	 * one possible consumer has of now.
+	 */
+	if (!ua_sess->consumer) {
+		ua_sess->consumer = usess->consumer;
+	}
+
 	*ua_sess_ptr = ua_sess;
 	if (is_created) {
 		*is_created = created;
 	}
+
 	/* Everything went well. */
 	ret = 0;
 
@@ -1590,9 +1776,11 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 {
 	int ret = 0;
 	struct ust_app_channel *metadata;
+	struct consumer_socket *socket;
 
 	assert(ua_sess);
 	assert(app);
+	assert(consumer);
 
 	if (ua_sess->metadata) {
 		/* Already exist. Return success. */
@@ -1616,19 +1804,43 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	metadata->attr.output = LTTNG_UST_MMAP;
 	metadata->attr.type = LTTNG_UST_CHAN_METADATA;
 
-	ret = create_ust_channel(app, ua_sess, metadata, consumer);
+	/* Get the right consumer socket for the application. */
+	socket = find_consumer_socket_by_bitness(app->bits_per_long, consumer);
+	if (!socket) {
+		ret = -EINVAL;
+		goto error_consumer;
+	}
+
+	/*
+	 * Ask the metadata channel creation to the consumer. The metadata object
+	 * will be created by the consumer and kept their. However, the stream is
+	 * never added or monitored until we do a first push metadata to the
+	 * consumer.
+	 */
+	ret = ust_consumer_ask_channel(ua_sess, metadata, consumer, socket);
 	if (ret < 0) {
-		goto error_create;
+		goto error_consumer;
+	}
+
+	/*
+	 * The setup command will make the metadata stream be sent to the relayd,
+	 * if applicable, and the thread managing the metadatas. This is important
+	 * because after this point, if an error occurs, the only way the stream
+	 * can be deleted is to be monitored in the consumer.
+	 */
+	ret = ust_consumer_setup_metadata(socket, metadata);
+	if (ret < 0) {
+		goto error_consumer;
 	}
 
 	ua_sess->metadata = metadata;
 
-	DBG2("UST metadata opened for app pid %d", app->pid);
+	DBG2("UST metadata created for app pid %d", app->pid);
 
 end:
 	return 0;
-error_create:
-	delete_ust_app_channel(metadata->is_sent ? app->sock : -1, metadata, app);
+error_consumer:
+	delete_ust_app_channel(-1, metadata, app);
 error:
 	return ret;
 }
@@ -1642,10 +1854,12 @@ struct lttng_ht *ust_app_get_ht(void)
 }
 
 /*
- * Return ust app pointer or NULL if not found.
+ * Return ust app pointer or NULL if not found. RCU read side lock MUST be
+ * acquired before calling this function.
  */
 struct ust_app *ust_app_find_by_pid(pid_t pid)
 {
+	struct ust_app *app = NULL;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
@@ -1658,13 +1872,19 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 
 	DBG2("Found UST app by pid %d", pid);
 
-	return caa_container_of(node, struct ust_app, pid_n);
+	app = caa_container_of(node, struct ust_app, pid_n);
 
 error:
-	rcu_read_unlock();
-	return NULL;
+	return app;
 }
 
+/*
+ * Allocate and init an UST app object using the registration information and
+ * the command socket. This is called when the command socket connects to the
+ * session daemon.
+ *
+ * The object is returned on success or else NULL.
+ */
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 {
 	struct ust_app *lta = NULL;
@@ -1693,7 +1913,6 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->ppid = msg->ppid;
 	lta->uid = msg->uid;
 	lta->gid = msg->gid;
-	lta->compatible = 0;  /* Not compatible until proven */
 
 	lta->bits_per_long = msg->bits_per_long;
 	lta->uint8_t_alignment = msg->uint8_t_alignment;
@@ -1705,11 +1924,19 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 
 	lta->v_major = msg->major;
 	lta->v_minor = msg->minor;
-	strncpy(lta->name, msg->name, sizeof(lta->name));
-	lta->name[LTTNG_UST_ABI_PROCNAME_LEN] = '\0';
 	lta->sessions = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	lta->ust_objd = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	lta->notify_sock = -1;
+
+	/* Copy name and make sure it's NULL terminated. */
+	strncpy(lta->name, msg->name, sizeof(lta->name));
+	lta->name[UST_APP_PROCNAME_LEN] = '\0';
+
+	/*
+	 * Before this can be called, when receiving the registration information,
+	 * the application compatibility is checked. So, at this point, the
+	 * application can work with this session daemon.
+	 */
 	lta->compatible = 1;
 
 	lta->pid = msg->pid;
@@ -1723,6 +1950,9 @@ error:
 	return lta;
 }
 
+/*
+ * For a given application object, add it to every hash table.
+ */
 void ust_app_add(struct ust_app *app)
 {
 	assert(app);
@@ -1748,16 +1978,35 @@ void ust_app_add(struct ust_app *app)
 	lttng_ht_add_unique_ulong(ust_app_ht_by_notify_sock, &app->notify_sock_n);
 
 	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock:%d name:%s "
-			"(version %d.%d)", app->pid, app->ppid, app->uid, app->gid,
-			app->sock, app->name, app->v_major, app->v_minor);
+			"notify_sock:%d (version %d.%d)", app->pid, app->ppid, app->uid,
+			app->gid, app->sock, app->name, app->notify_sock, app->v_major,
+			app->v_minor);
 
 	rcu_read_unlock();
 }
 
+/*
+ * Set the application version into the object.
+ *
+ * Return 0 on success else a negative value either an errno code or a
+ * LTTng-UST error code.
+ */
 int ust_app_version(struct ust_app *app)
 {
+	int ret;
+
 	assert(app);
-	return ustctl_tracer_version(app->sock, &app->version);
+
+	ret = ustctl_tracer_version(app->sock, &app->version);
+	if (ret < 0) {
+		if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+			ERR("UST app %d verson failed with ret %d", app->sock, ret);
+		} else {
+			DBG3("UST app %d verion failed. Application is dead", app->sock);
+		}
+	}
+
+	return ret;
 }
 
 /*
@@ -1788,9 +2037,14 @@ void ust_app_unregister(int sock)
 	ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
 	assert(!ret);
 
-	/* Remove application from notify hash table */
+	/*
+	 * Remove application from notify hash table. The thread handling the
+	 * notify socket could have deleted the node so ignore on error because
+	 * either way it's valid. The close of that socket is handled by the other
+	 * thread.
+	 */
 	iter.iter.node = &lta->notify_sock_n.node;
-	ret = lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
+	(void) lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
 
 	/*
 	 * Ignore return value since the node might have been removed before by an
@@ -1817,7 +2071,24 @@ void ust_app_unregister(int sock)
 		 * Add session to list for teardown. This is safe since at this point we
 		 * are the only one using this list.
 		 */
+		pthread_mutex_lock(&ua_sess->lock);
+
+		/*
+		 * Normally, this is done in the delete session process which is
+		 * executed in the call rcu below. However, upon registration we can't
+		 * afford to wait for the grace period before pushing data or else the
+		 * data pending feature can race between the unregistration and stop
+		 * command where the data pending command is sent *before* the grace
+		 * period ended.
+		 *
+		 * The close metadata below nullifies the metadata pointer in the
+		 * session so the delete session will NOT push/close a second time.
+		 */
+		(void) push_metadata(lta, ua_sess);
+		(void) close_metadata(lta, ua_sess);
+
 		cds_list_add(&ua_sess->teardown_node, &lta->teardown_head);
+		pthread_mutex_unlock(&ua_sess->lock);
 	}
 
 	/* Free memory */
@@ -2060,9 +2331,17 @@ void ust_app_clean_list(void)
 		assert(!ret);
 	}
 
+	/* Cleanup notify socket hash table */
+	cds_lfht_for_each_entry(ust_app_ht_by_notify_sock->ht, &iter.iter, app,
+			notify_sock_n.node) {
+		ret = lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
+		assert(!ret);
+	}
+
 	/* Destroy is done only when the ht is empty */
 	lttng_ht_destroy(ust_app_ht);
 	lttng_ht_destroy(ust_app_ht_by_sock);
+	lttng_ht_destroy(ust_app_ht_by_notify_sock);
 
 	rcu_read_unlock();
 }
@@ -2625,13 +2904,15 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	rcu_read_lock();
 
 	if (!app->compatible) {
-		goto end;
+		goto end_no_session;
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
-		goto end;
+		goto end_no_session;
 	}
+
+	pthread_mutex_lock(&ua_sess->lock);
 
 	/*
 	 * If started = 0, it means that stop trace has been called for a session
@@ -2682,7 +2963,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				DBG3("UST app failed to flush %s. Application is dead.",
 						ua_chan->name);
 				/* No need to continue. */
-				goto end;
+				break;
 			}
 			/* Continuing flushing all buffers */
 			continue;
@@ -2691,25 +2972,19 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	health_code_update();
 
-	assert(ua_sess->metadata->is_sent);
-	/* Flush all buffers before stopping */
-	ret = ustctl_sock_flush_buffer(app->sock, ua_sess->metadata->obj);
+	ret = push_metadata(app, ua_sess);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app PID %d metadata flush failed with ret %d", app->pid,
-					ret);
-			goto error_rcu_unlock;
-		} else {
-			DBG3("UST app failed to flush metadata. Application is dead.");
-		}
+		goto error_rcu_unlock;
 	}
 
-end:
+	pthread_mutex_unlock(&ua_sess->lock);
+end_no_session:
 	rcu_read_unlock();
 	health_code_update();
 	return 0;
 
 error_rcu_unlock:
+	pthread_mutex_unlock(&ua_sess->lock);
 	rcu_read_unlock();
 	health_code_update();
 	return -1;
@@ -2752,7 +3027,6 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		ERR("UST app wait quiescent failed for app pid %d ret %d",
 				app->pid, ret);
 	}
-
 end:
 	rcu_read_unlock();
 	health_code_update();
@@ -2801,6 +3075,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		ret = ust_app_stop_trace(usess, app);
 		if (ret < 0) {
+			ERR("UST app stop trace failed with ret %d", ret);
 			/* Continue to next apps even on error */
 			continue;
 		}
@@ -2860,7 +3135,11 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 
 	app = find_app_by_sock(sock);
 	if (app == NULL) {
-		ERR("Failed to find app sock %d", sock);
+		/*
+		 * Application can be unregistered before so this is possible hence
+		 * simply stopping the update.
+		 */
+		DBG3("UST app update failed to find app sock %d", sock);
 		goto error;
 	}
 
@@ -3212,6 +3491,11 @@ error:
 	return ret;
 }
 
+/*
+ * Return a ust app channel object using the application object and the channel
+ * object descriptor has a key. If not found, NULL is returned. A RCU read side
+ * lock MUST be acquired before calling this function.
+ */
 static struct ust_app_channel *find_channel_by_objd(struct ust_app *app,
 		int objd)
 {
@@ -3234,6 +3518,14 @@ error:
 	return ua_chan;
 }
 
+/*
+ * Reply to a register channel notification from an application on the notify
+ * socket. The channel metadata is also created.
+ *
+ * The session UST registry lock is acquired in this function.
+ *
+ * On success 0 is returned else a negative value.
+ */
 static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 		size_t nr_fields, struct ustctl_field *fields)
 {
@@ -3248,7 +3540,12 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
-	assert(app);
+	if (!app) {
+		DBG("Application socket %d is being teardown. Abort event notify",
+				sock);
+		ret = 0;
+		goto error_rcu_unlock;
+	}
 
 	/* Lookup channel by UST object descriptor. Should always be found. */
 	ua_chan = find_channel_by_objd(app, cobjd);
@@ -3311,10 +3608,20 @@ reply:
 
 error:
 	pthread_mutex_unlock(&ua_sess->registry.lock);
+error_rcu_unlock:
 	rcu_read_unlock();
 	return ret;
 }
 
+/*
+ * Add event to the UST channel registry. When the event is added to the
+ * registry, the metadata is also created. Once done, this replies to the
+ * application with the appropriate error code.
+ *
+ * The session UST registry lock is acquired in the function.
+ *
+ * On success 0 is returned else a negative value.
+ */
 static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
 		char *model_emf_uri)
@@ -3329,7 +3636,12 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
-	assert(app);
+	if (!app) {
+		DBG("Application socket %d is being teardown. Abort event notify",
+				sock);
+		ret = 0;
+		goto error_rcu_unlock;
+	}
 
 	/* Lookup channel by UST object descriptor. Should always be found. */
 	ua_chan = find_channel_by_objd(app, cobjd);
@@ -3339,8 +3651,9 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 
 	pthread_mutex_lock(&ua_sess->registry.lock);
 
-	ret_code = ust_registry_create_event(&ua_sess->registry, &ua_chan->registry, sobjd, cobjd,
-			name, sig, nr_fields, fields, loglevel, model_emf_uri, &event_id);
+	ret_code = ust_registry_create_event(&ua_sess->registry,
+			&ua_chan->registry, sobjd, cobjd, name, sig, nr_fields, fields,
+			loglevel, model_emf_uri, &event_id);
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
@@ -3361,12 +3674,20 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 		goto error;
 	}
 
+	DBG3("UST registry event %s has been added successfully", name);
+
 error:
 	pthread_mutex_unlock(&ua_sess->registry.lock);
+error_rcu_unlock:
 	rcu_read_unlock();
 	return ret;
 }
 
+/*
+ * Handle application notification through the given notify socket.
+ *
+ * Return 0 on success or else a negative value.
+ */
 int ust_app_recv_notify(int sock)
 {
 	int ret;
@@ -3448,4 +3769,81 @@ int ust_app_recv_notify(int sock)
 
 error:
 	return ret;
+}
+
+/*
+ * Once the notify socket hangs up, this is called. First, it tries to find the
+ * corresponding application. On failure, the call_rcu to close the socket is
+ * executed. If an application is found, it tries to delete it from the notify
+ * socket hash table. Whathever the result, it proceeds to the call_rcu.
+ *
+ * Note that an object needs to be allocated here so on ENOMEM failure, the
+ * call RCU is not done but the rest of the cleanup is.
+ */
+void ust_app_notify_sock_unregister(int sock)
+{
+	int err_enomem = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+	struct ust_app_notify_sock_obj *obj;
+
+	assert(sock >= 0);
+
+	rcu_read_lock();
+
+	obj = zmalloc(sizeof(*obj));
+	if (!obj) {
+		/*
+		 * An ENOMEM is kind of uncool. If this strikes we continue the
+		 * procedure but the call_rcu will not be called. In this case, we
+		 * accept the fd leak rather than possibly creating an unsynchronized
+		 * state between threads.
+		 *
+		 * TODO: The notify object should be created once the notify socket is
+		 * registered and stored independantely from the ust app object. The
+		 * tricky part is to synchronize the teardown of the application and
+		 * this notify object. Let's keep that in mind so we can avoid this
+		 * kind of shenanigans with ENOMEM in the teardown path.
+		 */
+		err_enomem = 1;
+	} else {
+		obj->fd = sock;
+	}
+
+	DBG("UST app notify socket unregister %d", sock);
+
+	/*
+	 * Lookup application by notify socket. If this fails, this means that the
+	 * hash table delete has already been done by the application
+	 * unregistration process so we can safely close the notify socket in a
+	 * call RCU.
+	 */
+	app = find_app_by_notify_sock(sock);
+	if (!app) {
+		goto close_socket;
+	}
+
+	iter.iter.node = &app->notify_sock_n.node;
+
+	/*
+	 * Whatever happens here either we fail or succeed, in both cases we have
+	 * to close the socket after a grace period to continue to the call RCU
+	 * here. If the deletion is successful, the application is not visible
+	 * anymore by other threads and is it fails it means that it was already
+	 * deleted from the hash table so either way we just have to close the
+	 * socket.
+	 */
+	(void) lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
+
+close_socket:
+	rcu_read_unlock();
+
+	/*
+	 * Close socket after a grace period to avoid for the socket to be reused
+	 * before the application object is freed creating potential race between
+	 * threads trying to add unique in the global hash table.
+	 */
+	if (!err_enomem) {
+		call_rcu(&obj->head, close_notify_sock_rcu);
+	}
 }

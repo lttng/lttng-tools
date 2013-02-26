@@ -55,6 +55,17 @@ static int match_ulong(struct cds_lfht_node *node, const void *key)
 }
 
 /*
+ * Match function for u64 node.
+ */
+static int match_u64(struct cds_lfht_node *node, const void *key)
+{
+	struct lttng_ht_node_u64 *match_node =
+		caa_container_of(node, struct lttng_ht_node_u64, node);
+
+	return hash_match_key_u64(&match_node->key, (void *) key);
+}
+
+/*
  * Return an allocated lttng hashtable.
  */
 struct lttng_ht *lttng_ht_new(unsigned long size, int type)
@@ -87,6 +98,10 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 	case LTTNG_HT_TYPE_ULONG:
 		ht->match_fct = match_ulong;
 		ht->hash_fct = hash_key_ulong;
+		break;
+	case LTTNG_HT_TYPE_U64:
+		ht->match_fct = match_u64;
+		ht->hash_fct = hash_key_u64;
 		break;
 	default:
 		ERR("Unknown lttng hashtable type %d", type);
@@ -137,6 +152,18 @@ void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 }
 
 /*
+ * Init lttng ht node uint64_t.
+ */
+void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
+		uint64_t key)
+{
+	assert(node);
+
+	node->key = key;
+	cds_lfht_node_init(&node->node);
+}
+
+/*
  * Free lttng ht node string.
  */
 void lttng_ht_node_free_str(struct lttng_ht_node_str *node)
@@ -149,6 +176,15 @@ void lttng_ht_node_free_str(struct lttng_ht_node_str *node)
  * Free lttng ht node unsigned long.
  */
 void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node)
+{
+	assert(node);
+	free(node);
+}
+
+/*
+ * Free lttng ht node uint64_t.
+ */
+void lttng_ht_node_free_u64(struct lttng_ht_node_ulong *node)
 {
 	assert(node);
 	free(node);
@@ -197,6 +233,20 @@ void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 }
 
 /*
+ * Add uint64_t node to hashtable.
+
+ */
+void lttng_ht_add_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
+{
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	cds_lfht_add(ht->ht, ht->hash_fct(&node->key, lttng_ht_seed),
+			&node->node);
+}
+
+/*
  * Add unique unsigned long node to hashtable.
  */
 void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
@@ -210,6 +260,23 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct((void *) node->key, lttng_ht_seed), ht->match_fct,
 			(void *) node->key, &node->node);
+	assert(node_ptr == &node->node);
+}
+
+/*
+ * Add unique uint64_t node to hashtable.
+ */
+void lttng_ht_add_unique_u64(struct lttng_ht *ht,
+		struct lttng_ht_node_u64 *node)
+{
+	struct cds_lfht_node *node_ptr;
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	node_ptr = cds_lfht_add_unique(ht->ht,
+			ht->hash_fct(&node->key, lttng_ht_seed), ht->match_fct,
+			&node->key, &node->node);
 	assert(node_ptr == &node->node);
 }
 
@@ -231,6 +298,28 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 		return NULL;
 	} else {
 		return caa_container_of(node_ptr, struct lttng_ht_node_ulong, node);
+	}
+	assert(node_ptr == &node->node);
+}
+
+/*
+ * Add replace unsigned long node to hashtable.
+ */
+struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
+		struct lttng_ht_node_u64 *node)
+{
+	struct cds_lfht_node *node_ptr;
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	node_ptr = cds_lfht_add_replace(ht->ht,
+			ht->hash_fct(&node->key, lttng_ht_seed), ht->match_fct,
+			&node->key, &node->node);
+	if (!node_ptr) {
+		return NULL;
+	} else {
+		return caa_container_of(node_ptr, struct lttng_ht_node_u64, node);
 	}
 	assert(node_ptr == &node->node);
 }
@@ -320,9 +409,25 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 }
 
 /*
+ * Return lttng ht unsigned long node from iterator.
+ */
+struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
+		struct lttng_ht_iter *iter)
+{
+	struct cds_lfht_node *node;
+
+	assert(iter);
+	node = cds_lfht_iter_get_node(&iter->iter);
+	if (!node) {
+		return NULL;
+	}
+	return caa_container_of(node, struct lttng_ht_node_u64, node);
+}
+
+/*
  * lib constructor
  */
-static void __attribute__((constructor)) _init()
+static void __attribute__((constructor)) _init(void)
 {
 	/* Init hash table seed */
 	lttng_ht_seed = (unsigned long) time(NULL);

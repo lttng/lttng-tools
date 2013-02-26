@@ -49,6 +49,9 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_ASK_CHANNEL_CREATION,
 	LTTNG_CONSUMER_GET_CHANNEL,
 	LTTNG_CONSUMER_DESTROY_CHANNEL,
+	LTTNG_CONSUMER_PUSH_METADATA,
+	LTTNG_CONSUMER_CLOSE_METADATA,
+	LTTNG_CONSUMER_SETUP_METADATA,
 };
 
 /* State of each fd in consumer */
@@ -77,7 +80,7 @@ enum consumer_channel_output {
 
 enum consumer_channel_type {
 	CONSUMER_CHANNEL_TYPE_METADATA	= 0,
-	CONSUMER_CHANNEL_TYPE_DATA		= 1,
+	CONSUMER_CHANNEL_TYPE_DATA	= 1,
 };
 
 struct stream_list {
@@ -87,9 +90,9 @@ struct stream_list {
 
 struct lttng_consumer_channel {
 	/* HT node used for consumer_data.channel_ht */
-	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_u64 node;
 	/* Indexed key. Incremented value in the consumer. */
-	int key;
+	uint64_t key;
 	/* Number of streams referencing this channel */
 	int refcount;
 	/* Tracing session id on the session daemon side. */
@@ -102,7 +105,7 @@ struct lttng_consumer_channel {
 	uid_t uid;
 	gid_t gid;
 	/* Relayd id of the channel. -1 if it does not apply. */
-	int relayd_id;
+	int64_t relayd_id;
 	/*
 	 * Number of streams NOT initialized yet. This is used in order to not
 	 * delete this channel if streams are getting initialized.
@@ -122,6 +125,17 @@ struct lttng_consumer_channel {
 	 * LTTNG_CONSUMER_GET_CHANNEL.
 	 */
 	struct stream_list streams;
+	/*
+	 * Set if the channel is metadata. We keep a reference to the stream
+	 * because we have to flush data once pushed by the session daemon. For a
+	 * regular channel, this is always set to NULL.
+	 */
+	struct lttng_consumer_stream *metadata_stream;
+	/*
+	 * Metadata written so far. Helps keeping track of
+	 * contiguousness and order.
+	 */
+	uint64_t contig_metadata_written;
 };
 
 /*
@@ -130,14 +144,14 @@ struct lttng_consumer_channel {
  */
 struct lttng_consumer_stream {
 	/* HT node used by the data_ht and metadata_ht */
-	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_u64 node;
 	/* HT node used in consumer_data.stream_list_ht */
-	struct lttng_ht_node_ulong node_session_id;
+	struct lttng_ht_node_u64 node_session_id;
 	/* Pointer to associated channel. */
 	struct lttng_consumer_channel *chan;
 
 	/* Key by which the stream is indexed for 'node'. */
-	int key;
+	uint64_t key;
 	/*
 	 * File descriptor of the data output file. This can be either a file or a
 	 * socket fd for relayd streaming.
@@ -167,7 +181,7 @@ struct lttng_consumer_stream {
 	uid_t uid;
 	gid_t gid;
 	/* Network sequence number. Indicating on which relayd socket it goes. */
-	int net_seq_idx;
+	uint64_t net_seq_idx;
 	/* Identify if the stream is the metadata */
 	unsigned int metadata_flag;
 	/* Used when the stream is set for network streaming */
@@ -214,7 +228,7 @@ struct lttng_consumer_stream {
  */
 struct consumer_relayd_sock_pair {
 	/* Network sequence number. */
-	int net_seq_idx;
+	int64_t net_seq_idx;
 	/* Number of stream associated with this relayd */
 	unsigned int refcount;
 
@@ -245,7 +259,7 @@ struct consumer_relayd_sock_pair {
 	 * this socket is for now only used in a single thread.
 	 */
 	struct lttcomm_sock data_sock;
-	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_u64 node;
 
 	/* Session id on both sides for the sockets. */
 	uint64_t relayd_session_id;
@@ -407,8 +421,8 @@ void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
  */
 int lttng_consumer_poll_socket(struct pollfd *kconsumer_sockpoll);
 
-struct lttng_consumer_stream *consumer_allocate_stream(int channel_key,
-		int stream_key,
+struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
+		uint64_t stream_key,
 		enum lttng_consumer_stream_state state,
 		const char *channel_name,
 		uid_t uid,
@@ -418,7 +432,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(int channel_key,
 		int cpu,
 		int *alloc_ret,
 		enum consumer_channel_type type);
-struct lttng_consumer_channel *consumer_allocate_channel(unsigned long key,
+struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t session_id,
 		const char *pathname,
 		const char *name,
@@ -436,8 +450,8 @@ void consumer_del_channel(struct lttng_consumer_channel *channel);
 /* lttng-relayd consumer command */
 struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		int net_seq_idx);
-struct consumer_relayd_sock_pair *consumer_find_relayd(int key);
-struct lttng_consumer_channel *consumer_find_channel(unsigned long key);
+struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key);
+struct lttng_consumer_channel *consumer_find_channel(uint64_t key);
 int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,
 		size_t data_size);
 void consumer_steal_stream_key(int key, struct lttng_ht *ht);

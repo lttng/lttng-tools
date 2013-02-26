@@ -128,7 +128,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 
-		DBG("consumer_add_channel %d", msg.u.channel.channel_key);
+		DBG("consumer_add_channel %" PRIu64, msg.u.channel.channel_key);
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
 				msg.u.channel.session_id, msg.u.channel.pathname,
 				msg.u.channel.name, msg.u.channel.uid, msg.u.channel.gid,
@@ -180,7 +180,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 * We could not find the channel. Can happen if cpu hotplug
 			 * happens while tearing down.
 			 */
-			ERR("Unable to find channel key %d", msg.u.stream.channel_key);
+			ERR("Unable to find channel key %" PRIu64, msg.u.stream.channel_key);
 			ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 		}
 
@@ -265,8 +265,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				consumer_del_stream(new_stream, NULL);
 				goto end_nosignal;
 			}
-		} else if (new_stream->net_seq_idx != -1) {
-			ERR("Network sequence index %d unknown. Not adding stream.",
+		} else if (new_stream->net_seq_idx != (uint64_t) -1ULL) {
+			ERR("Network sequence index %" PRIu64 " unknown. Not adding stream.",
 					new_stream->net_seq_idx);
 			consumer_del_stream(new_stream, NULL);
 			goto end_nosignal;
@@ -464,8 +464,8 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 * network streaming or the full padding (len) size when we are _not_
 		 * streaming.
 		 */
-		if ((ret != subbuf_size && stream->net_seq_idx != -1) ||
-				(ret != len && stream->net_seq_idx == -1)) {
+		if ((ret != subbuf_size && stream->net_seq_idx != (uint64_t) -1ULL) ||
+				(ret != len && stream->net_seq_idx == (uint64_t) -1ULL)) {
 			/*
 			 * Display the error but continue processing to try to release the
 			 * subbuffer
@@ -513,7 +513,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 	}
 
 	/* Opening the tracefile in write mode */
-	if (stream->net_seq_idx == -1) {
+	if (stream->net_seq_idx == (uint64_t) -1ULL) {
 		ret = run_as_open(full_path, O_WRONLY | O_CREAT | O_TRUNC,
 				S_IRWXU|S_IRWXG|S_IRWXO, stream->uid, stream->gid);
 		if (ret < 0) {

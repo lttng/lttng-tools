@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/consumer.h>
@@ -99,7 +100,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		struct consumer_socket *socket)
 {
 	int ret;
-	unsigned long key;
+	uint64_t key;
 	char *pathname = NULL;
 	struct lttcomm_consumer_msg msg;
 
@@ -151,7 +152,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	/* We need at least one where 1 stream for 1 cpu. */
 	assert(ua_chan->expected_stream_count > 0);
 
-	DBG2("UST ask channel %lu successfully done with %u stream(s)", key,
+	DBG2("UST ask channel %" PRIu64 " successfully done with %u stream(s)", key,
 			ua_chan->expected_stream_count);
 
 error:
@@ -381,5 +382,133 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	}
 
 error:
+	return ret;
+}
+
+/*
+ * Send metadata string to consumer.
+ *
+ * Return 0 on success else a negative value.
+ */
+int ust_consumer_push_metadata(struct consumer_socket *socket,
+		struct ust_app_session *ua_sess, char *metadata_str,
+		size_t len, size_t target_offset)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+	assert(socket->fd >= 0);
+	assert(ua_sess);
+	assert(ua_sess->metadata);
+
+	DBG2("UST consumer push metadata to consumer socket %d", socket->fd);
+
+	msg.cmd_type = LTTNG_CONSUMER_PUSH_METADATA;
+	msg.u.push_metadata.key = ua_sess->metadata->key;
+	msg.u.push_metadata.target_offset = target_offset;
+	msg.u.push_metadata.len = len;
+
+	/*
+	 * TODO: reenable these locks when the consumerd gets the ability to
+	 * reorder the metadata it receives. This fits with locking in
+	 * src/bin/lttng-sessiond/ust-app.c:push_metadata()
+	 *
+	 * pthread_mutex_lock(socket->lock);
+	 */
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG3("UST consumer push metadata on sock %d of len %lu", socket->fd, len);
+
+	ret = lttcomm_send_unix_sock(socket->fd, metadata_str, len);
+	if (ret < 0) {
+		fprintf(stderr, "send error: %d\n", ret);
+		goto error;
+	}
+
+	health_code_update();
+	ret = consumer_recv_status_reply(socket);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	/*
+	 * pthread_mutex_unlock(socket->lock);
+	 */
+	return ret;
+}
+
+/*
+ * Send a close metdata command to consumer using the given channel key.
+ *
+ * Return 0 on success else a negative value.
+ */
+int ust_consumer_close_metadata(struct consumer_socket *socket,
+		struct ust_app_channel *ua_chan)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(ua_chan);
+	assert(socket);
+	assert(socket->fd >= 0);
+
+	DBG2("UST consumer close metadata channel key %lu", ua_chan->key);
+
+	msg.cmd_type = LTTNG_CONSUMER_CLOSE_METADATA;
+	msg.u.close_metadata.key = ua_chan->key;
+
+	pthread_mutex_lock(socket->lock);
+	health_code_update();
+
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	pthread_mutex_unlock(socket->lock);
+	return ret;
+}
+
+/*
+ * Send a setup metdata command to consumer using the given channel key.
+ *
+ * Return 0 on success else a negative value.
+ */
+int ust_consumer_setup_metadata(struct consumer_socket *socket,
+		struct ust_app_channel *ua_chan)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(ua_chan);
+	assert(socket);
+	assert(socket->fd >= 0);
+
+	DBG2("UST consumer setup metadata channel key %lu", ua_chan->key);
+
+	msg.cmd_type = LTTNG_CONSUMER_SETUP_METADATA;
+	msg.u.setup_metadata.key = ua_chan->key;
+
+	pthread_mutex_lock(socket->lock);
+	health_code_update();
+
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	pthread_mutex_unlock(socket->lock);
 	return ret;
 }

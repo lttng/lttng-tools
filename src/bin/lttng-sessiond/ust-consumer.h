@@ -37,4 +37,14 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 int ust_consumer_send_channel_to_ust(struct ust_app *app,
 		struct ust_app_session *ua_sess, struct ust_app_channel *channel);
 
+int ust_consumer_push_metadata(struct consumer_socket *socket,
+		struct ust_app_session *ua_sess, char *metadata_str,
+		size_t len, size_t target_offset);
+
+int ust_consumer_close_metadata(struct consumer_socket *socket,
+		struct ust_app_channel *ua_chan);
+
+int ust_consumer_setup_metadata(struct consumer_socket *socket,
+		struct ust_app_channel *ua_chan);
+
 #endif /* _UST_CONSUMER_H */

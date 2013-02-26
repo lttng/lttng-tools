@@ -128,24 +128,20 @@ restart:
 						goto error;
 					}
 
-					ret = close(pollfd);
-					if (ret < 0) {
-						PERROR("close sock %d", pollfd);
-					}
-					lttng_fd_put(LTTNG_FD_APPS, 1);
+					/* The socket is closed after a grace period here. */
+					ust_app_notify_sock_unregister(pollfd);
 				} else if (revents & (LPOLLIN | LPOLLPRI)) {
 					ret = ust_app_recv_notify(pollfd);
 					if (ret < 0) {
-						ret = lttng_poll_del(&events, pollfd);
-						if (ret < 0) {
-							goto error;
-						}
-
-						ret = close(pollfd);
-						if (ret < 0) {
-							PERROR("close sock %d", pollfd);
-						}
-						lttng_fd_put(LTTNG_FD_APPS, 1);
+						/*
+						 * If the notification failed either the application is
+						 * dead or an internal error happened. In both cases,
+						 * we can only continue here. If the application is
+						 * dead, an unregistration will follow or else the
+						 * application will notice that we are not responding
+						 * on that socket and will close it.
+						 */
+						continue;
 					}
 				} else {
 					ERR("Unknown poll events %u for sock %d", revents, pollfd);

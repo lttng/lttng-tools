@@ -98,7 +98,7 @@ static int add_channel(struct lttng_consumer_channel *channel,
 		ret = consumer_add_channel(channel);
 	}
 
-	DBG("UST consumer channel added (key: %u)", channel->key);
+	DBG("UST consumer channel added (key: %" PRIu64 ")", channel->key);
 
 error:
 	return ret;
@@ -109,7 +109,7 @@ error:
  */
 static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		const char *pathname, const char *name, uid_t uid, gid_t gid,
-		int relayd_id, unsigned long key, enum lttng_event_output output)
+		int relayd_id, uint64_t key, enum lttng_event_output output)
 {
 	assert(pathname);
 	assert(name);
@@ -223,8 +223,8 @@ static int send_stream_to_relayd(struct lttng_consumer_stream *stream)
 		if (ret < 0) {
 			goto error;
 		}
-	} else if (stream->net_seq_idx != -1) {
-		ERR("Network sequence index %d unknown. Not adding stream.",
+	} else if (stream->net_seq_idx != (uint64_t) -1ULL) {
+		ERR("Network sequence index %" PRIu64 " unknown. Not adding stream.",
 				stream->net_seq_idx);
 		ret = -1;
 		goto error;
@@ -234,6 +234,11 @@ error:
 	return ret;
 }
 
+/*
+ * Create streams for the given channel using liblttng-ust-ctl.
+ *
+ * Return 0 on success else a negative value.
+ */
 static int create_ust_streams(struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx)
 {
@@ -288,11 +293,16 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 			}
 		}
 
-		DBG("UST consumer add stream %s (key: %d) with relayd id %" PRIu64,
+		DBG("UST consumer add stream %s (key: %" PRIu64 ") with relayd id %" PRIu64,
 				stream->name, stream->key, stream->relayd_stream_id);
 
 		/* Set next CPU stream. */
 		channel->streams.count = ++cpu;
+
+		/* Keep stream reference when creating metadata. */
+		if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA) {
+			channel->metadata_stream = stream;
+		}
 	}
 
 	return 0;
@@ -338,6 +348,11 @@ error_create:
 	return ret;
 }
 
+/*
+ * Send a single given stream to the session daemon using the sock.
+ *
+ * Return 0 on success else a negative value.
+ */
 static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 {
 	int ret;
@@ -345,7 +360,7 @@ static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 	assert(stream);
 	assert(sock >= 0);
 
-	DBG2("UST consumer sending stream %d to sessiond", stream->key);
+	DBG2("UST consumer sending stream %" PRIu64 " to sessiond", stream->key);
 
 	/* Send stream to session daemon. */
 	ret = ustctl_send_stream_to_sessiond(sock, stream->ustream);
@@ -365,8 +380,7 @@ error:
 /*
  * Send channel to sessiond.
  *
- * Return 0 on success or else a negative value. On error, the channel is
- * destroy using ustctl.
+ * Return 0 on success or else a negative value.
  */
 static int send_sessiond_channel(int sock,
 		struct lttng_consumer_channel *channel,
@@ -473,6 +487,155 @@ error:
 }
 
 /*
+ * Send all stream of a channel to the right thread handling it.
+ *
+ * On error, return a negative value else 0 on success.
+ */
+static int send_streams_to_thread(struct lttng_consumer_channel *channel,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret = 0;
+	struct lttng_consumer_stream *stream, *stmp;
+
+	assert(channel);
+	assert(ctx);
+
+	/* Send streams to the corresponding thread. */
+	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
+			send_node) {
+		/* Sending the stream to the thread. */
+		ret = send_stream_to_thread(stream, ctx);
+		if (ret < 0) {
+			/*
+			 * If we are unable to send the stream to the thread, there is
+			 * a big problem so just stop everything.
+			 */
+			goto error;
+		}
+
+		/* Remove node from the channel stream list. */
+		cds_list_del(&stream->send_node);
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Write metadata to the given channel using ustctl to convert the string to
+ * the ringbuffer.
+ *
+ * Return 0 on success else a negative value.
+ */
+static int push_metadata(struct lttng_consumer_channel *metadata,
+		const char *metadata_str, uint64_t target_offset, uint64_t len)
+{
+	int ret;
+
+	assert(metadata);
+	assert(metadata_str);
+
+	DBG("UST consumer writing metadata to channel %s", metadata->name);
+
+	assert(target_offset == metadata->contig_metadata_written);
+	ret = ustctl_write_metadata_to_channel(metadata->uchan, metadata_str, len);
+	if (ret < 0) {
+		ERR("ustctl write metadata fail with ret %d, len %ld", ret, len);
+		goto error;
+	}
+	metadata->contig_metadata_written += len;
+
+	ustctl_flush_buffer(metadata->metadata_stream->ustream, 1);
+
+error:
+	return ret;
+}
+
+/*
+ * Close metadata stream wakeup_fd using the given key to retrieve the channel.
+ *
+ * Return 0 on success else an LTTng error code.
+ */
+static int close_metadata(uint64_t chan_key)
+{
+	int ret;
+	struct lttng_consumer_channel *channel;
+
+	DBG("UST consumer close metadata key %lu", chan_key);
+
+	channel = consumer_find_channel(chan_key);
+	if (!channel) {
+		ERR("UST consumer close metadata %lu not found", chan_key);
+		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	ret = ustctl_stream_close_wakeup_fd(channel->metadata_stream->ustream);
+	if (ret < 0) {
+		ERR("UST consumer unable to close fd of metadata (ret: %d)", ret);
+		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * RCU read side lock MUST be acquired before calling this function.
+ *
+ * Return 0 on success else an LTTng error code.
+ */
+static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
+{
+	int ret;
+	struct lttng_consumer_channel *metadata;
+
+	DBG("UST consumer setup metadata key %lu", key);
+
+	metadata = consumer_find_channel(key);
+	if (!metadata) {
+		ERR("UST consumer push metadata %" PRIu64 " not found", key);
+		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	/*
+	 * Send metadata stream to relayd if one available. Availability is
+	 * known if the stream is still in the list of the channel.
+	 */
+	if (cds_list_empty(&metadata->streams.head)) {
+		ERR("Metadata channel key %" PRIu64 ", no stream available.", key);
+		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+		goto error;
+	}
+
+	/* Send metadata stream to relayd if needed. */
+	ret = send_stream_to_relayd(metadata->metadata_stream);
+	if (ret < 0) {
+		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+		goto error;
+	}
+
+	ret = send_streams_to_thread(metadata, ctx);
+	if (ret < 0) {
+		/*
+		 * If we are unable to send the stream to the thread, there is
+		 * a big problem so just stop everything.
+		 */
+		ret = LTTCOMM_CONSUMERD_FATAL;
+		goto error;
+	}
+	/* List MUST be empty after or else it could be reused. */
+	assert(cds_list_empty(&metadata->streams.head));
+
+	ret = 0;
+
+error:
+	return ret;
+}
+
+/*
  * Receive command from session daemon and process it.
  *
  * Return 1 on success else a negative value or 0.
@@ -548,13 +711,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_flag_relayd_for_destroy(relayd);
 		}
 
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
-		goto end_nosignal;
+		goto end_msg_sessiond;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
 	{
@@ -665,9 +822,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_GET_CHANNEL:
 	{
 		int ret, relayd_err = 0;
-		unsigned long key = msg.u.get_channel.key;
+		uint64_t key = msg.u.get_channel.key;
 		struct lttng_consumer_channel *channel;
-		struct lttng_consumer_stream *stream, *stmp;
 
 		channel = consumer_find_channel(key);
 		if (!channel) {
@@ -702,58 +858,108 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto error_fatal;
 		}
 
-		/* Send streams to the corresponding thread. */
-		cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
-				send_node) {
-			/* Sending the stream to the thread. */
-			ret = send_stream_to_thread(stream, ctx);
-			if (ret < 0) {
-				/*
-				 * If we are unable to send the stream to the thread, there is
-				 * a big problem so just stop everything.
-				 */
-				goto error_fatal;
-			}
-
-			/* Remove node from the channel stream list. */
-			cds_list_del(&stream->send_node);
+		ret = send_streams_to_thread(channel, ctx);
+		if (ret < 0) {
+			/*
+			 * If we are unable to send the stream to the thread, there is
+			 * a big problem so just stop everything.
+			 */
+			goto error_fatal;
 		}
-
 		/* List MUST be empty after or else it could be reused. */
 		assert(cds_list_empty(&channel->streams.head));
 
-		/* Inform sessiond that everything is done and OK on our side. */
-		ret = consumer_send_status_msg(sock, LTTNG_OK);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
-		break;
+		goto end_msg_sessiond;
 	}
 	case LTTNG_CONSUMER_DESTROY_CHANNEL:
 	{
-		int ret;
-		unsigned long key = msg.u.destroy_channel.key;
+		uint64_t key = msg.u.destroy_channel.key;
 		struct lttng_consumer_channel *channel;
-
-		DBG("UST consumer destroy channel key %lu", key);
 
 		channel = consumer_find_channel(key);
 		if (!channel) {
-			ERR("UST consumer destroy channel %lu not found", key);
+			ERR("UST consumer get channel key %lu not found", key);
 			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		} else {
-			/* Protocol error if the stream list is NOT empty. */
-			assert(!cds_list_empty(&channel->streams.head));
-			consumer_del_channel(channel);
+			goto end_msg_sessiond;
 		}
 
+		destroy_channel(channel);
+
+		goto end_msg_sessiond;
+	}
+	case LTTNG_CONSUMER_CLOSE_METADATA:
+	{
+		int ret;
+
+		ret = close_metadata(msg.u.close_metadata.key);
+		if (ret != 0) {
+			ret_code = ret;
+		}
+
+		goto end_msg_sessiond;
+	}
+	case LTTNG_CONSUMER_PUSH_METADATA:
+	{
+		int ret;
+		uint64_t len = msg.u.push_metadata.len;
+		uint64_t target_offset = msg.u.push_metadata.target_offset;
+		uint64_t key = msg.u.push_metadata.key;
+		struct lttng_consumer_channel *channel;
+		char *metadata_str;
+
+		DBG("UST consumer push metadata key %lu of len %lu", key, len);
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			ERR("UST consumer push metadata %lu not found", key);
+			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		}
+
+		metadata_str = zmalloc(len * sizeof(char));
+		if (!metadata_str) {
+			PERROR("zmalloc metadata string");
+			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
+			goto end_msg_sessiond;
+		}
+
+		/* Tell session daemon we are ready to receive the metadata. */
 		ret = consumer_send_status_msg(sock, LTTNG_OK);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
+			goto error_fatal;
+		}
+
+		/* Wait for more data. */
+		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
 			goto end_nosignal;
 		}
+
+		/* Receive metadata string. */
+		ret = lttcomm_recv_unix_sock(sock, metadata_str, len);
+		if (ret < 0) {
+			/* Session daemon is dead so return gracefully. */
+			goto end_nosignal;
+		}
+
+		ret = push_metadata(channel, metadata_str, target_offset, len);
+		free(metadata_str);
+		if (ret < 0) {
+			/* Unable to handle metadata. Notify session daemon. */
+			ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			goto end_msg_sessiond;
+		}
+
+		goto end_msg_sessiond;
+	}
+	case LTTNG_CONSUMER_SETUP_METADATA:
+	{
+		int ret;
+
+		ret = setup_metadata(ctx, msg.u.setup_metadata.key);
+		if (ret) {
+			ret_code = ret;
+		}
+		goto end_msg_sessiond;
 	}
 	default:
 		break;
@@ -945,8 +1151,8 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	 * The mmap operation should write subbuf_size amount of data when network
 	 * streaming or the full padding (len) size when we are _not_ streaming.
 	 */
-	if ((ret != subbuf_size && stream->net_seq_idx != -1) ||
-			(ret != len && stream->net_seq_idx == -1)) {
+	if ((ret != subbuf_size && stream->net_seq_idx != (uint64_t) -1ULL) ||
+			(ret != len && stream->net_seq_idx == (uint64_t) -1ULL)) {
 		/*
 		 * Display the error but continue processing to try to release the
 		 * subbuffer. This is a DBG statement since any unexpected kill or
@@ -974,7 +1180,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 	char full_path[PATH_MAX];
 
 	/* Opening the tracefile in write mode */
-	if (stream->net_seq_idx != -1) {
+	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		goto end;
 	}
 
@@ -1032,4 +1238,42 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 
 end:
 	return ret;
+}
+
+/*
+ * Close every metadata stream wait fd of the metadata hash table. This
+ * function MUST be used very carefully so not to run into a race between the
+ * metadata thread handling streams and this function closing their wait fd.
+ *
+ * For UST, this is used when the session daemon hangs up. Its the metadata
+ * producer so calling this is safe because we are assured that no state change
+ * can occur in the metadata thread for the streams in the hash table.
+ */
+void lttng_ustconsumer_close_metadata(struct lttng_ht *metadata_ht)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttng_consumer_stream *stream;
+
+	assert(metadata_ht);
+	assert(metadata_ht->ht);
+
+	DBG("UST consumer closing all metadata streams");
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(metadata_ht->ht, &iter.iter, stream,
+			node.node) {
+		int fd = stream->wait_fd;
+
+		/*
+		 * Whatever happens here we have to continue to try to close every
+		 * streams. Let's report at least the error on failure.
+		 */
+		ret = ustctl_stream_close_wakeup_fd(stream->ustream);
+		if (ret) {
+			ERR("Unable to close metadata stream fd %d ret %d", fd, ret);
+		}
+		DBG("Metadata wait fd %d closed", fd);
+	}
+	rcu_read_unlock();
 }

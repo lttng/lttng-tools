@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
@@ -76,7 +77,7 @@ end:
  * negative value is sent back and both parameters are untouched.
  */
 int consumer_recv_status_channel(struct consumer_socket *sock,
-		unsigned long *key, unsigned int *stream_count)
+		uint64_t *key, unsigned int *stream_count)
 {
 	int ret;
 	struct lttcomm_consumer_status_channel reply;
@@ -359,7 +360,7 @@ struct consumer_output *consumer_create_output(enum consumer_dst_type type)
 	/* By default, consumer output is enabled */
 	output->enabled = 1;
 	output->type = type;
-	output->net_seq_index = -1;
+	output->net_seq_index = (uint64_t) -1ULL;
 
 	output->socks = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
@@ -622,8 +623,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		const char *name,
 		uid_t uid,
 		gid_t gid,
-		int relayd_id,
-		unsigned long key,
+		uint64_t relayd_id,
+		uint64_t key,
 		unsigned char *uuid)
 {
 	assert(msg);
@@ -660,12 +661,12 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
  */
 void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
-		int channel_key,
+		uint64_t channel_key,
 		uint64_t session_id,
 		const char *pathname,
 		uid_t uid,
 		gid_t gid,
-		int relayd_id,
+		uint64_t relayd_id,
 		const char *name,
 		unsigned int nb_init_streams,
 		enum lttng_event_output output,
@@ -700,8 +701,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
  */
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
-		int channel_key,
-		int stream_key,
+		uint64_t channel_key,
+		uint64_t stream_key,
 		int cpu)
 {
 	assert(msg);
@@ -758,7 +759,7 @@ error:
  */
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_sock *sock, struct consumer_output *consumer,
-		enum lttng_stream_type type, unsigned int session_id)
+		enum lttng_stream_type type, uint64_t session_id)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -865,7 +866,7 @@ error:
  * This function has a different behavior with the consumer i.e. that it waits
  * for a reply from the consumer if yes or no the data is pending.
  */
-int consumer_is_data_pending(unsigned int id,
+int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer)
 {
 	int ret;
@@ -878,9 +879,9 @@ int consumer_is_data_pending(unsigned int id,
 
 	msg.cmd_type = LTTNG_CONSUMER_DATA_PENDING;
 
-	msg.u.data_pending.session_id = (uint64_t) id;
+	msg.u.data_pending.session_id = session_id;
 
-	DBG3("Consumer data pending for id %u", id);
+	DBG3("Consumer data pending for id %" PRIu64, session_id);
 
 	/* Send command for each consumer */
 	rcu_read_lock();
@@ -924,8 +925,8 @@ int consumer_is_data_pending(unsigned int id,
 	}
 	rcu_read_unlock();
 
-	DBG("Consumer data is %s pending for session id %u",
-			ret_code == 1 ? "" : "NOT", id);
+	DBG("Consumer data is %s pending for session id %" PRIu64,
+			ret_code == 1 ? "" : "NOT", session_id);
 	return ret_code;
 
 error_unlock:

@@ -126,7 +126,7 @@ struct consumer_output {
 	 * side. It tells the consumer which streams goes to which relayd with this
 	 * index. The relayd sockets are index with it on the consumer side.
 	 */
-	int net_seq_index;
+	uint64_t net_seq_index;
 
 	/*
 	 * Subdirectory path name used for both local and network consumer.
@@ -170,12 +170,12 @@ int consumer_send_channel(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg);
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_sock *sock, struct consumer_output *consumer,
-		enum lttng_stream_type type, unsigned int session_id);
+		enum lttng_stream_type type, uint64_t session_id);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);
 int consumer_recv_status_channel(struct consumer_socket *sock,
-		unsigned long *key, unsigned int *stream_count);
+		uint64_t *key, unsigned int *stream_count);
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
 int consumer_create_socket(struct consumer_data *data,
 		struct consumer_output *output);
@@ -195,27 +195,27 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		const char *name,
 		uid_t uid,
 		gid_t gid,
-		int relayd_id,
-		unsigned long key,
+		uint64_t relayd_id,
+		uint64_t key,
 		unsigned char *uuid);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
-		int channel_key,
-		int stream_key,
+		uint64_t channel_key,
+		uint64_t stream_key,
 		int cpu);
 void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
-		int channel_key,
+		uint64_t channel_key,
 		uint64_t session_id,
 		const char *pathname,
 		uid_t uid,
 		gid_t gid,
-		int relayd_id,
+		uint64_t relayd_id,
 		const char *name,
 		unsigned int nb_init_streams,
 		enum lttng_event_output output,
 		int type);
-int consumer_is_data_pending(unsigned int id,
+int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
 
 #endif /* _CONSUMER_H */

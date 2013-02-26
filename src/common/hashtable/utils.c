@@ -446,12 +446,8 @@ static uint32_t __attribute__((unused)) hashlittle(const void *key,
 	return c;
 }
 
-#if (CAA_BITS_PER_LONG == 64)
-/*
- * Hash function for number value.
- */
 LTTNG_HIDDEN
-unsigned long hash_key_ulong(void *_key, unsigned long seed)
+unsigned long hash_key_u64(void *_key, unsigned long seed)
 {
 	union {
 		uint64_t v64;
@@ -463,9 +459,20 @@ unsigned long hash_key_ulong(void *_key, unsigned long seed)
 	} key;
 
 	v.v64 = (uint64_t) seed;
-	key.v64 = (uint64_t) _key;
+	key.v64 = *(uint64_t *) _key;
 	hashword2(key.v32, 2, &v.v32[0], &v.v32[1]);
 	return v.v64;
+}
+
+#if (CAA_BITS_PER_LONG == 64)
+/*
+ * Hash function for number value.
+ */
+LTTNG_HIDDEN
+unsigned long hash_key_ulong(void *_key, unsigned long seed)
+{
+	uint64_t __key = (uint64_t) _key;
+	return (unsigned long) hash_key_u64(&__key, seed);
 }
 #else
 /*
@@ -496,6 +503,19 @@ LTTNG_HIDDEN
 int hash_match_key_ulong(void *key1, void *key2)
 {
 	if (key1 == key2) {
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * Hash function compare for number value.
+ */
+LTTNG_HIDDEN
+int hash_match_key_u64(void *key1, void *key2)
+{
+	if (*(uint64_t *) key1 == *(uint64_t *) key2) {
 		return 1;
 	}
 

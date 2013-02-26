@@ -24,19 +24,25 @@
 #include "trace-ust.h"
 #include "ust-registry.h"
 
-/* lttng-ust supported version. */
-//#define LTTNG_UST_COMM_MAJOR          2	/* comm protocol major version */
-//#define UST_APP_MAJOR_VERSION         3 /* Internal UST version supported */
-
 #define UST_APP_EVENT_LIST_SIZE 32
 
-/* Process name (short). Extra for the NULL byte. */
-#define UST_APP_PROCNAME_LEN 	17
+/* Process name (short). */
+#define UST_APP_PROCNAME_LEN	16
 
 struct lttng_filter_bytecode;
 struct lttng_ust_filter_bytecode;
 
 extern int ust_consumerd64_fd, ust_consumerd32_fd;
+
+/*
+ * Object used to close the notify socket in a call_rcu(). Since the
+ * application might not be found, we need an independant object containing the
+ * notify socket fd.
+ */
+struct ust_app_notify_sock_obj {
+	int fd;
+	struct rcu_head head;
+};
 
 struct ust_app_ht_key {
 	const char *name;
@@ -124,7 +130,7 @@ struct ust_app_channel {
 	/* Channel and streams were sent to the UST tracer. */
 	int is_sent;
 	/* Unique key used to identify the channel on the consumer side. */
-	unsigned long key;
+	uint64_t key;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count;
 	char name[LTTNG_UST_SYM_NAME_LEN];
@@ -172,6 +178,11 @@ struct ust_app_session {
 	uid_t uid;
 	gid_t gid;
 	struct cds_list_head teardown_node;
+	/*
+	 * Once at least *one* session is created onto the application, the
+	 * corresponding consumer is set so we can use it on unregistration.
+	 */
+	struct consumer_output *consumer;
 };
 
 /*
@@ -201,7 +212,8 @@ struct ust_app {
 	struct lttng_ust_tracer_version version;
 	uint32_t v_major;    /* Version major number */
 	uint32_t v_minor;    /* Version minor number */
-	char name[UST_APP_PROCNAME_LEN];
+	/* Extra for the NULL byte. */
+	char name[UST_APP_PROCNAME_LEN + 1];
 	struct lttng_ht *sessions;
 	struct lttng_ht_node_ulong pid_n;
 	struct lttng_ht_node_ulong sock_n;
@@ -276,6 +288,7 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg);
 int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
+void ust_app_notify_sock_unregister(int sock);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -456,6 +469,10 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 }
 static inline
 void ust_app_add(struct ust_app *app)
+{
+}
+static inline
+void ust_app_notify_sock_unregister(int sock)
 {
 }
 

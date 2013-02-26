@@ -38,12 +38,11 @@
 /*
  * Used to keep a unique index for each relayd socket created where this value
  * is associated with streams on the consumer so it can match the right relayd
- * to send to.
- *
- * This value should be incremented atomically for safety purposes and future
- * possible concurrent access.
+ * to send to. It must be accessed with the relayd_net_seq_idx_lock
+ * held.
  */
-static unsigned int relayd_net_seq_idx;
+static pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t relayd_net_seq_idx;
 
 /*
  * Create a session path used by list_lttng_sessions for the case that the
@@ -566,15 +565,15 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	}
 
 	/* Set the network sequence index if not set. */
-	if (consumer->net_seq_index == -1) {
+	if (consumer->net_seq_index == (uint64_t) -1ULL) {
+		pthread_mutex_lock(&relayd_net_seq_idx_lock);
 		/*
 		 * Increment net_seq_idx because we are about to transfer the
 		 * new relayd socket to the consumer.
+		 * Assign unique key so the consumer can match streams.
 		 */
-		uatomic_inc(&relayd_net_seq_idx);
-		/* Assign unique key so the consumer can match streams */
-		uatomic_set(&consumer->net_seq_index,
-				uatomic_read(&relayd_net_seq_idx));
+		consumer->net_seq_index = ++relayd_net_seq_idx;
+		pthread_mutex_unlock(&relayd_net_seq_idx_lock);
 	}
 
 	/* Send relayd socket to consumer. */
@@ -2136,10 +2135,12 @@ error:
 void cmd_init(void)
 {
 	/*
-	 * Set network sequence index to 1 for streams to match a relayd socket on
-	 * the consumer side.
+	 * Set network sequence index to 1 for streams to match a relayd
+	 * socket on the consumer side.
 	 */
-	uatomic_set(&relayd_net_seq_idx, 1);
+	pthread_mutex_lock(&relayd_net_seq_idx_lock);
+	relayd_net_seq_idx = 1;
+	pthread_mutex_unlock(&relayd_net_seq_idx_lock);
 
 	DBG("Command subsystem initialized");
 }

@@ -117,6 +117,8 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_SPLICE_ENOMEM,            /* ENOMEM from splice(2) */
 	LTTCOMM_CONSUMERD_SPLICE_ESPIPE,            /* ESPIPE from splice(2) */
 	LTTCOMM_CONSUMERD_ENOMEM,                   /* Consumer is out of memory */
+	LTTCOMM_CONSUMERD_ERROR_METADATA,           /* Error with metadata. */
+	LTTCOMM_CONSUMERD_FATAL,                    /* Fatal error. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -145,7 +147,7 @@ struct lttcomm_sockaddr {
 } LTTNG_PACKED;
 
 struct lttcomm_sock {
-	int fd;
+	int32_t fd;
 	enum lttcomm_sock_proto proto;
 	struct lttcomm_sockaddr sockaddr;
 	const struct lttcomm_proto_ops *ops;
@@ -259,26 +261,26 @@ struct lttcomm_consumer_msg {
 	uint32_t cmd_type;	/* enum consumerd_command */
 	union {
 		struct {
-			int channel_key;
+			uint64_t channel_key;
 			uint64_t session_id;
 			char pathname[PATH_MAX];
-			uid_t uid;
-			gid_t gid;
-			int relayd_id;
+			uint32_t uid;
+			uint32_t gid;
+			uint64_t relayd_id;
 			/* nb_init_streams is the number of streams open initially. */
-			unsigned int nb_init_streams;
+			uint32_t nb_init_streams;
 			char name[LTTNG_SYMBOL_NAME_LEN];
 			/* Use splice or mmap to consume this fd */
 			enum lttng_event_output output;
 			int type; /* Per cpu or metadata. */
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
-			int stream_key;
-			int channel_key;
-			int cpu;	/* On which CPU this stream is assigned. */
+			uint64_t stream_key;
+			uint64_t channel_key;
+			int32_t cpu;	/* On which CPU this stream is assigned. */
 		} LTTNG_PACKED stream;	/* Only used by Kernel. */
 		struct {
-			int net_index;
+			uint64_t net_index;
 			enum lttng_stream_type type;
 			/* Open socket to the relayd */
 			struct lttcomm_sock sock;
@@ -294,26 +296,37 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t subbuf_size;			/* bytes */
 			uint64_t num_subbuf;			/* power of 2 */
-			int overwrite;						/* 1: overwrite, 0: discard */
-			unsigned int switch_timer_interval;	/* usec */
-			unsigned int read_timer_interval;	/* usec */
-			int output;				/* splice, mmap */
-			int type;				/* metadata or per_cpu */
+			int32_t overwrite;			/* 1: overwrite, 0: discard */
+			uint32_t switch_timer_interval;		/* usec */
+			uint32_t read_timer_interval;		/* usec */
+			int32_t output;				/* splice, mmap */
+			int32_t type;				/* metadata or per_cpu */
 			uint64_t session_id;			/* Tracing session id */
 			char pathname[PATH_MAX];		/* Channel file path. */
 			char name[LTTNG_SYMBOL_NAME_LEN];	/* Channel name. */
-			uid_t uid;				/* User ID of the session */
-			gid_t gid;				/* Group ID ot the session */
-			int relayd_id;				/* Relayd id if apply. */
-			unsigned long key;					/* Unique channel key. */
+			uint32_t uid;				/* User ID of the session */
+			uint32_t gid;				/* Group ID ot the session */
+			uint64_t relayd_id;			/* Relayd id if apply. */
+			uint64_t key;				/* Unique channel key. */
 			unsigned char uuid[UUID_STR_LEN];	/* uuid for ust tracer. */
 		} LTTNG_PACKED ask_channel;
 		struct {
-			unsigned long key;
+			uint64_t key;
 		} LTTNG_PACKED get_channel;
 		struct {
-			unsigned long key;
+			uint64_t key;
 		} LTTNG_PACKED destroy_channel;
+		struct {
+			uint64_t key;	/* Metadata channel key. */
+			uint64_t target_offset;	/* Offset in the consumer */
+			uint64_t len;	/* Length of metadata to be received. */
+		} LTTNG_PACKED push_metadata;
+		struct {
+			uint64_t key;	/* Metadata channel key. */
+		} LTTNG_PACKED close_metadata;
+		struct {
+			uint64_t key;	/* Metadata channel key. */
+		} LTTNG_PACKED setup_metadata;
 	} u;
 } LTTNG_PACKED;
 
@@ -326,7 +339,7 @@ struct lttcomm_consumer_status_msg {
 
 struct lttcomm_consumer_status_channel {
 	enum lttng_error_code ret_code;
-	unsigned long key;
+	uint64_t key;
 	unsigned int stream_count;
 } LTTNG_PACKED;
 

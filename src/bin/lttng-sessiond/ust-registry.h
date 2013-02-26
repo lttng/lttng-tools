@@ -60,6 +60,8 @@ struct ust_registry_session {
 	/* Generated metadata. */
 	char *metadata;		/* NOT null-terminated ! Use memcpy. */
 	size_t metadata_len, metadata_alloc_len;
+	/* Length of bytes sent to the consumer. */
+	size_t metadata_len_sent;
 };
 
 struct ust_registry_channel {
