@@ -1885,6 +1885,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				ret = putenv(tmpnew);
 				if (ret) {
 					ret = -errno;
+					free(tmpnew);
 					goto error;
 				}
 			}
@@ -1929,6 +1930,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				ret = putenv(tmpnew);
 				if (ret) {
 					ret = -errno;
+					free(tmpnew);
 					goto error;
 				}
 			}
