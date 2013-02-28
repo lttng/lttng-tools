@@ -91,12 +91,20 @@ AC_ARG_WITH([consumerd64-libdir],
 	[CONSUMERD64_LIBDIR=''])
 AC_SUBST([CONSUMERD64_LIBDIR])
 
+AC_ARG_WITH([sessiond-bin],
+	AS_HELP_STRING([--with-sessiond-bin],
+	[Location of the sessiond executable (including the filename)]),
+	[SESSIOND_BIN="$withval"],
+	[SESSIOND_BIN=''])
+AC_SUBST([SESSIOND_BIN])
+
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], "$CONSUMERD32_BIN", [Location of the 32-bit consumerd executable.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of the 64-bit consumerd executable])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], "$CONSUMERD64_LIBDIR", [Search for consumerd 64-bit libraries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_BABELTRACE_BIN], "$BABELTRACE_BIN", [Location of the babeltrace viewer executable.])
 AC_DEFINE_UNQUOTED([CONFIG_LTTV_GUI_BIN], "$LTTV_GUI_BIN", [Location of the lttv GUI viewer executable.])
+AC_DEFINE_UNQUOTED([CONFIG_SESSIOND_BIN], "$SESSIOND_BIN", [Location of the sessiond executable.])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
@@ -387,6 +395,15 @@ AS_ECHO("`eval eval echo $libdir`")
 
 # If we build the sessiond, print the paths it will use
 AS_IF([test "x$consumerd_only" = "xno"],[
+	AS_ECHO()
+	AS_ECHO_N("The lttng command will look for the lttng-sessiond executable at: ")
+	AS_IF([test "$SESSIOND_BIN" = ""],[
+		AS_ECHO_N("`eval eval echo $bindir`")
+		AS_ECHO("/lttng-sessiond")
+	],[
+		AS_ECHO("$SESSIOND_BIN")
+	])
+
 	AS_ECHO()
 	AS_ECHO("The sessiond daemon will look in the following directories: ")
 	AS_ECHO_N("32-bit consumerd executable at: ")
