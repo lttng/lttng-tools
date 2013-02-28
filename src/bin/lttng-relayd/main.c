@@ -941,6 +941,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	ret = asprintf(&path, "%s/%s", root_path, stream_info.channel_name);
 	if (ret < 0) {
 		PERROR("asprintf stream path");
+		path = NULL;
 		goto end;
 	}
 
@@ -963,13 +964,17 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 end:
 	free(path);
 	free(root_path);
+
+	reply.handle = htobe64(stream->stream_handle);
 	/* send the session id to the client or a negative return code on error */
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
+		/* stream was not properly added to the ht, so free it */
+		free(stream);
 	} else {
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
-	reply.handle = htobe64(stream->stream_handle);
+
 	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
 			sizeof(struct lttcomm_relayd_status_stream), 0);
 	if (send_ret < 0) {
