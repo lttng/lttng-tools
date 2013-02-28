@@ -203,6 +203,7 @@ char *config_read_session_name(char *path)
 	if (fp == NULL) {
 		ERR("Can't find valid lttng config %s/.lttngrc", path);
 		MSG("Did you create a session? (lttng create <my_session>)");
+		free(session_name);
 		goto error;
 	}
 
@@ -221,6 +222,7 @@ char *config_read_session_name(char *path)
 	}
 
 error_close:
+	free(session_name);
 	ret = fclose(fp);
 	if (ret < 0) {
 		PERROR("close config read session name");
