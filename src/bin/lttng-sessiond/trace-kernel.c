@@ -158,6 +158,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 	lkc->channel = zmalloc(sizeof(struct lttng_channel));
 	if (lkc->channel == NULL) {
 		PERROR("lttng_channel zmalloc");
+		free(lkc);
 		goto error;
 	}
 	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
