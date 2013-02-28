@@ -105,6 +105,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 		break;
 	default:
 		ERR("Unknown lttng hashtable type %d", type);
+		lttng_ht_destroy(ht);
 		goto error;
 	}
 
