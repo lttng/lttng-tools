@@ -294,6 +294,7 @@ static int list_ust_events(void)
 	struct lttng_handle *handle;
 	struct lttng_event *event_list;
 	pid_t cur_pid = 0;
+	char *cmdline = NULL;
 
 	memset(&domain, 0, sizeof(domain));
 
@@ -322,7 +323,9 @@ static int list_ust_events(void)
 	for (i = 0; i < size; i++) {
 		if (cur_pid != event_list[i].pid) {
 			cur_pid = event_list[i].pid;
-			MSG("\nPID: %d - Name: %s", cur_pid, get_cmdline_by_pid(cur_pid));
+			cmdline = get_cmdline_by_pid(cur_pid);
+			MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
+			free(cmdline);
 		}
 		print_events(&event_list[i]);
 	}
@@ -349,6 +352,8 @@ static int list_ust_event_fields(void)
 	struct lttng_handle *handle;
 	struct lttng_event_field *event_field_list;
 	pid_t cur_pid = 0;
+	char *cmdline = NULL;
+
 	struct lttng_event cur_event;
 
 	memset(&domain, 0, sizeof(domain));
@@ -379,7 +384,9 @@ static int list_ust_event_fields(void)
 	for (i = 0; i < size; i++) {
 		if (cur_pid != event_field_list[i].event.pid) {
 			cur_pid = event_field_list[i].event.pid;
-			MSG("\nPID: %d - Name: %s", cur_pid, get_cmdline_by_pid(cur_pid));
+			cmdline = get_cmdline_by_pid(cur_pid);
+			MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
+			free(cmdline);
 		}
 		if (strcmp(cur_event.name, event_field_list[i].event.name) != 0) {
 			print_events(&event_field_list[i].event);
