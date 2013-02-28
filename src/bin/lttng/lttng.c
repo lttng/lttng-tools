@@ -374,13 +374,12 @@ static int check_sessiond(void)
 		}
 
 		ret = spawn_sessiond(pathname);
-		free(alloc_pathname);
 		if (ret < 0) {
 			ERR("Problem occurred when starting %s", pathname);
-			goto end;
 		}
-	}
 
+		free(alloc_pathname);
+	}
 end:
 	return ret;
 }
