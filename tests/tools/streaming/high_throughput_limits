@@ -88,13 +88,6 @@ function create_lttng_session_with_uri
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create -U $uri $sess_name >/dev/null 2>&1
 }
 
-function enable_lttng_consumer
-{
-	uri=$1
-	# Create session with custom URI
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-consumer -u $uri >/dev/null 2>&1
-}
-
 function run_apps
 {
 	for i in `seq 1 $NR_APP_ITER`; do
@@ -120,7 +113,6 @@ function test_high_throughput
 {
 	NETWORK_URI="net://localhost"
 	create_lttng_session_with_uri $SESSION_NAME $NETWORK_URI
-	enable_lttng_consumer $NETWORK_URI
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 	run_apps
