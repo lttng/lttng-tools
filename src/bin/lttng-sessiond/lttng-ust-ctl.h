@@ -136,22 +136,27 @@ void ustctl_destroy_channel(struct ustctl_consumer_channel *chan);
 
 int ustctl_send_channel_to_sessiond(int sock,
 		struct ustctl_consumer_channel *channel);
+int ustctl_channel_close_wait_fd(struct ustctl_consumer_channel *consumer_chan);
+int ustctl_channel_close_wakeup_fd(struct ustctl_consumer_channel *consumer_chan);
+int ustctl_channel_get_wait_fd(struct ustctl_consumer_channel *consumer_chan);
+int ustctl_channel_get_wakeup_fd(struct ustctl_consumer_channel *consumer_chan);
+
 /*
  * Send a NULL stream to finish iteration over all streams of a given
  * channel.
  */
 int ustctl_send_stream_to_sessiond(int sock,
 		struct ustctl_consumer_stream *stream);
+int ustctl_stream_close_wait_fd(struct ustctl_consumer_stream *stream);
 int ustctl_stream_close_wakeup_fd(struct ustctl_consumer_stream *stream);
+int ustctl_stream_get_wait_fd(struct ustctl_consumer_stream *stream);
+int ustctl_stream_get_wakeup_fd(struct ustctl_consumer_stream *stream);
 
 /* Create/destroy stream buffers for read */
 struct ustctl_consumer_stream *
 	ustctl_create_stream(struct ustctl_consumer_channel *channel,
 			int cpu);
 void ustctl_destroy_stream(struct ustctl_consumer_stream *stream);
-
-int ustctl_get_wait_fd(struct ustctl_consumer_stream *stream);
-int ustctl_get_wakeup_fd(struct ustctl_consumer_stream *stream);
 
 /* For mmap mode, readable without "get" operation */
 int ustctl_get_mmap_len(struct ustctl_consumer_stream *stream,

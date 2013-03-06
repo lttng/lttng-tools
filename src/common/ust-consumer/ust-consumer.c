@@ -256,7 +256,7 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 	while ((ustream = ustctl_create_stream(channel->uchan, cpu))) {
 		int wait_fd;
 
-		wait_fd = ustctl_get_wait_fd(ustream);
+		wait_fd = ustctl_stream_get_wait_fd(ustream);
 
 		/* Allocate consumer stream object. */
 		stream = allocate_stream(cpu, wait_fd, channel, ctx, &ret);
