@@ -62,9 +62,15 @@ struct ust_registry_session {
 	size_t metadata_len, metadata_alloc_len;
 	/* Length of bytes sent to the consumer. */
 	size_t metadata_len_sent;
+	/*
+	 * Hash table containing channels sent by the UST tracer. MUST be accessed
+	 * with a RCU read side lock acquired.
+	 */
+	struct lttng_ht *channels;
 };
 
 struct ust_registry_channel {
+	uint64_t key;
 	/* Id set when replying to a register channel. */
 	uint32_t chan_id;
 	enum ustctl_channel_header header_type;
@@ -84,6 +90,8 @@ struct ust_registry_channel {
 	 */
 	size_t nr_ctx_fields;
 	struct ustctl_field *ctx_fields;
+	/* Hash table node for the session ht indexed by key. */
+	struct lttng_ht_node_u64 node;
 };
 
 /*
@@ -168,12 +176,16 @@ static inline uint32_t ust_registry_get_event_count(
 	return (uint32_t) uatomic_read(&r->used_event_id);
 }
 
-void ust_registry_channel_init(struct ust_registry_session *session,
-		struct ust_registry_channel *chan);
 void ust_registry_channel_destroy(struct ust_registry_session *session,
 		struct ust_registry_channel *chan);
+struct ust_registry_channel *ust_registry_channel_find(
+		struct ust_registry_session *session, uint64_t key);
+int ust_registry_channel_add(struct ust_registry_session *session,
+		uint64_t key);
+void ust_registry_channel_del_free(struct ust_registry_session *session,
+		uint64_t key);
 
-int ust_registry_session_init(struct ust_registry_session *session,
+int ust_registry_session_init(struct ust_registry_session **sessionp,
 		struct ust_app *app,
 		uint32_t bits_per_long,
 		uint32_t uint8_t_alignment,
@@ -182,13 +194,11 @@ int ust_registry_session_init(struct ust_registry_session *session,
 		uint32_t uint64_t_alignment,
 		uint32_t long_alignment,
 		int byte_order);
-
 void ust_registry_session_destroy(struct ust_registry_session *session);
 
 int ust_registry_create_event(struct ust_registry_session *session,
-		struct ust_registry_channel *channel,
-		int session_objd, int channel_objd, char *name, char *sig,
-		size_t nr_fields, struct ustctl_field *fields, int loglevel,
+		uint64_t chan_key, int session_objd, int channel_objd, char *name,
+		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
 		char *model_emf_uri, uint32_t *event_id);
 struct ust_registry_event *ust_registry_find_event(
 		struct ust_registry_channel *chan, char *name, char *sig);

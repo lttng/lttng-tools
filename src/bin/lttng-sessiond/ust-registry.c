@@ -165,17 +165,16 @@ end:
  * Should be called with session registry mutex held.
  */
 int ust_registry_create_event(struct ust_registry_session *session,
-		struct ust_registry_channel *chan,
-		int session_objd, int channel_objd, char *name, char *sig,
-		size_t nr_fields, struct ustctl_field *fields, int loglevel,
+		uint64_t chan_key, int session_objd, int channel_objd, char *name,
+		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
 		char *model_emf_uri, uint32_t *event_id)
 {
 	int ret;
 	struct cds_lfht_node *nptr;
 	struct ust_registry_event *event = NULL;
+	struct ust_registry_channel *chan;
 
 	assert(session);
-	assert(chan);
 	assert(name);
 	assert(sig);
 
@@ -188,17 +187,25 @@ int ust_registry_create_event(struct ust_registry_session *session,
 		goto error;
 	}
 
+	rcu_read_lock();
+
+	chan = ust_registry_channel_find(session, chan_key);
+	if (!chan) {
+		ret = -EINVAL;
+		goto error_unlock;
+	}
+
 	/* Check if we've reached the maximum possible id. */
 	if (ust_registry_is_max_id(chan->used_event_id)) {
 		ret = -ENOENT;
-		goto error;
+		goto error_unlock;
 	}
 
 	event = alloc_event(session_objd, channel_objd, name, sig, nr_fields,
 			fields, loglevel, model_emf_uri);
 	if (!event) {
 		ret = -ENOMEM;
-		goto error;
+		goto error_unlock;
 	}
 
 	event->id = ust_registry_get_next_event_id(chan);
@@ -207,7 +214,6 @@ int ust_registry_create_event(struct ust_registry_session *session,
 			"chan_objd: %u, sess_objd: %u", event->name, event->signature,
 			event->id, event->channel_objd, event->session_objd);
 
-	rcu_read_lock();
 	/*
 	 * This is an add unique with a custom match function for event. The node
 	 * are matched using the event name and signature.
@@ -227,15 +233,16 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	if (event_id) {
 		*event_id = event->id;
 	}
-	rcu_read_unlock();
 
 	/* Append to metadata */
 	ret = ust_metadata_event_statedump(session, chan, event);
 	if (ret) {
 		ERR("Error appending event metadata (errno = %d)", ret);
+		rcu_read_unlock();
 		return ret;
 	}
 
+	rcu_read_unlock();
 	return 0;
 
 error_unlock:
@@ -269,31 +276,13 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 }
 
 /*
- * Initialize registry with default values.
- */
-void ust_registry_channel_init(struct ust_registry_session *session,
-		struct ust_registry_channel *chan)
-{
-	assert(chan);
-
-	memset(chan, 0, sizeof(struct ust_registry_channel));
-
-	chan->ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	assert(chan->ht);
-
-	/* Set custom match function. */
-	chan->ht->match_fct = ht_match_event;
-}
-
-/*
  * Destroy every element of the registry and free the memory. This does NOT
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
  *
  * This MUST be called within a RCU read side lock section.
  */
-void ust_registry_channel_destroy(struct ust_registry_session *session,
-		struct ust_registry_channel *chan)
+static void destroy_channel(struct ust_registry_channel *chan)
 {
 	struct lttng_ht_iter iter;
 	struct ust_registry_event *event;
@@ -306,12 +295,109 @@ void ust_registry_channel_destroy(struct ust_registry_session *session,
 		ust_registry_destroy_event(chan, event);
 	}
 	lttng_ht_destroy(chan->ht);
+
+	free(chan);
 }
 
 /*
  * Initialize registry with default values.
  */
-int ust_registry_session_init(struct ust_registry_session *session,
+int ust_registry_channel_add(struct ust_registry_session *session,
+		uint64_t key)
+{
+	int ret = 0;
+	struct ust_registry_channel *chan;
+
+	assert(session);
+
+	chan = zmalloc(sizeof(*chan));
+	if (!chan) {
+		PERROR("zmalloc ust registry channel");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	chan->ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	if (!chan->ht) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	/* Set custom match function. */
+	chan->ht->match_fct = ht_match_event;
+
+	rcu_read_lock();
+	lttng_ht_node_init_u64(&chan->node, key);
+	lttng_ht_add_unique_u64(session->channels, &chan->node);
+	rcu_read_unlock();
+
+error:
+	return ret;
+}
+
+/*
+ * Find a channel in the given registry. RCU read side lock MUST be acquired
+ * before calling this function and as long as the event reference is kept by
+ * the caller.
+ *
+ * On success, the pointer is returned else NULL.
+ */
+struct ust_registry_channel *ust_registry_channel_find(
+		struct ust_registry_session *session, uint64_t key)
+{
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+	struct ust_registry_channel *chan = NULL;
+
+	assert(session);
+	assert(session->channels);
+
+	lttng_ht_lookup(session->channels, &key, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
+	if (!node) {
+		goto end;
+	}
+	chan = caa_container_of(node, struct ust_registry_channel, node);
+
+end:
+	return chan;
+}
+
+/*
+ * Remove channel using key from registry and free memory.
+ */
+void ust_registry_channel_del_free(struct ust_registry_session *session,
+		uint64_t key)
+{
+	struct lttng_ht_iter iter;
+	struct ust_registry_channel *chan;
+
+	assert(session);
+
+	rcu_read_lock();
+	chan = ust_registry_channel_find(session, key);
+	if (!chan) {
+		goto end;
+	}
+
+	iter.iter.node = &chan->node.node;
+	lttng_ht_del(session->channels, &iter);
+
+	destroy_channel(chan);
+
+end:
+	rcu_read_unlock();
+	return;
+}
+
+/*
+ * Initialize registry with default values and set the newly allocated session
+ * pointer to sessionp.
+ *
+ * Return 0 on success and sessionp is set or else return -1 and sessionp is
+ * kept untouched.
+ */
+int ust_registry_session_init(struct ust_registry_session **sessionp,
 		struct ust_app *app,
 		uint32_t bits_per_long,
 		uint32_t uint8_t_alignment,
@@ -322,10 +408,16 @@ int ust_registry_session_init(struct ust_registry_session *session,
 		int byte_order)
 {
 	int ret;
+	struct ust_registry_session *session;
 
-	assert(session);
+	assert(sessionp);
+	assert(app);
 
-	memset(session, 0, sizeof(struct ust_registry_session));
+	session = zmalloc(sizeof(*session));
+	if (!session) {
+		PERROR("zmalloc ust registry session");
+		goto error;
+	}
 
 	pthread_mutex_init(&session->lock, NULL);
 	session->bits_per_long = bits_per_long;
@@ -335,6 +427,11 @@ int ust_registry_session_init(struct ust_registry_session *session,
 	session->uint64_t_alignment = uint64_t_alignment;
 	session->long_alignment = long_alignment;
 	session->byte_order = byte_order;
+
+	session->channels = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!session->channels) {
+		goto error;
+	}
 
 	ret = lttng_uuid_generate(session->uuid);
 	if (ret) {
@@ -350,6 +447,8 @@ int ust_registry_session_init(struct ust_registry_session *session,
 		goto error;
 	}
 
+	*sessionp = session;
+
 	return 0;
 
 error:
@@ -363,10 +462,23 @@ error:
 void ust_registry_session_destroy(struct ust_registry_session *reg)
 {
 	int ret;
+	struct lttng_ht_iter iter;
+	struct ust_registry_channel *chan;
 
 	/* On error, EBUSY can be returned if lock. Code flow error. */
 	ret = pthread_mutex_destroy(&reg->lock);
 	assert(!ret);
+
+	rcu_read_lock();
+	/* Destroy all event associated with this registry. */
+	cds_lfht_for_each_entry(reg->channels->ht, &iter.iter, chan, node.node) {
+		/* Delete the node from the ht and free it. */
+		ret = lttng_ht_del(reg->channels, &iter);
+		assert(!ret);
+		destroy_channel(chan);
+	}
+	lttng_ht_destroy(reg->channels);
+	rcu_read_unlock();
 
 	free(reg->metadata);
 }

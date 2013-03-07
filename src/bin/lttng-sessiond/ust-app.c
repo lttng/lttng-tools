@@ -300,8 +300,8 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	}
 	lttng_ht_destroy(ua_chan->events);
 
-	/* Wipe and free registry. */
-	ust_registry_channel_destroy(&ua_chan->session->registry, &ua_chan->registry);
+	/* Wipe and free registry from session registry. */
+	ust_registry_channel_del_free(ua_chan->session->registry, ua_chan->key);
 
 	if (ua_chan->obj != NULL) {
 		/* Remove channel from application UST object descriptor. */
@@ -361,10 +361,11 @@ static int push_metadata(struct ust_app *app, struct ust_app_session *ua_sess)
 	 * ability to reorder the metadata it receives.
 	 */
 	pthread_mutex_lock(socket->lock);
-	pthread_mutex_lock(&ua_sess->registry.lock);
+	pthread_mutex_lock(&ua_sess->registry->lock);
 
-	offset = ua_sess->registry.metadata_len_sent;
-	len = ua_sess->registry.metadata_len - ua_sess->registry.metadata_len_sent;
+	offset = ua_sess->registry->metadata_len_sent;
+	len = ua_sess->registry->metadata_len -
+		ua_sess->registry->metadata_len_sent;
 	if (len == 0) {
 		DBG3("No metadata to push for session id %d", ua_sess->id);
 		ret = 0;
@@ -380,9 +381,9 @@ static int push_metadata(struct ust_app *app, struct ust_app_session *ua_sess)
 		goto error_reg_unlock;
 	}
 	/* Copy what we haven't send out. */
-	memcpy(metadata_str, ua_sess->registry.metadata + offset, len);
+	memcpy(metadata_str, ua_sess->registry->metadata + offset, len);
 
-	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_unlock(&ua_sess->registry->lock);
 
 	ret = ust_consumer_push_metadata(socket, ua_sess, metadata_str, len,
 			offset);
@@ -392,9 +393,9 @@ static int push_metadata(struct ust_app *app, struct ust_app_session *ua_sess)
 	}
 
 	/* Update len sent of the registry. */
-	pthread_mutex_lock(&ua_sess->registry.lock);
-	ua_sess->registry.metadata_len_sent += len;
-	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_lock(&ua_sess->registry->lock);
+	ua_sess->registry->metadata_len_sent += len;
+	pthread_mutex_unlock(&ua_sess->registry->lock);
 	pthread_mutex_unlock(socket->lock);
 
 	rcu_read_unlock();
@@ -402,7 +403,7 @@ static int push_metadata(struct ust_app *app, struct ust_app_session *ua_sess)
 	return 0;
 
 error_reg_unlock:
-	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_unlock(&ua_sess->registry->lock);
 	pthread_mutex_unlock(socket->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
@@ -488,7 +489,8 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	}
 	lttng_ht_destroy(ua_sess->channels);
 
-	ust_registry_session_destroy(&ua_sess->registry);
+	ust_registry_session_destroy(ua_sess->registry);
+	free(ua_sess->registry);
 
 	if (ua_sess->handle != -1) {
 		ret = ustctl_release_handle(sock, ua_sess->handle);
@@ -652,6 +654,7 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 
 	ua_chan->enabled = 1;
 	ua_chan->handle = -1;
+	ua_chan->session = ua_sess;
 	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
@@ -659,8 +662,10 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
 
-	/* Initialize UST registry. */
-	ust_registry_channel_init(&ua_sess->registry, &ua_chan->registry);
+	/* Add a channel registry to session. */
+	if (ust_registry_channel_add(ua_sess->registry, ua_chan->key) < 0) {
+		goto error;
+	}
 
 	/* Copy attributes */
 	if (attr) {
@@ -1145,8 +1150,6 @@ static int create_ust_channel(struct ust_app *app,
 
 	/* Flag the channel that it is sent to the application. */
 	ua_chan->is_sent = 1;
-	/* Assign session to channel. */
-	ua_chan->session = ua_sess;
 	/* Initialize ust objd object using the received handle and add it. */
 	lttng_ht_node_init_ulong(&ua_chan->ust_objd_node, ua_chan->handle);
 	lttng_ht_add_unique_ulong(app->ust_objd, &ua_chan->ust_objd_node);
@@ -3535,6 +3538,7 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
+	struct ust_registry_channel *chan_reg;
 
 	rcu_read_lock();
 
@@ -3552,11 +3556,13 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	assert(ua_chan);
 	assert(ua_chan->session);
 	ua_sess = ua_chan->session;
-	assert(ua_sess);
 
-	pthread_mutex_lock(&ua_sess->registry.lock);
+	pthread_mutex_lock(&ua_sess->registry->lock);
 
-	if (ust_registry_is_max_id(ua_chan->session->registry.used_channel_id)) {
+	chan_reg = ust_registry_channel_find(ua_sess->registry, ua_chan->key);
+	assert(chan_reg);
+
+	if (ust_registry_is_max_id(ua_sess->registry->used_channel_id)) {
 		ret_code = -1;
 		chan_id = -1U;
 		type = -1;
@@ -3567,25 +3573,25 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	if (ua_chan->attr.type == LTTNG_UST_CHAN_METADATA) {
 		chan_id = -1U;
 	} else {
-		chan_id = ust_registry_get_next_chan_id(&ua_chan->session->registry);
+		chan_id = ust_registry_get_next_chan_id(ua_sess->registry);
 	}
 
-	reg_count = ust_registry_get_event_count(&ua_chan->registry);
+	reg_count = ust_registry_get_event_count(chan_reg);
 	if (reg_count < 31) {
 		type = USTCTL_CHANNEL_HEADER_COMPACT;
 	} else {
 		type = USTCTL_CHANNEL_HEADER_LARGE;
 	}
 
-	ua_chan->registry.nr_ctx_fields = nr_fields;
-	ua_chan->registry.ctx_fields = fields;
-	ua_chan->registry.chan_id = chan_id;
-	ua_chan->registry.header_type = type;
+	chan_reg->nr_ctx_fields = nr_fields;
+	chan_reg->ctx_fields = fields;
+	chan_reg->chan_id = chan_id;
+	chan_reg->header_type = type;
 
 	/* Append to metadata */
 	if (!ret_code) {
-		ret_code = ust_metadata_channel_statedump(&ua_chan->session->registry,
-				&ua_chan->registry);
+		ret_code = ust_metadata_channel_statedump(ua_chan->session->registry,
+				chan_reg);
 		if (ret_code) {
 			ERR("Error appending channel metadata (errno = %d)", ret_code);
 			goto reply;
@@ -3607,7 +3613,7 @@ reply:
 	}
 
 error:
-	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_unlock(&ua_sess->registry->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
 	return ret;
@@ -3649,11 +3655,11 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	assert(ua_chan->session);
 	ua_sess = ua_chan->session;
 
-	pthread_mutex_lock(&ua_sess->registry.lock);
+	pthread_mutex_lock(&ua_sess->registry->lock);
 
-	ret_code = ust_registry_create_event(&ua_sess->registry,
-			&ua_chan->registry, sobjd, cobjd, name, sig, nr_fields, fields,
-			loglevel, model_emf_uri, &event_id);
+	ret_code = ust_registry_create_event(ua_sess->registry, ua_chan->key,
+			sobjd, cobjd, name, sig, nr_fields, fields, loglevel,
+			model_emf_uri, &event_id);
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
@@ -3677,7 +3683,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	DBG3("UST registry event %s has been added successfully", name);
 
 error:
-	pthread_mutex_unlock(&ua_sess->registry.lock);
+	pthread_mutex_unlock(&ua_sess->registry->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
 	return ret;

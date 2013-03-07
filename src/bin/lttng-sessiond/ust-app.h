@@ -142,10 +142,6 @@ struct ust_app_channel {
 	struct lttng_ht *ctx;
 	struct lttng_ht *events;
 	/*
-	 * UST event registry. The ONLY writer is the application thread.
-	 */
-	struct ust_registry_channel registry;
-	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */
 	struct lttng_ht_node_str node;
@@ -170,7 +166,7 @@ struct ust_app_session {
 	int handle;   /* used has unique identifier for app session */
 	int id;       /* session unique identifier */
 	struct ust_app_channel *metadata;
-	struct ust_registry_session registry;
+	struct ust_registry_session *registry;
 	struct lttng_ht *channels; /* Registered channels */
 	struct lttng_ht_node_ulong node;
 	char path[PATH_MAX];

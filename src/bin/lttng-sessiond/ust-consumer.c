@@ -133,7 +133,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_sess->gid,
 			consumer->net_seq_index,
 			ua_chan->key,
-			ua_sess->registry.uuid);
+			ua_sess->registry->uuid);
 
 	health_code_update();
 
