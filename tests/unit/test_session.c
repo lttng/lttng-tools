@@ -29,6 +29,7 @@
 #include <tap/tap.h>
 
 #include <bin/lttng-sessiond/session.h>
+#include <bin/lttng-sessiond/ust-app.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/common.h>
 
@@ -48,6 +49,9 @@ static struct ltt_session_list *session_list;
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 0;
+
+int ust_consumerd32_fd;
+int ust_consumerd64_fd;
 
 static const char alphanum[] =
 	"0123456789"

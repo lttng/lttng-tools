@@ -28,6 +28,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
+#include "health.h"
 #include "ust-consumer.h"
 
 /*
@@ -66,8 +67,8 @@ static char *setup_trace_path(struct consumer_output *consumer,
 		}
 
 		/* Create directory. Ignore if exist. */
-		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG, ua_sess->uid,
-				ua_sess->gid);
+		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG,
+				ua_sess->euid, ua_sess->egid);
 		if (ret < 0) {
 			if (ret != -EEXIST) {
 				ERR("Trace directory creation error");
@@ -93,21 +94,24 @@ error:
 /*
  * Send a single channel to the consumer using command ADD_CHANNEL.
  *
- * Consumer socket MUST be acquired before calling this.
+ * Consumer socket lock MUST be acquired before calling this.
  */
 static int ask_channel_creation(struct ust_app_session *ua_sess,
 		struct ust_app_channel *ua_chan, struct consumer_output *consumer,
-		struct consumer_socket *socket)
+		struct consumer_socket *socket, struct ust_registry_session *registry)
 {
 	int ret;
-	uint64_t key;
+	uint32_t chan_id;
+	uint64_t key, chan_reg_key;
 	char *pathname = NULL;
 	struct lttcomm_consumer_msg msg;
+	struct ust_registry_channel *chan_reg;
 
 	assert(ua_sess);
 	assert(ua_chan);
 	assert(socket);
 	assert(consumer);
+	assert(registry);
 
 	DBG2("Asking UST consumer for channel");
 
@@ -118,6 +122,21 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
+	/* Depending on the buffer type, a different channel key is used. */
+	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
+		chan_reg_key = ua_chan->tracing_channel_id;
+	} else {
+		chan_reg_key = ua_chan->key;
+	}
+
+	if (ua_chan->attr.type == LTTNG_UST_CHAN_METADATA) {
+		chan_id = -1U;
+	} else {
+		chan_reg = ust_registry_channel_find(registry, chan_reg_key);
+		assert(chan_reg);
+		chan_id = chan_reg->chan_id;
+	}
+
 	consumer_init_ask_channel_comm_msg(&msg,
 			ua_chan->attr.subbuf_size,
 			ua_chan->attr.num_subbuf,
@@ -126,14 +145,15 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->attr.read_timer_interval,
 			(int) ua_chan->attr.output,
 			(int) ua_chan->attr.type,
-			ua_sess->id,
+			ua_sess->tracing_id,
 			pathname,
 			ua_chan->name,
-			ua_sess->uid,
-			ua_sess->gid,
+			ua_sess->euid,
+			ua_sess->egid,
 			consumer->net_seq_index,
 			ua_chan->key,
-			ua_sess->registry->uuid);
+			registry->uuid,
+			chan_id);
 
 	health_code_update();
 
@@ -168,7 +188,7 @@ error:
  */
 int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 		struct ust_app_channel *ua_chan, struct consumer_output *consumer,
-		struct consumer_socket *socket)
+		struct consumer_socket *socket, struct ust_registry_session *registry)
 {
 	int ret;
 
@@ -177,10 +197,11 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 	assert(consumer);
 	assert(socket);
 	assert(socket->fd >= 0);
+	assert(registry);
 
 	pthread_mutex_lock(socket->lock);
 
-	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket);
+	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry);
 	if (ret < 0) {
 		goto error;
 	}
@@ -366,8 +387,8 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	assert(channel);
 	assert(channel->obj);
 
-	DBG2("UST app send channel to app sock %d pid %d (name: %s, key: %lu)",
-			app->sock, app->pid, channel->name, channel->key);
+	DBG2("UST app send channel to sock %d pid %d (name: %s, key: %" PRIu64 ")",
+			app->sock, app->pid, channel->name, channel->tracing_channel_id);
 
 	/* Send stream to application. */
 	ret = ustctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);
@@ -382,133 +403,5 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	}
 
 error:
-	return ret;
-}
-
-/*
- * Send metadata string to consumer.
- *
- * Return 0 on success else a negative value.
- */
-int ust_consumer_push_metadata(struct consumer_socket *socket,
-		struct ust_app_session *ua_sess, char *metadata_str,
-		size_t len, size_t target_offset)
-{
-	int ret;
-	struct lttcomm_consumer_msg msg;
-
-	assert(socket);
-	assert(socket->fd >= 0);
-	assert(ua_sess);
-	assert(ua_sess->metadata);
-
-	DBG2("UST consumer push metadata to consumer socket %d", socket->fd);
-
-	msg.cmd_type = LTTNG_CONSUMER_PUSH_METADATA;
-	msg.u.push_metadata.key = ua_sess->metadata->key;
-	msg.u.push_metadata.target_offset = target_offset;
-	msg.u.push_metadata.len = len;
-
-	/*
-	 * TODO: reenable these locks when the consumerd gets the ability to
-	 * reorder the metadata it receives. This fits with locking in
-	 * src/bin/lttng-sessiond/ust-app.c:push_metadata()
-	 *
-	 * pthread_mutex_lock(socket->lock);
-	 */
-
-	health_code_update();
-	ret = consumer_send_msg(socket, &msg);
-	if (ret < 0) {
-		goto error;
-	}
-
-	DBG3("UST consumer push metadata on sock %d of len %lu", socket->fd, len);
-
-	ret = lttcomm_send_unix_sock(socket->fd, metadata_str, len);
-	if (ret < 0) {
-		fprintf(stderr, "send error: %d\n", ret);
-		goto error;
-	}
-
-	health_code_update();
-	ret = consumer_recv_status_reply(socket);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	health_code_update();
-	/*
-	 * pthread_mutex_unlock(socket->lock);
-	 */
-	return ret;
-}
-
-/*
- * Send a close metdata command to consumer using the given channel key.
- *
- * Return 0 on success else a negative value.
- */
-int ust_consumer_close_metadata(struct consumer_socket *socket,
-		struct ust_app_channel *ua_chan)
-{
-	int ret;
-	struct lttcomm_consumer_msg msg;
-
-	assert(ua_chan);
-	assert(socket);
-	assert(socket->fd >= 0);
-
-	DBG2("UST consumer close metadata channel key %lu", ua_chan->key);
-
-	msg.cmd_type = LTTNG_CONSUMER_CLOSE_METADATA;
-	msg.u.close_metadata.key = ua_chan->key;
-
-	pthread_mutex_lock(socket->lock);
-	health_code_update();
-
-	ret = consumer_send_msg(socket, &msg);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	health_code_update();
-	pthread_mutex_unlock(socket->lock);
-	return ret;
-}
-
-/*
- * Send a setup metdata command to consumer using the given channel key.
- *
- * Return 0 on success else a negative value.
- */
-int ust_consumer_setup_metadata(struct consumer_socket *socket,
-		struct ust_app_channel *ua_chan)
-{
-	int ret;
-	struct lttcomm_consumer_msg msg;
-
-	assert(ua_chan);
-	assert(socket);
-	assert(socket->fd >= 0);
-
-	DBG2("UST consumer setup metadata channel key %lu", ua_chan->key);
-
-	msg.cmd_type = LTTNG_CONSUMER_SETUP_METADATA;
-	msg.u.setup_metadata.key = ua_chan->key;
-
-	pthread_mutex_lock(socket->lock);
-	health_code_update();
-
-	ret = consumer_send_msg(socket, &msg);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	health_code_update();
-	pthread_mutex_unlock(socket->lock);
 	return ret;
 }

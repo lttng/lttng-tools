@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#include <inttypes.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -188,7 +189,7 @@ error:
 /*
  * Enable UST channel for session and domain.
  */
-int channel_ust_enable(struct ltt_ust_session *usess, int domain,
+int channel_ust_enable(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = LTTNG_OK;
@@ -203,43 +204,30 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 		goto end;
 	}
 
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		DBG2("Channel %s being enabled in UST global domain", uchan->name);
+	DBG2("Channel %s being enabled in UST domain", uchan->name);
 
-		/*
-		 * Enable channel for UST global domain on all applications. Ignore
-		 * return value here since whatever error we got, it means that the
-		 * channel was not created on one or many registered applications and
-		 * we can not report this to the user yet. However, at this stage, the
-		 * channel was successfully created on the session daemon side so the
-		 * enable-channel command is a success.
-		 */
-		(void) ust_app_create_channel_glb(usess, uchan);
-		break;
-#if 0
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-#endif
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
+	/*
+	 * Enable channel for UST global domain on all applications. Ignore return
+	 * value here since whatever error we got, it means that the channel was
+	 * not created on one or many registered applications and we can not report
+	 * this to the user yet. However, at this stage, the channel was
+	 * successfully created on the session daemon side so the enable-channel
+	 * command is a success.
+	 */
+	(void) ust_app_create_channel_glb(usess, uchan);
 
 	uchan->enabled = 1;
 	DBG2("Channel %s enabled successfully", uchan->name);
 
 end:
-error:
 	return ret;
 }
 
 /*
  * Create UST channel for session and domain.
  */
-int channel_ust_create(struct ltt_ust_session *usess, int domain,
-		struct lttng_channel *attr)
+int channel_ust_create(struct ltt_ust_session *usess,
+		struct lttng_channel *attr, enum lttng_buffer_type type)
 {
 	int ret = LTTNG_OK;
 	struct ltt_ust_channel *uchan = NULL;
@@ -249,7 +237,7 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		defattr = channel_new_default_attr(domain);
+		defattr = channel_new_default_attr(LTTNG_DOMAIN_UST);
 		if (defattr == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
@@ -291,24 +279,27 @@ int channel_ust_create(struct ltt_ust_session *usess, int domain,
 		goto error;
 	}
 	uchan->enabled = 1;
+	if (trace_ust_is_max_id(usess->used_channel_id)) {
+		ret = LTTNG_ERR_UST_CHAN_FAIL;
+		goto error;
+	}
+	uchan->id = trace_ust_get_next_chan_id(usess);
 
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		DBG2("Channel %s being created in UST global domain", uchan->name);
+	DBG2("Channel %s is being created for UST with buffer %d and id %" PRIu64,
+			uchan->name, type, uchan->id);
 
-		/* Enable channel for global domain */
-		ret = ust_app_create_channel_glb(usess, uchan);
-		break;
-#if 0
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-#endif
-	default:
-		ret = LTTNG_ERR_UND;
+	/* Flag session buffer type. */
+	if (!usess->buffer_type_changed) {
+		usess->buffer_type = type;
+		usess->buffer_type_changed = 1;
+	} else if (usess->buffer_type != type) {
+		/* Buffer type was already set. Refuse to create channel. */
+		ret = LTTNG_ERR_BUFFER_TYPE_MISMATCH;
 		goto error_free_chan;
 	}
 
+	/* Enable channel for global domain */
+	ret = ust_app_create_channel_glb(usess, uchan);
 	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 		ret = LTTNG_ERR_UST_CHAN_FAIL;
 		goto error_free_chan;
@@ -338,7 +329,7 @@ error:
 /*
  * Disable UST channel for session and domain.
  */
-int channel_ust_disable(struct ltt_ust_session *usess, int domain,
+int channel_ust_disable(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	int ret = LTTNG_OK;
@@ -352,23 +343,9 @@ int channel_ust_disable(struct ltt_ust_session *usess, int domain,
 		goto end;
 	}
 
-	/* Get the right channel's hashtable */
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		DBG2("Channel %s being disabled in UST global domain", uchan->name);
-		/* Disable channel for global domain */
-		ret = ust_app_disable_channel_glb(usess, uchan);
-		break;
-#if 0
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-#endif
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
-
+	DBG2("Channel %s being disabled in UST global domain", uchan->name);
+	/* Disable channel for global domain */
+	ret = ust_app_disable_channel_glb(usess, uchan);
 	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 		ret = LTTNG_ERR_UST_CHAN_DISABLE_FAIL;
 		goto error;

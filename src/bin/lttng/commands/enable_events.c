@@ -319,8 +319,11 @@ static int enable_events(char *session_name)
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+		dom.buf_type = LTTNG_BUFFER_GLOBAL;
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
+		/* Default. */
+		dom.buf_type = LTTNG_BUFFER_PER_PID;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_ERROR;

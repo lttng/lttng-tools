@@ -10,6 +10,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
                        kernel.c kernel.h \
                        ust-ctl.h ust-app.h trace-ust.h ust-thread.h \
+                       ust-registry.h \
                        context.c context.h \
                        channel.c channel.h \
                        event.c event.h \
@@ -23,10 +24,11 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        consumer.h \
                        health.c health.h \
                        cmd.c cmd.h \
+                       buffer-registry.c buffer-registry.h \
                        testpoint.h
 
 if HAVE_LIBLTTNG_UST_CTL
-lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-registry.h ust-app.c \
+lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-consumer.c ust-consumer.h ust-thread.c \
 			ust-metadata.c ust-clock.h
 endif

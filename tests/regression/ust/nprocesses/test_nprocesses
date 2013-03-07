@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-NR_ITER=100
+NR_ITER=30
 TEST_DESC="UST tracer - Generate $NR_ITER process"
 
 CURDIR=$(dirname $0)/
@@ -46,16 +46,13 @@ do
 	./$CURDIR/$TEST_BIN_NAME 1000 >/dev/null 2>&1 &
 done
 
-sleep 3
+reg_app_count=0
+while [ $reg_app_count -ne $NR_ITER ]; do
+	listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
+	reg_app_count=$(echo -n $listing | sed "s/$TEST_BIN_NAME/$TEST_BIN_NAME\n/g" | grep "$TEST_BIN_NAME" | wc -l)
+done
 
-listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
-reg_app_count=$(echo -n $listing | sed "s/$TEST_BIN_NAME/$TEST_BIN_NAME\n/g" | grep "$TEST_BIN_NAME" | wc -l)
-if [ "$reg_app_count" -ne "$NR_ITER" ]; then
-	fail "Trace validation"
-	diag "$reg_app_count apps listed. Expected $NR_ITER "
-else
-	pass "Trace validation"
-fi
+pass "Trace validation"
 
 TRACE_PATH=$(mktemp -d)
 
@@ -74,8 +71,11 @@ destroy_lttng_session $SESSION_NAME
 
 rm -rf $TRACE_PATH
 
-# Send SIGPIPE to 'silence' bash process status such as "Process as terminated"
-killall -s PIPE -q $TEST_BIN_NAME >/dev/null 2>&1
+while [ -n "$(pidof $TEST_BIN_NAME)" ]; do
+	killall -s PIPE -q $TEST_BIN_NAME >/dev/null 2>&1
+	sleep 0.5
+done
+
 
 pass "Kill all spawned applications"
 

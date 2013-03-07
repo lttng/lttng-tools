@@ -142,13 +142,21 @@ enum lttng_health_component {
 	LTTNG_HEALTH_ALL,
 };
 
+/* Buffer type for a specific domain. */
+enum lttng_buffer_type {
+	LTTNG_BUFFER_PER_PID,	/* Only supported by UST being the default. */
+	LTTNG_BUFFER_PER_UID,	/* Only supported by UST. */
+	LTTNG_BUFFER_GLOBAL,	/* Only supported by the Kernel. */
+};
+
 /*
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_DOMAIN_PADDING1              16
+#define LTTNG_DOMAIN_PADDING1              12
 #define LTTNG_DOMAIN_PADDING2              LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_domain {
 	enum lttng_domain_type type;
+	enum lttng_buffer_type buf_type;
 	char padding[LTTNG_DOMAIN_PADDING1];
 
 	union {

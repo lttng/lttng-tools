@@ -876,8 +876,7 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 	pthread_mutex_lock(&consumer_data.lock);
 	rcu_read_lock();
 
-	lttng_ht_lookup(consumer_data.channel_ht,
-			&channel->key, &iter);
+	lttng_ht_lookup(consumer_data.channel_ht, &channel->key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
 		/* Channel already exist. Ignore the insertion */
@@ -936,7 +935,12 @@ static int update_poll_array(struct lttng_consumer_local_data *ctx,
 				stream->endpoint_status == CONSUMER_ENDPOINT_INACTIVE) {
 			continue;
 		}
-		DBG("Active FD %d", stream->wait_fd);
+		/*
+		 * This clobbers way too much the debug output. Uncomment that if you
+		 * need it for debugging purposes.
+		 *
+		 * DBG("Active FD %d", stream->wait_fd);
+		 */
 		(*pollfd)[i].fd = stream->wait_fd;
 		(*pollfd)[i].events = POLLIN | POLLPRI;
 		local_stream[i] = stream;

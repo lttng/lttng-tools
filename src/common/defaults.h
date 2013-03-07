@@ -48,6 +48,10 @@
 #define DEFAULT_KERNEL_TRACE_DIR                "/kernel"
 #define DEFAULT_UST_TRACE_DIR                   "/ust"
 
+/* Subpath for per PID or UID sessions. */
+#define DEFAULT_UST_TRACE_PID_PATH               "/pid"
+#define DEFAULT_UST_TRACE_UID_PATH               "/uid/%d/%u-bit"
+
 /*
  * Default session name for the lttng command line. This default value will
  * get the date and time appended (%Y%m%d-%H%M%S) to it.
@@ -84,7 +88,6 @@
 #define DEFAULT_GLOBAL_HEALTH_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/health.sock"
 #define DEFAULT_HOME_HEALTH_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/health.sock"
 
-#ifdef HAVE_LIBLTTNG_UST_CTL
 #define DEFAULT_GLOBAL_APPS_UNIX_SOCK \
 	DEFAULT_LTTNG_RUNDIR "/" LTTNG_UST_SOCK_FILENAME
 #define DEFAULT_HOME_APPS_UNIX_SOCK \
@@ -93,11 +96,6 @@
 	"/" LTTNG_UST_WAIT_FILENAME
 #define DEFAULT_HOME_APPS_WAIT_SHM_PATH \
 	DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH "-%d"
-
-#else
-#define DEFAULT_GLOBAL_APPS_UNIX_SOCK
-#define DEFAULT_HOME_APPS_UNIX_SOCK
-#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 /*
  * Value taken from the hard limit allowed by the kernel when using setrlimit

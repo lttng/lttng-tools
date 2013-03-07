@@ -372,6 +372,7 @@ int ust_metadata_event_statedump(struct ust_registry_session *session,
 		"};\n\n");
 	if (ret)
 		goto end;
+	event->metadata_dumped = 1;
 
 end:
 	return ret;
@@ -424,6 +425,8 @@ int ust_metadata_channel_statedump(struct ust_registry_session *session,
 
 	ret = lttng_metadata_printf(session,
 		"};\n\n");
+	/* Flag success of metadata dump. */
+	chan->metadata_dumped = 1;
 
 end:
 	return ret;
@@ -524,6 +527,9 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		clock_uuid_s[UUID_STR_LEN];
 	int ret = 0;
 	char hostname[HOST_NAME_MAX];
+
+	assert(session);
+	assert(app);
 
 	uuid_c = session->uuid;
 

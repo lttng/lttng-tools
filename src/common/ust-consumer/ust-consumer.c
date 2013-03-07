@@ -558,6 +558,43 @@ error:
 }
 
 /*
+ * Flush channel's streams using the given key to retrieve the channel.
+ *
+ * Return 0 on success else an LTTng error code.
+ */
+static int flush_channel(uint64_t chan_key)
+{
+	int ret = 0;
+	struct lttng_consumer_channel *channel;
+	struct lttng_consumer_stream *stream;
+	struct lttng_ht *ht;
+	struct lttng_ht_iter iter;
+
+	DBG("UST consumer flush channel key %lu", chan_key);
+
+	channel = consumer_find_channel(chan_key);
+	if (!channel) {
+		ERR("UST consumer flush channel %lu not found", chan_key);
+		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	ht = consumer_data.stream_per_chan_id_ht;
+
+	/* For each stream of the channel id, flush it. */
+	rcu_read_lock();
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&channel->key, lttng_ht_seed), ht->match_fct,
+			&channel->key, &iter.iter, stream, node_channel_id.node) {
+			ustctl_flush_buffer(stream->ustream, 1);
+	}
+	rcu_read_unlock();
+
+error:
+	return ret;
+}
+
+/*
  * Close metadata stream wakeup_fd using the given key to retrieve the channel.
  *
  * Return 0 on success else an LTTng error code.
@@ -767,6 +804,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		attr.overwrite = msg.u.ask_channel.overwrite;
 		attr.switch_timer_interval = msg.u.ask_channel.switch_timer_interval;
 		attr.read_timer_interval = msg.u.ask_channel.read_timer_interval;
+		attr.chan_id = msg.u.ask_channel.chan_id;
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
 
 		/* Translate the event output type to UST. */
@@ -904,6 +942,17 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		goto end_msg_sessiond;
 	}
+	case LTTNG_CONSUMER_FLUSH_CHANNEL:
+	{
+		int ret;
+
+		ret = flush_channel(msg.u.flush_channel.key);
+		if (ret != 0) {
+			ret_code = ret;
+		}
+
+		goto end_msg_sessiond;
+	}
 	case LTTNG_CONSUMER_PUSH_METADATA:
 	{
 		int ret;
@@ -919,6 +968,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (!channel) {
 			ERR("UST consumer push metadata %lu not found", key);
 			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto end_msg_sessiond;
 		}
 
 		metadata_str = zmalloc(len * sizeof(char));

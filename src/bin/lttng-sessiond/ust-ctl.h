@@ -3,24 +3,24 @@
  *
  * Meta header used to include all relevant file from the lttng ust ABI.
  *
- * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2013 - David Goulet <dgoulet@efficios.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License, version 2 only,
- * as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License, version 2 only, as
+ * published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _LTT_UST_CTL_H
-#define _LTT_UST_CTL_H
+#ifndef LTTNG_UST_CTL_H
+#define LTTNG_UST_CTL_H
 
 #include <config.h>
 
@@ -31,13 +31,29 @@
  * UST ABI.
  */
 #ifdef HAVE_LIBLTTNG_UST_CTL
+
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-abi.h>
 #include <lttng/ust-error.h>
-#else
+
+static inline
+int ust_ctl_release_object(int sock, struct lttng_ust_object_data *data)
+{
+	return ustctl_release_object(sock, data);
+}
+
+#else /* HAVE_LIBLTTNG_UST_CTL */
+
 #include "lttng-ust-ctl.h"
 #include "lttng-ust-abi.h"
 #include "lttng-ust-error.h"
-#endif
+
+static inline
+int ust_ctl_release_object(int sock, struct lttng_ust_object_data *data)
+{
+	return 0;
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_UST_CTL_H */

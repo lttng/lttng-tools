@@ -22,8 +22,6 @@
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
 
-#include "health.h"
-
 enum consumer_dst_type {
 	CONSUMER_DST_LOCAL,
 	CONSUMER_DST_NET,
@@ -148,6 +146,8 @@ struct consumer_output {
 
 struct consumer_socket *consumer_find_socket(int key,
 		struct consumer_output *consumer);
+struct consumer_socket *consumer_find_socket_by_bitness(int bits,
+		struct consumer_output *consumer);
 struct consumer_socket *consumer_allocate_socket(int fd);
 void consumer_add_socket(struct consumer_socket *sock,
 		struct consumer_output *consumer);
@@ -197,7 +197,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		gid_t gid,
 		uint64_t relayd_id,
 		uint64_t key,
-		unsigned char *uuid);
+		unsigned char *uuid,
+		uint32_t chan_id);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		uint64_t channel_key,
@@ -217,5 +218,13 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int type);
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
+int consumer_close_metadata(struct consumer_socket *socket,
+		uint64_t metadata_key);
+int consumer_setup_metadata(struct consumer_socket *socket,
+		uint64_t metadata_key);
+int consumer_push_metadata(struct consumer_socket *socket,
+		uint64_t metadata_key, char *metadata_str, size_t len,
+		size_t target_offset);
+int consumer_flush_channel(struct consumer_socket *socket, uint64_t key);
 
 #endif /* _CONSUMER_H */

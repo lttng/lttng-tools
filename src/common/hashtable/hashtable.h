@@ -75,7 +75,7 @@ extern void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 		uint64_t key);
 extern void lttng_ht_node_free_str(struct lttng_ht_node_str *node);
 extern void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node);
-extern void lttng_ht_node_free_u64(struct lttng_ht_node_ulong *node);
+extern void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node);
 
 extern void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 		struct lttng_ht_iter *iter);

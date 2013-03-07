@@ -184,7 +184,7 @@ void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node)
 /*
  * Free lttng ht node uint64_t.
  */
-void lttng_ht_node_free_u64(struct lttng_ht_node_ulong *node)
+void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node)
 {
 	assert(node);
 	free(node);

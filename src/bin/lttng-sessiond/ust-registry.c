@@ -16,8 +16,12 @@
  */
 #define _GNU_SOURCE
 #include <assert.h>
+#include <inttypes.h>
 
 #include <common/common.h>
+#include <common/hashtable/utils.h>
+#include <lttng/lttng.h>
+
 #include "ust-registry.h"
 
 /*
@@ -53,6 +57,19 @@ no_match:
 	return 0;
 }
 
+static unsigned long ht_hash_event(void *_key, unsigned long seed)
+{
+	uint64_t xored_key;
+	struct ust_registry_event *key = _key;
+
+	assert(key);
+
+	xored_key = (uint64_t) (hash_key_str(key->name, seed) ^
+			hash_key_str(key->signature, seed));
+
+	return hash_key_u64(&xored_key, seed);
+}
+
 /*
  * Allocate event and initialize it. This does NOT set a valid event id from a
  * registry.
@@ -82,7 +99,7 @@ static struct ust_registry_event *alloc_event(int session_objd,
 		strncpy(event->name, name, sizeof(event->name));
 		event->name[sizeof(event->name) - 1] = '\0';
 	}
-	lttng_ht_node_init_str(&event->node, event->name);
+	cds_lfht_node_init(&event->node.node);
 
 error:
 	return event;
@@ -110,8 +127,8 @@ static void destroy_event(struct ust_registry_event *event)
  */
 static void destroy_event_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_str *node =
-		caa_container_of(head, struct lttng_ht_node_str, head);
+	struct lttng_ht_node_u64 *node =
+		caa_container_of(head, struct lttng_ht_node_u64, head);
 	struct ust_registry_event *event =
 		caa_container_of(node, struct ust_registry_event, node);
 
@@ -128,7 +145,7 @@ static void destroy_event_rcu(struct rcu_head *head)
 struct ust_registry_event *ust_registry_find_event(
 		struct ust_registry_channel *chan, char *name, char *sig)
 {
-	struct lttng_ht_node_str *node;
+	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 	struct ust_registry_event *event = NULL;
 	struct ust_registry_event key;
@@ -142,9 +159,9 @@ struct ust_registry_event *ust_registry_find_event(
 	key.name[sizeof(key.name) - 1] = '\0';
 	key.signature = sig;
 
-	cds_lfht_lookup(chan->ht->ht, chan->ht->hash_fct(name, lttng_ht_seed),
+	cds_lfht_lookup(chan->ht->ht, chan->ht->hash_fct(&key, lttng_ht_seed),
 			chan->ht->match_fct, &key, &iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
 		goto end;
 	}
@@ -167,9 +184,10 @@ end:
 int ust_registry_create_event(struct ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
 		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
-		char *model_emf_uri, uint32_t *event_id)
+		char *model_emf_uri, int buffer_type, uint32_t *event_id_p)
 {
 	int ret;
+	uint32_t event_id;
 	struct cds_lfht_node *nptr;
 	struct ust_registry_event *event = NULL;
 	struct ust_registry_channel *chan;
@@ -177,6 +195,7 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	assert(session);
 	assert(name);
 	assert(sig);
+	assert(event_id_p);
 
 	/*
 	 * This should not happen but since it comes from the UST tracer, an
@@ -208,38 +227,52 @@ int ust_registry_create_event(struct ust_registry_session *session,
 		goto error_unlock;
 	}
 
-	event->id = ust_registry_get_next_event_id(chan);
-
 	DBG3("UST registry creating event with event: %s, sig: %s, id: %u, "
-			"chan_objd: %u, sess_objd: %u", event->name, event->signature,
-			event->id, event->channel_objd, event->session_objd);
+			"chan_objd: %u, sess_objd: %u, chan_id: %u", event->name,
+			event->signature, event->id, event->channel_objd,
+			event->session_objd, chan->chan_id);
 
 	/*
 	 * This is an add unique with a custom match function for event. The node
 	 * are matched using the event name and signature.
 	 */
-	nptr = cds_lfht_add_unique(chan->ht->ht, chan->ht->hash_fct(event->node.key,
+	nptr = cds_lfht_add_unique(chan->ht->ht, chan->ht->hash_fct(event,
 				lttng_ht_seed), chan->ht->match_fct, event, &event->node.node);
 	if (nptr != &event->node.node) {
-		ERR("UST registry create event add unique failed for event: %s, "
-				"sig: %s, id: %u, chan_objd: %u, sess_objd: %u", event->name,
-				event->signature, event->id, event->channel_objd,
-				event->session_objd);
-		ret = -EINVAL;
-		goto error_unlock;
+		if (buffer_type == LTTNG_BUFFER_PER_UID) {
+			/*
+			 * This is normal, we just have to send the event id of the
+			 * returned node and make sure we destroy the previously allocated
+			 * event object.
+			 */
+			destroy_event(event);
+			event = caa_container_of(nptr, struct ust_registry_event,
+					node.node);
+			assert(event);
+			event_id = event->id;
+		} else {
+			ERR("UST registry create event add unique failed for event: %s, "
+					"sig: %s, id: %u, chan_objd: %u, sess_objd: %u",
+					event->name, event->signature, event->id,
+					event->channel_objd, event->session_objd);
+			ret = -EINVAL;
+			goto error_unlock;
+		}
+	} else {
+		/* Request next event id if the node was successfully added. */
+		event_id = event->id = ust_registry_get_next_event_id(chan);
 	}
 
-	/* Set event id if user wants it. */
-	if (event_id) {
-		*event_id = event->id;
-	}
+	*event_id_p = event_id;
 
-	/* Append to metadata */
-	ret = ust_metadata_event_statedump(session, chan, event);
-	if (ret) {
-		ERR("Error appending event metadata (errno = %d)", ret);
-		rcu_read_unlock();
-		return ret;
+	if (!event->metadata_dumped) {
+		/* Append to metadata */
+		ret = ust_metadata_event_statedump(session, chan, event);
+		if (ret) {
+			ERR("Error appending event metadata (errno = %d)", ret);
+			rcu_read_unlock();
+			return ret;
+		}
 	}
 
 	rcu_read_unlock();
@@ -325,6 +358,18 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 
 	/* Set custom match function. */
 	chan->ht->match_fct = ht_match_event;
+	chan->ht->hash_fct = ht_hash_event;
+
+	/*
+	 * Assign a channel ID right now since the event notification comes
+	 * *before* the channel notify so the ID needs to be set at this point so
+	 * the metadata can be dumped for that event.
+	 */
+	if (ust_registry_is_max_id(session->used_channel_id)) {
+		ret = -1;
+		goto error;
+	}
+	chan->chan_id = ust_registry_get_next_chan_id(session);
 
 	rcu_read_lock();
 	lttng_ht_node_init_u64(&chan->node, key);
@@ -351,6 +396,8 @@ struct ust_registry_channel *ust_registry_channel_find(
 
 	assert(session);
 	assert(session->channels);
+
+	DBG3("UST registry channel finding key %" PRIu64, key);
 
 	lttng_ht_lookup(session->channels, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);

@@ -52,6 +52,7 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_PUSH_METADATA,
 	LTTNG_CONSUMER_CLOSE_METADATA,
 	LTTNG_CONSUMER_SETUP_METADATA,
+	LTTNG_CONSUMER_FLUSH_CHANNEL,
 };
 
 /* State of each fd in consumer */

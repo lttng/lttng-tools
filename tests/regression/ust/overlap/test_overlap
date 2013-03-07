@@ -30,7 +30,7 @@ NUM_DEMO1_2_EVENT=1
 NUM_DEMO2_EVENT=5
 NUM_DEMO3_EVENT=1
 
-NUM_TESTS=260
+NUM_TESTS=259
 
 source $TESTDIR/utils/utils.sh
 
@@ -301,13 +301,12 @@ test_enable_same_wildcard_filter_2()
 
 	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
 
-	# Enabling the same events with same filters should fail
+	# Enabling the same events with same filters should fail. This one is expected to fail.
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_wild2" -s $SESSION_NAME -u --filter "1==1" >/dev/null 2>&1
-
-	if [ $? -eq 1 ]; then
+	if [ $? -ne 0 ]; then
 	    pass "Enable event $event_name with filtering for session $sess_name twice failure detected"
 	else
-	    fail "Enable event $event_name with filtering for session $sess_name twice failure detected"
+	    fail "Enable event $event_name with filtering for session $sess_name twice failure NOT detected"
 	fi
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
@@ -372,8 +371,6 @@ test_enable_same_event_filter()
 
 	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1&&1==1"
 	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild2" "1==1"
-
-	disable_ust_lttng_event $SESSION_NAME "ust*"
 
 	start_lttng_tracing $SESSION_NAME >/dev/null 2>&1
 

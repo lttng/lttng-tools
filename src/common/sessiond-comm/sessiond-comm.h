@@ -309,6 +309,7 @@ struct lttcomm_consumer_msg {
 			uint64_t relayd_id;			/* Relayd id if apply. */
 			uint64_t key;				/* Unique channel key. */
 			unsigned char uuid[UUID_STR_LEN];	/* uuid for ust tracer. */
+			uint32_t chan_id;			/* Channel ID on the tracer side. */
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;
@@ -327,6 +328,9 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t key;	/* Metadata channel key. */
 		} LTTNG_PACKED setup_metadata;
+		struct {
+			uint64_t key;	/* Channel key. */
+		} LTTNG_PACKED flush_channel;
 	} u;
 } LTTNG_PACKED;
 

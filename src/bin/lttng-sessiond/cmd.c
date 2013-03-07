@@ -28,6 +28,7 @@
 #include "channel.h"
 #include "consumer.h"
 #include "event.h"
+#include "health.h"
 #include "kernel.h"
 #include "kernel-consumer.h"
 #include "lttng-sessiond.h"
@@ -816,7 +817,7 @@ int cmd_disable_channel(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = channel_ust_disable(usess, domain, uchan);
+		ret = channel_ust_disable(usess, uchan);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -845,7 +846,7 @@ error:
  * The wpipe arguments is used as a notifier for the kernel thread.
  */
 int cmd_enable_channel(struct ltt_session *session,
-		int domain, struct lttng_channel *attr, int wpipe)
+		struct lttng_domain *domain, struct lttng_channel *attr, int wpipe)
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
@@ -853,12 +854,13 @@ int cmd_enable_channel(struct ltt_session *session,
 
 	assert(session);
 	assert(attr);
+	assert(domain);
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
 	rcu_read_lock();
 
-	switch (domain) {
+	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
@@ -898,9 +900,9 @@ int cmd_enable_channel(struct ltt_session *session,
 
 		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
-			ret = channel_ust_create(usess, domain, attr);
+			ret = channel_ust_create(usess, attr, domain->buf_type);
 		} else {
-			ret = channel_ust_enable(usess, domain, uchan);
+			ret = channel_ust_enable(usess, uchan);
 		}
 
 		/* Start the UST session if the session was already started. */
@@ -915,11 +917,6 @@ int cmd_enable_channel(struct ltt_session *session,
 		}
 		break;
 	}
-#if 0
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-#endif
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
@@ -977,7 +974,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_ust_disable_tracepoint(usess, domain, uchan, event_name);
+		ret = event_ust_disable_tracepoint(usess, uchan, event_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1049,7 +1046,7 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_ust_disable_all_tracepoints(usess, domain, uchan);
+		ret = event_ust_disable_all_tracepoints(usess, uchan);
 		if (ret != 0) {
 			goto error;
 		}
@@ -1117,7 +1114,7 @@ int cmd_add_context(struct ltt_session *session, int domain,
 				goto error;
 			}
 
-			ret = channel_ust_create(usess, domain, attr);
+			ret = channel_ust_create(usess, attr, usess->buffer_type);
 			if (ret != LTTNG_OK) {
 				free(attr);
 				goto error;
@@ -1150,7 +1147,7 @@ error:
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
  */
-int cmd_enable_event(struct ltt_session *session, int domain,
+int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *filter, int wpipe)
 {
@@ -1163,7 +1160,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 
 	rcu_read_lock();
 
-	switch (domain) {
+	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
@@ -1171,7 +1168,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
-			attr = channel_new_default_attr(domain);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1221,7 +1218,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 				channel_name);
 		if (uchan == NULL) {
 			/* Create default channel */
-			attr = channel_new_default_attr(domain);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_UST);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1242,7 +1239,7 @@ int cmd_enable_event(struct ltt_session *session, int domain,
 		}
 
 		/* At this point, the session and channel exist on the tracer */
-		ret = event_ust_enable_tracepoint(usess, domain, uchan, event, filter);
+		ret = event_ust_enable_tracepoint(usess, uchan, event, filter);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1268,8 +1265,8 @@ error:
 /*
  * Command LTTNG_ENABLE_ALL_EVENT processed by the client thread.
  */
-int cmd_enable_event_all(struct ltt_session *session, int domain,
-		char *channel_name, int event_type,
+int cmd_enable_event_all(struct ltt_session *session,
+		struct lttng_domain *domain, char *channel_name, int event_type,
 		struct lttng_filter_bytecode *filter, int wpipe)
 {
 	int ret;
@@ -1280,7 +1277,7 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 
 	rcu_read_lock();
 
-	switch (domain) {
+	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_channel *kchan;
@@ -1291,7 +1288,7 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 				session->kernel_session);
 		if (kchan == NULL) {
 			/* Create default channel */
-			attr = channel_new_default_attr(domain);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1355,7 +1352,7 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 				channel_name);
 		if (uchan == NULL) {
 			/* Create default channel */
-			attr = channel_new_default_attr(domain);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_UST);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1380,8 +1377,7 @@ int cmd_enable_event_all(struct ltt_session *session, int domain,
 		switch (event_type) {
 		case LTTNG_EVENT_ALL:
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_ust_enable_all_tracepoints(usess, domain, uchan,
-					filter);
+			ret = event_ust_enable_all_tracepoints(usess, uchan, filter);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}

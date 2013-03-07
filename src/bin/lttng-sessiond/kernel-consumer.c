@@ -26,6 +26,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
+#include "health.h"
 #include "kernel-consumer.h"
 
 /*

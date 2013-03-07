@@ -45,6 +45,7 @@
 #include <common/utils.h>
 
 #include "lttng-sessiond.h"
+#include "buffer-registry.h"
 #include "channel.h"
 #include "cmd.h"
 #include "consumer.h"
@@ -435,6 +436,7 @@ static void cleanup(void)
 
 	DBG("Closing all UST sockets");
 	ust_app_clean_list();
+	buffer_reg_destroy_registries();
 
 	if (is_root && !opt_no_kernel) {
 		DBG2("Closing kernel fd");
@@ -1299,6 +1301,7 @@ static void *thread_dispatch_ust_registration(void *data)
 
 		do {
 			struct ust_app *app = NULL;
+			ust_cmd = NULL;
 
 			/* Dequeue command for registration */
 			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
@@ -1321,6 +1324,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				wait_node = zmalloc(sizeof(*wait_node));
 				if (!wait_node) {
 					PERROR("zmalloc wait_node dispatch");
+					free(ust_cmd);
 					goto error;
 				}
 				CDS_INIT_LIST_HEAD(&wait_node->head);
@@ -1335,6 +1339,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					}
 					lttng_fd_put(1, LTTNG_FD_APPS);
 					free(wait_node);
+					free(ust_cmd);
 					continue;
 				}
 				/*
@@ -1343,6 +1348,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 */
 				cds_list_add(&wait_node->head, &wait_queue);
 
+				free(ust_cmd);
 				/*
 				 * We have to continue here since we don't have the notify
 				 * socket and the application MUST be added to the hash table
@@ -1365,6 +1371,7 @@ static void *thread_dispatch_ust_registration(void *data)
 						break;
 					}
 				}
+				free(ust_cmd);
 			}
 
 			if (app) {
@@ -1433,7 +1440,6 @@ static void *thread_dispatch_ust_registration(void *data)
 				}
 				lttng_fd_put(1, LTTNG_FD_APPS);
 			}
-			free(ust_cmd);
 		} while (node != NULL);
 
 		/* Futex wait on queue. Blocking call on futex() */
@@ -2610,13 +2616,13 @@ skip_domain:
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+		ret = cmd_enable_channel(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				&cmd_ctx->lsm->u.channel.chan, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:
 	{
-		ret = cmd_enable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				cmd_ctx->lsm->u.enable.channel_name,
 				&cmd_ctx->lsm->u.enable.event, NULL, kernel_poll_pipe[1]);
 		break;
@@ -2625,7 +2631,7 @@ skip_domain:
 	{
 		DBG("Enabling all events");
 
-		ret = cmd_enable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+		ret = cmd_enable_event_all(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				cmd_ctx->lsm->u.enable.channel_name,
 				cmd_ctx->lsm->u.enable.event.type, NULL, kernel_poll_pipe[1]);
 		break;
@@ -2974,7 +2980,7 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_enable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				cmd_ctx->lsm->u.enable.channel_name,
 				&cmd_ctx->lsm->u.enable.event, bytecode, kernel_poll_pipe[1]);
 		break;
@@ -4216,6 +4222,10 @@ int main(int argc, char **argv)
 	if (utils_create_pipe_cloexec(apps_cmd_notify_pipe) < 0) {
 		goto exit;
 	}
+
+	/* Initialize global buffer per UID and PID registry. */
+	buffer_reg_init_uid_registry();
+	buffer_reg_init_pid_registry();
 
 	/* Init UST command queue. */
 	cds_wfq_init(&ust_cmd_queue.queue);

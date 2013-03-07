@@ -131,6 +131,8 @@ struct ust_app_channel {
 	int is_sent;
 	/* Unique key used to identify the channel on the consumer side. */
 	uint64_t key;
+	/* Id of the tracing channel set on creation. */
+	uint64_t tracing_channel_id;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count;
 	char name[LTTNG_UST_SYM_NAME_LEN];
@@ -164,21 +166,31 @@ struct ust_app_session {
 	/* started: has the session been in started state at any time ? */
 	int started;  /* allows detection of start vs restart. */
 	int handle;   /* used has unique identifier for app session */
-	int id;       /* session unique identifier */
-	struct ust_app_channel *metadata;
-	struct ust_registry_session *registry;
+
+	/*
+	 * Tracing session ID. Multiple ust app session can have the same tracing
+	 * session id making this value NOT unique to the object.
+	 */
+	int tracing_id;
+	uint64_t id;	/* Unique session identifier */
 	struct lttng_ht *channels; /* Registered channels */
 	struct lttng_ht_node_ulong node;
 	char path[PATH_MAX];
-	/* UID/GID of the user owning the session */
+	/* UID/GID of the application owning the session */
 	uid_t uid;
 	gid_t gid;
+	/* Effective UID and GID. Same as the tracing session. */
+	uid_t euid;
+	gid_t egid;
 	struct cds_list_head teardown_node;
 	/*
 	 * Once at least *one* session is created onto the application, the
 	 * corresponding consumer is set so we can use it on unregistration.
 	 */
 	struct consumer_output *consumer;
+	enum lttng_buffer_type buffer_type;
+	/* ABI of the session. Same value as the application. */
+	uint32_t bits_per_long;
 };
 
 /*
@@ -210,6 +222,8 @@ struct ust_app {
 	uint32_t v_minor;    /* Version minor number */
 	/* Extra for the NULL byte. */
 	char name[UST_APP_PROCNAME_LEN + 1];
+	/* Type of buffer this application uses. */
+	enum lttng_buffer_type buffer_type;
 	struct lttng_ht *sessions;
 	struct lttng_ht_node_ulong pid_n;
 	struct lttng_ht_node_ulong sock_n;

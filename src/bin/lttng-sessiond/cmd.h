@@ -35,8 +35,9 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe);
 /* Channel commands */
 int cmd_disable_channel(struct ltt_session *session, int domain,
 		char *channel_name);
-int cmd_enable_channel(struct ltt_session *session, int domain,
-		struct lttng_channel *attr, int wpipe);
+
+int cmd_enable_channel(struct ltt_session *session,
+		struct lttng_domain *domain, struct lttng_channel *attr, int wpipe);
 
 /* Event commands */
 int cmd_disable_event(struct ltt_session *session, int domain,
@@ -48,11 +49,11 @@ int cmd_add_context(struct ltt_session *session, int domain,
 int cmd_set_filter(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode);
-int cmd_enable_event(struct ltt_session *session, int domain,
+int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *filter, int wpipe);
-int cmd_enable_event_all(struct ltt_session *session, int domain,
-		char *channel_name, int event_type,
+int cmd_enable_event_all(struct ltt_session *session,
+		struct lttng_domain *domain, char *channel_name, int event_type,
 		struct lttng_filter_bytecode *filter, int wpipe);
 
 /* Trace session action commands */

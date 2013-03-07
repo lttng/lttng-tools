@@ -29,6 +29,7 @@
 #include <bin/lttng-sessiond/lttng-ust-abi.h>
 #include <common/defaults.h>
 #include <bin/lttng-sessiond/trace-ust.h>
+#include <bin/lttng-sessiond/ust-app.h>
 
 #include <tap/tap.h>
 
@@ -45,6 +46,9 @@
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
+
+int ust_consumerd32_fd;
+int ust_consumerd64_fd;
 
 static const char alphanum[] =
 	"0123456789"
@@ -82,8 +86,6 @@ static void test_create_one_ust_session(void)
 	ok(usess->id == 42 &&
 	   usess->start_trace == 0 &&
 	   usess->domain_global.channels != NULL &&
-	   usess->domain_pid != NULL &&
-	   usess->domain_exec != NULL &&
 	   usess->uid == 0 &&
 	   usess->gid == 0,
 	   "Validate UST session");
@@ -131,7 +133,6 @@ static void test_create_ust_channel(void)
 	ok(uchan != NULL, "Create UST channel");
 
 	ok(uchan->enabled == 0 &&
-	   strcmp(PATH1, uchan->pathname) == 0 &&
 	   strncmp(uchan->name, "channel0", 8) == 0 &&
 	   uchan->name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0' &&
 	   uchan->ctx != NULL &&

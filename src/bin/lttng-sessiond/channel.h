@@ -32,11 +32,11 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 
 struct lttng_channel *channel_new_default_attr(int domain);
 
-int channel_ust_create(struct ltt_ust_session *usess, int domain,
-		struct lttng_channel *attr);
-int channel_ust_enable(struct ltt_ust_session *usess, int domain,
+int channel_ust_create(struct ltt_ust_session *usess,
+		struct lttng_channel *attr, enum lttng_buffer_type type);
+int channel_ust_enable(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
-int channel_ust_disable(struct ltt_ust_session *usess, int domain,
+int channel_ust_disable(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 
 #endif /* _LTT_CHANNEL_H */

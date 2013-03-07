@@ -52,9 +52,9 @@ enum lttng_error_code {
 	LTTNG_ERR_NO_SESSIOND            = 19,  /* No session daemon available */
 	LTTNG_ERR_SET_URL                = 20,  /* Error setting URL */
 	LTTNG_ERR_URL_EXIST              = 21,  /* URL already exists. */
-	/* 22 */
+	LTTNG_ERR_BUFFER_NOT_SUPPORTED   = 22,  /* Buffer type not supported. */
 	LTTNG_ERR_SESS_NOT_FOUND         = 23,  /* Session by name not found */
-	/* 24 */
+	LTTNG_ERR_BUFFER_TYPE_MISMATCH   = 24,  /* Buffer type mismatched. */
 	LTTNG_ERR_FATAL                  = 25,  /* Fatal error */
 	/* 26 */
 	LTTNG_ERR_SELECT_SESS            = 27,  /* Must select a session */

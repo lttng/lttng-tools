@@ -51,6 +51,7 @@ struct ltt_ust_event {
 
 /* UST channel */
 struct ltt_ust_channel {
+	uint64_t id;	/* unique id per session. */
 	unsigned int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	char pathname[PATH_MAX];
@@ -72,20 +73,7 @@ struct ltt_ust_metadata {
 /* UST domain global (LTTNG_DOMAIN_UST) */
 struct ltt_ust_domain_global {
 	struct lttng_ht *channels;
-};
-
-/* UST domain pid (LTTNG_DOMAIN_UST_PID) */
-struct ltt_ust_domain_pid {
-	pid_t pid;
-	struct lttng_ht *channels;
-	struct lttng_ht_node_ulong node;
-};
-
-/* UST domain exec name (LTTNG_DOMAIN_UST_EXEC_NAME) */
-struct ltt_ust_domain_exec {
-	char exec_name[LTTNG_UST_SYM_NAME_LEN];
-	struct lttng_ht *channels;
-	struct lttng_ht_node_str node;
+	struct cds_list_head registry_buffer_uid_list;
 };
 
 /* UST session */
@@ -94,13 +82,6 @@ struct ltt_ust_session {
 	int start_trace;
 	char pathname[PATH_MAX];
 	struct ltt_ust_domain_global domain_global;
-	/*
-	 * Those two hash tables contains data for a specific UST domain and each
-	 * contains a HT of channels. See ltt_ust_domain_exec and
-	 * ltt_ust_domain_pid data structures.
-	 */
-	struct lttng_ht *domain_pid;
-	struct lttng_ht *domain_exec;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
@@ -114,7 +95,46 @@ struct ltt_ust_session {
 	struct consumer_output *tmp_consumer;
 	/* Sequence number for filters so the tracer knows the ordering. */
 	uint64_t filter_seq_num;
+	/* This indicates which type of buffer this session is set for. */
+	enum lttng_buffer_type buffer_type;
+	/* If set to 1, the buffer_type can not be changed anymore. */
+	int buffer_type_changed;
+	/* For per UID buffer, every buffer reg object is kept of this session */
+	struct cds_list_head buffer_reg_uid_list;
+	/* Next channel ID available for a newly registered channel. */
+	uint64_t next_channel_id;
+	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
+	uint64_t used_channel_id;
 };
+
+/*
+ * Validate that the id has reached the maximum allowed or not.
+ *
+ * Return 0 if NOT else 1.
+ */
+static inline int trace_ust_is_max_id(uint64_t id)
+{
+	return (id == UINT64_MAX) ? 1 : 0;
+}
+
+/*
+ * Return next available channel id and increment the used counter. The
+ * trace_ust_is_max_id function MUST be called before in order to validate if
+ * the maximum number of IDs have been reached. If not, it is safe to call this
+ * function.
+ *
+ * Return a unique channel ID. If max is reached, the used_channel_id counter
+ * is returned.
+ */
+static inline uint64_t trace_ust_get_next_chan_id(struct ltt_ust_session *s)
+{
+	if (trace_ust_is_max_id(s->used_channel_id)) {
+		return s->used_channel_id;
+	}
+
+	s->used_channel_id++;
+	return s->next_channel_id++;
+}
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 

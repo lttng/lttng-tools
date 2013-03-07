@@ -42,6 +42,9 @@
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 
+int ust_consumerd32_fd;
+int ust_consumerd64_fd;
+
 static const char alphanum[] =
 	"0123456789"
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"

@@ -30,7 +30,8 @@ tests=( $DIR/test_event_basic
 	$DIR/low-throughput/test_low_throughput
 	$DIR/multi-session/test_multi_session
 	$DIR/nprocesses/test_nprocesses
-	$DIR/overlap/test_overlap )
+	$DIR/overlap/test_overlap
+	$DIR/buffers-uid/test_buffers_uid )
 
 #### END TESTS HERE ####
 

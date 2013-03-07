@@ -24,6 +24,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 
+#include "buffer-registry.h"
 #include "trace-ust.h"
 
 /*
@@ -195,9 +196,17 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 	lus->id = session_id;
 	lus->start_trace = 0;
 
-	/* Alloc UST domain hash tables */
-	lus->domain_pid = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	lus->domain_exec = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	/*
+	 * Default buffer type. This can be changed through an enable channel
+	 * requesting a different type. Note that this can only be changed once
+	 * during the session lifetime which is at the first enable channel and
+	 * only before start. The flag buffer_type_changed indicates the status.
+	 */
+	lus->buffer_type = LTTNG_BUFFER_PER_PID;
+	/* Once set to 1, the buffer_type is immutable for the session. */
+	lus->buffer_type_changed = 0;
+	/* Init it in case it get used after allocation. */
+	CDS_INIT_LIST_HEAD(&lus->buffer_reg_uid_list);
 
 	/* Alloc UST global domain channels' HT */
 	lus->domain_global.channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
@@ -225,14 +234,6 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 			PERROR("snprintf UST consumer trace path");
 			goto error_path;
 		}
-
-		/* Set session path */
-		ret = snprintf(lus->pathname, PATH_MAX, "%s" DEFAULT_UST_TRACE_DIR,
-				path);
-		if (ret < 0) {
-			PERROR("snprintf kernel traces path");
-			goto error_path;
-		}
 	}
 
 	DBG2("UST trace session create successful");
@@ -243,8 +244,6 @@ error_path:
 	consumer_destroy_output(lus->consumer);
 error_consumer:
 	lttng_ht_destroy(lus->domain_global.channels);
-	lttng_ht_destroy(lus->domain_exec);
-	lttng_ht_destroy(lus->domain_pid);
 	free(lus);
 error:
 	return NULL;
@@ -258,7 +257,6 @@ error:
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		char *path)
 {
-	int ret;
 	struct ltt_ust_channel *luc;
 
 	assert(chan);
@@ -295,23 +293,10 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
-	/* Set trace output path */
-	ret = snprintf(luc->pathname, PATH_MAX, "%s", path);
-	if (ret < 0) {
-		PERROR("asprintf ust create channel");
-		goto error_free_channel;
-	}
-
 	DBG2("Trace UST channel %s created", luc->name);
 
-	return luc;
-
-error_free_channel:
-	lttng_ht_destroy(luc->ctx);
-	lttng_ht_destroy(luc->events);
-	free(luc);
 error:
-	return NULL;
+	return luc;
 }
 
 /*
@@ -630,46 +615,6 @@ static void destroy_channels(struct lttng_ht *channels)
 }
 
 /*
- * Cleanup UST pid domain.
- */
-static void destroy_domain_pid(struct lttng_ht *ht)
-{
-	int ret;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_domain_pid *dpid;
-
-	assert(ht);
-
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, dpid, node.node) {
-		ret = lttng_ht_del(ht , &iter);
-		assert(!ret);
-		destroy_channels(dpid->channels);
-	}
-
-	lttng_ht_destroy(ht);
-}
-
-/*
- * Cleanup UST exec name domain.
- */
-static void destroy_domain_exec(struct lttng_ht *ht)
-{
-	int ret;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_domain_exec *dexec;
-
-	assert(ht);
-
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, dexec, node.node) {
-		ret = lttng_ht_del(ht , &iter);
-		assert(!ret);
-		destroy_channels(dexec->channels);
-	}
-
-	lttng_ht_destroy(ht);
-}
-
-/*
  * Cleanup UST global domain.
  */
 static void destroy_domain_global(struct ltt_ust_domain_global *dom)
@@ -684,6 +629,8 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
+	struct buffer_reg_uid *reg, *sreg;
+
 	assert(session);
 
 	rcu_read_lock();
@@ -692,8 +639,14 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
-	destroy_domain_pid(session->domain_pid);
-	destroy_domain_exec(session->domain_exec);
+
+	/* Cleanup UID buffer registry object(s). */
+	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,
+			lnode) {
+		cds_list_del(&reg->lnode);
+		buffer_reg_uid_remove(reg);
+		buffer_reg_uid_destroy(reg, session->consumer);
+	}
 
 	consumer_destroy_output(session->consumer);
 	consumer_destroy_output(session->tmp_consumer);

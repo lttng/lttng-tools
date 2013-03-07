@@ -301,6 +301,10 @@ To enable event, you must first enable a channel which contains event(s).
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
+
+It is important to note that if a certain type of buffers is used, the session
+will be set with that type and all other subsequent channel need to have the
+same type.
 .fi
 
 .B OPTIONS:
@@ -333,6 +337,13 @@ file.
         Read timer interval in usec (default: 200)
 \-\-output TYPE
         Channel output type. Possible values: mmap, splice
+\-\-buffers-uid
+        Use per UID buffer (\-u only). Buffers are shared between applications
+        that have the same UID.
+\-\-buffers-pid
+        Use per PID buffer (\-u only). Each application has its own buffers.
+\-\-buffers-global
+        Use shared buffer for the whole system (\-k only)
 .fi
 
 .IP

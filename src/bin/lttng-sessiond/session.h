@@ -21,7 +21,8 @@
 #include <urcu/list.h>
 
 #include "trace-kernel.h"
-#include "trace-ust.h"
+
+struct ltt_ust_session;
 
 /*
  * Tracing session list

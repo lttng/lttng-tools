@@ -24,7 +24,7 @@ SESSION_NAME=""
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=11
+NUM_TESTS=10
 
 source $TESTDIR/utils/utils.sh
 
@@ -87,8 +87,8 @@ fi
 
 skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
 {
-	start_lttng_sessiond
 	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_sessiond
 
 	tests=( test_kernel_before_start )
 

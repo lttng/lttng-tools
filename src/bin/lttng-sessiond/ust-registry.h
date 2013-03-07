@@ -20,10 +20,11 @@
 
 #include <pthread.h>
 #include <stdint.h>
-#include <lttng/ust-ctl.h>
 
 #include <common/hashtable/hashtable.h>
 #include <common/compat/uuid.h>
+
+#include "ust-ctl.h"
 
 #define CTF_SPEC_MAJOR	1
 #define CTF_SPEC_MINOR	8
@@ -32,8 +33,7 @@ struct ust_app;
 
 struct ust_registry_session {
 	/*
-	 * With multiple writers and readers, use this lock to access
-	 * the registry. Use defined macros above to lock it.
+	 * With multiple writers and readers, use this lock to access the registry.
 	 * Can nest within the ust app session lock.
 	 */
 	pthread_mutex_t lock;
@@ -67,6 +67,14 @@ struct ust_registry_session {
 	 * with a RCU read side lock acquired.
 	 */
 	struct lttng_ht *channels;
+	/* Unique key to identify the metadata on the consumer side. */
+	uint64_t metadata_key;
+	/*
+	 * Indicates if the metadata is closed on the consumer side. This is to
+	 * avoid double close of metadata when an application unregisters AND
+	 * deletes its sessions.
+	 */
+	unsigned int metadata_closed;
 };
 
 struct ust_registry_channel {
@@ -74,6 +82,14 @@ struct ust_registry_channel {
 	/* Id set when replying to a register channel. */
 	uint32_t chan_id;
 	enum ustctl_channel_header header_type;
+
+	/*
+	 * Flag for this channel if the metadata was dumped once during
+	 * registration. 0 means no, 1 yes.
+	 */
+	unsigned int metadata_dumped;
+	/* Indicates if this channel registry has already been registered. */
+	unsigned int register_done;
 
 	/*
 	 * Hash table containing events sent by the UST tracer. MUST be accessed
@@ -90,7 +106,6 @@ struct ust_registry_channel {
 	 */
 	size_t nr_ctx_fields;
 	struct ustctl_field *ctx_fields;
-	/* Hash table node for the session ht indexed by key. */
 	struct lttng_ht_node_u64 node;
 };
 
@@ -110,11 +125,17 @@ struct ust_registry_event {
 	size_t nr_fields;
 	struct ustctl_field *fields;
 	char *model_emf_uri;
+	struct lttng_ust_object_data *obj;
+	/*
+	 * Flag for this channel if the metadata was dumped once during
+	 * registration. 0 means no, 1 yes.
+	 */
+	unsigned int metadata_dumped;
 	/*
 	 * Node in the ust-registry hash table. The event name is used to
 	 * initialize the node and the event_name/signature for the match function.
 	 */
-	struct lttng_ht_node_str node;
+	struct lttng_ht_node_u64 node;
 };
 
 /*
@@ -176,6 +197,8 @@ static inline uint32_t ust_registry_get_event_count(
 	return (uint32_t) uatomic_read(&r->used_event_id);
 }
 
+#ifdef HAVE_LIBLTTNG_UST_CTL
+
 void ust_registry_channel_destroy(struct ust_registry_session *session,
 		struct ust_registry_channel *chan);
 struct ust_registry_channel *ust_registry_channel_find(
@@ -199,7 +222,7 @@ void ust_registry_session_destroy(struct ust_registry_session *session);
 int ust_registry_create_event(struct ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
 		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
-		char *model_emf_uri, uint32_t *event_id);
+		char *model_emf_uri, int buffer_type, uint32_t *event_id_p);
 struct ust_registry_event *ust_registry_find_event(
 		struct ust_registry_channel *chan, char *name, char *sig);
 void ust_registry_destroy_event(struct ust_registry_channel *chan,
@@ -213,5 +236,85 @@ int ust_metadata_channel_statedump(struct ust_registry_session *session,
 int ust_metadata_event_statedump(struct ust_registry_session *session,
 		struct ust_registry_channel *chan,
 		struct ust_registry_event *event);
+
+#else /* HAVE_LIBLTTNG_UST_CTL */
+
+static inline
+void ust_registry_channel_destroy(struct ust_registry_session *session,
+		struct ust_registry_channel *chan)
+{}
+static inline
+struct ust_registry_channel *ust_registry_channel_find(
+		struct ust_registry_session *session, uint64_t key)
+{
+	return NULL;
+}
+static inline
+int ust_registry_channel_add(struct ust_registry_session *session,
+		uint64_t key)
+{
+	return 0;
+}
+static inline
+void ust_registry_channel_del_free(struct ust_registry_session *session,
+		uint64_t key)
+{}
+static inline
+int ust_registry_session_init(struct ust_registry_session **sessionp,
+		struct ust_app *app,
+		uint32_t bits_per_long,
+		uint32_t uint8_t_alignment,
+		uint32_t uint16_t_alignment,
+		uint32_t uint32_t_alignment,
+		uint32_t uint64_t_alignment,
+		uint32_t long_alignment,
+		int byte_order)
+{
+	return 0;
+}
+static inline
+void ust_registry_session_destroy(struct ust_registry_session *session)
+{}
+static inline
+int ust_registry_create_event(struct ust_registry_session *session,
+		uint64_t chan_key, int session_objd, int channel_objd, char *name,
+		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
+		char *model_emf_uri, int buffer_type, uint32_t *event_id_p)
+{
+	return 0;
+}
+static inline
+struct ust_registry_event *ust_registry_find_event(
+		struct ust_registry_channel *chan, char *name, char *sig)
+{
+	return NULL;
+}
+static inline
+void ust_registry_destroy_event(struct ust_registry_channel *chan,
+		struct ust_registry_event *event)
+{}
+
+/* The app object can be NULL for registry shared across applications. */
+static inline
+int ust_metadata_session_statedump(struct ust_registry_session *session,
+		struct ust_app *app)
+{
+	return 0;
+}
+static inline
+int ust_metadata_channel_statedump(struct ust_registry_session *session,
+		struct ust_registry_channel *chan)
+{
+	return 0;
+}
+static inline
+int ust_metadata_event_statedump(struct ust_registry_session *session,
+		struct ust_registry_channel *chan,
+		struct ust_registry_event *event)
+{
+	return 0;
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* LTTNG_UST_REGISTRY_H */

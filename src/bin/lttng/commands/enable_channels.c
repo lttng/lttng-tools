@@ -35,11 +35,9 @@ static char *opt_session_name;
 static int opt_userspace;
 static struct lttng_channel chan;
 static char *opt_output;
-#if 0
-/* Not implemented yet */
-static char *opt_cmd_name;
-static pid_t opt_pid;
-#endif
+static int opt_buffer_uid;
+static int opt_buffer_pid;
+static int opt_buffer_global;
 
 enum {
 	OPT_HELP = 1,
@@ -63,13 +61,7 @@ static struct poptOption long_options[] = {
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-#if 0
-	/* Not implemented yet */
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-#else
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-#endif
 	{"discard",        0,   POPT_ARG_NONE, 0, OPT_DISCARD, 0, 0},
 	{"overwrite",      0,   POPT_ARG_NONE, 0, OPT_OVERWRITE, 0, 0},
 	{"subbuf-size",    0,   POPT_ARG_DOUBLE, 0, OPT_SUBBUF_SIZE, 0, 0},
@@ -78,6 +70,9 @@ static struct poptOption long_options[] = {
 	{"read-timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{"output",         0,   POPT_ARG_STRING, &opt_output, 0, 0, 0},
+	{"buffers-uid",    0,	POPT_ARG_VAL, &opt_buffer_uid, 1, 0, 0},
+	{"buffers-pid",    0,	POPT_ARG_VAL, &opt_buffer_pid, 1, 0, 0},
+	{"buffers-global", 0,	POPT_ARG_VAL, &opt_buffer_global, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -117,6 +112,9 @@ static void usage(FILE *ofp)
 		DEFAULT_CHANNEL_READ_TIMER);
 	fprintf(ofp, "      --output TYPE        Channel output type (Values: %s, %s)\n",
 			output_mmap, output_splice);
+	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
+	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
+	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
 	fprintf(ofp, "\n");
 }
 
@@ -165,8 +163,14 @@ static int enable_channel(char *session_name)
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
+		dom.buf_type = LTTNG_BUFFER_GLOBAL;
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
+		if (opt_buffer_uid) {
+			dom.buf_type = LTTNG_BUFFER_PER_UID;
+		} else {
+			dom.buf_type = LTTNG_BUFFER_PER_PID;
+		}
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_ERROR;
