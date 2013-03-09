@@ -88,14 +88,14 @@ static int add_channel(struct lttng_consumer_channel *channel,
 	if (ctx->on_recv_channel != NULL) {
 		ret = ctx->on_recv_channel(channel);
 		if (ret == 0) {
-			ret = consumer_add_channel(channel);
+			ret = consumer_add_channel(channel, ctx);
 		} else if (ret < 0) {
 			/* Most likely an ENOMEM. */
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto error;
 		}
 	} else {
-		ret = consumer_add_channel(channel);
+		ret = consumer_add_channel(channel, ctx);
 	}
 
 	DBG("UST consumer channel added (key: %" PRIu64 ")", channel->key);
@@ -368,11 +368,6 @@ static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 		goto error;
 	}
 
-	ret = ustctl_stream_close_wakeup_fd(stream->ustream);
-	if (ret < 0) {
-		goto error;
-	}
-
 error:
 	return ret;
 }
@@ -397,6 +392,11 @@ static int send_sessiond_channel(int sock,
 
 	/* Send channel to sessiond. */
 	ret = ustctl_send_channel_to_sessiond(sock, channel->uchan);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = ustctl_channel_close_wakeup_fd(channel->uchan);
 	if (ret < 0) {
 		goto error;
 	}
@@ -472,6 +472,12 @@ static int ask_channel(struct lttng_consumer_local_data *ctx, int sock,
 
 	/* The reply msg status is handled in the following call. */
 	ret = create_ust_channel(attr, &channel->uchan);
+	if (ret < 0) {
+		goto error;
+	}
+
+	channel->wait_fd = ustctl_channel_get_wait_fd(channel->uchan);
+
 	if (ret < 0) {
 		goto error;
 	}
@@ -1276,4 +1282,14 @@ void lttng_ustconsumer_close_metadata(struct lttng_ht *metadata_ht)
 		DBG("Metadata wait fd %d closed", fd);
 	}
 	rcu_read_unlock();
+}
+
+void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
+{
+	int ret;
+
+	ret = ustctl_stream_close_wakeup_fd(stream->ustream);
+	if (ret < 0) {
+		ERR("Unable to close wakeup fd");
+	}
 }

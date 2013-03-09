@@ -47,6 +47,16 @@ struct lttng_consumer_global_data consumer_data = {
 	.type = LTTNG_CONSUMER_UNKNOWN,
 };
 
+enum consumer_channel_action {
+	CONSUMER_CHANNEL_ADD,
+	CONSUMER_CHANNEL_QUIT,
+};
+
+struct consumer_channel_msg {
+	enum consumer_channel_action action;
+	struct lttng_consumer_channel *chan;
+};
+
 /*
  * Flag to inform the polling thread to quit when all fd hung up. Updated by
  * the consumer_thread_receive_fds when it notices that all fds has hung up.
@@ -76,6 +86,37 @@ static void notify_thread_pipe(int wpipe)
 
 		ret = write(wpipe, &null_stream, sizeof(null_stream));
 	} while (ret < 0 && errno == EINTR);
+}
+
+static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_channel *chan,
+		enum consumer_channel_action action)
+{
+	struct consumer_channel_msg msg;
+	int ret;
+
+	msg.action = action;
+	msg.chan = chan;
+	do {
+		ret = write(ctx->consumer_channel_pipe[1], &msg, sizeof(msg));
+	} while (ret < 0 && errno == EINTR);
+}
+
+static int read_channel_pipe(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_channel **chan,
+		enum consumer_channel_action *action)
+{
+	struct consumer_channel_msg msg;
+	int ret;
+
+	do {
+		ret = read(ctx->consumer_channel_pipe[0], &msg, sizeof(msg));
+	} while (ret < 0 && errno == EINTR);
+	if (ret > 0) {
+		*action = msg.action;
+		*chan = msg.chan;
+	}
+	return ret;
 }
 
 /*
@@ -425,7 +466,10 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 	ret = lttng_ht_del(ht, &iter);
 	assert(!ret);
 
-	/* Remove node session id from the consumer_data stream ht */
+	iter.iter.node = &stream->node_channel_id.node;
+	ret = lttng_ht_del(consumer_data.stream_per_chan_id_ht, &iter);
+	assert(!ret);
+
 	iter.iter.node = &stream->node_session_id.node;
 	ret = lttng_ht_del(consumer_data.stream_list_ht, &iter);
 	assert(!ret);
@@ -542,11 +586,14 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	/* Key is always the wait_fd for streams. */
 	lttng_ht_node_init_u64(&stream->node, stream->key);
 
+	/* Init node per channel id key */
+	lttng_ht_node_init_u64(&stream->node_channel_id, channel_key);
+
 	/* Init session id node with the stream session id */
 	lttng_ht_node_init_u64(&stream->node_session_id, stream->session_id);
 
-	DBG3("Allocated stream %s (key %" PRIu64 ", relayd_id %" PRIu64 ", session_id %" PRIu64,
-			stream->name, stream->key, stream->net_seq_idx, stream->session_id);
+	DBG3("Allocated stream %s (key %" PRIu64 ", chan_key %" PRIu64 " relayd_id %" PRIu64 ", session_id %" PRIu64,
+			stream->name, stream->key, channel_key, stream->net_seq_idx, stream->session_id);
 
 	rcu_read_unlock();
 	return stream;
@@ -583,6 +630,9 @@ static int add_stream(struct lttng_consumer_stream *stream,
 	steal_stream_key(stream->key, ht);
 
 	lttng_ht_add_unique_u64(ht, &stream->node);
+
+	lttng_ht_add_u64(consumer_data.stream_per_chan_id_ht,
+			&stream->node_channel_id);
 
 	/*
 	 * Add stream to the stream_list_ht of the consumer data. No need to steal
@@ -802,6 +852,9 @@ struct lttng_consumer_channel *consumer_allocate_channel(unsigned long key,
 	channel->name[sizeof(channel->name) - 1] = '\0';
 
 	lttng_ht_node_init_u64(&channel->node, channel->key);
+
+	channel->wait_fd = -1;
+
 	CDS_INIT_LIST_HEAD(&channel->streams.head);
 
 	DBG("Allocated channel (key %" PRIu64 ")", channel->key)
@@ -813,7 +866,8 @@ end:
 /*
  * Add a channel to the global list protected by a mutex.
  */
-int consumer_add_channel(struct lttng_consumer_channel *channel)
+int consumer_add_channel(struct lttng_consumer_channel *channel,
+		struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
 	struct lttng_ht_node_u64 *node;
@@ -839,6 +893,10 @@ end:
 	rcu_read_unlock();
 	pthread_mutex_unlock(&consumer_data.lock);
 
+	if (!ret && channel->wait_fd != -1 &&
+			channel->metadata_stream == NULL) {
+		notify_channel_pipe(ctx, channel, CONSUMER_CHANNEL_ADD);
+	}
 	return ret;
 }
 
@@ -979,6 +1037,8 @@ void lttng_consumer_cleanup(void)
 
 	cleanup_relayd_ht();
 
+	lttng_ht_destroy(consumer_data.stream_per_chan_id_ht);
+
 	/*
 	 * This HT contains streams that are freed by either the metadata thread or
 	 * the data thread so we do *nothing* on the hash table and simply destroy
@@ -1063,7 +1123,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
 		int (*update_stream)(int stream_key, uint32_t state))
 {
-	int ret, i;
+	int ret;
 	struct lttng_consumer_local_data *ctx;
 
 	assert(consumer_data.type == LTTNG_CONSUMER_UNKNOWN ||
@@ -1115,6 +1175,12 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		goto error_thread_pipe;
 	}
 
+	ret = pipe(ctx->consumer_channel_pipe);
+	if (ret < 0) {
+		PERROR("Error creating channel pipe");
+		goto error_channel_pipe;
+	}
+
 	ret = utils_create_pipe(ctx->consumer_metadata_pipe);
 	if (ret < 0) {
 		goto error_metadata_pipe;
@@ -1130,26 +1196,14 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 error_splice_pipe:
 	utils_close_pipe(ctx->consumer_metadata_pipe);
 error_metadata_pipe:
+	utils_close_pipe(ctx->consumer_channel_pipe);
+error_channel_pipe:
 	utils_close_pipe(ctx->consumer_thread_pipe);
 error_thread_pipe:
-	for (i = 0; i < 2; i++) {
-		int err;
-
-		err = close(ctx->consumer_should_quit[i]);
-		if (err) {
-			PERROR("close");
-		}
-	}
+	utils_close_pipe(ctx->consumer_should_quit);
 error_poll_fcntl:
 error_quit_pipe:
-	for (i = 0; i < 2; i++) {
-		int err;
-
-		err = close(ctx->consumer_data_pipe[i]);
-		if (err) {
-			PERROR("close");
-		}
-	}
+	utils_close_pipe(ctx->consumer_data_pipe);
 error_poll_pipe:
 	free(ctx);
 error:
@@ -1169,30 +1223,10 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	if (ret) {
 		PERROR("close");
 	}
-	ret = close(ctx->consumer_thread_pipe[0]);
-	if (ret) {
-		PERROR("close");
-	}
-	ret = close(ctx->consumer_thread_pipe[1]);
-	if (ret) {
-		PERROR("close");
-	}
-	ret = close(ctx->consumer_data_pipe[0]);
-	if (ret) {
-		PERROR("close");
-	}
-	ret = close(ctx->consumer_data_pipe[1]);
-	if (ret) {
-		PERROR("close");
-	}
-	ret = close(ctx->consumer_should_quit[0]);
-	if (ret) {
-		PERROR("close");
-	}
-	ret = close(ctx->consumer_should_quit[1]);
-	if (ret) {
-		PERROR("close");
-	}
+	utils_close_pipe(ctx->consumer_thread_pipe);
+	utils_close_pipe(ctx->consumer_channel_pipe);
+	utils_close_pipe(ctx->consumer_data_pipe);
+	utils_close_pipe(ctx->consumer_should_quit);
 	utils_close_pipe(ctx->consumer_splice_metadata_pipe);
 
 	unlink(ctx->consumer_command_sock_path);
@@ -1806,7 +1840,10 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	ret = lttng_ht_del(ht, &iter);
 	assert(!ret);
 
-	/* Remove node session id from the consumer_data stream ht */
+	iter.iter.node = &stream->node_channel_id.node;
+	ret = lttng_ht_del(consumer_data.stream_per_chan_id_ht, &iter);
+	assert(!ret);
+
 	iter.iter.node = &stream->node_session_id.node;
 	ret = lttng_ht_del(consumer_data.stream_list_ht, &iter);
 	assert(!ret);
@@ -1925,6 +1962,9 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 
 	lttng_ht_add_unique_u64(ht, &stream->node);
 
+	lttng_ht_add_unique_u64(consumer_data.stream_per_chan_id_ht,
+		&stream->node_channel_id);
+
 	/*
 	 * Add stream to the stream_list_ht of the consumer data. No need to steal
 	 * the key since the HT does not use it and we allow to add redundant keys
@@ -2012,7 +2052,7 @@ void *consumer_thread_metadata_poll(void *data)
 	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!metadata_ht) {
 		/* ENOMEM at this point. Better to bail out. */
-		goto error;
+		goto end_ht;
 	}
 
 	DBG("Thread metadata poll started");
@@ -2021,7 +2061,7 @@ void *consumer_thread_metadata_poll(void *data)
 	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
 	if (ret < 0) {
 		ERR("Poll set creation failed");
-		goto end;
+		goto end_poll;
 	}
 
 	ret = lttng_poll_add(&events, ctx->consumer_metadata_pipe[0], LPOLLIN);
@@ -2180,10 +2220,11 @@ restart:
 error:
 end:
 	DBG("Metadata poll thread exiting");
+
 	lttng_poll_clean(&events);
-
+end_poll:
 	destroy_stream_ht(metadata_ht);
-
+end_ht:
 	rcu_unregister_thread();
 	return NULL;
 }
@@ -2447,6 +2488,222 @@ end:
 }
 
 /*
+ * Close wake-up end of each stream belonging to the channel. This will
+ * allow the poll() on the stream read-side to detect when the
+ * write-side (application) finally closes them.
+ */
+static
+void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
+{
+	struct lttng_ht *ht;
+	struct lttng_consumer_stream *stream;
+	struct lttng_ht_iter iter;
+
+	ht = consumer_data.stream_per_chan_id_ht;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&channel->key, lttng_ht_seed),
+			ht->match_fct, &channel->key,
+			&iter.iter, stream, node_channel_id.node) {
+		switch (consumer_data.type) {
+		case LTTNG_CONSUMER_KERNEL:
+			break;
+		case LTTNG_CONSUMER32_UST:
+		case LTTNG_CONSUMER64_UST:
+			/*
+			 * Note: a mutex is taken internally within
+			 * liblttng-ust-ctl to protect timer wakeup_fd
+			 * use from concurrent close.
+			 */
+			lttng_ustconsumer_close_stream_wakeup(stream);
+			break;
+		default:
+			ERR("Unknown consumer_data type");
+			assert(0);
+		}
+	}
+	rcu_read_unlock();
+}
+
+static void destroy_channel_ht(struct lttng_ht *ht)
+{
+	struct lttng_ht_iter iter;
+	struct lttng_consumer_channel *channel;
+	int ret;
+
+	if (ht == NULL) {
+		return;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, channel, wait_fd_node.node) {
+		ret = lttng_ht_del(ht, &iter);
+		assert(ret != 0);
+	}
+	rcu_read_unlock();
+
+	lttng_ht_destroy(ht);
+}
+
+/*
+ * This thread polls the channel fds to detect when they are being
+ * closed. It closes all related streams if the channel is detected as
+ * closed. It is currently only used as a shim layer for UST because the
+ * consumerd needs to keep the per-stream wakeup end of pipes open for
+ * periodical flush.
+ */
+void *consumer_thread_channel_poll(void *data)
+{
+	int ret, i, pollfd;
+	uint32_t revents, nb_fd;
+	struct lttng_consumer_channel *chan = NULL;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_u64 *node;
+	struct lttng_poll_event events;
+	struct lttng_consumer_local_data *ctx = data;
+	struct lttng_ht *channel_ht;
+
+	rcu_register_thread();
+
+	channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!channel_ht) {
+		/* ENOMEM at this point. Better to bail out. */
+		goto end_ht;
+	}
+
+	DBG("Thread channel poll started");
+
+	/* Size is set to 1 for the consumer_channel pipe */
+	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
+	if (ret < 0) {
+		ERR("Poll set creation failed");
+		goto end_poll;
+	}
+
+	ret = lttng_poll_add(&events, ctx->consumer_channel_pipe[0], LPOLLIN);
+	if (ret < 0) {
+		goto end;
+	}
+
+	/* Main loop */
+	DBG("Channel main loop started");
+
+	while (1) {
+		/* Only the channel pipe is set */
+		if (LTTNG_POLL_GETNB(&events) == 0 && consumer_quit == 1) {
+			goto end;
+		}
+
+restart:
+		DBG("Channel poll wait with %d fd(s)", LTTNG_POLL_GETNB(&events));
+		ret = lttng_poll_wait(&events, -1);
+		DBG("Channel event catched in thread");
+		if (ret < 0) {
+			if (errno == EINTR) {
+				ERR("Poll EINTR catched");
+				goto restart;
+			}
+			goto end;
+		}
+
+		nb_fd = ret;
+
+		/* From here, the event is a channel wait fd */
+		for (i = 0; i < nb_fd; i++) {
+			revents = LTTNG_POLL_GETEV(&events, i);
+			pollfd = LTTNG_POLL_GETFD(&events, i);
+
+			/* Just don't waste time if no returned events for the fd */
+			if (!revents) {
+				continue;
+			}
+			if (pollfd == ctx->consumer_channel_pipe[0]) {
+				if (revents & (LPOLLERR | LPOLLHUP)) {
+					DBG("Channel thread pipe hung up");
+					/*
+					 * Remove the pipe from the poll set and continue the loop
+					 * since their might be data to consume.
+					 */
+					lttng_poll_del(&events, ctx->consumer_channel_pipe[0]);
+					continue;
+				} else if (revents & LPOLLIN) {
+					enum consumer_channel_action action;
+
+					ret = read_channel_pipe(ctx, &chan, &action);
+					if (ret <= 0) {
+						ERR("Error reading channel pipe");
+						continue;
+					}
+
+					switch (action) {
+					case CONSUMER_CHANNEL_ADD:
+						DBG("Adding channel %d to poll set",
+							chan->wait_fd);
+
+						lttng_ht_node_init_u64(&chan->wait_fd_node,
+							chan->wait_fd);
+						lttng_ht_add_unique_u64(channel_ht,
+								&chan->wait_fd_node);
+						/* Add channel to the global poll events list */
+						lttng_poll_add(&events, chan->wait_fd,
+								LPOLLIN | LPOLLPRI);
+						break;
+					case CONSUMER_CHANNEL_QUIT:
+						/*
+						 * Remove the pipe from the poll set and continue the loop
+						 * since their might be data to consume.
+						 */
+						lttng_poll_del(&events, ctx->consumer_channel_pipe[0]);
+						continue;
+					default:
+						ERR("Unknown action");
+						break;
+					}
+				}
+
+				/* Handle other stream */
+				continue;
+			}
+
+			rcu_read_lock();
+			{
+				uint64_t tmp_id = (uint64_t) pollfd;
+
+				lttng_ht_lookup(channel_ht, &tmp_id, &iter);
+			}
+			node = lttng_ht_iter_get_node_u64(&iter);
+			assert(node);
+
+			chan = caa_container_of(node, struct lttng_consumer_channel,
+					wait_fd_node);
+
+			/* Check for error event */
+			if (revents & (LPOLLERR | LPOLLHUP)) {
+				DBG("Channel fd %d is hup|err.", pollfd);
+
+				lttng_poll_del(&events, chan->wait_fd);
+				ret = lttng_ht_del(channel_ht, &iter);
+				assert(ret == 0);
+				consumer_close_channel_streams(chan);
+			}
+
+			/* Release RCU lock for the channel looked up */
+			rcu_read_unlock();
+		}
+	}
+
+end:
+	lttng_poll_clean(&events);
+end_poll:
+	destroy_channel_ht(channel_ht);
+end_ht:
+	DBG("Channel poll thread exiting");
+	rcu_unregister_thread();
+	return NULL;
+}
+
+/*
  * This thread listens on the consumerd socket and receives the file
  * descriptors from the session daemon.
  */
@@ -2570,6 +2827,8 @@ end:
 	 */
 	notify_thread_pipe(ctx->consumer_data_pipe[1]);
 
+	notify_channel_pipe(ctx, NULL, CONSUMER_CHANNEL_QUIT);
+
 	/* Cleaning up possibly open sockets. */
 	if (sock >= 0) {
 		ret = close(sock);
@@ -2637,6 +2896,7 @@ void lttng_consumer_init(void)
 	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	consumer_data.stream_list_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	consumer_data.stream_per_chan_id_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 }
 
 /*

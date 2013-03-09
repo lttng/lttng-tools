@@ -153,12 +153,12 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ctx->on_recv_channel != NULL) {
 			ret = ctx->on_recv_channel(new_channel);
 			if (ret == 0) {
-				consumer_add_channel(new_channel);
+				consumer_add_channel(new_channel, ctx);
 			} else if (ret < 0) {
 				goto end_nosignal;
 			}
 		} else {
-			consumer_add_channel(new_channel);
+			consumer_add_channel(new_channel, ctx);
 		}
 		goto end_nosignal;
 	}

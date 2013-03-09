@@ -50,6 +50,7 @@ int lttng_ustctl_get_mmap_read_offset(struct lttng_consumer_stream *stream,
 void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream);
 void lttng_ustconsumer_close_metadata(struct lttng_ht *ht);
+void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -149,6 +150,10 @@ void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
 }
 static inline
 void lttng_ustconsumer_close_metadata(struct lttng_ht *ht)
+{
+}
+static inline
+void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
 {
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */

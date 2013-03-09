@@ -51,8 +51,8 @@
 
 /* TODO : support UST (all direct kernel-ctl accesses). */
 
-/* the two threads (receive fd, poll and metadata) */
-static pthread_t data_thread, metadata_thread, sessiond_thread;
+/* threads (channel handling, poll, metadata, sessiond) */
+static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -363,12 +363,20 @@ int main(int argc, char **argv)
 	}
 	lttng_consumer_set_error_sock(ctx, ret);
 
+	/* Create thread to manage channels */
+	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
+			(void *) ctx);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto error;
+	}
+
 	/* Create thread to manage the polling/writing of trace metadata */
 	ret = pthread_create(&metadata_thread, NULL, consumer_thread_metadata_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
-		goto error;
+		goto metadata_error;
 	}
 
 	/* Create thread to manage the polling/writing of trace data */
@@ -402,6 +410,13 @@ sessiond_error:
 
 data_error:
 	ret = pthread_join(metadata_thread, &status);
+	if (ret != 0) {
+		perror("pthread_join");
+		goto error;
+	}
+
+metadata_error:
+	ret = pthread_join(channel_thread, &status);
 	if (ret != 0) {
 		perror("pthread_join");
 		goto error;
