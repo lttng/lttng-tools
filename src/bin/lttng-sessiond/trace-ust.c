@@ -412,8 +412,8 @@ struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
 	lum->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
 	lum->attr.subbuf_size = default_get_metadata_subbuf_size();
 	lum->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	lum->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-	lum->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+	lum->attr.switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
+	lum->attr.read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
 	lum->attr.output = LTTNG_UST_MMAP;
 
 	lum->handle = -1;

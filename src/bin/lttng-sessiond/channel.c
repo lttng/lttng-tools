@@ -49,8 +49,6 @@ struct lttng_channel *channel_new_default_attr(int dom)
 	}
 
 	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	chan->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-	chan->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
 
 	switch (dom) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -58,6 +56,8 @@ struct lttng_channel *channel_new_default_attr(int dom)
 			default_get_kernel_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		chan->attr.switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
+		chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
 		break;
 	case LTTNG_DOMAIN_UST:
 #if 0
@@ -68,6 +68,8 @@ struct lttng_channel *channel_new_default_attr(int dom)
 		chan->attr.subbuf_size = default_get_ust_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
 		chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
+		chan->attr.switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
+		chan->attr.read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
 		break;
 	default:
 		goto error;	/* Not implemented */

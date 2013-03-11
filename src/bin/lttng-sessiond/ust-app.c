@@ -1799,8 +1799,8 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	metadata->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
 	metadata->attr.subbuf_size = default_get_metadata_subbuf_size();
 	metadata->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	metadata->attr.switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-	metadata->attr.read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+	metadata->attr.switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
+	metadata->attr.read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
 	metadata->attr.output = LTTNG_UST_MMAP;
 	metadata->attr.type = LTTNG_UST_CHAN_METADATA;
 

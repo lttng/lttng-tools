@@ -121,7 +121,7 @@
 /* DEFAULT_CHANNEL_SUBBUF_NUM must always be a power of 2 */
 #define DEFAULT_CHANNEL_SUBBUF_NUM      4
 #define DEFAULT_CHANNEL_SWITCH_TIMER    0       /* usec */
-#define DEFAULT_CHANNEL_READ_TIMER		200     /* usec */
+#define DEFAULT_CHANNEL_READ_TIMER      200000  /* usec */
 #define DEFAULT_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
 
 #define DEFAULT_METADATA_SUBBUF_SIZE    4096
@@ -139,6 +139,10 @@
 /* See lttng-kernel.h enum lttng_kernel_output for channel output */
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
 
+#define DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER	\
+		DEFAULT_CHANNEL_SWITCH_TIMER
+#define DEFAULT_KERNEL_CHANNEL_READ_TIMER      200000  /* usec */
+
 /* User space defaults */
 
 /* Must be a power of 2 */
@@ -147,6 +151,10 @@
 #define DEFAULT_UST_CHANNEL_SUBBUF_NUM      DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-ust.h enum lttng_ust_output */
 #define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
+
+#define DEFAULT_UST_CHANNEL_SWITCH_TIMER	\
+		DEFAULT_CHANNEL_SWITCH_TIMER
+#define DEFAULT_UST_CHANNEL_READ_TIMER      0  /* usec */
 
 /*
  * Default timeout value for the sem_timedwait() call. Blocking forever is not
