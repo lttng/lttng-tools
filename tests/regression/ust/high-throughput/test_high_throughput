@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Testing high events throughput"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_APP=20
+BIN_NAME="gen-events"
+SESSION_NAME="high-throughput"
+EVENT_NAME="tp:tptest"
+NUM_TESTS=9
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+TRACE_PATH=$(mktemp -d)
+
+# MUST set TESTDIR before calling those functions
+
+plan_tests $NUM_TESTS
+
+start_lttng_sessiond
+
+create_lttng_session $SESSION_NAME $TRACE_PATH
+
+enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+start_lttng_tracing $SESSION_NAME
+
+for i in `seq 1 $NR_APP`; do
+	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
+done
+
+while [ -n "$(pidof $BIN_NAME)" ]; do
+	sleep 0.5
+done
+pass "Wait for application end"
+
+stop_lttng_tracing $SESSION_NAME
+destroy_lttng_session $SESSION_NAME
+
+stop_lttng_sessiond
+
+# Validate test
+
+TEMP_FILE=$(mktemp)
+TEMP_FILE_2=$(mktemp)
+
+traced=$(babeltrace $TRACE_PATH 2>/dev/null | wc -l)
+babeltrace $TRACE_PATH >/dev/null 2>$TEMP_FILE_2
+
+cat $TEMP_FILE_2 | cut -f4 -d " " >$TEMP_FILE
+
+dropped=0
+while read line;
+do
+	let dropped=$dropped+$line
+done < $TEMP_FILE
+
+let total=$dropped+$traced
+let wanted=$NR_APP*1000000
+
+if [ $wanted -ne $total ]; then
+	fail "Trace validation"
+	diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total"
+else
+	pass "Trace validation"
+	diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total"
+fi
+
+rm -rf $TRACE_PATH
+rm $TEMP_FILE $TEMP_FILE_2

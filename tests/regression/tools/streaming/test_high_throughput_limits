@@ -1,0 +1,191 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+#                      David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Streaming - High throughput with bandwidth limits"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_APP_ITER=10
+NR_ITER=1000000
+BIN_NAME="gen-ust-events"
+SESSION_NAME="high-throughput"
+EVENT_NAME="tp:tptest"
+SESSIOND_CTRL_PORT=5342
+SESSIOND_DATA_PORT=5343
+DEFAULT_IF="lo"
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=112
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+function set_bw_limit
+{
+	limit=$1
+	ctrlportlimit=$(($limit/10))
+	# failsafe to have at least 1kbit/s for control (in the case where $1 < 10)
+	[ $ctrlportlimit = 0 ] && ctrlportlimit=1
+	# if $1 < 10, we might bust the limit set here, but the
+	# parent qdisc (1:) will always limit us to the right max value
+	dataportlimit=$((9*${ctrlportlimit}))
+
+
+	tc qdisc add dev $DEFAULT_IF root handle 1: htb default 15 >/dev/null 2>&1
+
+	# the total bandwidth is the limit set by the user
+	tc class add dev $DEFAULT_IF parent 1: classid 1:1 htb rate ${limit}kbit ceil ${limit}kbit >/dev/null 2>&1
+	# 1/10 of the bandwidth guaranteed and traffic prioritized for the control port
+	tc class add dev $DEFAULT_IF parent 1:1 classid 1:10 htb rate ${ctrlportlimit}kbit ceil ${limit}kbit prio 1 >/dev/null 2>&1
+	# 9/10 of the bandwidth guaranteed and can borrow up to the total bandwidth (if unused)
+	tc class add dev $DEFAULT_IF parent 1:1 classid 1:11 htb rate ${dataportlimit}kbit ceil ${limit}kbit prio 2 >/dev/null 2>&1
+
+	# filter to assign control traffic to the 1:10 class
+	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_CTRL_PORT 0xffff flowid 1:10 >/dev/null 2>&1
+	# filter to assign data traffic to the 1:11 class
+	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:11 >/dev/null 2>&1
+
+	ok $? "Set bandwidth limits to ${limit}kbits, ${ctrlportlimit} for control and ${dataportlimit} for data"
+}
+
+function reset_bw_limit
+{
+	tc qdisc del dev $DEFAULT_IF root >/dev/null 2>&1
+	ok $? "Reset bandwith limits"
+}
+
+function create_lttng_session_with_uri
+{
+	sess_name=$1
+	uri=$2
+	# Create session with custom URI
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create -U $uri $sess_name >/dev/null 2>&1
+	ok $? "Create session with uri $uri"
+}
+
+function run_apps
+{
+	for i in `seq 1 $NR_APP_ITER`; do
+		# With bandwidth limitation, unfortunately, application easily timeout
+		# due to very slow communication between the consumer and relayd making
+		# the status reply from the consumer quite slow thus delaying the
+		# registration done message.
+		LTTNG_UST_REGISTER_TIMEOUT=-1 ./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
+	done
+}
+
+function wait_apps
+{
+	while [ -n "$(pidof $BIN_NAME)" ]; do
+		sleep 1
+	done
+	pass "Wait for applications to end"
+}
+
+function test_high_throughput
+{
+	NETWORK_URI="net://localhost"
+	create_lttng_session_with_uri $SESSION_NAME $NETWORK_URI
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+	run_apps
+	wait_apps
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+	validate_event_count
+}
+
+function validate_event_count
+{
+
+	TEMP_FILE=$(mktemp)
+	TEMP_FILE_2=$(mktemp)
+
+	traced=$(babeltrace $TRACE_PATH 2>/dev/null | wc -l)
+	babeltrace $TRACE_PATH >/dev/null 2>$TEMP_FILE_2
+
+	cat $TEMP_FILE_2 | cut -f4 -d " " >$TEMP_FILE
+
+	dropped=0
+	while read line;
+	do
+		let dropped=$dropped+$line
+	done < $TEMP_FILE
+
+	let total=$dropped+$traced
+	let wanted=$NR_APP_ITER*$NR_ITER
+
+	if [ $wanted -ne $total ]; then
+		fail "Validate trace event count"
+		diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
+		return 1
+	else
+		pass "Validate trace event count"
+		diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
+
+		rm -rf $TRACE_PATH
+		rm $TEMP_FILE $TEMP_FILE_2
+
+		return 0
+	fi
+}
+
+function interrupt_cleanup()
+{
+	diag "*** Exiting ***"
+	stop_lttng_relayd
+	stop_lttng_sessiond
+	reset_bw_limit
+	exit 1
+}
+
+plan_tests $NUM_TESTS
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed to set bandwith limits. Skipping all tests." $NUM_TESTS ||
+{
+
+	# Catch sigint and try to cleanup limits
+	trap interrupt_cleanup SIGINT
+
+	BW_LIMITS=(3200 1600 800 400 200 100 50 25)
+	for BW in ${BW_LIMITS[@]};
+	do
+		diag "Test high-throughput with bandwidth limit set to ${BW}kbits"
+		set_bw_limit $BW
+
+		start_lttng_sessiond
+		start_lttng_relayd "-o $TRACE_PATH"
+		test_high_throughput
+		result=$?
+		stop_lttng_relayd
+		stop_lttng_sessiond
+		reset_bw_limit
+	done
+}

@@ -1,0 +1,403 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Filtering - Valid filters"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+LTTNG_BIN="lttng"
+BIN_NAME="gen-ust-events"
+STATS_BIN="babelstats.pl"
+SESSION_NAME="valid_filter"
+EVENT_NAME="tp:tptest"
+NR_ITER=100
+NUM_TESTS=198
+
+source $TESTDIR/utils/utils.sh
+
+print_test_banner "$TEST_DESC"
+
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+function enable_ust_lttng_event_filter()
+{
+	sess_name="$1"
+	event_name="$2"
+	filter="$3"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --filter "$filter" 2>&1 >/dev/null
+
+	ok $? "Enable lttng event with filtering"
+}
+
+function run_apps
+{
+	./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
+}
+
+function wait_apps
+{
+	while [ -n "$(pidof $BIN_NAME)" ]; do
+		sleep 1
+	done
+	pass "Wait for application end"
+}
+
+function test_valid_filter
+{
+	filter="$1"
+	validator="$2"
+
+	diag "Test valid filter: $1"
+
+	trace_path=$(mktemp -d)
+
+	# Create session
+	create_lttng_session $SESSION_NAME $trace_path
+
+	# Enable filter
+	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME $filter
+
+	# Trace apps
+	start_lttng_tracing $SESSION_NAME
+	run_apps
+	wait_apps
+	stop_lttng_tracing $SESSION_NAME
+
+	# Destroy session
+	destroy_lttng_session $SESSION_NAME
+
+	stats=`babeltrace $trace_path | $CURDIR/$STATS_BIN --tracepoint $EVENT_NAME`
+
+	rm -rf $trace_path
+
+	$validator "$stats"
+
+	ok $? "Validate trace filter output"
+
+	rm -rf $trace_path
+}
+
+function validate_min_max
+{
+	stats="$1"
+	field=$2
+	expected_min=$3
+	expected_max=$4
+
+	echo $stats | grep -q "$field $expected_min $expected_max"
+
+	return $?
+}
+
+function validator_intfield
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "1" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "intfield2" "0x1" "0x63"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "longfield" "1" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "netintfield" "1" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "netintfieldhex" "0x1" "0x63"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "floatfield" "2222" "2222"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "doublefield" "2" "2"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_gt
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "2" "99"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_ge
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "1" "99"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_lt
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "1"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_le
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "2"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_eq
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "1" "1"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_ne
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "98"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_not
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "0"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_gt_and_longfield_gt
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "43" "99"
+	status=$(($status|$?))
+	validate_min_max "$stats" "longfield" "43" "99"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_ge_and_longfield_le
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "42" "42"
+	status=$(($status|$?))
+	validate_min_max "$stats" "longfield" "42" "42"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_intfield_lt_or_longfield_gt
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "99"
+	status=$(($status|$?))
+	validate_min_max "$stats" "longfield" "0" "99"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_mixed_str_or_int_and_int
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "34" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "stringfield" "\"test\"" "\"test\""
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_mixed_int_double
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "42"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_true_statement
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "intfield2" "0x0" "0x63"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "longfield" "0" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "netintfield" "0" "99"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "netintfieldhex" "0x0" "0x63"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "floatfield" "2222" "2222"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "doublefield" "2" "2"
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "stringfield" "\"test\"" "\"test\""
+	status=$(($status|$?))
+
+	validate_min_max "$stats" "stringfield2" ""\*"" ""\*""
+	status=$(($status|$?))
+
+	return $status
+}
+
+plan_tests $NUM_TESTS
+
+IFS=$'\n'
+
+issue_356_filter="intfield > 0 && intfield > 1 && "
+issue_356_filter+="intfield > 2 && intfield > 3 && "
+issue_356_filter+="intfield > 4 && intfield > 5 && "
+issue_356_filter+="intfield > 6 && intfield > 7 && "
+issue_356_filter+="intfield > 8 || intfield > 0"
+
+# One to one mapping between filters and validators
+
+FILTERS=("intfield"                                                     #1
+	 "intfield > 1"                                                 #2
+	 "intfield >= 1"                                                #3
+	 "intfield < 2"                                                 #4
+	 "intfield <= 2"                                                #5
+	 "intfield == 1"                                                #6
+	 "intfield != 99"                                               #7
+	 "!intfield"                                                    #8
+	 "-intfield"                                                    #9
+	 "--intfield"                                                   #10
+	 "+intfield"                                                    #11
+	 "++intfield"                                                   #12
+	 "intfield > 1 && longfield > 42"                               #13
+	 "intfield >= 42 && longfield <= 42"                            #14
+	 "intfield < 1 || longfield > 98"                               #15
+	 "(stringfield == \"test\" || intfield != 10) && intfield > 33" #16
+	 "intfield < 42.4242424242"                                     #17
+	 "\"test\" == \"test\""                                         #18 #Issue #342
+	 "stringfield == \"test\""                                      #19
+	 "stringfield == \"t*\""                                        #20
+	 "stringfield == \"*\""                                         #21
+	 $issue_356_filter                                              #22 #Issue #356
+	 "intfield < 0xDEADBEEF"                                        #23
+	 "intfield < 0x2"                                               #24
+	 "intfield < 02"                                                #25
+	 "stringfield2 == \"\\\*\""                                     #26
+	 "1.0 || intfield || 1.0"                                       #27
+	 "1 < intfield"                                                 #28
+)
+
+VALIDATOR=("validator_intfield"                     #1
+	   "validator_intfield_gt"                  #2
+	   "validator_intfield_ge"                  #3
+	   "validator_intfield_lt"                  #4
+	   "validator_intfield_le"                  #5
+	   "validator_intfield_eq"                  #6
+	   "validator_intfield_ne"                  #7
+	   "validator_intfield_not"                 #8
+	   "validator_intfield"                     #9
+	   "validator_intfield"                     #10
+	   "validator_intfield"                     #11
+	   "validator_intfield"                     #12
+	   "validator_intfield_gt_and_longfield_gt" #13
+	   "validator_intfield_ge_and_longfield_le" #14
+	   "validator_intfield_lt_or_longfield_gt"  #15
+	   "validator_mixed_str_or_int_and_int"     #16
+	   "validator_mixed_int_double"             #17
+	   "validator_true_statement"               #18
+	   "validator_true_statement"               #19
+	   "validator_true_statement"               #20
+	   "validator_true_statement"               #21
+	   "validator_intfield"                     #22
+	   "validator_true_statement"               #23
+	   "validator_intfield_lt"                  #24
+	   "validator_intfield_lt"                  #25
+	   "validator_true_statement"               #26
+	   "validator_true_statement"               #27
+	   "validator_intfield_gt"                  #28
+)
+
+FILTER_COUNT=${#FILTERS[@]}
+i=0
+
+start_lttng_sessiond
+
+while [ "$i" -lt "$FILTER_COUNT" ]; do
+
+	test_valid_filter "${FILTERS[$i]}" "${VALIDATOR[$i]}"
+
+	if [ $? -eq 1 ]; then
+		stop_lttng_sessiond
+		exit 1
+	fi
+
+	let "i++"
+done
+
+stop_lttng_sessiond

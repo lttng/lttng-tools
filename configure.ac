@@ -309,19 +309,23 @@ AC_CONFIG_FILES([
 	src/bin/lttng-relayd/Makefile
 	src/bin/lttng/Makefile
 	tests/Makefile
-	tests/kernel/Makefile
-	tests/tools/Makefile
-	tests/tools/streaming/Makefile
-	tests/tools/filtering/Makefile
-	tests/tools/health/Makefile
-	tests/ust/Makefile
-	tests/ust/nprocesses/Makefile
-	tests/ust/high-throughput/Makefile
-	tests/ust/low-throughput/Makefile
-	tests/ust/before-after/Makefile
-	tests/ust/multi-session/Makefile
-	tests/ust/overlap/Makefile
-	tests/ust/overlap/demo/Makefile
+	tests/regression/Makefile
+	tests/regression/kernel/Makefile
+	tests/regression/tools/Makefile
+	tests/regression/tools/streaming/Makefile
+	tests/regression/tools/filtering/Makefile
+	tests/regression/tools/health/Makefile
+	tests/regression/ust/Makefile
+	tests/regression/ust/nprocesses/Makefile
+	tests/regression/ust/high-throughput/Makefile
+	tests/regression/ust/low-throughput/Makefile
+	tests/regression/ust/before-after/Makefile
+	tests/regression/ust/multi-session/Makefile
+	tests/regression/ust/overlap/Makefile
+	tests/regression/ust/overlap/demo/Makefile
+	tests/unit/Makefile
+	tests/utils/Makefile
+	tests/utils/tap/Makefile
 ])
 
 AC_OUTPUT
