@@ -103,9 +103,9 @@ static void create_kernel_metadata(void)
 	assert(kern->metadata->conf->attr.num_subbuf
 			== DEFAULT_METADATA_SUBBUF_NUM);
 	assert(kern->metadata->conf->attr.switch_timer_interval
-			== DEFAULT_CHANNEL_SWITCH_TIMER);
+			== DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER);
 	assert(kern->metadata->conf->attr.read_timer_interval
-			== DEFAULT_CHANNEL_READ_TIMER);
+			== DEFAULT_KERNEL_CHANNEL_READ_TIMER);
 	assert(kern->metadata->conf->attr.output
 			== DEFAULT_KERNEL_CHANNEL_OUTPUT);
 	PRINT_OK();

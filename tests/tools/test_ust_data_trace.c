@@ -111,9 +111,9 @@ static void create_ust_metadata(void)
 	assert(metadata->attr.num_subbuf
 			== DEFAULT_METADATA_SUBBUF_NUM);
 	assert(metadata->attr.switch_timer_interval
-			== DEFAULT_CHANNEL_SWITCH_TIMER);
+			== DEFAULT_UST_CHANNEL_SWITCH_TIMER);
 	assert(metadata->attr.read_timer_interval
-			== DEFAULT_CHANNEL_READ_TIMER);
+			== DEFAULT_UST_CHANNEL_READ_TIMER);
 	assert(metadata->attr.output == LTTNG_UST_MMAP);
 	PRINT_OK();
 
