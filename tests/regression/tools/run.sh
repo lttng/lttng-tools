@@ -31,7 +31,6 @@ tests=( $DIR/filtering/test_invalid_filter
 	$DIR/health/test_tp_fail
 	$DIR/streaming/test_kernel
 	$DIR/streaming/test_ust
-	$DIR/streaming/test_uri_switch
 	$DIR/streaming/test_high_throughput_limits )
 
 #### END TESTS HERE ####
