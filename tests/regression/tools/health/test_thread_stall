@@ -24,7 +24,7 @@ SESSION_NAME="health_thread_stall"
 EVENT_NAME="bogus"
 HEALTH_CHECK_BIN="health_check"
 SESSIOND_PRELOAD=".libs/libhealthstall.so"
-NUM_TESTS=12
+NUM_TESTS=11
 
 source $TESTDIR/utils/utils.sh
 
