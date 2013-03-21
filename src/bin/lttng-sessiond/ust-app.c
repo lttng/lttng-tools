@@ -58,6 +58,19 @@ static inline unsigned long get_next_session_id(void)
 	return uatomic_add_return(&next_session_id, 1);
 }
 
+static void copy_channel_attr_to_ustctl(
+		struct ustctl_consumer_channel_attr *attr,
+		struct lttng_ust_channel_attr *uattr)
+{
+	/* Copy event attributes since the layout is different. */
+	attr->subbuf_size = uattr->subbuf_size;
+	attr->num_subbuf = uattr->num_subbuf;
+	attr->overwrite = uattr->overwrite;
+	attr->switch_timer_interval = uattr->switch_timer_interval;
+	attr->read_timer_interval = uattr->read_timer_interval;
+	attr->output = uattr->output;
+}
+
 /*
  * Match function for the hash table lookup.
  *
@@ -2410,7 +2423,8 @@ error:
  * Called with UST app session lock held and RCU read side lock.
  */
 static int create_ust_app_metadata(struct ust_app_session *ua_sess,
-		struct ust_app *app, struct consumer_output *consumer)
+		struct ust_app *app, struct consumer_output *consumer,
+		struct ustctl_consumer_channel_attr *attr)
 {
 	int ret = 0;
 	struct ust_app_channel *metadata;
@@ -2438,14 +2452,20 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	/* Set default attributes for metadata. */
-	metadata->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	metadata->attr.subbuf_size = default_get_metadata_subbuf_size();
-	metadata->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	metadata->attr.switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
-	metadata->attr.read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
-	metadata->attr.output = LTTNG_UST_MMAP;
-	metadata->attr.type = LTTNG_UST_CHAN_METADATA;
+	if (!attr) {
+		/* Set default attributes for metadata. */
+		metadata->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+		metadata->attr.subbuf_size = default_get_metadata_subbuf_size();
+		metadata->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
+		metadata->attr.switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
+		metadata->attr.read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
+		metadata->attr.output = LTTNG_UST_MMAP;
+		metadata->attr.type = LTTNG_UST_CHAN_METADATA;
+	} else {
+		memcpy(&metadata->attr, attr, sizeof(metadata->attr));
+		metadata->attr.output = LTTNG_UST_MMAP;
+		metadata->attr.type = LTTNG_UST_CHAN_METADATA;
+	}
 
 	/* Get the right consumer socket for the application. */
 	socket = consumer_find_socket_by_bitness(app->bits_per_long, consumer);
@@ -3320,9 +3340,17 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		assert(ua_sess);
 
 		pthread_mutex_lock(&ua_sess->lock);
-		/* Create channel onto application. We don't need the chan ref. */
-		ret = create_ust_app_channel(ua_sess, uchan, app,
-				LTTNG_UST_CHAN_PER_CPU, usess, NULL);
+		if (!strncmp(uchan->name, DEFAULT_METADATA_NAME,
+					sizeof(uchan->name))) {
+			struct ustctl_consumer_channel_attr attr;
+			copy_channel_attr_to_ustctl(&attr, &uchan->attr);
+			ret = create_ust_app_metadata(ua_sess, app, usess->consumer,
+					&attr);
+		} else {
+			/* Create channel onto application. We don't need the chan ref. */
+			ret = create_ust_app_channel(ua_sess, uchan, app,
+					LTTNG_UST_CHAN_PER_CPU, usess, NULL);
+		}
 		pthread_mutex_unlock(&ua_sess->lock);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
@@ -3517,8 +3545,11 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		}
 	}
 
-	/* Create the metadata for the application. */
-	ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
+	/*
+	 * Create the metadata for the application. This returns gracefully if a
+	 * metadata was already set for the session.
+	 */
+	ret = create_ust_app_metadata(ua_sess, app, usess->consumer, NULL);
 	if (ret < 0) {
 		goto error_unlock;
 	}
@@ -3865,12 +3896,26 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	 */
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
-		ret = do_create_channel(app, usess, ua_sess, ua_chan);
+		/*
+		 * For a metadata channel, handle it differently.
+		 */
+		if (!strncmp(ua_chan->name, DEFAULT_METADATA_NAME,
+					sizeof(ua_chan->name))) {
+			ret = create_ust_app_metadata(ua_sess, app, usess->consumer,
+					&ua_chan->attr);
+			/* Remove it from the hash table and continue!. */
+			ret = lttng_ht_del(ua_sess->channels, &iter);
+			assert(!ret);
+			delete_ust_app_channel(-1, ua_chan, app);
+			continue;
+		} else {
+			ret = do_create_channel(app, usess, ua_sess, ua_chan);
+		}
 		if (ret < 0) {
 			/*
-			 * Stop everything. On error, the application failed, no more file
-			 * descriptor are available or ENOMEM so stopping here is the only
-			 * thing we can do for now.
+			 * Stop everything. On error, the application failed, no more
+			 * file descriptor are available or ENOMEM so stopping here is
+			 * the only thing we can do for now.
 			 */
 			goto error_unlock;
 		}
