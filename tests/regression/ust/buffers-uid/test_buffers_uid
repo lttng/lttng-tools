@@ -203,7 +203,7 @@ test_multiple_channels() {
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
-	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+	trace_matches $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
 	out=$?
 
 	destroy_lttng_session $SESSION_NAME
