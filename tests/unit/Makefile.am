@@ -14,8 +14,6 @@ LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 
-EXTRA_DIST = run.sh
-
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS = test_uri test_session test_ust_data test_kernel_data
 else
