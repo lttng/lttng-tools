@@ -62,7 +62,6 @@ gen-nevents
 gen-events-time
 gen-events
 gen-ust-events
-unit_tests
 health_check
 tests/regression/ust/overlap/demo/demo
 

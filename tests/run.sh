@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
-DIR=$(dirname $0)
 
-$DIR/regression/run.sh $@
-$DIR/unit/run.sh $@
+[ -z "$1" ] && echo "Error: No testlist. Please specify a testlist to run." && exit 1
+
+prove --merge --exec '' - < $1
