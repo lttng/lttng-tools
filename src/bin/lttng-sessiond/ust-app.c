@@ -3903,6 +3903,9 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 					sizeof(ua_chan->name))) {
 			ret = create_ust_app_metadata(ua_sess, app, usess->consumer,
 					&ua_chan->attr);
+			if (ret < 0) {
+				goto error_unlock;
+			}
 			/* Remove it from the hash table and continue!. */
 			ret = lttng_ht_del(ua_sess->channels, &iter);
 			assert(!ret);
@@ -3910,14 +3913,14 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 			continue;
 		} else {
 			ret = do_create_channel(app, usess, ua_sess, ua_chan);
-		}
-		if (ret < 0) {
-			/*
-			 * Stop everything. On error, the application failed, no more
-			 * file descriptor are available or ENOMEM so stopping here is
-			 * the only thing we can do for now.
-			 */
-			goto error_unlock;
+			if (ret < 0) {
+				/*
+				 * Stop everything. On error, the application failed, no more
+				 * file descriptor are available or ENOMEM so stopping here is
+				 * the only thing we can do for now.
+				 */
+				goto error_unlock;
+			}
 		}
 
 		cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter_ctx.iter, ua_ctx,
