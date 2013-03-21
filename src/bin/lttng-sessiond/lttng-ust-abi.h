@@ -28,7 +28,9 @@
  */
 
 #include <stdint.h>
-#include <lttng/ust-compiler.h>
+
+#define lttng_ust_notrace __attribute__((no_instrument_function))
+#define LTTNG_PACKED    __attribute__((__packed__))
 
 #ifndef __ust_stringify
 #define __ust_stringify1(x)	#x

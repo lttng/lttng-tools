@@ -19,8 +19,9 @@
 #ifndef _LTTNG_UST_CTL_H
 #define _LTTNG_UST_CTL_H
 
-#include <lttng/ust-abi.h>
 #include <sys/types.h>
+
+#include "lttng-ust-abi.h"
 
 #ifndef LTTNG_UST_UUID_LEN
 #define LTTNG_UST_UUID_LEN	16

@@ -19,13 +19,13 @@
 #define LTTNG_BUFFER_REGISTRY_H
 
 #include <stdint.h>
-#include <lttng/ust-ctl.h>
 #include <urcu/list.h>
 
 #include <lttng/lttng.h>
 #include <common/hashtable/hashtable.h>
 
 #include "consumer.h"
+#include "ust-ctl.h"
 #include "ust-registry.h"
 
 struct buffer_reg_stream {

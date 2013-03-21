@@ -28,7 +28,8 @@
 
 #include <limits.h>
 #include <unistd.h>
-#include <lttng/ust-abi.h>
+
+#include "lttng-ust-abi.h"
 
 /*
  * ustcomm error code.
