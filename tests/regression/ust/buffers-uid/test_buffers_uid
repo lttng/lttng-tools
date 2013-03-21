@@ -230,11 +230,6 @@ start_lttng_sessiond
 while [ $i -lt $TEST_COUNT ]; do
 	TRACE_PATH=$(mktemp -d)
 	${TESTS[$i]}
-	if [ $? -ne 0 ]; then
-		stop_lttng_sessiond
-		exit 1
-	fi
-
 	rm -rf $TRACE_PATH
 	let "i++"
 done
