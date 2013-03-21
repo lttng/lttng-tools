@@ -820,7 +820,7 @@ error:
  *
  * On error, return NULL.
  */
-struct lttng_consumer_channel *consumer_allocate_channel(unsigned long key,
+struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t session_id,
 		const char *pathname,
 		const char *name,
