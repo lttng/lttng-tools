@@ -252,9 +252,9 @@ void test_uri_cmp()
 
 int main(int argc, char **argv)
 {
-	diag("URI unit tests");
-
 	plan_tests(NUM_TESTS);
+
+	diag("URI unit tests");
 
 	test_uri_parsing();
 

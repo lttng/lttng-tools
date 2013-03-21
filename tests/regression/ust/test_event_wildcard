@@ -27,8 +27,6 @@ NUM_TESTS=9
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 function test_event_wildcard()
 {
 	TRACE_PATH=$(mktemp -d)
@@ -58,6 +56,8 @@ function test_event_wildcard()
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 

@@ -29,8 +29,6 @@ NUM_TESTS=198
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
@@ -312,6 +310,8 @@ function validator_true_statement
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 IFS=$'\n'
 

@@ -26,8 +26,6 @@ NUM_TESTS=58
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -x "$CURDIR/gen-nevents" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
@@ -213,6 +211,8 @@ test_multiple_channels() {
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 TESTS=(
 	"test_before_app"

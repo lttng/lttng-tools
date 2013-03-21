@@ -182,9 +182,9 @@ static void test_create_ust_context(void)
 
 int main(int argc, char **argv)
 {
-	diag("UST data structures unit test");
-
 	plan_tests(NUM_TESTS);
+
+	diag("UST data structures unit test");
 
 	test_create_one_ust_session();
 	test_create_ust_metadata();

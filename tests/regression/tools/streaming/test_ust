@@ -29,8 +29,6 @@ NUM_TESTS=18
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
@@ -86,6 +84,8 @@ function test_ust_after_start ()
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 start_lttng_relayd "-o $TRACE_PATH"
 start_lttng_sessiond

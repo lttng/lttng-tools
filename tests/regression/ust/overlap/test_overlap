@@ -34,8 +34,6 @@ NUM_TESTS=259
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -x "$CURDIR/demo/demo" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
@@ -614,6 +612,8 @@ test_disable_wildcard_overlap()
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 TESTS=(
 	"test_enable_wildcard_filter"

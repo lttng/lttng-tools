@@ -177,9 +177,9 @@ static void test_create_kernel_stream(void)
 
 int main(int argc, char **argv)
 {
-	diag("Kernel data structure unit test");
-
 	plan_tests(NUM_TESTS);
+
+	diag("Kernel data structure unit test");
 
 	test_create_one_kernel_session();
 	test_create_kernel_metadata();

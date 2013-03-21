@@ -27,8 +27,6 @@ TRACE_PATH=$(mktemp -d)
 NUM_TESTS=46
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 function enable_ust_lttng_event_filter_unsupported
 {
 	sess_name=$1
@@ -85,6 +83,8 @@ function test_unsupported_op
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 # Unsupported operators
 OP_STR=("MUL" "DIV" "MOD" "PLUS" "MINUS" "LSHIFT" "RSHIFT"

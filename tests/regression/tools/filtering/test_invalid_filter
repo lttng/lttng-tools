@@ -28,8 +28,6 @@ NUM_TESTS=119
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 function enable_ust_lttng_event_filter
 {
 	sess_name="$1"
@@ -84,6 +82,8 @@ function test_bytecode_limit
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 IFS=$'\n'
 INVALID_FILTERS=(

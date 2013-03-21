@@ -28,8 +28,6 @@ NUM_TESTS=12
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
 	BAIL_OUT "libhealthexit.so not available for this test."
 fi
@@ -78,7 +76,10 @@ function test_thread_exit
 		return 1
 	fi
 }
+
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 THREAD=("LTTNG_THREAD_MANAGE_CLIENTS"
 	"LTTNG_THREAD_MANAGE_APPS"

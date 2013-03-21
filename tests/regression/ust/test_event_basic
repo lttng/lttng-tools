@@ -27,8 +27,6 @@ NUM_TESTS=25
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 function enable_ust_lttng_event_per_chan()
 {
 	sess_name="$1"
@@ -110,6 +108,8 @@ function test_event_basic()
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 

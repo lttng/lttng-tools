@@ -35,8 +35,6 @@ NUM_TESTS=112
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
@@ -161,6 +159,8 @@ function interrupt_cleanup()
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 if [ "$(id -u)" == "0" ]; then
 	isroot=1

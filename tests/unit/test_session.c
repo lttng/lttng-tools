@@ -301,9 +301,9 @@ void test_large_session_number(void)
 
 int main(int argc, char **argv)
 {
-	diag("Sessions unit tests");
-
 	plan_tests(NUM_TESTS);
+
+	diag("Sessions unit tests");
 
 	test_session_list();
 

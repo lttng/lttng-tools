@@ -28,8 +28,6 @@ NUM_TESTS=11
 
 source $TESTDIR/utils/utils.sh
 
-print_test_banner "$TEST_DESC"
-
 if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
 	BAIL_OUT "libhealthstall.so not available for this test."
 fi
@@ -98,6 +96,8 @@ function test_thread_stall
 }
 
 plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
 
 THREAD=("LTTNG_THREAD_MANAGE_CLIENTS"
 	"LTTNG_THREAD_MANAGE_APPS"
