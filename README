@@ -28,6 +28,9 @@ REQUIREMENTS:
 
       * Debian/Ubuntu package: libpopt-dev
 
+    - Perl (optional)
+      Needed for make check and tests.
+
     - SWIG >= 2.0 (optional)
       Needed for Python bindings (--enable-python-bindings).
 
