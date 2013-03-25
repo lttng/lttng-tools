@@ -734,6 +734,10 @@ char *create_output_path_noauto(char *path_name)
 	char *full_path;
 
 	full_path = utils_expand_path(opt_output_path);
+	if (!full_path) {
+		goto exit;
+	}
+
 	ret = asprintf(&traces_path, "%s/%s", full_path, path_name);
 	if (ret < 0) {
 		PERROR("asprintf trace dir name");
