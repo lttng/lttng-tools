@@ -52,9 +52,9 @@ static struct poptOption long_options[] = {
 	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL},
 	{"output", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"set-uri",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
-	{"ctrl-uri",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
-	{"data-uri",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
+	{"set-url",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
+	{"ctrl-url",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
+	{"data-url",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
 	{"no-consumer",      0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"disable-consumer", 0, POPT_ARG_VAL, &opt_disable_consumer, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}

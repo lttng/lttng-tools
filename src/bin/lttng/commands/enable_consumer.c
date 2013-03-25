@@ -55,9 +55,9 @@ static struct poptOption long_options[] = {
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0},
-	{"set-uri",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
-	{"ctrl-uri",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
-	{"data-uri",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
+	{"set-url",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
+	{"ctrl-url",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
+	{"data-url",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
 	{"enable",         'e', POPT_ARG_VAL, &opt_enable, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -87,7 +87,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "Using these options, each API call can be controlled individually.\n");
 	fprintf(ofp, "For instance, -C does not enable the consumer automatically.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  -U, --set-uri=URL    Set URL for the enable-consumer destination.\n");
+	fprintf(ofp, "  -U, --set-url=URL    Set URL for the enable-consumer destination.\n");
 	fprintf(ofp, "                       It is persistent for the session lifetime.\n");
 	fprintf(ofp, "                       Redo the command to change it.\n");
 	fprintf(ofp, "                       This will set both data and control URL for network.\n");
