@@ -319,7 +319,7 @@ static int list_ust_events(void)
 
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
-		ERR("Unable to list UST events");
+		ERR("Unable to list UST events: %s", lttng_strerror(size));
 		lttng_destroy_handle(handle);
 		return size;
 	}
@@ -380,7 +380,7 @@ static int list_ust_event_fields(void)
 
 	size = lttng_list_tracepoint_fields(handle, &event_field_list);
 	if (size < 0) {
-		ERR("Unable to list UST event fields");
+		ERR("Unable to list UST event fields: %s", lttng_strerror(size));
 		lttng_destroy_handle(handle);
 		return size;
 	}
@@ -441,7 +441,7 @@ static int list_kernel_events(void)
 
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
-		ERR("Unable to list kernel events");
+		ERR("Unable to list kernel events: %s", lttng_strerror(size));
 		lttng_destroy_handle(handle);
 		return size;
 	}
@@ -475,6 +475,7 @@ static int list_events(const char *channel_name)
 	count = lttng_list_events(handle, channel_name, &events);
 	if (count < 0) {
 		ret = count;
+		ERR("%s", lttng_strerror(ret));
 		goto error;
 	}
 
@@ -545,6 +546,7 @@ static int list_channels(const char *channel_name)
 			/* We had a real error */
 			ret = count;
 			ERR("%s", lttng_strerror(ret));
+			break;
 		}
 		goto error_channels;
 	}
@@ -566,7 +568,7 @@ static int list_channels(const char *channel_name)
 		/* Listing events per channel */
 		ret = list_events(channels[i].name);
 		if (ret < 0) {
-			MSG("%s", lttng_strerror(ret));
+			ERR("%s", lttng_strerror(ret));
 		}
 
 		if (chan_found) {
@@ -665,6 +667,7 @@ static int list_domains(const char *session_name)
 	count = lttng_list_domains(session_name, &domains);
 	if (count < 0) {
 		ret = count;
+		ERR("%s", lttng_strerror(ret));
 		goto error;
 	} else if (count == 0) {
 		MSG("  None");
@@ -801,6 +804,7 @@ int cmd_list(int argc, const char **argv)
 			nb_domain = lttng_list_domains(session_name, &domains);
 			if (nb_domain < 0) {
 				ret = nb_domain;
+				ERR("%s", lttng_strerror(ret));
 				goto end;
 			}
 

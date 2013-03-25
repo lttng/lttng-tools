@@ -78,6 +78,7 @@ static int destroy_session(const char *session_name)
 			WARN("Session name %s not found", session_name);
 			break;
 		default:
+			ERR("%s", lttng_strerror(ret));
 			break;
 		}
 		goto error;
@@ -103,7 +104,11 @@ static int destroy_all_sessions()
 	count = lttng_list_sessions(&sessions);
 	if (count == 0) {
 		MSG("No session found, nothing to do.");
+	} else if (count < 0) {
+		ERR("%s", lttng_strerror(ret));
+		goto error;
 	}
+
 	for (i = 0; i < count; i++) {
 		ret = destroy_session(sessions[i].name);
 		if (ret < 0) {
