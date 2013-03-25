@@ -209,9 +209,16 @@ static int create_session(void)
 			ret = LTTNG_ERR_SESSION_FAIL;
 			goto error;
 		}
-		if (strncmp(opt_session_name, DEFAULT_SESSION_NAME,
+		/*
+		 * Check if the session name begins with "auto-" or is exactly "auto".
+		 * Both are reserved for the default session name. See bug #449 to
+		 * understand why we need to check both here.
+		 */
+		if ((strncmp(opt_session_name, DEFAULT_SESSION_NAME "-",
+					strlen(DEFAULT_SESSION_NAME) + 1) == 0) ||
+				(strncmp(opt_session_name, DEFAULT_SESSION_NAME,
 					strlen(DEFAULT_SESSION_NAME)) == 0 &&
-				strlen(opt_session_name) == strlen(DEFAULT_SESSION_NAME)) {
+				strlen(opt_session_name) == strlen(DEFAULT_SESSION_NAME))) {
 			ERR("%s is a reserved keyword for default session(s)",
 					DEFAULT_SESSION_NAME);
 			ret = CMD_ERROR;
