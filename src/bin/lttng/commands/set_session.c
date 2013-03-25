@@ -60,6 +60,13 @@ static int set_session(void)
 {
 	int ret = CMD_SUCCESS;
 
+	if (opt_session_name && strlen(opt_session_name) > NAME_MAX) {
+		ERR("Session name too long. Length must be lower or equal to %d",
+			NAME_MAX);
+		ret = CMD_ERROR;
+		goto error;
+	}
+
 	ret = config_init(opt_session_name);
 	if (ret < 0) {
 		ERR("Unable to set session name");

@@ -254,7 +254,7 @@ static int create_session(void)
 	int ret;
 	char *session_name = NULL, *traces_path = NULL, *alloc_path = NULL;
 	char *alloc_url = NULL, *url = NULL, datetime[16];
-	char session_name_date[NAME_MAX], *print_str_url = NULL;
+	char session_name_date[NAME_MAX + 17], *print_str_url = NULL;
 	time_t rawtime;
 	struct tm *timeinfo;
 
@@ -274,6 +274,12 @@ static int create_session(void)
 		session_name = session_name_date;
 		DBG("Auto session name set to %s", session_name_date);
 	} else {
+		if (strlen(opt_session_name) > NAME_MAX) {
+			ERR("Session name too long. Length must be lower or equal to %d",
+					NAME_MAX);
+			ret = LTTNG_ERR_SESSION_FAIL;
+			goto error;
+		}
 		if (strncmp(opt_session_name, DEFAULT_SESSION_NAME,
 					strlen(DEFAULT_SESSION_NAME)) == 0 &&
 				strlen(opt_session_name) == strlen(DEFAULT_SESSION_NAME)) {

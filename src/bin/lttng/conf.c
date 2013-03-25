@@ -40,6 +40,7 @@ char *config_get_file_path(char *path)
 	ret = asprintf(&file_path, "%s/%s", path, CONFIG_FILENAME);
 	if (ret < 0) {
 		ERR("Fail allocating config file path");
+		file_path = NULL;
 	}
 
 	return file_path;
@@ -248,14 +249,16 @@ found:
 int config_add_session_name(char *path, char *name)
 {
 	int ret;
-	char session_name[NAME_MAX];
+	char *attr = "session=";
+	/* Max name len accepted plus attribute's len and the NULL byte. */
+	char session_name[NAME_MAX + strlen(attr) + 1];
 
 	/*
 	 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
 	 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
 	 */
-	ret = snprintf(session_name, NAME_MAX, "session=%s\n", name);
-	if ((ret < 0) || (ret >= NAME_MAX)) {
+	ret = snprintf(session_name, sizeof(session_name), "%s%s\n", attr, name);
+	if (ret < 0) {
 		ret = -1;
 		goto error;
 	}
