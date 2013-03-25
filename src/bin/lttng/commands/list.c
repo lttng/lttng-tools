@@ -593,6 +593,7 @@ static int list_sessions(const char *session_name)
 	DBG("Session count %d", count);
 	if (count < 0) {
 		ret = count;
+		ERR("%s", lttng_strerror(ret));
 		goto error;
 	} else if (count == 0) {
 		MSG("Currently no available tracing session");
