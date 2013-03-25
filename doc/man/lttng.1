@@ -285,7 +285,8 @@ If NAME is omitted, the session name is taken from the .lttngrc file.
 .nf
 Enable tracing channel
 
-To enable event, you must first enable a channel which contains event(s).
+To enable an event, you must enable both the event and the channel that
+contains it.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
@@ -311,14 +312,14 @@ file.
         Flight recorder mode : overwrites events when subbuffers are full
 \-\-subbuf-size SIZE
         Subbuffer size in bytes (default: 4096, kernel default: 262144)
+        Needs to be a power of 2 for both tracers
 \-\-num-subbuf NUM
         Number of subbuffers (default: 4)
-        Needs to be a power of 2 for kernel and ust tracers
+        Needs to be a power of 2 for both tracers
 \-\-switch-timer USEC
-        Switch subbuffer timer interval in usec (default: 0)
-        Needs to be a power of 2 for kernel and ust tracers
+        Switch subbuffer timer interval in µsec (default: 0)
 \-\-read-timer USEC
-        Read timer interval in usec (default: 200)
+        Read timer interval in µsec (default: 200)
 \-\-output TYPE
         Channel output type. Possible values: mmap, splice
 .fi
