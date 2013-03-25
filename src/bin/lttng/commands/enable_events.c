@@ -494,7 +494,7 @@ static int enable_events(char *session_name)
 
 			if (opt_loglevel) {
 				MSG("Kernel loglevels are not supported.");
-				ret = CMD_UNDEFINED;
+				ret = CMD_UNSUPPORTED;
 				goto error;
 			}
 
@@ -527,7 +527,7 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_SYSCALL:
 			default:
 				ERR("Event type not available for user-space tracing");
-				ret = CMD_UNDEFINED;
+				ret = CMD_UNSUPPORTED;
 				goto error;
 			}
 

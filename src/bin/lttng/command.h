@@ -31,6 +31,7 @@ enum cmd_error_code {
 	CMD_UNDEFINED,
 	CMD_FATAL,
 	CMD_WARNING,
+	CMD_UNSUPPORTED,
 };
 
 struct cmd_struct {
