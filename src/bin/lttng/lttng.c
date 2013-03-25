@@ -272,7 +272,7 @@ static int handle_command(int argc, char **argv)
 	}
 
 	/* Command not found */
-	ret = -1;
+	ret = CMD_UNDEFINED;
 
 end:
 	return ret;
@@ -498,6 +498,9 @@ static int parse_args(int argc, char **argv)
 		break;
 	case CMD_FATAL:
 		ERR("Fatal error");
+		break;
+	case CMD_UNSUPPORTED:
+		ERR("Unsupported command");
 		break;
 	case -1:
 		usage(stderr);
