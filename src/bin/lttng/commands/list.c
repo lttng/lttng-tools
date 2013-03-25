@@ -220,6 +220,17 @@ static void print_events(struct lttng_event *event)
 		}
 		break;
 	}
+	case LTTNG_EVENT_FUNCTION:
+		MSG("%s%s (type: function)%s%s", indent6,
+				event->name, enabled_string(event->enabled),
+				filter_string(event->filter));
+		if (event->attr.probe.addr != 0) {
+			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
+		} else {
+			MSG("%soffset: 0x%" PRIx64, indent8, event->attr.probe.offset);
+			MSG("%ssymbol: %s", indent8, event->attr.probe.symbol_name);
+		}
+		break;
 	case LTTNG_EVENT_PROBE:
 		MSG("%s%s (type: probe)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
@@ -231,7 +242,6 @@ static void print_events(struct lttng_event *event)
 			MSG("%ssymbol: %s", indent8, event->attr.probe.symbol_name);
 		}
 		break;
-	case LTTNG_EVENT_FUNCTION:
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		MSG("%s%s (type: function)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
