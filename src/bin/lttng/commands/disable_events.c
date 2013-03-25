@@ -126,7 +126,7 @@ static int disable_events(char *session_name)
 	if (opt_disable_all) {
 		ret = lttng_disable_event(handle, NULL, channel_name);
 		if (ret < 0) {
-			/* Don't set ret so lttng can interpret the sessiond error. */
+			ERR("%s", lttng_strerror(ret));
 			goto error;
 		}
 

@@ -351,6 +351,9 @@ static int create_session(void)
 		case LTTNG_ERR_EXIST_SESS:
 			WARN("Session %s already exists", session_name);
 			break;
+		default:
+			ERR("%s", lttng_strerror(ret));
+			break;
 		}
 		goto error;
 	}
