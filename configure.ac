@@ -335,6 +335,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/linking/Makefile
 	tests/regression/ust/daemon/Makefile
 	tests/regression/ust/exit-fast/Makefile
+	tests/regression/ust/fork/Makefile
 	tests/unit/Makefile
 	tests/utils/Makefile
 	tests/utils/tap/Makefile
