@@ -299,6 +299,8 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
+ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
+		struct consumer_socket *socket, int send_zero_data);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -484,6 +486,12 @@ void ust_app_add(struct ust_app *app)
 static inline
 void ust_app_notify_sock_unregister(int sock)
 {
+}
+static inline
+ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
+		struct consumer_socket *socket, int send_zero_data)
+{
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

@@ -78,7 +78,9 @@ struct consumer_data {
 	pid_t pid;
 
 	int err_sock;
+	/* These two sockets uses the cmd_unix_sock_path. */
 	int cmd_sock;
+	struct consumer_socket metadata_sock;
 
 	/* consumer error and command Unix socket path */
 	char err_unix_sock_path[PATH_MAX];

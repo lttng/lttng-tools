@@ -44,6 +44,7 @@
 #include <common/defaults.h>
 #include <common/common.h>
 #include <common/consumer.h>
+#include <common/consumer-timer.h>
 #include <common/compat/poll.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
@@ -52,7 +53,9 @@
 /* TODO : support UST (all direct kernel-ctl accesses). */
 
 /* threads (channel handling, poll, metadata, sessiond) */
+
 static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread;
+static pthread_t metadata_timer_thread;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -363,6 +366,20 @@ int main(int argc, char **argv)
 	}
 	lttng_consumer_set_error_sock(ctx, ret);
 
+	/*
+	 * For UST consumer, we block RT signals used for periodical metadata flush
+	 * in main and create a dedicated thread to handle these signals.
+	 */
+	switch (opt_type) {
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		consumer_signal_init();
+		break;
+	default:
+		break;
+	}
+	ctx->type = opt_type;
+
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
 			(void *) ctx);
@@ -395,6 +412,28 @@ int main(int argc, char **argv)
 		goto sessiond_error;
 	}
 
+	switch (opt_type) {
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		/* Create the thread to manage the metadata periodic timers */
+		ret = pthread_create(&metadata_timer_thread, NULL,
+				consumer_timer_metadata_thread, (void *) ctx);
+		if (ret != 0) {
+			perror("pthread_create");
+			goto metadata_timer_error;
+		}
+
+		ret = pthread_detach(metadata_timer_thread);
+		if (ret) {
+			errno = ret;
+			perror("pthread_detach");
+		}
+		break;
+	default:
+		break;
+	}
+
+metadata_timer_error:
 	ret = pthread_join(sessiond_thread, &status);
 	if (ret != 0) {
 		perror("pthread_join");

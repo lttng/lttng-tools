@@ -76,7 +76,6 @@
 #define DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/command"
 #define DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/error"
 
-
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_RUNDIR                    "/var/run/lttng"
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
@@ -124,6 +123,7 @@
 
 #define DEFAULT_METADATA_SUBBUF_SIZE    4096
 #define DEFAULT_METADATA_SUBBUF_NUM     2
+#define DEFAULT_METADATA_CACHE_SIZE     4096
 
 /* Kernel has different defaults */
 
@@ -177,6 +177,12 @@
  * stop command of liblttng-ctl.
  */
 #define DEFAULT_DATA_AVAILABILITY_WAIT_TIME 200000  /* usec */
+
+/*
+ * Wait period before retrying the lttng_consumer_flushed_cache when
+ * the consumer receives metadata.
+ */
+#define DEFAULT_METADATA_AVAILABILITY_WAIT_TIME 200000  /* usec */
 
 /*
  * Default receiving and sending timeout for an application socket.

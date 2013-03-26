@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <signal.h>
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -1141,6 +1142,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 	}
 
 	ctx->consumer_error_socket = -1;
+	ctx->consumer_metadata_socket = -1;
 	/* assign the callbacks */
 	ctx->on_buffer_ready = buffer_ready;
 	ctx->on_recv_channel = recv_channel;
@@ -1224,6 +1226,10 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	DBG("Consumer destroying it. Closing everything.");
 
 	ret = close(ctx->consumer_error_socket);
+	if (ret) {
+		PERROR("close");
+	}
+	ret = close(ctx->consumer_metadata_socket);
 	if (ret) {
 		PERROR("close");
 	}
@@ -1328,6 +1334,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			goto end;
 		}
 		ret = lttng_ustctl_get_mmap_read_offset(stream, &mmap_offset);
+
 		break;
 	default:
 		ERR("Unknown consumer_data type");
@@ -2707,6 +2714,33 @@ end_ht:
 	return NULL;
 }
 
+static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
+		struct pollfd *sockpoll, int client_socket)
+{
+	int ret;
+
+	assert(ctx);
+	assert(sockpoll);
+
+	if (lttng_consumer_poll_socket(sockpoll) < 0) {
+		ret = -1;
+		goto error;
+	}
+	DBG("Metadata connection on client_socket");
+
+	/* Blocking call, waiting for transmission */
+	ctx->consumer_metadata_socket = lttcomm_accept_unix_sock(client_socket);
+	if (ctx->consumer_metadata_socket < 0) {
+		WARN("On accept metadata");
+		ret = -1;
+		goto error;
+	}
+	ret = 0;
+
+error:
+	return ret;
+}
+
 /*
  * This thread listens on the consumerd socket and receives the file
  * descriptors from the session daemon.
@@ -2770,6 +2804,15 @@ void *consumer_thread_sessiond_poll(void *data)
 	ret = fcntl(sock, F_SETFL, O_NONBLOCK);
 	if (ret < 0) {
 		PERROR("fcntl O_NONBLOCK");
+		goto end;
+	}
+
+	/*
+	 * Setup metadata socket which is the second socket connection on the
+	 * command unix socket.
+	 */
+	ret = set_metadata_socket(ctx, consumer_sockpoll, client_socket);
+	if (ret < 0) {
 		goto end;
 	}
 

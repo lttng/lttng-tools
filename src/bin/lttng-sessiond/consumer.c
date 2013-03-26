@@ -1072,7 +1072,7 @@ end:
 }
 
 /*
- * Send metadata string to consumer.
+ * Send metadata string to consumer. Socket lock MUST be acquired.
  *
  * Return 0 on success else a negative value.
  */
@@ -1093,17 +1093,9 @@ int consumer_push_metadata(struct consumer_socket *socket,
 	msg.u.push_metadata.target_offset = target_offset;
 	msg.u.push_metadata.len = len;
 
-	/*
-	 * TODO: reenable these locks when the consumerd gets the ability to
-	 * reorder the metadata it receives. This fits with locking in
-	 * src/bin/lttng-sessiond/ust-app.c:push_metadata()
-	 *
-	 * pthread_mutex_lock(socket->lock);
-	 */
-
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
-	if (ret < 0) {
+	if (ret < 0 || len == 0) {
 		goto end;
 	}
 
@@ -1122,8 +1114,5 @@ int consumer_push_metadata(struct consumer_socket *socket,
 
 end:
 	health_code_update();
-	/*
-	 * pthread_mutex_unlock(socket->lock);
-	 */
 	return ret;
 }

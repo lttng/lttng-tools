@@ -36,5 +36,6 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 
 int ust_consumer_send_channel_to_ust(struct ust_app *app,
 		struct ust_app_session *ua_sess, struct ust_app_channel *channel);
+int ust_consumer_metadata_request(struct consumer_socket *sock);
 
 #endif /* _UST_CONSUMER_H */

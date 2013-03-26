@@ -56,6 +56,10 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+#ifndef max_t
+#define max_t(type, a, b)	((type) max(a, b))
+#endif
+
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif

@@ -138,6 +138,24 @@ enum lttcomm_sock_domain {
 	LTTCOMM_INET6     = 1,
 };
 
+enum lttcomm_metadata_command {
+	LTTCOMM_METADATA_REQUEST = 1,
+};
+
+/*
+ * Commands sent from the consumerd to the sessiond to request if new metadata
+ * is available. This message is used to find the per UID _or_ per PID registry
+ * for the channel key. For per UID lookup, the triplet
+ * bits_per_long/uid/session_id is used. On lookup failure, we search for the
+ * per PID registry indexed by session id ignoring the other values.
+ */
+struct lttcomm_metadata_request_msg {
+	unsigned int session_id; /* Tracing session id */
+	uint32_t bits_per_long; /* Consumer ABI */
+	uint32_t uid;
+	uint64_t key; /* Metadata channel key. */
+} LTTNG_PACKED;
+
 struct lttcomm_sockaddr {
 	enum lttcomm_sock_domain type;
 	union {

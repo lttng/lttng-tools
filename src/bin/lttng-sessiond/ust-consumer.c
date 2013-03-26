@@ -30,6 +30,8 @@
 #include "consumer.h"
 #include "health.h"
 #include "ust-consumer.h"
+#include "buffer-registry.h"
+#include "session.h"
 
 /*
  * Return allocated full pathname of the session using the consumer trace path
@@ -403,5 +405,78 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	}
 
 error:
+	return ret;
+}
+
+/*
+ * Handle the metadata requests from the UST consumer
+ *
+ * Return 0 on success else a negative value.
+ */
+int ust_consumer_metadata_request(struct consumer_socket *socket)
+{
+	int ret;
+	ssize_t ret_push;
+	struct lttcomm_metadata_request_msg request;
+	struct buffer_reg_uid *reg_uid;
+	struct ust_registry_session *ust_reg;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	rcu_read_lock();
+	pthread_mutex_lock(socket->lock);
+
+	health_code_update();
+
+	/* Wait for a metadata request */
+	ret = lttcomm_recv_unix_sock(socket->fd, &request, sizeof(request));
+	if (ret <= 0) {
+		ERR("Consumer closed the metadata socket");
+		ret = -1;
+		goto end;
+	}
+
+	DBG("Metadata request received for session %u, key %" PRIu64,
+			request.session_id, request.key);
+
+	reg_uid = buffer_reg_uid_find(request.session_id,
+			request.bits_per_long, request.uid);
+	if (reg_uid) {
+		ust_reg = reg_uid->registry->reg.ust;
+	} else {
+		struct buffer_reg_pid *reg_pid =
+			buffer_reg_pid_find(request.session_id);
+		if (!reg_pid) {
+			DBG("PID registry not found for session id %u",
+					request.session_id);
+
+			msg.cmd_type = LTTNG_ERR_UND;
+			(void) consumer_send_msg(socket, &msg);
+			/*
+			 * This is possible since the session might have been destroyed
+			 * during a consumer metadata request. So here, return gracefully
+			 * because the destroy session will push the remaining metadata to
+			 * the consumer.
+			 */
+			ret = 0;
+			goto end;
+		}
+		ust_reg = reg_pid->registry->reg.ust;
+	}
+	assert(ust_reg);
+
+	ret_push = ust_app_push_metadata(ust_reg, socket, 1);
+	if (ret_push < 0) {
+		ERR("Pushing metadata");
+		ret = -1;
+		goto end;
+	}
+	DBG("UST Consumer metadata pushed successfully");
+	ret = 0;
+
+end:
+	pthread_mutex_unlock(socket->lock);
+	rcu_read_unlock();
 	return ret;
 }

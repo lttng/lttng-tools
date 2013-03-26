@@ -89,6 +89,9 @@ struct stream_list {
 	unsigned int count;
 };
 
+/* Stub. */
+struct consumer_metadata_cache;
+
 struct lttng_consumer_channel {
 	/* HT node used for consumer_data.channel_ht */
 	struct lttng_ht_node_u64 node;
@@ -132,16 +135,17 @@ struct lttng_consumer_channel {
 	 * regular channel, this is always set to NULL.
 	 */
 	struct lttng_consumer_stream *metadata_stream;
-	/*
-	 * Metadata written so far. Helps keeping track of
-	 * contiguousness and order.
-	 */
-	uint64_t contig_metadata_written;
 
 	/* for UST */
 	int wait_fd;
 	/* Node within channel thread ht */
 	struct lttng_ht_node_u64 wait_fd_node;
+
+	/* Metadata cache is metadata channel */
+	struct consumer_metadata_cache *metadata_cache;
+	/* For metadata periodical flush */
+	int switch_timer_enabled;
+	timer_t switch_timer;
 };
 
 /*
@@ -322,8 +326,11 @@ struct lttng_consumer_local_data {
 	 *    < 0 (error)
 	 */
 	int (*on_update_stream)(int sessiond_key, uint32_t state);
+	enum lttng_consumer_type type;
 	/* socket to communicate errors with sessiond */
 	int consumer_error_socket;
+	/* socket to ask metadata to sessiond */
+	int consumer_metadata_socket;
 	/* socket to exchange commands with sessiond */
 	char *consumer_command_sock_path;
 	/* communication with splice */

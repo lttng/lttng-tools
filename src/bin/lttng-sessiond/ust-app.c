@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <urcu/compiler.h>
 #include <lttng/ust-error.h>
+#include <signal.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -368,17 +369,83 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 }
 
 /*
+ * Push metadata to consumer socket. The socket lock MUST be acquired.
+ *
+ * On success, return the len of metadata pushed or else a negative value.
+ */
+ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
+		struct consumer_socket *socket, int send_zero_data)
+{
+	int ret;
+	char *metadata_str = NULL;
+	size_t len, offset;
+	ssize_t ret_val;
+
+	assert(registry);
+	assert(socket);
+	/* Should never be 0 which is the initial state. */
+	assert(registry->metadata_key);
+
+	pthread_mutex_lock(&registry->lock);
+
+	offset = registry->metadata_len_sent;
+	len = registry->metadata_len - registry->metadata_len_sent;
+	if (len == 0) {
+		DBG3("No metadata to push for metadata key %" PRIu64,
+				registry->metadata_key);
+		ret_val = len;
+		if (send_zero_data) {
+			DBG("No metadata to push");
+			goto push_data;
+		}
+		goto end;
+	}
+
+	/* Allocate only what we have to send. */
+	metadata_str = zmalloc(len);
+	if (!metadata_str) {
+		PERROR("zmalloc ust app metadata string");
+		ret_val = -ENOMEM;
+		goto error;
+	}
+	/* Copy what we haven't send out. */
+	memcpy(metadata_str, registry->metadata + offset, len);
+	registry->metadata_len_sent += len;
+
+push_data:
+	pthread_mutex_unlock(&registry->lock);
+	ret = consumer_push_metadata(socket, registry->metadata_key,
+			metadata_str, len, offset);
+	if (ret < 0) {
+		ret_val = ret;
+		goto error_push;
+	}
+
+	free(metadata_str);
+	return len;
+
+end:
+error:
+	pthread_mutex_unlock(&registry->lock);
+error_push:
+	free(metadata_str);
+	return ret_val;
+}
+
+/*
  * For a given application and session, push metadata to consumer. The session
  * lock MUST be acquired here before calling this.
+ * Either sock or consumer is required : if sock is NULL, the default
+ * socket to send the metadata is retrieved from consumer, if sock
+ * is not NULL we use it to send the metadata.
  *
  * Return 0 on success else a negative error.
  */
 static int push_metadata(struct ust_registry_session *registry,
 		struct consumer_output *consumer)
 {
-	int ret;
-	char *metadata_str = NULL;
-	size_t len, offset;
+	int ret_val;
+	ssize_t ret;
 	struct consumer_socket *socket;
 
 	assert(registry);
@@ -391,7 +458,7 @@ static int push_metadata(struct ust_registry_session *registry,
 	 * no start has been done previously.
 	 */
 	if (!registry->metadata_key) {
-		ret = 0;
+		ret_val = 0;
 		goto error_rcu_unlock;
 	}
 
@@ -399,7 +466,7 @@ static int push_metadata(struct ust_registry_session *registry,
 	socket = consumer_find_socket_by_bitness(registry->bits_per_long,
 			consumer);
 	if (!socket) {
-		ret = -1;
+		ret_val = -1;
 		goto error_rcu_unlock;
 	}
 
@@ -414,54 +481,19 @@ static int push_metadata(struct ust_registry_session *registry,
 	 * ability to reorder the metadata it receives.
 	 */
 	pthread_mutex_lock(socket->lock);
-	pthread_mutex_lock(&registry->lock);
-
-	offset = registry->metadata_len_sent;
-	len = registry->metadata_len - registry->metadata_len_sent;
-	if (len == 0) {
-		DBG3("No metadata to push for metadata key %" PRIu64,
-				registry->metadata_key);
-		ret = 0;
-		goto error_reg_unlock;
-	}
-	assert(len > 0);
-
-	/* Allocate only what we have to send. */
-	metadata_str = zmalloc(len);
-	if (!metadata_str) {
-		PERROR("zmalloc ust app metadata string");
-		ret = -ENOMEM;
-		goto error_reg_unlock;
-	}
-	/* Copy what we haven't send out. */
-	memcpy(metadata_str, registry->metadata + offset, len);
-
-	pthread_mutex_unlock(&registry->lock);
-
-	ret = consumer_push_metadata(socket, registry->metadata_key,
-			metadata_str, len, offset);
+	ret = ust_app_push_metadata(registry, socket, 0);
+	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
-		pthread_mutex_unlock(socket->lock);
+		ret_val = ret;
 		goto error_rcu_unlock;
 	}
 
-	/* Update len sent of the registry. */
-	pthread_mutex_lock(&registry->lock);
-	registry->metadata_len_sent += len;
-	pthread_mutex_unlock(&registry->lock);
-	pthread_mutex_unlock(socket->lock);
-
 	rcu_read_unlock();
-	free(metadata_str);
 	return 0;
 
-error_reg_unlock:
-	pthread_mutex_unlock(&registry->lock);
-	pthread_mutex_unlock(socket->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
-	free(metadata_str);
-	return ret;
+	return ret_val;
 }
 
 /*
@@ -2482,6 +2514,14 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	}
 
 	/*
+	 * Keep metadata key so we can identify it on the consumer side. Assign it
+	 * to the registry *before* we ask the consumer so we avoid the race of the
+	 * consumer requesting the metadata and the ask_channel call on our side
+	 * did not returned yet.
+	 */
+	registry->metadata_key = metadata->key;
+
+	/*
 	 * Ask the metadata channel creation to the consumer. The metadata object
 	 * will be created by the consumer and kept their. However, the stream is
 	 * never added or monitored until we do a first push metadata to the
@@ -2513,9 +2553,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 		goto error_consumer;
 	}
-
-	/* Keep metadata key so we can identify it on the consumer side. */
-	registry->metadata_key = metadata->key;
 
 	DBG2("UST metadata with key %" PRIu64 " created for app pid %d",
 			metadata->key, app->pid);

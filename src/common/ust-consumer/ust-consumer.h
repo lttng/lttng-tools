@@ -51,6 +51,12 @@ void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream);
 void lttng_ustconsumer_close_metadata(struct lttng_ht *ht);
 void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream);
+int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
+		uint64_t len, struct lttng_consumer_channel *channel);
+int lttng_ustconsumer_push_metadata(struct lttng_consumer_channel *metadata,
+		const char *metadata_str, uint64_t target_offset, uint64_t len);
+int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_channel *channel);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
