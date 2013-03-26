@@ -262,7 +262,7 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 	}
 
 	/* Get UST channel if defined */
-	if (channel_name != '\0') {
+	if (channel_name[0] != '\0') {
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == NULL) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
