@@ -242,7 +242,8 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		free(insn);
 		return ret;
 	}
-	case IR_DATA_FIELD_REF:
+	case IR_DATA_FIELD_REF:	/* fall-through */
+	case IR_DATA_GET_CONTEXT_REF:
 	{
 		struct load_op *insn;
 		uint32_t insn_len = sizeof(struct load_op)
@@ -254,7 +255,16 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		insn = calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
-		insn->op = FILTER_OP_LOAD_FIELD_REF;
+		switch(node->data_type) {
+		case IR_DATA_FIELD_REF:
+			insn->op = FILTER_OP_LOAD_FIELD_REF;
+			break;
+		case IR_DATA_GET_CONTEXT_REF:
+			insn->op = FILTER_OP_GET_CONTEXT_REF;
+			break;
+		default:
+			return -EINVAL;
+		}
 		ref_offset.offset = (uint16_t) -1U;
 		memcpy(insn->data, &ref_offset, sizeof(ref_offset));
 		/* reloc_offset points to struct load_op */
@@ -414,11 +424,13 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	if (ret)
 		return ret;
 	/* Cast to s64 if float or field ref */
-	if (node->u.binary.left->data_type == IR_DATA_FIELD_REF
+	if ((node->u.binary.left->data_type == IR_DATA_FIELD_REF
+				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF)
 			|| node->u.binary.left->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
-		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF) {
+		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF
+				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF) {
 			cast_insn.op = FILTER_OP_CAST_TO_S64;
 		} else {
 			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
@@ -451,11 +463,13 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	if (ret)
 		return ret;
 	/* Cast to s64 if float or field ref */
-	if (node->u.binary.right->data_type == IR_DATA_FIELD_REF
+	if ((node->u.binary.right->data_type == IR_DATA_FIELD_REF
+				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF)
 			|| node->u.binary.right->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
-		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF) {
+		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF
+				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF) {
 			cast_insn.op = FILTER_OP_CAST_TO_S64;
 		} else {
 			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;

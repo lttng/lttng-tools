@@ -313,7 +313,7 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 %token ASSIGN COLON SEMICOLON DOTDOTDOT DOT EQUAL COMMA
 %token XOR_BIN AND_BIN OR_BIN NOT_BIN
 
-%token <gs> IDENTIFIER
+%token <gs> IDENTIFIER GLOBAL_IDENTIFIER
 %token ERROR
 %union
 {
@@ -387,6 +387,13 @@ primary_expression
 			$$->u.expression.type = AST_EXP_IDENTIFIER;
 			$$->u.expression.u.identifier = yylval.gs->s;
 		}
+	|	GLOBAL_IDENTIFIER
+		{
+			$$ = make_node(parser_ctx, NODE_EXPRESSION);
+			$$->u.expression.type = AST_EXP_GLOBAL_IDENTIFIER;
+			$$->u.expression.u.identifier = yylval.gs->s;
+		}
+
 	|	DECIMAL_CONSTANT
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);

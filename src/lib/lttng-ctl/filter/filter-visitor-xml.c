@@ -73,9 +73,12 @@ int recursive_visit_print_expression(struct filter_node *node,
 		fprintf(stream, "<float_constant value=\"%lg\"/>\n",
 			node->u.expression.u.float_constant);
 		break;
-	case AST_EXP_IDENTIFIER:
+	case AST_EXP_IDENTIFIER:		/* fall-through */
+	case AST_EXP_GLOBAL_IDENTIFIER:
 		print_tabs(stream, indent);
-		fprintf(stream, "<identifier value=\"%s\"/>\n",
+		fprintf(stream, "<%s value=\"%s\"/>\n",
+			node->u.expression.type == AST_EXP_IDENTIFIER ?
+				"identifier" : "global_identifier",
 			node->u.expression.u.identifier);
 		while (node->u.expression.next) {
 			print_tabs(stream, indent);

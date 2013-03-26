@@ -130,6 +130,7 @@ L\"				BEGIN(string_lit); return STRING_LITERAL_START;
 "&"				return AND_BIN;
 "|"				return OR_BIN;
 "~"				return NOT_BIN;
+"$"{IDENTIFIER}			printf_debug("<GLOBAL_IDENTIFIER %s>\n", yytext); setstring(yyextra, yylval, yytext); return GLOBAL_IDENTIFIER;
 {IDENTIFIER}			printf_debug("<IDENTIFIER %s>\n", yytext); setstring(yyextra, yylval, yytext); return IDENTIFIER;
 [ \t\n]+			; /* ignore */
 .				return ERROR;

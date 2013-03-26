@@ -56,6 +56,7 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 		return NULL;
 	case IR_DATA_NUMERIC:
 	case IR_DATA_FIELD_REF:
+	case IR_DATA_GET_CONTEXT_REF:
 		/* ok */
 		break;
 	}
@@ -130,6 +131,26 @@ struct ir_op *make_op_load_field_ref(char *string, enum ir_side side)
 		return NULL;
 	op->op = IR_OP_LOAD;
 	op->data_type = IR_DATA_FIELD_REF;
+	op->signedness = IR_SIGN_DYN;
+	op->side = side;
+	op->u.load.u.ref = strdup(string);
+	if (!op->u.load.u.ref) {
+		free(op);
+		return NULL;
+	}
+	return op;
+}
+
+static
+struct ir_op *make_op_load_get_context_ref(char *string, enum ir_side side)
+{
+	struct ir_op *op;
+
+	op = calloc(sizeof(struct ir_op), 1);
+	if (!op)
+		return NULL;
+	op->op = IR_OP_LOAD;
+	op->data_type = IR_DATA_GET_CONTEXT_REF;
 	op->signedness = IR_SIGN_DYN;
 	op->side = side;
 	op->u.load.u.ref = strdup(string);
@@ -224,7 +245,8 @@ struct ir_op *make_op_binary_numeric(enum op_type bin_op_type,
 	/*
 	 * The field that is not a field ref will select type.
 	 */
-	if (left->data_type != IR_DATA_FIELD_REF)
+	if (left->data_type != IR_DATA_FIELD_REF
+			&& left->data_type != IR_DATA_GET_CONTEXT_REF)
 		op->data_type = left->data_type;
 	else
 		op->data_type = right->data_type;
@@ -475,7 +497,8 @@ void filter_free_ir_recursive(struct ir_op *op)
 		case IR_DATA_STRING:
 			free(op->u.load.u.string);
 			break;
-		case IR_DATA_FIELD_REF:
+		case IR_DATA_FIELD_REF:		/* fall-through */
+		case IR_DATA_GET_CONTEXT_REF:
 			free(op->u.load.u.ref);
 			break;
 		default:
@@ -522,6 +545,40 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 		}
 		return make_op_load_field_ref(node->u.expression.u.identifier,
 					side);
+	case AST_EXP_GLOBAL_IDENTIFIER:
+	{
+		struct filter_node *next;
+
+		if (node->u.expression.pre_op == AST_LINK_UNKNOWN) {
+			fprintf(stderr, "[error] %s: global identifiers need chained identifier \n", __func__);
+			return NULL;
+		}
+		/* We currently only support $ctx (context) identifiers */
+		if (strncmp(node->u.expression.u.identifier,
+				"$ctx", strlen("$ctx")) != 0) {
+			fprintf(stderr, "[error] %s: \"%s\" global identifier is unknown. Only \"$ctx\" currently implemented.\n", __func__, node->u.expression.u.identifier);
+			return NULL;
+		}
+		next = node->u.expression.next;
+		if (!next) {
+			fprintf(stderr, "[error] %s: Expecting a context name, e.g. \'$ctx.name\'.\n", __func__);
+			return NULL;
+		}
+		if (next->type != NODE_EXPRESSION) {
+			fprintf(stderr, "[error] %s: Expecting expression.\n", __func__);
+			return NULL;
+		}
+		if (next->u.expression.type != AST_EXP_IDENTIFIER) {
+			fprintf(stderr, "[error] %s: Expecting identifier.\n", __func__);
+			return NULL;
+		}
+		if (next->u.expression.pre_op != AST_LINK_UNKNOWN) {
+			fprintf(stderr, "[error] %s: dotted and dereferenced identifiers not supported after identifier\n", __func__);
+			return NULL;
+		}
+		return make_op_load_get_context_ref(next->u.expression.u.identifier,
+					side);
+	}
 	case AST_EXP_NESTED:
 		return generate_ir_recursive(ctx, node->u.expression.u.child,
 					side);

@@ -121,6 +121,7 @@ struct filter_node {
 				AST_EXP_CONSTANT,
 				AST_EXP_FLOAT_CONSTANT,
 				AST_EXP_IDENTIFIER,
+				AST_EXP_GLOBAL_IDENTIFIER,
 				AST_EXP_NESTED,
 			} type;
 			enum ast_link_type post_op;	/* reverse */
