@@ -1,0 +1,23 @@
+exit-fast tracing test
+-------------------
+
+This test verifies that tracing works correctly when the traced process exits
+right after an event is logged.
+
+DESCRIPTION
+-----------
+
+This test launches a process that logs an event and returns directly after.
+It then launches it again in a mode that will trigger a SIGKILL right after
+the tracepoint is executed. The resulting trace is then checked for errors.
+
+The events must be present in the trace and contain the appropriate test string.
+
+DEPENDENCIES
+------------
+
+To run this test, you will need:
+
+  - lttng-tools (with python bindings)
+  - babeltrace
+  - python 3.0 or better

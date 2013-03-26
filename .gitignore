@@ -68,5 +68,6 @@ tests/regression/ust/linking/demo_builtin
 tests/regression/ust/linking/demo_static
 tests/regression/ust/linking/demo
 tests/regression/ust/daemon/daemon
+tests/regression/ust/exit-fast/exit-fast
 
 benchmark/
