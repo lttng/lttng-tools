@@ -31,6 +31,11 @@ REQUIREMENTS:
     - Perl (optional)
       Needed for make check and tests.
 
+    - Python >= 3.0 (optional)
+      Needed for make check and tests.
+
+      * Debian/Ubuntu package: python3
+
     - SWIG >= 2.0 (optional)
       Needed for Python bindings (--enable-python-bindings).
 
