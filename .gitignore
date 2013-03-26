@@ -64,5 +64,8 @@ gen-events
 gen-ust-events
 health_check
 tests/regression/ust/overlap/demo/demo
+tests/regression/ust/linking/demo_builtin
+tests/regression/ust/linking/demo_static
+tests/regression/ust/linking/demo
 
 benchmark/

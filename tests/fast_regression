@@ -12,3 +12,4 @@ regression/ust/nprocesses/test_nprocesses
 regression/ust/overlap/test_overlap
 regression/ust/test_event_basic
 regression/ust/test_event_wildcard
+regression/ust/linking/test_linking
