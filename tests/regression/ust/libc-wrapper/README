@@ -1,0 +1,22 @@
+libc-wrapper malloc/free tracing test
+-------------------------------------
+
+This test checks if tracing works correctly when applications are linked against
+the UST libc wrapper which provides tracepoints in the malloc and free libc
+functions.
+
+DESCRIPTION
+-----------
+
+The test application performs a series of calls to malloc()/free() and the
+resulting trace is checked for the presence of ust-libc:malloc and ust-libc:free
+events.
+
+DEPENDENCIES
+------------
+
+To run this test, you will need:
+
+  - lttng-tools (with python bindings)
+  - babeltrace
+  - python 3.0 or better
