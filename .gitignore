@@ -67,5 +67,6 @@ tests/regression/ust/overlap/demo/demo
 tests/regression/ust/linking/demo_builtin
 tests/regression/ust/linking/demo_static
 tests/regression/ust/linking/demo
+tests/regression/ust/daemon/daemon
 
 benchmark/

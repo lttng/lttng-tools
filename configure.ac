@@ -333,6 +333,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/overlap/Makefile
 	tests/regression/ust/overlap/demo/Makefile
 	tests/regression/ust/linking/Makefile
+	tests/regression/ust/daemon/Makefile
 	tests/unit/Makefile
 	tests/utils/Makefile
 	tests/utils/tap/Makefile
