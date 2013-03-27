@@ -14,8 +14,3 @@ regression/ust/nprocesses/test_nprocesses
 regression/ust/overlap/test_overlap
 regression/ust/test_event_basic
 regression/ust/test_event_wildcard
-regression/ust/linking/test_linking
-regression/ust/daemon/test_daemon
-regression/ust/exit-fast/test_exit-fast
-regression/ust/fork/test_fork
-regression/ust/libc-wrapper/test_libc-wrapper
