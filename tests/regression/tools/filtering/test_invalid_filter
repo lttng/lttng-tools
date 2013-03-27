@@ -24,7 +24,7 @@ SESSION_NAME="filter-invalid"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
-NUM_TESTS=119
+NUM_TESTS=143
 
 source $TESTDIR/utils/utils.sh
 
@@ -118,7 +118,7 @@ INVALID_FILTERS=(
 		"!a.f.d"
 		"asdf.asdfsd.sadf < 4"
 		"asdfasdf->asdfasdf < 2"
-		# String can't be root node
+		# String can\'t be root node
 		"\"somestring\""
 		# Unary op on string not allowed
 		"!\"somestring\""
@@ -133,6 +133,16 @@ INVALID_FILTERS=(
 		# Nesting of binary operator not allowed
 		"1 | (1 | (1 | 1))"
 		"1 > (1 > (1 > 1))"
+		# Exactly one chaining level under \$ctx allowed
+		"\$ctx.vtid.blah == 0"
+		"0 == \$ctx.vtid.blah"
+		"\$ctx.44 == 0"
+		"0 == \$ctx.44"
+		"\$ctx == 0"
+		"0 == \$ctx"
+		# Only \$ctx is supported for now
+		"\$global.value == 0"
+		"0 == \$global.value"
 		)
 
 start_lttng_sessiond

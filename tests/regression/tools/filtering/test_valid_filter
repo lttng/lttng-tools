@@ -25,7 +25,7 @@ STATS_BIN="babelstats.pl"
 SESSION_NAME="valid_filter"
 EVENT_NAME="tp:tptest"
 NR_ITER=100
-NUM_TESTS=198
+NUM_TESTS=338
 
 source $TESTDIR/utils/utils.sh
 
@@ -139,6 +139,32 @@ function validator_intfield_gt
 	status=0
 
 	validate_min_max "$stats" "intfield" "2" "99"
+	status=$(($status|$?))
+
+	return $status
+}
+
+function validator_has_no_event
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "99"
+	status=$(($status|$?))
+
+	if [ $status -eq 0 ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
+function validator_has_events
+{
+	stats="$1"
+	status=0
+
+	validate_min_max "$stats" "intfield" "0" "99"
 	status=$(($status|$?))
 
 	return $status
@@ -351,6 +377,26 @@ FILTERS=("intfield"                                                     #1
 	 "stringfield2 == \"\\\*\""                                     #26
 	 "1.0 || intfield || 1.0"                                       #27
 	 "1 < intfield"                                                 #28
+	 "\$ctx.vtid == 0"                                              #29
+	 "\$ctx.vtid != 0"                                              #30
+	 "0 == \$ctx.vtid"                                              #31
+	 "0 != \$ctx.vtid"                                              #32
+	 "\$ctx.vpid == 0"                                              #33
+	 "\$ctx.vpid != 0"                                              #34
+	 "0 == \$ctx.vpid"                                              #35
+	 "0 != \$ctx.vpid"                                              #36
+	 "\$ctx.procname != \"$BIN_NAME\""                              #37
+	 "\$ctx.procname == \"$BIN_NAME\""                              #38
+	 "\"$BIN_NAME\" != \$ctx.procname"                              #39
+	 "\"$BIN_NAME\" == \$ctx.procname"                              #40
+	 "\$ctx.procname != \"$BIN_NAME*\""                             #41
+	 "\$ctx.procname == \"$BIN_NAME*\""                             #42
+	 "\"$BIN_NAME*\" != \$ctx.procname"                             #43
+	 "\"$BIN_NAME*\" == \$ctx.procname"                             #44
+	 "\$ctx.procname != \"*\""                                      #45
+	 "\$ctx.procname == \"*\""                                      #46
+	 "\"*\" != \$ctx.procname"                                      #47
+	 "\"*\" == \$ctx.procname"                                      #48
 )
 
 VALIDATOR=("validator_intfield"                     #1
@@ -381,6 +427,26 @@ VALIDATOR=("validator_intfield"                     #1
 	   "validator_true_statement"               #26
 	   "validator_true_statement"               #27
 	   "validator_intfield_gt"                  #28
+	   "validator_has_no_event"                 #29
+	   "validator_has_events"                   #30
+	   "validator_has_no_event"                 #31
+	   "validator_has_events"                   #32
+	   "validator_has_no_event"                 #33
+	   "validator_has_events"                   #34
+	   "validator_has_no_event"                 #35
+	   "validator_has_events"                   #36
+	   "validator_has_no_event"                 #36
+	   "validator_has_events"                   #37
+	   "validator_has_no_event"                 #38
+	   "validator_has_events"                   #39
+	   "validator_has_no_event"                 #41
+	   "validator_has_events"                   #42
+	   "validator_has_no_event"                 #43
+	   "validator_has_events"                   #44
+	   "validator_has_no_event"                 #45
+	   "validator_has_events"                   #46
+	   "validator_has_no_event"                 #47
+	   "validator_has_events"                   #48
 )
 
 FILTER_COUNT=${#FILTERS[@]}
