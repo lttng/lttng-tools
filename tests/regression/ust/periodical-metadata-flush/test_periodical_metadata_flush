@@ -1,0 +1,214 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST tracer - Tracing with per UID buffers and periodical flush"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_ITER=100
+SESSION_NAME="periodical-flush"
+EVENT_NAME="ust_gen_nevents:tptest"
+BIN_NAME="gen-nevents"
+NUM_TESTS=38
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$CURDIR/gen-nevents" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+# MUST set TESTDIR before calling those functions
+
+function enable_channel_per_uid()
+{
+	local sess_name=$1
+	local channel_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name >/dev/null 2>&1
+	ok $? "Enable channel $channel_name per UID for session $sess_name"
+}
+
+function enable_metadata_per_uid()
+{
+	local sess_name=$1
+	local channel_name="metadata"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name --switch-timer 200000 >/dev/null 2>&1
+	ok $? "Enable channel $channel_name per UID for session $sess_name"
+}
+
+function enable_metadata_per_pid()
+{
+	local sess_name=$1
+	local channel_name="metadata"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-pid -u $channel_name -s $sess_name --switch-timer 200000 >/dev/null 2>&1
+	ok $? "Enable channel $channel_name per PID for session $sess_name"
+}
+
+function wait_apps
+{
+	diag "Waiting for applications to end..."
+	while [ -n "$(pidof $BIN_NAME)" ]; do
+		sleep 1
+	done
+}
+
+test_after_app_pid() {
+	local out
+
+	diag "Start application AFTER tracing is started"
+
+	# BEFORE application is spawned
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_metadata_per_pid $SESSION_NAME
+	enable_ust_lttng_channel $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	./$CURDIR/$BIN_NAME $NR_ITER
+	ok $? "Start application to trace"
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+
+	return $?
+}
+
+test_before_app_pid() {
+	local out
+
+	diag "Start application BEFORE tracing is started"
+
+	./$CURDIR/$BIN_NAME $NR_ITER &
+	ok $? "Start application to trace"
+
+	# BEFORE application is spawned
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_metadata_per_pid $SESSION_NAME
+	enable_ust_lttng_channel $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	# At least hit one event
+	sleep 2
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	out=$(babeltrace $TRACE_PATH | grep $EVENT_NAME | wc -l)
+	if [ $out -eq 0 ]; then
+		fail "Trace validation"
+		diag "No event(s) found. We are supposed to have at least one."
+		out=1
+	else
+		pass "Trace validation"
+		diag "Found $out event(s). Coherent."
+		out=0
+	fi
+
+	wait_apps
+
+	return $out
+}
+
+test_after_app_uid() {
+	local out
+
+	diag "Start application AFTER tracing is started"
+
+	# BEFORE application is spawned
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_metadata_per_uid $SESSION_NAME
+	enable_channel_per_uid $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	./$CURDIR/$BIN_NAME $NR_ITER
+	ok $? "Start application to trace"
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+
+	return $?
+}
+
+test_before_app_uid() {
+	local out
+
+	diag "Start application BEFORE tracing is started"
+
+	./$CURDIR/$BIN_NAME $NR_ITER &
+	ok $? "Start application to trace"
+
+	# BEFORE application is spawned
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_metadata_per_uid $SESSION_NAME
+	enable_channel_per_uid $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	# At least hit one event
+	sleep 2
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	out=$(babeltrace $TRACE_PATH | grep $EVENT_NAME | wc -l)
+	if [ $out -eq 0 ]; then
+		fail "Trace validation"
+		diag "No event(s) found. We are supposed to have at least one."
+		out=1
+	else
+		pass "Trace validation"
+		diag "Found $out event(s). Coherent."
+		out=0
+	fi
+
+	wait_apps
+
+	return $out
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+TESTS=(
+	"test_before_app_uid"
+	"test_after_app_uid"
+	"test_before_app_pid"
+	"test_after_app_pid"
+)
+
+TEST_COUNT=${#TESTS[@]}
+i=0
+
+start_lttng_sessiond
+
+while [ $i -lt $TEST_COUNT ]; do
+	TRACE_PATH=$(mktemp -d)
+	${TESTS[$i]}
+	#rm -rf $TRACE_PATH
+	let "i++"
+done
+
+stop_lttng_sessiond

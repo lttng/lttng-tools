@@ -329,6 +329,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/low-throughput/Makefile
 	tests/regression/ust/before-after/Makefile
 	tests/regression/ust/buffers-uid/Makefile
+	tests/regression/ust/periodical-metadata-flush/Makefile
 	tests/regression/ust/multi-session/Makefile
 	tests/regression/ust/overlap/Makefile
 	tests/regression/ust/overlap/demo/Makefile
