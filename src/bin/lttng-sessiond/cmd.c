@@ -480,10 +480,12 @@ error:
  */
 static int create_connect_relayd(struct consumer_output *output,
 		const char *session_name, struct lttng_uri *uri,
-		struct lttcomm_sock **relayd_sock)
+		struct lttcomm_sock **relayd_sock,
+		struct ltt_session *session)
 {
 	int ret;
 	struct lttcomm_sock *sock;
+	uint32_t minor;
 
 	/* Create socket object from URI */
 	sock = lttcomm_alloc_sock_from_uri(uri);
@@ -518,11 +520,13 @@ static int create_connect_relayd(struct consumer_output *output,
 
 		/* Check relayd version */
 		ret = relayd_version_check(sock, RELAYD_VERSION_COMM_MAJOR,
-				RELAYD_VERSION_COMM_MINOR);
+				RELAYD_VERSION_COMM_MINOR, &minor);
 		if (ret < 0) {
 			ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
 			goto close_sock;
 		}
+		session->major = RELAYD_VERSION_COMM_MAJOR;
+		session->minor = minor;
 	} else if (uri->stype == LTTNG_STREAM_DATA) {
 		DBG3("Creating relayd data socket from URI");
 	} else {
@@ -559,7 +563,8 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	struct lttcomm_sock *sock = NULL;
 
 	/* Connect to relayd and make version check if uri is the control. */
-	ret = create_connect_relayd(consumer, session->name, relayd_uri, &sock);
+	ret = create_connect_relayd(consumer, session->name, relayd_uri,
+			&sock, session);
 	if (ret != LTTNG_OK) {
 		goto close_sock;
 	}

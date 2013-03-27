@@ -212,11 +212,13 @@ error:
 
 /*
  * Check version numbers on the relayd.
+ * If major versions are compatible, we assign minor_to_use to the
+ * minor version of the procotol we are going to use for this session.
  *
  * Return 0 if compatible else negative value.
  */
 int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
-		uint32_t minor)
+		uint32_t minor, uint32_t *minor_to_use)
 {
 	int ret;
 	struct lttcomm_relayd_version msg;
@@ -251,15 +253,12 @@ int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
 	 * communication is not possible. Only major version equal can talk to each
 	 * other. If the minor version differs, the lowest version is used by both
 	 * sides.
-	 *
-	 * For now, before 2.1.0 stable release, we don't have to check the minor
-	 * because this new mechanism with the relayd will only be available with
-	 * 2.1 and NOT 2.0.x.
 	 */
-	if (msg.major == major) {
-		/* Compatible */
-		ret = 0;
-		DBG2("Relayd version is compatible");
+	if (msg.major != major) {
+		/* Not compatible */
+		ret = -1;
+		DBG2("Relayd version is NOT compatible. Relayd version %u != %u (us)",
+				msg.major, major);
 		goto error;
 	}
 
@@ -270,11 +269,16 @@ int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
 	 * version is higher, it will adapt to our version so we can continue to
 	 * use the latest relayd communication data structure.
 	 */
+	if (minor <= msg.minor) {
+		*minor_to_use = minor;
+	} else {
+		*minor_to_use = msg.minor;
+	}
 
-	/* Version number not compatible */
-	DBG2("Relayd version is NOT compatible. Relayd version %u != %u (us)",
-			msg.major, major);
-	ret = -1;
+	/* Version number compatible */
+	DBG2("Relayd version is compatible, using protocol version %u.%u",
+			major, *minor_to_use);
+	ret = 0;
 
 error:
 	return ret;

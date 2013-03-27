@@ -1240,7 +1240,7 @@ end:
  */
 static
 int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_command *cmd, struct lttng_ht *streams_ht)
 {
 	int ret;
 	struct lttcomm_relayd_version reply, msg;
@@ -1262,13 +1262,6 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	/*
-	 * For now, we just ignore the received version but after 2.1 stable
-	 * release, a check must be done to see if we either adapt to the other
-	 * side version (which MUST be lower than us) or keep the latest data
-	 * structure considering that the other side will adapt.
-	 */
-
 	ret = sscanf(VERSION, "%10u.%10u", &reply.major, &reply.minor);
 	if (ret < 2) {
 		ERR("Error in scanning version");
@@ -1282,8 +1275,25 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	if (ret < 0) {
 		ERR("Relay sending version");
 	}
-	DBG("Version check done (%u.%u)", be32toh(reply.major),
-			be32toh(reply.minor));
+
+	/* Major versions must be the same */
+	if (reply.major != be32toh(msg.major)) {
+		DBG("Incompatible major versions, deleting session");
+		relay_delete_session(cmd, streams_ht);
+		ret = 0;
+		goto end;
+	}
+
+	cmd->session->major = reply.major;
+	/* We adapt to the lowest compatible version */
+	if (reply.minor <= be32toh(msg.minor)) {
+		cmd->session->minor = reply.minor;
+	} else {
+		cmd->session->minor = be32toh(msg.minor);
+	}
+
+	DBG("Version check done using protocol %u.%u", cmd->session->major,
+			cmd->session->minor);
 
 end:
 	return ret;
@@ -1593,7 +1603,7 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = relay_recv_metadata(recv_hdr, cmd, streams_ht);
 		break;
 	case RELAYD_VERSION:
-		ret = relay_send_version(recv_hdr, cmd);
+		ret = relay_send_version(recv_hdr, cmd, streams_ht);
 		break;
 	case RELAYD_CLOSE_STREAM:
 		ret = relay_close_stream(recv_hdr, cmd, streams_ht);

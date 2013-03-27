@@ -47,6 +47,9 @@ struct relay_session {
 	 */
 	uint64_t id;
 	struct lttcomm_sock *sock;
+	/* protocol version to use for this session */
+	uint32_t major;
+	uint32_t minor;
 };
 
 /*

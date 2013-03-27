@@ -31,7 +31,7 @@ int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
 int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
 		uint64_t last_net_seq_num);
 int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
-		uint32_t minor);
+		uint32_t minor, uint32_t *minor_to_use);
 int relayd_start_data(struct lttcomm_sock *sock);
 int relayd_send_metadata(struct lttcomm_sock *sock, size_t len);
 int relayd_send_data_hdr(struct lttcomm_sock *sock,
