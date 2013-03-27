@@ -536,6 +536,9 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 			PERROR("fcntl session fd");
 		}
 
+		lks->tracefile_size = channel->channel->attr.tracefile_size;
+		lks->tracefile_count = channel->channel->attr.tracefile_count;
+
 		/* Add stream to channe stream list */
 		cds_list_add(&lks->list, &channel->stream_list.head);
 		channel->stream_count++;

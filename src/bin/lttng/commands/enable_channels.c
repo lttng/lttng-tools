@@ -49,6 +49,8 @@ enum {
 	OPT_READ_TIMER,
 	OPT_USERSPACE,
 	OPT_LIST_OPTIONS,
+	OPT_TRACEFILE_SIZE,
+	OPT_TRACEFILE_COUNT,
 };
 
 static struct lttng_handle *handle;
@@ -73,6 +75,8 @@ static struct poptOption long_options[] = {
 	{"buffers-uid",    0,	POPT_ARG_VAL, &opt_buffer_uid, 1, 0, 0},
 	{"buffers-pid",    0,	POPT_ARG_VAL, &opt_buffer_pid, 1, 0, 0},
 	{"buffers-global", 0,	POPT_ARG_VAL, &opt_buffer_global, 1, 0, 0},
+	{"tracefile-size", 'C',   POPT_ARG_INT, 0, OPT_TRACEFILE_SIZE, 0, 0},
+	{"tracefile-count", 'W',   POPT_ARG_INT, 0, OPT_TRACEFILE_COUNT, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -115,6 +119,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
 	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
 	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
+	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
+	fprintf(ofp, "                           Maximum size of of each tracefile within a stream (in bytes).\n");
+	fprintf(ofp, "  -W, --tracefile-count COUNT\n");
+	fprintf(ofp, "                           Used in conjunction with -C option, this will limit the number\n");
+	fprintf(ofp, "                           of files created to the specified count.\n");
 	fprintf(ofp, "\n");
 }
 
@@ -147,6 +156,12 @@ static void set_default_attr(struct lttng_domain *dom)
 	if (chan.attr.output == -1) {
 		chan.attr.output = default_attr.output;
 	}
+	if (chan.attr.tracefile_count == -1) {
+		chan.attr.tracefile_count = default_attr.tracefile_count;
+	}
+	if (chan.attr.tracefile_size == -1) {
+		chan.attr.tracefile_size = default_attr.tracefile_size;
+	}
 }
 
 /*
@@ -178,6 +193,15 @@ static int enable_channel(char *session_name)
 	}
 
 	set_default_attr(&dom);
+
+	if ((chan.attr.tracefile_size > 0) &&
+			(chan.attr.tracefile_size < chan.attr.subbuf_size)) {
+		ERR("Tracefile_size must be greater than or equal to subbuf_size "
+				"(%" PRIu64 " < %" PRIu64 ")",
+				chan.attr.tracefile_size, chan.attr.subbuf_size);
+		ret = CMD_ERROR;
+		goto error;
+	}
 
 	/* Setting channel output */
 	if (opt_output) {
@@ -306,6 +330,16 @@ int cmd_enable_channels(int argc, const char **argv)
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
+			break;
+		case OPT_TRACEFILE_SIZE:
+			chan.attr.tracefile_size = atoll(poptGetOptArg(pc));
+			DBG("Maximum tracefile size set to %" PRIu64,
+					chan.attr.tracefile_size);
+			break;
+		case OPT_TRACEFILE_COUNT:
+			chan.attr.tracefile_count = atoll(poptGetOptArg(pc));
+			DBG("Maximum tracefile count set to %" PRIu64,
+					chan.attr.tracefile_count);
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);

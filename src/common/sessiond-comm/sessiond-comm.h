@@ -291,6 +291,8 @@ struct lttcomm_consumer_msg {
 			/* Use splice or mmap to consume this fd */
 			enum lttng_event_output output;
 			int type; /* Per cpu or metadata. */
+			uint64_t tracefile_size; /* bytes */
+			uint32_t tracefile_count; /* number of tracefiles */
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
 			uint64_t stream_key;
@@ -328,6 +330,8 @@ struct lttcomm_consumer_msg {
 			uint64_t key;				/* Unique channel key. */
 			unsigned char uuid[UUID_STR_LEN];	/* uuid for ust tracer. */
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
+			uint64_t tracefile_size;	/* bytes */
+			uint32_t tracefile_count;	/* number of tracefiles */
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;

@@ -1360,6 +1360,8 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->subbuf_size = default_get_kernel_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		attr->tracefile_size = DEFAULT_KERNEL_CHANNEL_TRACEFILE_SIZE;
+		attr->tracefile_count = DEFAULT_KERNEL_CHANNEL_TRACEFILE_COUNT;
 		break;
 	case LTTNG_DOMAIN_UST:
 #if 0
@@ -1374,6 +1376,8 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->subbuf_size = default_get_ust_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
 		attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
+		attr->tracefile_size = DEFAULT_UST_CHANNEL_TRACEFILE_SIZE;
+		attr->tracefile_count = DEFAULT_UST_CHANNEL_TRACEFILE_COUNT;
 		break;
 	default:
 		/* Default behavior: leave set to 0. */

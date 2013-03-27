@@ -155,7 +155,9 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			consumer->net_seq_index,
 			ua_chan->key,
 			registry->uuid,
-			chan_id);
+			chan_id,
+			ua_chan->tracefile_size,
+			ua_chan->tracefile_count);
 
 	health_code_update();
 

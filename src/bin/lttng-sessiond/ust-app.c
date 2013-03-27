@@ -1298,6 +1298,9 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	strncpy(ua_chan->name, uchan->name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
 
+	ua_chan->tracefile_size = uchan->tracefile_size;
+	ua_chan->tracefile_count = uchan->tracefile_count;
+
 	/* Copy event attributes since the layout is different. */
 	ua_chan->attr.subbuf_size = uchan->attr.subbuf_size;
 	ua_chan->attr.num_subbuf = uchan->attr.num_subbuf;

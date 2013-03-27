@@ -112,13 +112,14 @@ error:
  */
 static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		const char *pathname, const char *name, uid_t uid, gid_t gid,
-		int relayd_id, uint64_t key, enum lttng_event_output output)
+		int relayd_id, uint64_t key, enum lttng_event_output output,
+		uint64_t tracefile_size, uint64_t tracefile_count)
 {
 	assert(pathname);
 	assert(name);
 
 	return consumer_allocate_channel(key, session_id, pathname, name, uid, gid,
-			relayd_id, output);
+			relayd_id, output, tracefile_size, tracefile_count);
 }
 
 /*
@@ -848,7 +849,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.ask_channel.pathname, msg.u.ask_channel.name,
 				msg.u.ask_channel.uid, msg.u.ask_channel.gid,
 				msg.u.ask_channel.relayd_id, msg.u.ask_channel.key,
-				(enum lttng_event_output) msg.u.ask_channel.output);
+				(enum lttng_event_output) msg.u.ask_channel.output,
+				msg.u.ask_channel.tracefile_size,
+				msg.u.ask_channel.tracefile_count);
 		if (!channel) {
 			goto end_channel_error;
 		}
@@ -1283,35 +1286,7 @@ end:
  */
 int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
-	int ret;
-	char full_path[PATH_MAX];
-
-	/* Opening the tracefile in write mode */
-	if (stream->net_seq_idx != (uint64_t) -1ULL) {
-		goto end;
-	}
-
-	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
-			stream->chan->pathname, stream->name);
-	if (ret < 0) {
-		PERROR("snprintf on_recv_stream");
-		goto error;
-	}
-
-	ret = run_as_open(full_path, O_WRONLY | O_CREAT | O_TRUNC,
-			S_IRWXU | S_IRWXG | S_IRWXO, stream->uid, stream->gid);
-	if (ret < 0) {
-		PERROR("open stream path %s", full_path);
-		goto error;
-	}
-	stream->out_fd = ret;
-
-end:
-	/* we return 0 to let the library handle the FD internally */
-	return 0;
-
-error:
-	return ret;
+	return lttng_create_output_file(stream);
 }
 
 /*

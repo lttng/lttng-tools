@@ -146,6 +146,9 @@ struct lttng_consumer_channel {
 	/* For metadata periodical flush */
 	int switch_timer_enabled;
 	timer_t switch_timer;
+	/* On-disk circular buffer */
+	uint64_t tracefile_size;
+	uint64_t tracefile_count;
 };
 
 /*
@@ -233,6 +236,9 @@ struct lttng_consumer_stream {
 	/* Internal state of libustctl. */
 	struct ustctl_consumer_stream *ustream;
 	struct cds_list_head send_node;
+	/* On-disk circular buffer */
+	uint64_t tracefile_size_current;
+	uint64_t tracefile_count_current;
 };
 
 /*
@@ -460,7 +466,9 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uid_t uid,
 		gid_t gid,
 		int relayd_id,
-		enum lttng_event_output output);
+		enum lttng_event_output output,
+		uint64_t tracefile_size,
+		uint64_t tracefile_count);
 void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
@@ -486,6 +494,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
 		int (*update_stream)(int sessiond_key, uint32_t state));
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
+int lttng_create_output_file(struct lttng_consumer_stream *stream);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,

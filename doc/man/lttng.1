@@ -345,6 +345,29 @@ same type.
         Use per PID buffer (\-u only). Each application has its own buffers.
 \-\-buffers-global
         Use shared buffer for the whole system (\-k only)
+\-C, \-\-tracefile-size SIZE
+        Maximum size of of each tracefile within a stream (in bytes).
+\-W, \-\-tracefile-count COUNT
+        Used in conjunction with \-C option, this will limit the number
+        of files created to the specified count.
+
+.B EXAMPLES:
+
+$ lttng enable-channel -C 4096 -W 32 chan1
+For each stream, the maximum size of a trace file will be 4096 bytes divided
+over a \fBmaximum\fP of 32 different files. The file count is appended after
+the stream number as seen in the following example. The last trace file is
+smaller than 4096 since it was not completely filled.
+
+        ~/lttng-traces/[...]/chan1_0_0 (4096)
+        ~/lttng-traces/[...]/chan1_0_1 (4096)
+        ~/lttng-traces/[...]/chan1_0_2 (3245)
+        ~/lttng-traces/[...]/chan1_1_0 (4096)
+        ...
+
+$ lttng enable-channel -C 4096
+This will create trace files of 4096 bytes and will create new ones as long as
+there is data available.
 .fi
 
 .IP

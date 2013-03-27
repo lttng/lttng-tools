@@ -293,6 +293,10 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
+	/* On-disk circular buffer parameters */
+	luc->tracefile_size = chan->attr.tracefile_size;
+	luc->tracefile_count = chan->attr.tracefile_count;
+
 	DBG2("Trace UST channel %s created", luc->name);
 
 error:

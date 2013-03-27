@@ -136,6 +136,10 @@
 #define DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM   DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-kernel.h enum lttng_kernel_output for channel output */
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
+/* By default, unlimited tracefile size */
+#define DEFAULT_KERNEL_CHANNEL_TRACEFILE_SIZE  0
+/* By default, unlimited tracefile count */
+#define DEFAULT_KERNEL_CHANNEL_TRACEFILE_COUNT 0
 
 #define DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER	\
 		DEFAULT_CHANNEL_SWITCH_TIMER
@@ -149,6 +153,10 @@
 #define DEFAULT_UST_CHANNEL_SUBBUF_NUM      DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-ust.h enum lttng_ust_output */
 #define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
+/* By default, unlimited tracefile size */
+#define DEFAULT_UST_CHANNEL_TRACEFILE_SIZE  0
+/* By default, unlimited tracefile count */
+#define DEFAULT_UST_CHANNEL_TRACEFILE_COUNT 0
 
 #define DEFAULT_UST_CHANNEL_SWITCH_TIMER	\
 		DEFAULT_CHANNEL_SWITCH_TIMER

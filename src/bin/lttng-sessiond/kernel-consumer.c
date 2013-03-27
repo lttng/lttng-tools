@@ -94,7 +94,9 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			channel->channel->name,
 			channel->stream_count,
 			channel->channel->attr.output,
-			CONSUMER_CHANNEL_TYPE_DATA);
+			CONSUMER_CHANNEL_TYPE_DATA,
+			channel->channel->attr.tracefile_size,
+			channel->channel->attr.tracefile_count);
 
 	health_code_update();
 
@@ -174,7 +176,8 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			DEFAULT_METADATA_NAME,
 			1,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT,
-			CONSUMER_CHANNEL_TYPE_METADATA);
+			CONSUMER_CHANNEL_TYPE_METADATA,
+			0, 0);
 
 	health_code_update();
 
@@ -190,7 +193,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			LTTNG_CONSUMER_ADD_STREAM,
 			session->metadata->fd,
 			session->metadata_stream_fd,
-			0);	/* CPU: 0 for metadata. */
+			0); /* CPU: 0 for metadata. */
 
 	health_code_update();
 

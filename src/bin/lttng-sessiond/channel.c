@@ -272,6 +272,16 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		goto error;
 	}
 
+	/*
+	 * The tracefile_size should not be < to the subbuf_size, otherwise
+	 * we won't be able to write the packets on disk
+	 */
+	if ((attr->attr.tracefile_size > 0) &&
+			(attr->attr.tracefile_size < attr->attr.subbuf_size)) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, usess->pathname);
 	if (uchan == NULL) {

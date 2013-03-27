@@ -663,7 +663,9 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t relayd_id,
 		uint64_t key,
 		unsigned char *uuid,
-		uint32_t chan_id)
+		uint32_t chan_id,
+		uint64_t tracefile_size,
+		uint64_t tracefile_count)
 {
 	assert(msg);
 
@@ -684,6 +686,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.relayd_id = relayd_id;
 	msg->u.ask_channel.key = key;
 	msg->u.ask_channel.chan_id = chan_id;
+	msg->u.ask_channel.tracefile_size = tracefile_size;
+	msg->u.ask_channel.tracefile_count = tracefile_count;
 
 	memcpy(msg->u.ask_channel.uuid, uuid, sizeof(msg->u.ask_channel.uuid));
 
@@ -709,7 +713,9 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		const char *name,
 		unsigned int nb_init_streams,
 		enum lttng_event_output output,
-		int type)
+		int type,
+		uint64_t tracefile_size,
+		uint64_t tracefile_count)
 {
 	assert(msg);
 
@@ -726,6 +732,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.channel.nb_init_streams = nb_init_streams;
 	msg->u.channel.output = output;
 	msg->u.channel.type = type;
+	msg->u.channel.tracefile_size = tracefile_size;
+	msg->u.channel.tracefile_count = tracefile_count;
 
 	strncpy(msg->u.channel.pathname, pathname,
 			sizeof(msg->u.channel.pathname));

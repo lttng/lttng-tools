@@ -277,7 +277,7 @@ struct lttng_event_field {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 16
 struct lttng_channel_attr {
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes */
@@ -285,6 +285,9 @@ struct lttng_channel_attr {
 	unsigned int switch_timer_interval; /* usec */
 	unsigned int read_timer_interval;   /* usec */
 	enum lttng_event_output output;     /* splice, mmap */
+	/* LTTng 2.1 padding limit */
+	uint64_t tracefile_size;            /* bytes */
+	uint64_t tracefile_count;           /* number of tracefiles */
 
 	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
 };

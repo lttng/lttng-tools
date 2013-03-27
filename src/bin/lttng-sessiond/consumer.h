@@ -200,7 +200,9 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t relayd_id,
 		uint64_t key,
 		unsigned char *uuid,
-		uint32_t chan_id);
+		uint32_t chan_id,
+		uint64_t tracefile_size,
+		uint64_t tracefile_count);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		uint64_t channel_key,
@@ -217,7 +219,9 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		const char *name,
 		unsigned int nb_init_streams,
 		enum lttng_event_output output,
-		int type);
+		int type,
+		uint64_t tracefile_size,
+		uint64_t tracefile_count);
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
 int consumer_close_metadata(struct consumer_socket *socket,

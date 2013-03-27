@@ -132,7 +132,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
 				msg.u.channel.session_id, msg.u.channel.pathname,
 				msg.u.channel.name, msg.u.channel.uid, msg.u.channel.gid,
-				msg.u.channel.relayd_id, msg.u.channel.output);
+				msg.u.channel.relayd_id, msg.u.channel.output,
+				msg.u.channel.tracefile_size,
+				msg.u.channel.tracefile_count);
 		if (new_channel == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
@@ -501,26 +503,13 @@ end:
 int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
-	char full_path[PATH_MAX];
 
 	assert(stream);
 
-	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
-			stream->chan->pathname, stream->name);
+	ret = lttng_create_output_file(stream);
 	if (ret < 0) {
-		PERROR("snprintf on_recv_stream");
+		ERR("Creating output file");
 		goto error;
-	}
-
-	/* Opening the tracefile in write mode */
-	if (stream->net_seq_idx == (uint64_t) -1ULL) {
-		ret = run_as_open(full_path, O_WRONLY | O_CREAT | O_TRUNC,
-				S_IRWXU|S_IRWXG|S_IRWXO, stream->uid, stream->gid);
-		if (ret < 0) {
-			PERROR("open kernel stream path %s", full_path);
-			goto error;
-		}
-		stream->out_fd = ret;
 	}
 
 	if (stream->output == LTTNG_EVENT_MMAP) {
