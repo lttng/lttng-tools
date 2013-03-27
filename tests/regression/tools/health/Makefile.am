@@ -36,3 +36,6 @@ health_check_SOURCES = health_check.c $(UTILS)
 health_check_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		     $(top_builddir)/src/common/libcommon.la
 endif
+
+dist_noinst_SCRIPTS = test_thread_exit test_thread_stall test_tp_fail
+EXTRA_DIST = test_thread_exit test_thread_stall test_tp_fail
