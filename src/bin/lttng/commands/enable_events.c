@@ -154,8 +154,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
 	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
 	fprintf(ofp, "    --filter \'expression\'\n");
-	fprintf(ofp, "                           Filter expression on event fields,\n");
-	fprintf(ofp, "                           event recording depends on evaluation.\n");
+	fprintf(ofp, "                           Filter expression on event fields and context.\n");
+	fprintf(ofp, "                           Event recording depends on evaluation.\n");
 	fprintf(ofp, "                           Only specify on first activation of\n");
 	fprintf(ofp, "                           a given event within a session.\n");
 	fprintf(ofp, "                           Filter only allowed when enabling\n");
@@ -175,7 +175,20 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           'seqfield1 == \"te*\"'\n");
 	fprintf(ofp, "                           In string literals, the escape character is '\\'.\n");
 	fprintf(ofp, "                           Use '\\*' for the '*' character, and '\\\\' for\n");
-	fprintf(ofp, "                           the '\\' character.\n");
+	fprintf(ofp, "                           the '\\' character. Wildcard match any sequence of,\n");
+	fprintf(ofp, "                           characters including an empty sub-string (match 0 or\n");
+	fprintf(ofp, "                           more characters).\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                           Context information can be used for filtering. The\n");
+	fprintf(ofp, "                           examples below show usage of context filtering on\n");
+	fprintf(ofp, "                           process name (with a wildcard), process ID range, and\n");
+	fprintf(ofp, "                           unique thread ID for filtering. The process and\n");
+	fprintf(ofp, "                           thread ID of running applications can be found under\n");
+	fprintf(ofp, "                           columns \"PID\" and \"LWP\" of the \"ps -eLf\" command.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                           '$ctx.procname == \"demo*\"'\n");
+	fprintf(ofp, "                           '$ctx.vpid >= 4433 && $ctx.vpid < 4455'\n");
+	fprintf(ofp, "                           '$ctx.vtid == 1234'\n");
 	fprintf(ofp, "\n");
 }
 

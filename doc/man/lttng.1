@@ -408,12 +408,12 @@ file.
 
 \-\-filter 'expression'
         Set a filter on a newly enabled event. Filter expression on event
-        fields, event recording depends on evaluation. Only specify on first
-        activation of a given event within a session. Filter only allowed when
-        enabling events within a session before tracing is started. If the
-        filter fails to link with the event within the traced domain, the event
-        will be discarded. Currently, filter is only implemented for the
-        user-space tracer.
+	fields and context. Event recording depends on evaluation. Only
+	specify on first activation of a given event within a session.
+	Filter only allowed when enabling events within a session before
+	tracing is started. If the filter fails to link with the event
+	within the traced domain, the event will be discarded.
+	Currently, filter is only implemented for the user-space tracer.
 
         Expression examples:
 
@@ -424,7 +424,19 @@ file.
         Wildcards are allowed at the end of strings:
         'seqfield1 == "te*"'
         In string literals, the escape character is a '\\'. Use '\\*' for
-        the '*' character, and '\\\\' for the '\\' character.
+        the '*' character, and '\\\\' for the '\\' character. Wildcard
+	match any sequence of characters, including an empty sub-string
+	(match 0 or more characters).
+
+	Context information can be used for filtering. The examples
+	below show usage of context filtering on process name (with a
+	wildcard), process ID range, and unique thread ID for filtering.
+	The process and thread ID of running applications can be found
+	under columns "PID" and "LWP" of the "ps -eLf" command.
+
+	'$ctx.procname == "demo*"'
+	'$ctx.vpid >= 4433 && $ctx.vpid < 4455'
+	'$ctx.vtid == 1234'
 .fi
 
 .IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
