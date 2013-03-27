@@ -72,7 +72,7 @@ destroy_lttng_session $SESSION_NAME
 rm -rf $TRACE_PATH
 
 while [ -n "$(pidof $TEST_BIN_NAME)" ]; do
-	killall -s PIPE -q $TEST_BIN_NAME >/dev/null 2>&1
+	killall -q $TEST_BIN_NAME >/dev/null 2>&1
 	sleep 0.5
 done
 
