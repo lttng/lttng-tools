@@ -1288,99 +1288,6 @@ end:
 }
 
 /*
- * Create the tracefile on disk.
- *
- * Return 0 on success or else a negative value.
- */
-int lttng_create_output_file(struct lttng_consumer_stream *stream)
-{
-	int ret;
-	char full_path[PATH_MAX];
-	char *path_name_id = NULL;
-	char *path;
-
-	assert(stream);
-
-	/* Don't create anything if this is set for streaming. */
-	if (stream->net_seq_idx != (uint64_t) -1ULL) {
-		ret = 0;
-		goto end;
-	}
-
-	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
-			stream->chan->pathname, stream->name);
-	if (ret < 0) {
-		PERROR("snprintf create output file");
-		goto error;
-	}
-
-	/*
-	 * If we split the trace in multiple files, we have to add the tracefile
-	 * current count at the end of the tracefile name
-	 */
-	if (stream->chan->tracefile_size > 0) {
-		ret = asprintf(&path_name_id, "%s_%" PRIu64, full_path,
-				stream->tracefile_count_current);
-		if (ret < 0) {
-			PERROR("Allocating path name ID");
-			goto error;
-		}
-		path = path_name_id;
-	} else {
-		path = full_path;
-	}
-
-	ret = run_as_open(path, O_WRONLY | O_CREAT | O_TRUNC,
-			S_IRWXU | S_IRWXG | S_IRWXO, stream->uid, stream->gid);
-	if (ret < 0) {
-		PERROR("open stream path %s", path);
-		goto error_open;
-	}
-	stream->out_fd = ret;
-	stream->tracefile_size_current = 0;
-
-error_open:
-	free(path_name_id);
-error:
-end:
-	return ret;
-}
-
-/*
- * Change the output tracefile according to the tracefile_size and
- * tracefile_count parameters. The stream lock MUST be held before calling this
- * function because we are modifying the stream status.
- *
- * Return 0 on success or else a negative value.
- */
-static int rotate_output_file(struct lttng_consumer_stream *stream)
-{
-	int ret;
-
-	assert(stream);
-	assert(stream->tracefile_size_current);
-
-	ret = close(stream->out_fd);
-	if (ret < 0) {
-		PERROR("Closing tracefile");
-		goto end;
-	}
-
-	if (stream->chan->tracefile_count > 0) {
-		stream->tracefile_count_current =
-			(stream->tracefile_count_current + 1) %
-			stream->chan->tracefile_count;
-	} else {
-		stream->tracefile_count_current++;
-	}
-
-	return lttng_create_output_file(stream);
-
-end:
-	return ret;
-}
-
-/*
  * Mmap the ring buffer, read it and write the data to the tracefile. This is a
  * core function for writing trace buffers to either the local filesystem or
  * the network.
@@ -1494,12 +1401,15 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		if (stream->chan->tracefile_size > 0 &&
 				(stream->tracefile_size_current + len) >
 				stream->chan->tracefile_size) {
-			ret = rotate_output_file(stream);
+			ret = utils_rotate_stream_file(stream->chan->pathname,
+					stream->name, stream->chan->tracefile_size,
+					stream->chan->tracefile_count, stream->uid, stream->gid,
+					stream->out_fd, &(stream->tracefile_count_current));
 			if (ret < 0) {
 				ERR("Rotating output file");
 				goto end;
 			}
-			outfd = stream->out_fd;
+			outfd = stream->out_fd = ret;
 		}
 		stream->tracefile_size_current += len;
 	}
@@ -1671,12 +1581,15 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		if (stream->chan->tracefile_size > 0 &&
 				(stream->tracefile_size_current + len) >
 				stream->chan->tracefile_size) {
-			ret = rotate_output_file(stream);
+			ret = utils_rotate_stream_file(stream->chan->pathname,
+					stream->name, stream->chan->tracefile_size,
+					stream->chan->tracefile_count, stream->uid, stream->gid,
+					stream->out_fd, &(stream->tracefile_count_current));
 			if (ret < 0) {
 				ERR("Rotating output file");
 				goto end;
 			}
-			outfd = stream->out_fd;
+			outfd = stream->out_fd = ret;
 		}
 		stream->tracefile_size_current += len;
 	}

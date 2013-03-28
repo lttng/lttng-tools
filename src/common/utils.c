@@ -25,8 +25,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
+#include <common/runas.h>
 
 #include "utils.h"
 
@@ -298,6 +300,88 @@ int utils_mkdir_recursive(const char *path, mode_t mode)
 		}
 	}
 
+error:
+	return ret;
+}
+
+/*
+ * Create the stream tracefile on disk.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
+		uint64_t count, int uid, int gid)
+{
+	int ret, out_fd;
+	char full_path[PATH_MAX], *path_name_id = NULL, *path;
+
+	assert(path_name);
+	assert(file_name);
+
+	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
+			path_name, file_name);
+	if (ret < 0) {
+		PERROR("snprintf create output file");
+		goto error;
+	}
+
+	/*
+	 * If we split the trace in multiple files, we have to add the count at the
+	 * end of the tracefile name
+	 */
+	if (size > 0) {
+		ret = asprintf(&path_name_id, "%s_%" PRIu64, full_path, count);
+		if (ret < 0) {
+			PERROR("Allocating path name ID");
+			goto error;
+		}
+		path = path_name_id;
+	} else {
+		path = full_path;
+	}
+
+	out_fd = run_as_open(path, O_WRONLY | O_CREAT | O_TRUNC,
+			S_IRWXU | S_IRWXG | S_IRWXO, uid, gid);
+	if (out_fd < 0) {
+		PERROR("open stream path %s", path);
+		goto error_open;
+	}
+	ret = out_fd;
+
+error_open:
+	free(path_name_id);
+error:
+	return ret;
+}
+
+/*
+ * Change the output tracefile according to the given size and count The
+ * new_count pointer is set during this operation.
+ *
+ * From the consumer, the stream lock MUST be held before calling this function
+ * because we are modifying the stream status.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
+		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count)
+{
+	int ret;
+
+	ret = close(out_fd);
+	if (ret < 0) {
+		PERROR("Closing tracefile");
+		goto error;
+	}
+
+	if (count > 0) {
+		*new_count = (*new_count + 1) % count;
+	} else {
+		(*new_count)++;
+	}
+
+	return utils_create_stream_file(path_name, file_name, size, *new_count,
+			uid, gid);
 error:
 	return ret;
 }

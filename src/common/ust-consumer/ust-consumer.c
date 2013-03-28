@@ -38,6 +38,7 @@
 #include <common/compat/fcntl.h>
 #include <common/consumer-metadata-cache.h>
 #include <common/consumer-timer.h>
+#include <common/utils.h>
 
 #include "ust-consumer.h"
 
@@ -1283,10 +1284,28 @@ end:
 
 /*
  * Called when a stream is created.
+ *
+ * Return 0 on success or else a negative value.
  */
 int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
-	return lttng_create_output_file(stream);
+	int ret;
+
+	/* Don't create anything if this is set for streaming. */
+	if (stream->net_seq_idx == (uint64_t) -1ULL) {
+		ret = utils_create_stream_file(stream->chan->pathname, stream->name,
+				stream->chan->tracefile_size, stream->tracefile_count_current,
+				stream->uid, stream->gid);
+		if (ret < 0) {
+			goto error;
+		}
+		stream->out_fd = ret;
+		stream->tracefile_size_current = 0;
+	}
+	ret = 0;
+
+error:
+	return ret;
 }
 
 /*

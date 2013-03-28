@@ -35,6 +35,7 @@
 #include <common/sessiond-comm/relayd.h>
 #include <common/compat/fcntl.h>
 #include <common/relayd/relayd.h>
+#include <common/utils.h>
 
 #include "kernel-consumer.h"
 
@@ -506,10 +507,16 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 	assert(stream);
 
-	ret = lttng_create_output_file(stream);
-	if (ret < 0) {
-		ERR("Creating output file");
-		goto error;
+	/* Don't create anything if this is set for streaming. */
+	if (stream->net_seq_idx == (uint64_t) -1ULL) {
+		ret = utils_create_stream_file(stream->chan->pathname, stream->name,
+				stream->chan->tracefile_size, stream->tracefile_count_current,
+				stream->uid, stream->gid);
+		if (ret < 0) {
+			goto error;
+		}
+		stream->out_fd = ret;
+		stream->tracefile_size_current = 0;
 	}
 
 	if (stream->output == LTTNG_EVENT_MMAP) {

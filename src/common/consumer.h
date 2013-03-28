@@ -494,7 +494,6 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
 		int (*update_stream)(int sessiond_key, uint32_t state));
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
-int lttng_create_output_file(struct lttng_consumer_stream *stream);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
