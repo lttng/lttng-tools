@@ -171,6 +171,16 @@ struct lttcomm_sock {
 	const struct lttcomm_proto_ops *ops;
 } LTTNG_PACKED;
 
+/*
+ * Relayd sock. Adds the protocol version to use for the communications with
+ * the relayd.
+ */
+struct lttcomm_relayd_sock {
+	struct lttcomm_sock sock;
+	uint32_t major;
+	uint32_t minor;
+} LTTNG_PACKED;
+
 struct lttcomm_net_family {
 	int family;
 	int (*create) (struct lttcomm_sock *sock, int type, int proto);
@@ -303,7 +313,7 @@ struct lttcomm_consumer_msg {
 			uint64_t net_index;
 			enum lttng_stream_type type;
 			/* Open socket to the relayd */
-			struct lttcomm_sock sock;
+			struct lttcomm_relayd_sock sock;
 			/* Tracing session id associated to the relayd. */
 			uint64_t session_id;
 		} LTTNG_PACKED relayd_sock;
@@ -424,5 +434,9 @@ extern void lttcomm_destroy_sock(struct lttcomm_sock *sock);
 extern struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src);
 extern void lttcomm_copy_sock(struct lttcomm_sock *dst,
 		struct lttcomm_sock *src);
+
+/* Relayd socket object. */
+extern struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
+		struct lttng_uri *uri, uint32_t major, uint32_t minor);
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */

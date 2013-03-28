@@ -313,3 +313,53 @@ void lttcomm_destroy_sock(struct lttcomm_sock *sock)
 {
 	free(sock);
 }
+
+/*
+ * Allocate and return a relayd socket object using a given URI to initialize
+ * it and the major/minor version of the supported protocol.
+ *
+ * On error, NULL is returned.
+ */
+struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
+		uint32_t major, uint32_t minor)
+{
+	int ret;
+	struct lttcomm_sock *tmp_sock = NULL;
+	struct lttcomm_relayd_sock *rsock = NULL;
+
+	assert(uri);
+
+	rsock = zmalloc(sizeof(*rsock));
+	if (!rsock) {
+		PERROR("zmalloc relayd sock");
+		goto error;
+	}
+
+	/* Allocate socket object from URI */
+	tmp_sock = lttcomm_alloc_sock_from_uri(uri);
+	if (tmp_sock == NULL) {
+		goto error_free;
+	}
+
+	/*
+	 * Create socket object which basically sets the ops according to the
+	 * socket protocol.
+	 */
+	lttcomm_copy_sock(&rsock->sock, tmp_sock);
+	/* Temporary socket pointer not needed anymore. */
+	lttcomm_destroy_sock(tmp_sock);
+	ret = lttcomm_create_sock(&rsock->sock);
+	if (ret < 0) {
+		goto error_free;
+	}
+
+	rsock->major = major;
+	rsock->minor = minor;
+
+	return rsock;
+
+error_free:
+	free(rsock);
+error:
+	return NULL;
+}

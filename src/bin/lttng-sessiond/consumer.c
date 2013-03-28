@@ -805,14 +805,14 @@ error:
  * On success return positive value. On error, negative value.
  */
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
-		struct lttcomm_sock *sock, struct consumer_output *consumer,
+		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
 		enum lttng_stream_type type, uint64_t session_id)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
 
 	/* Code flow error. Safety net. */
-	assert(sock);
+	assert(rsock);
 	assert(consumer);
 	assert(consumer_sock);
 
@@ -831,13 +831,13 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	msg.u.relayd_sock.net_index = consumer->net_seq_index;
 	msg.u.relayd_sock.type = type;
 	msg.u.relayd_sock.session_id = session_id;
-	memcpy(&msg.u.relayd_sock.sock, sock, sizeof(msg.u.relayd_sock.sock));
+	memcpy(&msg.u.relayd_sock.sock, rsock, sizeof(msg.u.relayd_sock.sock));
 
 	DBG3("Sending relayd sock info to consumer on %d", consumer_sock->fd);
 	ret = lttcomm_send_unix_sock(consumer_sock->fd, &msg, sizeof(msg));
 	if (ret < 0) {
 		/* The above call will print a PERROR on error. */
-		DBG("Error when sending relayd sockets on sock %d", sock->fd);
+		DBG("Error when sending relayd sockets on sock %d", rsock->sock.fd);
 		goto error;
 	}
 
@@ -847,7 +847,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	}
 
 	DBG3("Sending relayd socket file descriptor to consumer");
-	ret = consumer_send_fds(consumer_sock, &sock->fd, 1);
+	ret = consumer_send_fds(consumer_sock, &rsock->sock.fd, 1);
 	if (ret < 0) {
 		goto error;
 	}

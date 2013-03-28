@@ -23,25 +23,24 @@
 #include <common/sessiond-comm/relayd.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
-int relayd_connect(struct lttcomm_sock *sock);
-int relayd_close(struct lttcomm_sock *sock);
-int relayd_create_session(struct lttcomm_sock *sock, uint64_t *session_id);
-int relayd_add_stream(struct lttcomm_sock *sock, const char *channel_name,
+int relayd_connect(struct lttcomm_relayd_sock *sock);
+int relayd_close(struct lttcomm_relayd_sock *sock);
+int relayd_create_session(struct lttcomm_relayd_sock *sock, uint64_t *session_id);
+int relayd_add_stream(struct lttcomm_relayd_sock *sock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id);
-int relayd_send_close_stream(struct lttcomm_sock *sock, uint64_t stream_id,
+int relayd_send_close_stream(struct lttcomm_relayd_sock *sock, uint64_t stream_id,
 		uint64_t last_net_seq_num);
-int relayd_version_check(struct lttcomm_sock *sock, uint32_t major,
-		uint32_t minor, uint32_t *minor_to_use);
-int relayd_start_data(struct lttcomm_sock *sock);
-int relayd_send_metadata(struct lttcomm_sock *sock, size_t len);
-int relayd_send_data_hdr(struct lttcomm_sock *sock,
+int relayd_version_check(struct lttcomm_relayd_sock *sock);
+int relayd_start_data(struct lttcomm_relayd_sock *sock);
+int relayd_send_metadata(struct lttcomm_relayd_sock *sock, size_t len);
+int relayd_send_data_hdr(struct lttcomm_relayd_sock *sock,
 		struct lttcomm_relayd_data_hdr *hdr, size_t size);
-int relayd_data_pending(struct lttcomm_sock *sock, uint64_t stream_id,
+int relayd_data_pending(struct lttcomm_relayd_sock *sock, uint64_t stream_id,
 		uint64_t last_net_seq_num);
-int relayd_quiescent_control(struct lttcomm_sock *sock,
+int relayd_quiescent_control(struct lttcomm_relayd_sock *sock,
 		uint64_t metadata_stream_id);
-int relayd_begin_data_pending(struct lttcomm_sock *sock, uint64_t id);
-int relayd_end_data_pending(struct lttcomm_sock *sock, uint64_t id,
+int relayd_begin_data_pending(struct lttcomm_relayd_sock *sock, uint64_t id);
+int relayd_end_data_pending(struct lttcomm_relayd_sock *sock, uint64_t id,
 		unsigned int *is_data_inflight);
 
 #endif /* _RELAYD_H */

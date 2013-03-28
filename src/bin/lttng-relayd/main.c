@@ -1268,6 +1268,16 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto end;
 	}
+
+	/* Major versions must be the same */
+	if (reply.major != be32toh(msg.major)) {
+		DBG("Incompatible major versions (%u vs %u), deleting session",
+				reply.major, be32toh(msg.major));
+		relay_delete_session(cmd, streams_ht);
+		ret = 0;
+		goto end;
+	}
+
 	reply.major = htobe32(reply.major);
 	reply.minor = htobe32(reply.minor);
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
@@ -1276,14 +1286,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		ERR("Relay sending version");
 	}
 
-	/* Major versions must be the same */
-	if (reply.major != be32toh(msg.major)) {
-		DBG("Incompatible major versions, deleting session");
-		relay_delete_session(cmd, streams_ht);
-		ret = 0;
-		goto end;
-	}
-
+#if 0
 	cmd->session->major = reply.major;
 	/* We adapt to the lowest compatible version */
 	if (reply.minor <= be32toh(msg.minor)) {
@@ -1294,6 +1297,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 
 	DBG("Version check done using protocol %u.%u", cmd->session->major,
 			cmd->session->minor);
+#endif
 
 end:
 	return ret;

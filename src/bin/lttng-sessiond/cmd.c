@@ -478,24 +478,15 @@ error:
  * On success, the relayd_sock pointer is set to the created socket.
  * Else, it's stays untouched and a lttcomm error code is returned.
  */
-static int create_connect_relayd(struct consumer_output *output,
-		const char *session_name, struct lttng_uri *uri,
-		struct lttcomm_sock **relayd_sock,
-		struct ltt_session *session)
+static int create_connect_relayd(struct lttng_uri *uri,
+		struct lttcomm_relayd_sock **relayd_sock)
 {
 	int ret;
-	struct lttcomm_sock *sock;
-	uint32_t minor;
+	struct lttcomm_relayd_sock *rsock;
 
-	/* Create socket object from URI */
-	sock = lttcomm_alloc_sock_from_uri(uri);
-	if (sock == NULL) {
-		ret = LTTNG_ERR_FATAL;
-		goto error;
-	}
-
-	ret = lttcomm_create_sock(sock);
-	if (ret < 0) {
+	rsock = lttcomm_alloc_relayd_sock(uri, RELAYD_VERSION_COMM_MAJOR,
+			RELAYD_VERSION_COMM_MINOR);
+	if (!rsock) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
@@ -506,7 +497,7 @@ static int create_connect_relayd(struct consumer_output *output,
 	 * state to be in poll execution.
 	 */
 	health_poll_entry();
-	ret = relayd_connect(sock);
+	ret = relayd_connect(rsock);
 	health_poll_exit();
 	if (ret < 0) {
 		ERR("Unable to reach lttng-relayd");
@@ -519,14 +510,11 @@ static int create_connect_relayd(struct consumer_output *output,
 		DBG3("Creating relayd stream socket from URI");
 
 		/* Check relayd version */
-		ret = relayd_version_check(sock, RELAYD_VERSION_COMM_MAJOR,
-				RELAYD_VERSION_COMM_MINOR, &minor);
+		ret = relayd_version_check(rsock);
 		if (ret < 0) {
 			ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
 			goto close_sock;
 		}
-		session->major = RELAYD_VERSION_COMM_MAJOR;
-		session->minor = minor;
 	} else if (uri->stype == LTTNG_STREAM_DATA) {
 		DBG3("Creating relayd data socket from URI");
 	} else {
@@ -536,18 +524,15 @@ static int create_connect_relayd(struct consumer_output *output,
 		goto close_sock;
 	}
 
-	*relayd_sock = sock;
+	*relayd_sock = rsock;
 
 	return LTTNG_OK;
 
 close_sock:
-	if (sock) {
-		(void) relayd_close(sock);
-	}
+	/* The returned value is not useful since we are on an error path. */
+	(void) relayd_close(rsock);
 free_sock:
-	if (sock) {
-		lttcomm_destroy_sock(sock);
-	}
+	free(rsock);
 error:
 	return ret;
 }
@@ -560,14 +545,14 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 		struct consumer_socket *consumer_sock)
 {
 	int ret;
-	struct lttcomm_sock *sock = NULL;
+	struct lttcomm_relayd_sock *rsock = NULL;
 
 	/* Connect to relayd and make version check if uri is the control. */
-	ret = create_connect_relayd(consumer, session->name, relayd_uri,
-			&sock, session);
+	ret = create_connect_relayd(relayd_uri, &rsock);
 	if (ret != LTTNG_OK) {
-		goto close_sock;
+		goto error;
 	}
+	assert(rsock);
 
 	/* If the control socket is connected, network session is ready */
 	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
@@ -587,8 +572,8 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	}
 
 	/* Send relayd socket to consumer. */
-	ret = consumer_send_relayd_socket(consumer_sock, sock,
-			consumer, relayd_uri->stype, session->id);
+	ret = consumer_send_relayd_socket(consumer_sock, rsock, consumer,
+			relayd_uri->stype, session->id);
 	if (ret < 0) {
 		ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -609,11 +594,10 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 	 */
 
 close_sock:
-	if (sock) {
-		(void) relayd_close(sock);
-		lttcomm_destroy_sock(sock);
-	}
+	(void) relayd_close(rsock);
+	free(rsock);
 
+error:
 	if (ret != LTTNG_OK) {
 		/*
 		 * On error, nullify the consumer sequence index so streams are not
@@ -621,7 +605,6 @@ close_sock:
 		 */
 		uatomic_set(&consumer->net_seq_index, -1);
 	}
-
 	return ret;
 }
 

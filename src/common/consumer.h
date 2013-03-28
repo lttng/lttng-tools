@@ -269,14 +269,14 @@ struct consumer_relayd_sock_pair {
 	pthread_mutex_t ctrl_sock_mutex;
 
 	/* Control socket. Command and metadata are passed over it */
-	struct lttcomm_sock control_sock;
+	struct lttcomm_relayd_sock control_sock;
 
 	/*
 	 * We don't need a mutex at this point since we only splice or write single
 	 * large chunk of data with a header appended at the begining. Moreover,
 	 * this socket is for now only used in a single thread.
 	 */
-	struct lttcomm_sock data_sock;
+	struct lttcomm_relayd_sock data_sock;
 	struct lttng_ht_node_u64 node;
 
 	/* Session id on both sides for the sockets. */
@@ -518,7 +518,7 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
-		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock,
+		struct pollfd *consumer_sockpoll, struct lttcomm_relayd_sock *relayd_sock,
 		unsigned int sessiond_id);
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);

@@ -86,9 +86,6 @@ struct ltt_session {
 
 	/* Did a start command occured before the kern/ust session creation? */
 	unsigned int started;
-	/* Procotol version to use with the relayd */
-	uint32_t major;
-	uint32_t minor;
 };
 
 /* Prototypes */
