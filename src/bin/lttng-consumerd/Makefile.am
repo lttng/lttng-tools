@@ -4,7 +4,7 @@ lttnglibexec_PROGRAMS = lttng-consumerd
 
 lttng_consumerd_SOURCES = lttng-consumerd.c lttng-consumerd.h
 
-lttng_consumerd_LDADD = \
+lttng_consumerd_LDADD = -lrt \
 	   $(top_builddir)/src/common/libconsumer.la \
 	   $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 	   $(top_builddir)/src/common/libcommon.la

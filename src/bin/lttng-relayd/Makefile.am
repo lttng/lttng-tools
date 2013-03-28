@@ -6,7 +6,10 @@ AM_CFLAGS = -fno-strict-aliasing
 
 bin_PROGRAMS = lttng-relayd
 
-lttng_relayd_SOURCES = main.c lttng-relayd.h
+lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c \
+                       cmd-generic.c cmd-generic.h \
+                       cmd-2-1.c cmd-2-1.h \
+                       cmd-2-2.c cmd-2-2.h
 
 # link on liblttngctl for check if relayd is already alive.
 lttng_relayd_LDADD = -lrt -lurcu-common -lurcu \

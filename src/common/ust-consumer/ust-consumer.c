@@ -223,7 +223,9 @@ static int send_stream_to_relayd(struct lttng_consumer_stream *stream)
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		/* Add stream on the relayd */
 		ret = relayd_add_stream(&relayd->control_sock, stream->name,
-				stream->chan->pathname, &stream->relayd_stream_id);
+				stream->chan->pathname, &stream->relayd_stream_id,
+				stream->chan->tracefile_size,
+				stream->chan->tracefile_count);
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 		if (ret < 0) {
 			goto error;

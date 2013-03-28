@@ -340,8 +340,9 @@ int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
 		path = full_path;
 	}
 
+	/* Open with 660 mode */
 	out_fd = run_as_open(path, O_WRONLY | O_CREAT | O_TRUNC,
-			S_IRWXU | S_IRWXG | S_IRWXO, uid, gid);
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, uid, gid);
 	if (out_fd < 0) {
 		PERROR("open stream path %s", path);
 		goto error_open;

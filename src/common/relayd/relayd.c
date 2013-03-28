@@ -161,10 +161,12 @@ error:
  * On success return 0 else return ret_code negative value.
  */
 int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_name,
-		const char *pathname, uint64_t *stream_id)
+		const char *pathname, uint64_t *stream_id,
+		uint64_t tracefile_size, uint64_t tracefile_count)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream msg;
+	struct lttcomm_relayd_add_stream_2_2 msg_2_2;
 	struct lttcomm_relayd_status_stream reply;
 
 	/* Code flow error. Safety net. */
@@ -174,13 +176,28 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 
 	DBG("Relayd adding stream for channel name %s", channel_name);
 
-	strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name));
-	strncpy(msg.pathname, pathname, sizeof(msg.pathname));
+	/* Compat with relayd 2.1 */
+	if (rsock->minor == 1) {
+		strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name));
+		strncpy(msg.pathname, pathname, sizeof(msg.pathname));
 
-	/* Send command */
-	ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
-	if (ret < 0) {
-		goto error;
+		/* Send command */
+		ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
+		if (ret < 0) {
+			goto error;
+		}
+	} else {
+		/* Compat with relayd 2.2+ */
+		strncpy(msg_2_2.channel_name, channel_name, sizeof(msg_2_2.channel_name));
+		strncpy(msg_2_2.pathname, pathname, sizeof(msg_2_2.pathname));
+		msg_2_2.tracefile_size = htobe64(tracefile_size);
+		msg_2_2.tracefile_count = htobe64(tracefile_count);
+
+		/* Send command */
+		ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) &msg_2_2, sizeof(msg_2_2), 0);
+		if (ret < 0) {
+			goto error;
+		}
 	}
 
 	/* Waiting for reply */

@@ -262,7 +262,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 			ret = relayd_add_stream(&relayd->control_sock,
 					new_stream->name, new_stream->chan->pathname,
-					&new_stream->relayd_stream_id);
+					&new_stream->relayd_stream_id,
+					new_stream->chan->tracefile_size,
+					new_stream->chan->tracefile_count);
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 			if (ret < 0) {
 				consumer_del_stream(new_stream, NULL);
