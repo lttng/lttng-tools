@@ -216,7 +216,9 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uint32_t uint32_t_alignment,
 		uint32_t uint64_t_alignment,
 		uint32_t long_alignment,
-		int byte_order);
+		int byte_order,
+		uint32_t major,
+		uint32_t minor);
 void ust_registry_session_destroy(struct ust_registry_session *session);
 
 int ust_registry_create_event(struct ust_registry_session *session,
@@ -230,7 +232,7 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 
 /* app can be NULL for registry shared across applications. */
 int ust_metadata_session_statedump(struct ust_registry_session *session,
-		struct ust_app *app);
+		struct ust_app *app, uint32_t major, uint32_t minor);
 int ust_metadata_channel_statedump(struct ust_registry_session *session,
 		struct ust_registry_channel *chan);
 int ust_metadata_event_statedump(struct ust_registry_session *session,

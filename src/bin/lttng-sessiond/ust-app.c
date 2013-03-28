@@ -1502,7 +1502,9 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 	ret = ust_registry_session_init(&reg_pid->registry->reg.ust, app,
 			app->bits_per_long, app->uint8_t_alignment,
 			app->uint16_t_alignment, app->uint32_t_alignment,
-			app->uint64_t_alignment, app->long_alignment, app->byte_order);
+			app->uint64_t_alignment, app->long_alignment,
+			app->byte_order, app->version.major,
+			app->version.minor);
 	if (ret < 0) {
 		goto error;
 	}
@@ -1553,10 +1555,12 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 	}
 
 	/* Initialize registry. */
-	ret = ust_registry_session_init(&reg_uid->registry->reg.ust, app,
+	ret = ust_registry_session_init(&reg_uid->registry->reg.ust, NULL,
 			app->bits_per_long, app->uint8_t_alignment,
 			app->uint16_t_alignment, app->uint32_t_alignment,
-			app->uint64_t_alignment, app->long_alignment, app->byte_order);
+			app->uint64_t_alignment, app->long_alignment,
+			app->byte_order, app->version.major,
+			app->version.minor);
 	if (ret < 0) {
 		goto error;
 	}

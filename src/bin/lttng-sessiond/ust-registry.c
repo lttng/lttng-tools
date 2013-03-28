@@ -452,13 +452,14 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uint32_t uint32_t_alignment,
 		uint32_t uint64_t_alignment,
 		uint32_t long_alignment,
-		int byte_order)
+		int byte_order,
+		uint32_t major,
+		uint32_t minor)
 {
 	int ret;
 	struct ust_registry_session *session;
 
 	assert(sessionp);
-	assert(app);
 
 	session = zmalloc(sizeof(*session));
 	if (!session) {
@@ -487,7 +488,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	}
 
 	pthread_mutex_lock(&session->lock);
-	ret = ust_metadata_session_statedump(session, app);
+	ret = ust_metadata_session_statedump(session, app, major, minor);
 	pthread_mutex_unlock(&session->lock);
 	if (ret) {
 		ERR("Failed to generate session metadata (errno = %d)", ret);

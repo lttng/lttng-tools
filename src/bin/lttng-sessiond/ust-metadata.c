@@ -520,7 +520,9 @@ uint64_t measure_clock_offset(void)
  * Should be called with session registry mutex held.
  */
 int ust_metadata_session_statedump(struct ust_registry_session *session,
-		struct ust_app *app)
+		struct ust_app *app,
+		uint32_t major,
+		uint32_t minor)
 {
 	unsigned char *uuid_c;
 	char uuid_s[UUID_STR_LEN],
@@ -529,7 +531,6 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	char hostname[HOST_NAME_MAX];
 
 	assert(session);
-	assert(app);
 
 	uuid_c = session->uuid;
 
@@ -585,12 +586,10 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"	domain = \"ust\";\n"
 		"	tracer_name = \"lttng-ust\";\n"
 		"	tracer_major = %u;\n"
-		"	tracer_minor = %u;\n"
-		"	tracer_patchlevel = %u;\n",
+		"	tracer_minor = %u;\n",
 		hostname,
-		app->version.major,
-		app->version.minor,
-		app->version.patchlevel
+		major,
+		minor
 		);
 	if (ret)
 		goto end;
@@ -601,8 +600,10 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	 */
 	if (app) {
 		ret = lttng_metadata_printf(session,
+			"	tracer_patchlevel = %u;\n"
 			"	vpid = %d;\n"
 			"	procname = \"%s\";\n",
+			app->version.patchlevel,
 			(int) app->pid,
 			app->name
 			);
