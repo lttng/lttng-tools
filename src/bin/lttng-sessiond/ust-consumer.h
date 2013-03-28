@@ -36,6 +36,15 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 
 int ust_consumer_send_channel_to_ust(struct ust_app *app,
 		struct ust_app_session *ua_sess, struct ust_app_channel *channel);
+
+#if HAVE_LIBLTTNG_UST_CTL
 int ust_consumer_metadata_request(struct consumer_socket *sock);
+#else
+static inline
+int ust_consumer_metadata_request(struct consumer_socket *sock)
+{
+	return -ENOSYS;
+}
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _UST_CONSUMER_H */
