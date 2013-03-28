@@ -1,3 +1,16 @@
+2013-03-28 lttng-tools 2.2.0-rc1
+	* Add UST per UID buffers support
+	* UST metadata generation are created on the sessiond side
+	* Move LTTng-UST buffer ownership from application to consumer
+	* Add a UST registry of events and channel in the sessiond
+	* UST periodical metadata flush
+	* Refactor tests to use prove and tap
+	* Support for trace file rotation for the relayd and on disk
+	* Support per-context filtering
+	* Add channel wakeup fd to monitor close
+	* Deprecate enable/disable-consumer
+	* Multiple fixes and memory leak fix.
+
 2012-12-20 lttng-tools 2.1.0 (13th Baktun)
 	* STABLE VERSION 2.1.0-stable - "Basse Messe"
 	* Multiple minor fixes

@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.1.0],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.2.0-rc1],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -6,8 +6,8 @@ AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-version_name="Basse Messe"
-version_description="Light coloured German ale whose style was named after the city Cologne (Koln) where it was first brewed. It is a rather simple beer with lightly fruity aromas and a delicate hoppy fragrance. The beer has a pronounced malty taste with a subtle bitter aftertaste"
+version_name="Cuda"
+version_description="Brewed at the Benelux microbrewery, this IPA has huge floral, citric and resinous hop aroma, simply an amazing nose. The flavor is very fresh with a light caramel malting touch completing a strong body. Huge amounts of hops, lots of grapefruit, lemon and oranges. This is an outstanding IPA!"
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
 AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description"], "")
