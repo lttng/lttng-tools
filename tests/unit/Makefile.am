@@ -25,44 +25,47 @@ test_uri_SOURCES = test_uri.c
 test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE)
 
 # Session unit test
-SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.c	\
-	 $(top_srcdir)/src/bin/lttng-sessiond/consumer.c \
-	 $(top_srcdir)/src/bin/lttng-sessiond/health.c \
-	 $(top_srcdir)/src/common/uri.c \
-	 $(top_srcdir)/src/common/utils.c \
-	 $(top_srcdir)/src/common/error.c
+SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.o	\
+	 $(top_srcdir)/src/bin/lttng-sessiond/consumer.o \
+	 $(top_srcdir)/src/bin/lttng-sessiond/health.o \
+	 $(top_srcdir)/src/common/uri.o \
+	 $(top_srcdir)/src/common/utils.o \
+	 $(top_srcdir)/src/common/error.o
 
-test_session_SOURCES = test_session.c $(SESSIONS)
+test_session_SOURCES = test_session.c
 test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
 					 -lrt
+test_session_LDADD += $(SESSIONS)
 
 # UST data structures unit test
 if HAVE_LIBLTTNG_UST_CTL
-UST_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-ust.c \
-	       $(top_srcdir)/src/bin/lttng-sessiond/consumer.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/buffer-registry.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/ust-registry.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/ust-metadata.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/ust-app.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/ust-consumer.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/fd-limit.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/health.c \
-		   $(top_srcdir)/src/bin/lttng-sessiond/session.c \
-		   $(top_srcdir)/src/common/uri.c \
-		   $(top_srcdir)/src/common/utils.c
+UST_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-ust.o \
+	       $(top_srcdir)/src/bin/lttng-sessiond/consumer.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/buffer-registry.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/ust-registry.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/ust-metadata.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/ust-app.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/ust-consumer.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/fd-limit.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/health.o \
+		   $(top_srcdir)/src/bin/lttng-sessiond/session.o \
+		   $(top_srcdir)/src/common/uri.o \
+		   $(top_srcdir)/src/common/utils.o
 
-test_ust_data_SOURCES = test_ust_data.c $(UST_DATA_TRACE)
+test_ust_data_SOURCES = test_ust_data.c
 test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
 					  -lrt -llttng-ust-ctl
+test_ust_data_LDADD += $(UST_DATA_TRACE)
 endif
 
 # Kernel data structures unit test
-KERN_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-kernel.c	\
-		$(top_srcdir)/src/bin/lttng-sessiond/consumer.c	\
-		$(top_srcdir)/src/bin/lttng-sessiond/health.c \
-		$(top_srcdir)/src/common/uri.c \
-		$(top_srcdir)/src/common/utils.c
+KERN_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-kernel.o	\
+		$(top_srcdir)/src/bin/lttng-sessiond/consumer.o	\
+		$(top_srcdir)/src/bin/lttng-sessiond/health.o \
+		$(top_srcdir)/src/common/uri.o \
+		$(top_srcdir)/src/common/utils.o
 
-test_kernel_data_SOURCES = test_kernel_data.c $(KERN_DATA_TRACE)
+test_kernel_data_SOURCES = test_kernel_data.c
 test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
 						 -lrt
+test_kernel_data_LDADD += $(KERN_DATA_TRACE)
