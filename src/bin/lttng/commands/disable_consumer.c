@@ -37,7 +37,7 @@ int cmd_disable_consumer(int argc, const char **argv)
 {
 	int ret;
 
-	MSG("The disable-consumer command is now obselete.");
+	MSG("The disable-consumer command is now obsolete.");
 	ret = CMD_WARNING;
 
 	return ret;

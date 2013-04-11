@@ -601,13 +601,13 @@ extern int lttng_set_consumer_url(struct lttng_handle *handle,
 /*
  * Enable the consumer for a session and domain.
  */
-extern LTTNG_DEPRECATED("This call is now obselete.")
+extern LTTNG_DEPRECATED("This call is now obsolete.")
 int lttng_enable_consumer(struct lttng_handle *handle);
 
 /*
  * Disable consumer for a session and domain.
  */
-extern LTTNG_DEPRECATED("This call is now obselete.")
+extern LTTNG_DEPRECATED("This call is now obsolete.")
 int lttng_disable_consumer(struct lttng_handle *handle);
 
 /*

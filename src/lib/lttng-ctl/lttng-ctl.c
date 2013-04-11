@@ -1494,7 +1494,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 }
 
 /*
- * [OBSELETE]
+ * [OBSOLETE]
  */
 int lttng_enable_consumer(struct lttng_handle *handle)
 {
@@ -1502,7 +1502,7 @@ int lttng_enable_consumer(struct lttng_handle *handle)
 }
 
 /*
- * [OBSELETE]
+ * [OBSOLETE]
  */
 int lttng_disable_consumer(struct lttng_handle *handle)
 {

@@ -91,11 +91,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                       You can change it with the enable-consumer cmd\n");
 	fprintf(ofp, "  -C, --ctrl-url=URL   Set control path URL. (Must use -D also)\n");
 	fprintf(ofp, "  -D, --data-url=URL   Set data path URL. (Must use -C also)\n");
-	fprintf(ofp, "      --no-consumer    Don't activate a consumer for this session.\n");
-	fprintf(ofp, "                       OBSELETE\n");
-	fprintf(ofp, "      --disable-consumer\n");
-	fprintf(ofp, "                       Disable consumer for this session.\n");
-	fprintf(ofp, "                       OBSELETE\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please refer to the man page (lttng(1)) for more information on network\n");
 	fprintf(ofp, "streaming mechanisms and explanation of the control and data port\n");

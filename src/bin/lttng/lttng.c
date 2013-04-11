@@ -74,8 +74,8 @@ static struct cmd_struct commands[] =  {
 	{ "version", cmd_version},
 	{ "calibrate", cmd_calibrate},
 	{ "view", cmd_view},
-	{ "enable-consumer", cmd_enable_consumer}, /* OBSELETE */
-	{ "disable-consumer", cmd_disable_consumer}, /*OBSELETE */
+	{ "enable-consumer", cmd_enable_consumer}, /* OBSOLETE */
+	{ "disable-consumer", cmd_disable_consumer}, /* OBSOLETE */
 	{ NULL, NULL}	/* Array closure */
 };
 

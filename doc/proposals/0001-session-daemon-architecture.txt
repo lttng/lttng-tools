@@ -1,7 +1,7 @@
 RFC - LTTng session daemon architecture
 
 WARNING:
-  Parts of the proposal are obselete but we keep this version for historical
+  Parts of the proposal are obsolete but we keep this version for historical
   purposes.
 
 Author: David Goulet <david.goulet@polymtl.ca>
