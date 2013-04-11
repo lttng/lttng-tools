@@ -634,6 +634,7 @@ int cmd_enable_events(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
+	int event_type = -1;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -681,6 +682,17 @@ int cmd_enable_events(int argc, const char **argv)
 			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
+		}
+
+		/* Validate event type. Multiple event type are not supported. */
+		if (event_type == -1) {
+			event_type = opt_event_type;
+		} else {
+			if (event_type != opt_event_type) {
+				ERR("Multiple event type not supported.");
+				ret = CMD_ERROR;
+				goto end;
+			}
 		}
 	}
 
