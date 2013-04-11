@@ -282,6 +282,16 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		goto error;
 	}
 
+	/* Validate buffer type. */
+	switch (type) {
+	case LTTNG_BUFFER_PER_PID:
+	case LTTNG_BUFFER_PER_UID:
+		break;
+	default:
+		ret = LTTNG_ERR_BUFFER_NOT_SUPPORTED;
+		goto error;
+	}
+
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, usess->pathname);
 	if (uchan == NULL) {
