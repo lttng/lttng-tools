@@ -56,7 +56,7 @@ enum lttng_error_code {
 	LTTNG_ERR_SESS_NOT_FOUND         = 23,  /* Session by name not found */
 	LTTNG_ERR_BUFFER_TYPE_MISMATCH   = 24,  /* Buffer type mismatched. */
 	LTTNG_ERR_FATAL                  = 25,  /* Fatal error */
-	/* 26 */
+	LTTNG_ERR_NOMEM                  = 26,  /* Not enough memory. */
 	LTTNG_ERR_SELECT_SESS            = 27,  /* Must select a session */
 	LTTNG_ERR_EXIST_SESS             = 28,  /* Session name already exist */
 	LTTNG_ERR_NO_EVENT               = 29,  /* No event found */

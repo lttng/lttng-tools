@@ -107,6 +107,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_URL_EXIST) ] = "URL already exists",
 	[ ERROR_INDEX(LTTNG_ERR_BUFFER_NOT_SUPPORTED)] = "Buffer type not supported",
 	[ ERROR_INDEX(LTTNG_ERR_BUFFER_TYPE_MISMATCH)] = "Buffer type mismatch for session",
+	[ ERROR_INDEX(LTTNG_ERR_NOMEM)] = "Not enough memory",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

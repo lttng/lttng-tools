@@ -504,6 +504,12 @@ int consumer_set_network_uri(struct consumer_output *obj,
 		if (uri->port == 0) {
 			/* Assign default port. */
 			uri->port = DEFAULT_NETWORK_CONTROL_PORT;
+		} else {
+			if (obj->dst.net.data_isset && uri->port ==
+					obj->dst.net.data.port) {
+				ret = -LTTNG_ERR_INVALID;
+				goto error;
+			}
 		}
 		DBG3("Consumer control URI set with port %d", uri->port);
 		break;
@@ -513,11 +519,18 @@ int consumer_set_network_uri(struct consumer_output *obj,
 		if (uri->port == 0) {
 			/* Assign default port. */
 			uri->port = DEFAULT_NETWORK_DATA_PORT;
+		} else {
+			if (obj->dst.net.control_isset && uri->port ==
+					obj->dst.net.control.port) {
+				ret = -LTTNG_ERR_INVALID;
+				goto error;
+			}
 		}
 		DBG3("Consumer data URI set with port %d", uri->port);
 		break;
 	default:
 		ERR("Set network uri type unknown %d", uri->stype);
+		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -553,6 +566,7 @@ int consumer_set_network_uri(struct consumer_output *obj,
 		}
 		if (ret < 0) {
 			PERROR("snprintf set consumer uri subdir");
+			ret = -LTTNG_ERR_NOMEM;
 			goto error;
 		}
 
@@ -564,7 +578,7 @@ int consumer_set_network_uri(struct consumer_output *obj,
 equal:
 	return 1;
 error:
-	return -1;
+	return ret;
 }
 
 /*

@@ -397,7 +397,7 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 		/* Set URI into consumer output object */
 		ret = consumer_set_network_uri(consumer, uri);
 		if (ret < 0) {
-			ret = LTTNG_ERR_FATAL;
+			ret = -ret;
 			goto error;
 		} else if (ret == 1) {
 			/*
@@ -437,6 +437,8 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 		consumer->type = CONSUMER_DST_LOCAL;
 		break;
 	}
+
+	ret = LTTNG_OK;
 
 error:
 	return ret;
@@ -1646,7 +1648,7 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 
 	for (i = 0; i < nb_uri; i++) {
 		ret = add_uri_to_consumer(consumer, &uris[i], domain, session->name);
-		if (ret < 0) {
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 	}

@@ -293,7 +293,6 @@ static int create_session(void)
 			WARN("Session %s already exists", session_name);
 			break;
 		default:
-			ERR("%s", lttng_strerror(ret));
 			break;
 		}
 		goto error;
