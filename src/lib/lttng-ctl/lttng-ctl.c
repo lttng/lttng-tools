@@ -73,6 +73,33 @@ static int connected;
 int lttng_opt_quiet;
 int lttng_opt_verbose;
 
+/*
+ * Compare two URL destination.
+ *
+ * Return 0 is equal else is not equal.
+ */
+static int compare_destination(struct lttng_uri *ctrl, struct lttng_uri *data)
+{
+	int ret;
+
+	assert(ctrl);
+	assert(data);
+
+	switch (ctrl->dtype) {
+	case LTTNG_DST_IPV4:
+		ret = strncmp(ctrl->dst.ipv4, data->dst.ipv4, sizeof(ctrl->dst.ipv4));
+		break;
+	case LTTNG_DST_IPV6:
+		ret = strncmp(ctrl->dst.ipv6, data->dst.ipv6, sizeof(ctrl->dst.ipv6));
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
 static void set_default_url_attr(struct lttng_uri *uri,
 		enum lttng_stream_type stype)
 {
@@ -158,6 +185,8 @@ static ssize_t parse_str_urls_to_uri(const char *ctrl_url, const char *data_url,
 	}
 
 	if (data_url) {
+		int ret;
+
 		/* We have to parse the data URL in this case */
 		size_data = uri_parse(data_url, &data_uris);
 		if (size_data < 1) {
@@ -169,6 +198,12 @@ static ssize_t parse_str_urls_to_uri(const char *ctrl_url, const char *data_url,
 		}
 
 		set_default_url_attr(&data_uris[0], LTTNG_STREAM_DATA);
+
+		ret = compare_destination(&ctrl_uris[0], &data_uris[0]);
+		if (ret != 0) {
+			ERR("Control and data destination mismatch");
+			goto error;
+		}
 	}
 
 	/* Compute total size */

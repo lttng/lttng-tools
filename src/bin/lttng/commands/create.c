@@ -253,7 +253,7 @@ static int create_session(void)
 	} else if (opt_url) { /* Handling URL (-U opt) */
 		url = opt_url;
 		print_str_url = url;
-	} else if (opt_ctrl_url == NULL && opt_data_url == NULL) {
+	} else {
 		/* Auto output path */
 		alloc_path = config_get_default_path();
 		if (alloc_path == NULL) {
@@ -274,10 +274,16 @@ static int create_session(void)
 		}
 
 		url = alloc_url;
-		print_str_url = alloc_url + strlen("file://");
+		if (!opt_data_url && !opt_ctrl_url) {
+			print_str_url = alloc_url + strlen("file://");
+		}
 	}
 
-	assert(url);
+	if ((!opt_ctrl_url && opt_data_url) || (opt_ctrl_url && !opt_data_url)) {
+		ERR("You need both control and data URL.");
+		ret = CMD_ERROR;
+		goto error;
+	}
 
 	ret = _lttng_create_session_ext(session_name, url, datetime);
 	if (ret < 0) {
@@ -293,22 +299,19 @@ static int create_session(void)
 		goto error;
 	}
 
-	MSG("Session %s created.", session_name);
-	if (print_str_url) {
-		MSG("Traces will be written in %s", print_str_url);
-	}
-
 	if (opt_ctrl_url && opt_data_url) {
 		/* Setting up control URI (-C or/and -D opt) */
 		ret = set_consumer_url(session_name, opt_ctrl_url, opt_data_url);
 		if (ret < 0) {
+			/* Destroy created session because the URL are not valid. */
+			lttng_destroy_session(session_name);
 			goto error;
 		}
-	} else if ((!opt_ctrl_url && opt_data_url) ||
-			(opt_ctrl_url && !opt_data_url)) {
-		ERR("You need both control and data URL.");
-		ret = CMD_ERROR;
-		goto error;
+	}
+
+	MSG("Session %s created.", session_name);
+	if (print_str_url) {
+		MSG("Traces will be written in %s", print_str_url);
 	}
 
 	/* Init lttng session config */
@@ -317,7 +320,6 @@ static int create_session(void)
 		ret = CMD_ERROR;
 		goto error;
 	}
-
 
 	ret = CMD_SUCCESS;
 
