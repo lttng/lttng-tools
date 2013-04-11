@@ -1920,6 +1920,7 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 
 	if (session->ust_session != NULL) {
 		(*domains)[index].type = LTTNG_DOMAIN_UST;
+		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
 	}
 

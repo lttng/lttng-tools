@@ -179,11 +179,21 @@ static int enable_channel(char *session_name)
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
 		dom.buf_type = LTTNG_BUFFER_GLOBAL;
+		if (opt_buffer_uid || opt_buffer_pid) {
+			ERR("Buffer type not supported for domain -k");
+			ret = CMD_ERROR;
+			goto error;
+		}
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 		if (opt_buffer_uid) {
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
 		} else {
+			if (opt_buffer_global) {
+				ERR("Buffer type not supported for domain -u");
+				ret = CMD_ERROR;
+				goto error;
+			}
 			dom.buf_type = LTTNG_BUFFER_PER_PID;
 		}
 	} else {
@@ -238,7 +248,7 @@ static int enable_channel(char *session_name)
 			switch (-ret) {
 			case LTTNG_ERR_KERN_CHAN_EXIST:
 			case LTTNG_ERR_UST_CHAN_EXIST:
-				WARN("Channel %s: %s (session %s", channel_name,
+				WARN("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
 				goto error;
 			default:
