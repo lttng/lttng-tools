@@ -380,15 +380,19 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 	case LTTNG_DST_IPV6:
 		DBG2("Setting network URI to consumer");
 
-		consumer->type = CONSUMER_DST_NET;
-
-		if ((uri->stype == LTTNG_STREAM_CONTROL &&
+		if (consumer->type == CONSUMER_DST_NET) {
+			if ((uri->stype == LTTNG_STREAM_CONTROL &&
 				consumer->dst.net.control_isset) ||
 				(uri->stype == LTTNG_STREAM_DATA &&
 				consumer->dst.net.data_isset)) {
-			ret = LTTNG_ERR_URL_EXIST;
-			goto error;
+				ret = LTTNG_ERR_URL_EXIST;
+				goto error;
+			}
+		} else {
+			memset(&consumer->dst.net, 0, sizeof(consumer->dst.net));
 		}
+
+		consumer->type = CONSUMER_DST_NET;
 
 		/* Set URI into consumer output object */
 		ret = consumer_set_network_uri(consumer, uri);
