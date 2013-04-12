@@ -1389,8 +1389,8 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
-		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+		attr->switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
+		attr->read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
 
 		attr->subbuf_size = default_get_kernel_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
@@ -1399,14 +1399,9 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->tracefile_count = DEFAULT_KERNEL_CHANNEL_TRACEFILE_COUNT;
 		break;
 	case LTTNG_DOMAIN_UST:
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
 		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
-		attr->switch_timer_interval = DEFAULT_CHANNEL_SWITCH_TIMER;
-		attr->read_timer_interval = DEFAULT_CHANNEL_READ_TIMER;
+		attr->switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
+		attr->read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
 
 		attr->subbuf_size = default_get_ust_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
