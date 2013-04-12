@@ -112,8 +112,8 @@ static void usage(FILE *ofp)
         fprintf(ofp, "                               kernel and ust tracers\n");
 	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec (default: %u)\n",
 		DEFAULT_CHANNEL_SWITCH_TIMER);
-	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (default: %u)\n",
-		DEFAULT_CHANNEL_READ_TIMER);
+	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (UST default: %u, kernel default: %u)\n",
+		DEFAULT_UST_CHANNEL_READ_TIMER, DEFAULT_KERNEL_CHANNEL_READ_TIMER);
 	fprintf(ofp, "      --output TYPE        Channel output type (Values: %s, %s)\n",
 			output_mmap, output_splice);
 	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
