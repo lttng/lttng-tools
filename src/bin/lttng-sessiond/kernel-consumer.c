@@ -54,7 +54,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	/* Get the right path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s",
 				consumer->dst.trace_path, consumer->subdir);
 		if (ret < 0) {
 			PERROR("snprintf metadata path");
@@ -136,7 +136,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	/* Get the right path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s",
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s",
 				consumer->dst.trace_path, consumer->subdir);
 		if (ret < 0) {
 			PERROR("snprintf metadata path");

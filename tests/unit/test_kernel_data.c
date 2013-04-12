@@ -30,9 +30,6 @@
 
 #include <tap/tap.h>
 
-/* This path will NEVER be created in this test */
-#define PATH1 "/tmp/.test-junk-lttng"
-
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
@@ -72,7 +69,7 @@ static char *get_random_string(void)
 
 static void test_create_one_kernel_session(void)
 {
-	kern = trace_kernel_create_session(PATH1);
+	kern = trace_kernel_create_session();
 	ok(kern != NULL, "Create kernel session");
 
 	ok(kern->fd == -1 &&

@@ -94,7 +94,6 @@ struct ltt_kernel_session {
 	int consumer_fds_sent;
 	unsigned int channel_count;
 	unsigned int stream_count_global;
-	char *trace_path;
 	struct ltt_kernel_metadata *metadata;
 	struct ltt_kernel_channel_list channel_list;
 	/* UID/GID of the user owning the session */
@@ -125,7 +124,7 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_kernel_session *trace_kernel_create_session(char *path);
+struct ltt_kernel_session *trace_kernel_create_session(void);
 struct ltt_kernel_channel *trace_kernel_create_channel(
 		struct lttng_channel *chan);
 struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev);

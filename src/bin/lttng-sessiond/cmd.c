@@ -1667,7 +1667,6 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 		size_t nb_uri, lttng_sock_cred *creds)
 {
 	int ret;
-	char *path = NULL;
 	struct ltt_session *session;
 
 	assert(name);
@@ -1692,7 +1691,7 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	}
 
 	/* Create tracing session in the registry */
-	ret = session_create(name, path, LTTNG_SOCK_GET_UID_CRED(creds),
+	ret = session_create(name, LTTNG_SOCK_GET_UID_CRED(creds),
 			LTTNG_SOCK_GET_GID_CRED(creds));
 	if (ret != LTTNG_OK) {
 		goto session_error;
@@ -2066,9 +2065,9 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 				(ksess && ksess->consumer->type == CONSUMER_DST_NET) ||
 				(usess && usess->consumer->type == CONSUMER_DST_NET)) {
 			ret = build_network_session_path(sessions[i].path,
-					sizeof(session[i].path), session);
+					sizeof(sessions[i].path), session);
 		} else {
-			ret = snprintf(sessions[i].path, sizeof(session[i].path), "%s",
+			ret = snprintf(sessions[i].path, sizeof(sessions[i].path), "%s",
 					session->consumer->dst.trace_path);
 		}
 		if (ret < 0) {

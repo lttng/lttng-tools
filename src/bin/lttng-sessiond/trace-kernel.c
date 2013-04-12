@@ -77,7 +77,7 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_session *trace_kernel_create_session(char *path)
+struct ltt_kernel_session *trace_kernel_create_session(void)
 {
 	struct ltt_kernel_session *lks = NULL;
 
@@ -108,25 +108,6 @@ struct ltt_kernel_session *trace_kernel_create_session(char *path)
 	 * the struct.
 	 */
 	lks->tmp_consumer = NULL;
-
-	if (*path != '\0') {
-		int ret;
-
-		/* Use the default consumer output which is the tracing session path. */
-		ret = snprintf(lks->consumer->dst.trace_path, PATH_MAX,
-				"%s" DEFAULT_KERNEL_TRACE_DIR, path);
-		if (ret < 0) {
-			PERROR("snprintf consumer trace path");
-			goto error;
-		}
-
-		/* Set session path */
-		ret = asprintf(&lks->trace_path, "%s" DEFAULT_KERNEL_TRACE_DIR, path);
-		if (ret < 0) {
-			PERROR("asprintf kernel traces path");
-			goto error;
-		}
-	}
 
 	return lks;
 
@@ -477,6 +458,5 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	consumer_destroy_output(session->consumer);
 	consumer_destroy_output(session->tmp_consumer);
 
-	free(session->trace_path);
 	free(session);
 }

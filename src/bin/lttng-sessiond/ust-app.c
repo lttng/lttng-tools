@@ -1381,7 +1381,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 		ret = snprintf(ua_sess->path, sizeof(ua_sess->path),
-				DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s/", app->name, app->pid,
+				DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s", app->name, app->pid,
 				datetime);
 		break;
 	case LTTNG_BUFFER_PER_UID:

@@ -35,14 +35,11 @@
 
 #define SESSION1 "test1"
 
-/* This path will NEVER be created in this test */
-#define PATH1 "/tmp/.test-junk-lttng"
-
 #define MAX_SESSIONS 10000
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 12
+#define NUM_TESTS 11
 
 static struct ltt_session_list *session_list;
 
@@ -122,11 +119,11 @@ static void empty_session_list(void)
 /*
  * Test creation of 1 session
  */
-static int create_one_session(char *name, char *path)
+static int create_one_session(char *name)
 {
 	int ret;
 
-	ret = session_create(name, path, geteuid(), getegid());
+	ret = session_create(name, geteuid(), getegid());
 	if (ret == LTTNG_OK) {
 		/* Validate */
 		ret = find_session_name(name);
@@ -184,7 +181,7 @@ static int two_session_same_name(void)
 	int ret;
 	struct ltt_session *sess;
 
-	ret = create_one_session(SESSION1, PATH1);
+	ret = create_one_session(SESSION1);
 	if (ret < 0) {
 		/* Fail */
 		return -1;
@@ -208,7 +205,7 @@ void test_session_list(void)
 
 void test_create_one_session(void)
 {
-	ok(create_one_session(SESSION1, PATH1) == 0,
+	ok(create_one_session(SESSION1) == 0,
 	   "Create session: %s",
 	   SESSION1);
 }
@@ -223,7 +220,6 @@ void test_validate_session(void)
 	   "Validating session: session found");
 
 	ok(tmp->kernel_session == NULL &&
-	   strlen(tmp->path) &&
 	   strlen(tmp->name),
 	   "Validating session: basic sanity check");
 
@@ -253,12 +249,8 @@ void test_duplicate_session(void)
 
 void test_bogus_session_param(void)
 {
-	ok(create_one_session(NULL, NULL) < 0,
-	   "Create session with bogus param: NULL, NULL should fail");
-
-	ok(create_one_session(NULL, PATH1) < 0,
-	   "Create session with bogus param: NULL, %s should fail",
-	   PATH1);
+	ok(create_one_session(NULL) < 0,
+	   "Create session with bogus param: NULL should fail");
 
 	ok(session_list_count() == 0,
 	   "Create session with bogus param: session list empty");
@@ -271,7 +263,7 @@ void test_large_session_number(void)
 
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		char *tmp_name = get_random_string();
-		ret = create_one_session(tmp_name, PATH1);
+		ret = create_one_session(tmp_name);
 		if (ret < 0) {
 			diag("session %d (name: %s) creation failed", i, tmp_name);
 			++failed;

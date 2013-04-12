@@ -56,7 +56,6 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	char name[NAME_MAX];
-	char path[PATH_MAX];
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
 	/*
@@ -89,7 +88,7 @@ struct ltt_session {
 };
 
 /* Prototypes */
-int session_create(char *name, char *path, uid_t uid, gid_t gid);
+int session_create(char *name, uid_t uid, gid_t gid);
 int session_destroy(struct ltt_session *session);
 
 void session_lock(struct ltt_session *session);

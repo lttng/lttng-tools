@@ -293,7 +293,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	}
 
 	/* Create UST channel */
-	uchan = trace_ust_create_channel(attr, usess->pathname);
+	uchan = trace_ust_create_channel(attr);
 	if (uchan == NULL) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;

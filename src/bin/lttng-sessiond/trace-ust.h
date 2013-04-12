@@ -54,7 +54,6 @@ struct ltt_ust_channel {
 	uint64_t id;	/* unique id per session. */
 	unsigned int enabled;
 	char name[LTTNG_UST_SYM_NAME_LEN];
-	char pathname[PATH_MAX];
 	struct lttng_ust_channel_attr attr;
 	struct lttng_ht *ctx;
 	struct lttng_ht *events;
@@ -82,7 +81,6 @@ struct ltt_ust_domain_global {
 struct ltt_ust_session {
 	int id;    /* Unique identifier of session */
 	int start_trace;
-	char pathname[PATH_MAX];
 	struct ltt_ust_domain_global domain_global;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
@@ -155,10 +153,8 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path,
-		unsigned int session_id);
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
-		char *path);
+struct ltt_ust_session *trace_ust_create_session(unsigned int session_id);
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		struct lttng_filter_bytecode *filter);
 struct ltt_ust_metadata *trace_ust_create_metadata(char *path);
@@ -194,14 +190,12 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 }
 
 static inline
-struct ltt_ust_session *trace_ust_create_session(char *path,
-		unsigned int session_id)
+struct ltt_ust_session *trace_ust_create_session(unsigned int session_id)
 {
 	return NULL;
 }
 static inline
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
-		char *path)
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr)
 {
 	return NULL;
 }

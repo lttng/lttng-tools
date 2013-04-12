@@ -80,7 +80,7 @@ static void test_create_one_ust_session(void)
 {
 	dom.type = LTTNG_DOMAIN_UST;
 
-	usess = trace_ust_create_session(PATH1, 42);
+	usess = trace_ust_create_session(42);
 	ok(usess != NULL, "Create UST session");
 
 	ok(usess->id == 42 &&
@@ -129,7 +129,7 @@ static void test_create_ust_channel(void)
 
 	strncpy(attr.name, "channel0", 8);
 
-	uchan = trace_ust_create_channel(&attr, PATH1);
+	uchan = trace_ust_create_channel(&attr);
 	ok(uchan != NULL, "Create UST channel");
 
 	ok(uchan->enabled == 0 &&

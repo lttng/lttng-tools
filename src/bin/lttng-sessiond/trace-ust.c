@@ -180,8 +180,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(char *path,
-		unsigned int session_id)
+struct ltt_ust_session *trace_ust_create_session(unsigned int session_id)
 {
 	struct ltt_ust_session *lus;
 
@@ -224,24 +223,10 @@ struct ltt_ust_session *trace_ust_create_session(char *path,
 	 */
 	lus->tmp_consumer = NULL;
 
-	/* Use the default consumer output which is the tracing session path. */
-	if (*path != '\0') {
-		int ret;
-
-		ret = snprintf(lus->consumer->dst.trace_path, PATH_MAX,
-				"%s" DEFAULT_UST_TRACE_DIR, path);
-		if (ret < 0) {
-			PERROR("snprintf UST consumer trace path");
-			goto error_path;
-		}
-	}
-
 	DBG2("UST trace session create successful");
 
 	return lus;
 
-error_path:
-	consumer_destroy_output(lus->consumer);
 error_consumer:
 	lttng_ht_destroy(lus->domain_global.channels);
 	free(lus);
@@ -254,13 +239,11 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
-		char *path)
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
 {
 	struct ltt_ust_channel *luc;
 
 	assert(chan);
-	assert(path);
 
 	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {

@@ -168,7 +168,7 @@ int session_destroy(struct ltt_session *session)
 /*
  * Create a brand new session and add it to the session list.
  */
-int session_create(char *name, char *path, uid_t uid, gid_t gid)
+int session_create(char *name, uid_t uid, gid_t gid)
 {
 	int ret;
 	struct ltt_session *new_session;
@@ -193,14 +193,6 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 		goto error;
 	}
 
-	/* Define session system path */
-	if (path != NULL) {
-		if (snprintf(new_session->path, PATH_MAX, "%s", path) < 0) {
-			ret = LTTNG_ERR_FATAL;
-			goto error_asprintf;
-		}
-	}
-
 	/* Init kernel session */
 	new_session->kernel_session = NULL;
 	new_session->ust_session = NULL;
@@ -210,19 +202,6 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 
 	new_session->uid = uid;
 	new_session->gid = gid;
-
-	/* Mkdir if we have a valid path and length */
-	if (strlen(new_session->path) > 0) {
-		ret = run_as_mkdir_recursive(new_session->path, S_IRWXU | S_IRWXG,
-				new_session->uid, new_session->gid);
-		if (ret < 0) {
-			if (ret != -EEXIST) {
-				ERR("Trace directory creation error");
-				ret = LTTNG_ERR_CREATE_DIR_FAIL;
-				goto error;
-			}
-		}
-	}
 
 	/* Add new session to the session list */
 	session_lock_list();
@@ -234,8 +213,8 @@ int session_create(char *name, char *path, uid_t uid, gid_t gid)
 	 * up and, if valid, assign it to the session.
 	 */
 
-	DBG("Tracing session %s created in %s with ID %u by UID %d GID %d", name,
-			path, new_session->id, new_session->uid, new_session->gid);
+	DBG("Tracing session %s created with ID %u by UID %d GID %d", name,
+			new_session->id, new_session->uid, new_session->gid);
 
 	return LTTNG_OK;
 
