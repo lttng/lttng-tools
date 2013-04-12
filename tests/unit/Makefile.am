@@ -14,10 +14,11 @@ LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 
+# Define test programs
+noinst_PROGRAMS = test_uri test_session	test_kernel_data test_utils_parse_size_suffix
+
 if HAVE_LIBLTTNG_UST_CTL
-noinst_PROGRAMS = test_uri test_session test_ust_data test_kernel_data
-else
-noinst_PROGRAMS = test_uri test_session	test_kernel_data
+noinst_PROGRAMS += test_ust_data
 endif
 
 # URI unit tests
@@ -69,3 +70,11 @@ test_kernel_data_SOURCES = test_kernel_data.c
 test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
 						 -lrt
 test_kernel_data_LDADD += $(KERN_DATA_TRACE)
+
+# parse_size_suffix unit test
+UTILS_PARSE_SIZE_SUFFIX=$(top_srcdir)/src/common/utils.o \
+		$(top_srcdir)/src/common/runas.o
+
+test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
+test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+test_utils_parse_size_suffix_LDADD += $(UTILS_PARSE_SIZE_SUFFIX)

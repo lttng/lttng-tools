@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <regex.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -392,5 +393,128 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 	return utils_create_stream_file(path_name, file_name, size, *new_count,
 			uid, gid);
 error:
+	return ret;
+}
+
+/**
+ * Prints the error message corresponding to a regex error code.
+ *
+ * @param errcode	The error code.
+ * @param regex		The regex object that produced the error code.
+ */
+static void regex_print_error(int errcode, regex_t *regex)
+{
+	/* Get length of error message and allocate accordingly */
+	size_t length;
+	char *buffer;
+
+	assert(regex != NULL);
+
+	length = regerror(errcode, regex, NULL, 0);
+	if (length == 0) {
+		ERR("regerror returned a length of 0");
+		return;
+	}
+
+	buffer = zmalloc(length);
+	if (!buffer) {
+		ERR("regex_print_error: zmalloc failed");
+		return;
+	}
+
+	/* Get and print error message */
+	regerror(errcode, regex, buffer, length);
+	ERR("regex error: %s\n", buffer);
+	free(buffer);
+
+}
+
+/**
+ * Parse a string that represents a size in human readable format. It
+ * supports decimal integers suffixed by 'k', 'M' or 'G'.
+ *
+ * The suffix multiply the integer by:
+ * 'k': 1024
+ * 'M': 1024^2
+ * 'G': 1024^3
+ *
+ * @param str	The string to parse.
+ * @param size	Pointer to a size_t that will be filled with the
+ * 	  	resulting size.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+int utils_parse_size_suffix(char *str, uint64_t *size)
+{
+	regex_t regex;
+	int ret;
+	const int nmatch = 3;
+	regmatch_t suffix_match, matches[nmatch];
+	unsigned long long base_size;
+	long shift = 0;
+
+	if (!str) {
+		return 0;
+	}
+
+	/* Compile regex */
+	ret = regcomp(&regex, "^\\(0x\\)\\{0,1\\}[0-9][0-9]*\\([kKMG]\\{0,1\\}\\)$", 0);
+	if (ret != 0) {
+		regex_print_error(ret, &regex);
+		ret = -1;
+		goto end;
+	}
+
+	/* Match regex */
+	ret = regexec(&regex, str, nmatch, matches, 0);
+	if (ret != 0) {
+		ret = -1;
+		goto free;
+	}
+
+	/* There is a match ! */
+	errno = 0;
+	base_size = strtoull(str, NULL, 0);
+	if (errno != 0) {
+		PERROR("strtoull");
+		ret = -1;
+		goto free;
+	}
+
+	/* Check if there is a suffix */
+	suffix_match = matches[2];
+	if (suffix_match.rm_eo - suffix_match.rm_so == 1) {
+		switch (*(str + suffix_match.rm_so)) {
+		case 'K':
+		case 'k':
+			shift = KIBI_LOG2;
+			break;
+		case 'M':
+			shift = MEBI_LOG2;
+			break;
+		case 'G':
+			shift = GIBI_LOG2;
+			break;
+		default:
+			ERR("parse_human_size: invalid suffix");
+			ret = -1;
+			goto free;
+		}
+	}
+
+	*size = base_size << shift;
+
+	/* Check for overflow */
+	if ((*size >> shift) != base_size) {
+		ERR("parse_size_suffix: oops, overflow detected.");
+		ret = -1;
+		goto free;
+	}
+
+	ret = 0;
+
+free:
+	regfree(&regex);
+end:
 	return ret;
 }

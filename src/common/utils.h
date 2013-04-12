@@ -18,6 +18,14 @@
 #ifndef _COMMON_UTILS_H
 #define _COMMON_UTILS_H
 
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdint.h>
+
+#define KIBI_LOG2 10
+#define MEBI_LOG2 20
+#define GIBI_LOG2 30
+
 char *utils_expand_path(const char *path);
 int utils_create_pipe(int *dst);
 int utils_create_pipe_cloexec(int *dst);
@@ -30,5 +38,6 @@ int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid);
 int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count);
+int utils_parse_size_suffix(char *str, uint64_t *size);
 
 #endif /* _COMMON_UTILS_H */

@@ -28,6 +28,7 @@
 #include "../command.h"
 
 #include <src/common/sessiond-comm/sessiond-comm.h>
+#include <src/common/utils.h>
 
 static char *opt_channels;
 static int opt_kernel;
@@ -66,7 +67,7 @@ static struct poptOption long_options[] = {
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"discard",        0,   POPT_ARG_NONE, 0, OPT_DISCARD, 0, 0},
 	{"overwrite",      0,   POPT_ARG_NONE, 0, OPT_OVERWRITE, 0, 0},
-	{"subbuf-size",    0,   POPT_ARG_DOUBLE, 0, OPT_SUBBUF_SIZE, 0, 0},
+	{"subbuf-size",    0,   POPT_ARG_STRING, 0, OPT_SUBBUF_SIZE, 0, 0},
 	{"num-subbuf",     0,   POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0},
 	{"switch-timer",   0,   POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0},
 	{"read-timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
@@ -99,7 +100,7 @@ static void usage(FILE *ofp)
 		DEFAULT_CHANNEL_OVERWRITE ? "" : " (default)");
 	fprintf(ofp, "      --overwrite          Flight recorder mode%s\n",
 		DEFAULT_CHANNEL_OVERWRITE ? " (default)" : "");
-	fprintf(ofp, "      --subbuf-size SIZE   Subbuffer size in bytes\n");
+	fprintf(ofp, "      --subbuf-size SIZE   Subbuffer size in bytes {+k,+M,+G}\n");
 	fprintf(ofp, "                               (default: %zu, kernel default: %zu)\n",
 		default_get_channel_subbuf_size(),
 		default_get_kernel_channel_subbuf_size());
@@ -299,6 +300,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
+	char *opt_arg = NULL;
 
 	init_channel_config();
 
@@ -319,8 +321,22 @@ int cmd_enable_channels(int argc, const char **argv)
 			DBG("Channel set to overwrite");
 			break;
 		case OPT_SUBBUF_SIZE:
-			/* TODO Replace atol with strtol and check for errors */
-			chan.attr.subbuf_size = atol(poptGetOptArg(pc));
+			/* Parse the size */
+			opt_arg = poptGetOptArg(pc);
+			if (utils_parse_size_suffix(opt_arg, &chan.attr.subbuf_size) < 0) {
+				ERR("Wrong value the --subbuf-size parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+
+			/* Check if power of 2 */
+			if ((chan.attr.subbuf_size - 1) & chan.attr.subbuf_size) {
+				ERR("The subbuf size is not a power of 2: %" PRIu64 " (%s)",
+						chan.attr.subbuf_size, opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+
 			DBG("Channel subbuf size set to %" PRIu64, chan.attr.subbuf_size);
 			break;
 		case OPT_NUM_SUBBUF:
