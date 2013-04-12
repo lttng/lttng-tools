@@ -2494,6 +2494,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_START_TRACE:
 	case LTTNG_STOP_TRACE:
 	case LTTNG_DATA_PENDING:
+	case LTTNG_SNAPSHOT_ADD_OUTPUT:
+	case LTTNG_SNAPSHOT_DEL_OUTPUT:
+	case LTTNG_SNAPSHOT_LIST_OUTPUT:
+	case LTTNG_SNAPSHOT_RECORD:
 		need_domain = 0;
 		break;
 	default:
@@ -3174,6 +3178,26 @@ skip_domain:
 	case LTTNG_DATA_PENDING:
 	{
 		ret = cmd_data_pending(cmd_ctx->session);
+		break;
+	}
+	case LTTNG_SNAPSHOT_ADD_OUTPUT:
+	{
+		ret = LTTNG_ERR_UND;
+		break;
+	}
+	case LTTNG_SNAPSHOT_DEL_OUTPUT:
+	{
+		ret = LTTNG_ERR_UND;
+		break;
+	}
+	case LTTNG_SNAPSHOT_LIST_OUTPUT:
+	{
+		ret = LTTNG_ERR_UND;
+		break;
+	}
+	case LTTNG_SNAPSHOT_RECORD:
+	{
+		ret = LTTNG_ERR_UND;
 		break;
 	}
 	default:

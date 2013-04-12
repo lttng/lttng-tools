@@ -28,6 +28,7 @@
 #define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
+#include <lttng/snapshot-internal.h>
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
@@ -82,6 +83,10 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_EVENT_WITH_FILTER      = 22,
 	LTTNG_HEALTH_CHECK                  = 23,
 	LTTNG_DATA_PENDING                  = 24,
+	LTTNG_SNAPSHOT_ADD_OUTPUT           = 25,
+	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
+	LTTNG_SNAPSHOT_LIST_OUTPUT          = 27,
+	LTTNG_SNAPSHOT_RECORD               = 28,
 };
 
 enum lttcomm_relayd_command {
@@ -240,6 +245,13 @@ struct lttcomm_session_msg {
 			/* Number of lttng_uri following */
 			uint32_t size;
 		} LTTNG_PACKED uri;
+		struct {
+			struct lttng_snapshot_output output;
+		} LTTNG_PACKED snapshot_output;
+		struct {
+			uint32_t wait;
+			struct lttng_snapshot_output output;
+		} LTTNG_PACKED snapshot_record;
 	} u;
 } LTTNG_PACKED;
 
@@ -269,6 +281,10 @@ struct lttcomm_lttng_msg {
 	uint32_t data_size;
 	/* Contains: trace_name + data */
 	char payload[];
+} LTTNG_PACKED;
+
+struct lttcomm_lttng_output_id {
+	uint32_t id;
 } LTTNG_PACKED;
 
 struct lttcomm_health_msg {

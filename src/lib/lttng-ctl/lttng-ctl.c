@@ -340,6 +340,11 @@ static int connect_sessiond(void)
 {
 	int ret;
 
+	/* Don't try to connect if already connected. */
+	if (connected) {
+		return 0;
+	}
+
 	ret = set_session_daemon_path();
 	if (ret < 0) {
 		goto error;

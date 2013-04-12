@@ -204,6 +204,8 @@
 
 #define DEFAULT_UST_STREAM_FD_NUM			2 /* Number of fd per UST stream. */
 
+#define DEFAULT_SNAPSHOT_NAME				"snapshot"
+
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
 extern size_t default_ust_pid_channel_subbuf_size;
