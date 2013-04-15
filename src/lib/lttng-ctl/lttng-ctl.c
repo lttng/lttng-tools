@@ -39,6 +39,7 @@
 #include "filter/filter-parser.h"
 #include "filter/filter-bytecode.h"
 #include "filter/memstream.h"
+#include "lttng-ctl-helper.h"
 
 #ifdef DEBUG
 static const int print_xml = 1;
@@ -243,7 +244,8 @@ parse_error:
 /*
  * Copy string from src to dst and enforce null terminated byte.
  */
-static void copy_string(char *dst, const char *src, size_t len)
+LTTNG_HIDDEN
+void lttng_ctl_copy_string(char *dst, const char *src, size_t len)
 {
 	if (src && dst) {
 		strncpy(dst, src, len);
@@ -259,17 +261,14 @@ static void copy_string(char *dst, const char *src, size_t len)
  *
  * If domain is unknown, default domain will be the kernel.
  */
-static void copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src)
+LTTNG_HIDDEN
+void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
+		struct lttng_domain *src)
 {
 	if (src && dst) {
 		switch (src->type) {
 		case LTTNG_DOMAIN_KERNEL:
 		case LTTNG_DOMAIN_UST:
-		/*
-		case LTTNG_DOMAIN_UST_EXEC_NAME:
-		case LTTNG_DOMAIN_UST_PID:
-		case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-		*/
 			memcpy(dst, src, sizeof(struct lttng_domain));
 			break;
 		default:
@@ -464,8 +463,8 @@ static int set_session_daemon_path(void)
 	}
 
 	if ((uid == 0) || in_tgroup) {
-		copy_string(sessiond_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				sizeof(sessiond_sock_path));
+		lttng_ctl_copy_string(sessiond_sock_path,
+				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK, sizeof(sessiond_sock_path));
 	}
 
 	if (uid != 0) {
@@ -550,7 +549,8 @@ static int disconnect_sessiond(void)
  *
  * Return size of data (only payload, not header) or a negative error code.
  */
-static int ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
+LTTNG_HIDDEN
+int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 		void *vardata, size_t varlen, void **buf)
 {
 	int ret;
@@ -628,16 +628,6 @@ end:
 }
 
 /*
- * Ask the session daemon a specific command and put the data into buf.
- *
- * Return size of data (only payload, not header) or a negative error code.
- */
-static int ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
-{
-	return ask_sessiond_varlen(lsm, NULL, 0, buf);
-}
-
-/*
  * Create lttng handle and return pointer.
  * The returned pointer will be NULL in case of malloc() error.
  */
@@ -657,11 +647,11 @@ struct lttng_handle *lttng_create_handle(const char *session_name,
 	}
 
 	/* Copy session name */
-	copy_string(handle->session_name, session_name,
+	lttng_ctl_copy_string(handle->session_name, session_name,
 			sizeof(handle->session_name));
 
 	/* Copy lttng domain */
-	copy_lttng_domain(&handle->domain, domain);
+	lttng_ctl_copy_lttng_domain(&handle->domain, domain);
 
 end:
 	return handle;
@@ -689,13 +679,13 @@ int lttng_register_consumer(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_REGISTER_CONSUMER;
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	copy_string(lsm.u.reg.path, socket_path, sizeof(lsm.u.reg.path));
+	lttng_ctl_copy_string(lsm.u.reg.path, socket_path, sizeof(lsm.u.reg.path));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -712,9 +702,10 @@ int lttng_start_tracing(const char *session_name)
 
 	lsm.cmd_type = LTTNG_START_TRACE;
 
-	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -731,9 +722,10 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 
 	lsm.cmd_type = LTTNG_STOP_TRACE;
 
-	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
 
-	ret = ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
 		goto error;
 	}
@@ -810,17 +802,17 @@ int lttng_add_context(struct lttng_handle *handle,
 	lsm.cmd_type = LTTNG_ADD_CONTEXT;
 
 	/* Copy channel name */
-	copy_string(lsm.u.context.channel_name, channel_name,
+	lttng_ctl_copy_string(lsm.u.context.channel_name, channel_name,
 			sizeof(lsm.u.context.channel_name));
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -842,14 +834,14 @@ int lttng_enable_event(struct lttng_handle *handle,
 
 	/* If no channel name, we put the default name */
 	if (channel_name == NULL) {
-		copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME,
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME,
 				sizeof(lsm.u.enable.channel_name));
 	} else {
-		copy_string(lsm.u.enable.channel_name, channel_name,
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
 				sizeof(lsm.u.enable.channel_name));
 	}
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	if (ev->name[0] != '\0') {
 		lsm.cmd_type = LTTNG_ENABLE_EVENT;
@@ -858,10 +850,10 @@ int lttng_enable_event(struct lttng_handle *handle,
 	}
 	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -970,7 +962,7 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 	lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_FILTER;
 
 	/* Copy channel name */
-	copy_string(lsm.u.enable.channel_name, channel_name,
+	lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
 			sizeof(lsm.u.enable.channel_name));
 	/* Copy event name */
 	if (event) {
@@ -980,12 +972,12 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 	lsm.u.enable.bytecode_len = sizeof(ctx->bytecode->b)
 			+ bytecode_get_len(&ctx->bytecode->b);
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	ret = ask_sessiond_varlen(&lsm, &ctx->bytecode->b,
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, &ctx->bytecode->b,
 				lsm.u.enable.bytecode_len, NULL);
 
 	filter_bytecode_free(ctx);
@@ -1025,26 +1017,27 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 	memset(&lsm, 0, sizeof(lsm));
 
 	if (channel_name) {
-		copy_string(lsm.u.disable.channel_name, channel_name,
+		lttng_ctl_copy_string(lsm.u.disable.channel_name, channel_name,
 				sizeof(lsm.u.disable.channel_name));
 	} else {
-		copy_string(lsm.u.disable.channel_name, DEFAULT_CHANNEL_NAME,
+		lttng_ctl_copy_string(lsm.u.disable.channel_name, DEFAULT_CHANNEL_NAME,
 				sizeof(lsm.u.disable.channel_name));
 	}
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	if (name != NULL) {
-		copy_string(lsm.u.disable.name, name, sizeof(lsm.u.disable.name));
+		lttng_ctl_copy_string(lsm.u.disable.name, name,
+				sizeof(lsm.u.disable.name));
 		lsm.cmd_type = LTTNG_DISABLE_EVENT;
 	} else {
 		lsm.cmd_type = LTTNG_DISABLE_ALL_EVENT;
 	}
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -1069,12 +1062,12 @@ int lttng_enable_channel(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -1094,15 +1087,15 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 
 	lsm.cmd_type = LTTNG_DISABLE_CHANNEL;
 
-	copy_string(lsm.u.disable.channel_name, name,
+	lttng_ctl_copy_string(lsm.u.disable.channel_name, name,
 			sizeof(lsm.u.disable.channel_name));
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -1122,9 +1115,9 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINTS;
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	ret = ask_sessiond(&lsm, (void **) events);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) events);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1149,9 +1142,9 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	ret = ask_sessiond(&lsm, (void **) fields);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) fields);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1187,7 +1180,7 @@ int lttng_create_session(const char *name, const char *url)
 	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
 
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
@@ -1197,8 +1190,8 @@ int lttng_create_session(const char *name, const char *url)
 
 	lsm.u.uri.size = size;
 
-	ret = ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
-			NULL);
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
 
 	free(uris);
 	return ret;
@@ -1218,9 +1211,10 @@ int lttng_destroy_session(const char *session_name)
 
 	lsm.cmd_type = LTTNG_DESTROY_SESSION;
 
-	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -1235,7 +1229,7 @@ int lttng_list_sessions(struct lttng_session **sessions)
 	struct lttcomm_session_msg lsm;
 
 	lsm.cmd_type = LTTNG_LIST_SESSIONS;
-	ret = ask_sessiond(&lsm, (void**) sessions);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void**) sessions);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1261,9 +1255,10 @@ int lttng_list_domains(const char *session_name,
 
 	lsm.cmd_type = LTTNG_LIST_DOMAINS;
 
-	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
 
-	ret = ask_sessiond(&lsm, (void**) domains);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void**) domains);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1288,12 +1283,12 @@ int lttng_list_channels(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_LIST_CHANNELS;
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	ret = ask_sessiond(&lsm, (void**) channels);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void**) channels);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1319,14 +1314,14 @@ int lttng_list_events(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_LIST_EVENTS;
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
-	copy_string(lsm.u.list.channel_name, channel_name,
+	lttng_ctl_copy_string(lsm.u.list.channel_name, channel_name,
 			sizeof(lsm.u.list.channel_name));
 
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	ret = ask_sessiond(&lsm, (void**) events);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void**) events);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1366,11 +1361,11 @@ int lttng_calibrate(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_CALIBRATE;
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	memcpy(&lsm.u.calibrate, calibrate, sizeof(lsm.u.calibrate));
 
-	return ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
 /*
@@ -1479,9 +1474,9 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_SET_CONSUMER_URI;
 
-	copy_string(lsm.session.name, handle->session_name,
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
-	copy_lttng_domain(&lsm.domain, &handle->domain);
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	size = parse_str_urls_to_uri(control_url, data_url, &uris);
 	if (size < 0) {
@@ -1490,8 +1485,8 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lsm.u.uri.size = size;
 
-	ret = ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
-			NULL);
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
 
 	free(uris);
 	return ret;
@@ -1533,8 +1528,8 @@ static int set_health_socket_path(void)
 	}
 
 	if ((uid == 0) || in_tgroup) {
-		copy_string(health_sock_path, DEFAULT_GLOBAL_HEALTH_UNIX_SOCK,
-				sizeof(health_sock_path));
+		lttng_ctl_copy_string(health_sock_path,
+				DEFAULT_GLOBAL_HEALTH_UNIX_SOCK, sizeof(health_sock_path));
 	}
 
 	if (uid != 0) {
@@ -1644,7 +1639,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
 
 	/* There should never be a data URL */
 	size = parse_str_urls_to_uri(url, NULL, &uris);
@@ -1671,8 +1666,8 @@ int _lttng_create_session_ext(const char *name, const char *url,
 		}
 	}
 
-	ret = ask_sessiond_varlen(&lsm, uris, sizeof(struct lttng_uri) * size,
-			NULL);
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
 
 error:
 	free(uris);
@@ -1695,14 +1690,16 @@ int lttng_data_pending(const char *session_name)
 
 	lsm.cmd_type = LTTNG_DATA_PENDING;
 
-	copy_string(lsm.session.name, session_name, sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
 
-	ret = ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 
 	/*
-	 * The ask_sessiond function negate the return code if it's not LTTNG_OK so
-	 * getting -1 means that the reply ret_code was 1 thus meaning that the
-	 * data is available. Yes it is hackish but for now this is the only way.
+	 * The lttng_ctl_ask_sessiond function negate the return code if it's not
+	 * LTTNG_OK so getting -1 means that the reply ret_code was 1 thus meaning
+	 * that the data is available. Yes it is hackish but for now this is the
+	 * only way.
 	 */
 	if (ret == -1) {
 		ret = 1;
