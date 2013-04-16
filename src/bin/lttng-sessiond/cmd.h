@@ -81,8 +81,18 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 ssize_t cmd_list_tracepoint_fields(int domain,
 		struct lttng_event_field **fields);
 ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events);
+ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
+		struct lttng_snapshot_output **outputs);
 
 int cmd_calibrate(int domain, struct lttng_calibrate *calibrate);
 int cmd_data_pending(struct ltt_session *session);
+
+/* Snapshot */
+int cmd_snapshot_add_output(struct ltt_session *session,
+		struct lttng_snapshot_output *output, uint32_t *id);
+int cmd_snapshot_del_output(struct ltt_session *session,
+		struct lttng_snapshot_output *output);
+int cmd_snapshot_record(struct ltt_session *session,
+		struct lttng_snapshot_output *output, int wait);
 
 #endif /* CMD_H */

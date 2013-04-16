@@ -115,7 +115,7 @@ error:
  * Sending metadata to the consumer with command ADD_CHANNEL and ADD_STREAM.
  */
 int kernel_consumer_add_metadata(struct consumer_socket *sock,
-		struct ltt_kernel_session *session)
+		struct ltt_kernel_session *session, int no_monitor)
 {
 	int ret;
 	char tmp_path[PATH_MAX];
@@ -194,6 +194,14 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			session->metadata->fd,
 			session->metadata_stream_fd,
 			0); /* CPU: 0 for metadata. */
+
+	/*
+	 * Set the no monitor flag. If set to 1, it indicates the consumer to NOT
+	 * monitor the stream but rather add it to a special list in the associated
+	 * channel. This is used to handle ephemeral stream used by the snapshot
+	 * command or store streams for the flight recorder mode.
+	 */
+	lkm.u.stream.no_monitor = no_monitor;
 
 	health_code_update();
 
@@ -323,7 +331,7 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 	DBG("Sending session stream to kernel consumer");
 
 	if (session->metadata_stream_fd >= 0) {
-		ret = kernel_consumer_add_metadata(sock, session);
+		ret = kernel_consumer_add_metadata(sock, session, 0);
 		if (ret < 0) {
 			goto error;
 		}

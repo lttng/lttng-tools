@@ -317,6 +317,13 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 		}
 
+		if (msg.u.stream.no_monitor) {
+			DBG("Kernel consumer add stream %s in no monitor mode with"
+					"relayd id %" PRIu64, new_stream->name,
+					new_stream->relayd_stream_id);
+			break;
+		}
+
 		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
 			stream_pipe = ctx->consumer_metadata_pipe;
@@ -398,6 +405,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * No need to send back a status message since the data pending
 		 * returned value is the response.
 		 */
+		break;
+	}
+	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
+	{
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
 		break;
 	}
 	default:

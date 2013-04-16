@@ -30,6 +30,7 @@
 
 #include "consumer.h"
 #include "kernel.h"
+#include "kernel-consumer.h"
 #include "kern-modules.h"
 
 /*
@@ -787,4 +788,105 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
 	if (ksess) {
 		ksess->channel_count--;
 	}
+}
+
+/*
+ * Take a snapshot for a given kernel session.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int kernel_snapshot_record(struct ltt_kernel_session *ksess,
+		struct snapshot_output *output, int wait)
+{
+	int ret, saved_metadata_fd;
+	struct consumer_socket *socket;
+	struct lttng_ht_iter iter;
+	struct ltt_kernel_metadata *saved_metadata;
+
+	assert(ksess);
+	assert(ksess->consumer);
+	assert(output);
+
+	DBG("Kernel snapshot record started");
+
+	/* Save current metadata since the following calls will change it. */
+	saved_metadata = ksess->metadata;
+	saved_metadata_fd = ksess->metadata_stream_fd;
+
+	rcu_read_lock();
+
+	ret = kernel_open_metadata(ksess);
+	if (ret < 0) {
+		ret = LTTNG_ERR_KERN_META_FAIL;
+		goto error;
+	}
+
+	ret = kernel_open_metadata_stream(ksess);
+	if (ret < 0) {
+		ret = LTTNG_ERR_KERN_META_FAIL;
+		goto error_open_stream;
+	}
+
+	/* Send metadata to consumer and snapshot everything. */
+	cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
+			socket, node.node) {
+		struct consumer_output *saved_output;
+		struct ltt_kernel_channel *chan;
+		/* Code flow error */
+		assert(socket->fd >= 0);
+
+		/*
+		 * Temporarly switch consumer output for our snapshot output. As long
+		 * as the session lock is taken, this is safe.
+		 */
+		saved_output = ksess->consumer;
+		ksess->consumer = output->consumer;
+
+		pthread_mutex_lock(socket->lock);
+		/* This stream must not be monitored by the consumer. */
+		ret = kernel_consumer_add_metadata(socket, ksess, 1);
+		ret = 0;
+		pthread_mutex_unlock(socket->lock);
+		/* Put back the savec consumer output into the session. */
+		ksess->consumer = saved_output;
+		if (ret < 0) {
+			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			goto error_consumer;
+		}
+
+		/* For each channel, ask the consumer to snapshot it. */
+		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
+					ksess->uid, ksess->gid, wait);
+			if (ret < 0) {
+				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				goto error_consumer;
+			}
+		}
+
+		/* Snapshot metadata, */
+		ret = consumer_snapshot_channel(socket, ksess->metadata->fd, output,
+				1, ksess->uid, ksess->gid, wait);
+		if (ret < 0) {
+			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			goto error_consumer;
+		}
+	}
+
+error_consumer:
+	/* Close newly opened metadata stream. It's now on the consumer side. */
+	ret = close(ksess->metadata_stream_fd);
+	if (ret < 0) {
+		PERROR("close snapshot kernel");
+	}
+
+error_open_stream:
+	trace_kernel_destroy_metadata(ksess->metadata);
+error:
+	/* Restore metadata state.*/
+	ksess->metadata = saved_metadata;
+	ksess->metadata_stream_fd = saved_metadata_fd;
+
+	rcu_read_unlock();
+	return ret;
 }

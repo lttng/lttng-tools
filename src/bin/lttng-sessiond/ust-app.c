@@ -4845,3 +4845,66 @@ void ust_app_destroy(struct ust_app *app)
 
 	call_rcu(&app->pid_n.head, delete_ust_app_rcu);
 }
+
+/*
+ * Take a snapshot for a given UST session. The snapshot is sent to the given
+ * output.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int ust_app_snapshot_record(struct ltt_ust_session *usess,
+		struct snapshot_output *output, int wait)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+
+	assert(usess);
+	assert(output);
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		struct consumer_socket *socket;
+		struct lttng_ht_iter chan_iter;
+		struct ust_app_channel *ua_chan;
+		struct ust_app_session *ua_sess;
+		struct ust_registry_session *registry;
+
+		ua_sess = lookup_session_by_app(usess, app);
+		if (!ua_sess) {
+			/* Session not associated with this app. */
+			continue;
+		}
+
+		/* Get the right consumer socket for the application. */
+		socket = consumer_find_socket_by_bitness(app->bits_per_long,
+				output->consumer);
+		if (!socket) {
+			ret = -EINVAL;
+			goto error;
+		}
+
+		cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+				ua_chan, node.node) {
+			ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
+					ua_sess->euid, ua_sess->egid, wait);
+			if (ret < 0) {
+				goto error;
+			}
+		}
+
+		registry = get_session_registry(ua_sess);
+		assert(registry);
+		ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
+				1, ua_sess->euid, ua_sess->egid, wait);
+		if (ret < 0) {
+			goto error;
+		}
+
+	}
+
+error:
+	rcu_read_unlock();
+	return ret;
+}

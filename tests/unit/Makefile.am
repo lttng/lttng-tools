@@ -30,6 +30,7 @@ SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.o	\
 	 $(top_builddir)/src/bin/lttng-sessiond/consumer.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/utils.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/health.o \
+	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
 	 $(top_builddir)/src/common/.libs/uri.o \
 	 $(top_builddir)/src/common/.libs/utils.o \
 	 $(top_builddir)/src/common/.libs/error.o
@@ -52,6 +53,7 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/fd-limit.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/health.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/session.o \
+		   $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
 		   $(top_builddir)/src/common/.libs/uri.o \
 		   $(top_builddir)/src/common/.libs/utils.o
 

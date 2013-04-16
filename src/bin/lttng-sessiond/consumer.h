@@ -22,6 +22,11 @@
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
 
+#include "snapshot.h"
+
+struct snapshot;
+struct snapshot_output;
+
 enum consumer_dst_type {
 	CONSUMER_DST_LOCAL,
 	CONSUMER_DST_NET,
@@ -48,6 +53,8 @@ struct consumer_socket {
 	unsigned int data_sock_sent;
 
 	struct lttng_ht_node_ulong node;
+
+	enum lttng_consumer_type type;
 };
 
 struct consumer_data {
@@ -156,6 +163,8 @@ void consumer_add_socket(struct consumer_socket *sock,
 void consumer_del_socket(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 void consumer_destroy_socket(struct consumer_socket *sock);
+int consumer_copy_sockets(struct consumer_output *dst,
+		struct consumer_output *src);
 
 struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
@@ -232,5 +241,10 @@ int consumer_push_metadata(struct consumer_socket *socket,
 		uint64_t metadata_key, char *metadata_str, size_t len,
 		size_t target_offset);
 int consumer_flush_channel(struct consumer_socket *socket, uint64_t key);
+
+/* Snapshot command. */
+int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
+		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
+		int wait);
 
 #endif /* _CONSUMER_H */

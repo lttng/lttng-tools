@@ -19,6 +19,7 @@
 #define _LTT_KERNEL_CTL_H
 
 #include "session.h"
+#include "snapshot.h"
 #include "trace-kernel.h"
 
 /*
@@ -53,6 +54,8 @@ int kernel_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);
 int kernel_validate_version(int tracer_fd);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
+int kernel_snapshot_record(struct ltt_kernel_session *ksess,
+		struct snapshot_output *output, int wait);
 
 int init_kernel_workarounds(void);
 

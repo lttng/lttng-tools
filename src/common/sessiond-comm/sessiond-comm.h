@@ -324,6 +324,8 @@ struct lttcomm_consumer_msg {
 			uint64_t stream_key;
 			uint64_t channel_key;
 			int32_t cpu;	/* On which CPU this stream is assigned. */
+			/* Tells the consumer if the stream should be or not monitored. */
+			uint32_t no_monitor;
 		} LTTNG_PACKED stream;	/* Only used by Kernel. */
 		struct {
 			uint64_t net_index;
@@ -379,6 +381,15 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t key;	/* Channel key. */
 		} LTTNG_PACKED flush_channel;
+		struct {
+			char pathname[PATH_MAX];
+			/* Indicate if the snapshot goes on the relayd or locally. */
+			uint32_t use_relayd;
+			uint32_t metadata;		/* This a metadata snapshot. */
+			uint64_t relayd_id;		/* Relayd id if apply. */
+			uint64_t key;
+			uint64_t max_size;
+		} LTTNG_PACKED snapshot_channel;
 	} u;
 } LTTNG_PACKED;
 

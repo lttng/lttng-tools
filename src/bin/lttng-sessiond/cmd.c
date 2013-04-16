@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <inttypes.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
 
@@ -546,7 +547,7 @@ error:
 /*
  * Connect to the relayd using URI and send the socket to the right consumer.
  */
-static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
+static int send_consumer_relayd_socket(int domain, unsigned int session_id,
 		struct lttng_uri *relayd_uri, struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock)
 {
@@ -559,11 +560,6 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 		goto error;
 	}
 	assert(rsock);
-
-	/* If the control socket is connected, network session is ready */
-	if (relayd_uri->stype == LTTNG_STREAM_CONTROL) {
-		session->net_handle = 1;
-	}
 
 	/* Set the network sequence index if not set. */
 	if (consumer->net_seq_index == (uint64_t) -1ULL) {
@@ -579,7 +575,7 @@ static int send_consumer_relayd_socket(int domain, struct ltt_session *session,
 
 	/* Send relayd socket to consumer. */
 	ret = consumer_send_relayd_socket(consumer_sock, rsock, consumer,
-			relayd_uri->stype, session->id);
+			relayd_uri->stype, session_id);
 	if (ret < 0) {
 		ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -620,18 +616,17 @@ error:
  * helper function to facilitate sending the information to the consumer for a
  * session.
  */
-static int send_consumer_relayd_sockets(int domain,
-		struct ltt_session *session, struct consumer_output *consumer,
-		struct consumer_socket *sock)
+static int send_consumer_relayd_sockets(int domain, unsigned int session_id,
+		struct consumer_output *consumer, struct consumer_socket *sock)
 {
 	int ret = LTTNG_OK;
 
-	assert(session);
 	assert(consumer);
+	assert(sock);
 
 	/* Sending control relayd socket. */
 	if (!sock->control_sock_sent) {
-		ret = send_consumer_relayd_socket(domain, session,
+		ret = send_consumer_relayd_socket(domain, session_id,
 				&consumer->dst.net.control, consumer, sock);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -640,7 +635,7 @@ static int send_consumer_relayd_sockets(int domain,
 
 	/* Sending data relayd socket. */
 	if (!sock->data_sock_sent) {
-		ret = send_consumer_relayd_socket(domain, session,
+		ret = send_consumer_relayd_socket(domain, session_id,
 				&consumer->dst.net.data, consumer, sock);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -682,12 +677,14 @@ int cmd_setup_relayd(struct ltt_session *session)
 			assert(socket->fd >= 0);
 
 			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session,
+			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
 					usess->consumer, socket);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
+			/* Session is now ready for network streaming. */
+			session->net_handle = 1;
 		}
 	}
 
@@ -699,12 +696,14 @@ int cmd_setup_relayd(struct ltt_session *session)
 			assert(socket->fd >= 0);
 
 			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session,
+			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
 					ksess->consumer, socket);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
+			/* Session is now ready for network streaming. */
+			session->net_handle = 1;
 		}
 	}
 
@@ -2135,6 +2134,440 @@ int cmd_data_pending(struct ltt_session *session)
 	ret = 0;
 
 error:
+	return ret;
+}
+
+/*
+ * Command LTTNG_SNAPSHOT_ADD_OUTPUT from the lttng ctl library.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR code.
+ */
+int cmd_snapshot_add_output(struct ltt_session *session,
+		struct lttng_snapshot_output *output, uint32_t *id)
+{
+	int ret;
+	struct snapshot_output *new_output;
+
+	assert(session);
+	assert(output);
+
+	DBG("Cmd snapshot add output for session %s", session->name);
+
+	/*
+	 * Persmission denied to create an output if the session is not set in no
+	 * output mode.
+	 */
+	if (session->output_traces) {
+		ret = LTTNG_ERR_EPERM;
+		goto error;
+	}
+
+	/* Only one output is allowed until we have the "tee" feature. */
+	if (session->snapshot.nb_output == 1) {
+		ret = LTTNG_ERR_SNAPSHOT_OUTPUT_EXIST;
+		goto error;
+	}
+
+	new_output = snapshot_output_alloc();
+	if (!new_output) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	ret = snapshot_output_init(output->max_size, output->name,
+			output->ctrl_url, output->data_url, session->consumer, new_output,
+			&session->snapshot);
+	if (ret < 0) {
+		if (ret == -ENOMEM) {
+			ret = LTTNG_ERR_NOMEM;
+		} else {
+			ret = LTTNG_ERR_INVALID;
+		}
+		goto free_error;
+	}
+
+	/*
+	 * Copy sockets so the snapshot output can use them on destroy.
+	 */
+
+	if (session->ust_session) {
+		ret = consumer_copy_sockets(new_output->consumer,
+				session->ust_session->consumer);
+		if (ret < 0) {
+			goto free_error;
+		}
+		new_output->ust_sockets_copied = 1;
+	}
+	if (session->kernel_session) {
+		ret = consumer_copy_sockets(new_output->consumer,
+				session->kernel_session->consumer);
+		if (ret < 0) {
+			goto free_error;
+		}
+		new_output->kernel_sockets_copied = 1;
+	}
+
+	rcu_read_lock();
+	snapshot_add_output(&session->snapshot, new_output);
+	if (id) {
+		*id = new_output->id;
+	}
+	rcu_read_unlock();
+
+	return LTTNG_OK;
+
+free_error:
+	snapshot_output_destroy(new_output);
+error:
+	return ret;
+}
+
+/*
+ * Command LTTNG_SNAPSHOT_DEL_OUTPUT from lib lttng ctl.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR code.
+ */
+int cmd_snapshot_del_output(struct ltt_session *session,
+		struct lttng_snapshot_output *output)
+{
+	int ret;
+	struct snapshot_output *sout;
+
+	assert(session);
+	assert(output);
+
+	DBG("Cmd snapshot del output id %" PRIu32 " for session %s", output->id,
+			session->name);
+
+	rcu_read_lock();
+
+	/*
+	 * Persmission denied to create an output if the session is not set in no
+	 * output mode.
+	 */
+	if (session->output_traces) {
+		ret = LTTNG_ERR_EPERM;
+		goto error;
+	}
+
+	sout = snapshot_find_output_by_id(output->id, &session->snapshot);
+	if (!sout) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	snapshot_delete_output(&session->snapshot, sout);
+	snapshot_output_destroy(sout);
+	ret = LTTNG_OK;
+
+error:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Command LTTNG_SNAPSHOT_LIST_OUTPUT from lib lttng ctl.
+ *
+ * If no output is available, outputs is untouched and 0 is returned.
+ *
+ * Return the size of the newly allocated outputs or a negative LTTNG_ERR code.
+ */
+ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
+		struct lttng_snapshot_output **outputs)
+{
+	int ret, idx = 0;
+	struct lttng_snapshot_output *list;
+	struct lttng_ht_iter iter;
+	struct snapshot_output *output;
+
+	assert(session);
+	assert(outputs);
+
+	DBG("Cmd snapshot list outputs for session %s", session->name);
+
+	/*
+	 * Persmission denied to create an output if the session is not set in no
+	 * output mode.
+	 */
+	if (session->output_traces) {
+		ret = LTTNG_ERR_EPERM;
+		goto error;
+	}
+
+	if (session->snapshot.nb_output == 0) {
+		ret = 0;
+		goto error;
+	}
+
+	list = zmalloc(session->snapshot.nb_output * sizeof(*list));
+	if (!list) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	/* Copy list from session to the new list object. */
+	cds_lfht_for_each_entry(session->snapshot.output_ht->ht, &iter.iter,
+			output, node.node) {
+		assert(output->consumer);
+		list[idx].id = output->id;
+		list[idx].max_size = output->max_size;
+		strncpy(list[idx].name, output->name, sizeof(list[idx].name));
+		if (output->consumer->type == CONSUMER_DST_LOCAL) {
+			strncpy(list[idx].ctrl_url, output->consumer->dst.trace_path,
+					sizeof(list[idx].ctrl_url));
+		} else {
+			/* Control URI. */
+			ret = uri_to_str_url(&output->consumer->dst.net.control,
+					list[idx].ctrl_url, sizeof(list[idx].ctrl_url));
+			if (ret < 0) {
+				ret = LTTNG_ERR_NOMEM;
+				goto free_error;
+			}
+
+			/* Data URI. */
+			ret = uri_to_str_url(&output->consumer->dst.net.data,
+					list[idx].data_url, sizeof(list[idx].data_url));
+			if (ret < 0) {
+				ret = LTTNG_ERR_NOMEM;
+				goto free_error;
+			}
+		}
+		idx++;
+	}
+
+	*outputs = list;
+	return session->snapshot.nb_output;
+
+free_error:
+	free(list);
+error:
+	return -ret;
+}
+
+/*
+ * Send relayd sockets from snapshot output to consumer. Ignore request if the
+ * snapshot output is *not* set with a remote destination.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static int set_relayd_for_snapshot(struct consumer_output *consumer,
+		struct snapshot_output *snap_output, struct ltt_session *session)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct consumer_socket *socket;
+
+	assert(consumer);
+	assert(snap_output);
+	assert(session);
+
+	DBG2("Set relayd object from snapshot output");
+
+	/* Ignore if snapshot consumer output is not network. */
+	if (snap_output->consumer->type != CONSUMER_DST_NET) {
+		goto error;
+	}
+
+	/*
+	 * For each consumer socket, create and send the relayd object of the
+	 * snapshot output.
+	 */
+	rcu_read_lock();
+	cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
+			node.node) {
+		ret = send_consumer_relayd_sockets(0, session->id,
+				snap_output->consumer, socket);
+		if (ret < 0) {
+			rcu_read_unlock();
+			goto error;
+		}
+	}
+	rcu_read_unlock();
+
+error:
+	return ret;
+}
+
+/*
+ * Record a kernel snapshot.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
+		struct snapshot_output *output, struct ltt_session *session, int wait)
+{
+	int ret;
+
+	assert(ksess);
+	assert(output);
+	assert(session);
+
+	if (!output->kernel_sockets_copied) {
+		ret = consumer_copy_sockets(output->consumer, ksess->consumer);
+		if (ret < 0) {
+			goto error;
+		}
+		output->kernel_sockets_copied = 1;
+	}
+
+	ret = set_relayd_for_snapshot(ksess->consumer, output, session);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = kernel_snapshot_record(ksess, output, wait);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Record a UST snapshot.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static int record_ust_snapshot(struct ltt_ust_session *usess,
+		struct snapshot_output *output, struct ltt_session *session, int wait)
+{
+	int ret;
+
+	assert(usess);
+	assert(output);
+	assert(session);
+
+	if (!output->ust_sockets_copied) {
+		ret = consumer_copy_sockets(output->consumer, usess->consumer);
+		if (ret < 0) {
+			goto error;
+		}
+		output->ust_sockets_copied = 1;
+	}
+
+	ret = set_relayd_for_snapshot(usess->consumer, output, session);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = ust_app_snapshot_record(usess, output, wait);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Command LTTNG_SNAPSHOT_RECORD from lib lttng ctl.
+ *
+ * The wait parameter is ignored so this call always wait for the snapshot to
+ * complete before returning.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR code.
+ */
+int cmd_snapshot_record(struct ltt_session *session,
+		struct lttng_snapshot_output *output, int wait)
+{
+	int ret = LTTNG_OK;
+	struct snapshot_output *tmp_sout = NULL;
+
+	assert(session);
+
+	DBG("Cmd snapshot record for session %s", session->name);
+
+	/*
+	 * Persmission denied to create an output if the session is not set in no
+	 * output mode.
+	 */
+	if (session->output_traces) {
+		ret = LTTNG_ERR_EPERM;
+		goto error;
+	}
+
+	/* The session needs to be started at least once. */
+	if (!session->started) {
+		ret = LTTNG_ERR_START_SESSION_ONCE;
+		goto error;
+	}
+
+	/* Use temporary output for the session. */
+	if (output && *output->ctrl_url != '\0') {
+		tmp_sout = snapshot_output_alloc();
+		if (!tmp_sout) {
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+
+		ret = snapshot_output_init(output->max_size, output->name,
+				output->ctrl_url, output->data_url, session->consumer,
+				tmp_sout, NULL);
+		if (ret < 0) {
+			if (ret == -ENOMEM) {
+				ret = LTTNG_ERR_NOMEM;
+			} else {
+				ret = LTTNG_ERR_INVALID;
+			}
+			goto error;
+		}
+	}
+
+	if (session->kernel_session) {
+		struct ltt_kernel_session *ksess = session->kernel_session;
+
+		if (tmp_sout) {
+			ret = record_kernel_snapshot(ksess, tmp_sout, session, wait);
+			if (ret < 0) {
+				goto error;
+			}
+		} else {
+			struct snapshot_output *sout;
+			struct lttng_ht_iter iter;
+
+			rcu_read_lock();
+			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
+					&iter.iter, sout, node.node) {
+				ret = record_kernel_snapshot(ksess, sout, session, wait);
+				if (ret < 0) {
+					rcu_read_unlock();
+					goto error;
+				}
+			}
+			rcu_read_unlock();
+		}
+	}
+
+	if (session->ust_session) {
+		struct ltt_ust_session *usess = session->ust_session;
+
+		if (tmp_sout) {
+			ret = record_ust_snapshot(usess, tmp_sout, session, wait);
+			if (ret < 0) {
+				goto error;
+			}
+		} else {
+			struct snapshot_output *sout;
+			struct lttng_ht_iter iter;
+
+			rcu_read_lock();
+			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
+					&iter.iter, sout, node.node) {
+				ret = record_ust_snapshot(usess, tmp_sout, session, wait);
+				if (ret < 0) {
+					rcu_read_unlock();
+					goto error;
+				}
+			}
+			rcu_read_unlock();
+		}
+	}
+
+error:
+	if (tmp_sout) {
+		snapshot_output_destroy(tmp_sout);
+	}
 	return ret;
 }
 

@@ -170,7 +170,7 @@ void consumer_output_send_destroy_relayd(struct consumer_output *consumer)
 	assert(consumer);
 
 	/* Destroy any relayd connection */
-	if (consumer && consumer->type == CONSUMER_DST_NET) {
+	if (consumer->type == CONSUMER_DST_NET) {
 		rcu_read_lock();
 		cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
 				node.node) {
@@ -225,6 +225,8 @@ int consumer_create_socket(struct consumer_data *data,
 		consumer_add_socket(socket, output);
 		rcu_read_unlock();
 	}
+
+	socket->type = data->type;
 
 	DBG3("Consumer socket created (fd: %d) and added to output",
 			data->cmd_sock);
@@ -442,9 +444,8 @@ void consumer_destroy_output(struct consumer_output *obj)
  */
 struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 {
+	int ret;
 	struct lttng_ht *tmp_ht_ptr;
-	struct lttng_ht_iter iter;
-	struct consumer_socket *socket, *copy_sock;
 	struct consumer_output *output;
 
 	assert(obj);
@@ -461,20 +462,10 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 	/* Putting back the HT pointer and start copying socket(s). */
 	output->socks = tmp_ht_ptr;
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry(obj->socks->ht, &iter.iter, socket, node.node) {
-		/* Create new socket object. */
-		copy_sock = consumer_allocate_socket(socket->fd);
-		if (copy_sock == NULL) {
-			rcu_read_unlock();
-			goto malloc_error;
-		}
-
-		copy_sock->registered = socket->registered;
-		copy_sock->lock = socket->lock;
-		consumer_add_socket(copy_sock, output);
+	ret = consumer_copy_sockets(output, obj);
+	if (ret < 0) {
+		goto malloc_error;
 	}
-	rcu_read_unlock();
 
 error:
 	return output;
@@ -482,6 +473,52 @@ error:
 malloc_error:
 	consumer_destroy_output(output);
 	return NULL;
+}
+
+/*
+ * Copy consumer sockets from src to dst.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int consumer_copy_sockets(struct consumer_output *dst,
+		struct consumer_output *src)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct consumer_socket *socket, *copy_sock;
+
+	assert(dst);
+	assert(src);
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(src->socks->ht, &iter.iter, socket, node.node) {
+		/* Ignore socket that are already there. */
+		copy_sock = consumer_find_socket(socket->fd, dst);
+		if (copy_sock) {
+			continue;
+		}
+
+		/* Create new socket object. */
+		copy_sock = consumer_allocate_socket(socket->fd);
+		if (copy_sock == NULL) {
+			rcu_read_unlock();
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		copy_sock->registered = socket->registered;
+		/*
+		 * This is valid because this lock is shared accross all consumer
+		 * object being the global lock of the consumer data structure of the
+		 * session daemon.
+		 */
+		copy_sock->lock = socket->lock;
+		consumer_add_socket(copy_sock, dst);
+	}
+	rcu_read_unlock();
+
+error:
+	return ret;
 }
 
 /*
@@ -1140,6 +1177,73 @@ int consumer_push_metadata(struct consumer_socket *socket,
 	}
 
 end:
+	health_code_update();
+	return ret;
+}
+
+/*
+ * Ask the consumer to snapshot a specific channel using the key.
+ *
+ * Return 0 on success or else a negative error.
+ */
+int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
+		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
+		int wait)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+	assert(socket->fd >= 0);
+	assert(output);
+	assert(output->consumer);
+
+	DBG("Consumer snapshot channel key %" PRIu64, key);
+
+	memset(&msg, 0, sizeof(msg));
+
+	msg.cmd_type = LTTNG_CONSUMER_SNAPSHOT_CHANNEL;
+	msg.u.snapshot_channel.key = key;
+	msg.u.snapshot_channel.max_size = output->max_size;
+	msg.u.snapshot_channel.metadata = metadata;
+
+	if (output->consumer->type == CONSUMER_DST_NET) {
+		msg.u.snapshot_channel.relayd_id = output->consumer->net_seq_index;
+		msg.u.snapshot_channel.use_relayd = 1;
+		ret = snprintf(msg.u.snapshot_channel.pathname,
+				sizeof(msg.u.snapshot_channel.pathname), "%s/%s",
+				output->consumer->subdir, DEFAULT_SNAPSHOT_NAME);
+		if (ret < 0) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto error;
+		}
+	} else {
+		ret = snprintf(msg.u.snapshot_channel.pathname,
+				sizeof(msg.u.snapshot_channel.pathname), "%s/%s",
+				output->consumer->dst.trace_path, DEFAULT_SNAPSHOT_NAME);
+		if (ret < 0) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto error;
+		}
+
+		/* Create directory. Ignore if exist. */
+		ret = run_as_mkdir_recursive(msg.u.snapshot_channel.pathname,
+				S_IRWXU | S_IRWXG, uid, gid);
+		if (ret < 0) {
+			if (ret != -EEXIST) {
+				ERR("Trace directory creation error");
+				goto error;
+			}
+		}
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
 	health_code_update();
 	return ret;
 }

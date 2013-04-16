@@ -20,6 +20,9 @@
 
 #include <urcu/list.h>
 
+#include <common/hashtable/hashtable.h>
+
+#include "snapshot.h"
 #include "trace-kernel.h"
 
 struct ltt_ust_session;
@@ -85,6 +88,11 @@ struct ltt_session {
 
 	/* Did a start command occured before the kern/ust session creation? */
 	unsigned int started;
+
+	/* Snapshot representation in a session. */
+	struct snapshot snapshot;
+	/* Indicate if the session has to output the traces or not. */
+	unsigned int output_traces;
 };
 
 /* Prototypes */

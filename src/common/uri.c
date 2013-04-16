@@ -194,13 +194,13 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 	if (uri->dtype == LTTNG_DST_PATH) {
 		ipver = 0;
 		addr = uri->dst.path;
-		(void) snprintf(proto, sizeof(proto), "file");
-		(void) snprintf(port, sizeof(port), "%s", "");
+		(void) snprintf(proto, sizeof(proto) + 1, "file");
+		(void) snprintf(port, sizeof(port) + 1, "%s", "");
 	} else {
 		ipver = (uri->dtype == LTTNG_DST_IPV4) ? 4 : 6;
 		addr = (ipver == 4) ?  uri->dst.ipv4 : uri->dst.ipv6;
-		(void) snprintf(proto, sizeof(proto), "net%d", ipver);
-		(void) snprintf(port, sizeof(port), ":%d", uri->port);
+		(void) snprintf(proto, sizeof(proto) + 1, "net%d", ipver);
+		(void) snprintf(port, sizeof(port) + 1, ":%d", uri->port);
 	}
 
 	ret = snprintf(dst, size, "%s://%s%s%s%s/%s", proto,

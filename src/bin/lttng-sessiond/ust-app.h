@@ -306,6 +306,8 @@ void ust_app_notify_sock_unregister(int sock);
 ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
+int ust_app_snapshot_record(struct ltt_ust_session *usess,
+		struct snapshot_output *output, int wait);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -502,6 +504,12 @@ static inline
 void ust_app_destroy(struct ust_app *app)
 {
 	return;
+}
+static inline
+int ust_app_snapshot_record(struct ltt_ust_session *usess,
+		struct snapshot_output *output, int wait)
+{
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

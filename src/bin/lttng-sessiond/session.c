@@ -159,6 +159,7 @@ int session_destroy(struct ltt_session *session)
 	pthread_mutex_destroy(&session->lock);
 
 	consumer_destroy_output(session->consumer);
+	snapshot_destroy(&session->snapshot);
 	free(session);
 
 	return LTTNG_OK;
@@ -201,6 +202,12 @@ int session_create(char *name, uid_t uid, gid_t gid)
 
 	new_session->uid = uid;
 	new_session->gid = gid;
+
+	ret = snapshot_init(&new_session->snapshot);
+	if (ret < 0) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
 
 	/* Add new session to the session list */
 	session_lock_list();

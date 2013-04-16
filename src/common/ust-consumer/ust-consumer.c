@@ -1146,6 +1146,15 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		goto end_msg_sessiond;
 	}
+	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
+	{
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+		break;
+	}
 	default:
 		break;
 	}

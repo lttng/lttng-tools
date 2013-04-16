@@ -61,7 +61,7 @@ enum lttng_error_code {
 	LTTNG_ERR_EXIST_SESS             = 28,  /* Session name already exist */
 	LTTNG_ERR_NO_EVENT               = 29,  /* No event found */
 	LTTNG_ERR_CONNECT_FAIL           = 30,  /* Unable to connect to unix socket */
-	/* 31 */
+	LTTNG_ERR_SNAPSHOT_OUTPUT_EXIST  = 31,  /* Snapshot output already exists */
 	LTTNG_ERR_EPERM                  = 32,  /* Permission denied */
 	LTTNG_ERR_KERN_NA                = 33,  /* Kernel tracer unavalable */
 	LTTNG_ERR_KERN_VERSION           = 34,  /* Kernel tracer not compatible */
@@ -80,7 +80,7 @@ enum lttng_error_code {
 	LTTNG_ERR_KERN_STOP_FAIL         = 47,  /* Kernel stop trace failed */
 	LTTNG_ERR_KERN_CONSUMER_FAIL     = 48,  /* Kernel consumer start failed */
 	LTTNG_ERR_KERN_STREAM_FAIL       = 49,  /* Kernel create stream failed */
-	/* 50 */
+	LTTNG_ERR_START_SESSION_ONCE     = 50,  /* Session needs to be started once. */
 	/* 51 */
 	/* 52 */
 	LTTNG_ERR_KERN_LIST_FAIL         = 53,  /* Kernel listing events failed */

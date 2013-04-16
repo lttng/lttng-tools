@@ -2377,6 +2377,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	lus->uid = session->uid;
 	lus->gid = session->gid;
+
 	session->ust_session = lus;
 
 	/* Copy session output to the newly created UST session */
@@ -3182,22 +3183,63 @@ skip_domain:
 	}
 	case LTTNG_SNAPSHOT_ADD_OUTPUT:
 	{
-		ret = LTTNG_ERR_UND;
+		struct lttcomm_lttng_output_id reply;
+
+		ret = cmd_snapshot_add_output(cmd_ctx->session,
+				&cmd_ctx->lsm->u.snapshot_output.output, &reply.id);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		ret = setup_lttng_msg(cmd_ctx, sizeof(reply));
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		/* Copy output list into message payload */
+		memcpy(cmd_ctx->llm->payload, &reply, sizeof(reply));
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_SNAPSHOT_DEL_OUTPUT:
 	{
-		ret = LTTNG_ERR_UND;
+		ret = cmd_snapshot_del_output(cmd_ctx->session,
+				&cmd_ctx->lsm->u.snapshot_output.output);
 		break;
 	}
 	case LTTNG_SNAPSHOT_LIST_OUTPUT:
 	{
-		ret = LTTNG_ERR_UND;
+		ssize_t nb_output;
+		struct lttng_snapshot_output *outputs = NULL;
+
+		nb_output = cmd_snapshot_list_outputs(cmd_ctx->session, &outputs);
+		if (nb_output < 0) {
+			ret = -nb_output;
+			goto error;
+		}
+
+		ret = setup_lttng_msg(cmd_ctx,
+				nb_output * sizeof(struct lttng_snapshot_output));
+		if (ret < 0) {
+			free(outputs);
+			goto setup_error;
+		}
+
+		if (outputs) {
+			/* Copy output list into message payload */
+			memcpy(cmd_ctx->llm->payload, outputs,
+					nb_output * sizeof(struct lttng_snapshot_output));
+			free(outputs);
+		}
+
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_SNAPSHOT_RECORD:
 	{
-		ret = LTTNG_ERR_UND;
+		ret = cmd_snapshot_record(cmd_ctx->session,
+				&cmd_ctx->lsm->u.snapshot_record.output,
+				cmd_ctx->lsm->u.snapshot_record.wait);
 		break;
 	}
 	default:
