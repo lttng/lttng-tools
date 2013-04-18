@@ -75,6 +75,7 @@ static struct cmd_struct commands[] =  {
 	{ "version", cmd_version},
 	{ "calibrate", cmd_calibrate},
 	{ "view", cmd_view},
+	{ "snapshot", cmd_snapshot},
 	{ "enable-consumer", cmd_enable_consumer}, /* OBSOLETE */
 	{ "disable-consumer", cmd_disable_consumer}, /* OBSOLETE */
 	{ NULL, NULL}	/* Array closure */
@@ -107,6 +108,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    disable-event     Disable tracing event\n");
 	fprintf(ofp, "    list              List possible tracing options\n");
 	fprintf(ofp, "    set-session       Set current session name\n");
+	fprintf(ofp, "    snapshot          Snapshot buffers of current session name\n");
 	fprintf(ofp, "    start             Start tracing\n");
 	fprintf(ofp, "    stop              Stop tracing\n");
 	fprintf(ofp, "    version           Show version information\n");
