@@ -206,8 +206,8 @@ $ lttng add-context -u -e ust_tests_hello:tptest -t pid -t nice -t tid
 
 $ lttng start
 
-Tracing is in progress at this point and traces will be written in
-$HOME/lttng-traces/mysession-<date>-<time>/ust/<procname>-<pid>-<date>-<time>
+Tracing is in progress at this point and traces will be written in the session
+directory.
 
 NOTE: It will start tracing for *all* domain(s).
 
