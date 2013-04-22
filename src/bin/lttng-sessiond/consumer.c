@@ -1121,7 +1121,7 @@ int consumer_push_metadata(struct consumer_socket *socket,
 		goto end;
 	}
 
-	DBG3("Consumer pushing metadata on sock %d of len %lu", socket->fd, len);
+	DBG3("Consumer pushing metadata on sock %d of len %zu", socket->fd, len);
 
 	ret = lttcomm_send_unix_sock(socket->fd, metadata_str, len);
 	if (ret < 0) {

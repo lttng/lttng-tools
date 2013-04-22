@@ -37,7 +37,7 @@ int cmd_recv(struct lttcomm_sock *sock, void *buf, size_t len)
 			DBG("Socket %d did an orderly shutdown", sock->fd);
 		} else {
 			ERR("Relay didn't receive valid add_stream struct size. "
-					"Expected %lu, got %d", len, ret);
+					"Expected %zu, got %d", len, ret);
 		}
 		ret = -1;
 		goto error;

@@ -556,7 +556,7 @@ int lttng_ustconsumer_push_metadata(struct lttng_consumer_channel *metadata,
 	ret = ustctl_write_metadata_to_channel(metadata->uchan,
 			metadata_str + target_offset, len);
 	if (ret < 0) {
-		ERR("ustctl write metadata fail with ret %d, len %ld", ret, len);
+		ERR("ustctl write metadata fail with ret %d, len %" PRIu64, ret, len);
 		goto error;
 	}
 
@@ -579,11 +579,11 @@ static int flush_channel(uint64_t chan_key)
 	struct lttng_ht *ht;
 	struct lttng_ht_iter iter;
 
-	DBG("UST consumer flush channel key %lu", chan_key);
+	DBG("UST consumer flush channel key %" PRIu64, chan_key);
 
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
-		ERR("UST consumer flush channel %lu not found", chan_key);
+		ERR("UST consumer flush channel %" PRIu64 " not found", chan_key);
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
@@ -613,11 +613,11 @@ static int close_metadata(uint64_t chan_key)
 	int ret;
 	struct lttng_consumer_channel *channel;
 
-	DBG("UST consumer close metadata key %lu", chan_key);
+	DBG("UST consumer close metadata key %" PRIu64, chan_key);
 
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
-		ERR("UST consumer close metadata %lu not found", chan_key);
+		ERR("UST consumer close metadata %" PRIu64 " not found", chan_key);
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
@@ -648,7 +648,7 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	int ret;
 	struct lttng_consumer_channel *metadata;
 
-	DBG("UST consumer setup metadata key %lu", key);
+	DBG("UST consumer setup metadata key %" PRIu64, key);
 
 	metadata = consumer_find_channel(key);
 	if (!metadata) {
@@ -701,7 +701,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 	int ret, ret_code = LTTNG_OK;
 	char *metadata_str;
 
-	DBG("UST consumer push metadata key %lu of len %lu", key, len);
+	DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
 
 	metadata_str = zmalloc(len * sizeof(char));
 	if (!metadata_str) {
@@ -943,7 +943,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		channel = consumer_find_channel(key);
 		if (!channel) {
-			ERR("UST consumer get channel key %lu not found", key);
+			ERR("UST consumer get channel key %" PRIu64 " not found", key);
 			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto end_msg_sessiond;
 		}
@@ -994,7 +994,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		channel = consumer_find_channel(key);
 		if (!channel) {
-			ERR("UST consumer get channel key %lu not found", key);
+			ERR("UST consumer get channel key %" PRIu64 " not found", key);
 			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto end_msg_sessiond;
 		}
@@ -1033,11 +1033,12 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		uint64_t offset = msg.u.push_metadata.target_offset;
 		struct lttng_consumer_channel *channel;
 
-		DBG("UST consumer push metadata key %lu of len %lu", key, len);
+		DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key,
+				len);
 
 		channel = consumer_find_channel(key);
 		if (!channel) {
-			ERR("UST consumer push metadata %lu not found", key);
+			ERR("UST consumer push metadata %" PRIu64 " not found", key);
 			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		}
 
@@ -1274,7 +1275,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 * happen and it is OK with the code flow.
 		 */
 		DBG("Error writing to tracefile "
-				"(ret: %zd != len: %lu != subbuf_size: %lu)",
+				"(ret: %ld != len: %lu != subbuf_size: %lu)",
 				ret, len, subbuf_size);
 	}
 	err = ustctl_put_next_subbuf(ustream);
@@ -1433,7 +1434,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	ret = lttcomm_recv_unix_sock(ctx->consumer_metadata_socket, &msg,
 			sizeof(msg));
 	if (ret != sizeof(msg)) {
-		DBG("Consumer received unexpected message size %d (expects %lu)",
+		DBG("Consumer received unexpected message size %d (expects %zu)",
 			ret, sizeof(msg));
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 		/*

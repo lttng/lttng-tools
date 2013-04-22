@@ -87,7 +87,7 @@ static int recv_reply(struct lttcomm_relayd_sock *rsock, void *data, size_t size
 {
 	int ret;
 
-	DBG3("Relayd waiting for reply of size %ld", size);
+	DBG3("Relayd waiting for reply of size %zu", size);
 
 	ret = rsock->sock.ops->recvmsg(&rsock->sock, data, size, 0);
 	if (ret <= 0 || ret != size) {
@@ -95,7 +95,7 @@ static int recv_reply(struct lttcomm_relayd_sock *rsock, void *data, size_t size
 			/* Orderly shutdown. */
 			DBG("Socket %d has performed an orderly shutdown", rsock->sock.fd);
 		} else {
-			DBG("Receiving reply failed on sock %d for size %lu with ret %d",
+			DBG("Receiving reply failed on sock %d for size %zu with ret %d",
 					rsock->sock.fd, size, ret);
 		}
 		/* Always return -1 here and the caller can use errno. */
@@ -396,7 +396,7 @@ int relayd_send_data_hdr(struct lttcomm_relayd_sock *rsock,
 	assert(rsock);
 	assert(hdr);
 
-	DBG3("Relayd sending data header of size %ld", size);
+	DBG3("Relayd sending data header of size %zu", size);
 
 	/* Again, safety net */
 	if (size == 0) {
