@@ -2999,7 +2999,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 {
 	int fd = -1, ret = -1, relayd_created = 0;
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct consumer_relayd_sock_pair *relayd;
+	struct consumer_relayd_sock_pair *relayd = NULL;
 
 	assert(ctx);
 	assert(relayd_sock);
