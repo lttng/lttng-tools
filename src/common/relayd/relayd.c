@@ -327,15 +327,44 @@ int relayd_connect(struct lttcomm_sock *sock)
 
 /*
  * Close relayd socket with an allocated lttcomm_sock.
+ *
+ * If no socket operations are found, simply return 0 meaning that everything
+ * is fine. Without operations, the socket can not possibly be opened or used.
+ * This is possible if the socket was allocated but not created. However, the
+ * caller could simply use it to store a valid file descriptor for instance
+ * passed over a Unix socket and call this to cleanup but still without a valid
+ * ops pointer.
+ *
+ * Return the close returned value. On error, a negative value is usually
+ * returned back from close(2).
  */
 int relayd_close(struct lttcomm_sock *sock)
 {
+	int ret;
+
 	/* Code flow error. Safety net. */
 	assert(sock);
 
+	/* An invalid fd is fine, return success. */
+	if (sock->fd < 0) {
+		ret = 0;
+		goto end;
+	}
+
 	DBG3("Relayd closing socket %d", sock->fd);
 
-	return sock->ops->close(sock);
+	if (sock->ops) {
+		ret = sock->ops->close(sock);
+	} else {
+		/* Default call if no specific ops found. */
+		ret = close(sock->fd);
+		if (ret < 0) {
+			PERROR("relayd_close default close");
+		}
+	}
+
+end:
+	return ret;
 }
 
 /*

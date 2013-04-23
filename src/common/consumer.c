@@ -2711,7 +2711,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		struct pollfd *consumer_sockpoll, struct lttcomm_sock *relayd_sock,
 		unsigned int sessiond_id)
 {
-	int fd = -1, ret = -1, relayd_created = 0;
+	int fd = -1, ret = -1, relayd_created = 0, sock_created = 0;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct consumer_relayd_sock_pair *relayd;
 
@@ -2779,6 +2779,8 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 		/* Assign new file descriptor */
 		relayd->control_sock.fd = fd;
+		/* Flag that we have successfully created a socket with a valid fd. */
+		sock_created = 1;
 
 		/*
 		 * Create a session on the relayd and store the returned id. Lock the
@@ -2814,6 +2816,8 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 		/* Assign new file descriptor */
 		relayd->data_sock.fd = fd;
+		/* Flag that we have successfully created a socket with a valid fd. */
+		sock_created = 1;
 		break;
 	default:
 		ERR("Unknown relayd socket type (%d)", sock_type);
@@ -2843,9 +2847,11 @@ error:
 	}
 
 	if (relayd_created) {
-		/* We just want to cleanup. Ignore ret value. */
-		(void) relayd_close(&relayd->control_sock);
-		(void) relayd_close(&relayd->data_sock);
+		if (sock_created) {
+			/* We just want to close the fd for cleanup. Ignore ret value. */
+			(void) relayd_close(&relayd->control_sock);
+			(void) relayd_close(&relayd->data_sock);
+		}
 		free(relayd);
 	}
 
