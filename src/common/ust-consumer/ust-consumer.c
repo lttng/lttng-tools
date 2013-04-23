@@ -589,7 +589,6 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 	ret = lttng_ustconsumer_add_stream(stream);
 	if (ret) {
-		consumer_del_stream(stream, NULL);
 		ret = -1;
 		goto error;
 	}
