@@ -61,17 +61,17 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 	channel = si->si_value.sival_ptr;
 	assert(channel);
 
+	if (channel->switch_timer_error) {
+		return;
+	}
+
 	DBG("Switch timer for channel %" PRIu64, channel->key);
 	switch (ctx->type) {
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
 		ret = lttng_ustconsumer_request_metadata(ctx, channel);
 		if (ret < 0) {
-			/*
-			 * An error means that we were unable to request the metadata to
-			 * the session daemon so stop the timer for that channel.
-			 */
-			consumer_timer_switch_stop(channel);
+			channel->switch_timer_error = 1;
 		}
 		break;
 	case LTTNG_CONSUMER_KERNEL:
@@ -83,6 +83,8 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 
 /*
  * Set the timer for periodical metadata flush.
+ * Should be called only from the recv cmd thread (single thread ensures
+ * mutual exclusion).
  */
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 		unsigned int switch_timer_interval)
@@ -120,6 +122,8 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 
 /*
  * Stop and delete timer.
+ * Should be called only from the recv cmd thread (single thread ensures
+ * mutual exclusion).
  */
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 {

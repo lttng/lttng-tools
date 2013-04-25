@@ -146,6 +146,8 @@ struct lttng_consumer_channel {
 	/* For metadata periodical flush */
 	int switch_timer_enabled;
 	timer_t switch_timer;
+	int switch_timer_error;
+
 	/* On-disk circular buffer */
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
