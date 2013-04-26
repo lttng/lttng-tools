@@ -26,7 +26,12 @@
 #include "consumer-timer.h"
 #include "ust-consumer/ust-consumer.h"
 
-static struct timer_signal_data timer_signal;
+static struct timer_signal_data timer_signal = {
+	.tid = 0,
+	.setup_done = 0,
+	.qs_done = 0,
+	.lock = PTHREAD_MUTEX_INITIALIZER,
+};
 
 /*
  * Set custom signal mask to current thread.
@@ -81,10 +86,59 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 	}
 }
 
+static
+void consumer_timer_signal_thread_qs(unsigned int signr)
+{
+	sigset_t pending_set;
+	int ret;
+
+	/*
+	 * We need to be the only thread interacting with the thread
+	 * that manages signals for teardown synchronization.
+	 */
+	pthread_mutex_lock(&timer_signal.lock);
+
+	/* Ensure we don't have any signal queued for this channel. */
+	for (;;) {
+		ret = sigemptyset(&pending_set);
+		if (ret == -1) {
+			PERROR("sigemptyset");
+		}
+		ret = sigpending(&pending_set);
+		if (ret == -1) {
+			PERROR("sigpending");
+		}
+		if (!sigismember(&pending_set, LTTNG_CONSUMER_SIG_SWITCH)) {
+			break;
+		}
+		caa_cpu_relax();
+	}
+
+	/*
+	 * From this point, no new signal handler will be fired that would try to
+	 * access "chan". However, we still need to wait for any currently
+	 * executing handler to complete.
+	 */
+	cmm_smp_mb();
+	CMM_STORE_SHARED(timer_signal.qs_done, 0);
+	cmm_smp_mb();
+
+	/*
+	 * Kill with LTTNG_CONSUMER_SIG_TEARDOWN, so signal management thread wakes
+	 * up.
+	 */
+	kill(getpid(), LTTNG_CONSUMER_SIG_TEARDOWN);
+
+	while (!CMM_LOAD_SHARED(timer_signal.qs_done)) {
+		caa_cpu_relax();
+	}
+	cmm_smp_mb();
+
+	pthread_mutex_unlock(&timer_signal.lock);
+}
+
 /*
  * Set the timer for periodical metadata flush.
- * Should be called only from the recv cmd thread (single thread ensures
- * mutual exclusion).
  */
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 		unsigned int switch_timer_interval)
@@ -122,13 +176,10 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 
 /*
  * Stop and delete timer.
- * Should be called only from the recv cmd thread (single thread ensures
- * mutual exclusion).
  */
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 {
 	int ret;
-	sigset_t pending_set;
 
 	assert(channel);
 
@@ -137,41 +188,10 @@ void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 		PERROR("timer_delete");
 	}
 
-	/* Ensure we don't have any signal queued for this channel. */
-	for (;;) {
-		ret = sigemptyset(&pending_set);
-		if (ret == -1) {
-			PERROR("sigemptyset");
-		}
-		ret = sigpending(&pending_set);
-		if (ret == -1) {
-			PERROR("sigpending");
-		}
-		if (!sigismember(&pending_set, LTTNG_CONSUMER_SIG_SWITCH)) {
-			break;
-		}
-		caa_cpu_relax();
-	}
+	consumer_timer_signal_thread_qs(LTTNG_CONSUMER_SIG_SWITCH);
 
-	/*
-	 * From this point, no new signal handler will be fired that would try to
-	 * access "chan". However, we still need to wait for any currently
-	 * executing handler to complete.
-	 */
-	cmm_smp_mb();
-	CMM_STORE_SHARED(timer_signal.qs_done, 0);
-	cmm_smp_mb();
-
-	/*
-	 * Kill with LTTNG_CONSUMER_SIG_TEARDOWN, so signal management thread wakes
-	 * up.
-	 */
-	kill(getpid(), LTTNG_CONSUMER_SIG_TEARDOWN);
-
-	while (!CMM_LOAD_SHARED(timer_signal.qs_done)) {
-		caa_cpu_relax();
-	}
-	cmm_smp_mb();
+	channel->switch_timer = 0;
+	channel->switch_timer_enabled = 0;
 }
 
 /*

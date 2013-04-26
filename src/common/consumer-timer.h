@@ -32,12 +32,14 @@
 /*
  * Handle timer teardown race wrt memory free of private data by consumer
  * signals are handled by a single thread, which permits a synchronization
- * point between handling of each signal.
+ * point between handling of each signal. Internal lock ensures mutual
+ * exclusion.
  */
 struct timer_signal_data {
 	pthread_t tid;	/* thread id managing signals */
 	int setup_done;
 	int qs_done;
+	pthread_mutex_t lock;
 };
 
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
