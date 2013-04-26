@@ -516,8 +516,7 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 	}
 	rcu_read_unlock();
 
-	uatomic_dec(&stream->chan->refcount);
-	if (!uatomic_read(&stream->chan->refcount)
+	if (!uatomic_sub_return(&stream->chan->refcount, 1)
 			&& !uatomic_read(&stream->chan->nb_init_stream_left)) {
 		free_chan = stream->chan;
 	}
@@ -659,6 +658,8 @@ static int add_stream(struct lttng_consumer_stream *stream,
 	 * stream.
 	 */
 	if (uatomic_read(&stream->chan->nb_init_stream_left) > 0) {
+		/* Increment refcount before decrementing nb_init_stream_left */
+		cmm_smp_wmb();
 		uatomic_dec(&stream->chan->nb_init_stream_left);
 	}
 
@@ -1937,8 +1938,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	rcu_read_unlock();
 
 	/* Atomically decrement channel refcount since other threads can use it. */
-	uatomic_dec(&stream->chan->refcount);
-	if (!uatomic_read(&stream->chan->refcount)
+	if (!uatomic_sub_return(&stream->chan->refcount, 1)
 			&& !uatomic_read(&stream->chan->nb_init_stream_left)) {
 		/* Go for channel deletion! */
 		free_chan = stream->chan;
@@ -2008,6 +2008,8 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 	 * stream.
 	 */
 	if (uatomic_read(&stream->chan->nb_init_stream_left) > 0) {
+		/* Increment refcount before decrementing nb_init_stream_left */
+		cmm_smp_wmb();
 		uatomic_dec(&stream->chan->nb_init_stream_left);
 	}
 
@@ -2557,6 +2559,13 @@ void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 			ht->hash_fct(&channel->key, lttng_ht_seed),
 			ht->match_fct, &channel->key,
 			&iter.iter, stream, node_channel_id.node) {
+		/*
+		 * Protect against teardown with mutex.
+		 */
+		pthread_mutex_lock(&stream->lock);
+		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+			goto next;
+		}
 		switch (consumer_data.type) {
 		case LTTNG_CONSUMER_KERNEL:
 			break;
@@ -2573,6 +2582,8 @@ void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 			ERR("Unknown consumer_data type");
 			assert(0);
 		}
+	next:
+		pthread_mutex_unlock(&stream->lock);
 	}
 	rcu_read_unlock();
 }
@@ -2737,6 +2748,12 @@ restart:
 				ret = lttng_ht_del(channel_ht, &iter);
 				assert(ret == 0);
 				consumer_close_channel_streams(chan);
+
+				/* Release our own refcount */
+				if (!uatomic_sub_return(&chan->refcount, 1)
+						&& !uatomic_read(&chan->nb_init_stream_left)) {
+					consumer_del_channel(chan);
+				}
 			}
 
 			/* Release RCU lock for the channel looked up */

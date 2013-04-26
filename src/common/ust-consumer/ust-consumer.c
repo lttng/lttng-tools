@@ -859,6 +859,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_channel_error;
 		}
 
+		/*
+		 * Set refcount to 1 for owner. Below, we will pass
+		 * ownership to the consumer_thread_channel_poll()
+		 * thread.
+		 */
+		channel->refcount = 1;
+
 		/* Build channel attributes from received message. */
 		attr.subbuf_size = msg.u.ask_channel.subbuf_size;
 		attr.num_subbuf = msg.u.ask_channel.num_subbuf;
