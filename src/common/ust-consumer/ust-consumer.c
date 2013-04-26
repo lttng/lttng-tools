@@ -898,10 +898,22 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_channel_error;
 		}
 
+		if (msg.u.ask_channel.type == LTTNG_UST_CHAN_METADATA) {
+			ret = consumer_metadata_cache_allocate(channel);
+			if (ret < 0) {
+				ERR("Allocating metadata cache");
+				goto end_channel_error;
+			}
+			consumer_timer_switch_start(channel, attr.switch_timer_interval);
+			attr.switch_timer_interval = 0;
+		}
+
 		/*
 		 * Add the channel to the internal state AFTER all streams were created
 		 * and successfully sent to session daemon. This way, all streams must
 		 * be ready before this channel is visible to the threads.
+		 * If add_channel succeeds, ownership of the channel is
+		 * passed to consumer_thread_channel_poll().
 		 */
 		ret = add_channel(channel, ctx);
 		if (ret < 0) {
@@ -921,16 +933,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 * it and clean everything up.
 			 */
 			goto end_nosignal;
-		}
-
-		if (msg.u.ask_channel.type == LTTNG_UST_CHAN_METADATA) {
-			ret = consumer_metadata_cache_allocate(channel);
-			if (ret < 0) {
-				ERR("Allocating metadata cache");
-				goto end_channel_error;
-			}
-			consumer_timer_switch_start(channel, attr.switch_timer_interval);
-			attr.switch_timer_interval = 0;
 		}
 
 		break;
