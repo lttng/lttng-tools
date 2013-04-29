@@ -1049,6 +1049,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (!channel) {
 			ERR("UST consumer push metadata %" PRIu64 " not found", key);
 			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto end_msg_sessiond;
 		}
 
 		/* Tell session daemon we are ready to receive the metadata. */
