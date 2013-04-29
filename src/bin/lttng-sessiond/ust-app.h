@@ -257,8 +257,6 @@ int ust_app_register_done(int sock)
 int ust_app_version(struct ust_app *app);
 void ust_app_unregister(int sock);
 unsigned long ust_app_list_count(void);
-int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app);
-int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);

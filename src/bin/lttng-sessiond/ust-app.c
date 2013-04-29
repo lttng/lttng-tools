@@ -3550,6 +3550,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 /*
  * Start tracing for a specific UST session and app.
  */
+static
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
@@ -3642,12 +3643,11 @@ error_unlock:
 /*
  * Stop tracing for a specific UST session and app.
  */
+static
 int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
 	struct ust_registry_session *registry;
 
 	DBG("Stopping tracing for ust app pid %d", app->pid);
@@ -3700,6 +3700,52 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	health_code_update();
 
+	registry = get_session_registry(ua_sess);
+	assert(registry);
+	/* Push metadata for application before freeing the application. */
+	(void) push_metadata(registry, ua_sess->consumer);
+
+	pthread_mutex_unlock(&ua_sess->lock);
+end_no_session:
+	rcu_read_unlock();
+	health_code_update();
+	return 0;
+
+error_rcu_unlock:
+	pthread_mutex_unlock(&ua_sess->lock);
+	rcu_read_unlock();
+	health_code_update();
+	return -1;
+}
+
+/*
+ * Flush buffers for a specific UST session and app.
+ */
+static
+int ust_app_flush_trace(struct ltt_ust_session *usess, struct ust_app *app)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+
+	DBG("Flushing buffers for ust app pid %d", app->pid);
+
+	rcu_read_lock();
+
+	if (!app->compatible) {
+		goto end_no_session;
+	}
+
+	ua_sess = lookup_session_by_app(usess, app);
+	if (ua_sess == NULL) {
+		goto end_no_session;
+	}
+
+	pthread_mutex_lock(&ua_sess->lock);
+
+	health_code_update();
+
 	/* Flushing buffers */
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
@@ -3723,22 +3769,11 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	health_code_update();
 
-	registry = get_session_registry(ua_sess);
-	assert(registry);
-	/* Push metadata for application before freeing the application. */
-	(void) push_metadata(registry, ua_sess->consumer);
-
 	pthread_mutex_unlock(&ua_sess->lock);
 end_no_session:
 	rcu_read_unlock();
 	health_code_update();
 	return 0;
-
-error_rcu_unlock:
-	pthread_mutex_unlock(&ua_sess->lock);
-	rcu_read_unlock();
-	health_code_update();
-	return -1;
 }
 
 /*
@@ -3823,9 +3858,21 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 
 	rcu_read_lock();
 
-	/* Flush all per UID buffers associated to that session. */
-	if (usess->buffer_type == LTTNG_BUFFER_PER_UID) {
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		ret = ust_app_stop_trace(usess, app);
+		if (ret < 0) {
+			/* Continue to next apps even on error */
+			continue;
+		}
+	}
+
+	/* Flush buffers */
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
 		struct buffer_reg_uid *reg;
+
+		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
 			struct buffer_reg_channel *reg_chan;
 			struct consumer_socket *socket;
@@ -3848,14 +3895,20 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 				(void) consumer_flush_channel(socket, reg_chan->consumer_key);
 			}
 		}
+		break;
 	}
-
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		ret = ust_app_stop_trace(usess, app);
-		if (ret < 0) {
-			/* Continue to next apps even on error */
-			continue;
+	case LTTNG_BUFFER_PER_PID:
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			ret = ust_app_flush_trace(usess, app);
+			if (ret < 0) {
+				/* Continue to next apps even on error */
+				continue;
+			}
 		}
+		break;
+	default:
+		assert(0);
+		break;
 	}
 
 	rcu_read_unlock();
