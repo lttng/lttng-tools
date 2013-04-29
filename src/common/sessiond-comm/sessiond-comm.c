@@ -320,6 +320,7 @@ void lttcomm_destroy_sock(struct lttcomm_sock *sock)
  *
  * On error, NULL is returned.
  */
+LTTNG_HIDDEN
 struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
 		uint32_t major, uint32_t minor)
 {
