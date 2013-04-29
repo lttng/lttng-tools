@@ -313,7 +313,7 @@ LTTNG_HIDDEN
 int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid)
 {
-	int ret, out_fd;
+	int ret, out_fd, flags, mode;
 	char full_path[PATH_MAX], *path_name_id = NULL, *path;
 
 	assert(path_name);
@@ -341,9 +341,15 @@ int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
 		path = full_path;
 	}
 
+	flags = O_WRONLY | O_CREAT | O_TRUNC;
 	/* Open with 660 mode */
-	out_fd = run_as_open(path, O_WRONLY | O_CREAT | O_TRUNC,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, uid, gid);
+	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+
+	if (uid < 0 || gid < 0) {
+		out_fd = open(path, flags, mode);
+	} else {
+		out_fd = run_as_open(path, flags, mode, uid, gid);
+	}
 	if (out_fd < 0) {
 		PERROR("open stream path %s", path);
 		goto error_open;

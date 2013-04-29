@@ -863,8 +863,12 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	/*
+	 * No need to use run_as API here because whatever we receives, the relayd
+	 * uses its own credentials for the stream files.
+	 */
 	ret = utils_create_stream_file(stream->path_name, stream->channel_name,
-			stream->tracefile_size, 0, getuid(), getgid());
+			stream->tracefile_size, 0, -1, -1);
 	if (ret < 0) {
 		ERR("Create output file");
 		goto end;
@@ -1625,7 +1629,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 			stream->tracefile_size) {
 		ret = utils_rotate_stream_file(stream->path_name,
 				stream->channel_name, stream->tracefile_size,
-				stream->tracefile_count, getuid(), getgid(),
+				stream->tracefile_count, -1, -1,
 				stream->fd, &(stream->tracefile_count_current));
 		if (ret < 0) {
 			ERR("Rotating output file");
