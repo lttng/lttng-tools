@@ -506,12 +506,14 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 			buffer_reg_stream_destroy(sreg, domain);
 		}
 
-		ret = ust_ctl_release_object(-1, regp->obj.ust);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Buffer reg channel release obj handle %d failed with ret %d",
-					regp->obj.ust->handle, ret);
+		if (regp->obj.ust) {
+			ret = ust_ctl_release_object(-1, regp->obj.ust);
+			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+				ERR("Buffer reg channel release obj handle %d failed with ret %d",
+						regp->obj.ust->handle, ret);
+			}
+			free(regp->obj.ust);
 		}
-		free(regp->obj.ust);
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 		break;
 	}
