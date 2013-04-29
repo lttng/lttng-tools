@@ -120,7 +120,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
 	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
 	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
-	fprintf(ofp, "                           Maximum size of of each tracefile within a stream (in bytes).\n");
+	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes).\n");
 	fprintf(ofp, "  -W, --tracefile-count COUNT\n");
 	fprintf(ofp, "                           Used in conjunction with -C option, this will limit the number\n");
 	fprintf(ofp, "                           of files created to the specified count.\n");
