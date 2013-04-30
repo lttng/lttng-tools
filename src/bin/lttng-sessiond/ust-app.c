@@ -2537,18 +2537,18 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		metadata->attr.type = LTTNG_UST_CHAN_METADATA;
 	}
 
-	/* Get the right consumer socket for the application. */
-	socket = consumer_find_socket_by_bitness(app->bits_per_long, consumer);
-	if (!socket) {
-		ret = -EINVAL;
-		goto error_consumer;
-	}
-
 	/* Need one fd for the channel. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
 	if (ret < 0) {
 		ERR("Exhausted number of available FD upon create metadata");
 		goto error;
+	}
+
+	/* Get the right consumer socket for the application. */
+	socket = consumer_find_socket_by_bitness(app->bits_per_long, consumer);
+	if (!socket) {
+		ret = -EINVAL;
+		goto error_consumer;
 	}
 
 	/*
