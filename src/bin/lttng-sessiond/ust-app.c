@@ -2572,7 +2572,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		 * Safe because the metadata obj pointer is not set so the delete below
 		 * will not put a FD back again.
 		 */
-		lttng_fd_put(LTTNG_FD_APPS, 1);
 		goto error_consumer;
 	}
 
@@ -2588,7 +2587,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		 * Safe because the metadata obj pointer is not set so the delete below
 		 * will not put a FD back again.
 		 */
-		lttng_fd_put(LTTNG_FD_APPS, 1);
 		goto error_consumer;
 	}
 
@@ -2596,6 +2594,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			metadata->key, app->pid);
 
 error_consumer:
+	lttng_fd_put(LTTNG_FD_APPS, 1);
 	delete_ust_app_channel(-1, metadata, app);
 error:
 	return ret;
