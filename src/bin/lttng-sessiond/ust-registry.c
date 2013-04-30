@@ -313,7 +313,7 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
  *
- * This MUST be called within a RCU read side lock section.
+ * This *MUST NOT* be called within a RCU read side lock section.
  */
 static void destroy_channel(struct ust_registry_channel *chan)
 {
@@ -322,13 +322,15 @@ static void destroy_channel(struct ust_registry_channel *chan)
 
 	assert(chan);
 
+	rcu_read_lock();
 	/* Destroy all event associated with this registry. */
 	cds_lfht_for_each_entry(chan->ht->ht, &iter.iter, event, node.node) {
 		/* Delete the node from the ht and free it. */
 		ust_registry_destroy_event(chan, event);
 	}
-	lttng_ht_destroy(chan->ht);
+	rcu_read_unlock();
 
+	lttng_ht_destroy(chan->ht);
 	free(chan);
 }
 
@@ -418,22 +420,30 @@ void ust_registry_channel_del_free(struct ust_registry_session *session,
 {
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan;
+	int ret;
 
 	assert(session);
 
 	rcu_read_lock();
 	chan = ust_registry_channel_find(session, key);
 	if (!chan) {
+		rcu_read_unlock();
 		goto end;
 	}
 
 	iter.iter.node = &chan->node.node;
-	lttng_ht_del(session->channels, &iter);
+	ret = lttng_ht_del(session->channels, &iter);
+	assert(!ret);
+	rcu_read_unlock();
 
+	/*
+	 * Destroying the hash table should be done without RCU
+	 * read-side lock held. Since we own "chan" now, it is OK to use
+	 * it outside of RCU read-side critical section.
+	 */
 	destroy_channel(chan);
 
 end:
-	rcu_read_unlock();
 	return;
 }
 
