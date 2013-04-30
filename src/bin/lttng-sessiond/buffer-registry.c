@@ -527,8 +527,10 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 
 /*
  * Destroy a buffer registry session with the given domain.
+ *
+ * Should *NOT* be called with RCU read-side lock held.
  */
-void buffer_reg_session_destroy(struct buffer_reg_session *regp,
+static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 		enum lttng_domain_type domain)
 {
 	int ret;
@@ -545,8 +547,9 @@ void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 		assert(!ret);
 		buffer_reg_channel_destroy(reg_chan, domain);
 	}
-	lttng_ht_destroy(regp->channels);
 	rcu_read_unlock();
+
+	lttng_ht_destroy(regp->channels);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -562,8 +565,7 @@ void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 }
 
 /*
- * Remove buffer registry UID object from the global hash table. RCU read side
- * lock MUST be acquired before calling this.
+ * Remove buffer registry UID object from the global hash table.
  */
 void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 {
@@ -572,9 +574,11 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 
 	assert(regp);
 
+	rcu_read_lock();
 	iter.iter.node = &regp->node.node;
 	ret = lttng_ht_del(buffer_registry_uid, &iter);
 	assert(!ret);
+	rcu_read_unlock();
 }
 
 static void rcu_free_buffer_reg_uid(struct rcu_head *head)
@@ -620,11 +624,12 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 		goto destroy;
 	}
 
+	rcu_read_lock();
 	/* Get the right socket from the consumer object. */
 	socket = consumer_find_socket_by_bitness(regp->bits_per_long,
 			consumer);
 	if (!socket) {
-		goto destroy;
+		goto unlock;
 	}
 
 	switch (regp->domain) {
@@ -637,9 +642,12 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 		break;
 	default:
 		assert(0);
+		rcu_read_unlock();
 		return;
 	}
 
+unlock:
+	rcu_read_unlock();
 destroy:
 	call_rcu(&regp->node.head, rcu_free_buffer_reg_uid);
 }
@@ -679,6 +687,8 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 
 /*
  * Destroy per PID and UID registry hash table.
+ *
+ * Should *NOT* be called with RCU read-side lock held.
  */
 void buffer_reg_destroy_registries(void)
 {

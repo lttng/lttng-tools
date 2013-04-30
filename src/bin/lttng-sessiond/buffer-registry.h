@@ -133,10 +133,6 @@ void buffer_reg_stream_add(struct buffer_reg_stream *stream,
 void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
 		enum lttng_domain_type domain);
 
-/* Session */
-void buffer_reg_session_destroy(struct buffer_reg_session *regp,
-		enum lttng_domain_type domain);
-
 /* Global registry. */
 void buffer_reg_destroy_registries(void);
 

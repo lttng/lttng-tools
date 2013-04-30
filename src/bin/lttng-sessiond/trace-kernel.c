@@ -421,6 +421,8 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 
 /*
  * Cleanup kernel session structure
+ *
+ * Should *NOT* be called with RCU read-side lock held.
  */
 void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 {

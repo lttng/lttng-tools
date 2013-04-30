@@ -154,6 +154,8 @@ struct ust_app_channel {
 	 * ust_objd hash table in the ust_app object.
 	 */
 	struct lttng_ht_node_ulong ust_objd_node;
+	/* For delayed reclaim */
+	struct rcu_head rcu_head;
 };
 
 struct ust_app_session {
@@ -193,6 +195,8 @@ struct ust_app_session {
 	enum lttng_buffer_type buffer_type;
 	/* ABI of the session. Same value as the application. */
 	uint32_t bits_per_long;
+	/* For delayed reclaim */
+	struct rcu_head rcu_head;
 };
 
 /*

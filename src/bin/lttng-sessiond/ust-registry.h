@@ -107,6 +107,8 @@ struct ust_registry_channel {
 	size_t nr_ctx_fields;
 	struct ustctl_field *ctx_fields;
 	struct lttng_ht_node_u64 node;
+	/* For delayed reclaim */
+	struct rcu_head rcu_head;
 };
 
 /*

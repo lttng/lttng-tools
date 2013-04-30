@@ -474,12 +474,14 @@ static void destroy_contexts(struct lttng_ht *ht)
 
 	assert(ht);
 
+	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(ht, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_context_rcu);
 		}
 	}
+	rcu_read_unlock();
 
 	lttng_ht_destroy(ht);
 }
@@ -520,25 +522,27 @@ static void destroy_events(struct lttng_ht *events)
 
 	assert(events);
 
+	rcu_read_lock();
 	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(events, &iter);
 		assert(!ret);
 		call_rcu(&node->head, destroy_event_rcu);
 	}
+	rcu_read_unlock();
 
 	lttng_ht_destroy(events);
 }
 
 /*
  * Cleanup ust channel structure.
+ *
+ * Should _NOT_ be called with RCU read lock held.
  */
-void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
+static void _trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
 	assert(channel);
 
 	DBG2("Trace destroy UST channel %s", channel->name);
-
-	rcu_read_lock();
 
 	/* Destroying all events of the channel */
 	destroy_events(channel->events);
@@ -546,8 +550,6 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 	destroy_contexts(channel->ctx);
 
 	free(channel);
-
-	rcu_read_unlock();
 }
 
 /*
@@ -560,7 +562,12 @@ static void destroy_channel_rcu(struct rcu_head *head)
 	struct ltt_ust_channel *channel =
 		caa_container_of(node, struct ltt_ust_channel, node);
 
-	trace_ust_destroy_channel(channel);
+	_trace_ust_destroy_channel(channel);
+}
+
+void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
+{
+	call_rcu(&channel->node.head, destroy_channel_rcu);
 }
 
 /*
@@ -595,10 +602,9 @@ static void destroy_channels(struct lttng_ht *channels)
 		assert(!ret);
 		call_rcu(&node->head, destroy_channel_rcu);
 	}
+	rcu_read_unlock();
 
 	lttng_ht_destroy(channels);
-
-	rcu_read_unlock();
 }
 
 /*
@@ -613,14 +619,14 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
 
 /*
  * Cleanup ust session structure
+ *
+ * Should *NOT* be called with RCU read-side lock held.
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
 	struct buffer_reg_uid *reg, *sreg;
 
 	assert(session);
-
-	rcu_read_lock();
 
 	DBG2("Trace UST destroy session %u", session->id);
 
@@ -639,6 +645,4 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	consumer_destroy_output(session->tmp_consumer);
 
 	free(session);
-
-	rcu_read_unlock();
 }

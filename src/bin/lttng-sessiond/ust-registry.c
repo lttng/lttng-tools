@@ -309,11 +309,25 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 }
 
 /*
+ * We need to execute ht_destroy outside of RCU read-side critical
+ * section, so we postpone its execution using call_rcu. It is simpler
+ * than to change the semantic of the many callers of
+ * destroy_channel().
+ */
+static
+void destroy_channel_rcu(struct rcu_head *head)
+{
+	struct ust_registry_channel *chan =
+		caa_container_of(head, struct ust_registry_channel, rcu_head);
+
+	lttng_ht_destroy(chan->ht);
+	free(chan);
+}
+
+/*
  * Destroy every element of the registry and free the memory. This does NOT
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
- *
- * This *MUST NOT* be called within a RCU read side lock section.
  */
 static void destroy_channel(struct ust_registry_channel *chan)
 {
@@ -329,9 +343,7 @@ static void destroy_channel(struct ust_registry_channel *chan)
 		ust_registry_destroy_event(chan, event);
 	}
 	rcu_read_unlock();
-
-	lttng_ht_destroy(chan->ht);
-	free(chan);
+	call_rcu(&chan->rcu_head, destroy_channel_rcu);
 }
 
 /*
@@ -435,12 +447,6 @@ void ust_registry_channel_del_free(struct ust_registry_session *session,
 	ret = lttng_ht_del(session->channels, &iter);
 	assert(!ret);
 	rcu_read_unlock();
-
-	/*
-	 * Destroying the hash table should be done without RCU
-	 * read-side lock held. Since we own "chan" now, it is OK to use
-	 * it outside of RCU read-side critical section.
-	 */
 	destroy_channel(chan);
 
 end:
@@ -535,8 +541,8 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 		assert(!ret);
 		destroy_channel(chan);
 	}
-	lttng_ht_destroy(reg->channels);
 	rcu_read_unlock();
 
+	lttng_ht_destroy(reg->channels);
 	free(reg->metadata);
 }

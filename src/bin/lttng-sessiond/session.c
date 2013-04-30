@@ -147,6 +147,7 @@ found:
  * Delete session from the session list and free the memory.
  *
  * Return -1 if no session is found.  On success, return 1;
+ * Should *NOT* be called with RCU read-side lock held.
  */
 int session_destroy(struct ltt_session *session)
 {
@@ -157,9 +158,7 @@ int session_destroy(struct ltt_session *session)
 	del_session_list(session);
 	pthread_mutex_destroy(&session->lock);
 
-	rcu_read_lock();
 	consumer_destroy_output(session->consumer);
-	rcu_read_unlock();
 	free(session);
 
 	return LTTNG_OK;

@@ -306,6 +306,23 @@ void delete_ust_app_stream(int sock, struct ust_app_stream *stream)
 }
 
 /*
+ * We need to execute ht_destroy outside of RCU read-side critical
+ * section, so we postpone its execution using call_rcu. It is simpler
+ * than to change the semantic of the many callers of
+ * delete_ust_app_channel().
+ */
+static
+void delete_ust_app_channel_rcu(struct rcu_head *head)
+{
+	struct ust_app_channel *ua_chan =
+		caa_container_of(head, struct ust_app_channel, rcu_head);
+
+	lttng_ht_destroy(ua_chan->ctx);
+	lttng_ht_destroy(ua_chan->events);
+	free(ua_chan);
+}
+
+/*
  * Delete ust app channel safely. RCU read lock must be held before calling
  * this function.
  */
@@ -336,7 +353,6 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		assert(!ret);
 		delete_ust_app_ctx(sock, ua_ctx);
 	}
-	lttng_ht_destroy(ua_chan->ctx);
 
 	/* Wipe events */
 	cds_lfht_for_each_entry(ua_chan->events->ht, &iter.iter, ua_event,
@@ -345,7 +361,6 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		assert(!ret);
 		delete_ust_app_event(sock, ua_event);
 	}
-	lttng_ht_destroy(ua_chan->events);
 
 	/* Wipe and free registry from session registry. */
 	registry = get_session_registry(ua_chan->session);
@@ -365,7 +380,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 		free(ua_chan->obj);
 	}
-	free(ua_chan);
+	call_rcu(&ua_chan->rcu_head, delete_ust_app_channel_rcu);
 }
 
 /*
@@ -542,6 +557,22 @@ error:
 }
 
 /*
+ * We need to execute ht_destroy outside of RCU read-side critical
+ * section, so we postpone its execution using call_rcu. It is simpler
+ * than to change the semantic of the many callers of
+ * delete_ust_app_session().
+ */
+static
+void delete_ust_app_session_rcu(struct rcu_head *head)
+{
+	struct ust_app_session *ua_sess =
+		caa_container_of(head, struct ust_app_session, rcu_head);
+
+	lttng_ht_destroy(ua_sess->channels);
+	free(ua_sess);
+}
+
+/*
  * Delete ust app session safely. RCU read lock must be held before calling
  * this function.
  */
@@ -577,7 +608,6 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 		assert(!ret);
 		delete_ust_app_channel(sock, ua_chan, app);
 	}
-	lttng_ht_destroy(ua_sess->channels);
 
 	/* In case of per PID, the registry is kept in the session. */
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
@@ -595,12 +625,14 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 					sock, ret);
 		}
 	}
-	free(ua_sess);
+	call_rcu(&ua_sess->rcu_head, delete_ust_app_session_rcu);
 }
 
 /*
  * Delete a traceable application structure from the global list. Never call
  * this function outside of a call_rcu call.
+ *
+ * RCU read side lock should _NOT_ be held when calling this function.
  */
 static
 void delete_ust_app(struct ust_app *app)
@@ -608,20 +640,20 @@ void delete_ust_app(struct ust_app *app)
 	int ret, sock;
 	struct ust_app_session *ua_sess, *tmp_ua_sess;
 
-	rcu_read_lock();
-
 	/* Delete ust app sessions info */
 	sock = app->sock;
 	app->sock = -1;
-
-	lttng_ht_destroy(app->sessions);
 
 	/* Wipe sessions */
 	cds_list_for_each_entry_safe(ua_sess, tmp_ua_sess, &app->teardown_head,
 			teardown_node) {
 		/* Free every object in the session and the session. */
+		rcu_read_lock();
 		delete_ust_app_session(sock, ua_sess, app);
+		rcu_read_unlock();
 	}
+
+	lttng_ht_destroy(app->sessions);
 	lttng_ht_destroy(app->ust_objd);
 
 	/*
@@ -645,8 +677,6 @@ void delete_ust_app(struct ust_app *app)
 
 	DBG2("UST app pid %d deleted", app->pid);
 	free(app);
-
-	rcu_read_unlock();
 }
 
 /*
@@ -2347,7 +2377,7 @@ error:
  * Create UST app channel and create it on the tracer. Set ua_chanp of the
  * newly created channel if not NULL.
  *
- * Called with UST app session lock held.
+ * Called with UST app session lock and RCU read-side lock held.
  *
  * Return 0 on success or else a negative value.
  */
@@ -3046,6 +3076,8 @@ error:
 
 /*
  * Free and clean all traceable apps of the global list.
+ *
+ * Should _NOT_ be called with RCU read-side lock held.
  */
 void ust_app_clean_list(void)
 {
@@ -3076,13 +3108,12 @@ void ust_app_clean_list(void)
 		ret = lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
 		assert(!ret);
 	}
+	rcu_read_unlock();
 
 	/* Destroy is done only when the ht is empty */
 	lttng_ht_destroy(ust_app_ht);
 	lttng_ht_destroy(ust_app_ht_by_sock);
 	lttng_ht_destroy(ust_app_ht_by_notify_sock);
-
-	rcu_read_unlock();
 }
 
 /*

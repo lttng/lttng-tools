@@ -407,6 +407,8 @@ error:
 
 /*
  * Delete the consumer_output object from the list and free the ptr.
+ *
+ * Should *NOT* be called with RCU read-side lock held.
  */
 void consumer_destroy_output(struct consumer_output *obj)
 {
@@ -434,6 +436,8 @@ void consumer_destroy_output(struct consumer_output *obj)
 
 /*
  * Copy consumer output and returned the newly allocated copy.
+ *
+ * Should *NOT* be called with RCU read-side lock held.
  */
 struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 {

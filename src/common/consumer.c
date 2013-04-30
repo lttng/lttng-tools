@@ -319,9 +319,9 @@ static void cleanup_relayd_ht(void)
 		destroy_relayd(relayd);
 	}
 
-	lttng_ht_destroy(consumer_data.relayd_ht);
-
 	rcu_read_unlock();
+
+	lttng_ht_destroy(consumer_data.relayd_ht);
 }
 
 /*
