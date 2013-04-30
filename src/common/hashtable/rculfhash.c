@@ -1733,10 +1733,25 @@ int cds_lfht_delete_bucket(struct cds_lfht *ht)
 int cds_lfht_destroy(struct cds_lfht *ht, pthread_attr_t **attr)
 {
 	int ret;
+#ifdef rcu_read_ongoing_mb
+	int was_online;
+#endif
 
 	/* Wait for in-flight resize operations to complete */
 	_CMM_STORE_SHARED(ht->in_progress_destroy, 1);
 	cmm_smp_mb();	/* Store destroy before load resize */
+#ifdef rcu_read_ongoing_mb
+	was_online = ht->flavor->read_ongoing();
+	if (was_online)
+		ht->flavor->thread_offline();
+	/* Calling with RCU read-side held is an error. */
+	if (ht->flavor->read_ongoing()) {
+		ret = -EINVAL;
+		if (was_online)
+			ht->flavor->thread_online();
+		goto end;
+	}
+#endif
 	while (uatomic_read(&ht->in_progress_resize))
 		poll(NULL, 0, 100);	/* wait for 100ms */
 	ret = cds_lfht_delete_bucket(ht);
@@ -1746,6 +1761,9 @@ int cds_lfht_destroy(struct cds_lfht *ht, pthread_attr_t **attr)
 	if (attr)
 		*attr = ht->resize_attr;
 	poison_free(ht);
+#ifdef rcu_read_ongoing_mb
+end:
+#endif
 	return ret;
 }
 
@@ -1874,13 +1892,34 @@ void resize_target_update_count(struct cds_lfht *ht,
 
 void cds_lfht_resize(struct cds_lfht *ht, unsigned long new_size)
 {
+#ifdef rcu_read_ongoing_mb
+	int was_online;
+
+	was_online = ht->flavor->read_ongoing();
+	if (was_online)
+		ht->flavor->thread_offline();
+	/* Calling with RCU read-side held is an error. */
+	if (ht->flavor->read_ongoing()) {
+		static int print_once;
+
+		if (!CMM_LOAD_SHARED(print_once))
+			fprintf(stderr, "[error] rculfhash: cds_lfht_resize "
+				"called with RCU read-side lock held.\n");
+		CMM_STORE_SHARED(print_once, 1);
+		assert(0);
+		goto end;
+	}
+#endif
 	resize_target_update_count(ht, new_size);
 	CMM_STORE_SHARED(ht->resize_initiated, 1);
-	ht->flavor->thread_offline();
 	pthread_mutex_lock(&ht->resize_mutex);
 	_do_cds_lfht_resize(ht);
 	pthread_mutex_unlock(&ht->resize_mutex);
-	ht->flavor->thread_online();
+#ifdef rcu_read_ongoing_mb
+end:
+	if (was_online)
+		ht->flavor->thread_online();
+#endif
 }
 
 static
