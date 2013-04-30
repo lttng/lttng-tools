@@ -2183,6 +2183,7 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &stream);
 		if (ret < 0) {
+			(void) release_ust_app_stream(-1, &stream);
 			goto error_stream_unlock;
 		}
 
