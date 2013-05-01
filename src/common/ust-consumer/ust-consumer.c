@@ -581,6 +581,7 @@ static int flush_channel(uint64_t chan_key)
 
 	DBG("UST consumer flush channel key %" PRIu64, chan_key);
 
+	rcu_read_lock();
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
 		ERR("UST consumer flush channel %" PRIu64 " not found", chan_key);
@@ -591,20 +592,19 @@ static int flush_channel(uint64_t chan_key)
 	ht = consumer_data.stream_per_chan_id_ht;
 
 	/* For each stream of the channel id, flush it. */
-	rcu_read_lock();
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 			ht->hash_fct(&channel->key, lttng_ht_seed), ht->match_fct,
 			&channel->key, &iter.iter, stream, node_channel_id.node) {
 			ustctl_flush_buffer(stream->ustream, 1);
 	}
-	rcu_read_unlock();
-
 error:
+	rcu_read_unlock();
 	return ret;
 }
 
 /*
  * Close metadata stream wakeup_fd using the given key to retrieve the channel.
+ * RCU read side lock MUST be acquired before calling this function.
  *
  * Return 0 on success else an LTTng error code.
  */
