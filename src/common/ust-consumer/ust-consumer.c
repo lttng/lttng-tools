@@ -610,7 +610,7 @@ error:
  */
 static int close_metadata(uint64_t chan_key)
 {
-	int ret;
+	int ret = 0;
 	struct lttng_consumer_channel *channel;
 
 	DBG("UST consumer close metadata key %" PRIu64, chan_key);
@@ -622,18 +622,22 @@ static int close_metadata(uint64_t chan_key)
 		goto error;
 	}
 
-	ret = ustctl_stream_close_wakeup_fd(channel->metadata_stream->ustream);
-	if (ret < 0) {
-		ERR("UST consumer unable to close fd of metadata (ret: %d)", ret);
-		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
-		goto error;
+	pthread_mutex_lock(&consumer_data.lock);
+	if (!cds_lfht_is_node_deleted(&channel->node.node)) {
+		if (channel->switch_timer_enabled == 1) {
+			DBG("Deleting timer on metadata channel");
+			consumer_timer_switch_stop(channel);
+		}
+		ret = ustctl_stream_close_wakeup_fd(channel->metadata_stream->ustream);
+		if (ret < 0) {
+			ERR("UST consumer unable to close fd of metadata (ret: %d)", ret);
+			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			goto error_unlock;
+		}
 	}
-	if (channel->switch_timer_enabled == 1) {
-		DBG("Deleting timer on metadata channel");
-		consumer_timer_switch_stop(channel);
-	}
-	consumer_metadata_cache_destroy(channel);
 
+error_unlock:
+	pthread_mutex_unlock(&consumer_data.lock);
 error:
 	return ret;
 }
@@ -923,9 +927,14 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 */
 		ret = add_channel(channel, ctx);
 		if (ret < 0) {
+			if (msg.u.ask_channel.type == LTTNG_UST_CHAN_METADATA) {
+				if (channel->switch_timer_enabled == 1) {
+					consumer_timer_switch_stop(channel);
+				}
+				consumer_metadata_cache_destroy(channel);
+			}
 			goto end_channel_error;
 		}
-
 
 		/*
 		 * Channel and streams are now created. Inform the session daemon that
@@ -1193,6 +1202,10 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 	assert(chan);
 	assert(chan->uchan);
 
+	if (chan->switch_timer_enabled == 1) {
+		consumer_timer_switch_stop(chan);
+	}
+	consumer_metadata_cache_destroy(chan);
 	ustctl_destroy_channel(chan->uchan);
 }
 
@@ -1201,6 +1214,9 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 	assert(stream);
 	assert(stream->ustream);
 
+	if (stream->chan->switch_timer_enabled == 1) {
+		consumer_timer_switch_stop(stream->chan);
+	}
 	ustctl_destroy_stream(stream->ustream);
 }
 
