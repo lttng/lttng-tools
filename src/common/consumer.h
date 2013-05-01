@@ -527,5 +527,7 @@ int consumer_data_pending(uint64_t id);
 int consumer_send_status_msg(int sock, int ret_code);
 int consumer_send_status_channel(int sock,
 		struct lttng_consumer_channel *channel);
+void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
+		uint64_t key);
 
 #endif /* LIB_CONSUMER_H */

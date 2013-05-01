@@ -998,17 +998,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_DESTROY_CHANNEL:
 	{
 		uint64_t key = msg.u.destroy_channel.key;
-		struct lttng_consumer_channel *channel;
 
-		channel = consumer_find_channel(key);
-		if (!channel) {
-			ERR("UST consumer get channel key %" PRIu64 " not found", key);
-			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto end_msg_sessiond;
-		}
-
-		destroy_channel(channel);
-
+		/*
+		 * Only called if streams have not been sent to stream
+		 * manager thread. However, channel has been sent to
+		 * channel manager thread.
+		 */
+		notify_thread_del_channel(ctx, key);
 		goto end_msg_sessiond;
 	}
 	case LTTNG_CONSUMER_CLOSE_METADATA:
