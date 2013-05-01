@@ -720,6 +720,8 @@ struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 	obj->net_seq_idx = net_seq_idx;
 	obj->refcount = 0;
 	obj->destroy_flag = 0;
+	obj->control_sock.sock.fd = -1;
+	obj->data_sock.sock.fd = -1;
 	lttng_ht_node_init_u64(&obj->node, obj->net_seq_idx);
 	pthread_mutex_init(&obj->ctrl_sock_mutex, NULL);
 

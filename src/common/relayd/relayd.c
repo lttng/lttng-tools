@@ -41,6 +41,10 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 	char *buf;
 	uint64_t buf_size = sizeof(header);
 
+	if (rsock->sock.fd < 0) {
+		return -ECONNRESET;
+	}
+
 	if (data) {
 		buf_size += size;
 	}
@@ -86,6 +90,10 @@ alloc_error:
 static int recv_reply(struct lttcomm_relayd_sock *rsock, void *data, size_t size)
 {
 	int ret;
+
+	if (rsock->sock.fd < 0) {
+		return -ECONNRESET;
+	}
 
 	DBG3("Relayd waiting for reply of size %zu", size);
 
@@ -337,6 +345,13 @@ int relayd_connect(struct lttcomm_relayd_sock *rsock)
 	/* Code flow error. Safety net. */
 	assert(rsock);
 
+	if (!rsock->sock.ops) {
+		/*
+		 * Attempting a connect on a non-initialized socket.
+		 */
+		return -ECONNRESET;
+	}
+
 	DBG3("Relayd connect ...");
 
 	return rsock->sock.ops->connect(&rsock->sock);
@@ -379,6 +394,7 @@ int relayd_close(struct lttcomm_relayd_sock *rsock)
 			PERROR("relayd_close default close");
 		}
 	}
+	rsock->sock.fd = -1;
 
 end:
 	return ret;
@@ -395,6 +411,10 @@ int relayd_send_data_hdr(struct lttcomm_relayd_sock *rsock,
 	/* Code flow error. Safety net. */
 	assert(rsock);
 	assert(hdr);
+
+	if (rsock->sock.fd < 0) {
+		return -ECONNRESET;
+	}
 
 	DBG3("Relayd sending data header of size %zu", size);
 
