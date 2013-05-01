@@ -319,6 +319,8 @@ struct lttcomm_consumer_msg {
 			int type; /* Per cpu or metadata. */
 			uint64_t tracefile_size; /* bytes */
 			uint32_t tracefile_count; /* number of tracefiles */
+			/* If the channel's streams have to be monitored or not. */
+			uint32_t monitor;
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
 			uint64_t stream_key;
@@ -360,6 +362,8 @@ struct lttcomm_consumer_msg {
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
 			uint64_t tracefile_size;	/* bytes */
 			uint32_t tracefile_count;	/* number of tracefiles */
+			/* Tells the consumer if the stream should be or not monitored. */
+			uint32_t monitor;
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;

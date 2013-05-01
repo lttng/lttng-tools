@@ -1681,12 +1681,7 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	struct ltt_session *session;
 
 	assert(name);
-
-	/* No URIs is not possible. */
-	if (uris == NULL) {
-		ret = LTTNG_ERR_SESSION_FAIL;
-		goto session_error;
-	}
+	assert(creds);
 
 	/*
 	 * Verify if the session already exist
@@ -1725,9 +1720,15 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 		goto consumer_error;
 	}
 
-	ret = cmd_set_consumer_uri(0, session, nb_uri, uris);
-	if (ret != LTTNG_OK) {
-		goto consumer_error;
+	if (uris) {
+		ret = cmd_set_consumer_uri(0, session, nb_uri, uris);
+		if (ret != LTTNG_OK) {
+			goto consumer_error;
+		}
+		session->output_traces = 1;
+	} else {
+		session->output_traces = 0;
+		DBG2("Session %s created with no output", session->name);
 	}
 
 	session->consumer->enabled = 1;

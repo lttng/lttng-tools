@@ -144,7 +144,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.channel.name, msg.u.channel.uid, msg.u.channel.gid,
 				msg.u.channel.relayd_id, msg.u.channel.output,
 				msg.u.channel.tracefile_size,
-				msg.u.channel.tracefile_count);
+				msg.u.channel.tracefile_count,
+				msg.u.channel.monitor);
 		if (new_channel == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
@@ -317,7 +318,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 		}
 
-		if (msg.u.stream.no_monitor) {
+		/* Do not monitor this stream. */
+		if (!channel->monitor) {
 			DBG("Kernel consumer add stream %s in no monitor mode with"
 					"relayd id %" PRIu64, new_stream->name,
 					new_stream->relayd_stream_id);
@@ -561,8 +563,11 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 	assert(stream);
 
-	/* Don't create anything if this is set for streaming. */
-	if (stream->net_seq_idx == (uint64_t) -1ULL) {
+	/*
+	 * Don't create anything if this is set for streaming or should not be
+	 * monitored.
+	 */
+	if (stream->net_seq_idx == (uint64_t) -1ULL && stream->chan->monitor) {
 		ret = utils_create_stream_file(stream->chan->pathname, stream->name,
 				stream->chan->tracefile_size, stream->tracefile_count_current,
 				stream->uid, stream->gid);

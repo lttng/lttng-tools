@@ -646,7 +646,8 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 
 						pthread_mutex_lock(socket->lock);
 						ret = kernel_consumer_send_channel_stream(socket,
-								channel, ksess);
+								channel, ksess,
+								session->output_traces ? 1 : 0);
 						pthread_mutex_unlock(socket->lock);
 						if (ret < 0) {
 							rcu_read_unlock();
@@ -2377,7 +2378,7 @@ static int create_ust_session(struct ltt_session *session,
 
 	lus->uid = session->uid;
 	lus->gid = session->gid;
-
+	lus->output_traces = session->output_traces;
 	session->ust_session = lus;
 
 	/* Copy session output to the newly created UST session */
@@ -2434,6 +2435,7 @@ static int create_kernel_session(struct ltt_session *session)
 
 	session->kernel_session->uid = session->uid;
 	session->kernel_session->gid = session->gid;
+	session->kernel_session->output_traces = session->output_traces;
 
 	return LTTNG_OK;
 

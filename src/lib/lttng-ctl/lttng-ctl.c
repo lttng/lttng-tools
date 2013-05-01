@@ -1471,7 +1471,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	struct lttcomm_session_msg lsm;
 	struct lttng_uri *uris = NULL;
 
-	if (name == NULL || datetime == NULL || url == NULL) {
+	if (name == NULL || datetime == NULL) {
 		return -LTTNG_ERR_INVALID;
 	}
 

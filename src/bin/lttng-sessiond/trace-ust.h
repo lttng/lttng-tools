@@ -105,6 +105,8 @@ struct ltt_ust_session {
 	uint64_t next_channel_id;
 	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
 	uint64_t used_channel_id;
+	/* Tell or not if the session has to output the traces. */
+	unsigned int output_traces;
 };
 
 /*

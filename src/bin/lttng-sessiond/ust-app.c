@@ -1440,6 +1440,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->bits_per_long = app->bits_per_long;
 	/* There is only one consumer object per session possible. */
 	ua_sess->consumer = usess->consumer;
+	ua_sess->output_traces = usess->output_traces;
 
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:

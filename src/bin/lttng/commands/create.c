@@ -40,6 +40,7 @@ static char *opt_url;
 static char *opt_ctrl_url;
 static char *opt_data_url;
 static int opt_no_consumer;
+static int opt_no_output;
 static int opt_disable_consumer;
 
 enum {
@@ -55,7 +56,8 @@ static struct poptOption long_options[] = {
 	{"set-url",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
 	{"ctrl-url",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
 	{"data-url",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
-	{"no-consumer",      0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
+	{"no-output",       0, POPT_ARG_VAL, &opt_no_output, 1, 0, 0},
+	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"disable-consumer", 0, POPT_ARG_VAL, &opt_disable_consumer, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -80,6 +82,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
+	fprintf(ofp, "      --no-output      Traces will not be outputed\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Extended Options:\n");
 	fprintf(ofp, "\n");
@@ -248,7 +251,7 @@ static int create_session(void)
 	} else if (opt_url) { /* Handling URL (-U opt) */
 		url = opt_url;
 		print_str_url = url;
-	} else {
+	} else if (!opt_no_output) {
 		/* Auto output path */
 		alloc_path = utils_get_home_dir();
 		if (alloc_path == NULL) {
@@ -272,6 +275,9 @@ static int create_session(void)
 		if (!opt_data_url && !opt_ctrl_url) {
 			print_str_url = alloc_url + strlen("file://");
 		}
+	} else {
+		/* No output means --no-output. */
+		url = NULL;
 	}
 
 	if ((!opt_ctrl_url && opt_data_url) || (opt_ctrl_url && !opt_data_url)) {
@@ -357,7 +363,7 @@ int cmd_create(int argc, const char **argv)
 	}
 
 	if (opt_no_consumer) {
-		MSG("The option --no-consumer is obsolete.");
+		MSG("The option --no-consumer is obsolete. Use --no-output now.");
 		ret = CMD_WARNING;
 		goto end;
 	}

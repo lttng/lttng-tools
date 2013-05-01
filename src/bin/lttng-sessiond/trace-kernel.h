@@ -111,6 +111,8 @@ struct ltt_kernel_session {
 	unsigned int id;
 	/* Session is started and active */
 	unsigned int started;
+	/* Tell or not if the session has to output the traces. */
+	unsigned int output_traces;
 };
 
 /*
