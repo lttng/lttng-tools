@@ -208,11 +208,9 @@ static int enable_channel(char *session_name)
 
 	if ((chan.attr.tracefile_size > 0) &&
 			(chan.attr.tracefile_size < chan.attr.subbuf_size)) {
-		ERR("Tracefile_size must be greater than or equal to subbuf_size "
-				"(%" PRIu64 " < %" PRIu64 ")",
+		WARN("Tracefile size rounded up from (%" PRIu64 ") to subbuffer size (%" PRIu64 ")",
 				chan.attr.tracefile_size, chan.attr.subbuf_size);
-		ret = CMD_ERROR;
-		goto error;
+		chan.attr.tracefile_size = chan.attr.subbuf_size;
 	}
 
 	/* Setting channel output */
