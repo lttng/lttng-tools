@@ -340,33 +340,89 @@ int cmd_enable_channels(int argc, const char **argv)
 			DBG("Channel subbuf size set to %" PRIu64, chan.attr.subbuf_size);
 			break;
 		case OPT_NUM_SUBBUF:
-			/* TODO Replace atoi with strtol and check for errors */
-			chan.attr.num_subbuf = atoi(poptGetOptArg(pc));
+			errno = 0;
+			chan.attr.num_subbuf = strtoull(poptGetOptArg(pc), NULL, 0);
+			if (errno != 0) {
+				ERR("Wrong value the --num-subbuf parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+
 			DBG("Channel subbuf num set to %" PRIu64, chan.attr.num_subbuf);
 			break;
 		case OPT_SWITCH_TIMER:
-			/* TODO Replace atoi with strtol and check for errors */
-			chan.attr.switch_timer_interval = atoi(poptGetOptArg(pc));
+		{
+			unsigned long v;
+
+			errno = 0;
+			v = strtoul(poptGetOptArg(pc), NULL, 0);
+			if (errno != 0) {
+				ERR("Wrong value the --switch-timer parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			if (v != (uint32_t) v) {
+				ERR("32-bit overflow in --switch-timer parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			chan.attr.switch_timer_interval = (uint32_t) v;
 			DBG("Channel switch timer interval set to %d", chan.attr.switch_timer_interval);
 			break;
+		}
 		case OPT_READ_TIMER:
-			/* TODO Replace atoi with strtol and check for errors */
-			chan.attr.read_timer_interval = atoi(poptGetOptArg(pc));
+		{
+			unsigned long v;
+
+			errno = 0;
+			v = strtoul(poptGetOptArg(pc), NULL, 0);
+			if (errno != 0) {
+				ERR("Wrong value the --read-timer parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			if (v != (uint32_t) v) {
+				ERR("32-bit overflow in --read-timer parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			chan.attr.read_timer_interval = (uint32_t) v;
 			DBG("Channel read timer interval set to %d", chan.attr.read_timer_interval);
 			break;
+		}
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
 		case OPT_TRACEFILE_SIZE:
-			chan.attr.tracefile_size = atoll(poptGetOptArg(pc));
+			if (utils_parse_size_suffix(opt_arg, &chan.attr.tracefile_size) < 0) {
+				ERR("Wrong value the --tracefile-size parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
 			DBG("Maximum tracefile size set to %" PRIu64,
 					chan.attr.tracefile_size);
 			break;
 		case OPT_TRACEFILE_COUNT:
-			chan.attr.tracefile_count = atoll(poptGetOptArg(pc));
+		{
+			unsigned long v;
+
+			errno = 0;
+			v = strtoul(poptGetOptArg(pc), NULL, 0);
+			if (errno != 0) {
+				ERR("Wrong value the --tracefile-count parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			if (v != (uint32_t) v) {
+				ERR("32-bit overflow in --tracefile-count parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			chan.attr.tracefile_count = (uint32_t) v;
 			DBG("Maximum tracefile count set to %" PRIu64,
 					chan.attr.tracefile_count);
 			break;
+		}
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
