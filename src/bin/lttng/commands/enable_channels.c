@@ -24,8 +24,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <assert.h>
+#include <ctype.h>
 
 #include "../command.h"
+#include "../utils.h"
 
 #include <src/common/sessiond-comm/sessiond-comm.h>
 #include <src/common/utils.h>
@@ -104,13 +107,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               (default: %zu, kernel default: %zu)\n",
 		default_get_channel_subbuf_size(),
 		default_get_kernel_channel_subbuf_size());
-	fprintf(ofp, "                               Needs to be a power of 2 for\n");
-        fprintf(ofp, "                               kernel and ust tracers\n");
+	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
 	fprintf(ofp, "      --num-subbuf NUM     Number of subbufers\n");
 	fprintf(ofp, "                               (default: %u)\n",
 		DEFAULT_CHANNEL_SUBBUF_NUM);
-	fprintf(ofp, "                               Needs to be a power of 2 for\n");
-        fprintf(ofp, "                               kernel and ust tracers\n");
+	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
 	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec (default: %u)\n",
 		DEFAULT_CHANNEL_SWITCH_TIMER);
 	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (UST default: %u, kernel default: %u)\n",
@@ -321,43 +322,71 @@ int cmd_enable_channels(int argc, const char **argv)
 			DBG("Channel set to overwrite");
 			break;
 		case OPT_SUBBUF_SIZE:
+		{
+			uint64_t rounded_size;
+			int order;
+
 			/* Parse the size */
 			opt_arg = poptGetOptArg(pc);
-			if (utils_parse_size_suffix(opt_arg, &chan.attr.subbuf_size) < 0) {
-				ERR("Wrong value the --subbuf-size parameter: %s", opt_arg);
+			if (utils_parse_size_suffix(opt_arg, &chan.attr.subbuf_size) < 0 || !chan.attr.subbuf_size) {
+				ERR("Wrong value in --subbuf-size parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
 
-			/* Check if power of 2 */
-			if ((chan.attr.subbuf_size - 1) & chan.attr.subbuf_size) {
-				ERR("The subbuf size is not a power of 2: %" PRIu64 " (%s)",
-						chan.attr.subbuf_size, opt_arg);
-				ret = CMD_ERROR;
-				goto end;
+			order = get_count_order_u64(chan.attr.subbuf_size);
+			assert(order >= 0);
+			rounded_size = 1ULL << order;
+			if (rounded_size != chan.attr.subbuf_size) {
+				WARN("The subbuf size (%" PRIu64 ") is rounded to the next power of 2 (%" PRIu64 ")",
+						chan.attr.subbuf_size, rounded_size);
+				chan.attr.subbuf_size = rounded_size;
 			}
+
+			/* Should now be power of 2 */
+			assert(!((chan.attr.subbuf_size - 1) & chan.attr.subbuf_size));
 
 			DBG("Channel subbuf size set to %" PRIu64, chan.attr.subbuf_size);
 			break;
+		}
 		case OPT_NUM_SUBBUF:
+		{
+			uint64_t rounded_size;
+			int order;
+
 			errno = 0;
-			chan.attr.num_subbuf = strtoull(poptGetOptArg(pc), NULL, 0);
-			if (errno != 0) {
-				ERR("Wrong value the --num-subbuf parameter: %s", opt_arg);
+			opt_arg = poptGetOptArg(pc);
+			chan.attr.num_subbuf = strtoull(opt_arg, NULL, 0);
+			if (errno != 0 || !chan.attr.num_subbuf || !isdigit(opt_arg[0])) {
+				ERR("Wrong value in --num-subbuf parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
 
+			order = get_count_order_u64(chan.attr.num_subbuf);
+			assert(order >= 0);
+			rounded_size = 1ULL << order;
+			if (rounded_size != chan.attr.num_subbuf) {
+				WARN("The number of subbuffers (%" PRIu64 ") is rounded to the next power of 2 (%" PRIu64 ")",
+						chan.attr.num_subbuf, rounded_size);
+				chan.attr.num_subbuf = rounded_size;
+			}
+
+			/* Should now be power of 2 */
+			assert(!((chan.attr.num_subbuf - 1) & chan.attr.num_subbuf));
+
 			DBG("Channel subbuf num set to %" PRIu64, chan.attr.num_subbuf);
 			break;
+		}
 		case OPT_SWITCH_TIMER:
 		{
 			unsigned long v;
 
 			errno = 0;
-			v = strtoul(poptGetOptArg(pc), NULL, 0);
-			if (errno != 0) {
-				ERR("Wrong value the --switch-timer parameter: %s", opt_arg);
+			opt_arg = poptGetOptArg(pc);
+			v = strtoul(opt_arg, NULL, 0);
+			if (errno != 0 || !isdigit(opt_arg[0])) {
+				ERR("Wrong value in --switch-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
@@ -375,9 +404,10 @@ int cmd_enable_channels(int argc, const char **argv)
 			unsigned long v;
 
 			errno = 0;
-			v = strtoul(poptGetOptArg(pc), NULL, 0);
-			if (errno != 0) {
-				ERR("Wrong value the --read-timer parameter: %s", opt_arg);
+			opt_arg = poptGetOptArg(pc);
+			v = strtoul(opt_arg, NULL, 0);
+			if (errno != 0 || !isdigit(opt_arg[0])) {
+				ERR("Wrong value in --read-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
@@ -394,8 +424,9 @@ int cmd_enable_channels(int argc, const char **argv)
 			opt_userspace = 1;
 			break;
 		case OPT_TRACEFILE_SIZE:
+			opt_arg = poptGetOptArg(pc);
 			if (utils_parse_size_suffix(opt_arg, &chan.attr.tracefile_size) < 0) {
-				ERR("Wrong value the --tracefile-size parameter: %s", opt_arg);
+				ERR("Wrong value in --tracefile-size parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
@@ -407,9 +438,10 @@ int cmd_enable_channels(int argc, const char **argv)
 			unsigned long v;
 
 			errno = 0;
-			v = strtoul(poptGetOptArg(pc), NULL, 0);
-			if (errno != 0) {
-				ERR("Wrong value the --tracefile-count parameter: %s", opt_arg);
+			opt_arg = poptGetOptArg(pc);
+			v = strtoul(opt_arg, NULL, 0);
+			if (errno != 0 || !isdigit(opt_arg[0])) {
+				ERR("Wrong value in --tracefile-count parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
