@@ -1,7 +1,7 @@
 lttng.i: lttng.i.in
 	sed "s/LTTNG_VERSION_STR/LTTng $(PACKAGE_VERSION)/g" <lttng.i.in >lttng.i
 
-AM_CFLAGS = -I$(PYTHON_INCLUDE) -I$(top_srcdir)/lib/lttng-ctl -I../common \
+AM_CFLAGS = $(PYTHON_INCLUDE) -I$(top_srcdir)/lib/lttng-ctl -I../common \
               $(BUDDY_CFLAGS)
 
 EXTRA_DIST = lttng.i.in
