@@ -1424,6 +1424,8 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 				goto end;
 			}
 			outfd = stream->out_fd = ret;
+			/* Reset current size because we just perform a rotation. */
+			stream->tracefile_size_current = 0;
 		}
 		stream->tracefile_size_current += len;
 	}
@@ -1604,6 +1606,8 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 				goto end;
 			}
 			outfd = stream->out_fd = ret;
+			/* Reset current size because we just perform a rotation. */
+			stream->tracefile_size_current = 0;
 		}
 		stream->tracefile_size_current += len;
 	}

@@ -1636,6 +1636,8 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 			goto end;
 		}
 		stream->fd = ret;
+		/* Reset current size because we just perform a stream rotation. */
+		stream->tracefile_size_current = 0;
 	}
 	stream->tracefile_size_current += data_size;
 	do {
