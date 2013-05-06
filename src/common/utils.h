@@ -34,7 +34,7 @@ char *utils_strdupdelim(const char *begin, const char *end);
 int utils_set_fd_cloexec(int fd);
 int utils_create_pid_file(pid_t pid, const char *filepath);
 int utils_mkdir_recursive(const char *path, mode_t mode);
-int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
+int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid);
 int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count);

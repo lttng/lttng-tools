@@ -134,6 +134,13 @@ struct lttng_consumer_channel {
 	 * LTTNG_CONSUMER_GET_CHANNEL.
 	 */
 	struct stream_list streams;
+
+	/*
+	 * List of streams in no monitor mode for this channel. Used ONLY for
+	 * snapshots recording.
+	 */
+	struct stream_list stream_no_monitor_list;
+
 	/*
 	 * Set if the channel is metadata. We keep a reference to the stream
 	 * because we have to flush data once pushed by the session daemon. For a
@@ -253,6 +260,9 @@ struct lttng_consumer_stream {
 	/* On-disk circular buffer */
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count_current;
+
+	/* Node for the no monitor stream list in a channel. */
+	struct cds_list_head no_monitor_node;
 };
 
 /*

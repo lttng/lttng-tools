@@ -82,13 +82,21 @@ function lttng_enable_kernel_event
 {
 	sess_name=$1
 	event_name=$2
+	channel_name=$3
 
 	if [ -z $event_name ]; then
 		# Enable all event if no event name specified
 		event_name="-a"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -k >/dev/null 2>&1
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -k >/dev/null 2>&1
 	ok $? "Enable kernel event $event_name for session $sess_name"
 }
 
@@ -181,6 +189,14 @@ function stop_lttng_sessiond ()
 	fi
 }
 
+function create_lttng_session_no_output ()
+{
+	sess_name=$1
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name --no-output >/dev/null 2>&1
+	ok $? "Create session $sess_name in no-output mode"
+}
+
 function create_lttng_session ()
 {
 	sess_name=$1
@@ -206,6 +222,15 @@ function disable_ust_lttng_channel()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel -u $channel_name -s $sess_name >/dev/null 2>&1
 	ok $? "Disable channel $channel_name for session $sess_name"
+}
+
+function enable_lttng_mmap_overwrite_kernel_channel()
+{
+	sess_name=$1
+	channel_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -k --output mmap --overwrite >/dev/null 2>&1
+	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
 function enable_ust_lttng_event ()
@@ -281,6 +306,24 @@ function destroy_lttng_session ()
 	ok $? "Destroy lttng session $sess_name"
 }
 
+function lttng_snapshot_add_output ()
+{
+	sess_name=$1
+	trace_path=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path >/dev/null 2>&1
+	ok $? "Added snapshot output file://$trace_path"
+}
+
+function lttng_snapshot_record ()
+{
+	sess_name=$1
+	trace_path=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot record -s $sess_name >/dev/null 2>&1
+	ok $? "Snapshot recorded"
+}
+
 function trace_matches ()
 {
 	event_name=$1
@@ -310,11 +353,18 @@ function validate_trace
 	    skip 0 "Babeltrace binary not found. Skipping trace validation"
 	fi
 
-	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $event_name | wc -l)
-	if [ "$traced" -ne 0 ]; then
-	    pass "Validate trace for event $event_name"
-	else
-	    fail "Validate trace for event $event_name"
-	    diag "Found $traced occurences of $event_name"
-	fi
+	OLDIFS=$IFS
+	IFS=","
+	for i in $event_name; do
+		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
+		if [ "$traced" -ne 0 ]; then
+			pass "Validate trace for event $i"
+		else
+			fail "Validate trace for event $i"
+			diag "Found $traced occurences of $i"
+		fi
+	done
+	ret=$?
+	IFS=$OLDIFS
+	return $ret
 }

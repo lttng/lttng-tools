@@ -1229,6 +1229,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;
 		}
+		msg.u.snapshot_channel.relayd_id = (uint64_t) -1ULL;
 
 		/* Create directory. Ignore if exist. */
 		ret = run_as_mkdir_recursive(msg.u.snapshot_channel.pathname,

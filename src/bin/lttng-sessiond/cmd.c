@@ -721,7 +721,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	struct ltt_kernel_channel *kchan;
 
 	/* Open kernel metadata */
-	if (ksess->metadata == NULL) {
+	if (ksess->metadata == NULL && ksess->output_traces) {
 		ret = kernel_open_metadata(ksess);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_META_FAIL;
@@ -730,7 +730,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	}
 
 	/* Open kernel metadata stream */
-	if (ksess->metadata_stream_fd < 0) {
+	if (ksess->metadata && ksess->metadata_stream_fd < 0) {
 		ret = kernel_open_metadata_stream(ksess);
 		if (ret < 0) {
 			ERR("Kernel create metadata stream failed");

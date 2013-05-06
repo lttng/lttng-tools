@@ -186,7 +186,7 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 {
 	int ipver, ret;
 	const char *addr;
-	char proto[4], port[7];
+	char proto[5], port[7];
 
 	assert(uri);
 	assert(dst);

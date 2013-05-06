@@ -308,7 +308,7 @@ error:
  * Return 0 on success or else a negative value.
  */
 LTTNG_HIDDEN
-int utils_create_stream_file(char *path_name, char *file_name, uint64_t size,
+int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid)
 {
 	int ret, out_fd, flags, mode;

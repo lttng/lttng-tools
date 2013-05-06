@@ -754,6 +754,32 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 
 	DBG("Tearing down kernel session");
 
+	/*
+	 * Destroy channels on the consumer if in no output mode because the
+	 * streams are in *no* monitor mode so we have to send a command to clean
+	 * them up or else they leaked.
+	 */
+	if (!ksess->output_traces) {
+		int ret;
+		struct consumer_socket *socket;
+		struct lttng_ht_iter iter;
+
+		/* For each consumer socket. */
+		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
+				socket, node.node) {
+			struct ltt_kernel_channel *chan;
+
+			/* For each channel, ask the consumer to destroy it. */
+			cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+				ret = kernel_consumer_destroy_channel(socket, chan);
+				if (ret < 0) {
+					/* Consumer is probably dead. Use next socket. */
+					continue;
+				}
+			}
+		}
+	}
+
 	/* Close any relayd session */
 	consumer_output_send_destroy_relayd(ksess->consumer);
 
@@ -844,10 +870,9 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 		pthread_mutex_lock(socket->lock);
 		/* This stream must not be monitored by the consumer. */
-		ret = kernel_consumer_add_metadata(socket, ksess, 1);
-		ret = 0;
+		ret = kernel_consumer_add_metadata(socket, ksess, 0);
 		pthread_mutex_unlock(socket->lock);
-		/* Put back the savec consumer output into the session. */
+		/* Put back the saved consumer output into the session. */
 		ksess->consumer = saved_output;
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
@@ -856,8 +881,10 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+			pthread_mutex_lock(socket->lock);
 			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
 					ksess->uid, ksess->gid, wait);
+			pthread_mutex_unlock(socket->lock);
 			if (ret < 0) {
 				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 				goto error_consumer;
@@ -865,12 +892,20 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		}
 
 		/* Snapshot metadata, */
+		pthread_mutex_lock(socket->lock);
 		ret = consumer_snapshot_channel(socket, ksess->metadata->fd, output,
 				1, ksess->uid, ksess->gid, wait);
+		pthread_mutex_unlock(socket->lock);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 			goto error_consumer;
 		}
+
+		/*
+		 * The metadata snapshot is done, ask the consumer to destroy it since
+		 * it's not monitored on the consumer side.
+		 */
+		(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
 	}
 
 error_consumer:

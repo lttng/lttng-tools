@@ -177,9 +177,15 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream,
 
 	rcu_read_unlock();
 
-	/* Decrement the stream count of the global consumer data. */
-	assert(consumer_data.stream_count > 0);
-	consumer_data.stream_count--;
+	/*
+	 * For a *non* monitored stream, we MUST NOT decrement or else the data
+	 * thread will use the wrong value or stream for its local stream set.
+	 */
+	if (stream->chan->monitor) {
+		/* Decrement the stream count of the global consumer data. */
+		assert(consumer_data.stream_count > 0);
+		consumer_data.stream_count--;
+	}
 }
 
 /*

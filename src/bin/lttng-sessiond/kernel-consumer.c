@@ -202,14 +202,6 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			session->metadata_stream_fd,
 			0); /* CPU: 0 for metadata. */
 
-	/*
-	 * Set the no monitor flag. If set to 1, it indicates the consumer to NOT
-	 * monitor the stream but rather add it to a special list in the associated
-	 * channel. This is used to handle ephemeral stream used by the snapshot
-	 * command or store streams for the flight recorder mode.
-	 */
-	lkm.u.stream.no_monitor = no_monitor;
-
 	health_code_update();
 
 	/* Send stream and file descriptor */
@@ -368,5 +360,63 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 	return 0;
 
 error:
+	return ret;
+}
+
+int kernel_consumer_destroy_channel(struct consumer_socket *socket,
+		struct ltt_kernel_channel *channel)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(channel);
+	assert(socket);
+	assert(socket->fd >= 0);
+
+	DBG("Sending kernel consumer destroy channel key %d", channel->fd);
+
+	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
+	msg.u.destroy_channel.key = channel->fd;
+
+	pthread_mutex_lock(socket->lock);
+	health_code_update();
+
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	pthread_mutex_unlock(socket->lock);
+	return ret;
+}
+
+int kernel_consumer_destroy_metadata(struct consumer_socket *socket,
+		struct ltt_kernel_metadata *metadata)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(metadata);
+	assert(socket);
+	assert(socket->fd >= 0);
+
+	DBG("Sending kernel consumer destroy channel key %d", metadata->fd);
+
+	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
+	msg.u.destroy_channel.key = metadata->fd;
+
+	pthread_mutex_lock(socket->lock);
+	health_code_update();
+
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	pthread_mutex_unlock(socket->lock);
 	return ret;
 }
