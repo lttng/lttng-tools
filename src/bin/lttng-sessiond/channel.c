@@ -199,7 +199,7 @@ int channel_ust_enable(struct ltt_ust_session *usess, int domain,
 		 * channel was successfully created on the session daemon side so the
 		 * enable-channel command is a success.
 		 */
-		(void) ust_app_create_channel_glb(usess, uchan);
+		(void) ust_app_enable_channel_glb(usess, uchan);
 		break;
 #if 0
 	case LTTNG_DOMAIN_UST_PID:
