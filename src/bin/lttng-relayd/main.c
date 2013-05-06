@@ -105,12 +105,12 @@ static
 void usage(void)
 {
 	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
-	fprintf(stderr, "  -h, --help                         Display this usage.\n");
-	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
-	fprintf(stderr, "  -C, --control-port                 Control port listening (URI)\n");
-	fprintf(stderr, "  -D, --data-port                    Data port listening (URI)\n");
-	fprintf(stderr, "  -o, --output                       Output path for traces (PATH)\n");
-	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
+	fprintf(stderr, "  -h, --help                Display this usage.\n");
+	fprintf(stderr, "  -d, --daemonize           Start as a daemon.\n");
+	fprintf(stderr, "  -C, --control-port URL    Control port listening.\n");
+	fprintf(stderr, "  -D, --data-port URL       Data port listening.\n");
+	fprintf(stderr, "  -o, --output PATH         Output path for traces. Must use an absolute path.\n");
+	fprintf(stderr, "  -v, --verbose             Verbose mode. Activate DBG() macro.\n");
 }
 
 static
@@ -2071,6 +2071,11 @@ int main(int argc, char **argv)
 
 	/* Try to create directory if -o, --output is specified. */
 	if (opt_output_path) {
+		if (*opt_output_path != '/') {
+			ERR("Please specify an absolute path for -o, --output PATH");
+			goto exit;
+		}
+
 		ret = utils_mkdir_recursive(opt_output_path, S_IRWXU | S_IRWXG);
 		if (ret < 0) {
 			ERR("Unable to create %s", opt_output_path);
