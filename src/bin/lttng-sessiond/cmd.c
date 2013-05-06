@@ -110,7 +110,7 @@ static int build_network_session_path(char *dst, size_t size,
 				tmp_urls, kdata_port, tmp_uurl, udata_port);
 	} else {
 		int dport;
-		if (kuri) {
+		if (kuri || (!kuri && !uuri)) {
 			dport = kdata_port;
 		} else {
 			/* No kernel URI, use the UST port. */
