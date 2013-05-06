@@ -438,7 +438,6 @@ static int enable_events(char *session_name)
 			ret = lttng_enable_event_with_filter(handle, &ev, channel_name,
 						opt_filter);
 			if (ret < 0) {
-				fprintf(stderr, "Ret filter: %d\n", ret);
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on events is already enabled"
@@ -447,9 +446,8 @@ static int enable_events(char *session_name)
 					break;
 				case LTTNG_ERR_FILTER_INVAL:
 				case LTTNG_ERR_FILTER_NOMEM:
-					ERR("%s", lttng_strerror(ret));
 				default:
-					ERR("Setting filter: '%s'", opt_filter);
+					ERR("%s", lttng_strerror(ret));
 					break;
 				}
 				goto error;
