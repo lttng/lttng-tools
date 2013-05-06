@@ -214,7 +214,7 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 	 * successfully created on the session daemon side so the enable-channel
 	 * command is a success.
 	 */
-	(void) ust_app_create_channel_glb(usess, uchan);
+	(void) ust_app_enable_channel_glb(usess, uchan);
 
 	uchan->enabled = 1;
 	DBG2("Channel %s enabled successfully", uchan->name);
