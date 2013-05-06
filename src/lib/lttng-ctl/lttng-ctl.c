@@ -1642,8 +1642,14 @@ int _lttng_create_session_ext(const char *name, const char *url,
 	lsm.u.uri.size = size;
 
 	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
-		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s-%s", name,
-				datetime);
+		/* Don't append datetime if the name was automatically created. */
+		if (strncmp(name, DEFAULT_SESSION_NAME "-",
+					strlen(DEFAULT_SESSION_NAME) + 1)) {
+			ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s-%s",
+					name, datetime);
+		} else {
+			ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s", name);
+		}
 		if (ret < 0) {
 			PERROR("snprintf uri subdir");
 			ret = -LTTNG_ERR_FATAL;
