@@ -33,7 +33,8 @@
 /*
  * Return allocated channel attributes.
  */
-struct lttng_channel *channel_new_default_attr(int dom)
+struct lttng_channel *channel_new_default_attr(int dom,
+		enum lttng_buffer_type type)
 {
 	struct lttng_channel *chan;
 
@@ -49,10 +50,14 @@ struct lttng_channel *channel_new_default_attr(int dom)
 		goto error;
 	}
 
+	/* Same for all domains. */
 	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	chan->attr.tracefile_size = DEFAULT_CHANNEL_TRACEFILE_SIZE;
+	chan->attr.tracefile_count = DEFAULT_CHANNEL_TRACEFILE_COUNT;
 
 	switch (dom) {
 	case LTTNG_DOMAIN_KERNEL:
+		assert(type == LTTNG_BUFFER_GLOBAL);
 		chan->attr.subbuf_size =
 			default_get_kernel_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
@@ -61,16 +66,27 @@ struct lttng_channel *channel_new_default_attr(int dom)
 		chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
 		break;
 	case LTTNG_DOMAIN_UST:
-#if 0
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-#endif
-		chan->attr.subbuf_size = default_get_ust_channel_subbuf_size();
-		chan->attr.num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
-		chan->attr.output = DEFAULT_UST_CHANNEL_OUTPUT;
-		chan->attr.switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
-		chan->attr.read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
+		switch (type) {
+		case LTTNG_BUFFER_PER_UID:
+			chan->attr.subbuf_size = default_get_ust_uid_channel_subbuf_size();
+			chan->attr.num_subbuf = DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM;
+			chan->attr.output = DEFAULT_UST_UID_CHANNEL_OUTPUT;
+			chan->attr.switch_timer_interval =
+				DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
+			chan->attr.read_timer_interval =
+				DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			break;
+		case LTTNG_BUFFER_PER_PID:
+		default:
+			chan->attr.subbuf_size = default_get_ust_pid_channel_subbuf_size();
+			chan->attr.num_subbuf = DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM;
+			chan->attr.output = DEFAULT_UST_PID_CHANNEL_OUTPUT;
+			chan->attr.switch_timer_interval =
+				DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
+			chan->attr.read_timer_interval =
+				DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			break;
+		}
 		break;
 	default:
 		goto error;	/* Not implemented */
@@ -158,7 +174,8 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
+		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
+				LTTNG_BUFFER_GLOBAL);
 		if (defattr == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
@@ -237,17 +254,12 @@ int channel_ust_create(struct ltt_ust_session *usess,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		defattr = channel_new_default_attr(LTTNG_DOMAIN_UST);
+		defattr = channel_new_default_attr(LTTNG_DOMAIN_UST, type);
 		if (defattr == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
 		attr = defattr;
-	}
-
-	if (attr->attr.subbuf_size < DEFAULT_UST_CHANNEL_SUBBUF_SIZE) {
-		ret = LTTNG_ERR_INVALID;
-		goto error;
 	}
 
 	/*
@@ -285,7 +297,18 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	/* Validate buffer type. */
 	switch (type) {
 	case LTTNG_BUFFER_PER_PID:
+		if (attr->attr.subbuf_size <
+				default_get_ust_pid_channel_subbuf_size()) {
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
+		break;
 	case LTTNG_BUFFER_PER_UID:
+		if (attr->attr.subbuf_size <
+				default_get_ust_uid_channel_subbuf_size()) {
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
 		break;
 	default:
 		ret = LTTNG_ERR_BUFFER_NOT_SUPPORTED;

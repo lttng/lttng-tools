@@ -112,55 +112,57 @@
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
-#define DEFAULT_CHANNEL_OVERWRITE       0       /* usec */
-/* DEFAULT_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_SIZE     4096    /* bytes */
-/* DEFAULT_CHANNEL_SUBBUF_NUM must always be a power of 2 */
-#define DEFAULT_CHANNEL_SUBBUF_NUM      4
-#define DEFAULT_CHANNEL_SWITCH_TIMER    0       /* usec */
-#define DEFAULT_CHANNEL_READ_TIMER      200000  /* usec */
-#define DEFAULT_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
+#define DEFAULT_CHANNEL_OVERWRITE       0
+#define DEFAULT_CHANNEL_TRACEFILE_SIZE  0
+#define DEFAULT_CHANNEL_TRACEFILE_COUNT 0
 
+/* Must always be a power of 2 */
+#define _DEFAULT_CHANNEL_SUBBUF_SIZE	4096    /* bytes */
+/* Must always be a power of 2 */
+#define _DEFAULT_CHANNEL_SUBBUF_NUM		4
+#define _DEFAULT_CHANNEL_SWITCH_TIMER	0       /* usec */
+#define _DEFAULT_CHANNEL_READ_TIMER		200000  /* usec */
+#define _DEFAULT_CHANNEL_OUTPUT			LTTNG_EVENT_MMAP
+
+/* Metadata channel defaults. */
 #define DEFAULT_METADATA_SUBBUF_SIZE    4096
 #define DEFAULT_METADATA_SUBBUF_NUM     2
 #define DEFAULT_METADATA_CACHE_SIZE     4096
+#define DEFAULT_METADATA_SWITCH_TIMER	_DEFAULT_CHANNEL_SWITCH_TIMER
+#define DEFAULT_METADATA_READ_TIMER		0
+#define DEFAULT_METADATA_OUTPUT			_DEFAULT_CHANNEL_OUTPUT
 
 /* Kernel has different defaults */
 
 /* DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE must always be a power of 2 */
-#define DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE  262144    /* bytes */
+#define DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE		262144    /* bytes */
 /*
  * DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM must always be a power of 2.
  * Update help manually if override.
  */
-#define DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM   DEFAULT_CHANNEL_SUBBUF_NUM
+#define DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM		_DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-kernel.h enum lttng_kernel_output for channel output */
-#define DEFAULT_KERNEL_CHANNEL_OUTPUT       LTTNG_EVENT_SPLICE
-/* By default, unlimited tracefile size */
-#define DEFAULT_KERNEL_CHANNEL_TRACEFILE_SIZE  0
-/* By default, unlimited tracefile count */
-#define DEFAULT_KERNEL_CHANNEL_TRACEFILE_COUNT 0
-
-#define DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER	\
-		DEFAULT_CHANNEL_SWITCH_TIMER
-#define DEFAULT_KERNEL_CHANNEL_READ_TIMER      200000  /* usec */
+#define DEFAULT_KERNEL_CHANNEL_OUTPUT			LTTNG_EVENT_SPLICE
+#define DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER		_DEFAULT_CHANNEL_SWITCH_TIMER
+#define DEFAULT_KERNEL_CHANNEL_READ_TIMER		_DEFAULT_CHANNEL_READ_TIMER
 
 /* User space defaults */
 
 /* Must be a power of 2 */
-#define DEFAULT_UST_CHANNEL_SUBBUF_SIZE     4096    /* bytes */
+#define DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE		_DEFAULT_CHANNEL_SUBBUF_SIZE
+#define DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE		131072  /* bytes */
 /* Must be a power of 2. Update help manuall if override. */
-#define DEFAULT_UST_CHANNEL_SUBBUF_NUM      DEFAULT_CHANNEL_SUBBUF_NUM
+#define DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM		_DEFAULT_CHANNEL_SUBBUF_NUM
+#define DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM		_DEFAULT_CHANNEL_SUBBUF_NUM
 /* See lttng-ust.h enum lttng_ust_output */
-#define DEFAULT_UST_CHANNEL_OUTPUT          LTTNG_EVENT_MMAP
-/* By default, unlimited tracefile size */
-#define DEFAULT_UST_CHANNEL_TRACEFILE_SIZE  0
-/* By default, unlimited tracefile count */
-#define DEFAULT_UST_CHANNEL_TRACEFILE_COUNT 0
+#define DEFAULT_UST_PID_CHANNEL_OUTPUT			_DEFAULT_CHANNEL_OUTPUT
+#define DEFAULT_UST_UID_CHANNEL_OUTPUT			_DEFAULT_CHANNEL_OUTPUT
+/* Timers in usec. */
+#define DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER	_DEFAULT_CHANNEL_SWITCH_TIMER
+#define DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER	_DEFAULT_CHANNEL_SWITCH_TIMER
 
-#define DEFAULT_UST_CHANNEL_SWITCH_TIMER	\
-		DEFAULT_CHANNEL_SWITCH_TIMER
-#define DEFAULT_UST_CHANNEL_READ_TIMER      0  /* usec */
+#define DEFAULT_UST_PID_CHANNEL_READ_TIMER      0  /* usec */
+#define DEFAULT_UST_UID_CHANNEL_READ_TIMER      0  /* usec */
 
 /*
  * Default timeout value for the sem_timedwait() call. Blocking forever is not
@@ -202,9 +204,9 @@
 
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
-extern size_t default_ust_channel_subbuf_size;
+extern size_t default_ust_pid_channel_subbuf_size;
+extern size_t default_ust_uid_channel_subbuf_size;
 extern size_t default_kernel_channel_subbuf_size;
-
 
 /*
  * Returns the default subbuf size.
@@ -243,15 +245,27 @@ size_t default_get_kernel_channel_subbuf_size(void)
 }
 
 /*
- * Returns the default subbuf size for the UST domain.
+ * Returns the default subbuf size for the UST domain per PID.
  *
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
 static inline
-size_t default_get_ust_channel_subbuf_size(void)
+size_t default_get_ust_pid_channel_subbuf_size(void)
 {
-	return default_ust_channel_subbuf_size;
+	return default_ust_pid_channel_subbuf_size;
+}
+
+/*
+ * Returns the default subbuf size for the UST domain per UID.
+ *
+ * This function depends on a value that is set at constructor time, so it is
+ * unsafe to call it from another constructor.
+ */
+static inline
+size_t default_get_ust_uid_channel_subbuf_size(void)
+{
+	return default_ust_uid_channel_subbuf_size;
 }
 
 #endif /* _DEFAULTS_H */

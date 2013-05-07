@@ -1106,7 +1106,7 @@ int cmd_add_context(struct ltt_session *session, int domain,
 		if (chan_count == 0) {
 			struct lttng_channel *attr;
 			/* Create default channel */
-			attr = channel_new_default_attr(domain);
+			attr = channel_new_default_attr(domain, usess->buffer_type);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1166,7 +1166,8 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
-			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
+					LTTNG_BUFFER_GLOBAL);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1216,7 +1217,8 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 				channel_name);
 		if (uchan == NULL) {
 			/* Create default channel */
-			attr = channel_new_default_attr(LTTNG_DOMAIN_UST);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_UST,
+					usess->buffer_type);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1286,7 +1288,8 @@ int cmd_enable_event_all(struct ltt_session *session,
 				session->kernel_session);
 		if (kchan == NULL) {
 			/* Create default channel */
-			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
+					LTTNG_BUFFER_GLOBAL);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
@@ -1350,7 +1353,8 @@ int cmd_enable_event_all(struct ltt_session *session,
 				channel_name);
 		if (uchan == NULL) {
 			/* Create default channel */
-			attr = channel_new_default_attr(LTTNG_DOMAIN_UST);
+			attr = channel_new_default_attr(LTTNG_DOMAIN_UST,
+					usess->buffer_type);
 			if (attr == NULL) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;

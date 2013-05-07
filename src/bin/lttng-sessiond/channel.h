@@ -30,7 +30,8 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 int channel_kernel_create(struct ltt_kernel_session *ksession,
 		struct lttng_channel *chan, int kernel_pipe);
 
-struct lttng_channel *channel_new_default_attr(int domain);
+struct lttng_channel *channel_new_default_attr(int domain,
+		enum lttng_buffer_type type);
 
 int channel_ust_create(struct ltt_ust_session *usess,
 		struct lttng_channel *attr, enum lttng_buffer_type type);

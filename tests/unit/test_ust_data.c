@@ -111,9 +111,9 @@ static void test_create_ust_metadata(void)
 	   metadata->attr.num_subbuf
 			== DEFAULT_METADATA_SUBBUF_NUM &&
 	   metadata->attr.switch_timer_interval
-			== DEFAULT_UST_CHANNEL_SWITCH_TIMER &&
+			== DEFAULT_METADATA_SWITCH_TIMER &&
 	   metadata->attr.read_timer_interval
-			== DEFAULT_UST_CHANNEL_READ_TIMER &&
+			== DEFAULT_METADATA_READ_TIMER &&
 	   metadata->attr.output == LTTNG_UST_MMAP,
 	   "Validate UST session metadata");
 

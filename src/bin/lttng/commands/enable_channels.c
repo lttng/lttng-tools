@@ -104,28 +104,42 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --overwrite          Flight recorder mode%s\n",
 		DEFAULT_CHANNEL_OVERWRITE ? " (default)" : "");
 	fprintf(ofp, "      --subbuf-size SIZE   Subbuffer size in bytes {+k,+M,+G}\n");
-	fprintf(ofp, "                               (default: %zu, kernel default: %zu)\n",
-		default_get_channel_subbuf_size(),
-		default_get_kernel_channel_subbuf_size());
+	fprintf(ofp, "                               (default UST uid: %zu, UST pid: %zu, kernel: %zu, metadata: %zu)\n",
+		default_get_ust_uid_channel_subbuf_size(),
+		default_get_ust_pid_channel_subbuf_size(),
+		default_get_kernel_channel_subbuf_size(),
+		default_get_metadata_subbuf_size());
 	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
 	fprintf(ofp, "      --num-subbuf NUM     Number of subbufers\n");
-	fprintf(ofp, "                               (default: %u)\n",
-		DEFAULT_CHANNEL_SUBBUF_NUM);
+	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
+		DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM, DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM,
+		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM, DEFAULT_METADATA_SUBBUF_NUM);
 	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
-	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec (default: %u)\n",
-		DEFAULT_CHANNEL_SWITCH_TIMER);
-	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec (UST default: %u, kernel default: %u)\n",
-		DEFAULT_UST_CHANNEL_READ_TIMER, DEFAULT_KERNEL_CHANNEL_READ_TIMER);
+	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec\n");
+	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
+		DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER, DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER,
+		DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER, DEFAULT_METADATA_SWITCH_TIMER);
+	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec.\n");
+	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
+		DEFAULT_UST_UID_CHANNEL_READ_TIMER, DEFAULT_UST_UID_CHANNEL_READ_TIMER,
+		DEFAULT_KERNEL_CHANNEL_READ_TIMER, DEFAULT_METADATA_READ_TIMER);
 	fprintf(ofp, "      --output TYPE        Channel output type (Values: %s, %s)\n",
 			output_mmap, output_splice);
+	fprintf(ofp, "                               (default UST uid: %s, UST pid: %s, kernel: %s, metadata: %s)\n",
+			DEFAULT_UST_UID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
+			DEFAULT_UST_PID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
+			DEFAULT_KERNEL_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
+			DEFAULT_METADATA_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
 	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
 	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
 	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
 	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
-	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes).\n");
+	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes). 0 means unlimited.\n");
+	fprintf(ofp, "                               (default: %u)\n", DEFAULT_CHANNEL_TRACEFILE_SIZE);
 	fprintf(ofp, "  -W, --tracefile-count COUNT\n");
 	fprintf(ofp, "                           Used in conjunction with -C option, this will limit the number\n");
-	fprintf(ofp, "                           of files created to the specified count.\n");
+	fprintf(ofp, "                           of files created to the specified count. 0 means unlimited.\n");
+	fprintf(ofp, "                               (default: %u)\n", DEFAULT_CHANNEL_TRACEFILE_COUNT);
 	fprintf(ofp, "\n");
 }
 

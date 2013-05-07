@@ -1386,29 +1386,37 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 
 	memset(attr, 0, sizeof(struct lttng_channel_attr));
 
+	/* Same for all domains. */
+	attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	attr->tracefile_size = DEFAULT_CHANNEL_TRACEFILE_SIZE;
+	attr->tracefile_count = DEFAULT_CHANNEL_TRACEFILE_COUNT;
+
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
-		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
 		attr->switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
 		attr->read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
-
 		attr->subbuf_size = default_get_kernel_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
-		attr->tracefile_size = DEFAULT_KERNEL_CHANNEL_TRACEFILE_SIZE;
-		attr->tracefile_count = DEFAULT_KERNEL_CHANNEL_TRACEFILE_COUNT;
 		break;
 	case LTTNG_DOMAIN_UST:
-		attr->overwrite = DEFAULT_CHANNEL_OVERWRITE;
-		attr->switch_timer_interval = DEFAULT_UST_CHANNEL_SWITCH_TIMER;
-		attr->read_timer_interval = DEFAULT_UST_CHANNEL_READ_TIMER;
-
-		attr->subbuf_size = default_get_ust_channel_subbuf_size();
-		attr->num_subbuf = DEFAULT_UST_CHANNEL_SUBBUF_NUM;
-		attr->output = DEFAULT_UST_CHANNEL_OUTPUT;
-		attr->tracefile_size = DEFAULT_UST_CHANNEL_TRACEFILE_SIZE;
-		attr->tracefile_count = DEFAULT_UST_CHANNEL_TRACEFILE_COUNT;
-		break;
+		switch (domain->buf_type) {
+		case LTTNG_BUFFER_PER_UID:
+			attr->subbuf_size = default_get_ust_uid_channel_subbuf_size();
+			attr->num_subbuf = DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM;
+			attr->output = DEFAULT_UST_UID_CHANNEL_OUTPUT;
+			attr->switch_timer_interval = DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
+			attr->read_timer_interval = DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			break;
+		case LTTNG_BUFFER_PER_PID:
+		default:
+			attr->subbuf_size = default_get_ust_pid_channel_subbuf_size();
+			attr->num_subbuf = DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM;
+			attr->output = DEFAULT_UST_PID_CHANNEL_OUTPUT;
+			attr->switch_timer_interval = DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
+			attr->read_timer_interval = DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			break;
+		}
 	default:
 		/* Default behavior: leave set to 0. */
 		break;

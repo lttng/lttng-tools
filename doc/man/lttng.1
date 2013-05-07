@@ -327,17 +327,21 @@ same type.
 \-\-overwrite
         Flight recorder mode : overwrites events when subbuffers are full
 \-\-subbuf-size SIZE
-        Subbuffer size in bytes {+k,+M,+G} (default: 4096, kernel default: 262144)
+        Subbuffer size in bytes {+k,+M,+G}
+        (default UST uid: 131072, UST pid: 4096, kernel: 262144, metadata: 4096)
         Rounded up to the next power of 2.
 \-\-num-subbuf NUM
-        Number of subbuffers (default: 4)
+        Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4, metadata: 2)
         Rounded up to the next power of 2.
 \-\-switch-timer USEC
-        Switch subbuffer timer interval in µsec (default: 0)
+        Switch subbuffer timer interval in µsec.
+        (default UST uid: 0, UST pid: 0, kernel: 0, metadata: 0)
 \-\-read-timer USEC
-        Read timer interval in µsec (UST default: 0, kernel default: 200000)
+        Read timer interval in µsec.
+        (default UST uid: 0, UST pid: 0, kernel: 200000, metadata: 0)
 \-\-output TYPE
         Channel output type. Possible values: mmap, splice
+        (default UST uid: mmap, UST pid: mmap, kernel: splice, metadata: mmap)
 \-\-buffers-uid
         Use per UID buffer (\-u only). Buffers are shared between applications
         that have the same UID.
@@ -347,9 +351,10 @@ same type.
         Use shared buffer for the whole system (\-k only)
 \-C, \-\-tracefile-size SIZE
         Maximum size of each tracefile within a stream (in bytes).
+		0 means unlimited. (default: 0)
 \-W, \-\-tracefile-count COUNT
         Used in conjunction with \-C option, this will limit the number
-        of files created to the specified count.
+        of files created to the specified count. 0 means unlimited. (default: 0)
 
 .B EXAMPLES:
 

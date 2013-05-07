@@ -24,7 +24,8 @@
 size_t default_channel_subbuf_size;
 size_t default_metadata_subbuf_size;
 size_t default_kernel_channel_subbuf_size;
-size_t default_ust_channel_subbuf_size;
+size_t default_ust_pid_channel_subbuf_size;
+size_t default_ust_uid_channel_subbuf_size;
 
 static void __attribute__((constructor)) init_defaults(void)
 {
@@ -39,11 +40,13 @@ static void __attribute__((constructor)) init_defaults(void)
 	}
 
 	default_channel_subbuf_size =
-		max(DEFAULT_CHANNEL_SUBBUF_SIZE, page_size);
+		max(_DEFAULT_CHANNEL_SUBBUF_SIZE, page_size);
 	default_metadata_subbuf_size =
 		max(DEFAULT_METADATA_SUBBUF_SIZE, page_size);
 	default_kernel_channel_subbuf_size =
 		max(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, page_size);
-	default_ust_channel_subbuf_size =
-		max(DEFAULT_UST_CHANNEL_SUBBUF_SIZE, page_size);
+	default_ust_pid_channel_subbuf_size =
+		max(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, page_size);
+	default_ust_uid_channel_subbuf_size =
+		max(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, page_size);
 }
