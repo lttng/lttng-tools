@@ -220,6 +220,13 @@ static int enable_channel(char *session_name)
 
 	set_default_attr(&dom);
 
+	if (chan.attr.tracefile_size == 0 && chan.attr.tracefile_count) {
+		ERR("Missing option --tracefile-size. "
+				"A file count without a size won't do anything.");
+		ret = CMD_ERROR;
+		goto error;
+	}
+
 	if ((chan.attr.tracefile_size > 0) &&
 			(chan.attr.tracefile_size < chan.attr.subbuf_size)) {
 		WARN("Tracefile size rounded up from (%" PRIu64 ") to subbuffer size (%" PRIu64 ")",
