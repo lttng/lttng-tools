@@ -1,3 +1,59 @@
+2013-05-09 lttng-tools 2.2.0-rc2
+	* Fix: split UST per UID/PID default values
+	* Fix: don't start the relayd with a wrong --output dir
+	* Fix: Erroneous automatic session name when streaming
+	* Fix: wrong data port when listing session's URI
+	* Fix: don't create a channel on an enable channel
+	* Tests: Add missing test_utils_parse_size_suffix to unit tests
+	* Fix: print lttng strerror on enable event with filter
+	* Fix: change relayd protocol version to 2.2
+	* Fix: reset current size for tracefile rotation
+	* Fix: remove extra -I for python bindings
+	* lttng UI: round up trace file size to subbuf size if needed
+	* Fix lttng UI: fix arg parsing, round size to next power of two
+	* Fix: check errors in lttng command argument values
+	* Implement get_count_order in lttng utils
+	* lttng cli: Accept human readable sizes for --subbuf-size
+	* Unit tests: don't rebuild units under test
+	* Fix: consumerd metadata channel/cache/timer races
+	* Fix: consumerd channel destroy race
+	* Cleanup: document RCU read-side lock better
+	* consumer relayd interaction: fix segfaults
+	* Fix: change order of fd get to fix error path
+	* Fix: fd leak when creating UST metadata channel
+	* Fix: fd leak on error
+	* Fix consumerd fd leak
+	* Fix RCU-related hangs: incorrect lttng_ht_destroy use
+	* rculfhash: check for callers from RCU read-side C.S.
+	* Fix: don't call hash table destroy under rcu read-side c.s.
+	* Documentation: import updated comments from urcu
+	* Fix: segfault in buffer_reg_channel_destroy()
+	* Fix: add missing goto error in UST consumer
+	* Fix: no need to use run_as_open in the relayd
+	* Fix: typo in enable-channel man and help
+	* Fix: add some missing hidden attribute
+	* Fix: per-uid buffers should only be flushed once on stop
+	* Cleanup: Use own mutex within timer setup/teardown
+	* Fix: channel management thread should hold a refcount
+	* Fix: move metadata cache setup before ownership passing
+	* Fix: consumer metadata switch timer error handling
+	* Fix: set ptr to NULL to suppress old gcc warnings
+	* Fix: linking order of libraries
+	* Fix: multiple type mismatch in debug statement
+	* Fix: remove mention of trace directory layout in quickstart doc
+	* Fix: remove unused path variables from session obj
+	* Fix: update lttng.1 man and enable-channel help with read timer size
+	* Fix: use channel per domain default values
+	* Fix: typos in the code base
+	* Fix: deny multiple event types with enable-event
+	* Fix: deny the same port for data and control URL
+	* Fix: reset consumer destination when changing URIs
+	* Fix: don't allow different control and data destination
+	* Fix: typos in error strings
+	* Improve channel listing output format
+	* Fix: enable-channel accepts mismatched option
+	* Fix: validate buffer type for UST channel creation
+
 2013-03-28 lttng-tools 2.2.0-rc1
 	* Add UST per UID buffers support
 	* UST metadata generation are created on the sessiond side
