@@ -13,7 +13,8 @@ noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
 noinst_LTLIBRARIES = libcommon.la
 
 libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
-                       common.h futex.c futex.h uri.c uri.h defaults.c
+                       common.h futex.c futex.h uri.c uri.h defaults.c \
+                       pipe.c pipe.h
 libcommon_la_LIBADD = -luuid
 
 # Consumer library
