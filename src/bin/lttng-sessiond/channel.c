@@ -25,6 +25,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "channel.h"
+#include "lttng-sessiond.h"
 #include "kernel.h"
 #include "ust-ctl.h"
 #include "utils.h"
@@ -273,6 +274,14 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		goto error;
 	}
 
+	/*
+	 * Invalid subbuffer size if it's lower then the page size.
+	 */
+	if (attr->attr.subbuf_size < page_size) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
 	if (!attr->attr.num_subbuf ||
 			(attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
 		ret = LTTNG_ERR_INVALID;
@@ -297,18 +306,8 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	/* Validate buffer type. */
 	switch (type) {
 	case LTTNG_BUFFER_PER_PID:
-		if (attr->attr.subbuf_size <
-				default_get_ust_pid_channel_subbuf_size()) {
-			ret = LTTNG_ERR_INVALID;
-			goto error;
-		}
 		break;
 	case LTTNG_BUFFER_PER_UID:
-		if (attr->attr.subbuf_size <
-				default_get_ust_uid_channel_subbuf_size()) {
-			ret = LTTNG_ERR_INVALID;
-			goto error;
-		}
 		break;
 	default:
 		ret = LTTNG_ERR_BUFFER_NOT_SUPPORTED;

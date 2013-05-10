@@ -71,6 +71,11 @@ struct ust_cmd_queue {
  */
 extern int apps_cmd_notify_pipe[2];
 
+/*
+ * Populated when the daemon starts with the current page size of the system.
+ */
+extern long page_size;
+
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 

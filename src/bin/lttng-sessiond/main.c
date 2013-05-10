@@ -232,6 +232,9 @@ static enum consumerd_state kernel_consumerd_state;
  */
 static int app_socket_timeout;
 
+/* Set in main() with the current page size. */
+long page_size;
+
 static
 void setup_consumerd_path(void)
 {
@@ -4037,6 +4040,13 @@ int main(int argc, char **argv)
 	rcu_register_thread();
 
 	setup_consumerd_path();
+
+	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size < 0) {
+		PERROR("sysconf _SC_PAGESIZE");
+		page_size = LONG_MAX;
+		WARN("Fallback page size to %ld", page_size);
+	}
 
 	/* Parse arguments */
 	progname = argv[0];
