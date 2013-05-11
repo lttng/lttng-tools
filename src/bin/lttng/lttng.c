@@ -47,6 +47,7 @@ enum {
 
 /* Getopt options. No first level command. */
 static struct option long_options[] = {
+	{"version",          0, NULL, 'V'},
 	{"help",             0, NULL, 'h'},
 	{"group",            1, NULL, 'g'},
 	{"verbose",          0, NULL, 'v'},
@@ -85,6 +86,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND> [<ARGS>]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
+	fprintf(ofp, "  -V, --version              Show version\n");
 	fprintf(ofp, "  -h, --help                 Show this help\n");
 	fprintf(ofp, "      --list-options         Simple listing of lttng options\n");
 	fprintf(ofp, "      --list-commands        Simple listing of lttng commands\n");
@@ -114,6 +116,12 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Please see the lttng(1) man page for full documentation.\n");
 	fprintf(ofp, "See http://lttng.org for updates, bug reports and news.\n");
+}
+
+static void version(FILE *ofp)
+{
+	fprintf(ofp, "%s (LTTng Trace Control) " VERSION" - " VERSION_NAME"\n",
+			progname);
 }
 
 /*
@@ -426,8 +434,12 @@ static int parse_args(int argc, char **argv)
 		clean_exit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+hnvqg:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+Vhnvqg:", long_options, NULL)) != -1) {
 		switch (opt) {
+		case 'V':
+			version(stdout);
+			ret = 0;
+			goto end;
 		case 'h':
 			usage(stdout);
 			ret = 0;
