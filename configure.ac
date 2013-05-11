@@ -163,6 +163,15 @@ AC_CHECK_DECL([caa_likely], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 
+AC_ARG_WITH(lttng-ust-prefix,
+  AS_HELP_STRING([--with-lttng-ust-prefix=PATH],
+                 [Specify the installation prefix of the lttng-ust library.
+	          Headers must be in PATH/include; libraries in PATH/lib.]),
+		  [
+		    CPPFLAGS="$CPPFLAGS -I${withval}/include"
+		    LDFLAGS="$LDFLAGS -L${withval}/lib64 -L${withval}/lib"
+		  ])
+
 # Check liblttng-ust-ctl library
 AC_ARG_ENABLE(lttng-ust,
 	AS_HELP_STRING([--disable-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
@@ -174,7 +183,7 @@ AS_IF([test "x$lttng_ust_support" = "xyes"], [
 			AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1], [has LTTng-UST control support])
 			lttng_ust_ctl_found=yes
 		],
-		[AC_MSG_ERROR([Cannot find LTTng-UST 2.1.x. Use [LDFLAGS]=-Ldir to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])],
+		[AC_MSG_ERROR([Cannot find LTTng-UST >= 2.1.x. Use --with-lttng-ust-prefix=PREFIX to specify its location, or specify --disable-lttng-ust to build lttng-tools without LTTng-UST support.])],
 		[-lurcu-common -lurcu-bp -lurcu-cds -lrt]
 	)
 ])
