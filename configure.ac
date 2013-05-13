@@ -350,6 +350,8 @@ AC_CONFIG_FILES([
 	tests/unit/Makefile
 	tests/utils/Makefile
 	tests/utils/tap/Makefile
+	tests/utils/testapp/Makefile
+	tests/utils/testapp/gen-ust-events/Makefile
 ])
 
 AC_OUTPUT
