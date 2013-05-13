@@ -19,27 +19,29 @@ TEST_DESC="UST tracer - Start tracing before and after execution"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_ITER=100
+NR_USEC_WAIT=100000
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="per-session"
-EVENT_NAME="ust_gen_nevents:tptest"
+EVENT_NAME="tp:tptest"
 NUM_TESTS=16
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$CURDIR/gen-nevents" ]; then
+if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
 
 # MUST set TESTDIR before calling those functions
 
 test_before_apps() {
-	local out
-
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	./$CURDIR/gen-nevents $NR_ITER
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
@@ -53,7 +55,7 @@ test_before_apps() {
 test_after_apps() {
 	local out
 
-	./$CURDIR/gen-nevents 100 &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# BEFORE application is spawned
