@@ -14,21 +14,25 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-NR_ITER=30
-TEST_DESC="UST tracer - Generate $NR_ITER process"
+NUM_PROCESS=30
+TEST_DESC="UST tracer - Generate $NUM_PROCESS process"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-TEST_BIN_NAME="gen-events-time"
+NR_ITER=1000
+NR_USEC_WAIT=1000000
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="ust-nprocesses"
-EVENT_NAME="ust_gen_event:tptest"
+EVENT_NAME="tp:tptest"
 TEST_WAIT_SEC=5
 NUM_TESTS=9
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$CURDIR/$TEST_BIN_NAME" ]; then
-	BAIL_OUT "No UST $TEST_BIN_NAME binary detected."
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST $TESTAPP_BIN binary detected."
 fi
 
 # MUST set TESTDIR before calling those functions
@@ -41,15 +45,15 @@ start_lttng_sessiond
 
 # Start test for 1000 seconds
 
-for i in `seq 1 $NR_ITER`
+for i in `seq 1 $NUM_PROCESS`
 do
-	./$CURDIR/$TEST_BIN_NAME 1000 >/dev/null 2>&1 &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
 done
 
 reg_app_count=0
-while [ $reg_app_count -ne $NR_ITER ]; do
+while [ $reg_app_count -ne $NUM_PROCESS ]; do
 	listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
-	reg_app_count=$(echo -n $listing | sed "s/$TEST_BIN_NAME/$TEST_BIN_NAME\n/g" | grep "$TEST_BIN_NAME" | wc -l)
+	reg_app_count=$(echo -n $listing | sed "s#$TESTAPP_BIN#$TESTAPP_BIN\n#g" | grep "$TESTAPP_BIN" | wc -l)
 done
 
 pass "Trace validation"
@@ -71,8 +75,8 @@ destroy_lttng_session $SESSION_NAME
 
 rm -rf $TRACE_PATH
 
-while [ -n "$(pidof $TEST_BIN_NAME)" ]; do
-	killall -q $TEST_BIN_NAME >/dev/null 2>&1
+while [ -n "$(pidof $TESTAPP_NAME)" ]; do
+	killall -q $TESTAPP_NAME >/dev/null 2>&1
 	sleep 0.5
 done
 
