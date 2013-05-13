@@ -22,7 +22,9 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_APP_ITER=10
 NR_ITER=1000000
-BIN_NAME="gen-ust-events"
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="high-throughput"
 EVENT_NAME="tp:tptest"
 SESSIOND_CTRL_PORT=5342
@@ -35,8 +37,8 @@ NUM_TESTS=112
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	BAIL_OUT "No UST nevents binary detected."
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
 fi
 
 function set_bw_limit
@@ -89,13 +91,13 @@ function run_apps
 		# due to very slow communication between the consumer and relayd making
 		# the status reply from the consumer quite slow thus delaying the
 		# registration done message.
-		LTTNG_UST_REGISTER_TIMEOUT=-1 ./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
+		LTTNG_UST_REGISTER_TIMEOUT=-1 $TESTAPP_BIN $NR_ITER & >/dev/null 2>&1
 	done
 }
 
 function wait_apps
 {
-	while [ -n "$(pidof $BIN_NAME)" ]; do
+	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
 		sleep 1
 	done
 	pass "Wait for applications to end"

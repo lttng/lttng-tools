@@ -18,7 +18,11 @@ TEST_DESC="Streaming - User space tracing"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-BIN_NAME="gen-ust-events"
+NR_ITER=5
+NR_USEC_WAIT=1000000
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
 PID_RELAYD=0
@@ -29,8 +33,8 @@ NUM_TESTS=18
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	BAIL_OUT "No UST nevents binary detected."
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
 fi
 
 function lttng_create_session_uri
@@ -42,7 +46,7 @@ function lttng_create_session_uri
 
 function wait_apps
 {
-	while [ -n "$(pidof $BIN_NAME)" ]; do
+	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
 		sleep 0.5
 	done
 	pass "Wait for applications to end"
@@ -57,7 +61,7 @@ function test_ust_before_start ()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
-	./$CURDIR/$BIN_NAME 5 1000000 >/dev/null 2>&1 &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
 
 	start_lttng_tracing $SESSION_NAME
 
@@ -75,7 +79,7 @@ function test_ust_after_start ()
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
-	./$CURDIR/$BIN_NAME 5 1000000 >/dev/null 2>&1 &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
 
 	wait_apps
 
