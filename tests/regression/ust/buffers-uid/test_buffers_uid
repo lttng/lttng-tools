@@ -19,15 +19,19 @@ TEST_DESC="UST tracer - Tracing with per UID buffers"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_ITER=100
+NR_USEC_WAIT=100000
 SESSION_NAME="buffers-uid"
-EVENT_NAME="ust_gen_nevents:tptest"
-BIN_NAME="gen-nevents"
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+EVENT_NAME="tp:tptest"
 NUM_TESTS=58
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$CURDIR/gen-nevents" ]; then
-	BAIL_OUT "No UST nevents binary detected."
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
 fi
 
 # MUST set TESTDIR before calling those functions
@@ -44,7 +48,7 @@ function enable_channel_per_uid()
 function wait_apps
 {
 	diag "Waiting for applications to end..."
-	while [ -n "$(pidof $BIN_NAME)" ]; do
+	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
 		sleep 1
 	done
 }
@@ -62,7 +66,7 @@ test_after_multiple_apps() {
 	start_lttng_tracing $SESSION_NAME
 
 	for i in `seq 1 5`; do
-		./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
+		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT & >/dev/null 2>&1
 		ok $? "Start application $i for tracing"
 	done
 	wait_apps
@@ -82,7 +86,7 @@ test_before_multiple_apps() {
 	diag "Start multiple applications BEFORE tracing is started"
 
 	for i in `seq 1 5`; do
-		./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
+		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT & >/dev/null 2>&1
 		ok $? "Start application $i for tracing"
 	done
 
@@ -125,7 +129,7 @@ test_after_app() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	./$CURDIR/$BIN_NAME $NR_ITER
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
@@ -141,7 +145,7 @@ test_before_app() {
 
 	diag "Start application BEFORE tracing is started"
 
-	./$CURDIR/$BIN_NAME $NR_ITER &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# BEFORE application is spawned
@@ -197,7 +201,7 @@ test_multiple_channels() {
 	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel4"
 	start_lttng_tracing $SESSION_NAME
 
-	./$CURDIR/$BIN_NAME $NR_ITER
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
