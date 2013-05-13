@@ -33,8 +33,6 @@
 
 #include <tap/tap.h>
 
-#include "utils.h"
-
 /* This path will NEVER be created in this test */
 #define PATH1 "/tmp/.test-junk-lttng"
 
