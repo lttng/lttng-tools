@@ -19,15 +19,19 @@ TEST_DESC="UST tracer - Tracing with per UID buffers and periodical flush"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_ITER=100
+NR_USEC_WAIT=100000
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="periodical-flush"
-EVENT_NAME="ust_gen_nevents:tptest"
+EVENT_NAME="tp:tptest"
 BIN_NAME="gen-nevents"
 NUM_TESTS=38
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$CURDIR/gen-nevents" ]; then
-	BAIL_OUT "No UST nevents binary detected."
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
 fi
 
 # MUST set TESTDIR before calling those functions
@@ -62,7 +66,7 @@ function enable_metadata_per_pid()
 function wait_apps
 {
 	diag "Waiting for applications to end..."
-	while [ -n "$(pidof $BIN_NAME)" ]; do
+	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
 		sleep 1
 	done
 }
@@ -79,7 +83,7 @@ test_after_app_pid() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	./$CURDIR/$BIN_NAME $NR_ITER
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
@@ -95,7 +99,7 @@ test_before_app_pid() {
 
 	diag "Start application BEFORE tracing is started"
 
-	./$CURDIR/$BIN_NAME $NR_ITER &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# BEFORE application is spawned
@@ -139,7 +143,7 @@ test_after_app_uid() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	./$CURDIR/$BIN_NAME $NR_ITER
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
@@ -155,7 +159,7 @@ test_before_app_uid() {
 
 	diag "Start application BEFORE tracing is started"
 
-	./$CURDIR/$BIN_NAME $NR_ITER &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# BEFORE application is spawned
