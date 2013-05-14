@@ -189,7 +189,7 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 
 	/* Get the right pipe where the stream will be sent. */
 	if (stream->metadata_flag) {
-		stream_pipe = ctx->consumer_metadata_pipe[1];
+		stream_pipe = lttng_pipe_get_writefd(ctx->consumer_metadata_pipe);
 	} else {
 		stream_pipe = lttng_pipe_get_writefd(ctx->consumer_data_pipe);
 	}

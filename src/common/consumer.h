@@ -351,7 +351,7 @@ struct lttng_consumer_local_data {
 	/* to let the signal handler wake up the fd receiver thread */
 	int consumer_should_quit[2];
 	/* Metadata poll thread pipe. Transfer metadata stream to it */
-	int consumer_metadata_pipe[2];
+	struct lttng_pipe *consumer_metadata_pipe;
 };
 
 /*
