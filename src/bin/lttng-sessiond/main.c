@@ -2895,6 +2895,7 @@ skip_domain:
 
 		ret = setup_lttng_msg(cmd_ctx, nb_dom * sizeof(struct lttng_domain));
 		if (ret < 0) {
+			free(domains);
 			goto setup_error;
 		}
 
@@ -2922,6 +2923,7 @@ skip_domain:
 
 		ret = setup_lttng_msg(cmd_ctx, nb_chan * sizeof(struct lttng_channel));
 		if (ret < 0) {
+			free(channels);
 			goto setup_error;
 		}
 
@@ -2949,6 +2951,7 @@ skip_domain:
 
 		ret = setup_lttng_msg(cmd_ctx, nb_event * sizeof(struct lttng_event));
 		if (ret < 0) {
+			free(events);
 			goto setup_error;
 		}
 
