@@ -14,5 +14,5 @@ gen_ust_events_SOURCES = gen-ust-events.c tp.c tp.h
 gen_ust_events_LDADD = -llttng-ust
 endif
 
-noinst_SCRIPTS = test_unsupported_op test_invalid_filter test_valid_filter babelstats.pl
-EXTRA_DIST = test_unsupported_op test_invalid_filter test_valid_filter babelstats.pl
+noinst_SCRIPTS = test_unsupported_op test_invalid_filter test_valid_filter
+EXTRA_DIST = test_unsupported_op test_invalid_filter test_valid_filter

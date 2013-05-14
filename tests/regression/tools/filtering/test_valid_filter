@@ -21,7 +21,7 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 LTTNG_BIN="lttng"
 BIN_NAME="gen-ust-events"
-STATS_BIN="babelstats.pl"
+STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 EVENT_NAME="tp:tptest"
 NR_ITER=100
@@ -81,7 +81,7 @@ function test_valid_filter
 	# Destroy session
 	destroy_lttng_session $SESSION_NAME
 
-	stats=`babeltrace $trace_path | $CURDIR/$STATS_BIN --tracepoint $EVENT_NAME`
+	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $EVENT_NAME`
 
 	rm -rf $trace_path
 
