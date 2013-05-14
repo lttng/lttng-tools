@@ -1,0 +1,174 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Tracefile count limits"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+STATS_BIN="$TESTDIR/utils/babelstats.pl"
+NUM_TESTS=146
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+function wait_apps
+{
+	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
+		sleep 0.5
+	done
+	pass "Wait for applications to end"
+}
+
+function enable_lttng_channel_count_limit ()
+{
+	sess_name="$1"
+	channel_name="$2"
+	tracefile_count_limit="$3"
+
+	test_name="Enable channel $channel_name "
+	test_name+="for session $sess_name: "
+	test_name+="$tracefile_count_limit tracefiles"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
+	    -u $channel_name -s $sess_name \
+	    -C 4096 -W $tracefile_count_limit \
+	    --overwrite >/dev/null 2>&1
+
+	ok $? "$test_name"
+}
+
+function enable_ust_lttng_event_per_channel ()
+{
+	sess_name="$1"
+	event_name="$2"
+	channel_name="$3"
+
+	test_name="Enable event $event_name "
+	test_name+="for session $sess_name "
+	test_name+="in channel $channel_name"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" \
+	    -s $sess_name -u -c $channel_name >/dev/null 2>&1
+
+	ok $? "$test_name"
+}
+
+function validate_min_max
+{
+	stats="$1"
+	field="$2"
+	expected_min="$3"
+	expected_max="$4"
+
+	echo $stats | grep -q -E "$field $expected_min $expected_max"
+	return $?
+}
+
+function validate_file_count
+{
+	path="$1"
+	file_pattern="$2"
+	expected_max_count="$3"
+
+	count=`find $path -name "$file_pattern" -type f | wc -l`
+
+	if [ "$count" -gt "$expected_max_count" ]; then
+	    fail "Validate file count: $file_pattern"
+	    diag "File count: $count expected: $expected_max_count"
+	else
+	    pass "Validate file count: $file_pattern"
+	fi
+}
+
+function test_tracefile_count_limit ()
+{
+	count_limit="$1"
+	trace_path=$(mktemp -d)
+	session_name=$(randstring 16 0)
+	channel_name="channel"
+	event_name="tp:tptest"
+	num_iter=1000
+	expected_max=$(($num_iter - 1))
+
+	diag "Test tracefile count limit : $count_limit tracefiles"
+
+	create_lttng_session $session_name $trace_path
+
+	enable_lttng_channel_count_limit \
+	    $session_name $channel_name $count_limit
+
+	enable_ust_lttng_event_per_channel \
+	    $session_name $event_name $channel_name
+
+	start_lttng_tracing $session_name
+
+	$TESTAPP_BIN $num_iter >/dev/null 2>&1 &
+
+	wait_apps
+
+	stop_lttng_tracing $session_name
+
+	destroy_lttng_session $session_name
+
+	# Validate tracing dir
+
+	num_cpu=`nproc`
+
+	for cpuno in $(seq 0 $(($num_cpu - 1)))
+	do
+		validate_file_count \
+		    $trace_path "${channel_name}_${cpuno}_*" $count_limit
+	done
+
+	# Validate tracing data
+
+	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $event_name`
+
+	validate_min_max "$stats" "intfield" "[0-9]+" "$expected_max"
+	ok $? "Trace validation - intfield"
+
+	validate_min_max "$stats" "netintfield" "[0-9]+" "$expected_max"
+	ok $? "Trace validation - netintfield"
+
+	validate_min_max "$stats" "longfield" "[0-9]+" "$expected_max"
+	ok $? "Trace validation - longfield"
+
+	rm -rf $trace_path
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+LIMITS=("1" "2" "4" "8" "10" "16" "32" "64")
+
+for limit in ${LIMITS[@]};
+do
+	test_tracefile_count_limit $limit
+done
+
+stop_lttng_sessiond

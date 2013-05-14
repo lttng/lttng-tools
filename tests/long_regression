@@ -5,6 +5,7 @@ regression/tools/health/test_thread_exit
 regression/tools/health/test_thread_stall
 regression/tools/health/test_tp_fail
 regression/tools/streaming/test_ust
+regression/tools/tracefile-limits/test_tracefile_count
 regression/ust/before-after/test_before_after
 regression/ust/buffers-uid/test_buffers_uid
 regression/ust/high-throughput/test_high_throughput
