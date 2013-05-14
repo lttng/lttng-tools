@@ -1,2 +1,2 @@
-noinst_SCRIPTS = test_tracefile_count
-EXTRA_DIST = test_tracefile_count
+noinst_SCRIPTS = test_tracefile_count test_tracefile_size
+EXTRA_DIST = test_tracefile_count test_tracefile_size
