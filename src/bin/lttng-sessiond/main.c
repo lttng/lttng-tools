@@ -1380,6 +1380,11 @@ static void *thread_dispatch_ust_registration(void *data)
 				wait_node = zmalloc(sizeof(*wait_node));
 				if (!wait_node) {
 					PERROR("zmalloc wait_node dispatch");
+					ret = close(ust_cmd->sock);
+					if (ret < 0) {
+						PERROR("close ust sock dispatch %d", ust_cmd->sock);
+					}
+					lttng_fd_put(1, LTTNG_FD_APPS);
 					free(ust_cmd);
 					goto error;
 				}
@@ -1426,6 +1431,19 @@ static void *thread_dispatch_ust_registration(void *data)
 						DBG3("UST app notify socket %d is set", ust_cmd->sock);
 						break;
 					}
+				}
+
+				/*
+				 * With no application at this stage the received socket is
+				 * basically useless so close it before we free the cmd data
+				 * structure for good.
+				 */
+				if (!app) {
+					ret = close(ust_cmd->sock);
+					if (ret < 0) {
+						PERROR("close ust sock dispatch %d", ust_cmd->sock);
+					}
+					lttng_fd_put(1, LTTNG_FD_APPS);
 				}
 				free(ust_cmd);
 			}
@@ -1488,13 +1506,6 @@ static void *thread_dispatch_ust_registration(void *data)
 
 				rcu_read_unlock();
 				session_unlock_list();
-			} else {
-				/* Application manager threads are not available. */
-				ret = close(ust_cmd->sock);
-				if (ret < 0) {
-					PERROR("close ust_cmd sock");
-				}
-				lttng_fd_put(1, LTTNG_FD_APPS);
 			}
 		} while (node != NULL);
 
