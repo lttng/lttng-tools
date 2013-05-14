@@ -3449,13 +3449,11 @@ static void *thread_manage_clients(void *data)
 		ret = process_client_msg(cmd_ctx, sock, &sock_error);
 		rcu_thread_offline();
 		if (ret < 0) {
-			if (sock_error) {
-				ret = close(sock);
-				if (ret) {
-					PERROR("close");
-				}
-				sock = -1;
+			ret = close(sock);
+			if (ret) {
+				PERROR("close");
 			}
+			sock = -1;
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
 			 * this point, ret < 0 means that a zmalloc failed
