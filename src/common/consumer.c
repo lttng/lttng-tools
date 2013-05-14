@@ -99,6 +99,8 @@ static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
 	struct consumer_channel_msg msg;
 	int ret;
 
+	memset(&msg, 0, sizeof(msg));
+
 	msg.action = action;
 	msg.chan = chan;
 	do {
