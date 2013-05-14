@@ -353,7 +353,7 @@ error:
 int kernel_open_metadata(struct ltt_kernel_session *session)
 {
 	int ret;
-	struct ltt_kernel_metadata *lkm;
+	struct ltt_kernel_metadata *lkm = NULL;
 
 	assert(session);
 
@@ -366,7 +366,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 	/* Kernel tracer metadata creation */
 	ret = kernctl_open_metadata(session->fd, &lkm->conf->attr);
 	if (ret < 0) {
-		goto error;
+		goto error_open;
 	}
 
 	lkm->fd = ret;
@@ -382,6 +382,8 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 
 	return 0;
 
+error_open:
+	trace_kernel_destroy_metadata(lkm);
 error:
 	return -1;
 }
