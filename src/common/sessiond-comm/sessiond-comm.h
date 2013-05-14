@@ -338,7 +338,7 @@ struct lttcomm_consumer_msg {
 			uint32_t gid;				/* Group ID ot the session */
 			uint64_t relayd_id;			/* Relayd id if apply. */
 			uint64_t key;				/* Unique channel key. */
-			unsigned char uuid[UUID_STR_LEN];	/* uuid for ust tracer. */
+			unsigned char uuid[UUID_LEN];	/* uuid for ust tracer. */
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
 			uint64_t tracefile_size;	/* bytes */
 			uint32_t tracefile_count;	/* number of tracefiles */
