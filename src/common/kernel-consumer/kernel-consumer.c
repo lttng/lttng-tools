@@ -34,6 +34,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/compat/fcntl.h>
+#include <common/pipe.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
 
@@ -289,7 +290,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (new_stream->metadata_flag) {
 			stream_pipe = ctx->consumer_metadata_pipe[1];
 		} else {
-			stream_pipe = ctx->consumer_data_pipe[1];
+			stream_pipe = lttng_pipe_get_writefd(ctx->consumer_data_pipe);
 		}
 
 		do {

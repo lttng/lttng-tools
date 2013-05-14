@@ -31,6 +31,7 @@
 #include <common/compat/fcntl.h>
 #include <common/compat/uuid.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/pipe.h>
 
 /* Commands for consumer */
 enum lttng_consumer_command {
@@ -346,7 +347,7 @@ struct lttng_consumer_local_data {
 	int consumer_channel_pipe[2];
 	int consumer_splice_metadata_pipe[2];
 	/* Data stream poll thread pipe. To transfer data stream to the thread */
-	int consumer_data_pipe[2];
+	struct lttng_pipe *consumer_data_pipe;
 	/* to let the signal handler wake up the fd receiver thread */
 	int consumer_should_quit[2];
 	/* Metadata poll thread pipe. Transfer metadata stream to it */
