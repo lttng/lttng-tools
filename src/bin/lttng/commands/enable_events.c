@@ -268,7 +268,11 @@ int loglevel_str_to_value(const char *inputstr)
 	int i = 0;
 	char str[LTTNG_SYMBOL_NAME_LEN];
 
-	while (i < LTTNG_SYMBOL_NAME_LEN && inputstr[i] != '\0') {
+	/*
+	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
+	 * added at the end of the loop so a the upper bound we avoid the overflow.
+	 */
+	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
 		str[i] = toupper(inputstr[i]);
 		i++;
 	}
