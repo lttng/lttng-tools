@@ -1831,7 +1831,7 @@ int cmd_register_consumer(struct ltt_session *session, int domain,
 		const char *sock_path, struct consumer_data *cdata)
 {
 	int ret, sock;
-	struct consumer_socket *socket;
+	struct consumer_socket *socket = NULL;
 
 	assert(session);
 	assert(cdata);
@@ -1891,9 +1891,12 @@ int cmd_register_consumer(struct ltt_session *session, int domain,
 		goto error;
 	}
 
-	ret = LTTNG_OK;
+	return LTTNG_OK;
 
 error:
+	if (socket) {
+		consumer_destroy_socket(socket);
+	}
 	return ret;
 }
 
