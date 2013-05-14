@@ -125,6 +125,11 @@ int lttcomm_create_unix_sock(const char *pathname)
 	return fd;
 
 error:
+	if (fd >= 0) {
+		if (close(fd) < 0) {
+			PERROR("close create unix sock");
+		}
+	}
 	return ret;
 }
 
