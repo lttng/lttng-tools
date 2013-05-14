@@ -151,15 +151,14 @@ static int create_one_session(char *name)
 static int destroy_one_session(struct ltt_session *session)
 {
 	int ret;
+	char session_name[NAME_MAX];
+
+	strncpy(session_name, session->name, sizeof(session->name));
+	session_name[sizeof(session_name) - 1] = '\0';
 
 	ret = session_destroy(session);
-
 	if (ret == LTTNG_OK) {
-		/* Validate */
-		if (session == NULL) {
-			return 0;
-		}
-		ret = find_session_name(session->name);
+		ret = find_session_name(session_name);
 		if (ret < 0) {
 			/* Success, -1 means that the sesion is NOT found */
 			return 0;
@@ -280,7 +279,7 @@ void test_large_session_number(void)
 		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
 			ret = destroy_one_session(iter);
 			if (ret < 0) {
-				diag("session %d (name: %s) destroy failed", i, iter->name);
+				diag("session %d destroy failed", i);
 				++failed;
 			}
 		}
