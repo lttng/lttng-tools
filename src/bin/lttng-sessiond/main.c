@@ -3097,6 +3097,10 @@ static void *thread_manage_health(void *data)
 
 	rcu_register_thread();
 
+	/* We might hit an error path before this is set once. */
+	memset(&events, 0, sizeof(events));
+	events.epfd = -1;
+
 	/* Create unix socket */
 	sock = lttcomm_create_unix_sock(health_unix_sock_path);
 	if (sock < 0) {

@@ -166,13 +166,18 @@ static inline void lttng_poll_clean(struct lttng_poll_event *events)
 {
 	int ret;
 
-	if (events) {
+	if (!events) {
+		return;
+	}
+
+	if (events->epfd >= 0) {
 		ret = close(events->epfd);
 		if (ret) {
 			perror("close");
 		}
-		__lttng_poll_free((void *) events->events);
 	}
+
+	__lttng_poll_free((void *) events->events);
 }
 
 #else	/* HAVE_EPOLL */
