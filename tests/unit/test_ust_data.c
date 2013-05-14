@@ -176,6 +176,7 @@ static void test_create_ust_context(void)
 
 	ok((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID,
 	   "Validate UST context");
+	free(uctx);
 }
 
 int main(int argc, char **argv)
