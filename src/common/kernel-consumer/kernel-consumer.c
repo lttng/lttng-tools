@@ -168,7 +168,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_ADD_STREAM:
 	{
-		int fd, stream_pipe;
+		int fd;
+		struct lttng_pipe *stream_pipe;
 		struct consumer_relayd_sock_pair *relayd = NULL;
 		struct lttng_consumer_stream *new_stream;
 		struct lttng_consumer_channel *channel;
@@ -288,18 +289,16 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
-			stream_pipe = lttng_pipe_get_writefd(ctx->consumer_metadata_pipe);
+			stream_pipe = ctx->consumer_metadata_pipe;
 		} else {
-			stream_pipe = lttng_pipe_get_writefd(ctx->consumer_data_pipe);
+			stream_pipe = ctx->consumer_data_pipe;
 		}
 
-		do {
-			ret = write(stream_pipe, &new_stream, sizeof(new_stream));
-		} while (ret < 0 && errno == EINTR);
+		ret = lttng_pipe_write(stream_pipe, &new_stream, sizeof(new_stream));
 		if (ret < 0) {
-			PERROR("Consumer write %s stream to pipe %d",
+			ERR("Consumer write %s stream to pipe %d",
 					new_stream->metadata_flag ? "metadata" : "data",
-					stream_pipe);
+					lttng_pipe_get_writefd(stream_pipe));
 			consumer_del_stream(new_stream, NULL);
 			goto end_nosignal;
 		}

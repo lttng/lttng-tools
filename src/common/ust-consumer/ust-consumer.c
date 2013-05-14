@@ -185,21 +185,21 @@ error:
 static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
-	int ret, stream_pipe;
+	int ret;
+	struct lttng_pipe *stream_pipe;
 
 	/* Get the right pipe where the stream will be sent. */
 	if (stream->metadata_flag) {
-		stream_pipe = lttng_pipe_get_writefd(ctx->consumer_metadata_pipe);
+		stream_pipe = ctx->consumer_metadata_pipe;
 	} else {
-		stream_pipe = lttng_pipe_get_writefd(ctx->consumer_data_pipe);
+		stream_pipe = ctx->consumer_data_pipe;
 	}
 
-	do {
-		ret = write(stream_pipe, &stream, sizeof(stream));
-	} while (ret < 0 && errno == EINTR);
+	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream));
 	if (ret < 0) {
-		PERROR("Consumer write %s stream to pipe %d",
-				stream->metadata_flag ? "metadata" : "data", stream_pipe);
+		ERR("Consumer write %s stream to pipe %d",
+				stream->metadata_flag ? "metadata" : "data",
+				lttng_pipe_get_writefd(stream_pipe));
 	}
 
 	return ret;
