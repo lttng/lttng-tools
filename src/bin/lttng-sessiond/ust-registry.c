@@ -320,7 +320,9 @@ void destroy_channel_rcu(struct rcu_head *head)
 	struct ust_registry_channel *chan =
 		caa_container_of(head, struct ust_registry_channel, rcu_head);
 
-	lttng_ht_destroy(chan->ht);
+	if (chan->ht) {
+		lttng_ht_destroy(chan->ht);
+	}
 	free(chan);
 }
 
@@ -361,7 +363,7 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 	if (!chan) {
 		PERROR("zmalloc ust registry channel");
 		ret = -ENOMEM;
-		goto error;
+		goto error_alloc;
 	}
 
 	chan->ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
@@ -390,7 +392,11 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 	lttng_ht_add_unique_u64(session->channels, &chan->node);
 	rcu_read_unlock();
 
+	return 0;
+
 error:
+	destroy_channel(chan);
+error_alloc:
 	return ret;
 }
 
@@ -480,7 +486,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	session = zmalloc(sizeof(*session));
 	if (!session) {
 		PERROR("zmalloc ust registry session");
-		goto error;
+		goto error_alloc;
 	}
 
 	pthread_mutex_init(&session->lock, NULL);
@@ -516,6 +522,8 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	return 0;
 
 error:
+	ust_registry_session_destroy(session);
+error_alloc:
 	return -1;
 }
 
@@ -543,6 +551,8 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(reg->channels);
+	if (reg->channels) {
+		lttng_ht_destroy(reg->channels);
+	}
 	free(reg->metadata);
 }
