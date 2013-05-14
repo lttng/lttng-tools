@@ -189,10 +189,12 @@ void test_uri_parsing(void)
 	s_uri1 = "file/my/test/path";
 	size = uri_parse(s_uri1, &uri);
 	ok(size == -1, "Bad URI set to file/my/test/path");
+	assert(!uri);
 
 	s_uri1 = "net://:8999";
 	size = uri_parse(s_uri1, &uri);
 	ok(size == -1, "Bad URI set to net://:8999");
+	assert(!uri);
 }
 
 void test_uri_cmp()
