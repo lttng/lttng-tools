@@ -48,8 +48,8 @@ def bail(diag, session_info = None):
     if session_info is not None:
         stop_session(session_info, True)
 
-        if os.path.exists(session_info.trace_path):
-            shutil.rmtree(session_info.trace_path)
+        if os.path.exists(session_info.tmp_directory):
+            shutil.rmtree(session_info.tmp_directory)
     exit(-1)
 
 def print_test_result(result, number, description):
