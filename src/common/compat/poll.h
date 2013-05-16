@@ -159,6 +159,17 @@ static inline void lttng_poll_reset(struct lttng_poll_event *events)
 }
 
 /*
+ * Initialize an already allocated poll event data structure. For epoll(), the
+ * epfd is set to -1 to indicate that it's not usable.
+ */
+static inline void lttng_poll_init(struct lttng_poll_event *events)
+{
+	lttng_poll_reset(events);
+	/* Set fd to -1 so if clean before created, we don't close 0. */
+	events->epfd = -1;
+}
+
+/*
  * Clean the events structure of a lttng_poll_event. It's the caller
  * responsability to free the lttng_poll_event memory.
  */
@@ -316,6 +327,14 @@ extern void compat_poll_set_max_size(void);
  */
 static inline void lttng_poll_reset(struct lttng_poll_event *events)
 {}
+
+/*
+ * Initialize an already allocated poll event data structure.
+ */
+static inline void lttng_poll_init(struct lttng_poll_event *events)
+{
+	memset(events, 0, sizeof(struct lttng_poll_event));
+}
 
 /*
  * Clean the events structure of a lttng_poll_event. It's the caller

@@ -705,9 +705,9 @@ static void *thread_manage_kernel(void *data)
 
 	/*
 	 * This first step of the while is to clean this structure which could free
-	 * non NULL pointers so zero it before the loop.
+	 * non NULL pointers so initialize it before the loop.
 	 */
-	memset(&events, 0, sizeof(events));
+	lttng_poll_init(&events);
 
 	if (testpoint(thread_manage_kernel)) {
 		goto error_testpoint;
@@ -3108,9 +3108,8 @@ static void *thread_manage_health(void *data)
 
 	rcu_register_thread();
 
-	/* We might hit an error path before this is set once. */
-	memset(&events, 0, sizeof(events));
-	events.epfd = -1;
+	/* We might hit an error path before this is created. */
+	lttng_poll_init(&events);
 
 	/* Create unix socket */
 	sock = lttcomm_create_unix_sock(health_unix_sock_path);
