@@ -164,7 +164,7 @@ static inline void lttng_poll_reset(struct lttng_poll_event *events)
  */
 static inline void lttng_poll_init(struct lttng_poll_event *events)
 {
-	lttng_poll_reset(events);
+	memset(events, 0, sizeof(struct lttng_poll_event));
 	/* Set fd to -1 so if clean before created, we don't close 0. */
 	events->epfd = -1;
 }
