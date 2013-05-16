@@ -1,27 +1,30 @@
 LTTng Trace Control
 ----------------
 
-Please visit http://lttng.org for more information.
+Please visit https://lttng.org for more information. The current maintainer is
+David Goulet <dgoulet@efficios.com>.
 
 Latest development can be found at:
 
-    * Gitweb :  http://git.lttng.org/lttng-tools.git/
+    * Gitweb :  https://git.lttng.org/?p=lttng-tools.git;a=summary
     * Git :     git://git.lttng.org/lttng-tools.git
 
 REQUIREMENTS:
 
 	- Linux kernel >= 2.6.27
-	  pipe2(), epoll_create1() and SOCK_CLOEXEC are needed to run the session
-	  daemon. There were introduce in the Linux 2.6.27
+	  For epoll() support, at least this version is needed. However, poll() is
+	  also supported by running "./configure --disable-epoll". Using that, the
+	  kernel version can probably be older but we can't provide any guarantee.
+	  Please let us know if you are able to go lower without any problems.
 
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
-      -> Tested with liburcu >= v0.7.2
+      -> Tested with liburcu 0.7.x stable.
 
       * Debian/Ubuntu package: liburcu-dev
       * Git : git://git.lttng.org/userspace-rcu.git
-      * Website:  http://lttng.org/urcu
+      * Website:  https://lttng.org/urcu
 
     - libpopt >= 1.13
       Library for parsing command line parameters
@@ -60,7 +63,7 @@ compile the git repository tree :
 - GNU autotools (automake >=1.10, autoconf >=2.50, autoheader >=2.50)
   (make sure your system wide "automake" points to a recent version!)
 - GNU Libtool >=2.2
-  (for more information, go to http://www.gnu.org/software/autoconf/)
+  (for more information, go to https://www.gnu.org/software/autoconf/)
 - flex >= 2.5.35
 - bison >= 2.4
 
@@ -106,7 +109,7 @@ PACKAGE CONTENTS:
 
     This package contains the following elements:
 
-    - liblttng-ctl
+    - liblttng-ctl (public API)
       The LTTng tracing control library.
 
     - libsessiond-comm (internal)
@@ -149,7 +152,7 @@ PACKAGE CONTENTS:
     - lttng
       The LTTng tracer command line control tool.
 
-    - include (lttng.h --> installed in $(includedir)/lttng/lttng.h)
+    - include (installed in $(includedir)/lttng/)
       The liblttngctl API header file.
 
     - tests
@@ -159,4 +162,5 @@ PACKAGE CONTENTS:
 	  Various documentations and quickstart guide.
 
 	- extras
-	  Contains extra data such as bash completion file.
+	  Contains extra data such as bash completion file. Python bindings for
+	  liblttng-ctl are also available there.
