@@ -279,6 +279,12 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 		stream->wait_fd = wait_fd;
 
 		/*
+		 * Increment channel refcount since the channel reference has now been
+		 * assigned in the allocation process above.
+		 */
+		uatomic_inc(&stream->chan->refcount);
+
+		/*
 		 * Order is important this is why a list is used. On error, the caller
 		 * should clean this list.
 		 */
