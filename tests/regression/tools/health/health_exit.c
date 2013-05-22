@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <urcu.h>
 
 /*
  * Check if the specified environment variable is set.
@@ -40,6 +41,7 @@ int __testpoint_thread_manage_clients(void)
 	const char *var = "LTTNG_THREAD_MANAGE_CLIENTS_EXIT";
 
 	if (check_env_var(var)) {
+		rcu_unregister_thread();
 		pthread_exit(NULL);
 	}
 
@@ -62,6 +64,7 @@ int __testpoint_thread_manage_apps(void)
 	const char *var = "LTTNG_THREAD_MANAGE_APPS_EXIT";
 
 	if (check_env_var(var)) {
+		rcu_unregister_thread();
 		pthread_exit(NULL);
 	}
 
