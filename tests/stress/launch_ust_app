@@ -1,0 +1,59 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/..
+
+NR_APP=1
+NR_USEC_WAIT=5000000
+NR_APP_LOOP=1
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+# Number of application to spawn.
+if [ -n "$1" ]; then
+	NR_APP=$1
+fi
+
+# Number of seconds before the next loop is done in the app.
+if [ -n "$2" ]; then
+	NR_USEC_WAIT=$(echo $(( $2 * 1000000 )))
+fi
+
+# Number of loop the application should do meaning one TP is hit per loop.
+if [ -n "$3" ]; then
+	NR_APP_LOOP=$3
+fi
+
+# MUST set TESTDIR before this point.
+
+# Infinite loop. Spawns NR_APP apps for NR_USEC_WAIT doing NR_APP_LOOP.
+while :; do
+	for j in `seq 1 $NR_APP`; do
+		$TESTAPP_BIN $NR_APP_LOOP $NR_USEC_WAIT >/dev/null 2>&1 &
+	done
+	# Wait before the next round of applications.
+	sleep 3
+done

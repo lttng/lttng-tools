@@ -348,6 +348,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/exit-fast/Makefile
 	tests/regression/ust/fork/Makefile
 	tests/regression/ust/libc-wrapper/Makefile
+	tests/stress/Makefile
 	tests/unit/Makefile
 	tests/utils/Makefile
 	tests/utils/tap/Makefile

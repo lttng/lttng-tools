@@ -1,0 +1,19 @@
+Compiling the whole code base with "-O0" is HIGHLY recommended before running
+stress tests. This makes the GDB backtrace accurate and without values
+optimized out.
+
+Use this diff:
+-------
+diff --git a/configure.ac b/configure.ac
+index d5733b3..8bbb115 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -285,7 +285,7 @@ AC_PROG_LEX
+ 
+  AC_DEFUN([AC_PROG_BISON], [AC_CHECK_PROGS(BISON, bison, bison)])
+   
+   -CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
+   +CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing -O0"
+    
+	 DEFAULT_INCLUDES="-I\$(top_srcdir) -I\$(top_builddir) -I\$(top_builddir)/src -I\$(top_builddir)/include -
+-------

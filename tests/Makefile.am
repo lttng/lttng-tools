@@ -1,4 +1,4 @@
-SUBDIRS = utils regression unit
+SUBDIRS = utils regression unit stress
 
 if USE_PYTHON
 check-am:

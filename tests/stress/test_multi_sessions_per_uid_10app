@@ -1,0 +1,146 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/..
+LAUNCH_APP="launch_ust_app"
+SESSION_NAME="stress"
+EVENT_NAME="tp:tptest"
+LOG_FILE="sessiond.log"
+CHANNEL_NAME="channel0"
+NUM_TESTS=16
+NR_APP=10
+NR_SESSION=5
+NR_LOOP=1000
+COREDUMP_FILE=$(cat /proc/sys/kernel/core_pattern)
+
+TEST_DESC="Stress test - $NR_SESSION sessions per UID with $NR_APP apps"
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+
+function enable_channel_per_uid()
+{
+    local sess_name=$1
+    local channel_name=$2
+
+    $TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name >/dev/null 2>&1
+    ok $? "Enable channel $channel_name per UID for session $sess_name"
+}
+
+function check_sessiond()
+{
+	if [ -z "$(pidof lt-lttng-sessiond)" ]; then
+		local str_date=$(date +%H%M%S-%d%m%Y)
+
+		diag "!!!The session daemon died unexpectedly!!!"
+		mv $LOG_FILE $LOG_FILE-$str_date
+		if [ -e $COREDUMP_FILE ]; then
+			mv $COREDUMP_FILE $COREDUMP_FILE-$str_date
+		fi
+		exit 1
+	fi
+}
+
+function start_sessiond()
+{
+	local SESSIOND_BIN="lttng-sessiond"
+
+	validate_kernel_version
+	if [ $? -ne 0 ]; then
+		fail "Start session daemon"
+		BAIL_OUT "*** Kernel too old for session daemon tests ***"
+	fi
+
+	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
+		# We have to start it like this so the ulimit -c is used by this
+		# process. Also, we collect any error message printed out.
+		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --quiet --consumerd32-path="$TESTDIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$TESTDIR/../src/bin/lttng-consumerd/lttng-consumerd" >$LOG_FILE 2>&1 &
+		status=$?
+		# Wait for sessiond to bootstrap
+		sleep 2
+		ok $status "Start session daemon"
+	fi
+}
+
+test_stress()
+{
+	for b in $(seq 1 $NR_LOOP); do
+		for a in $(seq 1 $NR_SESSION); do
+			create_lttng_session $SESSION_NAME-$a $TRACE_PATH
+			check_sessiond
+			enable_channel_per_uid $SESSION_NAME-$a $CHANNEL_NAME
+			check_sessiond
+			enable_ust_lttng_event $SESSION_NAME-$a $EVENT_NAME
+			check_sessiond
+			start_lttng_tracing $SESSION_NAME-$a
+			check_sessiond
+		done
+
+		for a in $(seq 1 $NR_SESSION); do
+			stop_lttng_tracing $SESSION_NAME-$a
+			check_sessiond
+			destroy_lttng_session $SESSION_NAME-$a
+			check_sessiond
+		done
+	done
+
+	return 0
+}
+
+function cleanup()
+{
+	diag "Cleaning up!"
+	killall -9 $LAUNCH_APP
+	stop_lttng_sessiond
+}
+
+function sighandler()
+{
+	cleanup
+	rm $LOG_FILE
+	exit 1
+}
+
+trap sighandler SIGINT
+
+# Make sure we collect a coredump if possible.
+ulimit -c unlimited
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_sessiond
+
+diag "Starting applications"
+
+# Start NR_APP applications script that will spawn apps non stop.
+./$TESTDIR/stress/$LAUNCH_APP $NR_APP &
+
+TRACE_PATH=$(mktemp -d)
+
+test_stress
+out=$?
+if [ $out -ne 0 ]; then
+	cleanup
+	exit $out
+fi
+
+cleanup
+rm -rf $TRACE_PATH
+rm $LOG_FILE
+exit 0
