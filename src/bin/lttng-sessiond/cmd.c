@@ -754,7 +754,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 
 	/* Setup kernel consumer socket and send fds to it */
 	ret = init_kernel_tracing(ksess);
-	if (ret < 0) {
+	if (ret != 0) {
 		ret = LTTNG_ERR_KERN_START_FAIL;
 		goto error;
 	}

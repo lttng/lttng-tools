@@ -122,6 +122,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ADD_CHANNEL:
 	{
 		struct lttng_consumer_channel *new_channel;
+		int ret_recv;
 
 		/* First send a status message before receiving the fds. */
 		ret = consumer_send_status_msg(sock, ret_code);
@@ -129,7 +130,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
 		}
-
 		DBG("consumer_add_channel %" PRIu64, msg.u.channel.channel_key);
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
 				msg.u.channel.session_id, msg.u.channel.pathname,
@@ -155,15 +155,22 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		};
 
 		if (ctx->on_recv_channel != NULL) {
-			ret = ctx->on_recv_channel(new_channel);
-			if (ret == 0) {
-				consumer_add_channel(new_channel, ctx);
-			} else if (ret < 0) {
+			ret_recv = ctx->on_recv_channel(new_channel);
+			if (ret_recv == 0) {
+				ret = consumer_add_channel(new_channel, ctx);
+			} else if (ret_recv < 0) {
 				goto end_nosignal;
 			}
 		} else {
-			consumer_add_channel(new_channel, ctx);
+			ret = consumer_add_channel(new_channel, ctx);
 		}
+
+		/* If we received an error in add_channel, we need to report it. */
+		if (ret != 0) {
+			consumer_send_status_msg(sock, ret);
+			goto end_nosignal;
+		}
+
 		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_ADD_STREAM:
