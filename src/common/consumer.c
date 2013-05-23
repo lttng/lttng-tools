@@ -463,6 +463,13 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 				PERROR("munmap");
 			}
 		}
+
+		if (stream->wait_fd >= 0) {
+			ret = close(stream->wait_fd);
+			if (ret) {
+				PERROR("close");
+			}
+		}
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
@@ -1874,6 +1881,13 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 			ret = munmap(stream->mmap_base, stream->mmap_len);
 			if (ret != 0) {
 				PERROR("munmap metadata stream");
+			}
+		}
+
+		if (stream->wait_fd >= 0) {
+			ret = close(stream->wait_fd);
+			if (ret < 0) {
+				PERROR("close kernel metadata wait_fd");
 			}
 		}
 		break;
