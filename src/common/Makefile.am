@@ -21,7 +21,7 @@ libcommon_la_LIBADD = -luuid
 noinst_LTLIBRARIES += libconsumer.la
 
 libconsumer_la_SOURCES = consumer.c consumer.h consumer-metadata-cache.c \
-                         consumer-timer.c
+                         consumer-timer.c consumer-stream.c consumer-stream.h
 
 libconsumer_la_LIBADD = \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \

@@ -85,6 +85,8 @@ enum consumer_channel_type {
 	CONSUMER_CHANNEL_TYPE_DATA	= 1,
 };
 
+extern struct lttng_consumer_global_data consumer_data;
+
 struct stream_list {
 	struct cds_list_head head;
 	unsigned int count;
@@ -531,5 +533,6 @@ int consumer_send_status_channel(int sock,
 		struct lttng_consumer_channel *channel);
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
 		uint64_t key);
+void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
 
 #endif /* LIB_CONSUMER_H */

@@ -254,10 +254,8 @@ static void free_relayd_rcu(struct rcu_head *head)
 
 /*
  * Destroy and free relayd socket pair object.
- *
- * This function MUST be called with the consumer_data lock acquired.
  */
-static void destroy_relayd(struct consumer_relayd_sock_pair *relayd)
+void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -337,7 +335,7 @@ static void cleanup_relayd_ht(void)
 
 	cds_lfht_for_each_entry(consumer_data.relayd_ht->ht, &iter.iter, relayd,
 			node.node) {
-		destroy_relayd(relayd);
+		consumer_destroy_relayd(relayd);
 	}
 
 	rcu_read_unlock();
@@ -404,7 +402,7 @@ static void cleanup_relayd(struct consumer_relayd_sock_pair *relayd,
 	 * Delete the relayd from the relayd hash table, close the sockets and free
 	 * the object in a RCU call.
 	 */
-	destroy_relayd(relayd);
+	consumer_destroy_relayd(relayd);
 
 	/* Set inactive endpoint to all streams */
 	update_endpoint_status_by_netidx(netidx, CONSUMER_ENDPOINT_INACTIVE);
@@ -436,7 +434,7 @@ void consumer_flag_relayd_for_destroy(struct consumer_relayd_sock_pair *relayd)
 
 	/* Destroy the relayd if refcount is 0 */
 	if (uatomic_read(&relayd->refcount) == 0) {
-		destroy_relayd(relayd);
+		consumer_destroy_relayd(relayd);
 	}
 }
 
@@ -539,7 +537,7 @@ void consumer_del_stream(struct lttng_consumer_stream *stream,
 		/* Both conditions are met, we destroy the relayd. */
 		if (uatomic_read(&relayd->refcount) == 0 &&
 				uatomic_read(&relayd->destroy_flag)) {
-			destroy_relayd(relayd);
+			consumer_destroy_relayd(relayd);
 		}
 	}
 	rcu_read_unlock();
@@ -1957,7 +1955,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		/* Both conditions are met, we destroy the relayd. */
 		if (uatomic_read(&relayd->refcount) == 0 &&
 				uatomic_read(&relayd->destroy_flag)) {
-			destroy_relayd(relayd);
+			consumer_destroy_relayd(relayd);
 		}
 	}
 	rcu_read_unlock();
