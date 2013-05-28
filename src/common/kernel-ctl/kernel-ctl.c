@@ -99,7 +99,7 @@ int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
 	channel.switch_timer_interval = chops->switch_timer_interval;
 	channel.read_timer_interval = chops->read_timer_interval;
 	channel.output = chops->output;
-	memcpy(channel.padding, chops->padding, sizeof(channel.padding));
+	memcpy(channel.padding, chops->padding, sizeof(chops->padding));
 
 	return ioctl(fd, LTTNG_KERNEL_METADATA, &channel);
 }
@@ -134,7 +134,7 @@ int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 	channel.switch_timer_interval = chops->switch_timer_interval;
 	channel.read_timer_interval = chops->read_timer_interval;
 	channel.output = chops->output;
-	memcpy(channel.padding, chops->padding, sizeof(channel.padding));
+	memcpy(channel.padding, chops->padding, sizeof(chops->padding));
 
 	return ioctl(fd, LTTNG_KERNEL_CHANNEL, &channel);
 }
