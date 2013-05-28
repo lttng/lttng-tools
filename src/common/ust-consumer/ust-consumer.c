@@ -558,6 +558,11 @@ int lttng_ustconsumer_push_metadata(struct lttng_consumer_channel *metadata,
 
 	DBG("UST consumer writing metadata to channel %s", metadata->name);
 
+	if (!metadata->metadata_stream) {
+		ret = 0;
+		goto error;
+	}
+
 	assert(target_offset <= metadata->metadata_cache->max_offset);
 	ret = ustctl_write_metadata_to_channel(metadata->uchan,
 			metadata_str + target_offset, len);
@@ -629,11 +634,17 @@ static int close_metadata(uint64_t chan_key)
 	}
 
 	pthread_mutex_lock(&consumer_data.lock);
-	if (!cds_lfht_is_node_deleted(&channel->node.node)) {
-		if (channel->switch_timer_enabled == 1) {
-			DBG("Deleting timer on metadata channel");
-			consumer_timer_switch_stop(channel);
-		}
+
+	if (cds_lfht_is_node_deleted(&channel->node.node)) {
+		goto error_unlock;
+	}
+
+	if (channel->switch_timer_enabled == 1) {
+		DBG("Deleting timer on metadata channel");
+		consumer_timer_switch_stop(channel);
+	}
+
+	if (channel->metadata_stream) {
 		ret = ustctl_stream_close_wakeup_fd(channel->metadata_stream->ustream);
 		if (ret < 0) {
 			ERR("UST consumer unable to close fd of metadata (ret: %d)", ret);
@@ -728,6 +739,17 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		goto end_free;
 	}
 
+	/*
+	 * XXX: The consumer data lock is acquired before calling metadata cache
+	 * write which calls push metadata that MUST be protected by the consumer
+	 * lock in order to be able to check the validity of the metadata stream of
+	 * the channel.
+	 *
+	 * Note that this will be subject to change to better fine grained locking
+	 * and ultimately try to get rid of this global consumer data lock.
+	 */
+	pthread_mutex_lock(&consumer_data.lock);
+
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 	ret = consumer_metadata_cache_write(channel, offset, len, metadata_str);
 	if (ret < 0) {
@@ -735,6 +757,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
 	}
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
+	pthread_mutex_unlock(&consumer_data.lock);
 
 	while (consumer_metadata_cache_flushed(channel, offset + len)) {
 		DBG("Waiting for metadata to be flushed");

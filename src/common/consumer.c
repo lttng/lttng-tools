@@ -1960,6 +1960,13 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	}
 
 end:
+	/*
+	 * Nullify the stream reference so it is not used after deletion. The
+	 * consumer data lock MUST be acquired before being able to check for a
+	 * NULL pointer value.
+	 */
+	stream->chan->metadata_stream = NULL;
+
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 

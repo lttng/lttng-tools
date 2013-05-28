@@ -43,6 +43,8 @@ struct consumer_metadata_cache {
 	/*
 	 * Lock to update the metadata cache and push into the ring_buffer
 	 * (ustctl_write_metadata_to_channel).
+	 *
+	 * This is nested INSIDE the consumer_data lock.
 	 */
 	pthread_mutex_t lock;
 };
