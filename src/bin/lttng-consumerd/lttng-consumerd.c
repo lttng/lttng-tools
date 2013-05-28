@@ -469,7 +469,9 @@ metadata_error:
 
 error:
 	ret = EXIT_FAILURE;
-	lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_FAILURE);
+	if (ctx) {
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_FAILURE);
+	}
 
 end:
 	lttng_consumer_destroy(ctx);

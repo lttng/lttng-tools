@@ -2404,7 +2404,7 @@ static int create_ust_app_channel(struct ust_app_session *ua_sess,
 	if (ua_chan == NULL) {
 		/* Only malloc can fail here */
 		ret = -ENOMEM;
-		goto error;
+		goto error_alloc;
 	}
 	shadow_copy_channel(ua_chan, uchan);
 
@@ -2432,6 +2432,7 @@ end:
 
 error:
 	delete_ust_app_channel(ua_chan->is_sent ? app->sock : -1, ua_chan, app);
+error_alloc:
 	return ret;
 }
 
