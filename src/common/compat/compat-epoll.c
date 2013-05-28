@@ -169,8 +169,6 @@ int compat_epoll_del(struct lttng_poll_event *events, int fd)
 			PERROR("epoll_ctl DEL fatal");
 			goto error;
 		}
-		PERROR("epoll_ctl del");
-		goto error;
 	}
 
 	events->nb_fd--;

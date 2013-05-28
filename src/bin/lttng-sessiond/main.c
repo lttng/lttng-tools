@@ -3276,12 +3276,6 @@ error:
 			PERROR("close");
 		}
 	}
-	if (new_sock >= 0) {
-		ret = close(new_sock);
-		if (ret) {
-			PERROR("close");
-		}
-	}
 
 	lttng_poll_clean(&events);
 

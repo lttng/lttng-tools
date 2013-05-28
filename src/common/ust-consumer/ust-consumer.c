@@ -491,10 +491,6 @@ static int ask_channel(struct lttng_consumer_local_data *ctx, int sock,
 
 	channel->wait_fd = ustctl_channel_get_wait_fd(channel->uchan);
 
-	if (ret < 0) {
-		goto error;
-	}
-
 	/* Open all streams for this channel. */
 	ret = create_ust_streams(channel, ctx);
 	if (ret < 0) {
