@@ -2976,7 +2976,7 @@ end:
 		}
 	}
 	if (client_socket >= 0) {
-		ret = close(sock);
+		ret = close(client_socket);
 		if (ret < 0) {
 			PERROR("close client_socket sessiond poll");
 		}
