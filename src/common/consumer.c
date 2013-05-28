@@ -102,6 +102,7 @@ static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
 
 	msg.action = action;
 	msg.chan = chan;
+	msg.key = key;
 	do {
 		ret = write(ctx->consumer_channel_pipe[1], &msg, sizeof(msg));
 	} while (ret < 0 && errno == EINTR);
