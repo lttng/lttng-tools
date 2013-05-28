@@ -2246,6 +2246,14 @@ static int create_channel_per_uid(struct ust_app *app,
 		ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
 				app->bits_per_long, reg_uid->registry->reg.ust);
 		if (ret < 0) {
+			/*
+			 * Let's remove the previously created buffer registry channel so
+			 * it's not visible anymore in the session registry.
+			 */
+			ust_registry_channel_del_free(reg_uid->registry->reg.ust,
+					ua_chan->tracing_channel_id);
+			buffer_reg_channel_remove(reg_uid->registry, reg_chan);
+			buffer_reg_channel_destroy(reg_chan, LTTNG_DOMAIN_UST);
 			goto error;
 		}
 

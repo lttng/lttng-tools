@@ -492,8 +492,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 		return;
 	}
 
-	DBG3("Buffer registry channel destroy with key %" PRIu32 " and handle %d",
-			regp->key, regp->obj.ust->handle);
+	DBG3("Buffer registry channel destroy with key %" PRIu32, regp->key);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
