@@ -255,11 +255,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		new_stream->chan = channel;
 		new_stream->wait_fd = fd;
 
-		/* Metadata chan refcount is increment in add_metadata_stream */
-		if (new_stream->chan->type != CONSUMER_CHANNEL_TYPE_METADATA) {
-			/* Update channel refcount */
-			uatomic_inc(&new_stream->chan->refcount);
-		}
+		/*
+		 * We've just assigned the channel to the stream so increment the
+		 * refcount right now.
+		 */
+		uatomic_inc(&new_stream->chan->refcount);
 
 		/*
 		 * The buffer flush is done on the session daemon side for the kernel

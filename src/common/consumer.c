@@ -2019,9 +2019,6 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 		uatomic_inc(&relayd->refcount);
 	}
 
-	/* Update channel refcount once added without error(s). */
-	uatomic_inc(&stream->chan->refcount);
-
 	/*
 	 * When nb_init_stream_left reaches 0, we don't need to trigger any action
 	 * in terms of destroying the associated channel, because the action that
