@@ -751,6 +751,14 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 	if (ret < 0) {
 		/* Unable to handle metadata. Notify session daemon. */
 		ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
+		/*
+		 * Skip metadata flush on write error since the offset and len might
+		 * not have been updated which could create an infinite loop below when
+		 * waiting for the metadata cache to be flushed.
+		 */
+		pthread_mutex_unlock(&channel->metadata_cache->lock);
+		pthread_mutex_unlock(&consumer_data.lock);
+		goto end_free;
 	}
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
