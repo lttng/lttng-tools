@@ -384,7 +384,10 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 }
 
 /*
- * Push metadata to consumer socket. The socket lock MUST be acquired.
+ * Push metadata to consumer socket.
+ *
+ * The socket lock MUST be acquired.
+ * The ust app session lock MUST be acquired.
  *
  * On success, return the len of metadata pushed or else a negative value.
  */
@@ -398,8 +401,19 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 
 	assert(registry);
 	assert(socket);
-	/* Should never be 0 which is the initial state. */
-	assert(registry->metadata_key);
+
+	/*
+	 * On a push metadata error either the consumer is dead or the metadata
+	 * channel has been destroyed because its endpoint might have died (e.g:
+	 * relayd). If so, the metadata closed flag is set to 1 so we deny pushing
+	 * metadata again which is not valid anymore on the consumer side.
+	 *
+	 * The ust app session mutex locked allows us to make this check without
+	 * the registry lock.
+	 */
+	if (registry->metadata_closed) {
+		return -EPIPE;
+	}
 
 	pthread_mutex_lock(&registry->lock);
 
@@ -474,7 +488,7 @@ static int push_metadata(struct ust_registry_session *registry,
 	 */
 	if (!registry->metadata_key) {
 		ret_val = 0;
-		goto error_rcu_unlock;
+		goto end_rcu_unlock;
 	}
 
 	/* Get consumer socket to use to push the metadata.*/
@@ -507,6 +521,13 @@ static int push_metadata(struct ust_registry_session *registry,
 	return 0;
 
 error_rcu_unlock:
+	/*
+	 * On error, flag the registry that the metadata is closed. We were unable
+	 * to push anything and this means that either the consumer is not
+	 * responding or the metadata cache has been destroyed on the consumer.
+	 */
+	registry->metadata_closed = 1;
+end_rcu_unlock:
 	rcu_read_unlock();
 	return ret_val;
 }
@@ -532,7 +553,7 @@ static int close_metadata(struct ust_registry_session *registry,
 
 	if (!registry->metadata_key || registry->metadata_closed) {
 		ret = 0;
-		goto error;
+		goto end;
 	}
 
 	/* Get consumer socket to use to push the metadata.*/
@@ -548,10 +569,14 @@ static int close_metadata(struct ust_registry_session *registry,
 		goto error;
 	}
 
-	/* Metadata successfully closed. Flag the registry. */
-	registry->metadata_closed = 1;
-
 error:
+	/*
+	 * Metadata closed. Even on error this means that the consumer is not
+	 * responding or not found so either way a second close should NOT be emit
+	 * for this registry.
+	 */
+	registry->metadata_closed = 1;
+end:
 	rcu_read_unlock();
 	return ret;
 }
@@ -587,16 +612,21 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 
 	assert(ua_sess);
 
+	pthread_mutex_lock(&ua_sess->lock);
+
 	registry = get_session_registry(ua_sess);
-	if (registry) {
+	if (registry && !registry->metadata_closed) {
 		/* Push metadata for application before freeing the application. */
 		(void) push_metadata(registry, ua_sess->consumer);
 
 		/*
 		 * Don't ask to close metadata for global per UID buffers. Close
-		 * metadata only on destroy trace session in this case.
+		 * metadata only on destroy trace session in this case. Also, the
+		 * previous push metadata could have flag the metadata registry to
+		 * close so don't send a close command if closed.
 		 */
-		if (ua_sess->buffer_type != LTTNG_BUFFER_PER_UID) {
+		if (ua_sess->buffer_type != LTTNG_BUFFER_PER_UID &&
+				!registry->metadata_closed) {
 			/* And ask to close it for this session registry. */
 			(void) close_metadata(registry, ua_sess->consumer);
 		}
@@ -625,6 +655,8 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 					sock, ret);
 		}
 	}
+	pthread_mutex_unlock(&ua_sess->lock);
+
 	call_rcu(&ua_sess->rcu_head, delete_ust_app_session_rcu);
 }
 
@@ -2517,8 +2549,8 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	registry = get_session_registry(ua_sess);
 	assert(registry);
 
-	/* Metadata already exists for this registry. */
-	if (registry->metadata_key) {
+	/* Metadata already exists for this registry or it was closed previously */
+	if (registry->metadata_key || registry->metadata_closed) {
 		ret = 0;
 		goto error;
 	}
@@ -2851,15 +2883,18 @@ void ust_app_unregister(int sock)
 		 * session so the delete session will NOT push/close a second time.
 		 */
 		registry = get_session_registry(ua_sess);
-		if (registry) {
+		if (registry && !registry->metadata_closed) {
 			/* Push metadata for application before freeing the application. */
 			(void) push_metadata(registry, ua_sess->consumer);
 
 			/*
 			 * Don't ask to close metadata for global per UID buffers. Close
-			 * metadata only on destroy trace session in this case.
+			 * metadata only on destroy trace session in this case. Also, the
+			 * previous push metadata could have flag the metadata registry to
+			 * close so don't send a close command if closed.
 			 */
-			if (ua_sess->buffer_type != LTTNG_BUFFER_PER_UID) {
+			if (ua_sess->buffer_type != LTTNG_BUFFER_PER_UID &&
+					!registry->metadata_closed) {
 				/* And ask to close it for this session registry. */
 				(void) close_metadata(registry, ua_sess->consumer);
 			}
@@ -3742,8 +3777,11 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	registry = get_session_registry(ua_sess);
 	assert(registry);
-	/* Push metadata for application before freeing the application. */
-	(void) push_metadata(registry, ua_sess->consumer);
+
+	if (!registry->metadata_closed) {
+		/* Push metadata for application before freeing the application. */
+		(void) push_metadata(registry, ua_sess->consumer);
+	}
 
 	pthread_mutex_unlock(&ua_sess->lock);
 end_no_session:
