@@ -33,6 +33,8 @@
 
 #include "consumer-metadata-cache.h"
 
+extern struct lttng_consumer_global_data consumer_data;
+
 /*
  * Extend the allocated size of the metadata cache. Called only from
  * lttng_ustconsumer_write_metadata_cache.
@@ -201,13 +203,28 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 
 	cache = channel->metadata_cache;
 
+	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
+
 	if (cache->rb_pushed >= offset) {
 		ret = 0;
+	} else if (!channel->metadata_stream) {
+		/*
+		 * Having no metadata stream means the channel is being destroyed so there
+		 * is no cache to flush anymore.
+		 */
+		ret = 0;
+	} else if (channel->metadata_stream->endpoint_status !=
+			CONSUMER_ENDPOINT_ACTIVE) {
+		/* An inactive endpoint means we don't have to flush anymore. */
+		ret = 0;
 	} else {
+		/* Still not completely flushed. */
 		ret = 1;
 	}
+
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
+	pthread_mutex_unlock(&consumer_data.lock);
 
 	return ret;
 }
