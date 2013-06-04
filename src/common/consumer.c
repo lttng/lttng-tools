@@ -2716,16 +2716,20 @@ restart:
 
 						lttng_ht_node_init_u64(&chan->wait_fd_node,
 							chan->wait_fd);
+						rcu_read_lock();
 						lttng_ht_add_unique_u64(channel_ht,
 								&chan->wait_fd_node);
+						rcu_read_unlock();
 						/* Add channel to the global poll events list */
 						lttng_poll_add(&events, chan->wait_fd,
 								LPOLLIN | LPOLLPRI);
 						break;
 					case CONSUMER_CHANNEL_DEL:
 					{
+						rcu_read_lock();
 						chan = consumer_find_channel(key);
 						if (!chan) {
+							rcu_read_unlock();
 							ERR("UST consumer get channel key %" PRIu64 " not found for del channel", key);
 							break;
 						}
@@ -2741,6 +2745,7 @@ restart:
 						if (!uatomic_sub_return(&chan->refcount, 1)) {
 							consumer_del_channel(chan);
 						}
+						rcu_read_unlock();
 						goto restart;
 					}
 					case CONSUMER_CHANNEL_QUIT:
