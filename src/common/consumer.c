@@ -2734,6 +2734,7 @@ restart:
 							break;
 						}
 						lttng_poll_del(&events, chan->wait_fd);
+						iter.iter.node = &chan->wait_fd_node.node;
 						ret = lttng_ht_del(channel_ht, &iter);
 						assert(ret == 0);
 						consumer_close_channel_streams(chan);
