@@ -507,15 +507,11 @@ static void print_channel(struct lttng_channel *channel)
 	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
 
 	MSG("%sAttributes:", indent4);
-	MSG("%swrite mode: %s", indent6,
-			channel->attr.overwrite == 0 ? "discard" : "overwrite");
-	MSG("%ssubbufers size: %" PRIu64 " bytes", indent6,
-			channel->attr.subbuf_size);
+	MSG("%soverwrite mode: %d", indent6, channel->attr.overwrite);
+	MSG("%ssubbufers size: %" PRIu64, indent6, channel->attr.subbuf_size);
 	MSG("%snumber of subbufers: %" PRIu64, indent6, channel->attr.num_subbuf);
-	MSG("%sswitch timer interval: %u usec", indent6,
-			channel->attr.switch_timer_interval);
-	MSG("%sread timer interval: %u usec", indent6,
-			channel->attr.read_timer_interval);
+	MSG("%sswitch timer interval: %u", indent6, channel->attr.switch_timer_interval);
+	MSG("%sread timer interval: %u", indent6, channel->attr.read_timer_interval);
 	switch (channel->attr.output) {
 		case LTTNG_EVENT_SPLICE:
 			MSG("%soutput: splice()", indent6);
