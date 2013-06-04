@@ -2873,12 +2873,6 @@ void *consumer_thread_sessiond_poll(void *data)
 		goto end;
 	}
 
-	ret = fcntl(client_socket, F_SETFL, O_NONBLOCK);
-	if (ret < 0) {
-		PERROR("fcntl O_NONBLOCK");
-		goto end;
-	}
-
 	/* prepare the FDs to poll : to client socket and the should_quit pipe */
 	consumer_sockpoll[0].fd = ctx->consumer_should_quit[0];
 	consumer_sockpoll[0].events = POLLIN | POLLPRI;
@@ -2894,11 +2888,6 @@ void *consumer_thread_sessiond_poll(void *data)
 	sock = lttcomm_accept_unix_sock(client_socket);
 	if (sock < 0) {
 		WARN("On accept");
-		goto end;
-	}
-	ret = fcntl(sock, F_SETFL, O_NONBLOCK);
-	if (ret < 0) {
-		PERROR("fcntl O_NONBLOCK");
 		goto end;
 	}
 
