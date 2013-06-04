@@ -3083,29 +3083,36 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 	DBG("Consumer adding relayd socket (idx: %d)", net_seq_idx);
 
-	/* First send a status message before receiving the fds. */
-	ret = consumer_send_status_msg(sock, ret_code);
-	if (ret < 0) {
-		/* Somehow, the session daemon is not responding anymore. */
-		goto error;
-	}
-
 	/* Get relayd reference if exists. */
 	relayd = consumer_find_relayd(net_seq_idx);
 	if (relayd == NULL) {
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
-			ret = -1;
-			goto error;
+			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
+			ret = -ENOMEM;
+		} else {
+			relayd->sessiond_session_id = (uint64_t) sessiond_id;
+			relayd_created = 1;
 		}
-		relayd->sessiond_session_id = (uint64_t) sessiond_id;
-		relayd_created = 1;
+
+		/*
+		 * This code path MUST continue to the consumer send status message to
+		 * we can notify the session daemon and continue our work without
+		 * killing everything.
+		 */
+	}
+
+	/* First send a status message before receiving the fds. */
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0 || ret_code != LTTNG_OK) {
+		/* Somehow, the session daemon is not responding anymore. */
+		goto error;
 	}
 
 	/* Poll on consumer socket. */
 	if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
 		ret = -EINTR;
 		goto error;
 	}
@@ -3113,15 +3120,31 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 	/* Get relayd socket from session daemon */
 	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 	if (ret != sizeof(fd)) {
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
+		ret_code = LTTCOMM_CONSUMERD_ERROR_RECV_FD;
 		ret = -1;
 		fd = -1;	/* Just in case it gets set with an invalid value. */
-		goto error_close;
+
+		/*
+		 * Failing to receive FDs might indicate a major problem such as
+		 * reaching a fd limit during the receive where the kernel returns a
+		 * MSG_CTRUNC and fails to cleanup the fd in the queue. Any case, we
+		 * don't take any chances and stop everything.
+		 *
+		 * XXX: Feature request #558 will fix that and avoid this possible
+		 * issue when reaching the fd limit.
+		 */
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
+
+		/*
+		 * This code path MUST continue to the consumer send status message so
+		 * we can send the error to the thread expecting a reply. The above
+		 * call will make everything stop.
+		 */
 	}
 
 	/* We have the fds without error. Send status back. */
 	ret = consumer_send_status_msg(sock, ret_code);
-	if (ret < 0) {
+	if (ret < 0 || ret_code != LTTNG_OK) {
 		/* Somehow, the session daemon is not responding anymore. */
 		goto error;
 	}
@@ -3221,7 +3244,6 @@ error:
 		}
 	}
 
-error_close:
 	if (relayd_created) {
 		free(relayd);
 	}
