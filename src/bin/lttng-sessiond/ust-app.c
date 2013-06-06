@@ -4806,3 +4806,15 @@ close_socket:
 		call_rcu(&obj->head, close_notify_sock_rcu);
 	}
 }
+
+/*
+ * Destroy a ust app data structure and free its memory.
+ */
+void ust_app_destroy(struct ust_app *app)
+{
+	if (!app) {
+		return;
+	}
+
+	call_rcu(&app->pid_n.head, delete_ust_app_rcu);
+}

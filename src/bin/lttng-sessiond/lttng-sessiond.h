@@ -66,6 +66,24 @@ struct ust_cmd_queue {
 };
 
 /*
+ * This is the wait queue containing wait nodes during the application
+ * registration process.
+ */
+struct ust_reg_wait_queue {
+	unsigned long count;
+	struct cds_list_head head;
+};
+
+/*
+ * Use by the dispatch registration to queue UST command socket to wait for the
+ * notify socket.
+ */
+struct ust_reg_wait_node {
+	struct ust_app *app;
+	struct cds_list_head head;
+};
+
+/*
  * This pipe is used to inform the thread managing application notify
  * communication that a command is queued and ready to be processed.
  */

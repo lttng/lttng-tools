@@ -305,6 +305,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
 ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
+void ust_app_destroy(struct ust_app *app);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -496,6 +497,11 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data)
 {
 	return 0;
+}
+static inline
+void ust_app_destroy(struct ust_app *app)
+{
+	return;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

@@ -1335,6 +1335,91 @@ error:
 }
 
 /*
+ * Sanitize the wait queue of the dispatch registration thread meaning removing
+ * invalid nodes from it. This is to avoid memory leaks for the case the UST
+ * notify socket is never received.
+ */
+static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
+{
+	int ret, nb_fd = 0, i;
+	unsigned int fd_added = 0;
+	struct lttng_poll_event events;
+	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
+
+	assert(wait_queue);
+
+	lttng_poll_init(&events);
+
+	/* Just skip everything for an empty queue. */
+	if (!wait_queue->count) {
+		goto end;
+	}
+
+	ret = lttng_poll_create(&events, wait_queue->count, LTTNG_CLOEXEC);
+	if (ret < 0) {
+		goto error_create;
+	}
+
+	cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
+			&wait_queue->head, head) {
+		assert(wait_node->app);
+		ret = lttng_poll_add(&events, wait_node->app->sock,
+				LPOLLHUP | LPOLLERR);
+		if (ret < 0) {
+			goto error;
+		}
+
+		fd_added = 1;
+	}
+
+	if (!fd_added) {
+		goto end;
+	}
+
+	/*
+	 * Poll but don't block so we can quickly identify the faulty events and
+	 * clean them afterwards from the wait queue.
+	 */
+	ret = lttng_poll_wait(&events, 0);
+	if (ret < 0) {
+		goto error;
+	}
+	nb_fd = ret;
+
+	for (i = 0; i < nb_fd; i++) {
+		/* Get faulty FD. */
+		uint32_t revents = LTTNG_POLL_GETEV(&events, i);
+		int pollfd = LTTNG_POLL_GETFD(&events, i);
+
+		cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
+				&wait_queue->head, head) {
+			if (pollfd == wait_node->app->sock &&
+					(revents & (LPOLLHUP | LPOLLERR))) {
+				cds_list_del(&wait_node->head);
+				wait_queue->count--;
+				ust_app_destroy(wait_node->app);
+				free(wait_node);
+				break;
+			}
+		}
+	}
+
+	if (nb_fd > 0) {
+		DBG("Wait queue sanitized, %d node were cleaned up", nb_fd);
+	}
+
+end:
+	lttng_poll_clean(&events);
+	return;
+
+error:
+	lttng_poll_clean(&events);
+error_create:
+	ERR("Unable to sanitize wait queue");
+	return;
+}
+
+/*
  * Dispatch request from the registration threads to the application
  * communication thread.
  */
@@ -1343,16 +1428,16 @@ static void *thread_dispatch_ust_registration(void *data)
 	int ret, err = -1;
 	struct cds_wfq_node *node;
 	struct ust_command *ust_cmd = NULL;
-	struct {
-		struct ust_app *app;
-		struct cds_list_head head;
-	} *wait_node = NULL, *tmp_wait_node;
+	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
+	struct ust_reg_wait_queue wait_queue = {
+		.count = 0,
+	};
 
 	health_register(HEALTH_TYPE_APP_REG_DISPATCH);
 
 	health_code_update();
 
-	CDS_LIST_HEAD(wait_queue);
+	CDS_INIT_LIST_HEAD(&wait_queue.head);
 
 	DBG("[thread] Dispatch UST command started");
 
@@ -1365,6 +1450,13 @@ static void *thread_dispatch_ust_registration(void *data)
 		do {
 			struct ust_app *app = NULL;
 			ust_cmd = NULL;
+
+			/*
+			 * Make sure we don't have node(s) that have hung up before receiving
+			 * the notify socket. This is to clean the list in order to avoid
+			 * memory leaks from notify socket that are never seen.
+			 */
+			sanitize_wait_queue(&wait_queue);
 
 			health_code_update();
 			/* Dequeue command for registration */
@@ -1415,7 +1507,8 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * Add application to the wait queue so we can set the notify
 				 * socket before putting this object in the global ht.
 				 */
-				cds_list_add(&wait_node->head, &wait_queue);
+				cds_list_add(&wait_node->head, &wait_queue.head);
+				wait_queue.count++;
 
 				free(ust_cmd);
 				/*
@@ -1430,11 +1523,12 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * notify socket if found.
 				 */
 				cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
-						&wait_queue, head) {
+						&wait_queue.head, head) {
 					health_code_update();
 					if (wait_node->app->pid == ust_cmd->reg_msg.pid) {
 						wait_node->app->notify_sock = ust_cmd->sock;
 						cds_list_del(&wait_node->head);
+						wait_queue.count--;
 						app = wait_node->app;
 						free(wait_node);
 						DBG3("UST app notify socket %d is set", ust_cmd->sock);
@@ -1529,8 +1623,9 @@ static void *thread_dispatch_ust_registration(void *data)
 error:
 	/* Clean up wait queue. */
 	cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
-			&wait_queue, head) {
+			&wait_queue.head, head) {
 		cds_list_del(&wait_node->head);
+		wait_queue.count--;
 		free(wait_node);
 	}
 
