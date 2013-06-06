@@ -440,7 +440,7 @@ static void regex_print_error(int errcode, regex_t *regex)
  *
  * @param str	The string to parse.
  * @param size	Pointer to a size_t that will be filled with the
- * 	  	resulting size.
+ *		resulting size.
  *
  * @return 0 on success, -1 on failure.
  */
@@ -517,4 +517,70 @@ free:
 	regfree(&regex);
 end:
 	return ret;
+}
+
+/*
+ * fls: returns the position of the most significant bit.
+ * Returns 0 if no bit is set, else returns the position of the most
+ * significant bit (from 1 to 32 on 32-bit, from 1 to 64 on 64-bit).
+ */
+#if defined(__i386) || defined(__x86_64)
+static inline unsigned int fls_u32(uint32_t x)
+{
+	int r;
+
+	asm("bsrl %1,%0\n\t"
+		"jnz 1f\n\t"
+		"movl $-1,%0\n\t"
+		"1:\n\t"
+		: "=r" (r) : "rm" (x));
+	return r + 1;
+}
+#define HAS_FLS_U32
+#endif
+
+#ifndef HAS_FLS_U32
+static __attribute__((unused)) unsigned int fls_u32(uint32_t x)
+{
+	unsigned int r = 32;
+
+	if (!x) {
+		return 0;
+	}
+	if (!(x & 0xFFFF0000U)) {
+		x <<= 16;
+		r -= 16;
+	}
+	if (!(x & 0xFF000000U)) {
+		x <<= 8;
+		r -= 8;
+	}
+	if (!(x & 0xF0000000U)) {
+		x <<= 4;
+		r -= 4;
+	}
+	if (!(x & 0xC0000000U)) {
+		x <<= 2;
+		r -= 2;
+	}
+	if (!(x & 0x80000000U)) {
+		x <<= 1;
+		r -= 1;
+	}
+	return r;
+}
+#endif
+
+/*
+ * Return the minimum order for which x <= (1UL << order).
+ * Return -1 if x is 0.
+ */
+LTTNG_HIDDEN
+int utils_get_count_order_u32(uint32_t x)
+{
+	if (!x) {
+		return -1;
+	}
+
+	return fls_u32(x - 1);
 }

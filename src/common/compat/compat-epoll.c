@@ -27,6 +27,8 @@
 
 #include <common/error.h>
 #include <common/defaults.h>
+#include <common/macros.h>
+#include <common/utils.h>
 
 #include "poll.h"
 
@@ -201,11 +203,15 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 	 */
 	if (events->nb_fd > events->alloc_size) {
 		/* Expand if the nb_fd is higher than the actual size. */
-		new_size = events->alloc_size << 1UL;
+		new_size = max_t(uint32_t,
+				1U << utils_get_count_order_u32(events->nb_fd),
+				events->alloc_size << 1UL);
 	} else if ((events->nb_fd << 1UL) <= events->alloc_size &&
 			events->nb_fd >= events->init_size) {
 		/* Shrink if nb_fd multiplied by two is <= than the actual size. */
-		new_size = events->alloc_size >> 1UL;
+		new_size = max_t(uint32_t,
+				utils_get_count_order_u32(events->nb_fd) >> 1U,
+				events->alloc_size >> 1U);
 	} else {
 		/* Indicate that we don't want to resize. */
 		new_size = 0;
