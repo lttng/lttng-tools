@@ -4475,9 +4475,14 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 		goto error_rcu_unlock;
 	}
 
-	/* Lookup channel by UST object descriptor. Should always be found. */
+	/* Lookup channel by UST object descriptor. */
 	ua_chan = find_channel_by_objd(app, cobjd);
-	assert(ua_chan);
+	if (!ua_chan) {
+		DBG("Application channel is being teardown. Abort event notify");
+		ret = 0;
+		goto error_rcu_unlock;
+	}
+
 	assert(ua_chan->session);
 	ua_sess = ua_chan->session;
 
@@ -4581,9 +4586,14 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 		goto error_rcu_unlock;
 	}
 
-	/* Lookup channel by UST object descriptor. Should always be found. */
+	/* Lookup channel by UST object descriptor. */
 	ua_chan = find_channel_by_objd(app, cobjd);
-	assert(ua_chan);
+	if (!ua_chan) {
+		DBG("Application channel is being teardown. Abort event notify");
+		ret = 0;
+		goto error_rcu_unlock;
+	}
+
 	assert(ua_chan->session);
 	ua_sess = ua_chan->session;
 
