@@ -21,6 +21,7 @@
 #include <limits.h>
 
 #include <common/error.h>
+#include <common/utils.h>
 
 #include "conf.h"
 #include "utils.h"
@@ -36,7 +37,7 @@ char *get_session_name(void)
 	char *path, *session_name = NULL;
 
 	/* Get path to config file */
-	path = config_get_default_path();
+	path = utils_get_home_dir();
 	if (path == NULL) {
 		goto error;
 	}

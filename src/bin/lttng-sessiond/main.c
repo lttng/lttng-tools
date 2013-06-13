@@ -4256,7 +4256,7 @@ int main(int argc, char **argv)
 		DBG2("Kernel consumer cmd path: %s",
 				kconsumer_data.cmd_unix_sock_path);
 	} else {
-		home_path = get_home_dir();
+		home_path = utils_get_home_dir();
 		if (home_path == NULL) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");

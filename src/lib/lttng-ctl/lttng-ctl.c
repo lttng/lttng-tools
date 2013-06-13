@@ -32,6 +32,7 @@
 #include <common/defaults.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
+#include <common/utils.h>
 #include <lttng/lttng.h>
 
 #include "filter/filter-ast.h"
@@ -485,7 +486,7 @@ static int set_session_daemon_path(void)
 		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
 		 */
 		ret = snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
-				DEFAULT_HOME_CLIENT_UNIX_SOCK, getenv("HOME"));
+				DEFAULT_HOME_CLIENT_UNIX_SOCK, utils_get_home_dir());
 		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
 			goto error;
 		}
@@ -1543,7 +1544,7 @@ static int set_health_socket_path(void)
 		 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
 		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
 		 */
-		home = getenv("HOME");
+		home = utils_get_home_dir();
 		if (home == NULL) {
 			/* Fallback in /tmp .. */
 			home = "/tmp";

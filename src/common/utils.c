@@ -32,6 +32,7 @@
 #include <common/runas.h>
 
 #include "utils.h"
+#include "defaults.h"
 
 /*
  * Return the realpath(3) of the path even if the last directory token does not
@@ -579,4 +580,18 @@ int utils_get_count_order_u32(uint32_t x)
 	}
 
 	return fls_u32(x - 1);
+}
+
+/**
+ * Obtain the value of LTTNG_HOME environment variable, if exists.
+ * Otherwise returns the value of HOME.
+ */
+char *utils_get_home_dir(void)
+{
+	char *val = NULL;
+	val = getenv(DEFAULT_LTTNG_HOME_ENV_VAR);
+	if (val != NULL) {
+		return val;
+	}
+	return getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
 }

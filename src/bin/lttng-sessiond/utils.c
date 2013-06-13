@@ -49,16 +49,6 @@ int notify_thread_pipe(int wpipe)
 	return ret;
 }
 
-/*
- * Return pointer to home directory path using the env variable HOME.
- *
- * No home, NULL is returned.
- */
-const char *get_home_dir(void)
-{
-	return ((const char *) getenv("HOME"));
-}
-
 void ht_cleanup_push(struct lttng_ht *ht)
 {
 	int ret;

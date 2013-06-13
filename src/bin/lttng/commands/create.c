@@ -250,7 +250,7 @@ static int create_session(void)
 		print_str_url = url;
 	} else {
 		/* Auto output path */
-		alloc_path = config_get_default_path();
+		alloc_path = utils_get_home_dir();
 		if (alloc_path == NULL) {
 			ERR("HOME path not found.\n \
 					Please specify an output path using -o, --output PATH");

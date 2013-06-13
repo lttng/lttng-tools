@@ -214,6 +214,10 @@ automatically created having this form: 'auto-yyyymmdd-hhmmss'.
 
 If no \fB\-o, \-\-output\fP is specified, the traces will be written in
 $HOME/lttng-traces.
+
+The $HOME environment variable can be overridden by defining the environment
+variable LTTNG_HOME. This is useful when the user running the commands has
+a non-writeable home directory.
 .fi
 
 .B OPTIONS:
