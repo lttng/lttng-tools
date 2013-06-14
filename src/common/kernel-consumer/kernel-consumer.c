@@ -350,7 +350,7 @@ end:
  * Returns 0 on success, < 0 on error
  */
 int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
-		struct lttng_consumer_local_data *ctx)
+		uint64_t relayd_id, struct lttng_consumer_local_data *ctx)
 {
 	struct lttng_consumer_channel *metadata_channel;
 	struct lttng_consumer_stream *metadata_stream;
@@ -371,14 +371,22 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 	metadata_stream = metadata_channel->metadata_stream;
 	assert(metadata_stream);
 
-	ret = utils_create_stream_file(path, metadata_stream->name,
-			metadata_stream->chan->tracefile_size,
-			metadata_stream->tracefile_count_current,
-			metadata_stream->uid, metadata_stream->gid);
-	if (ret < 0) {
-		goto end;
+	if (relayd_id != (uint64_t) -1ULL) {
+		ret = send_relayd_stream(metadata_stream, path);
+		if (ret < 0) {
+			ERR("sending stream to relayd");
+		}
+		DBG("Stream %s sent to the relayd", metadata_stream->name);
+	} else {
+		ret = utils_create_stream_file(path, metadata_stream->name,
+				metadata_stream->chan->tracefile_size,
+				metadata_stream->tracefile_count_current,
+				metadata_stream->uid, metadata_stream->gid);
+		if (ret < 0) {
+			goto end;
+		}
+		metadata_stream->out_fd = ret;
 	}
-	metadata_stream->out_fd = ret;
 
 	ret = 0;
 	while (ret >= 0) {
@@ -391,6 +399,18 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 			/* "ret" is negative at this point so we will exit the loop. */
 			continue;
 		}
+	}
+
+	if (relayd_id == (uint64_t) -1ULL) {
+		ret = close(metadata_stream->out_fd);
+		if (ret < 0) {
+			PERROR("Kernel consumer snapshot close out_fd");
+			goto end;
+		}
+		metadata_stream->out_fd = -1;
+	} else {
+		close_relayd_stream(metadata_stream);
+		metadata_stream->net_seq_idx = (uint64_t) -1ULL;
 	}
 
 	ret = 0;
@@ -619,12 +639,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 */
 		new_stream->hangup_flush_done = 0;
 
-		ret = send_relayd_stream(new_stream, NULL);
-		if (ret < 0) {
-			consumer_del_stream(new_stream, NULL);
-			goto end_nosignal;
-		}
-
 		if (ctx->on_recv_stream) {
 			ret = ctx->on_recv_stream(new_stream);
 			if (ret < 0) {
@@ -645,6 +659,12 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			cds_list_add(&new_stream->no_monitor_node,
 					&channel->stream_no_monitor_list.head);
 			break;
+		}
+
+		ret = send_relayd_stream(new_stream, NULL);
+		if (ret < 0) {
+			consumer_del_stream(new_stream, NULL);
+			goto end_nosignal;
 		}
 
 		/* Get the right pipe where the stream will be sent. */
@@ -734,7 +754,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		if (msg.u.snapshot_channel.metadata == 1) {
 			ret = lttng_kconsumer_snapshot_metadata(msg.u.snapshot_channel.key,
-					msg.u.snapshot_channel.pathname, ctx);
+					msg.u.snapshot_channel.pathname,
+					msg.u.snapshot_channel.relayd_id, ctx);
 			if (ret < 0) {
 				ERR("Snapshot metadata failed");
 				ret_code = LTTNG_ERR_KERN_META_FAIL;
