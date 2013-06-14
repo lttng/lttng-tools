@@ -48,6 +48,8 @@ extras/bindings/swig/python/lttng_wrap.c
 
 .checkpatch.conf
 
+!memleak/Makefile
+
 # Tests
 tests/unit/test_kernel_data
 tests/unit/test_session
