@@ -324,6 +324,7 @@ void destroy_channel_rcu(struct rcu_head *head)
 	if (chan->ht) {
 		ht_cleanup_push(chan->ht);
 	}
+	free(chan->ctx_fields);
 	free(chan);
 }
 

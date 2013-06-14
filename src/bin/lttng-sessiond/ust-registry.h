@@ -127,7 +127,6 @@ struct ust_registry_event {
 	size_t nr_fields;
 	struct ustctl_field *fields;
 	char *model_emf_uri;
-	struct lttng_ust_object_data *obj;
 	/*
 	 * Flag for this channel if the metadata was dumped once during
 	 * registration. 0 means no, 1 yes.
