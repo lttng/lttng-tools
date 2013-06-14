@@ -1340,7 +1340,7 @@ error:
  */
 static void *thread_dispatch_ust_registration(void *data)
 {
-	int ret;
+	int ret, err = -1;
 	struct cds_wfq_node *node;
 	struct ust_command *ust_cmd = NULL;
 	struct {
@@ -1348,11 +1348,17 @@ static void *thread_dispatch_ust_registration(void *data)
 		struct cds_list_head head;
 	} *wait_node = NULL, *tmp_wait_node;
 
+	health_register(HEALTH_TYPE_APP_REG_DISPATCH);
+
+	health_code_update();
+
 	CDS_LIST_HEAD(wait_queue);
 
 	DBG("[thread] Dispatch UST command started");
 
 	while (!CMM_LOAD_SHARED(dispatch_thread_exit)) {
+		health_code_update();
+
 		/* Atomically prepare the queue futex */
 		futex_nto1_prepare(&ust_cmd_queue.futex);
 
@@ -1360,6 +1366,7 @@ static void *thread_dispatch_ust_registration(void *data)
 			struct ust_app *app = NULL;
 			ust_cmd = NULL;
 
+			health_code_update();
 			/* Dequeue command for registration */
 			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
 			if (node == NULL) {
@@ -1424,6 +1431,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 */
 				cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
 						&wait_queue, head) {
+					health_code_update();
 					if (wait_node->app->pid == ust_cmd->reg_msg.pid) {
 						wait_node->app->notify_sock = ust_cmd->sock;
 						cds_list_del(&wait_node->head);
@@ -1510,9 +1518,13 @@ static void *thread_dispatch_ust_registration(void *data)
 			}
 		} while (node != NULL);
 
+		health_poll_entry();
 		/* Futex wait on queue. Blocking call on futex() */
 		futex_nto1_wait(&ust_cmd_queue.futex);
+		health_poll_exit();
 	}
+	/* Normal exit, no error */
+	err = 0;
 
 error:
 	/* Clean up wait queue. */
@@ -1523,6 +1535,11 @@ error:
 	}
 
 	DBG("Dispatch thread dying");
+	if (err) {
+		health_error();
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_unregister();
 	return NULL;
 }
 
@@ -3232,6 +3249,9 @@ restart:
 		case LTTNG_HEALTH_APP_MANAGE_NOTIFY:
 			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY);
 			break;
+		case LTTNG_HEALTH_APP_REG_DISPATCH:
+			reply.ret_code = health_check_state(HEALTH_TYPE_APP_REG_DISPATCH);
+			break;
 		case LTTNG_HEALTH_ALL:
 			reply.ret_code =
 				health_check_state(HEALTH_TYPE_APP_MANAGE) &&
@@ -3240,7 +3260,8 @@ restart:
 				health_check_state(HEALTH_TYPE_KERNEL) &&
 				check_consumer_health() &&
 				health_check_state(HEALTH_TYPE_HT_CLEANUP) &&
-				health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY);
+				health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY) &&
+				health_check_state(HEALTH_TYPE_APP_REG_DISPATCH);
 			break;
 		default:
 			reply.ret_code = LTTNG_ERR_UND;
