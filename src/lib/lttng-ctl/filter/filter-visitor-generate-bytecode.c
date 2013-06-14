@@ -263,6 +263,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 			insn->op = FILTER_OP_GET_CONTEXT_REF;
 			break;
 		default:
+			free(insn);
 			return -EINVAL;
 		}
 		ref_offset.offset = (uint16_t) -1U;
