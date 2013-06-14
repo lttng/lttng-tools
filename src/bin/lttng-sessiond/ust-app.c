@@ -4473,6 +4473,7 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 		DBG("Application socket %d is being teardown. Abort event notify",
 				sock);
 		ret = 0;
+		free(fields);
 		goto error_rcu_unlock;
 	}
 
@@ -4481,6 +4482,7 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	if (!ua_chan) {
 		DBG("Application channel is being teardown. Abort event notify");
 		ret = 0;
+		free(fields);
 		goto error_rcu_unlock;
 	}
 
@@ -4517,6 +4519,9 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	} else {
 		/* Get current already assigned values. */
 		type = chan_reg->header_type;
+		free(fields);
+		/* Set to NULL so the error path does not do a double free. */
+		fields = NULL;
 	}
 	/* Channel id is set during the object creation. */
 	chan_id = chan_reg->chan_id;
@@ -4552,6 +4557,9 @@ error:
 	pthread_mutex_unlock(&registry->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
+	if (ret) {
+		free(fields);
+	}
 	return ret;
 }
 
@@ -4584,6 +4592,9 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 		DBG("Application socket %d is being teardown. Abort event notify",
 				sock);
 		ret = 0;
+		free(sig);
+		free(fields);
+		free(model_emf_uri);
 		goto error_rcu_unlock;
 	}
 
@@ -4592,6 +4603,9 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	if (!ua_chan) {
 		DBG("Application channel is being teardown. Abort event notify");
 		ret = 0;
+		free(sig);
+		free(fields);
+		free(model_emf_uri);
 		goto error_rcu_unlock;
 	}
 
@@ -4609,6 +4623,11 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 
 	pthread_mutex_lock(&registry->lock);
 
+	/*
+	 * From this point on, this call acquires the ownership of the sig, fields
+	 * and model_emf_uri meaning any free are done inside it if needed. These
+	 * three variables MUST NOT be read/write after this.
+	 */
 	ret_code = ust_registry_create_event(registry, chan_reg_key,
 			sobjd, cobjd, name, sig, nr_fields, fields, loglevel,
 			model_emf_uri, ua_sess->buffer_type, &event_id);
@@ -4685,13 +4704,15 @@ int ust_app_recv_notify(int sock)
 			goto error;
 		}
 
-		/* Add event to the UST registry coming from the notify socket. */
+		/*
+		 * Add event to the UST registry coming from the notify socket. This
+		 * call will free if needed the sig, fields and model_emf_uri. This
+		 * code path loses the ownsership of these variables and transfer them
+		 * to the this function.
+		 */
 		ret = add_event_ust_registry(sock, sobjd, cobjd, name, sig, nr_fields,
 				fields, loglevel, model_emf_uri);
 		if (ret < 0) {
-			free(sig);
-			free(model_emf_uri);
-			free(fields);
 			goto error;
 		}
 
@@ -4716,10 +4737,14 @@ int ust_app_recv_notify(int sock)
 			goto error;
 		}
 
+		/*
+		 * The fields ownership are transfered to this function call meaning
+		 * that if needed it will be freed. After this, it's invalid to access
+		 * fields or clean it up.
+		 */
 		ret = reply_ust_register_channel(sock, sobjd, cobjd, nr_fields,
 				fields);
 		if (ret < 0) {
-			free(fields);
 			goto error;
 		}
 

@@ -198,34 +198,34 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	assert(sig);
 	assert(event_id_p);
 
+	rcu_read_lock();
+
 	/*
 	 * This should not happen but since it comes from the UST tracer, an
 	 * external party, don't assert and simply validate values.
 	 */
 	if (session_objd < 0 || channel_objd < 0) {
 		ret = -EINVAL;
-		goto error;
+		goto error_free;
 	}
-
-	rcu_read_lock();
 
 	chan = ust_registry_channel_find(session, chan_key);
 	if (!chan) {
 		ret = -EINVAL;
-		goto error_unlock;
+		goto error_free;
 	}
 
 	/* Check if we've reached the maximum possible id. */
 	if (ust_registry_is_max_id(chan->used_event_id)) {
 		ret = -ENOENT;
-		goto error_unlock;
+		goto error_free;
 	}
 
 	event = alloc_event(session_objd, channel_objd, name, sig, nr_fields,
 			fields, loglevel, model_emf_uri);
 	if (!event) {
 		ret = -ENOMEM;
-		goto error_unlock;
+		goto error_free;
 	}
 
 	DBG3("UST registry creating event with event: %s, sig: %s, id: %u, "
@@ -279,9 +279,12 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	rcu_read_unlock();
 	return 0;
 
+error_free:
+	free(sig);
+	free(fields);
+	free(model_emf_uri);
 error_unlock:
 	rcu_read_unlock();
-error:
 	destroy_event(event);
 	return ret;
 }
