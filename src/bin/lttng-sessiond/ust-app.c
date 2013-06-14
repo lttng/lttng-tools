@@ -4689,6 +4689,9 @@ int ust_app_recv_notify(int sock)
 		ret = add_event_ust_registry(sock, sobjd, cobjd, name, sig, nr_fields,
 				fields, loglevel, model_emf_uri);
 		if (ret < 0) {
+			free(sig);
+			free(model_emf_uri);
+			free(fields);
 			goto error;
 		}
 
@@ -4716,6 +4719,7 @@ int ust_app_recv_notify(int sock)
 		ret = reply_ust_register_channel(sock, sobjd, cobjd, nr_fields,
 				fields);
 		if (ret < 0) {
+			free(fields);
 			goto error;
 		}
 
