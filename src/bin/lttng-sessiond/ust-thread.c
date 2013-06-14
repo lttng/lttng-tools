@@ -23,13 +23,14 @@
 #include "fd-limit.h"
 #include "lttng-sessiond.h"
 #include "ust-thread.h"
+#include "health.h"
 
 /*
  * This thread manage application notify communication.
  */
 void *ust_thread_manage_notify(void *data)
 {
-	int i, ret, pollfd;
+	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 
@@ -37,6 +38,10 @@ void *ust_thread_manage_notify(void *data)
 
 	rcu_register_thread();
 	rcu_thread_online();
+
+	health_register(HEALTH_TYPE_APP_MANAGE_NOTIFY);
+
+	health_code_update();
 
 	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
@@ -49,13 +54,17 @@ void *ust_thread_manage_notify(void *data)
 		goto error;
 	}
 
+	health_code_update();
+
 	while (1) {
 		DBG3("[ust-thread] Manage notify polling on %d fds",
 				LTTNG_POLL_GETNB(&events));
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -69,6 +78,8 @@ restart:
 		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
+			health_code_update();
+
 			/* Fetch once the poll data */
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
@@ -76,6 +87,7 @@ restart:
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
+				err = 0;
 				goto exit;
 			}
 
@@ -100,6 +112,7 @@ restart:
 					PERROR("read apps notify pipe");
 					goto error;
 				}
+				health_code_update();
 
 				ret = lttng_poll_add(&events, sock,
 						LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
@@ -147,6 +160,7 @@ restart:
 					ERR("Unknown poll events %u for sock %d", revents, pollfd);
 					continue;
 				}
+				health_code_update();
 			}
 		}
 	}
@@ -158,6 +172,11 @@ error_poll_create:
 	utils_close_pipe(apps_cmd_notify_pipe);
 	apps_cmd_notify_pipe[0] = apps_cmd_notify_pipe[1] = -1;
 	DBG("Application notify communication apps thread cleanup complete");
+	if (err) {
+		health_error();
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_unregister();
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;

@@ -3229,6 +3229,9 @@ restart:
 		case LTTNG_HEALTH_HT_CLEANUP:
 			reply.ret_code = health_check_state(HEALTH_TYPE_HT_CLEANUP);
 			break;
+		case LTTNG_HEALTH_APP_MANAGE_NOTIFY:
+			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY);
+			break;
 		case LTTNG_HEALTH_ALL:
 			reply.ret_code =
 				health_check_state(HEALTH_TYPE_APP_MANAGE) &&
@@ -3236,7 +3239,8 @@ restart:
 				health_check_state(HEALTH_TYPE_CMD) &&
 				health_check_state(HEALTH_TYPE_KERNEL) &&
 				check_consumer_health() &&
-				health_check_state(HEALTH_TYPE_HT_CLEANUP);
+				health_check_state(HEALTH_TYPE_HT_CLEANUP) &&
+				health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY);
 			break;
 		default:
 			reply.ret_code = LTTNG_ERR_UND;
