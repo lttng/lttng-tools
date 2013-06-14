@@ -72,11 +72,22 @@ struct ust_cmd_queue {
 extern int apps_cmd_notify_pipe[2];
 
 /*
+ * Used to notify that a hash table needs to be destroyed by dedicated
+ * thread. Required by design because we don't want to move destroy
+ * paths outside of large RCU read-side lock paths, and destroy cannot
+ * be called by call_rcu thread, because it may hang (waiting for
+ * call_rcu completion).
+ */
+extern int ht_cleanup_pipe[2];
+
+/*
  * Populated when the daemon starts with the current page size of the system.
  */
 extern long page_size;
 
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
+
+void *thread_ht_cleanup(void *data);
 
 #endif /* _LTT_SESSIOND_H */

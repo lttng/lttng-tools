@@ -18,7 +18,10 @@
 #ifndef _LTT_UTILS_H
 #define _LTT_UTILS_H
 
+struct lttng_ht;
+
 const char *get_home_dir(void);
 int notify_thread_pipe(int wpipe);
+void ht_cleanup_push(struct lttng_ht *ht);
 
 #endif /* _LTT_UTILS_H */

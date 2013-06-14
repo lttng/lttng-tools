@@ -32,6 +32,7 @@
 #include "consumer.h"
 #include "health.h"
 #include "ust-app.h"
+#include "utils.h"
 
 /*
  * Receive a reply command status message from the consumer. Consumer socket
@@ -428,7 +429,7 @@ void consumer_destroy_output(struct consumer_output *obj)
 		rcu_read_unlock();
 
 		/* Finally destroy HT */
-		lttng_ht_destroy(obj->socks);
+		ht_cleanup_push(obj->socks);
 	}
 
 	free(obj);

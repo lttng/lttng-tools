@@ -25,7 +25,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        health.c health.h \
                        cmd.c cmd.h \
                        buffer-registry.c buffer-registry.h \
-                       testpoint.h
+                       testpoint.h ht-cleanup.c
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \

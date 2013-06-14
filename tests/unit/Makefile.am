@@ -28,6 +28,7 @@ test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE)
 # Session unit test
 SESSIONS=$(top_srcdir)/src/bin/lttng-sessiond/session.o	\
 	 $(top_srcdir)/src/bin/lttng-sessiond/consumer.o \
+	 $(top_srcdir)/src/bin/lttng-sessiond/utils.o \
 	 $(top_srcdir)/src/bin/lttng-sessiond/health.o \
 	 $(top_srcdir)/src/common/uri.o \
 	 $(top_srcdir)/src/common/utils.o \
@@ -42,6 +43,7 @@ test_session_LDADD += $(SESSIONS)
 if HAVE_LIBLTTNG_UST_CTL
 UST_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-ust.o \
 	       $(top_srcdir)/src/bin/lttng-sessiond/consumer.o \
+	       $(top_srcdir)/src/bin/lttng-sessiond/utils.o \
 		   $(top_srcdir)/src/bin/lttng-sessiond/buffer-registry.o \
 		   $(top_srcdir)/src/bin/lttng-sessiond/ust-registry.o \
 		   $(top_srcdir)/src/bin/lttng-sessiond/ust-metadata.o \
@@ -63,6 +65,7 @@ endif
 KERN_DATA_TRACE=$(top_srcdir)/src/bin/lttng-sessiond/trace-kernel.o	\
 		$(top_srcdir)/src/bin/lttng-sessiond/consumer.o	\
 		$(top_srcdir)/src/bin/lttng-sessiond/health.o \
+		$(top_srcdir)/src/bin/lttng-sessiond/utils.o \
 		$(top_srcdir)/src/common/uri.o \
 		$(top_srcdir)/src/common/utils.o
 

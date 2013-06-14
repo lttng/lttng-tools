@@ -161,6 +161,7 @@ static pthread_t client_thread;
 static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t health_thread;
+static pthread_t ht_cleanup_thread;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -3225,13 +3226,17 @@ restart:
 		case LTTNG_HEALTH_CONSUMER:
 			reply.ret_code = check_consumer_health();
 			break;
+		case LTTNG_HEALTH_HT_CLEANUP:
+			reply.ret_code = health_check_state(HEALTH_TYPE_HT_CLEANUP);
+			break;
 		case LTTNG_HEALTH_ALL:
 			reply.ret_code =
 				health_check_state(HEALTH_TYPE_APP_MANAGE) &&
 				health_check_state(HEALTH_TYPE_APP_REG) &&
 				health_check_state(HEALTH_TYPE_CMD) &&
 				health_check_state(HEALTH_TYPE_KERNEL) &&
-				check_consumer_health();
+				check_consumer_health() &&
+				health_check_state(HEALTH_TYPE_HT_CLEANUP);
 			break;
 		default:
 			reply.ret_code = LTTNG_ERR_UND;
@@ -4293,6 +4298,11 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/* Setup the thread ht_cleanup communication pipe. */
+	if (utils_create_pipe_cloexec(ht_cleanup_pipe) < 0) {
+		goto exit;
+	}
+
 	/* Setup the thread apps communication pipe. */
 	if ((ret = utils_create_pipe_cloexec(apps_cmd_pipe)) < 0) {
 		goto exit;
@@ -4330,6 +4340,14 @@ int main(int argc, char **argv)
 	}
 
 	write_pidfile();
+
+	/* Create thread to manage the client socket */
+	ret = pthread_create(&ht_cleanup_thread, NULL,
+			thread_ht_cleanup, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create ht_cleanup");
+		goto exit_ht_cleanup;
+	}
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,
@@ -4450,6 +4468,12 @@ exit_client:
 	}
 
 exit_health:
+	ret = pthread_join(ht_cleanup_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join ht cleanup thread");
+		goto error;	/* join error, exit without cleanup */
+	}
+exit_ht_cleanup:
 exit:
 	/*
 	 * cleanup() is called when no other thread is running.

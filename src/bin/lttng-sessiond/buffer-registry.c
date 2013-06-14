@@ -25,6 +25,7 @@
 #include "fd-limit.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"
+#include "utils.h"
 
 /*
  * Set in main.c during initialization process of the daemon. This contains
@@ -548,7 +549,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(regp->channels);
+	ht_cleanup_push(regp->channels);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -692,6 +693,6 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 void buffer_reg_destroy_registries(void)
 {
 	DBG3("Buffer registry destroy all registry");
-	lttng_ht_destroy(buffer_registry_uid);
-	lttng_ht_destroy(buffer_registry_pid);
+	ht_cleanup_push(buffer_registry_uid);
+	ht_cleanup_push(buffer_registry_pid);
 }

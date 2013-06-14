@@ -26,6 +26,7 @@
 
 #include "buffer-registry.h"
 #include "trace-ust.h"
+#include "utils.h"
 
 /*
  * Match function for the events hash table lookup.
@@ -228,7 +229,7 @@ struct ltt_ust_session *trace_ust_create_session(unsigned int session_id)
 	return lus;
 
 error_consumer:
-	lttng_ht_destroy(lus->domain_global.channels);
+	ht_cleanup_push(lus->domain_global.channels);
 	free(lus);
 error:
 	return NULL;
@@ -483,7 +484,7 @@ static void destroy_contexts(struct lttng_ht *ht)
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(ht);
+	ht_cleanup_push(ht);
 }
 
 /*
@@ -530,7 +531,7 @@ static void destroy_events(struct lttng_ht *events)
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(events);
+	ht_cleanup_push(events);
 }
 
 /*
@@ -604,7 +605,7 @@ static void destroy_channels(struct lttng_ht *channels)
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(channels);
+	ht_cleanup_push(channels);
 }
 
 /*

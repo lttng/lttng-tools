@@ -23,6 +23,7 @@
 #include <lttng/lttng.h>
 
 #include "ust-registry.h"
+#include "utils.h"
 
 /*
  * Hash table match function for event in the registry.
@@ -310,9 +311,9 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 
 /*
  * We need to execute ht_destroy outside of RCU read-side critical
- * section, so we postpone its execution using call_rcu. It is simpler
- * than to change the semantic of the many callers of
- * destroy_channel().
+ * section and outside of call_rcu thread, so we postpone its execution
+ * using ht_cleanup_push. It is simpler than to change the semantic of
+ * the many callers of delete_ust_app_session().
  */
 static
 void destroy_channel_rcu(struct rcu_head *head)
@@ -321,7 +322,7 @@ void destroy_channel_rcu(struct rcu_head *head)
 		caa_container_of(head, struct ust_registry_channel, rcu_head);
 
 	if (chan->ht) {
-		lttng_ht_destroy(chan->ht);
+		ht_cleanup_push(chan->ht);
 	}
 	free(chan);
 }
@@ -552,7 +553,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	rcu_read_unlock();
 
 	if (reg->channels) {
-		lttng_ht_destroy(reg->channels);
+		ht_cleanup_push(reg->channels);
 	}
 	free(reg->metadata);
 }
