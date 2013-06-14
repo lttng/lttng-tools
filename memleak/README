@@ -1,0 +1,15 @@
+LTTng memleak finder
+
+example usage:
+LD_PRELOAD=./lttng-memleak-finder.so lttng-sessiond
+
+If you get e.g.:
+
+[warning] trying to free unallocated ptr 0x18b2a70 caller 0x7fae7943dd57
+or
+[leak] ptr: 0x18b2350 size: 0x160 caller: 0x7fae7943e28f <symbol>
+
+If you need to see local symbols as well, try compiling your code with
+-Wl,--export-dynamic .
+
+Mathieu Desnoyers, May 2013

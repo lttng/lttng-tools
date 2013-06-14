@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License, version 2 only, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+LIB_MEMLEAK="lttng-memleak-finder.so"
+LIB_STATS="lttng-malloc-stats.so"
+
+ld_preload_lib="./$LIB_MEMLEAK"
+
+if [ -z "$1" ]; then
+	echo "Usage: $0 [--stats] PROG"
+	exit 1
+fi
+
+if [ ! -f ./$LIB_MEMLEAK -a ! -f ./$LIB_STATS ]; then
+	echo "Please compile the $LIB_STATS and/or $LIB_MEMLEAK first."
+	exit 1
+fi
+
+if [ "$1" = "--stats" ]; then
+	ld_preload_lib="./$LIB_STATS"
+	shift
+fi
+
+LD_PRELOAD=$ld_preload_lib $@
