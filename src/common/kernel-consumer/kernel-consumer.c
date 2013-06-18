@@ -83,6 +83,11 @@ int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 	return ret;
 }
 
+/*
+ * Receive command from session daemon and process it.
+ *
+ * Return 1 on success else a negative value or 0.
+ */
 int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll)
 {
@@ -93,6 +98,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
+		if (ret > 0) {
+			ret = -1;
+		}
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
@@ -128,7 +136,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto error_fatal;
 		}
 		DBG("consumer_add_channel %" PRIu64, msg.u.channel.channel_key);
 		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
@@ -167,7 +175,10 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* If we received an error in add_channel, we need to report it. */
 		if (ret != 0) {
-			consumer_send_status_msg(sock, ret);
+			ret = consumer_send_status_msg(sock, ret);
+			if (ret < 0) {
+				goto error_fatal;
+			}
 			goto end_nosignal;
 		}
 
@@ -198,10 +209,16 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* First send a status message before receiving the fds. */
 		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0 || ret_code != LTTNG_OK) {
+		if (ret < 0) {
 			/*
-			 * Somehow, the session daemon is not responding anymore or the
-			 * channel was not found.
+			 * Somehow, the session daemon is not responding
+			 * anymore.
+			 */
+			goto error_fatal;
+		}
+		if (ret_code != LTTNG_OK) {
+			/*
+			 * Channel was not found.
 			 */
 			goto end_nosignal;
 		}
@@ -356,7 +373,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto error_fatal;
 		}
 
 		goto end_nosignal;
@@ -374,6 +391,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
 		if (ret < 0) {
 			PERROR("send data pending ret code");
+			goto error_fatal;
 		}
 
 		/*
@@ -394,6 +412,11 @@ end_nosignal:
 	 * shutdown during the recv() or send() call.
 	 */
 	return 1;
+
+error_fatal:
+	rcu_read_unlock();
+	/* This will issue a consumer stop. */
+	return -1;
 }
 
 /*
