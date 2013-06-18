@@ -2562,12 +2562,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		session_lock_list();
 		cmd_ctx->session = session_find_by_name(cmd_ctx->lsm->session.name);
 		if (cmd_ctx->session == NULL) {
-			if (cmd_ctx->lsm->session.name != NULL) {
-				ret = LTTNG_ERR_SESS_NOT_FOUND;
-			} else {
-				/* If no session name specified */
-				ret = LTTNG_ERR_SELECT_SESS;
-			}
+			ret = LTTNG_ERR_SESS_NOT_FOUND;
 			goto error;
 		} else {
 			/* Acquire lock for the session */
