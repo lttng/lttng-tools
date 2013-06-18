@@ -1599,7 +1599,12 @@ int lttng_health_check(enum lttng_health_component c)
 	ret = reply.ret_code;
 
 close_error:
-	close(sock);
+	{
+		int closeret;
+
+		closeret = close(sock);
+		assert(!closeret);
+	}
 
 error:
 	return ret;
