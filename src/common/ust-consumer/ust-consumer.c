@@ -796,6 +796,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * The ret value might 0 meaning an orderly shutdown but this is ok
 		 * since the caller handles this.
 		 */
+		if (ret > 0) {
+			ret = -1;
+		}
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
@@ -871,6 +874,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				sizeof(is_data_pending));
 		if (ret < 0) {
 			DBG("Error when sending the data pending ret code: %d", ret);
+			goto error_fatal;
 		}
 
 		/*
@@ -977,10 +981,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_channel(sock, channel);
 		if (ret < 0) {
 			/*
-			 * There is probably a problem on the socket so the poll will get
-			 * it and clean everything up.
+			 * There is probably a problem on the socket.
 			 */
-			goto end_nosignal;
+			goto error_fatal;
 		}
 
 		break;
@@ -1002,7 +1005,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_msg(sock, LTTNG_OK);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto error_fatal;
 		}
 
 		/* Send everything to sessiond. */
@@ -1098,14 +1101,14 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Wait for more data. */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
-			goto end_nosignal;
+			goto error_fatal;
 		}
 
 		ret = lttng_ustconsumer_recv_metadata(sock, key, offset,
 				len, channel);
 		if (ret < 0) {
 			/* error receiving from sessiond */
-			goto end_nosignal;
+			goto error_fatal;
 		} else {
 			ret_code = ret;
 			goto end_msg_sessiond;
@@ -1140,7 +1143,10 @@ end_msg_sessiond:
 	 * the caller because the session daemon socket management is done
 	 * elsewhere. Returning a negative code or 0 will shutdown the consumer.
 	 */
-	(void) consumer_send_status_msg(sock, ret_code);
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0) {
+		goto error_fatal;
+	}
 	rcu_read_unlock();
 	return 1;
 end_channel_error:
