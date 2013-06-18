@@ -2349,7 +2349,7 @@ void *consumer_thread_data_poll(void *data)
 
 			/* allocate for all fds + 1 for the consumer_data_pipe */
 			local_stream = zmalloc((consumer_data.stream_count + 1) *
-					sizeof(struct lttng_consumer_stream));
+					sizeof(struct lttng_consumer_stream *));
 			if (local_stream == NULL) {
 				PERROR("local_stream malloc");
 				pthread_mutex_unlock(&consumer_data.lock);
