@@ -22,8 +22,8 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <regex.h>
@@ -248,7 +248,6 @@ LTTNG_HIDDEN
 int utils_mkdir_recursive(const char *path, mode_t mode)
 {
 	char *p, tmp[PATH_MAX];
-	struct stat statbuf;
 	size_t len;
 	int ret;
 
@@ -276,15 +275,12 @@ int utils_mkdir_recursive(const char *path, mode_t mode)
 				ret = -1;
 				goto error;
 			}
-			ret = stat(tmp, &statbuf);
+			ret = mkdir(tmp, mode);
 			if (ret < 0) {
-				ret = mkdir(tmp, mode);
-				if (ret < 0) {
-					if (errno != EEXIST) {
-						PERROR("mkdir recursive");
-						ret = -errno;
-						goto error;
-					}
+				if (errno != EEXIST) {
+					PERROR("mkdir recursive");
+					ret = -errno;
+					goto error;
 				}
 			}
 			*p = '/';
