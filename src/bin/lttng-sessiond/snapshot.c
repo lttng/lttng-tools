@@ -214,11 +214,6 @@ error:
 	return output;
 }
 
-struct snapshot *snapshot_alloc(void)
-{
-	return zmalloc(sizeof(struct snapshot));
-}
-
 /*
  * Initialized a snapshot object that was already allocated.
  *

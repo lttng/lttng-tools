@@ -28,7 +28,6 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/uri.h>
-#include <common/utils.h>
 
 #include "consumer.h"
 #include "health.h"
@@ -752,9 +751,11 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 
 	memcpy(msg->u.ask_channel.uuid, uuid, sizeof(msg->u.ask_channel.uuid));
 
-	strncpy(msg->u.ask_channel.pathname, pathname,
-			sizeof(msg->u.ask_channel.pathname));
-	msg->u.ask_channel.pathname[sizeof(msg->u.ask_channel.pathname)-1] = '\0';
+	if (pathname) {
+		strncpy(msg->u.ask_channel.pathname, pathname,
+				sizeof(msg->u.ask_channel.pathname));
+		msg->u.ask_channel.pathname[sizeof(msg->u.ask_channel.pathname)-1] = '\0';
+	}
 
 	strncpy(msg->u.ask_channel.name, name, sizeof(msg->u.ask_channel.name));
 	msg->u.ask_channel.name[sizeof(msg->u.ask_channel.name) - 1] = '\0';
@@ -1198,7 +1199,6 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		const char *session_path, int wait)
 {
 	int ret;
-	char datetime[16];
 	struct lttcomm_consumer_msg msg;
 
 	assert(socket);
@@ -1207,13 +1207,6 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	assert(output->consumer);
 
 	DBG("Consumer snapshot channel key %" PRIu64, key);
-
-	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", datetime,
-			sizeof(datetime));
-	if (!ret) {
-		ret = -EINVAL;
-		goto error;
-	}
 
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_SNAPSHOT_CHANNEL;
@@ -1226,7 +1219,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		msg.u.snapshot_channel.use_relayd = 1;
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname), "%s/%s-%s%s",
-				output->consumer->subdir, output->name, datetime,
+				output->consumer->subdir, output->name, output->datetime,
 				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
@@ -1235,8 +1228,8 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname), "%s/%s-%s%s",
-				output->consumer->dst.trace_path, output->name, datetime,
-				session_path);
+				output->consumer->dst.trace_path, output->name,
+				output->datetime, session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;

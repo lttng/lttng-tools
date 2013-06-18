@@ -36,6 +36,12 @@ struct snapshot_output {
 	struct consumer_output *consumer;
 	int kernel_sockets_copied;
 	int ust_sockets_copied;
+	/*
+	 * Contains the string with "<date>-<time>" for when the snapshot command
+	 * is triggered. This is to make sure every streams will use the same time
+	 * for the directory output.
+	 */
+	char datetime[16];
 
 	/* Indexed by ID. */
 	struct lttng_ht_node_ulong node;

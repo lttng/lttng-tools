@@ -25,6 +25,7 @@
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/relayd/relayd.h>
+#include <common/utils.h>
 
 #include "channel.h"
 #include "consumer.h"
@@ -2403,6 +2404,14 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	assert(output);
 	assert(session);
 
+	/* Get the datetime for the snapshot output directory. */
+	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", output->datetime,
+			sizeof(output->datetime));
+	if (!ret) {
+		ret = -EINVAL;
+		goto error;
+	}
+
 	if (!output->kernel_sockets_copied) {
 		ret = consumer_copy_sockets(output->consumer, ksess->consumer);
 		if (ret < 0) {
@@ -2438,6 +2447,14 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 	assert(usess);
 	assert(output);
 	assert(session);
+
+	/* Get the datetime for the snapshot output directory. */
+	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", output->datetime,
+			sizeof(output->datetime));
+	if (!ret) {
+		ret = -EINVAL;
+		goto error;
+	}
 
 	if (!output->ust_sockets_copied) {
 		ret = consumer_copy_sockets(output->consumer, usess->consumer);
@@ -2555,7 +2572,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
-				ret = record_ust_snapshot(usess, tmp_sout, session, wait);
+				ret = record_ust_snapshot(usess, sout, session, wait);
 				if (ret < 0) {
 					rcu_read_unlock();
 					goto error;

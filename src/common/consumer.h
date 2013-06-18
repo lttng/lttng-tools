@@ -141,12 +141,6 @@ struct lttng_consumer_channel {
 	struct stream_list streams;
 
 	/*
-	 * List of streams in no monitor mode for this channel. Used ONLY for
-	 * snapshots recording.
-	 */
-	struct stream_list stream_no_monitor_list;
-
-	/*
 	 * Set if the channel is metadata. We keep a reference to the stream
 	 * because we have to flush data once pushed by the session daemon. For a
 	 * regular channel, this is always set to NULL.
@@ -265,9 +259,6 @@ struct lttng_consumer_stream {
 	/* On-disk circular buffer */
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count_current;
-
-	/* Node for the no monitor stream list in a channel. */
-	struct cds_list_head no_monitor_node;
 };
 
 /*
@@ -512,6 +503,8 @@ void consumer_del_channel(struct lttng_consumer_channel *channel);
 struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		uint64_t net_seq_idx);
 struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key);
+int consumer_send_relayd_stream(struct lttng_consumer_stream *stream, char *path);
+void close_relayd_stream(struct lttng_consumer_stream *stream);
 struct lttng_consumer_channel *consumer_find_channel(uint64_t key);
 int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,
 		size_t data_size);

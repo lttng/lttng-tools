@@ -118,10 +118,12 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	DBG2("Asking UST consumer for channel");
 
 	/* Get and create full trace path of session. */
-	pathname = setup_trace_path(consumer, ua_sess);
-	if (!pathname) {
-		ret = -1;
-		goto error;
+	if (ua_sess->output_traces) {
+		pathname = setup_trace_path(consumer, ua_sess);
+		if (!pathname) {
+			ret = -1;
+			goto error;
+		}
 	}
 
 	/* Depending on the buffer type, a different channel key is used. */
@@ -176,7 +178,9 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	/* Communication protocol error. */
 	assert(key == ua_chan->key);
 	/* We need at least one where 1 stream for 1 cpu. */
-	assert(ua_chan->expected_stream_count > 0);
+	if (ua_sess->output_traces) {
+		assert(ua_chan->expected_stream_count > 0);
+	}
 
 	DBG2("UST ask channel %" PRIu64 " successfully done with %u stream(s)", key,
 			ua_chan->expected_stream_count);

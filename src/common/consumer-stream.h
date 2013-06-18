@@ -62,4 +62,10 @@ void consumer_stream_free(struct lttng_consumer_stream *stream);
 void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 
+/*
+ * Destroy the stream's buffers on the tracer side. This is also called in a
+ * stream destroy.
+ */
+void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */

@@ -30,6 +30,8 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream);
 
 int lttng_ustconsumer_get_produced_snapshot(
 		struct lttng_consumer_stream *stream, unsigned long *pos);
+int lttng_ustconsumer_get_consumed_snapshot(
+		struct lttng_consumer_stream *stream, unsigned long *pos);
 
 int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
