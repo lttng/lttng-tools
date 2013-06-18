@@ -942,16 +942,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		attr.chan_id = msg.u.ask_channel.chan_id;
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
 
-		/* Translate the event output type to UST. */
-		switch (channel->output) {
-		case LTTNG_EVENT_SPLICE:
-			/* Splice not supported so fallback on mmap(). */
-		case LTTNG_EVENT_MMAP:
-		default:
-			attr.output = CONSUMER_CHANNEL_MMAP;
-			break;
-		};
-
 		/* Translate and save channel type. */
 		switch (msg.u.ask_channel.type) {
 		case LTTNG_UST_CHAN_PER_CPU:

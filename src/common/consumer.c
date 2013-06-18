@@ -805,20 +805,6 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		channel->refcount = 1;
 	}
 
-	switch (output) {
-	case LTTNG_EVENT_SPLICE:
-		channel->output = CONSUMER_CHANNEL_SPLICE;
-		break;
-	case LTTNG_EVENT_MMAP:
-		channel->output = CONSUMER_CHANNEL_MMAP;
-		break;
-	default:
-		ERR("Allocate channel output unknown %d", output);
-		free(channel);
-		channel = NULL;
-		goto end;
-	}
-
 	strncpy(channel->pathname, pathname, sizeof(channel->pathname));
 	channel->pathname[sizeof(channel->pathname) - 1] = '\0';
 

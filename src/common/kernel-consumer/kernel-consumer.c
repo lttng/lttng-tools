@@ -487,6 +487,17 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 		new_channel->nb_init_stream_left = msg.u.channel.nb_init_streams;
+		switch (msg.u.channel.output) {
+		case LTTNG_EVENT_SPLICE:
+			new_channel->output = CONSUMER_CHANNEL_SPLICE;
+			break;
+		case LTTNG_EVENT_MMAP:
+			new_channel->output = CONSUMER_CHANNEL_MMAP;
+			break;
+		default:
+			ERR("Channel output unknown %d", msg.u.channel.output);
+			goto end_nosignal;
+		}
 
 		/* Translate and save channel type. */
 		switch (msg.u.channel.type) {
