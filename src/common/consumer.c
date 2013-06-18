@@ -287,6 +287,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 {
 	int ret;
 	struct lttng_ht_iter iter;
+	struct lttng_consumer_stream *stream, *stmp;
 
 	DBG("Consumer delete channel key %" PRIu64, channel->key);
 
@@ -297,6 +298,13 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
+		/* Delete streams that might have been left in the stream list. */
+		cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
+				send_node) {
+			cds_list_del(&stream->send_node);
+			lttng_ustconsumer_del_stream(stream);
+			free(stream);
+		}
 		lttng_ustconsumer_del_channel(channel);
 		break;
 	default:
@@ -2728,6 +2736,8 @@ restart:
 						break;
 					case CONSUMER_CHANNEL_DEL:
 					{
+						struct lttng_consumer_stream *stream, *stmp;
+
 						rcu_read_lock();
 						chan = consumer_find_channel(key);
 						if (!chan) {
@@ -2740,6 +2750,26 @@ restart:
 						ret = lttng_ht_del(channel_ht, &iter);
 						assert(ret == 0);
 						consumer_close_channel_streams(chan);
+
+						switch (consumer_data.type) {
+						case LTTNG_CONSUMER_KERNEL:
+							break;
+						case LTTNG_CONSUMER32_UST:
+						case LTTNG_CONSUMER64_UST:
+							/* Delete streams that might have been left in the stream list. */
+							cds_list_for_each_entry_safe(stream, stmp, &chan->streams.head,
+									send_node) {
+								cds_list_del(&stream->send_node);
+								lttng_ustconsumer_del_stream(stream);
+								uatomic_sub(&stream->chan->refcount, 1);
+								assert(&chan->refcount);
+								free(stream);
+							}
+							break;
+						default:
+							ERR("Unknown consumer_data type");
+							assert(0);
+						}
 
 						/*
 						 * Release our own refcount. Force channel deletion even if
@@ -2787,6 +2817,7 @@ restart:
 				lttng_poll_del(&events, chan->wait_fd);
 				ret = lttng_ht_del(channel_ht, &iter);
 				assert(ret == 0);
+				assert(cds_list_empty(&chan->streams.head));
 				consumer_close_channel_streams(chan);
 
 				/* Release our own refcount */

@@ -2610,10 +2610,8 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	ret = ust_consumer_ask_channel(ua_sess, metadata, consumer, socket,
 			registry);
 	if (ret < 0) {
-		/*
-		 * Safe because the metadata obj pointer is not set so the delete below
-		 * will not put a FD back again.
-		 */
+		/* Nullify the metadata key so we don't try to close it later on. */
+		registry->metadata_key = 0;
 		goto error_consumer;
 	}
 
@@ -2625,10 +2623,8 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 */
 	ret = consumer_setup_metadata(socket, metadata->key);
 	if (ret < 0) {
-		/*
-		 * Safe because the metadata obj pointer is not set so the delete below
-		 * will not put a FD back again.
-		 */
+		/* Nullify the metadata key so we don't try to close it later on. */
+		registry->metadata_key = 0;
 		goto error_consumer;
 	}
 
