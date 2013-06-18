@@ -624,14 +624,9 @@ static int list_sessions(const char *session_name)
 				MSG("%sTrace path: %s\n", indent4, sessions[i].path);
 				break;
 			}
-			continue;
-		}
-
-		MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path,
-				active_string(sessions[i].enabled));
-
-		if (session_found) {
-			break;
+		} else {
+			MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path,
+					active_string(sessions[i].enabled));
 		}
 	}
 
