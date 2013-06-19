@@ -24,7 +24,7 @@ SESSION_NAME="health_thread_stall"
 EVENT_NAME="bogus"
 HEALTH_CHECK_BIN="health_check"
 SESSIOND_PRELOAD=".libs/libhealthstall.so"
-NUM_TESTS=11
+NUM_TESTS=12
 
 source $TESTDIR/utils/utils.sh
 
@@ -131,7 +131,7 @@ else
 	isroot=0
 fi
 
-skip $isroot "Root access is needed. Skipping LTTNG_THREAD_MANAGE_KERNEL tests." "3" ||
+skip $isroot "Root access is needed. Skipping LTTNG_THREAD_MANAGE_KERNEL tests." "4" ||
 {
 	test_thread_stall "LTTNG_THREAD_MANAGE_KERNEL" "8"
 }
