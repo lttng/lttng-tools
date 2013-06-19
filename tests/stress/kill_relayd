@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/..
+# We use the .libs/ binary since it's run from the repository.
+REPO_RELAYD_BIN="lt-lttng-relayd"
+
+# Number of seconds the we sleep before killing the relayd. If RANDOM_KILL is
+# defined, it's between 1 and 10 seconds.
+NR_SEC=10
+
+KILL_LOOP=0
+RANDOM_KILL=0
+
+source $TESTDIR/utils/utils.sh
+
+function get_random()
+{
+	return $(echo $RANDOM % $NR_SEC + 1 | bc)
+}
+
+function kill_relayd()
+{
+	if [ $RANDOM_KILL -eq 1 ]; then
+		# Something between 1 and NR_SEC seconds.
+		get_random
+		sleep $?
+	else
+		sleep $NR_SEC
+	fi
+	killall -q -9 $REPO_RELAYD_BIN >/dev/null 2>&1
+}
+
+# Do we have to run in an infinite loop ?
+if [ -n "$1" ]; then
+	KILL_LOOP=1
+fi
+
+# Should it be a random kill or not ?
+if [ -n "$2" ]; then
+	RANDOM_KILL=1
+fi
+
+# MUST set TESTDIR before this point.
+
+if [ $KILL_LOOP -eq 0 ]; then
+	kill_relayd
+else
+	while :; do
+		kill_relayd
+	done
+fi
