@@ -174,7 +174,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		/* If we received an error in add_channel, we need to report it. */
-		if (ret != 0) {
+		if (ret < 0) {
 			ret = consumer_send_status_msg(sock, ret);
 			if (ret < 0) {
 				goto error_fatal;

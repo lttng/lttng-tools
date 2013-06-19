@@ -890,6 +890,8 @@ end:
 
 /*
  * Add a channel to the global list protected by a mutex.
+ *
+ * On success 0 is returned else a negative value.
  */
 int consumer_add_channel(struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx)
@@ -907,7 +909,7 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 		/* Channel already exist. Ignore the insertion */
 		ERR("Consumer add channel key %" PRIu64 " already exists!",
 			channel->key);
-		ret = LTTNG_ERR_KERN_CHAN_EXIST;
+		ret = -EEXIST;
 		goto end;
 	}
 
