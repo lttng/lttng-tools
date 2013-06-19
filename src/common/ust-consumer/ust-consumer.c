@@ -624,7 +624,13 @@ static int close_metadata(uint64_t chan_key)
 
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
-		ERR("UST consumer close metadata %" PRIu64 " not found", chan_key);
+		/*
+		 * This is possible if the metadata thread has issue a delete because
+		 * the endpoint point of the stream hung up. There is no way the
+		 * session daemon can know about it thus use a DBG instead of an actual
+		 * error.
+		 */
+		DBG("UST consumer close metadata %" PRIu64 " not found", chan_key);
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
