@@ -120,7 +120,7 @@ int buffer_reg_uid_create(int session_id, uint32_t bits_per_long, uid_t uid,
 	}
 
 	reg->registry = zmalloc(sizeof(struct buffer_reg_session));
-	if (!reg) {
+	if (!reg->registry) {
 		PERROR("zmalloc buffer registry uid session");
 		ret = -ENOMEM;
 		goto error;
@@ -240,7 +240,7 @@ int buffer_reg_pid_create(int session_id, struct buffer_reg_pid **regp)
 	}
 
 	reg->registry = zmalloc(sizeof(struct buffer_reg_session));
-	if (!reg) {
+	if (!reg->registry) {
 		PERROR("zmalloc buffer registry pid session");
 		ret = -ENOMEM;
 		goto error;
