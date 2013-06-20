@@ -1,3 +1,20 @@
+2013-06-20 lttng-tools 2.2.0-rc3
+	* Multiple memory and fd leak fixes in sessiond and consumerd
+	* Test: stress test added to the repository but not in make check
+	* Using LTTNG_HOME environment variable if exists, with fallback to HOME
+	* Implement health check for app registration dispatch
+	* Implement health check for app notification thread
+	* Revert "Improve channel listing output format"
+	* Fix: use lttng pipe to send new stream to thread
+	* Change consumer_metadata_pipe to be a lttng_pipe
+	* Change consumer_data_pipe to be a lttng_pipe
+	* Add wrappers for pipe
+	* Add --version command-line option to lttng.
+	* Add --with-lttng-ust-prefix config option.
+	* Fixes from coverity scan.
+	* Stability fixes
+	* RCU hash table are now destroyed in a seperate thread in sessiond
+
 2013-05-09 lttng-tools 2.2.0-rc2
 	* Fix: split UST per UID/PID default values
 	* Fix: don't start the relayd with a wrong --output dir
