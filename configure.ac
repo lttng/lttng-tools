@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.2.0-rc2],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.2.0-rc3],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST

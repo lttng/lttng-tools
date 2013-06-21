@@ -42,7 +42,6 @@ const struct kern_modules_param kern_modules_list[] = {
 	{ "lttng-ring-buffer-client-mmap-discard", 1 },
 	{ "lttng-ring-buffer-client-mmap-overwrite", 1 },
 	{ "lttng-ring-buffer-metadata-mmap-client", 1 },
-	{ "lttng-probe-lttng", 1 },
 	{ "lttng-types", 0 },
 	{ "lttng-probe-asoc", 0 },
 	{ "lttng-probe-block", 0 },

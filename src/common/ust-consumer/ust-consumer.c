@@ -394,7 +394,7 @@ static int send_sessiond_channel(int sock,
 		struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx, int *relayd_error)
 {
-	int ret;
+	int ret, ret_code = LTTNG_OK;
 	struct lttng_consumer_stream *stream;
 
 	assert(channel);
@@ -402,6 +402,31 @@ static int send_sessiond_channel(int sock,
 	assert(sock >= 0);
 
 	DBG("UST consumer sending channel %s to sessiond", channel->name);
+
+	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
+		/* Try to send the stream to the relayd if one is available. */
+		ret = send_stream_to_relayd(stream);
+		if (ret < 0) {
+			/*
+			 * Flag that the relayd was the problem here probably due to a
+			 * communicaton error on the socket.
+			 */
+			if (relayd_error) {
+				*relayd_error = 1;
+			}
+			ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
+		}
+	}
+
+	/* Inform sessiond that we are about to send channel and streams. */
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0 || ret_code != LTTNG_OK) {
+		/*
+		 * Either the session daemon is not responding or the relayd died so we
+		 * stop now.
+		 */
+		goto error;
+	}
 
 	/* Send channel to sessiond. */
 	ret = ustctl_send_channel_to_sessiond(sock, channel->uchan);
@@ -416,19 +441,6 @@ static int send_sessiond_channel(int sock,
 
 	/* The channel was sent successfully to the sessiond at this point. */
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
-		/* Try to send the stream to the relayd if one is available. */
-		ret = send_stream_to_relayd(stream);
-		if (ret < 0) {
-			/*
-			 * Flag that the relayd was the problem here probably due to a
-			 * communicaton error on the socket.
-			 */
-			if (relayd_error) {
-				*relayd_error = 1;
-			}
-			goto error;
-		}
-
 		/* Send stream to session daemon. */
 		ret = send_sessiond_stream(sock, stream);
 		if (ret < 0) {
@@ -447,6 +459,9 @@ static int send_sessiond_channel(int sock,
 	return 0;
 
 error:
+	if (ret_code != LTTNG_OK) {
+		ret = -1;
+	}
 	return ret;
 }
 
@@ -624,7 +639,13 @@ static int close_metadata(uint64_t chan_key)
 
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
-		ERR("UST consumer close metadata %" PRIu64 " not found", chan_key);
+		/*
+		 * This is possible if the metadata thread has issue a delete because
+		 * the endpoint point of the stream hung up. There is no way the
+		 * session daemon can know about it thus use a DBG instead of an actual
+		 * error.
+		 */
+		DBG("UST consumer close metadata %" PRIu64 " not found", chan_key);
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
@@ -671,7 +692,7 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	if (!metadata) {
 		ERR("UST consumer push metadata %" PRIu64 " not found", key);
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		goto error;
+		goto error_find;
 	}
 
 	/*
@@ -703,9 +724,17 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	/* List MUST be empty after or else it could be reused. */
 	assert(cds_list_empty(&metadata->streams.head));
 
-	ret = 0;
+	return 0;
 
 error:
+	/*
+	 * Delete metadata channel on error. At this point, the metadata stream can
+	 * NOT be monitored by the metadata thread thus having the guarantee that
+	 * the stream is still in the local stream list of the channel. This call
+	 * will make sure to clean that list.
+	 */
+	consumer_del_channel(metadata);
+error_find:
 	return ret;
 }
 
@@ -796,6 +825,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * The ret value might 0 meaning an orderly shutdown but this is ok
 		 * since the caller handles this.
 		 */
+		if (ret > 0) {
+			ret = -1;
+		}
 		return ret;
 	}
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
@@ -871,6 +903,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				sizeof(is_data_pending));
 		if (ret < 0) {
 			DBG("Error when sending the data pending ret code: %d", ret);
+			goto error_fatal;
 		}
 
 		/*
@@ -977,10 +1010,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_channel(sock, channel);
 		if (ret < 0) {
 			/*
-			 * There is probably a problem on the socket so the poll will get
-			 * it and clean everything up.
+			 * There is probably a problem on the socket.
 			 */
-			goto end_nosignal;
+			goto error_fatal;
 		}
 
 		break;
@@ -998,13 +1030,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_msg_sessiond;
 		}
 
-		/* Inform sessiond that we are about to send channel and streams. */
-		ret = consumer_send_status_msg(sock, LTTNG_OK);
-		if (ret < 0) {
-			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
-		}
-
 		/* Send everything to sessiond. */
 		ret = send_sessiond_channel(sock, channel, ctx, &relayd_err);
 		if (ret < 0) {
@@ -1012,10 +1037,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				/*
 				 * We were unable to send to the relayd the stream so avoid
 				 * sending back a fatal error to the thread since this is OK
-				 * and the consumer can continue its work.
+				 * and the consumer can continue its work. The above call
+				 * has sent the error status message to the sessiond.
 				 */
-				ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
-				goto end_msg_sessiond;
+				goto end_nosignal;
 			}
 			/*
 			 * The communicaton was broken hence there is a bad state between
@@ -1098,14 +1123,14 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Wait for more data. */
 		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
-			goto end_nosignal;
+			goto error_fatal;
 		}
 
 		ret = lttng_ustconsumer_recv_metadata(sock, key, offset,
 				len, channel);
 		if (ret < 0) {
 			/* error receiving from sessiond */
-			goto end_nosignal;
+			goto error_fatal;
 		} else {
 			ret_code = ret;
 			goto end_msg_sessiond;
@@ -1140,7 +1165,10 @@ end_msg_sessiond:
 	 * the caller because the session daemon socket management is done
 	 * elsewhere. Returning a negative code or 0 will shutdown the consumer.
 	 */
-	(void) consumer_send_status_msg(sock, ret_code);
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0) {
+		goto error_fatal;
+	}
 	rcu_read_unlock();
 	return 1;
 end_channel_error:
@@ -1532,7 +1560,13 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 
 	ret_code = lttng_ustconsumer_recv_metadata(ctx->consumer_metadata_socket,
 			key, offset, len, channel);
-	(void) consumer_send_status_msg(ctx->consumer_metadata_socket, ret_code);
+	if (ret_code >= 0) {
+		/*
+		 * Only send the status msg if the sessiond is alive meaning a positive
+		 * ret code.
+		 */
+		(void) consumer_send_status_msg(ctx->consumer_metadata_socket, ret_code);
+	}
 	ret = 0;
 
 end:

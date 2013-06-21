@@ -383,7 +383,9 @@ static int add_context(char *session_name)
 		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
 			context.u.perf_counter.type = type->opt->u.perf.type;
 			context.u.perf_counter.config = type->opt->u.perf.config;
-			strcpy(context.u.perf_counter.name, type->opt->symbol);
+			strncpy(context.u.perf_counter.name, type->opt->symbol,
+				LTTNG_SYMBOL_NAME_LEN);
+			context.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 			/* Replace : and - by _ */
 			while ((ptr = strchr(context.u.perf_counter.name, '-')) != NULL) {
 				*ptr = '_';

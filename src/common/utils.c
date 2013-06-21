@@ -22,8 +22,8 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <regex.h>
@@ -32,6 +32,7 @@
 #include <common/runas.h>
 
 #include "utils.h"
+#include "defaults.h"
 
 /*
  * Return the realpath(3) of the path even if the last directory token does not
@@ -248,7 +249,6 @@ LTTNG_HIDDEN
 int utils_mkdir_recursive(const char *path, mode_t mode)
 {
 	char *p, tmp[PATH_MAX];
-	struct stat statbuf;
 	size_t len;
 	int ret;
 
@@ -276,15 +276,12 @@ int utils_mkdir_recursive(const char *path, mode_t mode)
 				ret = -1;
 				goto error;
 			}
-			ret = stat(tmp, &statbuf);
+			ret = mkdir(tmp, mode);
 			if (ret < 0) {
-				ret = mkdir(tmp, mode);
-				if (ret < 0) {
-					if (errno != EEXIST) {
-						PERROR("mkdir recursive");
-						ret = -errno;
-						goto error;
-					}
+				if (errno != EEXIST) {
+					PERROR("mkdir recursive");
+					ret = -errno;
+					goto error;
 				}
 			}
 			*p = '/';
@@ -583,4 +580,18 @@ int utils_get_count_order_u32(uint32_t x)
 	}
 
 	return fls_u32(x - 1);
+}
+
+/**
+ * Obtain the value of LTTNG_HOME environment variable, if exists.
+ * Otherwise returns the value of HOME.
+ */
+char *utils_get_home_dir(void)
+{
+	char *val = NULL;
+	val = getenv(DEFAULT_LTTNG_HOME_ENV_VAR);
+	if (val != NULL) {
+		return val;
+	}
+	return getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
 }

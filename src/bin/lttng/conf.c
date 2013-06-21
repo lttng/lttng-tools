@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include <common/error.h>
+#include <common/utils.h>
 
 #include "conf.h"
 
@@ -123,14 +124,6 @@ end:
 }
 
 /*
- * Returns the HOME directory path. Caller MUST NOT free(3) the return pointer.
- */
-char *config_get_default_path(void)
-{
-	return getenv("HOME");
-}
-
-/*
  * Destroys directory config and file config.
  */
 void config_destroy(char *path)
@@ -161,7 +154,7 @@ end:
  */
 void config_destroy_default(void)
 {
-	char *path = config_get_default_path();
+	char *path = utils_get_home_dir();
 	if (path == NULL) {
 		return;
 	}
@@ -277,7 +270,7 @@ int config_init(char *session_name)
 	int ret;
 	char *path;
 
-	path = config_get_default_path();
+	path = utils_get_home_dir();
 	if (path == NULL) {
 		ret = -1;
 		goto error;

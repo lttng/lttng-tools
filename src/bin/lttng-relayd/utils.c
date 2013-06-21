@@ -29,14 +29,6 @@
 #include "lttng-relayd.h"
 #include "utils.h"
 
-/*
- * Returns the HOME directory path. Caller MUST NOT free(3) the return pointer.
- */
-static char *get_default_path(void)
-{
-	return getenv("HOME");
-}
-
 static char *create_output_path_auto(char *path_name)
 {
 	int ret;
@@ -44,7 +36,7 @@ static char *create_output_path_auto(char *path_name)
 	char *alloc_path = NULL;
 	char *default_path;
 
-	default_path = get_default_path();
+	default_path = utils_get_home_dir();
 	if (default_path == NULL) {
 		ERR("Home path not found.\n \
 				Please specify an output path using -o, --output PATH");

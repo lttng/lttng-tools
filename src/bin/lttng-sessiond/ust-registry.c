@@ -556,8 +556,6 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	}
 	rcu_read_unlock();
 
-	if (reg->channels) {
-		ht_cleanup_push(reg->channels);
-	}
+	ht_cleanup_push(reg->channels);
 	free(reg->metadata);
 }

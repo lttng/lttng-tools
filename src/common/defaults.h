@@ -77,6 +77,8 @@
 #define DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/error"
 
 /* Default lttng run directory */
+#define DEFAULT_LTTNG_HOME_ENV_VAR              "LTTNG_HOME"
+#define DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR	"HOME"
 #define DEFAULT_LTTNG_RUNDIR                    "/var/run/lttng"
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
