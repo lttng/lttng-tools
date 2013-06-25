@@ -460,6 +460,8 @@ int kernel_metadata_flush_buffer(int fd)
 {
 	int ret;
 
+	DBG("Kernel flushing metadata buffer on fd %d", fd);
+
 	ret = kernctl_buffer_flush(fd);
 	if (ret < 0) {
 		ERR("Fail to flush metadata buffers %d (ret: %d)", fd, ret);
