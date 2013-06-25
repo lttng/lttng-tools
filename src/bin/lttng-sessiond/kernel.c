@@ -110,6 +110,9 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	return 0;
 
 error:
+	if (lks) {
+		trace_kernel_destroy_session(lks);
+	}
 	return ret;
 }
 
@@ -163,6 +166,10 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	return 0;
 
 error:
+	if (lkc) {
+		free(lkc->channel);
+		free(lkc);
+	}
 	return -1;
 }
 
