@@ -527,8 +527,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 
 		if (uevent->enabled == 0) {
 			/* It's already disabled so everything is OK */
-			ret = LTTNG_OK;
-			continue;
+			goto next;
 		}
 
 		ret = ust_app_disable_event_glb(usess, uchan, uevent);
@@ -541,6 +540,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 		DBG2("Event UST %s disabled in channel %s", uevent->attr.name,
 				uchan->name);
 
+next:
 		/* Get next duplicate event by name. */
 		cds_lfht_next_duplicate(ht->ht, trace_ust_ht_match_event_by_name,
 				event_name, &iter.iter);
