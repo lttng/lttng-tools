@@ -1553,7 +1553,7 @@ int cmd_stop_trace(struct ltt_session *session)
 	session->enabled = 0;
 
 	/* Kernel tracer */
-	if (ksession) {
+	if (ksession && ksession->started) {
 		DBG("Stop kernel tracing");
 
 		/* Flush metadata if exist */
@@ -1583,7 +1583,7 @@ int cmd_stop_trace(struct ltt_session *session)
 		ksession->started = 0;
 	}
 
-	if (usess) {
+	if (usess && usess->start_trace) {
 		usess->start_trace = 0;
 
 		ret = ust_app_stop_trace_all(usess);
