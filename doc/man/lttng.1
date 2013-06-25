@@ -101,8 +101,9 @@ data output:
 Please take a look at the help (\-h/\-\-help) for a detailed list of available
 contexts.
 
-If no channel is given (\-c), the context is added to all channels. Otherwise
-the context will be added only to the given channel (\-c).
+If no channel is given (\-c), the context is added to all channels that were
+already enabled. If the session has no channel, a default channel is created.
+Otherwise the context will be added only to the given channel (\-c).
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
@@ -308,8 +309,11 @@ If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngr
 file.
 
 It is important to note that if a certain type of buffers is used, the session
-will be set with that type and all other subsequent channel need to have the
+will be set with that type and all other subsequent channel needs to have the
 same type.
+
+For the kernel tracer (\-k), once the session is started at least once, it's
+not possible anymore to enable new channel for that session.
 .fi
 
 .B OPTIONS:
@@ -334,6 +338,10 @@ same type.
         Subbuffer size in bytes {+k,+M,+G}
         (default UST uid: 131072, UST pid: 4096, kernel: 262144, metadata: 4096)
         Rounded up to the next power of 2.
+
+        The minimum subbuffer size, for each tracer, is the max value between
+        the default above and the system page size. You can issue this command
+        to get the current page size on your system: \fB$ getconf PAGE_SIZE\fP
 \-\-num-subbuf NUM
         Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4, metadata: 2)
         Rounded up to the next power of 2.
