@@ -1,3 +1,17 @@
+2013-06-25 lttng-tools 2.2.0 (National Catfish Day)
+	* STABLE VERSION
+	* Fix: if relayd is unreachable, disable consumer for the session
+	* Fix: possible infinite loop in disable ust event
+	* Fix: don't enable a channel if a session was already started
+	* Fix: bad type for the relayd id
+	* Fix: add debug statement in kernel flush metadata
+	* Fix: destroy default created channel if add-context fails
+	* Fix: clarify tracefile size/count in lttng.1 man
+	* Fix: don't stop a session that was not previously started
+	* Fix: update lttng.1 man page
+	* Fix: bad protocol flow between sessiond and consumerd
+	* Fix: kernel memory leak in error path
+
 2013-06-20 lttng-tools 2.2.0-rc3
 	* Multiple memory and fd leak fixes in sessiond and consumerd
 	* Test: stress test added to the repository but not in make check
