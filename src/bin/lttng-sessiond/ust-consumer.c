@@ -203,6 +203,12 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 	assert(socket->fd >= 0);
 	assert(registry);
 
+	if (!consumer->enabled) {
+		ret = -LTTNG_ERR_NO_CONSUMER;
+		DBG3("Consumer is disabled");
+		goto error;
+	}
+
 	pthread_mutex_lock(socket->lock);
 
 	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry);

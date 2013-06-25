@@ -606,10 +606,11 @@ close_sock:
 error:
 	if (ret != LTTNG_OK) {
 		/*
-		 * On error, nullify the consumer sequence index so streams are not
-		 * associated with it once sent to the consumer.
+		 * The consumer output for this session should not be used anymore
+		 * since the relayd connection failed thus making any tracing or/and
+		 * streaming not usable.
 		 */
-		uatomic_set(&consumer->net_seq_index, -1);
+		consumer->enabled = 0;
 	}
 	return ret;
 }

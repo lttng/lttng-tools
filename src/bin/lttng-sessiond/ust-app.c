@@ -1946,9 +1946,11 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	 * Now get the channel from the consumer. This call wil populate the stream
 	 * list of that channel and set the ust objects.
 	 */
-	ret = ust_consumer_get_channel(socket, ua_chan);
-	if (ret < 0) {
-		goto error_destroy;
+	if (usess->consumer->enabled) {
+		ret = ust_consumer_get_channel(socket, ua_chan);
+		if (ret < 0) {
+			goto error_destroy;
+		}
 	}
 
 	rcu_read_unlock();
