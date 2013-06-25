@@ -856,6 +856,15 @@ int cmd_enable_channel(struct ltt_session *session,
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
+	/*
+	 * Don't try to enable a channel if the session has been started at
+	 * some point in time before. The tracer does not allow it.
+	 */
+	if (session->started) {
+		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto error;
+	}
+
 	rcu_read_lock();
 
 	switch (domain->type) {
@@ -876,18 +885,6 @@ int cmd_enable_channel(struct ltt_session *session,
 		}
 
 		kernel_wait_quiescent(kernel_tracer_fd);
-
-		/*
-		 * If the session was previously started, start as well this newly
-		 * created kernel session so the events/channels enabled *after* the
-		 * start actually work.
-		 */
-		if (session->started && !session->kernel_session->started) {
-			ret = start_kernel_session(session->kernel_session, wpipe);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-		}
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -901,17 +898,6 @@ int cmd_enable_channel(struct ltt_session *session,
 			ret = channel_ust_create(usess, attr, domain->buf_type);
 		} else {
 			ret = channel_ust_enable(usess, uchan);
-		}
-
-		/* Start the UST session if the session was already started. */
-		if (session->started && !usess->start_trace) {
-			ret = ust_app_start_trace_all(usess);
-			if (ret < 0) {
-				ret = LTTNG_ERR_UST_START_FAIL;
-				goto error;
-			}
-			ret = LTTNG_OK;
-			usess->start_trace = 1;
 		}
 		break;
 	}
@@ -1615,8 +1601,6 @@ int cmd_stop_trace(struct ltt_session *session)
 			goto error;
 		}
 	}
-
-	session->started = 0;
 
 	ret = LTTNG_OK;
 
