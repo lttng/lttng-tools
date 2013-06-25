@@ -1076,7 +1076,7 @@ error:
 int cmd_add_context(struct ltt_session *session, int domain,
 		char *channel_name, struct lttng_event_context *ctx, int kwpipe)
 {
-	int ret;
+	int ret, chan_kern_created = 0, chan_ust_created = 0;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1088,6 +1088,7 @@ int cmd_add_context(struct ltt_session *session, int domain,
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
+			chan_kern_created = 1;
 		}
 
 		/* Add kernel context to kernel tracer */
@@ -1118,6 +1119,7 @@ int cmd_add_context(struct ltt_session *session, int domain,
 				goto error;
 			}
 			free(attr);
+			chan_ust_created = 1;
 		}
 
 		ret = context_ust_add(usess, domain, ctx, channel_name);
@@ -1136,9 +1138,30 @@ int cmd_add_context(struct ltt_session *session, int domain,
 		goto error;
 	}
 
-	ret = LTTNG_OK;
+	return LTTNG_OK;
 
 error:
+	if (chan_kern_created) {
+		struct ltt_kernel_channel *kchan =
+			trace_kernel_get_channel_by_name(DEFAULT_CHANNEL_NAME,
+					session->kernel_session);
+		/* Created previously, this should NOT fail. */
+		assert(kchan);
+		kernel_destroy_channel(kchan);
+	}
+
+	if (chan_ust_created) {
+		struct ltt_ust_channel *uchan =
+			trace_ust_find_channel_by_name(
+					session->ust_session->domain_global.channels,
+					DEFAULT_CHANNEL_NAME);
+		/* Created previously, this should NOT fail. */
+		assert(uchan);
+		/* Remove from the channel list of the session. */
+		trace_ust_delete_channel(session->ust_session->domain_global.channels,
+				uchan);
+		trace_ust_destroy_channel(uchan);
+	}
 	return ret;
 }
 

@@ -160,6 +160,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 struct ltt_ust_metadata *trace_ust_create_metadata(char *path);
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx);
+void trace_ust_delete_channel(struct lttng_ht *ht,
+		struct ltt_ust_channel *channel);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if
@@ -240,6 +242,12 @@ static inline struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_filter_bytecode *filter, int loglevel)
 {
 	return NULL;
+}
+static inline
+void trace_ust_delete_channel(struct lttng_ht *ht,
+		struct ltt_ust_channel *channel)
+{
+	return;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

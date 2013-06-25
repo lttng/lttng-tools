@@ -572,6 +572,23 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 }
 
 /*
+ * Remove an UST channel from a channel HT.
+ */
+void trace_ust_delete_channel(struct lttng_ht *ht,
+		struct ltt_ust_channel *channel)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+
+	assert(ht);
+	assert(channel);
+
+	iter.iter.node = &channel->node.node;
+	ret = lttng_ht_del(ht, &iter);
+	assert(!ret);
+}
+
+/*
  * Cleanup ust metadata structure.
  */
 void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
