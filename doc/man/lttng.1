@@ -371,8 +371,8 @@ not possible anymore to enable new channel for that session.
 .B EXAMPLES:
 
 $ lttng enable-channel -C 4096 -W 32 chan1
-For each stream, the maximum size of a trace file will be 4096 bytes divided
-over a \fBmaximum\fP of 32 different files. The file count is appended after
+For each stream, the maximum size of each trace file will be 4096 bytes, and
+there will be a maximum of 32 different files. The file count is appended after
 the stream number as seen in the following example. The last trace file is
 smaller than 4096 since it was not completely filled.
 
