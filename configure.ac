@@ -162,6 +162,10 @@ AC_CHECK_DECL([rcu_thread_online], [],
 AC_CHECK_DECL([caa_likely], [],
 	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
+#Function added in urcu 0.7.0
+AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
+        [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+)
 
 AC_ARG_WITH(lttng-ust-prefix,
   AS_HELP_STRING([--with-lttng-ust-prefix=PATH],
