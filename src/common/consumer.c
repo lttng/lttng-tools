@@ -3107,6 +3107,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 		/* Assign new file descriptor */
 		relayd->control_sock.sock.fd = fd;
+		fd = -1;	/* For error path */
 		/* Assign version values. */
 		relayd->control_sock.major = relayd_sock->major;
 		relayd->control_sock.minor = relayd_sock->minor;
@@ -3152,6 +3153,7 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 
 		/* Assign new file descriptor */
 		relayd->data_sock.sock.fd = fd;
+		fd = -1;	/* for eventual error paths */
 		/* Assign version values. */
 		relayd->data_sock.major = relayd_sock->major;
 		relayd->data_sock.minor = relayd_sock->minor;
