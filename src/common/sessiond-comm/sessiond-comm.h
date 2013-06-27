@@ -155,7 +155,8 @@ enum lttcomm_metadata_command {
  * per PID registry indexed by session id ignoring the other values.
  */
 struct lttcomm_metadata_request_msg {
-	unsigned int session_id; /* Tracing session id */
+	uint64_t session_id; /* Tracing session id */
+	uint64_t session_id_per_pid; /* Tracing session id for per-pid */
 	uint32_t bits_per_long; /* Consumer ABI */
 	uint32_t uid;
 	uint64_t key; /* Metadata channel key. */
@@ -362,6 +363,7 @@ struct lttcomm_consumer_msg {
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
 			uint64_t tracefile_size;	/* bytes */
 			uint32_t tracefile_count;	/* number of tracefiles */
+			uint64_t session_id_per_pid;	/* Per-pid session ID. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t monitor;
 		} LTTNG_PACKED ask_channel;

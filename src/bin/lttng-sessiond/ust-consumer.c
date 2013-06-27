@@ -158,6 +158,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			chan_id,
 			ua_chan->tracefile_size,
 			ua_chan->tracefile_count,
+			ua_sess->id,
 			ua_sess->output_traces);
 
 	health_code_update();
@@ -446,7 +447,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 		goto end;
 	}
 
-	DBG("Metadata request received for session %u, key %" PRIu64,
+	DBG("Metadata request received for session %" PRIu64 ", key %" PRIu64,
 			request.session_id, request.key);
 
 	reg_uid = buffer_reg_uid_find(request.session_id,
@@ -455,10 +456,10 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 		ust_reg = reg_uid->registry->reg.ust;
 	} else {
 		struct buffer_reg_pid *reg_pid =
-			buffer_reg_pid_find(request.session_id);
+			buffer_reg_pid_find(request.session_id_per_pid);
 		if (!reg_pid) {
-			DBG("PID registry not found for session id %u",
-					request.session_id);
+			DBG("PID registry not found for session id %" PRIu64,
+					request.session_id_per_pid);
 
 			msg.cmd_type = LTTNG_ERR_UND;
 			(void) consumer_send_msg(socket, &msg);

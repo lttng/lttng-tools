@@ -212,6 +212,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint32_t chan_id,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
+		uint64_t session_id_per_pid,
 		unsigned int monitor);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,

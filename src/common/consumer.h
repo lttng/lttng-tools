@@ -106,6 +106,11 @@ struct lttng_consumer_channel {
 	int refcount;
 	/* Tracing session id on the session daemon side. */
 	uint64_t session_id;
+	/*
+	 * Session id when requesting metadata to the session daemon for
+	 * a session with per-PID buffers.
+	 */
+	uint64_t session_id_per_pid;
 	/* Channel trace file path name. */
 	char pathname[PATH_MAX];
 	/* Channel name. */
@@ -493,6 +498,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		enum lttng_event_output output,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
+		uint64_t session_id_per_pid,
 		unsigned int monitor);
 void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);

@@ -480,7 +480,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.channel.name, msg.u.channel.uid, msg.u.channel.gid,
 				msg.u.channel.relayd_id, msg.u.channel.output,
 				msg.u.channel.tracefile_size,
-				msg.u.channel.tracefile_count,
+				msg.u.channel.tracefile_count, 0,
 				msg.u.channel.monitor);
 		if (new_channel == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
