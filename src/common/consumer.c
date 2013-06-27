@@ -858,7 +858,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t relayd_id,
 		enum lttng_event_output output,
 		uint64_t tracefile_size,
-		uint64_t tracefile_count)
+		uint64_t tracefile_count,
+		uint64_t session_id_per_pid)
 {
 	struct lttng_consumer_channel *channel;
 
@@ -871,6 +872,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->key = key;
 	channel->refcount = 0;
 	channel->session_id = session_id;
+	channel->session_id_per_pid = session_id_per_pid;
 	channel->uid = uid;
 	channel->gid = gid;
 	channel->relayd_id = relayd_id;

@@ -684,7 +684,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		unsigned char *uuid,
 		uint32_t chan_id,
 		uint64_t tracefile_size,
-		uint64_t tracefile_count)
+		uint64_t tracefile_count,
+		uint64_t session_id_per_pid)
 {
 	assert(msg);
 
@@ -700,6 +701,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.output = output;
 	msg->u.ask_channel.type = type;
 	msg->u.ask_channel.session_id = session_id;
+	msg->u.ask_channel.session_id_per_pid = session_id_per_pid;
 	msg->u.ask_channel.uid = uid;
 	msg->u.ask_channel.gid = gid;
 	msg->u.ask_channel.relayd_id = relayd_id;

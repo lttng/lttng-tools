@@ -114,13 +114,15 @@ error:
 static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		const char *pathname, const char *name, uid_t uid, gid_t gid,
 		int relayd_id, uint64_t key, enum lttng_event_output output,
-		uint64_t tracefile_size, uint64_t tracefile_count)
+		uint64_t tracefile_size, uint64_t tracefile_count,
+		uint64_t session_id_per_pid)
 {
 	assert(pathname);
 	assert(name);
 
-	return consumer_allocate_channel(key, session_id, pathname, name, uid, gid,
-			relayd_id, output, tracefile_size, tracefile_count);
+	return consumer_allocate_channel(key, session_id, pathname, name, uid,
+			gid, relayd_id, output, tracefile_size,
+			tracefile_count, session_id_per_pid);
 }
 
 /*
@@ -924,7 +926,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.ask_channel.relayd_id, msg.u.ask_channel.key,
 				(enum lttng_event_output) msg.u.ask_channel.output,
 				msg.u.ask_channel.tracefile_size,
-				msg.u.ask_channel.tracefile_count);
+				msg.u.ask_channel.tracefile_count,
+				msg.u.ask_channel.session_id_per_pid);
 		if (!channel) {
 			goto end_channel_error;
 		}
@@ -1500,10 +1503,13 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	}
 
 	request.session_id = channel->session_id;
+	request.session_id_per_pid = channel->session_id_per_pid;
 	request.uid = channel->uid;
 	request.key = channel->key;
-	DBG("Sending metadata request to sessiond, session %" PRIu64,
-			channel->session_id);
+	DBG("Sending metadata request to sessiond, session id %" PRIu64
+			", per-pid %" PRIu64,
+			channel->session_id,
+			channel->session_id_per_pid);
 
 	ret = lttcomm_send_unix_sock(ctx->consumer_metadata_socket, &request,
 			sizeof(request));
