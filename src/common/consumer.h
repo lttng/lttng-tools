@@ -118,8 +118,8 @@ struct lttng_consumer_channel {
 	/* UID and GID of the channel. */
 	uid_t uid;
 	gid_t gid;
-	/* Relayd id of the channel. -1 if it does not apply. */
-	int64_t relayd_id;
+	/* Relayd id of the channel. -1ULL if it does not apply. */
+	uint64_t relayd_id;
 	/*
 	 * Number of streams NOT initialized yet. This is used in order to not
 	 * delete this channel if streams are getting initialized.
@@ -275,7 +275,7 @@ struct lttng_consumer_stream {
  */
 struct consumer_relayd_sock_pair {
 	/* Network sequence number. */
-	int64_t net_seq_idx;
+	uint64_t net_seq_idx;
 	/* Number of stream associated with this relayd */
 	unsigned int refcount;
 
@@ -510,7 +510,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel);
 
 /* lttng-relayd consumer command */
 struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
-		int net_seq_idx);
+		uint64_t net_seq_idx);
 struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key);
 struct lttng_consumer_channel *consumer_find_channel(uint64_t key);
 int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,
@@ -546,7 +546,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
-int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
+int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll, struct lttcomm_relayd_sock *relayd_sock,
 		unsigned int sessiond_id);
