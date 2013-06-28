@@ -664,9 +664,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Do not monitor this stream. */
 		if (!channel->monitor) {
-			DBG("Kernel consumer add stream %s in no monitor mode with"
+			DBG("Kernel consumer add stream %s in no monitor mode with "
 					"relayd id %" PRIu64, new_stream->name,
-					new_stream->relayd_stream_id);
+					new_stream->net_seq_idx);
 			cds_list_add(&new_stream->no_monitor_node,
 					&channel->stream_no_monitor_list.head);
 			break;

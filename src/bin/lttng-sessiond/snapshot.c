@@ -49,6 +49,9 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 
 	assert(output);
 
+	DBG2("Snapshot output initializing with max size %" PRIu64 ", name %s "
+			"ctrl URL %s, data URL %s", max_size, name, ctrl_url, data_url);
+
 	output->max_size = max_size;
 	if (snapshot) {
 		output->id = get_next_output_id(snapshot);

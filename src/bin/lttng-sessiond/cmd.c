@@ -2374,8 +2374,8 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 	 * snapshot output.
 	 */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(consumer->socks->ht, &iter.iter, socket,
-			node.node) {
+	cds_lfht_for_each_entry(snap_output->consumer->socks->ht, &iter.iter,
+			socket, node.node) {
 		ret = send_consumer_relayd_sockets(0, session->id,
 				snap_output->consumer, socket);
 		if (ret < 0) {
