@@ -597,3 +597,30 @@ char *utils_get_home_dir(void)
 	}
 	return getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
 }
+
+/*
+ * With the given format, fill dst with the time of len maximum siz.
+ *
+ * Return amount of bytes set in the buffer or else 0 on error.
+ */
+LTTNG_HIDDEN
+size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
+{
+	size_t ret;
+	time_t rawtime;
+	struct tm *timeinfo;
+
+	assert(format);
+	assert(dst);
+
+	/* Get date and time for session path */
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	ret = strftime(dst, len, format, timeinfo);
+	if (ret == 0) {
+		ERR("Unable to strftime with format %s at dst %p of len %lu", format,
+				dst, len);
+	}
+
+	return ret;
+}
