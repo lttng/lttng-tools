@@ -340,7 +340,7 @@ struct lttng_consumer_local_data {
 	 *   == 0 (success, FD is left to library)
 	 *    < 0 (error)
 	 */
-	int (*on_update_stream)(int sessiond_key, uint32_t state);
+	int (*on_update_stream)(uint64_t sessiond_key, uint32_t state);
 	enum lttng_consumer_type type;
 	/* socket to communicate errors with sessiond */
 	int consumer_error_socket;
@@ -502,7 +502,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 			struct lttng_consumer_local_data *ctx),
 		int (*recv_channel)(struct lttng_consumer_channel *channel),
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
-		int (*update_stream)(int sessiond_key, uint32_t state));
+		int (*update_stream)(uint64_t sessiond_key, uint32_t state));
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
@@ -528,7 +528,7 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll, struct lttcomm_relayd_sock *relayd_sock,
-		unsigned int sessiond_id);
+		uint64_t sessiond_id);
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);
 int consumer_data_pending(uint64_t id);

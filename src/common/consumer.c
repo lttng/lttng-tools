@@ -1162,7 +1162,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 			struct lttng_consumer_local_data *ctx),
 		int (*recv_channel)(struct lttng_consumer_channel *channel),
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
-		int (*update_stream)(int stream_key, uint32_t state))
+		int (*update_stream)(uint64_t stream_key, uint32_t state))
 {
 	int ret;
 	struct lttng_consumer_local_data *ctx;
@@ -3074,7 +3074,7 @@ void lttng_consumer_init(void)
 int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll,
-		struct lttcomm_relayd_sock *relayd_sock, unsigned int sessiond_id)
+		struct lttcomm_relayd_sock *relayd_sock, uint64_t sessiond_id)
 {
 	int fd = -1, ret = -1, relayd_created = 0;
 	enum lttng_error_code ret_code = LTTNG_OK;
@@ -3095,7 +3095,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
 			ret = -ENOMEM;
 		} else {
-			relayd->sessiond_session_id = (uint64_t) sessiond_id;
+			relayd->sessiond_session_id = sessiond_id;
 			relayd_created = 1;
 		}
 
