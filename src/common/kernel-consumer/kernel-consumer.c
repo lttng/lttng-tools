@@ -204,6 +204,10 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 		 */
 		pthread_mutex_lock(&stream->lock);
 
+		/*
+		 * Assign the received relayd ID so we can use it for streaming. The streams
+		 * are not visible to anyone so this is OK to change it.
+		 */
 		stream->net_seq_idx = relayd_id;
 		channel->relayd_id = relayd_id;
 		if (relayd_id != (uint64_t) -1ULL) {
@@ -282,22 +286,21 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			ret = kernctl_get_subbuf_size(stream->wait_fd, &len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_subbuf_size");
-				goto end_unlock;
+				goto error_put_subbuf;
 			}
 
 			ret = kernctl_get_padded_subbuf_size(stream->wait_fd, &padded_len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_padded_subbuf_size");
-				goto end_unlock;
+				goto error_put_subbuf;
 			}
 
 			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len,
 					padded_len - len);
 			/*
-			 * We write the padded len in local tracefiles but the
-			 * data len when using a relay.
-			 * Display the error but continue processing to try to
-			 * release the subbuffer.
+			 * We write the padded len in local tracefiles but the data len
+			 * when using a relay. Display the error but continue processing
+			 * to try to release the subbuffer.
 			 */
 			if (relayd_id != (uint64_t) -1ULL) {
 				if (read_len != len) {
@@ -337,6 +340,11 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 	ret = 0;
 	goto end;
 
+error_put_subbuf:
+	ret = kernctl_put_subbuf(stream->wait_fd);
+	if (ret < 0) {
+		ERR("Snapshot kernctl_put_subbuf error path");
+	}
 end_unlock:
 	pthread_mutex_unlock(&stream->lock);
 end:
