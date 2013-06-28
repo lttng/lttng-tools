@@ -247,6 +247,6 @@ int consumer_flush_channel(struct consumer_socket *socket, uint64_t key);
 /* Snapshot command. */
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
-		int wait);
+		const char *session_path, int wait);
 
 #endif /* _CONSUMER_H */

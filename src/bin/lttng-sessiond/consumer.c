@@ -28,6 +28,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/uri.h>
+#include <common/utils.h>
 
 #include "consumer.h"
 #include "health.h"
@@ -1192,9 +1193,10 @@ end:
  */
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
-		int wait)
+		const char *session_path, int wait)
 {
 	int ret;
+	char datetime[16];
 	struct lttcomm_consumer_msg msg;
 
 	assert(socket);
@@ -1204,8 +1206,14 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 
 	DBG("Consumer snapshot channel key %" PRIu64, key);
 
-	memset(&msg, 0, sizeof(msg));
+	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", datetime,
+			sizeof(datetime));
+	if (!ret) {
+		ret = -EINVAL;
+		goto error;
+	}
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_SNAPSHOT_CHANNEL;
 	msg.u.snapshot_channel.key = key;
 	msg.u.snapshot_channel.max_size = output->max_size;
@@ -1215,16 +1223,18 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		msg.u.snapshot_channel.relayd_id = output->consumer->net_seq_index;
 		msg.u.snapshot_channel.use_relayd = 1;
 		ret = snprintf(msg.u.snapshot_channel.pathname,
-				sizeof(msg.u.snapshot_channel.pathname), "%s/%s",
-				output->consumer->subdir, DEFAULT_SNAPSHOT_NAME);
+				sizeof(msg.u.snapshot_channel.pathname), "%s/%s-%s%s",
+				output->consumer->subdir, output->name, datetime,
+				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;
 		}
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
-				sizeof(msg.u.snapshot_channel.pathname), "%s/%s",
-				output->consumer->dst.trace_path, DEFAULT_SNAPSHOT_NAME);
+				sizeof(msg.u.snapshot_channel.pathname), "%s/%s-%s%s",
+				output->consumer->dst.trace_path, output->name, datetime,
+				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;

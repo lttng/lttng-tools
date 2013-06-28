@@ -55,7 +55,7 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 	}
 	lttng_ht_node_init_ulong(&output->node, (unsigned long) output->id);
 
-	if (name) {
+	if (name && name[0] != '\0') {
 		strncpy(output->name, name, sizeof(output->name));
 	} else {
 		/* Set default name. */

@@ -4889,7 +4889,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 				ua_chan, node.node) {
 			ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
-					ua_sess->euid, ua_sess->egid, wait);
+					ua_sess->euid, ua_sess->egid, ua_sess->path, wait);
 			if (ret < 0) {
 				goto error;
 			}
@@ -4898,7 +4898,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		registry = get_session_registry(ua_sess);
 		assert(registry);
 		ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
-				1, ua_sess->euid, ua_sess->egid, wait);
+				1, ua_sess->euid, ua_sess->egid, ua_sess->path, wait);
 		if (ret < 0) {
 			goto error;
 		}
