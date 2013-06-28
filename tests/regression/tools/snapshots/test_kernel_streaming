@@ -25,7 +25,7 @@ CHANNEL_NAME="chan1"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=13
+NUM_TESTS=36
 
 source $TESTDIR/utils/utils.sh
 
@@ -69,7 +69,6 @@ function test_kernel_default_name_with_del()
 
 	lttng_snapshot_del_output $SESSION_NAME 1
 	snapshot_add_output $SESSION_NAME "net://localhost"
-	lttng snapshot list-output
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test with the next ID since a del output was done prior.
@@ -156,8 +155,7 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 		${fct_test}
 		if [ $? -eq 0 ]; then
 			# Only delete if successful
-			echo allo
-			#rm -rf $TRACE_PATH
+			rm -rf $TRACE_PATH
 		else
 			break
 		fi
