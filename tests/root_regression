@@ -3,3 +3,4 @@ regression/kernel/test_event_basic
 regression/tools/streaming/test_high_throughput_limits
 regression/tools/streaming/test_kernel
 regression/tools/snapshots/test_kernel
+regression/tools/snapshots/test_kernel_streaming
