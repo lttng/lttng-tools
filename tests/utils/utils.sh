@@ -315,6 +315,15 @@ function lttng_snapshot_add_output ()
 	ok $? "Added snapshot output file://$trace_path"
 }
 
+function lttng_snapshot_del_output ()
+{
+	local sess_name=$1
+	local id=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot del-output -s $sess_name $id >/dev/null 2>&1
+	ok $? "Deleted snapshot output id $id"
+}
+
 function lttng_snapshot_record ()
 {
 	sess_name=$1
