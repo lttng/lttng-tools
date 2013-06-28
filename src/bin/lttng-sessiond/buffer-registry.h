@@ -71,7 +71,7 @@ struct buffer_reg_uid {
 	 * Keys to match this object in a hash table. The following three variables
 	 * identify a unique per UID buffer registry.
 	 */
-	int session_id;		/* Unique tracing session id. */
+	uint64_t session_id;	/* Unique tracing session id. */
 	int bits_per_long;	/* ABI */
 	uid_t uid;			/* Owner. */
 
@@ -88,20 +88,20 @@ struct buffer_reg_uid {
  * Registry object for per PID buffers.
  */
 struct buffer_reg_pid {
-	int session_id;
+	uint64_t session_id;
 
 	struct buffer_reg_session *registry;
 
 	/* Indexed by session id. */
-	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_u64 node;
 };
 
 /* Buffer registry per UID. */
 void buffer_reg_init_uid_registry(void);
-int buffer_reg_uid_create(int session_id, uint32_t bits_per_long, uid_t uid,
+int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid,
 		enum lttng_domain_type domain, struct buffer_reg_uid **regp);
 void buffer_reg_uid_add(struct buffer_reg_uid *reg);
-struct buffer_reg_uid *buffer_reg_uid_find(int session_id,
+struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
 		uint32_t bits_per_long, uid_t uid);
 void buffer_reg_uid_remove(struct buffer_reg_uid *regp);
 void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
@@ -109,9 +109,9 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 
 /* Buffer registry per PID. */
 void buffer_reg_init_pid_registry(void);
-int buffer_reg_pid_create(int session_id, struct buffer_reg_pid **regp);
+int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp);
 void buffer_reg_pid_add(struct buffer_reg_pid *reg);
-struct buffer_reg_pid *buffer_reg_pid_find(int session_id);
+struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id);
 void buffer_reg_pid_remove(struct buffer_reg_pid *regp);
 void buffer_reg_pid_destroy(struct buffer_reg_pid *regp);
 

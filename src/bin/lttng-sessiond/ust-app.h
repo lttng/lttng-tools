@@ -175,10 +175,10 @@ struct ust_app_session {
 	 * Tracing session ID. Multiple ust app session can have the same tracing
 	 * session id making this value NOT unique to the object.
 	 */
-	int tracing_id;
+	uint64_t tracing_id;
 	uint64_t id;	/* Unique session identifier */
 	struct lttng_ht *channels; /* Registered channels */
-	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_u64 node;
 	char path[PATH_MAX];
 	/* UID/GID of the application owning the session */
 	uid_t uid;
