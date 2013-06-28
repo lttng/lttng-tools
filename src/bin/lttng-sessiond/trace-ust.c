@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
@@ -181,7 +182,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_session *trace_ust_create_session(unsigned int session_id)
+struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 {
 	struct ltt_ust_session *lus;
 
@@ -646,7 +647,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	assert(session);
 
-	DBG2("Trace UST destroy session %u", session->id);
+	DBG2("Trace UST destroy session %" PRIu64, session->id);
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);

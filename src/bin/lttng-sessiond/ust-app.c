@@ -40,24 +40,38 @@
 #include "ust-ctl.h"
 #include "utils.h"
 
-/* Next available channel key. */
-static unsigned long next_channel_key;
-static unsigned long next_session_id;
+/* Next available channel key. Access under next_channel_key_lock. */
+static uint64_t _next_channel_key;
+static pthread_mutex_t next_channel_key_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Next available session ID. Access under next_session_id_lock. */
+static uint64_t _next_session_id;
+static pthread_mutex_t next_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*
- * Return the atomically incremented value of next_channel_key.
+ * Return the incremented value of next_channel_key.
  */
-static inline unsigned long get_next_channel_key(void)
+static uint64_t get_next_channel_key(void)
 {
-	return uatomic_add_return(&next_channel_key, 1);
+	uint64_t ret;
+
+	pthread_mutex_lock(&next_channel_key_lock);
+	ret = ++_next_channel_key;
+	pthread_mutex_unlock(&next_channel_key_lock);
+	return ret;
 }
 
 /*
  * Return the atomically incremented value of next_session_id.
  */
-static inline unsigned long get_next_session_id(void)
+static uint64_t get_next_session_id(void)
 {
-	return uatomic_add_return(&next_session_id, 1);
+	uint64_t ret;
+
+	pthread_mutex_lock(&next_session_id_lock);
+	ret = ++_next_session_id;
+	pthread_mutex_unlock(&next_session_id_lock);
+	return ret;
 }
 
 static void copy_channel_attr_to_ustctl(
@@ -1504,7 +1518,7 @@ void __lookup_session_by_app(struct ltt_ust_session *usess,
 			struct ust_app *app, struct lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
-	lttng_ht_lookup(app->sessions, (void *)((unsigned long) usess->id), iter);
+	lttng_ht_lookup(app->sessions, &usess->id, iter);
 }
 
 /*
@@ -1515,10 +1529,10 @@ static struct ust_app_session *lookup_session_by_app(
 		struct ltt_ust_session *usess, struct ust_app *app)
 {
 	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_node_u64 *node;
 
 	__lookup_session_by_app(usess, app, &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node == NULL) {
 		goto error;
 	}
@@ -1668,7 +1682,7 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == NULL) {
-		DBG2("UST app pid: %d session id %d not found, creating it",
+		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 				app->pid, usess->id);
 		ua_sess = alloc_ust_app_session(app);
 		if (ua_sess == NULL) {
@@ -1726,9 +1740,9 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 		ua_sess->handle = ret;
 
 		/* Add ust app session to app's HT */
-		lttng_ht_node_init_ulong(&ua_sess->node,
-				(unsigned long) ua_sess->tracing_id);
-		lttng_ht_add_unique_ulong(app->sessions, &ua_sess->node);
+		lttng_ht_node_init_u64(&ua_sess->node,
+				ua_sess->tracing_id);
+		lttng_ht_add_unique_u64(app->sessions, &ua_sess->node);
 
 		DBG2("UST app session created successfully with handle %d", ret);
 	}
@@ -1865,7 +1879,7 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_chan_node == NULL) {
-		DBG2("Unable to find channel %s in ust session id %u",
+		DBG2("Unable to find channel %s in ust session id %" PRIu64,
 				uchan->name, ua_sess->tracing_id);
 		goto error;
 	}
@@ -2720,7 +2734,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 
 	lta->v_major = msg->major;
 	lta->v_minor = msg->minor;
-	lta->sessions = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	lta->sessions = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	lta->ust_objd = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	lta->notify_sock = -1;
 
@@ -3189,7 +3203,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	DBG2("UST app disabling channel %s from global domain for session id %d",
+	DBG2("UST app disabling channel %s from global domain for session id %" PRIu64,
 			uchan->name, usess->id);
 
 	rcu_read_lock();
@@ -3250,7 +3264,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	DBG2("UST app enabling channel %s to global domain for session id %d",
+	DBG2("UST app enabling channel %s to global domain for session id %" PRIu64,
 			uchan->name, usess->id);
 
 	rcu_read_lock();
@@ -3298,7 +3312,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	DBG("UST app disabling event %s for all apps in channel "
-			"%s for session id %d", uevent->attr.name, uchan->name, usess->id);
+			"%s for session id %" PRIu64,
+			uevent->attr.name, uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -3321,7 +3336,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		if (ua_chan_node == NULL) {
-			DBG2("Channel %s not found in session id %d for app pid %d."
+			DBG2("Channel %s not found in session id %" PRIu64 " for app pid %d."
 					"Skipping", uchan->name, usess->id, app->pid);
 			continue;
 		}
@@ -3364,7 +3379,7 @@ int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	DBG("UST app disabling all event for all apps in channel "
-			"%s for session id %d", uchan->name, usess->id);
+			"%s for session id %" PRIu64, uchan->name, usess->id);
 
 	rcu_read_lock();
 
@@ -3422,7 +3437,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 	assert(usess);
 	assert(uchan);
 
-	DBG2("UST app adding channel %s to UST domain for session id %d",
+	DBG2("UST app adding channel %s to UST domain for session id %" PRIu64,
 			uchan->name, usess->id);
 
 	rcu_read_lock();
@@ -3502,7 +3517,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	DBG("UST app enabling event %s for all apps for session id %d",
+	DBG("UST app enabling event %s for all apps for session id %" PRIu64,
 			uevent->attr.name, usess->id);
 
 	/*
@@ -3575,7 +3590,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	DBG("UST app creating event %s for all apps for session id %d",
+	DBG("UST app creating event %s for all apps for session id %" PRIu64,
 			uevent->attr.name, usess->id);
 
 	rcu_read_lock();
@@ -3862,7 +3877,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	int ret;
 	struct ust_app_session *ua_sess;
 	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_node_u64 *node;
 
 	DBG("Destroy tracing for ust app pid %d", app->pid);
 
@@ -3873,7 +3888,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	__lookup_session_by_app(usess, app, &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node == NULL) {
 		/* Session is being or is deleted. */
 		goto end;
@@ -4036,7 +4051,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	assert(usess);
 	assert(sock >= 0);
 
-	DBG2("UST app global update for app sock %d for session id %d", sock,
+	DBG2("UST app global update for app sock %d for session id %" PRIu64, sock,
 			usess->id);
 
 	rcu_read_lock();

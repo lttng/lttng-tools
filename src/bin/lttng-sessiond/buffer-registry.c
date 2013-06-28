@@ -104,7 +104,7 @@ void buffer_reg_init_uid_registry(void)
  *
  * Return 0 on success else a negative value and regp is untouched.
  */
-int buffer_reg_uid_create(int session_id, uint32_t bits_per_long, uid_t uid,
+int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid,
 		enum lttng_domain_type domain, struct buffer_reg_uid **regp)
 {
 	int ret = 0;
@@ -140,7 +140,7 @@ int buffer_reg_uid_create(int session_id, uint32_t bits_per_long, uid_t uid,
 	cds_lfht_node_init(&reg->node.node);
 	*regp = reg;
 
-	DBG3("Buffer registry per UID created id: %d, ABI: %u, uid: %d, domain: %d",
+	DBG3("Buffer registry per UID created id: %" PRIu64 ", ABI: %u, uid: %d, domain: %d",
 			session_id, bits_per_long, uid, domain);
 
 	return 0;
@@ -162,7 +162,7 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
 
 	assert(reg);
 
-	DBG3("Buffer registry per UID adding to global registry with id: %d",
+	DBG3("Buffer registry per UID adding to global registry with id: %" PRIu64 ,
 			reg->session_id);
 
 	rcu_read_lock();
@@ -178,7 +178,7 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
  *
  * Return the object pointer or NULL on error.
  */
-struct buffer_reg_uid *buffer_reg_uid_find(int session_id,
+struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
 		uint32_t bits_per_long, uid_t uid)
 {
 	struct lttng_ht_node_u64 *node;
@@ -191,7 +191,7 @@ struct buffer_reg_uid *buffer_reg_uid_find(int session_id,
 	key.bits_per_long = bits_per_long;
 	key.uid = uid;
 
-	DBG3("Buffer registry per UID find id: %d, ABI: %u, uid: %d",
+	DBG3("Buffer registry per UID find id: %" PRIu64 ", ABI: %u, uid: %d",
 			session_id, bits_per_long, uid);
 
 	/* Custom lookup function since it's a different key. */
@@ -214,7 +214,7 @@ void buffer_reg_init_pid_registry(void)
 {
 	/* Should be called once. */
 	assert(!buffer_registry_pid);
-	buffer_registry_pid = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	buffer_registry_pid = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	assert(buffer_registry_pid);
 
 	DBG3("Global buffer per PID registry initialized");
@@ -225,7 +225,7 @@ void buffer_reg_init_pid_registry(void)
  *
  * Return 0 on success else a negative value and regp is untouched.
  */
-int buffer_reg_pid_create(int session_id, struct buffer_reg_pid **regp)
+int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp)
 {
 	int ret = 0;
 	struct buffer_reg_pid *reg = NULL;
@@ -255,10 +255,11 @@ int buffer_reg_pid_create(int session_id, struct buffer_reg_pid **regp)
 		goto error_session;
 	}
 
-	lttng_ht_node_init_ulong(&reg->node, reg->session_id);
+	lttng_ht_node_init_u64(&reg->node, reg->session_id);
 	*regp = reg;
 
-	DBG3("Buffer registry per PID created with session id: %d", session_id);
+	DBG3("Buffer registry per PID created with session id: %" PRIu64,
+			session_id);
 
 	return 0;
 
@@ -276,11 +277,11 @@ void buffer_reg_pid_add(struct buffer_reg_pid *reg)
 {
 	assert(reg);
 
-	DBG3("Buffer registry per PID adding to global registry with id: %d",
+	DBG3("Buffer registry per PID adding to global registry with id: %" PRIu64,
 			reg->session_id);
 
 	rcu_read_lock();
-	lttng_ht_add_unique_ulong(buffer_registry_pid, &reg->node);
+	lttng_ht_add_unique_u64(buffer_registry_pid, &reg->node);
 	rcu_read_unlock();
 }
 
@@ -290,17 +291,17 @@ void buffer_reg_pid_add(struct buffer_reg_pid *reg)
  *
  * Return the object pointer or NULL on error.
  */
-struct buffer_reg_pid *buffer_reg_pid_find(int session_id)
+struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id)
 {
-	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 	struct buffer_reg_pid *reg = NULL;
 	struct lttng_ht *ht = buffer_registry_pid;
 
-	DBG3("Buffer registry per PID find id: %d", session_id);
+	DBG3("Buffer registry per PID find id: %" PRIu64, session_id);
 
-	lttng_ht_lookup(ht, (void *)((unsigned long) session_id), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	lttng_ht_lookup(ht, &session_id, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
 		goto end;
 	}
@@ -594,8 +595,8 @@ static void rcu_free_buffer_reg_uid(struct rcu_head *head)
 
 static void rcu_free_buffer_reg_pid(struct rcu_head *head)
 {
-	struct lttng_ht_node_ulong *node =
-		caa_container_of(head, struct lttng_ht_node_ulong, head);
+	struct lttng_ht_node_u64 *node =
+		caa_container_of(head, struct lttng_ht_node_u64, head);
 	struct buffer_reg_pid *reg =
 		caa_container_of(node, struct buffer_reg_pid, node);
 
@@ -617,7 +618,7 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 		return;
 	}
 
-	DBG3("Buffer registry per UID destroy with id: %d, ABI: %u, uid: %d",
+	DBG3("Buffer registry per UID destroy with id: %" PRIu64 ", ABI: %u, uid: %d",
 			regp->session_id, regp->bits_per_long, regp->uid);
 
 	if (!consumer) {
@@ -679,7 +680,8 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 		return;
 	}
 
-	DBG3("Buffer registry per PID destroy with id: %d", regp->session_id);
+	DBG3("Buffer registry per PID destroy with id: %" PRIu64,
+			regp->session_id);
 
 	/* This registry is only used by UST. */
 	call_rcu(&regp->node.head, rcu_free_buffer_reg_pid);

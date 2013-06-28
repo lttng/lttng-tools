@@ -79,7 +79,7 @@ struct ltt_ust_domain_global {
 
 /* UST session */
 struct ltt_ust_session {
-	int id;    /* Unique identifier of session */
+	uint64_t id;    /* Unique identifier of session */
 	int start_trace;
 	struct ltt_ust_domain_global domain_global;
 	/* UID/GID of the user owning the session */
@@ -155,7 +155,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 /*
  * Create functions malloc() the data structure.
  */
-struct ltt_ust_session *trace_ust_create_session(unsigned int session_id);
+struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		struct lttng_filter_bytecode *filter);
