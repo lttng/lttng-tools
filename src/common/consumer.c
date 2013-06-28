@@ -164,20 +164,20 @@ static struct lttng_consumer_stream *find_stream(uint64_t key,
 	return stream;
 }
 
-static void steal_stream_key(int key, struct lttng_ht *ht)
+static void steal_stream_key(uint64_t key, struct lttng_ht *ht)
 {
 	struct lttng_consumer_stream *stream;
 
 	rcu_read_lock();
 	stream = find_stream(key, ht);
 	if (stream) {
-		stream->key = -1ULL;
+		stream->key = (uint64_t) -1ULL;
 		/*
 		 * We don't want the lookup to match, but we still need
 		 * to iterate on this stream when iterating over the hash table. Just
 		 * change the node key.
 		 */
-		stream->node.key = -1ULL;
+		stream->node.key = (uint64_t) -1ULL;
 	}
 	rcu_read_unlock();
 }
@@ -352,13 +352,13 @@ static void cleanup_relayd_ht(void)
  * It's atomically set without having the stream mutex locked which is fine
  * because we handle the write/read race with a pipe wakeup for each thread.
  */
-static void update_endpoint_status_by_netidx(int net_seq_idx,
+static void update_endpoint_status_by_netidx(uint64_t net_seq_idx,
 		enum consumer_endpoint_status status)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
-	DBG("Consumer set delete flag on stream by idx %d", net_seq_idx);
+	DBG("Consumer set delete flag on stream by idx %" PRIu64, net_seq_idx);
 
 	rcu_read_lock();
 
@@ -391,7 +391,7 @@ static void update_endpoint_status_by_netidx(int net_seq_idx,
 static void cleanup_relayd(struct consumer_relayd_sock_pair *relayd,
 		struct lttng_consumer_local_data *ctx)
 {
-	int netidx;
+	uint64_t netidx;
 
 	assert(relayd);
 
@@ -727,12 +727,12 @@ end:
  * Allocate and return a consumer relayd socket.
  */
 struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
-		int net_seq_idx)
+		uint64_t net_seq_idx)
 {
 	struct consumer_relayd_sock_pair *obj = NULL;
 
-	/* Negative net sequence index is a failure */
-	if (net_seq_idx < 0) {
+	/* net sequence index of -1 is a failure */
+	if (net_seq_idx == (uint64_t) -1ULL) {
 		goto error;
 	}
 
@@ -1333,7 +1333,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	rcu_read_lock();
 
 	/* Flag that the current stream if set for network streaming. */
-	if (stream->net_seq_idx != -1) {
+	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
 			goto end;
@@ -1532,7 +1532,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 	rcu_read_lock();
 
 	/* Flag that the current stream if set for network streaming. */
-	if (stream->net_seq_idx != -1) {
+	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
 			goto end;
@@ -3071,7 +3071,7 @@ void lttng_consumer_init(void)
  * This will create a relayd socket pair and add it to the relayd hash table.
  * The caller MUST acquire a RCU read side lock before calling it.
  */
-int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
+int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll,
 		struct lttcomm_relayd_sock *relayd_sock, unsigned int sessiond_id)
@@ -3083,11 +3083,12 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 	assert(ctx);
 	assert(relayd_sock);
 
-	DBG("Consumer adding relayd socket (idx: %d)", net_seq_idx);
+	DBG("Consumer adding relayd socket (idx: %" PRIu64 ")", net_seq_idx);
 
 	/* Get relayd reference if exists. */
 	relayd = consumer_find_relayd(net_seq_idx);
 	if (relayd == NULL) {
+		assert(sock_type == LTTNG_STREAM_CONTROL);
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
@@ -3103,6 +3104,11 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		 * we can notify the session daemon and continue our work without
 		 * killing everything.
 		 */
+	} else {
+		/*
+		 * relayd key should never be found for control socket.
+		 */
+		assert(sock_type != LTTNG_STREAM_CONTROL);
 	}
 
 	/* First send a status message before receiving the fds. */
@@ -3157,15 +3163,17 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		/* Copy received lttcomm socket */
 		lttcomm_copy_sock(&relayd->control_sock.sock, &relayd_sock->sock);
 		ret = lttcomm_create_sock(&relayd->control_sock.sock);
-		/* Immediately try to close the created socket if valid. */
-		if (relayd->control_sock.sock.fd >= 0) {
-			if (close(relayd->control_sock.sock.fd)) {
-				PERROR("close relayd control socket");
-			}
-		}
 		/* Handle create_sock error. */
 		if (ret < 0) {
 			goto error;
+		}
+		/*
+		 * Close the socket created internally by
+		 * lttcomm_create_sock, so we can replace it by the one
+		 * received from sessiond.
+		 */
+		if (close(relayd->control_sock.sock.fd)) {
+			PERROR("close");
 		}
 
 		/* Assign new file descriptor */
@@ -3203,15 +3211,17 @@ int consumer_add_relayd_socket(int net_seq_idx, int sock_type,
 		/* Copy received lttcomm socket */
 		lttcomm_copy_sock(&relayd->data_sock.sock, &relayd_sock->sock);
 		ret = lttcomm_create_sock(&relayd->data_sock.sock);
-		/* Immediately try to close the created socket if valid. */
-		if (relayd->data_sock.sock.fd >= 0) {
-			if (close(relayd->data_sock.sock.fd)) {
-				PERROR("close relayd data socket");
-			}
-		}
 		/* Handle create_sock error. */
 		if (ret < 0) {
 			goto error;
+		}
+		/*
+		 * Close the socket created internally by
+		 * lttcomm_create_sock, so we can replace it by the one
+		 * received from sessiond.
+		 */
+		if (close(relayd->data_sock.sock.fd)) {
+			PERROR("close");
 		}
 
 		/* Assign new file descriptor */

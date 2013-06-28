@@ -113,7 +113,7 @@ error:
  */
 static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		const char *pathname, const char *name, uid_t uid, gid_t gid,
-		int relayd_id, uint64_t key, enum lttng_event_output output,
+		uint64_t relayd_id, uint64_t key, enum lttng_event_output output,
 		uint64_t tracefile_size, uint64_t tracefile_count,
 		uint64_t session_id_per_pid)
 {
