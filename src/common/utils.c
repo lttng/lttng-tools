@@ -441,6 +441,7 @@ static void regex_print_error(int errcode, regex_t *regex)
  *
  * @return 0 on success, -1 on failure.
  */
+LTTNG_HIDDEN
 int utils_parse_size_suffix(char *str, uint64_t *size)
 {
 	regex_t regex;
@@ -586,6 +587,7 @@ int utils_get_count_order_u32(uint32_t x)
  * Obtain the value of LTTNG_HOME environment variable, if exists.
  * Otherwise returns the value of HOME.
  */
+LTTNG_HIDDEN
 char *utils_get_home_dir(void)
 {
 	char *val = NULL;
