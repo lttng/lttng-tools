@@ -377,10 +377,12 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		delete_ust_app_event(sock, ua_event);
 	}
 
-	/* Wipe and free registry from session registry. */
-	registry = get_session_registry(ua_chan->session);
-	if (registry) {
-		ust_registry_channel_del_free(registry, ua_chan->key);
+	if (ua_chan->session->buffer_type == LTTNG_BUFFER_PER_PID) {
+		/* Wipe and free registry from session registry. */
+		registry = get_session_registry(ua_chan->session);
+		if (registry) {
+			ust_registry_channel_del_free(registry, ua_chan->key);
+		}
 	}
 
 	if (ua_chan->obj != NULL) {
