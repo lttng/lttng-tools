@@ -124,6 +124,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_ENOMEM,                   /* Consumer is out of memory */
 	LTTCOMM_CONSUMERD_ERROR_METADATA,           /* Error with metadata. */
 	LTTCOMM_CONSUMERD_FATAL,                    /* Fatal error. */
+	LTTCOMM_CONSUMERD_RELAYD_FAIL,              /* Error on remote relayd */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */

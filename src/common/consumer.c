@@ -3017,8 +3017,9 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
-			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
 			ret = -ENOMEM;
+			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
+			goto error;
 		} else {
 			relayd->sessiond_session_id = (uint64_t) sessiond_id;
 			relayd_created = 1;
@@ -3037,23 +3038,23 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	}
 
 	/* First send a status message before receiving the fds. */
-	ret = consumer_send_status_msg(sock, ret_code);
-	if (ret < 0 || ret_code != LTTNG_OK) {
+	ret = consumer_send_status_msg(sock, LTTNG_OK);
+	if (ret < 0) {
 		/* Somehow, the session daemon is not responding anymore. */
-		goto error;
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
+		goto error_nosignal;
 	}
 
 	/* Poll on consumer socket. */
 	if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
 		ret = -EINTR;
-		goto error;
+		goto error_nosignal;
 	}
 
 	/* Get relayd socket from session daemon */
 	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 	if (ret != sizeof(fd)) {
-		ret_code = LTTCOMM_CONSUMERD_ERROR_RECV_FD;
 		ret = -1;
 		fd = -1;	/* Just in case it gets set with an invalid value. */
 
@@ -3067,18 +3068,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		 * issue when reaching the fd limit.
 		 */
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
-
-		/*
-		 * This code path MUST continue to the consumer send status message so
-		 * we can send the error to the thread expecting a reply. The above
-		 * call will make everything stop.
-		 */
-	}
-
-	/* We have the fds without error. Send status back. */
-	ret = consumer_send_status_msg(sock, ret_code);
-	if (ret < 0 || ret_code != LTTNG_OK) {
-		/* Somehow, the session daemon is not responding anymore. */
+		ret_code = LTTCOMM_CONSUMERD_ERROR_RECV_FD;
 		goto error;
 	}
 
@@ -3090,6 +3080,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		ret = lttcomm_create_sock(&relayd->control_sock.sock);
 		/* Handle create_sock error. */
 		if (ret < 0) {
+			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
 			goto error;
 		}
 		/*
@@ -3128,6 +3119,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 			 */
 			(void) relayd_close(&relayd->control_sock);
 			(void) relayd_close(&relayd->data_sock);
+			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 			goto error;
 		}
 
@@ -3138,6 +3130,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		ret = lttcomm_create_sock(&relayd->data_sock.sock);
 		/* Handle create_sock error. */
 		if (ret < 0) {
+			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
 			goto error;
 		}
 		/*
@@ -3159,12 +3152,21 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	default:
 		ERR("Unknown relayd socket type (%d)", sock_type);
 		ret = -1;
+		ret_code = LTTCOMM_CONSUMERD_FATAL;
 		goto error;
 	}
 
 	DBG("Consumer %s socket created successfully with net idx %" PRIu64 " (fd: %d)",
 			sock_type == LTTNG_STREAM_CONTROL ? "control" : "data",
 			relayd->net_seq_idx, fd);
+
+	/* We successfully added the socket. Send status back. */
+	ret = consumer_send_status_msg(sock, ret_code);
+	if (ret < 0) {
+		/* Somehow, the session daemon is not responding anymore. */
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
+		goto error_nosignal;
+	}
 
 	/*
 	 * Add relayd socket pair to consumer data hashtable. If object already
@@ -3176,6 +3178,11 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	return 0;
 
 error:
+	if (consumer_send_status_msg(sock, ret_code) < 0) {
+		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
+	}
+
+error_nosignal:
 	/* Close received socket if valid. */
 	if (fd >= 0) {
 		if (close(fd)) {
