@@ -47,7 +47,7 @@ struct ltt_session_list {
 	 * Session unique ID generator. The session list lock MUST be
 	 * upon update and read of this counter.
 	 */
-	unsigned int next_uuid;
+	uint64_t next_uuid;
 
 	/* Linked list head */
 	struct cds_list_head head;
@@ -69,7 +69,7 @@ struct ltt_session {
 	pthread_mutex_t lock;
 	struct cds_list_head list;
 	int enabled;	/* enabled/started flag */
-	unsigned int id;		/* session unique identifier */
+	uint64_t id;		/* session unique identifier */
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;

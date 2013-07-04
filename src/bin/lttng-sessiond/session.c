@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <limits.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,7 +55,7 @@ static struct ltt_session_list ltt_session_list = {
  * The caller MUST acquire the session list lock before.
  * Returns the unique identifier for the session.
  */
-static unsigned int add_session_list(struct ltt_session *ls)
+static uint64_t add_session_list(struct ltt_session *ls)
 {
 	assert(ls);
 
@@ -219,8 +220,8 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	 * up and, if valid, assign it to the session.
 	 */
 
-	DBG("Tracing session %s created with ID %u by UID %d GID %d", name,
-			new_session->id, new_session->uid, new_session->gid);
+	DBG("Tracing session %s created with ID %" PRIu64 " by UID %d GID %d",
+			name, new_session->id, new_session->uid, new_session->gid);
 
 	return LTTNG_OK;
 
