@@ -216,6 +216,14 @@ struct lttng_consumer_stream {
 	gid_t gid;
 	/* Network sequence number. Indicating on which relayd socket it goes. */
 	uint64_t net_seq_idx;
+	/*
+	 * Indicate if this stream was successfully sent to a relayd. This is set
+	 * after the refcount of the relayd is incremented and is checked when the
+	 * stream is closed before decrementing the refcount in order to avoid an
+	 * unbalanced state.
+	 */
+	unsigned int sent_to_relayd;
+
 	/* Identify if the stream is the metadata */
 	unsigned int metadata_flag;
 	/* Used when the stream is set for network streaming */

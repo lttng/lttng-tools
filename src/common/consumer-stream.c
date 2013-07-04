@@ -58,8 +58,10 @@ void consumer_stream_relayd_close(struct lttng_consumer_stream *stream,
 	assert(stream);
 	assert(relayd);
 
-	uatomic_dec(&relayd->refcount);
-	assert(uatomic_read(&relayd->refcount) >= 0);
+	if (stream->sent_to_relayd) {
+		uatomic_dec(&relayd->refcount);
+		assert(uatomic_read(&relayd->refcount) >= 0);
+	}
 
 	/* Closing streams requires to lock the control socket. */
 	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
@@ -82,6 +84,7 @@ void consumer_stream_relayd_close(struct lttng_consumer_stream *stream,
 		consumer_destroy_relayd(relayd);
 	}
 	stream->net_seq_idx = (uint64_t) -1ULL;
+	stream->sent_to_relayd = 0;
 }
 
 /*

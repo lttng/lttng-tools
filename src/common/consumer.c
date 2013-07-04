@@ -540,7 +540,6 @@ static int add_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht)
 {
 	int ret = 0;
-	struct consumer_relayd_sock_pair *relayd;
 
 	assert(stream);
 	assert(ht);
@@ -565,12 +564,6 @@ static int add_stream(struct lttng_consumer_stream *stream,
 	 * into this table.
 	 */
 	lttng_ht_add_u64(consumer_data.stream_list_ht, &stream->node_session_id);
-
-	/* Check and cleanup relayd */
-	relayd = consumer_find_relayd(stream->net_seq_idx);
-	if (relayd != NULL) {
-		uatomic_inc(&relayd->refcount);
-	}
 
 	/*
 	 * When nb_init_stream_left reaches 0, we don't need to trigger any action
@@ -709,6 +702,7 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream,
 			goto end;
 		}
 		uatomic_inc(&relayd->refcount);
+		stream->sent_to_relayd = 1;
 	} else {
 		ERR("Stream %" PRIu64 " relayd ID %" PRIu64 " unknown. Can't send it.",
 				stream->key, stream->net_seq_idx);
@@ -1969,7 +1963,6 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht)
 {
 	int ret = 0;
-	struct consumer_relayd_sock_pair *relayd;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 
@@ -1995,12 +1988,6 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 	lttng_ht_lookup(ht, &stream->key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	assert(!node);
-
-	/* Find relayd and, if one is found, increment refcount. */
-	relayd = consumer_find_relayd(stream->net_seq_idx);
-	if (relayd != NULL) {
-		uatomic_inc(&relayd->refcount);
-	}
 
 	/*
 	 * When nb_init_stream_left reaches 0, we don't need to trigger any action

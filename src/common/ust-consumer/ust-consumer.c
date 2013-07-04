@@ -210,42 +210,6 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 }
 
 /*
- * Search for a relayd object related to the stream. If found, send the stream
- * to the relayd.
- *
- * On success, returns 0 else a negative value.
- */
-static int send_stream_to_relayd(struct lttng_consumer_stream *stream)
-{
-	int ret = 0;
-	struct consumer_relayd_sock_pair *relayd;
-
-	assert(stream);
-
-	relayd = consumer_find_relayd(stream->net_seq_idx);
-	if (relayd != NULL) {
-		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-		/* Add stream on the relayd */
-		ret = relayd_add_stream(&relayd->control_sock, stream->name,
-				stream->chan->pathname, &stream->relayd_stream_id,
-				stream->chan->tracefile_size,
-				stream->chan->tracefile_count);
-		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-		if (ret < 0) {
-			goto error;
-		}
-	} else if (stream->net_seq_idx != (uint64_t) -1ULL) {
-		ERR("Network sequence index %" PRIu64 " unknown. Not adding stream.",
-				stream->net_seq_idx);
-		ret = -1;
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-/*
  * Create streams for the given channel using liblttng-ust-ctl.
  *
  * Return 0 on success else a negative value.
@@ -411,7 +375,7 @@ static int send_sessiond_channel(int sock,
 
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
 		/* Try to send the stream to the relayd if one is available. */
-		ret = send_stream_to_relayd(stream);
+		ret = consumer_send_relayd_stream(stream, stream->chan->pathname);
 		if (ret < 0) {
 			/*
 			 * Flag that the relayd was the problem here probably due to a
@@ -737,7 +701,8 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	}
 
 	/* Send metadata stream to relayd if needed. */
-	ret = send_stream_to_relayd(metadata->metadata_stream);
+	ret = consumer_send_relayd_stream(metadata->metadata_stream,
+			metadata->pathname);
 	if (ret < 0) {
 		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
 		goto error;
