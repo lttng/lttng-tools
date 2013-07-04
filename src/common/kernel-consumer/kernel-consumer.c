@@ -626,10 +626,13 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			break;
 		}
 
-		ret = consumer_send_relayd_stream(new_stream, NULL);
-		if (ret < 0) {
-			consumer_stream_free(new_stream);
-			goto end_nosignal;
+		/* Send stream to relayd if the stream has an ID. */
+		if (new_stream->net_seq_idx != (uint64_t) -1ULL) {
+			ret = consumer_send_relayd_stream(new_stream, NULL);
+			if (ret < 0) {
+				consumer_stream_free(new_stream);
+				goto end_nosignal;
+			}
 		}
 
 		/* Get the right pipe where the stream will be sent. */
