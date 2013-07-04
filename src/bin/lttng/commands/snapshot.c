@@ -348,6 +348,7 @@ static int record(const char *url)
 	}
 
 error:
+	lttng_snapshot_output_destroy(output);
 	return ret;
 }
 
