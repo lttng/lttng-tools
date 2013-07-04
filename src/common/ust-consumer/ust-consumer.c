@@ -824,12 +824,12 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	if (ret != sizeof(msg)) {
 		DBG("Consumer received unexpected message size %zd (expects %zu)",
 			ret, sizeof(msg));
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 		/*
 		 * The ret value might 0 meaning an orderly shutdown but this is ok
 		 * since the caller handles this.
 		 */
 		if (ret > 0) {
+			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 			ret = -1;
 		}
 		return ret;
