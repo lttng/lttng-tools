@@ -465,7 +465,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t session_id,
 		int cpu,
 		int *alloc_ret,
-		enum consumer_channel_type type)
+		enum consumer_channel_type type,
+		unsigned int monitor)
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
@@ -487,6 +488,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->gid = gid;
 	stream->net_seq_idx = relayd_id;
 	stream->session_id = session_id;
+	stream->monitor = monitor;
 	pthread_mutex_init(&stream->lock, NULL);
 
 	/* If channel is the metadata, flag this stream as metadata. */

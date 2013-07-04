@@ -152,7 +152,8 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 			channel->session_id,
 			cpu,
 			&alloc_ret,
-			channel->type);
+			channel->type,
+			channel->monitor);
 	if (stream == NULL) {
 		switch (alloc_ret) {
 		case -ENOENT:
@@ -559,6 +560,12 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 
 		/* Remove node from the channel stream list. */
 		cds_list_del(&stream->send_node);
+
+		/*
+		 * From this point on, the stream's ownership has been moved away from
+		 * the channel and becomes globally visible.
+		 */
+		stream->globally_visible = 1;
 	}
 
 error:

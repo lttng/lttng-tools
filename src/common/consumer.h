@@ -259,6 +259,18 @@ struct lttng_consumer_stream {
 	/* On-disk circular buffer */
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count_current;
+	/*
+	 * Monitor or not the streams of this channel meaning this indicates if the
+	 * streams should be sent to the data/metadata thread or added to the no
+	 * monitor list of the channel.
+	 */
+	unsigned int monitor;
+	/*
+	 * Indicate if the stream is globally visible meaning that it has been
+	 * added to the multiple hash tables. If *not* set, NO lock should be
+	 * acquired in the destroy path.
+	 */
+	unsigned int globally_visible;
 };
 
 /*
@@ -478,7 +490,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t session_id,
 		int cpu,
 		int *alloc_ret,
-		enum consumer_channel_type type);
+		enum consumer_channel_type type,
+		unsigned int monitor);
 struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t session_id,
 		const char *pathname,

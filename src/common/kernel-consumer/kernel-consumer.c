@@ -559,7 +559,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				channel->session_id,
 				msg.u.stream.cpu,
 				&alloc_ret,
-				channel->type);
+				channel->type,
+				channel->monitor);
 		if (new_stream == NULL) {
 			switch (alloc_ret) {
 			case -ENOMEM:
