@@ -956,11 +956,12 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 	return 0;
 
 error_close_fd:
-	{
+	if (stream->out_fd >= 0) {
 		int err;
 
 		err = close(stream->out_fd);
 		assert(!err);
+		stream->out_fd = -1;
 	}
 error:
 	return ret;
