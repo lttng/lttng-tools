@@ -2291,7 +2291,11 @@ void *consumer_thread_data_poll(void *data)
 		goto end;
 	}
 
-	local_stream = zmalloc(sizeof(struct lttng_consumer_stream));
+	local_stream = zmalloc(sizeof(struct lttng_consumer_stream *));
+	if (local_stream == NULL) {
+		PERROR("local_stream malloc");
+		goto end;
+	}
 
 	while (1) {
 		high_prio = 0;
