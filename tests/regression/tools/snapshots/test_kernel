@@ -48,7 +48,7 @@ function test_kernel_local_snapshot ()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/snapshot/
+	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
@@ -70,7 +70,7 @@ function test_kernel_local_snapshot_after_stop ()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/snapshot/
+	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
@@ -81,8 +81,8 @@ function test_kernel_local_snapshot_after_stop ()
 
 function test_kernel_local_snapshot_append_to_metadata ()
 {
-	EVENT1=sched_switch
-	EVENT2=sched_process_exec
+	local EVENT1=sched_switch
+	local EVENT2=sched_process_exit
 
 	diag "Test local kernel snapshots with one event $EVENT1"
 	create_lttng_session_no_output $SESSION_NAME
@@ -93,7 +93,7 @@ function test_kernel_local_snapshot_append_to_metadata ()
 
 	# first snapshot with only 1 event
 	lttng_snapshot_record $SESSION_NAME
-	validate_trace $EVENT_NAME $TRACE_PATH/snapshot/
+	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
@@ -106,7 +106,7 @@ function test_kernel_local_snapshot_append_to_metadata ()
 	lttng_enable_kernel_event $SESSION_NAME $EVENT2 $CHANNEL_NAME
 	rm -rf $TRACE_PATH/snapshot/* 2>/dev/null
 	lttng_snapshot_record $SESSION_NAME
-	validate_trace "${EVENT1},${EVENT2}" $TRACE_PATH/snapshot/
+	validate_trace "${EVENT1},${EVENT2}" $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
@@ -133,7 +133,7 @@ function test_kernel_1000_local_snapshots ()
 		rm -rf $TRACE_PATH/snapshot/* 2>/dev/null
 		lttng_snapshot_record $SESSION_NAME
 		# Validate test
-		validate_trace $EVENT_NAME $TRACE_PATH/snapshot/
+		validate_trace $EVENT_NAME $TRACE_PATH/
 		if [ $? -eq 0 ]; then
 			# Only delete if successful
 			rm -rf $TRACE_PATH
