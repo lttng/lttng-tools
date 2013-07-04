@@ -1,0 +1,185 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="Streaming - Snapshot UST tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+EVENT_NAME="tp:tptest"
+PID_RELAYD=0
+SESSION_NAME=""
+CHANNEL_NAME="chan1"
+BIN_NAME="gen-nevents"
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NR_ITER=2000000
+NR_USEC_WAIT=100
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=39
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+function snapshot_add_output ()
+{
+	local sess_name=$1
+	local trace_path=$2
+	local name=$3
+	local extra_opt=""
+
+	if [ ! -z $name ]; then
+		extra_opt="-n $name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name $extra_opt $trace_path >/dev/null 2>&1
+	ok $? "Added snapshot output $trace_path"
+}
+
+# Test a snapshot using a default name for the output destination.
+function test_ust_default_name_with_del()
+{
+	diag "Test UST snapshot streaming with default name with delete output"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	ok $? "Start application to trace"
+	snapshot_add_output $SESSION_NAME "net://localhost"
+	lttng_snapshot_record $SESSION_NAME
+
+	# Validate test
+	echo $TRACE_PATH/$HOSTNAME/snapshot-1
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	lttng_snapshot_del_output $SESSION_NAME 1
+	snapshot_add_output $SESSION_NAME "net://localhost"
+	lttng_snapshot_record $SESSION_NAME
+
+	# Validate test with the next ID since a del output was done prior.
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+
+	return 0
+}
+
+# Test a snapshot using a default name for the output destination.
+function test_ust_default_name()
+{
+	diag "Test UST snapshot streaming with default name"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	ok $? "Start application to trace"
+	snapshot_add_output $SESSION_NAME "net://localhost"
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+	# Validate test
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	out=$?
+
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+
+	return $out
+}
+
+# Test a snapshot using a custom name for the output destination.
+function test_ust_custom_name()
+{
+	local out
+	local name="asnapshotname"
+
+	diag "Test UST snapshot streaming with custom name"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	ok $? "Start application to trace"
+	snapshot_add_output $SESSION_NAME "net://localhost" $name
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then
+		ok 0 "Custom name snapshot exists"
+		# Validate test
+		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$name-*
+		out=$?
+	else
+		fail "No custom name snapshot found"
+		out=1
+	fi
+
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+
+	return $out
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_sessiond
+
+tests=( test_ust_default_name_with_del test_ust_default_name test_ust_custom_name )
+
+for fct_test in ${tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test}
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	else
+		break
+	fi
+done
+
+stop_lttng_sessiond
+stop_lttng_relayd

@@ -233,12 +233,29 @@ function enable_lttng_mmap_overwrite_kernel_channel()
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
+function enable_lttng_mmap_overwrite_ust_channel()
+{
+	sess_name=$1
+	channel_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -u --output mmap --overwrite >/dev/null 2>&1
+	ok $? "Enable channel $channel_name for session $sess_name"
+}
+
 function enable_ust_lttng_event ()
 {
 	sess_name=$1
 	event_name="$2"
+	channel_name=$3
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u >/dev/null 2>&1
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -u >/dev/null 2>&1
 	ok $? "Enable event $event_name for session $sess_name"
 }
 
@@ -367,7 +384,7 @@ function validate_trace
 	for i in $event_name; do
 		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
 		if [ "$traced" -ne 0 ]; then
-			pass "Validate trace for event $i"
+			pass "Validate trace for event $i, $traced events"
 		else
 			fail "Validate trace for event $i"
 			diag "Found $traced occurences of $i"

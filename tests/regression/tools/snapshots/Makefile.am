@@ -1,2 +1,2 @@
-noinst_SCRIPTS = test_kernel
-EXTRA_DIST = test_kernel
+noinst_SCRIPTS = test_kernel test_kernel_streaming test_ust test_ust_streaming
+EXTRA_DIST = test_kernel test_kernel_streaming test_ust test_ust_streaming
