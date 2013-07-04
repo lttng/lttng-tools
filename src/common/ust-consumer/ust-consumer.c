@@ -726,7 +726,7 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	if (cds_list_empty(&metadata->streams.head)) {
 		ERR("Metadata channel key %" PRIu64 ", no stream available.", key);
 		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
-		goto error;
+		goto error_no_stream;
 	}
 
 	/* Send metadata stream to relayd if needed. */
@@ -758,7 +758,9 @@ error:
 	 * the stream is still in the local stream list of the channel. This call
 	 * will make sure to clean that list.
 	 */
-	consumer_del_channel(metadata);
+	cds_list_del(&metadata->metadata_stream->send_node);
+	consumer_stream_destroy(metadata->metadata_stream, NULL);
+error_no_stream:
 end:
 	return ret;
 }
