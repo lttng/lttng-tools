@@ -260,12 +260,14 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 		}
 
 		if (relayd_id == (uint64_t) -1ULL) {
-			ret = close(stream->out_fd);
-			if (ret < 0) {
-				PERROR("Kernel consumer snapshot close out_fd");
-				goto end_unlock;
+			if (stream->out_fd >= 0) {
+				ret = close(stream->out_fd);
+				if (ret < 0) {
+					PERROR("Kernel consumer snapshot close out_fd");
+					goto end_unlock;
+				}
+				stream->out_fd = -1;
 			}
-			stream->out_fd = -1;
 		} else {
 			close_relayd_stream(stream);
 			stream->net_seq_idx = (uint64_t) -1ULL;
@@ -357,15 +359,17 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 		close_relayd_stream(metadata_stream);
 		metadata_stream->net_seq_idx = (uint64_t) -1ULL;
 	} else {
-		ret = close(metadata_stream->out_fd);
-		if (ret < 0) {
-			PERROR("Kernel consumer snapshot metadata close out_fd");
-			/*
-			 * Don't go on error here since the snapshot was successful at this
-			 * point but somehow the close failed.
-			 */
+		if (metadata_stream->out_fd >= 0) {
+			ret = close(metadata_stream->out_fd);
+			if (ret < 0) {
+				PERROR("Kernel consumer snapshot metadata close out_fd");
+				/*
+				 * Don't go on error here since the snapshot was successful at this
+				 * point but somehow the close failed.
+				 */
+			}
+			metadata_stream->out_fd = -1;
 		}
-		metadata_stream->out_fd = -1;
 	}
 
 	ret = 0;
