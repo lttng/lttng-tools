@@ -656,6 +656,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_stream_free(new_stream);
 			goto end_nosignal;
 		}
+		/* Successfully sent to the right thread. */
+		new_stream->globally_visible = 1;
 
 		DBG("Kernel consumer ADD_STREAM %s (fd: %d) with relayd id %" PRIu64,
 				new_stream->name, fd, new_stream->relayd_stream_id);
