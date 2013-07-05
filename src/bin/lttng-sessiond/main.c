@@ -391,6 +391,51 @@ static void stop_threads(void)
 }
 
 /*
+ * Close every consumer sockets.
+ */
+static void close_consumer_sockets(void)
+{
+	int ret;
+
+	if (kconsumer_data.err_sock >= 0) {
+		ret = close(kconsumer_data.err_sock);
+		if (ret < 0) {
+			PERROR("kernel consumer err_sock close");
+		}
+	}
+	if (ustconsumer32_data.err_sock >= 0) {
+		ret = close(ustconsumer32_data.err_sock);
+		if (ret < 0) {
+			PERROR("UST consumer32 err_sock close");
+		}
+	}
+	if (ustconsumer64_data.err_sock >= 0) {
+		ret = close(ustconsumer64_data.err_sock);
+		if (ret < 0) {
+			PERROR("UST consumer64 err_sock close");
+		}
+	}
+	if (kconsumer_data.cmd_sock >= 0) {
+		ret = close(kconsumer_data.cmd_sock);
+		if (ret < 0) {
+			PERROR("kernel consumer cmd_sock close");
+		}
+	}
+	if (ustconsumer32_data.cmd_sock >= 0) {
+		ret = close(ustconsumer32_data.cmd_sock);
+		if (ret < 0) {
+			PERROR("UST consumer32 cmd_sock close");
+		}
+	}
+	if (ustconsumer64_data.cmd_sock >= 0) {
+		ret = close(ustconsumer64_data.cmd_sock);
+		if (ret < 0) {
+			PERROR("UST consumer64 cmd_sock close");
+		}
+	}
+}
+
+/*
  * Cleanup the daemon
  */
 static void cleanup(void)
@@ -457,6 +502,8 @@ static void cleanup(void)
 		DBG("Unloading kernel modules");
 		modprobe_remove_lttng_all();
 	}
+
+	close_consumer_sockets();
 
 	/* <fun> */
 	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
