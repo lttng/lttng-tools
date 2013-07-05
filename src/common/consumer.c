@@ -292,21 +292,22 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	pthread_mutex_lock(&consumer_data.lock);
 
+	/* Delete streams that might have been left in the stream list. */
+	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
+			send_node) {
+		cds_list_del(&stream->send_node);
+		/*
+		 * Once a stream is added to this list, the buffers were created so
+		 * we have a guarantee that this call will succeed.
+		 */
+		consumer_stream_destroy(stream, NULL);
+	}
+
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		/* Delete streams that might have been left in the stream list. */
-		cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
-				send_node) {
-			cds_list_del(&stream->send_node);
-			/*
-			 * Once a stream is added to this list, the buffers were created so
-			 * we have a guarantee that this call will succeed.
-			 */
-			consumer_stream_destroy(stream, NULL);
-		}
 		lttng_ustconsumer_del_channel(channel);
 		break;
 	default:
