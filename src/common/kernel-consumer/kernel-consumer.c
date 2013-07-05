@@ -370,6 +370,9 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 
 	ret = 0;
 
+	cds_list_del(&metadata_stream->send_node);
+	consumer_stream_destroy(metadata_stream, NULL);
+	metadata_channel->metadata_stream = NULL;
 error:
 	rcu_read_unlock();
 	return ret;
