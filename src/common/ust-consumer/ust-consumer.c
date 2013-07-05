@@ -373,18 +373,20 @@ static int send_sessiond_channel(int sock,
 
 	DBG("UST consumer sending channel %s to sessiond", channel->name);
 
-	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
-		/* Try to send the stream to the relayd if one is available. */
-		ret = consumer_send_relayd_stream(stream, stream->chan->pathname);
-		if (ret < 0) {
-			/*
-			 * Flag that the relayd was the problem here probably due to a
-			 * communicaton error on the socket.
-			 */
-			if (relayd_error) {
-				*relayd_error = 1;
+	if (channel->relayd_id != (uint64_t) -1ULL) {
+		cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
+			/* Try to send the stream to the relayd if one is available. */
+			ret = consumer_send_relayd_stream(stream, stream->chan->pathname);
+			if (ret < 0) {
+				/*
+				 * Flag that the relayd was the problem here probably due to a
+				 * communicaton error on the socket.
+				 */
+				if (relayd_error) {
+					*relayd_error = 1;
+				}
+				ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 			}
-			ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 		}
 	}
 
@@ -701,11 +703,13 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	}
 
 	/* Send metadata stream to relayd if needed. */
-	ret = consumer_send_relayd_stream(metadata->metadata_stream,
-			metadata->pathname);
-	if (ret < 0) {
-		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
-		goto error;
+	if (metadata->metadata_stream->net_seq_idx != (uint64_t) -1ULL) {
+		ret = consumer_send_relayd_stream(metadata->metadata_stream,
+				metadata->pathname);
+		if (ret < 0) {
+			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			goto error;
+		}
 	}
 
 	ret = send_streams_to_thread(metadata, ctx);
