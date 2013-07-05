@@ -102,10 +102,7 @@ int lttcomm_connect_inet6_sock(struct lttcomm_sock *sock)
 	ret = connect(sock->fd, (struct sockaddr *) &sock->sockaddr.addr.sin6,
 			sizeof(sock->sockaddr.addr.sin6));
 	if (ret < 0) {
-		/*
-		 * Don't print message on connect error, because connect is used in
-		 * normal execution to detect if sessiond is alive.
-		 */
+		PERROR("connect inet6");
 		goto error_connect;
 	}
 
