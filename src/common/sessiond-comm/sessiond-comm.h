@@ -87,6 +87,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
 	LTTNG_SNAPSHOT_LIST_OUTPUT          = 27,
 	LTTNG_SNAPSHOT_RECORD               = 28,
+	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
 };
 
 enum lttcomm_relayd_command {

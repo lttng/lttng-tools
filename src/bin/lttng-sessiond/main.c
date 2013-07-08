@@ -2428,6 +2428,7 @@ static int create_ust_session(struct ltt_session *session,
 	lus->uid = session->uid;
 	lus->gid = session->gid;
 	lus->output_traces = session->output_traces;
+	lus->snapshot_mode = session->snapshot_mode;
 	session->ust_session = lus;
 
 	/* Copy session output to the newly created UST session */
@@ -2485,6 +2486,7 @@ static int create_kernel_session(struct ltt_session *session)
 	session->kernel_session->uid = session->uid;
 	session->kernel_session->gid = session->gid;
 	session->kernel_session->output_traces = session->output_traces;
+	session->kernel_session->snapshot_mode = session->snapshot_mode;
 
 	return LTTNG_OK;
 
@@ -2540,6 +2542,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
+	case LTTNG_CREATE_SESSION_SNAPSHOT:
 	case LTTNG_DESTROY_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_DOMAINS:
@@ -2602,6 +2605,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
+	case LTTNG_CREATE_SESSION_SNAPSHOT:
 	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
@@ -3291,6 +3295,45 @@ skip_domain:
 		ret = cmd_snapshot_record(cmd_ctx->session,
 				&cmd_ctx->lsm->u.snapshot_record.output,
 				cmd_ctx->lsm->u.snapshot_record.wait);
+		break;
+	}
+	case LTTNG_CREATE_SESSION_SNAPSHOT:
+	{
+		size_t nb_uri, len;
+		struct lttng_uri *uris = NULL;
+
+		nb_uri = cmd_ctx->lsm->u.uri.size;
+		len = nb_uri * sizeof(struct lttng_uri);
+
+		if (nb_uri > 0) {
+			uris = zmalloc(len);
+			if (uris == NULL) {
+				ret = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			/* Receive variable len data */
+			DBG("Waiting for %zu URIs from client ...", nb_uri);
+			ret = lttcomm_recv_unix_sock(sock, uris, len);
+			if (ret <= 0) {
+				DBG("No URIs received from client... continuing");
+				*sock_error = 1;
+				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
+				goto error;
+			}
+
+			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
+				DBG("Creating session with ONE network URI is a bad call");
+				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
+				goto error;
+			}
+		}
+
+		ret = cmd_create_session_snapshot(cmd_ctx->lsm->session.name, uris,
+				nb_uri, &cmd_ctx->creds);
+		free(uris);
 		break;
 	}
 	default:

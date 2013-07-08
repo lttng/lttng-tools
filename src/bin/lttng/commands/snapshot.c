@@ -343,8 +343,6 @@ static int record(const char *url)
 	} else if (opt_ctrl_url) {
 		MSG("Snapshot written to ctrl: %s, data: %s", opt_ctrl_url,
 				opt_data_url);
-	} else {
-		MSG("Snapshot written in session directory.");
 	}
 
 error:

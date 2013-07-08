@@ -391,6 +391,21 @@ extern void lttng_destroy_handle(struct lttng_handle *handle);
 extern int lttng_create_session(const char *name, const char *url);
 
 /*
+ * Create a tracing session that will exclusively be used for snapshot meaning
+ * the session will be in no output mode and every channel enabled for that
+ * session will be set in overwrite mode and in mmap output since splice is not
+ * supported.
+ *
+ * If an url is given, it will be used to create a default snapshot output
+ * using it as a destination. If NULL, no output will be defined and an
+ * add-output call will be needed.
+ *
+ * Name can't be NULL.
+ */
+extern int lttng_create_session_snapshot(const char *name,
+		const char *snapshot_url);
+
+/*
  * Destroy a tracing session.
  *
  * The session will not be usable anymore, tracing will be stopped for all

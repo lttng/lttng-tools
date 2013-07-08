@@ -107,6 +107,7 @@ struct ltt_ust_session {
 	uint64_t used_channel_id;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
+	unsigned int snapshot_mode;
 };
 
 /*

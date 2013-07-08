@@ -184,6 +184,12 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 		attr = defattr;
 	}
 
+	if (ksession->snapshot_mode) {
+		/* Force channel attribute for snapshot mode. */
+		attr->attr.overwrite = 1;
+		attr->attr.output = LTTNG_EVENT_MMAP;
+	}
+
 	/* Channel not found, creating it */
 	ret = kernel_create_channel(ksession, attr);
 	if (ret < 0) {
@@ -261,6 +267,12 @@ int channel_ust_create(struct ltt_ust_session *usess,
 			goto error;
 		}
 		attr = defattr;
+	}
+
+	if (usess->snapshot_mode) {
+		/* Force channel attribute for snapshot mode. */
+		attr->attr.overwrite = 1;
+		attr->attr.output = LTTNG_EVENT_MMAP;
 	}
 
 	/*

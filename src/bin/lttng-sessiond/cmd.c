@@ -1744,6 +1744,72 @@ find_error:
 }
 
 /*
+ * Command LTTNG_CREATE_SESSION_SNAPSHOT processed by the client thread.
+ */
+int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
+		size_t nb_uri, lttng_sock_cred *creds)
+{
+	int ret;
+	struct ltt_session *session;
+	struct snapshot_output *new_output = NULL;
+
+	assert(name);
+	assert(creds);
+
+	/*
+	 * Create session in no output mode with URIs set to NULL. The uris we've
+	 * received are for a default snapshot output if one.
+	 */
+	ret = cmd_create_session_uri(name, NULL, 0, creds);
+	if (ret != LTTNG_OK) {
+		goto error;
+	}
+
+	/* Get the newly created session pointer back. This should NEVER fail. */
+	session = session_find_by_name(name);
+	assert(session);
+
+	/* Flag session for snapshot mode. */
+	session->snapshot_mode = 1;
+
+	/* Skip snapshot output creation if no URI is given. */
+	if (nb_uri == 0) {
+		goto end;
+	}
+
+	new_output = snapshot_output_alloc();
+	if (!new_output) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error_snapshot_alloc;
+	}
+
+	ret = snapshot_output_init_with_uri(DEFAULT_SNAPSHOT_MAX_SIZE, NULL,
+			uris, nb_uri, session->consumer, new_output, &session->snapshot);
+	if (ret < 0) {
+		if (ret == -ENOMEM) {
+			ret = LTTNG_ERR_NOMEM;
+		} else {
+			ret = LTTNG_ERR_INVALID;
+		}
+		goto error_snapshot;
+	}
+
+	rcu_read_lock();
+	snapshot_add_output(&session->snapshot, new_output);
+	rcu_read_unlock();
+
+end:
+	return LTTNG_OK;
+
+error_snapshot:
+	snapshot_output_destroy(new_output);
+error_snapshot_alloc:
+	session_destroy(session);
+error:
+	return ret;
+}
+
+/*
  * Command LTTNG_DESTROY_SESSION processed by the client thread.
  */
 int cmd_destroy_session(struct ltt_session *session, int wpipe)

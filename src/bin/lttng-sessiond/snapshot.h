@@ -69,6 +69,10 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 		const char *ctrl_url, const char *data_url,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot);
+int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
+		struct lttng_uri *uris, size_t nb_uri,
+		struct consumer_output *consumer, struct snapshot_output *output,
+		struct snapshot *snapshot);
 struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 		struct snapshot *snapshot);
 

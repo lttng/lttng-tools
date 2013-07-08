@@ -1548,6 +1548,41 @@ int lttng_data_pending(const char *session_name)
 }
 
 /*
+ * Create a session exclusively used for snapshot.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
+{
+	int ret;
+	ssize_t size;
+	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
+
+	if (name == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_CREATE_SESSION_SNAPSHOT;
+	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+
+	size = uri_parse_str_urls(snapshot_url, NULL, &uris);
+	if (size < 0) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	lsm.u.uri.size = size;
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
+
+	free(uris);
+	return ret;
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()

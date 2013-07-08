@@ -93,6 +93,12 @@ struct ltt_session {
 	struct snapshot snapshot;
 	/* Indicate if the session has to output the traces or not. */
 	unsigned int output_traces;
+	/*
+	 * This session is in snapshot mode. This means that every channel enabled
+	 * will be set in overwrite mode and mmap. It is considered exclusively for
+	 * snapshot purposes.
+	 */
+	unsigned int snapshot_mode;
 };
 
 /* Prototypes */
