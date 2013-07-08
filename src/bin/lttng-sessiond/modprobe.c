@@ -55,6 +55,8 @@ const struct kern_modules_param kern_modules_list[] = {
 	{ "lttng-probe-jbd2", 0 },
 	{ "lttng-probe-kmem", 0 },
 	{ "lttng-probe-kvm", 0 },
+	{ "lttng-probe-kvm-x86", 0 },
+	{ "lttng-probe-kvm-x86-mmu", 0 },
 	{ "lttng-probe-lock", 0 },
 	{ "lttng-probe-module", 0 },
 	{ "lttng-probe-napi", 0 },
