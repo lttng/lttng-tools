@@ -33,6 +33,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
 #include <common/utils.h>
+#include <lttng/snapshot.h>
 
 static char *opt_output_path;
 static char *opt_session_name;
@@ -41,6 +42,7 @@ static char *opt_ctrl_url;
 static char *opt_data_url;
 static int opt_no_consumer;
 static int opt_no_output;
+static int opt_snapshot;
 static int opt_disable_consumer;
 
 enum {
@@ -59,6 +61,7 @@ static struct poptOption long_options[] = {
 	{"no-output",       0, POPT_ARG_VAL, &opt_no_output, 1, 0, 0},
 	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"disable-consumer", 0, POPT_ARG_VAL, &opt_disable_consumer, 1, 0, 0},
+	{"snapshot",        0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -83,6 +86,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
 	fprintf(ofp, "      --no-output      Traces will not be outputed\n");
+	fprintf(ofp, "      --snasphot       Set the session in snapshot mode.\n");
+	fprintf(ofp, "                       Created in no-output mode and uses the URL,\n");
+	fprintf(ofp, "                       if one, as the default snapshot output.\n");
+	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");
+	fprintf(ofp, "                       and with mmap output (splice not supported).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Extended Options:\n");
 	fprintf(ofp, "\n");
@@ -167,6 +175,46 @@ static int set_consumer_url(const char *session_name, const char *ctrl_url,
 
 error:
 	lttng_destroy_handle(handle);
+	return ret;
+}
+
+static int add_snapshot_output(const char *session_name, const char *ctrl_url,
+		const char *data_url)
+{
+	int ret;
+	struct lttng_snapshot_output *output = NULL;
+
+	assert(session_name);
+
+	output = lttng_snapshot_output_create();
+	if (!output) {
+		ret = CMD_FATAL;
+		goto error_create;
+	}
+
+	if (ctrl_url) {
+		ret = lttng_snapshot_output_set_ctrl_url(ctrl_url, output);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	if (data_url) {
+		ret = lttng_snapshot_output_set_data_url(data_url, output);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/* This call, if successful, populates the id of the output object. */
+	ret = lttng_snapshot_add_output(session_name, output);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	lttng_snapshot_output_destroy(output);
+error_create:
 	return ret;
 }
 
@@ -276,7 +324,7 @@ static int create_session(void)
 			print_str_url = alloc_url + strlen("file://");
 		}
 	} else {
-		/* No output means --no-output. */
+		/* No output means --no-output or --snapshot mode. */
 		url = NULL;
 	}
 
@@ -286,7 +334,20 @@ static int create_session(void)
 		goto error;
 	}
 
-	ret = _lttng_create_session_ext(session_name, url, datetime);
+	if (opt_snapshot) {
+		/* No output by default. */
+		const char *snapshot_url = NULL;
+
+		if (opt_url) {
+			snapshot_url = url;
+		} else if (!opt_data_url && !opt_ctrl_url) {
+			/* This is the session path that we need to use as output. */
+			snapshot_url = url;
+		}
+		ret = lttng_create_session_snapshot(session_name, snapshot_url);
+	} else {
+		ret = _lttng_create_session_ext(session_name, url, datetime);
+	}
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
 		switch (-ret) {
@@ -300,8 +361,13 @@ static int create_session(void)
 	}
 
 	if (opt_ctrl_url && opt_data_url) {
-		/* Setting up control URI (-C or/and -D opt) */
-		ret = set_consumer_url(session_name, opt_ctrl_url, opt_data_url);
+		if (opt_snapshot) {
+			ret = add_snapshot_output(session_name, opt_ctrl_url,
+					opt_data_url);
+		} else {
+			/* Setting up control URI (-C or/and -D opt) */
+			ret = set_consumer_url(session_name, opt_ctrl_url, opt_data_url);
+		}
 		if (ret < 0) {
 			/* Destroy created session because the URL are not valid. */
 			lttng_destroy_session(session_name);
@@ -310,8 +376,14 @@ static int create_session(void)
 	}
 
 	MSG("Session %s created.", session_name);
-	if (print_str_url) {
+	if (print_str_url && !opt_snapshot) {
 		MSG("Traces will be written in %s", print_str_url);
+	} else if (opt_snapshot) {
+		if (print_str_url) {
+			MSG("Default snapshot output set to: %s", print_str_url);
+		}
+		MSG("Snapshot mode set. Every channel enabled for that session will "
+				"be set in overwrite mode and mmap output");
 	}
 
 	/* Init lttng session config */
