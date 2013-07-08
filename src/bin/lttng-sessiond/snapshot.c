@@ -34,23 +34,18 @@ static inline unsigned long get_next_output_id(struct snapshot *snapshot)
 }
 
 /*
- * Initialize a snapshot output object using the given parameters. The name
- * value and url can be NULL.
+ * Initialized snapshot output with the given values.
  *
  * Return 0 on success or else a negative value.
  */
-int snapshot_output_init(uint64_t max_size, const char *name,
-		const char *ctrl_url, const char *data_url,
+static int output_init(uint64_t max_size, const char *name,
+		struct lttng_uri *uris, size_t nb_uri,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot)
 {
-	int ret = 0, nb_uri, i;
-	struct lttng_uri *uris = NULL;
+	int ret = 0, i;
 
 	assert(output);
-
-	DBG2("Snapshot output initializing with max size %" PRIu64 ", name %s "
-			"ctrl URL %s, data URL %s", max_size, name, ctrl_url, data_url);
 
 	output->max_size = max_size;
 	if (snapshot) {
@@ -72,13 +67,6 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 
 	if (!consumer) {
 		goto end;
-	}
-
-	/* Create an array of URIs from URLs. */
-	nb_uri = uri_parse_str_urls(ctrl_url, data_url, &uris);
-	if (nb_uri < 0) {
-		ret = nb_uri;
-		goto error;
 	}
 
 	output->consumer = consumer_copy_output(consumer);
@@ -119,6 +107,49 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 
 error:
 end:
+	return ret;
+}
+
+/*
+ * Initialize a snapshot output object using the given parameters and URI(s).
+ * The name value and uris can be NULL.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
+		struct lttng_uri *uris, size_t nb_uri,
+		struct consumer_output *consumer, struct snapshot_output *output,
+		struct snapshot *snapshot)
+{
+	return output_init(max_size, name, uris, nb_uri, consumer, output,
+			snapshot);
+}
+
+/*
+ * Initialize a snapshot output object using the given parameters. The name
+ * value and url can be NULL.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int snapshot_output_init(uint64_t max_size, const char *name,
+		const char *ctrl_url, const char *data_url,
+		struct consumer_output *consumer, struct snapshot_output *output,
+		struct snapshot *snapshot)
+{
+	int ret = 0, nb_uri;
+	struct lttng_uri *uris = NULL;
+
+	/* Create an array of URIs from URLs. */
+	nb_uri = uri_parse_str_urls(ctrl_url, data_url, &uris);
+	if (nb_uri < 0) {
+		ret = nb_uri;
+		goto error;
+	}
+
+	ret = output_init(max_size, name, uris, nb_uri, consumer, output,
+			snapshot);
+
+error:
 	free(uris);
 	return ret;
 }
