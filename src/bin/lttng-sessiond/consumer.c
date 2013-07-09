@@ -409,6 +409,28 @@ error:
 }
 
 /*
+ * Iterate over the consumer output socket hash table and destroy them. The
+ * socket file descriptor are only closed if the consumer output was
+ * registered meaning it's an external consumer.
+ */
+void consumer_destroy_output_sockets(struct consumer_output *obj)
+{
+	struct lttng_ht_iter iter;
+	struct consumer_socket *socket;
+
+	if (!obj->socks) {
+		return;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(obj->socks->ht, &iter.iter, socket, node.node) {
+		consumer_del_socket(socket, obj);
+		consumer_destroy_socket(socket);
+	}
+	rcu_read_unlock();
+}
+
+/*
  * Delete the consumer_output object from the list and free the ptr.
  *
  * Should *NOT* be called with RCU read-side lock held.
@@ -419,17 +441,9 @@ void consumer_destroy_output(struct consumer_output *obj)
 		return;
 	}
 
+	consumer_destroy_output_sockets(obj);
+
 	if (obj->socks) {
-		struct lttng_ht_iter iter;
-		struct consumer_socket *socket;
-
-		rcu_read_lock();
-		cds_lfht_for_each_entry(obj->socks->ht, &iter.iter, socket, node.node) {
-			consumer_del_socket(socket, obj);
-			consumer_destroy_socket(socket);
-		}
-		rcu_read_unlock();
-
 		/* Finally destroy HT */
 		ht_cleanup_push(obj->socks);
 	}

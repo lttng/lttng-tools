@@ -4876,6 +4876,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
+	char pathname[PATH_MAX];
 
 	assert(usess);
 	assert(output);
@@ -4903,10 +4904,19 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			goto error;
 		}
 
+		/* Add the UST default trace dir to path. */
+		memset(pathname, 0, sizeof(pathname));
+		ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
+				ua_sess->path);
+		if (ret < 0) {
+			PERROR("snprintf snapshot path");
+			goto error;
+		}
+
 		cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 				ua_chan, node.node) {
 			ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
-					ua_sess->euid, ua_sess->egid, ua_sess->path, wait);
+					ua_sess->euid, ua_sess->egid, pathname, wait);
 			if (ret < 0) {
 				goto error;
 			}
@@ -4915,7 +4925,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		registry = get_session_registry(ua_sess);
 		assert(registry);
 		ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
-				1, ua_sess->euid, ua_sess->egid, ua_sess->path, wait);
+				1, ua_sess->euid, ua_sess->egid, pathname, wait);
 		if (ret < 0) {
 			goto error;
 		}

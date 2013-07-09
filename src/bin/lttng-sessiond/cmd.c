@@ -2254,27 +2254,6 @@ int cmd_snapshot_add_output(struct ltt_session *session,
 		goto free_error;
 	}
 
-	/*
-	 * Copy sockets so the snapshot output can use them on destroy.
-	 */
-
-	if (session->ust_session) {
-		ret = consumer_copy_sockets(new_output->consumer,
-				session->ust_session->consumer);
-		if (ret < 0) {
-			goto free_error;
-		}
-		new_output->ust_sockets_copied = 1;
-	}
-	if (session->kernel_session) {
-		ret = consumer_copy_sockets(new_output->consumer,
-				session->kernel_session->consumer);
-		if (ret < 0) {
-			goto free_error;
-		}
-		new_output->kernel_sockets_copied = 1;
-	}
-
 	rcu_read_lock();
 	snapshot_add_output(&session->snapshot, new_output);
 	if (id) {
@@ -2478,24 +2457,28 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		goto error;
 	}
 
-	if (!output->kernel_sockets_copied) {
-		ret = consumer_copy_sockets(output->consumer, ksess->consumer);
-		if (ret < 0) {
-			goto error;
-		}
-		output->kernel_sockets_copied = 1;
+	/*
+	 * Copy kernel session sockets so we can communicate with the right
+	 * consumer for the snapshot record command.
+	 */
+	ret = consumer_copy_sockets(output->consumer, ksess->consumer);
+	if (ret < 0) {
+		goto error;
 	}
 
 	ret = set_relayd_for_snapshot(ksess->consumer, output, session);
 	if (ret < 0) {
-		goto error;
+		goto error_snapshot;
 	}
 
 	ret = kernel_snapshot_record(ksess, output, wait);
 	if (ret < 0) {
-		goto error;
+		goto error_snapshot;
 	}
 
+error_snapshot:
+	/* Clean up copied sockets so this output can use some other later on. */
+	consumer_destroy_output_sockets(output->consumer);
 error:
 	return ret;
 }
@@ -2522,24 +2505,28 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	if (!output->ust_sockets_copied) {
-		ret = consumer_copy_sockets(output->consumer, usess->consumer);
-		if (ret < 0) {
-			goto error;
-		}
-		output->ust_sockets_copied = 1;
+	/*
+	 * Copy kernel session sockets so we can communicate with the right
+	 * consumer for the snapshot record command.
+	 */
+	ret = consumer_copy_sockets(output->consumer, usess->consumer);
+	if (ret < 0) {
+		goto error;
 	}
 
 	ret = set_relayd_for_snapshot(usess->consumer, output, session);
 	if (ret < 0) {
-		goto error;
+		goto error_snapshot;
 	}
 
 	ret = ust_app_snapshot_record(usess, output, wait);
 	if (ret < 0) {
-		goto error;
+		goto error_snapshot;
 	}
 
+error_snapshot:
+	/* Clean up copied sockets so this output can use some other later on. */
+	consumer_destroy_output_sockets(output->consumer);
 error:
 	return ret;
 }

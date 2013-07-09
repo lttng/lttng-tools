@@ -165,6 +165,7 @@ void consumer_del_socket(struct consumer_socket *sock,
 void consumer_destroy_socket(struct consumer_socket *sock);
 int consumer_copy_sockets(struct consumer_output *dst,
 		struct consumer_output *src);
+void consumer_destroy_output_sockets(struct consumer_output *obj);
 
 struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
