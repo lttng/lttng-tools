@@ -406,13 +406,13 @@ static void close_consumer_sockets(void)
 	if (ustconsumer32_data.err_sock >= 0) {
 		ret = close(ustconsumer32_data.err_sock);
 		if (ret < 0) {
-			PERROR("UST consumer32 err_sock close");
+			PERROR("UST consumerd32 err_sock close");
 		}
 	}
 	if (ustconsumer64_data.err_sock >= 0) {
 		ret = close(ustconsumer64_data.err_sock);
 		if (ret < 0) {
-			PERROR("UST consumer64 err_sock close");
+			PERROR("UST consumerd64 err_sock close");
 		}
 	}
 	if (kconsumer_data.cmd_sock >= 0) {
@@ -424,13 +424,13 @@ static void close_consumer_sockets(void)
 	if (ustconsumer32_data.cmd_sock >= 0) {
 		ret = close(ustconsumer32_data.cmd_sock);
 		if (ret < 0) {
-			PERROR("UST consumer32 cmd_sock close");
+			PERROR("UST consumerd32 cmd_sock close");
 		}
 	}
 	if (ustconsumer64_data.cmd_sock >= 0) {
 		ret = close(ustconsumer64_data.cmd_sock);
 		if (ret < 0) {
-			PERROR("UST consumer64 cmd_sock close");
+			PERROR("UST consumerd64 cmd_sock close");
 		}
 	}
 }
@@ -1148,12 +1148,14 @@ error:
 		if (ret) {
 			PERROR("close");
 		}
+		consumer_data->err_sock = -1;
 	}
 	if (consumer_data->cmd_sock >= 0) {
 		ret = close(consumer_data->cmd_sock);
 		if (ret) {
 			PERROR("close");
 		}
+		consumer_data->cmd_sock = -1;
 	}
 	if (consumer_data->metadata_sock.fd >= 0) {
 		ret = close(consumer_data->metadata_sock.fd);
