@@ -432,6 +432,9 @@ struct ltt_ust_context *trace_ust_create_context(
 	case LTTNG_EVENT_CONTEXT_PROCNAME:
 		utype = LTTNG_UST_CONTEXT_PROCNAME;
 		break;
+	case LTTNG_EVENT_CONTEXT_IP:
+		utype = LTTNG_UST_CONTEXT_IP;
+		break;
 	default:
 		ERR("Invalid UST context");
 		return NULL;
