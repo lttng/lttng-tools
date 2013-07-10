@@ -3457,3 +3457,23 @@ int consumer_send_status_channel(int sock,
 
 	return lttcomm_send_unix_sock(sock, &msg, sizeof(msg));
 }
+
+/*
+ * Using a maximum stream size with the produced and consumed position of a
+ * stream, computes the new consumed position to be as close as possible to the
+ * maximum possible stream size.
+ *
+ * If maximum stream size is lower than the possible buffer size (produced -
+ * consumed), the consumed_pos given is returned untouched else the new value
+ * is returned.
+ */
+unsigned long consumer_get_consumed_maxsize(unsigned long consumed_pos,
+		unsigned long produced_pos, uint64_t max_stream_size)
+{
+	if (max_stream_size && max_stream_size < (produced_pos - consumed_pos)) {
+		/* Offset from the produced position to get the latest buffers. */
+		return produced_pos - max_stream_size;
+	}
+
+	return consumed_pos;
+}

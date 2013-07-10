@@ -2441,7 +2441,8 @@ error:
  * Return 0 on success or else a negative value.
  */
 static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
-		struct snapshot_output *output, struct ltt_session *session, int wait)
+		struct snapshot_output *output, struct ltt_session *session,
+		int wait, int nb_streams)
 {
 	int ret;
 
@@ -2471,8 +2472,12 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		goto error_snapshot;
 	}
 
-	ret = kernel_snapshot_record(ksess, output, wait);
+	ret = kernel_snapshot_record(ksess, output, wait, nb_streams);
 	if (ret < 0) {
+		ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+		if (ret == -EINVAL) {
+			ret = -LTTNG_ERR_INVALID;
+		}
 		goto error_snapshot;
 	}
 
@@ -2489,7 +2494,8 @@ error:
  * Return 0 on success or else a negative value.
  */
 static int record_ust_snapshot(struct ltt_ust_session *usess,
-		struct snapshot_output *output, struct ltt_session *session, int wait)
+		struct snapshot_output *output, struct ltt_session *session,
+		int wait, int nb_streams)
 {
 	int ret;
 
@@ -2519,8 +2525,12 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 		goto error_snapshot;
 	}
 
-	ret = ust_app_snapshot_record(usess, output, wait);
+	ret = ust_app_snapshot_record(usess, output, wait, nb_streams);
 	if (ret < 0) {
+		ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+		if (ret == -EINVAL) {
+			ret = -LTTNG_ERR_INVALID;
+		}
 		goto error_snapshot;
 	}
 
@@ -2529,6 +2539,29 @@ error_snapshot:
 	consumer_destroy_output_sockets(output->consumer);
 error:
 	return ret;
+}
+
+/*
+ * Returns the total number of streams for a session or a negative value
+ * on error.
+ */
+static unsigned int get_total_nb_stream(struct ltt_session *session)
+{
+	unsigned int total_streams = 0;
+
+	if (session->kernel_session) {
+		struct ltt_kernel_session *ksess = session->kernel_session;
+
+		total_streams += ksess->stream_count_global;
+	}
+
+	if (session->ust_session) {
+		struct ltt_ust_session *usess = session->ust_session;
+
+		total_streams += ust_app_get_nb_stream(usess);
+	}
+
+	return total_streams;
 }
 
 /*
@@ -2544,6 +2577,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 {
 	int ret = LTTNG_OK;
 	struct snapshot_output *tmp_sout = NULL;
+	unsigned int nb_streams;
 
 	assert(session);
 
@@ -2585,11 +2619,18 @@ int cmd_snapshot_record(struct ltt_session *session,
 		}
 	}
 
+	/*
+	 * Get the total number of stream of that session which is used by the
+	 * maximum size of the snapshot feature.
+	 */
+	nb_streams = get_total_nb_stream(session);
+
 	if (session->kernel_session) {
 		struct ltt_kernel_session *ksess = session->kernel_session;
 
 		if (tmp_sout) {
-			ret = record_kernel_snapshot(ksess, tmp_sout, session, wait);
+			ret = record_kernel_snapshot(ksess, tmp_sout, session,
+					wait, nb_streams);
 			if (ret < 0) {
 				goto error;
 			}
@@ -2600,7 +2641,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
-				ret = record_kernel_snapshot(ksess, sout, session, wait);
+				ret = record_kernel_snapshot(ksess, sout,
+						session, wait, nb_streams);
 				if (ret < 0) {
 					rcu_read_unlock();
 					goto error;
@@ -2614,7 +2656,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		if (tmp_sout) {
-			ret = record_ust_snapshot(usess, tmp_sout, session, wait);
+			ret = record_ust_snapshot(usess, tmp_sout, session,
+					wait, nb_streams);
 			if (ret < 0) {
 				goto error;
 			}
@@ -2625,7 +2668,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
-				ret = record_ust_snapshot(usess, sout, session, wait);
+				ret = record_ust_snapshot(usess, sout, session,
+						wait, nb_streams);
 				if (ret < 0) {
 					rcu_read_unlock();
 					goto error;

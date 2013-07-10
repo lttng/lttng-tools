@@ -675,6 +675,8 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 				if (ret < 0) {
 					goto error;
 				}
+				/* Update the stream global counter */
+				ksess->stream_count_global += ret;
 
 				/*
 				 * Have we already sent fds to the consumer? If yes, it means

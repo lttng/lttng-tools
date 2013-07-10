@@ -110,7 +110,8 @@ int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
  * Returns 0 on success, < 0 on error
  */
 int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
-		uint64_t relayd_id, struct lttng_consumer_local_data *ctx)
+		uint64_t relayd_id, uint64_t max_stream_size,
+		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	unsigned long consumed_pos, produced_pos;
@@ -202,6 +203,15 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 				goto end_unlock;
 			}
 		}
+
+		/*
+		 * The original value is sent back if max stream size is larger than
+		 * the possible size of the snapshot. Also, we asume that the session
+		 * daemon should never send a maximum stream size that is lower than
+		 * subbuffer size.
+		 */
+		consumed_pos = consumer_get_consumed_maxsize(consumed_pos,
+				produced_pos, max_stream_size);
 
 		while (consumed_pos < produced_pos) {
 			ssize_t read_len;
@@ -739,7 +749,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		} else {
 			ret = lttng_kconsumer_snapshot_channel(msg.u.snapshot_channel.key,
 					msg.u.snapshot_channel.pathname,
-					msg.u.snapshot_channel.relayd_id, ctx);
+					msg.u.snapshot_channel.relayd_id,
+					msg.u.snapshot_channel.max_stream_size,
+					ctx);
 			if (ret < 0) {
 				ERR("Snapshot channel failed");
 				ret_code = LTTNG_ERR_KERN_CHAN_FAIL;

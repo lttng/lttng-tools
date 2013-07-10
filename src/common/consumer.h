@@ -573,5 +573,7 @@ int consumer_send_status_channel(int sock,
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
 		uint64_t key);
 void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
+unsigned long consumer_get_consumed_maxsize(unsigned long consumed_pos,
+		unsigned long produced_pos, uint64_t max_stream_size);
 
 #endif /* LIB_CONSUMER_H */

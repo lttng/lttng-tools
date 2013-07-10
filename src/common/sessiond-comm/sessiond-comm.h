@@ -396,7 +396,7 @@ struct lttcomm_consumer_msg {
 			uint32_t metadata;		/* This a metadata snapshot. */
 			uint64_t relayd_id;		/* Relayd id if apply. */
 			uint64_t key;
-			uint64_t max_size;
+			uint64_t max_stream_size;
 		} LTTNG_PACKED snapshot_channel;
 	} u;
 } LTTNG_PACKED;

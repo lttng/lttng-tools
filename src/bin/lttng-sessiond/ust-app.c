@@ -4871,17 +4871,26 @@ void ust_app_destroy(struct ust_app *app)
  * Return 0 on success or else a negative value.
  */
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct snapshot_output *output, int wait)
+		struct snapshot_output *output, int wait, unsigned int nb_streams)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
+	uint64_t max_stream_size = 0;
 
 	assert(usess);
 	assert(output);
 
 	rcu_read_lock();
+
+	/*
+	 * Compute the maximum size of a single stream if a max size is asked by
+	 * the caller.
+	 */
+	if (output->max_size > 0 && nb_streams > 0) {
+		max_stream_size = output->max_size / nb_streams;
+	}
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		struct consumer_socket *socket;
@@ -4915,8 +4924,22 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 
 		cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 				ua_chan, node.node) {
+			/*
+			 * Make sure the maximum stream size is not lower than the
+			 * subbuffer size or else it's an error since we won't be able to
+			 * snapshot anything.
+			 */
+			if (ua_chan->attr.subbuf_size > max_stream_size) {
+				ret = -EINVAL;
+				DBG3("UST app snapshot record maximum stream size %" PRIu64
+						" is smaller than subbuffer size of %" PRIu64,
+						max_stream_size, ua_chan->attr.subbuf_size);
+				goto error;
+			}
+
 			ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
-					ua_sess->euid, ua_sess->egid, pathname, wait);
+					ua_sess->euid, ua_sess->egid, pathname, wait,
+					max_stream_size);
 			if (ret < 0) {
 				goto error;
 			}
@@ -4925,7 +4948,8 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		registry = get_session_registry(ua_sess);
 		assert(registry);
 		ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
-				1, ua_sess->euid, ua_sess->egid, pathname, wait);
+				1, ua_sess->euid, ua_sess->egid, pathname, wait,
+				max_stream_size);
 		if (ret < 0) {
 			goto error;
 		}
@@ -4934,5 +4958,61 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 
 error:
 	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Return the number of streams for a UST session.
+ */
+unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
+{
+	unsigned int ret = 0;
+	struct ust_app *app;
+	struct lttng_ht_iter iter;
+
+	assert(usess);
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
+
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+
+			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
+					reg_chan, node.node) {
+				ret += reg_chan->stream_count;
+			}
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		rcu_read_lock();
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct lttng_ht_iter chan_iter;
+
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+					ua_chan, node.node) {
+				ret += ua_chan->streams.count;
+			}
+		}
+		rcu_read_unlock();
+		break;
+	}
+	default:
+		assert(0);
+		break;
+	}
+
 	return ret;
 }

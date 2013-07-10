@@ -43,6 +43,8 @@ struct buffer_reg_channel {
 	uint64_t consumer_key;
 	/* Stream registry object of this channel registry. */
 	struct cds_list_head streams;
+	/* Total number of stream in the list. */
+	uint64_t stream_count;
 	/* Used to ensure mutual exclusion to the stream's list. */
 	pthread_mutex_t stream_list_lock;
 	/* Node for hash table usage. */
