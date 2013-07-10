@@ -4077,6 +4077,16 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 		goto error;
 	}
 
+	/*
+	 * Set the CLOEXEC flag. Return code is useless because either way, the
+	 * show must go on.
+	 */
+	ret = utils_set_fd_cloexec(consumer_data->err_sock);
+	if (ret < 0) {
+		PERROR("utils_set_fd_cloexec");
+		/* continue anyway */
+	}
+
 	/* File permission MUST be 660 */
 	ret = chmod(consumer_data->err_unix_sock_path,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
