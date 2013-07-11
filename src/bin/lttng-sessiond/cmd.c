@@ -2279,13 +2279,10 @@ int cmd_snapshot_del_output(struct ltt_session *session,
 		struct lttng_snapshot_output *output)
 {
 	int ret;
-	struct snapshot_output *sout;
+	struct snapshot_output *sout = NULL;
 
 	assert(session);
 	assert(output);
-
-	DBG("Cmd snapshot del output id %" PRIu32 " for session %s", output->id,
-			session->name);
 
 	rcu_read_lock();
 
@@ -2298,7 +2295,15 @@ int cmd_snapshot_del_output(struct ltt_session *session,
 		goto error;
 	}
 
-	sout = snapshot_find_output_by_id(output->id, &session->snapshot);
+	if (output->id) {
+		DBG("Cmd snapshot del output id %" PRIu32 " for session %s", output->id,
+				session->name);
+		sout = snapshot_find_output_by_id(output->id, &session->snapshot);
+	} else if (*output->name != '\0') {
+		DBG("Cmd snapshot del output name %s for session %s", output->name,
+				session->name);
+		sout = snapshot_find_output_by_name(output->name, &session->snapshot);
+	}
 	if (!sout) {
 		ret = LTTNG_ERR_INVALID;
 		goto error;

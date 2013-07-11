@@ -75,5 +75,7 @@ int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
 		struct snapshot *snapshot);
 struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 		struct snapshot *snapshot);
+struct snapshot_output *snapshot_find_output_by_name(const char *name,
+		struct snapshot *snapshot);
 
 #endif /* SNAPSHOT_H */

@@ -228,6 +228,32 @@ void snapshot_output_destroy(struct snapshot_output *obj)
  *
  * Return the reference on success or else NULL.
  */
+struct snapshot_output *snapshot_find_output_by_name(const char *name,
+		struct snapshot *snapshot)
+{
+	struct lttng_ht_iter iter;
+	struct snapshot_output *output = NULL;
+
+	assert(snapshot);
+	assert(name);
+
+	cds_lfht_for_each_entry(snapshot->output_ht->ht, &iter.iter, output,
+		node.node) {
+		if (!strncmp(output->name, name, strlen(name))) {
+			return output;
+		}
+	}
+
+	/* Not found */
+	return NULL;
+}
+
+/*
+ * RCU read side lock MUST be acquired before calling this since the returned
+ * pointer is in a RCU hash table.
+ *
+ * Return the reference on success or else NULL.
+ */
 struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 		struct snapshot *snapshot)
 {
