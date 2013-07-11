@@ -128,10 +128,20 @@ static
 const char *active_string(int value)
 {
 	switch (value) {
-	case 0:	return " [inactive]";
-	case 1: return " [active]";
+	case 0:	return "inactive";
+	case 1: return "active";
 	case -1: return "";
 	default: return NULL;
+	}
+}
+
+static const char *snapshot_string(int value)
+{
+	switch (value) {
+	case 1:
+		return " snapshot";
+	default:
+		return "";
 	}
 }
 
@@ -620,13 +630,16 @@ static int list_sessions(const char *session_name)
 		if (session_name != NULL) {
 			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
 				session_found = 1;
-				MSG("Tracing session %s:%s", session_name, active_string(sessions[i].enabled));
+				MSG("Tracing session %s: [%s%s]", session_name,
+						active_string(sessions[i].enabled),
+						snapshot_string(sessions[i].snapshot_mode));
 				MSG("%sTrace path: %s\n", indent4, sessions[i].path);
 				break;
 			}
 		} else {
-			MSG("  %d) %s (%s)%s", i + 1, sessions[i].name, sessions[i].path,
-					active_string(sessions[i].enabled));
+			MSG("  %d) %s (%s) [%s%s]", i + 1, sessions[i].name, sessions[i].path,
+					active_string(sessions[i].enabled),
+					snapshot_string(sessions[i].snapshot_mode));
 		}
 	}
 

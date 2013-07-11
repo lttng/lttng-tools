@@ -326,12 +326,13 @@ struct lttng_calibrate {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_SESSION_PADDING1             16
+#define LTTNG_SESSION_PADDING1             12
 struct lttng_session {
 	char name[NAME_MAX];
 	/* The path where traces are written */
 	char path[PATH_MAX];
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
+	uint32_t snapshot_mode;
 
 	char padding[LTTNG_SESSION_PADDING1];
 };

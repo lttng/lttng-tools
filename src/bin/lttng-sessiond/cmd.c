@@ -2160,6 +2160,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		strncpy(sessions[i].name, session->name, NAME_MAX);
 		sessions[i].name[NAME_MAX - 1] = '\0';
 		sessions[i].enabled = session->enabled;
+		sessions[i].snapshot_mode = session->snapshot_mode;
 		i++;
 	}
 }
