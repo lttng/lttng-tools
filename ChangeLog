@@ -1,3 +1,25 @@
+2013-07-11 lttng-tools 2.2.1
+	* Fix: consumer err_sock cloexec
+	* Fix: possible consumer sockets double close on cleanup
+	* Fix: add gpl and lgpl files to tarball
+	* Fix: don't install libtap system wide
+	* Fix: close consumer sockets in sessiond cleanup
+	* Fix: print errno message on connect() error
+	* Fix: possible double-close on stream out_fd
+	* Fix: session ID signess to uin64_t in sessiond
+	* Fix: consumer_add_relayd_socket() report errors to sessiond
+	* Fix: UST per-UID channels persist across application teardown
+	* Fix: add missing enum lttcomm_return_code entries
+	* Fix: detect the correct version of LTTng-UST
+	* Fix: sessiond: use uint64_t for all session ids
+	* Fix: consumer: use uint64_t for all sessiond_id
+	* Fix: periodical flush check trace before stop
+	* Fix: consumer: 64-bit index for relayd rather than 32-bit (v2)
+	* Fix: send per-pid session id in channel creation
+	* Fix: consumer double-close on error
+	* Update URCU detection to correctly check for a 0.7 version
+	* Fix: set hidden attribute to utils_* calls
+
 2013-06-25 lttng-tools 2.2.0 (National Catfish Day)
 	* STABLE VERSION
 	* Fix: if relayd is unreachable, disable consumer for the session
