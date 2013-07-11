@@ -203,7 +203,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	 * during the session lifetime which is at the first enable channel and
 	 * only before start. The flag buffer_type_changed indicates the status.
 	 */
-	lus->buffer_type = LTTNG_BUFFER_PER_PID;
+	lus->buffer_type = LTTNG_BUFFER_PER_UID;
 	/* Once set to 1, the buffer_type is immutable for the session. */
 	lus->buffer_type_changed = 0;
 	/* Init it in case it get used after allocation. */

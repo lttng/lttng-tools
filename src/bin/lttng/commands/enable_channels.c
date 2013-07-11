@@ -202,15 +202,15 @@ static int enable_channel(char *session_name)
 		}
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
-		if (opt_buffer_uid) {
-			dom.buf_type = LTTNG_BUFFER_PER_UID;
+		if (opt_buffer_pid) {
+			dom.buf_type = LTTNG_BUFFER_PER_PID;
 		} else {
 			if (opt_buffer_global) {
 				ERR("Buffer type not supported for domain -u");
 				ret = CMD_ERROR;
 				goto error;
 			}
-			dom.buf_type = LTTNG_BUFFER_PER_PID;
+			dom.buf_type = LTTNG_BUFFER_PER_UID;
 		}
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");

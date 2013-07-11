@@ -340,7 +340,7 @@ static int enable_events(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 		/* Default. */
-		dom.buf_type = LTTNG_BUFFER_PER_PID;
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
 		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
 		ret = CMD_ERROR;
