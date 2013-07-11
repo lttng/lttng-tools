@@ -1,3 +1,34 @@
+2013-07-11 lttng-tools 2.1.2
+	* Fix: don't create a channel on an enable channel
+	* Fix: remove double consumer_del_stream in error path
+	* Fix: handle invalid ops pointer in relayd_close()
+	* Fix: lttng create default name check
+	* Fix: add missing error output
+	* Fix: minor errors in lttng.1 man page
+	* Fix: kernel function event was listed as probe
+	* Add unsupported error code to lttng cmd line
+	* Fix: typo in the create command help and man page
+	* Fix: session name max length was not handled correctly
+	* Fix: lttng UI failed to report error 19
+	* Fix: put session list lock around the app registration
+	* Fix: add poll entry/exit around relayd_connect()
+	* Fix: set relayd sock sent flag per consumer socket
+	* Fix: change health poll update to entry/exit calls
+	* Fix: support duplicate health type
+	* Fix: remove consumer health poll update on startup
+	* Fix: add missing unistd.h for fdatasync in compat-fcntl.c
+	* Cleanup unused health state reference
+	* Fix: health subsystem issues with shared code
+	* Fix: poll max size should be checked during resize
+	* Fix: wrong variable type for read() return value
+	* Fix: add missing rcu lock for UST lookup
+	* Fix: add missing rcu read side lock
+	* Fix: UST returns -LTTNG_UST_ERR_NOENT and not -ENOENT
+	* Fix: add missing fd put on stream creation error
+	* Fix: change function name for better meaning
+	* Fix: improve error handling for UST stream creation
+	* Fix: remove duplicate set ust event filter
+
 2013-01-11 lttng-tools 2.1.1
 	* Fix: update next_net_seq_num after sending header
 	* Fix: wrong loop continuation in metadata thread
