@@ -221,7 +221,17 @@ int lttng_snapshot_record(const char *session_name,
  */
 struct lttng_snapshot_output *lttng_snapshot_output_create(void)
 {
-	return zmalloc(sizeof(struct lttng_snapshot_output));
+	struct lttng_snapshot_output *output;
+
+	output = zmalloc(sizeof(struct lttng_snapshot_output));
+	if (!output) {
+		goto error;
+	}
+
+	output->max_size = (uint64_t) -1ULL;
+
+error:
+	return output;
 }
 
 /*

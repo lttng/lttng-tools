@@ -4929,7 +4929,8 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			 * subbuffer size or else it's an error since we won't be able to
 			 * snapshot anything.
 			 */
-			if (ua_chan->attr.subbuf_size > max_stream_size) {
+			if (max_stream_size &&
+					ua_chan->attr.subbuf_size > max_stream_size) {
 				ret = -EINVAL;
 				DBG3("UST app snapshot record maximum stream size %" PRIu64
 						" is smaller than subbuffer size of %" PRIu64,

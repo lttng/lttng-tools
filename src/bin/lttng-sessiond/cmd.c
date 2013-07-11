@@ -2576,7 +2576,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 		struct lttng_snapshot_output *output, int wait)
 {
 	int ret = LTTNG_OK;
-	struct snapshot_output *tmp_sout = NULL;
+	unsigned int use_tmp_output = 0;
+	struct snapshot_output tmp_output;
 	unsigned int nb_streams;
 
 	assert(session);
@@ -2600,15 +2601,9 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 	/* Use temporary output for the session. */
 	if (output && *output->ctrl_url != '\0') {
-		tmp_sout = snapshot_output_alloc();
-		if (!tmp_sout) {
-			ret = LTTNG_ERR_NOMEM;
-			goto error;
-		}
-
 		ret = snapshot_output_init(output->max_size, output->name,
 				output->ctrl_url, output->data_url, session->consumer,
-				tmp_sout, NULL);
+				&tmp_output, NULL);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
 				ret = LTTNG_ERR_NOMEM;
@@ -2617,6 +2612,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			}
 			goto error;
 		}
+		use_tmp_output = 1;
 	}
 
 	/*
@@ -2628,8 +2624,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 	if (session->kernel_session) {
 		struct ltt_kernel_session *ksess = session->kernel_session;
 
-		if (tmp_sout) {
-			ret = record_kernel_snapshot(ksess, tmp_sout, session,
+		if (use_tmp_output) {
+			ret = record_kernel_snapshot(ksess, &tmp_output, session,
 					wait, nb_streams);
 			if (ret < 0) {
 				goto error;
@@ -2641,7 +2637,25 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
-				ret = record_kernel_snapshot(ksess, sout,
+				/*
+				 * Make a local copy of the output and assign the possible
+				 * temporary value given by the caller.
+				 */
+				memset(&tmp_output, 0, sizeof(tmp_output));
+				memcpy(&tmp_output, sout, sizeof(tmp_output));
+
+				/* Use temporary max size. */
+				if (output->max_size != (uint64_t) -1ULL) {
+					tmp_output.max_size = output->max_size;
+				}
+
+				/* Use temporary name. */
+				if (*output->name != '\0') {
+					strncpy(tmp_output.name, output->name,
+							sizeof(tmp_output.name));
+				}
+
+				ret = record_kernel_snapshot(ksess, &tmp_output,
 						session, wait, nb_streams);
 				if (ret < 0) {
 					rcu_read_unlock();
@@ -2655,8 +2669,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 	if (session->ust_session) {
 		struct ltt_ust_session *usess = session->ust_session;
 
-		if (tmp_sout) {
-			ret = record_ust_snapshot(usess, tmp_sout, session,
+		if (use_tmp_output) {
+			ret = record_ust_snapshot(usess, &tmp_output, session,
 					wait, nb_streams);
 			if (ret < 0) {
 				goto error;
@@ -2668,7 +2682,27 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
-				ret = record_ust_snapshot(usess, sout, session,
+				/*
+				 * Make a local copy of the output and assign the possible
+				 * temporary value given by the caller.
+				 */
+				memset(&tmp_output, 0, sizeof(tmp_output));
+				memcpy(&tmp_output, sout, sizeof(tmp_output));
+
+				fprintf(stderr, "Name: %s\n", output->name);
+
+				/* Use temporary max size. */
+				if (output->max_size != (uint64_t) -1ULL) {
+					tmp_output.max_size = output->max_size;
+				}
+
+				/* Use temporary name. */
+				if (*output->name != '\0') {
+					strncpy(tmp_output.name, output->name,
+							sizeof(tmp_output.name));
+				}
+
+				ret = record_ust_snapshot(usess, &tmp_output, session,
 						wait, nb_streams);
 				if (ret < 0) {
 					rcu_read_unlock();
@@ -2680,9 +2714,6 @@ int cmd_snapshot_record(struct ltt_session *session,
 	}
 
 error:
-	if (tmp_sout) {
-		snapshot_output_destroy(tmp_sout);
-	}
 	return ret;
 }
 

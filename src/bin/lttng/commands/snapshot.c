@@ -323,12 +323,10 @@ static int record(const char *url)
 	int ret;
 	struct lttng_snapshot_output *output = NULL;
 
-	if (url || (opt_ctrl_url && opt_data_url)) {
-		output = create_output_from_args(url);
-		if (!output) {
-			ret = CMD_FATAL;
-			goto error;
-		}
+	output = create_output_from_args(url);
+	if (!output) {
+		ret = CMD_FATAL;
+		goto error;
 	}
 
 	ret = lttng_snapshot_record(current_session_name, output, 0);
@@ -422,6 +420,8 @@ int cmd_snapshot(int argc, const char **argv)
 			char *endptr;
 			const char *opt = poptGetOptArg(pc);
 
+			/* Documented by the man page of strtoll(3). */
+			errno = 0;
 			val = strtoll(opt, &endptr, 10);
 			if ((errno == ERANGE && (val == LLONG_MAX || val == LONG_MIN))
 					|| (errno != 0 && val == 0)) {

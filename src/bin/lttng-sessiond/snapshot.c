@@ -47,7 +47,11 @@ static int output_init(uint64_t max_size, const char *name,
 
 	assert(output);
 
+	if (max_size == (uint64_t) -1ULL) {
+		max_size = 0;
+	}
 	output->max_size = max_size;
+
 	if (snapshot) {
 		output->id = get_next_output_id(snapshot);
 	}
