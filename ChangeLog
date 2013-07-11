@@ -1,3 +1,6 @@
+2013-07-11 lttng-tools 2.0.6
+	* Fix: Delete UST app session on ustctl create error
+
 2012-11-28 lttng-tools 2.0.5
 	* Fix: Change the type of enabled in lttng_event to a signed int
 	* Fix: Returned code when listing kernel channel
