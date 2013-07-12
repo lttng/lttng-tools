@@ -83,7 +83,9 @@ _gen_result(int ok, const char *func, char *file, unsigned int line,
 	   expansions on it */
 	if(test_name != NULL) {
 		va_start(ap, test_name);
-		vasprintf(&local_test_name, test_name, ap);
+		if (vasprintf(&local_test_name, test_name, ap) == -1) {
+			local_test_name = NULL;
+		}
 		va_end(ap);
 
 		/* Make sure the test name contains more than digits
@@ -299,7 +301,9 @@ skip(unsigned int n, char *fmt, ...)
 	LOCK;
 
 	va_start(ap, fmt);
-	asprintf(&skip_msg, fmt, ap);
+	if (asprintf(&skip_msg, fmt, ap) == -1) {
+		skip_msg = NULL;
+	}
 	va_end(ap);
 
 	while(n-- > 0) {
@@ -324,7 +328,9 @@ todo_start(char *fmt, ...)
 	LOCK;
 
 	va_start(ap, fmt);
-	vasprintf(&todo_msg, fmt, ap);
+	if (vasprintf(&todo_msg, fmt, ap) == -1) {
+		todo_msg = NULL;
+	}
 	va_end(ap);
 
 	todo = 1;
