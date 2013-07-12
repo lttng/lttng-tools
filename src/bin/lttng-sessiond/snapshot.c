@@ -47,6 +47,8 @@ static int output_init(uint64_t max_size, const char *name,
 
 	assert(output);
 
+	memset(output, 0, sizeof(struct snapshot_output));
+
 	if (max_size == (uint64_t) -1ULL) {
 		max_size = 0;
 	}
