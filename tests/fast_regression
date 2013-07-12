@@ -7,6 +7,8 @@ regression/tools/health/test_tp_fail
 regression/tools/streaming/test_ust
 regression/tools/tracefile-limits/test_tracefile_count
 regression/tools/tracefile-limits/test_tracefile_size
+regression/tools/snapshots/test_ust
+regression/tools/snapshots/test_ust_streaming
 regression/ust/before-after/test_before_after
 regression/ust/buffers-uid/test_buffers_uid
 regression/ust/periodical-metadata-flush/test_periodical_metadata_flush
