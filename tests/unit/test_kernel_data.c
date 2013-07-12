@@ -79,9 +79,6 @@ static void test_create_one_kernel_session(void)
 	   kern->stream_count_global == 0 &&
 	   kern->metadata == NULL,
 	   "Validate kernel session");
-
-	/* Init list in order to avoid sefaults from cds_list_del */
-	trace_kernel_destroy_session(kern);
 }
 
 static void test_create_kernel_metadata(void)
