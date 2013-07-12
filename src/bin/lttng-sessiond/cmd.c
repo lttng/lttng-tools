@@ -2401,12 +2401,12 @@ error:
  * Send relayd sockets from snapshot output to consumer. Ignore request if the
  * snapshot output is *not* set with a remote destination.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or a LTTNG_ERR code.
  */
 static int set_relayd_for_snapshot(struct consumer_output *consumer,
 		struct snapshot_output *snap_output, struct ltt_session *session)
 {
-	int ret = 0;
+	int ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket;
 
@@ -2430,7 +2430,7 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 			socket, node.node) {
 		ret = send_consumer_relayd_sockets(0, session->id,
 				snap_output->consumer, socket);
-		if (ret < 0) {
+		if (ret != LTTNG_OK) {
 			rcu_read_unlock();
 			goto error;
 		}
@@ -2444,7 +2444,7 @@ error:
 /*
  * Record a kernel snapshot.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or a LTTNG_ERR code.
  */
 static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, struct ltt_session *session,
@@ -2460,7 +2460,7 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", output->datetime,
 			sizeof(output->datetime));
 	if (!ret) {
-		ret = -EINVAL;
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -2470,22 +2470,25 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	 */
 	ret = consumer_copy_sockets(output->consumer, ksess->consumer);
 	if (ret < 0) {
+		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
 	ret = set_relayd_for_snapshot(ksess->consumer, output, session);
-	if (ret < 0) {
+	if (ret != LTTNG_OK) {
 		goto error_snapshot;
 	}
 
 	ret = kernel_snapshot_record(ksess, output, wait, nb_streams);
 	if (ret < 0) {
-		ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		if (ret == -EINVAL) {
-			ret = -LTTNG_ERR_INVALID;
+			ret = LTTNG_ERR_INVALID;
 		}
 		goto error_snapshot;
 	}
+
+	ret = LTTNG_OK;
 
 error_snapshot:
 	/* Clean up copied sockets so this output can use some other later on. */
@@ -2497,7 +2500,7 @@ error:
 /*
  * Record a UST snapshot.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or a LTTNG_ERR error code.
  */
 static int record_ust_snapshot(struct ltt_ust_session *usess,
 		struct snapshot_output *output, struct ltt_session *session,
@@ -2513,7 +2516,7 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", output->datetime,
 			sizeof(output->datetime));
 	if (!ret) {
-		ret = -EINVAL;
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -2523,22 +2526,25 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 	 */
 	ret = consumer_copy_sockets(output->consumer, usess->consumer);
 	if (ret < 0) {
+		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
 	ret = set_relayd_for_snapshot(usess->consumer, output, session);
-	if (ret < 0) {
+	if (ret != LTTNG_OK) {
 		goto error_snapshot;
 	}
 
 	ret = ust_app_snapshot_record(usess, output, wait, nb_streams);
 	if (ret < 0) {
-		ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		if (ret == -EINVAL) {
-			ret = -LTTNG_ERR_INVALID;
+			ret = LTTNG_ERR_INVALID;
 		}
 		goto error_snapshot;
 	}
+
+	ret = LTTNG_OK;
 
 error_snapshot:
 	/* Clean up copied sockets so this output can use some other later on. */
@@ -2635,7 +2641,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 		if (use_tmp_output) {
 			ret = record_kernel_snapshot(ksess, &tmp_output, session,
 					wait, nb_streams);
-			if (ret < 0) {
+			if (ret != LTTNG_OK) {
 				goto error;
 			}
 			snapshot_success = 1;
@@ -2668,7 +2674,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 				ret = record_kernel_snapshot(ksess, &tmp_output,
 						session, wait, nb_streams);
-				if (ret < 0) {
+				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
 				}
@@ -2684,7 +2690,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 		if (use_tmp_output) {
 			ret = record_ust_snapshot(usess, &tmp_output, session,
 					wait, nb_streams);
-			if (ret < 0) {
+			if (ret != LTTNG_OK) {
 				goto error;
 			}
 			snapshot_success = 1;
@@ -2719,7 +2725,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 				ret = record_ust_snapshot(usess, &tmp_output, session,
 						wait, nb_streams);
-				if (ret < 0) {
+				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
 				}
