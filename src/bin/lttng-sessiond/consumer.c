@@ -1232,8 +1232,9 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		msg.u.snapshot_channel.relayd_id = output->consumer->net_seq_index;
 		msg.u.snapshot_channel.use_relayd = 1;
 		ret = snprintf(msg.u.snapshot_channel.pathname,
-				sizeof(msg.u.snapshot_channel.pathname), "%s/%s-%s%s",
-				output->consumer->subdir, output->name, output->datetime,
+				sizeof(msg.u.snapshot_channel.pathname),
+				"%s/%s-%s-%" PRIu64 "%s", output->consumer->subdir,
+				output->name, output->datetime, output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
@@ -1241,9 +1242,10 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		}
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
-				sizeof(msg.u.snapshot_channel.pathname), "%s/%s-%s%s",
-				output->consumer->dst.trace_path, output->name,
-				output->datetime, session_path);
+				sizeof(msg.u.snapshot_channel.pathname),
+				"%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.trace_path,
+				output->name, output->datetime, output->nb_snapshot,
+				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;

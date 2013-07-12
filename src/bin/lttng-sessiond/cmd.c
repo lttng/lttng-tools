@@ -2584,7 +2584,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	int ret = LTTNG_OK;
 	unsigned int use_tmp_output = 0;
 	struct snapshot_output tmp_output;
-	unsigned int nb_streams;
+	unsigned int nb_streams, snapshot_success = 0;
 
 	assert(session);
 
@@ -2618,6 +2618,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 			}
 			goto error;
 		}
+		/* Use the global session count for the temporary snapshot. */
+		tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
 		use_tmp_output = 1;
 	}
 
@@ -2636,6 +2638,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			if (ret < 0) {
 				goto error;
 			}
+			snapshot_success = 1;
 		} else {
 			struct snapshot_output *sout;
 			struct lttng_ht_iter iter;
@@ -2661,12 +2664,15 @@ int cmd_snapshot_record(struct ltt_session *session,
 							sizeof(tmp_output.name));
 				}
 
+				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
+
 				ret = record_kernel_snapshot(ksess, &tmp_output,
 						session, wait, nb_streams);
 				if (ret < 0) {
 					rcu_read_unlock();
 					goto error;
 				}
+				snapshot_success = 1;
 			}
 			rcu_read_unlock();
 		}
@@ -2681,6 +2687,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			if (ret < 0) {
 				goto error;
 			}
+			snapshot_success = 1;
 		} else {
 			struct snapshot_output *sout;
 			struct lttng_ht_iter iter;
@@ -2708,15 +2715,22 @@ int cmd_snapshot_record(struct ltt_session *session,
 							sizeof(tmp_output.name));
 				}
 
+				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
+
 				ret = record_ust_snapshot(usess, &tmp_output, session,
 						wait, nb_streams);
 				if (ret < 0) {
 					rcu_read_unlock();
 					goto error;
 				}
+				snapshot_success = 1;
 			}
 			rcu_read_unlock();
 		}
+	}
+
+	if (snapshot_success) {
+		session->snapshot.nb_snapshot++;
 	}
 
 error:
