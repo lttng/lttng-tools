@@ -857,6 +857,8 @@ int cmd_enable_channel(struct ltt_session *session,
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
+	rcu_read_lock();
+
 	/*
 	 * Don't try to enable a channel if the session has been started at
 	 * some point in time before. The tracer does not allow it.
@@ -865,8 +867,6 @@ int cmd_enable_channel(struct ltt_session *session,
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
 		goto error;
 	}
-
-	rcu_read_lock();
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
