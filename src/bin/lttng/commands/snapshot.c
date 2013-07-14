@@ -76,13 +76,13 @@ static struct cmd_struct actions[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng snapshot [ACTION]\n");
+	fprintf(ofp, "usage: lttng snapshot ACTION\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Actions:\n");
 	fprintf(ofp, "   add-output [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>\n");
 	fprintf(ofp, "      Setup and add an snapshot output for a session.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "   del-output ID [-s <NAME>]\n");
+	fprintf(ofp, "   del-output ID | NAME [-s <NAME>]\n");
 	fprintf(ofp, "      Delete an output for a session using the ID.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "   list-output [-s <NAME>]\n");
@@ -91,8 +91,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "   record [-m <SIZE>] [-s <NAME>] [-n <NAME>] [<URL> | -C <URL> -D <URL>]\n");
 	fprintf(ofp, "      Snapshot a session's buffer(s) for all domains. If an URL is\n");
 	fprintf(ofp, "      specified, it is used instead of a previously added output.\n");
-	fprintf(ofp, "      The snapshot is saved in the session directory in snapshot/ with\n");
-	fprintf(ofp, "      the top directory being NAME or the default: snapshot-ID/\n");
+	fprintf(ofp, "      Specifying only a name or/a size will override the current output value.\n");
+	fprintf(ofp, "      For instance, you can record a snapshot with a custom maximum size\n");
+	fprintf(ofp, "      or with a different name.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
