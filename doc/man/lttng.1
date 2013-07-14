@@ -645,12 +645,17 @@ rather then in mysnapshot*/
 .B LONG OPTIONS
 
 .nf
-\-s, \-\-session NAME   Apply to session name.
-\-n, \-\-name NAME      Name of the snapshot's output.
-\-m, \-\-max-size SIZE  Maximum size in bytes of the snapshot.
-                        The maxium size does not count the metadata file.
-\-C, \-\-ctrl-url URL   Set control path URL. (Must use -D also)
-\-D, \-\-data-url URL   Set data path URL. (Must use -C also)
+\-s, \-\-session NAME
+        Apply to session name.
+\-n, \-\-name NAME
+        Name of the snapshot's output.
+\-m, \-\-max-size SIZE
+        Maximum size in bytes of the snapshot. The maxium size does not
+        include the metadata file.
+\-C, \-\-ctrl-url URL
+        Set control path URL. (Must use -D also)
+\-D, \-\-data-url URL
+        Set data path URL. (Must use -C also)
 .fi
 
 .IP
