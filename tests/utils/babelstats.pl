@@ -146,6 +146,7 @@ while (<>)
 	my $elapsed     = '\((.*)\)';
 	my $hostname    = '.*';
 	my $pname       = '.*';
+	my $pinfo       = '.*';
 	my $pid         = '\d+';
 	my $tp_provider = '.*';
 	my $tp_name     = '.*';
@@ -153,18 +154,21 @@ while (<>)
 	my $fields      = '{(.*)}';
 
 	# Parse babeltrace text output format
-	if (/$timestamp\s$elapsed\s($hostname):($pname):($pid)\s($tp_provider):($tp_name):\s$cpu_info,\s$fields/) {
+	if (/$timestamp\s$elapsed\s($pinfo)\s($tp_provider):($tp_name):\s$cpu_info,\s$fields/) {
 		my %event_hash;
-
 		$event_hash{'timestamp'}   = $1;
 		$event_hash{'elapsed'}     = $2;
-		$event_hash{'hostname'}    = $3;
-		$event_hash{'pname'}       = $4;
-		$event_hash{'pid'}         = $5;
-		$event_hash{'tp_provider'} = $6;
-		$event_hash{'tp_name'}     = $7;
-		$event_hash{'cpu_id'}      = $8;
-		$event_hash{'fields'}      = parse_fields($9);
+		$event_hash{'pinfo'}       = $3;
+
+#		my @split_pinfo = split(':', $3);
+#		$event_hash{'hostname'}    = $split_pinfo[0];
+#		$event_hash{'pname'}       = defined($split_pinfo[1]) ? $split_pinfo[1] : undef;
+#		$event_hash{'pid'}         = defined($split_pinfo[2]) ? $split_pinfo[2] : undef;
+
+		$event_hash{'tp_provider'} = $4;
+		$event_hash{'tp_name'}     = $5;
+		$event_hash{'cpu_id'}      = $6;
+		$event_hash{'fields'}      = parse_fields($7);
 
 		push @events, \%event_hash;
 	}
