@@ -157,6 +157,15 @@ struct lttng_consumer_channel {
 	/* On-disk circular buffer */
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
+	/*
+	 * Channel lock.
+	 *
+	 * This is nested INSIDE the consumer data lock.
+	 * This is nested OUTSIDE the metadata cache lock.
+	 * This is nested OUTSIDE stream lock.
+	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
+	 */
+	pthread_mutex_t lock;
 };
 
 /*
@@ -228,6 +237,7 @@ struct lttng_consumer_stream {
 	 *
 	 * This is nested INSIDE the consumer_data lock.
 	 * This is nested INSIDE the metadata cache lock.
+	 * This is nested INSIDE the channel lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;
