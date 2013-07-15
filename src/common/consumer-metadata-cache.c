@@ -204,6 +204,7 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	cache = channel->metadata_cache;
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 
 	if (cache->rb_pushed >= offset) {
@@ -224,6 +225,7 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	}
 
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
+	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	return ret;

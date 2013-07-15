@@ -291,6 +291,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	DBG("Consumer delete channel key %" PRIu64, channel->key);
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&channel->lock);
 
 	/* Delete streams that might have been left in the stream list. */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
@@ -324,6 +325,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	call_rcu(&channel->node.head, free_channel_rcu);
 end:
+	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 }
 
@@ -547,6 +549,7 @@ static int add_stream(struct lttng_consumer_stream *stream,
 	DBG3("Adding consumer stream %" PRIu64, stream->key);
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->lock);
 	rcu_read_lock();
 
@@ -584,6 +587,7 @@ static int add_stream(struct lttng_consumer_stream *stream,
 
 	rcu_read_unlock();
 	pthread_mutex_unlock(&stream->lock);
+	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	return ret;
@@ -832,6 +836,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->tracefile_size = tracefile_size;
 	channel->tracefile_count = tracefile_count;
 	channel->monitor = monitor;
+	pthread_mutex_init(&channel->lock, NULL);
 
 	/*
 	 * In monitor mode, the streams associated with the channel will be put in
@@ -877,6 +882,7 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 	struct lttng_ht_iter iter;
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&channel->lock);
 	rcu_read_lock();
 
 	lttng_ht_lookup(consumer_data.channel_ht, &channel->key, &iter);
@@ -893,6 +899,7 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 
 end:
 	rcu_read_unlock();
+	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	if (!ret && channel->wait_fd != -1 &&
@@ -1852,6 +1859,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	}
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->lock);
 
 	switch (consumer_data.type) {
@@ -1945,6 +1953,7 @@ end:
 	stream->chan->metadata_stream = NULL;
 
 	pthread_mutex_unlock(&stream->lock);
+	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	if (free_chan) {
@@ -1972,6 +1981,7 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 	DBG3("Adding metadata stream %" PRIu64 " to hash table", stream->key);
 
 	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->lock);
 
 	/*
@@ -2017,6 +2027,7 @@ static int add_metadata_stream(struct lttng_consumer_stream *stream,
 	rcu_read_unlock();
 
 	pthread_mutex_unlock(&stream->lock);
+	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 	return ret;
 }
