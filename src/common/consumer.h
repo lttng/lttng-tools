@@ -398,7 +398,11 @@ struct lttng_consumer_local_data {
 	int consumer_error_socket;
 	/* socket to ask metadata to sessiond. */
 	int consumer_metadata_socket;
-	/* Protect consumer_metadata_socket. */
+	/*
+	 * Protect consumer_metadata_socket.
+	 *
+	 * This is nested OUTSIDE the metadata cache lock.
+	 */
 	pthread_mutex_t metadata_socket_lock;
 	/* socket to exchange commands with sessiond */
 	char *consumer_command_sock_path;
