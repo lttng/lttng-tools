@@ -31,7 +31,7 @@ NR_USEC_WAIT=100
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=2029
+NUM_TESTS=2039
 
 source $TESTDIR/utils/utils.sh
 
@@ -102,6 +102,33 @@ function test_ust_per_uid_local_snapshot ()
 	kill $PID_APP >/dev/null 2>&1
 }
 
+function test_ust_per_uid_local_snapshot_post_mortem ()
+{
+	diag "Test local UST snapshots post-mortem"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	ok $? "Start application to trace"
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test
+	validate_trace $EVENT_NAME $TRACE_PATH/
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	else
+		break
+	fi
+}
+
 function test_ust_1000_local_snapshots ()
 {
 	NB_SNAP=1000
@@ -145,7 +172,10 @@ fi
 
 start_lttng_sessiond
 
-tests=( test_ust_local_snapshot test_ust_per_uid_local_snapshot test_ust_1000_local_snapshots )
+tests=( test_ust_local_snapshot \
+	test_ust_per_uid_local_snapshot \
+	test_ust_per_uid_local_snapshot_post_mortem \
+	test_ust_1000_local_snapshots )
 
 for fct_test in ${tests[@]};
 do
