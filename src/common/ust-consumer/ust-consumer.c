@@ -1486,6 +1486,12 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
 	}
 }
 
+/*
+ * Please refer to consumer-timer.c before adding any lock within this
+ * function or any of its callees. Timers have a very strict locking
+ * semantic with respect to teardown. Failure to respect this semantic
+ * introduces deadlocks.
+ */
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_channel *channel)
 {
