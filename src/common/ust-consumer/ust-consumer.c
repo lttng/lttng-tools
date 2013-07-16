@@ -551,43 +551,6 @@ error:
 }
 
 /*
- * Write metadata to the given channel using ustctl to convert the string to
- * the ringbuffer.
- * Called only from consumer_metadata_cache_write.
- * The metadata cache lock MUST be acquired to write in the cache.
- *
- * Return 0 on success else a negative value.
- */
-int lttng_ustconsumer_push_metadata(struct lttng_consumer_channel *metadata,
-		const char *metadata_str, uint64_t target_offset, uint64_t len)
-{
-	int ret;
-
-	assert(metadata);
-	assert(metadata_str);
-
-	DBG("UST consumer writing metadata to channel %s", metadata->name);
-
-	if (!metadata->metadata_stream) {
-		ret = 0;
-		goto error;
-	}
-
-	assert(target_offset <= metadata->metadata_cache->max_offset);
-	ret = ustctl_write_metadata_to_channel(metadata->uchan,
-			metadata_str + target_offset, len);
-	if (ret < 0) {
-		ERR("ustctl write metadata fail with ret %d, len %" PRIu64, ret, len);
-		goto error;
-	}
-
-	ustctl_flush_buffer(metadata->metadata_stream->ustream, 1);
-
-error:
-	return ret;
-}
-
-/*
  * Flush channel's streams using the given key to retrieve the channel.
  *
  * Return 0 on success else an LTTng error code.
