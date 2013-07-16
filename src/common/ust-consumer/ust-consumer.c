@@ -1417,6 +1417,11 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 
 	DBG("UST consumer checking data pending");
 
+	if (stream->endpoint_status != CONSUMER_ENDPOINT_ACTIVE) {
+		ret = 0;
+		goto end;
+	}
+
 	ret = ustctl_get_next_subbuf(stream->ustream);
 	if (ret == 0) {
 		/* There is still data so let's put back this subbuffer. */
