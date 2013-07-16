@@ -205,6 +205,7 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	 */
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
+	pthread_mutex_lock(&channel->timer_lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 
 	metadata_stream = channel->metadata_stream;
@@ -227,6 +228,7 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	}
 
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
+	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
