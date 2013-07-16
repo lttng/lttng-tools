@@ -343,7 +343,7 @@ static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 	assert(stream);
 	assert(sock >= 0);
 
-	DBG2("UST consumer sending stream %" PRIu64 " to sessiond", stream->key);
+	DBG("UST consumer sending stream %" PRIu64 " to sessiond", stream->key);
 
 	/* Send stream to session daemon. */
 	ret = ustctl_send_stream_to_sessiond(sock, stream->ustream);
@@ -1616,7 +1616,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	assert(stream->ustream);
 	assert(ctx);
 
-	DBG2("In UST read_subbuffer (wait_fd: %d, name: %s)", stream->wait_fd,
+	DBG("In UST read_subbuffer (wait_fd: %d, name: %s)", stream->wait_fd,
 			stream->name);
 
 	/* Ease our life for what's next. */
