@@ -491,6 +491,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->net_seq_idx = relayd_id;
 	stream->session_id = session_id;
 	stream->monitor = monitor;
+	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
 	pthread_mutex_init(&stream->lock, NULL);
 
 	/* If channel is the metadata, flag this stream as metadata. */
