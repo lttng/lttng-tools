@@ -2134,6 +2134,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	}
 	assert(reg_chan);
 	reg_chan->consumer_key = ua_chan->key;
+	reg_chan->subbuf_size = ua_chan->attr.subbuf_size;
 
 	/* Create and add a channel registry to session. */
 	ret = ust_registry_channel_add(reg_sess->reg.ust,
@@ -4892,69 +4893,135 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		max_stream_size = output->max_size / nb_streams;
 	}
 
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		struct consumer_socket *socket;
-		struct lttng_ht_iter chan_iter;
-		struct ust_app_channel *ua_chan;
-		struct ust_app_session *ua_sess;
-		struct ust_registry_session *registry;
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
 
-		ua_sess = lookup_session_by_app(usess, app);
-		if (!ua_sess) {
-			/* Session not associated with this app. */
-			continue;
-		}
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+			struct consumer_socket *socket;
 
-		/* Get the right consumer socket for the application. */
-		socket = consumer_find_socket_by_bitness(app->bits_per_long,
-				output->consumer);
-		if (!socket) {
-			ret = -EINVAL;
-			goto error;
-		}
-
-		/* Add the UST default trace dir to path. */
-		memset(pathname, 0, sizeof(pathname));
-		ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
-				ua_sess->path);
-		if (ret < 0) {
-			PERROR("snprintf snapshot path");
-			goto error;
-		}
-
-		cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
-				ua_chan, node.node) {
-			/*
-			 * Make sure the maximum stream size is not lower than the
-			 * subbuffer size or else it's an error since we won't be able to
-			 * snapshot anything.
-			 */
-			if (max_stream_size &&
-					ua_chan->attr.subbuf_size > max_stream_size) {
+			/* Get consumer socket to use to push the metadata.*/
+			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
+					usess->consumer);
+			if (!socket) {
 				ret = -EINVAL;
-				DBG3("UST app snapshot record maximum stream size %" PRIu64
-						" is smaller than subbuffer size of %" PRIu64,
-						max_stream_size, ua_chan->attr.subbuf_size);
 				goto error;
 			}
 
-			ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
-					ua_sess->euid, ua_sess->egid, pathname, wait,
+			memset(pathname, 0, sizeof(pathname));
+			ret = snprintf(pathname, sizeof(pathname),
+					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
+					reg->uid, reg->bits_per_long);
+			if (ret < 0) {
+				PERROR("snprintf snapshot path");
+				goto error;
+			}
+
+			/* Add the UST default trace dir to path. */
+			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
+					reg_chan, node.node) {
+
+				/*
+				 * Make sure the maximum stream size is not lower than the
+				 * subbuffer size or else it's an error since we won't be able to
+				 * snapshot anything.
+				 */
+				if (max_stream_size &&
+						reg_chan->subbuf_size > max_stream_size) {
+					ret = -EINVAL;
+					DBG3("UST app snapshot record maximum stream size %" PRIu64
+							" is smaller than subbuffer size of %" PRIu64,
+							max_stream_size, reg_chan->subbuf_size);
+					goto error;
+				}
+				ret = consumer_snapshot_channel(socket, reg_chan->consumer_key, output, 0,
+						usess->uid, usess->gid, pathname, wait,
+						max_stream_size);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+			ret = consumer_snapshot_channel(socket, reg->registry->reg.ust->metadata_key, output,
+					1, usess->uid, usess->gid, pathname, wait,
 					max_stream_size);
 			if (ret < 0) {
 				goto error;
 			}
 		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct consumer_socket *socket;
+			struct lttng_ht_iter chan_iter;
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct ust_registry_session *registry;
 
-		registry = get_session_registry(ua_sess);
-		assert(registry);
-		ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
-				1, ua_sess->euid, ua_sess->egid, pathname, wait,
-				max_stream_size);
-		if (ret < 0) {
-			goto error;
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			/* Get the right consumer socket for the application. */
+			socket = consumer_find_socket_by_bitness(app->bits_per_long,
+					output->consumer);
+			if (!socket) {
+				ret = -EINVAL;
+				goto error;
+			}
+
+			/* Add the UST default trace dir to path. */
+			memset(pathname, 0, sizeof(pathname));
+			ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
+					ua_sess->path);
+			if (ret < 0) {
+				PERROR("snprintf snapshot path");
+				goto error;
+			}
+
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+					ua_chan, node.node) {
+				/*
+				 * Make sure the maximum stream size is not lower than the
+				 * subbuffer size or else it's an error since we won't be able to
+				 * snapshot anything.
+				 */
+				if (max_stream_size &&
+						ua_chan->attr.subbuf_size > max_stream_size) {
+					ret = -EINVAL;
+					DBG3("UST app snapshot record maximum stream size %" PRIu64
+							" is smaller than subbuffer size of %" PRIu64,
+							max_stream_size, ua_chan->attr.subbuf_size);
+					goto error;
+				}
+
+				ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
+						ua_sess->euid, ua_sess->egid, pathname, wait,
+						max_stream_size);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+
+			registry = get_session_registry(ua_sess);
+			assert(registry);
+			ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
+					1, ua_sess->euid, ua_sess->egid, pathname, wait,
+					max_stream_size);
+			if (ret < 0) {
+				goto error;
+			}
 		}
-
+		break;
+	}
+	default:
+		assert(0);
+		break;
 	}
 
 error:
