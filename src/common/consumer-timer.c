@@ -56,6 +56,10 @@ static void setmask(sigset_t *mask)
 
 /*
  * Execute action on a timer switch.
+ *
+ * Beware: metadata_switch_timer() should *never* take a mutex also held
+ * while consumer_timer_switch_stop() is called. It would result in
+ * deadlocks.
  */
 static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 		int sig, siginfo_t *si, void *uc)
