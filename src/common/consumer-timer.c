@@ -82,9 +82,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 		 * Locks taken by lttng_ustconsumer_request_metadata():
 		 * - metadata_socket_lock
 		 *   - Calling lttng_ustconsumer_recv_metadata():
-		 *     - consumer_data.lock
-		 *       - channel->lock
-		 *         - channel->metadata_cache->lock
+		 *     - channel->metadata_cache->lock
 		 *     - Calling consumer_metadata_cache_flushed():
 		 *       - consumer_data.lock
 		 *         - channel->lock

@@ -1039,17 +1039,6 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		goto end_free;
 	}
 
-	/*
-	 * XXX: The consumer data lock is acquired before calling metadata cache
-	 * write which calls push metadata that MUST be protected by the consumer
-	 * lock in order to be able to check the validity of the metadata stream of
-	 * the channel.
-	 *
-	 * Note that this will be subject to change to better fine grained locking
-	 * and ultimately try to get rid of this global consumer data lock.
-	 */
-	pthread_mutex_lock(&consumer_data.lock);
-	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 	ret = consumer_metadata_cache_write(channel, offset, len, metadata_str);
 	if (ret < 0) {
@@ -1061,13 +1050,9 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		 * waiting for the metadata cache to be flushed.
 		 */
 		pthread_mutex_unlock(&channel->metadata_cache->lock);
-		pthread_mutex_unlock(&channel->lock);
-		pthread_mutex_unlock(&consumer_data.lock);
 		goto end_free;
 	}
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
-	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
 
 	while (consumer_metadata_cache_flushed(channel, offset + len)) {
 		DBG("Waiting for metadata to be flushed");
