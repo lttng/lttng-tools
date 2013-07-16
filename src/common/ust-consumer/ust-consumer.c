@@ -614,7 +614,6 @@ static int close_metadata(uint64_t chan_key)
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
-	pthread_mutex_lock(&channel->timer_lock);
 
 	if (cds_lfht_is_node_deleted(&channel->node.node)) {
 		goto error_unlock;
@@ -642,7 +641,6 @@ static int close_metadata(uint64_t chan_key)
 	}
 
 error_unlock:
-	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 error:
@@ -759,7 +757,7 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 	 * Ask the sessiond if we have new metadata waiting and update the
 	 * consumer metadata cache.
 	 */
-	ret = lttng_ustconsumer_request_metadata(ctx, metadata_channel);
+	ret = lttng_ustconsumer_request_metadata(ctx, metadata_channel, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -982,7 +980,8 @@ error:
  * Receive the metadata updates from the sessiond.
  */
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
-		uint64_t len, struct lttng_consumer_channel *channel)
+		uint64_t len, struct lttng_consumer_channel *channel,
+		int timer)
 {
 	int ret, ret_code = LTTNG_OK;
 	char *metadata_str;
@@ -1019,7 +1018,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 	}
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
 
-	while (consumer_metadata_cache_flushed(channel, offset + len)) {
+	while (consumer_metadata_cache_flushed(channel, offset + len, timer)) {
 		DBG("Waiting for metadata to be flushed");
 		usleep(DEFAULT_METADATA_AVAILABILITY_WAIT_TIME);
 	}
@@ -1354,7 +1353,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		ret = lttng_ustconsumer_recv_metadata(sock, key, offset,
-				len, channel);
+				len, channel, 0);
 		if (ret < 0) {
 			/* error receiving from sessiond */
 			goto error_fatal;
@@ -1813,7 +1812,7 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
  * introduces deadlocks.
  */
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_channel *channel)
+		struct lttng_consumer_channel *channel, int timer)
 {
 	struct lttcomm_metadata_request_msg request;
 	struct lttcomm_consumer_msg msg;
@@ -1901,7 +1900,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	}
 
 	ret_code = lttng_ustconsumer_recv_metadata(ctx->consumer_metadata_socket,
-			key, offset, len, channel);
+			key, offset, len, channel, timer);
 	if (ret_code >= 0) {
 		/*
 		 * Only send the status msg if the sessiond is alive meaning a positive

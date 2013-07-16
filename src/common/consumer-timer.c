@@ -84,15 +84,15 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 		 *   - Calling lttng_ustconsumer_recv_metadata():
 		 *     - channel->metadata_cache->lock
 		 *     - Calling consumer_metadata_cache_flushed():
-		 *       - consumer_data.lock
-		 *         - channel->lock
-		 *           - channel->metadata_cache->lock
+		 *       - channel->timer_lock
+		 *         - channel->metadata_cache->lock
 		 *
-		 * Both consumer_data.lock and channel->lock currently
-		 * cause a deadlock, since they are held while
-		 * consumer_timer_switch_stop() is called.
+		 * Ensure that neither consumer_data.lock nor
+		 * channel->lock are taken within this function, since
+		 * they are held while consumer_timer_switch_stop() is
+		 * called.
 		 */
-		ret = lttng_ustconsumer_request_metadata(ctx, channel);
+		ret = lttng_ustconsumer_request_metadata(ctx, channel, 1);
 		if (ret < 0) {
 			channel->switch_timer_error = 1;
 		}

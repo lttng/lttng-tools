@@ -190,7 +190,7 @@ void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel)
  * Return 0 if everything has been flushed, 1 if there is data not flushed.
  */
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
-		uint64_t offset)
+		uint64_t offset, int timer)
 {
 	int ret = 0;
 	struct lttng_consumer_stream *metadata_stream;
@@ -199,12 +199,15 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	assert(channel->metadata_cache);
 
 	/*
-	 * XXX This consumer_data.lock should eventually be replaced by
-	 * a channel lock. It protects metadata_stream read and endpoint
-	 * status check.
+	 * If not called from a timer handler, we have to take the
+	 * channel lock to be mutually exclusive with channel teardown.
+	 * Timer handler does not need to take this lock because it is
+	 * already synchronized by timer stop (and, more importantly,
+	 * taking this lock in a timer handler would cause a deadlock).
 	 */
-	pthread_mutex_lock(&consumer_data.lock);
-	pthread_mutex_lock(&channel->lock);
+	if (!timer) {
+		pthread_mutex_lock(&channel->lock);
+	}
 	pthread_mutex_lock(&channel->timer_lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 
@@ -229,8 +232,9 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
 	pthread_mutex_unlock(&channel->timer_lock);
-	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	if (!timer) {
+		pthread_mutex_unlock(&channel->lock);
+	}
 
 	return ret;
 }

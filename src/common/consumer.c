@@ -292,7 +292,6 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
-	pthread_mutex_lock(&channel->timer_lock);
 
 	/* Delete streams that might have been left in the stream list. */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
@@ -326,7 +325,6 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	call_rcu(&channel->node.head, free_channel_rcu);
 end:
-	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 }
@@ -1869,7 +1867,6 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&stream->chan->lock);
-	pthread_mutex_lock(&stream->chan->timer_lock);
 	pthread_mutex_lock(&stream->lock);
 
 	switch (consumer_data.type) {
@@ -1964,13 +1961,12 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 end:
 	/*
 	 * Nullify the stream reference so it is not used after deletion. The
-	 * consumer data lock MUST be acquired before being able to check for a
-	 * NULL pointer value.
+	 * channel lock MUST be acquired before being able to check for
+	 * a NULL pointer value.
 	 */
 	stream->chan->metadata_stream = NULL;
 
 	pthread_mutex_unlock(&stream->lock);
-	pthread_mutex_unlock(&stream->chan->timer_lock);
 	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
