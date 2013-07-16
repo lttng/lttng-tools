@@ -607,6 +607,11 @@ int lttng_kconsumer_data_pending(struct lttng_consumer_stream *stream)
 
 	assert(stream);
 
+	if (stream->endpoint_status != CONSUMER_ENDPOINT_ACTIVE) {
+		ret = 0;
+		goto end;
+	}
+
 	ret = kernctl_get_next_subbuf(stream->wait_fd);
 	if (ret == 0) {
 		/* There is still data so let's put back this subbuffer. */
