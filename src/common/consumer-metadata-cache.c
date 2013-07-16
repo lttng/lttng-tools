@@ -203,6 +203,11 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 
 	cache = channel->metadata_cache;
 
+	/*
+	 * XXX This consumer_data.lock should eventually be replaced by
+	 * a channel lock. It protects metadata_stream read and endpoint
+	 * status check.
+	 */
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
