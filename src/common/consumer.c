@@ -1153,6 +1153,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 
 	ctx->consumer_error_socket = -1;
 	ctx->consumer_metadata_socket = -1;
+	pthread_mutex_init(&ctx->metadata_socket_lock, NULL);
 	/* assign the callbacks */
 	ctx->on_buffer_ready = buffer_ready;
 	ctx->on_recv_channel = recv_channel;

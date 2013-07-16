@@ -396,8 +396,10 @@ struct lttng_consumer_local_data {
 	enum lttng_consumer_type type;
 	/* socket to communicate errors with sessiond */
 	int consumer_error_socket;
-	/* socket to ask metadata to sessiond */
+	/* socket to ask metadata to sessiond. */
 	int consumer_metadata_socket;
+	/* Protect consumer_metadata_socket. */
+	pthread_mutex_t metadata_socket_lock;
 	/* socket to exchange commands with sessiond */
 	char *consumer_command_sock_path;
 	/* communication with splice */

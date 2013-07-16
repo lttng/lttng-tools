@@ -1890,6 +1890,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 			channel->session_id,
 			channel->session_id_per_pid);
 
+	pthread_mutex_lock(&ctx->metadata_socket_lock);
 	ret = lttcomm_send_unix_sock(ctx->consumer_metadata_socket, &request,
 			sizeof(request));
 	if (ret < 0) {
@@ -1955,5 +1956,6 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	ret = 0;
 
 end:
+	pthread_mutex_unlock(&ctx->metadata_socket_lock);
 	return ret;
 }
