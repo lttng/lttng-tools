@@ -52,11 +52,12 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream);
 void lttng_ustconsumer_close_metadata(struct lttng_ht *ht);
 void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
-		uint64_t len, struct lttng_consumer_channel *channel);
+		uint64_t len, struct lttng_consumer_channel *channel,
+		int timer);
 int lttng_ustconsumer_push_metadata(struct lttng_consumer_channel *metadata,
 		const char *metadata_str, uint64_t target_offset, uint64_t len);
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_channel *channel);
+		struct lttng_consumer_channel *channel, int timer);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -164,7 +165,8 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
 }
 static inline
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
-		uint64_t len, struct lttng_consumer_channel *channel)
+		uint64_t len, struct lttng_consumer_channel *channel,
+		int timer)
 {
 	return -ENOSYS;
 }
@@ -176,7 +178,7 @@ int lttng_ustconsumer_push_metadata(struct lttng_consumer_channel *metadata,
 }
 static inline
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_channel *channel)
+		struct lttng_consumer_channel *channel, int timer)
 {
 	return -ENOSYS;
 }
