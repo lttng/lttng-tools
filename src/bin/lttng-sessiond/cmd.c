@@ -2167,7 +2167,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 
 /*
  * Command LTTNG_DATA_PENDING returning 0 if the data is NOT pending meaning
- * ready for trace analysis (or anykind of reader) or else 1 for pending data.
+ * ready for trace analysis (or any kind of reader) or else 1 for pending data.
  */
 int cmd_data_pending(struct ltt_session *session)
 {
@@ -2223,8 +2223,8 @@ int cmd_snapshot_add_output(struct ltt_session *session,
 	DBG("Cmd snapshot add output for session %s", session->name);
 
 	/*
-	 * Persmission denied to create an output if the session is not set in no
-	 * output mode.
+	 * Permission denied to create an output if the session is not
+	 * set in no output mode.
 	 */
 	if (session->output_traces) {
 		ret = LTTNG_ERR_EPERM;
@@ -2287,8 +2287,8 @@ int cmd_snapshot_del_output(struct ltt_session *session,
 	rcu_read_lock();
 
 	/*
-	 * Persmission denied to create an output if the session is not set in no
-	 * output mode.
+	 * Permission denied to create an output if the session is not
+	 * set in no output mode.
 	 */
 	if (session->output_traces) {
 		ret = LTTNG_ERR_EPERM;
@@ -2339,8 +2339,8 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	DBG("Cmd snapshot list outputs for session %s", session->name);
 
 	/*
-	 * Persmission denied to create an output if the session is not set in no
-	 * output mode.
+	 * Permission denied to create an output if the session is not
+	 * set in no output mode.
 	 */
 	if (session->output_traces) {
 		ret = LTTNG_ERR_EPERM;
@@ -2521,7 +2521,7 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 	}
 
 	/*
-	 * Copy kernel session sockets so we can communicate with the right
+	 * Copy UST session sockets so we can communicate with the right
 	 * consumer for the snapshot record command.
 	 */
 	ret = consumer_copy_sockets(output->consumer, usess->consumer);
@@ -2597,8 +2597,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 	DBG("Cmd snapshot record for session %s", session->name);
 
 	/*
-	 * Persmission denied to create an output if the session is not set in no
-	 * output mode.
+	 * Permission denied to create an output if the session is not
+	 * set in no output mode.
 	 */
 	if (session->output_traces) {
 		ret = LTTNG_ERR_EPERM;
