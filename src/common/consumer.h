@@ -290,6 +290,16 @@ struct lttng_consumer_stream {
 	 * acquired in the destroy path.
 	 */
 	unsigned int globally_visible;
+	/*
+	 * Pipe to wake up the metadata poll thread when the UST metadata
+	 * cache is updated.
+	 */
+	int ust_metadata_poll_pipe[2];
+	/*
+	 * How much metadata was read from the metadata cache and sent
+	 * to the channel.
+	 */
+	uint64_t ust_metadata_pushed;
 };
 
 /*
