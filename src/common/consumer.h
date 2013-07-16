@@ -160,12 +160,29 @@ struct lttng_consumer_channel {
 	/*
 	 * Channel lock.
 	 *
+	 * This lock protects against concurrent update of channel.
+	 *
 	 * This is nested INSIDE the consumer data lock.
+	 * This is nested OUTSIDE the channel timer lock.
 	 * This is nested OUTSIDE the metadata cache lock.
 	 * This is nested OUTSIDE stream lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;
+
+	/*
+	 * Channel teardown lock.
+	 *
+	 * This lock protect against teardown of channel. It is _never_
+	 * taken by the timer handler.
+	 *
+	 * This is nested INSIDE the consumer data lock.
+	 * This is nested INSIDE the channel lock.
+	 * This is nested OUTSIDE the metadata cache lock.
+	 * This is nested OUTSIDE stream lock.
+	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
+	 */
+	pthread_mutex_t timer_lock;
 };
 
 /*
@@ -238,6 +255,7 @@ struct lttng_consumer_stream {
 	 * This is nested INSIDE the consumer_data lock.
 	 * This is nested INSIDE the metadata cache lock.
 	 * This is nested INSIDE the channel lock.
+	 * This is nested INSIDE the channel timer lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;

@@ -654,6 +654,7 @@ static int close_metadata(uint64_t chan_key)
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
+	pthread_mutex_lock(&channel->timer_lock);
 
 	if (cds_lfht_is_node_deleted(&channel->node.node)) {
 		goto error_unlock;
@@ -674,6 +675,7 @@ static int close_metadata(uint64_t chan_key)
 	}
 
 error_unlock:
+	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 error:
@@ -779,6 +781,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 	 */
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
+	pthread_mutex_lock(&channel->timer_lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 	ret = consumer_metadata_cache_write(channel, offset, len, metadata_str);
 	if (ret < 0) {
@@ -790,11 +793,13 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		 * waiting for the metadata cache to be flushed.
 		 */
 		pthread_mutex_unlock(&channel->metadata_cache->lock);
+		pthread_mutex_unlock(&channel->timer_lock);
 		pthread_mutex_unlock(&channel->lock);
 		pthread_mutex_unlock(&consumer_data.lock);
 		goto end_free;
 	}
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
+	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
