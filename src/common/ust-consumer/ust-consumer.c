@@ -230,8 +230,18 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 	 */
 	while ((ustream = ustctl_create_stream(channel->uchan, cpu))) {
 		int wait_fd;
+		int ust_metadata_pipe[2];
 
-		wait_fd = ustctl_stream_get_wait_fd(ustream);
+		if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA && channel->monitor) {
+			ret = utils_create_pipe_cloexec_nonblock(ust_metadata_pipe);
+			if (ret < 0) {
+				ERR("Create ust metadata poll pipe");
+				goto error;
+			}
+			wait_fd = ust_metadata_pipe[0];
+		} else {
+			wait_fd = ustctl_stream_get_wait_fd(ustream);
+		}
 
 		/* Allocate consumer stream object. */
 		stream = allocate_stream(cpu, wait_fd, channel, ctx, &ret);
@@ -285,6 +295,8 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 		/* Keep stream reference when creating metadata. */
 		if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA) {
 			channel->metadata_stream = stream;
+			stream->ust_metadata_poll_pipe[0] = ust_metadata_pipe[0];
+			stream->ust_metadata_poll_pipe[1] = ust_metadata_pipe[1];
 		}
 	}
 
@@ -656,6 +668,13 @@ static int close_metadata(uint64_t chan_key)
 			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
 			goto error_unlock;
 		}
+		if (channel->monitor) {
+			/* close the read-side in consumer_del_metadata_stream */
+			ret = close(channel->metadata_stream->ust_metadata_poll_pipe[1]);
+			if (ret < 0) {
+				PERROR("Close UST metadata write-side poll pipe");
+			}
+		}
 	}
 
 error_unlock:
@@ -752,8 +771,6 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 		struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
-	ssize_t write_len;
-	uint64_t total_len = 0;
 	struct lttng_consumer_channel *metadata_channel;
 	struct lttng_consumer_stream *metadata_stream;
 
@@ -813,30 +830,13 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 	}
 
 	pthread_mutex_lock(&metadata_channel->metadata_cache->lock);
-	while (total_len < metadata_channel->metadata_cache->total_bytes_written) {
-		/*
-		 * Write at most one packet of metadata into the channel
-		 * to avoid blocking here.
-		 */
-		write_len = ustctl_write_one_packet_to_channel(metadata_channel->uchan,
-				metadata_channel->metadata_cache->data,
-				metadata_channel->metadata_cache->total_bytes_written);
-		if (write_len < 0) {
-			ERR("UST consumer snapshot writing metadata packet");
-			ret = -1;
-			goto error_unlock;
-		}
-		total_len += write_len;
 
-		DBG("Written %" PRIu64 " bytes to metadata (left: %" PRIu64 ")",
-				write_len,
-				metadata_channel->metadata_cache->total_bytes_written - write_len);
-		ustctl_flush_buffer(metadata_stream->ustream, 1);
+	do {
 		ret = lttng_consumer_read_subbuffer(metadata_stream, ctx);
 		if (ret < 0) {
 			goto error_unlock;
 		}
-	}
+	} while (ret > 0);
 
 error_unlock:
 	pthread_mutex_unlock(&metadata_channel->metadata_cache->lock);
@@ -1623,21 +1623,50 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	ustream = stream->ustream;
 
 	/* We can consume the 1 byte written into the wait_fd by UST */
-	if (!stream->hangup_flush_done) {
+	if (stream->monitor && !stream->hangup_flush_done) {
 		ssize_t readlen;
 
 		do {
 			readlen = read(stream->wait_fd, &dummy, 1);
 		} while (readlen == -1 && errno == EINTR);
-		if (readlen == -1) {
+		if (readlen == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
 			ret = readlen;
 			goto end;
 		}
 	}
 
+retry:
 	/* Get the next subbuffer */
 	err = ustctl_get_next_subbuf(ustream);
 	if (err != 0) {
+		/*
+		 * Populate metadata info if the existing info has
+		 * already been read.
+		 */
+		if (stream->metadata_flag) {
+			ssize_t write_len;
+
+			if (stream->chan->metadata_cache->contiguous
+					== stream->ust_metadata_pushed) {
+				ret = 0;
+				goto end;
+			}
+
+			write_len = ustctl_write_one_packet_to_channel(stream->chan->uchan,
+					&stream->chan->metadata_cache->data[stream->ust_metadata_pushed],
+					stream->chan->metadata_cache->contiguous
+						- stream->ust_metadata_pushed);
+			assert(write_len != 0);
+			if (write_len < 0) {
+				ERR("Writing one metadata packet");
+				ret = -1;
+				goto end;
+			}
+			stream->ust_metadata_pushed += write_len;
+			ustctl_flush_buffer(stream->ustream, 1);
+			goto retry;
+		}
+
 		ret = err;	/* ustctl_get_next_subbuf returns negative, caller expect positive. */
 		/*
 		 * This is a debug message even for single-threaded consumer,
@@ -1739,13 +1768,37 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		goto end;
 	}
 
-	ret = ustctl_get_next_subbuf(stream->ustream);
-	if (ret == 0) {
-		/* There is still data so let's put back this subbuffer. */
-		ret = ustctl_put_subbuf(stream->ustream);
-		assert(ret == 0);
-		ret = 1;  /* Data is pending */
-		goto end;
+	if (stream->chan->type == CONSUMER_CHANNEL_TYPE_METADATA) {
+		/*
+		 * We can simply check whether all contiguously available data
+		 * has been pushed to the ring buffer, since the push operation
+		 * is performed within get_next_subbuf(), and because both
+		 * get_next_subbuf() and put_next_subbuf() are issued atomically
+		 * thanks to the stream lock within
+		 * lttng_ustconsumer_read_subbuffer(). This basically means that
+		 * whetnever ust_metadata_pushed is incremented, the associated
+		 * metadata has been consumed from the metadata stream.
+		 */
+		DBG("UST consumer metadata pending check: contiguous %" PRIu64 " vs pushed %" PRIu64,
+			stream->chan->metadata_cache->contiguous,
+			stream->ust_metadata_pushed);
+		if (stream->chan->metadata_cache->contiguous
+				!= stream->ust_metadata_pushed) {
+			ret = 1;	/* Data is pending */
+			goto end;
+		}
+	} else {
+		ret = ustctl_get_next_subbuf(stream->ustream);
+		if (ret == 0) {
+			/*
+			 * There is still data so let's put back this
+			 * subbuffer.
+			 */
+			ret = ustctl_put_subbuf(stream->ustream);
+			assert(ret == 0);
+			ret = 1;	/* Data is pending */
+			goto end;
+		}
 	}
 
 	/* Data is NOT pending so ready to be read. */

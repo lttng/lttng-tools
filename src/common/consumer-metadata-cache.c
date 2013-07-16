@@ -105,15 +105,17 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 	}
 
 	if (cache->max_offset == cache->total_bytes_written) {
-		offset = cache->rb_pushed;
-		len = cache->total_bytes_written - cache->rb_pushed;
-		ret = lttng_ustconsumer_push_metadata(channel, cache->data, offset,
-				len);
-		if (ret < 0) {
-			ERR("Pushing metadata");
-			goto end;
+		char dummy = 'c';
+
+		cache->contiguous = cache->max_offset;
+		if (channel->monitor) {
+			ret = write(channel->metadata_stream->ust_metadata_poll_pipe[1],
+					&dummy, 1);
+			if (ret < 1) {
+				ERR("Wakeup UST metadata pipe");
+				goto end;
+			}
 		}
-		cache->rb_pushed += len;
 	}
 
 end:
@@ -177,11 +179,6 @@ void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel)
 
 	DBG("Destroying metadata cache");
 
-	if (channel->metadata_cache->max_offset >
-			channel->metadata_cache->rb_pushed) {
-		ERR("Destroying a cache not entirely commited");
-	}
-
 	pthread_mutex_destroy(&channel->metadata_cache->lock);
 	free(channel->metadata_cache->data);
 	free(channel->metadata_cache);
@@ -195,13 +192,11 @@ void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel)
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 		uint64_t offset)
 {
-	int ret;
-	struct consumer_metadata_cache *cache;
+	int ret = 0;
+	struct lttng_consumer_stream *metadata_stream;
 
 	assert(channel);
 	assert(channel->metadata_cache);
-
-	cache = channel->metadata_cache;
 
 	/*
 	 * XXX This consumer_data.lock should eventually be replaced by
@@ -212,13 +207,15 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 
-	if (cache->rb_pushed >= offset) {
-		ret = 0;
-	} else if (!channel->metadata_stream) {
+	metadata_stream = channel->metadata_stream;
+
+	if (!metadata_stream) {
 		/*
 		 * Having no metadata stream means the channel is being destroyed so there
 		 * is no cache to flush anymore.
 		 */
+		ret = 0;
+	} else if (metadata_stream->ust_metadata_pushed >= offset) {
 		ret = 0;
 	} else if (channel->metadata_stream->endpoint_status !=
 			CONSUMER_ENDPOINT_ACTIVE) {

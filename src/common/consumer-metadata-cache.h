@@ -25,9 +25,9 @@ struct consumer_metadata_cache {
 	char *data;
 	uint64_t cache_alloc_size;
 	/*
-	 * How many bytes from the cache were already sent to the ring buffer.
+	 * How many bytes from the cache are written contiguously.
 	 */
-	uint64_t rb_pushed;
+	uint64_t contiguous;
 	/*
 	 * How many bytes are written in the buffer (excluding the wholes).
 	 */

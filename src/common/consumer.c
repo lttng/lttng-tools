@@ -1880,6 +1880,13 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
+		if (stream->monitor) {
+			/* close the write-side in close_metadata */
+			ret = close(stream->ust_metadata_poll_pipe[0]);
+			if (ret < 0) {
+				PERROR("Close UST metadata read-side poll pipe");
+			}
+		}
 		lttng_ustconsumer_del_stream(stream);
 		break;
 	default:
@@ -2252,14 +2259,21 @@ restart:
 				DBG("Metadata available on fd %d", pollfd);
 				assert(stream->wait_fd == pollfd);
 
-				len = ctx->on_buffer_ready(stream, ctx);
+				do {
+					len = ctx->on_buffer_ready(stream, ctx);
+					/*
+					 * We don't check the return value here since if we get
+					 * a negative len, it means an error occured thus we
+					 * simply remove it from the poll set and free the
+					 * stream.
+					 */
+				} while (len > 0);
+
 				/* It's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean up stream from consumer and free it. */
 					lttng_poll_del(&events, stream->wait_fd);
 					consumer_del_metadata_stream(stream, metadata_ht);
-				} else if (len > 0) {
-					stream->data_read = 1;
 				}
 			}
 
