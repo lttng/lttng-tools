@@ -2708,8 +2708,6 @@ int cmd_snapshot_record(struct ltt_session *session,
 				memset(&tmp_output, 0, sizeof(tmp_output));
 				memcpy(&tmp_output, sout, sizeof(tmp_output));
 
-				fprintf(stderr, "Name: %s\n", output->name);
-
 				/* Use temporary max size. */
 				if (output->max_size != (uint64_t) -1ULL) {
 					tmp_output.max_size = output->max_size;
