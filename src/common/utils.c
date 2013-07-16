@@ -143,6 +143,48 @@ error:
 }
 
 /*
+ * Create pipe and set fd flags to FD_CLOEXEC and O_NONBLOCK.
+ *
+ * Make sure the pipe opened by this function are closed at some point. Use
+ * utils_close_pipe(). Using pipe() and fcntl rather than pipe2() to
+ * support OSes other than Linux 2.6.23+.
+ */
+LTTNG_HIDDEN
+int utils_create_pipe_cloexec_nonblock(int *dst)
+{
+	int ret, i;
+
+	if (dst == NULL) {
+		return -1;
+	}
+
+	ret = utils_create_pipe(dst);
+	if (ret < 0) {
+		goto error;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(dst[i], F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			PERROR("fcntl pipe cloexec");
+			goto error;
+		}
+		/*
+		 * Note: we override any flag that could have been
+		 * previously set on the fd.
+		 */
+		ret = fcntl(dst[i], F_SETFL, O_NONBLOCK);
+		if (ret < 0) {
+			PERROR("fcntl pipe nonblock");
+			goto error;
+		}
+	}
+
+error:
+	return ret;
+}
+
+/*
  * Close both read and write side of the pipe.
  */
 LTTNG_HIDDEN
