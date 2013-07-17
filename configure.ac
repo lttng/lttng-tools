@@ -287,7 +287,19 @@ LT_INIT
 AC_PROG_YACC
 AC_PROG_LEX
 
-AC_DEFUN([AC_PROG_BISON], [AC_CHECK_PROGS(BISON, bison, bison)])
+if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
+	if test x"$YACC" != "xbison -y"; then
+		AC_MSG_ERROR([[bison not found and is required when building from git.
+		Please install bison]])
+	fi
+fi
+
+if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
+	if test x"$LEX" != "xflex"; then
+		AC_MSG_ERROR([[flex not found and is required when building from git.
+		Please install flex]])
+	fi
+fi
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
