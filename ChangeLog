@@ -1,3 +1,24 @@
+2013-07-17 lttng-tools 2.2.2
+	* Fix: set tracefile size test with PID buffers
+	* Fix: Babelstats fail to parse output with no process name or pid
+	* Fix: kernel data unit test
+	* Fix: don't send error to sessiond on orderly shutdown
+	* Fix: consumer: incorrect size zmalloc
+	* Fix: RCU read side lock unbalanced
+	* Fix deadlock: don't take channel lock in timer
+	* Introduce channel timer lock
+	* document lttng_ustconsumer_request_metadata locking constraints
+	* document metadata_switch_timer() deadlock
+	* document metadata_switch_timer() locking constraints
+	* consumer: replace DBG2() instances by DBG()
+	* ust consumer: data_pending check is endpoint active
+	* Fix: kernel consumer: data_pending check if endpoint active
+	* consumer: explicitly set endpoint status to active at init
+	* document consumer_metadata_cache_flushed use of consumer_data.lock
+	* consumer: introduce channel lock
+	* Missing NULL pointer init in tap.c
+	* Fix: Unchecked asprintf/vasprintf return values
+
 2013-07-11 lttng-tools 2.2.1
 	* Fix: consumer err_sock cloexec
 	* Fix: possible consumer sockets double close on cleanup
