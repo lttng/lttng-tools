@@ -19,7 +19,6 @@ TEST_DESC="Snapshots - UST tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="tp:tptest"
-BIN_NAME="gen-nevents"
 PID_RELAYD=0
 SESSION_NAME=""
 CHANNEL_NAME="snapchan"
@@ -31,7 +30,7 @@ NR_USEC_WAIT=100
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=2039
+NUM_TESTS=2053
 
 source $TESTDIR/utils/utils.sh
 
@@ -64,6 +63,35 @@ function test_ust_local_snapshot ()
 	diag "Killing $TESTAPP_NAME"
 	PID_APP=`pidof $TESTAPP_NAME`
 	kill $PID_APP >/dev/null 2>&1
+}
+
+function test_ust_local_snapshot_large_metadata ()
+{
+	LM_EVENT="tp:tptest1,tp:tptest2,tp:tptest3,tp:tptest4,tp:tptest5"
+	LM_PATH="$TESTDIR/utils/testapp"
+	LM_NAME="gen-ust-nevents"
+	LM_BIN="$LM_PATH/$LM_NAME/$LM_NAME"
+
+	diag "Test local UST snapshots with > 4kB metadata"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $LM_EVENT $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
+	$LM_BIN 1 1
+	ok $? "Start application to trace"
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test
+	validate_trace $LM_EVENT $TRACE_PATH/
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	else
+		break
+	fi
 }
 
 function enable_channel_per_uid_mmap_overwrite()
@@ -175,6 +203,7 @@ start_lttng_sessiond
 tests=( test_ust_local_snapshot \
 	test_ust_per_uid_local_snapshot \
 	test_ust_per_uid_local_snapshot_post_mortem \
+	test_ust_local_snapshot_large_metadata \
 	test_ust_1000_local_snapshots )
 
 for fct_test in ${tests[@]};
