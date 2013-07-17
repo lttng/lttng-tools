@@ -1,2 +1,2 @@
-SUBDIRS = gen-ust-events
+SUBDIRS = gen-ust-events gen-ust-nevents
 
