@@ -955,6 +955,51 @@ AS_IF([test x$build_lib_relayd = xyes],
       ]
 )
 
+# Find arch type
+AS_CASE([$host_cpu],
+        [k1om], [ARCHTYPE="x86"],
+        [i386], [ARCHTYPE="x86"],
+        [i486], [ARCHTYPE="x86"],
+        [i586], [ARCHTYPE="x86"],
+        [i686], [ARCHTYPE="x86"],
+        [amd64], [ARCHTYPE="x86"],
+        [x86_64], [ARCHTYPE="x86"],
+        [powerpc], [ARCHTYPE="ppc"],
+        [ppc64], [ARCHTYPE="ppc"],
+        [powerpc64], [ARCHTYPE="ppc"],
+        [powerpc64le], [ARCHTYPE="ppc"],
+        [ppc], [ARCHTYPE="ppc"],
+        [s390], [ARCHTYPE="s390"],
+        [s390x], [ARCHTYPE="s390"],
+        [sparc], [ARCHTYPE="sparc64"],
+        [sparc64], [ARCHTYPE="sparc64"],
+        [alpha*], [ARCHTYPE="alpha"],
+        [ia64], [ARCHTYPE="ia64"],
+        [arm*], [ARCHTYPE="arm"],
+        [aarch64*], [ARCHTYPE="aarch64"],
+        [mips*], [ARCHTYPE="mips"],
+        [nios2*], [ARCHTYPE="nios2"],
+        [tile*], [ARCHTYPE="tile"],
+        [hppa*], [ARCHTYPE="hppa"],
+        [m68k], [ARCHTYPE="m68k"],
+        [riscv*], [ARCHTYPE="riscv"],
+        [ARCHTYPE="unknown"]
+)
+
+AC_SUBST(ARCHTYPE)
+
+AH_TEMPLATE([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [Define if you have LTTng-modules userspace callstack tracing support])
+AC_MSG_CHECKING([for architecture support of userspace callstack tracing from the kernel])
+AS_IF([test "x$ARCHTYPE" = "xx86"],[
+        # Userspace callstack capture is only supported by the Linux kernel on x86.
+        AC_MSG_RESULT([yes])
+        have_modules_userspace_callstack_context=yes
+        AC_DEFINE([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [1])
+], [
+        AC_MSG_RESULT([no])
+        have_modules_userspace_callstack_context=no
+])
+AM_CONDITIONAL([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [test x$have_modules_userspace_callstack_context != xno])
 
 # Export binaries build conditions.
 AM_CONDITIONAL([BUILD_BIN_LTTNG], [test x$enable_bin_lttng != xno])
