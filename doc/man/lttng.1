@@ -83,7 +83,7 @@ Simple listing of lttng commands.
 .SH "COMMANDS"
 
 .PP
-\fBadd-context\fP
+\fBadd-context\fP [OPTIONS]
 .RS
 Add context to event(s) and/or channel(s).
 
@@ -215,8 +215,9 @@ Dynamic function entry/return probe (default)
 .RE
 .PP
 
-.IP "\fBcreate\fP [NAME] [OPTIONS]
-.nf
+.PP
+.IP \fBcreate\fP [NAME] [OPTIONS]
+.RS
 Create tracing session.
 
 A tracing session contains channel(s) which contains event(s). It is domain
@@ -234,69 +235,83 @@ $HOME/lttng-traces.
 The $HOME environment variable can be overridden by defining the environment
 variable LTTNG_HOME. This is useful when the user running the commands has
 a non-writeable home directory.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-o, \-\-output PATH
-        Specify output path for traces
-\-\-no-output
-	Traces will not be outputed
-\-\-snapshot
-	Set the session in snapshot mode. Created in no-output mode
-	and uses the URL, if one, as the default snapshot output.
-	Every channel will be set in overwrite mode and with mmap
-	output (splice not supported).
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-o, \-\-output PATH"
+Specify output path for traces
+.TP
+.BR "\-\-no-output"
+Traces will not be outputed
+.TP
+.BR "\-\-snapshot"
+Set the session in snapshot mode. Created in no-output mode and uses the
+URL, if one, as the default snapshot output.  Every channel will be set
+in overwrite mode and with mmap output (splice not supported).
 
+.TP
+.BR "\-U, \-\-set-url=URL"
+Set URL for the consumer output destination. It is persistent for the
+session lifetime. Redo the command to change it. This will set both data
+and control URL for network.
+.TP
+.BR "\-C, \-\-ctrl-url=URL"
+Set control path URL. (Must use -D also)
+.TP
+.BR "\-D, \-\-data-url=URL"
+Set data path URL. (Must use -C also)
+.PP
 Using these options, each API call can be controlled individually. For
 instance, \-C does not enable the consumer automatically. You'll need the \-e
 option for that.
-
-\-U, \-\-set-url=URL
-        Set URL for the consumer output destination. It is persistent for the
-        session lifetime. Redo the command to change it. This will set both
-        data and control URL for network.
-\-C, \-\-ctrl-url=URL
-        Set control path URL. (Must use -D also)
-\-D, \-\-data-url=URL
-        Set data path URL. (Must use -C also)
 
 .B URL FORMAT:
 
 proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]
 
 Supported protocols are (proto):
-> file://...
-        Local filesystem full path.
+.TP
+.BR "file://..."
+Local filesystem full path.
 
-> net://...
-        This will use the default network transport layer which is TCP for both
-        control (PORT1) and data port (PORT2). The default ports are
-        respectively 5342 and 5343. Note that net[6]:// is not yet supported.
+.TP
+.BR "net://..."
+This will use the default network transport layer which is TCP for both
+control (PORT1) and data port (PORT2). The default ports are
+respectively 5342 and 5343. Note that net[6]:// is not yet supported.
 
-> tcp[6]://...
-        Can only be used with -C and -D together
+.TP
+.BR "tcp[6]://..."
+Can only be used with -C and -D together
 
 NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)
 
 .B EXAMPLES:
 
+.nf
 # lttng create -U net://192.168.1.42
+.fi
 Uses TCP and default ports for the given destination.
 
+.nf
 # lttng create -U net6://[fe80::f66d:4ff:fe53:d220]
+.fi
 Uses TCP, default ports and IPv6.
 
+.nf
 # lttng create s1 -U net://myhost.com:3229
-Create session s1 and set its consumer to myhost.com on port 3229 for control.
 .fi
+Create session s1 and set its consumer to myhost.com on port 3229 for control.
+.RE
+.PP
 
-.IP
 
 .IP "\fBdestroy\fP [OPTIONS] [NAME]"
 .nf
