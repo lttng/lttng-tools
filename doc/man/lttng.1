@@ -335,8 +335,9 @@ Simple listing of options
 .RE
 .PP
 
-.IP "\fBenable-channel\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
-.nf
+.PP
+\fBenable-channel\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+.RS
 Enable tracing channel
 
 To enable an event, you must enable both the event and the channel that
@@ -345,86 +346,107 @@ contains it.
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 
+Exactly one of \-k or -u must be specified.
+
 It is important to note that if a certain type of buffers is used, the session
 will be set with that type and all other subsequent channel needs to have the
 same type.
 
 Note that once the session has been started and enabled on the tracer side,
 it's not possible anymore to enable a new channel for that session.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show this help
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-k, \-\-kernel
-        Apply to the kernel tracer
-\-u, \-\-userspace
-        Apply to the user-space tracer
+.TP
+.BR "\-h, \-\-help"
+Show this help
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-k, \-\-kernel"
+Apply to the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply to the user-space tracer
+.TP
+.BR "\-\-discard"
+Discard event when subbuffers are full (default)
+.TP
+.BR "\-\-overwrite"
+Flight recorder mode : overwrites events when subbuffers are full
+.TP
+.BR "\-\-subbuf-size SIZE"
+Subbuffer size in bytes {+k,+M,+G}.
+(default UST uid: 131072, UST pid: 4096, kernel: 262144, metadata: 4096)
+Rounded up to the next power of 2.
 
-\-\-discard
-        Discard event when subbuffers are full (default)
-\-\-overwrite
-        Flight recorder mode : overwrites events when subbuffers are full
-\-\-subbuf-size SIZE
-        Subbuffer size in bytes {+k,+M,+G}
-        (default UST uid: 131072, UST pid: 4096, kernel: 262144, metadata: 4096)
-        Rounded up to the next power of 2.
-
-        The minimum subbuffer size, for each tracer, is the max value between
-        the default above and the system page size. You can issue this command
-        to get the current page size on your system: \fB$ getconf PAGE_SIZE\fP
-\-\-num-subbuf NUM
-        Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4, metadata: 2)
-        Rounded up to the next power of 2.
-\-\-switch-timer USEC
-        Switch subbuffer timer interval in µsec.
-        (default UST uid: 0, UST pid: 0, kernel: 0, metadata: 0)
-\-\-read-timer USEC
-        Read timer interval in µsec.
-        (default UST uid: 0, UST pid: 0, kernel: 200000, metadata: 0)
-\-\-output TYPE
-        Channel output type. Possible values: mmap, splice
-        (default UST uid: mmap, UST pid: mmap, kernel: splice, metadata: mmap)
-\-\-buffers-uid
-        Use per UID buffer (\-u only). Buffers are shared between applications
-        that have the same UID.
-\-\-buffers-pid
-        Use per PID buffer (\-u only). Each application has its own buffers.
-\-\-buffers-global
-        Use shared buffer for the whole system (\-k only)
-\-C, \-\-tracefile-size SIZE
-        Maximum size of each tracefile within a stream (in bytes).
-		0 means unlimited. (default: 0)
-\-W, \-\-tracefile-count COUNT
-        Used in conjunction with \-C option, this will limit the number
-        of files created to the specified count. 0 means unlimited. (default: 0)
+The minimum subbuffer size, for each tracer, is the max value between
+the default above and the system page size. You can issue this command
+to get the current page size on your system: \fB$ getconf PAGE_SIZE\fP
+.TP
+.BR "\-\-num-subbuf NUM"
+Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4,
+metadata: 2) Rounded up to the next power of 2.
+.TP
+.BR "\-\-switch-timer USEC"
+Switch subbuffer timer interval in µsec.
+(default UST uid: 0, UST pid: 0, kernel: 0, metadata: 0)
+.TP
+.BR "\-\-read-timer USEC"
+Read timer interval in µsec.
+(default UST uid: 0, UST pid: 0, kernel: 200000, metadata: 0)
+.TP
+.BR "\-\-output TYPE"
+Channel output type. Possible values: mmap, splice
+(default UST uid: mmap, UST pid: mmap, kernel: splice, metadata: mmap)
+.TP
+.BR "\-\-buffers-uid"
+Use per UID buffer (\-u only). Buffers are shared between applications
+that have the same UID.
+.TP
+.BR "\-\-buffers-pid"
+Use per PID buffer (\-u only). Each application has its own buffers.
+.TP
+.BR "\-\-buffers-global"
+Use shared buffer for the whole system (\-k only)
+.TP
+.BR "\-C, \-\-tracefile-size SIZE"
+Maximum size of each tracefile within a stream (in bytes).
+0 means unlimited. (default: 0)
+.TP
+.BR "\-W, \-\-tracefile-count COUNT"
+Used in conjunction with \-C option, this will limit the number of files
+created to the specified count. 0 means unlimited. (default: 0)
 
 .B EXAMPLES:
 
-$ lttng enable-channel -C 4096 -W 32 chan1
+.nf
+$ lttng enable-channel -k -C 4096 -W 32 chan1
+.fi
 For each stream, the maximum size of each trace file will be 4096 bytes, and
 there will be a maximum of 32 different files. The file count is appended after
 the stream number as seen in the following example. The last trace file is
 smaller than 4096 since it was not completely filled.
 
+.nf
         ~/lttng-traces/[...]/chan1_0_0 (4096)
         ~/lttng-traces/[...]/chan1_0_1 (4096)
         ~/lttng-traces/[...]/chan1_0_2 (3245)
         ~/lttng-traces/[...]/chan1_1_0 (4096)
         ...
-
-$ lttng enable-channel -C 4096
-This will create trace files of 4096 bytes and will create new ones as long as
-there is data available.
 .fi
 
-.IP
+.nf
+$ lttng enable-channel -k -C 4096
+.fi
+This will create trace files of 4096 bytes and will create new ones as long as
+there is data available.
+.RE
+.PP
 
 .IP "\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
 .nf
