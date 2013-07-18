@@ -65,7 +65,7 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng disable-channel NAME[,NAME2,...] [-k|-u] [OPTIONS]\n");
+	fprintf(ofp, "usage: lttng disable-channel NAME[,NAME2,...] (-k | -u) [OPTIONS]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");

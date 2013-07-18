@@ -555,8 +555,9 @@ running applications can be found under columns "PID" and "LWP" of the
 .RE
 .PP
 
-.IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
-.nf
+.PP
+\fBdisable-channel\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+.RS
 Disable tracing channel
 
 Disabling a channel makes all event(s) in that channel to stop tracing. You can
@@ -564,22 +565,26 @@ enable it back by calling \fBlttng enable-channel NAME\fP again.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.RE
+.PP
 
 .IP "\fBdisable-event\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
 .nf
