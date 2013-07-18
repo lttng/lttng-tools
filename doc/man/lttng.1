@@ -230,6 +230,13 @@ a non-writeable home directory.
         Simple listing of options
 \-o, \-\-output PATH
         Specify output path for traces
+\-\-no-output
+	Traces will not be outputed
+\-\-snapshot
+	Set the session in snapshot mode. Created in no-output mode
+	and uses the URL, if one, as the default snapshot output.
+	Every channel will be set in overwrite mode and with mmap
+	output (splice not supported).
 
 Using these options, each API call can be controlled individually. For
 instance, \-C does not enable the consumer automatically. You'll need the \-e
