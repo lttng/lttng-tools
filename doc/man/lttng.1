@@ -784,8 +784,9 @@ Simple listing of options
 .RE
 .PP
 
-.IP "\fBstop\fP [NAME] [OPTIONS]"
-.nf
+.PP
+\fBstop\fP [NAME] [OPTIONS]
+.RS
 Stop tracing
 
 It will stop tracing for all tracers for a specific tracing session. Before
@@ -794,20 +795,19 @@ until the trace is readable for the session. Use \-\-no-wait to avoid this
 behavior.
 
 If NAME is omitted, the session name is taken from the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-\-no-wait
-        Don't wait for data availability.
-.fi
-
-.IP
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP "\-\-no-wait"
+Don't wait for data availability.
+.RE
+.PP
 
 .IP "\fBversion\fP"
 .nf
