@@ -448,8 +448,9 @@ there is data available.
 .RE
 .PP
 
-.IP "\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
-.nf
+.PP
+\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]
+.RS
 Enable tracing event
 
 A tracing event is always assigned to a channel. If \fB\-c, \-\-channel\fP is
@@ -459,84 +460,100 @@ using the wildcard "*".
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-c, \-\-channel NAME"
+Apply on channel name
+.TP
+.BR "\-a, \-\-all"
+Enable all tracepoints and syscalls. This actually enable a single
+wildcard event "*".
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.TP
+.BR "\-\-tracepoint"
+Tracepoint event (default). Userspace tracer supports wildcards at end
+of string. Don't forget to quote to deal with bash expansion.
+e.g.:
 .nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-c, \-\-channel NAME
-        Apply on channel name
-\-a, \-\-all
-        Enable all tracepoints and syscalls. This actually enable a single
-        wildcard event "*".
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-
-\-\-tracepoint
-        Tracepoint event (default)
-        - userspace tracer supports wildcards at end of string. Don't forget to
-        quote to deal with bash expansion.
-        e.g.:
         "*"
         "app_component:na*"
-\-\-loglevel NAME
-        Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
-\-\-loglevel-only NAME
-        Tracepoint loglevel (only this loglevel).
-
-        The loglevel or loglevel-only options should be combined with a
-        tracepoint name or tracepoint wildcard.
-\-\-probe [addr | symbol | symbol+offset]
-        Dynamic probe. Addr and offset can be octal (0NNN...), decimal (NNN...)
-        or hexadecimal (0xNNN...)
-\-\-function [addr | symbol | symbol+offset]
-        Dynamic function entry/return probe. Addr and offset can be octal
-        (0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
-\-\-syscall
-        System call event. Enabling syscalls tracing (kernel tracer), you will
-        not be able to disable them with disable-event. This is a known
-        limitation. You can disable the entire channel to do the trick.
-
-\-\-filter 'expression'
-        Set a filter on a newly enabled event. Filter expression on event
-	fields and context. Event recording depends on evaluation. Only
-	specify on first activation of a given event within a session.
-	Filter only allowed when enabling events within a session before
-	tracing is started. If the filter fails to link with the event
-	within the traced domain, the event will be discarded.
-	Currently, filter is only implemented for the user-space tracer.
-
-        Expression examples:
-
-        'intfield > 500 && intfield < 503'
-        '(stringfield == "test" || intfield != 10) && intfield > 33'
-        'doublefield > 1.1 && intfield < 5.3'
-
-        Wildcards are allowed at the end of strings:
-        'seqfield1 == "te*"'
-        In string literals, the escape character is a '\\'. Use '\\*' for
-        the '*' character, and '\\\\' for the '\\' character. Wildcard
-	match any sequence of characters, including an empty sub-string
-	(match 0 or more characters).
-
-	Context information can be used for filtering. The examples
-	below show usage of context filtering on process name (with a
-	wildcard), process ID range, and unique thread ID for filtering.
-	The process and thread ID of running applications can be found
-	under columns "PID" and "LWP" of the "ps -eLf" command.
-
-	'$ctx.procname == "demo*"'
-	'$ctx.vpid >= 4433 && $ctx.vpid < 4455'
-	'$ctx.vtid == 1234'
 .fi
+.TP
+.BR "\-\-loglevel NAME"
+Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
+.TP
+.BR "\-\-loglevel-only NAME"
+Tracepoint loglevel (only this loglevel).
+The loglevel or loglevel-only options should be combined with a
+tracepoint name or tracepoint wildcard.
+.TP
+.BR "\-\-probe (addr | symbol | symbol+offset)"
+Dynamic probe. Addr and offset can be octal (0NNN...), decimal (NNN...)
+or hexadecimal (0xNNN...)
+.TP
+.BR "\-\-function (addr | symbol | symbol+offset)"
+Dynamic function entry/return probe. Addr and offset can be octal
+(0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
+.TP
+.BR "\-\-syscall"
+System call event. Enabling syscalls tracing (kernel tracer), you will
+not be able to disable them with disable-event. This is a known
+limitation. You can disable the entire channel to do the trick.
+.TP
+.BR "\-\-filter 'expression'"
+Set a filter on a newly enabled event. Filter expression on event
+fields and context. Event recording depends on evaluation. Only
+specify on first activation of a given event within a session.
+Filter only allowed when enabling events within a session before
+tracing is started. If the filter fails to link with the event
+within the traced domain, the event will be discarded.
+Currently, filter is only implemented for the user-space tracer.
+
+Expression examples:
+
+.nf
+  'intfield > 500 && intfield < 503'
+  '(strfield == "test" || intfield != 10) && intfield > 33'
+  'doublefield > 1.1 && intfield < 5.3'
+.fi
+
+Wildcards are allowed at the end of strings:
+  'seqfield1 == "te*"'
+In string literals, the escape character is a '\\'. Use '\\*' for
+the '*' character, and '\\\\' for the '\\' character. Wildcard
+match any sequence of characters, including an empty sub-string
+(match 0 or more characters).
+
+Context information can be used for filtering. The examples below show
+usage of context filtering on process name (with a wildcard), process ID
+range, and unique thread ID for filtering.  The process and thread ID of
+running applications can be found under columns "PID" and "LWP" of the
+"ps -eLf" command.
+
+.nf
+  '$ctx.procname == "demo*"'
+  '$ctx.vpid >= 4433 && $ctx.vpid < 4455'
+  '$ctx.vtid == 1234'
+.fi
+
+.RE
+.PP
 
 .IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
 .nf

@@ -113,11 +113,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                             e.g.:\n");
 	fprintf(ofp, "                               \"*\"\n");
 	fprintf(ofp, "                               \"app_component:na*\"\n");
-	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
+	fprintf(ofp, "    --probe (addr | symbol | symbol+offset)\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
-	fprintf(ofp, "    --function [addr | symbol | symbol+offset]\n");
+	fprintf(ofp, "    --function (addr | symbol | symbol+offset)\n");
 	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
@@ -168,7 +168,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Expression examples:.\n");
 	fprintf(ofp, "                           \n");
 	fprintf(ofp, "                           'intfield > 500 && intfield < 503'\n");
-	fprintf(ofp, "                           '(stringfield == \"test\" || intfield != 10) && intfield > 33'\n");
+	fprintf(ofp, "                           '(strfield == \"test\" || intfield != 10) && intfield > 33'\n");
 	fprintf(ofp, "                           'doublefield > 1.1 && intfield < 5.3'\n");
 	fprintf(ofp, "                           \n");
 	fprintf(ofp, "                           Wildcards are allowed at the end of strings:\n");
