@@ -621,8 +621,9 @@ Apply for the user-space tracer
 .RE
 .PP
 
-.IP "\fBlist\fP [\-k|\-u] [SESSION [SESSION_OPTIONS]]"
-.nf
+.PP
+\fBlist\fP [OPTIONS] [SESSION [SESSION OPTIONS]]
+.RS
 List tracing session information.
 
 With no arguments, it will list available tracing session(s).
@@ -636,33 +637,41 @@ calls events).
 With \-u alone, it will list all available user-space events from registered
 applications. Here is an example of 'lttng list \-u':
 
+.nf
 PID: 7448 - Name: /tmp/lttng-ust/tests/hello/.libs/lt-hello
       ust_tests_hello:tptest_sighandler (type: tracepoint)
       ust_tests_hello:tptest (type: tracepoint)
+.fi
 
 You can now enable any event listed by using the name :
 \fBust_tests_hello:tptest\fP.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-k, \-\-kernel
-        Select kernel domain
-\-u, \-\-userspace
-        Select user-space domain.
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-k, \-\-kernel"
+Select kernel domain
+.TP
+.BR "\-u, \-\-userspace"
+Select user-space domain.
 
+.PP
 .B SESSION OPTIONS:
 
-\-c, \-\-channel NAME
-        List details of a channel
-\-d, \-\-domain
-        List available domain(s)
-.fi
+.TP
+.BR "\-c, \-\-channel NAME"
+List details of a channel
+.TP
+.BR "\-d, \-\-domain"
+List available domain(s)
+.RE
+.PP
 
 .IP "\fBset-session\fP NAME"
 .nf
