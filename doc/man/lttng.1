@@ -765,19 +765,24 @@ Set data path URL. (Must use -C also)
 .RE
 .PP
 
-.IP "\fBstart\fP [NAME] [OPTIONS]"
+.PP
+\fBstart\fP [NAME] [OPTIONS]
+.RS
 Start tracing
 
 It will start tracing for all tracers for a specific tracing session.
-
 If NAME is omitted, the session name is taken from the .lttngrc file.
 
 .B OPTIONS:
 
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
 
 .IP "\fBstop\fP [NAME] [OPTIONS]"
 .nf
