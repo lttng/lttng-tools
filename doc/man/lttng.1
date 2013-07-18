@@ -825,32 +825,32 @@ Simple listing of options
 .RE
 .PP
 
-.IP "\fBview\fP [SESSION_NAME] [OPTIONS]"
-.nf
-View traces of a tracing session
-
-By default, the babeltrace viewer will be used for text viewing.
-
-If SESSION_NAME is omitted, the session name is taken from the .lttngrc file.
-
-.fi
+.PP
+\fBview\fP [SESSION_NAME] [OPTIONS]
+.RS
+View traces of a tracing session.  By default, the babeltrace viewer
+will be used for text viewing.  If SESSION_NAME is omitted, the session
+name is taken from the .lttngrc file.
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show this help
-\-\-list-options
-        Simple listing of options
-\-t, \-\-trace-path PATH
-        Trace directory path for the viewer
-\-e, \-\-viewer CMD
-        Specify viewer and/or options to use
-        This will completely override the default viewers so
-        please make sure to specify the full command. The trace
-        directory path of the session will be appended at the end
-        to the arguments
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show this help
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-t, \-\-trace-path PATH"
+Trace directory path for the viewer
+.TP
+.BR "\-e, \-\-viewer CMD"
+Specify viewer and/or options to use This will completely override the
+default viewers so please make sure to specify the full command. The
+trace directory path of the session will be appended at the end to the
+arguments
+.RE
+.PP
 
 .SH "EXIT VALUES"
 On success 0 is returned and a positive value on error. Value of 1 means a command
