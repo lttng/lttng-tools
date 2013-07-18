@@ -82,9 +82,9 @@ Simple listing of lttng options.
 Simple listing of lttng commands.
 .SH "COMMANDS"
 
-.TP
+.PP
 \fBadd-context\fP
-.nf
+.RS
 Add context to event(s) and/or channel(s).
 
 A context is basically extra information appended to a channel. For instance,
@@ -96,7 +96,10 @@ For example, this command will add the context information 'prio' and two perf
 counters (hardware branch misses and cache misses), to all events in the trace
 data output:
 
-# lttng add-context \-k \-t prio \-t perf:branch-misses \-t perf:cache-misses
+.nf
+# lttng add-context \-k \-t prio \-t perf:branch-misses \\
+		\-t perf:cache-misses
+.fi
 
 Please take a look at the help (\-h/\-\-help) for a detailed list of available
 contexts.
@@ -107,25 +110,30 @@ Otherwise the context will be added only to the given channel (\-c).
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-s, \-\-session NAME
-        Apply on session name.
-\-c, \-\-channel NAME
-        Apply on channel name.
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-\-t, \-\-type TYPE
-        Context type. You can repeat this option on the command line. Please
-        use "lttng add-context \-h" to list all available types.
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name.
+.TP
+.BR "\-c, \-\-channel NAME"
+Apply on channel name.
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.TP
+.BR "\-t, \-\-type TYPE"
+Context type. You can repeat this option on the command line. Please
+use "lttng add-context \-h" to list all available types.
+.RE
+.PP
 
 .IP
 
