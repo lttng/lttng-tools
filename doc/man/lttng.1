@@ -691,38 +691,42 @@ Simple listing of options
 .RE
 .PP
 
-.IP "\fBsnapshot\fP ACTION"
-.nf
+.PP
+\fBsnapshot\fP [OPTIONS] ACTION
+.RS
 Snapshot command for LTTng session.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
 
+.PP
 .B ACTION:
 
-.nf
+.TP
 \fBadd-output\fP [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>
 
 Setup and add an snapshot output for a session. Output are the destination
 where the snapshot will be sent. Only one output is permitted. To change it,
 you'll need to delete it and add back the new one.
 
+.TP
 \fBdel-output\fP ID | NAME [-s <NAME>]
 
 Delete an output for a session using the ID. You can either specify the
 output's ID that can be found with list-output or the name.
 
+.TP
 \fBlist-output\fP [-s <NAME>]
 
 List the output of a session. Attributes of the output are printed.
 
+.TP
 \fBrecord\fP [-m <SIZE>] [-s <NAME>] [-n <NAME>] [<URL> | -C <URL> -D <URL>]
 
 Snapshot a session's buffer(s) for all domains. If an URL is specified, it is
@@ -730,51 +734,50 @@ used instead of a previously added output. Specifying only a name or/and a max
 size will override the current output values. For instance, you can record a
 snapshot with a custom maximum size or with a different name.
 
+.nf
 $ lttng add-output -n mysnapshot file:///data/snapshot
 [...]
 $ lttng snapshot record -n new_name_snapshot
+.fi
 
 The above will create a snapshot in /data/snapshot/new_name_snapshot* directory
 rather then in mysnapshot*/
-.fi
 
-.B LONG OPTIONS
+.PP
+.B DETAILED ACTION OPTIONS
 
-.nf
-\-s, \-\-session NAME
-        Apply to session name.
-\-n, \-\-name NAME
-        Name of the snapshot's output.
-\-m, \-\-max-size SIZE
-        Maximum size in bytes of the snapshot. The maxium size does not
-        include the metadata file.
-\-C, \-\-ctrl-url URL
-        Set control path URL. (Must use -D also)
-\-D, \-\-data-url URL
-        Set data path URL. (Must use -C also)
-.fi
-
-.IP
+.TP
+.BR "\-s, \-\-session NAME"
+Apply to session name.
+.TP
+.BR "\-n, \-\-name NAME"
+Name of the snapshot's output.
+.TP
+.BR "\-m, \-\-max-size SIZE"
+Maximum size in bytes of the snapshot. The maxium size does not include
+the metadata file.
+.TP
+.BR "\-C, \-\-ctrl-url URL"
+Set control path URL. (Must use -D also)
+.TP
+.BR "\-D, \-\-data-url URL"
+Set data path URL. (Must use -C also)
+.RE
+.PP
 
 .IP "\fBstart\fP [NAME] [OPTIONS]"
-.nf
 Start tracing
 
 It will start tracing for all tracers for a specific tracing session.
 
 If NAME is omitted, the session name is taken from the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
-.nf
 \-h, \-\-help
         Show summary of possible options and commands.
 \-\-list-options
         Simple listing of options
-.fi
-
-.IP
 
 .IP "\fBstop\fP [NAME] [OPTIONS]"
 .nf

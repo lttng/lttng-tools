@@ -76,7 +76,7 @@ static struct cmd_struct actions[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng snapshot ACTION\n");
+	fprintf(ofp, "usage: lttng snapshot [OPTION] ACTION\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Actions:\n");
 	fprintf(ofp, "   add-output [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>\n");
