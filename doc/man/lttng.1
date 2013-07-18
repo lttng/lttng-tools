@@ -586,8 +586,9 @@ Apply for the user-space tracer
 .RE
 .PP
 
-.IP "\fBdisable-event\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
-.nf
+.PP
+\fBdisable-event\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+.RS
 Disable tracing event
 
 The event, once disabled, can be re-enabled by calling \fBlttng enable-event
@@ -595,25 +596,30 @@ NAME\fP again.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-a, \-\-all-events
-        Disable all events. This does NOT disable "*" but rather
-        every known events of the session.
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-a, \-\-all-events"
+Disable all events. This does NOT disable "*" but rather every known
+events of the session.
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.RE
+.PP
 
 .IP "\fBlist\fP [\-k|\-u] [SESSION [SESSION_OPTIONS]]"
 .nf
