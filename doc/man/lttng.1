@@ -135,10 +135,9 @@ use "lttng add-context \-h" to list all available types.
 .RE
 .PP
 
-.IP
-
-.IP "\fBcalibrate\fP"
-.nf
+.PP
+\fBcalibrate\fP [OPTIONS]
+.RS
 Quantify LTTng overhead
 
 The LTTng calibrate command can be used to find out the combined average
@@ -160,16 +159,21 @@ an empty function, gathering PMU counters LLC (Last Level Cache) misses
 information (see lttng add-context \-\-help to see the list of available PMU
 counters).
 
+.nf
 # lttng create calibrate-function
-# lttng enable-event calibrate \-\-kernel \-\-function lttng_calibrate_kretprobe
-# lttng add-context \-\-kernel \-t perf:LLC-load-misses \-t perf:LLC-store-misses \\
-                  \-t perf:LLC-prefetch-misses
+# lttng enable-event calibrate \-\-kernel \\
+	\-\-function lttng_calibrate_kretprobe
+# lttng add-context \-\-kernel \-t perf:LLC-load-misses \\
+	\-t perf:LLC-store-misses \\
+	\-t perf:LLC-prefetch-misses
 # lttng start
 # for a in $(seq 1 10); do \\
         lttng calibrate \-\-kernel \-\-function;
   done
 # lttng destroy
-# babeltrace $(ls \-1drt ~/lttng-traces/calibrate-function-* | tail \-n 1)
+# babeltrace $(ls \-1drt ~/lttng-traces/calibrate-function-* \\
+	| tail \-n 1)
+.fi
 
 The output from babeltrace can be saved to a text file and opened in a
 spreadsheet (e.g. oocalc) to focus on the per-PMU counter delta between
@@ -180,10 +184,12 @@ staying on the same CPU must be considered.
 
 The average result, for the i7, on 10 samples:
 
+.nf
                           Average     Std.Dev.
 perf_LLC_load_misses:       5.0       0.577
 perf_LLC_store_misses:      1.6       0.516
 perf_LLC_prefetch_misses:   9.0      14.742
+.fi
 
 As we can notice, the load and store misses are relatively stable across runs
 (their standard deviation is relatively low) compared to the prefetch misses.
@@ -191,22 +197,23 @@ We can conclude from this information that LLC load and store misses can be
 accounted for quite precisely, but prefetches within a function seems to behave
 too erratically (not much causality link between the code executed and the CPU
 prefetch activity) to be accounted for.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-\-\-function
-        Dynamic function entry/return probe (default)
-.fi
-
-.IP
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.TP
+.BR "\-\-function"
+Dynamic function entry/return probe (default)
+.RE
+.PP
 
 .IP "\fBcreate\fP [NAME] [OPTIONS]
 .nf
