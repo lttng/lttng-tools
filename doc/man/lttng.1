@@ -312,28 +312,28 @@ Create session s1 and set its consumer to myhost.com on port 3229 for control.
 .RE
 .PP
 
-
-.IP "\fBdestroy\fP [OPTIONS] [NAME]"
-.nf
+.PP
+\fBdestroy\fP [NAME] [OPTIONS]
+.RS
 Teardown tracing session
 
 Free memory on the session daemon and tracer side. It's gone!
 
 If NAME is omitted, the session name is taken from the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-a, \-\-all
-        Destroy all sessions
-\-\-list-options
-        Simple listing of options
-.fi
-
-.IP
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-a, \-\-all"
+Destroy all sessions
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
 
 .IP "\fBenable-channel\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
 .nf
