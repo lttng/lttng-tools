@@ -446,7 +446,10 @@ static void cleanup(void)
 
 	DBG("Cleaning up");
 
-	/* First thing first, stop all threads */
+	/*
+	 * Close the thread quit pipe. It has already done its job,
+	 * since we are now called.
+	 */
 	utils_close_pipe(thread_quit_pipe);
 
 	/*
