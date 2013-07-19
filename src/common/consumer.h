@@ -565,5 +565,9 @@ int consumer_send_status_channel(int sock,
 		struct lttng_consumer_channel *channel);
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
 		uint64_t key);
+int consumer_add_data_stream(struct lttng_consumer_stream *stream);
+void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
+int consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
+void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 
 #endif /* LIB_CONSUMER_H */

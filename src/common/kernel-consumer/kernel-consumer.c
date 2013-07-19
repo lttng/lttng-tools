@@ -319,8 +319,22 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
+			ret = consumer_add_metadata_stream(new_stream);
+			if (ret) {
+				ERR("Consumer add metadata stream %" PRIu64 " failed. Continuing",
+						new_stream->key);
+				consumer_del_stream(new_stream, NULL);
+				goto end_nosignal;
+			}
 			stream_pipe = ctx->consumer_metadata_pipe;
 		} else {
+			ret = consumer_add_data_stream(new_stream);
+			if (ret) {
+				ERR("Consumer add stream %" PRIu64 " failed. Continuing",
+						new_stream->key);
+				consumer_del_stream(new_stream, NULL);
+				goto end_nosignal;
+			}
 			stream_pipe = ctx->consumer_data_pipe;
 		}
 
@@ -329,7 +343,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			ERR("Consumer write %s stream to pipe %d",
 					new_stream->metadata_flag ? "metadata" : "data",
 					lttng_pipe_get_writefd(stream_pipe));
-			consumer_del_stream(new_stream, NULL);
+			if (new_stream->metadata_flag) {
+				consumer_del_stream_for_metadata(new_stream);
+			} else {
+				consumer_del_stream_for_data(new_stream);
+			}
 			goto end_nosignal;
 		}
 

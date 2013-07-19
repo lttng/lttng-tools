@@ -564,6 +564,19 @@ free_stream_rcu:
 	call_rcu(&stream->node.head, free_stream_rcu);
 }
 
+/*
+ * XXX naming of del vs destroy is all mixed up.
+ */
+void consumer_del_stream_for_data(struct lttng_consumer_stream *stream)
+{
+	consumer_del_stream(stream, data_ht);
+}
+
+void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream)
+{
+	consumer_del_stream(stream, metadata_ht);
+}
+
 struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t stream_key,
 		enum lttng_consumer_stream_state state,
@@ -642,9 +655,9 @@ end:
 /*
  * Add a stream to the global list protected by a mutex.
  */
-static int add_stream(struct lttng_consumer_stream *stream,
-		struct lttng_ht *ht)
+int consumer_add_data_stream(struct lttng_consumer_stream *stream)
 {
+	struct lttng_ht *ht = data_ht;
 	int ret = 0;
 	struct consumer_relayd_sock_pair *relayd;
 
@@ -704,6 +717,11 @@ static int add_stream(struct lttng_consumer_stream *stream,
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	return ret;
+}
+
+void consumer_del_data_stream(struct lttng_consumer_stream *stream)
+{
+	consumer_del_stream(stream, data_ht);
 }
 
 /*
@@ -2009,9 +2027,9 @@ free_stream_rcu:
  * Action done with the metadata stream when adding it to the consumer internal
  * data structures to handle it.
  */
-static int add_metadata_stream(struct lttng_consumer_stream *stream,
-		struct lttng_ht *ht)
+int consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 {
+	struct lttng_ht *ht = metadata_ht;
 	int ret = 0;
 	struct consumer_relayd_sock_pair *relayd;
 	struct lttng_ht_iter iter;
@@ -2240,14 +2258,6 @@ restart:
 					DBG("Adding metadata stream %d to poll set",
 							stream->wait_fd);
 
-					ret = add_metadata_stream(stream, metadata_ht);
-					if (ret) {
-						ERR("Unable to add metadata stream");
-						/* Stream was not setup properly. Continuing. */
-						consumer_del_metadata_stream(stream, NULL);
-						continue;
-					}
-
 					/* Add metadata stream to the global poll events list */
 					lttng_poll_add(&events, stream->wait_fd,
 							LPOLLIN | LPOLLPRI);
@@ -2452,17 +2462,6 @@ void *consumer_thread_data_poll(void *data)
 			if (new_stream == NULL) {
 				validate_endpoint_status_data_stream();
 				continue;
-			}
-
-			ret = add_stream(new_stream, data_ht);
-			if (ret) {
-				ERR("Consumer add stream %" PRIu64 " failed. Continuing",
-						new_stream->key);
-				/*
-				 * At this point, if the add_stream fails, it is not in the
-				 * hash table thus passing the NULL value here.
-				 */
-				consumer_del_stream(new_stream, NULL);
 			}
 
 			/* Continue to update the local streams and handle prio ones */
