@@ -185,7 +185,7 @@ function test_ust_1000_local_snapshots ()
 	destroy_lttng_session $SESSION_NAME
 	diag "Killing $TESTAPP_NAME"
 	PID_APP=`pidof $TESTAPP_NAME`
-#	kill $PID_APP >/dev/null 2>&1
+	kill $PID_APP >/dev/null 2>&1
 }
 
 plan_tests $NUM_TESTS
