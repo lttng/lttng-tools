@@ -322,6 +322,7 @@ AC_CONFIG_FILES([
 	extras/bindings/Makefile
 	extras/bindings/swig/Makefile
 	extras/bindings/swig/python/Makefile
+	extras/core-handler/Makefile
 	src/Makefile
 	src/common/Makefile
 	src/common/kernel-ctl/Makefile
