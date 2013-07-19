@@ -619,7 +619,7 @@ static int flush_channel(uint64_t chan_key)
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 			ht->hash_fct(&channel->key, lttng_ht_seed), ht->match_fct,
 			&channel->key, &iter.iter, stream, node_channel_id.node) {
-			ustctl_flush_buffer(stream->ustream, 1);
+		ustctl_flush_buffer(stream->ustream, 1);
 	}
 error:
 	rcu_read_unlock();
