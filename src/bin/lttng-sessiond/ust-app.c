@@ -3962,7 +3962,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 		}
 	}
 
-	/* Flush buffers */
+	/* Flush buffers and push metadata (for UID buffers). */
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
@@ -3970,6 +3970,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 
 		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct ust_registry_session *ust_session_reg;
 			struct buffer_reg_channel *reg_chan;
 			struct consumer_socket *socket;
 
@@ -3990,7 +3991,14 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 				 */
 				(void) consumer_flush_channel(socket, reg_chan->consumer_key);
 			}
+
+			ust_session_reg = reg->registry->reg.ust;
+			if (!ust_session_reg->metadata_closed) {
+				/* Push metadata. */
+				(void) push_metadata(ust_session_reg, usess->consumer);
+			}
 		}
+
 		break;
 	}
 	case LTTNG_BUFFER_PER_PID:
