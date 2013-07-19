@@ -1,3 +1,38 @@
+2013-07-19 lttng-tools 2.3.0-rc2
+	* Add core-handler README to dist tarball
+	* extras: core-handler: simplify, allow usage from tracing group
+	* Cleanup: add missing dot
+	* Fix: documentation: create name and options
+	* Add core dump snapshot handler script
+	* Fix: sym name len (kernel)
+	* Fix: tests: provide channel name when a non-default channel exists: per-pid
+	* Fix: tests: provide channel name when a non-default channel exists
+	* Fix: data pending race
+	* Fix hang in make check snapshots/test_ust
+	* Cleanup: ust-consumer: wrong indentation
+	* Fix: print dots while waiting for data availability
+	* Fix: remove sleep(1) added by "Fix: (slight UI change) refuse missing -c if non-default channel exists"
+	* Fix: (slight UI change) refuse missing -c if non-default channel exists
+	* Fix: push metadata on stop for per-UID buffers
+	* README: update python documentation
+	* Manpage: other layout cleanups
+	* Manpage: cleanup layout of view
+	* Manpage: cleanup layout of version
+	* Manpage: cleanup layout of stop
+	* Manpage: cleanup layout of start
+	* Manpage: cleanup layout of snapshot
+	* Manpage: cleanup layout of set-session
+	* Manpage: cleanup layout of list
+	* Manpage: cleanup layout of disable-event
+	* Manpage: cleanup layout of disable-channel
+	* Manpage: cleanup layout of enable-event
+	* Manpage: cleanup layout of enable-channel
+	* Manpage: cleanup layout of destroy
+	* Manpage: cleanup layout of create
+	* Manpage: cleanup layout of calibrate
+	* Manpage: cleanup layout of add-context
+	* Documentation: create --snapshot in manpage
+
 2013-07-17 lttng-tools 2.3.0-rc1
 	* Fix: add missing snapshot header to dist tarball
 	* Documentation: fix thread quit pipe comment
