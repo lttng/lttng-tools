@@ -17,18 +17,20 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 
-CORE_PATTERN="/proc/sys/kernel/core_pattern"
+CORE_PATTERN_PATH="/proc/sys/kernel/core_pattern"
 CORE_HANDLER_PATH="$(dirname $(readlink -e $0))/handler.sh"
+CORE_PATTERN="$(cat ${CORE_PATTERN_PATH})"
 
-cat ${CORE_PATTERN} > core_pattern.bkp
+echo ${CORE_PATTERN} > core_pattern.bkp
 
 echo "Backup current core_pattern in core_pattern.bkp."
 
-echo "|$CORE_HANDLER_PATH %p %u %g %s %t %h %e %E %c" > ${CORE_PATTERN}
+echo "|$CORE_HANDLER_PATH %p %u %g %s %t %h %e %E %c" > ${CORE_PATTERN_PATH}
 
 if [ $? -eq 0 ]
 then
-    echo "Successfully installed core_pattern."
+	echo "Successfully installed core_pattern."
 else
-    echo "Installation of core_pattern failed."
+	echo "Installation of core_pattern failed."
+	exit 1
 fi

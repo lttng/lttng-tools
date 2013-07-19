@@ -23,36 +23,34 @@ You can use the provided test.sh script to test that the core dump snapshot
 handler is working properly:
 
 # ./test.sh
-Setup...
-Spawning a session daemon
-Session auto-20130626-224838 created.
-Kernel channel chan enabled for session auto-20130626-224838
-kernel event sched_switch created in channel chan
-Tracing started for session auto-20130626-224838
+Setup coredump-handler...
+Session coredump-handler created.
+Default snapshot output set to: /tmp/lttng/snapshot
+Snapshot mode set. Every channel enabled for that session will be set in overwrite mode and mmap output
+kernel event sched_switch created in channel channel0
+Tracing started for session coredump-handler
 Sleeping...
 Crashing...
-./test.sh: line 35: 16980 Segmentation fault      (core dumped)
-$(dirname $0)/crash
+Segmentation fault (core dumped)
+Sleeping...
 Waiting for data availability
-Tracing stopped for session auto-20130626-224838
-Session auto-20130626-224838 destroyed
-Core dump and snapshot will be available in /tmp/lttng/{core,snapshot}.
+Tracing stopped for session coredump-handler
+Session coredump-handler destroyed
+Core dump will be available in /tmp/lttng/core.
+Snapshot will be available in /tmp/lttng/snapshot.
 
 # tree /tmp/lttng
 /tmp/lttng
-|-- core
-|   `-- core.16980
-`-- snapshot
-    `-- snapshot
-        |-- chan_0
-        |-- chan_1
-        |-- chan_2
-        |-- chan_3
-        |-- chan_4
-        |-- chan_5
-        |-- chan_6
-        |-- chan_7
-        `-- metadata
+├── core
+│   └── core.29085
+└── snapshot
+    └── snapshot-1-20130719-175041-0
+        └── kernel
+            ├── channel0_0
+            ├── channel0_1
+            ├── channel0_2
+            ├── channel0_3
+            └── metadata
 
 Chaining with other core dump handler:
 
@@ -72,7 +70,8 @@ In LTTng handler.sh script:
 
 [...]
 # Save core dump from stdin.
-$MKDIR_BIN -p "${CORE_PATH}"
+#$MKDIR_BIN -p "${CORE_PATH}"
+#$CAT_BIN - > "${CORE_PATH}/${CORE_PREFIX}.$p"
 
 # Optional, chain core dump handler with original systemd script.
 $CAT_BIN - | /usr/lib/systemd/systemd-coredump $p $u $g $s $t $e

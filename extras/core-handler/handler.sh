@@ -23,17 +23,15 @@ PGREP_BIN="pgrep"
 MKDIR_BIN="mkdir"
 LTTNG_BIN="lttng"
 
-# Core file settings.
-CORE_PATH="/tmp/lttng/core"
-CORE_PREFIX="core"
-
-# Folder where to save snapshot output.
-# Can also be a remote URI.
-SNAPSHOT_PATH="/tmp/lttng/snapshot"
-SNAPSHOT_OUTPUT="file://${SNAPSHOT_PATH}"
+# Session name
+SESSION_NAME="coredump-handler"
 
 # Sessiond binary name.
 SESSIOND_BIN_NAME="lttng-sessiond"
+
+# Core file settings.
+CORE_PATH="/tmp/lttng/core"
+CORE_PREFIX="core"
 
 # Core specifiers, see man core(5)
 
@@ -60,13 +58,5 @@ $CAT_BIN - > "${CORE_PATH}/${CORE_PREFIX}.$p"
 # TODO: Checking for a sessiond lockfile would be more appropriate.
 if $PGREP_BIN -u root "${SESSIOND_BIN_NAME}" > /dev/null 2>&1
 then
-    # Since we are called via the kernel coredump mechanism, we need to
-    # setup our environment manually.
-    #
-    # The lttng command line tool lookup $HOME to adjust the .lttngrc
-    # path. This is useful to have automatic session name lookup.
-    export HOME="/root"
-    $MKDIR_BIN -p "${SNAPSHOT_PATH}"
-    $LTTNG_BIN snapshot add-output "${SNAPSHOT_OUTPUT}" > /dev/null 2>&1
-    $LTTNG_BIN snapshot record > /dev/null 2>&1
+    $LTTNG_BIN snapshot record -s ${SESSION_NAME} > /dev/null 2>&1
 fi
