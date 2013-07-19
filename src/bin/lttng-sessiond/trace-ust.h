@@ -108,6 +108,7 @@ struct ltt_ust_session {
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
 	unsigned int snapshot_mode;
+	unsigned int has_non_default_channel;
 };
 
 /*

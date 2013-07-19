@@ -640,9 +640,14 @@ int lttng_add_context(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_ADD_CONTEXT;
 
-	/* Copy channel name */
-	lttng_ctl_copy_string(lsm.u.context.channel_name, channel_name,
-			sizeof(lsm.u.context.channel_name));
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.context.channel_name, "",
+				sizeof(lsm.u.context.channel_name));
+	} else {
+		lttng_ctl_copy_string(lsm.u.context.channel_name, channel_name,
+				sizeof(lsm.u.context.channel_name));
+	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -671,9 +676,9 @@ int lttng_enable_event(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	/* If no channel name, we put the default name */
+	/* If no channel name, send empty string. */
 	if (channel_name == NULL) {
-		lttng_ctl_copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME,
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, "",
 				sizeof(lsm.u.enable.channel_name));
 	} else {
 		lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
@@ -800,9 +805,15 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_FILTER;
 
-	/* Copy channel name */
-	lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
-			sizeof(lsm.u.enable.channel_name));
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, "",
+				sizeof(lsm.u.enable.channel_name));
+	} else {
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
+				sizeof(lsm.u.enable.channel_name));
+	}
+
 	/* Copy event name */
 	if (event) {
 		memcpy(&lsm.u.enable.event, event, sizeof(lsm.u.enable.event));
@@ -855,11 +866,12 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	if (channel_name) {
-		lttng_ctl_copy_string(lsm.u.disable.channel_name, channel_name,
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.disable.channel_name, "",
 				sizeof(lsm.u.disable.channel_name));
 	} else {
-		lttng_ctl_copy_string(lsm.u.disable.channel_name, DEFAULT_CHANNEL_NAME,
+		lttng_ctl_copy_string(lsm.u.disable.channel_name, channel_name,
 				sizeof(lsm.u.disable.channel_name));
 	}
 

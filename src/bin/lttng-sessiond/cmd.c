@@ -877,6 +877,9 @@ int cmd_enable_channel(struct ltt_session *session,
 				session->kernel_session);
 		if (kchan == NULL) {
 			ret = channel_kernel_create(session->kernel_session, attr, wpipe);
+			if (attr->name[0] != '\0') {
+				session->kernel_session->has_non_default_channel = 1;
+			}
 		} else {
 			ret = channel_kernel_enable(session->kernel_session, kchan);
 		}
@@ -897,6 +900,9 @@ int cmd_enable_channel(struct ltt_session *session,
 		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
 			ret = channel_ust_create(usess, attr, domain->buf_type);
+			if (attr->name[0] != '\0') {
+				usess->has_non_default_channel = 1;
+			}
 		} else {
 			ret = channel_ust_enable(usess, uchan);
 		}
@@ -931,6 +937,16 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		ksess = session->kernel_session;
 
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (ksess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
+
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == NULL) {
 			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
@@ -951,6 +967,16 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 		struct ltt_ust_session *usess;
 
 		usess = session->ust_session;
+
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
 
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
 				channel_name);
@@ -1003,6 +1029,16 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 
 		ksess = session->kernel_session;
 
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (ksess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
+
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == NULL) {
 			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
@@ -1023,6 +1059,16 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 		struct ltt_ust_channel *uchan;
 
 		usess = session->ust_session;
+
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
 
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
 				channel_name);
@@ -1069,6 +1115,17 @@ int cmd_add_context(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_KERNEL:
 		assert(session->kernel_session);
 
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (session->kernel_session->has_non_default_channel
+				&& channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
+
 		if (session->kernel_session->channel_count == 0) {
 			/* Create default channel */
 			ret = channel_kernel_create(session->kernel_session, NULL, kwpipe);
@@ -1077,7 +1134,6 @@ int cmd_add_context(struct ltt_session *session, int domain,
 			}
 			chan_kern_created = 1;
 		}
-
 		/* Add kernel context to kernel tracer */
 		ret = context_kernel_add(session->kernel_session, ctx, channel_name);
 		if (ret != LTTNG_OK) {
@@ -1087,10 +1143,21 @@ int cmd_add_context(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_session *usess = session->ust_session;
+		unsigned int chan_count;
+
 		assert(usess);
 
-		unsigned int chan_count =
-			lttng_ht_get_count(usess->domain_global.channels);
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
+
+		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {
 			struct lttng_channel *attr;
 			/* Create default channel */
@@ -1173,6 +1240,17 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	{
 		struct ltt_kernel_channel *kchan;
 
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (session->kernel_session->has_non_default_channel
+				&& channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
+
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
@@ -1221,6 +1299,16 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
 
 		/* Get channel from global UST domain */
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
@@ -1294,6 +1382,17 @@ int cmd_enable_event_all(struct ltt_session *session,
 
 		assert(session->kernel_session);
 
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (session->kernel_session->has_non_default_channel
+				&& channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
+
 		kchan = trace_kernel_get_channel_by_name(channel_name,
 				session->kernel_session);
 		if (kchan == NULL) {
@@ -1357,6 +1456,16 @@ int cmd_enable_event_all(struct ltt_session *session,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		/*
+		 * If a non-default channel has been created in the
+		 * session, explicitely require that -c chan_name needs
+		 * to be provided.
+		 */
+		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
+			goto error;
+		}
 
 		/* Get channel from global UST domain */
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,

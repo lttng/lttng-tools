@@ -104,7 +104,9 @@ contexts.
 
 If no channel is given (\-c), the context is added to all channels that were
 already enabled. If the session has no channel, a default channel is created.
-Otherwise the context will be added only to the given channel (\-c).
+If \fB\-c, \-\-channel\fP is omitted, but a non-default channel already
+exists within the session, an error is returned.  Otherwise the context
+will be added only to the given channel (\-c).
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
@@ -453,8 +455,10 @@ Enable tracing event
 
 A tracing event is always assigned to a channel. If \fB\-c, \-\-channel\fP is
 omitted, a default channel named '\fBchannel0\fP' is created and the event is
-added to it. For the user-space tracer, using \fB\-a, \-\-all\fP is the same as
-using the wildcard "*".
+added to it. If \fB\-c, \-\-channel\fP is omitted, but a non-default
+channel already exists within the session, an error is returned. For the
+user-space tracer, using \fB\-a, \-\-all\fP is the same as using the
+wildcard "*".
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
@@ -595,6 +599,10 @@ NAME\fP again.
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 
+If \fB\-c, \-\-channel\fP is omitted, the default channel name is used.
+If \fB\-c, \-\-channel\fP is omitted, but a non-default channel already
+exists within the session, an error is returned.
+
 .B OPTIONS:
 
 .TP
@@ -606,6 +614,9 @@ Simple listing of options
 .TP
 .BR "\-s, \-\-session NAME"
 Apply on session name
+.TP
+.BR "\-c, \-\-channel NAME"
+Apply on channel name
 .TP
 .BR "\-a, \-\-all-events"
 Disable all events. This does NOT disable "*" but rather every known

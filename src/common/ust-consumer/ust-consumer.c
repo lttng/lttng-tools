@@ -1568,6 +1568,8 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	DBG("In UST read_subbuffer (wait_fd: %d, name: %s)", stream->wait_fd,
 			stream->name);
 
+	sleep(1);
+
 	/* Ease our life for what's next. */
 	ustream = stream->ustream;
 

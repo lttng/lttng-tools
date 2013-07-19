@@ -128,6 +128,13 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	/*
+	 * If we receive an empty string for channel name, it means the
+	 * default channel name is requested.
+	 */
+	if (name[0] == '\0')
+		name = DEFAULT_CHANNEL_NAME;
+
 	lttng_ht_lookup(ht, (void *)name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
@@ -268,8 +275,16 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
 		break;
 	}
 
-	/* Copy channel name */
-	strncpy(luc->name, chan->name, sizeof(luc->name));
+	/*
+	 * If we receive an empty string for channel name, it means the
+	 * default channel name is requested.
+	 */
+	if (chan->name[0] == '\0') {
+		strncpy(luc->name, DEFAULT_CHANNEL_NAME, sizeof(luc->name));
+	} else {
+		/* Copy channel name */
+		strncpy(luc->name, chan->name, sizeof(luc->name));
+	}
 	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */

@@ -312,12 +312,24 @@ int loglevel_str_to_value(const char *inputstr)
 	}
 }
 
+static
+const char *print_channel_name(const char *name)
+{
+	return name ? : DEFAULT_CHANNEL_NAME;
+}
+
+static
+const char *print_raw_channel_name(const char *name)
+{
+	return name ? : "<default>";
+}
+
 /*
  * Enabling event using the lttng API.
  */
 static int enable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
@@ -347,15 +359,7 @@ static int enable_events(char *session_name)
 		goto error;
 	}
 
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
+	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
@@ -392,11 +396,15 @@ static int enable_events(char *session_name)
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel events already enabled (channel %s, session %s)",
-							channel_name, session_name);
+							print_channel_name(channel_name), session_name);
 					break;
 				default:
 					ERR("Events: %s (channel %s, session %s)",
-							lttng_strerror(ret), channel_name, session_name);
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name);
 					break;
 				}
 				goto end;
@@ -406,28 +414,32 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel) {
 					MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
-							opt_kernel ? "kernel" : "UST", channel_name,
+							opt_kernel ? "kernel" : "UST",
+							print_channel_name(channel_name),
 							opt_loglevel);
 				} else {
 					MSG("All %s tracepoints are enabled in channel %s",
-							opt_kernel ? "kernel" : "UST", channel_name);
+							opt_kernel ? "kernel" : "UST",
+							print_channel_name(channel_name));
 
 				}
 				break;
 			case LTTNG_EVENT_SYSCALL:
 				if (opt_kernel) {
 					MSG("All kernel system calls are enabled in channel %s",
-							channel_name);
+							print_channel_name(channel_name));
 				}
 				break;
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel) {
 					MSG("All %s events are enabled in channel %s for loglevel %s",
-							opt_kernel ? "kernel" : "UST", channel_name,
+							opt_kernel ? "kernel" : "UST",
+							print_channel_name(channel_name),
 							opt_loglevel);
 				} else {
 					MSG("All %s events are enabled in channel %s",
-							opt_kernel ? "kernel" : "UST", channel_name);
+							opt_kernel ? "kernel" : "UST",
+							print_channel_name(channel_name));
 				}
 				break;
 			default:
@@ -444,14 +456,17 @@ static int enable_events(char *session_name)
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					WARN("Filter on events is already enabled"
+					WARN("Filter on all events is already enabled"
 							" (channel %s, session %s)",
-						channel_name, session_name);
+						print_channel_name(channel_name), session_name);
 					break;
-				case LTTNG_ERR_FILTER_INVAL:
-				case LTTNG_ERR_FILTER_NOMEM:
 				default:
-					ERR("%s", lttng_strerror(ret));
+					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name, opt_filter);
 					break;
 				}
 				goto error;
@@ -473,7 +488,8 @@ static int enable_events(char *session_name)
 		/* Kernel tracer action */
 		if (opt_kernel) {
 			DBG("Enabling kernel event %s for channel %s",
-					event_name, channel_name);
+					event_name,
+					print_channel_name(channel_name));
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
@@ -528,7 +544,7 @@ static int enable_events(char *session_name)
 #endif
 
 			DBG("Enabling UST event %s for channel %s, loglevel %s", event_name,
-					channel_name, opt_loglevel ? : "<all>");
+					print_channel_name(channel_name), opt_loglevel ? : "<all>");
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
@@ -573,17 +589,23 @@ static int enable_events(char *session_name)
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel event %s already enabled (channel %s, session %s)",
-							event_name, channel_name, session_name);
+							event_name,
+							print_channel_name(channel_name), session_name);
 					break;
 				default:
 					ERR("Event %s: %s (channel %s, session %s)", event_name,
-							lttng_strerror(ret), channel_name, session_name);
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name);
 					break;
 				}
 				warn = 1;
 			} else {
 				MSG("%s event %s created in channel %s",
-						opt_kernel ? "kernel": "UST", event_name, channel_name);
+						opt_kernel ? "kernel": "UST", event_name,
+						print_channel_name(channel_name));
 			}
 		}
 
@@ -595,14 +617,16 @@ static int enable_events(char *session_name)
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on event %s is already enabled"
 							" (channel %s, session %s)",
-						event_name, channel_name, session_name);
+						event_name,
+						print_channel_name(channel_name), session_name);
 					break;
-				case LTTNG_ERR_FILTER_INVAL:
-				case LTTNG_ERR_FILTER_NOMEM:
-					ERR("%s", lttng_strerror(ret));
 				default:
-					ERR("Setting filter for event %s: '%s'", ev.name,
-							opt_filter);
+					ERR("Event %s: %s (channel %s, session %s, filter \'%s\')", ev.name,
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name, opt_filter);
 					break;
 				}
 				goto error;
@@ -619,9 +643,6 @@ end:
 error:
 	if (warn) {
 		ret = CMD_WARNING;
-	}
-	if (opt_channel_name == NULL) {
-		free(channel_name);
 	}
 	lttng_destroy_handle(handle);
 

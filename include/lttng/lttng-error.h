@@ -113,7 +113,7 @@ enum lttng_error_code {
 	LTTNG_ERR_TRACE_ALREADY_STARTED  = 80,  /* Tracing already started */
 	LTTNG_ERR_TRACE_ALREADY_STOPPED  = 81,  /* Tracing already stopped */
 	LTTNG_ERR_KERN_EVENT_ENOSYS      = 82,  /* Kernel event type not supported */
-	/* 83 */
+	LTTNG_ERR_NEED_CHANNEL_NAME      = 83,	/* Non-default channel exists within session: channel name needs to be specified with '-c name' */
 	/* 84 */
 	/* 85 */
 	/* 86 */
