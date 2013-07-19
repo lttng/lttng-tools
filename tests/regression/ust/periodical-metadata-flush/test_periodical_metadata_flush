@@ -107,7 +107,7 @@ test_after_app_pid() {
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
@@ -136,7 +136,7 @@ test_before_app_pid() {
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# At least hit one event
