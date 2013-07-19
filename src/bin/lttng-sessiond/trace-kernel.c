@@ -159,7 +159,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 		strncpy(lkc->channel->name, DEFAULT_CHANNEL_NAME,
 			sizeof(lkc->channel->name));
 	}
-	lkc->channel->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	lkc->channel->name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 
 	lkc->fd = -1;
 	lkc->stream_count = 0;
