@@ -383,7 +383,7 @@ static int create_session(void)
 			MSG("Default snapshot output set to: %s", print_str_url);
 		}
 		MSG("Snapshot mode set. Every channel enabled for that session will "
-				"be set in overwrite mode and mmap output");
+				"be set in overwrite mode and mmap output.");
 	}
 
 	/* Init lttng session config */
