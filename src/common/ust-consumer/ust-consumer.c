@@ -194,18 +194,41 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 
 	/* Get the right pipe where the stream will be sent. */
 	if (stream->metadata_flag) {
+		ret = consumer_add_metadata_stream(stream);
+		if (ret) {
+			ERR("Consumer add metadata stream %" PRIu64 " failed.",
+					stream->key);
+			goto error;
+		}
 		stream_pipe = ctx->consumer_metadata_pipe;
 	} else {
+		ret = consumer_add_data_stream(stream);
+		if (ret) {
+			ERR("Consumer add stream %" PRIu64 " failed.",
+					stream->key);
+			goto error;
+		}
 		stream_pipe = ctx->consumer_data_pipe;
 	}
+
+	/*
+	 * From this point on, the stream's ownership has been moved away from
+	 * the channel and becomes globally visible.
+	 */
+	stream->globally_visible = 1;
 
 	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream));
 	if (ret < 0) {
 		ERR("Consumer write %s stream to pipe %d",
 				stream->metadata_flag ? "metadata" : "data",
 				lttng_pipe_get_writefd(stream_pipe));
+		if (stream->metadata_flag) {
+			consumer_del_stream_for_metadata(stream);
+		} else {
+			consumer_del_stream_for_data(stream);
+		}
 	}
-
+error:
 	return ret;
 }
 
@@ -533,17 +556,14 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 			 * If we are unable to send the stream to the thread, there is
 			 * a big problem so just stop everything.
 			 */
+			/* Remove node from the channel stream list. */
+			cds_list_del(&stream->send_node);
 			goto error;
 		}
 
 		/* Remove node from the channel stream list. */
 		cds_list_del(&stream->send_node);
 
-		/*
-		 * From this point on, the stream's ownership has been moved away from
-		 * the channel and becomes globally visible.
-		 */
-		stream->globally_visible = 1;
 	}
 
 error:

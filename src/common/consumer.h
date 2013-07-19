@@ -620,5 +620,9 @@ void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
 void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
 unsigned long consumer_get_consumed_maxsize(unsigned long consumed_pos,
 		unsigned long produced_pos, uint64_t max_stream_size);
+int consumer_add_data_stream(struct lttng_consumer_stream *stream);
+void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
+int consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
+void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 
 #endif /* LIB_CONSUMER_H */

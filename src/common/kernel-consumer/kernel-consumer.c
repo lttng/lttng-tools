@@ -653,21 +653,40 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
+			ret = consumer_add_metadata_stream(new_stream);
+			if (ret) {
+				ERR("Consumer add metadata stream %" PRIu64 " failed. Continuing",
+						new_stream->key);
+				consumer_stream_free(new_stream);
+				goto end_nosignal;
+			}
 			stream_pipe = ctx->consumer_metadata_pipe;
 		} else {
+			ret = consumer_add_data_stream(new_stream);
+			if (ret) {
+				ERR("Consumer add stream %" PRIu64 " failed. Continuing",
+						new_stream->key);
+				consumer_stream_free(new_stream);
+				goto end_nosignal;
+			}
 			stream_pipe = ctx->consumer_data_pipe;
 		}
+
+		/* Vitible to other threads */
+		new_stream->globally_visible = 1;
 
 		ret = lttng_pipe_write(stream_pipe, &new_stream, sizeof(new_stream));
 		if (ret < 0) {
 			ERR("Consumer write %s stream to pipe %d",
 					new_stream->metadata_flag ? "metadata" : "data",
 					lttng_pipe_get_writefd(stream_pipe));
-			consumer_stream_free(new_stream);
+			if (new_stream->metadata_flag) {
+				consumer_del_stream_for_metadata(new_stream);
+			} else {
+				consumer_del_stream_for_data(new_stream);
+			}
 			goto end_nosignal;
 		}
-		/* Successfully sent to the right thread. */
-		new_stream->globally_visible = 1;
 
 		DBG("Kernel consumer ADD_STREAM %s (fd: %d) with relayd id %" PRIu64,
 				new_stream->name, fd, new_stream->relayd_stream_id);
