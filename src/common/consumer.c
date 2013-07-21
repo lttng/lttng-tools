@@ -2207,7 +2207,7 @@ restart:
 					pipe_len = lttng_pipe_read(ctx->consumer_metadata_pipe,
 							&stream, sizeof(stream));
 					if (pipe_len < 0) {
-						ERR("read metadata stream, ret: %ld", pipe_len);
+						ERR("read metadata stream, ret: %zd", pipe_len);
 						/*
 						 * Continue here to handle the rest of the streams.
 						 */
@@ -2422,7 +2422,7 @@ void *consumer_thread_data_poll(void *data)
 			pipe_readlen = lttng_pipe_read(ctx->consumer_data_pipe,
 					&new_stream, sizeof(new_stream));
 			if (pipe_readlen < 0) {
-				ERR("Consumer data pipe ret %ld", pipe_readlen);
+				ERR("Consumer data pipe ret %zd", pipe_readlen);
 				/* Continue so we can at least handle the current stream(s). */
 				continue;
 			}

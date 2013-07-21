@@ -118,13 +118,13 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 	struct lttng_consumer_channel *channel;
 	struct lttng_consumer_stream *stream;
 
-	DBG("Kernel consumer snapshot channel %lu", key);
+	DBG("Kernel consumer snapshot channel %" PRIu64, key);
 
 	rcu_read_lock();
 
 	channel = consumer_find_channel(key);
 	if (!channel) {
-		ERR("No channel found for key %lu", key);
+		ERR("No channel found for key %" PRIu64, key);
 		ret = -1;
 		goto end;
 	}
@@ -356,7 +356,7 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 		ret_read = lttng_kconsumer_read_subbuffer(metadata_stream, ctx);
 		if (ret_read < 0) {
 			if (ret_read != -EPERM) {
-				ERR("Kernel snapshot reading metadata subbuffer (ret: %ld)",
+				ERR("Kernel snapshot reading metadata subbuffer (ret: %zd)",
 						ret_read);
 				goto error;
 			}

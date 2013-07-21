@@ -767,7 +767,8 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 
 	metadata_channel = consumer_find_channel(key);
 	if (!metadata_channel) {
-		ERR("UST snapshot metadata channel not found for key %lu", key);
+		ERR("UST snapshot metadata channel not found for key %" PRIu64,
+			key);
 		ret = -1;
 		goto error;
 	}
@@ -863,12 +864,12 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 
 	channel = consumer_find_channel(key);
 	if (!channel) {
-		ERR("UST snapshot channel not found for key %lu", key);
+		ERR("UST snapshot channel not found for key %" PRIu64, key);
 		ret = -1;
 		goto error;
 	}
 	assert(!channel->monitor);
-	DBG("UST consumer snapshot channel %lu", key);
+	DBG("UST consumer snapshot channel %" PRIu64, key);
 
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
 		/* Lock stream because we are about to change its state. */
