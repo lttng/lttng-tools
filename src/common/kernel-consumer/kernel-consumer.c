@@ -167,8 +167,8 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			stream->out_fd = ret;
 			stream->tracefile_size_current = 0;
 
-			DBG("Kernel consumer snapshot stream %s/%s (%lu)", path,
-					stream->name, stream->key);
+			DBG("Kernel consumer snapshot stream %s/%s (%" PRIu64 ")",
+					path, stream->name, stream->key);
 		}
 
 		ret = kernctl_buffer_flush(stream->wait_fd);
