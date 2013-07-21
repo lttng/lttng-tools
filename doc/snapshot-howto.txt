@@ -79,7 +79,7 @@ directory reported by the "create" command above:
                     └── metadata
 
 
-Then, running babeltrace on, e.g. here
+Then, running babeltrace on, e.g.
 
 babeltrace snapshot-1-20130721-141838-0
 
