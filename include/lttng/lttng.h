@@ -281,7 +281,7 @@ struct lttng_event_field {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 16
+#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 12
 struct lttng_channel_attr {
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes */
@@ -292,6 +292,8 @@ struct lttng_channel_attr {
 	/* LTTng 2.1 padding limit */
 	uint64_t tracefile_size;            /* bytes */
 	uint64_t tracefile_count;           /* number of tracefiles */
+	/* LTTng 2.3 padding limit */
+	unsigned int live_timer_interval;   /* usec */
 
 	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
 };
@@ -333,6 +335,7 @@ struct lttng_session {
 	char path[PATH_MAX];
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
 	uint32_t snapshot_mode;
+	unsigned int live_timer_interval;	/* usec */
 
 	char padding[LTTNG_SESSION_PADDING1];
 };
@@ -405,6 +408,19 @@ extern int lttng_create_session(const char *name, const char *url);
  */
 extern int lttng_create_session_snapshot(const char *name,
 		const char *snapshot_url);
+
+/*
+ * Create a session exclusively used for live reading.
+ *
+ * In this mode, the switch-timer parameter is forced for each UST channel, a
+ * live-switch-timer is enabled for kernel channels, manually setting
+ * switch-timer is forbidden. Synchronization beacons are sent to the relayd,
+ * indexes are sent and metadata is checked for each packet.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+extern int lttng_create_session_live(const char *name, const char *url,
+		unsigned int timer_interval);
 
 /*
  * Destroy a tracing session.

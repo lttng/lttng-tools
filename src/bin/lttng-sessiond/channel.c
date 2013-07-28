@@ -65,6 +65,7 @@ struct lttng_channel *channel_new_default_attr(int dom,
 		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		chan->attr.switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
 		chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
+		chan->attr.live_timer_interval = DEFAULT_KERNEL_CHANNEL_LIVE_TIMER;
 		break;
 	case LTTNG_DOMAIN_UST:
 		switch (type) {
@@ -76,6 +77,8 @@ struct lttng_channel *channel_new_default_attr(int dom,
 				DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
 			chan->attr.read_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			chan->attr.live_timer_interval =
+				DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
@@ -86,6 +89,8 @@ struct lttng_channel *channel_new_default_attr(int dom,
 				DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
 			chan->attr.read_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			chan->attr.live_timer_interval =
+				DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
 			break;
 		}
 		break;

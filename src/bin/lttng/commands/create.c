@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <ctype.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,11 +44,13 @@ static char *opt_data_url;
 static int opt_no_consumer;
 static int opt_no_output;
 static int opt_snapshot;
+static unsigned int opt_live_timer;
 static int opt_disable_consumer;
 
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
+	OPT_LIVE_TIMER,
 };
 
 static struct poptOption long_options[] = {
@@ -62,6 +65,7 @@ static struct poptOption long_options[] = {
 	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"disable-consumer", 0, POPT_ARG_VAL, &opt_disable_consumer, 1, 0, 0},
 	{"snapshot",        0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0},
+	{"live",            0, POPT_ARG_INT, 0, OPT_LIVE_TIMER, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -70,7 +74,7 @@ static struct poptOption long_options[] = {
  * why this declaration exists and used ONLY in for this command.
  */
 extern int _lttng_create_session_ext(const char *name, const char *url,
-		const char *datetime);
+		const char *datetime, int live_timer);
 
 /*
  * usage
@@ -91,6 +95,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                       if one, as the default snapshot output.\n");
 	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");
 	fprintf(ofp, "                       and with mmap output (splice not supported).\n");
+	fprintf(ofp, "      --live USEC      Set the session in live-reading mode.\n");
+	fprintf(ofp, "                       The delay parameter in micro-seconds is the\n");
+	fprintf(ofp, "                       maximum time the user can wait for the data\n");
+	fprintf(ofp, "                       to be flushed. Requires a network URL (-U or -C/-D)\n");
+	fprintf(ofp, "                       and a lttng-relayd listening.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Extended Options:\n");
 	fprintf(ofp, "\n");
@@ -334,6 +343,18 @@ static int create_session(void)
 		goto error;
 	}
 
+	if ((opt_live_timer && !opt_url) && (opt_live_timer && !opt_data_url)) {
+		ERR("You need a network URL (-U or -C/-D) to use live tracing.");
+		ret = CMD_ERROR;
+		goto error;
+	}
+
+	if (opt_snapshot && opt_live_timer) {
+		ERR("Snapshot and live modes are mutually exclusive.");
+		ret = CMD_ERROR;
+		goto error;
+	}
+
 	if (opt_snapshot) {
 		/* No output by default. */
 		const char *snapshot_url = NULL;
@@ -345,8 +366,10 @@ static int create_session(void)
 			snapshot_url = url;
 		}
 		ret = lttng_create_session_snapshot(session_name, snapshot_url);
+	} else if (opt_live_timer) {
+		ret = lttng_create_session_live(session_name, url, opt_live_timer);
 	} else {
-		ret = _lttng_create_session_ext(session_name, url, datetime);
+		ret = _lttng_create_session_ext(session_name, url, datetime, -1);
 	}
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
@@ -414,6 +437,7 @@ error:
 int cmd_create(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
+	char *opt_arg = NULL;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -427,6 +451,27 @@ int cmd_create(int argc, const char **argv)
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
+		case OPT_LIVE_TIMER:
+		{
+			unsigned long v;
+
+			errno = 0;
+			opt_arg = poptGetOptArg(pc);
+			v = strtoul(opt_arg, NULL, 0);
+			if (errno != 0 || !isdigit(opt_arg[0])) {
+				ERR("Wrong value in --live parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			if (v != (uint32_t) v) {
+				ERR("32-bit overflow in --live parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			opt_live_timer = (uint32_t) v;
+			DBG("Session live timer interval set to %d", opt_live_timer);
+			break;
+		}
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;

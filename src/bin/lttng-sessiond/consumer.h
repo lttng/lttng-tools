@@ -220,6 +220,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int overwrite,
 		unsigned int switch_timer_interval,
 		unsigned int read_timer_interval,
+		unsigned int live_timer_interval,
 		int output,
 		int type,
 		uint64_t session_id,
@@ -255,7 +256,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int type,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
-		unsigned int monitor);
+		unsigned int monitor,
+		unsigned int live_timer_interval);
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
 int consumer_close_metadata(struct consumer_socket *socket,

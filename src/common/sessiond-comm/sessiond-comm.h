@@ -88,6 +88,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_SNAPSHOT_LIST_OUTPUT          = 27,
 	LTTNG_SNAPSHOT_RECORD               = 28,
 	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
+	LTTNG_CREATE_SESSION_LIVE           = 30,
 };
 
 enum lttcomm_relayd_command {
@@ -255,6 +256,10 @@ struct lttcomm_session_msg {
 			uint32_t wait;
 			struct lttng_snapshot_output output;
 		} LTTNG_PACKED snapshot_record;
+		struct {
+			uint32_t nb_uri;
+			unsigned int timer_interval;	/* usec */
+		} LTTNG_PACKED session_live;
 	} u;
 } LTTNG_PACKED;
 
@@ -324,6 +329,8 @@ struct lttcomm_consumer_msg {
 			uint32_t tracefile_count; /* number of tracefiles */
 			/* If the channel's streams have to be monitored or not. */
 			uint32_t monitor;
+			/* timer to check the streams usage in live mode (usec). */
+			unsigned int live_timer_interval;
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
 			uint64_t stream_key;
@@ -352,6 +359,7 @@ struct lttcomm_consumer_msg {
 			int32_t overwrite;			/* 1: overwrite, 0: discard */
 			uint32_t switch_timer_interval;		/* usec */
 			uint32_t read_timer_interval;		/* usec */
+			unsigned int live_timer_interval;		/* usec */
 			int32_t output;				/* splice, mmap */
 			int32_t type;				/* metadata or per_cpu */
 			uint64_t session_id;			/* Tracing session id */

@@ -207,6 +207,7 @@ struct ust_app_session {
 	struct rcu_head rcu_head;
 	/* If the channel's streams have to be outputed or not. */
 	unsigned int output_traces;
+	unsigned int live_timer_interval;	/* usec */
 };
 
 /*

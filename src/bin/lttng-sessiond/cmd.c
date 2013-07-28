@@ -850,6 +850,25 @@ int cmd_enable_channel(struct ltt_session *session,
 
 	rcu_read_lock();
 
+	/*
+	 * Don't try to enable a channel if the session has been started at
+	 * some point in time before. The tracer does not allow it.
+	 */
+	if (session->started) {
+		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto error;
+	}
+
+	/*
+	 * If the session is a live session, remove the switch timer, the
+	 * live timer does the same thing but sends also synchronisation
+	 * beacons for inactive streams.
+	 */
+	if (session->live_timer > 0) {
+		attr->attr.live_timer_interval = session->live_timer;
+		attr->attr.switch_timer_interval = 0;
+	}
+
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -1764,7 +1783,7 @@ error:
  * Command LTTNG_CREATE_SESSION processed by the client thread.
  */
 int cmd_create_session_uri(char *name, struct lttng_uri *uris,
-		size_t nb_uri, lttng_sock_cred *creds)
+		size_t nb_uri, lttng_sock_cred *creds, unsigned int live_timer)
 {
 	int ret;
 	struct ltt_session *session;
@@ -1802,6 +1821,7 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	session = session_find_by_name(name);
 	assert(session);
 
+	session->live_timer = live_timer;
 	/* Create default consumer output for the session not yet created. */
 	session->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (session->consumer == NULL) {
@@ -1848,7 +1868,7 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 	 * Create session in no output mode with URIs set to NULL. The uris we've
 	 * received are for a default snapshot output if one.
 	 */
-	ret = cmd_create_session_uri(name, NULL, 0, creds);
+	ret = cmd_create_session_uri(name, NULL, 0, creds, -1);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
