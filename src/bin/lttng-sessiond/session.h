@@ -99,6 +99,10 @@ struct ltt_session {
 	 * snapshot purposes.
 	 */
 	unsigned int snapshot_mode;
+	/*
+	 * Timer set when the session is created for live reading.
+	 */
+	int live_timer;
 };
 
 /* Prototypes */

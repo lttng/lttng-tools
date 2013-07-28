@@ -781,6 +781,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int overwrite,
 		unsigned int switch_timer_interval,
 		unsigned int read_timer_interval,
+		unsigned int live_timer_interval,
 		int output,
 		int type,
 		uint64_t session_id,
@@ -809,6 +810,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.overwrite = overwrite;
 	msg->u.ask_channel.switch_timer_interval = switch_timer_interval;
 	msg->u.ask_channel.read_timer_interval = read_timer_interval;
+	msg->u.ask_channel.live_timer_interval = live_timer_interval;
 	msg->u.ask_channel.output = output;
 	msg->u.ask_channel.type = type;
 	msg->u.ask_channel.session_id = session_id;
@@ -852,7 +854,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int type,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
-		unsigned int monitor)
+		unsigned int monitor,
+		unsigned int live_timer_interval)
 {
 	assert(msg);
 
@@ -872,6 +875,7 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.channel.tracefile_size = tracefile_size;
 	msg->u.channel.tracefile_count = tracefile_count;
 	msg->u.channel.monitor = monitor;
+	msg->u.channel.live_timer_interval = live_timer_interval;
 
 	strncpy(msg->u.channel.pathname, pathname,
 			sizeof(msg->u.channel.pathname));

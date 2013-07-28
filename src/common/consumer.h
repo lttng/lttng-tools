@@ -197,6 +197,9 @@ struct lttng_consumer_channel {
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t timer_lock;
+
+	/* Timer value in usec for live streaming. */
+	unsigned int live_timer_interval;
 };
 
 /*
@@ -564,7 +567,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
 		uint64_t session_id_per_pid,
-		unsigned int monitor);
+		unsigned int monitor,
+		unsigned int live_timer_interval);
 void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,

@@ -1597,6 +1597,51 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 }
 
 /*
+ * Create a session exclusively used for live.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+int lttng_create_session_live(const char *name, const char *url,
+		unsigned int timer_interval)
+{
+	int ret;
+	ssize_t size;
+	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
+
+	if (name == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_CREATE_SESSION_LIVE;
+	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+
+	size = uri_parse_str_urls(url, NULL, &uris);
+	if (size < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* file:// is not accepted for live session. */
+	if (uris[0].dtype == LTTNG_DST_PATH) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	lsm.u.session_live.nb_uri = size;
+	lsm.u.session_live.timer_interval = timer_interval;
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
+
+end:
+	free(uris);
+	return ret;
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()

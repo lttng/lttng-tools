@@ -111,6 +111,7 @@ struct ltt_ust_session {
 	unsigned int output_traces;
 	unsigned int snapshot_mode;
 	unsigned int has_non_default_channel;
+	unsigned int live_timer_interval;	/* usec */
 };
 
 /*

@@ -123,7 +123,8 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			CONSUMER_CHANNEL_TYPE_DATA,
 			channel->channel->attr.tracefile_size,
 			channel->channel->attr.tracefile_count,
-			monitor);
+			monitor,
+			channel->channel->attr.live_timer_interval);
 
 	health_code_update();
 
@@ -184,7 +185,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT,
 			CONSUMER_CHANNEL_TYPE_METADATA,
 			0, 0,
-			monitor);
+			monitor, 0);
 
 	health_code_update();
 

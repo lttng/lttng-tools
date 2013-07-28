@@ -117,14 +117,15 @@ static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		const char *pathname, const char *name, uid_t uid, gid_t gid,
 		uint64_t relayd_id, uint64_t key, enum lttng_event_output output,
 		uint64_t tracefile_size, uint64_t tracefile_count,
-		uint64_t session_id_per_pid, unsigned int monitor)
+		uint64_t session_id_per_pid, unsigned int monitor,
+		unsigned int live_timer_interval)
 {
 	assert(pathname);
 	assert(name);
 
 	return consumer_allocate_channel(key, session_id, pathname, name, uid,
 			gid, relayd_id, output, tracefile_size,
-			tracefile_count, session_id_per_pid, monitor);
+			tracefile_count, session_id_per_pid, monitor, live_timer_interval);
 }
 
 /*
@@ -1194,7 +1195,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.ask_channel.tracefile_size,
 				msg.u.ask_channel.tracefile_count,
 				msg.u.ask_channel.session_id_per_pid,
-				msg.u.ask_channel.monitor);
+				msg.u.ask_channel.monitor,
+				msg.u.ask_channel.live_timer_interval);
 		if (!channel) {
 			goto end_channel_error;
 		}
