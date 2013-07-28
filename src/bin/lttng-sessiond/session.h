@@ -59,6 +59,8 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	char name[NAME_MAX];
+	/* FIXME : size */
+	char hostname[PATH_MAX]; /* local hostname, FIXME : could be useful to have that user defined too */
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
 	/*

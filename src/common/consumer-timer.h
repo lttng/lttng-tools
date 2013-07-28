@@ -26,6 +26,7 @@
 
 #define LTTNG_CONSUMER_SIG_SWITCH	SIGRTMIN + 10
 #define LTTNG_CONSUMER_SIG_TEARDOWN	SIGRTMIN + 11
+#define LTTNG_CONSUMER_SIG_LIVE		SIGRTMIN + 12
 
 #define CLOCKID CLOCK_MONOTONIC
 
@@ -45,7 +46,10 @@ struct timer_signal_data {
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 		unsigned int switch_timer_interval);
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel);
-void *consumer_timer_metadata_thread(void *data);
+void consumer_timer_live_start(struct lttng_consumer_channel *channel,
+		int live_timer_interval);
+void consumer_timer_live_stop(struct lttng_consumer_channel *channel);
+void *consumer_timer_thread(void *data);
 void consumer_signal_init(void);
 
 #endif /* CONSUMER_TIMER_H */

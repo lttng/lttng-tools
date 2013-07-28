@@ -426,3 +426,9 @@ int kernctl_get_stream_id(int fd, uint64_t *stream_id)
 {
 	return ioctl(fd, LTTNG_RING_BUFFER_GET_STREAM_ID, stream_id);
 }
+
+/* Returns the current timestamp. */
+int kernctl_get_current_timestamp(int fd, uint64_t *ts)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP, ts);
+}

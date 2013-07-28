@@ -106,6 +106,8 @@ enum lttcomm_relayd_command {
 	RELAYD_ADD_INDEX                    = 12,
 	RELAYD_SEND_INDEX                   = 13,
 	RELAYD_CLOSE_INDEX                  = 14,
+	/* Live-reading commands. */
+	RELAYD_LIST_SESSIONS                = 15,
 };
 
 /*
@@ -349,6 +351,8 @@ struct lttcomm_consumer_msg {
 			struct lttcomm_relayd_sock sock;
 			/* Tracing session id associated to the relayd. */
 			uint64_t session_id;
+			/* Relayd session id, only used with control socket. */
+			uint64_t relayd_session_id;
 		} LTTNG_PACKED relayd_sock;
 		struct {
 			uint64_t net_seq_idx;

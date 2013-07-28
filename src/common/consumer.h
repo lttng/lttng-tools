@@ -156,10 +156,15 @@ struct lttng_consumer_channel {
 
 	/* Metadata cache is metadata channel */
 	struct consumer_metadata_cache *metadata_cache;
-	/* For metadata periodical flush */
+	/* For UST metadata periodical flush */
 	int switch_timer_enabled;
 	timer_t switch_timer;
 	int switch_timer_error;
+
+	/* For the live mode */
+	int live_timer_enabled;
+	timer_t live_timer;
+	int live_timer_error;
 
 	/* On-disk circular buffer */
 	uint64_t tracefile_size;
@@ -622,7 +627,7 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll, struct lttcomm_relayd_sock *relayd_sock,
-		uint64_t sessiond_id);
+		uint64_t sessiond_id, uint64_t relayd_session_id);
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);
 int consumer_data_pending(uint64_t id);

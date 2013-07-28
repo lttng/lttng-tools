@@ -16,12 +16,12 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef RELAYD_CMD_H
-#define RELAYD_CMD_H
+#ifndef RELAYD_CMD_2_4_H
+#define RELAYD_CMD_2_4_H
 
-#include "cmd-generic.h"
-#include "cmd-2-1.h"
-#include "cmd-2-2.h"
-#include "cmd-2-4.h"
+#include "lttng-relayd.h"
 
-#endif /* RELAYD_CMD_H */
+int cmd_create_session_2_4(struct relay_command *cmd,
+		struct relay_session *session);
+
+#endif /* RELAYD_CMD_2_4_H */

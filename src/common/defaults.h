@@ -182,6 +182,7 @@
 /* Default network ports for trace streaming support */
 #define DEFAULT_NETWORK_CONTROL_PORT        5342
 #define DEFAULT_NETWORK_DATA_PORT           5343
+#define DEFAULT_NETWORK_VIEWER_PORT         5344
 
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad

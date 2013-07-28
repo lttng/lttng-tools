@@ -117,13 +117,57 @@ error:
 }
 
 /*
+ * Starting at 2.4, RELAYD_CREATE_SESSION takes additional parameters to
+ * support the live reading capability.
+ */
+static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
+		uint64_t *session_id, char *session_name, char *hostname,
+		int session_live_timer)
+{
+	int ret;
+	struct lttcomm_relayd_create_session_2_4 msg;
+
+	strncpy(msg.session_name, session_name, sizeof(msg.session_name));
+	strncpy(msg.hostname, hostname, sizeof(msg.hostname));
+	msg.live_timer = htobe32(session_live_timer);
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_CREATE_SESSION, &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * RELAYD_CREATE_SESSION from 2.1 to 2.3.
+ */
+static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
+		uint64_t *session_id)
+{
+	int ret;
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_CREATE_SESSION, NULL, 0, 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+/*
  * Send a RELAYD_CREATE_SESSION command to the relayd with the given socket and
  * set session_id of the relayd if we have a successful reply from the relayd.
  *
  * On success, return 0 else a negative value which is either an errno error or
  * a lttng error code from the relayd.
  */
-int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_id)
+int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_id,
+		char *session_name, char *hostname, int session_live_timer)
 {
 	int ret;
 	struct lttcomm_relayd_status_session reply;
@@ -133,8 +177,18 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 
 	DBG("Relayd create session");
 
-	/* Send command */
-	ret = send_command(rsock, RELAYD_CREATE_SESSION, NULL, 0, 0);
+	switch(rsock->minor) {
+		case 1:
+		case 2:
+		case 3:
+			ret = relayd_create_session_2_1(rsock, session_id);
+		case 4:
+		default:
+			ret = relayd_create_session_2_4(rsock, session_id,
+					session_name, hostname,
+					session_live_timer);
+	}
+
 	if (ret < 0) {
 		goto error;
 	}

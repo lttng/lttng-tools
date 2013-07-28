@@ -10,7 +10,9 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        index.c index.h \
                        cmd-generic.c cmd-generic.h \
                        cmd-2-1.c cmd-2-1.h \
-                       cmd-2-2.c cmd-2-2.h
+                       cmd-2-2.c cmd-2-2.h \
+		       cmd-2-4.c cmd-2-4.h \
+		       live.c live.h
 
 # link on liblttngctl for check if relayd is already alive.
 lttng_relayd_LDADD = -lrt -lurcu-common -lurcu \

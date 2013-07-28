@@ -1120,7 +1120,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Session daemon status message are handled in the following call. */
 		ret = consumer_add_relayd_socket(msg.u.relayd_sock.net_index,
 				msg.u.relayd_sock.type, ctx, sock, consumer_sockpoll,
-				&msg.u.relayd_sock.sock, msg.u.relayd_sock.session_id);
+				&msg.u.relayd_sock.sock, msg.u.relayd_sock.session_id,
+				msg.u.relayd_sock.relayd_session_id);
 		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_DESTROY_RELAYD:
@@ -1254,6 +1255,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			attr.switch_timer_interval = 0;
 		}
 
+		consumer_timer_live_start(channel, msg.u.ask_channel.live_timer_interval);
+
 		/*
 		 * Add the channel to the internal state AFTER all streams were created
 		 * and successfully sent to session daemon. This way, all streams must
@@ -1268,6 +1271,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					consumer_timer_switch_stop(channel);
 				}
 				consumer_metadata_cache_destroy(channel);
+			}
+			if (channel->live_timer_enabled == 1) {
+				consumer_timer_live_stop(channel);
 			}
 			goto end_channel_error;
 		}

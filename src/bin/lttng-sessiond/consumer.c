@@ -28,6 +28,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/uri.h>
+#include <common/relayd/relayd.h>
 
 #include "consumer.h"
 #include "health.h"
@@ -939,7 +940,8 @@ error:
  */
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
-		enum lttng_stream_type type, uint64_t session_id)
+		enum lttng_stream_type type, uint64_t session_id,
+		char *session_name, char *hostname, int session_live_timer)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -953,6 +955,17 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	if (!consumer->enabled) {
 		ret = LTTNG_OK;
 		goto error;
+	}
+
+	if (type == LTTNG_STREAM_CONTROL) {
+		ret = relayd_create_session(rsock,
+				&msg.u.relayd_sock.relayd_session_id,
+				session_name, hostname, session_live_timer);
+		if (ret < 0) {
+			/* Close the control socket. */
+			(void) relayd_close(rsock);
+			goto error;
+		}
 	}
 
 	msg.cmd_type = LTTNG_CONSUMER_ADD_RELAYD_SOCKET;

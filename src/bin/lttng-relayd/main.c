@@ -55,12 +55,14 @@
 #include "index.h"
 #include "utils.h"
 #include "lttng-relayd.h"
+#include "live.h"
 
 /* command line options */
 char *opt_output_path;
 static int opt_daemon;
 static struct lttng_uri *control_uri;
 static struct lttng_uri *data_uri;
+static struct lttng_uri *live_uri;
 
 const char *progname;
 
@@ -85,6 +87,7 @@ static pthread_t worker_thread;
 
 static uint64_t last_relay_stream_id;
 static uint64_t last_relay_session_id;
+static uint64_t last_relay_ctf_trace_id;
 
 /*
  * Relay command queue.
@@ -225,6 +228,21 @@ int parse_args(int argc, char **argv)
 		free(default_address);
 		if (ret < 0) {
 			ERR("Invalid data URI specified");
+			goto exit;
+		}
+	}
+	if (live_uri == NULL) {
+		ret = asprintf(&default_address, "tcp://0.0.0.0:%d",
+				DEFAULT_NETWORK_VIEWER_PORT);
+		if (ret < 0) {
+			PERROR("asprintf default viewer control address");
+			goto exit;
+		}
+
+		ret = uri_parse(default_address, &live_uri);
+		free(default_address);
+		if (ret < 0) {
+			ERR("Invalid viewer control URI specified");
 			goto exit;
 		}
 	}
@@ -726,9 +744,22 @@ void deferred_free_stream(struct rcu_head *head)
 {
 	struct relay_stream *stream =
 		caa_container_of(head, struct relay_stream, rcu_node);
+
+	/* FIXME : safe ? */
+	if (stream->viewer_stream) {
+		stream->viewer_stream->stream = NULL;
+	}
 	free(stream->path_name);
 	free(stream->channel_name);
 	free(stream);
+}
+
+static
+void deferred_free_session(struct rcu_head *head)
+{
+	struct relay_session *session =
+		caa_container_of(head, struct relay_session, rcu_node);
+	free(session);
 }
 
 /*
@@ -736,7 +767,9 @@ void deferred_free_stream(struct rcu_head *head)
  * close all the FDs
  */
 static
-void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht)
+void relay_delete_session(struct relay_command *cmd,
+		struct lttng_ht *streams_ht,
+		struct lttng_ht *sessions_ht)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
@@ -770,9 +803,12 @@ void relay_delete_session(struct relay_command *cmd, struct lttng_ht *streams_ht
 					indexes_ht);
 		}
 	}
+	iter.iter.node = &cmd->session->session_n.node;
+	ret = lttng_ht_del(sessions_ht, &iter);
+	assert(!ret);
+	call_rcu(&cmd->session->rcu_node,
+			deferred_free_session);
 	rcu_read_unlock();
-
-	free(cmd->session);
 }
 
 /*
@@ -804,7 +840,8 @@ static void copy_index_control_data(struct relay_index *index,
  */
 static
 int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_command *cmd,
+		struct lttng_ht *sessions_ht)
 {
 	int ret = 0, send_ret;
 	struct relay_session *session;
@@ -828,6 +865,18 @@ int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 
 	reply.session_id = htobe64(session->id);
 
+	switch (cmd->minor) {
+		case 4: /* LTTng sessiond 2.4 */
+		default:
+			ret = cmd_create_session_2_4(cmd, session);
+			break;
+	}
+
+	lttng_ht_node_init_ulong(&session->session_n,
+			(unsigned long) session->id);
+	lttng_ht_add_unique_ulong(sessions_ht,
+			&session->session_n);
+
 	DBG("Created session %" PRIu64, session->id);
 
 error:
@@ -847,11 +896,72 @@ error:
 }
 
 /*
+ * Check if we can assign the ctf_trace id and metadata stream to one or
+ * all the streams with the same path_name (our unique ID for ctf traces).
+ * rcu_read_lock must be held.
+ */
+static
+void relay_match_ctf_trace(struct relay_command *cmd,
+		struct relay_stream *stream)
+{
+	struct lttng_ht *ht;
+	struct lttng_ht_iter iter;
+	struct relay_stream *tmp_stream;
+
+	ht = cmd->ctf_traces_ht;
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct((void *) stream->path_name, lttng_ht_seed),
+			ht->match_fct, (void *) stream->path_name,
+			&iter.iter, tmp_stream, ctf_trace_node.node) {
+		if (stream->metadata_flag) {
+			/*
+			 * The new stream is the metadata stream for this trace,
+			 * assign the ctf_trace pointer to all the streams in
+			 * this bucket.
+			 */
+			pthread_mutex_lock(&tmp_stream->lock);
+			tmp_stream->ctf_trace = stream->ctf_trace;
+			pthread_mutex_unlock(&tmp_stream->lock);
+			uatomic_inc(&tmp_stream->ctf_trace->refcount);
+			cmd->session->stream_count++;
+			DBG("Assigned ctf_trace %lu to stream %lu",
+					tmp_stream->ctf_trace->id,
+					tmp_stream->stream_handle);
+		} else if (tmp_stream->ctf_trace) {
+			/*
+			 * The ctf_trace already exists for this bucket,
+			 * just assign the pointer to the new stream and exit.
+			 */
+			pthread_mutex_lock(&stream->lock);
+			stream->ctf_trace = tmp_stream->ctf_trace;
+			pthread_mutex_unlock(&stream->lock);
+			uatomic_inc(&tmp_stream->ctf_trace->refcount);
+			cmd->session->stream_count++;
+			DBG("Assigned ctf_trace %lu to stream %lu",
+					stream->ctf_trace->id,
+					stream->stream_handle);
+			goto end;
+		} else {
+			/*
+			 * We don't know yet the ctf_trace ID (no metadata has
+			 * been added), so leave it there until the metadata
+			 * stream arrives.
+			 */
+			goto end;
+		}
+	}
+
+end:
+	return;
+}
+
+/*
  * relay_add_stream: allocate a new stream for a session
  */
 static
 int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd, struct lttng_ht *streams_ht)
+		struct relay_command *cmd, struct lttng_ht *streams_ht,
+		struct lttng_ht *sessions_ht)
 {
 	struct relay_session *session = cmd->session;
 	struct relay_stream *stream = NULL;
@@ -889,6 +999,9 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	stream->prev_seq = -1ULL;
 	stream->session = session;
 	stream->index_fd = -1;
+	stream->read_index_fd = -1;
+	stream->ctf_trace = NULL;
+	pthread_mutex_init(&stream->lock, NULL);
 
 	ret = utils_mkdir_recursive(stream->path_name, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
@@ -913,10 +1026,37 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		DBG("Tracefile %s/%s created", stream->path_name, stream->channel_name);
 	}
 
+	if (!strncmp(stream->channel_name, DEFAULT_METADATA_NAME, NAME_MAX)) {
+		stream->metadata_flag = 1;
+		/*
+		 * When we receive a new metadata stream, we create a new
+		 * ctf_trace and we assign this ctf_trace to all streams with
+		 * the same path.
+		 *
+		 * If later on we receive a new stream for the same ctf_trace,
+		 * we copy the information from the first hit in the HT to the
+		 * new stream.
+		 */
+		stream->ctf_trace = zmalloc(sizeof(struct ctf_trace));
+		if (!stream->ctf_trace) {
+			PERROR("ctf_trace alloc");
+			ret = -1;
+			goto end;
+		}
+		stream->ctf_trace->refcount = 1;
+		stream->ctf_trace->id = ++last_relay_ctf_trace_id;
+		stream->ctf_trace->metadata_stream = stream;
+		DBG("Created ctf_trace %" PRIu64, stream->ctf_trace->id);
+	}
+	relay_match_ctf_trace(cmd, stream);
+
 	lttng_ht_node_init_ulong(&stream->stream_n,
 			(unsigned long) stream->stream_handle);
 	lttng_ht_add_unique_ulong(streams_ht,
 			&stream->stream_n);
+
+	lttng_ht_node_init_str(&stream->ctf_trace_node, stream->path_name);
+	lttng_ht_add_str(cmd->ctf_traces_ht, &stream->ctf_trace_node);
 
 	DBG("Relay new stream added %s with ID %" PRIu64, stream->channel_name,
 			stream->stream_handle);
@@ -1010,8 +1150,23 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 				PERROR("close stream index_fd");
 			}
 		}
+		if (stream->ctf_trace) {
+			uatomic_dec(&stream->ctf_trace->refcount);
+			assert(uatomic_read(&stream->ctf_trace->refcount) >= 0);
+			if (uatomic_read(&stream->ctf_trace->refcount) == 0) {
+				DBG("Freeing ctf_trace %" PRIu64,
+						stream->ctf_trace->id);
+				free(stream->ctf_trace);
+			}
+			session->stream_count--;
+			assert(session->stream_count >= 0);
+		}
+
 		iter.iter.node = &stream->stream_n.node;
 		delret = lttng_ht_del(streams_ht, &iter);
+		assert(!delret);
+		iter.iter.node = &stream->ctf_trace_node.node;
+		delret = lttng_ht_del(cmd->ctf_traces_ht, &iter);
 		assert(!delret);
 		call_rcu(&stream->rcu_node,
 				deferred_free_stream);
@@ -1192,6 +1347,8 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	if (ret < 0) {
 		goto end_unlock;
 	}
+	metadata_stream->ctf_trace->metadata_received +=
+		payload_size + be32toh(metadata_struct->padding_size);
 
 	DBG2("Relay metadata written");
 
@@ -1206,7 +1363,8 @@ end:
  */
 static
 int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd, struct lttng_ht *streams_ht)
+		struct relay_command *cmd, struct lttng_ht *streams_ht,
+		struct lttng_ht *sessions_ht)
 {
 	int ret;
 	struct lttcomm_relayd_version reply, msg;
@@ -1235,7 +1393,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	if (reply.major != be32toh(msg.major)) {
 		DBG("Incompatible major versions (%u vs %u), deleting session",
 				reply.major, be32toh(msg.major));
-		relay_delete_session(cmd, streams_ht);
+		relay_delete_session(cmd, streams_ht, sessions_ht);
 		ret = 0;
 		goto end;
 	}
@@ -1597,6 +1755,31 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_rcu_unlock;
 	}
 
+	/* Live beacon handling */
+	if (index_info.packet_size == 0) {
+		DBG("Received live beacon for stream %" PRIu64,
+				stream->stream_handle);
+		/*
+		 * Only flag a stream inactive when it has already
+		 * received data.
+		 */
+		if (stream->viewer_stream && stream->total_index_received > 0) {
+			stream->viewer_stream->beacon_ts_end =
+				be64toh(index_info.timestamp_end);
+		}
+		ret = 0;
+		goto end_rcu_unlock;
+	} else {
+		if (stream->viewer_stream) {
+			stream->viewer_stream->beacon_ts_end = -1ULL;
+		}
+	}
+
+	if (stream->viewer_stream) {
+		stream->viewer_stream->total_index_received =
+			stream->total_index_received;
+	}
+
 	index = relay_index_find(stream->stream_handle, net_seq_num, indexes_ht);
 	if (!index) {
 		/* A successful creation will add the object to the HT. */
@@ -1642,6 +1825,7 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		if (ret < 0) {
 			goto end_rcu_unlock;
 		}
+		stream->total_index_received++;
 	}
 
 end_rcu_unlock:
@@ -1669,16 +1853,17 @@ static
 int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_command *cmd, struct lttng_ht *streams_ht,
 		struct lttng_ht *index_streams_ht,
-		struct lttng_ht *indexes_ht)
+		struct lttng_ht *indexes_ht,
+		struct lttng_ht *sessions_ht)
 {
 	int ret = 0;
 
 	switch (be32toh(recv_hdr->cmd)) {
 	case RELAYD_CREATE_SESSION:
-		ret = relay_create_session(recv_hdr, cmd);
+		ret = relay_create_session(recv_hdr, cmd, sessions_ht);
 		break;
 	case RELAYD_ADD_STREAM:
-		ret = relay_add_stream(recv_hdr, cmd, streams_ht);
+		ret = relay_add_stream(recv_hdr, cmd, streams_ht, sessions_ht);
 		break;
 	case RELAYD_START_DATA:
 		ret = relay_start(recv_hdr, cmd);
@@ -1687,7 +1872,8 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = relay_recv_metadata(recv_hdr, cmd, streams_ht);
 		break;
 	case RELAYD_VERSION:
-		ret = relay_send_version(recv_hdr, cmd, streams_ht);
+		ret = relay_send_version(recv_hdr, cmd, streams_ht,
+				sessions_ht);
 		break;
 	case RELAYD_CLOSE_STREAM:
 		ret = relay_close_stream(recv_hdr, cmd, streams_ht);
@@ -1871,6 +2057,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht,
 		if (ret < 0) {
 			goto end_rcu_unlock;
 		}
+		stream->total_index_received++;
 	}
 
 	do {
@@ -1954,6 +2141,11 @@ int relay_add_connection(int fd, struct lttng_poll_event *events,
 		goto error_read;
 	}
 
+	relay_connection->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	if (!relay_connection->ctf_traces_ht) {
+		goto error_read;
+	}
+
 	lttng_ht_node_init_ulong(&relay_connection->sock_n,
 			(unsigned long) relay_connection->sock->fd);
 	rcu_read_lock();
@@ -1976,6 +2168,7 @@ void deferred_free_connection(struct rcu_head *head)
 	struct relay_command *relay_connection =
 		caa_container_of(head, struct relay_command, rcu_node);
 
+	lttng_ht_destroy(relay_connection->ctf_traces_ht);
 	lttcomm_destroy_sock(relay_connection->sock);
 	free(relay_connection);
 }
@@ -1983,14 +2176,15 @@ void deferred_free_connection(struct rcu_head *head)
 static
 void relay_del_connection(struct lttng_ht *relay_connections_ht,
 		struct lttng_ht *streams_ht, struct lttng_ht_iter *iter,
-		struct relay_command *relay_connection)
+		struct relay_command *relay_connection,
+		struct lttng_ht *sessions_ht)
 {
 	int ret;
 
 	ret = lttng_ht_del(relay_connections_ht, iter);
 	assert(!ret);
 	if (relay_connection->type == RELAY_CONTROL) {
-		relay_delete_session(relay_connection, streams_ht);
+		relay_delete_session(relay_connection, streams_ht, sessions_ht);
 	}
 
 	call_rcu(&relay_connection->rcu_node,
@@ -2010,9 +2204,11 @@ void *relay_thread_worker(void *data)
 	struct lttng_ht *relay_connections_ht;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct lttng_ht *streams_ht;
 	struct lttng_ht *index_streams_ht;
 	struct lttcomm_relayd_hdr recv_hdr;
+	struct relay_local_data *relay_ctx = (struct relay_local_data *) data;
+	struct lttng_ht *sessions_ht = relay_ctx->sessions_ht;
+	struct lttng_ht *streams_ht = relay_ctx->streams_ht;
 
 	DBG("[thread] Relay worker started");
 
@@ -2022,12 +2218,6 @@ void *relay_thread_worker(void *data)
 	relay_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!relay_connections_ht) {
 		goto relay_connections_ht_error;
-	}
-
-	/* tables of streams indexed by stream ID */
-	streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	if (!streams_ht) {
-		goto streams_ht_error;
 	}
 
 	/* Tables of received indexes indexed by index handle and net_seq_num. */
@@ -2114,7 +2304,8 @@ restart:
 					relay_cleanup_poll_connection(&events, pollfd);
 					relay_del_connection(relay_connections_ht,
 							streams_ht, &iter,
-							relay_connection);
+							relay_connection,
+							sessions_ht);
 					if (last_seen_data_fd == pollfd) {
 						last_seen_data_fd = last_notdel_data_fd;
 					}
@@ -2123,7 +2314,8 @@ restart:
 					relay_cleanup_poll_connection(&events, pollfd);
 					relay_del_connection(relay_connections_ht,
 							streams_ht, &iter,
-							relay_connection);
+							relay_connection,
+							sessions_ht);
 					if (last_seen_data_fd == pollfd) {
 						last_seen_data_fd = last_notdel_data_fd;
 					}
@@ -2138,7 +2330,8 @@ restart:
 							relay_cleanup_poll_connection(&events, pollfd);
 							relay_del_connection(relay_connections_ht,
 									streams_ht, &iter,
-									relay_connection);
+									relay_connection,
+									sessions_ht);
 							DBG("Control connection closed with %d", pollfd);
 						} else {
 							if (relay_connection->session) {
@@ -2149,13 +2342,16 @@ restart:
 									relay_connection,
 									streams_ht,
 									index_streams_ht,
-									indexes_ht);
+									indexes_ht,
+									sessions_ht);
 							if (ret < 0) {
 								/* Clear the session on error. */
 								relay_cleanup_poll_connection(&events, pollfd);
 								relay_del_connection(relay_connections_ht,
-										streams_ht, &iter,
-										relay_connection);
+										streams_ht,
+										&iter,
+										relay_connection,
+										sessions_ht);
 								DBG("Connection closed with %d", pollfd);
 							}
 							seen_control = 1;
@@ -2228,7 +2424,8 @@ restart:
 						relay_cleanup_poll_connection(&events, pollfd);
 						relay_del_connection(relay_connections_ht,
 								streams_ht, &iter,
-								relay_connection);
+								relay_connection,
+								sessions_ht);
 						DBG("Data connection closed with %d", pollfd);
 						/*
 						 * Every goto restart call sets the last seen fd where
@@ -2261,15 +2458,14 @@ error:
 					struct relay_command, sock_n);
 			relay_del_connection(relay_connections_ht,
 					streams_ht, &iter,
-					relay_connection);
+					relay_connection,
+					sessions_ht);
 		}
 	}
 	rcu_read_unlock();
 error_poll_create:
 	lttng_ht_destroy(indexes_ht);
 indexes_ht_error:
-	lttng_ht_destroy(streams_ht);
-streams_ht_error:
 	lttng_ht_destroy(relay_connections_ht);
 relay_connections_ht_error:
 	/* Close relay cmd pipes */
@@ -2304,6 +2500,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0;
 	void *status;
+	struct relay_local_data *relay_ctx;
 
 	/* Create thread quit pipe */
 	if ((ret = init_thread_quit_pipe()) < 0) {
@@ -2370,6 +2567,30 @@ int main(int argc, char **argv)
 	/* Initialize communication library */
 	lttcomm_init();
 
+	relay_ctx = zmalloc(sizeof(struct relay_local_data));
+	if (!relay_ctx) {
+		PERROR("relay_ctx");
+		goto exit;
+	}
+
+	/* tables of sessions indexed by session ID */
+	relay_ctx->sessions_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!relay_ctx->sessions_ht) {
+		goto exit_relay_ctx_sessions;
+	}
+
+	/* tables of streams indexed by stream ID */
+	relay_ctx->streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!relay_ctx->streams_ht) {
+		goto exit_relay_ctx_streams;
+	}
+
+	/* tables of streams indexed by stream ID */
+	relay_ctx->viewer_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!relay_ctx->viewer_streams_ht) {
+		goto exit_relay_ctx_viewer_streams;
+	}
+
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&dispatcher_thread, NULL,
 			relay_thread_dispatcher, (void *) NULL);
@@ -2380,7 +2601,7 @@ int main(int argc, char **argv)
 
 	/* Setup the worker thread */
 	ret = pthread_create(&worker_thread, NULL,
-			relay_thread_worker, (void *) NULL);
+			relay_thread_worker, (void *) relay_ctx);
 	if (ret != 0) {
 		PERROR("pthread_create worker");
 		goto exit_worker;
@@ -2392,6 +2613,11 @@ int main(int argc, char **argv)
 	if (ret != 0) {
 		PERROR("pthread_create listener");
 		goto exit_listener;
+	}
+
+	ret = start_live_threads(live_uri, relay_ctx);
+	if (ret != 0) {
+		ERR("Starting live viewer threads");
 	}
 
 exit_listener:
@@ -2414,8 +2640,19 @@ exit_dispatcher:
 		PERROR("pthread_join");
 		goto error;	/* join error, exit without cleanup */
 	}
+	lttng_ht_destroy(relay_ctx->viewer_streams_ht);
+
+exit_relay_ctx_viewer_streams:
+	lttng_ht_destroy(relay_ctx->streams_ht);
+
+exit_relay_ctx_streams:
+	lttng_ht_destroy(relay_ctx->sessions_ht);
+
+exit_relay_ctx_sessions:
+	free(relay_ctx);
 
 exit:
+	stop_live_threads();
 	cleanup();
 	if (!ret) {
 		exit(EXIT_SUCCESS);

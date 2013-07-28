@@ -39,6 +39,7 @@
 #include <common/utils.h>
 #include <common/consumer-stream.h>
 #include <common/index/index.h>
+#include <common/consumer-timer.h>
 
 #include "kernel-consumer.h"
 
@@ -441,7 +442,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Session daemon status message are handled in the following call. */
 		ret = consumer_add_relayd_socket(msg.u.relayd_sock.net_index,
 				msg.u.relayd_sock.type, ctx, sock, consumer_sockpoll,
-				&msg.u.relayd_sock.sock, msg.u.relayd_sock.session_id);
+				&msg.u.relayd_sock.sock, msg.u.relayd_sock.session_id,
+				 msg.u.relayd_sock.relayd_session_id);
 		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_ADD_CHANNEL:
@@ -502,6 +504,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		} else {
 			ret = consumer_add_channel(new_channel, ctx);
 		}
+		consumer_timer_live_start(new_channel, msg.u.channel.live_timer_interval);
 
 		/* If we received an error in add_channel, we need to report it. */
 		if (ret < 0) {

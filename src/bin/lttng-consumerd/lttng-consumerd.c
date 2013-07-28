@@ -367,17 +367,11 @@ int main(int argc, char **argv)
 	lttng_consumer_set_error_sock(ctx, ret);
 
 	/*
-	 * For UST consumer, we block RT signals used for periodical metadata flush
-	 * in main and create a dedicated thread to handle these signals.
+	 * Block RT signals used for UST periodical metadata flush and the live
+	 * timer in main, and create a dedicated thread to handle these signals.
 	 */
-	switch (opt_type) {
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		consumer_signal_init();
-		break;
-	default:
-		break;
-	}
+	consumer_signal_init();
+
 	ctx->type = opt_type;
 
 	/* Initialize communication library */
@@ -415,25 +409,21 @@ int main(int argc, char **argv)
 		goto sessiond_error;
 	}
 
-	switch (opt_type) {
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		/* Create the thread to manage the metadata periodic timers */
-		ret = pthread_create(&metadata_timer_thread, NULL,
-				consumer_timer_metadata_thread, (void *) ctx);
-		if (ret != 0) {
-			perror("pthread_create");
-			goto metadata_timer_error;
-		}
+	/*
+	 * Create the thread to manage the UST metadata periodic timer and
+	 * live timer.
+	 */
+	ret = pthread_create(&metadata_timer_thread, NULL,
+			consumer_timer_thread, (void *) ctx);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto metadata_timer_error;
+	}
 
-		ret = pthread_detach(metadata_timer_thread);
-		if (ret) {
-			errno = ret;
-			perror("pthread_detach");
-		}
-		break;
-	default:
-		break;
+	ret = pthread_detach(metadata_timer_thread);
+	if (ret) {
+		errno = ret;
+		perror("pthread_detach");
 	}
 
 metadata_timer_error:

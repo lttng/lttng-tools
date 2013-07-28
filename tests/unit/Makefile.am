@@ -13,6 +13,7 @@ LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
+LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 
 # Define test programs
 noinst_PROGRAMS = test_uri test_session	test_kernel_data test_utils_parse_size_suffix
@@ -36,8 +37,8 @@ SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.o	\
 	 $(top_builddir)/src/common/.libs/error.o
 
 test_session_SOURCES = test_session.c
-test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
-					 -lrt
+test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
+		     $(LIBHASHTABLE) -lrt
 test_session_LDADD += $(SESSIONS)
 
 # UST data structures unit test
@@ -58,8 +59,8 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.o \
 		   $(top_builddir)/src/common/.libs/utils.o
 
 test_ust_data_SOURCES = test_ust_data.c
-test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
-					  -lrt -llttng-ust-ctl
+test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM)\
+		      $(LIBHASHTABLE) -lrt -llttng-ust-ctl
 test_ust_data_LDADD += $(UST_DATA_TRACE)
 endif
 
@@ -72,8 +73,8 @@ KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.o	\
 		$(top_builddir)/src/common/.libs/utils.o
 
 test_kernel_data_SOURCES = test_kernel_data.c
-test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSESSIOND_COMM) $(LIBHASHTABLE) \
-						 -lrt
+test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
+			 $(LIBHASHTABLE) -lrt
 test_kernel_data_LDADD += $(KERN_DATA_TRACE)
 
 # parse_size_suffix unit test
