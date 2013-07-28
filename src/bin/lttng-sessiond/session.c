@@ -194,6 +194,11 @@ int session_create(char *name, uid_t uid, gid_t gid)
 		goto error;
 	}
 
+	ret = gethostname(new_session->hostname, sizeof(new_session->hostname));
+	if (ret && errno == ENAMETOOLONG) {
+		new_session->hostname[HOST_NAME_MAX - 1] = '\0';
+	}
+
 	/* Init kernel session */
 	new_session->kernel_session = NULL;
 	new_session->ust_session = NULL;

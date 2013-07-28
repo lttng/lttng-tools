@@ -59,6 +59,8 @@
 #define LTTNG_RING_BUFFER_GET_PACKET_SIZE         _IOR(0xF6, 0x24, uint64_t)
 /* returns the stream id */
 #define LTTNG_RING_BUFFER_GET_STREAM_ID           _IOR(0xF6, 0x25, uint64_t)
+/* returns the current timestamp */
+#define LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP   _IOR(0xF6, 0x26, uint64_t)
 
 /* Old ABI (without support for 32/64 bits compat) */
 /* LTTng file descriptor ioctl */

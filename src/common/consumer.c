@@ -40,6 +40,7 @@
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/relayd/relayd.h>
 #include <common/ust-consumer/ust-consumer.h>
+#include <common/consumer-timer.h>
 
 #include "consumer.h"
 #include "consumer-stream.h"
@@ -303,6 +304,10 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		 * we have a guarantee that this call will succeed.
 		 */
 		consumer_stream_destroy(stream, NULL);
+	}
+
+	if (channel->live_timer_enabled == 1) {
+		consumer_timer_live_stop(channel);
 	}
 
 	switch (consumer_data.type) {
@@ -3112,7 +3117,8 @@ void lttng_consumer_init(void)
 int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll,
-		struct lttcomm_relayd_sock *relayd_sock, uint64_t sessiond_id)
+		struct lttcomm_relayd_sock *relayd_sock, uint64_t sessiond_id,
+		uint64_t relayd_session_id)
 {
 	int fd = -1, ret = -1, relayd_created = 0;
 	enum lttng_error_code ret_code = LTTNG_OK;
@@ -3212,29 +3218,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		relayd->control_sock.major = relayd_sock->major;
 		relayd->control_sock.minor = relayd_sock->minor;
 
-		/*
-		 * Create a session on the relayd and store the returned id. Lock the
-		 * control socket mutex if the relayd was NOT created before.
-		 */
-		if (!relayd_created) {
-			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-		}
-		ret = relayd_create_session(&relayd->control_sock,
-				&relayd->relayd_session_id);
-		if (!relayd_created) {
-			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-		}
-		if (ret < 0) {
-			/*
-			 * Close all sockets of a relayd object. It will be freed if it was
-			 * created at the error code path or else it will be garbage
-			 * collect.
-			 */
-			(void) relayd_close(&relayd->control_sock);
-			(void) relayd_close(&relayd->data_sock);
-			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
-			goto error;
-		}
+		relayd->relayd_session_id = relayd_session_id;
 
 		break;
 	case LTTNG_STREAM_DATA:

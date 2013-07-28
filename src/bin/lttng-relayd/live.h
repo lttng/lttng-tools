@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along with
@@ -16,12 +16,18 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef RELAYD_CMD_H
-#define RELAYD_CMD_H
+#ifndef LTTNG_RELAYD_LIVE_H
+#define LTTNG_RELAYD_LIVE_H
 
-#include "cmd-generic.h"
-#include "cmd-2-1.h"
-#include "cmd-2-2.h"
-#include "cmd-2-4.h"
+#include <common/uri.h>
 
-#endif /* RELAYD_CMD_H */
+#include "lttng-relayd.h"
+
+int live_start_threads(struct lttng_uri *live_uri,
+		struct relay_local_data *relay_ctx);
+void live_stop_threads(void);
+
+struct relay_viewer_stream *live_find_viewer_stream_by_id(uint64_t stream_id,
+		struct lttng_ht *viewer_streams_ht);
+
+#endif /* LTTNG_RELAYD_LIVE_H */

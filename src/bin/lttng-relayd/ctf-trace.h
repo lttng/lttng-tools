@@ -16,12 +16,25 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef RELAYD_CMD_H
-#define RELAYD_CMD_H
+#ifndef _CTF_TRACE_H
+#define _CTF_TRACE_H
 
-#include "cmd-generic.h"
-#include "cmd-2-1.h"
-#include "cmd-2-2.h"
-#include "cmd-2-4.h"
+#include <inttypes.h>
 
-#endif /* RELAYD_CMD_H */
+#include <common/hashtable/hashtable.h>
+
+#include "lttng-relayd.h"
+
+struct ctf_trace {
+	int refcount;
+	uint64_t id;
+	uint64_t metadata_received;
+	uint64_t metadata_sent;
+	struct relay_stream *metadata_stream;
+};
+
+void ctf_trace_assign(struct lttng_ht *ht, struct relay_stream *stream);
+struct ctf_trace *ctf_trace_create(void);
+void ctf_trace_try_destroy(struct ctf_trace *obj);
+
+#endif /* _CTF_TRACE_H */

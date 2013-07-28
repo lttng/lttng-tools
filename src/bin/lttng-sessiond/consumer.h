@@ -202,7 +202,8 @@ int consumer_send_channel(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg);
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
-		enum lttng_stream_type type, uint64_t session_id);
+		enum lttng_stream_type type, uint64_t session_id,
+		char *session_name, char *hostname, int session_live_timer);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);

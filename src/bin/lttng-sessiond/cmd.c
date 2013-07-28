@@ -547,7 +547,8 @@ error:
  */
 static int send_consumer_relayd_socket(int domain, unsigned int session_id,
 		struct lttng_uri *relayd_uri, struct consumer_output *consumer,
-		struct consumer_socket *consumer_sock)
+		struct consumer_socket *consumer_sock,
+		char *session_name, char *hostname, int session_live_timer)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = NULL;
@@ -573,7 +574,8 @@ static int send_consumer_relayd_socket(int domain, unsigned int session_id,
 
 	/* Send relayd socket to consumer. */
 	ret = consumer_send_relayd_socket(consumer_sock, rsock, consumer,
-			relayd_uri->stype, session_id);
+			relayd_uri->stype, session_id,
+			session_name, hostname, session_live_timer);
 	if (ret < 0) {
 		ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -615,7 +617,8 @@ error:
  * session.
  */
 static int send_consumer_relayd_sockets(int domain, unsigned int session_id,
-		struct consumer_output *consumer, struct consumer_socket *sock)
+		struct consumer_output *consumer, struct consumer_socket *sock,
+		char *session_name, char *hostname, int session_live_timer)
 {
 	int ret = LTTNG_OK;
 
@@ -625,7 +628,8 @@ static int send_consumer_relayd_sockets(int domain, unsigned int session_id,
 	/* Sending control relayd socket. */
 	if (!sock->control_sock_sent) {
 		ret = send_consumer_relayd_socket(domain, session_id,
-				&consumer->dst.net.control, consumer, sock);
+				&consumer->dst.net.control, consumer, sock,
+				session_name, hostname, session_live_timer);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -634,7 +638,8 @@ static int send_consumer_relayd_sockets(int domain, unsigned int session_id,
 	/* Sending data relayd socket. */
 	if (!sock->data_sock_sent) {
 		ret = send_consumer_relayd_socket(domain, session_id,
-				&consumer->dst.net.data, consumer, sock);
+				&consumer->dst.net.data, consumer, sock,
+				session_name, hostname, session_live_timer);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -673,7 +678,9 @@ int cmd_setup_relayd(struct ltt_session *session)
 				socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
-					usess->consumer, socket);
+					usess->consumer, socket,
+					session->name, session->hostname,
+					session->live_timer);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -689,7 +696,9 @@ int cmd_setup_relayd(struct ltt_session *session)
 				socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
-					ksess->consumer, socket);
+					ksess->consumer, socket,
+					session->name, session->hostname,
+					session->live_timer);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -2539,7 +2548,9 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 	cds_lfht_for_each_entry(snap_output->consumer->socks->ht, &iter.iter,
 			socket, node.node) {
 		ret = send_consumer_relayd_sockets(0, session->id,
-				snap_output->consumer, socket);
+				snap_output->consumer, socket,
+				session->name, session->hostname,
+				session->live_timer);
 		if (ret != LTTNG_OK) {
 			rcu_read_unlock();
 			goto error;

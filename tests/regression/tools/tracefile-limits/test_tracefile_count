@@ -94,7 +94,7 @@ function validate_file_count
 	file_pattern="$2"
 	expected_max_count="$3"
 
-	count=`find $path -name "$file_pattern" -type f | wc -l`
+	count=`find $path -name "$file_pattern" -type f \( ! -iname "*.idx" \) | wc -l`
 
 	if [ "$count" -gt "$expected_max_count" ]; then
 	    fail "Validate file count: $file_pattern"

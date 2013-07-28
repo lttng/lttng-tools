@@ -16,12 +16,39 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef RELAYD_CMD_H
-#define RELAYD_CMD_H
+#define _GNU_SOURCE
+#include <assert.h>
+#include <string.h>
+
+#include <common/common.h>
+#include <common/sessiond-comm/relayd.h>
 
 #include "cmd-generic.h"
-#include "cmd-2-1.h"
-#include "cmd-2-2.h"
-#include "cmd-2-4.h"
+#include "lttng-relayd.h"
 
-#endif /* RELAYD_CMD_H */
+int cmd_create_session_2_4(struct relay_command *cmd,
+		struct relay_session *session)
+{
+	int ret;
+	struct lttcomm_relayd_create_session_2_4 session_info;
+
+	assert(cmd);
+	assert(session);
+
+	ret = cmd_recv(cmd->sock, &session_info, sizeof(session_info));
+	if (ret < 0) {
+		ERR("Unable to recv session info version 2.4");
+		goto error;
+	}
+
+	strncpy(session->session_name, session_info.session_name,
+			sizeof(session->session_name));
+	strncpy(session->hostname, session_info.hostname,
+			sizeof(session->hostname));
+	session->live_timer = be32toh(session_info.live_timer);
+
+	ret = 0;
+
+error:
+	return ret;
+}
