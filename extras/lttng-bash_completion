@@ -146,7 +146,7 @@ _lttng_cmd_disablechannel() {
 
 _lttng_cmd_disableevent() {
 	local disable_event_opts
-	disable_channel_opts=$(lttng disable-event --list-options)
+	disable_event_opts=$(lttng disable-event --list-options)
 
 	case $prev in
 	--session|-s)
