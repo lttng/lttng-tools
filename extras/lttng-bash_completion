@@ -32,9 +32,6 @@ _lttng_cmd_add_context() {
 	--channel|-c)
 		return
 		;;
-	--event|-e)
-		return
-		;;
 	--type|-t)
 		return
 		;;
