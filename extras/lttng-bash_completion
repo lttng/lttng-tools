@@ -20,7 +20,7 @@ _lttng_complete_sessions() {
 	return
 }
 
-_lttng_cmd_add_context() {
+_lttng_cmd_addcontext() {
 	local add_context_opts
 	add_context_opts=$(lttng add-context --list-options)
 
@@ -182,7 +182,7 @@ _lttng_cmd_disablechannel() {
 	esac
 }
 
-_lttng_cmd_disable_event() {
+_lttng_cmd_disableevent() {
 	local disable_event_opts
 	disable_channel_opts=$(lttng disable-event --list-options)
 
@@ -222,7 +222,7 @@ _lttng_cmd_list() {
 	esac
 }
 
-_lttng_cmd_set_session() {
+_lttng_cmd_setsession() {
 	local set_session_opts
 	set_session_opts=$(lttng set-session --list-options)
 
