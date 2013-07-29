@@ -16,7 +16,12 @@
 #
 
 _lttng_complete_sessions() {
-	# TODO, maybe have a lttng list --simple or something like that
+	# TODO
+	# This code does nothing for now. When there is a mecanism to get the
+	# existing sessions, use it to fill the sessions variable.
+	local sessions
+	sessions=""
+	COMPREPLY=( $(compgen -W "${sessions}" -- $cur) )
 	return
 }
 
@@ -181,6 +186,9 @@ _lttng_cmd_list() {
 		COMPREPLY=( $(compgen -W "${list_opts}" -- $cur) )
 		return
 		;;
+	*)
+		_lttng_complete_sessions
+		return
 	esac
 }
 
@@ -191,6 +199,10 @@ _lttng_cmd_setsession() {
 	case $cur in
 	-*)
 		COMPREPLY=( $(compgen -W "${set_session_opts}" -- $cur) )
+		return
+		;;
+	*)
+		_lttng_complete_sessions
 		return
 		;;
 	esac
