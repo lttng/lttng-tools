@@ -125,44 +125,6 @@ _lttng_cmd_enableevent() {
 	esac
 }
 
-_lttng_cmd_enableconsumer() {
-	local enable_consumer_opts
-		enable_consumer_opts=$(lttng enable-consumer --list-options)
-
-	case $prev in
-	--session|-s)
-		_lttng_complete_sessions
-		return
-		;;
-	esac
-
-	case $cur in
-	-*)
-		COMPREPLY=( $(compgen -W "${enable_consumer_opts}" -- $cur) )
-		return
-		;;
-	esac
-}
-
-_lttng_cmd_disableconsumer() {
-	local disable_consumer_opts
-		disable_consumer_opts=$(lttng disable-consumer --list-options)
-
-	case $prev in
-	--session|-s)
-		_lttng_complete_sessions
-		return
-		;;
-	esac
-
-	case $cur in
-	-*)
-		COMPREPLY=( $(compgen -W "${disable_consumer_opts}" -- $cur) )
-		return
-		;;
-	esac
-}
-
 _lttng_cmd_disablechannel() {
 	local disable_channel_opts
 	disable_channel_opts=$(lttng disable-channel --list-options)
