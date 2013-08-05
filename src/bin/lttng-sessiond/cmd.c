@@ -2590,10 +2590,12 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 
 	ret = kernel_snapshot_record(ksess, output, wait, nb_streams);
 	if (ret < 0) {
-		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		if (ret == -EINVAL) {
 			ret = LTTNG_ERR_INVALID;
+			goto error_snapshot;
 		}
+
+		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		goto error_snapshot;
 	}
 
@@ -2646,10 +2648,12 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 
 	ret = ust_app_snapshot_record(usess, output, wait, nb_streams);
 	if (ret < 0) {
-		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		if (ret == -EINVAL) {
 			ret = LTTNG_ERR_INVALID;
+			goto error_snapshot;
 		}
+
+		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		goto error_snapshot;
 	}
 
