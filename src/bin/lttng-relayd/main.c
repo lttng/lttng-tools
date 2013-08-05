@@ -1187,12 +1187,8 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	ret = sscanf(VERSION, "%10u.%10u", &reply.major, &reply.minor);
-	if (ret < 2) {
-		ERR("Error in scanning version");
-		ret = -1;
-		goto end;
-	}
+	reply.major = RELAYD_VERSION_COMM_MAJOR;
+	reply.minor = RELAYD_VERSION_COMM_MINOR;
 
 	/* Major versions must be the same */
 	if (reply.major != be32toh(msg.major)) {
