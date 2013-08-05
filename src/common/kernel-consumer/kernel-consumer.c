@@ -56,8 +56,8 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 
 	ret = kernctl_snapshot(infd);
 	if (ret != 0) {
-		errno = -ret;
 		perror("Getting sub-buffer snapshot.");
+		ret = -errno;
 	}
 
 	return ret;
@@ -76,8 +76,8 @@ int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 
 	ret = kernctl_snapshot_get_produced(infd, pos);
 	if (ret != 0) {
-		errno = -ret;
 		perror("kernctl_snapshot_get_produced");
+		ret = -errno;
 	}
 
 	return ret;
@@ -452,7 +452,6 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
-		ret = err;
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -461,15 +460,15 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 */
 		DBG("Reserving sub buffer failed (everything is normal, "
 				"it is due to concurrency)");
+		ret = -errno;
 		goto end;
 	}
 
 	/* Get the full subbuffer size including padding */
 	err = kernctl_get_padded_subbuf_size(infd, &len);
 	if (err != 0) {
-		errno = -err;
 		perror("Getting sub-buffer len failed.");
-		ret = err;
+		ret = -errno;
 		goto end;
 	}
 
@@ -504,9 +503,8 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		/* Get subbuffer size without padding */
 		err = kernctl_get_subbuf_size(infd, &subbuf_size);
 		if (err != 0) {
-			errno = -err;
 			perror("Getting sub-buffer len failed.");
-			ret = err;
+			ret = -errno;
 			goto end;
 		}
 
@@ -536,20 +534,18 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		break;
 	default:
 		ERR("Unknown output method");
-		ret = -1;
+		ret = -EPERM;
 	}
 
 	err = kernctl_put_next_subbuf(infd);
 	if (err != 0) {
-		errno = -err;
 		if (errno == EFAULT) {
 			perror("Error in unreserving sub buffer\n");
 		} else if (errno == EIO) {
 			/* Should never happen with newer LTTng versions */
 			perror("Reader has been pushed by the writer, last sub-buffer corrupted.");
 		}
-
-		ret = -err;
+		ret = -errno;
 		goto end;
 	}
 
@@ -581,8 +577,8 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
 		if (ret != 0) {
-			errno = -ret;
 			PERROR("kernctl_get_mmap_len");
+			ret = -errno;
 			goto error_close_fd;
 		}
 		stream->mmap_len = (size_t) mmap_len;
