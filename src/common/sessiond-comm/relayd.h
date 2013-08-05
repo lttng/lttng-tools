@@ -26,9 +26,10 @@
 
 #include <lttng/lttng.h>
 #include <common/defaults.h>
+#include <config.h>
 
-#define RELAYD_VERSION_COMM_MAJOR             2
-#define RELAYD_VERSION_COMM_MINOR             2
+#define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
+#define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR
 
 /*
  * lttng-relayd communication header.
