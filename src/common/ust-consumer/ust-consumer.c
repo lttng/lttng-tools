@@ -958,12 +958,12 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 					padded_len - len);
 			if (use_relayd) {
 				if (read_len != len) {
-					ret = -1;
+					ret = -EPERM;
 					goto error_put_subbuf;
 				}
 			} else {
 				if (read_len != padded_len) {
-					ret = -1;
+					ret = -EPERM;
 					goto error_put_subbuf;
 				}
 			}

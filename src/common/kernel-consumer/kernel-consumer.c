@@ -57,8 +57,8 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 
 	ret = kernctl_snapshot(infd);
 	if (ret != 0) {
-		errno = -ret;
 		perror("Getting sub-buffer snapshot.");
+		ret = -errno;
 	}
 
 	return ret;
@@ -77,8 +77,8 @@ int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 
 	ret = kernctl_snapshot_get_produced(infd, pos);
 	if (ret != 0) {
-		errno = -ret;
 		perror("kernctl_snapshot_get_produced");
+		ret = -errno;
 	}
 
 	return ret;
@@ -97,8 +97,8 @@ int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 
 	ret = kernctl_snapshot_get_consumed(infd, pos);
 	if (ret != 0) {
-		errno = -ret;
 		perror("kernctl_snapshot_get_consumed");
+		ret = -errno;
 	}
 
 	return ret;
@@ -174,6 +174,7 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 		ret = kernctl_buffer_flush(stream->wait_fd);
 		if (ret < 0) {
 			ERR("Failed to flush kernel stream");
+			ret = -errno;
 			goto end_unlock;
 		}
 
@@ -200,6 +201,7 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 					&stream->max_sb_size);
 			if (ret < 0) {
 				ERR("Getting kernel max_sb_size");
+				ret = -errno;
 				goto end_unlock;
 			}
 		}
@@ -223,6 +225,7 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			if (ret < 0) {
 				if (errno != EAGAIN) {
 					PERROR("kernctl_get_subbuf snapshot");
+					ret = -errno;
 					goto end_unlock;
 				}
 				DBG("Kernel consumer get subbuf failed. Skipping it.");
@@ -233,12 +236,14 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			ret = kernctl_get_subbuf_size(stream->wait_fd, &len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_subbuf_size");
+				ret = -errno;
 				goto error_put_subbuf;
 			}
 
 			ret = kernctl_get_padded_subbuf_size(stream->wait_fd, &padded_len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_padded_subbuf_size");
+				ret = -errno;
 				goto error_put_subbuf;
 			}
 
@@ -264,6 +269,7 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			ret = kernctl_put_subbuf(stream->wait_fd);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_put_subbuf");
+				ret = -errno;
 				goto end_unlock;
 			}
 			consumed_pos += stream->max_sb_size;
@@ -292,6 +298,7 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 error_put_subbuf:
 	ret = kernctl_put_subbuf(stream->wait_fd);
 	if (ret < 0) {
+		ret = -errno;
 		ERR("Snapshot kernctl_put_subbuf error path");
 	}
 end_unlock:
@@ -355,7 +362,7 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 	do {
 		ret_read = lttng_kconsumer_read_subbuffer(metadata_stream, ctx);
 		if (ret_read < 0) {
-			if (ret_read != -EPERM) {
+			if (ret_read != -EAGAIN) {
 				ERR("Kernel snapshot reading metadata subbuffer (ret: %zd)",
 						ret_read);
 				goto error;
@@ -851,7 +858,6 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
 	if (err != 0) {
-		ret = err;
 		/*
 		 * This is a debug message even for single-threaded consumer,
 		 * because poll() have more relaxed criterions than get subbuf,
@@ -860,15 +866,15 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 */
 		DBG("Reserving sub buffer failed (everything is normal, "
 				"it is due to concurrency)");
+		ret = -errno;
 		goto end;
 	}
 
 	/* Get the full subbuffer size including padding */
 	err = kernctl_get_padded_subbuf_size(infd, &len);
 	if (err != 0) {
-		errno = -err;
 		perror("Getting sub-buffer len failed.");
-		ret = err;
+		ret = -errno;
 		goto end;
 	}
 
@@ -902,9 +908,8 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		/* Get subbuffer size without padding */
 		err = kernctl_get_subbuf_size(infd, &subbuf_size);
 		if (err != 0) {
-			errno = -err;
 			perror("Getting sub-buffer len failed.");
-			ret = err;
+			ret = -errno;
 			goto end;
 		}
 
@@ -934,20 +939,18 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		break;
 	default:
 		ERR("Unknown output method");
-		ret = -1;
+		ret = -EPERM;
 	}
 
 	err = kernctl_put_next_subbuf(infd);
 	if (err != 0) {
-		errno = -err;
 		if (errno == EFAULT) {
 			perror("Error in unreserving sub buffer\n");
 		} else if (errno == EIO) {
 			/* Should never happen with newer LTTng versions */
 			perror("Reader has been pushed by the writer, last sub-buffer corrupted.");
 		}
-
-		ret = -err;
+		ret = -errno;
 		goto end;
 	}
 
@@ -982,8 +985,8 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 
 		ret = kernctl_get_mmap_len(stream->wait_fd, &mmap_len);
 		if (ret != 0) {
-			errno = -ret;
 			PERROR("kernctl_get_mmap_len");
+			ret = -errno;
 			goto error_close_fd;
 		}
 		stream->mmap_len = (size_t) mmap_len;

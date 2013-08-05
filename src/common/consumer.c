@@ -1334,6 +1334,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
+			ret = -EPIPE;
 			goto end;
 		}
 	}
@@ -1343,27 +1344,30 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	case LTTNG_CONSUMER_KERNEL:
 		mmap_base = stream->mmap_base;
 		ret = kernctl_get_mmap_read_offset(stream->wait_fd, &mmap_offset);
+		if (ret != 0) {
+			PERROR("tracer ctl get_mmap_read_offset");
+			written = -errno;
+			goto end;
+		}
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
 		mmap_base = lttng_ustctl_get_mmap_base(stream);
 		if (!mmap_base) {
 			ERR("read mmap get mmap base for stream %s", stream->name);
-			written = -1;
+			written = -EPERM;
 			goto end;
 		}
 		ret = lttng_ustctl_get_mmap_read_offset(stream, &mmap_offset);
-
+		if (ret != 0) {
+			PERROR("tracer ctl get_mmap_read_offset");
+			written = ret;
+			goto end;
+		}
 		break;
 	default:
 		ERR("Unknown consumer_data type");
 		assert(0);
-	}
-	if (ret != 0) {
-		errno = -ret;
-		PERROR("tracer ctl get_mmap_read_offset");
-		written = ret;
-		goto end;
 	}
 
 	/* Handle stream on the relayd if the output is on the network */
@@ -1445,7 +1449,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			 */
 			DBG("Error in file write mmap");
 			if (written == 0) {
-				written = ret;
+				written = -errno;
 			}
 			/* Socket operation failed. We consider the relayd dead */
 			if (errno == EPIPE || errno == EINVAL) {
@@ -1533,6 +1537,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
+			ret = -EPIPE;
 			goto end;
 		}
 	}
