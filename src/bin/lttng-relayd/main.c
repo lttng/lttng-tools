@@ -2110,6 +2110,9 @@ int main(int argc, char **argv)
 	/* Set up max poll set size */
 	lttng_poll_set_max_size();
 
+	/* Initialize communication library */
+	lttcomm_init();
+
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&dispatcher_thread, NULL,
 			relay_thread_dispatcher, (void *) NULL);

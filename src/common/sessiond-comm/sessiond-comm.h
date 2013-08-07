@@ -474,4 +474,8 @@ extern void lttcomm_copy_sock(struct lttcomm_sock *dst,
 extern struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
 		struct lttng_uri *uri, uint32_t major, uint32_t minor);
 
+extern void lttcomm_init(void);
+/* Get network timeout, in milliseconds */
+extern unsigned long lttcomm_get_network_timeout(void);
+
 #endif	/* _LTTNG_SESSIOND_COMM_H */

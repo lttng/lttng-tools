@@ -380,6 +380,9 @@ int main(int argc, char **argv)
 	}
 	ctx->type = opt_type;
 
+	/* Initialize communication library */
+	lttcomm_init();
+
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
 			(void *) ctx);

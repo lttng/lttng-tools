@@ -134,9 +134,14 @@ Debug-mode disabling use of clone/fork. Insecure, but required to allow
 debuggers to work with sessiond on some operating systems.
 .IP "LTTNG_APP_SOCKET_TIMEOUT"
 Control the timeout of application's socket when sending and receiving
-commands. After this period of time, the application is unregistered by the
-session daemon. A value of 0 or -1 means an infinite timeout. Default value is
-5 seconds.
+commands. Takes an integer parameter: the timeout value, in seconds.
+After this period of time, the application is unregistered by the
+session daemon. A value of 0 or -1 means an infinite timeout. Default
+value is 5 seconds.
+.IP "LTTNG_NETWORK_SOCKET_TIMEOUT"
+Control timeout of socket connection, receive and send. Takes an integer
+parameter: the timeout value, in milliseconds. A value of 0 or -1 uses
+the timeout of the operating system (this is the default).
 .SH "SEE ALSO"
 
 .PP
