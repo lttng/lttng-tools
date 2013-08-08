@@ -351,10 +351,11 @@ error:
  */
 LTTNG_HIDDEN
 int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid)
+		uint64_t count, int uid, int gid, char *suffix)
 {
 	int ret, out_fd, flags, mode;
-	char full_path[PATH_MAX], *path_name_id = NULL, *path;
+	char full_path[PATH_MAX], *path_name_suffix = NULL, *path;
+	char *extra = NULL;
 
 	assert(path_name);
 	assert(file_name);
@@ -366,17 +367,30 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 		goto error;
 	}
 
+	/* Setup extra string if suffix or/and a count is needed. */
+	if (size > 0 && suffix) {
+		ret = asprintf(&extra, "_%" PRIu64 "%s", count, suffix);
+	} else if (size > 0) {
+		ret = asprintf(&extra, "_%" PRIu64, count);
+	} else if (suffix) {
+		ret = asprintf(&extra, "%s", suffix);
+	}
+	if (ret < 0) {
+		PERROR("Allocating extra string to name");
+		goto error;
+	}
+
 	/*
 	 * If we split the trace in multiple files, we have to add the count at the
 	 * end of the tracefile name
 	 */
-	if (size > 0) {
-		ret = asprintf(&path_name_id, "%s_%" PRIu64, full_path, count);
+	if (extra) {
+		ret = asprintf(&path_name_suffix, "%s%s", full_path, extra);
 		if (ret < 0) {
-			PERROR("Allocating path name ID");
-			goto error;
+			PERROR("Allocating path name with extra string");
+			goto error_free_suffix;
 		}
-		path = path_name_id;
+		path = path_name_suffix;
 	} else {
 		path = full_path;
 	}
@@ -397,7 +411,9 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 	ret = out_fd;
 
 error_open:
-	free(path_name_id);
+	free(path_name_suffix);
+error_free_suffix:
+	free(extra);
 error:
 	return ret;
 }
@@ -413,9 +429,13 @@ error:
  */
 LTTNG_HIDDEN
 int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count)
+		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
+		int *stream_fd)
 {
 	int ret;
+
+	assert(new_count);
+	assert(stream_fd);
 
 	ret = close(out_fd);
 	if (ret < 0) {
@@ -429,8 +449,16 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		(*new_count)++;
 	}
 
-	return utils_create_stream_file(path_name, file_name, size, *new_count,
-			uid, gid);
+	ret = utils_create_stream_file(path_name, file_name, size, *new_count,
+			uid, gid, 0);
+	if (ret < 0) {
+		goto error;
+	}
+	*stream_fd = ret;
+
+	/* Success. */
+	ret = 0;
+
 error:
 	return ret;
 }

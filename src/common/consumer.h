@@ -32,6 +32,7 @@
 #include <common/compat/uuid.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/pipe.h>
+#include <common/index/lttng-index.h>
 
 /* Commands for consumer */
 enum lttng_consumer_command {
@@ -321,6 +322,10 @@ struct lttng_consumer_stream {
 	 * to the channel.
 	 */
 	uint64_t ust_metadata_pushed;
+	/*
+	 * FD of the index file for this stream.
+	 */
+	int index_fd;
 };
 
 /*
@@ -590,11 +595,13 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding);
+		unsigned long padding,
+		struct lttng_packet_index *index);
 ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding);
+		unsigned long padding,
+		struct lttng_packet_index *index);
 int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream);
 int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 		unsigned long *pos);
@@ -627,5 +634,6 @@ int consumer_add_data_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
 int consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
+int consumer_create_index_file(struct lttng_consumer_stream *stream);
 
 #endif /* LIB_CONSUMER_H */

@@ -60,6 +60,7 @@ struct relay_stream {
 	struct relay_session *session;
 	struct rcu_head rcu_node;
 	int fd;
+	int index_fd;
 
 	char *path_name;
 	char *channel_name;
