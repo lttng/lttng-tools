@@ -216,6 +216,9 @@
 #define DEFAULT_SNAPSHOT_NAME				"snapshot"
 #define DEFAULT_SNAPSHOT_MAX_SIZE			0 /* Unlimited. */
 
+/* Suffix of an index file. */
+#define DEFAULT_INDEX_FILE_SUFFIX			".idx"
+
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
 extern size_t default_ust_pid_channel_subbuf_size;

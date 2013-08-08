@@ -135,6 +135,14 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 		stream->out_fd = -1;
 	}
 
+	if (stream->index_fd >= 0) {
+		ret = close(stream->index_fd);
+		if (ret) {
+			PERROR("close stream index_fd");
+		}
+		stream->index_fd = -1;
+	}
+
 	/* Check and cleanup relayd if needed. */
 	rcu_read_lock();
 	relayd = consumer_find_relayd(stream->net_seq_idx);

@@ -8,6 +8,7 @@ lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/libconsumer.la \
 	   $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 	   $(top_builddir)/src/common/libcommon.la \
+	   $(top_builddir)/src/common/index/libindex.la \
 	   -lrt
 
 if HAVE_LIBLTTNG_UST_CTL

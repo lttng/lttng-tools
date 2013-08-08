@@ -33,6 +33,7 @@
 #include <common/common.h>
 #include <common/utils.h>
 #include <common/compat/poll.h>
+#include <common/index/index.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -506,6 +507,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->session_id = session_id;
 	stream->monitor = monitor;
 	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
+	stream->index_fd = -1;
 	pthread_mutex_init(&stream->lock, NULL);
 
 	/* If channel is the metadata, flag this stream as metadata. */
@@ -1317,7 +1319,8 @@ end:
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding)
+		unsigned long padding,
+		struct lttng_packet_index *index)
 {
 	unsigned long mmap_offset;
 	void *mmap_base;
@@ -1424,18 +1427,34 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			ret = utils_rotate_stream_file(stream->chan->pathname,
 					stream->name, stream->chan->tracefile_size,
 					stream->chan->tracefile_count, stream->uid, stream->gid,
-					stream->out_fd, &(stream->tracefile_count_current));
+					stream->out_fd, &(stream->tracefile_count_current),
+					&stream->out_fd);
 			if (ret < 0) {
 				ERR("Rotating output file");
 				goto end;
 			}
-			outfd = stream->out_fd = ret;
+			outfd = stream->out_fd;
+
+			if (stream->index_fd >= 0) {
+				ret = index_create_file(stream->chan->pathname,
+						stream->name, stream->uid, stream->gid,
+						stream->chan->tracefile_size,
+						stream->tracefile_count_current);
+				if (ret < 0) {
+					goto end;
+				}
+				stream->index_fd = ret;
+			}
+
 			/* Reset current size because we just perform a rotation. */
 			stream->tracefile_size_current = 0;
 			stream->out_fd_offset = 0;
 			orig_offset = 0;
 		}
 		stream->tracefile_size_current += len;
+		if (index) {
+			index->offset = htobe64(stream->out_fd_offset);
+		}
 	}
 
 	while (len > 0) {
@@ -1510,7 +1529,8 @@ end:
 ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding)
+		unsigned long padding,
+		struct lttng_packet_index *index)
 {
 	ssize_t ret = 0, written = 0, ret_splice = 0;
 	loff_t offset = 0;
@@ -1610,18 +1630,32 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 			ret = utils_rotate_stream_file(stream->chan->pathname,
 					stream->name, stream->chan->tracefile_size,
 					stream->chan->tracefile_count, stream->uid, stream->gid,
-					stream->out_fd, &(stream->tracefile_count_current));
+					stream->out_fd, &(stream->tracefile_count_current),
+					&stream->out_fd);
 			if (ret < 0) {
 				ERR("Rotating output file");
 				goto end;
 			}
-			outfd = stream->out_fd = ret;
+			outfd = stream->out_fd;
+
+			if (stream->index_fd >= 0) {
+				ret = index_create_file(stream->chan->pathname,
+						stream->name, stream->uid, stream->gid,
+						stream->chan->tracefile_size,
+						stream->tracefile_count_current);
+				if (ret < 0) {
+					goto end;
+				}
+				stream->index_fd = ret;
+			}
+
 			/* Reset current size because we just perform a rotation. */
 			stream->tracefile_size_current = 0;
 			stream->out_fd_offset = 0;
 			orig_offset = 0;
 		}
 		stream->tracefile_size_current += len;
+		index->offset = htobe64(stream->out_fd_offset);
 	}
 
 	while (len > 0) {

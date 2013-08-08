@@ -868,7 +868,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	 * uses its own credentials for the stream files.
 	 */
 	ret = utils_create_stream_file(stream->path_name, stream->channel_name,
-			stream->tracefile_size, 0, -1, -1);
+			stream->tracefile_size, 0, -1, -1, NULL);
 	if (ret < 0) {
 		ERR("Create output file");
 		goto end;
@@ -1626,7 +1626,8 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *streams_ht)
 		ret = utils_rotate_stream_file(stream->path_name,
 				stream->channel_name, stream->tracefile_size,
 				stream->tracefile_count, -1, -1,
-				stream->fd, &(stream->tracefile_count_current));
+				stream->fd, &(stream->tracefile_count_current),
+				&stream->fd);
 		if (ret < 0) {
 			ERR("Rotating output file");
 			goto end;
