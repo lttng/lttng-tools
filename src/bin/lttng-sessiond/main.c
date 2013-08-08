@@ -1298,11 +1298,17 @@ static void *thread_manage_apps(void *data)
 						goto error;
 					}
 
-					/* Set socket timeout for both receiving and ending */
+					/*
+					 * Set socket timeout for both receiving and ending.
+					 * app_socket_timeout is in seconds, whereas
+					 * lttcomm_setsockopt_rcv_timeout and
+					 * lttcomm_setsockopt_snd_timeout expect msec as
+					 * parameter.
+					 */
 					(void) lttcomm_setsockopt_rcv_timeout(sock,
-							app_socket_timeout);
+							app_socket_timeout * 1000);
 					(void) lttcomm_setsockopt_snd_timeout(sock,
-							app_socket_timeout);
+							app_socket_timeout * 1000);
 
 					DBG("Apps with sock %d added to poll set", sock);
 

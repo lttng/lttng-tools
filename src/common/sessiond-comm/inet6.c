@@ -57,6 +57,7 @@ LTTNG_HIDDEN
 int lttcomm_create_inet6_sock(struct lttcomm_sock *sock, int type, int proto)
 {
 	int val = 1, ret;
+	unsigned long timeout;
 
 	/* Create server socket */
 	if ((sock->fd = socket(PF_INET6, type, proto)) < 0) {
@@ -73,6 +74,17 @@ int lttcomm_create_inet6_sock(struct lttcomm_sock *sock, int type, int proto)
 	if (ret < 0) {
 		PERROR("setsockopt inet6");
 		goto error;
+	}
+	timeout = lttcomm_get_network_timeout();
+	if (timeout) {
+		ret = lttcomm_setsockopt_rcv_timeout(sock->fd, timeout);
+		if (ret) {
+			goto error;
+		}
+		ret = lttcomm_setsockopt_snd_timeout(sock->fd, timeout);
+		if (ret) {
+			goto error;
+		}
 	}
 
 	return 0;

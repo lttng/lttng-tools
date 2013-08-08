@@ -373,6 +373,46 @@ error:
 	return NULL;
 }
 
+/*
+ * Set socket receiving timeout.
+ */
+LTTNG_HIDDEN
+int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec)
+{
+	int ret;
+	struct timeval tv;
+
+	tv.tv_sec = msec / 1000;
+	tv.tv_usec = (msec % 1000) * 1000;
+
+	ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	if (ret < 0) {
+		PERROR("setsockopt SO_RCVTIMEO");
+	}
+
+	return ret;
+}
+
+/*
+ * Set socket sending timeout.
+ */
+LTTNG_HIDDEN
+int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec)
+{
+	int ret;
+	struct timeval tv;
+
+	tv.tv_sec = msec / 1000;
+	tv.tv_usec = (msec % 1000) * 1000;
+
+	ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+	if (ret < 0) {
+		PERROR("setsockopt SO_SNDTIMEO");
+	}
+
+	return ret;
+}
+
 LTTNG_HIDDEN
 void lttcomm_init(void)
 {

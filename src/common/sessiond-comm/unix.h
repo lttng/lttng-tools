@@ -45,7 +45,5 @@ extern ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		lttng_sock_cred *creds);
 
 extern int lttcomm_setsockopt_creds_unix_sock(int sock);
-extern int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int sec);
-extern int lttcomm_setsockopt_snd_timeout(int sock, unsigned int sec);
 
 #endif	/* _LTTCOMM_UNIX_H */
