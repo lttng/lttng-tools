@@ -50,6 +50,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 	OPT_MAX_SIZE,
+	OPT_LIST_COMMANDS,
 };
 
 static struct poptOption snapshot_opts[] = {
@@ -61,6 +62,7 @@ static struct poptOption snapshot_opts[] = {
 	{"name",         'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0},
 	{"max-size",     'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
+	{"list-commands",  0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -439,6 +441,9 @@ int cmd_snapshot(int argc, const char **argv)
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, snapshot_opts);
+			goto end;
+		case OPT_LIST_COMMANDS:
+			list_commands(actions, stdout);
 			goto end;
 		case OPT_MAX_SIZE:
 		{

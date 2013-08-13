@@ -151,25 +151,6 @@ static void list_options(FILE *ofp)
 }
 
 /*
- *  list_commands
- *
- *  List commands line by line. This is mostly for bash auto completion and to
- *  avoid difficult parsing.
- */
-static void list_commands(FILE *ofp)
-{
-	int i = 0;
-	struct cmd_struct *cmd = NULL;
-
-	cmd = &commands[i];
-	while (cmd->name != NULL) {
-		fprintf(ofp, "%s\n", cmd->name);
-		i++;
-		cmd = &commands[i];
-	}
-}
-
-/*
  * clean_exit
  */
 static void clean_exit(int code)
@@ -466,7 +447,7 @@ static int parse_args(int argc, char **argv)
 			ret = 0;
 			goto end;
 		case OPT_DUMP_COMMANDS:
-			list_commands(stdout);
+			list_commands(commands, stdout);
 			ret = 0;
 			goto end;
 		default:

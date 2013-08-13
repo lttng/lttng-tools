@@ -25,6 +25,7 @@
 
 #include "conf.h"
 #include "utils.h"
+#include "command.h"
 
 /*
  *  get_session_name
@@ -56,6 +57,24 @@ error:
 	return NULL;
 }
 
+/*
+ *  list_commands
+ *
+ *  List commands line by line. This is mostly for bash auto completion and to
+ *  avoid difficult parsing.
+ */
+void list_commands(struct cmd_struct *commands, FILE *ofp)
+{
+	int i = 0;
+	struct cmd_struct *cmd = NULL;
+
+	cmd = &commands[i];
+	while (cmd->name != NULL) {
+		fprintf(ofp, "%s\n", cmd->name);
+		i++;
+		cmd = &commands[i];
+	}
+}
 
 /*
  * list_cmd_options
