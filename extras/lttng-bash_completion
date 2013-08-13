@@ -50,6 +50,17 @@ _lttng_cmd_addcontext() {
 	esac
 }
 
+_lttng_cmd_calibrate() {
+	local calibrate_opts
+	calibrate_opts=$(lttng calibrate --list-options)
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${calibrate_opts}" -- $cur) )
+		;;
+	esac
+}
+
 _lttng_cmd_create() {
 	local create_opts
 	create_opts=$(lttng create --list-options)
@@ -79,6 +90,45 @@ _lttng_cmd_destroy() {
 		;;
 	*)
 		_lttng_complete_sessions
+		;;
+	esac
+}
+_lttng_cmd_disablechannel() {
+	local disable_channel_opts
+	disable_channel_opts=$(lttng disable-channel --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${disable_channel_opts}" -- $cur) )
+		return
+		;;
+	esac
+}
+_lttng_cmd_disableevent() {
+	local disable_event_opts
+	disable_event_opts=$(lttng disable-event --list-options)
+
+	case $prev in
+	--session|-s)
+		_lttng_complete_sessions
+		return
+		;;
+	--channel|-c)
+		return
+		;;
+	esac
+
+	case $cur in
+	-*)
+		COMPREPLY=( $(compgen -W "${disable_event_opts}" -- $cur) )
+		return
 		;;
 	esac
 }
@@ -125,47 +175,6 @@ _lttng_cmd_enableevent() {
 	case $cur in
 	-*)
 		COMPREPLY=( $(compgen -W "${enable_event_opts}" -- $cur) )
-		return
-		;;
-	esac
-}
-
-_lttng_cmd_disablechannel() {
-	local disable_channel_opts
-	disable_channel_opts=$(lttng disable-channel --list-options)
-
-	case $prev in
-	--session|-s)
-		_lttng_complete_sessions
-		return
-		;;
-	esac
-
-	case $cur in
-	-*)
-		COMPREPLY=( $(compgen -W "${disable_channel_opts}" -- $cur) )
-		return
-		;;
-	esac
-}
-
-_lttng_cmd_disableevent() {
-	local disable_event_opts
-	disable_event_opts=$(lttng disable-event --list-options)
-
-	case $prev in
-	--session|-s)
-		_lttng_complete_sessions
-		return
-		;;
-	--channel|-c)
-		return
-		;;
-	esac
-
-	case $cur in
-	-*)
-		COMPREPLY=( $(compgen -W "${disable_event_opts}" -- $cur) )
 		return
 		;;
 	esac
@@ -243,17 +252,6 @@ _lttng_cmd_version() {
 	case $cur in
 	-*)
 		COMPREPLY=( $(compgen -W "${version_opts}" -- $cur) )
-		;;
-	esac
-}
-
-_lttng_cmd_calibrate() {
-	local calibrate_opts
-	calibrate_opts=$(lttng calibrate --list-options)
-
-	case $cur in
-	-*)
-		COMPREPLY=( $(compgen -W "${calibrate_opts}" -- $cur) )
 		;;
 	esac
 }
