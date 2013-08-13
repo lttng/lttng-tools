@@ -761,8 +761,9 @@ Apply to session name.
 Name of the snapshot's output.
 .TP
 .BR "\-m, \-\-max-size SIZE"
-Maximum size in bytes of the snapshot. The maxium size does not include
-the metadata file.
+Maximum size in bytes of the snapshot. The maxium size does not include the
+metadata file. Human readable format is accepted: {+k,+M,+G}. For instance,
+\-\-max-size 5M
 .TP
 .BR "\-C, \-\-ctrl-url URL"
 Set control path URL. (Must use -D also)

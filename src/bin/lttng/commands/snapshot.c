@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/utils.h>
 #include <lttng/snapshot.h>
 
 #include "../command.h"
@@ -58,7 +59,7 @@ static struct poptOption snapshot_opts[] = {
 	{"ctrl-url",     'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
 	{"data-url",     'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
 	{"name",         'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0},
-	{"max-size",     'm', POPT_ARG_DOUBLE, 0, OPT_MAX_SIZE, 0, 0},
+	{"max-size",     'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -100,7 +101,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -s, --session NAME   Apply to session name\n");
 	fprintf(ofp, "  -n, --name NAME      Name of the output or snapshot\n");
-	fprintf(ofp, "  -m, --max-size SIZE  Maximum bytes size of the snapshot\n");
+	fprintf(ofp, "  -m, --max-size SIZE  Maximum bytes size of the snapshot {+k,+M,+G}\n");
 	fprintf(ofp, "  -C, --ctrl-url URL   Set control path URL. (Must use -D also)\n");
 	fprintf(ofp, "  -D, --data-url URL   Set data path URL. (Must use -C also)\n");
 	fprintf(ofp, "\n");
@@ -441,25 +442,15 @@ int cmd_snapshot(int argc, const char **argv)
 			goto end;
 		case OPT_MAX_SIZE:
 		{
-			long long int val;
-			char *endptr;
+			uint64_t val;
 			const char *opt = poptGetOptArg(pc);
 
-			/* Documented by the man page of strtoll(3). */
-			errno = 0;
-			val = strtoll(opt, &endptr, 10);
-			if ((errno == ERANGE && (val == LLONG_MAX || val == LONG_MIN))
-					|| (errno != 0 && val == 0)) {
+			if (utils_parse_size_suffix((char *) opt, &val) < 0) {
 				ERR("Unable to handle max-size value %s", opt);
 				ret = CMD_ERROR;
 				goto end;
 			}
 
-			if (endptr == opt) {
-				ERR("No digits were found in %s", opt);
-				ret = CMD_ERROR;
-				goto end;
-			}
 			opt_max_size = val;
 
 			break;
