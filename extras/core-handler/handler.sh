@@ -29,6 +29,12 @@ SESSION_NAME="coredump-handler"
 # Sessiond binary name.
 SESSIOND_BIN_NAME="lttng-sessiond"
 
+# TODO: Checking for a sessiond lockfile would be more appropriate.
+if $PGREP_BIN -u root "${SESSIOND_BIN_NAME}" > /dev/null 2>&1
+then
+    $LTTNG_BIN snapshot record -s ${SESSION_NAME} > /dev/null 2>&1
+fi
+
 # Core file settings.
 CORE_PATH="/tmp/lttng/core"
 CORE_PREFIX="core"
@@ -54,9 +60,3 @@ $CAT_BIN - > "${CORE_PATH}/${CORE_PREFIX}.$p"
 
 # Optional, chain core dump handler with original systemd script.
 #$CAT_BIN - | /usr/lib/systemd/systemd-coredump $p $u $g $s $t $e
-
-# TODO: Checking for a sessiond lockfile would be more appropriate.
-if $PGREP_BIN -u root "${SESSIOND_BIN_NAME}" > /dev/null 2>&1
-then
-    $LTTNG_BIN snapshot record -s ${SESSION_NAME} > /dev/null 2>&1
-fi
