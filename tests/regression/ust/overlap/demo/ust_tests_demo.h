@@ -4,10 +4,6 @@
 #if !defined(_TRACEPOINT_UST_TESTS_DEMO_H) || defined(TRACEPOINT_HEADER_MULTI_READ)
 #define _TRACEPOINT_UST_TESTS_DEMO_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Copyright (C) 2011  Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
@@ -57,7 +53,3 @@ TRACEPOINT_MODEL_EMF_URI(ust_tests_demo, done,
 
 /* This part must be outside ifdef protection */
 #include <lttng/tracepoint-event.h>
-
-#ifdef __cplusplus
-}
-#endif
