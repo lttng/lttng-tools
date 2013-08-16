@@ -859,15 +859,6 @@ int cmd_enable_channel(struct ltt_session *session,
 
 	rcu_read_lock();
 
-	/*
-	 * Don't try to enable a channel if the session has been started at
-	 * some point in time before. The tracer does not allow it.
-	 */
-	if (session->started) {
-		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-		goto error;
-	}
-
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -876,6 +867,15 @@ int cmd_enable_channel(struct ltt_session *session,
 		kchan = trace_kernel_get_channel_by_name(attr->name,
 				session->kernel_session);
 		if (kchan == NULL) {
+			/*
+			 * Don't try to create a channel if the session
+			 * has been started at some point in time
+			 * before. The tracer does not allow it.
+			 */
+			if (session->started) {
+				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+				goto error;
+			}
 			ret = channel_kernel_create(session->kernel_session, attr, wpipe);
 			if (attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
@@ -899,6 +899,15 @@ int cmd_enable_channel(struct ltt_session *session,
 
 		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
+			/*
+			 * Don't try to create a channel if the session
+			 * has been started at some point in time
+			 * before. The tracer does not allow it.
+			 */
+			if (session->started) {
+				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+				goto error;
+			}
 			ret = channel_ust_create(usess, attr, domain->buf_type);
 			if (attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
