@@ -1,6 +1,8 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
 			  -DINSTALL_BIN_PATH=\""$(bindir)"\"
 
+AUTOMAKE_OPTIONS = subdir-objects
+
 bin_PROGRAMS = lttng
 
 lttng_SOURCES = command.h conf.c conf.h commands/start.c \
