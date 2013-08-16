@@ -4075,11 +4075,11 @@ static int set_permissions(char *rundir)
 	ret = allowed_group();
 	if (ret < 0) {
 		WARN("No tracing group detected");
-		ret = 0;
-		goto end;
+		/* Setting gid to 0 if no tracing group is found */
+		gid = 0;
+	} else {
+		gid = ret;
 	}
-
-	gid = ret;
 
 	/* Set lttng run dir */
 	ret = chown(rundir, 0, gid);
@@ -4088,7 +4088,7 @@ static int set_permissions(char *rundir)
 		PERROR("chown");
 	}
 
-	/* Ensure tracing group can search the run dir */
+	/* Ensure all applications and tracing group can search the run dir */
 	ret = chmod(rundir, S_IRWXU | S_IXGRP | S_IXOTH);
 	if (ret < 0) {
 		ERR("Unable to set permissions on %s", rundir);
@@ -4125,7 +4125,6 @@ static int set_permissions(char *rundir)
 
 	DBG("All permissions are set");
 
-end:
 	return ret;
 }
 
