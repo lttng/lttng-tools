@@ -85,8 +85,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
-	fprintf(ofp, "      --no-output      Traces will not be outputed\n");
-	fprintf(ofp, "      --snasphot       Set the session in snapshot mode.\n");
+	fprintf(ofp, "      --no-output      Traces will not be outputted\n");
+	fprintf(ofp, "      --snapshot       Set the session in snapshot mode.\n");
 	fprintf(ofp, "                       Created in no-output mode and uses the URL,\n");
 	fprintf(ofp, "                       if one, as the default snapshot output.\n");
 	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");

@@ -859,15 +859,6 @@ int cmd_enable_channel(struct ltt_session *session,
 
 	rcu_read_lock();
 
-	/*
-	 * Don't try to enable a channel if the session has been started at
-	 * some point in time before. The tracer does not allow it.
-	 */
-	if (session->started) {
-		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-		goto error;
-	}
-
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -876,6 +867,15 @@ int cmd_enable_channel(struct ltt_session *session,
 		kchan = trace_kernel_get_channel_by_name(attr->name,
 				session->kernel_session);
 		if (kchan == NULL) {
+			/*
+			 * Don't try to create a channel if the session
+			 * has been started at some point in time
+			 * before. The tracer does not allow it.
+			 */
+			if (session->started) {
+				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+				goto error;
+			}
 			ret = channel_kernel_create(session->kernel_session, attr, wpipe);
 			if (attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
@@ -899,6 +899,15 @@ int cmd_enable_channel(struct ltt_session *session,
 
 		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
+			/*
+			 * Don't try to create a channel if the session
+			 * has been started at some point in time
+			 * before. The tracer does not allow it.
+			 */
+			if (session->started) {
+				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+				goto error;
+			}
 			ret = channel_ust_create(usess, attr, domain->buf_type);
 			if (attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
@@ -1115,17 +1124,6 @@ int cmd_add_context(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_KERNEL:
 		assert(session->kernel_session);
 
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (session->kernel_session->has_non_default_channel
-				&& channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
-
 		if (session->kernel_session->channel_count == 0) {
 			/* Create default channel */
 			ret = channel_kernel_create(session->kernel_session, NULL, kwpipe);
@@ -1146,16 +1144,6 @@ int cmd_add_context(struct ltt_session *session, int domain,
 		unsigned int chan_count;
 
 		assert(usess);
-
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (usess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
 
 		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {

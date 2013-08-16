@@ -24,10 +24,6 @@
 #undef TRACEPOINT_PROVIDER
 #define TRACEPOINT_PROVIDER ust_tests_exitfast
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 #if !defined(_TRACEPOINT_UST_TESTS_EXITFAST_H) || defined(TRACEPOINT_HEADER_MULTI_READ)
 #define _TRACEPOINT_UST_TESTS_EXITFAST_H
 
@@ -46,7 +42,3 @@ TRACEPOINT_LOGLEVEL(ust_tests_exitfast, message, TRACE_INFO)
 #define TRACEPOINT_INCLUDE "./ust_tests_exitfast.h"
 
 #include <lttng/tracepoint-event.h>
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
