@@ -1124,17 +1124,6 @@ int cmd_add_context(struct ltt_session *session, int domain,
 	case LTTNG_DOMAIN_KERNEL:
 		assert(session->kernel_session);
 
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (session->kernel_session->has_non_default_channel
-				&& channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
-
 		if (session->kernel_session->channel_count == 0) {
 			/* Create default channel */
 			ret = channel_kernel_create(session->kernel_session, NULL, kwpipe);
@@ -1155,16 +1144,6 @@ int cmd_add_context(struct ltt_session *session, int domain,
 		unsigned int chan_count;
 
 		assert(usess);
-
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (usess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
 
 		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {
