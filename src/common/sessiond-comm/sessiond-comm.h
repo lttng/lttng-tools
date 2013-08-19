@@ -368,6 +368,13 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id_per_pid;	/* Per-pid session ID. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t monitor;
+			/*
+			 * For UST per UID buffers, this is the application UID of the
+			 * channel.  This can be different from the user UID requesting the
+			 * channel creation and used for the rights on the stream file
+			 * because the application can be in the tracing for instance.
+			 */
+			uint32_t ust_app_uid;
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;

@@ -115,7 +115,7 @@ struct lttng_consumer_channel {
 	char pathname[PATH_MAX];
 	/* Channel name. */
 	char name[LTTNG_SYMBOL_NAME_LEN];
-	/* UID and GID of the channel. */
+	/* UID and GID of the session owning this channel. */
 	uid_t uid;
 	gid_t gid;
 	/* Relayd id of the channel. -1ULL if it does not apply. */
@@ -131,6 +131,7 @@ struct lttng_consumer_channel {
 	enum consumer_channel_type type;
 
 	/* For UST */
+	uid_t ust_app_uid;	/* Application UID. */
 	struct ustctl_consumer_channel *uchan;
 	unsigned char uuid[UUID_STR_LEN];
 	/*
