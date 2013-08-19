@@ -26,6 +26,7 @@
 
 #include <lttng/lttng.h>
 #include <common/defaults.h>
+#include <common/index/lttng-index.h>
 #include <config.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
@@ -146,6 +147,20 @@ struct lttcomm_relayd_end_data_pending {
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_quiescent_control {
+	uint64_t stream_id;
+} LTTNG_PACKED;
+
+/*
+ * Index data.
+ */
+struct lttcomm_relayd_index {
+	uint64_t relay_stream_id;
+	uint64_t net_seq_num;
+	uint64_t packet_size;
+	uint64_t content_size;
+	uint64_t timestamp_begin;
+	uint64_t timestamp_end;
+	uint64_t events_discarded;
 	uint64_t stream_id;
 } LTTNG_PACKED;
 

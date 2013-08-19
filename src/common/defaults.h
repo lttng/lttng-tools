@@ -222,6 +222,7 @@
 
 /* Suffix of an index file. */
 #define DEFAULT_INDEX_FILE_SUFFIX			".idx"
+#define DEFAULT_INDEX_DIR					"index"
 
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;

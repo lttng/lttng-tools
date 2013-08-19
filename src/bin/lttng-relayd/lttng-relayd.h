@@ -23,6 +23,7 @@
 #include <urcu.h>
 #include <urcu/wfqueue.h>
 #include <common/hashtable/hashtable.h>
+#include <common/index/lttng-index.h>
 
 /*
  * Queue used to enqueue relay requests
@@ -60,6 +61,7 @@ struct relay_stream {
 	struct relay_session *session;
 	struct rcu_head rcu_node;
 	int fd;
+	/* FD on which to write the index data. */
 	int index_fd;
 
 	char *path_name;

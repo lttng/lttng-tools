@@ -82,7 +82,7 @@ enum lttng_error_code {
 	LTTNG_ERR_KERN_STREAM_FAIL       = 49,  /* Kernel create stream failed */
 	LTTNG_ERR_START_SESSION_ONCE     = 50,  /* Session needs to be started once. */
 	LTTNG_ERR_SNAPSHOT_FAIL          = 51,  /* Snapshot record failed. */
-	/* 52 */
+	LTTNG_ERR_NO_STREAM              = 52,  /* Index without stream on relay. */
 	LTTNG_ERR_KERN_LIST_FAIL         = 53,  /* Kernel listing events failed */
 	LTTNG_ERR_UST_CALIBRATE_FAIL     = 54,  /* UST calibration failed */
 	LTTNG_ERR_UST_EVENT_ENABLED      = 55,  /* UST event already enabled. */

@@ -18,6 +18,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <sys/stat.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
@@ -35,8 +36,25 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 {
 	int ret, fd = -1;
 	struct lttng_packet_index_file_hdr hdr;
+	char fullpath[PATH_MAX];
 
-	ret = utils_create_stream_file(path_name, stream_name, size, count, uid,
+	ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR,
+			path_name);
+	if (ret < 0) {
+		PERROR("snprintf index path");
+		goto error;
+	}
+
+	/* Create index directory if necessary. */
+	ret = run_as_mkdir(fullpath, S_IRWXU | S_IRWXG, uid, gid);
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ERR("Index trace directory creation error");
+			goto error;
+		}
+	}
+
+	ret = utils_create_stream_file(fullpath, stream_name, size, count, uid,
 			gid, DEFAULT_INDEX_FILE_SUFFIX);
 	if (ret < 0) {
 		goto error;

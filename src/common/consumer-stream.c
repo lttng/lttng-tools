@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 #include <common/common.h>
+#include <common/index/index.h>
 #include <common/relayd/relayd.h>
 #include <common/ust-consumer/ust-consumer.h>
 
@@ -321,4 +322,36 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 
 	/* Free stream within a RCU call. */
 	consumer_stream_free(stream);
+}
+
+/*
+ * Write index of a specific stream either on the relayd or local disk.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int consumer_stream_write_index(struct lttng_consumer_stream *stream,
+		struct lttng_packet_index *index)
+{
+	int ret;
+	struct consumer_relayd_sock_pair *relayd;
+
+	assert(stream);
+	assert(index);
+
+	rcu_read_lock();
+	relayd = consumer_find_relayd(stream->net_seq_idx);
+	if (relayd) {
+		ret = relayd_send_index(&relayd->control_sock, index,
+				stream->relayd_stream_id, stream->next_net_seq_num - 1);
+	} else {
+		ret = index_write(stream->index_fd, index,
+				sizeof(struct lttng_packet_index));
+	}
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	rcu_read_unlock();
+	return ret;
 }

@@ -1664,7 +1664,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	unsigned long len, subbuf_size, padding;
-	int err, write_index = 0;
+	int err, write_index = 1;
 	long ret = 0;
 	char dummy;
 	struct ustctl_consumer_stream *ustream;
@@ -1679,11 +1679,6 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 	/* Ease our life for what's next. */
 	ustream = stream->ustream;
-
-	/* Indicate that for this stream we have to write the index. */
-	if (stream->index_fd >= 0) {
-		write_index = 1;
-	}
 
 	/* We can consume the 1 byte written into the wait_fd by UST */
 	if (stream->monitor && !stream->hangup_flush_done) {
@@ -1743,12 +1738,14 @@ retry:
 	}
 	assert(stream->chan->output == CONSUMER_CHANNEL_MMAP);
 
-	if (!stream->metadata_flag && write_index) {
+	if (!stream->metadata_flag) {
 		index.offset = htobe64(stream->out_fd_offset);
 		ret = get_index_values(&index, ustream);
 		if (ret < 0) {
 			goto end;
 		}
+	} else {
+		write_index = 0;
 	}
 
 	/* Get the full padded subbuffer size */
@@ -1788,12 +1785,14 @@ retry:
 	assert(err == 0);
 
 	/* Write index if needed. */
-	if (write_index) {
-		err = index_write(stream->index_fd, &index, sizeof(index));
-		if (err < 0) {
-			ret = -1;
-			goto end;
-		}
+	if (!write_index) {
+		goto end;
+	}
+
+	assert(!stream->metadata_flag);
+	err = consumer_stream_write_index(stream, &index);
+	if (err < 0) {
+		goto end;
 	}
 
 end:

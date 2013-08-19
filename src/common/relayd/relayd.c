@@ -26,6 +26,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/sessiond-comm/relayd.h>
+#include <common/index/lttng-index.h>
 
 #include "relayd.h"
 
@@ -667,6 +668,66 @@ int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id,
 	DBG("Relayd end data pending is data inflight: %d", reply.ret_code);
 
 	return 0;
+
+error:
+	return ret;
+}
+
+/*
+ * Send index to the relayd.
+ */
+int relayd_send_index(struct lttcomm_relayd_sock *rsock,
+		struct lttng_packet_index *index, uint64_t relay_stream_id,
+		uint64_t net_seq_num)
+{
+	int ret;
+	struct lttcomm_relayd_index msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	if (rsock->minor < 4) {
+		DBG("Not sending indexes before protocol 2.4");
+		ret = 0;
+		goto error;
+	}
+
+	DBG("Relayd sending index for stream ID %" PRIu64, relay_stream_id);
+
+	msg.relay_stream_id = htobe64(relay_stream_id);
+	msg.net_seq_num = htobe64(net_seq_num);
+
+	/* The index is already in big endian. */
+	msg.packet_size = index->packet_size;
+	msg.content_size = index->content_size;
+	msg.timestamp_begin = index->timestamp_begin;
+	msg.timestamp_end = index->timestamp_end;
+	msg.events_discarded = index->events_discarded;
+	msg.stream_id = index->stream_id;
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_SEND_INDEX, &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd send index replied error %d", reply.ret_code);
+	} else {
+		/* Success */
+		ret = 0;
+	}
 
 error:
 	return ret;
