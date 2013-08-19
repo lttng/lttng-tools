@@ -907,17 +907,12 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	unsigned long len, subbuf_size, padding;
-	int err, write_index = 0;
+	int err, write_index = 1;
 	ssize_t ret = 0;
 	int infd = stream->wait_fd;
 	struct lttng_packet_index index;
 
 	DBG("In read_subbuffer (infd : %d)", infd);
-
-	/* Indicate that for this stream we have to write the index. */
-	if (stream->index_fd >= 0) {
-		write_index = 1;
-	}
 
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
@@ -942,11 +937,13 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
-	if (!stream->metadata_flag && write_index) {
+	if (!stream->metadata_flag) {
 		ret = get_index_values(&index, infd);
 		if (ret < 0) {
 			goto end;
 		}
+	} else {
+		write_index = 0;
 	}
 
 	switch (stream->chan->output) {
@@ -1028,12 +1025,13 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	}
 
 	/* Write index if needed. */
-	if (write_index) {
-		err = index_write(stream->index_fd, &index, sizeof(index));
-		if (err < 0) {
-			ret = -1;
-			goto end;
-		}
+	if (!write_index) {
+		goto end;
+	}
+
+	err = consumer_stream_write_index(stream, &index);
+	if (err < 0) {
+		goto end;
 	}
 
 end:

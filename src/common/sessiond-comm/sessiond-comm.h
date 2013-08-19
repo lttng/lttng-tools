@@ -103,6 +103,9 @@ enum lttcomm_relayd_command {
 	RELAYD_QUIESCENT_CONTROL            = 9,
 	RELAYD_BEGIN_DATA_PENDING           = 10,
 	RELAYD_END_DATA_PENDING             = 11,
+	RELAYD_ADD_INDEX                    = 12,
+	RELAYD_SEND_INDEX                   = 13,
+	RELAYD_CLOSE_INDEX                  = 14,
 };
 
 /*

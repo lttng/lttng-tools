@@ -729,6 +729,7 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream,
 		if (ret < 0) {
 			goto end;
 		}
+
 		uatomic_inc(&relayd->refcount);
 		stream->sent_to_relayd = 1;
 	} else {

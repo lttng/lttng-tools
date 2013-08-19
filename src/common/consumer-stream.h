@@ -68,4 +68,10 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
  */
 void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream);
 
+/*
+ * Write index of a specific stream either on the relayd or local disk.
+ */
+int consumer_stream_write_index(struct lttng_consumer_stream *stream,
+		struct lttng_packet_index *index);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */
