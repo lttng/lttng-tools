@@ -15,6 +15,7 @@ Makefile.in
 *.info
 *.bz2
 *.tar
+.dirstamp
 configure
 aclocal.m4
 autom4te.cache/
