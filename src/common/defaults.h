@@ -19,6 +19,8 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
 
+#include <config.h>
+
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"
 
@@ -79,7 +81,7 @@
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_HOME_ENV_VAR              "LTTNG_HOME"
 #define DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR	"HOME"
-#define DEFAULT_LTTNG_RUNDIR                    "/var/run/lttng"
+#define DEFAULT_LTTNG_RUNDIR                    CONFIG_LTTNG_SYSTEM_RUNDIR
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
 
