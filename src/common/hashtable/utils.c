@@ -60,6 +60,7 @@
 #include "utils.h"
 #include <common/compat/endian.h>    /* attempt to define endianness */
 #include <common/common.h>
+#include <common/hashtable/hashtable.h>
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may
@@ -497,6 +498,17 @@ unsigned long hash_key_str(void *key, unsigned long seed)
 }
 
 /*
+ * Hash function for two uint64_t.
+ */
+LTTNG_HIDDEN
+unsigned long hash_key_two_u64(void *key, unsigned long seed)
+{
+	struct lttng_ht_two_u64 *k = (struct lttng_ht_two_u64 *) key;
+
+	return hash_key_u64(&k->key1, seed) ^ hash_key_u64(&k->key2, seed);
+}
+
+/*
  * Hash function compare for number value.
  */
 LTTNG_HIDDEN
@@ -529,6 +541,23 @@ LTTNG_HIDDEN
 int hash_match_key_str(void *key1, void *key2)
 {
 	if (strcmp(key1, key2) == 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * Hash function compare two uint64_t.
+ */
+LTTNG_HIDDEN
+int hash_match_key_two_u64(void *key1, void *key2)
+{
+	struct lttng_ht_two_u64 *k1 = (struct lttng_ht_two_u64 *) key1;
+	struct lttng_ht_two_u64 *k2 = (struct lttng_ht_two_u64 *) key2;
+
+	if (hash_match_key_u64(&k1->key1, &k2->key1) &&
+			hash_match_key_u64(&k1->key2, &k2->key2)) {
 		return 1;
 	}
 
