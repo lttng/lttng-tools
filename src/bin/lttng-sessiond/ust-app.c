@@ -364,6 +364,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 
 	/* Wipe context */
 	cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter.iter, ua_ctx, node.node) {
+		cds_list_del(&ua_ctx->list);
 		ret = lttng_ht_del(ua_chan->ctx, &iter);
 		assert(!ret);
 		delete_ust_app_ctx(sock, ua_ctx);
@@ -825,6 +826,7 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
+	CDS_INIT_LIST_HEAD(&ua_chan->ctx_list);
 
 	/* Copy attributes */
 	if (attr) {
@@ -915,6 +917,8 @@ struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
 	if (ua_ctx == NULL) {
 		goto error;
 	}
+
+	CDS_INIT_LIST_HEAD(&ua_ctx->list);
 
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
@@ -1395,7 +1399,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	ua_chan->enabled = uchan->enabled;
 	ua_chan->tracing_channel_id = uchan->id;
 
-	cds_lfht_for_each_entry(uchan->ctx->ht, &iter.iter, uctx, node.node) {
+	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
 		if (ua_ctx == NULL) {
 			continue;
@@ -1403,6 +1407,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 		lttng_ht_node_init_ulong(&ua_ctx->node,
 				(unsigned long) ua_ctx->ctx.ctx);
 		lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
+		cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 	}
 
 	/* Copy all events from ltt ust channel to ust app channel */
@@ -1794,6 +1799,7 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 
 	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
 	lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
+	cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 	if (ret < 0) {
@@ -4050,7 +4056,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter, uiter, iter_ctx;
+	struct lttng_ht_iter iter, uiter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess = NULL;
 	struct ust_app_channel *ua_chan;
@@ -4122,8 +4128,11 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 			}
 		}
 
-		cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter_ctx.iter, ua_ctx,
-				node.node) {
+		/*
+		 * Add context using the list so they are enabled in the same order the
+		 * user added them.
+		 */
+		cds_list_for_each_entry(ua_ctx, &ua_chan->ctx_list, list) {
 			ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 			if (ret < 0) {
 				goto error_unlock;

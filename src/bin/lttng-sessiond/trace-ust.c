@@ -274,6 +274,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
 
 	/* Init node */
 	lttng_ht_node_init_str(&luc->node, luc->name);
+	CDS_INIT_LIST_HEAD(&luc->ctx_list);
+
 	/* Alloc hash tables */
 	luc->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
@@ -445,6 +447,7 @@ struct ltt_ust_context *trace_ust_create_context(
 
 	uctx->ctx.ctx = utype;
 	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
+	CDS_INIT_LIST_HEAD(&uctx->list);
 
 	return uctx;
 
@@ -473,11 +476,16 @@ static void destroy_contexts(struct lttng_ht *ht)
 	int ret;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
+	struct ltt_ust_context *ctx;
 
 	assert(ht);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
+		/* Remove from ordered list. */
+		ctx = caa_container_of(node, struct ltt_ust_context, node);
+		cds_list_del(&ctx->list);
+		/* Remove from channel's hash table. */
 		ret = lttng_ht_del(ht, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_context_rcu);

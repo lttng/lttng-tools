@@ -478,7 +478,7 @@ int cmd_add_context(int argc, const char **argv)
 				ret = CMD_ERROR;
 				goto end;
 			} else {
-				cds_list_add(&type->list, &ctx_type_list.head);
+				cds_list_add_tail(&type->list, &ctx_type_list.head);
 			}
 			break;
 		case OPT_USERSPACE:
