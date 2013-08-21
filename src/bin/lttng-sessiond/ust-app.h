@@ -102,6 +102,7 @@ struct ust_app_ctx {
 	struct lttng_ust_context ctx;
 	struct lttng_ust_object_data *obj;
 	struct lttng_ht_node_ulong node;
+	struct cds_list_head list;
 };
 
 struct ust_app_event {
@@ -141,7 +142,14 @@ struct ust_app_channel {
 	struct ust_app_stream_list streams;
 	/* Session pointer that owns this object. */
 	struct ust_app_session *session;
+	/*
+	 * Contexts are kept in a hash table for fast lookup and in an ordered list
+	 * so we are able to enable them on the tracer side in the same order the
+	 * user added them.
+	 */
 	struct lttng_ht *ctx;
+	struct cds_list_head ctx_list;
+
 	struct lttng_ht *events;
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;

@@ -132,6 +132,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 	/* Add ltt UST context node to ltt UST channel */
 	lttng_ht_add_unique_ulong(uchan->ctx, &uctx->node);
 	rcu_read_unlock();
+	cds_list_add_tail(&uctx->list, &uchan->ctx_list);
 
 	DBG("Context UST %d added to channel %s", uctx->ctx.ctx, uchan->name);
 

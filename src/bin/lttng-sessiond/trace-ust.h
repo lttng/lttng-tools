@@ -39,6 +39,7 @@ struct ltt_ust_ht_key {
 struct ltt_ust_context {
 	struct lttng_ust_context ctx;
 	struct lttng_ht_node_ulong node;
+	struct cds_list_head list;
 };
 
 /* UST event */
@@ -56,6 +57,7 @@ struct ltt_ust_channel {
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_channel_attr attr;
 	struct lttng_ht *ctx;
+	struct cds_list_head ctx_list;
 	struct lttng_ht *events;
 	struct lttng_ht_node_str node;
 	uint64_t tracefile_size;
