@@ -4664,7 +4664,8 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	 */
 	ret_code = ust_registry_create_event(registry, chan_reg_key,
 			sobjd, cobjd, name, sig, nr_fields, fields, loglevel,
-			model_emf_uri, ua_sess->buffer_type, &event_id);
+			model_emf_uri, ua_sess->buffer_type, &event_id,
+			app);
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
