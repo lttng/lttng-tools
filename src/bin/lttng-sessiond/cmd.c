@@ -2836,6 +2836,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 	if (snapshot_success) {
 		session->snapshot.nb_snapshot++;
+	} else {
+		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 	}
 
 error:
