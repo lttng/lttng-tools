@@ -320,6 +320,12 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		struct snapshot_output *output, int wait, unsigned int nb_streams);
 unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess);
 
+static inline
+int ust_app_supported(void)
+{
+	return 1;
+}
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
@@ -524,6 +530,12 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 }
 static inline
 unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
+{
+	return 0;
+}
+
+static inline
+int ust_app_supported(void)
 {
 	return 0;
 }
