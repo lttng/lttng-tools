@@ -153,7 +153,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
 	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
 	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
-	fprintf(ofp, "    --filter \'expression\'\n");
+	fprintf(ofp, "  -f, --filter \'expression\'\n");
 	fprintf(ofp, "                           Filter expression on event fields and context.\n");
 	fprintf(ofp, "                           Event recording depends on evaluation.\n");
 	fprintf(ofp, "                           Only specify on first activation of\n");
