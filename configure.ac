@@ -14,9 +14,9 @@ patchlevel_version=$(echo AC_PACKAGE_VERSION | sed 's/^[[0-9]]*\.[[0-9]]*\.\([[0
 AC_SUBST([MAJOR_VERSION], [$major_version])
 AC_SUBST([MINOR_VERSION], [$minor_version])
 AC_SUBST([PATCHLEVEL_VERSION], [$patchlevel_version])
-AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [UST major version number])
-AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [UST minor version number])
-AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [UST patchlevel version number])
+AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version number])
+AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
+AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
 version_name="Dominus Vobiscum"
 version_description="A very succulent line-up of beers brewed at Microbrasserie Charlevoix. Elaborated starting from special malts and fermented with a Belgian yeast. These beers are refermented in bottle and will make you discover the richness of wheat, amber and triple styles."
