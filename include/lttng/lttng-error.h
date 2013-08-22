@@ -114,7 +114,7 @@ enum lttng_error_code {
 	LTTNG_ERR_TRACE_ALREADY_STOPPED  = 81,  /* Tracing already stopped */
 	LTTNG_ERR_KERN_EVENT_ENOSYS      = 82,  /* Kernel event type not supported */
 	/* 83 */
-	/* 84 */
+	LTTNG_ERR_NO_UST                 = 84,  /* LTTng-UST tracer is not supported. Please rebuild lttng-tools with lttng-ust support enabled. */
 	/* 85 */
 	/* 86 */
 	/* 87 */

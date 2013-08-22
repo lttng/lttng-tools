@@ -315,6 +315,12 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
 
+static inline
+int ust_app_supported(void)
+{
+	return 1;
+}
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
@@ -510,6 +516,12 @@ static inline
 void ust_app_destroy(struct ust_app *app)
 {
 	return;
+}
+
+static inline
+int ust_app_supported(void)
+{
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

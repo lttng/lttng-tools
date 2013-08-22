@@ -2688,6 +2688,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
+		if (!ust_app_supported()) {
+			ret = LTTNG_ERR_NO_UST;
+			goto error;
+		}
 		/* Consumer is in an ERROR state. Report back to client */
 		if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_USTCONSUMERD;
