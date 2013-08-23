@@ -2577,13 +2577,7 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	}
 
 	ret = kernel_snapshot_record(ksess, output, wait, nb_streams);
-	if (ret < 0) {
-		if (ret == -EINVAL) {
-			ret = LTTNG_ERR_INVALID;
-			goto error_snapshot;
-		}
-
-		ret = LTTNG_ERR_SNAPSHOT_FAIL;
+	if (ret != LTTNG_OK) {
 		goto error_snapshot;
 	}
 
