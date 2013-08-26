@@ -62,8 +62,8 @@ int consumer_socket_send(struct consumer_socket *socket, void *msg, size_t len)
 		/* The above call will print a PERROR on error. */
 		DBG("Error when sending data to consumer on sock %d", fd);
 		/*
-		 * At this point, the socket is not usable anymore thus flagging it
-		 * invalid and closing it.
+		 * At this point, the socket is not usable anymore thus closing it and
+		 * setting the file descriptor to -1 so it is not reused.
 		 */
 
 		/* This call will PERROR on error. */
@@ -106,8 +106,8 @@ int consumer_socket_recv(struct consumer_socket *socket, void *msg, size_t len)
 		/* The above call will print a PERROR on error. */
 		DBG("Error when receiving data from the consumer socket %d", fd);
 		/*
-		 * At this point, the socket is not usable anymore thus flagging it
-		 * invalid and closing it.
+		 * At this point, the socket is not usable anymore thus closing it and
+		 * setting the file descriptor to -1 so it is not reused.
 		 */
 
 		/* This call will PERROR on error. */

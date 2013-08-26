@@ -105,7 +105,11 @@ struct consumer_data {
 	char err_unix_sock_path[PATH_MAX];
 	char cmd_unix_sock_path[PATH_MAX];
 
-	/* communication lock */
+	/*
+	 * This lock has two purposes. It protects any change to the consumer
+	 * socket and make sure only one thread uses this object for read/write
+	 * operations.
+	 */
 	pthread_mutex_t lock;
 };
 

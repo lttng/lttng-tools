@@ -1021,7 +1021,8 @@ restart:
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
 		consumer_data->metadata_fd =
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
-		if (consumer_data->cmd_sock < 0 || consumer_data->metadata_fd < 0) {
+		if (consumer_data->cmd_sock < 0
+				|| consumer_data->metadata_fd < 0) {
 			PERROR("consumer connect cmd socket");
 			/* On error, signal condition and quit. */
 			signal_consumer_condition(consumer_data, -1);
@@ -1140,8 +1141,8 @@ exit:
 error:
 	/*
 	 * We lock here because we are about to close the sockets and some other
-	 * thread might be using them so wait before we are exclusive which will
-	 * abort all other consumer command by other threads.
+	 * thread might be using them so get exclusive access which will abort all
+	 * other consumer command by other threads.
 	 */
 	pthread_mutex_lock(&consumer_data->lock);
 
@@ -1188,6 +1189,7 @@ error:
 	unlink(consumer_data->cmd_unix_sock_path);
 	consumer_data->pid = 0;
 	pthread_mutex_unlock(&consumer_data->lock);
+
 	/* Cleanup metadata socket mutex. */
 	pthread_mutex_destroy(consumer_data->metadata_sock.lock);
 	free(consumer_data->metadata_sock.lock);
