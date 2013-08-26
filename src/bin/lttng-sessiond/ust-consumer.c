@@ -207,7 +207,6 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 	assert(ua_chan);
 	assert(consumer);
 	assert(socket);
-	assert(socket->fd);
 	assert(registry);
 
 	if (!consumer->enabled) {
@@ -242,7 +241,6 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 
 	assert(ua_chan);
 	assert(socket);
-	assert(socket->fd);
 
 	msg.cmd_type = LTTNG_CONSUMER_GET_CHANNEL;
 	msg.u.get_channel.key = ua_chan->key;
@@ -257,11 +255,11 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 	}
 
 	/* First, get the channel from consumer. */
-	ret = ustctl_recv_channel_from_consumer(*socket->fd, &ua_chan->obj);
+	ret = ustctl_recv_channel_from_consumer(*socket->fd_ptr, &ua_chan->obj);
 	if (ret < 0) {
 		if (ret != -EPIPE) {
 			ERR("Error recv channel from consumer %d with ret %d",
-					*socket->fd, ret);
+					*socket->fd_ptr, ret);
 		} else {
 			DBG3("UST app recv channel from consumer. Consumer is dead.");
 		}
@@ -280,7 +278,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 		}
 
 		/* Stream object is populated by this call if successful. */
-		ret = ustctl_recv_stream_from_consumer(*socket->fd, &stream->obj);
+		ret = ustctl_recv_stream_from_consumer(*socket->fd_ptr, &stream->obj);
 		if (ret < 0) {
 			free(stream);
 			if (ret == -LTTNG_UST_ERR_NOENT) {
@@ -290,7 +288,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 			}
 			if (ret != -EPIPE) {
 				ERR("Recv stream from consumer %d with ret %d",
-						*socket->fd, ret);
+						*socket->fd_ptr, ret);
 			} else {
 				DBG3("UST app recv stream from consumer. Consumer is dead.");
 			}
@@ -337,7 +335,6 @@ int ust_consumer_destroy_channel(struct consumer_socket *socket,
 
 	assert(ua_chan);
 	assert(socket);
-	assert(socket->fd);
 
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
 	msg.u.destroy_channel.key = ua_chan->key;

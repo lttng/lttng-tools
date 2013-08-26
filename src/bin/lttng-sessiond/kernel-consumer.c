@@ -371,7 +371,6 @@ int kernel_consumer_destroy_channel(struct consumer_socket *socket,
 
 	assert(channel);
 	assert(socket);
-	assert(socket->fd);
 
 	DBG("Sending kernel consumer destroy channel key %d", channel->fd);
 
@@ -400,7 +399,6 @@ int kernel_consumer_destroy_metadata(struct consumer_socket *socket,
 
 	assert(metadata);
 	assert(socket);
-	assert(socket->fd);
 
 	DBG("Sending kernel consumer destroy channel key %d", metadata->fd);
 

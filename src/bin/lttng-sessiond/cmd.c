@@ -462,9 +462,6 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 	if (session->consumer_fds_sent == 0 && session->consumer != NULL) {
 		cds_lfht_for_each_entry(session->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
-			/* Code flow error */
-			assert(socket->fd);
-
 			pthread_mutex_lock(socket->lock);
 			ret = kernel_consumer_send_session(socket, session);
 			pthread_mutex_unlock(socket->lock);
@@ -674,9 +671,6 @@ int cmd_setup_relayd(struct ltt_session *session)
 		/* For each consumer socket, send relayd sockets */
 		cds_lfht_for_each_entry(usess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
-			/* Code flow error */
-			assert(socket->fd);
-
 			pthread_mutex_lock(socket->lock);
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
 					usess->consumer, socket);
@@ -693,9 +687,6 @@ int cmd_setup_relayd(struct ltt_session *session)
 			&& ksess->consumer->enabled) {
 		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
-			/* Code flow error */
-			assert(socket->fd);
-
 			pthread_mutex_lock(socket->lock);
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
 					ksess->consumer, socket);

@@ -35,9 +35,10 @@ enum consumer_dst_type {
 struct consumer_socket {
 	/*
 	 * File descriptor. This is just a reference to the consumer data meaning
-	 * that every access must be locked and check for a possible invalid value.
+	 * that every access must be locked and checked for a possible invalid
+	 * value.
 	 */
-	int *fd;
+	int *fd_ptr;
 
 	/*
 	 * To use this socket (send/recv), this lock MUST be acquired.
@@ -94,8 +95,8 @@ struct consumer_data {
 	/*
 	 * The metadata socket object is handled differently and only created
 	 * locally in this object thus it's the only reference available in the
-	 * session daemon. For that reason, a static variable for the fd is
-	 * required and the metadata socket fd points to it.
+	 * session daemon. For that reason, a variable for the fd is required and
+	 * the metadata socket fd points to it.
 	 */
 	int metadata_fd;
 	struct consumer_socket metadata_sock;

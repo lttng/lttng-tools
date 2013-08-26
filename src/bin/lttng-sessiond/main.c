@@ -690,9 +690,6 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 					rcu_read_lock();
 					cds_lfht_for_each_entry(ksess->consumer->socks->ht,
 							&iter.iter, socket, node.node) {
-						/* Code flow error */
-						assert(socket->fd);
-
 						pthread_mutex_lock(socket->lock);
 						ret = kernel_consumer_send_channel_stream(socket,
 								channel, ksess,
@@ -1030,7 +1027,7 @@ restart:
 			signal_consumer_condition(consumer_data, -1);
 			goto error;
 		}
-		consumer_data->metadata_sock.fd = &consumer_data->metadata_fd;
+		consumer_data->metadata_sock.fd_ptr = &consumer_data->metadata_fd;
 		/* Create metadata socket lock. */
 		consumer_data->metadata_sock.lock = zmalloc(sizeof(pthread_mutex_t));
 		if (consumer_data->metadata_sock.lock == NULL) {
@@ -1173,8 +1170,8 @@ error:
 		}
 		consumer_data->cmd_sock = -1;
 	}
-	if (*consumer_data->metadata_sock.fd >= 0) {
-		ret = close(*consumer_data->metadata_sock.fd);
+	if (*consumer_data->metadata_sock.fd_ptr >= 0) {
+		ret = close(*consumer_data->metadata_sock.fd_ptr);
 		if (ret) {
 			PERROR("close");
 		}
