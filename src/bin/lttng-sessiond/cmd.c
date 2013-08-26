@@ -463,7 +463,7 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 		cds_lfht_for_each_entry(session->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			/* Code flow error */
-			assert(socket->fd >= 0);
+			assert(socket->fd);
 
 			pthread_mutex_lock(socket->lock);
 			ret = kernel_consumer_send_session(socket, session);
@@ -675,7 +675,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 		cds_lfht_for_each_entry(usess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			/* Code flow error */
-			assert(socket->fd >= 0);
+			assert(socket->fd);
 
 			pthread_mutex_lock(socket->lock);
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
@@ -694,7 +694,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			/* Code flow error */
-			assert(socket->fd >= 0);
+			assert(socket->fd);
 
 			pthread_mutex_lock(socket->lock);
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
@@ -2027,13 +2027,15 @@ int cmd_register_consumer(struct ltt_session *session, int domain,
 			ret = LTTNG_ERR_CONNECT_FAIL;
 			goto error;
 		}
+		cdata->cmd_sock = sock;
 
-		socket = consumer_allocate_socket(sock);
+		socket = consumer_allocate_socket(&cdata->cmd_sock);
 		if (socket == NULL) {
 			ret = close(sock);
 			if (ret < 0) {
 				PERROR("close register consumer");
 			}
+			cdata->cmd_sock = -1;
 			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}

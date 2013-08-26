@@ -864,7 +864,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		struct consumer_output *saved_output;
 		struct ltt_kernel_channel *chan;
 		/* Code flow error */
-		assert(socket->fd >= 0);
+		assert(socket->fd);
 
 		/*
 		 * Temporarly switch consumer output for our snapshot output. As long

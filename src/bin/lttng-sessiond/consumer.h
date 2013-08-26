@@ -33,8 +33,12 @@ enum consumer_dst_type {
 };
 
 struct consumer_socket {
-	/* File descriptor */
-	int fd;
+	/*
+	 * File descriptor. This is just a reference to the consumer data meaning
+	 * that every access must be locked and check for a possible invalid value.
+	 */
+	int *fd;
+
 	/*
 	 * To use this socket (send/recv), this lock MUST be acquired.
 	 */
@@ -87,6 +91,13 @@ struct consumer_data {
 	int err_sock;
 	/* These two sockets uses the cmd_unix_sock_path. */
 	int cmd_sock;
+	/*
+	 * The metadata socket object is handled differently and only created
+	 * locally in this object thus it's the only reference available in the
+	 * session daemon. For that reason, a static variable for the fd is
+	 * required and the metadata socket fd points to it.
+	 */
+	int metadata_fd;
 	struct consumer_socket metadata_sock;
 
 	/* consumer error and command Unix socket path */
@@ -157,7 +168,7 @@ struct consumer_socket *consumer_find_socket(int key,
 		struct consumer_output *consumer);
 struct consumer_socket *consumer_find_socket_by_bitness(int bits,
 		struct consumer_output *consumer);
-struct consumer_socket *consumer_allocate_socket(int fd);
+struct consumer_socket *consumer_allocate_socket(int *fd);
 void consumer_add_socket(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 void consumer_del_socket(struct consumer_socket *sock,

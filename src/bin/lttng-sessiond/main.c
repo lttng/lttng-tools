@@ -90,7 +90,6 @@ static struct consumer_data kconsumer_data = {
 	.cmd_unix_sock_path = DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
-	.metadata_sock.fd = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -102,7 +101,6 @@ static struct consumer_data ustconsumer64_data = {
 	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
-	.metadata_sock.fd = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -114,7 +112,6 @@ static struct consumer_data ustconsumer32_data = {
 	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
-	.metadata_sock.fd = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -694,7 +691,7 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 					cds_lfht_for_each_entry(ksess->consumer->socks->ht,
 							&iter.iter, socket, node.node) {
 						/* Code flow error */
-						assert(socket->fd >= 0);
+						assert(socket->fd);
 
 						pthread_mutex_lock(socket->lock);
 						ret = kernel_consumer_send_channel_stream(socket,
@@ -1019,15 +1016,15 @@ restart:
 		/* Connect both socket, command and metadata. */
 		consumer_data->cmd_sock =
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
-		consumer_data->metadata_sock.fd =
+		consumer_data->metadata_fd =
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
-		if (consumer_data->cmd_sock < 0 ||
-				consumer_data->metadata_sock.fd < 0) {
+		if (consumer_data->cmd_sock < 0 || consumer_data->metadata_fd < 0) {
 			PERROR("consumer connect cmd socket");
 			/* On error, signal condition and quit. */
 			signal_consumer_condition(consumer_data, -1);
 			goto error;
 		}
+		consumer_data->metadata_sock.fd = &consumer_data->metadata_fd;
 		/* Create metadata socket lock. */
 		consumer_data->metadata_sock.lock = zmalloc(sizeof(pthread_mutex_t));
 		if (consumer_data->metadata_sock.lock == NULL) {
@@ -1040,7 +1037,7 @@ restart:
 		signal_consumer_condition(consumer_data, 1);
 		DBG("Consumer command socket ready (fd: %d", consumer_data->cmd_sock);
 		DBG("Consumer metadata socket ready (fd: %d)",
-				consumer_data->metadata_sock.fd);
+				consumer_data->metadata_fd);
 	} else {
 		ERR("consumer error when waiting for SOCK_READY : %s",
 				lttcomm_get_readable_code(-code));
@@ -1060,7 +1057,7 @@ restart:
 	}
 
 	/* Add metadata socket that is successfully connected. */
-	ret = lttng_poll_add(&events, consumer_data->metadata_sock.fd,
+	ret = lttng_poll_add(&events, consumer_data->metadata_fd,
 			LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
@@ -1119,7 +1116,7 @@ restart_poll:
 						lttcomm_get_readable_code(-code));
 
 				goto exit;
-			} else if (pollfd == consumer_data->metadata_sock.fd) {
+			} else if (pollfd == consumer_data->metadata_fd) {
 				/* UST metadata requests */
 				ret = ust_consumer_metadata_request(
 						&consumer_data->metadata_sock);
@@ -1163,8 +1160,8 @@ error:
 		}
 		consumer_data->cmd_sock = -1;
 	}
-	if (consumer_data->metadata_sock.fd >= 0) {
-		ret = close(consumer_data->metadata_sock.fd);
+	if (*consumer_data->metadata_sock.fd >= 0) {
+		ret = close(*consumer_data->metadata_sock.fd);
 		if (ret) {
 			PERROR("close");
 		}
