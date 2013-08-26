@@ -727,6 +727,12 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 
+	/* Consumer is in an ERROR state. Stop any application update. */
+	if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
+		/* Stop the update process since the consumer is dead. */
+		return;
+	}
+
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
 		session_lock(sess);
@@ -1135,6 +1141,13 @@ restart_poll:
 
 exit:
 error:
+	/*
+	 * We lock here because we are about to close the sockets and some other
+	 * thread might be using them so wait before we are exclusive which will
+	 * abort all other consumer command by other threads.
+	 */
+	pthread_mutex_lock(&consumer_data->lock);
+
 	/* Immediately set the consumerd state to stopped */
 	if (consumer_data->type == LTTNG_CONSUMER_KERNEL) {
 		uatomic_set(&kernel_consumerd_state, CONSUMER_ERROR);
@@ -1166,9 +1179,6 @@ error:
 			PERROR("close");
 		}
 	}
-	/* Cleanup metadata socket mutex. */
-	pthread_mutex_destroy(consumer_data->metadata_sock.lock);
-	free(consumer_data->metadata_sock.lock);
 
 	if (sock >= 0) {
 		ret = close(sock);
@@ -1180,6 +1190,10 @@ error:
 	unlink(consumer_data->err_unix_sock_path);
 	unlink(consumer_data->cmd_unix_sock_path);
 	consumer_data->pid = 0;
+	pthread_mutex_unlock(&consumer_data->lock);
+	/* Cleanup metadata socket mutex. */
+	pthread_mutex_destroy(consumer_data->metadata_sock.lock);
+	free(consumer_data->metadata_sock.lock);
 
 	lttng_poll_clean(&events);
 error_poll:
