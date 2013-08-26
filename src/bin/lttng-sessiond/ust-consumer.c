@@ -166,7 +166,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 
 	health_code_update();
 
-	ret = lttcomm_send_unix_sock(*socket->fd, &msg, sizeof(msg));
+	ret = consumer_socket_send(socket, &msg, sizeof(msg));
 	if (ret < 0) {
 		goto error;
 	}
@@ -445,10 +445,8 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	health_code_update();
 
 	/* Wait for a metadata request */
-	ret = lttcomm_recv_unix_sock(*socket->fd, &request, sizeof(request));
-	if (ret <= 0) {
-		ERR("Consumer closed the metadata socket");
-		ret = -1;
+	ret = consumer_socket_recv(socket, &request, sizeof(request));
+	if (ret < 0) {
 		goto end;
 	}
 
