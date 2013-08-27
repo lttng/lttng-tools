@@ -726,9 +726,32 @@ void check_resize(struct cds_lfht *ht, unsigned long size, uint32_t chain_len)
 	if (chain_len > 100)
 		dbg_printf("WARNING: large chain length: %u.\n",
 			   chain_len);
-	if (chain_len >= CHAIN_LEN_RESIZE_THRESHOLD)
-		cds_lfht_resize_lazy_grow(ht, size,
-			cds_lfht_get_count_order_u32(chain_len - (CHAIN_LEN_TARGET - 1)));
+	if (chain_len >= CHAIN_LEN_RESIZE_THRESHOLD) {
+		int growth;
+
+		/*
+		 * Ideal growth calculated based on chain length.
+		 */
+		growth = cds_lfht_get_count_order_u32(chain_len
+				- (CHAIN_LEN_TARGET - 1));
+		if ((ht->flags & CDS_LFHT_ACCOUNTING)
+				&& (size << growth) >= (1UL << COUNT_COMMIT_ORDER)) {
+			/*
+			 * If ideal growth expands the hash table size
+			 * beyond the "small hash table" sizes, use the
+			 * maximum small hash table size to attempt
+			 * expanding the hash table. This only applies
+			 * when node accounting is available, otherwise
+			 * the chain length is used to expand the hash
+			 * table in every case.
+			 */
+			growth = COUNT_COMMIT_ORDER -
+				cds_lfht_get_count_order_u32(size);
+			if (growth <= 0)
+				return;
+		}
+		cds_lfht_resize_lazy_grow(ht, size, growth);
+	}
 }
 
 static
