@@ -495,7 +495,13 @@ error:
 LTTNG_HIDDEN
 void lttcomm_inet_init(void)
 {
-	unsigned long syn_retries, fin_timeout, syn_timeout;
+	unsigned long syn_retries, fin_timeout, syn_timeout, env;
+
+	env = lttcomm_get_network_timeout();
+	if (env) {
+		lttcomm_inet_tcp_timeout = env;
+		goto end;
+	}
 
 	/* Assign default value and see if we can change it. */
 	lttcomm_inet_tcp_timeout = DEFAULT_INET_TCP_TIMEOUT;
@@ -513,5 +519,6 @@ void lttcomm_inet_init(void)
 			max_t(unsigned long, syn_timeout, fin_timeout),
 			lttcomm_inet_tcp_timeout);
 
+end:
 	DBG("TCP inet operation timeout set to %lu sec", lttcomm_inet_tcp_timeout);
 }
