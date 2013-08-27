@@ -4655,6 +4655,12 @@ int main(int argc, char **argv)
 	/* This is to get the TCP timeout value. */
 	lttcomm_inet_init();
 
+	/*
+	 * Initialize the health check subsystem. This call should set the
+	 * appropriate time values.
+	 */
+	health_init();
+
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
 			thread_ht_cleanup, (void *) NULL);
