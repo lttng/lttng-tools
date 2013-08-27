@@ -1,5 +1,5 @@
-noinst_SCRIPTS = test_buffers_uid
-EXTRA_DIST = test_buffers_uid
+noinst_SCRIPTS = test_buffers_pid
+EXTRA_DIST = test_buffers_pid
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
