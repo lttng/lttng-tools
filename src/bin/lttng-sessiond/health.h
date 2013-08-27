@@ -124,5 +124,6 @@ static inline void health_error(void)
 int health_check_state(enum health_type type);
 void health_register(enum health_type type);
 void health_unregister(void);
+void health_init(void);
 
 #endif /* _HEALTH_H */

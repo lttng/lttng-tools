@@ -24,10 +24,12 @@
 
 #include <common/defaults.h>
 #include <common/error.h>
+#include <common/macros.h>
+#include <common/sessiond-comm/inet.h>
 
 #include "health.h"
 
-static const struct timespec time_delta = {
+static struct timespec time_delta = {
 	.tv_sec = DEFAULT_HEALTH_CHECK_DELTA_S,
 	.tv_nsec = DEFAULT_HEALTH_CHECK_DELTA_NS,
 };
@@ -252,4 +254,20 @@ void health_unregister(void)
 	}
 	cds_list_del(&URCU_TLS(health_state).node);
 	state_unlock();
+}
+
+/*
+ * Initiliazie health check subsytem. This should be called before any health
+ * register occurs.
+ */
+void health_init(void)
+{
+	/*
+	 * Get the maximum value between the default delta value and the TCP
+	 * timeout with a safety net of the default health check delta.
+	 */
+	time_delta.tv_sec = max_t(unsigned long,
+			lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S,
+			time_delta.tv_sec);
+	DBG("Health check time delta in seconds set to %lu", time_delta.tv_sec);
 }
