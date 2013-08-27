@@ -47,6 +47,8 @@ function test_thread_stall
 
 	# Spawn sessiond with preload healthexit lib
 	export LD_PRELOAD="$CURDIR/$SESSIOND_PRELOAD"
+	# Set the socket timeout to 5 so the health check delta is set to 25.
+	export LTTNG_NETWORK_SOCKET_TIMEOUT=5
 	start_lttng_sessiond
 
 	# Cleanup some env. var.
@@ -57,7 +59,7 @@ function test_thread_stall
 	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
 
 	# Wait
-	sleep 25
+	sleep 30
 
 	# Check health status, exit code should indicate failure
 	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
