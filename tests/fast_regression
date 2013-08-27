@@ -1,9 +1,6 @@
 regression/tools/filtering/test_invalid_filter
 regression/tools/filtering/test_unsupported_op
 regression/tools/filtering/test_valid_filter
-regression/tools/health/test_thread_exit
-regression/tools/health/test_thread_stall
-regression/tools/health/test_tp_fail
 regression/tools/streaming/test_ust
 regression/tools/tracefile-limits/test_tracefile_count
 regression/tools/tracefile-limits/test_tracefile_size
