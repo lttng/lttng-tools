@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include <common/common.h>
 
@@ -42,6 +43,8 @@ static const struct lttcomm_proto_ops inet_ops = {
 	.recvmsg = lttcomm_recvmsg_inet_sock,
 	.sendmsg = lttcomm_sendmsg_inet_sock,
 };
+
+unsigned long lttcomm_inet_tcp_timeout;
 
 /*
  * Creates an PF_INET socket.
@@ -301,4 +304,69 @@ int lttcomm_close_inet_sock(struct lttcomm_sock *sock)
 	sock->fd = -1;
 
 	return ret;
+}
+
+/*
+ * Return value read from /proc or else 0 if value is not found.
+ */
+static unsigned long read_proc_value(const char *path)
+{
+	int ret, fd;
+	long r_val;
+	unsigned long val = 0;
+	char buf[64];
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		goto error;
+	}
+
+	ret = read(fd, buf, sizeof(buf));
+	if (ret < 0) {
+		PERROR("read proc failed");
+		goto error_close;
+	}
+
+	errno = 0;
+	r_val = strtol(buf, NULL, 10);
+	if (errno != 0 || r_val < -1L) {
+		val = 0;
+		goto error_close;
+	} else {
+		if (r_val > 0) {
+			val = r_val;
+		}
+	}
+
+error_close:
+	ret = close(fd);
+	if (ret) {
+		PERROR("close /proc value");
+	}
+error:
+	return val;
+}
+
+LTTNG_HIDDEN
+void lttcomm_inet_init(void)
+{
+	unsigned long syn_retries, fin_timeout, syn_timeout;
+
+	/* Assign default value and see if we can change it. */
+	lttcomm_inet_tcp_timeout = DEFAULT_INET_TCP_TIMEOUT;
+
+	syn_retries = read_proc_value(LTTCOMM_INET_PROC_SYN_RETRIES_PATH);
+	fin_timeout = read_proc_value(LTTCOMM_INET_PROC_FIN_TIMEOUT_PATH);
+
+	syn_timeout = syn_retries * LTTCOMM_INET_SYN_TIMEOUT_FACTOR;
+
+	/*
+	 * Get the maximum between the two possible timeout value and use that to
+	 * get the maximum with the default timeout.
+	 */
+	lttcomm_inet_tcp_timeout = max_t(unsigned long,
+			max_t(unsigned long, syn_timeout, fin_timeout),
+			lttcomm_inet_tcp_timeout);
+
+	DBG("TCP inet operation timeout set to %lu sec", lttcomm_inet_tcp_timeout);
 }

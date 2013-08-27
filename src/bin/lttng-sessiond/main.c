@@ -4518,6 +4518,9 @@ int main(int argc, char **argv)
 
 	write_pidfile();
 
+	/* This is to get the TCP timeout value. */
+	lttcomm_inet_init();
+
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
 			thread_ht_cleanup, (void *) NULL);
