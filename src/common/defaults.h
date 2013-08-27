@@ -199,6 +199,13 @@
 #define DEFAULT_METADATA_AVAILABILITY_WAIT_TIME 200000  /* usec */
 
 /*
+ * The usual value for the maximum TCP SYN retries time and TCP FIN timeout is
+ * 180 and 60 seconds on most Linux system and the default value since kernel
+ * 2.2 thus using the highest value. See tcp(7) for more details.
+ */
+#define DEFAULT_INET_TCP_TIMEOUT			180	/* sec */
+
+/*
  * Default receiving and sending timeout for an application socket.
  */
 #define DEFAULT_APP_SOCKET_RW_TIMEOUT       5  /* sec */

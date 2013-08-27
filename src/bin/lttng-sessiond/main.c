@@ -4652,6 +4652,8 @@ int main(int argc, char **argv)
 
 	/* Initialize communication library */
 	lttcomm_init();
+	/* This is to get the TCP timeout value. */
+	lttcomm_inet_init();
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
