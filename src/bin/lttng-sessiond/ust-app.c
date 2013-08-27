@@ -1055,6 +1055,12 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 			ERR("UST app create channel context failed for app (pid: %d) "
 					"with ret %d", app->pid, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app disable event failed. Application is dead.");
 		}
 		goto error;
@@ -1093,6 +1099,12 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 			ERR("UST app event %s filter failed for app (pid: %d) "
 					"with ret %d", ua_event->attr.name, app->pid, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app filter event failed. Application is dead.");
 		}
 		goto error;
@@ -1122,6 +1134,12 @@ static int disable_ust_event(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_event->attr.name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app disable event failed. Application is dead.");
 		}
 		goto error;
@@ -1152,6 +1170,12 @@ static int disable_ust_channel(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_chan->name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app disable channel failed. Application is dead.");
 		}
 		goto error;
@@ -1182,6 +1206,12 @@ static int enable_ust_channel(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_chan->name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app enable channel failed. Application is dead.");
 		}
 		goto error;
@@ -1214,6 +1244,12 @@ static int enable_ust_event(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_event->attr.name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app enable event failed. Application is dead.");
 		}
 		goto error;
@@ -1294,6 +1330,12 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			ERR("Error ustctl create event %s for app pid: %d with ret %d",
 					ua_event->attr.name, app->pid, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app create event failed. Application is dead.");
 		}
 		goto error;
@@ -1732,6 +1774,13 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 						app->pid, ret);
 			} else {
 				DBG("UST app creating session failed. Application is dead");
+				/*
+				 * This is normal behavior, an application can die during the
+				 * creation process. Don't report an error so the execution can
+				 * continue normally. This will get flagged ENOTCONN and the
+				 * caller will handle it.
+				 */
+				ret = 0;
 			}
 			delete_ust_app_session(-1, ua_sess, app);
 			if (ret != -ENOMEM) {
@@ -3000,6 +3049,12 @@ int ust_app_list_events(struct lttng_event **events)
 							app->sock, ret);
 				} else {
 					DBG3("UST app tp list get failed. Application is dead");
+					/*
+					 * This is normal behavior, an application can die during the
+					 * creation process. Don't report an error so the execution can
+					 * continue normally. Continue normal execution.
+					 */
+					break;
 				}
 				goto rcu_error;
 			}
@@ -3094,6 +3149,12 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 							app->sock, ret);
 				} else {
 					DBG3("UST app tp list field failed. Application is dead");
+					/*
+					 * This is normal behavior, an application can die during the
+					 * creation process. Don't report an error so the execution can
+					 * continue normally.
+					 */
+					break;
 				}
 				goto rcu_error;
 			}
@@ -3709,6 +3770,13 @@ skip_setup:
 					app->pid, ret);
 		} else {
 			DBG("UST app start session failed. Application is dead.");
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			pthread_mutex_unlock(&ua_sess->lock);
+			goto end;
 		}
 		goto error_unlock;
 	}
@@ -3784,6 +3852,12 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 					app->pid, ret);
 		} else {
 			DBG("UST app stop session failed. Application is dead.");
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			goto end_unlock;
 		}
 		goto error_rcu_unlock;
 	}
@@ -3807,6 +3881,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		(void) push_metadata(registry, ua_sess->consumer);
 	}
 
+end_unlock:
 	pthread_mutex_unlock(&ua_sess->lock);
 end_no_session:
 	rcu_read_unlock();
@@ -3861,8 +3936,11 @@ int ust_app_flush_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			} else {
 				DBG3("UST app failed to flush %s. Application is dead.",
 						ua_chan->name);
-				/* No need to continue. */
-				break;
+				/*
+				 * This is normal behavior, an application can die during the
+				 * creation process. Don't report an error so the execution can
+				 * continue normally.
+				 */
 			}
 			/* Continuing flushing all buffers */
 			continue;
