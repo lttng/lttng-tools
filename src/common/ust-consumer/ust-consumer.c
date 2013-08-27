@@ -1746,6 +1746,12 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 	}
 
 	if (stream->chan->type == CONSUMER_CHANNEL_TYPE_METADATA) {
+		uint64_t contiguous, pushed;
+
+		/* Ease our life a bit. */
+		contiguous = stream->chan->metadata_cache->contiguous;
+		pushed = stream->ust_metadata_pushed;
+
 		/*
 		 * We can simply check whether all contiguously available data
 		 * has been pushed to the ring buffer, since the push operation
@@ -1757,10 +1763,10 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		 * metadata has been consumed from the metadata stream.
 		 */
 		DBG("UST consumer metadata pending check: contiguous %" PRIu64 " vs pushed %" PRIu64,
-			stream->chan->metadata_cache->contiguous,
-			stream->ust_metadata_pushed);
-		if (stream->chan->metadata_cache->contiguous
-				!= stream->ust_metadata_pushed) {
+				contiguous, pushed);
+		assert(contiguous - pushed >= 0);
+		if ((contiguous != pushed) ||
+				(contiguous - pushed > 0 || contiguous == 0)) {
 			ret = 1;	/* Data is pending */
 			goto end;
 		}
