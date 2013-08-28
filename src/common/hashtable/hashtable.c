@@ -221,6 +221,20 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 }
 
 /*
+ * Add string node to hashtable.
+ */
+void lttng_ht_add_str(struct lttng_ht *ht,
+		struct lttng_ht_node_str *node)
+{
+	assert(ht);
+	assert(ht->ht);
+	assert(node);
+
+	cds_lfht_add(ht->ht, ht->hash_fct(node->key, lttng_ht_seed),
+			&node->node);
+}
+
+/*
  * Add unsigned long node to hashtable.
  */
 void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)

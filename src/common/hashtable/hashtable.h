@@ -91,6 +91,8 @@ extern struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(
 		struct lttng_ht *ht, struct lttng_ht_node_ulong *node);
 extern struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(
 		struct lttng_ht *ht, struct lttng_ht_node_u64 *node);
+extern void lttng_ht_add_str(struct lttng_ht *ht,
+		struct lttng_ht_node_str *node);
 extern void lttng_ht_add_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
 extern void lttng_ht_add_u64(struct lttng_ht *ht,
