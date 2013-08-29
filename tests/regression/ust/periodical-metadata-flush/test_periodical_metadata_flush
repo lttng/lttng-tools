@@ -110,7 +110,7 @@ test_after_app_pid() {
 	start_lttng_tracing $SESSION_NAME
 
 	# Start application after tracing
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# At least hit one event
@@ -119,7 +119,9 @@ test_after_app_pid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -q $TESTAPP_NAME
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
 	sleep 2
 
 	validate_trace
@@ -127,6 +129,9 @@ test_after_app_pid() {
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	killall -SIGKILL -q $TESTAPP_NAME
+	wait_apps
 
 	return $out
 }
@@ -152,7 +157,9 @@ test_before_app_pid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -q $TESTAPP_NAME
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
 	sleep 2
 
 	validate_trace
@@ -161,6 +168,7 @@ test_before_app_pid() {
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	wait_apps
 
 	return $out
@@ -178,7 +186,7 @@ test_after_app_uid() {
 	start_lttng_tracing $SESSION_NAME
 
 	# Start application after tracing
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# At least hit one event
@@ -187,7 +195,9 @@ test_after_app_uid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -q $TESTAPP_NAME
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
 	sleep 2
 
 	validate_trace
@@ -195,6 +205,9 @@ test_after_app_uid() {
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	killall -SIGKILL -q $TESTAPP_NAME
+	wait_apps
 
 	return $out
 }
@@ -204,7 +217,7 @@ test_before_app_uid() {
 
 	diag "Start application BEFORE tracing is started"
 
-	# Start application after tracing
+	# Start application before tracing
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
@@ -220,7 +233,9 @@ test_before_app_uid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -q $TESTAPP_NAME
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
 	sleep 2
 
 	validate_trace
@@ -229,6 +244,7 @@ test_before_app_uid() {
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	wait_apps
 
 	return $out
