@@ -254,7 +254,7 @@ start_lttng_sessiond
 while [ $i -lt $TEST_COUNT ]; do
 	TRACE_PATH=$(mktemp -d)
 	${TESTS[$i]}
-	#rm -rf $TRACE_PATH
+	rm -rf $TRACE_PATH
 	let "i++"
 done
 
