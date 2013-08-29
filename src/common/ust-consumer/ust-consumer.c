@@ -1764,9 +1764,9 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		 */
 		DBG("UST consumer metadata pending check: contiguous %" PRIu64 " vs pushed %" PRIu64,
 				contiguous, pushed);
-		assert(contiguous - pushed >= 0);
+		assert(((int64_t) contiguous - pushed) >= 0);
 		if ((contiguous != pushed) ||
-				(contiguous - pushed > 0 || contiguous == 0)) {
+				(((int64_t) contiguous - pushed) > 0 || contiguous == 0)) {
 			ret = 1;	/* Data is pending */
 			goto end;
 		}
