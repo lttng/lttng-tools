@@ -605,6 +605,45 @@ error:
 	rcu_read_unlock();
 	return ret;
 }
+/*
+ * Close metadata stream wakeup_fd using the given key to retrieve the channel.
+ * RCU read side lock MUST be acquired before calling this function.
+ *
+ * NOTE: This function does NOT take any channel nor stream lock.
+ *
+ * Return 0 on success else LTTng error code.
+ */
+static int _close_metadata(struct lttng_consumer_channel *channel)
+{
+	int ret = LTTNG_OK;
+
+	assert(channel);
+	assert(channel->type == CONSUMER_CHANNEL_TYPE_METADATA);
+
+	if (channel->switch_timer_enabled == 1) {
+		DBG("Deleting timer on metadata channel");
+		consumer_timer_switch_stop(channel);
+	}
+
+	if (channel->metadata_stream) {
+		ret = ustctl_stream_close_wakeup_fd(channel->metadata_stream->ustream);
+		if (ret < 0) {
+			ERR("UST consumer unable to close fd of metadata (ret: %d)", ret);
+			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+		}
+
+		if (channel->monitor) {
+			/* Close the read-side in consumer_del_metadata_stream */
+			ret = close(channel->metadata_stream->ust_metadata_poll_pipe[1]);
+			if (ret < 0) {
+				PERROR("Close UST metadata write-side poll pipe");
+				ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			}
+		}
+	}
+
+	return ret;
+}
 
 /*
  * Close metadata stream wakeup_fd using the given key to retrieve the channel.
@@ -639,26 +678,7 @@ static int close_metadata(uint64_t chan_key)
 		goto error_unlock;
 	}
 
-	if (channel->switch_timer_enabled == 1) {
-		DBG("Deleting timer on metadata channel");
-		consumer_timer_switch_stop(channel);
-	}
-
-	if (channel->metadata_stream) {
-		ret = ustctl_stream_close_wakeup_fd(channel->metadata_stream->ustream);
-		if (ret < 0) {
-			ERR("UST consumer unable to close fd of metadata (ret: %d)", ret);
-			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
-			goto error_unlock;
-		}
-		if (channel->monitor) {
-			/* close the read-side in consumer_del_metadata_stream */
-			ret = close(channel->metadata_stream->ust_metadata_poll_pipe[1]);
-			if (ret < 0) {
-				PERROR("Close UST metadata write-side poll pipe");
-			}
-		}
-	}
+	ret = _close_metadata(channel);
 
 error_unlock:
 	pthread_mutex_unlock(&channel->lock);
@@ -1802,7 +1822,6 @@ end:
  */
 void lttng_ustconsumer_close_metadata(struct lttng_ht *metadata_ht)
 {
-	int ret;
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
@@ -1814,17 +1833,16 @@ void lttng_ustconsumer_close_metadata(struct lttng_ht *metadata_ht)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(metadata_ht->ht, &iter.iter, stream,
 			node.node) {
-		int fd = stream->wait_fd;
-
+		pthread_mutex_lock(&stream->chan->lock);
 		/*
-		 * Whatever happens here we have to continue to try to close every
-		 * streams. Let's report at least the error on failure.
+		 * Whatever returned value, we must continue to try to close everything
+		 * so ignore it.
 		 */
-		ret = ustctl_stream_close_wakeup_fd(stream->ustream);
-		if (ret) {
-			ERR("Unable to close metadata stream fd %d ret %d", fd, ret);
-		}
-		DBG("Metadata wait fd %d closed", fd);
+		(void) _close_metadata(stream->chan);
+		DBG("Metadata wait fd %d and poll pipe fd %d closed", stream->wait_fd,
+				stream->ust_metadata_poll_pipe[1]);
+		pthread_mutex_unlock(&stream->chan->lock);
+
 	}
 	rcu_read_unlock();
 }
