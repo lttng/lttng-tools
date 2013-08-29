@@ -604,6 +604,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->key = stream_key;
 	stream->out_fd = -1;
 	stream->out_fd_offset = 0;
+	stream->output_written = 0;
 	stream->state = state;
 	stream->uid = uid;
 	stream->gid = gid;
@@ -1508,6 +1509,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 					SYNC_FILE_RANGE_WRITE);
 			stream->out_fd_offset += ret;
 		}
+		stream->output_written += ret;
 		written += ret;
 	}
 	lttng_consumer_sync_trace_file(stream, orig_offset);
@@ -1721,6 +1723,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 					SYNC_FILE_RANGE_WRITE);
 			stream->out_fd_offset += ret_splice;
 		}
+		stream->output_written += ret_splice;
 		written += ret_splice;
 	}
 	lttng_consumer_sync_trace_file(stream, orig_offset);
@@ -3428,6 +3431,15 @@ int consumer_data_pending(uint64_t id)
 		 */
 		ret = cds_lfht_is_node_deleted(&stream->node.node);
 		if (!ret) {
+			/*
+			 * An empty output file is not valid. We need at least one packet
+			 * generated per stream, even if it contains no event, so it
+			 * contains at least one packet header.
+			 */
+			if (stream->output_written == 0) {
+				pthread_mutex_unlock(&stream->lock);
+				goto data_pending;
+			}
 			/* Check the stream if there is data in the buffers. */
 			ret = data_pending(stream);
 			if (ret == 1) {
