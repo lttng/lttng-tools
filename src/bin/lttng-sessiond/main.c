@@ -1377,6 +1377,9 @@ error_testpoint:
  * Send a socket to a thread This is called from the dispatch UST registration
  * thread once all sockets are set for the application.
  *
+ * The sock value can be invalid, we don't really care, the thread will handle
+ * it and make the necessary cleanup if so.
+ *
  * On success, return 0 else a negative value being the errno message of the
  * write().
  */
@@ -1384,9 +1387,14 @@ static int send_socket_to_thread(int fd, int sock)
 {
 	int ret;
 
-	/* Sockets MUST be set or else this should not have been called. */
-	assert(fd >= 0);
-	assert(sock >= 0);
+	/*
+	 * It's possible that the FD is set as invalid with -1 concurrently just
+	 * before calling this function being a shutdown state of the thread.
+	 */
+	if (fd < 0) {
+		ret = -EBADF;
+		goto error;
+	}
 
 	do {
 		ret = write(fd, &sock, sizeof(sock));
@@ -1649,7 +1657,12 @@ static void *thread_dispatch_ust_registration(void *data)
 				if (ret < 0) {
 					rcu_read_unlock();
 					session_unlock_list();
-					/* No notify thread, stop the UST tracing. */
+					/*
+					 * No notify thread, stop the UST tracing. However, this is
+					 * not an internal error of the this thread thus setting
+					 * the health error code to a normal exit.
+					 */
+					err = 0;
 					goto error;
 				}
 
@@ -1674,7 +1687,12 @@ static void *thread_dispatch_ust_registration(void *data)
 				if (ret < 0) {
 					rcu_read_unlock();
 					session_unlock_list();
-					/* No apps. thread, stop the UST tracing. */
+					/*
+					 * No apps. thread, stop the UST tracing. However, this is
+					 * not an internal error of the this thread thus setting
+					 * the health error code to a normal exit.
+					 */
+					err = 0;
 					goto error;
 				}
 
