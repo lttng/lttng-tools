@@ -570,6 +570,7 @@ void cds_lfht_resize_lazy_count(struct cds_lfht *ht, unsigned long size,
 
 static long nr_cpus_mask = -1;
 static long split_count_mask = -1;
+static int split_count_order = -1;
 
 #if defined(HAVE_SYSCONF)
 static void ht_init_nr_cpus_mask(void)
@@ -606,6 +607,8 @@ void alloc_split_items_count(struct cds_lfht *ht)
 			split_count_mask = DEFAULT_SPLIT_COUNT_MASK;
 		else
 			split_count_mask = nr_cpus_mask;
+		split_count_order =
+			cds_lfht_get_count_order_ulong(split_count_mask + 1);
 	}
 
 	assert(split_count_mask >= 0);
@@ -721,7 +724,7 @@ void check_resize(struct cds_lfht *ht, unsigned long size, uint32_t chain_len)
 	 * Use bucket-local length for small table expand and for
 	 * environments lacking per-cpu data support.
 	 */
-	if (count >= (1UL << COUNT_COMMIT_ORDER))
+	if (count >= (1UL << (COUNT_COMMIT_ORDER + split_count_order)))
 		return;
 	if (chain_len > 100)
 		dbg_printf("WARNING: large chain length: %u.\n",
@@ -735,7 +738,9 @@ void check_resize(struct cds_lfht *ht, unsigned long size, uint32_t chain_len)
 		growth = cds_lfht_get_count_order_u32(chain_len
 				- (CHAIN_LEN_TARGET - 1));
 		if ((ht->flags & CDS_LFHT_ACCOUNTING)
-				&& (size << growth) >= (1UL << COUNT_COMMIT_ORDER)) {
+				&& (size << growth)
+					>= (1UL << (COUNT_COMMIT_ORDER
+						+ split_count_order))) {
 			/*
 			 * If ideal growth expands the hash table size
 			 * beyond the "small hash table" sizes, use the
@@ -745,8 +750,8 @@ void check_resize(struct cds_lfht *ht, unsigned long size, uint32_t chain_len)
 			 * the chain length is used to expand the hash
 			 * table in every case.
 			 */
-			growth = COUNT_COMMIT_ORDER -
-				cds_lfht_get_count_order_u32(size);
+			growth = COUNT_COMMIT_ORDER + split_count_order
+				- cds_lfht_get_count_order_ulong(size);
 			if (growth <= 0)
 				return;
 		}
