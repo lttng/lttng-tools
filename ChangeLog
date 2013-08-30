@@ -1,3 +1,30 @@
+2013-08-30 lttng-tools 2.2.4
+	* Fix: hashtable: take split_count_order into account
+	* Fix: remove wrong doing asserts in sessiond
+	* Fix: delete the trace directory used for the test
+	* Fix: remove bad check after epoll wait in consumer
+	* Fix: consumer data pending for empty streams
+	* Fix: hash table growth (for small tables) should be limited (v2)
+	* Fix: run_as gid/uid test should return result to parent
+	* Fix: remove health test from fast regression
+	* Fix: set the health delta tcp timeout aware
+	* Get the maximum TCP timeout in sessiond
+	* Fix: don't report error if UST app dies
+	* Fix: improve error message when UST support is disabled
+	* Fix: remove calibrate syscall option from code
+	* Fix: check UST float field mantissa length
+	* Fix: add UST context in the same order the user enabled them
+	* Prepare for automake deprecation of missing subdir-objects
+	* Fix: channels can be _enabled_ after tracing is started, but not created
+	* Fix filter parser segmentation fault with bison 3.0
+	* Fix: typo in error msg
+	* Fix: imprecise error message about root sessiond/tracing group
+	* Fix: LTTNG_ERR_NEED_ROOT_SESSIOND error message
+	* Fix: don't skip chmod if tracing group is not found
+	* Tracepoint probes don't need extern C
+	* Fix: reset out_fd_offset when we rotate the trace file
+	* Fix: kernel ctl error codes are based on errno
+
 2013-07-23 lttng-tools 2.2.3
 	* test: test_periodical_metadata_flush shrink timer period, kill app
 	* Fix: format string type mismatch
