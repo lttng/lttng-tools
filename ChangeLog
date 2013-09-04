@@ -1,3 +1,6 @@
+2013-09-03 lttng-tools 2.3.0
+	* Fix: remove periodical flush test from make check
+
 2013-08-30 lttng-tools 2.3.0-rc3
 	* Fix: hashtable: take split_count_order into account
 	* Fix: remove wrong doing asserts in sessiond
