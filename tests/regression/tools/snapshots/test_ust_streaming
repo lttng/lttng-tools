@@ -31,7 +31,7 @@ NR_USEC_WAIT=100
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=39
+NUM_TESTS=49
 
 source $TESTDIR/utils/utils.sh
 
@@ -119,6 +119,30 @@ function test_ust_default_name()
 	return $out
 }
 
+function test_ust_default_name_custom_uri()
+{
+	diag "Test UST snapshot streaming with default name with custom URL"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	ok $? "Start application to trace"
+	snapshot_add_output $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+	# Validate test
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	out=$?
+
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+
+	return $out
+}
+
 # Test a snapshot using a custom name for the output destination.
 function test_ust_custom_name()
 {
@@ -167,7 +191,7 @@ fi
 start_lttng_relayd "-o $TRACE_PATH"
 start_lttng_sessiond
 
-tests=( test_ust_default_name_with_del test_ust_default_name test_ust_custom_name )
+tests=( test_ust_default_name_with_del test_ust_default_name test_ust_custom_name test_ust_default_name_custom_uri )
 
 for fct_test in ${tests[@]};
 do
