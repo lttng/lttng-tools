@@ -520,6 +520,9 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		stream->metadata_flag = 1;
 		/* Metadata is flat out. */
 		strncpy(stream->name, DEFAULT_METADATA_NAME, sizeof(stream->name));
+		/* Live rendez-vous point. */
+		pthread_cond_init(&stream->metadata_rdv, NULL);
+		pthread_mutex_init(&stream->metadata_rdv_lock, NULL);
 	} else {
 		/* Format stream name to <channel_name>_<cpu_number> */
 		ret = snprintf(stream->name, sizeof(stream->name), "%s_%d",
@@ -2326,6 +2329,7 @@ restart:
 				DBG("Metadata available on fd %d", pollfd);
 				assert(stream->wait_fd == pollfd);
 
+				pthread_mutex_lock(&stream->metadata_rdv_lock);
 				do {
 					len = ctx->on_buffer_ready(stream, ctx);
 					/*
@@ -2335,6 +2339,8 @@ restart:
 					 * stream.
 					 */
 				} while (len > 0);
+				pthread_cond_broadcast(&stream->metadata_rdv);
+				pthread_mutex_unlock(&stream->metadata_rdv_lock);
 
 				/* It's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {

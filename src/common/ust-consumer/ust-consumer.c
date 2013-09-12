@@ -1665,6 +1665,88 @@ error:
 	return ret;
 }
 
+static
+int sync_metadata(struct lttng_consumer_stream *data_stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret;
+	struct lttng_consumer_stream *metadata = NULL;
+	struct lttng_consumer_stream *stream = NULL;
+	struct lttng_ht_iter iter;
+	struct lttng_ht *ht;
+	uint64_t id = data_stream->node_session_id.key;
+
+	ht = consumer_data.stream_list_ht;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&id, lttng_ht_seed),
+			ht->match_fct, &id,
+			&iter.iter, stream, node_session_id.node) {
+		if (stream->metadata_flag) {
+			metadata = stream;
+			break;
+		}
+	}
+	if (!metadata) {
+		ret = 0;
+		goto end_unlock_rcu;
+	}
+
+	/*
+	 * Steps :
+	 * - Lock the metadata stream
+	 * - Check if new metadata is ready (flush + snapshot pos)
+	 * - If nothing : release and return.
+	 * - Lock the metadata_rdv_lock
+	 * - Unlock the metadata stream
+	 * - cond_wait on metadata_rdv to wait the wakeup from the
+	 *   metadata thread
+	 * - Unlock the metadata_rdv_lock
+	 */
+	pthread_mutex_lock(&metadata->lock);
+	/*
+	 * Ask the sessiond if we have new metadata waiting and update the
+	 * consumer metadata cache.
+	 */
+	ret = lttng_ustconsumer_request_metadata(ctx, metadata->chan, 0);
+	if (ret < 0) {
+		goto end_unlock_mutex;
+	}
+	ustctl_flush_buffer(metadata->ustream, 1);
+	ret = ustctl_snapshot(metadata->ustream);
+	if (ret < 0) {
+		if (errno != EAGAIN) {
+			ERR("Taking UST snapshot");
+		}
+		DBG("No new metadata");
+		/* No new metadata, exit. */
+		ret = 0;
+		goto end_unlock_mutex;
+	}
+	/*
+	 * FIXME : Lots of debug for now since it is a nice place to be
+	 * deadlocked, we could remove some after intensive testing.
+	 */
+	DBG("New metadata");
+	pthread_mutex_lock(&metadata->metadata_rdv_lock);
+	DBG(" locked metadata_rdv_lock");
+	pthread_mutex_unlock(&metadata->lock);
+	DBG(" unlocked metadata_lock");
+	pthread_cond_wait(&metadata->metadata_rdv, &metadata->metadata_rdv_lock);
+	DBG(" woken up");
+	pthread_mutex_unlock(&metadata->metadata_rdv_lock);
+	DBG("New metadata flushed");
+
+	ret = 0;
+	goto end_unlock_rcu;
+
+end_unlock_mutex:
+	pthread_mutex_unlock(&metadata->lock);
+end_unlock_rcu:
+	rcu_read_unlock();
+	return ret;
+}
 
 int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
@@ -1793,6 +1875,16 @@ retry:
 	/* Write index if needed. */
 	if (!write_index) {
 		goto end;
+	}
+
+	if (stream->chan->live_timer_interval && !stream->metadata_flag) {
+		/*
+		 * In live, block until all the metadata is sent.
+		 */
+		err = sync_metadata(stream, ctx);
+		if (err < 0) {
+			goto end;
+		}
 	}
 
 	assert(!stream->metadata_flag);
