@@ -25,6 +25,7 @@
 
 #include <common/common.h>
 #include <common/index/index.h>
+#include <common/kernel-consumer/kernel-consumer.h>
 #include <common/relayd/relayd.h>
 #include <common/ust-consumer/ust-consumer.h>
 
@@ -352,6 +353,141 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 	}
 
 error:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Synchronize the metadata using a given session ID. A successful acquisition
+ * of a metadata stream will trigger a request to the session daemon and a
+ * snapshot so the metadata thread can consume it.
+ *
+ * This function call is a rendez-vous point between the metadata thread and
+ * the data thread.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
+		uint64_t session_id)
+{
+	int ret;
+	struct lttng_consumer_stream *metadata = NULL, *stream = NULL;
+	struct lttng_ht_iter iter;
+	struct lttng_ht *ht;
+
+	assert(ctx);
+
+	/* Ease our life a bit. */
+	ht = consumer_data.stream_list_ht;
+
+	rcu_read_lock();
+
+	/* Search the metadata associated with the session id of the given stream. */
+
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&session_id, lttng_ht_seed), ht->match_fct,
+			&session_id, &iter.iter, stream, node_session_id.node) {
+		if (stream->metadata_flag) {
+			metadata = stream;
+			break;
+		}
+	}
+	if (!metadata) {
+		ret = 0;
+		goto end_unlock_rcu;
+	}
+
+	/*
+	 * In UST, since we have to write the metadata from the cache packet
+	 * by packet, we might need to start this procedure multiple times
+	 * until all the metadata from the cache has been extracted.
+	 */
+	do {
+		/*
+		 * Steps :
+		 * - Lock the metadata stream
+		 * - Check if metadata stream node was deleted before locking.
+		 *   - if yes, release and return success
+		 * - Check if new metadata is ready (flush + snapshot pos)
+		 * - If nothing : release and return.
+		 * - Lock the metadata_rdv_lock
+		 * - Unlock the metadata stream
+		 * - cond_wait on metadata_rdv to wait the wakeup from the
+		 *   metadata thread
+		 * - Unlock the metadata_rdv_lock
+		 */
+		pthread_mutex_lock(&metadata->lock);
+
+		/*
+		 * There is a possibility that we were able to acquire a reference on the
+		 * stream from the RCU hash table but between then and now, the node might
+		 * have been deleted just before the lock is acquired. Thus, after locking,
+		 * we make sure the metadata node has not been deleted which means that the
+		 * buffers are closed.
+		 *
+		 * In that case, there is no need to sync the metadata hence returning a
+		 * success return code.
+		 */
+		ret = cds_lfht_is_node_deleted(&metadata->node.node);
+		if (ret) {
+			ret = 0;
+			goto end_unlock_mutex;
+		}
+
+		switch (ctx->type) {
+		case LTTNG_CONSUMER_KERNEL:
+			/*
+			 * Empty the metadata cache and flush the current stream.
+			 */
+			ret = lttng_kconsumer_sync_metadata(metadata);
+			break;
+		case LTTNG_CONSUMER32_UST:
+		case LTTNG_CONSUMER64_UST:
+			/*
+			 * Ask the sessiond if we have new metadata waiting and update the
+			 * consumer metadata cache.
+			 */
+			ret = lttng_ustconsumer_sync_metadata(ctx, metadata);
+			break;
+		default:
+			assert(0);
+			ret = -1;
+			break;
+		}
+		/*
+		 * Error or no new metadata, we exit here.
+		 */
+		if (ret <= 0 || ret == ENODATA) {
+			goto end_unlock_mutex;
+		}
+
+		/*
+		 * At this point, new metadata have been flushed, so we wait on the
+		 * rendez-vous point for the metadata thread to wake us up when it
+		 * finishes consuming the metadata and continue execution.
+		 */
+
+		pthread_mutex_lock(&metadata->metadata_rdv_lock);
+
+		/*
+		 * Release metadata stream lock so the metadata thread can process it.
+		 */
+		pthread_mutex_unlock(&metadata->lock);
+
+		/*
+		 * Wait on the rendez-vous point. Once woken up, it means the metadata was
+		 * consumed and thus synchronization is achieved.
+		 */
+		pthread_cond_wait(&metadata->metadata_rdv, &metadata->metadata_rdv_lock);
+		pthread_mutex_unlock(&metadata->metadata_rdv_lock);
+	} while (ret == EAGAIN);
+
+	ret = 0;
+	goto end_unlock_rcu;
+
+end_unlock_mutex:
+	pthread_mutex_unlock(&metadata->lock);
+end_unlock_rcu:
 	rcu_read_unlock();
 	return ret;
 }

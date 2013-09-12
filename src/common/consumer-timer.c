@@ -100,7 +100,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 		 * they are held while consumer_timer_switch_stop() is
 		 * called.
 		 */
-		ret = lttng_ustconsumer_request_metadata(ctx, channel, 1);
+		ret = lttng_ustconsumer_request_metadata(ctx, channel, 1, 1);
 		if (ret < 0) {
 			channel->switch_timer_error = 1;
 		}
@@ -186,6 +186,11 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 	 * safely send the empty index.
 	 */
 	pthread_mutex_lock(&stream->lock);
+	ret = cds_lfht_is_node_deleted(&stream->node.node);
+	if (ret) {
+		goto error_unlock;
+	}
+
 	ret = ustctl_get_current_timestamp(stream->ustream, &ts);
 	if (ret < 0) {
 		ERR("Failed to get the current timestamp");
@@ -194,7 +199,7 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 	ustctl_flush_buffer(stream->ustream, 1);
 	ret = ustctl_snapshot(stream->ustream);
 	if (ret < 0) {
-		if (errno != EAGAIN) {
+		if (ret != -EAGAIN) {
 			ERR("Taking UST snapshot");
 			ret = -1;
 			goto error_unlock;

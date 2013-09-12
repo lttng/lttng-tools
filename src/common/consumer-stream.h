@@ -74,4 +74,7 @@ void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream);
 int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 		struct lttng_packet_index *index);
 
+int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
+		uint64_t session_id);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */

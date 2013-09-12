@@ -32,5 +32,6 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx);
 int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int lttng_kconsumer_data_pending(struct lttng_consumer_stream *stream);
+int lttng_kconsumer_sync_metadata(struct lttng_consumer_stream *metadata);
 
 #endif /* _LTTNG_KCONSUMER_H */

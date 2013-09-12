@@ -504,7 +504,10 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		} else {
 			ret = consumer_add_channel(new_channel, ctx);
 		}
-		consumer_timer_live_start(new_channel, msg.u.channel.live_timer_interval);
+		if (CONSUMER_CHANNEL_TYPE_DATA) {
+			consumer_timer_live_start(new_channel,
+					msg.u.channel.live_timer_interval);
+		}
 
 		/* If we received an error in add_channel, we need to report it. */
 		if (ret < 0) {
@@ -902,6 +905,42 @@ static int get_index_values(struct lttng_packet_index *index, int infd)
 error:
 	return ret;
 }
+/*
+ * Sync metadata meaning request them to the session daemon and snapshot to the
+ * metadata thread can consumer them.
+ *
+ * Metadata stream lock MUST be acquired.
+ *
+ * Return 0 if new metadatda is available, EAGAIN if the metadata stream
+ * is empty or a negative value on error.
+ */
+int lttng_kconsumer_sync_metadata(struct lttng_consumer_stream *metadata)
+{
+	int ret;
+
+	assert(metadata);
+
+	ret = kernctl_buffer_flush(metadata->wait_fd);
+	if (ret < 0) {
+		ERR("Failed to flush kernel stream");
+		goto end;
+	}
+
+	ret = kernctl_snapshot(metadata->wait_fd);
+	if (ret < 0) {
+		if (errno != EAGAIN) {
+			ERR("Sync metadata, taking kernel snapshot failed.");
+			goto end;
+		}
+		DBG("Sync metadata, no new kernel metadata");
+		/* No new metadata, exit. */
+		ret = ENODATA;
+		goto end;
+	}
+
+end:
+	return ret;
+}
 
 /*
  * Consume data on a file descriptor and write it on a trace file.
@@ -1030,6 +1069,16 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Write index if needed. */
 	if (!write_index) {
 		goto end;
+	}
+
+	if (stream->chan->live_timer_interval && !stream->metadata_flag) {
+		/*
+		 * In live, block until all the metadata is sent.
+		 */
+		err = consumer_stream_sync_metadata(ctx, stream->session_id);
+		if (err < 0) {
+			goto end;
+		}
 	}
 
 	err = consumer_stream_write_index(stream, &index);

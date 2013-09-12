@@ -334,6 +334,12 @@ struct lttng_consumer_stream {
 	 * FD of the index file for this stream.
 	 */
 	int index_fd;
+
+	/*
+	 * Rendez-vous point between data and metadata stream in live mode.
+	 */
+	pthread_cond_t metadata_rdv;
+	pthread_mutex_t metadata_rdv_lock;
 };
 
 /*
