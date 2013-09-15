@@ -34,7 +34,7 @@
 
 #include "buffer-registry.h"
 #include "fd-limit.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"

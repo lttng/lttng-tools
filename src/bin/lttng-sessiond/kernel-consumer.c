@@ -26,7 +26,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "kernel-consumer.h"
 
 static char *create_channel_path(struct consumer_output *consumer,

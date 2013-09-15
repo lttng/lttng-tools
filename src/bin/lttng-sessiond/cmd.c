@@ -30,7 +30,7 @@
 #include "channel.h"
 #include "consumer.h"
 #include "event.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "kernel.h"
 #include "kernel-consumer.h"
 #include "lttng-sessiond.h"

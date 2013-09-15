@@ -31,7 +31,7 @@
 #include <common/relayd/relayd.h>
 
 #include "consumer.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "ust-app.h"
 #include "utils.h"
 

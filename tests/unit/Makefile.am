@@ -30,11 +30,13 @@ test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE)
 SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.o	\
 	 $(top_builddir)/src/bin/lttng-sessiond/consumer.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/utils.o \
-	 $(top_builddir)/src/bin/lttng-sessiond/health.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
 	 $(top_builddir)/src/common/.libs/uri.o \
 	 $(top_builddir)/src/common/.libs/utils.o \
-	 $(top_builddir)/src/common/.libs/error.o
+	 $(top_builddir)/src/common/.libs/error.o \
+	 $(top_builddir)/src/common/health/libhealth.la \
+	 $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
+
 
 test_session_SOURCES = test_session.c
 test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
@@ -52,11 +54,12 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-app.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-consumer.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/fd-limit.o \
-		   $(top_builddir)/src/bin/lttng-sessiond/health.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/session.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
 		   $(top_builddir)/src/common/.libs/uri.o \
-		   $(top_builddir)/src/common/.libs/utils.o
+		   $(top_builddir)/src/common/.libs/utils.o \
+		   $(top_builddir)/src/common/health/libhealth.la \
+		   $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 
 test_ust_data_SOURCES = test_ust_data.c
 test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM)\
@@ -67,10 +70,11 @@ endif
 # Kernel data structures unit test
 KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.o	\
 		$(top_builddir)/src/bin/lttng-sessiond/consumer.o	\
-		$(top_builddir)/src/bin/lttng-sessiond/health.o \
 		$(top_builddir)/src/bin/lttng-sessiond/utils.o \
 		$(top_builddir)/src/common/.libs/uri.o \
-		$(top_builddir)/src/common/.libs/utils.o
+		$(top_builddir)/src/common/.libs/utils.o \
+		$(top_builddir)/src/common/health/libhealth.la \
+		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 
 test_kernel_data_SOURCES = test_kernel_data.c
 test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \

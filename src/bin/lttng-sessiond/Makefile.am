@@ -22,7 +22,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        fd-limit.c fd-limit.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h \
-                       health.c health.h \
+                       health.c health.h health-sessiond.h \
                        cmd.c cmd.h \
                        buffer-registry.c buffer-registry.h \
                        testpoint.h ht-cleanup.c \

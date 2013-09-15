@@ -28,7 +28,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "ust-consumer.h"
 #include "buffer-registry.h"
 #include "session.h"

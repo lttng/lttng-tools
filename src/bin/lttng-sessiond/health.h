@@ -34,25 +34,10 @@
 
 #define HEALTH_IS_IN_POLL(x)	((x) & HEALTH_POLL_VALUE)
 
+struct health_app;
+
 enum health_flags {
 	HEALTH_ERROR			 = (1U << 0),
-};
-
-enum health_type {
-	HEALTH_TYPE_CMD			= 0,
-	HEALTH_TYPE_APP_MANAGE		= 1,
-	HEALTH_TYPE_APP_REG		= 2,
-	HEALTH_TYPE_KERNEL		= 3,
-	HEALTH_TYPE_CONSUMER		= 4,
-	HEALTH_TYPE_HT_CLEANUP		= 5,
-	HEALTH_TYPE_APP_MANAGE_NOTIFY	= 6,
-	HEALTH_TYPE_APP_REG_DISPATCH	= 7,
-
-	HEALTH_NUM_TYPE,
-};
-
-struct health_tls_state_list {
-	struct cds_list_head head;
 };
 
 struct health_state {
@@ -68,7 +53,7 @@ struct health_state {
 	 */
 	unsigned long current;		/* progress counter, updated atomically */
 	enum health_flags flags;	/* other flags, updated atomically */
-	enum health_type type;		/* Indicates the nature of the thread. */
+	int type;			/* Indicates the nature of the thread. */
 	/* Node of the global TLS state list. */
 	struct cds_list_head node;
 };
@@ -121,9 +106,11 @@ static inline void health_error(void)
 	uatomic_or(&URCU_TLS(health_state).flags, HEALTH_ERROR);
 }
 
-int health_check_state(enum health_type type);
-void health_register(enum health_type type);
-void health_unregister(void);
-void health_init(void);
+struct health_app *health_app_create(int nr_types);
+void health_app_destroy(struct health_app *ha);
+int health_check_state(struct health_app *ha, int type);
+void health_register(struct health_app *ha, int type);
+void health_unregister(struct health_app *ha);
+void health_init(struct health_app *ha);
 
 #endif /* _HEALTH_H */

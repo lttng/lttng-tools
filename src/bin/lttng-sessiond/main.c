@@ -60,7 +60,7 @@
 #include "ust-consumer.h"
 #include "utils.h"
 #include "fd-limit.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "testpoint.h"
 #include "ust-thread.h"
 
@@ -232,6 +232,9 @@ static int app_socket_timeout;
 
 /* Set in main() with the current page size. */
 long page_size;
+
+/* Application health monitoring */
+struct health_app *health_sessiond;
 
 static
 void setup_consumerd_path(void)
@@ -755,7 +758,7 @@ static void *thread_manage_kernel(void *data)
 
 	DBG("[thread] Thread manage kernel started");
 
-	health_register(HEALTH_TYPE_KERNEL);
+	health_register(health_sessiond, HEALTH_TYPE_KERNEL);
 
 	/*
 	 * This first step of the while is to clean this structure which could free
@@ -880,7 +883,7 @@ error_testpoint:
 		WARN("Kernel thread died unexpectedly. "
 				"Kernel tracing can continue but CPU hotplug is disabled.");
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	DBG("Kernel thread dying");
 	return NULL;
 }
@@ -921,7 +924,7 @@ static void *thread_manage_consumer(void *data)
 
 	DBG("[thread] Manage consumer started");
 
-	health_register(HEALTH_TYPE_CONSUMER);
+	health_register(health_sessiond, HEALTH_TYPE_CONSUMER);
 
 	health_code_update();
 
@@ -1200,7 +1203,7 @@ error_poll:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	DBG("consumer thread cleanup completed");
 
 	return NULL;
@@ -1220,7 +1223,7 @@ static void *thread_manage_apps(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(HEALTH_TYPE_APP_MANAGE);
+	health_register(health_sessiond, HEALTH_TYPE_APP_MANAGE);
 
 	if (testpoint(thread_manage_apps)) {
 		goto error_testpoint;
@@ -1366,7 +1369,7 @@ error_testpoint:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	DBG("Application communication apps thread cleanup complete");
 	rcu_thread_offline();
 	rcu_unregister_thread();
@@ -1512,7 +1515,7 @@ static void *thread_dispatch_ust_registration(void *data)
 		.count = 0,
 	};
 
-	health_register(HEALTH_TYPE_APP_REG_DISPATCH);
+	health_register(health_sessiond, HEALTH_TYPE_APP_REG_DISPATCH);
 
 	health_code_update();
 
@@ -1723,7 +1726,7 @@ error:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	return NULL;
 }
 
@@ -1743,7 +1746,7 @@ static void *thread_registration_apps(void *data)
 
 	DBG("[thread] Manage application registration started");
 
-	health_register(HEALTH_TYPE_APP_REG);
+	health_register(health_sessiond, HEALTH_TYPE_APP_REG);
 
 	if (testpoint(thread_registration_apps)) {
 		goto error_testpoint;
@@ -1923,7 +1926,7 @@ error_listen:
 error_create_poll:
 error_testpoint:
 	DBG("UST Registration thread cleanup complete");
-	health_unregister();
+	health_unregister(health_sessiond);
 
 	return NULL;
 }
@@ -2300,7 +2303,7 @@ static int check_consumer_health(void)
 {
 	int ret;
 
-	ret = health_check_state(HEALTH_TYPE_CONSUMER);
+	ret = health_check_state(health_sessiond, HEALTH_TYPE_CONSUMER);
 
 	DBG3("Health consumer check %d", ret);
 
@@ -3564,39 +3567,39 @@ restart:
 
 		switch (msg.component) {
 		case LTTNG_HEALTH_CMD:
-			reply.ret_code = health_check_state(HEALTH_TYPE_CMD);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_CMD);
 			break;
 		case LTTNG_HEALTH_APP_MANAGE:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE);
 			break;
 		case LTTNG_HEALTH_APP_REG:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_REG);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_REG);
 			break;
 		case LTTNG_HEALTH_KERNEL:
-			reply.ret_code = health_check_state(HEALTH_TYPE_KERNEL);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_KERNEL);
 			break;
 		case LTTNG_HEALTH_CONSUMER:
 			reply.ret_code = check_consumer_health();
 			break;
 		case LTTNG_HEALTH_HT_CLEANUP:
-			reply.ret_code = health_check_state(HEALTH_TYPE_HT_CLEANUP);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_HT_CLEANUP);
 			break;
 		case LTTNG_HEALTH_APP_MANAGE_NOTIFY:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE_NOTIFY);
 			break;
 		case LTTNG_HEALTH_APP_REG_DISPATCH:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_REG_DISPATCH);
+			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_REG_DISPATCH);
 			break;
 		case LTTNG_HEALTH_ALL:
 			reply.ret_code =
-				health_check_state(HEALTH_TYPE_APP_MANAGE) &&
-				health_check_state(HEALTH_TYPE_APP_REG) &&
-				health_check_state(HEALTH_TYPE_CMD) &&
-				health_check_state(HEALTH_TYPE_KERNEL) &&
+				health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE) &&
+				health_check_state(health_sessiond, HEALTH_TYPE_APP_REG) &&
+				health_check_state(health_sessiond, HEALTH_TYPE_CMD) &&
+				health_check_state(health_sessiond, HEALTH_TYPE_KERNEL) &&
 				check_consumer_health() &&
-				health_check_state(HEALTH_TYPE_HT_CLEANUP) &&
-				health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY) &&
-				health_check_state(HEALTH_TYPE_APP_REG_DISPATCH);
+				health_check_state(health_sessiond, HEALTH_TYPE_HT_CLEANUP) &&
+				health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE_NOTIFY) &&
+				health_check_state(health_sessiond, HEALTH_TYPE_APP_REG_DISPATCH);
 			break;
 		default:
 			reply.ret_code = LTTNG_ERR_UND;
@@ -3664,7 +3667,7 @@ static void *thread_manage_clients(void *data)
 
 	rcu_register_thread();
 
-	health_register(HEALTH_TYPE_CMD);
+	health_register(health_sessiond, HEALTH_TYPE_CMD);
 
 	if (testpoint(thread_manage_clients)) {
 		goto error_testpoint;
@@ -3888,7 +3891,7 @@ error_testpoint:
 		ERR("Health error occurred in %s", __func__);
 	}
 
-	health_unregister();
+	health_unregister(health_sessiond);
 
 	DBG("Client thread dying");
 
@@ -4719,7 +4722,12 @@ int main(int argc, char **argv)
 	 * Initialize the health check subsystem. This call should set the
 	 * appropriate time values.
 	 */
-	health_init();
+	health_sessiond = health_app_create(HEALTH_NUM_TYPE);
+	if (!health_sessiond) {
+		PERROR("health_app_create error");
+		goto exit_health_sessiond_cleanup;
+	}
+	health_init(health_sessiond);
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
@@ -4862,6 +4870,8 @@ exit_health:
 		goto error;	/* join error, exit without cleanup */
 	}
 exit_ht_cleanup:
+	health_app_destroy(health_sessiond);
+exit_health_sessiond_cleanup:
 exit:
 	/*
 	 * cleanup() is called when no other thread is running.
