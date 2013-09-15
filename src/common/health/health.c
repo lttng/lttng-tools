@@ -28,7 +28,7 @@
 #include <common/macros.h>
 #include <common/sessiond-comm/inet.h>
 
-#include "health.h"
+#include <lttng/health-internal.h>
 
 /*
  * An application-specific error state for unregistered thread keeps
@@ -56,6 +56,23 @@ struct health_app {
 /* Define TLS health state. */
 DEFINE_URCU_TLS(struct health_state, health_state);
 
+/*
+ * Initialize health check subsytem.
+ */
+static
+void health_init(struct health_app *ha)
+{
+	/*
+	 * Get the maximum value between the default delta value and the TCP
+	 * timeout with a safety net of the default health check delta.
+	 */
+	ha->time_delta.tv_sec = max_t(unsigned long,
+			lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S,
+			ha->time_delta.tv_sec);
+	DBG("Health check time delta in seconds set to %lu",
+		ha->time_delta.tv_sec);
+}
+
 struct health_app *health_app_create(int nr_types)
 {
 	struct health_app *ha;
@@ -73,6 +90,7 @@ struct health_app *health_app_create(int nr_types)
 	ha->nr_types = nr_types;
 	ha->time_delta.tv_sec = DEFAULT_HEALTH_CHECK_DELTA_S;
 	ha->time_delta.tv_nsec = DEFAULT_HEALTH_CHECK_DELTA_NS;
+	health_init(ha);
 	return ha;
 
 error_flags:
@@ -284,21 +302,4 @@ void health_unregister(struct health_app *ha)
 	}
 	cds_list_del(&URCU_TLS(health_state).node);
 	state_unlock(ha);
-}
-
-/*
- * Initiliazie health check subsytem. This should be called before any health
- * register occurs.
- */
-void health_init(struct health_app *ha)
-{
-	/*
-	 * Get the maximum value between the default delta value and the TCP
-	 * timeout with a safety net of the default health check delta.
-	 */
-	ha->time_delta.tv_sec = max_t(unsigned long,
-			lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S,
-			ha->time_delta.tv_sec);
-	DBG("Health check time delta in seconds set to %lu",
-		ha->time_delta.tv_sec);
 }

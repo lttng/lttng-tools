@@ -22,7 +22,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        fd-limit.c fd-limit.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h \
-                       health.c health.h health-sessiond.h \
+                       health-sessiond.h \
                        cmd.c cmd.h \
                        buffer-registry.c buffer-registry.h \
                        testpoint.h ht-cleanup.c \
@@ -46,7 +46,8 @@ lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		$(top_builddir)/src/common/libcommon.la \
 		$(top_builddir)/src/common/compat/libcompat.la \
 		$(top_builddir)/src/common/relayd/librelayd.la \
-		$(top_builddir)/src/common/testpoint/libtestpoint.la
+		$(top_builddir)/src/common/testpoint/libtestpoint.la \
+		$(top_builddir)/src/common/health/libhealth.la
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_LDADD += -llttng-ust-ctl

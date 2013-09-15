@@ -1,6 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 
-SUBDIRS = compat hashtable kernel-ctl sessiond-comm relayd \
+SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
 		  kernel-consumer ust-consumer testpoint index
 
 AM_CFLAGS = -fno-strict-aliasing

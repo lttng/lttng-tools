@@ -4727,7 +4727,6 @@ int main(int argc, char **argv)
 		PERROR("health_app_create error");
 		goto exit_health_sessiond_cleanup;
 	}
-	health_init(health_sessiond);
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&ht_cleanup_thread, NULL,

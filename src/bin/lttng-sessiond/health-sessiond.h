@@ -18,7 +18,7 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "health.h"
+#include <lttng/health-internal.h>
 
 enum health_type {
 	HEALTH_TYPE_CMD			= 0,

@@ -1,5 +1,9 @@
+#ifndef HEALTH_INTERNAL_H
+#define HEALTH_INTERNAL_H
+
 /*
  * Copyright (C) 2012 - David Goulet <dgoulet@efficios.com>
+ * Copyright (C) 2013 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -14,9 +18,6 @@
  * this program; if not, write to the Free Software Foundation, Inc., 51
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-
-#ifndef _HEALTH_H
-#define _HEALTH_H
 
 #include <assert.h>
 #include <time.h>
@@ -111,6 +112,5 @@ void health_app_destroy(struct health_app *ha);
 int health_check_state(struct health_app *ha, int type);
 void health_register(struct health_app *ha, int type);
 void health_unregister(struct health_app *ha);
-void health_init(struct health_app *ha);
 
-#endif /* _HEALTH_H */
+#endif /* HEALTH_INTERNAL_H */
