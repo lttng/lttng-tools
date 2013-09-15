@@ -1365,45 +1365,37 @@ int lttng_disable_consumer(struct lttng_handle *handle)
  * Set health socket path by putting it in the global health_sock_path
  * variable.
  *
- * Returns 0 on success or assert(0) on ENOMEM.
+ * Returns 0 on success or -ENOMEM.
  */
 static int set_health_socket_path(void)
 {
-	int in_tgroup = 0;	/* In tracing group */
 	uid_t uid;
 	const char *home;
+	int ret;
 
 	uid = getuid();
 
-	if (uid != 0) {
-		/* Are we in the tracing group ? */
-		in_tgroup = check_tracing_group(tracing_group);
-	}
-
-	if ((uid == 0) || in_tgroup) {
+	if (uid == 0 || check_tracing_group(tracing_group)) {
 		lttng_ctl_copy_string(health_sock_path,
 				DEFAULT_GLOBAL_HEALTH_UNIX_SOCK, sizeof(health_sock_path));
+		return 0;
 	}
 
-	if (uid != 0) {
-		int ret;
+	/*
+	 * With GNU C <  2.1, snprintf returns -1 if the target buffer
+	 * is too small; With GNU C >= 2.1, snprintf returns the
+	 * required size (excluding closing null).
+	 */
+	home = utils_get_home_dir();
+	if (home == NULL) {
+		/* Fallback in /tmp */
+		home = "/tmp";
+	}
 
-		/*
-		 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
-		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
-		 */
-		home = utils_get_home_dir();
-		if (home == NULL) {
-			/* Fallback in /tmp .. */
-			home = "/tmp";
-		}
-
-		ret = snprintf(health_sock_path, sizeof(health_sock_path),
-				DEFAULT_HOME_HEALTH_UNIX_SOCK, home);
-		if ((ret < 0) || (ret >= sizeof(health_sock_path))) {
-			/* ENOMEM at this point... just kill the control lib. */
-			assert(0);
-		}
+	ret = snprintf(health_sock_path, sizeof(health_sock_path),
+			DEFAULT_HOME_HEALTH_UNIX_SOCK, home);
+	if ((ret < 0) || (ret >= sizeof(health_sock_path))) {
+		return -ENOMEM;
 	}
 
 	return 0;
@@ -1649,7 +1641,9 @@ static void __attribute__((constructor)) init()
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
 	/* Set socket for health check */
-	(void) set_health_socket_path();
+	if (set_health_socket_path()) {
+		abort();
+	}
 }
 
 /*
