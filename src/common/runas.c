@@ -96,8 +96,15 @@ int _mkdir_recursive(void *_data)
 static
 int _mkdir(void *_data)
 {
+	int ret;
 	struct run_as_mkdir_data *data = _data;
-	return mkdir(data->path, data->mode);
+
+	ret = mkdir(data->path, data->mode);
+	if (ret < 0) {
+		ret = -errno;
+	}
+
+	return ret;
 }
 
 static
