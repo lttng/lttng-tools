@@ -2530,30 +2530,33 @@ int main(int argc, char **argv)
 	ret = live_start_threads(live_uri, relay_ctx, thread_quit_pipe);
 	if (ret != 0) {
 		ERR("Starting live viewer threads");
+		goto exit_live;
 	}
 
-exit_listener:
+	live_stop_threads();
+
+exit_live:
 	ret = pthread_join(listener_thread, &status);
 	if (ret != 0) {
 		PERROR("pthread_join");
 		goto error;	/* join error, exit without cleanup */
 	}
 
-exit_worker:
+exit_listener:
 	ret = pthread_join(worker_thread, &status);
 	if (ret != 0) {
 		PERROR("pthread_join");
 		goto error;	/* join error, exit without cleanup */
 	}
 
-exit_dispatcher:
+exit_worker:
 	ret = pthread_join(dispatcher_thread, &status);
 	if (ret != 0) {
 		PERROR("pthread_join");
 		goto error;	/* join error, exit without cleanup */
 	}
 
-	live_stop_threads();
+exit_dispatcher:
 	lttng_ht_destroy(viewer_streams_ht);
 
 exit_relay_ctx_viewer_streams:
