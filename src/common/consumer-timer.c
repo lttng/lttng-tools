@@ -28,6 +28,7 @@
 
 #include "consumer-timer.h"
 #include "ust-consumer/ust-consumer.h"
+#include "../bin/lttng-consumerd/health-consumerd.h"
 
 static struct timer_signal_data timer_signal = {
 	.tid = 0,
@@ -469,6 +470,8 @@ void *consumer_timer_thread(void *data)
 	siginfo_t info;
 	struct lttng_consumer_local_data *ctx = data;
 
+	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA_TIMER);
+
 	/* Only self thread will receive signal mask. */
 	setmask(&mask);
 	CMM_STORE_SHARED(timer_signal.tid, pthread_self());
@@ -494,5 +497,9 @@ void *consumer_timer_thread(void *data)
 		}
 	}
 
+	/* Currently never reached */
+	health_unregister(health_consumerd);
+
+	/* Never return */
 	return NULL;
 }

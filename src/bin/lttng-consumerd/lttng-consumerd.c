@@ -49,6 +49,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "lttng-consumerd.h"
+#include "health-consumerd.h"
 
 /* TODO : support UST (all direct kernel-ctl accesses). */
 
@@ -71,6 +72,9 @@ static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
 /* the liblttngconsumerd context */
 static struct lttng_consumer_local_data *ctx;
+
+/* Consumerd health monitoring */
+struct health_app *health_consumerd;
 
 /*
  * Signal handler for the daemon
@@ -325,6 +329,11 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
+	health_consumerd = health_app_create(NR_HEALTH_CONSUMERD_TYPES);
+	if (!health_consumerd) {
+		goto error;
+	}
+
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
 		NULL, lttng_consumer_on_recv_stream, NULL);
@@ -469,6 +478,9 @@ error:
 end:
 	lttng_consumer_destroy(ctx);
 	lttng_consumer_cleanup();
+	if (health_consumerd) {
+		health_app_destroy(health_consumerd);
+	}
 
 	return ret;
 }
