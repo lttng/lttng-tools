@@ -57,6 +57,7 @@
 #include "utils.h"
 #include "lttng-relayd.h"
 #include "live.h"
+#include "health-relayd.h"
 
 /* command line options */
 char *opt_output_path;
@@ -113,6 +114,9 @@ struct lttng_ht *viewer_streams_ht;
 
 /* Global hash table that stores relay index object. */
 struct lttng_ht *indexes_ht;
+
+/* Relayd health monitoring */
+static struct health_app *health_relayd;
 
 /*
  * usage function on stderr
@@ -513,6 +517,8 @@ void *relay_thread_listener(void *data)
 
 	DBG("[thread] Relay listener started");
 
+	health_register(health_relayd, HEALTH_RELAYD_TYPE_LISTENER);
+
 	control_sock = relay_init_sock(control_uri);
 	if (!control_sock) {
 		goto error_sock_control;
@@ -658,6 +664,7 @@ error_sock_control:
 	if (err) {
 		DBG("Thread exited with error");
 	}
+	health_unregister(health_relayd);
 	DBG("Relay listener thread cleanup complete");
 	stop_threads();
 	return NULL;
@@ -674,6 +681,8 @@ void *relay_thread_dispatcher(void *data)
 	struct relay_command *relay_cmd = NULL;
 
 	DBG("[thread] Relay dispatcher started");
+
+	health_register(health_relayd, HEALTH_RELAYD_TYPE_DISPATCHER);
 
 	while (!CMM_LOAD_SHARED(dispatch_thread_exit)) {
 		/* Atomically prepare the queue futex */
@@ -712,6 +721,7 @@ void *relay_thread_dispatcher(void *data)
 	}
 
 error:
+	health_unregister(health_relayd);
 	DBG("Dispatch thread dying");
 	stop_threads();
 	return NULL;
@@ -2144,6 +2154,8 @@ void *relay_thread_worker(void *data)
 
 	rcu_register_thread();
 
+	health_register(health_relayd, HEALTH_RELAYD_TYPE_WORKER);
+
 	/* table of connections indexed on socket */
 	relay_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!relay_connections_ht) {
@@ -2385,6 +2397,7 @@ relay_connections_ht_error:
 	if (err) {
 		DBG("Thread exited with error");
 	}
+	health_unregister(health_relayd);
 	DBG("Worker thread cleanup complete");
 	free(data_buffer);
 	stop_threads();
@@ -2503,6 +2516,13 @@ int main(int argc, char **argv)
 		goto exit_relay_ctx_viewer_streams;
 	}
 
+	/* Initialize thread health monitoring */
+	health_relayd = health_app_create(NR_HEALTH_RELAYD_TYPES);
+	if (!health_relayd) {
+		PERROR("health_app_create error");
+		goto exit_health_app_create;
+	}
+
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&dispatcher_thread, NULL,
 			relay_thread_dispatcher, (void *) NULL);
@@ -2557,6 +2577,9 @@ exit_worker:
 	}
 
 exit_dispatcher:
+	health_app_destroy(health_relayd);
+
+exit_health_app_create:
 	lttng_ht_destroy(viewer_streams_ht);
 
 exit_relay_ctx_viewer_streams:
