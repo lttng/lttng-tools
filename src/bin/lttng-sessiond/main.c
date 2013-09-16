@@ -4808,6 +4808,7 @@ exit_apps_notify:
 		goto error;	/* join error, exit without cleanup */
 	}
 
+
 exit_apps:
 	ret = pthread_join(reg_apps_thread, &status);
 	if (ret != 0) {
