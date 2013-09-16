@@ -43,6 +43,7 @@
 #include <common/index/index.h>
 
 #include "ust-consumer.h"
+#include "../../bin/lttng-consumerd/health-consumerd.h"
 
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;
@@ -63,6 +64,9 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
 			send_node) {
+
+		health_code_update();
+
 		cds_list_del(&stream->send_node);
 		ustctl_destroy_stream(stream->ustream);
 		free(stream);
@@ -257,6 +261,8 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 		int wait_fd;
 		int ust_metadata_pipe[2];
 
+		health_code_update();
+
 		if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA && channel->monitor) {
 			ret = utils_create_pipe_cloexec_nonblock(ust_metadata_pipe);
 			if (ret < 0) {
@@ -412,6 +418,9 @@ static int send_sessiond_channel(int sock,
 
 	if (channel->relayd_id != (uint64_t) -1ULL) {
 		cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
+
+			health_code_update();
+
 			/* Try to send the stream to the relayd if one is available. */
 			ret = consumer_send_relayd_stream(stream, stream->chan->pathname);
 			if (ret < 0) {
@@ -450,6 +459,9 @@ static int send_sessiond_channel(int sock,
 
 	/* The channel was sent successfully to the sessiond at this point. */
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
+
+		health_code_update();
+
 		/* Send stream to session daemon. */
 		ret = send_sessiond_stream(sock, stream);
 		if (ret < 0) {
@@ -551,6 +563,9 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 	/* Send streams to the corresponding thread. */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
 			send_node) {
+
+		health_code_update();
+
 		/* Sending the stream to the thread. */
 		ret = send_stream_to_thread(stream, ctx);
 		if (ret < 0) {
@@ -601,6 +616,9 @@ static int flush_channel(uint64_t chan_key)
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 			ht->hash_fct(&channel->key, lttng_ht_seed), ht->match_fct,
 			&channel->key, &iter.iter, stream, node_channel_id.node) {
+
+		health_code_update();
+
 		ustctl_flush_buffer(stream->ustream, 1);
 	}
 error:
@@ -796,6 +814,8 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 	}
 	assert(!metadata_channel->monitor);
 
+	health_code_update();
+
 	/*
 	 * Ask the sessiond if we have new metadata waiting and update the
 	 * consumer metadata cache.
@@ -804,6 +824,8 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 	if (ret < 0) {
 		goto error;
 	}
+
+	health_code_update();
 
 	/*
 	 * The metadata stream is NOT created in no monitor mode when the channel
@@ -836,6 +858,8 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 	}
 
 	do {
+		health_code_update();
+
 		ret = lttng_consumer_read_subbuffer(metadata_stream, ctx);
 		if (ret < 0) {
 			goto error_stream;
@@ -889,6 +913,9 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
+
+		health_code_update();
+
 		/* Lock stream because we are about to change its state. */
 		pthread_mutex_lock(&stream->lock);
 		stream->net_seq_idx = relayd_id;
@@ -945,6 +972,8 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 		while (consumed_pos < produced_pos) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
+
+			health_code_update();
 
 			DBG("UST consumer taking snapshot at pos %lu", consumed_pos);
 
@@ -1033,6 +1062,8 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		goto end;
 	}
 
+	health_code_update();
+
 	/* Receive metadata string. */
 	ret = lttcomm_recv_unix_sock(sock, metadata_str, len);
 	if (ret < 0) {
@@ -1040,6 +1071,8 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		ret_code = ret;
 		goto end_free;
 	}
+
+	health_code_update();
 
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 	ret = consumer_metadata_cache_write(channel, offset, len, metadata_str);
@@ -1061,6 +1094,9 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 	}
 	while (consumer_metadata_cache_flushed(channel, offset + len, timer)) {
 		DBG("Waiting for metadata to be flushed");
+
+		health_code_update();
+
 		usleep(DEFAULT_METADATA_AVAILABILITY_WAIT_TIME);
 	}
 
@@ -1083,6 +1119,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	struct lttcomm_consumer_msg msg;
 	struct lttng_consumer_channel *channel = NULL;
 
+	health_code_update();
+
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
 		DBG("Consumer received unexpected message size %zd (expects %zu)",
@@ -1097,6 +1135,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		return ret;
 	}
+
+	health_code_update();
+
 	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
 		/*
 		 * Notify the session daemon that the command is completed.
@@ -1108,6 +1149,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		(void) consumer_send_status_msg(sock, ret_code);
 		return -ENOENT;
 	}
+
+	health_code_update();
 
 	/* relayd needs RCU read-side lock */
 	rcu_read_lock();
@@ -1238,6 +1281,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto error_fatal;
 		};
 
+		health_code_update();
+
 		ret = ask_channel(ctx, sock, channel, &attr);
 		if (ret < 0) {
 			goto end_channel_error;
@@ -1255,6 +1300,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_timer_live_start(channel,
 					msg.u.ask_channel.live_timer_interval);
 		}
+
+		health_code_update();
 
 		/*
 		 * Add the channel to the internal state AFTER all streams were created
@@ -1276,6 +1323,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 			goto end_channel_error;
 		}
+
+		health_code_update();
 
 		/*
 		 * Channel and streams are now created. Inform the session daemon that
@@ -1305,6 +1354,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_msg_sessiond;
 		}
 
+		health_code_update();
+
 		/* Send everything to sessiond. */
 		ret = send_sessiond_channel(sock, channel, ctx, &relayd_err);
 		if (ret < 0) {
@@ -1323,6 +1374,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 */
 			goto error_fatal;
 		}
+
+		health_code_update();
 
 		/*
 		 * In no monitor mode, the streams ownership is kept inside the channel
@@ -1396,6 +1449,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_msg_sessiond;
 		}
 
+		health_code_update();
+
 		/* Tell session daemon we are ready to receive the metadata. */
 		ret = consumer_send_status_msg(sock, LTTNG_OK);
 		if (ret < 0) {
@@ -1403,10 +1458,17 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto error_fatal;
 		}
 
+		health_code_update();
+
 		/* Wait for more data. */
-		if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+		health_poll_entry();
+		ret = lttng_consumer_poll_socket(consumer_sockpoll);
+		health_poll_exit();
+		if (ret < 0) {
 			goto error_fatal;
 		}
+
+		health_code_update();
 
 		ret = lttng_ustconsumer_recv_metadata(sock, key, offset,
 				len, channel, 0, 1);
@@ -1451,11 +1513,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 		}
 
+		health_code_update();
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
 		}
+		health_code_update();
 		break;
 	}
 	default:
@@ -1464,6 +1528,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 end_nosignal:
 	rcu_read_unlock();
+
+	health_code_update();
 
 	/*
 	 * Return 1 to indicate success since the 0 value can be a socket
@@ -1482,6 +1548,9 @@ end_msg_sessiond:
 		goto error_fatal;
 	}
 	rcu_read_unlock();
+
+	health_code_update();
+
 	return 1;
 end_channel_error:
 	if (channel) {
@@ -1498,6 +1567,9 @@ end_channel_error:
 		goto error_fatal;
 	}
 	rcu_read_unlock();
+
+	health_code_update();
+
 	return 1;
 error_fatal:
 	rcu_read_unlock();
@@ -2052,6 +2124,9 @@ void lttng_ustconsumer_close_metadata(struct lttng_ht *metadata_ht)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(metadata_ht->ht, &iter.iter, stream,
 			node.node) {
+
+		health_code_update();
+
 		pthread_mutex_lock(&stream->chan->lock);
 		/*
 		 * Whatever returned value, we must continue to try to close everything
@@ -2123,12 +2198,17 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 			request.key);
 
 	pthread_mutex_lock(&ctx->metadata_socket_lock);
+
+	health_code_update();
+
 	ret = lttcomm_send_unix_sock(ctx->consumer_metadata_socket, &request,
 			sizeof(request));
 	if (ret < 0) {
 		ERR("Asking metadata to sessiond");
 		goto end;
 	}
+
+	health_code_update();
 
 	/* Receive the metadata from sessiond */
 	ret = lttcomm_recv_unix_sock(ctx->consumer_metadata_socket, &msg,
@@ -2143,6 +2223,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		 */
 		goto end;
 	}
+
+	health_code_update();
 
 	if (msg.cmd_type == LTTNG_ERR_UND) {
 		/* No registry found */
@@ -2165,6 +2247,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		DBG("No new metadata to receive for key %" PRIu64, key);
 	}
 
+	health_code_update();
+
 	/* Tell session daemon we are ready to receive the metadata. */
 	ret = consumer_send_status_msg(ctx->consumer_metadata_socket,
 			LTTNG_OK);
@@ -2175,6 +2259,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		 */
 		goto end;
 	}
+
+	health_code_update();
 
 	ret_code = lttng_ustconsumer_recv_metadata(ctx->consumer_metadata_socket,
 			key, offset, len, channel, timer, wait);
@@ -2188,6 +2274,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	ret = 0;
 
 end:
+	health_code_update();
+
 	pthread_mutex_unlock(&ctx->metadata_socket_lock);
 	return ret;
 }

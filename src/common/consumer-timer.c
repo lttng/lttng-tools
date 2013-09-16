@@ -472,12 +472,18 @@ void *consumer_timer_thread(void *data)
 
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA_TIMER);
 
+	health_code_update();
+
 	/* Only self thread will receive signal mask. */
 	setmask(&mask);
 	CMM_STORE_SHARED(timer_signal.tid, pthread_self());
 
 	while (1) {
+		health_code_update();
+
+		health_poll_entry();
 		signr = sigwaitinfo(&mask, &info);
+		health_poll_exit();
 		if (signr == -1) {
 			if (errno != EINTR) {
 				PERROR("sigwaitinfo");
