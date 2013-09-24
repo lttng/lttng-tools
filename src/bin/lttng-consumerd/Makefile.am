@@ -4,7 +4,8 @@ lttnglibexec_PROGRAMS = lttng-consumerd
 
 lttng_consumerd_SOURCES = lttng-consumerd.c \
 	lttng-consumerd.h \
-	health-consumerd.h
+	health-consumerd.h \
+	health-consumerd.c
 
 lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/libconsumer.la \

@@ -47,6 +47,7 @@
 #include <common/consumer-timer.h>
 #include <common/compat/poll.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/utils.h>
 
 #include "lttng-consumerd.h"
 #include "health-consumerd.h"
@@ -55,8 +56,8 @@
 
 /* threads (channel handling, poll, metadata, sessiond) */
 
-static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread;
-static pthread_t metadata_timer_thread;
+static pthread_t channel_thread, data_thread, metadata_thread,
+		sessiond_thread, metadata_timer_thread, health_thread;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -75,6 +76,14 @@ static struct lttng_consumer_local_data *ctx;
 
 /* Consumerd health monitoring */
 struct health_app *health_consumerd;
+
+enum lttng_consumer_type lttng_consumer_get_type(void)
+{
+	if (!ctx) {
+		return LTTNG_CONSUMER_UNKNOWN;
+	}
+	return ctx->type;
+}
 
 /*
  * Signal handler for the daemon
@@ -386,12 +395,25 @@ int main(int argc, char **argv)
 	/* Initialize communication library */
 	lttcomm_init();
 
+	ret = utils_create_pipe(health_quit_pipe);
+	if (ret < 0) {
+		goto error_health_pipe;
+	}
+
+	/* Create thread to manage the client socket */
+	ret = pthread_create(&health_thread, NULL,
+			thread_manage_health, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create health");
+		goto health_error;
+	}
+
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
-		goto error;
+		goto channel_error;
 	}
 
 	/* Create thread to manage the polling/writing of trace metadata */
@@ -463,6 +485,17 @@ metadata_error:
 		goto error;
 	}
 
+channel_error:
+	ret = pthread_join(health_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join health thread");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+health_error:
+	utils_close_pipe(health_quit_pipe);
+
+error_health_pipe:
 	if (!ret) {
 		ret = EXIT_SUCCESS;
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_SUCCESS);

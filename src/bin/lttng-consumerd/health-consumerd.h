@@ -34,4 +34,8 @@ enum health_type {
 /* Consumerd health monitoring */
 struct health_app *health_consumerd;
 
+void *thread_manage_health(void *data);
+
+int health_quit_pipe[2];
+
 #endif /* HEALTH_CONSUMERD_H */

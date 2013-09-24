@@ -94,6 +94,18 @@ static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 	(void) lttng_pipe_write(pipe, &null_stream, sizeof(null_stream));
 }
 
+static void notify_health_quit_pipe(int *pipe)
+{
+	int ret;
+
+	do {
+		ret = write(pipe[1], "4", 1);
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0 || ret != 1) {
+		PERROR("write consumer health quit");
+	}
+}
+
 static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_channel *chan,
 		uint64_t key,
@@ -3120,6 +3132,8 @@ end:
 	notify_thread_lttng_pipe(ctx->consumer_data_pipe);
 
 	notify_channel_pipe(ctx, NULL, -1, CONSUMER_CHANNEL_QUIT);
+
+	notify_health_quit_pipe(health_quit_pipe);
 
 	/* Cleaning up possibly open sockets. */
 	if (sock >= 0) {
