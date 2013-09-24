@@ -59,6 +59,19 @@ struct health_state {
 	struct cds_list_head node;
 };
 
+enum health_cmd {
+	HEALTH_CMD_CHECK		= 0,
+};
+
+struct health_comm_msg {
+	uint32_t component;
+	uint32_t cmd;		/* enum health_cmd */
+} LTTNG_PACKED;
+
+struct health_comm_reply {
+	uint32_t ret_code;
+} LTTNG_PACKED;
+
 /* Declare TLS health state. */
 extern DECLARE_URCU_TLS(struct health_state, health_state);
 

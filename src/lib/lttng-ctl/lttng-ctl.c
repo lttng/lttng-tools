@@ -34,6 +34,7 @@
 #include <common/uri.h>
 #include <common/utils.h>
 #include <lttng/lttng.h>
+#include <lttng/health-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -1412,8 +1413,8 @@ static int set_health_socket_path(void)
 int lttng_health_check(enum lttng_health_component c)
 {
 	int sock, ret;
-	struct lttcomm_health_msg msg;
-	struct lttcomm_health_data reply;
+	struct health_comm_msg msg;
+	struct health_comm_reply reply;
 
 	/* Connect to the sesssion daemon */
 	sock = lttcomm_connect_unix_sock(health_sock_path);
@@ -1422,7 +1423,7 @@ int lttng_health_check(enum lttng_health_component c)
 		goto error;
 	}
 
-	msg.cmd = LTTNG_HEALTH_CHECK;
+	msg.cmd = HEALTH_CMD_CHECK;
 	msg.component = c;
 
 	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));

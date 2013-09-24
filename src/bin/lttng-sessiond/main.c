@@ -3457,8 +3457,8 @@ static void *thread_manage_health(void *data)
 	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
-	struct lttcomm_health_msg msg;
-	struct lttcomm_health_data reply;
+	struct health_comm_msg msg;
+	struct health_comm_reply reply;
 
 	DBG("[thread] Manage health check started");
 

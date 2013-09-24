@@ -81,7 +81,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_CONSUMER               = 20,
 	LTTNG_SET_CONSUMER_URI              = 21,
 	LTTNG_ENABLE_EVENT_WITH_FILTER      = 22,
-	LTTNG_HEALTH_CHECK                  = 23,
+	/* Unused */
 	LTTNG_DATA_PENDING                  = 24,
 	LTTNG_SNAPSHOT_ADD_OUTPUT           = 25,
 	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
@@ -298,15 +298,6 @@ struct lttcomm_lttng_msg {
 
 struct lttcomm_lttng_output_id {
 	uint32_t id;
-} LTTNG_PACKED;
-
-struct lttcomm_health_msg {
-	uint32_t component;
-	uint32_t cmd;
-} LTTNG_PACKED;
-
-struct lttcomm_health_data {
-	uint32_t ret_code;
 } LTTNG_PACKED;
 
 /*
