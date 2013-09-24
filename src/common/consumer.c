@@ -3008,6 +3008,7 @@ void *consumer_thread_sessiond_poll(void *data)
 			 * ERR() here.
 			 */
 			DBG("Communication interrupted on command socket");
+			err = 0;
 			goto end;
 		}
 		if (consumer_quit) {
