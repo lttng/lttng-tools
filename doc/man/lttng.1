@@ -742,7 +742,7 @@ size will override the current output values. For instance, you can record a
 snapshot with a custom maximum size or with a different name.
 
 .nf
-$ lttng add-output -n mysnapshot file:///data/snapshot
+$ lttng snapshot add-output -n mysnapshot file:///data/snapshot
 [...]
 $ lttng snapshot record -n new_name_snapshot
 .fi
