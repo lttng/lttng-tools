@@ -1601,7 +1601,6 @@ restart:
 						sock_n);
 
 				if (revents & (LPOLLERR)) {
-					ERR("VIEWER POLL ERROR");
 					cleanup_poll_connection(&events, pollfd);
 					del_connection(relay_connections_ht, &iter,
 							relay_connection);
