@@ -47,14 +47,12 @@ struct relay_index {
 
 struct relay_index *relay_index_create(uint64_t stream_id,
 		uint64_t net_seq_num);
-struct relay_index *relay_index_find(uint64_t stream_id,
-		uint64_t net_seq_num, struct lttng_ht *ht);
-void relay_index_add(struct relay_index *index, struct lttng_ht *ht,
-		struct relay_index **_index);
-int relay_index_write(int fd, struct relay_index *index, struct lttng_ht *ht);
+struct relay_index *relay_index_find(uint64_t stream_id, uint64_t net_seq_num);
+void relay_index_add(struct relay_index *index, struct relay_index **_index);
+int relay_index_write(int fd, struct relay_index *index);
 void relay_index_free(struct relay_index *index);
 void relay_index_free_safe(struct relay_index *index);
-void relay_index_delete(struct relay_index *index, struct lttng_ht *ht);
-void relay_index_destroy_by_stream_id(uint64_t stream_id, struct lttng_ht *ht);
+void relay_index_delete(struct relay_index *index);
+void relay_index_destroy_by_stream_id(uint64_t stream_id);
 
 #endif /* _RELAY_INDEX_H */

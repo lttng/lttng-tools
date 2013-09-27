@@ -166,6 +166,7 @@ extern char *opt_output_path;
 
 extern struct lttng_ht *relay_streams_ht;
 extern struct lttng_ht *viewer_streams_ht;
+extern struct lttng_ht *indexes_ht;
 
 struct relay_stream *relay_stream_find_by_id(uint64_t stream_id);
 

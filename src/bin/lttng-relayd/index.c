@@ -22,6 +22,7 @@
 #include <common/common.h>
 #include <common/utils.h>
 
+#include "lttng-relayd.h"
 #include "index.h"
 
 /*
@@ -76,15 +77,12 @@ error:
  *
  * Return index object or else NULL on error.
  */
-struct relay_index *relay_index_find(uint64_t stream_id,
-		uint64_t net_seq_num, struct lttng_ht *ht)
+struct relay_index *relay_index_find(uint64_t stream_id, uint64_t net_seq_num)
 {
 	struct lttng_ht_node_two_u64 *node;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_two_u64 key;
 	struct relay_index *index = NULL;
-
-	assert(ht);
 
 	DBG3("Finding index for stream id %" PRIu64 " and seq_num %" PRIu64,
 			stream_id, net_seq_num);
@@ -92,7 +90,7 @@ struct relay_index *relay_index_find(uint64_t stream_id,
 	key.key1 = stream_id;
 	key.key2 = net_seq_num;
 
-	lttng_ht_lookup(ht, (void *)(&key), &iter);
+	lttng_ht_lookup(indexes_ht, (void *)(&key), &iter);
 	node = lttng_ht_iter_get_node_two_u64(&iter);
 	if (node == NULL) {
 		goto end;
@@ -111,21 +109,18 @@ end:
  *
  * RCU read side lock MUST be acquired.
  */
-void relay_index_add(struct relay_index *index, struct lttng_ht *ht,
-		struct relay_index **_index)
+void relay_index_add(struct relay_index *index, struct relay_index **_index)
 {
 	struct cds_lfht_node *node_ptr;
 
 	assert(index);
-	assert(ht);
-	assert(_index);
 
 	DBG2("Adding relay index with stream id %" PRIu64 " and seqnum %" PRIu64,
 			index->key.key1, index->key.key2);
 
-	node_ptr = cds_lfht_add_unique(ht->ht,
-			ht->hash_fct((void *) &index->index_n.key, lttng_ht_seed),
-			ht->match_fct, (void *) &index->index_n.key,
+	node_ptr = cds_lfht_add_unique(indexes_ht->ht,
+			indexes_ht->hash_fct((void *) &index->index_n.key, lttng_ht_seed),
+			indexes_ht->match_fct, (void *) &index->index_n.key,
 			&index->index_n.node);
 	if (node_ptr != &index->index_n.node) {
 		*_index = caa_container_of(node_ptr, struct relay_index, index_n.node);
@@ -140,7 +135,7 @@ void relay_index_add(struct relay_index *index, struct lttng_ht *ht,
  *
  * Return 0 on success else a negative value.
  */
-int relay_index_write(int fd, struct relay_index *index, struct lttng_ht *ht)
+int relay_index_write(int fd, struct relay_index *index)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -150,7 +145,7 @@ int relay_index_write(int fd, struct relay_index *index, struct lttng_ht *ht)
 
 	/* Delete index from hash table. */
 	iter.iter.node = &index->index_n.node;
-	ret = lttng_ht_del(ht, &iter);
+	ret = lttng_ht_del(indexes_ht, &iter);
 	assert(!ret);
 	call_rcu(&index->rcu_node, deferred_free_relay_index);
 
@@ -182,7 +177,7 @@ void relay_index_free_safe(struct relay_index *index)
  *
  * RCU read side lock MUST be acquired.
  */
-void relay_index_delete(struct relay_index *index, struct lttng_ht *ht)
+void relay_index_delete(struct relay_index *index)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -192,25 +187,22 @@ void relay_index_delete(struct relay_index *index, struct lttng_ht *ht)
 
 	/* Delete index from hash table. */
 	iter.iter.node = &index->index_n.node;
-	ret = lttng_ht_del(ht, &iter);
+	ret = lttng_ht_del(indexes_ht, &iter);
 	assert(!ret);
 }
 
 /*
  * Destroy every relay index with the given stream id as part of the key.
  */
-void relay_index_destroy_by_stream_id(uint64_t stream_id, struct lttng_ht *ht)
+void relay_index_destroy_by_stream_id(uint64_t stream_id)
 {
 	struct lttng_ht_iter iter;
 	struct relay_index *index;
 
-	assert(ht);
-	assert(ht->ht);
-
 	rcu_read_lock();
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, index, index_n.node) {
+	cds_lfht_for_each_entry(indexes_ht->ht, &iter.iter, index, index_n.node) {
 		if (index->key.key1 == stream_id) {
-			relay_index_delete(index, ht);
+			relay_index_delete(index);
 			relay_index_free_safe(index);
 		}
 	}
