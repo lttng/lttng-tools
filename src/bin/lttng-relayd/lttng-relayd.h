@@ -38,10 +38,10 @@ struct relay_cmd_queue {
 };
 
 enum connection_type {
-	RELAY_DATA,
-	RELAY_CONTROL,
-	RELAY_VIEWER_COMMAND,
-	RELAY_VIEWER_NOTIFICATION,
+	RELAY_DATA                  = 1,
+	RELAY_CONTROL               = 2,
+	RELAY_VIEWER_COMMAND        = 3,
+	RELAY_VIEWER_NOTIFICATION   = 4,
 };
 
 /*
