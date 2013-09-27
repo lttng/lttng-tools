@@ -2527,7 +2527,7 @@ int main(int argc, char **argv)
 		goto exit_listener;
 	}
 
-	ret = live_start_threads(live_uri, relay_ctx);
+	ret = live_start_threads(live_uri, relay_ctx, thread_quit_pipe);
 	if (ret != 0) {
 		ERR("Starting live viewer threads");
 	}
@@ -2552,6 +2552,8 @@ exit_dispatcher:
 		PERROR("pthread_join");
 		goto error;	/* join error, exit without cleanup */
 	}
+
+	live_stop_threads();
 	lttng_ht_destroy(viewer_streams_ht);
 
 exit_relay_ctx_viewer_streams:
@@ -2564,7 +2566,6 @@ exit_relay_ctx_sessions:
 	free(relay_ctx);
 
 exit:
-	live_stop_threads();
 	cleanup();
 	if (!ret) {
 		exit(EXIT_SUCCESS);

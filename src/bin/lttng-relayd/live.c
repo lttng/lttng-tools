@@ -96,8 +96,6 @@ void cleanup(void)
 {
 	DBG("Cleaning up");
 
-	/* Close thread quit pipes */
-	utils_close_pipe(live_thread_quit_pipe);
 	free(live_uri);
 }
 
@@ -137,21 +135,6 @@ void stop_threads(void)
 	/* Dispatch thread */
 	CMM_STORE_SHARED(live_dispatch_thread_exit, 1);
 	futex_nto1_wake(&viewer_cmd_queue.futex);
-}
-
-/*
- * Init thread quit pipe.
- *
- * Return -1 on error or 0 if all pipes are created.
- */
-static
-int init_thread_quit_pipe(void)
-{
-	int ret;
-
-	ret = utils_create_pipe_cloexec(live_thread_quit_pipe);
-
-	return ret;
 }
 
 /*
@@ -1719,7 +1702,7 @@ error:
  * main
  */
 int live_start_threads(struct lttng_uri *uri,
-		struct relay_local_data *relay_ctx)
+		struct relay_local_data *relay_ctx, int quit_pipe[2])
 {
 	int ret = 0;
 	void *status;
@@ -1728,10 +1711,8 @@ int live_start_threads(struct lttng_uri *uri,
 	assert(uri);
 	live_uri = uri;
 
-	/* Create thread quit pipe */
-	if ((ret = init_thread_quit_pipe()) < 0) {
-		goto error;
-	}
+	live_thread_quit_pipe[0] = quit_pipe[0];
+	live_thread_quit_pipe[1] = quit_pipe[1];
 
 	/* Check if daemon is UID = 0 */
 	is_root = !getuid();
