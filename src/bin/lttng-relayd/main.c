@@ -802,6 +802,9 @@ static void destroy_stream(struct relay_stream *stream,
 		vstream->total_index_received = stream->total_index_received;
 	}
 
+	/* Cleanup index of that stream. */
+	relay_index_destroy_by_stream_id(stream->stream_handle);
+
 	iter.iter.node = &stream->stream_n.node;
 	delret = lttng_ht_del(relay_streams_ht, &iter);
 	assert(!delret);
@@ -841,8 +844,6 @@ void relay_delete_session(struct relay_command *cmd,
 		if (stream->session == cmd->session) {
 			destroy_stream(stream, cmd->ctf_traces_ht);
 		}
-		/* Cleanup index of that stream. */
-		relay_index_destroy_by_stream_id(stream->stream_handle);
 	}
 
 	/* Make this session not visible anymore. */
