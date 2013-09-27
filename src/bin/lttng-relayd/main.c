@@ -764,7 +764,13 @@ void deferred_free_session(struct rcu_head *head)
 	free(session);
 }
 
-static void close_stream(struct relay_stream *stream,
+/*
+ * Close a given stream. The stream is freed using a call RCU.
+ *
+ * RCU read side lock MUST be acquired. If NO close_stream_check() was called
+ * BEFORE the stream lock MUST be acquired.
+ */
+static void destroy_stream(struct relay_stream *stream,
 		struct lttng_ht *ctf_traces_ht)
 {
 	int delret;
@@ -828,29 +834,22 @@ void relay_delete_session(struct relay_command *cmd,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, node, node) {
 		node = lttng_ht_iter_get_node_ulong(&iter);
-		if (node) {
-			stream = caa_container_of(node,
-					struct relay_stream, stream_n);
-			if (stream->session == cmd->session) {
-				ret = close(stream->fd);
-				if (ret < 0) {
-					PERROR("close stream fd on delete session");
-				}
-				ret = lttng_ht_del(relay_streams_ht, &iter);
-				assert(!ret);
-				call_rcu(&stream->rcu_node,
-					deferred_free_stream);
-			}
-			/* Cleanup index of that stream. */
-			relay_index_destroy_by_stream_id(stream->stream_handle,
-					indexes_ht);
+		if (!node) {
+			continue;
 		}
+		stream = caa_container_of(node, struct relay_stream, stream_n);
+		if (stream->session == cmd->session) {
+			destroy_stream(stream, cmd->ctf_traces_ht);
+		}
+		/* Cleanup index of that stream. */
+		relay_index_destroy_by_stream_id(stream->stream_handle, indexes_ht);
 	}
+
+	/* Make this session not visible anymore. */
 	iter.iter.node = &cmd->session->session_n.node;
 	ret = lttng_ht_del(sessions_ht, &iter);
 	assert(!ret);
-	call_rcu(&cmd->session->rcu_node,
-			deferred_free_session);
+	call_rcu(&cmd->session->rcu_node, deferred_free_session);
 	rcu_read_unlock();
 }
 
@@ -1114,7 +1113,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	stream->close_flag = 1;
 
 	if (close_stream_check(stream)) {
-		close_stream(stream, cmd->ctf_traces_ht);
+		destroy_stream(stream, cmd->ctf_traces_ht);
 	}
 
 end_unlock:
@@ -2010,7 +2009,7 @@ int relay_process_data(struct relay_command *cmd,
 
 	/* Check if we need to close the FD */
 	if (close_stream_check(stream)) {
-		close_stream(stream, cmd->ctf_traces_ht);
+		destroy_stream(stream, cmd->ctf_traces_ht);
 	}
 
 end_rcu_unlock:
