@@ -166,6 +166,7 @@ struct relay_command {
 	uint32_t major;
 	uint32_t minor;
 	struct lttng_ht *ctf_traces_ht;	/* indexed by path name */
+	uint64_t session_id;
 };
 
 struct relay_local_data {

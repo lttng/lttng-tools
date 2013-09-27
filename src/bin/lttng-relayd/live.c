@@ -689,7 +689,7 @@ int viewer_attach_session(struct relay_command *cmd,
 	}
 
 	session = caa_container_of(node, struct relay_session, session_n);
-	if (cmd->session == session) {
+	if (cmd->session_id == session->id) {
 		/* Same viewer already attached, just send the stream list. */
 		send_streams = 1;
 		response.status = htobe32(VIEWER_ATTACH_OK);
@@ -705,6 +705,7 @@ int viewer_attach_session(struct relay_command *cmd,
 		session->viewer_attached++;
 		send_streams = 1;
 		response.status = htobe32(VIEWER_ATTACH_OK);
+		cmd->session_id = session->id;
 		cmd->session = session;
 	}
 
@@ -1433,14 +1434,12 @@ void deferred_free_viewer_stream(struct rcu_head *head)
 }
 
 static
-void viewer_del_streams(struct relay_session *session)
+void viewer_del_streams(uint64_t session_id)
 {
 	int ret;
 	struct relay_viewer_stream *stream;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
-
-	assert(session);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, node, node) {
@@ -1450,7 +1449,7 @@ void viewer_del_streams(struct relay_session *session)
 		}
 
 		stream = caa_container_of(node, struct relay_viewer_stream, stream_n);
-		if (stream->session_id != session->id) {
+		if (stream->session_id != session_id) {
 			continue;
 		}
 
@@ -1494,9 +1493,7 @@ void del_connection(struct lttng_ht *relay_connections_ht,
 	ret = lttng_ht_del(relay_connections_ht, iter);
 	assert(!ret);
 
-	if (relay_connection->session) {
-		viewer_del_streams(relay_connection->session);
-	}
+	viewer_del_streams(relay_connection->session_id);
 
 	call_rcu(&relay_connection->rcu_node, deferred_free_connection);
 }
