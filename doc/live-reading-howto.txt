@@ -1,0 +1,53 @@
+LTTng Live trace reading how-to
+
+Julien Desfossez
+September 27th, 2013
+
+This document presents a summary on how to use the live trace reading feature
+introduced in LTTng 2.4. For the details about the protocol, please refer to
+the live-reading-protocol.txt document.
+
+Live trace reading refers to the feature of reading the trace while it is being
+recorded. In order to do that, the trace must be streamed a relay even if the
+viewer is running on the same machine as the tracer.
+
+So, the first thing to do is to start a lttng-relayd process. It can be
+anywhere on the network (including localhost) as long as the sessiond/consumerd
+and the viewer can communicate with it over TCP/IP.
+
+$ lttng-relayd -d
+
+Then, we can create a session configured for streaming with the new --live
+parameter.
+
+$ lttng create --live 1000000 -U net://localhost
+
+The --live parameter activates a session-wide timer (usec) that is responsible
+for checking at a user-defined rate if new data is available. If there is new
+data, it is flushed automatically, otherwise a beacon is sent to the relayd to
+inform it that the stream is currently empty and the viewer can ignore this
+stream up to a certain point in time.
+
+Once the session is created, the user can activate events as usual.
+
+In order to view the live trace, the viewer must implement the live-reading
+protocol.
+
+For now, a basic client is available in the branch index2013 of the git
+repository :
+https://github.com/jdesfossez/babeltrace-dev.git
+
+This client is still in heavy development and the branch will be rebased, it is
+only provided as a proof-of-concept and an exemple on how to use the protocol.
+Once compiled and installed, just run :
+$ test-live hostname 2>/dev/null
+
+If you want to see all the debug, just get rid of "2>/dev/null".
+Once again, it is a client in development, the name is purposely bad and the
+debug output is relatively heavy.
+
+Known viewer issues :
+- adding metadata on the fly (enabling events when a viewer is connected)
+- destroy not clean
+- aggressive polling when all the streams are inactive (after a lttng stop)
+- restart reading from the beginning (SEEK_LAST not implemented yet)
