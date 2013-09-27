@@ -1573,6 +1573,25 @@ int lttng_ustconsumer_get_consumed_snapshot(
 	return ustctl_snapshot_get_consumed(stream->ustream, pos);
 }
 
+void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
+		int producer)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	ustctl_flush_buffer(stream->ustream, producer);
+}
+
+int lttng_ustconsumer_get_current_timestamp(
+		struct lttng_consumer_stream *stream, uint64_t *ts)
+{
+	assert(stream);
+	assert(stream->ustream);
+	assert(ts);
+
+	return ustctl_get_current_timestamp(stream->ustream, ts);
+}
+
 /*
  * Called when the stream signal the consumer that it has hang up.
  */

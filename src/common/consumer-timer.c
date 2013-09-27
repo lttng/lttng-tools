@@ -191,13 +191,13 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 		goto error_unlock;
 	}
 
-	ret = ustctl_get_current_timestamp(stream->ustream, &ts);
+	ret = lttng_ustconsumer_get_current_timestamp(stream, &ts);
 	if (ret < 0) {
 		ERR("Failed to get the current timestamp");
 		goto error_unlock;
 	}
-	ustctl_flush_buffer(stream->ustream, 1);
-	ret = ustctl_snapshot(stream->ustream);
+	lttng_ustconsumer_flush_buffer(stream, 1);
+	ret = lttng_ustconsumer_take_snapshot(stream);
 	if (ret < 0) {
 		if (ret != -EAGAIN) {
 			ERR("Taking UST snapshot");
