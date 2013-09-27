@@ -184,10 +184,12 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 		case 2:
 		case 3:
 			ret = relayd_create_session_2_1(rsock, session_id);
+			break;
 		case 4:
 		default:
 			ret = relayd_create_session_2_4(rsock, session_id, session_name,
 					hostname, session_live_timer, snapshot);
+			break;
 	}
 
 	if (ret < 0) {
