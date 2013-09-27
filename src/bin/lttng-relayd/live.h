@@ -27,7 +27,6 @@ int live_start_threads(struct lttng_uri *live_uri,
 		struct relay_local_data *relay_ctx);
 void live_stop_threads(void);
 
-struct relay_viewer_stream *live_find_viewer_stream_by_id(uint64_t stream_id,
-		struct lttng_ht *viewer_streams_ht);
+struct relay_viewer_stream *live_find_viewer_stream_by_id(uint64_t stream_id);
 
 #endif /* LTTNG_RELAYD_LIVE_H */

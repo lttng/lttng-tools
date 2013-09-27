@@ -160,12 +160,12 @@ struct relay_command {
 
 struct relay_local_data {
 	struct lttng_ht *sessions_ht;
-	struct lttng_ht *viewer_streams_ht;
 };
 
 extern char *opt_output_path;
 
 extern struct lttng_ht *relay_streams_ht;
+extern struct lttng_ht *viewer_streams_ht;
 
 struct relay_stream *relay_stream_find_by_id(uint64_t stream_id);
 

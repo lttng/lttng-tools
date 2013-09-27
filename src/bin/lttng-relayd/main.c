@@ -111,6 +111,9 @@ static gid_t relayd_gid;
 /* Global relay stream hash table. */
 struct lttng_ht *relay_streams_ht;
 
+/* Global relay viewer stream hash table. */
+struct lttng_ht *viewer_streams_ht;
+
 /*
  * usage function on stderr
  */
@@ -762,14 +765,13 @@ void deferred_free_session(struct rcu_head *head)
 }
 
 static void close_stream(struct relay_stream *stream,
-		struct lttng_ht *viewer_streams_ht, struct lttng_ht *ctf_traces_ht)
+		struct lttng_ht *ctf_traces_ht)
 {
 	int delret;
 	struct relay_viewer_stream *vstream;
 	struct lttng_ht_iter iter;
 
 	assert(stream);
-	assert(viewer_streams_ht);
 
 	delret = close(stream->fd);
 	if (delret < 0) {
@@ -783,8 +785,7 @@ static void close_stream(struct relay_stream *stream,
 		}
 	}
 
-	vstream = live_find_viewer_stream_by_id(stream->stream_handle,
-			viewer_streams_ht);
+	vstream = live_find_viewer_stream_by_id(stream->stream_handle);
 	if (vstream) {
 		/*
 		 * Set the last good value into the viewer stream. This is done
@@ -1073,7 +1074,7 @@ err_free_stream:
  */
 static
 int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd, struct lttng_ht *viewer_streams_ht)
+		struct relay_command *cmd)
 {
 	int ret, send_ret;
 	struct relay_session *session = cmd->session;
@@ -1113,7 +1114,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	stream->close_flag = 1;
 
 	if (close_stream_check(stream)) {
-		close_stream(stream, viewer_streams_ht, cmd->ctf_traces_ht);
+		close_stream(stream, cmd->ctf_traces_ht);
 	}
 
 end_unlock:
@@ -1803,7 +1804,7 @@ int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = relay_send_version(recv_hdr, cmd, ctx->sessions_ht);
 		break;
 	case RELAYD_CLOSE_STREAM:
-		ret = relay_close_stream(recv_hdr, cmd, ctx->viewer_streams_ht);
+		ret = relay_close_stream(recv_hdr, cmd);
 		break;
 	case RELAYD_DATA_PENDING:
 		ret = relay_data_pending(recv_hdr, cmd);
@@ -1837,7 +1838,7 @@ end:
  */
 static
 int relay_process_data(struct relay_command *cmd,
-		struct lttng_ht *indexes_ht, struct lttng_ht *viewer_streams_ht)
+		struct lttng_ht *indexes_ht)
 {
 	int ret = 0, rotate_index = 0, index_created = 0;
 	struct relay_stream *stream;
@@ -2009,7 +2010,7 @@ int relay_process_data(struct relay_command *cmd,
 
 	/* Check if we need to close the FD */
 	if (close_stream_check(stream)) {
-		close_stream(stream, viewer_streams_ht, cmd->ctf_traces_ht);
+		close_stream(stream, cmd->ctf_traces_ht);
 	}
 
 end_rcu_unlock:
@@ -2311,8 +2312,7 @@ restart:
 						continue;
 					}
 
-					ret = relay_process_data(relay_connection, indexes_ht,
-							relay_ctx->viewer_streams_ht);
+					ret = relay_process_data(relay_connection, indexes_ht);
 					/* connection closed */
 					if (ret < 0) {
 						relay_cleanup_poll_connection(&events, pollfd);
@@ -2482,8 +2482,8 @@ int main(int argc, char **argv)
 	}
 
 	/* tables of streams indexed by stream ID */
-	relay_ctx->viewer_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!relay_ctx->viewer_streams_ht) {
+	viewer_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!viewer_streams_ht) {
 		goto exit_relay_ctx_viewer_streams;
 	}
 
@@ -2536,7 +2536,7 @@ exit_dispatcher:
 		PERROR("pthread_join");
 		goto error;	/* join error, exit without cleanup */
 	}
-	lttng_ht_destroy(relay_ctx->viewer_streams_ht);
+	lttng_ht_destroy(viewer_streams_ht);
 
 exit_relay_ctx_viewer_streams:
 	lttng_ht_destroy(relay_streams_ht);
