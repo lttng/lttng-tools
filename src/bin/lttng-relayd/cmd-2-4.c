@@ -46,6 +46,7 @@ int cmd_create_session_2_4(struct relay_command *cmd,
 	strncpy(session->hostname, session_info.hostname,
 			sizeof(session->hostname));
 	session->live_timer = be32toh(session_info.live_timer);
+	session->snapshot = be32toh(session_info.snapshot);
 
 	ret = 0;
 

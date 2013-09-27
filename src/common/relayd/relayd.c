@@ -122,7 +122,7 @@ error:
  */
 static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 		uint64_t *session_id, char *session_name, char *hostname,
-		int session_live_timer)
+		int session_live_timer, unsigned int snapshot)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
@@ -130,6 +130,7 @@ static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 	strncpy(msg.session_name, session_name, sizeof(msg.session_name));
 	strncpy(msg.hostname, hostname, sizeof(msg.hostname));
 	msg.live_timer = htobe32(session_live_timer);
+	msg.snapshot = htobe32(snapshot);
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_CREATE_SESSION, &msg, sizeof(msg), 0);
@@ -167,7 +168,8 @@ error:
  * a lttng error code from the relayd.
  */
 int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_id,
-		char *session_name, char *hostname, int session_live_timer)
+		char *session_name, char *hostname, int session_live_timer,
+		unsigned int snapshot)
 {
 	int ret;
 	struct lttcomm_relayd_status_session reply;
@@ -184,9 +186,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 			ret = relayd_create_session_2_1(rsock, session_id);
 		case 4:
 		default:
-			ret = relayd_create_session_2_4(rsock, session_id,
-					session_name, hostname,
-					session_live_timer);
+			ret = relayd_create_session_2_4(rsock, session_id, session_name,
+					hostname, session_live_timer, snapshot);
 	}
 
 	if (ret < 0) {

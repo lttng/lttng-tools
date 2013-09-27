@@ -26,7 +26,8 @@
 int relayd_connect(struct lttcomm_relayd_sock *sock);
 int relayd_close(struct lttcomm_relayd_sock *sock);
 int relayd_create_session(struct lttcomm_relayd_sock *sock, uint64_t *session_id,
-		char *session_name, char *hostname, int session_live_timer);
+		char *session_name, char *hostname, int session_live_timer,
+		unsigned int snapshot);
 int relayd_add_stream(struct lttcomm_relayd_sock *sock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id,
 		uint64_t tracefile_size, uint64_t tracefile_count);

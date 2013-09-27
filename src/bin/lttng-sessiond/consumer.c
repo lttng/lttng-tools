@@ -960,7 +960,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	if (type == LTTNG_STREAM_CONTROL) {
 		ret = relayd_create_session(rsock,
 				&msg.u.relayd_sock.relayd_session_id,
-				session_name, hostname, session_live_timer);
+				session_name, hostname, session_live_timer,
+				consumer->snapshot);
 		if (ret < 0) {
 			/* Close the control socket. */
 			(void) relayd_close(rsock);

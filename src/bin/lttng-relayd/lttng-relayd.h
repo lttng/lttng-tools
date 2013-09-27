@@ -62,6 +62,16 @@ struct relay_session {
 	struct rcu_head rcu_node;
 	uint32_t viewer_attached;
 	uint32_t stream_count;
+	/* Tell if this session is for a snapshot or not. */
+	unsigned int snapshot:1;
+
+	/*
+	 * Indicate version protocol for this session. This is especially useful
+	 * for the data thread that has no idea which version it operates on since
+	 * linking control/data sockets is non trivial.
+	 */
+	uint64_t minor;
+	uint64_t major;
 };
 
 /*

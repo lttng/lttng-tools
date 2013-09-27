@@ -171,6 +171,7 @@ struct lttcomm_relayd_create_session_2_4 {
 	char session_name[NAME_MAX];
 	char hostname[HOST_NAME_MAX];
 	uint32_t live_timer;
+	uint32_t snapshot;
 } LTTNG_PACKED;
 
 #endif	/* _RELAYD_COMM */

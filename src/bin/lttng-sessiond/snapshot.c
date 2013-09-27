@@ -80,6 +80,7 @@ static int output_init(uint64_t max_size, const char *name,
 		ret = -ENOMEM;
 		goto error;
 	}
+	output->consumer->snapshot = 1;
 
 	/* No URL given. */
 	if (nb_uri == 0) {

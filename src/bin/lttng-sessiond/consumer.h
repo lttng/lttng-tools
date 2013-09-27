@@ -163,6 +163,9 @@ struct consumer_output {
 	 */
 	struct lttng_ht *socks;
 
+	/* Tell if this output is used for snapshot. */
+	unsigned int snapshot:1;
+
 	union {
 		char trace_path[PATH_MAX];
 		struct consumer_net net;
