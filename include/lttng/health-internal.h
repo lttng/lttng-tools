@@ -25,6 +25,7 @@
 #include <urcu/tls-compat.h>
 #include <urcu/uatomic.h>
 #include <urcu/list.h>
+#include <lttng/health.h>
 
 /*
  * These are the value added to the current state depending of the position in
@@ -71,6 +72,13 @@ struct health_comm_msg {
 struct health_comm_reply {
 	uint32_t ret_code;
 } LTTNG_PACKED;
+
+/*
+ * Status returned to lttng clients.
+ */
+struct lttng_health_status {
+	uint64_t error_threads_bitmask;
+};
 
 /* Declare TLS health state. */
 extern DECLARE_URCU_TLS(struct health_state, health_state);

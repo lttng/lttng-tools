@@ -1,4 +1,5 @@
 lttnginclude_HEADERS = \
+	lttng/health.h \
 	lttng/lttng.h \
 	lttng/lttng-error.h \
 	lttng/snapshot.h

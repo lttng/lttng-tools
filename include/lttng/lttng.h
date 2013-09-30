@@ -658,7 +658,8 @@ int lttng_disable_consumer(struct lttng_handle *handle);
  *
  * Please see lttng-health-check(3) man page for more information.
  */
-extern int lttng_health_check(enum lttng_health_component c);
+extern LTTNG_DEPRECATED("This call is now obsolete.")
+int lttng_health_check(enum lttng_health_component c);
 
 /*
  * For a given session name, this call checks if the data is ready to be read
