@@ -21,7 +21,6 @@
 #include <inttypes.h>
 #include <signal.h>
 
-#include <lttng/ust-ctl.h>
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-consumer/kernel-consumer.h>
