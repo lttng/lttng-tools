@@ -4774,7 +4774,7 @@ int main(int argc, char **argv)
 			ust_thread_manage_notify, (void *) NULL);
 	if (ret != 0) {
 		PERROR("pthread_create apps");
-		goto exit_apps;
+		goto exit_apps_notify;
 	}
 
 	/* Don't start this thread if kernel tracing is not requested nor root */
@@ -4795,9 +4795,16 @@ int main(int argc, char **argv)
 	}
 
 exit_kernel:
+	ret = pthread_join(apps_notify_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join apps notify");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_apps_notify:
 	ret = pthread_join(apps_thread, &status);
 	if (ret != 0) {
-		PERROR("pthread_join");
+		PERROR("pthread_join apps");
 		goto error;	/* join error, exit without cleanup */
 	}
 
