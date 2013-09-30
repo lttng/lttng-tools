@@ -191,6 +191,7 @@ error:
  */
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 {
+	int ret;
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
@@ -218,6 +219,10 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 	/* Alloc UST global domain channels' HT */
 	lus->domain_global.channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	ret = jul_init_domain(&lus->domain_jul);
+	if (ret < 0) {
+		goto error_consumer;
+	}
 
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lus->consumer == NULL) {
@@ -238,6 +243,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 error_consumer:
 	ht_cleanup_push(lus->domain_global.channels);
+	jul_destroy_domain(&lus->domain_jul);
 	free(lus);
 error:
 	return NULL;
@@ -677,6 +683,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
+	jul_destroy_domain(&session->domain_jul);
 
 	/* Cleanup UID buffer registry object(s). */
 	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,

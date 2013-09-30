@@ -132,6 +132,9 @@
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
+/* Default JUL domain channel name. */
+#define DEFAULT_JUL_CHANNEL_NAME        "jul_channel"
+/* JUL default channel name. */
 #define DEFAULT_CHANNEL_OVERWRITE       0
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  0
 #define DEFAULT_CHANNEL_TRACEFILE_COUNT 0
