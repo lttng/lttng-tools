@@ -18,6 +18,7 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
+#include <limits.h>
 #include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
@@ -59,8 +60,7 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	char name[NAME_MAX];
-	/* FIXME : size */
-	char hostname[PATH_MAX]; /* local hostname, FIXME : could be useful to have that user defined too */
+	char hostname[HOST_NAME_MAX]; /* Local hostname. */
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
 	/*

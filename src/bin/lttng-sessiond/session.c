@@ -195,8 +195,13 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	}
 
 	ret = gethostname(new_session->hostname, sizeof(new_session->hostname));
-	if (ret && errno == ENAMETOOLONG) {
-		new_session->hostname[HOST_NAME_MAX - 1] = '\0';
+	if (ret < 0) {
+		if (errno == ENAMETOOLONG) {
+			new_session->hostname[sizeof(new_session->hostname) - 1] = '\0';
+		} else {
+			ret = LTTNG_ERR_FATAL;
+			goto error;
+		}
 	}
 
 	/* Init kernel session */
