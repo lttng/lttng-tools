@@ -203,6 +203,9 @@
 #define DEFAULT_NETWORK_DATA_PORT           5343
 #define DEFAULT_NETWORK_VIEWER_PORT         5344
 
+/* JUL registration TCP port. */
+#define DEFAULT_JUL_TCP_PORT                5345
+
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad
  * health).

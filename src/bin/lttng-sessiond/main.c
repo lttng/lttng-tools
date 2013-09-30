@@ -63,6 +63,7 @@
 #include "health-sessiond.h"
 #include "testpoint.h"
 #include "ust-thread.h"
+#include "jul-thread.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -156,6 +157,7 @@ static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t health_thread;
 static pthread_t ht_cleanup_thread;
+static pthread_t jul_reg_thread;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -232,6 +234,9 @@ long page_size;
 
 /* Application health monitoring */
 struct health_app *health_sessiond;
+
+/* JUL TCP port for registration. Used by the JUL thread. */
+unsigned int jul_tcp_port = DEFAULT_JUL_TCP_PORT;
 
 static
 void setup_consumerd_path(void)
@@ -3917,6 +3922,7 @@ static void usage(void)
 	fprintf(stderr, "  -p, --pidfile FILE                 Write a pid to FILE name overriding the default value.\n");
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
 	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
+	fprintf(stderr, "      --jul-tcp-port                 JUL application registration TCP port\n");
 }
 
 /*
@@ -3949,12 +3955,13 @@ static int parse_args(int argc, char **argv)
 		{ "verbose-consumer", 0, 0, 'Z' },
 		{ "no-kernel", 0, 0, 'N' },
 		{ "pidfile", 1, 0, 'p' },
+		{ "jul-tcp-port", 1, 0, 'J' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:",
+		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:J:",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -4034,6 +4041,24 @@ static int parse_args(int argc, char **argv)
 		case 'p':
 			opt_pidfile = optarg;
 			break;
+		case 'J': /* JUL TCP port. */
+		{
+			unsigned long v;
+
+			errno = 0;
+			v = strtoul(optarg, NULL, 0);
+			if (errno != 0 || !isdigit(optarg[0])) {
+				ERR("Wrong value in --jul-tcp-port parameter: %s", optarg);
+				return -1;
+			}
+			if (v == 0 || v >= 65535) {
+				ERR("Port overflow in --jul-tcp-port parameter: %s", optarg);
+				return -1;
+			}
+			jul_tcp_port = (uint32_t) v;
+			DBG3("JUL TCP port set to non default: %u", jul_tcp_port);
+			break;
+		}
 		default:
 			/* Unknown option or other error.
 			 * Error is printed by getopt, just return */
@@ -4778,6 +4803,14 @@ int main(int argc, char **argv)
 		goto exit_apps_notify;
 	}
 
+	/* Create JUL registration thread. */
+	ret = pthread_create(&jul_reg_thread, NULL,
+			jul_thread_manage_registration, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create apps");
+		goto exit_jul_reg;
+	}
+
 	/* Don't start this thread if kernel tracing is not requested nor root */
 	if (is_root && !opt_no_kernel) {
 		/* Create kernel thread to manage kernel event */
@@ -4796,6 +4829,13 @@ int main(int argc, char **argv)
 	}
 
 exit_kernel:
+	ret = pthread_join(jul_reg_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join JUL");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_jul_reg:
 	ret = pthread_join(apps_notify_thread, &status);
 	if (ret != 0) {
 		PERROR("pthread_join apps notify");
