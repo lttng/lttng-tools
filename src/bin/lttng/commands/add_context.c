@@ -368,7 +368,7 @@ static int add_context(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}

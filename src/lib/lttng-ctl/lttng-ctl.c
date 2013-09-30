@@ -103,6 +103,7 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		switch (src->type) {
 		case LTTNG_DOMAIN_KERNEL:
 		case LTTNG_DOMAIN_UST:
+		case LTTNG_DOMAIN_JUL:
 			memcpy(dst, src, sizeof(struct lttng_domain));
 			break;
 		default:

@@ -20,6 +20,8 @@
 
 #include <popt.h>
 
+#include <lttng/lttng.h>
+
 struct cmd_struct;
 
 char *get_session_name(void);
@@ -43,5 +45,13 @@ int get_count_order_u64(uint64_t x);
  * Return -1 if x is 0.
  */
 int get_count_order_ulong(unsigned long x);
+
+const char *get_domain_str(enum lttng_domain_type domain);
+
+static inline
+void print_missing_domain(void)
+{
+	ERR("Please specify a domain (-k/-u/-j).");
+}
 
 #endif /* _LTTNG_UTILS_H */

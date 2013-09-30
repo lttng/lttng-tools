@@ -92,7 +92,7 @@ enum lttng_error_code {
 	LTTNG_ERR_UST_CHAN_NOT_FOUND     = 59,  /* UST channel not found */
 	LTTNG_ERR_UST_CHAN_DISABLE_FAIL  = 60,  /* UST disable channel failed */
 	LTTNG_ERR_UST_CHAN_ENABLE_FAIL   = 61,  /* UST enable channel failed */
-	/* 62 */
+	LTTNG_ERR_CHAN_EXIST             = 62,  /* Channel already exists. */
 	LTTNG_ERR_UST_ENABLE_FAIL        = 63,  /* UST enable event failed */
 	LTTNG_ERR_UST_DISABLE_FAIL       = 64,  /* UST disable event failed */
 	LTTNG_ERR_UST_META_FAIL          = 65,  /* UST open metadata failed */

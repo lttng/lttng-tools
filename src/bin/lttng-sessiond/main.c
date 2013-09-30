@@ -2744,6 +2744,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		}
 
 		break;
+	case LTTNG_DOMAIN_JUL:
+	{
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		goto error;
+	}
 	case LTTNG_DOMAIN_UST:
 	{
 		if (!ust_app_supported()) {
@@ -2835,6 +2840,7 @@ skip_domain:
 	if (cmd_ctx->lsm->cmd_type == LTTNG_START_TRACE ||
 			cmd_ctx->lsm->cmd_type == LTTNG_STOP_TRACE) {
 		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_UST:
 			if (uatomic_read(&ust_consumerd_state) != CONSUMER_STARTED) {
 				ret = LTTNG_ERR_NO_USTCONSUMERD;

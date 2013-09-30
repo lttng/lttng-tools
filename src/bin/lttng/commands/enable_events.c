@@ -36,6 +36,7 @@ static int opt_loglevel_type;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
+static int opt_jul;
 static int opt_enable_all;
 static char *opt_probe;
 static char *opt_function;
@@ -72,6 +73,7 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
@@ -105,6 +107,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -a, --all                Enable all tracepoints and syscalls\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
@@ -353,8 +356,12 @@ static int enable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 		/* Default. */
 		dom.buf_type = LTTNG_BUFFER_PER_UID;
+	} else if (opt_jul) {
+		dom.type = LTTNG_DOMAIN_JUL;
+		/* Default. */
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -414,12 +421,12 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel) {
 					MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
-							opt_kernel ? "kernel" : "UST",
+							get_domain_str(dom.type),
 							print_channel_name(channel_name),
 							opt_loglevel);
 				} else {
 					MSG("All %s tracepoints are enabled in channel %s",
-							opt_kernel ? "kernel" : "UST",
+							get_domain_str(dom.type),
 							print_channel_name(channel_name));
 
 				}
@@ -433,12 +440,12 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel) {
 					MSG("All %s events are enabled in channel %s for loglevel %s",
-							opt_kernel ? "kernel" : "UST",
+							get_domain_str(dom.type),
 							print_channel_name(channel_name),
 							opt_loglevel);
 				} else {
 					MSG("All %s events are enabled in channel %s",
-							opt_kernel ? "kernel" : "UST",
+							get_domain_str(dom.type),
 							print_channel_name(channel_name));
 				}
 				break;
@@ -576,8 +583,18 @@ static int enable_events(char *session_name)
 			} else {
 				ev.loglevel = -1;
 			}
+		} else if (opt_jul) {
+			if (opt_event_type != LTTNG_EVENT_ALL &&
+					opt_event_type != LTTNG_EVENT_TRACEPOINT) {
+				ERR("Event type not supported for JUL domain.");
+				ret = CMD_UNSUPPORTED;
+				goto error;
+			}
+			ev.type = LTTNG_EVENT_TRACEPOINT;
+			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		} else {
-			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+			print_missing_domain();
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -604,7 +621,7 @@ static int enable_events(char *session_name)
 				warn = 1;
 			} else {
 				MSG("%s event %s created in channel %s",
-						opt_kernel ? "kernel": "UST", event_name,
+						get_domain_str(dom.type), event_name,
 						print_channel_name(channel_name));
 			}
 		}

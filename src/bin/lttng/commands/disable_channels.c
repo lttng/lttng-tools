@@ -93,7 +93,7 @@ static int disable_channels(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -116,7 +116,7 @@ static int disable_channels(char *session_name)
 			warn = 1;
 		} else {
 			MSG("%s channel %s disabled for session %s",
-					opt_kernel ? "Kernel" : "UST", channel_name, session_name);
+					get_domain_str(dom.type), channel_name, session_name);
 		}
 
 		/* Next channel */

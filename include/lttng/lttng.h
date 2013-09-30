@@ -47,18 +47,9 @@ extern "C" {
  * Domain types: the different possible tracers.
  */
 enum lttng_domain_type {
-	LTTNG_DOMAIN_KERNEL                   = 1,
-	LTTNG_DOMAIN_UST                      = 2,
-
-	/*
-	 * For now, the domains below are not implemented. However, we keep them
-	 * here in order to retain their enum values for future development. Note
-	 * that it is on the roadmap to implement them.
-	 *
-	LTTNG_DOMAIN_UST_EXEC_NAME            = 3,
-	LTTNG_DOMAIN_UST_PID                  = 4,
-	LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN  = 5,
-	*/
+	LTTNG_DOMAIN_KERNEL                   = 1,	/* Linux Kernel tracer. */
+	LTTNG_DOMAIN_UST                      = 2,	/* Global Userspace tracer. */
+	LTTNG_DOMAIN_JUL                      = 3,	/* Java Util Logging. */
 };
 
 /*

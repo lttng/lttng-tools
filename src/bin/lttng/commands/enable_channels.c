@@ -130,8 +130,8 @@ static void usage(FILE *ofp)
 			DEFAULT_UST_PID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
 			DEFAULT_METADATA_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
-	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
-	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
+	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u/-j only)\n");
+	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u/-j only)\n");
 	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
 	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
 	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes). 0 means unlimited.\n");
@@ -213,7 +213,7 @@ static int enable_channel(char *session_name)
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
 		}
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -269,6 +269,7 @@ static int enable_channel(char *session_name)
 			switch (-ret) {
 			case LTTNG_ERR_KERN_CHAN_EXIST:
 			case LTTNG_ERR_UST_CHAN_EXIST:
+			case LTTNG_ERR_CHAN_EXIST:
 				WARN("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
 				goto error;
@@ -280,8 +281,7 @@ static int enable_channel(char *session_name)
 			warn = 1;
 		} else {
 			MSG("%s channel %s enabled for session %s",
-					opt_kernel ? "Kernel" : "UST", channel_name,
-					session_name);
+					get_domain_str(dom.type), channel_name, session_name);
 		}
 
 		/* Next event */
