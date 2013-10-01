@@ -1022,6 +1022,19 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 				channel_name);
 		break;
 	}
+	case LTTNG_DOMAIN_JUL:
+	{
+		struct ltt_ust_session *usess = session->ust_session;
+
+		assert(usess);
+
+		ret = event_jul_disable(usess, event_name);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		break;
+	}
 #if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
@@ -1111,6 +1124,19 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 		}
 
 		DBG3("Disable all UST events in channel %s completed", channel_name);
+
+		break;
+	}
+	case LTTNG_DOMAIN_JUL:
+	{
+		struct ltt_ust_session *usess = session->ust_session;
+
+		assert(usess);
+
+		ret = event_jul_disable_all(usess);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
 
 		break;
 	}
@@ -1350,6 +1376,46 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		}
 		break;
 	}
+	case LTTNG_DOMAIN_JUL:
+	{
+		struct lttng_event uevent;
+		struct lttng_domain tmp_dom;
+		struct ltt_ust_session *usess = session->ust_session;
+
+		assert(usess);
+
+		/* Create the default JUL tracepoint. */
+		uevent.type = LTTNG_EVENT_TRACEPOINT;
+		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+		strncpy(uevent.name, DEFAULT_JUL_EVENT_NAME, sizeof(uevent.name));
+		uevent.name[sizeof(uevent.name) - 1] = '\0';
+
+		/*
+		 * The domain type is changed because we are about to enable the
+		 * default channel and event for the JUL domain that are hardcoded.
+		 * This happens in the UST domain.
+		 */
+		memcpy(&tmp_dom, domain, sizeof(tmp_dom));
+		tmp_dom.type = LTTNG_DOMAIN_UST;
+
+		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
+				&uevent, NULL, wpipe);
+		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
+			goto error;
+		}
+
+		/* The wild card * means that everything should be enabled. */
+		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
+			ret = event_jul_enable_all(usess);
+		} else {
+			ret = event_jul_enable(usess, event);
+		}
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		break;
+	}
 #if 0
 	case LTTNG_DOMAIN_UST_EXEC_NAME:
 	case LTTNG_DOMAIN_UST_PID:
@@ -1516,6 +1582,41 @@ int cmd_enable_event_all(struct ltt_session *session,
 		}
 
 		/* Manage return value */
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		break;
+	}
+	case LTTNG_DOMAIN_JUL:
+	{
+		struct lttng_event uevent;
+		struct lttng_domain tmp_dom;
+		struct ltt_ust_session *usess = session->ust_session;
+
+		assert(usess);
+
+		/* Create the default JUL tracepoint. */
+		uevent.type = LTTNG_EVENT_TRACEPOINT;
+		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+		strncpy(uevent.name, DEFAULT_JUL_EVENT_NAME, sizeof(uevent.name));
+		uevent.name[sizeof(uevent.name) - 1] = '\0';
+
+		/*
+		 * The domain type is changed because we are about to enable the
+		 * default channel and event for the JUL domain that are hardcoded.
+		 * This happens in the UST domain.
+		 */
+		memcpy(&tmp_dom, domain, sizeof(tmp_dom));
+		tmp_dom.type = LTTNG_DOMAIN_UST;
+
+		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
+				&uevent, NULL, wpipe);
+		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
+			goto error;
+		}
+
+		ret = event_jul_enable_all(usess);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}

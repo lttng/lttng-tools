@@ -21,6 +21,8 @@
 #include <stdint.h>
 
 #include <common/compat/uuid.h>
+
+#include "jul.h"
 #include "trace-ust.h"
 #include "ust-registry.h"
 
@@ -259,6 +261,13 @@ struct ust_app {
 	 * Hash table containing ust_app_channel indexed by channel objd.
 	 */
 	struct lttng_ht *ust_objd;
+	/*
+	 * If this application is of the JUL domain and this is non negative then a
+	 * lookup MUST be done to acquire a read side reference to the
+	 * corresponding JUL app object. If the lookup fails, this should be set to
+	 * a negative value indicating that the JUL application is gone.
+	 */
+	int jul_app_sock;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
@@ -320,6 +329,7 @@ void ust_app_destroy(struct ust_app *app);
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		struct snapshot_output *output, int wait, unsigned int nb_streams);
 unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess);
+struct ust_app *ust_app_find_by_sock(int sock);
 
 static inline
 int ust_app_supported(void)
@@ -539,6 +549,11 @@ static inline
 int ust_app_supported(void)
 {
 	return 0;
+}
+static inline
+struct ust_app *ust_app_find_by_sock(int sock)
+{
+	return NULL;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

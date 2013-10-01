@@ -2415,6 +2415,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		consumer = session->kernel_session->consumer;
 		dir_name = DEFAULT_KERNEL_TRACE_DIR;
 		break;
+	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
 		if (session->ust_session->consumer) {
@@ -2458,6 +2459,7 @@ static int create_ust_session(struct ltt_session *session,
 	assert(session->consumer);
 
 	switch (domain->type) {
+	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_UST:
 		break;
 	default:
@@ -2750,10 +2752,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 		break;
 	case LTTNG_DOMAIN_JUL:
-	{
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
-	}
 	case LTTNG_DOMAIN_UST:
 	{
 		if (!ust_app_supported()) {
@@ -4627,6 +4625,12 @@ int main(int argc, char **argv)
 	 * cleanup() can get called after that point.
 	 */
 	ust_app_ht_alloc();
+
+	/* Initialize JUL domain subsystem. */
+	if ((ret = jul_init()) < 0) {
+		/* ENOMEM at this point. */
+		goto error;
+	}
 
 	/* After this point, we can safely call cleanup() with "goto exit" */
 

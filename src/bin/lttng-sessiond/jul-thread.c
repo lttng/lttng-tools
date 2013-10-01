@@ -26,6 +26,8 @@
 #include "fd-limit.h"
 #include "jul-thread.h"
 #include "lttng-sessiond.h"
+#include "session.h"
+#include "utils.h"
 
 /*
  * Note that there is not port here. It's set after this URI is parsed so we
@@ -33,6 +35,79 @@
  * default listening address.
  */
 static const char *default_reg_uri = "tcp://localhost";
+
+/*
+ * Update JUL application using the given socket. This is done just after
+ * registration was successful.
+ *
+ * This is a quite heavy call in terms of locking since the session list lock
+ * AND session lock are acquired.
+ */
+static void update_jul_app(int sock)
+{
+	struct ltt_session *session, *stmp;
+	struct ltt_session_list *list;
+
+	list = session_get_list();
+	assert(list);
+
+	session_lock_list();
+	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
+		session_lock(session);
+		if (session->ust_session) {
+			jul_update(&session->ust_session->domain_jul, sock);
+		}
+		session_unlock(session);
+	}
+	session_unlock_list();
+}
+
+/*
+ * Destroy a JUL application by socket.
+ */
+static void destroy_jul_app(int sock)
+{
+	struct jul_app *app;
+
+	assert(sock >= 0);
+
+	/*
+	 * Not finding an application is a very important error that should NEVER
+	 * happen. The hash table deletion is ONLY done through this call even on
+	 * thread cleanup.
+	 */
+	rcu_read_lock();
+	app = jul_find_app_by_sock(sock);
+	assert(app);
+	rcu_read_unlock();
+
+	/* RCU read side lock is taken in this function call. */
+	jul_delete_app(app);
+
+	/* The application is freed in a RCU call but the socket is closed here. */
+	jul_destroy_app(app);
+}
+
+/*
+ * Cleanup remaining JUL apps in the hash table. This should only be called in
+ * the exit path of the thread.
+ */
+static void clean_jul_apps_ht(void)
+{
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+
+	DBG3("[jul-thread] Cleaning JUL apps ht");
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(jul_apps_ht_by_sock->ht, &iter.iter, node, node) {
+		struct jul_app *app;
+
+		app = caa_container_of(node, struct jul_app, node);
+		destroy_jul_app(app->sock->fd);
+	}
+	rcu_read_unlock();
+}
 
 /*
  * Create and init socket from uri.
@@ -101,6 +176,71 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 }
 
 /*
+ * Handle a new JUL registration using the reg socket. After that, a new JUL
+ * application is added to the global hash table and attach to an UST app
+ * object.
+ *
+ * Return the new FD created upon accept() on success or else a negative errno
+ * value.
+ */
+static int handle_registration(struct lttcomm_sock *reg_sock)
+{
+	int ret;
+	pid_t pid;
+	ssize_t size;
+	struct jul_app *app;
+	struct jul_register_msg msg;
+	struct lttcomm_sock *new_sock;
+
+	assert(reg_sock);
+
+	new_sock = reg_sock->ops->accept(reg_sock);
+	if (!new_sock) {
+		ret = -ENOTCONN;
+		goto error;
+	}
+
+	size = new_sock->ops->recvmsg(new_sock, &msg, sizeof(msg), 0);
+	if (size < sizeof(msg)) {
+		ret = -errno;
+		goto error_socket;
+	}
+	pid = be32toh(msg.pid);
+
+	DBG2("[jul-thread] New registration for pid %d on socket %d", pid,
+			new_sock->fd);
+
+	app = jul_create_app(pid, new_sock);
+	if (!app) {
+		ret = -ENOMEM;
+		goto error_socket;
+	}
+
+	/*
+	 * Add before assigning the socket value to the UST app so it can be found
+	 * concurrently.
+	 */
+	jul_add_app(app);
+
+	/*
+	 * Attach JUL application to a UST app object if one exists.
+	 *
+	 * FIXME: This implies that the UST app object exists and created before
+	 * JUL registration. Must confirm or else JUL app will leak until socket is
+	 * closed by the application.
+	 */
+	jul_attach_app(app);
+
+	return new_sock->fd;
+
+error_socket:
+	new_sock->ops->close(new_sock);
+	lttcomm_destroy_sock(new_sock);
+error:
+	return ret;
+}
+
+/*
  * This thread manage application notify communication.
  */
 void *jul_thread_manage_registration(void *data)
@@ -114,6 +254,9 @@ void *jul_thread_manage_registration(void *data)
 
 	rcu_register_thread();
 	rcu_thread_online();
+
+	/* JUL initialization call MUST be called before starting the thread. */
+	assert(jul_apps_ht_by_sock);
 
 	/* Create pollset with size 2, quit pipe and socket. */
 	ret = sessiond_set_thread_pollset(&events, 2);
@@ -150,6 +293,7 @@ restart:
 			goto error;
 		}
 		nb_fd = ret;
+		DBG3("[jul-thread] %d fd ready", nb_fd);
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -173,12 +317,34 @@ restart:
 					goto error;
 				}
 
-				/* FIXME: Nullify the JUL socket for the associated ust app. */
-			} else if (revents & (LPOLLIN | LPOLLPRI)) {
 				/*
-				 * FIXME: Handle JUL registration which must link an UST-app
-				 * and this JUL socket.
+				 * FIXME: Should we try to invalidate the JUL socket in the
+				 * associated ust app.
 				 */
+				destroy_jul_app(pollfd);
+			} else if (revents & (LPOLLIN)) {
+				int new_fd;
+
+				/* Pollin event of JUL app socket should NEVER happen. */
+				assert(pollfd == reg_sock->fd);
+
+				new_fd = handle_registration(reg_sock);
+				if (new_fd < 0) {
+					WARN("[jul-thread] JUL registration failed. Ignoring.");
+					/* Somehow the communication failed. Just continue. */
+					continue;
+				}
+
+				/* Only add poll error event to only detect shutdown. */
+				ret = lttng_poll_add(&events, new_fd,
+						LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+				if (ret < 0) {
+					destroy_jul_app(new_fd);
+					continue;
+				}
+
+				/* Update newly registered app. */
+				update_jul_app(new_fd);
 			} else {
 				ERR("Unknown poll events %u for sock %d", revents, pollfd);
 				continue;
@@ -187,12 +353,19 @@ restart:
 	}
 
 exit:
+	/* Whatever happens, try to delete it and exit. */
+	(void) lttng_poll_del(&events, reg_sock->fd);
 error:
 	destroy_tcp_socket(reg_sock);
 error_tcp_socket:
 	lttng_poll_clean(&events);
 error_poll_create:
 	DBG("[jul-thread] is cleaning up and stopping.");
+
+	if (jul_apps_ht_by_sock) {
+		clean_jul_apps_ht();
+		lttng_ht_destroy(jul_apps_ht_by_sock);
+	}
 
 	rcu_thread_offline();
 	rcu_unregister_thread();

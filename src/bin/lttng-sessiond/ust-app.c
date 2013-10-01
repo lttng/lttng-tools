@@ -957,8 +957,7 @@ error:
  * Find an ust_app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
-static
-struct ust_app *find_app_by_sock(int sock)
+struct ust_app *ust_app_find_by_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -4152,7 +4151,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 
 	rcu_read_lock();
 
-	app = find_app_by_sock(sock);
+	app = ust_app_find_by_sock(sock);
 	if (app == NULL) {
 		/*
 		 * Application can be unregistered before so this is possible hence

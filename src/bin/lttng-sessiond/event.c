@@ -607,3 +607,180 @@ error:
 	rcu_read_unlock();
 	return ret;
 }
+
+/*
+ * Enable all JUL event for a given UST session.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int event_jul_enable_all(struct ltt_ust_session *usess)
+{
+	int ret;
+	struct jul_event *jevent;
+	struct lttng_event event;
+	struct lttng_ht_iter iter;
+
+	assert(usess);
+
+	DBG("Event JUL enabling ALL events for session %" PRIu64, usess->id);
+
+	/* Create the * wildcard event name for the Java agent. */
+	memset(event.name, 0, sizeof(event.name));
+	strncpy(event.name, "*", sizeof(event.name));
+	event.name[sizeof(event.name) - 1] = '\0';
+
+	/* Enable event on JUL application through TCP socket. */
+	ret = event_jul_enable(usess, &event);
+	if (ret != LTTNG_OK) {
+		goto error;
+	}
+
+	/* Flag every event that they are now enabled. */
+	rcu_read_lock();
+	cds_lfht_for_each_entry(usess->domain_jul.events->ht, &iter.iter, jevent,
+			node.node) {
+		jevent->enabled = 1;
+	}
+	rcu_read_unlock();
+
+	ret = LTTNG_OK;
+
+error:
+	return ret;
+}
+
+/*
+ * Enable a single JUL event for a given UST session.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event)
+{
+	int ret, created = 0;
+	struct jul_event *jevent;
+
+	assert(usess);
+	assert(event);
+
+	DBG("Event JUL enabling %s for session %" PRIu64, event->name, usess->id);
+
+	jevent = jul_find_by_name(event->name, &usess->domain_jul);
+	if (!jevent) {
+		jevent = jul_create_event(event->name);
+		if (!jevent) {
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+		created = 1;
+	}
+
+	/* Already enabled? */
+	if (jevent->enabled) {
+		goto end;
+	}
+
+	ret = jul_enable_event(jevent);
+	if (ret != LTTNG_OK) {
+		goto error;
+	}
+
+	/* If the event was created prior to the enable, add it to the domain. */
+	if (created) {
+		jul_add_event(jevent, &usess->domain_jul);
+	}
+
+end:
+	return LTTNG_OK;
+
+error:
+	if (created) {
+		jul_destroy_event(jevent);
+	}
+	return ret;
+}
+
+/*
+ * Disable a single JUL event for a given UST session.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
+{
+	int ret;
+	struct jul_event *jevent;
+
+	assert(usess);
+	assert(event_name);
+
+	DBG("Event JUL disabling %s for session %" PRIu64, event_name, usess->id);
+
+	jevent = jul_find_by_name(event_name, &usess->domain_jul);
+	if (!jevent) {
+		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
+		goto error;
+	}
+
+	/* Already disabled? */
+	if (!jevent->enabled) {
+		goto end;
+	}
+
+	ret = jul_disable_event(jevent);
+	if (ret != LTTNG_OK) {
+		goto error;
+	}
+
+end:
+	return LTTNG_OK;
+
+error:
+	return ret;
+}
+/*
+ * Disable all JUL event for a given UST session.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int event_jul_disable_all(struct ltt_ust_session *usess)
+{
+	int ret, do_disable = 0;
+	struct jul_event *jevent;
+	struct lttng_ht_iter iter;
+
+	assert(usess);
+
+	/* Enable event on JUL application through TCP socket. */
+	ret = event_jul_disable(usess, "*");
+	if (ret != LTTNG_OK) {
+		if (ret == LTTNG_ERR_UST_EVENT_NOT_FOUND) {
+			/*
+			 * This means that no enable all was done before but still a user
+			 * could want to disable everything even though the * wild card
+			 * event does not exists.
+			 */
+			do_disable = 1;
+		} else {
+			goto error;
+		}
+	}
+
+	/* Flag every event that they are now enabled. */
+	rcu_read_lock();
+	cds_lfht_for_each_entry(usess->domain_jul.events->ht, &iter.iter, jevent,
+			node.node) {
+		if (jevent->enabled && do_disable) {
+			ret = event_jul_disable(usess, jevent->name);
+			if (ret != LTTNG_OK) {
+				rcu_read_unlock();
+				goto error;
+			}
+		}
+		jevent->enabled = 0;
+	}
+	rcu_read_unlock();
+
+	ret = LTTNG_OK;
+
+error:
+	return ret;
+}
