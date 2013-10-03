@@ -92,6 +92,13 @@ struct jul_event {
  */
 struct jul_domain {
 	/*
+	 * This indicates if that domain is being used meaning if at least one
+	 * event has been at some point in time added to it. This is used so when
+	 * listing domains for a session, we can tell or not if the JUL is actually
+	 * enabled.
+	 */
+	unsigned int being_used:1;
+	/*
 	 * Contains JUL event indexed by name.
 	 */
 	struct lttng_ht *events;
@@ -124,5 +131,6 @@ void jul_destroy_app(struct jul_app *app);
 int jul_enable_event(struct jul_event *event);
 int jul_disable_event(struct jul_event *event);
 void jul_update(struct jul_domain *domain, int sock);
+int jul_list_events(struct lttng_event **events);
 
 #endif /* _JUL_H */

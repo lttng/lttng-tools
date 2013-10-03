@@ -133,6 +133,92 @@ error:
 	return ret;
 }
 
+
+/*
+ * Internal call to list events on a given app. Populate events.
+ *
+ * Return number of element in the list or else a negative LTTNG_ERR* code.
+ */
+static ssize_t list_events(struct jul_app *app, struct lttng_event **events)
+{
+	int ret, i, len = 0, offset = 0;
+	uint32_t nb_event;
+	size_t data_size;
+	struct lttng_event *tmp_events = NULL;
+	struct lttcomm_jul_list_reply *reply = NULL;
+	struct lttcomm_jul_list_reply_hdr reply_hdr;
+
+	assert(app);
+	assert(app->sock);
+	assert(events);
+
+	DBG2("JUL listing events for app pid: %d and socket %d", app->pid,
+			app->sock->fd);
+
+	ret = send_header(app->sock, 0, JUL_CMD_LIST, 0);
+	if (ret < 0) {
+		goto error_io;
+	}
+
+	/* Get list header so we know how much we'll receive. */
+	ret = recv_reply(app->sock, &reply_hdr, sizeof(reply_hdr));
+	if (ret < 0) {
+		goto error_io;
+	}
+
+	switch (be32toh(reply_hdr.ret_code)) {
+	case JUL_RET_CODE_SUCCESS:
+		data_size = be32toh(reply_hdr.data_size) + sizeof(*reply);
+		break;
+	default:
+		ERR("Java agent returned an unknown code: %" PRIu32,
+				be32toh(reply_hdr.ret_code));
+		ret = LTTNG_ERR_FATAL;
+		goto error;
+	}
+
+	reply = zmalloc(data_size);
+	if (!reply) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	/* Get the list with the appropriate data size. */
+	ret = recv_reply(app->sock, reply, data_size);
+	if (ret < 0) {
+		goto error_io;
+	}
+
+	nb_event = be32toh(reply->nb_event);
+	tmp_events = zmalloc(sizeof(*tmp_events) * nb_event);
+	if (!tmp_events) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	for (i = 0; i < nb_event; i++) {
+		offset += len;
+		strncpy(tmp_events[i].name, reply->payload + offset,
+				sizeof(tmp_events[i].name));
+		tmp_events[i].pid = app->pid;
+		tmp_events[i].enabled = -1;
+		len = strlen(reply->payload + offset) + 1;
+	}
+
+	*events = tmp_events;
+
+	free(reply);
+	return nb_event;
+
+error_io:
+	ret = LTTNG_ERR_UST_LIST_FAIL;
+error:
+	free(reply);
+	free(tmp_events);
+	return -ret;
+
+}
+
 /*
  * Internal enable JUL event call on a JUL application. This function
  * communicates with the Java agent to enable a given event (Logger name).
@@ -274,9 +360,9 @@ int jul_enable_event(struct jul_event *event)
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
-		event->enabled = 1;
 	}
 
+	event->enabled = 1;
 	ret = LTTNG_OK;
 
 error:
@@ -307,9 +393,9 @@ int jul_disable_event(struct jul_event *event)
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
-		event->enabled = 0;
 	}
 
+	event->enabled = 0;
 	ret = LTTNG_OK;
 
 error:
@@ -608,6 +694,7 @@ void jul_add_event(struct jul_event *event, struct jul_domain *dom)
 	rcu_read_lock();
 	lttng_ht_add_unique_str(dom->events, &event->node);
 	rcu_read_unlock();
+	dom->being_used = 1;
 }
 
 /*

@@ -183,6 +183,55 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 }
 
 /*
+ * Create a list of JUL domain events.
+ *
+ * Return number of events in list on success or else a negative value.
+ */
+static int list_lttng_jul_events(struct jul_domain *dom,
+		struct lttng_event **events)
+{
+	int i = 0, ret = 0;
+	unsigned int nb_event = 0;
+	struct jul_event *event;
+	struct lttng_event *tmp_events;
+	struct lttng_ht_iter iter;
+
+	assert(dom);
+	assert(events);
+
+	DBG3("Listing JUL events");
+
+	nb_event = lttng_ht_get_count(dom->events);
+	if (nb_event == 0) {
+		ret = nb_event;
+		goto error;
+	}
+
+	tmp_events = zmalloc(nb_event * sizeof(*tmp_events));
+	if (!tmp_events) {
+		PERROR("zmalloc JUL events session");
+		ret = -LTTNG_ERR_FATAL;
+		goto error;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(dom->events->ht, &iter.iter, event, node.node) {
+		strncpy(tmp_events[i].name, event->name, sizeof(tmp_events[i].name));
+		tmp_events[i].name[sizeof(tmp_events[i].name) - 1] = '\0';
+		tmp_events[i].enabled = event->enabled;
+		i++;
+	}
+	rcu_read_unlock();
+
+	*events = tmp_events;
+	ret = nb_event;
+
+error:
+	assert(nb_event == i);
+	return ret;
+}
+
+/*
  * Create a list of ust global domain events.
  */
 static int list_lttng_ust_global_events(char *channel_name,
@@ -1664,6 +1713,13 @@ ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 			goto error;
 		}
 		break;
+	case LTTNG_DOMAIN_JUL:
+		nb_events = jul_list_events(events);
+		if (nb_events < 0) {
+			ret = LTTNG_ERR_UST_LIST_FAIL;
+			goto error;
+		}
+		break;
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
@@ -2212,6 +2268,10 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 	if (session->ust_session != NULL) {
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
+
+		if (session->ust_session->domain_jul.being_used) {
+			nb_dom++;
+		}
 	}
 
 	*domains = zmalloc(nb_dom * sizeof(struct lttng_domain));
@@ -2229,6 +2289,12 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		(*domains)[index].type = LTTNG_DOMAIN_UST;
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
+
+		if (session->ust_session->domain_jul.being_used) {
+			(*domains)[index].type = LTTNG_DOMAIN_JUL;
+			(*domains)[index].buf_type = session->ust_session->buffer_type;
+			index++;
+		}
 	}
 
 	return nb_dom;
@@ -2319,6 +2385,12 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 		}
 		break;
 	}
+	case LTTNG_DOMAIN_JUL:
+		if (session->ust_session) {
+			nb_event = list_lttng_jul_events(
+					&session->ust_session->domain_jul, events);
+		}
+		break;
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
