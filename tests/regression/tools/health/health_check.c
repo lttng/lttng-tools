@@ -17,8 +17,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <lttng/health.h>
+
+static const char *relayd_path;
 
 static
 int check_component(struct lttng_health *lh, const char *component_name)
@@ -106,14 +109,48 @@ int check_consumerd(enum lttng_health_consumerd hc)
 	return status;
 }
 
+static
+int check_relayd(const char *path)
+{
+	struct lttng_health *lh;
+	int status;
+
+	lh = lttng_health_create_relayd(path);
+	if (!lh) {
+		perror("lttng_health_create_relayd");
+		return -1;
+	}
+
+	status = check_component(lh, "relayd");
+
+	lttng_health_destroy(lh);
+
+	return status;
+}
 
 int main(int argc, char *argv[])
 {
 	int status = 0, i;
 
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--relayd-path")) {
+			if (i >= argc - 1) {
+				fprintf(stderr, "Missing relayd path\n");
+				exit(EXIT_FAILURE);
+			}
+			relayd_path = argv[++i];
+		} else {
+			fprintf(stderr, "Unknown option \"%s\". Try --relayd-path PATH.\n", argv[i]);
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	status |= check_sessiond();
 	for (i = 0; i < NR_LTTNG_HEALTH_CONSUMERD; i++) {
 		status |= check_consumerd(i);
+	}
+	if (relayd_path) {
+		status |= check_relayd(relayd_path);
 	}
 	if (!status) {
 		exit(EXIT_SUCCESS);
