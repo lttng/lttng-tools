@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <regex.h>
+#include <grp.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -693,4 +694,25 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	}
 
 	return ret;
+}
+
+/*
+ * Return the group ID matching name, else 0 if it cannot be found.
+ */
+LTTNG_HIDDEN
+gid_t utils_get_group_id(const char *name)
+{
+	struct group *grp;
+
+	grp = getgrnam(name);
+	if (!grp) {
+		static volatile int warn_once;
+
+		if (!warn_once) {
+			WARN("No tracing group detected");
+			warn_once = 1;
+		}
+		return 0;
+	}
+	return grp->gr_gid;
 }

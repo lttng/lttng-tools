@@ -26,6 +26,8 @@ enum lttng_health_consumerd {
 	LTTNG_HEALTH_CONSUMERD_UST_32,
 	LTTNG_HEALTH_CONSUMERD_UST_64,
 	LTTNG_HEALTH_CONSUMERD_KERNEL,
+
+	NR_LTTNG_HEALTH_CONSUMERD,
 };
 
 /**
@@ -104,7 +106,7 @@ int lttng_health_get_nr_threads(const struct lttng_health *health);
  */
 const struct lttng_health_thread *
 	lttng_health_get_thread(const struct lttng_health *health,
-		int nth_thread);
+		unsigned int nth_thread);
 
 /**
  * lttng_health_thread_state - Get thread health state

@@ -21,7 +21,7 @@
 
 #include <lttng/health-internal.h>
 
-enum health_type {
+enum health_type_relayd {
 	HEALTH_RELAYD_TYPE_DISPATCHER		= 0,
 	HEALTH_RELAYD_TYPE_WORKER		= 1,
 	HEALTH_RELAYD_TYPE_LISTENER		= 2,

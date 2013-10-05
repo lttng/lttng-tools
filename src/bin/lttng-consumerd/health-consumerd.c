@@ -39,6 +39,7 @@
 #include <config.h>
 #include <urcu/compiler.h>
 #include <ulimit.h>
+#include <inttypes.h>
 
 #include <common/defaults.h>
 #include <common/common.h>
@@ -175,6 +176,7 @@ void *thread_manage_health(void *data)
 	struct lttng_poll_event events;
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
+	int is_root;
 
 	DBG("[thread] Manage health check started");
 
@@ -191,6 +193,28 @@ void *thread_manage_health(void *data)
 		ERR("Unable to create health check Unix socket");
 		ret = -1;
 		goto error;
+	}
+
+	is_root = !getuid();
+	if (is_root) {
+		/* lttng health client socket path permissions */
+		ret = chown(health_unix_sock_path, 0,
+				utils_get_group_id(tracing_group_name));
+		if (ret < 0) {
+			ERR("Unable to set group on %s", health_unix_sock_path);
+			PERROR("chown");
+			ret = -1;
+			goto error;
+		}
+
+		ret = chmod(health_unix_sock_path,
+				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+		if (ret < 0) {
+			ERR("Unable to set permissions on %s", health_unix_sock_path);
+			PERROR("chmod");
+			ret = -1;
+			goto error;
+		}
 	}
 
 	/*
@@ -288,47 +312,18 @@ restart:
 
 		assert(msg.cmd == HEALTH_CMD_CHECK);
 
-		switch (msg.component) {
-		case LTTNG_HEALTH_CONSUMERD_CHANNEL:
-			reply.ret_code = health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_CHANNEL);
-			break;
-		case LTTNG_HEALTH_CONSUMERD_METADATA:
-			reply.ret_code = health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA);
-			break;
-		case LTTNG_HEALTH_CONSUMERD_DATA:
-			reply.ret_code = health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_DATA);
-			break;
-		case LTTNG_HEALTH_CONSUMERD_SESSIOND:
-			reply.ret_code = health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_SESSIOND);
-			break;
-		case LTTNG_HEALTH_CONSUMERD_METADATA_TIMER:
-			reply.ret_code = health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA_TIMER);
-			break;
-
-		case LTTNG_HEALTH_CONSUMERD_ALL:
-			reply.ret_code =
-				health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_CHANNEL) &&
-				health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA) &&
-				health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_DATA) &&
-				health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_SESSIOND) &&
-				health_check_state(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA_TIMER);
-			break;
-		default:
-			reply.ret_code = LTTNG_ERR_UND;
-			break;
+		reply.ret_code = 0;
+		for (i = 0; i < NR_HEALTH_CONSUMERD_TYPES; i++) {
+			/*
+			 * health_check_state return 0 if thread is in
+			 * error.
+			 */
+			if (!health_check_state(health_consumerd, i)) {
+				reply.ret_code |= 1ULL << i;
+			}
 		}
 
-		/*
-		 * Flip ret value since 0 is a success and 1 indicates a bad health for
-		 * the client where in the sessiond it is the opposite. Again, this is
-		 * just to make things easier for us poor developer which enjoy a lot
-		 * lazyness.
-		 */
-		if (reply.ret_code == 0 || reply.ret_code == 1) {
-			reply.ret_code = !reply.ret_code;
-		}
-
-		DBG2("Health check return value %d", reply.ret_code);
+		DBG2("Health check return value %" PRIx64, reply.ret_code);
 
 		ret = send_unix_sock(new_sock, (void *) &reply, sizeof(reply));
 		if (ret < 0) {

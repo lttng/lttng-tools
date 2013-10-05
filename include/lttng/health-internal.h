@@ -26,6 +26,7 @@
 #include <urcu/uatomic.h>
 #include <urcu/list.h>
 #include <lttng/health.h>
+#include <common/macros.h>
 
 /*
  * These are the value added to the current state depending of the position in
@@ -65,20 +66,12 @@ enum health_cmd {
 };
 
 struct health_comm_msg {
-	uint32_t component;
 	uint32_t cmd;		/* enum health_cmd */
 } LTTNG_PACKED;
 
 struct health_comm_reply {
-	uint32_t ret_code;
+	uint64_t ret_code;	/* bitmask of threads in bad health */
 } LTTNG_PACKED;
-
-/*
- * Status returned to lttng clients.
- */
-struct lttng_health_status {
-	uint64_t error_threads_bitmask;
-};
 
 /* Declare TLS health state. */
 extern DECLARE_URCU_TLS(struct health_state, health_state);

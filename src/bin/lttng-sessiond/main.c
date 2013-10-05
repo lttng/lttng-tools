@@ -66,11 +66,8 @@
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
-/* Const values */
-const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
-
 const char *progname;
-const char *opt_tracing_group;
+static const char *tracing_group_name = DEFAULT_TRACING_GROUP;
 static const char *opt_pidfile;
 static int opt_sig_parent;
 static int opt_verbose_consumer;
@@ -323,25 +320,6 @@ int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 	}
 
 	return 0;
-}
-
-/*
- * Return group ID of the tracing group or -1 if not found.
- */
-static gid_t allowed_group(void)
-{
-	struct group *grp;
-
-	if (opt_tracing_group) {
-		grp = getgrnam(opt_tracing_group);
-	} else {
-		grp = getgrnam(default_tracing_group);
-	}
-	if (!grp) {
-		return -1;
-	} else {
-		return grp->gr_gid;
-	}
 }
 
 /*
@@ -758,7 +736,7 @@ static void *thread_manage_kernel(void *data)
 
 	DBG("[thread] Thread manage kernel started");
 
-	health_register(health_sessiond, HEALTH_TYPE_KERNEL);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_KERNEL);
 
 	/*
 	 * This first step of the while is to clean this structure which could free
@@ -924,7 +902,7 @@ static void *thread_manage_consumer(void *data)
 
 	DBG("[thread] Manage consumer started");
 
-	health_register(health_sessiond, HEALTH_TYPE_CONSUMER);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CONSUMER);
 
 	health_code_update();
 
@@ -1223,7 +1201,7 @@ static void *thread_manage_apps(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(health_sessiond, HEALTH_TYPE_APP_MANAGE);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE);
 
 	if (testpoint(thread_manage_apps)) {
 		goto error_testpoint;
@@ -1515,7 +1493,7 @@ static void *thread_dispatch_ust_registration(void *data)
 		.count = 0,
 	};
 
-	health_register(health_sessiond, HEALTH_TYPE_APP_REG_DISPATCH);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
 
 	health_code_update();
 
@@ -1746,7 +1724,7 @@ static void *thread_registration_apps(void *data)
 
 	DBG("[thread] Manage application registration started");
 
-	health_register(health_sessiond, HEALTH_TYPE_APP_REG);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
 
 	if (testpoint(thread_registration_apps)) {
 		goto error_testpoint;
@@ -2127,6 +2105,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				"lttng-consumerd", verbosity, "-k",
 				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+				"--group", tracing_group_name,
 				NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
@@ -2165,6 +2144,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			ret = execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					"--group", tracing_group_name,
 					NULL);
 			if (consumerd64_libdir[0] != '\0') {
 				free(tmpnew);
@@ -2210,6 +2190,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			ret = execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					"--group", tracing_group_name,
 					NULL);
 			if (consumerd32_libdir[0] != '\0') {
 				free(tmpnew);
@@ -2292,21 +2273,6 @@ error:
 			PERROR("close consumer data error socket");
 		}
 	}
-	return ret;
-}
-
-/*
- * Compute health status of each consumer. If one of them is zero (bad
- * state), we return 0.
- */
-static int check_consumer_health(void)
-{
-	int ret;
-
-	ret = health_check_state(health_sessiond, HEALTH_TYPE_CONSUMER);
-
-	DBG3("Health consumer check %d", ret);
-
 	return ret;
 }
 
@@ -3475,6 +3441,27 @@ static void *thread_manage_health(void *data)
 		goto error;
 	}
 
+	if (is_root) {
+		/* lttng health client socket path permissions */
+		ret = chown(health_unix_sock_path, 0,
+				utils_get_group_id(tracing_group_name));
+		if (ret < 0) {
+			ERR("Unable to set group on %s", health_unix_sock_path);
+			PERROR("chown");
+			ret = -1;
+			goto error;
+		}
+
+		ret = chmod(health_unix_sock_path,
+				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+		if (ret < 0) {
+			ERR("Unable to set permissions on %s", health_unix_sock_path);
+			PERROR("chmod");
+			ret = -1;
+			goto error;
+		}
+	}
+
 	/*
 	 * Set the CLOEXEC flag. Return code is useless because either way, the
 	 * show must go on.
@@ -3565,58 +3552,18 @@ restart:
 
 		rcu_thread_online();
 
-		switch (msg.component) {
-		case LTTNG_HEALTH_CMD:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_CMD);
-			break;
-		case LTTNG_HEALTH_APP_MANAGE:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE);
-			break;
-		case LTTNG_HEALTH_APP_REG:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_REG);
-			break;
-		case LTTNG_HEALTH_KERNEL:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_KERNEL);
-			break;
-		case LTTNG_HEALTH_CONSUMER:
-			reply.ret_code = check_consumer_health();
-			break;
-		case LTTNG_HEALTH_HT_CLEANUP:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_HT_CLEANUP);
-			break;
-		case LTTNG_HEALTH_APP_MANAGE_NOTIFY:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE_NOTIFY);
-			break;
-		case LTTNG_HEALTH_APP_REG_DISPATCH:
-			reply.ret_code = health_check_state(health_sessiond, HEALTH_TYPE_APP_REG_DISPATCH);
-			break;
-		case LTTNG_HEALTH_ALL:
-			reply.ret_code =
-				health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE) &&
-				health_check_state(health_sessiond, HEALTH_TYPE_APP_REG) &&
-				health_check_state(health_sessiond, HEALTH_TYPE_CMD) &&
-				health_check_state(health_sessiond, HEALTH_TYPE_KERNEL) &&
-				check_consumer_health() &&
-				health_check_state(health_sessiond, HEALTH_TYPE_HT_CLEANUP) &&
-				health_check_state(health_sessiond, HEALTH_TYPE_APP_MANAGE_NOTIFY) &&
-				health_check_state(health_sessiond, HEALTH_TYPE_APP_REG_DISPATCH);
-			break;
-		default:
-			reply.ret_code = LTTNG_ERR_UND;
-			break;
+		reply.ret_code = 0;
+		for (i = 0; i < NR_HEALTH_SESSIOND_TYPES; i++) {
+			/*
+			 * health_check_state returns 0 if health is
+			 * bad.
+			 */
+			if (!health_check_state(health_sessiond, i)) {
+				reply.ret_code |= 1ULL << i;
+			}
 		}
 
-		/*
-		 * Flip ret value since 0 is a success and 1 indicates a bad health for
-		 * the client where in the sessiond it is the opposite. Again, this is
-		 * just to make things easier for us poor developer which enjoy a lot
-		 * lazyness.
-		 */
-		if (reply.ret_code == 0 || reply.ret_code == 1) {
-			reply.ret_code = !reply.ret_code;
-		}
-
-		DBG2("Health check return value %d", reply.ret_code);
+		DBG2("Health check return value %" PRIx64, reply.ret_code);
 
 		ret = send_unix_sock(new_sock, (void *) &reply, sizeof(reply));
 		if (ret < 0) {
@@ -3667,7 +3614,7 @@ static void *thread_manage_clients(void *data)
 
 	rcu_register_thread();
 
-	health_register(health_sessiond, HEALTH_TYPE_CMD);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CMD);
 
 	if (testpoint(thread_manage_clients)) {
 		goto error_testpoint;
@@ -3988,7 +3935,7 @@ static int parse_args(int argc, char **argv)
 			opt_daemon = 1;
 			break;
 		case 'g':
-			opt_tracing_group = optarg;
+			tracing_group_name = optarg;
 			break;
 		case 'h':
 			usage();
@@ -4149,14 +4096,7 @@ static int set_permissions(char *rundir)
 	int ret;
 	gid_t gid;
 
-	ret = allowed_group();
-	if (ret < 0) {
-		WARN("No tracing group detected");
-		/* Setting gid to 0 if no tracing group is found */
-		gid = 0;
-	} else {
-		gid = ret;
-	}
+	gid = utils_get_group_id(tracing_group_name);
 
 	/* Set lttng run dir */
 	ret = chown(rundir, 0, gid);
@@ -4165,8 +4105,12 @@ static int set_permissions(char *rundir)
 		PERROR("chown");
 	}
 
-	/* Ensure all applications and tracing group can search the run dir */
-	ret = chmod(rundir, S_IRWXU | S_IXGRP | S_IXOTH);
+	/*
+	 * Ensure all applications and tracing group can search the run
+	 * dir. Allow everyone to read the directory, since it does not
+	 * buy us anything to hide its content.
+	 */
+	ret = chmod(rundir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0) {
 		ERR("Unable to set permissions on %s", rundir);
 		PERROR("chmod");
@@ -4180,21 +4124,21 @@ static int set_permissions(char *rundir)
 	}
 
 	/* kconsumer error socket path */
-	ret = chown(kconsumer_data.err_unix_sock_path, 0, gid);
+	ret = chown(kconsumer_data.err_unix_sock_path, 0, 0);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", kconsumer_data.err_unix_sock_path);
 		PERROR("chown");
 	}
 
 	/* 64-bit ustconsumer error socket path */
-	ret = chown(ustconsumer64_data.err_unix_sock_path, 0, gid);
+	ret = chown(ustconsumer64_data.err_unix_sock_path, 0, 0);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", ustconsumer64_data.err_unix_sock_path);
 		PERROR("chown");
 	}
 
 	/* 32-bit ustconsumer compat32 error socket path */
-	ret = chown(ustconsumer32_data.err_unix_sock_path, 0, gid);
+	ret = chown(ustconsumer32_data.err_unix_sock_path, 0, 0);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", ustconsumer32_data.err_unix_sock_path);
 		PERROR("chown");
@@ -4238,7 +4182,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 	int ret;
 	char path[PATH_MAX];
 
-    switch (consumer_data->type) {
+	switch (consumer_data->type) {
 	case LTTNG_CONSUMER_KERNEL:
 		snprintf(path, PATH_MAX, DEFAULT_KCONSUMERD_PATH, rundir);
 		break;
@@ -4256,7 +4200,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 
 	DBG2("Creating consumer directory: %s", path);
 
-	ret = mkdir(path, S_IRWXU);
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			PERROR("mkdir");
@@ -4264,6 +4208,14 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 			goto error;
 		}
 		ret = -1;
+	}
+	if (is_root) {
+		ret = chown(path, 0, utils_get_group_id(tracing_group_name));
+		if (ret < 0) {
+			ERR("Unable to set group on %s", path);
+			PERROR("chown");
+			goto error;
+		}
 	}
 
 	/* Create the kconsumerd error unix socket */
@@ -4722,7 +4674,7 @@ int main(int argc, char **argv)
 	 * Initialize the health check subsystem. This call should set the
 	 * appropriate time values.
 	 */
-	health_sessiond = health_app_create(HEALTH_NUM_TYPE);
+	health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
 	if (!health_sessiond) {
 		PERROR("health_app_create error");
 		goto exit_health_sessiond_cleanup;

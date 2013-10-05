@@ -77,6 +77,8 @@ static struct lttng_consumer_local_data *ctx;
 /* Consumerd health monitoring */
 struct health_app *health_consumerd;
 
+const char *tracing_group_name = DEFAULT_TRACING_GROUP;
+
 enum lttng_consumer_type lttng_consumer_get_type(void)
 {
 	if (!ctx) {
@@ -150,9 +152,9 @@ static void usage(FILE *fp)
 	fprintf(fp, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(fp, "  -h, --help                         "
 			"Display this usage.\n");
-	fprintf(fp, "  -c, --consumerd-cmd-sock PATH     "
+	fprintf(fp, "  -c, --consumerd-cmd-sock PATH      "
 			"Specify path for the command socket\n");
-	fprintf(fp, "  -e, --consumerd-err-sock PATH     "
+	fprintf(fp, "  -e, --consumerd-err-sock PATH      "
 			"Specify path for the error socket\n");
 	fprintf(fp, "  -d, --daemonize                    "
 			"Start as a daemon.\n");
@@ -162,6 +164,8 @@ static void usage(FILE *fp)
 			"Verbose mode. Activate DBG() macro.\n");
 	fprintf(fp, "  -V, --version                      "
 			"Show version number.\n");
+	fprintf(fp, "  -g, --group NAME                   "
+			"Specify the tracing group name. (default: tracing)\n");
 	fprintf(fp, "  -k, --kernel                       "
 			"Consumer kernel buffers (default).\n");
 	fprintf(fp, "  -u, --ust                          "
@@ -185,6 +189,7 @@ static void parse_args(int argc, char **argv)
 		{ "consumerd-cmd-sock", 1, 0, 'c' },
 		{ "consumerd-err-sock", 1, 0, 'e' },
 		{ "daemonize", 0, 0, 'd' },
+		{ "group", 1, 0, 'g' },
 		{ "help", 0, 0, 'h' },
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
@@ -198,7 +203,7 @@ static void parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVku" "c:e:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqvVku" "c:e:g:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -218,6 +223,9 @@ static void parse_args(int argc, char **argv)
 			break;
 		case 'd':
 			opt_daemon = 1;
+			break;
+		case 'g':
+			tracing_group_name = optarg;
 			break;
 		case 'h':
 			usage(stdout);

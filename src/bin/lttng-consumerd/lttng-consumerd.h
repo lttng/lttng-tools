@@ -19,6 +19,8 @@
 #ifndef _LTTNG_CONSUMERD_H
 #define _LTTNG_CONSUMERD_H
 
+const char *tracing_group_name;
+
 enum lttng_consumer_type lttng_consumer_get_type(void);
 
 #endif /* _LTTNG_CONSUMERD_H */

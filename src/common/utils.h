@@ -44,5 +44,6 @@ int utils_parse_size_suffix(char *str, uint64_t *size);
 int utils_get_count_order_u32(uint32_t x);
 char *utils_get_home_dir(void);
 size_t utils_get_current_time_str(const char *format, char *dst, size_t len);
+gid_t utils_get_group_id(const char *name);
 
 #endif /* _COMMON_UTILS_H */

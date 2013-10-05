@@ -60,7 +60,6 @@ do {								\
 /* Socket to session daemon for communication */
 static int sessiond_socket;
 static char sessiond_sock_path[PATH_MAX];
-static char health_sock_path[PATH_MAX];
 
 /* Variables */
 static char *tracing_group;
@@ -198,12 +197,14 @@ end:
  *
  *  If yes return 1, else return -1.
  */
-static int check_tracing_group(const char *grp_name)
+LTTNG_HIDDEN
+int lttng_check_tracing_group(void)
 {
 	struct group *grp_tracing;	/* no free(). See getgrnam(3) */
 	gid_t *grp_list;
 	int grp_list_size, grp_id, i;
 	int ret = -1;
+	const char *grp_name = tracing_group;
 
 	/* Get GID of group 'tracing' */
 	grp_tracing = getgrnam(grp_name);
@@ -294,7 +295,7 @@ static int set_session_daemon_path(void)
 
 	if (uid != 0) {
 		/* Are we in the tracing group ? */
-		in_tgroup = check_tracing_group(tracing_group);
+		in_tgroup = lttng_check_tracing_group();
 	}
 
 	if ((uid == 0) || in_tgroup) {
@@ -1363,96 +1364,6 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 }
 
 /*
- * Set health socket path by putting it in the global health_sock_path
- * variable.
- *
- * Returns 0 on success or -ENOMEM.
- */
-static int set_health_socket_path(void)
-{
-	uid_t uid;
-	const char *home;
-	int ret;
-
-	uid = getuid();
-
-	if (uid == 0 || check_tracing_group(tracing_group)) {
-		lttng_ctl_copy_string(health_sock_path,
-				DEFAULT_GLOBAL_HEALTH_UNIX_SOCK, sizeof(health_sock_path));
-		return 0;
-	}
-
-	/*
-	 * With GNU C <  2.1, snprintf returns -1 if the target buffer
-	 * is too small; With GNU C >= 2.1, snprintf returns the
-	 * required size (excluding closing null).
-	 */
-	home = utils_get_home_dir();
-	if (home == NULL) {
-		/* Fallback in /tmp */
-		home = "/tmp";
-	}
-
-	ret = snprintf(health_sock_path, sizeof(health_sock_path),
-			DEFAULT_HOME_HEALTH_UNIX_SOCK, home);
-	if ((ret < 0) || (ret >= sizeof(health_sock_path))) {
-		return -ENOMEM;
-	}
-
-	return 0;
-}
-
-/*
- * Check session daemon health for a specific health component.
- *
- * Return 0 if health is OK or else 1 if BAD.
- *
- * Any other negative value is a lttng error code which can be translated with
- * lttng_strerror().
- */
-int lttng_health_check(enum lttng_health_component c)
-{
-	int sock, ret;
-	struct health_comm_msg msg;
-	struct health_comm_reply reply;
-
-	/* Connect to the sesssion daemon */
-	sock = lttcomm_connect_unix_sock(health_sock_path);
-	if (sock < 0) {
-		ret = -LTTNG_ERR_NO_SESSIOND;
-		goto error;
-	}
-
-	msg.cmd = HEALTH_CMD_CHECK;
-	msg.component = c;
-
-	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));
-	if (ret < 0) {
-		ret = -LTTNG_ERR_FATAL;
-		goto close_error;
-	}
-
-	ret = lttcomm_recv_unix_sock(sock, (void *)&reply, sizeof(reply));
-	if (ret < 0) {
-		ret = -LTTNG_ERR_FATAL;
-		goto close_error;
-	}
-
-	ret = reply.ret_code;
-
-close_error:
-	{
-		int closeret;
-
-		closeret = close(sock);
-		assert(!closeret);
-	}
-
-error:
-	return ret;
-}
-
-/*
  * This is an extension of create session that is ONLY and SHOULD only be used
  * by the lttng command line program. It exists to avoid using URI parsing in
  * the lttng client.
@@ -1641,10 +1552,6 @@ static void __attribute__((constructor)) init()
 {
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
-	/* Set socket for health check */
-	if (set_health_socket_path()) {
-		abort();
-	}
 }
 
 /*

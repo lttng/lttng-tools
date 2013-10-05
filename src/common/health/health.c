@@ -81,7 +81,7 @@ struct health_app *health_app_create(int nr_types)
 	if (!ha) {
 		return NULL;
 	}
-	ha->flags = zmalloc(sizeof(*ha->flags));
+	ha->flags = zmalloc(sizeof(*ha->flags) * nr_types);
 	if (!ha->flags) {
 		goto error_flags;
 	}

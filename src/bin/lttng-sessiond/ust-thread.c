@@ -39,7 +39,8 @@ void *ust_thread_manage_notify(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(health_sessiond, HEALTH_TYPE_APP_MANAGE_NOTIFY);
+	health_register(health_sessiond,
+		HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY);
 
 	health_code_update();
 

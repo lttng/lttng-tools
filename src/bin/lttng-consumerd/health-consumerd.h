@@ -21,7 +21,7 @@
 
 #include <lttng/health-internal.h>
 
-enum health_type {
+enum health_type_consumerd {
 	HEALTH_CONSUMERD_TYPE_CHANNEL		= 0,
 	HEALTH_CONSUMERD_TYPE_METADATA		= 1,
 	HEALTH_CONSUMERD_TYPE_DATA		= 2,

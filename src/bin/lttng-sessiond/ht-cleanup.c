@@ -36,7 +36,7 @@ void *thread_ht_cleanup(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(health_sessiond, HEALTH_TYPE_HT_CLEANUP);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_HT_CLEANUP);
 
 	health_code_update();
 
