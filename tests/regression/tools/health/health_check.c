@@ -24,12 +24,16 @@
 static const char *relayd_path;
 
 static
-int check_component(struct lttng_health *lh, const char *component_name)
+int check_component(struct lttng_health *lh, const char *component_name,
+		int ok_if_not_running)
 {
 	const struct lttng_health_thread *thread;
 	int nr_threads, i, status;
 
 	if (lttng_health_query(lh)) {
+		if (ok_if_not_running) {
+			return 0;
+		}
 		fprintf(stderr, "Error querying %s health\n",
 			component_name);
 		return -1;
@@ -78,7 +82,7 @@ int check_sessiond(void)
 		return -1;
 	}
 
-	status = check_component(lh, "sessiond");
+	status = check_component(lh, "sessiond", 0);
 
 	lttng_health_destroy(lh);
 
@@ -102,7 +106,7 @@ int check_consumerd(enum lttng_health_consumerd hc)
 		return -1;
 	}
 
-	status = check_component(lh, cnames[hc]);
+	status = check_component(lh, cnames[hc], 1);
 
 	lttng_health_destroy(lh);
 
@@ -121,7 +125,7 @@ int check_relayd(const char *path)
 		return -1;
 	}
 
-	status = check_component(lh, "relayd");
+	status = check_component(lh, "relayd", 0);
 
 	lttng_health_destroy(lh);
 
