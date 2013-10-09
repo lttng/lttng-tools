@@ -30,6 +30,7 @@
 #include <inttypes.h>
 #include <signal.h>
 
+#include <bin/lttng-consumerd/health-consumerd.h>
 #include <common/common.h>
 #include <common/utils.h>
 #include <common/compat/poll.h>
@@ -44,7 +45,6 @@
 
 #include "consumer.h"
 #include "consumer-stream.h"
-#include "../bin/lttng-consumerd/health-consumerd.h"
 
 struct lttng_consumer_global_data consumer_data = {
 	.stream_count = 0,

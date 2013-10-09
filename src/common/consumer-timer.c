@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <signal.h>
 
+#include <bin/lttng-consumerd/health-consumerd.h>
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-consumer/kernel-consumer.h>
@@ -28,7 +29,6 @@
 
 #include "consumer-timer.h"
 #include "ust-consumer/ust-consumer.h"
-#include "../bin/lttng-consumerd/health-consumerd.h"
 
 static struct timer_signal_data timer_signal = {
 	.tid = 0,

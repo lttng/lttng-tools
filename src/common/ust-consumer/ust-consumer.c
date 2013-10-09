@@ -32,6 +32,7 @@
 #include <urcu/list.h>
 #include <signal.h>
 
+#include <bin/lttng-consumerd/health-consumerd.h>
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/relayd/relayd.h>
@@ -43,7 +44,6 @@
 #include <common/index/index.h>
 
 #include "ust-consumer.h"
-#include "../../bin/lttng-consumerd/health-consumerd.h"
 
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;
