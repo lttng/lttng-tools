@@ -133,7 +133,7 @@ static
 int setup_health_path(void)
 {
 	int is_root, ret = 0;
-	char *home_path = NULL, *rundir, *relayd_path;
+	char *home_path = NULL, *rundir = NULL, *relayd_path;
 
 	is_root = !getuid();
 
@@ -195,6 +195,7 @@ int setup_health_path(void)
 	}
 
 end:
+	free(rundir);
 	return ret;
 }
 

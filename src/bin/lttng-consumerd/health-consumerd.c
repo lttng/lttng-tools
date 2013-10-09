@@ -119,23 +119,11 @@ int setup_health_path(void)
 			goto end;
 		}
 	} else {
-		static char *rundir;
-
 		home_path = utils_get_home_dir();
 		if (home_path == NULL) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");
 			ret = -EPERM;
-			goto end;
-		}
-
-		/*
-		 * Create rundir from home path. This will create something like
-		 * $HOME/.lttng
-		 */
-		ret = asprintf(&rundir, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
-		if (ret < 0) {
-			ret = -ENOMEM;
 			goto end;
 		}
 
@@ -146,22 +134,21 @@ int setup_health_path(void)
 		switch (type) {
 		case LTTNG_CONSUMER_KERNEL:
 			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK, rundir);
+				DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK, home_path);
 			break;
 		case LTTNG_CONSUMER64_UST:
 			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK, rundir);
+				DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK, home_path);
 			break;
 		case LTTNG_CONSUMER32_UST:
 			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK, rundir);
+				DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK, home_path);
 			break;
 		default:
 			ret = -EINVAL;
 			goto end;
 		}
 	}
-
 end:
 	return ret;
 }
