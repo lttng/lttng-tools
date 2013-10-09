@@ -34,4 +34,8 @@ enum health_type_relayd {
 
 extern struct health_app *health_relayd;
 
+extern int health_quit_pipe[2];
+
+void *thread_manage_health(void *data);
+
 #endif /* HEALTH_RELAYD_H */

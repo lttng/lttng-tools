@@ -179,6 +179,8 @@ extern struct lttng_ht *relay_streams_ht;
 extern struct lttng_ht *viewer_streams_ht;
 extern struct lttng_ht *indexes_ht;
 
+extern const char *tracing_group_name;
+
 struct relay_stream *relay_stream_find_by_id(uint64_t stream_id);
 
 #endif /* LTTNG_RELAYD_H */

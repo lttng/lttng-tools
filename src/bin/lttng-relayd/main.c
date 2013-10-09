@@ -68,6 +68,8 @@ static struct lttng_uri *live_uri;
 
 const char *progname;
 
+const char *tracing_group_name = DEFAULT_TRACING_GROUP;
+
 /*
  * Quit pipe for all threads. This permits a single cancellation point
  * for all threads when receiving an event on the pipe.
@@ -86,6 +88,7 @@ static int dispatch_thread_exit;
 static pthread_t listener_thread;
 static pthread_t dispatcher_thread;
 static pthread_t worker_thread;
+static pthread_t health_thread;
 
 static uint64_t last_relay_stream_id;
 static uint64_t last_relay_session_id;
@@ -131,6 +134,7 @@ void usage(void)
 	fprintf(stderr, "  -D, --data-port URL       Data port listening.\n");
 	fprintf(stderr, "  -o, --output PATH         Output path for traces. Must use an absolute path.\n");
 	fprintf(stderr, "  -v, --verbose             Verbose mode. Activate DBG() macro.\n");
+	fprintf(stderr, "  -g, --group NAME          Specify the tracing group name. (default: tracing)\n");
 }
 
 static
@@ -144,6 +148,7 @@ int parse_args(int argc, char **argv)
 		{ "control-port", 1, 0, 'C', },
 		{ "data-port", 1, 0, 'D', },
 		{ "daemonize", 0, 0, 'd', },
+		{ "group", 1, 0, 'g', },
 		{ "help", 0, 0, 'h', },
 		{ "output", 1, 0, 'o', },
 		{ "verbose", 0, 0, 'v', },
@@ -152,7 +157,7 @@ int parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhv" "C:D:o:",
+		c = getopt_long(argc, argv, "dhv" "C:D:o:g:",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -187,6 +192,9 @@ int parse_args(int argc, char **argv)
 			break;
 		case 'd':
 			opt_daemon = 1;
+			break;
+		case 'g':
+			tracing_group_name = optarg;
 			break;
 		case 'h':
 			usage();
@@ -297,6 +305,18 @@ int notify_thread_pipe(int wpipe)
 	return ret;
 }
 
+static void notify_health_quit_pipe(int *pipe)
+{
+	int ret;
+
+	do {
+		ret = write(pipe[1], "4", 1);
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0 || ret != 1) {
+		PERROR("write relay health quit");
+	}
+}
+
 /*
  * Stop all threads by closing the thread quit pipe.
  */
@@ -311,6 +331,8 @@ void stop_threads(void)
 	if (ret < 0) {
 		ERR("write error on thread quit pipe");
 	}
+
+	notify_health_quit_pipe(health_quit_pipe);
 
 	/* Dispatch thread */
 	CMM_STORE_SHARED(dispatch_thread_exit, 1);
@@ -2569,6 +2591,19 @@ int main(int argc, char **argv)
 		goto exit_health_app_create;
 	}
 
+	ret = utils_create_pipe(health_quit_pipe);
+	if (ret < 0) {
+		goto error_health_pipe;
+	}
+
+	/* Create thread to manage the client socket */
+	ret = pthread_create(&health_thread, NULL,
+			thread_manage_health, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create health");
+		goto health_error;
+	}
+
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&dispatcher_thread, NULL,
 			relay_thread_dispatcher, (void *) NULL);
@@ -2623,6 +2658,16 @@ exit_worker:
 	}
 
 exit_dispatcher:
+	ret = pthread_join(health_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join health thread");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+health_error:
+	utils_close_pipe(health_quit_pipe);
+
+error_health_pipe:
 	health_app_destroy(health_relayd);
 
 exit_health_app_create:
