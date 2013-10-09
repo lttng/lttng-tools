@@ -419,8 +419,8 @@ static void close_consumer_sockets(void)
 static void cleanup(void)
 {
 	int ret;
-	char *cmd = NULL;
 	struct ltt_session *sess, *stmp;
+	char path[PATH_MAX];
 
 	DBG("Cleaning up");
 
@@ -441,18 +441,54 @@ static void cleanup(void)
 		}
 	}
 
-	DBG("Removing %s directory", rundir);
-	ret = asprintf(&cmd, "rm -rf %s", rundir);
-	if (ret < 0) {
-		ERR("asprintf failed. Something is really wrong!");
-	}
+	DBG("Removing sessiond and consumerd content of directory %s", rundir);
 
-	/* Remove lttng run directory */
-	ret = system(cmd);
-	if (ret < 0) {
-		ERR("Unable to clean %s", rundir);
-	}
-	free(cmd);
+	/* sessiond */
+	snprintf(path, PATH_MAX,
+		"%s/%s",
+		rundir, DEFAULT_LTTNG_SESSIOND_PIDFILE);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	/* kconsumerd */
+	snprintf(path, PATH_MAX,
+		DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
+		rundir);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	snprintf(path, PATH_MAX,
+		DEFAULT_KCONSUMERD_PATH,
+		rundir);
+	DBG("Removing directory %s", path);
+	(void) rmdir(path);
+
+	/* ust consumerd 32 */
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
+		rundir);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD32_PATH,
+		rundir);
+	DBG("Removing directory %s", path);
+	(void) rmdir(path);
+
+	/* ust consumerd 64 */
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
+		rundir);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD64_PATH,
+		rundir);
+	DBG("Removing directory %s", path);
+	(void) rmdir(path);
+
 	free(rundir);
 
 	DBG("Cleaning up all sessions");
