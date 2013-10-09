@@ -84,6 +84,9 @@ const char *relayd_thread_name[NR_HEALTH_RELAYD_TYPES] = {
 	[ HEALTH_RELAYD_TYPE_DISPATCHER ] = "Relay daemon dispatcher",
 	[ HEALTH_RELAYD_TYPE_WORKER ] = "Relay daemon worker",
 	[ HEALTH_RELAYD_TYPE_LISTENER ] = "Relay daemon listener",
+	[ HEALTH_RELAYD_TYPE_LIVE_DISPATCHER ] = "Relay daemon live dispatcher",
+	[ HEALTH_RELAYD_TYPE_LIVE_WORKER ] = "Relay daemon live worker",
+	[ HEALTH_RELAYD_TYPE_LIVE_LISTENER ] = "Relay daemon live listener",
 };
 
 static
