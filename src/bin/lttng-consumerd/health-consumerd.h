@@ -32,10 +32,10 @@ enum health_type_consumerd {
 };
 
 /* Consumerd health monitoring */
-struct health_app *health_consumerd;
+extern struct health_app *health_consumerd;
 
 void *thread_manage_health(void *data);
 
-int health_quit_pipe[2];
+extern int health_quit_pipe[2];
 
 #endif /* HEALTH_CONSUMERD_H */
