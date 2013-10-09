@@ -35,7 +35,7 @@ fi
 function test_tp_fail
 {
 	test_tp_fail_name="$1"
-	test_tp_fail_code="$2"
+	test_tp_error_string="$2"
 
 	diag "Test health failure with ${test_tp_fail_name}"
 
@@ -53,19 +53,31 @@ function test_tp_fail
 	unset LD_PRELOAD
 	unset ${test_tp_fail_name}_TP_FAIL
 
-	# Check health status, exit code should indicate failure
-	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
+	# Check health status
+	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
 
-	health_check_exit_code=$?
-
-	if [ $health_check_exit_code -eq $test_tp_fail_code ]; then
-		pass "Validate thread ${test_tp_fail_name} failure"
-		stop_lttng_sessiond
-	else
+	out=$(grep "${test_tp_error_string}" ${STDOUT_PATH} | wc -l)
+	if [ $out -eq 0 ]; then
 		fail "Validate thread ${test_tp_fail_name} failure"
-		diag "Health returned: $health_check_exit_code"
+		diag "Health returned:"
+
+		diag "stdout:"
+		file=${STDOUT_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
+
+		diag "stderr:"
+		file=${STDERR_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
+
 		stop_lttng_sessiond
 		return 1
+	else
+		pass "Validate thread ${test_tp_fail_name} failure"
+		stop_lttng_sessiond
 	fi
 }
 
@@ -76,13 +88,18 @@ print_test_banner "$TEST_DESC"
 THREAD=("LTTNG_THREAD_MANAGE_CLIENTS"
 	"LTTNG_THREAD_MANAGE_APPS")
 
-# Exit code value to indicate specific thread failure
-EXIT_CODE=(1 2)
+ERROR_STRING=(
+	"Thread \"Session daemon command\" is not responding in component \"sessiond\"."
+	"Thread \"Session daemon application manager\" is not responding in component \"sessiond\"."
+)
+
+STDOUT_PATH=$(mktemp)
+STDERR_PATH=$(mktemp)
 
 THREAD_COUNT=${#THREAD[@]}
 i=0
 while [ "$i" -lt "$THREAD_COUNT" ]; do
-	test_tp_fail "${THREAD[$i]}" "${EXIT_CODE[$i]}"
+	test_tp_fail "${THREAD[$i]}" "${ERROR_STRING[$i]}"
 
 	if [ $? -eq 1 ]; then
 		exit 1
@@ -100,9 +117,11 @@ fi
 
 skip $isroot "Root access is needed. Skipping LTTNG_THREAD_MANAGE_KERNEL tests." "3" ||
 {
-	test_tp_fail "LTTNG_THREAD_MANAGE_KERNEL" "8"
+	test_tp_fail "LTTNG_THREAD_MANAGE_KERNEL" "Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
 }
 
+rm -f ${STDOUT_PATH}
+rm -f ${STDERR_PATH}
 
 # TODO: Special case manage consumer, need to spawn consumer via commands.
 #"LTTNG_THREAD_MANAGE_CONSUMER"
