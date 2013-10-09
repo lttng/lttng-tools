@@ -116,7 +116,7 @@ struct lttng_ht *viewer_streams_ht;
 struct lttng_ht *indexes_ht;
 
 /* Relayd health monitoring */
-static struct health_app *health_relayd;
+struct health_app *health_relayd;
 
 /*
  * usage function on stderr

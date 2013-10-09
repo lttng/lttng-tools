@@ -56,6 +56,7 @@
 #include "lttng-relayd.h"
 #include "lttng-viewer.h"
 #include "utils.h"
+#include "health-relayd.h"
 
 static struct lttng_uri *live_uri;
 
@@ -237,6 +238,10 @@ void *thread_listener(void *data)
 
 	DBG("[thread] Relay live listener started");
 
+	health_register(health_relayd, HEALTH_RELAYD_TYPE_LIVE_LISTENER);
+
+	health_code_update();
+
 	live_control_sock = init_socket(live_uri);
 	if (!live_control_sock) {
 		goto error_sock_control;
@@ -257,10 +262,14 @@ void *thread_listener(void *data)
 	}
 
 	while (1) {
+		health_code_update();
+
 		DBG("Listener accepting live viewers connections");
 
 restart:
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -274,6 +283,8 @@ restart:
 
 		DBG("Relay new viewer connection received");
 		for (i = 0; i < nb_fd; i++) {
+			health_code_update();
+
 			/* Fetch once the poll data */
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
@@ -348,8 +359,10 @@ error_create_poll:
 	lttcomm_destroy_sock(live_control_sock);
 error_sock_control:
 	if (err) {
+		health_error();
 		DBG("Live viewer listener thread exited with error");
 	}
+	health_unregister(health_relayd);
 	DBG("Live viewer listener thread cleanup complete");
 	stop_threads();
 	return NULL;
@@ -361,17 +374,25 @@ error_sock_control:
 static
 void *thread_dispatcher(void *data)
 {
-	int ret;
+	int ret, err = -1;
 	struct cds_wfq_node *node;
 	struct relay_command *relay_cmd = NULL;
 
 	DBG("[thread] Live viewer relay dispatcher started");
 
+	health_register(health_relayd, HEALTH_RELAYD_TYPE_LIVE_DISPATCHER);
+
+	health_code_update();
+
 	while (!CMM_LOAD_SHARED(live_dispatch_thread_exit)) {
+		health_code_update();
+
 		/* Atomically prepare the queue futex */
 		futex_nto1_prepare(&viewer_cmd_queue.futex);
 
 		do {
+			health_code_update();
+
 			/* Dequeue commands */
 			node = cds_wfq_dequeue_blocking(&viewer_cmd_queue.queue);
 			if (node == NULL) {
@@ -402,10 +423,20 @@ void *thread_dispatcher(void *data)
 		} while (node != NULL);
 
 		/* Futex wait on queue. Blocking call on futex() */
+		health_poll_entry();
 		futex_nto1_wait(&viewer_cmd_queue.futex);
+		health_poll_exit();
 	}
 
+	/* Normal exit, no error */
+	err = 0;
+
 error:
+	if (err) {
+		health_error();
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_unregister(health_relayd);
 	DBG("Live viewer dispatch thread dying");
 	stop_threads();
 	return NULL;
@@ -426,6 +457,8 @@ int viewer_connect(struct relay_command *cmd)
 
 	cmd->version_check_done = 1;
 
+	health_code_update();
+
 	/* Get version from the other side. */
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
 	if (ret < 0 || ret != sizeof(msg)) {
@@ -438,6 +471,8 @@ int viewer_connect(struct relay_command *cmd)
 		ret = -1;
 		goto end;
 	}
+
+	health_code_update();
 
 	reply.major = RELAYD_VERSION_COMM_MAJOR;
 	reply.minor = RELAYD_VERSION_COMM_MINOR;
@@ -473,11 +508,16 @@ int viewer_connect(struct relay_command *cmd)
 	if (cmd->type == RELAY_VIEWER_COMMAND) {
 		reply.viewer_session_id = htobe64(++last_relay_viewer_session_id);
 	}
+
+	health_code_update();
+
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
 			sizeof(struct lttng_viewer_connect), 0);
 	if (ret < 0) {
 		ERR("Relay sending version");
 	}
+
+	health_code_update();
 
 	DBG("Version check done using protocol %u.%u", cmd->major, cmd->minor);
 	ret = 0;
@@ -516,6 +556,8 @@ int viewer_list_sessions(struct relay_command *cmd,
 	cds_lfht_count_nodes(sessions_ht->ht, &approx_before, &count, &approx_after);
 	session_list.sessions_count = htobe32(count);
 
+	health_code_update();
+
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &session_list,
 			sizeof(session_list), 0);
 	if (ret < 0) {
@@ -523,7 +565,11 @@ int viewer_list_sessions(struct relay_command *cmd,
 		goto end_unlock;
 	}
 
+	health_code_update();
+
 	cds_lfht_for_each_entry(sessions_ht->ht, &iter.iter, node, node) {
+		health_code_update();
+
 		node = lttng_ht_iter_get_node_ulong(&iter);
 		if (!node) {
 			goto end_unlock;
@@ -538,6 +584,8 @@ int viewer_list_sessions(struct relay_command *cmd,
 		send_session.live_timer = htobe32(session->live_timer);
 		send_session.clients = htobe32(session->viewer_attached);
 
+		health_code_update();
+
 		ret = cmd->sock->ops->sendmsg(cmd->sock, &send_session,
 				sizeof(send_session), 0);
 		if (ret < 0) {
@@ -545,6 +593,8 @@ int viewer_list_sessions(struct relay_command *cmd,
 			goto end_unlock;
 		}
 	}
+	health_code_update();
+
 	rcu_read_unlock();
 	ret = 0;
 	goto end;
@@ -648,6 +698,8 @@ int viewer_attach_session(struct relay_command *cmd,
 		goto end_no_session;
 	}
 
+	health_code_update();
+
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &request, sizeof(request), 0);
 	if (ret < 0 || ret != sizeof(request)) {
 		if (ret == 0) {
@@ -659,6 +711,8 @@ int viewer_attach_session(struct relay_command *cmd,
 		ret = -1;
 		goto error;
 	}
+
+	health_code_update();
 
 	rcu_read_lock();
 	lttng_ht_lookup(sessions_ht,
@@ -718,6 +772,8 @@ int viewer_attach_session(struct relay_command *cmd,
 		cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, node, node) {
 			struct relay_viewer_stream *vstream;
 
+			health_code_update();
+
 			node = lttng_ht_iter_get_node_ulong(&iter);
 			if (!node) {
 				continue;
@@ -748,11 +804,13 @@ int viewer_attach_session(struct relay_command *cmd,
 	}
 
 send_reply:
+	health_code_update();
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &response, sizeof(response), 0);
 	if (ret < 0) {
 		ERR("Relay sending viewer attach response");
 		goto end_unlock;
 	}
+	health_code_update();
 
 	/*
 	 * Unknown or busy session, just return gracefully, the viewer knows what
@@ -766,6 +824,8 @@ send_reply:
 	/* We should only be there if we have a session to attach to. */
 	assert(session);
 	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, node, node) {
+		health_code_update();
+
 		node64 = lttng_ht_iter_get_node_u64(&iter);
 		if (!node64) {
 			continue;
@@ -841,6 +901,7 @@ static int open_index(struct relay_viewer_stream *stream)
 	DBG("Opening index file %s in read only, (fd: %d)", fullpath, ret);
 
 	do {
+		health_code_update();
 		ret = read(stream->index_read_fd, &hdr, sizeof(hdr));
 	} while (ret < 0 && errno == EINTR);
 	if (ret < 0) {
@@ -915,6 +976,7 @@ int viewer_get_next_index(struct relay_command *cmd,
 		goto end_no_session;
 	}
 
+	health_code_update();
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &request_index,
 			sizeof(request_index), 0);
 	if (ret < 0 || ret != sizeof(request_index)) {
@@ -922,6 +984,7 @@ int viewer_get_next_index(struct relay_command *cmd,
 		ERR("Relay didn't receive the whole packet");
 		goto end;
 	}
+	health_code_update();
 
 	rcu_read_lock();
 	vstream = live_find_viewer_stream_by_id(be64toh(request_index.stream_id));
@@ -984,6 +1047,7 @@ int viewer_get_next_index(struct relay_command *cmd,
 	}
 
 	do {
+		health_code_update();
 		ret = read(vstream->index_read_fd, &packet_index,
 				sizeof(packet_index));
 	} while (ret < 0 && errno == EINTR);
@@ -1008,12 +1072,14 @@ int viewer_get_next_index(struct relay_command *cmd,
 
 send_reply:
 	viewer_index.flags = htobe32(viewer_index.flags);
+	health_code_update();
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &viewer_index,
 			sizeof(viewer_index), 0);
 	if (ret < 0) {
 		ERR("Relay index to viewer");
 		goto end_unlock;
 	}
+	health_code_update();
 
 	DBG("Index %" PRIu64 "for stream %" PRIu64 "sent",
 			vstream->last_sent_index, vstream->stream_handle);
@@ -1052,6 +1118,7 @@ int viewer_get_packet(struct relay_command *cmd)
 		goto end;
 	}
 
+	health_code_update();
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &get_packet_info,
 			sizeof(get_packet_info), 0);
 	if (ret < 0 || ret != sizeof(get_packet_info)) {
@@ -1059,6 +1126,7 @@ int viewer_get_packet(struct relay_command *cmd)
 		ERR("Relay didn't receive the whole packet");
 		goto end;
 	}
+	health_code_update();
 
 	rcu_read_lock();
 	stream = live_find_viewer_stream_by_id(be64toh(get_packet_info.stream_id));
@@ -1127,18 +1195,23 @@ error:
 
 send_reply:
 	reply.flags = htobe32(reply.flags);
+
+	health_code_update();
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
 		ERR("Relay data header to viewer");
 		goto end_unlock;
 	}
+	health_code_update();
 
 	if (send_data) {
+		health_code_update();
 		ret = cmd->sock->ops->sendmsg(cmd->sock, data, len, 0);
 		if (ret < 0) {
 			ERR("Relay send data to viewer");
 			goto end_unlock;
 		}
+		health_code_update();
 	}
 
 	DBG("Sent %u bytes for stream %" PRIu64, len,
@@ -1178,6 +1251,7 @@ int viewer_get_metadata(struct relay_command *cmd)
 		goto end;
 	}
 
+	health_code_update();
 	ret = cmd->sock->ops->recvmsg(cmd->sock, &request,
 			sizeof(request), 0);
 	if (ret < 0 || ret != sizeof(request)) {
@@ -1185,6 +1259,7 @@ int viewer_get_metadata(struct relay_command *cmd)
 		ERR("Relay didn't receive the whole packet");
 		goto end;
 	}
+	health_code_update();
 
 	rcu_read_lock();
 	stream = live_find_viewer_stream_by_id(be64toh(request.stream_id));
@@ -1240,11 +1315,13 @@ error:
 	reply.status = htobe32(VIEWER_METADATA_ERR);
 
 send_reply:
+	health_code_update();
 	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
 		ERR("Relay data header to viewer");
 		goto end_unlock;
 	}
+	health_code_update();
 
 	if (len > 0) {
 		ret = cmd->sock->ops->sendmsg(cmd->sock, data, len, 0);
@@ -1359,6 +1436,7 @@ int add_connection(int fd, struct lttng_poll_event *events,
 	}
 
 	do {
+		health_code_update();
 		ret = read(fd, relay_connection, sizeof(*relay_connection));
 	} while (ret < 0 && errno == EINTR);
 	if (ret < 0 || ret < sizeof(*relay_connection)) {
@@ -1426,6 +1504,8 @@ void viewer_del_streams(uint64_t session_id)
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, node, node) {
+		health_code_update();
+
 		node = lttng_ht_iter_get_node_u64(&iter);
 		if (!node) {
 			continue;
@@ -1502,6 +1582,8 @@ void *thread_worker(void *data)
 
 	rcu_register_thread();
 
+	health_register(health_relayd, HEALTH_RELAYD_TYPE_LIVE_WORKER);
+
 	/* table of connections indexed on socket */
 	relay_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!relay_connections_ht) {
@@ -1522,9 +1604,13 @@ restart:
 	while (1) {
 		int i;
 
+		health_code_update();
+
 		/* Infinite blocking call, waiting for transmission */
 		DBG3("Relayd live viewer worker thread polling...");
+		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		health_poll_exit();
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -1546,6 +1632,8 @@ restart:
 			/* Fetch once the poll data */
 			uint32_t revents = LTTNG_POLL_GETEV(&events, i);
 			int pollfd = LTTNG_POLL_GETFD(&events, i);
+
+			health_code_update();
 
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
@@ -1630,6 +1718,8 @@ error:
 	/* empty the hash table and free the memory */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter, node, node) {
+		health_code_update();
+
 		node = lttng_ht_iter_get_node_ulong(&iter);
 		if (!node) {
 			continue;
@@ -1649,6 +1739,11 @@ relay_connections_ht_error:
 		DBG("Viewer worker thread exited with error");
 	}
 	DBG("Viewer worker thread cleanup complete");
+	if (err) {
+		health_error();
+		ERR("Health error occurred in %s", __func__);
+	}
+	health_unregister(health_relayd);
 	stop_threads();
 	rcu_unregister_thread();
 	return NULL;
