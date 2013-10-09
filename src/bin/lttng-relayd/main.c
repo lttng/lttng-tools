@@ -2634,8 +2634,6 @@ int main(int argc, char **argv)
 		goto exit_live;
 	}
 
-	live_stop_threads();
-
 exit_live:
 	ret = pthread_join(listener_thread, &status);
 	if (ret != 0) {
@@ -2663,6 +2661,11 @@ exit_dispatcher:
 		PERROR("pthread_join health thread");
 		goto error;	/* join error, exit without cleanup */
 	}
+
+	/*
+	 * Stop live threads only after joining other threads.
+	 */
+	live_stop_threads();
 
 health_error:
 	utils_close_pipe(health_quit_pipe);
