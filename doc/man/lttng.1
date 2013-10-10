@@ -253,6 +253,26 @@ Traces will not be outputted
 Set the session in snapshot mode. Created in no-output mode and uses the
 URL, if one, as the default snapshot output.  Every channel will be set
 in overwrite mode and with mmap output (splice not supported).
+.TP
+.BR "\-\-live USEC"
+Set the session exclusively in live mode. The paremeter is the delay in micro
+seconds before the data is flushed and streamed. The live mode allows you to
+stream the trace and view it while it's being recorded by any tracer. For that,
+you need a lttng-relayd and this session requires a network URL (\-U or
+\-C/\-D).
+
+To read a live session, you can use babeltrace(1) or the live streaming
+protocol in doc/live-reading-protocol.txt. Here is an example:
+
+.nf
+$ lttng-relayd -o /tmp/lttng
+$ lttng create --live 200000 -U net://localhost
+$ lttng enable-event -a --userspace
+$ lttng start
+.fi
+
+After the start, you'll be able to read the events while they are being
+recorded in /tmp/lttng.
 
 .TP
 .BR "\-U, \-\-set-url=URL"
