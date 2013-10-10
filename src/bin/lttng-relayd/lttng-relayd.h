@@ -100,7 +100,15 @@ struct relay_stream {
 	uint64_t total_index_received;
 	struct relay_viewer_stream *viewer_stream;
 	uint64_t last_net_seq_num;
+
+	/*
+	 * This node is added to the *control* connection hash table and the
+	 * pointer is copied in here so we can access it when deleting this object.
+	 * When deleting this, the ctf trace ht MUST NOT be destroyed. This happens
+	 * at connection deletion.
+	 */
 	struct lttng_ht_node_str ctf_trace_node;
+	struct lttng_ht *ctf_traces_ht;
 
 	/*
 	 * To protect from concurrent read/update between the

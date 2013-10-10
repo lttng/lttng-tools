@@ -826,8 +826,7 @@ void deferred_free_session(struct rcu_head *head)
  * RCU read side lock MUST be acquired. If NO close_stream_check() was called
  * BEFORE the stream lock MUST be acquired.
  */
-static void destroy_stream(struct relay_stream *stream,
-		struct lttng_ht *ctf_traces_ht)
+static void destroy_stream(struct relay_stream *stream)
 {
 	int delret;
 	struct relay_viewer_stream *vstream;
@@ -865,7 +864,7 @@ static void destroy_stream(struct relay_stream *stream,
 	delret = lttng_ht_del(relay_streams_ht, &iter);
 	assert(!delret);
 	iter.iter.node = &stream->ctf_trace_node.node;
-	delret = lttng_ht_del(ctf_traces_ht, &iter);
+	delret = lttng_ht_del(stream->ctf_traces_ht, &iter);
 	assert(!delret);
 	call_rcu(&stream->rcu_node, deferred_free_stream);
 	DBG("Closed tracefile %d from close stream", stream->fd);
@@ -898,7 +897,7 @@ void relay_delete_session(struct relay_command *cmd,
 		}
 		stream = caa_container_of(node, struct relay_stream, stream_n);
 		if (stream->session == cmd->session) {
-			destroy_stream(stream, cmd->ctf_traces_ht);
+			destroy_stream(stream);
 		}
 	}
 
@@ -1086,6 +1085,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		stream->ctf_trace->metadata_stream = stream;
 	}
 	ctf_trace_assign(cmd->ctf_traces_ht, stream);
+	stream->ctf_traces_ht = cmd->ctf_traces_ht;
 
 	lttng_ht_node_init_ulong(&stream->stream_n,
 			(unsigned long) stream->stream_handle);
@@ -1172,7 +1172,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	stream->close_flag = 1;
 
 	if (close_stream_check(stream)) {
-		destroy_stream(stream, cmd->ctf_traces_ht);
+		destroy_stream(stream);
 	}
 
 end_unlock:
@@ -2088,7 +2088,7 @@ int relay_process_data(struct relay_command *cmd)
 
 	/* Check if we need to close the FD */
 	if (close_stream_check(stream)) {
-		destroy_stream(stream, cmd->ctf_traces_ht);
+		destroy_stream(stream);
 	}
 
 end_rcu_unlock:
@@ -2130,9 +2130,17 @@ int relay_add_connection(int fd, struct lttng_poll_event *events,
 		goto error_read;
 	}
 
-	relay_connection->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	if (!relay_connection->ctf_traces_ht) {
-		goto error_read;
+	/*
+	 * Only used by the control side and the reference is copied inside each
+	 * stream from that connection. Thus a destroy HT must be done after every
+	 * stream has been destroyed.
+	 */
+	if (relay_connection->type == RELAY_CONTROL) {
+		relay_connection->ctf_traces_ht = lttng_ht_new(0,
+				LTTNG_HT_TYPE_STRING);
+		if (!relay_connection->ctf_traces_ht) {
+			goto error_read;
+		}
 	}
 
 	lttng_ht_node_init_ulong(&relay_connection->sock_n,
@@ -2157,7 +2165,6 @@ void deferred_free_connection(struct rcu_head *head)
 	struct relay_command *relay_connection =
 		caa_container_of(head, struct relay_command, rcu_node);
 
-	lttng_ht_destroy(relay_connection->ctf_traces_ht);
 	lttcomm_destroy_sock(relay_connection->sock);
 	free(relay_connection);
 }
@@ -2171,12 +2178,13 @@ void relay_del_connection(struct lttng_ht *relay_connections_ht,
 
 	ret = lttng_ht_del(relay_connections_ht, iter);
 	assert(!ret);
+
 	if (relay_connection->type == RELAY_CONTROL) {
 		relay_delete_session(relay_connection, sessions_ht);
+		lttng_ht_destroy(relay_connection->ctf_traces_ht);
 	}
 
-	call_rcu(&relay_connection->rcu_node,
-		deferred_free_connection);
+	call_rcu(&relay_connection->rcu_node, deferred_free_connection);
 }
 
 /*
