@@ -435,6 +435,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret;
+	size_t len_last;
 #ifdef __linux__
 	struct cmsghdr *cmptr;
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
@@ -461,12 +462,21 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 #endif /* __linux__ */
 
 	do {
+		len_last = iov[0].iov_len;
 		ret = recvmsg(sock, &msg, 0);
-	} while (ret < 0 && errno == EINTR);
+		if (ret > 0) {
+			iov[0].iov_base += ret;
+			iov[0].iov_len -= ret;
+			assert(ret <= len_last);
+		}
+	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
 	if (ret < 0) {
 		PERROR("recvmsg fds");
 		goto end;
+	} else if (ret > 0) {
+		ret = len;
 	}
+	/* Else ret = 0 meaning an orderly shutdown. */
 
 #ifdef __linux__
 	if (msg.msg_flags & MSG_CTRUNC) {
