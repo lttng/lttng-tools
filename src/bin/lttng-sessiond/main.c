@@ -1802,9 +1802,9 @@ static void *thread_registration_apps(void *data)
 					 * parameter.
 					 */
 					(void) lttcomm_setsockopt_rcv_timeout(sock,
-							app_socket_timeout * 1000);
+							app_socket_timeout);
 					(void) lttcomm_setsockopt_snd_timeout(sock,
-							app_socket_timeout * 1000);
+							app_socket_timeout);
 
 					/*
 					 * Set the CLOEXEC flag. Return code is useless because
