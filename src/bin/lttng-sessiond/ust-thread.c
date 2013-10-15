@@ -121,11 +121,11 @@ restart:
 					 * It's possible we've reached the max poll fd allowed.
 					 * Let's close the socket but continue normal execution.
 					 */
+					_lttng_fd_put(LTTNG_FD_APPS, 1, sock);
 					ret = close(sock);
 					if (ret) {
 						PERROR("close notify socket %d", sock);
 					}
-					lttng_fd_put(LTTNG_FD_APPS, 1);
 					continue;
 				}
 				DBG3("UST thread notify added sock %d to pollset", sock);

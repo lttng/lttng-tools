@@ -186,11 +186,11 @@ static void close_notify_sock_rcu(struct rcu_head *head)
 	/* Must have a valid fd here. */
 	assert(obj->fd >= 0);
 
+	_lttng_fd_put(LTTNG_FD_APPS, 1, obj->fd);
 	ret = close(obj->fd);
 	if (ret) {
 		ERR("close notify sock %d RCU", obj->fd);
 	}
-	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	free(obj);
 }
@@ -739,11 +739,11 @@ void delete_ust_app(struct ust_app *app)
 	 * This close() is a very important step of the synchronization model so
 	 * every modification to this function must be carefully reviewed.
 	 */
+	_lttng_fd_put(LTTNG_FD_APPS, 1, sock);
 	ret = close(sock);
 	if (ret) {
 		PERROR("close");
 	}
-	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	DBG2("UST app pid %d deleted", app->pid);
 	free(app);

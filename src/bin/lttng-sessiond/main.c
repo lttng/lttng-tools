@@ -1535,7 +1535,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					lttng_fd_put(LTTNG_FD_APPS, 1);
+					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					free(ust_cmd);
 					goto error;
 				}
@@ -1549,7 +1549,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					lttng_fd_put(LTTNG_FD_APPS, 1);
+					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					free(wait_node);
 					free(ust_cmd);
 					continue;
@@ -1597,7 +1597,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					lttng_fd_put(LTTNG_FD_APPS, 1);
+					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 				}
 				free(ust_cmd);
 			}
@@ -1823,7 +1823,7 @@ static void *thread_registration_apps(void *data)
 					 * Using message-based transmissions to ensure we don't
 					 * have to deal with partially received messages.
 					 */
-					ret = lttng_fd_get(LTTNG_FD_APPS, 1);
+					ret = _lttng_fd_get(LTTNG_FD_APPS, 1, sock);
 					if (ret < 0) {
 						ERR("Exhausted file descriptors allowed for applications.");
 						free(ust_cmd);
@@ -1840,11 +1840,11 @@ static void *thread_registration_apps(void *data)
 					if (ret < 0) {
 						free(ust_cmd);
 						/* Close socket of the application. */
+						_lttng_fd_put(LTTNG_FD_APPS, 1, sock);
 						ret = close(sock);
 						if (ret) {
 							PERROR("close");
 						}
-						lttng_fd_put(LTTNG_FD_APPS, 1);
 						sock = -1;
 						continue;
 					}
@@ -1893,11 +1893,11 @@ error:
 		}
 	}
 	if (sock >= 0) {
+		_lttng_fd_put(LTTNG_FD_APPS, 1, sock);
 		ret = close(sock);
 		if (ret) {
 			PERROR("close");
 		}
-		lttng_fd_put(LTTNG_FD_APPS, 1);
 	}
 	unlink(apps_unix_sock_path);
 
@@ -4692,6 +4692,11 @@ exit:
 	cleanup();
 	rcu_thread_offline();
 	rcu_unregister_thread();
+	/*
+	 * Ensure all call_rcu work is completed before library
+	 * destructors (for mem/fd leak detectors).
+	 */
+	rcu_barrier();
 	if (!ret) {
 		exit(EXIT_SUCCESS);
 	}

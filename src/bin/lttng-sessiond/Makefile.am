@@ -20,6 +20,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        modprobe.c modprobe.h kern-modules.h \
                        lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
                        fd-limit.c fd-limit.h \
+                       fd-limit-leak-finder.c jhash.h hlist.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h \
                        health.c health.h \

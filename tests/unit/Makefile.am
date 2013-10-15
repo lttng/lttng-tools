@@ -50,6 +50,7 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-app.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-consumer.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/fd-limit.o \
+		   $(top_builddir)/src/bin/lttng-sessiond/fd-limit-leak-finder.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/health.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/session.o \
 		   $(top_builddir)/src/common/.libs/uri.o \

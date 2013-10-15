@@ -21,6 +21,7 @@
 #include <sys/resource.h>
 #include <errno.h>
 #include <stdio.h>
+#include <assert.h>
 #include "fd-limit.h"
 
 /* total count of fd. */
@@ -55,6 +56,26 @@ int lttng_fd_get(enum lttng_fd_type type, unsigned int nr)
 void lttng_fd_put(enum lttng_fd_type type, unsigned int nr)
 {
 	uatomic_sub(&fd_count, (long) nr);
+}
+
+int _lttng_fd_get(enum lttng_fd_type type, unsigned int nr, int fd)
+{
+	int ret;
+
+	assert(nr == 1);
+
+	ret = lttng_fd_get(type, nr);
+	if (!ret) {
+		fd_limit_leak_open_fd(fd);
+	}
+	return ret;
+}
+
+void _lttng_fd_put(enum lttng_fd_type type, unsigned int nr, int fd)
+{
+	assert(nr == 1);
+	fd_limit_leak_close_fd(fd);
+	lttng_fd_put(type, nr);
 }
 
 void lttng_fd_init(void)

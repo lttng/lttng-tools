@@ -25,6 +25,12 @@ enum lttng_fd_type {
 
 int lttng_fd_get(enum lttng_fd_type type, unsigned int nr);
 void lttng_fd_put(enum lttng_fd_type type, unsigned int nr);
+int _lttng_fd_get(enum lttng_fd_type type, unsigned int nr, int fd);
+void _lttng_fd_put(enum lttng_fd_type type, unsigned int nr, int fd);
 void lttng_fd_init(void);
+
+/* internal */
+void fd_limit_leak_open_fd(int fd);
+void fd_limit_leak_close_fd(int fd);
 
 #endif /* _LTTNG_FD_LIMIT_H */
