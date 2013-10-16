@@ -555,6 +555,11 @@ struct ust_app *ust_app_find_by_sock(int sock)
 {
 	return NULL;
 }
+static inline
+struct ust_app *ust_app_find_by_pid(pid_t pid)
+{
+	return NULL;
+}
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

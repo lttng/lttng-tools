@@ -24,7 +24,8 @@ void *jul_thread_manage_registration(void *data);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-void *jul_thread_manage_registration(void *data);
+static inline
+void *jul_thread_manage_registration(void *data)
 {
 	return NULL;
 }
