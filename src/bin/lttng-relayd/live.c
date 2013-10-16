@@ -609,6 +609,71 @@ end_no_session:
 }
 
 /*
+ * Open index file using a given viewer stream.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static int open_index(struct relay_viewer_stream *stream)
+{
+	int ret;
+	char fullpath[PATH_MAX];
+	struct lttng_packet_index_file_hdr hdr;
+
+	if (stream->tracefile_size > 0) {
+		/* For now we don't support on-disk ring buffer. */
+		ret = -1;
+		goto end;
+	}
+
+	ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s"
+			DEFAULT_INDEX_FILE_SUFFIX, stream->path_name,
+			stream->channel_name);
+	if (ret < 0) {
+		PERROR("snprintf index path");
+		goto error;
+	}
+
+	DBG("Opening index file %s in read only", fullpath);
+	ret = open(fullpath, O_RDONLY);
+	if (ret < 0) {
+		if (errno == ENOENT) {
+			ret = -ENOENT;
+			goto error;
+		} else {
+			PERROR("opening index in read-only");
+		}
+		goto error;
+	}
+	stream->index_read_fd = ret;
+	DBG("Opening index file %s in read only, (fd: %d)", fullpath, ret);
+
+	do {
+		health_code_update();
+		ret = read(stream->index_read_fd, &hdr, sizeof(hdr));
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0) {
+		PERROR("Reading index header");
+		goto error;
+	}
+	if (strncmp(hdr.magic, INDEX_MAGIC, sizeof(hdr.magic)) != 0) {
+		ERR("Invalid header magic");
+		ret = -1;
+		goto error;
+	}
+	if (be32toh(hdr.index_major) != INDEX_MAJOR ||
+			be32toh(hdr.index_minor) != INDEX_MINOR) {
+		ERR("Invalid header version");
+		ret = -1;
+		goto error;
+	}
+	ret = 0;
+
+error:
+end:
+	return ret;
+}
+
+/*
  * Allocate and init a new viewer_stream.
  *
  * Copies the values from the stream passed in parameter and insert the new
@@ -619,7 +684,7 @@ end_no_session:
  * Returns 0 on success or a negative value on error.
  */
 static
-int init_viewer_stream(struct relay_stream *stream)
+int init_viewer_stream(struct relay_stream *stream, int seek_last)
 {
 	int ret;
 	struct relay_viewer_stream *viewer_stream;
@@ -645,6 +710,22 @@ int init_viewer_stream(struct relay_stream *stream)
 	viewer_stream->tracefile_size = stream->tracefile_size;
 	viewer_stream->tracefile_count = stream->tracefile_count;
 	viewer_stream->metadata_flag = stream->metadata_flag;
+
+	if (seek_last && viewer_stream->total_index_received > 0) {
+		ret = open_index(viewer_stream);
+		if (ret < 0) {
+			goto error;
+		}
+		ret = lseek(viewer_stream->index_read_fd,
+				viewer_stream->total_index_received *
+					sizeof(struct lttng_packet_index),
+				SEEK_CUR);
+		if (ret < 0) {
+			goto error;
+		}
+		viewer_stream->last_sent_index =
+			viewer_stream->total_index_received;
+	}
 
 	/*
 	 * This is to avoid a race between the initialization of this object and
@@ -687,6 +768,7 @@ int viewer_attach_session(struct relay_command *cmd,
 	struct lttng_ht_node_u64 *node64;
 	struct lttng_ht_iter iter;
 	struct relay_session *session;
+	int seek_last = 0;
 
 	assert(cmd);
 	assert(sessions_ht);
@@ -752,7 +834,7 @@ int viewer_attach_session(struct relay_command *cmd,
 		/* Default behaviour. */
 		break;
 	case VIEWER_SEEK_LAST:
-		/* TODO */
+		seek_last = 1;
 		break;
 	default:
 		ERR("Wrong seek parameter");
@@ -794,7 +876,7 @@ int viewer_attach_session(struct relay_command *cmd,
 
 			vstream = live_find_viewer_stream_by_id(stream->stream_handle);
 			if (!vstream) {
-				ret = init_viewer_stream(stream);
+				ret = init_viewer_stream(stream, seek_last);
 				if (ret < 0) {
 					goto end_unlock;
 				}
@@ -859,71 +941,6 @@ end_unlock:
 	rcu_read_unlock();
 end_no_session:
 error:
-	return ret;
-}
-
-/*
- * Open index file using a given viewer stream.
- *
- * Return 0 on success or else a negative value.
- */
-static int open_index(struct relay_viewer_stream *stream)
-{
-	int ret;
-	char fullpath[PATH_MAX];
-	struct lttng_packet_index_file_hdr hdr;
-
-	if (stream->tracefile_size > 0) {
-		/* For now we don't support on-disk ring buffer. */
-		ret = -1;
-		goto end;
-	} else {
-		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR
-				"/%s" DEFAULT_INDEX_FILE_SUFFIX,
-				stream->path_name, stream->channel_name);
-		if (ret < 0) {
-			PERROR("snprintf index path");
-			goto error;
-		}
-	}
-
-	DBG("Opening index file %s in read only", fullpath);
-	ret = open(fullpath, O_RDONLY);
-	if (ret < 0) {
-		if (errno == ENOENT) {
-			ret = ENOENT;
-			goto error;
-		} else {
-			PERROR("opening index in read-only");
-		}
-		goto error;
-	}
-	stream->index_read_fd = ret;
-	DBG("Opening index file %s in read only, (fd: %d)", fullpath, ret);
-
-	do {
-		health_code_update();
-		ret = read(stream->index_read_fd, &hdr, sizeof(hdr));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
-		PERROR("Reading index header");
-		goto error;
-	}
-	if (strncmp(hdr.magic, INDEX_MAGIC, sizeof(hdr.magic)) != 0) {
-		ERR("Invalid header magic");
-		ret = -1;
-		goto error;
-	}
-	if (be32toh(hdr.index_major) != INDEX_MAJOR ||
-			be32toh(hdr.index_minor) != INDEX_MINOR) {
-		ERR("Invalid header version");
-		ret = -1;
-		goto error;
-	}
-	ret = 0;
-
-error:
-end:
 	return ret;
 }
 
@@ -1007,7 +1024,7 @@ int viewer_get_next_index(struct relay_command *cmd,
 	/* First time, we open the index file */
 	if (vstream->index_read_fd < 0) {
 		ret = open_index(vstream);
-		if (ret == ENOENT) {
+		if (ret == -ENOENT) {
 			/*
 			 * The index is created only when the first data packet arrives, it
 			 * might not be ready at the beginning of the session
