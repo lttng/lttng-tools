@@ -414,7 +414,7 @@ int jul_list_events(struct lttng_event **events)
 	int ret;
 	size_t nbmem, count = 0;
 	struct jul_app *app;
-	struct lttng_event *tmp_events;
+	struct lttng_event *tmp_events = NULL;
 	struct lttng_ht_iter iter;
 
 	assert(events);
@@ -466,8 +466,10 @@ int jul_list_events(struct lttng_event **events)
 
 	ret = count;
 	*events = tmp_events;
+	return ret;
 
 error:
+	free(tmp_events);
 	return ret;
 }
 
