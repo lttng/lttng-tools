@@ -450,7 +450,6 @@ int jul_list_events(struct lttng_event **events)
 			ptr = realloc(tmp_events, nbmem * sizeof(*tmp_events));
 			if (!ptr) {
 				PERROR("realloc JUL events");
-				free(tmp_events);
 				ret = -ENOMEM;
 				rcu_read_unlock();
 				goto error;
