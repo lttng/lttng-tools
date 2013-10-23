@@ -11,13 +11,13 @@ lttng [OPTIONS] <COMMAND>
 
 .PP
 The LTTng project aims at providing highly efficient tracing tools for Linux.
-It's tracers help tracking down performance issues and debugging problems
+Its tracers help track down performance issues and debug problems
 involving multiple concurrent processes and threads. Tracing across multiple
 systems is also possible.
 
 The \fBlttng\fP command line tool from the lttng-tools package is used to control
-both kernel and user-space tracing. Every interactions with the tracer should
-be done by this tool or by the liblttng-ctl provided with the lttng-tools
+both kernel and user-space tracing. Every interaction with the tracer should
+be done by this tool or by the liblttng-ctl library provided by the lttng-tools
 package.
 
 LTTng uses a session daemon (lttng-sessiond(8)), acting as a tracing registry,
@@ -29,19 +29,18 @@ those traces is done using the babeltrace(1) text viewer.
 We introduce the notion of \fBtracing domains\fP which is essentially a type of
 tracer (kernel or user space for now). In the future, we could see a third
 tracer being for instance an hypervisor. For some commands, you'll need to
-specify on which domain the command applies (-u or -k). For instance, enabling
-a kernel event, you must specify the kernel domain to the command so we know
-for which tracer this event is for.
+specify on which domain the command operates (-u or -k). For instance, the
+kernel domain must be specified when enabling a kernel event.
 
 In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
 in that group can interact with the root session daemon and thus trace the
-kernel. Session daemons can co-exist meaning that you can have a session daemon
+kernel. Session daemons can co-exist, meaning that you can have a session daemon
 running as Alice that can be used to trace her applications along side with a
-root daemon or even a Bob daemon. We highly recommend to start the session
+root daemon or even a Bob daemon. We highly recommend starting the session
 daemon at boot time for stable and long term tracing.
 
-Every user-space applications instrumented with lttng-ust(3), will
+All user-space applications instrumented with lttng-ust(3) will
 automatically register to the session daemon. This feature gives you the
 ability to list available traceable applications and tracepoints on a per user
 basis. (See \fBlist\fP command).
@@ -219,7 +218,7 @@ Dynamic function entry/return probe (default)
 Create tracing session.
 
 A tracing session contains channel(s) which contains event(s). It is domain
-agnostic meaning that you can enable channels and events for either the
+agnostic, meaning that channels and events can be enabled for the
 user-space tracer and/or the kernel tracer. It acts like a container
 aggregating multiple tracing sources.
 
@@ -247,11 +246,11 @@ Simple listing of options
 Specify output path for traces
 .TP
 .BR "\-\-no-output"
-Traces will not be outputted
+Traces will not be output
 .TP
 .BR "\-\-snapshot"
 Set the session in snapshot mode. Created in no-output mode and uses the
-URL, if one, as the default snapshot output.  Every channel will be set
+URL, if one is specified, as the default snapshot output.  Every channel will be set
 in overwrite mode and with mmap output (splice not supported).
 .TP
 .BR "\-\-live USEC"
@@ -445,7 +444,7 @@ created to the specified count. 0 means unlimited. (default: 0)
 .nf
 $ lttng enable-channel -k -C 4096 -W 32 chan1
 .fi
-For each stream, the maximum size of each trace file will be 4096 bytes, and
+For each stream, the maximum size of each trace file will be 4096 bytes and
 there will be a maximum of 32 different files. The file count is appended after
 the stream number as seen in the following example. The last trace file is
 smaller than 4096 since it was not completely filled.
@@ -497,7 +496,7 @@ Apply on session name
 Apply on channel name
 .TP
 .BR "\-a, \-\-all"
-Enable all tracepoints and syscalls. This actually enable a single
+Enable all tracepoints and syscalls. This actually enables a single
 wildcard event "*".
 .TP
 .BR "\-k, \-\-kernel"
@@ -507,7 +506,7 @@ Apply for the kernel tracer
 Apply for the user-space tracer
 .TP
 .BR "\-\-tracepoint"
-Tracepoint event (default). Userspace tracer supports wildcards at end
+Tracepoint event (default). Userspace tracer supports wildcards at the end
 of string. Don't forget to quote to deal with bash expansion.
 e.g.:
 .nf
@@ -538,12 +537,13 @@ limitation. You can disable the entire channel to do the trick.
 .TP
 .BR "\-\-filter 'expression'"
 Set a filter on a newly enabled event. Filter expression on event
-fields and context. Event recording depends on evaluation. Only
-specify on first activation of a given event within a session.
-Filter only allowed when enabling events within a session before
+fields and context. The event will be recorded if the filter's
+expression evaluates to TRUE. Only specify on first activation of a
+given event within a session.
+Specifying a filter is only allowed when enabling events within a session before
 tracing is started. If the filter fails to link with the event
 within the traced domain, the event will be discarded.
-Currently, filter is only implemented for the user-space tracer.
+Filtering is currently only implemented for the user-space tracer.
 
 Expression examples:
 
@@ -556,13 +556,13 @@ Expression examples:
 Wildcards are allowed at the end of strings:
   'seqfield1 == "te*"'
 In string literals, the escape character is a '\\'. Use '\\*' for
-the '*' character, and '\\\\' for the '\\' character. Wildcard
-match any sequence of characters, including an empty sub-string
-(match 0 or more characters).
+the '*' character, and '\\\\' for the '\\' character sequence. Wildcard
+matches any sequence of characters, including an empty sub-string
+(matches 0 or more characters).
 
-Context information can be used for filtering. The examples below show
-usage of context filtering on process name (with a wildcard), process ID
-range, and unique thread ID for filtering.  The process and thread ID of
+Context information can be used for filtering. The examples below shows
+usage of context filtering on the process name (using a wildcard), process ID
+range, and unique thread ID. The process and thread IDs of
 running applications can be found under columns "PID" and "LWP" of the
 "ps -eLf" command.
 
@@ -580,8 +580,8 @@ running applications can be found under columns "PID" and "LWP" of the
 .RS
 Disable tracing channel
 
-Disabling a channel makes all event(s) in that channel to stop tracing. You can
-enable it back by calling \fBlttng enable-channel NAME\fP again.
+Disabling a channel disables the tracing of all of the channel's events. A channel
+can be reenabled by calling \fBlttng enable-channel NAME\fP again.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
