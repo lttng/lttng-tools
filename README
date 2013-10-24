@@ -47,7 +47,7 @@ REQUIREMENTS:
     - python-dev (optional)
       Python headers
 
-      * Debian/Ubuntu package: python-dev
+      * Debian/Ubuntu package: python3-dev
 
     - For kernel tracing: modprobe
 
@@ -92,6 +92,11 @@ INSTALLATION INSTRUCTIONS:
   the configure script, to generate it.
 
   If you want Python bindings, run ./configure --enable-python-bindings.
+  Please note that some distributions will need the following
+  environment variables set before running configure:
+
+    export PYTHON="python3"
+    export PYTHON_CONFIG="/usr/bin/python3-config"
 
 USAGE:
 

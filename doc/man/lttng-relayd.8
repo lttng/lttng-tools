@@ -61,6 +61,15 @@ Output base directory. Must use an absolute path (~/lttng-traces is the default)
 .TP
 .BR "-V, --version"
 Show version number
+.SH "ENVIRONMENT VARIABLES"
+
+.PP
+.IP "LTTNG_NETWORK_SOCKET_TIMEOUT"
+Control timeout of socket connection, receive and send. Takes an integer
+parameter: the timeout value, in milliseconds. A value of 0 or -1 uses
+the timeout of the operating system (this is the default).
+.PP
+
 .SH "SEE ALSO"
 
 .PP

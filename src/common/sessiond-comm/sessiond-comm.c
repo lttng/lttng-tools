@@ -38,6 +38,8 @@
 /* For Inet6 socket */
 #include "inet6.h"
 
+#define NETWORK_TIMEOUT_ENV	"LTTNG_NETWORK_SOCKET_TIMEOUT"
+
 static struct lttcomm_net_family net_families[] = {
 	{ LTTCOMM_INET, lttcomm_create_inet_sock },
 	{ LTTCOMM_INET6, lttcomm_create_inet6_sock },
@@ -69,6 +71,8 @@ static const char *lttcomm_readable_code[] = {
 	/* Last element */
 	[ LTTCOMM_ERR_INDEX(LTTCOMM_NR) ] = "Unknown error code"
 };
+
+static unsigned long network_timeout;
 
 /*
  * Return ptr to string representing a human readable error code from the
@@ -367,4 +371,71 @@ error_free:
 	free(rsock);
 error:
 	return NULL;
+}
+
+/*
+ * Set socket receiving timeout.
+ */
+LTTNG_HIDDEN
+int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec)
+{
+	int ret;
+	struct timeval tv;
+
+	tv.tv_sec = msec / 1000;
+	tv.tv_usec = (msec % 1000) * 1000;
+
+	ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	if (ret < 0) {
+		PERROR("setsockopt SO_RCVTIMEO");
+	}
+
+	return ret;
+}
+
+/*
+ * Set socket sending timeout.
+ */
+LTTNG_HIDDEN
+int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec)
+{
+	int ret;
+	struct timeval tv;
+
+	tv.tv_sec = msec / 1000;
+	tv.tv_usec = (msec % 1000) * 1000;
+
+	ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+	if (ret < 0) {
+		PERROR("setsockopt SO_SNDTIMEO");
+	}
+
+	return ret;
+}
+
+LTTNG_HIDDEN
+void lttcomm_init(void)
+{
+	const char *env;
+
+	env = getenv(NETWORK_TIMEOUT_ENV);
+	if (env) {
+		long timeout;
+
+		errno = 0;
+		timeout = strtol(env, NULL, 0);
+		if (errno != 0 || timeout < -1L) {
+			PERROR("Network timeout");
+		} else {
+			if (timeout > 0) {
+				network_timeout = timeout;
+			}
+		}
+	}
+}
+
+LTTNG_HIDDEN
+unsigned long lttcomm_get_network_timeout(void)
+{
+	return network_timeout;
 }

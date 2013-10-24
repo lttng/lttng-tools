@@ -32,6 +32,7 @@
 #include <common/compat/uuid.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/pipe.h>
+#include <common/index/lttng-index.h>
 
 /* Commands for consumer */
 enum lttng_consumer_command {
@@ -115,7 +116,7 @@ struct lttng_consumer_channel {
 	char pathname[PATH_MAX];
 	/* Channel name. */
 	char name[LTTNG_SYMBOL_NAME_LEN];
-	/* UID and GID of the channel. */
+	/* UID and GID of the session owning this channel. */
 	uid_t uid;
 	gid_t gid;
 	/* Relayd id of the channel. -1ULL if it does not apply. */
@@ -131,6 +132,7 @@ struct lttng_consumer_channel {
 	enum consumer_channel_type type;
 
 	/* For UST */
+	uid_t ust_app_uid;	/* Application UID. */
 	struct ustctl_consumer_channel *uchan;
 	unsigned char uuid[UUID_STR_LEN];
 	/*
@@ -154,10 +156,15 @@ struct lttng_consumer_channel {
 
 	/* Metadata cache is metadata channel */
 	struct consumer_metadata_cache *metadata_cache;
-	/* For metadata periodical flush */
+	/* For UST metadata periodical flush */
 	int switch_timer_enabled;
 	timer_t switch_timer;
 	int switch_timer_error;
+
+	/* For the live mode */
+	int live_timer_enabled;
+	timer_t live_timer;
+	int live_timer_error;
 
 	/* On-disk circular buffer */
 	uint64_t tracefile_size;
@@ -168,6 +175,36 @@ struct lttng_consumer_channel {
 	 * monitor list of the channel.
 	 */
 	unsigned int monitor;
+
+	/*
+	 * Channel lock.
+	 *
+	 * This lock protects against concurrent update of channel.
+	 *
+	 * This is nested INSIDE the consumer data lock.
+	 * This is nested OUTSIDE the channel timer lock.
+	 * This is nested OUTSIDE the metadata cache lock.
+	 * This is nested OUTSIDE stream lock.
+	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
+	 */
+	pthread_mutex_t lock;
+
+	/*
+	 * Channel teardown lock.
+	 *
+	 * This lock protect against teardown of channel. It is _never_
+	 * taken by the timer handler.
+	 *
+	 * This is nested INSIDE the consumer data lock.
+	 * This is nested INSIDE the channel lock.
+	 * This is nested OUTSIDE the metadata cache lock.
+	 * This is nested OUTSIDE stream lock.
+	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
+	 */
+	pthread_mutex_t timer_lock;
+
+	/* Timer value in usec for live streaming. */
+	unsigned int live_timer_interval;
 };
 
 /*
@@ -193,6 +230,8 @@ struct lttng_consumer_stream {
 	int out_fd; /* output file to write the data */
 	/* Write position in the output file descriptor */
 	off_t out_fd_offset;
+	/* Amount of bytes written to the output */
+	uint64_t output_written;
 	enum lttng_consumer_stream_state state;
 	int shm_fd_is_copy;
 	int data_read;
@@ -247,6 +286,8 @@ struct lttng_consumer_stream {
 	 *
 	 * This is nested INSIDE the consumer_data lock.
 	 * This is nested INSIDE the metadata cache lock.
+	 * This is nested INSIDE the channel lock.
+	 * This is nested INSIDE the channel timer lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;
@@ -279,6 +320,26 @@ struct lttng_consumer_stream {
 	 * acquired in the destroy path.
 	 */
 	unsigned int globally_visible;
+	/*
+	 * Pipe to wake up the metadata poll thread when the UST metadata
+	 * cache is updated.
+	 */
+	int ust_metadata_poll_pipe[2];
+	/*
+	 * How much metadata was read from the metadata cache and sent
+	 * to the channel.
+	 */
+	uint64_t ust_metadata_pushed;
+	/*
+	 * FD of the index file for this stream.
+	 */
+	int index_fd;
+
+	/*
+	 * Rendez-vous point between data and metadata stream in live mode.
+	 */
+	pthread_cond_t metadata_rdv;
+	pthread_mutex_t metadata_rdv_lock;
 };
 
 /*
@@ -371,12 +432,18 @@ struct lttng_consumer_local_data {
 	 *   == 0 (success, FD is left to library)
 	 *    < 0 (error)
 	 */
-	int (*on_update_stream)(int sessiond_key, uint32_t state);
+	int (*on_update_stream)(uint64_t sessiond_key, uint32_t state);
 	enum lttng_consumer_type type;
 	/* socket to communicate errors with sessiond */
 	int consumer_error_socket;
-	/* socket to ask metadata to sessiond */
+	/* socket to ask metadata to sessiond. */
 	int consumer_metadata_socket;
+	/*
+	 * Protect consumer_metadata_socket.
+	 *
+	 * This is nested OUTSIDE the metadata cache lock.
+	 */
+	pthread_mutex_t metadata_socket_lock;
 	/* socket to exchange commands with sessiond */
 	char *consumer_command_sock_path;
 	/* communication with splice */
@@ -511,7 +578,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
 		uint64_t session_id_per_pid,
-		unsigned int monitor);
+		unsigned int monitor,
+		unsigned int live_timer_interval);
 void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
@@ -537,16 +605,18 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 			struct lttng_consumer_local_data *ctx),
 		int (*recv_channel)(struct lttng_consumer_channel *channel),
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
-		int (*update_stream)(int sessiond_key, uint32_t state));
+		int (*update_stream)(uint64_t sessiond_key, uint32_t state));
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding);
+		unsigned long padding,
+		struct lttng_packet_index *index);
 ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding);
+		unsigned long padding,
+		struct lttng_packet_index *index);
 int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream);
 int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 		unsigned long *pos);
@@ -563,7 +633,7 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll, struct lttcomm_relayd_sock *relayd_sock,
-		unsigned int sessiond_id);
+		uint64_t sessiond_id, uint64_t relayd_session_id);
 void consumer_flag_relayd_for_destroy(
 		struct consumer_relayd_sock_pair *relayd);
 int consumer_data_pending(uint64_t id);
@@ -573,5 +643,12 @@ int consumer_send_status_channel(int sock,
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
 		uint64_t key);
 void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
+unsigned long consumer_get_consumed_maxsize(unsigned long consumed_pos,
+		unsigned long produced_pos, uint64_t max_stream_size);
+int consumer_add_data_stream(struct lttng_consumer_stream *stream);
+void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
+int consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
+void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
+int consumer_create_index_file(struct lttng_consumer_stream *stream);
 
 #endif /* LIB_CONSUMER_H */

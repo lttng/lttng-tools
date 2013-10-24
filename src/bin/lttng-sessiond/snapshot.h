@@ -32,6 +32,8 @@ struct consumer_output;
 struct snapshot_output {
 	uint32_t id;
 	uint64_t max_size;
+	/* Number of snapshot taken with that output. */
+	uint64_t nb_snapshot;
 	char name[NAME_MAX];
 	struct consumer_output *consumer;
 	int kernel_sockets_copied;
@@ -50,6 +52,11 @@ struct snapshot_output {
 struct snapshot {
 	unsigned long next_output_id;
 	size_t nb_output;
+	/*
+	 * Number of snapshot taken for that object. This value is used with a
+	 * temporary output of a snapshot record.
+	 */
+	uint64_t nb_snapshot;
 	struct lttng_ht *output_ht;
 };
 
@@ -69,7 +76,13 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 		const char *ctrl_url, const char *data_url,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot);
+int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
+		struct lttng_uri *uris, size_t nb_uri,
+		struct consumer_output *consumer, struct snapshot_output *output,
+		struct snapshot *snapshot);
 struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
+		struct snapshot *snapshot);
+struct snapshot_output *snapshot_find_output_by_name(const char *name,
 		struct snapshot *snapshot);
 
 #endif /* SNAPSHOT_H */

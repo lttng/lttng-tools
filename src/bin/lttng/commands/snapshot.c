@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/utils.h>
 #include <lttng/snapshot.h>
 
 #include "../command.h"
@@ -49,6 +50,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 	OPT_MAX_SIZE,
+	OPT_LIST_COMMANDS,
 };
 
 static struct poptOption snapshot_opts[] = {
@@ -58,8 +60,9 @@ static struct poptOption snapshot_opts[] = {
 	{"ctrl-url",     'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
 	{"data-url",     'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
 	{"name",         'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0},
-	{"max-size",     'm', POPT_ARG_DOUBLE, 0, OPT_MAX_SIZE, 0, 0},
+	{"max-size",     'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
+	{"list-commands",  0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -76,13 +79,13 @@ static struct cmd_struct actions[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng snapshot [ACTION]\n");
+	fprintf(ofp, "usage: lttng snapshot [OPTION] ACTION\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Actions:\n");
 	fprintf(ofp, "   add-output [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>\n");
 	fprintf(ofp, "      Setup and add an snapshot output for a session.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "   del-output ID [-s <NAME>]\n");
+	fprintf(ofp, "   del-output ID | NAME [-s <NAME>]\n");
 	fprintf(ofp, "      Delete an output for a session using the ID.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "   list-output [-s <NAME>]\n");
@@ -91,15 +94,16 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "   record [-m <SIZE>] [-s <NAME>] [-n <NAME>] [<URL> | -C <URL> -D <URL>]\n");
 	fprintf(ofp, "      Snapshot a session's buffer(s) for all domains. If an URL is\n");
 	fprintf(ofp, "      specified, it is used instead of a previously added output.\n");
-	fprintf(ofp, "      The snapshot is saved in the session directory in snapshot/ with\n");
-	fprintf(ofp, "      the top directory being NAME or the default: snapshot-ID/\n");
+	fprintf(ofp, "      Specifying only a name or/a size will override the current output value.\n");
+	fprintf(ofp, "      For instance, you can record a snapshot with a custom maximum size\n");
+	fprintf(ofp, "      or with a different name.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -s, --session NAME   Apply to session name\n");
 	fprintf(ofp, "  -n, --name NAME      Name of the output or snapshot\n");
-	fprintf(ofp, "  -m, --max-size SIZE  Maximum bytes size of the snapshot\n");
+	fprintf(ofp, "  -m, --max-size SIZE  Maximum bytes size of the snapshot {+k,+M,+G}\n");
 	fprintf(ofp, "  -C, --ctrl-url URL   Set control path URL. (Must use -D also)\n");
 	fprintf(ofp, "  -D, --data-url URL   Set data path URL. (Must use -C also)\n");
 	fprintf(ofp, "\n");
@@ -211,7 +215,7 @@ error:
 /*
  * Delete output by ID.
  */
-static int del_output(uint32_t id)
+static int del_output(uint32_t id, const char *name)
 {
 	int ret;
 	struct lttng_snapshot_output *output = NULL;
@@ -222,7 +226,14 @@ static int del_output(uint32_t id)
 		goto error;
 	}
 
-	ret = lttng_snapshot_output_set_id(id, output);
+	if (name) {
+		ret = lttng_snapshot_output_set_name(name, output);
+	} else if (id != UINT32_MAX) {
+		ret = lttng_snapshot_output_set_id(id, output);
+	} else {
+		ret = CMD_ERROR;
+		goto error;
+	}
 	if (ret < 0) {
 		ret = CMD_FATAL;
 		goto error;
@@ -233,8 +244,13 @@ static int del_output(uint32_t id)
 		goto error;
 	}
 
-	MSG("Snapshot output id %" PRIu32 " successfully deleted for session %s",
-			id, current_session_name);
+	if (id != UINT32_MAX) {
+		MSG("Snapshot output id %" PRIu32 " successfully deleted for session %s",
+				id, current_session_name);
+	} else {
+		MSG("Snapshot output %s successfully deleted for session %s",
+				name, current_session_name);
+	}
 
 error:
 	lttng_snapshot_output_destroy(output);
@@ -297,6 +313,8 @@ end:
 static int cmd_del_output(int argc, const char **argv)
 {
 	int ret = CMD_SUCCESS;
+	char *name;
+	long id;
 
 	if (argc < 2) {
 		usage(stderr);
@@ -304,7 +322,17 @@ static int cmd_del_output(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = del_output(atoi(argv[1]));
+	errno = 0;
+	id = strtol(argv[1], &name, 10);
+	if (id == 0 && errno == 0) {
+		ret = del_output(UINT32_MAX, name);
+	} else if (errno == 0 && *name == '\0') {
+		ret = del_output(id, NULL);
+	} else {
+		ERR("Argument %s not recognized", argv[1]);
+		ret = -1;
+		goto end;
+	}
 
 end:
 	return ret;
@@ -323,12 +351,10 @@ static int record(const char *url)
 	int ret;
 	struct lttng_snapshot_output *output = NULL;
 
-	if (url || (opt_ctrl_url && opt_data_url)) {
-		output = create_output_from_args(url);
-		if (!output) {
-			ret = CMD_FATAL;
-			goto error;
-		}
+	output = create_output_from_args(url);
+	if (!output) {
+		ret = CMD_FATAL;
+		goto error;
 	}
 
 	ret = lttng_snapshot_record(current_session_name, output, 0);
@@ -343,8 +369,6 @@ static int record(const char *url)
 	} else if (opt_ctrl_url) {
 		MSG("Snapshot written to ctrl: %s, data: %s", opt_ctrl_url,
 				opt_data_url);
-	} else {
-		MSG("Snapshot written in session directory.");
 	}
 
 error:
@@ -418,25 +442,20 @@ int cmd_snapshot(int argc, const char **argv)
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, snapshot_opts);
 			goto end;
+		case OPT_LIST_COMMANDS:
+			list_commands(actions, stdout);
+			goto end;
 		case OPT_MAX_SIZE:
 		{
-			long long int val;
-			char *endptr;
+			uint64_t val;
 			const char *opt = poptGetOptArg(pc);
 
-			val = strtoll(opt, &endptr, 10);
-			if ((errno == ERANGE && (val == LLONG_MAX || val == LONG_MIN))
-					|| (errno != 0 && val == 0)) {
+			if (utils_parse_size_suffix((char *) opt, &val) < 0) {
 				ERR("Unable to handle max-size value %s", opt);
 				ret = CMD_ERROR;
 				goto end;
 			}
 
-			if (endptr == opt) {
-				ERR("No digits were found in %s", opt);
-				ret = CMD_ERROR;
-				goto end;
-			}
 			opt_max_size = val;
 
 			break;

@@ -377,6 +377,7 @@ void buffer_reg_stream_add(struct buffer_reg_stream *stream,
 
 	pthread_mutex_lock(&channel->stream_list_lock);
 	cds_list_add_tail(&stream->lnode, &channel->streams);
+	channel->stream_count++;
 	pthread_mutex_unlock(&channel->stream_list_lock);
 }
 
@@ -504,6 +505,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 		/* Wipe stream */
 		cds_list_for_each_entry_safe(sreg, stmp, &regp->streams, lnode) {
 			cds_list_del(&sreg->lnode);
+			regp->stream_count--;
 			buffer_reg_stream_destroy(sreg, domain);
 		}
 

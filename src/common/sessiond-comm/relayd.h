@@ -26,9 +26,11 @@
 
 #include <lttng/lttng.h>
 #include <common/defaults.h>
+#include <common/index/lttng-index.h>
+#include <config.h>
 
-#define RELAYD_VERSION_COMM_MAJOR             2
-#define RELAYD_VERSION_COMM_MINOR             2
+#define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
+#define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR
 
 /*
  * lttng-relayd communication header.
@@ -146,6 +148,30 @@ struct lttcomm_relayd_end_data_pending {
 
 struct lttcomm_relayd_quiescent_control {
 	uint64_t stream_id;
+} LTTNG_PACKED;
+
+/*
+ * Index data.
+ */
+struct lttcomm_relayd_index {
+	uint64_t relay_stream_id;
+	uint64_t net_seq_num;
+	uint64_t packet_size;
+	uint64_t content_size;
+	uint64_t timestamp_begin;
+	uint64_t timestamp_end;
+	uint64_t events_discarded;
+	uint64_t stream_id;
+} LTTNG_PACKED;
+
+/*
+ * Create session in 2.4 adds additionnal parameters for live reading.
+ */
+struct lttcomm_relayd_create_session_2_4 {
+	char session_name[NAME_MAX];
+	char hostname[HOST_NAME_MAX];
+	uint32_t live_timer;
+	uint32_t snapshot;
 } LTTNG_PACKED;
 
 #endif	/* _RELAYD_COMM */

@@ -25,10 +25,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <time.h>
+#include <poll.h>
 
 #include <common/common.h>
 
 #include "inet.h"
+
+#define MSEC_PER_SEC	1000
+#define NSEC_PER_MSEC	1000000
+#define RECONNECT_DELAY	200	/* ms */
 
 /*
  * INET protocol operations.
@@ -43,6 +50,8 @@ static const struct lttcomm_proto_ops inet_ops = {
 	.sendmsg = lttcomm_sendmsg_inet_sock,
 };
 
+unsigned long lttcomm_inet_tcp_timeout;
+
 /*
  * Creates an PF_INET socket.
  */
@@ -50,6 +59,7 @@ LTTNG_HIDDEN
 int lttcomm_create_inet_sock(struct lttcomm_sock *sock, int type, int proto)
 {
 	int val = 1, ret;
+	unsigned long timeout;
 
 	/* Create server socket */
 	if ((sock->fd = socket(PF_INET, type, proto)) < 0) {
@@ -66,6 +76,17 @@ int lttcomm_create_inet_sock(struct lttcomm_sock *sock, int type, int proto)
 	if (ret < 0) {
 		PERROR("setsockopt inet");
 		goto error;
+	}
+	timeout = lttcomm_get_network_timeout();
+	if (timeout) {
+		ret = lttcomm_setsockopt_rcv_timeout(sock->fd, timeout);
+		if (ret) {
+			goto error;
+		}
+		ret = lttcomm_setsockopt_snd_timeout(sock->fd, timeout);
+		if (ret) {
+			goto error;
+		}
 	}
 
 	return 0;
@@ -91,6 +112,130 @@ int lttcomm_bind_inet_sock(struct lttcomm_sock *sock)
 	return ret;
 }
 
+static
+int connect_no_timeout(struct lttcomm_sock *sock)
+{
+	return connect(sock->fd, (struct sockaddr *) &sock->sockaddr.addr.sin,
+			sizeof(sock->sockaddr.addr.sin));
+}
+
+/*
+ * Return time_a - time_b  in milliseconds.
+ */
+static
+unsigned long time_diff_ms(struct timespec *time_a,
+		struct timespec *time_b)
+{
+	time_t sec_diff;
+	long nsec_diff;
+	unsigned long result_ms;
+
+	sec_diff = time_a->tv_sec - time_b->tv_sec;
+	nsec_diff = time_a->tv_nsec - time_b->tv_nsec;
+
+	result_ms = sec_diff * MSEC_PER_SEC;
+	result_ms += nsec_diff / NSEC_PER_MSEC;
+	return result_ms;
+}
+
+static
+int connect_with_timeout(struct lttcomm_sock *sock)
+{
+	unsigned long timeout = lttcomm_get_network_timeout();
+	int ret, flags, connect_ret;
+	struct timespec orig_time, cur_time;
+
+	ret = fcntl(sock->fd, F_GETFL, 0);
+	if (ret == -1) {
+		PERROR("fcntl");
+		return -1;
+	}
+	flags = ret;
+
+	/* Set socket to nonblock */
+	ret = fcntl(sock->fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret == -1) {
+		PERROR("fcntl");
+		return -1;
+	}
+
+	ret = clock_gettime(CLOCK_MONOTONIC, &orig_time);
+	if (ret == -1) {
+		PERROR("clock_gettime");
+		return -1;
+	}
+
+	connect_ret = connect(sock->fd,
+		(struct sockaddr *) &sock->sockaddr.addr.sin,
+		sizeof(sock->sockaddr.addr.sin));
+	if (connect_ret == -1 && errno != EAGAIN
+			&& errno != EWOULDBLOCK
+			&& errno != EINPROGRESS) {
+		goto error;
+	} else if (!connect_ret) {
+		/* Connect succeeded */
+		goto success;
+	}
+
+	/*
+	 * Perform poll loop following EINPROGRESS recommendation from
+	 * connect(2) man page.
+	 */
+	do {
+		struct pollfd fds;
+
+		fds.fd = sock->fd;
+		fds.events = POLLOUT;
+		fds.revents = 0;
+		ret = poll(&fds, 1, RECONNECT_DELAY);
+		if (ret < 0) {
+			goto error;
+		} else if (ret > 0) {
+			int optval;
+			socklen_t optval_len = sizeof(optval);
+
+			if (!(fds.revents & POLLOUT)) {
+				/* Either hup or error */
+				errno = EPIPE;
+				goto error;
+			}
+			/* got something */
+			ret = getsockopt(sock->fd, SOL_SOCKET,
+				SO_ERROR, &optval, &optval_len);
+			if (ret) {
+				goto error;
+			}
+			if (!optval) {
+				connect_ret = 0;
+				goto success;
+			} else {
+				goto error;
+			}
+		}
+		/* ret == 0: timeout */
+		ret = clock_gettime(CLOCK_MONOTONIC, &cur_time);
+		if (ret == -1) {
+			PERROR("clock_gettime");
+			connect_ret = ret;
+			goto error;
+		}
+	} while (time_diff_ms(&cur_time, &orig_time) < timeout);
+
+	/* Timeout */
+	errno = ETIMEDOUT;
+	connect_ret = -1;
+
+success:
+	/* Restore initial flags */
+	ret = fcntl(sock->fd, F_SETFL, flags);
+	if (ret == -1) {
+		PERROR("fcntl");
+		/* Continue anyway */
+	}
+error:
+	return connect_ret;
+}
+
 /*
  * Connect PF_INET socket.
  */
@@ -99,8 +244,11 @@ int lttcomm_connect_inet_sock(struct lttcomm_sock *sock)
 {
 	int ret, closeret;
 
-	ret = connect(sock->fd, (struct sockaddr *) &sock->sockaddr.addr.sin,
-			sizeof(sock->sockaddr.addr.sin));
+	if (lttcomm_get_network_timeout()) {
+		ret = connect_with_timeout(sock);
+	} else {
+		ret = connect_no_timeout(sock);
+	}
 	if (ret < 0) {
 		PERROR("connect");
 		goto error_connect;
@@ -301,4 +449,76 @@ int lttcomm_close_inet_sock(struct lttcomm_sock *sock)
 	sock->fd = -1;
 
 	return ret;
+}
+
+/*
+ * Return value read from /proc or else 0 if value is not found.
+ */
+static unsigned long read_proc_value(const char *path)
+{
+	int ret, fd;
+	long r_val;
+	unsigned long val = 0;
+	char buf[64];
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		goto error;
+	}
+
+	ret = read(fd, buf, sizeof(buf));
+	if (ret < 0) {
+		PERROR("read proc failed");
+		goto error_close;
+	}
+
+	errno = 0;
+	r_val = strtol(buf, NULL, 10);
+	if (errno != 0 || r_val < -1L) {
+		val = 0;
+		goto error_close;
+	} else {
+		if (r_val > 0) {
+			val = r_val;
+		}
+	}
+
+error_close:
+	ret = close(fd);
+	if (ret) {
+		PERROR("close /proc value");
+	}
+error:
+	return val;
+}
+
+LTTNG_HIDDEN
+void lttcomm_inet_init(void)
+{
+	unsigned long syn_retries, fin_timeout, syn_timeout, env;
+
+	env = lttcomm_get_network_timeout();
+	if (env) {
+		lttcomm_inet_tcp_timeout = env;
+		goto end;
+	}
+
+	/* Assign default value and see if we can change it. */
+	lttcomm_inet_tcp_timeout = DEFAULT_INET_TCP_TIMEOUT;
+
+	syn_retries = read_proc_value(LTTCOMM_INET_PROC_SYN_RETRIES_PATH);
+	fin_timeout = read_proc_value(LTTCOMM_INET_PROC_FIN_TIMEOUT_PATH);
+
+	syn_timeout = syn_retries * LTTCOMM_INET_SYN_TIMEOUT_FACTOR;
+
+	/*
+	 * Get the maximum between the two possible timeout value and use that to
+	 * get the maximum with the default timeout.
+	 */
+	lttcomm_inet_tcp_timeout = max_t(unsigned long,
+			max_t(unsigned long, syn_timeout, fin_timeout),
+			lttcomm_inet_tcp_timeout);
+
+end:
+	DBG("TCP inet operation timeout set to %lu sec", lttcomm_inet_tcp_timeout);
 }

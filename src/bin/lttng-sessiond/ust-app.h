@@ -21,6 +21,8 @@
 #include <stdint.h>
 
 #include <common/compat/uuid.h>
+
+#include "jul.h"
 #include "trace-ust.h"
 #include "ust-registry.h"
 
@@ -102,6 +104,7 @@ struct ust_app_ctx {
 	struct lttng_ust_context ctx;
 	struct lttng_ust_object_data *obj;
 	struct lttng_ht_node_ulong node;
+	struct cds_list_head list;
 };
 
 struct ust_app_event {
@@ -141,7 +144,14 @@ struct ust_app_channel {
 	struct ust_app_stream_list streams;
 	/* Session pointer that owns this object. */
 	struct ust_app_session *session;
+	/*
+	 * Contexts are kept in a hash table for fast lookup and in an ordered list
+	 * so we are able to enable them on the tracer side in the same order the
+	 * user added them.
+	 */
 	struct lttng_ht *ctx;
+	struct cds_list_head ctx_list;
+
 	struct lttng_ht *events;
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
@@ -199,6 +209,7 @@ struct ust_app_session {
 	struct rcu_head rcu_head;
 	/* If the channel's streams have to be outputed or not. */
 	unsigned int output_traces;
+	unsigned int live_timer_interval;	/* usec */
 };
 
 /*
@@ -250,6 +261,13 @@ struct ust_app {
 	 * Hash table containing ust_app_channel indexed by channel objd.
 	 */
 	struct lttng_ht *ust_objd;
+	/*
+	 * If this application is of the JUL domain and this is non negative then a
+	 * lookup MUST be done to acquire a read side reference to the
+	 * corresponding JUL app object. If the lookup fails, this should be set to
+	 * a negative value indicating that the JUL application is gone.
+	 */
+	int jul_app_sock;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
@@ -309,7 +327,15 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct snapshot_output *output, int wait);
+		struct snapshot_output *output, int wait, unsigned int nb_streams);
+unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess);
+struct ust_app *ust_app_find_by_sock(int sock);
+
+static inline
+int ust_app_supported(void)
+{
+	return 1;
+}
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -509,9 +535,30 @@ void ust_app_destroy(struct ust_app *app)
 }
 static inline
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct snapshot_output *output, int wait)
+		struct snapshot_output *output, int wait, unsigned int nb_stream)
 {
 	return 0;
+}
+static inline
+unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
+{
+	return 0;
+}
+
+static inline
+int ust_app_supported(void)
+{
+	return 0;
+}
+static inline
+struct ust_app *ust_app_find_by_sock(int sock)
+{
+	return NULL;
+}
+static inline
+struct ust_app *ust_app_find_by_pid(pid_t pid)
+{
+	return NULL;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

@@ -103,6 +103,11 @@ extern int ht_cleanup_pipe[2];
  */
 extern long page_size;
 
+/*
+ * Global set once in main(). JUL TCP port for registration.
+ */
+extern unsigned int jul_tcp_port;
+
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 

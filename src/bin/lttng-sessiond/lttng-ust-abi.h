@@ -44,7 +44,7 @@
 #define LTTNG_UST_COMM_MAGIC			0xC57C57C5
 
 /* Version for ABI between liblttng-ust, sessiond, consumerd */
-#define LTTNG_UST_ABI_MAJOR_VERSION		4
+#define LTTNG_UST_ABI_MAJOR_VERSION		5
 #define LTTNG_UST_ABI_MINOR_VERSION		0
 
 enum lttng_ust_instrumentation {
@@ -139,6 +139,7 @@ enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_VPID			= 1,
 	LTTNG_UST_CONTEXT_PTHREAD_ID		= 2,
 	LTTNG_UST_CONTEXT_PROCNAME		= 3,
+	LTTNG_UST_CONTEXT_IP			= 4,
 };
 
 #define LTTNG_UST_CONTEXT_PADDING1	16

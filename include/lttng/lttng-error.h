@@ -81,8 +81,8 @@ enum lttng_error_code {
 	LTTNG_ERR_KERN_CONSUMER_FAIL     = 48,  /* Kernel consumer start failed */
 	LTTNG_ERR_KERN_STREAM_FAIL       = 49,  /* Kernel create stream failed */
 	LTTNG_ERR_START_SESSION_ONCE     = 50,  /* Session needs to be started once. */
-	/* 51 */
-	/* 52 */
+	LTTNG_ERR_SNAPSHOT_FAIL          = 51,  /* Snapshot record failed. */
+	LTTNG_ERR_NO_STREAM              = 52,  /* Index without stream on relay. */
 	LTTNG_ERR_KERN_LIST_FAIL         = 53,  /* Kernel listing events failed */
 	LTTNG_ERR_UST_CALIBRATE_FAIL     = 54,  /* UST calibration failed */
 	LTTNG_ERR_UST_EVENT_ENABLED      = 55,  /* UST event already enabled. */
@@ -92,7 +92,7 @@ enum lttng_error_code {
 	LTTNG_ERR_UST_CHAN_NOT_FOUND     = 59,  /* UST channel not found */
 	LTTNG_ERR_UST_CHAN_DISABLE_FAIL  = 60,  /* UST disable channel failed */
 	LTTNG_ERR_UST_CHAN_ENABLE_FAIL   = 61,  /* UST enable channel failed */
-	/* 62 */
+	LTTNG_ERR_CHAN_EXIST             = 62,  /* Channel already exists. */
 	LTTNG_ERR_UST_ENABLE_FAIL        = 63,  /* UST enable event failed */
 	LTTNG_ERR_UST_DISABLE_FAIL       = 64,  /* UST disable event failed */
 	LTTNG_ERR_UST_META_FAIL          = 65,  /* UST open metadata failed */
@@ -113,8 +113,8 @@ enum lttng_error_code {
 	LTTNG_ERR_TRACE_ALREADY_STARTED  = 80,  /* Tracing already started */
 	LTTNG_ERR_TRACE_ALREADY_STOPPED  = 81,  /* Tracing already stopped */
 	LTTNG_ERR_KERN_EVENT_ENOSYS      = 82,  /* Kernel event type not supported */
-	/* 83 */
-	/* 84 */
+	LTTNG_ERR_NEED_CHANNEL_NAME      = 83,	/* Non-default channel exists within session: channel name needs to be specified with '-c name' */
+	LTTNG_ERR_NO_UST                 = 84,  /* LTTng-UST tracer is not supported. Please rebuild lttng-tools with lttng-ust support enabled. */
 	/* 85 */
 	/* 86 */
 	/* 87 */

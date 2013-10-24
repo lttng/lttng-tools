@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <regex.h>
+#include <grp.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -134,6 +135,48 @@ int utils_create_pipe_cloexec(int *dst)
 		ret = fcntl(dst[i], F_SETFD, FD_CLOEXEC);
 		if (ret < 0) {
 			PERROR("fcntl pipe cloexec");
+			goto error;
+		}
+	}
+
+error:
+	return ret;
+}
+
+/*
+ * Create pipe and set fd flags to FD_CLOEXEC and O_NONBLOCK.
+ *
+ * Make sure the pipe opened by this function are closed at some point. Use
+ * utils_close_pipe(). Using pipe() and fcntl rather than pipe2() to
+ * support OSes other than Linux 2.6.23+.
+ */
+LTTNG_HIDDEN
+int utils_create_pipe_cloexec_nonblock(int *dst)
+{
+	int ret, i;
+
+	if (dst == NULL) {
+		return -1;
+	}
+
+	ret = utils_create_pipe(dst);
+	if (ret < 0) {
+		goto error;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(dst[i], F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			PERROR("fcntl pipe cloexec");
+			goto error;
+		}
+		/*
+		 * Note: we override any flag that could have been
+		 * previously set on the fd.
+		 */
+		ret = fcntl(dst[i], F_SETFL, O_NONBLOCK);
+		if (ret < 0) {
+			PERROR("fcntl pipe nonblock");
 			goto error;
 		}
 	}
@@ -309,10 +352,11 @@ error:
  */
 LTTNG_HIDDEN
 int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid)
+		uint64_t count, int uid, int gid, char *suffix)
 {
 	int ret, out_fd, flags, mode;
-	char full_path[PATH_MAX], *path_name_id = NULL, *path;
+	char full_path[PATH_MAX], *path_name_suffix = NULL, *path;
+	char *extra = NULL;
 
 	assert(path_name);
 	assert(file_name);
@@ -324,17 +368,30 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 		goto error;
 	}
 
+	/* Setup extra string if suffix or/and a count is needed. */
+	if (size > 0 && suffix) {
+		ret = asprintf(&extra, "_%" PRIu64 "%s", count, suffix);
+	} else if (size > 0) {
+		ret = asprintf(&extra, "_%" PRIu64, count);
+	} else if (suffix) {
+		ret = asprintf(&extra, "%s", suffix);
+	}
+	if (ret < 0) {
+		PERROR("Allocating extra string to name");
+		goto error;
+	}
+
 	/*
 	 * If we split the trace in multiple files, we have to add the count at the
 	 * end of the tracefile name
 	 */
-	if (size > 0) {
-		ret = asprintf(&path_name_id, "%s_%" PRIu64, full_path, count);
+	if (extra) {
+		ret = asprintf(&path_name_suffix, "%s%s", full_path, extra);
 		if (ret < 0) {
-			PERROR("Allocating path name ID");
-			goto error;
+			PERROR("Allocating path name with extra string");
+			goto error_free_suffix;
 		}
-		path = path_name_id;
+		path = path_name_suffix;
 	} else {
 		path = full_path;
 	}
@@ -355,7 +412,9 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 	ret = out_fd;
 
 error_open:
-	free(path_name_id);
+	free(path_name_suffix);
+error_free_suffix:
+	free(extra);
 error:
 	return ret;
 }
@@ -371,9 +430,13 @@ error:
  */
 LTTNG_HIDDEN
 int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count)
+		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
+		int *stream_fd)
 {
 	int ret;
+
+	assert(new_count);
+	assert(stream_fd);
 
 	ret = close(out_fd);
 	if (ret < 0) {
@@ -387,8 +450,16 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		(*new_count)++;
 	}
 
-	return utils_create_stream_file(path_name, file_name, size, *new_count,
-			uid, gid);
+	ret = utils_create_stream_file(path_name, file_name, size, *new_count,
+			uid, gid, 0);
+	if (ret < 0) {
+		goto error;
+	}
+	*stream_fd = ret;
+
+	/* Success. */
+	ret = 0;
+
 error:
 	return ret;
 }
@@ -623,4 +694,25 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	}
 
 	return ret;
+}
+
+/*
+ * Return the group ID matching name, else 0 if it cannot be found.
+ */
+LTTNG_HIDDEN
+gid_t utils_get_group_id(const char *name)
+{
+	struct group *grp;
+
+	grp = getgrnam(name);
+	if (!grp) {
+		static volatile int warn_once;
+
+		if (!warn_once) {
+			WARN("No tracing group detected");
+			warn_once = 1;
+		}
+		return 0;
+	}
+	return grp->gr_gid;
 }

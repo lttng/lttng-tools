@@ -33,6 +33,7 @@ enum lttng_ht_type {
 	LTTNG_HT_TYPE_STRING,
 	LTTNG_HT_TYPE_ULONG,
 	LTTNG_HT_TYPE_U64,
+	LTTNG_HT_TYPE_TWO_U64,
 };
 
 struct lttng_ht {
@@ -63,6 +64,17 @@ struct lttng_ht_node_u64 {
 	struct rcu_head head;
 };
 
+struct lttng_ht_two_u64 {
+	uint64_t key1;
+	uint64_t key2;
+};
+
+struct lttng_ht_node_two_u64 {
+	struct lttng_ht_two_u64 key;
+	struct cds_lfht_node node;
+	struct rcu_head head;
+};
+
 /* Hashtable new and destroy */
 extern struct lttng_ht *lttng_ht_new(unsigned long size, int type);
 extern void lttng_ht_destroy(struct lttng_ht *ht);
@@ -73,9 +85,12 @@ extern void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 		unsigned long key);
 extern void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 		uint64_t key);
+extern void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
+		uint64_t key1, uint64_t key2);
 extern void lttng_ht_node_free_str(struct lttng_ht_node_str *node);
 extern void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node);
 extern void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node);
+extern void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node);
 
 extern void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 		struct lttng_ht_iter *iter);
@@ -87,10 +102,14 @@ extern void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
 extern void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node);
+extern void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
+		struct lttng_ht_node_two_u64 *node);
 extern struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(
 		struct lttng_ht *ht, struct lttng_ht_node_ulong *node);
 extern struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(
 		struct lttng_ht *ht, struct lttng_ht_node_u64 *node);
+extern void lttng_ht_add_str(struct lttng_ht *ht,
+		struct lttng_ht_node_str *node);
 extern void lttng_ht_add_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
 extern void lttng_ht_add_u64(struct lttng_ht *ht,
@@ -109,6 +128,8 @@ extern struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 extern struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 		struct lttng_ht_iter *iter);
 extern struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
+		struct lttng_ht_iter *iter);
+extern struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 		struct lttng_ht_iter *iter);
 
 #endif /* _LTT_HT_H */

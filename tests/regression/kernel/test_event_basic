@@ -19,7 +19,7 @@ TEST_DESC="Kernel tracer - Basic event"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=12
+NUM_TESTS=20
 
 source $TESTDIR/utils/utils.sh
 
@@ -46,6 +46,27 @@ function test_event_basic()
 	rm -rf $TRACE_PATH
 }
 
+function test_enable_after_start()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_enable_after_start"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_event $SESSION_NAME "sched_switch"
+
+	start_lttng_tracing
+	lttng_enable_kernel_event $SESSION_NAME "sched_process_exit"
+	stop_lttng_tracing
+
+	validate_trace "sched_switch" $TRACE_PATH
+	validate_trace "sched_process_exit" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
@@ -62,6 +83,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	start_lttng_sessiond
 
 	test_event_basic
+	test_enable_after_start
 
 	stop_lttng_sessiond
 }

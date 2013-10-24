@@ -60,17 +60,15 @@
 #include "ust-consumer.h"
 #include "utils.h"
 #include "fd-limit.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "testpoint.h"
 #include "ust-thread.h"
+#include "jul-thread.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
-/* Const values */
-const char default_tracing_group[] = DEFAULT_TRACING_GROUP;
-
 const char *progname;
-const char *opt_tracing_group;
+static const char *tracing_group_name = DEFAULT_TRACING_GROUP;
 static const char *opt_pidfile;
 static int opt_sig_parent;
 static int opt_verbose_consumer;
@@ -90,7 +88,6 @@ static struct consumer_data kconsumer_data = {
 	.cmd_unix_sock_path = DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
-	.metadata_sock.fd = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -102,7 +99,6 @@ static struct consumer_data ustconsumer64_data = {
 	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
-	.metadata_sock.fd = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -114,7 +110,6 @@ static struct consumer_data ustconsumer32_data = {
 	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
-	.metadata_sock.fd = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -162,6 +157,7 @@ static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t health_thread;
 static pthread_t ht_cleanup_thread;
+static pthread_t jul_reg_thread;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -235,6 +231,12 @@ static int app_socket_timeout;
 
 /* Set in main() with the current page size. */
 long page_size;
+
+/* Application health monitoring */
+struct health_app *health_sessiond;
+
+/* JUL TCP port for registration. Used by the JUL thread. */
+unsigned int jul_tcp_port = DEFAULT_JUL_TCP_PORT;
 
 static
 void setup_consumerd_path(void)
@@ -326,25 +328,6 @@ int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 }
 
 /*
- * Return group ID of the tracing group or -1 if not found.
- */
-static gid_t allowed_group(void)
-{
-	struct group *grp;
-
-	if (opt_tracing_group) {
-		grp = getgrnam(opt_tracing_group);
-	} else {
-		grp = getgrnam(default_tracing_group);
-	}
-	if (!grp) {
-		return -1;
-	} else {
-		return grp->gr_gid;
-	}
-}
-
-/*
  * Init thread quit pipe.
  *
  * Return -1 on error or 0 if all pipes are created.
@@ -406,13 +389,13 @@ static void close_consumer_sockets(void)
 	if (ustconsumer32_data.err_sock >= 0) {
 		ret = close(ustconsumer32_data.err_sock);
 		if (ret < 0) {
-			PERROR("UST consumer32 err_sock close");
+			PERROR("UST consumerd32 err_sock close");
 		}
 	}
 	if (ustconsumer64_data.err_sock >= 0) {
 		ret = close(ustconsumer64_data.err_sock);
 		if (ret < 0) {
-			PERROR("UST consumer64 err_sock close");
+			PERROR("UST consumerd64 err_sock close");
 		}
 	}
 	if (kconsumer_data.cmd_sock >= 0) {
@@ -424,13 +407,13 @@ static void close_consumer_sockets(void)
 	if (ustconsumer32_data.cmd_sock >= 0) {
 		ret = close(ustconsumer32_data.cmd_sock);
 		if (ret < 0) {
-			PERROR("UST consumer32 cmd_sock close");
+			PERROR("UST consumerd32 cmd_sock close");
 		}
 	}
 	if (ustconsumer64_data.cmd_sock >= 0) {
 		ret = close(ustconsumer64_data.cmd_sock);
 		if (ret < 0) {
-			PERROR("UST consumer64 cmd_sock close");
+			PERROR("UST consumerd64 cmd_sock close");
 		}
 	}
 }
@@ -441,12 +424,15 @@ static void close_consumer_sockets(void)
 static void cleanup(void)
 {
 	int ret;
-	char *cmd = NULL;
 	struct ltt_session *sess, *stmp;
+	char path[PATH_MAX];
 
 	DBG("Cleaning up");
 
-	/* First thing first, stop all threads */
+	/*
+	 * Close the thread quit pipe. It has already done its job,
+	 * since we are now called.
+	 */
 	utils_close_pipe(thread_quit_pipe);
 
 	/*
@@ -460,18 +446,54 @@ static void cleanup(void)
 		}
 	}
 
-	DBG("Removing %s directory", rundir);
-	ret = asprintf(&cmd, "rm -rf %s", rundir);
-	if (ret < 0) {
-		ERR("asprintf failed. Something is really wrong!");
-	}
+	DBG("Removing sessiond and consumerd content of directory %s", rundir);
 
-	/* Remove lttng run directory */
-	ret = system(cmd);
-	if (ret < 0) {
-		ERR("Unable to clean %s", rundir);
-	}
-	free(cmd);
+	/* sessiond */
+	snprintf(path, PATH_MAX,
+		"%s/%s",
+		rundir, DEFAULT_LTTNG_SESSIOND_PIDFILE);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	/* kconsumerd */
+	snprintf(path, PATH_MAX,
+		DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
+		rundir);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	snprintf(path, PATH_MAX,
+		DEFAULT_KCONSUMERD_PATH,
+		rundir);
+	DBG("Removing directory %s", path);
+	(void) rmdir(path);
+
+	/* ust consumerd 32 */
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
+		rundir);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD32_PATH,
+		rundir);
+	DBG("Removing directory %s", path);
+	(void) rmdir(path);
+
+	/* ust consumerd 64 */
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
+		rundir);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
+	snprintf(path, PATH_MAX,
+		DEFAULT_USTCONSUMERD64_PATH,
+		rundir);
+	DBG("Removing directory %s", path);
+	(void) rmdir(path);
+
 	free(rundir);
 
 	DBG("Cleaning up all sessions");
@@ -675,6 +697,8 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 				if (ret < 0) {
 					goto error;
 				}
+				/* Update the stream global counter */
+				ksess->stream_count_global += ret;
 
 				/*
 				 * Have we already sent fds to the consumer? If yes, it means
@@ -688,9 +712,6 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 					rcu_read_lock();
 					cds_lfht_for_each_entry(ksess->consumer->socks->ht,
 							&iter.iter, socket, node.node) {
-						/* Code flow error */
-						assert(socket->fd >= 0);
-
 						pthread_mutex_lock(socket->lock);
 						ret = kernel_consumer_send_channel_stream(socket,
 								channel, ksess,
@@ -725,6 +746,12 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 
+	/* Consumer is in an ERROR state. Stop any application update. */
+	if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
+		/* Stop the update process since the consumer is dead. */
+		return;
+	}
+
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
 		session_lock(sess);
@@ -750,7 +777,7 @@ static void *thread_manage_kernel(void *data)
 
 	DBG("[thread] Thread manage kernel started");
 
-	health_register(HEALTH_TYPE_KERNEL);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_KERNEL);
 
 	/*
 	 * This first step of the while is to clean this structure which could free
@@ -875,7 +902,7 @@ error_testpoint:
 		WARN("Kernel thread died unexpectedly. "
 				"Kernel tracing can continue but CPU hotplug is disabled.");
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	DBG("Kernel thread dying");
 	return NULL;
 }
@@ -916,7 +943,7 @@ static void *thread_manage_consumer(void *data)
 
 	DBG("[thread] Manage consumer started");
 
-	health_register(HEALTH_TYPE_CONSUMER);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CONSUMER);
 
 	health_code_update();
 
@@ -1014,15 +1041,16 @@ restart:
 		/* Connect both socket, command and metadata. */
 		consumer_data->cmd_sock =
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
-		consumer_data->metadata_sock.fd =
+		consumer_data->metadata_fd =
 			lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
-		if (consumer_data->cmd_sock < 0 ||
-				consumer_data->metadata_sock.fd < 0) {
+		if (consumer_data->cmd_sock < 0
+				|| consumer_data->metadata_fd < 0) {
 			PERROR("consumer connect cmd socket");
 			/* On error, signal condition and quit. */
 			signal_consumer_condition(consumer_data, -1);
 			goto error;
 		}
+		consumer_data->metadata_sock.fd_ptr = &consumer_data->metadata_fd;
 		/* Create metadata socket lock. */
 		consumer_data->metadata_sock.lock = zmalloc(sizeof(pthread_mutex_t));
 		if (consumer_data->metadata_sock.lock == NULL) {
@@ -1035,7 +1063,7 @@ restart:
 		signal_consumer_condition(consumer_data, 1);
 		DBG("Consumer command socket ready (fd: %d", consumer_data->cmd_sock);
 		DBG("Consumer metadata socket ready (fd: %d)",
-				consumer_data->metadata_sock.fd);
+				consumer_data->metadata_fd);
 	} else {
 		ERR("consumer error when waiting for SOCK_READY : %s",
 				lttcomm_get_readable_code(-code));
@@ -1055,7 +1083,7 @@ restart:
 	}
 
 	/* Add metadata socket that is successfully connected. */
-	ret = lttng_poll_add(&events, consumer_data->metadata_sock.fd,
+	ret = lttng_poll_add(&events, consumer_data->metadata_fd,
 			LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
@@ -1114,7 +1142,7 @@ restart_poll:
 						lttcomm_get_readable_code(-code));
 
 				goto exit;
-			} else if (pollfd == consumer_data->metadata_sock.fd) {
+			} else if (pollfd == consumer_data->metadata_fd) {
 				/* UST metadata requests */
 				ret = ust_consumer_metadata_request(
 						&consumer_data->metadata_sock);
@@ -1133,6 +1161,13 @@ restart_poll:
 
 exit:
 error:
+	/*
+	 * We lock here because we are about to close the sockets and some other
+	 * thread might be using them so get exclusive access which will abort all
+	 * other consumer command by other threads.
+	 */
+	pthread_mutex_lock(&consumer_data->lock);
+
 	/* Immediately set the consumerd state to stopped */
 	if (consumer_data->type == LTTNG_CONSUMER_KERNEL) {
 		uatomic_set(&kernel_consumerd_state, CONSUMER_ERROR);
@@ -1149,22 +1184,21 @@ error:
 		if (ret) {
 			PERROR("close");
 		}
+		consumer_data->err_sock = -1;
 	}
 	if (consumer_data->cmd_sock >= 0) {
 		ret = close(consumer_data->cmd_sock);
 		if (ret) {
 			PERROR("close");
 		}
+		consumer_data->cmd_sock = -1;
 	}
-	if (consumer_data->metadata_sock.fd >= 0) {
-		ret = close(consumer_data->metadata_sock.fd);
+	if (*consumer_data->metadata_sock.fd_ptr >= 0) {
+		ret = close(*consumer_data->metadata_sock.fd_ptr);
 		if (ret) {
 			PERROR("close");
 		}
 	}
-	/* Cleanup metadata socket mutex. */
-	pthread_mutex_destroy(consumer_data->metadata_sock.lock);
-	free(consumer_data->metadata_sock.lock);
 
 	if (sock >= 0) {
 		ret = close(sock);
@@ -1176,6 +1210,11 @@ error:
 	unlink(consumer_data->err_unix_sock_path);
 	unlink(consumer_data->cmd_unix_sock_path);
 	consumer_data->pid = 0;
+	pthread_mutex_unlock(&consumer_data->lock);
+
+	/* Cleanup metadata socket mutex. */
+	pthread_mutex_destroy(consumer_data->metadata_sock.lock);
+	free(consumer_data->metadata_sock.lock);
 
 	lttng_poll_clean(&events);
 error_poll:
@@ -1183,7 +1222,7 @@ error_poll:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	DBG("consumer thread cleanup completed");
 
 	return NULL;
@@ -1203,7 +1242,7 @@ static void *thread_manage_apps(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(HEALTH_TYPE_APP_MANAGE);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE);
 
 	if (testpoint(thread_manage_apps)) {
 		goto error_testpoint;
@@ -1291,12 +1330,6 @@ static void *thread_manage_apps(void *data)
 						goto error;
 					}
 
-					/* Set socket timeout for both receiving and ending */
-					(void) lttcomm_setsockopt_rcv_timeout(sock,
-							app_socket_timeout);
-					(void) lttcomm_setsockopt_snd_timeout(sock,
-							app_socket_timeout);
-
 					DBG("Apps with sock %d added to poll set", sock);
 
 					health_code_update();
@@ -1343,7 +1376,7 @@ error_testpoint:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	DBG("Application communication apps thread cleanup complete");
 	rcu_thread_offline();
 	rcu_unregister_thread();
@@ -1354,6 +1387,9 @@ error_testpoint:
  * Send a socket to a thread This is called from the dispatch UST registration
  * thread once all sockets are set for the application.
  *
+ * The sock value can be invalid, we don't really care, the thread will handle
+ * it and make the necessary cleanup if so.
+ *
  * On success, return 0 else a negative value being the errno message of the
  * write().
  */
@@ -1361,9 +1397,14 @@ static int send_socket_to_thread(int fd, int sock)
 {
 	int ret;
 
-	/* Sockets MUST be set or else this should not have been called. */
-	assert(fd >= 0);
-	assert(sock >= 0);
+	/*
+	 * It's possible that the FD is set as invalid with -1 concurrently just
+	 * before calling this function being a shutdown state of the thread.
+	 */
+	if (fd < 0) {
+		ret = -EBADF;
+		goto error;
+	}
 
 	do {
 		ret = write(fd, &sock, sizeof(sock));
@@ -1481,7 +1522,7 @@ static void *thread_dispatch_ust_registration(void *data)
 		.count = 0,
 	};
 
-	health_register(HEALTH_TYPE_APP_REG_DISPATCH);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
 
 	health_code_update();
 
@@ -1626,7 +1667,12 @@ static void *thread_dispatch_ust_registration(void *data)
 				if (ret < 0) {
 					rcu_read_unlock();
 					session_unlock_list();
-					/* No notify thread, stop the UST tracing. */
+					/*
+					 * No notify thread, stop the UST tracing. However, this is
+					 * not an internal error of the this thread thus setting
+					 * the health error code to a normal exit.
+					 */
+					err = 0;
 					goto error;
 				}
 
@@ -1651,7 +1697,12 @@ static void *thread_dispatch_ust_registration(void *data)
 				if (ret < 0) {
 					rcu_read_unlock();
 					session_unlock_list();
-					/* No apps. thread, stop the UST tracing. */
+					/*
+					 * No apps. thread, stop the UST tracing. However, this is
+					 * not an internal error of the this thread thus setting
+					 * the health error code to a normal exit.
+					 */
+					err = 0;
 					goto error;
 				}
 
@@ -1682,7 +1733,7 @@ error:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	return NULL;
 }
 
@@ -1702,7 +1753,7 @@ static void *thread_registration_apps(void *data)
 
 	DBG("[thread] Manage application registration started");
 
-	health_register(HEALTH_TYPE_APP_REG);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
 
 	if (testpoint(thread_registration_apps)) {
 		goto error_testpoint;
@@ -1780,6 +1831,18 @@ static void *thread_registration_apps(void *data)
 					if (sock < 0) {
 						goto error;
 					}
+
+					/*
+					 * Set socket timeout for both receiving and ending.
+					 * app_socket_timeout is in seconds, whereas
+					 * lttcomm_setsockopt_rcv_timeout and
+					 * lttcomm_setsockopt_snd_timeout expect msec as
+					 * parameter.
+					 */
+					(void) lttcomm_setsockopt_rcv_timeout(sock,
+							app_socket_timeout * 1000);
+					(void) lttcomm_setsockopt_snd_timeout(sock,
+							app_socket_timeout * 1000);
 
 					/*
 					 * Set the CLOEXEC flag. Return code is useless because
@@ -1882,7 +1945,7 @@ error_listen:
 error_create_poll:
 error_testpoint:
 	DBG("UST Registration thread cleanup complete");
-	health_unregister();
+	health_unregister(health_sessiond);
 
 	return NULL;
 }
@@ -2083,6 +2146,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				"lttng-consumerd", verbosity, "-k",
 				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+				"--group", tracing_group_name,
 				NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
@@ -2121,6 +2185,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			ret = execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					"--group", tracing_group_name,
 					NULL);
 			if (consumerd64_libdir[0] != '\0') {
 				free(tmpnew);
@@ -2166,6 +2231,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			ret = execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
+					"--group", tracing_group_name,
 					NULL);
 			if (consumerd32_libdir[0] != '\0') {
 				free(tmpnew);
@@ -2248,21 +2314,6 @@ error:
 			PERROR("close consumer data error socket");
 		}
 	}
-	return ret;
-}
-
-/*
- * Compute health status of each consumer. If one of them is zero (bad
- * state), we return 0.
- */
-static int check_consumer_health(void)
-{
-	int ret;
-
-	ret = health_check_state(HEALTH_TYPE_CONSUMER);
-
-	DBG3("Health consumer check %d", ret);
-
 	return ret;
 }
 
@@ -2364,6 +2415,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		consumer = session->kernel_session->consumer;
 		dir_name = DEFAULT_KERNEL_TRACE_DIR;
 		break;
+	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
 		if (session->ust_session->consumer) {
@@ -2407,6 +2459,7 @@ static int create_ust_session(struct ltt_session *session,
 	assert(session->consumer);
 
 	switch (domain->type) {
+	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_UST:
 		break;
 	default:
@@ -2426,6 +2479,8 @@ static int create_ust_session(struct ltt_session *session,
 	lus->uid = session->uid;
 	lus->gid = session->gid;
 	lus->output_traces = session->output_traces;
+	lus->snapshot_mode = session->snapshot_mode;
+	lus->live_timer_interval = session->live_timer;
 	session->ust_session = lus;
 
 	/* Copy session output to the newly created UST session */
@@ -2483,6 +2538,7 @@ static int create_kernel_session(struct ltt_session *session)
 	session->kernel_session->uid = session->uid;
 	session->kernel_session->gid = session->gid;
 	session->kernel_session->output_traces = session->output_traces;
+	session->kernel_session->snapshot_mode = session->snapshot_mode;
 
 	return LTTNG_OK;
 
@@ -2538,6 +2594,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
+	case LTTNG_CREATE_SESSION_SNAPSHOT:
+	case LTTNG_CREATE_SESSION_LIVE:
 	case LTTNG_DESTROY_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_DOMAINS:
@@ -2600,6 +2658,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_CREATE_SESSION:
+	case LTTNG_CREATE_SESSION_SNAPSHOT:
+	case LTTNG_CREATE_SESSION_LIVE:
 	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
@@ -2691,8 +2751,13 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		}
 
 		break;
+	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_UST:
 	{
+		if (!ust_app_supported()) {
+			ret = LTTNG_ERR_NO_UST;
+			goto error;
+		}
 		/* Consumer is in an ERROR state. Report back to client */
 		if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_USTCONSUMERD;
@@ -2778,6 +2843,7 @@ skip_domain:
 	if (cmd_ctx->lsm->cmd_type == LTTNG_START_TRACE ||
 			cmd_ctx->lsm->cmd_type == LTTNG_STOP_TRACE) {
 		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_UST:
 			if (uatomic_read(&ust_consumerd_state) != CONSUMER_STARTED) {
 				ret = LTTNG_ERR_NO_USTCONSUMERD;
@@ -3040,7 +3106,7 @@ skip_domain:
 		}
 
 		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris, nb_uri,
-			&cmd_ctx->creds);
+			&cmd_ctx->creds, 0);
 
 		free(uris);
 
@@ -3291,6 +3357,84 @@ skip_domain:
 				cmd_ctx->lsm->u.snapshot_record.wait);
 		break;
 	}
+	case LTTNG_CREATE_SESSION_SNAPSHOT:
+	{
+		size_t nb_uri, len;
+		struct lttng_uri *uris = NULL;
+
+		nb_uri = cmd_ctx->lsm->u.uri.size;
+		len = nb_uri * sizeof(struct lttng_uri);
+
+		if (nb_uri > 0) {
+			uris = zmalloc(len);
+			if (uris == NULL) {
+				ret = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			/* Receive variable len data */
+			DBG("Waiting for %zu URIs from client ...", nb_uri);
+			ret = lttcomm_recv_unix_sock(sock, uris, len);
+			if (ret <= 0) {
+				DBG("No URIs received from client... continuing");
+				*sock_error = 1;
+				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
+				goto error;
+			}
+
+			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
+				DBG("Creating session with ONE network URI is a bad call");
+				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
+				goto error;
+			}
+		}
+
+		ret = cmd_create_session_snapshot(cmd_ctx->lsm->session.name, uris,
+				nb_uri, &cmd_ctx->creds);
+		free(uris);
+		break;
+	}
+	case LTTNG_CREATE_SESSION_LIVE:
+	{
+		size_t nb_uri, len;
+		struct lttng_uri *uris = NULL;
+
+		nb_uri = cmd_ctx->lsm->u.uri.size;
+		len = nb_uri * sizeof(struct lttng_uri);
+
+		if (nb_uri > 0) {
+			uris = zmalloc(len);
+			if (uris == NULL) {
+				ret = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			/* Receive variable len data */
+			DBG("Waiting for %zu URIs from client ...", nb_uri);
+			ret = lttcomm_recv_unix_sock(sock, uris, len);
+			if (ret <= 0) {
+				DBG("No URIs received from client... continuing");
+				*sock_error = 1;
+				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
+				goto error;
+			}
+
+			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
+				DBG("Creating session with ONE network URI is a bad call");
+				ret = LTTNG_ERR_SESSION_FAIL;
+				free(uris);
+				goto error;
+			}
+		}
+
+		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris,
+				nb_uri, &cmd_ctx->creds, cmd_ctx->lsm->u.session_live.timer_interval);
+		free(uris);
+		break;
+	}
 	default:
 		ret = LTTNG_ERR_UND;
 		break;
@@ -3324,8 +3468,8 @@ static void *thread_manage_health(void *data)
 	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
-	struct lttcomm_health_msg msg;
-	struct lttcomm_health_data reply;
+	struct health_comm_msg msg;
+	struct health_comm_reply reply;
 
 	DBG("[thread] Manage health check started");
 
@@ -3340,6 +3484,27 @@ static void *thread_manage_health(void *data)
 		ERR("Unable to create health check Unix socket");
 		ret = -1;
 		goto error;
+	}
+
+	if (is_root) {
+		/* lttng health client socket path permissions */
+		ret = chown(health_unix_sock_path, 0,
+				utils_get_group_id(tracing_group_name));
+		if (ret < 0) {
+			ERR("Unable to set group on %s", health_unix_sock_path);
+			PERROR("chown");
+			ret = -1;
+			goto error;
+		}
+
+		ret = chmod(health_unix_sock_path,
+				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+		if (ret < 0) {
+			ERR("Unable to set permissions on %s", health_unix_sock_path);
+			PERROR("chmod");
+			ret = -1;
+			goto error;
+		}
 	}
 
 	/*
@@ -3432,58 +3597,18 @@ restart:
 
 		rcu_thread_online();
 
-		switch (msg.component) {
-		case LTTNG_HEALTH_CMD:
-			reply.ret_code = health_check_state(HEALTH_TYPE_CMD);
-			break;
-		case LTTNG_HEALTH_APP_MANAGE:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE);
-			break;
-		case LTTNG_HEALTH_APP_REG:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_REG);
-			break;
-		case LTTNG_HEALTH_KERNEL:
-			reply.ret_code = health_check_state(HEALTH_TYPE_KERNEL);
-			break;
-		case LTTNG_HEALTH_CONSUMER:
-			reply.ret_code = check_consumer_health();
-			break;
-		case LTTNG_HEALTH_HT_CLEANUP:
-			reply.ret_code = health_check_state(HEALTH_TYPE_HT_CLEANUP);
-			break;
-		case LTTNG_HEALTH_APP_MANAGE_NOTIFY:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY);
-			break;
-		case LTTNG_HEALTH_APP_REG_DISPATCH:
-			reply.ret_code = health_check_state(HEALTH_TYPE_APP_REG_DISPATCH);
-			break;
-		case LTTNG_HEALTH_ALL:
-			reply.ret_code =
-				health_check_state(HEALTH_TYPE_APP_MANAGE) &&
-				health_check_state(HEALTH_TYPE_APP_REG) &&
-				health_check_state(HEALTH_TYPE_CMD) &&
-				health_check_state(HEALTH_TYPE_KERNEL) &&
-				check_consumer_health() &&
-				health_check_state(HEALTH_TYPE_HT_CLEANUP) &&
-				health_check_state(HEALTH_TYPE_APP_MANAGE_NOTIFY) &&
-				health_check_state(HEALTH_TYPE_APP_REG_DISPATCH);
-			break;
-		default:
-			reply.ret_code = LTTNG_ERR_UND;
-			break;
+		reply.ret_code = 0;
+		for (i = 0; i < NR_HEALTH_SESSIOND_TYPES; i++) {
+			/*
+			 * health_check_state returns 0 if health is
+			 * bad.
+			 */
+			if (!health_check_state(health_sessiond, i)) {
+				reply.ret_code |= 1ULL << i;
+			}
 		}
 
-		/*
-		 * Flip ret value since 0 is a success and 1 indicates a bad health for
-		 * the client where in the sessiond it is the opposite. Again, this is
-		 * just to make things easier for us poor developer which enjoy a lot
-		 * lazyness.
-		 */
-		if (reply.ret_code == 0 || reply.ret_code == 1) {
-			reply.ret_code = !reply.ret_code;
-		}
-
-		DBG2("Health check return value %d", reply.ret_code);
+		DBG2("Health check return value %" PRIx64, reply.ret_code);
 
 		ret = send_unix_sock(new_sock, (void *) &reply, sizeof(reply));
 		if (ret < 0) {
@@ -3534,7 +3659,7 @@ static void *thread_manage_clients(void *data)
 
 	rcu_register_thread();
 
-	health_register(HEALTH_TYPE_CMD);
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CMD);
 
 	if (testpoint(thread_manage_clients)) {
 		goto error_testpoint;
@@ -3758,7 +3883,7 @@ error_testpoint:
 		ERR("Health error occurred in %s", __func__);
 	}
 
-	health_unregister();
+	health_unregister(health_sessiond);
 
 	DBG("Client thread dying");
 
@@ -3795,6 +3920,7 @@ static void usage(void)
 	fprintf(stderr, "  -p, --pidfile FILE                 Write a pid to FILE name overriding the default value.\n");
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
 	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
+	fprintf(stderr, "      --jul-tcp-port                 JUL application registration TCP port\n");
 }
 
 /*
@@ -3827,12 +3953,13 @@ static int parse_args(int argc, char **argv)
 		{ "verbose-consumer", 0, 0, 'Z' },
 		{ "no-kernel", 0, 0, 'N' },
 		{ "pidfile", 1, 0, 'p' },
+		{ "jul-tcp-port", 1, 0, 'J' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:",
+		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:J:",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -3855,7 +3982,7 @@ static int parse_args(int argc, char **argv)
 			opt_daemon = 1;
 			break;
 		case 'g':
-			opt_tracing_group = optarg;
+			tracing_group_name = optarg;
 			break;
 		case 'h':
 			usage();
@@ -3912,6 +4039,24 @@ static int parse_args(int argc, char **argv)
 		case 'p':
 			opt_pidfile = optarg;
 			break;
+		case 'J': /* JUL TCP port. */
+		{
+			unsigned long v;
+
+			errno = 0;
+			v = strtoul(optarg, NULL, 0);
+			if (errno != 0 || !isdigit(optarg[0])) {
+				ERR("Wrong value in --jul-tcp-port parameter: %s", optarg);
+				return -1;
+			}
+			if (v == 0 || v >= 65535) {
+				ERR("Port overflow in --jul-tcp-port parameter: %s", optarg);
+				return -1;
+			}
+			jul_tcp_port = (uint32_t) v;
+			DBG3("JUL TCP port set to non default: %u", jul_tcp_port);
+			break;
+		}
 		default:
 			/* Unknown option or other error.
 			 * Error is printed by getopt, just return */
@@ -4016,14 +4161,7 @@ static int set_permissions(char *rundir)
 	int ret;
 	gid_t gid;
 
-	ret = allowed_group();
-	if (ret < 0) {
-		WARN("No tracing group detected");
-		ret = 0;
-		goto end;
-	}
-
-	gid = ret;
+	gid = utils_get_group_id(tracing_group_name);
 
 	/* Set lttng run dir */
 	ret = chown(rundir, 0, gid);
@@ -4032,8 +4170,12 @@ static int set_permissions(char *rundir)
 		PERROR("chown");
 	}
 
-	/* Ensure tracing group can search the run dir */
-	ret = chmod(rundir, S_IRWXU | S_IXGRP | S_IXOTH);
+	/*
+	 * Ensure all applications and tracing group can search the run
+	 * dir. Allow everyone to read the directory, since it does not
+	 * buy us anything to hide its content.
+	 */
+	ret = chmod(rundir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0) {
 		ERR("Unable to set permissions on %s", rundir);
 		PERROR("chmod");
@@ -4047,21 +4189,21 @@ static int set_permissions(char *rundir)
 	}
 
 	/* kconsumer error socket path */
-	ret = chown(kconsumer_data.err_unix_sock_path, 0, gid);
+	ret = chown(kconsumer_data.err_unix_sock_path, 0, 0);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", kconsumer_data.err_unix_sock_path);
 		PERROR("chown");
 	}
 
 	/* 64-bit ustconsumer error socket path */
-	ret = chown(ustconsumer64_data.err_unix_sock_path, 0, gid);
+	ret = chown(ustconsumer64_data.err_unix_sock_path, 0, 0);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", ustconsumer64_data.err_unix_sock_path);
 		PERROR("chown");
 	}
 
 	/* 32-bit ustconsumer compat32 error socket path */
-	ret = chown(ustconsumer32_data.err_unix_sock_path, 0, gid);
+	ret = chown(ustconsumer32_data.err_unix_sock_path, 0, 0);
 	if (ret < 0) {
 		ERR("Unable to set group on %s", ustconsumer32_data.err_unix_sock_path);
 		PERROR("chown");
@@ -4069,7 +4211,6 @@ static int set_permissions(char *rundir)
 
 	DBG("All permissions are set");
 
-end:
 	return ret;
 }
 
@@ -4106,7 +4247,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 	int ret;
 	char path[PATH_MAX];
 
-    switch (consumer_data->type) {
+	switch (consumer_data->type) {
 	case LTTNG_CONSUMER_KERNEL:
 		snprintf(path, PATH_MAX, DEFAULT_KCONSUMERD_PATH, rundir);
 		break;
@@ -4124,7 +4265,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 
 	DBG2("Creating consumer directory: %s", path);
 
-	ret = mkdir(path, S_IRWXU);
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			PERROR("mkdir");
@@ -4132,6 +4273,14 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 			goto error;
 		}
 		ret = -1;
+	}
+	if (is_root) {
+		ret = chown(path, 0, utils_get_group_id(tracing_group_name));
+		if (ret < 0) {
+			ERR("Unable to set group on %s", path);
+			PERROR("chown");
+			goto error;
+		}
 	}
 
 	/* Create the kconsumerd error unix socket */
@@ -4141,6 +4290,16 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 		ERR("Create unix sock failed: %s", consumer_data->err_unix_sock_path);
 		ret = -1;
 		goto error;
+	}
+
+	/*
+	 * Set the CLOEXEC flag. Return code is useless because either way, the
+	 * show must go on.
+	 */
+	ret = utils_set_fd_cloexec(consumer_data->err_sock);
+	if (ret < 0) {
+		PERROR("utils_set_fd_cloexec");
+		/* continue anyway */
 	}
 
 	/* File permission MUST be 660 */
@@ -4467,6 +4626,12 @@ int main(int argc, char **argv)
 	 */
 	ust_app_ht_alloc();
 
+	/* Initialize JUL domain subsystem. */
+	if ((ret = jul_init()) < 0) {
+		/* ENOMEM at this point. */
+		goto error;
+	}
+
 	/* After this point, we can safely call cleanup() with "goto exit" */
 
 	/*
@@ -4571,6 +4736,21 @@ int main(int argc, char **argv)
 
 	write_pidfile();
 
+	/* Initialize communication library */
+	lttcomm_init();
+	/* This is to get the TCP timeout value. */
+	lttcomm_inet_init();
+
+	/*
+	 * Initialize the health check subsystem. This call should set the
+	 * appropriate time values.
+	 */
+	health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
+	if (!health_sessiond) {
+		PERROR("health_app_create error");
+		goto exit_health_sessiond_cleanup;
+	}
+
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
 			thread_ht_cleanup, (void *) NULL);
@@ -4624,7 +4804,15 @@ int main(int argc, char **argv)
 			ust_thread_manage_notify, (void *) NULL);
 	if (ret != 0) {
 		PERROR("pthread_create apps");
-		goto exit_apps;
+		goto exit_apps_notify;
+	}
+
+	/* Create JUL registration thread. */
+	ret = pthread_create(&jul_reg_thread, NULL,
+			jul_thread_manage_registration, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create apps");
+		goto exit_jul_reg;
 	}
 
 	/* Don't start this thread if kernel tracing is not requested nor root */
@@ -4645,11 +4833,26 @@ int main(int argc, char **argv)
 	}
 
 exit_kernel:
-	ret = pthread_join(apps_thread, &status);
+	ret = pthread_join(jul_reg_thread, &status);
 	if (ret != 0) {
-		PERROR("pthread_join");
+		PERROR("pthread_join JUL");
 		goto error;	/* join error, exit without cleanup */
 	}
+
+exit_jul_reg:
+	ret = pthread_join(apps_notify_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join apps notify");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+exit_apps_notify:
+	ret = pthread_join(apps_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join apps");
+		goto error;	/* join error, exit without cleanup */
+	}
+
 
 exit_apps:
 	ret = pthread_join(reg_apps_thread, &status);
@@ -4704,6 +4907,8 @@ exit_health:
 		goto error;	/* join error, exit without cleanup */
 	}
 exit_ht_cleanup:
+	health_app_destroy(health_sessiond);
+exit_health_sessiond_cleanup:
 exit:
 	/*
 	 * cleanup() is called when no other thread is running.

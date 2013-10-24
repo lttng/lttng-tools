@@ -1,0 +1,117 @@
+LTTng Live trace reading protocol
+
+Julien Desfossez
+September 18th, 2013
+
+This document describes the protocol of live trace reading. It is mainly
+intended for trace-viewer developers.
+
+Live trace reading allows a viewer to read safely a LTTng trace while it is
+being recorded. The protocol ensures that the viewer is never in a position
+where it can read for which it does not have the metadata, and also allows to
+viewer to know about inactive streams and skip those up to a certain point in
+time.
+
+This feature is implemented starting at lttng-tools 2.4
+
+* General informations
+All the data structures required to implement this protocole are provided in
+the lttng-viewer.h header. All integer are encoded in big endian during the
+transfer.
+
+Just like the streaming protocol, this protocol works always in only one
+direction : from the viewer to the relay. After each command, the relay sends a
+reply to the viewer (or closes the connection on fatal error).
+
+When the viewer sends a command to the relay, it sends a struct
+lttng_viewer_cmd which contains the command (enum lttcomm_relayd_command) and
+the size of the actual command if the command requires a payload.
+For example, if the viewer wants to list the sessions, it sends a struct
+lttng_viewer_cmd with :
+cmd = htobe32(VIEWER_CONNECT);
+data_size = htobe64(sizeof(struct lttng_viewer_connect));
+
+The cmd_version is currently unused, but might get useful when we extend the
+protocol later.
+
+* Protocol sequence
+In this section, we describe the normal sequence of event during a live-reading
+session. The viewer is abbreviated V and the relay R for conciseness.
+
+Establishing a connection :
+- V connects to R on port TCP/5344
+- V establishes a session by sending a VIEWER_CONNECT command, payload in
+  struct lttng_viewer_connect. In this struct, it sets its major and minor
+  version of the protocol it implements, and the type of connection it wants,
+  for now only VIEWER_CLIENT_COMMAND is supported.
+- If the protocol implemented by V and R are compatible, R sends back the same
+  struct with its own version and the newly assigned viewer_session_id.
+  Protocols are compatible if they have the same major number. At this point,
+  if the communication continues and the minor are not the same, it is implied
+  that the two processes will use the min(minor) of the protocol during this
+  connection. Protocol versions follow lttng-tools version, so if R implements
+  the 2.5 protocol and V implements the 2.4 protocol, R will use the 2.4
+  protocol for this connection.
+
+List the sessions :
+Once V and R agree on a protocol, V can start interacting with R. The first
+thing to do is list the sessions currently active on R.
+- V sends the command VIEWER_LIST_SESSIONS with no payload (data_size ignored)
+- R sends back a struct lttng_viewer_list_sessions which contains the number of
+  sessions to receive, and then for each session (sessions_count), it sends a
+  struct lttng_viewer_session
+- V must first receive the struct lttng_viewer_list_sessions and then receive
+  all the lttng_viewer_session structs. The live_timer corresponds to the value
+  set by the user who created the tracing session, if it is 0, the session
+  cannot be read in live. This timer in microseconds is the minimum rate at
+  which R receives information about the running session. The "clients" field
+  contains the number of connected clients to this session, for now only one
+  client at a time can attach to session.
+
+Attach to a session :
+Now V can select a session and attach to it. In order to do so, it sends the
+command VIEWER_ATTACH_SESSION with the session_id it wants. The "seek"
+parameter allows the viewer to attach to a session from its beginning (it will
+receive all trace data still on the relayd) or from now (data will be available
+to read starting at the next packet received on the relay). Only one session
+can be established by connection. Lots of clock synchronisation issues can
+happen when connecting to multiple sessions from multiple hosts at the same
+time, we let the viewers have fun with it ;-)
+R replies with a struct lttng_viewer_attach_session_response with a status and
+the number of streams currently active in this session. Then, for each stream,
+it sends a struct lttng_viewer_stream. Just like with the session list, V must
+receive the first header and then all the stream structs. The ctf_trace_id
+parameter in the struct lttng_viewer_stream is particularly important since it
+allows the viewer to match all the streams belonging to the same CTF trace (so
+one metadata file and multiple stream files). If the stream is a metadata
+stream, metadata_flag will be set to 1.
+
+#### below needs to be well written, but the essential is here ###
+
+Get metadata :
+A CTF trace cannot be read without the complete metadata.
+Send the command VIEWER_GET_METADATA and the struct lttng_viewer_get_metadata.
+
+Once we have all the metadata, we can start processing the trace. In order to
+do that, we work with the indexes. Whenever we need to read a new packet from a
+stream, we first ask for the next index for this stream and then ask for a
+trace packet at a certain offset and length.
+
+Get the next index :
+Command VIEWER_GET_NEXT_INDEX
+struct lttng_viewer_get_next_index
+Receive back a struct lttng_viewer_index 
+
+Get data packet :
+Command VIEWER_GET_PACKET
+struct lttng_viewer_get_packet
+Receive back a struct lttng_viewer_trace_packet
+
+For the VIEWER_GET_NEXT_INDEX and VIEWER_GET_PACKET, the viewer must check the
+"flags" element of the struct it receives, because it contains important
+information such as the information that new metadata must be received before
+being able to receive and read the next packet.
+When new metadata is added during a session, the GET_NEXT_INDEX will succeed
+but it will have the flag LTTNG_VIEWER_FLAG_NEW_METADATA, but the
+GET_DATA_PACKET will fail with the same flag as long as the metadata is not
+downloaded.

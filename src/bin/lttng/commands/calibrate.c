@@ -73,8 +73,8 @@ static struct poptOption long_options[] = {
 	 * tracer anymore.
 	 */
 	{"function:entry", 0,   POPT_ARG_NONE, 0, OPT_FUNCTION_ENTRY, 0, 0},
-#endif
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
+#endif
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -128,7 +128,7 @@ static int calibrate_lttng(void)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}

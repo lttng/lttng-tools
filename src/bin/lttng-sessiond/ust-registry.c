@@ -23,6 +23,7 @@
 #include <lttng/lttng.h>
 
 #include "ust-registry.h"
+#include "ust-app.h"
 #include "utils.h"
 
 /*
@@ -72,14 +73,76 @@ static unsigned long ht_hash_event(void *_key, unsigned long seed)
 }
 
 /*
+ * Return negative value on error, 0 if OK.
+ *
+ * TODO: we could add stricter verification of more types to catch
+ * errors in liblttng-ust implementation earlier than consumption by the
+ * trace reader.
+ */
+static
+int validate_event_field(struct ustctl_field *field,
+		const char *event_name,
+		struct ust_app *app)
+{
+	switch(field->type.atype) {
+	case ustctl_atype_integer:
+	case ustctl_atype_enum:
+	case ustctl_atype_array:
+	case ustctl_atype_sequence:
+	case ustctl_atype_string:
+		break;
+
+	case ustctl_atype_float:
+		switch (field->type.u.basic._float.mant_dig) {
+		case 0:
+			WARN("UST application '%s' (pid: %d) has unknown float mantissa '%u' "
+				"in field '%s', rejecting event '%s'",
+				app->name, app->pid,
+				field->type.u.basic._float.mant_dig,
+				field->name,
+				event_name);
+			return -EINVAL;
+		default:
+			break;
+		}
+		break;
+
+	default:
+		return -ENOENT;
+	}
+	return 0;
+}
+
+static
+int validate_event_fields(size_t nr_fields, struct ustctl_field *fields,
+		const char *event_name, struct ust_app *app)
+{
+	unsigned int i;
+
+	for (i = 0; i < nr_fields; i++) {
+		if (validate_event_field(&fields[i], event_name, app) < 0)
+			return -EINVAL;
+	}
+	return 0;
+}
+
+/*
  * Allocate event and initialize it. This does NOT set a valid event id from a
  * registry.
  */
 static struct ust_registry_event *alloc_event(int session_objd,
 		int channel_objd, char *name, char *sig, size_t nr_fields,
-		struct ustctl_field *fields, int loglevel, char *model_emf_uri)
+		struct ustctl_field *fields, int loglevel, char *model_emf_uri,
+		struct ust_app *app)
 {
 	struct ust_registry_event *event = NULL;
+
+	/*
+	 * Ensure that the field content is valid.
+	 */
+	if (validate_event_fields(nr_fields, fields, name, app) < 0) {
+		return NULL;
+	}
 
 	event = zmalloc(sizeof(*event));
 	if (!event) {
@@ -185,7 +248,8 @@ end:
 int ust_registry_create_event(struct ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
 		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
-		char *model_emf_uri, int buffer_type, uint32_t *event_id_p)
+		char *model_emf_uri, int buffer_type, uint32_t *event_id_p,
+		struct ust_app *app)
 {
 	int ret;
 	uint32_t event_id;
@@ -222,7 +286,7 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	}
 
 	event = alloc_event(session_objd, channel_objd, name, sig, nr_fields,
-			fields, loglevel, model_emf_uri);
+			fields, loglevel, model_emf_uri, app);
 	if (!event) {
 		ret = -ENOMEM;
 		goto error_free;

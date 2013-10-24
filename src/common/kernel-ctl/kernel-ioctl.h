@@ -47,6 +47,21 @@
 /* flush the current sub-buffer */
 #define RING_BUFFER_FLUSH                   _IO(0xF6, 0x0C)
 
+/* returns the timestamp begin of the current sub-buffer */
+#define LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN     _IOR(0xF6, 0x20, uint64_t)
+/* returns the timestamp end of the current sub-buffer */
+#define LTTNG_RING_BUFFER_GET_TIMESTAMP_END       _IOR(0xF6, 0x21, uint64_t)
+/* returns the number of events discarded */
+#define LTTNG_RING_BUFFER_GET_EVENTS_DISCARDED    _IOR(0xF6, 0x22, uint64_t)
+/* returns the packet payload size */
+#define LTTNG_RING_BUFFER_GET_CONTENT_SIZE        _IOR(0xF6, 0x23, uint64_t)
+/* returns the actual packet size */
+#define LTTNG_RING_BUFFER_GET_PACKET_SIZE         _IOR(0xF6, 0x24, uint64_t)
+/* returns the stream id */
+#define LTTNG_RING_BUFFER_GET_STREAM_ID           _IOR(0xF6, 0x25, uint64_t)
+/* returns the current timestamp */
+#define LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP   _IOR(0xF6, 0x26, uint64_t)
+
 /* Old ABI (without support for 32/64 bits compat) */
 /* LTTng file descriptor ioctl */
 #define LTTNG_KERNEL_OLD_SESSION                _IO(0xF6, 0x40)

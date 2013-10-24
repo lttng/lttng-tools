@@ -47,18 +47,9 @@ extern "C" {
  * Domain types: the different possible tracers.
  */
 enum lttng_domain_type {
-	LTTNG_DOMAIN_KERNEL                   = 1,
-	LTTNG_DOMAIN_UST                      = 2,
-
-	/*
-	 * For now, the domains below are not implemented. However, we keep them
-	 * here in order to retain their enum values for future development. Note
-	 * that it is on the roadmap to implement them.
-	 *
-	LTTNG_DOMAIN_UST_EXEC_NAME            = 3,
-	LTTNG_DOMAIN_UST_PID                  = 4,
-	LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN  = 5,
-	*/
+	LTTNG_DOMAIN_KERNEL                   = 1,	/* Linux Kernel tracer. */
+	LTTNG_DOMAIN_UST                      = 2,	/* Global Userspace tracer. */
+	LTTNG_DOMAIN_JUL                      = 3,	/* Java Util Logging. */
 };
 
 /*
@@ -126,6 +117,7 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_VPPID             = 9,
 	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
 	LTTNG_EVENT_CONTEXT_HOSTNAME          = 11,
+	LTTNG_EVENT_CONTEXT_IP                = 12,
 };
 
 enum lttng_calibrate_type {
@@ -280,7 +272,7 @@ struct lttng_event_field {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 16
+#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 12
 struct lttng_channel_attr {
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes */
@@ -291,6 +283,8 @@ struct lttng_channel_attr {
 	/* LTTng 2.1 padding limit */
 	uint64_t tracefile_size;            /* bytes */
 	uint64_t tracefile_count;           /* number of tracefiles */
+	/* LTTng 2.3 padding limit */
+	unsigned int live_timer_interval;   /* usec */
 
 	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
 };
@@ -325,12 +319,14 @@ struct lttng_calibrate {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_SESSION_PADDING1             16
+#define LTTNG_SESSION_PADDING1             12
 struct lttng_session {
 	char name[NAME_MAX];
 	/* The path where traces are written */
 	char path[PATH_MAX];
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
+	uint32_t snapshot_mode;
+	unsigned int live_timer_interval;	/* usec */
 
 	char padding[LTTNG_SESSION_PADDING1];
 };
@@ -388,6 +384,34 @@ extern void lttng_destroy_handle(struct lttng_handle *handle);
  * NULL here.
  */
 extern int lttng_create_session(const char *name, const char *url);
+
+/*
+ * Create a tracing session that will exclusively be used for snapshot meaning
+ * the session will be in no output mode and every channel enabled for that
+ * session will be set in overwrite mode and in mmap output since splice is not
+ * supported.
+ *
+ * If an url is given, it will be used to create a default snapshot output
+ * using it as a destination. If NULL, no output will be defined and an
+ * add-output call will be needed.
+ *
+ * Name can't be NULL.
+ */
+extern int lttng_create_session_snapshot(const char *name,
+		const char *snapshot_url);
+
+/*
+ * Create a session exclusively used for live reading.
+ *
+ * In this mode, the switch-timer parameter is forced for each UST channel, a
+ * live-switch-timer is enabled for kernel channels, manually setting
+ * switch-timer is forbidden. Synchronization beacons are sent to the relayd,
+ * indexes are sent and metadata is checked for each packet.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+extern int lttng_create_session_live(const char *name, const char *url,
+		unsigned int timer_interval);
 
 /*
  * Destroy a tracing session.
@@ -625,7 +649,8 @@ int lttng_disable_consumer(struct lttng_handle *handle);
  *
  * Please see lttng-health-check(3) man page for more information.
  */
-extern int lttng_health_check(enum lttng_health_component c);
+extern LTTNG_DEPRECATED("This call is now obsolete.")
+int lttng_health_check(enum lttng_health_component c);
 
 /*
  * For a given session name, this call checks if the data is ready to be read

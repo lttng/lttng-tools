@@ -1,4 +1,4 @@
-.TH "LTTNG" "1" "December 3rd, 2012" "" ""
+.TH "LTTNG" "1" "July 18th, 2013" "" ""
 
 .SH "NAME"
 lttng \(em LTTng 2.x tracer control command line tool
@@ -6,20 +6,18 @@ lttng \(em LTTng 2.x tracer control command line tool
 .SH "SYNOPSIS"
 
 .PP
-.nf
 lttng [OPTIONS] <COMMAND>
-.fi
 .SH "DESCRIPTION"
 
 .PP
 The LTTng project aims at providing highly efficient tracing tools for Linux.
-It's tracers help tracking down performance issues and debugging problems
+Its tracers help track down performance issues and debug problems
 involving multiple concurrent processes and threads. Tracing across multiple
 systems is also possible.
 
 The \fBlttng\fP command line tool from the lttng-tools package is used to control
-both kernel and user-space tracing. Every interactions with the tracer should
-be done by this tool or by the liblttng-ctl provided with the lttng-tools
+both kernel and user-space tracing. Every interaction with the tracer should
+be done by this tool or by the liblttng-ctl library provided by the lttng-tools
 package.
 
 LTTng uses a session daemon (lttng-sessiond(8)), acting as a tracing registry,
@@ -31,19 +29,18 @@ those traces is done using the babeltrace(1) text viewer.
 We introduce the notion of \fBtracing domains\fP which is essentially a type of
 tracer (kernel or user space for now). In the future, we could see a third
 tracer being for instance an hypervisor. For some commands, you'll need to
-specify on which domain the command applies (-u or -k). For instance, enabling
-a kernel event, you must specify the kernel domain to the command so we know
-for which tracer this event is for.
+specify on which domain the command operates (-u or -k). For instance, the
+kernel domain must be specified when enabling a kernel event.
 
 In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
 in that group can interact with the root session daemon and thus trace the
-kernel. Session daemons can co-exist meaning that you can have a session daemon
+kernel. Session daemons can co-exist, meaning that you can have a session daemon
 running as Alice that can be used to trace her applications along side with a
-root daemon or even a Bob daemon. We highly recommend to start the session
+root daemon or even a Bob daemon. We highly recommend starting the session
 daemon at boot time for stable and long term tracing.
 
-Every user-space applications instrumented with lttng-ust(3), will
+All user-space applications instrumented with lttng-ust(3) will
 automatically register to the session daemon. This feature gives you the
 ability to list available traceable applications and tracepoints on a per user
 basis. (See \fBlist\fP command).
@@ -82,9 +79,9 @@ Simple listing of lttng options.
 Simple listing of lttng commands.
 .SH "COMMANDS"
 
-.TP
-\fBadd-context\fP
-.nf
+.PP
+\fBadd-context\fP [OPTIONS]
+.RS
 Add context to event(s) and/or channel(s).
 
 A context is basically extra information appended to a channel. For instance,
@@ -96,7 +93,10 @@ For example, this command will add the context information 'prio' and two perf
 counters (hardware branch misses and cache misses), to all events in the trace
 data output:
 
-# lttng add-context \-k \-t prio \-t perf:branch-misses \-t perf:cache-misses
+.nf
+# lttng add-context \-k \-t prio \-t perf:branch-misses \\
+		\-t perf:cache-misses
+.fi
 
 Please take a look at the help (\-h/\-\-help) for a detailed list of available
 contexts.
@@ -107,30 +107,34 @@ Otherwise the context will be added only to the given channel (\-c).
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-s, \-\-session NAME
-        Apply on session name.
-\-c, \-\-channel NAME
-        Apply on channel name.
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-\-t, \-\-type TYPE
-        Context type. You can repeat this option on the command line. Please
-        use "lttng add-context \-h" to list all available types.
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name.
+.TP
+.BR "\-c, \-\-channel NAME"
+Apply on channel name.
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.TP
+.BR "\-t, \-\-type TYPE"
+Context type. You can repeat this option on the command line. Please
+use "lttng add-context \-h" to list all available types.
+.RE
+.PP
 
-.IP
-
-.IP "\fBcalibrate\fP"
-.nf
+.PP
+\fBcalibrate\fP [OPTIONS]
+.RS
 Quantify LTTng overhead
 
 The LTTng calibrate command can be used to find out the combined average
@@ -152,16 +156,21 @@ an empty function, gathering PMU counters LLC (Last Level Cache) misses
 information (see lttng add-context \-\-help to see the list of available PMU
 counters).
 
+.nf
 # lttng create calibrate-function
-# lttng enable-event calibrate \-\-kernel \-\-function lttng_calibrate_kretprobe
-# lttng add-context \-\-kernel \-t perf:LLC-load-misses \-t perf:LLC-store-misses \\
-                  \-t perf:LLC-prefetch-misses
+# lttng enable-event calibrate \-\-kernel \\
+	\-\-function lttng_calibrate_kretprobe
+# lttng add-context \-\-kernel \-t perf:LLC-load-misses \\
+	\-t perf:LLC-store-misses \\
+	\-t perf:LLC-prefetch-misses
 # lttng start
 # for a in $(seq 1 10); do \\
         lttng calibrate \-\-kernel \-\-function;
   done
 # lttng destroy
-# babeltrace $(ls \-1drt ~/lttng-traces/calibrate-function-* | tail \-n 1)
+# babeltrace $(ls \-1drt ~/lttng-traces/calibrate-function-* \\
+	| tail \-n 1)
+.fi
 
 The output from babeltrace can be saved to a text file and opened in a
 spreadsheet (e.g. oocalc) to focus on the per-PMU counter delta between
@@ -172,10 +181,12 @@ staying on the same CPU must be considered.
 
 The average result, for the i7, on 10 samples:
 
+.nf
                           Average     Std.Dev.
 perf_LLC_load_misses:       5.0       0.577
 perf_LLC_store_misses:      1.6       0.516
 perf_LLC_prefetch_misses:   9.0      14.742
+.fi
 
 As we can notice, the load and store misses are relatively stable across runs
 (their standard deviation is relatively low) compared to the prefetch misses.
@@ -183,29 +194,31 @@ We can conclude from this information that LLC load and store misses can be
 accounted for quite precisely, but prefetches within a function seems to behave
 too erratically (not much causality link between the code executed and the CPU
 prefetch activity) to be accounted for.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-\-\-function
-        Dynamic function entry/return probe (default)
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.TP
+.BR "\-\-function"
+Dynamic function entry/return probe (default)
+.RE
+.PP
 
-.IP
-
-.IP "\fBcreate\fP [NAME] [OPTIONS]
-.nf
+.PP
+\fBcreate\fP [NAME] [OPTIONS]
+.RS
 Create tracing session.
 
 A tracing session contains channel(s) which contains event(s). It is domain
-agnostic meaning that you can enable channels and events for either the
+agnostic, meaning that channels and events can be enabled for the
 user-space tracer and/or the kernel tracer. It acts like a container
 aggregating multiple tracing sources.
 
@@ -219,87 +232,129 @@ $HOME/lttng-traces.
 The $HOME environment variable can be overridden by defining the environment
 variable LTTNG_HOME. This is useful when the user running the commands has
 a non-writeable home directory.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-o, \-\-output PATH
-        Specify output path for traces
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-o, \-\-output PATH"
+Specify output path for traces
+.TP
+.BR "\-\-no-output"
+Traces will not be output
+.TP
+.BR "\-\-snapshot"
+Set the session in snapshot mode. Created in no-output mode and uses the
+URL, if one is specified, as the default snapshot output.  Every channel will be set
+in overwrite mode and with mmap output (splice not supported).
+.TP
+.BR "\-\-live USEC"
+Set the session exclusively in live mode. The paremeter is the delay in micro
+seconds before the data is flushed and streamed. The live mode allows you to
+stream the trace and view it while it's being recorded by any tracer. For that,
+you need a lttng-relayd and this session requires a network URL (\-U or
+\-C/\-D).
 
+To read a live session, you can use babeltrace(1) or the live streaming
+protocol in doc/live-reading-protocol.txt. Here is an example:
+
+.nf
+$ lttng-relayd -o /tmp/lttng
+$ lttng create --live 200000 -U net://localhost
+$ lttng enable-event -a --userspace
+$ lttng start
+.fi
+
+After the start, you'll be able to read the events while they are being
+recorded in /tmp/lttng.
+
+.TP
+.BR "\-U, \-\-set-url=URL"
+Set URL for the consumer output destination. It is persistent for the
+session lifetime. Redo the command to change it. This will set both data
+and control URL for network.
+.TP
+.BR "\-C, \-\-ctrl-url=URL"
+Set control path URL. (Must use -D also)
+.TP
+.BR "\-D, \-\-data-url=URL"
+Set data path URL. (Must use -C also)
+.PP
 Using these options, each API call can be controlled individually. For
 instance, \-C does not enable the consumer automatically. You'll need the \-e
 option for that.
-
-\-U, \-\-set-url=URL
-        Set URL for the consumer output destination. It is persistent for the
-        session lifetime. Redo the command to change it. This will set both
-        data and control URL for network.
-\-C, \-\-ctrl-url=URL
-        Set control path URL. (Must use -D also)
-\-D, \-\-data-url=URL
-        Set data path URL. (Must use -C also)
 
 .B URL FORMAT:
 
 proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]
 
 Supported protocols are (proto):
-> file://...
-        Local filesystem full path.
+.TP
+.BR "file://..."
+Local filesystem full path.
 
-> net://...
-        This will use the default network transport layer which is TCP for both
-        control (PORT1) and data port (PORT2). The default ports are
-        respectively 5342 and 5343. Note that net[6]:// is not yet supported.
+.TP
+.BR "net://..."
+This will use the default network transport layer which is TCP for both
+control (PORT1) and data port (PORT2). The default ports are
+respectively 5342 and 5343. Note that net[6]:// is not yet supported.
 
-> tcp[6]://...
-        Can only be used with -C and -D together
+.TP
+.BR "tcp[6]://..."
+Can only be used with -C and -D together
 
 NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)
 
 .B EXAMPLES:
 
+.nf
 # lttng create -U net://192.168.1.42
+.fi
 Uses TCP and default ports for the given destination.
 
+.nf
 # lttng create -U net6://[fe80::f66d:4ff:fe53:d220]
+.fi
 Uses TCP, default ports and IPv6.
 
-# lttng create s1 -U net://myhost.com:3229
-Create session s1 and set its consumer to myhost.com on port 3229 for control.
-.fi
-
-.IP
-
-.IP "\fBdestroy\fP [OPTIONS] [NAME]"
 .nf
+# lttng create s1 -U net://myhost.com:3229
+.fi
+Create session s1 and set its consumer to myhost.com on port 3229 for control.
+.RE
+.PP
+
+.PP
+\fBdestroy\fP [NAME] [OPTIONS]
+.RS
 Teardown tracing session
 
 Free memory on the session daemon and tracer side. It's gone!
 
 If NAME is omitted, the session name is taken from the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-a, \-\-all
-        Destroy all sessions
-\-\-list-options
-        Simple listing of options
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-a, \-\-all"
+Destroy all sessions
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
 
-.IP
-
-.IP "\fBenable-channel\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
-.nf
+.PP
+\fBenable-channel\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+.RS
 Enable tracing channel
 
 To enable an event, you must enable both the event and the channel that
@@ -308,205 +363,252 @@ contains it.
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
 
+Exactly one of \-k or -u must be specified.
+
 It is important to note that if a certain type of buffers is used, the session
 will be set with that type and all other subsequent channel needs to have the
 same type.
 
 Note that once the session has been started and enabled on the tracer side,
 it's not possible anymore to enable a new channel for that session.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show this help
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-k, \-\-kernel
-        Apply to the kernel tracer
-\-u, \-\-userspace
-        Apply to the user-space tracer
+.TP
+.BR "\-h, \-\-help"
+Show this help
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-k, \-\-kernel"
+Apply to the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply to the user-space tracer
+.TP
+.BR "\-\-discard"
+Discard event when subbuffers are full (default)
+.TP
+.BR "\-\-overwrite"
+Flight recorder mode : overwrites events when subbuffers are full
+.TP
+.BR "\-\-subbuf-size SIZE"
+Subbuffer size in bytes {+k,+M,+G}.
+(default UST uid: 131072, UST pid: 4096, kernel: 262144, metadata: 4096)
+Rounded up to the next power of 2.
 
-\-\-discard
-        Discard event when subbuffers are full (default)
-\-\-overwrite
-        Flight recorder mode : overwrites events when subbuffers are full
-\-\-subbuf-size SIZE
-        Subbuffer size in bytes {+k,+M,+G}
-        (default UST uid: 131072, UST pid: 4096, kernel: 262144, metadata: 4096)
-        Rounded up to the next power of 2.
-
-        The minimum subbuffer size, for each tracer, is the max value between
-        the default above and the system page size. You can issue this command
-        to get the current page size on your system: \fB$ getconf PAGE_SIZE\fP
-\-\-num-subbuf NUM
-        Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4, metadata: 2)
-        Rounded up to the next power of 2.
-\-\-switch-timer USEC
-        Switch subbuffer timer interval in µsec.
-        (default UST uid: 0, UST pid: 0, kernel: 0, metadata: 0)
-\-\-read-timer USEC
-        Read timer interval in µsec.
-        (default UST uid: 0, UST pid: 0, kernel: 200000, metadata: 0)
-\-\-output TYPE
-        Channel output type. Possible values: mmap, splice
-        (default UST uid: mmap, UST pid: mmap, kernel: splice, metadata: mmap)
-\-\-buffers-uid
-        Use per UID buffer (\-u only). Buffers are shared between applications
-        that have the same UID.
-\-\-buffers-pid
-        Use per PID buffer (\-u only). Each application has its own buffers.
-\-\-buffers-global
-        Use shared buffer for the whole system (\-k only)
-\-C, \-\-tracefile-size SIZE
-        Maximum size of each tracefile within a stream (in bytes).
-		0 means unlimited. (default: 0)
-\-W, \-\-tracefile-count COUNT
-        Used in conjunction with \-C option, this will limit the number
-        of files created to the specified count. 0 means unlimited. (default: 0)
+The minimum subbuffer size, for each tracer, is the max value between
+the default above and the system page size. You can issue this command
+to get the current page size on your system: \fB$ getconf PAGE_SIZE\fP
+.TP
+.BR "\-\-num-subbuf NUM"
+Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4,
+metadata: 2) Rounded up to the next power of 2.
+.TP
+.BR "\-\-switch-timer USEC"
+Switch subbuffer timer interval in µsec.
+(default UST uid: 0, UST pid: 0, kernel: 0, metadata: 0)
+.TP
+.BR "\-\-read-timer USEC"
+Read timer interval in µsec.
+(default UST uid: 0, UST pid: 0, kernel: 200000, metadata: 0)
+.TP
+.BR "\-\-output TYPE"
+Channel output type. Possible values: mmap, splice
+(default UST uid: mmap, UST pid: mmap, kernel: splice, metadata: mmap)
+.TP
+.BR "\-\-buffers-uid"
+Use per UID buffer (\-u only). Buffers are shared between applications
+that have the same UID.
+.TP
+.BR "\-\-buffers-pid"
+Use per PID buffer (\-u only). Each application has its own buffers.
+.TP
+.BR "\-\-buffers-global"
+Use shared buffer for the whole system (\-k only)
+.TP
+.BR "\-C, \-\-tracefile-size SIZE"
+Maximum size of each tracefile within a stream (in bytes).
+0 means unlimited. (default: 0)
+.TP
+.BR "\-W, \-\-tracefile-count COUNT"
+Used in conjunction with \-C option, this will limit the number of files
+created to the specified count. 0 means unlimited. (default: 0)
 
 .B EXAMPLES:
 
-$ lttng enable-channel -C 4096 -W 32 chan1
-For each stream, the maximum size of each trace file will be 4096 bytes, and
+.nf
+$ lttng enable-channel -k -C 4096 -W 32 chan1
+.fi
+For each stream, the maximum size of each trace file will be 4096 bytes and
 there will be a maximum of 32 different files. The file count is appended after
 the stream number as seen in the following example. The last trace file is
 smaller than 4096 since it was not completely filled.
 
+.nf
         ~/lttng-traces/[...]/chan1_0_0 (4096)
         ~/lttng-traces/[...]/chan1_0_1 (4096)
         ~/lttng-traces/[...]/chan1_0_2 (3245)
         ~/lttng-traces/[...]/chan1_1_0 (4096)
         ...
-
-$ lttng enable-channel -C 4096
-This will create trace files of 4096 bytes and will create new ones as long as
-there is data available.
 .fi
 
-.IP
-
-.IP "\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]"
 .nf
+$ lttng enable-channel -k -C 4096
+.fi
+This will create trace files of 4096 bytes and will create new ones as long as
+there is data available.
+.RE
+.PP
+
+.PP
+\fBenable-event\fP NAME[,NAME2,...] [-k|-u] [OPTIONS]
+.RS
 Enable tracing event
 
 A tracing event is always assigned to a channel. If \fB\-c, \-\-channel\fP is
 omitted, a default channel named '\fBchannel0\fP' is created and the event is
-added to it. For the user-space tracer, using \fB\-a, \-\-all\fP is the same as
-using the wildcard "*".
+added to it. If \fB\-c, \-\-channel\fP is omitted, but a non-default
+channel already exists within the session, an error is returned. For the
+user-space tracer, using \fB\-a, \-\-all\fP is the same as using the
+wildcard "*".
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-c, \-\-channel NAME"
+Apply on channel name
+.TP
+.BR "\-a, \-\-all"
+Enable all tracepoints and syscalls. This actually enables a single
+wildcard event "*".
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.TP
+.BR "\-\-tracepoint"
+Tracepoint event (default). Userspace tracer supports wildcards at the end
+of string. Don't forget to quote to deal with bash expansion.
+e.g.:
 .nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-c, \-\-channel NAME
-        Apply on channel name
-\-a, \-\-all
-        Enable all tracepoints and syscalls. This actually enable a single
-        wildcard event "*".
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-
-\-\-tracepoint
-        Tracepoint event (default)
-        - userspace tracer supports wildcards at end of string. Don't forget to
-        quote to deal with bash expansion.
-        e.g.:
         "*"
         "app_component:na*"
-\-\-loglevel NAME
-        Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
-\-\-loglevel-only NAME
-        Tracepoint loglevel (only this loglevel).
+.fi
+.TP
+.BR "\-\-loglevel NAME"
+Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
+.TP
+.BR "\-\-loglevel-only NAME"
+Tracepoint loglevel (only this loglevel).
+The loglevel or loglevel-only options should be combined with a
+tracepoint name or tracepoint wildcard.
+.TP
+.BR "\-\-probe (addr | symbol | symbol+offset)"
+Dynamic probe. Addr and offset can be octal (0NNN...), decimal (NNN...)
+or hexadecimal (0xNNN...)
+.TP
+.BR "\-\-function (addr | symbol | symbol+offset)"
+Dynamic function entry/return probe. Addr and offset can be octal
+(0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
+.TP
+.BR "\-\-syscall"
+System call event. Enabling syscalls tracing (kernel tracer), you will
+not be able to disable them with disable-event. This is a known
+limitation. You can disable the entire channel to do the trick.
+.TP
+.BR "\-\-filter 'expression'"
+Set a filter on a newly enabled event. Filter expression on event
+fields and context. The event will be recorded if the filter's
+expression evaluates to TRUE. Only specify on first activation of a
+given event within a session.
+Specifying a filter is only allowed when enabling events within a session before
+tracing is started. If the filter fails to link with the event
+within the traced domain, the event will be discarded.
+Filtering is currently only implemented for the user-space tracer.
 
-        The loglevel or loglevel-only options should be combined with a
-        tracepoint name or tracepoint wildcard.
-\-\-probe [addr | symbol | symbol+offset]
-        Dynamic probe. Addr and offset can be octal (0NNN...), decimal (NNN...)
-        or hexadecimal (0xNNN...)
-\-\-function [addr | symbol | symbol+offset]
-        Dynamic function entry/return probe. Addr and offset can be octal
-        (0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
-\-\-syscall
-        System call event. Enabling syscalls tracing (kernel tracer), you will
-        not be able to disable them with disable-event. This is a known
-        limitation. You can disable the entire channel to do the trick.
+Expression examples:
 
-\-\-filter 'expression'
-        Set a filter on a newly enabled event. Filter expression on event
-	fields and context. Event recording depends on evaluation. Only
-	specify on first activation of a given event within a session.
-	Filter only allowed when enabling events within a session before
-	tracing is started. If the filter fails to link with the event
-	within the traced domain, the event will be discarded.
-	Currently, filter is only implemented for the user-space tracer.
-
-        Expression examples:
-
-        'intfield > 500 && intfield < 503'
-        '(stringfield == "test" || intfield != 10) && intfield > 33'
-        'doublefield > 1.1 && intfield < 5.3'
-
-        Wildcards are allowed at the end of strings:
-        'seqfield1 == "te*"'
-        In string literals, the escape character is a '\\'. Use '\\*' for
-        the '*' character, and '\\\\' for the '\\' character. Wildcard
-	match any sequence of characters, including an empty sub-string
-	(match 0 or more characters).
-
-	Context information can be used for filtering. The examples
-	below show usage of context filtering on process name (with a
-	wildcard), process ID range, and unique thread ID for filtering.
-	The process and thread ID of running applications can be found
-	under columns "PID" and "LWP" of the "ps -eLf" command.
-
-	'$ctx.procname == "demo*"'
-	'$ctx.vpid >= 4433 && $ctx.vpid < 4455'
-	'$ctx.vtid == 1234'
+.nf
+  'intfield > 500 && intfield < 503'
+  '(strfield == "test" || intfield != 10) && intfield > 33'
+  'doublefield > 1.1 && intfield < 5.3'
 .fi
 
-.IP "\fBdisable-channel\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
+Wildcards are allowed at the end of strings:
+  'seqfield1 == "te*"'
+In string literals, the escape character is a '\\'. Use '\\*' for
+the '*' character, and '\\\\' for the '\\' character sequence. Wildcard
+matches any sequence of characters, including an empty sub-string
+(matches 0 or more characters).
+
+Context information can be used for filtering. The examples below shows
+usage of context filtering on the process name (using a wildcard), process ID
+range, and unique thread ID. The process and thread IDs of
+running applications can be found under columns "PID" and "LWP" of the
+"ps -eLf" command.
+
 .nf
+  '$ctx.procname == "demo*"'
+  '$ctx.vpid >= 4433 && $ctx.vpid < 4455'
+  '$ctx.vtid == 1234'
+.fi
+
+.RE
+.PP
+
+.PP
+\fBdisable-channel\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+.RS
 Disable tracing channel
 
-Disabling a channel makes all event(s) in that channel to stop tracing. You can
-enable it back by calling \fBlttng enable-channel NAME\fP again.
+Disabling a channel disables the tracing of all of the channel's events. A channel
+can be reenabled by calling \fBlttng enable-channel NAME\fP again.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.RE
+.PP
 
-.IP "\fBdisable-event\fP NAME[,NAME2,...] [\-k|\-u] [OPTIONS]"
-.nf
+.PP
+\fBdisable-event\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+.RS
 Disable tracing event
 
 The event, once disabled, can be re-enabled by calling \fBlttng enable-event
@@ -514,28 +616,41 @@ NAME\fP again.
 
 If \fB\-s, \-\-session\fP is omitted, the session name is taken from the .lttngrc
 file.
-.fi
+
+If \fB\-c, \-\-channel\fP is omitted, the default channel name is used.
+If \fB\-c, \-\-channel\fP is omitted, but a non-default channel already
+exists within the session, an error is returned.
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-s, \-\-session NAME
-        Apply on session name
-\-a, \-\-all-events
-        Disable all events. This does NOT disable "*" but rather
-        every known events of the session.
-\-k, \-\-kernel
-        Apply for the kernel tracer
-\-u, \-\-userspace
-        Apply for the user-space tracer
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-s, \-\-session NAME"
+Apply on session name
+.TP
+.BR "\-c, \-\-channel NAME"
+Apply on channel name
+.TP
+.BR "\-a, \-\-all-events"
+Disable all events. This does NOT disable "*" but rather every known
+events of the session.
+.TP
+.BR "\-k, \-\-kernel"
+Apply for the kernel tracer
+.TP
+.BR "\-u, \-\-userspace"
+Apply for the user-space tracer
+.RE
+.PP
 
-.IP "\fBlist\fP [\-k|\-u] [SESSION [SESSION_OPTIONS]]"
-.nf
+.PP
+\fBlist\fP [OPTIONS] [SESSION [SESSION OPTIONS]]
+.RS
 List tracing session information.
 
 With no arguments, it will list available tracing session(s).
@@ -549,74 +664,157 @@ calls events).
 With \-u alone, it will list all available user-space events from registered
 applications. Here is an example of 'lttng list \-u':
 
+.nf
 PID: 7448 - Name: /tmp/lttng-ust/tests/hello/.libs/lt-hello
       ust_tests_hello:tptest_sighandler (type: tracepoint)
       ust_tests_hello:tptest (type: tracepoint)
+.fi
 
 You can now enable any event listed by using the name :
 \fBust_tests_hello:tptest\fP.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-k, \-\-kernel
-        Select kernel domain
-\-u, \-\-userspace
-        Select user-space domain.
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-k, \-\-kernel"
+Select kernel domain
+.TP
+.BR "\-u, \-\-userspace"
+Select user-space domain.
 
+.PP
 .B SESSION OPTIONS:
 
-\-c, \-\-channel NAME
-        List details of a channel
-\-d, \-\-domain
-        List available domain(s)
-.fi
+.TP
+.BR "\-c, \-\-channel NAME"
+List details of a channel
+.TP
+.BR "\-d, \-\-domain"
+List available domain(s)
+.RE
+.PP
 
-.IP "\fBset-session\fP NAME"
-.nf
+.PP
+\fBset-session\fP NAME [OPTIONS]
+.RS
 Set current session name
 
 Will change the session name in the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
+
+.PP
+\fBsnapshot\fP [OPTIONS] ACTION
+.RS
+Snapshot command for LTTng session.
+
+.B OPTIONS:
+
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+
+.PP
+.B ACTION:
+
+.TP
+\fBadd-output\fP [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>
+
+Setup and add an snapshot output for a session. Output are the destination
+where the snapshot will be sent. Only one output is permitted. To change it,
+you'll need to delete it and add back the new one.
+
+.TP
+\fBdel-output\fP ID | NAME [-s <NAME>]
+
+Delete an output for a session using the ID. You can either specify the
+output's ID that can be found with list-output or the name.
+
+.TP
+\fBlist-output\fP [-s <NAME>]
+
+List the output of a session. Attributes of the output are printed.
+
+.TP
+\fBrecord\fP [-m <SIZE>] [-s <NAME>] [-n <NAME>] [<URL> | -C <URL> -D <URL>]
+
+Snapshot a session's buffer(s) for all domains. If an URL is specified, it is
+used instead of a previously added output. Specifying only a name or/and a max
+size will override the current output values. For instance, you can record a
+snapshot with a custom maximum size or with a different name.
+
 .nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
+$ lttng snapshot add-output -n mysnapshot file:///data/snapshot
+[...]
+$ lttng snapshot record -n new_name_snapshot
 .fi
 
-.IP
+The above will create a snapshot in /data/snapshot/new_name_snapshot* directory
+rather then in mysnapshot*/
 
-.IP "\fBstart\fP [NAME] [OPTIONS]"
-.nf
+.PP
+.B DETAILED ACTION OPTIONS
+
+.TP
+.BR "\-s, \-\-session NAME"
+Apply to session name.
+.TP
+.BR "\-n, \-\-name NAME"
+Name of the snapshot's output.
+.TP
+.BR "\-m, \-\-max-size SIZE"
+Maximum size in bytes of the snapshot. The maxium size does not include the
+metadata file. Human readable format is accepted: {+k,+M,+G}. For instance,
+\-\-max-size 5M
+.TP
+.BR "\-C, \-\-ctrl-url URL"
+Set control path URL. (Must use -D also)
+.TP
+.BR "\-D, \-\-data-url URL"
+Set data path URL. (Must use -C also)
+.RE
+.PP
+
+.PP
+\fBstart\fP [NAME] [OPTIONS]
+.RS
 Start tracing
 
 It will start tracing for all tracers for a specific tracing session.
-
 If NAME is omitted, the session name is taken from the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
 
-.IP
-
-.IP "\fBstop\fP [NAME] [OPTIONS]"
-.nf
+.PP
+\fBstop\fP [NAME] [OPTIONS]
+.RS
 Stop tracing
 
 It will stop tracing for all tracers for a specific tracing session. Before
@@ -625,75 +823,75 @@ until the trace is readable for the session. Use \-\-no-wait to avoid this
 behavior.
 
 If NAME is omitted, the session name is taken from the .lttngrc file.
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-\-\-no-wait
-        Don't wait for data availability.
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP "\-\-no-wait"
+Don't wait for data availability.
+.RE
+.PP
 
-.IP
-
-.IP "\fBversion\fP"
-.nf
+.PP
+\fBversion\fP
+.RS
 Show version information
-.fi
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show summary of possible options and commands.
-\-\-list-options
-        Simple listing of options
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
 
-.IP
-
-.IP "\fBview\fP [SESSION_NAME] [OPTIONS]"
-.nf
-View traces of a tracing session
-
-By default, the babeltrace viewer will be used for text viewing.
-
-If SESSION_NAME is omitted, the session name is taken from the .lttngrc file.
-
-.fi
+.PP
+\fBview\fP [SESSION_NAME] [OPTIONS]
+.RS
+View traces of a tracing session.  By default, the babeltrace viewer
+will be used for text viewing.  If SESSION_NAME is omitted, the session
+name is taken from the .lttngrc file.
 
 .B OPTIONS:
 
-.nf
-\-h, \-\-help
-        Show this help
-\-\-list-options
-        Simple listing of options
-\-t, \-\-trace-path PATH
-        Trace directory path for the viewer
-\-e, \-\-viewer CMD
-        Specify viewer and/or options to use
-        This will completely override the default viewers so
-        please make sure to specify the full command. The trace
-        directory path of the session will be appended at the end
-        to the arguments
-.fi
+.TP
+.BR "\-h, \-\-help"
+Show this help
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.TP
+.BR "\-t, \-\-trace-path PATH"
+Trace directory path for the viewer
+.TP
+.BR "\-e, \-\-viewer CMD"
+Specify viewer and/or options to use This will completely override the
+default viewers so please make sure to specify the full command. The
+trace directory path of the session will be appended at the end to the
+arguments
+.RE
+.PP
 
 .SH "EXIT VALUES"
+.PP
 On success 0 is returned and a positive value on error. Value of 1 means a command
 error, 2 an undefined command, 3 a fatal error and 4 a command warning meaning that
 something went wrong during the command.
 
 Any other value above 10, please refer to
-.BR <lttng/lttng-error.h>
+.BR "<lttng/lttng-error.h>"
 for a detailed list or use lttng_strerror() to get a human readable string of
 the error code.
-
 .PP
+
 .SH "ENVIRONMENT VARIABLES"
 
 .PP
@@ -704,17 +902,22 @@ Note that all command line options override environment variables.
 .IP "LTTNG_SESSIOND_PATH"
 Allows one to specify the full session daemon binary path to lttng command line
 tool. You can also use \-\-sessiond-path option having the same effect.
+.PP
+
 .SH "SEE ALSO"
 .BR babeltrace(1),
 .BR lttng-ust(3),
 .BR lttng-sessiond(8),
 .BR lttng-relayd(8),
-.BR lttng-health-check(3)
+
 .SH "BUGS"
 
+.PP
 If you encounter any issues or usability problem, please report it on our
 mailing list <lttng-dev@lists.lttng.org> to help improve this project or
 at https://bugs.lttng.org which is a bugtracker.
+.PP
+
 .SH "CREDITS"
 
 .PP

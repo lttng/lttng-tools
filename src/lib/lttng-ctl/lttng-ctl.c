@@ -34,6 +34,7 @@
 #include <common/uri.h>
 #include <common/utils.h>
 #include <lttng/lttng.h>
+#include <lttng/health-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -59,7 +60,6 @@ do {								\
 /* Socket to session daemon for communication */
 static int sessiond_socket;
 static char sessiond_sock_path[PATH_MAX];
-static char health_sock_path[PATH_MAX];
 
 /* Variables */
 static char *tracing_group;
@@ -103,6 +103,7 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		switch (src->type) {
 		case LTTNG_DOMAIN_KERNEL:
 		case LTTNG_DOMAIN_UST:
+		case LTTNG_DOMAIN_JUL:
 			memcpy(dst, src, sizeof(struct lttng_domain));
 			break;
 		default:
@@ -197,12 +198,14 @@ end:
  *
  *  If yes return 1, else return -1.
  */
-static int check_tracing_group(const char *grp_name)
+LTTNG_HIDDEN
+int lttng_check_tracing_group(void)
 {
 	struct group *grp_tracing;	/* no free(). See getgrnam(3) */
 	gid_t *grp_list;
 	int grp_list_size, grp_id, i;
 	int ret = -1;
+	const char *grp_name = tracing_group;
 
 	/* Get GID of group 'tracing' */
 	grp_tracing = getgrnam(grp_name);
@@ -293,7 +296,7 @@ static int set_session_daemon_path(void)
 
 	if (uid != 0) {
 		/* Are we in the tracing group ? */
-		in_tgroup = check_tracing_group(tracing_group);
+		in_tgroup = lttng_check_tracing_group();
 	}
 
 	if ((uid == 0) || in_tgroup) {
@@ -574,6 +577,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 	}
 
 	_MSG("Waiting for data availability");
+	fflush(stdout);
 
 	/* Check for data availability */
 	do {
@@ -591,6 +595,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		if (data_ret) {
 			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
 			_MSG(".");
+			fflush(stdout);
 		}
 	} while (data_ret != 0);
 
@@ -640,9 +645,14 @@ int lttng_add_context(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_ADD_CONTEXT;
 
-	/* Copy channel name */
-	lttng_ctl_copy_string(lsm.u.context.channel_name, channel_name,
-			sizeof(lsm.u.context.channel_name));
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.context.channel_name, "",
+				sizeof(lsm.u.context.channel_name));
+	} else {
+		lttng_ctl_copy_string(lsm.u.context.channel_name, channel_name,
+				sizeof(lsm.u.context.channel_name));
+	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -671,9 +681,9 @@ int lttng_enable_event(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	/* If no channel name, we put the default name */
+	/* If no channel name, send empty string. */
 	if (channel_name == NULL) {
-		lttng_ctl_copy_string(lsm.u.enable.channel_name, DEFAULT_CHANNEL_NAME,
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, "",
 				sizeof(lsm.u.enable.channel_name));
 	} else {
 		lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
@@ -800,9 +810,15 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_FILTER;
 
-	/* Copy channel name */
-	lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
-			sizeof(lsm.u.enable.channel_name));
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, "",
+				sizeof(lsm.u.enable.channel_name));
+	} else {
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
+				sizeof(lsm.u.enable.channel_name));
+	}
+
 	/* Copy event name */
 	if (event) {
 		memcpy(&lsm.u.enable.event, event, sizeof(lsm.u.enable.event));
@@ -855,11 +871,12 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	if (channel_name) {
-		lttng_ctl_copy_string(lsm.u.disable.channel_name, channel_name,
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.disable.channel_name, "",
 				sizeof(lsm.u.disable.channel_name));
 	} else {
-		lttng_ctl_copy_string(lsm.u.disable.channel_name, DEFAULT_CHANNEL_NAME,
+		lttng_ctl_copy_string(lsm.u.disable.channel_name, channel_name,
 				sizeof(lsm.u.disable.channel_name));
 	}
 
@@ -1348,104 +1365,6 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 }
 
 /*
- * Set health socket path by putting it in the global health_sock_path
- * variable.
- *
- * Returns 0 on success or assert(0) on ENOMEM.
- */
-static int set_health_socket_path(void)
-{
-	int in_tgroup = 0;	/* In tracing group */
-	uid_t uid;
-	const char *home;
-
-	uid = getuid();
-
-	if (uid != 0) {
-		/* Are we in the tracing group ? */
-		in_tgroup = check_tracing_group(tracing_group);
-	}
-
-	if ((uid == 0) || in_tgroup) {
-		lttng_ctl_copy_string(health_sock_path,
-				DEFAULT_GLOBAL_HEALTH_UNIX_SOCK, sizeof(health_sock_path));
-	}
-
-	if (uid != 0) {
-		int ret;
-
-		/*
-		 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
-		 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
-		 */
-		home = utils_get_home_dir();
-		if (home == NULL) {
-			/* Fallback in /tmp .. */
-			home = "/tmp";
-		}
-
-		ret = snprintf(health_sock_path, sizeof(health_sock_path),
-				DEFAULT_HOME_HEALTH_UNIX_SOCK, home);
-		if ((ret < 0) || (ret >= sizeof(health_sock_path))) {
-			/* ENOMEM at this point... just kill the control lib. */
-			assert(0);
-		}
-	}
-
-	return 0;
-}
-
-/*
- * Check session daemon health for a specific health component.
- *
- * Return 0 if health is OK or else 1 if BAD.
- *
- * Any other negative value is a lttng error code which can be translated with
- * lttng_strerror().
- */
-int lttng_health_check(enum lttng_health_component c)
-{
-	int sock, ret;
-	struct lttcomm_health_msg msg;
-	struct lttcomm_health_data reply;
-
-	/* Connect to the sesssion daemon */
-	sock = lttcomm_connect_unix_sock(health_sock_path);
-	if (sock < 0) {
-		ret = -LTTNG_ERR_NO_SESSIOND;
-		goto error;
-	}
-
-	msg.cmd = LTTNG_HEALTH_CHECK;
-	msg.component = c;
-
-	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));
-	if (ret < 0) {
-		ret = -LTTNG_ERR_FATAL;
-		goto close_error;
-	}
-
-	ret = lttcomm_recv_unix_sock(sock, (void *)&reply, sizeof(reply));
-	if (ret < 0) {
-		ret = -LTTNG_ERR_FATAL;
-		goto close_error;
-	}
-
-	ret = reply.ret_code;
-
-close_error:
-	{
-		int closeret;
-
-		closeret = close(sock);
-		assert(!closeret);
-	}
-
-error:
-	return ret;
-}
-
-/*
  * This is an extension of create session that is ONLY and SHOULD only be used
  * by the lttng command line program. It exists to avoid using URI parsing in
  * the lttng client.
@@ -1548,14 +1467,92 @@ int lttng_data_pending(const char *session_name)
 }
 
 /*
+ * Create a session exclusively used for snapshot.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
+{
+	int ret;
+	ssize_t size;
+	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
+
+	if (name == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_CREATE_SESSION_SNAPSHOT;
+	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+
+	size = uri_parse_str_urls(snapshot_url, NULL, &uris);
+	if (size < 0) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	lsm.u.uri.size = size;
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
+
+	free(uris);
+	return ret;
+}
+
+/*
+ * Create a session exclusively used for live.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+int lttng_create_session_live(const char *name, const char *url,
+		unsigned int timer_interval)
+{
+	int ret;
+	ssize_t size;
+	struct lttcomm_session_msg lsm;
+	struct lttng_uri *uris = NULL;
+
+	if (name == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_CREATE_SESSION_LIVE;
+	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
+
+	size = uri_parse_str_urls(url, NULL, &uris);
+	if (size < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* file:// is not accepted for live session. */
+	if (uris[0].dtype == LTTNG_DST_PATH) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	lsm.u.session_live.nb_uri = size;
+	lsm.u.session_live.timer_interval = timer_interval;
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+			sizeof(struct lttng_uri) * size, NULL);
+
+end:
+	free(uris);
+	return ret;
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()
 {
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
-	/* Set socket for health check */
-	(void) set_health_socket_path();
 }
 
 /*

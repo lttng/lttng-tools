@@ -96,8 +96,15 @@ int _mkdir_recursive(void *_data)
 static
 int _mkdir(void *_data)
 {
+	int ret;
 	struct run_as_mkdir_data *data = _data;
-	return mkdir(data->path, data->mode);
+
+	ret = mkdir(data->path, data->mode);
+	if (ret < 0) {
+		ret = -errno;
+	}
+
+	return ret;
 }
 
 static
@@ -130,14 +137,16 @@ int child_run_as(void *_data)
 		ret = setegid(data->gid);
 		if (ret < 0) {
 			PERROR("setegid");
-			return EXIT_FAILURE;
+			sendret.i = -1;
+			goto write_return;
 		}
 	}
 	if (data->uid != geteuid()) {
 		ret = seteuid(data->uid);
 		if (ret < 0) {
 			PERROR("seteuid");
-			return EXIT_FAILURE;
+			sendret.i = -1;
+			goto write_return;
 		}
 	}
 	/*
@@ -145,6 +154,8 @@ int child_run_as(void *_data)
 	 */
 	umask(0);
 	sendret.i = (*data->cmd)(data->data);
+
+write_return:
 	/* send back return value */
 	writeleft = sizeof(sendret);
 	index = 0;

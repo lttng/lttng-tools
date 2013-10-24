@@ -27,6 +27,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
+#include "jul.h"
 #include "ust-ctl.h"
 
 struct ltt_ust_ht_key {
@@ -39,6 +40,7 @@ struct ltt_ust_ht_key {
 struct ltt_ust_context {
 	struct lttng_ust_context ctx;
 	struct lttng_ht_node_ulong node;
+	struct cds_list_head list;
 };
 
 /* UST event */
@@ -56,6 +58,7 @@ struct ltt_ust_channel {
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_channel_attr attr;
 	struct lttng_ht *ctx;
+	struct cds_list_head ctx_list;
 	struct lttng_ht *events;
 	struct lttng_ht_node_str node;
 	uint64_t tracefile_size;
@@ -82,6 +85,7 @@ struct ltt_ust_session {
 	uint64_t id;    /* Unique identifier of session */
 	int start_trace;
 	struct ltt_ust_domain_global domain_global;
+	struct jul_domain domain_jul;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
@@ -107,6 +111,9 @@ struct ltt_ust_session {
 	uint64_t used_channel_id;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
+	unsigned int snapshot_mode;
+	unsigned int has_non_default_channel;
+	unsigned int live_timer_interval;	/* usec */
 };
 
 /*

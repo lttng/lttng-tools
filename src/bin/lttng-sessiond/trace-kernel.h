@@ -113,6 +113,8 @@ struct ltt_kernel_session {
 	unsigned int started;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
+	unsigned int snapshot_mode;
+	unsigned int has_non_default_channel;
 };
 
 /*

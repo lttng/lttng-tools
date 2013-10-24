@@ -67,4 +67,13 @@ int kernctl_put_subbuf(int fd);
 
 int kernctl_buffer_flush(int fd);
 
+/* index */
+int kernctl_get_timestamp_begin(int fd, uint64_t *timestamp_begin);
+int kernctl_get_timestamp_end(int fd, uint64_t *timestamp_end);
+int kernctl_get_events_discarded(int fd, uint64_t *events_discarded);
+int kernctl_get_content_size(int fd, uint64_t *content_size);
+int kernctl_get_packet_size(int fd, uint64_t *packet_size);
+int kernctl_get_stream_id(int fd, uint64_t *stream_id);
+int kernctl_get_current_timestamp(int fd, uint64_t *ts);
+
 #endif /* _LTTNG_KERNEL_CTL_H */

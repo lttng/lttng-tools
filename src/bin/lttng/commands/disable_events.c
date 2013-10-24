@@ -32,6 +32,7 @@ static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_userspace;
 static int opt_disable_all;
+static int opt_jul;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -52,6 +53,7 @@ static struct poptOption long_options[] = {
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"all-events",     'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
+	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 #if 0
 	/* Not implemented yet */
@@ -69,7 +71,7 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] [-k|-u] [OPTIONS]\n");
+	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] (-k | -u) [OPTIONS]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -79,7 +81,20 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
 	fprintf(ofp, "\n");
+}
+
+static
+const char *print_channel_name(const char *name)
+{
+	return name ? : DEFAULT_CHANNEL_NAME;
+}
+
+static
+const char *print_raw_channel_name(const char *name)
+{
+	return name ? : "<default>";
 }
 
 /*
@@ -89,7 +104,7 @@ static void usage(FILE *ofp)
  */
 static int disable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_domain dom;
 
@@ -100,22 +115,15 @@ static int disable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
+	} else if (opt_jul) {
+		dom.type = LTTNG_DOMAIN_JUL;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}
 
-	/* Get channel name */
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
+	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
@@ -131,7 +139,7 @@ static int disable_events(char *session_name)
 		}
 
 		MSG("All %s events are disabled in channel %s",
-				opt_kernel ? "kernel" : "UST", channel_name);
+				get_domain_str(dom.type), print_channel_name(channel_name));
 		goto end;
 	}
 
@@ -143,11 +151,16 @@ static int disable_events(char *session_name)
 		ret = lttng_disable_event(handle, event_name, channel_name);
 		if (ret < 0) {
 			ERR("Event %s: %s (channel %s, session %s)", event_name,
-					lttng_strerror(ret), channel_name, session_name);
+					lttng_strerror(ret),
+					ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+						? print_raw_channel_name(channel_name)
+						: print_channel_name(channel_name),
+					session_name);
 			warn = 1;
 		} else {
 			MSG("%s event %s disabled in channel %s for session %s",
-					opt_kernel ? "kernel" : "UST", event_name, channel_name,
+					get_domain_str(dom.type), event_name,
+					print_channel_name(channel_name),
 					session_name);
 		}
 
@@ -161,9 +174,6 @@ end:
 error:
 	if (warn) {
 		ret = CMD_WARNING;
-	}
-	if (opt_channel_name == NULL) {
-		free(channel_name);
 	}
 	lttng_destroy_handle(handle);
 

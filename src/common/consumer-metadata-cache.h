@@ -25,9 +25,9 @@ struct consumer_metadata_cache {
 	char *data;
 	uint64_t cache_alloc_size;
 	/*
-	 * How many bytes from the cache were already sent to the ring buffer.
+	 * How many bytes from the cache are written contiguously.
 	 */
-	uint64_t rb_pushed;
+	uint64_t contiguous;
 	/*
 	 * How many bytes are written in the buffer (excluding the wholes).
 	 */
@@ -54,6 +54,6 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);
 void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel);
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
-		uint64_t offset);
+		uint64_t offset, int timer);
 
 #endif /* CONSUMER_METADATA_CACHE_H */

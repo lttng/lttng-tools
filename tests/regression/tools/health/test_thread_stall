@@ -47,6 +47,8 @@ function test_thread_stall
 
 	# Spawn sessiond with preload healthexit lib
 	export LD_PRELOAD="$CURDIR/$SESSIOND_PRELOAD"
+	# Set the socket timeout to 5 so the health check delta is set to 25.
+	export LTTNG_NETWORK_SOCKET_TIMEOUT=5
 	start_lttng_sessiond
 
 	# Cleanup some env. var.
@@ -54,45 +56,64 @@ function test_thread_stall
 	unset ${test_thread_stall_name}_STALL
 
 	# Check initial health status
-	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
+	$CURDIR/$HEALTH_CHECK_BIN > /dev/null
 
 	# Wait
-	sleep 25
+	sleep 30
 
-	# Check health status, exit code should indicate failure
-	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
+	# Check health status, should indicate failure
+	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
 
-	health_check_exit_code=$?
+	out=$(grep "${test_thread_error_string}" ${STDOUT_PATH} | wc -l)
+	if [ $out -eq 0 ]; then
+		fail "Validate thread ${test_thread_stall_name} is stalled"
+		diag "Health returned:"
+		diag "stdout:"
+		file=${STDOUT_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
 
-	if [ $health_check_exit_code -eq $test_thread_exit_code ]; then
-		pass "Validate that ${test_thread_stall_name} is stalled"
-	else
-		fail "Validate that ${test_thread_stall_name} is stalled"
-		diag "Health returned: $health_check_exit_code"
+		diag "stderr:"
+		file=${STDERR_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
 
 		stop_lttng_sessiond
 		return 1
+	else
+		pass "Validate thread ${test_thread_stall_name} is stalled"
 	fi
 
 	# Wait
 	sleep 40
 
-	# Check health status, exit code should now pass
-	$CURDIR/$HEALTH_CHECK_BIN &> /dev/null
+	# Check health status, should now pass
+	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
 
-	health_check_exit_code=$?
+	out=$(grep "${test_thread_error_string}" ${STDOUT_PATH} | wc -l)
+	if [ $out -ne 0 ]; then
+		fail "Validate thread ${test_thread_stall_name} is not longer stalled"
+		diag "Health returned:"
+		diag "stdout:"
+		file=${STDOUT_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
 
-	if [ $health_check_exit_code -eq 0 ]; then
-		pass "Validate that ${test_thread_stall_name} is no longer stalled"
-		stop_lttng_sessiond
-	else
-		fail "Validate that ${test_thread_stall_name} is no longer stalled"
-		diag "Health returned: $health_check_exit_code\n"
+		diag "stderr:"
+		file=${STDERR_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
+
 		stop_lttng_sessiond
 		return 1
+	else
+		pass "Validate thread ${test_thread_stall_name} is not longer stalled"
+		stop_lttng_sessiond
 	fi
-
-
 }
 
 plan_tests $NUM_TESTS
@@ -106,16 +127,19 @@ THREAD=("LTTNG_THREAD_MANAGE_CLIENTS"
 #	"LTTNG_THREAD_REG_APPS"
 )
 
-# Exit code value to indicate specific thread failure
-EXIT_CODE=(1
-	   2
-#	   4
+ERROR_STRING=(
+	"Thread \"Session daemon command\" is not responding in component \"sessiond\"."
+	"Thread \"Session daemon application manager\" is not responding in component \"sessiond\"."
+	"Thread \"Session daemon application registration\" is not responding in component \"sessiond\"."
 )
+
+STDOUT_PATH=$(mktemp)
+STDERR_PATH=$(mktemp)
 
 THREAD_COUNT=${#THREAD[@]}
 i=0
 while [ "$i" -lt "$THREAD_COUNT" ]; do
-	test_thread_stall "${THREAD[$i]}" "${EXIT_CODE[$i]}"
+	test_thread_stall "${THREAD[$i]}" "${ERROR_STRING[$i]}"
 
 	if [ $? -eq 1 ]; then
 		exit 1
@@ -133,5 +157,8 @@ fi
 
 skip $isroot "Root access is needed. Skipping LTTNG_THREAD_MANAGE_KERNEL tests." "4" ||
 {
-	test_thread_stall "LTTNG_THREAD_MANAGE_KERNEL" "8"
+	test_thread_stall "LTTNG_THREAD_MANAGE_KERNEL" "Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
 }
+
+rm -f ${STDOUT_PATH}
+rm -f ${STDERR_PATH}

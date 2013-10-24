@@ -81,12 +81,14 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_CONSUMER               = 20,
 	LTTNG_SET_CONSUMER_URI              = 21,
 	LTTNG_ENABLE_EVENT_WITH_FILTER      = 22,
-	LTTNG_HEALTH_CHECK                  = 23,
+	/* Unused */
 	LTTNG_DATA_PENDING                  = 24,
 	LTTNG_SNAPSHOT_ADD_OUTPUT           = 25,
 	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
 	LTTNG_SNAPSHOT_LIST_OUTPUT          = 27,
 	LTTNG_SNAPSHOT_RECORD               = 28,
+	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
+	LTTNG_CREATE_SESSION_LIVE           = 30,
 };
 
 enum lttcomm_relayd_command {
@@ -101,6 +103,11 @@ enum lttcomm_relayd_command {
 	RELAYD_QUIESCENT_CONTROL            = 9,
 	RELAYD_BEGIN_DATA_PENDING           = 10,
 	RELAYD_END_DATA_PENDING             = 11,
+	RELAYD_ADD_INDEX                    = 12,
+	RELAYD_SEND_INDEX                   = 13,
+	RELAYD_CLOSE_INDEX                  = 14,
+	/* Live-reading commands. */
+	RELAYD_LIST_SESSIONS                = 15,
 };
 
 /*
@@ -254,6 +261,10 @@ struct lttcomm_session_msg {
 			uint32_t wait;
 			struct lttng_snapshot_output output;
 		} LTTNG_PACKED snapshot_record;
+		struct {
+			uint32_t nb_uri;
+			unsigned int timer_interval;	/* usec */
+		} LTTNG_PACKED session_live;
 	} u;
 } LTTNG_PACKED;
 
@@ -289,15 +300,6 @@ struct lttcomm_lttng_output_id {
 	uint32_t id;
 } LTTNG_PACKED;
 
-struct lttcomm_health_msg {
-	uint32_t component;
-	uint32_t cmd;
-} LTTNG_PACKED;
-
-struct lttcomm_health_data {
-	uint32_t ret_code;
-} LTTNG_PACKED;
-
 /*
  * lttcomm_consumer_msg is the message sent from sessiond to consumerd
  * to either add a channel, add a stream, update a stream, or stop
@@ -323,6 +325,8 @@ struct lttcomm_consumer_msg {
 			uint32_t tracefile_count; /* number of tracefiles */
 			/* If the channel's streams have to be monitored or not. */
 			uint32_t monitor;
+			/* timer to check the streams usage in live mode (usec). */
+			unsigned int live_timer_interval;
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
 			uint64_t stream_key;
@@ -338,6 +342,8 @@ struct lttcomm_consumer_msg {
 			struct lttcomm_relayd_sock sock;
 			/* Tracing session id associated to the relayd. */
 			uint64_t session_id;
+			/* Relayd session id, only used with control socket. */
+			uint64_t relayd_session_id;
 		} LTTNG_PACKED relayd_sock;
 		struct {
 			uint64_t net_seq_idx;
@@ -351,6 +357,7 @@ struct lttcomm_consumer_msg {
 			int32_t overwrite;			/* 1: overwrite, 0: discard */
 			uint32_t switch_timer_interval;		/* usec */
 			uint32_t read_timer_interval;		/* usec */
+			unsigned int live_timer_interval;		/* usec */
 			int32_t output;				/* splice, mmap */
 			int32_t type;				/* metadata or per_cpu */
 			uint64_t session_id;			/* Tracing session id */
@@ -367,6 +374,13 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id_per_pid;	/* Per-pid session ID. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t monitor;
+			/*
+			 * For UST per UID buffers, this is the application UID of the
+			 * channel.  This can be different from the user UID requesting the
+			 * channel creation and used for the rights on the stream file
+			 * because the application can be in the tracing for instance.
+			 */
+			uint32_t ust_app_uid;
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;
@@ -395,7 +409,7 @@ struct lttcomm_consumer_msg {
 			uint32_t metadata;		/* This a metadata snapshot. */
 			uint64_t relayd_id;		/* Relayd id if apply. */
 			uint64_t key;
-			uint64_t max_size;
+			uint64_t max_stream_size;
 		} LTTNG_PACKED snapshot_channel;
 	} u;
 } LTTNG_PACKED;
@@ -472,5 +486,12 @@ extern void lttcomm_copy_sock(struct lttcomm_sock *dst,
 /* Relayd socket object. */
 extern struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
 		struct lttng_uri *uri, uint32_t major, uint32_t minor);
+
+extern int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec);
+extern int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec);
+
+extern void lttcomm_init(void);
+/* Get network timeout, in milliseconds */
+extern unsigned long lttcomm_get_network_timeout(void);
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */

@@ -38,6 +38,13 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 	assert(session);
 	assert(name);
 
+	/*
+	 * If we receive an empty string for channel name, it means the
+	 * default channel name is requested.
+	 */
+	if (name[0] == '\0')
+		name = DEFAULT_CHANNEL_NAME;
+
 	DBG("Trying to find channel %s", name);
 
 	cds_list_for_each_entry(chan, &session->channel_list.head, list) {
@@ -144,6 +151,16 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 	}
 	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
 
+	/*
+	 * If we receive an empty string for channel name, it means the
+	 * default channel name is requested.
+	 */
+	if (chan->name[0] == '\0') {
+		strncpy(lkc->channel->name, DEFAULT_CHANNEL_NAME,
+			sizeof(lkc->channel->name));
+	}
+	lkc->channel->name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
+
 	lkc->fd = -1;
 	lkc->stream_count = 0;
 	lkc->event_count = 0;
@@ -190,7 +207,6 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev)
 	case LTTNG_EVENT_FUNCTION:
 		attr->instrumentation = LTTNG_KERNEL_KRETPROBE;
 		attr->u.kretprobe.addr = ev->attr.probe.addr;
-		attr->u.kretprobe.offset = ev->attr.probe.offset;
 		attr->u.kretprobe.offset = ev->attr.probe.offset;
 		strncpy(attr->u.kretprobe.symbol_name,
 				ev->attr.probe.symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);

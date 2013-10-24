@@ -23,7 +23,7 @@
 #include "fd-limit.h"
 #include "lttng-sessiond.h"
 #include "ust-thread.h"
-#include "health.h"
+#include "health-sessiond.h"
 
 /*
  * This thread manage application notify communication.
@@ -39,7 +39,8 @@ void *ust_thread_manage_notify(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(HEALTH_TYPE_APP_MANAGE_NOTIFY);
+	health_register(health_sessiond,
+		HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY);
 
 	health_code_update();
 
@@ -176,7 +177,7 @@ error_poll_create:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister();
+	health_unregister(health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;

@@ -65,6 +65,7 @@ struct lttng_channel *channel_new_default_attr(int dom,
 		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		chan->attr.switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
 		chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
+		chan->attr.live_timer_interval = DEFAULT_KERNEL_CHANNEL_LIVE_TIMER;
 		break;
 	case LTTNG_DOMAIN_UST:
 		switch (type) {
@@ -76,6 +77,8 @@ struct lttng_channel *channel_new_default_attr(int dom,
 				DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
 			chan->attr.read_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			chan->attr.live_timer_interval =
+				DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
@@ -86,6 +89,8 @@ struct lttng_channel *channel_new_default_attr(int dom,
 				DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
 			chan->attr.read_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			chan->attr.live_timer_interval =
+				DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
 			break;
 		}
 		break;
@@ -184,6 +189,12 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 		attr = defattr;
 	}
 
+	if (ksession->snapshot_mode) {
+		/* Force channel attribute for snapshot mode. */
+		attr->attr.overwrite = 1;
+		attr->attr.output = LTTNG_EVENT_MMAP;
+	}
+
 	/* Channel not found, creating it */
 	ret = kernel_create_channel(ksession, attr);
 	if (ret < 0) {
@@ -261,6 +272,12 @@ int channel_ust_create(struct ltt_ust_session *usess,
 			goto error;
 		}
 		attr = defattr;
+	}
+
+	if (usess->snapshot_mode) {
+		/* Force channel attribute for snapshot mode. */
+		attr->attr.overwrite = 1;
+		attr->attr.output = LTTNG_EVENT_MMAP;
 	}
 
 	/*

@@ -36,6 +36,7 @@ static int opt_loglevel_type;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
+static int opt_jul;
 static int opt_enable_all;
 static char *opt_probe;
 static char *opt_function;
@@ -72,6 +73,7 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
@@ -105,6 +107,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -a, --all                Enable all tracepoints and syscalls\n");
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
@@ -113,11 +116,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                             e.g.:\n");
 	fprintf(ofp, "                               \"*\"\n");
 	fprintf(ofp, "                               \"app_component:na*\"\n");
-	fprintf(ofp, "    --probe [addr | symbol | symbol+offset]\n");
+	fprintf(ofp, "    --probe (addr | symbol | symbol+offset)\n");
 	fprintf(ofp, "                           Dynamic probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
-	fprintf(ofp, "    --function [addr | symbol | symbol+offset]\n");
+	fprintf(ofp, "    --function (addr | symbol | symbol+offset)\n");
 	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
 	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
 	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
@@ -153,7 +156,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
 	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
 	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
-	fprintf(ofp, "    --filter \'expression\'\n");
+	fprintf(ofp, "  -f, --filter \'expression\'\n");
 	fprintf(ofp, "                           Filter expression on event fields and context.\n");
 	fprintf(ofp, "                           Event recording depends on evaluation.\n");
 	fprintf(ofp, "                           Only specify on first activation of\n");
@@ -168,7 +171,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           Expression examples:.\n");
 	fprintf(ofp, "                           \n");
 	fprintf(ofp, "                           'intfield > 500 && intfield < 503'\n");
-	fprintf(ofp, "                           '(stringfield == \"test\" || intfield != 10) && intfield > 33'\n");
+	fprintf(ofp, "                           '(strfield == \"test\" || intfield != 10) && intfield > 33'\n");
 	fprintf(ofp, "                           'doublefield > 1.1 && intfield < 5.3'\n");
 	fprintf(ofp, "                           \n");
 	fprintf(ofp, "                           Wildcards are allowed at the end of strings:\n");
@@ -312,12 +315,24 @@ int loglevel_str_to_value(const char *inputstr)
 	}
 }
 
+static
+const char *print_channel_name(const char *name)
+{
+	return name ? : DEFAULT_CHANNEL_NAME;
+}
+
+static
+const char *print_raw_channel_name(const char *name)
+{
+	return name ? : "<default>";
+}
+
 /*
  * Enabling event using the lttng API.
  */
 static int enable_events(char *session_name)
 {
-	int err, ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, warn = 0;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
@@ -340,22 +355,18 @@ static int enable_events(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 		/* Default. */
-		dom.buf_type = LTTNG_BUFFER_PER_PID;
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
+	} else if (opt_jul) {
+		dom.type = LTTNG_DOMAIN_JUL;
+		/* Default. */
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
-		ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+		print_missing_domain();
 		ret = CMD_ERROR;
 		goto error;
 	}
 
-	if (opt_channel_name == NULL) {
-		err = asprintf(&channel_name, DEFAULT_CHANNEL_NAME);
-		if (err < 0) {
-			ret = CMD_FATAL;
-			goto error;
-		}
-	} else {
-		channel_name = opt_channel_name;
-	}
+	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
@@ -392,11 +403,15 @@ static int enable_events(char *session_name)
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel events already enabled (channel %s, session %s)",
-							channel_name, session_name);
+							print_channel_name(channel_name), session_name);
 					break;
 				default:
 					ERR("Events: %s (channel %s, session %s)",
-							lttng_strerror(ret), channel_name, session_name);
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name);
 					break;
 				}
 				goto end;
@@ -406,28 +421,32 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel) {
 					MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
-							opt_kernel ? "kernel" : "UST", channel_name,
+							get_domain_str(dom.type),
+							print_channel_name(channel_name),
 							opt_loglevel);
 				} else {
 					MSG("All %s tracepoints are enabled in channel %s",
-							opt_kernel ? "kernel" : "UST", channel_name);
+							get_domain_str(dom.type),
+							print_channel_name(channel_name));
 
 				}
 				break;
 			case LTTNG_EVENT_SYSCALL:
 				if (opt_kernel) {
 					MSG("All kernel system calls are enabled in channel %s",
-							channel_name);
+							print_channel_name(channel_name));
 				}
 				break;
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel) {
 					MSG("All %s events are enabled in channel %s for loglevel %s",
-							opt_kernel ? "kernel" : "UST", channel_name,
+							get_domain_str(dom.type),
+							print_channel_name(channel_name),
 							opt_loglevel);
 				} else {
 					MSG("All %s events are enabled in channel %s",
-							opt_kernel ? "kernel" : "UST", channel_name);
+							get_domain_str(dom.type),
+							print_channel_name(channel_name));
 				}
 				break;
 			default:
@@ -444,14 +463,17 @@ static int enable_events(char *session_name)
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					WARN("Filter on events is already enabled"
+					WARN("Filter on all events is already enabled"
 							" (channel %s, session %s)",
-						channel_name, session_name);
+						print_channel_name(channel_name), session_name);
 					break;
-				case LTTNG_ERR_FILTER_INVAL:
-				case LTTNG_ERR_FILTER_NOMEM:
 				default:
-					ERR("%s", lttng_strerror(ret));
+					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name, opt_filter);
 					break;
 				}
 				goto error;
@@ -473,7 +495,8 @@ static int enable_events(char *session_name)
 		/* Kernel tracer action */
 		if (opt_kernel) {
 			DBG("Enabling kernel event %s for channel %s",
-					event_name, channel_name);
+					event_name,
+					print_channel_name(channel_name));
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
@@ -528,7 +551,7 @@ static int enable_events(char *session_name)
 #endif
 
 			DBG("Enabling UST event %s for channel %s, loglevel %s", event_name,
-					channel_name, opt_loglevel ? : "<all>");
+					print_channel_name(channel_name), opt_loglevel ? : "<all>");
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
@@ -560,8 +583,18 @@ static int enable_events(char *session_name)
 			} else {
 				ev.loglevel = -1;
 			}
+		} else if (opt_jul) {
+			if (opt_event_type != LTTNG_EVENT_ALL &&
+					opt_event_type != LTTNG_EVENT_TRACEPOINT) {
+				ERR("Event type not supported for JUL domain.");
+				ret = CMD_UNSUPPORTED;
+				goto error;
+			}
+			ev.type = LTTNG_EVENT_TRACEPOINT;
+			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
+			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		} else {
-			ERR("Please specify a tracer (-k/--kernel or -u/--userspace)");
+			print_missing_domain();
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -573,17 +606,23 @@ static int enable_events(char *session_name)
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel event %s already enabled (channel %s, session %s)",
-							event_name, channel_name, session_name);
+							event_name,
+							print_channel_name(channel_name), session_name);
 					break;
 				default:
 					ERR("Event %s: %s (channel %s, session %s)", event_name,
-							lttng_strerror(ret), channel_name, session_name);
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name);
 					break;
 				}
 				warn = 1;
 			} else {
 				MSG("%s event %s created in channel %s",
-						opt_kernel ? "kernel": "UST", event_name, channel_name);
+						get_domain_str(dom.type), event_name,
+						print_channel_name(channel_name));
 			}
 		}
 
@@ -595,14 +634,16 @@ static int enable_events(char *session_name)
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on event %s is already enabled"
 							" (channel %s, session %s)",
-						event_name, channel_name, session_name);
+						event_name,
+						print_channel_name(channel_name), session_name);
 					break;
-				case LTTNG_ERR_FILTER_INVAL:
-				case LTTNG_ERR_FILTER_NOMEM:
-					ERR("%s", lttng_strerror(ret));
 				default:
-					ERR("Setting filter for event %s: '%s'", ev.name,
-							opt_filter);
+					ERR("Event %s: %s (channel %s, session %s, filter \'%s\')", ev.name,
+							lttng_strerror(ret),
+							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+								? print_raw_channel_name(channel_name)
+								: print_channel_name(channel_name),
+							session_name, opt_filter);
 					break;
 				}
 				goto error;
@@ -619,9 +660,6 @@ end:
 error:
 	if (warn) {
 		ret = CMD_WARNING;
-	}
-	if (opt_channel_name == NULL) {
-		free(channel_name);
 	}
 	lttng_destroy_handle(handle);
 

@@ -128,6 +128,13 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	/*
+	 * If we receive an empty string for channel name, it means the
+	 * default channel name is requested.
+	 */
+	if (name[0] == '\0')
+		name = DEFAULT_CHANNEL_NAME;
+
 	lttng_ht_lookup(ht, (void *)name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
@@ -184,6 +191,7 @@ error:
  */
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 {
+	int ret;
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
@@ -203,7 +211,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	 * during the session lifetime which is at the first enable channel and
 	 * only before start. The flag buffer_type_changed indicates the status.
 	 */
-	lus->buffer_type = LTTNG_BUFFER_PER_PID;
+	lus->buffer_type = LTTNG_BUFFER_PER_UID;
 	/* Once set to 1, the buffer_type is immutable for the session. */
 	lus->buffer_type_changed = 0;
 	/* Init it in case it get used after allocation. */
@@ -211,6 +219,10 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 	/* Alloc UST global domain channels' HT */
 	lus->domain_global.channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	ret = jul_init_domain(&lus->domain_jul);
+	if (ret < 0) {
+		goto error_consumer;
+	}
 
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lus->consumer == NULL) {
@@ -231,6 +243,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 error_consumer:
 	ht_cleanup_push(lus->domain_global.channels);
+	jul_destroy_domain(&lus->domain_jul);
 	free(lus);
 error:
 	return NULL;
@@ -268,12 +281,22 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
 		break;
 	}
 
-	/* Copy channel name */
-	strncpy(luc->name, chan->name, sizeof(luc->name));
+	/*
+	 * If we receive an empty string for channel name, it means the
+	 * default channel name is requested.
+	 */
+	if (chan->name[0] == '\0') {
+		strncpy(luc->name, DEFAULT_CHANNEL_NAME, sizeof(luc->name));
+	} else {
+		/* Copy channel name */
+		strncpy(luc->name, chan->name, sizeof(luc->name));
+	}
 	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */
 	lttng_ht_node_init_str(&luc->node, luc->name);
+	CDS_INIT_LIST_HEAD(&luc->ctx_list);
+
 	/* Alloc hash tables */
 	luc->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
@@ -432,6 +455,9 @@ struct ltt_ust_context *trace_ust_create_context(
 	case LTTNG_EVENT_CONTEXT_PROCNAME:
 		utype = LTTNG_UST_CONTEXT_PROCNAME;
 		break;
+	case LTTNG_EVENT_CONTEXT_IP:
+		utype = LTTNG_UST_CONTEXT_IP;
+		break;
 	default:
 		ERR("Invalid UST context");
 		return NULL;
@@ -445,6 +471,7 @@ struct ltt_ust_context *trace_ust_create_context(
 
 	uctx->ctx.ctx = utype;
 	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
+	CDS_INIT_LIST_HEAD(&uctx->list);
 
 	return uctx;
 
@@ -473,11 +500,16 @@ static void destroy_contexts(struct lttng_ht *ht)
 	int ret;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
+	struct ltt_ust_context *ctx;
 
 	assert(ht);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
+		/* Remove from ordered list. */
+		ctx = caa_container_of(node, struct ltt_ust_context, node);
+		cds_list_del(&ctx->list);
+		/* Remove from channel's hash table. */
 		ret = lttng_ht_del(ht, &iter);
 		if (!ret) {
 			call_rcu(&node->head, destroy_context_rcu);
@@ -651,6 +683,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
+	jul_destroy_domain(&session->domain_jul);
 
 	/* Cleanup UID buffer registry object(s). */
 	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,

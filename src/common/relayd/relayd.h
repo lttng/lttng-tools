@@ -25,7 +25,9 @@
 
 int relayd_connect(struct lttcomm_relayd_sock *sock);
 int relayd_close(struct lttcomm_relayd_sock *sock);
-int relayd_create_session(struct lttcomm_relayd_sock *sock, uint64_t *session_id);
+int relayd_create_session(struct lttcomm_relayd_sock *sock, uint64_t *session_id,
+		char *session_name, char *hostname, int session_live_timer,
+		unsigned int snapshot);
 int relayd_add_stream(struct lttcomm_relayd_sock *sock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id,
 		uint64_t tracefile_size, uint64_t tracefile_count);
@@ -43,5 +45,8 @@ int relayd_quiescent_control(struct lttcomm_relayd_sock *sock,
 int relayd_begin_data_pending(struct lttcomm_relayd_sock *sock, uint64_t id);
 int relayd_end_data_pending(struct lttcomm_relayd_sock *sock, uint64_t id,
 		unsigned int *is_data_inflight);
+int relayd_send_index(struct lttcomm_relayd_sock *rsock,
+		struct lttng_packet_index *index, uint64_t relay_stream_id,
+		uint64_t net_seq_num);
 
 #endif /* _RELAYD_H */

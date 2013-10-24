@@ -19,6 +19,8 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
 
+#include <config.h>
+
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"
 
@@ -76,18 +78,34 @@
 #define DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/command"
 #define DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH    DEFAULT_USTCONSUMERD32_PATH "/error"
 
+/* Relayd path */
+#define DEFAULT_RELAYD_RUNDIR			"%s"
+#define DEFAULT_RELAYD_PATH			DEFAULT_RELAYD_RUNDIR "/relayd"
+
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_HOME_ENV_VAR              "LTTNG_HOME"
 #define DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR	"HOME"
-#define DEFAULT_LTTNG_RUNDIR                    "/var/run/lttng"
+#define DEFAULT_LTTNG_RUNDIR                    CONFIG_LTTNG_SYSTEM_RUNDIR
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
 
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
-#define DEFAULT_GLOBAL_HEALTH_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/health.sock"
-#define DEFAULT_HOME_HEALTH_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/health.sock"
+#define DEFAULT_GLOBAL_HEALTH_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/sessiond-health"
+#define DEFAULT_HOME_HEALTH_UNIX_SOCK		DEFAULT_LTTNG_HOME_RUNDIR "/sessiond-health"
+
+/* Default consumer health unix socket path */
+#define DEFAULT_GLOBAL_USTCONSUMER32_HEALTH_UNIX_SOCK	DEFAULT_LTTNG_RUNDIR "/ustconsumerd32/health"
+#define DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK	DEFAULT_LTTNG_HOME_RUNDIR "/ustconsumerd32/health"
+#define DEFAULT_GLOBAL_USTCONSUMER64_HEALTH_UNIX_SOCK	DEFAULT_LTTNG_RUNDIR "/ustconsumerd64/health"
+#define DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK	DEFAULT_LTTNG_HOME_RUNDIR "/ustconsumerd64/health"
+#define DEFAULT_GLOBAL_KCONSUMER_HEALTH_UNIX_SOCK	DEFAULT_LTTNG_RUNDIR "/kconsumerd/health"
+#define DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK		DEFAULT_LTTNG_HOME_RUNDIR "/kconsumerd/health"
+
+/* Default relay health unix socket path */
+#define DEFAULT_GLOBAL_RELAY_HEALTH_UNIX_SOCK		DEFAULT_LTTNG_RUNDIR "/relayd/health-%d"
+#define DEFAULT_HOME_RELAY_HEALTH_UNIX_SOCK		DEFAULT_LTTNG_HOME_RUNDIR "/relayd/health-%d"
 
 #define DEFAULT_GLOBAL_APPS_UNIX_SOCK \
 	DEFAULT_LTTNG_RUNDIR "/" LTTNG_UST_SOCK_FILENAME
@@ -114,6 +132,11 @@
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
+/* Default JUL domain channel name. */
+#define DEFAULT_JUL_CHANNEL_NAME        "lttng_jul_channel"
+/* Default JUL tracepoint name. This is a wildcard for the JUL domain. */
+#define DEFAULT_JUL_EVENT_NAME          "lttng_jul*"
+/* JUL default channel name. */
 #define DEFAULT_CHANNEL_OVERWRITE       0
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  0
 #define DEFAULT_CHANNEL_TRACEFILE_COUNT 0
@@ -123,6 +146,7 @@
 /* Must always be a power of 2 */
 #define _DEFAULT_CHANNEL_SUBBUF_NUM		4
 #define _DEFAULT_CHANNEL_SWITCH_TIMER	0       /* usec */
+#define _DEFAULT_CHANNEL_LIVE_TIMER	0       /* usec */
 #define _DEFAULT_CHANNEL_READ_TIMER		200000  /* usec */
 #define _DEFAULT_CHANNEL_OUTPUT			LTTNG_EVENT_MMAP
 
@@ -147,6 +171,7 @@
 #define DEFAULT_KERNEL_CHANNEL_OUTPUT			LTTNG_EVENT_SPLICE
 #define DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER		_DEFAULT_CHANNEL_SWITCH_TIMER
 #define DEFAULT_KERNEL_CHANNEL_READ_TIMER		_DEFAULT_CHANNEL_READ_TIMER
+#define DEFAULT_KERNEL_CHANNEL_LIVE_TIMER		_DEFAULT_CHANNEL_LIVE_TIMER
 
 /* User space defaults */
 
@@ -162,6 +187,8 @@
 /* Timers in usec. */
 #define DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER	_DEFAULT_CHANNEL_SWITCH_TIMER
 #define DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER	_DEFAULT_CHANNEL_SWITCH_TIMER
+#define DEFAULT_UST_PID_CHANNEL_LIVE_TIMER	_DEFAULT_CHANNEL_LIVE_TIMER
+#define DEFAULT_UST_UID_CHANNEL_LIVE_TIMER	_DEFAULT_CHANNEL_LIVE_TIMER
 
 #define DEFAULT_UST_PID_CHANNEL_READ_TIMER      0  /* usec */
 #define DEFAULT_UST_UID_CHANNEL_READ_TIMER      0  /* usec */
@@ -176,6 +203,10 @@
 /* Default network ports for trace streaming support */
 #define DEFAULT_NETWORK_CONTROL_PORT        5342
 #define DEFAULT_NETWORK_DATA_PORT           5343
+#define DEFAULT_NETWORK_VIEWER_PORT         5344
+
+/* JUL registration TCP port. */
+#define DEFAULT_JUL_TCP_PORT                5345
 
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad
@@ -197,6 +228,13 @@
 #define DEFAULT_METADATA_AVAILABILITY_WAIT_TIME 200000  /* usec */
 
 /*
+ * The usual value for the maximum TCP SYN retries time and TCP FIN timeout is
+ * 180 and 60 seconds on most Linux system and the default value since kernel
+ * 2.2 thus using the highest value. See tcp(7) for more details.
+ */
+#define DEFAULT_INET_TCP_TIMEOUT			180	/* sec */
+
+/*
  * Default receiving and sending timeout for an application socket.
  */
 #define DEFAULT_APP_SOCKET_RW_TIMEOUT       5  /* sec */
@@ -205,6 +243,11 @@
 #define DEFAULT_UST_STREAM_FD_NUM			2 /* Number of fd per UST stream. */
 
 #define DEFAULT_SNAPSHOT_NAME				"snapshot"
+#define DEFAULT_SNAPSHOT_MAX_SIZE			0 /* Unlimited. */
+
+/* Suffix of an index file. */
+#define DEFAULT_INDEX_FILE_SUFFIX			".idx"
+#define DEFAULT_INDEX_DIR					"index"
 
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;

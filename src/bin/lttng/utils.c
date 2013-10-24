@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <limits.h>
@@ -25,6 +26,11 @@
 
 #include "conf.h"
 #include "utils.h"
+#include "command.h"
+
+static const char *str_kernel = "Kernel";
+static const char *str_ust = "UST";
+static const char *str_jul = "JUL";
 
 /*
  *  get_session_name
@@ -56,6 +62,24 @@ error:
 	return NULL;
 }
 
+/*
+ *  list_commands
+ *
+ *  List commands line by line. This is mostly for bash auto completion and to
+ *  avoid difficult parsing.
+ */
+void list_commands(struct cmd_struct *commands, FILE *ofp)
+{
+	int i = 0;
+	struct cmd_struct *cmd = NULL;
+
+	cmd = &commands[i];
+	while (cmd->name != NULL) {
+		fprintf(ofp, "%s\n", cmd->name);
+		i++;
+		cmd = &commands[i];
+	}
+}
 
 /*
  * list_cmd_options
@@ -229,4 +253,26 @@ int get_count_order_ulong(unsigned long x)
 		return -1;
 
 	return fls_ulong(x - 1);
+}
+
+const char *get_domain_str(enum lttng_domain_type domain)
+{
+	const char *str_dom;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		str_dom = str_kernel;
+		break;
+	case LTTNG_DOMAIN_UST:
+		str_dom = str_ust;
+		break;
+	case LTTNG_DOMAIN_JUL:
+		str_dom = str_jul;
+		break;
+	default:
+		/* Should not have an unknown domain or else define it. */
+		assert(0);
+	}
+
+	return str_dom;
 }

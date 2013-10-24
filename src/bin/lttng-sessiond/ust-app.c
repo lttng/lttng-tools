@@ -34,7 +34,7 @@
 
 #include "buffer-registry.h"
 #include "fd-limit.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "ust-app.h"
 #include "ust-consumer.h"
 #include "ust-ctl.h"
@@ -364,6 +364,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 
 	/* Wipe context */
 	cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter.iter, ua_ctx, node.node) {
+		cds_list_del(&ua_ctx->list);
 		ret = lttng_ht_del(ua_chan->ctx, &iter);
 		assert(!ret);
 		delete_ust_app_ctx(sock, ua_ctx);
@@ -825,6 +826,7 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
+	CDS_INIT_LIST_HEAD(&ua_chan->ctx_list);
 
 	/* Copy attributes */
 	if (attr) {
@@ -916,6 +918,8 @@ struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
 		goto error;
 	}
 
+	CDS_INIT_LIST_HEAD(&ua_ctx->list);
+
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
 	}
@@ -953,8 +957,7 @@ error:
  * Find an ust_app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
-static
-struct ust_app *find_app_by_sock(int sock)
+struct ust_app *ust_app_find_by_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -1051,6 +1054,12 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 			ERR("UST app create channel context failed for app (pid: %d) "
 					"with ret %d", app->pid, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app disable event failed. Application is dead.");
 		}
 		goto error;
@@ -1089,6 +1098,12 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 			ERR("UST app event %s filter failed for app (pid: %d) "
 					"with ret %d", ua_event->attr.name, app->pid, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app filter event failed. Application is dead.");
 		}
 		goto error;
@@ -1118,6 +1133,12 @@ static int disable_ust_event(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_event->attr.name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app disable event failed. Application is dead.");
 		}
 		goto error;
@@ -1148,6 +1169,12 @@ static int disable_ust_channel(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_chan->name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app disable channel failed. Application is dead.");
 		}
 		goto error;
@@ -1178,6 +1205,12 @@ static int enable_ust_channel(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_chan->name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app enable channel failed. Application is dead.");
 		}
 		goto error;
@@ -1210,6 +1243,12 @@ static int enable_ust_event(struct ust_app *app,
 					"and session handle %d with ret %d",
 					ua_event->attr.name, app->pid, ua_sess->handle, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app enable event failed. Application is dead.");
 		}
 		goto error;
@@ -1290,6 +1329,12 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			ERR("Error ustctl create event %s for app pid: %d with ret %d",
 					ua_event->attr.name, app->pid, ret);
 		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
 			DBG3("UST app create event failed. Application is dead.");
 		}
 		goto error;
@@ -1395,7 +1440,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	ua_chan->enabled = uchan->enabled;
 	ua_chan->tracing_channel_id = uchan->id;
 
-	cds_lfht_for_each_entry(uchan->ctx->ht, &iter.iter, uctx, node.node) {
+	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
 		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
 		if (ua_ctx == NULL) {
 			continue;
@@ -1403,6 +1448,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 		lttng_ht_node_init_ulong(&ua_ctx->node,
 				(unsigned long) ua_ctx->ctx.ctx);
 		lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
+		cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 	}
 
 	/* Copy all events from ltt ust channel to ust app channel */
@@ -1457,6 +1503,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	/* There is only one consumer object per session possible. */
 	ua_sess->consumer = usess->consumer;
 	ua_sess->output_traces = usess->output_traces;
+	ua_sess->live_timer_interval = usess->live_timer_interval;
 
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
@@ -1727,6 +1774,13 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 						app->pid, ret);
 			} else {
 				DBG("UST app creating session failed. Application is dead");
+				/*
+				 * This is normal behavior, an application can die during the
+				 * creation process. Don't report an error so the execution can
+				 * continue normally. This will get flagged ENOTCONN and the
+				 * caller will handle it.
+				 */
+				ret = 0;
 			}
 			delete_ust_app_session(-1, ua_sess, app);
 			if (ret != -ENOMEM) {
@@ -1795,6 +1849,7 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 
 	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
 	lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
+	cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 	if (ret < 0) {
@@ -2134,6 +2189,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	}
 	assert(reg_chan);
 	reg_chan->consumer_key = ua_chan->key;
+	reg_chan->subbuf_size = ua_chan->attr.subbuf_size;
 
 	/* Create and add a channel registry to session. */
 	ret = ust_registry_channel_add(reg_sess->reg.ust,
@@ -2993,6 +3049,12 @@ int ust_app_list_events(struct lttng_event **events)
 							app->sock, ret);
 				} else {
 					DBG3("UST app tp list get failed. Application is dead");
+					/*
+					 * This is normal behavior, an application can die during the
+					 * creation process. Don't report an error so the execution can
+					 * continue normally. Continue normal execution.
+					 */
+					break;
 				}
 				goto rcu_error;
 			}
@@ -3087,6 +3149,12 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 							app->sock, ret);
 				} else {
 					DBG3("UST app tp list field failed. Application is dead");
+					/*
+					 * This is normal behavior, an application can die during the
+					 * creation process. Don't report an error so the execution can
+					 * continue normally.
+					 */
+					break;
 				}
 				goto rcu_error;
 			}
@@ -3702,6 +3770,13 @@ skip_setup:
 					app->pid, ret);
 		} else {
 			DBG("UST app start session failed. Application is dead.");
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			pthread_mutex_unlock(&ua_sess->lock);
+			goto end;
 		}
 		goto error_unlock;
 	}
@@ -3777,6 +3852,12 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 					app->pid, ret);
 		} else {
 			DBG("UST app stop session failed. Application is dead.");
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			goto end_unlock;
 		}
 		goto error_rcu_unlock;
 	}
@@ -3800,6 +3881,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		(void) push_metadata(registry, ua_sess->consumer);
 	}
 
+end_unlock:
 	pthread_mutex_unlock(&ua_sess->lock);
 end_no_session:
 	rcu_read_unlock();
@@ -3854,8 +3936,11 @@ int ust_app_flush_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			} else {
 				DBG3("UST app failed to flush %s. Application is dead.",
 						ua_chan->name);
-				/* No need to continue. */
-				break;
+				/*
+				 * This is normal behavior, an application can die during the
+				 * creation process. Don't report an error so the execution can
+				 * continue normally.
+				 */
 			}
 			/* Continuing flushing all buffers */
 			continue;
@@ -3961,7 +4046,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 		}
 	}
 
-	/* Flush buffers */
+	/* Flush buffers and push metadata (for UID buffers). */
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
@@ -3969,6 +4054,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 
 		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct ust_registry_session *ust_session_reg;
 			struct buffer_reg_channel *reg_chan;
 			struct consumer_socket *socket;
 
@@ -3989,7 +4075,14 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 				 */
 				(void) consumer_flush_channel(socket, reg_chan->consumer_key);
 			}
+
+			ust_session_reg = reg->registry->reg.ust;
+			if (!ust_session_reg->metadata_closed) {
+				/* Push metadata. */
+				(void) push_metadata(ust_session_reg, usess->consumer);
+			}
 		}
+
 		break;
 	}
 	case LTTNG_BUFFER_PER_PID:
@@ -4043,7 +4136,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter, uiter, iter_ctx;
+	struct lttng_ht_iter iter, uiter;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess = NULL;
 	struct ust_app_channel *ua_chan;
@@ -4058,7 +4151,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 
 	rcu_read_lock();
 
-	app = find_app_by_sock(sock);
+	app = ust_app_find_by_sock(sock);
 	if (app == NULL) {
 		/*
 		 * Application can be unregistered before so this is possible hence
@@ -4115,8 +4208,11 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 			}
 		}
 
-		cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter_ctx.iter, ua_ctx,
-				node.node) {
+		/*
+		 * Add context using the list so they are enabled in the same order the
+		 * user added them.
+		 */
+		cds_list_for_each_entry(ua_ctx, &ua_chan->ctx_list, list) {
 			ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 			if (ret < 0) {
 				goto error_unlock;
@@ -4646,7 +4742,8 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	 */
 	ret_code = ust_registry_create_event(registry, chan_reg_key,
 			sobjd, cobjd, name, sig, nr_fields, fields, loglevel,
-			model_emf_uri, ua_sess->buffer_type, &event_id);
+			model_emf_uri, ua_sess->buffer_type, &event_id,
+			app);
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
@@ -4871,58 +4968,215 @@ void ust_app_destroy(struct ust_app *app)
  * Return 0 on success or else a negative value.
  */
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct snapshot_output *output, int wait)
+		struct snapshot_output *output, int wait, unsigned int nb_streams)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
+	char pathname[PATH_MAX];
+	uint64_t max_stream_size = 0;
 
 	assert(usess);
 	assert(output);
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		struct consumer_socket *socket;
-		struct lttng_ht_iter chan_iter;
-		struct ust_app_channel *ua_chan;
-		struct ust_app_session *ua_sess;
-		struct ust_registry_session *registry;
+	/*
+	 * Compute the maximum size of a single stream if a max size is asked by
+	 * the caller.
+	 */
+	if (output->max_size > 0 && nb_streams > 0) {
+		max_stream_size = output->max_size / nb_streams;
+	}
 
-		ua_sess = lookup_session_by_app(usess, app);
-		if (!ua_sess) {
-			/* Session not associated with this app. */
-			continue;
-		}
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
 
-		/* Get the right consumer socket for the application. */
-		socket = consumer_find_socket_by_bitness(app->bits_per_long,
-				output->consumer);
-		if (!socket) {
-			ret = -EINVAL;
-			goto error;
-		}
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+			struct consumer_socket *socket;
 
-		cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
-				ua_chan, node.node) {
-			ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
-					ua_sess->euid, ua_sess->egid, ua_sess->path, wait);
+			/* Get consumer socket to use to push the metadata.*/
+			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
+					usess->consumer);
+			if (!socket) {
+				ret = -EINVAL;
+				goto error;
+			}
+
+			memset(pathname, 0, sizeof(pathname));
+			ret = snprintf(pathname, sizeof(pathname),
+					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
+					reg->uid, reg->bits_per_long);
+			if (ret < 0) {
+				PERROR("snprintf snapshot path");
+				goto error;
+			}
+
+			/* Add the UST default trace dir to path. */
+			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
+					reg_chan, node.node) {
+
+				/*
+				 * Make sure the maximum stream size is not lower than the
+				 * subbuffer size or else it's an error since we won't be able to
+				 * snapshot anything.
+				 */
+				if (max_stream_size &&
+						reg_chan->subbuf_size > max_stream_size) {
+					ret = -EINVAL;
+					DBG3("UST app snapshot record maximum stream size %" PRIu64
+							" is smaller than subbuffer size of %zu",
+							max_stream_size, reg_chan->subbuf_size);
+					goto error;
+				}
+				ret = consumer_snapshot_channel(socket, reg_chan->consumer_key, output, 0,
+						usess->uid, usess->gid, pathname, wait,
+						max_stream_size);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+			ret = consumer_snapshot_channel(socket, reg->registry->reg.ust->metadata_key, output,
+					1, usess->uid, usess->gid, pathname, wait,
+					max_stream_size);
 			if (ret < 0) {
 				goto error;
 			}
 		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct consumer_socket *socket;
+			struct lttng_ht_iter chan_iter;
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct ust_registry_session *registry;
 
-		registry = get_session_registry(ua_sess);
-		assert(registry);
-		ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
-				1, ua_sess->euid, ua_sess->egid, ua_sess->path, wait);
-		if (ret < 0) {
-			goto error;
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			/* Get the right consumer socket for the application. */
+			socket = consumer_find_socket_by_bitness(app->bits_per_long,
+					output->consumer);
+			if (!socket) {
+				ret = -EINVAL;
+				goto error;
+			}
+
+			/* Add the UST default trace dir to path. */
+			memset(pathname, 0, sizeof(pathname));
+			ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
+					ua_sess->path);
+			if (ret < 0) {
+				PERROR("snprintf snapshot path");
+				goto error;
+			}
+
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+					ua_chan, node.node) {
+				/*
+				 * Make sure the maximum stream size is not lower than the
+				 * subbuffer size or else it's an error since we won't be able to
+				 * snapshot anything.
+				 */
+				if (max_stream_size &&
+						ua_chan->attr.subbuf_size > max_stream_size) {
+					ret = -EINVAL;
+					DBG3("UST app snapshot record maximum stream size %" PRIu64
+							" is smaller than subbuffer size of %" PRIu64,
+							max_stream_size, ua_chan->attr.subbuf_size);
+					goto error;
+				}
+
+				ret = consumer_snapshot_channel(socket, ua_chan->key, output, 0,
+						ua_sess->euid, ua_sess->egid, pathname, wait,
+						max_stream_size);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+
+			registry = get_session_registry(ua_sess);
+			assert(registry);
+			ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
+					1, ua_sess->euid, ua_sess->egid, pathname, wait,
+					max_stream_size);
+			if (ret < 0) {
+				goto error;
+			}
 		}
-
+		break;
+	}
+	default:
+		assert(0);
+		break;
 	}
 
 error:
 	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Return the number of streams for a UST session.
+ */
+unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
+{
+	unsigned int ret = 0;
+	struct ust_app *app;
+	struct lttng_ht_iter iter;
+
+	assert(usess);
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
+
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+
+			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
+					reg_chan, node.node) {
+				ret += reg_chan->stream_count;
+			}
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		rcu_read_lock();
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct lttng_ht_iter chan_iter;
+
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+					ua_chan, node.node) {
+				ret += ua_chan->streams.count;
+			}
+		}
+		rcu_read_unlock();
+		break;
+	}
+	default:
+		assert(0);
+		break;
+	}
+
 	return ret;
 }

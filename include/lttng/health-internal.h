@@ -1,5 +1,9 @@
+#ifndef HEALTH_INTERNAL_H
+#define HEALTH_INTERNAL_H
+
 /*
  * Copyright (C) 2012 - David Goulet <dgoulet@efficios.com>
+ * Copyright (C) 2013 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -15,15 +19,14 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _HEALTH_H
-#define _HEALTH_H
-
 #include <assert.h>
 #include <time.h>
 #include <pthread.h>
 #include <urcu/tls-compat.h>
 #include <urcu/uatomic.h>
 #include <urcu/list.h>
+#include <lttng/health.h>
+#include <common/macros.h>
 
 /*
  * These are the value added to the current state depending of the position in
@@ -34,25 +37,10 @@
 
 #define HEALTH_IS_IN_POLL(x)	((x) & HEALTH_POLL_VALUE)
 
+struct health_app;
+
 enum health_flags {
-	HEALTH_ERROR = (1U << 0),
-};
-
-enum health_type {
-	HEALTH_TYPE_CMD			= 0,
-	HEALTH_TYPE_APP_MANAGE	= 1,
-	HEALTH_TYPE_APP_REG		= 2,
-	HEALTH_TYPE_KERNEL		= 3,
-	HEALTH_TYPE_CONSUMER	= 4,
-	HEALTH_TYPE_HT_CLEANUP		= 5,
-	HEALTH_TYPE_APP_MANAGE_NOTIFY	= 6,
-	HEALTH_TYPE_APP_REG_DISPATCH	= 7,
-
-	HEALTH_NUM_TYPE,
-};
-
-struct health_tls_state_list {
-	struct cds_list_head head;
+	HEALTH_ERROR			 = (1U << 0),
 };
 
 struct health_state {
@@ -68,10 +56,22 @@ struct health_state {
 	 */
 	unsigned long current;		/* progress counter, updated atomically */
 	enum health_flags flags;	/* other flags, updated atomically */
-	enum health_type type;		/* Indicates the nature of the thread. */
+	int type;			/* Indicates the nature of the thread. */
 	/* Node of the global TLS state list. */
 	struct cds_list_head node;
 };
+
+enum health_cmd {
+	HEALTH_CMD_CHECK		= 0,
+};
+
+struct health_comm_msg {
+	uint32_t cmd;		/* enum health_cmd */
+} LTTNG_PACKED;
+
+struct health_comm_reply {
+	uint64_t ret_code;	/* bitmask of threads in bad health */
+} LTTNG_PACKED;
 
 /* Declare TLS health state. */
 extern DECLARE_URCU_TLS(struct health_state, health_state);
@@ -121,8 +121,10 @@ static inline void health_error(void)
 	uatomic_or(&URCU_TLS(health_state).flags, HEALTH_ERROR);
 }
 
-int health_check_state(enum health_type type);
-void health_register(enum health_type type);
-void health_unregister(void);
+struct health_app *health_app_create(int nr_types);
+void health_app_destroy(struct health_app *ha);
+int health_check_state(struct health_app *ha, int type);
+void health_register(struct health_app *ha, int type);
+void health_unregister(struct health_app *ha);
 
-#endif /* _HEALTH_H */
+#endif /* HEALTH_INTERNAL_H */

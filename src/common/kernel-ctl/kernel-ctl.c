@@ -390,3 +390,45 @@ int kernctl_put_subbuf(int fd)
 {
 	return ioctl(fd, RING_BUFFER_PUT_SUBBUF);
 }
+
+/* Returns the timestamp begin of the current sub-buffer. */
+int kernctl_get_timestamp_begin(int fd, uint64_t *timestamp_begin)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN, timestamp_begin);
+}
+
+/* Returns the timestamp end of the current sub-buffer. */
+int kernctl_get_timestamp_end(int fd, uint64_t *timestamp_end)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_TIMESTAMP_END, timestamp_end);
+}
+
+/* Returns the number of discarded events in the current sub-buffer. */
+int kernctl_get_events_discarded(int fd, uint64_t *events_discarded)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_EVENTS_DISCARDED, events_discarded);
+}
+
+/* Returns the content size in the current sub-buffer. */
+int kernctl_get_content_size(int fd, uint64_t *content_size)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_CONTENT_SIZE, content_size);
+}
+
+/* Returns the packet size in the current sub-buffer. */
+int kernctl_get_packet_size(int fd, uint64_t *packet_size)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_PACKET_SIZE, packet_size);
+}
+
+/* Returns the stream id of the current sub-buffer. */
+int kernctl_get_stream_id(int fd, uint64_t *stream_id)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_STREAM_ID, stream_id);
+}
+
+/* Returns the current timestamp. */
+int kernctl_get_current_timestamp(int fd, uint64_t *ts)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP, ts);
+}

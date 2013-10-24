@@ -26,7 +26,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
-#include "health.h"
+#include "health-sessiond.h"
 #include "kernel-consumer.h"
 
 static char *create_channel_path(struct consumer_output *consumer,
@@ -123,7 +123,8 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			CONSUMER_CHANNEL_TYPE_DATA,
 			channel->channel->attr.tracefile_size,
 			channel->channel->attr.tracefile_count,
-			monitor);
+			monitor,
+			channel->channel->attr.live_timer_interval);
 
 	health_code_update();
 
@@ -184,7 +185,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT,
 			CONSUMER_CHANNEL_TYPE_METADATA,
 			0, 0,
-			monitor);
+			monitor, 0);
 
 	health_code_update();
 
@@ -371,7 +372,6 @@ int kernel_consumer_destroy_channel(struct consumer_socket *socket,
 
 	assert(channel);
 	assert(socket);
-	assert(socket->fd >= 0);
 
 	DBG("Sending kernel consumer destroy channel key %d", channel->fd);
 
@@ -400,7 +400,6 @@ int kernel_consumer_destroy_metadata(struct consumer_socket *socket,
 
 	assert(metadata);
 	assert(socket);
-	assert(socket->fd >= 0);
 
 	DBG("Sending kernel consumer destroy channel key %d", metadata->fd);
 

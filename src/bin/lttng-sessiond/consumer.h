@@ -33,8 +33,13 @@ enum consumer_dst_type {
 };
 
 struct consumer_socket {
-	/* File descriptor */
-	int fd;
+	/*
+	 * File descriptor. This is just a reference to the consumer data meaning
+	 * that every access must be locked and checked for a possible invalid
+	 * value.
+	 */
+	int *fd_ptr;
+
 	/*
 	 * To use this socket (send/recv), this lock MUST be acquired.
 	 */
@@ -87,13 +92,24 @@ struct consumer_data {
 	int err_sock;
 	/* These two sockets uses the cmd_unix_sock_path. */
 	int cmd_sock;
+	/*
+	 * The metadata socket object is handled differently and only created
+	 * locally in this object thus it's the only reference available in the
+	 * session daemon. For that reason, a variable for the fd is required and
+	 * the metadata socket fd points to it.
+	 */
+	int metadata_fd;
 	struct consumer_socket metadata_sock;
 
 	/* consumer error and command Unix socket path */
 	char err_unix_sock_path[PATH_MAX];
 	char cmd_unix_sock_path[PATH_MAX];
 
-	/* communication lock */
+	/*
+	 * This lock has two purposes. It protects any change to the consumer
+	 * socket and make sure only one thread uses this object for read/write
+	 * operations.
+	 */
 	pthread_mutex_t lock;
 };
 
@@ -147,6 +163,9 @@ struct consumer_output {
 	 */
 	struct lttng_ht *socks;
 
+	/* Tell if this output is used for snapshot. */
+	unsigned int snapshot:1;
+
 	union {
 		char trace_path[PATH_MAX];
 		struct consumer_net net;
@@ -157,7 +176,7 @@ struct consumer_socket *consumer_find_socket(int key,
 		struct consumer_output *consumer);
 struct consumer_socket *consumer_find_socket_by_bitness(int bits,
 		struct consumer_output *consumer);
-struct consumer_socket *consumer_allocate_socket(int fd);
+struct consumer_socket *consumer_allocate_socket(int *fd);
 void consumer_add_socket(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 void consumer_del_socket(struct consumer_socket *sock,
@@ -165,6 +184,11 @@ void consumer_del_socket(struct consumer_socket *sock,
 void consumer_destroy_socket(struct consumer_socket *sock);
 int consumer_copy_sockets(struct consumer_output *dst,
 		struct consumer_output *src);
+void consumer_destroy_output_sockets(struct consumer_output *obj);
+int consumer_socket_send(struct consumer_socket *socket, void *msg,
+		size_t len);
+int consumer_socket_recv(struct consumer_socket *socket, void *msg,
+		size_t len);
 
 struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
@@ -181,7 +205,8 @@ int consumer_send_channel(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg);
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
-		enum lttng_stream_type type, uint64_t session_id);
+		enum lttng_stream_type type, uint64_t session_id,
+		char *session_name, char *hostname, int session_live_timer);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);
@@ -199,6 +224,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int overwrite,
 		unsigned int switch_timer_interval,
 		unsigned int read_timer_interval,
+		unsigned int live_timer_interval,
 		int output,
 		int type,
 		uint64_t session_id,
@@ -213,7 +239,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
 		uint64_t session_id_per_pid,
-		unsigned int monitor);
+		unsigned int monitor,
+		uint32_t ust_app_uid);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		uint64_t channel_key,
@@ -233,7 +260,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int type,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
-		unsigned int monitor);
+		unsigned int monitor,
+		unsigned int live_timer_interval);
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
 int consumer_close_metadata(struct consumer_socket *socket,
@@ -248,6 +276,6 @@ int consumer_flush_channel(struct consumer_socket *socket, uint64_t key);
 /* Snapshot command. */
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
-		const char *session_path, int wait);
+		const char *session_path, int wait, int max_size_per_stream);
 
 #endif /* _CONSUMER_H */

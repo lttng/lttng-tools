@@ -14,13 +14,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
-TEST_DESC="UST tracer - Tracing with per UID buffers"
+TEST_DESC="UST tracer - Tracing with per PID buffers"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_ITER=100
 NR_USEC_WAIT=100000
-SESSION_NAME="buffers-uid"
+SESSION_NAME="buffers-pid"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
@@ -36,13 +36,13 @@ fi
 
 # MUST set TESTDIR before calling those functions
 
-function enable_channel_per_uid()
+function enable_channel_per_pid()
 {
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name >/dev/null 2>&1
-	ok $? "Enable channel $channel_name per UID for session $sess_name"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-pid -u $channel_name -s $sess_name >/dev/null 2>&1
+	ok $? "Enable channel $channel_name per PID for session $sess_name"
 }
 
 function wait_apps
@@ -61,8 +61,8 @@ test_after_multiple_apps() {
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	for i in `seq 1 5`; do
@@ -92,8 +92,8 @@ test_before_multiple_apps() {
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# At least hit one event
@@ -125,8 +125,8 @@ test_after_app() {
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
@@ -150,8 +150,8 @@ test_before_app() {
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# At least hit one event
@@ -183,11 +183,11 @@ test_multiple_channels() {
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_channel_per_uid $SESSION_NAME "channel1"
-	enable_channel_per_uid $SESSION_NAME "channel2"
-	enable_channel_per_uid $SESSION_NAME "channel3"
-	enable_channel_per_uid $SESSION_NAME "channel4"
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_channel_per_pid $SESSION_NAME "channel1"
+	enable_channel_per_pid $SESSION_NAME "channel2"
+	enable_channel_per_pid $SESSION_NAME "channel3"
+	enable_channel_per_pid $SESSION_NAME "channel4"
 	# Enable event in all channels.
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel0 -s $SESSION_NAME -u >/dev/null 2>&1
 	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel0"

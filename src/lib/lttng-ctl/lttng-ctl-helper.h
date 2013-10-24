@@ -54,4 +54,6 @@ int lttng_ctl_ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 	return lttng_ctl_ask_sessiond_varlen(lsm, NULL, 0, buf);
 }
 
+int lttng_check_tracing_group(void);
+
 #endif /* LTTNG_CTL_HELPER_H */

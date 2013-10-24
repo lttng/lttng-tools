@@ -47,15 +47,17 @@
 #include <common/consumer-timer.h>
 #include <common/compat/poll.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/utils.h>
 
 #include "lttng-consumerd.h"
+#include "health-consumerd.h"
 
 /* TODO : support UST (all direct kernel-ctl accesses). */
 
 /* threads (channel handling, poll, metadata, sessiond) */
 
-static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread;
-static pthread_t metadata_timer_thread;
+static pthread_t channel_thread, data_thread, metadata_thread,
+		sessiond_thread, metadata_timer_thread, health_thread;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -71,6 +73,19 @@ static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
 /* the liblttngconsumerd context */
 static struct lttng_consumer_local_data *ctx;
+
+/* Consumerd health monitoring */
+struct health_app *health_consumerd;
+
+const char *tracing_group_name = DEFAULT_TRACING_GROUP;
+
+enum lttng_consumer_type lttng_consumer_get_type(void)
+{
+	if (!ctx) {
+		return LTTNG_CONSUMER_UNKNOWN;
+	}
+	return ctx->type;
+}
 
 /*
  * Signal handler for the daemon
@@ -137,9 +152,9 @@ static void usage(FILE *fp)
 	fprintf(fp, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(fp, "  -h, --help                         "
 			"Display this usage.\n");
-	fprintf(fp, "  -c, --consumerd-cmd-sock PATH     "
+	fprintf(fp, "  -c, --consumerd-cmd-sock PATH      "
 			"Specify path for the command socket\n");
-	fprintf(fp, "  -e, --consumerd-err-sock PATH     "
+	fprintf(fp, "  -e, --consumerd-err-sock PATH      "
 			"Specify path for the error socket\n");
 	fprintf(fp, "  -d, --daemonize                    "
 			"Start as a daemon.\n");
@@ -149,6 +164,8 @@ static void usage(FILE *fp)
 			"Verbose mode. Activate DBG() macro.\n");
 	fprintf(fp, "  -V, --version                      "
 			"Show version number.\n");
+	fprintf(fp, "  -g, --group NAME                   "
+			"Specify the tracing group name. (default: tracing)\n");
 	fprintf(fp, "  -k, --kernel                       "
 			"Consumer kernel buffers (default).\n");
 	fprintf(fp, "  -u, --ust                          "
@@ -172,6 +189,7 @@ static void parse_args(int argc, char **argv)
 		{ "consumerd-cmd-sock", 1, 0, 'c' },
 		{ "consumerd-err-sock", 1, 0, 'e' },
 		{ "daemonize", 0, 0, 'd' },
+		{ "group", 1, 0, 'g' },
 		{ "help", 0, 0, 'h' },
 		{ "quiet", 0, 0, 'q' },
 		{ "verbose", 0, 0, 'v' },
@@ -185,7 +203,7 @@ static void parse_args(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVku" "c:e:", long_options, &option_index);
+		c = getopt_long(argc, argv, "dhqvVku" "c:e:g:", long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
@@ -205,6 +223,9 @@ static void parse_args(int argc, char **argv)
 			break;
 		case 'd':
 			opt_daemon = 1;
+			break;
+		case 'g':
+			tracing_group_name = optarg;
 			break;
 		case 'h':
 			usage(stdout);
@@ -325,6 +346,11 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
+	health_consumerd = health_app_create(NR_HEALTH_CONSUMERD_TYPES);
+	if (!health_consumerd) {
+		goto error;
+	}
+
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
 		NULL, lttng_consumer_on_recv_stream, NULL);
@@ -367,25 +393,35 @@ int main(int argc, char **argv)
 	lttng_consumer_set_error_sock(ctx, ret);
 
 	/*
-	 * For UST consumer, we block RT signals used for periodical metadata flush
-	 * in main and create a dedicated thread to handle these signals.
+	 * Block RT signals used for UST periodical metadata flush and the live
+	 * timer in main, and create a dedicated thread to handle these signals.
 	 */
-	switch (opt_type) {
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		consumer_signal_init();
-		break;
-	default:
-		break;
-	}
+	consumer_signal_init();
+
 	ctx->type = opt_type;
+
+	/* Initialize communication library */
+	lttcomm_init();
+
+	ret = utils_create_pipe(health_quit_pipe);
+	if (ret < 0) {
+		goto error_health_pipe;
+	}
+
+	/* Create thread to manage the client socket */
+	ret = pthread_create(&health_thread, NULL,
+			thread_manage_health, (void *) NULL);
+	if (ret != 0) {
+		PERROR("pthread_create health");
+		goto health_error;
+	}
 
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
 			(void *) ctx);
 	if (ret != 0) {
 		perror("pthread_create");
-		goto error;
+		goto channel_error;
 	}
 
 	/* Create thread to manage the polling/writing of trace metadata */
@@ -412,25 +448,21 @@ int main(int argc, char **argv)
 		goto sessiond_error;
 	}
 
-	switch (opt_type) {
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		/* Create the thread to manage the metadata periodic timers */
-		ret = pthread_create(&metadata_timer_thread, NULL,
-				consumer_timer_metadata_thread, (void *) ctx);
-		if (ret != 0) {
-			perror("pthread_create");
-			goto metadata_timer_error;
-		}
+	/*
+	 * Create the thread to manage the UST metadata periodic timer and
+	 * live timer.
+	 */
+	ret = pthread_create(&metadata_timer_thread, NULL,
+			consumer_timer_thread, (void *) ctx);
+	if (ret != 0) {
+		perror("pthread_create");
+		goto metadata_timer_error;
+	}
 
-		ret = pthread_detach(metadata_timer_thread);
-		if (ret) {
-			errno = ret;
-			perror("pthread_detach");
-		}
-		break;
-	default:
-		break;
+	ret = pthread_detach(metadata_timer_thread);
+	if (ret) {
+		errno = ret;
+		perror("pthread_detach");
 	}
 
 metadata_timer_error:
@@ -461,6 +493,17 @@ metadata_error:
 		goto error;
 	}
 
+channel_error:
+	ret = pthread_join(health_thread, &status);
+	if (ret != 0) {
+		PERROR("pthread_join health thread");
+		goto error;	/* join error, exit without cleanup */
+	}
+
+health_error:
+	utils_close_pipe(health_quit_pipe);
+
+error_health_pipe:
 	if (!ret) {
 		ret = EXIT_SUCCESS;
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_SUCCESS);
@@ -476,6 +519,9 @@ error:
 end:
 	lttng_consumer_destroy(ctx);
 	lttng_consumer_cleanup();
+	if (health_consumerd) {
+		health_app_destroy(health_consumerd);
+	}
 
 	return ret;
 }

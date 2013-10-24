@@ -1,0 +1,164 @@
+RFC - LTTng snapshot
+
+Author: David Goulet <dgoulet@efficios.com>
+
+Version:
+    - v0.1: 11/04/2013
+        * Initial proposal
+
+Motivation
+----------
+
+This proposal is for the snapshot feature in lttng-tools. The idea is to be
+able to snapshot a portion of the trace and write it to a specified output
+(disk or network). This could be particularly useful in flight recorder mode
+where you detect a problem on your system for instance and then use this
+snapshot feature to save the latest buffers which should contain information to
+help understand the issue.
+
+Requirements
+-----------------
+
+In order to snapshot a session, it must be set in flight recorder mode meaning
+that there is *no* consumer extracting the trace and writing it to a
+destination. To do that, the --no-output option is added to "lttng create"
+command.
+
+    $ lttng create --no-output
+    Create a session with active tracing but no data being collected.
+
+    For the API call lttng_create_session(), simply set the URL to NULL.
+
+Furthermore, by default, this command will set all subsequent channel in
+overwrite mode. You can force the discard value (overwrite=0) but it is a bit
+pointless since the snapshot does NOT remove the data from the buffers.
+
+Proposed Solution
+-----------------
+
+First, the new lttng command line UI is presented followed by the new API
+calls.
+
+This new command uses a git-alike UI, but in the form of the object first
+followed by the desired action, whereas other commands only use actions such as
+"enable-event".
+
+    $ lttng snapshot [ACTION] [OPTIONS]
+
+    ACTION: (detailed below)
+
+The user can specify an output destination either for the current session
+(being the default) or on the spot when the command is executed. To specify an
+output for the session, use the "add-output" action.
+
+    $ lttng snapshot add-output [URL] [OPTIONS]
+
+    OPTIONS:
+        -s, --session NAME
+        -C, --ctrl-url URL
+        -D, --data-url URL
+        -a, --alias ALIAS    Name of the output in the session.
+        -m, --max-size SIZE    Maximum bytes size of the snapshot.
+
+Without the -s, the current session is used. The above command adds an output
+location to the session so when a snapshot is recorded later on, it's sent
+there. This action command takes either a valid lttng URL (see proposal 0004)
+or the -C/-D options from "lttng create" can be used to define relayd on
+different ports. The alias option can be used to give a name to the output so
+it's recognizable in the list command and can also be used with the del
+command.
+
+Following that, two new actions are available to control outputs. You can list
+and delete outputs.
+
+    $ lttng snapshot list-output
+    [1]: file://[...]
+    [2]: net://1.1.1.1:8762:9123
+    [3] - ALIAS: file://[...]
+
+    $ lttng snapshot del-output ID|ALIAS
+
+    The output identified by the ID or alias is removed from the session. In
+    this case the ID is the number returned by list-output (e.g.: 2).
+
+To specify an output destination on the spot when the snapshot is taken, use
+the record action.
+
+    $ lttng snapshot record [URL] [OPTIONS]
+
+    OPTIONS:
+        -s, --session NAME     Session name
+        -n, --name NAME        Name of the snapshot to recognize it afterwards.
+        -m, --max-size SIZE    Maximum bytes size of the snapshot.
+        -C, --ctrl-url URL
+        -D, --data-url URL
+
+No URL means that the default output of the session is used. The max-size is
+the maximum size of the trace you want to snapshot. The name is used so you can
+recognize the snapshot once taken and written on disk. Finally, the -s let the
+user specify a session name or else the current session is used (in .lttngrc).
+
+Finally, we allow the snapshot command to be used without an action which
+basically do "lttng snapshot record".
+
+    $ lttng snapshot [OPTIONS]
+
+    OPTIONS:
+        -s, --session NAME
+        -m, --max-size SIZE    Maximum bytes size of the snapshot.
+
+    $ lttng snapshot -s mysession -m 8192
+
+    Snapshot the session and puts it in the session define output directory.
+
+By default, the snapshot(s) are saved in the session directory in the snapshot/ directory.
+
+    SESSION_DIR/snapshot/<name>-<date>-<time>/[...]
+
+Public API
+----------
+
+/*
+ * Snapshot output structure. Padding will be added once this RFC is accepted.
+ */
+struct lttng_snapshot_output {
+    int id;
+    uint64_t max_size;  /* 0: unlimited. */
+    char alias[NAME_MAX];
+    char url[PATH_MAX];
+};
+
+/*
+ * Return the ID of the output or a negative value being a LTTNG_ERR* code.
+ */
+int lttng_snapshot_add_output(struct lttng_handle *handle,
+                              struct lttng_snapshot_output *output);
+
+/*
+ * Return 0 on success or else a negative LTTNG_ERR* code.
+ */
+int lttng_snapshot_del_output(int id, char *alias);
+
+/*
+ * Return the number of output and set outputs with the returned info.
+ *
+ * On error, a negative LTTNG_ERR* code is returned.
+ */
+ssize_t lttng_snapshot_list_output(struct lttng_handle *handle,
+                                   struct lttng_snapshot_output **outputs);
+
+/*
+ * If output is specified, use it as output only for this snapshot or else if
+ * NULL, the default snapshot destination of the session is used. If name is
+ * specified, write it in <name>-<date>-<time> or else if name is NULL, only
+ * the date and time will be used for the directory name.
+ *
+ * This is a blocking call meaning that it will return only if the snapshot is
+ * completed or an error occured. For now, no-wait is not supported but we keep
+ * a parameter for that future case. The wait param is ignored.
+ *
+ * Return 0 on success or else a negative LTTNG_ERR* code.
+ */
+int lttng_snapshot_record(struct lttng_handle *handle,
+                          struct lttng_snapshot_output *output,
+                          char *name, int wait);

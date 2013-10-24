@@ -41,7 +41,7 @@ function enable_channel_per_uid()
 	local sess_name=$1
 	local channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name --switch-timer 1000000 >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name --switch-timer 100000 >/dev/null 2>&1
 	ok $? "Enable channel $channel_name per UID for session $sess_name"
 }
 
@@ -50,7 +50,7 @@ function enable_channel_per_pid()
 	local sess_name=$1
 	local channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-pid -u $channel_name -s $sess_name --switch-timer 1000000 >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-pid -u $channel_name -s $sess_name --switch-timer 100000 >/dev/null 2>&1
 	ok $? "Enable channel $channel_name per UID for session $sess_name"
 }
 
@@ -103,23 +103,35 @@ test_after_app_pid() {
 
 	diag "Start application AFTER tracing is started"
 
-	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	# Start application after tracing
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# At least hit one event
 	sleep 2
+
+	# Make sure the application does not generate any more data,
+	# thus ensuring that we are not flushing a packet concurrently
+	# with validate_trace.
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
+	sleep 2
+
 	validate_trace
 	out=$?
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	killall -SIGKILL -q $TESTAPP_NAME
+	wait_apps
 
 	return $out
 }
@@ -132,21 +144,31 @@ test_before_app_pid() {
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
-	# BEFORE application is spawned
+	# Start application before tracing
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# At least hit one event
 	sleep 2
+
+	# Make sure the application does not generate any more data,
+	# thus ensuring that we are not flushing a packet concurrently
+	# with validate_trace.
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
+	sleep 2
+
 	validate_trace
 	out=$?
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	wait_apps
 
 	return $out
@@ -157,23 +179,35 @@ test_after_app_uid() {
 
 	diag "Start application AFTER tracing is started"
 
-	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_uid $SESSION_NAME
 	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	# Start application after tracing
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
 	# At least hit one event
 	sleep 2
+
+	# Make sure the application does not generate any more data,
+	# thus ensuring that we are not flushing a packet concurrently
+	# with validate_trace.
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
+	sleep 2
+
 	validate_trace
 	out=$?
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	killall -SIGKILL -q $TESTAPP_NAME
+	wait_apps
 
 	return $out
 }
@@ -183,24 +217,34 @@ test_before_app_uid() {
 
 	diag "Start application BEFORE tracing is started"
 
+	# Start application before tracing
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
-	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_uid $SESSION_NAME
 	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# At least hit one event
 	sleep 2
+
+	# Make sure the application does not generate any more data,
+	# thus ensuring that we are not flushing a packet concurrently
+	# with validate_trace.
+	killall -SIGSTOP -q $TESTAPP_NAME
+
+	# Give time to the consumer to write inflight data.
+	sleep 2
+
 	validate_trace
 	out=$?
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	wait_apps
 
 	return $out
@@ -226,7 +270,7 @@ start_lttng_sessiond
 while [ $i -lt $TEST_COUNT ]; do
 	TRACE_PATH=$(mktemp -d)
 	${TESTS[$i]}
-	#rm -rf $TRACE_PATH
+	rm -rf $TRACE_PATH
 	let "i++"
 done
 

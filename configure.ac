@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.2.0],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.4.0-pre1],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -6,8 +6,20 @@ AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-version_name="Cuda"
-version_description="Brewed at the Benelux microbrewery, this IPA has huge floral, citric and resinous hop aroma, simply an amazing nose. The flavor is very fresh with a light caramel malting touch completing a strong body. Huge amounts of hops, lots of grapefruit, lemon and oranges. This is an outstanding IPA!"
+# Compute minor/major/patchlevel version numbers
+AC_PROG_SED
+major_version=$(echo AC_PACKAGE_VERSION | sed 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
+minor_version=$(echo AC_PACKAGE_VERSION | sed 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
+patchlevel_version=$(echo AC_PACKAGE_VERSION | sed 's/^[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\).*$/\1/')
+AC_SUBST([MAJOR_VERSION], [$major_version])
+AC_SUBST([MINOR_VERSION], [$minor_version])
+AC_SUBST([PATCHLEVEL_VERSION], [$patchlevel_version])
+AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version number])
+AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
+AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
+
+version_name="Dominus Vobiscum"
+version_description="A very succulent line-up of beers brewed at Microbrasserie Charlevoix. Elaborated starting from special malts and fermented with a Belgian yeast. These beers are refermented in bottle and will make you discover the richness of wheat, amber and triple styles."
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
 AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description"], "")
@@ -98,6 +110,13 @@ AC_ARG_WITH([sessiond-bin],
 	[SESSIOND_BIN=''])
 AC_SUBST([SESSIOND_BIN])
 
+AC_ARG_WITH([lttng-system-rundir],
+	AS_HELP_STRING([--with-lttng-system-rundir],
+	[Location of the system directory where the system-wide lttng-sessiond runtime files are kept. The default is "/var/run/lttng".]),
+	[LTTNG_SYSTEM_RUNDIR="$withval"],
+	[LTTNG_SYSTEM_RUNDIR="/var/run/lttng"])
+AC_SUBST([LTTNG_SYSTEM_RUNDIR])
+
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], "$CONSUMERD32_BIN", [Location of the 32-bit consumerd executable.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of the 64-bit consumerd executable])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
@@ -105,6 +124,7 @@ AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], "$CONSUMERD64_LIBDIR", [Search f
 AC_DEFINE_UNQUOTED([CONFIG_BABELTRACE_BIN], "$BABELTRACE_BIN", [Location of the babeltrace viewer executable.])
 AC_DEFINE_UNQUOTED([CONFIG_LTTV_GUI_BIN], "$LTTV_GUI_BIN", [Location of the lttv GUI viewer executable.])
 AC_DEFINE_UNQUOTED([CONFIG_SESSIOND_BIN], "$SESSIOND_BIN", [Location of the sessiond executable.])
+AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_RUNDIR], ["$LTTNG_SYSTEM_RUNDIR"], [LTTng system runtime directory])
 
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
@@ -287,7 +307,19 @@ LT_INIT
 AC_PROG_YACC
 AC_PROG_LEX
 
-AC_DEFUN([AC_PROG_BISON], [AC_CHECK_PROGS(BISON, bison, bison)])
+if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
+	if test x"$YACC" != "xbison -y"; then
+		AC_MSG_ERROR([[bison not found and is required when building from git.
+		Please install bison]])
+	fi
+fi
+
+if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
+	if test x"$LEX" != "xflex"; then
+		AC_MSG_ERROR([[flex not found and is required when building from git.
+		Please install flex]])
+	fi
+fi
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
@@ -310,6 +342,7 @@ AC_CONFIG_FILES([
 	extras/bindings/Makefile
 	extras/bindings/swig/Makefile
 	extras/bindings/swig/python/Makefile
+	extras/core-handler/Makefile
 	src/Makefile
 	src/common/Makefile
 	src/common/kernel-ctl/Makefile
@@ -320,6 +353,8 @@ AC_CONFIG_FILES([
 	src/common/compat/Makefile
 	src/common/relayd/Makefile
 	src/common/testpoint/Makefile
+	src/common/index/Makefile
+	src/common/health/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/filter/Makefile
@@ -343,7 +378,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/high-throughput/Makefile
 	tests/regression/ust/low-throughput/Makefile
 	tests/regression/ust/before-after/Makefile
-	tests/regression/ust/buffers-uid/Makefile
+	tests/regression/ust/buffers-pid/Makefile
 	tests/regression/ust/periodical-metadata-flush/Makefile
 	tests/regression/ust/multi-session/Makefile
 	tests/regression/ust/overlap/Makefile
@@ -359,6 +394,7 @@ AC_CONFIG_FILES([
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ust-events/Makefile
+	tests/utils/testapp/gen-ust-nevents/Makefile
 ])
 
 AC_OUTPUT

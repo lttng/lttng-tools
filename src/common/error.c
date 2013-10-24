@@ -82,10 +82,12 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_UST_EVENT_NOT_FOUND)] = "UST event not found",
 	[ ERROR_INDEX(LTTNG_ERR_UST_CONTEXT_EXIST)] = "UST context already exist",
 	[ ERROR_INDEX(LTTNG_ERR_UST_CONTEXT_INVAL)] = "UST invalid context",
-	[ ERROR_INDEX(LTTNG_ERR_NEED_ROOT_SESSIOND) ] = "Tracing the kernel requires a root lttng-sessiond daemon or \"tracing\" group user membership",
+	[ ERROR_INDEX(LTTNG_ERR_NEED_ROOT_SESSIOND) ] = "Tracing the kernel requires a root lttng-sessiond daemon, as well as \"tracing\" group membership or root user ID for the lttng client.",
+	[ ERROR_INDEX(LTTNG_ERR_NO_UST) ] = "LTTng-UST tracer is not supported. Please rebuild lttng-tools with lttng-ust support enabled.",
 	[ ERROR_INDEX(LTTNG_ERR_TRACE_ALREADY_STARTED) ] = "Tracing already started",
 	[ ERROR_INDEX(LTTNG_ERR_TRACE_ALREADY_STOPPED) ] = "Tracing already stopped",
 	[ ERROR_INDEX(LTTNG_ERR_KERN_EVENT_ENOSYS) ] = "Kernel event type not supported",
+	[ ERROR_INDEX(LTTNG_ERR_NEED_CHANNEL_NAME) ] = "Non-default channel exists within session: channel name needs to be specified with '-c name'",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID) ] = "Invalid parameter",
 	[ ERROR_INDEX(LTTNG_ERR_NO_USTCONSUMERD) ] = "No UST consumer detected",
 	[ ERROR_INDEX(LTTNG_ERR_NO_KERNCONSUMERD) ] = "No kernel consumer detected",
@@ -110,6 +112,8 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_NOMEM)] = "Not enough memory",
 	[ ERROR_INDEX(LTTNG_ERR_SNAPSHOT_OUTPUT_EXIST) ] = "Snapshot output already exists",
 	[ ERROR_INDEX(LTTNG_ERR_START_SESSION_ONCE) ] = "Session needs to be started once",
+	[ ERROR_INDEX(LTTNG_ERR_SNAPSHOT_FAIL) ] = "Snapshot record failed",
+	[ ERROR_INDEX(LTTNG_ERR_CHAN_EXIST) ] = "Channel already exists",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
