@@ -392,7 +392,7 @@ int cmd_enable_channels(int argc, const char **argv)
 			order = get_count_order_u64(chan.attr.num_subbuf);
 			assert(order >= 0);
 			rounded_size = 1ULL << order;
-			if (rounded_size < chan.attr.subbuf_size) {
+			if (rounded_size < chan.attr.num_subbuf) {
 				ERR("The number of subbuffers (%" PRIu64 ") is rounded and overflows!",
 						chan.attr.num_subbuf);
 				ret = CMD_ERROR;
