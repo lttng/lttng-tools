@@ -452,6 +452,7 @@ int jul_list_events(struct lttng_event **events)
 				PERROR("realloc JUL events");
 				ret = -ENOMEM;
 				rcu_read_unlock();
+				free(jul_events);
 				goto error;
 			}
 			tmp_events = ptr;
