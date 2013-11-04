@@ -1128,6 +1128,9 @@ int viewer_get_packet(struct relay_command *cmd)
 	}
 	health_code_update();
 
+	/* From this point on, the error label can be reached. */
+	memset(&reply, 0, sizeof(reply));
+
 	rcu_read_lock();
 	stream = live_find_viewer_stream_by_id(be64toh(get_packet_info.stream_id));
 	if (!stream) {
@@ -1156,14 +1159,11 @@ int viewer_get_packet(struct relay_command *cmd)
 		stream->read_fd = ret;
 	}
 
-	memset(&reply, 0, sizeof(reply));
-
 	if (!stream->ctf_trace->metadata_received ||
 			stream->ctf_trace->metadata_received >
 			stream->ctf_trace->metadata_sent) {
 		reply.status = htobe32(VIEWER_GET_PACKET_ERR);
 		reply.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
-
 		goto send_reply;
 	}
 
