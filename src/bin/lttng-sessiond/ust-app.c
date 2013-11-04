@@ -287,7 +287,8 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event)
 	assert(ua_event);
 
 	free(ua_event->filter);
-
+	if (ua_event->exclusion != NULL)
+		free(ua_event->exclusion);
 	if (ua_event->obj != NULL) {
 		ret = ustctl_release_object(sock, ua_event->obj);
 		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
