@@ -81,7 +81,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_CONSUMER               = 20,
 	LTTNG_SET_CONSUMER_URI              = 21,
 	LTTNG_ENABLE_EVENT_WITH_FILTER      = 22,
-	/* Unused */
+	LTTNG_ENABLE_EVENT_WITH_EXCLUSION   = 23,
 	LTTNG_DATA_PENDING                  = 24,
 	LTTNG_SNAPSHOT_ADD_OUTPUT           = 25,
 	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
@@ -230,6 +230,14 @@ struct lttcomm_session_msg {
 			struct lttng_event event;
 			/* Length of following bytecode for filter. */
 			uint32_t bytecode_len;
+			/* exclusion data */
+			uint32_t exclusion_count;
+			/*
+			 * After this structure, the following variable-length
+			 * items are transmitted:
+			 * - char exclusion_names[LTTNG_SYMBOL_NAME_LEN][exclusion_count]
+			 * - unsigned char filter_bytecode[bytecode_len]
+			 */
 		} LTTNG_PACKED enable;
 		/* Create channel */
 		struct {
