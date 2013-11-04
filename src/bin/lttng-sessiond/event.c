@@ -244,7 +244,7 @@ end:
 }
 
 /*
- * Enable all kernel tracepoint events of a channel of the kernel session.
+ * Enable all kernel sycalls events of a channel of the kernel session.
  */
 int event_kernel_enable_all_syscalls(struct ltt_kernel_channel *kchan,
 		int kernel_tracer_fd)
