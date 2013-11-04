@@ -104,7 +104,7 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 	event = caa_container_of(node, struct ust_app_event, node.node);
 	key = _key;
 
-	/* Match the 3 elements of the key: name, filter and loglevel. */
+	/* Match the 4 elements of the key: name, filter, loglevel, exclusions */
 
 	/* Event name */
 	if (strncmp(event->attr.name, key->name, sizeof(event->attr.name)) != 0) {
@@ -139,6 +139,21 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 			goto no_match;
 		}
 	}
+
+	/* One of the exclusions is NULL, fail. */
+	if ((key->exclusion && !event->exclusion) || (!key->exclusion && event->exclusion)) {
+		goto no_match;
+	}
+
+	if (key->exclusion && event->exclusion) {
+		/* Both exclusions exists, check count followed by the names. */
+		if (event->exclusion->count != key->exclusion->count ||
+				memcmp(event->exclusion->names, key->exclusion->names,
+					event->exclusion->count * LTTNG_UST_SYM_NAME_LEN) != 0) {
+			goto no_match;
+		}
+	}
+
 
 	/* Match. */
 	return 1;
