@@ -264,6 +264,8 @@ static int add_output(const char *url)
 {
 	int ret;
 	struct lttng_snapshot_output *output = NULL;
+	char name[NAME_MAX];
+	const char *n_ptr;
 
 	if (!url && (!opt_data_url || !opt_ctrl_url)) {
 		ret = CMD_ERROR;
@@ -282,11 +284,21 @@ static int add_output(const char *url)
 		goto error;
 	}
 
+	n_ptr = lttng_snapshot_output_get_name(output);
+	if (*n_ptr == '\0') {
+		int pret;
+		pret = snprintf(name, sizeof(name), DEFAULT_SNAPSHOT_NAME "-%" PRIu32,
+				lttng_snapshot_output_get_id(output));
+		if (pret < 0) {
+			PERROR("snprintf add output name");
+		}
+		n_ptr = name;
+	}
+
 	MSG("Snapshot output successfully added for session %s",
 			current_session_name);
 	MSG("  [%" PRIu32 "] %s: %s (max-size: %" PRId64 ")",
-			lttng_snapshot_output_get_id(output),
-			lttng_snapshot_output_get_name(output),
+			lttng_snapshot_output_get_id(output), n_ptr,
 			lttng_snapshot_output_get_ctrl_url(output),
 			lttng_snapshot_output_get_maxsize(output));
 error:
