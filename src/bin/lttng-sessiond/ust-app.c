@@ -181,6 +181,7 @@ static void add_unique_ust_app_event(struct ust_app_channel *ua_chan,
 	key.name = event->attr.name;
 	key.filter = event->filter;
 	key.loglevel = event->attr.loglevel;
+	key.exclusion = event->exclusion;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
