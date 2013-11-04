@@ -2939,7 +2939,7 @@ skip_domain:
 	{
 		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				cmd_ctx->lsm->u.enable.channel_name,
-				&cmd_ctx->lsm->u.enable.event, NULL, kernel_poll_pipe[1]);
+				&cmd_ctx->lsm->u.enable.event, NULL, NULL, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_ENABLE_ALL_EVENT:
@@ -3300,7 +3300,7 @@ skip_domain:
 
 		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				cmd_ctx->lsm->u.enable.channel_name,
-				&cmd_ctx->lsm->u.enable.event, bytecode, kernel_poll_pipe[1]);
+				&cmd_ctx->lsm->u.enable.event, bytecode, NULL, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_DATA_PENDING:
