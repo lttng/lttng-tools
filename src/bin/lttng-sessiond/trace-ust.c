@@ -330,7 +330,8 @@ error:
  * Return pointer to structure or NULL.
  */
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
-		struct lttng_filter_bytecode *filter)
+		struct lttng_filter_bytecode *filter,
+		struct lttng_event_exclusion *exclusion)
 {
 	struct ltt_ust_event *lue;
 
@@ -384,6 +385,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 
 	/* Same layout. */
 	lue->filter = (struct lttng_ust_filter_bytecode *) filter;
+	lue->exclusion = (struct lttng_event_exclusion *) exclusion;
 
 	/* Init node */
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);

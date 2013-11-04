@@ -364,7 +364,7 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess,
 		}
 
 		/* Create ust event */
-		uevent = trace_ust_create_event(&events[i], filter);
+		uevent = trace_ust_create_event(&events[i], filter, NULL);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error_destroy;
@@ -423,7 +423,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
 			event->loglevel);
 	if (uevent == NULL) {
-		uevent = trace_ust_create_event(event, filter);
+		uevent = trace_ust_create_event(event, filter, exclusion);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_UST_ENABLE_FAIL;
 			goto error;
