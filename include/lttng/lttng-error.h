@@ -140,6 +140,8 @@ enum lttng_error_code {
 	LTTNG_ERR_FILTER_NOMEM           = 107, /* Lack of memory for filter bytecode */
 	LTTNG_ERR_FILTER_EXIST           = 108, /* Filter already exist */
 	LTTNG_ERR_NO_CONSUMER            = 109, /* No consumer exist for the session */
+	LTTNG_ERR_EXCLUSION_INVAL        = 110, /* Invalid event exclusion data */
+	LTTNG_ERR_EXCLUSION_NOMEM        = 111, /* Lack of memory while processing event exclusions */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
