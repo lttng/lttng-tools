@@ -34,6 +34,7 @@ struct ltt_ust_ht_key {
 	const char *name;
 	const struct lttng_filter_bytecode *filter;
 	enum lttng_ust_loglevel_type loglevel;
+	const struct lttng_event_exclusion *exclusion;
 };
 
 /* Context hash table nodes */
@@ -49,6 +50,7 @@ struct ltt_ust_event {
 	struct lttng_ust_event attr;
 	struct lttng_ht_node_str node;
 	struct lttng_ust_filter_bytecode *filter;
+	const struct lttng_event_exclusion *exclusion;
 };
 
 /* UST channel */
