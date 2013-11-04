@@ -1573,7 +1573,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					lttng_fd_put(1, LTTNG_FD_APPS);
+					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(ust_cmd);
 					goto error;
 				}
@@ -1587,7 +1587,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					lttng_fd_put(1, LTTNG_FD_APPS);
+					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(wait_node);
 					free(ust_cmd);
 					continue;
@@ -1635,7 +1635,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					lttng_fd_put(1, LTTNG_FD_APPS);
+					lttng_fd_put(LTTNG_FD_APPS, 1);
 				}
 				free(ust_cmd);
 			}
