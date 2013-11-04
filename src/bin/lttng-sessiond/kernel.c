@@ -927,6 +927,8 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
 	}
 
+	ret = LTTNG_OK;
+
 error_consumer:
 	/* Close newly opened metadata stream. It's now on the consumer side. */
 	err = close(ksess->metadata_stream_fd);

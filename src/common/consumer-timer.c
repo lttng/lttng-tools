@@ -397,7 +397,7 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 	assert(channel);
 	assert(channel->key);
 
-	if (live_timer_interval == 0) {
+	if (live_timer_interval <= 0) {
 		return;
 	}
 

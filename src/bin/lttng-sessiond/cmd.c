@@ -2738,7 +2738,7 @@ error:
 /*
  * Record a kernel snapshot.
  *
- * Return 0 on success or a LTTNG_ERR code.
+ * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
 static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, struct ltt_session *session,
