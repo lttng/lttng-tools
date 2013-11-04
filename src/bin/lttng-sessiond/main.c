@@ -2937,6 +2937,7 @@ skip_domain:
 	}
 	case LTTNG_ENABLE_EVENT:
 	case LTTNG_ENABLE_EVENT_WITH_EXCLUSION:
+	case LTTNG_ENABLE_EVENT_WITH_FILTER:
 	{
 		struct lttng_event_exclusion *exclusion = NULL;
 		struct lttng_filter_bytecode *bytecode = NULL;
@@ -3324,46 +3325,6 @@ skip_domain:
 
 		ret = cmd_register_consumer(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.reg.path, cdata);
-		break;
-	}
-	case LTTNG_ENABLE_EVENT_WITH_FILTER:
-	{
-		struct lttng_filter_bytecode *bytecode;
-
-		if (cmd_ctx->lsm->u.enable.bytecode_len > LTTNG_FILTER_MAX_LEN) {
-			ret = LTTNG_ERR_FILTER_INVAL;
-			goto error;
-		}
-		if (cmd_ctx->lsm->u.enable.bytecode_len == 0) {
-			ret = LTTNG_ERR_FILTER_INVAL;
-			goto error;
-		}
-		bytecode = zmalloc(cmd_ctx->lsm->u.enable.bytecode_len);
-		if (!bytecode) {
-			ret = LTTNG_ERR_FILTER_NOMEM;
-			goto error;
-		}
-		/* Receive var. len. data */
-		DBG("Receiving var len data from client ...");
-		ret = lttcomm_recv_unix_sock(sock, bytecode,
-				cmd_ctx->lsm->u.enable.bytecode_len);
-		if (ret <= 0) {
-			DBG("Nothing recv() from client var len data... continuing");
-			*sock_error = 1;
-			ret = LTTNG_ERR_FILTER_INVAL;
-			goto error;
-		}
-
-		if (bytecode->len + sizeof(*bytecode)
-				!= cmd_ctx->lsm->u.enable.bytecode_len) {
-			free(bytecode);
-			ret = LTTNG_ERR_FILTER_INVAL;
-			goto error;
-		}
-
-		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
-				cmd_ctx->lsm->u.enable.channel_name,
-				&cmd_ctx->lsm->u.enable.event, bytecode, NULL, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_DATA_PENDING:
