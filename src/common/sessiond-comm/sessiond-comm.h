@@ -293,6 +293,18 @@ struct lttng_filter_bytecode {
 } LTTNG_PACKED;
 
 /*
+ * Event exclusion data. At the end of the structure, there will actually
+ * by zero or more names, where the actual number of names is given by
+ * the 'count' item of the structure.
+ */
+#define LTTNG_EVENT_EXCLUSION_PADDING	32
+struct lttng_event_exclusion {
+	uint32_t count;
+	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
+	char names[LTTNG_SYMBOL_NAME_LEN][0];
+} LTTNG_PACKED;
+
+/*
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
