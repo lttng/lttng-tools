@@ -168,7 +168,8 @@ error:
  * MUST be acquired before calling this.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter, int loglevel)
+		char *name, struct lttng_filter_bytecode *filter, int loglevel,
+		struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -180,6 +181,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 	key.name = name;
 	key.filter = filter;
 	key.loglevel = loglevel;
+	key.exclusion = exclusion;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
 			trace_ust_ht_match_event, &key, &iter.iter);
