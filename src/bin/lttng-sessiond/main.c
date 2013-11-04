@@ -2936,10 +2936,73 @@ skip_domain:
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:
+	case LTTNG_ENABLE_EVENT_WITH_EXCLUSION:
 	{
-		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
-				cmd_ctx->lsm->u.enable.channel_name,
-				&cmd_ctx->lsm->u.enable.event, NULL, NULL, kernel_poll_pipe[1]);
+		struct lttng_event_exclusion *exclusion = NULL;
+		struct lttng_filter_bytecode *bytecode = NULL;
+
+		if (cmd_ctx->lsm->cmd_type == LTTNG_ENABLE_EVENT ||
+				(cmd_ctx->lsm->u.enable.exclusion_count == 0 && cmd_ctx->lsm->u.enable.bytecode_len == 0)) {
+			ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
+					cmd_ctx->lsm->u.enable.channel_name,
+					&cmd_ctx->lsm->u.enable.event, NULL, NULL, kernel_poll_pipe[1]);
+		} else {
+			if (cmd_ctx->lsm->u.enable.exclusion_count != 0) {
+				exclusion = zmalloc(sizeof(struct lttng_event_exclusion) +
+						cmd_ctx->lsm->u.enable.exclusion_count * LTTNG_SYMBOL_NAME_LEN);
+				if (!exclusion) {
+					ret = LTTNG_ERR_EXCLUSION_NOMEM;
+					goto error;
+				}
+				DBG("Receiving var len data from client ...");
+				exclusion->count = cmd_ctx->lsm->u.enable.exclusion_count;
+				ret = lttcomm_recv_unix_sock(sock, exclusion->names,
+						cmd_ctx->lsm->u.enable.exclusion_count * LTTNG_SYMBOL_NAME_LEN);
+				if (ret <= 0) {
+					DBG("Nothing recv() from client var len data... continuing");
+					*sock_error = 1;
+					ret = LTTNG_ERR_EXCLUSION_INVAL;
+					goto error;
+				}
+			}
+			if (cmd_ctx->lsm->u.enable.bytecode_len != 0) {
+				bytecode = zmalloc(cmd_ctx->lsm->u.enable.bytecode_len);
+				if (!bytecode) {
+					if (!exclusion)
+						free(exclusion);
+					ret = LTTNG_ERR_FILTER_NOMEM;
+					goto error;
+				}
+				/* Receive var. len. data */
+				DBG("Receiving var len data from client ...");
+				ret = lttcomm_recv_unix_sock(sock, bytecode,
+						cmd_ctx->lsm->u.enable.bytecode_len);
+				if (ret <= 0) {
+					DBG("Nothing recv() from client car len data... continuing");
+					*sock_error = 1;
+					if (!exclusion)
+						free(exclusion);
+					ret = LTTNG_ERR_FILTER_INVAL;
+					goto error;
+				}
+
+				if (bytecode->len + sizeof(*bytecode)
+						!= cmd_ctx->lsm->u.enable.bytecode_len) {
+					free(bytecode);
+					if (!exclusion)
+						free(exclusion);
+					ret = LTTNG_ERR_FILTER_INVAL;
+					goto error;
+				}
+			}
+
+			ret = cmd_enable_event(cmd_ctx->session,
+					&cmd_ctx->lsm->domain,
+					cmd_ctx->lsm->u.enable.channel_name,
+					&cmd_ctx->lsm->u.enable.event, bytecode,
+					exclusion,
+					kernel_poll_pipe[1]);
+		}
 		break;
 	}
 	case LTTNG_ENABLE_ALL_EVENT:
