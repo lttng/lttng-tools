@@ -468,6 +468,12 @@ static int enable_events(char *session_name)
 		goto error;
 	}
 
+	if (opt_kernel && opt_exclude) {
+		ERR("Event name exclusions are not yet implemented for kernel events");
+		ret = CMD_ERROR;
+		goto error;
+	}
+
 	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -678,6 +684,11 @@ static int enable_events(char *session_name)
 			}
 
 			if (opt_exclude) {
+				if (opt_event_type != LTTNG_EVENT_ALL && opt_event_type != LTTNG_EVENT_TRACEPOINT) {
+					ERR("Exclusion option can only be used with tracepoint events");
+					ret = CMD_ERROR;
+					goto error;
+				}
 				/* Free previously allocated items */
 				if (exclusion_list != NULL) {
 					while (exclusion_count--) {
