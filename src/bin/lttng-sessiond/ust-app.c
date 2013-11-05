@@ -1410,6 +1410,8 @@ error:
 static void shadow_copy_event(struct ust_app_event *ua_event,
 		struct ltt_ust_event *uevent)
 {
+	size_t exclusion_alloc_size;
+
 	strncpy(ua_event->name, uevent->attr.name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 
@@ -1422,6 +1424,16 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 	if (uevent->filter) {
 		ua_event->filter = alloc_copy_ust_app_filter(uevent->filter);
 		/* Filter might be NULL here in case of ENONEM. */
+	}
+
+	/* Copy exclusion data */
+	if (uevent->exclusion) {
+		exclusion_alloc_size = sizeof(struct lttng_ust_event_exclusion) +
+				LTTNG_UST_SYM_NAME_LEN * uevent->exclusion->count;
+		ua_event->exclusion = zmalloc(exclusion_alloc_size);
+		if (ua_event->exclusion) {
+			memcpy(ua_event->exclusion, uevent->exclusion, exclusion_alloc_size);
+		}
 	}
 }
 
