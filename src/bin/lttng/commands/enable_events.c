@@ -195,6 +195,12 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           '$ctx.procname == \"demo*\"'\n");
 	fprintf(ofp, "                           '$ctx.vpid >= 4433 && $ctx.vpid < 4455'\n");
 	fprintf(ofp, "                           '$ctx.vtid == 1234'\n");
+	fprintf(ofp, "  -x, --exclude LIST\n");
+	fprintf(ofp, "                           Add exclusions to UST tracepoints:\n");
+	fprintf(ofp, "                           Events that match any of the items\n");
+	fprintf(ofp, "                           in the comma-separated LIST are not\n");
+	fprintf(ofp, "                           enabled, even if they match a wildcard\n");
+	fprintf(ofp, "                           definition of the event.\n");
 	fprintf(ofp, "\n");
 }
 
