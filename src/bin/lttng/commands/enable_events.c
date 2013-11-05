@@ -43,6 +43,7 @@ static char *opt_function;
 static char *opt_function_entry_symbol;
 static char *opt_channel_name;
 static char *opt_filter;
+static char *opt_exclude;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -61,6 +62,7 @@ enum {
 	OPT_LOGLEVEL_ONLY,
 	OPT_LIST_OPTIONS,
 	OPT_FILTER,
+	OPT_EXCLUDE,
 };
 
 static struct lttng_handle *handle;
@@ -89,6 +91,7 @@ static struct poptOption long_options[] = {
 	{"loglevel-only",  0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL_ONLY, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{"filter",         'f', POPT_ARG_STRING, &opt_filter, OPT_FILTER, 0, 0},
+	{"exclude",        'x', POPT_ARG_STRING, &opt_exclude, OPT_EXCLUDE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -713,6 +716,8 @@ int cmd_enable_events(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		case OPT_FILTER:
+			break;
+		case OPT_EXCLUDE:
 			break;
 		default:
 			usage(stderr);
