@@ -855,6 +855,214 @@ alloc_error:
 }
 
 /*
+ * Enable event(s) for a channel, possibly with exclusions and a filter.
+ * If no event name is specified, all events are enabled.
+ * If no channel name is specified, the default name is used.
+ * If filter expression is not NULL, the filter is set for the event.
+ * If exclusion count is not zero, the exclusions are set for the event.
+ * Returns size of returned session payload data or a negative error code.
+ */
+int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
+		struct lttng_event *ev, const char *channel_name,
+		const char *filter_expression,
+		int exclusion_count, char **exclusion_list)
+{
+	struct lttcomm_session_msg lsm;
+	char *varlen_data;
+	int ret = 0;
+	struct filter_parser_ctx *ctx = NULL;
+	FILE *fmem = NULL;
+
+	if (handle == NULL || ev == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	/* Empty filter string will always be rejected by the parser
+	 * anyway, so treat this corner-case early to eliminate
+	 * lttng_fmemopen error for 0-byte allocation.
+	 */
+	if (filter_expression && filter_expression[0] == '\0') {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	/* If no channel name, send empty string. */
+	if (channel_name == NULL) {
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, "",
+				sizeof(lsm.u.enable.channel_name));
+	} else {
+		lttng_ctl_copy_string(lsm.u.enable.channel_name, channel_name,
+				sizeof(lsm.u.enable.channel_name));
+	}
+
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	/* figure out correct command type, based on if we have a filter or exclusions */
+	if (exclusion_count == 0) {
+		if (filter_expression == NULL) {
+			if (ev->name[0] != '\0') {
+				lsm.cmd_type = LTTNG_ENABLE_EVENT;
+			} else {
+				lsm.cmd_type = LTTNG_ENABLE_ALL_EVENT;
+			}
+		} else {
+			lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_FILTER;
+		}
+	} else {
+		lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_EXCLUSION;
+	}
+
+	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
+
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	lsm.u.enable.exclusion_count = exclusion_count;
+	lsm.u.enable.bytecode_len = 0;
+
+	if (exclusion_count == 0 && filter_expression == NULL) {
+		ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+		return ret;
+	}
+
+	/*
+	 * We have either a filter or some exclusions, so we need to set up
+	 * a variable-length memory block from where to send the data
+	 */
+
+	/* Parse filter expression */
+	if (filter_expression != NULL) {
+
+		/*
+		 * casting const to non-const, as the underlying function will
+		 * use it in read-only mode.
+		 */
+		fmem = lttng_fmemopen((void *) filter_expression,
+				strlen(filter_expression), "r");
+		if (!fmem) {
+			fprintf(stderr, "Error opening memory as stream\n");
+			return -LTTNG_ERR_FILTER_NOMEM;
+		}
+		ctx = filter_parser_ctx_alloc(fmem);
+		if (!ctx) {
+			fprintf(stderr, "Error allocating parser\n");
+			ret = -LTTNG_ERR_FILTER_NOMEM;
+			goto filter_alloc_error;
+		}
+		ret = filter_parser_ctx_append_ast(ctx);
+		if (ret) {
+			fprintf(stderr, "Parse error\n");
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto parse_error;
+		}
+		ret = filter_visitor_set_parent(ctx);
+		if (ret) {
+			fprintf(stderr, "Set parent error\n");
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto parse_error;
+		}
+		if (print_xml) {
+			ret = filter_visitor_print_xml(ctx, stdout, 0);
+			if (ret) {
+				fflush(stdout);
+				fprintf(stderr, "XML print error\n");
+				ret = -LTTNG_ERR_FILTER_INVAL;
+				goto parse_error;
+			}
+		}
+
+		dbg_printf("Generating IR... ");
+		fflush(stdout);
+		ret = filter_visitor_ir_generate(ctx);
+		if (ret) {
+			fprintf(stderr, "Generate IR error\n");
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto parse_error;
+		}
+		dbg_printf("done\n");
+
+		dbg_printf("Validating IR... ");
+		fflush(stdout);
+		ret = filter_visitor_ir_check_binary_op_nesting(ctx);
+		if (ret) {
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto parse_error;
+		}
+		dbg_printf("done\n");
+
+		dbg_printf("Generating bytecode... ");
+		fflush(stdout);
+		ret = filter_visitor_bytecode_generate(ctx);
+		if (ret) {
+			fprintf(stderr, "Generate bytecode error\n");
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto parse_error;
+		}
+		dbg_printf("done\n");
+		dbg_printf("Size of bytecode generated: %u bytes.\n",
+			bytecode_get_len(&ctx->bytecode->b));
+
+		lsm.u.enable.bytecode_len = sizeof(ctx->bytecode->b)
+				+ bytecode_get_len(&ctx->bytecode->b);
+	}
+
+	/* Allocate variable length data */
+	if (lsm.u.enable.exclusion_count != 0) {
+		varlen_data = zmalloc(lsm.u.enable.bytecode_len
+				+ LTTNG_SYMBOL_NAME_LEN * exclusion_count);
+		if (!varlen_data) {
+			ret = -LTTNG_ERR_EXCLUSION_NOMEM;
+			goto varlen_alloc_error;
+		}
+		/* Put exclusion names first in the data */
+		while (exclusion_count--) {
+			strncpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * exclusion_count,
+					*(exclusion_list + exclusion_count),
+					LTTNG_SYMBOL_NAME_LEN);
+		}
+		/* Add filter bytecode next */
+		if (lsm.u.enable.bytecode_len != 0) {
+			memcpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count,
+					&ctx->bytecode->b,
+					lsm.u.enable.bytecode_len);
+		}
+	} else {
+		/* no exclusions - use the already allocated filter bytecode */
+		varlen_data = (char *)(&ctx->bytecode->b);
+	}
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, varlen_data,
+			LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count
+					+ lsm.u.enable.bytecode_len,
+			NULL);
+
+	if (lsm.u.enable.exclusion_count != 0) {
+		free(varlen_data);
+	}
+
+varlen_alloc_error:
+	if (filter_expression) {
+		filter_bytecode_free(ctx);
+		filter_ir_free(ctx);
+		filter_parser_ctx_free(ctx);
+		if (fclose(fmem) != 0) {
+			perror("fclose");
+		}
+	}
+	return ret;
+
+parse_error:
+	filter_bytecode_free(ctx);
+	filter_ir_free(ctx);
+	filter_parser_ctx_free(ctx);
+filter_alloc_error:
+	if (fclose(fmem) != 0) {
+		perror("fclose");
+	}
+	return ret;
+}
+
+/*
  *  Disable event(s) of a channel and domain.
  *  If no event name is specified, all events are disabled.
  *  If no channel name is specified, the default 'channel0' is used.
