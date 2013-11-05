@@ -1137,6 +1137,47 @@ error:
 }
 
 /*
+ * Set event exclusions on the tracer.
+ */
+static
+int set_ust_event_exclusion(struct ust_app_event *ua_event,
+		struct ust_app *app)
+{
+	int ret;
+
+	health_code_update();
+
+	if (!ua_event->exclusion || !ua_event->exclusion->count) {
+		ret = 0;
+		goto error;
+	}
+
+	ret = ustctl_set_exclusion(app->sock, ua_event->exclusion,
+			ua_event->obj);
+	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app event %s exclusions failed for app (pid: %d) "
+					"with ret %d", ua_event->attr.name, app->pid, ret);
+		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
+			DBG3("UST app event exclusion failed. Application is dead.");
+		}
+		goto error;
+	}
+
+	DBG2("UST exclusion set successfully for event %s", ua_event->name);
+
+error:
+	health_code_update();
+	return ret;
+}
+
+/*
  * Disable the specified event on to UST tracer for the UST session.
  */
 static int disable_ust_event(struct ust_app *app,
@@ -1370,6 +1411,14 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	/* Set filter if one is present. */
 	if (ua_event->filter) {
 		ret = set_ust_event_filter(ua_event, app);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/* Set exclusions for the event */
+	if (ua_event->exclusion) {
+		ret = set_ust_event_exclusion(ua_event, app);
 		if (ret < 0) {
 			goto error;
 		}
