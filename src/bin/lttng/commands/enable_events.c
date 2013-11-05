@@ -337,6 +337,39 @@ const char *print_raw_channel_name(const char *name)
 }
 
 /*
+ * Return allocated string for pretty-printing exclusion names.
+ */
+static
+char *print_exclusions(int count, char **names)
+{
+	int length = 0;
+	int i;
+	const char *preamble = " excluding ";
+	char *ret;
+
+	if (count == 0) {
+		return strdup("");
+	}
+
+	/* calculate total required length */
+	for (i = 0; i < count; i++) {
+		length += strlen(names[i]) + 1;
+	}
+
+	/* add length of preamble + one for NUL - one for last (missing) comma */
+	length += strlen(preamble);
+	ret = malloc(length);
+	strncpy(ret, preamble, length);
+	for (i = 0; i < count; i++) {
+		strcat(ret, names[i]);
+		if (i != count - 1) {
+			strcat(ret, ",");
+		}
+	}
+	return ret;
+}
+
+/*
  * Compare list of exclusions against an event name.
  * Return a list of legal exclusion names.
  * Produce an error or a warning about others (depending on the situation)
@@ -538,14 +571,20 @@ static int enable_events(char *session_name)
 			switch (opt_event_type) {
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
-					MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
+					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					MSG("All %s tracepoints%s are enabled in channel %s for loglevel %s",
 							get_domain_str(dom.type),
+							exclusion_string,
 							print_channel_name(channel_name),
 							opt_loglevel);
+					free(exclusion_string);
 				} else {
-					MSG("All %s tracepoints are enabled in channel %s",
+					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					MSG("All %s tracepoints%s are enabled in channel %s",
 							get_domain_str(dom.type),
+							exclusion_string,
 							print_channel_name(channel_name));
+					free(exclusion_string);
 				}
 				break;
 			case LTTNG_EVENT_SYSCALL:
@@ -556,14 +595,20 @@ static int enable_events(char *session_name)
 				break;
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
-					MSG("All %s events are enabled in channel %s for loglevel %s",
+					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					MSG("All %s events%s are enabled in channel %s for loglevel %s",
 							get_domain_str(dom.type),
+							exclusion_string,
 							print_channel_name(channel_name),
 							opt_loglevel);
+					free(exclusion_string);
 				} else {
-					MSG("All %s events are enabled in channel %s",
+					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					MSG("All %s events%s are enabled in channel %s",
 							get_domain_str(dom.type),
+							exclusion_string,
 							print_channel_name(channel_name));
+					free(exclusion_string);
 				}
 				break;
 			default:
@@ -733,19 +778,24 @@ static int enable_events(char *session_name)
 		}
 
 		if (!opt_filter) {
+			char *exclusion_string;
+
 			ret = lttng_enable_event_with_exclusions(handle,
 					&ev, channel_name,
 					NULL, exclusion_count, exclusion_list);
+			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
 			if (ret < 0) {
 				/* Turn ret to positive value to handle the positive error code */
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
-					WARN("Kernel event %s already enabled (channel %s, session %s)",
+					WARN("Kernel event %s%s already enabled (channel %s, session %s)",
 							event_name,
+							exclusion_string,
 							print_channel_name(channel_name), session_name);
 					break;
 				default:
-					ERR("Event %s: %s (channel %s, session %s)", event_name,
+					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
+							exclusion_string,
 							lttng_strerror(ret),
 							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
 								? print_raw_channel_name(channel_name)
@@ -755,25 +805,33 @@ static int enable_events(char *session_name)
 				}
 				warn = 1;
 			} else {
-				MSG("%s event %s created in channel %s",
+				MSG("%s event %s%s created in channel %s",
 						get_domain_str(dom.type), event_name,
+						exclusion_string,
 						print_channel_name(channel_name));
 			}
+			free(exclusion_string);
 		}
 
 		if (opt_filter) {
+			char *exclusion_string;
+
 			ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
 					opt_filter, exclusion_count, exclusion_list);
+			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					WARN("Filter on event %s is already enabled"
+					WARN("Filter on event %s%s is already enabled"
 							" (channel %s, session %s)",
 						event_name,
+						exclusion_string,
 						print_channel_name(channel_name), session_name);
 					break;
 				default:
-					ERR("Event %s: %s (channel %s, session %s, filter \'%s\')", ev.name,
+					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')", ev.name,
+							exclusion_string,
 							lttng_strerror(ret),
 							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
 								? print_raw_channel_name(channel_name)
@@ -783,8 +841,11 @@ static int enable_events(char *session_name)
 				}
 				goto error;
 			} else {
-				MSG("Filter '%s' successfully set", opt_filter);
+				MSG("Event %s%s: Filter '%s' successfully set",
+						event_name, exclusion_string,
+						opt_filter);
 			}
+			free(exclusion_string);
 		}
 
 		/* Next event */
