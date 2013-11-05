@@ -433,6 +433,8 @@ static int enable_events(char *session_name)
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
+	int exclusion_count = 0;
+	char **exclusion_list = NULL;
 
 	memset(&ev, 0, sizeof(ev));
 	memset(&dom, 0, sizeof(dom));
@@ -497,8 +499,18 @@ static int enable_events(char *session_name)
 			}
 		}
 
+		if (opt_exclude) {
+			ret = check_exclusion_subsets("*", opt_exclude,
+					&exclusion_count, &exclusion_list);
+			if (ret == CMD_ERROR) {
+				goto error;
+			}
+		}
 		if (!opt_filter) {
-			ret = lttng_enable_event(handle, &ev, channel_name);
+			ret = lttng_enable_event_with_exclusions(handle,
+					&ev, channel_name,
+					NULL,
+					exclusion_count, exclusion_list);
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
@@ -557,8 +569,8 @@ static int enable_events(char *session_name)
 			}
 		}
 		if (opt_filter) {
-			ret = lttng_enable_event_with_filter(handle, &ev, channel_name,
-						opt_filter);
+			ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
+						opt_filter, exclusion_count, exclusion_list);
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
@@ -665,6 +677,23 @@ static int enable_events(char *session_name)
 				goto error;
 			}
 
+			if (opt_exclude) {
+				/* Free previously allocated items */
+				if (exclusion_list != NULL) {
+					while (exclusion_count--) {
+						free(exclusion_list[exclusion_count]);
+					}
+					free(exclusion_list);
+					exclusion_list = NULL;
+				}
+				/* Check for proper subsets */
+				ret = check_exclusion_subsets(event_name, opt_exclude,
+						&exclusion_count, &exclusion_list);
+				if (ret == CMD_ERROR) {
+					goto error;
+				}
+			}
+
 			ev.loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
 				ev.loglevel = loglevel_str_to_value(opt_loglevel);
@@ -693,7 +722,9 @@ static int enable_events(char *session_name)
 		}
 
 		if (!opt_filter) {
-			ret = lttng_enable_event(handle, &ev, channel_name);
+			ret = lttng_enable_event_with_exclusions(handle,
+					&ev, channel_name,
+					NULL, exclusion_count, exclusion_list);
 			if (ret < 0) {
 				/* Turn ret to positive value to handle the positive error code */
 				switch (-ret) {
@@ -720,8 +751,8 @@ static int enable_events(char *session_name)
 		}
 
 		if (opt_filter) {
-			ret = lttng_enable_event_with_filter(handle, &ev, channel_name,
-					opt_filter);
+			ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
+					opt_filter, exclusion_count, exclusion_list);
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_FILTER_EXIST:
@@ -755,6 +786,13 @@ error:
 		ret = CMD_WARNING;
 	}
 	lttng_destroy_handle(handle);
+
+	if (exclusion_list != NULL) {
+		while (exclusion_count--) {
+			free(exclusion_list[exclusion_count]);
+		}
+		free(exclusion_list);
+	}
 
 	return ret;
 }
