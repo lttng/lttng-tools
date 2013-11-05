@@ -168,6 +168,15 @@ const char *filter_string(int value)
 	}
 }
 
+static
+const char *exclusion_string(int value)
+{
+	switch (value) {
+	case 1: return " [has exclusions]";
+	default: return "";
+	}
+}
+
 static const char *loglevel_string(int value)
 {
 	switch (value) {
@@ -217,18 +226,20 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_TRACEPOINT:
 	{
 		if (event->loglevel != -1) {
-			MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)%s%s",
+			MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)%s%s%s",
 				indent6,
 				event->name,
 				loglevel_string(event->loglevel),
 				event->loglevel,
 				enabled_string(event->enabled),
+				exclusion_string(event->exclusion),
 				filter_string(event->filter));
 		} else {
-			MSG("%s%s (type: tracepoint)%s%s",
+			MSG("%s%s (type: tracepoint)%s%s%s",
 				indent6,
 				event->name,
 				enabled_string(event->enabled),
+				exclusion_string(event->exclusion),
 				filter_string(event->filter));
 		}
 		break;

@@ -305,6 +305,9 @@ static int list_lttng_ust_global_events(char *channel_name,
 		if (uevent->filter) {
 			tmp[i].filter = 1;
 		}
+		if (uevent->exclusion) {
+			tmp[i].exclusion = 1;
+		}
 		i++;
 	}
 
