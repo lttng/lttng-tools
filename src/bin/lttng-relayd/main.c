@@ -898,6 +898,8 @@ void relay_delete_session(struct relay_command *cmd,
 		stream = caa_container_of(node, struct relay_stream, stream_n);
 		if (stream->session == cmd->session) {
 			destroy_stream(stream);
+			cmd->session->stream_count--;
+			assert(cmd->session->stream_count >= 0);
 		}
 	}
 
@@ -1094,6 +1096,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 
 	lttng_ht_node_init_str(&stream->ctf_trace_node, stream->path_name);
 	lttng_ht_add_str(cmd->ctf_traces_ht, &stream->ctf_trace_node);
+	session->stream_count++;
 
 	DBG("Relay new stream added %s with ID %" PRIu64, stream->channel_name,
 			stream->stream_handle);
@@ -1170,6 +1173,8 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 
 	stream->last_net_seq_num = be64toh(stream_info.last_net_seq_num);
 	stream->close_flag = 1;
+	session->stream_count--;
+	assert(session->stream_count >= 0);
 
 	if (close_stream_check(stream)) {
 		destroy_stream(stream);

@@ -583,6 +583,7 @@ int viewer_list_sessions(struct relay_command *cmd,
 		send_session.id = htobe64(session->id);
 		send_session.live_timer = htobe32(session->live_timer);
 		send_session.clients = htobe32(session->viewer_attached);
+		send_session.streams = htobe32(session->stream_count);
 
 		health_code_update();
 

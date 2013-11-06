@@ -90,6 +90,7 @@ struct lttng_viewer_session {
 	char session_name[LTTNG_VIEWER_NAME_MAX];
 	uint32_t live_timer;
 	uint32_t clients;
+	uint32_t streams;
 } __attribute__((__packed__));
 
 struct lttng_viewer_stream {
