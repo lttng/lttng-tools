@@ -48,40 +48,17 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	/* Default permissions */
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 
-	/* Change owner of the shm path */
-	if (global) {
-		ret = chown(shm_path, 0, 0);
-		if (ret < 0) {
-			if (errno != ENOENT) {
-				PERROR("chown wait shm");
-				goto error;
-			}
-		}
-
-		/*
-		 * If global session daemon, any application can register so the shm
-		 * needs to be set in read-only mode for others.
-		 */
-		mode |= S_IROTH;
-	} else {
-		ret = chown(shm_path, getuid(), getgid());
-		if (ret < 0) {
-			if (errno != ENOENT) {
-				PERROR("chown wait shm");
-				goto error;
-			}
-		}
-	}
-
 	/*
-	 * Set permissions to the shm even if we did not create the shm.
+	 * Change owner of the shm path.
 	 */
-	ret = chmod(shm_path, mode);
-	if (ret < 0) {
-		if (errno != ENOENT) {
-			PERROR("chmod wait shm");
-			goto error;
-		}
+	if (global) {
+		/*
+		 * If global session daemon, any application can
+		 * register. Make it initially writeable so applications
+		 * registering concurrently can do ftruncate() by
+		 * themselves.
+		 */
+		mode |= S_IROTH | S_IWOTH;
 	}
 
 	/*
@@ -107,13 +84,32 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	}
 
 #ifndef __FreeBSD__
-	ret = fchmod(wait_shm_fd, mode);
-	if (ret < 0) {
-		PERROR("fchmod");
-		exit(EXIT_FAILURE);
+	if (global) {
+		ret = fchown(wait_shm_fd, 0, 0);
+		if (ret < 0) {
+			PERROR("fchown");
+			exit(EXIT_FAILURE);
+		}
+		/*
+		 * If global session daemon, any application can
+		 * register so the shm needs to be set in read-only mode
+		 * for others.
+		 */
+		mode &= ~S_IWOTH;
+		ret = fchmod(wait_shm_fd, mode);
+		if (ret < 0) {
+			PERROR("fchmod");
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		ret = fchown(wait_shm_fd, getuid(), getgid());
+		if (ret < 0) {
+			PERROR("fchown");
+			exit(EXIT_FAILURE);
+		}
 	}
 #else
-#warning "FreeBSD does not support setting file mode on shm FD. Remember that for secure use, lttng-sessiond should be started before applications linked on lttng-ust."
+#warning "FreeBSD does not support setting file mode on shm FD."
 #endif
 
 	DBG("Got the wait shm fd %d", wait_shm_fd);
