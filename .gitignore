@@ -76,5 +76,6 @@ tests/regression/ust/fork/fork
 tests/regression/ust/fork/fork2
 tests/regression/ust/libc-wrapper/prog
 tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
+tests/regression/tools/live/live_test
 
 benchmark/

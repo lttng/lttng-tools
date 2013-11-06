@@ -373,6 +373,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/health/Makefile
 	tests/regression/tools/tracefile-limits/Makefile
 	tests/regression/tools/snapshots/Makefile
+	tests/regression/tools/live/Makefile
 	tests/regression/ust/Makefile
 	tests/regression/ust/nprocesses/Makefile
 	tests/regression/ust/high-throughput/Makefile

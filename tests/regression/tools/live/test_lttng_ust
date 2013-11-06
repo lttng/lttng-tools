@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Julien Desfossez <julien.desfossez@efficios.com>
+#                      David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Live - User space tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+SESSIOND_BIN="lttng-sessiond"
+RELAYD_BIN="lttng-relayd"
+LTTNG_BIN="lttng"
+BABELTRACE_BIN="babeltrace"
+NR_ITER=1
+NR_USEC_WAIT=1
+DELAY_USEC=2000000
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+SESSION_NAME="live"
+EVENT_NAME="tp:tptest"
+
+TRACE_PATH=$(mktemp -d)
+
+DIR=$(readlink -f $TESTDIR)
+
+NUM_TESTS=10
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+function setup_live_tracing()
+{
+	# Create session with default path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
+		-U net://localhost >/dev/null 2>&1
+	ok $? "Create session in live mode with delay $DELAY_USEC"
+
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+}
+
+function clean_live_tracing()
+{
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+}
+
+start_lttng_sessiond
+start_lttng_relayd "-o $TRACE_PATH"
+
+setup_live_tracing
+
+# Run app in background
+$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
+# Wait for app to complete
+while [ -n "$(pidof $TESTAPP_NAME)" ]; do
+	sleep 0.5
+done
+
+clean_live_tracing
+
+trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+rm -rf $TRACE_PATH
+
+stop_lttng_relayd
+stop_lttng_sessiond

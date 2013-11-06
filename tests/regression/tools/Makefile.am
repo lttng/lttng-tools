@@ -1,1 +1,1 @@
-SUBDIRS = streaming filtering health tracefile-limits snapshots
+SUBDIRS = streaming filtering health tracefile-limits snapshots live
