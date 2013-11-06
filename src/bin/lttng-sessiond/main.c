@@ -455,6 +455,11 @@ static void cleanup(void)
 	DBG("Removing %s", path);
 	(void) unlink(path);
 
+	snprintf(path, PATH_MAX, "%s/%s", rundir,
+			DEFAULT_LTTNG_SESSIOND_JULPORT_FILE);
+	DBG("Removing %s", path);
+	(void) unlink(path);
+
 	/* kconsumerd */
 	snprintf(path, PATH_MAX,
 		DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
@@ -4430,6 +4435,34 @@ error:
 }
 
 /*
+ * Write JUL TCP port using the rundir.
+ */
+static void write_julport(void)
+{
+	int ret;
+	char path[PATH_MAX];
+
+	assert(rundir);
+
+	ret = snprintf(path, sizeof(path), "%s/"
+			DEFAULT_LTTNG_SESSIOND_JULPORT_FILE, rundir);
+	if (ret < 0) {
+		PERROR("snprintf julport path");
+		goto error;
+	}
+
+	/*
+	 * Create TCP JUL port file in rundir. Return value is of no importance.
+	 * The execution will continue even though we are not able to write the
+	 * file.
+	 */
+	(void) utils_create_pid_file(jul_tcp_port, path);
+
+error:
+	return;
+}
+
+/*
  * main
  */
 int main(int argc, char **argv)
@@ -4735,6 +4768,7 @@ int main(int argc, char **argv)
 	}
 
 	write_pidfile();
+	write_julport();
 
 	/* Initialize communication library */
 	lttcomm_init();
