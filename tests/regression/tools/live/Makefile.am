@@ -30,8 +30,9 @@ endif
 
 live_test_SOURCES = live_test.c
 live_test_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-				  $(LIBHASHTABLE) $(LIBHEALTH) -lrt -llttng-ctl
-live_test_LDADD += $(LIVE)
+				  $(LIBHASHTABLE) $(LIBHEALTH) -lrt
+live_test_LDADD += $(LIVE) \
+				   $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
