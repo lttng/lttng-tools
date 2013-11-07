@@ -505,6 +505,9 @@ Apply for the kernel tracer
 .BR "\-u, \-\-userspace"
 Apply for the user-space tracer
 .TP
+.BR "\-j, \-\-jul"
+Apply for Java application using Java Util Logging interface (JUL)
+.TP
 .BR "\-\-tracepoint"
 Tracepoint event (default). Userspace tracer supports wildcards at the end
 of string. Don't forget to quote to deal with bash expansion.
@@ -645,6 +648,10 @@ Apply for the kernel tracer
 .TP
 .BR "\-u, \-\-userspace"
 Apply for the user-space tracer
+.TP
+.BR "\-j, \-\-jul"
+Apply for Java application using Java Util Logging interface (JUL)
+.TP
 .RE
 .PP
 
@@ -661,6 +668,8 @@ and deactivated), the activated events and more.
 
 With \-k alone, it will list all available kernel events (except the system
 calls events).
+With \-j alone, the available JUL event from registered application will be
+list. The event corresponds to the Logger name in the Java JUL application.
 With \-u alone, it will list all available user-space events from registered
 applications. Here is an example of 'lttng list \-u':
 
@@ -687,6 +696,12 @@ Select kernel domain
 .TP
 .BR "\-u, \-\-userspace"
 Select user-space domain.
+.TP
+.BR "\-j, \-\-jul"
+Apply for Java application using JUL
+.TP
+.BR "\-f, \-\-fields"
+List event fields
 
 .PP
 .B SESSION OPTIONS:
