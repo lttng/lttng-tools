@@ -54,6 +54,8 @@
 
 /* Global health check unix path */
 static char health_unix_sock_path[PATH_MAX];
+static char *relayd_path;
+static char *lttng_rundir;
 
 int health_quit_pipe[2];
 
@@ -133,12 +135,12 @@ static
 int setup_health_path(void)
 {
 	int is_root, ret = 0;
-	char *home_path = NULL, *rundir = NULL, *relayd_path;
+	char *home_path = NULL;
 
 	is_root = !getuid();
 
 	if (is_root) {
-		rundir = strdup(DEFAULT_LTTNG_RUNDIR);
+		lttng_rundir = strdup(DEFAULT_LTTNG_RUNDIR);
 	} else {
 		/*
 		 * Create rundir from home path. This will create something like
@@ -153,20 +155,20 @@ int setup_health_path(void)
 			goto end;
 		}
 
-		ret = asprintf(&rundir, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
+		ret = asprintf(&lttng_rundir, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
 		if (ret < 0) {
 			ret = -ENOMEM;
 			goto end;
 		}
 	}
 
-	ret = asprintf(&relayd_path, DEFAULT_RELAYD_PATH, rundir);
+	ret = asprintf(&relayd_path, DEFAULT_RELAYD_PATH, lttng_rundir);
 	if (ret < 0) {
 		ret = -ENOMEM;
 		goto end;
 	}
 
-	ret = create_lttng_rundir_with_perm(rundir);
+	ret = create_lttng_rundir_with_perm(lttng_rundir);
 	if (ret < 0) {
 		goto end;
 	}
@@ -195,7 +197,6 @@ int setup_health_path(void)
 	}
 
 end:
-	free(rundir);
 	return ret;
 }
 
@@ -378,6 +379,11 @@ error:
 	}
 	DBG("Health check thread dying");
 	unlink(health_unix_sock_path);
+	(void) rmdir(relayd_path);
+	free(relayd_path);
+	(void) rmdir(lttng_rundir);
+	free(lttng_rundir);
+
 	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {
