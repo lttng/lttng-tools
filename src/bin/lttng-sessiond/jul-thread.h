@@ -15,8 +15,8 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _JUL_THREAD_H
-#define _JUL_THREAD_H
+#ifndef LTTNG_SESSIOND_JUL_THREAD_H
+#define LTTNG_SESSIOND_JUL_THREAD_H
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
@@ -32,4 +32,4 @@ void *jul_thread_manage_registration(void *data)
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
-#endif /* _JUL_THREAD_H */
+#endif /* LTTNG_SESSIOND_JUL_THREAD_H */
