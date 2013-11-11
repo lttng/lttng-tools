@@ -52,6 +52,9 @@ void ht_cleanup_push(struct lttng_ht *ht)
 	ssize_t ret;
 	int fd = ht_cleanup_pipe[1];
 
+	if (!ht) {
+		return;
+	}
 	if (fd < 0)
 		return;
 	ret = lttng_write(fd, &ht, sizeof(ht));
