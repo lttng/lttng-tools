@@ -27,7 +27,7 @@
 #include "utils.h"
 
 /*
- * URCU intermediate call to complete destroy a JUL event.
+ * URCU delayed JUL event reclaim.
  */
 static void destroy_event_jul_rcu(struct rcu_head *head)
 {
@@ -40,7 +40,7 @@ static void destroy_event_jul_rcu(struct rcu_head *head)
 }
 
 /*
- * URCU intermediate call to complete destroy a JUL event.
+ * URCU delayed JUL app reclaim.
  */
 static void destroy_app_jul_rcu(struct rcu_head *head)
 {
@@ -53,8 +53,8 @@ static void destroy_app_jul_rcu(struct rcu_head *head)
 }
 
 /*
- * Communication with Java agent call. Send the message header to the given
- * socket all in big endian.
+ * Communication with Java agent. Send the message header to the given
+ * socket in big endian.
  *
  * Return 0 on success or else a negative errno message of sendmsg() op.
  */
@@ -135,9 +135,11 @@ error:
 
 
 /*
- * Internal call to list events on a given app. Populate events.
+ * Internal event listing for a given app. Populate events.
  *
  * Return number of element in the list or else a negative LTTNG_ERR* code.
+ * On success, the caller is responsible for freeing the memory
+ * allocated for "events".
  */
 static ssize_t list_events(struct jul_app *app, struct lttng_event **events)
 {
@@ -220,7 +222,7 @@ error:
 }
 
 /*
- * Internal enable JUL event call on a JUL application. This function
+ * Internal enable JUL event on a JUL application. This function
  * communicates with the Java agent to enable a given event (Logger name).
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
@@ -436,8 +438,7 @@ int jul_list_events(struct lttng_event **events)
 		nb_ev = list_events(app, &jul_events);
 		if (nb_ev < 0) {
 			ret = nb_ev;
-			rcu_read_unlock();
-			goto error;
+			goto error_unlock;
 		}
 
 		if (count >= nbmem) {
@@ -451,9 +452,8 @@ int jul_list_events(struct lttng_event **events)
 			if (!ptr) {
 				PERROR("realloc JUL events");
 				ret = -ENOMEM;
-				rcu_read_unlock();
 				free(jul_events);
-				goto error;
+				goto error_unlock;
 			}
 			tmp_events = ptr;
 		}
@@ -468,6 +468,8 @@ int jul_list_events(struct lttng_event **events)
 	*events = tmp_events;
 	return ret;
 
+error_unlock:
+	rcu_read_unlock();
 error:
 	free(tmp_events);
 	return ret;
@@ -618,7 +620,8 @@ void jul_delete_app(struct jul_app *app)
 
 /*
  * Destroy a JUL application object by detaching it from its corresponding UST
- * app if one, closing the socket and freeing the memory.
+ * app if one is connected by closing the socket. Finally, perform a
+ * delayed memory reclaim.
  */
 void jul_destroy_app(struct jul_app *app)
 {
@@ -751,7 +754,9 @@ void jul_delete_event(struct jul_event *event, struct jul_domain *dom)
 }
 
 /*
- * Free given JUl event. After this call, the pointer is not usable anymore.
+ * Free given JUL event. This event must not be globally visible at this
+ * point (only expected to be used on failure just after event
+ * creation). After this call, the pointer is not usable anymore.
  */
 void jul_destroy_event(struct jul_event *event)
 {
@@ -762,7 +767,7 @@ void jul_destroy_event(struct jul_event *event)
 
 /*
  * Destroy a JUL domain completely. Note that the given pointer is NOT freed
- * thus a reference can be passed to this function.
+ * thus a reference to static or stack data can be passed to this function.
  */
 void jul_destroy_domain(struct jul_domain *dom)
 {
