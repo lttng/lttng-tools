@@ -39,8 +39,9 @@ struct jul_register_msg {
 };
 
 /*
- * JUL application object created after a successful registration. This object
- * is kept inside an UST app.
+ * JUL application object created after a successful registration. This
+ * object is linked to its associated UST app by their PID through hash
+ * table lookups.
  */
 struct jul_app {
 	/*
