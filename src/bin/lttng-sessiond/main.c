@@ -4787,7 +4787,7 @@ int main(int argc, char **argv)
 		goto exit_health_sessiond_cleanup;
 	}
 
-	/* Create thread to manage the client socket */
+	/* Create thread to clean up RCU hash tables */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
 			thread_ht_cleanup, (void *) NULL);
 	if (ret != 0) {
@@ -4795,7 +4795,7 @@ int main(int argc, char **argv)
 		goto exit_ht_cleanup;
 	}
 
-	/* Create thread to manage the client socket */
+	/* Create health-check thread */
 	ret = pthread_create(&health_thread, NULL,
 			thread_manage_health, (void *) NULL);
 	if (ret != 0) {
