@@ -1703,7 +1703,7 @@ restart:
 					/* connection closed */
 					if (ret <= 0) {
 						cleanup_poll_connection(&events, pollfd);
-						del_connection( relay_connections_ht, &iter,
+						del_connection(relay_connections_ht, &iter,
 								relay_connection);
 						DBG("Viewer control connection closed with %d",
 								pollfd);
@@ -1780,7 +1780,7 @@ static int create_relay_cmd_pipe(void)
 	return ret;
 }
 
-void live_stop_threads()
+void live_stop_threads(void)
 {
 	int ret;
 	void *status;
