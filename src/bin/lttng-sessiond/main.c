@@ -499,6 +499,12 @@ static void cleanup(void)
 	DBG("Removing directory %s", path);
 	(void) rmdir(path);
 
+	/*
+	 * We do NOT rmdir rundir because there are other processes
+	 * using it, for instance lttng-relayd, which can start in
+	 * parallel with this teardown.
+	 */
+
 	free(rundir);
 
 	DBG("Cleaning up all sessions");

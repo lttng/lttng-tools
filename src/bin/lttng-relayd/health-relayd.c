@@ -385,6 +385,11 @@ error:
 		}
 	}
 
+	/*
+	 * We do NOT rmdir rundir nor the relayd path because there are
+	 * other processes using them.
+	 */
+
 	lttng_poll_clean(&events);
 
 	rcu_unregister_thread();
