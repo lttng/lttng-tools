@@ -499,7 +499,6 @@ static void cleanup(void)
 	DBG("Removing directory %s", path);
 	(void) rmdir(path);
 
-	(void) rmdir(rundir);
 	free(rundir);
 
 	DBG("Cleaning up all sessions");
