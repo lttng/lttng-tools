@@ -782,7 +782,6 @@ static void update_ust_app(int app_sock)
 static void *thread_manage_kernel(void *data)
 {
 	int ret, i, pollfd, update_poll_flag = 1, err = -1;
-	ssize_t size_ret;
 	uint32_t revents, nb_fd;
 	char tmp;
 	struct lttng_poll_event events;

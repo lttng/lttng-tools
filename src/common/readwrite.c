@@ -15,9 +15,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <unistd.h>
-#include <errno.h>
 #include <assert.h>
+#include <errno.h>
+#include <unistd.h>
+
 #include "readwrite.h"
 
 /*
@@ -32,6 +33,9 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 {
 	size_t i = 0;
 	ssize_t ret;
+
+	assert(fd >= 0);
+	assert(buf);
 
 	do {
 		ret = read(fd, buf + i, count - i);
@@ -59,6 +63,9 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 {
 	size_t i = 0;
 	ssize_t ret;
+
+	assert(fd >= 0);
+	assert(buf);
 
 	do {
 		ret = write(fd, buf + i, count - i);
