@@ -15,8 +15,8 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _JUL_H
-#define _JUL_H
+#ifndef LTTNG_SESSIOND_JUL_H
+#define LTTNG_SESSIOND_JUL_H
 
 #define _GNU_SOURCE
 #include <inttypes.h>
@@ -134,4 +134,4 @@ int jul_disable_event(struct jul_event *event);
 void jul_update(struct jul_domain *domain, int sock);
 int jul_list_events(struct lttng_event **events);
 
-#endif /* _JUL_H */
+#endif /* LTTNG_SESSIOND_JUL_H */
