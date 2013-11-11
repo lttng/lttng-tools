@@ -223,13 +223,10 @@ static int handle_registration(struct lttcomm_sock *reg_sock)
 	jul_add_app(app);
 
 	/*
-	 * Attach JUL application to a UST app object if one exists.
-	 *
-	 * FIXME: This implies that the UST app object exists and created before
-	 * JUL registration. Must confirm or else JUL app will leak until socket is
-	 * closed by the application.
+	 * We don't need to attach the JUL app to the app. If we ever do
+	 * so, we should consider both registration order of JUL before
+	 * app and app before JUL.
 	 */
-	jul_attach_app(app);
 
 	return new_sock->fd;
 
@@ -317,10 +314,6 @@ restart:
 					goto error;
 				}
 
-				/*
-				 * FIXME: Should we try to invalidate the JUL socket in the
-				 * associated ust app.
-				 */
 				destroy_jul_app(pollfd);
 			} else if (revents & (LPOLLIN)) {
 				int new_fd;

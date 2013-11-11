@@ -54,14 +54,6 @@ struct jul_app {
 	 */
 	struct lttcomm_sock *sock;
 
-	/*
-	 * Associated UST app. socket. To get a reference to the ust application
-	 * object corresponding to that socket, a lookup MUST be done each time
-	 * since there is important synchronization issue for the lockless hash
-	 * table shared accross multiple threads.
-	 */
-	int ust_app_sock;
-
 	/* Initialized with the JUL sock value. */
 	struct lttng_ht_node_ulong node;
 };
@@ -124,8 +116,6 @@ struct jul_app *jul_create_app(pid_t pid, struct lttcomm_sock *sock);
 void jul_add_app(struct jul_app *app);
 void jul_delete_app(struct jul_app *app);
 struct jul_app *jul_find_app_by_sock(int sock);
-void jul_attach_app(struct jul_app *japp);
-void jul_detach_app(struct jul_app *app);
 void jul_destroy_app(struct jul_app *app);
 
 /* JUL action API */

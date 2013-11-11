@@ -494,8 +494,6 @@ struct jul_app *jul_create_app(pid_t pid, struct lttcomm_sock *sock)
 
 	app->pid = pid;
 	app->sock = sock;
-	/* Flag it invalid until assignation. */
-	app->ust_app_sock = -1;
 	lttng_ht_node_init_ulong(&app->node, (unsigned long) app->sock->fd);
 
 error:
@@ -544,59 +542,6 @@ void jul_add_app(struct jul_app *app)
 	rcu_read_lock();
 	lttng_ht_add_unique_ulong(jul_apps_ht_by_sock, &app->node);
 	rcu_read_unlock();
-}
-
-/*
- * Attach a given JUL application to an UST app object. This is done by copying
- * the socket fd value into the ust app obj. atomically.
- */
-void jul_attach_app(struct jul_app *japp)
-{
-	struct ust_app *uapp;
-
-	assert(japp);
-
-	rcu_read_lock();
-	uapp = ust_app_find_by_pid(japp->pid);
-	if (!uapp) {
-		goto end;
-	}
-
-	uatomic_set(&uapp->jul_app_sock, japp->sock->fd);
-
-	DBG3("JUL app pid: %d, sock: %d attached to UST app.", japp->pid,
-			japp->sock->fd);
-
-end:
-	rcu_read_unlock();
-	return;
-}
-
-/*
- * Remove JUL app. reference from an UST app object and set it to NULL.
- */
-void jul_detach_app(struct jul_app *japp)
-{
-	struct ust_app *uapp;
-
-	assert(japp);
-
-	rcu_read_lock();
-
-	if (japp->ust_app_sock < 0) {
-		goto end;
-	}
-
-	uapp = ust_app_find_by_sock(japp->ust_app_sock);
-	if (!uapp) {
-		goto end;
-	}
-
-	uapp->jul_app_sock = -1;
-
-end:
-	rcu_read_unlock();
-	return;
 }
 
 /*
