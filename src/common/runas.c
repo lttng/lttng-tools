@@ -120,11 +120,7 @@ int child_run_as(void *_data)
 	int ret;
 	struct run_as_data *data = _data;
 	ssize_t writelen;
-	size_t writeleft, index;
-	union {
-		int i;
-		char c[sizeof(int)];
-	} sendret;
+	int sendret;
 
 	/*
 	 * Child: it is safe to drop egid and euid while sharing the
@@ -137,7 +133,7 @@ int child_run_as(void *_data)
 		ret = setegid(data->gid);
 		if (ret < 0) {
 			PERROR("setegid");
-			sendret.i = -1;
+			sendret = -1;
 			goto write_return;
 		}
 	}
@@ -145,7 +141,7 @@ int child_run_as(void *_data)
 		ret = seteuid(data->uid);
 		if (ret < 0) {
 			PERROR("seteuid");
-			sendret.i = -1;
+			sendret = -1;
 			goto write_return;
 		}
 	}
@@ -153,25 +149,17 @@ int child_run_as(void *_data)
 	 * Also set umask to 0 for mkdir executable bit.
 	 */
 	umask(0);
-	sendret.i = (*data->cmd)(data->data);
+	sendret = (*data->cmd)(data->data);
 
 write_return:
 	/* send back return value */
-	writeleft = sizeof(sendret);
-	index = 0;
-	do {
-		do {
-			writelen = write(data->retval_pipe, &sendret.c[index],
-					writeleft);
-		} while (writelen < 0 && errno == EINTR);
-		if (writelen < 0) {
-			PERROR("write");
-			return EXIT_FAILURE;
-		}
-		writeleft -= writelen;
-		index += writelen;
-	} while (writeleft > 0);
-	return EXIT_SUCCESS;
+	writelen = lttng_write(data->retval_pipe, &sendret, sizeof(sendret));
+	if (writelen < sizeof(sendret)) {
+		PERROR("lttng_write error");
+		return EXIT_FAILURE;
+	} else {
+		return EXIT_SUCCESS;
+	}
 }
 
 static
@@ -179,15 +167,12 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
 	struct run_as_data run_as_data;
 	int ret = 0;
+	ssize_t readlen;
 	int status;
 	pid_t pid;
 	int retval_pipe[2];
-	ssize_t readlen, readleft, index;
 	void *child_stack;
-	union {
-		int i;
-		char c[sizeof(int)];
-	} retval;
+	int retval;
 
 	/*
 	 * If we are non-root, we can only deal with our own uid.
@@ -203,7 +188,7 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	ret = pipe(retval_pipe);
 	if (ret < 0) {
 		PERROR("pipe");
-		retval.i = ret;
+		retval = ret;
 		goto end;
 	}
 	run_as_data.data = data;
@@ -217,7 +202,7 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		-1, 0);
 	if (child_stack == MAP_FAILED) {
 		PERROR("mmap");
-		retval.i = -ENOMEM;
+		retval = -ENOMEM;
 		goto close_pipe;
 	}
 	/*
@@ -228,22 +213,14 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		&run_as_data);
 	if (pid < 0) {
 		PERROR("clone");
-		retval.i = pid;
+		retval = pid;
 		goto unmap_stack;
 	}
 	/* receive return value */
-	readleft = sizeof(retval);
-	index = 0;
-	do {
-		readlen = read(retval_pipe[0], &retval.c[index], readleft);
-		if (readlen < 0) {
-			PERROR("read");
-			ret = -1;
-			break;
-		}
-		readleft -= readlen;
-		index += readlen;
-	} while (readleft > 0);
+	readlen = lttng_read(retval_pipe[0], &retval, sizeof(retval));
+	if (readlen < sizeof(retval)) {
+		ret = -1;
+	}
 
 	/*
 	 * Parent: wait for child to return, in which case the
@@ -252,13 +229,13 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	pid = waitpid(pid, &status, 0);
 	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		PERROR("wait");
-		retval.i = -1;
+		retval = -1;
 	}
 unmap_stack:
 	ret = munmap(child_stack, RUNAS_CHILD_STACK_SIZE);
 	if (ret < 0) {
 		PERROR("munmap");
-		retval.i = ret;
+		retval = ret;
 	}
 close_pipe:
 	ret = close(retval_pipe[0]);
@@ -270,7 +247,7 @@ close_pipe:
 		PERROR("close");
 	}
 end:
-	return retval.i;
+	return retval;
 }
 
 /*

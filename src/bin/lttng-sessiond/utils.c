@@ -32,34 +32,30 @@ int ht_cleanup_pipe[2] = { -1, -1 };
  */
 int notify_thread_pipe(int wpipe)
 {
-	int ret;
+	ssize_t ret;
 
 	/* Ignore if the pipe is invalid. */
 	if (wpipe < 0) {
 		return 0;
 	}
 
-	do {
-		ret = write(wpipe, "!", 1);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	ret = lttng_write(wpipe, "!", 1);
+	if (ret < 1) {
 		PERROR("write poll pipe");
 	}
 
-	return ret;
+	return (int) ret;
 }
 
 void ht_cleanup_push(struct lttng_ht *ht)
 {
-	int ret;
+	ssize_t ret;
 	int fd = ht_cleanup_pipe[1];
 
 	if (fd < 0)
 		return;
-	do {
-		ret = write(fd, &ht, sizeof(ht));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != sizeof(ht)) {
+	ret = lttng_write(fd, &ht, sizeof(ht));
+	if (ret < sizeof(ht)) {
 		PERROR("write ht cleanup pipe %d", fd);
 		if (ret < 0) {
 			ret = -errno;

@@ -81,6 +81,7 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 		unsigned int offset, unsigned int len, char *data)
 {
 	int ret = 0;
+	int size_ret;
 	struct consumer_metadata_cache *cache;
 
 	assert(channel);
@@ -109,10 +110,11 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 
 		cache->contiguous = cache->max_offset;
 		if (channel->monitor) {
-			ret = write(channel->metadata_stream->ust_metadata_poll_pipe[1],
+			size_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
 					&dummy, 1);
-			if (ret < 1) {
+			if (size_ret < 1) {
 				ERR("Wakeup UST metadata pipe");
+				ret = -1;
 				goto end;
 			}
 		}

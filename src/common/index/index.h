@@ -25,6 +25,6 @@
 
 int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 		uint64_t size, uint64_t count);
-int index_write(int fd, struct lttng_packet_index *index, size_t len);
+ssize_t index_write(int fd, struct lttng_packet_index *index, size_t len);
 
 #endif /* _INDEX_H */

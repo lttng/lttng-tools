@@ -35,6 +35,7 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 		uint64_t size, uint64_t count)
 {
 	int ret, fd = -1;
+	ssize_t size_ret;
 	struct lttng_packet_index_file_hdr hdr;
 	char fullpath[PATH_MAX];
 
@@ -65,11 +66,10 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 	hdr.index_major = htobe32(INDEX_MAJOR);
 	hdr.index_minor = htobe32(INDEX_MINOR);
 
-	do {
-		ret = write(fd, &hdr, sizeof(hdr));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
+	if (size_ret < sizeof(hdr)) {
 		PERROR("write index header");
+		ret = -1;
 		goto error;
 	}
 
@@ -90,19 +90,18 @@ error:
 /*
  * Write index values to the given fd of size len.
  *
- * Return 0 on success or else a negative value on error.
+ * Return "len" on success or else < len on error. errno contains error
+ * details.
  */
-int index_write(int fd, struct lttng_packet_index *index, size_t len)
+ssize_t index_write(int fd, struct lttng_packet_index *index, size_t len)
 {
-	int ret;
+	ssize_t ret;
 
 	assert(fd >= 0);
 	assert(index);
 
-	do {
-		ret = write(fd, index, len);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	ret = lttng_write(fd, index, len);
+	if (ret < len) {
 		PERROR("writing index file");
 	}
 

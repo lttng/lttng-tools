@@ -782,6 +782,7 @@ static void update_ust_app(int app_sock)
 static void *thread_manage_kernel(void *data)
 {
 	int ret, i, pollfd, update_poll_flag = 1, err = -1;
+	ssize_t size_ret;
 	uint32_t revents, nb_fd;
 	char tmp;
 	struct lttng_poll_event events;
@@ -871,9 +872,8 @@ static void *thread_manage_kernel(void *data)
 
 			/* Check for data on kernel pipe */
 			if (pollfd == kernel_poll_pipe[0] && (revents & LPOLLIN)) {
-				do {
-					ret = read(kernel_poll_pipe[0], &tmp, 1);
-				} while (ret < 0 && errno == EINTR);
+				(void) lttng_read(kernel_poll_pipe[0],
+					&tmp, 1);
 				/*
 				 * Ret value is useless here, if this pipe gets any actions an
 				 * update is required anyway.
@@ -1245,6 +1245,7 @@ error_poll:
 static void *thread_manage_apps(void *data)
 {
 	int i, ret, pollfd, err = -1;
+	ssize_t size_ret;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 
@@ -1320,10 +1321,8 @@ static void *thread_manage_apps(void *data)
 					int sock;
 
 					/* Empty pipe */
-					do {
-						ret = read(apps_cmd_pipe[0], &sock, sizeof(sock));
-					} while (ret < 0 && errno == EINTR);
-					if (ret < 0 || ret < sizeof(sock)) {
+					size_ret = lttng_read(apps_cmd_pipe[0], &sock, sizeof(sock));
+					if (size_ret < sizeof(sock)) {
 						PERROR("read apps cmd pipe");
 						goto error;
 					}
@@ -1406,7 +1405,7 @@ error_testpoint:
  */
 static int send_socket_to_thread(int fd, int sock)
 {
-	int ret;
+	ssize_t ret;
 
 	/*
 	 * It's possible that the FD is set as invalid with -1 concurrently just
@@ -1417,10 +1416,8 @@ static int send_socket_to_thread(int fd, int sock)
 		goto error;
 	}
 
-	do {
-		ret = write(fd, &sock, sizeof(sock));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != sizeof(sock)) {
+	ret = lttng_write(fd, &sock, sizeof(sock));
+	if (ret < sizeof(sock)) {
 		PERROR("write apps pipe %d", fd);
 		if (ret < 0) {
 			ret = -errno;
@@ -1431,7 +1428,7 @@ static int send_socket_to_thread(int fd, int sock)
 	/* All good. Don't send back the write positive ret value. */
 	ret = 0;
 error:
-	return ret;
+	return (int) ret;
 }
 
 /*

@@ -293,12 +293,10 @@ void cleanup(void)
 static
 int notify_thread_pipe(int wpipe)
 {
-	int ret;
+	ssize_t ret;
 
-	do {
-		ret = write(wpipe, "!", 1);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != 1) {
+	ret = lttng_write(wpipe, "!", 1);
+	if (ret < 1) {
 		PERROR("write poll pipe");
 	}
 
@@ -307,12 +305,10 @@ int notify_thread_pipe(int wpipe)
 
 static void notify_health_quit_pipe(int *pipe)
 {
-	int ret;
+	ssize_t ret;
 
-	do {
-		ret = write(pipe[1], "4", 1);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != 1) {
+	ret = lttng_write(pipe[1], "4", 1);
+	if (ret < 1) {
 		PERROR("write relay health quit");
 	}
 }
@@ -707,7 +703,8 @@ error_sock_control:
 static
 void *relay_thread_dispatcher(void *data)
 {
-	int ret, err = -1;
+	int err = -1;
+	ssize_t ret;
 	struct cds_wfq_node *node;
 	struct relay_command *relay_cmd = NULL;
 
@@ -742,12 +739,10 @@ void *relay_thread_dispatcher(void *data)
 			 * call is blocking so we can be assured that the data will be read
 			 * at some point in time or wait to the end of the world :)
 			 */
-			do {
-				ret = write(relay_cmd_pipe[1], relay_cmd,
-						sizeof(struct relay_command));
-			} while (ret < 0 && errno == EINTR);
+			ret = lttng_write(relay_cmd_pipe[1], relay_cmd,
+					sizeof(struct relay_command));
 			free(relay_cmd);
-			if (ret < 0 || ret != sizeof(struct relay_command)) {
+			if (ret < sizeof(struct relay_command)) {
 				PERROR("write cmd pipe");
 				goto error;
 			}
@@ -1248,7 +1243,7 @@ int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
  */
 static int write_padding_to_file(int fd, uint32_t size)
 {
-	int ret = 0;
+	ssize_t ret = 0;
 	char *zeros;
 
 	if (size == 0) {
@@ -1262,10 +1257,8 @@ static int write_padding_to_file(int fd, uint32_t size)
 		goto end;
 	}
 
-	do {
-		ret = write(fd, zeros, size);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != size) {
+	ret = lttng_write(fd, zeros, size);
+	if (ret < size) {
 		PERROR("write padding to file");
 	}
 
@@ -1283,6 +1276,7 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_command *cmd)
 {
 	int ret = htobe32(LTTNG_OK);
+	ssize_t size_ret;
 	struct relay_session *session = cmd->session;
 	struct lttcomm_relayd_metadata_payload *metadata_struct;
 	struct relay_stream *metadata_stream;
@@ -1339,11 +1333,9 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_unlock;
 	}
 
-	do {
-		ret = write(metadata_stream->fd, metadata_struct->payload,
-				payload_size);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != payload_size) {
+	size_ret = lttng_write(metadata_stream->fd, metadata_struct->payload,
+			payload_size);
+	if (size_ret < payload_size) {
 		ERR("Relay error writing metadata on file");
 		ret = -1;
 		goto end_unlock;
@@ -1984,6 +1976,7 @@ static
 int relay_process_data(struct relay_command *cmd)
 {
 	int ret = 0, rotate_index = 0;
+	ssize_t size_ret;
 	struct relay_stream *stream;
 	struct lttcomm_relayd_data_hdr data_hdr;
 	uint64_t stream_id;
@@ -2071,10 +2064,8 @@ int relay_process_data(struct relay_command *cmd)
 	}
 
 	/* Write data to stream output fd. */
-	do {
-		ret = write(stream->fd, data_buffer, data_size);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != data_size) {
+	size_ret = lttng_write(stream->fd, data_buffer, data_size);
+	if (size_ret < data_size) {
 		ERR("Relay error writing data to file");
 		ret = -1;
 		goto end_rcu_unlock;
@@ -2120,17 +2111,15 @@ int relay_add_connection(int fd, struct lttng_poll_event *events,
 		struct lttng_ht *relay_connections_ht)
 {
 	struct relay_command *relay_connection;
-	int ret;
+	ssize_t ret;
 
 	relay_connection = zmalloc(sizeof(struct relay_command));
 	if (relay_connection == NULL) {
 		PERROR("Relay command zmalloc");
 		goto error;
 	}
-	do {
-		ret = read(fd, relay_connection, sizeof(struct relay_command));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret < sizeof(struct relay_command)) {
+	ret = lttng_read(fd, relay_connection, sizeof(struct relay_command));
+	if (ret < sizeof(struct relay_command)) {
 		PERROR("read relay cmd pipe");
 		goto error_read;
 	}

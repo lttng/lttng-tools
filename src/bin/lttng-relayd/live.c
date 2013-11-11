@@ -106,16 +106,14 @@ void cleanup(void)
 static
 int notify_thread_pipe(int wpipe)
 {
-	int ret;
+	ssize_t ret;
 
-	do {
-		ret = write(wpipe, "!", 1);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != 1) {
+	ret = lttng_write(wpipe, "!", 1);
+	if (ret < 1) {
 		PERROR("write poll pipe");
 	}
 
-	return ret;
+	return (int) ret;
 }
 
 /*
@@ -374,7 +372,8 @@ error_sock_control:
 static
 void *thread_dispatcher(void *data)
 {
-	int ret, err = -1;
+	int err = -1;
+	ssize_t ret;
 	struct cds_wfq_node *node;
 	struct relay_command *relay_cmd = NULL;
 
@@ -411,12 +410,10 @@ void *thread_dispatcher(void *data)
 			 * so we can be assured that the data will be read at some point in
 			 * time or wait to the end of the world :)
 			 */
-			do {
-				ret = write(live_relay_cmd_pipe[1], relay_cmd,
-						sizeof(*relay_cmd));
-			} while (ret < 0 && errno == EINTR);
+			ret = lttng_write(live_relay_cmd_pipe[1], relay_cmd,
+					sizeof(*relay_cmd));
 			free(relay_cmd);
-			if (ret < 0 || ret != sizeof(struct relay_command)) {
+			if (ret < sizeof(struct relay_command)) {
 				PERROR("write cmd pipe");
 				goto error;
 			}
@@ -647,11 +644,8 @@ static int open_index(struct relay_viewer_stream *stream)
 	stream->index_read_fd = ret;
 	DBG("Opening index file %s in read only, (fd: %d)", fullpath, ret);
 
-	do {
-		health_code_update();
-		ret = read(stream->index_read_fd, &hdr, sizeof(hdr));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0) {
+	ret = lttng_read(stream->index_read_fd, &hdr, sizeof(hdr));
+	if (ret < sizeof(hdr)) {
 		PERROR("Reading index header");
 		goto error;
 	}
@@ -1064,11 +1058,8 @@ int viewer_get_next_index(struct relay_command *cmd,
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
 	}
 
-	do {
-		health_code_update();
-		ret = read(vstream->index_read_fd, &packet_index,
-				sizeof(packet_index));
-	} while (ret < 0 && errno == EINTR);
+	ret = lttng_read(vstream->index_read_fd, &packet_index,
+			sizeof(packet_index));
 	if (ret < sizeof(packet_index)) {
 		PERROR("Relay reading index file");
 		viewer_index.status = htobe32(VIEWER_INDEX_ERR);
@@ -1197,8 +1188,8 @@ int viewer_get_packet(struct relay_command *cmd)
 		PERROR("lseek");
 		goto error;
 	}
-	read_len = read(stream->read_fd, data, len);
-	if (read_len < (ssize_t) len) {
+	read_len = lttng_read(stream->read_fd, data, len);
+	if (read_len < len) {
 		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
 				stream->read_fd, be64toh(get_packet_info.offset));
 		goto error;
@@ -1320,8 +1311,8 @@ int viewer_get_metadata(struct relay_command *cmd)
 		goto error;
 	}
 
-	read_len = read(stream->read_fd, data, len);
-	if (read_len < (ssize_t) len) {
+	read_len = lttng_read(stream->read_fd, data, len);
+	if (read_len < len) {
 		PERROR("Relay reading metadata file");
 		goto error;
 	}
@@ -1453,11 +1444,8 @@ int add_connection(int fd, struct lttng_poll_event *events,
 		goto error;
 	}
 
-	do {
-		health_code_update();
-		ret = read(fd, relay_connection, sizeof(*relay_connection));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret < sizeof(*relay_connection)) {
+	ret = lttng_read(fd, relay_connection, sizeof(*relay_connection));
+	if (ret < sizeof(*relay_connection)) {
 		PERROR("read relay cmd pipe");
 		goto error_read;
 	}

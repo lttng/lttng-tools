@@ -457,6 +457,7 @@ int lttcomm_close_inet_sock(struct lttcomm_sock *sock)
 static unsigned long read_proc_value(const char *path)
 {
 	int ret, fd;
+	ssize_t size_ret;
 	long r_val;
 	unsigned long val = 0;
 	char buf[64];
@@ -466,11 +467,16 @@ static unsigned long read_proc_value(const char *path)
 		goto error;
 	}
 
-	ret = read(fd, buf, sizeof(buf));
-	if (ret < 0) {
+	size_ret = lttng_read(fd, buf, sizeof(buf));
+	/*
+	 * Allow reading a file smaller than buf, but keep space for
+	 * final \0.
+	 */
+	if (size_ret < 0 || size_ret >= sizeof(buf)) {
 		PERROR("read proc failed");
 		goto error_close;
 	}
+	buf[size_ret] = '\0';
 
 	errno = 0;
 	r_val = strtol(buf, NULL, 10);

@@ -345,8 +345,15 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 		ret = relayd_send_index(&relayd->control_sock, index,
 				stream->relayd_stream_id, stream->next_net_seq_num - 1);
 	} else {
-		ret = index_write(stream->index_fd, index,
+		ssize_t size_ret;
+
+		size_ret = index_write(stream->index_fd, index,
 				sizeof(struct lttng_packet_index));
+		if (size_ret < sizeof(struct lttng_packet_index)) {
+			ret = -1;
+		} else {
+			ret = 0;
+		}
 	}
 	if (ret < 0) {
 		goto error;

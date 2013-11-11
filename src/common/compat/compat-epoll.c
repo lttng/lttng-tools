@@ -250,6 +250,7 @@ error:
 void compat_epoll_set_max_size(void)
 {
 	int ret, fd;
+	size_t size_ret;
 	char buf[64];
 
 	poll_max_size = DEFAULT_POLL_SIZE;
@@ -259,11 +260,16 @@ void compat_epoll_set_max_size(void)
 		return;
 	}
 
-	ret = read(fd, buf, sizeof(buf));
-	if (ret < 0) {
+	size_ret = lttng_read(fd, buf, sizeof(buf));
+	/*
+	 * Allow reading a file smaller than buf, but keep space for
+	 * final \0.
+	 */
+	if (size_ret < 0 || size_ret >= sizeof(buf)) {
 		PERROR("read set max size");
 		goto error;
 	}
+	buf[size_ret] = '\0';
 
 	poll_max_size = atoi(buf);
 	if (poll_max_size == 0) {

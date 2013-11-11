@@ -1881,14 +1881,16 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	/* Ease our life for what's next. */
 	ustream = stream->ustream;
 
-	/* We can consume the 1 byte written into the wait_fd by UST */
+	/*
+	 * We can consume the 1 byte written into the wait_fd by UST.
+	 * Don't trigger error if we cannot read this one byte (read
+	 * returns 0), or if the error is EAGAIN or EWOULDBLOCK.
+	 */
 	if (stream->monitor && !stream->hangup_flush_done) {
 		ssize_t readlen;
 
-		do {
-			readlen = read(stream->wait_fd, &dummy, 1);
-		} while (readlen == -1 && errno == EINTR);
-		if (readlen == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+		readlen = lttng_read(stream->wait_fd, &dummy, 1);
+		if (readlen < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
 			ret = readlen;
 			goto end;
 		}

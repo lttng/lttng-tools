@@ -257,51 +257,23 @@ void lttng_pipe_destroy(struct lttng_pipe *pipe)
 /*
  * Read on a lttng pipe and put the data in buf of at least size count.
  *
- * Return 0 on success or else a negative errno message from read(2).
+ * Return "count" on success. Return < count on error. errno can be used
+ * to check the actual error.
  */
 ssize_t lttng_pipe_read(struct lttng_pipe *pipe, void *buf, size_t count)
 {
-	ssize_t ret, read_len, read_left, index;
+	ssize_t ret;
 
 	assert(pipe);
 	assert(buf);
 
 	lock_read_side(pipe);
-
 	if (!lttng_pipe_is_read_open(pipe)) {
-		ret = -EBADF;
+		ret = -1;
+		errno = EBADF;
 		goto error;
 	}
-
-	read_left = count;
-	index = 0;
-	do {
-		read_len = read(pipe->fd[0], buf + index, read_left);
-		if (read_len < 0) {
-			ret = -errno;
-			if (errno == EINTR) {
-				/* Read again. */
-				continue;
-			} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				/*
-				 * Return the number of bytes read up to this point if any.
-				 */
-				if (index) {
-					ret = index;
-				}
-				goto error;
-			} else {
-				PERROR("lttng pipe read");
-				goto error;
-			}
-		}
-		read_left -= read_len;
-		index += read_len;
-	} while (read_left > 0);
-
-	/* Everything went fine. */
-	ret = index;
-
+	ret = lttng_read(pipe->fd[0], buf, count);
 error:
 	unlock_read_side(pipe);
 	return ret;
@@ -310,52 +282,24 @@ error:
 /*
  * Write on a lttng pipe using the data in buf and size of count.
  *
- * Return 0 on success or else a negative errno message from write(2).
+ * Return "count" on success. Return < count on error. errno can be used
+ * to check the actual error.
  */
 ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
 		size_t count)
 {
-	ssize_t ret, write_len, write_left, index;
+	ssize_t ret;
 
 	assert(pipe);
 	assert(buf);
 
 	lock_write_side(pipe);
-
 	if (!lttng_pipe_is_write_open(pipe)) {
-		ret = -EBADF;
+		ret = -1;
+		errno = EBADF;
 		goto error;
 	}
-
-	write_left = count;
-	index = 0;
-	do {
-		write_len = write(pipe->fd[1], buf + index, write_left);
-		if (write_len < 0) {
-			ret = -errno;
-			if (errno == EINTR) {
-				/* Read again. */
-				continue;
-			} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				/*
-				 * Return the number of bytes read up to this point if any.
-				 */
-				if (index) {
-					ret = index;
-				}
-				goto error;
-			} else {
-				PERROR("lttng pipe write");
-				goto error;
-			}
-		}
-		write_left -= write_len;
-		index += write_len;
-	} while (write_left > 0);
-
-	/* Everything went fine. */
-	ret = index;
-
+	ret = lttng_write(pipe->fd[1], buf, count);
 error:
 	unlock_write_side(pipe);
 	return ret;

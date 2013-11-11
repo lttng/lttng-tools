@@ -28,6 +28,7 @@
 void *thread_ht_cleanup(void *data)
 {
 	int ret, i, pollfd, err = -1;
+	ssize_t size_ret;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 
@@ -100,11 +101,10 @@ restart:
 				goto error;
 			}
 
-			do {
-				/* Get socket from dispatch thread. */
-				ret = read(ht_cleanup_pipe[0], &ht, sizeof(ht));
-			} while (ret < 0 && errno == EINTR);
-			if (ret < 0 || ret < sizeof(ht)) {
+			/* Get socket from dispatch thread. */
+			size_ret = lttng_read(ht_cleanup_pipe[0], &ht,
+					sizeof(ht));
+			if (size_ret < sizeof(ht)) {
 				PERROR("ht cleanup notify pipe");
 				goto error;
 			}

@@ -31,6 +31,7 @@
 void *ust_thread_manage_notify(void *data)
 {
 	int i, ret, pollfd, err = -1;
+	ssize_t size_ret;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 
@@ -105,11 +106,10 @@ restart:
 					goto error;
 				}
 
-				do {
-					/* Get socket from dispatch thread. */
-					ret = read(apps_cmd_notify_pipe[0], &sock, sizeof(sock));
-				} while (ret < 0 && errno == EINTR);
-				if (ret < 0 || ret < sizeof(sock)) {
+				/* Get socket from dispatch thread. */
+				size_ret = lttng_read(apps_cmd_notify_pipe[0],
+						&sock, sizeof(sock));
+				if (size_ret < sizeof(sock)) {
 					PERROR("read apps notify pipe");
 					goto error;
 				}

@@ -96,12 +96,10 @@ static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 
 static void notify_health_quit_pipe(int *pipe)
 {
-	int ret;
+	ssize_t ret;
 
-	do {
-		ret = write(pipe[1], "4", 1);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != 1) {
+	ret = lttng_write(pipe[1], "4", 1);
+	if (ret < 1) {
 		PERROR("write consumer health quit");
 	}
 }
@@ -112,16 +110,17 @@ static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
 		enum consumer_channel_action action)
 {
 	struct consumer_channel_msg msg;
-	int ret;
+	ssize_t ret;
 
 	memset(&msg, 0, sizeof(msg));
 
 	msg.action = action;
 	msg.chan = chan;
 	msg.key = key;
-	do {
-		ret = write(ctx->consumer_channel_pipe[1], &msg, sizeof(msg));
-	} while (ret < 0 && errno == EINTR);
+	ret = lttng_write(ctx->consumer_channel_pipe[1], &msg, sizeof(msg));
+	if (ret < sizeof(msg)) {
+		PERROR("notify_channel_pipe write error");
+	}
 }
 
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx,
@@ -136,17 +135,18 @@ static int read_channel_pipe(struct lttng_consumer_local_data *ctx,
 		enum consumer_channel_action *action)
 {
 	struct consumer_channel_msg msg;
-	int ret;
+	ssize_t ret;
 
-	do {
-		ret = read(ctx->consumer_channel_pipe[0], &msg, sizeof(msg));
-	} while (ret < 0 && errno == EINTR);
-	if (ret > 0) {
-		*action = msg.action;
-		*chan = msg.chan;
-		*key = msg.key;
+	ret = lttng_read(ctx->consumer_channel_pipe[0], &msg, sizeof(msg));
+	if (ret < sizeof(msg)) {
+		ret = -1;
+		goto error;
 	}
-	return ret;
+	*action = msg.action;
+	*chan = msg.chan;
+	*key = msg.key;
+error:
+	return (int) ret;
 }
 
 /*
@@ -1117,12 +1117,11 @@ void lttng_consumer_cleanup(void)
  */
 void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 {
-	int ret;
+	ssize_t ret;
+
 	consumer_quit = 1;
-	do {
-		ret = write(ctx->consumer_should_quit[1], "4", 1);
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != 1) {
+	ret = lttng_write(ctx->consumer_should_quit[1], "4", 1);
+	if (ret < 1) {
 		PERROR("write consumer quit");
 	}
 
@@ -1296,15 +1295,13 @@ static int write_relayd_metadata_id(int fd,
 		struct lttng_consumer_stream *stream,
 		struct consumer_relayd_sock_pair *relayd, unsigned long padding)
 {
-	int ret;
+	ssize_t ret;
 	struct lttcomm_relayd_metadata_payload hdr;
 
 	hdr.stream_id = htobe64(stream->relayd_stream_id);
 	hdr.padding_size = htobe32(padding);
-	do {
-		ret = write(fd, (void *) &hdr, sizeof(hdr));
-	} while (ret < 0 && errno == EINTR);
-	if (ret < 0 || ret != sizeof(hdr)) {
+	ret = lttng_write(fd, (void *) &hdr, sizeof(hdr));
+	if (ret < sizeof(hdr)) {
 		/*
 		 * This error means that the fd's end is closed so ignore the perror
 		 * not to clubber the error output since this can happen in a normal
@@ -1326,7 +1323,7 @@ static int write_relayd_metadata_id(int fd,
 			stream->relayd_stream_id, padding);
 
 end:
-	return ret;
+	return (int) ret;
 }
 
 /*
@@ -1482,11 +1479,9 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	}
 
 	while (len > 0) {
-		do {
-			ret = write(outfd, mmap_base + mmap_offset, len);
-		} while (ret < 0 && errno == EINTR);
+		ret = lttng_write(outfd, mmap_base + mmap_offset, len);
 		DBG("Consumer mmap write() ret %zd (len %lu)", ret, len);
-		if (ret < 0) {
+		if (ret < len) {
 			/*
 			 * This is possible if the fd is closed on the other side (outfd)
 			 * or any write problem. It can be verbose a bit for a normal
@@ -2282,8 +2277,8 @@ restart:
 
 					pipe_len = lttng_pipe_read(ctx->consumer_metadata_pipe,
 							&stream, sizeof(stream));
-					if (pipe_len < 0) {
-						ERR("read metadata stream, ret: %zd", pipe_len);
+					if (pipe_len < sizeof(stream)) {
+						PERROR("read metadata stream");
 						/*
 						 * Continue here to handle the rest of the streams.
 						 */
@@ -2517,8 +2512,8 @@ void *consumer_thread_data_poll(void *data)
 			DBG("consumer_data_pipe wake up");
 			pipe_readlen = lttng_pipe_read(ctx->consumer_data_pipe,
 					&new_stream, sizeof(new_stream));
-			if (pipe_readlen < 0) {
-				ERR("Consumer data pipe ret %zd", pipe_readlen);
+			if (pipe_readlen < sizeof(new_stream)) {
+				PERROR("Consumer data pipe");
 				/* Continue so we can at least handle the current stream(s). */
 				continue;
 			}

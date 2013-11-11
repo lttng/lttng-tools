@@ -16,6 +16,8 @@
  */
 
 #include <unistd.h>
+#include <errno.h>
+#include <assert.h>
 #include "readwrite.h"
 
 /*
@@ -32,7 +34,7 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 	ssize_t ret;
 
 	do {
-		ret = read(fd, &buf[i], count - i);
+		ret = read(fd, buf + i, count - i);
 		if (ret < 0) {
 			if (errno == EINTR) {
 				continue;	/* retry operation */
@@ -59,7 +61,7 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 	ssize_t ret;
 
 	do {
-		ret = write(fd, &buf[i], count - i);
+		ret = write(fd, buf + i, count - i);
 		if (ret < 0) {
 			if (errno == EINTR) {
 				continue;	/* retry operation */
