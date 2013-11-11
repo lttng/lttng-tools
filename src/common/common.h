@@ -22,5 +22,6 @@
 #include "error.h"
 #include "macros.h"
 #include "runas.h"
+#include "readwrite.h"
 
 #endif /* _COMMON_H */
