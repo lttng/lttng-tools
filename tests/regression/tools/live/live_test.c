@@ -129,6 +129,7 @@ int establish_connection(void)
 	cmd.data_size = sizeof(connect);
 	cmd.cmd_version = 0;
 
+	memset(&connect, 0, sizeof(connect));
 	connect.major = htobe32(VERSION_MAJOR);
 	connect.minor = htobe32(VERSION_MINOR);
 	connect.type = htobe32(VIEWER_CLIENT_COMMAND);
@@ -230,6 +231,7 @@ int attach_session(int id)
 	cmd.data_size = sizeof(rq);
 	cmd.cmd_version = 0;
 
+	memset(&rq, 0, sizeof(rq));
 	rq.session_id = htobe64(id);
 	rq.seek = htobe32(VIEWER_SEEK_BEGINNING);
 
