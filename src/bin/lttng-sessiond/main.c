@@ -3921,7 +3921,7 @@ static void usage(void)
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
-	fprintf(stderr, "  -S, --sig-parent                   Send SIGCHLD to parent pid to notify readiness.\n");
+	fprintf(stderr, "  -S, --sig-parent                   Send SIGUSR1 to parent pid to notify readiness.\n");
 	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
 	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
 	fprintf(stderr, "  -p, --pidfile FILE                 Write a pid to FILE name overriding the default value.\n");
