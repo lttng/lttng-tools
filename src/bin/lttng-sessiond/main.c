@@ -20,6 +20,7 @@
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
+#include <paths.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -76,7 +77,11 @@ static int opt_daemon;
 static int opt_no_kernel;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
+static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
 static char *rundir;
+
+/* Set to 1 when a SIGUSR1 signal is received. */
+static int recv_child_signal;
 
 /*
  * Consumer daemon specific control data. Every value not initialized here is
@@ -3696,9 +3701,15 @@ static void *thread_manage_clients(void *data)
 
 	/*
 	 * Notify parent pid that we are ready to accept command for client side.
+	 * This ppid is the one from the external process that spawned us.
 	 */
 	if (opt_sig_parent) {
 		kill(ppid, SIGUSR1);
+	}
+
+	/* Notify the parent of the fork() process that we are ready. */
+	if (opt_daemon) {
+		kill(child_ppid, SIGUSR1);
 	}
 
 	if (testpoint(thread_manage_clients_before_loop)) {
@@ -4342,6 +4353,9 @@ static void sighandler(int sig)
 		DBG("SIGTERM caught");
 		stop_threads();
 		break;
+	case SIGUSR1:
+		CMM_STORE_SHARED(recv_child_signal, 1);
+		break;
 	default:
 		break;
 	}
@@ -4380,7 +4394,12 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
-	DBG("Signal handler set for SIGTERM, SIGPIPE and SIGINT");
+	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
+		PERROR("sigaction");
+		return ret;
+	}
+
+	DBG("Signal handler set for SIGTERM, SIGUSR1, SIGPIPE and SIGINT");
 
 	return ret;
 }
@@ -4465,6 +4484,95 @@ error:
 }
 
 /*
+ * Daemonize this process by forking and making the parent wait for the child
+ * to signal it indicating readiness. Once received, the parent successfully
+ * quits.
+ *
+ * The child process undergoes the same action that daemon(3) does meaning
+ * setsid, chdir, and dup /dev/null into 0, 1 and 2.
+ *
+ * Return 0 on success else -1 on error.
+ */
+static int daemonize(void)
+{
+	int ret;
+	pid_t pid;
+
+	/* Get parent pid of this process. */
+	child_ppid = getppid();
+
+	pid = fork();
+	if (pid < 0) {
+		PERROR("fork");
+		goto error;
+	} else if (pid == 0) {
+		int fd;
+		pid_t sid;
+
+		/* Child */
+
+		/*
+		 * Get the newly created parent pid so we can signal that process when
+		 * we are ready to operate.
+		 */
+		child_ppid = getppid();
+
+		sid = setsid();
+		if (sid < 0) {
+			PERROR("setsid");
+			goto error;
+		}
+
+		/* Try to change directory to /. If we can't well at least notify. */
+		ret = chdir("/");
+		if (ret < 0) {
+			PERROR("chdir");
+		}
+
+		fd = open(_PATH_DEVNULL, O_RDWR, 0);
+		if (fd < 0) {
+			PERROR("open %s", _PATH_DEVNULL);
+			/* Let 0, 1 and 2 open since we can't bind them to /dev/null. */
+		} else {
+			(void) dup2(fd, STDIN_FILENO);
+			(void) dup2(fd, STDOUT_FILENO);
+			(void) dup2(fd, STDERR_FILENO);
+			if (fd > 2) {
+				ret = close(fd);
+				if (ret < 0) {
+					PERROR("close");
+				}
+			}
+		}
+		goto end;
+	} else {
+		/* Parent */
+
+		/*
+		 * Waiting for child to notify this parent that it can exit. Note that
+		 * sleep() is interrupted before the 1 second delay as soon as the
+		 * signal is received, so it will not cause visible delay for the
+		 * user.
+		 */
+		while (!CMM_LOAD_SHARED(recv_child_signal)) {
+			sleep(1);
+		}
+
+		/*
+		 * From this point on, the parent can exit and the child is now an
+		 * operationnal session daemon ready to serve clients and applications.
+		 */
+		exit(EXIT_SUCCESS);
+	}
+
+end:
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
  * main
  */
 int main(int argc, char **argv)
@@ -4476,6 +4584,10 @@ int main(int argc, char **argv)
 	init_kernel_workarounds();
 
 	rcu_register_thread();
+
+	if ((ret = set_signal_handler()) < 0) {
+		goto error;
+	}
 
 	setup_consumerd_path();
 
@@ -4496,20 +4608,15 @@ int main(int argc, char **argv)
 	if (opt_daemon) {
 		int i;
 
-		/*
-		 * fork
-		 * child: setsid, close FD 0, 1, 2, chdir /
-		 * parent: exit (if fork is successful)
-		 */
-		ret = daemon(0, 0);
+		ret = daemonize();
 		if (ret < 0) {
-			PERROR("daemon");
 			goto error;
 		}
+
 		/*
-		 * We are in the child. Make sure all other file
-		 * descriptors are closed, in case we are called with
-		 * more opened file descriptors than the standard ones.
+		 * We are in the child. Make sure all other file descriptors are
+		 * closed, in case we are called with more opened file descriptors than
+		 * the standard ones.
 		 */
 		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
 			(void) close(i);
@@ -4699,10 +4806,6 @@ int main(int argc, char **argv)
 
 	ret = set_consumer_sockets(&ustconsumer32_data, rundir);
 	if (ret < 0) {
-		goto exit;
-	}
-
-	if ((ret = set_signal_handler()) < 0) {
 		goto exit;
 	}
 
