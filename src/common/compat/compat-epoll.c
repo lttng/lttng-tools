@@ -250,7 +250,7 @@ error:
 void compat_epoll_set_max_size(void)
 {
 	int ret, fd;
-	size_t size_ret;
+	ssize_t size_ret;
 	char buf[64];
 
 	poll_max_size = DEFAULT_POLL_SIZE;
