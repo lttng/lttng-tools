@@ -112,7 +112,7 @@ error:
 LTTNG_HIDDEN
 char *utils_expand_path(const char *path)
 {
-	const char *end_path = path;
+	const char *end_path = NULL;
 	char *next, *cut_path = NULL, *expanded_path = NULL;
 
 	/* Safety net */
@@ -120,38 +120,80 @@ char *utils_expand_path(const char *path)
 		goto error;
 	}
 
-	/* Find last token delimited by '/' */
-	while ((next = strpbrk(end_path + 1, "/"))) {
-		end_path = next;
-	}
-
-	/* Cut last token from original path */
-	cut_path = strndup(path, end_path - path);
-
+	/* Allocate memory for the expanded path */
 	expanded_path = zmalloc(PATH_MAX);
 	if (expanded_path == NULL) {
 		PERROR("zmalloc expand path");
 		goto error;
 	}
 
-	expanded_path = realpath((char *)cut_path, expanded_path);
-	if (expanded_path == NULL) {
-		switch (errno) {
-		case ENOENT:
-			ERR("%s: No such file or directory", cut_path);
-			break;
-		default:
-			PERROR("realpath utils expand path");
-			break;
+	/* If given path is already absolute */
+	if (*path == '/') {
+		strncpy(expanded_path, path, PATH_MAX);
+	/* Else, we have some work to do */
+	} else {
+		/* Pointer to the last char of the path */
+		const char *last_char = path + strlen(path) - 1;
+
+		end_path = path;
+
+		/* Split part that will be resolved by realpath (relative path from
+		 * current directory using ./ or ../ only) and part that could not
+		 * (directory names)
+		 */
+		while ((next = strpbrk(end_path, "/")) && (next != last_char)) {
+			end_path = next + 1;
+			if (strncmp(end_path, "./", 2) != 0 &&
+					strncmp(end_path, "../", 3) != 0) {
+				break;
+			}
 		}
+
+		/* If this is the end of the string, and we still can resolve it */
+		if (strncmp(end_path, "..\0", 3) == 0 ||
+				strncmp(end_path, ".\0", 2) == 0) {
+			end_path += strlen(end_path);
+		}
+
+		/* If the end part is the whole path, we are in the current dir */
+		if (end_path == path) {
+			cut_path = strdup(".");
+		/* Else, cut the resolvable part from original path */
+		} else {
+			cut_path = strndup(path, end_path - path);
+		}
+
+		/* Resolve the canonical path of the first part of the path */
+		expanded_path = realpath((char *)cut_path, expanded_path);
+		if (expanded_path == NULL) {
+			switch (errno) {
+			case ENOENT:
+				ERR("%s: No such file or directory", cut_path);
+				break;
+			default:
+				PERROR("realpath utils expand path");
+				break;
+			}
+			goto error;
+		}
+
+		/* Add end part to expanded path if not empty */
+		if (*end_path != 0) {
+			strncat(expanded_path, "/", PATH_MAX - strlen(expanded_path) - 1);
+			strncat(expanded_path, end_path,
+					PATH_MAX - strlen(expanded_path) - 1);
+		}
+	}
+
+	/* Resolve the internal './' and '../' strings */
+	next = utils_resolve_relative(expanded_path);
+	if (next == NULL) {
 		goto error;
 	}
 
-	/* Add end part to expanded path */
-	strncat(expanded_path, end_path, PATH_MAX - strlen(expanded_path) - 1);
-
+	free(expanded_path);
 	free(cut_path);
-	return expanded_path;
+	return next;
 
 error:
 	free(expanded_path);
