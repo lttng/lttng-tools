@@ -35,9 +35,9 @@ int check_env_var(const char *env)
 	return 0;
 }
 
-int __testpoint_thread_manage_clients(void)
+int __testpoint_sessiond_thread_manage_clients(void)
 {
-	const char *var = "LTTNG_THREAD_MANAGE_CLIENTS_TP_FAIL";
+	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS_TP_FAIL";
 
 	if (check_env_var(var)) {
 		return 1;
@@ -46,9 +46,9 @@ int __testpoint_thread_manage_clients(void)
 	return 0;
 }
 
-int __testpoint_thread_manage_apps(void)
+int __testpoint_sessiond_thread_manage_apps(void)
 {
-	const char *var = "LTTNG_THREAD_MANAGE_APPS_TP_FAIL";
+	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_APPS_TP_FAIL";
 
 	if (check_env_var(var)) {
 		return 1;
@@ -57,9 +57,9 @@ int __testpoint_thread_manage_apps(void)
 	return 0;
 }
 
-int __testpoint_thread_manage_kernel(void)
+int __testpoint_sessiond_thread_manage_kernel(void)
 {
-	const char *var = "LTTNG_THREAD_MANAGE_KERNEL_TP_FAIL";
+	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_KERNEL_TP_FAIL";
 
 	if (check_env_var(var)) {
 		return 1;
