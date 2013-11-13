@@ -17,7 +17,7 @@ LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 
 # Define test programs
 noinst_PROGRAMS = test_uri test_session test_kernel_data
-noinst_PROGRAMS += test_utils_parse_size_suffix test_utils_resolve_relative
+noinst_PROGRAMS += test_utils_parse_size_suffix test_utils_resolve_relative test_utils_expand_path
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -96,3 +96,8 @@ test_utils_parse_size_suffix_LDADD += $(UTILS_SUFFIX)
 test_utils_resolve_relative_SOURCES = test_utils_resolve_relative.c
 test_utils_resolve_relative_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
 test_utils_resolve_relative_LDADD += $(UTILS_SUFFIX)
+
+# expand_path unit test
+test_utils_expand_path_SOURCES = test_utils_expand_path.c
+test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+test_utils_expand_path_LDADD += $(UTILS_SUFFIX)

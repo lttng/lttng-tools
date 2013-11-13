@@ -4,3 +4,4 @@ unit/test_uri
 unit/test_ust_data
 unit/test_utils_parse_size_suffix
 unit/test_utils_resolve_relative
+unit/test_utils_expand_path
