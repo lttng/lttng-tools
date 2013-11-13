@@ -616,15 +616,15 @@ static int open_index(struct relay_viewer_stream *stream)
 	char fullpath[PATH_MAX];
 	struct lttng_packet_index_file_hdr hdr;
 
-	if (stream->tracefile_size > 0) {
-		/* For now we don't support on-disk ring buffer. */
-		ret = -1;
-		goto end;
+	if (stream->tracefile_count > 0) {
+		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s_%"
+				PRIu64 DEFAULT_INDEX_FILE_SUFFIX, stream->path_name,
+				stream->channel_name, stream->tracefile_count_current);
+	} else {
+		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s"
+				DEFAULT_INDEX_FILE_SUFFIX, stream->path_name,
+				stream->channel_name);
 	}
-
-	ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s"
-			DEFAULT_INDEX_FILE_SUFFIX, stream->path_name,
-			stream->channel_name);
 	if (ret < 0) {
 		PERROR("snprintf index path");
 		goto error;
@@ -663,7 +663,6 @@ static int open_index(struct relay_viewer_stream *stream)
 	ret = 0;
 
 error:
-end:
 	return ret;
 }
 
@@ -691,25 +690,60 @@ int init_viewer_stream(struct relay_stream *stream, int seek_last)
 		ret = -1;
 		goto error;
 	}
-
-	viewer_stream->read_fd = -1;
-	viewer_stream->index_read_fd = -1;
 	viewer_stream->session_id = stream->session->id;
 	viewer_stream->stream_handle = stream->stream_handle;
 	viewer_stream->path_name = strndup(stream->path_name,
 			LTTNG_VIEWER_PATH_MAX);
 	viewer_stream->channel_name = strndup(stream->channel_name,
 			LTTNG_VIEWER_NAME_MAX);
-	viewer_stream->total_index_received = stream->total_index_received;
-	viewer_stream->tracefile_size = stream->tracefile_size;
 	viewer_stream->tracefile_count = stream->tracefile_count;
 	viewer_stream->metadata_flag = stream->metadata_flag;
+	if (seek_last) {
+		viewer_stream->tracefile_count_current =
+			stream->tracefile_count_current;
+	} else {
+		viewer_stream->tracefile_count_current =
+			stream->oldest_tracefile_id;
+	}
 
-	if (seek_last && viewer_stream->total_index_received > 0) {
+	/*
+	 * The deletion of this ctf_trace object is only done in a call RCU of the
+	 * relay stream making it valid as long as we have the read side lock.
+	 */
+	viewer_stream->ctf_trace = stream->ctf_trace;
+	uatomic_inc(&viewer_stream->ctf_trace->refcount);
+
+	lttng_ht_node_init_u64(&viewer_stream->stream_n, stream->stream_handle);
+	lttng_ht_add_unique_u64(viewer_streams_ht, &viewer_stream->stream_n);
+
+	viewer_stream->index_read_fd = -1;
+	viewer_stream->read_fd = -1;
+
+	/*
+	 * This is to avoid a race between the initialization of this object and
+	 * the close of the given stream. If the stream is unable to find this
+	 * viewer stream when closing, this copy will at least take the latest
+	 * value.
+	 * We also need that for the seek_last.
+	 */
+	viewer_stream->total_index_received = stream->total_index_received;
+
+	/*
+	 * If we never received an index for the current stream, delay
+	 * the opening of the index, otherwise open it right now.
+	 */
+	if (viewer_stream->tracefile_count_current ==
+			stream->tracefile_count_current &&
+			viewer_stream->total_index_received == 0) {
+		viewer_stream->index_read_fd = -1;
+	} else {
 		ret = open_index(viewer_stream);
 		if (ret < 0) {
 			goto error;
 		}
+	}
+
+	if (seek_last && viewer_stream->index_read_fd > 0) {
 		ret = lseek(viewer_stream->index_read_fd,
 				viewer_stream->total_index_received *
 					sizeof(struct lttng_packet_index),
@@ -721,23 +755,73 @@ int init_viewer_stream(struct relay_stream *stream, int seek_last)
 			viewer_stream->total_index_received;
 	}
 
-	/*
-	 * This is to avoid a race between the initialization of this object and
-	 * the close of the given stream. If the stream is unable to find this
-	 * viewer stream when closing, this copy will at least take the latest
-	 * value.
-	 */
-	viewer_stream->total_index_received = stream->total_index_received;
+	ret = 0;
 
-	/*
-	 * The deletion of this ctf_trace object is only done in a call RCU of the
-	 * relay stream making it valid as long as we have the read side lock.
-	 */
-	viewer_stream->ctf_trace = stream->ctf_trace;
-	uatomic_inc(&viewer_stream->ctf_trace->refcount);
+error:
+	return ret;
+}
 
-	lttng_ht_node_init_u64(&viewer_stream->stream_n, stream->stream_handle);
-	lttng_ht_add_unique_u64(viewer_streams_ht, &viewer_stream->stream_n);
+/*
+ * Rotate a stream to the next tracefile.
+ *
+ * Returns 0 on success, a negative value on error.
+ */
+static
+int rotate_viewer_stream(struct relay_viewer_stream *viewer_stream,
+		struct relay_stream *stream)
+{
+	int ret;
+	uint64_t tracefile_id;
+
+	assert(viewer_stream);
+
+	tracefile_id = (viewer_stream->tracefile_count_current + 1) %
+		viewer_stream->tracefile_count;
+
+	if (stream) {
+		pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
+	}
+	/*
+	 * The writer and the reader are not working in the same
+	 * tracefile, we can read up to EOF, we don't care about the
+	 * total_index_received.
+	 */
+	if (!stream || (stream->tracefile_count_current != tracefile_id)) {
+		viewer_stream->close_write_flag = 1;
+	} else {
+		/*
+		 * We are opening a file that is still open in write, make
+		 * sure we limit our reading to the number of indexes
+		 * received.
+		 */
+		viewer_stream->close_write_flag = 0;
+		if (stream) {
+			viewer_stream->total_index_received =
+				stream->total_index_received;
+		}
+	}
+	viewer_stream->tracefile_count_current = tracefile_id;
+	pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
+
+	if (viewer_stream->abort_flag == 0) {
+		ret = close(viewer_stream->index_read_fd);
+		if (ret < 0) {
+			PERROR("close index file");
+		}
+		ret = close(viewer_stream->read_fd);
+		if (ret < 0) {
+			PERROR("close tracefile");
+		}
+	} else {
+		viewer_stream->abort_flag = 0;
+	}
+
+	viewer_stream->read_fd = -1;
+
+	ret = open_index(viewer_stream);
+	if (ret < 0) {
+		goto error;
+	}
 
 	ret = 0;
 
@@ -1033,23 +1117,42 @@ int viewer_get_next_index(struct relay_command *cmd,
 
 	rstream = relay_stream_find_by_id(vstream->stream_handle);
 	if (rstream) {
+		if (vstream->abort_flag) {
+			/* Rotate on abort (overwrite). */
+			DBG("Viewer rotate because of overwrite");
+			ret = rotate_viewer_stream(vstream, rstream);
+			if (ret < 0) {
+				goto end_unlock;
+			}
+		}
 		if (rstream->beacon_ts_end != -1ULL &&
 				vstream->last_sent_index == rstream->total_index_received) {
 			viewer_index.status = htobe32(VIEWER_INDEX_INACTIVE);
 			viewer_index.timestamp_end = htobe64(rstream->beacon_ts_end);
 			goto send_reply;
 		}
-
-		if (rstream->total_index_received <= vstream->last_sent_index) {
+		/*
+		 * Reader and writer are working in the same tracefile, so we care
+		 * about the number of index received and sent. Otherwise, we read
+		 * up to EOF.
+		 */
+		pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
+		if (rstream->tracefile_count_current == vstream->tracefile_count_current
+				&& rstream->total_index_received <= vstream->last_sent_index
+				&& !vstream->close_write_flag) {
+			pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 			/* No new index to send, retry later. */
 			viewer_index.status = htobe32(VIEWER_INDEX_RETRY);
 			goto send_reply;
 		}
-	} else if (!rstream &&
+		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
+	} else if (!rstream && vstream->close_write_flag &&
 			vstream->total_index_received == vstream->last_sent_index) {
-		/* Last index sent and stream closed */
+		/* Last index sent and current tracefile closed in write */
 		viewer_index.status = htobe32(VIEWER_INDEX_HUP);
 		goto send_reply;
+	} else {
+		vstream->close_write_flag = 1;
 	}
 
 	if (!vstream->ctf_trace->metadata_received ||
@@ -1061,8 +1164,30 @@ int viewer_get_next_index(struct relay_command *cmd,
 	ret = lttng_read(vstream->index_read_fd, &packet_index,
 			sizeof(packet_index));
 	if (ret < sizeof(packet_index)) {
-		PERROR("Relay reading index file");
-		viewer_index.status = htobe32(VIEWER_INDEX_ERR);
+		/*
+		 * The tracefile is closed in write, so we read up to EOF.
+		 */
+		if (vstream->close_write_flag == 1) {
+			viewer_index.status = htobe32(VIEWER_INDEX_RETRY);
+			/* Rotate on normal EOF */
+			ret = rotate_viewer_stream(vstream, rstream);
+			if (ret < 0) {
+				goto end_unlock;
+			}
+		} else {
+			/*
+			 * If the read fd was closed by the streaming side, the
+			 * abort_flag will be set to 1, otherwise it is an error.
+			 */
+			if (vstream->abort_flag != 1) {
+				PERROR("Relay reading index file");
+				viewer_index.status = htobe32(VIEWER_INDEX_ERR);
+				goto send_reply;
+			} else {
+				viewer_index.status = htobe32(VIEWER_INDEX_HUP);
+			}
+		}
+		goto send_reply;
 	} else {
 		viewer_index.status = htobe32(VIEWER_INDEX_OK);
 		vstream->last_sent_index++;
@@ -1155,8 +1280,14 @@ int viewer_get_packet(struct relay_command *cmd)
 	if (stream->read_fd < 0) {
 		char fullpath[PATH_MAX];
 
-		ret = snprintf(fullpath, PATH_MAX, "%s/%s", stream->path_name,
-				stream->channel_name);
+		if (stream->tracefile_count > 0) {
+			ret = snprintf(fullpath, PATH_MAX, "%s/%s_%" PRIu64, stream->path_name,
+					stream->channel_name,
+					stream->tracefile_count_current);
+		} else {
+			ret = snprintf(fullpath, PATH_MAX, "%s/%s", stream->path_name,
+					stream->channel_name);
+		}
 		if (ret < 0) {
 			goto error;
 		}
@@ -1185,14 +1316,32 @@ int viewer_get_packet(struct relay_command *cmd)
 
 	ret = lseek(stream->read_fd, be64toh(get_packet_info.offset), SEEK_SET);
 	if (ret < 0) {
-		PERROR("lseek");
-		goto error;
+		/*
+		 * If the read fd was closed by the streaming side, the
+		 * abort_flag will be set to 1, otherwise it is an error.
+		 */
+		if (stream->abort_flag == 0) {
+			PERROR("lseek");
+			goto error;
+		}
+		reply.status = htobe32(VIEWER_GET_PACKET_EOF);
+		goto send_reply;
 	}
 	read_len = lttng_read(stream->read_fd, data, len);
 	if (read_len < len) {
-		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
-				stream->read_fd, be64toh(get_packet_info.offset));
-		goto error;
+		/*
+		 * If the read fd was closed by the streaming side, the
+		 * abort_flag will be set to 1, otherwise it is an error.
+		 */
+		if (stream->abort_flag == 0) {
+			PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
+					stream->read_fd,
+					be64toh(get_packet_info.offset));
+			goto error;
+		} else {
+			reply.status = htobe32(VIEWER_GET_PACKET_EOF);
+			goto send_reply;
+		}
 	}
 	reply.status = htobe32(VIEWER_GET_PACKET_OK);
 	reply.len = htobe32(len);
@@ -1522,13 +1671,13 @@ void viewer_del_streams(uint64_t session_id)
 			continue;
 		}
 
-		if (stream->read_fd > 0) {
+		if (stream->read_fd >= 0) {
 			ret = close(stream->read_fd);
 			if (ret < 0) {
 				PERROR("close read_fd");
 			}
 		}
-		if (stream->index_read_fd > 0) {
+		if (stream->index_read_fd >= 0) {
 			ret = close(stream->index_read_fd);
 			if (ret < 0) {
 				PERROR("close index_read_fd");

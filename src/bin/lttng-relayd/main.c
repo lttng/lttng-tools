@@ -2039,10 +2039,62 @@ int relay_process_data(struct relay_command *cmd)
 	if (stream->tracefile_size > 0 &&
 			(stream->tracefile_size_current + data_size) >
 			stream->tracefile_size) {
+		struct relay_viewer_stream *vstream;
+		uint64_t new_id;
+
+		new_id = (stream->tracefile_count_current + 1) %
+			stream->tracefile_count;
+		/*
+		 * When we wrap-around back to 0, we start overwriting old
+		 * trace data.
+		 */
+		if (!stream->tracefile_overwrite && new_id == 0) {
+			stream->tracefile_overwrite = 1;
+		}
+		pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
+		if (stream->tracefile_overwrite) {
+			stream->oldest_tracefile_id =
+				(stream->oldest_tracefile_id + 1) %
+				stream->tracefile_count;
+		}
+		vstream = live_find_viewer_stream_by_id(stream->stream_handle);
+		if (vstream) {
+			/*
+			 * The viewer is reading a file about to be
+			 * overwritten. Close the FDs it is
+			 * currently using and let it handle the fault.
+			 */
+			if (vstream->tracefile_count_current == new_id) {
+				vstream->abort_flag = 1;
+				vstream->close_write_flag = 1;
+
+				ret = close(vstream->read_fd);
+				if (ret < 0) {
+					PERROR("close index");
+				}
+
+				ret = close(vstream->index_read_fd);
+				if (ret < 0) {
+					PERROR("close tracefile");
+				}
+				DBG("Streaming side setting abort_flag on stream %s_%lu\n",
+						stream->channel_name, new_id);
+			} else if (vstream->tracefile_count_current ==
+					stream->tracefile_count_current) {
+				/*
+				 * The reader and writer were in the
+				 * same trace file, inform the viewer
+				 * that no new index will ever be added
+				 * to this file.
+				 */
+				vstream->close_write_flag = 1;
+			}
+		}
 		ret = utils_rotate_stream_file(stream->path_name, stream->channel_name,
 				stream->tracefile_size, stream->tracefile_count,
 				relayd_uid, relayd_gid, stream->fd,
 				&(stream->tracefile_count_current), &stream->fd);
+		pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
 		if (ret < 0) {
 			ERR("Rotating stream output file");
 			goto end_rcu_unlock;

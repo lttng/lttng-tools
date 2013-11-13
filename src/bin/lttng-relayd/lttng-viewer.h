@@ -60,12 +60,14 @@ enum lttng_viewer_next_index_return_code {
 	VIEWER_INDEX_HUP	= 3, /* Index closed (trace destroyed). */
 	VIEWER_INDEX_ERR	= 4, /* Unknow error. */
 	VIEWER_INDEX_INACTIVE	= 5, /* Inactive stream beacon. */
+	VIEWER_INDEX_EOF	= 6, /* End of index file. */
 };
 
 enum lttng_viewer_get_packet_return_code {
 	VIEWER_GET_PACKET_OK		= 1,
 	VIEWER_GET_PACKET_RETRY		= 2,
 	VIEWER_GET_PACKET_ERR		= 3,
+	VIEWER_GET_PACKET_EOF		= 4,
 };
 
 enum lttng_viewer_get_metadata_return_code {

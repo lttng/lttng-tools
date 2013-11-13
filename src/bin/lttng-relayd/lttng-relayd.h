@@ -96,6 +96,8 @@ struct relay_stream {
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count;
 	uint64_t tracefile_count_current;
+	/* To inform the viewer up to where it can go back in time. */
+	uint64_t oldest_tracefile_id;
 
 	uint64_t total_index_received;
 	struct relay_viewer_stream *viewer_stream;
@@ -124,12 +126,24 @@ struct relay_stream {
 	 * timestamp end, when it is active, this field == -1ULL.
 	 */
 	uint64_t beacon_ts_end;
+	/*
+	 * To protect the update of the close_write_flag and the checks of
+	 * the tracefile_count_current.
+	 * It is taken before checking whenever we need to know if the
+	 * writer and reader are working in the same tracefile.
+	 */
+	pthread_mutex_t viewer_stream_rotation_lock;
 
 	/* Information telling us when to close the stream  */
 	unsigned int close_flag:1;
 	/* Indicate if the stream was initialized for a data pending command. */
 	unsigned int data_pending_check_done:1;
 	unsigned int metadata_flag:1;
+	/*
+	 * To detect when we start overwriting old data, it is used to
+	 * update the oldest_tracefile_id.
+	 */
+	unsigned int tracefile_overwrite:1;
 };
 
 /*
@@ -147,8 +161,6 @@ struct relay_viewer_stream {
 	char *channel_name;
 	uint64_t last_sent_index;
 	uint64_t total_index_received;
-	uint64_t tracefile_size;
-	uint64_t tracefile_size_current;
 	uint64_t tracefile_count;
 	uint64_t tracefile_count_current;
 	struct lttng_ht_node_u64 stream_n;
@@ -156,6 +168,16 @@ struct relay_viewer_stream {
 	struct ctf_trace *ctf_trace;
 	/* Information telling us if the stream is a metadata stream. */
 	unsigned int metadata_flag:1;
+	/*
+	 * Information telling us that the stream is closed in write, so
+	 * we don't expect new indexes and we can read up to EOF.
+	 */
+	unsigned int close_write_flag:1;
+	/*
+	 * If the streaming side closes a FD in use in the viewer side,
+	 * it sets this flag to inform that it is a normal error.
+	 */
+	unsigned int abort_flag:1;
 };
 
 /*
