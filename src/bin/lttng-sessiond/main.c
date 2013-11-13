@@ -866,13 +866,13 @@ static void *thread_manage_kernel(void *data)
 	 */
 	lttng_poll_init(&events);
 
-	if (testpoint(thread_manage_kernel)) {
+	if (testpoint(sessiond_thread_manage_kernel)) {
 		goto error_testpoint;
 	}
 
 	health_code_update();
 
-	if (testpoint(thread_manage_kernel_before_loop)) {
+	if (testpoint(sessiond_thread_manage_kernel_before_loop)) {
 		goto error_testpoint;
 	}
 
@@ -1052,7 +1052,7 @@ static void *thread_manage_consumer(void *data)
 restart:
 	health_poll_entry();
 
-	if (testpoint(thread_manage_consumer)) {
+	if (testpoint(sessiond_thread_manage_consumer)) {
 		goto error;
 	}
 
@@ -1325,7 +1325,7 @@ static void *thread_manage_apps(void *data)
 
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE);
 
-	if (testpoint(thread_manage_apps)) {
+	if (testpoint(sessiond_thread_manage_apps)) {
 		goto error_testpoint;
 	}
 
@@ -1341,7 +1341,7 @@ static void *thread_manage_apps(void *data)
 		goto error;
 	}
 
-	if (testpoint(thread_manage_apps_before_loop)) {
+	if (testpoint(sessiond_thread_manage_apps_before_loop)) {
 		goto error;
 	}
 
@@ -1827,7 +1827,7 @@ static void *thread_registration_apps(void *data)
 
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
 
-	if (testpoint(thread_registration_apps)) {
+	if (testpoint(sessiond_thread_registration_apps)) {
 		goto error_testpoint;
 	}
 
@@ -3758,7 +3758,7 @@ static void *thread_manage_clients(void *data)
 
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CMD);
 
-	if (testpoint(thread_manage_clients)) {
+	if (testpoint(sessiond_thread_manage_clients)) {
 		goto error_testpoint;
 	}
 
@@ -3797,7 +3797,7 @@ static void *thread_manage_clients(void *data)
 		kill(child_ppid, SIGUSR1);
 	}
 
-	if (testpoint(thread_manage_clients_before_loop)) {
+	if (testpoint(sessiond_thread_manage_clients_before_loop)) {
 		goto error;
 	}
 

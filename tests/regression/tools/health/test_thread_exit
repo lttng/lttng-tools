@@ -92,9 +92,9 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-THREAD=("LTTNG_THREAD_MANAGE_CLIENTS"
-	"LTTNG_THREAD_MANAGE_APPS"
-	"LTTNG_THREAD_REG_APPS")
+THREAD=("LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS"
+	"LTTNG_SESSIOND_THREAD_MANAGE_APPS"
+	"LTTNG_SESSIOND_THREAD_REG_APPS")
 
 ERROR_STRING=(
 	"Thread \"Session daemon command\" is not responding in component \"sessiond\"."
@@ -124,13 +124,13 @@ else
 	isroot=0
 fi
 
-skip $isroot "Root access is needed. Skipping LTTNG_THREAD_MANAGE_KERNEL tests." "3" ||
+skip $isroot "Root access is needed. Skipping LTTNG_SESSIOND_THREAD_MANAGE_KERNEL tests." "3" ||
 {
-	test_thread_exit "LTTNG_THREAD_MANAGE_KERNEL" "Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
+	test_thread_exit "LTTNG_SESSIOND_THREAD_MANAGE_KERNEL" "Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
 }
 
 rm -f ${STDOUT_PATH}
 rm -f ${STDERR_PATH}
 
 # TODO: Special case manage consumer, need to spawn consumer via commands.
-#"LTTNG_THREAD_MANAGE_CONSUMER"
+#"LTTNG_SESSIOND_THREAD_MANAGE_CONSUMER"

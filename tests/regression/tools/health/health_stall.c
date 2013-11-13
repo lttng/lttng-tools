@@ -38,9 +38,9 @@ int check_env_var(const char *env)
 	return 0;
 }
 
-int __testpoint_thread_manage_clients_before_loop(void)
+int __testpoint_sessiond_thread_manage_clients_before_loop(void)
 {
-	const char *var = "LTTNG_THREAD_MANAGE_CLIENTS_STALL";
+	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS_STALL";
 
 	if (check_env_var(var)) {
 		unsigned int sleep_time = STALL_TIME;
@@ -52,9 +52,9 @@ int __testpoint_thread_manage_clients_before_loop(void)
 	return 0;
 }
 
-int __testpoint_thread_manage_kernel_before_loop(void)
+int __testpoint_sessiond_thread_manage_kernel_before_loop(void)
 {
-	const char *var = "LTTNG_THREAD_MANAGE_KERNEL_STALL";
+	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_KERNEL_STALL";
 
 	if (check_env_var(var)) {
 		unsigned int sleep_time = STALL_TIME;
@@ -66,9 +66,9 @@ int __testpoint_thread_manage_kernel_before_loop(void)
 	return 0;
 }
 
-int __testpoint_thread_manage_apps_before_loop(void)
+int __testpoint_sessiond_thread_manage_apps_before_loop(void)
 {
-	const char *var = "LTTNG_THREAD_MANAGE_APPS_STALL";
+	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_APPS_STALL";
 
 	if (check_env_var(var)) {
 		unsigned int sleep_time = STALL_TIME;
