@@ -346,6 +346,9 @@ static int enable_events(char *session_name)
 			ret = CMD_ERROR;
 			goto error;
 		}
+		if (opt_loglevel) {
+			WARN("Kernel loglevels are not supported.");
+		}
 	}
 
 	/* Create lttng domain */
@@ -419,7 +422,7 @@ static int enable_events(char *session_name)
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_TRACEPOINT:
-				if (opt_loglevel) {
+				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
 					MSG("All %s tracepoints are enabled in channel %s for loglevel %s",
 							get_domain_str(dom.type),
 							print_channel_name(channel_name),
@@ -428,7 +431,6 @@ static int enable_events(char *session_name)
 					MSG("All %s tracepoints are enabled in channel %s",
 							get_domain_str(dom.type),
 							print_channel_name(channel_name));
-
 				}
 				break;
 			case LTTNG_EVENT_SYSCALL:
@@ -438,7 +440,7 @@ static int enable_events(char *session_name)
 				}
 				break;
 			case LTTNG_EVENT_ALL:
-				if (opt_loglevel) {
+				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
 					MSG("All %s events are enabled in channel %s for loglevel %s",
 							get_domain_str(dom.type),
 							print_channel_name(channel_name),
@@ -530,12 +532,6 @@ static int enable_events(char *session_name)
 						"for all syscalls.");
 			default:
 				ret = CMD_UNDEFINED;
-				goto error;
-			}
-
-			if (opt_loglevel) {
-				MSG("Kernel loglevels are not supported.");
-				ret = CMD_UNSUPPORTED;
 				goto error;
 			}
 
