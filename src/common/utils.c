@@ -36,6 +36,74 @@
 #include "defaults.h"
 
 /*
+ * Resolve the './' and '../' strings in the middle of a path using
+ * our very own way to do it, so that it works even if the directory
+ * does not exist
+ */
+LTTNG_HIDDEN
+char *utils_resolve_relative(const char *path)
+{
+	char *next, *previous, *slash, *start_path, *absolute_path = NULL;
+
+	/* Safety net */
+	if (path == NULL) {
+		goto error;
+	}
+
+	/* Allocate memory for the absolute path */
+	absolute_path = zmalloc(PATH_MAX);
+	if (absolute_path == NULL) {
+		PERROR("zmalloc expand path");
+		goto error;
+	}
+
+	/* Copy the path in the absolute path */
+	strncpy(absolute_path, path, PATH_MAX);
+
+	/* As long as we find '/./' in the path string */
+	while ((next = strstr(absolute_path, "/./"))) {
+
+		/* We prepare the start_path not containing it */
+		start_path = strndup(absolute_path, next - absolute_path);
+
+		/* And we concatenate it with the part after this string */
+		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 2);
+
+		free(start_path);
+	}
+
+	/* As long as we find '/../' in the path string */
+	while ((next = strstr(absolute_path, "/../"))) {
+		/* If the path starts with '/../', there's a problem */
+		if (next == absolute_path) {
+			ERR("%s: Path cannot be resolved", path);
+			goto error;
+		}
+
+		/* We find the last level of directory */
+		previous = absolute_path;
+		while ((slash = strpbrk(previous + 1, "/")) && slash != next) {
+			previous = slash;
+		}
+
+		/* Then we prepare the start_path not containing it */
+		start_path = strndup(absolute_path, previous - absolute_path);
+
+		/* And we concatenate it with the part after the '/../' */
+		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 3);
+
+		free(start_path);
+	}
+
+	return absolute_path;
+
+error:
+	free(absolute_path);
+	return NULL;
+}
+
+
+/*
  * Return the realpath(3) of the path even if the last directory token does not
  * exist. For example, with /tmp/test1/test2, if test2/ does not exist but the
  * /tmp/test1 does, the real path is returned. In normal time, realpath(3)
