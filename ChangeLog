@@ -1,3 +1,13 @@
+2013-11-13 lttng-tools 2.3.1
+	* Fix: typo in --sig-parent help
+	* Fix: application SIGBUS when starting in parallel with sessiond
+	* Fix: missing LTTNG_OK return value for snapshot
+	* Fix: arguments in the wrong order for fd-limit
+	* Fix: Some corrections to the lttng man page
+	* Fix: recv creds comm should handle partial receive
+	* Fix: set app socket timeout just after accept()
+	* Fix typo in lttng snapshot add-output example of lttng(1)
+
 2013-09-03 lttng-tools 2.3.0
 	* Fix: remove periodical flush test from make check
 
