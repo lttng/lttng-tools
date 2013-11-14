@@ -734,21 +734,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-
-	/* figure out correct command type, based on if we have a filter or exclusions */
-	if (exclusion_count == 0) {
-		if (filter_expression == NULL) {
-			if (ev->name[0] != '\0') {
-				lsm.cmd_type = LTTNG_ENABLE_EVENT;
-			} else {
-				lsm.cmd_type = LTTNG_ENABLE_ALL_EVENT;
-			}
-		} else {
-			lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_FILTER;
-		}
-	} else {
-		lsm.cmd_type = LTTNG_ENABLE_EVENT_WITH_EXCLUSION;
-	}
+	lsm.cmd_type = LTTNG_ENABLE_EVENT;
 
 	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 
@@ -869,9 +855,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	}
 
 	ret = lttng_ctl_ask_sessiond_varlen(&lsm, varlen_data,
-			LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count
-					+ lsm.u.enable.bytecode_len,
-			NULL);
+			(LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count) +
+			lsm.u.enable.bytecode_len, NULL);
 
 	if (lsm.u.enable.exclusion_count != 0) {
 		free(varlen_data);

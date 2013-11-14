@@ -80,8 +80,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_DISABLE_CONSUMER              = 19,
 	LTTNG_ENABLE_CONSUMER               = 20,
 	LTTNG_SET_CONSUMER_URI              = 21,
-	LTTNG_ENABLE_EVENT_WITH_FILTER      = 22,
-	LTTNG_ENABLE_EVENT_WITH_EXCLUSION   = 23,
+	/* 22 */
+	/* 23 */
 	LTTNG_DATA_PENDING                  = 24,
 	LTTNG_SNAPSHOT_ADD_OUTPUT           = 25,
 	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
