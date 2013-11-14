@@ -39,7 +39,7 @@
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 10
+#define NUM_TESTS 12
 
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
@@ -164,6 +164,46 @@ static void test_create_ust_event(void)
 	trace_ust_destroy_event(event);
 }
 
+static void test_create_ust_event_exclusion(void)
+{
+	struct ltt_ust_event *event;
+	struct lttng_event ev;
+	char *name;
+	struct lttng_event_exclusion *exclusion;
+
+	memset(&ev, 0, sizeof(ev));
+
+	/* make a wildcarded event name */
+	name = get_random_string();
+	name[strlen(name) - 1] = '*';
+	strncpy(ev.name, name, LTTNG_SYMBOL_NAME_LEN);
+
+	ev.type = LTTNG_EVENT_TRACEPOINT;
+	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+
+	/* set up an exclusion set */
+	exclusion = zmalloc(sizeof(*exclusion) + LTTNG_SYMBOL_NAME_LEN);
+	exclusion->count = 1;
+	strncpy((char *)(exclusion->names), get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+
+	event = trace_ust_create_event(&ev, NULL, exclusion);
+
+	ok(event != NULL, "Create UST event with exclusion");
+
+	ok(event->enabled == 0 &&
+	   event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
+	   strcmp(event->attr.name, ev.name) == 0 &&
+	   event->exclusion != NULL &&
+	   event->exclusion->count == 1 &&
+	   strcmp((char *)(event->exclusion->names), (char *)(exclusion->names)) == 0 &&
+	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
+	   "Validate UST event and exclusion");
+
+	free(exclusion);
+	trace_ust_destroy_event(event);
+}
+
+
 static void test_create_ust_context(void)
 {
 	struct lttng_event_context ectx;
@@ -190,6 +230,7 @@ int main(int argc, char **argv)
 	test_create_ust_channel();
 	test_create_ust_event();
 	test_create_ust_context();
+	test_create_ust_event_exclusion();
 
 	return exit_status();
 }
