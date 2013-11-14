@@ -1480,8 +1480,11 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 		exclusion_alloc_size = sizeof(struct lttng_ust_event_exclusion) +
 				LTTNG_UST_SYM_NAME_LEN * uevent->exclusion->count;
 		ua_event->exclusion = zmalloc(exclusion_alloc_size);
-		if (ua_event->exclusion) {
-			memcpy(ua_event->exclusion, uevent->exclusion, exclusion_alloc_size);
+		if (ua_event->exclusion == NULL) {
+			PERROR("malloc");
+		} else {
+			memcpy(ua_event->exclusion, uevent->exclusion,
+					exclusion_alloc_size);
 		}
 	}
 }
