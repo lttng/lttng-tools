@@ -575,6 +575,15 @@ running applications can be found under columns "PID" and "LWP" of the
   '$ctx.vtid == 1234'
 .fi
 
+.TP
+.BR "\-x, \-\-exclude LIST"
+Add exclusions to UST tracepoints:
+Events that match any of the items in the comma-separated LIST are not
+enabled, even if they match a wildcard definition of the event.
+
+This option is also applicable with the \fB\-a, \-\-all\fP option,
+in which case all UST tracepoints are enabled except the ones whose
+names match any of the items in LIST.
 .RE
 .PP
 
