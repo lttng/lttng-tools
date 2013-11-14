@@ -230,6 +230,13 @@ struct lttng_ust_filter_bytecode {
 	char data[0];
 } LTTNG_PACKED;
 
+#define LTTNG_UST_EXCLUSION_PADDING	32
+struct lttng_ust_event_exclusion {
+	uint32_t count;
+	char padding[LTTNG_UST_EXCLUSION_PADDING];
+	char names[LTTNG_UST_SYM_NAME_LEN][0];
+} LTTNG_PACKED;
+
 #define _UST_CMD(minor)				(minor)
 #define _UST_CMDR(minor, type)			(minor)
 #define _UST_CMDW(minor, type)			(minor)
