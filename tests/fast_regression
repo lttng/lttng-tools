@@ -7,6 +7,7 @@ regression/tools/live/test_ust_tracefile_count
 regression/tools/live/test_lttng_ust
 regression/tools/tracefile-limits/test_tracefile_count
 regression/tools/tracefile-limits/test_tracefile_size
+regression/tools/exclusion/test_exclusion
 regression/tools/snapshots/test_ust
 regression/tools/snapshots/test_ust_streaming
 regression/ust/before-after/test_before_after

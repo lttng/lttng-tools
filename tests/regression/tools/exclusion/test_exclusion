@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Event exclusion"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+LTTNG_BIN="lttng"
+STATS_BIN="$TESTDIR/utils/babelstats.pl"
+SESSION_NAME="test-exclusion"
+EV_EXCLUDE_NAME="tp:tptest2"
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-nevents"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NR_ITER=100
+NR_USEC_WAIT=1
+NUM_TESTS=9
+
+source $TESTDIR/utils/utils.sh
+
+function enable_ust_lttng_all_event_exclusion()
+{
+	sess_name="$1"
+	exclusion="$2"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -a -s $sess_name -u -x "$exclusion" 2>&1 >/dev/null
+
+	ok $? "Enable lttng event with event $EV_EXCLUDE_NAME excluded"
+}
+
+function run_apps
+{
+	 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
+}
+
+function wait_apps
+{
+	while [ -n "$(pidof $BIN_NAME)" ]; do
+		sleep 1
+	done
+	pass "Wait for application end"
+}
+
+function test_exclusion
+{
+	trace_path=$(mktemp -d)
+
+	# Create session
+	create_lttng_session $SESSION_NAME $trace_path
+
+	enable_ust_lttng_all_event_exclusion $SESSION_NAME $EV_EXCLUDE_NAME
+
+	# Trace apps
+	start_lttng_tracing $SESSION_NAME
+	run_apps
+	wait_apps
+	stop_lttng_tracing $SESSION_NAME
+
+	# Destroy session
+	destroy_lttng_session $SESSION_NAME
+
+	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $EV_EXCLUDE_NAME | grep -v index`
+	if [ ! -z "$stats" ]; then
+		fail "Excluded event $EV_EXCLUDE_NAME was found in trace!"
+	else
+		ok 0 "Validate trace exclusion output"
+		rm -rf $trace_path
+	fi
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner $TEST_DESC
+
+start_lttng_sessiond
+
+test_exclusion
+
+stop_lttng_sessiond
