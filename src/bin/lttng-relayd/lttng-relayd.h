@@ -169,6 +169,8 @@ struct relay_viewer_stream {
 	/*
 	 * This lock blocks only when the writer is about to start overwriting
 	 * a file currently read by the reader.
+	 *
+	 * This is nested INSIDE the viewer_stream_rotation_lock.
 	 */
 	pthread_mutex_t overwrite_lock;
 	/* Information telling us if the stream is a metadata stream. */
