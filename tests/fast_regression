@@ -3,6 +3,7 @@ regression/tools/filtering/test_unsupported_op
 regression/tools/filtering/test_valid_filter
 regression/tools/streaming/test_ust
 regression/tools/live/test_ust
+regression/tools/live/test_ust_tracefile_count
 regression/tools/live/test_lttng_ust
 regression/tools/tracefile-limits/test_tracefile_count
 regression/tools/tracefile-limits/test_tracefile_size

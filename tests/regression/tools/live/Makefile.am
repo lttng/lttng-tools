@@ -25,7 +25,7 @@ noinst_PROGRAMS = live_test
 EXTRA_DIST = live_test test_kernel
 
 if HAVE_LIBLTTNG_UST_CTL
-EXTRA_DIST += test_ust
+EXTRA_DIST += test_ust test_ust_tracefile_count
 endif
 
 live_test_SOURCES = live_test.c

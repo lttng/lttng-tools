@@ -166,6 +166,11 @@ struct relay_viewer_stream {
 	struct lttng_ht_node_u64 stream_n;
 	struct rcu_head rcu_node;
 	struct ctf_trace *ctf_trace;
+	/*
+	 * This lock blocks only when the writer is about to start overwriting
+	 * a file currently read by the reader.
+	 */
+	pthread_mutex_t overwrite_lock;
 	/* Information telling us if the stream is a metadata stream. */
 	unsigned int metadata_flag:1;
 	/*

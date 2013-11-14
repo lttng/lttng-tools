@@ -849,7 +849,10 @@ static void destroy_stream(struct relay_stream *stream)
 		 * lookup failure on the live thread side of a stream indicates
 		 * that the viewer stream index received value should be used.
 		 */
+		pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
 		vstream->total_index_received = stream->total_index_received;
+		vstream->close_write_flag = 1;
+		pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
 	}
 
 	/* Cleanup index of that stream. */
@@ -2065,18 +2068,9 @@ int relay_process_data(struct relay_command *cmd)
 			 * currently using and let it handle the fault.
 			 */
 			if (vstream->tracefile_count_current == new_id) {
+				pthread_mutex_lock(&vstream->overwrite_lock);
 				vstream->abort_flag = 1;
-				vstream->close_write_flag = 1;
-
-				ret = close(vstream->read_fd);
-				if (ret < 0) {
-					PERROR("close index");
-				}
-
-				ret = close(vstream->index_read_fd);
-				if (ret < 0) {
-					PERROR("close tracefile");
-				}
+				pthread_mutex_unlock(&vstream->overwrite_lock);
 				DBG("Streaming side setting abort_flag on stream %s_%lu\n",
 						stream->channel_name, new_id);
 			} else if (vstream->tracefile_count_current ==
@@ -2094,6 +2088,7 @@ int relay_process_data(struct relay_command *cmd)
 				stream->tracefile_size, stream->tracefile_count,
 				relayd_uid, relayd_gid, stream->fd,
 				&(stream->tracefile_count_current), &stream->fd);
+		stream->total_index_received = 0;
 		pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
 		if (ret < 0) {
 			ERR("Rotating stream output file");

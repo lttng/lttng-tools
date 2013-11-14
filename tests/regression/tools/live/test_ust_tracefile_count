@@ -1,0 +1,122 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Julien Desfossez <julien.desfossez@efficios.com>
+#                      David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Live - User space tracing with tracefile_count"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+SESSIOND_BIN="lttng-sessiond"
+RELAYD_BIN="lttng-relayd"
+LTTNG_BIN="lttng"
+BABELTRACE_BIN="babeltrace"
+NR_ITER=1
+NR_USEC_WAIT=1
+DELAY_USEC=2000000
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+SESSION_NAME="live"
+EVENT_NAME="tp:tptest"
+
+TRACE_PATH=$(mktemp -d)
+
+DIR=$(readlink -f $TESTDIR)
+
+source $TESTDIR/utils/utils.sh
+
+echo "$TEST_DESC"
+
+function setup_live_tracing()
+{
+	# Create session with default path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
+		-U net://localhost >/dev/null 2>&1
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --subbuf-size 16k -C 16k -W 10 -u chan1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$EVENT_NAME" -s $SESSION_NAME -u -c chan1 >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $SESSION_NAME >/dev/null 2>&1
+}
+
+function clean_live_tracing()
+{
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $SESSION_NAME >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $SESSION_NAME >/dev/null 2>&1
+	rm -rf $TRACE_PATH
+}
+
+if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
+	$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+	if [ $? -eq 1 ]; then
+		echo "Fail to start lttng-sessiond"
+		exit 1
+	fi
+	# Wait for sessiond to bootstrap
+	sleep 2
+fi
+
+opt="-o $TRACE_PATH"
+if [ -z $(pidof lt-$RELAYD_BIN) ]; then
+	$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1 &
+	if [ $? -eq 1 ]; then
+		echo "Fail to start lttng-relayd (opt: $opt)"
+		return 1
+	fi
+fi
+
+setup_live_tracing
+
+# Run app in background
+$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
+# Wait for app to complete
+while [ -n "$(pidof $TESTAPP_NAME)" ]; do
+	sleep 0.5
+done
+
+# Start the live test
+$TESTDIR/regression/tools/live/live_test
+
+clean_live_tracing
+
+# Kill the relayd
+PID_RELAYD=`pidof lt-$RELAYD_BIN`
+kill $PID_RELAYD >/dev/null 2>&1
+if [ $? -eq 1 ]; then
+	echo "Kill lttng-relayd (pid: $PID_RELAYD)"
+	exit 1
+else
+	out=1
+	while [ -n "$out" ]; do
+		out=$(pidof lt-$RELAYD_BIN)
+		sleep 0.5
+	done
+fi
+
+# Kill the sessiond
+PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
+kill $PID_SESSIOND >/dev/null 2>&1
+if [ $? -eq 1 ]; then
+	echo "Kill sessiond daemon"
+	exit 1
+else
+	out=1
+	while [ -n "$out" ]; do
+		out=$(pidof lt-$SESSIOND_BIN)
+		sleep 0.5
+	done
+fi
