@@ -851,6 +851,7 @@ static void destroy_stream(struct relay_stream *stream)
 		 */
 		pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
 		vstream->total_index_received = stream->total_index_received;
+		vstream->tracefile_count_last = stream->tracefile_count_current;
 		vstream->close_write_flag = 1;
 		pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
 	}

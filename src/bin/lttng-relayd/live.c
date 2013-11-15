@@ -698,6 +698,7 @@ int init_viewer_stream(struct relay_stream *stream, int seek_last)
 			LTTNG_VIEWER_NAME_MAX);
 	viewer_stream->tracefile_count = stream->tracefile_count;
 	viewer_stream->metadata_flag = stream->metadata_flag;
+	viewer_stream->tracefile_count_last = -1ULL;
 	if (seek_last) {
 		viewer_stream->tracefile_count_current =
 			stream->tracefile_count_current;
@@ -764,7 +765,7 @@ error:
 /*
  * Rotate a stream to the next tracefile.
  *
- * Returns 0 on success, a negative value on error.
+ * Returns 0 on success, 1 on EOF, a negative value on error.
  */
 static
 int rotate_viewer_stream(struct relay_viewer_stream *viewer_stream,
@@ -777,6 +778,15 @@ int rotate_viewer_stream(struct relay_viewer_stream *viewer_stream,
 
 	tracefile_id = (viewer_stream->tracefile_count_current + 1) %
 		viewer_stream->tracefile_count;
+	/*
+	 * Detect the last tracefile to open.
+	 */
+	if (viewer_stream->tracefile_count_last != -1ULL &&
+			viewer_stream->tracefile_count_last ==
+			viewer_stream->tracefile_count_current) {
+		ret = 1;
+		goto end;
+	}
 
 	if (stream) {
 		pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
@@ -832,6 +842,7 @@ int rotate_viewer_stream(struct relay_viewer_stream *viewer_stream,
 
 	ret = 0;
 
+end:
 error:
 	return ret;
 }
@@ -1130,6 +1141,9 @@ int viewer_get_next_index(struct relay_command *cmd,
 			ret = rotate_viewer_stream(vstream, rstream);
 			if (ret < 0) {
 				goto end_unlock;
+			} else if (ret == 1) {
+				viewer_index.status = htobe32(VIEWER_INDEX_HUP);
+				goto send_reply;
 			}
 		}
 		pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
@@ -1180,6 +1194,9 @@ int viewer_get_next_index(struct relay_command *cmd,
 		ret = rotate_viewer_stream(vstream, rstream);
 		if (ret < 0) {
 			goto end_unlock;
+		} else if (ret == 1) {
+			viewer_index.status = htobe32(VIEWER_INDEX_HUP);
+			goto send_reply;
 		}
 		goto send_reply;
 	}
@@ -1196,6 +1213,9 @@ int viewer_get_next_index(struct relay_command *cmd,
 			ret = rotate_viewer_stream(vstream, rstream);
 			if (ret < 0) {
 				goto end_unlock;
+			} else if (ret == 1) {
+				viewer_index.status = htobe32(VIEWER_INDEX_HUP);
+				goto send_reply;
 			}
 		} else {
 			PERROR("Relay reading index file %d",

@@ -163,6 +163,8 @@ struct relay_viewer_stream {
 	uint64_t total_index_received;
 	uint64_t tracefile_count;
 	uint64_t tracefile_count_current;
+	/* Stop after reading this tracefile. */
+	uint64_t tracefile_count_last;
 	struct lttng_ht_node_u64 stream_n;
 	struct rcu_head rcu_node;
 	struct ctf_trace *ctf_trace;
