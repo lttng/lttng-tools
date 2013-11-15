@@ -1,4 +1,4 @@
-AC_INIT([lttng-tools],[2.4.0-pre1],[dgoulet@efficios.com],[],[http://lttng.org])
+AC_INIT([lttng-tools],[2.4.0-rc1],[dgoulet@efficios.com],[],[http://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
@@ -18,8 +18,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="Dominus Vobiscum"
-version_description="A very succulent line-up of beers brewed at Microbrasserie Charlevoix. Elaborated starting from special malts and fermented with a Belgian yeast. These beers are refermented in bottle and will make you discover the richness of wheat, amber and triple styles."
+version_name="Époque Opaque"
+version_description="The Époque Opaque is a black IPA from Trou du Diable brewery. The nose is eerily reminiscent of the coffee crisp candy from of our childhood. These strong mocha accents are present on the palate, which are quickly subdued by Japanese and Australian hops leading to a final state of satisfaction enjoyable for any fan of bitter beer."
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
 AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description"], "")

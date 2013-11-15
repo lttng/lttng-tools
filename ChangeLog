@@ -1,3 +1,10 @@
+2013-11-15 lttng-tools 2.4.0-rc1
+	* Live streaming support
+	* Health check support in consumer and relayd
+	* Event exclusion support
+	* Java Util Logging support
+	* Multiple fixes! The diff is just too big to put here.
+
 2013-09-03 lttng-tools 2.3.0
 	* Fix: remove periodical flush test from make check
 
