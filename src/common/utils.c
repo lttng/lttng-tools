@@ -230,102 +230,87 @@ error:
 	return NULL;
 }
 
-
 /*
- * Return the realpath(3) of the path even if the last directory token does not
- * exist. For example, with /tmp/test1/test2, if test2/ does not exist but the
- * /tmp/test1 does, the real path is returned. In normal time, realpath(3)
- * fails if the end point directory does not exist.
+ * Make a full resolution of the given path even if it doesn't exist.
+ * This function uses the utils_partial_realpath function to resolve
+ * symlinks and relatives paths at the start of the string, and
+ * implements functionnalities to resolve the './' and '../' strings
+ * in the middle of a path. This function is only necessary because
+ * realpath(3) does not accept to resolve unexistent paths.
+ * The returned string was allocated in the function, it is thus of
+ * the responsibility of the caller to free this memory.
  */
 LTTNG_HIDDEN
 char *utils_expand_path(const char *path)
 {
-	const char *end_path = NULL;
-	char *next, *cut_path = NULL, *expanded_path = NULL;
+	char *next, *previous, *slash, *start_path, *absolute_path = NULL;
 
 	/* Safety net */
 	if (path == NULL) {
 		goto error;
 	}
 
-	/* Allocate memory for the expanded path */
-	expanded_path = zmalloc(PATH_MAX);
-	if (expanded_path == NULL) {
+	/* Allocate memory for the absolute_path */
+	absolute_path = zmalloc(PATH_MAX);
+	if (absolute_path == NULL) {
 		PERROR("zmalloc expand path");
 		goto error;
 	}
 
-	/* If given path is already absolute */
-	if (*path == '/') {
-		strncpy(expanded_path, path, PATH_MAX);
-	/* Else, we have some work to do */
+	/*
+	 * If the path is not already absolute nor explicitly relative,
+	 * consider we're in the current directory
+	 */
+	if (*path != '/' && strncmp(path, "./", 2) != 0 &&
+			strncmp(path, "../", 3) != 0) {
+		snprintf(absolute_path, PATH_MAX, "./%s", path);
+		/* Else, we just copy the path */
 	} else {
-		/* Pointer to the last char of the path */
-		const char *last_char = path + strlen(path) - 1;
-
-		end_path = path;
-
-		/* Split part that will be resolved by realpath (relative path from
-		 * current directory using ./ or ../ only) and part that could not
-		 * (directory names)
-		 */
-		while ((next = strpbrk(end_path, "/")) && (next != last_char)) {
-			end_path = next + 1;
-			if (strncmp(end_path, "./", 2) != 0 &&
-					strncmp(end_path, "../", 3) != 0) {
-				break;
-			}
-		}
-
-		/* If this is the end of the string, and we still can resolve it */
-		if (strncmp(end_path, "..\0", 3) == 0 ||
-				strncmp(end_path, ".\0", 2) == 0) {
-			end_path += strlen(end_path);
-		}
-
-		/* If the end part is the whole path, we are in the current dir */
-		if (end_path == path) {
-			cut_path = strdup(".");
-		/* Else, cut the resolvable part from original path */
-		} else {
-			cut_path = strndup(path, end_path - path);
-		}
-
-		/* Resolve the canonical path of the first part of the path */
-		expanded_path = realpath((char *)cut_path, expanded_path);
-		if (expanded_path == NULL) {
-			switch (errno) {
-			case ENOENT:
-				ERR("%s: No such file or directory", cut_path);
-				break;
-			default:
-				PERROR("realpath utils expand path");
-				break;
-			}
-			goto error;
-		}
-
-		/* Add end part to expanded path if not empty */
-		if (*end_path != 0) {
-			strncat(expanded_path, "/", PATH_MAX - strlen(expanded_path) - 1);
-			strncat(expanded_path, end_path,
-					PATH_MAX - strlen(expanded_path) - 1);
-		}
+		strncpy(absolute_path, path, PATH_MAX);
 	}
 
-	/* Resolve the internal './' and '../' strings */
-	next = utils_resolve_relative(expanded_path);
-	if (next == NULL) {
-		goto error;
+	/* Resolve partially our path */
+	absolute_path = utils_partial_realpath(absolute_path,
+			absolute_path, PATH_MAX);
+
+	/* As long as we find '/./' in the working_path string */
+	while ((next = strstr(absolute_path, "/./"))) {
+
+		/* We prepare the start_path not containing it */
+		start_path = strndup(absolute_path, next - absolute_path);
+
+		/* And we concatenate it with the part after this string */
+		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 2);
+
+		free(start_path);
 	}
 
-	free(expanded_path);
-	free(cut_path);
-	return next;
+	/* As long as we find '/../' in the working_path string */
+	while ((next = strstr(absolute_path, "/../"))) {
+		/* We find the last level of directory */
+		previous = absolute_path;
+		while ((slash = strpbrk(previous, "/")) && slash != next) {
+			previous = slash + 1;
+		}
+
+		/* Then we prepare the start_path not containing it */
+		start_path = strndup(absolute_path, previous - absolute_path);
+
+		/* And we concatenate it with the part after the '/../' */
+		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 4);
+
+		/* We can free the memory used for the start path*/
+		free(start_path);
+
+		/* Then we verify for symlinks using partial_realpath */
+		absolute_path = utils_partial_realpath(absolute_path,
+				absolute_path, PATH_MAX);
+	}
+
+	return absolute_path;
 
 error:
-	free(expanded_path);
-	free(cut_path);
+	free(absolute_path);
 	return NULL;
 }
 
