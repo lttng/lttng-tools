@@ -26,7 +26,6 @@
 #define MEBI_LOG2 20
 #define GIBI_LOG2 30
 
-char *utils_resolve_relative(const char *path);
 char *utils_partial_realpath(const char *path, char *resolved_path,
 		size_t size);
 char *utils_expand_path(const char *path);

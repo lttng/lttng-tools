@@ -56,7 +56,6 @@ tests/unit/test_session
 tests/unit/test_uri
 tests/unit/test_ust_data
 tests/unit/test_utils_parse_size_suffix
-tests/unit/test_utils_resolve_relative
 tests/unit/test_utils_expand_path
 kernel_all_events_basic
 kernel_event_basic
