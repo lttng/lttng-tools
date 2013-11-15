@@ -36,6 +36,134 @@
 #include "defaults.h"
 
 /*
+ * Return a partial realpath(3) of the path even if the full path does not
+ * exist. For instance, with /tmp/test1/test2/test3, if test2/ does not exist
+ * but the /tmp/test1 does, the real path for /tmp/test1 is concatened with
+ * /test2/test3 then returned. In normal time, realpath(3) fails if the end
+ * point directory does not exist.
+ * In case resolved_path is NULL, the string returned was allocated in the
+ * function and thus need to be freed by the caller. The size argument allows
+ * to specify the size of the resolved_path argument if given, or the size to
+ * allocate.
+ */
+LTTNG_HIDDEN
+char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
+{
+	char *cut_path, *try_path = NULL, *try_path_prev = NULL;
+	const char *next, *prev, *end;
+
+	/* Safety net */
+	if (path == NULL) {
+		goto error;
+	}
+
+	/*
+	 * Identify the end of the path, we don't want to treat the
+	 * last char if it is a '/', we will just keep it on the side
+	 * to be added at the end, and return a value coherent with
+	 * the path given as argument
+	 */
+	end = path + strlen(path);
+	if (*(end-1) == '/') {
+		end--;
+	}
+
+	/* Initiate the values of the pointers before looping */
+	next = path;
+	prev = next;
+	/* Only to ensure try_path is not NULL to enter the while */
+	try_path = (char *)next;
+
+	/* Resolve the canonical path of the first part of the path */
+	while (try_path != NULL && next != end) {
+		/*
+		 * If there is not any '/' left, we want to try with
+		 * the full path
+		 */
+		next = strpbrk(next + 1, "/");
+		if (next == NULL) {
+			next = end;
+		}
+
+		/* Cut the part we will be trying to resolve */
+		cut_path = strndup(path, next - path);
+
+		/* Try to resolve this part */
+		try_path = realpath((char *)cut_path, NULL);
+		if (try_path == NULL) {
+			/*
+			 * There was an error, we just want to be assured it
+			 * is linked to an unexistent directory, if it's another
+			 * reason, we spawn an error
+			 */
+			switch (errno) {
+			case ENOENT:
+				/* Ignore the error */
+				break;
+			default:
+				PERROR("realpath (partial_realpath)");
+				goto error;
+				break;
+			}
+		} else {
+			/* Save the place we are before trying the next step */
+			free(try_path_prev);
+			try_path_prev = try_path;
+			prev = next;
+		}
+
+		/* Free the allocated memory */
+		free(cut_path);
+	};
+
+	/* Allocate memory for the resolved path if necessary */
+	if (resolved_path == NULL) {
+		resolved_path = zmalloc(size);
+		if (resolved_path == NULL) {
+			PERROR("zmalloc resolved path");
+			goto error;
+		}
+	}
+
+	/*
+	 * If we were able to solve at least partially the path, we can concatenate
+	 * what worked and what didn't work
+	 */
+	if (try_path_prev != NULL) {
+		/* If we risk to concatenate two '/', we remove one of them */
+		if (try_path_prev[strlen(try_path_prev) - 1] == '/' && prev[0] == '/') {
+			try_path_prev[strlen(try_path_prev) - 1] = '\0';
+		}
+
+		/*
+		 * Duplicate the memory used by prev in case resolved_path and
+		 * path are pointers for the same memory space
+		 */
+		cut_path = strdup(prev);
+
+		/* Concatenate the strings */
+		snprintf(resolved_path, size, "%s%s", try_path_prev, cut_path);
+
+		/* Free the allocated memory */
+		free(cut_path);
+		free(try_path_prev);
+	/*
+	 * Else, we just copy the path in our resolved_path to
+	 * return it as is
+	 */
+	} else {
+		strncpy(resolved_path, path, size);
+	}
+
+	/* Then we return the 'partially' resolved path */
+	return resolved_path;
+
+error:
+	free(resolved_path);
+	return NULL;
+}
+
+/*
  * Resolve the './' and '../' strings in the middle of a path using
  * our very own way to do it, so that it works even if the directory
  * does not exist
