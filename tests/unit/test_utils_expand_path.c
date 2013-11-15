@@ -135,7 +135,8 @@ static void test_utils_expand_path(void)
 		sprintf(name, "valid test case: %s", valid_tests_inputs[i].input);
 
 		result = utils_expand_path(valid_tests_inputs[i].input);
-		ok(strcmp(result, valid_tests_expected_results[i]) == 0, name);
+		ok(result != NULL &&
+				strcmp(result, valid_tests_expected_results[i]) == 0, name);
 
 		free(result);
 	}
