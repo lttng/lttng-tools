@@ -802,26 +802,22 @@ int rotate_viewer_stream(struct relay_viewer_stream *viewer_stream,
 	}
 	viewer_stream->tracefile_count_current = tracefile_id;
 
-	if (viewer_stream->abort_flag == 0) {
-		if (viewer_stream->index_read_fd > 0) {
-			ret = close(viewer_stream->index_read_fd);
-			if (ret < 0) {
-				PERROR("close index file %d",
-						viewer_stream->index_read_fd);
-			}
-			viewer_stream->index_read_fd = -1;
-		}
-		if (viewer_stream->read_fd > 0) {
-			ret = close(viewer_stream->read_fd);
-			if (ret < 0) {
-				PERROR("close tracefile %d",
-						viewer_stream->read_fd);
-			}
-			viewer_stream->read_fd = -1;
-		}
-	} else {
-		viewer_stream->abort_flag = 0;
+	ret = close(viewer_stream->index_read_fd);
+	if (ret < 0) {
+		PERROR("close index file %d",
+				viewer_stream->index_read_fd);
 	}
+	viewer_stream->index_read_fd = -1;
+	ret = close(viewer_stream->read_fd);
+	if (ret < 0) {
+		PERROR("close tracefile %d",
+				viewer_stream->read_fd);
+	}
+	viewer_stream->read_fd = -1;
+
+	pthread_mutex_lock(&viewer_stream->overwrite_lock);
+	viewer_stream->abort_flag = 0;
+	pthread_mutex_unlock(&viewer_stream->overwrite_lock);
 
 	viewer_stream->index_read_fd = -1;
 	viewer_stream->read_fd = -1;
