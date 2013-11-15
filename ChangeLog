@@ -1,3 +1,11 @@
+2013-11-15 lttng-tools 2.2.5
+	* Fix: typo in --sig-parent help
+	* Fix: application SIGBUS when starting in parallel with sessiond
+	* Fix: arguments in the wrong order for fd-limit
+	* Fix: recv creds comm should handle partial receive
+	* Fix: backported fix uses msec vs sec in stable-2.2
+	* Fix: set app socket timeout just after accept()
+
 2013-08-30 lttng-tools 2.2.4
 	* Fix: hashtable: take split_count_order into account
 	* Fix: remove wrong doing asserts in sessiond
