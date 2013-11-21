@@ -4580,6 +4580,18 @@ static int daemonize(void)
 		 * user.
 		 */
 		while (!CMM_LOAD_SHARED(recv_child_signal)) {
+			int status;
+			pid_t ret;
+
+			/*
+			 * Check if child exists without blocking. If so, we have to stop
+			 * this parent process and return an error.
+			 */
+			ret = waitpid(pid, &status, WNOHANG);
+			if (ret < 0 || (ret != 0 && WIFEXITED(status))) {
+				/* The child exited somehow or was not valid. */
+				goto error;
+			}
 			sleep(1);
 		}
 
