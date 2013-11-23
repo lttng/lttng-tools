@@ -198,7 +198,7 @@ char *utils_expand_path(const char *path)
 	if (*path != '/' && strncmp(path, "./", 2) != 0 &&
 			strncmp(path, "../", 3) != 0) {
 		snprintf(absolute_path, PATH_MAX, "./%s", path);
-		/* Else, we just copy the path */
+	/* Else, we just copy the path */
 	} else {
 		strncpy(absolute_path, path, PATH_MAX);
 	}
