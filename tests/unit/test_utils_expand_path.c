@@ -21,6 +21,9 @@
 #include <stdlib.h>
 #include <limits.h>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <tap/tap.h>
 
 #include <src/common/utils.h>
@@ -33,6 +36,16 @@ struct valid_test_input {
 	char *input;
 	char *relative_part;
 	char *absolute_part;
+};
+
+struct tree_symlink {
+	char *orig;
+	char *dest;
+};
+
+struct symlink_test_input {
+	char *input;
+	char *expected_result;
 };
 
 /* Valid test cases */
@@ -62,12 +75,52 @@ char **valid_tests_expected_results;
 static const int num_valid_tests =
 		sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
 
+/* Symlinks test cases */
+char tree_origin[] = "/tmp/test_utils_expand_path.XXXXXX";
+
+static const char * const tree_dirs[] = {
+	"a",
+	"a/b",
+	"a/b/c",
+	"a/e",
+};
+static const int num_tree_dirs =
+		sizeof(tree_dirs) / sizeof(tree_dirs[0]);
+
+static struct tree_symlink tree_symlinks[] = {
+	{ "a/d",			"b/c/"		},
+	{ "a/g",			"d/"		},
+	{ "a/b/f",			"../e/"		},
+	{ "a/b/h",			"../g/"		},
+	{ "a/b/k",			"c/g/"		},
+	{ "a/b/c/g",			"../../../"	},
+};
+static const int num_tree_symlinks =
+		sizeof(tree_symlinks) / sizeof(tree_symlinks[0]);
+
+static struct symlink_test_input symlink_tests_inputs[] = {
+	{ "a/g/../l/.",			"a/b/l"		},
+	{ "a/g/../l/./",		"a/b/l/"	},
+	{ "a/g/../l/..",		"a/b"		},
+	{ "a/g/../l/../",		"a/b/"		},
+	{ "a/b/h/g/",			""		},
+};
+static const int num_symlink_tests =
+		sizeof(symlink_tests_inputs) / sizeof(symlink_tests_inputs[0]);
+
 /* Invalid test cases */
 static char *invalid_tests_inputs[] = {
 	NULL,
 };
 static const int num_invalid_tests =
 		sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
+
+#define ERRSIZE 100
+char errmsg[ERRSIZE];
+static void printerr(char *msg)
+{
+	fprintf(stderr, "test_utils_expand_path: error: %s\n", msg);
+}
 
 int prepare_valid_results()
 {
@@ -85,7 +138,7 @@ int prepare_valid_results()
 	for (i = 0; i < num_valid_tests; i++) {
 		valid_tests_expected_results[i] = malloc(PATH_MAX);
 		if (valid_tests_expected_results[i] == NULL) {
-			fprintf(stderr, "malloc expected results");
+			printerr("malloc expected results");
 			return 1;
 		}
 
@@ -124,14 +177,96 @@ int free_valid_results()
 	return 0;
 }
 
+int prepare_symlink_tree()
+{
+	int i;
+	char tmppath[PATH_MAX];
+
+	/* Create the temporary directory */
+	if (mkdtemp(tree_origin) == NULL) {
+		printerr("mkdtemp");
+		goto error;
+	}
+
+	/* Create the directories of the test tree */
+	for (i = 0; i < num_tree_dirs; i++) {
+		snprintf(tmppath, PATH_MAX, "%s/%s", tree_origin, tree_dirs[i]);
+
+		if (mkdir(tmppath, 0755) != 0) {
+			snprintf(errmsg, ERRSIZE, "mkdir %s", tmppath);
+			printerr(errmsg);
+			goto error;
+		}
+	}
+
+	/* Create the symlinks of the test tree */
+	for (i = 0; i < num_tree_symlinks; i++) {
+		snprintf(tmppath, PATH_MAX, "%s/%s",
+				tree_origin, tree_symlinks[i].orig);
+
+		if (symlink(tree_symlinks[i].dest, tmppath) != 0) {
+			snprintf(errmsg, ERRSIZE, "symlink %s to %s",
+					tmppath, tree_symlinks[i].dest);
+			printerr(errmsg);
+			goto error;
+		}
+	}
+
+	return 0;
+
+error:
+	return 1;
+}
+
+int free_symlink_tree()
+{
+	int i;
+	char tmppath[PATH_MAX];
+
+	/* Remove the symlinks from the test tree */
+	for (i =  num_tree_symlinks - 1; i > -1; i--) {
+		snprintf(tmppath, PATH_MAX, "%s/%s",
+				tree_origin, tree_symlinks[i].orig);
+
+		if (unlink(tmppath) != 0) {
+			snprintf(errmsg, ERRSIZE, "unlink %s", tmppath);
+			printerr(errmsg);
+			goto error;
+		}
+	}
+
+	/* Remove the directories from the test tree */
+	for (i = num_tree_dirs - 1; i > -1; i--) {
+		snprintf(tmppath, PATH_MAX, "%s/%s", tree_origin, tree_dirs[i]);
+
+		if (rmdir(tmppath) != 0) {
+			snprintf(errmsg, ERRSIZE, "rmdir %s", tmppath);
+			printerr(errmsg);
+			goto error;
+		}
+	}
+
+	/* Remove the temporary directory */
+	if (rmdir(tree_origin) != 0) {
+		snprintf(errmsg, ERRSIZE, "rmdir %s", tree_origin);
+		printerr(errmsg);
+		goto error;
+	}
+
+	return 0;
+
+error:
+	return 1;
+}
+
 static void test_utils_expand_path(void)
 {
 	char *result;
+	char name[100], tmppath[PATH_MAX];
 	int i;
 
 	/* Test valid cases */
 	for (i = 0; i < num_valid_tests; i++) {
-		char name[100];
 		sprintf(name, "valid test case: %s", valid_tests_inputs[i].input);
 
 		result = utils_expand_path(valid_tests_inputs[i].input);
@@ -141,9 +276,23 @@ static void test_utils_expand_path(void)
 		free(result);
 	}
 
+	/* Test symlink tree cases */
+	int treelen = strlen(tree_origin) + 1;
+	for (i = 0; i < num_symlink_tests; i++) {
+		sprintf(name, "symlink tree test case: [tmppath/]%s",
+				symlink_tests_inputs[i].input);
+
+		snprintf(tmppath, PATH_MAX, "%s/%s",
+				tree_origin, symlink_tests_inputs[i].input);
+		result = utils_expand_path(tmppath);
+		ok(result != NULL && strcmp(result + treelen,
+					symlink_tests_inputs[i].expected_result) == 0, name);
+
+		free(result);
+	}
+
 	/* Test invalid cases */
 	for (i = 0; i < num_invalid_tests; i++) {
-		char name[100];
 		sprintf(name, "invalid test case: %s", invalid_tests_inputs[i]);
 
 		result = utils_expand_path(invalid_tests_inputs[i]);
@@ -156,16 +305,30 @@ static void test_utils_expand_path(void)
 
 int main(int argc, char **argv)
 {
-	if (prepare_valid_results() != 0) {
-		return 1;
+	if (prepare_symlink_tree() != 0) {
+		goto error_mkdir;
 	}
 
-	plan_tests(num_valid_tests + num_invalid_tests);
+	if (prepare_valid_results() != 0) {
+		goto error_malloc;
+	}
+
+	plan_tests(num_valid_tests + num_invalid_tests + num_symlink_tests);
 
 	diag("utils_expand_path tests");
 
 	test_utils_expand_path();
 
 	free_valid_results();
+	free_symlink_tree();
+
 	return exit_status();
+
+error_malloc:
+	free_valid_results();
+
+error_mkdir:
+	free_symlink_tree();
+
+	return 1;
 }
