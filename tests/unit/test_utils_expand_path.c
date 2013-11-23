@@ -70,6 +70,8 @@ static struct valid_test_input valid_tests_inputs[] = {
 	{ ".",				".",		""		},
 	{ "/../a/b/c/d/e",		"",		"/a/b/c/d/e"	},
 	{ "/a/b/c/d/../../../../../e",	"",		"/e"		},
+	{ "/..",			"",		"/"		},
+	{ "/a/..",			"",		"/"		},
 };
 char **valid_tests_expected_results;
 static const int num_valid_tests =
