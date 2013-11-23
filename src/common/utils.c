@@ -178,6 +178,8 @@ LTTNG_HIDDEN
 char *utils_expand_path(const char *path)
 {
 	char *next, *previous, *slash, *start_path, *absolute_path = NULL;
+	char *last_token;
+	int is_dot, is_dotdot;
 
 	/* Safety net */
 	if (path == NULL) {
@@ -239,6 +241,31 @@ char *utils_expand_path(const char *path)
 		/* Then we verify for symlinks using partial_realpath */
 		absolute_path = utils_partial_realpath(absolute_path,
 				absolute_path, PATH_MAX);
+	}
+
+	/* Identify the last token */
+	last_token = strrchr(absolute_path, '/');
+
+	/* Verify that this token is not a relative path */
+	is_dotdot = (strcmp(last_token, "/..") == 0);
+	is_dot = (strcmp(last_token, "/.") == 0);
+
+	/* If it is, take action */
+	if (is_dot || is_dotdot) {
+		/* For both, remove this token */
+		*last_token = '\0';
+
+		/* If it was a reference to parent directory, go back one more time */
+		if (is_dotdot) {
+			last_token = strrchr(absolute_path, '/');
+
+			/* If there was only one level left, we keep the first '/' */
+			if (last_token == absolute_path) {
+				last_token++;
+			}
+
+			*last_token = '\0';
+		}
 	}
 
 	return absolute_path;
