@@ -156,11 +156,9 @@ function start_lttng_sessiond()
 	DIR=$(readlink -f $TESTDIR)
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
-		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1 &
 		status=$?
-		# Wait for sessiond to bootstrap
-		sleep 2
 		ok $status "Start session daemon"
 	fi
 }
