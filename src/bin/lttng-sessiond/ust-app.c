@@ -3176,12 +3176,13 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 			}
 
 			memcpy(tmp_event[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
-			tmp_event[count].type = uiter.type;
+			/* Mapping between these enums matches 1 to 1. */
+			tmp_event[count].type = (enum lttng_event_field_type) uiter.type;
 			tmp_event[count].nowrite = uiter.nowrite;
 
 			memcpy(tmp_event[count].event.name, uiter.event_name, LTTNG_UST_SYM_NAME_LEN);
 			tmp_event[count].event.loglevel = uiter.loglevel;
-			tmp_event[count].event.type = LTTNG_UST_TRACEPOINT;
+			tmp_event[count].event.type = LTTNG_EVENT_TRACEPOINT;
 			tmp_event[count].event.pid = app->pid;
 			tmp_event[count].event.enabled = -1;
 			count++;

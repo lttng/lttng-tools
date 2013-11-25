@@ -1810,7 +1810,14 @@ int cmd_calibrate(int domain, struct lttng_calibrate *calibrate)
 	{
 		struct lttng_kernel_calibrate kcalibrate;
 
-		kcalibrate.type = calibrate->type;
+		switch (calibrate->type) {
+		case LTTNG_CALIBRATE_FUNCTION:
+		default:
+			/* Default and only possible calibrate option. */
+			kcalibrate.type = LTTNG_KERNEL_CALIBRATE_KRETPROBE;
+			break;
+		}
+
 		ret = kernel_calibrate(kernel_tracer_fd, &kcalibrate);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
@@ -1822,7 +1829,14 @@ int cmd_calibrate(int domain, struct lttng_calibrate *calibrate)
 	{
 		struct lttng_ust_calibrate ucalibrate;
 
-		ucalibrate.type = calibrate->type;
+		switch (calibrate->type) {
+		case LTTNG_CALIBRATE_FUNCTION:
+		default:
+			/* Default and only possible calibrate option. */
+			ucalibrate.type = LTTNG_UST_CALIBRATE_TRACEPOINT;
+			break;
+		}
+
 		ret = ust_app_calibrate_glb(&ucalibrate);
 		if (ret < 0) {
 			ret = LTTNG_ERR_UST_CALIBRATE_FAIL;
