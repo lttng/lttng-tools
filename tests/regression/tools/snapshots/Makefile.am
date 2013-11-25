@@ -1,5 +1,5 @@
-noinst_SCRIPTS = test_kernel test_kernel_streaming test_ust test_ust_streaming
-EXTRA_DIST = test_kernel test_kernel_streaming test_ust test_ust_streaming
+noinst_SCRIPTS = test_kernel test_kernel_streaming test_ust_fast test_ust_long ust_test test_ust_streaming
+EXTRA_DIST = test_kernel test_kernel_streaming test_ust_fast test_ust_long ust_test test_ust_streaming
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

@@ -28,15 +28,23 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=2000000
 NR_USEC_WAIT=100
 
-TRACE_PATH=$(mktemp -d)
+NUM_TESTS=76
 
-NUM_TESTS=2076
+TRACE_PATH=$(mktemp -d)
 
 source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
+
+# Need the number of snapshot to do.
+if [ -z $1 ]; then
+	BAIL_OUT "A number of snapshot is needed."
+fi
+NR_SNAPSHOT=$1
+
+NUM_TESTS=$(($NUM_TESTS + ($NR_SNAPSHOT * 2)))
 
 function start_test_app()
 {
@@ -308,11 +316,9 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	fi
 }
 
-function test_ust_1000_local_snapshots ()
+function test_ust_local_snapshots ()
 {
-	NB_SNAP=1000
-
-	diag "Test $NB_SNAP local UST snapshots"
+	diag "Test $NR_SNAPSHOT local UST snapshots"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
@@ -322,8 +328,8 @@ function test_ust_1000_local_snapshots ()
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
 
-	for i in $(seq 1 $NB_SNAP); do
-		diag "Snapshot $i/$NB_SNAP"
+	for i in $(seq 1 $NR_SNAPSHOT); do
+		diag "Snapshot $i/$NR_SNAPSHOT"
 		rm -rf $TRACE_PATH/snapshot/* 2>/dev/null
 		lttng_snapshot_record $SESSION_NAME
 		# Validate test
@@ -345,12 +351,6 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-if [ "$(id -u)" == "0" ]; then
-	isroot=1
-else
-	isroot=0
-fi
-
 start_lttng_sessiond
 
 tests=( test_ust_list_output
@@ -359,7 +359,7 @@ tests=( test_ust_list_output
 	test_ust_per_uid_local_snapshot
 	test_ust_per_uid_local_snapshot_post_mortem
 	test_ust_local_snapshot_large_metadata
-	test_ust_1000_local_snapshots )
+	test_ust_local_snapshots)
 
 for fct_test in ${tests[@]};
 do
