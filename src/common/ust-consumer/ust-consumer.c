@@ -1964,14 +1964,14 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		goto end;
 	}
 
-	ret_code = lttng_ustconsumer_recv_metadata(ctx->consumer_metadata_socket,
+	ret = lttng_ustconsumer_recv_metadata(ctx->consumer_metadata_socket,
 			key, offset, len, channel, timer);
-	if (ret_code >= 0) {
+	if (ret >= 0) {
 		/*
 		 * Only send the status msg if the sessiond is alive meaning a positive
 		 * ret code.
 		 */
-		(void) consumer_send_status_msg(ctx->consumer_metadata_socket, ret_code);
+		(void) consumer_send_status_msg(ctx->consumer_metadata_socket, ret);
 	}
 	ret = 0;
 
