@@ -31,6 +31,11 @@ REQUIREMENTS:
 
       * Debian/Ubuntu package: libpopt-dev
 
+    - libuuid
+      Universally unique id library
+
+      * Debian/Ubuntu package: uuid-dev
+
     - Perl (optional)
       Needed for make check and tests.
 
