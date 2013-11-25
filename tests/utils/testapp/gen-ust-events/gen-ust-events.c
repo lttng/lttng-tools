@@ -15,7 +15,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include <assert.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +30,21 @@
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
+void create_file(const char *path)
+{
+	int ret;
+
+	assert(path);
+
+	ret = creat(path, S_IRWXU);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to create file %s\n", path);
+		return;
+	}
+
+	(void) close(ret);
+}
+
 int main(int argc, char **argv)
 {
 	int i, netint;
@@ -37,6 +54,7 @@ int main(int argc, char **argv)
 	float flt = 2222.0;
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
+	char *tmp_file_path = NULL;
 
 	if (argc >= 2) {
 		nr_iter = atoi(argv[1]);
@@ -47,10 +65,22 @@ int main(int argc, char **argv)
 		nr_usec = atoi(argv[2]);
 	}
 
+	if (argc == 4) {
+		tmp_file_path = argv[3];
+	}
+
 	for (i = 0; i < nr_iter; i++) {
 		netint = htonl(i);
-		tracepoint(tp, tptest, i, netint, values, text, strlen(text),
-			   dbl, flt);
+		tracepoint(tp, tptest, i, netint, values, text, strlen(text), dbl,
+				flt);
+
+		/*
+		 * First loop we create the file if asked to indicate that at least one
+		 * tracepoint has been hit.
+		 */
+		if (i == 0 && tmp_file_path) {
+			create_file(tmp_file_path);
+		}
 		usleep(nr_usec);
 	}
 

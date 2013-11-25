@@ -30,13 +30,37 @@ NR_USEC_WAIT=100
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=2075
+NUM_TESTS=2076
 
 source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
+
+function start_test_app()
+{
+	local tmp_file="/tmp/lttng_test_ust.42.file"
+
+	# Start application with a temporary file.
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
+	ok $? "Start application to trace"
+
+	# Wait for the application file to appear indicating that at least one
+	# tracepoint has been fired.
+	while [ ! -f "$tmp_file" ]; do
+		sleep 0.5
+	done
+	diag "Removing test app temporary file $tmp_file"
+	rm -f $tmp_file
+}
+
+function kill_test_app()
+{
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+}
 
 function snapshot_add_output ()
 {
@@ -123,8 +147,10 @@ function test_ust_local_snapshot ()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+
+	# Returns once the application has at least fired ONE tracepoint.
+	start_test_app
+
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -137,9 +163,8 @@ function test_ust_local_snapshot ()
 	else
 		break
 	fi
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+
+	kill_test_app
 }
 
 function test_ust_local_snapshot_max_size ()
@@ -160,8 +185,8 @@ function test_ust_local_snapshot_max_size ()
 
 	snapshot_add_output $SESSION_NAME "file://$TRACE_PATH" "" $max_size
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+	# Returns once the application has at least fired ONE tracepoint.
+	start_test_app
 
 	lttng_snapshot_record $SESSION_NAME
 
@@ -187,9 +212,7 @@ function test_ust_local_snapshot_max_size ()
 		rm -rf $TRACE_PATH
 	fi
 
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+	kill_test_app
 }
 
 function test_ust_local_snapshot_large_metadata ()
@@ -238,8 +261,10 @@ function test_ust_per_uid_local_snapshot ()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+
+	# Returns once the application has at least fired ONE tracepoint.
+	start_test_app
+
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -252,9 +277,8 @@ function test_ust_per_uid_local_snapshot ()
 	else
 		break
 	fi
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+
+	kill_test_app
 }
 
 function test_ust_per_uid_local_snapshot_post_mortem ()
@@ -265,11 +289,11 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+
+	# Returns once the application has at least fired ONE tracepoint.
+	start_test_app
+	kill_test_app
+
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -294,7 +318,10 @@ function test_ust_1000_local_snapshots ()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+
+	# Returns once the application has at least fired ONE tracepoint.
+	start_test_app
+
 	for i in $(seq 1 $NB_SNAP); do
 		diag "Snapshot $i/$NB_SNAP"
 		rm -rf $TRACE_PATH/snapshot/* 2>/dev/null
@@ -310,9 +337,8 @@ function test_ust_1000_local_snapshots ()
 	done
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+
+	kill_test_app
 }
 
 plan_tests $NUM_TESTS
