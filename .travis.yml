@@ -1,0 +1,39 @@
+env:
+  # You can also install binary packages instead to speed-up building
+  - URCU_REPO=git://git.lttng.org/userspace-rcu.git LTTNG_UST_REPO=git://git.lttng.org/lttng-ust.git BABELTRACE_REPO=git://git.efficios.com/babeltrace.git
+language: c
+compiler:
+  - gcc
+  - clang
+before_install:
+  - git clone $URCU_REPO ../urcu
+  - git clone $LTTNG_UST_REPO ../lttng-ust
+  - git clone $BABELTRACE_REPO ../babeltrace
+install:
+  - sudo apt-get install -qq libpopt-dev uuid-dev
+  - pushd ../urcu && ./bootstrap && ./configure && make && sudo make install && popd
+  - pushd ../lttng-ust && ./bootstrap && ./configure && make && sudo make install && popd
+  - pushd ../babeltrace && ./bootstrap && ./configure && make && sudo make install && popd
+  - sudo ldconfig
+    # Workaround for travis-ci/travis-cookbooks#155, https://github.com/travis-ci/travis-cookbooks/issues/155
+  - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
+script:
+  - ./bootstrap
+  - ./configure
+  - make
+  - make check
+branches:
+  only:
+    - master
+    - travis-ci
+    - /^bug*/
+
+#notifications:
+#  recipients:
+#    - test@test.com
+#  email:
+#    on_success: change
+#    on_failure: always
+#  irc:
+#    channels:
+#      - "irc.oftc.net#lttng"
