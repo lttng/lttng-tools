@@ -26,7 +26,7 @@
 
 #include <lttng/lttng.h>
 #include <common/defaults.h>
-#include <common/index/lttng-index.h>
+#include <common/index/ctf-index.h>
 #include <config.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR

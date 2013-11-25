@@ -115,7 +115,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 static int send_empty_index(struct lttng_consumer_stream *stream, uint64_t ts)
 {
 	int ret;
-	struct lttng_packet_index index;
+	struct ctf_packet_index index;
 
 	memset(&index, 0, sizeof(index));
 	index.timestamp_end = htobe64(ts);

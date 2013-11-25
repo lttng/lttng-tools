@@ -25,7 +25,7 @@
 #include <urcu/wfqueue.h>
 
 #include <common/hashtable/hashtable.h>
-#include <common/index/lttng-index.h>
+#include <common/index/ctf-index.h>
 
 #include "ctf-trace.h"
 

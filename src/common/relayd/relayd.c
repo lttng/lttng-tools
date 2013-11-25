@@ -26,7 +26,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/sessiond-comm/relayd.h>
-#include <common/index/lttng-index.h>
+#include <common/index/ctf-index.h>
 
 #include "relayd.h"
 
@@ -734,7 +734,7 @@ error:
  * Send index to the relayd.
  */
 int relayd_send_index(struct lttcomm_relayd_sock *rsock,
-		struct lttng_packet_index *index, uint64_t relay_stream_id,
+		struct ctf_packet_index *index, uint64_t relay_stream_id,
 		uint64_t net_seq_num)
 {
 	int ret;

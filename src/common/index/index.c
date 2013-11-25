@@ -36,7 +36,7 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 {
 	int ret, fd = -1;
 	ssize_t size_ret;
-	struct lttng_packet_index_file_hdr hdr;
+	struct ctf_packet_index_file_hdr hdr;
 	char fullpath[PATH_MAX];
 
 	ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR,
@@ -62,9 +62,10 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 	}
 	fd = ret;
 
-	memcpy(hdr.magic, INDEX_MAGIC, sizeof(hdr.magic));
-	hdr.index_major = htobe32(INDEX_MAJOR);
-	hdr.index_minor = htobe32(INDEX_MINOR);
+	hdr.magic = htobe32(CTF_INDEX_MAGIC);
+	hdr.index_major = htobe32(CTF_INDEX_MAJOR);
+	hdr.index_minor = htobe32(CTF_INDEX_MINOR);
+	hdr.packet_index_len = sizeof(struct ctf_packet_index);
 
 	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
 	if (size_ret < sizeof(hdr)) {
@@ -93,7 +94,7 @@ error:
  * Return "len" on success or else < len on error. errno contains error
  * details.
  */
-ssize_t index_write(int fd, struct lttng_packet_index *index, size_t len)
+ssize_t index_write(int fd, struct ctf_packet_index *index, size_t len)
 {
 	ssize_t ret;
 

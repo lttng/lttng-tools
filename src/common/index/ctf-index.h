@@ -27,25 +27,27 @@
 
 #include <limits.h>
 
-#define INDEX_MAGIC "CTFIDX"
-#define INDEX_MAJOR 1
-#define INDEX_MINOR 0
+#define CTF_INDEX_MAGIC 0xC1F1DCC1
+#define CTF_INDEX_MAJOR 1
+#define CTF_INDEX_MINOR 0
 
 /*
  * Header at the beginning of each index file.
  * All integer fields are stored in big endian.
  */
-struct lttng_packet_index_file_hdr {
-	char magic[6];
+struct ctf_packet_index_file_hdr {
+	uint32_t magic;
 	uint32_t index_major;
 	uint32_t index_minor;
+	/* struct packet_index_len, in bytes */
+	uint32_t packet_index_len;
 } __attribute__((__packed__));
 
 /*
  * Packet index generated for each trace packet store in a trace file.
  * All integer fields are stored in big endian.
  */
-struct lttng_packet_index {
+struct ctf_packet_index {
 	uint64_t offset;		/* offset of the packet in the file, in bytes */
 	uint64_t packet_size;		/* packet size, in bits */
 	uint64_t content_size;		/* content size, in bits */

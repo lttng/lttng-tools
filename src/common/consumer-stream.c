@@ -331,7 +331,7 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
  * Return 0 on success or else a negative value.
  */
 int consumer_stream_write_index(struct lttng_consumer_stream *stream,
-		struct lttng_packet_index *index)
+		struct ctf_packet_index *index)
 {
 	int ret;
 	struct consumer_relayd_sock_pair *relayd;
@@ -348,8 +348,8 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 		ssize_t size_ret;
 
 		size_ret = index_write(stream->index_fd, index,
-				sizeof(struct lttng_packet_index));
-		if (size_ret < sizeof(struct lttng_packet_index)) {
+				sizeof(struct ctf_packet_index));
+		if (size_ret < sizeof(struct ctf_packet_index)) {
 			ret = -1;
 		} else {
 			ret = 0;

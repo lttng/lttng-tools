@@ -614,7 +614,7 @@ static int open_index(struct relay_viewer_stream *stream)
 {
 	int ret;
 	char fullpath[PATH_MAX];
-	struct lttng_packet_index_file_hdr hdr;
+	struct ctf_packet_index_file_hdr hdr;
 
 	if (stream->tracefile_count > 0) {
 		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s_%"
@@ -649,13 +649,13 @@ static int open_index(struct relay_viewer_stream *stream)
 		PERROR("Reading index header");
 		goto error;
 	}
-	if (strncmp(hdr.magic, INDEX_MAGIC, sizeof(hdr.magic)) != 0) {
+	if (be32toh(hdr.magic) != CTF_INDEX_MAGIC) {
 		ERR("Invalid header magic");
 		ret = -1;
 		goto error;
 	}
-	if (be32toh(hdr.index_major) != INDEX_MAJOR ||
-			be32toh(hdr.index_minor) != INDEX_MINOR) {
+	if (be32toh(hdr.index_major) != CTF_INDEX_MAJOR ||
+			be32toh(hdr.index_minor) != CTF_INDEX_MINOR) {
 		ERR("Invalid header version");
 		ret = -1;
 		goto error;
@@ -747,7 +747,7 @@ int init_viewer_stream(struct relay_stream *stream, int seek_last)
 	if (seek_last && viewer_stream->index_read_fd > 0) {
 		ret = lseek(viewer_stream->index_read_fd,
 				viewer_stream->total_index_received *
-					sizeof(struct lttng_packet_index),
+					sizeof(struct ctf_packet_index),
 				SEEK_CUR);
 		if (ret < 0) {
 			goto error;
@@ -1075,7 +1075,7 @@ int viewer_get_next_index(struct relay_command *cmd,
 	int ret;
 	struct lttng_viewer_get_next_index request_index;
 	struct lttng_viewer_index viewer_index;
-	struct lttng_packet_index packet_index;
+	struct ctf_packet_index packet_index;
 	struct relay_viewer_stream *vstream;
 	struct relay_stream *rstream;
 

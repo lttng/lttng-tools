@@ -41,7 +41,7 @@
 #include <common/common.h>
 
 #include <bin/lttng-relayd/lttng-viewer.h>
-#include <common/index/lttng-index.h>
+#include <common/index/ctf-index.h>
 
 #define SESSION1 "test1"
 #define RELAYD_URL "net://localhost"

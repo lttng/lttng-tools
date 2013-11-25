@@ -36,7 +36,7 @@ struct relay_index {
 	int to_close_fd;
 
 	/* Index packet data. This is the data that is written on disk. */
-	struct lttng_packet_index index_data;
+	struct ctf_packet_index index_data;
 
 	/* key1 = stream_id, key2 = net_seq_num */
 	struct lttng_ht_two_u64 key;

@@ -1711,7 +1711,7 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
  *
  * Return 0 on success or else a negative value.
  */
-static int get_index_values(struct lttng_packet_index *index,
+static int get_index_values(struct ctf_packet_index *index,
 		struct ustctl_consumer_stream *ustream)
 {
 	int ret;
@@ -1876,7 +1876,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	long ret = 0;
 	char dummy;
 	struct ustctl_consumer_stream *ustream;
-	struct lttng_packet_index index;
+	struct ctf_packet_index index;
 
 	assert(stream);
 	assert(stream->ustream);

@@ -911,7 +911,7 @@ error_fatal:
  *
  * Return 0 on success or else a negative value.
  */
-static int get_index_values(struct lttng_packet_index *index, int infd)
+static int get_index_values(struct ctf_packet_index *index, int infd)
 {
 	int ret;
 
@@ -1007,7 +1007,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	int err, write_index = 1;
 	ssize_t ret = 0;
 	int infd = stream->wait_fd;
-	struct lttng_packet_index index;
+	struct ctf_packet_index index;
 
 	DBG("In read_subbuffer (infd : %d)", infd);
 

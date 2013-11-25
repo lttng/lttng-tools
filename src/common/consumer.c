@@ -1354,7 +1354,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
 		unsigned long padding,
-		struct lttng_packet_index *index)
+		struct ctf_packet_index *index)
 {
 	unsigned long mmap_offset;
 	void *mmap_base;
@@ -1562,7 +1562,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
 		unsigned long padding,
-		struct lttng_packet_index *index)
+		struct ctf_packet_index *index)
 {
 	ssize_t ret = 0, written = 0, ret_splice = 0;
 	loff_t offset = 0;
