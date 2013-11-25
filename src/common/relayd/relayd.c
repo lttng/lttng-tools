@@ -691,7 +691,7 @@ error:
 int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id,
 		unsigned int *is_data_inflight)
 {
-	int ret;
+	int ret, recv_ret;
 	struct lttcomm_relayd_end_data_pending msg;
 	struct lttcomm_relayd_generic_reply reply;
 
@@ -714,15 +714,15 @@ int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id,
 		goto error;
 	}
 
-	reply.ret_code = be32toh(reply.ret_code);
-	if (reply.ret_code < 0) {
-		ret = reply.ret_code;
+	recv_ret = be32toh(reply.ret_code);
+	if (recv_ret < 0) {
+		ret = recv_ret;
 		goto error;
 	}
 
-	*is_data_inflight = reply.ret_code;
+	*is_data_inflight = recv_ret;
 
-	DBG("Relayd end data pending is data inflight: %d", reply.ret_code);
+	DBG("Relayd end data pending is data inflight: %d", recv_ret);
 
 	return 0;
 
