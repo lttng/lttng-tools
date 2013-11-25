@@ -102,7 +102,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		struct ust_app_channel *ua_chan, struct consumer_output *consumer,
 		struct consumer_socket *socket, struct ust_registry_session *registry)
 {
-	int ret;
+	int ret, output;
 	uint32_t chan_id;
 	uint64_t key, chan_reg_key;
 	char *pathname = NULL;
@@ -141,6 +141,13 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		chan_id = chan_reg->chan_id;
 	}
 
+	switch (ua_chan->attr.output) {
+	case LTTNG_UST_MMAP:
+	default:
+		output = LTTNG_EVENT_MMAP;
+		break;
+	}
+
 	consumer_init_ask_channel_comm_msg(&msg,
 			ua_chan->attr.subbuf_size,
 			ua_chan->attr.num_subbuf,
@@ -148,7 +155,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->attr.switch_timer_interval,
 			ua_chan->attr.read_timer_interval,
 			ua_sess->live_timer_interval,
-			(int) ua_chan->attr.output,
+			output,
 			(int) ua_chan->attr.type,
 			ua_sess->tracing_id,
 			pathname,

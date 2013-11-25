@@ -879,13 +879,26 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->uid = uid;
 	channel->gid = gid;
 	channel->relayd_id = relayd_id;
-	channel->output = output;
 	channel->tracefile_size = tracefile_size;
 	channel->tracefile_count = tracefile_count;
 	channel->monitor = monitor;
 	channel->live_timer_interval = live_timer_interval;
 	pthread_mutex_init(&channel->lock, NULL);
 	pthread_mutex_init(&channel->timer_lock, NULL);
+
+	switch (output) {
+	case LTTNG_EVENT_SPLICE:
+		channel->output = CONSUMER_CHANNEL_SPLICE;
+		break;
+	case LTTNG_EVENT_MMAP:
+		channel->output = CONSUMER_CHANNEL_MMAP;
+		break;
+	default:
+		assert(0);
+		free(channel);
+		channel = NULL;
+		goto end;
+	}
 
 	/*
 	 * In monitor mode, the streams associated with the channel will be put in
@@ -3226,7 +3239,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		uint64_t relayd_session_id)
 {
 	int fd = -1, ret = -1, relayd_created = 0;
-	enum lttng_error_code ret_code = LTTNG_OK;
+	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct consumer_relayd_sock_pair *relayd = NULL;
 
 	assert(ctx);
@@ -3262,7 +3275,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	}
 
 	/* First send a status message before receiving the fds. */
-	ret = consumer_send_status_msg(sock, LTTNG_OK);
+	ret = consumer_send_status_msg(sock, LTTCOMM_CONSUMERD_SUCCESS);
 	if (ret < 0) {
 		/* Somehow, the session daemon is not responding anymore. */
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
@@ -3623,9 +3636,9 @@ int consumer_send_status_channel(int sock,
 	assert(sock >= 0);
 
 	if (!channel) {
-		msg.ret_code = -LTTNG_ERR_UST_CHAN_FAIL;
+		msg.ret_code = LTTCOMM_CONSUMERD_CHANNEL_FAIL;
 	} else {
-		msg.ret_code = LTTNG_OK;
+		msg.ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 		msg.key = channel->key;
 		msg.stream_count = channel->streams.count;
 	}

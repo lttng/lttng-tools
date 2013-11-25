@@ -407,7 +407,7 @@ static int send_sessiond_channel(int sock,
 		struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx, int *relayd_error)
 {
-	int ret, ret_code = LTTNG_OK;
+	int ret, ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttng_consumer_stream *stream;
 
 	assert(channel);
@@ -438,7 +438,7 @@ static int send_sessiond_channel(int sock,
 
 	/* Inform sessiond that we are about to send channel and streams. */
 	ret = consumer_send_status_msg(sock, ret_code);
-	if (ret < 0 || ret_code != LTTNG_OK) {
+	if (ret < 0 || ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 		/*
 		 * Either the session daemon is not responding or the relayd died so we
 		 * stop now.
@@ -480,7 +480,7 @@ static int send_sessiond_channel(int sock,
 	return 0;
 
 error:
-	if (ret_code != LTTNG_OK) {
+	if (ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 		ret = -1;
 	}
 	return ret;
@@ -635,7 +635,7 @@ error:
  */
 static int _close_metadata(struct lttng_consumer_channel *channel)
 {
-	int ret = LTTNG_OK;
+	int ret = LTTCOMM_CONSUMERD_SUCCESS;
 
 	assert(channel);
 	assert(channel->type == CONSUMER_CHANNEL_TYPE_METADATA);
@@ -1050,7 +1050,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		uint64_t len, struct lttng_consumer_channel *channel,
 		int timer, int wait)
 {
-	int ret, ret_code = LTTNG_OK;
+	int ret, ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	char *metadata_str;
 
 	DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
@@ -1115,7 +1115,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll)
 {
 	ssize_t ret;
-	enum lttng_error_code ret_code = LTTNG_OK;
+	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttcomm_consumer_msg msg;
 	struct lttng_consumer_channel *channel = NULL;
 
@@ -1257,8 +1257,15 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		attr.switch_timer_interval = msg.u.ask_channel.switch_timer_interval;
 		attr.read_timer_interval = msg.u.ask_channel.read_timer_interval;
 		attr.chan_id = msg.u.ask_channel.chan_id;
-		attr.output = msg.u.ask_channel.output;
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
+
+		/* Match channel buffer type to the UST abi. */
+		switch (msg.u.ask_channel.output) {
+		case LTTNG_EVENT_MMAP:
+		default:
+			attr.output = LTTNG_UST_MMAP;
+			break;
+		}
 
 		/* Translate and save channel type. */
 		switch (msg.u.ask_channel.type) {
@@ -1452,7 +1459,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		/* Tell session daemon we are ready to receive the metadata. */
-		ret = consumer_send_status_msg(sock, LTTNG_OK);
+		ret = consumer_send_status_msg(sock, LTTCOMM_CONSUMERD_SUCCESS);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto error_fatal;
@@ -2164,7 +2171,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 {
 	struct lttcomm_metadata_request_msg request;
 	struct lttcomm_consumer_msg msg;
-	enum lttng_error_code ret_code = LTTNG_OK;
+	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	uint64_t len, key, offset;
 	int ret;
 
@@ -2253,7 +2260,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 
 	/* Tell session daemon we are ready to receive the metadata. */
 	ret = consumer_send_status_msg(ctx->consumer_metadata_socket,
-			LTTNG_OK);
+			LTTCOMM_CONSUMERD_SUCCESS);
 	if (ret < 0 || len == 0) {
 		/*
 		 * Somehow, the session daemon is not responding anymore or there is
