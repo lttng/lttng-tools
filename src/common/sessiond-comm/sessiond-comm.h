@@ -108,6 +108,7 @@ enum lttcomm_relayd_command {
  * lttcomm error code.
  */
 enum lttcomm_return_code {
+	LTTCOMM_CONSUMERD_SUCCESS            = 0,   /* Everything went fine. */
 	LTTCOMM_CONSUMERD_COMMAND_SOCK_READY = 1,   /* Command socket ready */
 	LTTCOMM_CONSUMERD_SUCCESS_RECV_FD,          /* Success on receiving fds */
 	LTTCOMM_CONSUMERD_ERROR_RECV_FD,            /* Error on receiving fds */
@@ -126,6 +127,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_ERROR_METADATA,           /* Error with metadata. */
 	LTTCOMM_CONSUMERD_FATAL,                    /* Fatal error. */
 	LTTCOMM_CONSUMERD_RELAYD_FAIL,              /* Error on remote relayd */
+	LTTCOMM_CONSUMERD_CHANNEL_FAIL,             /* Channel creation failed. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -412,11 +414,11 @@ struct lttcomm_consumer_msg {
  * Status message returned to the sessiond after a received command.
  */
 struct lttcomm_consumer_status_msg {
-	enum lttng_error_code ret_code;
+	enum lttcomm_return_code ret_code;
 } LTTNG_PACKED;
 
 struct lttcomm_consumer_status_channel {
-	enum lttng_error_code ret_code;
+	enum lttcomm_return_code ret_code;
 	uint64_t key;
 	unsigned int stream_count;
 } LTTNG_PACKED;

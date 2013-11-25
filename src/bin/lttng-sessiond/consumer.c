@@ -141,7 +141,7 @@ int consumer_recv_status_reply(struct consumer_socket *sock)
 		goto end;
 	}
 
-	if (reply.ret_code == LTTNG_OK) {
+	if (reply.ret_code == LTTCOMM_CONSUMERD_SUCCESS) {
 		/* All good. */
 		ret = 0;
 	} else {
@@ -177,13 +177,14 @@ int consumer_recv_status_channel(struct consumer_socket *sock,
 	}
 
 	/* An error is possible so don't touch the key and stream_count. */
-	if (reply.ret_code != LTTNG_OK) {
+	if (reply.ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 		ret = -1;
 		goto end;
 	}
 
 	*key = reply.key;
 	*stream_count = reply.stream_count;
+	ret = 0;
 
 end:
 	return ret;

@@ -408,7 +408,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll)
 {
 	ssize_t ret;
-	enum lttng_error_code ret_code = LTTNG_OK;
+	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttcomm_consumer_msg msg;
 
 	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
@@ -540,7 +540,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			/* Somehow, the session daemon is not responding anymore. */
 			goto error_fatal;
 		}
-		if (ret_code != LTTNG_OK) {
+
+		if (ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 			/* Channel was not found. */
 			goto end_nosignal;
 		}
