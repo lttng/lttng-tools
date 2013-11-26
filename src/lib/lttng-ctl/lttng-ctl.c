@@ -733,9 +733,13 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 				sizeof(lsm.u.enable.channel_name));
 	}
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-	lsm.cmd_type = LTTNG_ENABLE_EVENT;
+	if (ev->name[0] != '\0') {
+		lsm.cmd_type = LTTNG_ENABLE_EVENT;
+	} else {
+		lsm.cmd_type = LTTNG_ENABLE_ALL_EVENT;
+	}
 
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
