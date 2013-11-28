@@ -34,7 +34,6 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 	size_t i = 0;
 	ssize_t ret;
 
-	assert(fd >= 0);
 	assert(buf);
 
 	do {
@@ -64,7 +63,6 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 	size_t i = 0;
 	ssize_t ret;
 
-	assert(fd >= 0);
 	assert(buf);
 
 	do {
