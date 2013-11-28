@@ -592,6 +592,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 
 error:
 	ust_registry_session_destroy(session);
+	free(session);
 error_alloc:
 	return -1;
 }
