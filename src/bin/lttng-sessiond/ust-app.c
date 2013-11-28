@@ -481,6 +481,20 @@ push_data:
 	ret = consumer_push_metadata(socket, registry->metadata_key,
 			metadata_str, len, offset);
 	if (ret < 0) {
+		/*
+		 * There is an acceptable race here between the registry metadata key
+		 * assignment and the creation on the consumer. The session daemon can
+		 * concurrently push metadata for this registry while being created on
+		 * the consumer since the metadata key of the registry is assigned
+		 * *before* it is setup to avoid the consumer to ask for metadata that
+		 * could possibly be not found in the session daemon.
+		 *
+		 * The metadata will get pushed either by the session being stopped or
+		 * the consumer requesting metadata if that race is triggered.
+		 */
+		if (ret == -LTTCOMM_CONSUMERD_CHANNEL_FAIL) {
+			ret = 0;
+		}
 		ret_val = ret;
 		goto error_push;
 	}
