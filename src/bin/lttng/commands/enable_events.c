@@ -839,6 +839,7 @@ static int enable_events(char *session_name)
 							session_name, opt_filter);
 					break;
 				}
+				free(exclusion_string);
 				goto error;
 			} else {
 				MSG("Event %s%s: Filter '%s' successfully set",
