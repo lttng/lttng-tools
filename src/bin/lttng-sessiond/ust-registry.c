@@ -607,20 +607,25 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan;
 
+	assert(reg);
+
 	/* On error, EBUSY can be returned if lock. Code flow error. */
 	ret = pthread_mutex_destroy(&reg->lock);
 	assert(!ret);
 
-	rcu_read_lock();
-	/* Destroy all event associated with this registry. */
-	cds_lfht_for_each_entry(reg->channels->ht, &iter.iter, chan, node.node) {
-		/* Delete the node from the ht and free it. */
-		ret = lttng_ht_del(reg->channels, &iter);
-		assert(!ret);
-		destroy_channel(chan);
+	if (reg->channels) {
+		rcu_read_lock();
+		/* Destroy all event associated with this registry. */
+		cds_lfht_for_each_entry(reg->channels->ht, &iter.iter, chan,
+				node.node) {
+			/* Delete the node from the ht and free it. */
+			ret = lttng_ht_del(reg->channels, &iter);
+			assert(!ret);
+			destroy_channel(chan);
+		}
+		rcu_read_unlock();
+		ht_cleanup_push(reg->channels);
 	}
-	rcu_read_unlock();
 
-	ht_cleanup_push(reg->channels);
 	free(reg->metadata);
 }
