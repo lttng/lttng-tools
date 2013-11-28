@@ -406,7 +406,8 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	if (ua_chan->obj != NULL) {
 		/* Remove channel from application UST object descriptor. */
 		iter.iter.node = &ua_chan->ust_objd_node.node;
-		lttng_ht_del(app->ust_objd, &iter);
+		ret = lttng_ht_del(app->ust_objd, &iter);
+		assert(!ret);
 		ret = ustctl_release_object(sock, ua_chan->obj);
 		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("UST app sock %d release channel obj failed with ret %d",
