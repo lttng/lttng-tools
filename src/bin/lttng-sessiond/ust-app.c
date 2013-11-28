@@ -495,6 +495,11 @@ push_data:
 		if (ret == -LTTCOMM_CONSUMERD_CHANNEL_FAIL) {
 			ret = 0;
 		}
+
+		/* Update back the actual metadata len sent since it failed here. */
+		pthread_mutex_lock(&registry->lock);
+		registry->metadata_len_sent -= len;
+		pthread_mutex_unlock(&registry->lock);
 		ret_val = ret;
 		goto error_push;
 	}
