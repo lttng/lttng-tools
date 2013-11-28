@@ -342,8 +342,10 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 	rcu_read_lock();
 	relayd = consumer_find_relayd(stream->net_seq_idx);
 	if (relayd) {
+		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_send_index(&relayd->control_sock, index,
 				stream->relayd_stream_id, stream->next_net_seq_num - 1);
+		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	} else {
 		ssize_t size_ret;
 
