@@ -1390,8 +1390,15 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		channel = consumer_find_channel(key);
 		if (!channel) {
-			ERR("UST consumer push metadata %" PRIu64 " not found", key);
-			ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			/*
+			 * This is possible if the metadata creation on the consumer side
+			 * is in flight vis-a-vis a concurrent push metadata from the
+			 * session daemon.  Simply return that the channel failed and the
+			 * session daemon will handle that message correctly considering
+			 * that this race is acceptable thus the DBG() statement here.
+			 */
+			DBG("UST consumer push metadata %" PRIu64 " not found", key);
+			ret_code = LTTCOMM_CONSUMERD_CHANNEL_FAIL;
 			goto end_msg_sessiond;
 		}
 
