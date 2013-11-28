@@ -120,6 +120,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_ERROR_METADATA,           /* Error with metadata. */
 	LTTCOMM_CONSUMERD_FATAL,                    /* Fatal error. */
 	LTTCOMM_CONSUMERD_RELAYD_FAIL,              /* Error on remote relayd */
+	LTTCOMM_CONSUMERD_CHANNEL_FAIL,             /* Channel creation failed. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
