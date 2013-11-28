@@ -60,12 +60,12 @@ int main(int argc, char **argv)
 		nr_iter = atoi(argv[1]);
 	}
 
-	if (argc == 3) {
+	if (argc >= 3) {
 		/* By default, don't wait unless user specifies. */
 		nr_usec = atoi(argv[2]);
 	}
 
-	if (argc == 4) {
+	if (argc >= 4) {
 		tmp_file_path = argv[3];
 	}
 
