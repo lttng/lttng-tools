@@ -232,24 +232,3 @@ int modprobe_lttng_data(void)
 error:
 	return ret;
 }
-
-/*
- * Load all lttng kernel modules.
- */
-int modprobe_lttng_all(void)
-{
-	int ret;
-
-	ret = modprobe_lttng_control();
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = modprobe_lttng_data();
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	return ret;
-}

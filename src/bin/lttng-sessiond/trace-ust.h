@@ -67,15 +67,6 @@ struct ltt_ust_channel {
 	uint64_t tracefile_count;
 };
 
-/* UST Metadata */
-struct ltt_ust_metadata {
-	int handle;
-	struct lttng_ust_object_data *obj;
-	char pathname[PATH_MAX];              /* Trace file path name */
-	struct lttng_ust_channel_attr attr;
-	struct lttng_ust_object_data *stream_obj;
-};
-
 /* UST domain global (LTTNG_DOMAIN_UST) */
 struct ltt_ust_domain_global {
 	struct lttng_ht *channels;
@@ -170,7 +161,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion);
-struct ltt_ust_metadata *trace_ust_create_metadata(char *path);
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx);
 void trace_ust_delete_channel(struct lttng_ht *ht,
@@ -181,7 +171,6 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
  * it's applies.
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session);
-void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
 
@@ -222,18 +211,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 	return NULL;
 }
 static inline
-struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
-{
-	return NULL;
-}
-
-static inline
 void trace_ust_destroy_session(struct ltt_ust_session *session)
-{
-}
-
-static inline
-void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
 {
 }
 

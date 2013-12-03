@@ -282,7 +282,6 @@ int ust_app_register_done(int sock)
 }
 int ust_app_version(struct ust_app *app);
 void ust_app_unregister(int sock);
-unsigned long ust_app_list_count(void);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
@@ -292,9 +291,6 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
-int ust_app_disable_event_pid(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
-		pid_t pid);
 int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
 		pid_t pid);
@@ -304,8 +300,6 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
-int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan);
 int ust_app_enable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 int ust_app_disable_event_glb(struct ltt_ust_session *usess,
@@ -316,7 +310,6 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
 void ust_app_ht_alloc(void);
-struct lttng_ht *ust_app_get_ht(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
 int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate);
 struct ust_app_stream *ust_app_alloc_stream(void);
@@ -391,11 +384,6 @@ void ust_app_unregister(int sock)
 {
 }
 static inline
-unsigned int ust_app_list_count(void)
-{
-	return 0;
-}
-static inline
 void ust_app_lock_list(void)
 {
 }
@@ -414,11 +402,6 @@ struct ust_app_list *ust_app_get_list(void)
 }
 static inline
 struct ust_app *ust_app_get_by_pid(pid_t pid)
-{
-	return NULL;
-}
-static inline
-struct lttng_ht *ust_app_get_ht(void)
 {
 	return NULL;
 }
@@ -442,12 +425,6 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 }
 static inline
 int ust_app_create_channel_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan)
-{
-	return 0;
-}
-static inline
-int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	return 0;
@@ -484,13 +461,6 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 }
 static inline
 int ust_app_enable_event_pid(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
-		pid_t pid)
-{
-	return 0;
-}
-static inline
-int ust_app_disable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
 		pid_t pid)
 {

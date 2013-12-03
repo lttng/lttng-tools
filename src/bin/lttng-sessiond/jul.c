@@ -678,27 +678,6 @@ error:
 }
 
 /*
- * Delete JUL event from given domain. Events hash table MUST be initialized.
- */
-void jul_delete_event(struct jul_event *event, struct jul_domain *dom)
-{
-	int ret;
-	struct lttng_ht_iter iter;
-
-	assert(event);
-	assert(dom);
-	assert(dom->events);
-
-	DBG3("JUL deleting event %s from domain", event->name);
-
-	iter.iter.node = &event->node.node;
-	rcu_read_lock();
-	ret = lttng_ht_del(dom->events, &iter);
-	rcu_read_unlock();
-	assert(!ret);
-}
-
-/*
  * Free given JUL event. This event must not be globally visible at this
  * point (only expected to be used on failure just after event
  * creation). After this call, the pointer is not usable anymore.

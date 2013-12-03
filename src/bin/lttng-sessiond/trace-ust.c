@@ -405,48 +405,6 @@ error:
 }
 
 /*
- * Allocate and initialize a ust metadata.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_ust_metadata *trace_ust_create_metadata(char *path)
-{
-	int ret;
-	struct ltt_ust_metadata *lum;
-
-	assert(path);
-
-	lum = zmalloc(sizeof(struct ltt_ust_metadata));
-	if (lum == NULL) {
-		PERROR("ust metadata zmalloc");
-		goto error;
-	}
-
-	/* Set default attributes */
-	lum->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	lum->attr.subbuf_size = default_get_metadata_subbuf_size();
-	lum->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	lum->attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
-	lum->attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-	lum->attr.output = LTTNG_UST_MMAP;
-
-	lum->handle = -1;
-	/* Set metadata trace path */
-	ret = snprintf(lum->pathname, PATH_MAX, "%s/" DEFAULT_METADATA_NAME, path);
-	if (ret < 0) {
-		PERROR("asprintf ust metadata");
-		goto error_free_metadata;
-	}
-
-	return lum;
-
-error_free_metadata:
-	free(lum);
-error:
-	return NULL;
-}
-
-/*
  * Allocate and initialize an UST context.
  *
  * Return pointer to structure or NULL.
@@ -636,20 +594,6 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
 	iter.iter.node = &channel->node.node;
 	ret = lttng_ht_del(ht, &iter);
 	assert(!ret);
-}
-
-/*
- * Cleanup ust metadata structure.
- */
-void trace_ust_destroy_metadata(struct ltt_ust_metadata *metadata)
-{
-	assert(metadata);
-
-	if (!metadata->handle) {
-		return;
-	}
-	DBG2("Trace UST destroy metadata %d", metadata->handle);
-	free(metadata);
 }
 
 /*

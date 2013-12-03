@@ -39,7 +39,7 @@
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 12
+#define NUM_TESTS 10
 
 /* For lttngerr.h */
 int lttng_opt_quiet = 1;
@@ -89,33 +89,6 @@ static void test_create_one_ust_session(void)
 	   "Validate UST session");
 
 	trace_ust_destroy_session(usess);
-}
-
-static void test_create_ust_metadata(void)
-{
-	struct ltt_ust_metadata *metadata;
-
-	assert(usess != NULL);
-
-	metadata = trace_ust_create_metadata(PATH1);
-	ok(metadata != NULL, "Create UST metadata");
-
-	ok(metadata->handle == -1 &&
-	   strlen(metadata->pathname) &&
-	   metadata->attr.overwrite
-			== DEFAULT_CHANNEL_OVERWRITE &&
-	   metadata->attr.subbuf_size
-			== default_get_metadata_subbuf_size() &&
-	   metadata->attr.num_subbuf
-			== DEFAULT_METADATA_SUBBUF_NUM &&
-	   metadata->attr.switch_timer_interval
-			== DEFAULT_METADATA_SWITCH_TIMER &&
-	   metadata->attr.read_timer_interval
-			== DEFAULT_METADATA_READ_TIMER &&
-	   metadata->attr.output == LTTNG_UST_MMAP,
-	   "Validate UST session metadata");
-
-	trace_ust_destroy_metadata(metadata);
 }
 
 static void test_create_ust_channel(void)
@@ -226,7 +199,6 @@ int main(int argc, char **argv)
 	diag("UST data structures unit test");
 
 	test_create_one_ust_session();
-	test_create_ust_metadata();
 	test_create_ust_channel();
 	test_create_ust_event();
 	test_create_ust_context();

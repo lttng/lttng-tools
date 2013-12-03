@@ -2818,14 +2818,6 @@ error:
 }
 
 /*
- * Return pointer to traceable apps list.
- */
-struct lttng_ht *ust_app_get_ht(void)
-{
-	return ust_app_ht;
-}
-
-/*
  * Return ust app pointer or NULL if not found. RCU read side lock MUST be
  * acquired before calling this function.
  */
@@ -3085,20 +3077,6 @@ void ust_app_unregister(int sock)
 
 	rcu_read_unlock();
 	return;
-}
-
-/*
- * Return traceable_app_count
- */
-unsigned long ust_app_list_count(void)
-{
-	unsigned long count;
-
-	rcu_read_lock();
-	count = lttng_ht_get_count(ust_app_ht);
-	rcu_read_unlock();
-
-	return count;
 }
 
 /*
@@ -3530,65 +3508,6 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		if (ret < 0) {
 			/* XXX: Report error someday... */
 			continue;
-		}
-	}
-
-	rcu_read_unlock();
-
-	return ret;
-}
-
-/*
- * For a specific UST session and UST channel, the event for all
- * registered apps.
- */
-int ust_app_disable_all_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan)
-{
-	int ret = 0;
-	struct lttng_ht_iter iter, uiter;
-	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app *app;
-	struct ust_app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-	struct ust_app_event *ua_event;
-
-	DBG("UST app disabling all event for all apps in channel "
-			"%s for session id %" PRIu64, uchan->name, usess->id);
-
-	rcu_read_lock();
-
-	/* For all registered applications */
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		if (!app->compatible) {
-			/*
-			 * TODO: In time, we should notice the caller of this error by
-			 * telling him that this is a version error.
-			 */
-			continue;
-		}
-		ua_sess = lookup_session_by_app(usess, app);
-		if (!ua_sess) {
-			/* The application has problem or is probably dead. */
-			continue;
-		}
-
-		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
-		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
-		/* If the channel is not found, there is a code flow error */
-		assert(ua_chan_node);
-
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
-
-		/* Disable each events of channel */
-		cds_lfht_for_each_entry(ua_chan->events->ht, &uiter.iter, ua_event,
-				node.node) {
-			ret = disable_ust_app_event(ua_sess, ua_event, app);
-			if (ret < 0) {
-				/* XXX: Report error someday... */
-				continue;
-			}
 		}
 	}
 
@@ -4472,69 +4391,6 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 end_unlock:
 	pthread_mutex_unlock(&ua_sess->lock);
 end:
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
- * Disable event for a channel from a UST session for a specific PID.
- */
-int ust_app_disable_event_pid(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent, pid_t pid)
-{
-	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
-	struct ust_app *app;
-	struct ust_app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-	struct ust_app_event *ua_event;
-
-	DBG("UST app disabling event %s for PID %d", uevent->attr.name, pid);
-
-	rcu_read_lock();
-
-	app = ust_app_find_by_pid(pid);
-	if (app == NULL) {
-		ERR("UST app disable event per PID %d not found", pid);
-		ret = -1;
-		goto error;
-	}
-
-	if (!app->compatible) {
-		ret = 0;
-		goto error;
-	}
-
-	ua_sess = lookup_session_by_app(usess, app);
-	if (!ua_sess) {
-		/* The application has problem or is probably dead. */
-		goto error;
-	}
-
-	/* Lookup channel in the ust app session */
-	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
-	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_chan_node == NULL) {
-		/* Channel does not exist, skip disabling */
-		goto error;
-	}
-	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
-
-	lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &iter);
-	ua_event_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_event_node == NULL) {
-		/* Event does not exist, skip disabling */
-		goto error;
-	}
-	ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
-
-	ret = disable_ust_app_event(ua_sess, ua_event, app);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
 	rcu_read_unlock();
 	return ret;
 }
