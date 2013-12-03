@@ -307,7 +307,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 	}
 
 	/* Set name */
-	ret = snprintf(lks->name, sizeof(lks->name), "%s_%d", name, count);
+	ret = snprintf(lks->name, sizeof(lks->name), "%s_%u", name, count);
 	if (ret < 0) {
 		PERROR("snprintf stream name");
 		goto error;
