@@ -39,7 +39,6 @@ void ctf_trace_try_destroy(struct ctf_trace *obj)
 	}
 
 	ret_ref = uatomic_add_return(&obj->refcount, -1);
-	assert(ret_ref >= 0);
 	if (ret_ref == 0) {
 		DBG("Freeing ctf_trace %" PRIu64, obj->id);
 		free(obj);
