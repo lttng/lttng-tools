@@ -605,7 +605,6 @@ static int enable_events(char *session_name)
 							opt_filter);
 					break;
 				}
-				free(exclusion_string);
 				goto error;
 			} else {
 				MSG("Filter '%s' successfully set", opt_filter);
