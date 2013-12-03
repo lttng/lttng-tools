@@ -3062,7 +3062,7 @@ int ust_app_list_events(struct lttng_event **events)
 			/* Handle ustctl error. */
 			if (ret < 0) {
 				free(tmp_event);
-				if (ret != -LTTNG_UST_ERR_EXITING || ret != -EPIPE) {
+				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
 					ERR("UST app tp list get failed for app %d with ret %d",
 							app->sock, ret);
 				} else {
@@ -3162,7 +3162,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 			/* Handle ustctl error. */
 			if (ret < 0) {
 				free(tmp_event);
-				if (ret != -LTTNG_UST_ERR_EXITING || ret != -EPIPE) {
+				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
 					ERR("UST app tp list field failed for app %d with ret %d",
 							app->sock, ret);
 				} else {
