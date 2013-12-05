@@ -3125,7 +3125,6 @@ int ust_app_list_events(struct lttng_event **events)
 					&uiter)) != -LTTNG_UST_ERR_NOENT) {
 			/* Handle ustctl error. */
 			if (ret < 0) {
-				free(tmp_event);
 				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
 					ERR("UST app tp list get failed for app %d with ret %d",
 							app->sock, ret);
@@ -3138,6 +3137,7 @@ int ust_app_list_events(struct lttng_event **events)
 					 */
 					break;
 				}
+				free(tmp_event);
 				goto rcu_error;
 			}
 
@@ -3225,7 +3225,6 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					&uiter)) != -LTTNG_UST_ERR_NOENT) {
 			/* Handle ustctl error. */
 			if (ret < 0) {
-				free(tmp_event);
 				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
 					ERR("UST app tp list field failed for app %d with ret %d",
 							app->sock, ret);
@@ -3234,10 +3233,11 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					/*
 					 * This is normal behavior, an application can die during the
 					 * creation process. Don't report an error so the execution can
-					 * continue normally.
+					 * continue normally. Reset list and count for next app.
 					 */
 					break;
 				}
+				free(tmp_event);
 				goto rcu_error;
 			}
 
