@@ -392,6 +392,7 @@ AC_CONFIG_FILES([
 	src/common/testpoint/Makefile
 	src/common/index/Makefile
 	src/common/health/Makefile
+	src/common/config/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/filter/Makefile
