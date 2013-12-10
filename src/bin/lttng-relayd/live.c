@@ -478,7 +478,7 @@ int viewer_connect(struct relay_command *cmd)
 	if (reply.major != be32toh(msg.major)) {
 		DBG("Incompatible major versions (%u vs %u)", reply.major,
 				be32toh(msg.major));
-		ret = 0;
+		ret = -1;
 		goto end;
 	}
 
