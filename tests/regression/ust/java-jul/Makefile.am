@@ -1,7 +1,7 @@
 if BUILD_JAVA_JUL
 
-noinst_SCRIPTS = test_java_jul
-EXTRA_DIST = test_java_jul
+noinst_SCRIPTS = test_java_jul JTestLTTng.java
+EXTRA_DIST = test_java_jul JTestLTTng.java
 
 if HAVE_JAVA_JDK
 JCC=$(JAVA_JDK)/bin/javac
