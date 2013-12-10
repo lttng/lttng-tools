@@ -1,3 +1,6 @@
+#ifndef LTTNG_VIEWER_H
+#define LTTNG_VIEWER_H
+
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
@@ -22,9 +25,6 @@
  * SOFTWARE.
  */
 
-#ifndef LTTNG_VIEWER_H
-#define LTTNG_VIEWER_H
-
 #include <limits.h>
 
 #define LTTNG_VIEWER_PATH_MAX		4096
@@ -34,7 +34,7 @@
 /* Flags in reply to get_next_index and get_packet. */
 /* New metadata is required to read this packet. */
 #define LTTNG_VIEWER_FLAG_NEW_METADATA	(1 << 0)
-/* New stream got added to the trace */
+/* New stream got added to the trace. */
 #define LTTNG_VIEWER_FLAG_NEW_STREAM	(1 << 1)
 
 enum lttng_viewer_command {
@@ -82,25 +82,27 @@ enum lttng_viewer_connection_type {
 };
 
 enum lttng_viewer_seek {
-	VIEWER_SEEK_BEGINNING	= 1,	/* Receive the trace packets from the beginning. */
-	VIEWER_SEEK_LAST	= 2,	/* Receive the trace packets from now. */
+	/* Receive the trace packets from the beginning. */
+	VIEWER_SEEK_BEGINNING	= 1,
+	/* Receive the trace packets from now. */
+	VIEWER_SEEK_LAST	= 2,
 };
 
 struct lttng_viewer_session {
 	uint64_t id;
-	char hostname[LTTNG_VIEWER_HOST_NAME_MAX];
-	char session_name[LTTNG_VIEWER_NAME_MAX];
 	uint32_t live_timer;
 	uint32_t clients;
 	uint32_t streams;
+	char hostname[LTTNG_VIEWER_HOST_NAME_MAX];
+	char session_name[LTTNG_VIEWER_NAME_MAX];
 } __attribute__((__packed__));
 
 struct lttng_viewer_stream {
 	uint64_t id;
 	uint64_t ctf_trace_id;
+	int metadata_flag;
 	char path_name[LTTNG_VIEWER_PATH_MAX];
 	char channel_name[LTTNG_VIEWER_NAME_MAX];
-	int metadata_flag;
 } __attribute__((__packed__));
 
 struct lttng_viewer_cmd {
@@ -113,10 +115,11 @@ struct lttng_viewer_cmd {
  * CONNECT payload.
  */
 struct lttng_viewer_connect {
+	/* session ID assigned by the relay for command connections */
+	uint64_t viewer_session_id;
 	uint32_t major;
 	uint32_t minor;
 	uint32_t type; /* enum lttng_viewer_connection_type */
-	uint64_t viewer_session_id; /* session ID assigned by the relay for command connections */
 } __attribute__((__packed__));
 
 /*
@@ -132,14 +135,16 @@ struct lttng_viewer_list_sessions {
  */
 struct lttng_viewer_attach_session_request {
 	uint64_t session_id;
-	uint32_t seek;		/* enum lttng_viewer_seek */
 	uint64_t offset;	/* unused for now */
+	uint32_t seek;		/* enum lttng_viewer_seek */
 } __attribute__((__packed__));
 
 struct lttng_viewer_attach_session_response {
-	uint32_t status;		/* enum lttng_viewer_attach_return_code */
+	/* enum lttng_viewer_attach_return_code */
+	uint32_t status;
 	uint32_t streams_count;
-	char stream_list[];		/* struct lttng_viewer_stream */
+	/* struct lttng_viewer_stream */
+	char stream_list[];
 } __attribute__((__packed__));
 
 /*
@@ -150,7 +155,6 @@ struct lttng_viewer_get_next_index {
 } __attribute__ ((__packed__));
 
 struct lttng_viewer_index {
-	uint32_t status;	/* enum lttng_viewer_next_index_return_code */
 	uint64_t offset;
 	uint64_t packet_size;
 	uint64_t content_size;
@@ -158,6 +162,8 @@ struct lttng_viewer_index {
 	uint64_t timestamp_end;
 	uint64_t events_discarded;
 	uint64_t stream_id;
+	/* enum lttng_viewer_next_index_return_code */
+	uint32_t status;
 	uint32_t flags;	/* LTTNG_VIEWER_FLAG_* */
 } __attribute__ ((__packed__));
 
@@ -171,7 +177,8 @@ struct lttng_viewer_get_packet {
 } __attribute__((__packed__));
 
 struct lttng_viewer_trace_packet {
-	uint32_t status;		/* enum lttng_viewer_get_packet_return_code */
+	/* enum lttng_viewer_get_packet_return_code */
+	uint32_t status;
 	uint32_t len;
 	uint32_t flags;	/* LTTNG_VIEWER_FLAG_* */
 	char data[];
@@ -185,8 +192,9 @@ struct lttng_viewer_get_metadata {
 } __attribute__((__packed__));
 
 struct lttng_viewer_metadata_packet {
-	uint32_t status;		/* enum lttng_viewer_get_metadata_return_code */
 	uint64_t len;
+	/* enum lttng_viewer_get_metadata_return_code */
+	uint32_t status;
 	char data[];
 } __attribute__((__packed__));
 
