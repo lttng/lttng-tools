@@ -301,6 +301,43 @@ AX_CONFIG_FEATURE(
 )
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
+# Set compile flags to java include files if given. This is only used to
+# compile JUL tests.
+AC_ARG_WITH([java-jdk],
+	[AS_HELP_STRING([--with-java-jdk=DIR],[use the Java JDK in DIR. Ex : $JAVA_HOME.])],
+	[JAVA_JDK=$withval],
+	[JAVA_JDK=""]
+)
+AM_CONDITIONAL([HAVE_JAVA_JDK], [test $JAVA_JDK], [Java JDK path])
+AC_SUBST([JAVA_JDK])
+
+AS_IF([test $JAVA_JDK],[
+	AS_IF([test -d $JAVA_JDK],
+		[
+			AC_MSG_RESULT([using Java includes in $JAVA_SDK])
+			SUBDIRS=`find $JAVA_JDK/include -type d`
+			CPPFLAGS+=" "
+			CPPFLAGS+=`for x in $SUBDIRS; do echo -n "-I$x "; done`
+			CPPFLAGS+=" "
+        ],[AC_MSG_ERROR(Unable to find Java include files in $JAVA_JDK)]
+	)
+])
+
+# Check for the UST JUL jar file in the system. Hardcoded path is added here
+# since we have *no* idea where this could be installed. Note that this is only
+# used for JUL testing.
+AC_MSG_CHECKING(Java JUL UST jar file)
+java_jul_jar_path="/usr/local/lib/lttng/java/liblttng-ust-jul.jar"
+if test -f $java_jul_jar_path; then
+	build_java_jul=yes
+	AC_MSG_RESULT(found)
+else
+	build_java_jul=no
+	AC_MSG_RESULT(not found)
+fi
+AM_CONDITIONAL([BUILD_JAVA_JUL], [test "x$build_java_jul" = "xyes"])
+AC_SUBST([java_jul_jar_path])
+
 AC_SYS_LARGEFILE
 AC_PROG_CC
 LT_INIT
@@ -390,6 +427,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/exit-fast/Makefile
 	tests/regression/ust/fork/Makefile
 	tests/regression/ust/libc-wrapper/Makefile
+	tests/regression/ust/java-jul/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile
 	tests/utils/Makefile

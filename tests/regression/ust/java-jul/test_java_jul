@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License, version 2 only, as published by
+# the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Java JUL support"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_ITER=6
+NR_MSEC_WAIT=1000
+TESTAPP_NAME="JTestLTTng"
+TESTAPP_BIN="$TESTAPP_NAME.java"
+TESTAPP_PATH="$CURDIR/$TESTAPP_NAME"
+SESSION_NAME="jul"
+EVENT_NAME="JTestLTTng"
+JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/java/liblttng-ust-jul.jar"
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=16
+
+source $TESTDIR/utils/utils.sh
+
+function run_app
+{
+	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT >/dev/null 2>&1 &
+}
+
+function wait_apps
+{
+	while [ -n "$(pidof java)" ]; do
+		sleep 0.5
+	done
+	pass "Wait for applications to end"
+}
+
+# MUST set TESTDIR before calling those functions
+
+function test_jul_before_start ()
+{
+	diag "Test JUL application BEFORE tracing starts"
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+
+	# Run 5 times with a 1 second delay
+	run_app
+
+	start_lttng_tracing $SESSION_NAME
+
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+}
+
+function test_jul_after_start ()
+{
+	diag "Test JUL application AFTER tracing starts"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay
+	run_app
+
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ ! -f "$TESTAPP_PATH.class" ]; then
+	withapp=0
+else
+	withapp=1
+fi
+
+skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_sessiond
+
+	tests=(
+		test_jul_before_start
+		test_jul_after_start
+	)
+
+	for fct_test in ${tests[@]};
+	do
+		${fct_test}
+
+		# Validate test
+		validate_trace $EVENT_NAME $TRACE_PATH
+		if [ $? -eq 0 ]; then
+			# Only delete if successful
+			rm -rf $TRACE_PATH
+		else
+			break
+		fi
+	done
+
+	stop_lttng_sessiond
+}

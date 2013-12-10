@@ -15,6 +15,7 @@ Makefile.in
 *.info
 *.bz2
 *.tar
+*.class
 .dirstamp
 configure
 aclocal.m4
