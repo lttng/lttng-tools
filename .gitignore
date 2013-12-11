@@ -82,3 +82,5 @@ health_check
 /tests/unit/ini_config/ini_config
 
 /benchmark/
+
+/include/version.h

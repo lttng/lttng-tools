@@ -1,9 +1,9 @@
 ACLOCAL_AMFLAGS = -I config
 
-SUBDIRS = src \
+SUBDIRS = include \
+		  src \
 		  tests \
 		  extras \
-		  include \
 		  doc
 
 dist_doc_DATA = LICENSE \

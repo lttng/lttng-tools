@@ -19,6 +19,7 @@
 #define _LTTNG_UTILS_H
 
 #include <popt.h>
+#include "version.h"
 
 #include <lttng/lttng.h>
 
