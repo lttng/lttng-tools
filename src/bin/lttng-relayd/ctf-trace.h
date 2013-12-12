@@ -31,6 +31,7 @@ struct ctf_trace {
 	uint64_t metadata_received;
 	uint64_t metadata_sent;
 	struct relay_stream *metadata_stream;
+	struct relay_viewer_stream *viewer_metadata_stream;
 };
 
 void ctf_trace_assign(struct lttng_ht *ht, struct relay_stream *stream);

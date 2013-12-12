@@ -800,8 +800,6 @@ void deferred_free_stream(struct rcu_head *head)
 	struct relay_stream *stream =
 		caa_container_of(head, struct relay_stream, rcu_node);
 
-	ctf_trace_try_destroy(stream->ctf_trace);
-
 	free(stream->path_name);
 	free(stream->channel_name);
 	free(stream);
@@ -865,6 +863,11 @@ static void destroy_stream(struct relay_stream *stream)
 	iter.iter.node = &stream->ctf_trace_node.node;
 	delret = lttng_ht_del(stream->ctf_traces_ht, &iter);
 	assert(!delret);
+
+	if (stream->ctf_trace) {
+		ctf_trace_try_destroy(stream->ctf_trace);
+	}
+
 	call_rcu(&stream->rcu_node, deferred_free_stream);
 	DBG("Closed tracefile %d from close stream", stream->fd);
 }
