@@ -431,6 +431,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/java-jul/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile
+	tests/unit/ini_config/Makefile
 	tests/utils/Makefile
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
