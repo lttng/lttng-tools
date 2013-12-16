@@ -48,7 +48,9 @@ lttng_sessiond_LDADD = -lrt -lurcu-common -lurcu \
 		$(top_builddir)/src/common/compat/libcompat.la \
 		$(top_builddir)/src/common/relayd/librelayd.la \
 		$(top_builddir)/src/common/testpoint/libtestpoint.la \
-		$(top_builddir)/src/common/health/libhealth.la
+		$(top_builddir)/src/common/health/libhealth.la \
+		$(top_builddir)/src/common/config/libconfig.la
+
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_LDADD += -llttng-ust-ctl

@@ -126,6 +126,14 @@ AC_DEFINE_UNQUOTED([CONFIG_LTTV_GUI_BIN], "$LTTV_GUI_BIN", [Location of the lttv
 AC_DEFINE_UNQUOTED([CONFIG_SESSIOND_BIN], "$SESSIOND_BIN", [Location of the sessiond executable.])
 AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_RUNDIR], ["$LTTNG_SYSTEM_RUNDIR"], [LTTng system runtime directory])
 
+if test "x$prefix" = "xNONE"; then
+	prefix=$ac_default_prefix
+fi
+CONFDIR=`eval echo $sysconfdir`
+AC_SUBST(CONFDIR)
+AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_CONFIGDIR],"$CONFDIR", [LTTng system configuration directory.])
+
+#
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
 	[AC_MSG_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]

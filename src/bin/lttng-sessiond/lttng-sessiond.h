@@ -108,6 +108,11 @@ extern long page_size;
  */
 extern unsigned int jul_tcp_port;
 
+/*
+ * Section name to look for in the daemon configuration file.
+ */
+extern const char * const config_section_name;
+
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 

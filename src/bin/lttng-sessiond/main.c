@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *               2013 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -45,6 +46,7 @@
 #include <common/futex.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
+#include <common/config/config.h>
 
 #include "lttng-sessiond.h"
 #include "buffer-registry.h"
@@ -70,7 +72,8 @@
 
 const char *progname;
 static const char *tracing_group_name = DEFAULT_TRACING_GROUP;
-static const char *opt_pidfile;
+static int tracing_group_name_override;
+static char *opt_pidfile;
 static int opt_sig_parent;
 static int opt_verbose_consumer;
 static int opt_daemon;
@@ -120,6 +123,38 @@ static struct consumer_data ustconsumer32_data = {
 	.cond = PTHREAD_COND_INITIALIZER,
 	.cond_mutex = PTHREAD_MUTEX_INITIALIZER,
 };
+
+/* Command line options */
+static const struct option long_options[] = {
+	{ "client-sock", 1, 0, 'c' },
+	{ "apps-sock", 1, 0, 'a' },
+	{ "kconsumerd-cmd-sock", 1, 0, 'C' },
+	{ "kconsumerd-err-sock", 1, 0, 'E' },
+	{ "ustconsumerd32-cmd-sock", 1, 0, 'G' },
+	{ "ustconsumerd32-err-sock", 1, 0, 'H' },
+	{ "ustconsumerd64-cmd-sock", 1, 0, 'D' },
+	{ "ustconsumerd64-err-sock", 1, 0, 'F' },
+	{ "consumerd32-path", 1, 0, 'u' },
+	{ "consumerd32-libdir", 1, 0, 'U' },
+	{ "consumerd64-path", 1, 0, 't' },
+	{ "consumerd64-libdir", 1, 0, 'T' },
+	{ "daemonize", 0, 0, 'd' },
+	{ "sig-parent", 0, 0, 'S' },
+	{ "help", 0, 0, 'h' },
+	{ "group", 1, 0, 'g' },
+	{ "version", 0, 0, 'V' },
+	{ "quiet", 0, 0, 'q' },
+	{ "verbose", 0, 0, 'v' },
+	{ "verbose-consumer", 0, 0, 'Z' },
+	{ "no-kernel", 0, 0, 'N' },
+	{ "pidfile", 1, 0, 'p' },
+	{ "jul-tcp-port", 1, 0, 'J' },
+	{ "config", 1, 0, 'f' },
+	{ NULL, 0, 0, 0 }
+};
+
+/* Command line options to ignore from configuration file */
+static const char *config_ignore_options[] = { "help", "version", "config" };
 
 /* Shared between threads */
 static int dispatch_thread_exit;
@@ -192,6 +227,10 @@ static const char *consumerd32_bin = CONFIG_CONSUMERD32_BIN;
 static const char *consumerd64_bin = CONFIG_CONSUMERD64_BIN;
 static const char *consumerd32_libdir = CONFIG_CONSUMERD32_LIBDIR;
 static const char *consumerd64_libdir = CONFIG_CONSUMERD64_LIBDIR;
+static int consumerd32_bin_override;
+static int consumerd64_bin_override;
+static int consumerd32_libdir_override;
+static int consumerd64_libdir_override;
 
 static const char *module_proc_lttng = "/proc/lttng";
 
@@ -242,6 +281,8 @@ struct health_app *health_sessiond;
 
 /* JUL TCP port for registration. Used by the JUL thread. */
 unsigned int jul_tcp_port = DEFAULT_JUL_TCP_PORT;
+
+const char * const config_section_name = "sessiond";
 
 static
 void setup_consumerd_path(void)
@@ -542,6 +583,30 @@ static void cleanup(void)
 	}
 
 	close_consumer_sockets();
+
+	/*
+	 * If the override option is set, the pointer points to a *non* const thus
+	 * freeing it even though the variable type is set to const.
+	 */
+	if (tracing_group_name_override) {
+		free((void *) tracing_group_name);
+	}
+	if (consumerd32_bin_override) {
+		free((void *) consumerd32_bin);
+	}
+	if (consumerd64_bin_override) {
+		free((void *) consumerd64_bin);
+	}
+	if (consumerd32_libdir_override) {
+		free((void *) consumerd32_libdir);
+	}
+	if (consumerd64_libdir_override) {
+		free((void *) consumerd64_libdir);
+	}
+
+	if (opt_pidfile) {
+		free(opt_pidfile);
+	}
 
 	/* <fun> */
 	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
@@ -3964,150 +4029,250 @@ static void usage(void)
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
 	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
 	fprintf(stderr, "      --jul-tcp-port                 JUL application registration TCP port\n");
+	fprintf(stderr, "  -f  --config                       Load daemon configuration file\n");
 }
 
 /*
- * daemon argument parsing
+ * Take an option from the getopt output and set it in the right variable to be
+ * used later.
+ *
+ * Return 0 on success else a negative value.
  */
-static int parse_args(int argc, char **argv)
+static int set_option(int opt, const char *arg, const char *optname)
 {
-	int c;
+	int ret = 0;
 
-	static struct option long_options[] = {
-		{ "client-sock", 1, 0, 'c' },
-		{ "apps-sock", 1, 0, 'a' },
-		{ "kconsumerd-cmd-sock", 1, 0, 'C' },
-		{ "kconsumerd-err-sock", 1, 0, 'E' },
-		{ "ustconsumerd32-cmd-sock", 1, 0, 'G' },
-		{ "ustconsumerd32-err-sock", 1, 0, 'H' },
-		{ "ustconsumerd64-cmd-sock", 1, 0, 'D' },
-		{ "ustconsumerd64-err-sock", 1, 0, 'F' },
-		{ "consumerd32-path", 1, 0, 'u' },
-		{ "consumerd32-libdir", 1, 0, 'U' },
-		{ "consumerd64-path", 1, 0, 't' },
-		{ "consumerd64-libdir", 1, 0, 'T' },
-		{ "daemonize", 0, 0, 'd' },
-		{ "sig-parent", 0, 0, 'S' },
-		{ "help", 0, 0, 'h' },
-		{ "group", 1, 0, 'g' },
-		{ "version", 0, 0, 'V' },
-		{ "quiet", 0, 0, 'q' },
-		{ "verbose", 0, 0, 'v' },
-		{ "verbose-consumer", 0, 0, 'Z' },
-		{ "no-kernel", 0, 0, 'N' },
-		{ "pidfile", 1, 0, 'p' },
-		{ "jul-tcp-port", 1, 0, 'J' },
-		{ NULL, 0, 0, 0 }
-	};
+	switch (opt) {
+	case 0:
+		fprintf(stderr, "option %s", optname);
+		if (arg) {
+			fprintf(stderr, " with arg %s\n", arg);
+		}
+		break;
+	case 'c':
+		snprintf(client_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'a':
+		snprintf(apps_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'd':
+		opt_daemon = 1;
+		break;
+	case 'g':
+		tracing_group_name = strdup(arg);
+		break;
+	case 'h':
+		usage();
+		exit(EXIT_FAILURE);
+	case 'V':
+		fprintf(stdout, "%s\n", VERSION);
+		exit(EXIT_SUCCESS);
+	case 'S':
+		opt_sig_parent = 1;
+		break;
+	case 'E':
+		snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'C':
+		snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'F':
+		snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'D':
+		snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'H':
+		snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'G':
+		snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
+		break;
+	case 'N':
+		opt_no_kernel = 1;
+		break;
+	case 'q':
+		lttng_opt_quiet = 1;
+		break;
+	case 'v':
+		/* Verbose level can increase using multiple -v */
+		if (arg) {
+			lttng_opt_verbose = config_parse_value(arg);
+		} else {
+			lttng_opt_verbose += 1;
+		}
+		break;
+	case 'Z':
+		if (arg) {
+			opt_verbose_consumer = config_parse_value(arg);
+		} else {
+			opt_verbose_consumer += 1;
+		}
+		break;
+	case 'u':
+		consumerd32_bin = strdup(arg);
+		consumerd32_bin_override = 1;
+		break;
+	case 'U':
+		consumerd32_libdir = strdup(arg);
+		consumerd32_libdir_override = 1;
+		break;
+	case 't':
+		consumerd64_bin = strdup(arg);
+		consumerd64_bin_override = 1;
+		break;
+	case 'T':
+		consumerd64_libdir = strdup(arg);
+		consumerd64_libdir_override = 1;
+		break;
+	case 'p':
+		opt_pidfile = strdup(arg);
+		break;
+	case 'J': /* JUL TCP port. */
+	{
+		unsigned long v;
 
+		errno = 0;
+		v = strtoul(arg, NULL, 0);
+		if (errno != 0 || !isdigit(arg[0])) {
+			ERR("Wrong value in --jul-tcp-port parameter: %s", arg);
+			return -1;
+		}
+		if (v == 0 || v >= 65535) {
+			ERR("Port overflow in --jul-tcp-port parameter: %s", arg);
+			return -1;
+		}
+		jul_tcp_port = (uint32_t) v;
+		DBG3("JUL TCP port set to non default: %u", jul_tcp_port);
+		break;
+	}
+	default:
+		/* Unknown option or other error.
+		 * Error is printed by getopt, just return */
+		ret = -1;
+	}
+
+	return ret;
+}
+
+/*
+ * config_entry_handler_cb used to handle options read from a config file.
+ * See config_entry_handler_cb comment in common/config/config.h for the
+ * return value conventions.
+ */
+static int config_entry_handler(const struct config_entry *entry, void *unused)
+{
+	int ret = 0, i;
+
+	if (!entry || !entry->name || !entry->value) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	/* Check if the option is to be ignored */
+	for (i = 0; i < sizeof(config_ignore_options) / sizeof(char *); i++) {
+		if (!strcmp(entry->name, config_ignore_options[i])) {
+			goto end;
+		}
+	}
+
+	for (i = 0; i < (sizeof(long_options) / sizeof(struct option)) - 1;
+		i++) {
+
+		/* Ignore if not fully matched. */
+		if (strcmp(entry->name, long_options[i].name)) {
+			continue;
+		}
+
+		/*
+		 * If the option takes no argument on the command line, we have to
+		 * check if the value is "true". We support non-zero numeric values,
+		 * true, on and yes.
+		 */
+		if (!long_options[i].has_arg) {
+			ret = config_parse_value(entry->value);
+			if (ret <= 0) {
+				if (ret) {
+					WARN("Invalid configuration value \"%s\" for option %s",
+							entry->value, entry->name);
+				}
+				/* False, skip boolean config option. */
+				goto end;
+			}
+		}
+
+		ret = set_option(long_options[i].val, entry->value, entry->name);
+		goto end;
+	}
+
+	WARN("Unrecognized option \"%s\" in daemon configuration file.", entry->name);
+
+end:
+	return ret;
+}
+
+/*
+ * daemon configuration loading and argument parsing
+ */
+static int set_options(int argc, char **argv)
+{
+	int ret = 0, c = 0, option_index = 0;
+	int orig_optopt = optopt, orig_optind = optind;
+	char *optstring;
+	const char *config_path = NULL;
+
+	optstring = utils_generate_optstring(long_options,
+			sizeof(long_options) / sizeof(struct option));
+	if (!optstring) {
+		ret = -ENOMEM;
+		goto end;
+	}
+
+	/* Check for the --config option */
+	while ((c = getopt_long(argc, argv, optstring, long_options,
+					&option_index)) != -1) {
+		if (c == '?') {
+			ret = -EINVAL;
+			goto end;
+		} else if (c != 'f') {
+			/* if not equal to --config option. */
+			continue;
+		}
+
+		config_path = utils_expand_path(optarg);
+		if (!config_path) {
+			ERR("Failed to resolve path: %s", optarg);
+		}
+	}
+
+	ret = config_get_section_entries(config_path, config_section_name,
+			config_entry_handler, NULL);
+	if (ret) {
+		if (ret > 0) {
+			ERR("Invalid configuration option at line %i", ret);
+			ret = -1;
+		}
+		goto end;
+	}
+
+	/* Reset getopt's global state */
+	optopt = orig_optopt;
+	optind = orig_optind;
 	while (1) {
-		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:J:",
-				long_options, &option_index);
+		c = getopt_long(argc, argv, optstring, long_options, &option_index);
 		if (c == -1) {
 			break;
 		}
 
-		switch (c) {
-		case 0:
-			fprintf(stderr, "option %s", long_options[option_index].name);
-			if (optarg) {
-				fprintf(stderr, " with arg %s\n", optarg);
-			}
+		ret = set_option(c, optarg, long_options[option_index].name);
+		if (ret < 0) {
 			break;
-		case 'c':
-			snprintf(client_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'a':
-			snprintf(apps_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'd':
-			opt_daemon = 1;
-			break;
-		case 'g':
-			tracing_group_name = optarg;
-			break;
-		case 'h':
-			usage();
-			exit(EXIT_FAILURE);
-		case 'V':
-			fprintf(stdout, "%s\n", VERSION);
-			exit(EXIT_SUCCESS);
-		case 'S':
-			opt_sig_parent = 1;
-			break;
-		case 'E':
-			snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'C':
-			snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'F':
-			snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'D':
-			snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'H':
-			snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'G':
-			snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", optarg);
-			break;
-		case 'N':
-			opt_no_kernel = 1;
-			break;
-		case 'q':
-			lttng_opt_quiet = 1;
-			break;
-		case 'v':
-			/* Verbose level can increase using multiple -v */
-			lttng_opt_verbose += 1;
-			break;
-		case 'Z':
-			opt_verbose_consumer += 1;
-			break;
-		case 'u':
-			consumerd32_bin= optarg;
-			break;
-		case 'U':
-			consumerd32_libdir = optarg;
-			break;
-		case 't':
-			consumerd64_bin = optarg;
-			break;
-		case 'T':
-			consumerd64_libdir = optarg;
-			break;
-		case 'p':
-			opt_pidfile = optarg;
-			break;
-		case 'J': /* JUL TCP port. */
-		{
-			unsigned long v;
-
-			errno = 0;
-			v = strtoul(optarg, NULL, 0);
-			if (errno != 0 || !isdigit(optarg[0])) {
-				ERR("Wrong value in --jul-tcp-port parameter: %s", optarg);
-				return -1;
-			}
-			if (v == 0 || v >= 65535) {
-				ERR("Port overflow in --jul-tcp-port parameter: %s", optarg);
-				return -1;
-			}
-			jul_tcp_port = (uint32_t) v;
-			DBG3("JUL TCP port set to non default: %u", jul_tcp_port);
-			break;
-		}
-		default:
-			/* Unknown option or other error.
-			 * Error is printed by getopt, just return */
-			return -1;
 		}
 	}
 
-	return 0;
+end:
+	free(optstring);
+	return ret;
 }
 
 /*
@@ -4635,9 +4800,9 @@ int main(int argc, char **argv)
 		WARN("Fallback page size to %ld", page_size);
 	}
 
-	/* Parse arguments */
+	/* Parse arguments and load the daemon configuration file */
 	progname = argv[0];
-	if ((ret = parse_args(argc, argv)) < 0) {
+	if ((ret = set_options(argc, argv)) < 0) {
 		goto error;
 	}
 
