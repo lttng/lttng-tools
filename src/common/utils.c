@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2012 - David Goulet <dgoulet@efficios.com>
  * Copyright (C) 2013 - Raphaël Beamonte <raphael.beamonte@gmail.com>
+ * Copyright (C) 2013 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -899,4 +900,47 @@ gid_t utils_get_group_id(const char *name)
 		return 0;
 	}
 	return grp->gr_gid;
+}
+
+/*
+ * Return a newly allocated option string. This string is to be used as the
+ * optstring argument of getopt_long(), see GETOPT(3). opt_count is the number
+ * of elements in the long_options array. Returns NULL if the string's
+ * allocation fails.
+ */
+LTTNG_HIDDEN
+char *utils_generate_optstring(const struct option *long_options,
+		size_t opt_count)
+{
+	int i;
+	size_t string_len = opt_count, str_pos = 0;
+	char *optstring;
+
+	/*
+	 * Compute the necessary string length. One letter per option, two when an
+	 * argument is necessary, and a trailing NULL.
+	 */
+	for (i = 0; i < opt_count; i++) {
+		string_len += long_options[i].has_arg ? 1 : 0;
+	}
+
+	optstring = zmalloc(string_len);
+	if (!optstring) {
+		goto end;
+	}
+
+	for (i = 0; i < opt_count; i++) {
+		if (!long_options[i].name) {
+			/* Got to the trailing NULL element */
+			break;
+		}
+
+		optstring[str_pos++] = (char)long_options[i].val;
+		if (long_options[i].has_arg) {
+			optstring[str_pos++] = ':';
+		}
+	}
+
+end:
+	return optstring;
 }
