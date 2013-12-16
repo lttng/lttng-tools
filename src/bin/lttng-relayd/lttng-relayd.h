@@ -220,6 +220,8 @@ extern struct lttng_ht *indexes_ht;
 
 extern const char *tracing_group_name;
 
+extern const char * const config_section_name;
+
 struct relay_stream *relay_stream_find_by_id(uint64_t stream_id);
 
 #endif /* LTTNG_RELAYD_H */
