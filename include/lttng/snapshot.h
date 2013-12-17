@@ -62,7 +62,7 @@ const char *lttng_snapshot_output_get_data_url(struct lttng_snapshot_output *out
 /*
  * Snapshot output setter family functions.
  *
- * For every set* call, 0 is returned on success or else LTTNG_ERR_INVALID is
+ * For every set* call, 0 is returned on success or else -LTTNG_ERR_INVALID is
  * returned indicating that at least one given parameter is invalid.
  */
 
