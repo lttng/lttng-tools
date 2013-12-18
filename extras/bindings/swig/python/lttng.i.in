@@ -314,6 +314,7 @@ enum lttng_calibrate_type {
 // =============================================
 
 %rename("create") lttng_create_session(const char *name, const char *path);
+%rename("create_snapshot") lttng_create_session_snapshot(const char *name, const char *snapshot_url);
 %rename("destroy") lttng_destroy_session(const char *name);
 %rename("_lttng_create_handle") lttng_create_handle(const char *session_name, struct lttng_domain *domain);
 %rename("_lttng_destroy_handle") lttng_destroy_handle(struct lttng_handle *handle);
@@ -361,14 +362,20 @@ int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
 %feature("docstring")"create(str name, str path) -> int
 
 Create a new tracing session using name and path.
-Returns size of returned session payload data or a negative error code."
+Returns 0 on success or a negative error code."
 int lttng_create_session(const char *name, const char *path);
 
+%feature("docstring")"create_snapshot(str name, str snapshot_url) -> int
+
+Create a new tracing session using name and snapshot_url in snapshot
+mode (flight recorder).
+Returns 0 on success or a negative error code."
+int lttng_create_session_snapshot(const char *name, const char *path);
 
 %feature("docstring")"destroy(str name) -> int
 
 Tear down tracing session using name.
-Returns size of returned session payload data or a negative error code."
+Returns 0 on success or a negative error code."
 int lttng_destroy_session(const char *name);
 
 
