@@ -673,8 +673,14 @@ int cmd_setup_relayd(struct ltt_session *session)
 
 	rcu_read_lock();
 
-	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET
-			&& usess->consumer->enabled) {
+	if (usess && usess->consumer &&
+			usess->consumer->type == CONSUMER_DST_NET) {
+		/* Bail out with an error if the consumer is not working. */
+		if (!usess->consumer->enabled) {
+			ret = LTTNG_ERR_NO_CONSUMER;
+			goto error;
+		}
+
 		/* For each consumer socket, send relayd sockets */
 		cds_lfht_for_each_entry(usess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
@@ -691,8 +697,14 @@ int cmd_setup_relayd(struct ltt_session *session)
 		}
 	}
 
-	if (ksess && ksess->consumer && ksess->consumer->type == CONSUMER_DST_NET
-			&& ksess->consumer->enabled) {
+	if (ksess && ksess->consumer &&
+			ksess->consumer->type == CONSUMER_DST_NET) {
+		/* Bail out with an error if the consumer is not working. */
+		if (!ksess->consumer->enabled) {
+			ret = LTTNG_ERR_NO_CONSUMER;
+			goto error;
+		}
+
 		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			/* Code flow error */
