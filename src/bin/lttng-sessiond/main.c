@@ -1531,11 +1531,11 @@ static void *thread_dispatch_ust_registration(void *data)
 				wait_node = zmalloc(sizeof(*wait_node));
 				if (!wait_node) {
 					PERROR("zmalloc wait_node dispatch");
+					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					ret = close(ust_cmd->sock);
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					free(ust_cmd);
 					goto error;
 				}
@@ -1545,11 +1545,11 @@ static void *thread_dispatch_ust_registration(void *data)
 				wait_node->app = ust_app_create(&ust_cmd->reg_msg,
 						ust_cmd->sock);
 				if (!wait_node->app) {
+					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					ret = close(ust_cmd->sock);
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					free(wait_node);
 					free(ust_cmd);
 					continue;
@@ -1593,11 +1593,11 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * structure for good.
 				 */
 				if (!app) {
+					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 					ret = close(ust_cmd->sock);
 					if (ret < 0) {
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
-					_lttng_fd_put(LTTNG_FD_APPS, 1, ust_cmd->sock);
 				}
 				free(ust_cmd);
 			}
