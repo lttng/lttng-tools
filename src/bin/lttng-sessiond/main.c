@@ -1293,10 +1293,6 @@ static void *thread_manage_apps(void *data)
 					}
 
 					DBG("Apps with sock %d added to poll set", sock);
-
-					health_code_update();
-
-					break;
 				}
 			} else {
 				/*
@@ -1312,7 +1308,6 @@ static void *thread_manage_apps(void *data)
 
 					/* Socket closed on remote end. */
 					ust_app_unregister(pollfd);
-					break;
 				}
 			}
 
