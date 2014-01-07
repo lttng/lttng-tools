@@ -129,6 +129,7 @@ struct health_app *health_relayd;
 static struct option long_options[] = {
 	{ "control-port", 1, 0, 'C', },
 	{ "data-port", 1, 0, 'D', },
+	{ "live-port", 1, 0, 'L', },
 	{ "daemonize", 0, 0, 'd', },
 	{ "group", 1, 0, 'g', },
 	{ "help", 0, 0, 'h', },
@@ -151,6 +152,7 @@ void usage(void)
 	fprintf(stderr, "  -d, --daemonize           Start as a daemon.\n");
 	fprintf(stderr, "  -C, --control-port URL    Control port listening.\n");
 	fprintf(stderr, "  -D, --data-port URL       Data port listening.\n");
+	fprintf(stderr, "  -L, --live-port URL       Live view port listening.\n");
 	fprintf(stderr, "  -o, --output PATH         Output path for traces. Must use an absolute path.\n");
 	fprintf(stderr, "  -v, --verbose             Verbose mode. Activate DBG() macro.\n");
 	fprintf(stderr, "  -g, --group NAME          Specify the tracing group name. (default: tracing)\n");
@@ -193,6 +195,16 @@ int set_option(int opt, const char *arg, const char *optname)
 		}
 		if (data_uri->port == 0) {
 			data_uri->port = DEFAULT_NETWORK_DATA_PORT;
+		}
+		break;
+	case 'L':
+		ret = uri_parse(arg, &live_uri);
+		if (ret < 0) {
+			ERR("Invalid live URI specified");
+			goto end;
+		}
+		if (live_uri->port == 0) {
+			live_uri->port = DEFAULT_NETWORK_VIEWER_PORT;
 		}
 		break;
 	case 'd':
@@ -416,6 +428,7 @@ void cleanup(void)
 
 	uri_free(control_uri);
 	uri_free(data_uri);
+	/* Live URI is freed in the live thread. */
 
 	if (tracing_group_name_override) {
 		free((void *) tracing_group_name);
@@ -2727,7 +2740,7 @@ int main(int argc, char **argv)
 
 	/* Check if daemon is UID = 0 */
 	if (relayd_uid == 0) {
-		if (control_uri->port < 1024 || data_uri->port < 1024) {
+		if (control_uri->port < 1024 || data_uri->port < 1024 || live_uri->port < 1024) {
 			ERR("Need to be root to use ports < 1024");
 			ret = -1;
 			goto exit;
