@@ -58,11 +58,11 @@ int check_bin_op_nesting_recursive(struct ir_op *node, int nesting)
 			return -EINVAL;
 		}
 		ret = check_bin_op_nesting_recursive(node->u.binary.left,
-				nesting++);
+				nesting + 1);
 		if (ret)
 			return ret;
 		return check_bin_op_nesting_recursive(node->u.binary.right,
-				nesting++);
+				nesting + 1);
 	}
 	case IR_OP_LOGICAL:
 	{
