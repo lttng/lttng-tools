@@ -294,6 +294,59 @@ error:
 }
 
 /*
+ * Inform the relay that all the streams for the current channel has been sent.
+ *
+ * On success return 0 else return ret_code negative value.
+ */
+int relayd_streams_sent(struct lttcomm_relayd_sock *rsock)
+{
+	int ret;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd sending streams sent.");
+
+	/* This feature was introduced in 2.4, ignore it for earlier versions. */
+	if (rsock->minor < 4) {
+		ret = 0;
+		goto end;
+	}
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_STREAMS_SENT, NULL, 0, 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Waiting for reply */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Back to host bytes order. */
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd streams sent replied error %d", reply.ret_code);
+		goto error;
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd streams sent success");
+
+error:
+end:
+	return ret;
+}
+
+/*
  * Check version numbers on the relayd.
  * If major versions are compatible, we assign minor_to_use to the
  * minor version of the procotol we are going to use for this session.

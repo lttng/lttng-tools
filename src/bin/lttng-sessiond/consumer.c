@@ -906,6 +906,19 @@ void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.stream.cpu = cpu;
 }
 
+void consumer_init_streams_sent_comm_msg(struct lttcomm_consumer_msg *msg,
+		enum lttng_consumer_command cmd,
+		uint64_t channel_key, uint64_t net_seq_idx)
+{
+	assert(msg);
+
+	memset(msg, 0, sizeof(struct lttcomm_consumer_msg));
+
+	msg->cmd_type = cmd;
+	msg->u.sent_streams.channel_key = channel_key;
+	msg->u.sent_streams.net_seq_idx = net_seq_idx;
+}
+
 /*
  * Send stream communication structure to the consumer.
  */

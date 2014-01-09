@@ -57,6 +57,7 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_FLUSH_CHANNEL,
 	LTTNG_CONSUMER_SNAPSHOT_CHANNEL,
 	LTTNG_CONSUMER_SNAPSHOT_METADATA,
+	LTTNG_CONSUMER_STREAMS_SENT,
 };
 
 /* State of each fd in consumer */
@@ -593,6 +594,7 @@ struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		uint64_t net_seq_idx);
 struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key);
 int consumer_send_relayd_stream(struct lttng_consumer_stream *stream, char *path);
+int consumer_send_relayd_streams_sent(uint64_t net_seq_idx);
 void close_relayd_stream(struct lttng_consumer_stream *stream);
 struct lttng_consumer_channel *consumer_find_channel(uint64_t key);
 int consumer_handle_stream_before_relayd(struct lttng_consumer_stream *stream,

@@ -176,6 +176,11 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			DBG("Kernel consumer snapshot stream %s/%s (%" PRIu64 ")",
 					path, stream->name, stream->key);
 		}
+		ret = consumer_send_relayd_streams_sent(relayd_id);
+		if (ret < 0) {
+			ERR("sending streams sent to relayd");
+			goto end_unlock;
+		}
 
 		ret = kernctl_buffer_flush(stream->wait_fd);
 		if (ret < 0) {
@@ -749,6 +754,57 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		DBG("Kernel consumer ADD_STREAM %s (fd: %d) with relayd id %" PRIu64,
 				new_stream->name, fd, new_stream->relayd_stream_id);
+		break;
+	}
+	case LTTNG_CONSUMER_STREAMS_SENT:
+	{
+		struct lttng_consumer_channel *channel;
+
+		/*
+		 * Get stream's channel reference. Needed when adding the stream to the
+		 * global hash table.
+		 */
+		channel = consumer_find_channel(msg.u.sent_streams.channel_key);
+		if (!channel) {
+			/*
+			 * We could not find the channel. Can happen if cpu hotplug
+			 * happens while tearing down.
+			 */
+			ERR("Unable to find channel key %" PRIu64,
+					msg.u.sent_streams.channel_key);
+			ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+		}
+
+		health_code_update();
+
+		/*
+		 * Send status code to session daemon.
+		 */
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
+		health_code_update();
+
+		/*
+		 * We should not send this message if we don't monitor the
+		 * streams in this channel.
+		 */
+		if (!channel->monitor) {
+			break;
+		}
+
+		health_code_update();
+		/* Send stream to relayd if the stream has an ID. */
+		if (msg.u.sent_streams.net_seq_idx != (uint64_t) -1ULL) {
+			ret = consumer_send_relayd_streams_sent(
+					msg.u.sent_streams.net_seq_idx);
+			if (ret < 0) {
+				goto end_nosignal;
+			}
+		}
 		break;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:

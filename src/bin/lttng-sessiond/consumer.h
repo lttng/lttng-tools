@@ -246,6 +246,9 @@ void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t channel_key,
 		uint64_t stream_key,
 		int cpu);
+void consumer_init_streams_sent_comm_msg(struct lttcomm_consumer_msg *msg,
+		enum lttng_consumer_command cmd,
+		uint64_t channel_key, uint64_t net_seq_idx);
 void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		uint64_t channel_key,

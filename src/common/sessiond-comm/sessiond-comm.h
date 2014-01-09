@@ -106,8 +106,10 @@ enum lttcomm_relayd_command {
 	RELAYD_ADD_INDEX                    = 12,
 	RELAYD_SEND_INDEX                   = 13,
 	RELAYD_CLOSE_INDEX                  = 14,
-	/* Live-reading commands. */
+	/* Live-reading commands (2.4+). */
 	RELAYD_LIST_SESSIONS                = 15,
+	/* All streams of the channel have been sent to the relayd (2.4+). */
+	RELAYD_STREAMS_SENT                 = 16,
 };
 
 /*
@@ -433,6 +435,10 @@ struct lttcomm_consumer_msg {
 			uint64_t key;
 			uint64_t max_stream_size;
 		} LTTNG_PACKED snapshot_channel;
+		struct {
+			uint64_t channel_key;
+			uint64_t net_seq_idx;
+		} LTTNG_PACKED sent_streams;
 	} u;
 } LTTNG_PACKED;
 

@@ -769,6 +769,44 @@ end:
 }
 
 /*
+ * Find a relayd and send the streams sent message
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int consumer_send_relayd_streams_sent(uint64_t net_seq_idx)
+{
+	int ret = 0;
+	struct consumer_relayd_sock_pair *relayd;
+
+	assert(net_seq_idx != -1ULL);
+
+	/* The stream is not metadata. Get relayd reference if exists. */
+	rcu_read_lock();
+	relayd = consumer_find_relayd(net_seq_idx);
+	if (relayd != NULL) {
+		/* Add stream on the relayd */
+		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+		ret = relayd_streams_sent(&relayd->control_sock);
+		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		if (ret < 0) {
+			goto end;
+		}
+	} else {
+		ERR("Relayd ID %" PRIu64 " unknown. Can't send streams_sent.",
+				net_seq_idx);
+		ret = -1;
+		goto end;
+	}
+
+	ret = 0;
+	DBG("All streams sent relayd id %" PRIu64, net_seq_idx);
+
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
  * Find a relayd and close the stream
  */
 void close_relayd_stream(struct lttng_consumer_stream *stream)
