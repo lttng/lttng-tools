@@ -475,6 +475,8 @@ static int list_ust_event_fields(void)
 			cmdline = get_cmdline_by_pid(cur_pid);
 			MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
 			free(cmdline);
+			/* Wipe current event since we are about to print a new PID. */
+			memset(&cur_event, 0, sizeof(cur_event));
 		}
 		if (strcmp(cur_event.name, event_field_list[i].event.name) != 0) {
 			print_events(&event_field_list[i].event);
