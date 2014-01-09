@@ -854,7 +854,8 @@ static
 int viewer_attach_session(struct relay_command *cmd,
 		struct lttng_ht *sessions_ht)
 {
-	int ret, send_streams = 0, nb_streams = 0;
+	int ret, send_streams = 0;
+	uint32_t nb_streams = 0, nb_streams_ready = 0;
 	struct lttng_viewer_attach_session_request request;
 	struct lttng_viewer_attach_session_response response;
 	struct lttng_viewer_stream send_stream;
@@ -961,14 +962,16 @@ int viewer_attach_session(struct relay_command *cmd,
 			if (stream->session != cmd->session) {
 				continue;
 			}
+			nb_streams++;
 
 			/*
-			 * Don't send streams with no ctf_trace, they are not ready to be
-			 * read.
+			 * Don't send streams with no ctf_trace, they are not
+			 * ready to be read.
 			 */
-			if (!stream->ctf_trace) {
+			if (!stream->ctf_trace || !stream->viewer_ready) {
 				continue;
 			}
+			nb_streams_ready++;
 
 			vstream = live_find_viewer_stream_by_id(stream->stream_handle);
 			if (!vstream) {
@@ -977,7 +980,11 @@ int viewer_attach_session(struct relay_command *cmd,
 					goto end_unlock;
 				}
 			}
-			nb_streams++;
+		}
+
+		/* We must have the same amount of existing stream and ready stream. */
+		if (nb_streams != nb_streams_ready) {
+			nb_streams = 0;
 		}
 		response.streams_count = htobe32(nb_streams);
 	}

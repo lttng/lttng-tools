@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <urcu.h>
 #include <urcu/wfqueue.h>
+#include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
 #include <common/index/ctf-index.h>
@@ -42,6 +43,16 @@ enum connection_type {
 	RELAY_CONTROL               = 2,
 	RELAY_VIEWER_COMMAND        = 3,
 	RELAY_VIEWER_NOTIFICATION   = 4,
+};
+
+/*
+ * When we receive a stream, it gets stored in a list (on a per connection
+ * basis) until we have all the streams of the same channel and the metadata
+ * associated with it, then it gets flagged with viewer_ready.
+ */
+struct relay_stream_recv_handle {
+	uint64_t id;	/* stream handle */
+	struct cds_list_head node;
 };
 
 /*
@@ -144,6 +155,11 @@ struct relay_stream {
 	 * update the oldest_tracefile_id.
 	 */
 	unsigned int tracefile_overwrite:1;
+	/*
+	 * Can this stream be used by a viewer or are we waiting for additional
+	 * information.
+	 */
+	unsigned int viewer_ready:1;
 };
 
 /*
@@ -200,12 +216,13 @@ struct relay_command {
 	struct lttng_ht_node_ulong sock_n;
 	struct rcu_head rcu_node;
 	enum connection_type type;
-	unsigned int version_check_done:1;
 	/* protocol version to use for this session */
 	uint32_t major;
 	uint32_t minor;
 	struct lttng_ht *ctf_traces_ht;	/* indexed by path name */
 	uint64_t session_id;
+	struct cds_list_head recv_head;
+	unsigned int version_check_done:1;
 };
 
 struct relay_local_data {

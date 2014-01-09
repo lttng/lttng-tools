@@ -409,6 +409,7 @@ static int send_sessiond_channel(int sock,
 {
 	int ret, ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttng_consumer_stream *stream;
+	uint64_t net_seq_idx = -1ULL;
 
 	assert(channel);
 	assert(ctx);
@@ -433,6 +434,20 @@ static int send_sessiond_channel(int sock,
 				}
 				ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 			}
+			if (net_seq_idx == -1ULL) {
+				net_seq_idx = stream->net_seq_idx;
+			}
+		}
+		ret = consumer_send_relayd_streams_sent(net_seq_idx);
+		if (ret < 0) {
+			/*
+			 * Flag that the relayd was the problem here probably due to a
+			 * communicaton error on the socket.
+			 */
+			if (relayd_error) {
+				*relayd_error = 1;
+			}
+			ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 		}
 	}
 
@@ -938,6 +953,12 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 
 			DBG("UST consumer snapshot stream %s/%s (%" PRIu64 ")", path,
 					stream->name, stream->key);
+		}
+		if (relayd_id != -1ULL) {
+			ret = consumer_send_relayd_streams_sent(relayd_id);
+			if (ret < 0) {
+				goto error_unlock;
+			}
 		}
 
 		ustctl_flush_buffer(stream->ustream, 1);
