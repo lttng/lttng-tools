@@ -1030,16 +1030,8 @@ void set_viewer_ready_flag(struct relay_command *cmd)
 			 * Stream is most probably being cleaned up by the data thread thus
 			 * simply continue to the next one.
 			 */
+			rcu_read_unlock();
 			continue;
-		}
-
-		/*
-		 * If any of the streams in the list doesn't have a ctf_trace assigned,
-		 * it means that we never received the metadata stream, so we have to
-		 * wait until it arrives to make the streams available to the viewer.
-		 */
-		if (!stream->ctf_trace) {
-			goto end;
 		}
 
 		stream->viewer_ready = 1;
@@ -1050,7 +1042,6 @@ void set_viewer_ready_flag(struct relay_command *cmd)
 		free(node);
 	}
 
-end:
 	return;
 }
 
@@ -1172,7 +1163,11 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	 * stream message is received, this list is emptied and streams are set
 	 * with the viewer ready flag.
 	 */
-	queue_stream_handle(stream->stream_handle, cmd);
+	if (stream->metadata_flag) {
+		stream->viewer_ready = 1;
+	} else {
+		queue_stream_handle(stream->stream_handle, cmd);
+	}
 
 	lttng_ht_node_init_ulong(&stream->stream_n,
 			(unsigned long) stream->stream_handle);
