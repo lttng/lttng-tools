@@ -4932,6 +4932,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		struct snapshot_output *output, int wait, unsigned int nb_streams)
 {
 	int ret = 0;
+	unsigned int snapshot_done = 0;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
@@ -5006,6 +5007,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			if (ret < 0) {
 				goto error;
 			}
+			snapshot_done = 1;
 		}
 		break;
 	}
@@ -5073,12 +5075,22 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			if (ret < 0) {
 				goto error;
 			}
+			snapshot_done = 1;
 		}
 		break;
 	}
 	default:
 		assert(0);
 		break;
+	}
+
+	if (!snapshot_done) {
+		/*
+		 * If no snapshot was made and we are not in the error path, this means
+		 * that there are no buffers thus no (prior) application to snapshot
+		 * data from so we have simply NO data.
+		 */
+		ret = -ENODATA;
 	}
 
 error:

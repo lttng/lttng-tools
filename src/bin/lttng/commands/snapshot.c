@@ -492,10 +492,17 @@ int cmd_snapshot(int argc, const char **argv)
 
 	ret = handle_command(poptGetArgs(pc));
 	if (ret < 0) {
-		if (ret == -LTTNG_ERR_EPERM) {
+		switch (-ret) {
+		case LTTNG_ERR_EPERM:
 			ERR("The session needs to be set in no output mode (--no-output)");
+			break;
+		case LTTNG_ERR_SNAPSHOT_NODATA:
+			WARN("%s", lttng_strerror(ret));
+			break;
+		default:
+			ERR("%s", lttng_strerror(ret));
+			break;
 		}
-		ERR("%s", lttng_strerror(ret));
 		goto end;
 	}
 
