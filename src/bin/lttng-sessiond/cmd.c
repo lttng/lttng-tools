@@ -2637,12 +2637,17 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 
 	ret = ust_app_snapshot_record(usess, output, wait, nb_streams);
 	if (ret < 0) {
-		if (ret == -EINVAL) {
+		switch (-ret) {
+		case EINVAL:
 			ret = LTTNG_ERR_INVALID;
-			goto error_snapshot;
+			break;
+		case ENODATA:
+			ret = LTTNG_ERR_SNAPSHOT_NODATA;
+			break;
+		default:
+			ret = LTTNG_ERR_SNAPSHOT_FAIL;
+			break;
 		}
-
-		ret = LTTNG_ERR_SNAPSHOT_FAIL;
 		goto error_snapshot;
 	}
 
