@@ -1,3 +1,14 @@
+2014-01-14 lttng-tools 2.4.0-rc3
+	* Fix: metadata stream should be always flagged as ready
+	* Fix: wrong check before destroying the viewer metadata stream
+	* Fix: race with the viewer and readiness of streams
+	* Fix: missing reset when listing UST fields for multiple PIDs
+	* Fix: filter: check binary op nesting
+	* Fix: relayd cmd line option for live port
+	* Fix: remove break in epoll loop of apps. thread
+	* Fix: wrong comment in snapshot public API
+	* Fix: clear the CTF traces when all the streams are closed
+
 2013-12-10 lttng-tools 2.4.0-rc2
 	* Fix: close connection on incompatible version check
 	* Fix: fields alignements in live protocol
