@@ -22,10 +22,10 @@ LIVE=$(top_builddir)/src/bin/lttng-sessiond/session.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.o
 
 noinst_PROGRAMS = live_test
-EXTRA_DIST = live_test test_kernel
+EXTRA_DIST = live_test test_kernel test_lttng_kernel
 
 if HAVE_LIBLTTNG_UST_CTL
-EXTRA_DIST += test_ust test_ust_tracefile_count
+EXTRA_DIST += test_ust test_ust_tracefile_count test_lttng_ust
 endif
 
 live_test_SOURCES = live_test.c
