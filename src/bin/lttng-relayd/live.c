@@ -1121,6 +1121,7 @@ void destroy_viewer_stream(struct relay_viewer_stream *vstream)
 	 * stream.
 	 */
 	if (ret_ref == 1 && vstream->ctf_trace->viewer_metadata_stream) {
+		delete_viewer_stream(vstream->ctf_trace->viewer_metadata_stream);
 		destroy_viewer_stream(vstream->ctf_trace->viewer_metadata_stream);
 		vstream->ctf_trace->metadata_stream = NULL;
 		DBG("Freeing ctf_trace %" PRIu64, vstream->ctf_trace->id);
