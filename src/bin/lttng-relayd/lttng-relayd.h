@@ -88,6 +88,13 @@ struct relay_session {
 	 * viewer-side if new streams got added since the last check.
 	 */
 	unsigned long new_streams;
+
+	/*
+	 * Used to synchronize the process where we flag every streams readiness
+	 * for the viewer when the streams_sent message is received and the viewer
+	 * process of sending those streams.
+	 */
+	pthread_mutex_t viewer_ready_lock;
 };
 
 /*
@@ -208,6 +215,8 @@ struct relay_viewer_stream {
 	 * it sets this flag to inform that it is a normal error.
 	 */
 	unsigned int abort_flag:1;
+	/* Indicates if this stream has been sent to a viewer client. */
+	unsigned int sent_flag:1;
 };
 
 /*

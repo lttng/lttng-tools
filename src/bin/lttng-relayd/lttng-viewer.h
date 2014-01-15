@@ -44,6 +44,7 @@ enum lttng_viewer_command {
 	VIEWER_GET_NEXT_INDEX	= 4,
 	VIEWER_GET_PACKET	= 5,
 	VIEWER_GET_METADATA	= 6,
+	VIEWER_GET_NEW_STREAMS	= 7,
 };
 
 enum lttng_viewer_attach_return_code {
@@ -86,6 +87,12 @@ enum lttng_viewer_seek {
 	VIEWER_SEEK_BEGINNING	= 1,
 	/* Receive the trace packets from now. */
 	VIEWER_SEEK_LAST	= 2,
+};
+
+enum lttng_viewer_new_streams_return_code {
+	VIEWER_NEW_STREAMS_OK		= 1, /* If new streams are being sent. */
+	VIEWER_NEW_STREAMS_NO_NEW	= 2, /* If no new streams are available. */
+	VIEWER_NEW_STREAMS_ERR		= 3, /* Error. */
 };
 
 struct lttng_viewer_session {
@@ -197,5 +204,21 @@ struct lttng_viewer_metadata_packet {
 	uint32_t status;
 	char data[];
 } __attribute__((__packed__));
+
+/*
+ * VIEWER_GET_NEW_STREAMS payload.
+ */
+struct lttng_viewer_new_streams_request {
+	uint64_t session_id;
+} __attribute__((__packed__));
+
+struct lttng_viewer_new_streams_response {
+	/* enum lttng_viewer_new_streams_return_code */
+	uint32_t status;
+	uint32_t streams_count;
+	/* struct lttng_viewer_stream */
+	char stream_list[];
+} __attribute__((__packed__));
+
 
 #endif /* LTTNG_VIEWER_H */
