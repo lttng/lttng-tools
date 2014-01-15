@@ -1160,6 +1160,7 @@ int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 	session->sock = cmd->sock;
 	session->minor = cmd->minor;
 	session->major = cmd->major;
+	pthread_mutex_init(&session->viewer_ready_lock, NULL);
 	cmd->session = session;
 
 	reply.session_id = htobe64(session->id);
@@ -1207,6 +1208,8 @@ void set_viewer_ready_flag(struct relay_command *cmd)
 {
 	struct relay_stream_recv_handle *node, *tmp_node;
 
+	pthread_mutex_lock(&cmd->session->viewer_ready_lock);
+
 	cds_list_for_each_entry_safe(node, tmp_node, &cmd->recv_head, node) {
 		struct relay_stream *stream;
 
@@ -1229,6 +1232,7 @@ void set_viewer_ready_flag(struct relay_command *cmd)
 		free(node);
 	}
 
+	pthread_mutex_unlock(&cmd->session->viewer_ready_lock);
 	return;
 }
 
