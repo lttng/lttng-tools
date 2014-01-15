@@ -1439,6 +1439,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		assert(usess);
 
 		/* Create the default JUL tracepoint. */
+		memset(&uevent, 0, sizeof(uevent));
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		strncpy(uevent.name, DEFAULT_JUL_EVENT_NAME, sizeof(uevent.name));
