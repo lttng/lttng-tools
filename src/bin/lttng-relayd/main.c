@@ -1350,11 +1350,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	 * stream message is received, this list is emptied and streams are set
 	 * with the viewer ready flag.
 	 */
-	if (stream->metadata_flag) {
-		stream->viewer_ready = 1;
-	} else {
-		queue_stream_handle(stream->stream_handle, cmd);
-	}
+	queue_stream_handle(stream->stream_handle, cmd);
 
 	lttng_ht_node_init_ulong(&stream->stream_n,
 			(unsigned long) stream->stream_handle);
