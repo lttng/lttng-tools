@@ -83,6 +83,11 @@ struct relay_session {
 	 */
 	uint64_t minor;
 	uint64_t major;
+	/*
+	 * Flag checked and exchanged with uatomic_cmpxchg to tell the
+	 * viewer-side if new streams got added since the last check.
+	 */
+	unsigned long new_streams;
 };
 
 /*
