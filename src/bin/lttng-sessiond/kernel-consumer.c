@@ -305,7 +305,6 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 {
 	int ret;
 	struct ltt_kernel_stream *stream;
-	uint64_t channel_key = -1ULL;
 
 	/* Safety net */
 	assert(channel);
@@ -339,22 +338,8 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 		if (ret < 0) {
 			goto error;
 		}
-		if (channel_key == -1ULL) {
-			channel_key = channel->fd;
-		}
 	}
 
-	if (!monitor || channel_key == -1ULL) {
-		goto end;
-	}
-
-	/* Add stream on the kernel consumer side. */
-	ret = kernel_consumer_streams_sent(sock, session, channel_key);
-	if (ret < 0) {
-		goto error;
-	}
-
-end:
 error:
 	return ret;
 }
@@ -402,6 +387,16 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 				monitor);
 		if (ret < 0) {
 			goto error;
+		}
+		if (monitor) {
+			/*
+			 * Inform the relay that all the streams for the
+			 * channel were sent.
+			 */
+			ret = kernel_consumer_streams_sent(sock, session, chan->fd);
+			if (ret < 0) {
+				goto error;
+			}
 		}
 	}
 

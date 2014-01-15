@@ -438,17 +438,6 @@ static int send_sessiond_channel(int sock,
 				net_seq_idx = stream->net_seq_idx;
 			}
 		}
-		ret = consumer_send_relayd_streams_sent(net_seq_idx);
-		if (ret < 0) {
-			/*
-			 * Flag that the relayd was the problem here probably due to a
-			 * communicaton error on the socket.
-			 */
-			if (relayd_error) {
-				*relayd_error = 1;
-			}
-			ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
-		}
 	}
 
 	/* Inform sessiond that we are about to send channel and streams. */
@@ -767,6 +756,12 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 				metadata->pathname);
 		if (ret < 0) {
 			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			goto error;
+		}
+		ret = consumer_send_relayd_streams_sent(
+				metadata->metadata_stream->net_seq_idx);
+		if (ret < 0) {
+			ret = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 			goto error;
 		}
 	}
