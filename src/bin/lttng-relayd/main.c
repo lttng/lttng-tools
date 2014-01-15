@@ -2128,6 +2128,11 @@ int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
 	 */
 	set_viewer_ready_flag(cmd);
 
+	/*
+	 * Inform the viewer that there are new streams in the session.
+	 */
+	uatomic_set(&cmd->session->new_streams, 1);
+
 	reply.ret_code = htobe32(LTTNG_OK);
 	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
 	if (send_ret < 0) {
