@@ -40,7 +40,7 @@
 #include <bin/lttng-sessiond/session.h>
 #include <common/common.h>
 
-#include <bin/lttng-relayd/lttng-viewer.h>
+#include <bin/lttng-relayd/lttng-viewer-abi.h>
 #include <common/index/ctf-index.h>
 
 #define SESSION1 "test1"

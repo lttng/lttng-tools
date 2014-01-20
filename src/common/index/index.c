@@ -19,6 +19,8 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
@@ -106,5 +108,78 @@ ssize_t index_write(int fd, struct ctf_packet_index *index, size_t len)
 		PERROR("writing index file");
 	}
 
+	return ret;
+}
+
+/*
+ * Open index file using a given path, channel name and tracefile count.
+ *
+ * Return read only FD on success or else a negative value.
+ */
+int index_open(const char *path_name, const char *channel_name,
+		uint64_t tracefile_count, uint64_t tracefile_count_current)
+{
+	int ret, read_fd;
+	ssize_t read_len;
+	char fullpath[PATH_MAX];
+	struct ctf_packet_index_file_hdr hdr;
+
+	assert(path_name);
+	assert(channel_name);
+
+	if (tracefile_count > 0) {
+		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s_%"
+				PRIu64 DEFAULT_INDEX_FILE_SUFFIX, path_name,
+				channel_name, tracefile_count_current);
+	} else {
+		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s"
+				DEFAULT_INDEX_FILE_SUFFIX, path_name, channel_name);
+	}
+	if (ret < 0) {
+		PERROR("snprintf index path");
+		goto error;
+	}
+
+	DBG("Index opening file %s in read only", fullpath);
+	read_fd = open(fullpath, O_RDONLY);
+	if (read_fd < 0) {
+		if (errno == ENOENT) {
+			ret = -ENOENT;
+		} else {
+			PERROR("opening index in read-only");
+		}
+		goto error;
+	}
+
+	read_len = lttng_read(read_fd, &hdr, sizeof(hdr));
+	if (read_len < 0) {
+		PERROR("Reading index header");
+		goto error_close;
+	}
+
+	if (be32toh(hdr.magic) != CTF_INDEX_MAGIC) {
+		ERR("Invalid header magic");
+		goto error_close;
+	}
+	if (be32toh(hdr.index_major) != CTF_INDEX_MAJOR ||
+			be32toh(hdr.index_minor) != CTF_INDEX_MINOR) {
+		ERR("Invalid header version");
+		goto error_close;
+	}
+
+	return read_fd;
+
+error_close:
+	if (read_fd >= 0) {
+		int close_ret;
+
+		close_ret = close(read_fd);
+		if (close_ret < 0) {
+			PERROR("close read fd %d", read_fd);
+		}
+	}
+	ret = -1;
+
+error:
 	return ret;
 }

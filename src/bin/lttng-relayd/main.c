@@ -60,6 +60,7 @@
 #include "live.h"
 #include "health-relayd.h"
 #include "testpoint.h"
+#include "viewer-stream.h"
 
 /* command line options */
 char *opt_output_path;
@@ -898,7 +899,7 @@ static void destroy_stream(struct relay_stream *stream)
 		}
 	}
 
-	vstream = live_find_viewer_stream_by_id(stream->stream_handle);
+	vstream = viewer_stream_find_by_id(stream->stream_handle);
 	if (vstream) {
 		/*
 		 * Set the last good value into the viewer stream. This is done
@@ -2243,7 +2244,7 @@ int relay_process_data(struct relay_command *cmd)
 				(stream->oldest_tracefile_id + 1) %
 				stream->tracefile_count;
 		}
-		vstream = live_find_viewer_stream_by_id(stream->stream_handle);
+		vstream = viewer_stream_find_by_id(stream->stream_handle);
 		if (vstream) {
 			/*
 			 * The viewer is reading a file about to be

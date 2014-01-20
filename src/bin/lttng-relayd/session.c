@@ -16,17 +16,30 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _INDEX_H
-#define _INDEX_H
+#include "session.h"
 
-#include <inttypes.h>
+/*
+ * Lookup a session within the given hash table and session id. RCU read side
+ * lock MUST be acquired before calling this and as long as the caller has a
+ * reference to the object.
+ *
+ * Return session or NULL if not found.
+ */
+struct relay_session *session_find_by_id(struct lttng_ht *ht, uint64_t id)
+{
+	struct relay_session *session = NULL;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
 
-#include "ctf-index.h"
+	assert(ht);
 
-int index_create_file(char *path_name, char *stream_name, int uid, int gid,
-		uint64_t size, uint64_t count);
-ssize_t index_write(int fd, struct ctf_packet_index *index, size_t len);
-int index_open(const char *path_name, const char *channel_name,
-		uint64_t tracefile_count, uint64_t tracefile_count_current);
+	lttng_ht_lookup(ht, (void *)((unsigned long) id), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (!node) {
+		goto end;
+	}
+	session = caa_container_of(node, struct relay_session, session_n);
 
-#endif /* _INDEX_H */
+end:
+	return session;
+}
