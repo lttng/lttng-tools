@@ -50,7 +50,7 @@ struct ltt_ust_event {
 	struct lttng_ust_event attr;
 	struct lttng_ht_node_str node;
 	struct lttng_ust_filter_bytecode *filter;
-	const struct lttng_event_exclusion *exclusion;
+	struct lttng_event_exclusion *exclusion;
 };
 
 /* UST channel */

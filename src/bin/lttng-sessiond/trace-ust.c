@@ -504,6 +504,7 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 
 	DBG2("Trace destroy UST event %s", event->attr.name);
 	free(event->filter);
+	free(event->exclusion);
 	free(event);
 }
 
