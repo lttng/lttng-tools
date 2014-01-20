@@ -29,6 +29,7 @@
 #include <common/index/ctf-index.h>
 
 #include "ctf-trace.h"
+#include "session.h"
 
 /*
  * Queue used to enqueue relay requests
@@ -53,48 +54,6 @@ enum connection_type {
 struct relay_stream_recv_handle {
 	uint64_t id;	/* stream handle */
 	struct cds_list_head node;
-};
-
-/*
- * Represents a session for the relay point of view
- */
-struct relay_session {
-	/*
-	 * This session id is used to identify a set of stream to a tracing session
-	 * but also make sure we have a unique session id associated with a session
-	 * daemon which can provide multiple data source.
-	 */
-	uint64_t id;
-	struct lttcomm_sock *sock;
-	char session_name[NAME_MAX];
-	char hostname[HOST_NAME_MAX];
-	uint32_t live_timer;
-	struct lttng_ht_node_ulong session_n;
-	struct rcu_head rcu_node;
-	uint32_t viewer_attached;
-	uint32_t stream_count;
-	/* Tell if this session is for a snapshot or not. */
-	unsigned int snapshot:1;
-
-	/*
-	 * Indicate version protocol for this session. This is especially useful
-	 * for the data thread that has no idea which version it operates on since
-	 * linking control/data sockets is non trivial.
-	 */
-	uint64_t minor;
-	uint64_t major;
-	/*
-	 * Flag checked and exchanged with uatomic_cmpxchg to tell the
-	 * viewer-side if new streams got added since the last check.
-	 */
-	unsigned long new_streams;
-
-	/*
-	 * Used to synchronize the process where we flag every streams readiness
-	 * for the viewer when the streams_sent message is received and the viewer
-	 * process of sending those streams.
-	 */
-	pthread_mutex_t viewer_ready_lock;
 };
 
 /*
@@ -123,7 +82,6 @@ struct relay_stream {
 	uint64_t oldest_tracefile_id;
 
 	uint64_t total_index_received;
-	struct relay_viewer_stream *viewer_stream;
 	uint64_t last_net_seq_num;
 
 	/*
@@ -172,51 +130,6 @@ struct relay_stream {
 	 * information.
 	 */
 	unsigned int viewer_ready:1;
-};
-
-/*
- * Shadow copy of the relay_stream structure for the viewer side.  The only
- * fields updated by the writer (streaming side) after allocation are :
- * total_index_received and close_flag. Everything else is updated by the
- * reader (viewer side).
- */
-struct relay_viewer_stream {
-	uint64_t stream_handle;
-	uint64_t session_id;
-	int read_fd;
-	int index_read_fd;
-	char *path_name;
-	char *channel_name;
-	uint64_t last_sent_index;
-	uint64_t total_index_received;
-	uint64_t tracefile_count;
-	uint64_t tracefile_count_current;
-	/* Stop after reading this tracefile. */
-	uint64_t tracefile_count_last;
-	struct lttng_ht_node_u64 stream_n;
-	struct rcu_head rcu_node;
-	struct ctf_trace *ctf_trace;
-	/*
-	 * This lock blocks only when the writer is about to start overwriting
-	 * a file currently read by the reader.
-	 *
-	 * This is nested INSIDE the viewer_stream_rotation_lock.
-	 */
-	pthread_mutex_t overwrite_lock;
-	/* Information telling us if the stream is a metadata stream. */
-	unsigned int metadata_flag:1;
-	/*
-	 * Information telling us that the stream is closed in write, so
-	 * we don't expect new indexes and we can read up to EOF.
-	 */
-	unsigned int close_write_flag:1;
-	/*
-	 * If the streaming side closes a FD in use in the viewer side,
-	 * it sets this flag to inform that it is a normal error.
-	 */
-	unsigned int abort_flag:1;
-	/* Indicates if this stream has been sent to a viewer client. */
-	unsigned int sent_flag:1;
 };
 
 /*

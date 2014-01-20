@@ -1,5 +1,5 @@
-#ifndef LTTNG_VIEWER_H
-#define LTTNG_VIEWER_H
+#ifndef LTTNG_VIEWER_ABI_H
+#define LTTNG_VIEWER_ABI_H
 
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
@@ -29,7 +29,7 @@
 
 #define LTTNG_VIEWER_PATH_MAX		4096
 #define LTTNG_VIEWER_NAME_MAX		255
-#define LTTNG_VIEWER_HOST_NAME_MAX	64
+#define LTTNG_VIEWER_ABI_HOST_NAME_MAX	64
 
 /* Flags in reply to get_next_index and get_packet. */
 /* New metadata is required to read this packet. */
@@ -100,7 +100,7 @@ struct lttng_viewer_session {
 	uint32_t live_timer;
 	uint32_t clients;
 	uint32_t streams;
-	char hostname[LTTNG_VIEWER_HOST_NAME_MAX];
+	char hostname[LTTNG_VIEWER_ABI_HOST_NAME_MAX];
 	char session_name[LTTNG_VIEWER_NAME_MAX];
 } __attribute__((__packed__));
 
@@ -221,4 +221,4 @@ struct lttng_viewer_new_streams_response {
 } __attribute__((__packed__));
 
 
-#endif /* LTTNG_VIEWER_H */
+#endif /* LTTNG_VIEWER_ABI_H */
