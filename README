@@ -41,6 +41,11 @@ REQUIREMENTS:
 
       * Debian/Ubuntu package: babeltrace
 
+    - libxml2 >= 2.7.6
+      XML document parsing library.
+
+      * Debian/Ubuntu package: libxml2-dev
+
     - Perl (optional)
       Needed for make check and tests.
 
