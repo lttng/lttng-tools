@@ -17,12 +17,11 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
-#include <config.h>
 #include <ctype.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <common/defaults.h>
 #include <common/error.h>
@@ -30,6 +29,7 @@
 #include <common/utils.h>
 
 #include "config.h"
+#include "config-internal.h"
 
 struct handler_filter_args {
 	const char* section;
@@ -43,6 +43,12 @@ const char * const config_str_on = "on";
 const char * const config_str_no = "no";
 const char * const config_str_false = "false";
 const char * const config_str_off = "off";
+const char * const config_xml_encoding = "UTF-8";
+/* Size of the encoding's largest character */
+const size_t config_xml_encoding_bytes_per_char = 2;
+const char * const config_xml_indent_string = "\t";
+const char * const config_xml_true = "true";
+const char * const config_xml_false = "false";
 
 static int config_entry_handler_filter(struct handler_filter_args *args,
 		const char *section, const char *name, const char *value)
@@ -170,4 +176,244 @@ int config_parse_value(const char *value)
 	free(lower_str);
 end:
 	return ret;
+}
+
+/*
+ * Returns a xmlChar string which must be released using xmlFree().
+ */
+static xmlChar *encode_string(const char *in_str)
+{
+	xmlChar *out_str = NULL;
+	xmlCharEncodingHandlerPtr handler;
+	int out_len, ret, in_len;
+
+	assert(in_str);
+
+	handler = xmlFindCharEncodingHandler(config_xml_encoding);
+	if (!handler) {
+		ERR("xmlFindCharEncodingHandler return NULL!. Configure issue!");
+		goto end;
+	}
+
+	in_len = strlen(in_str);
+	/*
+	 * Add 1 byte for the NULL terminted character. The factor 2 here is
+	 * because UTF-8 can be on two bytes so this fits the worst case for each
+	 * bytes.
+	 */
+	out_len = (in_len * 2) + 1;
+	out_str = xmlMalloc(out_len);
+	if (!out_str) {
+		goto end;
+	}
+
+	ret = handler->input(out_str, &out_len, (const xmlChar *) in_str, &in_len);
+	if (ret < 0) {
+		xmlFree(out_str);
+		out_str = NULL;
+		goto end;
+	}
+
+	/* out_len is now the size of out_str */
+	out_str[out_len] = '\0';
+end:
+	return out_str;
+}
+
+LTTNG_HIDDEN
+struct config_writer *config_writer_create(int fd_output)
+{
+	int ret;
+	struct config_writer *writer;
+	xmlOutputBufferPtr buffer;
+
+	writer = zmalloc(sizeof(struct config_writer));
+	if (!writer) {
+		PERROR("zmalloc config_writer_create");
+		goto end;
+	}
+
+	buffer = xmlOutputBufferCreateFd(fd_output, NULL);
+	if (!buffer) {
+		goto error_destroy;
+	}
+
+	writer->writer = xmlNewTextWriter(buffer);
+	ret = xmlTextWriterStartDocument(writer->writer, NULL,
+		config_xml_encoding, NULL);
+	if (ret < 0) {
+		goto error_destroy;
+	}
+
+	ret = xmlTextWriterSetIndentString(writer->writer,
+		BAD_CAST config_xml_indent_string);
+	if (ret)  {
+		goto error_destroy;
+	}
+
+	ret = xmlTextWriterSetIndent(writer->writer, 1);
+	if (ret)  {
+		goto error_destroy;
+	}
+
+end:
+	return writer;
+error_destroy:
+	config_writer_destroy(writer);
+	return NULL;
+}
+
+LTTNG_HIDDEN
+int config_writer_destroy(struct config_writer *writer)
+{
+	int ret = 0;
+
+	if (!writer) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (xmlTextWriterEndDocument(writer->writer) < 0) {
+		WARN("Could not close XML document");
+		ret = -EIO;
+	}
+
+	if (writer->writer) {
+		xmlFreeTextWriter(writer->writer);
+	}
+
+	free(writer);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int config_writer_open_element(struct config_writer *writer,
+	const char *element_name)
+{
+	int ret;
+	xmlChar *encoded_element_name;
+
+	if (!writer || !writer->writer || !element_name || !element_name[0]) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_element_name = encode_string(element_name);
+	if (!encoded_element_name) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterStartElement(writer->writer, encoded_element_name);
+	xmlFree(encoded_element_name);
+end:
+	return ret > 0 ? 0 : ret;
+}
+
+LTTNG_HIDDEN
+int config_writer_close_element(struct config_writer *writer)
+{
+	int ret;
+
+	if (!writer || !writer->writer) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterEndElement(writer->writer);
+end:
+	return ret > 0 ? 0 : ret;
+}
+
+LTTNG_HIDDEN
+int config_writer_write_element_unsigned_int(struct config_writer *writer,
+		const char *element_name, uint64_t value)
+{
+	int ret;
+	xmlChar *encoded_element_name;
+
+	if (!writer || !writer->writer || !element_name || !element_name[0]) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_element_name = encode_string(element_name);
+	if (!encoded_element_name) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterWriteFormatElement(writer->writer,
+		encoded_element_name, "%" PRIu64, value);
+	xmlFree(encoded_element_name);
+end:
+	return ret > 0 ? 0 : ret;
+}
+
+LTTNG_HIDDEN
+int config_writer_write_element_signed_int(struct config_writer *writer,
+		const char *element_name, int64_t value)
+{
+	int ret;
+	xmlChar *encoded_element_name;
+
+	if (!writer || !writer->writer || !element_name || !element_name[0]) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_element_name = encode_string(element_name);
+	if (!encoded_element_name) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterWriteFormatElement(writer->writer,
+		encoded_element_name, "%" PRIi64, value);
+	xmlFree(encoded_element_name);
+end:
+	return ret > 0 ? 0 : ret;
+}
+
+LTTNG_HIDDEN
+int config_writer_write_element_bool(struct config_writer *writer,
+		const char *element_name, int value)
+{
+	return config_writer_write_element_string(writer, element_name,
+		value ? config_xml_true : config_xml_false);
+}
+
+LTTNG_HIDDEN
+int config_writer_write_element_string(struct config_writer *writer,
+		const char *element_name, const char *value)
+{
+	int ret;
+	xmlChar *encoded_element_name = NULL;
+	xmlChar *encoded_value = NULL;
+
+	if (!writer || !writer->writer || !element_name || !element_name[0] ||
+		!value) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_element_name = encode_string(element_name);
+	if (!encoded_element_name) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_value = encode_string(value);
+	if (!encoded_value) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterWriteElement(writer->writer, encoded_element_name,
+		encoded_value);
+end:
+	xmlFree(encoded_element_name);
+	xmlFree(encoded_value);
+	return ret > 0 ? 0 : ret;
 }

@@ -20,6 +20,7 @@
 
 #include <common/config/ini.h>
 #include <common/macros.h>
+#include <stdint.h>
 
 struct config_entry {
 	/* section is NULL if the entry is not in a section */
@@ -27,6 +28,9 @@ struct config_entry {
 	const char *name;
 	const char *value;
 };
+
+/* Instance of a configuration writer. */
+struct config_writer;
 
 /*
  * A config_entry_handler_cb receives config_entry structures belonging to the
@@ -69,5 +73,116 @@ int config_get_section_entries(const char *path, const char *section,
  */
 LTTNG_HIDDEN
 int config_parse_value(const char *value);
+
+/*
+ * Create an instance of a configuration writer.
+ *
+ * fd_output File to which the XML content must be written. The file will be
+ * closed once the config_writer has been destroyed.
+ *
+ * Returns an instance of a configuration writer on success, NULL on
+ * error.
+ */
+LTTNG_HIDDEN
+struct config_writer *config_writer_create(int fd_output);
+
+/*
+ * Destroy an instance of a configuration writer.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * Returns zero if the XML document could be closed cleanly. Negative values
+ * indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_destroy(struct config_writer *writer);
+
+/*
+ * Open an element tag.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * element_name Element tag name.
+ *
+ * Returns zero if the XML document could be closed cleanly.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_open_element(struct config_writer *writer,
+		const char *element_name);
+
+/*
+ * Close the current element tag.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * Returns zero if the XML document could be closed cleanly.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_close_element(struct config_writer *writer);
+
+/*
+ * Write an element of type unsigned int.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * element_name Element name.
+ *
+ * value Unsigned int value of the element
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_write_element_unsigned_int(struct config_writer *writer,
+		const char *element_name, uint64_t value);
+
+/*
+ * Write an element of type signed int.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * element_name Element name.
+ *
+ * value Signed int value of the element
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */LTTNG_HIDDEN
+int config_writer_write_element_signed_int(struct config_writer *writer,
+		const char *element_name, int64_t value);
+
+/*
+ * Write an element of type boolean.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * element_name Element name.
+ *
+ * value Boolean value of the element
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_write_element_bool(struct config_writer *writer,
+		const char *element_name, int value);
+
+/*
+ * Write an element of type string.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * element_name Element name.
+ *
+ * value String value of the element
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_write_element_string(struct config_writer *writer,
+		const char *element_name, const char *value);
 
 #endif /* _CONFIG_H */
