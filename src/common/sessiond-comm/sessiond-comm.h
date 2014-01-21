@@ -232,6 +232,8 @@ struct lttcomm_session_msg {
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 			struct lttng_event event;
+			/* Length of following filter expression. */
+			uint32_t expression_len;
 			/* Length of following bytecode for filter. */
 			uint32_t bytecode_len;
 			/* exclusion data */
@@ -240,6 +242,7 @@ struct lttcomm_session_msg {
 			 * After this structure, the following variable-length
 			 * items are transmitted:
 			 * - char exclusion_names[LTTNG_SYMBOL_NAME_LEN][exclusion_count]
+			 * - unsigned char filter_expression[expression_len]
 			 * - unsigned char filter_bytecode[bytecode_len]
 			 */
 		} LTTNG_PACKED enable;

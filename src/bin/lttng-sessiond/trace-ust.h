@@ -49,6 +49,7 @@ struct ltt_ust_event {
 	unsigned int enabled;
 	struct lttng_ust_event attr;
 	struct lttng_ht_node_str node;
+	char *filter_expression;
 	struct lttng_ust_filter_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
 };
@@ -162,6 +163,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion);
 struct ltt_ust_context *trace_ust_create_context(
@@ -208,6 +210,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr)
 }
 static inline
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+		const char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion)
 {

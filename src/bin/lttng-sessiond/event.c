@@ -314,7 +314,9 @@ end:
  * Enable all UST tracepoints for a channel from a UST session.
  */
 int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct lttng_filter_bytecode *filter)
+		struct ltt_ust_channel *uchan,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter)
 {
 	int ret, i, size;
 	struct lttng_ht_iter iter;
@@ -365,7 +367,8 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess,
 		}
 
 		/* Create ust event */
-		uevent = trace_ust_create_event(&events[i], filter, NULL);
+		uevent = trace_ust_create_event(&events[i], filter_expression,
+			filter, NULL);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error_destroy;
@@ -409,6 +412,7 @@ error:
  */
 int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event *event,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion)
 {
@@ -424,7 +428,8 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
 			event->loglevel, exclusion);
 	if (uevent == NULL) {
-		uevent = trace_ust_create_event(event, filter, exclusion);
+		uevent = trace_ust_create_event(event, filter_expression,
+			filter, exclusion);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_UST_ENABLE_FAIL;
 			goto error;

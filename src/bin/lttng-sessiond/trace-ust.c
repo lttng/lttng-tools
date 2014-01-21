@@ -340,6 +340,7 @@ error:
  * Return pointer to structure or NULL.
  */
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion)
 {
@@ -394,6 +395,7 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 	}
 
 	/* Same layout. */
+	lue->filter_expression = filter_expression;
 	lue->filter = (struct lttng_ust_filter_bytecode *) filter;
 	lue->exclusion = (struct lttng_event_exclusion *) exclusion;
 
@@ -511,6 +513,7 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 	assert(event);
 
 	DBG2("Trace destroy UST event %s", event->attr.name);
+	free(event->filter_expression);
 	free(event->filter);
 	free(event->exclusion);
 	free(event);

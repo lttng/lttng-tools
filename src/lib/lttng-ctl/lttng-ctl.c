@@ -834,40 +834,43 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 
 		lsm.u.enable.bytecode_len = sizeof(ctx->bytecode->b)
 				+ bytecode_get_len(&ctx->bytecode->b);
+		lsm.u.enable.expression_len = strlen(filter_expression) + 1;
 	}
 
-	/* Allocate variable length data */
-	if (lsm.u.enable.exclusion_count != 0) {
-		varlen_data = zmalloc(lsm.u.enable.bytecode_len
-				+ LTTNG_SYMBOL_NAME_LEN * exclusion_count);
-		if (!varlen_data) {
-			ret = -LTTNG_ERR_EXCLUSION_NOMEM;
-			goto varlen_alloc_error;
-		}
-		/* Put exclusion names first in the data */
-		while (exclusion_count--) {
-			strncpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * exclusion_count,
-					*(exclusion_list + exclusion_count),
-					LTTNG_SYMBOL_NAME_LEN);
-		}
-		/* Add filter bytecode next */
-		if (lsm.u.enable.bytecode_len != 0) {
-			memcpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count,
-					&ctx->bytecode->b,
-					lsm.u.enable.bytecode_len);
-		}
-	} else {
-		/* no exclusions - use the already allocated filter bytecode */
-		varlen_data = (char *)(&ctx->bytecode->b);
+	varlen_data = zmalloc(lsm.u.enable.bytecode_len
+			      + lsm.u.enable.expression_len
+			      + LTTNG_SYMBOL_NAME_LEN * exclusion_count);
+	if (!varlen_data) {
+		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
+		goto varlen_alloc_error;
+	}
+	/* Put exclusion names first in the data */
+	while (exclusion_count--) {
+		strncpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * exclusion_count,
+			*(exclusion_list + exclusion_count),
+			LTTNG_SYMBOL_NAME_LEN);
+	}
+	/* Add filter expression next */
+	if (lsm.u.enable.expression_len != 0) {
+		memcpy(varlen_data
+			+ LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count,
+			filter_expression,
+			lsm.u.enable.expression_len);
+	}
+	/* Add filter bytecode next */
+	if (lsm.u.enable.bytecode_len != 0) {
+		memcpy(varlen_data
+			+ LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count
+			+ lsm.u.enable.expression_len,
+			&ctx->bytecode->b,
+			lsm.u.enable.bytecode_len);
 	}
 
 	ret = lttng_ctl_ask_sessiond_varlen(&lsm, varlen_data,
 			(LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count) +
-			lsm.u.enable.bytecode_len, NULL);
-
-	if (lsm.u.enable.exclusion_count != 0) {
-		free(varlen_data);
-	}
+			lsm.u.enable.bytecode_len + lsm.u.enable.expression_len,
+			NULL);
+	free(varlen_data);
 
 varlen_alloc_error:
 	if (filter_expression) {

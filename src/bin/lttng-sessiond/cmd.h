@@ -53,11 +53,13 @@ int cmd_set_filter(struct ltt_session *session, int domain,
 		struct lttng_filter_bytecode *bytecode);
 int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		int wpipe);
 int cmd_enable_event_all(struct ltt_session *session,
 		struct lttng_domain *domain, char *channel_name, int event_type,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter, int wpipe);
 
 /* Trace session action commands */

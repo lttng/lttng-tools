@@ -124,7 +124,7 @@ static void test_create_ust_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	event = trace_ust_create_event(&ev, NULL, NULL);
+	event = trace_ust_create_event(&ev, NULL, NULL, NULL);
 
 	ok(event != NULL, "Create UST event");
 
@@ -159,7 +159,7 @@ static void test_create_ust_event_exclusion(void)
 	exclusion->count = 1;
 	strncpy((char *)(exclusion->names), get_random_string(), LTTNG_SYMBOL_NAME_LEN);
 
-	event = trace_ust_create_event(&ev, NULL, exclusion);
+	event = trace_ust_create_event(&ev, NULL, NULL, exclusion);
 
 	ok(event != NULL, "Create UST event with exclusion");
 

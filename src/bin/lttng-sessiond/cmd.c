@@ -1309,6 +1309,7 @@ error:
  */
 int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		int wpipe)
@@ -1424,7 +1425,8 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		}
 
 		/* At this point, the session and channel exist on the tracer */
-		ret = event_ust_enable_tracepoint(usess, uchan, event, filter, exclusion);
+		ret = event_ust_enable_tracepoint(usess, uchan, event,
+				filter_expression, filter, exclusion);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1460,7 +1462,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		tmp_dom.type = LTTNG_DOMAIN_UST;
 
 		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
-				&uevent, NULL, NULL, wpipe);
+			&uevent, NULL, NULL, NULL, wpipe);
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
 		}
@@ -1499,6 +1501,7 @@ error:
  */
 int cmd_enable_event_all(struct ltt_session *session,
 		struct lttng_domain *domain, char *channel_name, int event_type,
+		char *filter_expression,
 		struct lttng_filter_bytecode *filter, int wpipe)
 {
 	int ret;
@@ -1632,7 +1635,8 @@ int cmd_enable_event_all(struct ltt_session *session,
 		switch (event_type) {
 		case LTTNG_EVENT_ALL:
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_ust_enable_all_tracepoints(usess, uchan, filter);
+			ret = event_ust_enable_all_tracepoints(usess, uchan,
+				filter_expression, filter);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -1678,7 +1682,7 @@ int cmd_enable_event_all(struct ltt_session *session,
 		tmp_dom.type = LTTNG_DOMAIN_UST;
 
 		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
-				&uevent, NULL, NULL, wpipe);
+			&uevent, NULL, NULL, NULL, wpipe);
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
 		}
