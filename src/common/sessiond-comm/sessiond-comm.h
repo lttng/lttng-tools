@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <lttng/lttng.h>
 #include <lttng/snapshot-internal.h>
+#include <lttng/save-internal.h>
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
@@ -89,6 +90,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_SNAPSHOT_RECORD               = 28,
 	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
 	LTTNG_CREATE_SESSION_LIVE           = 30,
+	LTTNG_SAVE_SESSION                  = 31,
 };
 
 enum lttcomm_relayd_command {
@@ -280,6 +282,9 @@ struct lttcomm_session_msg {
 			uint32_t nb_uri;
 			unsigned int timer_interval;	/* usec */
 		} LTTNG_PACKED session_live;
+		struct {
+			struct lttng_save_session_attr attr;
+		} LTTNG_PACKED save_session;
 	} u;
 } LTTNG_PACKED;
 
