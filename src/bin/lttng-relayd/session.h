@@ -35,16 +35,22 @@ struct relay_session {
 	 * daemon which can provide multiple data source.
 	 */
 	uint64_t id;
-	struct lttcomm_sock *sock;
 	char session_name[NAME_MAX];
 	char hostname[HOST_NAME_MAX];
 	uint32_t live_timer;
-	struct lttng_ht_node_ulong session_n;
+	struct lttng_ht_node_u64 session_n;
 	struct rcu_head rcu_node;
-	uint32_t viewer_attached;
 	uint32_t stream_count;
 	/* Tell if this session is for a snapshot or not. */
 	unsigned int snapshot:1;
+	/* Tell if the session has been closed on the streaming side. */
+	unsigned int close_flag:1;
+
+	/* Number of viewer using it. Set to 0, it should be destroyed. */
+	int viewer_refcount;
+
+	/* Contains ctf_trace object of that session indexed by path name. */
+	struct lttng_ht *ctf_traces_ht;
 
 	/*
 	 * Indicate version protocol for this session. This is especially useful
@@ -67,6 +73,34 @@ struct relay_session {
 	pthread_mutex_t viewer_ready_lock;
 };
 
+static inline void session_viewer_attach(struct relay_session *session)
+{
+	uatomic_inc(&session->viewer_refcount);
+}
+
+static inline void session_viewer_detach(struct relay_session *session)
+{
+	uatomic_add(&session->viewer_refcount, -1);
+}
+
 struct relay_session *session_find_by_id(struct lttng_ht *ht, uint64_t id);
+struct relay_session *session_create(void);
+int session_delete(struct lttng_ht *ht, struct relay_session *session);
+
+/*
+ * Direct destroy without reading the refcount.
+ */
+void session_destroy(struct relay_session *session);
+
+/*
+ * Destroy the session if the refcount is down to 0.
+ */
+void session_try_destroy(struct lttng_ht *ht, struct relay_session *session);
+
+/*
+ * Decrement the viewer refcount and destroy it if down to 0.
+ */
+void session_viewer_try_destroy(struct lttng_ht *ht,
+		struct relay_session *session);
 
 #endif /* _SESSION_H */
