@@ -19,7 +19,10 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <limits.h>
 #include <lttng/health-internal.h>
+
+#define LTTNG_RELAYD_HEALTH_ENV		"LTTNG_RELAYD_HEALTH"
 
 enum health_type_relayd {
 	HEALTH_RELAYD_TYPE_DISPATCHER		= 0,
