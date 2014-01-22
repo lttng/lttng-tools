@@ -46,6 +46,7 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 int utils_parse_size_suffix(char *str, uint64_t *size);
 int utils_get_count_order_u32(uint32_t x);
 char *utils_get_home_dir(void);
+char *utils_get_user_home_dir(uid_t uid);
 size_t utils_get_current_time_str(const char *format, char *dst, size_t len);
 gid_t utils_get_group_id(const char *name);
 char *utils_generate_optstring(const struct option *long_options,

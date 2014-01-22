@@ -27,6 +27,11 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/utils.h>
+#include <common/config/config-session-internal.h>
+#include <lttng/lttng-error.h>
+#include <libxml/parser.h>
+#include <libxml/valid.h>
+#include <libxml/xmlschemas.h>
 
 #include "config.h"
 #include "config-internal.h"
@@ -44,11 +49,99 @@ const char * const config_str_no = "no";
 const char * const config_str_false = "false";
 const char * const config_str_off = "off";
 const char * const config_xml_encoding = "UTF-8";
-/* Size of the encoding's largest character */
-const size_t config_xml_encoding_bytes_per_char = 2;
+const size_t config_xml_encoding_bytes_per_char = 2;	/* Size of the encoding's largest character */
 const char * const config_xml_indent_string = "\t";
 const char * const config_xml_true = "true";
 const char * const config_xml_false = "false";
+
+const char * const config_element_channel = "channel";
+const char * const config_element_channels = "channels";
+const char * const config_element_domain = "domain";
+const char * const config_element_domains = "domains";
+const char * const config_element_event = "event";
+const char * const config_element_events = "events";
+const char * const config_element_context = "context";
+const char * const config_element_contexts = "contexts";
+const char * const config_element_attributes = "attributes";
+const char * const config_element_exclusion = "exclusion";
+const char * const config_element_exclusions = "exclusions";
+const char * const config_element_function_attributes = "function_attributes";
+const char * const config_element_probe_attributes = "probe_attributes";
+const char * const config_element_symbol_name = "symbol_name";
+const char * const config_element_address = "address";
+const char * const config_element_offset = "offset";
+const char * const config_element_name = "name";
+const char * const config_element_enabled = "enabled";
+const char * const config_element_overwrite_mode = "overwrite_mode";
+const char * const config_element_subbuf_size = "subbuffer_size";
+const char * const config_element_num_subbuf = "subbuffer_count";
+const char * const config_element_switch_timer_interval = "switch_timer_interval";
+const char * const config_element_read_timer_interval = "read_timer_interval";
+const char * const config_element_output = "output";
+const char * const config_element_output_type = "output_type";
+const char * const config_element_tracefile_size = "tracefile_size";
+const char * const config_element_tracefile_count = "tracefile_count";
+const char * const config_element_live_timer_interval = "live_timer_interval";
+const char * const config_element_type = "type";
+const char * const config_element_buffer_type = "buffer_type";
+const char * const config_element_session = "session";
+const char * const config_element_sessions = "sessions";
+const char * const config_element_perf = "perf";
+const char * const config_element_config = "config";
+const char * const config_element_started = "started";
+const char * const config_element_snapshot_mode = "snapshot_mode";
+const char * const config_element_loglevel = "loglevel";
+const char * const config_element_loglevel_type = "loglevel_type";
+const char * const config_element_filter = "filter";
+const char * const config_element_snapshot_outputs = "snapshot_outputs";
+const char * const config_element_consumer_output = "consumer_output";
+const char * const config_element_destination = "destination";
+const char * const config_element_path = "path";
+const char * const config_element_net_output = "net_output";
+const char * const config_element_control_uri = "control_uri";
+const char * const config_element_data_uri = "data_uri";
+const char * const config_element_max_size = "max_size";
+
+const char * const config_domain_type_kernel = "KERNEL";
+const char * const config_domain_type_ust = "UST";
+const char * const config_domain_type_jul = "JUL";
+
+const char * const config_buffer_type_per_pid = "PER_PID";
+const char * const config_buffer_type_per_uid = "PER_UID";
+const char * const config_buffer_type_global = "GLOBAL";
+
+const char * const config_overwrite_mode_discard = "DISCARD";
+const char * const config_overwrite_mode_overwrite = "OVERWRITE";
+
+const char * const config_output_type_splice = "SPLICE";
+const char * const config_output_type_mmap = "MMAP";
+
+const char * const config_loglevel_type_all = "ALL";
+const char * const config_loglevel_type_range = "RANGE";
+const char * const config_loglevel_type_single = "SINGLE";
+
+const char * const config_event_type_all = "ALL";
+const char * const config_event_type_tracepoint = "TRACEPOINT";
+const char * const config_event_type_probe = "PROBE";
+const char * const config_event_type_function = "FUNCTION";
+const char * const config_event_type_function_entry = "FUNCTION_ENTRY";
+const char * const config_event_type_noop = "NOOP";
+const char * const config_event_type_syscall = "SYSCALL";
+const char * const config_event_type_kprobe = "KPROBE";
+const char * const config_event_type_kretprobe = "KRETPROBE";
+
+const char * const config_event_context_pid = "PID";
+const char * const config_event_context_procname = "PROCNAME";
+const char * const config_event_context_prio = "PRIO";
+const char * const config_event_context_nice = "NICE";
+const char * const config_event_context_vpid = "VPID";
+const char * const config_event_context_tid = "TID";
+const char * const config_event_context_vtid = "VTID";
+const char * const config_event_context_ppid = "PPID";
+const char * const config_event_context_vppid = "VPPID";
+const char * const config_event_context_pthread_id = "PTHREAD_ID";
+const char * const config_event_context_hostname = "HOSTNAME";
+const char * const config_event_context_ip = "IP";
 
 static int config_entry_handler_filter(struct handler_filter_args *args,
 		const char *section, const char *name, const char *value)

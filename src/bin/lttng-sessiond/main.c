@@ -68,6 +68,7 @@
 #include "testpoint.h"
 #include "ust-thread.h"
 #include "jul-thread.h"
+#include "save.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -2718,6 +2719,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_SNAPSHOT_DEL_OUTPUT:
 	case LTTNG_SNAPSHOT_LIST_OUTPUT:
 	case LTTNG_SNAPSHOT_RECORD:
+	case LTTNG_SAVE_SESSION:
 		need_domain = 0;
 		break;
 	default:
@@ -2776,6 +2778,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
 	case LTTNG_LIST_TRACEPOINT_FIELDS:
+	case LTTNG_SAVE_SESSION:
 		need_tracing_session = 0;
 		break;
 	default:
@@ -3605,6 +3608,12 @@ skip_domain:
 		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris,
 				nb_uri, &cmd_ctx->creds, cmd_ctx->lsm->u.session_live.timer_interval);
 		free(uris);
+		break;
+	}
+	case LTTNG_SAVE_SESSION:
+	{
+		ret = cmd_save_sessions(&cmd_ctx->lsm->u.save_session.attr,
+			&cmd_ctx->creds);
 		break;
 	}
 	default:

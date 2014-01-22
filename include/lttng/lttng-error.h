@@ -142,6 +142,7 @@ enum lttng_error_code {
 	LTTNG_ERR_NO_CONSUMER            = 109, /* No consumer exist for the session */
 	LTTNG_ERR_EXCLUSION_INVAL        = 110, /* Invalid event exclusion data */
 	LTTNG_ERR_EXCLUSION_NOMEM        = 111, /* Lack of memory while processing event exclusions */
+	LTTNG_ERR_SAVE_IO_FAIL           = 112, /* IO error while writting session configuration */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

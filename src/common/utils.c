@@ -30,6 +30,7 @@
 #include <inttypes.h>
 #include <regex.h>
 #include <grp.h>
+#include <pwd.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -852,6 +853,46 @@ char *utils_get_home_dir(void)
 		return val;
 	}
 	return getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
+}
+
+/**
+ * Get user's home directory. Dynamically allocated, must be freed
+ * by the caller.
+ */
+LTTNG_HIDDEN
+char *utils_get_user_home_dir(uid_t uid)
+{
+	struct passwd pwd;
+	struct passwd *result;
+	char *home_dir = NULL;
+	char *buf = NULL;
+	long buflen;
+	int ret;
+
+	buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (buflen == -1) {
+		goto end;
+	}
+retry:
+	buf = zmalloc(buflen);
+	if (!buf) {
+		goto end;
+	}
+
+	ret = getpwuid_r(uid, &pwd, buf, buflen, &result);
+	if (ret || !result) {
+		if (ret == ERANGE) {
+			free(buf);
+			buflen *= 2;
+			goto retry;
+		}
+		goto end;
+	}
+
+	home_dir = strdup(pwd.pw_dir);
+end:
+	free(buf);
+	return home_dir;
 }
 
 /*
