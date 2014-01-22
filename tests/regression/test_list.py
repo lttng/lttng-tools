@@ -100,15 +100,21 @@ Tests = \
 
     # Tools health check tests
     {
+    'bin': "tools/health/health_thread_ok", 'daemon': "test", 'kern': True,
+    'name': "Health check - Threads OK",
+    'desc': "Verify that health check is OK when running lttng-sessiond, lttng-consumerd, and lttng-relayd",
+    'success': 0, 'enabled': True
+    },
+    {
     'bin': "tools/health/health_thread_exit", 'daemon': "test", 'kern': True,
     'name': "Health check - Thread exit",
-    'desc': "Call exit in the various lttng-sessiond threads and ensure that health failure is detected",
+    'desc': "Call exit in the various lttng-sessiond, lttng-consumerd, lttng-relayd threads and ensure that health failure is detected",
     'success': 0, 'enabled': True
     },
     {
     'bin': "tools/health/health_thread_stall", 'daemon': "test", 'kern': True,
     'name': "Health check - Thread stall",
-    'desc': "Stall the various lttng-sessiond threads and ensure that health failure is detected",
+    'desc': "Stall the various lttng-sessiond, lttng-consumerd, lttng-relayd threads and ensure that health failure is detected",
     'success': 0, 'enabled': True
     },
     {
