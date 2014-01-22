@@ -53,7 +53,8 @@
 #include "health-relayd.h"
 
 /* Global health check unix path */
-static char health_unix_sock_path[PATH_MAX];
+static
+char health_unix_sock_path[PATH_MAX];
 
 int health_quit_pipe[2];
 
@@ -130,10 +131,30 @@ error:
 }
 
 static
+int parse_health_env(void)
+{
+	const char *health_path;
+
+	health_path = getenv(LTTNG_RELAYD_HEALTH_ENV);
+	if (health_path) {
+		strncpy(health_unix_sock_path, health_path,
+			PATH_MAX);
+		health_unix_sock_path[PATH_MAX - 1] = '\0';
+	}
+
+	return 0;
+}
+
+static
 int setup_health_path(void)
 {
 	int is_root, ret = 0;
 	char *home_path = NULL, *rundir = NULL, *relayd_path;
+
+	ret = parse_health_env();
+	if (ret) {
+		return ret;
+	}
 
 	is_root = !getuid();
 
