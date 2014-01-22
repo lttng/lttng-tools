@@ -27,6 +27,7 @@
 
 #include "ctf-trace.h"
 #include "lttng-viewer-abi.h"
+#include "stream.h"
 
 /* Stub */
 struct relay_stream;
@@ -77,9 +78,10 @@ struct relay_viewer_stream {
 };
 
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
-		enum lttng_viewer_seek seek_t);
+		enum lttng_viewer_seek seek_t, struct ctf_trace *ctf_trace);
 struct relay_viewer_stream *viewer_stream_find_by_id(uint64_t id);
-void viewer_stream_destroy(struct relay_viewer_stream *stream);
+void viewer_stream_destroy(struct ctf_trace *ctf_trace,
+		struct relay_viewer_stream *stream);
 void viewer_stream_delete(struct relay_viewer_stream *stream);
 int viewer_stream_rotate(struct relay_viewer_stream *vstream,
 		struct relay_stream *stream);

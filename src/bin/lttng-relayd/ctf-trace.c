@@ -23,34 +23,70 @@
 #include <common/utils.h>
 
 #include "ctf-trace.h"
+#include "lttng-relayd.h"
+#include "stream.h"
 
 static uint64_t last_relay_ctf_trace_id;
 
-/*
- * Try to destroy a ctf_trace object meaning that the refcount is decremented
- * and checked if down to 0 which will free it.
- */
-void ctf_trace_try_destroy(struct ctf_trace *obj)
+static void rcu_destroy_ctf_trace(struct rcu_head *head)
 {
-	unsigned long ret_ref;
+	struct lttng_ht_node_str *node =
+		caa_container_of(head, struct lttng_ht_node_str, head);
+	struct ctf_trace *trace=
+		caa_container_of(node, struct ctf_trace, node);
 
-	if (!obj) {
-		return;
+	free(trace);
+}
+
+/*
+ * Destroy a ctf trace and all stream contained in it.
+ *
+ * MUST be called with the RCU read side lock.
+ */
+void ctf_trace_destroy(struct ctf_trace *obj)
+{
+	struct relay_stream *stream, *tmp_stream;
+
+	assert(obj);
+	/*
+	 * Getting to this point, every stream referenced to that object have put
+	 * back their ref since the've been closed by the control side.
+	 */
+	assert(!obj->refcount);
+
+	cds_list_for_each_entry_safe(stream, tmp_stream, &obj->stream_list,
+			trace_list) {
+		stream_delete(relay_streams_ht, stream);
+		stream_destroy(stream);
 	}
 
-	ret_ref = uatomic_add_return(&obj->refcount, -1);
-	if (ret_ref == 0) {
-		DBG("Freeing ctf_trace %" PRIu64, obj->id);
-		free(obj);
+	call_rcu(&obj->node.head, rcu_destroy_ctf_trace);
+}
+
+void ctf_trace_try_destroy(struct relay_session *session,
+		struct ctf_trace *ctf_trace)
+{
+	assert(session);
+	assert(ctf_trace);
+
+	/*
+	 * Considering no viewer attach to the session and the trace having no more
+	 * stream attached, wipe the trace.
+	 */
+	if (uatomic_read(&session->viewer_refcount) == 0 &&
+			uatomic_read(&ctf_trace->refcount) == 0) {
+		ctf_trace_destroy(ctf_trace);
 	}
 }
 
 /*
  * Create and return an allocated ctf_trace object. NULL on error.
  */
-struct ctf_trace *ctf_trace_create(void)
+struct ctf_trace *ctf_trace_create(char *path_name)
 {
 	struct ctf_trace *obj;
+
+	assert(path_name);
 
 	obj = zmalloc(sizeof(*obj));
 	if (!obj) {
@@ -58,65 +94,64 @@ struct ctf_trace *ctf_trace_create(void)
 		goto error;
 	}
 
+	CDS_INIT_LIST_HEAD(&obj->stream_list);
+
 	obj->id = ++last_relay_ctf_trace_id;
-	DBG("Created ctf_trace %" PRIu64, obj->id);
+	lttng_ht_node_init_str(&obj->node, path_name);
+
+	DBG("Created ctf_trace %" PRIu64 " with path: %s", obj->id, path_name);
 
 error:
 	return obj;
 }
 
 /*
- * Check if we can assign the ctf_trace id and metadata stream to one or all
- * the streams with the same path_name (our unique ID for ctf traces).
- *
- * The given stream MUST be new and NOT visible (in any hash table).
+ * Return a ctf_trace object if found by id in the given hash table else NULL.
  */
-void ctf_trace_assign(struct lttng_ht *ht, struct relay_stream *stream)
+struct ctf_trace *ctf_trace_find_by_path(struct lttng_ht *ht,
+		char *path_name)
 {
+	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
-	struct relay_stream *tmp_stream;
+	struct ctf_trace *trace = NULL;
 
 	assert(ht);
-	assert(stream);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry_duplicate(ht->ht,
-			ht->hash_fct((void *) stream->path_name, lttng_ht_seed),
-			ht->match_fct, (void *) stream->path_name,
-			&iter.iter, tmp_stream, ctf_trace_node.node) {
-		if (stream->metadata_flag) {
-			/*
-			 * The new stream is the metadata stream for this trace,
-			 * assign the ctf_trace pointer to all the streams in
-			 * this bucket.
-			 */
-			pthread_mutex_lock(&tmp_stream->lock);
-			tmp_stream->ctf_trace = stream->ctf_trace;
-			uatomic_inc(&tmp_stream->ctf_trace->refcount);
-			pthread_mutex_unlock(&tmp_stream->lock);
-			DBG("Assigned ctf_trace %" PRIu64 " to stream %" PRIu64,
-					tmp_stream->ctf_trace->id, tmp_stream->stream_handle);
-		} else if (tmp_stream->ctf_trace) {
-			/*
-			 * The ctf_trace already exists for this bucket,
-			 * just assign the pointer to the new stream and exit.
-			 */
-			stream->ctf_trace = tmp_stream->ctf_trace;
-			uatomic_inc(&stream->ctf_trace->refcount);
-			DBG("Assigned ctf_trace %" PRIu64 " to stream %" PRIu64,
-					tmp_stream->ctf_trace->id, tmp_stream->stream_handle);
-			goto end;
-		} else {
-			/*
-			 * We don't know yet the ctf_trace ID (no metadata has been added),
-			 * so leave it there until the metadata stream arrives.
-			 */
-			goto end;
-		}
+	lttng_ht_lookup(ht, (void *) path_name, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (!node) {
+		DBG("CTF Trace path %s not found", path_name);
+		goto end;
 	}
+	trace = caa_container_of(node, struct ctf_trace, node);
 
 end:
-	rcu_read_unlock();
-	return;
+	return trace;
 }
 
+/*
+ * Add stream to a given hash table.
+ */
+void ctf_trace_add(struct lttng_ht *ht, struct ctf_trace *trace)
+{
+	assert(ht);
+	assert(trace);
+
+	lttng_ht_add_str(ht, &trace->node);
+}
+
+/*
+ * Delete stream from a given hash table.
+ */
+void ctf_trace_delete(struct lttng_ht *ht, struct ctf_trace *trace)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+
+	assert(ht);
+	assert(trace);
+
+	iter.iter.node = &trace->node.node;
+	ret = lttng_ht_del(ht, &iter);
+	assert(!ret);
+}
