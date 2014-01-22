@@ -1,0 +1,150 @@
+#!/bin/bash
+#
+# Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Health check - Thread OK"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+LTTNG_BIN="lttng"
+SESSION_NAME="health_thread_ok"
+UST_EVENT_NAME="tp:tptest"
+KERNEL_EVENT_NAME="sched_switch"
+CHANNEL_NAME="testchan"
+HEALTH_CHECK_BIN="health_check"
+NUM_TESTS=17
+SLEEP_TIME=30
+
+source $TESTDIR/utils/utils.sh
+
+function lttng_create_session_uri
+{
+	# Create session with default path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME \
+		-U net://localhost >/dev/null 2>&1
+	ok $? "Create session with default path"
+}
+
+function report_errors
+{
+	# Report health errors
+	out=$(cat ${STDOUT_PATH} | wc -l)
+	if [ $out -ne 0 ]; then
+		fail "Validation failure"
+		diag "Health returned:"
+		diag "stdout:"
+		file=${STDOUT_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
+
+		diag "stderr:"
+		file=${STDERR_PATH}
+		while read line ; do
+		    diag "$line"
+		done < ${file}
+	else
+		pass "Validation OK"
+	fi
+}
+
+function test_thread_ok
+{
+	diag "Test health OK"
+
+	# Set the socket timeout to 5 so the health check delta is set to 25.
+	export LTTNG_NETWORK_SOCKET_TIMEOUT=5
+	export LTTNG_RELAYD_HEALTH="${HEALTH_PATH}/test-health"
+
+	diag "Only session daemon"
+	start_lttng_sessiond
+
+	# Check health status
+	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
+	report_errors
+
+	diag "With UST consumer daemons"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_ust_lttng_event $SESSION_NAME $UST_EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Check health status
+	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
+	report_errors
+
+	skip $isroot "Root access is needed. Skipping kernel consumer health check test." "5" ||
+	{
+		diag "With kernel consumer daemon"
+		create_lttng_session_no_output $SESSION_NAME
+		lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME $CHANNEL_NAME
+		start_lttng_tracing $SESSION_NAME
+		destroy_lttng_session $SESSION_NAME
+
+		# Check health status
+		$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
+		report_errors
+	}
+
+	diag "With relay daemon"
+
+	start_lttng_relayd "-o $TRACE_PATH"
+	# Check health status
+	$CURDIR/$HEALTH_CHECK_BIN \
+		--relayd-path="${LTTNG_RELAYD_HEALTH}" \
+		> ${STDOUT_PATH} 2> ${STDERR_PATH}
+	report_errors
+
+	# Wait
+	diag "Check after running for 30 seconds"
+	sleep ${SLEEP_TIME}
+
+	# Check health status
+	$CURDIR/$HEALTH_CHECK_BIN \
+		--relayd-path="${LTTNG_RELAYD_HEALTH}" \
+		> ${STDOUT_PATH} 2> ${STDERR_PATH}
+	report_errors
+
+	stop_lttng_relayd
+	stop_lttng_sessiond
+
+	unset LTTNG_NETWORK_SOCKET_TIMEOUT
+	unset LTTNG_RELAYD_HEALTH
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+STDOUT_PATH=$(mktemp)
+STDERR_PATH=$(mktemp)
+TRACE_PATH=$(mktemp -d)
+HEALTH_PATH=$(mktemp -d)
+
+# The manage kernel thread is only spawned if we are root
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+test_thread_ok
+
+rm -rf ${HEALTH_PATH}
+rm -rf ${TRACE_PATH}
+rm -f ${STDOUT_PATH}
+rm -f ${STDERR_PATH}
