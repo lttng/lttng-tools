@@ -160,7 +160,7 @@ void session_unlock(struct ltt_session *session)
  * NULL is returned. This must be called with the session lock held using
  * session_lock_list and session_unlock_list.
  */
-struct ltt_session *session_find_by_name(char *name)
+struct ltt_session *session_find_by_name(const char *name)
 {
 	struct ltt_session *iter;
 
