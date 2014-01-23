@@ -21,6 +21,7 @@
 
 #include "lttng-relayd.h"
 
-int cmd_recv_stream_2_2(struct relay_command *cmd, struct relay_stream *stream);
+int cmd_recv_stream_2_2(struct relay_connection *conn,
+		struct relay_stream *stream);
 
 #endif /* RELAYD_CMD_2_2_H */

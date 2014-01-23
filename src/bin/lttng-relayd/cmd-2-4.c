@@ -26,16 +26,16 @@
 #include "cmd-generic.h"
 #include "lttng-relayd.h"
 
-int cmd_create_session_2_4(struct relay_command *cmd,
+int cmd_create_session_2_4(struct relay_connection *conn,
 		struct relay_session *session)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 session_info;
 
-	assert(cmd);
+	assert(conn);
 	assert(session);
 
-	ret = cmd_recv(cmd->sock, &session_info, sizeof(session_info));
+	ret = cmd_recv(conn->sock, &session_info, sizeof(session_info));
 	if (ret < 0) {
 		ERR("Unable to recv session info version 2.4");
 		goto error;

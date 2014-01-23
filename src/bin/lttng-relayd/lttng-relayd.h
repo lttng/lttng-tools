@@ -23,46 +23,15 @@
 #include <limits.h>
 #include <urcu.h>
 #include <urcu/wfqueue.h>
-#include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
-#include <common/index/ctf-index.h>
-
-#include "ctf-trace.h"
-#include "session.h"
 
 /*
  * Queue used to enqueue relay requests
  */
-struct relay_cmd_queue {
+struct relay_conn_queue {
 	struct cds_wfq_queue queue;
 	int32_t futex;
-};
-
-enum connection_type {
-	RELAY_DATA                  = 1,
-	RELAY_CONTROL               = 2,
-	RELAY_VIEWER_COMMAND        = 3,
-	RELAY_VIEWER_NOTIFICATION   = 4,
-};
-
-/*
- * Internal structure to map a socket with the corresponding session.
- * A hashtable indexed on the socket FD is used for the lookups.
- */
-struct relay_command {
-	struct lttcomm_sock *sock;
-	struct relay_session *session;
-	struct cds_wfq_node node;
-	struct lttng_ht_node_ulong sock_n;
-	struct rcu_head rcu_node;
-	enum connection_type type;
-	/* protocol version to use for this session */
-	uint32_t major;
-	uint32_t minor;
-	uint64_t session_id;
-	struct cds_list_head recv_head;
-	unsigned int version_check_done:1;
 };
 
 struct relay_local_data {

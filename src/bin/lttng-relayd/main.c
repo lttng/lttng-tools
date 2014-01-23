@@ -63,6 +63,7 @@
 #include "viewer-stream.h"
 #include "session.h"
 #include "stream.h"
+#include "connection.h"
 
 /* command line options */
 char *opt_output_path;
@@ -95,7 +96,7 @@ int thread_quit_pipe[2] = { -1, -1 };
  * This pipe is used to inform the worker thread that a command is queued and
  * ready to be processed.
  */
-static int relay_cmd_pipe[2] = { -1, -1 };
+static int relay_conn_pipe[2] = { -1, -1 };
 
 /* Shared between threads */
 static int dispatch_thread_exit;
@@ -113,7 +114,7 @@ static uint64_t last_relay_stream_id;
  * The relay_thread_listener and relay_thread_dispatcher communicate with this
  * queue.
  */
-static struct relay_cmd_queue relay_cmd_queue;
+static struct relay_conn_queue relay_conn_queue;
 
 /* buffer allocated at startup, used to store the trace data */
 static char *data_buffer;
@@ -363,7 +364,7 @@ void stop_threads(void)
 
 	/* Dispatch thread */
 	CMM_STORE_SHARED(dispatch_thread_exit, 1);
-	futex_nto1_wake(&relay_cmd_queue.futex);
+	futex_nto1_wake(&relay_conn_queue.futex);
 }
 
 /*
@@ -610,7 +611,6 @@ static
 void *relay_thread_listener(void *data)
 {
 	int i, ret, pollfd, err = -1;
-	int val = 1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	struct lttcomm_sock *control_sock, *data_sock;
@@ -698,58 +698,54 @@ restart:
 				goto error;
 			} else if (revents & LPOLLIN) {
 				/*
-				 * Get allocated in this thread,
-				 * enqueued to a global queue, dequeued
-				 * and freed in the worker thread.
+				 * Get allocated in this thread, enqueued to a global queue,
+				 * dequeued and freed in the worker thread.
 				 */
-				struct relay_command *relay_cmd;
+				int val = 1;
+				struct relay_connection *new_conn;
 				struct lttcomm_sock *newsock;
 
-				relay_cmd = zmalloc(sizeof(struct relay_command));
-				if (relay_cmd == NULL) {
-					PERROR("relay command zmalloc");
+				new_conn = connection_create();
+				if (!new_conn) {
 					goto error;
 				}
 
 				if (pollfd == data_sock->fd) {
+					new_conn->type = RELAY_DATA;
 					newsock = data_sock->ops->accept(data_sock);
-					if (!newsock) {
-						PERROR("accepting data sock");
-						free(relay_cmd);
-						goto error;
-					}
-					relay_cmd->type = RELAY_DATA;
-					DBG("Relay data connection accepted, socket %d", newsock->fd);
+					DBG("Relay data connection accepted, socket %d",
+							newsock->fd);
 				} else {
 					assert(pollfd == control_sock->fd);
+					new_conn->type = RELAY_CONTROL;
 					newsock = control_sock->ops->accept(control_sock);
-					if (!newsock) {
-						PERROR("accepting control sock");
-						free(relay_cmd);
-						goto error;
-					}
-					relay_cmd->type = RELAY_CONTROL;
-					DBG("Relay control connection accepted, socket %d", newsock->fd);
+					DBG("Relay control connection accepted, socket %d",
+							newsock->fd);
 				}
-				ret = setsockopt(newsock->fd, SOL_SOCKET, SO_REUSEADDR,
-						&val, sizeof(int));
+				if (!newsock) {
+					PERROR("accepting sock");
+					connection_free(new_conn);
+					goto error;
+				}
+
+				ret = setsockopt(newsock->fd, SOL_SOCKET, SO_REUSEADDR, &val,
+						sizeof(val));
 				if (ret < 0) {
 					PERROR("setsockopt inet");
 					lttcomm_destroy_sock(newsock);
-					free(relay_cmd);
+					connection_free(new_conn);
 					goto error;
 				}
-				relay_cmd->sock = newsock;
-				/*
-				 * Lock free enqueue the request.
-				 */
-				cds_wfq_enqueue(&relay_cmd_queue.queue, &relay_cmd->node);
+				new_conn->sock = newsock;
+
+				/* Enqueue request for the dispatcher thread. */
+				cds_wfq_enqueue(&relay_conn_queue.queue, &new_conn->qnode);
 
 				/*
-				 * Wake the dispatch queue futex. Implicit memory
-				 * barrier with the exchange in cds_wfq_enqueue.
+				 * Wake the dispatch queue futex. Implicit memory barrier with
+				 * the exchange in cds_wfq_enqueue.
 				 */
-				futex_nto1_wake(&relay_cmd_queue.futex);
+				futex_nto1_wake(&relay_conn_queue.futex);
 			}
 		}
 	}
@@ -795,7 +791,7 @@ void *relay_thread_dispatcher(void *data)
 	int err = -1;
 	ssize_t ret;
 	struct cds_wfq_node *node;
-	struct relay_command *relay_cmd = NULL;
+	struct relay_connection *new_conn = NULL;
 
 	DBG("[thread] Relay dispatcher started");
 
@@ -811,39 +807,38 @@ void *relay_thread_dispatcher(void *data)
 		health_code_update();
 
 		/* Atomically prepare the queue futex */
-		futex_nto1_prepare(&relay_cmd_queue.futex);
+		futex_nto1_prepare(&relay_conn_queue.futex);
 
 		do {
 			health_code_update();
 
 			/* Dequeue commands */
-			node = cds_wfq_dequeue_blocking(&relay_cmd_queue.queue);
+			node = cds_wfq_dequeue_blocking(&relay_conn_queue.queue);
 			if (node == NULL) {
 				DBG("Woken up but nothing in the relay command queue");
 				/* Continue thread execution */
 				break;
 			}
+			new_conn = caa_container_of(node, struct relay_connection, qnode);
 
-			relay_cmd = caa_container_of(node, struct relay_command, node);
-			DBG("Dispatching request waiting on sock %d", relay_cmd->sock->fd);
+			DBG("Dispatching request waiting on sock %d", new_conn->sock->fd);
 
 			/*
-			 * Inform worker thread of the new request. This
-			 * call is blocking so we can be assured that the data will be read
-			 * at some point in time or wait to the end of the world :)
+			 * Inform worker thread of the new request. This call is blocking
+			 * so we can be assured that the data will be read at some point in
+			 * time or wait to the end of the world :)
 			 */
-			ret = lttng_write(relay_cmd_pipe[1], relay_cmd,
-					sizeof(struct relay_command));
-			free(relay_cmd);
-			if (ret < sizeof(struct relay_command)) {
-				PERROR("write cmd pipe");
+			ret = lttng_write(relay_conn_pipe[1], &new_conn, sizeof(new_conn));
+			if (ret < 0) {
+				PERROR("write connection pipe");
+				connection_destroy(new_conn);
 				goto error;
 			}
 		} while (node != NULL);
 
 		/* Futex wait on queue. Blocking call on futex() */
 		health_poll_entry();
-		futex_nto1_wait(&relay_cmd_queue.futex);
+		futex_nto1_wait(&relay_conn_queue.futex);
 		health_poll_exit();
 	}
 
@@ -890,23 +885,22 @@ static void try_close_streams(struct relay_session *session)
 /*
  * Try to destroy a session within a connection.
  */
-static
-void relay_delete_session(struct relay_command *cmd,
+static void destroy_session(struct relay_session *session,
 		struct lttng_ht *sessions_ht)
 {
-	assert(cmd);
+	assert(session);
 	assert(sessions_ht);
 
 	/* Indicate that this session can be destroyed from now on. */
-	cmd->session->close_flag = 1;
+	session->close_flag = 1;
 
-	try_close_streams(cmd->session);
+	try_close_streams(session);
 
 	/*
 	 * This will try to delete and destroy the session if no viewer is attached
 	 * to it meaning the refcount is down to zero.
 	 */
-	session_try_destroy(sessions_ht, cmd->session);
+	session_try_destroy(sessions_ht, session);
 }
 
 /*
@@ -938,15 +932,14 @@ static void copy_index_control_data(struct relay_index *index,
  */
 static
 int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd,
-		struct lttng_ht *sessions_ht)
+		struct relay_connection *conn)
 {
 	int ret = 0, send_ret;
 	struct relay_session *session;
 	struct lttcomm_relayd_status_session reply;
 
 	assert(recv_hdr);
-	assert(cmd);
+	assert(conn);
 
 	memset(&reply, 0, sizeof(reply));
 
@@ -955,25 +948,24 @@ int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto error;
 	}
-	session->minor = cmd->minor;
-	session->major = cmd->major;
-	cmd->session_id = session->id;
-	cmd->session = session;
+	session->minor = conn->minor;
+	session->major = conn->major;
+	conn->session_id = session->id;
+	conn->session = session;
 
 	reply.session_id = htobe64(session->id);
 
-	switch (cmd->minor) {
+	switch (conn->minor) {
 	case 1:
 	case 2:
 	case 3:
 		break;
 	case 4: /* LTTng sessiond 2.4 */
 	default:
-		ret = cmd_create_session_2_4(cmd, session);
-		break;
+		ret = cmd_create_session_2_4(conn, session);
 	}
 
-	lttng_ht_add_unique_u64(sessions_ht, &session->session_n);
+	lttng_ht_add_unique_u64(conn->sessions_ht, &session->session_n);
 	DBG("Created session %" PRIu64, session->id);
 
 error:
@@ -983,7 +975,7 @@ error:
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
 
-	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < 0) {
 		ERR("Relayd sending session id");
 		ret = send_ret;
@@ -997,17 +989,17 @@ error:
  * we make them visible to the viewer threads.
  */
 static
-void set_viewer_ready_flag(struct relay_command *cmd)
+void set_viewer_ready_flag(struct relay_connection *conn)
 {
 	struct relay_stream *stream, *tmp_stream;
 
-	pthread_mutex_lock(&cmd->session->viewer_ready_lock);
-	cds_list_for_each_entry_safe(stream, tmp_stream, &cmd->recv_head,
+	pthread_mutex_lock(&conn->session->viewer_ready_lock);
+	cds_list_for_each_entry_safe(stream, tmp_stream, &conn->recv_head,
 			recv_list) {
 		stream->viewer_ready = 1;
 		cds_list_del(&stream->recv_list);
 	}
-	pthread_mutex_unlock(&cmd->session->viewer_ready_lock);
+	pthread_mutex_unlock(&conn->session->viewer_ready_lock);
 	return;
 }
 
@@ -1016,12 +1008,13 @@ void set_viewer_ready_flag(struct relay_command *cmd)
  * handle. A new node is allocated thus must be freed when the node is deleted
  * from the list.
  */
-static void queue_stream(struct relay_stream *stream, struct relay_command *cmd)
+static void queue_stream(struct relay_stream *stream,
+		struct relay_connection *conn)
 {
-	assert(cmd);
+	assert(conn);
 	assert(stream);
 
-	cds_list_add(&stream->recv_list, &cmd->recv_head);
+	cds_list_add(&stream->recv_list, &conn->recv_head);
 }
 
 /*
@@ -1029,15 +1022,15 @@ static void queue_stream(struct relay_stream *stream, struct relay_command *cmd)
  */
 static
 int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd, struct lttng_ht *sessions_ht)
+		struct relay_connection *conn)
 {
 	int ret, send_ret;
-	struct relay_session *session = cmd->session;
+	struct relay_session *session = conn->session;
 	struct relay_stream *stream = NULL;
 	struct lttcomm_relayd_status_stream reply;
 	struct ctf_trace *trace;
 
-	if (!session || cmd->version_check_done == 0) {
+	if (!session || conn->version_check_done == 0) {
 		ERR("Trying to add a stream before version check");
 		ret = -1;
 		goto end_no_session;
@@ -1050,13 +1043,13 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	switch (cmd->minor) {
+	switch (conn->minor) {
 	case 1: /* LTTng sessiond 2.1 */
-		ret = cmd_recv_stream_2_1(cmd, stream);
+		ret = cmd_recv_stream_2_1(conn, stream);
 		break;
 	case 2: /* LTTng sessiond 2.2 */
 	default:
-		ret = cmd_recv_stream_2_2(cmd, stream);
+		ret = cmd_recv_stream_2_2(conn, stream);
 		break;
 	}
 	if (ret < 0) {
@@ -1117,7 +1110,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	 * message is received, this list is emptied and streams are set with the
 	 * viewer ready flag.
 	 */
-	queue_stream(stream, cmd);
+	queue_stream(stream, conn);
 
 	/*
 	 * Both in the ctf_trace object and the global stream ht since the data
@@ -1142,7 +1135,7 @@ end:
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
 
-	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_status_stream), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending stream id");
@@ -1165,28 +1158,28 @@ err_free_stream:
  */
 static
 int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret, send_ret;
-	struct relay_session *session = cmd->session;
+	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_close_stream stream_info;
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 
 	DBG("Close stream received");
 
-	if (!session || cmd->version_check_done == 0) {
+	if (!session || conn->version_check_done == 0) {
 		ERR("Trying to close a stream before version check");
 		ret = -1;
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &stream_info,
+	ret = conn->sock->ops->recvmsg(conn->sock, &stream_info,
 			sizeof(struct lttcomm_relayd_close_stream), 0);
 	if (ret < sizeof(struct lttcomm_relayd_close_stream)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive valid add_stream struct size : %d", ret);
 		}
@@ -1218,7 +1211,7 @@ end_unlock:
 	} else {
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
-	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending stream id");
@@ -1233,13 +1226,13 @@ end_no_session:
  * relay_unknown_command: send -1 if received unknown command
  */
 static
-void relay_unknown_command(struct relay_command *cmd)
+void relay_unknown_command(struct relay_connection *conn)
 {
 	struct lttcomm_relayd_generic_reply reply;
 	int ret;
 
 	reply.ret_code = htobe32(LTTNG_ERR_UNK);
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
 	if (ret < 0) {
 		ERR("Relay sending unknown command");
@@ -1252,11 +1245,11 @@ void relay_unknown_command(struct relay_command *cmd)
  */
 static
 int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret = htobe32(LTTNG_OK);
 	struct lttcomm_relayd_generic_reply reply;
-	struct relay_session *session = cmd->session;
+	struct relay_session *session = conn->session;
 
 	if (!session) {
 		DBG("Trying to start the streaming without a session established");
@@ -1264,7 +1257,7 @@ int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	reply.ret_code = ret;
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
 	if (ret < 0) {
 		ERR("Relay sending start ack");
@@ -1308,11 +1301,11 @@ end:
  */
 static
 int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret = htobe32(LTTNG_OK);
 	ssize_t size_ret;
-	struct relay_session *session = cmd->session;
+	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_metadata_payload *metadata_struct;
 	struct relay_stream *metadata_stream;
 	uint64_t data_size, payload_size;
@@ -1348,11 +1341,11 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	memset(data_buffer, 0, data_size);
 	DBG2("Relay receiving metadata, waiting for %" PRIu64 " bytes", data_size);
-	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, data_buffer, data_size, 0);
 	if (ret < 0 || ret != data_size) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive the whole metadata");
 		}
@@ -1402,21 +1395,21 @@ end:
  */
 static
 int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd, struct lttng_ht *sessions_ht)
+		struct relay_connection *conn)
 {
 	int ret;
 	struct lttcomm_relayd_version reply, msg;
 
-	assert(cmd);
+	assert(conn);
 
-	cmd->version_check_done = 1;
+	conn->version_check_done = 1;
 
 	/* Get version from the other side. */
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, &msg, sizeof(msg), 0);
 	if (ret < 0 || ret != sizeof(msg)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay failed to receive the version values.");
 		}
@@ -1431,29 +1424,29 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	if (reply.major != be32toh(msg.major)) {
 		DBG("Incompatible major versions (%u vs %u), deleting session",
 				reply.major, be32toh(msg.major));
-		relay_delete_session(cmd, sessions_ht);
+		destroy_session(conn->session, conn->sessions_ht);
 		ret = 0;
 		goto end;
 	}
 
-	cmd->major = reply.major;
+	conn->major = reply.major;
 	/* We adapt to the lowest compatible version */
 	if (reply.minor <= be32toh(msg.minor)) {
-		cmd->minor = reply.minor;
+		conn->minor = reply.minor;
 	} else {
-		cmd->minor = be32toh(msg.minor);
+		conn->minor = be32toh(msg.minor);
 	}
 
 	reply.major = htobe32(reply.major);
 	reply.minor = htobe32(reply.minor);
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply,
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_version), 0);
 	if (ret < 0) {
 		ERR("Relay sending version");
 	}
 
-	DBG("Version check done using protocol %u.%u", cmd->major,
-			cmd->minor);
+	DBG("Version check done using protocol %u.%u", conn->major,
+			conn->minor);
 
 end:
 	return ret;
@@ -1464,9 +1457,9 @@ end:
  */
 static
 int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
-	struct relay_session *session = cmd->session;
+	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_data_pending msg;
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
@@ -1475,17 +1468,17 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 
 	DBG("Data pending command received");
 
-	if (!session || cmd->version_check_done == 0) {
+	if (!session || conn->version_check_done == 0) {
 		ERR("Trying to check for data before version check");
 		ret = -1;
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive valid data_pending struct size : %d",
 					ret);
@@ -1524,7 +1517,7 @@ end_unlock:
 	rcu_read_unlock();
 
 	reply.ret_code = htobe32(ret);
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
 		ERR("Relay data pending ret code failed");
 	}
@@ -1542,7 +1535,7 @@ end_no_session:
  */
 static
 int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret;
 	uint64_t stream_id;
@@ -1553,17 +1546,17 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 
 	DBG("Checking quiescent state on control socket");
 
-	if (!cmd->session || cmd->version_check_done == 0) {
+	if (!conn->session || conn->version_check_done == 0) {
 		ERR("Trying to check for data before version check");
 		ret = -1;
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive valid begin data_pending struct size: %d",
 					ret);
@@ -1587,7 +1580,7 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 	rcu_read_unlock();
 
 	reply.ret_code = htobe32(LTTNG_OK);
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
 		ERR("Relay data quiescent control ret code failed");
 	}
@@ -1605,7 +1598,7 @@ end_no_session:
  */
 static
 int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -1615,21 +1608,21 @@ int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	uint64_t session_id;
 
 	assert(recv_hdr);
-	assert(cmd);
+	assert(conn);
 
 	DBG("Init streams for data pending");
 
-	if (!cmd->session || cmd->version_check_done == 0) {
+	if (!conn->session || conn->version_check_done == 0) {
 		ERR("Trying to check for data before version check");
 		ret = -1;
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive valid begin data_pending struct size: %d",
 					ret);
@@ -1659,7 +1652,7 @@ int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	/* All good, send back reply. */
 	reply.ret_code = htobe32(LTTNG_OK);
 
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
 		ERR("Relay begin data pending send reply failed");
 	}
@@ -1679,7 +1672,7 @@ end_no_session:
  */
 static
 int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -1690,21 +1683,21 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	uint32_t is_data_inflight = 0;
 
 	assert(recv_hdr);
-	assert(cmd);
+	assert(conn);
 
 	DBG("End data pending command");
 
-	if (!cmd->session || cmd->version_check_done == 0) {
+	if (!conn->session || conn->version_check_done == 0) {
 		ERR("Trying to check for data before version check");
 		ret = -1;
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &msg, sizeof(msg), 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, &msg, sizeof(msg), 0);
 	if (ret < sizeof(msg)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive valid end data_pending struct size: %d",
 					ret);
@@ -1732,7 +1725,7 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	/* All good, send back reply. */
 	reply.ret_code = htobe32(is_data_inflight);
 
-	ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
 		ERR("Relay end data pending send reply failed");
 	}
@@ -1748,32 +1741,32 @@ end_no_session:
  */
 static
 int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret, send_ret, index_created = 0;
-	struct relay_session *session = cmd->session;
+	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_index index_info;
 	struct relay_index *index, *wr_index = NULL;
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	uint64_t net_seq_num;
 
-	assert(cmd);
+	assert(conn);
 
 	DBG("Relay receiving index");
 
-	if (!session || cmd->version_check_done == 0) {
+	if (!session || conn->version_check_done == 0) {
 		ERR("Trying to close a stream before version check");
 		ret = -1;
 		goto end_no_session;
 	}
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &index_info,
+	ret = conn->sock->ops->recvmsg(conn->sock, &index_info,
 			sizeof(index_info), 0);
 	if (ret < sizeof(index_info)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
 			ERR("Relay didn't receive valid index struct size : %d", ret);
 		}
@@ -1838,7 +1831,7 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 	/* Do we have a writable ready index to write on disk. */
 	if (wr_index) {
 		/* Starting at 2.4, create the index file if none available. */
-		if (cmd->minor >= 4 && stream->index_fd < 0) {
+		if (conn->minor >= 4 && stream->index_fd < 0) {
 			ret = index_create_file(stream->path_name, stream->channel_name,
 					relayd_uid, relayd_gid, stream->tracefile_size,
 					stream->tracefile_count_current);
@@ -1863,7 +1856,7 @@ end_rcu_unlock:
 	} else {
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
-	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending close index id reply");
 		ret = send_ret;
@@ -1880,16 +1873,16 @@ end_no_session:
  */
 static
 int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd)
+		struct relay_connection *conn)
 {
 	int ret, send_ret;
 	struct lttcomm_relayd_generic_reply reply;
 
-	assert(cmd);
+	assert(conn);
 
 	DBG("Relay receiving streams_sent");
 
-	if (!cmd->session || cmd->version_check_done == 0) {
+	if (!conn->session || conn->version_check_done == 0) {
 		ERR("Trying to close a stream before version check");
 		ret = -1;
 		goto end_no_session;
@@ -1899,15 +1892,15 @@ int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
 	 * Flag every pending stream in the connection recv list that they are
 	 * ready to be used by the viewer.
 	 */
-	set_viewer_ready_flag(cmd);
+	set_viewer_ready_flag(conn);
 
 	/*
 	 * Inform the viewer that there are new streams in the session.
 	 */
-	uatomic_set(&cmd->session->new_streams, 1);
+	uatomic_set(&conn->session->new_streams, 1);
 
 	reply.ret_code = htobe32(LTTNG_OK);
-	send_ret = cmd->sock->ops->sendmsg(cmd->sock, &reply, sizeof(reply), 0);
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending sent_stream reply");
 		ret = send_ret;
@@ -1925,51 +1918,51 @@ end_no_session:
  */
 static
 int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
-		struct relay_command *cmd, struct relay_local_data *ctx)
+		struct relay_connection *conn)
 {
 	int ret = 0;
 
 	switch (be32toh(recv_hdr->cmd)) {
 	case RELAYD_CREATE_SESSION:
-		ret = relay_create_session(recv_hdr, cmd, ctx->sessions_ht);
+		ret = relay_create_session(recv_hdr, conn);
 		break;
 	case RELAYD_ADD_STREAM:
-		ret = relay_add_stream(recv_hdr, cmd, ctx->sessions_ht);
+		ret = relay_add_stream(recv_hdr, conn);
 		break;
 	case RELAYD_START_DATA:
-		ret = relay_start(recv_hdr, cmd);
+		ret = relay_start(recv_hdr, conn);
 		break;
 	case RELAYD_SEND_METADATA:
-		ret = relay_recv_metadata(recv_hdr, cmd);
+		ret = relay_recv_metadata(recv_hdr, conn);
 		break;
 	case RELAYD_VERSION:
-		ret = relay_send_version(recv_hdr, cmd, ctx->sessions_ht);
+		ret = relay_send_version(recv_hdr, conn);
 		break;
 	case RELAYD_CLOSE_STREAM:
-		ret = relay_close_stream(recv_hdr, cmd);
+		ret = relay_close_stream(recv_hdr, conn);
 		break;
 	case RELAYD_DATA_PENDING:
-		ret = relay_data_pending(recv_hdr, cmd);
+		ret = relay_data_pending(recv_hdr, conn);
 		break;
 	case RELAYD_QUIESCENT_CONTROL:
-		ret = relay_quiescent_control(recv_hdr, cmd);
+		ret = relay_quiescent_control(recv_hdr, conn);
 		break;
 	case RELAYD_BEGIN_DATA_PENDING:
-		ret = relay_begin_data_pending(recv_hdr, cmd);
+		ret = relay_begin_data_pending(recv_hdr, conn);
 		break;
 	case RELAYD_END_DATA_PENDING:
-		ret = relay_end_data_pending(recv_hdr, cmd);
+		ret = relay_end_data_pending(recv_hdr, conn);
 		break;
 	case RELAYD_SEND_INDEX:
-		ret = relay_recv_index(recv_hdr, cmd);
+		ret = relay_recv_index(recv_hdr, conn);
 		break;
 	case RELAYD_STREAMS_SENT:
-		ret = relay_streams_sent(recv_hdr, cmd);
+		ret = relay_streams_sent(recv_hdr, conn);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:
 		ERR("Received unknown command (%u)", be32toh(recv_hdr->cmd));
-		relay_unknown_command(cmd);
+		relay_unknown_command(conn);
 		ret = -1;
 		goto end;
 	}
@@ -2064,7 +2057,7 @@ error:
  * relay_process_data: Process the data received on the data socket
  */
 static
-int relay_process_data(struct relay_command *cmd, struct lttng_ht *sessions_ht)
+int relay_process_data(struct relay_connection *conn)
 {
 	int ret = 0, rotate_index = 0;
 	ssize_t size_ret;
@@ -2075,14 +2068,16 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *sessions_ht)
 	uint32_t data_size;
 	struct relay_session *session;
 
-	ret = cmd->sock->ops->recvmsg(cmd->sock, &data_hdr,
+	assert(conn);
+
+	ret = conn->sock->ops->recvmsg(conn->sock, &data_hdr,
 			sizeof(struct lttcomm_relayd_data_hdr), 0);
 	if (ret <= 0) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
-			ERR("Unable to receive data header on sock %d", cmd->sock->fd);
+			ERR("Unable to receive data header on sock %d", conn->sock->fd);
 		}
 		ret = -1;
 		goto end;
@@ -2097,7 +2092,7 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *sessions_ht)
 		goto end_rcu_unlock;
 	}
 
-	session = session_find_by_id(sessions_ht, stream->session_id);
+	session = session_find_by_id(conn->sessions_ht, stream->session_id);
 	assert(session);
 
 	data_size = be32toh(data_hdr.data_size);
@@ -2120,11 +2115,11 @@ int relay_process_data(struct relay_command *cmd, struct lttng_ht *sessions_ht)
 
 	DBG3("Receiving data of size %u for stream id %" PRIu64 " seqnum %" PRIu64,
 		data_size, stream_id, net_seq_num);
-	ret = cmd->sock->ops->recvmsg(cmd->sock, data_buffer, data_size, 0);
+	ret = conn->sock->ops->recvmsg(conn->sock, data_buffer, data_size, 0);
 	if (ret <= 0) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", cmd->sock->fd);
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		}
 		ret = -1;
 		goto end_rcu_unlock;
@@ -2230,11 +2225,13 @@ end:
 }
 
 static
-void relay_cleanup_poll_connection(struct lttng_poll_event *events, int pollfd)
+void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 {
 	int ret;
 
-	lttng_poll_del(events, pollfd);
+	assert(events);
+
+	(void) lttng_poll_del(events, pollfd);
 
 	ret = close(pollfd);
 	if (ret < 0) {
@@ -2242,75 +2239,20 @@ void relay_cleanup_poll_connection(struct lttng_poll_event *events, int pollfd)
 	}
 }
 
-static
-int relay_add_connection(int fd, struct lttng_poll_event *events,
-		struct lttng_ht *relay_connections_ht)
+static void destroy_connection(struct lttng_ht *relay_connections_ht,
+		struct relay_connection *conn)
 {
-	struct relay_command *relay_connection;
-	ssize_t ret;
+	assert(relay_connections_ht);
+	assert(conn);
 
-	relay_connection = zmalloc(sizeof(struct relay_command));
-	if (relay_connection == NULL) {
-		PERROR("Relay command zmalloc");
-		goto error;
-	}
-	ret = lttng_read(fd, relay_connection, sizeof(struct relay_command));
-	if (ret < sizeof(struct relay_command)) {
-		PERROR("read relay cmd pipe");
-		goto error_read;
-	}
-	CDS_INIT_LIST_HEAD(&relay_connection->recv_head);
+	connection_delete(relay_connections_ht, conn);
 
-	lttng_ht_node_init_ulong(&relay_connection->sock_n,
-			(unsigned long) relay_connection->sock->fd);
-	rcu_read_lock();
-	lttng_ht_add_unique_ulong(relay_connections_ht,
-			&relay_connection->sock_n);
-	rcu_read_unlock();
-	return lttng_poll_add(events,
-			relay_connection->sock->fd,
-			LPOLLIN | LPOLLRDHUP);
-
-error_read:
-	free(relay_connection);
-error:
-	return -1;
-}
-
-static
-void deferred_free_connection(struct rcu_head *head)
-{
-	struct relay_command *relay_connection =
-		caa_container_of(head, struct relay_command, rcu_node);
-
-	lttcomm_destroy_sock(relay_connection->sock);
-	free(relay_connection);
-}
-
-static
-void relay_del_connection(struct lttng_ht *relay_connections_ht,
-		struct lttng_ht_iter *iter, struct relay_command *relay_connection,
-		struct lttng_ht *sessions_ht)
-{
-	int ret;
-
-	ret = lttng_ht_del(relay_connections_ht, iter);
-	assert(!ret);
-
-	if (relay_connection->type == RELAY_CONTROL) {
-		struct relay_stream *stream, *tmp_stream;
-
-		/* Clean up recv list. */
-		cds_list_for_each_entry_safe(stream, tmp_stream,
-				&relay_connection->recv_head, recv_list) {
-			cds_list_del(&stream->recv_list);
-		}
-
-		relay_delete_session(relay_connection, sessions_ht);
-
+	/* For the control socket, we try to destroy the session. */
+	if (conn->type == RELAY_CONTROL) {
+		destroy_session(conn->session, conn->sessions_ht);
 	}
 
-	call_rcu(&relay_connection->rcu_node, deferred_free_connection);
+	connection_destroy(conn);
 }
 
 /*
@@ -2321,10 +2263,9 @@ void *relay_thread_worker(void *data)
 {
 	int ret, err = -1, last_seen_data_fd = -1;
 	uint32_t nb_fd;
-	struct relay_command *relay_connection;
+	struct relay_connection *conn;
 	struct lttng_poll_event events;
 	struct lttng_ht *relay_connections_ht;
-	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 	struct lttcomm_relayd_hdr recv_hdr;
 	struct relay_local_data *relay_ctx = (struct relay_local_data *) data;
@@ -2359,7 +2300,7 @@ void *relay_thread_worker(void *data)
 		goto error_poll_create;
 	}
 
-	ret = lttng_poll_add(&events, relay_cmd_pipe[0], LPOLLIN | LPOLLRDHUP);
+	ret = lttng_poll_add(&events, relay_conn_pipe[0], LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
@@ -2406,73 +2347,53 @@ restart:
 				goto exit;
 			}
 
-			/* Inspect the relay cmd pipe for new connection */
-			if (pollfd == relay_cmd_pipe[0]) {
+			/* Inspect the relay conn pipe for new connection */
+			if (pollfd == relay_conn_pipe[0]) {
 				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Relay pipe error");
+					ERR("Relay connection pipe error");
 					goto error;
 				} else if (revents & LPOLLIN) {
-					DBG("Relay command received");
-					ret = relay_add_connection(relay_cmd_pipe[0],
-							&events, relay_connections_ht);
+					ret = lttng_read(relay_conn_pipe[0], &conn, sizeof(conn));
 					if (ret < 0) {
 						goto error;
 					}
-				}
-			} else if (revents) {
-				rcu_read_lock();
-				lttng_ht_lookup(relay_connections_ht,
-						(void *)((unsigned long) pollfd),
-						&iter);
-				node = lttng_ht_iter_get_node_ulong(&iter);
-				if (node == NULL) {
-					DBG2("Relay sock %d not found", pollfd);
+					conn->sessions_ht = sessions_ht;
+					connection_init(conn);
+					lttng_poll_add(&events, conn->sock->fd,
+							LPOLLIN | LPOLLRDHUP);
+					rcu_read_lock();
+					lttng_ht_add_unique_ulong(relay_connections_ht,
+							&conn->sock_n);
 					rcu_read_unlock();
-					goto error;
+					DBG("Connection socket %d added", conn->sock->fd);
 				}
-				relay_connection = caa_container_of(node,
-						struct relay_command, sock_n);
+			} else {
+				rcu_read_lock();
+				conn = connection_find_by_sock(relay_connections_ht, pollfd);
+				/* If not found, there is a synchronization issue. */
+				assert(conn);
 
-				if (revents & (LPOLLERR)) {
-					ERR("POLL ERROR");
-					relay_cleanup_poll_connection(&events, pollfd);
-					relay_del_connection(relay_connections_ht,
-							&iter, relay_connection, sessions_ht);
-					if (last_seen_data_fd == pollfd) {
-						last_seen_data_fd = last_notdel_data_fd;
-					}
-				} else if (revents & (LPOLLHUP | LPOLLRDHUP)) {
-					DBG("Socket %d hung up", pollfd);
-					relay_cleanup_poll_connection(&events, pollfd);
-					relay_del_connection(relay_connections_ht,
-							&iter, relay_connection, sessions_ht);
+				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					cleanup_connection_pollfd(&events, pollfd);
+					destroy_connection(relay_connections_ht, conn);
 					if (last_seen_data_fd == pollfd) {
 						last_seen_data_fd = last_notdel_data_fd;
 					}
 				} else if (revents & LPOLLIN) {
-					/* control socket */
-					if (relay_connection->type == RELAY_CONTROL) {
-						ret = relay_connection->sock->ops->recvmsg(
-								relay_connection->sock, &recv_hdr,
-								sizeof(struct lttcomm_relayd_hdr), 0);
-						/* connection closed */
+					if (conn->type == RELAY_CONTROL) {
+						ret = conn->sock->ops->recvmsg(conn->sock, &recv_hdr,
+								sizeof(recv_hdr), 0);
 						if (ret <= 0) {
-							relay_cleanup_poll_connection(&events, pollfd);
-							relay_del_connection(relay_connections_ht,
-									&iter, relay_connection, sessions_ht);
+							/* Connection closed */
+							cleanup_connection_pollfd(&events, pollfd);
+							destroy_connection(relay_connections_ht, conn);
 							DBG("Control connection closed with %d", pollfd);
 						} else {
-							if (relay_connection->session) {
-								DBG2("Relay worker receiving data for session : %" PRIu64,
-										relay_connection->session->id);
-							}
-							ret = relay_process_control(&recv_hdr,
-									relay_connection, relay_ctx);
+							ret = relay_process_control(&recv_hdr, conn);
 							if (ret < 0) {
 								/* Clear the session on error. */
-								relay_cleanup_poll_connection(&events, pollfd);
-								relay_del_connection(relay_connections_ht,
-										&iter, relay_connection, sessions_ht);
+								cleanup_connection_pollfd(&events, pollfd);
+								destroy_connection(relay_connections_ht, conn);
 								DBG("Connection closed with %d", pollfd);
 							}
 							seen_control = 1;
@@ -2485,6 +2406,8 @@ restart:
 						 */
 						last_notdel_data_fd = pollfd;
 					}
+				} else {
+					ERR("Unknown poll events %u for sock %d", revents, pollfd);
 				}
 				rcu_read_unlock();
 			}
@@ -2520,36 +2443,29 @@ restart:
 			health_code_update();
 
 			/* Skip the command pipe. It's handled in the first loop. */
-			if (pollfd == relay_cmd_pipe[0]) {
+			if (pollfd == relay_conn_pipe[0]) {
 				continue;
 			}
 
 			if (revents) {
 				rcu_read_lock();
-				lttng_ht_lookup(relay_connections_ht,
-						(void *)((unsigned long) pollfd),
-						&iter);
-				node = lttng_ht_iter_get_node_ulong(&iter);
-				if (node == NULL) {
+				conn = connection_find_by_sock(relay_connections_ht, pollfd);
+				if (!conn) {
 					/* Skip it. Might be removed before. */
 					rcu_read_unlock();
 					continue;
 				}
-				relay_connection = caa_container_of(node,
-						struct relay_command, sock_n);
 
 				if (revents & LPOLLIN) {
-					if (relay_connection->type != RELAY_DATA) {
+					if (conn->type != RELAY_DATA) {
 						continue;
 					}
 
-					ret = relay_process_data(relay_connection,
-							sessions_ht);
-					/* connection closed */
+					ret = relay_process_data(conn);
+					/* Connection closed */
 					if (ret < 0) {
-						relay_cleanup_poll_connection(&events, pollfd);
-						relay_del_connection(relay_connections_ht,
-								&iter, relay_connection, sessions_ht);
+						cleanup_connection_pollfd(&events, pollfd);
+						destroy_connection(relay_connections_ht, conn);
 						DBG("Data connection closed with %d", pollfd);
 						/*
 						 * Every goto restart call sets the last seen fd where
@@ -2576,18 +2492,12 @@ exit:
 error:
 	lttng_poll_clean(&events);
 
-	/* empty the hash table and free the memory */
+	/* Cleanup reamaining connection object. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter, conn,
+			sock_n.node) {
 		health_code_update();
-
-		node = lttng_ht_iter_get_node_ulong(&iter);
-		if (node) {
-			relay_connection = caa_container_of(node,
-					struct relay_command, sock_n);
-			relay_del_connection(relay_connections_ht,
-					&iter, relay_connection, sessions_ht);
-		}
+		destroy_connection(relay_connections_ht, conn);
 	}
 	rcu_read_unlock();
 error_poll_create:
@@ -2595,8 +2505,8 @@ error_poll_create:
 indexes_ht_error:
 	lttng_ht_destroy(relay_connections_ht);
 relay_connections_ht_error:
-	/* Close relay cmd pipes */
-	utils_close_pipe(relay_cmd_pipe);
+	/* Close relay conn pipes */
+	utils_close_pipe(relay_conn_pipe);
 	if (err) {
 		DBG("Thread exited with error");
 	}
@@ -2617,11 +2527,11 @@ error_testpoint:
  * Create the relay command pipe to wake thread_manage_apps.
  * Closed in cleanup().
  */
-static int create_relay_cmd_pipe(void)
+static int create_relay_conn_pipe(void)
 {
 	int ret;
 
-	ret = utils_create_pipe_cloexec(relay_cmd_pipe);
+	ret = utils_create_pipe_cloexec(relay_conn_pipe);
 
 	return ret;
 }
@@ -2699,12 +2609,12 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the thread apps communication pipe. */
-	if ((ret = create_relay_cmd_pipe()) < 0) {
+	if ((ret = create_relay_conn_pipe()) < 0) {
 		goto exit;
 	}
 
 	/* Init relay command queue. */
-	cds_wfq_init(&relay_cmd_queue.queue);
+	cds_wfq_init(&relay_conn_queue.queue);
 
 	/* Set up max poll set size */
 	lttng_poll_set_max_size();
