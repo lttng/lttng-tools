@@ -3758,10 +3758,6 @@ static void *thread_manage_clients(void *data)
 
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CMD);
 
-	if (testpoint(sessiond_thread_manage_clients)) {
-		goto error_testpoint;
-	}
-
 	health_code_update();
 
 	ret = lttcomm_listen_unix_sock(client_sock);
@@ -3795,6 +3791,11 @@ static void *thread_manage_clients(void *data)
 	/* Notify the parent of the fork() process that we are ready. */
 	if (opt_daemon) {
 		kill(child_ppid, SIGUSR1);
+	}
+
+	/* This testpoint is after we signal readiness to the parent. */
+	if (testpoint(sessiond_thread_manage_clients)) {
+		goto error;
 	}
 
 	if (testpoint(sessiond_thread_manage_clients_before_loop)) {
@@ -3972,7 +3973,6 @@ error:
 
 error_listen:
 error_create_poll:
-error_testpoint:
 	unlink(client_unix_sock_path);
 	if (client_sock >= 0) {
 		ret = close(client_sock);
