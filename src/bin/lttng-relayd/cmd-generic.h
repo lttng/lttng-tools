@@ -21,6 +21,8 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 
+#include "connection.h"
+
 int cmd_recv(struct lttcomm_sock *sock, void *buf, size_t len);
 
 #endif /* RELAYD_CMD_GENERIC_H */

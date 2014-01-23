@@ -27,15 +27,16 @@
 #include "cmd-2-1.h"
 #include "utils.h"
 
-int cmd_recv_stream_2_1(struct relay_command *cmd, struct relay_stream *stream)
+int cmd_recv_stream_2_1(struct relay_connection *conn,
+		struct relay_stream *stream)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream stream_info;
 
-	assert(cmd);
+	assert(conn);
 	assert(stream);
 
-	ret = cmd_recv(cmd->sock, &stream_info, sizeof(stream_info));
+	ret = cmd_recv(conn->sock, &stream_info, sizeof(stream_info));
 	if (ret < 0) {
 		ERR("Unable to recv stream version 2.1");
 		goto error;

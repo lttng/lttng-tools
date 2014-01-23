@@ -23,8 +23,8 @@
 
 #include <common/hashtable/hashtable.h>
 
-#include "lttng-relayd.h"
 #include "session.h"
+#include "stream.h"
 
 struct ctf_trace {
 	int refcount;

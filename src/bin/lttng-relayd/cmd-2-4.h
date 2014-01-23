@@ -21,7 +21,7 @@
 
 #include "lttng-relayd.h"
 
-int cmd_create_session_2_4(struct relay_command *cmd,
+int cmd_create_session_2_4(struct relay_connection *conn,
 		struct relay_session *session);
 
 #endif /* RELAYD_CMD_2_4_H */
