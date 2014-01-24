@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,6 +160,19 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
 	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
 	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                           Available JUL domain loglevels:\n");
+	fprintf(ofp, "                               JUL_OFF            = INT32_MAX\n");
+	fprintf(ofp, "                               JUL_SEVERE         = %d\n", LTTNG_LOGLEVEL_JUL_SEVERE);
+	fprintf(ofp, "                               JUL_WARNING        = %d\n", LTTNG_LOGLEVEL_JUL_WARNING);
+	fprintf(ofp, "                               JUL_INFO           = %d\n", LTTNG_LOGLEVEL_JUL_INFO);
+	fprintf(ofp, "                               JUL_CONFIG         = %d\n", LTTNG_LOGLEVEL_JUL_CONFIG);
+	fprintf(ofp, "                               JUL_FINE           = %d\n", LTTNG_LOGLEVEL_JUL_FINE);
+	fprintf(ofp, "                               JUL_FINER          = %d\n", LTTNG_LOGLEVEL_JUL_FINER);
+	fprintf(ofp, "                               JUL_FINEST         = %d\n", LTTNG_LOGLEVEL_JUL_FINEST);
+	fprintf(ofp, "                               JUL_ALL            = INT32_MIN\n");
+	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
+	fprintf(ofp, "\n");
 	fprintf(ofp, "  -f, --filter \'expression\'\n");
 	fprintf(ofp, "                           Filter expression on event fields and context.\n");
 	fprintf(ofp, "                           Event recording depends on evaluation.\n");
@@ -269,6 +283,47 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 
 end:
 	return ret;
+}
+
+/*
+ * Maps JUL loglevel from string to value
+ */
+static int loglevel_jul_str_to_value(const char *inputstr)
+{
+	int i = 0;
+	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	/*
+	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
+	 * added at the end of the loop so a the upper bound we avoid the overflow.
+	 */
+	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
+		str[i] = toupper(inputstr[i]);
+		i++;
+	}
+	str[i] = '\0';
+
+	if (!strcmp(str, "JUL_OFF") || !strcmp(str, "OFF")) {
+		return LTTNG_LOGLEVEL_JUL_OFF;
+	} else if (!strcmp(str, "JUL_SEVERE") || !strcmp(str, "SEVERE")) {
+		return LTTNG_LOGLEVEL_JUL_SEVERE;
+	} else if (!strcmp(str, "JUL_WARNING") || !strcmp(str, "WARNING")) {
+		return LTTNG_LOGLEVEL_JUL_WARNING;
+	} else if (!strcmp(str, "JUL_INFO") || !strcmp(str, "INFO")) {
+		return LTTNG_LOGLEVEL_JUL_INFO;
+	} else if (!strcmp(str, "JUL_CONFIG") || !strcmp(str, "CONFIG")) {
+		return LTTNG_LOGLEVEL_JUL_CONFIG;
+	} else if (!strcmp(str, "JUL_FINE") || !strcmp(str, "FINE")) {
+		return LTTNG_LOGLEVEL_JUL_FINE;
+	} else if (!strcmp(str, "JUL_FINER") || !strcmp(str, "FINER")) {
+		return LTTNG_LOGLEVEL_JUL_FINER;
+	} else if (!strcmp(str, "JUL_FINEST") || !strcmp(str, "FINEST")) {
+		return LTTNG_LOGLEVEL_JUL_FINEST;
+	} else if (!strcmp(str, "JUL_ALL") || !strcmp(str, "ALL")) {
+		return LTTNG_LOGLEVEL_JUL_ALL;
+	} else {
+		return -1;
+	}
 }
 
 /*
@@ -527,14 +582,24 @@ static int enable_events(char *session_name)
 			strcpy(ev.name, "*");
 			ev.loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
-				ev.loglevel = loglevel_str_to_value(opt_loglevel);
+				assert(opt_userspace || opt_jul);
+				if (opt_userspace) {
+					ev.loglevel = loglevel_str_to_value(opt_loglevel);
+				} else if (opt_jul) {
+					ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
+				}
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
 			} else {
-				ev.loglevel = -1;
+				assert(opt_userspace || opt_jul);
+				if (opt_userspace) {
+					ev.loglevel = -1;
+				} else if (opt_jul) {
+					ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+				}
 			}
 		}
 
@@ -767,6 +832,18 @@ static int enable_events(char *session_name)
 				ERR("Event type not supported for JUL domain.");
 				ret = CMD_UNSUPPORTED;
 				goto error;
+			}
+
+			ev.loglevel_type = opt_loglevel_type;
+			if (opt_loglevel) {
+				ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
+				if (ev.loglevel == -1) {
+					ERR("Unknown loglevel %s", opt_loglevel);
+					ret = -LTTNG_ERR_INVALID;
+					goto error;
+				}
+			} else {
+				ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 			}
 			ev.type = LTTNG_EVENT_TRACEPOINT;
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);

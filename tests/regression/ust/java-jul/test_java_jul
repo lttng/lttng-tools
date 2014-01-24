@@ -30,7 +30,7 @@ JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/j
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=16
+NUM_TESTS=37
 
 source $TESTDIR/utils/utils.sh
 
@@ -64,6 +64,12 @@ function test_jul_before_start ()
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting all events.
+	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
 }
 
 function test_jul_after_start ()
@@ -81,6 +87,73 @@ function test_jul_after_start ()
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting all events.
+	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
+function test_jul_loglevel ()
+{
+	diag "Test JUL application with loglevel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_INFO"
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay
+	run_app
+
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting all events.
+	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	diag "Test JUL applications with lower loglevel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_SEVERE"
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay
+	run_app
+
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting 0 events.
+	trace_matches $EVENT_NAME 0 $TRACE_PATH
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	diag "Test JUL applications with higher loglevel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_FINER"
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay
+	run_app
+
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting all events.
+	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	return $?
 }
 
 plan_tests $NUM_TESTS
@@ -98,6 +171,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 	start_lttng_sessiond
 
 	tests=(
+		test_jul_loglevel
 		test_jul_before_start
 		test_jul_after_start
 	)
@@ -105,15 +179,10 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 	for fct_test in ${tests[@]};
 	do
 		${fct_test}
-
-		# Validate test
-		validate_trace $EVENT_NAME $TRACE_PATH
-		if [ $? -eq 0 ]; then
-			# Only delete if successful
-			rm -rf $TRACE_PATH
-		else
-			break
+		if [ $? -ne 0 ]; then
+			break;
 		fi
+		rm -rf $TRACE_PATH
 	done
 
 	stop_lttng_sessiond

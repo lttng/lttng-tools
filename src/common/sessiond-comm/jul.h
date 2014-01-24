@@ -54,6 +54,8 @@ struct lttcomm_jul_hdr {
  * Enable event command payload.
  */
 struct lttcomm_jul_enable {
+	uint32_t loglevel;
+	uint32_t loglevel_type;
 	char name[LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 
