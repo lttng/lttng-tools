@@ -615,24 +615,19 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_jul_enable_all(struct ltt_ust_session *usess)
+int event_jul_enable_all(struct ltt_ust_session *usess,
+		struct lttng_event *event)
 {
 	int ret;
 	struct jul_event *jevent;
-	struct lttng_event event;
 	struct lttng_ht_iter iter;
 
 	assert(usess);
 
 	DBG("Event JUL enabling ALL events for session %" PRIu64, usess->id);
 
-	/* Create the * wildcard event name for the Java agent. */
-	memset(event.name, 0, sizeof(event.name));
-	strncpy(event.name, "*", sizeof(event.name));
-	event.name[sizeof(event.name) - 1] = '\0';
-
 	/* Enable event on JUL application through TCP socket. */
-	ret = event_jul_enable(usess, &event);
+	ret = event_jul_enable(usess, event);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -664,7 +659,9 @@ int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event)
 	assert(usess);
 	assert(event);
 
-	DBG("Event JUL enabling %s for session %" PRIu64, event->name, usess->id);
+	DBG("Event JUL enabling %s for session %" PRIu64 " with loglevel type %d "
+			"and loglevel %d", event->name, usess->id, event->loglevel_type,
+			event->loglevel);
 
 	jevent = jul_find_by_name(event->name, &usess->domain_jul);
 	if (!jevent) {
@@ -673,6 +670,8 @@ int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event)
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
+		jevent->loglevel = event->loglevel;
+		jevent->loglevel_type = event->loglevel_type;
 		created = 1;
 	}
 

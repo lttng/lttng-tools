@@ -280,6 +280,24 @@ function enable_jul_lttng_event()
 	ok $? "Enable JUL event $event_name for session $sess_name"
 }
 
+function enable_jul_lttng_event_loglevel()
+{
+	sess_name=$1
+	event_name="$2"
+	loglevel=$3
+	channel_name=$4
+
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
+	ok $? "Enable JUL event $event_name for session $sess_name with loglevel $loglevel"
+}
+
 function enable_ust_lttng_event_filter()
 {
 	sess_name="$1"

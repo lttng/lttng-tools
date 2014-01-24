@@ -96,6 +96,22 @@ enum lttng_loglevel {
 };
 
 /*
+ * Available loglevels for the JUL domain. Those are an exact map from the
+ * class java.util.logging.Level.
+ */
+enum lttng_loglevel_jul {
+	LTTNG_LOGLEVEL_JUL_OFF                = INT32_MAX,
+	LTTNG_LOGLEVEL_JUL_SEVERE             = 1000,
+	LTTNG_LOGLEVEL_JUL_WARNING            = 900,
+	LTTNG_LOGLEVEL_JUL_INFO               = 800,
+	LTTNG_LOGLEVEL_JUL_CONFIG             = 700,
+	LTTNG_LOGLEVEL_JUL_FINE               = 500,
+	LTTNG_LOGLEVEL_JUL_FINER              = 400,
+	LTTNG_LOGLEVEL_JUL_FINEST             = 300,
+	LTTNG_LOGLEVEL_JUL_ALL                = INT32_MIN,
+};
+
+/*
  * LTTng consumer mode
  */
 enum lttng_event_output {

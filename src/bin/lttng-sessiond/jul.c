@@ -248,6 +248,8 @@ static int enable_event(struct jul_app *app, struct jul_event *event)
 		goto error_io;
 	}
 
+	msg.loglevel = event->loglevel;
+	msg.loglevel_type = event->loglevel_type;
 	strncpy(msg.name, event->name, sizeof(msg.name));
 	ret = send_payload(app->sock, &msg, sizeof(msg));
 	if (ret < 0) {

@@ -47,7 +47,8 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 
 int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event);
-int event_jul_enable_all(struct ltt_ust_session *usess);
+int event_jul_enable_all(struct ltt_ust_session *usess,
+		struct lttng_event *event);
 
 int event_jul_disable(struct ltt_ust_session *usess, char *event_name);
 int event_jul_disable_all(struct ltt_ust_session *usess);

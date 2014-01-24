@@ -67,6 +67,8 @@ struct jul_event {
 	 * the JUL API.
 	 */
 	char name[LTTNG_SYMBOL_NAME_LEN];
+	enum lttng_loglevel_jul loglevel;
+	enum lttng_loglevel_type loglevel_type;
 
 	/*
 	 * Tells if the event is enabled or not on the JUL Agent.
