@@ -85,7 +85,7 @@ const char *tracing_group_name = DEFAULT_TRACING_GROUP;
  * Quit pipe for all threads. This permits a single cancellation point
  * for all threads when receiving an event on the pipe.
  */
-static int thread_quit_pipe[2] = { -1, -1 };
+int thread_quit_pipe[2] = { -1, -1 };
 
 /*
  * This pipe is used to inform the worker thread that a command is queued and
@@ -2859,7 +2859,7 @@ int main(int argc, char **argv)
 		goto exit_listener;
 	}
 
-	ret = live_start_threads(live_uri, relay_ctx, thread_quit_pipe);
+	ret = live_start_threads(live_uri, relay_ctx);
 	if (ret != 0) {
 		ERR("Starting live viewer threads");
 		goto exit_live;

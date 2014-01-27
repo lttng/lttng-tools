@@ -237,6 +237,8 @@ extern struct lttng_ht *indexes_ht;
 
 extern const char *tracing_group_name;
 
+extern int thread_quit_pipe[2];
+
 struct relay_stream *relay_stream_find_by_id(uint64_t stream_id);
 void lttng_relay_notify_ready(void);
 

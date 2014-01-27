@@ -61,12 +61,6 @@
 static struct lttng_uri *live_uri;
 
 /*
- * Quit pipe for all threads. This permits a single cancellation point
- * for all threads when receiving an event on the pipe.
- */
-static int live_thread_quit_pipe[2] = { -1, -1 };
-
-/*
  * This pipe is used to inform the worker thread that a command is queued and
  * ready to be processed.
  */
@@ -126,7 +120,7 @@ void stop_threads(void)
 
 	/* Stopping all threads */
 	DBG("Terminating all live threads");
-	ret = notify_thread_pipe(live_thread_quit_pipe[1]);
+	ret = notify_thread_pipe(thread_quit_pipe[1]);
 	if (ret < 0) {
 		ERR("write error on thread quit pipe");
 	}
@@ -155,7 +149,7 @@ int create_thread_poll_set(struct lttng_poll_event *events, int size)
 	}
 
 	/* Add quit pipe */
-	ret = lttng_poll_add(events, live_thread_quit_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
@@ -174,7 +168,7 @@ error:
 static
 int check_thread_quit_pipe(int fd, uint32_t events)
 {
-	if (fd == live_thread_quit_pipe[0] && (events & LPOLLIN)) {
+	if (fd == thread_quit_pipe[0] && (events & LPOLLIN)) {
 		return 1;
 	}
 
@@ -2044,7 +2038,7 @@ error:
  * main
  */
 int live_start_threads(struct lttng_uri *uri,
-		struct relay_local_data *relay_ctx, int quit_pipe[2])
+		struct relay_local_data *relay_ctx)
 {
 	int ret = 0;
 	void *status;
@@ -2052,9 +2046,6 @@ int live_start_threads(struct lttng_uri *uri,
 
 	assert(uri);
 	live_uri = uri;
-
-	live_thread_quit_pipe[0] = quit_pipe[0];
-	live_thread_quit_pipe[1] = quit_pipe[1];
 
 	/* Check if daemon is UID = 0 */
 	is_root = !getuid();
