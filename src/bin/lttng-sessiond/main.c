@@ -1564,6 +1564,10 @@ static void *thread_dispatch_ust_registration(void *data)
 
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
 
+	if (testpoint(sessiond_thread_app_reg_dispatch)) {
+		goto error_testpoint;
+	}
+
 	health_code_update();
 
 	CDS_INIT_LIST_HEAD(&wait_queue.head);
@@ -1768,6 +1772,7 @@ error:
 		free(wait_node);
 	}
 
+error_testpoint:
 	DBG("Dispatch thread dying");
 	if (err) {
 		health_error();
@@ -1956,11 +1961,6 @@ static void *thread_registration_apps(void *data)
 
 exit:
 error:
-	if (err) {
-		health_error();
-		ERR("Health error occurred in %s", __func__);
-	}
-
 	/* Notify that the registration thread is gone */
 	notify_ust_apps(0);
 
@@ -1985,6 +1985,10 @@ error_listen:
 error_create_poll:
 error_testpoint:
 	DBG("UST Registration thread cleanup complete");
+	if (err) {
+		health_error();
+		ERR("Health error occurred in %s", __func__);
+	}
 	health_unregister(health_sessiond);
 
 	return NULL;
