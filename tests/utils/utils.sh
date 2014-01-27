@@ -108,7 +108,7 @@ function start_lttng_relayd
 	DIR=$(readlink -f $TESTDIR)
 
 	if [ -z $(pidof lt-$RELAYD_BIN) ]; then
-		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1 &
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN -b $opt >/dev/null 2>&1
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
 			fail "Start lttng-relayd (opt: $opt)"
