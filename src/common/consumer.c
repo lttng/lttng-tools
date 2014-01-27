@@ -45,6 +45,7 @@
 
 #include "consumer.h"
 #include "consumer-stream.h"
+#include "consumer-testpoint.h"
 
 struct lttng_consumer_global_data consumer_data = {
 	.stream_count = 0,
@@ -2254,6 +2255,10 @@ void *consumer_thread_metadata_poll(void *data)
 
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA);
 
+	if (testpoint(consumerd_thread_metadata)) {
+		goto error_testpoint;
+	}
+
 	health_code_update();
 
 	DBG("Thread metadata poll started");
@@ -2428,6 +2433,7 @@ end:
 
 	lttng_poll_clean(&events);
 end_poll:
+error_testpoint:
 	if (err) {
 		health_error();
 		ERR("Health error occurred in %s", __func__);
@@ -2455,6 +2461,10 @@ void *consumer_thread_data_poll(void *data)
 	rcu_register_thread();
 
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_DATA);
+
+	if (testpoint(consumerd_thread_data)) {
+		goto error_testpoint;
+	}
 
 	health_code_update();
 
@@ -2687,6 +2697,7 @@ end:
 	 */
 	(void) lttng_pipe_write_close(ctx->consumer_metadata_pipe);
 
+error_testpoint:
 	if (err) {
 		health_error();
 		ERR("Health error occurred in %s", __func__);
@@ -2786,6 +2797,10 @@ void *consumer_thread_channel_poll(void *data)
 	rcu_register_thread();
 
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_CHANNEL);
+
+	if (testpoint(consumerd_thread_channel)) {
+		goto error_testpoint;
+	}
 
 	health_code_update();
 
@@ -2988,6 +3003,7 @@ end:
 end_poll:
 	destroy_channel_ht(channel_ht);
 end_ht:
+error_testpoint:
 	DBG("Channel poll thread exiting");
 	if (err) {
 		health_error();
@@ -3042,6 +3058,10 @@ void *consumer_thread_sessiond_poll(void *data)
 	rcu_register_thread();
 
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_SESSIOND);
+
+	if (testpoint(consumerd_thread_sessiond)) {
+		goto error_testpoint;
+	}
 
 	health_code_update();
 
@@ -3179,6 +3199,7 @@ end:
 		}
 	}
 
+error_testpoint:
 	if (err) {
 		health_error();
 		ERR("Health error occurred in %s", __func__);

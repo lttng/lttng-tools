@@ -13,6 +13,7 @@ lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/libcommon.la \
 	   $(top_builddir)/src/common/index/libindex.la \
 	   $(top_builddir)/src/common/health/libhealth.la \
+	   $(top_builddir)/src/common/testpoint/libtestpoint.la \
 	   -lrt
 
 if HAVE_LIBLTTNG_UST_CTL
