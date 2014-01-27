@@ -79,6 +79,8 @@ struct health_app *health_consumerd;
 
 const char *tracing_group_name = DEFAULT_TRACING_GROUP;
 
+int lttng_consumer_ready = NR_LTTNG_CONSUMER_READY;
+
 enum lttng_consumer_type lttng_consumer_get_type(void)
 {
 	if (!ctx) {
@@ -418,6 +420,15 @@ int main(int argc, char **argv)
 		PERROR("pthread_create health");
 		goto health_error;
 	}
+
+	/*
+	 * Wait for health thread to be initialized before letting the
+	 * sessiond thread reply to the sessiond that we are ready.
+	 */
+	while (uatomic_read(&lttng_consumer_ready)) {
+		sleep(1);
+	}
+	cmm_smp_mb();	/* Read ready before following operations */
 
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
