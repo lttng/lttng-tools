@@ -24,6 +24,7 @@
 
 #include "lttng-sessiond.h"
 #include "health-sessiond.h"
+#include "testpoint.h"
 
 void *thread_ht_cleanup(void *data)
 {
@@ -38,6 +39,10 @@ void *thread_ht_cleanup(void *data)
 	rcu_thread_online();
 
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_HT_CLEANUP);
+
+	if (testpoint(sessiond_thread_ht_cleanup)) {
+		goto error_testpoint;
+	}
 
 	health_code_update();
 
@@ -125,6 +130,7 @@ exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
+error_testpoint:
 	utils_close_pipe(ht_cleanup_pipe);
 	ht_cleanup_pipe[0] = ht_cleanup_pipe[1] = -1;
 	DBG("[ust-thread] cleanup complete.");

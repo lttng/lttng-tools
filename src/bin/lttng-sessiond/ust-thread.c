@@ -24,6 +24,7 @@
 #include "lttng-sessiond.h"
 #include "ust-thread.h"
 #include "health-sessiond.h"
+#include "testpoint.h"
 
 /*
  * This thread manage application notify communication.
@@ -42,6 +43,10 @@ void *ust_thread_manage_notify(void *data)
 
 	health_register(health_sessiond,
 		HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY);
+
+	if (testpoint(sessiond_thread_app_manage_notify)) {
+		goto error_testpoint;
+	}
 
 	health_code_update();
 
@@ -170,6 +175,7 @@ exit:
 error:
 	lttng_poll_clean(&events);
 error_poll_create:
+error_testpoint:
 	utils_close_pipe(apps_cmd_notify_pipe);
 	apps_cmd_notify_pipe[0] = apps_cmd_notify_pipe[1] = -1;
 	DBG("Application notify communication apps thread cleanup complete");
