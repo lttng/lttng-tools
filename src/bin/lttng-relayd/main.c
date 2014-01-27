@@ -2746,6 +2746,7 @@ int main(int argc, char **argv)
 
 	/* Initialize communication library */
 	lttcomm_init();
+	lttcomm_inet_init();
 
 	relay_ctx = zmalloc(sizeof(struct relay_local_data));
 	if (!relay_ctx) {
