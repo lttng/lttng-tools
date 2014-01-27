@@ -260,7 +260,7 @@ retry:
 	if (ret) {
 		goto error;
 	}
-	/* Connect to the sesssion daemon */
+	/* Connect to component */
 	sock = lttcomm_connect_unix_sock(health->health_sock_path);
 	if (sock < 0) {
 		if (tracing_group) {
