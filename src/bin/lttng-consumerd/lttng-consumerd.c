@@ -318,7 +318,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Init */
-	lttng_consumer_init();
+	if (lttng_consumer_init() < 0) {
+		goto error;
+	}
+
 	/* Init socket timeouts */
 	lttcomm_init();
 	lttcomm_inet_init();

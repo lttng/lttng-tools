@@ -1249,6 +1249,57 @@ error:
 }
 
 /*
+ * Iterate over all streams of the hashtable and free them properly.
+ */
+static void destroy_data_stream_ht(struct lttng_ht *ht)
+{
+	struct lttng_ht_iter iter;
+	struct lttng_consumer_stream *stream;
+
+	if (ht == NULL) {
+		return;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
+		/*
+		 * Ignore return value since we are currently cleaning up so any error
+		 * can't be handled.
+		 */
+		(void) consumer_del_stream(stream, ht);
+	}
+	rcu_read_unlock();
+
+	lttng_ht_destroy(ht);
+}
+
+/*
+ * Iterate over all streams of the metadata hashtable and free them
+ * properly.
+ */
+static void destroy_metadata_stream_ht(struct lttng_ht *ht)
+{
+	struct lttng_ht_iter iter;
+	struct lttng_consumer_stream *stream;
+
+	if (ht == NULL) {
+		return;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
+		/*
+		 * Ignore return value since we are currently cleaning up so any error
+		 * can't be handled.
+		 */
+		(void) consumer_del_metadata_stream(stream, ht);
+	}
+	rcu_read_unlock();
+
+	lttng_ht_destroy(ht);
+}
+
+/*
  * Close all fds associated with the instance and free the context.
  */
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
@@ -1256,6 +1307,9 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	int ret;
 
 	DBG("Consumer destroying it. Closing everything.");
+
+	destroy_data_stream_ht(data_ht);
+	destroy_metadata_stream_ht(metadata_ht);
 
 	ret = close(ctx->consumer_error_socket);
 	if (ret) {
@@ -1803,60 +1857,6 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 }
 
-/*
- * Iterate over all streams of the hashtable and free them properly.
- *
- * WARNING: *MUST* be used with data stream only.
- */
-static void destroy_data_stream_ht(struct lttng_ht *ht)
-{
-	struct lttng_ht_iter iter;
-	struct lttng_consumer_stream *stream;
-
-	if (ht == NULL) {
-		return;
-	}
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
-		/*
-		 * Ignore return value since we are currently cleaning up so any error
-		 * can't be handled.
-		 */
-		(void) consumer_del_stream(stream, ht);
-	}
-	rcu_read_unlock();
-
-	lttng_ht_destroy(ht);
-}
-
-/*
- * Iterate over all streams of the hashtable and free them properly.
- *
- * XXX: Should not be only for metadata stream or else use an other name.
- */
-static void destroy_stream_ht(struct lttng_ht *ht)
-{
-	struct lttng_ht_iter iter;
-	struct lttng_consumer_stream *stream;
-
-	if (ht == NULL) {
-		return;
-	}
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, stream, node.node) {
-		/*
-		 * Ignore return value since we are currently cleaning up so any error
-		 * can't be handled.
-		 */
-		(void) consumer_del_metadata_stream(stream, ht);
-	}
-	rcu_read_unlock();
-
-	lttng_ht_destroy(ht);
-}
-
 void lttng_consumer_close_metadata(void)
 {
 	switch (consumer_data.type) {
@@ -2161,12 +2161,6 @@ void *consumer_thread_metadata_poll(void *data)
 
 	rcu_register_thread();
 
-	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!metadata_ht) {
-		/* ENOMEM at this point. Better to bail out. */
-		goto end_ht;
-	}
-
 	DBG("Thread metadata poll started");
 
 	/* Size is set to 1 for the consumer_metadata pipe */
@@ -2326,7 +2320,6 @@ end:
 
 	lttng_poll_clean(&events);
 end_poll:
-	destroy_stream_ht(metadata_ht);
 end_ht:
 	rcu_unregister_thread();
 	return NULL;
@@ -2348,12 +2341,6 @@ void *consumer_thread_data_poll(void *data)
 	ssize_t len;
 
 	rcu_register_thread();
-
-	data_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (data_ht == NULL) {
-		/* ENOMEM at this point. Better to bail out. */
-		goto end;
-	}
 
 	local_stream = zmalloc(sizeof(struct lttng_consumer_stream *));
 	if (local_stream == NULL) {
@@ -2570,8 +2557,6 @@ end:
 	 * the read side.
 	 */
 	(void) lttng_pipe_write_close(ctx->consumer_metadata_pipe);
-
-	destroy_data_stream_ht(data_ht);
 
 	rcu_unregister_thread();
 	return NULL;
@@ -3071,12 +3056,42 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
 /*
  * Allocate and set consumer data hash tables.
  */
-void lttng_consumer_init(void)
+int lttng_consumer_init(void)
 {
 	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!consumer_data.channel_ht) {
+		goto error;
+	}
+
 	consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!consumer_data.relayd_ht) {
+		goto error;
+	}
+
 	consumer_data.stream_list_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!consumer_data.stream_list_ht) {
+		goto error;
+	}
+
 	consumer_data.stream_per_chan_id_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!consumer_data.stream_per_chan_id_ht) {
+		goto error;
+	}
+
+	data_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!data_ht) {
+		goto error;
+	}
+
+	metadata_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!metadata_ht) {
+		goto error;
+	}
+
+	return 0;
+
+error:
+	return -1;
 }
 
 /*
