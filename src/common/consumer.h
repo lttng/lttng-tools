@@ -512,7 +512,7 @@ struct lttng_consumer_global_data {
 /*
  * Init consumer data structures.
  */
-void lttng_consumer_init(void);
+int lttng_consumer_init(void);
 
 /*
  * Set the error socket for communication with a session daemon.

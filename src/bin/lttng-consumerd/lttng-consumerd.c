@@ -341,7 +341,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Init */
-	lttng_consumer_init();
+	if (lttng_consumer_init() < 0) {
+		goto error;
+	}
+
 	/* Init socket timeouts */
 	lttcomm_init();
 	lttcomm_inet_init();
@@ -404,9 +407,6 @@ int main(int argc, char **argv)
 	consumer_signal_init();
 
 	ctx->type = opt_type;
-
-	/* Initialize communication library */
-	lttcomm_init();
 
 	ret = utils_create_pipe(health_quit_pipe);
 	if (ret < 0) {
