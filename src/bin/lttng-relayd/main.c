@@ -1165,6 +1165,10 @@ int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 	reply.session_id = htobe64(session->id);
 
 	switch (cmd->minor) {
+		case 1:
+		case 2:
+		case 3:
+			break;
 		case 4: /* LTTng sessiond 2.4 */
 		default:
 			ret = cmd_create_session_2_4(cmd, session);
