@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 - Christian Babeux <christian.babeux@efficios.com>
+ * Copyright (C) 2014 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as

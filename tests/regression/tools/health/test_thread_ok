@@ -110,7 +110,7 @@ function test_thread_ok
 	report_errors
 
 	# Wait
-	diag "Check after running for 30 seconds"
+	diag "Check after running for ${SLEEP_TIME} seconds"
 	sleep ${SLEEP_TIME}
 
 	# Check health status
