@@ -314,7 +314,7 @@ restart:
 			}
 		}
 
-		DBG2("Health check return value %" PRIx64, reply.ret_code);
+		DBG("Health check return value %" PRIx64, reply.ret_code);
 
 		ret = send_unix_sock(new_sock, (void *) &reply, sizeof(reply));
 		if (ret < 0) {
