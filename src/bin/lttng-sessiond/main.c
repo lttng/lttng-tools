@@ -74,7 +74,7 @@ static const char *tracing_group_name = DEFAULT_TRACING_GROUP;
 static const char *opt_pidfile;
 static int opt_sig_parent;
 static int opt_verbose_consumer;
-static int opt_daemon;
+static int opt_daemon, opt_background;
 static int opt_no_kernel;
 static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
@@ -270,7 +270,7 @@ void lttng_sessiond_notify_ready(void)
 		 * Notify the parent of the fork() process that we are
 		 * ready.
 		 */
-		if (opt_daemon) {
+		if (opt_daemon || opt_background) {
 			kill(child_ppid, SIGUSR1);
 		}
 	}
@@ -3974,6 +3974,7 @@ static void usage(void)
 	fprintf(stderr, "      --consumerd64-path PATH     Specify path for the 64-bit UST consumer daemon binary\n");
 	fprintf(stderr, "      --consumerd64-libdir PATH   Specify path for the 64-bit UST consumer daemon libraries\n");
 	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
+	fprintf(stderr, "  -b, --background                   Start as a daemon, keeping console open.\n");
 	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
 	fprintf(stderr, "  -V, --version                      Show version number.\n");
 	fprintf(stderr, "  -S, --sig-parent                   Send SIGUSR1 to parent pid to notify readiness.\n");
@@ -4560,10 +4561,11 @@ int main(int argc, char **argv)
 	}
 
 	/* Daemonize */
-	if (opt_daemon) {
+	if (opt_daemon || opt_background) {
 		int i;
 
-		ret = lttng_daemonize(&child_ppid, &recv_child_signal, 1);
+		ret = lttng_daemonize(&child_ppid, &recv_child_signal,
+			!opt_background);
 		if (ret < 0) {
 			goto error;
 		}
