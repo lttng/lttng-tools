@@ -63,7 +63,7 @@
 
 /* command line options */
 char *opt_output_path;
-static int opt_daemon;
+static int opt_daemon, opt_background;
 static struct lttng_uri *control_uri;
 static struct lttng_uri *data_uri;
 static struct lttng_uri *live_uri;
@@ -131,6 +131,7 @@ static struct option long_options[] = {
 	{ "data-port", 1, 0, 'D', },
 	{ "live-port", 1, 0, 'L', },
 	{ "daemonize", 0, 0, 'd', },
+	{ "background", 0, 0, 'b', },
 	{ "group", 1, 0, 'g', },
 	{ "help", 0, 0, 'h', },
 	{ "output", 1, 0, 'o', },
@@ -150,6 +151,7 @@ void usage(void)
 	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(stderr, "  -h, --help                Display this usage.\n");
 	fprintf(stderr, "  -d, --daemonize           Start as a daemon.\n");
+	fprintf(stderr, "  -b, --background          Start as a daemon, keeping console open.\n");
 	fprintf(stderr, "  -C, --control-port URL    Control port listening.\n");
 	fprintf(stderr, "  -D, --data-port URL       Data port listening.\n");
 	fprintf(stderr, "  -L, --live-port URL       Live view port listening.\n");
@@ -209,6 +211,9 @@ int set_option(int opt, const char *arg, const char *optname)
 		break;
 	case 'd':
 		opt_daemon = 1;
+		break;
+	case 'b':
+		opt_background = 1;
 		break;
 	case 'g':
 		tracing_group_name = strdup(arg);
@@ -2847,8 +2852,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Daemonize */
-	if (opt_daemon) {
-		ret = daemon(0, 0);
+	if (opt_daemon || opt_background) {
+		ret = daemon(0, opt_background);
 		if (ret < 0) {
 			PERROR("daemon");
 			goto exit;
