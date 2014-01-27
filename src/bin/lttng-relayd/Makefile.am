@@ -13,7 +13,7 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        cmd-2-2.c cmd-2-2.h \
                        cmd-2-4.c cmd-2-4.h \
                        health-relayd.c health-relayd.h \
-                       lttng-viewer.h
+                       lttng-viewer.h testpoint.h
 
 # link on liblttngctl for check if relayd is already alive.
 lttng_relayd_LDADD = -lrt -lurcu-common -lurcu \
@@ -24,4 +24,5 @@ lttng_relayd_LDADD = -lrt -lurcu-common -lurcu \
 		$(top_builddir)/src/common/compat/libcompat.la \
 		$(top_builddir)/src/common/index/libindex.la \
 		$(top_builddir)/src/common/health/libhealth.la \
-		$(top_builddir)/src/common/config/libconfig.la
+		$(top_builddir)/src/common/config/libconfig.la \
+		$(top_builddir)/src/common/testpoint/libtestpoint.la
