@@ -284,6 +284,38 @@ unsigned int jul_tcp_port = DEFAULT_JUL_TCP_PORT;
 
 const char * const config_section_name = "sessiond";
 
+/*
+ * Whether sessiond is ready for commands/health check requests.
+ * NR_LTTNG_SESSIOND_READY must match the number of calls to
+ * lttng_sessiond_notify_ready().
+ */
+#define NR_LTTNG_SESSIOND_READY		2
+int lttng_sessiond_ready = NR_LTTNG_SESSIOND_READY;
+
+/* Notify parents that we are ready for cmd and health check */
+static
+void lttng_sessiond_notify_ready(void)
+{
+	if (uatomic_sub_return(&lttng_sessiond_ready, 1) == 0) {
+		/*
+		 * Notify parent pid that we are ready to accept command
+		 * for client side.  This ppid is the one from the
+		 * external process that spawned us.
+		 */
+		if (opt_sig_parent) {
+			kill(ppid, SIGUSR1);
+		}
+
+		/*
+		 * Notify the parent of the fork() process that we are
+		 * ready.
+		 */
+		if (opt_daemon) {
+			kill(child_ppid, SIGUSR1);
+		}
+	}
+}
+
 static
 void setup_consumerd_path(void)
 {
@@ -3630,6 +3662,8 @@ static void *thread_manage_health(void *data)
 		goto error;
 	}
 
+	lttng_sessiond_notify_ready();
+
 	while (1) {
 		DBG("Health check ready");
 
@@ -3780,18 +3814,7 @@ static void *thread_manage_clients(void *data)
 		goto error;
 	}
 
-	/*
-	 * Notify parent pid that we are ready to accept command for client side.
-	 * This ppid is the one from the external process that spawned us.
-	 */
-	if (opt_sig_parent) {
-		kill(ppid, SIGUSR1);
-	}
-
-	/* Notify the parent of the fork() process that we are ready. */
-	if (opt_daemon) {
-		kill(child_ppid, SIGUSR1);
-	}
+	lttng_sessiond_notify_ready();
 
 	/* This testpoint is after we signal readiness to the parent. */
 	if (testpoint(sessiond_thread_manage_clients)) {
