@@ -245,9 +245,7 @@ void *thread_listener(void *data)
 		goto error_sock_control;
 	}
 
-	/*
-	 * Pass 3 as size here for the thread quit pipe, control and data socket.
-	 */
+	/* Pass 2 as size here for the thread quit pipe and control sockets. */
 	ret = create_thread_poll_set(&events, 2);
 	if (ret < 0) {
 		goto error_create_poll;
