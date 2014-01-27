@@ -2112,6 +2112,7 @@ int main(int argc, char **argv)
 
 	/* Initialize communication library */
 	lttcomm_init();
+	lttcomm_inet_init();
 
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&dispatcher_thread, NULL,
