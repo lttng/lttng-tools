@@ -46,6 +46,7 @@
 #include <common/futex.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
+#include <common/daemonize.h>
 #include <common/config/config.h>
 
 #include "lttng-sessiond.h"
@@ -4692,107 +4693,6 @@ error:
 }
 
 /*
- * Daemonize this process by forking and making the parent wait for the child
- * to signal it indicating readiness. Once received, the parent successfully
- * quits.
- *
- * The child process undergoes the same action that daemon(3) does meaning
- * setsid, chdir, and dup /dev/null into 0, 1 and 2.
- *
- * Return 0 on success else -1 on error.
- */
-static int daemonize(void)
-{
-	int ret;
-	pid_t pid;
-
-	/* Get parent pid of this process. */
-	child_ppid = getppid();
-
-	pid = fork();
-	if (pid < 0) {
-		PERROR("fork");
-		goto error;
-	} else if (pid == 0) {
-		int fd;
-		pid_t sid;
-
-		/* Child */
-
-		/*
-		 * Get the newly created parent pid so we can signal that process when
-		 * we are ready to operate.
-		 */
-		child_ppid = getppid();
-
-		sid = setsid();
-		if (sid < 0) {
-			PERROR("setsid");
-			goto error;
-		}
-
-		/* Try to change directory to /. If we can't well at least notify. */
-		ret = chdir("/");
-		if (ret < 0) {
-			PERROR("chdir");
-		}
-
-		fd = open(_PATH_DEVNULL, O_RDWR, 0);
-		if (fd < 0) {
-			PERROR("open %s", _PATH_DEVNULL);
-			/* Let 0, 1 and 2 open since we can't bind them to /dev/null. */
-		} else {
-			(void) dup2(fd, STDIN_FILENO);
-			(void) dup2(fd, STDOUT_FILENO);
-			(void) dup2(fd, STDERR_FILENO);
-			if (fd > 2) {
-				ret = close(fd);
-				if (ret < 0) {
-					PERROR("close");
-				}
-			}
-		}
-		goto end;
-	} else {
-		/* Parent */
-
-		/*
-		 * Waiting for child to notify this parent that it can exit. Note that
-		 * sleep() is interrupted before the 1 second delay as soon as the
-		 * signal is received, so it will not cause visible delay for the
-		 * user.
-		 */
-		while (!CMM_LOAD_SHARED(recv_child_signal)) {
-			int status;
-			pid_t ret;
-
-			/*
-			 * Check if child exists without blocking. If so, we have to stop
-			 * this parent process and return an error.
-			 */
-			ret = waitpid(pid, &status, WNOHANG);
-			if (ret < 0 || (ret != 0 && WIFEXITED(status))) {
-				/* The child exited somehow or was not valid. */
-				goto error;
-			}
-			sleep(1);
-		}
-
-		/*
-		 * From this point on, the parent can exit and the child is now an
-		 * operationnal session daemon ready to serve clients and applications.
-		 */
-		exit(EXIT_SUCCESS);
-	}
-
-end:
-	return 0;
-
-error:
-	return -1;
-}
-
-/*
  * main
  */
 int main(int argc, char **argv)
@@ -4828,7 +4728,7 @@ int main(int argc, char **argv)
 	if (opt_daemon) {
 		int i;
 
-		ret = daemonize();
+		ret = lttng_daemonize(&child_ppid, &recv_child_signal, 1);
 		if (ret < 0) {
 			goto error;
 		}
