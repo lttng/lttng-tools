@@ -259,6 +259,8 @@ void *thread_listener(void *data)
 		goto error_poll_add;
 	}
 
+	lttng_relay_notify_ready();
+
 	while (1) {
 		health_code_update();
 

@@ -300,6 +300,8 @@ void *thread_manage_health(void *data)
 		goto error;
 	}
 
+	lttng_relay_notify_ready();
+
 	while (1) {
 		DBG("Health check ready");
 

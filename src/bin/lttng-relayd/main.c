@@ -44,6 +44,7 @@
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
 #include <common/defaults.h>
+#include <common/daemonize.h>
 #include <common/futex.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/sessiond-comm/inet.h>
@@ -62,6 +63,16 @@
 /* command line options */
 char *opt_output_path;
 static int opt_daemon, opt_background;
+
+/*
+ * We need to wait for listener and live listener threads, as well as
+ * health check thread, before being ready to signal readiness.
+ */
+#define NR_LTTNG_RELAY_READY	3
+static int lttng_relay_ready = NR_LTTNG_RELAY_READY;
+static int recv_child_signal;	/* Set to 1 when a SIGUSR1 signal is received. */
+static pid_t child_ppid;	/* Internal parent PID use with daemonize. */
+
 static struct lttng_uri *control_uri;
 static struct lttng_uri *data_uri;
 static struct lttng_uri *live_uri;
@@ -369,6 +380,9 @@ void sighandler(int sig)
 		DBG("SIGTERM caught");
 		stop_threads();
 		break;
+	case SIGUSR1:
+		CMM_STORE_SHARED(recv_child_signal, 1);
+		break;
 	default:
 		break;
 	}
@@ -408,9 +422,24 @@ int set_signal_handler(void)
 		return ret;
 	}
 
-	DBG("Signal handler set for SIGTERM, SIGPIPE and SIGINT");
+	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
+		PERROR("sigaction");
+		return ret;
+	}
+
+	DBG("Signal handler set for SIGTERM, SIGUSR1, SIGPIPE and SIGINT");
 
 	return ret;
+}
+
+void lttng_relay_notify_ready(void)
+{
+	/* Notify the parent of the fork() process that we are ready. */
+	if (opt_daemon || opt_background) {
+		if (uatomic_sub_return(&lttng_relay_ready, 1) == 0) {
+			kill(child_ppid, SIGUSR1);
+		}
+	}
 }
 
 /*
@@ -581,6 +610,8 @@ void *relay_thread_listener(void *data)
 	if (ret < 0) {
 		goto error_poll_add;
 	}
+
+	lttng_relay_notify_ready();
 
 	while (1) {
 		health_code_update();
@@ -2682,11 +2713,6 @@ int main(int argc, char **argv)
 	void *status;
 	struct relay_local_data *relay_ctx;
 
-	/* Create thread quit pipe */
-	if ((ret = init_thread_quit_pipe()) < 0) {
-		goto error;
-	}
-
 	/* Parse arguments */
 	progname = argv[0];
 	if ((ret = parse_args(argc, argv)) < 0) {
@@ -2713,11 +2739,27 @@ int main(int argc, char **argv)
 
 	/* Daemonize */
 	if (opt_daemon || opt_background) {
-		ret = daemon(0, opt_background);
+		int i;
+
+		ret = lttng_daemonize(&child_ppid, &recv_child_signal,
+			!opt_background);
 		if (ret < 0) {
-			PERROR("daemon");
 			goto exit;
 		}
+
+		/*
+		 * We are in the child. Make sure all other file
+		 * descriptors are closed, in case we are called with
+		 * more opened file descriptors than the standard ones.
+		 */
+		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+			(void) close(i);
+		}
+	}
+
+	/* Create thread quit pipe */
+	if ((ret = init_thread_quit_pipe()) < 0) {
+		goto error;
 	}
 
 	/* We need those values for the file/dir creation. */
