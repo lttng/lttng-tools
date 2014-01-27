@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License, version 2 only, as
@@ -17,148 +18,9 @@
 
 TEST_DESC="Health check - Thread stall"
 
-CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 SESSION_NAME="health_thread_stall"
-EVENT_NAME="bogus"
-HEALTH_CHECK_BIN="health_check"
 SESSIOND_PRELOAD=".libs/libhealthstall.so"
-NUM_TESTS=12
+TEST_SUFFIX="STALL"
+CURDIR=$(dirname $(readlink -f $0))
 
-source $TESTDIR/utils/utils.sh
-
-if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
-	BAIL_OUT "libhealthstall.so not available for this test."
-fi
-
-function test_thread_stall
-{
-	test_thread_stall_name="$1"
-	test_thread_exit_code="$2"
-
-	diag "Test health failure with ${test_thread_stall_name}"
-
-	# Activate testpoints
-	export LTTNG_TESTPOINT_ENABLE=1
-
-	# Activate specific thread exit
-	export ${test_thread_stall_name}_STALL=1
-
-	# Spawn sessiond with preload healthexit lib
-	export LD_PRELOAD="$CURDIR/$SESSIOND_PRELOAD"
-	# Set the socket timeout to 5 so the health check delta is set to 25.
-	export LTTNG_NETWORK_SOCKET_TIMEOUT=5
-	start_lttng_sessiond
-
-	# Cleanup some env. var.
-	unset LD_PRELOAD
-	unset ${test_thread_stall_name}_STALL
-
-	# Check initial health status
-	$CURDIR/$HEALTH_CHECK_BIN > /dev/null
-
-	# Wait
-	sleep 30
-
-	# Check health status, should indicate failure
-	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
-
-	out=$(grep "${test_thread_error_string}" ${STDOUT_PATH} | wc -l)
-	if [ $out -eq 0 ]; then
-		fail "Validate thread ${test_thread_stall_name} is stalled"
-		diag "Health returned:"
-		diag "stdout:"
-		file=${STDOUT_PATH}
-		while read line ; do
-		    diag "$line"
-		done < ${file}
-
-		diag "stderr:"
-		file=${STDERR_PATH}
-		while read line ; do
-		    diag "$line"
-		done < ${file}
-
-		stop_lttng_sessiond
-		return 1
-	else
-		pass "Validate thread ${test_thread_stall_name} is stalled"
-	fi
-
-	# Wait
-	sleep 40
-
-	# Check health status, should now pass
-	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
-
-	out=$(grep "${test_thread_error_string}" ${STDOUT_PATH} | wc -l)
-	if [ $out -ne 0 ]; then
-		fail "Validate thread ${test_thread_stall_name} is not longer stalled"
-		diag "Health returned:"
-		diag "stdout:"
-		file=${STDOUT_PATH}
-		while read line ; do
-		    diag "$line"
-		done < ${file}
-
-		diag "stderr:"
-		file=${STDERR_PATH}
-		while read line ; do
-		    diag "$line"
-		done < ${file}
-
-		stop_lttng_sessiond
-		return 1
-	else
-		pass "Validate thread ${test_thread_stall_name} is not longer stalled"
-		stop_lttng_sessiond
-	fi
-}
-
-plan_tests $NUM_TESTS
-
-print_test_banner "$TEST_DESC"
-
-THREAD=("LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS"
-	"LTTNG_SESSIOND_THREAD_MANAGE_APPS"
-# This thread is a little bit tricky to stall,
-# need to send some commands and setup an app.
-#	"LTTNG_SESSIOND_THREAD_REG_APPS"
-)
-
-ERROR_STRING=(
-	"Thread \"Session daemon command\" is not responding in component \"sessiond\"."
-	"Thread \"Session daemon application manager\" is not responding in component \"sessiond\"."
-	"Thread \"Session daemon application registration\" is not responding in component \"sessiond\"."
-)
-
-STDOUT_PATH=$(mktemp)
-STDERR_PATH=$(mktemp)
-
-THREAD_COUNT=${#THREAD[@]}
-i=0
-while [ "$i" -lt "$THREAD_COUNT" ]; do
-	test_thread_stall "${THREAD[$i]}" "${ERROR_STRING[$i]}"
-
-	if [ $? -eq 1 ]; then
-		exit 1
-	fi
-
-	let "i++"
-done
-
-# The manage kernel thread is only spawned if we are root
-if [ "$(id -u)" == "0" ]; then
-	isroot=1
-else
-	isroot=0
-fi
-
-skip $isroot "Root access is needed. Skipping LTTNG_SESSIOND_THREAD_MANAGE_KERNEL tests." "4" ||
-{
-	test_thread_stall "LTTNG_SESSIOND_THREAD_MANAGE_KERNEL" "Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
-}
-
-rm -f ${STDOUT_PATH}
-rm -f ${STDERR_PATH}
+source ${CURDIR}/test_health.sh

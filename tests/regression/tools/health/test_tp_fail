@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Copyright (C) - 2012 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License, version 2 only, as
@@ -17,111 +18,9 @@
 
 TEST_DESC="Health check - Testpoint failure"
 
-CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 SESSION_NAME="health_tp_fail"
-EVENT_NAME="bogus"
-HEALTH_CHECK_BIN="health_check"
 SESSIOND_PRELOAD=".libs/libhealthtpfail.so"
-NUM_TESTS=9
+TEST_SUFFIX="TP_FAIL"
+CURDIR=$(dirname $(readlink -f $0))
 
-source $TESTDIR/utils/utils.sh
-
-if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
-	BAIL_OUT "libhealthtpfail.so not available for this test."
-fi
-
-function test_tp_fail
-{
-	test_tp_fail_name="$1"
-	test_tp_error_string="$2"
-
-	diag "Test health failure with ${test_tp_fail_name}"
-
-	# Activate testpoints
-	export LTTNG_TESTPOINT_ENABLE=1
-
-	# Activate specific testpoint failure
-	export ${test_tp_fail_name}_TP_FAIL=1
-
-	# Spawn sessiond with preload healthexit lib
-	export LD_PRELOAD="$CURDIR/$SESSIOND_PRELOAD"
-	start_lttng_sessiond
-
-	# Cleanup some env. var.
-	unset LD_PRELOAD
-	unset ${test_tp_fail_name}_TP_FAIL
-
-	# Check health status
-	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
-
-	out=$(grep "${test_tp_error_string}" ${STDOUT_PATH} | wc -l)
-	if [ $out -eq 0 ]; then
-		fail "Validate thread ${test_tp_fail_name} failure"
-		diag "Health returned:"
-
-		diag "stdout:"
-		file=${STDOUT_PATH}
-		while read line ; do
-		    diag "$line"
-		done < ${file}
-
-		diag "stderr:"
-		file=${STDERR_PATH}
-		while read line ; do
-		    diag "$line"
-		done < ${file}
-
-		stop_lttng_sessiond
-		return 1
-	else
-		pass "Validate thread ${test_tp_fail_name} failure"
-		stop_lttng_sessiond
-	fi
-}
-
-plan_tests $NUM_TESTS
-
-print_test_banner "$TEST_DESC"
-
-THREAD=("LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS"
-	"LTTNG_SESSIOND_THREAD_MANAGE_APPS")
-
-ERROR_STRING=(
-	"Thread \"Session daemon command\" is not responding in component \"sessiond\"."
-	"Thread \"Session daemon application manager\" is not responding in component \"sessiond\"."
-)
-
-STDOUT_PATH=$(mktemp)
-STDERR_PATH=$(mktemp)
-
-THREAD_COUNT=${#THREAD[@]}
-i=0
-while [ "$i" -lt "$THREAD_COUNT" ]; do
-	test_tp_fail "${THREAD[$i]}" "${ERROR_STRING[$i]}"
-
-	if [ $? -eq 1 ]; then
-		exit 1
-	fi
-
-	let "i++"
-done
-
-# The manage kernel thread is only spawned if we are root
-if [ "$(id -u)" == "0" ]; then
-	isroot=1
-else
-	isroot=0
-fi
-
-skip $isroot "Root access is needed. Skipping LTTNG_SESSIOND_THREAD_MANAGE_KERNEL tests." "3" ||
-{
-	test_tp_fail "LTTNG_SESSIOND_THREAD_MANAGE_KERNEL" "Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
-}
-
-rm -f ${STDOUT_PATH}
-rm -f ${STDERR_PATH}
-
-# TODO: Special case manage consumer, need to spawn consumer via commands.
-#"LTTNG_SESSIOND_THREAD_MANAGE_CONSUMER"
+source ${CURDIR}/test_health.sh

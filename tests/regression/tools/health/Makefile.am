@@ -37,8 +37,10 @@ health_check_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		     $(top_builddir)/src/common/libcommon.la
 endif
 
-dist_noinst_SCRIPTS = test_thread_exit test_thread_stall test_tp_fail
-EXTRA_DIST = test_thread_exit test_thread_stall test_tp_fail
+dist_noinst_SCRIPTS = test_thread_exit test_thread_stall test_tp_fail \
+		test_health.sh
+EXTRA_DIST = test_thread_exit test_thread_stall test_tp_fail \
+		test_health.sh
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
