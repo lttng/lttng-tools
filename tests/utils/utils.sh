@@ -16,6 +16,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 SESSIOND_BIN="lttng-sessiond"
+CONSUMERD_BIN="lttng-consumerd"
 RELAYD_BIN="lttng-relayd"
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
@@ -181,6 +182,11 @@ function stop_lttng_sessiond ()
 		out=1
 		while [ -n "$out" ]; do
 			out=$(pidof lt-$SESSIOND_BIN)
+			sleep 0.5
+		done
+		out=1
+		while [ -n "$out" ]; do
+			out=$(pidof $CONSUMERD_BIN)
 			sleep 0.5
 		done
 		pass "Kill session daemon"
