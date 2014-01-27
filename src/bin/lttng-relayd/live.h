@@ -24,7 +24,7 @@
 #include "lttng-relayd.h"
 
 int live_start_threads(struct lttng_uri *live_uri,
-		struct relay_local_data *relay_ctx, int quit_pipe[2]);
+		struct relay_local_data *relay_ctx);
 void live_stop_threads(void);
 
 struct relay_viewer_stream *live_find_viewer_stream_by_id(uint64_t stream_id);
