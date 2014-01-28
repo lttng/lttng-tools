@@ -45,8 +45,10 @@ struct uri_proto {
 static const struct uri_proto proto_uri[] = {
 	{ .name = "file", .leading_string = "file://", .code = P_FILE, .type = 0, .dtype = LTTNG_DST_PATH },
 	{ .name = "net", .leading_string = "net://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
+	{ .name = "net4", .leading_string = "net4://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
 	{ .name = "net6", .leading_string = "net6://", .code = P_NET6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
 	{ .name = "tcp", .leading_string = "tcp://", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
+	{ .name = "tcp4", .leading_string = "tcp4://", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
 	{ .name = "tcp6", .leading_string = "tcp6://", .code = P_TCP6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
 	/* Invalid proto marking the end of the array. */
 	{ NULL, NULL, 0, 0, 0 }
