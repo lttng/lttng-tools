@@ -166,12 +166,13 @@ int parse_args(int argc, char **argv)
 		{ "help", 0, 0, 'h', },
 		{ "output", 1, 0, 'o', },
 		{ "verbose", 0, 0, 'v', },
+		{ "background", 0, 0, 'b' },
 		{ NULL, 0, 0, 0, },
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhv" "C:D:L:o:g:",
+		c = getopt_long(argc, argv, "dhv" "C:D:L:o:g:b",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -216,6 +217,9 @@ int parse_args(int argc, char **argv)
 			break;
 		case 'd':
 			opt_daemon = 1;
+			break;
+		case 'b':
+			opt_background = 1;
 			break;
 		case 'g':
 			tracing_group_name = optarg;

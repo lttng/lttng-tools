@@ -4021,12 +4021,13 @@ static int parse_args(int argc, char **argv)
 		{ "no-kernel", 0, 0, 'N' },
 		{ "pidfile", 1, 0, 'p' },
 		{ "jul-tcp-port", 1, 0, 'J' },
+		{ "background", 0, 0, 'b' },
 		{ NULL, 0, 0, 0 }
 	};
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:J:",
+		c = getopt_long(argc, argv, "dhqvVSN" "a:c:g:s:C:E:D:F:Z:u:t:p:J:b",
 				long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -4047,6 +4048,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case 'd':
 			opt_daemon = 1;
+			break;
+		case 'b':
+			opt_background = 1;
 			break;
 		case 'g':
 			tracing_group_name = optarg;
