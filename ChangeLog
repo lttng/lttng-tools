@@ -1,3 +1,38 @@
+2014-01-29 lttng-tools 2.4.0-rc4
+	* Fix: add -b, --background option
+	* health check tests: test relayd and consumerd
+	* tests: Add stop_lttng_relayd_nocheck
+	* Fix: add missing JUL loglevel handling
+	* relayd: add testpoints
+	* relayd: use same pipe for live and main
+	* Cleanup relayd live comment
+	* Fix: relayd: add LPOLLERR to events
+	* Fix: relayd: notify parent of readiness when all threads ready
+	* Fix: tests: start relayd in background mode (-b)
+	* lttng-relayd: implement background cmd line option
+	* sessiond: add missing testpoints
+	* tests: use --background for session daemon
+	* sessiond: add --background argument
+	* Use lib common daemonize
+	* Fix: sessiond: wait for health check readiness
+	* Fix: relayd: initialize lttcomm inet
+	* Consumer: add testpoints
+	* Fix: consumerd: HT init/teardown with program
+	* Cleanup: lttng-ctl-health comment
+	* Add daemonize() to libcommon
+	* Fix: tests: wait for consumerd to complete
+	* Fix: consumerd: use DBG rather than DBG2
+	* Fix: consumerd: only return readiness when health is ready
+	* Fix: consumerd should initialize lttcomm
+	* Fix health check: signal parent before exit testpoint
+	* Test health: add test_thread_ok
+	* health check: change --relayd-path arg to --relayd-path=arg
+	* relayd: add LTTNG_RELAYD_HEALTH env var
+	* Add sessiond/SESSIOND_ prefix to sessiond testpoints
+	* Fix: zero out data structure before using it
+	* Fix: delete metadata stream before destroying it
+	* Fix: report to client when snapshot will be empty
+
 2014-01-14 lttng-tools 2.4.0-rc3
 	* Fix: metadata stream should be always flagged as ready
 	* Fix: wrong check before destroying the viewer metadata stream
