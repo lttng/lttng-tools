@@ -121,22 +121,33 @@ function start_lttng_relayd
 	fi
 }
 
-function stop_lttng_relayd
+function stop_lttng_relayd_nocheck
 {
 	PID_RELAYD=`pidof lt-$RELAYD_BIN`
 
+	diag "Killing lttng-relayd (pid: $PID_RELAYD)"
 	kill $PID_RELAYD >/dev/null 2>&1
+	retval=$?
 
-	if [ $? -eq 1 ]; then
-		fail "Kill lttng-relayd (pid: $PID_RELAYD)"
-		return 1
-	else
+	if [ $retval -eq 1 ]; then
 		out=1
 		while [ -n "$out" ]; do
 			out=$(pidof lt-$RELAYD_BIN)
 			sleep 0.5
 		done
-		pass "Kill lttng-relayd (pid: $PID_RELAYD)"
+	fi
+	return $retval
+}
+
+function stop_lttng_relayd
+{
+	stop_lttng_relayd_nocheck
+
+	if [ $? -eq 1 ]; then
+		fail "Killed lttng-relayd (pid: $PID_RELAYD)"
+		return 1
+	else
+		pass "Killed lttng-relayd (pid: $PID_RELAYD)"
 		return 0
 	fi
 }
