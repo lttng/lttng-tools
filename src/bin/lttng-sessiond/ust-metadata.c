@@ -37,6 +37,13 @@
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
 #endif
 
+#define NR_CLOCK_OFFSET_SAMPLES		10
+
+struct offset_sample {
+	uint64_t offset;		/* correlation offset */
+	uint64_t measure_delta;		/* lower is better */
+};
+
 static inline
 int fls(unsigned int x)
 {
@@ -490,31 +497,57 @@ int _lttng_event_header_declare(struct ust_registry_session *session)
 	);
 }
 
-/*
- * Approximation of NTP time of day to clock monotonic correlation,
- * taken at start of trace.
- * Yes, this is only an approximation. Yes, we can (and will) do better
- * in future versions.
- */
 static
-uint64_t measure_clock_offset(void)
+int measure_single_clock_offset(struct offset_sample *sample)
 {
-	uint64_t offset, monotonic[2], realtime;
+	uint64_t offset, monotonic[2], measure_delta, realtime;
 	struct timespec rts = { 0, 0 };
 	int ret;
 
 	monotonic[0] = trace_clock_read64();
 	ret = clock_gettime(CLOCK_REALTIME, &rts);
-	if (ret < 0)
-		return 0;
+	if (ret < 0) {
+		return ret;
+	}
 	monotonic[1] = trace_clock_read64();
+	measure_delta = monotonic[1] - monotonic[0];
+	if (measure_delta > sample->measure_delta) {
+		/*
+		 * Discard value if it took longer to read than the best
+		 * sample so far.
+		 */
+		return 0;
+	}
 	offset = (monotonic[0] + monotonic[1]) >> 1;
 	realtime = (uint64_t) rts.tv_sec * 1000000000ULL;
 	realtime += rts.tv_nsec;
 	offset = realtime - offset;
-	return offset;
+	sample->offset = offset;
+	sample->measure_delta = measure_delta;
+	return 0;
 }
 
+/*
+ * Approximation of NTP time of day to clock monotonic correlation,
+ * taken at start of trace. Keep the measurement that took the less time
+ * to complete, thus removing imprecision caused by preemption.
+ */
+static
+uint64_t measure_clock_offset(void)
+{
+	int i;
+	struct offset_sample offset_best_sample = {
+		.offset = 0,
+		.measure_delta = UINT64_MAX,
+	};
+
+	for (i = 0; i < NR_CLOCK_OFFSET_SAMPLES; i++) {
+		if (measure_single_clock_offset(&offset_best_sample)) {
+			return 0;
+		}
+	}
+	return offset_best_sample.offset;
+}
 
 /*
  * Should be called with session registry mutex held.
