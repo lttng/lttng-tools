@@ -868,6 +868,17 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	nb_streams = nb_created + nb_unsent;
 	response.streams_count = htobe32(nb_streams);
 
+	/*
+	 * If the session is closed and we have no new streams to send,
+	 * it means that the viewer has already received the whole trace
+	 * for this session and should now close it.
+	 */
+	if (nb_streams == 0 && session->close_flag) {
+		send_streams = 0;
+		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_HUP);
+		goto send_reply;
+	}
+
 send_reply:
 	health_code_update();
 	ret = send_response(conn->sock, &response, sizeof(response));
