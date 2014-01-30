@@ -28,6 +28,7 @@ static void rcu_free_connection(struct rcu_head *head)
 		caa_container_of(head, struct relay_connection, rcu_node);
 
 	lttcomm_destroy_sock(conn->sock);
+	free(conn->viewer_session);
 	free(conn);
 }
 
