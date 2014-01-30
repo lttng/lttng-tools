@@ -97,6 +97,7 @@ enum lttng_viewer_new_streams_return_code {
 	LTTNG_VIEWER_NEW_STREAMS_OK           = 1, /* If new streams are being sent. */
 	LTTNG_VIEWER_NEW_STREAMS_NO_NEW       = 2, /* If no new streams are available. */
 	LTTNG_VIEWER_NEW_STREAMS_ERR          = 3, /* Error. */
+	LTTNG_VIEWER_NEW_STREAMS_HUP          = 4, /* Session closed. */
 };
 
 enum lttng_viewer_create_session_return_code {
