@@ -44,6 +44,7 @@ enum connection_type {
 struct relay_connection {
 	struct lttcomm_sock *sock;
 	struct relay_session *session;
+	struct relay_viewer_session *viewer_session;
 	struct cds_wfq_node qnode;
 	struct lttng_ht_node_ulong sock_n;
 	struct rcu_head rcu_node;

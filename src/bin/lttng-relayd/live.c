@@ -926,6 +926,12 @@ int viewer_attach_session(struct relay_connection *conn)
 
 	health_code_update();
 
+	if (!conn->viewer_session) {
+		DBG("Client trying to attach before creating a live viewer session");
+		response.status = htobe32(LTTNG_VIEWER_ATTACH_NO_SESSION);
+		goto send_reply;
+	}
+
 	rcu_read_lock();
 	session = session_find_by_id(conn->sessions_ht,
 			be64toh(request.session_id));
@@ -1492,6 +1498,42 @@ end:
 }
 
 /*
+ * Create a viewer session.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static
+int viewer_create_session(struct relay_connection *conn)
+{
+	int ret;
+	struct lttng_viewer_create_session_response resp;
+
+	DBG("Viewer create session received");
+
+	resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_OK);
+	conn->viewer_session = zmalloc(sizeof(conn->viewer_session));
+	if (!conn->viewer_session) {
+		ERR("Allocation viewer session");
+		resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_ERR);
+		goto send_reply;
+	}
+	CDS_INIT_LIST_HEAD(&conn->viewer_session->sessions_head);
+
+send_reply:
+	health_code_update();
+	ret = send_response(conn->sock, &resp, sizeof(resp));
+	if (ret < 0) {
+		goto end;
+	}
+	health_code_update();
+	ret = 0;
+
+end:
+	return ret;
+}
+
+
+/*
  * live_relay_unknown_command: send -1 if received unknown command
  */
 static
@@ -1549,6 +1591,9 @@ int process_control(struct lttng_viewer_cmd *recv_hdr,
 		break;
 	case LTTNG_VIEWER_GET_NEW_STREAMS:
 		ret = viewer_get_new_streams(conn);
+		break;
+	case LTTNG_VIEWER_CREATE_SESSION:
+		ret = viewer_create_session(conn);
 		break;
 	default:
 		ERR("Received unknown viewer command (%u)", be32toh(recv_hdr->cmd));

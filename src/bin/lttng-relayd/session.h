@@ -22,6 +22,7 @@
 #include <limits.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
 
@@ -71,6 +72,15 @@ struct relay_session {
 	 * process of sending those streams.
 	 */
 	pthread_mutex_t viewer_ready_lock;
+
+	/*
+	 * Member of the session list in struct relay_viewer_session.
+	 */
+	struct cds_list_head viewer_session_list;
+};
+
+struct relay_viewer_session {
+	struct cds_list_head sessions_head;
 };
 
 static inline void session_viewer_attach(struct relay_session *session)
