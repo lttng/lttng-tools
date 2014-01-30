@@ -64,10 +64,10 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	vstream->tracefile_count_last = -1ULL;
 
 	switch (seek_t) {
-	case VIEWER_SEEK_BEGINNING:
+	case LTTNG_VIEWER_SEEK_BEGINNING:
 		vstream->tracefile_count_current = stream->oldest_tracefile_id;
 		break;
-	case VIEWER_SEEK_LAST:
+	case LTTNG_VIEWER_SEEK_LAST:
 		vstream->tracefile_count_current = stream->tracefile_count_current;
 		break;
 	default:
@@ -112,7 +112,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		vstream->index_read_fd = read_fd;
 	}
 
-	if (seek_t == VIEWER_SEEK_LAST && vstream->index_read_fd >= 0) {
+	if (seek_t == LTTNG_VIEWER_SEEK_LAST && vstream->index_read_fd >= 0) {
 		off_t lseek_ret;
 
 		lseek_ret = lseek(vstream->index_read_fd,

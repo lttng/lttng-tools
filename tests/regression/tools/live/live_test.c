@@ -125,14 +125,14 @@ int establish_connection(void)
 	struct lttng_viewer_connect connect;
 	int ret;
 
-	cmd.cmd = htobe32(VIEWER_CONNECT);
+	cmd.cmd = htobe32(LTTNG_VIEWER_CONNECT);
 	cmd.data_size = sizeof(connect);
 	cmd.cmd_version = 0;
 
 	memset(&connect, 0, sizeof(connect));
 	connect.major = htobe32(VERSION_MAJOR);
 	connect.minor = htobe32(VERSION_MINOR);
-	connect.type = htobe32(VIEWER_CLIENT_COMMAND);
+	connect.type = htobe32(LTTNG_VIEWER_CLIENT_COMMAND);
 
 	do {
 		ret = send(control_sock, &cmd, sizeof(cmd), 0);
@@ -173,7 +173,7 @@ int list_sessions(int *session_id)
 	int i, ret;
 	int first_session = 0;
 
-	cmd.cmd = htobe32(VIEWER_LIST_SESSIONS);
+	cmd.cmd = htobe32(LTTNG_VIEWER_LIST_SESSIONS);
 	cmd.data_size = 0;
 	cmd.cmd_version = 0;
 
@@ -227,13 +227,13 @@ int attach_session(int id)
 		goto error;
 	}
 
-	cmd.cmd = htobe32(VIEWER_ATTACH_SESSION);
+	cmd.cmd = htobe32(LTTNG_VIEWER_ATTACH_SESSION);
 	cmd.data_size = sizeof(rq);
 	cmd.cmd_version = 0;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.session_id = htobe64(id);
-	rq.seek = htobe32(VIEWER_SEEK_BEGINNING);
+	rq.seek = htobe32(LTTNG_VIEWER_SEEK_BEGINNING);
 
 	do {
 		ret = send(control_sock, &cmd, sizeof(cmd), 0);
@@ -257,7 +257,7 @@ int attach_session(int id)
 		fprintf(stderr, "Error receiving attach response\n");
 		goto error;
 	}
-	if (be32toh(rp.status) != VIEWER_ATTACH_OK) {
+	if (be32toh(rp.status) != LTTNG_VIEWER_ATTACH_OK) {
 		ret = -1;
 		goto end;
 	}
@@ -312,7 +312,7 @@ int get_metadata(void)
 	uint64_t len = 0;
 	int metadata_stream_id = -1;
 
-	cmd.cmd = htobe32(VIEWER_GET_METADATA);
+	cmd.cmd = htobe32(LTTNG_VIEWER_GET_METADATA);
 	cmd.data_size = sizeof(rq);
 	cmd.cmd_version = 0;
 
@@ -353,13 +353,13 @@ int get_metadata(void)
 		goto error;
 	}
 	switch (be32toh(rp.status)) {
-		case VIEWER_METADATA_OK:
+		case LTTNG_VIEWER_METADATA_OK:
 			break;
-		case VIEWER_NO_NEW_METADATA:
+		case LTTNG_VIEWER_NO_NEW_METADATA:
 			fprintf(stderr, "NO NEW\n");
 			ret = -1;
 			goto end;
-		case VIEWER_METADATA_ERR:
+		case LTTNG_VIEWER_METADATA_ERR:
 			fprintf(stderr, "ERR\n");
 			ret = -1;
 			goto end;
@@ -403,7 +403,7 @@ int get_next_index(void)
 	int ret;
 	int id;
 
-	cmd.cmd = htobe32(VIEWER_GET_NEXT_INDEX);
+	cmd.cmd = htobe32(LTTNG_VIEWER_GET_NEXT_INDEX);
 	cmd.data_size = sizeof(rq);
 	cmd.cmd_version = 0;
 
@@ -439,20 +439,20 @@ retry:
 		rp.flags = be32toh(rp.flags);
 
 		switch (be32toh(rp.status)) {
-			case VIEWER_INDEX_INACTIVE:
+			case LTTNG_VIEWER_INDEX_INACTIVE:
 				fprintf(stderr, "(INACTIVE)\n");
 				break;
-			case VIEWER_INDEX_OK:
+			case LTTNG_VIEWER_INDEX_OK:
 				break;
-			case VIEWER_INDEX_RETRY:
+			case LTTNG_VIEWER_INDEX_RETRY:
 				sleep(1);
 				goto retry;
-			case VIEWER_INDEX_HUP:
+			case LTTNG_VIEWER_INDEX_HUP:
 				fprintf(stderr, "(HUP)\n");
 				session->streams[id].id = -1ULL;
 				session->streams[id].fd = -1;
 				break;
-			case VIEWER_INDEX_ERR:
+			case LTTNG_VIEWER_INDEX_ERR:
 				fprintf(stderr, "(ERR)\n");
 				ret = -1;
 				goto error;
@@ -482,7 +482,7 @@ int get_data_packet(int id, uint64_t offset,
 	struct lttng_viewer_trace_packet rp;
 	int ret;
 
-	cmd.cmd = htobe32(VIEWER_GET_PACKET);
+	cmd.cmd = htobe32(LTTNG_VIEWER_GET_PACKET);
 	cmd.data_size = sizeof(rq);
 	cmd.cmd_version = 0;
 
@@ -515,13 +515,13 @@ int get_data_packet(int id, uint64_t offset,
 	rp.flags = be32toh(rp.flags);
 
 	switch (be32toh(rp.status)) {
-	case VIEWER_GET_PACKET_OK:
+	case LTTNG_VIEWER_GET_PACKET_OK:
 		break;
-	case VIEWER_GET_PACKET_RETRY:
+	case LTTNG_VIEWER_GET_PACKET_RETRY:
 		fprintf(stderr, "RETRY\n");
 		ret = -1;
 		goto end;
-	case VIEWER_GET_PACKET_ERR:
+	case LTTNG_VIEWER_GET_PACKET_ERR:
 		if (rp.flags & LTTNG_VIEWER_FLAG_NEW_METADATA) {
 			fprintf(stderr, "NEW_METADATA\n");
 			ret = 0;
