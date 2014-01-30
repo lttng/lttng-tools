@@ -810,6 +810,32 @@ end:
 }
 
 /*
+ * Check if a connection is attached to a session.
+ * Return 1 if attached, 0 if not attached, a negative value on error.
+ */
+static
+int session_attached(struct relay_connection *conn, uint64_t session_id)
+{
+	struct relay_session *session;
+	int found = 0;
+
+	if (!conn->viewer_session) {
+		goto end;
+	}
+	cds_list_for_each_entry(session,
+			&conn->viewer_session->sessions_head,
+			viewer_session_list) {
+		if (session->id == session_id) {
+			found = 1;
+			goto end;
+		}
+	}
+
+end:
+	return found;
+}
+
+/*
  * Send the viewer the list of current sessions.
  */
 static
@@ -820,6 +846,7 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	struct lttng_viewer_new_streams_request request;
 	struct lttng_viewer_new_streams_response response;
 	struct relay_session *session;
+	uint64_t session_id;
 
 	assert(conn);
 
@@ -832,28 +859,26 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	if (ret < 0) {
 		goto error;
 	}
+	session_id = be64toh(request.session_id);
 
 	health_code_update();
 
 	rcu_read_lock();
-	session = session_find_by_id(conn->sessions_ht,
-			be64toh(request.session_id));
+	session = session_find_by_id(conn->sessions_ht, session_id);
 	if (!session) {
-		DBG("Relay session %" PRIu64 " not found",
-				be64toh(request.session_id));
+		DBG("Relay session %" PRIu64 " not found", session_id);
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
 		goto send_reply;
 	}
 
-	if (conn->session_id == session->id) {
-		/* We confirmed the viewer is asking for the same session. */
-		send_streams = 1;
-		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
-	} else {
+	if (!session_attached(conn, session_id)) {
 		send_streams = 0;
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
 		goto send_reply;
 	}
+
+	send_streams = 1;
+	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
 
 	if (!send_streams) {
 		goto send_reply;
@@ -876,6 +901,12 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	if (nb_streams == 0 && session->close_flag) {
 		send_streams = 0;
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_HUP);
+		/*
+		 * Remove the session from the attached list of the connection
+		 * and try to destroy it.
+		 */
+		cds_list_del(&session->viewer_session_list);
+		session_viewer_try_destroy(conn->sessions_ht, session);
 		goto send_reply;
 	}
 
@@ -967,8 +998,8 @@ int viewer_attach_session(struct relay_connection *conn)
 	} else {
 		send_streams = 1;
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_OK);
-		conn->session_id = session->id;
-		conn->session = session;
+		cds_list_add(&session->viewer_session_list,
+				&conn->viewer_session->sessions_head);
 	}
 
 	switch (be32toh(request.seek)) {
@@ -1052,14 +1083,14 @@ int viewer_get_next_index(struct relay_connection *conn)
 	health_code_update();
 
 	rcu_read_lock();
-	session = session_find_by_id(conn->sessions_ht, conn->session_id);
-	if (!session) {
+	vstream = viewer_stream_find_by_id(be64toh(request_index.stream_id));
+	if (!vstream) {
 		ret = -1;
 		goto end_unlock;
 	}
 
-	vstream = viewer_stream_find_by_id(be64toh(request_index.stream_id));
-	if (!vstream) {
+	session = session_find_by_id(conn->sessions_ht, vstream->session_id);
+	if (!session) {
 		ret = -1;
 		goto end_unlock;
 	}
@@ -1253,6 +1284,7 @@ int viewer_get_packet(struct relay_connection *conn)
 	struct lttng_viewer_get_packet get_packet_info;
 	struct lttng_viewer_trace_packet reply;
 	struct relay_viewer_stream *stream;
+	struct relay_session *session;
 	struct ctf_trace *ctf_trace;
 
 	assert(conn);
@@ -1276,7 +1308,13 @@ int viewer_get_packet(struct relay_connection *conn)
 		goto error;
 	}
 
-	ctf_trace = ctf_trace_find_by_path(conn->session->ctf_traces_ht,
+	session = session_find_by_id(conn->sessions_ht, stream->session_id);
+	if (!session) {
+		ret = -1;
+		goto error;
+	}
+
+	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
 			stream->path_name);
 	assert(ctf_trace);
 
@@ -1414,6 +1452,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 	struct lttng_viewer_metadata_packet reply;
 	struct relay_viewer_stream *stream;
 	struct ctf_trace *ctf_trace;
+	struct relay_session *session;
 
 	assert(conn);
 
@@ -1434,7 +1473,13 @@ int viewer_get_metadata(struct relay_connection *conn)
 		goto error;
 	}
 
-	ctf_trace = ctf_trace_find_by_path(conn->session->ctf_traces_ht,
+	session = session_find_by_id(conn->sessions_ht, stream->session_id);
+	if (!session) {
+		ret = -1;
+		goto error;
+	}
+
+	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
 			stream->path_name);
 	assert(ctf_trace);
 	assert(ctf_trace->metadata_sent <= ctf_trace->metadata_received);
@@ -1690,28 +1735,34 @@ static void try_destroy_streams(struct relay_session *session)
 static void destroy_connection(struct lttng_ht *relay_connections_ht,
 		struct relay_connection *conn)
 {
-	struct relay_session *session;
+	struct relay_session *session, *tmp_session;
 
 	assert(relay_connections_ht);
 	assert(conn);
 
-	DBG("Cleaning connection of session ID %" PRIu64, conn->session_id);
-
 	connection_delete(relay_connections_ht, conn);
 
+	if (!conn->viewer_session) {
+		goto end;
+	}
+
 	rcu_read_lock();
-	session = session_find_by_id(conn->sessions_ht, conn->session_id);
-	if (session) {
+	cds_list_for_each_entry_safe(session, tmp_session,
+			&conn->viewer_session->sessions_head,
+			viewer_session_list) {
+		DBG("Cleaning connection of session ID %" PRIu64, session->id);
 		/*
 		 * Very important that this is done before destroying the session so we
 		 * can put back every viewer stream reference from the ctf_trace.
 		 */
 		destroy_viewer_streams_by_session(session);
 		try_destroy_streams(session);
+		cds_list_del(&session->viewer_session_list);
 		session_viewer_try_destroy(conn->sessions_ht, session);
 	}
 	rcu_read_unlock();
 
+end:
 	connection_destroy(conn);
 }
 
