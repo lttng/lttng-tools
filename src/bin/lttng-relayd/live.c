@@ -836,6 +836,72 @@ end:
 }
 
 /*
+ * Delete all streams for a specific session ID.
+ */
+static void destroy_viewer_streams_by_session(struct relay_session *session)
+{
+	struct relay_viewer_stream *stream;
+	struct lttng_ht_iter iter;
+
+	assert(session);
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, stream,
+			stream_n.node) {
+		struct ctf_trace *ctf_trace;
+
+		health_code_update();
+		if (stream->session_id != session->id) {
+			continue;
+		}
+
+		ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
+				stream->path_name);
+		assert(ctf_trace);
+
+		viewer_stream_delete(stream);
+
+		if (stream->metadata_flag) {
+			ctf_trace->metadata_sent = 0;
+			ctf_trace->viewer_metadata_stream = NULL;
+		}
+
+		viewer_stream_destroy(ctf_trace, stream);
+	}
+	rcu_read_unlock();
+}
+
+static void try_destroy_streams(struct relay_session *session)
+{
+	struct ctf_trace *ctf_trace;
+	struct lttng_ht_iter iter;
+
+	assert(session);
+
+	cds_lfht_for_each_entry(session->ctf_traces_ht->ht, &iter.iter, ctf_trace,
+			node.node) {
+		/* Attempt to destroy the ctf trace of that session. */
+		ctf_trace_try_destroy(session, ctf_trace);
+	}
+}
+
+/*
+ * Cleanup a session.
+ */
+static void cleanup_session(struct relay_connection *conn,
+		struct relay_session *session)
+{
+	/*
+	 * Very important that this is done before destroying the session so we
+	 * can put back every viewer stream reference from the ctf_trace.
+	 */
+	destroy_viewer_streams_by_session(session);
+	try_destroy_streams(session);
+	cds_list_del(&session->viewer_session_list);
+	session_viewer_try_destroy(conn->sessions_ht, session);
+}
+
+/*
  * Send the viewer the list of current sessions.
  */
 static
@@ -906,7 +972,7 @@ int viewer_get_new_streams(struct relay_connection *conn)
 		 * and try to destroy it.
 		 */
 		cds_list_del(&session->viewer_session_list);
-		session_viewer_try_destroy(conn->sessions_ht, session);
+		cleanup_session(conn, session);
 		goto send_reply;
 	}
 
@@ -1678,56 +1744,6 @@ void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 }
 
 /*
- * Delete all streams for a specific session ID.
- */
-static void destroy_viewer_streams_by_session(struct relay_session *session)
-{
-	struct relay_viewer_stream *stream;
-	struct lttng_ht_iter iter;
-
-	assert(session);
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, stream,
-			stream_n.node) {
-		struct ctf_trace *ctf_trace;
-
-		health_code_update();
-		if (stream->session_id != session->id) {
-			continue;
-		}
-
-		ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-				stream->path_name);
-		assert(ctf_trace);
-
-		viewer_stream_delete(stream);
-
-		if (stream->metadata_flag) {
-			ctf_trace->metadata_sent = 0;
-			ctf_trace->viewer_metadata_stream = NULL;
-		}
-
-		viewer_stream_destroy(ctf_trace, stream);
-	}
-	rcu_read_unlock();
-}
-
-static void try_destroy_streams(struct relay_session *session)
-{
-	struct ctf_trace *ctf_trace;
-	struct lttng_ht_iter iter;
-
-	assert(session);
-
-	cds_lfht_for_each_entry(session->ctf_traces_ht->ht, &iter.iter, ctf_trace,
-			node.node) {
-		/* Attempt to destroy the ctf trace of that session. */
-		ctf_trace_try_destroy(session, ctf_trace);
-	}
-}
-
-/*
  * Delete and destroy a connection.
  *
  * RCU read side lock MUST be acquired.
@@ -1751,14 +1767,7 @@ static void destroy_connection(struct lttng_ht *relay_connections_ht,
 			&conn->viewer_session->sessions_head,
 			viewer_session_list) {
 		DBG("Cleaning connection of session ID %" PRIu64, session->id);
-		/*
-		 * Very important that this is done before destroying the session so we
-		 * can put back every viewer stream reference from the ctf_trace.
-		 */
-		destroy_viewer_streams_by_session(session);
-		try_destroy_streams(session);
-		cds_list_del(&session->viewer_session_list);
-		session_viewer_try_destroy(conn->sessions_ht, session);
+		cleanup_session(conn, session);
 	}
 	rcu_read_unlock();
 
