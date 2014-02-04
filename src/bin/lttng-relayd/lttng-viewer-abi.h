@@ -117,7 +117,7 @@ struct lttng_viewer_session {
 struct lttng_viewer_stream {
 	uint64_t id;
 	uint64_t ctf_trace_id;
-	int metadata_flag;
+	uint32_t metadata_flag;
 	char path_name[LTTNG_VIEWER_PATH_MAX];
 	char channel_name[LTTNG_VIEWER_NAME_MAX];
 } __attribute__((__packed__));
