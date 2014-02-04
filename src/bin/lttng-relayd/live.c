@@ -153,32 +153,33 @@ ssize_t send_response(struct lttcomm_sock *sock, void *buf, size_t size)
 }
 
 /*
- * Atomically check if new streams got added in the session since the last
- * check and reset the flag to 0.
+ * Atomically check if new streams got added in one of the sessions attached
+ * and reset the flag to 0.
  *
  * Returns 1 if new streams got added, 0 if nothing changed, a negative value
  * on error.
  */
 static
-int check_new_streams(uint64_t session_id, struct lttng_ht *sessions_ht)
+int check_new_streams(struct relay_connection *conn)
 {
-	int ret;
-	unsigned long current_val;
 	struct relay_session *session;
+	unsigned long current_val;
+	int ret = 0;
 
-	assert(sessions_ht);
-
-	session = session_find_by_id(sessions_ht, session_id);
-	if (!session) {
-		DBG("Relay session %" PRIu64 " not found", session_id);
-		ret = -1;
-		goto error;
+	if (!conn->viewer_session) {
+		goto end;
+	}
+	cds_list_for_each_entry(session,
+			&conn->viewer_session->sessions_head,
+			viewer_session_list) {
+		current_val = uatomic_cmpxchg(&session->new_streams, 1, 0);
+		ret = current_val;
+		if (ret == 1) {
+			goto end;
+		}
 	}
 
-	current_val = uatomic_cmpxchg(&session->new_streams, 1, 0);
-	ret = current_val;
-
-error:
+end:
 	return ret;
 }
 
@@ -1249,7 +1250,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
 	}
 
-	ret = check_new_streams(vstream->session_id, conn->sessions_ht);
+	ret = check_new_streams(conn);
 	if (ret < 0) {
 		goto end_unlock;
 	} else if (ret == 1) {
@@ -1418,7 +1419,7 @@ int viewer_get_packet(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	ret = check_new_streams(stream->session_id, conn->sessions_ht);
+	ret = check_new_streams(conn);
 	if (ret < 0) {
 		goto end_unlock;
 	} else if (ret == 1) {
