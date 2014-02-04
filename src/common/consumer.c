@@ -2320,7 +2320,6 @@ end:
 
 	lttng_poll_clean(&events);
 end_poll:
-end_ht:
 	rcu_unregister_thread();
 	return NULL;
 }
