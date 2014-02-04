@@ -172,7 +172,6 @@ static void test_create_ust_event_exclusion(void)
 	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
 	   "Validate UST event and exclusion");
 
-	free(exclusion);
 	trace_ust_destroy_event(event);
 }
 
