@@ -1558,7 +1558,7 @@ int lttng_create_session_live(const char *name, const char *url,
 	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
 
 	size = uri_parse_str_urls(url, NULL, &uris);
-	if (size < 0) {
+	if (size <= 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
