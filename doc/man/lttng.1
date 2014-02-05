@@ -1,4 +1,4 @@
-.TH "LTTNG" "1" "July 18th, 2013" "" ""
+.TH "LTTNG" "1" "February 05th, 2014" "" ""
 
 .SH "NAME"
 lttng \(em LTTng 2.x tracer control command line tool
@@ -27,10 +27,10 @@ kernel and/or instrumented applications (lttng-ust(3)). Aggregating and reading
 those traces is done using the babeltrace(1) text viewer.
 
 We introduce the notion of \fBtracing domains\fP which is essentially a type of
-tracer (kernel or user space for now). In the future, we could see a third
-tracer being for instance an hypervisor. For some commands, you'll need to
-specify on which domain the command operates (-u or -k). For instance, the
-kernel domain must be specified when enabling a kernel event.
+tracer (kernel, user space or JUL for now). In the future, we could see more
+tracer like for instance an hypervisor. For some commands, you'll need to
+specify on which domain the command operates (\-u, \-k or \-j). For instance,
+the kernel domain must be specified when enabling a kernel event.
 
 In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
@@ -902,6 +902,46 @@ default viewers so please make sure to specify the full command. The
 trace directory path of the session will be appended at the end to the
 arguments
 .RE
+.PP
+
+.SH "JUL DOMAIN"
+This section explains the JUL domain (\-j, \-\-jul) where JUL stands for Java
+Util Logging. You can use that feature by using the \fBliblttng-ust-jul.so\fP
+from the lttng-ust(3) project.
+
+The LTTng Java Agent uses JNI to link the UST tracer to the Java application
+that uses the agent. Thus, it behaves similarly to the UST domain (\-u). When
+enabling events with the JUL domain, you enable a Logger name that will then be
+mapped to a default UST tracepoint called \fBlttng_jul:jul_event\fP in the
+\fBlttng_jul_channel\fP. Using the lttng-ctl API, any JUL events must use the
+tracepoint event type (same as \-\-tracepoint).
+
+Because of the default immutable channel (\fBlttng_jul_channel\fP), the
+\fBenable-channel\fP command CAN NOT be used with the JUL domain thus not
+having any \-j option.
+
+For JUL event, loglevels are supported with the JUL ABI values. Use \fBlttng
+enable-event \-h\fP to list them. Wildcards are NOT supported except the "*"
+meaning all events (same as \-a).
+
+Exactly like the UST domain, if the Java application has the same UID as you,
+you can trace it. Same goes for the tracing group accessing root applications.
+
+Finally, you can list every Logger name that are available from JUL registered
+applications to the session daemon by using \fBlttng list \-j\fP.
+
+Here is an example on how to use this domain.
+
+.nf
+$ lttng list -j
+[...]
+$ lttng create aSession
+$ lttng enable-event -s aSession -j MyCustomLoggerName
+$ lttng start
+.fi
+
+More information can be found in the lttng-ust documentation, see
+java-util-logging.txt
 .PP
 
 .SH "EXIT VALUES"
