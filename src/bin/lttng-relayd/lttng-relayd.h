@@ -54,6 +54,8 @@ extern const char *tracing_group_name;
 
 extern const char * const config_section_name;
 
+extern int thread_quit_pipe[2];
+
 void lttng_relay_notify_ready(void);
 
 #endif /* LTTNG_RELAYD_H */
