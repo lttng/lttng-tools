@@ -1,5 +1,5 @@
-#ifndef LTTNG_VIEWER_H
-#define LTTNG_VIEWER_H
+#ifndef LTTNG_VIEWER_ABI_H
+#define LTTNG_VIEWER_ABI_H
 
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
@@ -232,4 +232,4 @@ struct lttng_viewer_create_session_response {
 	uint32_t status;
 } __attribute__((__packed__));
 
-#endif /* LTTNG_VIEWER_H */
+#endif /* LTTNG_VIEWER_ABI_H */
