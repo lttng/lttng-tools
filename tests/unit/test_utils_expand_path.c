@@ -141,6 +141,7 @@ int prepare_valid_results()
 		valid_tests_expected_results[i] = malloc(PATH_MAX);
 		if (valid_tests_expected_results[i] == NULL) {
 			printerr("malloc expected results");
+			free(empty);
 			return 1;
 		}
 
