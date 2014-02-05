@@ -28,8 +28,7 @@ static void rcu_free_connection(struct rcu_head *head)
 		caa_container_of(head, struct relay_connection, rcu_node);
 
 	lttcomm_destroy_sock(conn->sock);
-	free(conn->viewer_session);
-	free(conn);
+	connection_free(conn);
 }
 
 struct relay_connection *connection_find_by_sock(struct lttng_ht *ht, int sock)
@@ -108,5 +107,6 @@ void connection_free(struct relay_connection *conn)
 {
 	assert(conn);
 
+	free(conn->viewer_session);
 	free(conn);
 }
