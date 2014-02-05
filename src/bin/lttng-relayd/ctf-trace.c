@@ -75,6 +75,7 @@ void ctf_trace_try_destroy(struct relay_session *session,
 	 */
 	if (uatomic_read(&session->viewer_refcount) == 0 &&
 			uatomic_read(&ctf_trace->refcount) == 0) {
+		ctf_trace_delete(session->ctf_traces_ht, ctf_trace);
 		ctf_trace_destroy(ctf_trace);
 	}
 }
