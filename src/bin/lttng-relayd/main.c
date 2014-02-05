@@ -729,7 +729,7 @@ static void try_close_stream(struct relay_session *session,
 	pthread_mutex_unlock(&session->viewer_ready_lock);
 
 	ret = stream_close(session, stream);
-	if (!ret) {
+	if (ret || session->snapshot) {
 		/* Already close thus the ctf trace is being or has been destroyed. */
 		goto end;
 	}
@@ -1849,7 +1849,7 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, stream,
 			node.node) {
 		if (stream->session_id == session_id &&
-				!stream->data_pending_check_done) {
+				!stream->data_pending_check_done && !stream->terminated_flag) {
 			is_data_inflight = 1;
 			DBG("Data is still in flight for stream %" PRIu64,
 					stream->stream_handle);
