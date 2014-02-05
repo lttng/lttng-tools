@@ -350,7 +350,7 @@ void stop_threads(void)
 
 	/* Stopping all threads */
 	DBG("Terminating all live threads");
-	ret = notify_thread_pipe(live_conn_pipe[1]);
+	ret = notify_thread_pipe(thread_quit_pipe[1]);
 	if (ret < 0) {
 		ERR("write error on thread quit pipe");
 	}
@@ -379,7 +379,7 @@ int create_thread_poll_set(struct lttng_poll_event *events, int size)
 	}
 
 	/* Add quit pipe */
-	ret = lttng_poll_add(events, live_conn_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
@@ -396,9 +396,9 @@ error:
  * Return 1 if it was triggered else 0;
  */
 static
-int check_live_conn_pipe(int fd, uint32_t events)
+int check_thread_quit_pipe(int fd, uint32_t events)
 {
-	if (fd == live_conn_pipe[0] && (events & LPOLLIN)) {
+	if (fd == thread_quit_pipe[0] && (events & LPOLLIN)) {
 		return 1;
 	}
 
@@ -515,7 +515,7 @@ restart:
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_live_conn_pipe(pollfd, revents);
+			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
@@ -1854,7 +1854,7 @@ restart:
 			health_code_update();
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_live_conn_pipe(pollfd, revents);
+			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				goto exit;
