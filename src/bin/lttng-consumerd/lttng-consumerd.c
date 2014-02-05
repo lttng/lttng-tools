@@ -426,7 +426,7 @@ int main(int argc, char **argv)
 	 * sessiond thread reply to the sessiond that we are ready.
 	 */
 	while (uatomic_read(&lttng_consumer_ready)) {
-		sleep(1);
+		usleep(100000);
 	}
 	cmm_smp_mb();	/* Read ready before following operations */
 
