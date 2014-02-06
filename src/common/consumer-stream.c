@@ -122,7 +122,29 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
+	{
+		/*
+		 * Special case for the metadata since the wait fd is an internal pipe
+		 * polled in the metadata thread.
+		 */
+		if (stream->metadata_flag && stream->chan->monitor) {
+			int rpipe = stream->ust_metadata_poll_pipe[0];
+
+			/*
+			 * This will stop the channel timer if one and close the write side
+			 * of the metadata poll pipe.
+			 */
+			lttng_ustconsumer_close_metadata(stream->chan);
+			if (rpipe >= 0) {
+				ret = close(rpipe);
+				if (ret < 0) {
+					PERROR("closing metadata pipe write side");
+				}
+				stream->ust_metadata_poll_pipe[0] = -1;
+			}
+		}
 		break;
+	}
 	default:
 		ERR("Unknown consumer_data type");
 		assert(0);
@@ -195,9 +217,11 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream,
 
 	rcu_read_unlock();
 
-	/* Decrement the stream count of the global consumer data. */
-	assert(consumer_data.stream_count > 0);
-	consumer_data.stream_count--;
+	if (!stream->metadata_flag) {
+		/* Decrement the stream count of the global consumer data. */
+		assert(consumer_data.stream_count > 0);
+		consumer_data.stream_count--;
+	}
 }
 
 /*
