@@ -105,13 +105,6 @@ enum lttng_viewer_create_session_return_code {
 	LTTNG_VIEWER_CREATE_SESSION_ERR		= 2,
 };
 
-/* Flags set when creating a viewer session. */
-enum {
-	/* New metadata is required to read this packet. */
-	LTTNG_VIEWER_OPTION_NOTIFY_NEW_SESSIONS	= (1 << 0),
-};
-
-
 struct lttng_viewer_session {
 	uint64_t id;
 	uint32_t live_timer;
@@ -237,7 +230,6 @@ struct lttng_viewer_new_streams_response {
 struct lttng_viewer_create_session_response {
 	/* enum lttng_viewer_create_session_return_code */
 	uint32_t status;
-	uint32_t options;		/* LTTNG_VIEWER_OPTION_* */
 } __attribute__((__packed__));
 
 #endif /* LTTNG_VIEWER_ABI_H */
