@@ -1,7 +1,7 @@
 LTTng Live trace reading protocol
 
 Julien Desfossez
-September 18th, 2013
+February 6th, 2014
 
 This document describes the protocol of live trace reading. It is mainly
 intended for trace-viewer developers.
@@ -16,7 +16,7 @@ This feature is implemented starting at lttng-tools 2.4
 
 * General informations
 All the data structures required to implement this protocole are provided in
-the lttng-viewer.h header. All integer are encoded in big endian during the
+the lttng-viewer-abi.h header. All integer are encoded in big endian during the
 transfer.
 
 Just like the streaming protocol, this protocol works always in only one
@@ -69,14 +69,16 @@ thing to do is list the sessions currently active on R.
   client at a time can attach to session.
 
 Attach to a session :
-Now V can select a session and attach to it. In order to do so, it sends the
-command VIEWER_ATTACH_SESSION with the session_id it wants. The "seek"
+Now V can select and attach one or multiple session IDs, but first, it needs to
+create a viewer_session. Creating a viewer session is done by sending the
+command LTTNG_VIEWER_CREATE_SESSION. In the future, this would be the place
+where we could specify options global to the viewer session.
+Once the session is created, the viewer can issue one or multiple
+VIEWER_ATTACH_SESSION commands with the session_id it wants. The "seek"
 parameter allows the viewer to attach to a session from its beginning (it will
 receive all trace data still on the relayd) or from now (data will be available
-to read starting at the next packet received on the relay). Only one session
-can be established by connection. Lots of clock synchronisation issues can
-happen when connecting to multiple sessions from multiple hosts at the same
-time, we let the viewers have fun with it ;-)
+to read starting at the next packet received on the relay). The viewer can
+issue this command multiple times and at any moment in the process.
 R replies with a struct lttng_viewer_attach_session_response with a status and
 the number of streams currently active in this session. Then, for each stream,
 it sends a struct lttng_viewer_stream. Just like with the session list, V must
@@ -85,6 +87,24 @@ parameter in the struct lttng_viewer_stream is particularly important since it
 allows the viewer to match all the streams belonging to the same CTF trace (so
 one metadata file and multiple stream files). If the stream is a metadata
 stream, metadata_flag will be set to 1.
+The relay ensures that it sends only ready ctf traces, so once this command is
+complete, V knows that it has all the streams ready to be processed.
+A quick note about the "sessions": from the relay perspective we see one
+session for each domain (kernel, ust32, ust64) of a session as created on the
+sessiond. For example, if the user creates a session and adds events in the
+kernel and UST and has only 64-bit applications running, the relay sees two
+sessions with the same name and hostname. So in order to display a session as
+seen by the user, the viewer has to attach to all the sessions with the same
+hostname and session name. There might be clashes if two servers on the network
+have the same hostname and create the same session name, but the relay cannot
+distinguish these cases, so it is currently a known limitation.
+During a session, new streams might get added (especially in per-pid tracing)
+so the viewer must be ready to add new streams while processing the trace. To
+inform V that new streams are available, R sets the
+LTTNG_VIEWER_FLAG_NEW_STREAM flag on LTTNG_VIEWER_GET_NEXT_INDEX and
+LTTNG_VIEWER_GET_PACKET replies. The viewer must then issue the
+LTTNG_VIEWER_GET_NEW_STREAMS command and receive all the streams, just like
+with the attach command.
 
 #### below needs to be well written, but the essential is here ###
 
@@ -101,11 +121,21 @@ Get the next index :
 Command VIEWER_GET_NEXT_INDEX
 struct lttng_viewer_get_next_index
 Receive back a struct lttng_viewer_index 
+We might also receive flags :
+- LTTNG_VIEWER_FLAG_NEW_METADATA the viewer must ask new metadata
+  (LTTNG_VIEWER_GET_METADATA)
+- LTTNG_VIEWER_FLAG_NEW_STREAM the viewer must get the new streams
+  (LTTNG_VIEWER_GET_NEW_STREAMS)
 
 Get data packet :
 Command VIEWER_GET_PACKET
 struct lttng_viewer_get_packet
 Receive back a struct lttng_viewer_trace_packet
+We might also receive a LTTNG_VIEWER_GET_PACKET_ERR and some flags :
+- LTTNG_VIEWER_FLAG_NEW_METADATA the viewer must ask new metadata
+  (LTTNG_VIEWER_GET_METADATA)
+- LTTNG_VIEWER_FLAG_NEW_STREAM the viewer must get the new streams
+  (LTTNG_VIEWER_GET_NEW_STREAMS)
 
 For the VIEWER_GET_NEXT_INDEX and VIEWER_GET_PACKET, the viewer must check the
 "flags" element of the struct it receives, because it contains important
