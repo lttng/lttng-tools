@@ -1584,44 +1584,49 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		}
 	}
 
-	while (len > 0) {
-		ret = lttng_write(outfd, mmap_base + mmap_offset, len);
-		DBG("Consumer mmap write() ret %zd (len %lu)", ret, len);
-		if (ret < len) {
-			/*
-			 * This is possible if the fd is closed on the other side (outfd)
-			 * or any write problem. It can be verbose a bit for a normal
-			 * execution if for instance the relayd is stopped abruptly. This
-			 * can happen so set this to a DBG statement.
-			 */
-			DBG("Error in file write mmap");
-			if (written == 0) {
-				written = -errno;
-			}
-			/* Socket operation failed. We consider the relayd dead */
-			if (errno == EPIPE || errno == EINVAL) {
-				relayd_hang_up = 1;
-				goto write_error;
-			}
-			goto end;
-		} else if (ret > len) {
-			PERROR("Error in file write (ret %zd > len %lu)", ret, len);
-			written += ret;
-			goto end;
+	/*
+	 * This call guarantee that len or less is returned. It's impossible to
+	 * receive a ret value that is bigger than len.
+	 */
+	ret = lttng_write(outfd, mmap_base + mmap_offset, len);
+	DBG("Consumer mmap write() ret %zd (len %lu)", ret, len);
+	if (ret < 0 || ((size_t) ret != len)) {
+		/*
+		 * Report error to caller if nothing was written else at least send the
+		 * amount written.
+		 */
+		if (ret < 0) {
+			written = -errno;
 		} else {
-			len -= ret;
-			mmap_offset += ret;
+			written = ret;
 		}
 
-		/* This call is useless on a socket so better save a syscall. */
-		if (!relayd) {
-			/* This won't block, but will start writeout asynchronously */
-			lttng_sync_file_range(outfd, stream->out_fd_offset, ret,
-					SYNC_FILE_RANGE_WRITE);
-			stream->out_fd_offset += ret;
+		/* Socket operation failed. We consider the relayd dead */
+		if (errno == EPIPE || errno == EINVAL) {
+			/*
+			 * This is possible if the fd is closed on the other side
+			 * (outfd) or any write problem. It can be verbose a bit for a
+			 * normal execution if for instance the relayd is stopped
+			 * abruptly. This can happen so set this to a DBG statement.
+			 */
+			DBG("Consumer mmap write detected relayd hang up");
+			relayd_hang_up = 1;
+			goto write_error;
 		}
-		stream->output_written += ret;
-		written += ret;
+
+		/* Unhandled error, print it and stop function right now. */
+		PERROR("Error in write mmap (ret %zd != len %lu)", ret, len);
+		goto end;
+	}
+	stream->output_written += ret;
+	written = ret;
+
+	/* This call is useless on a socket so better save a syscall. */
+	if (!relayd) {
+		/* This won't block, but will start writeout asynchronously */
+		lttng_sync_file_range(outfd, stream->out_fd_offset, len,
+				SYNC_FILE_RANGE_WRITE);
+		stream->out_fd_offset += len;
 	}
 	lttng_consumer_sync_trace_file(stream, orig_offset);
 
@@ -1790,11 +1795,11 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 				SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice chan to pipe, ret %zd", ret_splice);
 		if (ret_splice < 0) {
-			PERROR("Error in relay splice");
+			ret = errno;
 			if (written == 0) {
 				written = ret_splice;
 			}
-			ret = errno;
+			PERROR("Error in relay splice");
 			goto splice_error;
 		}
 
@@ -1820,27 +1825,32 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 				ret_splice, SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("Consumer splice pipe to file, ret %zd", ret_splice);
 		if (ret_splice < 0) {
-			PERROR("Error in file splice");
+			ret = errno;
 			if (written == 0) {
 				written = ret_splice;
 			}
 			/* Socket operation failed. We consider the relayd dead */
-			if (errno == EBADF || errno == EPIPE) {
+			if (errno == EBADF || errno == EPIPE || errno == ESPIPE) {
 				WARN("Remote relayd disconnected. Stopping");
 				relayd_hang_up = 1;
 				goto write_error;
 			}
-			ret = errno;
+			PERROR("Error in file splice");
 			goto splice_error;
 		} else if (ret_splice > len) {
-			errno = EINVAL;
-			PERROR("Wrote more data than requested %zd (len: %lu)",
-					ret_splice, len);
+			/*
+			 * We don't expect this code path to be executed but you never know
+			 * so this is an extra protection agains a buggy splice().
+			 */
 			written += ret_splice;
 			ret = errno;
+			PERROR("Wrote more data than requested %zd (len: %lu)", ret_splice,
+					len);
 			goto splice_error;
+		} else {
+			/* All good, update current len and continue. */
+			len -= ret_splice;
 		}
-		len -= ret_splice;
 
 		/* This call is useless on a socket so better save a syscall. */
 		if (!relayd) {
@@ -1853,9 +1863,6 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		written += ret_splice;
 	}
 	lttng_consumer_sync_trace_file(stream, orig_offset);
-
-	ret = ret_splice;
-
 	goto end;
 
 write_error:
