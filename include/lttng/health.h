@@ -19,6 +19,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_health;
 struct lttng_health_thread;
 
@@ -123,5 +127,9 @@ int lttng_health_thread_state(const struct lttng_health_thread *thread);
  * Return thread name, NULL on error.
  */
 const char *lttng_health_thread_name(const struct lttng_health_thread *thread);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_HEALTH_H */
