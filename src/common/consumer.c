@@ -225,16 +225,6 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 	return channel;
 }
 
-static void free_stream_rcu(struct rcu_head *head)
-{
-	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
-	struct lttng_consumer_stream *stream =
-		caa_container_of(node, struct lttng_consumer_stream, node);
-
-	free(stream);
-}
-
 static void free_channel_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
@@ -1956,7 +1946,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 }
 
-void lttng_consumer_close_metadata(void)
+void lttng_consumer_close_all_metadata(void)
 {
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -1974,7 +1964,7 @@ void lttng_consumer_close_metadata(void)
 		 * because at this point we are sure that the metadata producer is
 		 * either dead or blocked.
 		 */
-		lttng_ustconsumer_close_metadata(metadata_ht);
+		lttng_ustconsumer_close_all_metadata(metadata_ht);
 		break;
 	default:
 		ERR("Unknown consumer_data type");
@@ -1988,10 +1978,7 @@ void lttng_consumer_close_metadata(void)
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht)
 {
-	int ret;
-	struct lttng_ht_iter iter;
 	struct lttng_consumer_channel *free_chan = NULL;
-	struct consumer_relayd_sock_pair *relayd;
 
 	assert(stream);
 	/*
@@ -2002,96 +1989,17 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 
 	DBG3("Consumer delete metadata stream %d", stream->wait_fd);
 
-	if (ht == NULL) {
-		/* Means the stream was allocated but not successfully added */
-		goto free_stream_rcu;
-	}
-
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->lock);
 
-	switch (consumer_data.type) {
-	case LTTNG_CONSUMER_KERNEL:
-		if (stream->mmap_base != NULL) {
-			ret = munmap(stream->mmap_base, stream->mmap_len);
-			if (ret != 0) {
-				PERROR("munmap metadata stream");
-			}
-		}
-		if (stream->wait_fd >= 0) {
-			ret = close(stream->wait_fd);
-			if (ret < 0) {
-				PERROR("close kernel metadata wait_fd");
-			}
-		}
-		break;
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		if (stream->monitor) {
-			/* close the write-side in close_metadata */
-			ret = close(stream->ust_metadata_poll_pipe[0]);
-			if (ret < 0) {
-				PERROR("Close UST metadata read-side poll pipe");
-			}
-		}
-		lttng_ustconsumer_del_stream(stream);
-		break;
-	default:
-		ERR("Unknown consumer_data type");
-		assert(0);
-		goto end;
-	}
+	/* Remove any reference to that stream. */
+	consumer_stream_delete(stream, ht);
 
-	rcu_read_lock();
-	iter.iter.node = &stream->node.node;
-	ret = lttng_ht_del(ht, &iter);
-	assert(!ret);
-
-	iter.iter.node = &stream->node_channel_id.node;
-	ret = lttng_ht_del(consumer_data.stream_per_chan_id_ht, &iter);
-	assert(!ret);
-
-	iter.iter.node = &stream->node_session_id.node;
-	ret = lttng_ht_del(consumer_data.stream_list_ht, &iter);
-	assert(!ret);
-	rcu_read_unlock();
-
-	if (stream->out_fd >= 0) {
-		ret = close(stream->out_fd);
-		if (ret) {
-			PERROR("close");
-		}
-	}
-
-	/* Check and cleanup relayd */
-	rcu_read_lock();
-	relayd = consumer_find_relayd(stream->net_seq_idx);
-	if (relayd != NULL) {
-		uatomic_dec(&relayd->refcount);
-		assert(uatomic_read(&relayd->refcount) >= 0);
-
-		/* Closing streams requires to lock the control socket. */
-		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-		ret = relayd_send_close_stream(&relayd->control_sock,
-				stream->relayd_stream_id, stream->next_net_seq_num - 1);
-		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-		if (ret < 0) {
-			DBG("Unable to close stream on the relayd. Continuing");
-			/*
-			 * Continue here. There is nothing we can do for the relayd.
-			 * Chances are that the relayd has closed the socket so we just
-			 * continue cleaning up.
-			 */
-		}
-
-		/* Both conditions are met, we destroy the relayd. */
-		if (uatomic_read(&relayd->refcount) == 0 &&
-				uatomic_read(&relayd->destroy_flag)) {
-			consumer_destroy_relayd(relayd);
-		}
-	}
-	rcu_read_unlock();
+	/* Close down everything including the relayd if one. */
+	consumer_stream_close(stream);
+	/* Destroy tracer buffers of the stream. */
+	consumer_stream_destroy_buffers(stream);
 
 	/* Atomically decrement channel refcount since other threads can use it. */
 	if (!uatomic_sub_return(&stream->chan->refcount, 1)
@@ -2100,11 +2008,10 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		free_chan = stream->chan;
 	}
 
-end:
 	/*
 	 * Nullify the stream reference so it is not used after deletion. The
-	 * channel lock MUST be acquired before being able to check for
-	 * a NULL pointer value.
+	 * channel lock MUST be acquired before being able to check for a NULL
+	 * pointer value.
 	 */
 	stream->chan->metadata_stream = NULL;
 
@@ -2116,8 +2023,7 @@ end:
 		consumer_del_channel(free_chan);
 	}
 
-free_stream_rcu:
-	call_rcu(&stream->node.head, free_stream_rcu);
+	consumer_stream_free(stream);
 }
 
 /*
@@ -2354,7 +2260,7 @@ restart:
 
 					/* Add metadata stream to the global poll events list */
 					lttng_poll_add(&events, stream->wait_fd,
-							LPOLLIN | LPOLLPRI);
+							LPOLLIN | LPOLLPRI | LPOLLHUP);
 				}
 
 				/* Handle other stream */
@@ -3174,7 +3080,7 @@ end:
 	 *
 	 * NOTE: for now, this only applies to the UST tracer.
 	 */
-	lttng_consumer_close_metadata();
+	lttng_consumer_close_all_metadata();
 
 	/*
 	 * when all fds have hung up, the polling thread
