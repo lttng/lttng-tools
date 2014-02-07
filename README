@@ -11,11 +11,11 @@ Latest development can be found at:
 
 REQUIREMENTS:
 
-	- Linux kernel >= 2.6.27
-	  For epoll() support, at least this version is needed. However, poll() is
-	  also supported by running "./configure --disable-epoll". Using that, the
-	  kernel version can probably be older but we can't provide any guarantee.
-	  Please let us know if you are able to go lower without any problems.
+    - Linux kernel >= 2.6.27
+      For epoll() support, at least this version is needed. However, poll() is
+      also supported by running "./configure --disable-epoll". Using that, the
+      kernel version can probably be older but we can't provide any guarantee.
+      Please let us know if you are able to go lower without any problems.
 
     - liburcu
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
@@ -56,8 +56,8 @@ REQUIREMENTS:
 
     - For kernel tracing: modprobe
 
-	- bash
-	  Needed for running "make check".
+    - bash
+      Needed for running "make check".
 
 For developers using the git tree:
 
@@ -123,8 +123,8 @@ PACKAGE CONTENTS:
       The LTTng tracing control library.
 
     - libsessiond-comm (internal)
-	  The lttng-sessiond communication library. In order to talk with
-	  lttng-sessiond, this library must be used.
+      The lttng-sessiond communication library. In order to talk with
+      lttng-sessiond, this library must be used.
 
     - libkernel-ctl (internal)
       Kernel tracer control and ioctl definitions.
@@ -132,26 +132,26 @@ PACKAGE CONTENTS:
     - libconsumer (internal)
       Library for Kernel and (optionally) UST trace consumer.
 
-	- libkernel-consumer (internal)
-	  Library for Kernel consumer control
+    - libkernel-consumer (internal)
+      Library for Kernel consumer control
 
-	- libust-consumer (internal)
-	  Library for UST consumer control
+    - libust-consumer (internal)
+      Library for UST consumer control
 
-	- libhashtable (internal)
-	  Library wrapper over URCU hashtables.
+    - libhashtable (internal)
+      Library wrapper over URCU hashtables.
 
-	- libcommon (internal)
-	  Contains multiple useful function call used by the whole tree.
+    - libcommon (internal)
+      Contains multiple useful function call used by the whole tree.
 
-	- libcompat (internal)
-	  Compatibility library mostly for FreeBSD and Linux.
-	
-	- librelayd (internal)
-	  Library for all relayd interactions over the network.
+    - libcompat (internal)
+      Compatibility library mostly for FreeBSD and Linux.
 
-	- lttng-relayd
-	  The relay daemon used for network streaming
+    - librelayd (internal)
+      Library for all relayd interactions over the network.
+
+    - lttng-relayd
+      The relay daemon used for network streaming
 
     - lttng-consumerd
       The consumer daemon which uses libconsumer.
@@ -168,9 +168,9 @@ PACKAGE CONTENTS:
     - tests
       Various test programs.
 
-	- doc
-	  Various documentations and quickstart guide.
+    - doc
+      Various documentations and quickstart guide.
 
-	- extras
-	  Contains extra data such as bash completion file. Python bindings for
-	  liblttng-ctl are also available there.
+    - extras
+      Contains extra data such as bash completion file. Python bindings for
+      liblttng-ctl are also available there.
