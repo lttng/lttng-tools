@@ -36,6 +36,11 @@ REQUIREMENTS:
 
       * Debian/Ubuntu package: uuid-dev
 
+    - Babeltrace (optional)
+      Trace viewer. Enable the use of "lttng view" command
+
+      * Debian/Ubuntu package: babeltrace
+
     - Perl (optional)
       Needed for make check and tests.
 
