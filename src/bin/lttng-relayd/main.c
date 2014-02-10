@@ -2033,7 +2033,9 @@ int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
 	/*
 	 * Inform the viewer that there are new streams in the session.
 	 */
-	uatomic_set(&conn->session->new_streams, 1);
+	if (conn->session->viewer_refcount) {
+		uatomic_set(&conn->session->new_streams, 1);
+	}
 
 	reply.ret_code = htobe32(LTTNG_OK);
 	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
