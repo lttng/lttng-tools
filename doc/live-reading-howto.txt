@@ -31,23 +31,7 @@ stream up to a certain point in time.
 Once the session is created, the user can activate events as usual.
 
 In order to view the live trace, the viewer must implement the live-reading
-protocol.
+protocol. As of now, Babeltrace[1] and LTTngTop[2] implement the protocol.
 
-For now, a basic client is available in the branch index2013 of the git
-repository :
-https://github.com/jdesfossez/babeltrace-dev.git
-
-This client is still in heavy development and the branch will be rebased, it is
-only provided as a proof-of-concept and an exemple on how to use the protocol.
-Once compiled and installed, just run :
-$ test-live hostname 2>/dev/null
-
-If you want to see all the debug, just get rid of "2>/dev/null".
-Once again, it is a client in development, the name is purposely bad and the
-debug output is relatively heavy.
-
-Known viewer issues :
-- adding metadata on the fly (enabling events when a viewer is connected)
-- destroy not clean
-- aggressive polling when all the streams are inactive (after a lttng stop)
-- restart reading from the beginning (SEEK_LAST not implemented yet)
+[1] git://git.efficios.com/babeltrace.git
+[2] git://git.lttng.org/lttngtop.git
