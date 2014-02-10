@@ -9,7 +9,8 @@ noinst_PROGRAMS = ini_config
 EXTRA_DIST = test_ini_config
 
 ini_config_SOURCES = ini_config.c
-ini_config_LDADD = $(LIBTAP) $(LIBCONFIG) $(LIBCOMMON) $(LIBHASHTABLE)
+ini_config_LDADD = $(LIBTAP) $(LIBCONFIG) $(LIBCOMMON) $(LIBHASHTABLE) \
+	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

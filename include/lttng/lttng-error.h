@@ -143,6 +143,10 @@ enum lttng_error_code {
 	LTTNG_ERR_EXCLUSION_INVAL        = 110, /* Invalid event exclusion data */
 	LTTNG_ERR_EXCLUSION_NOMEM        = 111, /* Lack of memory while processing event exclusions */
 	LTTNG_ERR_SAVE_IO_FAIL           = 112, /* IO error while writting session configuration */
+	LTTNG_ERR_LOAD_INVALID_CONFIG    = 113, /* Invalid session configuration */
+	LTTNG_ERR_LOAD_IO_FAIL           = 114, /* IO error while reading a session configuration */
+	LTTNG_ERR_LOAD_SESSION_NOT_FOUND = 115, /* Session configuration not found */
+	LTTNG_ERR_LOAD_SESSION_NOENT     = 116, /* Session file not found */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

@@ -185,4 +185,25 @@ LTTNG_HIDDEN
 int config_writer_write_element_string(struct config_writer *writer,
 		const char *element_name, const char *value);
 
+/*
+ * Load session configurations from a file.
+ *
+ * path Path to an LTTng session configuration file. All *.lttng files
+ * will be loaded if path is a directory. If path is NULL, the default
+ * paths will be searched in the following order:
+ *	1) $HOME/.lttng/sessions
+ *	2) /etc/lttng/sessions
+ *
+ * session_name Name of the session to load. Will load all
+ * sessions from path if NULL.
+ *
+ * override Override current session configuration if it exists.
+ *
+ * Returns zero if the session could be loaded successfully. Returns
+ * a negative LTTNG_ERR code on error.
+ */
+LTTNG_HIDDEN
+int config_load_session(const char *path, const char *session_name,
+		int override);
+
 #endif /* _CONFIG_H */
