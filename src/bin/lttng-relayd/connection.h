@@ -23,6 +23,7 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <urcu.h>
+#include <urcu/wfqueue.h>
 #include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
