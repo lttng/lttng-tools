@@ -23,7 +23,17 @@
 #define LTTNG_H
 
 #include <limits.h>
+/*
+ * Necessary to include the fixed width type limits on glibc versions older
+ * than 2.18 when building with a C++ compiler.
+ */
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#undef __STDC_LIMIT_MACROS
+#else /* #ifndef __STDC_LIMIT_MACROS */
+#include <stdint.h>
+#endif /* #else #ifndef __STDC_LIMIT_MACROS */
 #include <sys/types.h>
 
 /* Error codes that can be returned by API calls */
