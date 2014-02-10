@@ -57,5 +57,6 @@ extern int cmd_enable_consumer(int argc, const char **argv);
 extern int cmd_disable_consumer(int argc, const char **argv);
 extern int cmd_snapshot(int argc, const char **argv);
 extern int cmd_save(int argc, const char **argv);
+extern int cmd_load(int argc, const char **argv);
 
 #endif /* _LTTNG_CMD_H */
