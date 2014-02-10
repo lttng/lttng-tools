@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 
 #include "readwrite.h"
@@ -35,6 +36,14 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 	ssize_t ret;
 
 	assert(buf);
+
+	/*
+	 * Deny a read count that can be bigger then the returned value max size.
+	 * This makes the function to never return an overflow value.
+	 */
+	if (count > SSIZE_MAX) {
+		return -EINVAL;
+	}
 
 	do {
 		ret = read(fd, buf + i, count - i);
@@ -64,6 +73,14 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 	ssize_t ret;
 
 	assert(buf);
+
+	/*
+	 * Deny a write count that can be bigger then the returned value max size.
+	 * This makes the function to never return an overflow value.
+	 */
+	if (count > SSIZE_MAX) {
+		return -EINVAL;
+	}
 
 	do {
 		ret = write(fd, buf + i, count - i);
