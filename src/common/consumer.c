@@ -2652,12 +2652,17 @@ void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 			break;
 		case LTTNG_CONSUMER32_UST:
 		case LTTNG_CONSUMER64_UST:
-			/*
-			 * Note: a mutex is taken internally within
-			 * liblttng-ust-ctl to protect timer wakeup_fd
-			 * use from concurrent close.
-			 */
-			lttng_ustconsumer_close_stream_wakeup(stream);
+			if (stream->metadata_flag) {
+				/* Safe and protected by the stream lock. */
+				lttng_ustconsumer_close_metadata(stream->chan);
+			} else {
+				/*
+				 * Note: a mutex is taken internally within
+				 * liblttng-ust-ctl to protect timer wakeup_fd
+				 * use from concurrent close.
+				 */
+				lttng_ustconsumer_close_stream_wakeup(stream);
+			}
 			break;
 		default:
 			ERR("Unknown consumer_data type");
@@ -2814,6 +2819,15 @@ restart:
 					{
 						struct lttng_consumer_stream *stream, *stmp;
 
+						/*
+						 * This command should never be called if the channel
+						 * has streams monitored by either the data or metadata
+						 * thread. The consumer only notify this thread with a
+						 * channel del. command if it receives a destroy
+						 * channel command from the session daemon that send it
+						 * if a command prior to the GET_CHANNEL failed.
+						 */
+
 						rcu_read_lock();
 						chan = consumer_find_channel(key);
 						if (!chan) {
@@ -2825,7 +2839,6 @@ restart:
 						iter.iter.node = &chan->wait_fd_node.node;
 						ret = lttng_ht_del(channel_ht, &iter);
 						assert(ret == 0);
-						consumer_close_channel_streams(chan);
 
 						switch (consumer_data.type) {
 						case LTTNG_CONSUMER_KERNEL:
@@ -2836,12 +2849,9 @@ restart:
 							cds_list_for_each_entry_safe(stream, stmp, &chan->streams.head,
 									send_node) {
 								health_code_update();
-
+								/* Remove from the list and destroy it. */
 								cds_list_del(&stream->send_node);
-								lttng_ustconsumer_del_stream(stream);
-								uatomic_sub(&stream->chan->refcount, 1);
-								assert(&chan->refcount);
-								free(stream);
+								consumer_stream_destroy(stream, NULL);
 							}
 							break;
 						default:
@@ -2895,6 +2905,12 @@ restart:
 				lttng_poll_del(&events, chan->wait_fd);
 				ret = lttng_ht_del(channel_ht, &iter);
 				assert(ret == 0);
+
+				/*
+				 * This will close the wait fd for each stream associated to
+				 * this channel AND monitored by the data/metadata thread thus
+				 * will be clean by the right thread.
+				 */
 				consumer_close_channel_streams(chan);
 
 				/* Release our own refcount */

@@ -138,7 +138,7 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 			if (rpipe >= 0) {
 				ret = close(rpipe);
 				if (ret < 0) {
-					PERROR("closing metadata pipe write side");
+					PERROR("closing metadata pipe read side");
 				}
 				stream->ust_metadata_poll_pipe[0] = -1;
 			}
