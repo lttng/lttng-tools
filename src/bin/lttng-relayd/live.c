@@ -948,10 +948,6 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	send_streams = 1;
 	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
 
-	if (!send_streams) {
-		goto send_reply;
-	}
-
 	ret = make_viewer_streams(session, LTTNG_VIEWER_SEEK_LAST, NULL, &nb_unsent,
 			&nb_created);
 	if (ret < 0) {
@@ -1079,10 +1075,6 @@ int viewer_attach_session(struct relay_connection *conn)
 		ERR("Wrong seek parameter");
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_SEEK_ERR);
 		send_streams = 0;
-		goto send_reply;
-	}
-
-	if (!send_streams) {
 		goto send_reply;
 	}
 
