@@ -694,7 +694,7 @@ int viewer_connect(struct relay_connection *conn)
 
 	health_code_update();
 
-	memset(&msg, 0, sizeof(msg));
+	memset(&reply, 0, sizeof(reply));
 	reply.major = RELAYD_VERSION_COMM_MAJOR;
 	reply.minor = RELAYD_VERSION_COMM_MINOR;
 
