@@ -1457,7 +1457,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 {
 	unsigned long mmap_offset;
 	void *mmap_base;
-	ssize_t ret = 0, written = 0;
+	ssize_t ret = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	/* Default is on the disk */
 	int outfd = stream->out_fd;
@@ -1481,9 +1481,9 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	case LTTNG_CONSUMER_KERNEL:
 		mmap_base = stream->mmap_base;
 		ret = kernctl_get_mmap_read_offset(stream->wait_fd, &mmap_offset);
-		if (ret != 0) {
+		if (ret < 0) {
+			ret = -errno;
 			PERROR("tracer ctl get_mmap_read_offset");
-			written = -errno;
 			goto end;
 		}
 		break;
@@ -1492,13 +1492,13 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		mmap_base = lttng_ustctl_get_mmap_base(stream);
 		if (!mmap_base) {
 			ERR("read mmap get mmap base for stream %s", stream->name);
-			written = -EPERM;
+			ret = -EPERM;
 			goto end;
 		}
 		ret = lttng_ustctl_get_mmap_read_offset(stream, &mmap_offset);
 		if (ret != 0) {
 			PERROR("tracer ctl get_mmap_read_offset");
-			written = ret;
+			ret = -EINVAL;
 			goto end;
 		}
 		break;
@@ -1522,30 +1522,20 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		}
 
 		ret = write_relayd_stream_header(stream, netlen, padding, relayd);
-		if (ret >= 0) {
-			/* Use the returned socket. */
-			outfd = ret;
+		if (ret < 0) {
+			relayd_hang_up = 1;
+			goto write_error;
+		}
+		/* Use the returned socket. */
+		outfd = ret;
 
-			/* Write metadata stream id before payload */
-			if (stream->metadata_flag) {
-				ret = write_relayd_metadata_id(outfd, stream, relayd, padding);
-				if (ret < 0) {
-					written = ret;
-					/* Socket operation failed. We consider the relayd dead */
-					if (ret == -EPIPE || ret == -EINVAL) {
-						relayd_hang_up = 1;
-						goto write_error;
-					}
-					goto end;
-				}
-			}
-		} else {
-			/* Socket operation failed. We consider the relayd dead */
-			if (ret == -EPIPE || ret == -EINVAL) {
+		/* Write metadata stream id before payload */
+		if (stream->metadata_flag) {
+			ret = write_relayd_metadata_id(outfd, stream, relayd, padding);
+			if (ret < 0) {
 				relayd_hang_up = 1;
 				goto write_error;
 			}
-			/* Else, use the default set before which is the filesystem. */
 		}
 	} else {
 		/* No streaming, we have to set the len with the full padding */
@@ -1602,13 +1592,12 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		 * amount written.
 		 */
 		if (ret < 0) {
-			written = -errno;
-		} else {
-			written = ret;
+			ret = -errno;
 		}
+		relayd_hang_up = 1;
 
 		/* Socket operation failed. We consider the relayd dead */
-		if (errno == EPIPE || errno == EINVAL) {
+		if (errno == EPIPE || errno == EINVAL || errno == EBADF) {
 			/*
 			 * This is possible if the fd is closed on the other side
 			 * (outfd) or any write problem. It can be verbose a bit for a
@@ -1616,16 +1605,13 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			 * abruptly. This can happen so set this to a DBG statement.
 			 */
 			DBG("Consumer mmap write detected relayd hang up");
-			relayd_hang_up = 1;
-			goto write_error;
+		} else {
+			/* Unhandled error, print it and stop function right now. */
+			PERROR("Error in write mmap (ret %zd != len %lu)", ret, len);
 		}
-
-		/* Unhandled error, print it and stop function right now. */
-		PERROR("Error in write mmap (ret %zd != len %lu)", ret, len);
-		goto end;
+		goto write_error;
 	}
 	stream->output_written += ret;
-	written = ret;
 
 	/* This call is useless on a socket so better save a syscall. */
 	if (!relayd) {
@@ -1652,7 +1638,7 @@ end:
 	}
 
 	rcu_read_unlock();
-	return written;
+	return ret;
 }
 
 /*
