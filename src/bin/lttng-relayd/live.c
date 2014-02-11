@@ -1635,7 +1635,7 @@ int viewer_create_session(struct relay_connection *conn)
 	DBG("Viewer create session received");
 
 	resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_OK);
-	conn->viewer_session = zmalloc(sizeof(conn->viewer_session));
+	conn->viewer_session = zmalloc(sizeof(*conn->viewer_session));
 	if (!conn->viewer_session) {
 		ERR("Allocation viewer session");
 		resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_ERR);
