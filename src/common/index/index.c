@@ -100,14 +100,19 @@ ssize_t index_write(int fd, struct ctf_packet_index *index, size_t len)
 {
 	ssize_t ret;
 
-	assert(fd >= 0);
 	assert(index);
+
+	if (fd < 0) {
+		ret = -EINVAL;
+		goto error;
+	}
 
 	ret = lttng_write(fd, index, len);
 	if (ret < len) {
 		PERROR("writing index file");
 	}
 
+error:
 	return ret;
 }
 
