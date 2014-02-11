@@ -52,6 +52,7 @@ struct relay_session *session_create(void)
 	session->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!session->ctf_traces_ht) {
 		free(session);
+		session = NULL;
 		goto error;
 	}
 
