@@ -1189,23 +1189,25 @@ int viewer_get_next_index(struct relay_connection *conn)
 	rstream = stream_find_by_id(relay_streams_ht, vstream->stream_handle);
 	assert(rstream);
 
+	pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
 	if (!rstream->close_flag) {
 		if (vstream->abort_flag) {
 			/* Rotate on abort (overwrite). */
 			DBG("Viewer rotate because of overwrite");
 			ret = viewer_stream_rotate(vstream, rstream);
 			if (ret < 0) {
+				pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 				goto end_unlock;
 			} else if (ret == 1) {
 				viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
 				viewer_stream_delete(vstream);
 				viewer_stream_destroy(ctf_trace, vstream);
+				pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 				goto send_reply;
 			}
 			/* ret == 0 means successful so we continue. */
 		}
 
-		pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
 		if (rstream->tracefile_count_current == vstream->tracefile_count_current) {
 			if (rstream->beacon_ts_end != -1ULL &&
 				vstream->last_sent_index == rstream->total_index_received) {
@@ -1226,17 +1228,18 @@ int viewer_get_next_index(struct relay_connection *conn)
 				goto send_reply;
 			}
 		}
-		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 	} else if (rstream->close_flag && vstream->close_write_flag &&
 			vstream->total_index_received == vstream->last_sent_index) {
 		/* Last index sent and current tracefile closed in write */
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
 		viewer_stream_delete(vstream);
 		viewer_stream_destroy(ctf_trace, vstream);
+		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 		goto send_reply;
 	} else {
 		vstream->close_write_flag = 1;
 	}
+	pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 
 	if (!ctf_trace->metadata_received ||
 			ctf_trace->metadata_received > ctf_trace->metadata_sent) {
@@ -1273,10 +1276,15 @@ int viewer_get_next_index(struct relay_connection *conn)
 			sizeof(packet_index));
 	pthread_mutex_unlock(&vstream->overwrite_lock);
 	if (ret < sizeof(packet_index)) {
+		unsigned int close_write_flag;
+
+		pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
+		close_write_flag = vstream->close_write_flag;
+		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 		/*
 		 * The tracefile is closed in write, so we read up to EOF.
 		 */
-		if (vstream->close_write_flag == 1) {
+		if (close_write_flag == 1) {
 			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
 			/* Rotate on normal EOF */
 			ret = viewer_stream_rotate(vstream, rstream);
