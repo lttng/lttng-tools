@@ -749,8 +749,9 @@ error:
 	 * the stream is still in the local stream list of the channel. This call
 	 * will make sure to clean that list.
 	 */
-	cds_list_del(&metadata->metadata_stream->send_node);
 	consumer_stream_destroy(metadata->metadata_stream, NULL);
+	cds_list_del(&metadata->metadata_stream->send_node);
+	metadata->metadata_stream = NULL;
 error_no_stream:
 end:
 	return ret;
@@ -842,8 +843,8 @@ error_stream:
 	 * Clean up the stream completly because the next snapshot will use a new
 	 * metadata stream.
 	 */
-	cds_list_del(&metadata_stream->send_node);
 	consumer_stream_destroy(metadata_stream, NULL);
+	cds_list_del(&metadata_stream->send_node);
 	metadata_channel->metadata_stream = NULL;
 
 error:
