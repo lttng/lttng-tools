@@ -151,6 +151,31 @@ error:
 }
 
 /*
+ * Cleanup the stream list of a channel. Those streams are not yet globally
+ * visible
+ */
+static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
+{
+	struct lttng_consumer_stream *stream, *stmp;
+
+	assert(channel);
+
+	/* Delete streams that might have been left in the stream list. */
+	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
+			send_node) {
+		cds_list_del(&stream->send_node);
+		/*
+		 * Once a stream is added to this list, the buffers were created so we
+		 * have a guarantee that this call will succeed. Setting the monitor
+		 * mode to 0 so we don't lock nor try to delete the stream from the
+		 * global hash table.
+		 */
+		stream->monitor = 0;
+		consumer_stream_destroy(stream, NULL);
+	}
+}
+
+/*
  * Find a stream. The consumer_data.lock must be locked during this
  * call.
  */
@@ -292,23 +317,14 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 {
 	int ret;
 	struct lttng_ht_iter iter;
-	struct lttng_consumer_stream *stream, *stmp;
 
 	DBG("Consumer delete channel key %" PRIu64, channel->key);
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
 
-	/* Delete streams that might have been left in the stream list. */
-	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
-			send_node) {
-		cds_list_del(&stream->send_node);
-		/*
-		 * Once a stream is added to this list, the buffers were created so
-		 * we have a guarantee that this call will succeed.
-		 */
-		consumer_stream_destroy(stream, NULL);
-	}
+	/* Destroy streams that might have been left in the stream list. */
+	clean_channel_stream_list(channel);
 
 	if (channel->live_timer_enabled == 1) {
 		consumer_timer_live_stop(channel);
@@ -2817,8 +2833,6 @@ restart:
 						break;
 					case CONSUMER_CHANNEL_DEL:
 					{
-						struct lttng_consumer_stream *stream, *stmp;
-
 						/*
 						 * This command should never be called if the channel
 						 * has streams monitored by either the data or metadata
@@ -2845,14 +2859,9 @@ restart:
 							break;
 						case LTTNG_CONSUMER32_UST:
 						case LTTNG_CONSUMER64_UST:
-							/* Delete streams that might have been left in the stream list. */
-							cds_list_for_each_entry_safe(stream, stmp, &chan->streams.head,
-									send_node) {
-								health_code_update();
-								/* Remove from the list and destroy it. */
-								cds_list_del(&stream->send_node);
-								consumer_stream_destroy(stream, NULL);
-							}
+							health_code_update();
+							/* Destroy streams that might have been left in the stream list. */
+							clean_channel_stream_list(chan);
 							break;
 						default:
 							ERR("Unknown consumer_data type");
