@@ -135,7 +135,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    --syscall              System call event\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "    --loglevel name\n");
-	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel\n");
+	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel.\n");
+	fprintf(ofp, "                           For JUL domain, see the table below for the range values.\n");
 	fprintf(ofp, "    --loglevel-only name\n");
 	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
 	fprintf(ofp, "\n");
