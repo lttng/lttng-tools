@@ -250,6 +250,32 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 	return channel;
 }
 
+/*
+ * There is a possibility that the consumer does not have enough time between
+ * the close of the channel on the session daemon and the cleanup in here thus
+ * once we have a channel add with an existing key, we know for sure that this
+ * channel will eventually get cleaned up by all streams being closed.
+ *
+ * This function just nullifies the already existing channel key.
+ */
+static void steal_channel_key(uint64_t key)
+{
+	struct lttng_consumer_channel *channel;
+
+	rcu_read_lock();
+	channel = consumer_find_channel(key);
+	if (channel) {
+		channel->key = (uint64_t) -1ULL;
+		/*
+		 * We don't want the lookup to match, but we still need to iterate on
+		 * this channel when iterating over the hash table. Just change the
+		 * node key.
+		 */
+		channel->node.key = (uint64_t) -1ULL;
+	}
+	rcu_read_unlock();
+}
+
 static void free_channel_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
@@ -979,43 +1005,35 @@ end:
 /*
  * Add a channel to the global list protected by a mutex.
  *
- * On success 0 is returned else a negative value.
+ * Always return 0 indicating success.
  */
 int consumer_add_channel(struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx)
 {
-	int ret = 0;
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&channel->timer_lock);
+
+	/*
+	 * This gives us a guarantee that the channel we are about to add to the
+	 * channel hash table will be unique. See this function comment on the why
+	 * we need to steel the channel key at this stage.
+	 */
+	steal_channel_key(channel->key);
+
 	rcu_read_lock();
-
-	lttng_ht_lookup(consumer_data.channel_ht, &channel->key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node != NULL) {
-		/* Channel already exist. Ignore the insertion */
-		ERR("Consumer add channel key %" PRIu64 " already exists!",
-			channel->key);
-		ret = -EEXIST;
-		goto end;
-	}
-
 	lttng_ht_add_unique_u64(consumer_data.channel_ht, &channel->node);
-
-end:
 	rcu_read_unlock();
+
 	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
-	if (!ret && channel->wait_fd != -1 &&
-			channel->type == CONSUMER_CHANNEL_TYPE_DATA) {
+	if (channel->wait_fd != -1 && channel->type == CONSUMER_CHANNEL_TYPE_DATA) {
 		notify_channel_pipe(ctx, channel, -1, CONSUMER_CHANNEL_ADD);
 	}
-	return ret;
+
+	return 0;
 }
 
 /*
