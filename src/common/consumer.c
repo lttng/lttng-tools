@@ -1683,7 +1683,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == NULL) {
-			ret = -EPIPE;
+			written = -ret;
 			goto end;
 		}
 	}
@@ -1701,7 +1701,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 
 	/* Write metadata stream id before payload */
 	if (relayd) {
-		int total_len = len;
+		unsigned long total_len = len;
 
 		if (stream->metadata_flag) {
 			/*
@@ -1714,31 +1714,21 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 					padding);
 			if (ret < 0) {
 				written = ret;
-				/* Socket operation failed. We consider the relayd dead */
-				if (ret == -EBADF) {
-					WARN("Remote relayd disconnected. Stopping");
-					relayd_hang_up = 1;
-					goto write_error;
-				}
-				goto end;
+				relayd_hang_up = 1;
+				goto write_error;
 			}
 
 			total_len += sizeof(struct lttcomm_relayd_metadata_payload);
 		}
 
 		ret = write_relayd_stream_header(stream, total_len, padding, relayd);
-		if (ret >= 0) {
-			/* Use the returned socket. */
-			outfd = ret;
-		} else {
-			/* Socket operation failed. We consider the relayd dead */
-			if (ret == -EBADF) {
-				WARN("Remote relayd disconnected. Stopping");
-				relayd_hang_up = 1;
-				goto write_error;
-			}
-			goto end;
+		if (ret < 0) {
+			written = ret;
+			relayd_hang_up = 1;
+			goto write_error;
 		}
+		/* Use the returned socket. */
+		outfd = ret;
 	} else {
 		/* No streaming, we have to set the len with the full padding */
 		len += padding;
@@ -1755,6 +1745,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 					stream->out_fd, &(stream->tracefile_count_current),
 					&stream->out_fd);
 			if (ret < 0) {
+				written = ret;
 				ERR("Rotating output file");
 				goto end;
 			}
@@ -1766,6 +1757,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 						stream->chan->tracefile_size,
 						stream->tracefile_count_current);
 				if (ret < 0) {
+					written = ret;
 					goto end;
 				}
 				stream->index_fd = ret;
@@ -1788,28 +1780,24 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		DBG("splice chan to pipe, ret %zd", ret_splice);
 		if (ret_splice < 0) {
 			ret = errno;
-			if (written == 0) {
-				written = ret_splice;
-			}
+			written = -ret;
 			PERROR("Error in relay splice");
 			goto splice_error;
 		}
 
 		/* Handle stream on the relayd if the output is on the network */
-		if (relayd) {
-			if (stream->metadata_flag) {
-				size_t metadata_payload_size =
-					sizeof(struct lttcomm_relayd_metadata_payload);
+		if (relayd && stream->metadata_flag) {
+			size_t metadata_payload_size =
+				sizeof(struct lttcomm_relayd_metadata_payload);
 
-				/* Update counter to fit the spliced data */
-				ret_splice += metadata_payload_size;
-				len += metadata_payload_size;
-				/*
-				 * We do this so the return value can match the len passed as
-				 * argument to this function.
-				 */
-				written -= metadata_payload_size;
-			}
+			/* Update counter to fit the spliced data */
+			ret_splice += metadata_payload_size;
+			len += metadata_payload_size;
+			/*
+			 * We do this so the return value can match the len passed as
+			 * argument to this function.
+			 */
+			written -= metadata_payload_size;
 		}
 
 		/* Splice data out */
@@ -1818,24 +1806,16 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		DBG("Consumer splice pipe to file, ret %zd", ret_splice);
 		if (ret_splice < 0) {
 			ret = errno;
-			if (written == 0) {
-				written = ret_splice;
-			}
-			/* Socket operation failed. We consider the relayd dead */
-			if (errno == EBADF || errno == EPIPE || errno == ESPIPE) {
-				WARN("Remote relayd disconnected. Stopping");
-				relayd_hang_up = 1;
-				goto write_error;
-			}
-			PERROR("Error in file splice");
-			goto splice_error;
+			written = -ret;
+			relayd_hang_up = 1;
+			goto write_error;
 		} else if (ret_splice > len) {
 			/*
 			 * We don't expect this code path to be executed but you never know
 			 * so this is an extra protection agains a buggy splice().
 			 */
-			written += ret_splice;
 			ret = errno;
+			written += ret_splice;
 			PERROR("Wrote more data than requested %zd (len: %lu)", ret_splice,
 					len);
 			goto splice_error;
