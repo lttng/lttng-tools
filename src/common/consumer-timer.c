@@ -154,8 +154,8 @@ static int check_kernel_stream(struct lttng_consumer_stream *stream)
 	}
 	ret = kernctl_snapshot(stream->wait_fd);
 	if (ret < 0) {
-		if (errno != EAGAIN) {
-			ERR("Taking kernel snapshot");
+		if (errno != EAGAIN && errno != ENODATA) {
+			PERROR("live timer kernel snapshot");
 			ret = -1;
 			goto error_unlock;
 		}
