@@ -1,3 +1,61 @@
+2014-02-14 lttng-tools 2.4.0-rc5
+	* Fix: steal channel key in the consumer to avoid race
+	* Fix: change ERR statement to DBG in kernel read subbuffer
+	* Fix: handle snapshot ENODATA in live timer
+	* Fix: relayd leak on error in consumer splice()
+	* Fix: protect close_write_flag with the rotation lock
+	* Man: clarify loglevel for JUL domain
+	* Fix: Define __STDC_LIMIT_MACROS to fix C++ builds
+	* Fix: bad indentation of lttng list in man page
+	* Fix: wrong data structure used in commit df41f83
+	* Fix: add missing optional dependency to babeltrace in README
+	* Fix: cleanup inconsistent use of spaces/tabs in README
+	* Fix: only set the new_streams flag if a viewer is attached
+	* Fix: lttng-live documentation
+	* Fix: remove dead code in relayd live code
+	* Fix: use after free error code path
+	* Fix: wrong sizeof argument in live viewer create session
+	* Fix: zero out the reply structure in viewer_connect
+	* Fix: write index only if fd is valid
+	* Fix: cleanup relayd on any I/O error in read subbuffer mmap
+	* Fix: memory/fd leak when cleaning streams in channel
+	* Fix: destroy streams in consumer del channel
+	* Fix: add missing urcu wfqueue headers in relayd
+	* Fix: in lttng_read/write deny count bigger than the possible returned value
+	* Fix: fd leak when closing metadata stream
+	* Fix: read subbuffer mmap/splice signedness issue
+	* Doc: live protocol clarifications
+	* Fix: remove unused create_viewer_session option
+	* Fix: don't sleep(1) on the consumer ready flag
+	* Fix: free viewer session in connection_free()
+	* Fix: add missing ctf trace delete before destroy
+	* Fix: don't delete ctf trace while in snapshot mode
+	* Fix: add flag to create session command and fix tests
+	* Fix: cleanup indef guards following the rename
+	* Fix: merge issue with thread quit pipe
+	* Fix: use uint32_t for metadata_flag in viewer's ABI
+	* Fix: check for new streams in all attached sessions
+	* Fix: Move static functions up in the code
+	* Fix: allow attach command to multiple sessions
+	* Fix: handle session hang up in get_new_streams
+	* Fix: force the client to create a viewer session before attaching
+	* Fix: Namespace lttng-viewer-abi
+	* Fix: relayd connection object refactor
+	* Fix: big relayd cleanup and refactor
+	* Fix: code refactoring of viewer streams in relayd
+	* Fix: handle new streams in live mode in relayd
+	* Fix: notify the viewer if new streams got added
+	* Fix: send the streams sent message after metadata
+	* Add extern C to the health-check header
+	* Fix: memory leak in unit test
+	* Man: add JUL DOMAIN section to lttng.1
+	* Fix: handle invalid URL passed to lttng_create_session_live
+	* Fix: add --jul-tcp-port to sessiond man page
+	* Fix: measure UST clock offset with best sample (v2)
+	* Fix: remove free in unit test not needed anymore
+	* Fix: relay create session for version before 2.4
+	* Fix: memory leak when UST events are enabled with exclusions
+
 2014-01-29 lttng-tools 2.4.0-rc4
 	* Fix: add -b, --background option
 	* health check tests: test relayd and consumerd
