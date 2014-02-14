@@ -196,6 +196,7 @@ end:
 /*
  * Rotate a stream to the next tracefile.
  *
+ * Must be called with viewer_stream_rotation_lock held.
  * Returns 0 on success, 1 on EOF, a negative value on error.
  */
 int viewer_stream_rotate(struct relay_viewer_stream *vstream,
@@ -223,12 +224,6 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream,
 		ret = 1;
 		goto end;
 	}
-
-	/*
-	 * Lock to execute rotation in order to avoid races between a modification
-	 * on the index values.
-	 */
-	pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
 
 	/*
 	 * The writer and the reader are not working in the same tracefile, we can
@@ -263,8 +258,6 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream,
 	pthread_mutex_lock(&vstream->overwrite_lock);
 	vstream->abort_flag = 0;
 	pthread_mutex_unlock(&vstream->overwrite_lock);
-
-	pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
 
 	ret = index_open(vstream->path_name, vstream->channel_name,
 			vstream->tracefile_count, vstream->tracefile_count_current);
