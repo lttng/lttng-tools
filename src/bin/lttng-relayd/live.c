@@ -1337,11 +1337,13 @@ int viewer_get_next_index(struct relay_connection *conn)
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
 	}
 
+	pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
 	pthread_mutex_lock(&vstream->overwrite_lock);
 	if (vstream->abort_flag) {
 		/* The file is being overwritten by the writer, we cannot use it. */
 		pthread_mutex_unlock(&vstream->overwrite_lock);
 		ret = viewer_stream_rotate(vstream, rstream);
+		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 		if (ret < 0) {
 			goto end_unlock;
 		} else if (ret == 1) {
@@ -1357,6 +1359,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 	read_ret = lttng_read(vstream->index_read_fd, &packet_index,
 			sizeof(packet_index));
 	pthread_mutex_unlock(&vstream->overwrite_lock);
+	pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 	if (read_ret < 0) {
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
 		viewer_stream_delete(vstream);
