@@ -1966,17 +1966,6 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 
 	/* Do we have a writable ready index to write on disk. */
 	if (wr_index) {
-		/* Starting at 2.4, create the index file if none available. */
-		if (conn->minor >= 4 && stream->index_fd < 0) {
-			ret = index_create_file(stream->path_name, stream->channel_name,
-					relayd_uid, relayd_gid, stream->tracefile_size,
-					stream->tracefile_count_current);
-			if (ret < 0) {
-				goto end_rcu_unlock;
-			}
-			stream->index_fd = ret;
-		}
-
 		ret = relay_index_write(wr_index->fd, wr_index);
 		if (ret < 0) {
 			goto end_rcu_unlock;
