@@ -43,7 +43,7 @@ enum lttng_kernel_instrumentation {
 
 enum lttng_kernel_context_type {
 	LTTNG_KERNEL_CONTEXT_PID            = 0,
-	LTTNG_KERNEL_CONTEXT_PERF_COUNTER   = 1,
+	LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER = 1,
 	LTTNG_KERNEL_CONTEXT_PROCNAME       = 2,
 	LTTNG_KERNEL_CONTEXT_PRIO           = 3,
 	LTTNG_KERNEL_CONTEXT_NICE           = 4,

@@ -169,6 +169,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		struct lttng_event_exclusion *exclusion);
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx);
+int trace_ust_match_context(struct ltt_ust_context *uctx,
+		struct lttng_event_context *ctx);
 void trace_ust_delete_channel(struct lttng_ht *ht,
 		struct ltt_ust_channel *channel);
 
@@ -236,6 +238,12 @@ struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx)
 {
 	return NULL;
+}
+static inline
+int trace_ust_match_context(struct ltt_ust_context *uctx,
+		struct lttng_event_context *ctx)
+{
+	return 0;
 }
 static inline struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_filter_bytecode *filter, int loglevel,

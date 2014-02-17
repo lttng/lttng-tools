@@ -414,20 +414,12 @@ error:
 	return NULL;
 }
 
-/*
- * Allocate and initialize an UST context.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_ust_context *trace_ust_create_context(
-		struct lttng_event_context *ctx)
+static
+int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
 {
-	struct ltt_ust_context *uctx;
-	enum lttng_ust_context_type utype;
+	int utype;
 
-	assert(ctx);
-
-	switch (ctx->ctx) {
+	switch (type) {
 	case LTTNG_EVENT_CONTEXT_VTID:
 		utype = LTTNG_UST_CONTEXT_VTID;
 		break;
@@ -443,8 +435,70 @@ struct ltt_ust_context *trace_ust_create_context(
 	case LTTNG_EVENT_CONTEXT_IP:
 		utype = LTTNG_UST_CONTEXT_IP;
 		break;
+	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
+		utype = LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER;
+		break;
 	default:
 		ERR("Invalid UST context");
+		utype = -1;
+		break;
+	}
+	return utype;
+}
+
+/*
+ * Return 1 if contexts match, 0 otherwise.
+ */
+int trace_ust_match_context(struct ltt_ust_context *uctx,
+		struct lttng_event_context *ctx)
+{
+	int utype;
+
+	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
+	if (utype < 0) {
+		return 0;
+	}
+	if (uctx->ctx.ctx != utype) {
+		return 0;
+	}
+	switch (utype) {
+	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+		if (uctx->ctx.u.perf_counter.type
+				!= ctx->u.perf_counter.type) {
+			return 0;
+		}
+		if (uctx->ctx.u.perf_counter.config
+				!= ctx->u.perf_counter.config) {
+			return 0;
+		}
+		if (strncmp(uctx->ctx.u.perf_counter.name,
+				ctx->u.perf_counter.name,
+				LTTNG_UST_SYM_NAME_LEN)) {
+			return 0;
+		}
+		break;
+	default:
+		break;
+
+	}
+	return 1;
+}
+
+/*
+ * Allocate and initialize an UST context.
+ *
+ * Return pointer to structure or NULL.
+ */
+struct ltt_ust_context *trace_ust_create_context(
+		struct lttng_event_context *ctx)
+{
+	struct ltt_ust_context *uctx;
+	int utype;
+
+	assert(ctx);
+
+	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
+	if (utype < 0) {
 		return NULL;
 	}
 
@@ -454,9 +508,19 @@ struct ltt_ust_context *trace_ust_create_context(
 		goto error;
 	}
 
-	uctx->ctx.ctx = utype;
+	uctx->ctx.ctx = (enum lttng_ust_context_type) utype;
+	switch (utype) {
+	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+		uctx->ctx.u.perf_counter.type = ctx->u.perf_counter.type;
+		uctx->ctx.u.perf_counter.config = ctx->u.perf_counter.config;
+		strncpy(uctx->ctx.u.perf_counter.name, ctx->u.perf_counter.name,
+				LTTNG_UST_SYM_NAME_LEN);
+		uctx->ctx.u.perf_counter.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+		break;
+	default:
+		break;
+	}
 	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
-	CDS_INIT_LIST_HEAD(&uctx->list);
 
 	return uctx;
 

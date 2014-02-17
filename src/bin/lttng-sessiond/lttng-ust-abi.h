@@ -140,7 +140,14 @@ enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_PTHREAD_ID		= 2,
 	LTTNG_UST_CONTEXT_PROCNAME		= 3,
 	LTTNG_UST_CONTEXT_IP			= 4,
+	LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER	= 5,
 };
+
+struct lttng_ust_perf_counter_ctx {
+	uint32_t type;
+	uint64_t config;
+	char name[LTTNG_UST_SYM_NAME_LEN];
+} LTTNG_PACKED;
 
 #define LTTNG_UST_CONTEXT_PADDING1	16
 #define LTTNG_UST_CONTEXT_PADDING2	(LTTNG_UST_SYM_NAME_LEN + 32)
@@ -149,6 +156,7 @@ struct lttng_ust_context {
 	char padding[LTTNG_UST_CONTEXT_PADDING1];
 
 	union {
+		struct lttng_ust_perf_counter_ctx perf_counter;
 		char padding[LTTNG_UST_CONTEXT_PADDING2];
 	} u;
 } LTTNG_PACKED;

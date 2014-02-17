@@ -188,7 +188,7 @@ int kernctl_add_context(int fd, struct lttng_kernel_context *ctx)
 
 		old_ctx.ctx = ctx->ctx;
 		/* only type that uses the union */
-		if (ctx->ctx == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
+		if (ctx->ctx == LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER) {
 			old_ctx.u.perf_counter.type =
 				ctx->u.perf_counter.type;
 			old_ctx.u.perf_counter.config =

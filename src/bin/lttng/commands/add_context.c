@@ -56,7 +56,7 @@ static struct lttng_handle *handle;
  */
 enum context_type {
 	CONTEXT_PID          = 0,
-	CONTEXT_PERF_COUNTER = 1,
+	CONTEXT_PERF_COUNTER = 1,	/* Backward compat. */
 	CONTEXT_PROCNAME     = 2,
 	CONTEXT_PRIO         = 3,
 	CONTEXT_NICE         = 4,
@@ -68,6 +68,8 @@ enum context_type {
 	CONTEXT_PTHREAD_ID   = 10,
 	CONTEXT_HOSTNAME     = 11,
 	CONTEXT_IP           = 12,
+	CONTEXT_PERF_CPU_COUNTER = 13,
+	CONTEXT_PERF_THREAD_COUNTER = 14,
 };
 
 /*
@@ -151,21 +153,21 @@ static struct poptOption long_options[] = {
 /*
  * Context options
  */
-#define PERF_HW(opt, name)						\
+#define PERF_HW(optstr, name, type, hide)				\
 	{								\
-		"perf:" #opt, CONTEXT_PERF_COUNTER,			\
+		optstr, type, hide,					\
 		.u.perf = { PERF_TYPE_HARDWARE, PERF_COUNT_HW_##name, },\
 	}
 
-#define PERF_SW(opt, name)						\
+#define PERF_SW(optstr, name, type, hide)				\
 	{								\
-		"perf:" #opt, CONTEXT_PERF_COUNTER,			\
+		optstr, type, hide,					\
 		.u.perf = { PERF_TYPE_SOFTWARE, PERF_COUNT_SW_##name, },\
 	}
 
-#define _PERF_HW_CACHE(optstr, name, op, result)			\
+#define _PERF_HW_CACHE(optstr, name, type, op, result, hide)		\
 	{								\
-		"perf:" optstr, CONTEXT_PERF_COUNTER,			\
+		optstr, type, hide,					\
 		.u.perf = {						\
 			PERF_TYPE_HW_CACHE,				\
 			(uint64_t) PERF_COUNT_HW_CACHE_##name		\
@@ -174,18 +176,25 @@ static struct poptOption long_options[] = {
 		},							\
 	}
 
-#define PERF_HW_CACHE(opt, name)					\
-	_PERF_HW_CACHE(#opt "-loads", name, READ, ACCESS),		\
-	_PERF_HW_CACHE(#opt "-load-misses", name, READ, MISS),		\
-	_PERF_HW_CACHE(#opt "-stores", name, WRITE, ACCESS),		\
-	_PERF_HW_CACHE(#opt "-store-misses", name, WRITE, MISS),	\
-	_PERF_HW_CACHE(#opt "-prefetches", name, PREFETCH, ACCESS),	\
-	_PERF_HW_CACHE(#opt "-prefetch-misses", name, PREFETCH, MISS)	\
+#define PERF_HW_CACHE(optstr, name, type, hide)				\
+	_PERF_HW_CACHE(optstr "-loads", name, type,			\
+		READ, ACCESS, hide),					\
+	_PERF_HW_CACHE(optstr "-load-misses", name, type,		\
+		READ, MISS, hide),					\
+	_PERF_HW_CACHE(optstr "-stores", name, type,			\
+		WRITE, ACCESS, hide),					\
+	_PERF_HW_CACHE(optstr "-store-misses", name, type,		\
+		WRITE, MISS, hide), 					\
+	_PERF_HW_CACHE(optstr "-prefetches", name, type,		\
+		PREFETCH, ACCESS, hide), 				\
+	_PERF_HW_CACHE(optstr "-prefetch-misses", name, type,		\
+		PREFETCH, MISS, hide)
 
 static
 const struct ctx_opts {
 	char *symbol;
 	enum context_type ctx_type;
+	int hide_help;	/* Hide from --help */
 	union {
 		struct {
 			uint32_t type;
@@ -205,46 +214,227 @@ const struct ctx_opts {
 	{ "vppid", CONTEXT_VPPID },
 	{ "hostname", CONTEXT_HOSTNAME },
 	{ "ip", CONTEXT_IP },
+
 	/* Perf options */
-	PERF_HW(cpu-cycles, CPU_CYCLES),
-	PERF_HW(cycles, CPU_CYCLES),
-	PERF_HW(stalled-cycles-frontend, STALLED_CYCLES_FRONTEND),
-	PERF_HW(idle-cycles-frontend, STALLED_CYCLES_FRONTEND),
-	PERF_HW(stalled-cycles-backend, STALLED_CYCLES_BACKEND),
-	PERF_HW(idle-cycles-backend, STALLED_CYCLES_BACKEND),
-	PERF_HW(instructions, INSTRUCTIONS),
-	PERF_HW(cache-references, CACHE_REFERENCES),
-	PERF_HW(cache-misses, CACHE_MISSES),
-	PERF_HW(branch-instructions, BRANCH_INSTRUCTIONS),
-	PERF_HW(branches, BRANCH_INSTRUCTIONS),
-	PERF_HW(branch-misses, BRANCH_MISSES),
-	PERF_HW(bus-cycles, BUS_CYCLES),
 
-	PERF_HW_CACHE(L1-dcache, L1D),
-	PERF_HW_CACHE(L1-icache, L1I),
-	PERF_HW_CACHE(LLC, LL),
-	PERF_HW_CACHE(dTLB, DTLB),
-	_PERF_HW_CACHE("iTLB-loads", ITLB, READ, ACCESS),
-	_PERF_HW_CACHE("iTLB-load-misses", ITLB, READ, MISS),
-	_PERF_HW_CACHE("branch-loads", BPU, READ, ACCESS),
-	_PERF_HW_CACHE("branch-load-misses", BPU, READ, MISS),
+	/* Perf per-CPU counters */
+	PERF_HW("perf:cpu:cpu-cycles", CPU_CYCLES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:cycles", CPU_CYCLES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:stalled-cycles-frontend", STALLED_CYCLES_FRONTEND,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:idle-cycles-frontend", STALLED_CYCLES_FRONTEND,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:stalled-cycles-backend", STALLED_CYCLES_BACKEND,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:idle-cycles-backend", STALLED_CYCLES_BACKEND,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:instructions", INSTRUCTIONS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:cache-references", CACHE_REFERENCES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:cache-misses", CACHE_MISSES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:branch-instructions", BRANCH_INSTRUCTIONS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:branches", BRANCH_INSTRUCTIONS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:branch-misses", BRANCH_MISSES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW("perf:cpu:bus-cycles", BUS_CYCLES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
 
+	PERF_HW_CACHE("perf:cpu:L1-dcache", L1D,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW_CACHE("perf:cpu:L1-icache", L1I,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW_CACHE("perf:cpu:LLC", LL,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_HW_CACHE("perf:cpu:dTLB", DTLB,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	_PERF_HW_CACHE("perf:cpu:iTLB-loads", ITLB,
+		CONTEXT_PERF_CPU_COUNTER, READ, ACCESS, 0),
+	_PERF_HW_CACHE("perf:cpu:iTLB-load-misses", ITLB,
+		CONTEXT_PERF_CPU_COUNTER, READ, MISS, 0),
+	_PERF_HW_CACHE("perf:cpu:branch-loads", BPU,
+		CONTEXT_PERF_CPU_COUNTER, READ, ACCESS, 0),
+	_PERF_HW_CACHE("perf:cpu:branch-load-misses", BPU,
+		CONTEXT_PERF_CPU_COUNTER, READ, MISS, 0),
 
-	PERF_SW(cpu-clock, CPU_CLOCK),
-	PERF_SW(task-clock, TASK_CLOCK),
-	PERF_SW(page-fault, PAGE_FAULTS),
-	PERF_SW(faults, PAGE_FAULTS),
-	PERF_SW(major-faults, PAGE_FAULTS_MAJ),
-	PERF_SW(minor-faults, PAGE_FAULTS_MIN),
-	PERF_SW(context-switches, CONTEXT_SWITCHES),
-	PERF_SW(cs, CONTEXT_SWITCHES),
-	PERF_SW(cpu-migrations, CPU_MIGRATIONS),
-	PERF_SW(migrations, CPU_MIGRATIONS),
-	PERF_SW(alignment-faults, ALIGNMENT_FAULTS),
-	PERF_SW(emulation-faults, EMULATION_FAULTS),
+	PERF_SW("perf:cpu:cpu-clock", CPU_CLOCK,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:task-clock", TASK_CLOCK,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:page-fault", PAGE_FAULTS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:faults", PAGE_FAULTS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:major-faults", PAGE_FAULTS_MAJ,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:minor-faults", PAGE_FAULTS_MIN,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:context-switches", CONTEXT_SWITCHES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:cs", CONTEXT_SWITCHES,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:cpu-migrations", CPU_MIGRATIONS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:migrations", CPU_MIGRATIONS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:alignment-faults", ALIGNMENT_FAULTS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+	PERF_SW("perf:cpu:emulation-faults", EMULATION_FAULTS,
+		CONTEXT_PERF_CPU_COUNTER, 0),
+
+	/* Perf per-thread counters */
+	PERF_HW("perf:thread:cpu-cycles", CPU_CYCLES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:cycles", CPU_CYCLES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:stalled-cycles-frontend", STALLED_CYCLES_FRONTEND,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:idle-cycles-frontend", STALLED_CYCLES_FRONTEND,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:stalled-cycles-backend", STALLED_CYCLES_BACKEND,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:idle-cycles-backend", STALLED_CYCLES_BACKEND,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:instructions", INSTRUCTIONS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:cache-references", CACHE_REFERENCES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:cache-misses", CACHE_MISSES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:branch-instructions", BRANCH_INSTRUCTIONS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:branches", BRANCH_INSTRUCTIONS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:branch-misses", BRANCH_MISSES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW("perf:thread:bus-cycles", BUS_CYCLES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+
+	PERF_HW_CACHE("perf:thread:L1-dcache", L1D,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW_CACHE("perf:thread:L1-icache", L1I,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW_CACHE("perf:thread:LLC", LL,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_HW_CACHE("perf:thread:dTLB", DTLB,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	_PERF_HW_CACHE("perf:thread:iTLB-loads", ITLB,
+		CONTEXT_PERF_THREAD_COUNTER, READ, ACCESS, 0),
+	_PERF_HW_CACHE("perf:thread:iTLB-load-misses", ITLB,
+		CONTEXT_PERF_THREAD_COUNTER, READ, MISS, 0),
+	_PERF_HW_CACHE("perf:thread:branch-loads", BPU,
+		CONTEXT_PERF_THREAD_COUNTER, READ, ACCESS, 0),
+	_PERF_HW_CACHE("perf:thread:branch-load-misses", BPU,
+		CONTEXT_PERF_THREAD_COUNTER, READ, MISS, 0),
+
+	PERF_SW("perf:thread:cpu-clock", CPU_CLOCK,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:task-clock", TASK_CLOCK,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:page-fault", PAGE_FAULTS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:faults", PAGE_FAULTS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:major-faults", PAGE_FAULTS_MAJ,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:minor-faults", PAGE_FAULTS_MIN,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:context-switches", CONTEXT_SWITCHES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:cs", CONTEXT_SWITCHES,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:cpu-migrations", CPU_MIGRATIONS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:migrations", CPU_MIGRATIONS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:alignment-faults", ALIGNMENT_FAULTS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+	PERF_SW("perf:thread:emulation-faults", EMULATION_FAULTS,
+		CONTEXT_PERF_THREAD_COUNTER, 0),
+
+	/*
+	 * Perf per-CPU counters, backward compatibilty for names.
+	 * Hidden from help listing.
+	 */
+	PERF_HW("perf:cpu-cycles", CPU_CYCLES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:cycles", CPU_CYCLES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:stalled-cycles-frontend", STALLED_CYCLES_FRONTEND,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:idle-cycles-frontend", STALLED_CYCLES_FRONTEND,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:stalled-cycles-backend", STALLED_CYCLES_BACKEND,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:idle-cycles-backend", STALLED_CYCLES_BACKEND,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:instructions", INSTRUCTIONS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:cache-references", CACHE_REFERENCES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:cache-misses", CACHE_MISSES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:branch-instructions", BRANCH_INSTRUCTIONS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:branches", BRANCH_INSTRUCTIONS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:branch-misses", BRANCH_MISSES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW("perf:bus-cycles", BUS_CYCLES,
+		CONTEXT_PERF_COUNTER, 1),
+
+	PERF_HW_CACHE("perf:L1-dcache", L1D,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW_CACHE("perf:L1-icache", L1I,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW_CACHE("perf:LLC", LL,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_HW_CACHE("perf:dTLB", DTLB,
+		CONTEXT_PERF_COUNTER, 1),
+	_PERF_HW_CACHE("perf:iTLB-loads", ITLB,
+		CONTEXT_PERF_COUNTER, READ, ACCESS, 1),
+	_PERF_HW_CACHE("perf:iTLB-load-misses", ITLB,
+		CONTEXT_PERF_COUNTER, READ, MISS, 1),
+	_PERF_HW_CACHE("perf:branch-loads", BPU,
+		CONTEXT_PERF_COUNTER, READ, ACCESS, 1),
+	_PERF_HW_CACHE("perf:branch-load-misses", BPU,
+		CONTEXT_PERF_COUNTER, READ, MISS, 1),
+
+	PERF_SW("perf:cpu-clock", CPU_CLOCK,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:task-clock", TASK_CLOCK,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:page-fault", PAGE_FAULTS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:faults", PAGE_FAULTS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:major-faults", PAGE_FAULTS_MAJ,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:minor-faults", PAGE_FAULTS_MIN,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:context-switches", CONTEXT_SWITCHES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:cs", CONTEXT_SWITCHES,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:cpu-migrations", CPU_MIGRATIONS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:migrations", CPU_MIGRATIONS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:alignment-faults", ALIGNMENT_FAULTS,
+		CONTEXT_PERF_COUNTER, 1),
+	PERF_SW("perf:emulation-faults", EMULATION_FAULTS,
+		CONTEXT_PERF_COUNTER, 1),
+
 	{ NULL, -1 },		/* Closure */
 };
 
+#undef PERF_HW_CACHE
+#undef _PERF_HW_CACHE
 #undef PERF_SW
 #undef PERF_HW
 
@@ -278,17 +468,19 @@ static void print_ctx_type(FILE *ofp)
 	fprintf(ofp, "%s", indent);
 	len = indent_len;
 	while (ctx_opts[i].symbol != NULL) {
-		if (len > indent_len) {
-			if (len + strlen(ctx_opts[i].symbol) + 2
-					>= PRINT_LINE_LEN) {
-				fprintf(ofp, ",\n");
-				fprintf(ofp, "%s", indent);
-				len = indent_len;
-			} else {
-				len += fprintf(ofp, ", ");
+		if (!ctx_opts[i].hide_help) {
+			if (len > indent_len) {
+				if (len + strlen(ctx_opts[i].symbol) + 2
+						>= PRINT_LINE_LEN) {
+					fprintf(ofp, ",\n");
+					fprintf(ofp, "%s", indent);
+					len = indent_len;
+				} else {
+					len += fprintf(ofp, ", ");
+				}
 			}
+			len += fprintf(ofp, "%s", ctx_opts[i].symbol);
 		}
-		len += fprintf(ofp, "%s", ctx_opts[i].symbol);
 		i++;
 	}
 }
@@ -323,10 +515,10 @@ static void usage(FILE *ofp)
 	print_ctx_type(ofp);
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Example:\n");
-	fprintf(ofp, "This command will add the context information 'prio' and two perf\n"
-			"counters (hardware branch misses and cache misses), to all channels\n"
+	fprintf(ofp, "This command will add the context information 'prio' and two per-cpu\n"
+			"perf counters (hardware branch misses and cache misses), to all channels\n"
 			"in the trace data output:\n");
-	fprintf(ofp, "# lttng add-context -k -t prio -t perf:branch-misses -t perf:cache-misses\n");
+	fprintf(ofp, "# lttng add-context -k -t prio -t perf:cpu:branch-misses -t perf:cpu:cache-misses\n");
 	fprintf(ofp, "\n");
 }
 
@@ -382,7 +574,10 @@ static int add_context(char *session_name)
 	/* Iterate over all the context types given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
 		context.ctx = (enum lttng_event_context_type) type->opt->ctx_type;
-		if (context.ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER) {
+		switch (context.ctx) {
+		case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+		case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+		case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
 			context.u.perf_counter.type = type->opt->u.perf.type;
 			context.u.perf_counter.config = type->opt->u.perf.config;
 			strncpy(context.u.perf_counter.name, type->opt->symbol,
@@ -395,6 +590,9 @@ static int add_context(char *session_name)
 			while ((ptr = strchr(context.u.perf_counter.name, ':')) != NULL) {
 				*ptr = '_';
 			}
+			break;
+		default:
+			break;
 		}
 		DBG("Adding context...");
 

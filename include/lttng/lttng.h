@@ -132,7 +132,7 @@ enum lttng_event_output {
 /* Event context possible type */
 enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PID               = 0,
-	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
+	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,	/* Backward compat. */
 	LTTNG_EVENT_CONTEXT_PROCNAME          = 2,
 	LTTNG_EVENT_CONTEXT_PRIO              = 3,
 	LTTNG_EVENT_CONTEXT_NICE              = 4,
@@ -144,6 +144,8 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
 	LTTNG_EVENT_CONTEXT_HOSTNAME          = 11,
 	LTTNG_EVENT_CONTEXT_IP                = 12,
+	LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER  = 13,
+	LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER = 14,
 };
 
 enum lttng_calibrate_type {

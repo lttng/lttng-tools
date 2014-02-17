@@ -87,19 +87,24 @@ Add context to event(s) and/or channel(s).
 A context is basically extra information appended to a channel. For instance,
 you could ask the tracer to add the PID information for all events in a
 channel. You can also add performance monitoring unit counters (perf PMU) using
-the perf kernel API).
+the perf kernel API.
 
-For example, this command will add the context information 'prio' and two perf
-counters (hardware branch misses and cache misses), to all events in the trace
+For example, this command will add the context information 'prio' and two per-CPU
+perf counters (hardware branch misses and cache misses), to all events in the trace
 data output:
 
 .nf
-# lttng add-context \-k \-t prio \-t perf:branch-misses \\
-		\-t perf:cache-misses
+# lttng add-context \-k \-t prio \-t perf:cpu:branch-misses \\
+		\-t perf:cpu:cache-misses
 .fi
 
 Please take a look at the help (\-h/\-\-help) for a detailed list of available
 contexts.
+
+Perf counters are available as per-CPU ("perf:cpu:...") and per-thread
+("perf:thread:...") counters. Currently, per-CPU counters can only be
+used with the kernel tracing domain, and per-thread counters can only be
+used with the UST tracing domain.
 
 If no channel is given (\-c), the context is added to all channels that were
 already enabled. If the session has no channel, a default channel is created.
@@ -160,9 +165,9 @@ counters).
 # lttng create calibrate-function
 # lttng enable-event calibrate \-\-kernel \\
 	\-\-function lttng_calibrate_kretprobe
-# lttng add-context \-\-kernel \-t perf:LLC-load-misses \\
-	\-t perf:LLC-store-misses \\
-	\-t perf:LLC-prefetch-misses
+# lttng add-context \-\-kernel \-t perf:cpu:LLC-load-misses \\
+	\-t perf:cpu:LLC-store-misses \\
+	\-t perf:cpu:LLC-prefetch-misses
 # lttng start
 # for a in $(seq 1 10); do \\
         lttng calibrate \-\-kernel \-\-function;

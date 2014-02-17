@@ -92,12 +92,18 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 {
 	int ret;
 	struct ltt_ust_context *uctx;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *uctx_node;
 
 	assert(usess);
 	assert(uchan);
 	assert(ctx);
+
+	/* Check if context is duplicate */
+	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
+		if (trace_ust_match_context(uctx, ctx)) {
+			ret = -EEXIST;
+			goto duplicate;
+		}
+	}
 
 	/* Create ltt UST context */
 	uctx = trace_ust_create_context(ctx);
@@ -120,17 +126,8 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 
 	rcu_read_lock();
 
-	/* Lookup context before adding it */
-	lttng_ht_lookup(uchan->ctx, (void *)((unsigned long)uctx->ctx.ctx), &iter);
-	uctx_node = lttng_ht_iter_get_node_ulong(&iter);
-	if (uctx_node != NULL) {
-		ret = -EEXIST;
-		rcu_read_unlock();
-		goto error;
-	}
-
 	/* Add ltt UST context node to ltt UST channel */
-	lttng_ht_add_unique_ulong(uchan->ctx, &uctx->node);
+	lttng_ht_add_ulong(uchan->ctx, &uctx->node);
 	rcu_read_unlock();
 	cds_list_add_tail(&uctx->list, &uchan->ctx_list);
 
@@ -140,6 +137,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
 
 error:
 	free(uctx);
+duplicate:
 	return ret;
 }
 
@@ -161,9 +159,6 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	switch (ctx->ctx) {
 	case LTTNG_EVENT_CONTEXT_PID:
 		kctx.ctx = LTTNG_KERNEL_CONTEXT_PID;
-		break;
-	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
-		kctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_COUNTER;
 		break;
 	case LTTNG_EVENT_CONTEXT_PROCNAME:
 		kctx.ctx = LTTNG_KERNEL_CONTEXT_PROCNAME;
@@ -191,6 +186,10 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 		break;
 	case LTTNG_EVENT_CONTEXT_HOSTNAME:
 		kctx.ctx = LTTNG_KERNEL_CONTEXT_HOSTNAME;
+		break;
+	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+		kctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER;
 		break;
 	default:
 		return LTTNG_ERR_KERN_CONTEXT_FAIL;

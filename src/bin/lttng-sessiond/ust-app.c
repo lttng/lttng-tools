@@ -1552,7 +1552,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 		}
 		lttng_ht_node_init_ulong(&ua_ctx->node,
 				(unsigned long) ua_ctx->ctx.ctx);
-		lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
+		lttng_ht_add_ulong(ua_chan->ctx, &ua_ctx->node);
 		cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 	}
 
@@ -1955,7 +1955,7 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 	}
 
 	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
-	lttng_ht_add_unique_ulong(ua_chan->ctx, &ua_ctx->node);
+	lttng_ht_add_ulong(ua_chan->ctx, &ua_ctx->node);
 	cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
