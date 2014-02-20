@@ -1,0 +1,4 @@
+Build lttng-tools with "-DVALGRIND" to create executables compatible
+with the valgrind tool. The start with e.g.:
+
+valgrind --leak-check=full lttng-sessiond
