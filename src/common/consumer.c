@@ -3613,6 +3613,7 @@ int consumer_send_status_msg(int sock, int ret_code)
 {
 	struct lttcomm_consumer_status_msg msg;
 
+	memset(&msg, 0, sizeof(msg));
 	msg.ret_code = ret_code;
 
 	return lttcomm_send_unix_sock(sock, &msg, sizeof(msg));
@@ -3630,6 +3631,7 @@ int consumer_send_status_channel(int sock,
 
 	assert(sock >= 0);
 
+	memset(&msg, 0, sizeof(msg));
 	if (!channel) {
 		msg.ret_code = LTTCOMM_CONSUMERD_CHANNEL_FAIL;
 	} else {

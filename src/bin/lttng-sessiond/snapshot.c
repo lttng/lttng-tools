@@ -24,6 +24,7 @@
 #include <common/defaults.h>
 
 #include "snapshot.h"
+#include "utils.h"
 
 /*
  * Return the atomically incremented value of next_output_id.
@@ -321,4 +322,5 @@ void snapshot_destroy(struct snapshot *obj)
 		snapshot_output_destroy(output);
 	}
 	rcu_read_unlock();
+	ht_cleanup_push(obj->output_ht);
 }

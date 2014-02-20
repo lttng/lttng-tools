@@ -272,6 +272,7 @@ retry:
 		goto error;
 	}
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd = HEALTH_CMD_CHECK;
 
 	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));

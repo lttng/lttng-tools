@@ -250,6 +250,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 	assert(ua_chan);
 	assert(socket);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_GET_CHANNEL;
 	msg.u.get_channel.key = ua_chan->key;
 
@@ -344,6 +345,7 @@ int ust_consumer_destroy_channel(struct consumer_socket *socket,
 	assert(ua_chan);
 	assert(socket);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
 	msg.u.destroy_channel.key = ua_chan->key;
 
@@ -469,6 +471,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 			DBG("PID registry not found for session id %" PRIu64,
 					request.session_id_per_pid);
 
+			memset(&msg, 0, sizeof(msg));
 			msg.cmd_type = LTTNG_ERR_UND;
 			(void) consumer_send_msg(socket, &msg);
 			/*

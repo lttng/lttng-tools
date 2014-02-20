@@ -520,6 +520,7 @@ int lttng_register_consumer(struct lttng_handle *handle,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_REGISTER_CONSUMER;
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -542,6 +543,7 @@ int lttng_start_tracing(const char *session_name)
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_START_TRACE;
 
 	lttng_ctl_copy_string(lsm.session.name, session_name,
@@ -562,6 +564,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_STOP_TRACE;
 
 	lttng_ctl_copy_string(lsm.session.name, session_name,
@@ -1004,6 +1007,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINTS;
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -1031,6 +1035,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -1099,6 +1104,7 @@ int lttng_destroy_session(const char *session_name)
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_DESTROY_SESSION;
 
 	lttng_ctl_copy_string(lsm.session.name, session_name,
@@ -1118,6 +1124,7 @@ int lttng_list_sessions(struct lttng_session **sessions)
 	int ret;
 	struct lttcomm_session_msg lsm;
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_SESSIONS;
 	ret = lttng_ctl_ask_sessiond(&lsm, (void**) sessions);
 	if (ret < 0) {
@@ -1143,6 +1150,7 @@ int lttng_list_domains(const char *session_name,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_DOMAINS;
 
 	lttng_ctl_copy_string(lsm.session.name, session_name,
@@ -1172,6 +1180,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_CHANNELS;
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -1203,6 +1212,7 @@ int lttng_list_events(struct lttng_handle *handle,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_EVENTS;
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -1250,6 +1260,7 @@ int lttng_calibrate(struct lttng_handle *handle,
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_CALIBRATE;
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
@@ -1480,6 +1491,7 @@ int lttng_data_pending(const char *session_name)
 		return -LTTNG_ERR_INVALID;
 	}
 
+	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_DATA_PENDING;
 
 	lttng_ctl_copy_string(lsm.session.name, session_name,

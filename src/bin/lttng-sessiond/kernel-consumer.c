@@ -105,7 +105,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 		}
 	} else {
 		/* Empty path. */
-		pathname = "";
+		pathname = strdup("");
 	}
 
 	/* Prep channel message structure */
@@ -136,6 +136,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	health_code_update();
 
 error:
+	free(pathname);
 	return ret;
 }
 
@@ -168,7 +169,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 		}
 	} else {
 		/* Empty path. */
-		pathname = "";
+		pathname = strdup("");
 	}
 
 	/* Prep channel message structure */
@@ -215,6 +216,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	health_code_update();
 
 error:
+	free(pathname);
 	return ret;
 }
 
@@ -419,6 +421,7 @@ int kernel_consumer_destroy_channel(struct consumer_socket *socket,
 
 	DBG("Sending kernel consumer destroy channel key %d", channel->fd);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
 	msg.u.destroy_channel.key = channel->fd;
 
@@ -447,6 +450,7 @@ int kernel_consumer_destroy_metadata(struct consumer_socket *socket,
 
 	DBG("Sending kernel consumer destroy channel key %d", metadata->fd);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
 	msg.u.destroy_channel.key = metadata->fd;
 

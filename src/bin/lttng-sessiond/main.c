@@ -3734,7 +3734,7 @@ restart:
 
 		rcu_thread_online();
 
-		reply.ret_code = 0;
+		memset(&reply, 0, sizeof(reply));
 		for (i = 0; i < NR_HEALTH_SESSIOND_TYPES; i++) {
 			/*
 			 * health_check_state returns 0 if health is

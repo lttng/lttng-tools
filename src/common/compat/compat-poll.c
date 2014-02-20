@@ -52,6 +52,11 @@ static int resize_poll_event(struct compat_poll_event_array *array,
 		PERROR("realloc epoll add");
 		goto error;
 	}
+	if (new_size > array->alloc_size) {
+		/* Zero newly allocated memory */
+		memset(ptr + array->alloc_size, 0,
+			(new_size - array->alloc_size) * sizeof(*ptr));
+	}
 	array->events = ptr;
 	array->alloc_size = new_size;
 

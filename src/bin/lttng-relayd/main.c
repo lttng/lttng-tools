@@ -1261,6 +1261,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 			stream->stream_handle);
 
 end:
+	memset(&reply, 0, sizeof(reply));
 	reply.handle = htobe64(stream->stream_handle);
 	/* send the session id to the client or a negative return code on error */
 	if (ret < 0) {
@@ -1342,6 +1343,7 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 end_unlock:
 	rcu_read_unlock();
 
+	memset(&reply, 0, sizeof(reply));
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
 	} else {
@@ -1367,6 +1369,7 @@ void relay_unknown_command(struct relay_connection *conn)
 	struct lttcomm_relayd_generic_reply reply;
 	int ret;
 
+	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(LTTNG_ERR_UNK);
 	ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
@@ -1392,6 +1395,7 @@ int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = htobe32(LTTNG_ERR_UNK);
 	}
 
+	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = ret;
 	ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
@@ -1553,6 +1557,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	memset(&reply, 0, sizeof(reply));
 	reply.major = RELAYD_VERSION_COMM_MAJOR;
 	reply.minor = RELAYD_VERSION_COMM_MINOR;
 
@@ -1652,6 +1657,7 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 end_unlock:
 	rcu_read_unlock();
 
+	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(ret);
 	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
@@ -1715,6 +1721,7 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	rcu_read_unlock();
 
+	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(LTTNG_OK);
 	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (ret < 0) {
@@ -1785,6 +1792,7 @@ int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	rcu_read_unlock();
 
+	memset(&reply, 0, sizeof(reply));
 	/* All good, send back reply. */
 	reply.ret_code = htobe32(LTTNG_OK);
 
@@ -1858,6 +1866,7 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	rcu_read_unlock();
 
+	memset(&reply, 0, sizeof(reply));
 	/* All good, send back reply. */
 	reply.ret_code = htobe32(is_data_inflight);
 
@@ -1976,6 +1985,7 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 end_rcu_unlock:
 	rcu_read_unlock();
 
+	memset(&reply, 0, sizeof(reply));
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
 	} else {
@@ -2026,6 +2036,7 @@ int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
 		uatomic_set(&conn->session->new_streams, 1);
 	}
 
+	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(LTTNG_OK);
 	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < 0) {

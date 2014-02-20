@@ -67,6 +67,7 @@ static int send_header(struct lttcomm_sock *sock, uint64_t data_size,
 
 	assert(sock);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.data_size = htobe64(data_size);
 	msg.cmd = htobe32(cmd);
 	msg.cmd_version = htobe32(cmd_version);
@@ -248,6 +249,7 @@ static int enable_event(struct jul_app *app, struct jul_event *event)
 		goto error_io;
 	}
 
+	memset(&msg, 0, sizeof(msg));
 	msg.loglevel = event->loglevel;
 	msg.loglevel_type = event->loglevel_type;
 	strncpy(msg.name, event->name, sizeof(msg.name));
@@ -309,6 +311,7 @@ static int disable_event(struct jul_app *app, struct jul_event *event)
 		goto error_io;
 	}
 
+	memset(&msg, 0, sizeof(msg));
 	strncpy(msg.name, event->name, sizeof(msg.name));
 	ret = send_payload(app->sock, &msg, sizeof(msg));
 	if (ret < 0) {
@@ -443,24 +446,30 @@ int jul_list_events(struct lttng_event **events)
 			goto error_unlock;
 		}
 
-		if (count >= nbmem) {
+		if (count + nb_ev > nbmem) {
 			/* In case the realloc fails, we free the memory */
-			void *ptr;
+			struct lttng_event *new_tmp_events;
+			size_t new_nbmem;
 
-			DBG2("Reallocating JUL event list from %zu to %zu entries", nbmem,
-					2 * nbmem);
-			nbmem *= 2;
-			ptr = realloc(tmp_events, nbmem * sizeof(*tmp_events));
-			if (!ptr) {
+			new_nbmem = max_t(size_t, count + nb_ev, nbmem << 1);
+			DBG2("Reallocating JUL event list from %zu to %zu entries",
+					nbmem, new_nbmem);
+			new_tmp_events = realloc(tmp_events,
+				new_nbmem * sizeof(*new_tmp_events));
+			if (!new_tmp_events) {
 				PERROR("realloc JUL events");
 				ret = -ENOMEM;
 				free(jul_events);
 				goto error_unlock;
 			}
-			tmp_events = ptr;
+			/* Zero the new memory */
+			memset(new_tmp_events + nbmem, 0,
+				(new_nbmem - nbmem) * sizeof(*new_tmp_events));
+			nbmem = new_nbmem;
+			tmp_events = new_tmp_events;
 		}
-		memcpy(tmp_events + (count * sizeof(*tmp_events)), jul_events,
-				nb_ev * sizeof(*tmp_events));
+		memcpy(tmp_events + count, jul_events,
+			nb_ev * sizeof(*tmp_events));
 		free(jul_events);
 		count += nb_ev;
 	}

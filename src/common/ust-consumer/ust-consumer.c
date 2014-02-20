@@ -2212,6 +2212,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	assert(channel);
 	assert(channel->metadata_cache);
 
+	memset(&request, 0, sizeof(request));
+
 	/* send the metadata request to sessiond */
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER64_UST:

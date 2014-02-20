@@ -51,6 +51,11 @@ static int resize_poll_event(struct lttng_poll_event *events,
 		PERROR("realloc epoll add");
 		goto error;
 	}
+	if (new_size > events->alloc_size) {
+		/* Zero newly allocated memory */
+		memset(ptr + events->alloc_size, 0,
+			(new_size - events->alloc_size) * sizeof(*ptr));
+	}
 	events->events = ptr;
 	events->alloc_size = new_size;
 
@@ -119,6 +124,11 @@ int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_event
 		goto error;
 	}
 
+	/*
+	 * Zero struct epoll_event to ensure all representations of its
+	 * union are zeroed.
+	 */
+	memset(&ev, 0, sizeof(ev));
 	ev.events = req_events;
 	ev.data.fd = fd;
 

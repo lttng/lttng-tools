@@ -207,6 +207,7 @@ int consumer_send_destroy_relayd(struct consumer_socket *sock,
 
 	DBG2("Sending destroy relayd command to consumer sock %d", *sock->fd_ptr);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_RELAYD;
 	msg.u.destroy_relayd.net_seq_idx = consumer->net_seq_index;
 
@@ -965,6 +966,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	assert(consumer);
 	assert(consumer_sock);
 
+	memset(&msg, 0, sizeof(msg));
 	/* Bail out if consumer is disabled */
 	if (!consumer->enabled) {
 		ret = LTTNG_OK;
@@ -1078,11 +1080,11 @@ int consumer_is_data_pending(uint64_t session_id,
 
 	assert(consumer);
 
-	msg.cmd_type = LTTNG_CONSUMER_DATA_PENDING;
-
-	msg.u.data_pending.session_id = session_id;
-
 	DBG3("Consumer data pending for id %" PRIu64, session_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_DATA_PENDING;
+	msg.u.data_pending.session_id = session_id;
 
 	/* Send command for each consumer */
 	rcu_read_lock();
@@ -1136,6 +1138,7 @@ int consumer_flush_channel(struct consumer_socket *socket, uint64_t key)
 
 	DBG2("Consumer flush channel key %" PRIu64, key);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_FLUSH_CHANNEL;
 	msg.u.flush_channel.key = key;
 
@@ -1168,6 +1171,7 @@ int consumer_close_metadata(struct consumer_socket *socket,
 
 	DBG2("Consumer close metadata channel key %" PRIu64, metadata_key);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_CLOSE_METADATA;
 	msg.u.close_metadata.key = metadata_key;
 
@@ -1200,6 +1204,7 @@ int consumer_setup_metadata(struct consumer_socket *socket,
 
 	DBG2("Consumer setup metadata channel key %" PRIu64, metadata_key);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_SETUP_METADATA;
 	msg.u.setup_metadata.key = metadata_key;
 
@@ -1233,6 +1238,7 @@ int consumer_push_metadata(struct consumer_socket *socket,
 
 	DBG2("Consumer push metadata to consumer socket %d", *socket->fd_ptr);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_PUSH_METADATA;
 	msg.u.push_metadata.key = metadata_key;
 	msg.u.push_metadata.target_offset = target_offset;
