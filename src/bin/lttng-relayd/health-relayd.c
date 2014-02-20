@@ -368,7 +368,7 @@ restart:
 
 		assert(msg.cmd == HEALTH_CMD_CHECK);
 
-		reply.ret_code = 0;
+		memset(&reply, 0, sizeof(reply));
 		for (i = 0; i < NR_HEALTH_RELAYD_TYPES; i++) {
 			/*
 			 * health_check_state return 0 if thread is in

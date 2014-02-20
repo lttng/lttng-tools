@@ -931,6 +931,8 @@ int viewer_get_new_streams(struct relay_connection *conn)
 
 	health_code_update();
 
+	memset(&response, 0, sizeof(response));
+
 	rcu_read_lock();
 	session = session_find_by_id(conn->sessions_ht, session_id);
 	if (!session) {
@@ -1031,6 +1033,8 @@ int viewer_attach_session(struct relay_connection *conn)
 	}
 
 	health_code_update();
+
+	memset(&response, 0, sizeof(response));
 
 	if (!conn->viewer_session) {
 		DBG("Client trying to attach before creating a live viewer session");
@@ -1618,6 +1622,8 @@ int viewer_get_metadata(struct relay_connection *conn)
 	}
 	health_code_update();
 
+	memset(&reply, 0, sizeof(reply));
+
 	rcu_read_lock();
 	stream = viewer_stream_find_by_id(be64toh(request.stream_id));
 	if (!stream || !stream->metadata_flag) {
@@ -1718,6 +1724,7 @@ int viewer_create_session(struct relay_connection *conn)
 
 	DBG("Viewer create session received");
 
+	memset(&resp, 0, sizeof(resp));
 	resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_OK);
 	conn->viewer_session = zmalloc(sizeof(*conn->viewer_session));
 	if (!conn->viewer_session) {
@@ -1749,6 +1756,7 @@ void live_relay_unknown_command(struct relay_connection *conn)
 {
 	struct lttcomm_relayd_generic_reply reply;
 
+	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(LTTNG_ERR_UNK);
 	(void) send_response(conn->sock, &reply, sizeof(reply));
 }

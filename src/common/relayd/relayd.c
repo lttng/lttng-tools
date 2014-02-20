@@ -57,6 +57,7 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 		goto alloc_error;
 	}
 
+	memset(&header, 0, sizeof(header));
 	header.cmd = htobe32(cmd);
 	header.data_size = htobe64(size);
 
@@ -244,6 +245,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 
 	/* Compat with relayd 2.1 */
 	if (rsock->minor == 1) {
+		memset(&msg, 0, sizeof(msg));
 		strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name));
 		strncpy(msg.pathname, pathname, sizeof(msg.pathname));
 
@@ -253,6 +255,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 			goto error;
 		}
 	} else {
+		memset(&msg_2_2, 0, sizeof(msg_2_2));
 		/* Compat with relayd 2.2+ */
 		strncpy(msg_2_2.channel_name, channel_name, sizeof(msg_2_2.channel_name));
 		strncpy(msg_2_2.pathname, pathname, sizeof(msg_2_2.pathname));
@@ -364,6 +367,7 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 	DBG("Relayd version check for major.minor %u.%u", rsock->major,
 			rsock->minor);
 
+	memset(&msg, 0, sizeof(msg));
 	/* Prepare network byte order before transmission. */
 	msg.major = htobe32(rsock->major);
 	msg.minor = htobe32(rsock->minor);
@@ -565,6 +569,7 @@ int relayd_send_close_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_
 
 	DBG("Relayd closing stream id %" PRIu64, stream_id);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.stream_id = htobe64(stream_id);
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
 
@@ -614,6 +619,7 @@ int relayd_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 
 	DBG("Relayd data pending for stream id %" PRIu64, stream_id);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.stream_id = htobe64(stream_id);
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
 
@@ -662,6 +668,7 @@ int relayd_quiescent_control(struct lttcomm_relayd_sock *rsock,
 
 	DBG("Relayd checking quiescent control state");
 
+	memset(&msg, 0, sizeof(msg));
 	msg.stream_id = htobe64(metadata_stream_id);
 
 	/* Send command */
@@ -706,6 +713,7 @@ int relayd_begin_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id)
 
 	DBG("Relayd begin data pending");
 
+	memset(&msg, 0, sizeof(msg));
 	msg.session_id = htobe64(id);
 
 	/* Send command */
@@ -753,6 +761,7 @@ int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id,
 
 	DBG("Relayd end data pending");
 
+	memset(&msg, 0, sizeof(msg));
 	msg.session_id = htobe64(id);
 
 	/* Send command */
@@ -805,6 +814,7 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 
 	DBG("Relayd sending index for stream ID %" PRIu64, relay_stream_id);
 
+	memset(&msg, 0, sizeof(msg));
 	msg.relay_stream_id = htobe64(relay_stream_id);
 	msg.net_seq_num = htobe64(net_seq_num);
 

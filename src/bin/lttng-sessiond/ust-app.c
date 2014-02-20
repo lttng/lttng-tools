@@ -3144,19 +3144,25 @@ int ust_app_list_events(struct lttng_event **events)
 			health_code_update();
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
-				void *ptr;
+				struct lttng_event *new_tmp_event;
+				size_t new_nbmem;
 
-				DBG2("Reallocating event list from %zu to %zu entries", nbmem,
-						2 * nbmem);
-				nbmem *= 2;
-				ptr = realloc(tmp_event, nbmem * sizeof(struct lttng_event));
-				if (ptr == NULL) {
+				new_nbmem = nbmem << 1;
+				DBG2("Reallocating event list from %zu to %zu entries",
+						nbmem, new_nbmem);
+				new_tmp_event = realloc(tmp_event,
+					new_nbmem * sizeof(struct lttng_event));
+				if (new_tmp_event == NULL) {
 					PERROR("realloc ust app events");
 					free(tmp_event);
 					ret = -ENOMEM;
 					goto rcu_error;
 				}
-				tmp_event = ptr;
+				/* Zero the new memory */
+				memset(new_tmp_event + nbmem, 0,
+					(new_nbmem - nbmem) * sizeof(struct lttng_event));
+				nbmem = new_nbmem;
+				tmp_event = new_tmp_event;
 			}
 			memcpy(tmp_event[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
 			tmp_event[count].loglevel = uiter.loglevel;
@@ -3244,19 +3250,25 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 			health_code_update();
 			if (count >= nbmem) {
 				/* In case the realloc fails, we free the memory */
-				void *ptr;
+				struct lttng_event_field *new_tmp_event;
+				size_t new_nbmem;
 
-				DBG2("Reallocating event field list from %zu to %zu entries", nbmem,
-						2 * nbmem);
-				nbmem *= 2;
-				ptr = realloc(tmp_event, nbmem * sizeof(struct lttng_event_field));
-				if (ptr == NULL) {
+				new_nbmem = nbmem << 1;
+				DBG2("Reallocating event field list from %zu to %zu entries",
+						nbmem, new_nbmem);
+				new_tmp_event = realloc(tmp_event,
+					new_nbmem * sizeof(struct lttng_event_field));
+				if (new_tmp_event == NULL) {
 					PERROR("realloc ust app event fields");
 					free(tmp_event);
 					ret = -ENOMEM;
 					goto rcu_error;
 				}
-				tmp_event = ptr;
+				/* Zero the new memory */
+				memset(new_tmp_event + nbmem, 0,
+					(new_nbmem - nbmem) * sizeof(struct lttng_event_field));
+				nbmem = new_nbmem;
+				tmp_event = new_tmp_event;
 			}
 
 			memcpy(tmp_event[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);

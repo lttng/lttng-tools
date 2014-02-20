@@ -602,7 +602,7 @@ error:
  */
 ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 {
-	int fd, pos, ret;
+	int fd, ret;
 	char *event;
 	size_t nbmem, count = 0;
 	FILE *fp;
@@ -634,15 +634,15 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 		goto end;
 	}
 
-	while (fscanf(fp, "event { name = %m[^;]; };%n\n", &event, &pos) == 1) {
+	while (fscanf(fp, "event { name = %m[^;]; };\n", &event) == 1) {
 		if (count >= nbmem) {
 			struct lttng_event *new_elist;
+			size_t new_nbmem;
 
-			DBG("Reallocating event list from %zu to %zu bytes", nbmem,
-					nbmem * 2);
-			/* Double the size */
-			nbmem <<= 1;
-			new_elist = realloc(elist, nbmem * sizeof(struct lttng_event));
+			new_nbmem = nbmem << 1;
+			DBG("Reallocating event list from %zu to %zu bytes",
+					nbmem, new_nbmem);
+			new_elist = realloc(elist, new_nbmem * sizeof(struct lttng_event));
 			if (new_elist == NULL) {
 				PERROR("realloc list events");
 				free(event);
@@ -650,6 +650,10 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 				count = -ENOMEM;
 				goto end;
 			}
+			/* Zero the new memory */
+			memset(new_elist + nbmem, 0,
+				(new_nbmem - nbmem) * sizeof(struct lttng_event));
+			nbmem = new_nbmem;
 			elist = new_elist;
 		}
 		strncpy(elist[count].name, event, LTTNG_SYMBOL_NAME_LEN);

@@ -46,14 +46,13 @@ static int extend_metadata_cache(struct lttng_consumer_channel *channel,
 {
 	int ret = 0;
 	char *tmp_data_ptr;
-	unsigned int new_size;
+	unsigned int new_size, old_size;
 
 	assert(channel);
 	assert(channel->metadata_cache);
 
-	new_size = max_t(unsigned int,
-			channel->metadata_cache->cache_alloc_size + size,
-			channel->metadata_cache->cache_alloc_size << 1);
+	old_size = channel->metadata_cache->cache_alloc_size;
+	new_size = max_t(unsigned int, old_size + size, old_size << 1);
 	DBG("Extending metadata cache to %u", new_size);
 	tmp_data_ptr = realloc(channel->metadata_cache->data, new_size);
 	if (!tmp_data_ptr) {
@@ -62,6 +61,8 @@ static int extend_metadata_cache(struct lttng_consumer_channel *channel,
 		ret = -1;
 		goto end;
 	}
+	/* Zero newly allocated memory */
+	memset(tmp_data_ptr + old_size, 0, new_size - old_size);
 	channel->metadata_cache->data = tmp_data_ptr;
 	channel->metadata_cache->cache_alloc_size = new_size;
 
