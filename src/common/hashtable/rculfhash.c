@@ -627,7 +627,7 @@ void free_split_items_count(struct cds_lfht *ht)
 	poison_free(ht->split_count);
 }
 
-#if defined(HAVE_SCHED_GETCPU)
+#if defined(HAVE_SCHED_GETCPU) && !defined(VALGRIND)
 static
 int ht_get_split_count_index(unsigned long hash)
 {

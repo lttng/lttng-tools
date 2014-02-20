@@ -77,6 +77,20 @@ struct run_as_open_data {
 	mode_t mode;
 };
 
+#ifdef VALGRIND
+static
+int use_clone(void)
+{
+	return 0;
+}
+#else
+static
+int use_clone(void)
+{
+	return !getenv("LTTNG_DEBUG_NOCLONE");
+}
+#endif
+
 /*
  * Create recursively directory using the FULL path.
  */
@@ -271,7 +285,7 @@ int run_as_noclone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 static
 int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
-	if (!getenv("LTTNG_DEBUG_NOCLONE")) {
+	if (use_clone()) {
 		int ret;
 
 		DBG("Using run_as_clone");
