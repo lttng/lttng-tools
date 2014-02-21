@@ -1116,17 +1116,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 	health_code_update();
 
-	if (msg.cmd_type == LTTNG_CONSUMER_STOP) {
-		/*
-		 * Notify the session daemon that the command is completed.
-		 *
-		 * On transport layer error, the function call will print an error
-		 * message so handling the returned code is a bit useless since we
-		 * return an error code anyway.
-		 */
-		(void) consumer_send_status_msg(sock, ret_code);
-		return -ENOENT;
-	}
+	/* deprecated */
+	assert(msg.cmd_type != LTTNG_CONSUMER_STOP);
 
 	health_code_update();
 
@@ -1456,7 +1447,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_poll_entry();
 		ret = lttng_consumer_poll_socket(consumer_sockpoll);
 		health_poll_exit();
-		if (ret < 0) {
+		if (ret) {
 			goto error_fatal;
 		}
 
