@@ -34,6 +34,11 @@
 
 #include <common/macros.h>
 
+#define WIDTH_u64_SCANF_IS_A_BROKEN_API	"20"
+#define WIDTH_o64_SCANF_IS_A_BROKEN_API	"22"
+#define WIDTH_x64_SCANF_IS_A_BROKEN_API	"17"
+#define WIDTH_lg_SCANF_IS_A_BROKEN_API	"4096"	/* Hugely optimistic approximation */
+
 LTTNG_HIDDEN
 int yydebug;
 LTTNG_HIDDEN
@@ -399,29 +404,39 @@ primary_expression
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);
 			$$->u.expression.type = AST_EXP_CONSTANT;
-			sscanf(yylval.gs->s, "%" PRIu64,
-			       &$$->u.expression.u.constant);
+			if (sscanf(yylval.gs->s, "%" WIDTH_u64_SCANF_IS_A_BROKEN_API SCNu64,
+					&$$->u.expression.u.constant) != 1) {
+				parse_error(parser_ctx, "cannot scanf decimal constant");
+			}
 		}
 	|	OCTAL_CONSTANT
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);
 			$$->u.expression.type = AST_EXP_CONSTANT;
-			sscanf(yylval.gs->s, "0%" PRIo64,
-			       &$$->u.expression.u.constant);
+			if (!strcmp(yylval.gs->s, "0")) {
+				$$->u.expression.u.constant = 0;
+			} else if (sscanf(yylval.gs->s, "0%" WIDTH_o64_SCANF_IS_A_BROKEN_API SCNo64,
+					&$$->u.expression.u.constant) != 1) {
+				parse_error(parser_ctx, "cannot scanf octal constant");
+			}
 		}
 	|	HEXADECIMAL_CONSTANT
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);
 			$$->u.expression.type = AST_EXP_CONSTANT;
-			sscanf(yylval.gs->s, "0x%" PRIx64,
-			       &$$->u.expression.u.constant);
+			if (sscanf(yylval.gs->s, "0x%" WIDTH_x64_SCANF_IS_A_BROKEN_API SCNx64,
+					&$$->u.expression.u.constant) != 1) {
+				parse_error(parser_ctx, "cannot scanf hexadecimal constant");
+			}
 		}
 	|	FLOAT_CONSTANT
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);
 			$$->u.expression.type = AST_EXP_FLOAT_CONSTANT;
-			sscanf(yylval.gs->s, "%lg",
-			       &$$->u.expression.u.float_constant);
+			if (sscanf(yylval.gs->s, "%" WIDTH_lg_SCANF_IS_A_BROKEN_API "lg",
+					&$$->u.expression.u.float_constant) != 1) {
+				parse_error(parser_ctx, "cannot scanf float constant");
+			}
 		}
 	|	STRING_LITERAL_START DQUOTE
 		{

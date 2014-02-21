@@ -186,6 +186,9 @@ char *config_read_session_name(char *path)
 	int ret;
 	FILE *fp;
 	char var[NAME_MAX], *session_name;
+#if (NAME_MAX == 255)
+#define NAME_MAX_SCANF_IS_A_BROKEN_API	"254"
+#endif
 
 	session_name = malloc(NAME_MAX);
 	if (session_name == NULL) {
@@ -202,7 +205,9 @@ char *config_read_session_name(char *path)
 	}
 
 	while (!feof(fp)) {
-		if ((ret = fscanf(fp, "%[^'=']=%s\n", var, session_name)) != 2) {
+		if ((ret = fscanf(fp, "%" NAME_MAX_SCANF_IS_A_BROKEN_API
+				"[^'=']=%" NAME_MAX_SCANF_IS_A_BROKEN_API "s\n",
+				var, session_name)) != 2) {
 			if (ret == -1) {
 				ERR("Missing session=NAME in config file.");
 				goto error_close;
