@@ -41,7 +41,7 @@ enum lttng_consumer_command {
 	/* pause, delete, active depending on fd state */
 	LTTNG_CONSUMER_UPDATE_STREAM,
 	/* inform the consumer to quit when all fd has hang up */
-	LTTNG_CONSUMER_STOP,
+	LTTNG_CONSUMER_STOP,	/* deprecated */
 	LTTNG_CONSUMER_ADD_RELAYD_SOCKET,
 	/* Inform the consumer to kill a specific relayd connection */
 	LTTNG_CONSUMER_DESTROY_RELAYD,

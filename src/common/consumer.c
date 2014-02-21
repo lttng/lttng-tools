@@ -1095,8 +1095,8 @@ static int update_poll_array(struct lttng_consumer_local_data *ctx,
 }
 
 /*
- * Poll on the should_quit pipe and the command socket return -1 on error and
- * should exit, 0 if data is available on the command socket
+ * Poll on the should_quit pipe and the command socket return -1 on
+ * error, 1 if should exit, 0 if data is available on the command socket
  */
 int lttng_consumer_poll_socket(struct pollfd *consumer_sockpoll)
 {
@@ -1112,16 +1112,13 @@ restart:
 			goto restart;
 		}
 		PERROR("Poll error");
-		goto exit;
+		return -1;
 	}
 	if (consumer_sockpoll[0].revents & (POLLIN | POLLPRI)) {
 		DBG("consumer_should_quit wake up");
-		goto exit;
+		return 1;
 	}
 	return 0;
-
-exit:
-	return -1;
 }
 
 /*
@@ -2944,8 +2941,8 @@ static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
 	assert(ctx);
 	assert(sockpoll);
 
-	if (lttng_consumer_poll_socket(sockpoll) < 0) {
-		ret = -1;
+	ret = lttng_consumer_poll_socket(sockpoll);
+	if (ret) {
 		goto error;
 	}
 	DBG("Metadata connection on client_socket");
@@ -3014,7 +3011,12 @@ void *consumer_thread_sessiond_poll(void *data)
 	consumer_sockpoll[1].fd = client_socket;
 	consumer_sockpoll[1].events = POLLIN | POLLPRI;
 
-	if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+	ret = lttng_consumer_poll_socket(consumer_sockpoll);
+	if (ret) {
+		if (ret > 0) {
+			/* should exit */
+			err = 0;
+		}
 		goto end;
 	}
 	DBG("Connection on client_socket");
@@ -3031,7 +3033,11 @@ void *consumer_thread_sessiond_poll(void *data)
 	 * command unix socket.
 	 */
 	ret = set_metadata_socket(ctx, consumer_sockpoll, client_socket);
-	if (ret < 0) {
+	if (ret) {
+		if (ret > 0) {
+			/* should exit */
+			err = 0;
+		}
 		goto end;
 	}
 
@@ -3052,15 +3058,15 @@ void *consumer_thread_sessiond_poll(void *data)
 		health_poll_entry();
 		ret = lttng_consumer_poll_socket(consumer_sockpoll);
 		health_poll_exit();
-		if (ret < 0) {
+		if (ret) {
+			if (ret > 0) {
+				/* should exit */
+				err = 0;
+			}
 			goto end;
 		}
 		DBG("Incoming command on sock");
 		ret = lttng_consumer_recv_cmd(ctx, sock, consumer_sockpoll);
-		if (ret == -ENOENT) {
-			DBG("Received STOP command");
-			goto end;
-		}
 		if (ret <= 0) {
 			/*
 			 * This could simply be a session daemon quitting. Don't output
@@ -3278,7 +3284,9 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	}
 
 	/* Poll on consumer socket. */
-	if (lttng_consumer_poll_socket(consumer_sockpoll) < 0) {
+	ret = lttng_consumer_poll_socket(consumer_sockpoll);
+	if (ret) {
+		/* Needing to exit in the middle of a command: error. */
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
 		ret = -EINTR;
 		goto error_nosignal;
