@@ -52,7 +52,7 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 	ret = run_as_mkdir(fullpath, S_IRWXU | S_IRWXG, uid, gid);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
-			ERR("Index trace directory creation error");
+			PERROR("Index trace directory creation error");
 			goto error;
 		}
 	}
