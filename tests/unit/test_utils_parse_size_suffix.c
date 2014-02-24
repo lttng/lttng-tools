@@ -23,7 +23,7 @@
 
 #include <src/common/utils.h>
 
-/* For lttngerr.h */
+/* For error.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 3;
 

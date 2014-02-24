@@ -35,7 +35,7 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 10
 
-/* For lttngerr.h */
+/* For error.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 
