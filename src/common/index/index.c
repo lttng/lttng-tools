@@ -67,7 +67,7 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 	hdr.magic = htobe32(CTF_INDEX_MAGIC);
 	hdr.index_major = htobe32(CTF_INDEX_MAJOR);
 	hdr.index_minor = htobe32(CTF_INDEX_MINOR);
-	hdr.packet_index_len = sizeof(struct ctf_packet_index);
+	hdr.packet_index_len = htobe32(sizeof(struct ctf_packet_index));
 
 	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
 	if (size_ret < sizeof(hdr)) {
