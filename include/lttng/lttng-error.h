@@ -102,7 +102,7 @@ enum lttng_error_code {
 	LTTNG_ERR_UST_CONSUMER32_FAIL    = 69,  /* 32-bit UST consumer start failed */
 	LTTNG_ERR_UST_STREAM_FAIL        = 70,  /* UST create stream failed */
 	LTTNG_ERR_SNAPSHOT_NODATA        = 71,  /* No data in snapshot. */
-	/* 72 */
+	LTTNG_ERR_NO_CHANNEL             = 72,  /* No channel found in the session. */
 	/* 73 */
 	LTTNG_ERR_UST_LIST_FAIL          = 74,  /* UST listing events failed */
 	LTTNG_ERR_UST_EVENT_EXIST        = 75,  /* UST event exist */
