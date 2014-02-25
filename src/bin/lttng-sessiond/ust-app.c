@@ -827,6 +827,15 @@ struct ust_app_session *alloc_ust_app_session(struct ust_app *app)
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	pthread_mutex_init(&ua_sess->lock, NULL);
 
+	/* Set default metadata channel attribute. */
+	ua_sess->metadata_attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	ua_sess->metadata_attr.subbuf_size = default_get_metadata_subbuf_size();
+	ua_sess->metadata_attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
+	ua_sess->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
+	ua_sess->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
+	ua_sess->metadata_attr.output = LTTNG_UST_MMAP;
+	ua_sess->metadata_attr.type = LTTNG_UST_CHAN_METADATA;
+
 	return ua_sess;
 
 error_free:
@@ -2714,8 +2723,7 @@ error:
  * Called with UST app session lock held and RCU read side lock.
  */
 static int create_ust_app_metadata(struct ust_app_session *ua_sess,
-		struct ust_app *app, struct consumer_output *consumer,
-		struct ustctl_consumer_channel_attr *attr)
+		struct ust_app *app, struct consumer_output *consumer)
 {
 	int ret = 0;
 	struct ust_app_channel *metadata;
@@ -2743,20 +2751,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	if (!attr) {
-		/* Set default attributes for metadata. */
-		metadata->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-		metadata->attr.subbuf_size = default_get_metadata_subbuf_size();
-		metadata->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-		metadata->attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
-		metadata->attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-		metadata->attr.output = LTTNG_UST_MMAP;
-		metadata->attr.type = LTTNG_UST_CHAN_METADATA;
-	} else {
-		memcpy(&metadata->attr, attr, sizeof(metadata->attr));
-		metadata->attr.output = LTTNG_UST_MMAP;
-		metadata->attr.type = LTTNG_UST_CHAN_METADATA;
-	}
+	memcpy(&metadata->attr, &ua_sess->metadata_attr, sizeof(metadata->attr));
 
 	/* Need one fd for the channel. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
@@ -3582,10 +3577,8 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		pthread_mutex_lock(&ua_sess->lock);
 		if (!strncmp(uchan->name, DEFAULT_METADATA_NAME,
 					sizeof(uchan->name))) {
-			struct ustctl_consumer_channel_attr attr;
-			copy_channel_attr_to_ustctl(&attr, &uchan->attr);
-			ret = create_ust_app_metadata(ua_sess, app, usess->consumer,
-					&attr);
+			copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
+			ret = 0;
 		} else {
 			/* Create channel onto application. We don't need the chan ref. */
 			ret = create_ust_app_channel(ua_sess, uchan, app,
@@ -3790,7 +3783,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	 * Create the metadata for the application. This returns gracefully if a
 	 * metadata was already set for the session.
 	 */
-	ret = create_ust_app_metadata(ua_sess, app, usess->consumer, NULL);
+	ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
 	if (ret < 0) {
 		goto error_unlock;
 	}
@@ -4217,31 +4210,14 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 	 */
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
-		/*
-		 * For a metadata channel, handle it differently.
-		 */
-		if (!strncmp(ua_chan->name, DEFAULT_METADATA_NAME,
-					sizeof(ua_chan->name))) {
-			ret = create_ust_app_metadata(ua_sess, app, usess->consumer,
-					&ua_chan->attr);
-			if (ret < 0) {
-				goto error_unlock;
-			}
-			/* Remove it from the hash table and continue!. */
-			ret = lttng_ht_del(ua_sess->channels, &iter);
-			assert(!ret);
-			delete_ust_app_channel(-1, ua_chan, app);
-			continue;
-		} else {
-			ret = do_create_channel(app, usess, ua_sess, ua_chan);
-			if (ret < 0) {
-				/*
-				 * Stop everything. On error, the application failed, no more
-				 * file descriptor are available or ENOMEM so stopping here is
-				 * the only thing we can do for now.
-				 */
-				goto error_unlock;
-			}
+		ret = do_create_channel(app, usess, ua_sess, ua_chan);
+		if (ret < 0) {
+			/*
+			 * Stop everything. On error, the application failed, no more
+			 * file descriptor are available or ENOMEM so stopping here is
+			 * the only thing we can do for now.
+			 */
+			goto error_unlock;
 		}
 
 		/*
