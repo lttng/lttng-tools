@@ -378,9 +378,6 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 		if (ret < 0) {
 			goto error;
 		}
-
-		/* Flag that at least the metadata has been sent to the consumer. */
-		session->consumer_fds_sent = 1;
 	}
 
 	/* Send channel and streams of it */
@@ -404,6 +401,7 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 
 	DBG("Kernel consumer FDs of metadata and channel streams sent");
 
+	session->consumer_fds_sent = 1;
 	return 0;
 
 error:
