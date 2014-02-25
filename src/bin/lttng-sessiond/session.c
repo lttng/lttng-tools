@@ -49,6 +49,42 @@ static struct ltt_session_list ltt_session_list = {
 	.next_uuid = 0,
 };
 
+/* These characters are forbidden in a session name. Used by validate_name. */
+static const char *forbidden_name_chars = "/";
+
+/*
+ * Validate the session name for forbidden characters.
+ *
+ * Return 0 on success else -1 meaning a forbidden char. has been found.
+ */
+static int validate_name(const char *name)
+{
+	int ret;
+	char *tok, *tmp_name;
+
+	assert(name);
+
+	tmp_name = strdup(name);
+	if (!tmp_name) {
+		/* ENOMEM here. */
+		ret = -1;
+		goto error;
+	}
+
+	tok = strpbrk(tmp_name, forbidden_name_chars);
+	if (tok) {
+		DBG("Session name %s contains a forbidden character", name);
+		/* Forbidden character has been found. */
+		ret = -1;
+		goto error;
+	}
+	ret = 0;
+
+error:
+	free(tmp_name);
+	return ret;
+}
+
 /*
  * Add a ltt_session structure to the global list.
  *
@@ -191,6 +227,12 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	} else {
 		ERR("No session name given");
 		ret = LTTNG_ERR_FATAL;
+		goto error;
+	}
+
+	ret = validate_name(name);
+	if (ret < 0) {
+		ret = LTTNG_ERR_SESSION_INVALID_CHAR;
 		goto error;
 	}
 
