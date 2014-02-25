@@ -212,6 +212,9 @@ struct ust_app_session {
 	/* If the channel's streams have to be outputed or not. */
 	unsigned int output_traces;
 	unsigned int live_timer_interval;	/* usec */
+
+	/* Metadata channel attributes. */
+	struct ustctl_consumer_channel_attr metadata_attr;
 };
 
 /*

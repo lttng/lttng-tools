@@ -366,7 +366,10 @@ int channel_ust_create(struct ltt_ust_session *usess,
 
 	/* Adding the channel to the channel hash table. */
 	rcu_read_lock();
-	lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
+	if (strncmp(uchan->name, DEFAULT_METADATA_NAME,
+				sizeof(uchan->name))) {
+		lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
+	}
 	rcu_read_unlock();
 
 	DBG2("Channel %s created successfully", uchan->name);
