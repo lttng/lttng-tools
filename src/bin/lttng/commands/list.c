@@ -920,7 +920,7 @@ int cmd_list(int argc, const char **argv)
 			goto end;
 		}
 
-		if (opt_kernel) {
+		if (opt_kernel || opt_userspace) {
 			/* Channel listing */
 			ret = list_channels(opt_channel);
 			if (ret < 0) {
