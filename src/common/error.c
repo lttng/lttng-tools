@@ -115,6 +115,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_SNAPSHOT_FAIL) ] = "Snapshot record failed",
 	[ ERROR_INDEX(LTTNG_ERR_SNAPSHOT_NODATA) ] = "No data available in snapshot",
 	[ ERROR_INDEX(LTTNG_ERR_NO_CHANNEL) ] = "No channel found in the session",
+	[ ERROR_INDEX(LTTNG_ERR_SESSION_INVALID_CHAR) ] = "Invalid character found in session name",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
