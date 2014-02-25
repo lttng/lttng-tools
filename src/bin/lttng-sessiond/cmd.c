@@ -1583,6 +1583,7 @@ error:
 int cmd_start_trace(struct ltt_session *session)
 {
 	int ret;
+	unsigned long nb_chan = 0;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
 
@@ -1595,6 +1596,21 @@ int cmd_start_trace(struct ltt_session *session)
 	if (session->enabled) {
 		/* Already started. */
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto error;
+	}
+
+	/*
+	 * Starting a session without channel is useless since after that it's not
+	 * possible to enable channel thus inform the client.
+	 */
+	if (usess && usess->domain_global.channels) {
+		nb_chan += lttng_ht_get_count(usess->domain_global.channels);
+	}
+	if (ksession) {
+		nb_chan += ksession->channel_count;
+	}
+	if (!nb_chan) {
+		ret = LTTNG_ERR_NO_CHANNEL;
 		goto error;
 	}
 
