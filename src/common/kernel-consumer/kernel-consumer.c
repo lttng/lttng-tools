@@ -809,6 +809,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_nosignal;
 		}
 
+		/* Stop right now if no channel was found. */
+		if (!channel) {
+			goto end_nosignal;
+		}
+
 		/*
 		 * This command should ONLY be issued for channel with streams set in
 		 * no monitor mode.

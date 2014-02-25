@@ -755,11 +755,11 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 	DBG("Tearing down kernel session");
 
 	/*
-	 * Destroy channels on the consumer if in no output mode because the
-	 * streams are in *no* monitor mode so we have to send a command to clean
-	 * them up or else they leaked.
+	 * Destroy channels on the consumer if at least one FD has been sent and we
+	 * are in no output mode because the streams are in *no* monitor mode so we
+	 * have to send a command to clean them up or else they leaked.
 	 */
-	if (!ksess->output_traces) {
+	if (!ksess->output_traces && ksess->consumer_fds_sent) {
 		int ret;
 		struct consumer_socket *socket;
 		struct lttng_ht_iter iter;
