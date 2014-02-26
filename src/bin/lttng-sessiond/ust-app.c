@@ -825,16 +825,8 @@ struct ust_app_session *alloc_ust_app_session(struct ust_app *app)
 
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	pthread_mutex_init(&ua_sess->lock, NULL);
-
-	/* Set default metadata channel attribute. */
-	ua_sess->metadata_attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	ua_sess->metadata_attr.subbuf_size = default_get_metadata_subbuf_size();
-	ua_sess->metadata_attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	ua_sess->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
-	ua_sess->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-	ua_sess->metadata_attr.output = LTTNG_UST_MMAP;
 	ua_sess->metadata_attr.type = LTTNG_UST_CHAN_METADATA;
+	pthread_mutex_init(&ua_sess->lock, NULL);
 
 	return ua_sess;
 
@@ -1617,6 +1609,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->consumer = usess->consumer;
 	ua_sess->output_traces = usess->output_traces;
 	ua_sess->live_timer_interval = usess->live_timer_interval;
+	copy_channel_attr_to_ustctl(&ua_sess->metadata_attr,
+			&usess->metadata_attr);
 
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
