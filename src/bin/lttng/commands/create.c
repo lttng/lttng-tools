@@ -65,7 +65,7 @@ static struct poptOption long_options[] = {
 	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"disable-consumer", 0, POPT_ARG_VAL, &opt_disable_consumer, 1, 0, 0},
 	{"snapshot",        0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0},
-	{"live",            0, POPT_ARG_INT, 0, OPT_LIVE_TIMER, 0, 0},
+	{"live",            0, POPT_ARG_INT | POPT_ARGFLAG_OPTIONAL, 0, OPT_LIVE_TIMER, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -95,11 +95,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                       if one, as the default snapshot output.\n");
 	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");
 	fprintf(ofp, "                       and with mmap output (splice not supported).\n");
-	fprintf(ofp, "      --live USEC      Set the session in live-reading mode.\n");
+	fprintf(ofp, "      --live [USEC]    Set the session in live-reading mode.\n");
 	fprintf(ofp, "                       The delay parameter in micro-seconds is the\n");
 	fprintf(ofp, "                       maximum time the user can wait for the data\n");
-	fprintf(ofp, "                       to be flushed. Requires a network URL (-U or -C/-D)\n");
-	fprintf(ofp, "                       and a lttng-relayd listening.\n");
+	fprintf(ofp, "                       to be flushed. Can be set with a network\n");
+	fprintf(ofp, "                       URL (-U or -C/-D) and must have a relayd listening.\n");
+	fprintf(ofp, "                       By default, %u is used for the timer and the\n",
+											DEFAULT_LTTNG_LIVE_TIMER);
+	fprintf(ofp, "                       network URL is set to net://127.0.0.1.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Extended Options:\n");
 	fprintf(ofp, "\n");
@@ -344,9 +347,15 @@ static int create_session(void)
 	}
 
 	if ((opt_live_timer && !opt_url) && (opt_live_timer && !opt_data_url)) {
-		ERR("You need a network URL (-U or -C/-D) to use live tracing.");
-		ret = CMD_ERROR;
-		goto error;
+		/* Use default live URL if none is found. */
+		ret = asprintf(&alloc_url, "net://127.0.0.1");
+		if (ret < 0) {
+			PERROR("asprintf default live URL");
+			ret = CMD_FATAL;
+			goto error;
+		}
+		url = alloc_url;
+		print_str_url = url;
 	}
 
 	if (opt_snapshot && opt_live_timer) {
@@ -401,6 +410,10 @@ static int create_session(void)
 	MSG("Session %s created.", session_name);
 	if (print_str_url && !opt_snapshot) {
 		MSG("Traces will be written in %s", print_str_url);
+
+		if (opt_live_timer) {
+			MSG("Live timer set to %u usec", opt_live_timer);
+		}
 	} else if (opt_snapshot) {
 		if (print_str_url) {
 			MSG("Default snapshot output set to: %s", print_str_url);
@@ -457,6 +470,14 @@ int cmd_create(int argc, const char **argv)
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
+			if (!opt_arg) {
+				/* Set up default values. */
+				opt_live_timer = (uint32_t) DEFAULT_LTTNG_LIVE_TIMER;
+				DBG("Session live timer interval set to default value %d",
+						opt_live_timer);
+				break;
+			}
+
 			v = strtoul(opt_arg, NULL, 0);
 			if (errno != 0 || !isdigit(opt_arg[0])) {
 				ERR("Wrong value in --live parameter: %s", opt_arg);
