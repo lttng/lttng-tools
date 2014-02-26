@@ -27,6 +27,7 @@ SESSION_NAME="periodical-flush"
 EVENT_NAME="tp:tptest"
 BIN_NAME="gen-nevents"
 NUM_TESTS=38
+APP_TMP_FILE="/tmp/lttng_test_ust.42.file"
 
 source $TESTDIR/utils/utils.sh
 
@@ -98,6 +99,30 @@ function validate_trace()
 	return $out
 }
 
+function check_app_tmp_file()
+{
+	# Wait for the application file to appear indicating that at least one
+	# tracepoint has been fired.
+	while [ ! -f "$APP_TMP_FILE" ]; do
+		sleep 0.5
+	done
+	diag "Removing test app temporary file $APP_TMP_FILE"
+	rm -f $APP_TMP_FILE
+}
+
+function start_trace_app()
+{
+	# Start application with a temporary file.
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $APP_TMP_FILE &
+	ok $? "Start application to trace"
+}
+
+function start_check_trace_app()
+{
+	start_trace_app
+	check_app_tmp_file
+}
+
 test_after_app_pid() {
 	local out
 
@@ -110,11 +135,8 @@ test_after_app_pid() {
 	start_lttng_tracing $SESSION_NAME
 
 	# Start application after tracing
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
-
-	# At least hit one event
-	sleep 2
+	start_check_trace_app
+	# After this point we are sure that at least one event has been hit.
 
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
@@ -138,11 +160,11 @@ test_after_app_pid() {
 
 test_before_app_pid() {
 	local out
+	local tmp_file="/tmp/lttng_test_ust.42.file"
 
 	diag "Start application BEFORE tracing is started"
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+	start_trace_app
 
 	# Start application before tracing
 	create_lttng_session $SESSION_NAME $TRACE_PATH
@@ -151,7 +173,8 @@ test_before_app_pid() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
-	# At least hit one event
+	check_app_tmp_file
+	# Let the application at least perform a flush!
 	sleep 2
 
 	# Make sure the application does not generate any more data,
@@ -186,11 +209,8 @@ test_after_app_uid() {
 	start_lttng_tracing $SESSION_NAME
 
 	# Start application after tracing
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
-
-	# At least hit one event
-	sleep 2
+	start_check_trace_app
+	# After this point we are sure that at least one event has been hit.
 
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
@@ -218,8 +238,7 @@ test_before_app_uid() {
 	diag "Start application BEFORE tracing is started"
 
 	# Start application before tracing
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+	start_trace_app
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_uid $SESSION_NAME
@@ -227,7 +246,8 @@ test_before_app_uid() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
-	# At least hit one event
+	check_app_tmp_file
+	# Let the application at least perform a flush!
 	sleep 2
 
 	# Make sure the application does not generate any more data,

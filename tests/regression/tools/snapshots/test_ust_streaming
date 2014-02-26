@@ -54,6 +54,24 @@ function snapshot_add_output ()
 	ok $? "Added snapshot output $trace_path"
 }
 
+# Start trace application and return once one event has been hit.
+function start_trace_app()
+{
+	local tmp_file="/tmp/lttng_test_ust.42.file"
+
+	# Start application with a temporary file.
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
+	ok $? "Start application to trace"
+
+	# Wait for the application file to appear indicating that at least one
+	# tracepoint has been fired.
+	while [ ! -f "$tmp_file" ]; do
+		sleep 0.5
+	done
+	diag "Removing test app temporary file $tmp_file"
+	rm -f $tmp_file
+}
+
 # Test a snapshot using a default name for the output destination.
 function test_ust_default_name_with_del()
 {
@@ -62,8 +80,9 @@ function test_ust_default_name_with_del()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+
+	start_trace_app
+
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 
@@ -102,8 +121,9 @@ function test_ust_default_name()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+
+	start_trace_app
+
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
@@ -126,8 +146,9 @@ function test_ust_default_name_custom_uri()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+
+	start_trace_app
+
 	snapshot_add_output $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
@@ -154,8 +175,9 @@ function test_ust_custom_name()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
+
+	start_trace_app
+
 	snapshot_add_output $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
