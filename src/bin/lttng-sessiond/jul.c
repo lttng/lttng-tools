@@ -345,6 +345,21 @@ error:
 }
 
 /*
+ * Send back the registration DONE command to a given JUL application.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int jul_send_registration_done(struct jul_app *app)
+{
+	assert(app);
+	assert(app->sock);
+
+	DBG("JUL sending registration done to app socket %d", app->sock->fd);
+
+	return send_header(app->sock, 0, JUL_CMD_REG_DONE, 0);
+}
+
+/*
  * Enable JUL event on every JUL applications registered with the session
  * daemon.
  *

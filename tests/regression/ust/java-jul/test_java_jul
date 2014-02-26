@@ -66,7 +66,7 @@ function test_jul_before_start ()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -89,7 +89,7 @@ function test_jul_after_start ()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -112,7 +112,7 @@ function test_jul_loglevel ()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -152,7 +152,7 @@ function test_jul_loglevel ()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_matches $EVENT_NAME $(($NR_ITER - 1)) $TRACE_PATH
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
 	return $?
 }
 

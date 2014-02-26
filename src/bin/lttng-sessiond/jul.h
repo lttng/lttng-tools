@@ -119,6 +119,7 @@ void jul_add_app(struct jul_app *app);
 void jul_delete_app(struct jul_app *app);
 struct jul_app *jul_find_app_by_sock(int sock);
 void jul_destroy_app(struct jul_app *app);
+int jul_send_registration_done(struct jul_app *app);
 
 /* JUL action API */
 int jul_enable_event(struct jul_event *event);
