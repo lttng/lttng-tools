@@ -30,6 +30,7 @@ enum lttcomm_jul_command {
 	JUL_CMD_LIST       = 1,
 	JUL_CMD_ENABLE     = 2,
 	JUL_CMD_DISABLE    = 3,
+	JUL_CMD_REG_DONE   = 4,	/* End registration process. */
 };
 
 /*
