@@ -1150,7 +1150,6 @@ restart:
 	}
 
 	health_code_update();
-
 	if (code == LTTCOMM_CONSUMERD_COMMAND_SOCK_READY) {
 		/* Connect both socket, command and metadata. */
 		consumer_data->cmd_sock =
@@ -1307,13 +1306,13 @@ error:
 		}
 		consumer_data->cmd_sock = -1;
 	}
-	if (*consumer_data->metadata_sock.fd_ptr >= 0) {
+	if (consumer_data->metadata_sock.fd_ptr &&
+	    *consumer_data->metadata_sock.fd_ptr >= 0) {
 		ret = close(*consumer_data->metadata_sock.fd_ptr);
 		if (ret) {
 			PERROR("close");
 		}
 	}
-
 	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {
@@ -1327,9 +1326,10 @@ error:
 	pthread_mutex_unlock(&consumer_data->lock);
 
 	/* Cleanup metadata socket mutex. */
-	pthread_mutex_destroy(consumer_data->metadata_sock.lock);
-	free(consumer_data->metadata_sock.lock);
-
+	if (consumer_data->metadata_sock.lock) {
+		pthread_mutex_destroy(consumer_data->metadata_sock.lock);
+		free(consumer_data->metadata_sock.lock);
+	}
 	lttng_poll_clean(&events);
 error_poll:
 	if (err) {
