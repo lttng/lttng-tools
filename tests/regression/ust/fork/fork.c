@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 
 #define TRACEPOINT_DEFINE
@@ -51,12 +52,19 @@ int main(int argc, char **argv, char *env[])
 		result = execve(argv[1], args, env);
 		if (result == -1) {
 			perror("execve");
-			return 1;
+			result = 1;
+			goto end;
 		}
 	} else {
 		printf("child_pid %d\n", result);
 		tracepoint(ust_tests_fork, after_fork_parent, getpid());
+		if (waitpid(result, NULL, 0) < 0) {
+			perror("waitpid");
+			result = 1;
+			goto end;
+		}
 	}
-
-	return 0;
+	result = 0;
+end:
+	return result;
 }
