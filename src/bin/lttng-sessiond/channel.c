@@ -369,6 +369,14 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	if (strncmp(uchan->name, DEFAULT_METADATA_NAME,
 				sizeof(uchan->name))) {
 		lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
+	} else {
+		/*
+		 * Copy channel attribute to session if this is metadata so if NO
+		 * application exists we can access that data in the shadow copy during
+		 * the global update of newly registered application.
+		 */
+		memcpy(&usess->metadata_attr, &uchan->attr,
+				sizeof(usess->metadata_attr));
 	}
 	rcu_read_unlock();
 

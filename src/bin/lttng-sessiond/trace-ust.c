@@ -220,6 +220,14 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	lus->id = session_id;
 	lus->start_trace = 0;
 
+	/* Set default metadata channel attribute. */
+	lus->metadata_attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	lus->metadata_attr.subbuf_size = default_get_metadata_subbuf_size();
+	lus->metadata_attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
+	lus->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
+	lus->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
+	lus->metadata_attr.output = LTTNG_UST_MMAP;
+
 	/*
 	 * Default buffer type. This can be changed through an enable channel
 	 * requesting a different type. Note that this can only be changed once
