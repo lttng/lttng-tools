@@ -40,10 +40,10 @@ running as Alice that can be used to trace her applications along side with a
 root daemon or even a Bob daemon. We highly recommend starting the session
 daemon at boot time for stable and long term tracing.
 
-All user-space applications instrumented with lttng-ust(3) will
-automatically register to the session daemon. This feature gives you the
-ability to list available traceable applications and tracepoints on a per user
-basis. (See \fBlist\fP command).
+Each user-space application instrumented with lttng-ust(3) will automatically
+register with the root session daemon and its user session daemon. This allows
+each daemon to list the available traceable applications and tracepoints at any
+given moment (See the \fBlist\fP command).
 .SH "OPTIONS"
 
 .PP
