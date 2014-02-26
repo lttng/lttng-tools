@@ -250,6 +250,9 @@
 #define DEFAULT_INDEX_FILE_SUFFIX			".idx"
 #define DEFAULT_INDEX_DIR					"index"
 
+/* Default lttng command live timer value in usec. */
+#define DEFAULT_LTTNG_LIVE_TIMER			1000000
+
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
 extern size_t default_ust_pid_channel_subbuf_size;

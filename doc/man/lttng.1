@@ -255,12 +255,13 @@ Set the session in snapshot mode. Created in no-output mode and uses the
 URL, if one is specified, as the default snapshot output.  Every channel will be set
 in overwrite mode and with mmap output (splice not supported).
 .TP
-.BR "\-\-live USEC"
+.BR "\-\-live [USEC]"
 Set the session exclusively in live mode. The paremeter is the delay in micro
 seconds before the data is flushed and streamed. The live mode allows you to
 stream the trace and view it while it's being recorded by any tracer. For that,
 you need a lttng-relayd and this session requires a network URL (\-U or
-\-C/\-D).
+\-C/\-D). If no USEC nor URL is provided, the default is to use a timer value
+set to 1000000 and the network URL set to net://127.0.0.1.
 
 To read a live session, you can use babeltrace(1) or the live streaming
 protocol in doc/live-reading-protocol.txt. Here is an example:
