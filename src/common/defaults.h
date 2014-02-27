@@ -136,7 +136,8 @@
 /* Default JUL domain channel name. */
 #define DEFAULT_JUL_CHANNEL_NAME        "lttng_jul_channel"
 /* Default JUL tracepoint name. This is a wildcard for the JUL domain. */
-#define DEFAULT_JUL_EVENT_NAME          "lttng_jul*"
+#define DEFAULT_SYS_JUL_EVENT_NAME      "lttng_jul:sys*"
+#define DEFAULT_USER_JUL_EVENT_NAME     "lttng_jul:user*"
 /* JUL default channel name. */
 #define DEFAULT_CHANNEL_OVERWRITE       0
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  0

@@ -76,7 +76,6 @@ static int opt_sig_parent;
 static int opt_verbose_consumer;
 static int opt_daemon, opt_background;
 static int opt_no_kernel;
-static int is_root;			/* Set to 1 if the daemon is running as root */
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
 static char *rundir;
@@ -243,6 +242,9 @@ struct health_app *health_sessiond;
 
 /* JUL TCP port for registration. Used by the JUL thread. */
 unsigned int jul_tcp_port = DEFAULT_JUL_TCP_PORT;
+
+/* Am I root or not. */
+int is_root;			/* Set to 1 if the daemon is running as root */
 
 /*
  * Whether sessiond is ready for commands/health check requests.

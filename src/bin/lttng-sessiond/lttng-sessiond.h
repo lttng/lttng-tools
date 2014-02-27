@@ -108,6 +108,9 @@ extern long page_size;
  */
 extern unsigned int jul_tcp_port;
 
+/* Is this daemon root or not. */
+extern int is_root;
+
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 
