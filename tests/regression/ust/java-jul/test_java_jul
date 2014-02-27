@@ -30,13 +30,15 @@ JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/j
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=37
+NUM_TESTS=53
 
 source $TESTDIR/utils/utils.sh
 
 function run_app
 {
-	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT >/dev/null 2>&1 &
+	local finest_tp=$1
+
+	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $finest_tp >/dev/null 2>&1 &
 }
 
 function wait_apps
@@ -156,6 +158,47 @@ function test_jul_loglevel ()
 	return $?
 }
 
+function test_jul_loglevel_multiple ()
+{
+	diag "Test JUL application with multiple loglevel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_INFO"
+	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_FINEST"
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay and fire two TP.
+	run_app 1
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting all events times two.
+	trace_matches $EVENT_NAME $(($NR_ITER * 2)) $TRACE_PATH
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_jul_lttng_event_loglevel $SESSION_NAME '*' "JUL_INFO"
+	enable_jul_lttng_event_loglevel $SESSION_NAME '*' "JUL_FINEST"
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay and fire two TP.
+	run_app 1
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting all events times two.
+	trace_matches $EVENT_NAME $(($NR_ITER * 2)) $TRACE_PATH
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -172,6 +215,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 
 	tests=(
 		test_jul_loglevel
+		test_jul_loglevel_multiple
 		test_jul_before_start
 		test_jul_after_start
 	)
