@@ -663,7 +663,7 @@ int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event)
 			"and loglevel %d", event->name, usess->id, event->loglevel_type,
 			event->loglevel);
 
-	jevent = jul_find_by_name(event->name, &usess->domain_jul);
+	jevent = jul_find_event(event->name, event->loglevel, &usess->domain_jul);
 	if (!jevent) {
 		jevent = jul_create_event(event->name);
 		if (!jevent) {
@@ -715,7 +715,7 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 
 	DBG("Event JUL disabling %s for session %" PRIu64, event_name, usess->id);
 
-	jevent = jul_find_by_name(event_name, &usess->domain_jul);
+	jevent = jul_find_event_by_name(event_name, &usess->domain_jul);
 	if (!jevent) {
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
