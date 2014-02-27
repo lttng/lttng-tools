@@ -1442,7 +1442,13 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		memset(&uevent, 0, sizeof(uevent));
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		strncpy(uevent.name, DEFAULT_JUL_EVENT_NAME, sizeof(uevent.name));
+		if (is_root) {
+			strncpy(uevent.name, DEFAULT_SYS_JUL_EVENT_NAME,
+					sizeof(uevent.name));
+		} else {
+			strncpy(uevent.name, DEFAULT_USER_JUL_EVENT_NAME,
+					sizeof(uevent.name));
+		}
 		uevent.name[sizeof(uevent.name) - 1] = '\0';
 
 		/*
@@ -1654,7 +1660,13 @@ int cmd_enable_event_all(struct ltt_session *session,
 		/* Create the default JUL tracepoint. */
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		strncpy(uevent.name, DEFAULT_JUL_EVENT_NAME, sizeof(uevent.name));
+		if (is_root) {
+			strncpy(uevent.name, DEFAULT_SYS_JUL_EVENT_NAME,
+					sizeof(uevent.name));
+		} else {
+			strncpy(uevent.name, DEFAULT_USER_JUL_EVENT_NAME,
+					sizeof(uevent.name));
+		}
 		uevent.name[sizeof(uevent.name) - 1] = '\0';
 
 		/*
