@@ -17,6 +17,7 @@
 
 import java.lang.Integer;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 
 import org.lttng.ust.jul.LTTngAgent;
 
@@ -31,9 +32,14 @@ public class JTestLTTng
 		int waitTime = Integer.parseInt(args[1]);
 
 		lttngAgent = LTTngAgent.getLTTngAgent();
+		lttng.setLevel(Level.FINEST);
 
 		for (int iter = 0; iter < nrIter; iter++) {
 			lttng.info("JUL tp fired!");
+			if (args.length == 3) {
+				/* Third arg, trigger finest TP. */
+				lttng.finest("JUL FINEST tp fired");
+			}
 			Thread.sleep(waitTime);
 		}
 
