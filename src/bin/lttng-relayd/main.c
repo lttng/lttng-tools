@@ -251,8 +251,9 @@ int parse_args(int argc, char **argv)
 
 	/* assign default values */
 	if (control_uri == NULL) {
-		ret = asprintf(&default_address, "tcp://0.0.0.0:%d",
-				DEFAULT_NETWORK_CONTROL_PORT);
+		ret = asprintf(&default_address,
+			"tcp://" DEFAULT_NETWORK_CONTROL_BIND_ADDRESS ":%d",
+			DEFAULT_NETWORK_CONTROL_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default data address");
 			goto exit;
@@ -266,8 +267,9 @@ int parse_args(int argc, char **argv)
 		}
 	}
 	if (data_uri == NULL) {
-		ret = asprintf(&default_address, "tcp://0.0.0.0:%d",
-				DEFAULT_NETWORK_DATA_PORT);
+		ret = asprintf(&default_address,
+			"tcp://" DEFAULT_NETWORK_DATA_BIND_ADDRESS ":%d",
+			DEFAULT_NETWORK_DATA_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default data address");
 			goto exit;
@@ -281,8 +283,9 @@ int parse_args(int argc, char **argv)
 		}
 	}
 	if (live_uri == NULL) {
-		ret = asprintf(&default_address, "tcp://0.0.0.0:%d",
-				DEFAULT_NETWORK_VIEWER_PORT);
+		ret = asprintf(&default_address,
+			"tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS ":%d",
+			DEFAULT_NETWORK_VIEWER_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default viewer control address");
 			goto exit;

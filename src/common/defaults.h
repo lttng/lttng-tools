@@ -202,7 +202,13 @@
  */
 #define DEFAULT_SEM_WAIT_TIMEOUT            30    /* in seconds */
 
-/* Default network ports for trace streaming support */
+/* Default bind addresses for network services. */
+#define DEFAULT_NETWORK_CONTROL_BIND_ADDRESS    "0.0.0.0"
+#define DEFAULT_NETWORK_DATA_BIND_ADDRESS       "0.0.0.0"
+#define DEFAULT_NETWORK_VIEWER_BIND_ADDRESS     "localhost"
+#define DEFAULT_JUL_BIND_ADDRESS                "localhost"
+
+/* Default network ports for trace streaming support. */
 #define DEFAULT_NETWORK_CONTROL_PORT        5342
 #define DEFAULT_NETWORK_DATA_PORT           5343
 #define DEFAULT_NETWORK_VIEWER_PORT         5344
