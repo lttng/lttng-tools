@@ -376,6 +376,16 @@ static int create_session(void)
 		}
 		ret = lttng_create_session_snapshot(session_name, snapshot_url);
 	} else if (opt_live_timer) {
+		const char *pathname;
+
+		if (opt_relayd_path) {
+			pathname = opt_relayd_path;
+		} else {
+			pathname = INSTALL_BIN_PATH "/lttng-relayd";
+		}
+		if (!check_relayd() && spawn_relayd(pathname, 0) < 0) {
+			goto error;
+		}
 		ret = lttng_create_session_live(session_name, url, opt_live_timer);
 	} else {
 		ret = _lttng_create_session_ext(session_name, url, datetime, -1);

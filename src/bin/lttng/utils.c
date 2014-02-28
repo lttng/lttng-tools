@@ -20,6 +20,11 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <limits.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <signal.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <common/error.h>
 #include <common/utils.h>
@@ -275,4 +280,93 @@ const char *get_domain_str(enum lttng_domain_type domain)
 	}
 
 	return str_dom;
+}
+
+/*
+ * Spawn a lttng relayd daemon by forking and execv.
+ */
+int spawn_relayd(const char *pathname, int port)
+{
+	int ret = 0;
+	pid_t pid;
+	char url[255];
+
+	if (!port) {
+		port = DEFAULT_NETWORK_VIEWER_PORT;
+	}
+
+	ret = snprintf(url, sizeof(url), "tcp://localhost:%d", port);
+	if (ret < 0) {
+		goto end;
+	}
+
+	MSG("Spawning a relayd daemon");
+	pid = fork();
+	if (pid == 0) {
+		/*
+		 * Spawn session daemon and tell
+		 * it to signal us when ready.
+		 */
+		execlp(pathname, "lttng-relayd", "-L", url, NULL);
+		/* execlp only returns if error happened */
+		if (errno == ENOENT) {
+			ERR("No relayd found. Use --relayd-path.");
+		} else {
+			perror("execlp");
+		}
+		kill(getppid(), SIGTERM);	/* wake parent */
+		exit(EXIT_FAILURE);
+	} else if (pid > 0) {
+		goto end;
+	} else {
+		perror("fork");
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Check if relayd is alive.
+ *
+ * Return 1 if found else 0 if NOT found. Negative value on error.
+ */
+int check_relayd(void)
+{
+	int ret, fd;
+	struct sockaddr_in sin;
+
+	fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) {
+		perror("socket check relayd");
+		goto error;
+	}
+
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(DEFAULT_NETWORK_VIEWER_PORT);
+	ret = inet_pton(sin.sin_family, "127.0.0.1", &sin.sin_addr);
+	if (ret < 1) {
+		perror("inet_pton check relayd");
+		goto error;
+	}
+
+	/*
+	 * A successful connect means the relayd exists thus returning 0 else a
+	 * negative value means it does NOT exists.
+	 */
+	ret = connect(fd, &sin, sizeof(sin));
+	if (ret < 0) {
+		/* Not found. */
+		ret = 0;
+	} else {
+		/* Already spawned. */
+		ret = 1;
+	}
+
+	return ret;
+
+error:
+	return -1;
 }

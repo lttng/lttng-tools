@@ -39,7 +39,10 @@ static char *opt_sessiond_path;
 static pid_t sessiond_pid;
 static volatile int recv_child_signal;
 
+char *opt_relayd_path;
+
 enum {
+	OPT_RELAYD_PATH,
 	OPT_SESSION_PATH,
 	OPT_DUMP_OPTIONS,
 	OPT_DUMP_COMMANDS,
@@ -54,6 +57,7 @@ static struct option long_options[] = {
 	{"quiet",            0, NULL, 'q'},
 	{"no-sessiond",      0, NULL, 'n'},
 	{"sessiond-path",    1, NULL, OPT_SESSION_PATH},
+	{"relayd-path",      1, NULL, OPT_RELAYD_PATH},
 	{"list-options",     0, NULL, OPT_DUMP_OPTIONS},
 	{"list-commands",    0, NULL, OPT_DUMP_COMMANDS},
 	{NULL, 0, NULL, 0}
@@ -96,6 +100,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -g, --group NAME           Unix tracing group name. (default: tracing)\n");
 	fprintf(ofp, "  -n, --no-sessiond          Don't spawn a session daemon\n");
 	fprintf(ofp, "      --sessiond-path PATH   Session daemon full path\n");
+	fprintf(ofp, "      --relayd-path PATH     Relayd daemon full path\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Commands:\n");
 	fprintf(ofp, "    add-context       Add context to event and/or channel\n");
@@ -441,6 +446,9 @@ static int parse_args(int argc, char **argv)
 			break;
 		case OPT_SESSION_PATH:
 			opt_sessiond_path = strdup(optarg);
+			break;
+		case OPT_RELAYD_PATH:
+			opt_relayd_path = strdup(optarg);
 			break;
 		case OPT_DUMP_OPTIONS:
 			list_options(stdout);

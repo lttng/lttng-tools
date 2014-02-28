@@ -22,6 +22,8 @@
 
 #include <lttng/lttng.h>
 
+extern char *opt_relayd_path;
+
 struct cmd_struct;
 
 char *get_session_name(void);
@@ -53,5 +55,8 @@ void print_missing_domain(void)
 {
 	ERR("Please specify a domain (-k/-u/-j).");
 }
+
+int spawn_relayd(const char *pathname, int port);
+int check_relayd(void);
 
 #endif /* _LTTNG_UTILS_H */
