@@ -17,12 +17,18 @@ It's tracers help tracking down performance issues and debugging problems
 involving multiple concurrent processes and threads. Tracing across multiple
 systems is also possible.
 
-The relay daemon listens on the network and receives traces streamed by a
-remote consumer. This daemon does not require any particular permissions as
-long as it can write in the output folder and listen on the ports.
+The relay daemon listens by default on all network interfaces to gather
+trace data, but only on localhost for viewer connections. This daemon
+does not require any particular permissions as long as it can write in
+the output folder and listen on the ports. If a user is within a secured
+network and/or has proper firewall settings, lttng-relayd can listen to
+viewer connections from all network interfaces by specifying '-L
+tcp://0.0.0.0:5344'.
 
-Once a trace has been streamed completely, the trace can be processed by any
-tool that can process a local LTTng CTF trace.
+Traces can be either viewed "live" (as they are produced) by attaching
+to the live viewer port using LTTng live protocol, or after tracing has
+been stopped. Once a trace has been streamed completely, the trace can
+be processed by any tool that can process a local LTTng CTF trace.
 
 By default, the relayd outputs the traces in :
 ~/lttng-traces/hostname/session-name/domain-name
@@ -63,7 +69,7 @@ Control port URL (tcp://0.0.0.0:5342 is the default)
 Data port URL (tcp://0.0.0.0:5343 is the default)
 .TP
 .BR "-L, --live-port URL"
-Live view port URL (tcp://0.0.0.0:5344 is the default).
+Live view port URL (tcp://localhost:5344 is the default).
 .TP
 .BR "-o, --output"
 Output base directory. Must use an absolute path (~/lttng-traces is the default)

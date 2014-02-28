@@ -34,7 +34,8 @@
  * can let the user define a custom one. However, localhost is ALWAYS the
  * default listening address.
  */
-static const char *default_reg_uri = "tcp://localhost";
+static const char *default_reg_uri =
+	"tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS;
 
 /*
  * Update JUL application using the given socket. This is done just after
