@@ -1,3 +1,37 @@
+2014-02-28 lttng-tools 2.4.0 (Public Sleeping Day)
+	* Fix: improve lttng with live by spawning relayd
+	* Fix: relayd should listen for viewers on localhost only by default
+	* Fix: handle loglevel range ALL in list command
+	* Tests: add JUL test for multiple loglevel
+	* Fix: index JUL event by name *and* loglevel
+	* Fix: JUL to enable user and root tracepoints
+	* Fix: handle the registration done command for JUL
+	* Test fix: use temp file sync. of test app
+	* Fix: keep metadata channel attr in UST session
+	* Tests fix: Missing waitpid in fork test
+	* Fix: add loglevel type to lttng list <name>
+	* Fix: minor rephrasing of the lttng.1 man page
+	* Fix: Warn user if JUL port is already being used
+	* Fix: add some sane default values to --live opt
+	* Fix: possible NULL deref. in sessiond error path
+	* Fix: flag that kernel streams FDs has been sent
+	* Fix: forbid session name creation if contains /
+	* Fix: don't start session if no channel
+	* Fix: add missing relayd option to man page
+	* Fix: report error if consumer can't be spawned
+	* Fix: lttng list -u <name> should only list UST
+	* Fix: kernel channel destroy on consumer if sent
+	* Fix: only create UST metadata on start trace
+	* Revert "Fix: wrong condition on startup for low-activity streams"
+	* Fix: missing big endian conversion for one index field
+	* Fix: wrong condition on startup for low-activity streams
+	* Fix: perror on index directory creation error
+	* Comments fix: lttngerr.h -> error.h (./Changelog:754)
+	* Fix: consumerd errors on exit
+	* Fix: scanf unbounded input
+	* Fix: miscellaneous memory handling fixes
+	* Fix: add missing VALGRIND ifdef checks and documentation
+
 2014-02-14 lttng-tools 2.4.0-rc5
 	* Fix: steal channel key in the consumer to avoid race
 	* Fix: change ERR statement to DBG in kernel read subbuffer
