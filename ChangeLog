@@ -1,3 +1,39 @@
+2014-02-28 lttng-tools 2.3.2
+	* Fix: minor rephrasing of the lttng.1 man page
+	* Fix: possible NULL deref. in sessiond error path
+	* Fix: flag that kernel streams FDs has been sent
+	* Fix: forbid session name creation if contains /
+	* Fix: don't start session if no channel
+	* Fix: report error if consumer can't be spawned
+	* Fix: lttng list -u <name> should only list UST
+	* Fix: kernel channel destroy on consumer if sent
+	* Fix: Define __STDC_LIMIT_MACROS to fix C++ builds
+	* Fix: remove unused goto label
+	* Fix: relayd: add LPOLLERR to events
+	* Fix: relayd: initialize lttcomm inet
+	* Fix: consumerd: HT init/teardown with program
+	* Fix: consumerd should initialize lttcomm
+	* Fix: measure UST clock offset with best sample (v2)
+	* Fix: report to client when snapshot will be empty
+	* Fix: missing reset when listing UST fields for multiple PIDs
+	* Fix: filter: check binary op nesting
+	* Fix: remove break in epoll loop of apps. thread
+	* Fix: wrong comment in snapshot public API
+	* Fix: remove bad code from previous backport patch
+	* Fix: bad logical check of error codes
+	* Fix: resource leak in enable-event command
+	* Fix: unchecked return value in ust app delete
+	* Fix: dereference after null check in UST registry
+	* Fix: Resource leak in ust registry
+	* Fix: backported from urcu commit 92af1a30
+	* Fix: update back the metadata len sent on failure
+	* Fix: don't fail on push metadata if no channel
+	* Fix: comparison of unsigned enum expression >= 0
+	* Add libuuid as dependency in README
+	* Fix: implicit conversion of enum types in consumer
+	* Fix: implicit conversion of enum types in sessiond
+	* Fix: comparison of unsigned value agains < 0
+
 2013-11-13 lttng-tools 2.3.1
 	* Fix: typo in --sig-parent help
 	* Fix: application SIGBUS when starting in parallel with sessiond
