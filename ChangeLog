@@ -1,3 +1,20 @@
+2014-02-28 lttng-tools 2.2.6
+	* Fix: remove break in epoll loop of apps. thread
+	* Fix: remove bad code from previous backport patch
+	* Fix: bad logical check of error codes
+	* Fix: resource leak in enable-event command
+	* Fix: unchecked return value in ust app delete
+	* Fix: dereference after null check in UST registry
+	* Fix: Resource leak in ust registry
+	* Fix: backported from urcu commit 92af1a30
+	* Fix: add missing values for a backported fix
+	* Fix: update back the metadata len sent on failure
+	* Fix: don't fail on push metadata if no channel
+	* Fix: comparison of unsigned enum expression >= 0
+	* Fix: implicit conversion of enum types in sessiond
+	* Fix: comparison of unsigned value agains < 0
+	* Add libuuid as dependency in README
+
 2013-11-15 lttng-tools 2.2.5
 	* Fix: typo in --sig-parent help
 	* Fix: application SIGBUS when starting in parallel with sessiond
