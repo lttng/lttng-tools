@@ -76,6 +76,9 @@ static struct viewers {
 	{ NULL, VIEWER_USER_DEFINED },
 };
 
+/* Is the session we are trying to view is in live mode. */
+static int session_live_mode;
+
 /*
  * usage
  */
@@ -179,20 +182,38 @@ static char **alloc_argv_from_local_opts(const char **opts, size_t opts_len,
 		const char *trace_path)
 {
 	char **argv;
-	size_t size;
+	size_t size, mem_len;
 
-	size = sizeof(char *) * opts_len;
+
+	/* Add one for the NULL terminating element. */
+	mem_len = opts_len + 1;
+	if (session_live_mode) {
+		/* Add 3 option for the live mode being "-i lttng-live URL". */
+		mem_len += 3;
+	} else {
+		/* Add option for the trace path. */
+		mem_len += 1;
+	}
+
+	size = sizeof(char *) * mem_len;
 
 	/* Add two here for the trace_path and the NULL terminating element. */
-	argv = malloc(size + 2);
+	argv = malloc(size);
 	if (argv == NULL) {
 		goto error;
 	}
 
 	memcpy(argv, opts, size);
 
-	argv[opts_len] = (char *)trace_path;
-	argv[opts_len + 1] = NULL;
+	if (session_live_mode) {
+		argv[opts_len] = "-i";
+		argv[opts_len + 1] = "lttng-live";
+		argv[opts_len + 2] = (char *) trace_path;
+		argv[opts_len + 3] = NULL;
+	} else {
+		argv[opts_len] = (char *) trace_path;
+		argv[opts_len + 1] = NULL;
+	}
 
 error:
 	return argv;
@@ -274,12 +295,38 @@ error:
 }
 
 /*
+ * Build the live path we need for the lttng live view.
+ */
+static char *build_live_path(char *session_name)
+{
+	int ret;
+	char *path = NULL;
+	char hostname[HOST_NAME_MAX];
+
+	ret = gethostname(hostname, sizeof(hostname));
+	if (ret < 0) {
+		perror("gethostname");
+		goto error;
+	}
+
+	ret = asprintf(&path, "net://localhost/host/%s/%s", hostname,
+			session_name);
+	if (ret < 0) {
+		perror("asprintf live path");
+		goto error;
+	}
+
+error:
+	return path;
+}
+
+/*
  * Exec viewer if found and use session name path.
  */
 static int view_trace(void)
 {
 	int ret;
-	char *session_name, *trace_path;
+	char *session_name, *trace_path = NULL;
 	struct lttng_session *sessions = NULL;
 
 	/*
@@ -340,13 +387,27 @@ static int view_trace(void)
 			goto free_sessions;
 		}
 
-		trace_path = sessions[i].path;
+		session_live_mode = sessions[i].live_timer_interval;
 
-		if (sessions[i].enabled) {
+		DBG("Session live mode set to %d", session_live_mode);
+
+		if (sessions[i].enabled && !session_live_mode) {
 			WARN("Session %s is running. Please stop it before reading it.",
 					session_name);
 			ret = CMD_ERROR;
 			goto free_sessions;
+		}
+
+		/* If the timer interval is set we are in live mode. */
+		if (session_live_mode) {
+			trace_path = build_live_path(session_name);
+			if (!trace_path) {
+				ret = CMD_ERROR;
+				goto free_sessions;
+			}
+		} else {
+			/* Get file system session path. */
+			trace_path = sessions[i].path;
 		}
 	} else {
 		trace_path = opt_trace_path;
@@ -361,6 +422,9 @@ static int view_trace(void)
 	}
 
 free_sessions:
+	if (session_live_mode) {
+		free(trace_path);
+	}
 	free(sessions);
 free_error:
 	if (opt_session_name == NULL) {

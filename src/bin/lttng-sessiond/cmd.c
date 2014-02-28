@@ -2506,6 +2506,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		sessions[i].name[NAME_MAX - 1] = '\0';
 		sessions[i].enabled = session->enabled;
 		sessions[i].snapshot_mode = session->snapshot_mode;
+		sessions[i].live_timer_interval = session->live_timer;
 		i++;
 	}
 }
