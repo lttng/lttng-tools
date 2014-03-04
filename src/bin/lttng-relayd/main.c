@@ -2253,7 +2253,7 @@ static void destroy_connection(struct lttng_ht *relay_connections_ht,
 	connection_delete(relay_connections_ht, conn);
 
 	/* For the control socket, we try to destroy the session. */
-	if (conn->type == RELAY_CONTROL) {
+	if (conn->type == RELAY_CONTROL && conn->session) {
 		destroy_session(conn->session, conn->sessions_ht);
 	}
 
