@@ -474,7 +474,7 @@ int cmd_add_context(int argc, const char **argv)
 			}
 
 			type->opt = &ctx_opts[index];
-			if (type->opt->ctx_type == -1) {
+			if (type->opt->symbol == NULL) {
 				ERR("Unknown context type %s", opt_type);
 				free(type);
 				ret = CMD_ERROR;

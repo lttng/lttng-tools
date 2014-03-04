@@ -169,7 +169,7 @@ static void set_default_attr(struct lttng_domain *dom)
 	if (chan.attr.read_timer_interval == -1) {
 		chan.attr.read_timer_interval = default_attr.read_timer_interval;
 	}
-	if (chan.attr.output == -1) {
+	if ((int) chan.attr.output == -1) {
 		chan.attr.output = default_attr.output;
 	}
 	if (chan.attr.tracefile_count == -1) {
