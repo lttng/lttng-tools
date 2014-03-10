@@ -1425,6 +1425,7 @@ int save_session(struct ltt_session *session,
 		}
 		strncpy(config_file_path, provided_path, len);
 	} else {
+		ssize_t ret_len;
 		char *home_dir = utils_get_user_home_dir(
 			LTTNG_SOCK_GET_UID_CRED(creds));
 		if (!home_dir) {
@@ -1432,14 +1433,15 @@ int save_session(struct ltt_session *session,
 			goto end;
 		}
 
-		len = snprintf(config_file_path, PATH_MAX,
+		ret_len = snprintf(config_file_path, PATH_MAX,
 				DEFAULT_SESSION_HOME_CONFIGPATH, home_dir);
 		free(home_dir);
-		if (len < 0) {
+		if (ret_len < 0) {
 			PERROR("snprintf save session");
 			ret = LTTNG_ERR_SET_URL;
 			goto end;
 		}
+		len = ret_len;
 	}
 
 	/*
