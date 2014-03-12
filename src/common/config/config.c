@@ -2176,7 +2176,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 
 	if (session_name && strcmp(name, session_name)) {
 		/* This is not the session we are looking for */
-		ret = -LTTNG_ERR_LOAD_SESSION_NOT_FOUND;
+		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
 		goto end;
 	}
 
@@ -2328,7 +2328,7 @@ int load_session_from_file(const char *path, const char *session_name,
 end:
 	xmlFreeDoc(doc);
 	if (!ret) {
-		ret = session_found ? 0 : -LTTNG_ERR_LOAD_SESSION_NOT_FOUND;
+		ret = session_found ? 0 : -LTTNG_ERR_LOAD_SESSION_NOENT;
 	}
 	return ret;
 }
@@ -2430,7 +2430,7 @@ end:
 	}
 
 	if (!session_found) {
-		ret = -LTTNG_ERR_LOAD_SESSION_NOT_FOUND;
+		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
 	}
 
 	return ret;
