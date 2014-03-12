@@ -1419,7 +1419,7 @@ int save_session(struct ltt_session *session,
 	provided_path = lttng_save_session_attr_get_output_url(attr);
 	if (provided_path) {
 		len = strlen(provided_path);
-		if (len > PATH_MAX) {
+		if (len >= sizeof(config_file_path)) {
 			ret = LTTNG_ERR_SET_URL;
 			goto end;
 		}
@@ -1433,7 +1433,7 @@ int save_session(struct ltt_session *session,
 			goto end;
 		}
 
-		ret_len = snprintf(config_file_path, PATH_MAX,
+		ret_len = snprintf(config_file_path, sizeof(config_file_path),
 				DEFAULT_SESSION_HOME_CONFIGPATH, home_dir);
 		free(home_dir);
 		if (ret_len < 0) {
@@ -1445,11 +1445,12 @@ int save_session(struct ltt_session *session,
 	}
 
 	/*
-	 * Check the path fits in PATH_MAX, including the / followed by trailing
-	 * .lttng extension and the NULL terminated string.
+	 * Check the path fits in the config file path dst including the '/'
+	 * followed by trailing .lttng extension and the NULL terminated string.
 	 */
-	if (len + session_name_len + 2 +
-			sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION) > PATH_MAX) {
+	if ((len + session_name_len + 2 +
+			sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION))
+			> sizeof(config_file_path)) {
 		ret = LTTNG_ERR_SET_URL;
 		goto end;
 	}
@@ -1461,6 +1462,10 @@ int save_session(struct ltt_session *session,
 		goto end;
 	}
 
+	/*
+	 * At this point, we know that everything fits in the buffer. Validation
+	 * was done just above.
+	 */
 	config_file_path[len++] = '/';
 	strncpy(config_file_path + len, session->name, session_name_len);
 	len += session_name_len;
