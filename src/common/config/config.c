@@ -1238,7 +1238,7 @@ int create_session(const char *name,
 			goto end;
 		}
 
-		for (i = 0; i < (sizeof(domains) / sizeof(*domain)); i++) {
+		for (i = 0; i < (sizeof(domains) / sizeof(domains[0])); i++) {
 			domain = domains[i];
 			if (!domain) {
 				continue;
