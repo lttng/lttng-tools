@@ -1478,7 +1478,8 @@ int save_session(struct ltt_session *session,
 	config_file_path[len] = '\0';
 
 	if (!access(config_file_path, F_OK) && !attr->overwrite) {
-		/* A file with the same name already exists, skip */
+		/* File exists, notify the user since the overwrite flag is off. */
+		ret = LTTNG_ERR_SAVE_FILE_EXIST;
 		goto end;
 	}
 
