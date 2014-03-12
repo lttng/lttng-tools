@@ -1239,6 +1239,7 @@ end_net_output:
 			ret = !output->dst.net.control_isset ?
 				LTTNG_ERR_URL_CTRL_MISS :
 				LTTNG_ERR_URL_DATA_MISS;
+			free(uri);
 			goto end;
 		}
 
