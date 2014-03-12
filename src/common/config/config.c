@@ -540,11 +540,11 @@ void xml_error_handler(void *ctx, const char *format, ...)
 
 	va_start(args, format);
 	ret = vasprintf(&errMsg, format, args);
+	va_end(args);
 	if (ret == -1) {
 		ERR("String allocation failed in xml error handler");
 		return;
 	}
-	va_end(args);
 
 	fprintf(stderr, "XML Error: %s", errMsg);
 	free(errMsg);
