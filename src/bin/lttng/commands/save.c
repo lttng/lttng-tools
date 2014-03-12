@@ -117,18 +117,27 @@ int cmd_save(int argc, const char **argv)
 		goto end_destroy;
 	}
 
-	if (lttng_save_session_attr_set_output_url(attr,
-		opt_output_path)) {
+	if (lttng_save_session_attr_set_output_url(attr, opt_output_path)) {
 		ret = CMD_ERROR;
 		goto end_destroy;
 	}
 
 	ret = lttng_save_session(attr);
-	if (ret) {
-		if (ret == -LTTNG_ERR_SESS_NOT_FOUND) {
-			ERR("Session '%s' not found", session_name);
+	if (ret < 0) {
+		ERR("%s", lttng_strerror(ret));
+	} else {
+		/* Inform the user of what just happened on success. */
+		if (session_name && opt_output_path) {
+			MSG("Session %s saved successfully in %s.", session_name,
+					opt_output_path);
+		} else if (session_name && !opt_output_path) {
+			MSG("Session %s saved successfully.", session_name);
+		} else if (!session_name && opt_output_path) {
+			MSG("All sessions have been saved successfully in %s.",
+					opt_output_path);
+		} else {
+			MSG("All sessions have been saved successfully.");
 		}
-		ret = CMD_ERROR;
 	}
 end_destroy:
 	lttng_save_session_attr_destroy(attr);
