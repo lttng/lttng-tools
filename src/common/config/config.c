@@ -2338,18 +2338,19 @@ int load_session_from_path(const char *path, const char *session_name,
 	struct session_config_validation_ctx *validation_ctx, int override)
 {
 	int ret, session_found = !session_name;
-	struct stat sb;
 	DIR *directory = NULL;
 
 	assert(path);
 	assert(validation_ctx);
 
-	ret = stat(path, &sb);
-	if (ret) {
-		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
-		goto end;
+	directory = opendir(path);
+	if (!directory) {
+		if (errno != ENOTDIR) {
+			ret = -LTTNG_ERR_LOAD_IO_FAIL;
+			goto end;
+		}
 	}
-	if (S_ISDIR(sb.st_mode)) {
+	if (directory) {
 		struct dirent *entry;
 		struct dirent *result;
 		char *file_path = NULL;
@@ -2366,13 +2367,6 @@ int load_session_from_path(const char *path, const char *session_name,
 			goto end;
 		}
 
-		directory = opendir(path);
-		if (!directory) {
-			ret = -LTTNG_ERR_LOAD_IO_FAIL;
-			free(entry);
-			goto end;
-		}
-
 		file_path = zmalloc(PATH_MAX);
 		if (!file_path) {
 			ret = -LTTNG_ERR_NOMEM;
@@ -2385,6 +2379,7 @@ int load_session_from_path(const char *path, const char *session_name,
 			file_path[path_len++] = '/';
 		}
 
+		ret = 0;
 		/* Search for *.lttng files */
 		while (!readdir_r(directory, entry, &result) && result) {
 			size_t file_name_len = strlen(result->d_name);
