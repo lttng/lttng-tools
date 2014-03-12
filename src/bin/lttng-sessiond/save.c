@@ -1398,6 +1398,7 @@ int save_session(struct ltt_session *session,
 	struct lttng_save_session_attr *attr, lttng_sock_cred *creds)
 {
 	int ret, fd;
+	unsigned int file_opened = 0;	/* Indicate if the file has been opened */
 	char config_file_path[PATH_MAX];
 	size_t len;
 	struct config_writer *writer = NULL;
@@ -1485,6 +1486,7 @@ int save_session(struct ltt_session *session,
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
+	file_opened = 1;
 
 	writer = config_writer_create(fd);
 	if (!writer) {
@@ -1579,7 +1581,7 @@ end:
 	}
 	if (ret) {
 		/* Delete file in case of error */
-		if (unlink(config_file_path)) {
+		if (file_opened && unlink(config_file_path)) {
 			PERROR("Unlinking XML session configuration.");
 		}
 	}
