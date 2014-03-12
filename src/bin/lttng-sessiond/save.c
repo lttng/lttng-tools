@@ -1410,6 +1410,7 @@ int save_session(struct ltt_session *session,
 	assert(creds);
 
 	session_name_len = strlen(session->name);
+	memset(config_file_path, 0, sizeof(config_file_path));
 
 	if (!session_access_ok(session,
 		LTTNG_SOCK_GET_UID_CRED(creds),
@@ -1420,6 +1421,7 @@ int save_session(struct ltt_session *session,
 
 	provided_path = lttng_save_session_attr_get_output_url(attr);
 	if (provided_path) {
+		DBG3("Save session in provided path %s", provided_path);
 		len = strlen(provided_path);
 		if (len >= sizeof(config_file_path)) {
 			ret = LTTNG_ERR_SET_URL;
@@ -1472,6 +1474,8 @@ int save_session(struct ltt_session *session,
 	strncpy(config_file_path + len, session->name, session_name_len);
 	len += session_name_len;
 	strcpy(config_file_path + len, DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
+	len += sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
+	config_file_path[len] = '\0';
 
 	if (!access(config_file_path, F_OK) && !attr->overwrite) {
 		/* A file with the same name already exists, skip */
