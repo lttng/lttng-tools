@@ -341,7 +341,8 @@ int check_relayd(void)
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) {
 		perror("socket check relayd");
-		goto error;
+		ret = -1;
+		goto error_socket;
 	}
 
 	sin.sin_family = AF_INET;
@@ -349,6 +350,7 @@ int check_relayd(void)
 	ret = inet_pton(sin.sin_family, "127.0.0.1", &sin.sin_addr);
 	if (ret < 1) {
 		perror("inet_pton check relayd");
+		ret = -1;
 		goto error;
 	}
 
@@ -365,8 +367,10 @@ int check_relayd(void)
 		ret = 1;
 	}
 
-	return ret;
-
 error:
-	return -1;
+	if (close(fd) < 0) {
+		perror("close relayd fd");
+	}
+error_socket:
+	return ret;
 }
