@@ -39,11 +39,6 @@ TRACEPOINT_EVENT(tp, tptest,
 	)
 )
 
-TRACEPOINT_EVENT(tp, tptest_sighandler,
-	TP_ARGS(),
-	TP_FIELDS()
-)
-
 #endif /* _TRACEPOINT_TP_H */
 
 #undef TRACEPOINT_INCLUDE_FILE
