@@ -2198,12 +2198,24 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 
 		switch (domain->type) {
 		case LTTNG_DOMAIN_KERNEL:
+			if (kernel_domain) {
+				/* Same domain seen twice, invalid! */
+				goto domain_init_error;
+			}
 			kernel_domain = domain;
 			break;
 		case LTTNG_DOMAIN_UST:
+			if (ust_domain) {
+				/* Same domain seen twice, invalid! */
+				goto domain_init_error;
+			}
 			ust_domain = domain;
 			break;
 		case LTTNG_DOMAIN_JUL:
+			if (jul_domain) {
+				/* Same domain seen twice, invalid! */
+				goto domain_init_error;
+			}
 			jul_domain = domain;
 			break;
 		default:
