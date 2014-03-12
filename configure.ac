@@ -4,6 +4,7 @@ AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
+AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Compute minor/major/patchlevel version numbers
