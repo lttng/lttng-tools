@@ -31,7 +31,6 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/utils.h>
-#include <common/config/config-session-internal.h>
 #include <lttng/lttng-error.h>
 #include <libxml/parser.h>
 #include <libxml/valid.h>

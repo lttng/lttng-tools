@@ -25,7 +25,6 @@
 #include <common/defaults.h>
 #include <common/error.h>
 #include <common/config/config.h>
-#include <common/config/config-session-internal.h>
 #include <common/utils.h>
 #include <common/runas.h>
 #include <lttng/save-internal.h>

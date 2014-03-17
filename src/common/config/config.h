@@ -19,6 +19,7 @@
 #define _CONFIG_H
 
 #include <common/config/ini.h>
+#include <common/config/config-session-abi.h>
 #include <common/macros.h>
 #include <stdint.h>
 
