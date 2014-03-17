@@ -78,6 +78,13 @@ function test_event_basic()
 	rm -rf $TRACE_PATH
 }
 
+uname -m|grep x86 >/dev/null
+if test $? != 0; then
+	plan_tests 1
+	ok 0 "This test only runs on x86"
+	exit 0
+fi
+
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
