@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="UST tracer - Perf counters"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+LTTNG_BIN="lttng"
+SESSION_NAME="perf_counters"
+EVENT_NAME="tp:tptest"
+NUM_TESTS=10
+NR_ITER=1
+NR_USEC_WAIT=1
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+source $TESTDIR/utils/utils.sh
+
+function enable_ust_lttng_event_per_chan()
+{
+	sess_name="$1"
+	event_name="$2"
+	chan_name="$3"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -c $chan_name -u >/dev/null 2>&1
+	ok $? "Enable event $event_name for session $sess_name in channel $chan_name"
+}
+
+function add_ust_lttng_context()
+{
+	sess_name="$1"
+	chan_name="$2"
+	type="$3"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-context -s $sess_name -c $chan_name -t $type -u >/dev/null 2>&1
+	ok $? "Add context $type for session $sess_name in channel $chan_name"
+}
+
+function test_event_basic()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="ust_event_basic"
+	CHAN_NAME="mychan"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	enable_ust_lttng_channel $SESSION_NAME $CHAN_NAME
+
+	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
+
+	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "perf:thread:page-fault"
+
+	start_lttng_tracing
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+
+	stop_lttng_tracing
+
+	destroy_lttng_session $SESSION_NAME
+
+	validate_trace "perf_thread_page_fault" $TRACE_PATH
+	rm -rf $TRACE_PATH
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+test_event_basic
+
+stop_lttng_sessiond
