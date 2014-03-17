@@ -678,7 +678,7 @@ int save_kernel_context(struct config_writer *writer,
 		goto end;
 	}
 
-	if (ctx->ctx == LTTNG_KERNEL_CONTEXT_PERF_COUNTER) {
+	if (ctx->ctx == LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER) {
 		ret = config_writer_open_element(writer, config_element_perf);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
