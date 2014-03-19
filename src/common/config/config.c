@@ -1186,9 +1186,6 @@ int create_session(const char *name,
 	xmlNodePtr consumer_output_node;
 
 	assert(name);
-	assert(kernel_domain);
-	assert(ust_domain);
-	assert(jul_domain);
 
 	if (output_node) {
 		consumer_output_node = xmlFirstElementChild(output_node);
