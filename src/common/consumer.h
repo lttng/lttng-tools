@@ -341,6 +341,9 @@ struct lttng_consumer_stream {
 	 */
 	pthread_cond_t metadata_rdv;
 	pthread_mutex_t metadata_rdv_lock;
+
+	/* Indicate if the stream still has some data to be read. */
+	unsigned int has_data:1;
 };
 
 /*
@@ -453,6 +456,19 @@ struct lttng_consumer_local_data {
 	int consumer_splice_metadata_pipe[2];
 	/* Data stream poll thread pipe. To transfer data stream to the thread */
 	struct lttng_pipe *consumer_data_pipe;
+
+	/*
+	 * Data thread use that pipe to catch wakeup from read subbuffer that
+	 * detects that there is still data to be read for the stream encountered.
+	 * Before doing so, the stream is flagged to indicate that there is still
+	 * data to be read.
+	 *
+	 * Both pipes (read/write) are owned and used inside the data thread.
+	 */
+	struct lttng_pipe *consumer_wakeup_pipe;
+	/* Indicate if the wakeup thread has been notified. */
+	unsigned int has_wakeup:1;
+
 	/* to let the signal handler wake up the fd receiver thread */
 	int consumer_should_quit[2];
 	/* Metadata poll thread pipe. Transfer metadata stream to it */
