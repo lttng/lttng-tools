@@ -99,26 +99,39 @@ int lttng_save_session_attr_set_output_url(
 	struct lttng_save_session_attr *attr, const char *url)
 {
 	int ret = 0;
+	size_t len, size;
+	struct lttng_uri *uris = NULL;
 
 	if (!attr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
-	if (url) {
-		size_t len;
-
-		len = strlen(url);
-		if (len >= PATH_MAX) {
-			ret = -LTTNG_ERR_INVALID;
-			goto error;
-		}
-
-		strncpy(attr->configuration_url, url, len);
-	} else {
+	if (!url) {
 		attr->configuration_url[0] = '\0';
+		ret = 0;
+		goto end;
 	}
+
+	len = strlen(url);
+	if (len >= PATH_MAX) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	size = uri_parse_str_urls(url, NULL, &uris);
+	if (size <= 0 || uris[0].dtype != LTTNG_DST_PATH) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	/* Copy string plus the NULL terminated byte. */
+	lttng_ctl_copy_string(attr->configuration_url, uris[0].dst.path,
+			sizeof(attr->configuration_url));
+
+end:
 error:
+	free(uris);
 	return ret;
 }
 
