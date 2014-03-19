@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sessions>
+	<session>
+		<name>load-42</name>
+		<domains>
+			<domain>
+				<type>UST</type>
+				<buffer_type>PER_UID</buffer_type>
+				<channels>
+					<channel>
+						<name>channel0</name>
+						<enabled>true</enabled>
+						<overwrite_mode>DISCARD</overwrite_mode>
+						<subbuffer_size>131072</subbuffer_size>
+						<subbuffer_count>4</subbuffer_count>
+						<switch_timer_interval>0</switch_timer_interval>
+						<read_timer_interval>0</read_timer_interval>
+						<output_type>MMAP</output_type>
+						<tracefile_size>0</tracefile_size>
+						<tracefile_count>0</tracefile_count>
+						<live_timer_interval>0</live_timer_interval>
+						<events>
+							<event>
+								<name>*</name>
+								<enabled>true</enabled>
+								<type>TRACEPOINT</type>
+								<loglevel_type>ALL</loglevel_type>
+								<loglevel>-1</loglevel>
+							</event>
+						</events>
+						<contexts/>
+					</channel>
+				</channels>
+			</domain>
+		</domains>
+		<started>false</started>
+		<output>
+			<consumer_output>
+				<enabled>true</enabled>
+				<destination>
+					<path>/tmp/lttng/load-42-1</path>
+				</destination>
+			</consumer_output>
+		</output>
+	</session>
+</sessions>

@@ -400,6 +400,23 @@ function lttng_snapshot_record ()
 	ok $? "Snapshot recorded"
 }
 
+function lttng_save()
+{
+	local sess_name=$1
+	local opts=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN save $sess_name $opts >/dev/null 2>&1
+	ok $? "Session successfully saved"
+}
+
+function lttng_load()
+{
+	local opts=$1
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN load $opts >/dev/null 2>&1
+	ok $? "Load command successful"
+}
+
 function trace_matches ()
 {
 	event_name=$1

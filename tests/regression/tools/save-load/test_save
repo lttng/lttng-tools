@@ -1,0 +1,156 @@
+#!/bin/bash
+#
+# Copyright (C) - 2014 David Goulet <dgoulet@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Save session(s)"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+SESSIOND_BIN="lttng-sessiond"
+RELAYD_BIN="lttng-relayd"
+LTTNG_BIN="lttng"
+
+SESSION_NAME="save-42"
+CHANNEL_NAME="chan-save"
+EVENT_NAME="tp:tptest"
+
+DIR=$(readlink -f $TESTDIR)
+
+NUM_TESTS=37
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+# Expected to fail
+function save_lttng_fail()
+{
+	local sess_name=$1
+	local opts=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN save $sess_name $opts >/dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		ok 0 "Session failed to be saved. Expected!"
+	else
+		ok 1 "Session has been saved. NOT expected!"
+	fi
+}
+
+function is_session_saved()
+{
+	local path=$1
+	local name=$2
+
+	[ -f "$path/$name.lttng" ];
+	ok $? "Session $name.lttng file found!"
+}
+
+function test_basic_save()
+{
+	diag "Test basic save"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+
+	lttng_save $SESSION_NAME "-o $TRACE_PATH"
+
+	is_session_saved $TRACE_PATH $SESSION_NAME
+
+	destroy_lttng_session $SESSION_NAME
+}
+
+function test_basic_save_all()
+{
+	diag "Test basic save all"
+
+	create_lttng_session $SESSION_NAME-1 $TRACE_PATH
+	create_lttng_session $SESSION_NAME-2 $TRACE_PATH
+	create_lttng_session $SESSION_NAME-3 $TRACE_PATH
+
+	enable_ust_lttng_channel $SESSION_NAME-1 $CHANNEL_NAME
+	enable_ust_lttng_channel $SESSION_NAME-2 $CHANNEL_NAME
+	enable_ust_lttng_channel $SESSION_NAME-3 $CHANNEL_NAME
+
+	enable_ust_lttng_event $SESSION_NAME-1 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
+
+	lttng_save "" "-a -o $TRACE_PATH"
+
+	is_session_saved $TRACE_PATH $SESSION_NAME-1
+	is_session_saved $TRACE_PATH $SESSION_NAME-2
+	is_session_saved $TRACE_PATH $SESSION_NAME-3
+
+	destroy_lttng_session $SESSION_NAME-1
+	destroy_lttng_session $SESSION_NAME-2
+	destroy_lttng_session $SESSION_NAME-3
+}
+
+function test_overwrite()
+{
+	diag "Test overwrite session file"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+
+	lttng_save $SESSION_NAME "-o $TRACE_PATH"
+
+	is_session_saved $TRACE_PATH $SESSION_NAME
+
+	destroy_lttng_session $SESSION_NAME
+
+	# Create a new session with same name so we can force the overwrite
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+
+	# This one MUST fail
+	save_lttng_fail $SESSION_NAME "-o $TRACE_PATH"
+
+	# This one MUST succeed
+	lttng_save $SESSION_NAME "-f -o $TRACE_PATH"
+
+	is_session_saved $TRACE_PATH $SESSION_NAME
+
+	destroy_lttng_session $SESSION_NAME
+}
+
+start_lttng_sessiond
+
+TESTS=(
+	test_basic_save
+	test_basic_save_all
+	test_overwrite
+)
+
+for fct_test in ${TESTS[@]};
+do
+	TRACE_PATH=$(mktemp -d)
+
+	${fct_test}
+	if [ $? -ne 0 ]; then
+		break;
+	fi
+	# Only delete if successful
+	#rm -rf $TRACE_PATH
+done
+
+stop_lttng_sessiond
