@@ -2456,7 +2456,7 @@ int config_load_session(const char *path, const char *session_name,
 				goto end;
 			}
 
-			ret = load_session_from_path(path, NULL,
+			ret = load_session_from_path(path, session_name,
 				&validation_ctx, 0);
 			if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
 				free(path);
@@ -2467,8 +2467,8 @@ int config_load_session(const char *path, const char *session_name,
 		}
 
 		/* Try system session configuration path */
-		ret = load_session_from_path(DEFAULT_SESSION_SYSTEM_CONFIGPATH, NULL,
-				&validation_ctx, 0);
+		ret = load_session_from_path(DEFAULT_SESSION_SYSTEM_CONFIGPATH,
+			session_name, &validation_ctx, 0);
 		if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
 			goto end;
 		}
