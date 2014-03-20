@@ -205,8 +205,10 @@ static pthread_t jul_reg_thread;
  * UST registration command queue. This queue is tied with a futex and uses a N
  * wakers / 1 waiter implemented and detailed in futex.c/.h
  *
- * The thread_manage_apps and thread_dispatch_ust_registration interact with
- * this queue and the wait/wake scheme.
+ * The thread_registration_apps and thread_dispatch_ust_registration uses this
+ * queue along with the wait/wake scheme. The thread_manage_apps receives down
+ * the line new application socket and monitors it for any I/O error or clean
+ * close that triggers an unregistration of the application.
  */
 static struct ust_cmd_queue ust_cmd_queue;
 
