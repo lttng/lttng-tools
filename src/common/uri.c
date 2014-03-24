@@ -201,7 +201,7 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 	} else {
 		ipver = (uri->dtype == LTTNG_DST_IPV4) ? 4 : 6;
 		addr = (ipver == 4) ?  uri->dst.ipv4 : uri->dst.ipv6;
-		(void) snprintf(proto, sizeof(proto), "net%d", ipver);
+		(void) snprintf(proto, sizeof(proto), "tcp%d", ipver);
 		(void) snprintf(port, sizeof(port), ":%d", uri->port);
 	}
 

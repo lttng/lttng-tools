@@ -1222,11 +1222,12 @@ int create_session(const char *name,
 
 		/* network destination */
 		if (live_timer_interval && live_timer_interval != UINT64_MAX) {
-			const char *url = output.control_uri ?
-				output.control_uri : output.data_uri;
-
-			/* URL has to be provided, even if we'll overwrite it after. */
-			ret = lttng_create_session_live(name, url, live_timer_interval);
+			/*
+			 * URLs are provided for sure since the test above make sure that
+			 * with a live timer the data and control URIs are provided. So,
+			 * NULL is passed here and will be set right after.
+			 */
+			ret = lttng_create_session_live(name, NULL, live_timer_interval);
 		} else {
 			ret = lttng_create_session(name, NULL);
 		}
