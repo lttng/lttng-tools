@@ -458,6 +458,7 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 			 * URI was the same in the consumer so we do not append the subdir
 			 * again so to not duplicate output dir.
 			 */
+			ret = LTTNG_OK;
 			goto error;
 		}
 
