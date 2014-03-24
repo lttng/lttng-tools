@@ -38,7 +38,7 @@ TRACE_PATH=$(mktemp -d)
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=10
+NUM_TESTS=11
 
 source $TESTDIR/utils/utils.sh
 
@@ -46,6 +46,14 @@ source $TESTDIR/utils/utils.sh
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+function test_custom_url()
+{
+	# Create session with custom URL
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
+		-C tcp://localhost:1819 -D tcp://localhost:9187 >/dev/null 2>&1
+	ok $? "Create session in live mode with delay $DELAY_USEC and custom URLs"
+}
 
 function setup_live_tracing()
 {
@@ -80,6 +88,9 @@ clean_live_tracing
 
 trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
 rm -rf $TRACE_PATH
-
 stop_lttng_relayd
+
+test_custom_url
+pkill $RELAYD_BIN
+
 stop_lttng_sessiond

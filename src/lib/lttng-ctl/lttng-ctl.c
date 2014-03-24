@@ -1572,16 +1572,20 @@ int lttng_create_session_live(const char *name, const char *url,
 	lsm.cmd_type = LTTNG_CREATE_SESSION_LIVE;
 	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
 
-	size = uri_parse_str_urls(url, NULL, &uris);
-	if (size <= 0) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
+	if (url) {
+		size = uri_parse_str_urls(url, NULL, &uris);
+		if (size <= 0) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
 
-	/* file:// is not accepted for live session. */
-	if (uris[0].dtype == LTTNG_DST_PATH) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
+		/* file:// is not accepted for live session. */
+		if (uris[0].dtype == LTTNG_DST_PATH) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+	} else {
+		size = 0;
 	}
 
 	lsm.u.session_live.nb_uri = size;

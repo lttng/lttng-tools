@@ -291,6 +291,12 @@ static int create_session(void)
 		}
 	}
 
+	if ((!opt_ctrl_url && opt_data_url) || (opt_ctrl_url && !opt_data_url)) {
+		ERR("You need both control and data URL.");
+		ret = CMD_ERROR;
+		goto error;
+	}
+
 	if (opt_output_path != NULL) {
 		traces_path = utils_expand_path(opt_output_path);
 		if (traces_path == NULL) {
@@ -311,6 +317,12 @@ static int create_session(void)
 	} else if (opt_url) { /* Handling URL (-U opt) */
 		url = opt_url;
 		print_str_url = url;
+	} else if (opt_data_url && opt_ctrl_url) {
+		/*
+		 * With both control and data, we'll be setting the consumer URL after
+		 * session creation thus use no URL.
+		 */
+		url = NULL;
 	} else if (!opt_no_output) {
 		/* Auto output path */
 		alloc_path = utils_get_home_dir();
@@ -332,22 +344,14 @@ static int create_session(void)
 		}
 
 		url = alloc_url;
-		if (!opt_data_url && !opt_ctrl_url) {
-			print_str_url = alloc_url + strlen("file://");
-		}
+		print_str_url = alloc_url + strlen("file://");
 	} else {
 		/* No output means --no-output or --snapshot mode. */
 		url = NULL;
 	}
 
-	if ((!opt_ctrl_url && opt_data_url) || (opt_ctrl_url && !opt_data_url)) {
-		ERR("You need both control and data URL.");
-		ret = CMD_ERROR;
-		goto error;
-	}
-
+	/* Use default live URL if NO url is/are found. */
 	if ((opt_live_timer && !opt_url) && (opt_live_timer && !opt_data_url)) {
-		/* Use default live URL if none is found. */
 		ret = asprintf(&alloc_url, "net://127.0.0.1");
 		if (ret < 0) {
 			PERROR("asprintf default live URL");
