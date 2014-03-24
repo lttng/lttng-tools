@@ -29,35 +29,35 @@ libtool
 tags
 
 # m4 macros not automatically generated
-config/
+/config/
 !config/epoll.m4
 !config/config_feature.m4
 
-src/bin/lttng-sessiond/lttng-sessiond
-src/bin/lttng/lttng
-src/bin/lttng-consumerd/lttng-consumerd
-src/bin/lttng-relayd/lttng-relayd
-src/lib/lttng-ctl/lttng-ctl.pc
-src/lib/lttng-ctl/filter/filter-grammar-test
-src/lib/lttng-ctl/filter/filter-lexer.c
-src/lib/lttng-ctl/filter/filter-parser.c
-src/lib/lttng-ctl/filter/filter-parser.h
-src/lib/lttng-ctl/filter/filter-parser.output
+/src/bin/lttng-sessiond/lttng-sessiond
+/src/bin/lttng/lttng
+/src/bin/lttng-consumerd/lttng-consumerd
+/src/bin/lttng-relayd/lttng-relayd
+/src/lib/lttng-ctl/lttng-ctl.pc
+/src/lib/lttng-ctl/filter/filter-grammar-test
+/src/lib/lttng-ctl/filter/filter-lexer.c
+/src/lib/lttng-ctl/filter/filter-parser.c
+/src/lib/lttng-ctl/filter/filter-parser.h
+/src/lib/lttng-ctl/filter/filter-parser.output
 
-extras/bindings/swig/python/lttng.i
-extras/bindings/swig/python/lttng.py
-extras/bindings/swig/python/lttng_wrap.c
-extras/core-handler/crash
+/extras/bindings/swig/python/lttng.i
+/extras/bindings/swig/python/lttng.py
+/extras/bindings/swig/python/lttng_wrap.c
+/extras/core-handler/crash
 
 .checkpatch.conf
 
 # Tests
-tests/unit/test_kernel_data
-tests/unit/test_session
-tests/unit/test_uri
-tests/unit/test_ust_data
-tests/unit/test_utils_parse_size_suffix
-tests/unit/test_utils_expand_path
+/tests/unit/test_kernel_data
+/tests/unit/test_session
+/tests/unit/test_uri
+/tests/unit/test_ust_data
+/tests/unit/test_utils_parse_size_suffix
+/tests/unit/test_utils_expand_path
 kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard
@@ -68,17 +68,17 @@ gen-events-time
 gen-events
 gen-ust-events
 health_check
-tests/regression/ust/overlap/demo/demo
-tests/regression/ust/linking/demo_builtin
-tests/regression/ust/linking/demo_static
-tests/regression/ust/linking/demo
-tests/regression/ust/daemon/daemon
-tests/regression/ust/exit-fast/exit-fast
-tests/regression/ust/fork/fork
-tests/regression/ust/fork/fork2
-tests/regression/ust/libc-wrapper/prog
-tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
-tests/regression/tools/live/live_test
-tests/unit/ini_config/ini_config
+/tests/regression/ust/overlap/demo/demo
+/tests/regression/ust/linking/demo_builtin
+/tests/regression/ust/linking/demo_static
+/tests/regression/ust/linking/demo
+/tests/regression/ust/daemon/daemon
+/tests/regression/ust/exit-fast/exit-fast
+/tests/regression/ust/fork/fork
+/tests/regression/ust/fork/fork2
+/tests/regression/ust/libc-wrapper/prog
+/tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
+/tests/regression/tools/live/live_test
+/tests/unit/ini_config/ini_config
 
-benchmark/
+/benchmark/
