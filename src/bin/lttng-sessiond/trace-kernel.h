@@ -109,8 +109,8 @@ struct ltt_kernel_session {
 	struct consumer_output *tmp_consumer;
 	/* Tracing session id */
 	uint64_t id;
-	/* Session is started and active */
-	unsigned int started;
+	/* Session is active or not meaning it has been started or stopped. */
+	unsigned int active:1;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
 	unsigned int snapshot_mode;

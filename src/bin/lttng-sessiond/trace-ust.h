@@ -77,12 +77,13 @@ struct ltt_ust_domain_global {
 /* UST session */
 struct ltt_ust_session {
 	uint64_t id;    /* Unique identifier of session */
-	int start_trace;
 	struct ltt_ust_domain_global domain_global;
 	struct jul_domain domain_jul;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
+	/* Is the session active meaning has is been started or stopped. */
+	unsigned int active:1;
 	/*
 	 * Two consumer_output object are needed where one is for the current
 	 * output object and the second one is the temporary object used to store

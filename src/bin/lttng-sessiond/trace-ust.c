@@ -218,7 +218,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 	/* Init data structure */
 	lus->id = session_id;
-	lus->start_trace = 0;
+	lus->active = 0;
 
 	/* Set default metadata channel attribute. */
 	lus->metadata_attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;

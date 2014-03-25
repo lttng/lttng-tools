@@ -4238,7 +4238,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 
 	pthread_mutex_unlock(&ua_sess->lock);
 
-	if (usess->start_trace) {
+	if (usess->active) {
 		ret = ust_app_start_trace(usess, app);
 		if (ret < 0) {
 			goto error;

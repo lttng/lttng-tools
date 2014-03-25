@@ -82,7 +82,7 @@ static void test_create_one_ust_session(void)
 	ok(usess != NULL, "Create UST session");
 
 	ok(usess->id == 42 &&
-	   usess->start_trace == 0 &&
+	   usess->active == 0 &&
 	   usess->domain_global.channels != NULL &&
 	   usess->uid == 0 &&
 	   usess->gid == 0,

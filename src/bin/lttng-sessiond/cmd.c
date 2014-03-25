@@ -823,7 +823,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	/* Quiescent wait after starting trace */
 	kernel_wait_quiescent(kernel_tracer_fd);
 
-	ksess->started = 1;
+	ksess->active = 1;
 
 	ret = LTTNG_OK;
 
@@ -1819,7 +1819,11 @@ int cmd_start_trace(struct ltt_session *session)
 
 	/* Flag session that trace should start automatically */
 	if (usess) {
-		usess->start_trace = 1;
+		/*
+		 * Even though the start trace might fail, flag this session active so
+		 * other application coming in are started by default.
+		 */
+		usess->active = 1;
 
 		ret = ust_app_start_trace_all(usess);
 		if (ret < 0) {
@@ -1861,7 +1865,7 @@ int cmd_stop_trace(struct ltt_session *session)
 	}
 
 	/* Kernel tracer */
-	if (ksession && ksession->started) {
+	if (ksession && ksession->active) {
 		DBG("Stop kernel tracing");
 
 		/* Flush metadata if exist */
@@ -1888,11 +1892,15 @@ int cmd_stop_trace(struct ltt_session *session)
 
 		kernel_wait_quiescent(kernel_tracer_fd);
 
-		ksession->started = 0;
+		ksession->active = 0;
 	}
 
-	if (usess && usess->start_trace) {
-		usess->start_trace = 0;
+	if (usess && usess->active) {
+		/*
+		 * Even though the stop trace might fail, flag this session inactive so
+		 * other application coming in are not started by default.
+		 */
+		usess->active = 0;
 
 		ret = ust_app_stop_trace_all(usess);
 		if (ret < 0) {
