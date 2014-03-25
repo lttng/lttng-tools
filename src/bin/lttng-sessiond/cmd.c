@@ -851,6 +851,15 @@ int cmd_enable_channel(struct ltt_session *session,
 	rcu_read_lock();
 
 	/*
+	 * Don't try to enable a channel if the session has been started at
+	 * some point in time before. The tracer does not allow it.
+	 */
+	if (session->has_been_started) {
+		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto error;
+	}
+
+	/*
 	 * The ringbuffer (both in user space and kernel) behave badly in overwrite
 	 * mode and with less than 2 subbuf so block it right away and send back an
 	 * invalid attribute error.
@@ -868,15 +877,6 @@ int cmd_enable_channel(struct ltt_session *session,
 		kchan = trace_kernel_get_channel_by_name(attr->name,
 				session->kernel_session);
 		if (kchan == NULL) {
-			/*
-			 * Don't try to create a channel if the session
-			 * has been started at some point in time
-			 * before. The tracer does not allow it.
-			 */
-			if (session->started) {
-				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-				goto error;
-			}
 			ret = channel_kernel_create(session->kernel_session, attr, wpipe);
 			if (attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
@@ -900,15 +900,6 @@ int cmd_enable_channel(struct ltt_session *session,
 
 		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
-			/*
-			 * Don't try to create a channel if the session
-			 * has been started at some point in time
-			 * before. The tracer does not allow it.
-			 */
-			if (session->started) {
-				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-				goto error;
-			}
 			ret = channel_ust_create(usess, attr, domain->buf_type);
 			if (attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
@@ -1603,8 +1594,8 @@ int cmd_start_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	if (session->enabled) {
-		/* Already started. */
+	/* Is the session already started? */
+	if (session->active) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
 		goto error;
 	}
@@ -1623,8 +1614,6 @@ int cmd_start_trace(struct ltt_session *session)
 		ret = LTTNG_ERR_NO_CHANNEL;
 		goto error;
 	}
-
-	session->enabled = 1;
 
 	/* Kernel tracing */
 	if (ksession != NULL) {
@@ -1645,7 +1634,9 @@ int cmd_start_trace(struct ltt_session *session)
 		}
 	}
 
-	session->started = 1;
+	/* Flag this after a successful start. */
+	session->has_been_started = 1;
+	session->active = 1;
 
 	ret = LTTNG_OK;
 
@@ -1669,12 +1660,11 @@ int cmd_stop_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	if (!session->enabled) {
+	/* Session is not active. Skip everythong and inform the client. */
+	if (!session->active) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STOPPED;
 		goto error;
 	}
-
-	session->enabled = 0;
 
 	/* Kernel tracer */
 	if (ksession && ksession->started) {
@@ -1717,6 +1707,8 @@ int cmd_stop_trace(struct ltt_session *session)
 		}
 	}
 
+	/* Flag inactive after a successful stop. */
+	session->active = 0;
 	ret = LTTNG_OK;
 
 error:
@@ -1738,8 +1730,8 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 	assert(uris);
 	assert(nb_uri > 0);
 
-	/* Can't enable consumer after session started. */
-	if (session->enabled) {
+	/* Can't set consumer URI if the session is active. */
+	if (session->active) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
 		goto error;
 	}
@@ -2300,7 +2292,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 
 		strncpy(sessions[i].name, session->name, NAME_MAX);
 		sessions[i].name[NAME_MAX - 1] = '\0';
-		sessions[i].enabled = session->enabled;
+		sessions[i].enabled = session->active;
 		sessions[i].snapshot_mode = session->snapshot_mode;
 		i++;
 	}
@@ -2319,7 +2311,7 @@ int cmd_data_pending(struct ltt_session *session)
 	assert(session);
 
 	/* Session MUST be stopped to ask for data availability. */
-	if (session->enabled) {
+	if (session->active) {
 		ret = LTTNG_ERR_SESSION_STARTED;
 		goto error;
 	} else {
@@ -2333,7 +2325,7 @@ int cmd_data_pending(struct ltt_session *session)
 		 * *VERY* important that we don't ask the consumer before a start
 		 * trace.
 		 */
-		if (!session->started) {
+		if (!session->has_been_started) {
 			ret = 0;
 			goto error;
 		}
@@ -2765,7 +2757,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	}
 
 	/* The session needs to be started at least once. */
-	if (!session->started) {
+	if (!session->has_been_started) {
 		ret = LTTNG_ERR_START_SESSION_ONCE;
 		goto error;
 	}
