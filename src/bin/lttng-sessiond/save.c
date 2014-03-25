@@ -1523,7 +1523,7 @@ int save_session(struct ltt_session *session,
 	}
 
 	ret = config_writer_write_element_bool(writer, config_element_started,
-			session->enabled);
+			session->active);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
