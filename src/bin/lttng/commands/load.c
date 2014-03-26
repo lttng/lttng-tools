@@ -97,12 +97,9 @@ int cmd_load(int argc, const char **argv)
 
 	if (!opt_load_all) {
 		session_name = poptGetArg(pc);
-		if (!session_name) {
-			ERR("A session name must be provided if the \"all\" option is not used.");
-			ret = CMD_ERROR;
-			goto end;
+		if (session_name) {
+			DBG2("Loading session name: %s", session_name);
 		}
-		DBG2("Loading session name: %s", session_name);
 	}
 
 	ret = config_load_session(opt_input_path, session_name, opt_force);
@@ -112,8 +109,10 @@ int cmd_load(int argc, const char **argv)
 	} else {
 		if (opt_load_all) {
 			MSG("All sessions have been loaded successfully");
-		} else {
+		} else if (session_name) {
 			MSG("Session %s has been loaded successfully", session_name);
+		} else {
+			MSG("Session has been loaded successfully");
 		}
 	}
 end:
