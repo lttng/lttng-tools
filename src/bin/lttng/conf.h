@@ -27,4 +27,6 @@ void conf_destroy_default(void);
 char *conf_read_session_name(void);
 int conf_add_session_name(char *name);
 
+int conf_write_sessiond_pid(pid_t pid);
+
 #endif /* _LTTNG_CONFIG_H */

@@ -29,6 +29,8 @@
 
 #include "conf.h"
 
+static const char *sessiond_pid_str = "sessiond_pid";
+
 /*
  * Returns the full path of the lttng user configuration file or NULL on error.
  *
@@ -277,6 +279,18 @@ error:
 int conf_init(void)
 {
 	int ret;
+	char *config_path;
+
+	config_path = get_conf_file_path();
+	if (config_path == NULL) {
+		ret = -1;
+		goto error;
+	}
+
+	if (conf_file_exists(config_path)) {
+		ret = 0;
+		goto error;
+	}
 
 	/* Create default config file */
 	ret = create_config_file();
@@ -285,6 +299,34 @@ int conf_init(void)
 	}
 
 	DBG("LTTng rc configuration created");
+
+error:
+	return ret;
+}
+
+/*
+ * Write sessiond PID to the lttngrc file.
+ *
+ * Return 0 on success else a negative value.
+ */
+int conf_write_sessiond_pid(pid_t pid)
+{
+	int ret;
+
+	/*
+	 * A pid maximum value is 65535 thus 5 bytes. We need one extra more for
+	 * the "=" character, one for the new line and finally one extra for the
+	 * NULL byte. Grand total of 5 + 1 + 1 + 1 = 8.
+	 */
+	char data[strlen(sessiond_pid_str) + 8];
+
+	ret = snprintf(data, sizeof(data), "%s=%d\n", sessiond_pid_str, pid);
+	if (ret < 0) {
+		ret = -1;
+		goto error;
+	}
+	ret = write_config(ret, data);
+	DBG("Sessiond PID %d written to conf file", pid);
 
 error:
 	return ret;

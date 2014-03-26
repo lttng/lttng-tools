@@ -82,6 +82,7 @@ static struct cmd_struct commands[] =  {
 	{ "snapshot", cmd_snapshot},
 	{ "save", cmd_save},
 	{ "load", cmd_load},
+	{ "shutdown", cmd_shutdown},
 	{ "enable-consumer", cmd_enable_consumer}, /* OBSOLETE */
 	{ "disable-consumer", cmd_disable_consumer}, /* OBSOLETE */
 	{ NULL, NULL}	/* Array closure */
@@ -115,6 +116,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    disable-event     Disable tracing event\n");
 	fprintf(ofp, "    list              List possible tracing options\n");
 	fprintf(ofp, "    set-session       Set current session name\n");
+	fprintf(ofp, "    shutdown          Shutdown session daemon and consumer(s)\n");
 	fprintf(ofp, "    snapshot          Snapshot buffers of current session name\n");
 	fprintf(ofp, "    start             Start tracing\n");
 	fprintf(ofp, "    stop              Stop tracing\n");
@@ -184,11 +186,14 @@ static void sighandler(int sig)
 			break;
 		case SIGCHLD:
 			DBG("SIGCHLD caught");
-			waitpid(sessiond_pid, &status, 0);
-			recv_child_signal = 1;
-			/* Indicate that the session daemon died */
-			sessiond_pid = 0;
-			ERR("Session daemon died (exit status %d)", WEXITSTATUS(status));
+			if (sessiond_pid) {
+				waitpid(sessiond_pid, &status, 0);
+				recv_child_signal = 1;
+				/* Indicate that the session daemon died */
+				sessiond_pid = 0;
+				ERR("Session daemon died (exit status %d)",
+						WEXITSTATUS(status));
+			}
 			break;
 		case SIGUSR1:
 			/* Notify is done */
@@ -319,6 +324,10 @@ static int spawn_sessiond(char *pathname)
 		while (!recv_child_signal) {
 			sleep(1);
 		}
+
+		/* If we can't write the PID, continue, nothing we can do here. */
+		(void) conf_write_sessiond_pid(sessiond_pid);
+
 		/*
 		 * The signal handler will nullify sessiond_pid on SIGCHLD
 		 */
@@ -404,7 +413,8 @@ static int check_args_no_sessiond(int argc, char **argv)
 				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0 ||
 				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0 ||
 				strncmp(argv[i], "version", sizeof("version")) == 0 ||
-				strncmp(argv[i], "view", sizeof("view")) == 0) {
+				strncmp(argv[i], "view", sizeof("view")) == 0 ||
+				strncmp(argv[i], "shutdown", sizeof("shutdown")) == 0) {
 			return 1;
 		}
 	}
@@ -472,6 +482,16 @@ static int parse_args(int argc, char **argv)
 	/* If both options are specified, quiet wins */
 	if (lttng_opt_verbose && lttng_opt_quiet) {
 		lttng_opt_verbose = 0;
+	}
+
+	/*
+	 * Initialize configuration file. Must be done BEFORE the session daemon
+	 * spawning since the sessiond PID might be written there.
+	 */
+	ret = conf_init();
+	if (ret < 0) {
+		ret = 1;
+		goto error;
 	}
 
 	/* Spawn session daemon if needed */
