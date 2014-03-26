@@ -85,7 +85,7 @@ static int destroy_session(const char *session_name)
 	}
 
 	MSG("Session %s destroyed", session_name);
-	config_destroy_default();
+	conf_destroy_default();
 	ret = CMD_SUCCESS;
 error:
 	return ret;

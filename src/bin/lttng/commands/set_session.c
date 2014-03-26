@@ -67,7 +67,7 @@ static int set_session(void)
 		goto error;
 	}
 
-	ret = config_init(opt_session_name);
+	ret = conf_add_session_name(opt_session_name);
 	if (ret < 0) {
 		ERR("Unable to set session name");
 		ret = CMD_ERROR;

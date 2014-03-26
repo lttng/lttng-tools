@@ -20,14 +20,11 @@
 
 #define CONFIG_FILENAME ".lttngrc"
 
-void config_destroy(char *path);
-void config_destroy_default(void);
-int config_exists(const char *path);
-int config_init(char *path);
-int config_add_session_name(char *path, char *name);
+int conf_init(void);
+void conf_destroy_default(void);
 
 /* Must free() the return pointer */
-char *config_read_session_name(char *path);
-char *config_get_file_path(char *path);
+char *conf_read_session_name(void);
+int conf_add_session_name(char *name);
 
 #endif /* _LTTNG_CONFIG_H */

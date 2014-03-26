@@ -30,33 +30,56 @@
 #include "conf.h"
 
 /*
- * Returns the path with '/CONFIG_FILENAME' added to it;
- * path will be NULL if an error occurs.
+ * Returns the full path of the lttng user configuration file or NULL on error.
+ *
+ * Caller MUST free return value.
  */
-char *config_get_file_path(char *path)
+static char *get_conf_file_path(void)
 {
 	int ret;
-	char *file_path;
+	char *file_path = NULL;
+	const char *home_path;
 
-	ret = asprintf(&file_path, "%s/%s", path, CONFIG_FILENAME);
+	home_path = utils_get_home_dir();
+	if (!home_path) {
+		goto error;
+	}
+
+	ret = asprintf(&file_path, "%s/%s", home_path, CONFIG_FILENAME);
 	if (ret < 0) {
 		ERR("Fail allocating config file path");
 		file_path = NULL;
 	}
 
+error:
 	return file_path;
+}
+
+/*
+ * Returns 1 if config exists, 0 otherwise
+ */
+static int conf_file_exists(const char *path)
+{
+	int ret;
+	struct stat info;
+
+	ret = stat(path, &info);
+	if (ret < 0) {
+		return 0;
+	}
+	return S_ISREG(info.st_mode) || S_ISDIR(info.st_mode);
 }
 
 /*
  * Returns an open FILE pointer to the config file;
  * on error, NULL is returned.
  */
-static FILE *open_config(char *path, const char *mode)
+static FILE *open_config(const char *mode)
 {
 	FILE *fp = NULL;
 	char *file_path;
 
-	file_path = config_get_file_path(path);
+	file_path = get_conf_file_path();
 	if (file_path == NULL) {
 		goto error;
 	}
@@ -76,12 +99,12 @@ error:
  * On success, returns 0;
  * on error, returns -1.
  */
-static int create_config_file(char *path)
+static int create_config_file(void)
 {
 	int ret;
 	FILE *fp;
 
-	fp = open_config(path, "w+");
+	fp = open_config("w+");
 	if (fp == NULL) {
 		ERR("Unable to create config file");
 		ret = -1;
@@ -99,13 +122,13 @@ error:
  * On success, returns 0;
  * on error, returns -1.
  */
-static int write_config(char *file_path, size_t size, char *data)
+static int write_config(size_t size, char *data)
 {
 	FILE *fp;
 	size_t len;
 	int ret = 0;
 
-	fp = open_config(file_path, "a");
+	fp = open_config("a");
 	if (fp == NULL) {
 		ret = -1;
 		goto end;
@@ -126,24 +149,24 @@ end:
 /*
  * Destroys directory config and file config.
  */
-void config_destroy(char *path)
+static void destroy_config(void)
 {
 	int ret;
 	char *config_path;
 
-	config_path = config_get_file_path(path);
+	config_path = get_conf_file_path();
 	if (config_path == NULL) {
 		return;
 	}
 
-	if (!config_exists(config_path)) {
+	if (!conf_file_exists(config_path)) {
 		goto end;
 	}
 
 	DBG("Removing %s\n", config_path);
 	ret = remove(config_path);
 	if (ret < 0) {
-		perror("remove config file");
+		PERROR("remove config file");
 	}
 end:
 	free(config_path);
@@ -152,28 +175,9 @@ end:
 /*
  * Destroys the default config
  */
-void config_destroy_default(void)
+void conf_destroy_default(void)
 {
-	char *path = utils_get_home_dir();
-	if (path == NULL) {
-		return;
-	}
-	config_destroy(path);
-}
-
-/*
- * Returns 1 if config exists, 0 otherwise
- */
-int config_exists(const char *path)
-{
-	int ret;
-	struct stat info;
-
-	ret = stat(path, &info);
-	if (ret < 0) {
-		return 0;
-	}
-	return S_ISREG(info.st_mode) || S_ISDIR(info.st_mode);
+	destroy_config();
 }
 
 /*
@@ -181,7 +185,7 @@ int config_exists(const char *path)
  * The caller is responsible for freeing the returned string.
  * On error, NULL is returned.
  */
-char *config_read_session_name(char *path)
+char *conf_read_session_name(void)
 {
 	int ret;
 	FILE *fp;
@@ -196,9 +200,9 @@ char *config_read_session_name(char *path)
 		goto error;
 	}
 
-	fp = open_config(path, "r");
+	fp = open_config("r");
 	if (fp == NULL) {
-		ERR("Can't find valid lttng config %s/.lttngrc", path);
+		ERR("Can't find valid lttng config .lttngrc");
 		MSG("Did you create a session? (lttng create <my_session>)");
 		free(session_name);
 		goto error;
@@ -244,7 +248,7 @@ found:
  * On success, returns 0;
  * on error, returns -1.
  */
-int config_add_session_name(char *path, char *name)
+int conf_add_session_name(char *name)
 {
 	int ret;
 	char *attr = "session=";
@@ -260,7 +264,7 @@ int config_add_session_name(char *path, char *name)
 		ret = -1;
 		goto error;
 	}
-	ret = write_config(path, ret, session_name);
+	ret = write_config(ret, session_name);
 error:
 	return ret;
 }
@@ -270,29 +274,17 @@ error:
  * On success, returns 0;
  * on error, returns -1.
  */
-int config_init(char *session_name)
+int conf_init(void)
 {
 	int ret;
-	char *path;
-
-	path = utils_get_home_dir();
-	if (path == NULL) {
-		ret = -1;
-		goto error;
-	}
 
 	/* Create default config file */
-	ret = create_config_file(path);
+	ret = create_config_file();
 	if (ret < 0) {
 		goto error;
 	}
 
-	ret = config_add_session_name(path, session_name);
-	if (ret < 0) {
-		goto error;
-	}
-
-	DBG("Init config session in %s", path);
+	DBG("LTTng rc configuration created");
 
 error:
 	return ret;

@@ -45,21 +45,14 @@ static const char *str_jul = "JUL";
  */
 char *get_session_name(void)
 {
-	char *path, *session_name = NULL;
-
-	/* Get path to config file */
-	path = utils_get_home_dir();
-	if (path == NULL) {
-		goto error;
-	}
+	char *session_name = NULL;
 
 	/* Get session name from config */
-	session_name = config_read_session_name(path);
+	session_name = conf_read_session_name();
 	if (session_name == NULL) {
 		goto error;
 	}
 
-	DBG2("Config file path found: %s", path);
 	DBG("Session name found: %s", session_name);
 	return session_name;
 

@@ -437,8 +437,14 @@ static int create_session(void)
 	}
 
 	/* Init lttng session config */
-	ret = config_init(session_name);
+	ret = conf_init();
 	if (ret < 0) {
+		ret = CMD_ERROR;
+		goto error;
+	}
+
+	ret = conf_add_session_name(session_name);
+	if (!ret < 0) {
 		ret = CMD_ERROR;
 		goto error;
 	}
