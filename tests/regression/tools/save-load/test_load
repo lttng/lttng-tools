@@ -51,7 +51,7 @@ function test_basic_load()
 {
 	diag "Test basic load"
 
-	lttng_load "$SESSION_NAME -i $CURDIR"
+	lttng_load "-i $CURDIR/$SESSION_NAME.lttng"
 
 	destroy_lttng_session $SESSION_NAME
 }
@@ -65,7 +65,7 @@ function test_complex_load()
 	# custom values.
 	start_lttng_relayd "-C tcp://localhost:8172 -D tcp://localhost:9817"
 
-	lttng_load "$sess -i $CURDIR"
+	lttng_load "-i $CURDIR/$sess.lttng"
 
 	# Once loaded, we are suppose to be able to disable certain events/channels
 	# thus having a confirmation that it's valid
@@ -102,7 +102,7 @@ function test_overwrite()
 {
 	diag "Test load overwrite"
 
-	lttng_load "$SESSION_NAME -i $CURDIR"
+	lttng_load "-i $CURDIR/$SESSION_NAME.lttng"
 
 	# This one should succeed
 	lttng_load "-f -i $CURDIR $SESSION_NAME"
