@@ -55,10 +55,14 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "usage: lttng load [OPTIONS] [SESSION]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "  -a, --all            Load all sessions (default)\n");
-	fprintf(ofp, "  -i, --input-path     Input path of the session configuration(s)\n");
-	fprintf(ofp, "  -f, --force          Override existing session configuration(s)\n");
+	fprintf(ofp, "  -h, --help               Show this help\n");
+	fprintf(ofp, "  -a, --all                Load all sessions (default)\n");
+	fprintf(ofp, "  -i, --input-path PATH    Input path of the session file(s).\n");
+	fprintf(ofp, "                           If a directory, load all files in it\n");
+	fprintf(ofp, "                           else try to load the given file.\n");
+	fprintf(ofp, "  -f, --force              Override existing session(s).\n");
+	fprintf(ofp, "                           This will destroy existing session(s)\n");
+	fprintf(ofp, "                           before creating new one(s).\n");
 }
 
 /*
