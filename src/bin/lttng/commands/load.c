@@ -27,9 +27,10 @@
 #include "../command.h"
 
 static char *opt_input_path;
-static char *opt_session_name;
 static int opt_force;
 static int opt_load_all;
+
+static const char *session_name;
 
 enum {
 	OPT_HELP = 1,
@@ -41,7 +42,6 @@ static struct poptOption load_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",        'h',  POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"all",         'a',  POPT_ARG_NONE, 0, OPT_ALL, 0, 0},
-	{"session",     's',  POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"input-path",  'i',  POPT_ARG_STRING, &opt_input_path, 0, 0, 0},
 	{"force",       'f',  POPT_ARG_NONE, 0, OPT_FORCE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -52,12 +52,11 @@ static struct poptOption load_opts[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng load [OPTIONS]\n");
+	fprintf(ofp, "usage: lttng load [OPTIONS] [SESSION]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "  -a, --all            Load all sessions (default)\n");
-	fprintf(ofp, "  -s, --session        Load a specific session\n");
 	fprintf(ofp, "  -i, --input-path     Input path of the session configuration(s)\n");
 	fprintf(ofp, "  -f, --force          Override existing session configuration(s)\n");
 }
@@ -92,14 +91,20 @@ int cmd_load(int argc, const char **argv)
 		}
 	}
 
-	if (opt_session_name && opt_load_all) {
-		WARN("Conflicting session options, loading session %s",
-			opt_session_name);
+	if (!opt_load_all) {
+		session_name = poptGetArg(pc);
+		if (!session_name) {
+			ERR("A session name must be provided if the \"all\" option is not used.");
+			ret = CMD_ERROR;
+			goto end;
+		}
+		DBG2("Loading session name: %s", session_name);
 	}
 
-	ret = config_load_session(opt_input_path, opt_session_name, opt_force);
+	ret = config_load_session(opt_input_path, session_name, opt_force);
 	if (ret) {
-		ret = CMD_ERROR;
+		ERR("%s", lttng_strerror(ret));
+		ret = -ret;
 	}
 end:
 	poptFreeContext(pc);

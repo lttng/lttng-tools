@@ -2342,9 +2342,15 @@ int load_session_from_path(const char *path, const char *session_name,
 
 	directory = opendir(path);
 	if (!directory) {
-		if (errno != ENOTDIR) {
+		switch (errno) {
+		case ENOTDIR:
 			ret = -LTTNG_ERR_LOAD_IO_FAIL;
 			goto end;
+		case ENOENT:
+			ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
+			goto end;
+		default:
+			break;
 		}
 	}
 	if (directory) {
