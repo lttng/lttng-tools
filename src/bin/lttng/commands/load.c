@@ -105,6 +105,12 @@ int cmd_load(int argc, const char **argv)
 	if (ret) {
 		ERR("%s", lttng_strerror(ret));
 		ret = -ret;
+	} else {
+		if (opt_load_all) {
+			MSG("All sessions have been loaded successfully");
+		} else {
+			MSG("Session %s has been loaded successfully", session_name);
+		}
 	}
 end:
 	poptFreeContext(pc);
