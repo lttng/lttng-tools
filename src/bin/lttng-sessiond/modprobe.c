@@ -78,6 +78,7 @@ const struct kern_modules_param kern_modules_list[] = {
 	{ "lttng-probe-timer", 0 },
 	{ "lttng-probe-udp", 0 },
 	{ "lttng-probe-vmscan", 0 },
+	{ "lttng-probe-v4l2", 0 },
 	{ "lttng-probe-workqueue", 0 },
 	{ "lttng-probe-writeback", 0 },
 };
