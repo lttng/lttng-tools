@@ -387,7 +387,8 @@ static int create_session(void)
 		} else {
 			pathname = INSTALL_BIN_PATH "/lttng-relayd";
 		}
-		if (!check_relayd() && spawn_relayd(pathname, 0) < 0) {
+		if (!opt_url && !opt_data_url && !check_relayd() &&
+				spawn_relayd(pathname, 0) < 0) {
 			goto error;
 		}
 		ret = lttng_create_session_live(session_name, url, opt_live_timer);
