@@ -2922,7 +2922,9 @@ skip_domain:
 		struct lttng_event *events;
 		ssize_t nb_events;
 
+		session_lock_list();
 		nb_events = cmd_list_tracepoints(cmd_ctx->lsm->domain.type, &events);
+		session_unlock_list();
 		if (nb_events < 0) {
 			/* Return value is a negative lttng_error_code. */
 			ret = -nb_events;
@@ -2953,8 +2955,10 @@ skip_domain:
 		struct lttng_event_field *fields;
 		ssize_t nb_fields;
 
+		session_lock_list();
 		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm->domain.type,
 				&fields);
+		session_unlock_list();
 		if (nb_fields < 0) {
 			/* Return value is a negative lttng_error_code. */
 			ret = -nb_fields;
