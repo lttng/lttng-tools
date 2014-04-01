@@ -383,8 +383,8 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 	ret = ustctl_send_stream_to_ust(app->sock, channel->obj, stream->obj);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Error ustctl send stream %s to app pid: %d with ret %d",
-					stream->name, app->pid, ret);
+			ERR("ustctl send stream handle %d to app pid: %d with ret %d",
+					stream->obj->handle, app->pid, ret);
 		} else {
 			DBG3("UST app send stream to ust failed. Application is dead.");
 		}
