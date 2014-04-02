@@ -54,6 +54,13 @@ struct relay_connection {
 	uint32_t major;
 	uint32_t minor;
 	uint64_t session_id;
+
+	/*
+	 * This contains streams that are received on that connection. It's used to
+	 * store them until we get the streams sent command where they are removed
+	 * and flagged ready for the viewer. This is ONLY used by the control
+	 * thread thus any action on it should happen in that thread.
+	 */
 	struct cds_list_head recv_head;
 	unsigned int version_check_done:1;
 
