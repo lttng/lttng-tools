@@ -1340,6 +1340,18 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	session->stream_count--;
 	assert(session->stream_count >= 0);
 
+	/*
+	 * Remove the stream from the connection recv list since we are about to
+	 * flag it invalid and thus might be freed. This has to be done here since
+	 * only the control thread can do actions on that list.
+	 *
+	 * Note that this stream might NOT be in the list but we have to try to
+	 * remove it here else this can race with the stream destruction freeing
+	 * the object and the connection destroy doing a use after free when
+	 * deleting the remaining nodes in this list.
+	 */
+	cds_list_del(&stream->recv_list);
+
 	/* Check if we can close it or else the data will do it. */
 	try_close_stream(session, stream);
 
