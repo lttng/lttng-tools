@@ -2233,9 +2233,12 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		 */
 		if (opt_verbose_consumer) {
 			verbosity = "--verbose";
-		} else {
+		} else if (lttng_opt_quiet) {
 			verbosity = "--quiet";
+		} else {
+			verbosity = "";
 		}
+
 		switch (consumer_data->type) {
 		case LTTNG_CONSUMER_KERNEL:
 			/*
