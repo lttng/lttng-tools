@@ -67,15 +67,7 @@ void connection_delete(struct lttng_ht *ht, struct relay_connection *conn)
 
 void connection_destroy(struct relay_connection *conn)
 {
-	struct relay_stream *stream, *tmp_stream;
-
 	assert(conn);
-
-	/* Clean up recv list of this connection if any. */
-	cds_list_for_each_entry_safe(stream, tmp_stream, &conn->recv_head,
-			recv_list) {
-		cds_list_del(&stream->recv_list);
-	}
 
 	call_rcu(&conn->rcu_node, rcu_free_connection);
 }
