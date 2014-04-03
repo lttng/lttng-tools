@@ -2793,6 +2793,12 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		registry->metadata_key = 0;
+		/*
+		 * This means that the previously created channel and stream are NOT
+		 * monitored in any way in the consumer thus we have to request the
+		 * destruction of the channel and streams.
+		 */
+		(void) ust_consumer_destroy_channel(socket, metadata);
 		goto error_consumer;
 	}
 

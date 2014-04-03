@@ -168,9 +168,17 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 		 * Once a stream is added to this list, the buffers were created so we
 		 * have a guarantee that this call will succeed. Setting the monitor
 		 * mode to 0 so we don't lock nor try to delete the stream from the
-		 * global hash table.
+		 * global hash table but we have to unref the stream from the chan.
 		 */
 		stream->monitor = 0;
+
+		/*
+		 * A stream in non monitor mode means that the channel owns it thus the
+		 * stream destroy does not try to unref. the channel but in this case
+		 * we need to explicitely put back the channel reference so it can be
+		 * destroyed after all streams in that list were cleaned up.
+		 */
+		consumer_stream_put_channel(stream);
 		consumer_stream_destroy(stream, NULL);
 	}
 }
@@ -2878,12 +2886,14 @@ restart:
 						}
 
 						/*
-						 * Release our own refcount. Force channel deletion even if
-						 * streams were not initialized.
+						 * After a clean stream list, the refcount MUST be down
+						 * to 0 else there is a reference to it meaning a
+						 * stream globally visible thus this command should not
+						 * have been sent by the session daemon.
 						 */
-						if (!uatomic_sub_return(&chan->refcount, 1)) {
-							consumer_del_channel(chan);
-						}
+						assert(!uatomic_sub_return(&chan->refcount, 1));
+						consumer_del_channel(chan);
+
 						rcu_read_unlock();
 						goto restart;
 					}

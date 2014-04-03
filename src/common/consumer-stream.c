@@ -290,6 +290,13 @@ static struct lttng_consumer_channel *unref_channel(
 	return free_chan;
 }
 
+void consumer_stream_put_channel(struct lttng_consumer_stream *stream)
+{
+	assert(stream);
+
+	(void) unref_channel(stream);
+}
+
 /*
  * Destroy a stream completely. This will delete, close and free the stream.
  * Once return, the stream is NO longer usable. Its channel may get destroyed
