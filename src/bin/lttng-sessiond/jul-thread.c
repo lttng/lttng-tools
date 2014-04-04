@@ -142,8 +142,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
-		WARN("An other session daemon is using this JUL port. JUL support "
-				"will be deactivated not interfering with the tracing.");
+		WARN("Another session daemon is using this JUL port. JUL support "
+				"will be deactivated to prevent interfering with the tracing.");
 		goto error;
 	}
 

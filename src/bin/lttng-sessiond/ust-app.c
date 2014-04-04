@@ -2953,9 +2953,9 @@ int ust_app_version(struct ust_app *app)
 	ret = ustctl_tracer_version(app->sock, &app->version);
 	if (ret < 0) {
 		if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-			ERR("UST app %d verson failed with ret %d", app->sock, ret);
+			ERR("UST app %d version failed with ret %d", app->sock, ret);
 		} else {
-			DBG3("UST app %d verion failed. Application is dead", app->sock);
+			DBG3("UST app %d version failed. Application is dead", app->sock);
 		}
 	}
 

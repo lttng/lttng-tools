@@ -308,7 +308,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 		cds_list_add_tail(&stream->list, &ua_chan->streams.head);
 		ua_chan->streams.count++;
 
-		DBG2("UST app stream %d received succesfully", ua_chan->streams.count);
+		DBG2("UST app stream %d received successfully", ua_chan->streams.count);
 	}
 
 	/* This MUST match or else we have a synchronization problem. */
