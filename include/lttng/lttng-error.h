@@ -120,9 +120,9 @@ enum lttng_error_code {
 	LTTNG_ERR_LOAD_INVALID_CONFIG    = 87,  /* Invalid session configuration */
 	LTTNG_ERR_LOAD_IO_FAIL           = 88,  /* IO error while reading a session configuration */
 	LTTNG_ERR_LOAD_SESSION_NOENT     = 89,  /* Session file not found */
-	/* 90 */
-	/* 91 */
-	/* 92 */
+	LTTNG_ERR_MI_OUTPUT_TYPE         = 90, /* Invalid MI output format */
+	LTTNG_ERR_MI_IO_FAIL             = 91, /* IO error while writing machine interface output */
+	LTTNG_ERR_MI_NOT_IMPLEMENTED     = 92, /* Mi feature not implemented */
 	/* 93 */
 	/* 94 */
 	/* 95 */

@@ -446,6 +446,13 @@ int cmd_add_context(int argc, const char **argv)
 		goto end;
 	}
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 

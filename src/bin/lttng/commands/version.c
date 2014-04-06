@@ -25,12 +25,16 @@
 #include <unistd.h>
 #include <config.h>
 
+#include <common/mi-lttng.h>
+
 #include "../command.h"
 
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 };
+
+static const char *lttng_license = "lttng is free software and under the GPL license and part LGPL";
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -50,6 +54,77 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help               Show this help\n");
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "\n");
+}
+
+/*
+ *  create_version
+ */
+static void create_version(struct mi_lttng_version *version)
+{
+	strncpy(version->version, VERSION, NAME_MAX);
+	version->version_major = VERSION_MAJOR;
+	version->version_minor = VERSION_MINOR;
+	version->version_patchlevel = VERSION_PATCHLEVEL;
+	strncpy(version->version_name, VERSION_NAME, NAME_MAX);
+	strncpy(version->package_url, PACKAGE_URL, NAME_MAX);
+}
+
+/*
+ * Print the machine interface output of this command.
+ */
+static int print_mi()
+{
+	int ret;
+	struct mi_writer *writer = NULL;
+	struct mi_lttng_version version;
+
+	create_version(&version);
+
+	writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+	if (!writer) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Open the command element */
+	ret = mi_lttng_writer_command_open(writer,
+			mi_lttng_element_command_version);
+	if (ret) {
+		goto error;
+	}
+
+	/* Beginning of output */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_command_output);
+	if (ret) {
+		goto error;
+	}
+
+	/* Print the machine interface of version */
+	ret = mi_lttng_version(writer, &version,
+			VERSION_DESCRIPTION, lttng_license);
+	if (ret) {
+		goto error;
+	}
+
+	/* Close the output element */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto error;
+	}
+
+	/* Close the command  */
+	ret = mi_lttng_writer_command_close(writer);
+
+error:
+	/* Cleanup */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
+	}
+
+end:
+	return ret;
 }
 
 /*
@@ -78,10 +153,14 @@ int cmd_version(int argc, const char **argv)
 		}
 	}
 
-	MSG("lttng version " VERSION " - " VERSION_NAME);
-	MSG("\n" VERSION_DESCRIPTION "\n");
-	MSG("Web site: http://lttng.org");
-	MSG("\nlttng is free software and under the GPL license and part LGPL");
+	if (lttng_opt_mi) {
+		ret = print_mi();
+	} else {
+		MSG("lttng version " VERSION " - " VERSION_NAME);
+		MSG("\n" VERSION_DESCRIPTION "\n");
+		MSG("Web site: http://lttng.org");
+		MSG("\n%s", lttng_license);
+	}
 
 end:
 	poptFreeContext(pc);

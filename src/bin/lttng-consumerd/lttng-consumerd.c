@@ -65,6 +65,8 @@ static int sigintcount = 0;
 /* Argument variables */
 int lttng_opt_quiet;    /* not static in error.h */
 int lttng_opt_verbose;  /* not static in error.h */
+int lttng_opt_mi;       /* not static in error.h */
+
 static int opt_daemon;
 static const char *progname;
 static char command_sock_path[PATH_MAX]; /* Global command socket path */

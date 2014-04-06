@@ -170,6 +170,11 @@ enum lttng_buffer_type {
 	LTTNG_BUFFER_GLOBAL,	/* Only supported by the Kernel. */
 };
 
+/* Machine interface output type */
+enum lttng_mi_output_type {
+	LTTNG_MI_XML                          = 1 /* XML output */
+};
+
 /*
  * The structures should be initialized to zero before use.
  */

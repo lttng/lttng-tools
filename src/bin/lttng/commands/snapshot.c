@@ -446,6 +446,13 @@ int cmd_snapshot(int argc, const char **argv)
 	pc = poptGetContext(NULL, argc, argv, snapshot_opts, 0);
 	poptReadDefaultConfig(pc, 0);
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:

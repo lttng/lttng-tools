@@ -515,6 +515,13 @@ int cmd_create(int argc, const char **argv)
 		}
 	}
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	if (opt_no_consumer) {
 		MSG("The option --no-consumer is obsolete. Use --no-output now.");
 		ret = CMD_WARNING;

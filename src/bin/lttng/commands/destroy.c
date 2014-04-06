@@ -148,6 +148,13 @@ int cmd_destroy(int argc, const char **argv)
 		goto end;
 	}
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	/* Ignore session name in case all sessions are to be destroyed */
 	if (opt_destroy_all) {
 		ret = destroy_all_sessions();

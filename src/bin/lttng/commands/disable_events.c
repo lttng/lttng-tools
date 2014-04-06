@@ -212,6 +212,13 @@ int cmd_disable_events(int argc, const char **argv)
 		}
 	}
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	opt_event_list = (char*) poptGetArg(pc);
 	if (opt_event_list == NULL && opt_disable_all == 0) {
 		ERR("Missing event name(s).\n");

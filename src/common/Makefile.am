@@ -16,8 +16,11 @@ noinst_LTLIBRARIES = libcommon.la
 libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        common.h futex.c futex.h uri.c uri.h defaults.c \
                        pipe.c pipe.h readwrite.c readwrite.h \
+                       mi-lttng.h mi-lttng.c \
                        daemonize.c daemonize.h
-libcommon_la_LIBADD = -luuid
+libcommon_la_LIBADD = \
+		-luuid \
+		$(top_builddir)/src/common/config/libconfig.la
 
 # Consumer library
 noinst_LTLIBRARIES += libconsumer.la

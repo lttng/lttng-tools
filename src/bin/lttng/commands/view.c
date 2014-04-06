@@ -445,6 +445,10 @@ int cmd_view(int argc, const char **argv)
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
+	if (lttng_opt_mi) {
+		WARN("mi does not apply to view command");
+	}
+
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
