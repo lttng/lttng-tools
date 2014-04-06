@@ -43,6 +43,11 @@ enum lttng_calibrate_type {
 	LTTNG_CALIBRATE_FUNCTION              = 0,
 };
 
+/* Machine interface output type */
+enum lttng_mi_output_type {
+	LTTNG_MI_XML                          = 1 /* XML output */
+};
+
 #define LTTNG_CALIBRATE_PADDING1           16
 struct lttng_calibrate {
 	enum lttng_calibrate_type type;

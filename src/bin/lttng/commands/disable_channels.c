@@ -167,6 +167,13 @@ int cmd_disable_channels(int argc, const char **argv)
 		}
 	}
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	opt_channels = (char*) poptGetArg(pc);
 	if (opt_channels == NULL) {
 		ERR("Missing channel name(s).\n");

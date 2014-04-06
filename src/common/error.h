@@ -49,6 +49,7 @@ extern DECLARE_URCU_TLS(struct log_time, error_log_time);
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
+extern int lttng_opt_mi;
 
 /* Error type. */
 #define PRINT_ERR   0x1
@@ -61,12 +62,18 @@ extern int lttng_opt_verbose;
 
 /*
  * Macro for printing message depending on command line option and verbosity.
+ *
+ * Machine interface:
+ * We use lttng_opt_mi to suppress all normal msg to stdout. We don't
+ * want any nested msg to show up when printing mi to stdout(if it's the case).
+ * All warnings and errors should be printed to stderr as normal.
  */
 #define __lttng_print(type, fmt, args...)                           \
 	do {                                                            \
-		if (lttng_opt_quiet == 0 && type == PRINT_MSG) {            \
+		if (lttng_opt_quiet == 0 && lttng_opt_mi == 0 &&            \
+				type == PRINT_MSG) {                                \
 			fprintf(stdout, fmt, ## args);                          \
-		} else if (lttng_opt_quiet == 0 &&                          \
+		} else if (lttng_opt_quiet == 0 && lttng_opt_mi == 0 &&     \
 				(((type & PRINT_DBG) && lttng_opt_verbose == 1) ||  \
 				((type & (PRINT_DBG | PRINT_DBG2)) &&               \
 					lttng_opt_verbose == 2) ||                      \

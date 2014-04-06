@@ -975,6 +975,13 @@ int cmd_enable_events(int argc, const char **argv)
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto end;
+	}
+
 	/* Default event type */
 	opt_event_type = LTTNG_EVENT_ALL;
 

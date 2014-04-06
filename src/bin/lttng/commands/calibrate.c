@@ -133,6 +133,13 @@ static int calibrate_lttng(void)
 		goto error;
 	}
 
+	/* TODO: mi support */
+	if (lttng_opt_mi) {
+		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
+		ERR("mi option not supported");
+		goto error;
+	}
+
 	handle = lttng_create_handle(NULL, &dom);
 	if (handle == NULL) {
 		ret = CMD_ERROR;

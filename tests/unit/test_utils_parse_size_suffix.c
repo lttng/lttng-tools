@@ -26,6 +26,7 @@
 /* For error.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 3;
+int lttng_opt_mi;
 
 struct valid_test_input {
 	char *input;

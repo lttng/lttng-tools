@@ -161,6 +161,9 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_LOAD_IO_FAIL) ] = "IO error while reading a session configuration",
 	[ ERROR_INDEX(LTTNG_ERR_LOAD_SESSION_NOENT) ] = "Session file not found",
 	[ ERROR_INDEX(LTTNG_ERR_MAX_SIZE_INVALID) ] = "Snapshot max size is invalid",
+	[ ERROR_INDEX(LTTNG_ERR_MI_OUTPUT_TYPE) ] = "Invalid MI output format",
+	[ ERROR_INDEX(LTTNG_ERR_MI_IO_FAIL) ] = "IO error while writing MI output",
+	[ ERROR_INDEX(LTTNG_ERR_MI_NOT_IMPLEMENTED) ] = "Mi feature not implemented",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

@@ -74,6 +74,7 @@ static int connected;
  */
 int lttng_opt_quiet;
 int lttng_opt_verbose;
+int lttng_opt_mi;
 
 /*
  * Copy string from src to dst and enforce null terminated byte.
