@@ -1,3 +1,21 @@
+2014-04-08 lttng-tools 2.4.1 (OpenSSL heartbleed day)
+	* Fix: don't delete stream from connection recv list
+	* Fix: use after free of a relayd stream
+	* Fix: don't print stream name in error message
+	* Fix: take session list lock when listing tp
+	* Fix: add consumer wake up pipe to avoid race
+	* Fix: don't spawn relayd if URL is provided
+	* Fix: don't ask data pending if session was not started
+	* Fix: missing test file in EXTRA dist
+	* Fix: allow empty URL for live session creation
+	* Fix: missing valid return code when adding an URI to consumer
+	* Fix: syntax error in lttng.1
+	* Fix: check relayd fd leak in lttng cmdline
+	* Fix: remove unused tp in high-throughput test
+	* Use autoconf AM_MAINTAINER_MODE.
+	* Fix: clang 'constant-out-of-range-compare' warning
+	* Fix: Unchecked session pointer when destroying a connection in relayd
+
 2014-02-28 lttng-tools 2.4.0 (Public Sleeping Day)
 	* Fix: improve lttng with live by spawning relayd
 	* Fix: relayd should listen for viewers on localhost only by default
