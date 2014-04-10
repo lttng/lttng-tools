@@ -43,7 +43,7 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
 		int *stream_fd);
-int utils_parse_size_suffix(char *str, uint64_t *size);
+int utils_parse_size_suffix(char const * const str, uint64_t * const size);
 int utils_get_count_order_u32(uint32_t x);
 char *utils_get_home_dir(void);
 char *utils_get_user_home_dir(uid_t uid);

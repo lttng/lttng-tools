@@ -28,7 +28,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <regex.h>
 #include <grp.h>
 #include <pwd.h>
 
@@ -650,42 +649,10 @@ error:
 	return ret;
 }
 
-/**
- * Prints the error message corresponding to a regex error code.
- *
- * @param errcode	The error code.
- * @param regex		The regex object that produced the error code.
- */
-static void regex_print_error(int errcode, regex_t *regex)
-{
-	/* Get length of error message and allocate accordingly */
-	size_t length;
-	char *buffer;
-
-	assert(regex != NULL);
-
-	length = regerror(errcode, regex, NULL, 0);
-	if (length == 0) {
-		ERR("regerror returned a length of 0");
-		return;
-	}
-
-	buffer = zmalloc(length);
-	if (!buffer) {
-		ERR("regex_print_error: zmalloc failed");
-		return;
-	}
-
-	/* Get and print error message */
-	regerror(errcode, regex, buffer, length);
-	ERR("regex error: %s\n", buffer);
-	free(buffer);
-
-}
 
 /**
  * Parse a string that represents a size in human readable format. It
- * supports decimal integers suffixed by 'k', 'M' or 'G'.
+ * supports decimal integers suffixed by 'k', 'K', 'M' or 'G'.
  *
  * The suffix multiply the integer by:
  * 'k': 1024
@@ -693,83 +660,90 @@ static void regex_print_error(int errcode, regex_t *regex)
  * 'G': 1024^3
  *
  * @param str	The string to parse.
- * @param size	Pointer to a size_t that will be filled with the
+ * @param size	Pointer to a uint64_t that will be filled with the
  *		resulting size.
  *
  * @return 0 on success, -1 on failure.
  */
 LTTNG_HIDDEN
-int utils_parse_size_suffix(char *str, uint64_t *size)
+int utils_parse_size_suffix(const char * const str, uint64_t * const size)
 {
-	regex_t regex;
 	int ret;
-	const int nmatch = 3;
-	regmatch_t suffix_match, matches[nmatch];
-	unsigned long long base_size;
+	uint64_t base_size;
 	long shift = 0;
+	const char *str_end;
+	char *num_end;
 
 	if (!str) {
-		return 0;
-	}
-
-	/* Compile regex */
-	ret = regcomp(&regex, "^\\(0x\\)\\{0,1\\}[0-9][0-9]*\\([kKMG]\\{0,1\\}\\)$", 0);
-	if (ret != 0) {
-		regex_print_error(ret, &regex);
+		DBG("utils_parse_size_suffix: received a NULL string.");
 		ret = -1;
 		goto end;
 	}
 
-	/* Match regex */
-	ret = regexec(&regex, str, nmatch, matches, 0);
-	if (ret != 0) {
+	/* strtoull will accept a negative number, but we don't want to. */
+	if (strchr(str, '-') != NULL) {
+		DBG("utils_parse_size_suffix: invalid size string, should not contain '-'.");
 		ret = -1;
-		goto free;
+		goto end;
 	}
 
-	/* There is a match ! */
+	/* str_end will point to the \0 */
+	str_end = str + strlen(str);
 	errno = 0;
-	base_size = strtoull(str, NULL, 0);
+	base_size = strtoull(str, &num_end, 0);
 	if (errno != 0) {
-		PERROR("strtoull");
+		PERROR("utils_parse_size_suffix strtoull");
 		ret = -1;
-		goto free;
+		goto end;
 	}
 
-	/* Check if there is a suffix */
-	suffix_match = matches[2];
-	if (suffix_match.rm_eo - suffix_match.rm_so == 1) {
-		switch (*(str + suffix_match.rm_so)) {
-		case 'K':
-		case 'k':
-			shift = KIBI_LOG2;
-			break;
-		case 'M':
-			shift = MEBI_LOG2;
-			break;
-		case 'G':
-			shift = GIBI_LOG2;
-			break;
-		default:
-			ERR("parse_human_size: invalid suffix");
-			ret = -1;
-			goto free;
-		}
+	if (num_end == str) {
+		/* strtoull parsed nothing, not good. */
+		DBG("utils_parse_size_suffix: strtoull had nothing good to parse.");
+		ret = -1;
+		goto end;
+	}
+
+	/* Check if a prefix is present. */
+	switch (*num_end) {
+	case 'G':
+		shift = GIBI_LOG2;
+		num_end++;
+		break;
+	case 'M': /*  */
+		shift = MEBI_LOG2;
+		num_end++;
+		break;
+	case 'K':
+	case 'k':
+		shift = KIBI_LOG2;
+		num_end++;
+		break;
+	case '\0':
+		break;
+	default:
+		DBG("utils_parse_size_suffix: invalid suffix.");
+		ret = -1;
+		goto end;
+	}
+
+	/* Check for garbage after the valid input. */
+	if (num_end != str_end) {
+		DBG("utils_parse_size_suffix: Garbage after size string.");
+		ret = -1;
+		goto end;
 	}
 
 	*size = base_size << shift;
 
 	/* Check for overflow */
 	if ((*size >> shift) != base_size) {
-		ERR("parse_size_suffix: oops, overflow detected.");
+		DBG("utils_parse_size_suffix: oops, overflow detected.");
 		ret = -1;
-		goto free;
+		goto end;
 	}
 
 	ret = 0;
-
-free:
-	regfree(&regex);
 end:
 	return ret;
 }
