@@ -22,6 +22,7 @@ TESTDIR=$CURDIR/../../../
 SESSIOND_BIN="lttng-sessiond"
 RELAYD_BIN="lttng-relayd"
 LTTNG_BIN="lttng"
+export LTTNG_SESSION_CONFIG_XSD_PATH=${TESTDIR}../src/common/config/
 
 SESSION_NAME="load-42"
 EVENT_NAME="tp:tptest"
