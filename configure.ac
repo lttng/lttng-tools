@@ -147,7 +147,7 @@ AC_CHECK_LIB([popt], [poptGetContext], [],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-AM_PATH_XML2(2.7.6, 1, AC_MSG_ERROR(No supported version of libxml2 found.))
+AM_PATH_XML2(2.7.6, true, AC_MSG_ERROR(No supported version of libxml2 found.))
 
 # Check for libuuid
 AC_CHECK_LIB([uuid], [uuid_generate],
