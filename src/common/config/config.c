@@ -569,12 +569,49 @@ void fini_session_config_validation_ctx(
 }
 
 static
+char *get_session_config_xsd_path()
+{
+	char *xsd_path;
+	const char *base_path = getenv(DEFAULT_SESSION_CONFIG_XSD_PATH_ENV);
+	size_t base_path_len;
+	size_t max_path_len;
+
+	if (!base_path) {
+		base_path = DEFAULT_SESSION_CONFIG_XSD_PATH;
+	}
+
+	base_path_len = strlen(base_path);
+	max_path_len = base_path_len +
+		sizeof(DEFAULT_SESSION_CONFIG_XSD_FILENAME) + 1;
+	xsd_path = zmalloc(max_path_len);
+	if (!xsd_path) {
+		goto end;
+	}
+
+	strncpy(xsd_path, base_path, max_path_len);
+	if (xsd_path[base_path_len - 1] != '/') {
+		xsd_path[base_path_len++] = '/';
+	}
+
+	strncpy(xsd_path + base_path_len, DEFAULT_SESSION_CONFIG_XSD_FILENAME,
+		max_path_len - base_path_len);
+end:
+	return xsd_path;
+}
+
+static
 int init_session_config_validation_ctx(
 	struct session_config_validation_ctx *ctx)
 {
 	int ret;
+	char *xsd_path = get_session_config_xsd_path();
 
-	ctx->parser_ctx = xmlSchemaNewParserCtxt(DEFAULT_SESSION_CONFIG_XSD_PATH);
+	if (!xsd_path) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	ctx->parser_ctx = xmlSchemaNewParserCtxt(xsd_path);
 	if (!ctx->parser_ctx) {
 		ERR("XSD parser context creation failed");
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -606,6 +643,7 @@ end:
 		fini_session_config_validation_ctx(ctx);
 	}
 
+	free(xsd_path);
 	return ret;
 }
 
