@@ -708,7 +708,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		int exclusion_count, char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm;
-	char *varlen_data;
+	char *varlen_data, *jul_filter = NULL;
 	int ret = 0;
 	struct filter_parser_ctx *ctx = NULL;
 	FILE *fmem = NULL;
@@ -750,7 +750,13 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	lsm.u.enable.exclusion_count = exclusion_count;
 	lsm.u.enable.bytecode_len = 0;
 
-	if (exclusion_count == 0 && filter_expression == NULL) {
+	/*
+	 * For the JUL domain, a filter is enforced except for the enable all
+	 * event. This is done to avoid having the event in all sessions thus
+	 * filtering by logger name.
+	 */
+	if (exclusion_count == 0 && filter_expression == NULL &&
+			(handle->domain.type != LTTNG_DOMAIN_JUL || ev->name[0] == '*')) {
 		ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 		return ret;
 	}
@@ -761,7 +767,23 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 */
 
 	/* Parse filter expression */
-	if (filter_expression != NULL) {
+	if (filter_expression != NULL ||
+			(handle->domain.type == LTTNG_DOMAIN_JUL && ev->name[0] != '*')) {
+		if (handle->domain.type == LTTNG_DOMAIN_JUL) {
+			int err;
+
+			if (filter_expression) {
+				err = asprintf(&jul_filter, "%s && logger_name == \"%s\"",
+						filter_expression, ev->name);
+			} else {
+				err = asprintf(&jul_filter, "logger_name == \"%s\"", ev->name);
+			}
+			if (err < 0) {
+				PERROR("asprintf");
+				return -LTTNG_ERR_NOMEM;
+			}
+			filter_expression = jul_filter;
+		}
 
 		/*
 		 * casting const to non-const, as the underlying function will
@@ -771,6 +793,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 				strlen(filter_expression), "r");
 		if (!fmem) {
 			fprintf(stderr, "Error opening memory as stream\n");
+			free(jul_filter);
 			return -LTTNG_ERR_FILTER_NOMEM;
 		}
 		ctx = filter_parser_ctx_alloc(fmem);
@@ -878,6 +901,7 @@ varlen_alloc_error:
 			perror("fclose");
 		}
 	}
+	free(jul_filter);
 	return ret;
 
 parse_error:
@@ -888,6 +912,7 @@ filter_alloc_error:
 	if (fclose(fmem) != 0) {
 		perror("fclose");
 	}
+	free(jul_filter);
 	return ret;
 }
 
