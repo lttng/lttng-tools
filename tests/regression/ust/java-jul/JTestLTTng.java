@@ -28,19 +28,33 @@ public class JTestLTTng
 	public static void main(String args[]) throws Exception
 	{
 		Logger lttng = Logger.getLogger("JTestLTTng");
+		Logger lttng2 = Logger.getLogger("JTestLTTng2");
 		int nrIter = Integer.parseInt(args[0]);
 		int waitTime = Integer.parseInt(args[1]);
+		int fire_finest_tp = 0;
+		int fire_second_tp = 0;
+
+		if (args.length > 2) {
+			fire_finest_tp = Integer.parseInt(args[2]);
+		}
+		if (args.length > 3) {
+			fire_second_tp = Integer.parseInt(args[3]);
+		}
 
 		lttngAgent = LTTngAgent.getLTTngAgent();
 		lttng.setLevel(Level.FINEST);
 
 		for (int iter = 0; iter < nrIter; iter++) {
 			lttng.info("JUL tp fired!");
-			if (args.length == 3) {
+			if (fire_finest_tp == 1) {
 				/* Third arg, trigger finest TP. */
 				lttng.finest("JUL FINEST tp fired");
 			}
 			Thread.sleep(waitTime);
+		}
+
+		if (fire_second_tp == 1) {
+			lttng2.info("JUL second logger fired");
 		}
 
 		lttngAgent.dispose();

@@ -1445,7 +1445,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		tmp_dom.type = LTTNG_DOMAIN_UST;
 
 		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
-			&uevent, NULL, NULL, NULL, wpipe);
+			&uevent, filter_expression, filter, NULL, wpipe);
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
 		}
