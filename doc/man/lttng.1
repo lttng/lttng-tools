@@ -541,7 +541,9 @@ Dynamic function entry/return probe. Addr and offset can be octal
 .BR "\-\-syscall"
 System call event. Enabling syscalls tracing (kernel tracer), you will
 not be able to disable them with disable-event. This is a known
-limitation. You can disable the entire channel to do the trick.
+limitation. You can disable the entire channel to do the trick. Also note
+that per-syscall selection is not supported yet. Use with "-a" to enable
+all syscalls.
 .TP
 .BR "\-\-filter 'expression'"
 Set a filter on a newly enabled event. Filter expression on event
