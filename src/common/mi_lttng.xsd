@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2014 - Oliver Cotte <olivier.cotte@polymtl.ca>
+                   - Jonathan Rajotte <jonathan.r.julien@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	elementFormDefault="qualified" version="2.5">
+
+	<!-- Maps to the uint32_t type -->
+	<xs:simpleType name="uint32_type">
+		<xs:restriction base="xs:integer">
+			<xs:minInclusive value="0" />
+			<xs:maxInclusive value="4294967295" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the uint64_t type -->
+	<xs:simpleType name="uint64_type">
+		<xs:restriction base="xs:integer">
+			<xs:minInclusive value="0" />
+			<xs:maxInclusive value="18446744073709551615" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the char name[LTTNG_SYMBOL_NAME_LEN] -->
+	<xs:simpleType name="name_type">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="255" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the lttng_event_type enum -->
+	<xs:simpleType name="event_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ALL" />
+			<xs:enumeration value="TRACEPOINT" />
+			<xs:enumeration value="PROBE" />
+			<xs:enumeration value="FUNCTION" />
+			<xs:enumeration value="FUNCTION_ENTRY" />
+			<xs:enumeration value="NOOP" />
+			<xs:enumeration value="SYSCALL" />
+			<xs:enumeration value="KPROBE" />
+			<xs:enumeration value="KRETPROBE" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the lttng_event_field_type enum -->
+	<xs:simpleType name="event_field_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="OTHER" />
+			<xs:enumeration value="INTEGER" />
+			<xs:enumeration value="ENUM" />
+			<xs:enumeration value="FLOAT" />
+			<xs:enumeration value="STRING" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the lttng_loglevel_type enum -->
+	<xs:simpleType name="loglevel_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ALL" />
+			<xs:enumeration value="RANGE" />
+			<xs:enumeration value="SINGLE" />
+			<xs:enumeration value="UNKNOWN" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to loglevel_string char * -->
+	<xs:simpleType name="loglevel_string_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="" />
+			<xs:enumeration value="TRACE_EMERG" />
+			<xs:enumeration value="TRACE_ALERT" />
+			<xs:enumeration value="TRACE_CRIT" />
+			<xs:enumeration value="TRACE_ERR" />
+			<xs:enumeration value="TRACE_WARNING" />
+			<xs:enumeration value="TRACE_NOTICE" />
+			<xs:enumeration value="TRACE_INFO" />
+			<xs:enumeration value="TRACE_DEBUG_SYSTEM" />
+			<xs:enumeration value="TRACE_DEBUG_PROGRAM" />
+			<xs:enumeration value="TRACE_DEBUG_PROCESS" />
+			<xs:enumeration value="TRACE_DEBUG_MODULE" />
+			<xs:enumeration value="TRACE_DEBUG_UNIT" />
+			<xs:enumeration value="TRACE_DEBUG_FUNCTION" />
+			<xs:enumeration value="TRACE_DEBUG_LINE" />
+			<xs:enumeration value="TRACE_DEBUG" />
+			<xs:enumeration value="UNKNOWN" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the lttng_event_probe_attr struct -->
+	<xs:complexType name="event_probe_attributes_type">
+		<xs:all>
+			<xs:element name="address" type="uint64_type" />
+			<xs:element name="offset" type="uint64_type" />
+			<xs:element name="symbol_name" type="name_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to the lttng_event_function_attr struct -->
+	<xs:complexType name="event_ftrace_attributes_type">
+		<xs:all>
+			<xs:element name="symbol_name" type="name_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to per event type configuration -->
+	<xs:complexType name="event_attributes_type">
+		<xs:choice>
+			<xs:element name="probe_attributes" type="event_probe_attributes_type" />
+			<xs:element name="function_attributes" type="event_ftrace_attributes_type" />
+		</xs:choice>
+	</xs:complexType>
+
+	<!-- Maps to lttng_event struct -->
+	<xs:complexType name="event_type">
+		<xs:all>
+			<xs:element name="type" type="event_type_type" default="TRACEPOINT" minOccurs="0" />
+			<xs:element name="name" type="name_type" minOccurs="0" />
+			<xs:element name="loglevel_type" type="loglevel_type" default="ALL" minOccurs="0" />
+			<xs:element name="loglevel" type="loglevel_string_type" default="" minOccurs="0" />
+			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
+			<xs:element name="filter" type="xs:boolean" minOccurs="0" />
+			<xs:element name="exclusion" type="xs:boolean" minOccurs="0" />
+			<xs:element name="attributes" type="event_attributes_type" minOccurs="0" />
+			<xs:element name="event_fields" type="event_fields_type" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to mi_lttng_version struct -->
+	<xs:complexType name="version_type">
+		<xs:all>
+			<xs:element name="name" type="name_type" />
+			<xs:element name="string" type="name_type" />
+			<xs:element name="major" type="uint32_type" />
+			<xs:element name="url" type="xs:string" />
+			<xs:element name="minor" type="uint32_type" />
+			<xs:element name="license" type="xs:string" />
+			<xs:element name="patchLevel" type="uint32_type" />
+			<xs:element name="description" type="xs:string" />
+		</xs:all>
+	</xs:complexType>
+
+	<xs:complexType name="event_list_type">
+		<xs:sequence>
+			<xs:element name="event" type="event_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to the lttng_domain_type enum -->
+	<xs:simpleType name="domain_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="KERNEL"/>
+			<xs:enumeration value="UST"/>
+			<xs:enumeration value="JUL"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the lttng_buffer_type enum -->
+	<xs:simpleType name="domain_buffer_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="PER_PID"/>
+			<xs:enumeration value="PER_UID"/>
+			<xs:enumeration value="GLOBAL"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="channel_overwrite_mode_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="DISCARD" />
+			<xs:enumeration value="OVERWRITE" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the lttng_event_output enum -->
+	<xs:simpleType name="event_output_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="SPLICE" />
+			<xs:enumeration value="MMAP" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="pid_type">
+		<xs:all>
+			<xs:element name="id" type="xs:int"/>
+			<xs:element name="name" type="name_type"/>
+			<xs:element name="events" type="event_list_type" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
+	<xs:complexType name="pids_type">
+		<xs:sequence>
+			<xs:element name="pid" type="pid_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to struct lttng_domain and contains channels -->
+	<xs:complexType name="domain_type">
+		<xs:all>
+			<xs:element name="type" type="domain_type_type"/>
+			<xs:element name="buffer_type" type="domain_buffer_type"/>
+			<xs:element name="pids" type="pids_type" minOccurs="0" />
+			<xs:element name="channels" type="channels_type" minOccurs="0" />
+			<xs:element name="events" type="event_list_type" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to struct lttng_channel -->
+	<xs:complexType name="channel_type">
+		<xs:all>
+			<xs:element name="name" type="name_type"/>
+			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0"/>
+			<xs:element name="attributes" type="channel_attributes_type" minOccurs="0"/>
+			<xs:element name="events" type="event_list_type"/>
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to struct lttng_channel_attr -->
+	<xs:complexType name="channel_attributes_type">
+		<xs:all>
+			<xs:element name="overwrite_mode" type="channel_overwrite_mode_type" default="DISCARD" minOccurs="0"/>
+			<xs:element name="subbuffer_size" type="uint64_type" minOccurs="0"/> <!-- bytes -->
+			<xs:element name="subbuffer_count" type="uint64_type" default="4" minOccurs="0"/>
+			<xs:element name="switch_timer_interval" type="uint32_type" default="0" minOccurs="0"/>  <!-- usec -->
+			<xs:element name="read_timer_interval" type="uint32_type"/>  <!-- usec -->
+			<xs:element name="output_type" type="event_output_type"/>
+			<xs:element name="tracefile_size" type="uint64_type" default="0" minOccurs="0"/> <!-- bytes -->
+			<xs:element name="tracefile_count" type="uint64_type" default="0" minOccurs="0"/>
+			<xs:element name="live_timer_interval" type="uint32_type" default="0" minOccurs="0"/> <!-- usec -->
+		</xs:all>
+	</xs:complexType>
+
+	<xs:complexType name="channels_type">
+		<xs:sequence>
+			<xs:element name="channel" type="channel_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="session_type">
+		<xs:all>
+			<xs:element name="name" type="name_type" />
+			<xs:element name="path" type="name_type" />
+			<xs:element name="enabled" type="xs:boolean" default="false" />
+			<xs:element name="snapshot_mode" type="uint32_type" />
+			<xs:element name="live_timer_interval" type="uint32_type" />
+			<xs:element name="channels" type="channels_type" minOccurs="0" />
+			<xs:element name="domains" type="domains_type" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
+	<xs:complexType name="event_field_type">
+		<xs:all>
+			<xs:element name="name" type="name_type" />
+			<xs:element name="type" type="event_field_type_type"/>
+			<xs:element name="nowrite" type="xs:int"/>
+		</xs:all>
+	</xs:complexType>
+
+
+	<xs:complexType name="domains_type">
+		<xs:sequence>
+			<xs:element name="domain" type="domain_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="sessions_type">
+		<xs:sequence>
+			<xs:element name="session" type="session_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="event_fields_type">
+		<xs:sequence>
+			<xs:element name="event_field" type="event_field_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="output_type">
+		<xs:choice>
+			<xs:element name="domains" type="domains_type" minOccurs="0" />
+			<xs:element name="sessions" type="sessions_type" minOccurs="0" />
+			<xs:element name="version" type="version_type" minOccurs="0" />
+		</xs:choice>
+	</xs:complexType>
+
+	<!-- Maps to the mi_lttng commands -->
+	<xs:simpleType name="command_string_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="list" />
+			<xs:enumeration value="version" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:element name="command">
+		<xs:complexType>
+			<xs:all>
+				<xs:element name="name" type="command_string_type" maxOccurs="1" />
+				<xs:element name="output" type="output_type" maxOccurs="1" />
+			</xs:all>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
