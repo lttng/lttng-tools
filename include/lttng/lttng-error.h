@@ -111,10 +111,9 @@ enum lttng_error_code {
 	LTTNG_ERR_LOAD_IO_FAIL           = 88,  /* IO error while reading a session configuration */
 	LTTNG_ERR_LOAD_SESSION_NOENT     = 89,  /* Session file not found */
 	LTTNG_ERR_MAX_SIZE_INVALID       = 90,  /* Snapshot max size is invalid. */
-	LTTNG_ERR_MI_OUTPUT_TYPE         = 91, /* Invalid MI output format */
-	LTTNG_ERR_MI_IO_FAIL             = 92, /* IO error while writing machine interface output */
-	LTTNG_ERR_MI_NOT_IMPLEMENTED     = 93, /* Mi feature not implemented */
-	/* 93 */
+	LTTNG_ERR_MI_OUTPUT_TYPE         = 91,  /* Invalid MI output format */
+	LTTNG_ERR_MI_IO_FAIL             = 92,  /* IO error while writing machine interface output */
+	LTTNG_ERR_MI_NOT_IMPLEMENTED     = 93,  /* Mi feature not implemented */
 	/* 94 */
 	/* 95 */
 	/* 96 */
