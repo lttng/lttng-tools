@@ -66,10 +66,9 @@ test_after_multiple_apps() {
 	start_lttng_tracing $SESSION_NAME
 
 	for i in `seq 1 5`; do
-		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT & >/dev/null 2>&1
+		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 		ok $? "Start application $i for tracing"
 	done
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME

@@ -25,7 +25,7 @@ STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 EVENT_NAME="tp:tptest"
 NR_ITER=100
-NUM_TESTS=338
+NUM_TESTS=290
 
 source $TESTDIR/utils/utils.sh
 
@@ -46,15 +46,7 @@ function enable_ust_lttng_event_filter()
 
 function run_apps
 {
-	./$CURDIR/$BIN_NAME $NR_ITER & >/dev/null 2>&1
-}
-
-function wait_apps
-{
-	while [ -n "$(pidof $BIN_NAME)" ]; do
-		sleep 1
-	done
-	pass "Wait for application end"
+	./$CURDIR/$BIN_NAME $NR_ITER >/dev/null 2>&1
 }
 
 function test_valid_filter
@@ -75,7 +67,6 @@ function test_valid_filter
 	# Trace apps
 	start_lttng_tracing $SESSION_NAME
 	run_apps
-	wait_apps
 	stop_lttng_tracing $SESSION_NAME
 
 	# Destroy session

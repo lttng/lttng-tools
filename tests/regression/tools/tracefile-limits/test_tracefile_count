@@ -25,7 +25,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
-NUM_TESTS=82
+NUM_TESTS=74
 
 NUM_CPUS=`nproc`
 
@@ -34,14 +34,6 @@ source $TESTDIR/utils/utils.sh
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
-
-function wait_apps
-{
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 0.5
-	done
-	pass "Wait for applications to end"
-}
 
 function enable_lttng_channel_count_limit ()
 {
@@ -126,9 +118,7 @@ function test_tracefile_count_limit ()
 
 	start_lttng_tracing $session_name
 
-	$TESTAPP_BIN $num_iter >/dev/null 2>&1 &
-
-	wait_apps
+	$TESTAPP_BIN $num_iter >/dev/null 2>&1
 
 	stop_lttng_tracing $session_name
 
