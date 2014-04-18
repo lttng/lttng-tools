@@ -28,7 +28,7 @@ TESTAPP_NAME="gen-ust-nevents"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=100
 NR_USEC_WAIT=1
-NUM_TESTS=9
+NUM_TESTS=8
 
 source $TESTDIR/utils/utils.sh
 
@@ -44,15 +44,7 @@ function enable_ust_lttng_all_event_exclusion()
 
 function run_apps
 {
-	 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
-}
-
-function wait_apps
-{
-	while [ -n "$(pidof $BIN_NAME)" ]; do
-		sleep 1
-	done
-	pass "Wait for application end"
+	 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 }
 
 function test_exclusion
@@ -67,7 +59,6 @@ function test_exclusion
 	# Trace apps
 	start_lttng_tracing $SESSION_NAME
 	run_apps
-	wait_apps
 	stop_lttng_tracing $SESSION_NAME
 
 	# Destroy session

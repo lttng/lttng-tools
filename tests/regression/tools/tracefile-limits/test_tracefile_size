@@ -26,21 +26,13 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-NUM_TESTS=47
+NUM_TESTS=42
 
 source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
-
-function wait_apps
-{
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 0.5
-	done
-	pass "Wait for applications to end"
-}
 
 function enable_lttng_channel_size_limit ()
 {
@@ -118,9 +110,7 @@ function test_tracefile_size_limit ()
 
 	start_lttng_tracing $session_name
 
-	$TESTAPP_BIN $NR_ITER >/dev/null 2>&1 &
-
-	wait_apps
+	$TESTAPP_BIN $NR_ITER >/dev/null 2>&1
 
 	stop_lttng_tracing $session_name
 
