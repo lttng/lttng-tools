@@ -23,6 +23,8 @@
 #include <common/uri.h>
 #include <common/utils.h>
 
+#include <common/compat/endian.h>
+
 #include "fd-limit.h"
 #include "jul-thread.h"
 #include "lttng-sessiond.h"

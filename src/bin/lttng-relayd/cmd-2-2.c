@@ -23,6 +23,8 @@
 #include <common/common.h>
 #include <common/sessiond-comm/relayd.h>
 
+#include <common/compat/endian.h>
+
 #include "cmd-generic.h"
 #include "cmd-2-1.h"
 #include "utils.h"

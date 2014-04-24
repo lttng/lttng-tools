@@ -81,7 +81,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 		size = poll_max_size;
 	}
 
-	ret = epoll_create1(flags);
+	ret = compat_glibc_epoll_create(size, flags);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
 		PERROR("epoll_create1");

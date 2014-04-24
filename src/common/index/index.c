@@ -24,6 +24,7 @@
 
 #include <common/common.h>
 #include <common/defaults.h>
+#include <common/compat/endian.h>
 #include <common/utils.h>
 
 #include "index.h"

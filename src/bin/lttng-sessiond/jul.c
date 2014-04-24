@@ -22,6 +22,8 @@
 #include <common/common.h>
 #include <common/sessiond-comm/jul.h>
 
+#include <common/compat/endian.h>
+
 #include "jul.h"
 #include "ust-app.h"
 #include "utils.h"

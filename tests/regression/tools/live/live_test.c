@@ -43,6 +43,8 @@
 #include <bin/lttng-relayd/lttng-viewer-abi.h>
 #include <common/index/ctf-index.h>
 
+#include <common/compat/endian.h>
+
 #define SESSION1 "test1"
 #define RELAYD_URL "net://localhost"
 #define LIVE_TIMER 2000000

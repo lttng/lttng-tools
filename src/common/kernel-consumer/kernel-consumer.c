@@ -35,6 +35,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/compat/fcntl.h>
+#include <common/compat/endian.h>
 #include <common/pipe.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>

@@ -23,6 +23,7 @@
 
 #include <bin/lttng-consumerd/health-consumerd.h>
 #include <common/common.h>
+#include <common/compat/endian.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/consumer-stream.h>

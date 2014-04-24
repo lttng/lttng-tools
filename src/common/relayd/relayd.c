@@ -25,6 +25,7 @@
 
 #include <common/common.h>
 #include <common/defaults.h>
+#include <common/compat/endian.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/index/ctf-index.h>
 

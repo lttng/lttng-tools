@@ -37,6 +37,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/relayd/relayd.h>
 #include <common/compat/fcntl.h>
+#include <common/compat/endian.h>
 #include <common/consumer-metadata-cache.h>
 #include <common/consumer-stream.h>
 #include <common/consumer-timer.h>

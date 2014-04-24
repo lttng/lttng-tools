@@ -52,6 +52,8 @@ static inline void __lttng_poll_free(void *events)
 #ifdef HAVE_EPOLL
 #include <sys/epoll.h>
 #include <stdio.h>
+#include <features.h>
+#include <common/compat/fcntl.h>
 
 /* See man epoll(7) for this define path */
 #define COMPAT_EPOLL_PROC_PATH "/proc/sys/fs/epoll/max_user_watches"
@@ -71,7 +73,17 @@ enum {
 	LPOLLNVAL = EPOLLHUP,
 	LPOLLRDHUP = EPOLLRDHUP,
 	/* Close on exec feature of epoll */
+#if __GLIBC_PREREQ(2, 9)
 	LTTNG_CLOEXEC = EPOLL_CLOEXEC,
+#else
+	/*
+	 * EPOLL_CLOEXEC was added in glibc 2.8 (usually used in conjunction with
+	 * epoll_create1(..)), but since neither EPOLL_CLOEXEC exists nor
+	 * epoll_create1(..), we set it to FD_CLOEXEC so that we can pass it
+	 * directly to fcntl(..) instead.
+	 */
+	LTTNG_CLOEXEC = FD_CLOEXEC,
+#endif
 };
 
 struct compat_epoll_event {
@@ -114,6 +126,27 @@ extern int compat_epoll_create(struct lttng_poll_event *events,
 		int size, int flags);
 #define lttng_poll_create(events, size, flags) \
 	compat_epoll_create(events, size, flags)
+
+#if __GLIBC_PREREQ(2, 9)
+static inline int compat_glibc_epoll_create(int size __attribute__((unused)),
+		int flags)
+{
+	return epoll_create1(flags);
+}
+#else
+static inline int compat_glibc_epoll_create(int size, int flags)
+{
+	/*
+	 * epoll_create1 was added in glibc 2.9, but unfortunatly reverting to
+	 * epoll_create(..) also means that we lose the possibility to
+	 * directly set the EPOLL_CLOEXEC, so try and do it anyway but through
+	 * fcntl(..).
+	 */
+	int efd = epoll_create(size);
+	assert(fcntl(efd, F_SETFD, flags) != -1);
+	return efd;
+}
+#endif
 
 /*
  * Wait on epoll set with the number of fd registered to the lttng_poll_event
