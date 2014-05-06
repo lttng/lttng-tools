@@ -7,5 +7,4 @@ libconfig_la_CPPFLAGS = $(XML_CPPFLAGS) $(AM_CPPFLAGS)
 libconfig_la_LIBADD = $(XML_LIBS)
 
 xmldir = $(datadir)/xml/lttng
-xml_DATA = session.xsd
 dist_xml_DATA = session.xsd
