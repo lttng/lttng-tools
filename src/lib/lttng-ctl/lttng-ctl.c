@@ -695,6 +695,62 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 }
 
 /*
+ * Depending on the event, return a newly allocated JUL filter expression or
+ * NULL if not applicable.
+ *
+ * An event with NO loglevel and the name is * will return NULL.
+ */
+static char *set_jul_filter(const char *filter, struct lttng_event *ev)
+{
+	int err;
+	char *jul_filter = NULL;
+
+	assert(ev);
+
+	/* Don't add filter for the '*' event. */
+	if (ev->name[0] != '*') {
+		if (filter) {
+			err = asprintf(&jul_filter, "%s && logger_name == \"%s\"", filter,
+					ev->name);
+		} else {
+			err = asprintf(&jul_filter, "logger_name == \"%s\"", ev->name);
+		}
+		if (err < 0) {
+			PERROR("asprintf");
+			goto end;
+		}
+	}
+
+	/* Add loglevel filtering if any for the JUL domain. */
+	if (ev->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+		char *op;
+
+		if (ev->loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
+			op = ">=";
+		} else {
+			op = "==";
+		}
+
+		if (filter) {
+			err = asprintf(&jul_filter, "%s && int_loglevel %s %d", filter, op,
+					ev->loglevel);
+		} else {
+			err = asprintf(&jul_filter, "int_loglevel %s %d", op,
+					ev->loglevel);
+		}
+		if (err < 0) {
+			PERROR("asprintf");
+			free(jul_filter);
+			jul_filter = NULL;
+			goto end;
+		}
+	}
+
+end:
+	return jul_filter;
+}
+
+/*
  * Enable event(s) for a channel, possibly with exclusions and a filter.
  * If no event name is specified, all events are enabled.
  * If no channel name is specified, the default name is used.
@@ -768,47 +824,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	/* Parse filter expression */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL) {
-			int err;
-
-			if (ev->name[0] != '*') {
-				if (filter_expression) {
-					err = asprintf(&jul_filter, "%s && logger_name == \"%s\"",
-							filter_expression, ev->name);
-				} else {
-					err = asprintf(&jul_filter, "logger_name == \"%s\"",
-							ev->name);
-				}
-				if (err < 0) {
-					PERROR("asprintf");
-					return -LTTNG_ERR_NOMEM;
-				}
-				filter_expression = jul_filter;
-			}
-
-			/* Add loglevel filtering if any for the JUL domain. */
-			if (ev->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-				char *op;
-
-				if (ev->loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
-					op = ">=";
-				} else {
-					op = "==";
-				}
-
-				if (filter_expression) {
-					err = asprintf(&jul_filter, "%s && int_loglevel %s %d",
-							filter_expression, op, ev->loglevel);
-				} else {
-					err = asprintf(&jul_filter, "int_loglevel %s %d", op,
-							ev->loglevel);
-				}
-				if (err < 0) {
-					PERROR("asprintf");
-					return -LTTNG_ERR_NOMEM;
-				}
-				filter_expression = jul_filter;
-			}
-
+			/* Setup JUL filter if needed. */
+			filter_expression = set_jul_filter(filter_expression, ev);
 			if (!filter_expression) {
 				goto ask_sessiond;
 			}
