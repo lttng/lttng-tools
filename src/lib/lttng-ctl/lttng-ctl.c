@@ -749,9 +749,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 * filtering by logger name.
 	 */
 	if (exclusion_count == 0 && filter_expression == NULL &&
-			(handle->domain.type != LTTNG_DOMAIN_JUL || ev->name[0] == '*')) {
-		ret = lttng_ctl_ask_sessiond(&lsm, NULL);
-		return ret;
+			handle->domain.type != LTTNG_DOMAIN_JUL) {
+		goto ask_sessiond;
 	}
 
 	/*
@@ -760,22 +759,52 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 */
 
 	/* Parse filter expression */
-	if (filter_expression != NULL ||
-			(handle->domain.type == LTTNG_DOMAIN_JUL && ev->name[0] != '*')) {
+	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL) {
 			int err;
 
-			if (filter_expression) {
-				err = asprintf(&jul_filter, "%s && logger_name == \"%s\"",
-						filter_expression, ev->name);
-			} else {
-				err = asprintf(&jul_filter, "logger_name == \"%s\"", ev->name);
+			if (ev->name[0] != '*') {
+				if (filter_expression) {
+					err = asprintf(&jul_filter, "%s && logger_name == \"%s\"",
+							filter_expression, ev->name);
+				} else {
+					err = asprintf(&jul_filter, "logger_name == \"%s\"",
+							ev->name);
+				}
+				if (err < 0) {
+					PERROR("asprintf");
+					return -LTTNG_ERR_NOMEM;
+				}
+				filter_expression = jul_filter;
 			}
-			if (err < 0) {
-				PERROR("asprintf");
-				return -LTTNG_ERR_NOMEM;
+
+			/* Add loglevel filtering if any for the JUL domain. */
+			if (ev->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+				char *op;
+
+				if (ev->loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
+					op = ">=";
+				} else {
+					op = "==";
+				}
+
+				if (filter_expression) {
+					err = asprintf(&jul_filter, "%s && int_loglevel %s %d",
+							filter_expression, op, ev->loglevel);
+				} else {
+					err = asprintf(&jul_filter, "int_loglevel %s %d", op,
+							ev->loglevel);
+				}
+				if (err < 0) {
+					PERROR("asprintf");
+					return -LTTNG_ERR_NOMEM;
+				}
+				filter_expression = jul_filter;
 			}
-			filter_expression = jul_filter;
+
+			if (!filter_expression) {
+				goto ask_sessiond;
+			}
 		}
 
 		/*
@@ -909,6 +938,10 @@ filter_alloc_error:
 		perror("fclose");
 	}
 	free(jul_filter);
+	return ret;
+
+ask_sessiond:
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 	return ret;
 }
 
