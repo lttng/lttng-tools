@@ -29,9 +29,7 @@ EVENT_NAME="JTestLTTng"
 EVENT_NAME2="JTestLTTng2"
 JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/java/liblttng-ust-jul.jar"
 
-TRACE_PATH=$(mktemp -d)
-
-NUM_TESTS=66
+NUM_TESTS=92
 
 source $TESTDIR/utils/utils.sh
 
@@ -49,6 +47,24 @@ function wait_apps
 		sleep 0.5
 	done
 	pass "Wait for applications to end"
+}
+
+function enable_jul_loglevel_only()
+{
+	sess_name=$1
+	event_name="$2"
+	loglevel=$3
+	channel_name=$4
+
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
+	ok $? "Enable JUL event $event_name for session $sess_name with loglevel-only $loglevel"
 }
 
 # MUST set TESTDIR before calling those functions
@@ -201,6 +217,40 @@ function test_jul_loglevel_multiple ()
 	fi
 }
 
+function test_jul_multi_session_loglevel()
+{
+	diag "Test JUL with multiple session"
+
+	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	enable_jul_loglevel_only $SESSION_NAME-1 '*' "JUL_INFO"
+	start_lttng_tracing $SESSION_NAME-1
+
+	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	enable_jul_loglevel_only $SESSION_NAME-2 '*' "JUL_FINEST"
+	start_lttng_tracing $SESSION_NAME-2
+
+	# Run 5 times with a 1 second delay and fire second TP.
+	run_app 1 1
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME-1
+	stop_lttng_tracing $SESSION_NAME-2
+	destroy_lttng_session $SESSION_NAME-1
+	destroy_lttng_session $SESSION_NAME-2
+
+	# Expecting 6 events being the main event plus the second tp.
+	trace_matches $EVENT_NAME $(($NR_ITER + 1)) $TRACE_PATH/$SESSION_NAME-1
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	# Expectin 5 events being the finest TP.
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 function test_jul_multi_session()
 {
 	diag "Test JUL with multiple session"
@@ -235,6 +285,44 @@ function test_jul_multi_session()
 	fi
 }
 
+function test_jul_destroy_session()
+{
+	diag "Test JUL two session with destroy"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH/first-sess
+	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay
+	run_app 0 1
+
+	sleep 1
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting at least one event num 1
+	validate_trace $EVENT_NAME $TRACE_PATH/first-sess
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH/second-sess
+	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
+	start_lttng_tracing $SESSION_NAME
+
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting only one event num 2
+	trace_matches $EVENT_NAME2 1 $TRACE_PATH/second-sess
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -250,6 +338,8 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 	start_lttng_sessiond
 
 	tests=(
+		test_jul_multi_session_loglevel
+		test_jul_destroy_session
 		test_jul_loglevel
 		test_jul_loglevel_multiple
 		test_jul_before_start
@@ -259,6 +349,8 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 
 	for fct_test in ${tests[@]};
 	do
+		TRACE_PATH=$(mktemp -d)
+
 		${fct_test}
 		if [ $? -ne 0 ]; then
 			break;
