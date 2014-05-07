@@ -79,11 +79,7 @@ static int stop_tracing(void)
 		session_name = opt_session_name;
 	}
 
-	if (opt_no_wait) {
-		ret = lttng_stop_tracing_no_wait(session_name);
-	} else {
-		ret = lttng_stop_tracing(session_name);
-	}
+	ret = lttng_stop_tracing_no_wait(session_name);
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_TRACE_ALREADY_STOPPED:
@@ -94,6 +90,29 @@ static int stop_tracing(void)
 			break;
 		}
 		goto free_name;
+	}
+
+	if (!opt_no_wait) {
+		_MSG("Waiting for data availability");
+		fflush(stdout);
+		do {
+			ret = lttng_data_pending(session_name);
+			if (ret < 0) {
+				/* Return the data available call error. */
+				goto error;
+			}
+
+			/*
+			 * Data sleep time before retrying (in usec). Don't sleep if the call
+			 * returned value indicates availability.
+			 */
+			if (ret) {
+				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+				_MSG(".");
+				fflush(stdout);
+			}
+		} while (ret != 0);
+		MSG("");
 	}
 
 	ret = CMD_SUCCESS;

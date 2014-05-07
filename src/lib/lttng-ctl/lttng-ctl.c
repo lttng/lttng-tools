@@ -579,9 +579,6 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		goto end;
 	}
 
-	_MSG("Waiting for data availability");
-	fflush(stdout);
-
 	/* Check for data availability */
 	do {
 		data_ret = lttng_data_pending(session_name);
@@ -597,12 +594,8 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		 */
 		if (data_ret) {
 			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
-			_MSG(".");
-			fflush(stdout);
 		}
 	} while (data_ret != 0);
-
-	MSG("");
 
 end:
 error:
