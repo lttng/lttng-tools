@@ -2544,5 +2544,12 @@ int config_load_session(const char *path, const char *session_name,
 	}
 end:
 	fini_session_config_validation_ctx(&validation_ctx);
+	if (ret == -LTTNG_ERR_LOAD_SESSION_NOENT && !session_name && !path) {
+		/*
+		 * Don't report an error if no sessions are found when called
+		 * without a session_name or a search path.
+		 */
+		ret = 0;
+	}
 	return ret;
 }
