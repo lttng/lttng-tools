@@ -121,4 +121,6 @@ int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 
 void *thread_ht_cleanup(void *data);
 
+void sessiond_notify_ready(void);
+
 #endif /* _LTT_SESSIOND_H */

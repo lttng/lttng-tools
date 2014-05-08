@@ -69,6 +69,7 @@
 #include "ust-thread.h"
 #include "jul-thread.h"
 #include "save.h"
+#include "load-session-thread.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -80,6 +81,7 @@ static int opt_sig_parent;
 static int opt_verbose_consumer;
 static int opt_daemon, opt_background;
 static int opt_no_kernel;
+static char *opt_load_session_path;
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
 static char *rundir;
@@ -152,6 +154,7 @@ static const struct option long_options[] = {
 	{ "pidfile", 1, 0, 'p' },
 	{ "jul-tcp-port", 1, 0, 'J' },
 	{ "config", 1, 0, 'f' },
+	{ "load", 1, 0, 'l' },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -200,6 +203,7 @@ static pthread_t dispatch_thread;
 static pthread_t health_thread;
 static pthread_t ht_cleanup_thread;
 static pthread_t jul_reg_thread;
+static pthread_t load_session_thread;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -291,17 +295,20 @@ int is_root;			/* Set to 1 if the daemon is running as root */
 
 const char * const config_section_name = "sessiond";
 
+/* Load session thread information to operate. */
+struct load_session_thread_data *load_info;
+
 /*
  * Whether sessiond is ready for commands/health check requests.
  * NR_LTTNG_SESSIOND_READY must match the number of calls to
- * lttng_sessiond_notify_ready().
+ * sessiond_notify_ready().
  */
-#define NR_LTTNG_SESSIOND_READY		2
+#define NR_LTTNG_SESSIOND_READY		3
 int lttng_sessiond_ready = NR_LTTNG_SESSIOND_READY;
 
 /* Notify parents that we are ready for cmd and health check */
-static
-void lttng_sessiond_notify_ready(void)
+LTTNG_HIDDEN
+void sessiond_notify_ready(void)
 {
 	if (uatomic_sub_return(&lttng_sessiond_ready, 1) == 0) {
 		/*
@@ -645,6 +652,15 @@ static void cleanup(void)
 
 	if (opt_pidfile) {
 		free(opt_pidfile);
+	}
+
+	if (opt_load_session_path) {
+		free(opt_load_session_path);
+	}
+
+	if (load_info) {
+		load_session_destroy_data(load_info);
+		free(load_info);
 	}
 
 	/* <fun> */
@@ -3723,7 +3739,7 @@ static void *thread_manage_health(void *data)
 		goto error;
 	}
 
-	lttng_sessiond_notify_ready();
+	sessiond_notify_ready();
 
 	while (1) {
 		DBG("Health check ready");
@@ -3875,7 +3891,12 @@ static void *thread_manage_clients(void *data)
 		goto error;
 	}
 
-	lttng_sessiond_notify_ready();
+	sessiond_notify_ready();
+	ret = sem_post(&load_info->message_thread_ready);
+	if (ret) {
+		PERROR("sem_post message_thread_ready");
+		goto error;
+	}
 
 	/* This testpoint is after we signal readiness to the parent. */
 	if (testpoint(sessiond_thread_manage_clients)) {
@@ -4110,6 +4131,7 @@ static void usage(void)
 	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
 	fprintf(stderr, "      --jul-tcp-port                 JUL application registration TCP port\n");
 	fprintf(stderr, "  -f  --config                       Load daemon configuration file\n");
+	fprintf(stderr, "  -l  --load PATH                    Load session configuration\n");
 }
 
 /*
@@ -4229,6 +4251,13 @@ static int set_option(int opt, const char *arg, const char *optname)
 		DBG3("JUL TCP port set to non default: %u", jul_tcp_port);
 		break;
 	}
+	case 'l':
+		opt_load_session_path = strdup(arg);
+		if (!opt_load_session_path) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
+		break;
 	default:
 		/* Unknown option or other error.
 		 * Error is printed by getopt, just return */
@@ -4757,6 +4786,35 @@ error:
 }
 
 /*
+ * Start the load session thread and dettach from it so the main thread can
+ * continue. This does not return a value since whatever the outcome, the main
+ * thread will continue.
+ */
+static void start_load_session_thread(void)
+{
+	int ret;
+
+	/* Create session loading thread. */
+	ret = pthread_create(&load_session_thread, NULL, thread_load_session,
+			load_info);
+	if (ret != 0) {
+		PERROR("pthread_create load_session_thread");
+		goto error_create;
+	}
+
+	ret = pthread_detach(load_session_thread);
+	if (ret != 0) {
+		PERROR("pthread_detach load_session_thread");
+	}
+
+	/* Everything went well so don't cleanup anything. */
+
+error_create:
+	/* The cleanup() function will destroy the load_info data. */
+	return;
+}
+
+/*
  * main
  */
 int main(int argc, char **argv)
@@ -5065,6 +5123,11 @@ int main(int argc, char **argv)
 	/* This is to get the TCP timeout value. */
 	lttcomm_inet_init();
 
+	if (load_session_init_data(&load_info) < 0) {
+		goto exit;
+	}
+	load_info->path = opt_load_session_path;
+
 	/*
 	 * Initialize the health check subsystem. This call should set the
 	 * appropriate time values.
@@ -5148,7 +5211,12 @@ int main(int argc, char **argv)
 			PERROR("pthread_create kernel");
 			goto exit_kernel;
 		}
+	}
 
+	/* Load possible session(s). */
+	start_load_session_thread();
+
+	if (is_root && !opt_no_kernel) {
 		ret = pthread_join(kernel_thread, &status);
 		if (ret != 0) {
 			PERROR("pthread_join");
