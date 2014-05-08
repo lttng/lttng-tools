@@ -238,6 +238,7 @@ int config_get_section_entries(const char *override_path, const char *section,
 	ret = ini_parse_file(config_file,
 			(ini_entry_handler) config_entry_handler_filter, (void *) &filter);
 
+	fclose(config_file);
 end:
 	return ret;
 }
