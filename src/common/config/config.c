@@ -2436,7 +2436,7 @@ int load_session_from_path(const char *path, const char *session_name,
 				continue;
 			}
 
-			if (path_len + file_name_len > PATH_MAX) {
+			if (path_len + file_name_len >= PATH_MAX) {
 				continue;
 			}
 
