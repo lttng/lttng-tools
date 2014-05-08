@@ -2305,6 +2305,11 @@ domain_init_error:
 		}
 	}
 end:
+	if (ret < 0) {
+		ERR("Failed to load session %s: %s", name, lttng_strerror(ret));
+		lttng_destroy_session(name);
+	}
+
 	free(kernel_domain);
 	free(ust_domain);
 	free(jul_domain);
