@@ -150,7 +150,7 @@ do
 		break;
 	fi
 	# Only delete if successful
-	#rm -rf $TRACE_PATH
+	rm -rf $TRACE_PATH
 done
 
 stop_lttng_sessiond
