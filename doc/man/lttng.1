@@ -1,4 +1,4 @@
-.TH "LTTNG" "1" "February 05th, 2014" "" ""
+.TH "LTTNG" "1" "May 13th, 2014" "" ""
 
 .SH "NAME"
 lttng \(em LTTng 2.x tracer control command line tool
@@ -736,6 +736,59 @@ List available domain(s)
 .PP
 
 .PP
+\fBload\fP [OPTIONS] [NAME]
+.RS
+Load tracing session configuration
+
+If NAME is omitted, all session configurations found in both the user's session
+configuration directory and the system session configuration directory will be
+loaded.
+
+.B OPTIONS:
+
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-a, \-\-all"
+Load all session configurations (default).
+.TP
+.BR "\-i, \-\-input-path PATH"
+Specify the input path for session configurations.
+.TP
+.BR "\-f, -\-force"
+Overwrite current session configuration(s) if a session of the same name
+already exists.
+.RE
+.PP
+
+.PP
+\fBsave\fP [OPTIONS] [SESSION]
+.RS
+Save tracing session configuration
+
+If SESSION is omitted, all session configurations will be saved to individual
+\fB.lttng\fP files under the user's session configuration directory. The
+default session configuration file naming scheme is \fBSESSION.lttng\fP.
+
+.B OPTIONS:
+
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-a, \-\-all"
+Save all session configurations (default).
+.TP
+.BR "\-o, \-\-output-path PATH"
+Specify the output path for saved sessions (default: ~/.lttng/sessions/).
+.TP
+.BR "\-f, -\-force"
+Overwrite session configuration file if session name clashes.
+.RE
+.PP
+
+.PP
 \fBset-session\fP NAME [OPTIONS]
 .RS
 Set current session name
@@ -978,6 +1031,12 @@ Note that all command line options override environment variables.
 .IP "LTTNG_SESSIOND_PATH"
 Allows one to specify the full session daemon binary path to lttng command line
 tool. You can also use \-\-sessiond-path option having the same effect.
+.PP
+
+.PP
+.IP "LTTNG_SESSION_CONFIG_XSD_PATH"
+Set the path in which the \fBsession.xsd\fP session configuration schema may be
+found.
 .PP
 
 .SH "SEE ALSO"
