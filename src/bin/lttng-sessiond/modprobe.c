@@ -25,66 +25,73 @@
 #include "modprobe.h"
 #include "kern-modules.h"
 
-/* LTTng kernel tracer base modules list */
-const struct kern_modules_param kern_modules_control[] = {
-	{ "lttng-tracer", 1 },	/* MUST be loaded first so keep at top */
-	{ "lttng-lib-ring-buffer", 1 },
-	{ "lttng-ring-buffer-client-discard", 1 },
-	{ "lttng-ring-buffer-client-overwrite", 1 },
-	{ "lttng-ring-buffer-metadata-client", 1 },
-	{ "lttng-ring-buffer-client-mmap-discard", 1 },
-	{ "lttng-ring-buffer-client-mmap-overwrite", 1 },
-	{ "lttng-ring-buffer-metadata-mmap-client", 1 },
-	{ "lttng-types", 0 },
-	{ "lttng-ftrace", 0 },
-	{ "lttng-kprobes", 0 },
-	{ "lttng-kretprobes", 0 },
+#define LTTNG_MOD_REQUIRED	1
+#define LTTNG_MOD_OPTIONAL	0
+
+/* LTTng kernel tracer mandatory core modules list */
+struct kern_modules_param kern_modules_control_core[] = {
+	{ "lttng-tracer" },	/* MUST be loaded first so keep at top */
+	{ "lttng-lib-ring-buffer" },
+	{ "lttng-ring-buffer-client-discard" },
+	{ "lttng-ring-buffer-client-overwrite" },
+	{ "lttng-ring-buffer-metadata-client" },
+	{ "lttng-ring-buffer-client-mmap-discard" },
+	{ "lttng-ring-buffer-client-mmap-overwrite" },
+	{ "lttng-ring-buffer-metadata-mmap-client" },
+};
+
+/* LTTng kernel tracer optional base modules list */
+struct kern_modules_param kern_modules_control_opt[] = {
+	{ "lttng-types" },
+	{ "lttng-ftrace" },
+	{ "lttng-kprobes" },
+	{ "lttng-kretprobes" },
 };
 
 /* LTTng kernel tracer probe modules list */
 const struct kern_modules_param kern_modules_probes[] = {
-	{ "lttng-probe-asoc", 0 },
-	{ "lttng-probe-block", 0 },
-	{ "lttng-probe-btrfs", 0 },
-	{ "lttng-probe-compaction", 0 },
-	{ "lttng-probe-ext3", 0 },
-	{ "lttng-probe-ext4", 0 },
-	{ "lttng-probe-gpio", 0 },
-	{ "lttng-probe-irq", 0 },
-	{ "lttng-probe-jbd", 0 },
-	{ "lttng-probe-jbd2", 0 },
-	{ "lttng-probe-kmem", 0 },
-	{ "lttng-probe-kvm", 0 },
-	{ "lttng-probe-kvm-x86", 0 },
-	{ "lttng-probe-kvm-x86-mmu", 0 },
-	{ "lttng-probe-lock", 0 },
-	{ "lttng-probe-module", 0 },
-	{ "lttng-probe-napi", 0 },
-	{ "lttng-probe-net", 0 },
-	{ "lttng-probe-power", 0 },
-	{ "lttng-probe-printk", 0 },
-	{ "lttng-probe-random", 0 },
-	{ "lttng-probe-rcu", 0 },
-	{ "lttng-probe-regmap", 0 },
-	{ "lttng-probe-regulator", 0 },
-	{ "lttng-probe-rpm", 0 },
-	{ "lttng-probe-sched", 0 },
-	{ "lttng-probe-scsi", 0 },
-	{ "lttng-probe-signal", 0 },
-	{ "lttng-probe-skb", 0 },
-	{ "lttng-probe-sock", 0 },
-	{ "lttng-probe-statedump", 0 },
-	{ "lttng-probe-sunrpc", 0 },
-	{ "lttng-probe-timer", 0 },
-	{ "lttng-probe-udp", 0 },
-	{ "lttng-probe-vmscan", 0 },
-	{ "lttng-probe-v4l2", 0 },
-	{ "lttng-probe-workqueue", 0 },
-	{ "lttng-probe-writeback", 0 },
+	{ "lttng-probe-asoc" },
+	{ "lttng-probe-block" },
+	{ "lttng-probe-btrfs" },
+	{ "lttng-probe-compaction" },
+	{ "lttng-probe-ext3" },
+	{ "lttng-probe-ext4" },
+	{ "lttng-probe-gpio" },
+	{ "lttng-probe-irq" },
+	{ "lttng-probe-jbd" },
+	{ "lttng-probe-jbd2" },
+	{ "lttng-probe-kmem" },
+	{ "lttng-probe-kvm" },
+	{ "lttng-probe-kvm-x86" },
+	{ "lttng-probe-kvm-x86-mmu" },
+	{ "lttng-probe-lock" },
+	{ "lttng-probe-module" },
+	{ "lttng-probe-napi" },
+	{ "lttng-probe-net" },
+	{ "lttng-probe-power" },
+	{ "lttng-probe-printk" },
+	{ "lttng-probe-random" },
+	{ "lttng-probe-rcu" },
+	{ "lttng-probe-regmap" },
+	{ "lttng-probe-regulator" },
+	{ "lttng-probe-rpm" },
+	{ "lttng-probe-sched" },
+	{ "lttng-probe-scsi" },
+	{ "lttng-probe-signal" },
+	{ "lttng-probe-skb" },
+	{ "lttng-probe-sock" },
+	{ "lttng-probe-statedump" },
+	{ "lttng-probe-sunrpc" },
+	{ "lttng-probe-timer" },
+	{ "lttng-probe-udp" },
+	{ "lttng-probe-vmscan" },
+	{ "lttng-probe-v4l2" },
+	{ "lttng-probe-workqueue" },
+	{ "lttng-probe-writeback" },
 };
 
 void modprobe_remove_lttng(const struct kern_modules_param *modules,
-			   int entries)
+			   int entries, int required)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -95,26 +102,21 @@ void modprobe_remove_lttng(const struct kern_modules_param *modules,
 				modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe -r");
-			goto error;
+			return;
 		}
 		modprobe[sizeof(modprobe) - 1] = '\0';
 		ret = system(modprobe);
 		if (ret == -1) {
 			ERR("Unable to launch modprobe -r for module %s",
-					kern_modules_control[i].name);
-		} else if (kern_modules_control[i].required
-				&& WEXITSTATUS(ret) != 0) {
+					modules[i].name);
+		} else if (required && WEXITSTATUS(ret) != 0) {
 			ERR("Unable to remove module %s",
-					kern_modules_control[i].name);
+					modules[i].name);
 		} else {
 			DBG("Modprobe removal successful %s",
-					kern_modules_control[i].name);
+					modules[i].name);
 		}
 	}
-
-error:
-	return;
-
 }
 
 /*
@@ -122,8 +124,12 @@ error:
  */
 void modprobe_remove_lttng_control(void)
 {
-	return modprobe_remove_lttng(kern_modules_control,
-				     ARRAY_SIZE(kern_modules_control));
+	modprobe_remove_lttng(kern_modules_control_opt,
+				    ARRAY_SIZE(kern_modules_control_opt),
+				    LTTNG_MOD_OPTIONAL);
+	modprobe_remove_lttng(kern_modules_control_core,
+				     ARRAY_SIZE(kern_modules_control_core),
+				     LTTNG_MOD_REQUIRED);
 }
 
 /*
@@ -132,7 +138,8 @@ void modprobe_remove_lttng_control(void)
 void modprobe_remove_lttng_data(void)
 {
 	return modprobe_remove_lttng(kern_modules_probes,
-				     ARRAY_SIZE(kern_modules_list));
+				     ARRAY_SIZE(kern_modules_probes),
+				     LTTNG_MOD_OPTIONAL);
 }
 
 /*
@@ -144,7 +151,8 @@ void modprobe_remove_lttng_all(void)
 	modprobe_remove_lttng_control();
 }
 
-static int modprobe_lttng(const struct kern_modules_param *modules, int entries)
+static int modprobe_lttng(const struct kern_modules_param *modules,
+			  int entries, int required)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -152,7 +160,7 @@ static int modprobe_lttng(const struct kern_modules_param *modules, int entries)
 	for (i = 0; i < entries; i++) {
 		ret = snprintf(modprobe, sizeof(modprobe),
 				"/sbin/modprobe %s%s",
-				modules[i].required ? "" : "-q ",
+				required ? "" : "-q ",
 				modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe");
@@ -163,12 +171,10 @@ static int modprobe_lttng(const struct kern_modules_param *modules, int entries)
 		if (ret == -1) {
 			ERR("Unable to launch modprobe for module %s",
 					modules[i].name);
-		} else if (modules[i].required && WEXITSTATUS(ret) != 0) {
-			ERR("Unable to load module %s",
-					modules[i].name);
+		} else if (required && WEXITSTATUS(ret) != 0) {
+			ERR("Unable to load module %s", modules[i].name);
 		} else {
-			DBG("Modprobe successfully %s",
-					modules[i].name);
+			DBG("Modprobe successfully %s", modules[i].name);
 		}
 	}
 
@@ -181,14 +187,25 @@ error:
  */
 int modprobe_lttng_control(void)
 {
-	return modprobe_lttng(kern_modules_control,
-			      ARRAY_SIZE(kern_modules_control));
+	int ret;
+
+	ret = modprobe_lttng(kern_modules_control_core,
+			     ARRAY_SIZE(kern_modules_control_core),
+			     LTTNG_MOD_REQUIRED);
+	if (ret != 0)
+		return ret;
+	ret = modprobe_lttng(kern_modules_control_opt,
+			      ARRAY_SIZE(kern_modules_control_opt),
+			      LTTNG_MOD_OPTIONAL);
+	return ret;
 }
+
 /*
  * Load data kernel module(s).
  */
 int modprobe_lttng_data(void)
 {
 	return modprobe_lttng(kern_modules_probes,
-			      ARRAY_SIZE(kern_modules_probes));
+			      ARRAY_SIZE(kern_modules_probes),
+			      LTTNG_MOD_OPTIONAL);
 }

@@ -29,7 +29,6 @@
 
 struct kern_modules_param {
 	const char *name;
-	int required;
 };
 
 #endif /* _KERN_MODULES_H */
