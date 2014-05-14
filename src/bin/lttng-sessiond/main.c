@@ -4913,7 +4913,7 @@ int main(int argc, char **argv)
 	ret = pthread_create(&apps_notify_thread, NULL,
 			ust_thread_manage_notify, (void *) NULL);
 	if (ret != 0) {
-		PERROR("pthread_create apps");
+		PERROR("pthread_create notify");
 		goto exit_apps_notify;
 	}
 
@@ -4921,7 +4921,7 @@ int main(int argc, char **argv)
 	ret = pthread_create(&jul_reg_thread, NULL,
 			jul_thread_manage_registration, (void *) NULL);
 	if (ret != 0) {
-		PERROR("pthread_create apps");
+		PERROR("pthread_create JUL");
 		goto exit_jul_reg;
 	}
 
