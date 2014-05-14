@@ -90,6 +90,9 @@
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
 #define DEFAULT_LTTNG_SESSIOND_JULPORT_FILE     "jul.port"
 
+/* Default probes list */
+#define DEFAULT_LTTNG_KMOD_PROBES		"LTTNG_KMOD_PROBES"
+
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"

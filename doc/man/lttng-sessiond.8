@@ -81,6 +81,11 @@ No kernel tracer support
 .BR "    --jul-tcp-port"
 JUL application registration TCP port (default: 5345)
 .TP
+.BR "    --kmod-probes=probe1, probe2, ..."
+Specify the kernel modules containing LTTng probes to load by the session daemon.
+Only the component name of the probe needs to be specified, e.g. to load the
+lttng-probe-irq and lttng-probe-sched use: --kmod-probes="irq, sched".
+.TP
 .BR "-c, --client-sock=PATH"
 Specify path for the client unix socket
 .TP
@@ -153,6 +158,8 @@ parameter: the timeout value, in milliseconds. A value of 0 or -1 uses
 the timeout of the operating system (this is the default).
 .IP "LTTNG_SESSION_CONFIG_XSD_PATH"
 Specify the path that contains the XML session configuration schema (xsd).
+.IP "LTTNG_KMOD_PROBES"
+Specify the kernel modules probes that should be loaded by the session daemon.
 .SH "SEE ALSO"
 
 .PP

@@ -155,6 +155,7 @@ static const struct option long_options[] = {
 	{ "jul-tcp-port", 1, 0, 'J' },
 	{ "config", 1, 0, 'f' },
 	{ "load", 1, 0, 'l' },
+	{ "kmod-probes", 1, 0, 'P' },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -4132,6 +4133,7 @@ static void usage(void)
 	fprintf(stderr, "      --jul-tcp-port                 JUL application registration TCP port\n");
 	fprintf(stderr, "  -f  --config                       Load daemon configuration file\n");
 	fprintf(stderr, "  -l  --load PATH                    Load session configuration\n");
+	fprintf(stderr, "      --kmod-probes                  Specify kernel module probes to load\n");
 }
 
 /*
@@ -4257,6 +4259,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 			perror("strdup");
 			ret = -ENOMEM;
 		}
+		break;
+	case 'P': /* probe modules list */
+		kmod_probes_list = strdup(arg);
 		break;
 	case 'f':
 		/* This is handled in set_options() thus silent break. */

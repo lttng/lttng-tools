@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <dgoulet@efficios.com>
+ *               2014 - Jan Glauber <jan.glauber@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -21,6 +22,7 @@
 #include <sys/wait.h>
 
 #include <common/common.h>
+#include <common/utils.h>
 
 #include "modprobe.h"
 #include "kern-modules.h"
@@ -49,7 +51,7 @@ struct kern_modules_param kern_modules_control_opt[] = {
 };
 
 /* LTTng kernel tracer probe modules list */
-const struct kern_modules_param kern_modules_probes[] = {
+struct kern_modules_param kern_modules_probes_default[] = {
 	{ "lttng-probe-asoc" },
 	{ "lttng-probe-block" },
 	{ "lttng-probe-btrfs" },
@@ -90,6 +92,10 @@ const struct kern_modules_param kern_modules_probes[] = {
 	{ "lttng-probe-writeback" },
 };
 
+/* dynamic probe modules list */
+static struct kern_modules_param *probes;
+static int nr_probes;
+
 void modprobe_remove_lttng(const struct kern_modules_param *modules,
 			   int entries, int required)
 {
@@ -116,6 +122,8 @@ void modprobe_remove_lttng(const struct kern_modules_param *modules,
 			DBG("Modprobe removal successful %s",
 					modules[i].name);
 		}
+		if (probes)
+			free(probes[i].name);
 	}
 }
 
@@ -125,11 +133,11 @@ void modprobe_remove_lttng(const struct kern_modules_param *modules,
 void modprobe_remove_lttng_control(void)
 {
 	modprobe_remove_lttng(kern_modules_control_opt,
-				    ARRAY_SIZE(kern_modules_control_opt),
-				    LTTNG_MOD_OPTIONAL);
+			      ARRAY_SIZE(kern_modules_control_opt),
+			      LTTNG_MOD_OPTIONAL);
 	modprobe_remove_lttng(kern_modules_control_core,
-				     ARRAY_SIZE(kern_modules_control_core),
-				     LTTNG_MOD_REQUIRED);
+			      ARRAY_SIZE(kern_modules_control_core),
+			      LTTNG_MOD_REQUIRED);
 }
 
 /*
@@ -137,9 +145,14 @@ void modprobe_remove_lttng_control(void)
  */
 void modprobe_remove_lttng_data(void)
 {
-	return modprobe_remove_lttng(kern_modules_probes,
-				     ARRAY_SIZE(kern_modules_probes),
-				     LTTNG_MOD_OPTIONAL);
+	if (probes) {
+		modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+		free(probes);
+		probes = NULL;
+	} else
+		modprobe_remove_lttng(kern_modules_probes_default,
+				      ARRAY_SIZE(kern_modules_probes_default),
+				      LTTNG_MOD_OPTIONAL);
 }
 
 /*
@@ -151,7 +164,7 @@ void modprobe_remove_lttng_all(void)
 	modprobe_remove_lttng_control();
 }
 
-static int modprobe_lttng(const struct kern_modules_param *modules,
+static int modprobe_lttng(struct kern_modules_param *modules,
 			  int entries, int required)
 {
 	int ret = 0, i;
@@ -195,8 +208,8 @@ int modprobe_lttng_control(void)
 	if (ret != 0)
 		return ret;
 	ret = modprobe_lttng(kern_modules_control_opt,
-			      ARRAY_SIZE(kern_modules_control_opt),
-			      LTTNG_MOD_OPTIONAL);
+			     ARRAY_SIZE(kern_modules_control_opt),
+			     LTTNG_MOD_OPTIONAL);
 	return ret;
 }
 
@@ -205,7 +218,67 @@ int modprobe_lttng_control(void)
  */
 int modprobe_lttng_data(void)
 {
-	return modprobe_lttng(kern_modules_probes,
-			      ARRAY_SIZE(kern_modules_probes),
-			      LTTNG_MOD_OPTIONAL);
+	int i, ret;
+	int entries = ARRAY_SIZE(kern_modules_probes_default);
+	char *list, *next;
+
+	/*
+	 * First take command line option, if not available take environment
+	 * variable.
+	 */
+	if (kmod_probes_list) {
+		list = kmod_probes_list;
+	} else {
+		list = utils_get_kmod_probes_list();
+	}
+	/* The default is to load ALL probes */
+	if (!list) {
+		return modprobe_lttng(kern_modules_probes_default, entries,
+				LTTNG_MOD_OPTIONAL);
+	}
+
+	/*
+	 * A probe list is available, so use it.
+	 * The number of probes is limited by the number of probes in the
+	 * default list.
+	 */
+	probes = zmalloc(sizeof(struct kern_modules_param *) * entries);
+	if (!probes) {
+		PERROR("malloc probe list");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < entries; i++) {
+		size_t name_len;
+
+		next = strtok(list, ",");
+		if (!next) {
+			goto out;
+		}
+		list = NULL;
+
+		/* filter leading spaces */
+		while (*next == ' ') {
+			next++;
+		}
+
+		/* Length 13 is "lttng-probe-" + \0 */
+		name_len = strlen(next) + 13;
+
+		probes[i].name = zmalloc(name_len);
+		if (!probes[i].name) {
+			PERROR("malloc probe list");
+			return -ENOMEM;
+		}
+
+		ret = snprintf(probes[i].name, name_len, "lttng-probe-%s", next);
+		if (ret < 0) {
+			PERROR("snprintf modprobe name");
+			goto out;
+		}
+	}
+
+out:
+	nr_probes = i;
+	return modprobe_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
 }

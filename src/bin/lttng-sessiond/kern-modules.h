@@ -28,7 +28,7 @@
 #define KERN_MODULES_MINOR         0
 
 struct kern_modules_param {
-	const char *name;
+	char *name;
 };
 
 #endif /* _KERN_MODULES_H */

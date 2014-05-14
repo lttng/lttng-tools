@@ -870,6 +870,16 @@ end:
 }
 
 /*
+ * Obtain the value of LTTNG_KMOD_PROBES environment variable, if exists.
+ * Otherwise returns an empty string.
+ */
+LTTNG_HIDDEN
+char *utils_get_kmod_probes_list(void)
+{
+	return getenv(DEFAULT_LTTNG_KMOD_PROBES);
+}
+
+/*
  * With the given format, fill dst with the time of len maximum siz.
  *
  * Return amount of bytes set in the buffer or else 0 on error.
