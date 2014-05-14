@@ -83,18 +83,16 @@ const struct kern_modules_param kern_modules_list[] = {
 	{ "lttng-probe-writeback", 0 },
 };
 
-/*
- * Remove control kernel module(s) in reverse load order.
- */
-void modprobe_remove_lttng_control(void)
+void modprobe_remove_lttng(const struct kern_modules_param *modules,
+			   int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
 
-	for (i = ARRAY_SIZE(kern_modules_control) - 1; i >= 0; i--) {
+	for (i = entries - 1; i >= 0; i--) {
 		ret = snprintf(modprobe, sizeof(modprobe),
 				"/sbin/modprobe -r -q %s",
-				kern_modules_control[i].name);
+				modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe -r");
 			goto error;
@@ -116,6 +114,16 @@ void modprobe_remove_lttng_control(void)
 
 error:
 	return;
+
+}
+
+/*
+ * Remove control kernel module(s) in reverse load order.
+ */
+void modprobe_remove_lttng_control(void)
+{
+	return modprobe_remove_lttng(kern_modules_control,
+				     ARRAY_SIZE(kern_modules_control));
 }
 
 /*
@@ -123,34 +131,8 @@ error:
  */
 void modprobe_remove_lttng_data(void)
 {
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = ARRAY_SIZE(kern_modules_list) - 1; i >= 0; i--) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe -r -q %s",
-				kern_modules_list[i].name);
-		if (ret < 0) {
-			PERROR("snprintf modprobe -r");
-			goto error;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe -r for module %s",
-					kern_modules_list[i].name);
-		} else if (kern_modules_list[i].required
-				&& WEXITSTATUS(ret) != 0) {
-			ERR("Unable to remove module %s",
-					kern_modules_list[i].name);
-		} else {
-			DBG("Modprobe removal successful %s",
-					kern_modules_list[i].name);
-		}
-	}
-
-error:
-	return;
+	return modprobe_remove_lttng(kern_modules_list,
+				     ARRAY_SIZE(kern_modules_list));
 }
 
 /*
@@ -162,19 +144,16 @@ void modprobe_remove_lttng_all(void)
 	modprobe_remove_lttng_control();
 }
 
-/*
- * Load control kernel module(s).
- */
-int modprobe_lttng_control(void)
+static int modprobe_lttng(const struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
 
-	for (i = 0; i < ARRAY_SIZE(kern_modules_control); i++) {
+	for (i = 0; i < entries; i++) {
 		ret = snprintf(modprobe, sizeof(modprobe),
 				"/sbin/modprobe %s%s",
-				kern_modules_control[i].required ? "" : "-q ",
-				kern_modules_control[i].name);
+				modules[i].required ? "" : "-q ",
+				modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe");
 			goto error;
@@ -183,14 +162,13 @@ int modprobe_lttng_control(void)
 		ret = system(modprobe);
 		if (ret == -1) {
 			ERR("Unable to launch modprobe for module %s",
-					kern_modules_control[i].name);
-		} else if (kern_modules_control[i].required
-				&& WEXITSTATUS(ret) != 0) {
+					modules[i].name);
+		} else if (modules[i].required && WEXITSTATUS(ret) != 0) {
 			ERR("Unable to load module %s",
-					kern_modules_control[i].name);
+					modules[i].name);
 		} else {
 			DBG("Modprobe successfully %s",
-					kern_modules_control[i].name);
+					modules[i].name);
 		}
 	}
 
@@ -199,37 +177,18 @@ error:
 }
 
 /*
+ * Load control kernel module(s).
+ */
+int modprobe_lttng_control(void)
+{
+	return modprobe_lttng(kern_modules_control,
+			      ARRAY_SIZE(kern_modules_control));
+}
+/*
  * Load data kernel module(s).
  */
 int modprobe_lttng_data(void)
 {
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = 0; i < ARRAY_SIZE(kern_modules_list); i++) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe %s%s",
-				kern_modules_list[i].required ? "" : "-q ",
-				kern_modules_list[i].name);
-		if (ret < 0) {
-			PERROR("snprintf modprobe");
-			goto error;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe for module %s",
-					kern_modules_list[i].name);
-		} else if (kern_modules_list[i].required
-				&& WEXITSTATUS(ret) != 0) {
-			ERR("Unable to load module %s",
-					kern_modules_list[i].name);
-		} else {
-			DBG("Modprobe successfully %s",
-					kern_modules_list[i].name);
-		}
-	}
-
-error:
-	return ret;
+	return modprobe_lttng(kern_modules_list,
+			      ARRAY_SIZE(kern_modules_list));
 }
