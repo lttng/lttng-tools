@@ -201,6 +201,9 @@ int kernel_create_event(struct lttng_event *ev,
 		case ENOSYS:
 			WARN("Event type not implemented");
 			break;
+		case ENOENT:
+			WARN("Event %s not found!", ev->name);
+			break;
 		default:
 			PERROR("create event ioctl");
 		}
