@@ -166,6 +166,8 @@ function start_lttng_sessiond()
 	fi
 
 	DIR=$(readlink -f $TESTDIR)
+	: ${LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/config/}
+	export LTTNG_SESSION_CONFIG_XSD_PATH
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
 		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
