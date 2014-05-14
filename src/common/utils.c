@@ -847,7 +847,7 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	timeinfo = localtime(&rawtime);
 	ret = strftime(dst, len, format, timeinfo);
 	if (ret == 0) {
-		ERR("Unable to strftime with format %s at dst %p of len %lu", format,
+		ERR("Unable to strftime with format %s at dst %p of len %zu", format,
 				dst, len);
 	}
 
