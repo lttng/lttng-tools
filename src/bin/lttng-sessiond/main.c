@@ -4258,6 +4258,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 			ret = -ENOMEM;
 		}
 		break;
+	case 'f':
+		/* This is handled in set_options() thus silent break. */
+		break;
 	default:
 		/* Unknown option or other error.
 		 * Error is printed by getopt, just return */

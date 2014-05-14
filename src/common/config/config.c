@@ -191,55 +191,73 @@ int config_get_section_entries(const char *override_path, const char *section,
 		config_entry_handler_cb handler, void *user_data)
 {
 	int ret = 0;
+	char *path;
 	FILE *config_file = NULL;
 	struct handler_filter_args filter = { section, handler, user_data };
 
+	/* First, try system-wide conf. file. */
+	path = DEFAULT_DAEMON_SYSTEM_CONFIGPATH;
+
+	config_file = fopen(path, "r");
+	if (config_file) {
+		DBG("Loading daemon conf file at %s", path);
+		/*
+		 * Return value is not very important here since error or not, we
+		 * continue and try the next possible conf. file.
+		 */
+		(void) ini_parse_file(config_file,
+				(ini_entry_handler) config_entry_handler_filter,
+				(void *) &filter);
+		fclose(config_file);
+	}
+
+	/* Second is the user local configuration. */
+	path = utils_get_home_dir();
+	if (path) {
+		char fullpath[PATH_MAX];
+
+		ret = snprintf(fullpath, sizeof(fullpath),
+				DEFAULT_DAEMON_HOME_CONFIGPATH, path);
+		if (ret < 0) {
+			PERROR("snprintf user conf. path");
+			goto error;
+		}
+
+		config_file = fopen(fullpath, "r");
+		if (config_file) {
+			DBG("Loading daemon user conf file at %s", path);
+			/*
+			 * Return value is not very important here since error or not, we
+			 * continue and try the next possible conf. file.
+			 */
+			(void) ini_parse_file(config_file,
+					(ini_entry_handler) config_entry_handler_filter,
+					(void *) &filter);
+			fclose(config_file);
+		}
+	}
+
+	/* Final path is the one that the user might have provided. */
 	if (override_path) {
 		config_file = fopen(override_path, "r");
 		if (config_file) {
-			DBG("Loaded daemon configuration file at %s",
-				override_path);
+			DBG("Loading daemon command line conf file at %s", override_path);
+			(void) ini_parse_file(config_file,
+					(ini_entry_handler) config_entry_handler_filter,
+					(void *) &filter);
+			fclose(config_file);
 		} else {
 			ERR("Failed to open daemon configuration file at %s",
 				override_path);
 			ret = -ENOENT;
-			goto end;
-		}
-	} else {
-		char *path = utils_get_home_dir();
-
-		/* Try to open the user's daemon configuration file */
-		if (path) {
-			ret = asprintf(&path, DEFAULT_DAEMON_HOME_CONFIGPATH, path);
-			if (ret < 0) {
-				goto end;
-			}
-
-			ret = 0;
-			config_file = fopen(path, "r");
-			if (config_file) {
-				DBG("Loaded daemon configuration file at %s", path);
-			}
-
-			free(path);
-		}
-
-		/* Try to open the system daemon configuration file */
-		if (!config_file) {
-			config_file = fopen(DEFAULT_DAEMON_HOME_CONFIGPATH, "r");
+			goto error;
 		}
 	}
 
-	if (!config_file) {
-		DBG("No daemon configuration file found.");
-		goto end;
-	}
+	/* Everything went well. */
+	ret = 0;
 
-	ret = ini_parse_file(config_file,
-			(ini_entry_handler) config_entry_handler_filter, (void *) &filter);
-
-	fclose(config_file);
-end:
+error:
 	return ret;
 }
 
