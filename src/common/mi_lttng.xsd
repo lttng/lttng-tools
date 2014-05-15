@@ -153,6 +153,7 @@ THE SOFTWARE.
 			<xs:element name="major" type="uint32_type" />
 			<xs:element name="url" type="xs:string" />
 			<xs:element name="minor" type="uint32_type" />
+			<xs:element name="commit" type="xs:string" />
 			<xs:element name="license" type="xs:string" />
 			<xs:element name="patchLevel" type="uint32_type" />
 			<xs:element name="description" type="xs:string" />

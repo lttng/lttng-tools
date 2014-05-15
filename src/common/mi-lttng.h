@@ -40,6 +40,7 @@ struct mi_lttng_version {
 	uint32_t version_major; /* LTTng-Tools major version number */
 	uint32_t version_minor; /* LTTng-Tools minor version number */
 	uint32_t version_patchlevel; /* LTTng-Tools patchlevel version number */
+	char version_commit[NAME_MAX]; /* Commit hash of the current version */
 	char version_name[NAME_MAX];
 	char package_url[NAME_MAX]; /* Define to the home page for this package. */
 };
@@ -58,6 +59,7 @@ const char * const mi_lttng_element_version_web;
 const char * const mi_lttng_element_version_major;
 const char * const mi_lttng_element_version_minor;
 const char * const mi_lttng_element_version_license;
+const char * const mi_lttng_element_version_commit;
 const char * const mi_lttng_element_version_patch_level;
 const char * const mi_lttng_element_version_description;
 

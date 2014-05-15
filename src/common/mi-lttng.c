@@ -36,6 +36,7 @@ const char * const mi_lttng_element_version_str = "string";
 const char * const mi_lttng_element_version_web = "url";
 const char * const mi_lttng_element_version_major = "major";
 const char * const mi_lttng_element_version_minor = "minor";
+const char * const mi_lttng_element_version_commit = "commit";
 const char * const mi_lttng_element_version_license = "license";
 const char * const mi_lttng_element_version_patch_level = "patchLevel";
 const char * const mi_lttng_element_version_description = "description";
@@ -368,6 +369,13 @@ int mi_lttng_version(struct mi_writer *writer, struct mi_lttng_version *version,
 	/* Minor version number */
 	ret = mi_lttng_writer_write_element_unsigned_int(writer,
 			mi_lttng_element_version_minor, version->version_minor);
+	if (ret) {
+		goto end;
+	}
+
+	/* Commit version number */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_version_commit, version->version_commit);
 	if (ret) {
 		goto end;
 	}
