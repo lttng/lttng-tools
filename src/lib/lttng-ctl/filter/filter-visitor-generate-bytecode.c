@@ -222,7 +222,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (!insn)
 			return -ENOMEM;
 		insn->op = FILTER_OP_LOAD_S64;
-		*(int64_t *) insn->data = node->u.load.u.num;
+		memcpy(insn->data, &node->u.load.u.num, sizeof(int64_t));
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
 		return ret;
@@ -237,7 +237,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (!insn)
 			return -ENOMEM;
 		insn->op = FILTER_OP_LOAD_DOUBLE;
-		*(double *) insn->data = node->u.load.u.flt;
+		memcpy(insn->data, &node->u.load.u.flt, sizeof(double));
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
 		return ret;
