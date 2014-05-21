@@ -580,6 +580,11 @@ running applications can be found under columns "PID" and "LWP" of the
   '$ctx.vtid == 1234'
 .fi
 
+Context information is available to all filters whether or not the add-context
+command has been used to add it to the event's channel, as long as the context
+field exists for that domain. For example, the filter examples given above will
+never fail to link: no add-context is required for the event's channel.
+
 .TP
 .BR "\-x, \-\-exclude LIST"
 Add exclusions to UST tracepoints:
