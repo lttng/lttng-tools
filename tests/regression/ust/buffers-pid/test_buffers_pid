@@ -144,17 +144,18 @@ test_before_app() {
 
 	diag "Start application BEFORE tracing is started"
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
-	ok $? "Start application to trace"
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	ok $? "Start application to trace"
+
 	start_lttng_tracing $SESSION_NAME
 
-	# At least hit one event
-	sleep 2
+	wait ${!}
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -169,8 +170,6 @@ test_before_app() {
 		diag "Found $out event(s). Coherent."
 		out=0
 	fi
-
-	wait_apps
 
 	return $out
 }
