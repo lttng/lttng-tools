@@ -29,7 +29,7 @@ PID_RELAYD=0
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=18
+NUM_TESTS=16
 
 source $TESTDIR/utils/utils.sh
 
@@ -44,13 +44,6 @@ function lttng_create_session_uri
 	ok $? "Create session with default path"
 }
 
-function wait_apps
-{
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 0.5
-	done
-	pass "Wait for applications to end"
-}
 
 # MUST set TESTDIR before calling those functions
 
@@ -64,8 +57,8 @@ function test_ust_before_start ()
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
 
 	start_lttng_tracing $SESSION_NAME
-
-	wait_apps
+	# Wait for the applications started in background
+	wait ${!}
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -79,9 +72,7 @@ function test_ust_after_start ()
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
-
-	wait_apps
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME

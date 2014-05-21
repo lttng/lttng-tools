@@ -78,11 +78,7 @@ start_lttng_relayd "-o $TRACE_PATH"
 setup_live_tracing
 
 # Run app in background
-$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
-# Wait for app to complete
-while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-	sleep 0.5
-done
+$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
 clean_live_tracing
 

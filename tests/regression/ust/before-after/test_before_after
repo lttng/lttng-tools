@@ -25,7 +25,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="per-session"
 EVENT_NAME="tp:tptest"
-NUM_TESTS=17
+NUM_TESTS=16
 
 source $TESTDIR/utils/utils.sh
 
@@ -34,14 +34,6 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 fi
 
 # MUST set TESTDIR before calling those functions
-
-function wait_app()
-{
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 0.5
-	done
-	pass "Application $TESTAPP_NAME ended."
-}
 
 function test_before_apps()
 {
@@ -65,19 +57,15 @@ function test_after_apps()
 {
 	local out
 
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Application started in background."
 
-	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	# Since the start is done after the application is started, there is a
-	# bootstrap time needed between the session daemon and the UST tracer.
-	# Waiting for the application to end tells us when to stop everything and
-	# validate that at least one event is seen.
-	wait_app
+	wait ${!}
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
