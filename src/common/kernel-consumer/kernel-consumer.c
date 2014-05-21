@@ -561,7 +561,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 * happens while tearing down.
 			 */
 			ERR("Unable to find channel key %" PRIu64, msg.u.stream.channel_key);
-			ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		}
 
 		health_code_update();
@@ -764,7 +764,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 */
 			ERR("Unable to find channel key %" PRIu64,
 					msg.u.sent_streams.channel_key);
-			ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		}
 
 		health_code_update();
@@ -815,7 +815,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		relayd = consumer_find_relayd(index);
 		if (relayd == NULL) {
 			DBG("Unable to find relayd %" PRIu64, index);
-			ret_code = LTTNG_ERR_NO_CONSUMER;
+			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 		}
 
 		/*
@@ -874,7 +874,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					msg.u.snapshot_channel.relayd_id, ctx);
 			if (ret < 0) {
 				ERR("Snapshot metadata failed");
-				ret_code = LTTNG_ERR_KERN_META_FAIL;
+				ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
 			}
 		} else {
 			ret = lttng_kconsumer_snapshot_channel(msg.u.snapshot_channel.key,
@@ -884,7 +884,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					ctx);
 			if (ret < 0) {
 				ERR("Snapshot channel failed");
-				ret_code = LTTNG_ERR_KERN_CHAN_FAIL;
+				ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 			}
 		}
 
@@ -905,7 +905,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		channel = consumer_find_channel(key);
 		if (!channel) {
 			ERR("Kernel consumer destroy channel %" PRIu64 " not found", key);
-			ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		}
 
 		health_code_update();
