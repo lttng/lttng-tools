@@ -2822,6 +2822,38 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		break;
 	}
 
+	/*
+	 * Commands that need a valid session but should NOT create one if none
+	 * exists. Instead of creating one and destroying it when the command is
+	 * handled, process that right before so we save some round trip in useless
+	 * code path.
+	 */
+	switch (cmd_ctx->lsm->cmd_type) {
+	case LTTNG_DISABLE_CHANNEL:
+	case LTTNG_DISABLE_EVENT:
+	case LTTNG_DISABLE_ALL_EVENT:
+		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_KERNEL:
+			if (!cmd_ctx->session->kernel_session) {
+				ret = LTTNG_ERR_NO_CHANNEL;
+				goto error;
+			}
+			break;
+		case LTTNG_DOMAIN_JUL:
+		case LTTNG_DOMAIN_UST:
+			if (!cmd_ctx->session->ust_session) {
+				ret = LTTNG_ERR_NO_CHANNEL;
+				goto error;
+			}
+			break;
+		default:
+			ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+			goto error;
+		}
+	default:
+		break;
+	}
+
 	if (!need_domain) {
 		goto skip_domain;
 	}
