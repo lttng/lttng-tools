@@ -136,6 +136,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
 	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes). 0 means unlimited.\n");
 	fprintf(ofp, "                               (default: %u)\n", DEFAULT_CHANNEL_TRACEFILE_SIZE);
+	fprintf(ofp, "                           Note: traces generated with this option may inaccurately report\n");
+	fprintf(ofp, "                           discarded events as per CTF 1.8.\n");
 	fprintf(ofp, "  -W, --tracefile-count COUNT\n");
 	fprintf(ofp, "                           Used in conjunction with -C option, this will limit the number\n");
 	fprintf(ofp, "                           of files created to the specified count. 0 means unlimited.\n");
