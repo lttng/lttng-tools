@@ -645,6 +645,8 @@ static void print_channel(struct lttng_channel *channel)
 	MSG("%snumber of subbufers: %" PRIu64, indent6, channel->attr.num_subbuf);
 	MSG("%sswitch timer interval: %u", indent6, channel->attr.switch_timer_interval);
 	MSG("%sread timer interval: %u", indent6, channel->attr.read_timer_interval);
+	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
+	MSG("%strace file size (bytes): %" PRIu64, indent6, channel->attr.tracefile_size);
 	switch (channel->attr.output) {
 		case LTTNG_EVENT_SPLICE:
 			MSG("%soutput: splice()", indent6);
@@ -756,7 +758,9 @@ static int list_sessions(const char *session_name)
 				MSG("Tracing session %s: [%s%s]", session_name,
 						active_string(sessions[i].enabled),
 						snapshot_string(sessions[i].snapshot_mode));
-				MSG("%sTrace path: %s\n", indent4, sessions[i].path);
+				MSG("%sTrace path: %s", indent4, sessions[i].path);
+				MSG("%sLive timer interval (usec): %u\n", indent4,
+						sessions[i].live_timer_interval);
 				break;
 			}
 		} else {

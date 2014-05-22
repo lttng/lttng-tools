@@ -166,6 +166,8 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 			channels[i].attr.read_timer_interval =
 				uchan->attr.read_timer_interval;
 			channels[i].enabled = uchan->enabled;
+			channels[i].attr.tracefile_size = uchan->tracefile_size;
+			channels[i].attr.tracefile_count = uchan->tracefile_count;
 			switch (uchan->attr.output) {
 			case LTTNG_UST_MMAP:
 			default:
