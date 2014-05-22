@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <urcu/tls-compat.h>
+#include <time.h>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"
@@ -33,6 +35,17 @@
 /* Stringify the expansion of a define */
 #define XSTR(d) STR(d)
 #define STR(s) #s
+
+/*
+ * Contains the string of the log entry time. This is used as a thread local
+ * storage so we don't race between thread and also avoid memory allocation
+ * every time a log is fired.
+ */
+struct log_time {
+	/* Format: 00:00:00.000000 plus NULL byte. */
+	char str[16];
+};
+extern DECLARE_URCU_TLS(struct log_time, error_log_time);
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
@@ -69,17 +82,17 @@ extern int lttng_opt_verbose;
 
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
 #define _ERRMSG(msg, type, fmt, args...) __lttng_print(type, msg \
-		" [%ld/%ld]: " fmt " (in %s() at " __FILE__ ":" XSTR(__LINE__) ")\n", \
-			(long) getpid(), (long) gettid(), ## args, __func__)
+		" - %s [%ld/%ld]: " fmt " (in %s() at " __FILE__ ":" XSTR(__LINE__) ")\n", \
+			log_add_time(), (long) getpid(), (long) gettid(), ## args, __func__)
 
 #define MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt "\n", ## args)
 #define _MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt, ## args)
 #define ERR(fmt, args...) \
-	__lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
+	_ERRMSG("ERROR", PRINT_ERR, fmt, ## args)
 #define WARN(fmt, args...) \
-	__lttng_print(PRINT_WARN, "Warning: " fmt "\n", ## args)
+	_ERRMSG("WARN", PRINT_WARN, fmt, ## args)
 
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ## args)
 
@@ -114,5 +127,12 @@ extern int lttng_opt_verbose;
 #endif
 
 const char *error_get_str(int32_t code);
+
+/*
+ * Function that format the time and return the reference of log_time.str to
+ * the caller. On error, an empty string is returned thus no time will be
+ * printed in the log.
+ */
+const char *log_add_time();
 
 #endif /* _ERROR_H */

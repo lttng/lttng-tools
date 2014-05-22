@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <inttypes.h>
 
 #include <lttng/lttng-error.h>
 #include <common/common.h>
@@ -24,6 +25,42 @@
 #include "error.h"
 
 #define ERROR_INDEX(code) (code - LTTNG_OK)
+
+/* TLS variable that contains the time of one single log entry. */
+DEFINE_URCU_TLS(struct log_time, error_log_time);
+
+const char *log_add_time(void)
+{
+	int ret;
+	struct tm tm, *res;
+	struct timespec tp;
+	time_t now;
+
+	ret = clock_gettime(CLOCK_REALTIME, &tp);
+	if (ret < 0) {
+		goto error;
+	}
+	now = (time_t) tp.tv_sec;
+
+	res = localtime_r(&now, &tm);
+	if (!res) {
+		goto error;
+	}
+
+	/* Format time in the TLS variable. */
+	ret = snprintf(error_log_time.str, sizeof(error_log_time.str),
+			"%02d:%02d:%02d.%06ld",
+			tm.tm_hour, tm.tm_min, tm.tm_sec, tp.tv_nsec);
+	if (ret < 0) {
+		goto error;
+	}
+
+	return error_log_time.str;
+
+error:
+	/* Return an empty string on error so logging is not affected. */
+	return "";
+}
 
 /*
  * Human readable error message.
