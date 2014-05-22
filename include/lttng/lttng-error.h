@@ -29,16 +29,6 @@
 extern "C" {
 #endif
 
-#ifndef LTTNG_DEPRECATED
-#if defined (__GNUC__) \
-	&& ((__GNUC_MAJOR__ == 4) && (__GNUC_MINOR__ >= 5)  \
-			|| __GNUC_MAJOR__ >= 5)
-#define LTTNG_DEPRECATED(msg) __attribute__((deprecated(msg)))
-#else
-#define LTTNG_DEPRECATED(msg) __attribute__((deprecated))
-#endif /* defined __GNUC__ */
-#endif /* LTTNG_DEPRECATED */
-
 enum lttng_error_code {
 	LTTNG_OK                         = 10,  /* Ok */
 	LTTNG_ERR_UNK                    = 11,  /* Unknown Error */
@@ -146,6 +136,13 @@ enum lttng_error_code {
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
 };
+
+/*
+ * Return a human-readable error message for a LTTng error code.
+ *
+ * Parameter MUST be a negative value or else you'll get a generic message.
+ */
+extern const char *lttng_strerror(int code);
 
 #ifdef __cplusplus
 }

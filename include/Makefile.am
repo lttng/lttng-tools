@@ -74,6 +74,12 @@ version.h:
 lttnginclude_HEADERS = \
 	lttng/health.h \
 	lttng/lttng.h \
+	lttng/constant.h \
+	lttng/channel.h \
+	lttng/domain.h \
+	lttng/event.h \
+	lttng/handle.h \
+	lttng/session.h \
 	lttng/lttng-error.h \
 	lttng/snapshot.h \
 	lttng/save.h \
