@@ -195,10 +195,11 @@ static int list_output(void)
 	MSG("Snapshot output list for session %s", current_session_name);
 
 	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
-		MSG("%s[%" PRIu32 "] %s: %s", indent4,
+		MSG("%s[%" PRIu32 "] %s: %s (max-size: %" PRId64 ")", indent4,
 				lttng_snapshot_output_get_id(s_iter),
 				lttng_snapshot_output_get_name(s_iter),
-				lttng_snapshot_output_get_ctrl_url(s_iter));
+				lttng_snapshot_output_get_ctrl_url(s_iter),
+				lttng_snapshot_output_get_maxsize(s_iter));
 		output_seen = 1;
 	}
 
