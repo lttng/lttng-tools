@@ -39,19 +39,6 @@
 extern "C" {
 #endif
 
-/* Health component for the health check function. */
-enum lttng_health_component {
-	LTTNG_HEALTH_CMD,
-	LTTNG_HEALTH_APP_MANAGE,
-	LTTNG_HEALTH_APP_REG,
-	LTTNG_HEALTH_KERNEL,
-	LTTNG_HEALTH_CONSUMER,
-	LTTNG_HEALTH_HT_CLEANUP,
-	LTTNG_HEALTH_APP_MANAGE_NOTIFY,
-	LTTNG_HEALTH_APP_REG_DISPATCH,
-	LTTNG_HEALTH_ALL,
-};
-
 enum lttng_calibrate_type {
 	LTTNG_CALIBRATE_FUNCTION              = 0,
 };
@@ -154,33 +141,6 @@ extern int lttng_calibrate(struct lttng_handle *handle,
  */
 extern int lttng_set_consumer_url(struct lttng_handle *handle,
 		const char *control_url, const char *data_url);
-
-/*
- * Enable the consumer for a session and domain.
- */
-extern LTTNG_DEPRECATED("This call is now obsolete.")
-int lttng_enable_consumer(struct lttng_handle *handle);
-
-/*
- * Disable consumer for a session and domain.
- */
-extern LTTNG_DEPRECATED("This call is now obsolete.")
-int lttng_disable_consumer(struct lttng_handle *handle);
-
-/*
- * Check session daemon health for a specific component.
- *
- * Return 0 if health is OK or 1 if BAD. A returned value of -1 indicate that
- * the control library was not able to connect to the session daemon health
- * socket.
- *
- * Any other positive value is an lttcomm error which can be translate with
- * lttng_strerror().
- *
- * Please see lttng-health-check(3) man page for more information.
- */
-extern LTTNG_DEPRECATED("This call is now obsolete.")
-int lttng_health_check(enum lttng_health_component c);
 
 /*
  * For a given session name, this call checks if the data is ready to be read
