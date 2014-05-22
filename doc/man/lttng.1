@@ -252,9 +252,12 @@ Simple listing of options
 .BR "\-o, \-\-output PATH"
 Specify output path for traces
 .TP
+.BR "\-\-no-output"
+Traces will not be output
+.TP
 .BR "\-\-snapshot"
-Set the session in snapshot mode. Created without a consumer and uses the URL,
-if one is specified, as the default snapshot output. Every channel will be set
+Set the session in snapshot mode. Created in no-output mode and uses the
+URL, if one is specified, as the default snapshot output.  Every channel will be set
 in overwrite mode and with mmap output (splice not supported).
 .TP
 .BR "\-\-live [USEC]"
