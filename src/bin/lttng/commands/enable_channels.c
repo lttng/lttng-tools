@@ -130,8 +130,8 @@ static void usage(FILE *ofp)
 			DEFAULT_UST_PID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
 			DEFAULT_METADATA_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
-	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u/-j only)\n");
-	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u/-j only)\n");
+	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
+	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
 	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
 	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
 	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes). 0 means unlimited.\n");
