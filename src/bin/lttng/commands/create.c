@@ -42,7 +42,6 @@ static char *opt_url;
 static char *opt_ctrl_url;
 static char *opt_data_url;
 static int opt_no_consumer;
-static int opt_no_output;
 static int opt_snapshot;
 static unsigned int opt_live_timer;
 static int opt_disable_consumer;
@@ -61,7 +60,6 @@ static struct poptOption long_options[] = {
 	{"set-url",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
 	{"ctrl-url",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
 	{"data-url",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
-	{"no-output",       0, POPT_ARG_VAL, &opt_no_output, 1, 0, 0},
 	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"disable-consumer", 0, POPT_ARG_VAL, &opt_disable_consumer, 1, 0, 0},
 	{"snapshot",        0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0},
@@ -89,9 +87,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
 	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
-	fprintf(ofp, "      --no-output      Traces will not be outputted\n");
 	fprintf(ofp, "      --snapshot       Set the session in snapshot mode.\n");
-	fprintf(ofp, "                       Created in no-output mode and uses the URL,\n");
+	fprintf(ofp, "                       Created without a consumer and uses the URL,\n");
 	fprintf(ofp, "                       if one, as the default snapshot output.\n");
 	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");
 	fprintf(ofp, "                       and with mmap output (splice not supported).\n");
@@ -346,7 +343,7 @@ static int create_session(void)
 		url = alloc_url;
 		print_str_url = alloc_url + strlen("file://");
 	} else {
-		/* No output means --no-output or --snapshot mode. */
+		/* No output means --snapshot mode. */
 		url = NULL;
 	}
 
@@ -516,7 +513,7 @@ int cmd_create(int argc, const char **argv)
 	}
 
 	if (opt_no_consumer) {
-		MSG("The option --no-consumer is obsolete. Use --no-output now.");
+		MSG("The option --no-consumer is obsolete.");
 		ret = CMD_WARNING;
 		goto end;
 	}
