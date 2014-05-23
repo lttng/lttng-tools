@@ -295,13 +295,6 @@ else
 
 fi
 
-# Option to only build the consumer daemon and its libraries
-AC_ARG_WITH([consumerd-only],
-	AS_HELP_STRING([--with-consumerd-only],[Only build the consumer daemon [default=no]]),
-	[consumerd_only=$withval],
-	[consumerd_only=no])
-AM_CONDITIONAL([BUILD_CONSUMERD_ONLY], [test "x$consumerd_only" = "xyes"])
-
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
 	[AX_CONFIG_FEATURE_ENABLE(epoll)],
