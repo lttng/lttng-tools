@@ -520,15 +520,11 @@ health_error:
 error_health_pipe:
 	if (!ret) {
 		ret = EXIT_SUCCESS;
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_SUCCESS);
 		goto end;
 	}
 
 error:
 	ret = EXIT_FAILURE;
-	if (ctx) {
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_EXIT_FAILURE);
-	}
 
 end:
 	lttng_consumer_destroy(ctx);
