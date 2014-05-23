@@ -437,7 +437,10 @@ static int parse_args(int argc, char **argv)
 			ret = 0;
 			goto end;
 		case 'v':
-			lttng_opt_verbose += 1;
+			/* There is only 3 possible level of verbosity. (-vvv) */
+			if (lttng_opt_verbose < 3) {
+				lttng_opt_verbose += 1;
+			}
 			break;
 		case 'q':
 			lttng_opt_quiet = 1;

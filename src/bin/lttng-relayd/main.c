@@ -251,7 +251,10 @@ int set_option(int opt, const char *arg, const char *optname)
 		if (arg) {
 			lttng_opt_verbose = config_parse_value(arg);
 		} else {
-			lttng_opt_verbose += 1;
+			/* Only 3 level of verbosity (-vvv). */
+			if (lttng_opt_verbose < 3) {
+				lttng_opt_verbose += 1;
+			}
 		}
 		break;
 	default:
