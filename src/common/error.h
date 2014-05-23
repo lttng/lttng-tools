@@ -90,9 +90,9 @@ extern int lttng_opt_verbose;
 #define _MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt, ## args)
 #define ERR(fmt, args...) \
-	_ERRMSG("ERROR", PRINT_ERR, fmt, ## args)
+	__lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
 #define WARN(fmt, args...) \
-	_ERRMSG("WARN", PRINT_WARN, fmt, ## args)
+	__lttng_print(PRINT_ERR, "Warning: " fmt "\n", ## args)
 
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ## args)
 
