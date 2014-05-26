@@ -764,7 +764,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		int exclusion_count, char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm;
-	char *varlen_data, *jul_filter = NULL;
+	char *varlen_data;
 	int ret = 0;
 	struct filter_parser_ctx *ctx = NULL;
 	FILE *fmem = NULL;
@@ -824,10 +824,25 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	/* Parse filter expression */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL) {
+			char *jul_filter;
+
 			/* Setup JUL filter if needed. */
-			filter_expression = set_jul_filter(filter_expression, ev);
-			if (!filter_expression) {
-				goto ask_sessiond;
+			jul_filter = set_jul_filter(filter_expression, ev);
+			if (!jul_filter) {
+				if (!filter_expression) {
+					/* No JUL and no filter, just skip everything below. */
+					goto ask_sessiond;
+				}
+			} else {
+				/*
+				 * With a JUL filter, the original filter has been added to it
+				 * thus replace the filter expression.
+				 */
+				filter_expression = strdup(jul_filter);
+				free(jul_filter);
+				if (!filter_expression) {
+					return -LTTNG_ERR_FILTER_NOMEM;
+				}
 			}
 		}
 
@@ -839,7 +854,6 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 				strlen(filter_expression), "r");
 		if (!fmem) {
 			fprintf(stderr, "Error opening memory as stream\n");
-			free(jul_filter);
 			return -LTTNG_ERR_FILTER_NOMEM;
 		}
 		ctx = filter_parser_ctx_alloc(fmem);
@@ -947,7 +961,6 @@ varlen_alloc_error:
 			perror("fclose");
 		}
 	}
-	free(jul_filter);
 	return ret;
 
 parse_error:
@@ -958,7 +971,6 @@ filter_alloc_error:
 	if (fclose(fmem) != 0) {
 		perror("fclose");
 	}
-	free(jul_filter);
 	return ret;
 
 ask_sessiond:
