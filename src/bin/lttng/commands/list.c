@@ -177,6 +177,34 @@ const char *exclusion_string(int value)
 	}
 }
 
+static const char *loglevel_jul_string(int value)
+{
+	switch (value) {
+	case -1:
+		return "";
+	case LTTNG_LOGLEVEL_JUL_OFF:
+		return "JUL_OFF";
+	case LTTNG_LOGLEVEL_JUL_SEVERE:
+		return "JUL_SEVERE";
+	case LTTNG_LOGLEVEL_JUL_WARNING:
+		return "JUL_WARNING";
+	case LTTNG_LOGLEVEL_JUL_INFO:
+		return "JUL_INFO";
+	case LTTNG_LOGLEVEL_JUL_CONFIG:
+		return "JUL_CONFIG";
+	case LTTNG_LOGLEVEL_JUL_FINE:
+		return "JUL_FINE";
+	case LTTNG_LOGLEVEL_JUL_FINER:
+		return "JUL_FINER";
+	case LTTNG_LOGLEVEL_JUL_FINEST:
+		return "JUL_FINEST";
+	case LTTNG_LOGLEVEL_JUL_ALL:
+		return "JUL_ALL";
+	default:
+		return "<<UNKNOWN>>";
+	}
+}
+
 static const char *loglevel_string(int value)
 {
 	switch (value) {
@@ -583,8 +611,10 @@ static int list_session_jul_events(void)
 	}
 
 	for (i = 0; i < count; i++) {
-		MSG("%s- %s%s", indent4, events[i].name,
-				enabled_string(events[i].enabled));
+		MSG("%s- %s%s (loglevel%s %s)", indent4, events[i].name,
+				enabled_string(events[i].enabled),
+				logleveltype_string(events[i].loglevel_type),
+				loglevel_jul_string(events[i].loglevel));
 	}
 
 	MSG("");
