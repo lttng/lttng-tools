@@ -29,7 +29,7 @@ EVENT_NAME="JTestLTTng"
 EVENT_NAME2="JTestLTTng2"
 JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/java/liblttng-ust-jul.jar"
 
-NUM_TESTS=92
+NUM_TESTS=106
 
 source $TESTDIR/utils/utils.sh
 
@@ -65,6 +65,16 @@ function enable_jul_loglevel_only()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
 	ok $? "Enable JUL event $event_name for session $sess_name with loglevel-only $loglevel"
+}
+
+function enable_jul_filter()
+{
+	local sess_name="$1"
+	local event_name="$2"
+	local filter="$3"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
+	ok $? "Enable event $event_name with filter $filter for session $sess_name"
 }
 
 # MUST set TESTDIR before calling those functions
@@ -323,6 +333,48 @@ function test_jul_destroy_session()
 	fi
 }
 
+function test_jul_filtering()
+{
+	diag "Test JUL filtering"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	# Enable all event with a filter.
+	enable_jul_filter $SESSION_NAME '*' 'msg == "JUL second logger fired"'
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay and fire second TP.
+	run_app 0 1
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting one event of the second TP only.
+	trace_matches $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	# Enable first Logger but filter msg payload for the INFO one while
+	# triggering the finest and second TP.
+	enable_jul_filter $SESSION_NAME $EVENT_NAME 'msg == "JUL tp fired!"'
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay, fire finest and second TP.
+	run_app 1 1
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting NR_ITER event of the main INFO tp.
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -338,6 +390,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 	start_lttng_sessiond
 
 	tests=(
+		test_jul_filtering
 		test_jul_multi_session_loglevel
 		test_jul_destroy_session
 		test_jul_loglevel
