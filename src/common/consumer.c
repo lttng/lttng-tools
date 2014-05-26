@@ -1308,6 +1308,10 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 
 	DBG("Consumer destroying it. Closing everything.");
 
+	if (!ctx) {
+		return;
+	}
+
 	destroy_data_stream_ht(data_ht);
 	destroy_metadata_stream_ht(metadata_ht);
 
