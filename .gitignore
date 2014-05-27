@@ -78,6 +78,7 @@ health_check
 /tests/regression/ust/fork/fork2
 /tests/regression/ust/libc-wrapper/prog
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
+/tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
 
