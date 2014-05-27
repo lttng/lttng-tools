@@ -9,7 +9,7 @@ version.h:
 	## the locations of the version.h and version.h.tmpl files
 	##
 	@echo -n "Generating version.h ... "
-	@(version_h_tmpl="$(top_builddir)/include/version.h.tmpl"; \
+	@(version_h_tmpl="$(top_srcdir)/include/version.h.tmpl"; \
 	if [ -f "$${version_h_tmpl}" ]; then \
 		version_h="$(top_builddir)/include/version.h"; \
 		##
