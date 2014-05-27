@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="UST tracer - tracef events"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+LTTNG_BIN="lttng"
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-tracef"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+SESSION_NAME="tracef"
+EVENT_NAME="lttng_ust_tracef:event"
+NUM_TESTS=9
+NR_ITER=100
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+function test_event_tracef()
+{
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	ok $? "Traced application stopped."
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+
+	return $?
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+TRACE_PATH=$(mktemp -d)
+test_event_tracef
+out=$?
+if [ $out -ne 0 ]; then
+	stop_lttng_sessiond
+	exit $out
+fi
+
+stop_lttng_sessiond
+
+rm -rf $TRACE_PATH
