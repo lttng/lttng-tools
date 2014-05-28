@@ -6,7 +6,7 @@ LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 
 noinst_PROGRAMS = ini_config
-EXTRA_DIST = test_ini_config
+EXTRA_DIST = test_ini_config sample.ini
 
 ini_config_SOURCES = ini_config.c
 ini_config_LDADD = $(LIBTAP) $(LIBCONFIG) $(LIBCOMMON) $(LIBHASHTABLE) \

@@ -8,3 +8,4 @@ libconfig_la_LIBADD = $(XML_LIBS)
 
 xmldir = $(datadir)/xml/lttng
 dist_xml_DATA = session.xsd
+EXTRA_DIST = session.xsd
