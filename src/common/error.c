@@ -29,6 +29,7 @@
 /* TLS variable that contains the time of one single log entry. */
 DEFINE_URCU_TLS(struct log_time, error_log_time);
 
+LTTNG_HIDDEN
 const char *log_add_time(void)
 {
 	int ret;
