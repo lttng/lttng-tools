@@ -1,3 +1,10 @@
+2014-05-28 lttng-tools 2.5.0-rc1 (International Hamburger Day)
+	* Save/load session feature
+	* Daemon configuration file support
+	* UST perf counter support with add-context
+	* Kernel tracer probe user define list
+	* Multiple fixes! The diff is just too big to put here.
+
 2014-04-08 lttng-tools 2.4.1 (OpenSSL heartbleed day)
 	* Fix: don't delete stream from connection recv list
 	* Fix: use after free of a relayd stream
