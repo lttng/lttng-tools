@@ -83,9 +83,11 @@ lttnginclude_HEADERS = \
 	lttng/lttng-error.h \
 	lttng/snapshot.h \
 	lttng/save.h \
+	lttng/load.h \
 	version.h
 
 noinst_HEADERS = \
 	lttng/snapshot-internal.h \
 	lttng/health-internal.h \
-	lttng/save-internal.h
+	lttng/save-internal.h \
+	lttng/load-internal.h
