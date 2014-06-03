@@ -39,6 +39,7 @@ const char * const mi_lttng_element_command_calibrate = "calibrate";
 const char * const mi_lttng_element_command_add_context = "add-context";
 const char * const mi_lttng_element_command_enable_channels = "enable-channel";
 const char * const mi_lttng_element_command_set_session = "set-session";
+const char * const mi_lttng_element_command_disable_event = "disable-event";
 const char * const mi_lttng_element_command_output = "output";
 const char * const mi_lttng_element_command_success = "success";
 
@@ -910,8 +911,6 @@ int mi_lttng_event(struct mi_writer *writer,
 	}
 
 	switch (event->type) {
-		/* We should never have "all" events in list. */
-		break;
 	case LTTNG_EVENT_TRACEPOINT:
 	{
 		if (event->loglevel != -1) {

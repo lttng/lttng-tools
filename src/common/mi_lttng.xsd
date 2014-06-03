@@ -266,7 +266,7 @@ THE SOFTWARE.
 			<xs:element name="name" type="name_type"/>
 			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0"/>
 			<xs:element name="attributes" type="channel_attributes_type" minOccurs="0"/>
-			<xs:element name="events" type="event_list_type" minOccurs="0" />
+			<xs:element name="events" type="event_list_type" minOccurs="0"/>
 		</xs:all>
 	</xs:complexType>
 
@@ -389,6 +389,7 @@ THE SOFTWARE.
 			<xs:element name="contexts" type="contexts_type" minOccurs="0" />
 			<xs:element name="channels" type="channels_type" minOccurs="0" />
 			<xs:element name="events" type="event_list_type" minOccurs="0" />
+			<xs:element name="channel" type="channel_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -408,6 +409,7 @@ THE SOFTWARE.
 			<xs:enumeration value="enable-channel" />
 			<xs:enumeration value="enable-event" />
 			<xs:enumeration value="set-session" />
+			<xs:enumeration value="disable-event" />
 		</xs:restriction>
 	</xs:simpleType>
 

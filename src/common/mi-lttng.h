@@ -61,6 +61,7 @@ const char * const mi_lttng_element_command_calibrate;
 const char * const mi_lttng_element_command_add_context;
 const char * const mi_lttng_element_command_enable_channels;
 const char * const mi_lttng_element_command_set_session;
+const char * const mi_lttng_element_command_disable_event;
 const char * const mi_lttng_element_command_output;
 const char * const mi_lttng_element_command_success;
 
@@ -496,7 +497,7 @@ int mi_lttng_event_field(struct mi_writer *writer,
  *
  * writer An instance of a machine interface writer.
  *
- * Returns zero if the element could be written.
+ * Returns zero if the element have be written.
  * Negative values indicate an error.
  */
 int mi_lttng_event_fields_open(struct mi_writer *writer);
