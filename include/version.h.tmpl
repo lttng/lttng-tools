@@ -20,15 +20,13 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define GIT_VERSION
-
 /*
  * Define the macro containing the FULL version
  */
 #ifdef GIT_VERSION
 #define FULL_VERSION "" GIT_VERSION
 #else /* GIT_VERSION */
-#define FULL_VERSION "v" VERSION
+#define FULL_VERSION "" VERSION
 #endif /* GIT_VERSION */
 
 #endif /* VERSION_H */
