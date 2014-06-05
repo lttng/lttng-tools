@@ -52,6 +52,7 @@ const char * const mi_lttng_element_command_list;
 const char * const mi_lttng_element_command_save;
 const char * const mi_lttng_element_command_load;
 const char * const mi_lttng_element_command_name;
+const char * const mi_lttng_element_command_start;
 const char * const mi_lttng_element_command_output;
 const char * const mi_lttng_element_command_success;
 
