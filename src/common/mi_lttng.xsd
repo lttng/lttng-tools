@@ -327,6 +327,7 @@ THE SOFTWARE.
 			<xs:enumeration value="save" />
 			<xs:enumeration value="load" />
 			<xs:enumeration value="start" />
+			<xs:enumeration value="stop" />
 		</xs:restriction>
 	</xs:simpleType>
 

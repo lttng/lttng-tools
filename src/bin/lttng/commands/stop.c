@@ -23,13 +23,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+
+#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/mi-lttng.h>
 
 #include "../command.h"
 
-#include <common/sessiond-comm/sessiond-comm.h>
-
 static char *opt_session_name;
 static int opt_no_wait;
+static struct mi_writer *writer;
 
 enum {
 	OPT_HELP = 1,
@@ -59,6 +62,41 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "      --list-options       Simple listing of options\n");
 	fprintf(ofp, "  -n, --no-wait            Don't wait for data availability\n");
 	fprintf(ofp, "\n");
+}
+/*
+ * Mi print of partial session
+ */
+static int mi_print_session(char *session_name, int enabled)
+{
+	int ret;
+	assert(writer);
+	assert(session_name);
+
+	/* Open session element */
+	ret = mi_lttng_writer_open_element(writer, config_element_session);
+	if (ret) {
+		goto end;
+	}
+
+	/* Print session name element */
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+			session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Is enabled ? */
+	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled,
+			enabled);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close session element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
 }
 
 /*
@@ -99,7 +137,7 @@ static int stop_tracing(void)
 			ret = lttng_data_pending(session_name);
 			if (ret < 0) {
 				/* Return the data available call error. */
-				goto error;
+				goto free_name;
 			}
 
 			/*
@@ -118,6 +156,12 @@ static int stop_tracing(void)
 	ret = CMD_SUCCESS;
 
 	MSG("Tracing stopped for session %s", session_name);
+	if (lttng_opt_mi) {
+		ret = mi_print_session(session_name, 0);
+		if (ret) {
+			goto free_name;
+		}
+	}
 
 free_name:
 	if (opt_session_name == NULL) {
@@ -135,18 +179,11 @@ error:
  */
 int cmd_stop(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
-
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
-	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -163,11 +200,84 @@ int cmd_stop(int argc, const char **argv)
 		}
 	}
 
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_stop);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/*
+		 * Open sessions element
+		 * For validation
+		 */
+		ret = mi_lttng_writer_open_element(writer,
+				config_element_sessions);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
 	opt_session_name = (char*) poptGetArg(pc);
 
-	ret = stop_tracing();
+	command_ret = stop_tracing();
+	if (command_ret) {
+		success = 0;
+	}
+
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close sessions and  output element */
+		ret = mi_lttng_close_multi_element(writer, 2);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
 
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+	}
+
+	/* Overwrite ret if an error occurred in stop_tracing() */
+	ret = command_ret ? command_ret : ret;
+
 	poptFreeContext(pc);
 	return ret;
 }
