@@ -13,7 +13,8 @@ MAINTAINERCLEANFILES = lttng_wrap.c lttng.py
 nodist__lttng_la_SOURCES = lttng_wrap.c
 _lttng_la_LDFLAGS = -module
 _lttng_la_LIBADD = 	$(top_srcdir)/src/lib/lttng-ctl/liblttng-ctl.la 		\
-			$(top_srcdir)/src/common/sessiond-comm/libsessiond-comm.la
+			$(top_srcdir)/src/common/sessiond-comm/libsessiond-comm.la		\
+			$(top_srcdir)/src/common/libcommon.la
 
 lttng_wrap.c: lttng.i
 	$(SWIG) -python -I. -I$(top_srcdir)/src/common/sessiond-comm lttng.i
