@@ -106,5 +106,6 @@ const char * const config_event_context_vppid;
 const char * const config_event_context_pthread_id;
 const char * const config_event_context_hostname;
 const char * const config_event_context_ip;
+const char * const config_event_context_perf_thread_counter;
 
 #endif /* CONFIG_SESSION_INTERNAL_H */

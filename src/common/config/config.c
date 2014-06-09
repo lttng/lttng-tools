@@ -154,6 +154,7 @@ const char * const config_event_context_vppid = "VPPID";
 const char * const config_event_context_pthread_id = "PTHREAD_ID";
 const char * const config_event_context_hostname = "HOSTNAME";
 const char * const config_event_context_ip = "IP";
+const char * const config_event_context_perf_thread_counter = "PERF_THREAD_COUNTER";
 
 struct consumer_output {
 	int enabled;

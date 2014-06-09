@@ -258,8 +258,12 @@ const char *get_ust_context_type_string(
 	case LTTNG_UST_CONTEXT_PTHREAD_ID:
 		context_type_string = config_event_context_pthread_id;
 		break;
+	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+		context_type_string = config_event_context_perf_thread_counter;
+		break;
 	default:
 		context_type_string = NULL;
+		break;
 	}
 
 	return context_type_string;
