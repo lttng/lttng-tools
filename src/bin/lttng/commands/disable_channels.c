@@ -23,6 +23,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+
+#include <common/mi-lttng.h>
 
 #include "../command.h"
 
@@ -43,6 +46,7 @@ enum {
 };
 
 static struct lttng_handle *handle;
+static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -76,12 +80,57 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 }
 
+static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
+		int success)
+{
+	int ret;
+
+	assert(writer);
+	assert(channel_name);
+
+	/* Open channel element */
+	ret = mi_lttng_writer_open_element(writer, config_element_channel);
+	if (ret) {
+		goto end;
+	}
+
+	/* Name */
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+			channel_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Enabled ? */
+	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled,
+			enabled);
+	if (ret) {
+		goto end;
+	}
+
+	/* Success ? */
+	ret = mi_lttng_writer_write_element_bool(writer,
+			mi_lttng_element_command, success);
+	if (ret) {
+		goto end;
+	}
+
+	/* Closing channel element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
 /*
  * Disabling channel using the lttng API.
  */
 static int disable_channels(char *session_name)
 {
-	int ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, warn = 0, success;
+
+	/* Normal case for disable channed is enabled = 0 */
+	unsigned int enabled = 0;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -104,6 +153,17 @@ static int disable_channels(char *session_name)
 		goto error;
 	}
 
+	/* Prepare MI */
+	if (lttng_opt_mi) {
+		/* open a channels element */
+		ret = mi_lttng_writer_open_element(writer, config_element_channels);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
+	}
+
 	/* Strip channel list */
 	channel_name = strtok(opt_channels, ",");
 	while (channel_name != NULL) {
@@ -114,9 +174,30 @@ static int disable_channels(char *session_name)
 			ERR("Channel %s: %s (session %s)", channel_name,
 					lttng_strerror(ret), session_name);
 			warn = 1;
+
+			/*
+			 * Mi:
+			 * We assume that if an error occurred the channel is still active.
+			 * This might not be the case but is a good assumption.
+			 * The client should look at the stderr stream for more informations.
+			 */
+			enabled = 1;
+			success = 0;
+
 		} else {
 			MSG("%s channel %s disabled for session %s",
 					get_domain_str(dom.type), channel_name, session_name);
+			enabled = 0;
+			success = 1;
+		}
+
+		/* Print the channel */
+		if (lttng_opt_mi) {
+			ret = mi_partial_channel_print(channel_name, enabled, success);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
 		}
 
 		/* Next channel */
@@ -125,8 +206,19 @@ static int disable_channels(char *session_name)
 
 	ret = CMD_SUCCESS;
 
+	/* Close Mi */
+	if (lttng_opt_mi) {
+		/* Close channels element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
+
 error:
-	if (warn) {
+	/* Bypass the warning if a more important error happened */
+	if (!ret && warn) {
 		ret = CMD_WARNING;
 	}
 
@@ -142,7 +234,7 @@ error:
  */
 int cmd_disable_channels(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
 
@@ -167,13 +259,6 @@ int cmd_disable_channels(int argc, const char **argv)
 		}
 	}
 
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
-	}
-
 	opt_channels = (char*) poptGetArg(pc);
 	if (opt_channels == NULL) {
 		ERR("Missing channel name(s).\n");
@@ -192,12 +277,75 @@ int cmd_disable_channels(int argc, const char **argv)
 		session_name = opt_session_name;
 	}
 
-	ret = disable_channels(session_name);
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_disable_channel);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	command_ret = disable_channels(session_name);
+	if (command_ret) {
+		success = 0;
+	}
+
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
 
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
+	}
+
 	if (!opt_session_name && session_name) {
 		free(session_name);
 	}
+
+	/* Overwrite ret if an error occurred in disable_channels */
+	ret = command_ret ? command_ret : ret;
+
 	poptFreeContext(pc);
 	return ret;
 }

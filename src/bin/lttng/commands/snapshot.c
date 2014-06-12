@@ -25,8 +25,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include <common/utils.h>
+#include <common/mi-lttng.h>
 #include <lttng/snapshot.h>
 
 #include "../command.h"
@@ -52,6 +54,8 @@ enum {
 	OPT_MAX_SIZE,
 	OPT_LIST_COMMANDS,
 };
+
+static struct mi_writer *writer;
 
 static struct poptOption snapshot_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -181,6 +185,52 @@ error_create:
 	return NULL;
 }
 
+static int mi_list_output(void)
+{
+	int ret;
+	struct lttng_snapshot_output *s_iter;
+	struct lttng_snapshot_output_list *list;
+
+	assert(writer);
+
+	ret = lttng_snapshot_list_output(current_session_name, &list);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = mi_lttng_snapshot_output_session_name(writer, current_session_name);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
+		ret = mi_lttng_snapshot_list_output(writer, s_iter);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+
+	/* Close snapshot snapshots element */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Close snapshot session element */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		ret = CMD_ERROR;
+	}
+end:
+	lttng_snapshot_output_list_destroy(list);
+error:
+	return ret;
+}
+
 static int list_output(void)
 {
 	int ret, output_seen = 0;
@@ -210,6 +260,51 @@ static int list_output(void)
 	}
 
 error:
+	return ret;
+}
+
+/*
+ * Delete output by ID (machine interface version).
+ */
+static int mi_del_output(uint32_t id, const char *name)
+{
+	int ret;
+	struct lttng_snapshot_output *output = NULL;
+
+	assert(writer);
+
+	output = lttng_snapshot_output_create();
+	if (!output) {
+		ret = CMD_FATAL;
+		goto error;
+	}
+
+	if (name) {
+		ret = lttng_snapshot_output_set_name(name, output);
+	} else if (id != UINT32_MAX) {
+		ret = lttng_snapshot_output_set_id(id, output);
+	} else {
+		ret = CMD_ERROR;
+		goto error;
+	}
+	if (ret < 0) {
+		ret = CMD_FATAL;
+		goto error;
+	}
+
+	ret = lttng_snapshot_del_output(current_session_name, output);
+	if (ret < 0) {
+		ret = CMD_FATAL;
+		goto error;
+	}
+
+	ret = mi_lttng_snapshot_del_output(writer, id, name, current_session_name);
+	if (ret) {
+		ret = CMD_ERROR;
+	}
+
+error:
+	lttng_snapshot_output_destroy(output);
 	return ret;
 }
 
@@ -251,6 +346,56 @@ static int del_output(uint32_t id, const char *name)
 	} else {
 		MSG("Snapshot output %s successfully deleted for session %s",
 				name, current_session_name);
+	}
+
+error:
+	lttng_snapshot_output_destroy(output);
+	return ret;
+}
+
+/*
+ * Add output from the user URL (machine interface).
+ */
+static int mi_add_output(const char *url)
+{
+	int ret;
+	struct lttng_snapshot_output *output = NULL;
+	char name[NAME_MAX];
+	const char *n_ptr;
+
+	if (!url && (!opt_data_url || !opt_ctrl_url)) {
+		ret = CMD_ERROR;
+		goto error;
+	}
+
+	output = create_output_from_args(url);
+	if (!output) {
+		ret = CMD_FATAL;
+		goto error;
+	}
+
+	/* This call, if successful, populates the id of the output object. */
+	ret = lttng_snapshot_add_output(current_session_name, output);
+	if (ret < 0) {
+		ret = CMD_ERROR;
+		goto error;
+	}
+
+	n_ptr = lttng_snapshot_output_get_name(output);
+	if (*n_ptr == '\0') {
+		int pret;
+		pret = snprintf(name, sizeof(name), DEFAULT_SNAPSHOT_NAME "-%" PRIu32,
+				lttng_snapshot_output_get_id(output));
+		if (pret < 0) {
+			PERROR("snprintf add output name");
+		}
+		n_ptr = name;
+	}
+
+	ret = mi_lttng_snapshot_add_output(writer, current_session_name, n_ptr,
+			output);
+	if (ret) {
+		ret = CMD_ERROR;
 	}
 
 error:
@@ -309,7 +454,7 @@ error:
 
 static int cmd_add_output(int argc, const char **argv)
 {
-	int ret = CMD_SUCCESS;
+	int ret;
 
 	if (argc < 2 && (!opt_data_url || !opt_ctrl_url)) {
 		usage(stderr);
@@ -317,7 +462,11 @@ static int cmd_add_output(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = add_output(argv[1]);
+	if (lttng_opt_mi) {
+		ret = mi_add_output(argv[1]);
+	} else {
+		ret = add_output(argv[1]);
+	}
 
 end:
 	return ret;
@@ -325,7 +474,7 @@ end:
 
 static int cmd_del_output(int argc, const char **argv)
 {
-	int ret = CMD_SUCCESS;
+	int ret;
 	char *name;
 	long id;
 
@@ -338,9 +487,17 @@ static int cmd_del_output(int argc, const char **argv)
 	errno = 0;
 	id = strtol(argv[1], &name, 10);
 	if (id == 0 && errno == 0) {
-		ret = del_output(UINT32_MAX, name);
+		if (lttng_opt_mi) {
+			ret = mi_del_output(UINT32_MAX, name);
+		} else {
+			ret = del_output(UINT32_MAX, name);
+		}
 	} else if (errno == 0 && *name == '\0') {
-		ret = del_output(id, NULL);
+		if (lttng_opt_mi) {
+			ret = mi_del_output(id, NULL);
+		} else {
+			ret = del_output(id, NULL);
+		}
 	} else {
 		ERR("Argument %s not recognized", argv[1]);
 		ret = -1;
@@ -353,7 +510,46 @@ end:
 
 static int cmd_list_output(int argc, const char **argv)
 {
-	return list_output();
+	int ret;
+
+	if (lttng_opt_mi) {
+		ret = mi_list_output();
+	} else {
+		ret = list_output();
+	}
+
+	return ret;
+}
+
+/*
+ * Do a snapshot record with the URL if one is given (machine interface).
+ */
+static int mi_record(const char *url)
+{
+	int ret;
+	struct lttng_snapshot_output *output = NULL;
+
+	output = create_output_from_args(url);
+	if (!output) {
+		ret = CMD_FATAL;
+		goto error;
+	}
+
+	ret = lttng_snapshot_record(current_session_name, output, 0);
+	if (ret < 0) {
+		ret = CMD_ERROR;
+		goto error;
+	}
+
+	ret = mi_lttng_snapshot_record(writer, current_session_name, url,
+			opt_ctrl_url, opt_data_url);
+	if (ret) {
+		ret = CMD_ERROR;
+	}
+
+error:
+	lttng_snapshot_output_destroy(output);
+	return ret;
 }
 
 /*
@@ -400,9 +596,17 @@ static int cmd_record(int argc, const char **argv)
 
 	if (argc == 2) {
 		/* With a given URL */
-		ret = record(argv[1]);
+		if (lttng_opt_mi) {
+			ret = mi_record(argv[1]);
+		} else {
+			ret = record(argv[1]);
+		}
 	} else {
-		ret = record(NULL);
+		if (lttng_opt_mi) {
+			ret = mi_record(NULL);
+		} else {
+			ret = record(NULL);
+		}
 	}
 
 	return ret;
@@ -410,13 +614,13 @@ static int cmd_record(int argc, const char **argv)
 
 static int handle_command(const char **argv)
 {
-	int ret, i = 0, argc;
+	int ret = CMD_SUCCESS, i = 0, argc, command_ret =  CMD_SUCCESS;
 	struct cmd_struct *cmd;
 
 	if (argv == NULL || (!opt_ctrl_url && opt_data_url) ||
 			(opt_ctrl_url && !opt_data_url)) {
 		usage(stderr);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -426,37 +630,90 @@ static int handle_command(const char **argv)
 	while (cmd->func != NULL) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
-			ret = cmd->func(argc, argv);
+			if (lttng_opt_mi) {
+				/* Action element */
+				ret = mi_lttng_writer_open_element(writer,
+						mi_lttng_element_command_action);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+
+				/* Name of the action */
+				ret = mi_lttng_writer_write_element_string(writer,
+						config_element_name, argv[0]);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+
+				/* Open output element */
+				ret = mi_lttng_writer_open_element(writer,
+						mi_lttng_element_command_output);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+			}
+
+			command_ret = cmd->func(argc, argv);
+
+			if (lttng_opt_mi) {
+				/* Close output and action element */
+				ret = mi_lttng_close_multi_element(writer, 2);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+			}
 			goto end;
 		}
 		i++;
 		cmd = &actions[i];
 	}
 
-	/* Command not found */
-	ret = CMD_UNDEFINED;
+	ret = -CMD_UNDEFINED;
 
 end:
+	/* Overwrite ret if an error occured in cmd->func() */
+	ret = command_ret ? command_ret : ret;
 	return ret;
 }
-
 /*
  * The 'snapshot <cmd> <options>' first level command
  */
 int cmd_snapshot(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	char *session_name = NULL;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, snapshot_opts, 0);
 	poptReadDefaultConfig(pc, 0);
 
-	/* TODO: mi support */
+	/* Mi check */
 	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_snapshot);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
 	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -503,26 +760,59 @@ int cmd_snapshot(int argc, const char **argv)
 		current_session_name = opt_session_name;
 	}
 
-	ret = handle_command(poptGetArgs(pc));
-	if (ret < 0) {
-		switch (-ret) {
+	command_ret = handle_command(poptGetArgs(pc));
+	if (command_ret < 0) {
+		switch (-command_ret) {
 		case LTTNG_ERR_EPERM:
 			ERR("The session needs to be set in no output mode (--no-output)");
 			break;
 		case LTTNG_ERR_SNAPSHOT_NODATA:
-			WARN("%s", lttng_strerror(ret));
+			WARN("%s", lttng_strerror(command_ret));
 			break;
 		default:
-			ERR("%s", lttng_strerror(ret));
+			ERR("%s", lttng_strerror(command_ret));
 			break;
 		}
-		goto end;
+		success = 0;
+	}
+
+	if (lttng_opt_mi) {
+		/* Close output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
 	}
 
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+	}
+
 	if (!opt_session_name) {
 		free(session_name);
 	}
+
+	/* Overwrite ret if an error occured during handle_command */
+	ret = command_ret ? command_ret : ret;
 	poptFreeContext(pc);
 	return ret;
 }

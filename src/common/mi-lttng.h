@@ -26,6 +26,9 @@
 #include <common/config/config.h>
 #include <lttng/lttng.h>
 
+/* Don't want to reference snapshot-internal.h here */
+struct lttng_snapshot_output;
+
 /* Instance of a machine interface writer. */
 struct mi_writer {
 	struct config_writer *writer;
@@ -48,6 +51,7 @@ struct mi_lttng_version {
 /* Strings related to command */
 const char * const mi_lttng_element_command;
 const char * const mi_lttng_element_command_name;
+const char * const mi_lttng_element_command_action;
 const char * const mi_lttng_element_command_version;
 const char * const mi_lttng_element_command_enable_event;
 const char * const mi_lttng_element_command_list;
@@ -62,6 +66,12 @@ const char * const mi_lttng_element_command_add_context;
 const char * const mi_lttng_element_command_enable_channels;
 const char * const mi_lttng_element_command_set_session;
 const char * const mi_lttng_element_command_disable_event;
+const char * const mi_lttng_element_command_disable_channel;
+const char * const mi_lttng_element_command_snapshot;
+const char * const mi_lttng_element_command_list_snapshot;
+const char * const mi_lttng_element_command_del_snapshot;
+const char * const mi_lttng_element_command_add_snapshot;
+const char * const mi_lttng_element_command_record_snapshot;
 const char * const mi_lttng_element_command_output;
 const char * const mi_lttng_element_command_success;
 
@@ -135,6 +145,14 @@ const char * const mi_lttng_loglevel_type_unknown;
 /* Sting related to lttng_calibrate */
 const char * const mi_lttng_element_calibrate;
 const char * const mi_lttng_element_calibrate_function;
+
+/* String related to a lttng_snashot */
+const char * const mi_lttng_element_snapshots;
+const char * const mi_lttng_element_snapshot_session_name;
+const char * const mi_lttng_element_snapshot_n_ptr;
+const char * const mi_lttng_element_snapshot_data_url;
+const char * const mi_lttng_element_snapshot_ctrl_url;
+const char * const mi_lttng_element_snapshot_max_size;
 
 /* Utility string function  */
 const char *mi_lttng_loglevel_string(int value);
@@ -553,8 +571,6 @@ int mi_lttng_calibrate(struct mi_writer *writer,
  * is_open Define if we close the context element
  *         This should be used carefully and the client
  *         need to close the context element.
- *         0-> False
- *         1-> True
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
@@ -573,5 +589,118 @@ int mi_lttng_context(struct mi_writer *writer,
  */
 int mi_lttng_perf_counter_context(struct mi_writer *writer,
 		struct lttng_event_perf_counter_ctx  *perf_context);
+
+/*
+ * Machine interface of the snapshot list_output.
+ * It specifies the session for which we are listing snapshots,
+ * and it opens a snapshots element to list a sequence
+ * of snapshots.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * session_name: Snapshot output for session "session_name".
+ *
+ * Note: The client has to close the session and the snapshots elements after
+ * having listed every lttng_snapshot_output.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_snapshot_output_session_name(struct mi_writer *writer,
+		const char *session_name);
+
+/*
+ * Machine interface of the snapshot output.
+ * The machine interface serializes the following attributes:
+ * - id: ID of the snapshot output.
+ * - name: Name of the output.
+ * - data_url : Destination of the output.
+ * - ctrl_url: Destination of the output.
+ * - max_size: total size of all stream combined.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * output: A list of snapshot_output.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_snapshot_list_output(struct mi_writer *writer,
+		struct lttng_snapshot_output *output);
+
+/*
+ * Machine interface of the output of the command snapshot del output
+ * when deleting a snapshot either by id or by name.
+ * If the snapshot was found and successfully deleted using its id,
+ * it return the id of the snapshot and the current session name on which it
+ * was attached.
+ *
+ * Otherwise, it do the same process with the name of the snapshot, if the
+ * snapshot output id is undefined.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * id: ID of the snapshot output.
+ *
+ * name: Name of the snapshot.
+ *
+ * current_session_name: Session to which the snapshot belongs.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_snapshot_del_output(struct mi_writer *writer, int id,
+		const char *name, const char *current_session_name);
+
+/*
+ * Machine interface of the output of the command snapshot add output
+ * when adding a snapshot from a user URL.
+ *
+ * If the snapshot was successfully added, the machine interface lists
+ * these information:
+ * - id: ID of the newly add snapshot output.
+ * - current_session_name: Name of the session to which the output was added.
+ * - ctrl_url: Destination of the output.
+ * - max_size: total size of all stream combined.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * current_session_name: Session to which the snapshot belongs.
+ *
+ * n_ptr:
+ *
+ * output: iterator over a lttng_snapshot_output_list which contain
+ * the snapshot output informations.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_snapshot_add_output(struct mi_writer *writer,
+		const char *current_session_name, const char *n_ptr,
+		struct lttng_snapshot_output *output);
+
+/*
+ * Machine interface of the output of the command snapshot
+ * record  from a URL (if given).
+ *
+ * If the snapshot is successfully recorded from a url, the machine interface
+ * output the following information:
+ * - url: Destination of the output stored in the snapshot.
+ *
+ * Otherwise, the machine interface output the data and ctrl url received
+ * from the command-line.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * current_session_name: Snapshot record for session "current_session_name".
+ *
+ * ctrl_url, data_url: Destination of the output receive from the command-line.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_snapshot_record(struct mi_writer *writer,
+		const char *current_session_name, const char *url,
+		const char *cmdline_ctrl_url, const char *cmdline_data_url);
 
 #endif /* _MI_LTTNG_H */

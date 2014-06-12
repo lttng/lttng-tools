@@ -19,6 +19,7 @@
 
 #include <include/config.h>
 #include <common/config/config.h>
+#include <lttng/snapshot-internal.h>
 #include "mi-lttng.h"
 
 #include <assert.h>
@@ -40,6 +41,8 @@ const char * const mi_lttng_element_command_add_context = "add-context";
 const char * const mi_lttng_element_command_enable_channels = "enable-channel";
 const char * const mi_lttng_element_command_set_session = "set-session";
 const char * const mi_lttng_element_command_disable_event = "disable-event";
+const char * const mi_lttng_element_command_disable_channel = "disable-channel";
+const char * const mi_lttng_element_command_action = "snapshot_action";
 const char * const mi_lttng_element_command_output = "output";
 const char * const mi_lttng_element_command_success = "success";
 
@@ -53,11 +56,15 @@ const char * const mi_lttng_element_version_commit = "commit";
 const char * const mi_lttng_element_version_license = "license";
 const char * const mi_lttng_element_version_patch_level = "patchLevel";
 const char * const mi_lttng_element_version_description = "description";
+const char * const mi_lttng_element_command_snapshot = "snapshot";
+const char * const mi_lttng_element_command_list_snapshot = "list_snapshot";
+const char * const mi_lttng_element_command_del_snapshot = "del_snapshot";
+const char * const mi_lttng_element_command_add_snapshot = "add_snapshot";
+const char * const mi_lttng_element_command_record_snapshot = "record_snapshot";
 
 /* Strings related to pid */
 const char * const mi_lttng_element_pids = "pids";
 const char * const mi_lttng_element_pid = "pid";
-const char * const mi_lttng_element_pid_id = "id";
 
 /* Strings related to save command */
 const char * const mi_lttng_element_save = "save";
@@ -85,6 +92,8 @@ const char * const mi_lttng_element_type_float = "FLOAT";
 const char * const mi_lttng_element_type_string = "STRING";
 const char * const mi_lttng_element_nowrite = "nowrite";
 const char * const mi_lttng_element_success = "success";
+const char * const mi_lttng_element_id = "id";
+const char * const mi_lttng_element_empty = "";
 
 /* String related to loglevel */
 const char * const mi_lttng_loglevel_str_alert = "TRACE_ALERT";
@@ -114,7 +123,13 @@ const char * const mi_lttng_loglevel_type_unknown = "UNKNOWN";
 const char * const mi_lttng_element_calibrate = "calibrate";
 const char * const mi_lttng_element_calibrate_function = "FUNCTION";
 
-const char * const mi_lttng_element_empty = "";
+/* String related to a lttng_snapshot_output */
+const char * const mi_lttng_element_snapshots = "snapshots";
+const char * const mi_lttng_element_snapshot_session_name = "session_name";
+const char * const mi_lttng_element_snapshot_n_ptr = "n_ptr";
+const char * const mi_lttng_element_snapshot_data_url = "data_url";
+const char * const mi_lttng_element_snapshot_ctrl_url = "ctrl_url";
+const char * const mi_lttng_element_snapshot_max_size = "max_size";
 
 const char *mi_lttng_loglevel_string(int value)
 {
@@ -1148,6 +1163,241 @@ int mi_lttng_perf_counter_context(struct mi_writer *writer,
 
 	/* Close perf_counter_context */
 	ret = mi_lttng_writer_close_element(writer);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_snapshot_output_session_name(struct mi_writer *writer,
+		const char *session_name)
+{
+	int ret;
+
+	/* Open session element */
+	ret = mi_lttng_writer_open_element(writer, config_element_session);
+	if (ret) {
+		goto end;
+	}
+
+	/* Snapshot output list for current session name */
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+			session_name);
+
+	/* Open element snapshots (sequence one snapshot) */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_snapshots);
+	if (ret) {
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_snapshot_list_output(struct mi_writer *writer,
+		struct lttng_snapshot_output *output)
+{
+	int ret;
+
+	/* Open element snapshot output */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_command_snapshot);
+	if (ret) {
+		goto end;
+	}
+
+	/* ID of the snapshot output */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			mi_lttng_element_id, output->id);
+	if (ret) {
+		goto end;
+	}
+
+	/* Name of the output */
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+			output->name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Destination of the output (ctrl_url)*/
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
+	if (ret) {
+		goto end;
+	}
+
+	/* Destination of the output (data_url) */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_snapshot_data_url, output->data_url);
+	if (ret) {
+		goto end;
+	}
+
+	/* total size of all stream combined */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			mi_lttng_element_snapshot_max_size, output->max_size);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close snapshot output element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_snapshot_del_output(struct mi_writer *writer, int id,
+		const char *name, const char *current_session_name)
+{
+	int ret;
+
+	/* Open element del_snapshot */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_command_snapshot);
+	if (ret) {
+		goto end;
+	}
+
+
+	if (id != UINT32_MAX) {
+		/* "Snapshot output "id" successfully deleted
+		 * for "current_session_name"
+		 * ID of the snapshot output
+		 */
+		ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				mi_lttng_element_id, id);
+		if (ret) {
+			goto end;
+		}
+	} else {
+		/* "Snapshot output "name" successfully deleted
+		 * for session "current_session_name"
+		 * Name of the output
+		 */
+		ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+				name);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Snapshot was deleted for session "current_session_name"*/
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_snapshot_session_name,
+			current_session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close snapshot element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_snapshot_add_output(struct mi_writer *writer,
+		const char *current_session_name, const char *n_ptr,
+		struct lttng_snapshot_output *output)
+{
+	int ret;
+
+	/* Open element snapshot */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_command_snapshot);
+	if (ret) {
+		goto end;
+	}
+
+	/* Snapshot output id */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			mi_lttng_element_id, output->id);
+	if (ret) {
+		goto end;
+	}
+
+	/* Snapshot output names */
+	ret = mi_lttng_writer_write_element_string(writer,
+			config_element_name, n_ptr);
+	if (ret) {
+		goto end;
+	}
+
+	/* Destination of the output (ctrl_url)*/
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
+	if (ret) {
+		goto end;
+	}
+
+	/* Snapshot added for session "current_session_name"*/
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_snapshot_session_name, current_session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* total size of all stream combined */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			mi_lttng_element_snapshot_max_size, output->max_size);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close snapshot element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_snapshot_record(struct mi_writer *writer,
+		const char *current_session_name, const char *url,
+		const char *cmdline_ctrl_url, const char *cmdline_data_url)
+{
+	int ret;
+
+	/* Open element snapshot */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_command_snapshot);
+	if (ret) {
+		goto end;
+	}
+
+	/*
+	 * If a valid an URL was given, serialize it,
+	 * else take the command line data and ctrl urls*/
+	if (url) {
+		/* Destination of the output (ctrl_url)*/
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_snapshot_ctrl_url, url);
+		if (ret) {
+			goto end;
+		}
+	} else if (cmdline_ctrl_url) {
+		/* Destination of the output (ctrl_url)*/
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_snapshot_ctrl_url, cmdline_ctrl_url);
+		if (ret) {
+			goto end;
+		}
+
+		/* Destination of the output (data_url) */
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_snapshot_data_url, cmdline_data_url);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close record_snapshot element */
+	ret = mi_lttng_writer_close_element(writer);
+
 end:
 	return ret;
 }
