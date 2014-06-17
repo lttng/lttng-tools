@@ -27,10 +27,13 @@
 const char * const mi_lttng_element_command = "command";
 const char * const mi_lttng_element_command_version = "version";
 const char * const mi_lttng_element_command_list = "list";
+const char * const mi_lttng_element_command_save = "save";
+const char * const mi_lttng_element_command_load = "load";
 const char * const mi_lttng_element_command_name = "name";
 const char * const mi_lttng_element_command_output = "output";
+const char * const mi_lttng_element_command_success = "success";
 
-/* Strings related to command: version */
+/* Strings related to version command */
 const char * const mi_lttng_element_version = "version";
 const char * const mi_lttng_element_version_str = "string";
 const char * const mi_lttng_element_version_web = "url";
@@ -45,6 +48,12 @@ const char * const mi_lttng_element_version_description = "description";
 const char * const mi_lttng_element_pids = "pids";
 const char * const mi_lttng_element_pid = "pid";
 const char * const mi_lttng_element_pid_id = "id";
+
+/* Strings related to save command */
+const char * const mi_lttng_element_save = "save";
+
+/* Strings related to load command */
+const char * const mi_lttng_element_load = "load";
 
 /* String related to a lttng_event_field */
 const char * const mi_lttng_element_event_field = "event_field";
@@ -76,6 +85,7 @@ const char * const mi_lttng_loglevel_str_notice = "TRACE_NOTICE";
 const char * const mi_lttng_loglevel_str_unknown = "UNKNOWN";
 const char * const mi_lttng_loglevel_str_warning = "TRACE_WARNING";
 
+/* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all = "ALL";
 const char * const mi_lttng_loglevel_type_range = "RANGE";
 const char * const mi_lttng_loglevel_type_single = "SINGLE";

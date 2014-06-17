@@ -23,7 +23,9 @@
 #include <string.h>
 #include <assert.h>
 
+#include <common/mi-lttng.h>
 #include <common/config/config.h>
+
 #include "../command.h"
 
 static char *opt_input_path;
@@ -37,6 +39,8 @@ enum {
 	OPT_ALL,
 	OPT_FORCE,
 };
+
+static struct mi_writer *writer;
 
 static struct poptOption load_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -65,24 +69,82 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           before creating new one(s).\n");
 }
 
+static int mi_partial_session(const char *session_name)
+{
+	int ret;
+	assert(writer);
+	assert(session_name);
+
+	/* Open session element */
+	ret = mi_lttng_writer_open_element(writer, config_element_session);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+			session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Closing session element */
+	ret = mi_lttng_writer_close_element(writer);
+end:
+	return ret;
+}
+
+/*
+ * Mi print of load command
+ */
+static int mi_load_print(const char *session_name)
+{
+	int ret;
+	assert(writer);
+
+	if (opt_load_all) {
+		/* We use a wildcard to represent all sessions */
+		session_name = "*";
+	}
+
+	/* Print load element */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_load);
+	if (ret) {
+		goto end;
+	}
+
+	/* Print session element */
+	ret = mi_partial_session(session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Path element */
+	if (opt_input_path) {
+		ret = mi_lttng_writer_write_element_string(writer, config_element_path,
+				opt_input_path);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close load element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
 /*
  * The 'load <options>' first level command
  */
 int cmd_load(int argc, const char **argv)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
 	int opt;
 	poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, load_opts, 0);
 	poptReadDefaultConfig(pc, 0);
-
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
-	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -106,13 +168,41 @@ int cmd_load(int argc, const char **argv)
 		session_name = poptGetArg(pc);
 		if (session_name) {
 			DBG2("Loading session name: %s", session_name);
+		} else {
+			/* Default to load_all */
+			opt_load_all = 1;
 		}
 	}
 
-	ret = config_load_session(opt_input_path, session_name, opt_force, 0);
-	if (ret) {
-		ERR("%s", lttng_strerror(ret));
-		ret = -ret;
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_load);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	command_ret = config_load_session(opt_input_path, session_name, opt_force, 0);
+	if (command_ret) {
+		ERR("%s", lttng_strerror(command_ret));
+		success = 0;
 	} else {
 		if (opt_load_all) {
 			MSG("All sessions have been loaded successfully");
@@ -125,8 +215,49 @@ int cmd_load(int argc, const char **argv)
 		} else {
 			MSG("Session has been loaded successfully");
 		}
+		success = 1;
+	}
+
+	/* Mi Printing and closing */
+	if (lttng_opt_mi) {
+		/* Mi print */
+		ret = mi_load_print(session_name);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
 	}
 end:
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+	}
+
+	/* Overwrite ret if the was an error with the load command */
+	ret = command_ret ? -command_ret : ret;
+
 	poptFreeContext(pc);
 	return ret;
 }

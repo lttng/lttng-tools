@@ -23,6 +23,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <common/mi-lttng.h>
+
 #include "../command.h"
 #include <lttng/save.h>
 
@@ -45,6 +47,8 @@ static struct poptOption save_opts[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
+static struct mi_writer *writer;
+
 /*
  * usage
  */
@@ -59,12 +63,76 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -f, --force          Overwrite existing session configuration(s)\n");
 }
 
+static int mi_partial_session(const char *session_name)
+{
+	int ret;
+	assert(writer);
+	assert(session_name);
+
+	/* Open session element */
+	ret = mi_lttng_writer_open_element(writer, config_element_session);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
+			session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Closing session element */
+	ret = mi_lttng_writer_close_element(writer);
+end:
+	return ret;
+}
+
+/*
+ * Mi print of save command
+ */
+static int mi_save_print(const char *session_name)
+{
+	int ret;
+	assert(writer);
+
+	if (opt_save_all) {
+		/* We use a wildcard to represent all sessions */
+		session_name = "*";
+	}
+
+	/* Print save element */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_save);
+	if (ret) {
+		goto end;
+	}
+
+	/* Print session element */
+	ret = mi_partial_session(session_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Path element */
+	if (opt_output_path) {
+		ret = mi_lttng_writer_write_element_string(writer, config_element_path,
+				opt_output_path);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close save element */
+	ret = mi_lttng_writer_close_element(writer);
+end:
+	return ret;
+}
+
 /*
  * The 'save <options>' first level command
  */
 int cmd_save(int argc, const char **argv)
 {
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
 	int opt;
 	const char *session_name = NULL;
 	poptContext pc;
@@ -72,13 +140,6 @@ int cmd_save(int argc, const char **argv)
 
 	pc = poptGetContext(NULL, argc, argv, save_opts, 0);
 	poptReadDefaultConfig(pc, 0);
-
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
-	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -102,6 +163,9 @@ int cmd_save(int argc, const char **argv)
 		session_name = poptGetArg(pc);
 		if (session_name) {
 			DBG2("Session name: %s", session_name);
+		} else {
+			/* default to opt_save_all */
+			opt_save_all = 1;
 		}
 	}
 
@@ -126,9 +190,35 @@ int cmd_save(int argc, const char **argv)
 		goto end_destroy;
 	}
 
-	ret = lttng_save_session(attr);
-	if (ret < 0) {
-		ERR("%s", lttng_strerror(ret));
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end_destroy;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_save);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_destroy;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_destroy;
+		}
+	}
+
+	command_ret = lttng_save_session(attr);
+	if (command_ret < 0) {
+		ERR("%s", lttng_strerror(command_ret));
+		success = 0;
 	} else {
 		/* Inform the user of what just happened on success. */
 		if (session_name && opt_output_path) {
@@ -142,10 +232,52 @@ int cmd_save(int argc, const char **argv)
 		} else {
 			MSG("All sessions have been saved successfully.");
 		}
+		success = 1;
+	}
+
+	/* Mi Printing and closing */
+	if (lttng_opt_mi) {
+		/* Mi print */
+		ret = mi_save_print(session_name);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_destroy;
+		}
+
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_destroy;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_destroy;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_destroy;
+		}
 	}
 end_destroy:
 	lttng_save_session_attr_destroy(attr);
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+	}
+
+	/* Overwrite ret if command failed */
+	ret = command_ret ? -command_ret : ret;
+
 	poptFreeContext(pc);
 	return ret;
 }

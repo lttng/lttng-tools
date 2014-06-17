@@ -49,10 +49,13 @@ struct mi_lttng_version {
 const char * const mi_lttng_element_command;
 const char * const mi_lttng_element_command_version;
 const char * const mi_lttng_element_command_list;
+const char * const mi_lttng_element_command_save;
+const char * const mi_lttng_element_command_load;
 const char * const mi_lttng_element_command_name;
 const char * const mi_lttng_element_command_output;
+const char * const mi_lttng_element_command_success;
 
-/* Strings related to command: version */
+/* Strings related to version command */
 const char * const mi_lttng_element_version;
 const char * const mi_lttng_element_version_str;
 const char * const mi_lttng_element_version_web;
@@ -71,6 +74,12 @@ const char * const mi_lttng_element_event_fields;
 const char * const mi_lttng_element_pids;
 const char * const mi_lttng_element_pid;
 const char * const mi_lttng_element_pid_id;
+
+/* Strings related to save command */
+const char * const mi_lttng_element_save;
+
+/* Strings related to load command */
+const char * const mi_lttng_element_load;
 
 /* General element of mi_lttng */
 const char * const mi_lttng_element_type_other;
@@ -98,6 +107,7 @@ const char * const mi_lttng_loglevel_str_notice;
 const char * const mi_lttng_loglevel_str_unknown;
 const char * const mi_lttng_loglevel_str_warning;
 
+/* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all;
 const char * const mi_lttng_loglevel_type_range;
 const char * const mi_lttng_loglevel_type_single;

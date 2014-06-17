@@ -258,10 +258,10 @@ THE SOFTWARE.
 	<xs:complexType name="session_type">
 		<xs:all>
 			<xs:element name="name" type="name_type" />
-			<xs:element name="path" type="name_type" />
-			<xs:element name="enabled" type="xs:boolean" default="false" />
-			<xs:element name="snapshot_mode" type="uint32_type" />
-			<xs:element name="live_timer_interval" type="uint32_type" />
+			<xs:element name="path" type="name_type" minOccurs="0" />
+			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
+			<xs:element name="snapshot_mode" type="uint32_type" minOccurs="0" />
+			<xs:element name="live_timer_interval" type="uint32_type" minOccurs="0" />
 			<xs:element name="channels" type="channels_type" minOccurs="0" />
 			<xs:element name="domains" type="domains_type" minOccurs="0" />
 		</xs:all>
@@ -275,6 +275,21 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
+	<!-- map to the save command -->
+	<xs:complexType name="save_type">
+		<xs:all>
+			<xs:element name="session" type="session_type" />
+			<xs:element name="path" type="name_type"/>
+		</xs:all>
+	</xs:complexType>
+
+	<!-- map to the load command -->
+	<xs:complexType name="load_type">
+		<xs:all>
+			<xs:element name="session" type="session_type" />
+			<xs:element name="path" type="name_type"/>
+		</xs:all>
+	</xs:complexType>
 
 	<xs:complexType name="domains_type">
 		<xs:sequence>
@@ -299,6 +314,8 @@ THE SOFTWARE.
 			<xs:element name="domains" type="domains_type" minOccurs="0" />
 			<xs:element name="sessions" type="sessions_type" minOccurs="0" />
 			<xs:element name="version" type="version_type" minOccurs="0" />
+			<xs:element name="save" type="save_type" minOccurs="0" />
+			<xs:element name="load" type="load_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -307,6 +324,8 @@ THE SOFTWARE.
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="list" />
 			<xs:enumeration value="version" />
+			<xs:enumeration value="save" />
+			<xs:enumeration value="load" />
 		</xs:restriction>
 	</xs:simpleType>
 
@@ -315,6 +334,7 @@ THE SOFTWARE.
 			<xs:all>
 				<xs:element name="name" type="command_string_type" maxOccurs="1" />
 				<xs:element name="output" type="output_type" maxOccurs="1" />
+				<xs:element name="success" type="xs:boolean" minOccurs="0" maxOccurs="1" />
 			</xs:all>
 		</xs:complexType>
 	</xs:element>
