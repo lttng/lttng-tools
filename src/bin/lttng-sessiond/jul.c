@@ -722,7 +722,8 @@ error:
  *
  * Return a new object else NULL on error.
  */
-struct jul_event *jul_create_event(const char *name)
+struct jul_event *jul_create_event(const char *name,
+		struct lttng_filter_bytecode *filter)
 {
 	struct jul_event *event;
 
@@ -737,6 +738,10 @@ struct jul_event *jul_create_event(const char *name)
 		strncpy(event->name, name, sizeof(event->name));
 		event->name[sizeof(event->name) - 1] = '\0';
 		lttng_ht_node_init_str(&event->node, event->name);
+	}
+
+	if (filter) {
+		event->filter = filter;
 	}
 
 error:

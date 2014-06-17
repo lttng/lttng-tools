@@ -84,6 +84,9 @@ struct jul_event {
 	 * Hash table nodes of the JUL domain. Indexed by name string.
 	 */
 	struct lttng_ht_node_str node;
+
+	/* Bytecode filter associated with the event . NULL if none. */
+	struct lttng_filter_bytecode *filter;
 };
 
 /*
@@ -112,7 +115,8 @@ int jul_init_domain(struct jul_domain *dom);
 void jul_destroy_domain(struct jul_domain *dom);
 
 /* JUL event API. */
-struct jul_event *jul_create_event(const char *name);
+struct jul_event *jul_create_event(const char *name,
+		struct lttng_filter_bytecode *filter);
 void jul_add_event(struct jul_event *event, struct jul_domain *dom);
 struct jul_event *jul_find_event(const char *name,
 		enum lttng_loglevel_jul loglevel, struct jul_domain *dom);

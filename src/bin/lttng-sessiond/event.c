@@ -27,6 +27,7 @@
 #include "channel.h"
 #include "event.h"
 #include "kernel.h"
+#include "lttng-sessiond.h"
 #include "ust-ctl.h"
 #include "ust-app.h"
 #include "trace-kernel.h"
@@ -621,7 +622,7 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
 int event_jul_enable_all(struct ltt_ust_session *usess,
-		struct lttng_event *event)
+		struct lttng_event *event, struct lttng_filter_bytecode *filter)
 {
 	int ret;
 	struct jul_event *jevent;
@@ -632,7 +633,7 @@ int event_jul_enable_all(struct ltt_ust_session *usess,
 	DBG("Event JUL enabling ALL events for session %" PRIu64, usess->id);
 
 	/* Enable event on JUL application through TCP socket. */
-	ret = event_jul_enable(usess, event);
+	ret = event_jul_enable(usess, event, filter);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -656,7 +657,8 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event)
+int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event,
+		struct lttng_filter_bytecode *filter)
 {
 	int ret, created = 0;
 	struct jul_event *jevent;
@@ -670,7 +672,7 @@ int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event)
 
 	jevent = jul_find_event(event->name, event->loglevel, &usess->domain_jul);
 	if (!jevent) {
-		jevent = jul_create_event(event->name);
+		jevent = jul_create_event(event->name, filter);
 		if (!jevent) {
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
@@ -714,6 +716,9 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 {
 	int ret;
 	struct jul_event *jevent;
+	struct ltt_ust_event *uevent = NULL;
+	struct ltt_ust_channel *uchan = NULL;
+	char *ust_event_name;
 
 	assert(usess);
 	assert(event_name);
@@ -729,6 +734,39 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 	/* Already disabled? */
 	if (!jevent->enabled) {
 		goto end;
+	}
+
+	/*
+	 * Disable it on the UST side. First get the channel reference then find
+	 * the event and finally disable it.
+	 */
+	uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+			DEFAULT_JUL_CHANNEL_NAME);
+	if (!uchan) {
+		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		goto error;
+	}
+
+	if (is_root) {
+		ust_event_name = DEFAULT_SYS_JUL_EVENT_NAME;
+	} else {
+		ust_event_name = DEFAULT_USER_JUL_EVENT_NAME;
+	}
+
+	/*
+	 * The loglevel is hardcoded with 0 here since the JUL ust event is set
+	 * with the loglevel type to ALL thus the loglevel stays 0. The event's
+	 * filter is the one handling the loglevel for JUL.
+	 */
+	uevent = trace_ust_find_event(uchan->events, ust_event_name,
+			jevent->filter, 0, NULL);
+	/* If the JUL event exists, it must be available on the UST side. */
+	assert(uevent);
+
+	ret = ust_app_disable_event_glb(usess, uchan, uevent);
+	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
+		ret = LTTNG_ERR_UST_DISABLE_FAIL;
+		goto error;
 	}
 
 	ret = jul_disable_event(jevent);
