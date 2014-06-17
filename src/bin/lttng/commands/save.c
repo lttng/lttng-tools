@@ -93,12 +93,9 @@ int cmd_save(int argc, const char **argv)
 
 	if (!opt_save_all) {
 		session_name = poptGetArg(pc);
-		if (!session_name) {
-			ERR("A session name must be provided if the \"all\" option is not used.");
-			ret = CMD_ERROR;
-			goto end;
+		if (session_name) {
+			DBG2("Session name: %s", session_name);
 		}
-		DBG2("Session name: %s", session_name);
 	}
 
 	attr = lttng_save_session_attr_create();
