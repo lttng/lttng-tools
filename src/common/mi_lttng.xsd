@@ -313,6 +313,7 @@ THE SOFTWARE.
 		<xs:choice>
 			<xs:element name="domains" type="domains_type" minOccurs="0" />
 			<xs:element name="sessions" type="sessions_type" minOccurs="0" />
+			<xs:element name="session" type="session_type" minOccurs="0" />
 			<xs:element name="version" type="version_type" minOccurs="0" />
 			<xs:element name="save" type="save_type" minOccurs="0" />
 			<xs:element name="load" type="load_type" minOccurs="0" />
@@ -322,6 +323,7 @@ THE SOFTWARE.
 	<!-- Maps to the mi_lttng commands -->
 	<xs:simpleType name="command_string_type">
 		<xs:restriction base="xs:string">
+			<xs:enumeration value="create" />
 			<xs:enumeration value="list" />
 			<xs:enumeration value="version" />
 			<xs:enumeration value="save" />
