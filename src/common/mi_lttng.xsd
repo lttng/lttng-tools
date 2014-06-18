@@ -83,6 +83,27 @@ THE SOFTWARE.
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!-- Maps to the lttng_loglevel_type enum -->
+	<xs:simpleType name="context_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="PERF_COUNTER" />
+			<xs:enumeration value="PERF_CPU_COUNTER" />
+			<xs:enumeration value="PERF_THREAD_COUNTER" />
+			<xs:enumeration value="PID" />
+			<xs:enumeration value="PROCNAME" />
+			<xs:enumeration value="PRIO" />
+			<xs:enumeration value="NICE" />
+			<xs:enumeration value="VPID" />
+			<xs:enumeration value="TID" />
+			<xs:enumeration value="VTID" />
+			<xs:enumeration value="PPID" />
+			<xs:enumeration value="VPPID" />
+			<xs:enumeration value="PTHREAD_ID" />
+			<xs:enumeration value="HOSTNAME" />
+			<xs:enumeration value="IP" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!-- Maps to loglevel_string char * -->
 	<xs:simpleType name="loglevel_string_type">
 		<xs:restriction base="xs:string">
@@ -305,6 +326,25 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
+	<!-- Map to lttng_event_perf_counter_ctx -->
+	<xs:complexType name="perf_counter_context_type">
+		<xs:all>
+			<xs:element name="type" type="uint32_type" />
+			<xs:element name="config" type="uint64_type" />
+			<xs:element name="name" type="name_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Map to lttng_event_context -->
+	<xs:complexType name="context_type">
+		<xs:all>
+			<xs:element name="type" type="context_type_type" />
+			<xs:element name="perf_counter_context" type="perf_counter_context_type" minOccurs="0" />
+			<!-- The success element is present only for lttng cli command add-context -->
+			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
 	<xs:complexType name="domains_type">
 		<xs:sequence>
 			<xs:element name="domain" type="domain_type" minOccurs="0" maxOccurs="unbounded" />
@@ -323,6 +363,12 @@ THE SOFTWARE.
 		</xs:sequence>
 	</xs:complexType>
 
+	<xs:complexType name="contexts_type">
+		<xs:sequence>
+			<xs:element name="context" type="context_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
 	<xs:complexType name="output_type">
 		<xs:choice>
 			<xs:element name="domains" type="domains_type" minOccurs="0" />
@@ -332,6 +378,7 @@ THE SOFTWARE.
 			<xs:element name="save" type="save_type" minOccurs="0" />
 			<xs:element name="load" type="load_type" minOccurs="0" />
 			<xs:element name="calibrate" type="calibrate_type" minOccurs="0" />
+			<xs:element name="contexts" type="contexts_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -347,6 +394,7 @@ THE SOFTWARE.
 			<xs:enumeration value="stop" />
 			<xs:enumeration value="destroy" />
 			<xs:enumeration value="calibrate" />
+			<xs:enumeration value="add-context" />
 		</xs:restriction>
 	</xs:simpleType>
 

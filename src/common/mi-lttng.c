@@ -35,6 +35,7 @@ const char * const mi_lttng_element_command_stop = "stop";
 const char * const mi_lttng_element_command_create = "create";
 const char * const mi_lttng_element_command_destroy = "destroy";
 const char * const mi_lttng_element_command_calibrate = "calibrate";
+const char * const mi_lttng_element_command_add_context = "add-context";
 const char * const mi_lttng_element_command_output = "output";
 const char * const mi_lttng_element_command_success = "success";
 
@@ -64,6 +65,14 @@ const char * const mi_lttng_element_load = "load";
 const char * const mi_lttng_element_event_field = "event_field";
 const char * const mi_lttng_element_event_fields = "event_fields";
 
+/* String related to lttng_event_context */
+const char * const mi_lttng_context_type_perf_counter = "PERF_COUNTER";
+const char * const mi_lttng_context_type_perf_cpu_counter = "PERF_CPU_COUNTER";
+const char * const mi_lttng_context_type_perf_thread_counter = "PERF_THREAD_COUNTER";
+
+/* String related to lttng_event_perf_counter_ctx */
+const char * const mi_lttng_element_perf_counter_context = "perf_counter_context";
+
 /* General elements of mi_lttng */
 const char * const mi_lttng_element_type_other = "OTHER";
 const char * const mi_lttng_element_type_integer = "INTEGER";
@@ -71,6 +80,7 @@ const char * const mi_lttng_element_type_enum = "ENUM";
 const char * const mi_lttng_element_type_float = "FLOAT";
 const char * const mi_lttng_element_type_string = "STRING";
 const char * const mi_lttng_element_nowrite = "nowrite";
+const char * const mi_lttng_element_success = "success";
 
 /* String related to loglevel */
 const char * const mi_lttng_loglevel_str_alert = "TRACE_ALERT";
@@ -175,6 +185,44 @@ const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 		return config_event_type_noop;
 	default:
 		return mi_lttng_element_empty;
+	}
+}
+
+const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
+{
+	switch (val) {
+	case LTTNG_EVENT_CONTEXT_PID:
+		return config_event_context_pid;
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+		return mi_lttng_context_type_perf_counter;
+	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
+		return mi_lttng_context_type_perf_thread_counter;
+	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+		return mi_lttng_context_type_perf_cpu_counter;
+	case LTTNG_EVENT_CONTEXT_PROCNAME:
+		return config_event_context_procname;
+	case LTTNG_EVENT_CONTEXT_PRIO:
+		return config_event_context_prio;
+	case LTTNG_EVENT_CONTEXT_NICE:
+		return config_event_context_nice;
+	case LTTNG_EVENT_CONTEXT_VPID:
+		return config_event_context_vpid;
+	case LTTNG_EVENT_CONTEXT_TID:
+		return config_event_context_tid;
+	case LTTNG_EVENT_CONTEXT_VTID:
+		return config_event_context_vtid;
+	case LTTNG_EVENT_CONTEXT_PPID:
+		return config_event_context_ppid;
+	case LTTNG_EVENT_CONTEXT_VPPID:
+		return config_event_context_vppid;
+	case LTTNG_EVENT_CONTEXT_PTHREAD_ID:
+		return config_event_context_pthread_id;
+	case LTTNG_EVENT_CONTEXT_HOSTNAME:
+		return config_event_context_hostname;
+	case LTTNG_EVENT_CONTEXT_IP:
+		return config_event_context_ip;
+	default:
+		return NULL;
 	}
 }
 
@@ -1010,6 +1058,93 @@ int mi_lttng_calibrate(struct mi_writer *writer,
 	}
 
 	/* Closing calibrate element */
+	ret = mi_lttng_writer_close_element(writer);
+end:
+	return ret;
+}
+LTTNG_HIDDEN
+int mi_lttng_context(struct mi_writer *writer,
+		struct lttng_event_context *context, int is_open)
+{
+	int ret;
+	const char *type_string;
+	struct lttng_event_perf_counter_ctx *perf_context;
+	/* Open context */
+	ret = mi_lttng_writer_open_element(writer , config_element_context);
+	if (ret) {
+		goto end;
+	}
+
+	type_string = mi_lttng_event_contexttype_string(context->ctx);
+	if (!type_string) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Print context type */
+	ret = mi_lttng_writer_write_element_string(writer, config_element_type,
+			type_string);
+
+	/* Special case for PERF_*_COUNTER
+	 * print the lttng_event_perf_counter_ctx*/
+	switch (context->ctx) {
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+		perf_context = &context->u.perf_counter;
+		ret =  mi_lttng_perf_counter_context(writer, perf_context);
+		if (ret) {
+			goto end;
+		}
+		break;
+	default:
+		break;
+	}
+
+	/* Close context */
+	if (!is_open) {
+		ret = mi_lttng_writer_close_element(writer);
+	}
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_perf_counter_context(struct mi_writer *writer,
+		struct lttng_event_perf_counter_ctx  *perf_context)
+{
+	int ret;
+
+	/* Open perf_counter_context */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_perf_counter_context);
+	if (ret) {
+		goto end;
+	}
+
+	/* Type */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			config_element_type, perf_context->type);
+	if (ret) {
+		goto end;
+	}
+
+	/* Config */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			config_element_config, perf_context->config);
+	if (ret) {
+		goto end;
+	}
+
+	/* Name of the perf counter */
+	ret = mi_lttng_writer_write_element_string(writer,
+			config_element_name, perf_context->name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close perf_counter_context */
 	ret = mi_lttng_writer_close_element(writer);
 end:
 	return ret;

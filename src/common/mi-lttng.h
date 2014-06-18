@@ -57,6 +57,7 @@ const char * const mi_lttng_element_command_start;
 const char * const mi_lttng_element_command_create;
 const char * const mi_lttng_element_command_destroy;
 const char * const mi_lttng_element_command_calibrate;
+const char * const mi_lttng_element_command_add_context;
 const char * const mi_lttng_element_command_output;
 const char * const mi_lttng_element_command_success;
 
@@ -74,6 +75,14 @@ const char * const mi_lttng_element_version_description;
 /* String related to a lttng_event_field */
 const char * const mi_lttng_element_event_field;
 const char * const mi_lttng_element_event_fields;
+
+/* String related to lttng_event_context */
+const char * const mi_lttng_context_type_perf_counter;
+const char * const mi_lttng_context_type_perf_cpu_counter;
+const char * const mi_lttng_context_type_perf_thread_counter;
+
+/* String related to lttng_event_perf_counter_ctx */
+const char * const mi_lttng_element_perf_counter_context;
 
 /* Strings related to pid */
 const char * const mi_lttng_element_pids;
@@ -93,6 +102,7 @@ const char * const mi_lttng_element_type_enum;
 const char * const mi_lttng_element_type_float;
 const char * const mi_lttng_element_type_string;
 const char * const mi_lttng_element_nowrite;
+const char * const mi_lttng_element_success;
 
 /* String related to loglevel */
 const char * const mi_lttng_loglevel_str_alert;
@@ -483,7 +493,7 @@ int mi_lttng_event_field(struct mi_writer *writer,
  *
  * writer An instance of a machine interface writer.
  *
- * Returns zero if the element's value could be written.
+ * Returns zero if the element could be written.
  * Negative values indicate an error.
  */
 int mi_lttng_event_fields_open(struct mi_writer *writer);
@@ -528,5 +538,36 @@ int mi_lttng_pid(struct mi_writer *writer, pid_t pid , const char *cmdline,
  */
 int mi_lttng_calibrate(struct mi_writer *writer,
 		struct lttng_calibrate *calibrate);
+
+/*
+ * Machine interface of a context.
+ *
+ * writer An instance of a machine interface writer
+ *
+ * context An instance of a lttng_event_context
+ *
+ * is_open Define if we close the context element
+ *         This should be used carefully and the client
+ *         need to close the context element.
+ *         0-> False
+ *         1-> True
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_context(struct mi_writer *writer,
+		struct lttng_event_context *context, int is_open);
+
+/*
+ * Machine interface of a perf_counter_context.
+ *
+ * writer An instance of a machine interface writer
+ *
+ * contest An instance of a lttng_event_perf_counter_ctx
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_perf_counter_context(struct mi_writer *writer,
+		struct lttng_event_perf_counter_ctx  *perf_context);
 
 #endif /* _MI_LTTNG_H */

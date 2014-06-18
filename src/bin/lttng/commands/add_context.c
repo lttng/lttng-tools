@@ -27,6 +27,8 @@
 
 #include <urcu/list.h>
 
+#include <common/mi-lttng.h>
+
 #include "../command.h"
 
 #define PRINT_LINE_LEN	80
@@ -36,6 +38,7 @@ static char *opt_session_name;
 static int opt_kernel;
 static int opt_userspace;
 static char *opt_type;
+
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -50,6 +53,7 @@ enum {
 };
 
 static struct lttng_handle *handle;
+static struct mi_writer *writer;
 
 /*
  * Taken from the LTTng ABI
@@ -549,7 +553,7 @@ end:
  */
 static int add_context(char *session_name)
 {
-	int ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, warn = 0, success = 0;
 	struct lttng_event_context context;
 	struct lttng_domain dom;
 	struct ctx_type *type;
@@ -572,6 +576,14 @@ static int add_context(char *session_name)
 	if (handle == NULL) {
 		ret = CMD_ERROR;
 		goto error;
+	}
+
+	if (lttng_opt_mi) {
+		/* Open a contexts element */
+		ret = mi_lttng_writer_open_element(writer, config_element_contexts);
+		if (ret) {
+			goto error;
+		}
 	}
 
 	/* Iterate over all the context types given */
@@ -599,11 +611,20 @@ static int add_context(char *session_name)
 		}
 		DBG("Adding context...");
 
+		if (lttng_opt_mi) {
+			/* We leave context open the update the success of the command */
+			ret = mi_lttng_context(writer, &context, 1);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+		}
+
 		ret = lttng_add_context(handle, &context, NULL, opt_channel_name);
 		if (ret < 0) {
 			ERR("%s: %s", type->opt->symbol, lttng_strerror(ret));
 			warn = 1;
-			continue;
+			success = 0;
 		} else {
 			if (opt_channel_name) {
 				MSG("%s context %s added to channel %s",
@@ -613,6 +634,32 @@ static int add_context(char *session_name)
 				MSG("%s context %s added to all channels",
 						opt_kernel ? "kernel" : "UST", type->opt->symbol)
 			}
+			success = 1;
+		}
+
+		if (lttng_opt_mi) {
+			/* Is the single operation a success ? */
+			ret = mi_lttng_writer_write_element_bool(writer,
+					mi_lttng_element_success, success);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* Close the context element */
+			ret = mi_lttng_writer_close_element(writer);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+		}
+	}
+
+	if (lttng_opt_mi) {
+		/* Close contexts element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto error;
 		}
 	}
 
@@ -625,7 +672,7 @@ error:
 	 * This means that at least one add_context failed and tells the user to
 	 * look on stderr for error(s).
 	 */
-	if (warn) {
+	if (!ret && warn) {
 		ret = CMD_WARNING;
 	}
 	return ret;
@@ -636,7 +683,8 @@ error:
  */
 int cmd_add_context(int argc, const char **argv)
 {
-	int index, opt, ret = CMD_SUCCESS;
+	int index, opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	int success = 1;
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
 	char *session_name = NULL;
@@ -644,13 +692,6 @@ int cmd_add_context(int argc, const char **argv)
 	if (argc < 2) {
 		usage(stderr);
 		ret = CMD_ERROR;
-		goto end;
-	}
-
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
 		goto end;
 	}
 
@@ -724,17 +765,79 @@ int cmd_add_context(int argc, const char **argv)
 		session_name = opt_session_name;
 	}
 
-	ret = add_context(session_name);
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
 
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_add_context);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	command_ret = add_context(session_name);
+	if (command_ret) {
+		success = 0;
+	}
+
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+end:
 	if (!opt_session_name) {
 		free(session_name);
 	}
 
-end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
+	}
+
 	/* Cleanup allocated memory */
 	cds_list_for_each_entry_safe(type, tmptype, &ctx_type_list.head, list) {
 		free(type);
 	}
+
+	/* Overwrite ret if an error occurred during add_context() */
+	ret = command_ret ? command_ret : ret;
 
 	poptFreeContext(pc);
 	return ret;
