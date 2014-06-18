@@ -407,6 +407,7 @@ THE SOFTWARE.
 			<xs:enumeration value="add-context" />
 			<xs:enumeration value="enable-channel" />
 			<xs:enumeration value="enable-event" />
+			<xs:enumeration value="set-session" />
 		</xs:restriction>
 	</xs:simpleType>
 
