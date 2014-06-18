@@ -158,6 +158,12 @@ THE SOFTWARE.
 		</xs:choice>
 	</xs:complexType>
 
+	<xs:complexType name="event_exclusion_list_type">
+		<xs:sequence>
+			<xs:element name="exclusion" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+
 	<!-- Maps to lttng_event struct -->
 	<xs:complexType name="event_type">
 		<xs:all>
@@ -168,8 +174,10 @@ THE SOFTWARE.
 			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
 			<xs:element name="filter" type="xs:boolean" minOccurs="0" />
 			<xs:element name="exclusion" type="xs:boolean" minOccurs="0" />
+			<xs:element name="exclusions" type="event_exclusion_list_type" minOccurs="0"/>
 			<xs:element name="attributes" type="event_attributes_type" minOccurs="0" />
 			<xs:element name="event_fields" type="event_fields_type" minOccurs="0" />
+			<xs:element name="success" type="xs:boolean" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -380,6 +388,7 @@ THE SOFTWARE.
 			<xs:element name="calibrate" type="calibrate_type" minOccurs="0" />
 			<xs:element name="contexts" type="contexts_type" minOccurs="0" />
 			<xs:element name="channels" type="channels_type" minOccurs="0" />
+			<xs:element name="events" type="event_list_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -397,6 +406,7 @@ THE SOFTWARE.
 			<xs:enumeration value="calibrate" />
 			<xs:enumeration value="add-context" />
 			<xs:enumeration value="enable-channel" />
+			<xs:enumeration value="enable-event" />
 		</xs:restriction>
 	</xs:simpleType>
 

@@ -27,8 +27,12 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include "../command.h"
 #include <src/common/sessiond-comm/sessiond-comm.h>
+
+/* Mi dependancy */
+#include <common/mi-lttng.h>
+
+#include "../command.h"
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API	"255"
@@ -71,6 +75,7 @@ enum {
 };
 
 static struct lttng_handle *handle;
+static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -400,6 +405,40 @@ const char *print_raw_channel_name(const char *name)
 }
 
 /*
+ * Mi print exlcusion list
+ */
+static
+int mi_print_exclusion(int count, char **names)
+{
+	int i, ret;
+
+	assert(writer);
+
+	if (count == 0) {
+		ret = 0;
+		goto end;
+	}
+	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
+	if (ret) {
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_exclusion, names[i]);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close exclusions element */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
+/*
  * Return allocated string for pretty-printing exclusion names.
  */
 static
@@ -429,6 +468,7 @@ char *print_exclusions(int count, char **names)
 			strcat(ret, ",");
 		}
 	}
+
 	return ret;
 }
 
@@ -522,10 +562,12 @@ end:
 }
 /*
  * Enabling event using the lttng API.
+ * Note: in case of error only the last error code will be return.
  */
 static int enable_events(char *session_name)
 {
-	int ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
@@ -578,6 +620,16 @@ static int enable_events(char *session_name)
 		goto error;
 	}
 
+	/* Prepare Mi */
+	if (lttng_opt_mi) {
+		/* Open a events element */
+		ret = mi_lttng_writer_open_element(writer, config_element_events);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
+
 	if (opt_enable_all) {
 		/* Default setup for enable all */
 		if (opt_kernel) {
@@ -617,6 +669,7 @@ static int enable_events(char *session_name)
 			if (ret == CMD_ERROR) {
 				goto error;
 			}
+			ev.exclusion = 1;
 		}
 		if (!opt_filter) {
 			ret = lttng_enable_event_with_exclusions(handle,
@@ -628,6 +681,7 @@ static int enable_events(char *session_name)
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel events already enabled (channel %s, session %s)",
 							print_channel_name(channel_name), session_name);
+					warn = 1;
 					break;
 				default:
 					ERR("Events: %s (channel %s, session %s)",
@@ -636,6 +690,7 @@ static int enable_events(char *session_name)
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name);
+					error = 1;
 					break;
 				}
 				goto end;
@@ -692,15 +747,17 @@ static int enable_events(char *session_name)
 				goto error;
 			}
 		}
+
 		if (opt_filter) {
-			ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
+			command_ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
 						opt_filter, exclusion_count, exclusion_list);
-			if (ret < 0) {
-				switch (-ret) {
+			if (command_ret < 0) {
+				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on all events is already enabled"
 							" (channel %s, session %s)",
 						print_channel_name(channel_name), session_name);
+					warn = 1;
 					break;
 				default:
 					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
@@ -709,13 +766,62 @@ static int enable_events(char *session_name)
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name, opt_filter);
+					error = 1;
 					break;
 				}
-				goto error;
+				error_holder = command_ret;
 			} else {
+				ev.filter = 1;
 				MSG("Filter '%s' successfully set", opt_filter);
 			}
 		}
+
+		if (lttng_opt_mi) {
+			/* The wildcard * is used for kernel and ust domain to
+			 * represent ALL. We copy * in event name to force the wildcard use
+			 * for kernel domain
+			 *
+			 * Note: this is strictly for semantic and printing while in
+			 * machine interface mode.
+			 */
+			strcpy(ev.name, "*");
+
+			/* If we reach here the events are enabled */
+			if (!error && !warn) {
+				ev.enabled = 1;
+			} else {
+				ev.enabled = 0;
+				success = 0;
+			}
+			ret = mi_lttng_event(writer, &ev, 1);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* print exclusion */
+			ret = mi_print_exclusion(exclusion_count, exclusion_list);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* Success ? */
+			ret = mi_lttng_writer_write_element_bool(writer,
+					mi_lttng_element_command_success, success);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* Close event element */
+			ret = mi_lttng_writer_close_element(writer);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+		}
+
 		goto end;
 	}
 
@@ -802,6 +908,7 @@ static int enable_events(char *session_name)
 			}
 
 			if (opt_exclude) {
+				ev.exclusion = 1;
 				if (opt_event_type != LTTNG_EVENT_ALL && opt_event_type != LTTNG_EVENT_TRACEPOINT) {
 					ERR("Exclusion option can only be used with tracepoint events");
 					ret = CMD_ERROR;
@@ -865,18 +972,19 @@ static int enable_events(char *session_name)
 		if (!opt_filter) {
 			char *exclusion_string;
 
-			ret = lttng_enable_event_with_exclusions(handle,
+			command_ret = lttng_enable_event_with_exclusions(handle,
 					&ev, channel_name,
 					NULL, exclusion_count, exclusion_list);
 			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
-			if (ret < 0) {
+			if (command_ret < 0) {
 				/* Turn ret to positive value to handle the positive error code */
-				switch (-ret) {
+				switch (-command_ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel event %s%s already enabled (channel %s, session %s)",
 							event_name,
 							exclusion_string,
 							print_channel_name(channel_name), session_name);
+					warn = 1;
 					break;
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
@@ -886,9 +994,10 @@ static int enable_events(char *session_name)
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name);
+					error = 1;
 					break;
 				}
-				warn = 1;
+				error_holder = command_ret;
 			} else {
 				/* So we don't print the default channel name for JUL. */
 				if (dom.type == LTTNG_DOMAIN_JUL) {
@@ -908,18 +1017,22 @@ static int enable_events(char *session_name)
 		if (opt_filter) {
 			char *exclusion_string;
 
-			ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
+			/* Filter present */
+			ev.filter = 1;
+
+			command_ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
 					opt_filter, exclusion_count, exclusion_list);
 			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
 
-			if (ret < 0) {
-				switch (-ret) {
+			if (command_ret < 0) {
+				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on event %s%s is already enabled"
 							" (channel %s, session %s)",
 						event_name,
 						exclusion_string,
 						print_channel_name(channel_name), session_name);
+					warn = 1;
 					break;
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')", ev.name,
@@ -929,10 +1042,11 @@ static int enable_events(char *session_name)
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name, opt_filter);
+					error = 1;
 					break;
 				}
-				free(exclusion_string);
-				goto error;
+				error_holder = command_ret;
+
 			} else {
 				MSG("Event %s%s: Filter '%s' successfully set",
 						event_name, exclusion_string,
@@ -941,14 +1055,65 @@ static int enable_events(char *session_name)
 			free(exclusion_string);
 		}
 
+		if (lttng_opt_mi) {
+			if (command_ret) {
+				success = 0;
+				ev.enabled = 0;
+			} else {
+				ev.enabled = 1;
+			}
+
+			ret = mi_lttng_event(writer, &ev, 1);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* print exclusion */
+			ret = mi_print_exclusion(exclusion_count, exclusion_list);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* Success ? */
+			ret = mi_lttng_writer_write_element_bool(writer,
+					mi_lttng_element_command_success, success);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto end;
+			}
+
+			/* Close event element */
+			ret = mi_lttng_writer_close_element(writer);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto end;
+			}
+		}
+
 		/* Next event */
 		event_name = strtok(NULL, ",");
+		/* Reset warn, error and success */
+		success = 1;
 	}
 
 end:
+	/* Close Mi */
+	if (lttng_opt_mi) {
+		/* Close events element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
 error:
 	if (warn) {
 		ret = CMD_WARNING;
+	}
+	if (error) {
+		ret = CMD_ERROR;
 	}
 	lttng_destroy_handle(handle);
 
@@ -959,6 +1124,11 @@ error:
 		free(exclusion_list);
 	}
 
+	/* Overwrite ret with error_holder if there was an actual error with
+	 * enabling an event.
+	 */
+	ret = error_holder ? error_holder : ret;
+
 	return ret;
 }
 
@@ -967,20 +1137,13 @@ error:
  */
 int cmd_enable_events(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
 	int event_type = -1;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
-
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
-	}
 
 	/* Default event type */
 	opt_event_type = LTTNG_EVENT_ALL;
@@ -1041,6 +1204,31 @@ int cmd_enable_events(int argc, const char **argv)
 		}
 	}
 
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_enable_event);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
 	opt_event_list = (char*) poptGetArg(pc);
 	if (opt_event_list == NULL && opt_enable_all == 0) {
 		ERR("Missing event name(s).\n");
@@ -1052,19 +1240,58 @@ int cmd_enable_events(int argc, const char **argv)
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = CMD_ERROR;
-			goto end;
+			command_ret = CMD_ERROR;
+			success = 0;
+			goto mi_closing;
 		}
 	} else {
 		session_name = opt_session_name;
 	}
 
-	ret = enable_events(session_name);
+	command_ret = enable_events(session_name);
+	if (command_ret) {
+		success = 0;
+		goto mi_closing;
+	}
+
+mi_closing:
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
 
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
+	}
+
 	if (opt_session_name == NULL) {
 		free(session_name);
 	}
+
+	/* Overwrite ret if an error occurred in enable_events */
+	ret = command_ret ? command_ret : ret;
 
 	poptFreeContext(pc);
 	return ret;

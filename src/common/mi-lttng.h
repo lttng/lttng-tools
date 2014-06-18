@@ -49,6 +49,7 @@ struct mi_lttng_version {
 const char * const mi_lttng_element_command;
 const char * const mi_lttng_element_command_name;
 const char * const mi_lttng_element_command_version;
+const char * const mi_lttng_element_command_enable_event;
 const char * const mi_lttng_element_command_list;
 const char * const mi_lttng_element_command_save;
 const char * const mi_lttng_element_command_load;
