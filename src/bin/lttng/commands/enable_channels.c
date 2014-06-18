@@ -27,11 +27,13 @@
 #include <assert.h>
 #include <ctype.h>
 
+#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/utils.h>
+#include <common/mi-lttng.h>
+
 #include "../command.h"
 #include "../utils.h"
 
-#include <src/common/sessiond-comm/sessiond-comm.h>
-#include <src/common/utils.h>
 
 static char *opt_channels;
 static int opt_kernel;
@@ -42,6 +44,8 @@ static char *opt_output;
 static int opt_buffer_uid;
 static int opt_buffer_pid;
 static int opt_buffer_global;
+
+static struct mi_writer *writer;
 
 enum {
 	OPT_HELP = 1,
@@ -187,7 +191,7 @@ static void set_default_attr(struct lttng_domain *dom)
  */
 static int enable_channel(char *session_name)
 {
-	int ret = CMD_SUCCESS, warn = 0;
+	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -257,6 +261,16 @@ static int enable_channel(char *session_name)
 		goto error;
 	}
 
+	/* Mi open channels element */
+	if (lttng_opt_mi) {
+		assert(writer);
+		ret = mi_lttng_channels_open(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
+
 	/* Strip channel list (format: chan1,chan2,...) */
 	channel_name = strtok(opt_channels, ",");
 	while (channel_name != NULL) {
@@ -268,33 +282,74 @@ static int enable_channel(char *session_name)
 
 		ret = lttng_enable_channel(handle, &chan);
 		if (ret < 0) {
+			success = 0;
 			switch (-ret) {
 			case LTTNG_ERR_KERN_CHAN_EXIST:
 			case LTTNG_ERR_UST_CHAN_EXIST:
 			case LTTNG_ERR_CHAN_EXIST:
 				WARN("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
-				goto error;
+				warn = 1;
+				break;
 			default:
 				ERR("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
+				error = 1;
 				break;
 			}
-			warn = 1;
 		} else {
 			MSG("%s channel %s enabled for session %s",
 					get_domain_str(dom.type), channel_name, session_name);
+			success = 1;
 		}
 
-		/* Next event */
+		if (lttng_opt_mi) {
+			/* Mi print the channel element and leave it open */
+			ret = mi_lttng_channel(writer, &chan, 1);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* Individual Success ? */
+			ret = mi_lttng_writer_write_element_bool(writer,
+					mi_lttng_element_command_success, success);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			/* Close channel element */
+			ret = mi_lttng_writer_close_element(writer);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+		}
+
+		/* Next channel */
 		channel_name = strtok(NULL, ",");
+	}
+
+	if (lttng_opt_mi) {
+		/* Close channels element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
 	}
 
 	ret = CMD_SUCCESS;
 
 error:
-	if (warn) {
+	/* If more important error happen bypass the warning */
+	if (!ret && warn) {
 		ret = CMD_WARNING;
+	}
+	/* If more important error happen bypass the warning */
+	if (!ret && error) {
+		ret = CMD_ERROR;
 	}
 
 	lttng_destroy_handle(handle);
@@ -319,7 +374,7 @@ static void init_channel_config(void)
  */
 int cmd_enable_channels(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
 	char *opt_arg = NULL;
@@ -328,13 +383,6 @@ int cmd_enable_channels(int argc, const char **argv)
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
-
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
-	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -507,30 +555,92 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 	}
 
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_enable_channels);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
 	opt_channels = (char*) poptGetArg(pc);
 	if (opt_channels == NULL) {
 		ERR("Missing channel name.\n");
 		usage(stderr);
 		ret = CMD_ERROR;
-		goto end;
+		success = 0;
+		goto mi_closing;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = CMD_ERROR;
-			goto end;
+			command_ret = CMD_ERROR;
+			success = 0;
+			goto mi_closing;
 		}
 	} else {
 		session_name = opt_session_name;
 	}
 
-	ret = enable_channel(session_name);
+	command_ret = enable_channel(session_name);
+	if (command_ret) {
+		success = 0;
+	}
+
+mi_closing:
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			goto end;
+		}
+	}
 
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
+	}
+
 	if (!opt_session_name && session_name) {
 		free(session_name);
 	}
+
+	/* Overwrite ret if an error occurred when enable_channel */
+	ret = command_ret ? command_ret : ret;
 	poptFreeContext(pc);
 	return ret;
 }

@@ -594,7 +594,7 @@ int cmd_create(int argc, const char **argv)
 	}
 
 
-	/* MI initilisation */
+	/* MI initialization */
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
@@ -656,7 +656,7 @@ end:
 		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
 	}
 
-	/* Overwrite ret if an error occured in create_session() */
+	/* Overwrite ret if an error occurred in create_session() */
 	ret = command_ret ? command_ret : ret;
 
 	poptFreeContext(pc);

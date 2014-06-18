@@ -36,6 +36,7 @@ const char * const mi_lttng_element_command_create = "create";
 const char * const mi_lttng_element_command_destroy = "destroy";
 const char * const mi_lttng_element_command_calibrate = "calibrate";
 const char * const mi_lttng_element_command_add_context = "add-context";
+const char * const mi_lttng_element_command_enable_channels = "enable-channel";
 const char * const mi_lttng_element_command_output = "output";
 const char * const mi_lttng_element_command_success = "success";
 

@@ -258,7 +258,7 @@ THE SOFTWARE.
 			<xs:element name="name" type="name_type"/>
 			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0"/>
 			<xs:element name="attributes" type="channel_attributes_type" minOccurs="0"/>
-			<xs:element name="events" type="event_list_type"/>
+			<xs:element name="events" type="event_list_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -379,6 +379,7 @@ THE SOFTWARE.
 			<xs:element name="load" type="load_type" minOccurs="0" />
 			<xs:element name="calibrate" type="calibrate_type" minOccurs="0" />
 			<xs:element name="contexts" type="contexts_type" minOccurs="0" />
+			<xs:element name="channels" type="channels_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -395,6 +396,7 @@ THE SOFTWARE.
 			<xs:enumeration value="destroy" />
 			<xs:enumeration value="calibrate" />
 			<xs:enumeration value="add-context" />
+			<xs:enumeration value="enable-channel" />
 		</xs:restriction>
 	</xs:simpleType>
 
