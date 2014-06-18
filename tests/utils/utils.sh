@@ -350,6 +350,15 @@ function disable_ust_lttng_event ()
 	ok $? "Disable event $event_name for session $sess_name"
 }
 
+function disable_jul_lttng_event ()
+{
+	local sess_name="$1"
+	local event_name="$2"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -j >/dev/null 2>&1
+	ok $? "Disable JUL event $event_name for session $sess_name"
+}
+
 function start_lttng_tracing ()
 {
 	sess_name=$1
