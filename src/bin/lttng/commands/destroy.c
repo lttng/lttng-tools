@@ -26,10 +26,14 @@
 
 #include "../command.h"
 
+#include <common/mi-lttng.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 static char *opt_session_name;
 static int opt_destroy_all;
+
+/* Mi writer */
+static struct mi_writer *writer;
 
 enum {
 	OPT_HELP = 1,
@@ -67,15 +71,15 @@ static void usage(FILE *ofp)
  * Unregister the provided session to the session daemon. On success, removes
  * the default configuration.
  */
-static int destroy_session(const char *session_name)
+static int destroy_session(struct lttng_session *session)
 {
 	int ret;
 
-	ret = lttng_destroy_session(session_name);
+	ret = lttng_destroy_session(session->name);
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_SESS_NOT_FOUND:
-			WARN("Session name %s not found", session_name);
+			WARN("Session name %s not found", session->name);
 			break;
 		default:
 			ERR("%s", lttng_strerror(ret));
@@ -84,8 +88,17 @@ static int destroy_session(const char *session_name)
 		goto error;
 	}
 
-	MSG("Session %s destroyed", session_name);
+	MSG("Session %s destroyed", session->name);
 	config_destroy_default();
+
+	if (lttng_opt_mi) {
+		ret = mi_lttng_session(writer, session, 0);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
+
 	ret = CMD_SUCCESS;
 error:
 	return ret;
@@ -96,12 +109,10 @@ error:
  *
  * Call destroy_sessions for each registered sessions
  */
-static int destroy_all_sessions()
+static int destroy_all_sessions(struct lttng_session *sessions, int count)
 {
-	int count, i, ret = CMD_SUCCESS;
-	struct lttng_session *sessions;
+	int i, ret = CMD_SUCCESS;
 
-	count = lttng_list_sessions(&sessions);
 	if (count == 0) {
 		MSG("No session found, nothing to do.");
 	} else if (count < 0) {
@@ -110,7 +121,7 @@ static int destroy_all_sessions()
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = destroy_session(sessions[i].name);
+		ret = destroy_session(&sessions[i]);
 		if (ret < 0) {
 			goto error;
 		}
@@ -125,9 +136,13 @@ error:
 int cmd_destroy(int argc, const char **argv)
 {
 	int opt;
-	int ret = CMD_SUCCESS;
+	int ret = CMD_SUCCESS , i, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+
+	struct lttng_session *sessions;
+	int count;
+	int found;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -148,38 +163,126 @@ int cmd_destroy(int argc, const char **argv)
 		goto end;
 	}
 
-	/* TODO: mi support */
+	/* Mi preparation */
 	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto end;
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_destroy);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* For validation and semantic purpose we open a sessions element */
+		ret = mi_lttng_sessions_open(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	/* Recuperate all sessions for further operation */
+	count = lttng_list_sessions(&sessions);
+	if (count < 0) {
+		command_ret = count;
+		success = 0;
+		goto mi_closing;
 	}
 
 	/* Ignore session name in case all sessions are to be destroyed */
 	if (opt_destroy_all) {
-		ret = destroy_all_sessions();
-		goto end;
+		command_ret = destroy_all_sessions(sessions, count);
+		if (command_ret) {
+			success = 0;
+		}
+	} else {
+		opt_session_name = (char *) poptGetArg(pc);
+
+		if (opt_session_name == NULL) {
+			/* No session name specified, lookup default */
+			session_name = get_session_name();
+			if (session_name == NULL) {
+				command_ret = CMD_ERROR;
+				success = 0;
+				goto mi_closing;
+			}
+		} else {
+			session_name = opt_session_name;
+		}
+
+		/* Find the corresponding lttng_session struct */
+		found = 0;
+		for (i = 0; i < count; i++) {
+			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
+				found = 1;
+				command_ret = destroy_session(&sessions[i]);
+				if (command_ret) {
+					success = 0;
+				}
+
+			}
+		}
+
+		if (!found) {
+			ERR("Session name %s not found", session_name);
+			command_ret = LTTNG_ERR_SESS_NOT_FOUND;
+			success = 0;
+			goto mi_closing;
+		}
 	}
 
-	opt_session_name = (char *) poptGetArg(pc);
-
-	if (opt_session_name == NULL) {
-		/* No session name specified, lookup default */
-		session_name = get_session_name();
-		if (session_name == NULL) {
+mi_closing:
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close sessions and output element element */
+		ret = mi_lttng_close_multi_element(writer, 2);
+		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
-	} else {
-		session_name = opt_session_name;
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
 	}
 
-	ret = destroy_session(session_name);
-
-end:
 	if (opt_session_name == NULL) {
 		free(session_name);
 	}
+
+	/* Overwrite ret if an error occurred during destroy_session/all */
+	ret = command_ret ? command_ret : ret;
 
 	poptFreeContext(pc);
 	return ret;

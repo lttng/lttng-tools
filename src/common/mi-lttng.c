@@ -33,6 +33,7 @@ const char * const mi_lttng_element_command_load = "load";
 const char * const mi_lttng_element_command_start = "start";
 const char * const mi_lttng_element_command_stop = "stop";
 const char * const mi_lttng_element_command_create = "create";
+const char * const mi_lttng_element_command_destroy = "destroy";
 const char * const mi_lttng_element_command_output = "output";
 const char * const mi_lttng_element_command_success = "success";
 

@@ -55,6 +55,7 @@ const char * const mi_lttng_element_command_load;
 const char * const mi_lttng_element_command_stop;
 const char * const mi_lttng_element_command_start;
 const char * const mi_lttng_element_command_create;
+const char * const mi_lttng_element_command_destroy;
 const char * const mi_lttng_element_command_output;
 const char * const mi_lttng_element_command_success;
 

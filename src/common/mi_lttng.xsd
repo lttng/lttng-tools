@@ -330,6 +330,7 @@ THE SOFTWARE.
 			<xs:enumeration value="load" />
 			<xs:enumeration value="start" />
 			<xs:enumeration value="stop" />
+			<xs:enumeration value="destroy" />
 		</xs:restriction>
 	</xs:simpleType>
 
