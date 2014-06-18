@@ -106,6 +106,13 @@ THE SOFTWARE.
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!-- Maps to the lttng_calibrate_type enum -->
+	<xs:simpleType name="calibrate_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="FUNCTION" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!-- Maps to the lttng_event_probe_attr struct -->
 	<xs:complexType name="event_probe_attributes_type">
 		<xs:all>
@@ -217,7 +224,7 @@ THE SOFTWARE.
 	<xs:complexType name="domain_type">
 		<xs:all>
 			<xs:element name="type" type="domain_type_type"/>
-			<xs:element name="buffer_type" type="domain_buffer_type"/>
+			<xs:element name="buffer_type" type="domain_buffer_type" />
 			<xs:element name="pids" type="pids_type" minOccurs="0" />
 			<xs:element name="channels" type="channels_type" minOccurs="0" />
 			<xs:element name="events" type="event_list_type" minOccurs="0" />
@@ -291,6 +298,13 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
+	<!-- Maps to struct lttng_calibrate -->
+	<xs:complexType name="calibrate_type">
+		<xs:all>
+			<xs:element name="type" type="calibrate_type_type" />
+		</xs:all>
+	</xs:complexType>
+
 	<xs:complexType name="domains_type">
 		<xs:sequence>
 			<xs:element name="domain" type="domain_type" minOccurs="0" maxOccurs="unbounded" />
@@ -317,6 +331,7 @@ THE SOFTWARE.
 			<xs:element name="version" type="version_type" minOccurs="0" />
 			<xs:element name="save" type="save_type" minOccurs="0" />
 			<xs:element name="load" type="load_type" minOccurs="0" />
+			<xs:element name="calibrate" type="calibrate_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -331,6 +346,7 @@ THE SOFTWARE.
 			<xs:enumeration value="start" />
 			<xs:enumeration value="stop" />
 			<xs:enumeration value="destroy" />
+			<xs:enumeration value="calibrate" />
 		</xs:restriction>
 	</xs:simpleType>
 

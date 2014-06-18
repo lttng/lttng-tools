@@ -26,6 +26,9 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <assert.h>
+
+#include <common/mi-lttng.h>
 
 #include "../command.h"
 
@@ -51,6 +54,7 @@ enum {
 };
 
 static struct lttng_handle *handle;
+static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -133,13 +137,6 @@ static int calibrate_lttng(void)
 		goto error;
 	}
 
-	/* TODO: mi support */
-	if (lttng_opt_mi) {
-		ret = -LTTNG_ERR_MI_NOT_IMPLEMENTED;
-		ERR("mi option not supported");
-		goto error;
-	}
-
 	handle = lttng_create_handle(NULL, &dom);
 	if (handle == NULL) {
 		ret = CMD_ERROR;
@@ -174,7 +171,14 @@ static int calibrate_lttng(void)
 		goto error;
 	}
 
-	ret = CMD_SUCCESS;
+	if (lttng_opt_mi) {
+		assert(writer);
+		ret = mi_lttng_calibrate(writer, &calibrate);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
 
 error:
 	lttng_destroy_handle(handle);
@@ -189,7 +193,7 @@ error:
  */
 int cmd_calibrate(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -234,9 +238,71 @@ int cmd_calibrate(int argc, const char **argv)
 		}
 	}
 
-	ret = calibrate_lttng();
+	/* Mi check */
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_calibrate);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	command_ret = calibrate_lttng();
+	if (command_ret) {
+		success = 0;
+	}
+
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close  output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
 
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+	}
+
+	/* Overwrite ret if an error occurred during calibrate_lttng() */
+	ret = command_ret ? command_ret : ret;
+
 	poptFreeContext(pc);
 	return ret;
 }
