@@ -26,51 +26,41 @@
 
 /* Strings related to command */
 const char * const mi_lttng_element_command = "command";
-const char * const mi_lttng_element_command_name = "name";
-const char * const mi_lttng_element_command_version = "version";
-const char * const mi_lttng_element_command_enable_event = "enable-event";
-const char * const mi_lttng_element_command_list = "list";
-const char * const mi_lttng_element_command_save = "save";
-const char * const mi_lttng_element_command_load = "load";
-const char * const mi_lttng_element_command_start = "start";
-const char * const mi_lttng_element_command_stop = "stop";
+const char * const mi_lttng_element_command_action = "snapshot_action";
+const char * const mi_lttng_element_command_add_context = "add-context";
+const char * const mi_lttng_element_command_calibrate = "calibrate";
 const char * const mi_lttng_element_command_create = "create";
 const char * const mi_lttng_element_command_destroy = "destroy";
-const char * const mi_lttng_element_command_calibrate = "calibrate";
-const char * const mi_lttng_element_command_add_context = "add-context";
-const char * const mi_lttng_element_command_enable_channels = "enable-channel";
-const char * const mi_lttng_element_command_set_session = "set-session";
-const char * const mi_lttng_element_command_disable_event = "disable-event";
 const char * const mi_lttng_element_command_disable_channel = "disable-channel";
-const char * const mi_lttng_element_command_action = "snapshot_action";
+const char * const mi_lttng_element_command_disable_event = "disable-event";
+const char * const mi_lttng_element_command_enable_channels = "enable-channel";
+const char * const mi_lttng_element_command_enable_event = "enable-event";
+const char * const mi_lttng_element_command_list = "list";
+const char * const mi_lttng_element_command_load = "load";
+const char * const mi_lttng_element_command_name = "name";
 const char * const mi_lttng_element_command_output = "output";
+const char * const mi_lttng_element_command_save = "save";
+const char * const mi_lttng_element_command_set_session = "set-session";
+const char * const mi_lttng_element_command_snapshot = "snapshot";
+const char * const mi_lttng_element_command_snapshot_add = "add_snapshot";
+const char * const mi_lttng_element_command_snapshot_del = "del_snapshot";
+const char * const mi_lttng_element_command_snapshot_list = "list_snapshot";
+const char * const mi_lttng_element_command_snapshot_record = "record_snapshot";
+const char * const mi_lttng_element_command_start = "start";
+const char * const mi_lttng_element_command_stop = "stop";
 const char * const mi_lttng_element_command_success = "success";
+const char * const mi_lttng_element_command_version = "version";
 
 /* Strings related to version command */
 const char * const mi_lttng_element_version = "version";
-const char * const mi_lttng_element_version_str = "string";
-const char * const mi_lttng_element_version_web = "url";
+const char * const mi_lttng_element_version_commit = "commit";
+const char * const mi_lttng_element_version_description = "description";
+const char * const mi_lttng_element_version_license = "license";
 const char * const mi_lttng_element_version_major = "major";
 const char * const mi_lttng_element_version_minor = "minor";
-const char * const mi_lttng_element_version_commit = "commit";
-const char * const mi_lttng_element_version_license = "license";
 const char * const mi_lttng_element_version_patch_level = "patchLevel";
-const char * const mi_lttng_element_version_description = "description";
-const char * const mi_lttng_element_command_snapshot = "snapshot";
-const char * const mi_lttng_element_command_list_snapshot = "list_snapshot";
-const char * const mi_lttng_element_command_del_snapshot = "del_snapshot";
-const char * const mi_lttng_element_command_add_snapshot = "add_snapshot";
-const char * const mi_lttng_element_command_record_snapshot = "record_snapshot";
-
-/* Strings related to pid */
-const char * const mi_lttng_element_pids = "pids";
-const char * const mi_lttng_element_pid = "pid";
-
-/* Strings related to save command */
-const char * const mi_lttng_element_save = "save";
-
-/* Strings related to load command */
-const char * const mi_lttng_element_load = "load";
+const char * const mi_lttng_element_version_str = "string";
+const char * const mi_lttng_element_version_web = "url";
 
 /* String related to a lttng_event_field */
 const char * const mi_lttng_element_event_field = "event_field";
@@ -84,16 +74,27 @@ const char * const mi_lttng_context_type_perf_thread_counter = "PERF_THREAD_COUN
 /* String related to lttng_event_perf_counter_ctx */
 const char * const mi_lttng_element_perf_counter_context = "perf_counter_context";
 
+/* Strings related to pid */
+const char * const mi_lttng_element_pids = "pids";
+const char * const mi_lttng_element_pid = "pid";
+const char * const mi_lttng_element_pid_id = "id";
+
+/* Strings related to save command */
+const char * const mi_lttng_element_save = "save";
+
+/* Strings related to load command */
+const char * const mi_lttng_element_load = "load";
+
 /* General elements of mi_lttng */
-const char * const mi_lttng_element_type_other = "OTHER";
-const char * const mi_lttng_element_type_integer = "INTEGER";
-const char * const mi_lttng_element_type_enum = "ENUM";
-const char * const mi_lttng_element_type_float = "FLOAT";
-const char * const mi_lttng_element_type_string = "STRING";
+const char * const mi_lttng_element_empty = "";
+const char * const mi_lttng_element_id = "id";
 const char * const mi_lttng_element_nowrite = "nowrite";
 const char * const mi_lttng_element_success = "success";
-const char * const mi_lttng_element_id = "id";
-const char * const mi_lttng_element_empty = "";
+const char * const mi_lttng_element_type_enum = "ENUM";
+const char * const mi_lttng_element_type_float = "FLOAT";
+const char * const mi_lttng_element_type_integer = "INTEGER";
+const char * const mi_lttng_element_type_other = "OTHER";
+const char * const mi_lttng_element_type_string = "STRING";
 
 /* String related to loglevel */
 const char * const mi_lttng_loglevel_str_alert = "TRACE_ALERT";
@@ -124,12 +125,12 @@ const char * const mi_lttng_element_calibrate = "calibrate";
 const char * const mi_lttng_element_calibrate_function = "FUNCTION";
 
 /* String related to a lttng_snapshot_output */
-const char * const mi_lttng_element_snapshots = "snapshots";
-const char * const mi_lttng_element_snapshot_session_name = "session_name";
-const char * const mi_lttng_element_snapshot_n_ptr = "n_ptr";
-const char * const mi_lttng_element_snapshot_data_url = "data_url";
 const char * const mi_lttng_element_snapshot_ctrl_url = "ctrl_url";
+const char * const mi_lttng_element_snapshot_data_url = "data_url";
 const char * const mi_lttng_element_snapshot_max_size = "max_size";
+const char * const mi_lttng_element_snapshot_n_ptr = "n_ptr";
+const char * const mi_lttng_element_snapshot_session_name = "session_name";
+const char * const mi_lttng_element_snapshots = "snapshots";
 
 const char *mi_lttng_loglevel_string(int value)
 {
@@ -798,28 +799,28 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* event name */
+	/* Event name */
 	ret = mi_lttng_writer_write_element_string(writer,
 			config_element_name, event->name);
 	if (ret) {
 		goto end;
 	}
 
-	/* event type */
+	/* Event type */
 	ret = mi_lttng_writer_write_element_string(writer,
 			config_element_type, mi_lttng_eventtype_string(event->type));
 	if (ret) {
 		goto end;
 	}
 
-	/* is event enabled */
+	/* Is event enabled */
 	ret = mi_lttng_writer_write_element_bool(writer,
 			config_element_enabled, event->enabled);
 	if (ret) {
 		goto end;
 	}
 
-	/* event filter enabled? */
+	/* Event filter enabled? */
 	ret = mi_lttng_writer_write_element_bool(writer,
 			config_element_filter, event->filter);
 
@@ -833,13 +834,14 @@ int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
 {
 	int ret;
 
-	/* event loglevel */
+	/* Event loglevel */
 	ret = mi_lttng_writer_write_element_string(writer,
 			config_element_loglevel, mi_lttng_loglevel_string(event->loglevel));
 	if (ret) {
 		goto end;
 	}
 
+	/* Log level type */
 	ret = mi_lttng_writer_write_element_string(writer,
 			config_element_loglevel_type,
 			mi_lttng_logleveltype_string(event->loglevel_type));
@@ -1009,9 +1011,6 @@ int mi_lttng_event_field(struct mi_writer *writer,
 	int ret;
 
 	if (!field->field_name[0]) {
-		/* To Review: not sure if legal david ?
-		 * how should this be handle ?
-		 */
 		ret = 0;
 		goto end;
 	}
