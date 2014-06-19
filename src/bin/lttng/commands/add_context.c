@@ -514,6 +514,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
 	print_ctx_type(ofp);
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Note that the vpid, vppid and vtid context types represent the virtual process id,\n"
+			"virtual parent process id and virtual thread id as seen from the current execution context\n"
+			"as opposed to the pid, ppid and tid which are kernel internal data structures.\n\n");
 	fprintf(ofp, "Example:\n");
 	fprintf(ofp, "This command will add the context information 'prio' and two per-cpu\n"
 			"perf counters (hardware branch misses and cache misses), to all channels\n"
