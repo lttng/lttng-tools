@@ -138,6 +138,17 @@ const char * const mi_lttng_loglevel_str_notice;
 const char * const mi_lttng_loglevel_str_unknown;
 const char * const mi_lttng_loglevel_str_warning;
 
+/* String related to loglevel JUL */
+const char * const mi_lttng_loglevel_str_jul_all;
+const char * const mi_lttng_loglevel_str_jul_config;
+const char * const mi_lttng_loglevel_str_jul_fine;
+const char * const mi_lttng_loglevel_str_jul_finer;
+const char * const mi_lttng_loglevel_str_jul_finest;
+const char * const mi_lttng_loglevel_str_jul_info;
+const char * const mi_lttng_loglevel_str_jul_off;
+const char * const mi_lttng_loglevel_str_jul_severe;
+const char * const mi_lttng_loglevel_str_jul_warning;
+
 /* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all;
 const char * const mi_lttng_loglevel_type_range;
@@ -148,7 +159,7 @@ const char * const mi_lttng_loglevel_type_unknown;
 const char * const mi_lttng_element_calibrate;
 const char * const mi_lttng_element_calibrate_function;
 
-/* String related to a lttng_snashot */
+/* String related to a lttng_snapshot */
 const char * const mi_lttng_element_snapshot_ctrl_url;
 const char * const mi_lttng_element_snapshot_data_url;
 const char * const mi_lttng_element_snapshot_max_size;
@@ -324,7 +335,7 @@ int mi_lttng_sessions_open(struct mi_writer *writer);
  * is_open Defines whether or not the session element shall be closed.
  *         This should be used carefully and the client
  *         must close the session element.
- *         Use case: nested addtionnal information on a session
+ *         Use case: nested additional information on a session
  *                  ex: domain,channel event.
  *
  * Returns zero if the element's value could be written.

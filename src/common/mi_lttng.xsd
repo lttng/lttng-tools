@@ -123,6 +123,15 @@ THE SOFTWARE.
 			<xs:enumeration value="TRACE_DEBUG_FUNCTION" />
 			<xs:enumeration value="TRACE_DEBUG_LINE" />
 			<xs:enumeration value="TRACE_DEBUG" />
+			<xs:enumeration value="JUL_OFF" />
+			<xs:enumeration value="JUL_SEVERE" />
+			<xs:enumeration value="JUL_WARNING" />
+			<xs:enumeration value="JUL_INFO" />
+			<xs:enumeration value="JUL_CONFIG" />
+			<xs:enumeration value="JUL_FINE" />
+			<xs:enumeration value="JUL_FINER" />
+			<xs:enumeration value="JUL_FINEST" />
+			<xs:enumeration value="JUL_ALL" />
 			<xs:enumeration value="UNKNOWN" />
 		</xs:restriction>
 	</xs:simpleType>

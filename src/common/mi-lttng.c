@@ -114,6 +114,17 @@ const char * const mi_lttng_loglevel_str_notice = "TRACE_NOTICE";
 const char * const mi_lttng_loglevel_str_unknown = "UNKNOWN";
 const char * const mi_lttng_loglevel_str_warning = "TRACE_WARNING";
 
+/* String related to loglevel JUL */
+const char * const mi_lttng_loglevel_str_jul_all = "JUL_ALL";
+const char * const mi_lttng_loglevel_str_jul_config = "JUL_CONFIG";
+const char * const mi_lttng_loglevel_str_jul_fine = "JUL_FINE";
+const char * const mi_lttng_loglevel_str_jul_finer = "JUL_FINER";
+const char * const mi_lttng_loglevel_str_jul_finest = "JUL_FINEST";
+const char * const mi_lttng_loglevel_str_jul_info = "JUL_INFO";
+const char * const mi_lttng_loglevel_str_jul_off = "JUL_OFF";
+const char * const mi_lttng_loglevel_str_jul_severe = "JUL_SEVERE";
+const char * const mi_lttng_loglevel_str_jul_warning = "JUL_WARNING";
+
 /* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all = "ALL";
 const char * const mi_lttng_loglevel_type_range = "RANGE";
@@ -132,6 +143,10 @@ const char * const mi_lttng_element_snapshot_n_ptr = "n_ptr";
 const char * const mi_lttng_element_snapshot_session_name = "session_name";
 const char * const mi_lttng_element_snapshots = "snapshots";
 
+/* This is a merge of jul loglevel and regular loglevel
+ * Those should never overlap by definition
+ * (see struct lttng_event loglevel)
+ */
 const char *mi_lttng_loglevel_string(int value)
 {
 	switch (value) {
@@ -167,6 +182,24 @@ const char *mi_lttng_loglevel_string(int value)
 		return mi_lttng_loglevel_str_debug_line;
 	case LTTNG_LOGLEVEL_DEBUG:
 		return mi_lttng_loglevel_str_debug;
+	case LTTNG_LOGLEVEL_JUL_OFF:
+		return mi_lttng_loglevel_str_jul_off;
+	case LTTNG_LOGLEVEL_JUL_SEVERE:
+		return mi_lttng_loglevel_str_jul_severe;
+	case LTTNG_LOGLEVEL_JUL_WARNING:
+		return mi_lttng_loglevel_str_jul_warning;
+	case LTTNG_LOGLEVEL_JUL_INFO:
+		return mi_lttng_loglevel_str_jul_info;
+	case LTTNG_LOGLEVEL_JUL_CONFIG:
+		return mi_lttng_loglevel_str_jul_config;
+	case LTTNG_LOGLEVEL_JUL_FINE:
+		return mi_lttng_loglevel_str_jul_fine;
+	case LTTNG_LOGLEVEL_JUL_FINER:
+		return mi_lttng_loglevel_str_jul_finer;
+	case LTTNG_LOGLEVEL_JUL_FINEST:
+		return mi_lttng_loglevel_str_jul_finest;
+	case LTTNG_LOGLEVEL_JUL_ALL:
+		return mi_lttng_loglevel_str_jul_all;
 	default:
 		return mi_lttng_loglevel_str_unknown;
 	}
