@@ -42,6 +42,11 @@ struct ltt_kernel_channel_list {
 	struct cds_list_head head;
 };
 
+struct ltt_kernel_context {
+	struct lttng_kernel_context ctx;
+	struct cds_list_head list;
+};
+
 /* Kernel event */
 struct ltt_kernel_event {
 	int fd;
@@ -56,11 +61,7 @@ struct ltt_kernel_channel {
 	int enabled;
 	unsigned int stream_count;
 	unsigned int event_count;
-	/*
-	 * TODO: need internal representation to support more than a
-	 * single context.
-	 */
-	struct lttng_kernel_context *ctx;
+	struct cds_list_head ctx_list;
 	struct lttng_channel *channel;
 	struct ltt_kernel_event_list events_list;
 	struct ltt_kernel_stream_list stream_list;
@@ -135,6 +136,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev);
 struct ltt_kernel_metadata *trace_kernel_create_metadata(void);
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 		unsigned int count);
+struct ltt_kernel_context *trace_kernel_create_context(
+		struct lttng_kernel_context *ctx);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if
@@ -145,5 +148,6 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata);
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
 void trace_kernel_destroy_event(struct ltt_kernel_event *event);
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
+void trace_kernel_destroy_context(struct ltt_kernel_context *ctx);
 
 #endif /* _LTT_TRACE_KERNEL_H */

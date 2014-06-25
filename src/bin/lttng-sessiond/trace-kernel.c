@@ -165,15 +165,39 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 	lkc->stream_count = 0;
 	lkc->event_count = 0;
 	lkc->enabled = 1;
-	lkc->ctx = NULL;
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
+	CDS_INIT_LIST_HEAD(&lkc->ctx_list);
 
 	return lkc;
 
 error:
 	return NULL;
+}
+
+/*
+ * Allocate and init a kernel context object.
+ *
+ * Return the allocated object or NULL on error.
+ */
+struct ltt_kernel_context *trace_kernel_create_context(
+		struct lttng_kernel_context *ctx)
+{
+	struct ltt_kernel_context *kctx;
+
+	kctx = zmalloc(sizeof(*kctx));
+	if (!kctx) {
+		PERROR("zmalloc kernel context");
+		goto error;
+	}
+
+	if (ctx) {
+		memcpy(&kctx->ctx, ctx, sizeof(kctx->ctx));
+	}
+
+error:
+	return kctx;
 }
 
 /*
@@ -376,12 +400,24 @@ void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 }
 
 /*
+ * Cleanup kernel context structure.
+ */
+void trace_kernel_destroy_context(struct ltt_kernel_context *ctx)
+{
+	assert(ctx);
+
+	cds_list_del(&ctx->list);
+	free(ctx);
+}
+
+/*
  * Cleanup kernel channel structure.
  */
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
 	struct ltt_kernel_event *event, *etmp;
+	struct ltt_kernel_context *ctx, *ctmp;
 	int ret;
 
 	assert(channel);
@@ -405,11 +441,15 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 		trace_kernel_destroy_event(event);
 	}
 
+	/* For each context in the channel list */
+	cds_list_for_each_entry_safe(ctx, ctmp, &channel->ctx_list, list) {
+		trace_kernel_destroy_context(ctx);
+	}
+
 	/* Remove from channel list */
 	cds_list_del(&channel->list);
 
 	free(channel->channel);
-	free(channel->ctx);
 	free(channel);
 }
 

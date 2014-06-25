@@ -37,7 +37,7 @@
  * Add context on a kernel channel.
  */
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
-		struct lttng_kernel_context *ctx)
+		struct ltt_kernel_context *ctx)
 {
 	int ret;
 
@@ -45,7 +45,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 	assert(ctx);
 
 	DBG("Adding context to channel %s", chan->channel->name);
-	ret = kernctl_add_context(chan->fd, ctx);
+	ret = kernctl_add_context(chan->fd, &ctx->ctx);
 	if (ret < 0) {
 		if (errno != EEXIST) {
 			PERROR("add context ioctl");
@@ -56,13 +56,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		goto error;
 	}
 
-	chan->ctx = zmalloc(sizeof(struct lttng_kernel_context));
-	if (chan->ctx == NULL) {
-		PERROR("zmalloc event context");
-		goto error;
-	}
-
-	memcpy(chan->ctx, ctx, sizeof(struct lttng_kernel_context));
+	cds_list_add_tail(&ctx->list, &chan->ctx_list);
 
 	return 0;
 

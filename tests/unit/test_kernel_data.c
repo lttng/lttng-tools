@@ -120,7 +120,6 @@ static void test_create_kernel_channel(void)
 	ok(chan->fd == -1 &&
 	   chan->enabled == 1 &&
 	   chan->stream_count == 0 &&
-	   chan->ctx == NULL &&
 	   chan->channel->attr.overwrite  == attr.attr.overwrite,
 	   "Validate kernel channel");
 

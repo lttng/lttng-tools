@@ -670,12 +670,6 @@ int save_kernel_context(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_open_element(writer, config_element_contexts);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
 	ret = config_writer_open_element(writer, config_element_context);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -739,6 +733,30 @@ int save_kernel_context(struct config_writer *writer,
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
+int save_kernel_contexts(struct config_writer *writer,
+		struct ltt_kernel_channel *kchan)
+{
+	int ret;
+	struct ltt_kernel_context *ctx;
+
+	ret = config_writer_open_element(writer, config_element_contexts);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	cds_list_for_each_entry(ctx, &kchan->ctx_list, list) {
+		ret = save_kernel_context(writer, &ctx->ctx);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	/* /contexts */
@@ -848,7 +866,7 @@ int save_kernel_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = save_kernel_context(writer, kchan->ctx);
+	ret = save_kernel_contexts(writer, kchan);
 	if (ret) {
 		goto end;
 	}
