@@ -1987,6 +1987,17 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 		}
 	}
 
+	/*
+	 * Make sure to set the session in output mode after we set URI since a
+	 * session can be created without URL (thus flagged in no output mode).
+	 */
+	session->output_traces = 1;
+	if (ksess) {
+		ksess->output_traces = 1;
+	} else if (usess) {
+		usess->output_traces = 1;
+	}
+
 	/* All good! */
 	ret = LTTNG_OK;
 
