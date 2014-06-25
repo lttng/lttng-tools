@@ -661,7 +661,11 @@ int mi_lttng_domain(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* TODO: attr... not sure how to use the union.... */
+	/* TODO: union  attr
+	 * This union is not currently used and was added for
+	 * future ust domain support.
+	 * Date: 25-06-2014
+	 * */
 
 	if (!is_open) {
 		/* Closing domain element */
