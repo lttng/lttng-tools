@@ -2156,7 +2156,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 			xmlChar *node_content = xmlNodeGetContent(node);
 			if (!node_content) {
 				ret = -LTTNG_ERR_NOMEM;
-				goto end;
+				goto error;
 			}
 
 			name = (char *) node_content;
@@ -2170,14 +2170,14 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 			xmlChar *node_content = xmlNodeGetContent(node);
 			if (!node_content) {
 				ret = -LTTNG_ERR_NOMEM;
-				goto end;
+				goto error;
 			}
 
 			ret = parse_bool(node_content, &started);
 			free(node_content);
 			if (ret) {
 				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-				goto end;
+				goto error;
 			}
 		} else if (!output_node && !strcmp((const char *) node->name,
 			config_element_output)) {
@@ -2195,14 +2195,14 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 					xmlNodeGetContent(attributes_child);
 				if (!snapshot_mode_content) {
 					ret = -LTTNG_ERR_NOMEM;
-					goto end;
+					goto error;
 				}
 
 				ret = parse_bool(snapshot_mode_content, &snapshot_mode);
 				free(snapshot_mode_content);
 				if (ret) {
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto end;
+					goto error;
 				}
 			} else {
 				/* live_timer_interval */
@@ -2210,14 +2210,14 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 					xmlNodeGetContent(attributes_child);
 				if (!timer_interval_content) {
 					ret = -LTTNG_ERR_NOMEM;
-					goto end;
+					goto error;
 				}
 
 				ret = parse_uint(timer_interval_content, &live_timer_interval);
 				free(timer_interval_content);
 				if (ret) {
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto end;
+					goto error;
 				}
 			}
 		}
@@ -2226,13 +2226,13 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 	if (!name) {
 		/* Mandatory attribute, as defined in the session XSD */
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-		goto end;
+		goto error;
 	}
 
 	if (session_name && strcmp(name, session_name)) {
 		/* This is not the session we are looking for */
-		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
-		goto end;
+		ret = -LTTNG_ERR_NO_SESSION;
+		goto error;
 	}
 
 	/* Init domains to create the session handles */
@@ -2243,7 +2243,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 		domain = zmalloc(sizeof(*domain));
 		if (!domain) {
 			ret = -LTTNG_ERR_NOMEM;
-			goto end;
+			goto error;
 		}
 
 		ret = init_domain(node, domain);
@@ -2281,7 +2281,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 domain_init_error:
 		free(domain);
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-		goto end;
+		goto error;
 	}
 
 	if (override) {
@@ -2289,7 +2289,7 @@ domain_init_error:
 		ret = lttng_destroy_session(name);
 		if (ret && ret != -LTTNG_ERR_SESS_NOT_FOUND) {
 			ERR("Failed to destroy existing session.");
-			goto end;
+			goto error;
 		}
 	}
 
@@ -2305,9 +2305,8 @@ domain_init_error:
 		ret = create_session(name, kernel_domain, ust_domain, jul_domain,
 				output_node, UINT64_MAX);
 	}
-
 	if (ret) {
-		goto end;
+		goto error;
 	}
 
 	for (node = xmlFirstElementChild(domains_node); node;
@@ -2324,12 +2323,14 @@ domain_init_error:
 			goto end;
 		}
 	}
+
 end:
 	if (ret < 0) {
 		ERR("Failed to load session %s: %s", name, lttng_strerror(ret));
 		lttng_destroy_session(name);
 	}
 
+error:
 	free(kernel_domain);
 	free(ust_domain);
 	free(jul_domain);
