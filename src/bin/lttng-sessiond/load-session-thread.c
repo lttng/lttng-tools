@@ -95,7 +95,8 @@ void *thread_load_session(void *data)
 		goto end;
 	}
 
-	ret = config_load_session(info->path, NULL, 0);
+	/* Override existing session and autoload also. */
+	ret = config_load_session(info->path, NULL, 1, 1);
 	if (ret) {
 		ERR("Session load failed: %s", error_get_str(ret));
 	}
