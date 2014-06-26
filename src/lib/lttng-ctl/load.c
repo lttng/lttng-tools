@@ -166,7 +166,7 @@ int lttng_load_session(struct lttng_load_session_attr *attr)
 	}
 
 	ret = config_load_session(attr->input_url, attr->session_name,
-			attr->overwrite);
+			attr->overwrite, 0);
 
 end:
 	return ret;

@@ -123,6 +123,8 @@
 
 /* Default session configuration file path */
 #define DEFAULT_SESSION_PATH                    "sessions"
+/* Auto load session in that directory. */
+#define DEFAULT_SESSION_CONFIG_AUTOLOAD         "auto"
 #define DEFAULT_SESSION_HOME_CONFIGPATH         DEFAULT_LTTNG_HOME_RUNDIR "/" \
 	DEFAULT_SESSION_PATH
 #define DEFAULT_SESSION_SYSTEM_CONFIGPATH       DEFAULT_SYSTEM_CONFIGPATH "/" \

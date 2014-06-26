@@ -2504,9 +2504,43 @@ end:
 	return ret;
 }
 
+/*
+ * Validate that the given path's credentials and the current process have the
+ * same UID. If so, return 0 else return 1 if it does NOT match.
+ */
+static int validate_path_creds(const char *path)
+{
+	int ret, uid = getuid();
+	struct stat buf;
+
+	assert(path);
+
+	if (uid != 0) {
+		goto valid;
+	}
+
+	ret = stat(path, &buf);
+	if (ret < 0) {
+		if (errno != ENOENT) {
+			PERROR("stat");
+		}
+		ret = -LTTNG_ERR_INVALID;
+		goto valid;
+	}
+
+	if (buf.st_uid != uid) {
+		goto invalid;
+	}
+
+valid:
+	return 0;
+invalid:
+	return 1;
+}
+
 LTTNG_HIDDEN
 int config_load_session(const char *path, const char *session_name,
-		int override)
+		int override, unsigned int autoload)
 {
 	int ret;
 	struct session_config_validation_ctx validation_ctx = { 0 };
@@ -2517,14 +2551,47 @@ int config_load_session(const char *path, const char *session_name,
 	}
 
 	if (!path) {
-		/* Try home path */
-		char *home_path = utils_get_home_dir();
-		if (home_path) {
-			char *path;
+		char *home_path;
+		const char *sys_path;
 
-			ret = asprintf(&path, DEFAULT_SESSION_HOME_CONFIGPATH,
-				home_path);
+		/*
+		 * Try system session configuration path. Ignore error here so we can
+		 * continue loading the home sessions. The above call should print an
+		 * error to inform the user.
+		 */
+		if (autoload) {
+			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH "/"
+				DEFAULT_SESSION_CONFIG_AUTOLOAD;
+		} else {
+			sys_path = DEFAULT_SESSION_HOME_CONFIGPATH;
+		}
+
+		ret = validate_path_creds(sys_path);
+		if (!ret && autoload) {
+			(void) load_session_from_path(sys_path, session_name,
+					&validation_ctx, override);
+		}
+
+		/* Try home path */
+		home_path = utils_get_home_dir();
+		if (home_path) {
+			char path[PATH_MAX];
+
+			if (autoload) {
+				ret = snprintf(path, sizeof(path),
+						DEFAULT_SESSION_HOME_CONFIGPATH "/"
+						DEFAULT_SESSION_CONFIG_AUTOLOAD, home_path);
+			} else {
+				ret = snprintf(path, sizeof(path),
+						DEFAULT_SESSION_HOME_CONFIGPATH, home_path);
+			}
 			if (ret < 0) {
+				goto end;
+			}
+
+			ret = validate_path_creds(path);
+			if (ret && autoload) {
+				ret = 0;
 				goto end;
 			}
 
@@ -2532,19 +2599,8 @@ int config_load_session(const char *path, const char *session_name,
 				&validation_ctx, override);
 			if (!ret || (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT)) {
 				/* Session found or an error occured */
-				free(path);
 				goto end;
 			}
-
-			free(path);
-		}
-
-		/* Try system session configuration path */
-		ret = load_session_from_path(DEFAULT_SESSION_SYSTEM_CONFIGPATH,
-			session_name, &validation_ctx, override);
-		if (!ret || (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT)) {
-			/* Session found or an error occured */
-			goto end;
 		}
 	} else {
 		ret = access(path, F_OK);

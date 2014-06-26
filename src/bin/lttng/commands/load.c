@@ -102,7 +102,7 @@ int cmd_load(int argc, const char **argv)
 		}
 	}
 
-	ret = config_load_session(opt_input_path, session_name, opt_force);
+	ret = config_load_session(opt_input_path, session_name, opt_force, 0);
 	if (ret) {
 		ERR("%s", lttng_strerror(ret));
 		ret = -ret;
