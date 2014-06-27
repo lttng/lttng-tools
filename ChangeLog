@@ -1,3 +1,17 @@
+2014-06-27 lttng-tools 2.5.0-rc2
+	* Test: add JUL disable event tests
+	* Fix: disable JUL event on UST side
+	* Fix: accept override flag even without a load path
+	* Fix: bad error code path when loading session
+	* Fix: set session in output mode if URL are set afterwards
+	* Fix: add a kernel context list to the channel
+	* Fix: Add vpid, vppid and vtid info in add-context help
+	* Fix: wrong behavior of save command when no session name is provided
+	* Fix: missing context type string in save for ust context
+	* Fix: wrong casting of return value
+	* Fix: add dependency to libcommon for python binding
+	* Fix: remove the default GIT_VERSION
+
 2014-05-28 lttng-tools 2.5.0-rc1 (International Hamburger Day)
 	* Save/load session feature
 	* Daemon configuration file support
