@@ -20,6 +20,7 @@ CONSUMERD_BIN="lttng-consumerd"
 RELAYD_BIN="lttng-relayd"
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
+OUTPUT_DEST=/dev/null 2>&1
 
 # Minimal kernel version supported for session daemon tests
 KERNEL_MAJOR_VERSION=2
@@ -97,7 +98,7 @@ function lttng_enable_kernel_event
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -k >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -k >$OUTPUT_DEST
 	ok $? "Enable kernel event $event_name for session $sess_name"
 }
 
@@ -108,7 +109,7 @@ function start_lttng_relayd
 	DIR=$(readlink -f $TESTDIR)
 
 	if [ -z $(pidof lt-$RELAYD_BIN) ]; then
-		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN -b $opt >/dev/null 2>&1
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN -b $opt >$OUTPUT_DEST
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
 			fail "Start lttng-relayd (opt: $opt)"
@@ -126,7 +127,7 @@ function stop_lttng_relayd_nocheck
 	PID_RELAYD=`pidof lt-$RELAYD_BIN`
 
 	diag "Killing lttng-relayd (pid: $PID_RELAYD)"
-	kill $PID_RELAYD >/dev/null 2>&1
+	kill $PID_RELAYD >$OUTPUT_DEST
 	retval=$?
 
 	if [ $retval -eq 1 ]; then
@@ -186,7 +187,7 @@ function stop_lttng_sessiond ()
 
 	PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
 
-	kill $PID_SESSIOND >/dev/null 2>&1
+	kill $PID_SESSIOND >$OUTPUT_DEST
 
 	if [ $? -eq 1 ]; then
 		fail "Kill sessions daemon"
@@ -206,11 +207,18 @@ function stop_lttng_sessiond ()
 	fi
 }
 
+function list_lttng_with_opts ()
+{
+	opts=$1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN $opts >$OUTPUT_DEST
+	ok $? "Lttng-tool list command with option $opts"
+}
+
 function create_lttng_session_no_output ()
 {
 	sess_name=$1
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name --no-output >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name --no-output >$OUTPUT_DEST
 	ok $? "Create session $sess_name in no-output mode"
 }
 
@@ -218,9 +226,15 @@ function create_lttng_session ()
 {
 	sess_name=$1
 	trace_path=$2
+	expected_to_fail=$3
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path >/dev/null 2>&1
-	ok $? "Create session $sess_name in $trace_path"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path > $OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail && $ret ]]; then
+		ok 0 "Expected fail on session creation $sess_name in $trace_path"
+	else
+		ok $ret "Create session $sess_name in $trace_path"
+	fi
 }
 
 function enable_ust_lttng_channel()
@@ -228,7 +242,7 @@ function enable_ust_lttng_channel()
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name >$OUTPUT_DEST
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
@@ -237,7 +251,7 @@ function disable_ust_lttng_channel()
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel -u $channel_name -s $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel -u $channel_name -s $sess_name >$OUTPUT_DEST
 	ok $? "Disable channel $channel_name for session $sess_name"
 }
 
@@ -246,7 +260,7 @@ function enable_lttng_mmap_overwrite_kernel_channel()
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -k --output mmap --overwrite >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -k --output mmap --overwrite >$OUTPUT_DEST
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
@@ -255,7 +269,7 @@ function enable_lttng_mmap_overwrite_ust_channel()
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -u --output mmap --overwrite >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -u --output mmap --overwrite >$OUTPUT_DEST
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
@@ -272,7 +286,7 @@ function enable_ust_lttng_event ()
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -u >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -u >$OUTPUT_DEST
 	ok $? "Enable event $event_name for session $sess_name"
 }
 
@@ -289,7 +303,7 @@ function enable_jul_lttng_event()
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -j >$OUTPUT_DEST
 	ok $? "Enable JUL event $event_name for session $sess_name"
 }
 
@@ -307,7 +321,7 @@ function enable_jul_lttng_event_loglevel()
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -j >$OUTPUT_DEST
 	ok $? "Enable JUL event $event_name for session $sess_name with loglevel $loglevel"
 }
 
@@ -317,7 +331,7 @@ function enable_ust_lttng_event_filter()
 	event_name="$2"
 	filter="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --filter "$filter" >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --filter "$filter" >$OUTPUT_DEST
 	ok $? "Enable event $event_name with filtering for session $sess_name"
 }
 
@@ -327,7 +341,7 @@ function enable_ust_lttng_event_loglevel()
 	event_name="$2"
 	loglevel="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel $loglevel >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel $loglevel >$OUTPUT_DEST
 	ok $? "Enable event $event_name with loglevel $loglevel"
 }
 
@@ -337,7 +351,7 @@ function enable_ust_lttng_event_loglevel_only()
 	event_name="$2"
 	loglevel="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel-only $loglevel >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -u --loglevel-only $loglevel >$OUTPUT_DEST
 	ok $? "Enable event $event_name with loglevel-only $loglevel"
 }
 
@@ -346,7 +360,7 @@ function disable_ust_lttng_event ()
 	sess_name="$1"
 	event_name="$2"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -u >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -u >$OUTPUT_DEST
 	ok $? "Disable event $event_name for session $sess_name"
 }
 
@@ -363,7 +377,7 @@ function start_lttng_tracing ()
 {
 	sess_name=$1
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name >$OUTPUT_DEST
 	ok $? "Start tracing for session $sess_name"
 }
 
@@ -371,7 +385,7 @@ function stop_lttng_tracing ()
 {
 	sess_name=$1
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name >$OUTPUT_DEST
 	ok $? "Stop lttng tracing for session $sess_name"
 }
 
@@ -379,9 +393,14 @@ function destroy_lttng_session ()
 {
 	sess_name=$1
 
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >$OUTPUT_DEST
 	ok $? "Destroy lttng session $sess_name"
+}
+
+function destroy_lttng_sessions ()
+{
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy --all >$OUTPUT_DEST
+	ok $? "Destroy all lttng sessions"
 }
 
 function lttng_snapshot_add_output ()
@@ -389,7 +408,7 @@ function lttng_snapshot_add_output ()
 	sess_name=$1
 	trace_path=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path >$OUTPUT_DEST
 	ok $? "Added snapshot output file://$trace_path"
 }
 
@@ -398,7 +417,7 @@ function lttng_snapshot_del_output ()
 	local sess_name=$1
 	local id=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot del-output -s $sess_name $id >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot del-output -s $sess_name $id >$OUTPUT_DEST
 	ok $? "Deleted snapshot output id $id"
 }
 
@@ -407,7 +426,7 @@ function lttng_snapshot_record ()
 	sess_name=$1
 	trace_path=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot record -s $sess_name >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot record -s $sess_name >$OUTPUT_DEST
 	ok $? "Snapshot recorded"
 }
 
@@ -416,7 +435,7 @@ function lttng_save()
 	local sess_name=$1
 	local opts=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN save $sess_name $opts >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN save $sess_name $opts >$OUTPUT_DEST
 	ok $? "Session successfully saved"
 }
 
@@ -424,7 +443,7 @@ function lttng_load()
 {
 	local opts=$1
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN load $opts >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN load $opts >$OUTPUT_DEST
 	ok $? "Load command successful"
 }
 
