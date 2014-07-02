@@ -13,7 +13,7 @@ regression/tools/snapshots/test_ust_fast
 regression/tools/snapshots/test_ust_streaming
 regression/tools/save-load/test_save
 regression/tools/save-load/test_load
-regression/tools/mi/test_mi_version
+regression/tools/mi/test_mi
 regression/ust/before-after/test_before_after
 regression/ust/buffers-pid/test_buffers_pid
 regression/ust/multi-session/test_multi_session

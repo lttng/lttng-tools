@@ -9,7 +9,7 @@ extract_xml_SOURCES = extract_xml.c
 extract_xml_CPPFLAGS = $(XML_CPPFLAGS) $(AM_CPPFLAGS)
 extract_xml_LDADD = $(XML_LIBS)
 
-noinst_SCRIPTS = test_mi_version
+noinst_SCRIPTS = test_mi
 EXTRA_DIST =
 
 all-local:

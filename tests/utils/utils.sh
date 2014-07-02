@@ -210,7 +210,7 @@ function stop_lttng_sessiond ()
 function list_lttng_with_opts ()
 {
 	opts=$1
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN $opts >$OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN list $opts >$OUTPUT_DEST
 	ok $? "Lttng-tool list command with option $opts"
 }
 
@@ -230,8 +230,12 @@ function create_lttng_session ()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path > $OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail && $ret ]]; then
-		ok 0 "Expected fail on session creation $sess_name in $trace_path"
+	if [[ $expected_to_fail ]]; then
+		if [[ $ret ]]; then
+			pass "Expected fail on session creation $sess_name in $trace_path"
+		else
+			fail "Session $sess_name creation in $trace_path was expected to fail"
+		fi
 	else
 		ok $ret "Create session $sess_name in $trace_path"
 	fi
@@ -241,9 +245,19 @@ function enable_ust_lttng_channel()
 {
 	sess_name=$1
 	channel_name=$2
+	expect_fail=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name >$OUTPUT_DEST
-	ok $? "Enable channel $channel_name for session $sess_name"
+	ret=$?
+	if [[ $expect_fail ]]; then
+		if [[ $ret ]]; then
+			pass "Enable channel $channel_name for session $sess_name expected fail"
+		else
+			fail "Enable channel $channel_name for session $sess_name did not fail as expected"
+		fi
+	else
+		ok $ret "Enable channel $channel_name for session $sess_name"
+	fi
 }
 
 function disable_ust_lttng_channel()

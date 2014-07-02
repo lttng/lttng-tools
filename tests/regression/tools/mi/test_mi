@@ -1,0 +1,294 @@
+#!/bin/bash
+#
+# Copyright (C) - 2014 Jonathan Rajotte <jonathan.r.julien@gmail.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Machine interface testing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+XSD_PATH=$TESTDIR/../src/common/mi_lttng.xsd
+SESSIOND_BIN="lttng-sessiond"
+RELAYD_BIN="lttng-relayd"
+
+
+#Temp file output
+#OUTPUT_DIR=$(mktemp -d)
+OUTPUT_DIR="/tmp/test"
+OUTPUT_FILE="default.xml"
+
+#Path to custom xml utilities
+XML_VALIDATE="$CURDIR/validate_xml $XSD_PATH"
+XML_EXTRACT="$CURDIR/extract_xml"
+
+XPATH_COMMAND_SUCCESS="/command/success/text()"
+XPATH_SESSION_NAME="/command/output/sessions/session/name/text()"
+XPATH_ENABLE_CHANNEL_NAME="/command/output/channels/channel/name/text()"
+
+DEVNULL=/dev/null 2>&1
+
+DIR=$(readlink -f $TESTDIR)
+
+NUM_TESTS=60
+
+source $TESTDIR/utils/utils.sh
+
+#Overwrite the lttng_bin to get mi output
+LTTNG_BIN="lttng --mi xml"
+
+#Global devlaration for simplification
+LTTNG=$TESTDIR/../src/bin/lttng/$LTTNG_BIN
+
+#Overwrite the default output for utils.sh command
+
+#MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+function extract_xml ()
+{
+	local xml=$1
+	local xpath=$2
+	local __result=$3
+	local output=$($XML_EXTRACT $xml $xpath)
+	ok $? "Extraction of xpath $xpath"
+	eval $__result="'$output'"
+}
+
+# Arg1 is path to xml file
+# Arg2:
+#     is true if we expected the success element to be false
+#     else
+#     passe false
+
+function is_command_success ()
+{
+	local xml=$1
+	local expect_false=$2
+
+	local xpath=$XPATH_COMMAND_SUCCESS
+
+	#Extract the success element
+	#expect false
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	if [[ $expect_false ]]; then
+		if [[ $result ]]; then
+			pass "Mi test: $xml command failed as expected"
+		else
+			fail "Mi test: $xml command did not fail as expected"
+		fi
+	else
+		if [[ $result ]]; then
+			fail "Mi test: $xml command failed"
+		else
+			pass "Mi test: $xml command success"
+		fi
+	fi
+}
+
+function mi_print_version ()
+{
+	local opt=$2
+	local output_path=$1
+
+	$LTTNG version $opt > $1
+	ok $? "MI test: Lttng version"
+
+}
+
+function test_version ()
+{
+	OUTPUT_FILE="version.xml"
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	mi_print_version $OUTPUT_DEST
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: Version xsd validation"
+}
+
+function test_create_session ()
+{
+	local session_name="testSession"
+
+	OUTPUT_FILE="create_session.xml"
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	create_lttng_session $session_name $OUTPUT_DIR
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: create session xsd validation"
+
+	#try to recreate a session. Expecting it to fail
+	create_lttng_session $session_name $OUTPUT_DIR true
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: expecting fail create session xsd validation"
+	is_command_success $OUTPUT_DEST true
+
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_session $session_name
+}
+
+function test_destroy_session ()
+{
+	local session_name=(
+			"testSession1"
+			"testSession2"
+			"testSession3")
+
+	OUTPUT_FILE="destroy_session.xml"
+
+	#Test build up
+	OUTPUT_DEST=$DEVNULL
+	for (( i = 0; i < 3; i++ )); do
+		create_lttng_session ${session_name[$i]} $OUTPUT_DIR
+	done
+
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	destroy_lttng_session ${session_name[0]}
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: destroy session ${session_name[0]} xsd validation"
+
+	#Verify that we destroyed the good session
+	extract_xml $OUTPUT_DEST $XPATH_SESSION_NAME result
+	if [[ "$result" == "${session_name[0]}" ]]; then
+		ok 0 "Mi test: delete by name"
+	else
+		ok 1 "Mi test: we deleted the wrong session"
+	fi
+
+	#Destroy all and count:should be 2
+	destroy_lttng_sessions
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: destroy all session xsd validation"
+
+	#Verify that we destroyed 2 sessions
+	extract_xml $OUTPUT_DEST $XPATH_SESSION_NAME result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "2"
+	ok $? "Mi test: $num / 2 sessions discovered"
+}
+
+function test_list_sessions ()
+{
+	local session_name=(
+			"testSession1"
+			"testSession2"
+			"testSession3")
+
+	OUTPUT_FILE="list_sessions.xml"
+
+	#Test buid up
+	OUTPUT_DEST=$DEVNULL
+	for (( i = 0; i < 3; i++ )); do
+		create_lttng_session ${session_name[$i]} $OUTPUT_DIR
+	done
+
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	list_lttng_with_opts
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: list session xsd validation"
+
+	#We should have 3 session
+	extract_xml $OUTPUT_DEST $XPATH_SESSION_NAME result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "3"
+	ok $? "Mi test: $num / 3 sessions discovered"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+}
+
+function test_ust_channel ()
+{
+	local session_name="testsession"
+	local channel_name=("channelUst0"
+						"channelUst1"
+						"channelUst2")
+
+	OUTPUT_FILE="ust_channel.xml"
+
+	#Test buil up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session $session_name $OUTPUT_DIR
+
+	#Test the enable_channel command
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	enable_ust_lttng_channel $session_name ${channel_name[0]}
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: enable ust channel xsd validation"
+	is_command_success $OUTPUT_DIR false
+
+	#Expect the command to fail
+	enable_ust_lttng_channel $session_name ${channel_name[0]} true
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: fail enable ust channel xsd validation"
+	is_command_success $OUTPUT_DIR true
+
+	#Create two ust channel to test multiple disable
+	for (( i = 1; i < 3; i++ )); do
+		enable_ust_lttng_channel $session_name ${channel_name[$i]}
+	done
+
+	#Test the disable_channel command
+	disable_ust_lttng_channel $session_name ${channel_name[0]}
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: disable ust channel xsd validation"
+	is_command_success $OUTPUT_DIR false
+	#Check that we delete the good channel
+	extract_xml $OUTPUT_DEST $XPATH_ENABLE_CHANNEL_NAME result
+	test "$result" == "${channel_name[0]}"
+	ok $? "MI test: ${channel_name[0]} disabled"
+
+	#Test multiple disable_channel;
+	disable_ust_lttng_channel $session_name ${channel_name[1]},${channel_name[2]}
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: multiple disable ust channel xsd validation"
+	is_command_success $OUTPUT_DIR false
+
+	#Make sure we have two disabled channel
+	extract_xml $OUTPUT_DEST $XPATH_ENABLE_CHANNEL_NAME result
+	local num=$(echo "$result" | wc -l)
+	test "$num" == "2"
+	ok $? "Mi test: disabled ust channel $num/2"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+
+}
+
+start_lttng_sessiond
+TESTS=(
+	test_version
+	test_create_session
+	test_destroy_session
+	test_list_sessions
+	test_ust_channel
+)
+
+echo $OUTPUT_DIR
+for fct_test in ${TESTS[@]};
+do
+
+	${fct_test}
+	if [ $? -ne 0 ]; then
+		break;
+	fi
+	# Only delete if successful
+	#TO REMOVE comment
+	#rm -rf $OUTPUT_DIR
+done
+
+OUTPUT_DEST=/dev/null 2>&1
+stop_lttng_sessiond
