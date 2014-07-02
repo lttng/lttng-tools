@@ -110,7 +110,7 @@ static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
 
 	/* Success ? */
 	ret = mi_lttng_writer_write_element_bool(writer,
-			mi_lttng_element_command, success);
+			mi_lttng_element_success, success);
 	if (ret) {
 		goto end;
 	}
@@ -179,7 +179,8 @@ static int disable_channels(char *session_name)
 			 * Mi:
 			 * We assume that if an error occurred the channel is still active.
 			 * This might not be the case but is a good assumption.
-			 * The client should look at the stderr stream for more informations.
+			 * The client should look at the stderr stream
+			 * for more informations.
 			 */
 			enabled = 1;
 			success = 0;

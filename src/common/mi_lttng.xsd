@@ -281,6 +281,7 @@ THE SOFTWARE.
 			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0" />
 			<xs:element name="attributes" type="channel_attributes_type" minOccurs="0" />
 			<xs:element name="events" type="event_list_type" minOccurs="0" />
+			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
