@@ -23,25 +23,39 @@ XSD_PATH=$TESTDIR/../src/common/mi_lttng.xsd
 SESSIOND_BIN="lttng-sessiond"
 RELAYD_BIN="lttng-relayd"
 
+#Test app for ust event
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NR_USEC_WAIT=10000
+
 
 #Temp file output
-#OUTPUT_DIR=$(mktemp -d)
-OUTPUT_DIR="/tmp/test"
+OUTPUT_DIR=$(mktemp -d)
 OUTPUT_FILE="default.xml"
 
 #Path to custom xml utilities
 XML_VALIDATE="$CURDIR/validate_xml $XSD_PATH"
 XML_EXTRACT="$CURDIR/extract_xml"
 
+XPATH_CMD_OUTPUT="//command/output"
 XPATH_COMMAND_SUCCESS="/command/success/text()"
-XPATH_SESSION_NAME="/command/output/sessions/session/name/text()"
-XPATH_ENABLE_CHANNEL_NAME="/command/output/channels/channel/name/text()"
+XPATH_SESSION="$XPATH_CMD_OUTPUT/sessions/session"
+XPATH_ENABLE_CHANNEL_NAME="$XPATH_CMD_OUTPUT/channels/channel/name/text()"
+XPATH_ENABLE_EVENT_SUCCESS="$XPATH_CMD_OUTPUT/events/event/success/text()"
+XPATH_DISABLE_EVENT_SUCCESS="$XPATH_CMD_OUTPUT/channel/events/event/success/text()"
+XPATH_LIST_DOMAIN="$XPATH_CMD_OUTPUT/sessions/session/domains/domain"
+XPATH_LIST_CHANNEL="$XPATH_CMD_OUTPUT/sessions/session/domains/domain/channels/channel"
+XPATH_LIST_UST_EVENT="$XPATH_CMD_OUTPUT/domains/domain[./type = 'UST']/pids/pid/events/event"
+XPATH_SNAPSHOT_ADD_SNAPSHOT="$XPATH_CMD_OUTPUT/snapshot_action[./name = 'add-output']/output"
+XPATH_SNAPSHOT_LIST="$XPATH_CMD_OUTPUT/snapshot_action[./name = 'list-output']/output"
+XPATH_SNAPSHOT_DEL="$XPATH_CMD_OUTPUT/snapshot_action[./name = 'del-output']/output"
 
 DEVNULL=/dev/null 2>&1
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=60
+NUM_TESTS=178
 
 source $TESTDIR/utils/utils.sh
 
@@ -63,7 +77,8 @@ function extract_xml ()
 	local xml=$1
 	local xpath=$2
 	local __result=$3
-	local output=$($XML_EXTRACT $xml $xpath)
+	local output
+	output=$($XML_EXTRACT $xml "$xpath")
 	ok $? "Extraction of xpath $xpath"
 	eval $__result="'$output'"
 }
@@ -84,7 +99,7 @@ function is_command_success ()
 	#Extract the success element
 	#expect false
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
-	if [[ $expect_false ]]; then
+	if [[ $expect_false = "true" ]]; then
 		if [[ $result ]]; then
 			pass "Mi test: $xml command failed as expected"
 		else
@@ -92,9 +107,9 @@ function is_command_success ()
 		fi
 	else
 		if [[ $result ]]; then
-			fail "Mi test: $xml command failed"
-		else
 			pass "Mi test: $xml command success"
+		else
+			fail "Mi test: $xml command failed"
 		fi
 	fi
 }
@@ -159,12 +174,9 @@ function test_destroy_session ()
 	ok $? "MI test: destroy session ${session_name[0]} xsd validation"
 
 	#Verify that we destroyed the good session
-	extract_xml $OUTPUT_DEST $XPATH_SESSION_NAME result
-	if [[ "$result" == "${session_name[0]}" ]]; then
-		ok 0 "Mi test: delete by name"
-	else
-		ok 1 "Mi test: we deleted the wrong session"
-	fi
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	test "$result" = "${session_name[0]}"
+	ok $? "Mi test: deleted session: $result expected: ${session_name[0]}"
 
 	#Destroy all and count:should be 2
 	destroy_lttng_sessions
@@ -172,10 +184,19 @@ function test_destroy_session ()
 	ok $? "MI test: destroy all session xsd validation"
 
 	#Verify that we destroyed 2 sessions
-	extract_xml $OUTPUT_DEST $XPATH_SESSION_NAME result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: $num / 2 sessions discovered"
+
+	#Verify that if no session is present command fail and mi report it.
+	destroy_lttng_session ${session_name[0]} 1
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: failing destroy session ${session_name[0]} xsd validation"
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "false"
+	ok $? "Mi test: destroy command on ${session_name[0]} failed as expected"
+
 }
 
 function test_list_sessions ()
@@ -196,10 +217,10 @@ function test_list_sessions ()
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	list_lttng_with_opts
 	$XML_VALIDATE $OUTPUT_DEST
-	ok $? "Mi test: list session xsd validation"
+	ok $? "Mi test: list sessions xsd validation"
 
 	#We should have 3 session
-	extract_xml $OUTPUT_DEST $XPATH_SESSION_NAME result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: $num / 3 sessions discovered"
@@ -227,13 +248,13 @@ function test_ust_channel ()
 	enable_ust_lttng_channel $session_name ${channel_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: enable ust channel xsd validation"
-	is_command_success $OUTPUT_DIR false
+	is_command_success $OUTPUT_DEST false
 
 	#Expect the command to fail
 	enable_ust_lttng_channel $session_name ${channel_name[0]} true
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: fail enable ust channel xsd validation"
-	is_command_success $OUTPUT_DIR true
+	is_command_success $OUTPUT_DEST true
 
 	#Create two ust channel to test multiple disable
 	for (( i = 1; i < 3; i++ )); do
@@ -244,28 +265,422 @@ function test_ust_channel ()
 	disable_ust_lttng_channel $session_name ${channel_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: disable ust channel xsd validation"
-	is_command_success $OUTPUT_DIR false
+	is_command_success $OUTPUT_DEST false
 	#Check that we delete the good channel
 	extract_xml $OUTPUT_DEST $XPATH_ENABLE_CHANNEL_NAME result
-	test "$result" == "${channel_name[0]}"
+	test "$result" = "${channel_name[0]}"
 	ok $? "MI test: ${channel_name[0]} disabled"
 
 	#Test multiple disable_channel;
 	disable_ust_lttng_channel $session_name ${channel_name[1]},${channel_name[2]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: multiple disable ust channel xsd validation"
-	is_command_success $OUTPUT_DIR false
+	is_command_success $OUTPUT_DEST false
 
 	#Make sure we have two disabled channel
 	extract_xml $OUTPUT_DEST $XPATH_ENABLE_CHANNEL_NAME result
 	local num=$(echo "$result" | wc -l)
-	test "$num" == "2"
+	test "$num" = "2"
 	ok $? "Mi test: disabled ust channel $num/2"
 
 	#Teardown
 	OUTPUT_DEST=$DEVNULL
 	destroy_lttng_sessions
 
+}
+
+function test_ust_lttng_event ()
+{
+	local session_name="testSession"
+	local channel_name="testChannel"
+	local event=("ev1" "ev2" "ev3")
+
+	OUTPUT_FILE="ust_event.xml"
+
+	#Test build up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel $session_name $channel_name
+
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	#Test the enable event for ust domain
+	enable_ust_lttng_event $session_name ${event[0]} $channel_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: Enable_event for ust domain xsd validation"
+	is_command_success $OUTPUT_DEST false
+
+	#Try to reenable an enabled event. Should fail
+	enable_ust_lttng_event $session_name ${event[0]} $channel_name true
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: Fail enable_event for ust domain xsd validation"
+	is_command_success $OUTPUT_DEST true
+
+	#Enable multiple event including the last one command will fail
+	#But 2 events should success
+
+	#Nice little hack, create a string ev,ev,ev
+	#IFS stand for Internal field separator
+	#Event[*] print all the element inside the array with the IFS in between
+	concat_event=$( IFS=$','; echo "${event[*]}" )
+
+	enable_ust_lttng_event $session_name $concat_event $channel_name true
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: Multiple enable ust event with inside fail xsd validation"
+
+	#Check for 2 success = true et 1 false
+	extract_xml $OUTPUT_DEST $XPATH_ENABLE_EVENT_SUCCESS result
+	num_ocur=$(grep -o "true" <<< "$result" | wc -l)
+	test "$num_ocur" -eq "2"
+	ok $? "Mi test: Enabled event on failing enable command $num_ocur_true/2"
+
+	extract_xml $OUTPUT_DEST $XPATH_ENABLE_EVENT_SUCCESS result
+	num_ocur=$(grep -o "false" <<< "$result" | wc -l)
+	test "$num_ocur" -eq "1"
+	ok $? "Mi test: Enabled event on failing enable command $num_ocur_true/2"
+
+	#Disable the event
+	disable_ust_lttng_event $session_name ${event[0]} $channel_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: Disable ust event xsd validation"
+	is_command_success $OUTPUT_DEST false
+
+	#Disable the 3 event combined. Should pass
+	disable_ust_lttng_event $session_name $concat_event $channel_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: Disable multiple ust event xsd validation"
+	is_command_success $OUTPUT_DEST false
+
+	#Make sure we have 3 inner success
+	extract_xml $OUTPUT_DEST $XPATH_DISABLE_EVENT_SUCCESS result
+	num_ocur=$(grep -o "true" <<< "$result" | wc -l)
+	test "$num_ocur" -eq "3"
+	ok $? "Mi test: Disable multiple ust event success $num_ocur/3"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+}
+
+function test_list_channel ()
+{
+	local session_name="testSession"
+	local channel_name="testChannel"
+	local event=("ev1" "ev2" "ev3")
+
+	OUTPUT_FILE="list_channel.xml"
+
+	#Test buid up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel $session_name $channel_name
+
+	#Enable ust and jul events
+	concat_event=$( IFS=$','; echo "${event[*]}" )
+	enable_ust_lttng_event $session_name $concat_event $channel_name
+
+	#Begin testing
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	list_lttng_with_opts "$session_name -c $channel_name"
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: list channel xsd validation"
+
+	#Expect 1 domain: UST
+	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/type/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "1"
+	ok $? "Mi test: $num / 1 domains discovered"
+
+	#Expect 1 channel: test
+	extract_xml $OUTPUT_DEST $XPATH_LIST_CHANNEL"/name/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "1"
+	ok $? "Mi test: $num / 1 channel discovered"
+
+	test "$result" = "$channel_name"
+	ok $? "Mi test: expected channel: $channel_name found: $result"
+
+	#Add a channel and make sure we have 2 channel now
+	OUTPUT_DEST=$DEVNULL
+	enable_ust_lttng_channel $session_name $channel_name"a"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+}
+
+function test_list_domain ()
+{
+	local session_name="testSession"
+	local channel_name="testChannel"
+	local event=("ev1" "ev2" "ev3")
+
+	OUTPUT_FILE="list_domain.xml"
+
+	#Test buid up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel $session_name $channel_name
+
+	#Enable ust and jul events
+	concat_event=$( IFS=$','; echo "${event[*]}" )
+	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_jul_lttng_event $session_name $concat_event $channel_name
+
+	#Begin testing
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	list_lttng_with_opts "$session_name -d"
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: list domain xsd validation"
+
+	#Expect 2 domain: Jul and UST
+	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/type/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "2"
+	ok $? "Mi test: $num / 2 domains discovered"
+
+	#Test for valid value
+	if [[ "$result" = *"JUL"* ]]; then
+		pass "Mi test: domains Jul is present"
+	else
+		fail "Mi test: domains Jul is absent"
+	fi
+
+	if [[ "$result" = *"UST"* ]]; then
+		pass "Mi test: domains UST is present"
+	else
+		fail "Mi test: domains UST is absent"
+	fi
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+}
+
+function test_list_session ()
+{
+	local session_name="testSession"
+	local channel_name="testChannel"
+	local event=("ev1" "ev2" "ev3")
+
+	OUTPUT_FILE="list_session.xml"
+
+	#Test buid up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel $session_name $channel_name
+
+	#Enable ust and jul events
+	concat_event=$( IFS=$','; echo "${event[*]}" )
+	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_jul_lttng_event $session_name $concat_event $channel_name
+
+	#Begin testing
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	list_lttng_with_opts $session_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: list session xsd validation"
+
+	#Expect 2 domain: Jul and UST
+	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/type/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "2"
+	ok $? "Mi test: $num / 2 domains discovered"
+
+	#Expect 2 channel: test and lttng_jul_event
+	extract_xml $OUTPUT_DEST $XPATH_LIST_CHANNEL"/name/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "2"
+	ok $? "Mi test: $num / 2 channel discovered"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+}
+
+function test_list_ust_event ()
+{
+	OUTPUT_FILE="list_ust_event.xml"
+
+	#Test buid up
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+
+	#Begin testing
+	$TESTAPP_BIN $NR_USEC_WAIT & 2>/dev/null
+	list_lttng_with_opts "-u -f"
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: list ust event xsd validation"
+
+	#Extract events 3 events should be present
+	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""/name/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "3"
+	ok $? "Mi test: $num / 3 ust events discovered"
+
+	#Extract field from tp:tptest event. Expect 12
+	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""[./name = 'tp:tptest']/event_fields/event_field/name/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "12"
+	ok $? "Mi test: $num / 12 ust event fields discovered"
+
+	#Wait for last forked process
+	wait $!
+
+}
+
+function test_start_stop () {
+	local session_name="testStartStopSession"
+	local channel_name="startStopChannel"
+
+	OUTPUT_FILE="list_start_stop.xml"
+
+	#Test buid up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session $session_name $OUTPUT_DIR
+
+	#Test fail command
+	#No channel enable start command should return element success false
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	start_lttng_tracing $session_name 1
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: failed start xsd validation"
+
+	#Expect a false element
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "false"
+	ok $? "Mi test: mi report failure on start command as expected"
+
+	#Enable a channel to test success
+	OUTPUT_DEST=$DEVNULL
+	enable_ust_lttng_channel $session_name $channel_name
+
+	#Start tracing
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	start_lttng_tracing $session_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: start xsd validation"
+
+	#Expect a true element
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "true"
+	ok $? "Mi test: mi report success on start command as expected"
+
+	#Extract session name from xml
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	test "$result" = "$session_name"
+	ok $? "Mi test: started $session_name"
+
+	#Extract enabled expect true
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/enabled/text()" result
+	test "$result" = "true"
+	ok $? "Mi test: enabled element : $result expected: true"
+
+	#Test stop command
+	stop_lttng_tracing $session_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: stop xsd validation"
+
+	#Extract session name from xml
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	test "$result" = "$session_name"
+	ok $? "Mi test: stoped $session_name"
+
+	#Extract enabled expect false
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/enabled/text()" result
+	test "$result" = "false"
+	ok $? "Mi test: enabled element : $result expected: false"
+
+	#Test failing stop command
+	stop_lttng_tracing $session_name 1
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: failed stop xsd validation"
+
+	#Expect a false element
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "false"
+	ok $? "Mi test: mi report failure on start command as expected"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+
+}
+
+function test_snapshot () {
+	local session_name="testSnapshotAdd"
+	local snapshot_path="$OUTPUT_DIR/snapshotoutput"
+	OUTPUT_FILE="snapshot.xml"
+
+
+	#Test buid up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session_no_output $session_name
+
+	#Test fail command
+	#No channel enable start command should return element success false
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+    lttng_snapshot_add_output $session_name $snapshot_path
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: snapshot xsd validation"
+
+	#Expect a true element
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "true"
+	ok $? "Mi test: add snapshot is a success"
+
+	#Get data
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/snapshot/session_name/text()" result
+	test "$result" = "$session_name"
+	ok $? "Mi test: added snapshot for: $result expected $session_name"
+
+	#Get name of generated output and id
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/snapshot/name/text()" snapshot_name
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/snapshot/id/text()" snapshot_id
+
+	#Test list output
+	lttng_snapshot_list $session_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: snapshot list xsd validation"
+
+	#Expect a true element
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "true"
+	ok $? "Mi test: add snapshot is a success"
+
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_LIST""/session[./name ='$session_name']/snapshots/snapshot/name/text()" result
+	test "$result" = "$snapshot_name"
+	ok $? "Mi test: snapshot list extracted snapshot: $result expected: $snapshot_name"
+
+	#Test del output
+	lttng_snapshot_del_output $session_name $snapshot_id
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: snapshot delete xsd validation"
+
+	#Success ?
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "true"
+	ok $? "Mi test: del snapshot is a success"
+
+	#Test data
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_DEL""/snapshot/id/text()" result
+	test "$result" = "$snapshot_id"
+	ok $? "Mi test: snapshot del extracted snapshot id: $result expected: $snapshot_id"
+
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_DEL""/snapshot/session_name/text()" result
+	test "$result" = "$session_name"
+	ok $? "Mi test: snapshot del extracted snapshot id: $result expected: $session_name"
+
+	#Test fail on delete command
+	lttng_snapshot_del_output $session_name $snapshot_id 1
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: snapshot delete xsd validation"
+
+	#Success ?
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "false"
+	ok $? "Mi test: del snapshot is a success"
+
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
 }
 
 start_lttng_sessiond
@@ -275,20 +690,25 @@ TESTS=(
 	test_destroy_session
 	test_list_sessions
 	test_ust_channel
+	test_ust_lttng_event
+	test_list_channel
+	test_list_domain
+	test_list_session
+	test_list_ust_event
+	test_start_stop
+	test_snapshot
 )
+
 
 echo $OUTPUT_DIR
 for fct_test in ${TESTS[@]};
 do
-
 	${fct_test}
 	if [ $? -ne 0 ]; then
 		break;
 	fi
-	# Only delete if successful
-	#TO REMOVE comment
-	#rm -rf $OUTPUT_DIR
 done
+rm -rf $OUTPUT_DIR
 
 OUTPUT_DEST=/dev/null 2>&1
 stop_lttng_sessiond
