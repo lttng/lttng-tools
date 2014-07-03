@@ -761,8 +761,8 @@ static int enable_events(char *session_name)
 					break;
 				default:
 					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
-							lttng_strerror(ret),
-							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+							lttng_strerror(command_ret),
+							command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name, opt_filter);
@@ -989,8 +989,8 @@ static int enable_events(char *session_name)
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
 							exclusion_string,
-							lttng_strerror(ret),
-							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+							lttng_strerror(command_ret),
+							command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name);
@@ -1037,8 +1037,8 @@ static int enable_events(char *session_name)
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')", ev.name,
 							exclusion_string,
-							lttng_strerror(ret),
-							ret == -LTTNG_ERR_NEED_CHANNEL_NAME
+							lttng_strerror(command_ret),
+							command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name, opt_filter);
