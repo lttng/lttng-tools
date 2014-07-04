@@ -107,7 +107,7 @@ static char *get_cmdline_by_pid(pid_t pid)
 	int ret;
 	FILE *fp;
 	char *cmdline = NULL;
-	char path[24];	/* Can't go bigger than /proc/65535/cmdline */
+	char path[20];	/* Can't go bigger than /proc/65535/cmdline */
 
 	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	fp = fopen(path, "r");
