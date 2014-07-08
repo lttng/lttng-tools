@@ -496,6 +496,7 @@ AC_CONFIG_FILES([
 	src/bin/lttng-sessiond/Makefile
 	src/bin/lttng-relayd/Makefile
 	src/bin/lttng/Makefile
+	src/bin/lttng-crash/Makefile
 	tests/Makefile
 	tests/regression/Makefile
 	tests/regression/kernel/Makefile

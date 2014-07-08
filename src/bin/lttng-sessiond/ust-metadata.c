@@ -120,6 +120,23 @@ ssize_t metadata_reserve(struct ust_registry_session *session, size_t len)
 	return ret;
 }
 
+static
+int metadata_file_append(struct ust_registry_session *session,
+		const char *str, size_t len)
+{
+	ssize_t written;
+
+	if (session->metadata_fd < 0) {
+		return 0;
+	}
+	/* Write to metadata file */
+	written = lttng_write(session->metadata_fd, str, len);
+	if (written != len) {
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * We have exclusive access to our metadata buffer (protected by the
  * ust_lock), so we can do racy operations such as looking for
@@ -149,6 +166,11 @@ int lttng_metadata_printf(struct ust_registry_session *session,
 		goto end;
 	}
 	memcpy(&session->metadata[offset], str, len);
+	ret = metadata_file_append(session, str, len);
+	if (ret) {
+		PERROR("Error appending to metadata file");
+		goto end;
+	}
 	DBG3("Append to metadata: \"%s\"", str);
 	ret = 0;
 
@@ -574,6 +596,15 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		uuid_c[4], uuid_c[5], uuid_c[6], uuid_c[7],
 		uuid_c[8], uuid_c[9], uuid_c[10], uuid_c[11],
 		uuid_c[12], uuid_c[13], uuid_c[14], uuid_c[15]);
+
+	/* For crash ABI */
+	ret = lttng_metadata_printf(session,
+		"/* CTF %u.%u */\n\n",
+		CTF_SPEC_MAJOR,
+		CTF_SPEC_MINOR);
+	if (ret) {
+		goto end;
+	}
 
 	ret = lttng_metadata_printf(session,
 		"typealias integer { size = 8; align = %u; signed = false; } := uint8_t;\n"

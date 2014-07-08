@@ -41,6 +41,7 @@ tags
 /src/bin/lttng-sessiond/lttng-sessiond
 /src/bin/lttng/lttng
 /src/bin/lttng-consumerd/lttng-consumerd
+/src/bin/lttng-crash/lttng-crash
 /src/bin/lttng-relayd/lttng-relayd
 /src/lib/lttng-ctl/lttng-ctl.pc
 /src/lib/lttng-ctl/filter/filter-grammar-test

@@ -1452,6 +1452,26 @@ int lttng_list_sessions(struct lttng_session **sessions)
 	return ret / sizeof(struct lttng_session);
 }
 
+int lttng_set_session_shm_path(const char *session_name,
+		const char *shm_path)
+{
+	struct lttcomm_session_msg lsm;
+
+	if (session_name == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_SET_SESSION_SHM_PATH;
+
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
+	lttng_ctl_copy_string(lsm.u.set_shm_path.shm_path, shm_path,
+			sizeof(lsm.u.set_shm_path.shm_path));
+
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
+}
+
 /*
  *  Ask the session daemon for all available domains of a session.
  *  Sets the contents of the domains array.

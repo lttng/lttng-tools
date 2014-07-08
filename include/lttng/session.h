@@ -104,6 +104,18 @@ extern int lttng_destroy_session(const char *name);
  */
 extern int lttng_list_sessions(struct lttng_session **sessions);
 
+/*
+ * Set the shared memory path for a session.
+ *
+ * Sets the (optional) file system path where shared memory buffers will
+ * be created for the session. This is useful for buffer extraction on
+ * crash, when used with filesystems like pramfs.
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+extern int lttng_set_session_shm_path(const char *session_name,
+		const char *shm_path);
+
 #ifdef __cplusplus
 }
 #endif

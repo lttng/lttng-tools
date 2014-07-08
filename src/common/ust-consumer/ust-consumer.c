@@ -124,14 +124,16 @@ static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		uint64_t relayd_id, uint64_t key, enum lttng_event_output output,
 		uint64_t tracefile_size, uint64_t tracefile_count,
 		uint64_t session_id_per_pid, unsigned int monitor,
-		unsigned int live_timer_interval)
+		unsigned int live_timer_interval,
+		const char *shm_path)
 {
 	assert(pathname);
 	assert(name);
 
 	return consumer_allocate_channel(key, session_id, pathname, name, uid,
 			gid, relayd_id, output, tracefile_size,
-			tracefile_count, session_id_per_pid, monitor, live_timer_interval);
+			tracefile_count, session_id_per_pid, monitor,
+			live_timer_interval, shm_path);
 }
 
 /*
@@ -1210,7 +1212,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.ask_channel.tracefile_count,
 				msg.u.ask_channel.session_id_per_pid,
 				msg.u.ask_channel.monitor,
-				msg.u.ask_channel.live_timer_interval);
+				msg.u.ask_channel.live_timer_interval,
+				msg.u.ask_channel.shm_path);
 		if (!channel) {
 			goto end_channel_error;
 		}
@@ -1230,6 +1233,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		attr.read_timer_interval = msg.u.ask_channel.read_timer_interval;
 		attr.chan_id = msg.u.ask_channel.chan_id;
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
+		strncpy(attr.shm_path, channel->shm_path,
+			sizeof(attr.shm_path));
+		attr.shm_path[sizeof(attr.shm_path) - 1] = '\0';
 
 		/* Match channel buffer type to the UST abi. */
 		switch (msg.u.ask_channel.output) {

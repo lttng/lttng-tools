@@ -109,6 +109,10 @@ struct ltt_session {
 	 * Timer set when the session is created for live reading.
 	 */
 	unsigned int live_timer;
+	/*
+	 * Path where to keep the shared memory files.
+	 */
+	char shm_path[PATH_MAX];
 };
 
 /* Prototypes */

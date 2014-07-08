@@ -206,6 +206,8 @@ struct lttng_consumer_channel {
 
 	/* Timer value in usec for live streaming. */
 	unsigned int live_timer_interval;
+
+	char shm_path[PATH_MAX];
 };
 
 /*
@@ -599,7 +601,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t tracefile_count,
 		uint64_t session_id_per_pid,
 		unsigned int monitor,
-		unsigned int live_timer_interval);
+		unsigned int live_timer_interval,
+		const char *shm_path);
 void consumer_del_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht);
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,

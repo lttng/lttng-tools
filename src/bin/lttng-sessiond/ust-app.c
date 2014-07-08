@@ -1593,6 +1593,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	struct tm *timeinfo;
 	char datetime[16];
 	int ret;
+	char tmp_shm_path[PATH_MAX];
 
 	/* Get date and time for unique app path */
 	time(&rawtime);
@@ -1634,6 +1635,35 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 		PERROR("asprintf UST shadow copy session");
 		assert(0);
 		goto error;
+	}
+
+	strncpy(ua_sess->shm_path, usess->shm_path,
+		sizeof(ua_sess->shm_path));
+	ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
+	if (ua_sess->shm_path[0]) {
+		switch (ua_sess->buffer_type) {
+		case LTTNG_BUFFER_PER_PID:
+			ret = snprintf(tmp_shm_path, sizeof(tmp_shm_path),
+					DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s",
+					app->name, app->pid, datetime);
+			break;
+		case LTTNG_BUFFER_PER_UID:
+			ret = snprintf(tmp_shm_path, sizeof(tmp_shm_path),
+					DEFAULT_UST_TRACE_UID_PATH,
+					app->uid, app->bits_per_long);
+			break;
+		default:
+			assert(0);
+			goto error;
+		}
+		if (ret < 0) {
+			PERROR("sprintf UST shadow copy session");
+			assert(0);
+			goto error;
+		}
+		strncat(ua_sess->shm_path, tmp_shm_path,
+			sizeof(ua_sess->shm_path) - strlen(ua_sess->shm_path) - 1);
+		ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
 	}
 
 	/* Iterate over all channels in global domain. */
@@ -1727,7 +1757,8 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 		 * This is the create channel path meaning that if there is NO
 		 * registry available, we have to create one for this session.
 		 */
-		ret = buffer_reg_pid_create(ua_sess->id, &reg_pid);
+		ret = buffer_reg_pid_create(ua_sess->id, &reg_pid,
+			ua_sess->shm_path);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1741,7 +1772,8 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
 			app->byte_order, app->version.major,
-			app->version.minor);
+			app->version.minor, reg_pid->shm_path,
+			ua_sess->euid, ua_sess->egid);
 	if (ret < 0) {
 		/*
 		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
@@ -1774,6 +1806,7 @@ error:
  * Return 0 on success or else a negative value.
  */
 static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
+		struct ust_app_session *ua_sess,
 		struct ust_app *app, struct buffer_reg_uid **regp)
 {
 	int ret = 0;
@@ -1791,7 +1824,7 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 		 * registry available, we have to create one for this session.
 		 */
 		ret = buffer_reg_uid_create(usess->id, app->bits_per_long, app->uid,
-				LTTNG_DOMAIN_UST, &reg_uid);
+				LTTNG_DOMAIN_UST, &reg_uid, ua_sess->shm_path);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1805,7 +1838,8 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
 			app->byte_order, app->version.major,
-			app->version.minor);
+			app->version.minor, reg_uid->shm_path,
+			usess->uid, usess->gid);
 	if (ret < 0) {
 		/*
 		 * reg_uid->registry->reg.ust is NULL upon error, so we need to
@@ -1880,7 +1914,7 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 		break;
 	case LTTNG_BUFFER_PER_UID:
 		/* Look for a global registry. If none exists, create one. */
-		ret = setup_buffer_reg_uid(usess, app, NULL);
+		ret = setup_buffer_reg_uid(usess, ua_sess, app, NULL);
 		if (ret < 0) {
 			delete_ust_app_session(-1, ua_sess, app);
 			goto error;

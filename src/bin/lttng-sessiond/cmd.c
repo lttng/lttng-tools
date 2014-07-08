@@ -3334,6 +3334,29 @@ error:
 }
 
 /*
+ * Command LTTNG_SET_SESSION_SHM_PATH processed by the client thread.
+ */
+int cmd_set_session_shm_path(struct ltt_session *session,
+		const char *shm_path)
+{
+	/* Safety net */
+	assert(session);
+
+	/*
+	 * Can only set shm path before session is started.
+	 */
+	if (session->has_been_started) {
+		return LTTNG_ERR_SESSION_STARTED;
+	}
+
+	strncpy(session->shm_path, shm_path,
+		sizeof(session->shm_path));
+	session->shm_path[sizeof(session->shm_path) - 1] = '\0';
+
+	return 0;
+}
+
+/*
  * Init command subsystem.
  */
 void cmd_init(void)

@@ -113,6 +113,11 @@ struct ltt_ust_session {
 
 	/* Metadata channel attributes. */
 	struct lttng_ust_channel_attr metadata_attr;
+
+	/*
+	 * Path where to keep the shared memory files.
+	 */
+	char shm_path[PATH_MAX];
 };
 
 /*

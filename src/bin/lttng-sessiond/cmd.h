@@ -97,4 +97,7 @@ int cmd_snapshot_del_output(struct ltt_session *session,
 int cmd_snapshot_record(struct ltt_session *session,
 		struct lttng_snapshot_output *output, int wait);
 
+int cmd_set_session_shm_path(struct ltt_session *session,
+		const char *shm_path);
+
 #endif /* CMD_H */

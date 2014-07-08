@@ -109,6 +109,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	char *pathname = NULL;
 	struct lttcomm_consumer_msg msg;
 	struct ust_registry_channel *chan_reg;
+	char shm_path[PATH_MAX] = "";
 
 	assert(ua_sess);
 	assert(ua_chan);
@@ -136,10 +137,25 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 
 	if (ua_chan->attr.type == LTTNG_UST_CHAN_METADATA) {
 		chan_id = -1U;
+		/*
+		 * Metadata channels shm_path (buffers) are handled within
+		 * session daemon. Consumer daemon should not try to create
+		 * those buffer files.
+		 */
 	} else {
 		chan_reg = ust_registry_channel_find(registry, chan_reg_key);
 		assert(chan_reg);
 		chan_id = chan_reg->chan_id;
+		if (ua_sess->shm_path[0]) {
+			strncpy(shm_path, ua_sess->shm_path, sizeof(shm_path));
+			shm_path[sizeof(shm_path) - 1] = '\0';
+			strncat(shm_path, "/",
+				sizeof(shm_path) - strlen(shm_path) - 1);
+			strncat(shm_path, ua_chan->name,
+					sizeof(shm_path) - strlen(shm_path) - 1);
+				strncat(shm_path, "_",
+					sizeof(shm_path) - strlen(shm_path) - 1);
+		}
 	}
 
 	switch (ua_chan->attr.output) {
@@ -171,7 +187,8 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->tracefile_count,
 			ua_sess->id,
 			ua_sess->output_traces,
-			ua_sess->uid);
+			ua_sess->uid,
+			shm_path);
 
 	health_code_update();
 

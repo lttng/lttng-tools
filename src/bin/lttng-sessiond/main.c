@@ -2765,7 +2765,13 @@ static int create_ust_session(struct ltt_session *session,
 	lus->snapshot_mode = session->snapshot_mode;
 	lus->live_timer_interval = session->live_timer;
 	session->ust_session = lus;
-
+	if (session->shm_path[0]) {
+		strncpy(lus->shm_path, session->shm_path,
+			sizeof(lus->shm_path));
+		lus->shm_path[sizeof(lus->shm_path) - 1] = '\0';
+		strncat(lus->shm_path, "/ust",
+			sizeof(lus->shm_path) - strlen(lus->shm_path) - 1);
+	}
 	/* Copy session output to the newly created UST session */
 	ret = copy_session_consumer(domain->type, session);
 	if (ret != LTTNG_OK) {
@@ -2890,6 +2896,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_SNAPSHOT_LIST_OUTPUT:
 	case LTTNG_SNAPSHOT_RECORD:
 	case LTTNG_SAVE_SESSION:
+	case LTTNG_SET_SESSION_SHM_PATH:
 		need_domain = 0;
 		break;
 	default:
@@ -3828,6 +3835,12 @@ skip_domain:
 	{
 		ret = cmd_save_sessions(&cmd_ctx->lsm->u.save_session.attr,
 			&cmd_ctx->creds);
+		break;
+	}
+	case LTTNG_SET_SESSION_SHM_PATH:
+	{
+		ret = cmd_set_session_shm_path(cmd_ctx->session,
+				cmd_ctx->lsm->u.set_shm_path.shm_path);
 		break;
 	}
 	default:

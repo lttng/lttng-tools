@@ -936,7 +936,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t tracefile_count,
 		uint64_t session_id_per_pid,
 		unsigned int monitor,
-		unsigned int live_timer_interval)
+		unsigned int live_timer_interval,
+		const char *shm_path)
 {
 	struct lttng_consumer_channel *channel;
 
@@ -992,6 +993,11 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 
 	strncpy(channel->name, name, sizeof(channel->name));
 	channel->name[sizeof(channel->name) - 1] = '\0';
+
+	if (shm_path) {
+		strncpy(channel->shm_path, shm_path, sizeof(channel->shm_path));
+		channel->shm_path[sizeof(channel->shm_path) - 1] = '\0';
+	}
 
 	lttng_ht_node_init_u64(&channel->node, channel->key);
 

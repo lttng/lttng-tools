@@ -66,6 +66,11 @@ struct ust_registry_session {
 	size_t metadata_len, metadata_alloc_len;
 	/* Length of bytes sent to the consumer. */
 	size_t metadata_len_sent;
+
+	char shm_path[PATH_MAX];
+	char metadata_path[PATH_MAX];
+	int metadata_fd;	/* file-backed metadata FD */
+
 	/*
 	 * Hash table containing channels sent by the UST tracer. MUST
 	 * be accessed with a RCU read side lock acquired.
@@ -225,7 +230,10 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uint32_t long_alignment,
 		int byte_order,
 		uint32_t major,
-		uint32_t minor);
+		uint32_t minor,
+		const char *shm_path,
+		uid_t euid,
+		gid_t egid);
 void ust_registry_session_destroy(struct ust_registry_session *session);
 
 int ust_registry_create_event(struct ust_registry_session *session,

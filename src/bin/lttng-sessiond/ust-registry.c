@@ -546,7 +546,10 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uint32_t long_alignment,
 		int byte_order,
 		uint32_t major,
-		uint32_t minor)
+		uint32_t minor,
+		const char *shm_path,
+		uid_t euid,
+		gid_t egid)
 {
 	int ret;
 	struct ust_registry_session *session;
@@ -567,6 +570,38 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	session->uint64_t_alignment = uint64_t_alignment;
 	session->long_alignment = long_alignment;
 	session->byte_order = byte_order;
+	session->metadata_fd = -1;
+	if (shm_path[0]) {
+		strncpy(session->shm_path, shm_path,
+			sizeof(session->shm_path));
+		session->shm_path[sizeof(session->shm_path) - 1] = '\0';
+		strncpy(session->metadata_path, shm_path,
+			sizeof(session->metadata_path));
+		session->metadata_path[sizeof(session->metadata_path) - 1] = '\0';
+		strncat(session->metadata_path, "/metadata",
+			sizeof(session->metadata_path)
+				- strlen(session->metadata_path) - 1);
+	}
+	if (session->shm_path[0]) {
+		ret = run_as_mkdir_recursive(session->shm_path,
+			S_IRWXU | S_IRWXG,
+			euid, egid);
+		if (ret) {
+			PERROR("run_as_mkdir_recursive");
+			goto error;
+		}
+	}
+	if (session->metadata_path[0]) {
+		/* Create metadata file */
+		ret = open(session->metadata_path,
+			O_WRONLY | O_CREAT | O_EXCL,
+			S_IRUSR | S_IWUSR);
+		if (ret < 0) {
+			PERROR("Opening metadata file");
+			goto error;
+		}
+		session->metadata_fd = ret;
+	}
 
 	session->channels = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!session->channels) {
@@ -631,4 +666,14 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	}
 
 	free(reg->metadata);
+	if (reg->metadata_fd >= 0) {
+		ret = close(reg->metadata_fd);
+		if (ret) {
+			PERROR("close");
+		}
+		ret = unlink(reg->metadata_path);
+		if (ret) {
+			PERROR("unlink");
+		}
+	}
 }

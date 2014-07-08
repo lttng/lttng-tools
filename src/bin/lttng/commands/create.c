@@ -44,6 +44,7 @@ static char *opt_session_name;
 static char *opt_url;
 static char *opt_ctrl_url;
 static char *opt_data_url;
+static char *opt_shm_path;
 static int opt_no_consumer;
 static int opt_no_output;
 static int opt_snapshot;
@@ -69,6 +70,7 @@ static struct poptOption long_options[] = {
 	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
 	{"snapshot",        0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0},
 	{"live",            0, POPT_ARG_INT | POPT_ARGFLAG_OPTIONAL, 0, OPT_LIVE_TIMER, 0, 0},
+	{"shm-path",        0, POPT_ARG_STRING, &opt_shm_path, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -106,6 +108,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                       By default, %u is used for the timer and the\n",
 											DEFAULT_LTTNG_LIVE_TIMER);
 	fprintf(ofp, "                       network URL is set to net://127.0.0.1.\n");
+	fprintf(ofp, "      --shm-path PATH  Path where shared memory holding buffers\n");
+	fprintf(ofp, "                       should be created. Useful when used with pramfs\n");
+	fprintf(ofp, "                       to extract trace data after crash.\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Extended Options:\n");
 	fprintf(ofp, "\n");
@@ -297,6 +302,7 @@ static int create_session(void)
 	char session_name_date[NAME_MAX + 17], *print_str_url = NULL;
 	time_t rawtime;
 	struct tm *timeinfo;
+	char shm_path[PATH_MAX] = "";
 
 	/* Get date and time for automatic session name/path */
 	time(&rawtime);
@@ -481,6 +487,21 @@ static int create_session(void)
 		}
 	}
 
+	if (opt_shm_path) {
+		ret = snprintf(shm_path, sizeof(shm_path),
+				"%s/%s", opt_shm_path, session_name_date);
+		if (ret < 0) {
+			PERROR("snprintf shm_path");
+			goto error;
+		}
+
+		ret = lttng_set_session_shm_path(session_name, shm_path);
+		if (ret < 0) {
+			lttng_destroy_session(session_name);
+			goto error;
+		}
+	}
+
 	MSG("Session %s created.", session_name);
 	if (print_str_url && !opt_snapshot) {
 		MSG("Traces will be written in %s", print_str_url);
@@ -494,6 +515,10 @@ static int create_session(void)
 		}
 		MSG("Snapshot mode set. Every channel enabled for that session will "
 				"be set in overwrite mode and mmap output.");
+	}
+	if (opt_shm_path) {
+		MSG("Session %s set to shm_path: %s.", session_name,
+			shm_path);
 	}
 
 	/* Mi output */

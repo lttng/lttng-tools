@@ -91,6 +91,9 @@ enum lttcomm_sessiond_command {
 	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
 	LTTNG_CREATE_SESSION_LIVE           = 30,
 	LTTNG_SAVE_SESSION                  = 31,
+
+	/* Session daemon commands (cont.) */
+	LTTNG_SET_SESSION_SHM_PATH          = 40,
 };
 
 enum lttcomm_relayd_command {
@@ -296,6 +299,9 @@ struct lttcomm_session_msg {
 		struct {
 			struct lttng_save_session_attr attr; /* struct already packed */
 		} LTTNG_PACKED save_session;
+		struct {
+			char shm_path[PATH_MAX];
+		} LTTNG_PACKED set_shm_path;
 	} u;
 } LTTNG_PACKED;
 
@@ -424,6 +430,7 @@ struct lttcomm_consumer_msg {
 			 * because the application can be in the tracing for instance.
 			 */
 			uint32_t ust_app_uid;
+			char shm_path[PATH_MAX];
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;
