@@ -110,7 +110,7 @@ enum lttng_error_code {
 	LTTNG_ERR_LOAD_INVALID_CONFIG    = 87,  /* Invalid session configuration */
 	LTTNG_ERR_LOAD_IO_FAIL           = 88,  /* IO error while reading a session configuration */
 	LTTNG_ERR_LOAD_SESSION_NOENT     = 89,  /* Session file not found */
-	/* 90 */
+	LTTNG_ERR_MAX_SIZE_INVALID       = 90,  /* Snapshot max size is invalid. */
 	/* 91 */
 	/* 92 */
 	/* 93 */

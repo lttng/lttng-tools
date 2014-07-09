@@ -55,7 +55,7 @@ int kernel_validate_version(int tracer_fd);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
 int kernel_snapshot_record(struct ltt_kernel_session *ksess,
-		struct snapshot_output *output, int wait, unsigned int nb_streams);
+		struct snapshot_output *output, int wait, uint64_t max_stream_size);
 
 int init_kernel_workarounds(void);
 

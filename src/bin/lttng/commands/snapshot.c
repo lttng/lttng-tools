@@ -372,6 +372,11 @@ static int record(const char *url)
 
 	ret = lttng_snapshot_record(current_session_name, output, 0);
 	if (ret < 0) {
+		if (ret == -LTTNG_ERR_MAX_SIZE_INVALID) {
+			ERR("The minimum size of a snapshot is computed by multiplying "
+					"the total amount of streams with the largest subbuffer "
+					"in the session.");
+		}
 		goto error;
 	}
 
