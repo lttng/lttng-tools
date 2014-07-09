@@ -2832,7 +2832,7 @@ error:
  */
 static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, struct ltt_session *session,
-		int wait, int nb_streams)
+		int wait, uint64_t max_stream_size)
 {
 	int ret;
 
@@ -2863,7 +2863,7 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		goto error_snapshot;
 	}
 
-	ret = kernel_snapshot_record(ksess, output, wait, nb_streams);
+	ret = kernel_snapshot_record(ksess, output, wait, max_stream_size);
 	if (ret != LTTNG_OK) {
 		goto error_snapshot;
 	}
@@ -2884,7 +2884,7 @@ error:
  */
 static int record_ust_snapshot(struct ltt_ust_session *usess,
 		struct snapshot_output *output, struct ltt_session *session,
-		int wait, int nb_streams)
+		int wait, uint64_t max_stream_size)
 {
 	int ret;
 
@@ -2915,7 +2915,7 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 		goto error_snapshot;
 	}
 
-	ret = ust_app_snapshot_record(usess, output, wait, nb_streams);
+	ret = ust_app_snapshot_record(usess, output, wait, max_stream_size);
 	if (ret < 0) {
 		switch (-ret) {
 		case EINVAL:
@@ -2941,10 +2941,50 @@ error:
 }
 
 /*
+ * Return the biggest subbuffer size of all channels in the given session.
+ */
+static uint64_t get_session_max_subbuf_size(struct ltt_session *session)
+{
+	uint64_t max_size = 0;
+
+	assert(session);
+
+	if (session->kernel_session) {
+		struct ltt_kernel_channel *chan;
+		struct ltt_kernel_session *ksess = session->kernel_session;
+
+		/*
+		 * For each channel, add to the max size the size of each subbuffer
+		 * multiplied by their sized.
+		 */
+		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+			if (chan->channel->attr.subbuf_size > max_size) {
+				max_size = chan->channel->attr.subbuf_size;
+			}
+		}
+	}
+
+	if (session->ust_session) {
+		struct lttng_ht_iter iter;
+		struct ltt_ust_channel *uchan;
+		struct ltt_ust_session *usess = session->ust_session;
+
+		cds_lfht_for_each_entry(usess->domain_global.channels->ht, &iter.iter,
+				uchan, node.node) {
+			if (uchan->attr.subbuf_size > max_size) {
+				max_size = uchan->attr.subbuf_size;
+			}
+		}
+	}
+
+	return max_size;
+}
+
+/*
  * Returns the total number of streams for a session or a negative value
  * on error.
  */
-static unsigned int get_total_nb_stream(struct ltt_session *session)
+static unsigned int get_session_nb_streams(struct ltt_session *session)
 {
 	unsigned int total_streams = 0;
 
@@ -2978,6 +3018,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	unsigned int use_tmp_output = 0;
 	struct snapshot_output tmp_output;
 	unsigned int nb_streams, snapshot_success = 0;
+	uint64_t session_max_size = 0, max_stream_size = 0;
 
 	assert(session);
 
@@ -3017,17 +3058,43 @@ int cmd_snapshot_record(struct ltt_session *session,
 	}
 
 	/*
-	 * Get the total number of stream of that session which is used by the
-	 * maximum size of the snapshot feature.
+	 * Get the session maximum size for a snapshot meaning it will compute the
+	 * size of all streams from all domain.
 	 */
-	nb_streams = get_total_nb_stream(session);
+	max_stream_size = get_session_max_subbuf_size(session);
+
+	nb_streams = get_session_nb_streams(session);
+	if (nb_streams) {
+		/*
+		 * The maximum size of the snapshot is the number of streams multiplied
+		 * by the biggest subbuf size of all channels in a session which is the
+		 * maximum stream size available for each stream. The session max size
+		 * is now checked against the snapshot max size value given by the user
+		 * and if lower, an error is returned.
+		 */
+		session_max_size = max_stream_size * nb_streams;
+	}
+
+	DBG3("Snapshot max size is %" PRIu64 " for max stream size of %" PRIu64,
+			session_max_size, max_stream_size);
+
+	/*
+	 * If we use a temporary output, check right away if the max size fits else
+	 * for each output the max size will be checked.
+	 */
+	if (use_tmp_output &&
+			(tmp_output.max_size != 0 &&
+			tmp_output.max_size < session_max_size)) {
+		ret = LTTNG_ERR_MAX_SIZE_INVALID;
+		goto error;
+	}
 
 	if (session->kernel_session) {
 		struct ltt_kernel_session *ksess = session->kernel_session;
 
 		if (use_tmp_output) {
 			ret = record_kernel_snapshot(ksess, &tmp_output, session,
-					wait, nb_streams);
+					wait, max_stream_size);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3051,6 +3118,13 @@ int cmd_snapshot_record(struct ltt_session *session,
 					tmp_output.max_size = output->max_size;
 				}
 
+				if (tmp_output.max_size != 0 &&
+						tmp_output.max_size < session_max_size) {
+					rcu_read_unlock();
+					ret = LTTNG_ERR_MAX_SIZE_INVALID;
+					goto error;
+				}
+
 				/* Use temporary name. */
 				if (*output->name != '\0') {
 					strncpy(tmp_output.name, output->name,
@@ -3060,7 +3134,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
 
 				ret = record_kernel_snapshot(ksess, &tmp_output,
-						session, wait, nb_streams);
+						session, wait, max_stream_size);
 				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
@@ -3076,7 +3150,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 		if (use_tmp_output) {
 			ret = record_ust_snapshot(usess, &tmp_output, session,
-					wait, nb_streams);
+					wait, max_stream_size);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3100,6 +3174,13 @@ int cmd_snapshot_record(struct ltt_session *session,
 					tmp_output.max_size = output->max_size;
 				}
 
+				if (tmp_output.max_size != 0 &&
+						tmp_output.max_size < session_max_size) {
+					rcu_read_unlock();
+					ret = LTTNG_ERR_MAX_SIZE_INVALID;
+					goto error;
+				}
+
 				/* Use temporary name. */
 				if (*output->name != '\0') {
 					strncpy(tmp_output.name, output->name,
@@ -3109,7 +3190,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
 
 				ret = record_ust_snapshot(usess, &tmp_output, session,
-						wait, nb_streams);
+						wait, max_stream_size);
 				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;

@@ -823,13 +823,12 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  * Return 0 on success or else return a LTTNG_ERR code.
  */
 int kernel_snapshot_record(struct ltt_kernel_session *ksess,
-		struct snapshot_output *output, int wait, unsigned int nb_streams)
+		struct snapshot_output *output, int wait, uint64_t max_size_per_stream)
 {
 	int err, ret, saved_metadata_fd;
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_metadata *saved_metadata;
-	uint64_t max_size_per_stream = 0;
 
 	assert(ksess);
 	assert(ksess->consumer);
@@ -853,10 +852,6 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 	if (ret < 0) {
 		ret = LTTNG_ERR_KERN_META_FAIL;
 		goto error_open_stream;
-	}
-
-	if (output->max_size > 0 && nb_streams > 0) {
-		max_size_per_stream = output->max_size / nb_streams;
 	}
 
 	/* Send metadata to consumer and snapshot everything. */
@@ -885,17 +880,6 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			if (max_size_per_stream &&
-					chan->channel->attr.subbuf_size > max_size_per_stream) {
-				ret = LTTNG_ERR_INVALID;
-				DBG3("Kernel snapshot record maximum stream size %" PRIu64
-						" is smaller than subbuffer size of %" PRIu64,
-						max_size_per_stream, chan->channel->attr.subbuf_size);
-				(void) kernel_consumer_destroy_metadata(socket,
-						ksess->metadata);
-				goto error_consumer;
-			}
-
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
 					ksess->uid, ksess->gid,
