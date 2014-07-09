@@ -760,7 +760,7 @@ end:
  */
 int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name,
-		const char *filter_expression,
+		const char *original_filter_expression,
 		int exclusion_count, char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm;
@@ -768,6 +768,13 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	int ret = 0;
 	struct filter_parser_ctx *ctx = NULL;
 	FILE *fmem = NULL;
+	/*
+	 * Cast as non-const since we may replace the filter expression
+	 * by a dynamically allocated string. Otherwise, the original
+	 * string is not modified.
+	 */
+	char *filter_expression = (char *) original_filter_expression;
+	int free_filter_expression = 0;
 
 	if (handle == NULL || ev == NULL) {
 		return -LTTNG_ERR_INVALID;
@@ -828,21 +835,16 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 
 			/* Setup JUL filter if needed. */
 			jul_filter = set_jul_filter(filter_expression, ev);
-			if (!jul_filter) {
-				if (!filter_expression) {
-					/* No JUL and no filter, just skip everything below. */
-					goto ask_sessiond;
-				}
+			if (!jul_filter && !filter_expression) {
+				/* No JUL and no filter, just skip everything below. */
+				goto ask_sessiond;
 			} else {
 				/*
 				 * With a JUL filter, the original filter has been added to it
 				 * thus replace the filter expression.
 				 */
-				filter_expression = strdup(jul_filter);
-				free(jul_filter);
-				if (!filter_expression) {
-					return -LTTNG_ERR_FILTER_NOMEM;
-				}
+				filter_expression = jul_filter;
+				free_filter_expression = 1;
 			}
 		}
 
@@ -959,6 +961,14 @@ varlen_alloc_error:
 		filter_parser_ctx_free(ctx);
 		if (fclose(fmem) != 0) {
 			perror("fclose");
+		}
+		if (free_filter_expression) {
+			/*
+			 * The filter expression has been replaced and must be
+			 * freed as it is not the original filter expression
+			 * received as a parameter.
+			 */
+			free(filter_expression);
 		}
 	}
 	return ret;
