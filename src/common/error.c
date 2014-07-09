@@ -49,14 +49,14 @@ const char *log_add_time(void)
 	}
 
 	/* Format time in the TLS variable. */
-	ret = snprintf(error_log_time.str, sizeof(error_log_time.str),
+	ret = snprintf(URCU_TLS(error_log_time).str, sizeof(error_log_time.str),
 			"%02d:%02d:%02d.%06ld",
 			tm.tm_hour, tm.tm_min, tm.tm_sec, tp.tv_nsec);
 	if (ret < 0) {
 		goto error;
 	}
 
-	return error_log_time.str;
+	return URCU_TLS(error_log_time).str;
 
 error:
 	/* Return an empty string on error so logging is not affected. */
