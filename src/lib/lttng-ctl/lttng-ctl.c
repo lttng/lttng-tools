@@ -710,7 +710,7 @@ static char *set_jul_filter(const char *filter, struct lttng_event *ev)
 		}
 		if (err < 0) {
 			PERROR("asprintf");
-			goto end;
+			goto error;
 		}
 	}
 
@@ -724,23 +724,30 @@ static char *set_jul_filter(const char *filter, struct lttng_event *ev)
 			op = "==";
 		}
 
-		if (filter) {
-			err = asprintf(&jul_filter, "%s && int_loglevel %s %d", filter, op,
+		if (filter || jul_filter) {
+			char *new_filter;
+
+			err = asprintf(&new_filter, "%s && int_loglevel %s %d",
+					jul_filter ? jul_filter : filter, op,
 					ev->loglevel);
+			if (jul_filter) {
+				free(jul_filter);
+			}
+			jul_filter = new_filter;
 		} else {
 			err = asprintf(&jul_filter, "int_loglevel %s %d", op,
 					ev->loglevel);
 		}
 		if (err < 0) {
 			PERROR("asprintf");
-			free(jul_filter);
-			jul_filter = NULL;
-			goto end;
+			goto error;
 		}
 	}
 
-end:
 	return jul_filter;
+error:
+	free(jul_filter);
+	return NULL;
 }
 
 /*
