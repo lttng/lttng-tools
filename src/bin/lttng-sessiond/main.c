@@ -4199,6 +4199,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 		break;
 	case 'g':
 		tracing_group_name = strdup(arg);
+		if (!tracing_group_name) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		break;
 	case 'h':
 		usage();
@@ -4253,22 +4257,42 @@ static int set_option(int opt, const char *arg, const char *optname)
 		break;
 	case 'u':
 		consumerd32_bin = strdup(arg);
+		if (!consumerd32_bin) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		consumerd32_bin_override = 1;
 		break;
 	case 'U':
 		consumerd32_libdir = strdup(arg);
+		if (!consumerd32_libdir) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		consumerd32_libdir_override = 1;
 		break;
 	case 't':
 		consumerd64_bin = strdup(arg);
+		if (!consumerd64_bin) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		consumerd64_bin_override = 1;
 		break;
 	case 'T':
 		consumerd64_libdir = strdup(arg);
+		if (!consumerd64_libdir) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		consumerd64_libdir_override = 1;
 		break;
 	case 'p':
 		opt_pidfile = strdup(arg);
+		if (!opt_pidfile) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		break;
 	case 'J': /* JUL TCP port. */
 	{
@@ -4297,6 +4321,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 		break;
 	case 'P': /* probe modules list */
 		kmod_probes_list = strdup(arg);
+		if (!kmod_probes_list) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
 		break;
 	case 'f':
 		/* This is handled in set_options() thus silent break. */
