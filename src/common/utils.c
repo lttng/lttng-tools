@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <grp.h>
+#include <pwd.h>
 
 #include <common/common.h>
 #include <common/runas.h>
