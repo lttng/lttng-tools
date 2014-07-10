@@ -1566,7 +1566,7 @@ int save_session(struct ltt_session *session,
 				goto end;
 			}
 		} else {
-			ret = config_writer_write_element_signed_int(writer,
+			ret = config_writer_write_element_unsigned_int(writer,
 					config_element_live_timer_interval, session->live_timer);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
