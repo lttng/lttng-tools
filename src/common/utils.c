@@ -820,11 +820,28 @@ LTTNG_HIDDEN
 char *utils_get_home_dir(void)
 {
 	char *val = NULL;
+	struct passwd *pwd;
+
 	val = getenv(DEFAULT_LTTNG_HOME_ENV_VAR);
 	if (val != NULL) {
-		return val;
+		goto end;
 	}
-	return getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
+	val = getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
+	if (val != NULL) {
+		goto end;
+	}
+
+	/* Fallback on the password file entry. */
+	pwd = getpwuid(getuid());
+	if (!pwd) {
+		goto end;
+	}
+	val = pwd->pw_dir;
+
+	DBG3("Home directory is '%s'", val);
+
+end:
+	return val;
 }
 
 /*
