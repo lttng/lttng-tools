@@ -4240,13 +4240,15 @@ static int set_option(int opt, const char *arg, const char *optname)
 	case 'v':
 		/* Verbose level can increase using multiple -v */
 		if (arg) {
+			/* Value obtained from config file */
 			lttng_opt_verbose = config_parse_value(arg);
 		} else {
-			/* Only 3 level of verbosity (-vvv). */
-			if (lttng_opt_verbose < 3) {
-				lttng_opt_verbose += 1;
-			}
+			/* -v used on command line */
+			lttng_opt_verbose++;
 		}
+		/* Clamp value to [0, 3] */
+		lttng_opt_verbose = lttng_opt_verbose < 0 ? 0 :
+			(lttng_opt_verbose <= 3 ? lttng_opt_verbose : 3);
 		break;
 	case 'Z':
 		if (arg) {
