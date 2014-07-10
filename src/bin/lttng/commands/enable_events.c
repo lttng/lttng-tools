@@ -890,10 +890,17 @@ static int enable_events(char *session_name)
 				}
 				warn = 1;
 			} else {
-				MSG("%s event %s%s created in channel %s",
-						get_domain_str(dom.type), event_name,
-						exclusion_string,
-						print_channel_name(channel_name));
+				/* So we don't print the default channel name for JUL. */
+				if (dom.type == LTTNG_DOMAIN_JUL) {
+					MSG("%s event %s%s enabled.",
+							get_domain_str(dom.type), event_name,
+							exclusion_string);
+				} else {
+					MSG("%s event %s%s created in channel %s",
+							get_domain_str(dom.type), event_name,
+							exclusion_string,
+							print_channel_name(channel_name));
+				}
 			}
 			free(exclusion_string);
 		}
