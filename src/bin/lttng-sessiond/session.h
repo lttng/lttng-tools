@@ -108,7 +108,7 @@ struct ltt_session {
 	/*
 	 * Timer set when the session is created for live reading.
 	 */
-	int live_timer;
+	unsigned int live_timer;
 };
 
 /* Prototypes */
