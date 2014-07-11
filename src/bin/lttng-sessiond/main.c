@@ -4198,11 +4198,20 @@ static int set_option(int opt, const char *arg, const char *optname)
 		opt_background = 1;
 		break;
 	case 'g':
+		/*
+		 * If the override option is set, the pointer points to a
+		 * *non* const thus freeing it even though the variable type is
+		 * set to const.
+		 */
+		if (tracing_group_name_override) {
+			free((void *) tracing_group_name);
+		}
 		tracing_group_name = strdup(arg);
 		if (!tracing_group_name) {
 			perror("strdup");
 			ret = -ENOMEM;
 		}
+		tracing_group_name_override = 1;
 		break;
 	case 'h':
 		usage();
@@ -4258,6 +4267,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		break;
 	case 'u':
+		if (consumerd32_bin_override) {
+			free((void *) consumerd32_bin);
+		}
 		consumerd32_bin = strdup(arg);
 		if (!consumerd32_bin) {
 			perror("strdup");
@@ -4266,6 +4278,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 		consumerd32_bin_override = 1;
 		break;
 	case 'U':
+		if (consumerd32_libdir_override) {
+			free((void *) consumerd32_libdir);
+		}
 		consumerd32_libdir = strdup(arg);
 		if (!consumerd32_libdir) {
 			perror("strdup");
@@ -4274,6 +4289,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 		consumerd32_libdir_override = 1;
 		break;
 	case 't':
+		if (consumerd64_bin_override) {
+			free((void *) consumerd64_bin);
+		}
 		consumerd64_bin = strdup(arg);
 		if (!consumerd64_bin) {
 			perror("strdup");
@@ -4282,6 +4300,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 		consumerd64_bin_override = 1;
 		break;
 	case 'T':
+		if (consumerd64_libdir_override) {
+			free((void *) consumerd64_libdir);
+		}
 		consumerd64_libdir = strdup(arg);
 		if (!consumerd64_libdir) {
 			perror("strdup");
@@ -4290,6 +4311,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		consumerd64_libdir_override = 1;
 		break;
 	case 'p':
+		free(opt_pidfile);
 		opt_pidfile = strdup(arg);
 		if (!opt_pidfile) {
 			perror("strdup");
@@ -4315,6 +4337,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		break;
 	}
 	case 'l':
+		free(opt_load_session_path);
 		opt_load_session_path = strdup(arg);
 		if (!opt_load_session_path) {
 			perror("strdup");
@@ -4322,6 +4345,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		break;
 	case 'P': /* probe modules list */
+		free(kmod_probes_list);
 		kmod_probes_list = strdup(arg);
 		if (!kmod_probes_list) {
 			perror("strdup");
