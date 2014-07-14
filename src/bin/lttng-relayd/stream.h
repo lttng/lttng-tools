@@ -77,6 +77,10 @@ struct relay_stream {
 	 */
 	uint64_t beacon_ts_end;
 	/*
+	 * CTF stream ID, -1ULL when unset.
+	 */
+	uint64_t ctf_stream_id;
+	/*
 	 * To protect the update of the close_write_flag and the checks of
 	 * the tracefile_count_current.
 	 * It is taken before checking whenever we need to know if the
