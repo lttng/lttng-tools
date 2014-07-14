@@ -2382,3 +2382,15 @@ end:
 	pthread_mutex_unlock(&ctx->metadata_socket_lock);
 	return ret;
 }
+
+/*
+ * Return the ustctl call for the get stream id.
+ */
+int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream,
+		uint64_t *stream_id)
+{
+	assert(stream);
+	assert(stream_id);
+
+	return ustctl_get_stream_id(stream->ustream, stream_id);
+}

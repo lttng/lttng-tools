@@ -26,7 +26,6 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/consumer-stream.h>
-#include <lttng/ust-ctl.h>
 
 #include "consumer-timer.h"
 #include "consumer-testpoint.h"
@@ -213,7 +212,7 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 			ret = -1;
 			goto error_unlock;
 		}
-		ret = ustctl_get_stream_id(stream->ustream, &stream_id);
+		ret = lttng_ustconsumer_get_stream_id(stream, &stream_id);
 		if (ret < 0) {
 			PERROR("ustctl_get_stream_id");
 			goto error_unlock;
