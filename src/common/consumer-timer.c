@@ -26,6 +26,7 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/consumer-stream.h>
+#include <lttng/ust-ctl.h>
 
 #include "consumer-timer.h"
 #include "consumer-testpoint.h"
@@ -113,12 +114,14 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 	}
 }
 
-static int send_empty_index(struct lttng_consumer_stream *stream, uint64_t ts)
+static int send_empty_index(struct lttng_consumer_stream *stream, uint64_t ts,
+		uint64_t stream_id)
 {
 	int ret;
 	struct ctf_packet_index index;
 
 	memset(&index, 0, sizeof(index));
+	index.stream_id = htobe64(stream_id);
 	index.timestamp_end = htobe64(ts);
 	ret = consumer_stream_write_index(stream, &index);
 	if (ret < 0) {
@@ -131,7 +134,7 @@ error:
 
 static int check_kernel_stream(struct lttng_consumer_stream *stream)
 {
-	uint64_t ts;
+	uint64_t ts, stream_id;
 	int ret;
 
 	/*
@@ -159,8 +162,13 @@ static int check_kernel_stream(struct lttng_consumer_stream *stream)
 			ret = -1;
 			goto error_unlock;
 		}
+		ret = kernctl_get_stream_id(stream->wait_fd, &stream_id);
+		if (ret < 0) {
+			PERROR("kernctl_get_stream_id");
+			goto error_unlock;
+		}
 		DBG("Stream %" PRIu64 " empty, sending beacon", stream->key);
-		ret = send_empty_index(stream, ts);
+		ret = send_empty_index(stream, ts, stream_id);
 		if (ret < 0) {
 			goto error_unlock;
 		}
@@ -174,7 +182,7 @@ error_unlock:
 
 static int check_ust_stream(struct lttng_consumer_stream *stream)
 {
-	uint64_t ts;
+	uint64_t ts, stream_id;
 	int ret;
 
 	assert(stream);
@@ -205,8 +213,13 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 			ret = -1;
 			goto error_unlock;
 		}
+		ret = ustctl_get_stream_id(stream->ustream, &stream_id);
+		if (ret < 0) {
+			PERROR("ustctl_get_stream_id");
+			goto error_unlock;
+		}
 		DBG("Stream %" PRIu64 " empty, sending beacon", stream->key);
-		ret = send_empty_index(stream, ts);
+		ret = send_empty_index(stream, ts, stream_id);
 		if (ret < 0) {
 			goto error_unlock;
 		}

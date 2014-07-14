@@ -1065,6 +1065,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	stream->session_id = session->id;
 	stream->index_fd = -1;
 	stream->read_index_fd = -1;
+	stream->ctf_stream_id = -1ULL;
 	lttng_ht_node_init_u64(&stream->node, stream->stream_handle);
 	pthread_mutex_init(&stream->lock, NULL);
 
@@ -1823,6 +1824,9 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	copy_index_control_data(index, &index_info);
+	if (stream->ctf_stream_id == -1ULL) {
+		stream->ctf_stream_id = be64toh(index_info.stream_id);
+	}
 
 	if (index_created) {
 		/*
