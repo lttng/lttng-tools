@@ -89,6 +89,7 @@
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
 #define DEFAULT_LTTNG_SESSIOND_JULPORT_FILE     "jul.port"
+#define DEFAULT_LTTNG_SESSIOND_LOCKFILE         "lttng-sessiond.lck"
 
 /* Default probes list */
 #define DEFAULT_LTTNG_KMOD_PROBES		"LTTNG_KMOD_PROBES"
