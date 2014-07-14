@@ -1206,6 +1206,7 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 				 */
 				index->status = htobe32(LTTNG_VIEWER_INDEX_INACTIVE);
 				index->timestamp_end = htobe64(rstream->beacon_ts_end);
+				index->stream_id = htobe64(rstream->ctf_stream_id);
 				goto index_ready;
 			} else if (rstream->total_index_received <= vstream->last_sent_index
 					&& !vstream->close_write_flag) {
