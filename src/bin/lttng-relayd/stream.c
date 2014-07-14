@@ -122,6 +122,7 @@ int stream_close(struct relay_session *session, struct relay_stream *stream)
 	assert(ctf_trace);
 	ctf_trace_put_ref(ctf_trace);
 
+	stream->close_flag = 1;
 	stream->terminated_flag = 1;
 	ret = 0;
 
