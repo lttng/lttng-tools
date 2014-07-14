@@ -29,6 +29,7 @@
 #include <inttypes.h>
 #include <grp.h>
 #include <pwd.h>
+#include <sys/file.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -465,6 +466,44 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 	DBG("Pid %d written in file %s", pid, filepath);
 error:
 	return ret;
+}
+
+/*
+ * Create lock file to the given path and filename.
+ * Returns the associated file descriptor, -1 on error.
+ */
+LTTNG_HIDDEN
+int utils_create_lock_file(const char *filepath)
+{
+	int ret;
+	int fd;
+
+	assert(filepath);
+
+	fd = open(filepath, O_CREAT,
+		O_WRONLY | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	if (fd < 0) {
+		PERROR("open lock file %s", filepath);
+		ret = -1;
+		goto error;
+	}
+
+	/*
+	 * Attempt to lock the file. If this fails, there is
+	 * already a process using the same lock file running
+	 * and we should exit.
+	 */
+	ret = flock(fd, LOCK_EX | LOCK_NB);
+	if (ret) {
+		WARN("Could not get lock file %s, another instance is running.",
+			filepath);
+		close(fd);
+		fd = ret;
+		goto error;
+	}
+
+error:
+	return fd;
 }
 
 /*

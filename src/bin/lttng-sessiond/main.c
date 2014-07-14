@@ -79,6 +79,7 @@ static int opt_no_kernel;
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
 static char *rundir;
+static int lockfile_fd = -1;
 
 /* Set to 1 when a SIGUSR1 signal is received. */
 static int recv_child_signal;
@@ -459,6 +460,27 @@ static void close_consumer_sockets(void)
 }
 
 /*
+ * Generate the full lock file path using the rundir.
+ *
+ * Return the snprintf() return value thus a negative value is an error.
+ */
+static int generate_lock_file_path(char *path, size_t len)
+{
+	int ret;
+
+	assert(path);
+	assert(rundir);
+
+	/* Build lockfile path from rundir. */
+	ret = snprintf(path, len, "%s/" DEFAULT_LTTNG_SESSIOND_LOCKFILE, rundir);
+	if (ret < 0) {
+		PERROR("snprintf lockfile path");
+	}
+
+	return ret;
+}
+
+/*
  * Cleanup the daemon
  */
 static void cleanup(void)
@@ -539,14 +561,6 @@ static void cleanup(void)
 	DBG("Removing directory %s", path);
 	(void) rmdir(path);
 
-	/*
-	 * We do NOT rmdir rundir because there are other processes
-	 * using it, for instance lttng-relayd, which can start in
-	 * parallel with this teardown.
-	 */
-
-	free(rundir);
-
 	DBG("Cleaning up all sessions");
 
 	/* Destroy session list mutex */
@@ -577,6 +591,35 @@ static void cleanup(void)
 	}
 
 	close_consumer_sockets();
+
+
+	/*
+	 * Cleanup lock file by deleting it and finaly closing it which will
+	 * release the file system lock.
+	 */
+	if (lockfile_fd >= 0) {
+		char lockfile_path[PATH_MAX];
+
+		ret = generate_lock_file_path(lockfile_path, sizeof(lockfile_path));
+		if (ret > 0) {
+			ret = remove(lockfile_path);
+			if (ret < 0) {
+				PERROR("remove lock file");
+			}
+			ret = close(lockfile_fd);
+			if (ret < 0) {
+				PERROR("close lock file");
+			}
+		}
+	}
+
+	/*
+	 * We do NOT rmdir rundir because there are other processes
+	 * using it, for instance lttng-relayd, which can start in
+	 * parallel with this teardown.
+	 */
+
+	free(rundir);
 
 	/* <fun> */
 	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
@@ -4515,6 +4558,24 @@ error:
 }
 
 /*
+ * Create lockfile using the rundir and return its fd.
+ */
+static int create_lockfile(void)
+{
+	int ret;
+	char lockfile_path[PATH_MAX];
+
+	ret = generate_lock_file_path(lockfile_path, sizeof(lockfile_path));
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = utils_create_lock_file(lockfile_path);
+error:
+	return ret;
+}
+
+/*
  * Write JUL TCP port using the rundir.
  */
 static void write_julport(void)
@@ -4688,6 +4749,11 @@ int main(int argc, char **argv)
 			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
 					DEFAULT_HOME_HEALTH_UNIX_SOCK, home_path);
 		}
+	}
+
+	lockfile_fd = create_lockfile();
+	if (lockfile_fd < 0) {
+		goto error;
 	}
 
 	/* Set consumer initial state */
