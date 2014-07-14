@@ -520,10 +520,15 @@ int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 LTTNG_HIDDEN
 void filter_bytecode_free(struct filter_parser_ctx *ctx)
 {
-	free(ctx->bytecode);
-	ctx->bytecode = NULL;
-	free(ctx->bytecode_reloc);
-	ctx->bytecode_reloc = NULL;
+	if (ctx->bytecode) {
+		free(ctx->bytecode);
+		ctx->bytecode = NULL;
+	}
+
+	if (ctx->bytecode_reloc) {
+		free(ctx->bytecode_reloc);
+		ctx->bytecode_reloc = NULL;
+	}
 }
 
 LTTNG_HIDDEN

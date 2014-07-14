@@ -851,7 +851,6 @@ static int generate_filter(char *filter_expression,
 	return 0;
 
 parse_error:
-	filter_bytecode_free(ctx);
 	filter_ir_free(ctx);
 	filter_parser_ctx_free(ctx);
 filter_alloc_error:
