@@ -110,6 +110,10 @@ int cmd_load(int argc, const char **argv)
 		if (opt_load_all) {
 			MSG("All sessions have been loaded successfully");
 		} else if (session_name) {
+			ret = config_init((char *)session_name);
+			if (ret < 0) {
+				ret = CMD_WARNING;
+			}
 			MSG("Session %s has been loaded successfully", session_name);
 		} else {
 			MSG("Session has been loaded successfully");
