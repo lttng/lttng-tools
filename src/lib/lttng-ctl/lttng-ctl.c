@@ -973,7 +973,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			+ LTTNG_SYMBOL_NAME_LEN * exclusion_count);
 	if (!varlen_data) {
 		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
-		goto filter_error;
+		goto mem_error;
 	}
 
 	/* Put exclusion names first in the data */
@@ -1002,19 +1002,19 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			lsm.u.enable.bytecode_len + lsm.u.enable.expression_len, NULL);
 	free(varlen_data);
 
-filter_error:
-	if (filter_expression) {
+mem_error:
+	if (filter_expression && ctx) {
 		filter_bytecode_free(ctx);
 		filter_ir_free(ctx);
 		filter_parser_ctx_free(ctx);
-		if (free_filter_expression) {
-			/*
-			 * The filter expression has been replaced and must be
-			 * freed as it is not the original filter expression
-			 * received as a parameter.
-			 */
-			free(filter_expression);
-		}
+	}
+filter_error:
+	if (free_filter_expression) {
+		/*
+		 * The filter expression has been replaced and must be freed as it is
+		 * not the original filter expression received as a parameter.
+		 */
+		free(filter_expression);
 	}
 error:
 	/*
