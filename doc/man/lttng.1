@@ -776,8 +776,9 @@ already exists.
 Save tracing session configuration
 
 If SESSION is omitted, all session configurations will be saved to individual
-\fB.lttng\fP files under the user's session configuration directory. The
-default session configuration file naming scheme is \fBSESSION.lttng\fP.
+\fB.lttng\fP files under the user's session configuration directory (default:
+~/.lttng/sessions/ or /var/run/lttng/sessions/ for root user). The default
+session configuration file naming scheme is \fBSESSION.lttng\fP.
 
 .B OPTIONS:
 
@@ -789,7 +790,8 @@ Show summary of possible options and commands.
 Save all session configurations (default).
 .TP
 .BR "\-o, \-\-output-path PATH"
-Specify the output path for saved sessions (default: ~/.lttng/sessions/).
+Specify the output path for saved sessions. This overrides the default session
+configuration directory.
 .TP
 .BR "\-f, -\-force"
 Overwrite session configuration file if session name clashes.
