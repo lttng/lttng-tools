@@ -123,7 +123,22 @@ Specify path for the 64-bit UST consumer daemon binary
 Specify path for the 64-bit UST consumer daemon libraries
 .TP
 .BR "-l, --load PATH
-Specify path from which to load session configurations
+Specify path from which to automatically load session configuration(s).
+
+.SH "LOADING SESSIONS"
+
+.PP
+By default, the session daemon tries to load session configuration(s) located
+in the user default directory \fB~/.lttng/sessions/auto/\fP and in the system
+wide one in \fB/etc/lttng/sessions/auto\fP. Note that the directory containing
+the session's configuration and lttng-sessiond MUST have the same UID for them
+to be automatically loaded.
+
+Specifiying a path with \-l, \-\-load PATH overrides the default directory and
+UID check. The lttng-sessiond will simply check if it's accessible and try to
+load every session file in it.
+.PP
+
 .SH "ENVIRONMENT VARIABLES"
 
 .PP
