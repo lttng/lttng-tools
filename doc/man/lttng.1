@@ -749,8 +749,8 @@ List available domain(s)
 Load tracing session configuration
 
 If NAME is omitted, all session configurations found in both the user's session
-configuration directory and the system session configuration directory will be
-loaded.
+configuration directory (default: ~/.lttng/sessions/) and the system session
+configuration directory (default: /etc/lttng/sessions/) will be loaded.
 
 .B OPTIONS:
 
@@ -762,7 +762,8 @@ Show summary of possible options and commands.
 Load all session configurations (default).
 .TP
 .BR "\-i, \-\-input-path PATH"
-Specify the input path for session configurations.
+Specify the input path for session configurations. This overrides the default
+session configuration directory.
 .TP
 .BR "\-f, -\-force"
 Overwrite current session configuration(s) if a session of the same name
@@ -777,8 +778,8 @@ Save tracing session configuration
 
 If SESSION is omitted, all session configurations will be saved to individual
 \fB.lttng\fP files under the user's session configuration directory (default:
-~/.lttng/sessions/ or /var/run/lttng/sessions/ for root user). The default
-session configuration file naming scheme is \fBSESSION.lttng\fP.
+~/.lttng/sessions/). The default session configuration file naming scheme is
+\fBSESSION.lttng\fP.
 
 .B OPTIONS:
 
