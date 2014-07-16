@@ -1,3 +1,21 @@
+2014-07-16 lttng-tools 2.5.0 (Take Your Poet to Work Day)
+	* Fix: validate file path creds in autoload mode
+	* Fix: change session file loading order
+	* Fix: add Loading Sessions section to lttng-sessiond.8
+	* Fix: add default session conf. dir to manpage
+	* Fix: on session load, add it to the .lttngrc
+	* Fix: clarify session conf. directory in man
+	* Fix: filter error path could free invalid ptr
+	* Fix: Create a lock file to prevent multiple session daemons
+	* Fix: relayd stream set close_flag on stream close
+	* Fix: ustctl_get_stream_id without UST support
+	* Fix: avoid freeing invalid ptr in filter bytecode
+	* Fix: get the stream_id when generating live beacons
+	* Fix: use biggest subbuffer size for snapshot max-size
+	* Fix: Possible memory leak when multiple config files are loaded
+	* Fix: Clamp verbosity value read from config file
+	* Fix: Unchecked strdup return values in set_option
+
 2014-06-27 lttng-tools 2.5.0-rc2
 	* Test: add JUL disable event tests
 	* Fix: disable JUL event on UST side
