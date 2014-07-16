@@ -1,3 +1,21 @@
+2014-07-16 lttng-tools 2.5.0 (Take Your Poet to Work Day)
+	* Fix: validate file path creds in autoload mode
+	* Fix: change session file loading order
+	* Fix: add Loading Sessions section to lttng-sessiond.8
+	* Fix: add default session conf. dir to manpage
+	* Fix: on session load, add it to the .lttngrc
+	* Fix: clarify session conf. directory in man
+	* Fix: filter error path could free invalid ptr
+	* Fix: Create a lock file to prevent multiple session daemons
+	* Fix: relayd stream set close_flag on stream close
+	* Fix: ustctl_get_stream_id without UST support
+	* Fix: avoid freeing invalid ptr in filter bytecode
+	* Fix: get the stream_id when generating live beacons
+	* Fix: use biggest subbuffer size for snapshot max-size
+	* Fix: Possible memory leak when multiple config files are loaded
+	* Fix: Clamp verbosity value read from config file
+	* Fix: Unchecked strdup return values in set_option
+
 2014-06-27 lttng-tools 2.5.0-rc2
 	* Test: add JUL disable event tests
 	* Fix: disable JUL event on UST side
@@ -18,6 +36,38 @@
 	* UST perf counter support with add-context
 	* Kernel tracer probe user define list
 	* Multiple fixes! The diff is just too big to put here.
+
+2014-07-16 lttng-tools 2.4.2 (Take Your Poet to Work Day)
+	* Fix: Create a lock file to prevent multiple session daemons
+	* Fix: relayd stream set close_flag on stream close
+	* Fix: ustctl_get_stream_id without UST support
+	* Fix: get the stream_id when generating live beacons
+	* Fix: missing include for getpwuid()
+	* Fix: add a get HOME dir fallback to getpwuid
+	* Fix: don't set enabled flag is session start fails
+	* Fix: logger name dropped from filter condition when loglevels are used
+	* Fix: memory leak in lttng_enable_event_with_exclusions
+	* Fix: check malloc return value
+	* Fix: static array larger than necessary
+	* Fix: set session in output mode if URL are set afterwards
+	* Fix: Add vpid, vppid and vtid info in add-context help
+	* Fix: alignment problems on targets not supporting unaligned access.
+	* Fix: possible use after free in consumer
+	* Fix: improve and update lttng.h comments
+	* Fix: JUL filtering for event *
+	* Fix: deny overwrite mode and num subbuf less than 2
+	* Fix: remove bad option in enable channel --help
+	* Fix: implicit conversion from enumeration
+	* Fix: clarify man page lttng.1
+	* Fix: Copy-pasted PERROR messages may be misleading
+	* Fix: incorrect printf format
+	* Fix: handle ENOENT when creating a kernel event
+	* Fix: move JUL filter creation to a function
+	* Fix: JUL filtering done on the UST level
+	* Fix: Don't include the binary in the live test's EXTRA_DIST
+	* Fix: add JUL filter to UST event on logger_name
+	* Fix: Racy event validation in tests
+	* Fix: rework utils_parse_size_suffix
 
 2014-04-08 lttng-tools 2.4.1 (OpenSSL heartbleed day)
 	* Fix: don't delete stream from connection recv list
