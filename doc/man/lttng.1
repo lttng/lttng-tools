@@ -750,7 +750,9 @@ Load tracing session configuration
 
 If NAME is omitted, all session configurations found in both the user's session
 configuration directory (default: ~/.lttng/sessions/) and the system session
-configuration directory (default: /etc/lttng/sessions/) will be loaded.
+configuration directory (default: /etc/lttng/sessions/) will be loaded. Note
+that the sessions in the user directory are loaded first and then the system
+wide directory are loaded.
 
 .B OPTIONS:
 
@@ -780,6 +782,9 @@ If SESSION is omitted, all session configurations will be saved to individual
 \fB.lttng\fP files under the user's session configuration directory (default:
 ~/.lttng/sessions/). The default session configuration file naming scheme is
 \fBSESSION.lttng\fP.
+
+For instance, a user in the tracing group saving a session from a root session
+daemon will save it in her/his user directory.
 
 .B OPTIONS:
 

@@ -2338,6 +2338,31 @@ error:
 	return ret;
 }
 
+/*
+ * Return 1 if the given path is readable by the current UID or 0 if not.
+ * Return -1 if the path is EPERM.
+ */
+static int validate_file_read_creds(const char *path)
+{
+	int ret;
+
+	assert(path);
+
+	/* Can we read the file. */
+	ret = access(path, R_OK);
+	if (!ret) {
+		goto valid;
+	}
+	if (errno == EACCES) {
+		return -1;
+	} else {
+		/* Invalid. */
+		return 0;
+	}
+valid:
+	return 1;
+}
+
 static
 int load_session_from_file(const char *path, const char *session_name,
 	struct session_config_validation_ctx *validation_ctx, int override)
@@ -2346,14 +2371,17 @@ int load_session_from_file(const char *path, const char *session_name,
 	xmlDocPtr doc = NULL;
 	xmlNodePtr sessions_node;
 	xmlNodePtr session_node;
-	struct stat sb;
 
 	assert(path);
 	assert(validation_ctx);
 
-	ret = stat(path, &sb);
-	if (ret) {
-		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
+	ret = validate_file_read_creds(path);
+	if (ret != 1) {
+		if (ret == -1) {
+			ret = -LTTNG_ERR_EPERM;
+		} else {
+			ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
+		}
 		goto end;
 	}
 
@@ -2506,7 +2534,7 @@ end:
 
 /*
  * Validate that the given path's credentials and the current process have the
- * same UID. If so, return 0 else return 1 if it does NOT match.
+ * same UID. If so, return 1 else return 0 if it does NOT match.
  */
 static int validate_path_creds(const char *path)
 {
@@ -2515,7 +2543,7 @@ static int validate_path_creds(const char *path)
 
 	assert(path);
 
-	if (uid != 0) {
+	if (uid == 0) {
 		goto valid;
 	}
 
@@ -2533,9 +2561,9 @@ static int validate_path_creds(const char *path)
 	}
 
 valid:
-	return 0;
-invalid:
 	return 1;
+invalid:
+	return 0;
 }
 
 LTTNG_HIDDEN
@@ -2543,6 +2571,7 @@ int config_load_session(const char *path, const char *session_name,
 		int override, unsigned int autoload)
 {
 	int ret;
+	const char *path_ptr = NULL;
 	struct session_config_validation_ctx validation_ctx = { 0 };
 
 	ret = init_session_config_validation_ctx(&validation_ctx);
@@ -2567,18 +2596,31 @@ int config_load_session(const char *path, const char *session_name,
 				ret = snprintf(path, sizeof(path),
 						DEFAULT_SESSION_HOME_CONFIGPATH "/"
 						DEFAULT_SESSION_CONFIG_AUTOLOAD, home_path);
+				if (ret < 0) {
+					PERROR("snprintf session autoload home config path");
+					goto end;
+				}
+
+				/*
+				 * Credentials are only validated for the autoload in order to
+				 * avoid any user session daemon to try to load kernel sessions
+				 * automatically and failing all the times.
+				 */
+				ret = validate_path_creds(path);
+				if (ret) {
+					path_ptr = path;
+				}
 			} else {
 				ret = snprintf(path, sizeof(path),
 						DEFAULT_SESSION_HOME_CONFIGPATH, home_path);
+				if (ret < 0) {
+					PERROR("snprintf session home config path");
+					goto end;
+				}
+				path_ptr = path;
 			}
-			if (ret < 0) {
-				PERROR("snprintf session home config path");
-				goto end;
-			}
-
-			ret = validate_path_creds(path);
-			if (!ret && autoload) {
-				ret = load_session_from_path(path, session_name,
+			if (path_ptr) {
+				ret = load_session_from_path(path_ptr, session_name,
 						&validation_ctx, override);
 				if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
 					goto end;
@@ -2590,19 +2632,25 @@ int config_load_session(const char *path, const char *session_name,
 			}
 		}
 
+		/* Reset path pointer for the system wide dir. */
+		path_ptr = NULL;
+
 		/* Try system wide configuration directory. */
 		if (autoload) {
 			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH "/"
 				DEFAULT_SESSION_CONFIG_AUTOLOAD;
+			ret = validate_path_creds(sys_path);
+			if (ret) {
+				path_ptr = sys_path;
+			}
 		} else {
-			sys_path = DEFAULT_SESSION_HOME_CONFIGPATH;
+			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH;
+			path_ptr = sys_path;
 		}
 
-		ret = validate_path_creds(sys_path);
-		if (!ret && autoload) {
-			ret = load_session_from_path(sys_path, session_name,
+		if (path_ptr) {
+			ret = load_session_from_path(path_ptr, session_name,
 					&validation_ctx, override);
-			goto end;
 		}
 	} else {
 		ret = access(path, F_OK);
