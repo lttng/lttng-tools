@@ -2554,29 +2554,15 @@ int config_load_session(const char *path, const char *session_name,
 		char *home_path;
 		const char *sys_path;
 
-		/*
-		 * Try system session configuration path. Ignore error here so we can
-		 * continue loading the home sessions. The above call should print an
-		 * error to inform the user.
-		 */
-		if (autoload) {
-			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH "/"
-				DEFAULT_SESSION_CONFIG_AUTOLOAD;
-		} else {
-			sys_path = DEFAULT_SESSION_HOME_CONFIGPATH;
-		}
-
-		ret = validate_path_creds(sys_path);
-		if (!ret && autoload) {
-			(void) load_session_from_path(sys_path, session_name,
-					&validation_ctx, override);
-		}
-
 		/* Try home path */
 		home_path = utils_get_home_dir();
 		if (home_path) {
 			char path[PATH_MAX];
 
+			/*
+			 * Try user session configuration path. Ignore error here so we can
+			 * continue loading the system wide sessions.
+			 */
 			if (autoload) {
 				ret = snprintf(path, sizeof(path),
 						DEFAULT_SESSION_HOME_CONFIGPATH "/"
@@ -2586,21 +2572,37 @@ int config_load_session(const char *path, const char *session_name,
 						DEFAULT_SESSION_HOME_CONFIGPATH, home_path);
 			}
 			if (ret < 0) {
+				PERROR("snprintf session home config path");
 				goto end;
 			}
 
 			ret = validate_path_creds(path);
-			if (ret && autoload) {
-				ret = 0;
-				goto end;
+			if (!ret && autoload) {
+				ret = load_session_from_path(path, session_name,
+						&validation_ctx, override);
+				if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
+					goto end;
+				}
+				/*
+				 * Continue even if the session was found since we have to try
+				 * the system wide sessions.
+				 */
 			}
+		}
 
-			ret = load_session_from_path(path, session_name,
-				&validation_ctx, override);
-			if (!ret || (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT)) {
-				/* Session found or an error occured */
-				goto end;
-			}
+		/* Try system wide configuration directory. */
+		if (autoload) {
+			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH "/"
+				DEFAULT_SESSION_CONFIG_AUTOLOAD;
+		} else {
+			sys_path = DEFAULT_SESSION_HOME_CONFIGPATH;
+		}
+
+		ret = validate_path_creds(sys_path);
+		if (!ret && autoload) {
+			ret = load_session_from_path(sys_path, session_name,
+					&validation_ctx, override);
+			goto end;
 		}
 	} else {
 		ret = access(path, F_OK);
