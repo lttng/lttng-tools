@@ -182,5 +182,6 @@ PACKAGE CONTENTS:
       Various documentations and quickstart guide.
 
     - extras
-      Contains extra data such as bash completion file. Python bindings for
-      liblttng-ctl are also available there.
+      Contains extra data such as bash completion file.
+	  	Note: the presence of xmllint is required for bash-completion.
+	  Python bindings for liblttng-ctl are also available there.

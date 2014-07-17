@@ -17,14 +17,38 @@
 
 # Generates COMPREPLY with the existing session names
 _lttng_complete_sessions() {
-	# TODO
-	# This code does nothing for now. When there is a mecanism to get the
-	# existing sessions, use it to fill the sessions variable.
 	local sessions
-	sessions=""
+	sessions=$(lttng --mi xml list |  xmllint --xpath "//command/output/sessions/session/name" - 2>/dev/null | sed  -e 's/<name>//g' -e $'s/<\/name>/\\n/g')
 	COMPREPLY=( $(compgen -W "${sessions}" -- $cur) )
 	return
 }
+#
+
+# Generates COMPREPLY with the available kernel event
+_lttng_complete_kernel_events() {
+	local kernel_event
+	kernel_event=$(lttng --mi xml list -k | xmllint --xpath "//command/output/domains/domain[./type = 'KERNEL']/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
+	COMPREPLY=( $(compgen -W "${kernel_event}" -- $cur) )
+	return
+}
+
+# Generates COMPREPLY with the available ust event
+_lttng_complete_ust_events() {
+	local ust_event
+	ust_event=$(lttng --mi xml list -u | xmllint --xpath "//command/output/domains/domain[./type = 'UST']/pids/pid/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
+	COMPREPLY=( $(compgen -W "${ust_event}" -- $cur) )
+	return
+}
+
+# Generates COMPREPLY with the available jul event
+_lttng_complete_jul_events() {
+	local jul_event
+	jul_event=$(lttng --mi xml list -j | xmllint --xpath "//command/output/domains/domain[./type = 'JUL']/pids/pid/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
+	COMPREPLY=( $(compgen -W "${jul_event}" -- $cur) )
+	return
+}
+
+
 
 # Generates COMPREPLY with whatever is in the $options variable.
 _lttng_complete_options() {
@@ -178,12 +202,32 @@ _lttng_cmd_enableevent() {
 		;;
 	esac
 
+
+	#Check if we want kernel event completion
+	if [[ "$COMP_LINE" == *"-k"* ]]; then
+		_lttng_complete_kernel_events
+		return
+	fi
+
+	#Check if we want ust event completion
+	if [[ "$COMP_LINE" == *"-u"* ]]; then
+		_lttng_complete_ust_events
+		return
+	fi
+
+	#Check if we want jul event completion
+	if [[ "$COMP_LINE" == *"-j"* ]]; then
+		_lttng_complete_jul_events
+		return
+	fi
+
 	case $cur in
 	-*)
 		_lttng_complete_options
 		return
 		;;
 	esac
+
 }
 
 _lttng_cmd_list() {
