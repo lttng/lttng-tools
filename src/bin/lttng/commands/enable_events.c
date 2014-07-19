@@ -927,8 +927,8 @@ static int enable_events(char *session_name)
 				ev.attr.ftrace.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
 			case LTTNG_EVENT_SYSCALL:
-				MSG("per-syscall selection not supported yet. Use \"-a\" "
-						"for all syscalls.");
+				ev.type = LTTNG_EVENT_SYSCALL;
+				break;
 			default:
 				ret = CMD_UNDEFINED;
 				goto error;
