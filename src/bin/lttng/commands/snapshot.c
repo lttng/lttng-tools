@@ -294,7 +294,6 @@ static int mi_del_output(uint32_t id, const char *name)
 
 	ret = lttng_snapshot_del_output(current_session_name, output);
 	if (ret < 0) {
-		ret = CMD_FATAL;
 		goto error;
 	}
 
@@ -377,7 +376,6 @@ static int mi_add_output(const char *url)
 	/* This call, if successful, populates the id of the output object. */
 	ret = lttng_snapshot_add_output(current_session_name, output);
 	if (ret < 0) {
-		ret = CMD_ERROR;
 		goto error;
 	}
 
@@ -672,10 +670,10 @@ static int handle_command(const char **argv)
 		cmd = &actions[i];
 	}
 
-	ret = -CMD_UNDEFINED;
+	ret = CMD_UNDEFINED;
 
 end:
-	/* Overwrite ret if an error occured in cmd->func() */
+	/* Overwrite ret if an error occurred in cmd->func() */
 	ret = command_ret ? command_ret : ret;
 	return ret;
 }
@@ -761,7 +759,7 @@ int cmd_snapshot(int argc, const char **argv)
 	}
 
 	command_ret = handle_command(poptGetArgs(pc));
-	if (command_ret < 0) {
+	if (command_ret) {
 		switch (-command_ret) {
 		case LTTNG_ERR_EPERM:
 			ERR("The session needs to be set in no output mode (--no-output)");
