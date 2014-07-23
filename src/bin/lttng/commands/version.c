@@ -65,7 +65,7 @@ static void create_version(struct mi_lttng_version *version)
 	version->version_major = VERSION_MAJOR;
 	version->version_minor = VERSION_MINOR;
 	version->version_patchlevel = VERSION_PATCHLEVEL;
-	strncpy(version->version_commit, FULL_VERSION, NAME_MAX);
+	strncpy(version->version_commit, GIT_VERSION, NAME_MAX);
 	strncpy(version->version_name, VERSION_NAME, NAME_MAX);
 	strncpy(version->package_url, PACKAGE_URL, NAME_MAX);
 }
