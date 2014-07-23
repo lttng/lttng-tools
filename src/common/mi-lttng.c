@@ -489,7 +489,7 @@ int mi_lttng_version(struct mi_writer *writer, struct mi_lttng_version *version,
 
 	/* Version string (contain info like rc etc.) */
 	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_version_str, VERSION);
+			mi_lttng_element_version_str, version->version);
 	if (ret) {
 		goto end;
 	}
