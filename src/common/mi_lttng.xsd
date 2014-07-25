@@ -437,7 +437,6 @@ THE SOFTWARE.
 	<xs:complexType name="output_type">
 		<xs:choice>
 			<xs:element name="domains" type="domains_type" minOccurs="0" />
-			<xs:element name="session" type="session_type" minOccurs="0" />
 			<xs:element name="sessions" type="sessions_type" minOccurs="0" />
 			<xs:element name="session" type="session_type" minOccurs="0" />
 			<xs:element name="snapshot_action" type="snapshot_action_type" minOccurs="0" />
@@ -450,7 +449,6 @@ THE SOFTWARE.
 			<xs:element name="channels" type="channels_type" minOccurs="0" />
 			<xs:element name="events" type="event_list_type" minOccurs="0" />
 			<xs:element name="channel" type="channel_type" minOccurs="0" />
-			<xs:element name="channels" type="channels_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
