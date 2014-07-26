@@ -17,10 +17,10 @@ REQUIREMENTS:
       kernel version can probably be older but we can't provide any guarantee.
       Please let us know if you are able to go lower without any problems.
 
-    - liburcu
+    - liburcu >= 0.8.0
       Userspace RCU library, by Mathieu Desnoyers and Paul E. McKenney
 
-      -> Tested with liburcu 0.7.x stable.
+      -> Tested with liburcu 0.8.x stable.
 
       * Debian/Ubuntu package: liburcu-dev
       * Git : git://git.lttng.org/userspace-rcu.git

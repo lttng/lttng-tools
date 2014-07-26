@@ -1685,7 +1685,7 @@ error_create:
 static void *thread_dispatch_ust_registration(void *data)
 {
 	int ret, err = -1;
-	struct cds_wfq_node *node;
+	struct cds_wfcq_node *node;
 	struct ust_command *ust_cmd = NULL;
 	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
 	struct ust_reg_wait_queue wait_queue = {
@@ -1723,7 +1723,7 @@ static void *thread_dispatch_ust_registration(void *data)
 
 			health_code_update();
 			/* Dequeue command for registration */
-			node = cds_wfq_dequeue_blocking(&ust_cmd_queue.queue);
+			node = cds_wfcq_dequeue_blocking(&ust_cmd_queue.head, &ust_cmd_queue.tail);
 			if (node == NULL) {
 				DBG("Woken up but nothing in the UST command queue");
 				/* Continue thread execution */
@@ -2077,11 +2077,11 @@ static void *thread_registration_apps(void *data)
 					 * Lock free enqueue the registration request. The red pill
 					 * has been taken! This apps will be part of the *system*.
 					 */
-					cds_wfq_enqueue(&ust_cmd_queue.queue, &ust_cmd->node);
+					cds_wfcq_enqueue(&ust_cmd_queue.head, &ust_cmd_queue.tail, &ust_cmd->node);
 
 					/*
 					 * Wake the registration queue futex. Implicit memory
-					 * barrier with the exchange in cds_wfq_enqueue.
+					 * barrier with the exchange in cds_wfcq_enqueue.
 					 */
 					futex_nto1_wake(&ust_cmd_queue.futex);
 				}
@@ -5257,7 +5257,7 @@ int main(int argc, char **argv)
 	buffer_reg_init_pid_registry();
 
 	/* Init UST command queue. */
-	cds_wfq_init(&ust_cmd_queue.queue);
+	cds_wfcq_init(&ust_cmd_queue.head, &ust_cmd_queue.tail);
 
 	/*
 	 * Get session list pointer. This pointer MUST NOT be free(). This list is

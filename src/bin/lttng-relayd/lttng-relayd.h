@@ -22,7 +22,7 @@
 #define _LGPL_SOURCE
 #include <limits.h>
 #include <urcu.h>
-#include <urcu/wfqueue.h>
+#include <urcu/wfcqueue.h>
 
 #include <common/hashtable/hashtable.h>
 
@@ -30,7 +30,8 @@
  * Queue used to enqueue relay requests
  */
 struct relay_conn_queue {
-	struct cds_wfq_queue queue;
+	struct cds_wfcq_head head;
+	struct cds_wfcq_tail tail;
 	int32_t futex;
 };
 

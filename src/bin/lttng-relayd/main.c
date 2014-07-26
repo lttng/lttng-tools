@@ -882,11 +882,12 @@ restart:
 				new_conn->sock = newsock;
 
 				/* Enqueue request for the dispatcher thread. */
-				cds_wfq_enqueue(&relay_conn_queue.queue, &new_conn->qnode);
+				cds_wfcq_enqueue(&relay_conn_queue.head, &relay_conn_queue.tail,
+						 &new_conn->qnode);
 
 				/*
 				 * Wake the dispatch queue futex. Implicit memory barrier with
-				 * the exchange in cds_wfq_enqueue.
+				 * the exchange in cds_wfcq_enqueue.
 				 */
 				futex_nto1_wake(&relay_conn_queue.futex);
 			}
@@ -933,7 +934,7 @@ void *relay_thread_dispatcher(void *data)
 {
 	int err = -1;
 	ssize_t ret;
-	struct cds_wfq_node *node;
+	struct cds_wfcq_node *node;
 	struct relay_connection *new_conn = NULL;
 
 	DBG("[thread] Relay dispatcher started");
@@ -956,7 +957,8 @@ void *relay_thread_dispatcher(void *data)
 			health_code_update();
 
 			/* Dequeue commands */
-			node = cds_wfq_dequeue_blocking(&relay_conn_queue.queue);
+			node = cds_wfcq_dequeue_blocking(&relay_conn_queue.head,
+							 &relay_conn_queue.tail);
 			if (node == NULL) {
 				DBG("Woken up but nothing in the relay command queue");
 				/* Continue thread execution */
@@ -2762,7 +2764,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Init relay command queue. */
-	cds_wfq_init(&relay_conn_queue.queue);
+	cds_wfcq_init(&relay_conn_queue.head, &relay_conn_queue.tail);
 
 	/* Set up max poll set size */
 	lttng_poll_set_max_size();

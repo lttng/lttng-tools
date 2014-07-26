@@ -23,7 +23,7 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <urcu.h>
-#include <urcu/wfqueue.h>
+#include <urcu/wfcqueue.h>
 #include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
@@ -46,7 +46,7 @@ struct relay_connection {
 	struct lttcomm_sock *sock;
 	struct relay_session *session;
 	struct relay_viewer_session *viewer_session;
-	struct cds_wfq_node qnode;
+	struct cds_wfcq_node qnode;
 	struct lttng_ht_node_ulong sock_n;
 	struct rcu_head rcu_node;
 	enum connection_type type;
