@@ -153,8 +153,11 @@ function stop_lttng_relayd
 	fi
 }
 
+#First argument: load path for automatic loading
 function start_lttng_sessiond()
 {
+
+	local load_path="$1"
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
 		return
@@ -171,7 +174,12 @@ function start_lttng_sessiond()
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
-		$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+		# Have a load path ?
+		if [ -n "$1" ]; then
+			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$1" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+		else
+			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+		fi
 		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1 &
 		status=$?
 		ok $status "Start session daemon"

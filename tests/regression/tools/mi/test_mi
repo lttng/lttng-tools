@@ -32,6 +32,7 @@ NR_USEC_WAIT=10000
 
 #Temp file output
 OUTPUT_DIR=$(mktemp -d)
+FOO_LOAD_DIR=$(mktemp -d)
 OUTPUT_FILE="default.xml"
 
 #Path to custom xml utilities
@@ -683,7 +684,7 @@ function test_snapshot () {
 	destroy_lttng_sessions
 }
 
-start_lttng_sessiond
+start_lttng_sessiond $FOO_LOAD_DIR
 TESTS=(
 	test_version
 	test_create_session
