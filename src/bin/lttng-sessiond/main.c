@@ -67,7 +67,7 @@
 #include "health-sessiond.h"
 #include "testpoint.h"
 #include "ust-thread.h"
-#include "jul-thread.h"
+#include "agent-thread.h"
 #include "save.h"
 #include "load-session-thread.h"
 
@@ -204,7 +204,7 @@ static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t health_thread;
 static pthread_t ht_cleanup_thread;
-static pthread_t jul_reg_thread;
+static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
 
 /*
@@ -289,8 +289,8 @@ long page_size;
 /* Application health monitoring */
 struct health_app *health_sessiond;
 
-/* JUL TCP port for registration. Used by the JUL thread. */
-unsigned int jul_tcp_port = DEFAULT_JUL_TCP_PORT;
+/* Agent TCP port for registration. Used by the agent thread. */
+unsigned int agent_tcp_port = DEFAULT_AGENT_TCP_PORT;
 
 /* Am I root or not. */
 int is_root;			/* Set to 1 if the daemon is running as root */
@@ -571,7 +571,7 @@ static void cleanup(void)
 	(void) unlink(path);
 
 	snprintf(path, PATH_MAX, "%s/%s", rundir,
-			DEFAULT_LTTNG_SESSIOND_JULPORT_FILE);
+			DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
 	DBG("Removing %s", path);
 	(void) unlink(path);
 
@@ -4361,7 +4361,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 			ret = -ENOMEM;
 		}
 		break;
-	case 'J': /* JUL TCP port. */
+	case 'J': /* Agent TCP port. */
 	{
 		unsigned long v;
 
@@ -4375,8 +4375,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 			ERR("Port overflow in --jul-tcp-port parameter: %s", arg);
 			return -1;
 		}
-		jul_tcp_port = (uint32_t) v;
-		DBG3("JUL TCP port set to non default: %u", jul_tcp_port);
+		agent_tcp_port = (uint32_t) v;
+		DBG3("Agent TCP port set to non default: %u", agent_tcp_port);
 		break;
 	}
 	case 'l':
@@ -4916,9 +4916,9 @@ error:
 }
 
 /*
- * Write JUL TCP port using the rundir.
+ * Write agent TCP port using the rundir.
  */
-static void write_julport(void)
+static void write_agent_port(void)
 {
 	int ret;
 	char path[PATH_MAX];
@@ -4926,18 +4926,18 @@ static void write_julport(void)
 	assert(rundir);
 
 	ret = snprintf(path, sizeof(path), "%s/"
-			DEFAULT_LTTNG_SESSIOND_JULPORT_FILE, rundir);
+			DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE, rundir);
 	if (ret < 0) {
-		PERROR("snprintf julport path");
+		PERROR("snprintf agent port path");
 		goto error;
 	}
 
 	/*
-	 * Create TCP JUL port file in rundir. Return value is of no importance.
+	 * Create TCP agent port file in rundir. Return value is of no importance.
 	 * The execution will continue even though we are not able to write the
 	 * file.
 	 */
-	(void) utils_create_pid_file(jul_tcp_port, path);
+	(void) utils_create_pid_file(agent_tcp_port, path);
 
 error:
 	return;
@@ -5174,8 +5174,8 @@ int main(int argc, char **argv)
 	 */
 	ust_app_ht_alloc();
 
-	/* Initialize JUL domain subsystem. */
-	if ((ret = jul_init()) < 0) {
+	/* Initialize agent domain subsystem. */
+	if ((ret = agent_setup()) < 0) {
 		/* ENOMEM at this point. */
 		goto error;
 	}
@@ -5279,7 +5279,7 @@ int main(int argc, char **argv)
 	}
 
 	write_pidfile();
-	write_julport();
+	write_agent_port();
 
 	/* Initialize communication library */
 	lttcomm_init();
@@ -5357,12 +5357,12 @@ int main(int argc, char **argv)
 		goto exit_apps_notify;
 	}
 
-	/* Create JUL registration thread. */
-	ret = pthread_create(&jul_reg_thread, NULL,
-			jul_thread_manage_registration, (void *) NULL);
+	/* Create agent registration thread. */
+	ret = pthread_create(&agent_reg_thread, NULL,
+			agent_thread_manage_registration, (void *) NULL);
 	if (ret != 0) {
-		PERROR("pthread_create JUL");
-		goto exit_jul_reg;
+		PERROR("pthread_create agent");
+		goto exit_agent_reg;
 	}
 
 	/* Don't start this thread if kernel tracing is not requested nor root */
@@ -5388,13 +5388,13 @@ int main(int argc, char **argv)
 	}
 
 exit_kernel:
-	ret = pthread_join(jul_reg_thread, &status);
+	ret = pthread_join(agent_reg_thread, &status);
 	if (ret != 0) {
-		PERROR("pthread_join JUL");
+		PERROR("pthread_join agent");
 		goto error;	/* join error, exit without cleanup */
 	}
 
-exit_jul_reg:
+exit_agent_reg:
 	ret = pthread_join(apps_notify_thread, &status);
 	if (ret != 0) {
 		PERROR("pthread_join apps notify");

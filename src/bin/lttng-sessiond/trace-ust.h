@@ -27,7 +27,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
-#include "jul.h"
+#include "agent.h"
 #include "ust-ctl.h"
 
 struct ltt_ust_ht_key {
@@ -78,7 +78,7 @@ struct ltt_ust_domain_global {
 struct ltt_ust_session {
 	uint64_t id;    /* Unique identifier of session */
 	struct ltt_ust_domain_global domain_global;
-	struct jul_domain domain_jul;
+	struct agent agent;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;

@@ -15,21 +15,21 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef LTTNG_SESSIOND_JUL_THREAD_H
-#define LTTNG_SESSIOND_JUL_THREAD_H
+#ifndef LTTNG_SESSIOND_AGENT_THREAD_H
+#define LTTNG_SESSIOND_AGENT_THREAD_H
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-void *jul_thread_manage_registration(void *data);
+void *agent_thread_manage_registration(void *data);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
-void *jul_thread_manage_registration(void *data)
+void *agent_thread_manage_registration(void *data)
 {
 	return NULL;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
-#endif /* LTTNG_SESSIOND_JUL_THREAD_H */
+#endif /* LTTNG_SESSIOND_AGENT_THREAD_H */

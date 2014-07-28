@@ -617,30 +617,30 @@ error:
 }
 
 /*
- * Enable all JUL event for a given UST session.
+ * Enable all agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_jul_enable_all(struct ltt_ust_session *usess,
+int event_agent_enable_all(struct ltt_ust_session *usess,
 		struct lttng_event *event, struct lttng_filter_bytecode *filter)
 {
 	int ret;
-	struct jul_event *jevent;
+	struct agent_event *jevent;
 	struct lttng_ht_iter iter;
 
 	assert(usess);
 
-	DBG("Event JUL enabling ALL events for session %" PRIu64, usess->id);
+	DBG("Event agent enabling ALL events for session %" PRIu64, usess->id);
 
-	/* Enable event on JUL application through TCP socket. */
-	ret = event_jul_enable(usess, event, filter);
+	/* Enable event on agent application through TCP socket. */
+	ret = event_agent_enable(usess, event, filter);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
 	/* Flag every event that they are now enabled. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(usess->domain_jul.events->ht, &iter.iter, jevent,
+	cds_lfht_for_each_entry(usess->agent.events->ht, &iter.iter, jevent,
 			node.node) {
 		jevent->enabled = 1;
 	}
@@ -653,26 +653,26 @@ error:
 }
 
 /*
- * Enable a single JUL event for a given UST session.
+ * Enable a single agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event,
+int event_agent_enable(struct ltt_ust_session *usess, struct lttng_event *event,
 		struct lttng_filter_bytecode *filter)
 {
 	int ret, created = 0;
-	struct jul_event *jevent;
+	struct agent_event *jevent;
 
 	assert(usess);
 	assert(event);
 
-	DBG("Event JUL enabling %s for session %" PRIu64 " with loglevel type %d "
+	DBG("Event agent enabling %s for session %" PRIu64 " with loglevel type %d "
 			"and loglevel %d", event->name, usess->id, event->loglevel_type,
 			event->loglevel);
 
-	jevent = jul_find_event(event->name, event->loglevel, &usess->domain_jul);
+	jevent = agent_find_event(event->name, event->loglevel, &usess->agent);
 	if (!jevent) {
-		jevent = jul_create_event(event->name, filter);
+		jevent = agent_create_event(event->name, filter);
 		if (!jevent) {
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
@@ -687,14 +687,14 @@ int event_jul_enable(struct ltt_ust_session *usess, struct lttng_event *event,
 		goto end;
 	}
 
-	ret = jul_enable_event(jevent);
+	ret = agent_enable_event(jevent);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
 	/* If the event was created prior to the enable, add it to the domain. */
 	if (created) {
-		jul_add_event(jevent, &usess->domain_jul);
+		agent_add_event(jevent, &usess->agent);
 	}
 
 end:
@@ -702,20 +702,20 @@ end:
 
 error:
 	if (created) {
-		jul_destroy_event(jevent);
+		agent_destroy_event(jevent);
 	}
 	return ret;
 }
 
 /*
- * Disable a single JUL event for a given UST session.
+ * Disable a single agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
+int event_agent_disable(struct ltt_ust_session *usess, char *event_name)
 {
 	int ret;
-	struct jul_event *jevent;
+	struct agent_event *jevent;
 	struct ltt_ust_event *uevent = NULL;
 	struct ltt_ust_channel *uchan = NULL;
 	char *ust_event_name;
@@ -723,9 +723,9 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 	assert(usess);
 	assert(event_name);
 
-	DBG("Event JUL disabling %s for session %" PRIu64, event_name, usess->id);
+	DBG("Event agent disabling %s for session %" PRIu64, event_name, usess->id);
 
-	jevent = jul_find_event_by_name(event_name, &usess->domain_jul);
+	jevent = agent_find_event_by_name(event_name, &usess->agent);
 	if (!jevent) {
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
@@ -754,13 +754,13 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 	}
 
 	/*
-	 * The loglevel is hardcoded with 0 here since the JUL ust event is set
+	 * The loglevel is hardcoded with 0 here since the agent ust event is set
 	 * with the loglevel type to ALL thus the loglevel stays 0. The event's
-	 * filter is the one handling the loglevel for JUL.
+	 * filter is the one handling the loglevel for agent.
 	 */
 	uevent = trace_ust_find_event(uchan->events, ust_event_name,
 			jevent->filter, 0, NULL);
-	/* If the JUL event exists, it must be available on the UST side. */
+	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
 
 	ret = ust_app_disable_event_glb(usess, uchan, uevent);
@@ -769,7 +769,7 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 		goto error;
 	}
 
-	ret = jul_disable_event(jevent);
+	ret = agent_disable_event(jevent);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -781,20 +781,20 @@ error:
 	return ret;
 }
 /*
- * Disable all JUL event for a given UST session.
+ * Disable all agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_jul_disable_all(struct ltt_ust_session *usess)
+int event_agent_disable_all(struct ltt_ust_session *usess)
 {
 	int ret, do_disable = 0;
-	struct jul_event *jevent;
+	struct agent_event *jevent;
 	struct lttng_ht_iter iter;
 
 	assert(usess);
 
-	/* Enable event on JUL application through TCP socket. */
-	ret = event_jul_disable(usess, "*");
+	/* Enable event on agent application through TCP socket. */
+	ret = event_agent_disable(usess, "*");
 	if (ret != LTTNG_OK) {
 		if (ret == LTTNG_ERR_UST_EVENT_NOT_FOUND) {
 			/*
@@ -810,10 +810,10 @@ int event_jul_disable_all(struct ltt_ust_session *usess)
 
 	/* Flag every event that they are now enabled. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(usess->domain_jul.events->ht, &iter.iter, jevent,
+	cds_lfht_for_each_entry(usess->agent.events->ht, &iter.iter, jevent,
 			node.node) {
 		if (jevent->enabled && do_disable) {
-			ret = event_jul_disable(usess, jevent->name);
+			ret = event_agent_disable(usess, jevent->name);
 			if (ret != LTTNG_OK) {
 				rcu_read_unlock();
 				goto error;

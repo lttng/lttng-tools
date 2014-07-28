@@ -22,7 +22,7 @@
 
 #include <common/compat/uuid.h>
 
-#include "jul.h"
+#include "agent.h"
 #include "trace-ust.h"
 #include "ust-registry.h"
 
@@ -266,13 +266,14 @@ struct ust_app {
 	 * Hash table containing ust_app_channel indexed by channel objd.
 	 */
 	struct lttng_ht *ust_objd;
+
 	/*
-	 * If this application is of the JUL domain and this is non negative then a
-	 * lookup MUST be done to acquire a read side reference to the
-	 * corresponding JUL app object. If the lookup fails, this should be set to
-	 * a negative value indicating that the JUL application is gone.
+	 * If this application is of the agent domain and this is non negative then
+	 * a lookup MUST be done to acquire a read side reference to the
+	 * corresponding agent app object. If the lookup fails, this should be set
+	 * to a negative value indicating that the agent application is gone.
 	 */
-	int jul_app_sock;
+	int agent_app_sock;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

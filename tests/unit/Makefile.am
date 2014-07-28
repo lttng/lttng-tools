@@ -59,7 +59,7 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/fd-limit.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/session.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
-		   $(top_builddir)/src/bin/lttng-sessiond/jul.o \
+		   $(top_builddir)/src/bin/lttng-sessiond/agent.o \
 		   $(top_builddir)/src/common/.libs/uri.o \
 		   $(top_builddir)/src/common/.libs/utils.o \
 		   $(top_builddir)/src/common/health/libhealth.la \

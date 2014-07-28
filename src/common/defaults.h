@@ -88,7 +88,7 @@
 #define DEFAULT_LTTNG_RUNDIR                    CONFIG_LTTNG_SYSTEM_RUNDIR
 #define DEFAULT_LTTNG_HOME_RUNDIR               "%s/.lttng"
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE          "lttng-sessiond.pid"
-#define DEFAULT_LTTNG_SESSIOND_JULPORT_FILE     "jul.port"
+#define DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE   "jul.port"
 #define DEFAULT_LTTNG_SESSIOND_LOCKFILE         "lttng-sessiond.lck"
 
 /* Default probes list */
@@ -233,15 +233,15 @@
 #define DEFAULT_NETWORK_CONTROL_BIND_ADDRESS    "0.0.0.0"
 #define DEFAULT_NETWORK_DATA_BIND_ADDRESS       "0.0.0.0"
 #define DEFAULT_NETWORK_VIEWER_BIND_ADDRESS     "localhost"
-#define DEFAULT_JUL_BIND_ADDRESS                "localhost"
+#define DEFAULT_AGENT_BIND_ADDRESS              "localhost"
 
 /* Default network ports for trace streaming support. */
 #define DEFAULT_NETWORK_CONTROL_PORT        5342
 #define DEFAULT_NETWORK_DATA_PORT           5343
 #define DEFAULT_NETWORK_VIEWER_PORT         5344
 
-/* JUL registration TCP port. */
-#define DEFAULT_JUL_TCP_PORT                5345
+/* Agent registration TCP port. */
+#define DEFAULT_AGENT_TCP_PORT              5345
 
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad

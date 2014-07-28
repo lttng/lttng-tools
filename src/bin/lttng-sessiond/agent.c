@@ -20,11 +20,11 @@
 #include <urcu/uatomic.h>
 
 #include <common/common.h>
-#include <common/sessiond-comm/jul.h>
+#include <common/sessiond-comm/agent.h>
 
 #include <common/compat/endian.h>
 
-#include "jul.h"
+#include "agent.h"
 #include "ust-app.h"
 #include "utils.h"
 
@@ -34,13 +34,13 @@
 static int ht_match_event_by_name(struct cds_lfht_node *node,
 		const void *_key)
 {
-	struct jul_event *event;
-	const struct jul_ht_key *key;
+	struct agent_event *event;
+	const struct agent_ht_key *key;
 
 	assert(node);
 	assert(_key);
 
-	event = caa_container_of(node, struct jul_event, node.node);
+	event = caa_container_of(node, struct agent_event, node.node);
 	key = _key;
 
 	/* Match 1 elements of the key: name. */
@@ -62,13 +62,13 @@ no_match:
 static int ht_match_event(struct cds_lfht_node *node,
 		const void *_key)
 {
-	struct jul_event *event;
-	const struct jul_ht_key *key;
+	struct agent_event *event;
+	const struct agent_ht_key *key;
 
 	assert(node);
 	assert(_key);
 
-	event = caa_container_of(node, struct jul_event, node.node);
+	event = caa_container_of(node, struct agent_event, node.node);
 	key = _key;
 
 	/* Match 2 elements of the key: name and loglevel. */
@@ -93,12 +93,13 @@ no_match:
 }
 
 /*
- * Add unique JUL event based on the event name and loglevel.
+ * Add unique agent event based on the event name and loglevel.
  */
-static void add_unique_jul_event(struct lttng_ht *ht, struct jul_event *event)
+static void add_unique_agent_event(struct lttng_ht *ht,
+		struct agent_event *event)
 {
 	struct cds_lfht_node *node_ptr;
-	struct jul_ht_key key;
+	struct agent_ht_key key;
 
 	assert(ht);
 	assert(ht->ht);
@@ -114,34 +115,34 @@ static void add_unique_jul_event(struct lttng_ht *ht, struct jul_event *event)
 }
 
 /*
- * URCU delayed JUL event reclaim.
+ * URCU delayed agent event reclaim.
  */
-static void destroy_event_jul_rcu(struct rcu_head *head)
+static void destroy_event_agent_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_str *node =
 		caa_container_of(head, struct lttng_ht_node_str, head);
-	struct jul_event *event =
-		caa_container_of(node, struct jul_event, node);
+	struct agent_event *event =
+		caa_container_of(node, struct agent_event, node);
 
 	free(event);
 }
 
 /*
- * URCU delayed JUL app reclaim.
+ * URCU delayed agent app reclaim.
  */
-static void destroy_app_jul_rcu(struct rcu_head *head)
+static void destroy_app_agent_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
 		caa_container_of(head, struct lttng_ht_node_ulong, head);
-	struct jul_app *app =
-		caa_container_of(node, struct jul_app, node);
+	struct agent_app *app =
+		caa_container_of(node, struct agent_app, node);
 
 	free(app);
 }
 
 /*
- * Communication with Java agent. Send the message header to the given
- * socket in big endian.
+ * Communication with the agent. Send the message header to the given socket in
+ * big endian.
  *
  * Return 0 on success or else a negative errno message of sendmsg() op.
  */
@@ -150,7 +151,7 @@ static int send_header(struct lttcomm_sock *sock, uint64_t data_size,
 {
 	int ret;
 	ssize_t size;
-	struct lttcomm_jul_hdr msg;
+	struct lttcomm_agent_hdr msg;
 
 	assert(sock);
 
@@ -171,8 +172,8 @@ error:
 }
 
 /*
- * Communication call with the Java agent. Send the payload to the given
- * socket. The header MUST be sent prior to this call.
+ * Communication call with the agent. Send the payload to the given socket. The
+ * header MUST be sent prior to this call.
  *
  * Return 0 on success or else a negative errno value of sendmsg() op.
  */
@@ -197,8 +198,8 @@ error:
 }
 
 /*
- * Communication call with the Java agent. Receive reply from the agent using
- * the given socket.
+ * Communication call with the agent. Receive reply from the agent using the
+ * given socket.
  *
  * Return 0 on success or else a negative errno value from recvmsg() op.
  */
@@ -221,7 +222,6 @@ error:
 	return ret;
 }
 
-
 /*
  * Internal event listing for a given app. Populate events.
  *
@@ -229,23 +229,23 @@ error:
  * On success, the caller is responsible for freeing the memory
  * allocated for "events".
  */
-static ssize_t list_events(struct jul_app *app, struct lttng_event **events)
+static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 {
 	int ret, i, len = 0, offset = 0;
 	uint32_t nb_event;
 	size_t data_size;
 	struct lttng_event *tmp_events = NULL;
-	struct lttcomm_jul_list_reply *reply = NULL;
-	struct lttcomm_jul_list_reply_hdr reply_hdr;
+	struct lttcomm_agent_list_reply *reply = NULL;
+	struct lttcomm_agent_list_reply_hdr reply_hdr;
 
 	assert(app);
 	assert(app->sock);
 	assert(events);
 
-	DBG2("JUL listing events for app pid: %d and socket %d", app->pid,
+	DBG2("Agent listing events for app pid: %d and socket %d", app->pid,
 			app->sock->fd);
 
-	ret = send_header(app->sock, 0, JUL_CMD_LIST, 0);
+	ret = send_header(app->sock, 0, AGENT_CMD_LIST, 0);
 	if (ret < 0) {
 		goto error_io;
 	}
@@ -257,11 +257,11 @@ static ssize_t list_events(struct jul_app *app, struct lttng_event **events)
 	}
 
 	switch (be32toh(reply_hdr.ret_code)) {
-	case JUL_RET_CODE_SUCCESS:
+	case AGENT_RET_CODE_SUCCESS:
 		data_size = be32toh(reply_hdr.data_size) + sizeof(*reply);
 		break;
 	default:
-		ERR("Java agent returned an unknown code: %" PRIu32,
+		ERR("Agent returned an unknown code: %" PRIu32,
 				be32toh(reply_hdr.ret_code));
 		ret = LTTNG_ERR_FATAL;
 		goto error;
@@ -310,28 +310,28 @@ error:
 }
 
 /*
- * Internal enable JUL event on a JUL application. This function
- * communicates with the Java agent to enable a given event (Logger name).
+ * Internal enable agent event on a agent application. This function
+ * communicates with the agent to enable a given event.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int enable_event(struct jul_app *app, struct jul_event *event)
+static int enable_event(struct agent_app *app, struct agent_event *event)
 {
 	int ret;
 	uint64_t data_size;
-	struct lttcomm_jul_enable msg;
-	struct lttcomm_jul_generic_reply reply;
+	struct lttcomm_agent_enable msg;
+	struct lttcomm_agent_generic_reply reply;
 
 	assert(app);
 	assert(app->sock);
 	assert(event);
 
-	DBG2("JUL enabling event %s for app pid: %d and socket %d", event->name,
+	DBG2("Agent enabling event %s for app pid: %d and socket %d", event->name,
 			app->pid, app->sock->fd);
 
 	data_size = sizeof(msg);
 
-	ret = send_header(app->sock, data_size, JUL_CMD_ENABLE, 0);
+	ret = send_header(app->sock, data_size, AGENT_CMD_ENABLE, 0);
 	if (ret < 0) {
 		goto error_io;
 	}
@@ -351,13 +351,13 @@ static int enable_event(struct jul_app *app, struct jul_event *event)
 	}
 
 	switch (be32toh(reply.ret_code)) {
-	case JUL_RET_CODE_SUCCESS:
+	case AGENT_RET_CODE_SUCCESS:
 		break;
-	case JUL_RET_CODE_UNKNOWN_NAME:
+	case AGENT_RET_CODE_UNKNOWN_NAME:
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
 	default:
-		ERR("Java agent returned an unknown code: %" PRIu32,
+		ERR("Agent returned an unknown code: %" PRIu32,
 				be32toh(reply.ret_code));
 		ret = LTTNG_ERR_FATAL;
 		goto error;
@@ -372,28 +372,28 @@ error:
 }
 
 /*
- * Internal disable JUL event call on a JUL application. This function
- * communicates with the Java agent to disable a given event (Logger name).
+ * Internal disable agent event call on a agent application. This function
+ * communicates with the agent to disable a given event.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int disable_event(struct jul_app *app, struct jul_event *event)
+static int disable_event(struct agent_app *app, struct agent_event *event)
 {
 	int ret;
 	uint64_t data_size;
-	struct lttcomm_jul_disable msg;
-	struct lttcomm_jul_generic_reply reply;
+	struct lttcomm_agent_disable msg;
+	struct lttcomm_agent_generic_reply reply;
 
 	assert(app);
 	assert(app->sock);
 	assert(event);
 
-	DBG2("JUL disabling event %s for app pid: %d and socket %d", event->name,
+	DBG2("Agent disabling event %s for app pid: %d and socket %d", event->name,
 			app->pid, app->sock->fd);
 
 	data_size = sizeof(msg);
 
-	ret = send_header(app->sock, data_size, JUL_CMD_DISABLE, 0);
+	ret = send_header(app->sock, data_size, AGENT_CMD_DISABLE, 0);
 	if (ret < 0) {
 		goto error_io;
 	}
@@ -411,16 +411,16 @@ static int disable_event(struct jul_app *app, struct jul_event *event)
 	}
 
 	switch (be32toh(reply.ret_code)) {
-		case JUL_RET_CODE_SUCCESS:
-			break;
-		case JUL_RET_CODE_UNKNOWN_NAME:
-			ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
-			goto error;
-		default:
-			ERR("Java agent returned an unknown code: %" PRIu32,
-					be32toh(reply.ret_code));
-			ret = LTTNG_ERR_FATAL;
-			goto error;
+	case AGENT_RET_CODE_SUCCESS:
+		break;
+	case AGENT_RET_CODE_UNKNOWN_NAME:
+		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
+		goto error;
+	default:
+		ERR("Agent returned an unknown code: %" PRIu32,
+				be32toh(reply.ret_code));
+		ret = LTTNG_ERR_FATAL;
+		goto error;
 	}
 
 	return LTTNG_OK;
@@ -432,39 +432,39 @@ error:
 }
 
 /*
- * Send back the registration DONE command to a given JUL application.
+ * Send back the registration DONE command to a given agent application.
  *
  * Return 0 on success or else a negative value.
  */
-int jul_send_registration_done(struct jul_app *app)
+int agent_send_registration_done(struct agent_app *app)
 {
 	assert(app);
 	assert(app->sock);
 
-	DBG("JUL sending registration done to app socket %d", app->sock->fd);
+	DBG("Agent sending registration done to app socket %d", app->sock->fd);
 
-	return send_header(app->sock, 0, JUL_CMD_REG_DONE, 0);
+	return send_header(app->sock, 0, AGENT_CMD_REG_DONE, 0);
 }
 
 /*
- * Enable JUL event on every JUL applications registered with the session
+ * Enable agent event on every agent applications registered with the session
  * daemon.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int jul_enable_event(struct jul_event *event)
+int agent_enable_event(struct agent_event *event)
 {
 	int ret;
-	struct jul_app *app;
+	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
 	assert(event);
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(jul_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
-		/* Enable event on JUL application through TCP socket. */
+		/* Enable event on agent application through TCP socket. */
 		ret = enable_event(app, event);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -480,24 +480,24 @@ error:
 }
 
 /*
- * Disable JUL event on every JUL applications registered with the session
+ * Disable agent event on every agent applications registered with the session
  * daemon.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int jul_disable_event(struct jul_event *event)
+int agent_disable_event(struct agent_event *event)
 {
 	int ret;
-	struct jul_app *app;
+	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
 	assert(event);
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(jul_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
-		/* Enable event on JUL application through TCP socket. */
+		/* Enable event on agent application through TCP socket. */
 		ret = disable_event(app, event);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -513,16 +513,16 @@ error:
 }
 
 /*
- * Ask every java agent for the list of possible event (logger name). Events is
- * allocated with the events of every JUL application.
+ * Ask every agent for the list of possible event. Events is allocated with the
+ * events of every agent application.
  *
  * Return the number of events or else a negative value.
  */
-int jul_list_events(struct lttng_event **events)
+int agent_list_events(struct lttng_event **events)
 {
 	int ret;
 	size_t nbmem, count = 0;
-	struct jul_app *app;
+	struct agent_app *app;
 	struct lttng_event *tmp_events = NULL;
 	struct lttng_ht_iter iter;
 
@@ -531,18 +531,18 @@ int jul_list_events(struct lttng_event **events)
 	nbmem = UST_APP_EVENT_LIST_SIZE;
 	tmp_events = zmalloc(nbmem * sizeof(*tmp_events));
 	if (!tmp_events) {
-		PERROR("zmalloc jul list events");
+		PERROR("zmalloc agent list events");
 		ret = -ENOMEM;
 		goto error;
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(jul_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
 		ssize_t nb_ev;
-		struct lttng_event *jul_events;
+		struct lttng_event *agent_events;
 
-		nb_ev = list_events(app, &jul_events);
+		nb_ev = list_events(app, &agent_events);
 		if (nb_ev < 0) {
 			ret = nb_ev;
 			goto error_unlock;
@@ -554,14 +554,14 @@ int jul_list_events(struct lttng_event **events)
 			size_t new_nbmem;
 
 			new_nbmem = max_t(size_t, count + nb_ev, nbmem << 1);
-			DBG2("Reallocating JUL event list from %zu to %zu entries",
+			DBG2("Reallocating agent event list from %zu to %zu entries",
 					nbmem, new_nbmem);
 			new_tmp_events = realloc(tmp_events,
 				new_nbmem * sizeof(*new_tmp_events));
 			if (!new_tmp_events) {
-				PERROR("realloc JUL events");
+				PERROR("realloc agent events");
 				ret = -ENOMEM;
-				free(jul_events);
+				free(agent_events);
 				goto error_unlock;
 			}
 			/* Zero the new memory */
@@ -570,9 +570,9 @@ int jul_list_events(struct lttng_event **events)
 			nbmem = new_nbmem;
 			tmp_events = new_tmp_events;
 		}
-		memcpy(tmp_events + count, jul_events,
+		memcpy(tmp_events + count, agent_events,
 			nb_ev * sizeof(*tmp_events));
-		free(jul_events);
+		free(agent_events);
 		count += nb_ev;
 	}
 	rcu_read_unlock();
@@ -589,19 +589,19 @@ error:
 }
 
 /*
- * Create a JUL app object using the given PID.
+ * Create a agent app object using the given PID.
  *
  * Return newly allocated object or else NULL on error.
  */
-struct jul_app *jul_create_app(pid_t pid, struct lttcomm_sock *sock)
+struct agent_app *agent_create_app(pid_t pid, struct lttcomm_sock *sock)
 {
-	struct jul_app *app;
+	struct agent_app *app;
 
 	assert(sock);
 
 	app = zmalloc(sizeof(*app));
 	if (!app) {
-		PERROR("zmalloc JUL create");
+		PERROR("zmalloc agent create");
 		goto error;
 	}
 
@@ -614,74 +614,74 @@ error:
 }
 
 /*
- * Lookup JUL app by socket in the global hash table.
+ * Lookup agent app by socket in the global hash table.
  *
  * RCU read side lock MUST be acquired.
  *
  * Return object if found else NULL.
  */
-struct jul_app *jul_find_app_by_sock(int sock)
+struct agent_app *agent_find_app_by_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct jul_app *app;
+	struct agent_app *app;
 
 	assert(sock >= 0);
 
-	lttng_ht_lookup(jul_apps_ht_by_sock, (void *)((unsigned long) sock), &iter);
+	lttng_ht_lookup(agent_apps_ht_by_sock, (void *)((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		goto error;
 	}
-	app = caa_container_of(node, struct jul_app, node);
+	app = caa_container_of(node, struct agent_app, node);
 
-	DBG3("JUL app pid %d found by sock %d.", app->pid, sock);
+	DBG3("Agent app pid %d found by sock %d.", app->pid, sock);
 	return app;
 
 error:
-	DBG3("JUL app NOT found by sock %d.", sock);
+	DBG3("Agent app NOT found by sock %d.", sock);
 	return NULL;
 }
 
 /*
- * Add JUL application object to a given hash table.
+ * Add agent application object to the global hash table.
  */
-void jul_add_app(struct jul_app *app)
+void agent_add_app(struct agent_app *app)
 {
 	assert(app);
 
-	DBG3("JUL adding app sock: %d and pid: %d to ht", app->sock->fd, app->pid);
+	DBG3("Agent adding app sock: %d and pid: %d to ht", app->sock->fd, app->pid);
 
 	rcu_read_lock();
-	lttng_ht_add_unique_ulong(jul_apps_ht_by_sock, &app->node);
+	lttng_ht_add_unique_ulong(agent_apps_ht_by_sock, &app->node);
 	rcu_read_unlock();
 }
 
 /*
- * Delete JUL application from the global hash table.
+ * Delete agent application from the global hash table.
  */
-void jul_delete_app(struct jul_app *app)
+void agent_delete_app(struct agent_app *app)
 {
 	int ret;
 	struct lttng_ht_iter iter;
 
 	assert(app);
 
-	DBG3("JUL deleting app pid: %d and sock: %d", app->pid, app->sock->fd);
+	DBG3("Agent deleting app pid: %d and sock: %d", app->pid, app->sock->fd);
 
 	iter.iter.node = &app->node.node;
 	rcu_read_lock();
-	ret = lttng_ht_del(jul_apps_ht_by_sock, &iter);
+	ret = lttng_ht_del(agent_apps_ht_by_sock, &iter);
 	rcu_read_unlock();
 	assert(!ret);
 }
 
 /*
- * Destroy a JUL application object by detaching it from its corresponding UST
- * app if one is connected by closing the socket. Finally, perform a
+ * Destroy a agent application object by detaching it from its corresponding
+ * UST app if one is connected by closing the socket. Finally, perform a
  * delayed memory reclaim.
  */
-void jul_destroy_app(struct jul_app *app)
+void agent_destroy_app(struct agent_app *app)
 {
 	assert(app);
 
@@ -690,22 +690,22 @@ void jul_destroy_app(struct jul_app *app)
 		lttcomm_destroy_sock(app->sock);
 	}
 
-	call_rcu(&app->node.head, destroy_app_jul_rcu);
+	call_rcu(&app->node.head, destroy_app_agent_rcu);
 }
 
 /*
- * Initialize an already allocated JUL domain object.
+ * Initialize an already allocated agent object.
  *
  * Return 0 on success or else a negative errno value.
  */
-int jul_init_domain(struct jul_domain *dom)
+int agent_init(struct agent *agt)
 {
 	int ret;
 
-	assert(dom);
+	assert(agt);
 
-	dom->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	if (!dom->events) {
+	agt->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	if (!agt->events) {
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -717,17 +717,17 @@ error:
 }
 
 /*
- * Create a newly allocated JUL event data structure. If name is valid, it's
+ * Create a newly allocated agent event data structure. If name is valid, it's
  * copied into the created event.
  *
  * Return a new object else NULL on error.
  */
-struct jul_event *jul_create_event(const char *name,
+struct agent_event *agent_create_event(const char *name,
 		struct lttng_filter_bytecode *filter)
 {
-	struct jul_event *event;
+	struct agent_event *event;
 
-	DBG3("JUL create new event with name %s", name);
+	DBG3("Agent create new event with name %s", name);
 
 	event = zmalloc(sizeof(*event));
 	if (!event) {
@@ -749,42 +749,42 @@ error:
 }
 
 /*
- * Unique add of a JUL event to a given domain.
+ * Unique add of a agent event to an agent object.
  */
-void jul_add_event(struct jul_event *event, struct jul_domain *dom)
+void agent_add_event(struct agent_event *event, struct agent *agt)
 {
 	assert(event);
-	assert(dom);
-	assert(dom->events);
+	assert(agt);
+	assert(agt->events);
 
-	DBG3("JUL adding event %s to domain", event->name);
+	DBG3("Agent adding event %s", event->name);
 
 	rcu_read_lock();
-	add_unique_jul_event(dom->events, event);
+	add_unique_agent_event(agt->events, event);
 	rcu_read_unlock();
-	dom->being_used = 1;
+	agt->being_used = 1;
 }
 
 /*
- * Find a JUL event in the given domain using name and loglevel.
+ * Find a agent event in the given agent using name.
  *
  * RCU read side lock MUST be acquired.
  *
  * Return object if found else NULL.
  */
-struct jul_event *jul_find_event_by_name(const char *name,
-		struct jul_domain *dom)
+struct agent_event *agent_find_event_by_name(const char *name,
+		struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
-	struct jul_ht_key key;
+	struct agent_ht_key key;
 
 	assert(name);
-	assert(dom);
-	assert(dom->events);
+	assert(agt);
+	assert(agt->events);
 
-	ht = dom->events;
+	ht = agt->events;
 	key.name = name;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
@@ -794,34 +794,34 @@ struct jul_event *jul_find_event_by_name(const char *name,
 		goto error;
 	}
 
-	DBG3("JUL event found %s by name.", name);
-	return caa_container_of(node, struct jul_event, node);
+	DBG3("Agent event found %s by name.", name);
+	return caa_container_of(node, struct agent_event, node);
 
 error:
-	DBG3("JUL NOT found by name %s.", name);
+	DBG3("Agent NOT found by name %s.", name);
 	return NULL;
 }
 
 /*
- * Find a JUL event in the given domain using name and loglevel.
+ * Find a agent event in the given agent using name and loglevel.
  *
  * RCU read side lock MUST be acquired.
  *
  * Return object if found else NULL.
  */
-struct jul_event *jul_find_event(const char *name,
-		enum lttng_loglevel_jul loglevel, struct jul_domain *dom)
+struct agent_event *agent_find_event(const char *name, int loglevel,
+		struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
-	struct jul_ht_key key;
+	struct agent_ht_key key;
 
 	assert(name);
-	assert(dom);
-	assert(dom->events);
+	assert(agt);
+	assert(agt->events);
 
-	ht = dom->events;
+	ht = agt->events;
 	key.name = name;
 	key.loglevel = loglevel;
 
@@ -832,20 +832,20 @@ struct jul_event *jul_find_event(const char *name,
 		goto error;
 	}
 
-	DBG3("JUL event found %s.", name);
-	return caa_container_of(node, struct jul_event, node);
+	DBG3("Agent event found %s.", name);
+	return caa_container_of(node, struct agent_event, node);
 
 error:
-	DBG3("JUL NOT found %s.", name);
+	DBG3("Agent NOT found %s.", name);
 	return NULL;
 }
 
 /*
- * Free given JUL event. This event must not be globally visible at this
- * point (only expected to be used on failure just after event
- * creation). After this call, the pointer is not usable anymore.
+ * Free given agent event. This event must not be globally visible at this
+ * point (only expected to be used on failure just after event creation). After
+ * this call, the pointer is not usable anymore.
  */
-void jul_destroy_event(struct jul_event *event)
+void agent_destroy_event(struct agent_event *event)
 {
 	assert(event);
 
@@ -853,55 +853,55 @@ void jul_destroy_event(struct jul_event *event)
 }
 
 /*
- * Destroy a JUL domain completely. Note that the given pointer is NOT freed
+ * Destroy an agent completely. Note that the given pointer is NOT freed
  * thus a reference to static or stack data can be passed to this function.
  */
-void jul_destroy_domain(struct jul_domain *dom)
+void agent_destroy(struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
-	assert(dom);
+	assert(agt);
 
-	DBG3("JUL destroy domain");
+	DBG3("Agent destroy");
 
 	/*
 	 * Just ignore if no events hash table exists. This is possible if for
-	 * instance a JUL domain object was allocated but not initialized.
+	 * instance an agent object was allocated but not initialized.
 	 */
-	if (!dom->events) {
+	if (!agt->events) {
 		return;
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(dom->events->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, node, node) {
 		int ret;
-		struct jul_event *event;
+		struct agent_event *event;
 
 		/*
 		 * When destroying an event, we have to try to disable it on the agent
 		 * side so the event stops generating data. The return value is not
 		 * important since we have to continue anyway destroying the object.
 		 */
-		event = caa_container_of(node, struct jul_event, node);
-		(void) jul_disable_event(event);
+		event = caa_container_of(node, struct agent_event, node);
+		(void) agent_disable_event(event, agt->domain);
 
-		ret = lttng_ht_del(dom->events, &iter);
+		ret = lttng_ht_del(agt->events, &iter);
 		assert(!ret);
-		call_rcu(&node->head, destroy_event_jul_rcu);
+		call_rcu(&node->head, destroy_event_agent_rcu);
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(dom->events);
+	lttng_ht_destroy(agt->events);
 }
 
 /*
- * Initialize JUL subsystem.
+ * Initialize agent subsystem.
  */
-int jul_init(void)
+int agent_setup(void)
 {
-	jul_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	if (!jul_apps_ht_by_sock) {
+	agent_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!agent_apps_ht_by_sock) {
 		return -1;
 	}
 
@@ -909,31 +909,31 @@ int jul_init(void)
 }
 
 /*
- * Update a JUL application (given socket) using the given domain.
+ * Update a agent application (given socket) using the given agent.
  *
  * Note that this function is most likely to be used with a tracing session
  * thus the caller should make sure to hold the appropriate lock(s).
  */
-void jul_update(struct jul_domain *domain, int sock)
+void agent_update(struct agent *agt, int sock)
 {
 	int ret;
-	struct jul_app *app;
-	struct jul_event *event;
+	struct agent_app *app;
+	struct agent_event *event;
 	struct lttng_ht_iter iter;
 
-	assert(domain);
+	assert(agt);
 	assert(sock >= 0);
 
-	DBG("JUL updating app socket %d", sock);
+	DBG("Agent updating app socket %d", sock);
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(domain->events->ht, &iter.iter, event, node.node) {
+	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
 		/* Skip event if disabled. */
 		if (!event->enabled) {
 			continue;
 		}
 
-		app = jul_find_app_by_sock(sock);
+		app = agent_find_app_by_sock(sock);
 		/*
 		 * We are in the registration path thus if the application is gone,
 		 * there is a serious code flow error.
@@ -942,7 +942,7 @@ void jul_update(struct jul_domain *domain, int sock)
 
 		ret = enable_event(app, event);
 		if (ret != LTTNG_OK) {
-			DBG2("JUL update unable to enable event %s on app pid: %d sock %d",
+			DBG2("Agent update unable to enable event %s on app pid: %d sock %d",
 					event->name, app->pid, app->sock->fd);
 			/* Let's try the others here and don't assume the app is dead. */
 			continue;

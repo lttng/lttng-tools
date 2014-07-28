@@ -1011,7 +1011,7 @@ end:
 
 static
 int save_ust_session(struct config_writer *writer,
-	struct ltt_session *session, int save_jul)
+	struct ltt_session *session, int save_agent)
 {
 	int ret;
 	struct ltt_ust_channel *ust_chan;
@@ -1023,7 +1023,7 @@ int save_ust_session(struct config_writer *writer,
 	assert(session);
 
 	ret = config_writer_write_element_string(writer, config_element_type,
-			save_jul ? config_domain_type_jul : config_domain_type_ust);
+			save_agent ? config_domain_type_jul : config_domain_type_ust);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1053,11 +1053,11 @@ int save_ust_session(struct config_writer *writer,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 			&iter.iter, node, node) {
-		int jul_channel;
+		int agent_channel;
 
 		ust_chan = caa_container_of(node, struct ltt_ust_channel, node);
-		jul_channel = !strcmp(DEFAULT_JUL_CHANNEL_NAME, ust_chan->name);
-		if (!(save_jul ^ jul_channel)) {
+		agent_channel = !strcmp(DEFAULT_JUL_CHANNEL_NAME, ust_chan->name);
+		if (!(save_agent ^ agent_channel)) {
 			ret = save_ust_channel(writer, ust_chan, session->ust_session);
 			if (ret) {
 				rcu_read_unlock();
@@ -1139,7 +1139,7 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 	}
 
 	if (session->ust_session &&
-		session->ust_session->domain_jul.being_used) {
+		session->ust_session->agent.being_used) {
 		ret = config_writer_open_element(writer,
 			config_element_domain);
 		if (ret) {

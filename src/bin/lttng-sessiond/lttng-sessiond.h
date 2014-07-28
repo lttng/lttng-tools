@@ -107,9 +107,9 @@ extern int ht_cleanup_pipe[2];
 extern long page_size;
 
 /*
- * Global set once in main(). JUL TCP port for registration.
+ * Global set once in main(). Agent TCP port for registration.
  */
-extern unsigned int jul_tcp_port;
+extern unsigned int agent_tcp_port;
 
 /*
  * Section name to look for in the daemon configuration file.

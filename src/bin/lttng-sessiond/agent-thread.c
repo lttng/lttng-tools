@@ -26,7 +26,7 @@
 #include <common/compat/endian.h>
 
 #include "fd-limit.h"
-#include "jul-thread.h"
+#include "agent-thread.h"
 #include "lttng-sessiond.h"
 #include "session.h"
 #include "utils.h"
@@ -40,13 +40,13 @@ static const char *default_reg_uri =
 	"tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS;
 
 /*
- * Update JUL application using the given socket. This is done just after
+ * Update agent application using the given socket. This is done just after
  * registration was successful.
  *
  * This is a quite heavy call in terms of locking since the session list lock
  * AND session lock are acquired.
  */
-static void update_jul_app(int sock)
+static void update_agent_app(int sock)
 {
 	struct ltt_session *session, *stmp;
 	struct ltt_session_list *list;
@@ -58,7 +58,7 @@ static void update_jul_app(int sock)
 	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
 		session_lock(session);
 		if (session->ust_session) {
-			jul_update(&session->ust_session->domain_jul, sock);
+			agent_update(&session->ust_session->agent, sock);
 		}
 		session_unlock(session);
 	}
@@ -66,11 +66,11 @@ static void update_jul_app(int sock)
 }
 
 /*
- * Destroy a JUL application by socket.
+ * Destroy a agent application by socket.
  */
-static void destroy_jul_app(int sock)
+static void destroy_agent_app(int sock)
 {
-	struct jul_app *app;
+	struct agent_app *app;
 
 	assert(sock >= 0);
 
@@ -80,34 +80,34 @@ static void destroy_jul_app(int sock)
 	 * thread cleanup.
 	 */
 	rcu_read_lock();
-	app = jul_find_app_by_sock(sock);
+	app = agent_find_app_by_sock(sock);
 	assert(app);
 	rcu_read_unlock();
 
 	/* RCU read side lock is taken in this function call. */
-	jul_delete_app(app);
+	agent_delete_app(app);
 
 	/* The application is freed in a RCU call but the socket is closed here. */
-	jul_destroy_app(app);
+	agent_destroy_app(app);
 }
 
 /*
- * Cleanup remaining JUL apps in the hash table. This should only be called in
+ * Cleanup remaining agent apps in the hash table. This should only be called in
  * the exit path of the thread.
  */
-static void clean_jul_apps_ht(void)
+static void clean_agent_apps_ht(void)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
-	DBG3("[jul-thread] Cleaning JUL apps ht");
+	DBG3("[agent-thread] Cleaning agent apps ht");
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(jul_apps_ht_by_sock->ht, &iter.iter, node, node) {
-		struct jul_app *app;
+	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
+		struct agent_app *app;
 
-		app = caa_container_of(node, struct jul_app, node);
-		destroy_jul_app(app->sock->fd);
+		app = caa_container_of(node, struct agent_app, node);
+		destroy_agent_app(app->sock->fd);
 	}
 	rcu_read_unlock();
 }
@@ -127,13 +127,13 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	 */
 	ret = uri_parse(default_reg_uri, &uri);
 	assert(ret);
-	assert(jul_tcp_port);
-	uri->port = jul_tcp_port;
+	assert(agent_tcp_port);
+	uri->port = agent_tcp_port;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	uri_free(uri);
 	if (sock == NULL) {
-		ERR("[jul-thread] JUL allocating TCP socket");
+		ERR("[agent-thread] agent allocating TCP socket");
 		goto error;
 	}
 
@@ -144,7 +144,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
-		WARN("Another session daemon is using this JUL port. JUL support "
+		WARN("Another session daemon is using this agent port. Agent support "
 				"will be deactivated to prevent interfering with the tracing.");
 		goto error;
 	}
@@ -154,8 +154,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		goto error;
 	}
 
-	DBG("[jul-thread] Listening on TCP port %u and socket %d", jul_tcp_port,
-			sock->fd);
+	DBG("[agent-thread] Listening on TCP port %u and socket %d",
+			agent_tcp_port, sock->fd);
 
 	return sock;
 
@@ -173,7 +173,7 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 {
 	assert(sock);
 
-	DBG3("[jul-thread] Destroy TCP socket on port %u", jul_tcp_port);
+	DBG3("[agent-thread] Destroy TCP socket on port %u", agent_tcp_port);
 
 	/* This will return gracefully if fd is invalid. */
 	sock->ops->close(sock);
@@ -181,21 +181,21 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 }
 
 /*
- * Handle a new JUL registration using the reg socket. After that, a new JUL
- * application is added to the global hash table and attach to an UST app
+ * Handle a new agent registration using the reg socket. After that, a new
+ * agent application is added to the global hash table and attach to an UST app
  * object. If r_app is not NULL, the created app is set to the pointer.
  *
  * Return the new FD created upon accept() on success or else a negative errno
  * value.
  */
 static int handle_registration(struct lttcomm_sock *reg_sock,
-		struct jul_app **r_app)
+		struct agent_app **r_app)
 {
 	int ret;
 	pid_t pid;
 	ssize_t size;
-	struct jul_app *app;
-	struct jul_register_msg msg;
+	struct agent_app *app;
+	struct agent_register_msg msg;
 	struct lttcomm_sock *new_sock;
 
 	assert(reg_sock);
@@ -213,10 +213,10 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 	}
 	pid = be32toh(msg.pid);
 
-	DBG2("[jul-thread] New registration for pid %d on socket %d", pid,
+	DBG2("[agent-thread] New registration for pid %d on socket %d", pid,
 			new_sock->fd);
 
-	app = jul_create_app(pid, new_sock);
+	app = agent_create_app(pid, new_sock);
 	if (!app) {
 		ret = -ENOMEM;
 		goto error_socket;
@@ -226,12 +226,12 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 	 * Add before assigning the socket value to the UST app so it can be found
 	 * concurrently.
 	 */
-	jul_add_app(app);
+	agent_add_app(app);
 
 	/*
-	 * We don't need to attach the JUL app to the app. If we ever do
-	 * so, we should consider both registration order of JUL before
-	 * app and app before JUL.
+	 * We don't need to attach the agent app to the app. If we ever do so, we
+	 * should consider both registration order of agent before app and app
+	 * before agent.
 	 */
 
 	if (r_app) {
@@ -250,20 +250,20 @@ error:
 /*
  * This thread manage application notify communication.
  */
-void *jul_thread_manage_registration(void *data)
+void *agent_thread_manage_registration(void *data)
 {
 	int i, ret, pollfd;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	struct lttcomm_sock *reg_sock;
 
-	DBG("[jul-thread] Manage JUL application registration.");
+	DBG("[agent-thread] Manage agent application registration.");
 
 	rcu_register_thread();
 	rcu_thread_online();
 
-	/* JUL initialization call MUST be called before starting the thread. */
-	assert(jul_apps_ht_by_sock);
+	/* Agent initialization call MUST be called before starting the thread. */
+	assert(agent_apps_ht_by_sock);
 
 	/* Create pollset with size 2, quit pipe and socket. */
 	ret = sessiond_set_thread_pollset(&events, 2);
@@ -284,7 +284,7 @@ void *jul_thread_manage_registration(void *data)
 	}
 
 	while (1) {
-		DBG3("[jul-thread] Manage JUL polling on %d fds",
+		DBG3("[agent-thread] Manage agent polling on %d fds",
 				LTTNG_POLL_GETNB(&events));
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -300,7 +300,7 @@ restart:
 			goto error;
 		}
 		nb_fd = ret;
-		DBG3("[jul-thread] %d fd ready", nb_fd);
+		DBG3("[agent-thread] %d fd ready", nb_fd);
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -324,17 +324,17 @@ restart:
 					goto error;
 				}
 
-				destroy_jul_app(pollfd);
+				destroy_agent_app(pollfd);
 			} else if (revents & (LPOLLIN)) {
 				int new_fd;
-				struct jul_app *app = NULL;
+				struct agent_app *app = NULL;
 
-				/* Pollin event of JUL app socket should NEVER happen. */
+				/* Pollin event of agent app socket should NEVER happen. */
 				assert(pollfd == reg_sock->fd);
 
 				new_fd = handle_registration(reg_sock, &app);
 				if (new_fd < 0) {
-					WARN("[jul-thread] JUL registration failed. Ignoring.");
+					WARN("[agent-thread] agent registration failed. Ignoring.");
 					/* Somehow the communication failed. Just continue. */
 					continue;
 				}
@@ -345,15 +345,15 @@ restart:
 				ret = lttng_poll_add(&events, new_fd,
 						LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 				if (ret < 0) {
-					destroy_jul_app(new_fd);
+					destroy_agent_app(new_fd);
 					continue;
 				}
 
 				/* Update newly registered app. */
-				update_jul_app(new_fd);
+				update_agent_app(new_fd);
 
 				/* On failure, the poll will detect it and clean it up. */
-				(void) jul_send_registration_done(app);
+				(void) agent_send_registration_done(app);
 			} else {
 				ERR("Unknown poll events %u for sock %d", revents, pollfd);
 				continue;
@@ -369,11 +369,11 @@ error:
 error_tcp_socket:
 	lttng_poll_clean(&events);
 error_poll_create:
-	DBG("[jul-thread] is cleaning up and stopping.");
+	DBG("[agent-thread] is cleaning up and stopping.");
 
-	if (jul_apps_ht_by_sock) {
-		clean_jul_apps_ht();
-		lttng_ht_destroy(jul_apps_ht_by_sock);
+	if (agent_apps_ht_by_sock) {
+		clean_agent_apps_ht();
+		lttng_ht_destroy(agent_apps_ht_by_sock);
 	}
 
 	rcu_thread_offline();
