@@ -152,11 +152,9 @@ static void usage(FILE *ofp)
 }
 
 /*
- * Retrieve the created session and
- * mi output it of the created session based on provided argument
+ * Retrieve the created session and mi output it based on provided argument
  * This is currently a summary of what was pretty printed and is subject to
  * enhancements.
- * str_url is a placement string for output  url (snapshot or regular trace)
  */
 static int mi_created_session(const char *session_name)
 {

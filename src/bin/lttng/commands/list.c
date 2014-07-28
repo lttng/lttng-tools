@@ -556,10 +556,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 		if (cur_pid != fields[i].event.pid) {
 			if (pid_element_open) {
 				if (event_element_open) {
-					/* 
-					 * Close the previous fields element
-					 * and the previous event
-					 */
+
+					/* Close the previous field element and event. */
 					ret = mi_lttng_close_multi_element(writer, 2);
 					if (ret) {
 						goto end;

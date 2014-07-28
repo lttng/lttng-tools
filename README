@@ -183,5 +183,5 @@ PACKAGE CONTENTS:
 
     - extras
       Contains extra data such as bash completion file.
-	  	Note: the presence of xmllint is required for bash-completion.
+        Note: the presence of xmllint is required for bash-completion.
 	  Python bindings for liblttng-ctl are also available there.
