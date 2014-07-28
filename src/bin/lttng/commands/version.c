@@ -164,7 +164,7 @@ int cmd_version(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		ret = print_mi();
 	} else {
-		MSG("lttng version " FULL_VERSION " - " VERSION_NAME);
+		MSG("lttng version " VERSION " - " VERSION_NAME " - " GIT_VERSION);
 		MSG("\n" VERSION_DESCRIPTION "\n");
 		MSG("Web site: http://lttng.org");
 		MSG("\n%s", lttng_license);
