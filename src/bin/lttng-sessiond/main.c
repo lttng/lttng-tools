@@ -3016,6 +3016,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			}
 
 			/* 32-bit */
+			pthread_mutex_lock(&ustconsumer32_data.pid_mutex);
 			if (consumerd32_bin[0] != '\0' &&
 					ustconsumer32_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
