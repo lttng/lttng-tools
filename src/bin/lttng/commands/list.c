@@ -746,7 +746,7 @@ static int mi_list_kernel_events(struct lttng_event *events, int count,
 	}
 
 	for (i = 0; i < count; i++) {
-		mi_lttng_event(writer, &events[i], 0);
+		ret = mi_lttng_event(writer, &events[i], 0);
 		if (ret) {
 			goto end;
 		}
