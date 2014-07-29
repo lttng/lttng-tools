@@ -77,6 +77,26 @@ Simple listing of lttng options.
 .TP
 .BR "\-\-list\-commands"
 Simple listing of lttng commands.
+.TP
+.BR "\-m, \-\-mi TYPE
+Machine interface
+
+TYPE supported: XML
+
+Machine interface (MI) mode converts the traditional pretty printing to a
+machine output syntax. MI mode provides a format change-resistant way to access
+information generated via the lttng command line.
+
+When using MI mode, the data is printed on \fBstdout\fP. Error and warning are
+printed on \fBstderr\fP with the pretty print default format.
+
+If any errors occur during the execution of a command, the return value of the
+command will be different than zero. In this case, lttng does NOT guarantee the
+syntax and data validity of the generated MI output.
+
+For XML output type, a schema definition (XSD) file used for validation can be
+found under src/common/mi_lttng.xsd
+
 .SH "COMMANDS"
 
 .PP
