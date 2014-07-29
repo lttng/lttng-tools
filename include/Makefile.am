@@ -21,8 +21,7 @@ version.h:
 			git_version=""; \
 		else \
 			git_describe="$$(git describe)"; \
-			if [ "$${git_branch}" == "$${git_describe}" ] || \
-				[ "$${git_branch}" == "heads/master" ]; then \
+			if [ "$${git_branch}" == "$${git_describe}" ]; then \
 				git_version="$${git_describe}"; \
 			else \
 				git_version="$$(git describe --long --all)"; \
