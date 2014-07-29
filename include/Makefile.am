@@ -46,8 +46,8 @@ version.h:
 			## as the one currently in the file (if there is one), as we
 			## don't want to update the file if it is already up to date
 			##
-			if [ $$(grep -cE "^#define GIT_VERSION \"?$${git_version}\"?$$" "$${version_h}") -eq 0 ]; then \
-				sed -i "s'^#define GIT_VERSION.*$$'#define GIT_VERSION \"$${git_version}\"'" "$${version_h}"; \
+			if [ $$(grep -cE "^#define GIT_VERSION_SED \"?$${git_version}\"?$$" "$${version_h}") -eq 0 ]; then \
+				sed -i "s'^#define GIT_VERSION_SED.*$$'#define GIT_VERSION \"$${git_version}\"'" "$${version_h}"; \
 			fi; \
 		fi; \
 	fi)

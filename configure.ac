@@ -259,6 +259,15 @@ AC_CHECK_LIB([c], [open_memstream],
 ]
 )
 
+AC_ARG_ENABLE([git-version],
+              [AC_HELP_STRING([--disable-git-version],
+                              [Do not use the git version for the build])],
+              [disable_git_version=yes], [disable_git_version=no]
+)
+if test "x${disable_git_version:-no}" = xno; then
+    AC_DEFINE_UNQUOTED([GIT_SOURCE], 1, [Disable git version.])
+fi
+
 # For Python
 # SWIG version needed or newer:
 swig_version=2.0.0

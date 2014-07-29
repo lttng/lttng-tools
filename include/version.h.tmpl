@@ -20,6 +20,12 @@
 #ifndef VERSION_H
 #define VERSION_H
 
+#ifdef GIT_SOURCE
+#define GIT_VERSION_PREFIX " - "
+#define GIT_VERSION_SED ""
+#else
+#define GIT_VERSION_PREFIX ""
 #define GIT_VERSION ""
+#endif
 
 #endif /* VERSION_H */
