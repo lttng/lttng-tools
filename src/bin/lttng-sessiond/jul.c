@@ -869,6 +869,15 @@ void jul_destroy_domain(struct jul_domain *dom)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(dom->events->ht, &iter.iter, node, node) {
 		int ret;
+		struct jul_event *event;
+
+		/*
+		 * When destroying an event, we have to try to disable it on the agent
+		 * side so the event stops generating data. The return value is not
+		 * important since we have to continue anyway destroying the object.
+		 */
+		event = caa_container_of(node, struct jul_event, node);
+		(void) jul_disable_event(event);
 
 		ret = lttng_ht_del(dom->events, &iter);
 		assert(!ret);
