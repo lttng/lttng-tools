@@ -1,3 +1,6 @@
+#ifndef VERSION_H
+#define VERSION_H
+
 /*
  * Copyright (C) 2013-2014 - Raphaël Beamonte <raphael.beamonte@gmail.com>
  *
@@ -17,15 +20,6 @@
 
 #include <config.h>
 
-#ifndef VERSION_H
-#define VERSION_H
-
-#ifdef GIT_SOURCE
-#define GIT_VERSION_PREFIX " - "
-#define GIT_VERSION_SED ""
-#else
-#define GIT_VERSION_PREFIX ""
-#define GIT_VERSION ""
-#endif
+#define GIT_VERSION	""
 
 #endif /* VERSION_H */

@@ -90,7 +90,8 @@ static struct cmd_struct commands[] =  {
 
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "LTTng Trace Control " VERSION " - " VERSION_NAME" - " GIT_VERSION "\n\n");
+	fprintf(ofp, "LTTng Trace Control " VERSION " - " VERSION_NAME "%s\n\n",
+		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
 	fprintf(ofp, "usage: lttng [OPTIONS] <COMMAND> [<ARGS>]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
@@ -134,8 +135,9 @@ static void usage(FILE *ofp)
 
 static void version(FILE *ofp)
 {
-	fprintf(ofp, "%s (LTTng Trace Control) " VERSION" - " VERSION_NAME" - " GIT_VERSION "\n",
-			progname);
+	fprintf(ofp, "%s (LTTng Trace Control) " VERSION" - " VERSION_NAME "%s\n",
+			progname,
+			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
 }
 
 /*

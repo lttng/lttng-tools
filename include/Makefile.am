@@ -1,3 +1,9 @@
+if LTTNG_TOOLS_BUILD_GIT_SOURCE
+GIT_DESCRIBE_CMD = (cd $(top_srcdir); git describe)
+else
+GIT_DESCRIBE_CMD = /bin/true
+endif
+
 ##
 ## The version.h file must be verified and generated or updated if the
 ## git commit id (called git version here) changed since the last build
@@ -6,49 +12,44 @@
 version.h:
 	##
 	## We first create variables for the current git version and
-	## the locations of the version.h and version.h.tmpl files
+	## the locations of the version.h and version.h.tmpl files.
 	##
-	@echo -n "Generating version.h ... "
+	@echo -n "Generating version.h... "
 	@(version_h_tmpl="$(top_srcdir)/include/version.h.tmpl"; \
 	if [ -f "$${version_h_tmpl}" ]; then \
 		version_h="$(top_builddir)/include/version.h"; \
 		##
-		## We check the git version format we will use depending on
-		## whether or not we are in the master branch or on a tag
+		## Check whether we are in a git repo.
 		##
-		git_branch="$$(git describe --all 2>/dev/null)"; \
-		if [ -z "$${git_branch}" ]; then \
-			git_version=""; \
+		git_describe="$$($(GIT_DESCRIBE_CMD) 2>/dev/null)"; \
+		if [ $$? -eq 0 ]; then \
+			git_version="$${git_describe}"; \
 		else \
-			git_describe="$$(git describe)"; \
-			if [ "$${git_branch}" == "$${git_describe}" ]; then \
-				git_version="$${git_describe}"; \
-			else \
-				git_version="$$(git describe --long --all)"; \
-			fi; \
+			git_version=""; \
 		fi; \
 		##
 		## If the version.h file doesn't exist or is not up to date,
-		## We replace it by the version.h.tmpl file
+		## We replace it by the version.h.tmpl file.
 		##
 		if [ ! -e "$${version_h}" ] || \
 			[ "$${version_h_tmpl}" -nt "$${version_h}" ]; then \
 			cp "$${version_h_tmpl}" "$${version_h}"; \
 		fi; \
-		if [ -n "$${git_version}" ]; then \
-			##
-			## We remove the leading "v" for the version number
-			##
-			git_version="$$(echo "$${git_version}" | sed -r "s/^v([0-9])/\1/")"; \
-			##
-			## If we have a git version, we verify that it isn't the same
-			## as the one currently in the file (if there is one), as we
-			## don't want to update the file if it is already up to date
-			##
-			if [ $$(grep -cE "^#define GIT_VERSION_SED \"?$${git_version}\"?$$" "$${version_h}") -eq 0 ]; then \
-				sed -i "s'^#define GIT_VERSION_SED.*$$'#define GIT_VERSION \"$${git_version}\"'" "$${version_h}"; \
-			fi; \
+		echo -n "git version: \"$${git_version}\""; \
+		##
+		## We verify that git_version isn't the same as the one
+		## currently in the file (if there is one), as we don't
+		## want to update the file if it is already up to date.
+		##
+		version_match='^#define GIT_VERSION.*'; \
+		old_version=$$(grep "$${version_match}" "$${version_h}"); \
+		new_version="#define GIT_VERSION	\"$${git_version}\""; \
+		if [ x"$${old_version}" != x"$${new_version}" ]; then \
+			sed -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
+		else \
+			echo -n " (cached)"; \
 		fi; \
+		echo -n "... "; \
 	fi)
 	@echo "ok"
 
@@ -57,6 +58,9 @@ version.h:
 ## we want our routine to be runned for each build.
 ##
 .PHONY: version.h
+
+nodist_noinst_HEADERS = \
+	version.h
 
 lttnginclude_HEADERS = \
 	lttng/health.h \
@@ -71,7 +75,7 @@ lttnginclude_HEADERS = \
 	lttng/snapshot.h \
 	lttng/save.h \
 	lttng/load.h \
-	version.h
+	version.h.tmpl
 
 noinst_HEADERS = \
 	lttng/snapshot-internal.h \

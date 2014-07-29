@@ -262,11 +262,11 @@ AC_CHECK_LIB([c], [open_memstream],
 AC_ARG_ENABLE([git-version],
               [AC_HELP_STRING([--disable-git-version],
                               [Do not use the git version for the build])],
-              [disable_git_version=yes], [disable_git_version=no]
+              [have_git_version=$enableval], [have_git_version=yes]
 )
-if test "x${disable_git_version:-no}" = xno; then
-    AC_DEFINE_UNQUOTED([GIT_SOURCE], 1, [Disable git version.])
-fi
+
+AM_CONDITIONAL([LTTNG_TOOLS_BUILD_GIT_SOURCE],
+	[test "x${have_git_version}" = "xyes"])
 
 # For Python
 # SWIG version needed or newer:
