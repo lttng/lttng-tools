@@ -10,7 +10,7 @@ extract_xml_CPPFLAGS = $(XML_CPPFLAGS) $(AM_CPPFLAGS)
 extract_xml_LDADD = $(XML_LIBS)
 
 noinst_SCRIPTS = test_mi
-EXTRA_DIST =
+EXTRA_DIST = test_mi
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
