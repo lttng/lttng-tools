@@ -46,7 +46,7 @@ static const char *default_reg_uri =
  * This is a quite heavy call in terms of locking since the session list lock
  * AND session lock are acquired.
  */
-static void update_agent_app(int sock)
+static void update_agent_app(struct agent_app *app)
 {
 	struct ltt_session *session, *stmp;
 	struct ltt_session_list *list;
@@ -58,7 +58,12 @@ static void update_agent_app(int sock)
 	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
 		session_lock(session);
 		if (session->ust_session) {
-			agent_update(&session->ust_session->agent, sock);
+			struct agent *agt;
+
+			agt = trace_ust_find_agent(session->ust_session, app->domain);
+			if (agt) {
+				agent_update(agt, app->sock->fd);
+			}
 		}
 		session_unlock(session);
 	}
@@ -194,6 +199,7 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 	int ret;
 	pid_t pid;
 	ssize_t size;
+	enum lttng_domain_type domain;
 	struct agent_app *app;
 	struct agent_register_msg msg;
 	struct lttcomm_sock *new_sock;
@@ -211,12 +217,13 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 		ret = -errno;
 		goto error_socket;
 	}
+	domain = be32toh(msg.domain);
 	pid = be32toh(msg.pid);
 
-	DBG2("[agent-thread] New registration for pid %d on socket %d", pid,
-			new_sock->fd);
+	DBG2("[agent-thread] New registration for pid %d domain %d on socket %d",
+			pid, domain, new_sock->fd);
 
-	app = agent_create_app(pid, new_sock);
+	app = agent_create_app(pid, domain, new_sock);
 	if (!app) {
 		ret = -ENOMEM;
 		goto error_socket;
@@ -350,7 +357,7 @@ restart:
 				}
 
 				/* Update newly registered app. */
-				update_agent_app(new_fd);
+				update_agent_app(app);
 
 				/* On failure, the poll will detect it and clean it up. */
 				(void) agent_send_registration_done(app);

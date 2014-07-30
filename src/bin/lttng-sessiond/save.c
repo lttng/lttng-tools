@@ -1139,7 +1139,7 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 	}
 
 	if (session->ust_session &&
-		session->ust_session->agent.being_used) {
+			lttng_ht_get_count(session->ust_session->agents) > 0) {
 		ret = config_writer_open_element(writer,
 			config_element_domain);
 		if (ret) {

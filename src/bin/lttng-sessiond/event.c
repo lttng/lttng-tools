@@ -622,10 +622,11 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
 int event_agent_enable_all(struct ltt_ust_session *usess,
-		struct lttng_event *event, struct lttng_filter_bytecode *filter)
+		struct agent *agt, struct lttng_event *event,
+		struct lttng_filter_bytecode *filter)
 {
 	int ret;
-	struct agent_event *jevent;
+	struct agent_event *aevent;
 	struct lttng_ht_iter iter;
 
 	assert(usess);
@@ -633,16 +634,16 @@ int event_agent_enable_all(struct ltt_ust_session *usess,
 	DBG("Event agent enabling ALL events for session %" PRIu64, usess->id);
 
 	/* Enable event on agent application through TCP socket. */
-	ret = event_agent_enable(usess, event, filter);
+	ret = event_agent_enable(usess, agt, event, filter);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
 	/* Flag every event that they are now enabled. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(usess->agent.events->ht, &iter.iter, jevent,
+	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, aevent,
 			node.node) {
-		jevent->enabled = 1;
+		aevent->enabled = 1;
 	}
 	rcu_read_unlock();
 
@@ -657,44 +658,46 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_enable(struct ltt_ust_session *usess, struct lttng_event *event,
+int event_agent_enable(struct ltt_ust_session *usess,
+		struct agent *agt, struct lttng_event *event,
 		struct lttng_filter_bytecode *filter)
 {
 	int ret, created = 0;
-	struct agent_event *jevent;
+	struct agent_event *aevent;
 
 	assert(usess);
 	assert(event);
+	assert(agt);
 
 	DBG("Event agent enabling %s for session %" PRIu64 " with loglevel type %d "
 			"and loglevel %d", event->name, usess->id, event->loglevel_type,
 			event->loglevel);
 
-	jevent = agent_find_event(event->name, event->loglevel, &usess->agent);
-	if (!jevent) {
-		jevent = agent_create_event(event->name, filter);
-		if (!jevent) {
+	aevent = agent_find_event(event->name, event->loglevel, agt);
+	if (!aevent) {
+		aevent = agent_create_event(event->name, filter);
+		if (!aevent) {
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-		jevent->loglevel = event->loglevel;
-		jevent->loglevel_type = event->loglevel_type;
+		aevent->loglevel = event->loglevel;
+		aevent->loglevel_type = event->loglevel_type;
 		created = 1;
 	}
 
 	/* Already enabled? */
-	if (jevent->enabled) {
+	if (aevent->enabled) {
 		goto end;
 	}
 
-	ret = agent_enable_event(jevent);
+	ret = agent_enable_event(aevent, agt->domain);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
 	/* If the event was created prior to the enable, add it to the domain. */
 	if (created) {
-		agent_add_event(jevent, &usess->agent);
+		agent_add_event(aevent, agt);
 	}
 
 end:
@@ -702,7 +705,7 @@ end:
 
 error:
 	if (created) {
-		agent_destroy_event(jevent);
+		agent_destroy_event(aevent);
 	}
 	return ret;
 }
@@ -712,27 +715,29 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable(struct ltt_ust_session *usess, char *event_name)
+int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
+		char *event_name)
 {
 	int ret;
-	struct agent_event *jevent;
+	struct agent_event *aevent;
 	struct ltt_ust_event *uevent = NULL;
 	struct ltt_ust_channel *uchan = NULL;
 	char *ust_event_name;
 
+	assert(agt);
 	assert(usess);
 	assert(event_name);
 
 	DBG("Event agent disabling %s for session %" PRIu64, event_name, usess->id);
 
-	jevent = agent_find_event_by_name(event_name, &usess->agent);
-	if (!jevent) {
+	aevent = agent_find_event_by_name(event_name, agt);
+	if (!aevent) {
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
 	}
 
 	/* Already disabled? */
-	if (!jevent->enabled) {
+	if (!aevent->enabled) {
 		goto end;
 	}
 
@@ -759,7 +764,7 @@ int event_agent_disable(struct ltt_ust_session *usess, char *event_name)
 	 * filter is the one handling the loglevel for agent.
 	 */
 	uevent = trace_ust_find_event(uchan->events, ust_event_name,
-			jevent->filter, 0, NULL);
+			aevent->filter, 0, NULL);
 	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
 
@@ -769,7 +774,7 @@ int event_agent_disable(struct ltt_ust_session *usess, char *event_name)
 		goto error;
 	}
 
-	ret = agent_disable_event(jevent);
+	ret = agent_disable_event(aevent, agt->domain);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -785,16 +790,18 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable_all(struct ltt_ust_session *usess)
+int event_agent_disable_all(struct ltt_ust_session *usess,
+		struct agent *agt)
 {
 	int ret, do_disable = 0;
-	struct agent_event *jevent;
+	struct agent_event *aevent;
 	struct lttng_ht_iter iter;
 
+	assert(agt);
 	assert(usess);
 
-	/* Enable event on agent application through TCP socket. */
-	ret = event_agent_disable(usess, "*");
+	/* Disable event on agent application through TCP socket. */
+	ret = event_agent_disable(usess, agt, "*");
 	if (ret != LTTNG_OK) {
 		if (ret == LTTNG_ERR_UST_EVENT_NOT_FOUND) {
 			/*
@@ -810,16 +817,16 @@ int event_agent_disable_all(struct ltt_ust_session *usess)
 
 	/* Flag every event that they are now enabled. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(usess->agent.events->ht, &iter.iter, jevent,
+	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, aevent,
 			node.node) {
-		if (jevent->enabled && do_disable) {
-			ret = event_agent_disable(usess, jevent->name);
+		if (aevent->enabled && do_disable) {
+			ret = event_agent_disable(usess, agt, aevent->name);
 			if (ret != LTTNG_OK) {
 				rcu_read_unlock();
 				goto error;
 			}
 		}
-		jevent->enabled = 0;
+		aevent->enabled = 0;
 	}
 	rcu_read_unlock();
 

@@ -200,13 +200,41 @@ error:
 }
 
 /*
+ * Lookup an agent in the session agents hash table by domain type and return
+ * the object if found else NULL.
+ */
+struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
+		enum lttng_domain_type domain_type)
+{
+	struct agent *agt = NULL;
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+	uint64_t key;
+
+	assert(session);
+
+	DBG3("Trace ust agent lookup for domain %d", domain_type);
+
+	key = domain_type;
+
+	lttng_ht_lookup(session->agents, &key, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
+	if (!node) {
+		goto end;
+	}
+	agt = caa_container_of(node, struct agent, node);
+
+end:
+	return agt;
+}
+
+/*
  * Allocate and initialize a ust session data structure.
  *
  * Return pointer to structure or NULL.
  */
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 {
-	int ret;
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
@@ -242,10 +270,8 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 	/* Alloc UST global domain channels' HT */
 	lus->domain_global.channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	ret = agent_init(&lus->agent);
-	if (ret < 0) {
-		goto error_consumer;
-	}
+	/* Alloc agent hash table. */
+	lus->agents = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lus->consumer == NULL) {
@@ -266,7 +292,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 error_consumer:
 	ht_cleanup_push(lus->domain_global.channels);
-	agent_destroy(&lus->agent);
+	ht_cleanup_push(lus->agents);
 	free(lus);
 error:
 	return NULL;
@@ -712,7 +738,9 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
+	struct agent *agt;
 	struct buffer_reg_uid *reg, *sreg;
+	struct lttng_ht_iter iter;
 
 	assert(session);
 
@@ -720,7 +748,11 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
-	agent_destroy(&session->agent);
+
+	cds_lfht_for_each_entry(session->agents->ht, &iter.iter, agt, node.node) {
+		lttng_ht_del(session->agents, &iter);
+		agent_destroy(agt);
+	}
 
 	/* Cleanup UID buffer registry object(s). */
 	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,

@@ -1073,11 +1073,18 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_JUL:
 	{
+		struct agent *agt;
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
 
-		ret = event_agent_disable(usess, event_name);
+		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		if (!agt) {
+			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
+			goto error;
+		}
+
+		ret = event_agent_disable(usess, agt, event_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1178,11 +1185,18 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_JUL:
 	{
+		struct agent *agt;
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
 
-		ret = event_agent_disable_all(usess);
+		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		if (!agt) {
+			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
+			goto error;
+		}
+
+		ret = event_agent_disable_all(usess, agt);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1468,11 +1482,22 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	}
 	case LTTNG_DOMAIN_JUL:
 	{
+		struct agent *agt;
 		struct lttng_event uevent;
 		struct lttng_domain tmp_dom;
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		if (!agt) {
+			agt = agent_create(LTTNG_DOMAIN_JUL);
+			if (!agt) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			agent_add(agt, usess->agents);
+		}
 
 		/* Create the default tracepoint. */
 		memset(&uevent, 0, sizeof(uevent));
@@ -1503,9 +1528,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
-			ret = event_agent_enable_all(usess, event, filter);
+			ret = event_agent_enable_all(usess, agt, event, filter);
 		} else {
-			ret = event_agent_enable(usess, event, filter);
+			ret = event_agent_enable(usess, agt, event, filter);
 		}
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -1689,11 +1714,22 @@ int cmd_enable_event_all(struct ltt_session *session,
 	}
 	case LTTNG_DOMAIN_JUL:
 	{
+		struct agent *agt;
 		struct lttng_event uevent, event;
 		struct lttng_domain tmp_dom;
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		if (!agt) {
+			agt = agent_create(LTTNG_DOMAIN_JUL);
+			if (!agt) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			agent_add(agt, usess->agents);
+		}
 
 		/* Create the default tracepoint. */
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
@@ -1726,7 +1762,7 @@ int cmd_enable_event_all(struct ltt_session *session,
 		strncpy(event.name, "*", sizeof(event.name));
 		event.name[sizeof(event.name) - 1] = '\0';
 
-		ret = event_agent_enable_all(usess, &event, filter);
+		ret = event_agent_enable_all(usess, agt, &event, filter);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2370,6 +2406,8 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 {
 	int ret, index = 0;
 	ssize_t nb_dom = 0;
+	struct agent *agt;
+	struct lttng_ht_iter iter;
 
 	if (session->kernel_session != NULL) {
 		DBG3("Listing domains found kernel domain");
@@ -2380,8 +2418,11 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
-		if (session->ust_session->agent.being_used) {
-			nb_dom++;
+		cds_lfht_for_each_entry(session->ust_session->agents->ht, &iter.iter,
+				agt, node.node) {
+			if (agt->being_used) {
+				nb_dom++;
+			}
 		}
 	}
 
@@ -2401,10 +2442,13 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
 
-		if (session->ust_session->agent.being_used) {
-			(*domains)[index].type = LTTNG_DOMAIN_JUL;
-			(*domains)[index].buf_type = session->ust_session->buffer_type;
-			index++;
+		cds_lfht_for_each_entry(session->ust_session->agents->ht, &iter.iter,
+				agt, node.node) {
+			if (agt->being_used) {
+				(*domains)[index].type = agt->domain;
+				(*domains)[index].buf_type = session->ust_session->buffer_type;
+				index++;
+			}
 		}
 	}
 
@@ -2498,8 +2542,13 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 	}
 	case LTTNG_DOMAIN_JUL:
 		if (session->ust_session) {
-			nb_event = list_lttng_agent_events(
-					&session->ust_session->agent, events);
+			struct lttng_ht_iter iter;
+			struct agent *agt;
+
+			cds_lfht_for_each_entry(session->ust_session->agents->ht,
+					&iter.iter, agt, node.node) {
+				nb_event = list_lttng_agent_events(agt, events);
+			}
 		}
 		break;
 	default:

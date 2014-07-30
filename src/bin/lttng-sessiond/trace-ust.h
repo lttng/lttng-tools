@@ -78,7 +78,8 @@ struct ltt_ust_domain_global {
 struct ltt_ust_session {
 	uint64_t id;    /* Unique identifier of session */
 	struct ltt_ust_domain_global domain_global;
-	struct agent agent;
+	/* Hash table of agent indexed by agent domain. */
+	struct lttng_ht *agents;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
@@ -157,6 +158,8 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		struct lttng_event_exclusion *exclusion);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name);
+struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
+		enum lttng_domain_type domain_type);
 
 /*
  * Create functions malloc() the data structure.
@@ -256,6 +259,12 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
 		struct ltt_ust_channel *channel)
 {
 	return;
+}
+static inline
+struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
+		enum lttng_domain_type domain_type)
+{
+	return NULL;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

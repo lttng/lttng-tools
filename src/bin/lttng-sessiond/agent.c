@@ -452,7 +452,8 @@ int agent_send_registration_done(struct agent_app *app)
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int agent_enable_event(struct agent_event *event)
+int agent_enable_event(struct agent_event *event,
+		enum lttng_domain_type domain)
 {
 	int ret;
 	struct agent_app *app;
@@ -464,6 +465,10 @@ int agent_enable_event(struct agent_event *event)
 
 	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
+		if (app->domain != domain) {
+			continue;
+		}
+
 		/* Enable event on agent application through TCP socket. */
 		ret = enable_event(app, event);
 		if (ret != LTTNG_OK) {
@@ -485,7 +490,8 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int agent_disable_event(struct agent_event *event)
+int agent_disable_event(struct agent_event *event,
+		enum lttng_domain_type domain)
 {
 	int ret;
 	struct agent_app *app;
@@ -497,6 +503,10 @@ int agent_disable_event(struct agent_event *event)
 
 	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
+		if (app->domain != domain) {
+			continue;
+		}
+
 		/* Enable event on agent application through TCP socket. */
 		ret = disable_event(app, event);
 		if (ret != LTTNG_OK) {
@@ -593,7 +603,8 @@ error:
  *
  * Return newly allocated object or else NULL on error.
  */
-struct agent_app *agent_create_app(pid_t pid, struct lttcomm_sock *sock)
+struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,
+		struct lttcomm_sock *sock)
 {
 	struct agent_app *app;
 
@@ -606,6 +617,7 @@ struct agent_app *agent_create_app(pid_t pid, struct lttcomm_sock *sock)
 	}
 
 	app->pid = pid;
+	app->domain = domain;
 	app->sock = sock;
 	lttng_ht_node_init_ulong(&app->node, (unsigned long) app->sock->fd);
 
@@ -709,11 +721,53 @@ int agent_init(struct agent *agt)
 		ret = -ENOMEM;
 		goto error;
 	}
+	lttng_ht_node_init_u64(&agt->node, agt->domain);
 
 	return 0;
 
 error:
 	return ret;
+}
+
+/*
+ * Add agent object to the given hash table.
+ */
+void agent_add(struct agent *agt, struct lttng_ht *ht)
+{
+	assert(agt);
+	assert(ht);
+
+	DBG3("Agent adding from domain %d", agt->domain);
+
+	rcu_read_lock();
+	lttng_ht_add_unique_u64(ht, &agt->node);
+	rcu_read_unlock();
+}
+
+/*
+ * Create an agent object for the given domain.
+ *
+ * Return the allocated agent or NULL on error.
+ */
+struct agent *agent_create(enum lttng_domain_type domain)
+{
+	int ret;
+	struct agent *agt;
+
+	agt = zmalloc(sizeof(*agt));
+	if (!agt) {
+		goto error;
+	}
+	agt->domain = domain;
+
+	ret = agent_init(agt);
+	if (ret < 0) {
+		free(agt);
+		goto error;
+	}
+
+error:
+	return agt;
 }
 
 /*

@@ -40,6 +40,8 @@ struct agent_ht_key {
  * find back the corresponding UST app object so both socket can be linked.
  */
 struct agent_register_msg {
+	/* This maps to a lttng_domain_type. */
+	uint32_t domain;
 	uint32_t pid;
 };
 
@@ -53,6 +55,9 @@ struct agent_app {
 	 * PID sent during registration of a AGENT application.
 	 */
 	pid_t pid;
+
+	/* Domain of the application. */
+	enum lttng_domain_type domain;
 
 	/*
 	 * AGENT TCP socket that was created upon registration.
@@ -95,8 +100,15 @@ struct agent {
 	 * actually enabled.
 	 */
 	unsigned int being_used:1;
+
+	/* What domain this agent is. */
+	enum lttng_domain_type domain;
+
 	/* Contains event indexed by name. */
 	struct lttng_ht *events;
+
+	/* Node used for the hash table indexed by domain type. */
+	struct lttng_ht_node_u64 node;
 };
 
 /* Setup agent subsystem. */
@@ -104,7 +116,9 @@ int agent_setup(void);
 
 /* Initialize an already allocated agent domain. */
 int agent_init(struct agent *agt);
+struct agent *agent_create(enum lttng_domain_type domain);
 void agent_destroy(struct agent *agt);
+void agent_add(struct agent *agt, struct lttng_ht *ht);
 
 /* Agent event API. */
 struct agent_event *agent_create_event(const char *name,
@@ -119,7 +133,8 @@ void agent_delete_event(struct agent_event *event, struct agent *agt);
 void agent_destroy_event(struct agent_event *event);
 
 /* Agent app API. */
-struct agent_app *agent_create_app(pid_t pid, struct lttcomm_sock *sock);
+struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,
+		struct lttcomm_sock *sock);
 void agent_add_app(struct agent_app *app);
 void agent_delete_app(struct agent_app *app);
 struct agent_app *agent_find_app_by_sock(int sock);
@@ -127,8 +142,10 @@ void agent_destroy_app(struct agent_app *app);
 int agent_send_registration_done(struct agent_app *app);
 
 /* Agent action API */
-int agent_enable_event(struct agent_event *event);
-int agent_disable_event(struct agent_event *event);
+int agent_enable_event(struct agent_event *event,
+		enum lttng_domain_type domain);
+int agent_disable_event(struct agent_event *event,
+		enum lttng_domain_type domain);
 void agent_update(struct agent *agt, int sock);
 int agent_list_events(struct lttng_event **events);
 
