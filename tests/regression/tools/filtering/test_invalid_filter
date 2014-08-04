@@ -24,7 +24,7 @@ SESSION_NAME="filter-invalid"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
-NUM_TESTS=143
+NUM_TESTS=146
 
 source $TESTDIR/utils/utils.sh
 
@@ -143,6 +143,8 @@ INVALID_FILTERS=(
 		# Only \$ctx is supported for now
 		"\$global.value == 0"
 		"0 == \$global.value"
+		# A wildcard should only appear as the last character in a string literal
+		"msg == \"my_event*_blah\""
 		)
 
 start_lttng_sessiond
