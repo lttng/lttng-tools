@@ -1301,6 +1301,38 @@ error:
 	return ret;
 }
 
+static int validate_event_name(const char *name)
+{
+	int ret = 0;
+	const char *c = name;
+	const char *event_name_end = c + LTTNG_SYMBOL_NAME_LEN;
+
+	/*
+	 * Make sure that unescaped wildcards are only used as the last
+	 * character of the event name.
+	 */
+	while (c < event_name_end) {
+		switch (*c) {
+		case '\0':
+			goto end;
+		case '\\':
+			c++;
+			break;
+		case '*':
+			if ((c + 1) < event_name_end && *(c + 1)) {
+				/* Wildcard is not the last character */
+				ret = LTTNG_ERR_INVALID_EVENT_NAME;
+				goto end;
+			}
+		default:
+			break;
+		}
+		c++;
+	}
+end:
+	return ret;
+}
+
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
  */
@@ -1317,6 +1349,11 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	assert(session);
 	assert(event);
 	assert(channel_name);
+
+	ret = validate_event_name(event->name);
+	if (ret) {
+		goto error;
+	}
 
 	rcu_read_lock();
 
