@@ -825,6 +825,12 @@ static int generate_filter(char *filter_expression,
 		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
+	/* Validate strings used as literals in the expression */
+	ret = filter_visitor_ir_validate_string(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
 	dbg_printf("done\n");
 
 	dbg_printf("Generating bytecode... ");
