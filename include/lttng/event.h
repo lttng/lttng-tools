@@ -84,6 +84,21 @@ enum lttng_loglevel_jul {
 };
 
 /*
+ * Available loglevels for the LOG4j domain. Those are an exact map from the
+ * class org.apache.log4j.Level.
+ */
+enum lttng_loglevel_log4j {
+	LTTNG_LOGLEVEL_LOG4J_OFF              = INT32_MAX,
+	LTTNG_LOGLEVEL_LOG4J_FATAL            = 50000,
+	LTTNG_LOGLEVEL_LOG4J_ERROR            = 40000,
+	LTTNG_LOGLEVEL_LOG4J_WARN             = 30000,
+	LTTNG_LOGLEVEL_LOG4J_INFO             = 20000,
+	LTTNG_LOGLEVEL_LOG4J_DEBUG            = 10000,
+	LTTNG_LOGLEVEL_LOG4J_TRACE            = 5000,
+	LTTNG_LOGLEVEL_LOG4J_ALL              = INT32_MIN,
+};
+
+/*
  * LTTng consumer mode
  */
 enum lttng_event_output {

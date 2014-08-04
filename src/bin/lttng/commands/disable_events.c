@@ -36,6 +36,7 @@ static char *opt_session_name;
 static int opt_userspace;
 static int opt_disable_all;
 static int opt_jul;
+static int opt_log4j;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -58,6 +59,7 @@ static struct poptOption long_options[] = {
 	{"all-events",     'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0},
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
+	{"log4j",          'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 #if 0
 	/* Not implemented yet */
@@ -86,6 +88,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
+	fprintf(ofp, "  -l, --log4j              Apply to Java application using LOG4j\n");
 	fprintf(ofp, "\n");
 }
 
@@ -166,6 +169,8 @@ static int disable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else if (opt_jul) {
 		dom.type = LTTNG_DOMAIN_JUL;
+	} else if (opt_log4j) {
+		dom.type = LTTNG_DOMAIN_LOG4J;
 	} else {
 		print_missing_domain();
 		ret = CMD_ERROR;

@@ -46,6 +46,7 @@ static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
 static int opt_jul;
+static int opt_log4j;
 static int opt_enable_all;
 static char *opt_probe;
 static char *opt_function;
@@ -86,6 +87,7 @@ static struct poptOption long_options[] = {
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
+	{"log4j",          'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
@@ -121,6 +123,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
+	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
@@ -145,7 +148,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "    --loglevel name\n");
 	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel.\n");
-	fprintf(ofp, "                           For JUL domain, see the table below for the range values.\n");
+	fprintf(ofp, "                           For JUL/LOG4j domain, see the table below for the range values.\n");
 	fprintf(ofp, "    --loglevel-only name\n");
 	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
 	fprintf(ofp, "\n");
@@ -181,6 +184,17 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               JUL_FINER          = %d\n", LTTNG_LOGLEVEL_JUL_FINER);
 	fprintf(ofp, "                               JUL_FINEST         = %d\n", LTTNG_LOGLEVEL_JUL_FINEST);
 	fprintf(ofp, "                               JUL_ALL            = INT32_MIN\n");
+	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                           Available LOG4j domain loglevels:\n");
+	fprintf(ofp, "                               LOG4J_OFF            = INT32_MAX\n");
+	fprintf(ofp, "                               LOG4J_FATAL          = %d\n", LTTNG_LOGLEVEL_LOG4J_FATAL);
+	fprintf(ofp, "                               LOG4J_ERROR          = %d\n", LTTNG_LOGLEVEL_LOG4J_ERROR);
+	fprintf(ofp, "                               LOG4J_WARN           = %d\n", LTTNG_LOGLEVEL_LOG4J_WARN);
+	fprintf(ofp, "                               LOG4J_INFO           = %d\n", LTTNG_LOGLEVEL_LOG4J_INFO);
+	fprintf(ofp, "                               LOG4J_DEBUG          = %d\n", LTTNG_LOGLEVEL_LOG4J_DEBUG);
+	fprintf(ofp, "                               LOG4J_TRACE          = %d\n", LTTNG_LOGLEVEL_LOG4J_TRACE);
+	fprintf(ofp, "                               LOG4J_ALL            = INT32_MIN\n");
 	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -f, --filter \'expression\'\n");
@@ -296,6 +310,45 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 
 end:
 	return ret;
+}
+
+/*
+ * Maps LOG4j loglevel from string to value
+ */
+static int loglevel_log4j_str_to_value(const char *inputstr)
+{
+	int i = 0;
+	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	/*
+	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
+	 * added at the end of the loop so a the upper bound we avoid the overflow.
+	 */
+	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
+		str[i] = toupper(inputstr[i]);
+		i++;
+	}
+	str[i] = '\0';
+
+	if (!strcmp(str, "LOG4J_OFF") || !strcmp(str, "OFF")) {
+		return LTTNG_LOGLEVEL_LOG4J_OFF;
+	} else if (!strcmp(str, "LOG4J_FATAL") || !strcmp(str, "FATAL")) {
+		return LTTNG_LOGLEVEL_LOG4J_FATAL;
+	} else if (!strcmp(str, "LOG4J_ERROR") || !strcmp(str, "ERROR")) {
+		return LTTNG_LOGLEVEL_LOG4J_ERROR;
+	} else if (!strcmp(str, "LOG4J_WARN") || !strcmp(str, "WARN")) {
+		return LTTNG_LOGLEVEL_LOG4J_WARN;
+	} else if (!strcmp(str, "LOG4J_INFO") || !strcmp(str, "INFO")) {
+		return LTTNG_LOGLEVEL_LOG4J_INFO;
+	} else if (!strcmp(str, "LOG4J_DEBUG") || !strcmp(str, "DEBUG")) {
+		return LTTNG_LOGLEVEL_LOG4J_DEBUG;
+	} else if (!strcmp(str, "LOG4J_TRACE") || !strcmp(str, "TRACE")) {
+		return LTTNG_LOGLEVEL_LOG4J_TRACE;
+	} else if (!strcmp(str, "LOG4J_ALL") || !strcmp(str, "ALL")) {
+		return LTTNG_LOGLEVEL_LOG4J_ALL;
+	} else {
+		return -1;
+	}
 }
 
 /*
@@ -600,6 +653,10 @@ static int enable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_JUL;
 		/* Default. */
 		dom.buf_type = LTTNG_BUFFER_PER_UID;
+	} else if (opt_log4j) {
+		dom.type = LTTNG_DOMAIN_LOG4J;
+		/* Default. */
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
 		print_missing_domain();
 		ret = CMD_ERROR;
@@ -642,11 +699,13 @@ static int enable_events(char *session_name)
 			strcpy(ev.name, "*");
 			ev.loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
-				assert(opt_userspace || opt_jul);
+				assert(opt_userspace || opt_jul || opt_log4j);
 				if (opt_userspace) {
 					ev.loglevel = loglevel_str_to_value(opt_loglevel);
 				} else if (opt_jul) {
 					ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
+				} else if (opt_log4j) {
+					ev.loglevel = loglevel_log4j_str_to_value(opt_loglevel);
 				}
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
@@ -654,10 +713,10 @@ static int enable_events(char *session_name)
 					goto error;
 				}
 			} else {
-				assert(opt_userspace || opt_jul);
+				assert(opt_userspace || opt_jul || opt_log4j);
 				if (opt_userspace) {
 					ev.loglevel = -1;
-				} else if (opt_jul) {
+				} else if (opt_jul || opt_log4j) {
 					ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 				}
 			}
@@ -941,24 +1000,32 @@ static int enable_events(char *session_name)
 			} else {
 				ev.loglevel = -1;
 			}
-		} else if (opt_jul) {
+		} else if (opt_jul || opt_log4j) {
 			if (opt_event_type != LTTNG_EVENT_ALL &&
 					opt_event_type != LTTNG_EVENT_TRACEPOINT) {
-				ERR("Event type not supported for JUL domain.");
+				ERR("Event type not supported for domain.");
 				ret = CMD_UNSUPPORTED;
 				goto error;
 			}
 
 			ev.loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
-				ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
+				if (opt_jul) {
+					ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
+				} else if (opt_log4j) {
+					ev.loglevel = loglevel_log4j_str_to_value(opt_loglevel);
+				}
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
 			} else {
-				ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+				if (opt_jul) {
+					ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+				} else if (opt_log4j) {
+					ev.loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+				}
 			}
 			ev.type = LTTNG_EVENT_TRACEPOINT;
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
@@ -999,8 +1066,9 @@ static int enable_events(char *session_name)
 				}
 				error_holder = command_ret;
 			} else {
-				/* So we don't print the default channel name for JUL. */
-				if (dom.type == LTTNG_DOMAIN_JUL) {
+				/* So we don't print the default channel name for agent domain. */
+				if (dom.type == LTTNG_DOMAIN_JUL ||
+						dom.type == LTTNG_DOMAIN_LOG4J) {
 					MSG("%s event %s%s enabled.",
 							get_domain_str(dom.type), event_name,
 							exclusion_string);

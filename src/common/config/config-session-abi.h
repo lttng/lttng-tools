@@ -69,6 +69,7 @@ const char * const config_element_max_size;
 const char * const config_domain_type_kernel;
 const char * const config_domain_type_ust;
 const char * const config_domain_type_jul;
+const char * const config_domain_type_log4j;
 
 const char * const config_buffer_type_per_pid;
 const char * const config_buffer_type_per_uid;

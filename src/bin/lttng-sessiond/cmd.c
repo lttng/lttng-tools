@@ -1071,6 +1071,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 				channel_name);
 		break;
 	}
+	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 	{
 		struct agent *agt;
@@ -1078,7 +1079,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		assert(usess);
 
-		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		agt = trace_ust_find_agent(usess, domain);
 		if (!agt) {
 			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
@@ -1183,6 +1184,7 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 
 		break;
 	}
+	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 	{
 		struct agent *agt;
@@ -1190,7 +1192,7 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 
 		assert(usess);
 
-		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		agt = trace_ust_find_agent(usess, domain);
 		if (!agt) {
 			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
@@ -1480,6 +1482,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		}
 		break;
 	}
+	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 	{
 		struct agent *agt;
@@ -1489,9 +1492,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		assert(usess);
 
-		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		agt = trace_ust_find_agent(usess, domain->type);
 		if (!agt) {
-			agt = agent_create(LTTNG_DOMAIN_JUL);
+			agt = agent_create(domain->type);
 			if (!agt) {
 				ret = -LTTNG_ERR_NOMEM;
 				goto error;
@@ -1712,6 +1715,7 @@ int cmd_enable_event_all(struct ltt_session *session,
 
 		break;
 	}
+	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 	{
 		struct agent *agt;
@@ -1721,9 +1725,9 @@ int cmd_enable_event_all(struct ltt_session *session,
 
 		assert(usess);
 
-		agt = trace_ust_find_agent(usess, LTTNG_DOMAIN_JUL);
+		agt = trace_ust_find_agent(usess, domain->type);
 		if (!agt) {
-			agt = agent_create(LTTNG_DOMAIN_JUL);
+			agt = agent_create(domain->type);
 			if (!agt) {
 				ret = -LTTNG_ERR_NOMEM;
 				goto error;
@@ -1810,6 +1814,7 @@ ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 			goto error;
 		}
 		break;
+	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 		nb_events = agent_list_events(events);
 		if (nb_events < 0) {
@@ -2540,6 +2545,7 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 		}
 		break;
 	}
+	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 		if (session->ust_session) {
 			struct lttng_ht_iter iter;

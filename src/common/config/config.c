@@ -117,6 +117,7 @@ const char * const config_element_max_size = "max_size";
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
 const char * const config_domain_type_jul = "JUL";
+const char * const config_domain_type_log4j = "LOG4J";
 
 const char * const config_buffer_type_per_pid = "PER_PID";
 const char * const config_buffer_type_per_uid = "PER_UID";
@@ -749,6 +750,8 @@ int get_domain_type(xmlChar *domain)
 		ret = LTTNG_DOMAIN_UST;
 	} else if (!strcmp((char *) domain, config_domain_type_jul)) {
 		ret = LTTNG_DOMAIN_JUL;
+	} else if (!strcmp((char *) domain, config_domain_type_log4j)) {
+		ret = LTTNG_DOMAIN_LOG4J;
 	} else {
 		goto error;
 	}
@@ -1236,6 +1239,7 @@ int create_session(const char *name,
 	struct lttng_domain *kernel_domain,
 	struct lttng_domain *ust_domain,
 	struct lttng_domain *jul_domain,
+	struct lttng_domain *log4j_domain,
 	xmlNodePtr output_node,
 	uint64_t live_timer_interval)
 {
@@ -1276,7 +1280,7 @@ int create_session(const char *name,
 		int i;
 		struct lttng_domain *domain;
 		struct lttng_domain *domains[] =
-			{ kernel_domain, ust_domain, jul_domain };
+			{ kernel_domain, ust_domain, jul_domain, log4j_domain};
 
 		/* network destination */
 		if (live_timer_interval && live_timer_interval != UINT64_MAX) {
@@ -2147,6 +2151,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 	struct lttng_domain *kernel_domain = NULL;
 	struct lttng_domain *ust_domain = NULL;
 	struct lttng_domain *jul_domain = NULL;
+	struct lttng_domain *log4j_domain = NULL;
 
 	for (node = xmlFirstElementChild(session_node); node;
 		node = xmlNextElementSibling(node)) {
@@ -2273,6 +2278,13 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 			}
 			jul_domain = domain;
 			break;
+		case LTTNG_DOMAIN_LOG4J:
+			if (log4j_domain) {
+				/* Same domain seen twice, invalid! */
+				goto domain_init_error;
+			}
+			log4j_domain = domain;
+			break;
 		default:
 			WARN("Invalid domain type");
 			goto domain_init_error;
@@ -2299,11 +2311,11 @@ domain_init_error:
 	} else if (live_timer_interval &&
 		live_timer_interval != UINT64_MAX) {
 		ret = create_session(name, kernel_domain, ust_domain, jul_domain,
-				output_node, live_timer_interval);
+				log4j_domain, output_node, live_timer_interval);
 	} else {
 		/* regular session */
 		ret = create_session(name, kernel_domain, ust_domain, jul_domain,
-				output_node, UINT64_MAX);
+				log4j_domain, output_node, UINT64_MAX);
 	}
 	if (ret) {
 		goto error;
@@ -2334,6 +2346,7 @@ error:
 	free(kernel_domain);
 	free(ust_domain);
 	free(jul_domain);
+	free(log4j_domain);
 	free(name);
 	return ret;
 }

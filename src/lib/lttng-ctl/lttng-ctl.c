@@ -105,6 +105,7 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		case LTTNG_DOMAIN_KERNEL:
 		case LTTNG_DOMAIN_UST:
 		case LTTNG_DOMAIN_JUL:
+		case LTTNG_DOMAIN_LOG4J:
 			memcpy(dst, src, sizeof(struct lttng_domain));
 			break;
 		default:
@@ -938,7 +939,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 * filtering by logger name.
 	 */
 	if (exclusion_count == 0 && filter_expression == NULL &&
-			handle->domain.type != LTTNG_DOMAIN_JUL) {
+			(handle->domain.type != LTTNG_DOMAIN_JUL &&
+				handle->domain.type != LTTNG_DOMAIN_LOG4J)) {
 		goto ask_sessiond;
 	}
 
@@ -948,8 +950,10 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 */
 
 	/* Parse filter expression */
-	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL) {
-		if (handle->domain.type == LTTNG_DOMAIN_JUL) {
+	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
+			|| handle->domain.type == LTTNG_DOMAIN_LOG4J) {
+		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
+				handle->domain.type == LTTNG_DOMAIN_LOG4J) {
 			char *jul_filter;
 
 			/* Setup JUL filter if needed. */

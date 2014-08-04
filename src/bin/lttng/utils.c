@@ -36,6 +36,7 @@
 static const char *str_kernel = "Kernel";
 static const char *str_ust = "UST";
 static const char *str_jul = "JUL";
+static const char *str_log4j = "LOG4J";
 
 /*
  *  get_session_name
@@ -273,6 +274,9 @@ const char *get_domain_str(enum lttng_domain_type domain)
 		break;
 	case LTTNG_DOMAIN_JUL:
 		str_dom = str_jul;
+		break;
+	case LTTNG_DOMAIN_LOG4J:
+		str_dom = str_log4j;
 		break;
 	default:
 		/* Should not have an unknown domain or else define it. */

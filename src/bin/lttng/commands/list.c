@@ -30,6 +30,7 @@
 static int opt_userspace;
 static int opt_kernel;
 static int opt_jul;
+static int opt_log4j;
 static char *opt_channel;
 static int opt_domain;
 static int opt_fields;
@@ -57,6 +58,7 @@ static struct poptOption long_options[] = {
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"kernel",    'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"jul",       'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
+	{"log4j",     'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
 #if 0
 	/* Not implemented yet */
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
@@ -304,7 +306,7 @@ static void print_event_field(struct lttng_event_field *field)
  * Machine interface
  * Jul and ust event listing
  */
-static int mi_list_jul_ust_events(struct lttng_event *events, int count,
+static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 		struct lttng_domain *domain)
 {
 	int ret, i;
@@ -388,7 +390,7 @@ error:
 	return ret;
 }
 
-static int list_jul_events(void)
+static int list_agent_events(void)
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_domain domain;
@@ -396,11 +398,18 @@ static int list_jul_events(void)
 	struct lttng_event *event_list;
 	pid_t cur_pid = 0;
 	char *cmdline = NULL;
-
-	DBG("Getting JUL tracing events");
+	const char *agent_domain_str;
 
 	memset(&domain, 0, sizeof(domain));
-	domain.type = LTTNG_DOMAIN_JUL;
+	if (opt_jul) {
+		domain.type = LTTNG_DOMAIN_JUL;
+	} else if (opt_log4j) {
+		domain.type = LTTNG_DOMAIN_LOG4J;
+	}
+
+	agent_domain_str = get_domain_str(domain.type);
+
+	DBG("Getting %s tracing events", agent_domain_str);
 
 	handle = lttng_create_handle(NULL, &domain);
 	if (handle == NULL) {
@@ -410,21 +419,23 @@ static int list_jul_events(void)
 
 	size = lttng_list_tracepoints(handle, &event_list);
 	if (size < 0) {
-		ERR("Unable to list JUL events: %s", lttng_strerror(size));
+		ERR("Unable to list %s events: %s", agent_domain_str,
+				lttng_strerror(size));
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (lttng_opt_mi) {
 		/* Mi print */
-		ret = mi_list_jul_ust_events(event_list, size, &domain);
+		ret = mi_list_agent_ust_events(event_list, size, &domain);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
 		}
 	} else {
 		/* Pretty print */
-		MSG("JUL events (Logger name):\n-------------------------");
+		MSG("%s events (Logger name):\n-------------------------",
+				agent_domain_str);
 
 		if (size == 0) {
 			MSG("None");
@@ -487,7 +498,7 @@ static int list_ust_events(void)
 
 	if (lttng_opt_mi) {
 		/* Mi print */
-		ret = mi_list_jul_ust_events(event_list, size, &domain);
+		ret = mi_list_agent_ust_events(event_list, size, &domain);
 	} else {
 		/* Pretty print */
 		MSG("UST events:\n-------------");
@@ -821,9 +832,9 @@ error:
 
 /*
  * Machine Interface
- * Print a list of jul events
+ * Print a list of agent events
  */
-static int mi_list_session_jul_events(struct lttng_event *events, int count)
+static int mi_list_session_agent_events(struct lttng_event *events, int count)
 {
 	int ret, i;
 
@@ -848,11 +859,11 @@ end:
 }
 
 /*
- * List JUL events for a specific session using the handle.
+ * List agent events for a specific session using the handle.
  *
  * Return CMD_SUCCESS on success else a negative value.
  */
-static int list_session_jul_events(void)
+static int list_session_agent_events(void)
 {
 	int ret = CMD_SUCCESS, count, i;
 	struct lttng_event *events = NULL;
@@ -866,7 +877,7 @@ static int list_session_jul_events(void)
 
 	if (lttng_opt_mi) {
 		/* Mi print */
-		ret = mi_list_session_jul_events(events, count);
+		ret = mi_list_session_agent_events(events, count);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -1360,6 +1371,9 @@ static int list_domains(const char *session_name)
 			case LTTNG_DOMAIN_JUL:
 				MSG("  - JUL (Java Util Logging)");
 				break;
+			case LTTNG_DOMAIN_LOG4J:
+				MSG("  - LOG4j (Logging for Java)");
+				break;
 			default:
 				break;
 			}
@@ -1450,9 +1464,11 @@ int cmd_list(int argc, const char **argv)
 	} else if (opt_jul) {
 		DBG2("Listing JUL domain");
 		domain.type = LTTNG_DOMAIN_JUL;
+	} else if (opt_jul) {
+		domain.type = LTTNG_DOMAIN_LOG4J;
 	}
 
-	if (opt_kernel || opt_userspace || opt_jul) {
+	if (opt_kernel || opt_userspace || opt_jul || opt_log4j) {
 		handle = lttng_create_handle(session_name, &domain);
 		if (handle == NULL) {
 			ret = CMD_FATAL;
@@ -1461,7 +1477,7 @@ int cmd_list(int argc, const char **argv)
 	}
 
 	if (session_name == NULL) {
-		if (!opt_kernel && !opt_userspace && !opt_jul) {
+		if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j) {
 			ret = list_sessions(NULL);
 			if (ret) {
 				goto end;
@@ -1483,8 +1499,8 @@ int cmd_list(int argc, const char **argv)
 				goto end;
 			}
 		}
-		if (opt_jul) {
-			ret = list_jul_events();
+		if (opt_jul || opt_log4j) {
+			ret = list_agent_events();
 			if (ret) {
 				goto end;
 			}
@@ -1578,6 +1594,9 @@ int cmd_list(int argc, const char **argv)
 				case LTTNG_DOMAIN_JUL:
 					MSG("=== Domain: JUL (Java Util Logging) ===\n");
 					break;
+				case LTTNG_DOMAIN_LOG4J:
+					MSG("=== Domain: LOG4j (Logging for Java) ===\n");
+					break;
 				default:
 					MSG("=== Domain: Unimplemented ===\n");
 					break;
@@ -1602,8 +1621,9 @@ int cmd_list(int argc, const char **argv)
 					goto end;
 				}
 
-				if (domains[i].type == LTTNG_DOMAIN_JUL) {
-					ret = list_session_jul_events();
+				if (domains[i].type == LTTNG_DOMAIN_JUL ||
+						domains[i].type == LTTNG_DOMAIN_LOG4J) {
+					ret = list_session_agent_events();
 					if (ret) {
 						goto end;
 					}

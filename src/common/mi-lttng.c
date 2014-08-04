@@ -305,6 +305,8 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 		return config_domain_type_ust;
 	case LTTNG_DOMAIN_JUL:
 		return config_domain_type_jul;
+	case LTTNG_DOMAIN_LOG4J:
+		return config_domain_type_log4j;
 	default:
 		/* Should not have an unknown domain */
 		assert(0);
