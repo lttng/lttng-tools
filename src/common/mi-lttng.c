@@ -354,7 +354,7 @@ struct mi_writer *mi_lttng_writer_create(int fd_output, int mi_output_type)
 		goto end;
 	}
 	if (mi_output_type == LTTNG_MI_XML) {
-		mi_writer->writer = config_writer_create(fd_output);
+		mi_writer->writer = config_writer_create(fd_output, 0);
 		if (!mi_writer->writer) {
 			goto err_destroy;
 		}

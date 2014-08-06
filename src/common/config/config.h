@@ -81,11 +81,14 @@ int config_parse_value(const char *value);
  * fd_output File to which the XML content must be written. The file will be
  * closed once the config_writer has been destroyed.
  *
+ * indent If other than 0 the XML will be pretty printed
+ * with indentation and newline.
+ *
  * Returns an instance of a configuration writer on success, NULL on
  * error.
  */
 LTTNG_HIDDEN
-struct config_writer *config_writer_create(int fd_output);
+struct config_writer *config_writer_create(int fd_output, int indent);
 
 /*
  * Destroy an instance of a configuration writer.

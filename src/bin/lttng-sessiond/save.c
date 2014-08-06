@@ -1514,7 +1514,7 @@ int save_session(struct ltt_session *session,
 	}
 	file_opened = 1;
 
-	writer = config_writer_create(fd);
+	writer = config_writer_create(fd, 1);
 	if (!writer) {
 		ret = LTTNG_ERR_NOMEM;
 		goto end;

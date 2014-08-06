@@ -354,7 +354,7 @@ end:
 }
 
 LTTNG_HIDDEN
-struct config_writer *config_writer_create(int fd_output)
+struct config_writer *config_writer_create(int fd_output, int indent)
 {
 	int ret;
 	struct config_writer *writer;
@@ -380,12 +380,12 @@ struct config_writer *config_writer_create(int fd_output)
 
 	ret = xmlTextWriterSetIndentString(writer->writer,
 		BAD_CAST config_xml_indent_string);
-	if (ret)  {
+	if (ret) {
 		goto error_destroy;
 	}
 
-	ret = xmlTextWriterSetIndent(writer->writer, 1);
-	if (ret)  {
+	ret = xmlTextWriterSetIndent(writer->writer, indent);
+	if (ret) {
 		goto error_destroy;
 	}
 
