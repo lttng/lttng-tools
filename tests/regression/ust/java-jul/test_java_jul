@@ -29,7 +29,7 @@ EVENT_NAME="JTestLTTng"
 EVENT_NAME2="JTestLTTng2"
 JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/java/liblttng-ust-jul.jar"
 
-NUM_TESTS=139
+NUM_TESTS=124
 
 source $TESTDIR/utils/utils.sh
 
@@ -38,15 +38,12 @@ function run_app
 	local finest_tp=$1
 	local fire_second_tp=$2
 
-	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $finest_tp $fire_second_tp >/dev/null 2>&1 &
+	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $finest_tp $fire_second_tp >/dev/null 2>&1
 }
 
-function wait_apps
+function run_app_background
 {
-	while [ -n "$(pidof java)" ]; do
-		sleep 0.5
-	done
-	pass "Wait for applications to end"
+	run_app $@ &
 }
 
 function enable_jul_loglevel_only()
@@ -86,11 +83,12 @@ function test_jul_before_start ()
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
-	run_app
+	run_app_background
 
 	start_lttng_tracing $SESSION_NAME
 
-	wait_apps
+	# Wait for the applications started in background
+	wait ${!}
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -113,8 +111,6 @@ function test_jul_after_start ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	wait_apps
-
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
@@ -136,8 +132,6 @@ function test_jul_loglevel ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	wait_apps
-
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
@@ -156,8 +150,6 @@ function test_jul_loglevel ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	wait_apps
-
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
@@ -175,8 +167,6 @@ function test_jul_loglevel ()
 
 	# Run 5 times with a 1 second delay
 	run_app
-
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -197,7 +187,6 @@ function test_jul_loglevel_multiple ()
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -215,7 +204,6 @@ function test_jul_loglevel_multiple ()
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -241,7 +229,6 @@ function test_jul_multi_session_loglevel()
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 1 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME-1
 	stop_lttng_tracing $SESSION_NAME-2
@@ -277,7 +264,6 @@ function test_jul_multi_session_disable()
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME-1
 	stop_lttng_tracing $SESSION_NAME-2
@@ -311,7 +297,6 @@ function test_jul_multi_session()
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME-1
 	stop_lttng_tracing $SESSION_NAME-2
@@ -340,7 +325,7 @@ function test_jul_destroy_session()
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
-	run_app 0 1
+	run_app_background 0 1
 
 	sleep 1
 
@@ -357,7 +342,8 @@ function test_jul_destroy_session()
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME
 
-	wait_apps
+	# Wait for the applications started in background
+	wait ${!}
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -380,7 +366,6 @@ function test_jul_filtering()
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -399,7 +384,6 @@ function test_jul_filtering()
 
 	# Run 5 times with a 1 second delay, fire finest and second TP.
 	run_app 1 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -424,7 +408,6 @@ function test_jul_disable()
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -449,7 +432,6 @@ function test_jul_disable_enable()
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
-	wait_apps
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
