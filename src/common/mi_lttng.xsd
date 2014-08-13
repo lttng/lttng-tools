@@ -83,7 +83,7 @@ THE SOFTWARE.
 		</xs:restriction>
 	</xs:simpleType>
 
-	<!-- Maps to the lttng_loglevel_type enum -->
+	<!-- Maps to the lttng_event_context_type enum -->
 	<xs:simpleType name="context_type_type">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="PERF_COUNTER" />
