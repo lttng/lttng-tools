@@ -134,7 +134,7 @@ wide one in \fB/etc/lttng/sessions/auto/\fP. Note that the directory containing
 the session's configuration and lttng-sessiond MUST have the same UID for them
 to be automatically loaded.
 
-Specifiying a path with \-l, \-\-load PATH overrides the default directory and
+Specifying a path with \-l, \-\-load PATH overrides the default directory and
 UID check. The lttng-sessiond will simply check if it's accessible and try to
 load every session file in it.
 .PP
@@ -153,10 +153,10 @@ override this variable.
 Specify the 64-bit consumer binary path. \fB--consumerd64-path\fP
 override this variable.
 .IP "LTTNG_CONSUMERD32_LIBDIR"
-Specifiy the 64-bit library path containing libconsumer.so.
+Specify the 64-bit library path containing libconsumer.so.
 \fB--consumerd32-libdir\fP override this variable.
 .IP "LTTNG_CONSUMERD64_LIBDIR"
-Specifiy the 32-bit library path containing libconsumer.so.
+Specify the 32-bit library path containing libconsumer.so.
 \fB--consumerd64-libdir\fP override this variable.
 .IP "LTTNG_DEBUG_NOCLONE"
 Debug-mode disabling use of clone/fork. Insecure, but required to allow
@@ -187,7 +187,7 @@ babeltrace(1), lttng-ust(3), lttng(1)
 For unprivileged user running lttng-sessiond, the maximum number of file
 descriptors per process is usually 1024. This limits the number of traceable
 applications since for each instrumented application there is two file
-descriptors per-CPU and one more socktet for bidirectional communication.
+descriptors per-CPU and one more socket for bidirectional communication.
 
 For the root user, the limit is bumped to 65535. Future version will deal with
 this limitation.
