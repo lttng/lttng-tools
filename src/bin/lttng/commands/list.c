@@ -1251,7 +1251,6 @@ static int list_sessions(const char *session_name)
 		/* Pretty print */
 		if (count == 0) {
 			MSG("Currently no available tracing session");
-			ret = CMD_ERROR;
 			goto end;
 		}
 
