@@ -1802,9 +1802,10 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		DBG("Received live beacon for stream %" PRIu64, stream->stream_handle);
 
 		/*
-		 * Only flag a stream inactive when it has already received data.
+		 * Only flag a stream inactive when it has already received data
+		 * and no indexes are in flight.
 		 */
-		if (stream->total_index_received > 0) {
+		if (stream->total_index_received > 0 && stream->indexes_in_flight == 0) {
 			stream->beacon_ts_end = be64toh(index_info.timestamp_end);
 		}
 		ret = 0;
@@ -1821,6 +1822,7 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 			goto end_rcu_unlock;
 		}
 		index_created = 1;
+		stream->indexes_in_flight++;
 	}
 
 	copy_index_control_data(index, &index_info);
@@ -1851,6 +1853,8 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 			goto end_rcu_unlock;
 		}
 		stream->total_index_received++;
+		stream->indexes_in_flight--;
+		assert(stream->indexes_in_flight >= 0);
 	}
 
 end_rcu_unlock:
@@ -2014,6 +2018,7 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 			goto error;
 		}
 		index_created = 1;
+		stream->indexes_in_flight++;
 	}
 
 	if (rotate_index || stream->index_fd < 0) {
@@ -2056,6 +2061,8 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 			goto error;
 		}
 		stream->total_index_received++;
+		stream->indexes_in_flight--;
+		assert(stream->indexes_in_flight >= 0);
 	}
 
 error:
