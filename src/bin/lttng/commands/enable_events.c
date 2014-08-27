@@ -228,26 +228,27 @@ static void usage(FILE *ofp)
  */
 static int parse_probe_opts(struct lttng_event *ev, char *opt)
 {
-	int ret;
+	int ret = CMD_SUCCESS;
+	int match;
 	char s_hex[19];
 #define S_HEX_LEN_SCANF_IS_A_BROKEN_API "18"	/* 18 is (19 - 1) (\0 is extra) */
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
 	if (opt == NULL) {
-		ret = -1;
+		ret = CMD_ERROR;
 		goto end;
 	}
 
 	/* Check for symbol+offset */
-	ret = sscanf(opt, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API
+	match = sscanf(opt, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API
 			"[^'+']+%" S_HEX_LEN_SCANF_IS_A_BROKEN_API "s", name, s_hex);
-	if (ret == 2) {
+	if (match == 2) {
 		strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
 		ev->attr.probe.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		DBG("probe symbol %s", ev->attr.probe.symbol_name);
 		if (*s_hex == '\0') {
 			ERR("Invalid probe offset %s", s_hex);
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 		ev->attr.probe.offset = strtoul(s_hex, NULL, 0);
@@ -258,9 +259,9 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 
 	/* Check for symbol */
 	if (isalpha(name[0])) {
-		ret = sscanf(opt, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "s",
+		match = sscanf(opt, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "s",
 			name);
-		if (ret == 1) {
+		if (match == 1) {
 			strncpy(ev->attr.probe.symbol_name, name, LTTNG_SYMBOL_NAME_LEN);
 			ev->attr.probe.symbol_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 			DBG("probe symbol %s", ev->attr.probe.symbol_name);
@@ -272,11 +273,11 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	}
 
 	/* Check for address */
-	ret = sscanf(opt, "%" S_HEX_LEN_SCANF_IS_A_BROKEN_API "s", s_hex);
-	if (ret > 0) {
+	match = sscanf(opt, "%" S_HEX_LEN_SCANF_IS_A_BROKEN_API "s", s_hex);
+	if (match > 0) {
 		if (*s_hex == '\0') {
 			ERR("Invalid probe address %s", s_hex);
-			ret = -1;
+			ret = CMD_ERROR;
 			goto end;
 		}
 		ev->attr.probe.addr = strtoul(s_hex, NULL, 0);
@@ -287,7 +288,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	}
 
 	/* No match */
-	ret = -1;
+	ret = CMD_ERROR;
 
 end:
 	return ret;
@@ -741,7 +742,7 @@ static int enable_events(char *session_name)
 				break;
 			case LTTNG_EVENT_PROBE:
 				ret = parse_probe_opts(&ev, opt_probe);
-				if (ret < 0) {
+				if (ret) {
 					ERR("Unable to parse probe options");
 					ret = 0;
 					goto error;
@@ -749,7 +750,7 @@ static int enable_events(char *session_name)
 				break;
 			case LTTNG_EVENT_FUNCTION:
 				ret = parse_probe_opts(&ev, opt_function);
-				if (ret < 0) {
+				if (ret) {
 					ERR("Unable to parse function probe options");
 					ret = 0;
 					goto error;
