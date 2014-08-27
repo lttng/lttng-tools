@@ -77,6 +77,12 @@ struct relay_stream {
 	 */
 	uint64_t beacon_ts_end;
 	/*
+	 * Number of indexes that are supposed to be complete soon.
+	 * Avoid sending the inactivity beacon to the client when data is in
+	 * transit.
+	 */
+	int indexes_in_flight;
+	/*
 	 * CTF stream ID, -1ULL when unset.
 	 */
 	uint64_t ctf_stream_id;
