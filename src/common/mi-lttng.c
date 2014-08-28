@@ -914,6 +914,16 @@ int mi_lttng_event_function_probe(struct mi_writer *writer,
 {
 	int ret;
 
+	ret = mi_lttng_writer_open_element(writer, config_element_attributes);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, config_element_probe_attributes);
+	if (ret) {
+		goto end;
+	}
+
 	if (event->attr.probe.addr != 0) {
 		/* event probe address */
 		ret = mi_lttng_writer_write_element_unsigned_int(writer,
@@ -936,6 +946,9 @@ int mi_lttng_event_function_probe(struct mi_writer *writer,
 			goto end;
 		}
 	}
+
+	/* Close probe_attributes and attributes */
+	ret = mi_lttng_close_multi_element(writer, 2);
 end:
 	return ret;
 }
@@ -944,9 +957,29 @@ LTTNG_HIDDEN
 int mi_lttng_event_function_entry(struct mi_writer *writer,
 		struct lttng_event *event)
 {
+	int ret;
+
+	ret = mi_lttng_writer_open_element(writer, config_element_attributes);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, config_element_probe_attributes);
+	if (ret) {
+		goto end;
+	}
+
 	/* event probe symbol_name */
-	return mi_lttng_writer_write_element_string(writer,
+	ret = mi_lttng_writer_write_element_string(writer,
 			config_element_symbol_name, event->attr.ftrace.symbol_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close function_attributes and attributes */
+	ret = mi_lttng_close_multi_element(writer, 2);
+end:
+	return ret;
 }
 
 LTTNG_HIDDEN
@@ -976,6 +1009,8 @@ int mi_lttng_event(struct mi_writer *writer,
 		}
 		break;
 	}
+	case LTTNG_EVENT_FUNCTION:
+		/* Fallthrough */
 	case LTTNG_EVENT_PROBE:
 		ret = mi_lttng_event_function_probe(writer, event);
 		break;

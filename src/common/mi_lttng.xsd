@@ -146,9 +146,9 @@ THE SOFTWARE.
 	<!-- Maps to the lttng_event_probe_attr struct -->
 	<xs:complexType name="event_probe_attributes_type">
 		<xs:all>
-			<xs:element name="address" type="uint64_type" />
-			<xs:element name="offset" type="uint64_type" />
-			<xs:element name="symbol_name" type="name_type" />
+			<xs:element name="address" type="uint64_type" minOccurs="0" />
+			<xs:element name="offset" type="uint64_type" minOccurs="0" />
+			<xs:element name="symbol_name" type="name_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
