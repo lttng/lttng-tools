@@ -29,7 +29,7 @@ EVENT_NAME="JTestLTTng"
 EVENT_NAME2="JTestLTTng2"
 JAVA_CP="$CURDIR:/usr/local/lib/lttng/java/liblttng-ust-jul.jar:/usr/lib/lttng/java/liblttng-ust-jul.jar"
 
-NUM_TESTS=124
+NUM_TESTS=131
 
 source $TESTDIR/utils/utils.sh
 
@@ -72,6 +72,17 @@ function enable_jul_filter()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
 	ok $? "Enable event $event_name with filter $filter for session $sess_name"
+}
+
+function enable_jul_filter_loglevel_only()
+{
+	local sess_name="$1"
+	local event_name="$2"
+	local filter="$3"
+	local loglevel="$4"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
+	ok $? "Enable event $event_name with filter \"$filter\" and loglevel-only $loglevel for session $sess_name"
 }
 
 # MUST set TESTDIR before calling those functions
@@ -443,6 +454,34 @@ function test_jul_disable_enable()
 	fi
 }
 
+function test_jul_filter_loglevel()
+{
+	local BOGUS_EVENT_NAME="not_a_real_event"
+	local FILTER="int_loglevel > 700 || int_loglevel < 700"
+	local ALL_EVENTS="."
+
+	diag "Test JUL a filter with a loglevel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	# Enable an event with a filter and the loglevel-only option.
+	enable_jul_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" JUL_CONFIG
+	disable_jul_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
+	enable_jul_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" JUL_CONFIG
+	start_lttng_tracing $SESSION_NAME
+
+	# Run 5 times with a 1 second delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting no events.
+	trace_match_only $ALL_EVENTS 0 $TRACE_PATH/$SESSION_NAME
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -469,6 +508,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 		test_jul_before_start
 		test_jul_after_start
 		test_jul_multi_session
+		test_jul_filter_loglevel
 	)
 
 	for fct_test in ${tests[@]};
