@@ -710,7 +710,7 @@ static char *set_jul_filter(const char *filter, struct lttng_event *ev)
 	/* Don't add filter for the '*' event. */
 	if (ev->name[0] != '*') {
 		if (filter) {
-			err = asprintf(&jul_filter, "%s && logger_name == \"%s\"", filter,
+			err = asprintf(&jul_filter, "(%s) && (logger_name == \"%s\")", filter,
 					ev->name);
 		} else {
 			err = asprintf(&jul_filter, "logger_name == \"%s\"", ev->name);
@@ -734,7 +734,7 @@ static char *set_jul_filter(const char *filter, struct lttng_event *ev)
 		if (filter || jul_filter) {
 			char *new_filter;
 
-			err = asprintf(&new_filter, "%s && int_loglevel %s %d",
+			err = asprintf(&new_filter, "(%s) && (int_loglevel %s %d)",
 					jul_filter ? jul_filter : filter, op,
 					ev->loglevel);
 			if (jul_filter) {
