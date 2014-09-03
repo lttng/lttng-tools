@@ -48,7 +48,7 @@ function test_before_apps()
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
 
 	return $?
 }

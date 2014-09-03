@@ -82,7 +82,7 @@ $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
 clean_live_tracing
 
-trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
 rm -rf $TRACE_PATH
 stop_lttng_relayd
 

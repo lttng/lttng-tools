@@ -73,7 +73,7 @@ test_after_multiple_apps() {
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	trace_matches $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
+	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
 
 	return $?
 }
@@ -134,7 +134,7 @@ test_after_app() {
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
 
 	return $?
 }
@@ -203,7 +203,7 @@ test_multiple_channels() {
 	ok $? "Start application to trace"
 
 	stop_lttng_tracing $SESSION_NAME
-	trace_matches $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
+	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
 	out=$?
 
 	destroy_lttng_session $SESSION_NAME
