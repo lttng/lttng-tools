@@ -200,6 +200,32 @@ AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
         [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 
+# Check kmod library
+AC_ARG_WITH(kmod-prefix,
+  AS_HELP_STRING([--with-kmod-prefix=PATH],
+		[Specify the installation prefix of the kmod library.
+		Headers must be in PATH/include; libraries in PATH/lib.]),
+		[
+			CPPFLAGS="$CPPFLAGS -I${withval}/include"
+			LDFLAGS="$LDFLAGS -L${withval}/lib64 -L${withval}/lib"
+		])
+
+AC_ARG_ENABLE(kmod,
+	AS_HELP_STRING([--disable-kmod],[build without kmod support]),
+	kmod_support=zz$enableval, kmod_support=yes)
+
+AS_IF([test "x$kmod_support" = "xyes"], [
+	AC_CHECK_LIB([kmod], [kmod_module_probe_insert_module],
+		[
+			AC_DEFINE([HAVE_KMOD], [1], [has kmod support])
+			LIBS="$LIBS -lkmod"
+			kmod_found=yes
+		],
+		kmod_found=no
+	)
+])
+AM_CONDITIONAL([HAVE_KMOD], [test "x$kmod_found" = xyes])
+
 AC_ARG_WITH(lttng-ust-prefix,
   AS_HELP_STRING([--with-lttng-ust-prefix=PATH],
                  [Specify the installation prefix of the lttng-ust library.
@@ -482,6 +508,14 @@ done
 ]
 AS_ECHO_N("Target architecture: ")
 AS_ECHO($target_arch)
+
+# kmod enabled/disabled
+AS_ECHO_N("libkmod support: ")
+AS_IF([test "x$kmod_found" = "xyes"],[
+	AS_ECHO("Enabled")
+],[
+	AS_ECHO("Disabled")
+])
 
 # LTTng-UST enabled/disabled
 AS_ECHO_N("Lttng-UST support: ")

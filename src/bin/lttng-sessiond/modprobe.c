@@ -164,8 +164,67 @@ void modprobe_remove_lttng_all(void)
 	modprobe_remove_lttng_control();
 }
 
+#if HAVE_KMOD
+#include <libkmod.h>
+static void log_kmod(void *data, int priority, const char *file, int line,
+		const char *fn, const char *format, va_list args)
+{
+	char *str;
+
+	if (vasprintf(&str, format, args) < 0) {
+		return;
+	}
+
+	DBG("libkmod: %s", str);
+	free(str);
+}
 static int modprobe_lttng(struct kern_modules_param *modules,
-			  int entries, int required)
+		int entries, int required)
+{
+	int ret = 0, i;
+	struct kmod_ctx *ctx;
+
+	ctx = kmod_new(NULL, NULL);
+	if (!ctx) {
+		PERROR("Unable to create kmod library context");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	kmod_set_log_fn(ctx, log_kmod, NULL);
+	kmod_load_resources(ctx);
+
+	for (i = 0; i < entries; i++) {
+		struct kmod_module *mod = NULL;
+
+		ret = kmod_module_new_from_name(ctx, modules[i].name, &mod);
+		if (ret < 0) {
+			PERROR("Failed to create kmod module for %s", modules[i].name);
+			goto error;
+		}
+
+		ret = kmod_module_probe_insert_module(mod, KMOD_PROBE_IGNORE_LOADED,
+				NULL, NULL, NULL, NULL);
+		if (required && ret < 0) {
+			ERR("Unable to load module %s", modules[i].name);
+		} else {
+			DBG("Modprobe successfully %s", modules[i].name);
+		}
+
+		kmod_module_unref(mod);
+	}
+
+error:
+	if (ctx) {
+		kmod_unref(ctx);
+	}
+	return ret;
+}
+
+#else /* HAVE_KMOD */
+
+static int modprobe_lttng(struct kern_modules_param *modules,
+		int entries, int required)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -194,6 +253,8 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 error:
 	return ret;
 }
+
+#endif /* HAVE_KMOD */
 
 /*
  * Load control kernel module(s).
