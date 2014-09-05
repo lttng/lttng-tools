@@ -1816,7 +1816,7 @@ ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 		break;
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
-		nb_events = agent_list_events(events);
+		nb_events = agent_list_events(events, domain);
 		if (nb_events < 0) {
 			ret = LTTNG_ERR_UST_LIST_FAIL;
 			goto error;

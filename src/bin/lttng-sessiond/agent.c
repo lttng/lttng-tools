@@ -528,7 +528,8 @@ error:
  *
  * Return the number of events or else a negative value.
  */
-int agent_list_events(struct lttng_event **events)
+int agent_list_events(struct lttng_event **events,
+		enum lttng_domain_type domain)
 {
 	int ret;
 	size_t nbmem, count = 0;
@@ -551,6 +552,11 @@ int agent_list_events(struct lttng_event **events)
 			node.node) {
 		ssize_t nb_ev;
 		struct lttng_event *agent_events;
+
+		/* Skip domain not asked by the list. */
+		if (app->domain != domain) {
+			continue;
+		}
 
 		nb_ev = list_events(app, &agent_events);
 		if (nb_ev < 0) {
