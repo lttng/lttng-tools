@@ -774,6 +774,12 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 		goto error;
 	}
 
+	/*
+	 * Flag event that it's disabled so the shadow copy on the ust app side
+	 * will disable it if an application shows up.
+	 */
+	uevent->enabled = 0;
+
 	ret = agent_disable_event(aevent, agt->domain);
 	if (ret != LTTNG_OK) {
 		goto error;
@@ -793,40 +799,35 @@ error:
 int event_agent_disable_all(struct ltt_ust_session *usess,
 		struct agent *agt)
 {
-	int ret, do_disable = 0;
+	int ret;
 	struct agent_event *aevent;
 	struct lttng_ht_iter iter;
 
 	assert(agt);
 	assert(usess);
 
-	/* Disable event on agent application through TCP socket. */
+	/*
+	 * Disable event on agent application. Continue to disable all other events
+	 * if the * event is not found.
+	 */
 	ret = event_agent_disable(usess, agt, "*");
-	if (ret != LTTNG_OK) {
-		if (ret == LTTNG_ERR_UST_EVENT_NOT_FOUND) {
-			/*
-			 * This means that no enable all was done before but still a user
-			 * could want to disable everything even though the * wild card
-			 * event does not exists.
-			 */
-			do_disable = 1;
-		} else {
-			goto error;
-		}
+	if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_NOT_FOUND) {
+		goto error;
 	}
 
 	/* Flag every event that they are now enabled. */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, aevent,
 			node.node) {
-		if (aevent->enabled && do_disable) {
-			ret = event_agent_disable(usess, agt, aevent->name);
-			if (ret != LTTNG_OK) {
-				rcu_read_unlock();
-				goto error;
-			}
+		if (!aevent->enabled) {
+			continue;
 		}
-		aevent->enabled = 0;
+
+		ret = event_agent_disable(usess, agt, aevent->name);
+		if (ret != LTTNG_OK) {
+			rcu_read_unlock();
+			goto error;
+		}
 	}
 	rcu_read_unlock();
 
