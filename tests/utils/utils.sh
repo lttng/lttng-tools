@@ -348,6 +348,15 @@ function disable_ust_lttng_event ()
 	ok $? "Disable event $event_name for session $sess_name"
 }
 
+function disable_jul_lttng_event ()
+{
+    local sess_name="$1"
+    local event_name="$2"
+
+    $TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -j >/dev/null 2>&1
+    ok $? "Disable JUL event $event_name for session $sess_name"
+}
+
 function start_lttng_tracing ()
 {
 	sess_name=$1
@@ -443,4 +452,24 @@ function validate_trace
 	ret=$?
 	IFS=$OLDIFS
 	return $ret
+}
+
+function trace_match_only()
+{
+	local event_name=$1
+	local nr_iter=$2
+	local trace_path=$3
+
+	which $BABELTRACE_BIN >/dev/null
+	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+
+	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
+	local total=$($BABELTRACE_BIN $trace_path | wc -l)
+
+	if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
+		pass "Trace match with $total event $event_name"
+	else
+		fail "Trace match"
+		diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
+	fi
 }

@@ -1460,9 +1460,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
-			ret = event_jul_enable_all(usess, event);
+			ret = event_jul_enable_all(usess, event, filter);
 		} else {
-			ret = event_jul_enable(usess, event);
+			ret = event_jul_enable(usess, event, filter);
 		}
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -1681,7 +1681,7 @@ int cmd_enable_event_all(struct ltt_session *session,
 		strncpy(event.name, "*", sizeof(event.name));
 		event.name[sizeof(event.name) - 1] = '\0';
 
-		ret = event_jul_enable_all(usess, &event);
+		ret = event_jul_enable_all(usess, &event, filter);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}

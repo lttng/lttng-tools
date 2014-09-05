@@ -84,6 +84,11 @@ struct jul_event {
 	 * Hash table nodes of the JUL domain. Indexed by name string.
 	 */
 	struct lttng_ht_node_str node;
+
+	/*
+	 * Filter that we keep to use it to disable an event.
+	 */
+	struct lttng_filter_bytecode *filter;
 };
 
 /*

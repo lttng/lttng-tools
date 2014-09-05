@@ -323,6 +323,31 @@ function test_jul_destroy_session()
 	fi
 }
 
+function test_jul_disable()
+{
+	diag "Test JUL disable event"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	# Enable all event with a filter.
+	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
+	disable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing $SESSION_NAME
+
+	# Fire second TP but not the finest one.
+	run_app 0 1
+	wait_apps
+
+	stop_lttng_tracing $SESSION_NAME
+	destroy_lttng_session $SESSION_NAME
+
+	# Validate test. Expecting one event of the second TP only.
+	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -338,6 +363,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 	start_lttng_sessiond
 
 	tests=(
+		test_jul_disable
 		test_jul_multi_session_loglevel
 		test_jul_destroy_session
 		test_jul_loglevel
@@ -355,7 +381,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 		if [ $? -ne 0 ]; then
 			break;
 		fi
-		rm -rf $TRACE_PATH
+		#rm -rf $TRACE_PATH
 	done
 
 	stop_lttng_sessiond
