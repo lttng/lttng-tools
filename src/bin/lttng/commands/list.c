@@ -1463,7 +1463,7 @@ int cmd_list(int argc, const char **argv)
 	} else if (opt_jul) {
 		DBG2("Listing JUL domain");
 		domain.type = LTTNG_DOMAIN_JUL;
-	} else if (opt_jul) {
+	} else if (opt_log4j) {
 		domain.type = LTTNG_DOMAIN_LOG4J;
 	}
 
