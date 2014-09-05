@@ -285,13 +285,13 @@ function test_jul_multi_session_disable()
 	destroy_lttng_session $SESSION_NAME-2
 
 	# Validate test. Expecting one event of the second TP.
-	trace_matches $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-1
+	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-1
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
 
 	# Validate test. Expecting one event of the second TP.
-	trace_matches $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-2
+	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-2
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -430,7 +430,7 @@ function test_jul_disable()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
-	trace_matches $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
+	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -455,7 +455,7 @@ function test_jul_disable_enable()
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
-	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
+	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
 	if [ $? -ne 0 ]; then
 		return $?
 	fi

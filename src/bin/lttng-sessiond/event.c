@@ -768,6 +768,7 @@ int event_jul_disable(struct ltt_ust_session *usess, char *event_name)
 		ret = LTTNG_ERR_UST_DISABLE_FAIL;
 		goto error;
 	}
+	uevent->enabled = 0;
 
 	ret = jul_disable_event(jevent);
 	if (ret != LTTNG_OK) {

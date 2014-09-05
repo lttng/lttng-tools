@@ -472,3 +472,23 @@ function validate_trace
 	IFS=$OLDIFS
 	return $ret
 }
+
+function trace_match_only()
+{
+	local event_name=$1
+	local nr_iter=$2
+	local trace_path=$3
+
+	which $BABELTRACE_BIN >/dev/null
+	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+
+	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
+	local total=$($BABELTRACE_BIN $trace_path | wc -l)
+
+	if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
+		pass "Trace match with $total event $event_name"
+	else
+		fail "Trace match"
+		diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
+	fi
+}
