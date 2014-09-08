@@ -28,6 +28,10 @@ stamp-h1
 libtool
 tags
 
+# cscope and ctags
+cscope.*
+tags
+
 # m4 macros not automatically generated
 /config/
 !config/epoll.m4
