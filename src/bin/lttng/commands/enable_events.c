@@ -777,7 +777,8 @@ static int enable_events(char *session_name)
 				break;
 			case LTTNG_EVENT_SYSCALL:
 				if (opt_kernel) {
-					MSG("All kernel system calls are enabled in channel %s",
+					MSG("All %s system calls are enabled in channel %s",
+							get_domain_str(dom.type),
 							print_channel_name(channel_name));
 				}
 				break;

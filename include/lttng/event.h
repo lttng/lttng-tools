@@ -343,6 +343,23 @@ extern int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 extern int lttng_disable_event(struct lttng_handle *handle,
 		const char *name, const char *channel_name);
 
+/*
+ * Disable event(s) of a channel and domain.
+ *
+ * Takes a struct lttng_event as parameter.
+ * If channel_name is NULL, the default channel is used (channel0).
+ *
+ * Currently, @filter_expression must be NULL. (disabling specific
+ * filter expressions not implemented)
+ * Currently, only LTTNG_EVENT_ALL and LTTNG_EVENT_SYSCALL event types
+ * are implemented for field @ev.
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+int lttng_disable_event_ext(struct lttng_handle *handle,
+		struct lttng_event *ev, const char *channel_name,
+		const char *filter_expression);
+
 #ifdef __cplusplus
 }
 #endif

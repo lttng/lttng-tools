@@ -40,6 +40,8 @@ int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v);
 int kernctl_wait_quiescent(int fd);
 int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);
 
+int kernctl_enable_syscall(int fd, const char *syscall_name);
+int kernctl_disable_syscall(int fd, const char *syscall_name);
 
 /* Buffer operations */
 

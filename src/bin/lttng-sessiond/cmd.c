@@ -1000,9 +1000,18 @@ error:
  * Command LTTNG_DISABLE_EVENT processed by the client thread.
  */
 int cmd_disable_event(struct ltt_session *session, int domain,
-		char *channel_name, char *event_name)
+		char *channel_name,
+		struct lttng_event *event)
 {
 	int ret;
+	char *event_name;
+
+	event_name = event->name;
+
+	if (event->loglevel_type || event->loglevel || event->enabled
+			|| event->pid || event->filter || event->exclusion) {
+		return LTTNG_ERR_UNK;
+	}
 
 	rcu_read_lock();
 
@@ -1030,8 +1039,19 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_kernel_disable_tracepoint(kchan, event_name);
-		if (ret != LTTNG_OK) {
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+		case LTTNG_EVENT_TRACEPOINT:
+			ret = event_kernel_disable_tracepoint(kchan, event_name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+			break;
+		case LTTNG_EVENT_SYSCALL:
+			ret = event_kernel_disable_syscall(kchan, event_name);
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 
@@ -1062,8 +1082,15 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_ust_disable_tracepoint(usess, uchan, event_name);
-		if (ret != LTTNG_OK) {
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+			ret = event_ust_disable_tracepoint(usess, uchan, event_name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 
@@ -1078,6 +1105,14 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
+			goto error;
+		}
 
 		agt = trace_ust_find_agent(usess, domain);
 		if (!agt) {
@@ -1113,9 +1148,13 @@ error:
  * Command LTTNG_DISABLE_ALL_EVENT processed by the client thread.
  */
 int cmd_disable_event_all(struct ltt_session *session, int domain,
-		char *channel_name)
+		char *channel_name,
+		struct lttng_event *event)
 {
 	int ret;
+	char *event_name;
+
+	event_name = event->name;
 
 	rcu_read_lock();
 
@@ -1143,8 +1182,18 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_kernel_disable_all(kchan);
-		if (ret != LTTNG_OK) {
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+			ret = event_kernel_disable_all(kchan);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+			break;
+		case LTTNG_EVENT_SYSCALL:
+			ret = event_kernel_disable_syscall(kchan, event_name);
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 
@@ -1175,8 +1224,15 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		ret = event_ust_disable_all_tracepoints(usess, uchan);
-		if (ret != 0) {
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+			ret = event_ust_disable_all_tracepoints(usess, uchan);
+			if (ret != 0) {
+				goto error;
+			}
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 
@@ -1191,6 +1247,14 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
+			goto error;
+		}
 
 		agt = trace_ust_find_agent(usess, domain);
 		if (!agt) {
@@ -1419,12 +1483,23 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 			goto error;
 		}
 
-		ret = event_kernel_enable_tracepoint(kchan, event);
-		if (ret != LTTNG_OK) {
-			if (channel_created) {
-				/* Let's not leak a useless channel. */
-				kernel_destroy_channel(kchan);
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+		case LTTNG_EVENT_TRACEPOINT:
+			ret = event_kernel_enable_tracepoint(kchan, event);
+			if (ret != LTTNG_OK) {
+				if (channel_created) {
+					/* Let's not leak a useless channel. */
+					kernel_destroy_channel(kchan);
+				}
+				goto error;
 			}
+			break;
+		case LTTNG_EVENT_SYSCALL:
+			ret = event_kernel_enable_syscall(kchan, event->name);
+			break;
+		default:
+			ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 
@@ -1625,7 +1700,7 @@ int cmd_enable_event_all(struct ltt_session *session,
 
 		switch (event_type) {
 		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_enable_all_syscalls(kchan, kernel_tracer_fd);
+			ret = event_kernel_enable_syscall(kchan, "");
 			break;
 		case LTTNG_EVENT_TRACEPOINT:
 			/*

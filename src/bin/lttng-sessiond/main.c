@@ -3122,17 +3122,21 @@ skip_domain:
 	}
 	case LTTNG_DISABLE_EVENT:
 	{
+		/* FIXME: passing packed structure to non-packed pointer */
+		/* TODO: handle filter */
 		ret = cmd_disable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.disable.channel_name,
-				cmd_ctx->lsm->u.disable.name);
+				&cmd_ctx->lsm->u.disable.event);
 		break;
 	}
 	case LTTNG_DISABLE_ALL_EVENT:
 	{
 		DBG("Disabling all events");
 
+		/* FIXME: passing packed structure to non-packed pointer */
 		ret = cmd_disable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.disable.channel_name);
+				cmd_ctx->lsm->u.disable.channel_name,
+				&cmd_ctx->lsm->u.disable.event);
 		break;
 	}
 	case LTTNG_ENABLE_CHANNEL:

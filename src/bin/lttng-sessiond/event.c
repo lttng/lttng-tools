@@ -58,21 +58,6 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 }
 
 /*
- * Setup a lttng_event used to enable *all* syscall tracing.
- */
-static void init_syscalls_kernel_event(struct lttng_event *event)
-{
-	assert(event);
-
-	event->name[0] = '\0';
-	/*
-	 * We use LTTNG_EVENT* here since the trace kernel creation will make the
-	 * right changes for the kernel.
-	 */
-	event->type = LTTNG_EVENT_SYSCALL;
-}
-
-/*
  * Disable kernel tracepoint event for a channel from the kernel session.
  */
 int event_kernel_disable_tracepoint(struct ltt_kernel_channel *kchan,
@@ -105,6 +90,57 @@ error:
 }
 
 /*
+ * Enable kernel system call for a channel from the kernel session.
+ */
+int event_kernel_enable_syscall(struct ltt_kernel_channel *kchan,
+		char *syscall_name)
+{
+	int ret;
+
+	assert(kchan);
+
+	ret = kernel_enable_syscall(syscall_name, kchan);
+	if (ret < 0) {
+		ret = LTTNG_ERR_KERN_ENABLE_FAIL;
+		goto error;
+	}
+
+	DBG("Kernel event %s enable for channel %s.",
+			syscall_name, kchan->channel->name);
+
+	ret = LTTNG_OK;
+
+error:
+	return ret;
+}
+
+/*
+ * Disable kernel system call for a channel from the kernel session.
+ */
+int event_kernel_disable_syscall(struct ltt_kernel_channel *kchan,
+		char *syscall_name)
+{
+	int ret;
+
+	assert(kchan);
+
+	ret = kernel_disable_syscall(syscall_name, kchan);
+	if (ret < 0) {
+		ret = LTTNG_ERR_KERN_DISABLE_FAIL;
+		goto error;
+	}
+
+	DBG("Kernel syscall %s disable for channel %s.",
+			syscall_name[0] == '\0' ? "<all>" : syscall_name,
+			kchan->channel->name);
+
+	ret = LTTNG_OK;
+
+error:
+	return ret;
+}
+
+/*
  * Disable kernel tracepoint events for a channel from the kernel session.
  */
 int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan)
@@ -127,15 +163,6 @@ int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan)
 }
 
 /*
- * Disable kernel syscall events for a channel from the kernel session.
- */
-int event_kernel_disable_all_syscalls(struct ltt_kernel_channel *kchan)
-{
-	ERR("Cannot disable syscall tracing for existing session. Please destroy session instead.");
-	return LTTNG_OK;	/* Return OK so disable all succeeds */
-}
-
-/*
  * Disable all kernel event for a channel from the kernel session.
  */
 int event_kernel_disable_all(struct ltt_kernel_channel *kchan)
@@ -147,7 +174,7 @@ int event_kernel_disable_all(struct ltt_kernel_channel *kchan)
 	ret = event_kernel_disable_all_tracepoints(kchan);
 	if (ret != LTTNG_OK)
 		return ret;
-	ret = event_kernel_disable_all_syscalls(kchan);
+	ret = event_kernel_disable_syscall(kchan, "");
 	return ret;
 }
 
@@ -246,36 +273,6 @@ end:
 }
 
 /*
- * Enable all kernel sycalls events of a channel of the kernel session.
- */
-int event_kernel_enable_all_syscalls(struct ltt_kernel_channel *kchan,
-		int kernel_tracer_fd)
-{
-	int ret;
-	struct lttng_event event;
-
-	assert(kchan);
-
-	init_syscalls_kernel_event(&event);
-
-	DBG("Enabling all syscall tracing");
-
-	ret = kernel_create_event(&event, kchan);
-	if (ret < 0) {
-		if (ret == -EEXIST) {
-			ret = LTTNG_ERR_KERN_EVENT_EXIST;
-		} else {
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-		}
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
-}
-
-/*
  * Enable all kernel events of a channel of the kernel session.
  */
 int event_kernel_enable_all(struct ltt_kernel_channel *kchan,
@@ -299,7 +296,7 @@ int event_kernel_enable_all(struct ltt_kernel_channel *kchan,
 	 * tracepoints did not fail. Future work will allow us to send back
 	 * multiple errors to the client in one API call.
 	 */
-	(void) event_kernel_enable_all_syscalls(kchan, kernel_tracer_fd);
+	(void) event_kernel_enable_syscall(kchan, "");
 
 end:
 	return tp_ret;

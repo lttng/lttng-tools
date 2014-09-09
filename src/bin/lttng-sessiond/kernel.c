@@ -351,6 +351,18 @@ error:
 	return ret;
 }
 
+int kernel_enable_syscall(const char *syscall_name,
+		struct ltt_kernel_channel *channel)
+{
+	return kernctl_enable_syscall(channel->fd, syscall_name);
+}
+
+int kernel_disable_syscall(const char *syscall_name,
+		struct ltt_kernel_channel *channel)
+{
+	return kernctl_disable_syscall(channel->fd, syscall_name);
+}
+
 /*
  * Create kernel metadata, open from the kernel tracer and add it to the
  * kernel session.

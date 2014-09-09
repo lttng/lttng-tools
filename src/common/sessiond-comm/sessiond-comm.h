@@ -227,10 +227,6 @@ struct lttcomm_session_msg {
 	struct lttng_session session;
 	struct lttng_domain domain;
 	union {
-		struct {
-			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			char name[NAME_MAX];
-		} LTTNG_PACKED disable;
 		/* Event data */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
@@ -249,6 +245,20 @@ struct lttcomm_session_msg {
 			 * - unsigned char filter_bytecode[bytecode_len]
 			 */
 		} LTTNG_PACKED enable;
+		struct {
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+			struct lttng_event event LTTNG_PACKED;
+			/* Length of following filter expression. */
+			uint32_t expression_len;
+			/* Length of following bytecode for filter. */
+			uint32_t bytecode_len;
+			/*
+			 * After this structure, the following variable-length
+			 * items are transmitted:
+			 * - unsigned char filter_expression[expression_len]
+			 * - unsigned char filter_bytecode[bytecode_len]
+			 */
+		} LTTNG_PACKED disable;
 		/* Create channel */
 		struct {
 			struct lttng_channel chan LTTNG_PACKED;

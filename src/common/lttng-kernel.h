@@ -97,6 +97,10 @@ struct lttng_kernel_function {
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
 } LTTNG_PACKED;
 
+struct lttng_kernel_syscall {
+	char disable;
+} __attribute__((packed));
+
 #define LTTNG_KERNEL_EVENT_PADDING1    16
 #define LTTNG_KERNEL_EVENT_PADDING2    LTTNG_KERNEL_SYM_NAME_LEN + 32
 struct lttng_kernel_event {
@@ -109,6 +113,7 @@ struct lttng_kernel_event {
 		struct lttng_kernel_kretprobe kretprobe;
 		struct lttng_kernel_kprobe kprobe;
 		struct lttng_kernel_function ftrace;
+		struct lttng_kernel_syscall syscall;
 		char padding[LTTNG_KERNEL_EVENT_PADDING2];
 	} u;
 } LTTNG_PACKED;

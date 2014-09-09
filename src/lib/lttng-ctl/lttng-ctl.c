@@ -926,6 +926,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	/* FIXME: copying non-packed struct to packed struct. */
 	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
@@ -1039,19 +1040,34 @@ ask_sessiond:
 	return ret;
 }
 
-/*
- *  Disable event(s) of a channel and domain.
- *  If no event name is specified, all events are disabled.
- *  If no channel name is specified, the default 'channel0' is used.
- *  Returns size of returned session payload data or a negative error code.
- */
-int lttng_disable_event(struct lttng_handle *handle, const char *name,
-		const char *channel_name)
+int lttng_disable_event_ext(struct lttng_handle *handle,
+		struct lttng_event *ev, const char *channel_name,
+		const char *original_filter_expression)
 {
 	struct lttcomm_session_msg lsm;
+	char *varlen_data;
+	int ret = 0;
+	unsigned int free_filter_expression = 0;
+	struct filter_parser_ctx *ctx = NULL;
+	/*
+	 * Cast as non-const since we may replace the filter expression
+	 * by a dynamically allocated string. Otherwise, the original
+	 * string is not modified.
+	 */
+	char *filter_expression = (char *) original_filter_expression;
 
-	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
+	if (handle == NULL || ev == NULL) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	/* Empty filter string will always be rejected by the parser
+	 * anyway, so treat this corner-case early to eliminate
+	 * lttng_fmemopen error for 0-byte allocation.
+	 */
+	if (filter_expression && filter_expression[0] == '\0') {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -1065,20 +1081,132 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 				sizeof(lsm.u.disable.channel_name));
 	}
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-
-	if (name != NULL && *name != '*') {
-		lttng_ctl_copy_string(lsm.u.disable.name, name,
-				sizeof(lsm.u.disable.name));
+	if (ev->name[0] != '\0') {
 		lsm.cmd_type = LTTNG_DISABLE_EVENT;
 	} else {
 		lsm.cmd_type = LTTNG_DISABLE_ALL_EVENT;
 	}
 
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	/* FIXME: copying non-packed struct to packed struct. */
+	memcpy(&lsm.u.disable.event, ev, sizeof(lsm.u.disable.event));
+
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
+	lsm.u.disable.bytecode_len = 0;
 
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	/*
+	 * For the JUL domain, a filter is enforced except for the
+	 * disable all event. This is done to avoid having the event in
+	 * all sessions thus filtering by logger name.
+	 */
+	if (filter_expression == NULL &&
+			(handle->domain.type != LTTNG_DOMAIN_JUL &&
+				handle->domain.type != LTTNG_DOMAIN_LOG4J)) {
+		goto ask_sessiond;
+	}
+
+	/*
+	 * We have a filter, so we need to set up a variable-length
+	 * memory block from where to send the data.
+	 */
+
+	/* Parse filter expression */
+	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
+			|| handle->domain.type == LTTNG_DOMAIN_LOG4J) {
+		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
+				handle->domain.type == LTTNG_DOMAIN_LOG4J) {
+			char *jul_filter;
+
+			/* Setup JUL filter if needed. */
+			jul_filter = set_jul_filter(filter_expression, ev);
+			if (!jul_filter) {
+				if (!filter_expression) {
+					/* No JUL and no filter, just skip everything below. */
+					goto ask_sessiond;
+				}
+			} else {
+				/*
+				 * With a JUL filter, the original filter has been added to it
+				 * thus replace the filter expression.
+				 */
+				filter_expression = jul_filter;
+				free_filter_expression = 1;
+			}
+		}
+
+		ret = generate_filter(filter_expression, &lsm, &ctx);
+		if (ret) {
+			goto filter_error;
+		}
+	}
+
+	varlen_data = zmalloc(lsm.u.disable.bytecode_len
+			+ lsm.u.disable.expression_len);
+	if (!varlen_data) {
+		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
+		goto mem_error;
+	}
+
+	/* Add filter expression */
+	if (lsm.u.disable.expression_len != 0) {
+		memcpy(varlen_data,
+			filter_expression,
+			lsm.u.disable.expression_len);
+	}
+	/* Add filter bytecode next */
+	if (ctx && lsm.u.disable.bytecode_len != 0) {
+		memcpy(varlen_data
+			+ lsm.u.disable.expression_len,
+			&ctx->bytecode->b,
+			lsm.u.disable.bytecode_len);
+	}
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, varlen_data,
+			lsm.u.disable.bytecode_len + lsm.u.disable.expression_len, NULL);
+	free(varlen_data);
+
+mem_error:
+	if (filter_expression && ctx) {
+		filter_bytecode_free(ctx);
+		filter_ir_free(ctx);
+		filter_parser_ctx_free(ctx);
+	}
+filter_error:
+	if (free_filter_expression) {
+		/*
+		 * The filter expression has been replaced and must be freed as it is
+		 * not the original filter expression received as a parameter.
+		 */
+		free(filter_expression);
+	}
+error:
+	/*
+	 * Return directly to the caller and don't ask the sessiond since something
+	 * went wrong in the parsing of data above.
+	 */
+	return ret;
+
+ask_sessiond:
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	return ret;
+}
+
+/*
+ *  Disable event(s) of a channel and domain.
+ *  If no event name is specified, all events are disabled.
+ *  If no channel name is specified, the default 'channel0' is used.
+ *  Returns size of returned session payload data or a negative error code.
+ */
+int lttng_disable_event(struct lttng_handle *handle, const char *name,
+		const char *channel_name)
+{
+	struct lttng_event ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.type = LTTNG_EVENT_ALL;
+	lttng_ctl_copy_string(ev.name, name, sizeof(ev.name));
+	return lttng_disable_event_ext(handle, &ev, channel_name, NULL);
 }
 
 /*
