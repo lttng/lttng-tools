@@ -1056,7 +1056,8 @@ int save_ust_session(struct config_writer *writer,
 		int agent_channel;
 
 		ust_chan = caa_container_of(node, struct ltt_ust_channel, node);
-		agent_channel = !strcmp(DEFAULT_JUL_CHANNEL_NAME, ust_chan->name);
+		agent_channel = !strcmp(DEFAULT_JUL_CHANNEL_NAME, ust_chan->name) ||
+			!strcmp(DEFAULT_LOG4J_CHANNEL_NAME, ust_chan->name);
 		if (!(save_agent ^ agent_channel)) {
 			ret = save_ust_channel(writer, ust_chan, session->ust_session);
 			if (ret) {

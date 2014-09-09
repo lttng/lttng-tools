@@ -1485,6 +1485,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 	{
+		const char *default_event_name, *default_chan_name;
 		struct agent *agt;
 		struct lttng_event uevent;
 		struct lttng_domain tmp_dom;
@@ -1506,13 +1507,12 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		memset(&uevent, 0, sizeof(uevent));
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		if (is_root) {
-			strncpy(uevent.name, DEFAULT_SYS_JUL_EVENT_NAME,
-					sizeof(uevent.name));
-		} else {
-			strncpy(uevent.name, DEFAULT_USER_JUL_EVENT_NAME,
-					sizeof(uevent.name));
+		default_event_name = event_get_default_agent_ust_name(domain->type);
+		if (!default_event_name) {
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
 		}
+		strncpy(uevent.name, default_event_name, sizeof(uevent.name));
 		uevent.name[sizeof(uevent.name) - 1] = '\0';
 
 		/*
@@ -1523,7 +1523,13 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		memcpy(&tmp_dom, domain, sizeof(tmp_dom));
 		tmp_dom.type = LTTNG_DOMAIN_UST;
 
-		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
+		if (domain->type == LTTNG_DOMAIN_LOG4J) {
+			default_chan_name = DEFAULT_LOG4J_CHANNEL_NAME;
+		} else {
+			default_chan_name = DEFAULT_JUL_CHANNEL_NAME;
+		}
+
+		ret = cmd_enable_event(session, &tmp_dom, (char *) default_chan_name,
 			&uevent, filter_expression, filter, NULL, wpipe);
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
@@ -1718,56 +1724,19 @@ int cmd_enable_event_all(struct ltt_session *session,
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
 	{
-		struct agent *agt;
-		struct lttng_event uevent, event;
-		struct lttng_domain tmp_dom;
+		struct lttng_event event;
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
-
-		agt = trace_ust_find_agent(usess, domain->type);
-		if (!agt) {
-			agt = agent_create(domain->type);
-			if (!agt) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto error;
-			}
-			agent_add(agt, usess->agents);
-		}
-
-		/* Create the default tracepoint. */
-		uevent.type = LTTNG_EVENT_TRACEPOINT;
-		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		if (is_root) {
-			strncpy(uevent.name, DEFAULT_SYS_JUL_EVENT_NAME,
-					sizeof(uevent.name));
-		} else {
-			strncpy(uevent.name, DEFAULT_USER_JUL_EVENT_NAME,
-					sizeof(uevent.name));
-		}
-		uevent.name[sizeof(uevent.name) - 1] = '\0';
-
-		/*
-		 * The domain type is changed because we are about to enable the
-		 * default channel and event for the JUL domain that are hardcoded.
-		 * This happens in the UST domain.
-		 */
-		memcpy(&tmp_dom, domain, sizeof(tmp_dom));
-		tmp_dom.type = LTTNG_DOMAIN_UST;
-
-		ret = cmd_enable_event(session, &tmp_dom, DEFAULT_JUL_CHANNEL_NAME,
-			&uevent, NULL, NULL, NULL, wpipe);
-		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
-			goto error;
-		}
 
 		event.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 		event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		strncpy(event.name, "*", sizeof(event.name));
 		event.name[sizeof(event.name) - 1] = '\0';
 
-		ret = event_agent_enable_all(usess, agt, &event, filter);
-		if (ret != LTTNG_OK) {
+		ret = cmd_enable_event(session, domain, NULL, &event,
+				filter_expression, filter, NULL, wpipe);
+		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
 		}
 

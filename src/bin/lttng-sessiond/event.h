@@ -59,4 +59,6 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 		char *event_name);
 int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt);
 
+const char *event_get_default_agent_ust_name(enum lttng_domain_type domain);
+
 #endif /* _LTT_EVENT_H */

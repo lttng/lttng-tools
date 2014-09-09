@@ -711,6 +711,34 @@ error:
 }
 
 /*
+ * Return the agent default event name to use by testing if the process is root
+ * or not. Return NULL on error.
+ */
+const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
+{
+	const char *default_event_name = NULL;
+
+	if (domain == LTTNG_DOMAIN_JUL) {
+		if (is_root) {
+			default_event_name = DEFAULT_SYS_JUL_EVENT_NAME;
+		} else {
+			default_event_name = DEFAULT_USER_JUL_EVENT_NAME;
+		}
+	} else if (domain == LTTNG_DOMAIN_LOG4J) {
+		if (is_root) {
+			default_event_name = DEFAULT_SYS_LOG4J_EVENT_NAME;
+		} else {
+			default_event_name = DEFAULT_USER_LOG4J_EVENT_NAME;
+		}
+	} else {
+		assert(0);
+	}
+
+	return default_event_name;
+}
+
+
+/*
  * Disable a single agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
@@ -722,7 +750,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	struct agent_event *aevent;
 	struct ltt_ust_event *uevent = NULL;
 	struct ltt_ust_channel *uchan = NULL;
-	char *ust_event_name;
+	const char *ust_event_name;
 
 	assert(agt);
 	assert(usess);
@@ -752,10 +780,10 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 		goto error;
 	}
 
-	if (is_root) {
-		ust_event_name = DEFAULT_SYS_JUL_EVENT_NAME;
-	} else {
-		ust_event_name = DEFAULT_USER_JUL_EVENT_NAME;
+	ust_event_name = event_get_default_agent_ust_name(agt->domain);
+	if (!ust_event_name) {
+		ret = LTTNG_ERR_FATAL;
+		goto error;
 	}
 
 	/*
@@ -763,7 +791,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	 * with the loglevel type to ALL thus the loglevel stays 0. The event's
 	 * filter is the one handling the loglevel for agent.
 	 */
-	uevent = trace_ust_find_event(uchan->events, ust_event_name,
+	uevent = trace_ust_find_event(uchan->events, (char *) ust_event_name,
 			aevent->filter, 0, NULL);
 	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
