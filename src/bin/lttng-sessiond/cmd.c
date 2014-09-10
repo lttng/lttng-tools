@@ -48,6 +48,21 @@ static pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t relayd_net_seq_idx;
 
 /*
+ * Both functions below are special case for the Kernel domain when
+ * enabling/disabling all events.
+ */
+static
+int enable_kevent_all(struct ltt_session *session,
+		struct lttng_domain *domain, char *channel_name,
+		struct lttng_event *event,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter, int wpipe);
+static
+int disable_kevent_all(struct ltt_session *session, int domain,
+		char *channel_name,
+		struct lttng_event *event);
+
+/*
  * Create a session path used by list_lttng_sessions for the case that the
  * session consumer is on the network.
  */
@@ -1006,11 +1021,17 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 	int ret;
 	char *event_name;
 
+	DBG("Disable event command for event \'%s\'", event->name);
+
 	event_name = event->name;
 
 	if (event->loglevel_type || event->loglevel || event->enabled
 			|| event->pid || event->filter || event->exclusion) {
 		return LTTNG_ERR_UNK;
+	}
+	/* Special handling for kernel domain all events. */
+	if (domain == LTTNG_DOMAIN_KERNEL && !strcmp(event_name, "*")) {
+		return disable_kevent_all(session, domain, channel_name, event);
 	}
 
 	rcu_read_lock();
@@ -1119,8 +1140,12 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error;
 		}
-
-		ret = event_agent_disable(usess, agt, event_name);
+		/* The wild card * means that everything should be disabled. */
+		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
+			ret = event_agent_disable_all(usess, agt);
+		} else {
+			ret = event_agent_disable(usess, agt, event_name);
+		}
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1145,9 +1170,10 @@ error:
 }
 
 /*
- * Command LTTNG_DISABLE_ALL_EVENT processed by the client thread.
+ * Command LTTNG_DISABLE_EVENT for event "*" processed by the client thread.
  */
-int cmd_disable_event_all(struct ltt_session *session, int domain,
+static
+int disable_kevent_all(struct ltt_session *session, int domain,
 		char *channel_name,
 		struct lttng_event *event)
 {
@@ -1200,80 +1226,6 @@ int cmd_disable_event_all(struct ltt_session *session, int domain,
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
 	}
-	case LTTNG_DOMAIN_UST:
-	{
-		struct ltt_ust_session *usess;
-		struct ltt_ust_channel *uchan;
-
-		usess = session->ust_session;
-
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (usess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
-
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-				channel_name);
-		if (uchan == NULL) {
-			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto error;
-		}
-
-		switch (event->type) {
-		case LTTNG_EVENT_ALL:
-			ret = event_ust_disable_all_tracepoints(usess, uchan);
-			if (ret != 0) {
-				goto error;
-			}
-			break;
-		default:
-			ret = LTTNG_ERR_UNK;
-			goto error;
-		}
-
-		DBG3("Disable all UST events in channel %s completed", channel_name);
-
-		break;
-	}
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_JUL:
-	{
-		struct agent *agt;
-		struct ltt_ust_session *usess = session->ust_session;
-
-		assert(usess);
-
-		switch (event->type) {
-		case LTTNG_EVENT_ALL:
-			break;
-		default:
-			ret = LTTNG_ERR_UNK;
-			goto error;
-		}
-
-		agt = trace_ust_find_agent(usess, domain);
-		if (!agt) {
-			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
-			goto error;
-		}
-
-		ret = event_agent_disable_all(usess, agt);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-
-		break;
-	}
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
@@ -1429,6 +1381,14 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	assert(session);
 	assert(event);
 	assert(channel_name);
+
+	DBG("Enable event command for event \'%s\'", event->name);
+
+	/* Special handling for kernel domain all events. */
+	if (domain->type == LTTNG_DOMAIN_KERNEL && !strcmp(event->name, "*")) {
+		return enable_kevent_all(session, domain, channel_name, event,
+				filter_expression, filter, wpipe);
+	}
 
 	ret = validate_event_name(event->name);
 	if (ret) {
@@ -1640,10 +1600,12 @@ error:
 }
 
 /*
- * Command LTTNG_ENABLE_ALL_EVENT processed by the client thread.
+ * Command LTTNG_ENABLE_EVENT for event "*" processed by the client thread.
  */
-int cmd_enable_event_all(struct ltt_session *session,
-		struct lttng_domain *domain, char *channel_name, int event_type,
+static
+int enable_kevent_all(struct ltt_session *session,
+		struct lttng_domain *domain, char *channel_name,
+		struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter, int wpipe)
 {
@@ -1698,7 +1660,7 @@ int cmd_enable_event_all(struct ltt_session *session,
 			assert(kchan);
 		}
 
-		switch (event_type) {
+		switch (event->type) {
 		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_enable_syscall(kchan, "");
 			break;
@@ -1730,98 +1692,6 @@ int cmd_enable_event_all(struct ltt_session *session,
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
 	}
-	case LTTNG_DOMAIN_UST:
-	{
-		struct ltt_ust_channel *uchan;
-		struct ltt_ust_session *usess = session->ust_session;
-
-		assert(usess);
-
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (usess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
-
-		/* Get channel from global UST domain */
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-				channel_name);
-		if (uchan == NULL) {
-			/* Create default channel */
-			attr = channel_new_default_attr(LTTNG_DOMAIN_UST,
-					usess->buffer_type);
-			if (attr == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-			strncpy(attr->name, channel_name, sizeof(attr->name));
-
-			ret = cmd_enable_channel(session, domain, attr, wpipe);
-			if (ret != LTTNG_OK) {
-				free(attr);
-				goto error;
-			}
-			free(attr);
-
-			/* Get the newly created channel reference back */
-			uchan = trace_ust_find_channel_by_name(
-					usess->domain_global.channels, channel_name);
-			assert(uchan);
-		}
-
-		/* At this point, the session and channel exist on the tracer */
-
-		switch (event_type) {
-		case LTTNG_EVENT_ALL:
-		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_ust_enable_all_tracepoints(usess, uchan,
-				filter_expression, filter);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			break;
-		default:
-			ret = LTTNG_ERR_UST_ENABLE_FAIL;
-			goto error;
-		}
-
-		/* Manage return value */
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-
-		break;
-	}
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_JUL:
-	{
-		struct lttng_event event;
-		struct ltt_ust_session *usess = session->ust_session;
-
-		assert(usess);
-
-		event.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
-		event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		strncpy(event.name, "*", sizeof(event.name));
-		event.name[sizeof(event.name) - 1] = '\0';
-
-		ret = cmd_enable_event(session, domain, NULL, &event,
-				filter_expression, filter, NULL, wpipe);
-		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
-			goto error;
-		}
-
-		break;
-	}
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;

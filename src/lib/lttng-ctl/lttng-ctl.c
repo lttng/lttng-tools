@@ -919,10 +919,10 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 				sizeof(lsm.u.enable.channel_name));
 	}
 
-	if (ev->name[0] != '\0') {
-		lsm.cmd_type = LTTNG_ENABLE_EVENT;
-	} else {
-		lsm.cmd_type = LTTNG_ENABLE_ALL_EVENT;
+	lsm.cmd_type = LTTNG_ENABLE_EVENT;
+	if (ev->name[0] == '\0') {
+		/* Enable all events */
+		lttng_ctl_copy_string(ev->name, "*", sizeof(ev->name));
 	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
@@ -1081,10 +1081,10 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 				sizeof(lsm.u.disable.channel_name));
 	}
 
-	if (ev->name[0] != '\0') {
-		lsm.cmd_type = LTTNG_DISABLE_EVENT;
-	} else {
-		lsm.cmd_type = LTTNG_DISABLE_ALL_EVENT;
+	lsm.cmd_type = LTTNG_DISABLE_EVENT;
+	if (ev->name[0] == '\0') {
+		/* Disable all events */
+		lttng_ctl_copy_string(ev->name, "*", sizeof(ev->name));
 	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);

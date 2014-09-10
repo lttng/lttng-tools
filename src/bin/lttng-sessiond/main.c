@@ -2876,7 +2876,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_DISABLE_CHANNEL:
 	case LTTNG_DISABLE_EVENT:
-	case LTTNG_DISABLE_ALL_EVENT:
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
 			if (!cmd_ctx->session->kernel_session) {
@@ -3129,16 +3128,6 @@ skip_domain:
 				&cmd_ctx->lsm->u.disable.event);
 		break;
 	}
-	case LTTNG_DISABLE_ALL_EVENT:
-	{
-		DBG("Disabling all events");
-
-		/* FIXME: passing packed structure to non-packed pointer */
-		ret = cmd_disable_event_all(cmd_ctx->session, cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.disable.channel_name,
-				&cmd_ctx->lsm->u.disable.event);
-		break;
-	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
 		ret = cmd_enable_channel(cmd_ctx->session, &cmd_ctx->lsm->domain,
@@ -3248,16 +3237,6 @@ skip_domain:
 				cmd_ctx->lsm->u.enable.channel_name,
 				&cmd_ctx->lsm->u.enable.event,
 				filter_expression, bytecode, exclusion,
-				kernel_poll_pipe[1]);
-		break;
-	}
-	case LTTNG_ENABLE_ALL_EVENT:
-	{
-		DBG("Enabling all events");
-
-		ret = cmd_enable_event_all(cmd_ctx->session, &cmd_ctx->lsm->domain,
-				cmd_ctx->lsm->u.enable.channel_name,
-				cmd_ctx->lsm->u.enable.event.type, NULL, NULL,
 				kernel_poll_pipe[1]);
 		break;
 	}

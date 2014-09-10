@@ -60,10 +60,10 @@ enum lttcomm_sessiond_command {
 	LTTNG_CALIBRATE                     = 1,
 	LTTNG_DISABLE_CHANNEL               = 2,
 	LTTNG_DISABLE_EVENT                 = 3,
-	LTTNG_DISABLE_ALL_EVENT             = 4,
+	/* 4 */
 	LTTNG_ENABLE_CHANNEL                = 5,
 	LTTNG_ENABLE_EVENT                  = 6,
-	LTTNG_ENABLE_ALL_EVENT              = 7,
+	/* 7 */
 	/* Session daemon command */
 	LTTNG_CREATE_SESSION                = 8,
 	LTTNG_DESTROY_SESSION               = 9,
