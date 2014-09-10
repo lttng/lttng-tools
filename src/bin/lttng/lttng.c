@@ -444,6 +444,7 @@ static int check_args_no_sessiond(int argc, char **argv)
 static int parse_args(int argc, char **argv)
 {
 	int opt, ret;
+	char *user;
 
 	if (argc < 2) {
 		usage(stderr);
@@ -522,6 +523,14 @@ static int parse_args(int argc, char **argv)
 		goto error;
 	}
 
+	/* For Mathieu Desnoyers a.k.a. Dr. Tracing */
+	user = getenv("USER");
+	if (user != NULL && ((strncmp(progname, "drtrace", 7) == 0 ||
+					strncmp("compudj", user, 7) == 0))) {
+		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);
+	}
+	/* Thanks Mathieu */
+
 	/* 
 	 * Handle leftovers which is a first level command with the trailing
 	 * options.
@@ -568,17 +577,8 @@ error:
 int main(int argc, char *argv[])
 {
 	int ret;
-	char *user;
 
 	progname = argv[0] ? argv[0] : "lttng";
-
-	/* For Mathieu Desnoyers a.k.a. Dr. Tracing */
-	user = getenv("USER");
-	if (user != NULL && ((strncmp(progname, "drtrace", 7) == 0 ||
-				strncmp("compudj", user, 7) == 0))) {
-		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);
-	}
-	/* Thanks Mathieu */
 
 	ret = set_signal_handler();
 	if (ret < 0) {
