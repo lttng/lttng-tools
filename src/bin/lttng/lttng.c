@@ -83,8 +83,6 @@ static struct cmd_struct commands[] =  {
 	{ "snapshot", cmd_snapshot},
 	{ "save", cmd_save},
 	{ "load", cmd_load},
-	{ "enable-consumer", cmd_enable_consumer}, /* OBSOLETE */
-	{ "disable-consumer", cmd_disable_consumer}, /* OBSOLETE */
 	{ NULL, NULL}	/* Array closure */
 };
 
