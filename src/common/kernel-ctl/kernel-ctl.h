@@ -36,6 +36,7 @@ int kernctl_start_session(int fd);
 int kernctl_stop_session(int fd);
 
 int kernctl_tracepoint_list(int fd);
+int kernctl_syscall_list(int fd);
 int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v);
 int kernctl_wait_quiescent(int fd);
 int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);

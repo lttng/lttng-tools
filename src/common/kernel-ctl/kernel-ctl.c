@@ -259,6 +259,11 @@ int kernctl_tracepoint_list(int fd)
 			LTTNG_KERNEL_TRACEPOINT_LIST);
 }
 
+int kernctl_syscall_list(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_SYSCALL_LIST);
+}
+
 int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v)
 {
 	int ret;
