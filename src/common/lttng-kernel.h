@@ -98,7 +98,7 @@ struct lttng_kernel_function {
 } LTTNG_PACKED;
 
 struct lttng_kernel_syscall {
-	char disable;
+	char enable;
 } __attribute__((packed));
 
 #define LTTNG_KERNEL_EVENT_PADDING1    16

@@ -147,7 +147,7 @@ int kernctl_enable_syscall(int fd, const char *syscall_name)
 	strncpy(event.name, syscall_name, sizeof(event.name));
 	event.name[sizeof(event.name) - 1] = '\0';
 	event.instrumentation = LTTNG_KERNEL_SYSCALL;
-	event.u.syscall.disable = 0;
+	event.u.syscall.enable = 1;
 	return ioctl(fd, LTTNG_KERNEL_EVENT, &event);
 }
 
@@ -159,7 +159,7 @@ int kernctl_disable_syscall(int fd, const char *syscall_name)
 	strncpy(event.name, syscall_name, sizeof(event.name));
 	event.name[sizeof(event.name) - 1] = '\0';
 	event.instrumentation = LTTNG_KERNEL_SYSCALL;
-	event.u.syscall.disable = 1;
+	event.u.syscall.enable = 0;
 	return ioctl(fd, LTTNG_KERNEL_EVENT, &event);
 }
 
