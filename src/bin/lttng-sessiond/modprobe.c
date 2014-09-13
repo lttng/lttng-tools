@@ -17,6 +17,7 @@
  */
 
 #define _GNU_SOURCE
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -95,6 +96,7 @@ struct kern_modules_param kern_modules_probes_default[] = {
 /* dynamic probe modules list */
 static struct kern_modules_param *probes;
 static int nr_probes;
+static int probes_capacity;
 
 void modprobe_remove_lttng(const struct kern_modules_param *modules,
 			   int entries, int required)
@@ -122,8 +124,6 @@ void modprobe_remove_lttng(const struct kern_modules_param *modules,
 			DBG("Modprobe removal successful %s",
 					modules[i].name);
 		}
-		if (probes)
-			free(probes[i].name);
 	}
 }
 
@@ -145,14 +145,18 @@ void modprobe_remove_lttng_control(void)
  */
 void modprobe_remove_lttng_data(void)
 {
+	int i;
+
 	if (probes) {
 		modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+
+		for (i = 0; i < nr_probes; ++i) {
+			free(probes[i].name);
+		}
+
 		free(probes);
 		probes = NULL;
-	} else
-		modprobe_remove_lttng(kern_modules_probes_default,
-				      ARRAY_SIZE(kern_modules_probes_default),
-				      LTTNG_MOD_OPTIONAL);
+	}
 }
 
 /*
@@ -274,72 +278,179 @@ int modprobe_lttng_control(void)
 	return ret;
 }
 
-/*
- * Load data kernel module(s).
+/**
+ * Grow global list of probes (double capacity or set it to 1 if
+ * currently 0 and copy existing data).
  */
-int modprobe_lttng_data(void)
+static int grow_probes(void)
 {
-	int i, ret;
-	int entries = ARRAY_SIZE(kern_modules_probes_default);
-	char *list, *next;
+	int i;
+	struct kern_modules_param *tmp_probes;
 
-	/*
-	 * First take command line option, if not available take environment
-	 * variable.
-	 */
-	if (kmod_probes_list) {
-		list = kmod_probes_list;
-	} else {
-		list = utils_get_kmod_probes_list();
-	}
-	/* The default is to load ALL probes */
-	if (!list) {
-		return modprobe_lttng(kern_modules_probes_default, entries,
-				LTTNG_MOD_OPTIONAL);
+	/* Initialize capacity to 1 if 0. */
+	if (probes_capacity == 0) {
+		probes = zmalloc(sizeof(*probes));
+		if (!probes) {
+			PERROR("malloc probe list");
+			return -ENOMEM;
+		}
+
+		probes_capacity = 1;
+		return 0;
 	}
 
-	/*
-	 * A probe list is available, so use it.
-	 * The number of probes is limited by the number of probes in the
-	 * default list.
-	 */
-	probes = zmalloc(sizeof(struct kern_modules_param *) * entries);
-	if (!probes) {
+	/* Double size. */
+	probes_capacity *= 2;
+
+	tmp_probes = zmalloc(sizeof(*tmp_probes) * probes_capacity);
+	if (!tmp_probes) {
 		PERROR("malloc probe list");
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < entries; i++) {
-		size_t name_len;
+	for (i = 0; i < nr_probes; ++i) {
+		/* Move name pointer. */
+		tmp_probes[i].name = probes[i].name;
+	}
 
-		next = strtok(list, ",");
+	/* Replace probes with larger copy. */
+	free(probes);
+	probes = tmp_probes;
+
+	return 0;
+}
+
+/*
+ * Appends a comma-separated list of probes to the global list
+ * of probes.
+ */
+static int append_list_to_probes(const char *list)
+{
+	char *next;
+	int index = nr_probes, ret;
+
+	assert(list);
+
+	char *tmp_list = strdup(list);
+	if (!tmp_list) {
+		PERROR("strdup temp list");
+		return -ENOMEM;
+	}
+
+	for (;;) {
+		size_t name_len;
+		struct kern_modules_param *cur_mod;
+
+		next = strtok(tmp_list, ",");
 		if (!next) {
-			goto out;
+			break;
 		}
-		list = NULL;
+		tmp_list = NULL;
 
 		/* filter leading spaces */
 		while (*next == ' ') {
 			next++;
 		}
 
+		if (probes_capacity <= nr_probes) {
+			ret = grow_probes();
+			if (ret) {
+				return ret;
+			}
+		}
+
 		/* Length 13 is "lttng-probe-" + \0 */
 		name_len = strlen(next) + 13;
 
-		probes[i].name = zmalloc(name_len);
-		if (!probes[i].name) {
+		cur_mod = &probes[index];
+		cur_mod->name = zmalloc(name_len);
+		if (!cur_mod->name) {
 			PERROR("malloc probe list");
 			return -ENOMEM;
 		}
 
-		ret = snprintf(probes[i].name, name_len, "lttng-probe-%s", next);
+		ret = snprintf(cur_mod->name, name_len, "lttng-probe-%s", next);
 		if (ret < 0) {
 			PERROR("snprintf modprobe name");
-			goto out;
+			return -ENOMEM;
+		}
+
+		cur_mod++;
+		nr_probes++;
+	}
+
+	free(tmp_list);
+
+	return 0;
+}
+
+/*
+ * Load data kernel module(s).
+ */
+int modprobe_lttng_data(void)
+{
+	int ret, i;
+	char *list;
+
+	/*
+	 * Base probes: either from command line option, environment
+	 * variable or default list.
+	 */
+	if (kmod_probes_list) {
+		list = kmod_probes_list;
+	} else {
+		list = utils_get_kmod_probes_list();
+	}
+
+	if (list) {
+		/* User-specified probes. */
+		ret = append_list_to_probes(list);
+
+		if (ret) {
+			return ret;
+		}
+	} else {
+		/* Default probes. */
+		int def_len = ARRAY_SIZE(kern_modules_probes_default);
+		probes = zmalloc(sizeof(*probes) * def_len);
+
+		if (!probes) {
+			PERROR("malloc probe list");
+			return -ENOMEM;
+		}
+
+		nr_probes = probes_capacity = def_len;
+
+		for (i = 0; i < def_len; ++i) {
+			char* name = strdup(kern_modules_probes_default[i].name);
+
+			if (!name) {
+				PERROR("strdup probe item");
+				return -ENOMEM;
+			}
+
+			probes[i].name = name;
 		}
 	}
 
-out:
-	nr_probes = i;
+	/*
+	 * Extra modules? Append them to current probes list.
+	 */
+	if (kmod_extra_probes_list) {
+		list = kmod_extra_probes_list;
+	} else {
+		list = utils_get_extra_kmod_probes_list();
+	}
+
+	if (list) {
+		ret = append_list_to_probes(list);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	/*
+	 * Load probes modules now.
+	 */
 	return modprobe_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
 }

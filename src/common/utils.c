@@ -927,12 +927,22 @@ end:
 
 /*
  * Obtain the value of LTTNG_KMOD_PROBES environment variable, if exists.
- * Otherwise returns an empty string.
+ * Otherwise returns NULL.
  */
 LTTNG_HIDDEN
 char *utils_get_kmod_probes_list(void)
 {
 	return getenv(DEFAULT_LTTNG_KMOD_PROBES);
+}
+
+/*
+ * Obtain the value of LTTNG_EXTRA_KMOD_PROBES environment variable, if
+ * exists. Otherwise returns NULL.
+ */
+LTTNG_HIDDEN
+char *utils_get_extra_kmod_probes_list(void)
+{
+	return getenv(DEFAULT_LTTNG_EXTRA_KMOD_PROBES);
 }
 
 /*

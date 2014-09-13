@@ -157,6 +157,7 @@ static const struct option long_options[] = {
 	{ "config", 1, 0, 'f' },
 	{ "load", 1, 0, 'l' },
 	{ "kmod-probes", 1, 0, 'P' },
+	{ "extra-kmod-probes", 1, 0, 'e' },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -4214,6 +4215,7 @@ static void usage(void)
 	fprintf(stderr, "  -f  --config                       Load daemon configuration file\n");
 	fprintf(stderr, "  -l  --load PATH                    Load session configuration\n");
 	fprintf(stderr, "      --kmod-probes                  Specify kernel module probes to load\n");
+	fprintf(stderr, "      --extra-kmod-probes            Specify extra kernel module probes to load\n");
 }
 
 /*
@@ -4396,6 +4398,14 @@ static int set_option(int opt, const char *arg, const char *optname)
 		free(kmod_probes_list);
 		kmod_probes_list = strdup(arg);
 		if (!kmod_probes_list) {
+			perror("strdup");
+			ret = -ENOMEM;
+		}
+		break;
+	case 'e':
+		free(kmod_extra_probes_list);
+		kmod_extra_probes_list = strdup(arg);
+		if (!kmod_extra_probes_list) {
 			perror("strdup");
 			ret = -ENOMEM;
 		}

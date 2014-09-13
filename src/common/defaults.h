@@ -94,6 +94,9 @@
 /* Default probes list */
 #define DEFAULT_LTTNG_KMOD_PROBES		"LTTNG_KMOD_PROBES"
 
+/* Default extra probes list */
+#define DEFAULT_LTTNG_EXTRA_KMOD_PROBES		"LTTNG_EXTRA_KMOD_PROBES"
+
 /* Default unix socket path */
 #define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
 #define DEFAULT_HOME_CLIENT_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
