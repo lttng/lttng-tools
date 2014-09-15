@@ -117,6 +117,8 @@
 #define LTTNG_KERNEL_STREAM			_IO(0xF6, 0x62)
 #define LTTNG_KERNEL_EVENT			\
 	_IOW(0xF6, 0x63, struct lttng_kernel_event)
+#define LTTNG_KERNEL_SYSCALL_MASK		\
+	_IOWR(0xF6, 0x64, struct lttng_kernel_syscall_mask)
 
 /* Event and Channel FD ioctl */
 #define LTTNG_KERNEL_CONTEXT			\

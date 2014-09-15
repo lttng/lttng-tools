@@ -132,6 +132,11 @@ struct lttng_kernel_calibrate {
 	enum lttng_kernel_calibrate_type type;	/* type (input) */
 } LTTNG_PACKED;
 
+struct lttng_kernel_syscall_mask {
+	uint32_t len;
+	char mask[];
+} LTTNG_PACKED;
+
 /*
  * kernel channel
  */
