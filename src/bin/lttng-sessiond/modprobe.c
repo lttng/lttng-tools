@@ -209,8 +209,16 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 
 		ret = kmod_module_probe_insert_module(mod, KMOD_PROBE_IGNORE_LOADED,
 				NULL, NULL, NULL, NULL);
-		if (required && ret < 0) {
-			ERR("Unable to load module %s", modules[i].name);
+		if (ret < 0) {
+			if (required) {
+				ERR("Unable to load required module %s",
+						modules[i].name);
+				goto error;
+			} else {
+				DBG("Unable to load optional module %s; continuing",
+						modules[i].name);
+				ret = 0;
+			}
 		} else {
 			DBG("Modprobe successfully %s", modules[i].name);
 		}
@@ -245,10 +253,25 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 		modprobe[sizeof(modprobe) - 1] = '\0';
 		ret = system(modprobe);
 		if (ret == -1) {
-			ERR("Unable to launch modprobe for module %s",
-					modules[i].name);
-		} else if (required && WEXITSTATUS(ret) != 0) {
-			ERR("Unable to load module %s", modules[i].name);
+			if (required) {
+				ERR("Unable to launch modprobe for required module %s",
+						modules[i].name);
+				goto error;
+			} else {
+				DBG("Unable to launch modprobe for optional module %s; continuing",
+						modules[i].name);
+				ret = 0;
+			}
+		} else if (WEXITSTATUS(ret) != 0) {
+			if (required) {
+				ERR("Unable to load required module %s",
+						modules[i].name);
+				goto error;
+			} else {
+				DBG("Unable to load optional module %s; continuing",
+						modules[i].name);
+				ret = 0;
+			}
 		} else {
 			DBG("Modprobe successfully %s", modules[i].name);
 		}
