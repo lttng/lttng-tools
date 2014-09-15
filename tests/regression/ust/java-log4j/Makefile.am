@@ -1,7 +1,7 @@
-if BUILD_JAVA_AGENT
+if BUILD_JAVA_LOG4J_AGENT
 
-noinst_SCRIPTS = test_java_jul JTestLTTng.java
-EXTRA_DIST = test_java_jul JTestLTTng.java
+noinst_SCRIPTS = test_java_log4j JTestLTTng.java
+EXTRA_DIST = test_java_log4j JTestLTTng.java
 
 if HAVE_JAVA_JDK
 JCC=$(JAVA_JDK)/bin/javac
@@ -9,12 +9,10 @@ else
 JCC=javac
 endif
 
-AGENT_JAR_FILE=$(java_agent_jar_path)
-
 all-local: JTestLTTng.class
 
 %.class: %.java
-	$(JCC) -d "$(builddir)" -cp "$(AGENT_JAR_FILE):." $<
+	$(JCC) -d "$(builddir)" $(JAVACFLAGS) $<
 
 JTestLTTng.class: JTestLTTng.java
 
@@ -33,4 +31,4 @@ clean-local:
 		done; \
 	fi
 
-endif # BUILD_JAVA_AGENT
+endif # BUILD_JAVA_LOG4J_AGENT

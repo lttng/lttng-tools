@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+# Copyright (C) - 2014 David Goulet <dgoulet@efficios.com>
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License, version 2 only, as published by
@@ -15,7 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-TEST_DESC="Java JUL support"
+TEST_DESC="Java LOG4J support"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
@@ -24,10 +24,11 @@ NR_MSEC_WAIT=1000
 TESTAPP_NAME="JTestLTTng"
 TESTAPP_BIN="$TESTAPP_NAME.java"
 TESTAPP_PATH="$CURDIR/$TESTAPP_NAME"
-SESSION_NAME="jul"
-EVENT_NAME="JTestLTTng"
-EVENT_NAME2="JTestLTTng2"
-JAVA_CP="$CURDIR:/usr/local/share/java/liblttng-ust-agent.jar:/usr/share/java/liblttng-ust-agent.jar"
+SESSION_NAME="log4j"
+EVENT_NAME="log4j-event"
+EVENT_NAME2="log4j-event-2"
+JAVA_CP="$CURDIR:/usr/local/share/java/liblttng-ust-agent.jar:/usr/share/java/*"
+OUTPUT_DEST="/dev/null"
 
 NUM_TESTS=155
 
@@ -35,10 +36,10 @@ source $TESTDIR/utils/utils.sh
 
 function run_app
 {
-	local finest_tp=$1
+	local debug_tp=$1
 	local fire_second_tp=$2
 
-	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $finest_tp $fire_second_tp >/dev/null 2>&1
+	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $debug_tp $fire_second_tp >/dev/null 2>&1
 }
 
 function run_app_background
@@ -46,7 +47,7 @@ function run_app_background
 	run_app $@ &
 }
 
-function enable_jul_loglevel_only()
+function enable_log4j_loglevel_only()
 {
 	sess_name=$1
 	event_name="$2"
@@ -60,38 +61,38 @@ function enable_jul_loglevel_only()
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
-	ok $? "Enable JUL event $event_name for session $sess_name with loglevel-only $loglevel"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -l >/dev/null 2>&1
+	ok $? "Enable LOG4J event $event_name for session $sess_name with loglevel-only $loglevel"
 }
 
-function enable_jul_filter()
+function enable_log4j_filter()
 {
 	local sess_name="$1"
 	local event_name="$2"
 	local filter="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -l --filter "$filter" >/dev/null 2>&1
 	ok $? "Enable event $event_name with filter $filter for session $sess_name"
 }
 
-function enable_jul_filter_loglevel_only()
+function enable_log4j_filter_loglevel_only()
 {
 	local sess_name="$1"
 	local event_name="$2"
 	local filter="$3"
 	local loglevel="$4"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -l --filter "$filter" >/dev/null 2>&1
 	ok $? "Enable event $event_name with filter \"$filter\" and loglevel-only $loglevel for session $sess_name"
 }
 
 # MUST set TESTDIR before calling those functions
 
-function test_jul_before_start ()
+function test_log4j_before_start ()
 {
-	diag "Test JUL application BEFORE tracing starts"
+	diag "Test LOG4J application BEFORE tracing starts"
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background
@@ -111,12 +112,12 @@ function test_jul_before_start ()
 	fi
 }
 
-function test_jul_after_start ()
+function test_log4j_after_start ()
 {
-	diag "Test JUL application AFTER tracing starts"
+	diag "Test LOG4J application AFTER tracing starts"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
@@ -132,12 +133,12 @@ function test_jul_after_start ()
 	fi
 }
 
-function test_jul_loglevel ()
+function test_log4j_loglevel ()
 {
-	diag "Test JUL application with loglevel"
+	diag "Test LOG4J application with loglevel"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_INFO"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
@@ -152,10 +153,10 @@ function test_jul_loglevel ()
 		return $?
 	fi
 
-	diag "Test JUL applications with lower loglevel"
+	diag "Test LOG4J applications with lower loglevel"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_SEVERE"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_FATAL"
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
@@ -170,10 +171,10 @@ function test_jul_loglevel ()
 		return $?
 	fi
 
-	diag "Test JUL applications with higher loglevel"
+	diag "Test LOG4J applications with higher loglevel"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_FINER"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_TRACE"
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
@@ -187,13 +188,13 @@ function test_jul_loglevel ()
 	return $?
 }
 
-function test_jul_loglevel_multiple ()
+function test_log4j_loglevel_multiple ()
 {
-	diag "Test JUL application with multiple loglevel"
+	diag "Test LOG4J application with multiple loglevel"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_INFO"
-	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_FINEST"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_DEBUG"
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
@@ -209,8 +210,8 @@ function test_jul_loglevel_multiple ()
 	fi
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_jul_lttng_event_loglevel $SESSION_NAME '*' "JUL_INFO"
-	enable_jul_lttng_event_loglevel $SESSION_NAME '*' "JUL_FINEST"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_INFO"
+	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_DEBUG"
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
@@ -226,16 +227,16 @@ function test_jul_loglevel_multiple ()
 	fi
 }
 
-function test_jul_multi_session_loglevel()
+function test_log4j_multi_session_loglevel()
 {
-	diag "Test JUL with multiple session"
+	diag "Test LOG4J with multiple session"
 
 	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
-	enable_jul_loglevel_only $SESSION_NAME-1 '*' "JUL_INFO"
+	enable_log4j_loglevel_only $SESSION_NAME-1 '*' "LOG4J_INFO"
 	start_lttng_tracing $SESSION_NAME-1
 
 	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
-	enable_jul_loglevel_only $SESSION_NAME-2 '*' "JUL_FINEST"
+	enable_log4j_loglevel_only $SESSION_NAME-2 '*' "LOG4J_DEBUG"
 	start_lttng_tracing $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -252,25 +253,25 @@ function test_jul_multi_session_loglevel()
 		return $?
 	fi
 
-	# Expectin 5 events being the finest TP.
+	# Expectin 5 events being the debug TP.
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
 }
 
-function test_jul_multi_session_disable()
+function test_log4j_multi_session_disable()
 {
-	diag "Test JUL with multiple session with disabled event"
+	diag "Test LOG4J with multiple session with disabled event"
 
 	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
-	enable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	enable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME2
-	disable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME2
+	disable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME-1
 
 	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
-	enable_jul_lttng_event $SESSION_NAME-2 $EVENT_NAME2
+	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -294,17 +295,17 @@ function test_jul_multi_session_disable()
 	fi
 }
 
-function test_jul_multi_session_disable_wildcard()
+function test_log4j_multi_session_disable_wildcard()
 {
-	diag "Test JUL with multiple session with disabled wildcard event"
+	diag "Test LOG4J with multiple session with disabled wildcard event"
 
 	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
-	enable_jul_lttng_event $SESSION_NAME-1 '*'
+	enable_log4j_lttng_event $SESSION_NAME-1 '*'
 
 	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
-	enable_jul_lttng_event $SESSION_NAME-2 '*'
+	enable_log4j_lttng_event $SESSION_NAME-2 '*'
 
-	disable_jul_lttng_event $SESSION_NAME-1 '*'
+	disable_log4j_lttng_event $SESSION_NAME-1 '*'
 
 	start_lttng_tracing $SESSION_NAME-1
 	start_lttng_tracing $SESSION_NAME-2
@@ -329,16 +330,16 @@ function test_jul_multi_session_disable_wildcard()
 	fi
 }
 
-function test_jul_disable_all()
+function test_log4j_disable_all()
 {
-	diag "Test JUL with multiple session with disabled all event"
+	diag "Test LOG4J with multiple session with disabled all event"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
-	enable_jul_lttng_event $SESSION_NAME '*'
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
+	enable_log4j_lttng_event $SESSION_NAME '*'
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
 
-	disable_jul_lttng_event $SESSION_NAME '*'
+	disable_log4j_lttng_event $SESSION_NAME '*'
 
 	start_lttng_tracing $SESSION_NAME
 
@@ -355,16 +356,16 @@ function test_jul_disable_all()
 	fi
 }
 
-function test_jul_multi_session()
+function test_log4j_multi_session()
 {
-	diag "Test JUL with multiple session"
+	diag "Test LOG4J with multiple session"
 
 	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
-	enable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME-1
 
 	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
-	enable_jul_lttng_event $SESSION_NAME-2 $EVENT_NAME2
+	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -388,12 +389,12 @@ function test_jul_multi_session()
 	fi
 }
 
-function test_jul_destroy_session()
+function test_log4j_destroy_session()
 {
-	diag "Test JUL two session with destroy"
+	diag "Test LOG4J two session with destroy"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/first-sess
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
@@ -411,7 +412,7 @@ function test_jul_destroy_session()
 	fi
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/second-sess
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME
 
 	# Wait for the applications started in background
@@ -427,13 +428,13 @@ function test_jul_destroy_session()
 	fi
 }
 
-function test_jul_filtering()
+function test_log4j_filtering()
 {
-	diag "Test JUL filtering"
+	diag "Test LOG4J filtering"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
-	enable_jul_filter $SESSION_NAME '*' 'msg == "JUL second logger fired"'
+	enable_log4j_filter $SESSION_NAME '*' 'msg == "LOG4J second logger fired"'
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -450,11 +451,11 @@ function test_jul_filtering()
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable first Logger but filter msg payload for the INFO one while
-	# triggering the finest and second TP.
-	enable_jul_filter $SESSION_NAME $EVENT_NAME 'msg == "JUL tp fired!"'
+	# triggering the debug and second TP.
+	enable_log4j_filter $SESSION_NAME $EVENT_NAME 'msg == "LOG4J tp fired!"'
 	start_lttng_tracing $SESSION_NAME
 
-	# Run 5 times with a 1 second delay, fire finest and second TP.
+	# Run 5 times with a 1 second delay, fire debug and second TP.
 	run_app 1 1
 
 	stop_lttng_tracing $SESSION_NAME
@@ -467,15 +468,15 @@ function test_jul_filtering()
 	fi
 }
 
-function test_jul_disable()
+function test_log4j_disable()
 {
-	diag "Test JUL disable event"
+	diag "Test LOG4J disable event"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
-	disable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
+	disable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -491,15 +492,15 @@ function test_jul_disable()
 	fi
 }
 
-function test_jul_disable_enable()
+function test_log4j_disable_enable()
 {
-	diag "Test JUL disable event followed by an enable"
+	diag "Test LOG4J disable event followed by an enable"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	disable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
+	disable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -515,19 +516,19 @@ function test_jul_disable_enable()
 	fi
 }
 
-function test_jul_filter_loglevel()
+function test_log4j_filter_loglevel()
 {
 	local BOGUS_EVENT_NAME="not_a_real_event"
 	local FILTER="int_loglevel > 700 || int_loglevel < 700"
 	local ALL_EVENTS="."
 
-	diag "Test JUL a filter with a loglevel"
+	diag "Test LOG4J a filter with a loglevel"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable an event with a filter and the loglevel-only option.
-	enable_jul_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" JUL_CONFIG
-	disable_jul_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
-	enable_jul_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" JUL_CONFIG
+	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
+	disable_log4j_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
+	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -553,25 +554,25 @@ else
 	withapp=1
 fi
 
-skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
+skip $withapp "LOG4J support is needed. Skipping all tests." $NUM_TESTS ||
 {
 	start_lttng_sessiond
 
 	tests=(
-		test_jul_multi_session_disable_wildcard
-		test_jul_multi_session_disable
-		test_jul_disable
-		test_jul_disable_enable
-		test_jul_disable_all
-		test_jul_filtering
-		test_jul_multi_session_loglevel
-		test_jul_destroy_session
-		test_jul_loglevel
-		test_jul_loglevel_multiple
-		test_jul_before_start
-		test_jul_after_start
-		test_jul_multi_session
-		test_jul_filter_loglevel
+		test_log4j_multi_session_disable_wildcard
+		test_log4j_multi_session_disable
+		test_log4j_disable
+		test_log4j_disable_enable
+		test_log4j_disable_all
+		test_log4j_filtering
+		test_log4j_multi_session_loglevel
+		test_log4j_destroy_session
+		test_log4j_loglevel
+		test_log4j_loglevel_multiple
+		test_log4j_before_start
+		test_log4j_after_start
+		test_log4j_multi_session
+		test_log4j_filter_loglevel
 	)
 
 	for fct_test in ${tests[@]};

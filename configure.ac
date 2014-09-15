@@ -343,7 +343,7 @@ AX_CONFIG_FEATURE(
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 # Set compile flags to java include files if given. This is only used to
-# compile JUL tests.
+# compile java agent tests.
 AC_ARG_WITH([java-jdk],
 	[AS_HELP_STRING([--with-java-jdk=DIR],[use the Java JDK in DIR. Ex : $JAVA_HOME.])],
 	[JAVA_JDK=$withval],
@@ -364,20 +364,44 @@ AS_IF([test $JAVA_JDK],[
 	)
 ])
 
-# Check for the UST JUL jar file in the system. Hardcoded path is added here
+# Check for the UST agent jar file in the system. Hardcoded path is added here
 # since we have *no* idea where this could be installed. Note that this is only
-# used for JUL testing.
-AC_MSG_CHECKING(Java JUL UST jar file)
-java_jul_jar_path="/usr/local/lib/lttng/java/liblttng-ust-jul.jar"
-if test -f $java_jul_jar_path; then
-	build_java_jul=yes
+# used for agent testing.
+AC_MSG_CHECKING(Java UST agent jar file)
+java_agent_jar_path="${prefix}/share/java/liblttng-ust-agent.jar"
+if test -f $java_agent_jar_path; then
+	build_java_agent=yes
 	AC_MSG_RESULT(found)
 else
-	build_java_jul=no
+	build_java_agent=no
 	AC_MSG_RESULT(not found)
 fi
-AM_CONDITIONAL([BUILD_JAVA_JUL], [test "x$build_java_jul" = "xyes"])
-AC_SUBST([java_jul_jar_path])
+AM_CONDITIONAL([BUILD_JAVA_AGENT], [test "x$build_java_agent" = "xyes"])
+AC_SUBST([java_agent_jar_path])
+
+# Check for log4j support on the system to know if we can build or not the
+# log4j tests.
+if test "x$build_java_agent" = "xyes"; then
+	AC_MSG_CHECKING(Java agent support for log4j)
+	AX_JAVA_OPTIONS
+	AX_PROG_JAR
+	AX_PROG_JAVA
+	AX_PROG_JAVAC
+
+	# By default, use a commonly used classpath on the system to ease things up
+	# for the Java testing in this directory.
+	LOG4J_CLASSPATH="$java_agent_jar_path:$CLASSPATH:.:/usr/share/java/*"
+	JAVAFLAGS="-cp $LOG4J_CLASSPATH"
+	JAVACFLAGS="$JAVAFLAGS"
+	AX_CHECK_CLASS(org.apache.log4j.Logger)
+
+	if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
+		build_java_log4j_agent=no
+	else
+		build_java_log4j_agent=yes
+	fi
+fi
+AM_CONDITIONAL([BUILD_JAVA_LOG4J_AGENT], [test "x$build_java_log4j_agent" = "xyes"])
 
 AC_SYS_LARGEFILE
 AC_PROG_CC
@@ -472,6 +496,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/fork/Makefile
 	tests/regression/ust/libc-wrapper/Makefile
 	tests/regression/ust/java-jul/Makefile
+	tests/regression/ust/java-log4j/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile
 	tests/unit/ini_config/Makefile
