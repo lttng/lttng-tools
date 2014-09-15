@@ -750,7 +750,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	struct agent_event *aevent;
 	struct ltt_ust_event *uevent = NULL;
 	struct ltt_ust_channel *uchan = NULL;
-	const char *ust_event_name;
+	const char *ust_event_name, *ust_channel_name;
 
 	assert(agt);
 	assert(usess);
@@ -769,12 +769,21 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 		goto end;
 	}
 
+	if (agt->domain == LTTNG_DOMAIN_JUL) {
+		ust_channel_name = DEFAULT_JUL_CHANNEL_NAME;
+	} else if (agt->domain == LTTNG_DOMAIN_LOG4J) {
+		ust_channel_name = DEFAULT_LOG4J_CHANNEL_NAME;
+	} else {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
 	/*
 	 * Disable it on the UST side. First get the channel reference then find
 	 * the event and finally disable it.
 	 */
 	uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-			DEFAULT_JUL_CHANNEL_NAME);
+			(char *) ust_channel_name);
 	if (!uchan) {
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;
