@@ -44,6 +44,20 @@ int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);
 int kernctl_enable_syscall(int fd, const char *syscall_name);
 int kernctl_disable_syscall(int fd, const char *syscall_name);
 
+/*
+ * kernctl_syscall_mask - Get syscall mask associated to a channel FD.
+ *
+ * The parameter @syscall_mask should initially be either NULL or point
+ * to memory allocated with malloc(3) or realloc(3). When the function
+ * returns, it will point to a memory area of the size required for the
+ * bitmask (using realloc(3) to resize the memory).
+ *
+ * It returns 0 if OK, -1 on error. In all cases (error and OK),
+ * @syscall_mask should be freed by the caller with free(3).
+ */
+int kernctl_syscall_mask(int fd, char **syscall_mask,
+		uint32_t *nr_bits);
+
 /* Buffer operations */
 
 /* For mmap mode, readable without "get" operation */

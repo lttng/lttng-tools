@@ -133,7 +133,7 @@ struct lttng_kernel_calibrate {
 } LTTNG_PACKED;
 
 struct lttng_kernel_syscall_mask {
-	uint32_t len;
+	uint32_t len;	/* in bits */
 	char mask[];
 } LTTNG_PACKED;
 
