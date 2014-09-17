@@ -5,7 +5,7 @@ STREAMING
 
 This is a brief howto for network streaming feature of lttng 2.0 toolchain.
 
-See the README file for installation procedure or use the various Linux
+See the README.md file for installation procedure or use the various Linux
 distribution packages.
 
 Terminology:
