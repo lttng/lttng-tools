@@ -13,7 +13,7 @@ This is a quick start guide for the complete LTTng tool chain. This is divided
 in three sections respectively kernel tracing, user-space tracing and reading a
 trace.
 
-See the README file for installation procedure or use the various Linux
+See the README.md file for installation procedure or use the various Linux
 distribution packages.
 
 In order to trace the kernel, you'll need the lttng-modules 2.0 compiled and
