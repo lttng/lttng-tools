@@ -1277,7 +1277,6 @@ static int list_sessions(const char *session_name)
 				MSG("%sTrace path: %s", indent4, sessions[i].path);
 				MSG("%sLive timer interval (usec): %u\n", indent4,
 						sessions[i].live_timer_interval);
-				break;
 			}
 		}
 
