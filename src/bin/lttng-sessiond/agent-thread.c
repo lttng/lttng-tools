@@ -198,6 +198,7 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 {
 	int ret;
 	pid_t pid;
+	uint32_t major_version, minor_version;
 	ssize_t size;
 	enum lttng_domain_type domain;
 	struct agent_app *app;
@@ -219,6 +220,18 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 	}
 	domain = be32toh(msg.domain);
 	pid = be32toh(msg.pid);
+	major_version = be32toh(msg.major_version);
+	minor_version = be32toh(msg.minor_version);
+
+	/* Test communication protocol version of the registring agent. */
+	if (major_version != AGENT_MAJOR_VERSION) {
+		ret = -EINVAL;
+		goto error_socket;
+	}
+	if (minor_version != AGENT_MINOR_VERSION) {
+		ret = -EINVAL;
+		goto error_socket;
+	}
 
 	DBG2("[agent-thread] New registration for pid %d domain %d on socket %d",
 			pid, domain, new_sock->fd);

@@ -24,6 +24,10 @@
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
 
+/* Agent protocol version that is verified during the agent registration. */
+#define AGENT_MAJOR_VERSION		1
+#define AGENT_MINOR_VERSION		0
+
 /*
  * Hash table that contains the agent app created upon registration indexed by
  * socket.
@@ -43,6 +47,8 @@ struct agent_register_msg {
 	/* This maps to a lttng_domain_type. */
 	uint32_t domain;
 	uint32_t pid;
+	uint32_t major_version;
+	uint32_t minor_version;
 };
 
 /*
