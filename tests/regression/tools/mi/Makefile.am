@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(srcdir)/include
+AM_CPPFLAGS = -I$(top_srcdir)/include
 
 noinst_PROGRAMS = validate_xml extract_xml
 validate_xml_SOURCES = validate_xml.c
