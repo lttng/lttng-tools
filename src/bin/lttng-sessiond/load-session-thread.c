@@ -51,7 +51,7 @@ void load_session_destroy_data(struct load_session_thread_data *data)
 int load_session_init_data(struct load_session_thread_data **data)
 {
 	int ret;
-	struct load_session_thread_data *_data;
+	struct load_session_thread_data *_data = NULL;
 
 	assert(data);
 
@@ -75,6 +75,7 @@ int load_session_init_data(struct load_session_thread_data **data)
 	return 0;
 
 error:
+	free(_data);
 	return -1;
 }
 
