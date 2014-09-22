@@ -2450,6 +2450,8 @@ static int create_channel_per_uid(struct ust_app *app,
 		/* Create the buffer registry channel object. */
 		ret = create_buffer_reg_channel(reg_uid->registry, ua_chan, &reg_chan);
 		if (ret < 0) {
+			ERR("Error creating the UST channel \"%s\" registry instance",
+				ua_chan->name);
 			goto error;
 		}
 		assert(reg_chan);
@@ -2461,6 +2463,9 @@ static int create_channel_per_uid(struct ust_app *app,
 		ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
 				app->bits_per_long, reg_uid->registry->reg.ust);
 		if (ret < 0) {
+			ERR("Error creating UST channel \"%s\" on the consumer daemon",
+				ua_chan->name);
+
 			/*
 			 * Let's remove the previously created buffer registry channel so
 			 * it's not visible anymore in the session registry.
@@ -2477,6 +2482,8 @@ static int create_channel_per_uid(struct ust_app *app,
 		 */
 		ret = setup_buffer_reg_channel(reg_uid->registry, ua_chan, reg_chan);
 		if (ret < 0) {
+			ERR("Error setting up UST channel \"%s\"",
+				ua_chan->name);
 			goto error;
 		}
 
@@ -2485,6 +2492,10 @@ static int create_channel_per_uid(struct ust_app *app,
 	/* Send buffers to the application. */
 	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
 	if (ret < 0) {
+		/*
+		 * Don't report error to the console, since it may be
+		 * caused by application concurrently exiting.
+		 */
 		goto error;
 	}
 
@@ -2519,6 +2530,8 @@ static int create_channel_per_pid(struct ust_app *app,
 	/* Create and add a new channel registry to session. */
 	ret = ust_registry_channel_add(registry, ua_chan->key);
 	if (ret < 0) {
+		ERR("Error creating the UST channel \"%s\" registry instance",
+			ua_chan->name);
 		goto error;
 	}
 
@@ -2526,11 +2539,17 @@ static int create_channel_per_pid(struct ust_app *app,
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
 			app->bits_per_long, registry);
 	if (ret < 0) {
+		ERR("Error creating UST channel \"%s\" on the consumer daemon",
+			ua_chan->name);
 		goto error;
 	}
 
 	ret = send_channel_pid_to_ust(app, ua_sess, ua_chan);
 	if (ret < 0) {
+		/*
+		 * Don't report error to the console, since it may be
+		 * caused by application concurrently exiting.
+		 */
 		goto error;
 	}
 
