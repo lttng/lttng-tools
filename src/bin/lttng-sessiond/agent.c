@@ -769,6 +769,7 @@ struct agent *agent_create(enum lttng_domain_type domain)
 	ret = agent_init(agt);
 	if (ret < 0) {
 		free(agt);
+		agt = NULL;
 		goto error;
 	}
 
