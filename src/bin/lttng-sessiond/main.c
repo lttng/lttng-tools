@@ -70,6 +70,7 @@
 #include "agent-thread.h"
 #include "save.h"
 #include "load-session-thread.h"
+#include "syscall.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -642,6 +643,7 @@ static void cleanup(void)
 		}
 		DBG("Unloading kernel modules");
 		modprobe_remove_lttng_all();
+		free(syscall_table);
 	}
 
 	close_consumer_sockets();
@@ -2826,6 +2828,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_DOMAINS:
 	case LTTNG_LIST_CHANNELS:
 	case LTTNG_LIST_EVENTS:
+	case LTTNG_LIST_SYSCALLS:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -2844,6 +2847,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
+	case LTTNG_LIST_SYSCALLS:
 	case LTTNG_LIST_TRACEPOINT_FIELDS:
 	case LTTNG_SAVE_SESSION:
 		need_tracing_session = 0;
@@ -3304,6 +3308,37 @@ skip_domain:
 				sizeof(struct lttng_event_field) * nb_fields);
 
 		free(fields);
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_LIST_SYSCALLS:
+	{
+		struct lttng_event *events;
+		ssize_t nb_events;
+
+		nb_events = cmd_list_syscalls(&events);
+		if (nb_events < 0) {
+			/* Return value is a negative lttng_error_code. */
+			ret = -nb_events;
+			goto error;
+		}
+
+		/*
+		 * Setup lttng message with payload size set to the event list size in
+		 * bytes and then copy list into the llm payload.
+		 */
+		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event) * nb_events);
+		if (ret < 0) {
+			free(events);
+			goto setup_error;
+		}
+
+		/* Copy event list into message payload */
+		memcpy(cmd_ctx->llm->payload, events,
+				sizeof(struct lttng_event) * nb_events);
+
+		free(events);
 
 		ret = LTTNG_OK;
 		break;
@@ -5195,6 +5230,11 @@ int main(int argc, char **argv)
 		/* Setup kernel tracer */
 		if (!opt_no_kernel) {
 			init_kernel_tracer();
+			ret = syscall_init_table();
+			if (ret < 0) {
+				ERR("Unable to populate syscall table. Syscall tracing won't"
+						" work for this session daemon.");
+			}
 		}
 
 		/* Set ulimit for open files */

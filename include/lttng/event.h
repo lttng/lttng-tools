@@ -133,6 +133,11 @@ enum lttng_event_field_type {
 	LTTNG_EVENT_FIELD_STRING              = 4,
 };
 
+enum lttng_event_flag {
+	LTTNG_EVENT_FLAG_SYSCALL_32           = (1U << 0),
+	LTTNG_EVENT_FLAG_SYSCALL_64           = (1U << 1),
+};
+
 /*
  * Perf counter attributes
  *
@@ -198,7 +203,7 @@ struct lttng_event_function_attr {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_EVENT_PADDING1               14
+#define LTTNG_EVENT_PADDING1               10
 #define LTTNG_EVENT_PADDING2               LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event {
 	enum lttng_event_type type;
@@ -211,6 +216,9 @@ struct lttng_event {
 	pid_t pid;
 	unsigned char filter;	/* filter enabled ? */
 	unsigned char exclusion; /* exclusions added ? */
+
+	/* Event flag, from 2.6 and above. */
+	enum lttng_event_flag flags;
 
 	char padding[LTTNG_EVENT_PADDING1];
 
@@ -265,6 +273,15 @@ extern int lttng_list_tracepoints(struct lttng_handle *handle,
  */
 extern int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 		struct lttng_event_field **fields);
+
+/*
+ * List the available kernel syscall.
+ *
+ * Return the size (number of entries) of the allocated "lttng_event" array.
+ * All events in will be of type syscall. Caller must free events. On error a
+ * negative LTTng error code is returned.
+ */
+extern int lttng_list_syscalls(struct lttng_event **events);
 
 /*
  * Add context to event(s) for a specific channel (or for all).

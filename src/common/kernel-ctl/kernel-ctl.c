@@ -188,6 +188,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 	}
 
 	array_alloc_len = ALIGN(kmask_len.len, 8) >> 3;
+
 	kmask = zmalloc(sizeof(*kmask) + array_alloc_len);
 	if (!kmask) {
 		ret = -1;
@@ -200,7 +201,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 		goto end;
 	}
 
-	new_mask = realloc(syscall_mask, array_alloc_len);
+	new_mask = realloc(*syscall_mask, array_alloc_len);
 	if (!new_mask) {
 		ret = -1;
 		goto end;

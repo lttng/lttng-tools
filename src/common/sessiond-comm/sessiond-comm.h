@@ -60,7 +60,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_CALIBRATE                     = 1,
 	LTTNG_DISABLE_CHANNEL               = 2,
 	LTTNG_DISABLE_EVENT                 = 3,
-	/* 4 */
+	LTTNG_LIST_SYSCALLS                 = 4,
 	LTTNG_ENABLE_CHANNEL                = 5,
 	LTTNG_ENABLE_EVENT                  = 6,
 	/* 7 */

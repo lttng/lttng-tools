@@ -1324,6 +1324,35 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 }
 
 /*
+ *  Lists all available kernel system calls. Allocates and sets the contents of
+ *  the events array.
+ *
+ *  Returns the number of lttng_event entries in events; on error, returns a
+ *  negative value.
+ */
+int lttng_list_syscalls(struct lttng_event **events)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+
+	if (!events) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_LIST_SYSCALLS;
+	/* Force kernel domain for system calls. */
+	lsm.domain.type = LTTNG_DOMAIN_KERNEL;
+
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) events);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return ret / sizeof(struct lttng_event);
+}
+
+/*
  *  Returns a human readable string describing
  *  the error code (a negative value).
  */

@@ -35,6 +35,7 @@
 #include "kernel-consumer.h"
 #include "lttng-sessiond.h"
 #include "utils.h"
+#include "syscall.h"
 
 #include "cmd.h"
 
@@ -360,7 +361,8 @@ static int list_lttng_kernel_events(char *channel_name,
 	DBG("Listing events for channel %s", kchan->channel->name);
 
 	if (nb_event == 0) {
-		goto end;
+		*events = NULL;
+		goto syscall;
 	}
 
 	*events = zmalloc(nb_event * sizeof(struct lttng_event));
@@ -407,7 +409,19 @@ static int list_lttng_kernel_events(char *channel_name,
 		i++;
 	}
 
-end:
+syscall:
+	if (syscall_table) {
+		ssize_t new_size;
+
+		new_size = syscall_list_channel(kchan, events, nb_event);
+		if (new_size < 0) {
+			free(events);
+			ret = -new_size;
+			goto error;
+		}
+		nb_event = new_size;
+	}
+
 	return nb_event;
 
 error:
@@ -1785,6 +1799,11 @@ ssize_t cmd_list_tracepoint_fields(int domain,
 error:
 	/* Return negative value to differentiate return code */
 	return -ret;
+}
+
+ssize_t cmd_list_syscalls(struct lttng_event **events)
+{
+	return syscall_table_list(events);
 }
 
 /*

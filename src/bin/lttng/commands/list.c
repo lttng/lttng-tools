@@ -34,6 +34,7 @@ static int opt_log4j;
 static char *opt_channel;
 static int opt_domain;
 static int opt_fields;
+static int opt_syscall;
 #if 0
 /* Not implemented yet */
 static char *opt_cmd_name;
@@ -69,6 +70,7 @@ static struct poptOption long_options[] = {
 	{"channel",   'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
 	{"domain",    'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
 	{"fields",    'f', POPT_ARG_VAL, &opt_fields, 1, 0, 0},
+	{"syscall",   'S', POPT_ARG_VAL, &opt_syscall, 1, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -91,6 +93,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
 	fprintf(ofp, "  -j, --jul               Apply for Java application using JUL\n");
 	fprintf(ofp, "  -f, --fields            List event fields.\n");
+	fprintf(ofp, "      --syscall           List available system calls.\n");
 #if 0
 	fprintf(ofp, "  -p, --pid PID           List user-space events by PID\n");
 #endif
@@ -202,6 +205,21 @@ static const char *logleveltype_string(enum lttng_loglevel_type value)
 	}
 }
 
+static const char *bitness_event(enum lttng_event_flag flags)
+{
+	if (flags & LTTNG_EVENT_FLAG_SYSCALL_32) {
+		if (flags & LTTNG_EVENT_FLAG_SYSCALL_64) {
+			return " [32/64-bit]";
+		} else {
+			return " [32-bit]";
+		}
+	} else if (flags & LTTNG_EVENT_FLAG_SYSCALL_64) {
+		return " [64-bit]";
+	} else {
+		return "";
+	}
+}
+
 /*
  * Pretty print single event.
  */
@@ -259,9 +277,10 @@ static void print_events(struct lttng_event *event)
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%ssyscalls (type: syscall)%s%s", indent6,
+		MSG("%s%s%s%s%s", indent6, event->name,
+				(opt_syscall ? "" : " (type:syscall)"),
 				enabled_string(event->enabled),
-				filter_string(event->filter));
+				bitness_event(event->flags));
 		break;
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s%s", indent6,
@@ -829,6 +848,79 @@ end:
 
 error:
 	lttng_destroy_handle(handle);
+	return ret;
+}
+
+/*
+ * Machine interface
+ * Print a list of system calls.
+ */
+static int mi_list_syscalls(struct lttng_event *events, int count)
+{
+	int ret, i;
+
+	/* Open events */
+	ret = mi_lttng_events_open(writer);
+	if (ret) {
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		ret = mi_lttng_event(writer, &events[i], 0);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close events. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Ask for kernel system calls.
+ */
+static int list_syscalls(void)
+{
+	int i, size, ret = CMD_SUCCESS;
+	struct lttng_event *event_list;
+
+	DBG("Getting kernel system call events");
+
+	size = lttng_list_syscalls(&event_list);
+	if (size < 0) {
+		ERR("Unable to list system calls: %s", lttng_strerror(size));
+		ret = CMD_ERROR;
+		goto error;
+	}
+
+	if (lttng_opt_mi) {
+		/* Mi print */
+		ret = mi_list_syscalls(event_list, size);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	} else {
+		MSG("System calls:\n-------------");
+
+		for (i = 0; i < size; i++) {
+			print_events(&event_list[i]);
+		}
+
+		MSG("");
+	}
+
+end:
+	free(event_list);
+	return ret;
+
+error:
 	return ret;
 }
 
@@ -1468,6 +1560,12 @@ int cmd_list(int argc, const char **argv)
 		domain.type = LTTNG_DOMAIN_LOG4J;
 	}
 
+	if (!opt_kernel && opt_syscall) {
+		WARN("--syscall will only work with the Kernel domain (-k)");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
 	if (opt_kernel || opt_userspace || opt_jul || opt_log4j) {
 		handle = lttng_create_handle(session_name, &domain);
 		if (handle == NULL) {
@@ -1484,9 +1582,16 @@ int cmd_list(int argc, const char **argv)
 			}
 		}
 		if (opt_kernel) {
-			ret = list_kernel_events();
-			if (ret) {
-				goto end;
+			if (opt_syscall) {
+				ret = list_syscalls();
+				if (ret) {
+					goto end;
+				}
+			} else {
+				ret = list_kernel_events();
+				if (ret) {
+					goto end;
+				}
 			}
 		}
 		if (opt_userspace) {

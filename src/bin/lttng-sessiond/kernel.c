@@ -32,6 +32,7 @@
 #include "kernel.h"
 #include "kernel-consumer.h"
 #include "kern-modules.h"
+#include "utils.h"
 
 /*
  * Add context on a kernel channel.
@@ -942,4 +943,18 @@ error:
 
 	rcu_read_unlock();
 	return ret;
+}
+
+/*
+ * Get the syscall mask array from the kernel tracer.
+ *
+ * Return 0 on success else a negative value. In both case, syscall_mask should
+ * be freed.
+ */
+int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
+{
+	assert(syscall_mask);
+	assert(nr_bits);
+
+	return kernctl_syscall_mask(chan_fd, syscall_mask, nr_bits);
 }
