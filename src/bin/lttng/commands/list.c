@@ -110,7 +110,7 @@ static void usage(FILE *ofp)
 static char *get_cmdline_by_pid(pid_t pid)
 {
 	int ret;
-	FILE *fp;
+	FILE *fp = NULL;
 	char *cmdline = NULL;
 	char path[20];	/* Can't go bigger than /proc/65535/cmdline */
 
@@ -130,9 +130,11 @@ static char *get_cmdline_by_pid(pid_t pid)
 	if (ret < 0) {
 		perror("fread proc list");
 	}
-	fclose(fp);
 
 end:
+	if (fp) {
+		fclose(fp);
+	}
 	return cmdline;
 }
 
