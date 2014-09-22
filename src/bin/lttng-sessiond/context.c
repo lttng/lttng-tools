@@ -198,7 +198,8 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER;
 		break;
 	default:
-		return LTTNG_ERR_KERN_CONTEXT_FAIL;
+		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
+		goto error;
 	}
 
 	kctx->ctx.u.perf_counter.type = ctx->u.perf_counter.type;
@@ -226,9 +227,12 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 		}
 	}
 
-	ret = LTTNG_OK;
+	return LTTNG_OK;
 
 error:
+	if (kctx) {
+		trace_kernel_destroy_context(kctx);
+	}
 	return ret;
 }
 
