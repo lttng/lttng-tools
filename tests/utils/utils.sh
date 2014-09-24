@@ -102,6 +102,85 @@ function lttng_enable_kernel_event
 	ok $? "Enable kernel event $event_name for session $sess_name"
 }
 
+function lttng_enable_kernel_syscall()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+	local syscall_name=$3
+	local channel_name=$4
+
+	if [ -z $syscall_name ]; then
+		# Enable all event if no syscall name specified
+		syscall_name="-a"
+	fi
+
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --syscall "$syscall_name" $chan -s $sess_name -k >$OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Enable kernel syscall $syscall_name for session $sess_name on channel $channel_name fail as expected"
+	else
+		ok $ret "Enable kernel syscall $syscall_name for session $sess_name on channel $channel_name"
+	fi
+}
+
+function lttng_enable_kernel_syscall_ok()
+{
+	lttng_enable_kernel_syscall 0 ${*}
+}
+
+function lttng_enable_kernel_syscall_fail()
+{
+	lttng_enable_kernel_syscall 1 ${*}
+}
+
+function lttng_disable_kernel_syscall()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+	local syscall_name=$3
+	local channel_name=$4
+
+	if [ -z $syscall_name ]; then
+		# Enable all event if no syscall name specified
+		syscall_name="-a"
+	fi
+
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event --syscall "$syscall_name" $chan -s $sess_name -k >$OUTPUT_DEST
+
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Disable kernel syscall $syscall_name for session $sess_name on channel $channel_name fail as expected"
+	else
+		ok $ret "Disable kernel syscall $syscall_name for session $sess_name on channel $channel_name"
+	fi
+}
+
+function lttng_disable_kernel_syscall_ok()
+{
+	lttng_disable_kernel_syscall 0 ${*}
+}
+
+function lttng_disable_kernel_syscall_fail()
+{
+	lttng_disable_kernel_syscall 1 ${*}
+}
+
 function start_lttng_relayd
 {
 	local opt=$1
@@ -626,5 +705,65 @@ function validate_trace
 	done
 	ret=$?
 	IFS=$OLDIFS
+	return $ret
+}
+
+function validate_trace_exp()
+{
+	local event_exp=$1
+	local trace_path=$2
+
+	which $BABELTRACE_BIN >/dev/null
+	skip $? -ne 0 "Babeltrace binary not found. Skipping trace validation"
+
+	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep ${event_exp} | wc -l)
+	if [ "$traced" -ne 0 ]; then
+		pass "Validate trace for expression '${event_exp}', $traced events"
+	else
+		fail "Validate trace for expression '${event_exp}'"
+		diag "Found $traced occurences of '${event_exp}'"
+	fi
+	ret=$?
+	return $ret
+}
+
+function validate_trace_only_exp()
+{
+	local event_exp=$1
+	local trace_path=$2
+
+	which $BABELTRACE_BIN >/dev/null
+	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+
+	local count=$($BABELTRACE_BIN $trace_path | grep ${event_exp} | wc -l)
+	local total=$($BABELTRACE_BIN $trace_path | wc -l)
+
+	if [ "$count" -ne 0 ] && [ "$total" -eq "$count" ]; then
+		pass "Trace match with $total for expression '${event_exp}"
+	else
+		fail "Trace match"
+		diag "$total syscall event(s) found, only syscalls matching expression '${event_exp}' ($count occurrences) are expected"
+	fi
+	ret=$?
+	return $ret
+}
+
+function validate_trace_empty()
+{
+	local trace_path=$1
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -ne 0 ]; then
+	    skip 0 "Babeltrace binary not found. Skipping trace validation"
+	fi
+
+	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | wc -l)
+	if [ "$traced" -eq 0 ]; then
+		pass "Validate empty trace"
+	else
+		fail "Validate empty trace"
+		diag "Found $traced events in trace"
+	fi
+	ret=$?
 	return $ret
 }

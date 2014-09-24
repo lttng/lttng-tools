@@ -1,0 +1,451 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Kernel tracer - System calls"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+NUM_TESTS=124
+
+# test command issues at least open and close system calls
+TESTCMD="cat /proc/cpuinfo > /dev/null"
+
+source $TESTDIR/utils/utils.sh
+
+function test_syscall_single()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_single"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
+
+	start_lttng_tracing
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure each is there.
+	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+
+	# ensure trace only contains those.
+	validate_trace_only_exp "-e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_two()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_two"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "close"
+
+	start_lttng_tracing
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure each is there.
+	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+
+	# ensure trace only contains those.
+	validate_trace_only_exp "-e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open -e syscall_entry_close -e compat_syscall_entry_close -e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_all()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_all"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable all syscalls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+
+	start_lttng_tracing
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure at least open and close are there.
+	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	# trace may contain other syscalls.
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_all_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_all_disable_one"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable all syscalls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# disable open system call
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
+
+	start_lttng_tracing
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure "open" syscall is not there.
+	validate_trace_only_exp "-v -e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+
+	# ensure "close" syscall is there.
+	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_all_disable_two()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_all_disable_two"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable all syscalls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# disable open system call
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure "open" and "close" syscalls are not there.
+	validate_trace_only_exp "-v -e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open -e syscall_entry_close -e compat_syscall_entry_close -e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+
+	# ensure "execve" syscall is there.
+	validate_trace_exp "-e syscall_entry_execve -e compat_syscall_entry_execve" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_execve -e compat_syscall_exit_execve" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_all_disable_all()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_all_disable_all"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable all system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# disable all system calls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure nothing has been traced.
+	validate_trace_empty $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_all_disable_all_enable_all()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_all_disable_all_enable_all"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable all system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# disable all system calls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+	# enable all system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure at least open and close are there.
+	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	# trace may contain other syscalls.
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_all_disable_all_twice()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_all_disable_all_twice"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable all system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# disable all system calls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+	# enable all system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# disable all system calls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure nothing has been traced.
+	validate_trace_empty $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_one_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_one_disable_one"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable open system call
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
+	# disable open system call
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure nothing has been traced.
+	validate_trace_empty $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_two_disable_two()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_two_disable_two"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable open and close system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "close"
+	# disable open and close system calls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure nothing has been traced.
+	validate_trace_empty $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_two_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_two_disable_one"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	# enable open and close system calls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "close"
+	# disable close system call
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
+
+	start_lttng_tracing
+	# generates open, close, execve (at least)
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure open is there.
+	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+
+	# ensure trace only contains those.
+	validate_trace_only_exp "-e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_disable_twice()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_disable_twice"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
+	# First disable will succeed
+	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
+	# Second disable will fail
+	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_disable_all_twice()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_disable_all_twice"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# First disable will succeed
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+	# Second disable will fail
+	lttng_disable_kernel_syscall_fail $SESSION_NAME
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+
+function test_syscall_enable_unknown()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_unknown"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_fail $SESSION_NAME "thissyscallcannotexist"
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_all_enable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_all_enable_one"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	# Enabling an event already enabled fails.
+	lttng_enable_kernel_syscall_fail $SESSION_NAME "open"
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_disable_all_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_all_enable_one"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+	# Disabling an event already disabled fails.
+	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_sessiond
+
+	test_syscall_single
+	test_syscall_two
+	test_syscall_all
+	test_syscall_all_disable_one
+	test_syscall_all_disable_two
+	test_syscall_enable_all_disable_all
+	test_syscall_enable_all_disable_all_enable_all
+	test_syscall_enable_all_disable_all_twice
+	test_syscall_enable_one_disable_one
+	test_syscall_enable_two_disable_two
+	test_syscall_enable_two_disable_one
+	test_syscall_disable_twice
+	test_syscall_disable_all_twice
+	test_syscall_enable_unknown
+	test_syscall_enable_all_enable_one
+	test_syscall_disable_all_disable_one
+
+	stop_lttng_sessiond
+}
