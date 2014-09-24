@@ -20,7 +20,7 @@ TEST_DESC="Kernel tracer - System calls"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=124
+NUM_TESTS=132
 
 # test command issues at least open and close system calls
 TESTCMD="cat /proc/cpuinfo > /dev/null"
@@ -415,6 +415,38 @@ function test_syscall_disable_all_disable_one()
 	rm -rf $TRACE_PATH
 }
 
+function test_syscall_enable_channel_disable_all()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_channel_disable_all"
+	CHANNEL_NAME="channel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_channel_ok $SESSION_NAME $CHANNEL_NAME
+	lttng_disable_kernel_syscall_fail $SESSION_NAME "-a" $CHANNEL_NAME
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_enable_channel_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_channel_disable_all"
+	CHANNEL_NAME="channel"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_channel_ok $SESSION_NAME $CHANNEL_NAME
+	lttng_disable_kernel_syscall_fail $SESSION_NAME "open" $CHANNEL_NAME
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
@@ -446,6 +478,8 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	test_syscall_enable_unknown
 	test_syscall_enable_all_enable_one
 	test_syscall_disable_all_disable_one
+	test_syscall_enable_channel_disable_all
+	test_syscall_enable_channel_disable_one
 
 	stop_lttng_sessiond
 }

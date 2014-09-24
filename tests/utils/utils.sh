@@ -181,6 +181,58 @@ function lttng_disable_kernel_syscall_fail()
 	lttng_disable_kernel_syscall 1 ${*}
 }
 
+function lttng_enable_kernel_channel()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+	local channel_name=$3
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -k $channel_name -s $sess_name >$OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected failure on kernel channel creation $channel_name in $sess_name"
+	else
+		ok $ret "Enable channel $channel_name for session $sess_name"
+	fi
+}
+
+function lttng_enable_kernel_channel_ok()
+{
+	lttng_enable_kernel_channel 0 ${*}
+}
+
+function lttng_enable_kernel_channel_fail()
+{
+	lttng_enable_kernel_channel 1 ${*}
+}
+
+function lttng_disable_kernel_channel()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+	local channel_name=$3
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-channel -k $channel_name -s $sess_name >$OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected failure on kernel channel creation $channel_name in $sess_name"
+	else
+		ok $ret "disable channel $channel_name for session $sess_name"
+	fi
+}
+
+function lttng_disable_kernel_channel_ok()
+{
+	lttng_disable_kernel_channel 0 ${*}
+}
+
+function lttng_disable_kernel_channel_fail()
+{
+	lttng_disable_kernel_channel 1 ${*}
+}
+
 function start_lttng_relayd
 {
 	local opt=$1
