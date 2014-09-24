@@ -1070,6 +1070,9 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_disable_syscall(kchan, event_name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 			break;
 		default:
 			ret = LTTNG_ERR_UNK;
@@ -1178,9 +1181,6 @@ int disable_kevent_all(struct ltt_session *session, int domain,
 		struct lttng_event *event)
 {
 	int ret;
-	char *event_name;
-
-	event_name = event->name;
 
 	rcu_read_lock();
 
@@ -1216,7 +1216,10 @@ int disable_kevent_all(struct ltt_session *session, int domain,
 			}
 			break;
 		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_disable_syscall(kchan, event_name);
+			ret = event_kernel_disable_syscall(kchan, "");
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 			break;
 		default:
 			ret = LTTNG_ERR_UNK;
@@ -1457,6 +1460,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 			break;
 		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_enable_syscall(kchan, event->name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 			break;
 		default:
 			ret = LTTNG_ERR_UNK;
@@ -1663,6 +1669,9 @@ int enable_kevent_all(struct ltt_session *session,
 		switch (event->type) {
 		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_enable_syscall(kchan, "");
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 			break;
 		case LTTNG_EVENT_TRACEPOINT:
 			/*
