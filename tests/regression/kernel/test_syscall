@@ -41,11 +41,11 @@ function test_syscall_single()
 	stop_lttng_tracing
 
 	# ensure each is there.
-	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
 	# ensure trace only contains those.
-	validate_trace_only_exp "-e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_only_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
 	destroy_lttng_session $SESSION_NAME
 
@@ -67,13 +67,13 @@ function test_syscall_two()
 	stop_lttng_tracing
 
 	# ensure each is there.
-	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
 	# ensure trace only contains those.
-	validate_trace_only_exp "-e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open -e syscall_entry_close -e compat_syscall_entry_close -e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	validate_trace_only_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open: -e syscall_entry_close: -e compat_syscall_entry_close: -e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
 	destroy_lttng_session $SESSION_NAME
 
@@ -95,10 +95,10 @@ function test_syscall_all()
 	stop_lttng_tracing
 
 	# ensure at least open and close are there.
-	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 	# trace may contain other syscalls.
 
 	destroy_lttng_session $SESSION_NAME
@@ -123,11 +123,11 @@ function test_syscall_all_disable_one()
 	stop_lttng_tracing
 
 	# ensure "open" syscall is not there.
-	validate_trace_only_exp "-v -e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_only_exp "-v -e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
 	# ensure "close" syscall is there.
-	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
 	destroy_lttng_session $SESSION_NAME
 
@@ -153,11 +153,11 @@ function test_syscall_all_disable_two()
 	stop_lttng_tracing
 
 	# ensure "open" and "close" syscalls are not there.
-	validate_trace_only_exp "-v -e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open -e syscall_entry_close -e compat_syscall_entry_close -e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	validate_trace_only_exp "-v -e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open: -e syscall_entry_close: -e compat_syscall_entry_close: -e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
 	# ensure "execve" syscall is there.
-	validate_trace_exp "-e syscall_entry_execve -e compat_syscall_entry_execve" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_execve -e compat_syscall_exit_execve" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_execve: -e compat_syscall_entry_execve:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_execve: -e compat_syscall_exit_execve:" $TRACE_PATH
 
 	destroy_lttng_session $SESSION_NAME
 
@@ -209,10 +209,10 @@ function test_syscall_enable_all_disable_all_enable_all()
 	stop_lttng_tracing
 
 	# ensure at least open and close are there.
-	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_entry_close -e compat_syscall_entry_close" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_close -e compat_syscall_exit_close" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 	# trace may contain other syscalls.
 
 	destroy_lttng_session $SESSION_NAME
@@ -320,11 +320,11 @@ function test_syscall_enable_two_disable_one()
 	stop_lttng_tracing
 
 	# ensure open is there.
-	validate_trace_exp "-e syscall_entry_open -e compat_syscall_entry_open" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
 	# ensure trace only contains those.
-	validate_trace_only_exp "-e syscall_entry_open -e compat_syscall_entry_open -e syscall_exit_open -e compat_syscall_exit_open" $TRACE_PATH
+	validate_trace_only_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
 	destroy_lttng_session $SESSION_NAME
 
