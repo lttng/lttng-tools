@@ -65,6 +65,8 @@ const char * const config_element_net_output;
 const char * const config_element_control_uri;
 const char * const config_element_data_uri;
 const char * const config_element_max_size;
+const char * const config_element_pid;
+const char * const config_element_pids;
 
 const char * const config_domain_type_kernel;
 const char * const config_domain_type_ust;

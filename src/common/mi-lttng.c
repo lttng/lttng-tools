@@ -50,6 +50,8 @@ const char * const mi_lttng_element_command_snapshot_record = "record_snapshot";
 const char * const mi_lttng_element_command_start = "start";
 const char * const mi_lttng_element_command_stop = "stop";
 const char * const mi_lttng_element_command_success = "success";
+const char * const mi_lttng_element_command_track = "track";
+const char * const mi_lttng_element_command_untrack = "untrack";
 const char * const mi_lttng_element_command_version = "version";
 
 /* Strings related to version command */
@@ -1238,6 +1240,9 @@ int mi_lttng_calibrate(struct mi_writer *writer,
 end:
 	return ret;
 }
+
+/* TODO: mi tracker */
+
 LTTNG_HIDDEN
 int mi_lttng_context(struct mi_writer *writer,
 		struct lttng_event_context *context, int is_open)

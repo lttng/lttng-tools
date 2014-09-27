@@ -116,6 +116,26 @@ extern int lttng_list_sessions(struct lttng_session **sessions);
 extern int lttng_set_session_shm_path(const char *session_name,
 		const char *shm_path);
 
+/*
+ * Add PID to session tracker.
+ *
+ * A pid argument >= 0 adds the PID to the session tracker.
+ * A pid argument of -1 means "track all PIDs".
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+extern int lttng_track_pid(struct lttng_handle *handle, int pid);
+
+/*
+ * Remove PID from session tracker.
+ *
+ * A pid argument >= 0 removes the PID from the session tracker.
+ * A pid argument of -1 means "untrack all PIDs".
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
+
 #ifdef __cplusplus
 }
 #endif

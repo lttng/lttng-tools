@@ -115,6 +115,8 @@ const char * const config_element_net_output = "net_output";
 const char * const config_element_control_uri = "control_uri";
 const char * const config_element_data_uri = "data_uri";
 const char * const config_element_max_size = "max_size";
+const char * const config_element_pid = "pid";
+const char * const config_element_pids = "pids";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";

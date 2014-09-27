@@ -45,6 +45,8 @@ int kernel_enable_syscall(const char *syscall_name,
 		struct ltt_kernel_channel *channel);
 int kernel_disable_syscall(const char *syscall_name,
 		struct ltt_kernel_channel *channel);
+int kernel_track_pid(struct ltt_kernel_session *session, int pid);
+int kernel_untrack_pid(struct ltt_kernel_session *session, int pid);
 int kernel_open_metadata(struct ltt_kernel_session *session);
 int kernel_open_metadata_stream(struct ltt_kernel_session *session);
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel);

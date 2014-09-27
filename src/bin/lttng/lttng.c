@@ -85,6 +85,8 @@ static struct cmd_struct commands[] =  {
 	{ "snapshot", cmd_snapshot},
 	{ "save", cmd_save},
 	{ "load", cmd_load},
+	{ "track", cmd_track},
+	{ "untrack", cmd_untrack},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -126,6 +128,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    view              Start trace viewer\n");
 	fprintf(ofp, "    save              Save session configuration\n");
 	fprintf(ofp, "    load              Load session configuration\n");
+	fprintf(ofp, "    track             Track specific system resources\n");
+	fprintf(ofp, "    untrack           Untrack specific system resources\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Each command also has its own -h, --help option.\n");
 	fprintf(ofp, "\n");

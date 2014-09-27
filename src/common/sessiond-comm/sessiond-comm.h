@@ -91,8 +91,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
 	LTTNG_CREATE_SESSION_LIVE           = 30,
 	LTTNG_SAVE_SESSION                  = 31,
-
-	/* Session daemon commands (cont.) */
+	LTTNG_TRACK_PID                     = 32,
+	LTTNG_UNTRACK_PID                   = 33,
 	LTTNG_SET_SESSION_SHM_PATH          = 40,
 };
 
@@ -302,6 +302,9 @@ struct lttcomm_session_msg {
 		struct {
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED set_shm_path;
+		struct {
+			uint32_t pid;
+		} LTTNG_PACKED pid_tracker;
 	} u;
 } LTTNG_PACKED;
 

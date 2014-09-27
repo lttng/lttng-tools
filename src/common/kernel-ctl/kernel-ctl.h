@@ -59,6 +59,10 @@ int kernctl_disable_syscall(int fd, const char *syscall_name);
 int kernctl_syscall_mask(int fd, char **syscall_mask,
 		uint32_t *nr_bits);
 
+/* Process ID tracking can be applied to session FD */
+int kernctl_track_pid(int fd, int pid);
+int kernctl_untrack_pid(int fd, int pid);
+
 /* Buffer operations */
 
 /* For mmap mode, readable without "get" operation */

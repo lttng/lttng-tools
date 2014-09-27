@@ -930,6 +930,90 @@ error:
 }
 
 /*
+ * Command LTTNG_TRACK_PID processed by the client thread.
+ */
+int cmd_track_pid(struct ltt_session *session, int domain, int pid)
+{
+	int ret;
+
+	rcu_read_lock();
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct ltt_kernel_session *ksess;
+
+		ksess = session->kernel_session;
+
+		ret = kernel_track_pid(ksess, pid);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		break;
+	}
+#if 0
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+#endif
+	default:
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		goto error;
+	}
+
+	ret = LTTNG_OK;
+
+error:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Command LTTNG_UNTRACK_PID processed by the client thread.
+ */
+int cmd_untrack_pid(struct ltt_session *session, int domain, int pid)
+{
+	int ret;
+
+	rcu_read_lock();
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct ltt_kernel_session *ksess;
+
+		ksess = session->kernel_session;
+
+		ret = kernel_untrack_pid(ksess, pid);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		kernel_wait_quiescent(kernel_tracer_fd);
+		break;
+	}
+#if 0
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
+	case LTTNG_DOMAIN_UST_EXEC_NAME:
+	case LTTNG_DOMAIN_UST_PID:
+#endif
+	default:
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		goto error;
+	}
+
+	ret = LTTNG_OK;
+
+error:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  *
  * The wpipe arguments is used as a notifier for the kernel thread.

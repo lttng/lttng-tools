@@ -73,6 +73,8 @@ const char * const mi_lttng_element_command_snapshot_record;
 const char * const mi_lttng_element_command_start;
 const char * const mi_lttng_element_command_stop;
 const char * const mi_lttng_element_command_success;
+const char * const mi_lttng_element_command_track;
+const char * const mi_lttng_element_command_untrack;
 const char * const mi_lttng_element_command_version;
 
 /* Strings related to version command */

@@ -1281,6 +1281,62 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 }
 
 /*
+ *  Add PID to session tracker.
+ *  Return 0 on success else a negative LTTng error code.
+ */
+int lttng_track_pid(struct lttng_handle *handle, int pid)
+{
+	struct lttcomm_session_msg lsm;
+
+	/*
+	 * NULL arguments are forbidden. No default values.
+	 */
+	if (handle == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_TRACK_PID;
+	lsm.u.pid_tracker.pid = pid;
+
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
+}
+
+/*
+ *  Remove PID from session tracker.
+ *  Return 0 on success else a negative LTTng error code.
+ */
+int lttng_untrack_pid(struct lttng_handle *handle, int pid)
+{
+	struct lttcomm_session_msg lsm;
+
+	/*
+	 * NULL arguments are forbidden. No default values.
+	 */
+	if (handle == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+
+	lsm.cmd_type = LTTNG_UNTRACK_PID;
+	lsm.u.pid_tracker.pid = pid;
+
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+
+	return lttng_ctl_ask_sessiond(&lsm, NULL);
+}
+
+/*
  *  Lists all available tracepoints of domain.
  *  Sets the contents of the events array.
  *  Returns the number of lttng_event entries in events;

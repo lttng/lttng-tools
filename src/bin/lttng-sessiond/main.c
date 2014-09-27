@@ -3252,6 +3252,20 @@ skip_domain:
 				&cmd_ctx->lsm->u.channel.chan, kernel_poll_pipe[1]);
 		break;
 	}
+	case LTTNG_TRACK_PID:
+	{
+		ret = cmd_track_pid(cmd_ctx->session,
+				cmd_ctx->lsm->domain.type,
+				cmd_ctx->lsm->u.pid_tracker.pid);
+		break;
+	}
+	case LTTNG_UNTRACK_PID:
+	{
+		ret = cmd_untrack_pid(cmd_ctx->session,
+				cmd_ctx->lsm->domain.type,
+				cmd_ctx->lsm->u.pid_tracker.pid);
+		break;
+	}
 	case LTTNG_ENABLE_EVENT:
 	{
 		struct lttng_event_exclusion *exclusion = NULL;

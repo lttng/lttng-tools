@@ -716,6 +716,8 @@ end:
 	return ret;
 }
 
+/* TODO: save/restore tracker pid */
+
 static
 int save_kernel_context(struct config_writer *writer,
 	struct lttng_kernel_context *ctx)

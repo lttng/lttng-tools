@@ -367,6 +367,20 @@ int kernel_disable_syscall(const char *syscall_name,
 	return kernctl_disable_syscall(channel->fd, syscall_name);
 }
 
+int kernel_track_pid(struct ltt_kernel_session *session, int pid)
+{
+	DBG("Kernel track PID %d for session id %" PRIu64 ".",
+			pid, session->id);
+	return kernctl_track_pid(session->fd, pid);
+}
+
+int kernel_untrack_pid(struct ltt_kernel_session *session, int pid)
+{
+	DBG("Kernel untrack PID %d for session id %" PRIu64 ".",
+			pid, session->id);
+	return kernctl_untrack_pid(session->fd, pid);
+}
+
 /*
  * Create kernel metadata, open from the kernel tracer and add it to the
  * kernel session.
