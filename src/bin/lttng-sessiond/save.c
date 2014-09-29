@@ -31,6 +31,7 @@
 
 #include "save.h"
 #include "session.h"
+#include "syscall.h"
 #include "trace-ust.h"
 
 static
@@ -370,6 +371,7 @@ int save_kernel_event(struct config_writer *writer,
 		}
 
 		switch (event->event->instrumentation) {
+		case LTTNG_KERNEL_SYSCALL:
 		case LTTNG_KERNEL_FUNCTION:
 			ret = config_writer_open_element(writer,
 				config_element_function_attributes);
@@ -484,8 +486,53 @@ end:
 }
 
 static
+int save_kernel_syscall(struct config_writer *writer,
+		struct ltt_kernel_channel *kchan)
+{
+	int ret, i;
+	ssize_t count;
+	struct lttng_event *events = NULL;
+
+	assert(writer);
+	assert(kchan);
+
+	count = syscall_list_channel(kchan, &events, 0);
+	if (!count) {
+		/* No syscalls, just gracefully return. */
+		ret = 0;
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		struct ltt_kernel_event *kevent;
+
+		/* Create a temporary kevent in order to save it. */
+		kevent = trace_kernel_create_event(&events[i]);
+		if (!kevent) {
+			ret = -ENOMEM;
+			goto end;
+		}
+		/* Init list in order so the destroy call can del the node. */
+		CDS_INIT_LIST_HEAD(&kevent->list);
+
+		ret = save_kernel_event(writer, kevent);
+		trace_kernel_destroy_event(kevent);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Everything went well */
+	ret = 0;
+
+end:
+	free(events);
+	return ret;
+}
+
+static
 int save_kernel_events(struct config_writer *writer,
-	struct ltt_kernel_event_list *event_list)
+	struct ltt_kernel_channel *kchan)
 {
 	int ret;
 	struct ltt_kernel_event *event;
@@ -496,11 +543,17 @@ int save_kernel_events(struct config_writer *writer,
 		goto end;
 	}
 
-	cds_list_for_each_entry(event, &event_list->head, list) {
+	cds_list_for_each_entry(event, &kchan->events_list.head, list) {
 		ret = save_kernel_event(writer, event);
 		if (ret) {
 			goto end;
 		}
+	}
+
+	/* Save syscalls if any. */
+	ret = save_kernel_syscall(writer, kchan);
+	if (ret) {
+		goto end;
 	}
 
 	/* /events */
@@ -861,7 +914,7 @@ int save_kernel_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = save_kernel_events(writer, &kchan->events_list);
+	ret = save_kernel_events(writer, kchan);
 	if (ret) {
 		goto end;
 	}
