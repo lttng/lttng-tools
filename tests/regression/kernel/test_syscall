@@ -32,6 +32,8 @@ function test_syscall_single()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_single"
 
+	diag "Syscall trace single"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
@@ -56,6 +58,8 @@ function test_syscall_two()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_two"
+
+	diag "Syscall trace two events"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -85,6 +89,8 @@ function test_syscall_all()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_all"
 
+	diag "Syscall trace all events"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	# enable all syscalls
@@ -110,6 +116,8 @@ function test_syscall_all_disable_one()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_all_disable_one"
+
+	diag "Syscall trace all events and disable one"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -138,6 +146,8 @@ function test_syscall_all_disable_two()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_all_disable_two"
+
+	diag "Syscall trace all events and disable two"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -169,6 +179,8 @@ function test_syscall_enable_all_disable_all()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_all_disable_all"
 
+	diag "Syscall trace all events and disable all"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	# enable all system calls
@@ -193,6 +205,8 @@ function test_syscall_enable_all_disable_all_enable_all()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_all_disable_all_enable_all"
+
+	diag "Syscall trace all events and enable/disable all"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -225,6 +239,8 @@ function test_syscall_enable_all_disable_all_twice()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_all_disable_all_twice"
 
+	diag "Syscall trace all events and enable/disable all twice"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	# enable all system calls
@@ -254,6 +270,8 @@ function test_syscall_enable_one_disable_one()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_one_disable_one"
 
+	diag "Syscall trace one event and disable one"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	# enable open system call
@@ -278,6 +296,8 @@ function test_syscall_enable_two_disable_two()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_two_disable_two"
+
+	diag "Syscall trace two events and disable two"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -305,6 +325,8 @@ function test_syscall_enable_two_disable_one()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_two_disable_one"
+
+	diag "Syscall trace two events and disable one"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -336,6 +358,8 @@ function test_syscall_disable_twice()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_disable_twice"
 
+	diag "Syscall trace one event and disable twice"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
@@ -353,6 +377,8 @@ function test_syscall_disable_all_twice()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_disable_all_twice"
+
+	diag "Syscall trace all events and disable all twice"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -373,6 +399,8 @@ function test_syscall_enable_unknown()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_unknown"
 
+	diag "Syscall enable an unknown event"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_syscall_fail $SESSION_NAME "thissyscallcannotexist"
@@ -386,6 +414,8 @@ function test_syscall_enable_all_enable_one()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_all_enable_one"
+
+	diag "Syscall enable all and enable one"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -402,6 +432,8 @@ function test_syscall_disable_all_disable_one()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_all_enable_one"
+
+	diag "Syscall disable all and disable one"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
@@ -421,6 +453,8 @@ function test_syscall_enable_channel_disable_all()
 	SESSION_NAME="kernel_syscall_enable_channel_disable_all"
 	CHANNEL_NAME="channel"
 
+	diag "Syscall enable channel and disable all"
+
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_channel_ok $SESSION_NAME $CHANNEL_NAME
@@ -436,6 +470,8 @@ function test_syscall_enable_channel_disable_one()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_syscall_enable_channel_disable_all"
 	CHANNEL_NAME="channel"
+
+	diag "Syscall enable channel and disable one"
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 
