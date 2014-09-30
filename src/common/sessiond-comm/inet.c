@@ -305,11 +305,11 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 
 		ret = lttcomm_setsockopt_rcv_timeout(new_fd, timeout);
 		if (ret) {
-			goto error;
+			goto error_close;
 		}
 		ret = lttcomm_setsockopt_snd_timeout(new_fd, timeout);
 		if (ret) {
-			goto error;
+			goto error_close;
 		}
 	}
 
@@ -318,6 +318,11 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 
 end:
 	return new_sock;
+
+error_close:
+	if (close(new_fd) < 0) {
+		PERROR("accept inet close fd");
+	}
 
 error:
 	free(new_sock);
