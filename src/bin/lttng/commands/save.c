@@ -36,6 +36,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_ALL,
 	OPT_FORCE,
+	OPT_LIST_OPTIONS,
 };
 
 static struct poptOption save_opts[] = {
@@ -44,6 +45,7 @@ static struct poptOption save_opts[] = {
 	{"all",         'a', POPT_ARG_NONE, 0, OPT_ALL, 0, 0},
 	{"output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, 0, 0},
 	{"force",       'f', POPT_ARG_NONE, 0, OPT_FORCE, 0, 0},
+	{"list-options",  0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -152,6 +154,9 @@ int cmd_save(int argc, const char **argv)
 		case OPT_FORCE:
 			opt_force = 1;
 			break;
+		case OPT_LIST_OPTIONS:
+			list_cmd_options(stdout, save_opts);
+			goto end;
 		default:
 			usage(stderr);
 			ret = CMD_UNDEFINED;
