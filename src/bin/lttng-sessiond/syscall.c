@@ -81,7 +81,7 @@ int syscall_init_table(void)
 			size_t new_nbmem;
 
 			/* Double memory size. */
-			new_nbmem = index << 1;
+			new_nbmem = max(index, nbmem << 1);
 
 			DBG("Reallocating syscall table from %zu to %zu entries", nbmem,
 					new_nbmem);
