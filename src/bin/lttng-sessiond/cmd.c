@@ -3055,6 +3055,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	uint64_t session_max_size = 0, max_stream_size = 0;
 
 	assert(session);
+	assert(output);
 
 	DBG("Cmd snapshot record for session %s", session->name);
 
@@ -3074,7 +3075,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	}
 
 	/* Use temporary output for the session. */
-	if (output && *output->ctrl_url != '\0') {
+	if (*output->ctrl_url != '\0') {
 		ret = snapshot_output_init(output->max_size, output->name,
 				output->ctrl_url, output->data_url, session->consumer,
 				&tmp_output, NULL);
