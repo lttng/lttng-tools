@@ -26,6 +26,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
+
+#include <common/macros.h>
+
 #include "filter-ast.h"
 #include "filter-parser.h"
 #include "filter-ir.h"
@@ -142,6 +145,7 @@ end_load:
 	}
 }
 
+LTTNG_HIDDEN
 int filter_visitor_ir_validate_string(struct filter_parser_ctx *ctx)
 {
 	return validate_string(ctx->ir_root);
