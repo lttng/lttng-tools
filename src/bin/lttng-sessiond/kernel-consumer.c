@@ -373,7 +373,7 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 
 	DBG("Sending session stream to kernel consumer");
 
-	if (session->metadata_stream_fd >= 0) {
+	if (session->metadata_stream_fd >= 0 && session->metadata) {
 		ret = kernel_consumer_add_metadata(sock, session, monitor);
 		if (ret < 0) {
 			goto error;
