@@ -524,6 +524,7 @@ static
 int measure_single_clock_offset(struct offset_sample *sample)
 {
 	uint64_t offset, monotonic[2], measure_delta, realtime;
+	uint64_t tcf = trace_clock_freq();
 	struct timespec rts = { 0, 0 };
 	int ret;
 
@@ -544,6 +545,9 @@ int measure_single_clock_offset(struct offset_sample *sample)
 	offset = (monotonic[0] + monotonic[1]) >> 1;
 	realtime = (uint64_t) rts.tv_sec * 1000000000ULL;
 	realtime += rts.tv_nsec;
+	if (tcf != 1000000000ULL) {
+		realtime /= 1000000000ULL / tcf;
+	}
 	offset = realtime - offset;
 	sample->offset = offset;
 	sample->measure_delta = measure_delta;
@@ -685,8 +689,8 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 
 	ret = lttng_metadata_printf(session,
 		"clock {\n"
-		"	name = %s;\n",
-		"monotonic"
+		"	name = \"%s\";\n",
+		trace_clock_name()
 		);
 	if (ret)
 		goto end;
@@ -701,11 +705,12 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	}
 
 	ret = lttng_metadata_printf(session,
-		"	description = \"Monotonic Clock\";\n"
+		"	description = \"%s\";\n"
 		"	freq = %" PRIu64 "; /* Frequency, in Hz */\n"
 		"	/* clock value offset from Epoch is: offset * (1/freq) */\n"
 		"	offset = %" PRIu64 ";\n"
 		"};\n\n",
+		trace_clock_description(),
 		trace_clock_freq(),
 		measure_clock_offset()
 		);
@@ -715,20 +720,23 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	ret = lttng_metadata_printf(session,
 		"typealias integer {\n"
 		"	size = 27; align = 1; signed = false;\n"
-		"	map = clock.monotonic.value;\n"
+		"	map = clock.%s.value;\n"
 		"} := uint27_clock_monotonic_t;\n"
 		"\n"
 		"typealias integer {\n"
 		"	size = 32; align = %u; signed = false;\n"
-		"	map = clock.monotonic.value;\n"
+		"	map = clock.%s.value;\n"
 		"} := uint32_clock_monotonic_t;\n"
 		"\n"
 		"typealias integer {\n"
 		"	size = 64; align = %u; signed = false;\n"
-		"	map = clock.monotonic.value;\n"
+		"	map = clock.%s.value;\n"
 		"} := uint64_clock_monotonic_t;\n\n",
+		trace_clock_name(),
 		session->uint32_t_alignment,
-		session->uint64_t_alignment
+		trace_clock_name(),
+		session->uint64_t_alignment,
+		trace_clock_name()
 		);
 	if (ret)
 		goto end;
