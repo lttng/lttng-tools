@@ -16,8 +16,6 @@ libfilter_la_SOURCES = filter-lexer.l filter-parser.y \
 	filter-visitor-ir-check-binary-op-nesting.c \
 	filter-visitor-ir-validate-string.c \
 	filter-visitor-generate-bytecode.c \
-	align.h \
-	bug.h \
 	filter-ast.h \
 	filter-bytecode.h \
 	filter-ir.h \
