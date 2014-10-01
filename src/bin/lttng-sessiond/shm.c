@@ -132,11 +132,19 @@ error:
  */
 char *shm_ust_get_mmap(char *shm_path, int global)
 {
-	size_t mmap_size = sysconf(_SC_PAGE_SIZE);
+	size_t mmap_size;
 	int wait_shm_fd, ret;
 	char *wait_shm_mmap;
+	long sys_page_size;
 
 	assert(shm_path);
+
+	sys_page_size = sysconf(_SC_PAGE_SIZE);
+	if (sys_page_size < 0) {
+		PERROR("sysconf PAGE_SIZE");
+		goto error;
+	}
+	mmap_size = sys_page_size;
 
 	wait_shm_fd = get_wait_shm(shm_path, mmap_size, global);
 	if (wait_shm_fd < 0) {
