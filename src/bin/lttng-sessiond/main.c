@@ -5230,10 +5230,12 @@ int main(int argc, char **argv)
 		/* Setup kernel tracer */
 		if (!opt_no_kernel) {
 			init_kernel_tracer();
-			ret = syscall_init_table();
-			if (ret < 0) {
-				ERR("Unable to populate syscall table. Syscall tracing won't"
-						" work for this session daemon.");
+			if (kernel_tracer_fd >= 0) {
+				ret = syscall_init_table();
+				if (ret < 0) {
+					ERR("Unable to populate syscall table. Syscall tracing"
+							" won't work for this session daemon.");
+				}
 			}
 		}
 
