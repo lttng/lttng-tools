@@ -1345,7 +1345,6 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	stream->last_net_seq_num = be64toh(stream_info.last_net_seq_num);
 	stream->close_flag = 1;
 	session->stream_count--;
-	assert(session->stream_count >= 0);
 
 	/* Check if we can close it or else the data will do it. */
 	try_close_stream(session, stream);
