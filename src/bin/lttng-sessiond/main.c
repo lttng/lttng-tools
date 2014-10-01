@@ -1028,7 +1028,7 @@ static void signal_consumer_condition(struct consumer_data *data, int state)
  */
 static void *thread_manage_consumer(void *data)
 {
-	int sock = -1, i, ret, pollfd, err = -1;
+	int sock = -1, i, ret, pollfd, err = -1, should_quit = 0;
 	uint32_t revents, nb_fd;
 	enum lttcomm_return_code code;
 	struct lttng_poll_event events;
@@ -1186,6 +1186,15 @@ restart:
 	/* Infinite blocking call, waiting for transmission */
 restart_poll:
 	while (1) {
+		health_code_update();
+
+		/* Exit the thread because the thread quit pipe has been triggered. */
+		if (should_quit) {
+			/* Not a health error. */
+			err = 0;
+			goto exit;
+		}
+
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
 		health_poll_exit();
@@ -1208,12 +1217,12 @@ restart_poll:
 
 			health_code_update();
 
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
-				err = 0;
-				goto exit;
-			}
+			/*
+			 * Thread quit pipe has been triggered, flag that we should stop
+			 * but continue the current loop to handle potential data from
+			 * consumer.
+			 */
+			should_quit = sessiond_check_thread_quit_pipe(pollfd, revents);
 
 			if (pollfd == sock) {
 				/* Event on the consumerd socket */
@@ -1242,11 +1251,8 @@ restart_poll:
 					ERR("Handling metadata request");
 					goto error;
 				}
-				break;
-			} else {
-				ERR("Unknown pollfd");
-				goto error;
 			}
+			/* No need for an else branch all FDs are tested prior. */
 		}
 		health_code_update();
 	}
