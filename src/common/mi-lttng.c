@@ -147,6 +147,7 @@ const char * const mi_lttng_element_snapshots = "snapshots";
  * Those should never overlap by definition
  * (see struct lttng_event loglevel)
  */
+LTTNG_HIDDEN
 const char *mi_lttng_loglevel_string(int value)
 {
 	switch (value) {
@@ -205,6 +206,7 @@ const char *mi_lttng_loglevel_string(int value)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value)
 {
 	switch (value) {
@@ -219,6 +221,7 @@ const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 {
 	switch (value) {
@@ -241,6 +244,7 @@ const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 {
 	switch (val) {
@@ -279,6 +283,7 @@ const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type val)
 {
 	switch (val) {
@@ -295,6 +300,7 @@ const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type val)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 {
 	/* Note: This is a *duplicate* of get_domain_str from bin/lttng/utils.c */
@@ -313,6 +319,7 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 {
 	switch (value) {
@@ -328,6 +335,7 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 	}
 }
 
+LTTNG_HIDDEN
 const char *mi_lttng_calibratetype_string(enum lttng_calibrate_type val)
 {
 	const char *ret;
