@@ -35,7 +35,7 @@ static size_t syscall_table_nb_entry;
  * Populate the system call table using the kernel tracer.
  *
  * Return 0 on success and the syscall table is allocated. On error, a negative
- * value is returned and the syscall table is set to NULL.
+ * value is returned.
  */
 int syscall_init_table(void)
 {
@@ -82,6 +82,14 @@ int syscall_init_table(void)
 
 			/* Double memory size. */
 			new_nbmem = max(index, nbmem << 1);
+			if (new_nbmem < nbmem) {
+				/* Overflow, stop everything, something went really wrong. */
+				ERR("Syscall listing memory size overflow. Stopping");
+				free(syscall_table);
+				syscall_table = NULL;
+				ret = -EINVAL;
+				goto error;
+			}
 
 			DBG("Reallocating syscall table from %zu to %zu entries", nbmem,
 					new_nbmem);
