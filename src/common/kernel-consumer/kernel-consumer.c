@@ -773,7 +773,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * Send status code to session daemon.
 		 */
 		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
+		if (ret < 0 || ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
 		}
