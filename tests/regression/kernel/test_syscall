@@ -20,12 +20,103 @@ TEST_DESC="Kernel tracer - System calls"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=132
+NUM_TESTS=155
 
 # test command issues at least open and close system calls
 TESTCMD="cat /proc/cpuinfo > /dev/null"
 
 source $TESTDIR/utils/utils.sh
+
+function validate_list()
+{
+	local session_name=$1
+	local event_name=$2
+	local opt=$3
+
+	out=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list $session_name $opt | grep $event_name)
+	if [ -z "$out" ]; then
+		fail "Validate syscall listing"
+		diag "$event_name not found when listing $session_name (opt $opt)"
+	else
+		pass "Validate syscall listing. Found $event_name."
+	fi
+}
+
+function test_syscall_event_list()
+{
+	local EVENT_NAME="getpid"
+
+	diag "Syscall event listing"
+
+	validate_list "" $EVENT_NAME "-k --syscall"
+}
+
+function test_syscall_simple_list()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_simple_list"
+	local EVENT_NAME="close"
+
+	diag "Syscall simple listing"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $EVENT_NAME
+
+	validate_list $SESSION_NAME $EVENT_NAME
+
+	start_lttng_tracing
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure each is there.
+	validate_trace_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME:" $TRACE_PATH
+
+	# ensure trace only contains those.
+	validate_trace_only_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME: -e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME:" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_syscall_simple_list_two()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_simple_list_two"
+	local EVENT_NAME="close"
+	local EVENT_NAME2="read"
+
+	diag "Syscall simple listing"
+
+	create_lttng_session $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $EVENT_NAME
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $EVENT_NAME2
+
+	validate_list $SESSION_NAME $EVENT_NAME
+	validate_list $SESSION_NAME $EVENT_NAME2
+
+	start_lttng_tracing
+	eval ${TESTCMD}
+	stop_lttng_tracing
+
+	# ensure each is there.
+	validate_trace_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME:" $TRACE_PATH
+
+	# ensure each is there.
+	validate_trace_exp "-e syscall_entry_$EVENT_NAME2: -e compat_syscall_entry_$EVENT_NAME2:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_$EVENT_NAME2: -e compat_syscall_exit_$EVENT_NAME2:" $TRACE_PATH
+
+	# ensure trace only contains those.
+	validate_trace_only_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME: -e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME: -e syscall_entry_$EVENT_NAME2: -e compat_syscall_entry_$EVENT_NAME2: -e syscall_exit_$EVENT_NAME2: -e compat_syscall_exit_$EVENT_NAME2:" $TRACE_PATH
+
+	destroy_lttng_session $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
 
 function test_syscall_single()
 {
@@ -498,6 +589,9 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
 	start_lttng_sessiond
 
+	test_syscall_event_list
+	test_syscall_simple_list
+	test_syscall_simple_list_two
 	test_syscall_single
 	test_syscall_two
 	test_syscall_all
