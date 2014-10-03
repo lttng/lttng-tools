@@ -1462,6 +1462,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
+		case LTTNG_EVENT_PROBE:
+		case LTTNG_EVENT_FUNCTION:
+		case LTTNG_EVENT_FUNCTION_ENTRY:
 		case LTTNG_EVENT_TRACEPOINT:
 			ret = event_kernel_enable_tracepoint(kchan, event);
 			if (ret != LTTNG_OK) {
