@@ -1960,7 +1960,9 @@ int process_context_node(xmlNodePtr context_node,
 		xmlNodePtr perf_attr_node;
 
 		/* perf */
-		context.ctx = LTTNG_EVENT_CONTEXT_PERF_COUNTER;
+		context.ctx = handle->domain.type == LTTNG_DOMAIN_KERNEL ?
+			LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER :
+			LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER;
 		for (perf_attr_node = xmlFirstElementChild(context_child_node);
 			perf_attr_node; perf_attr_node =
 				xmlNextElementSibling(perf_attr_node)) {
