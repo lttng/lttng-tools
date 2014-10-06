@@ -260,8 +260,10 @@ const char *get_ust_context_type_string(
 		context_type_string = config_event_context_pthread_id;
 		break;
 	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
-		context_type_string = config_event_context_perf_thread_counter;
-		break;
+		/*
+		 * Error, should not be stored in the XML, perf contexts
+		 * are stored as a node of type event_perf_context_type.
+		 */
 	default:
 		context_type_string = NULL;
 		break;
@@ -841,12 +843,6 @@ int save_ust_context(struct config_writer *writer,
 	cds_list_for_each_entry(ctx, ctx_list, list) {
 		const char *context_type_string;
 
-		context_type_string = get_ust_context_type_string(ctx->ctx.ctx);
-		if (!context_type_string) {
-			ERR("Unsupported UST context type.")
-			ret = LTTNG_ERR_INVALID;
-			goto end;
-		}
 
 		ret = config_writer_open_element(writer,
 			config_element_context);
@@ -855,11 +851,61 @@ int save_ust_context(struct config_writer *writer,
 			goto end;
 		}
 
-		ret = config_writer_write_element_string(writer,
-			config_element_type, context_type_string);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
+		if (ctx->ctx.ctx == LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER) {
+			/* Perf contexts are saved as event_perf_context_type */
+			ret = config_writer_open_element(writer,
+				config_element_perf);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+
+			ret = config_writer_write_element_unsigned_int(writer,
+				config_element_type,
+				ctx->ctx.u.perf_counter.type);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+
+			ret = config_writer_write_element_unsigned_int(writer,
+				config_element_config,
+				ctx->ctx.u.perf_counter.config);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+
+			ret = config_writer_write_element_string(writer,
+				config_element_name,
+				ctx->ctx.u.perf_counter.name);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+
+			/* /perf */
+			ret = config_writer_close_element(writer);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+		} else {
+			/* Save context as event_context_type_type */
+			context_type_string = get_ust_context_type_string(
+				ctx->ctx.ctx);
+			if (!context_type_string) {
+				ERR("Unsupported UST context type.")
+					ret = LTTNG_ERR_INVALID;
+				goto end;
+			}
+
+			ret = config_writer_write_element_string(writer,
+				config_element_type, context_type_string);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
 		}
 
 		/* /context */
