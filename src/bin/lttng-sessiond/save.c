@@ -801,6 +801,11 @@ int save_kernel_contexts(struct config_writer *writer,
 	int ret;
 	struct ltt_kernel_context *ctx;
 
+	if (cds_list_empty(&kchan->ctx_list)) {
+		ret = 0;
+		goto end;
+	}
+
 	ret = config_writer_open_element(writer, config_element_contexts);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
