@@ -217,7 +217,7 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 
 	size = new_sock->ops->recvmsg(new_sock, &msg, sizeof(msg), 0);
 	if (size < sizeof(msg)) {
-		ret = -errno;
+		ret = -EINVAL;
 		goto error_socket;
 	}
 	domain = be32toh(msg.domain);
