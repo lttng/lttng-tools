@@ -38,6 +38,7 @@
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
 #endif
 
+#define NSEC_PER_SEC			1000000000ULL
 #define NR_CLOCK_OFFSET_SAMPLES		10
 
 struct offset_sample {
@@ -543,10 +544,11 @@ int measure_single_clock_offset(struct offset_sample *sample)
 		return 0;
 	}
 	offset = (monotonic[0] + monotonic[1]) >> 1;
-	realtime = (uint64_t) rts.tv_sec * 1000000000ULL;
-	realtime += rts.tv_nsec;
-	if (tcf != 1000000000ULL) {
-		realtime /= 1000000000ULL / tcf;
+	realtime = (uint64_t) rts.tv_sec * tcf;
+	if (tcf == NSEC_PER_SEC) {
+		realtime += rts.tv_nsec;
+	} else {
+		realtime += (uint64_t) rts.tv_nsec * tcf / NSEC_PER_SEC;
 	}
 	offset = realtime - offset;
 	sample->offset = offset;
