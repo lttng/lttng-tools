@@ -125,6 +125,16 @@ const char * const mi_lttng_loglevel_str_jul_off = "JUL_OFF";
 const char * const mi_lttng_loglevel_str_jul_severe = "JUL_SEVERE";
 const char * const mi_lttng_loglevel_str_jul_warning = "JUL_WARNING";
 
+/* String related to loglevel LOG4J */
+const char * const mi_lttng_loglevel_str_log4j_off = "LOG4J_OFF";
+const char * const mi_lttng_loglevel_str_log4j_fatal = "LOG4J_FATAL";
+const char * const mi_lttng_loglevel_str_log4j_error = "LOG4J_ERROR";
+const char * const mi_lttng_loglevel_str_log4j_warn = "LOG4J_WARN";
+const char * const mi_lttng_loglevel_str_log4j_info = "LOG4J_INFO";
+const char * const mi_lttng_loglevel_str_log4j_debug = "LOG4J_DEBUG";
+const char * const mi_lttng_loglevel_str_log4j_trace = "LOG4J_TRACE";
+const char * const mi_lttng_loglevel_str_log4j_all = "LOG4J_ALL";
+
 /* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all = "ALL";
 const char * const mi_lttng_loglevel_type_range = "RANGE";
@@ -148,62 +158,102 @@ const char * const mi_lttng_element_snapshots = "snapshots";
  * (see struct lttng_event loglevel)
  */
 LTTNG_HIDDEN
-const char *mi_lttng_loglevel_string(int value)
+const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain)
 {
-	switch (value) {
-	case -1:
-		return mi_lttng_element_empty;
-	case LTTNG_LOGLEVEL_EMERG:
-		return mi_lttng_loglevel_str_emerg;
-	case LTTNG_LOGLEVEL_ALERT:
-		return mi_lttng_loglevel_str_alert;
-	case LTTNG_LOGLEVEL_CRIT:
-		return mi_lttng_loglevel_str_crit;
-	case LTTNG_LOGLEVEL_ERR:
-		return mi_lttng_loglevel_str_err;
-	case LTTNG_LOGLEVEL_WARNING:
-		return mi_lttng_loglevel_str_warning;
-	case LTTNG_LOGLEVEL_NOTICE:
-		return mi_lttng_loglevel_str_notice;
-	case LTTNG_LOGLEVEL_INFO:
-		return mi_lttng_loglevel_str_info;
-	case LTTNG_LOGLEVEL_DEBUG_SYSTEM:
-		return mi_lttng_loglevel_str_debug_system;
-	case LTTNG_LOGLEVEL_DEBUG_PROGRAM:
-		return mi_lttng_loglevel_str_debug_program;
-	case LTTNG_LOGLEVEL_DEBUG_PROCESS:
-		return mi_lttng_loglevel_str_debug_process;
-	case LTTNG_LOGLEVEL_DEBUG_MODULE:
-		return mi_lttng_loglevel_str_debug_module;
-	case LTTNG_LOGLEVEL_DEBUG_UNIT:
-		return mi_lttng_loglevel_str_debug_unit;
-	case LTTNG_LOGLEVEL_DEBUG_FUNCTION:
-		return mi_lttng_loglevel_str_debug_function;
-	case LTTNG_LOGLEVEL_DEBUG_LINE:
-		return mi_lttng_loglevel_str_debug_line;
-	case LTTNG_LOGLEVEL_DEBUG:
-		return mi_lttng_loglevel_str_debug;
-	case LTTNG_LOGLEVEL_JUL_OFF:
-		return mi_lttng_loglevel_str_jul_off;
-	case LTTNG_LOGLEVEL_JUL_SEVERE:
-		return mi_lttng_loglevel_str_jul_severe;
-	case LTTNG_LOGLEVEL_JUL_WARNING:
-		return mi_lttng_loglevel_str_jul_warning;
-	case LTTNG_LOGLEVEL_JUL_INFO:
-		return mi_lttng_loglevel_str_jul_info;
-	case LTTNG_LOGLEVEL_JUL_CONFIG:
-		return mi_lttng_loglevel_str_jul_config;
-	case LTTNG_LOGLEVEL_JUL_FINE:
-		return mi_lttng_loglevel_str_jul_fine;
-	case LTTNG_LOGLEVEL_JUL_FINER:
-		return mi_lttng_loglevel_str_jul_finer;
-	case LTTNG_LOGLEVEL_JUL_FINEST:
-		return mi_lttng_loglevel_str_jul_finest;
-	case LTTNG_LOGLEVEL_JUL_ALL:
-		return mi_lttng_loglevel_str_jul_all;
-	default:
-		return mi_lttng_loglevel_str_unknown;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+	case LTTNG_DOMAIN_UST:
+		switch (value) {
+		case -1:
+			return mi_lttng_element_empty;
+		case LTTNG_LOGLEVEL_EMERG:
+			return mi_lttng_loglevel_str_emerg;
+		case LTTNG_LOGLEVEL_ALERT:
+			return mi_lttng_loglevel_str_alert;
+		case LTTNG_LOGLEVEL_CRIT:
+			return mi_lttng_loglevel_str_crit;
+		case LTTNG_LOGLEVEL_ERR:
+			return mi_lttng_loglevel_str_err;
+		case LTTNG_LOGLEVEL_WARNING:
+			return mi_lttng_loglevel_str_warning;
+		case LTTNG_LOGLEVEL_NOTICE:
+			return mi_lttng_loglevel_str_notice;
+		case LTTNG_LOGLEVEL_INFO:
+			return mi_lttng_loglevel_str_info;
+		case LTTNG_LOGLEVEL_DEBUG_SYSTEM:
+			return mi_lttng_loglevel_str_debug_system;
+		case LTTNG_LOGLEVEL_DEBUG_PROGRAM:
+			return mi_lttng_loglevel_str_debug_program;
+		case LTTNG_LOGLEVEL_DEBUG_PROCESS:
+			return mi_lttng_loglevel_str_debug_process;
+		case LTTNG_LOGLEVEL_DEBUG_MODULE:
+			return mi_lttng_loglevel_str_debug_module;
+		case LTTNG_LOGLEVEL_DEBUG_UNIT:
+			return mi_lttng_loglevel_str_debug_unit;
+		case LTTNG_LOGLEVEL_DEBUG_FUNCTION:
+			return mi_lttng_loglevel_str_debug_function;
+		case LTTNG_LOGLEVEL_DEBUG_LINE:
+			return mi_lttng_loglevel_str_debug_line;
+		case LTTNG_LOGLEVEL_DEBUG:
+			return mi_lttng_loglevel_str_debug;
+		default:
+			return mi_lttng_loglevel_str_unknown;
+		}
+		break;
+	case LTTNG_DOMAIN_LOG4J:
+		switch (value) {
+		case -1:
+			return mi_lttng_element_empty;
+		case LTTNG_LOGLEVEL_LOG4J_OFF:
+			return mi_lttng_loglevel_str_log4j_off;
+		case LTTNG_LOGLEVEL_LOG4J_FATAL:
+			return mi_lttng_loglevel_str_log4j_fatal;
+		case LTTNG_LOGLEVEL_LOG4J_ERROR:
+			return mi_lttng_loglevel_str_log4j_error;
+		case LTTNG_LOGLEVEL_LOG4J_WARN:
+			return mi_lttng_loglevel_str_log4j_warn;
+		case LTTNG_LOGLEVEL_LOG4J_INFO:
+			return mi_lttng_loglevel_str_log4j_info;
+		case LTTNG_LOGLEVEL_LOG4J_DEBUG:
+			return mi_lttng_loglevel_str_log4j_debug;
+		case LTTNG_LOGLEVEL_LOG4J_TRACE:
+			return mi_lttng_loglevel_str_log4j_trace;
+		case LTTNG_LOGLEVEL_LOG4J_ALL:
+			return mi_lttng_loglevel_str_log4j_all;
+		default:
+			return mi_lttng_loglevel_str_unknown;
+		}
+		break;
+	case LTTNG_DOMAIN_JUL:
+		switch (value) {
+		case -1:
+			return mi_lttng_element_empty;
+		case LTTNG_LOGLEVEL_JUL_OFF:
+			return mi_lttng_loglevel_str_jul_off;
+		case LTTNG_LOGLEVEL_JUL_SEVERE:
+			return mi_lttng_loglevel_str_jul_severe;
+		case LTTNG_LOGLEVEL_JUL_WARNING:
+			return mi_lttng_loglevel_str_jul_warning;
+		case LTTNG_LOGLEVEL_JUL_INFO:
+			return mi_lttng_loglevel_str_jul_info;
+		case LTTNG_LOGLEVEL_JUL_CONFIG:
+			return mi_lttng_loglevel_str_jul_config;
+		case LTTNG_LOGLEVEL_JUL_FINE:
+			return mi_lttng_loglevel_str_jul_fine;
+		case LTTNG_LOGLEVEL_JUL_FINER:
+			return mi_lttng_loglevel_str_jul_finer;
+		case LTTNG_LOGLEVEL_JUL_FINEST:
+			return mi_lttng_loglevel_str_jul_finest;
+		case LTTNG_LOGLEVEL_JUL_ALL:
+			return mi_lttng_loglevel_str_jul_all;
+		default:
+			return mi_lttng_loglevel_str_unknown;
+		}
+		break;
 	}
+
+	/* Reaching this means the domain is unknown. */
+	return mi_lttng_loglevel_str_unknown;
 }
 
 LTTNG_HIDDEN
@@ -877,13 +927,14 @@ end:
 
 LTTNG_HIDDEN
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
-		struct lttng_event *event)
+		struct lttng_event *event, enum lttng_domain_type domain)
 {
 	int ret;
 
 	/* Event loglevel */
 	ret = mi_lttng_writer_write_element_string(writer,
-			config_element_loglevel, mi_lttng_loglevel_string(event->loglevel));
+			config_element_loglevel,
+			mi_lttng_loglevel_string(event->loglevel, domain));
 	if (ret) {
 		goto end;
 	}
@@ -998,7 +1049,7 @@ int mi_lttng_events_open(struct mi_writer *writer)
 
 LTTNG_HIDDEN
 int mi_lttng_event(struct mi_writer *writer,
-		struct lttng_event *event, int is_open)
+		struct lttng_event *event, int is_open, enum lttng_domain_type domain)
 {
 	int ret;
 
@@ -1011,7 +1062,7 @@ int mi_lttng_event(struct mi_writer *writer,
 	case LTTNG_EVENT_TRACEPOINT:
 	{
 		if (event->loglevel != -1) {
-			ret = mi_lttng_event_tracepoint_loglevel(writer, event);
+			ret = mi_lttng_event_tracepoint_loglevel(writer, event, domain);
 		} else {
 			ret = mi_lttng_event_tracepoint_no_loglevel(writer, event);
 		}

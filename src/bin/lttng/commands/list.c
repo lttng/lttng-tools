@@ -234,7 +234,7 @@ static void print_events(struct lttng_event *event)
 				indent6,
 				event->name,
 				logleveltype_string(event->loglevel_type),
-				mi_lttng_loglevel_string(event->loglevel),
+				mi_lttng_loglevel_string(event->loglevel, handle->domain.type),
 				event->loglevel,
 				enabled_string(event->enabled),
 				exclusion_string(event->exclusion),
@@ -391,7 +391,7 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 		}
 
 		/* Write an event */
-		ret = mi_lttng_event(writer, &events[i], 0);
+		ret = mi_lttng_event(writer, &events[i], 0, handle->domain.type);
 		if (ret) {
 			goto end;
 		}
@@ -641,7 +641,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 
 			if (!event_element_open) {
 				/* Open and write the event */
-				ret = mi_lttng_event(writer, &cur_event, 1);
+				ret = mi_lttng_event(writer, &cur_event, 1,
+						handle->domain.type);
 				if (ret) {
 					goto end;
 				}
@@ -779,7 +780,7 @@ static int mi_list_kernel_events(struct lttng_event *events, int count,
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(writer, &events[i], 0);
+		ret = mi_lttng_event(writer, &events[i], 0, handle->domain.type);
 		if (ret) {
 			goto end;
 		}
@@ -867,7 +868,7 @@ static int mi_list_syscalls(struct lttng_event *events, int count)
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(writer, &events[i], 0);
+		ret = mi_lttng_event(writer, &events[i], 0, handle->domain.type);
 		if (ret) {
 			goto end;
 		}
@@ -940,7 +941,7 @@ static int mi_list_session_agent_events(struct lttng_event *events, int count)
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(writer, &events[i], 0);
+		ret = mi_lttng_event(writer, &events[i], 0, handle->domain.type);
 		if (ret) {
 			goto end;
 		}
@@ -989,7 +990,8 @@ static int list_session_agent_events(void)
 			MSG("%s- %s%s (loglevel%s %s)", indent4, events[i].name,
 					enabled_string(events[i].enabled),
 					logleveltype_string(events[i].loglevel_type),
-					mi_lttng_loglevel_string(events[i].loglevel));
+					mi_lttng_loglevel_string(events[i].loglevel,
+						handle->domain.type));
 		}
 
 		MSG("");
@@ -1016,7 +1018,7 @@ static int mi_list_events(struct lttng_event *events, int count)
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(writer, &events[i], 0);
+		ret = mi_lttng_event(writer, &events[i], 0, handle->domain.type);
 		if (ret) {
 			goto end;
 		}

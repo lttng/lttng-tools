@@ -149,6 +149,16 @@ const char * const mi_lttng_loglevel_str_jul_off;
 const char * const mi_lttng_loglevel_str_jul_severe;
 const char * const mi_lttng_loglevel_str_jul_warning;
 
+/* String related to loglevel Log4j */
+const char * const mi_lttng_loglevel_str_log4j_off;
+const char * const mi_lttng_loglevel_str_log4j_fatal;
+const char * const mi_lttng_loglevel_str_log4j_error;
+const char * const mi_lttng_loglevel_str_log4j_warn;
+const char * const mi_lttng_loglevel_str_log4j_info;
+const char * const mi_lttng_loglevel_str_log4j_debug;
+const char * const mi_lttng_loglevel_str_log4j_trace;
+const char * const mi_lttng_loglevel_str_log4j_all;
+
 /* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all;
 const char * const mi_lttng_loglevel_type_range;
@@ -168,7 +178,7 @@ const char * const mi_lttng_element_snapshot_session_name;
 const char * const mi_lttng_element_snapshots;
 
 /* Utility string function  */
-const char *mi_lttng_loglevel_string(int value);
+const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain);
 const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value);
 const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type value);
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value);
@@ -436,12 +446,13 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer,
  *
  * writer An instance of a mi writer.
  * event single trace event.
+ * domain Event's domain
  *
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
-		struct lttng_event *event);
+		struct lttng_event *event, enum lttng_domain_type domain);
 
 /*
  * Machine interface for kernel tracepoint event with no loglevel.
@@ -504,12 +515,13 @@ int mi_lttng_events_open(struct mi_writer *writer);
  *         This should be used carefully and the client
  *         must close the event element.
  *         Use case: nested additional information
+ * domain Event's domain
  *
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
 int mi_lttng_event(struct mi_writer *writer, struct lttng_event *event,
-		int is_open);
+		int is_open, enum lttng_domain_type domain);
 
 /*
  * Machine interface for struct lttng_event_field.

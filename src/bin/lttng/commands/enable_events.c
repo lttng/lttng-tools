@@ -854,7 +854,7 @@ static int enable_events(char *session_name)
 				ev.enabled = 0;
 				success = 0;
 			}
-			ret = mi_lttng_event(writer, &ev, 1);
+			ret = mi_lttng_event(writer, &ev, 1, handle->domain.type);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -1133,7 +1133,7 @@ static int enable_events(char *session_name)
 				ev.enabled = 1;
 			}
 
-			ret = mi_lttng_event(writer, &ev, 1);
+			ret = mi_lttng_event(writer, &ev, 1, handle->domain.type);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
