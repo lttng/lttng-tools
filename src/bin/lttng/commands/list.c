@@ -92,6 +92,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
 	fprintf(ofp, "  -j, --jul               Apply for Java application using JUL\n");
+	fprintf(ofp, "  -l, --log4j             Apply for Java application using LOG4J\n");
 	fprintf(ofp, "  -f, --fields            List event fields.\n");
 	fprintf(ofp, "      --syscall           List available system calls.\n");
 #if 0
