@@ -192,6 +192,7 @@ elementFormDefault="qualified" version="2.5">
 		<xs:enumeration value="KERNEL"/>
 		<xs:enumeration value="UST"/>
 		<xs:enumeration value="JUL"/>
+		<xs:enumeration value="LOG4J"/>
 	</xs:restriction>
 </xs:simpleType>
 
