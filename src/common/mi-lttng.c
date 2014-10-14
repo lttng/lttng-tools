@@ -135,6 +135,14 @@ const char * const mi_lttng_loglevel_str_log4j_debug = "LOG4J_DEBUG";
 const char * const mi_lttng_loglevel_str_log4j_trace = "LOG4J_TRACE";
 const char * const mi_lttng_loglevel_str_log4j_all = "LOG4J_ALL";
 
+/* String related to loglevel Python */
+const char * const mi_lttng_loglevel_str_python_critical = "PYTHON_CRITICAL";
+const char * const mi_lttng_loglevel_str_python_error = "PYTHON_ERROR";
+const char * const mi_lttng_loglevel_str_python_warning = "PYTHON_WARNING";
+const char * const mi_lttng_loglevel_str_python_info = "PYTHON_INFO";
+const char * const mi_lttng_loglevel_str_python_debug = "PYTHON_DEBUG";
+const char * const mi_lttng_loglevel_str_python_notset = "PYTHON_NOTSET";
+
 /* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all = "ALL";
 const char * const mi_lttng_loglevel_type_range = "RANGE";
@@ -246,6 +254,24 @@ const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain)
 			return mi_lttng_loglevel_str_jul_finest;
 		case LTTNG_LOGLEVEL_JUL_ALL:
 			return mi_lttng_loglevel_str_jul_all;
+		default:
+			return mi_lttng_loglevel_str_unknown;
+		}
+		break;
+	case LTTNG_DOMAIN_PYTHON:
+		switch (value) {
+		case LTTNG_LOGLEVEL_PYTHON_CRITICAL:
+			return mi_lttng_loglevel_str_python_critical;
+		case LTTNG_LOGLEVEL_PYTHON_ERROR:
+			return mi_lttng_loglevel_str_python_error;
+		case LTTNG_LOGLEVEL_PYTHON_WARNING:
+			return mi_lttng_loglevel_str_python_warning;
+		case LTTNG_LOGLEVEL_PYTHON_INFO:
+			return mi_lttng_loglevel_str_python_info;
+		case LTTNG_LOGLEVEL_PYTHON_DEBUG:
+			return mi_lttng_loglevel_str_python_debug;
+		case LTTNG_LOGLEVEL_PYTHON_NOTSET:
+			return mi_lttng_loglevel_str_python_notset;
 		default:
 			return mi_lttng_loglevel_str_unknown;
 		}

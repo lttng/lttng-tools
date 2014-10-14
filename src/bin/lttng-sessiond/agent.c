@@ -539,6 +539,8 @@ int agent_list_events(struct lttng_event **events,
 
 	assert(events);
 
+	DBG2("Agent listing events for domain %d", domain);
+
 	nbmem = UST_APP_EVENT_LIST_SIZE;
 	tmp_events = zmalloc(nbmem * sizeof(*tmp_events));
 	if (!tmp_events) {

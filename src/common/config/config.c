@@ -118,6 +118,7 @@ const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
 const char * const config_domain_type_jul = "JUL";
 const char * const config_domain_type_log4j = "LOG4J";
+const char * const config_domain_type_python = "PYTHON";
 
 const char * const config_buffer_type_per_pid = "PER_PID";
 const char * const config_buffer_type_per_uid = "PER_UID";
@@ -752,6 +753,8 @@ int get_domain_type(xmlChar *domain)
 		ret = LTTNG_DOMAIN_JUL;
 	} else if (!strcmp((char *) domain, config_domain_type_log4j)) {
 		ret = LTTNG_DOMAIN_LOG4J;
+	} else if (!strcmp((char *) domain, config_domain_type_python)) {
+		ret = LTTNG_DOMAIN_PYTHON;
 	} else {
 		goto error;
 	}
@@ -2154,6 +2157,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 	struct lttng_domain *ust_domain = NULL;
 	struct lttng_domain *jul_domain = NULL;
 	struct lttng_domain *log4j_domain = NULL;
+	struct lttng_domain *python_domain = NULL;
 
 	for (node = xmlFirstElementChild(session_node); node;
 		node = xmlNextElementSibling(node)) {
@@ -2286,6 +2290,13 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 				goto domain_init_error;
 			}
 			log4j_domain = domain;
+			break;
+		case LTTNG_DOMAIN_PYTHON:
+			if (python_domain) {
+				/* Same domain seen twice, invalid! */
+				goto domain_init_error;
+			}
+			python_domain = domain;
 			break;
 		default:
 			WARN("Invalid domain type");

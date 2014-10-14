@@ -2603,6 +2603,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
 		if (session->ust_session->consumer) {
@@ -2648,6 +2649,7 @@ static int create_ust_session(struct ltt_session *session,
 	switch (domain->type) {
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_UST:
 		break;
 	default:
@@ -2895,6 +2897,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			break;
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
 			if (!cmd_ctx->session->ust_session) {
 				ret = LTTNG_ERR_NO_CHANNEL;
@@ -2977,6 +2980,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_UST:
 	{
 		if (!ust_app_supported()) {
@@ -3071,6 +3075,7 @@ skip_domain:
 		switch (cmd_ctx->lsm->domain.type) {
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
 			if (uatomic_read(&ust_consumerd_state) != CONSUMER_STARTED) {
 				ret = LTTNG_ERR_NO_USTCONSUMERD;

@@ -175,7 +175,11 @@
 #define DEFAULT_SYS_LOG4J_EVENT_NAME      "lttng_log4j:sys*"
 #define DEFAULT_USER_LOG4J_EVENT_NAME     "lttng_log4j:user*"
 
-/* JUL default channel name. */
+/* Default Python domain channel name. */
+#define DEFAULT_PYTHON_CHANNEL_NAME       "lttng_python_channel"
+/* Default Python tracepoint name. This is a wildcard for the python domain. */
+#define DEFAULT_USER_PYTHON_EVENT_NAME    "lttng_python:user*"
+
 #define DEFAULT_CHANNEL_OVERWRITE       0
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  0
 #define DEFAULT_CHANNEL_TRACEFILE_COUNT 0

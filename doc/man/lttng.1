@@ -27,10 +27,11 @@ kernel and/or instrumented applications (lttng-ust(3)). Aggregating and reading
 those traces is done using the babeltrace(1) text viewer.
 
 We introduce the notion of \fBtracing domains\fP which is essentially a type of
-tracer (kernel, user space, JUL or LOG4J for now). In the future, we could see
-more tracer like for instance an hypervisor. For some commands, you'll need to
-specify on which domain the command operates (\-u, \-k or \-j). For instance,
-the kernel domain must be specified when enabling a kernel event.
+tracer (kernel, user space, JUL, LOG4J or Python for now). In the future, we
+could see more tracer like for instance an hypervisor. For some commands,
+you'll need to specify on which domain the command operates (\-u, \-k, \-l, \-j
+or \-p). For instance, the kernel domain must be specified when enabling a
+kernel event.
 
 In order to trace the kernel, the session daemon needs to be running as root.
 LTTng provides the use of a \fBtracing group\fP (default: tracing). Whomever is
@@ -542,6 +543,9 @@ Apply for Java application using Java Util Logging interface (JUL)
 .BR "\-l, \-\-log4j"
 Apply for Java application using LOG4J
 .TP
+.BR "\-p, \-\-python"
+Apply for Python application using the logging module.
+.TP
 .BR "\-\-tracepoint"
 Tracepoint event (default). Userspace tracer supports wildcards at the end
 of string. Don't forget to quote to deal with bash expansion.
@@ -557,6 +561,8 @@ For the JUL domain, the loglevel ranges are detailed with the \-\-help
 option thus starting from SEVERE to FINEST.
 For the LOG4J domain, loglevels range from FATAL to TRACE which are also
 detailed in the help.
+For the Python domain, loglevels range from CRITICAL to DEBUG which are
+detailed in the help as well.
 .TP
 .BR "\-\-loglevel-only NAME"
 Tracepoint loglevel (only this loglevel).
@@ -708,6 +714,9 @@ Apply for Java application using Java Util Logging interface (JUL)
 .TP
 .BR "\-l, \-\-log4j"
 Apply for Java application using LOG4J
+.TP
+.BR "\-p, \-\-python"
+Apply for Python application using the logging module.
 .RE
 .PP
 
@@ -728,6 +737,8 @@ With \-j alone, the available JUL event from registered application will be
 list. The event corresponds to the Logger name in the Java JUL application.
 With \-l alone, the available LOG4J event from registered application will be
 list. The event corresponds to the Logger name in the Java LOG4J application.
+With \-p alone, the available Python event from registered application will be
+list. The event corresponds to the Logger name in the Python application.
 With \-u alone, it will list all available user-space events from registered
 applications. Here is an example of 'lttng list \-u':
 
@@ -758,9 +769,12 @@ Select user-space domain.
 .BR "\-j, \-\-jul"
 Apply for Java application using JUL
 .TP
-.TP
 .BR "\-l, \-\-log4j"
 Apply for Java application using LOG4J
+.TP
+.BR "\-p, \-\-python"
+Apply for Python application using the logging module.
+.TP
 .BR "\-f, \-\-fields"
 List event fields
 

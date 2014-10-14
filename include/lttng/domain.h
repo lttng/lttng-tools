@@ -32,6 +32,7 @@ enum lttng_domain_type {
 	LTTNG_DOMAIN_UST                      = 2,	/* Global Userspace tracer. */
 	LTTNG_DOMAIN_JUL                      = 3,	/* Java Util Logging. */
 	LTTNG_DOMAIN_LOG4J                    = 4,	/* Java Log4j Framework. */
+	LTTNG_DOMAIN_PYTHON                   = 5,	/* Python logging Framework. */
 };
 
 /* Buffer type for a specific domain. */

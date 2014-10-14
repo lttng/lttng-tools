@@ -47,6 +47,7 @@ static char *opt_session_name;
 static int opt_userspace;
 static int opt_jul;
 static int opt_log4j;
+static int opt_python;
 static int opt_enable_all;
 static char *opt_probe;
 static char *opt_function;
@@ -88,6 +89,7 @@ static struct poptOption long_options[] = {
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
 	{"log4j",          'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
+	{"python",         'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
@@ -124,6 +126,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
 	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
+	fprintf(ofp, "  -p, --python             Apply for Java application using LOG4j\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
@@ -196,6 +199,15 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               LOG4J_TRACE          = %d\n", LTTNG_LOGLEVEL_LOG4J_TRACE);
 	fprintf(ofp, "                               LOG4J_ALL            = INT32_MIN\n");
 	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "                           Available Python domain loglevels:\n");
+	fprintf(ofp, "                               PYTHON_CRITICAL      = %d\n", LTTNG_LOGLEVEL_PYTHON_CRITICAL);
+	fprintf(ofp, "                               PYTHON_ERROR         = %d\n", LTTNG_LOGLEVEL_PYTHON_ERROR);
+	fprintf(ofp, "                               PYTHON_WARNING       = %d\n", LTTNG_LOGLEVEL_PYTHON_WARNING);
+	fprintf(ofp, "                               PYTHON_INFO          = %d\n", LTTNG_LOGLEVEL_PYTHON_INFO);
+	fprintf(ofp, "                               PYTHON_DEBUG         = %d\n", LTTNG_LOGLEVEL_PYTHON_DEBUG);
+	fprintf(ofp, "                               PYTHON_NOTSET        = %d\n", LTTNG_LOGLEVEL_PYTHON_NOTSET);
+	fprintf(ofp, "                               (shortcuts such as \"critical\" are allowed)\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -f, --filter \'expression\'\n");
 	fprintf(ofp, "                           Filter expression on event fields and context.\n");
@@ -388,6 +400,41 @@ static int loglevel_jul_str_to_value(const char *inputstr)
 		return LTTNG_LOGLEVEL_JUL_FINEST;
 	} else if (!strcmp(str, "JUL_ALL") || !strcmp(str, "ALL")) {
 		return LTTNG_LOGLEVEL_JUL_ALL;
+	} else {
+		return -1;
+	}
+}
+
+/*
+ * Maps Python loglevel from string to value
+ */
+static int loglevel_python_str_to_value(const char *inputstr)
+{
+	int i = 0;
+	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	/*
+	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
+	 * added at the end of the loop so a the upper bound we avoid the overflow.
+	 */
+	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
+		str[i] = toupper(inputstr[i]);
+		i++;
+	}
+	str[i] = '\0';
+
+	if (!strcmp(str, "PYTHON_CRITICAL") || !strcmp(str, "CRITICAL")) {
+		return LTTNG_LOGLEVEL_PYTHON_CRITICAL;
+	} else if (!strcmp(str, "PYTHON_ERROR") || !strcmp(str, "ERROR")) {
+		return LTTNG_LOGLEVEL_PYTHON_ERROR;
+	} else if (!strcmp(str, "PYTHON_WARNING") || !strcmp(str, "WARNING")) {
+		return LTTNG_LOGLEVEL_PYTHON_WARNING;
+	} else if (!strcmp(str, "PYTHON_INFO") || !strcmp(str, "INFO")) {
+		return LTTNG_LOGLEVEL_PYTHON_INFO;
+	} else if (!strcmp(str, "PYTNON_DEBUG") || !strcmp(str, "DEBUG")) {
+		return LTTNG_LOGLEVEL_PYTHON_DEBUG;
+	} else if (!strcmp(str, "PYTHON_NOTSET") || !strcmp(str, "NOTSET")) {
+		return LTTNG_LOGLEVEL_PYTHON_NOTSET;
 	} else {
 		return -1;
 	}
@@ -658,6 +705,10 @@ static int enable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_LOG4J;
 		/* Default. */
 		dom.buf_type = LTTNG_BUFFER_PER_UID;
+	} else if (opt_python) {
+		dom.type = LTTNG_DOMAIN_PYTHON;
+		/* Default. */
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
 		print_missing_domain();
 		ret = CMD_ERROR;
@@ -700,13 +751,15 @@ static int enable_events(char *session_name)
 			strcpy(ev.name, "*");
 			ev.loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
-				assert(opt_userspace || opt_jul || opt_log4j);
+				assert(opt_userspace || opt_jul || opt_log4j || opt_python);
 				if (opt_userspace) {
 					ev.loglevel = loglevel_str_to_value(opt_loglevel);
 				} else if (opt_jul) {
 					ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
 				} else if (opt_log4j) {
 					ev.loglevel = loglevel_log4j_str_to_value(opt_loglevel);
+				} else if (opt_python) {
+					ev.loglevel = loglevel_python_str_to_value(opt_loglevel);
 				}
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
@@ -714,11 +767,13 @@ static int enable_events(char *session_name)
 					goto error;
 				}
 			} else {
-				assert(opt_userspace || opt_jul || opt_log4j);
+				assert(opt_userspace || opt_jul || opt_log4j || opt_python);
 				if (opt_userspace) {
 					ev.loglevel = -1;
 				} else if (opt_jul || opt_log4j) {
 					ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+				} else if (opt_python) {
+					ev.loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
 				}
 			}
 		}
@@ -1002,7 +1057,7 @@ static int enable_events(char *session_name)
 			} else {
 				ev.loglevel = -1;
 			}
-		} else if (opt_jul || opt_log4j) {
+		} else if (opt_jul || opt_log4j || opt_python) {
 			if (opt_event_type != LTTNG_EVENT_ALL &&
 					opt_event_type != LTTNG_EVENT_TRACEPOINT) {
 				ERR("Event type not supported for domain.");
@@ -1016,6 +1071,8 @@ static int enable_events(char *session_name)
 					ev.loglevel = loglevel_jul_str_to_value(opt_loglevel);
 				} else if (opt_log4j) {
 					ev.loglevel = loglevel_log4j_str_to_value(opt_loglevel);
+				} else if (opt_python) {
+					ev.loglevel = loglevel_python_str_to_value(opt_loglevel);
 				}
 				if (ev.loglevel == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
@@ -1027,6 +1084,8 @@ static int enable_events(char *session_name)
 					ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 				} else if (opt_log4j) {
 					ev.loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+				} else if (opt_python) {
+					ev.loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
 				}
 			}
 			ev.type = LTTNG_EVENT_TRACEPOINT;

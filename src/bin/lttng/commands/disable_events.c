@@ -37,6 +37,7 @@ static int opt_userspace;
 static int opt_disable_all;
 static int opt_jul;
 static int opt_log4j;
+static int opt_python;
 static int opt_event_type;
 #if 0
 /* Not implemented yet */
@@ -62,6 +63,7 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
 	{"log4j",          'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
+	{"python",         'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 #if 0
@@ -92,6 +94,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
 	fprintf(ofp, "  -l, --log4j              Apply to Java application using LOG4j\n");
+	fprintf(ofp, "  -p, --python             Apply to Python application using logging\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
 	fprintf(ofp, "      --syscall            System call event\n");
@@ -178,6 +181,8 @@ static int disable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_JUL;
 	} else if (opt_log4j) {
 		dom.type = LTTNG_DOMAIN_LOG4J;
+	} else if (opt_python) {
+		dom.type = LTTNG_DOMAIN_PYTHON;
 	} else {
 		print_missing_domain();
 		ret = CMD_ERROR;

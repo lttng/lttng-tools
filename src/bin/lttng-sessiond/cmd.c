@@ -1138,6 +1138,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 	}
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_PYTHON:
 	{
 		struct agent *agt;
 		struct ltt_ust_session *usess = session->ust_session;
@@ -1542,6 +1543,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	}
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_PYTHON:
 	{
 		const char *default_event_name, *default_chan_name;
 		struct agent *agt;
@@ -1581,10 +1583,19 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		memcpy(&tmp_dom, domain, sizeof(tmp_dom));
 		tmp_dom.type = LTTNG_DOMAIN_UST;
 
-		if (domain->type == LTTNG_DOMAIN_LOG4J) {
+		switch (domain->type) {
+		case LTTNG_DOMAIN_LOG4J:
 			default_chan_name = DEFAULT_LOG4J_CHANNEL_NAME;
-		} else {
+			break;
+		case LTTNG_DOMAIN_JUL:
 			default_chan_name = DEFAULT_JUL_CHANNEL_NAME;
+			break;
+		case LTTNG_DOMAIN_PYTHON:
+			default_chan_name = DEFAULT_PYTHON_CHANNEL_NAME;
+			break;
+		default:
+			/* The switch/case we are in should avoid this else big problem */
+			assert(0);
 		}
 
 		ret = cmd_enable_event(session, &tmp_dom, (char *) default_chan_name,
@@ -1756,6 +1767,7 @@ ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
 		break;
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_PYTHON:
 		nb_events = agent_list_events(events, domain);
 		if (nb_events < 0) {
 			ret = LTTNG_ERR_UST_LIST_FAIL;
@@ -2492,6 +2504,7 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 	}
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_PYTHON:
 		if (session->ust_session) {
 			struct lttng_ht_iter iter;
 			struct agent *agt;

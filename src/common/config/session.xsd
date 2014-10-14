@@ -193,6 +193,7 @@ elementFormDefault="qualified" version="2.5">
 		<xs:enumeration value="UST"/>
 		<xs:enumeration value="JUL"/>
 		<xs:enumeration value="LOG4J"/>
+		<xs:enumeration value="PYTHON"/>
 	</xs:restriction>
 </xs:simpleType>
 

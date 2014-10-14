@@ -140,6 +140,12 @@ THE SOFTWARE.
 			<xs:enumeration value="LOG4J_DEBUG" />
 			<xs:enumeration value="LOG4J_TRACE" />
 			<xs:enumeration value="LOG4J_ALL" />
+			<xs:enumeration value="PYTHON_CRITICAL" />
+			<xs:enumeration value="PYTHON_ERROR" />
+			<xs:enumeration value="PYTHON_WARNING" />
+			<xs:enumeration value="PYTHON_INFO" />
+			<xs:enumeration value="PYTHON_DEBUG" />
+			<xs:enumeration value="PYTHON_NOTSET" />
 			<xs:enumeration value="UNKNOWN" />
 		</xs:restriction>
 	</xs:simpleType>
@@ -228,6 +234,7 @@ THE SOFTWARE.
 			<xs:enumeration value="UST"/>
 			<xs:enumeration value="JUL"/>
 			<xs:enumeration value="LOG4J"/>
+			<xs:enumeration value="PYTHON"/>
 		</xs:restriction>
 	</xs:simpleType>
 

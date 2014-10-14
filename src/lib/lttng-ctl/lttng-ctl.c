@@ -106,6 +106,7 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		case LTTNG_DOMAIN_UST:
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_PYTHON:
 			memcpy(dst, src, sizeof(struct lttng_domain));
 			break;
 		default:
@@ -690,25 +691,25 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 }
 
 /*
- * Depending on the event, return a newly allocated JUL filter expression or
+ * Depending on the event, return a newly allocated agent filter expression or
  * NULL if not applicable.
  *
  * An event with NO loglevel and the name is * will return NULL.
  */
-static char *set_jul_filter(const char *filter, struct lttng_event *ev)
+static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 {
 	int err;
-	char *jul_filter = NULL;
+	char *agent_filter = NULL;
 
 	assert(ev);
 
 	/* Don't add filter for the '*' event. */
 	if (ev->name[0] != '*') {
 		if (filter) {
-			err = asprintf(&jul_filter, "(%s) && (logger_name == \"%s\")", filter,
+			err = asprintf(&agent_filter, "(%s) && (logger_name == \"%s\")", filter,
 					ev->name);
 		} else {
-			err = asprintf(&jul_filter, "logger_name == \"%s\"", ev->name);
+			err = asprintf(&agent_filter, "logger_name == \"%s\"", ev->name);
 		}
 		if (err < 0) {
 			PERROR("asprintf");
@@ -726,18 +727,18 @@ static char *set_jul_filter(const char *filter, struct lttng_event *ev)
 			op = "==";
 		}
 
-		if (filter || jul_filter) {
+		if (filter || agent_filter) {
 			char *new_filter;
 
 			err = asprintf(&new_filter, "(%s) && (int_loglevel %s %d)",
-					jul_filter ? jul_filter : filter, op,
+					agent_filter ? agent_filter : filter, op,
 					ev->loglevel);
-			if (jul_filter) {
-				free(jul_filter);
+			if (agent_filter) {
+				free(agent_filter);
 			}
-			jul_filter = new_filter;
+			agent_filter = new_filter;
 		} else {
-			err = asprintf(&jul_filter, "int_loglevel %s %d", op,
+			err = asprintf(&agent_filter, "int_loglevel %s %d", op,
 					ev->loglevel);
 		}
 		if (err < 0) {
@@ -746,9 +747,9 @@ static char *set_jul_filter(const char *filter, struct lttng_event *ev)
 		}
 	}
 
-	return jul_filter;
+	return agent_filter;
 error:
-	free(jul_filter);
+	free(agent_filter);
 	return NULL;
 }
 
@@ -941,7 +942,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 */
 	if (exclusion_count == 0 && filter_expression == NULL &&
 			(handle->domain.type != LTTNG_DOMAIN_JUL &&
-				handle->domain.type != LTTNG_DOMAIN_LOG4J)) {
+				handle->domain.type != LTTNG_DOMAIN_LOG4J &&
+				handle->domain.type != LTTNG_DOMAIN_PYTHON)) {
 		goto ask_sessiond;
 	}
 
@@ -952,24 +954,26 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 
 	/* Parse filter expression */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
-			|| handle->domain.type == LTTNG_DOMAIN_LOG4J) {
+			|| handle->domain.type == LTTNG_DOMAIN_LOG4J
+			|| handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
-				handle->domain.type == LTTNG_DOMAIN_LOG4J) {
-			char *jul_filter;
+				handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+				handle->domain.type == LTTNG_DOMAIN_PYTHON) {
+			char *agent_filter;
 
 			/* Setup JUL filter if needed. */
-			jul_filter = set_jul_filter(filter_expression, ev);
-			if (!jul_filter) {
+			agent_filter = set_agent_filter(filter_expression, ev);
+			if (!agent_filter) {
 				if (!filter_expression) {
 					/* No JUL and no filter, just skip everything below. */
 					goto ask_sessiond;
 				}
 			} else {
 				/*
-				 * With a JUL filter, the original filter has been added to it
-				 * thus replace the filter expression.
+				 * With an agent filter, the original filter has been added to
+				 * it thus replace the filter expression.
 				 */
-				filter_expression = jul_filter;
+				filter_expression = agent_filter;
 				free_filter_expression = 1;
 			}
 		}
@@ -1102,7 +1106,8 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	 */
 	if (filter_expression == NULL &&
 			(handle->domain.type != LTTNG_DOMAIN_JUL &&
-				handle->domain.type != LTTNG_DOMAIN_LOG4J)) {
+				handle->domain.type != LTTNG_DOMAIN_LOG4J &&
+				handle->domain.type != LTTNG_DOMAIN_PYTHON)) {
 		goto ask_sessiond;
 	}
 
@@ -1113,14 +1118,16 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 
 	/* Parse filter expression */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
-			|| handle->domain.type == LTTNG_DOMAIN_LOG4J) {
+			|| handle->domain.type == LTTNG_DOMAIN_LOG4J
+			|| handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
-				handle->domain.type == LTTNG_DOMAIN_LOG4J) {
-			char *jul_filter;
+				handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+				handle->domain.type == LTTNG_DOMAIN_PYTHON) {
+			char *agent_filter;
 
 			/* Setup JUL filter if needed. */
-			jul_filter = set_jul_filter(filter_expression, ev);
-			if (!jul_filter) {
+			agent_filter = set_agent_filter(filter_expression, ev);
+			if (!agent_filter) {
 				if (!filter_expression) {
 					/* No JUL and no filter, just skip everything below. */
 					goto ask_sessiond;
@@ -1130,7 +1137,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 				 * With a JUL filter, the original filter has been added to it
 				 * thus replace the filter expression.
 				 */
-				filter_expression = jul_filter;
+				filter_expression = agent_filter;
 				free_filter_expression = 1;
 			}
 		}

@@ -159,6 +159,14 @@ const char * const mi_lttng_loglevel_str_log4j_debug;
 const char * const mi_lttng_loglevel_str_log4j_trace;
 const char * const mi_lttng_loglevel_str_log4j_all;
 
+/* String related to loglevel Python */
+const char * const mi_lttng_loglevel_str_python_critical;
+const char * const mi_lttng_loglevel_str_python_error;
+const char * const mi_lttng_loglevel_str_python_warning;
+const char * const mi_lttng_loglevel_str_python_info;
+const char * const mi_lttng_loglevel_str_python_debug;
+const char * const mi_lttng_loglevel_str_python_notset;
+
 /* String related to loglevel type */
 const char * const mi_lttng_loglevel_type_all;
 const char * const mi_lttng_loglevel_type_range;

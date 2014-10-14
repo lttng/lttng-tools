@@ -99,6 +99,19 @@ enum lttng_loglevel_log4j {
 };
 
 /*
+ * Available loglevels for the Python domain. Those are an exact map from the
+ * Level class.
+ */
+enum lttng_loglevel_python {
+	LTTNG_LOGLEVEL_PYTHON_CRITICAL        = 50,
+	LTTNG_LOGLEVEL_PYTHON_ERROR           = 40,
+	LTTNG_LOGLEVEL_PYTHON_WARNING         = 30,
+	LTTNG_LOGLEVEL_PYTHON_INFO            = 20,
+	LTTNG_LOGLEVEL_PYTHON_DEBUG           = 10,
+	LTTNG_LOGLEVEL_PYTHON_NOTSET          = 0,
+};
+
+/*
  * LTTng consumer mode
  */
 enum lttng_event_output {

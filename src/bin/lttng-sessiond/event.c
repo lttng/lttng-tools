@@ -715,25 +715,30 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 {
 	const char *default_event_name = NULL;
 
-	if (domain == LTTNG_DOMAIN_JUL) {
-		if (is_root) {
-			default_event_name = DEFAULT_SYS_JUL_EVENT_NAME;
-		} else {
-			default_event_name = DEFAULT_USER_JUL_EVENT_NAME;
-		}
-	} else if (domain == LTTNG_DOMAIN_LOG4J) {
+	switch (domain) {
+	case LTTNG_DOMAIN_LOG4J:
 		if (is_root) {
 			default_event_name = DEFAULT_SYS_LOG4J_EVENT_NAME;
 		} else {
 			default_event_name = DEFAULT_USER_LOG4J_EVENT_NAME;
 		}
-	} else {
+		break;
+	case LTTNG_DOMAIN_JUL:
+		if (is_root) {
+			default_event_name = DEFAULT_SYS_JUL_EVENT_NAME;
+		} else {
+			default_event_name = DEFAULT_USER_JUL_EVENT_NAME;
+		}
+		break;
+	case LTTNG_DOMAIN_PYTHON:
+		default_event_name = DEFAULT_USER_PYTHON_EVENT_NAME;
+		break;
+	default:
 		assert(0);
 	}
 
 	return default_event_name;
 }
-
 
 /*
  * Disable a single agent event for a given UST session.
@@ -770,6 +775,8 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 		ust_channel_name = DEFAULT_JUL_CHANNEL_NAME;
 	} else if (agt->domain == LTTNG_DOMAIN_LOG4J) {
 		ust_channel_name = DEFAULT_LOG4J_CHANNEL_NAME;
+	} else if (agt->domain == LTTNG_DOMAIN_PYTHON) {
+		ust_channel_name = DEFAULT_PYTHON_CHANNEL_NAME;
 	} else {
 		ret = LTTNG_ERR_INVALID;
 		goto error;

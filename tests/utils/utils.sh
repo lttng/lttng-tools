@@ -514,6 +514,41 @@ function enable_log4j_lttng_event_loglevel()
 	ok $? "Enable LOG4J event $event_name for session $sess_name with loglevel $loglevel"
 }
 
+function enable_python_lttng_event()
+{
+	sess_name=$1
+	event_name="$2"
+	channel_name=$3
+
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -p >$OUTPUT_DEST
+	ok $? "Enable Python event $event_name for session $sess_name"
+}
+
+function enable_python_lttng_event_loglevel()
+{
+	local sess_name=$1
+	local event_name="$2"
+	local loglevel=$3
+	local channel_name=$4
+
+	if [ -z $channel_name ]; then
+		# default channel if none specified
+		chan=""
+	else
+		chan="-c $channel_name"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -p >$OUTPUT_DEST
+	ok $? "Enable Python event $event_name for session $sess_name with loglevel $loglevel"
+}
+
 function enable_ust_lttng_event_filter()
 {
 	local sess_name="$1"
@@ -577,6 +612,15 @@ function disable_log4j_lttng_event ()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -l >/dev/null 2>&1
 	ok $? "Disable LOG4J event $event_name for session $sess_name"
+}
+
+function disable_python_lttng_event ()
+{
+	local sess_name="$1"
+	local event_name="$2"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -p >$OUTPUT_DEST
+	ok $? "Disable Python event $event_name for session $sess_name"
 }
 
 function start_lttng_tracing ()
