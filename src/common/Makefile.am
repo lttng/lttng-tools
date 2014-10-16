@@ -8,7 +8,7 @@ AM_CFLAGS = -fno-strict-aliasing
 noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
 				 uri.h utils.h lttng-kernel-old.h \
 				 consumer-metadata-cache.h consumer-timer.h \
-				 consumer-testpoint.h
+				 consumer-testpoint.h align.h bitfield.h bug.h
 
 # Common library
 noinst_LTLIBRARIES = libcommon.la
