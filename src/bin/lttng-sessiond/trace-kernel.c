@@ -196,6 +196,8 @@ struct ltt_kernel_context *trace_kernel_create_context(
 		memcpy(&kctx->ctx, ctx, sizeof(kctx->ctx));
 	}
 
+	CDS_INIT_LIST_HEAD(&kctx->list);
+
 error:
 	return kctx;
 }
