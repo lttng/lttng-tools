@@ -124,6 +124,11 @@ struct lttng_kernel_tracer_version {
 	uint32_t patchlevel;
 } LTTNG_PACKED;
 
+struct lttng_kernel_tracer_abi_version {
+	uint32_t major;
+	uint32_t minor;
+} LTTNG_PACKED;
+
 enum lttng_kernel_calibrate_type {
 	LTTNG_KERNEL_CALIBRATE_KRETPROBE,
 };

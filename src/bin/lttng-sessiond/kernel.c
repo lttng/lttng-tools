@@ -26,6 +26,7 @@
 
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
+#include <common/kernel-ctl/kernel-ioctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "consumer.h"
@@ -698,6 +699,7 @@ int kernel_validate_version(int tracer_fd)
 {
 	int ret;
 	struct lttng_kernel_tracer_version version;
+	struct lttng_kernel_tracer_abi_version abi_version;
 
 	ret = kernctl_tracer_version(tracer_fd, &version);
 	if (ret < 0) {
@@ -706,17 +708,28 @@ int kernel_validate_version(int tracer_fd)
 	}
 
 	/* Validate version */
-	if (version.major != KERN_MODULES_PRE_MAJOR
-		&& version.major != KERN_MODULES_MAJOR) {
+	if (version.major != VERSION_MAJOR) {
+		ERR("Kernel tracer major version (%d) is not compatible with lttng-tools major version (%d)",
+			version.major, VERSION_MAJOR);
 		goto error_version;
 	}
-
-	DBG2("Kernel tracer version validated (major version %d)", version.major);
+	ret = kernctl_tracer_abi_version(tracer_fd, &abi_version);
+	if (ret < 0) {
+		ERR("Failed at getting lttng-modules ABI version");
+		goto error;
+	}
+	if (abi_version.major != LTTNG_MODULES_ABI_MAJOR_VERSION) {
+		ERR("Kernel tracer ABI version (%d.%d) is not compatible with expected ABI major version (%d.*)",
+			abi_version.major, abi_version.minor,
+			LTTNG_MODULES_ABI_MAJOR_VERSION);
+		goto error;
+	}
+	DBG2("Kernel tracer version validated (%d.%d, ABI %d.%d)",
+			version.major, version.minor,
+			abi_version.major, abi_version.minor);
 	return 0;
 
 error_version:
-	ERR("Kernel major version %d is not compatible (supporting <= %d)",
-			version.major, KERN_MODULES_MAJOR)
 	ret = -1;
 
 error:
