@@ -1,3 +1,9 @@
+2014-10-20 lttng-tools 2.6.0-rc1 (Harry Belafonte records Banana Boat Song)
+	* Machine Interface added to lttng command line (--mi)
+	* Java Log4j agent support (--log4j)
+	* Kernel per syscall tracing
+	* Multiple fixes.
+
 2014-07-16 lttng-tools 2.5.0 (Take Your Poet to Work Day)
 	* Fix: validate file path creds in autoload mode
 	* Fix: change session file loading order
