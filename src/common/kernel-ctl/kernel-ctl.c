@@ -346,6 +346,12 @@ end:
 	return ret;
 }
 
+int kernctl_tracer_abi_version(int fd,
+		struct lttng_kernel_tracer_abi_version *v)
+{
+	return ioctl(fd, LTTNG_KERNEL_TRACER_ABI_VERSION, v);
+}
+
 int kernctl_wait_quiescent(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_WAIT_QUIESCENT,
