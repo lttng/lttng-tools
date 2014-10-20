@@ -27,8 +27,8 @@ kernel and/or instrumented applications (lttng-ust(3)). Aggregating and reading
 those traces is done using the babeltrace(1) text viewer.
 
 We introduce the notion of \fBtracing domains\fP which is essentially a type of
-tracer (kernel, user space or JUL for now). In the future, we could see more
-tracer like for instance an hypervisor. For some commands, you'll need to
+tracer (kernel, user space, JUL or LOG4J for now). In the future, we could see
+more tracer like for instance an hypervisor. For some commands, you'll need to
 specify on which domain the command operates (\-u, \-k or \-j). For instance,
 the kernel domain must be specified when enabling a kernel event.
 
@@ -555,6 +555,8 @@ e.g.:
 Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
 For the JUL domain, the loglevel ranges are detailed with the \-\-help
 option thus starting from SEVERE to FINEST.
+For the LOG4J domain, loglevels range from FATAL to TRACE which are also
+detailed in the help.
 .TP
 .BR "\-\-loglevel-only NAME"
 Tracepoint loglevel (only this loglevel).
@@ -724,6 +726,8 @@ With \-k alone, it will list all available kernel events (except the system
 calls events).
 With \-j alone, the available JUL event from registered application will be
 list. The event corresponds to the Logger name in the Java JUL application.
+With \-l alone, the available LOG4J event from registered application will be
+list. The event corresponds to the Logger name in the Java LOG4J application.
 With \-u alone, it will list all available user-space events from registered
 applications. Here is an example of 'lttng list \-u':
 
@@ -1018,33 +1022,32 @@ arguments
 .RE
 .PP
 
-.SH "JUL DOMAIN"
-This section explains the JUL domain (\-j, \-\-jul) where JUL stands for Java
-Util Logging. You can use that feature by using the \fBliblttng-ust-jul.so\fP
-from the lttng-ust(3) project.
+.SH "JUL/LOG4J DOMAIN"
+
+This section explains the JUL and LOG4J domain where JUL stands for Java Util
+Logging. You can use these by using the \fBliblttng-ust-<domain>-jni.so\fP from
+the lttng-ust(3) project.
 
 The LTTng Java Agent uses JNI to link the UST tracer to the Java application
 that uses the agent. Thus, it behaves similarly to the UST domain (\-u). When
-enabling events with the JUL domain, you enable a Logger name that will then be
-mapped to a default UST tracepoint called \fBlttng_jul:jul_event\fP in the
-\fBlttng_jul_channel\fP. Using the lttng-ctl API, any JUL events must use the
-tracepoint event type (same as \-\-tracepoint).
+enabling events, you enable a Logger name that will then be mapped to a default
+UST tracepoint called \fBlttng_jul:<domain>_event\fP in the
+\fBlttng_<domain>_channel\fP. Using the lttng-ctl API, any JUL/LOG4J events
+must use the tracepoint event type (same as \-\-tracepoint).
 
-Because of the default immutable channel (\fBlttng_jul_channel\fP), the
-\fBenable-channel\fP command CAN NOT be used with the JUL domain thus not
-having any \-j option.
+Because of the default immutable channel, the \fBenable-channel\fP command CAN
+NOT be used with the JUL and LOG4J domain thus not having any options.
 
-For JUL event, loglevels are supported with the JUL ABI values. Use \fBlttng
-enable-event \-h\fP to list them. Wildcards are NOT supported except the "*"
-meaning all events (same as \-a).
+Also, loglevels are supported. Use \fBlttng enable-event \-h\fP to list them.
+Wildcards are NOT supported except the "*" meaning all events (same as \-a).
 
 Exactly like the UST domain, if the Java application has the same UID as you,
 you can trace it. Same goes for the tracing group accessing root applications.
 
-Finally, you can list every Logger name that are available from JUL registered
-applications to the session daemon by using \fBlttng list \-j\fP.
+Finally, you can list every Logger name that are available from registered
+applications to the session daemon by using \fBlttng list \-j\fP or \fB\-l\fP.
 
-Here is an example on how to use this domain.
+Here is an example on how to use the JUL domain.
 
 .nf
 $ lttng list -j
