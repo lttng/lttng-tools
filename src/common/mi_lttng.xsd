@@ -132,6 +132,14 @@ THE SOFTWARE.
 			<xs:enumeration value="JUL_FINER" />
 			<xs:enumeration value="JUL_FINEST" />
 			<xs:enumeration value="JUL_ALL" />
+			<xs:enumeration value="LOG4J_OFF" />
+			<xs:enumeration value="LOG4J_FATAL" />
+			<xs:enumeration value="LOG4J_ERROR" />
+			<xs:enumeration value="LOG4J_WARN" />
+			<xs:enumeration value="LOG4J_INFO" />
+			<xs:enumeration value="LOG4J_DEBUG" />
+			<xs:enumeration value="LOG4J_TRACE" />
+			<xs:enumeration value="LOG4J_ALL" />
 			<xs:enumeration value="UNKNOWN" />
 		</xs:restriction>
 	</xs:simpleType>
@@ -219,6 +227,7 @@ THE SOFTWARE.
 			<xs:enumeration value="KERNEL"/>
 			<xs:enumeration value="UST"/>
 			<xs:enumeration value="JUL"/>
+			<xs:enumeration value="LOG4J"/>
 		</xs:restriction>
 	</xs:simpleType>
 
