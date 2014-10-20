@@ -4,6 +4,21 @@
 	* Kernel per syscall tracing
 	* Multiple fixes.
 
+2014-10-20 lttng-tools 2.5.1
+	* Fix: handle sysconf possible negative returned value
+	* Fix: channel deref. after NULL check in kernel consumer
+	* Fix: check for kernel session metadata during init
+	* Fix: incorrect cast in ust consumer assert
+	* Fix: bad handling of incoming data in consumer thread
+	* Fix: disable event for JUL domain
+	* Fix: send disable ALL command code if event is *
+	* Fix: make sure no index is in flight before using inactivity beacons
+	* Fix: Parenthesize previous statement when adding conditions to a filter
+	* Fix: parse_prob_opts return the actual success of the function
+	* Fix: Man page typos
+	* Fix: disable JUL event on destroy
+	* Fix: unbalanced ustconsumer32_data.pid_mutex lock
+
 2014-07-16 lttng-tools 2.5.0 (Take Your Poet to Work Day)
 	* Fix: validate file path creds in autoload mode
 	* Fix: change session file loading order
