@@ -1,3 +1,7 @@
+2014-10-21 lttng-tools 2.6.0-rc2
+	* Use lttng-modules ABI version ioctl
+	* Fix: syscall list ioctl number conflict
+
 2014-10-20 lttng-tools 2.6.0-rc1 (Harry Belafonte records Banana Boat Song)
 	* Machine Interface added to lttng command line (--mi)
 	* Java Log4j agent support (--log4j)
