@@ -2360,6 +2360,7 @@ error:
 	free(ust_domain);
 	free(jul_domain);
 	free(log4j_domain);
+	free(python_domain);
 	free(name);
 	return ret;
 }
