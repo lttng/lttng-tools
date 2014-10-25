@@ -1,7 +1,7 @@
 #if USE_PYTHON
 
 noinst_SCRIPTS = test_python_logging
-EXTRA_DIST = test_python_logging LTTngPython.py
+EXTRA_DIST = test_python_logging LTTngTest.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
