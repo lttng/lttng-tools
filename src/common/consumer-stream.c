@@ -391,44 +391,19 @@ error:
 }
 
 /*
- * Synchronize the metadata using a given session ID. A successful acquisition
- * of a metadata stream will trigger a request to the session daemon and a
- * snapshot so the metadata thread can consume it.
+ * Actually do the metadata sync using the given metadata stream.
  *
- * This function call is a rendez-vous point between the metadata thread and
- * the data thread.
- *
- * Return 0 on success or else a negative value.
+ * Return 0 on success else a negative value. ENODATA can be returned also
+ * indicating that there is no metadata available for that stream.
  */
-int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
-		uint64_t session_id)
+static int do_sync_metadata(struct lttng_consumer_stream *metadata,
+		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
-	struct lttng_consumer_stream *metadata = NULL, *stream = NULL;
-	struct lttng_ht_iter iter;
-	struct lttng_ht *ht;
 
+	assert(metadata);
+	assert(metadata->metadata_flag);
 	assert(ctx);
-
-	/* Ease our life a bit. */
-	ht = consumer_data.stream_list_ht;
-
-	rcu_read_lock();
-
-	/* Search the metadata associated with the session id of the given stream. */
-
-	cds_lfht_for_each_entry_duplicate(ht->ht,
-			ht->hash_fct(&session_id, lttng_ht_seed), ht->match_fct,
-			&session_id, &iter.iter, stream, node_session_id.node) {
-		if (stream->metadata_flag) {
-			metadata = stream;
-			break;
-		}
-	}
-	if (!metadata) {
-		ret = 0;
-		goto end_unlock_rcu;
-	}
 
 	/*
 	 * In UST, since we have to write the metadata from the cache packet
@@ -515,12 +490,61 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
 		pthread_mutex_unlock(&metadata->metadata_rdv_lock);
 	} while (ret == EAGAIN);
 
-	ret = 0;
-	goto end_unlock_rcu;
+	/* Success */
+	return 0;
 
 end_unlock_mutex:
 	pthread_mutex_unlock(&metadata->lock);
-end_unlock_rcu:
+	return ret;
+}
+
+/*
+ * Synchronize the metadata using a given session ID. A successful acquisition
+ * of a metadata stream will trigger a request to the session daemon and a
+ * snapshot so the metadata thread can consume it.
+ *
+ * This function call is a rendez-vous point between the metadata thread and
+ * the data thread.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
+		uint64_t session_id)
+{
+	int ret;
+	struct lttng_consumer_stream *stream = NULL;
+	struct lttng_ht_iter iter;
+	struct lttng_ht *ht;
+
+	assert(ctx);
+
+	/* Ease our life a bit. */
+	ht = consumer_data.stream_list_ht;
+
+	rcu_read_lock();
+
+	/* Search the metadata associated with the session id of the given stream. */
+
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&session_id, lttng_ht_seed), ht->match_fct,
+			&session_id, &iter.iter, stream, node_session_id.node) {
+		if (!stream->metadata_flag) {
+			continue;
+		}
+
+		ret = do_sync_metadata(stream, ctx);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	/*
+	 * Force return code to 0 (success) since ret might be ENODATA for instance
+	 * which is not an error but rather that we should come back.
+	 */
+	ret = 0;
+
+end:
 	rcu_read_unlock();
 	return ret;
 }
