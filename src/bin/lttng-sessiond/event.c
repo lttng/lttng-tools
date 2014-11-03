@@ -106,7 +106,7 @@ int event_kernel_enable_syscall(struct ltt_kernel_channel *kchan,
 		goto error;
 	}
 
-	DBG("Kernel event %s enable for channel %s.",
+	DBG("Kernel syscall %s enable for channel %s.",
 			syscall_name, kchan->channel->name);
 
 	ret = LTTNG_OK;
@@ -132,7 +132,7 @@ int event_kernel_disable_syscall(struct ltt_kernel_channel *kchan,
 	}
 
 	DBG("Kernel syscall %s disable for channel %s.",
-			syscall_name[0] == '\0' ? "<all>" : syscall_name,
+			!strcmp(syscall_name, "*") ? "<all>" : syscall_name,
 			kchan->channel->name);
 
 	ret = LTTNG_OK;
@@ -175,7 +175,7 @@ int event_kernel_disable_all(struct ltt_kernel_channel *kchan)
 	ret = event_kernel_disable_all_tracepoints(kchan);
 	if (ret != LTTNG_OK)
 		return ret;
-	ret = event_kernel_disable_syscall(kchan, "");
+	ret = event_kernel_disable_syscall(kchan, "*");
 	return ret;
 }
 
@@ -224,84 +224,6 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
 	ret = LTTNG_OK;
 end:
 	return ret;
-}
-
-/*
- * Enable all kernel tracepoint events of a channel of the kernel session.
- */
-int event_kernel_enable_all_tracepoints(struct ltt_kernel_channel *kchan,
-		int kernel_tracer_fd)
-{
-	int size, i, ret;
-	struct ltt_kernel_event *kevent;
-	struct lttng_event *event_list = NULL;
-
-	assert(kchan);
-
-	/* For each event in the kernel session */
-	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
-		if (kevent->enabled == 0) {
-			ret = kernel_enable_event(kevent);
-			if (ret < 0) {
-				/* Enable failed but still continue */
-				continue;
-			}
-		}
-	}
-
-	size = kernel_list_events(kernel_tracer_fd, &event_list);
-	if (size < 0) {
-		ret = LTTNG_ERR_KERN_LIST_FAIL;
-		goto end;
-	}
-
-	for (i = 0; i < size; i++) {
-		kevent = trace_kernel_get_event_by_name(event_list[i].name, kchan);
-		if (kevent == NULL) {
-			/* Default event type for enable all */
-			event_list[i].type = LTTNG_EVENT_TRACEPOINT;
-			/* Enable each single tracepoint event */
-			ret = kernel_create_event(&event_list[i], kchan);
-			if (ret < 0) {
-				/* Ignore error here and continue */
-			}
-		}
-	}
-	free(event_list);
-
-	ret = LTTNG_OK;
-end:
-	return ret;
-}
-
-/*
- * Enable all kernel events of a channel of the kernel session.
- */
-int event_kernel_enable_all(struct ltt_kernel_channel *kchan,
-		int kernel_tracer_fd)
-{
-	int tp_ret;
-
-	assert(kchan);
-
-	tp_ret = event_kernel_enable_all_tracepoints(kchan, kernel_tracer_fd);
-	if (tp_ret != LTTNG_OK) {
-		goto end;
-	}
-
-	/*
-	 * Reaching this code path means that all tracepoints were enabled without
-	 * errors so we ignore the error value of syscalls.
-	 *
-	 * At the moment, failing to enable syscalls on "lttng enable-event -a -k"
-	 * is not considered an error that need to be returned to the client since
-	 * tracepoints did not fail. Future work will allow us to send back
-	 * multiple errors to the client in one API call.
-	 */
-	(void) event_kernel_enable_syscall(kchan, "");
-
-end:
-	return tp_ret;
 }
 
 /*

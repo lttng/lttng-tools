@@ -32,10 +32,6 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
 		struct lttng_event *event);
 int event_kernel_enable_syscall(struct ltt_kernel_channel *kchan,
 		char *syscall_name);
-int event_kernel_enable_all_tracepoints(struct ltt_kernel_channel *kchan,
-		int kernel_tracer_fd);
-int event_kernel_enable_all(struct ltt_kernel_channel *kchan,
-		int kernel_tracer_fd);
 
 int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event *event,

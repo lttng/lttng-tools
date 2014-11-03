@@ -51,21 +51,6 @@ static pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t relayd_net_seq_idx;
 
 /*
- * Both functions below are special case for the Kernel domain when
- * enabling/disabling all events.
- */
-static
-int enable_kevent_all(struct ltt_session *session,
-		struct lttng_domain *domain, char *channel_name,
-		struct lttng_event *event,
-		char *filter_expression,
-		struct lttng_filter_bytecode *filter, int wpipe);
-static
-int disable_kevent_all(struct ltt_session *session, int domain,
-		char *channel_name,
-		struct lttng_event *event);
-
-/*
  * Create a session path used by list_lttng_sessions for the case that the
  * session consumer is on the network.
  */
@@ -1134,7 +1119,6 @@ end:
 	return ret;
 }
 
-
 /*
  * Command LTTNG_DISABLE_EVENT processed by the client thread.
  */
@@ -1153,10 +1137,6 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 	if (event->loglevel_type || event->loglevel != -1 || event->enabled
 			|| event->pid || event->filter || event->exclusion) {
 		return LTTNG_ERR_UNK;
-	}
-	/* Special handling for kernel domain all events. */
-	if (domain == LTTNG_DOMAIN_KERNEL && !strcmp(event_name, "*")) {
-		return disable_kevent_all(session, domain, channel_name, event);
 	}
 
 	rcu_read_lock();
@@ -1187,8 +1167,17 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
+			ret = event_kernel_disable_all(kchan);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+			break;
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_kernel_disable_tracepoint(kchan, event_name);
+			if (!strcmp(event_name, "*")) {
+				ret = event_kernel_disable_all_tracepoints(kchan);
+			} else {
+				ret = event_kernel_disable_tracepoint(kchan, event_name);
+			}
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -1279,75 +1268,6 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			goto error;
 		}
 
-		break;
-	}
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
- * Command LTTNG_DISABLE_EVENT for event "*" processed by the client thread.
- */
-static
-int disable_kevent_all(struct ltt_session *session, int domain,
-		char *channel_name,
-		struct lttng_event *event)
-{
-	int ret;
-
-	rcu_read_lock();
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct ltt_kernel_session *ksess;
-		struct ltt_kernel_channel *kchan;
-
-		ksess = session->kernel_session;
-
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (ksess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
-
-		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
-		if (kchan == NULL) {
-			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-			goto error;
-		}
-
-		switch (event->type) {
-		case LTTNG_EVENT_ALL:
-			ret = event_kernel_disable_all(kchan);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			break;
-		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_disable_syscall(kchan, "");
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			break;
-		default:
-			ret = LTTNG_ERR_UNK;
-			goto error;
-		}
-
-		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
 	}
 	default:
@@ -1504,12 +1424,6 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 	DBG("Enable event command for event \'%s\'", event->name);
 
-	/* Special handling for kernel domain all events. */
-	if (domain->type == LTTNG_DOMAIN_KERNEL && !strcmp(event->name, "*")) {
-		return enable_kevent_all(session, domain, channel_name, event,
-				filter_expression, filter, wpipe);
-	}
-
 	ret = validate_event_name(event->name);
 	if (ret) {
 		goto error;
@@ -1565,6 +1479,23 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
+		{
+			event->type = LTTNG_EVENT_TRACEPOINT;	/* Hack */
+			ret = event_kernel_enable_tracepoint(kchan, event);
+			if (ret != LTTNG_OK) {
+				if (channel_created) {
+					/* Let's not leak a useless channel. */
+					kernel_destroy_channel(kchan);
+				}
+				goto error;
+			}
+			event->type = LTTNG_EVENT_SYSCALL;	/* Hack */
+			ret = event_kernel_enable_syscall(kchan, event->name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+			break;
+		}
 		case LTTNG_EVENT_PROBE:
 		case LTTNG_EVENT_FUNCTION:
 		case LTTNG_EVENT_FUNCTION_ENTRY:
@@ -1760,115 +1691,6 @@ error:
 	rcu_read_unlock();
 	return ret;
 }
-
-/*
- * Command LTTNG_ENABLE_EVENT for event "*" processed by the client thread.
- */
-static
-int enable_kevent_all(struct ltt_session *session,
-		struct lttng_domain *domain, char *channel_name,
-		struct lttng_event *event,
-		char *filter_expression,
-		struct lttng_filter_bytecode *filter, int wpipe)
-{
-	int ret;
-	struct lttng_channel *attr;
-
-	assert(session);
-	assert(channel_name);
-
-	rcu_read_lock();
-
-	switch (domain->type) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct ltt_kernel_channel *kchan;
-
-		assert(session->kernel_session);
-
-		/*
-		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
-		 * to be provided.
-		 */
-		if (session->kernel_session->has_non_default_channel
-				&& channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
-		}
-
-		kchan = trace_kernel_get_channel_by_name(channel_name,
-				session->kernel_session);
-		if (kchan == NULL) {
-			/* Create default channel */
-			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
-					LTTNG_BUFFER_GLOBAL);
-			if (attr == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-			strncpy(attr->name, channel_name, sizeof(attr->name));
-
-			ret = cmd_enable_channel(session, domain, attr, wpipe);
-			if (ret != LTTNG_OK) {
-				free(attr);
-				goto error;
-			}
-			free(attr);
-
-			/* Get the newly created kernel channel pointer */
-			kchan = trace_kernel_get_channel_by_name(channel_name,
-					session->kernel_session);
-			assert(kchan);
-		}
-
-		switch (event->type) {
-		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_enable_syscall(kchan, "");
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			break;
-		case LTTNG_EVENT_TRACEPOINT:
-			/*
-			 * This call enables all LTTNG_KERNEL_TRACEPOINTS and
-			 * events already registered to the channel.
-			 */
-			ret = event_kernel_enable_all_tracepoints(kchan, kernel_tracer_fd);
-			break;
-		case LTTNG_EVENT_ALL:
-			/* Enable syscalls and tracepoints */
-			ret = event_kernel_enable_all(kchan, kernel_tracer_fd);
-			break;
-		default:
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			goto error;
-		}
-
-		/* Manage return value */
-		if (ret != LTTNG_OK) {
-			/*
-			 * On error, cmd_enable_channel call will take care of destroying
-			 * the created channel if it was needed.
-			 */
-			goto error;
-		}
-
-		kernel_wait_quiescent(kernel_tracer_fd);
-		break;
-	}
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	rcu_read_unlock();
-	return ret;
-}
-
 
 /*
  * Command LTTNG_LIST_TRACEPOINTS processed by the client thread.

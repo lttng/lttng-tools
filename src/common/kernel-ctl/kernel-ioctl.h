@@ -19,7 +19,7 @@
 #ifndef _LTT_KERNEL_IOCTL_H
 #define _LTT_KERNEL_IOCTL_H
 
-#define LTTNG_MODULES_ABI_MAJOR_VERSION		1
+#define LTTNG_MODULES_ABI_MAJOR_VERSION		2
 #define LTTNG_MODULES_ABI_MINOR_VERSION		0
 
 /* Get a snapshot of the current ring buffer producer and consumer positions */

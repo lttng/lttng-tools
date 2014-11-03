@@ -777,7 +777,7 @@ static int enable_events(char *session_name)
 		/* Default setup for enable all */
 		if (opt_kernel) {
 			ev.type = opt_event_type;
-			ev.name[0] = '\0';
+			strcpy(ev.name, "*");
 			/* kernel loglevels not implemented */
 			ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else {
@@ -1034,9 +1034,12 @@ static int enable_events(char *session_name)
 					print_channel_name(channel_name));
 
 			switch (opt_event_type) {
-			case LTTNG_EVENT_ALL:	/* Default behavior is tracepoint */
-				ev.type = LTTNG_EVENT_TRACEPOINT;
-				/* Fall-through */
+			case LTTNG_EVENT_ALL:	/* Enable tracepoints and syscalls */
+				/* If event name differs from *, select tracepoint. */
+				if (strcmp(ev.name, "*")) {
+					ev.type = LTTNG_EVENT_TRACEPOINT;
+				}
+				break;
 			case LTTNG_EVENT_TRACEPOINT:
 				break;
 			case LTTNG_EVENT_PROBE:
