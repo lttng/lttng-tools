@@ -142,30 +142,6 @@ int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 	return ioctl(fd, LTTNG_KERNEL_CHANNEL, &channel);
 }
 
-int kernctl_enable_syscall(int fd, const char *syscall_name)
-{
-	struct lttng_kernel_event event;
-
-	memset(&event, 0, sizeof(event));
-	strncpy(event.name, syscall_name, sizeof(event.name));
-	event.name[sizeof(event.name) - 1] = '\0';
-	event.instrumentation = LTTNG_KERNEL_SYSCALL;
-	event.u.syscall.enable = 1;
-	return ioctl(fd, LTTNG_KERNEL_EVENT, &event);
-}
-
-int kernctl_disable_syscall(int fd, const char *syscall_name)
-{
-	struct lttng_kernel_event event;
-
-	memset(&event, 0, sizeof(event));
-	strncpy(event.name, syscall_name, sizeof(event.name));
-	event.name[sizeof(event.name) - 1] = '\0';
-	event.instrumentation = LTTNG_KERNEL_SYSCALL;
-	event.u.syscall.enable = 0;
-	return ioctl(fd, LTTNG_KERNEL_EVENT, &event);
-}
-
 int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 {
 	struct lttng_kernel_syscall_mask kmask_len, *kmask = NULL;

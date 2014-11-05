@@ -61,7 +61,7 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 /*
  * Disable kernel tracepoint event for a channel from the kernel session.
  */
-int event_kernel_disable_tracepoint(struct ltt_kernel_channel *kchan,
+int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 		char *event_name)
 {
 	int ret;
@@ -69,7 +69,8 @@ int event_kernel_disable_tracepoint(struct ltt_kernel_channel *kchan,
 
 	assert(kchan);
 
-	kevent = trace_kernel_get_event_by_name(event_name, kchan);
+	kevent = trace_kernel_get_event_by_name(event_name, kchan,
+			LTTNG_EVENT_ALL);
 	if (kevent == NULL) {
 		ret = LTTNG_ERR_NO_EVENT;
 		goto error;
@@ -91,60 +92,10 @@ error:
 }
 
 /*
- * Enable kernel system call for a channel from the kernel session.
- */
-int event_kernel_enable_syscall(struct ltt_kernel_channel *kchan,
-		char *syscall_name)
-{
-	int ret;
-
-	assert(kchan);
-
-	ret = kernel_enable_syscall(syscall_name, kchan);
-	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-		goto error;
-	}
-
-	DBG("Kernel syscall %s enable for channel %s.",
-			syscall_name, kchan->channel->name);
-
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-}
-
-/*
- * Disable kernel system call for a channel from the kernel session.
- */
-int event_kernel_disable_syscall(struct ltt_kernel_channel *kchan,
-		char *syscall_name)
-{
-	int ret;
-
-	assert(kchan);
-
-	ret = kernel_disable_syscall(syscall_name, kchan);
-	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_DISABLE_FAIL;
-		goto error;
-	}
-
-	DBG("Kernel syscall %s disable for channel %s.",
-			!strcmp(syscall_name, "*") ? "<all>" : syscall_name,
-			kchan->channel->name);
-
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-}
-
-/*
  * Disable kernel tracepoint events for a channel from the kernel session.
  */
-int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan)
+int event_kernel_disable_event_type(struct ltt_kernel_channel *kchan,
+		enum lttng_event_type type)
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
@@ -153,6 +104,8 @@ int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan)
 
 	/* For each event in the kernel session */
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
+		if (type != LTTNG_EVENT_ALL && kevent->type != type)
+			continue;
 		ret = kernel_disable_event(kevent);
 		if (ret < 0) {
 			/* We continue disabling the rest */
@@ -166,24 +119,16 @@ int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan)
 /*
  * Disable all kernel event for a channel from the kernel session.
  */
-int event_kernel_disable_all(struct ltt_kernel_channel *kchan)
+int event_kernel_disable_event_all(struct ltt_kernel_channel *kchan)
 {
-	int ret;
-
-	assert(kchan);
-
-	ret = event_kernel_disable_all_tracepoints(kchan);
-	if (ret != LTTNG_OK)
-		return ret;
-	ret = event_kernel_disable_syscall(kchan, "*");
-	return ret;
+	return event_kernel_disable_event_type(kchan, LTTNG_EVENT_ALL);
 }
 
 /*
  * Enable kernel tracepoint event for a channel from the kernel session.
  * We own filter_expression and filter.
  */
-int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
+int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 		struct lttng_event *event)
 {
 	int ret;
@@ -192,7 +137,8 @@ int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
 	assert(kchan);
 	assert(event);
 
-	kevent = trace_kernel_get_event_by_name(event->name, kchan);
+	kevent = trace_kernel_get_event_by_name(event->name, kchan,
+			event->type);
 	if (kevent == NULL) {
 		ret = kernel_create_event(event, kchan);
 		if (ret < 0) {

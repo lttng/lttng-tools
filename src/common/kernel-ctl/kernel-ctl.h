@@ -42,9 +42,6 @@ int kernctl_tracer_abi_version(int fd, struct lttng_kernel_tracer_abi_version *v
 int kernctl_wait_quiescent(int fd);
 int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate);
 
-int kernctl_enable_syscall(int fd, const char *syscall_name);
-int kernctl_disable_syscall(int fd, const char *syscall_name);
-
 /*
  * kernctl_syscall_mask - Get syscall mask associated to a channel FD.
  *

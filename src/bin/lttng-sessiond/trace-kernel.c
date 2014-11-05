@@ -62,7 +62,8 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
  * Find the event name for the given channel.
  */
 struct ltt_kernel_event *trace_kernel_get_event_by_name(
-		char *name, struct ltt_kernel_channel *channel)
+		char *name, struct ltt_kernel_channel *channel,
+		enum lttng_event_type type)
 {
 	struct ltt_kernel_event *ev;
 
@@ -70,6 +71,8 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(
 	assert(channel);
 
 	cds_list_for_each_entry(ev, &channel->events_list.head, list) {
+		if (type != LTTNG_EVENT_ALL && ev->type != type)
+			continue;
 		if (strcmp(name, ev->event->name) == 0) {
 			DBG("Found event by name %s for channel %s", name,
 					channel->channel->name);

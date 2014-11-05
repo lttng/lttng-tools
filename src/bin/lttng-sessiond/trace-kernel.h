@@ -51,6 +51,7 @@ struct ltt_kernel_context {
 struct ltt_kernel_event {
 	int fd;
 	int enabled;
+	enum lttng_event_type type;
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
 };
@@ -122,7 +123,8 @@ struct ltt_kernel_session {
  * Lookup functions. NULL is returned if not found.
  */
 struct ltt_kernel_event *trace_kernel_get_event_by_name(
-		char *name, struct ltt_kernel_channel *channel);
+		char *name, struct ltt_kernel_channel *channel,
+		enum lttng_event_type type);
 struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		char *name, struct ltt_kernel_session *session);
 

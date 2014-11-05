@@ -21,17 +21,14 @@
 #include "agent.h"
 #include "trace-kernel.h"
 
-int event_kernel_disable_tracepoint(struct ltt_kernel_channel *kchan,
+int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 		char *event_name);
-int event_kernel_disable_syscall(struct ltt_kernel_channel *kchan,
-		char *syscall_name);
-int event_kernel_disable_all_tracepoints(struct ltt_kernel_channel *kchan);
-int event_kernel_disable_all(struct ltt_kernel_channel *kchan);
+int event_kernel_disable_event_type(struct ltt_kernel_channel *kchan,
+		enum lttng_event_type type);
+int event_kernel_disable_event_all(struct ltt_kernel_channel *kchan);
 
-int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
+int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 		struct lttng_event *event);
-int event_kernel_enable_syscall(struct ltt_kernel_channel *kchan,
-		char *syscall_name);
 
 int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event *event,

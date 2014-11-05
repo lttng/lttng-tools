@@ -1167,23 +1167,28 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
-			ret = event_kernel_disable_all(kchan);
+			ret = event_kernel_disable_event_all(kchan);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
 			break;
-		case LTTNG_EVENT_TRACEPOINT:
-			if (!strcmp(event_name, "*")) {
-				ret = event_kernel_disable_all_tracepoints(kchan);
-			} else {
-				ret = event_kernel_disable_tracepoint(kchan, event_name);
-			}
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			break;
+		case LTTNG_EVENT_TRACEPOINT:	/* fall-through */
 		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_disable_syscall(kchan, event_name);
+			if (!strcmp(event_name, "*")) {
+				ret = event_kernel_disable_event_type(kchan,
+					event->type);
+			} else {
+				ret = event_kernel_disable_event(kchan,
+					event_name);
+			}
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+			break;
+		case LTTNG_EVENT_PROBE:
+		case LTTNG_EVENT_FUNCTION:
+		case LTTNG_EVENT_FUNCTION_ENTRY:
+			ret = event_kernel_disable_event(kchan, event_name);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -1481,7 +1486,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		case LTTNG_EVENT_ALL:
 		{
 			event->type = LTTNG_EVENT_TRACEPOINT;	/* Hack */
-			ret = event_kernel_enable_tracepoint(kchan, event);
+			ret = event_kernel_enable_event(kchan, event);
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
@@ -1490,7 +1495,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 				goto error;
 			}
 			event->type = LTTNG_EVENT_SYSCALL;	/* Hack */
-			ret = event_kernel_enable_syscall(kchan, event->name);
+			ret = event_kernel_enable_event(kchan, event);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -1500,7 +1505,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		case LTTNG_EVENT_FUNCTION:
 		case LTTNG_EVENT_FUNCTION_ENTRY:
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_kernel_enable_tracepoint(kchan, event);
+			ret = event_kernel_enable_event(kchan, event);
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
@@ -1510,7 +1515,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 			}
 			break;
 		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_enable_syscall(kchan, event->name);
+			ret = event_kernel_enable_event(kchan, event);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}

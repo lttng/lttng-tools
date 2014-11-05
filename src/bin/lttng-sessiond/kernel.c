@@ -209,19 +209,7 @@ int kernel_create_event(struct lttng_event *ev,
 		goto free_event;
 	}
 
-	/*
-	 * LTTNG_KERNEL_SYSCALL event creation will return 0 on success.
-	 */
-	if (ret == 0 && event->event->instrumentation == LTTNG_KERNEL_SYSCALL) {
-		DBG2("Kernel event syscall creation success");
-		/*
-		 * We use fd == -1 to ensure that we never trigger a close of fd
-		 * 0.
-		 */
-		event->fd = -1;
-		goto add_list;
-	}
-
+	event->type = ev->type;
 	event->fd = ret;
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
@@ -229,7 +217,6 @@ int kernel_create_event(struct lttng_event *ev,
 		PERROR("fcntl session fd");
 	}
 
-add_list:
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
 	channel->event_count++;
@@ -355,17 +342,6 @@ error:
 	return ret;
 }
 
-int kernel_enable_syscall(const char *syscall_name,
-		struct ltt_kernel_channel *channel)
-{
-	return kernctl_enable_syscall(channel->fd, syscall_name);
-}
-
-int kernel_disable_syscall(const char *syscall_name,
-		struct ltt_kernel_channel *channel)
-{
-	return kernctl_disable_syscall(channel->fd, syscall_name);
-}
 
 int kernel_track_pid(struct ltt_kernel_session *session, int pid)
 {
