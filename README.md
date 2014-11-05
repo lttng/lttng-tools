@@ -115,7 +115,7 @@ understand how to use the Python module to control LTTng.
 Contact
 -------
 
-Maintainer: [David Goulet](mailto:dgoulet@efficios.com)
+Maintainer: [Jérémie Galarneau](mailto:jeremie.galarneau@efficios.com)
 
 Mailing list: [`lttng-dev@lists.lttng.org`](https://lttng.org/cgi-bin/mailman/listinfo/lttng-dev)
 
