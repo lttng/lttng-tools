@@ -1,3 +1,8 @@
+2014-11-04 lttng-tools 2.6.0-rc3
+	* Fix: add README.md to documentation files
+	* Fix: UST consumer sync all available metadata
+	* Test: remove bogus argument from prove invocation
+
 2014-10-21 lttng-tools 2.6.0-rc2
 	* Use lttng-modules ABI version ioctl
 	* Fix: syscall list ioctl number conflict
