@@ -1949,6 +1949,74 @@ error:
 }
 
 /*
+ * Match function for a hash table lookup of ust_app_ctx.
+ *
+ * It matches an ust app context based on the context type and, in the case
+ * of perf counters, their name.
+ */
+static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
+{
+	struct ust_app_ctx *ctx;
+	const struct lttng_ust_context *key;
+
+	assert(node);
+	assert(_key);
+
+	ctx = caa_container_of(node, struct ust_app_ctx, node.node);
+	key = _key;
+
+	/* Context type */
+	if (ctx->ctx.ctx != key->ctx) {
+		goto no_match;
+	}
+
+	/* Check the name in the case of perf thread counters. */
+	if (key->ctx == LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER) {
+		if (strncmp(key->u.perf_counter.name,
+			ctx->ctx.u.perf_counter.name,
+			sizeof(key->u.perf_counter.name))) {
+			goto no_match;
+		}
+	}
+
+	/* Match. */
+	return 1;
+
+no_match:
+	return 0;
+}
+
+/*
+ * Lookup for an ust app context from an lttng_ust_context.
+ *
+ * Return an ust_app_ctx object or NULL on error.
+ */
+static
+struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
+		struct lttng_ust_context *uctx)
+{
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_ulong *node;
+	struct ust_app_ctx *app_ctx = NULL;
+
+	assert(uctx);
+	assert(ht);
+
+	/* Lookup using the lttng_ust_context_type and a custom match fct. */
+	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) uctx->ctx, lttng_ht_seed),
+			ht_match_ust_app_ctx, uctx, &iter.iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (!node) {
+		goto end;
+	}
+
+	app_ctx = caa_container_of(node, struct ust_app_ctx, node);
+
+end:
+	return app_ctx;
+}
+
+/*
  * Create a context for the channel on the tracer.
  *
  * Called with UST app session lock held and a RCU read side lock.
@@ -1959,15 +2027,12 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
 	struct ust_app_ctx *ua_ctx;
 
 	DBG2("UST app adding context to channel %s", ua_chan->name);
 
-	lttng_ht_lookup(ua_chan->ctx, (void *)((unsigned long)uctx->ctx), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node != NULL) {
+	ua_ctx = find_ust_app_context(ua_chan->ctx, uctx);
+	if (ua_ctx) {
 		ret = -EEXIST;
 		goto error;
 	}
