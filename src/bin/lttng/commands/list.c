@@ -1202,7 +1202,7 @@ static int list_channels(const char *channel_name)
 		}
 	} else {
 		/* Pretty print */
-		if (channel_name == NULL) {
+		if (count) {
 			MSG("Channels:\n-------------");
 		}
 
