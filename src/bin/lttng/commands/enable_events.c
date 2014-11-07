@@ -798,6 +798,16 @@ static int enable_events(char *session_name)
 							print_channel_name(channel_name), session_name);
 					warn = 1;
 					break;
+				case LTTNG_ERR_TRACE_ALREADY_STARTED:
+				{
+					const char *msg = "The command tried to enable an event in a new domain for a session that has already been started once.";
+					ERR("Events: %s (channel %s, session %s)",
+							msg,
+							print_channel_name(channel_name),
+							session_name);
+					error = 1;
+					break;
+				}
 				default:
 					ERR("Events: %s (channel %s, session %s)",
 							lttng_strerror(ret),
@@ -875,6 +885,16 @@ static int enable_events(char *session_name)
 						print_channel_name(channel_name), session_name);
 					warn = 1;
 					break;
+				case LTTNG_ERR_TRACE_ALREADY_STARTED:
+				{
+					const char *msg = "The command tried to enable an event in a new domain for a session that has already been started once.";
+					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
+							msg,
+							print_channel_name(channel_name),
+							session_name, opt_filter);
+					error = 1;
+					break;
+				}
 				default:
 					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
 							lttng_strerror(command_ret),
@@ -1114,6 +1134,17 @@ static int enable_events(char *session_name)
 							print_channel_name(channel_name), session_name);
 					warn = 1;
 					break;
+				case LTTNG_ERR_TRACE_ALREADY_STARTED:
+				{
+					const char *msg = "The command tried to enable an event in a new domain for a session that has already been started once.";
+					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
+							exclusion_string,
+							msg,
+							print_channel_name(channel_name),
+							session_name);
+					error = 1;
+					break;
+				}
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
 							exclusion_string,
@@ -1163,6 +1194,17 @@ static int enable_events(char *session_name)
 						print_channel_name(channel_name), session_name);
 					warn = 1;
 					break;
+				case LTTNG_ERR_TRACE_ALREADY_STARTED:
+				{
+					const char *msg = "The command tried to enable an event in a new domain for a session that has already been started once.";
+					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')", ev.name,
+							exclusion_string,
+							msg,
+							print_channel_name(channel_name),
+							session_name, opt_filter);
+					error = 1;
+					break;
+				}
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')", ev.name,
 							exclusion_string,
