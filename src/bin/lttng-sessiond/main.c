@@ -3472,7 +3472,7 @@ skip_domain:
 	case LTTNG_LIST_CHANNELS:
 	{
 		int nb_chan;
-		struct lttng_channel *channels;
+		struct lttng_channel *channels = NULL;
 
 		nb_chan = cmd_list_channels(cmd_ctx->lsm->domain.type,
 				cmd_ctx->session, &channels);
