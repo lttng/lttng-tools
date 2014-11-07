@@ -2388,6 +2388,10 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		}
 	}
 
+	if (!nb_dom) {
+		goto end;
+	}
+
 	*domains = zmalloc(nb_dom * sizeof(struct lttng_domain));
 	if (*domains == NULL) {
 		ret = LTTNG_ERR_FATAL;
@@ -2413,7 +2417,7 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 			}
 		}
 	}
-
+end:
 	return nb_dom;
 
 error:

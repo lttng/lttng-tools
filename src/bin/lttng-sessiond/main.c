@@ -3474,7 +3474,7 @@ skip_domain:
 	case LTTNG_LIST_DOMAINS:
 	{
 		ssize_t nb_dom;
-		struct lttng_domain *domains;
+		struct lttng_domain *domains = NULL;
 
 		nb_dom = cmd_list_domains(cmd_ctx->session, &domains);
 		if (nb_dom < 0) {
