@@ -688,7 +688,7 @@ static int list_channels(const char *channel_name)
 		goto error_channels;
 	}
 
-	if (channel_name == NULL) {
+	if (count) {
 		MSG("Channels:\n-------------");
 	}
 
