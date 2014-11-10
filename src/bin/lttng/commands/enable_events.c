@@ -637,7 +637,7 @@ static int enable_events(char *session_name)
 							msg,
 							print_channel_name(channel_name),
 							session_name);
-					error = 1;
+					ret = CMD_ERROR;
 					break;
 				}
 				default:
@@ -720,7 +720,7 @@ static int enable_events(char *session_name)
 							msg,
 							print_channel_name(channel_name),
 							session_name, opt_filter);
-					error = 1;
+					ret = CMD_ERROR;
 					break;
 				}
 				default:
@@ -898,6 +898,7 @@ static int enable_events(char *session_name)
 							event_name,
 							exclusion_string,
 							print_channel_name(channel_name), session_name);
+					warn = 1;
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
 				{
@@ -907,7 +908,7 @@ static int enable_events(char *session_name)
 							msg,
 							print_channel_name(channel_name),
 							session_name);
-					error = 1;
+					ret = CMD_ERROR;
 					break;
 				}
 				default:
@@ -918,9 +919,9 @@ static int enable_events(char *session_name)
 								? print_raw_channel_name(channel_name)
 								: print_channel_name(channel_name),
 							session_name);
+					warn = 1;
 					break;
 				}
-				warn = 1;
 			} else {
 				MSG("%s event %s%s created in channel %s",
 						get_domain_str(dom.type), event_name,
@@ -954,7 +955,7 @@ static int enable_events(char *session_name)
 							msg,
 							print_channel_name(channel_name),
 							session_name, opt_filter);
-					error = 1;
+					ret = CMD_ERROR;
 					break;
 				}
 				default:
