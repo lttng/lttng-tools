@@ -26,16 +26,17 @@ components:
     - Debian/Ubuntu package: `libpopt-dev`
   - **`libuuid`**: universally unique ID library
     - Debian/Ubuntu package: `uuid-dev`
+  - **`libxml2` >= 2.7.6**:  XML document parsing library. Needed for
+    tracing session configuration saving/loading and machine interface
+    output support.
+    - Debian/Ubuntu package: `libxml2-dev`
+
 
 The following items are _optional_ dependencies:
 
   - **[Babeltrace](https://lttng.org/babeltrace)**: trace viewer.
     Enables the use of `lttng view` command.
     - Debian/Ubuntu package: `babeltrace`
-  - **`libxml2` >= 2.7.6**:  XML document parsing library. Needed for
-    tracing session configuration saving/loading and machine interface
-    output support.
-    - Debian/Ubuntu package: `libxml2-dev`
   - **Perl**: needed for `make check` and tests.
   - **Python >= 3.0**: needed for `make check` and tests.
     - Debian/Ubuntu package: `python3`
