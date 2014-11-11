@@ -39,7 +39,6 @@ struct relay_index {
 	struct ctf_packet_index index_data;
 
 	/* key1 = stream_id, key2 = net_seq_num */
-	struct lttng_ht_two_u64 key;
 	struct lttng_ht_node_two_u64 index_n;
 	struct rcu_head rcu_node;
 	pthread_mutex_t mutex;
