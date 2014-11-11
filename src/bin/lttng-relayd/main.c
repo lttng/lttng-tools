@@ -2426,6 +2426,7 @@ void *relay_thread_worker(void *data)
 	struct lttcomm_relayd_hdr recv_hdr;
 	struct relay_local_data *relay_ctx = (struct relay_local_data *) data;
 	struct lttng_ht *sessions_ht = relay_ctx->sessions_ht;
+	struct relay_index *index;
 
 	DBG("[thread] Relay worker started");
 
@@ -2657,6 +2658,14 @@ error:
 	}
 	rcu_read_unlock();
 error_poll_create:
+	rcu_read_lock();
+	cds_lfht_for_each_entry(indexes_ht->ht, &iter.iter, index,
+			index_n.node) {
+		health_code_update();
+		relay_index_delete(index);
+		relay_index_free_safe(index);
+	}
+	rcu_read_unlock();
 	lttng_ht_destroy(indexes_ht);
 indexes_ht_error:
 	lttng_ht_destroy(relay_connections_ht);
