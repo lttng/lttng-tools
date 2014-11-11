@@ -116,7 +116,7 @@ void relay_index_add(struct relay_index *index, struct relay_index **_index)
 	assert(index);
 
 	DBG2("Adding relay index with stream id %" PRIu64 " and seqnum %" PRIu64,
-			index->key.key1, index->key.key2);
+			index->index_n.key.key1, index->index_n.key.key2);
 
 	node_ptr = cds_lfht_add_unique(indexes_ht->ht,
 			indexes_ht->hash_fct((void *) &index->index_n.key, lttng_ht_seed),
@@ -141,7 +141,8 @@ int relay_index_write(int fd, struct relay_index *index)
 	struct lttng_ht_iter iter;
 
 	DBG2("Writing index for stream ID %" PRIu64 " and seq num %" PRIu64
-			" on fd %d", index->key.key1, index->key.key2, fd);
+			" on fd %d", index->index_n.key.key1,
+			index->index_n.key.key2, fd);
 
 	/* Delete index from hash table. */
 	iter.iter.node = &index->index_n.node;
@@ -183,7 +184,8 @@ void relay_index_delete(struct relay_index *index)
 	struct lttng_ht_iter iter;
 
 	DBG3("Relay index with stream ID %" PRIu64 " and seq num %" PRIu64
-			"deleted.", index->key.key1, index->key.key2);
+			" deleted.", index->index_n.key.key1,
+			index->index_n.key.key2);
 
 	/* Delete index from hash table. */
 	iter.iter.node = &index->index_n.node;
@@ -201,7 +203,7 @@ void relay_index_destroy_by_stream_id(uint64_t stream_id)
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(indexes_ht->ht, &iter.iter, index, index_n.node) {
-		if (index->key.key1 == stream_id) {
+		if (index->index_n.key.key1 == stream_id) {
 			relay_index_delete(index);
 			relay_index_free_safe(index);
 		}
