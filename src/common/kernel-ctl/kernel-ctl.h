@@ -22,6 +22,7 @@
 #include <lttng/lttng.h>
 #include <common/lttng-kernel.h>
 #include <common/lttng-kernel-old.h>
+#include <common/sessiond-comm/sessiond-comm.h>	/* for struct lttng_filter_bytecode */
 
 int kernctl_create_session(int fd);
 int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);
@@ -34,6 +35,9 @@ int kernctl_enable(int fd);
 int kernctl_disable(int fd);
 int kernctl_start_session(int fd);
 int kernctl_stop_session(int fd);
+
+/* Apply on event FD */
+int kernctl_filter(int fd, struct lttng_filter_bytecode *filter);
 
 int kernctl_tracepoint_list(int fd);
 int kernctl_syscall_list(int fd);

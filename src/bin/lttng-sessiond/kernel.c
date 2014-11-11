@@ -177,7 +177,9 @@ error:
  * We own filter_expression and filter.
  */
 int kernel_create_event(struct lttng_event *ev,
-		struct ltt_kernel_channel *channel)
+		struct ltt_kernel_channel *channel,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter)
 {
 	int ret;
 	struct ltt_kernel_event *event;
@@ -185,7 +187,8 @@ int kernel_create_event(struct lttng_event *ev,
 	assert(ev);
 	assert(channel);
 
-	event = trace_kernel_create_event(ev);
+	event = trace_kernel_create_event(ev, filter_expression,
+			filter);
 	if (event == NULL) {
 		ret = -1;
 		goto error;
@@ -217,6 +220,26 @@ int kernel_create_event(struct lttng_event *ev,
 		PERROR("fcntl session fd");
 	}
 
+	if (filter) {
+		ret = kernctl_filter(event->fd, filter);
+		if (ret) {
+			goto filter_error;
+		}
+	}
+
+	ret = kernctl_enable(event->fd);
+	if (ret < 0) {
+		switch (errno) {
+		case EEXIST:
+			ret = LTTNG_ERR_KERN_EVENT_EXIST;
+			break;
+		default:
+			PERROR("enable kernel event");
+			break;
+		}
+		goto enable_error;
+	}
+
 	/* Add event to event list */
 	cds_list_add(&event->list, &channel->events_list.head);
 	channel->event_count++;
@@ -225,6 +248,16 @@ int kernel_create_event(struct lttng_event *ev,
 
 	return 0;
 
+enable_error:
+filter_error:
+	{
+		int closeret;
+
+		closeret = close(event->fd);
+		if (closeret) {
+			PERROR("close event fd");
+		}
+	}
 free_event:
 	free(event);
 error:

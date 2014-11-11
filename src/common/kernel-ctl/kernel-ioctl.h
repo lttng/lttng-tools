@@ -138,4 +138,7 @@
 #define LTTNG_KERNEL_ENABLE			_IO(0xF6, 0x82)
 #define LTTNG_KERNEL_DISABLE			_IO(0xF6, 0x83)
 
+/* Event FD ioctl */
+#define LTTNG_KERNEL_FILTER			_IO(0xF6, 0x90)
+
 #endif /* _LTT_KERNEL_IOCTL_H */

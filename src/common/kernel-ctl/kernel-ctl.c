@@ -22,6 +22,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <common/align.h>
+#include <errno.h>
 
 #include "kernel-ctl.h"
 #include "kernel-ioctl.h"
@@ -296,6 +297,25 @@ int kernctl_stop_session(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_SESSION_STOP,
 			LTTNG_KERNEL_SESSION_STOP);
+}
+
+int kernctl_filter(int fd, struct lttng_filter_bytecode *filter)
+{
+	struct lttng_kernel_filter_bytecode *kb;
+	uint32_t len;
+	int ret;
+
+	/* Translate bytecode to kernel bytecode */
+	kb = zmalloc(sizeof(*kb) + filter->len);
+	if (!kb)
+		return -ENOMEM;
+	kb->len = len = filter->len;
+	kb->reloc_offset = filter->reloc_table_offset;
+	kb->seqnum = filter->seqnum;
+	memcpy(kb->data, filter->data, len);
+	ret = ioctl(fd, LTTNG_KERNEL_FILTER, kb);
+	free(kb);
+	return ret;
 }
 
 int kernctl_tracepoint_list(int fd)

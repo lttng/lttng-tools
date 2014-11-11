@@ -152,4 +152,12 @@ struct lttng_kernel_channel {
 	char padding[LTTNG_KERNEL_CHANNEL_PADDING1];
 } LTTNG_PACKED;
 
+#define KERNEL_FILTER_BYTECODE_MAX_LEN		65536
+struct lttng_kernel_filter_bytecode {
+	uint32_t len;
+	uint32_t reloc_offset;
+	uint64_t seqnum;
+	char data[0];
+} LTTNG_PACKED;
+
 #endif /* _LTTNG_KERNEL_H */

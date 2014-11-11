@@ -129,7 +129,8 @@ int event_kernel_disable_event_all(struct ltt_kernel_channel *kchan)
  * We own filter_expression and filter.
  */
 int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
-		struct lttng_event *event)
+		struct lttng_event *event, char *filter_expression,
+		struct lttng_filter_bytecode *filter)
 {
 	int ret;
 	struct ltt_kernel_event *kevent;
@@ -137,10 +138,11 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 	assert(kchan);
 	assert(event);
 
-	kevent = trace_kernel_get_event_by_name(event->name, kchan,
-			event->type);
+	kevent = trace_kernel_find_event(event->name, kchan,
+			event->type, filter);
 	if (kevent == NULL) {
-		ret = kernel_create_event(event, kchan);
+		ret = kernel_create_event(event, kchan,
+			filter_expression, filter);
 		if (ret < 0) {
 			switch (-ret) {
 			case EEXIST:

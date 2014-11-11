@@ -54,6 +54,8 @@ struct ltt_kernel_event {
 	enum lttng_event_type type;
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
+	char *filter_expression;
+	struct lttng_filter_bytecode *filter;
 };
 
 /* Kernel channel */
@@ -125,6 +127,10 @@ struct ltt_kernel_session {
 struct ltt_kernel_event *trace_kernel_get_event_by_name(
 		char *name, struct ltt_kernel_channel *channel,
 		enum lttng_event_type type);
+struct ltt_kernel_event *trace_kernel_find_event(
+		char *name, struct ltt_kernel_channel *channel,
+		enum lttng_event_type type,
+		struct lttng_filter_bytecode *filter);
 struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		char *name, struct ltt_kernel_session *session);
 
@@ -134,7 +140,8 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 struct ltt_kernel_session *trace_kernel_create_session(void);
 struct ltt_kernel_channel *trace_kernel_create_channel(
 		struct lttng_channel *chan);
-struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev);
+struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
+		char *filter_expression, struct lttng_filter_bytecode *filter);
 struct ltt_kernel_metadata *trace_kernel_create_metadata(void);
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 		unsigned int count);

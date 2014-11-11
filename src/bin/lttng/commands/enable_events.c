@@ -713,11 +713,6 @@ static int enable_events(char *session_name)
 	memset(&dom, 0, sizeof(dom));
 
 	if (opt_kernel) {
-		if (opt_filter) {
-			ERR("Filter not implement for kernel tracing yet");
-			ret = CMD_ERROR;
-			goto error;
-		}
 		if (opt_loglevel) {
 			WARN("Kernel loglevels are not supported.");
 		}

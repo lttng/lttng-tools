@@ -1485,18 +1485,48 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
 		{
+			char *filter_expression_a = NULL;
+			struct lttng_filter_bytecode *filter_a = NULL;
+
+			/*
+			 * We need to duplicate filter_expression and filter,
+			 * because ownership is passed to first enable
+			 * event.
+			 */
+			if (filter_expression) {
+				filter_expression_a = strdup(filter_expression);
+				if (!filter_expression_a) {
+					ret = LTTNG_ERR_FATAL;
+					goto error;
+				}
+			}
+			if (filter) {
+				filter_a = zmalloc(sizeof(*filter_a) + filter->len);
+				if (!filter_a) {
+					free(filter_expression_a);
+					ret = LTTNG_ERR_FATAL;
+					goto error;
+				}
+				memcpy(filter_a, filter, sizeof(*filter_a) + filter->len);
+			}
 			event->type = LTTNG_EVENT_TRACEPOINT;	/* Hack */
-			ret = event_kernel_enable_event(kchan, event);
+			ret = event_kernel_enable_event(kchan, event,
+				filter_expression, filter);
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
 					kernel_destroy_channel(kchan);
 				}
+				free(filter_expression_a);
+				free(filter_a);
 				goto error;
 			}
 			event->type = LTTNG_EVENT_SYSCALL;	/* Hack */
-			ret = event_kernel_enable_event(kchan, event);
+			ret = event_kernel_enable_event(kchan, event,
+				filter_expression_a, filter_a);
 			if (ret != LTTNG_OK) {
+				free(filter_expression_a);
+				free(filter_a);
 				goto error;
 			}
 			break;
@@ -1505,7 +1535,8 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		case LTTNG_EVENT_FUNCTION:
 		case LTTNG_EVENT_FUNCTION_ENTRY:
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_kernel_enable_event(kchan, event);
+			ret = event_kernel_enable_event(kchan, event,
+				filter_expression, filter);
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
@@ -1515,7 +1546,8 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 			}
 			break;
 		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_enable_event(kchan, event);
+			ret = event_kernel_enable_event(kchan, event,
+				filter_expression, filter);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}

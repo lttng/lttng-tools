@@ -510,7 +510,13 @@ int save_kernel_syscall(struct config_writer *writer,
 		struct ltt_kernel_event *kevent;
 
 		/* Create a temporary kevent in order to save it. */
-		kevent = trace_kernel_create_event(&events[i]);
+		/*
+		 * TODO: struct lttng_event does not really work for a filter,
+		 * but unfortunately, it is exposed as external API (and used as
+		 * internal representation. Using NULL meanwhile.
+		 */
+		kevent = trace_kernel_create_event(&events[i],
+			NULL, NULL);
 		if (!kevent) {
 			ret = -ENOMEM;
 			goto end;
