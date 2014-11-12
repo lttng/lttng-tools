@@ -29,6 +29,7 @@
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/relayd/relayd.h>
 #include <common/ust-consumer/ust-consumer.h>
+#include <common/utils.h>
 
 #include "consumer-stream.h"
 
@@ -119,6 +120,9 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 				PERROR("close");
 			}
 			stream->wait_fd = -1;
+		}
+		if (stream->chan->output == CONSUMER_CHANNEL_SPLICE) {
+			utils_close_pipe(stream->splice_pipe);
 		}
 		break;
 	case LTTNG_CONSUMER32_UST:
