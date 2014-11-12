@@ -419,6 +419,11 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		ERR("Unknown ust loglevel type (%d)", ev->loglevel_type);
 		goto error_free_event;
 	}
+	/*
+	 * Fix for enabler race. Enable is now done explicitly by
+	 * sessiond after setting filter.
+	 */
+	lue->attr.disabled = 1;
 
 	/* Same layout. */
 	lue->filter_expression = filter_expression;
