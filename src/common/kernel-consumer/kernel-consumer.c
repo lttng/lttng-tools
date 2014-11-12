@@ -642,6 +642,10 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		switch (channel->output) {
 		case CONSUMER_CHANNEL_SPLICE:
 			new_stream->output = LTTNG_EVENT_SPLICE;
+			ret = utils_create_pipe(new_stream->splice_pipe);
+			if (ret < 0) {
+				goto end_nosignal;
+			}
 			break;
 		case CONSUMER_CHANNEL_MMAP:
 			new_stream->output = LTTNG_EVENT_MMAP;
