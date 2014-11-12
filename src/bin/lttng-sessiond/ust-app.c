@@ -1446,7 +1446,32 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 	}
 
 	/* If event not enabled, disable it on the tracer */
-	if (ua_event->enabled == 0) {
+	if (ua_event->enabled) {
+		/*
+		 * We now need to explicitly enable the event, since it
+		 * is now disabled at creation.
+		 */
+		ret = enable_ust_event(app, ua_sess, ua_event);
+		if (ret < 0) {
+			/*
+			 * If we hit an EPERM, something is wrong with our enable call. If
+			 * we get an EEXIST, there is a problem on the tracer side since we
+			 * just created it.
+			 */
+			switch (ret) {
+			case -LTTNG_UST_ERR_PERM:
+				/* Code flow problem */
+				assert(0);
+			case -LTTNG_UST_ERR_EXIST:
+				/* It's OK for our use case. */
+				ret = 0;
+				break;
+			default:
+				break;
+			}
+			goto error;
+		}
+	} else {
 		ret = disable_ust_event(app, ua_sess, ua_event);
 		if (ret < 0) {
 			/*
