@@ -337,6 +337,11 @@ struct lttng_consumer_stream {
 	int index_fd;
 
 	/*
+	 * Local pipe to extract data when using splice.
+	 */
+	int splice_pipe[2];
+
+	/*
 	 * Rendez-vous point between data and metadata stream in live mode.
 	 */
 	pthread_cond_t metadata_rdv;
@@ -451,9 +456,7 @@ struct lttng_consumer_local_data {
 	/* socket to exchange commands with sessiond */
 	char *consumer_command_sock_path;
 	/* communication with splice */
-	int consumer_thread_pipe[2];
 	int consumer_channel_pipe[2];
-	int consumer_splice_metadata_pipe[2];
 	/* Data stream poll thread pipe. To transfer data stream to the thread */
 	struct lttng_pipe *consumer_data_pipe;
 

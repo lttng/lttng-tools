@@ -1301,12 +1301,6 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		goto error_quit_pipe;
 	}
 
-	ret = pipe(ctx->consumer_thread_pipe);
-	if (ret < 0) {
-		PERROR("Error creating thread pipe");
-		goto error_thread_pipe;
-	}
-
 	ret = pipe(ctx->consumer_channel_pipe);
 	if (ret < 0) {
 		PERROR("Error creating channel pipe");
@@ -1318,20 +1312,11 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		goto error_metadata_pipe;
 	}
 
-	ret = utils_create_pipe(ctx->consumer_splice_metadata_pipe);
-	if (ret < 0) {
-		goto error_splice_pipe;
-	}
-
 	return ctx;
 
-error_splice_pipe:
-	lttng_pipe_destroy(ctx->consumer_metadata_pipe);
 error_metadata_pipe:
 	utils_close_pipe(ctx->consumer_channel_pipe);
 error_channel_pipe:
-	utils_close_pipe(ctx->consumer_thread_pipe);
-error_thread_pipe:
 	utils_close_pipe(ctx->consumer_should_quit);
 error_quit_pipe:
 	lttng_pipe_destroy(ctx->consumer_wakeup_pipe);
@@ -1418,13 +1403,11 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	if (ret) {
 		PERROR("close");
 	}
-	utils_close_pipe(ctx->consumer_thread_pipe);
 	utils_close_pipe(ctx->consumer_channel_pipe);
 	lttng_pipe_destroy(ctx->consumer_data_pipe);
 	lttng_pipe_destroy(ctx->consumer_metadata_pipe);
 	lttng_pipe_destroy(ctx->consumer_wakeup_pipe);
 	utils_close_pipe(ctx->consumer_should_quit);
-	utils_close_pipe(ctx->consumer_splice_metadata_pipe);
 
 	unlink(ctx->consumer_command_sock_path);
 	free(ctx);
@@ -1717,17 +1700,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 			goto end;
 		}
 	}
-
-	/*
-	 * Choose right pipe for splice. Metadata and trace data are handled by
-	 * different threads hence the use of two pipes in order not to race or
-	 * corrupt the written data.
-	 */
-	if (stream->metadata_flag) {
-		splice_pipe = ctx->consumer_splice_metadata_pipe;
-	} else {
-		splice_pipe = ctx->consumer_thread_pipe;
-	}
+	splice_pipe = stream->splice_pipe;
 
 	/* Write metadata stream id before payload */
 	if (relayd) {
@@ -1833,7 +1806,8 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		/* Splice data out */
 		ret_splice = splice(splice_pipe[0], NULL, outfd, NULL,
 				ret_splice, SPLICE_F_MOVE | SPLICE_F_MORE);
-		DBG("Consumer splice pipe to file, ret %zd", ret_splice);
+		DBG("Consumer splice pipe to file (out_fd: %d), ret %zd",
+				outfd, ret_splice);
 		if (ret_splice < 0) {
 			ret = errno;
 			written = -ret;
