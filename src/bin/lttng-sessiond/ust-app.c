@@ -1969,6 +1969,7 @@ no_match:
 /*
  * Lookup for an ust app context from an lttng_ust_context.
  *
+ * Must be called while holding RCU read side lock.
  * Return an ust_app_ctx object or NULL on error.
  */
 static
