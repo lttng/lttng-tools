@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>

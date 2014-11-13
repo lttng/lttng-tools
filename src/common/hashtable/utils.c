@@ -49,6 +49,7 @@
  * byte), but shoehorning those bytes into integers efficiently is messy.
  */
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <assert.h>
 #include <stdint.h>     /* defines uint32_t etc */
 #include <stdio.h>      /* defines printf for tests */

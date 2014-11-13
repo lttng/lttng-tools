@@ -17,6 +17,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <fcntl.h>
 #include <limits.h>
 #include <sys/mman.h>

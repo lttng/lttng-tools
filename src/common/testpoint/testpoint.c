@@ -18,6 +18,7 @@
 #ifndef NTESTPOINT
 
 #define _GNU_SOURCE /* for RTLD_DEFAULT GNU extension */
+#define _LGPL_SOURCE
 #include <dlfcn.h>  /* for dlsym   */
 #include <stdlib.h> /* for getenv  */
 #include <string.h> /* for strncmp */

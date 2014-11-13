@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <urcu/uatomic.h>
 #include <sys/time.h>
 #include <sys/resource.h>

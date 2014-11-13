@@ -19,7 +19,6 @@
 #ifndef LTTNG_RELAYD_H
 #define LTTNG_RELAYD_H
 
-#define _LGPL_SOURCE
 #include <limits.h>
 #include <urcu.h>
 #include <urcu/wfcqueue.h>

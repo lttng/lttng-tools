@@ -17,6 +17,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <unistd.h>
 #include <paths.h>
 #include <fcntl.h>

@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>

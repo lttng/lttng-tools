@@ -20,6 +20,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>

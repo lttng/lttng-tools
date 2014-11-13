@@ -16,6 +16,7 @@
  */
 
 #define _GNU_SOURCE
+#define _LGPL_SOURCE
 #include <common/bitfield.h>
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
