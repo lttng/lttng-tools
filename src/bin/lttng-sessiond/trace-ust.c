@@ -202,6 +202,9 @@ error:
 /*
  * Lookup an agent in the session agents hash table by domain type and return
  * the object if found else NULL.
+ *
+ * RCU read side lock must be acquired before calling and only released
+ * once the agent is no longer in scope or being used.
  */
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 		enum lttng_domain_type domain_type)

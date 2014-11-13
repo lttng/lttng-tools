@@ -60,10 +60,12 @@ static void update_agent_app(struct agent_app *app)
 		if (session->ust_session) {
 			struct agent *agt;
 
+			rcu_read_lock();
 			agt = trace_ust_find_agent(session->ust_session, app->domain);
 			if (agt) {
 				agent_update(agt, app->sock->fd);
 			}
+			rcu_read_unlock();
 		}
 		session_unlock(session);
 	}
