@@ -1805,7 +1805,9 @@ int cmd_start_trace(struct ltt_session *session)
 	 * possible to enable channel thus inform the client.
 	 */
 	if (usess && usess->domain_global.channels) {
+		rcu_read_lock();
 		nb_chan += lttng_ht_get_count(usess->domain_global.channels);
+		rcu_read_unlock();
 	}
 	if (ksession) {
 		nb_chan += ksession->channel_count;
