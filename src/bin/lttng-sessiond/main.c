@@ -3218,12 +3218,14 @@ skip_domain:
 
 			if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
 				ret = LTTNG_ERR_FILTER_INVAL;
+				free(filter_expression);
 				free(exclusion);
 				goto error;
 			}
 
 			bytecode = zmalloc(bytecode_len);
 			if (!bytecode) {
+				free(filter_expression);
 				free(exclusion);
 				ret = LTTNG_ERR_FILTER_NOMEM;
 				goto error;
@@ -3235,6 +3237,7 @@ skip_domain:
 			if (ret <= 0) {
 				DBG("Nothing recv() from client car len data... continuing");
 				*sock_error = 1;
+				free(filter_expression);
 				free(bytecode);
 				free(exclusion);
 				ret = LTTNG_ERR_FILTER_INVAL;
@@ -3242,6 +3245,7 @@ skip_domain:
 			}
 
 			if ((bytecode->len + sizeof(*bytecode)) != bytecode_len) {
+				free(filter_expression);
 				free(bytecode);
 				free(exclusion);
 				ret = LTTNG_ERR_FILTER_INVAL;

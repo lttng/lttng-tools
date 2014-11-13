@@ -366,6 +366,7 @@ error:
 
 /*
  * Allocate and initialize a ust event. Set name and event type.
+ * We own filter_expression, filter, and exclusion.
  *
  * Return pointer to structure or NULL.
  */
@@ -441,6 +442,9 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 error_free_event:
 	free(lue);
 error:
+	free(filter_expression);
+	free(filter);
+	free(exclusion);
 	return NULL;
 }
 
