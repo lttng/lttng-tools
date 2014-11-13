@@ -153,6 +153,7 @@ int event_kernel_disable_all(struct ltt_kernel_channel *kchan)
 
 /*
  * Enable kernel tracepoint event for a channel from the kernel session.
+ * We own filter_expression and filter.
  */
 int event_kernel_enable_tracepoint(struct ltt_kernel_channel *kchan,
 		struct lttng_event *event)
@@ -410,6 +411,7 @@ error:
 
 /*
  * Enable UST tracepoint event for a channel from a UST session.
+ * We own filter_expression, filter, and exclusion.
  */
 int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event *event,
@@ -431,6 +433,10 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	if (uevent == NULL) {
 		uevent = trace_ust_create_event(event, filter_expression,
 			filter, exclusion);
+		/* We have passed ownership */
+		filter_expression = NULL;
+		filter = NULL;
+		exclusion = NULL;
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_UST_ENABLE_FAIL;
 			goto error;
@@ -478,6 +484,9 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 
 end:
 	rcu_read_unlock();
+	free(filter_expression);
+	free(filter);
+	free(exclusion);
 	return ret;
 
 error:
@@ -493,6 +502,9 @@ error:
 		trace_ust_destroy_event(uevent);
 	}
 	rcu_read_unlock();
+	free(filter_expression);
+	free(filter);
+	free(exclusion);
 	return ret;
 }
 
