@@ -1384,6 +1384,7 @@ end:
 
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
+ * We own filter, exclusion, and filter_expression.
  */
 int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
@@ -1535,6 +1536,10 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		/* At this point, the session and channel exist on the tracer */
 		ret = event_ust_enable_tracepoint(usess, uchan, event,
 				filter_expression, filter, exclusion);
+		/* We have passed ownership */
+		filter_expression = NULL;
+		filter = NULL;
+		exclusion = NULL;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1589,6 +1594,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		ret = cmd_enable_event(session, &tmp_dom, (char *) default_chan_name,
 			&uevent, filter_expression, filter, NULL, wpipe);
+		/* We have passed ownership */
+		filter_expression = NULL;
+		filter = NULL;
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
 		}
@@ -1618,6 +1626,9 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 	ret = LTTNG_OK;
 
 error:
+	free(filter_expression);
+	free(filter);
+	free(exclusion);
 	rcu_read_unlock();
 	return ret;
 }

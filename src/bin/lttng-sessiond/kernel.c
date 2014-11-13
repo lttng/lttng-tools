@@ -173,6 +173,7 @@ error:
 /*
  * Create a kernel event, enable it to the kernel tracer and add it to the
  * channel event list of the kernel session.
+ * We own filter_expression and filter.
  */
 int kernel_create_event(struct lttng_event *ev,
 		struct ltt_kernel_channel *channel)
