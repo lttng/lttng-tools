@@ -752,10 +752,12 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
 
+	rcu_read_lock();
 	cds_lfht_for_each_entry(session->agents->ht, &iter.iter, agt, node.node) {
 		lttng_ht_del(session->agents, &iter);
 		agent_destroy(agt);
 	}
+	rcu_read_unlock();
 
 	/* Cleanup UID buffer registry object(s). */
 	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,
