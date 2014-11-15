@@ -153,6 +153,9 @@ void session_try_destroy(struct lttng_ht *ht, struct relay_session *session)
 
 /*
  * Destroy a session object.
+ *
+ * This function must *NOT* be called with an RCU read lock held since
+ * the session's ctf_traces_ht is destroyed.
  */
 void session_destroy(struct relay_session *session)
 {
@@ -173,8 +176,8 @@ void session_destroy(struct relay_session *session)
 		ctf_trace_delete(session->ctf_traces_ht, ctf_trace);
 		ctf_trace_destroy(ctf_trace);
 	}
-	lttng_ht_destroy(session->ctf_traces_ht);
 	rcu_read_unlock();
+	lttng_ht_destroy(session->ctf_traces_ht);
 
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
