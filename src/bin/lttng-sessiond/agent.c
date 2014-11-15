@@ -953,7 +953,7 @@ void agent_destroy(struct agent *agt)
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(agt->events);
+	ht_cleanup_push(agt->events);
 }
 
 /*
