@@ -2720,7 +2720,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		struct lttng_snapshot_output **outputs)
 {
 	int ret, idx = 0;
-	struct lttng_snapshot_output *list;
+	struct lttng_snapshot_output *list = NULL;
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output;
 
@@ -2734,7 +2734,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	 * set in no output mode.
 	 */
 	if (session->output_traces) {
-		ret = LTTNG_ERR_EPERM;
+		ret = -LTTNG_ERR_EPERM;
 		goto error;
 	}
 
@@ -2745,11 +2745,12 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 
 	list = zmalloc(session->snapshot.nb_output * sizeof(*list));
 	if (!list) {
-		ret = LTTNG_ERR_NOMEM;
+		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
 	/* Copy list from session to the new list object. */
+	rcu_read_lock();
 	cds_lfht_for_each_entry(session->snapshot.output_ht->ht, &iter.iter,
 			output, node.node) {
 		assert(output->consumer);
@@ -2764,28 +2765,28 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 			ret = uri_to_str_url(&output->consumer->dst.net.control,
 					list[idx].ctrl_url, sizeof(list[idx].ctrl_url));
 			if (ret < 0) {
-				ret = LTTNG_ERR_NOMEM;
-				goto free_error;
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
 			}
 
 			/* Data URI. */
 			ret = uri_to_str_url(&output->consumer->dst.net.data,
 					list[idx].data_url, sizeof(list[idx].data_url));
 			if (ret < 0) {
-				ret = LTTNG_ERR_NOMEM;
-				goto free_error;
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
 			}
 		}
 		idx++;
 	}
 
 	*outputs = list;
-	return session->snapshot.nb_output;
-
-free_error:
-	free(list);
+	list = NULL;
+	ret = session->snapshot.nb_output;
 error:
-	return -ret;
+	free(list);
+	rcu_read_unlock();
+	return ret;
 }
 
 /*
