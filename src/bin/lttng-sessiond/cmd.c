@@ -2402,12 +2402,14 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
+		rcu_read_lock();
 		cds_lfht_for_each_entry(session->ust_session->agents->ht, &iter.iter,
 				agt, node.node) {
 			if (agt->being_used) {
 				nb_dom++;
 			}
 		}
+		rcu_read_unlock();
 	}
 
 	*domains = zmalloc(nb_dom * sizeof(struct lttng_domain));
@@ -2426,6 +2428,7 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
 
+		rcu_read_lock();
 		cds_lfht_for_each_entry(session->ust_session->agents->ht, &iter.iter,
 				agt, node.node) {
 			if (agt->being_used) {
@@ -2434,6 +2437,7 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 				index++;
 			}
 		}
+		rcu_read_unlock();
 	}
 
 	return nb_dom;
