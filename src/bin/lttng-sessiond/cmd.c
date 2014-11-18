@@ -2534,10 +2534,12 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 			struct lttng_ht_iter iter;
 			struct agent *agt;
 
+			rcu_read_lock();
 			cds_lfht_for_each_entry(session->ust_session->agents->ht,
 					&iter.iter, agt, node.node) {
 				nb_event = list_lttng_agent_events(agt, events);
 			}
+			rcu_read_unlock();
 		}
 		break;
 	default:
