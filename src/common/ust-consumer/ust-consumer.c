@@ -1880,7 +1880,7 @@ static int notify_if_more_data(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
-	ret = ustctl_put_next_subbuf(ustream);
+	ret = ustctl_put_subbuf(ustream);
 	assert(!ret);
 
 	/* This stream still has data. Flag it and wake up the data thread. */
