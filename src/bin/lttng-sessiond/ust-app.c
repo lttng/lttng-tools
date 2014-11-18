@@ -5124,10 +5124,12 @@ unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
 			struct buffer_reg_channel *reg_chan;
 
+			rcu_read_lock();
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
 				ret += reg_chan->stream_count;
 			}
+			rcu_read_unlock();
 		}
 		break;
 	}
