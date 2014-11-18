@@ -2469,8 +2469,10 @@ ssize_t cmd_list_channels(int domain, struct ltt_session *session,
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (session->ust_session != NULL) {
+			rcu_read_lock();
 			nb_chan = lttng_ht_get_count(
-					session->ust_session->domain_global.channels);
+				session->ust_session->domain_global.channels);
+			rcu_read_unlock();
 		}
 		DBG3("Number of UST global channels %zd", nb_chan);
 		if (nb_chan < 0) {
