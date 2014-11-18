@@ -220,7 +220,9 @@ static int list_lttng_agent_events(struct agent *agt,
 
 	DBG3("Listing agent events");
 
+	rcu_read_lock();
 	nb_event = lttng_ht_get_count(agt->events);
+	rcu_read_unlock();
 	if (nb_event == 0) {
 		ret = nb_event;
 		goto error;
