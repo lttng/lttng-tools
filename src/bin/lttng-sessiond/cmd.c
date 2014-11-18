@@ -3054,12 +3054,14 @@ static uint64_t get_session_max_subbuf_size(struct ltt_session *session)
 		struct ltt_ust_channel *uchan;
 		struct ltt_ust_session *usess = session->ust_session;
 
+		rcu_read_lock();
 		cds_lfht_for_each_entry(usess->domain_global.channels->ht, &iter.iter,
 				uchan, node.node) {
 			if (uchan->attr.subbuf_size > max_size) {
 				max_size = uchan->attr.subbuf_size;
 			}
 		}
+		rcu_read_unlock();
 	}
 
 	return max_size;
