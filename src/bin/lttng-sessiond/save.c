@@ -1225,6 +1225,8 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 	}
 
 	if (session->ust_session) {
+		unsigned long agent_count;
+
 		ret = config_writer_open_element(writer,
 			config_element_domain);
 		if (ret) {
@@ -1243,28 +1245,35 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
+
+		rcu_read_lock();
+		agent_count =
+			lttng_ht_get_count(session->ust_session->agents);
+		rcu_read_unlock();
+
+		if (agent_count > 0) {
+			ret = config_writer_open_element(writer,
+				config_element_domain);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+
+			ret = save_ust_session(writer, session, 1);
+			if (ret) {
+				goto end;
+			}
+
+			/* /domain */
+			ret = config_writer_close_element(writer);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+		}
 	}
 
-	if (session->ust_session &&
-			lttng_ht_get_count(session->ust_session->agents) > 0) {
-		ret = config_writer_open_element(writer,
-			config_element_domain);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = save_ust_session(writer, session, 1);
-		if (ret) {
-			goto end;
-		}
-
-		/* /domain */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+	if (session->ust_session) {
 	}
 
 	/* /domains */
