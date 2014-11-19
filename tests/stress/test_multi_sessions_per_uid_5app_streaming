@@ -23,6 +23,7 @@ NR_SESSION=5
 NR_LOOP=1000
 COREDUMP_FILE=$(cat /proc/sys/kernel/core_pattern)
 NUM_TESTS=16
+APPS_PID=
 
 TEST_DESC="Stress test - $NR_SESSION sessions per UID streaming with $NR_APP apps"
 
@@ -140,7 +141,11 @@ test_stress()
 function cleanup()
 {
 	diag "Cleaning up!"
-	killall -9 $LAUNCH_APP
+	for p in ${APPS_PID}; do
+		kill -s SIGKILL ${p}
+		wait ${p} 2>/dev/null
+	done
+	APPS_PID=
 	stop_lttng_sessiond
 	stop_lttng_relayd
 }
@@ -153,6 +158,7 @@ function sighandler()
 }
 
 trap sighandler SIGINT
+trap sighandler SIGTERM
 
 # Make sure we collect a coredump if possible.
 ulimit -c unlimited
@@ -171,6 +177,7 @@ diag "Starting applications launcher"
 
 # Start NR_APP applications script that will spawn apps non stop.
 ./$TESTDIR/stress/$LAUNCH_APP $NR_APP &
+APPS_PID="${APPS_PID} ${!}"
 
 test_stress
 out=$?
