@@ -63,11 +63,13 @@ function start_test_app()
 	rm -f $tmp_file
 }
 
-function kill_test_app()
+function stop_test_app()
 {
 	diag "Killing $TESTAPP_NAME"
 	PID_APP=`pidof $TESTAPP_NAME`
 	kill $PID_APP >/dev/null 2>&1
+	diag "Waiting on $TESTAPP_NAME"
+	wait
 }
 
 function snapshot_add_output ()
@@ -172,7 +174,7 @@ function test_ust_local_snapshot ()
 		break
 	fi
 
-	kill_test_app
+	stop_test_app
 }
 
 function test_ust_local_snapshot_max_size ()
@@ -220,7 +222,7 @@ function test_ust_local_snapshot_max_size ()
 		rm -rf $TRACE_PATH
 	fi
 
-	kill_test_app
+	stop_test_app
 }
 
 function test_ust_local_snapshot_large_metadata ()
@@ -286,7 +288,7 @@ function test_ust_per_uid_local_snapshot ()
 		break
 	fi
 
-	kill_test_app
+	stop_test_app
 }
 
 function test_ust_per_uid_local_snapshot_post_mortem ()
@@ -300,7 +302,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
-	kill_test_app
+	stop_test_app
 
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
@@ -344,7 +346,7 @@ function test_ust_local_snapshots ()
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	kill_test_app
+	stop_test_app
 }
 
 plan_tests $NUM_TESTS

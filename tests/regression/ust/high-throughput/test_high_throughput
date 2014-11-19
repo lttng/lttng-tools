@@ -49,10 +49,9 @@ for i in `seq 1 $NR_APP`; do
 	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
 done
 
-while [ -n "$(pidof $BIN_NAME)" ]; do
-	sleep 0.5
-done
-pass "Wait for application end"
+diag "Waiting for applications to end"
+wait
+pass "Wait for applications to end"
 
 stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME

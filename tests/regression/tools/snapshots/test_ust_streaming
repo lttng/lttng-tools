@@ -72,6 +72,15 @@ function start_trace_app()
 	rm -f $tmp_file
 }
 
+function stop_trace_app()
+{
+	diag "Killing $TESTAPP_NAME"
+	PID_APP=`pidof $TESTAPP_NAME`
+	kill $PID_APP >/dev/null 2>&1
+	diag "Waiting on $TESTAPP_NAME"
+	wait
+}
+
 # Test a snapshot using a default name for the output destination.
 function test_ust_default_name_with_del()
 {
@@ -90,6 +99,7 @@ function test_ust_default_name_with_del()
 	echo $TRACE_PATH/$HOSTNAME/snapshot-1
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	if [ $? -ne 0 ]; then
+		stop_trace_app
 		return $?
 	fi
 
@@ -100,15 +110,14 @@ function test_ust_default_name_with_del()
 	# Validate test with the next ID since a del output was done prior.
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
 	if [ $? -ne 0 ]; then
+		stop_trace_app
 		return $?
 	fi
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+	stop_trace_app
 
 	return 0
 }
@@ -132,9 +141,7 @@ function test_ust_default_name()
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+	stop_trace_app
 
 	return $out
 }
@@ -157,9 +164,7 @@ function test_ust_default_name_custom_uri()
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+	stop_trace_app
 
 	return $out
 }
@@ -193,9 +198,7 @@ function test_ust_custom_name()
 		out=1
 	fi
 
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
+	stop_trace_app
 
 	return $out
 }

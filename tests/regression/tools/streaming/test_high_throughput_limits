@@ -33,7 +33,7 @@ DEFAULT_IF="lo"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=112
+NUM_TESTS=104
 
 source $TESTDIR/utils/utils.sh
 
@@ -95,14 +95,6 @@ function run_apps
 	done
 }
 
-function wait_apps
-{
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 1
-	done
-	pass "Wait for applications to end"
-}
-
 function test_high_throughput
 {
 	NETWORK_URI="net://localhost"
@@ -110,7 +102,9 @@ function test_high_throughput
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 	run_apps
-	wait_apps
+	diag "Waiting for applications to end"
+	wait
+	pass "waiting done"
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 	validate_event_count
