@@ -27,6 +27,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=2000000
 NR_USEC_WAIT=100
+APPS_PID=
 
 NUM_TESTS=76
 
@@ -52,7 +53,9 @@ function start_test_app()
 
 	# Start application with a temporary file.
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
-	ok $? "Start application to trace"
+	ret=$?
+	APPS_PID="${APPS_PID} ${!}"
+	ok $ret "Start application to trace"
 
 	# Wait for the application file to appear indicating that at least one
 	# tracepoint has been fired.
@@ -63,13 +66,13 @@ function start_test_app()
 	rm -f $tmp_file
 }
 
-function stop_test_app()
+function stop_test_apps()
 {
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
-	diag "Waiting on $TESTAPP_NAME"
-	wait
+	diag "Stopping $TESTAPP_NAME"
+	for p in ${APPS_PID}; do
+		kill ${p}
+		wait ${p} 2>&1
+	done
 }
 
 function snapshot_add_output ()
@@ -174,7 +177,7 @@ function test_ust_local_snapshot ()
 		break
 	fi
 
-	stop_test_app
+	stop_test_apps
 }
 
 function test_ust_local_snapshot_max_size ()
@@ -222,7 +225,7 @@ function test_ust_local_snapshot_max_size ()
 		rm -rf $TRACE_PATH
 	fi
 
-	stop_test_app
+	stop_test_apps
 }
 
 function test_ust_local_snapshot_large_metadata ()
@@ -288,7 +291,7 @@ function test_ust_per_uid_local_snapshot ()
 		break
 	fi
 
-	stop_test_app
+	stop_test_apps
 }
 
 function test_ust_per_uid_local_snapshot_post_mortem ()
@@ -302,7 +305,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
-	stop_test_app
+	stop_test_apps
 
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
@@ -346,7 +349,7 @@ function test_ust_local_snapshots ()
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	stop_test_app
+	stop_test_apps
 }
 
 plan_tests $NUM_TESTS

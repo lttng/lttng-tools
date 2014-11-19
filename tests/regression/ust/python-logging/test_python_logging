@@ -99,7 +99,7 @@ function test_python_before_start ()
 	start_lttng_tracing $SESSION_NAME
 
 	# Wait for the applications started in background
-	wait ${!}
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -403,7 +403,8 @@ function test_python_destroy_session()
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
 
-	sleep 1
+	# Wait for the applications started in background
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -418,8 +419,11 @@ function test_python_destroy_session()
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME
 
+	# Run 5 times with a 1 second delay
+	run_app_background 0 1
+
 	# Wait for the applications started in background
-	wait ${!}
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME

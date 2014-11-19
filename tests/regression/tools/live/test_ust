@@ -60,18 +60,16 @@ function clean_live_tracing()
 }
 
 if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
-	$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+	$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 	if [ $? -eq 1 ]; then
 		echo "Fail to start lttng-sessiond"
 		exit 1
 	fi
-	# Wait for sessiond to bootstrap
-	sleep 2
 fi
 
-opt="-o $TRACE_PATH"
+opt="-o $TRACE_PATH --background"
 if [ -z $(pidof lt-$RELAYD_BIN) ]; then
-	$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1 &
+	$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1
 	if [ $? -eq 1 ]; then
 		echo "Fail to start lttng-relayd (opt: $opt)"
 		return 1
