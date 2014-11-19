@@ -45,8 +45,9 @@ run_demo_app()
 	cd $CURDIR/demo
 
 	# Start test
+	diag "Running application"
 	./demo-trace >/dev/null 2>&1
-	ok $? "Start application"
+	ok $? "Application done"
 
 	cd -
 }
