@@ -75,12 +75,9 @@ destroy_lttng_session $SESSION_NAME
 
 rm -rf $TRACE_PATH
 
-while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-	killall -q $TESTAPP_NAME >/dev/null 2>&1
-	sleep 0.5
-done
-
-
-pass "Kill all spawned applications"
+diag "Stopping all spawned applications"
+killall -q $TESTAPP_NAME >/dev/null 2>&1
+wait
+pass "Stopped all spawned applications"
 
 stop_lttng_sessiond
