@@ -19,7 +19,7 @@ TEST_DESC="UST tracer - Generate $NUM_PROCESS process"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-NR_ITER=1000
+NR_ITER=-1	# infinite loop
 NR_USEC_WAIT=1000000
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
@@ -28,6 +28,7 @@ SESSION_NAME="ust-nprocesses"
 EVENT_NAME="tp:tptest"
 TEST_WAIT_SEC=5
 NUM_TESTS=9
+APPS_PID=
 
 source $TESTDIR/utils/utils.sh
 
@@ -43,12 +44,16 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-# Start test for 1000 seconds
+# Start tests. Each is an infinite tracing loop.
 
+diag "Starting $NUM_PROCESS test applications"
 for i in `seq 1 $NUM_PROCESS`
 do
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
+	APPS_PID="${APPS_PID} ${!}"
 done
+
+diag "Waiting for applications to be registered to sessiond"
 
 reg_app_count=0
 while [ $reg_app_count -ne $NUM_PROCESS ]; do
@@ -56,7 +61,7 @@ while [ $reg_app_count -ne $NUM_PROCESS ]; do
 	reg_app_count=$(echo -n $listing | sed "s#$TESTAPP_BIN#$TESTAPP_BIN\n#g" | grep "$TESTAPP_BIN" | wc -l)
 done
 
-pass "Trace validation"
+pass "All applications are registered to sessiond"
 
 TRACE_PATH=$(mktemp -d)
 
@@ -65,10 +70,8 @@ create_lttng_session $SESSION_NAME $TRACE_PATH
 enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_lttng_tracing $SESSION_NAME
 
-diag "Sleeping $TEST_WAIT_SEC seconds for tracing to start everywhere"
-diag "Warning: this arbitrary time can make the test fail on slower system"
-
-sleep $TEST_WAIT_SEC
+# We don't validate whether the applications have traced here, rather
+# just that they registered to sessiond (above).
 
 stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
@@ -76,8 +79,10 @@ destroy_lttng_session $SESSION_NAME
 rm -rf $TRACE_PATH
 
 diag "Stopping all spawned applications"
-killall -q $TESTAPP_NAME >/dev/null 2>&1
-wait
+for p in ${APPS_PID}; do
+	kill ${p}
+	wait ${p} 2>/dev/null
+done
 pass "Stopped all spawned applications"
 
 stop_lttng_sessiond
