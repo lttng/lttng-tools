@@ -73,14 +73,6 @@ function enable_metadata_per_pid()
 	ok $? "Enable channel $channel_name per PID for session $sess_name"
 }
 
-function wait_apps
-{
-	diag "Waiting for applications to end..."
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 1
-	done
-}
-
 function validate_trace()
 {
 	local out
@@ -149,11 +141,11 @@ test_after_app_pid() {
 	validate_trace
 	out=$?
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	killall -SIGKILL -q $TESTAPP_NAME
-	wait_apps
+	wait
 
 	return $out
 }
@@ -188,11 +180,11 @@ test_before_app_pid() {
 	validate_trace
 	out=$?
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	killall -SIGKILL -q $TESTAPP_NAME
-	wait_apps
+	wait
 
 	return $out
 }
@@ -223,11 +215,11 @@ test_after_app_uid() {
 	validate_trace
 	out=$?
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	killall -SIGKILL -q $TESTAPP_NAME
-	wait_apps
+	wait
 
 	return $out
 }
@@ -261,11 +253,11 @@ test_before_app_uid() {
 	validate_trace
 	out=$?
 
+	killall -SIGKILL -q $TESTAPP_NAME
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	killall -SIGKILL -q $TESTAPP_NAME
-	wait_apps
+	wait
 
 	return $out
 }
