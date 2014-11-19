@@ -44,11 +44,7 @@ test_multi_session() {
 	./$CURDIR/gen-nevents $NR_ITER &
 	ok $? "Start application to generate $NR_ITER events"
 
-	# At least hit one event
-	while [ -n "$(pidof gen-nevents)" ]; do
-		sleep 0.1
-	done
-
+	wait
 	pass "Wait for events to record"
 
 	for i in `seq 0 3`; do

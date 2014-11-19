@@ -73,6 +73,7 @@ function stop_test_apps()
 		kill ${p}
 		wait ${p} 2>&1
 	done
+	APPS_PID=
 }
 
 function snapshot_add_output ()
