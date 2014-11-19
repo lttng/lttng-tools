@@ -168,12 +168,14 @@ skip $isroot "Root access is needed to set bandwith limits. Skipping all tests."
 {
 
 	# Catch sigint and try to cleanup limits
+	trap interrupt_cleanup SIGTERM
 	trap interrupt_cleanup SIGINT
 
 	BW_LIMITS=(3200 1600 800 400 200 100 50 25)
 	for BW in ${BW_LIMITS[@]};
 	do
 		diag "Test high-throughput with bandwidth limit set to ${BW}kbits"
+
 		set_bw_limit $BW
 
 		start_lttng_sessiond
