@@ -15,6 +15,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#define _LGPL_SOURCE
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdio.h>
