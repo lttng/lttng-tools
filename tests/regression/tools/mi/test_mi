@@ -523,9 +523,8 @@ function test_list_ust_event ()
 	test "$num" -eq "12"
 	ok $? "Mi test: $num / 12 ust event fields discovered"
 
-	#Wait for last forked process
-	wait $!
-
+	#Wait for all background processes
+	wait
 }
 
 function test_start_stop () {
@@ -603,7 +602,6 @@ function test_start_stop () {
 	#Teardown
 	OUTPUT_DEST=$DEVNULL
 	destroy_lttng_sessions
-
 }
 
 function test_snapshot () {
