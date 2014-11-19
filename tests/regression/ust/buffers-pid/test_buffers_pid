@@ -26,7 +26,7 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
-NUM_TESTS=58
+NUM_TESTS=59
 
 source $TESTDIR/utils/utils.sh
 
@@ -43,14 +43,6 @@ function enable_channel_per_pid()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-pid -u $channel_name -s $sess_name >/dev/null 2>&1
 	ok $? "Enable channel $channel_name per PID for session $sess_name"
-}
-
-function wait_apps
-{
-	diag "Waiting for applications to end..."
-	while [ -n "$(pidof $TESTAPP_NAME)" ]; do
-		sleep 1
-	done
 }
 
 test_after_multiple_apps() {
@@ -95,8 +87,9 @@ test_before_multiple_apps() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
-	# At least hit one event
-	sleep 2
+	diag "Waiting for applications to end"
+	wait
+	pass "Waiting done"
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -111,8 +104,6 @@ test_before_multiple_apps() {
 		diag "Found $out event(s). Coherent."
 		out=0
 	fi
-
-	wait_apps
 
 	return $out
 }
