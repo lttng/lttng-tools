@@ -28,6 +28,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=2000000
 NR_USEC_WAIT=100
+APPS_PID=
 
 TRACE_PATH=$(mktemp -d)
 
@@ -55,13 +56,15 @@ function snapshot_add_output ()
 }
 
 # Start trace application and return once one event has been hit.
-function start_trace_app()
+function start_test_app()
 {
 	local tmp_file="/tmp/lttng_test_ust.42.file"
 
 	# Start application with a temporary file.
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
-	ok $? "Start application to trace"
+	ret=$?
+	APPS_PID="${APPS_PID} ${!}"
+	ok $ret "Start application to trace"
 
 	# Wait for the application file to appear indicating that at least one
 	# tracepoint has been fired.
@@ -72,13 +75,13 @@ function start_trace_app()
 	rm -f $tmp_file
 }
 
-function stop_trace_app()
+function stop_test_apps()
 {
-	diag "Killing $TESTAPP_NAME"
-	PID_APP=`pidof $TESTAPP_NAME`
-	kill $PID_APP >/dev/null 2>&1
-	diag "Waiting on $TESTAPP_NAME"
-	wait
+	diag "Stopping $TESTAPP_NAME"
+	for p in ${APPS_PID}; do
+		kill ${p}
+		wait ${p} 2>&1
+	done
 }
 
 # Test a snapshot using a default name for the output destination.
@@ -90,7 +93,7 @@ function test_ust_default_name_with_del()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	start_trace_app
+	start_test_app
 
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
@@ -99,7 +102,7 @@ function test_ust_default_name_with_del()
 	echo $TRACE_PATH/$HOSTNAME/snapshot-1
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	if [ $? -ne 0 ]; then
-		stop_trace_app
+		stop_test_apps
 		return $?
 	fi
 
@@ -110,14 +113,14 @@ function test_ust_default_name_with_del()
 	# Validate test with the next ID since a del output was done prior.
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
 	if [ $? -ne 0 ]; then
-		stop_trace_app
+		stop_test_apps
 		return $?
 	fi
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	stop_trace_app
+	stop_test_apps
 
 	return 0
 }
@@ -131,7 +134,7 @@ function test_ust_default_name()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	start_trace_app
+	start_test_app
 
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
@@ -141,7 +144,7 @@ function test_ust_default_name()
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
-	stop_trace_app
+	stop_test_apps
 
 	return $out
 }
@@ -154,7 +157,7 @@ function test_ust_default_name_custom_uri()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	start_trace_app
+	start_test_app
 
 	snapshot_add_output $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
 	lttng_snapshot_record $SESSION_NAME
@@ -164,7 +167,7 @@ function test_ust_default_name_custom_uri()
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
-	stop_trace_app
+	stop_test_apps
 
 	return $out
 }
@@ -181,7 +184,7 @@ function test_ust_custom_name()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	start_trace_app
+	start_test_app
 
 	snapshot_add_output $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
@@ -198,7 +201,7 @@ function test_ust_custom_name()
 		out=1
 	fi
 
-	stop_trace_app
+	stop_test_apps
 
 	return $out
 }

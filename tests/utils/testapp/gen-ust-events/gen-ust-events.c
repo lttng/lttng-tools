@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
@@ -47,16 +48,20 @@ void create_file(const char *path)
 
 int main(int argc, char **argv)
 {
-	int i, netint;
+	unsigned int i, netint;
 	long values[] = { 1, 2, 3 };
 	char text[10] = "test";
 	double dbl = 2.0;
 	float flt = 2222.0;
-	unsigned int nr_iter = 100;
+	int nr_iter = 100;
 	useconds_t nr_usec = 0;
 	char *tmp_file_path = NULL;
+	bool file_created = false;
 
 	if (argc >= 2) {
+		/*
+		 * If nr_iter is negative, do an infinite tracing loop.
+		 */
 		nr_iter = atoi(argv[1]);
 	}
 
@@ -69,7 +74,7 @@ int main(int argc, char **argv)
 		tmp_file_path = argv[3];
 	}
 
-	for (i = 0; i < nr_iter; i++) {
+	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
 		netint = htonl(i);
 		tracepoint(tp, tptest, i, netint, values, text, strlen(text), dbl,
 				flt);
@@ -78,8 +83,9 @@ int main(int argc, char **argv)
 		 * First loop we create the file if asked to indicate that at least one
 		 * tracepoint has been hit.
 		 */
-		if (i == 0 && tmp_file_path) {
+		if (!file_created && tmp_file_path) {
 			create_file(tmp_file_path);
+			file_created = true;
 		}
 		usleep(nr_usec);
 	}

@@ -52,13 +52,6 @@ function test_kernel_before_start ()
 	sleep 1
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
-
-	# We can not predict _yet_ when the trace is available so we have to do a
-	# arbitratry sleep to validate the trace.
-	diag "Wait 3 seconds for the trace to be written on disk"
-	for i in `seq 1 3`; do
-		sleep 1
-	done
 }
 
 # Deactivated since this feature is not yet available where we can enable
