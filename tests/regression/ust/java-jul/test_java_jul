@@ -88,6 +88,8 @@ function test_jul_before_start ()
 	# Run 5 times with a 1 second delay
 	run_app
 
+	#FIXME: racy missing synchronization
+
 	start_lttng_tracing $SESSION_NAME
 
 	# Wait for the applications started in background

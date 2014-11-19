@@ -58,9 +58,10 @@ test_after_multiple_apps() {
 	start_lttng_tracing $SESSION_NAME
 
 	for i in `seq 1 5`; do
-		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
 		ok $? "Start application $i for tracing"
 	done
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -77,9 +78,11 @@ test_before_multiple_apps() {
 	diag "Start multiple applications BEFORE tracing is started"
 
 	for i in `seq 1 5`; do
-		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT & >/dev/null 2>&1
+		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
 		ok $? "Start application $i for tracing"
 	done
+
+	#FIXME: racy missing synchronization
 
 	# BEFORE application is spawned
 	create_lttng_session $SESSION_NAME $TRACE_PATH
@@ -119,8 +122,9 @@ test_after_app() {
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -144,9 +148,11 @@ test_before_app() {
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
 
+	#FIXME: racy missing synchronization
+
 	start_lttng_tracing $SESSION_NAME
 
-	wait ${!}
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -190,8 +196,9 @@ test_multiple_channels() {
 	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel4"
 	start_lttng_tracing $SESSION_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	trace_matches $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH

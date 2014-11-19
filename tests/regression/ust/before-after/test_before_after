@@ -42,7 +42,8 @@ function test_before_apps()
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	wait
 	ok $? "Traced application stopped."
 
 	stop_lttng_tracing $SESSION_NAME
@@ -63,9 +64,11 @@ function test_after_apps()
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Application started in background."
 
+	#FIXME: racy missing synchronization
+
 	start_lttng_tracing $SESSION_NAME
 
-	wait ${!}
+	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
