@@ -44,7 +44,7 @@ test_multi_session() {
 	./$CURDIR/gen-nevents $NR_ITER &
 	ok $? "Start application to generate $NR_ITER events"
 
-	wait ${!}
+	wait
 	pass "Wait for events to record"
 
 	for i in `seq 0 3`; do

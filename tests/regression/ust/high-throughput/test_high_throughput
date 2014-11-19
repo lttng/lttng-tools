@@ -46,7 +46,7 @@ enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_lttng_tracing $SESSION_NAME
 
 for i in `seq 1 $NR_APP`; do
-	./$CURDIR/$BIN_NAME & >/dev/null 2>&1
+	./$CURDIR/$BIN_NAME >/dev/null 2>&1 &
 done
 
 diag "Waiting for applications to end"

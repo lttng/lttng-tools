@@ -28,6 +28,7 @@ EVENT_NAME="tp:tptest"
 BIN_NAME="gen-nevents"
 NUM_TESTS=38
 APP_TMP_FILE="/tmp/lttng_test_ust.42.file"
+APPS_PID=
 
 source $TESTDIR/utils/utils.sh
 
@@ -106,7 +107,9 @@ function start_trace_app()
 {
 	# Start application with a temporary file.
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $APP_TMP_FILE &
-	ok $? "Start application to trace"
+	ret=$?
+	APPS_PID="${APPS_PID} ${!}"
+	ok $ret "Start application to trace"
 }
 
 function start_check_trace_app()
@@ -115,8 +118,19 @@ function start_check_trace_app()
 	check_app_tmp_file
 }
 
+
+function wait_trace_apps()
+{
+	for p in ${APPS_PID}; do
+		wait ${p} 2>/dev/null
+	done
+	APPS_PID=
+}
+
 test_after_app_pid() {
 	local out
+
+	APPS_PID=
 
 	diag "Start application AFTER tracing is started"
 
@@ -133,7 +147,9 @@ test_after_app_pid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -SIGSTOP -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGSTOP ${p}
+	done
 
 	# Give time to the consumer to write inflight data.
 	sleep 2
@@ -141,11 +157,14 @@ test_after_app_pid() {
 	validate_trace
 	out=$?
 
-	killall -SIGKILL -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGKILL ${p}
+		wait ${p} 2>/dev/null
+	done
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	wait
+	wait_trace_apps
 
 	return $out
 }
@@ -154,6 +173,8 @@ test_before_app_pid() {
 	local out
 	local tmp_file="/tmp/lttng_test_ust.42.file"
 
+	APPS_PID=
+
 	diag "Start application BEFORE tracing is started"
 
 	start_trace_app
@@ -172,7 +193,9 @@ test_before_app_pid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -SIGSTOP -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGSTOP ${p}
+	done
 
 	# Give time to the consumer to write inflight data.
 	sleep 2
@@ -180,17 +203,23 @@ test_before_app_pid() {
 	validate_trace
 	out=$?
 
-	killall -SIGKILL -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGKILL ${p}
+		wait ${p} 2>/dev/null
+	done
+
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	wait
+	wait_trace_apps
 
 	return $out
 }
 
 test_after_app_uid() {
 	local out
+
+	APPS_PID=
 
 	diag "Start application AFTER tracing is started"
 
@@ -207,7 +236,10 @@ test_after_app_uid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -SIGSTOP -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGSTOP ${p}
+	done
+
 
 	# Give time to the consumer to write inflight data.
 	sleep 2
@@ -215,17 +247,22 @@ test_after_app_uid() {
 	validate_trace
 	out=$?
 
-	killall -SIGKILL -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGKILL ${p}
+		wait ${p} 2>/dev/null
+	done
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	wait
+	wait_trace_apps
 
 	return $out
 }
 
 test_before_app_uid() {
 	local out
+
+	APPS_PID=
 
 	diag "Start application BEFORE tracing is started"
 
@@ -245,7 +282,9 @@ test_before_app_uid() {
 	# Make sure the application does not generate any more data,
 	# thus ensuring that we are not flushing a packet concurrently
 	# with validate_trace.
-	killall -SIGSTOP -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGSTOP ${p}
+	done
 
 	# Give time to the consumer to write inflight data.
 	sleep 2
@@ -253,11 +292,14 @@ test_before_app_uid() {
 	validate_trace
 	out=$?
 
-	killall -SIGKILL -q $TESTAPP_NAME
+	for p in ${APPS_PID}; do
+		kill -s SIGKILL ${p}
+		wait ${p} 2>/dev/null
+	done
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
-	wait
+	wait_trace_apps
 
 	return $out
 }
