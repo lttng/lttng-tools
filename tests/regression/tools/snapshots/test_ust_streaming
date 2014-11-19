@@ -80,7 +80,7 @@ function stop_test_apps()
 	diag "Stopping $TESTAPP_NAME"
 	for p in ${APPS_PID}; do
 		kill ${p}
-		wait ${p} 2>&1
+		wait ${p} 2>/dev/null
 	done
 	APPS_PID=
 }
