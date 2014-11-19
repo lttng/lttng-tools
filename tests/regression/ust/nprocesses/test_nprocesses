@@ -53,6 +53,8 @@ do
 	APPS_PID="${APPS_PID} ${!}"
 done
 
+#FIXME: racy missing synchronization
+
 diag "Waiting for applications to be registered to sessiond"
 
 reg_app_count=0
@@ -76,6 +78,8 @@ start_lttng_tracing $SESSION_NAME
 stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
 
+#FIXME/TODO: add validation after fixing racy synchroniaation
+
 rm -rf $TRACE_PATH
 
 diag "Stopping all spawned applications"
@@ -83,6 +87,7 @@ for p in ${APPS_PID}; do
 	kill ${p}
 	wait ${p} 2>/dev/null
 done
+APPS_PID=
 pass "Stopped all spawned applications"
 
 stop_lttng_sessiond

@@ -82,6 +82,7 @@ function stop_test_apps()
 		kill ${p}
 		wait ${p} 2>&1
 	done
+	APPS_PID=
 }
 
 # Test a snapshot using a default name for the output destination.
