@@ -10,7 +10,7 @@ endif
 
 noinst_PROGRAMS = gen-nevents
 gen_nevents_SOURCES = gen-nevents.c tp.c ust_gen_nevents.h
-gen_nevents_LDADD = -llttng-ust
+gen_nevents_LDADD = -llttng-ust -lurcu-bp
 
 noinst_SCRIPTS = test_multi_session
 EXTRA_DIST = test_multi_session
