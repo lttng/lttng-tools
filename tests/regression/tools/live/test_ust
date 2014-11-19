@@ -92,7 +92,7 @@ clean_live_tracing
 
 # Kill the relayd
 PID_RELAYD=`pidof lt-$RELAYD_BIN`
-kill $PID_RELAYD >/dev/null 2>&1
+kill $PID_RELAYD
 if [ $? -eq 1 ]; then
 	echo "Kill lttng-relayd (pid: $PID_RELAYD)"
 	exit 1
@@ -106,7 +106,7 @@ fi
 
 # Kill the sessiond
 PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
-kill $PID_SESSIOND >/dev/null 2>&1
+kill $PID_SESSIOND
 if [ $? -eq 1 ]; then
 	echo "Kill sessiond daemon"
 	exit 1
