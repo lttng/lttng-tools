@@ -1,0 +1,63 @@
+* Test Anti-Patterns
+
+OK, there are a few patterns that have been found over and over in the
+testing code base which makes the tests flaky. Here is an incomplete
+list. Don't do that.
+
+1) Using pidof to wait for a background application (by name) to
+   disappear.
+
+   Why is it flaky ?
+
+   The application may be delayed after being forked, but not executed
+   yet. Therefore, pidof will not find it. Use "wait" instead.
+
+2) Using sleep as delay-based optimistic synchronization technique.
+
+   Why is it flaky ?
+
+   Everything that needs to happen before/after other things need to
+   be explicitly synchronized using e.g. a file (used as a flag).
+   Sleep is just an indicator of a minimum arbitrary delay, but
+   machine load and scheduling can actually mess up the real delay
+   between applications. Use explicit synchronization points. Never
+   sleep.
+
+3) Using killall on a background application.
+
+   Why is it flaky ?
+
+   Similarly to pidof, killall may run before the background application
+   executes, thus failing to find it. Store the application PID after it
+   it launched in background into a temporary variable for later use
+   by kill and wait.
+
+4) Using wait ${!} to wait for completion of many background
+   applications.
+
+   Why is it flaky ?
+
+   It just waits for the last application put in background. Use
+   "wait" to wait for all background applications.
+
+5) Forgetting wait at the end (or error return path) of a test phase
+   that has background applications.
+
+   Why is it flaky ?
+
+   Those application may interact with the following testing phases,
+   thus skewing the results.
+
+6) Not grepping into the entire code base for similar patterns.
+
+   When you find a problematic coding pattern, chances are it appears
+   elsewhere in the testing code base. Please fix it everywhere!
+
+7) Introducing a utility abstraction without changing all open coded
+   similar code path.
+
+   When an abstraction for e.g. starting and stopping the session daemon
+   is introduced as a utility (e.g. utils.sh), future changes will
+   assume that all the testing code base is using this abstraction.
+   Leaving a few custom open-coded sites of duplicated code around is a
+   good way to make it a pain to update the abstraction in the future.

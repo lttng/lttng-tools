@@ -15,7 +15,7 @@ if USE_PYTHON
 endif
 
 dist_noinst_SCRIPTS = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression
-EXTRA_DIST = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression
+EXTRA_DIST = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression README
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
