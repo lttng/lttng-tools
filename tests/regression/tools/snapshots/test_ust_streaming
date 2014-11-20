@@ -58,7 +58,7 @@ function snapshot_add_output ()
 # Start trace application and return once one event has been hit.
 function start_test_app()
 {
-	local tmp_file="/tmp/lttng_test_ust.42.file"
+	local tmp_file=$(mktemp -u)
 
 	# Start application with a temporary file.
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
