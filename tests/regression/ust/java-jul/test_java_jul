@@ -38,7 +38,8 @@ function run_app
 	local finest_tp=$1
 	local fire_second_tp=$2
 
-	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $finest_tp $fire_second_tp >/dev/null 2>&1 &
+	#FIXME: app should have synchro.
+	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $finest_tp $fire_second_tp >/dev/null 2>&1
 }
 
 function wait_apps
@@ -71,6 +72,9 @@ function enable_jul_loglevel_only()
 
 function test_jul_before_start ()
 {
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
+
 	diag "Test JUL application BEFORE tracing starts"
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
@@ -78,15 +82,18 @@ function test_jul_before_start ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	#FIXME: racy missing synchronization
-
 	start_lttng_tracing $SESSION_NAME
+
+	touch ${file_sync_before_last}
 
 	# Wait for the applications started in background
 	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
 
 	# Validate test. Expecting all events.
 	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH

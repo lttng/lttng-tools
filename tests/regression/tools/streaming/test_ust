@@ -56,42 +56,51 @@ function wait_apps
 
 function test_ust_before_start ()
 {
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
+
 	diag "Test UST streaming BEFORE tracing starts"
 	lttng_create_session_uri
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
-
-	#FIXME: racy missing synchro
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
 
 	start_lttng_tracing $SESSION_NAME
+
+	touch ${file_sync_before_last}
+
 	# Wait for the applications started in background
 	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
 }
 
 function test_ust_after_start ()
 {
+	local file_sync_after_first=$(mktemp -u)
+
 	diag "Test UST streaming AFTER tracing starts"
 	lttng_create_session_uri
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} >/dev/null 2>&1
 
-	wait_apps
-
-	#FIXME: racy missing synchro
+	while [ ! -f "${file_sync_after_first}" ]; do
+		sleep 0.5
+	done
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Wait for the applications started in background
 	wait
+	rm -f ${file_sync_after_first}
 }
 
 plan_tests $NUM_TESTS
