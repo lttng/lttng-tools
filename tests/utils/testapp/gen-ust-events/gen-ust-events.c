@@ -27,15 +27,21 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <signal.h>
+#include <poll.h>
+#include <errno.h>
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
 void create_file(const char *path)
 {
+	static bool file_created = false;
 	int ret;
 
-	assert(path);
+	if (!path || file_created) {
+		return;
+	}
 
 	ret = creat(path, S_IRWXU);
 	if (ret < 0) {
@@ -44,6 +50,30 @@ void create_file(const char *path)
 	}
 
 	(void) close(ret);
+	file_created = true;
+}
+
+static
+void wait_on_file(const char *path)
+{
+	if (!path) {
+		return;
+	}
+	for (;;) {
+		int ret;
+		struct stat buf;
+
+		ret = stat(path, &buf);
+		if (ret == -1 && errno == ENOENT) {
+			(void) poll(NULL, 0, 10);	/* 10 ms delay */
+			continue;			/* retry */
+		}
+		if (ret) {
+			perror("stat");
+			exit(EXIT_FAILURE);
+		}
+		break;	/* found */
+	}
 }
 
 int main(int argc, char **argv)
@@ -55,8 +85,8 @@ int main(int argc, char **argv)
 	float flt = 2222.0;
 	int nr_iter = 100;
 	useconds_t nr_usec = 0;
-	char *tmp_file_path = NULL;
-	bool file_created = false;
+	char *after_first_event_file_path = NULL;
+	char *before_last_event_file_path = NULL;
 
 	if (argc >= 2) {
 		/*
@@ -71,22 +101,30 @@ int main(int argc, char **argv)
 	}
 
 	if (argc >= 4) {
-		tmp_file_path = argv[3];
+		after_first_event_file_path = argv[3];
+	}
+
+	if (argc >= 5) {
+		before_last_event_file_path = argv[4];
 	}
 
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
+		if (nr_iter >= 0 && i == nr_iter - 1) {
+			/*
+			 * Wait on synchronization before writing last
+			 * event.
+			 */
+			wait_on_file(before_last_event_file_path);
+		}
 		netint = htonl(i);
-		tracepoint(tp, tptest, i, netint, values, text, strlen(text), dbl,
-				flt);
+		tracepoint(tp, tptest, i, netint, values, text,
+			strlen(text), dbl, flt);
 
 		/*
-		 * First loop we create the file if asked to indicate that at least one
-		 * tracepoint has been hit.
+		 * First loop we create the file if asked to indicate
+		 * that at least one tracepoint has been hit.
 		 */
-		if (!file_created && tmp_file_path) {
-			create_file(tmp_file_path);
-			file_created = true;
-		}
+		create_file(after_first_event_file_path);
 		usleep(nr_usec);
 	}
 
