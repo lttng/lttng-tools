@@ -27,7 +27,7 @@ SESSION_NAME="periodical-flush"
 EVENT_NAME="tp:tptest"
 BIN_NAME="gen-nevents"
 NUM_TESTS=38
-APP_TMP_FILE="/tmp/lttng_test_ust.42.file"
+APP_TMP_FILE=$(mktemp -u)
 APPS_PID=
 
 source $TESTDIR/utils/utils.sh
