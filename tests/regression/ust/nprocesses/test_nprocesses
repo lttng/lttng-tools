@@ -46,14 +46,15 @@ start_lttng_sessiond
 
 # Start tests. Each is an infinite tracing loop.
 
+file_sync_after_first=$(mktemp -u)
+file_sync_before_last=$(mktemp -u)
+
 diag "Starting $NUM_PROCESS test applications"
 for i in `seq 1 $NUM_PROCESS`
 do
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} >/dev/null 2>&1 &
 	APPS_PID="${APPS_PID} ${!}"
 done
-
-#FIXME: racy missing synchronization
 
 diag "Waiting for applications to be registered to sessiond"
 
@@ -72,13 +73,15 @@ create_lttng_session $SESSION_NAME $TRACE_PATH
 enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_lttng_tracing $SESSION_NAME
 
+touch ${file_sync_before_last}
+
 # We don't validate whether the applications have traced here, rather
 # just that they registered to sessiond (above).
 
 stop_lttng_tracing $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
 
-#FIXME/TODO: add validation after fixing racy synchroniaation
+#TODO: add trace validation.
 
 rm -rf $TRACE_PATH
 
@@ -89,5 +92,8 @@ for p in ${APPS_PID}; do
 done
 APPS_PID=
 pass "Stopped all spawned applications"
+
+rm -f ${file_sync_after_first}
+rm -f ${file_sync_before_last}
 
 stop_lttng_sessiond

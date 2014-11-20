@@ -57,21 +57,26 @@ function test_before_apps()
 function test_after_apps()
 {
 	local out
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
 
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} &
 	ok $? "Application started in background."
 
-	#FIXME: racy missing synchronization
-
 	start_lttng_tracing $SESSION_NAME
+
+	touch ${file_sync_before_last}
 
 	wait
 
 	stop_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
+
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
 
 	validate_trace $EVENT_NAME $TRACE_PATH
 	out=$?
