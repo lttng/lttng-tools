@@ -2622,6 +2622,7 @@ restart:
 
 				if (revents & LPOLLIN) {
 					if (conn->type != RELAY_DATA) {
+						rcu_read_unlock();
 						continue;
 					}
 
