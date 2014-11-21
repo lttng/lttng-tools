@@ -1323,7 +1323,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 	ret = check_index_status(vstream, rstream, ctf_trace, &viewer_index);
 	pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 	if (ret < 0) {
-		goto end;
+		goto end_unlock;
 	} else if (ret == 1) {
 		/*
 		 * This means the viewer index data structure has been populated by the
