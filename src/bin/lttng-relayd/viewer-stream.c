@@ -57,8 +57,16 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	vstream->session_id = stream->session_id;
 	vstream->stream_handle = stream->stream_handle;
 	vstream->path_name = strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
+	if (vstream->path_name == NULL) {
+		PERROR("relay viewer path_name alloc");
+		goto error;
+	}
 	vstream->channel_name = strndup(stream->channel_name,
 			LTTNG_VIEWER_NAME_MAX);
+	if (vstream->channel_name == NULL) {
+		PERROR("relay viewer channel_name alloc");
+		goto error;
+	}
 	vstream->tracefile_count = stream->tracefile_count;
 	vstream->metadata_flag = stream->metadata_flag;
 	vstream->tracefile_count_last = -1ULL;
