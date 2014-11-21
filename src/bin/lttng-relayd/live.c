@@ -804,14 +804,9 @@ int viewer_list_sessions(struct relay_connection *conn)
 	}
 	health_code_update();
 
-	rcu_read_unlock();
 	ret = 0;
-	goto end;
-
 end_unlock:
 	rcu_read_unlock();
-
-end:
 	return ret;
 }
 
