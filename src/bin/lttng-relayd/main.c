@@ -233,6 +233,11 @@ int set_option(int opt, const char *arg, const char *optname)
 		break;
 	case 'g':
 		tracing_group_name = strdup(arg);
+		if (tracing_group_name == NULL) {
+			ret = -errno;
+			PERROR("strdup");
+			goto end;
+		}
 		tracing_group_name_override = 1;
 		break;
 	case 'h':
