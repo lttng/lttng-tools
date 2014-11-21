@@ -2336,7 +2336,6 @@ int relay_process_data(struct relay_connection *conn)
 				stream->tracefile_size, stream->tracefile_count,
 				relayd_uid, relayd_gid, stream->fd,
 				&(stream->tracefile_count_current), &stream->fd);
-		stream->total_index_received = 0;
 		pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
 		if (ret < 0) {
 			ERR("Rotating stream output file");
