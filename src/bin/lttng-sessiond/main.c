@@ -4240,7 +4240,7 @@ static void usage(void)
 	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
 	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
 	fprintf(stderr, "      --agent-tcp-port               Agent registration TCP port\n");
-	fprintf(stderr, "  -f  --config                       Load daemon configuration file\n");
+	fprintf(stderr, "  -f  --config PATH                  Load daemon configuration file\n");
 	fprintf(stderr, "  -l  --load PATH                    Load session configuration\n");
 	fprintf(stderr, "      --kmod-probes                  Specify kernel module probes to load\n");
 	fprintf(stderr, "      --extra-kmod-probes            Specify extra kernel module probes to load\n");
