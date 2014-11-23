@@ -4256,6 +4256,17 @@ static int set_option(int opt, const char *arg, const char *optname)
 {
 	int ret = 0;
 
+	if (arg && arg[0] == '\0') {
+		/*
+		 * This only happens if the value is read from daemon config
+		 * file. This means the option requires an argument and the
+		 * configuration file contains a line such as:
+		 * my_option =
+		 */
+		ret = -EINVAL;
+		goto end;
+	}
+
 	switch (opt) {
 	case 0:
 		fprintf(stderr, "option %s", optname);
@@ -4447,6 +4458,22 @@ static int set_option(int opt, const char *arg, const char *optname)
 		ret = -1;
 	}
 
+	if (ret == -EINVAL) {
+		const char *opt_name = "unknown";
+		int i;
+
+		for (i = 0; i < sizeof(long_options) / sizeof(struct option);
+			i++) {
+			if (opt == long_options[i].val) {
+				opt_name = long_options[i].name;
+				break;
+			}
+		}
+
+		WARN("Invalid argument provided for option \"%s\", using default value.",
+			opt_name);
+	}
+end:
 	return ret;
 }
 
