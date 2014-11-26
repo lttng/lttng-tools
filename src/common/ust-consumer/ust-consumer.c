@@ -434,7 +434,7 @@ static int send_sessiond_channel(int sock,
 				if (relayd_error) {
 					*relayd_error = 1;
 				}
-				ret_code = LTTNG_ERR_RELAYD_CONNECT_FAIL;
+				ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 			}
 			if (net_seq_idx == -1ULL) {
 				net_seq_idx = stream->net_seq_idx;
