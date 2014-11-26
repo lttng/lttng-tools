@@ -159,6 +159,9 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 	token = strtok(opts, " ");
 	while (token != NULL) {
 		argv[i] = strdup(token);
+		if (argv[i] == NULL) {
+			goto error;
+		}
 		token = strtok(NULL, " ");
 		i++;
 	}
