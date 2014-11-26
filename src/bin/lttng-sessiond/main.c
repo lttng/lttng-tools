@@ -4672,6 +4672,10 @@ int main(int argc, char **argv)
 
 	if (is_root) {
 		rundir = strdup(DEFAULT_LTTNG_RUNDIR);
+		if (!rundir) {
+			ret = -ENOMEM;
+			goto error;
+		}
 
 		/* Create global run dir with root access */
 		ret = create_lttng_rundir(rundir);
