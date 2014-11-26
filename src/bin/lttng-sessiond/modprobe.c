@@ -99,8 +99,8 @@ static struct kern_modules_param *probes;
 static int nr_probes;
 static int probes_capacity;
 
-void modprobe_remove_lttng(const struct kern_modules_param *modules,
-			   int entries, int required)
+static void modprobe_remove_lttng(const struct kern_modules_param *modules,
+		int entries, int required)
 {
 	int ret = 0, i;
 	char modprobe[256];
