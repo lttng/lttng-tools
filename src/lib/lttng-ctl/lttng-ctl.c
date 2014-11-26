@@ -226,7 +226,7 @@ int lttng_check_tracing_group(void)
 	}
 
 	/* Alloc group list of the right size */
-	grp_list = malloc(grp_list_size * sizeof(gid_t));
+	grp_list = zmalloc(grp_list_size * sizeof(gid_t));
 	if (!grp_list) {
 		perror("malloc");
 		goto end;
@@ -446,7 +446,11 @@ int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 		goto end;
 	}
 
-	data = (void*) malloc(size);
+	data = zmalloc(size);
+	if (!data) {
+		ret = -ENOMEM;
+		goto end;
+	}
 
 	/* Get payload data */
 	ret = recv_data_sessiond(data, size);
@@ -486,7 +490,7 @@ struct lttng_handle *lttng_create_handle(const char *session_name,
 		goto end;
 	}
 
-	handle = malloc(sizeof(struct lttng_handle));
+	handle = zmalloc(sizeof(struct lttng_handle));
 	if (handle == NULL) {
 		PERROR("malloc handle");
 		goto end;
