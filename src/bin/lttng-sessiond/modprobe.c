@@ -140,23 +140,31 @@ void modprobe_remove_lttng_control(void)
 			      LTTNG_MOD_REQUIRED);
 }
 
+static void free_probes(void)
+{
+	int i;
+
+	if (!probes) {
+		return;
+	}
+	for (i = 0; i < nr_probes; ++i) {
+		free(probes[i].name);
+	}
+	free(probes);
+	probes = NULL;
+	nr_probes = 0;
+}
+
 /*
  * Remove data kernel modules in reverse load order.
  */
 void modprobe_remove_lttng_data(void)
 {
-	int i;
-
-	if (probes) {
-		modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
-
-		for (i = 0; i < nr_probes; ++i) {
-			free(probes[i].name);
-		}
-
-		free(probes);
-		probes = NULL;
+	if (!probes) {
+		return;
 	}
+	modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+	free_probes();
 }
 
 /*
@@ -378,7 +386,7 @@ static int append_list_to_probes(const char *list)
 		if (probes_capacity <= nr_probes) {
 			ret = grow_probes();
 			if (ret) {
-				return ret;
+				goto error;
 			}
 		}
 
@@ -389,13 +397,15 @@ static int append_list_to_probes(const char *list)
 		cur_mod->name = zmalloc(name_len);
 		if (!cur_mod->name) {
 			PERROR("malloc probe list");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto error;
 		}
 
 		ret = snprintf(cur_mod->name, name_len, "lttng-probe-%s", next);
 		if (ret < 0) {
 			PERROR("snprintf modprobe name");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto error;
 		}
 
 		cur_mod++;
@@ -403,8 +413,12 @@ static int append_list_to_probes(const char *list)
 	}
 
 	free(tmp_list);
-
 	return 0;
+
+error:
+	free(tmp_list);
+	free_probes();
+	return ret;
 }
 
 /*
@@ -428,7 +442,6 @@ int modprobe_lttng_data(void)
 	if (list) {
 		/* User-specified probes. */
 		ret = append_list_to_probes(list);
-
 		if (ret) {
 			return ret;
 		}
@@ -449,7 +462,8 @@ int modprobe_lttng_data(void)
 
 			if (!name) {
 				PERROR("strdup probe item");
-				return -ENOMEM;
+				ret = -ENOMEM;
+				goto error;
 			}
 
 			probes[i].name = name;
@@ -468,12 +482,20 @@ int modprobe_lttng_data(void)
 	if (list) {
 		ret = append_list_to_probes(list);
 		if (ret) {
-			return ret;
+			goto error;
 		}
 	}
 
 	/*
 	 * Load probes modules now.
 	 */
-	return modprobe_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+	ret = modprobe_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+	if (ret) {
+		goto error;
+	}
+	return ret;
+
+error:
+	free_probes();
+	return ret;
 }
