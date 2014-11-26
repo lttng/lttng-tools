@@ -4464,6 +4464,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		ret = -1;
 	}
 
+end:
 	if (ret == -EINVAL) {
 		const char *opt_name = "unknown";
 		int i;
@@ -4479,7 +4480,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		WARN("Invalid argument provided for option \"%s\", using default value.",
 			opt_name);
 	}
-end:
+
 	return ret;
 }
 
