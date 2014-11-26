@@ -15,6 +15,7 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -27,6 +28,8 @@
 #include <tap/tap.h>
 
 #include <src/common/utils.h>
+
+#include <common/common.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -127,22 +130,34 @@ static void printerr(char *msg)
 int prepare_valid_results()
 {
 	int i;
-	char *relative, *cur_path, *prev_path, *pprev_path, *empty;
+	char *relative, *cur_path = NULL, *prev_path = NULL,
+			*pprev_path = NULL, *empty = NULL;
+	int ret = 0;
 
 	/* Prepare the relative paths */
 	cur_path = realpath(".", NULL);
 	prev_path = realpath("..", NULL);
 	pprev_path = realpath("../..", NULL);
 	empty = strdup("");
+	if (!cur_path || !prev_path || !pprev_path || !empty) {
+		printerr("strdup out of memory");
+		ret = -1;
+		goto end;
+	}
 
 	/* allocate memory for the expected results */
-	valid_tests_expected_results = malloc(sizeof(char *) * num_valid_tests);
+	valid_tests_expected_results = zmalloc(sizeof(char *) * num_valid_tests);
+	if (!valid_tests_expected_results) {
+		printerr("out of memory");
+		ret = -1;
+		goto end;
+	}
 	for (i = 0; i < num_valid_tests; i++) {
 		valid_tests_expected_results[i] = malloc(PATH_MAX);
 		if (valid_tests_expected_results[i] == NULL) {
 			printerr("malloc expected results");
-			free(empty);
-			return 1;
+			ret = -1;
+			goto end;
 		}
 
 		if (strcmp(valid_tests_inputs[i].relative_part, ".") == 0) {
@@ -159,12 +174,13 @@ int prepare_valid_results()
 				"%s%s", relative, valid_tests_inputs[i].absolute_part);
 	}
 
+end:
 	free(cur_path);
 	free(prev_path);
 	free(pprev_path);
 	free(empty);
 
-	return 0;
+	return ret;
 }
 
 int free_valid_results()
