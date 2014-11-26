@@ -129,7 +129,7 @@ static char *get_cmdline_by_pid(pid_t pid)
 	}
 
 	/* Caller must free() *cmdline */
-	cmdline = malloc(PATH_MAX);
+	cmdline = zmalloc(PATH_MAX);
 	if (!cmdline) {
 		perror("malloc cmdline");
 		goto end;
