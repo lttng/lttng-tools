@@ -128,7 +128,7 @@ static void printerr(char *msg)
 	fprintf(stderr, "test_utils_expand_path: error: %s\n", msg);
 }
 
-int prepare_valid_results()
+int prepare_valid_results(void)
 {
 	int i;
 	char *relative, *cur_path = NULL, *prev_path = NULL,
@@ -184,7 +184,7 @@ end:
 	return ret;
 }
 
-int free_valid_results()
+int free_valid_results(void)
 {
 	int i;
 
@@ -197,7 +197,7 @@ int free_valid_results()
 	return 0;
 }
 
-int prepare_symlink_tree()
+int prepare_symlink_tree(void)
 {
 	int i;
 	char tmppath[PATH_MAX];
@@ -238,7 +238,7 @@ error:
 	return 1;
 }
 
-int free_symlink_tree()
+int free_symlink_tree(void)
 {
 	int i;
 	char tmppath[PATH_MAX];
