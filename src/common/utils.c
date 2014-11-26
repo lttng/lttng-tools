@@ -514,7 +514,9 @@ int utils_create_lock_file(const char *filepath)
 	if (ret) {
 		WARN("Could not get lock file %s, another instance is running.",
 			filepath);
-		close(fd);
+		if (close(fd)) {
+			PERROR("close lock file");
+		}
 		fd = ret;
 		goto error;
 	}
