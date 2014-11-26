@@ -278,6 +278,8 @@
 #include "rculfhash-internal.h"
 #include "urcu-flavor.h"
 
+#include <common/common.h>
+
 /*
  * We need to lock pthread exit, which deadlocks __nptl_setxid in the runas
  * clone.  This work-around will be allowed to be removed when runas.c gets
@@ -1981,7 +1983,7 @@ void __cds_lfht_resize_lazy_launch(struct cds_lfht *ht)
 			uatomic_dec(&ht->in_progress_resize);
 			return;
 		}
-		work = malloc(sizeof(*work));
+		work = zmalloc(sizeof(*work));
 		if (work == NULL) {
 			dbg_printf("error allocating resize work, bailing out\n");
 			uatomic_dec(&ht->in_progress_resize);
