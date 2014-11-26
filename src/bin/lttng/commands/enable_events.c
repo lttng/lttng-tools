@@ -576,11 +576,25 @@ int check_exclusion_subsets(const char *event_name,
 				goto error;
 			}
 			if (e == '*') {
-				/* Excluder is a proper subset of event */
-				exclusion_count++;
-				exclusion_list = realloc(exclusion_list, sizeof(char **) * exclusion_count);
-				exclusion_list[exclusion_count - 1] = strndup(next_excluder, excluder_length);
+				char *string;
+				char **new_exclusion_list;
 
+				/* Excluder is a proper subset of event */
+				string = strndup(next_excluder, excluder_length);
+				if (!string) {
+					PERROR("strndup error");
+					goto error;
+				}
+				new_exclusion_list = realloc(exclusion_list,
+					sizeof(char **) * (exclusion_count + 1));
+				if (!new_exclusion_list) {
+					PERROR("realloc");
+					free(string);
+					goto error;
+				}
+				exclusion_list = new_exclusion_list;
+				exclusion_count++;
+				exclusion_list[exclusion_count - 1] = string;
 				break;
 			}
 			if (x != e) {
@@ -773,6 +787,12 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
 					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+
+					if (!exclusion_string) {
+						PERROR("Cannot allocate exclusion_string");
+						error = 1;
+						goto end;
+					}
 					MSG("All %s tracepoints%s are enabled in channel %s for loglevel %s",
 							get_domain_str(dom.type),
 							exclusion_string,
@@ -781,6 +801,12 @@ static int enable_events(char *session_name)
 					free(exclusion_string);
 				} else {
 					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+
+					if (!exclusion_string) {
+						PERROR("Cannot allocate exclusion_string");
+						error = 1;
+						goto end;
+					}
 					MSG("All %s tracepoints%s are enabled in channel %s",
 							get_domain_str(dom.type),
 							exclusion_string,
@@ -798,6 +824,12 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
 					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+
+					if (!exclusion_string) {
+						PERROR("Cannot allocate exclusion_string");
+						error = 1;
+						goto end;
+					}
 					MSG("All %s events%s are enabled in channel %s for loglevel %s",
 							get_domain_str(dom.type),
 							exclusion_string,
@@ -806,6 +838,12 @@ static int enable_events(char *session_name)
 					free(exclusion_string);
 				} else {
 					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+
+					if (!exclusion_string) {
+						PERROR("Cannot allocate exclusion_string");
+						error = 1;
+						goto end;
+					}
 					MSG("All %s events%s are enabled in channel %s",
 							get_domain_str(dom.type),
 							exclusion_string,
@@ -1068,6 +1106,11 @@ static int enable_events(char *session_name)
 					&ev, channel_name,
 					NULL, exclusion_count, exclusion_list);
 			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+			if (!exclusion_string) {
+				PERROR("Cannot allocate exclusion_string");
+				error = 1;
+				goto end;
+			}
 			if (command_ret < 0) {
 				/* Turn ret to positive value to handle the positive error code */
 				switch (-command_ret) {
@@ -1127,7 +1170,11 @@ static int enable_events(char *session_name)
 			command_ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
 					opt_filter, exclusion_count, exclusion_list);
 			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
-
+			if (!exclusion_string) {
+				PERROR("Cannot allocate exclusion_string");
+				error = 1;
+				goto end;
+			}
 			if (command_ret < 0) {
 				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
