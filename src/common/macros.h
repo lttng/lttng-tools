@@ -46,7 +46,11 @@
 /*
  * Memory allocation zeroed
  */
-#define zmalloc(x) calloc(1, x)
+static inline
+void *zmalloc(size_t len)
+{
+	return calloc(1, len);
+}
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
