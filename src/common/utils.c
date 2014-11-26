@@ -91,6 +91,10 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 
 		/* Cut the part we will be trying to resolve */
 		cut_path = strndup(path, next - path);
+		if (cut_path == NULL) {
+			PERROR("strndup");
+			goto error;
+		}
 
 		/* Try to resolve this part */
 		try_path = realpath((char *)cut_path, NULL);
@@ -144,6 +148,10 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		 * path are pointers for the same memory space
 		 */
 		cut_path = strdup(prev);
+		if (cut_path == NULL) {
+			PERROR("strdup");
+			goto error;
+		}
 
 		/* Concatenate the strings */
 		snprintf(resolved_path, size, "%s%s", try_path_prev, cut_path);
@@ -217,7 +225,10 @@ char *utils_expand_path(const char *path)
 
 		/* We prepare the start_path not containing it */
 		start_path = strndup(absolute_path, next - absolute_path);
-
+		if (!start_path) {
+			PERROR("strndup");
+			goto error;
+		}
 		/* And we concatenate it with the part after this string */
 		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 2);
 
@@ -234,6 +245,10 @@ char *utils_expand_path(const char *path)
 
 		/* Then we prepare the start_path not containing it */
 		start_path = strndup(absolute_path, previous - absolute_path);
+		if (!start_path) {
+			PERROR("strndup");
+			goto error;
+		}
 
 		/* And we concatenate it with the part after the '/../' */
 		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 4);
