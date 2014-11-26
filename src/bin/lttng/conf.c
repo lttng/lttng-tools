@@ -25,7 +25,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/error.h>
+#include <common/common.h>
 #include <common/utils.h>
 
 #include "conf.h"
@@ -191,7 +191,7 @@ char *config_read_session_name(char *path)
 #define NAME_MAX_SCANF_IS_A_BROKEN_API	"254"
 #endif
 
-	session_name = malloc(NAME_MAX);
+	session_name = zmalloc(NAME_MAX);
 	if (session_name == NULL) {
 		ERR("Out of memory");
 		goto error;
