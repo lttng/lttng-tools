@@ -376,16 +376,22 @@ static int create_session(void)
 		 */
 		url = NULL;
 	} else if (!opt_no_output) {
+		char *tmp_path;
+
 		/* Auto output path */
-		alloc_path = utils_get_home_dir();
-		if (alloc_path == NULL) {
+		tmp_path = utils_get_home_dir();
+		if (tmp_path == NULL) {
 			ERR("HOME path not found.\n \
 					Please specify an output path using -o, --output PATH");
 			ret = CMD_FATAL;
 			goto error;
 		}
-		alloc_path = strdup(alloc_path);
-
+		alloc_path = strdup(tmp_path);
+		if (!alloc_path) {
+			PERROR("allocating alloc_path");
+			ret = CMD_FATAL;
+			goto error;
+		}
 		ret = asprintf(&alloc_url,
 				"file://%s/" DEFAULT_TRACE_DIR_NAME "/%s",
 				alloc_path, session_name_date);
