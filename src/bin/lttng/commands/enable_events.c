@@ -514,7 +514,10 @@ char *print_exclusions(int count, char **names)
 
 	/* add length of preamble + one for NUL - one for last (missing) comma */
 	length += strlen(preamble);
-	ret = malloc(length);
+	ret = zmalloc(length);
+	if (!ret) {
+		return NULL;
+	}
 	strncpy(ret, preamble, length);
 	for (i = 0; i < count; i++) {
 		strcat(ret, names[i]);
