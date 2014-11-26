@@ -109,7 +109,7 @@ int ini_parse_file(FILE* file, ini_entry_handler handler, void* user)
 	int error = 0;
 
 #if !INI_USE_STACK
-	line = (char*)malloc(INI_MAX_LINE);
+	line = (char*)zmalloc(INI_MAX_LINE);
 	if (!line) {
 		return -2;
 	}
