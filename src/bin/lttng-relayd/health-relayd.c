@@ -160,6 +160,10 @@ int setup_health_path(void)
 
 	if (is_root) {
 		rundir = strdup(DEFAULT_LTTNG_RUNDIR);
+		if (!rundir) {
+			ret = -ENOMEM;
+			goto end;
+		}
 	} else {
 		/*
 		 * Create rundir from home path. This will create something like
