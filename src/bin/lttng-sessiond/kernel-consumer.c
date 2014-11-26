@@ -48,6 +48,10 @@ static char *create_channel_path(struct consumer_output *consumer,
 			goto error;
 		}
 		pathname = strndup(tmp_path, sizeof(tmp_path));
+		if (!pathname) {
+			PERROR("strndup");
+			goto error;
+		}
 
 		/* Create directory */
 		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG, uid, gid);
@@ -65,6 +69,10 @@ static char *create_channel_path(struct consumer_output *consumer,
 			goto error;
 		}
 		pathname = strndup(tmp_path, sizeof(tmp_path));
+		if (!pathname) {
+			PERROR("strndup");
+			goto error;
+		}
 		DBG3("Kernel network consumer subdir path: %s", pathname);
 	}
 
@@ -99,13 +107,13 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 
 	if (monitor) {
 		pathname = create_channel_path(consumer, session->uid, session->gid);
-		if (!pathname) {
-			ret = -1;
-			goto error;
-		}
 	} else {
 		/* Empty path. */
 		pathname = strdup("");
+	}
+	if (!pathname) {
+		ret = -1;
+		goto error;
 	}
 
 	/* Prep channel message structure */
@@ -163,13 +171,13 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 
 	if (monitor) {
 		pathname = create_channel_path(consumer, session->uid, session->gid);
-		if (!pathname) {
-			ret = -1;
-			goto error;
-		}
 	} else {
 		/* Empty path. */
 		pathname = strdup("");
+	}
+	if (!pathname) {
+		ret = -1;
+		goto error;
 	}
 
 	/* Prep channel message structure */
