@@ -1783,7 +1783,7 @@ int cds_lfht_destroy(struct cds_lfht *ht, pthread_attr_t **attr)
 	}
 #endif
 	while (uatomic_read(&ht->in_progress_resize))
-		poll(NULL, 0, 100);	/* wait for 100ms */
+		(void) poll(NULL, 0, 100); /* wait for 100ms */
 	ret = cds_lfht_delete_bucket(ht);
 	if (ret)
 		return ret;
