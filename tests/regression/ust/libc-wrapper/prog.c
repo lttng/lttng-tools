@@ -31,6 +31,9 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < N_ITER; i++) {
 		ptrs[i] = malloc(i+1000);
+		if (!ptrs[i]) {
+			exit(EXIT_FAILURE);
+		}
 
 		memcpy(ptrs[i], teststr, sizeof(teststr));
 
