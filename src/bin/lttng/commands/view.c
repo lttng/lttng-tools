@@ -151,7 +151,7 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 	} while (*token != '\0');
 
 	/* Add two here for the NULL terminating element and trace path */
-	argv = malloc(sizeof(char *) * (num_opts + 2));
+	argv = zmalloc(sizeof(char *) * (num_opts + 2));
 	if (argv == NULL) {
 		goto error;
 	}
@@ -198,7 +198,7 @@ static char **alloc_argv_from_local_opts(const char **opts, size_t opts_len,
 	size = sizeof(char *) * mem_len;
 
 	/* Add two here for the trace_path and the NULL terminating element. */
-	argv = malloc(size);
+	argv = zmalloc(size);
 	if (argv == NULL) {
 		goto error;
 	}
