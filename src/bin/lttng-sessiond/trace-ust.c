@@ -759,7 +759,9 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->agents->ht, &iter.iter, agt, node.node) {
-		lttng_ht_del(session->agents, &iter);
+		int ret = lttng_ht_del(session->agents, &iter);
+
+		assert(!ret);
 		agent_destroy(agt);
 	}
 	rcu_read_unlock();
