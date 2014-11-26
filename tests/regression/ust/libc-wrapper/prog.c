@@ -23,7 +23,7 @@
 
 #define N_ITER 1000
 
-int main()
+int main(int argc, char **argv)
 {
 	int i;
 	const char teststr[] = "Hello World! 1234567890abc";
