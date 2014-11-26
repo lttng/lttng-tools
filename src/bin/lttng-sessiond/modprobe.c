@@ -352,10 +352,11 @@ static int append_list_to_probes(const char *list)
 {
 	char *next;
 	int index = nr_probes, ret;
+	char *tmp_list;
 
 	assert(list);
 
-	char *tmp_list = strdup(list);
+	tmp_list = strdup(list);
 	if (!tmp_list) {
 		PERROR("strdup temp list");
 		return -ENOMEM;
@@ -436,8 +437,8 @@ int modprobe_lttng_data(void)
 	} else {
 		/* Default probes. */
 		int def_len = ARRAY_SIZE(kern_modules_probes_default);
-		probes = zmalloc(sizeof(*probes) * def_len);
 
+		probes = zmalloc(sizeof(*probes) * def_len);
 		if (!probes) {
 			PERROR("malloc probe list");
 			return -ENOMEM;
