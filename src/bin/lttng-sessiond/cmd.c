@@ -18,6 +18,7 @@
 #define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
+#include <string.h>
 #include <inttypes.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
@@ -939,10 +940,20 @@ int cmd_enable_channel(struct ltt_session *session,
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
+	size_t len;
 
 	assert(session);
 	assert(attr);
 	assert(domain);
+
+	len = strnlen(attr->name, sizeof(attr->name));
+
+	/* Validate channel name */
+	if (attr->name[0] == '.' ||
+		memchr(attr->name, '/', len) != NULL) {
+		ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+		goto end;
+	}
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
@@ -1024,6 +1035,7 @@ int cmd_enable_channel(struct ltt_session *session,
 
 error:
 	rcu_read_unlock();
+end:
 	return ret;
 }
 

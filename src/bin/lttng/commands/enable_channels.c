@@ -275,9 +275,16 @@ static int enable_channel(char *session_name)
 	/* Strip channel list (format: chan1,chan2,...) */
 	channel_name = strtok(opt_channels, ",");
 	while (channel_name != NULL) {
-		/* Copy channel name and normalize it */
-		strncpy(chan.name, channel_name, NAME_MAX);
-		chan.name[NAME_MAX - 1] = '\0';
+		/* Validate channel name's length */
+		if (strlen(channel_name) >= NAME_MAX) {
+			ERR("Channel name is too long (max. %zu characters)",
+					sizeof(chan.name) - 1);
+			error = 1;
+			goto skip_enable;
+		}
+
+		/* Copy channel name */
+		strcpy(chan.name, channel_name);
 
 		DBG("Enabling channel %s", channel_name);
 
@@ -292,6 +299,12 @@ static int enable_channel(char *session_name)
 						lttng_strerror(ret), session_name);
 				warn = 1;
 				break;
+			case LTTNG_ERR_INVALID_CHANNEL_NAME:
+				ERR("Invalid channel name: \"%s\". "
+				    "Channel names may not start with '.', and "
+				    "may not contain '/'.", channel_name);
+				error = 1;
+				break;
 			default:
 				ERR("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
@@ -304,6 +317,7 @@ static int enable_channel(char *session_name)
 			success = 1;
 		}
 
+skip_enable:
 		if (lttng_opt_mi) {
 			/* Mi print the channel element and leave it open */
 			ret = mi_lttng_channel(writer, &chan, 1);
