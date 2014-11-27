@@ -260,9 +260,16 @@ static int enable_channel(char *session_name)
 	/* Strip channel list (format: chan1,chan2,...) */
 	channel_name = strtok(opt_channels, ",");
 	while (channel_name != NULL) {
-		/* Copy channel name and normalize it */
-		strncpy(chan.name, channel_name, NAME_MAX);
-		chan.name[NAME_MAX - 1] = '\0';
+		/* Validate channel name's length */
+		if (strlen(channel_name) >= NAME_MAX) {
+			ERR("Channel name is too long (max. %zu characters)",
+					sizeof(chan.name) - 1);
+			ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+			goto error;
+		}
+
+		/* Copy channel name */
+		strcpy(chan.name, channel_name);
 
 		DBG("Enabling channel %s", channel_name);
 
@@ -275,6 +282,11 @@ static int enable_channel(char *session_name)
 				WARN("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
 				goto error;
+			case LTTNG_ERR_INVALID_CHANNEL_NAME:
+				ERR("Invalid channel name: \"%s\". "
+				    "Channel names may not start with '.', and "
+				    "may not contain '/'.", channel_name);
+				goto error;
 			default:
 				ERR("Channel %s: %s (session %s)", channel_name,
 						lttng_strerror(ret), session_name);
@@ -286,7 +298,6 @@ static int enable_channel(char *session_name)
 					get_domain_str(dom.type), channel_name, session_name);
 		}
 
-		/* Next event */
 		channel_name = strtok(NULL, ",");
 	}
 
