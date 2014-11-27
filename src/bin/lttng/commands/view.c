@@ -173,6 +173,13 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 	return argv;
 
 error:
+	if (argv) {
+		for (i = 0; i < num_opts + 2; i++) {
+			free(argv[i]);
+		}
+		free(argv);
+	}
+
 	return NULL;
 }
 
