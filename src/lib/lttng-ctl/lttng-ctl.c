@@ -1216,6 +1216,7 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 	struct lttng_event ev;
 
 	memset(&ev, 0, sizeof(ev));
+	ev.loglevel = -1;
 	ev.type = LTTNG_EVENT_ALL;
 	lttng_ctl_copy_string(ev.name, name, sizeof(ev.name));
 	return lttng_disable_event_ext(handle, &ev, channel_name, NULL);

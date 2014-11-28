@@ -1042,7 +1042,8 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 	event_name = event->name;
 
-	if (event->loglevel_type || event->loglevel || event->enabled
+	/* Error out on unhandled search criteria */
+	if (event->loglevel_type || event->loglevel != -1 || event->enabled
 			|| event->pid || event->filter || event->exclusion) {
 		return LTTNG_ERR_UNK;
 	}
