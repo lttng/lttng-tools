@@ -1636,6 +1636,24 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 
 	ret = lttng_enable_event_with_exclusions(handle, &event, channel_name,
 			filter_expression, exclusion_count, exclusions);
+	if (ret) {
+		goto end;
+	}
+
+	if (!event.enabled) {
+		/*
+		 * Note that we should use lttng_disable_event_ext() (2.6+) to
+		 * eliminate the risk of clashing on events of the same
+		 * name (with different event types and loglevels).
+		 *
+		 * Unfortunately, lttng_disable_event_ext() only performs a
+		 * match on the name and event type and errors out if any other
+		 * event attribute is not set to its default value.
+		 *
+		 * This will disable all events that match this name.
+		 */
+		ret = lttng_disable_event(handle, event.name, channel_name);
+	}
 end:
 	for (i = 0; i < exclusion_count; i++) {
 		free(exclusions[i]);
