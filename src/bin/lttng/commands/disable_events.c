@@ -216,6 +216,9 @@ static int disable_events(char *session_name)
 	}
 
 	memset(&event, 0, sizeof(event));
+	/* Set default loglevel to any/unknown */
+	event.loglevel = -1;
+
 	switch (opt_event_type) {
 	case LTTNG_EVENT_SYSCALL:
 		event.type = LTTNG_EVENT_SYSCALL;
