@@ -29,7 +29,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=20
+NUM_TESTS=21
 
 source $TESTDIR/utils/utils.sh
 
@@ -78,6 +78,18 @@ function test_complex_load()
 	disable_ust_lttng_channel $sess chan2
 	disable_ust_lttng_channel $sess chan3
 
+	# Confirm that an event stored as disabled is restored in its disabled state
+	local mi_output_file=$(mktemp)
+	if [ $? -ne 0 ]; then
+		break;
+	fi
+	lttng --mi XML list $sess -c chan2 > $mi_output_file
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//command/output/sessions/session/domains/domain/channels/channel[name='chan2']/events/event[name='uevent_disabled']/enabled/text()")
+	if [[ $mi_result = "false" ]]; then
+	    ok 0 "Disabled event is loaded in disabled state"
+	else
+	    fail "Disabled event is loaded in disabled state"
+	fi
 	destroy_lttng_session $sess
 
 	stop_lttng_relayd_nocheck
