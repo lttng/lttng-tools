@@ -63,7 +63,7 @@ source $TESTDIR/utils/utils.sh
 #Overwrite the lttng_bin to get mi output
 LTTNG_BIN="lttng --mi xml"
 
-#Global devlaration for simplification
+#Global declaration for simplification
 LTTNG=$TESTDIR/../src/bin/lttng/$LTTNG_BIN
 
 #Overwrite the default output for utils.sh command
