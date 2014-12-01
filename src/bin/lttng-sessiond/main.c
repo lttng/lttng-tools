@@ -3389,31 +3389,12 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_set_consumer_uri(cmd_ctx->lsm->domain.type, cmd_ctx->session,
-				nb_uri, uris);
+		ret = cmd_set_consumer_uri(cmd_ctx->session, nb_uri, uris);
+		free(uris);
 		if (ret != LTTNG_OK) {
-			free(uris);
 			goto error;
 		}
 
-		/*
-		 * XXX: 0 means that this URI should be applied on the session. Should
-		 * be a DOMAIN enuam.
-		 */
-		if (cmd_ctx->lsm->domain.type == 0) {
-			/* Add the URI for the UST session if a consumer is present. */
-			if (cmd_ctx->session->ust_session &&
-					cmd_ctx->session->ust_session->consumer) {
-				ret = cmd_set_consumer_uri(LTTNG_DOMAIN_UST, cmd_ctx->session,
-						nb_uri, uris);
-			} else if (cmd_ctx->session->kernel_session &&
-					cmd_ctx->session->kernel_session->consumer) {
-				ret = cmd_set_consumer_uri(LTTNG_DOMAIN_KERNEL,
-						cmd_ctx->session, nb_uri, uris);
-			}
-		}
-
-		free(uris);
 
 		break;
 	}

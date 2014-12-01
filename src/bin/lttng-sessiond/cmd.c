@@ -2007,13 +2007,12 @@ error:
 /*
  * Command LTTNG_SET_CONSUMER_URI processed by the client thread.
  */
-int cmd_set_consumer_uri(int domain, struct ltt_session *session,
-		size_t nb_uri, struct lttng_uri *uris)
+int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
+		struct lttng_uri *uris)
 {
 	int ret, i;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
-	struct consumer_output *consumer = NULL;
 
 	assert(session);
 	assert(uris);
@@ -2025,38 +2024,38 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 		goto error;
 	}
 
-	/*
-	 * This case switch makes sure the domain session has a temporary consumer
-	 * so the URL can be set.
-	 */
-	switch (domain) {
-	case 0:
-		/* Code flow error. A session MUST always have a consumer object */
-		assert(session->consumer);
-		/*
-		 * The URL will be added to the tracing session consumer instead of a
-		 * specific domain consumer.
-		 */
-		consumer = session->consumer;
-		break;
-	case LTTNG_DOMAIN_KERNEL:
-		/* Code flow error if we don't have a kernel session here. */
-		assert(ksess);
-		assert(ksess->consumer);
-		consumer = ksess->consumer;
-		break;
-	case LTTNG_DOMAIN_UST:
-		/* Code flow error if we don't have a kernel session here. */
-		assert(usess);
-		assert(usess->consumer);
-		consumer = usess->consumer;
-		break;
-	}
-
+	/* Set the "global" consumer URIs */
 	for (i = 0; i < nb_uri; i++) {
-		ret = add_uri_to_consumer(consumer, &uris[i], domain, session->name);
+		ret = add_uri_to_consumer(session->consumer,
+				&uris[i], 0, session->name);
 		if (ret != LTTNG_OK) {
 			goto error;
+		}
+	}
+
+	/* Set UST session URIs */
+	if (session->ust_session) {
+		for (i = 0; i < nb_uri; i++) {
+			ret = add_uri_to_consumer(
+					session->ust_session->consumer,
+					&uris[i], LTTNG_DOMAIN_UST,
+					session->name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+		}
+	}
+
+	/* Set kernel session URIs */
+	if (session->kernel_session) {
+		for (i = 0; i < nb_uri; i++) {
+			ret = add_uri_to_consumer(
+					session->kernel_session->consumer,
+					&uris[i], LTTNG_DOMAIN_KERNEL,
+					session->name);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 		}
 	}
 
@@ -2067,7 +2066,9 @@ int cmd_set_consumer_uri(int domain, struct ltt_session *session,
 	session->output_traces = 1;
 	if (ksess) {
 		ksess->output_traces = 1;
-	} else if (usess) {
+	}
+
+	if (usess) {
 		usess->output_traces = 1;
 	}
 
@@ -2129,7 +2130,7 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	}
 
 	if (uris) {
-		ret = cmd_set_consumer_uri(0, session, nb_uri, uris);
+		ret = cmd_set_consumer_uri(session, nb_uri, uris);
 		if (ret != LTTNG_OK) {
 			goto consumer_error;
 		}
