@@ -1284,7 +1284,7 @@ int create_session(const char *name,
 		int i;
 		struct lttng_domain *domain;
 		struct lttng_domain *domains[] =
-			{ kernel_domain, ust_domain, jul_domain, log4j_domain};
+			{ kernel_domain, ust_domain, jul_domain, log4j_domain };
 
 		/* network destination */
 		if (live_timer_interval && live_timer_interval != UINT64_MAX) {
