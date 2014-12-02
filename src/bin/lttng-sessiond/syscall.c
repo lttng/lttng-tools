@@ -73,7 +73,7 @@ int syscall_init_table(void)
 	}
 
 	while (fscanf(fp,
-				"syscall { index = %lu; \
+				"syscall { index = %zu; \
 				name = %" XSTR(SYSCALL_NAME_LEN) "[^;]; \
 				bitness = %u; };\n",
 				&index, name, &bitness) == 3) {
