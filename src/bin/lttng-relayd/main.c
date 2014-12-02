@@ -2359,7 +2359,7 @@ int relay_process_data(struct relay_connection *conn)
 				pthread_mutex_lock(&vstream->overwrite_lock);
 				vstream->abort_flag = 1;
 				pthread_mutex_unlock(&vstream->overwrite_lock);
-				DBG("Streaming side setting abort_flag on stream %s_%lu\n",
+				DBG("Streaming side setting abort_flag on stream %s_%" PRIu64 "\n",
 						stream->channel_name, new_id);
 			} else if (vstream->tracefile_count_current ==
 					stream->tracefile_count_current) {
