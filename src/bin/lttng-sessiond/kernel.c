@@ -794,6 +794,7 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 		struct lttng_ht_iter iter;
 
 		/* For each consumer socket. */
+		rcu_read_lock();
 		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			struct ltt_kernel_channel *chan;
@@ -807,6 +808,7 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 				}
 			}
 		}
+		rcu_read_unlock();
 	}
 
 	/* Close any relayd session */
