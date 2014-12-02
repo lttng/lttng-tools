@@ -42,7 +42,7 @@ static struct valid_test_input valid_tests_inputs[] = {
 		{ "128K", 131072 },
 		{ "0x1234k", 4771840 },
 		{ "32M", 33554432 },
-		{ "1024G", 1099511627776 },
+		{ "1024G", 1099511627776ULL },
 		{ "0X400", 1024 },
 		{ "0x40a", 1034 },
 		{ "0X40b", 1035 },
@@ -65,15 +65,15 @@ static struct valid_test_input valid_tests_inputs[] = {
 		{ "0X0K", 0 },
 		{ "0x0M", 0 },
 		{ "0X0G", 0 },
-		{ "0X40G", 68719476736 },
+		{ "0X40G", 68719476736ULL },
 		{ "0300k", 196608 },
 		{ "0300K", 196608 },
 		{ "030M", 25165824 },
-		{ "020G", 17179869184 },
+		{ "020G", 17179869184ULL },
 		{ "0xa0k", 163840 },
 		{ "0xa0K", 163840 },
 		{ "0XA0M", 167772160 },
-		{ "0xA0G", 171798691840 },
+		{ "0xA0G", 171798691840ULL },
 };
 static const int num_valid_tests = sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
 
