@@ -732,7 +732,12 @@ int viewer_connect(struct relay_connection *conn)
 	reply.major = htobe32(reply.major);
 	reply.minor = htobe32(reply.minor);
 	if (conn->type == RELAY_VIEWER_COMMAND) {
-		reply.viewer_session_id = htobe64(++last_relay_viewer_session_id);
+		/*
+		 * Increment outside of htobe64 macro, because can be used more than once
+		 * within the macro, and thus the operation may be undefined.
+		 */
+		last_relay_viewer_session_id++;
+		reply.viewer_session_id = htobe64(last_relay_viewer_session_id);
 	}
 
 	health_code_update();
