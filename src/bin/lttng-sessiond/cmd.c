@@ -2961,11 +2961,13 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	}
 
 	ret = LTTNG_OK;
+	goto end;
 
 error_snapshot:
 	/* Clean up copied sockets so this output can use some other later on. */
 	consumer_destroy_output_sockets(output->consumer);
 error:
+end:
 	return ret;
 }
 
