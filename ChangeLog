@@ -1,3 +1,74 @@
+2014-12-12 lttng-tools 2.6.0-rc4 (International Day Of Heavy Metal)
+	* Fix: don't destroy the sockets if the snapshot was successful
+	* Fix: Missing RCU read locks in syscall_list_channel()
+	* Fix: Missing RCU read lock in kernel_destroy_session()
+	* Fix: channel names are not validated
+	* Fix: Apply consumer URI changes to all domains
+	* Test fix: Don't invoke the system's lttng client
+	* Tests: Add a test to check disabled events are loaded in the correct state
+	* Fix: Don't leave events enabled if they were saved in a disabled state
+	* Fix: "Any" loglevel's value is -1 and not 0
+	* Test fix: LTTNG_SESSION_CONFIG_XSD_PATH expects an absolute path
+	* Fix: Memory leak on error in alloc_argv_from_user_opts()
+	* Fix: Unreachable error logging in set_option()
+	* Fix: OOM leaks in sessiond modprobe.c
+	* Fix: test_utils_expand_path.c: out of memory error handling
+	* Fix: test test_ust_data.c: check OOM
+	* Fix: test libc-wrapper: check malloc OOM
+	* Fix: lttng-ctl: use zmalloc(), missing OOM check
+	* Fix: filter-parser.y: use zmalloc(), missing OOM check
+	* Fix: utils.c: check str*dup OOM
+	* Fix: rculfhash: use zmalloc()
+	* Fix: ini.c: use zmalloc()
+	* Fix: lttng lttng.c: check strdup OOM
+	* Fix: lttng conf.c: use zmalloc()
+	* Fix: lttng view.c missing strdup OOM check
+	* Fix: use zmalloc() in lttng view.c
+	* Fix: use zmalloc() in lttng list.c
+	* Fix: oom error check, realloc oom leak
+	* Fix: use zmalloc in lttng enable_events.c
+	* Fix: missing strdup oom check in lttng create.c
+	* Fix: lttng add_context.c: use zmalloc
+	* Fix: add missing str*dup oom check in sessiond main.c
+	* Fix: add missing sessiond kernel-consumer missing str*dup oom checks
+	* Fix: add missing strdup OOM check
+	* Fix: Live tracing does not honor live timer after first tracefile with tracefile rotation
+	* Fix: Handle empty daemon configuration file lines
+	* Docs: Add -f/--config option to lttng-sessiond man page
+	* Fix: relayd: unbalanced RCU read-side lock/unlock
+	* Fix: relayd: unbalanced RCU read lock/unlock
+	* Fix: lttng-relayd: unhandled out of memory error
+	* Fix: relayd viewer stream: unhandled out of memory error
+	* Fix: Missing rcu_read_lock in cmd_list_events()
+	* Fix: Missing rcu_read_lock in list_lttng_agent_events()
+	* Fix: Missing rcu_read_lock in cmd_list_channels()
+	* Fix: Missing rcu_read_locks in cmd_list_domains()
+	* Fix: Missing rcu_read_lock in cmd_snapshot_list_outputs()
+	* Fix: Missing rcu_read_lock in save_domains()
+	* Fix: Missing rcu_read_lock in ust_app_get_nb_stream()
+	* Fix: UST subbuffers silently dropped on moderate trace traffic
+	* Fix: Missing rcu_read_lock in get_session_max_subbuf_size()
+	* Fix: create/destroy a splice_pipe per stream
+	* Fix: return EINVAL if agent registration fails
+	* Note find_ust_app_context must be called with RCU read lock
+	* Fix: check userspace perf counter name when looking up contexts
+	* Fix: empty indexes_ht before destroying it.
+	* Fix: removed useless key from relay_index
+	* Fix: Ambiguous agent event filter bytecode ownership
+	* Fix: filter bytecode and string memory leak on error
+	* Fix: HT must not be destroyed with a rcu_read_lock held
+	* Fix: agent events HT should be destroyed from the cleanup thread
+	* Fix: missing rcu_read_lock in trace_ust_destroy_session()
+	* Fix: missing rcu_read_lock when calling trace_ust_find_agent()
+	* Fix: missing rcu_read_lock in cmd_start_trace()
+	* Fix: filter attach vs event enable race
+	* Fix: Mark libxml2 as a mandatory dependency
+	* Fix: Warn the user when enabling an event in a new domain
+	* Fix: Don't report an error when listing a session with no channels
+	* Fix: Add missing URCU_TLS access to error_log_time
+	* Update maintainer section of the man pages
+	* Update maintainer section of README.md
+
 2014-11-04 lttng-tools 2.6.0-rc3
 	* Fix: add README.md to documentation files
 	* Fix: UST consumer sync all available metadata
