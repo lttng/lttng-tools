@@ -186,8 +186,7 @@ static char *progname,
 	*opt_viewer_path = DEFAULT_VIEWER,
 	*opt_output_path;
 
-static int nr_input_paths;
-static char **input_paths;
+static char *input_path;
 
 int lttng_opt_quiet, lttng_opt_verbose, lttng_opt_mi;
 
@@ -210,7 +209,7 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "LTTng Crash Trace Viewer " VERSION " - " VERSION_NAME "%s\n\n",
 		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
-	fprintf(ofp, "usage: lttng [OPTIONS] FILE...\n");
+	fprintf(ofp, "usage: lttng [OPTIONS] FILE\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -V, --version              Show version.\n");
@@ -307,14 +306,13 @@ static int parse_args(int argc, char **argv)
 		}
 	}
 
-	/* No leftovers, print usage and quit */
-	if ((argc - optind) == 0) {
+	/* No leftovers, or more than one input path, print usage and quit */
+	if ((argc - optind) == 0 || (argc - optind) > 1) {
 		usage(stderr);
 		goto error;
 	}
 
-	input_paths = &argv[optind];
-	nr_input_paths = argc - optind;
+	input_path = argv[optind];
 end:
 	return ret;
 
@@ -947,27 +945,85 @@ int extract_one_trace(const char *output_path,
 }
 
 static
-int extract_all_traces(const char *output_path,
-		char **input_paths,
-		int nr_input_paths)
+int extract_trace_recursive(const char *output_path,
+		const char *input_path)
 {
-	int ret, i;
+	DIR *dir;
+	int dir_fd, ret = 0, closeret;
+	struct dirent *entry;
 	int has_warning = 0;
 
-	/* Only one input path is currently supported */
-	if (nr_input_paths != 1) {
-		ERR("Only a single input path is currently supported.\n");
+	/* Open directory */
+	dir = opendir(input_path);
+	if (!dir) {
+		PERROR("Cannot open '%s' path", input_path);
+		return -1;
+	}
+	dir_fd = dirfd(dir);
+	if (dir_fd < 0) {
+		PERROR("dirfd");
 		return -1;
 	}
 
-	for (i = 0; i < nr_input_paths; i++) {
-		ret = extract_one_trace(output_path,
-			input_paths[i]);
-		if (ret) {
-			WARN("Error extracting trace '%s', continuing anyway.",
-				input_paths[i]);
-			has_warning = 1;
+	while ((entry = readdir(dir))) {
+		if (!strcmp(entry->d_name, ".")
+				|| !strcmp(entry->d_name, "..")) {
+			continue;
 		}
+		switch (entry->d_type) {
+		case DT_DIR:
+		{
+			char output_subpath[PATH_MAX];
+			char input_subpath[PATH_MAX];
+
+			strncpy(output_subpath, output_path,
+				sizeof(output_subpath));
+			output_subpath[sizeof(output_subpath) - 1] = '\0';
+			strncat(output_subpath, "/",
+				sizeof(output_subpath) - strlen(output_subpath) - 1);
+			strncat(output_subpath, entry->d_name,
+				sizeof(output_subpath) - strlen(output_subpath) - 1);
+
+			ret = mkdir(output_subpath, S_IRWXU | S_IRWXG);
+			if (ret) {
+				PERROR("mkdir");
+				has_warning = 1;
+				goto end;
+			}
+
+			strncpy(input_subpath, input_path,
+				sizeof(input_subpath));
+			input_subpath[sizeof(input_subpath) - 1] = '\0';
+			strncat(input_subpath, "/",
+				sizeof(input_subpath) - strlen(input_subpath) - 1);
+			strncat(input_subpath, entry->d_name,
+				sizeof(input_subpath) - strlen(input_subpath) - 1);
+
+			ret = extract_trace_recursive(output_subpath,
+				input_subpath);
+			break;
+		}
+		case DT_REG:
+			if (!strcmp(entry->d_name, "metadata")) {
+				ret = extract_one_trace(output_path,
+					input_path);
+				if (ret) {
+					WARN("Error extracting trace '%s', continuing anyway.",
+						input_path);
+					has_warning = 1;
+				}
+			}
+			/* Ignore other files */
+			break;
+		default:
+			has_warning = 1;
+			goto end;
+		}
+	}
+end:
+	closeret = closedir(dir);
+	if (closeret) {
+		PERROR("closedir");
 	}
 	return has_warning;
 }
@@ -993,8 +1049,9 @@ int delete_trace(const char *trace_path)
 
 	while ((entry = readdir(trace_dir))) {
 		if (!strcmp(entry->d_name, ".")
-				|| !strcmp(entry->d_name, ".."))
+				|| !strcmp(entry->d_name, "..")) {
 			continue;
+		}
 		switch (entry->d_type) {
 		case DT_DIR:
 			unlinkat(trace_dir_fd, entry->d_name, AT_REMOVEDIR);
@@ -1017,7 +1074,6 @@ end:
 	}
 	return ret;
 }
-
 
 static
 int view_trace(const char *viewer_path, const char *trace_path)
@@ -1085,8 +1141,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = extract_all_traces(output_path, input_paths,
-		nr_input_paths);
+	ret = extract_trace_recursive(output_path, input_path);
 	if (ret < 0) {
 		exit(EXIT_FAILURE);
 	} else if (ret > 0) {
