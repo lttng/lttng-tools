@@ -1637,6 +1637,9 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
+	strncpy(ua_sess->root_shm_path, usess->root_shm_path,
+		sizeof(ua_sess->root_shm_path));
+	ua_sess->root_shm_path[sizeof(ua_sess->root_shm_path) - 1] = '\0';
 	strncpy(ua_sess->shm_path, usess->shm_path,
 		sizeof(ua_sess->shm_path));
 	ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
@@ -1758,7 +1761,7 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 		 * registry available, we have to create one for this session.
 		 */
 		ret = buffer_reg_pid_create(ua_sess->id, &reg_pid,
-			ua_sess->shm_path);
+			ua_sess->root_shm_path, ua_sess->shm_path);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1772,7 +1775,8 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
 			app->byte_order, app->version.major,
-			app->version.minor, reg_pid->shm_path,
+			app->version.minor, reg_pid->root_shm_path,
+			reg_pid->shm_path,
 			ua_sess->euid, ua_sess->egid);
 	if (ret < 0) {
 		/*
@@ -1824,7 +1828,8 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 		 * registry available, we have to create one for this session.
 		 */
 		ret = buffer_reg_uid_create(usess->id, app->bits_per_long, app->uid,
-				LTTNG_DOMAIN_UST, &reg_uid, ua_sess->shm_path);
+				LTTNG_DOMAIN_UST, &reg_uid,
+				ua_sess->root_shm_path, ua_sess->shm_path);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1838,8 +1843,8 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
 			app->byte_order, app->version.major,
-			app->version.minor, reg_uid->shm_path,
-			usess->uid, usess->gid);
+			app->version.minor, reg_uid->root_shm_path,
+			reg_uid->shm_path, usess->uid, usess->gid);
 	if (ret < 0) {
 		/*
 		 * reg_uid->registry->reg.ust is NULL upon error, so we need to

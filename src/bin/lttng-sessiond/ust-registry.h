@@ -67,6 +67,7 @@ struct ust_registry_session {
 	/* Length of bytes sent to the consumer. */
 	size_t metadata_len_sent;
 
+	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
 	char metadata_path[PATH_MAX];
 	int metadata_fd;	/* file-backed metadata FD */
@@ -231,6 +232,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		int byte_order,
 		uint32_t major,
 		uint32_t minor,
+		const char *root_shm_path,
 		const char *shm_path,
 		uid_t euid,
 		gid_t egid);

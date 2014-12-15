@@ -117,6 +117,7 @@ struct ltt_ust_session {
 	/*
 	 * Path where to keep the shared memory files.
 	 */
+	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
 };
 

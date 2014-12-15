@@ -481,7 +481,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.channel.tracefile_count, 0,
 				msg.u.channel.monitor,
 				msg.u.channel.live_timer_interval,
-				NULL);
+				NULL, NULL);
 		if (new_channel == NULL) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;

@@ -110,6 +110,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	struct lttcomm_consumer_msg msg;
 	struct ust_registry_channel *chan_reg;
 	char shm_path[PATH_MAX] = "";
+	char root_shm_path[PATH_MAX] = "";
 
 	assert(ua_sess);
 	assert(ua_chan);
@@ -156,6 +157,8 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 				strncat(shm_path, "_",
 					sizeof(shm_path) - strlen(shm_path) - 1);
 		}
+		strncpy(root_shm_path, ua_sess->root_shm_path, sizeof(root_shm_path));
+		root_shm_path[sizeof(root_shm_path) - 1] = '\0';
 	}
 
 	switch (ua_chan->attr.output) {
@@ -188,7 +191,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_sess->id,
 			ua_sess->output_traces,
 			ua_sess->uid,
-			shm_path);
+			root_shm_path, shm_path);
 
 	health_code_update();
 

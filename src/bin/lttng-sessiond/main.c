@@ -2766,6 +2766,9 @@ static int create_ust_session(struct ltt_session *session,
 	lus->live_timer_interval = session->live_timer;
 	session->ust_session = lus;
 	if (session->shm_path[0]) {
+		strncpy(lus->root_shm_path, session->shm_path,
+			sizeof(lus->root_shm_path));
+		lus->root_shm_path[sizeof(lus->root_shm_path) - 1] = '\0';
 		strncpy(lus->shm_path, session->shm_path,
 			sizeof(lus->shm_path));
 		lus->shm_path[sizeof(lus->shm_path) - 1] = '\0';

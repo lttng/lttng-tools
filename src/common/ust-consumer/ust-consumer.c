@@ -81,6 +81,10 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 	if (channel->uchan) {
 		lttng_ustconsumer_del_channel(channel);
 	}
+	/* Try to rmdir all directories under shm_path root. */
+	if (channel->root_shm_path[0]) {
+		(void) utils_recursive_rmdir(channel->root_shm_path);
+	}
 	free(channel);
 }
 
@@ -125,7 +129,7 @@ static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 		uint64_t tracefile_size, uint64_t tracefile_count,
 		uint64_t session_id_per_pid, unsigned int monitor,
 		unsigned int live_timer_interval,
-		const char *shm_path)
+		const char *root_shm_path, const char *shm_path)
 {
 	assert(pathname);
 	assert(name);
@@ -133,7 +137,7 @@ static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
 	return consumer_allocate_channel(key, session_id, pathname, name, uid,
 			gid, relayd_id, output, tracefile_size,
 			tracefile_count, session_id_per_pid, monitor,
-			live_timer_interval, shm_path);
+			live_timer_interval, root_shm_path, shm_path);
 }
 
 /*
@@ -1213,6 +1217,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.ask_channel.session_id_per_pid,
 				msg.u.ask_channel.monitor,
 				msg.u.ask_channel.live_timer_interval,
+				msg.u.ask_channel.root_shm_path,
 				msg.u.ask_channel.shm_path);
 		if (!channel) {
 			goto end_channel_error;
@@ -1678,6 +1683,10 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 	}
 	consumer_metadata_cache_destroy(chan);
 	ustctl_destroy_channel(chan->uchan);
+	/* Try to rmdir all directories under shm_path root. */
+	if (chan->root_shm_path[0]) {
+		(void) utils_recursive_rmdir(chan->root_shm_path);
+	}
 }
 
 void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)

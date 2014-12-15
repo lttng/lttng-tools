@@ -32,6 +32,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <sys/file.h>
+#include <dirent.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -1057,4 +1058,68 @@ char *utils_generate_optstring(const struct option *long_options,
 
 end:
 	return optstring;
+}
+
+/*
+ * Try to remove a hierarchy of empty directories, recursively. Don't unlink
+ * any file.
+ */
+LTTNG_HIDDEN
+int utils_recursive_rmdir(const char *path)
+{
+	DIR *dir;
+	int dir_fd, ret = 0, closeret;
+	struct dirent *entry;
+
+	/* Open directory */
+	dir = opendir(path);
+	if (!dir) {
+		PERROR("Cannot open '%s' path", path);
+		return -1;
+	}
+	dir_fd = dirfd(dir);
+	if (dir_fd < 0) {
+		PERROR("dirfd");
+		return -1;
+	}
+
+	while ((entry = readdir(dir))) {
+		if (!strcmp(entry->d_name, ".")
+				|| !strcmp(entry->d_name, ".."))
+			continue;
+		switch (entry->d_type) {
+		case DT_DIR:
+		{
+			char subpath[PATH_MAX];
+
+			strncpy(subpath, path, PATH_MAX);
+			subpath[PATH_MAX - 1] = '\0';
+			strncat(subpath, "/",
+				PATH_MAX - strlen(subpath) - 1);
+			strncat(subpath, entry->d_name,
+				PATH_MAX - strlen(subpath) - 1);
+			ret = utils_recursive_rmdir(subpath);
+			if (ret) {
+				goto end;
+			}
+			break;
+		}
+		case DT_REG:
+			ret = -EBUSY;
+			goto end;
+		default:
+			ret = -EINVAL;
+			goto end;
+		}
+	}
+end:
+	closeret = closedir(dir);
+	if (closeret) {
+		PERROR("closedir");
+	}
+	if (!ret) {
+		DBG3("Attempting rmdir %s", path);
+		ret = rmdir(path);
+	}
+	return ret;
 }

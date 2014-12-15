@@ -547,6 +547,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		int byte_order,
 		uint32_t major,
 		uint32_t minor,
+		const char *root_shm_path,
 		const char *shm_path,
 		uid_t euid,
 		gid_t egid)
@@ -571,6 +572,9 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	session->long_alignment = long_alignment;
 	session->byte_order = byte_order;
 	session->metadata_fd = -1;
+	strncpy(session->root_shm_path, root_shm_path,
+		sizeof(session->root_shm_path));
+	session->root_shm_path[sizeof(session->root_shm_path) - 1] = '\0';
 	if (shm_path[0]) {
 		strncpy(session->shm_path, shm_path,
 			sizeof(session->shm_path));
@@ -675,5 +679,11 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 		if (ret) {
 			PERROR("unlink");
 		}
+	}
+	if (reg->root_shm_path[0]) {
+		/*
+		 * Try deleting the directory hierarchy.
+		 */
+		(void) utils_recursive_rmdir(reg->root_shm_path);
 	}
 }

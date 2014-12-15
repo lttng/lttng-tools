@@ -802,6 +802,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t session_id_per_pid,
 		unsigned int monitor,
 		uint32_t ust_app_uid,
+		const char *root_shm_path,
 		const char *shm_path)
 {
 	assert(msg);
@@ -841,6 +842,11 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	strncpy(msg->u.ask_channel.name, name, sizeof(msg->u.ask_channel.name));
 	msg->u.ask_channel.name[sizeof(msg->u.ask_channel.name) - 1] = '\0';
 
+	if (root_shm_path) {
+		strncpy(msg->u.ask_channel.root_shm_path, root_shm_path,
+			sizeof(msg->u.ask_channel.root_shm_path));
+		msg->u.ask_channel.root_shm_path[sizeof(msg->u.ask_channel.root_shm_path) - 1] = '\0';
+	}
 	if (shm_path) {
 		strncpy(msg->u.ask_channel.shm_path, shm_path,
 			sizeof(msg->u.ask_channel.shm_path));

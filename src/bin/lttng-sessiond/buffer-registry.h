@@ -89,6 +89,7 @@ struct buffer_reg_uid {
 	/* Node of a linked list used to teardown object at a destroy session. */
 	struct cds_list_head lnode;
 
+	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
 };
 
@@ -103,6 +104,7 @@ struct buffer_reg_pid {
 	/* Indexed by session id. */
 	struct lttng_ht_node_u64 node;
 
+	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
 };
 
@@ -110,7 +112,7 @@ struct buffer_reg_pid {
 void buffer_reg_init_uid_registry(void);
 int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid,
 		enum lttng_domain_type domain, struct buffer_reg_uid **regp,
-		const char *shm_path);
+		const char *root_shm_path, const char *shm_path);
 void buffer_reg_uid_add(struct buffer_reg_uid *reg);
 struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
 		uint32_t bits_per_long, uid_t uid);
@@ -121,7 +123,7 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 /* Buffer registry per PID. */
 void buffer_reg_init_pid_registry(void);
 int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
-		const char *shm_path);
+		const char *root_shm_path, const char *shm_path);
 void buffer_reg_pid_add(struct buffer_reg_pid *reg);
 struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id);
 void buffer_reg_pid_remove(struct buffer_reg_pid *regp);

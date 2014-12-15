@@ -107,7 +107,7 @@ void buffer_reg_init_uid_registry(void)
  */
 int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid,
 		enum lttng_domain_type domain, struct buffer_reg_uid **regp,
-		const char *shm_path)
+		const char *root_shm_path, const char *shm_path)
 {
 	int ret = 0;
 	struct buffer_reg_uid *reg = NULL;
@@ -133,6 +133,8 @@ int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid
 	reg->uid = uid;
 	reg->domain = domain;
 	if (shm_path[0]) {
+		strncpy(reg->root_shm_path, root_shm_path, sizeof(reg->root_shm_path));
+		reg->root_shm_path[sizeof(reg->root_shm_path) - 1] = '\0';
 		strncpy(reg->shm_path, shm_path, sizeof(reg->shm_path));
 		reg->shm_path[sizeof(reg->shm_path) - 1] = '\0';
 		DBG3("shm path '%s' is assigned to uid buffer registry for session id %" PRIu64,
@@ -233,7 +235,7 @@ void buffer_reg_init_pid_registry(void)
  * Return 0 on success else a negative value and regp is untouched.
  */
 int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
-		const char *shm_path)
+		const char *root_shm_path, const char *shm_path)
 {
 	int ret = 0;
 	struct buffer_reg_pid *reg = NULL;
@@ -257,6 +259,8 @@ int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
 	/* A cast is done here so we can use the session ID as a u64 ht node. */
 	reg->session_id = session_id;
 	if (shm_path[0]) {
+		strncpy(reg->root_shm_path, root_shm_path, sizeof(reg->root_shm_path));
+		reg->root_shm_path[sizeof(reg->root_shm_path) - 1] = '\0';
 		strncpy(reg->shm_path, shm_path, sizeof(reg->shm_path));
 		reg->shm_path[sizeof(reg->shm_path) - 1] = '\0';
 		DBG3("shm path '%s' is assigned to pid buffer registry for session id %" PRIu64,

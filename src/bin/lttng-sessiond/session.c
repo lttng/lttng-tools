@@ -24,6 +24,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <urcu.h>
+#include <dirent.h>
+#include <sys/types.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>

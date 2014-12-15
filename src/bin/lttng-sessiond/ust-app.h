@@ -216,6 +216,7 @@ struct ust_app_session {
 	/* Metadata channel attributes. */
 	struct ustctl_consumer_channel_attr metadata_attr;
 
+	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
 };
 
