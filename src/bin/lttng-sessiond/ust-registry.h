@@ -87,6 +87,10 @@ struct ust_registry_session {
 	 * deletes its sessions.
 	 */
 	unsigned int metadata_closed;
+
+	/* User and group owning the session. */
+	uid_t uid;
+	gid_t gid;
 };
 
 struct ust_registry_channel {

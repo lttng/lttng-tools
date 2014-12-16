@@ -207,6 +207,8 @@ struct lttng_consumer_channel {
 	/* Timer value in usec for live streaming. */
 	unsigned int live_timer_interval;
 
+	int *stream_fds;
+	int nr_stream_fds;
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
 };

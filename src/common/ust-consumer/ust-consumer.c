@@ -47,6 +47,8 @@
 
 #include "ust-consumer.h"
 
+#define UINT_MAX_STR_LEN 11	/* includes \0 */
+
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;
 extern volatile int consumer_quit;
@@ -80,10 +82,6 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 	 */
 	if (channel->uchan) {
 		lttng_ustconsumer_del_channel(channel);
-	}
-	/* Try to rmdir all directories under shm_path root. */
-	if (channel->root_shm_path[0]) {
-		(void) utils_recursive_rmdir(channel->root_shm_path);
 	}
 	free(channel);
 }
@@ -246,6 +244,26 @@ error:
 	return ret;
 }
 
+static
+int get_stream_shm_path(char *stream_shm_path, const char *shm_path, int cpu)
+{
+	char cpu_nr[UINT_MAX_STR_LEN];  /* unsigned int max len */
+	int ret;
+
+	strncpy(stream_shm_path, shm_path, PATH_MAX);
+	stream_shm_path[PATH_MAX - 1] = '\0';
+	ret = snprintf(cpu_nr, UINT_MAX_STR_LEN, "%u", cpu);
+	if (ret != 1) {
+		ret = -1;
+		goto end;
+	}
+	strncat(stream_shm_path, cpu_nr,
+		PATH_MAX - strlen(stream_shm_path) - 1);
+	ret = 0;
+end:
+	return ret;
+}
+
 /*
  * Create streams for the given channel using liblttng-ust-ctl.
  *
@@ -347,19 +365,86 @@ error_alloc:
 }
 
 /*
+ * create_posix_shm is never called concurrently within a process.
+ */
+static
+int create_posix_shm(void)
+{
+	char tmp_name[NAME_MAX];
+	int shmfd, ret;
+
+	ret = snprintf(tmp_name, NAME_MAX, "/ust-shm-consumer-%d", getpid());
+	if (ret < 0) {
+		PERROR("snprintf");
+		return -1;
+	}
+	/*
+	 * Allocate shm, and immediately unlink its shm oject, keeping
+	 * only the file descriptor as a reference to the object.
+	 * We specifically do _not_ use the / at the beginning of the
+	 * pathname so that some OS implementations can keep it local to
+	 * the process (POSIX leaves this implementation-defined).
+	 */
+	shmfd = shm_open(tmp_name, O_CREAT | O_EXCL | O_RDWR, 0700);
+	if (shmfd < 0) {
+		PERROR("shm_open");
+		goto error_shm_open;
+	}
+	ret = shm_unlink(tmp_name);
+	if (ret < 0 && errno != ENOENT) {
+		PERROR("shm_unlink");
+		goto error_shm_release;
+	}
+	return shmfd;
+
+error_shm_release:
+	ret = close(shmfd);
+	if (ret) {
+		PERROR("close");
+	}
+error_shm_open:
+	return -1;
+}
+
+static int open_ust_stream_fd(struct lttng_consumer_channel *channel,
+		struct ustctl_consumer_channel_attr *attr,
+		int cpu)
+{
+	char shm_path[PATH_MAX];
+	int ret;
+
+	if (!channel->shm_path[0]) {
+		return create_posix_shm();
+	}
+	ret = get_stream_shm_path(shm_path, channel->shm_path, cpu);
+	if (ret) {
+		goto error_shm_path;
+	}
+	return run_as_open(shm_path,
+		O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR,
+		channel->uid, channel->gid);
+
+error_shm_path:
+	return -1;
+}
+
+/*
  * Create an UST channel with the given attributes and send it to the session
  * daemon using the ust ctl API.
  *
  * Return 0 on success or else a negative value.
  */
-static int create_ust_channel(struct ustctl_consumer_channel_attr *attr,
-		struct ustctl_consumer_channel **chanp)
+static int create_ust_channel(struct lttng_consumer_channel *channel,
+		struct ustctl_consumer_channel_attr *attr,
+		struct ustctl_consumer_channel **ust_chanp)
 {
-	int ret;
-	struct ustctl_consumer_channel *channel;
+	int ret, nr_stream_fds, i, j;
+	int *stream_fds;
+	struct ustctl_consumer_channel *ust_channel;
 
+	assert(channel);
 	assert(attr);
-	assert(chanp);
+	assert(ust_chanp);
 
 	DBG3("Creating channel to ustctl with attr: [overwrite: %d, "
 			"subbuf_size: %" PRIu64 ", num_subbuf: %" PRIu64 ", "
@@ -368,17 +453,65 @@ static int create_ust_channel(struct ustctl_consumer_channel_attr *attr,
 			attr->num_subbuf, attr->switch_timer_interval,
 			attr->read_timer_interval, attr->output, attr->type);
 
-	channel = ustctl_create_channel(attr);
-	if (!channel) {
+	if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA)
+		nr_stream_fds = 1;
+	else
+		nr_stream_fds = ustctl_get_nr_stream_per_channel();
+	stream_fds = zmalloc(nr_stream_fds * sizeof(*stream_fds));
+	if (!stream_fds) {
+		ret = -1;
+		goto error_alloc;
+	}
+	for (i = 0; i < nr_stream_fds; i++) {
+		stream_fds[i] = open_ust_stream_fd(channel, attr, i);
+		if (stream_fds[i] < 0) {
+			ret = -1;
+			goto error_open;
+		}
+	}
+	ust_channel = ustctl_create_channel(attr, stream_fds, nr_stream_fds);
+	if (!ust_channel) {
 		ret = -1;
 		goto error_create;
 	}
-
-	*chanp = channel;
+	channel->nr_stream_fds = nr_stream_fds;
+	channel->stream_fds = stream_fds;
+	*ust_chanp = ust_channel;
 
 	return 0;
 
 error_create:
+error_open:
+	for (j = i - 1; j >= 0; j--) {
+		int closeret;
+
+		closeret = close(stream_fds[j]);
+		if (closeret) {
+			PERROR("close");
+		}
+		if (channel->shm_path[0]) {
+			char shm_path[PATH_MAX];
+
+			closeret = get_stream_shm_path(shm_path,
+					channel->shm_path, j);
+			if (closeret) {
+				ERR("Cannot get stream shm path");
+			}
+			closeret = run_as_unlink(shm_path,
+					channel->uid, channel->gid);
+			if (closeret) {
+				errno = -closeret;
+				PERROR("unlink %s", shm_path);
+			}
+		}
+	}
+	/* Try to rmdir all directories under shm_path root. */
+	if (channel->root_shm_path[0]) {
+		(void) run_as_recursive_rmdir(channel->root_shm_path,
+				channel->uid, channel->gid);
+	}
+	free(stream_fds);
+error_alloc:
 	return ret;
 }
 
@@ -532,7 +665,7 @@ static int ask_channel(struct lttng_consumer_local_data *ctx, int sock,
 	channel->nb_init_stream_left = 0;
 
 	/* The reply msg status is handled in the following call. */
-	ret = create_ust_channel(attr, &channel->uchan);
+	ret = create_ust_channel(channel, attr, &channel->uchan);
 	if (ret < 0) {
 		goto end;
 	}
@@ -1238,9 +1371,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		attr.read_timer_interval = msg.u.ask_channel.read_timer_interval;
 		attr.chan_id = msg.u.ask_channel.chan_id;
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
-		strncpy(attr.shm_path, channel->shm_path,
-			sizeof(attr.shm_path));
-		attr.shm_path[sizeof(attr.shm_path) - 1] = '\0';
 
 		/* Match channel buffer type to the UST abi. */
 		switch (msg.u.ask_channel.output) {
@@ -1675,6 +1805,8 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 
 void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 {
+	int i;
+
 	assert(chan);
 	assert(chan->uchan);
 
@@ -1683,9 +1815,32 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 	}
 	consumer_metadata_cache_destroy(chan);
 	ustctl_destroy_channel(chan->uchan);
+	for (i = 0; i < chan->nr_stream_fds; i++) {
+		int ret;
+
+		ret = close(chan->stream_fds[i]);
+		if (ret) {
+			PERROR("close");
+		}
+		if (chan->shm_path[0]) {
+			char shm_path[PATH_MAX];
+
+			ret = get_stream_shm_path(shm_path, chan->shm_path, i);
+			if (ret) {
+				ERR("Cannot get stream shm path");
+			}
+			ret = run_as_unlink(shm_path, chan->uid, chan->gid);
+			if (ret) {
+				errno = -ret;
+				PERROR("unlink %s", shm_path);
+			}
+		}
+	}
+	free(chan->stream_fds);
 	/* Try to rmdir all directories under shm_path root. */
 	if (chan->root_shm_path[0]) {
-		(void) utils_recursive_rmdir(chan->root_shm_path);
+		(void) run_as_recursive_rmdir(chan->root_shm_path,
+				chan->uid, chan->gid);
 	}
 }
 

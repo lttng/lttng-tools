@@ -572,6 +572,8 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	session->long_alignment = long_alignment;
 	session->byte_order = byte_order;
 	session->metadata_fd = -1;
+	session->uid = euid;
+	session->gid = egid;
 	strncpy(session->root_shm_path, root_shm_path,
 		sizeof(session->root_shm_path));
 	session->root_shm_path[sizeof(session->root_shm_path) - 1] = '\0';
@@ -591,16 +593,18 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 			S_IRWXU | S_IRWXG,
 			euid, egid);
 		if (ret) {
+			errno = -ret;
 			PERROR("run_as_mkdir_recursive");
 			goto error;
 		}
 	}
 	if (session->metadata_path[0]) {
 		/* Create metadata file */
-		ret = open(session->metadata_path,
+		ret = run_as_open(session->metadata_path,
 			O_WRONLY | O_CREAT | O_EXCL,
-			S_IRUSR | S_IWUSR);
+			S_IRUSR | S_IWUSR, euid, egid);
 		if (ret < 0) {
+			errno = -ret;
 			PERROR("Opening metadata file");
 			goto error;
 		}
@@ -675,7 +679,8 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 		if (ret) {
 			PERROR("close");
 		}
-		ret = unlink(reg->metadata_path);
+		ret = run_as_unlink(reg->metadata_path,
+				reg->uid, reg->gid);
 		if (ret) {
 			PERROR("unlink");
 		}
@@ -684,6 +689,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 		/*
 		 * Try deleting the directory hierarchy.
 		 */
-		(void) utils_recursive_rmdir(reg->root_shm_path);
+		(void) run_as_recursive_rmdir(reg->root_shm_path,
+				reg->uid, reg->gid);
 	}
 }
