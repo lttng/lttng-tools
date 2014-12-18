@@ -186,9 +186,9 @@ static void usage(FILE *fp)
 /*
  * daemon argument parsing
  */
-static void parse_args(int argc, char **argv)
+static int parse_args(int argc, char **argv)
 {
-	int c;
+	int c, ret = 0;
 
 	static struct option long_options[] = {
 		{ "consumerd-cmd-sock", 1, 0, 'c' },
@@ -218,6 +218,8 @@ static void parse_args(int argc, char **argv)
 			fprintf(stderr, "option %s", long_options[option_index].name);
 			if (optarg) {
 				fprintf(stderr, " with arg %s\n", optarg);
+				ret = -1;
+				goto end;
 			}
 			break;
 		case 'c':
@@ -260,9 +262,12 @@ static void parse_args(int argc, char **argv)
 #endif
 		default:
 			usage(stderr);
-			exit(EXIT_FAILURE);
+			ret = -1;
+			goto end;
 		}
 	}
+end:
+	return ret;
 }
 
 /*
