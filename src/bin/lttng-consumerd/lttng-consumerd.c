@@ -122,7 +122,7 @@ static int set_signal_handler(void)
 	sigset_t sigset;
 
 	if ((ret = sigemptyset(&sigset)) < 0) {
-		perror("sigemptyset");
+		PERROR("sigemptyset");
 		return ret;
 	}
 
@@ -130,17 +130,17 @@ static int set_signal_handler(void)
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
-		perror("sigaction");
+		PERROR("sigaction");
 		return ret;
 	}
 
 	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
-		perror("sigaction");
+		PERROR("sigaction");
 		return ret;
 	}
 
 	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
-		perror("sigaction");
+		PERROR("sigaction");
 		return ret;
 	}
 
