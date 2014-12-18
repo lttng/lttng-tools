@@ -1732,7 +1732,6 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 		if (ret < 0) {
 			goto error;
 		}
-		buffer_reg_pid_add(reg_pid);
 	} else {
 		goto end;
 	}
@@ -1745,8 +1744,17 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 			app->byte_order, app->version.major,
 			app->version.minor);
 	if (ret < 0) {
+		/*
+		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
+		 * destroy the buffer registry, because it is always expected
+		 * that if the buffer registry can be found, its ust registry is
+		 * non-NULL.
+		 */
+		buffer_reg_pid_destroy(reg_pid);
 		goto error;
 	}
+
+	buffer_reg_pid_add(reg_pid);
 
 	DBG3("UST app buffer registry per PID created successfully");
 
@@ -1788,7 +1796,6 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 		if (ret < 0) {
 			goto error;
 		}
-		buffer_reg_uid_add(reg_uid);
 	} else {
 		goto end;
 	}
@@ -1801,13 +1808,21 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 			app->byte_order, app->version.major,
 			app->version.minor);
 	if (ret < 0) {
+		/*
+		 * reg_uid->registry->reg.ust is NULL upon error, so we need to
+		 * destroy the buffer registry, because it is always expected
+		 * that if the buffer registry can be found, its ust registry is
+		 * non-NULL.
+		 */
+		buffer_reg_uid_destroy(reg_uid, NULL);
 		goto error;
 	}
 	/* Add node to teardown list of the session. */
 	cds_list_add(&reg_uid->lnode, &usess->buffer_reg_uid_list);
 
-	DBG3("UST app buffer registry per UID created successfully");
+	buffer_reg_uid_add(reg_uid);
 
+	DBG3("UST app buffer registry per UID created successfully");
 end:
 	if (regp) {
 		*regp = reg_uid;

@@ -608,7 +608,9 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan;
 
-	assert(reg);
+	if (!reg) {
+		return;
+	}
 
 	/* On error, EBUSY can be returned if lock. Code flow error. */
 	ret = pthread_mutex_destroy(&reg->lock);
