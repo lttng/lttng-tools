@@ -335,7 +335,7 @@ end:
 static
 int set_options(int argc, char **argv)
 {
-	int c, ret = 0, option_index = 0;
+	int c, ret = 0, option_index = 0, retval = 0;
 	int orig_optopt = optopt, orig_optind = optind;
 	char *default_address, *optstring;
 	const char *config_path = NULL;
@@ -343,7 +343,7 @@ int set_options(int argc, char **argv)
 	optstring = utils_generate_optstring(long_options,
 			sizeof(long_options) / sizeof(struct option));
 	if (!optstring) {
-		ret = -ENOMEM;
+		retval = -ENOMEM;
 		goto exit;
 	}
 
@@ -352,7 +352,7 @@ int set_options(int argc, char **argv)
 	while ((c = getopt_long(argc, argv, optstring, long_options,
 					&option_index)) != -1) {
 		if (c == '?') {
-			ret = -EINVAL;
+			retval = -EINVAL;
 			goto exit;
 		} else if (c != 'f') {
 			continue;
@@ -369,8 +369,8 @@ int set_options(int argc, char **argv)
 	if (ret) {
 		if (ret > 0) {
 			ERR("Invalid configuration option at line %i", ret);
-			ret = -1;
 		}
+		retval = -1;
 		goto exit;
 	}
 
@@ -385,6 +385,7 @@ int set_options(int argc, char **argv)
 
 		ret = set_option(c, optarg, long_options[option_index].name);
 		if (ret < 0) {
+			retval = -1;
 			goto exit;
 		}
 	}
@@ -396,6 +397,7 @@ int set_options(int argc, char **argv)
 			DEFAULT_NETWORK_CONTROL_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default data address");
+			retval = -1;
 			goto exit;
 		}
 
@@ -403,6 +405,7 @@ int set_options(int argc, char **argv)
 		free(default_address);
 		if (ret < 0) {
 			ERR("Invalid control URI specified");
+			retval = -1;
 			goto exit;
 		}
 	}
@@ -412,6 +415,7 @@ int set_options(int argc, char **argv)
 			DEFAULT_NETWORK_DATA_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default data address");
+			retval = -1;
 			goto exit;
 		}
 
@@ -419,6 +423,7 @@ int set_options(int argc, char **argv)
 		free(default_address);
 		if (ret < 0) {
 			ERR("Invalid data URI specified");
+			retval = -1;
 			goto exit;
 		}
 	}
@@ -428,6 +433,7 @@ int set_options(int argc, char **argv)
 			DEFAULT_NETWORK_VIEWER_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default viewer control address");
+			retval = -1;
 			goto exit;
 		}
 
@@ -435,22 +441,31 @@ int set_options(int argc, char **argv)
 		free(default_address);
 		if (ret < 0) {
 			ERR("Invalid viewer control URI specified");
+			retval = -1;
 			goto exit;
 		}
 	}
 
 exit:
 	free(optstring);
-	return ret;
+	return retval;
 }
 
 /*
  * Cleanup the daemon
  */
 static
-void cleanup(void)
+void relayd_cleanup(struct relay_local_data *relay_ctx)
 {
 	DBG("Cleaning up");
+
+	if (viewer_streams_ht)
+		lttng_ht_destroy(viewer_streams_ht);
+	if (relay_streams_ht)
+		lttng_ht_destroy(relay_streams_ht);
+	if (relay_ctx && relay_ctx->sessions_ht)
+		lttng_ht_destroy(relay_ctx->sessions_ht);
+	free(relay_ctx);
 
 	/* free the dynamically allocated opt_output_path */
 	free(opt_output_path);
@@ -513,6 +528,11 @@ void stop_threads(void)
 	/* Dispatch thread */
 	CMM_STORE_SHARED(dispatch_thread_exit, 1);
 	futex_nto1_wake(&relay_conn_queue.futex);
+
+	ret = relayd_live_stop();
+	if (ret) {
+		ERR("Error stopping live threads");
+	}
 }
 
 /*
@@ -2724,32 +2744,36 @@ static int create_relay_conn_pipe(void)
  */
 int main(int argc, char **argv)
 {
-	int ret = 0;
+	int ret = 0, retval = 0;
 	void *status;
-	struct relay_local_data *relay_ctx;
+	struct relay_local_data *relay_ctx = NULL;
 
 	/* Parse arguments */
 	progname = argv[0];
-	if ((ret = set_options(argc, argv)) < 0) {
-		goto exit;
+	if (set_options(argc, argv)) {
+		retval = -1;
+		goto exit_options;
 	}
 
-	if ((ret = set_signal_handler()) < 0) {
-		goto exit;
+	if (set_signal_handler()) {
+		retval = -1;
+		goto exit_options;
 	}
 
 	/* Try to create directory if -o, --output is specified. */
 	if (opt_output_path) {
 		if (*opt_output_path != '/') {
 			ERR("Please specify an absolute path for -o, --output PATH");
-			goto exit;
+			retval = -1;
+			goto exit_options;
 		}
 
 		ret = utils_mkdir_recursive(opt_output_path, S_IRWXU | S_IRWXG,
 				-1, -1);
 		if (ret < 0) {
 			ERR("Unable to create %s", opt_output_path);
-			goto exit;
+			retval = -1;
+			goto exit_options;
 		}
 	}
 
@@ -2760,7 +2784,8 @@ int main(int argc, char **argv)
 		ret = lttng_daemonize(&child_ppid, &recv_child_signal,
 			!opt_background);
 		if (ret < 0) {
-			goto exit;
+			retval = -1;
+			goto exit_options;
 		}
 
 		/*
@@ -2773,9 +2798,19 @@ int main(int argc, char **argv)
 		}
 	}
 
+
+	/* Initialize thread health monitoring */
+	health_relayd = health_app_create(NR_HEALTH_RELAYD_TYPES);
+	if (!health_relayd) {
+		PERROR("health_app_create error");
+		retval = -1;
+		goto exit_health_app_create;
+	}
+
 	/* Create thread quit pipe */
-	if ((ret = init_thread_quit_pipe()) < 0) {
-		goto error;
+	if (init_thread_quit_pipe()) {
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* We need those values for the file/dir creation. */
@@ -2786,14 +2821,15 @@ int main(int argc, char **argv)
 	if (relayd_uid == 0) {
 		if (control_uri->port < 1024 || data_uri->port < 1024 || live_uri->port < 1024) {
 			ERR("Need to be root to use ports < 1024");
-			ret = -1;
-			goto exit;
+			retval = -1;
+			goto exit_init_data;
 		}
 	}
 
 	/* Setup the thread apps communication pipe. */
-	if ((ret = create_relay_conn_pipe()) < 0) {
-		goto exit;
+	if (create_relay_conn_pipe()) {
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* Init relay command queue. */
@@ -2809,134 +2845,139 @@ int main(int argc, char **argv)
 	relay_ctx = zmalloc(sizeof(struct relay_local_data));
 	if (!relay_ctx) {
 		PERROR("relay_ctx");
-		goto exit;
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* tables of sessions indexed by session ID */
 	relay_ctx->sessions_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!relay_ctx->sessions_ht) {
-		goto exit_relay_ctx_sessions;
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* tables of streams indexed by stream ID */
 	relay_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!relay_streams_ht) {
-		goto exit_relay_ctx_streams;
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* tables of streams indexed by stream ID */
 	viewer_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!viewer_streams_ht) {
-		goto exit_relay_ctx_viewer_streams;
-	}
-
-	/* Initialize thread health monitoring */
-	health_relayd = health_app_create(NR_HEALTH_RELAYD_TYPES);
-	if (!health_relayd) {
-		PERROR("health_app_create error");
-		goto exit_health_app_create;
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	ret = utils_create_pipe(health_quit_pipe);
-	if (ret < 0) {
-		goto error_health_pipe;
+	if (ret) {
+		retval = -1;
+		goto exit_health_quit_pipe;
 	}
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,
 			thread_manage_health, (void *) NULL);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create health");
-		goto health_error;
+		retval = -1;
+		goto exit_health_thread;
 	}
 
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&dispatcher_thread, NULL,
 			relay_thread_dispatcher, (void *) NULL);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create dispatcher");
-		goto exit_dispatcher;
+		retval = -1;
+		goto exit_dispatcher_thread;
 	}
 
 	/* Setup the worker thread */
 	ret = pthread_create(&worker_thread, NULL,
 			relay_thread_worker, (void *) relay_ctx);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create worker");
-		goto exit_worker;
+		retval = -1;
+		goto exit_worker_thread;
 	}
 
 	/* Setup the listener thread */
 	ret = pthread_create(&listener_thread, NULL,
 			relay_thread_listener, (void *) NULL);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create listener");
-		goto exit_listener;
+		retval = -1;
+		goto exit_listener_thread;
 	}
 
-	ret = live_start_threads(live_uri, relay_ctx);
-	if (ret != 0) {
+	ret = relayd_live_create(live_uri, relay_ctx);
+	if (ret) {
 		ERR("Starting live viewer threads");
+		retval = -1;
 		goto exit_live;
 	}
 
-exit_live:
-	ret = pthread_join(listener_thread, &status);
-	if (ret != 0) {
-		PERROR("pthread_join");
-		goto error;	/* join error, exit without cleanup */
-	}
-
-exit_listener:
-	ret = pthread_join(worker_thread, &status);
-	if (ret != 0) {
-		PERROR("pthread_join");
-		goto error;	/* join error, exit without cleanup */
-	}
-
-exit_worker:
-	ret = pthread_join(dispatcher_thread, &status);
-	if (ret != 0) {
-		PERROR("pthread_join");
-		goto error;	/* join error, exit without cleanup */
-	}
-
-exit_dispatcher:
-	ret = pthread_join(health_thread, &status);
-	if (ret != 0) {
-		PERROR("pthread_join health thread");
-		goto error;	/* join error, exit without cleanup */
-	}
-
 	/*
-	 * Stop live threads only after joining other threads.
+	 * This is where we start awaiting program completion (e.g. through
+	 * signal that asks threads to teardown).
 	 */
-	live_stop_threads();
 
-health_error:
-	utils_close_pipe(health_quit_pipe);
+	ret = relayd_live_join();
+	if (ret) {
+		retval = -1;
+	}
+exit_live:
 
-error_health_pipe:
-	health_app_destroy(health_relayd);
-
-exit_health_app_create:
-	lttng_ht_destroy(viewer_streams_ht);
-
-exit_relay_ctx_viewer_streams:
-	lttng_ht_destroy(relay_streams_ht);
-
-exit_relay_ctx_streams:
-	lttng_ht_destroy(relay_ctx->sessions_ht);
-
-exit_relay_ctx_sessions:
-	free(relay_ctx);
-
-exit:
-	cleanup();
-	if (!ret) {
-		exit(EXIT_SUCCESS);
+	ret = pthread_join(listener_thread, &status);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join listener_thread");
+		retval = -1;
 	}
 
-error:
-	exit(EXIT_FAILURE);
+exit_listener_thread:
+	ret = pthread_join(worker_thread, &status);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join worker_thread");
+		retval = -1;
+	}
+
+exit_worker_thread:
+	ret = pthread_join(dispatcher_thread, &status);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join dispatcher_thread");
+		retval = -1;
+	}
+exit_dispatcher_thread:
+
+	ret = pthread_join(health_thread, &status);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join health_thread");
+		retval = -1;
+	}
+exit_health_thread:
+
+	utils_close_pipe(health_quit_pipe);
+exit_health_quit_pipe:
+
+exit_init_data:
+	health_app_destroy(health_relayd);
+exit_health_app_create:
+exit_options:
+	relayd_cleanup(relay_ctx);
+
+	if (!retval) {
+		exit(EXIT_SUCCESS);
+	} else {
+		exit(EXIT_FAILURE);
+	}
 }
