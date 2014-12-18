@@ -53,8 +53,6 @@
 #include "lttng-consumerd.h"
 #include "health-consumerd.h"
 
-/* TODO : support UST (all direct kernel-ctl accesses). */
-
 /* threads (channel handling, poll, metadata, sessiond) */
 
 static pthread_t channel_thread, data_thread, metadata_thread,
