@@ -50,6 +50,6 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 		int live_timer_interval);
 void consumer_timer_live_stop(struct lttng_consumer_channel *channel);
 void *consumer_timer_thread(void *data);
-void consumer_signal_init(void);
+int consumer_signal_init(void);
 
 #endif /* CONSUMER_TIMER_H */

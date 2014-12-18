@@ -460,7 +460,7 @@ void consumer_timer_live_stop(struct lttng_consumer_channel *channel)
  * Block the RT signals for the entire process. It must be called from the
  * consumer main before creating the threads
  */
-void consumer_signal_init(void)
+int consumer_signal_init(void)
 {
 	int ret;
 	sigset_t mask;
@@ -471,7 +471,9 @@ void consumer_signal_init(void)
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_sigmask");
+		return -1;
 	}
+	return 0;
 }
 
 /*
