@@ -766,6 +766,8 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	}
 	rcu_read_unlock();
 
+	ht_cleanup_push(session->agents);
+
 	/* Cleanup UID buffer registry object(s). */
 	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,
 			lnode) {
