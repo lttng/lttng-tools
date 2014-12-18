@@ -47,7 +47,7 @@ void *thread_ht_cleanup(void *data)
 
 	health_code_update();
 
-	ret = sessiond_set_thread_pollset(&events, 2);
+	ret = sessiond_set_ht_cleanup_thread_pollset(&events, 2);
 	if (ret < 0) {
 		goto error_poll_create;
 	}
@@ -61,11 +61,14 @@ void *thread_ht_cleanup(void *data)
 	health_code_update();
 
 	while (1) {
+		int handled_event;
+
 		DBG3("[ht-thread] Polling on %d fds.",
 			LTTNG_POLL_GETNB(&events));
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
+		handled_event = 0;
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
 		health_poll_exit();
@@ -90,13 +93,9 @@ restart:
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
-				err = 0;
-				goto exit;
+			if (pollfd != ht_cleanup_pipe[0]) {
+				continue;
 			}
-			assert(pollfd == ht_cleanup_pipe[0]);
 
 			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				ERR("ht cleanup pipe error");
@@ -125,6 +124,30 @@ restart:
 
 			health_code_update();
 		}
+
+		/* Only check cleanup quit when no more work to do. */
+		if (handled_event) {
+			continue;
+		}
+
+		for (i = 0; i < nb_fd; i++) {
+			health_code_update();
+
+			/* Fetch once the poll data */
+			revents = LTTNG_POLL_GETEV(&events, i);
+			pollfd = LTTNG_POLL_GETFD(&events, i);
+
+			if (pollfd == ht_cleanup_pipe[0]) {
+				continue;
+			}
+
+			/* Thread quit pipe has been closed. Killing thread. */
+			ret = sessiond_check_ht_cleanup_quit(pollfd, revents);
+			if (ret) {
+				err = 0;
+				goto exit;
+			}
+		}
 	}
 
 exit:
@@ -132,9 +155,7 @@ error:
 	lttng_poll_clean(&events);
 error_poll_create:
 error_testpoint:
-	utils_close_pipe(ht_cleanup_pipe);
-	ht_cleanup_pipe[0] = ht_cleanup_pipe[1] = -1;
-	DBG("[ust-thread] cleanup complete.");
+	DBG("[ht-cleanup] Thread terminates.");
 	if (err) {
 		health_error();
 		ERR("Health error occurred in %s", __func__);
