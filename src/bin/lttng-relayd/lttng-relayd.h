@@ -57,5 +57,6 @@ extern const char * const config_section_name;
 extern int thread_quit_pipe[2];
 
 void lttng_relay_notify_ready(void);
+int lttng_relay_stop_threads(void);
 
 #endif /* LTTNG_RELAYD_H */
