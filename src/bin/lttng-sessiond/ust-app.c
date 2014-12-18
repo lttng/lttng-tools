@@ -3438,11 +3438,21 @@ void ust_app_clean_list(void)
 /*
  * Init UST app hash table.
  */
-void ust_app_ht_alloc(void)
+int ust_app_ht_alloc(void)
 {
 	ust_app_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!ust_app_ht) {
+		return -1;
+	}
 	ust_app_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!ust_app_ht_by_sock) {
+		return -1;
+	}
 	ust_app_ht_by_notify_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!ust_app_ht_by_notify_sock) {
+		return -1;
+	}
+	return 0;
 }
 
 /*

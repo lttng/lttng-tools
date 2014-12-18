@@ -313,7 +313,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 void ust_app_global_update(struct ltt_ust_session *usess, int sock);
 
 void ust_app_clean_list(void);
-void ust_app_ht_alloc(void);
+int ust_app_ht_alloc(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
 int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate);
 struct ust_app_stream *ust_app_alloc_stream(void);
