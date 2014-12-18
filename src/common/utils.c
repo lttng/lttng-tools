@@ -1062,13 +1062,13 @@ end:
 
 /*
  * Try to remove a hierarchy of empty directories, recursively. Don't unlink
- * any file.
+ * any file. Try to rmdir any empty directory within the hierarchy.
  */
 LTTNG_HIDDEN
 int utils_recursive_rmdir(const char *path)
 {
 	DIR *dir;
-	int dir_fd, ret = 0, closeret;
+	int dir_fd, ret = 0, closeret, is_empty = 1;
 	struct dirent *entry;
 
 	/* Open directory */
@@ -1098,15 +1098,14 @@ int utils_recursive_rmdir(const char *path)
 				PATH_MAX - strlen(subpath) - 1);
 			strncat(subpath, entry->d_name,
 				PATH_MAX - strlen(subpath) - 1);
-			ret = utils_recursive_rmdir(subpath);
-			if (ret) {
-				goto end;
+			if (utils_recursive_rmdir(subpath)) {
+				is_empty = 0;
 			}
 			break;
 		}
 		case DT_REG:
-			ret = -EBUSY;
-			goto end;
+			is_empty = 0;
+			break;
 		default:
 			ret = -EINVAL;
 			goto end;
@@ -1117,7 +1116,7 @@ end:
 	if (closeret) {
 		PERROR("closedir");
 	}
-	if (!ret) {
+	if (is_empty) {
 		DBG3("Attempting rmdir %s", path);
 		ret = rmdir(path);
 	}
