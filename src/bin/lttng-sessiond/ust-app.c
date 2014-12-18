@@ -1875,6 +1875,7 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 		/* Init local registry. */
 		ret = setup_buffer_reg_pid(ua_sess, app, NULL);
 		if (ret < 0) {
+			delete_ust_app_session(-1, ua_sess, app);
 			goto error;
 		}
 		break;
@@ -1882,6 +1883,7 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 		/* Look for a global registry. If none exists, create one. */
 		ret = setup_buffer_reg_uid(usess, app, NULL);
 		if (ret < 0) {
+			delete_ust_app_session(-1, ua_sess, app);
 			goto error;
 		}
 		break;
