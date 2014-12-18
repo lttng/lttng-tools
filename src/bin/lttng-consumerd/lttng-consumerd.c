@@ -294,12 +294,20 @@ static void set_ulimit(void)
  */
 int main(int argc, char **argv)
 {
-	int ret = 0;
+	int ret = 0, retval = 0;
 	void *status;
+
+	if (set_signal_handler()) {
+		retval = -1;
+		goto exit_set_signal_handler;
+	}
 
 	/* Parse arguments */
 	progname = argv[0];
-	parse_args(argc, argv);
+	if (parse_args(argc, argv)) {
+		retval = -1;
+		goto exit_options;
+	}
 
 	/* Daemonize */
 	if (opt_daemon) {
@@ -313,7 +321,8 @@ int main(int argc, char **argv)
 		ret = daemon(0, 0);
 		if (ret < 0) {
 			PERROR("daemon");
-			goto error;
+			retval = -1;
+			goto exit_options;
 		}
 		/*
 		 * We are in the child. Make sure all other file
@@ -325,36 +334,65 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 * Starting from here, we can create threads. This needs to be after
+	 * lttng_daemonize due to RCU.
+	 */
+
+	health_consumerd = health_app_create(NR_HEALTH_CONSUMERD_TYPES);
+	if (!health_consumerd) {
+		retval = -1;
+		goto exit_health_consumerd_cleanup;
+	}
+
 	/* Set up max poll set size */
 	lttng_poll_set_max_size();
 
 	if (*command_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
-			snprintf(command_sock_path, PATH_MAX, DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
+			ret = snprintf(command_sock_path, PATH_MAX,
+					DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
 					DEFAULT_LTTNG_RUNDIR);
+			if (ret < 0) {
+				retval = -1;
+				goto exit_init_data;
+			}
 			break;
 		case LTTNG_CONSUMER64_UST:
-			snprintf(command_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(command_sock_path, PATH_MAX,
+					DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
+					DEFAULT_LTTNG_RUNDIR);
+			if (ret < 0) {
+				retval = -1;
+				goto exit_init_data;
+			}
 			break;
 		case LTTNG_CONSUMER32_UST:
-			snprintf(command_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(command_sock_path, PATH_MAX,
+					DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
+					DEFAULT_LTTNG_RUNDIR);
+			if (ret < 0) {
+				retval = -1;
+				goto exit_init_data;
+			}
 			break;
 		default:
-			WARN("Unknown consumerd type");
-			goto error;
+			ERR("Unknown consumerd type");
+			retval = -1;
+			goto exit_init_data;
 		}
 	}
 
 	/* Init */
-	if (lttng_consumer_init() < 0) {
-		goto error;
+	if (lttng_consumer_init()) {
+		retval = -1;
+		goto exit_init_data;
 	}
 
-	/* Init socket timeouts */
+	/* Initialize communication library */
 	lttcomm_init();
+	/* Initialize TCP timeout values */
 	lttcomm_inet_init();
 
 	if (!getuid()) {
@@ -362,47 +400,58 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
-	health_consumerd = health_app_create(NR_HEALTH_CONSUMERD_TYPES);
-	if (!health_consumerd) {
-		goto error;
-	}
-
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
 		NULL, lttng_consumer_on_recv_stream, NULL);
-	if (ctx == NULL) {
-		goto error;
+	if (!ctx) {
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	lttng_consumer_set_command_sock_path(ctx, command_sock_path);
 	if (*error_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
-			snprintf(error_sock_path, PATH_MAX, DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
+			ret = snprintf(error_sock_path, PATH_MAX,
+					DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
 					DEFAULT_LTTNG_RUNDIR);
+			if (ret < 0) {
+				retval = -1;
+				goto exit_init_data;
+			}
 			break;
 		case LTTNG_CONSUMER64_UST:
-			snprintf(error_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(error_sock_path, PATH_MAX,
+					DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
+					DEFAULT_LTTNG_RUNDIR);
+			if (ret < 0) {
+				retval = -1;
+				goto exit_init_data;
+			}
 			break;
 		case LTTNG_CONSUMER32_UST:
-			snprintf(error_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH, DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(error_sock_path, PATH_MAX,
+					DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
+					DEFAULT_LTTNG_RUNDIR);
+			if (ret < 0) {
+				retval = -1;
+				goto exit_init_data;
+			}
 			break;
 		default:
-			WARN("Unknown consumerd type");
-			goto error;
+			ERR("Unknown consumerd type");
+			retval = -1;
+			goto exit_init_data;
 		}
-	}
-
-	if (set_signal_handler() < 0) {
-		goto error;
 	}
 
 	/* Connect to the socket created by lttng-sessiond to report errors */
 	DBG("Connecting to error socket %s", error_sock_path);
 	ret = lttcomm_connect_unix_sock(error_sock_path);
-	/* not a fatal error, but all communication with lttng-sessiond will fail */
+	/*
+	 * Not a fatal error, but all communication with lttng-sessiond will
+	 * fail.
+	 */
 	if (ret < 0) {
 		WARN("Cannot connect to error socket (is lttng-sessiond started?)");
 	}
@@ -412,21 +461,26 @@ int main(int argc, char **argv)
 	 * Block RT signals used for UST periodical metadata flush and the live
 	 * timer in main, and create a dedicated thread to handle these signals.
 	 */
-	consumer_signal_init();
+	if (consumer_signal_init()) {
+		retval = -1;
+		goto exit_init_data;
+	}
 
 	ctx->type = opt_type;
 
-	ret = utils_create_pipe(health_quit_pipe);
-	if (ret < 0) {
-		goto error_health_pipe;
+	if (utils_create_pipe(health_quit_pipe)) {
+		retval = -1;
+		goto exit_health_pipe;
 	}
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, NULL,
 			thread_manage_health, (void *) NULL);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create health");
-		goto health_error;
+		retval = -1;
+		goto exit_health_thread;
 	}
 
 	/*
@@ -439,35 +493,46 @@ int main(int argc, char **argv)
 	cmm_smp_mb();	/* Read ready before following operations */
 
 	/* Create thread to manage channels */
-	ret = pthread_create(&channel_thread, NULL, consumer_thread_channel_poll,
+	ret = pthread_create(&channel_thread, NULL,
+			consumer_thread_channel_poll,
 			(void *) ctx);
-	if (ret != 0) {
-		perror("pthread_create");
-		goto channel_error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create");
+		retval = -1;
+		goto exit_channel_thread;
 	}
 
 	/* Create thread to manage the polling/writing of trace metadata */
-	ret = pthread_create(&metadata_thread, NULL, consumer_thread_metadata_poll,
+	ret = pthread_create(&metadata_thread, NULL,
+			consumer_thread_metadata_poll,
 			(void *) ctx);
-	if (ret != 0) {
-		perror("pthread_create");
-		goto metadata_error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create");
+		retval = -1;
+		goto exit_metadata_thread;
 	}
 
 	/* Create thread to manage the polling/writing of trace data */
 	ret = pthread_create(&data_thread, NULL, consumer_thread_data_poll,
 			(void *) ctx);
-	if (ret != 0) {
-		perror("pthread_create");
-		goto data_error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create");
+		retval = -1;
+		goto exit_data_thread;
 	}
 
 	/* Create the thread to manage the receive of fd */
-	ret = pthread_create(&sessiond_thread, NULL, consumer_thread_sessiond_poll,
+	ret = pthread_create(&sessiond_thread, NULL,
+			consumer_thread_sessiond_poll,
 			(void *) ctx);
-	if (ret != 0) {
-		perror("pthread_create");
-		goto sessiond_error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create");
+		retval = -1;
+		goto exit_sessiond_thread;
 	}
 
 	/*
@@ -476,70 +541,86 @@ int main(int argc, char **argv)
 	 */
 	ret = pthread_create(&metadata_timer_thread, NULL,
 			consumer_timer_thread, (void *) ctx);
-	if (ret != 0) {
-		perror("pthread_create");
-		goto metadata_timer_error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create");
+		retval = -1;
+		goto exit_metadata_timer_thread;
 	}
 
 	ret = pthread_detach(metadata_timer_thread);
 	if (ret) {
 		errno = ret;
-		perror("pthread_detach");
+		PERROR("pthread_detach");
+		retval = -1;
+		goto exit_metadata_timer_detach;
 	}
 
-metadata_timer_error:
+	/*
+	 * This is where we start awaiting program completion (e.g. through
+	 * signal that asks threads to teardown.
+	 */
+
+exit_metadata_timer_detach:
+exit_metadata_timer_thread:
 	ret = pthread_join(sessiond_thread, &status);
-	if (ret != 0) {
-		perror("pthread_join");
-		goto error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join sessiond_thread");
+		retval = -1;
 	}
+exit_sessiond_thread:
 
-sessiond_error:
 	ret = pthread_join(data_thread, &status);
-	if (ret != 0) {
-		perror("pthread_join");
-		goto error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join data_thread");
+		retval = -1;
 	}
+exit_data_thread:
 
-data_error:
 	ret = pthread_join(metadata_thread, &status);
-	if (ret != 0) {
-		perror("pthread_join");
-		goto error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join metadata_thread");
+		retval = -1;
 	}
+exit_metadata_thread:
 
-metadata_error:
 	ret = pthread_join(channel_thread, &status);
-	if (ret != 0) {
-		perror("pthread_join");
-		goto error;
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join channel_thread");
+		retval = -1;
 	}
+exit_channel_thread:
 
-channel_error:
 	ret = pthread_join(health_thread, &status);
-	if (ret != 0) {
-		PERROR("pthread_join health thread");
-		goto error;	/* join error, exit without cleanup */
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join health_thread");
+		retval = -1;
 	}
+exit_health_thread:
 
-health_error:
 	utils_close_pipe(health_quit_pipe);
+exit_health_pipe:
 
-error_health_pipe:
-	if (!ret) {
-		ret = EXIT_SUCCESS;
-		goto end;
-	}
-
-error:
-	ret = EXIT_FAILURE;
-
-end:
+exit_init_data:
 	lttng_consumer_destroy(ctx);
 	lttng_consumer_cleanup();
+
 	if (health_consumerd) {
 		health_app_destroy(health_consumerd);
 	}
+exit_health_consumerd_cleanup:
 
-	return ret;
+exit_options:
+
+exit_set_signal_handler:
+	if (!retval) {
+		exit(EXIT_SUCCESS);
+	} else {
+		exit(EXIT_FAILURE);
+	}
 }
