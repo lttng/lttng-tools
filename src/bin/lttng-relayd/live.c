@@ -95,7 +95,7 @@ static uint64_t last_relay_viewer_session_id;
  * Cleanup the daemon
  */
 static
-void cleanup(void)
+void cleanup_relayd_live(void)
 {
 	DBG("Cleaning up");
 
@@ -346,20 +346,22 @@ int notify_thread_pipe(int wpipe)
  * Stop all threads by closing the thread quit pipe.
  */
 static
-void stop_threads(void)
+int stop_threads(void)
 {
-	int ret;
+	int ret, retval = 0;
 
 	/* Stopping all threads */
 	DBG("Terminating all live threads");
 	ret = notify_thread_pipe(thread_quit_pipe[1]);
 	if (ret < 0) {
 		ERR("write error on thread quit pipe");
+		retval = -1;
 	}
 
 	/* Dispatch thread */
 	CMM_STORE_SHARED(live_dispatch_thread_exit, 1);
 	futex_nto1_wake(&viewer_conn_queue.futex);
+	return retval;
 }
 
 /*
@@ -591,7 +593,9 @@ error_sock_control:
 	}
 	health_unregister(health_relayd);
 	DBG("Live viewer listener thread cleanup complete");
-	stop_threads();
+	if (stop_threads()) {
+		ERR("Error stopping live threads");
+	}
 	return NULL;
 }
 
@@ -668,7 +672,9 @@ error_testpoint:
 	}
 	health_unregister(health_relayd);
 	DBG("Live viewer dispatch thread dying");
-	stop_threads();
+	if (stop_threads()) {
+		ERR("Error stopping live threads");
+	}
 	return NULL;
 }
 
@@ -2032,7 +2038,9 @@ error_testpoint:
 		ERR("Health error occurred in %s", __func__);
 	}
 	health_unregister(health_relayd);
-	stop_threads();
+	if (stop_threads()) {
+		ERR("Error stopping live threads");
+	}
 	rcu_unregister_thread();
 	return NULL;
 }
@@ -2043,55 +2051,59 @@ error_testpoint:
  */
 static int create_conn_pipe(void)
 {
-	int ret;
-
-	ret = utils_create_pipe_cloexec(live_conn_pipe);
-
-	return ret;
+	return utils_create_pipe_cloexec(live_conn_pipe);
 }
 
-void live_stop_threads(void)
+int relayd_live_stop(void)
 {
-	int ret;
+	return stop_threads();
+}
+
+int relayd_live_join(void)
+{
+	int ret, retval = 0;
 	void *status;
 
-	stop_threads();
-
 	ret = pthread_join(live_listener_thread, &status);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_join live listener");
-		goto error;	/* join error, exit without cleanup */
+		retval = -1;
 	}
 
 	ret = pthread_join(live_worker_thread, &status);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_join live worker");
-		goto error;	/* join error, exit without cleanup */
+		retval = -1;
 	}
 
 	ret = pthread_join(live_dispatcher_thread, &status);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_join live dispatcher");
-		goto error;	/* join error, exit without cleanup */
+		retval = -1;
 	}
 
-	cleanup();
+	cleanup_relayd_live();
 
-error:
-	return;
+	return retval;
 }
 
 /*
  * main
  */
-int live_start_threads(struct lttng_uri *uri,
+int relayd_live_create(struct lttng_uri *uri,
 		struct relay_local_data *relay_ctx)
 {
-	int ret = 0;
+	int ret = 0, retval = 0;
 	void *status;
 	int is_root;
 
-	assert(uri);
+	if (!uri) {
+		retval = -1;
+		goto exit_init_data;
+	}
 	live_uri = uri;
 
 	/* Check if daemon is UID = 0 */
@@ -2100,14 +2112,15 @@ int live_start_threads(struct lttng_uri *uri,
 	if (!is_root) {
 		if (live_uri->port < 1024) {
 			ERR("Need to be root to use ports < 1024");
-			ret = -1;
-			goto exit;
+			retval = -1;
+			goto exit_init_data;
 		}
 	}
 
 	/* Setup the thread apps communication pipe. */
-	if ((ret = create_conn_pipe()) < 0) {
-		goto exit;
+	if (create_conn_pipe()) {
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* Init relay command queue. */
@@ -2119,55 +2132,65 @@ int live_start_threads(struct lttng_uri *uri,
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&live_dispatcher_thread, NULL,
 			thread_dispatcher, (void *) NULL);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create viewer dispatcher");
-		goto exit_dispatcher;
+		retval = -1;
+		goto exit_dispatcher_thread;
 	}
 
 	/* Setup the worker thread */
 	ret = pthread_create(&live_worker_thread, NULL,
 			thread_worker, relay_ctx);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create viewer worker");
-		goto exit_worker;
+		retval = -1;
+		goto exit_worker_thread;
 	}
 
 	/* Setup the listener thread */
 	ret = pthread_create(&live_listener_thread, NULL,
 			thread_listener, (void *) NULL);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_create viewer listener");
-		goto exit_listener;
+		retval = -1;
+		goto exit_listener_thread;
 	}
 
-	ret = 0;
-	goto end;
+	/*
+	 * All OK, started all threads.
+	 */
+	return retval;
 
-exit_listener:
+
 	ret = pthread_join(live_listener_thread, &status);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_join live listener");
-		goto error;	/* join error, exit without cleanup */
+		retval = -1;
 	}
+exit_listener_thread:
 
-exit_worker:
 	ret = pthread_join(live_worker_thread, &status);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_join live worker");
-		goto error;	/* join error, exit without cleanup */
+		retval = -1;
 	}
+exit_worker_thread:
 
-exit_dispatcher:
 	ret = pthread_join(live_dispatcher_thread, &status);
-	if (ret != 0) {
+	if (ret) {
+		errno = ret;
 		PERROR("pthread_join live dispatcher");
-		goto error;	/* join error, exit without cleanup */
+		retval = -1;
 	}
+exit_dispatcher_thread:
 
-exit:
-	cleanup();
+exit_init_data:
+	cleanup_relayd_live();
 
-end:
-error:
-	return ret;
+	return retval;
 }
