@@ -493,46 +493,55 @@ int notify_thread_pipe(int wpipe)
 	ret = lttng_write(wpipe, "!", 1);
 	if (ret < 1) {
 		PERROR("write poll pipe");
+		goto end;
 	}
-
+	ret = 0;
+end:
 	return ret;
 }
 
-static void notify_health_quit_pipe(int *pipe)
+static
+int notify_health_quit_pipe(int *pipe)
 {
 	ssize_t ret;
 
 	ret = lttng_write(pipe[1], "4", 1);
 	if (ret < 1) {
 		PERROR("write relay health quit");
+		goto end;
 	}
+	ret = 0;
+end:
+	return ret;
 }
 
 /*
- * Stop all threads by closing the thread quit pipe.
+ * Stop all relayd and relayd-live threads.
  */
-static
-void stop_threads(void)
+int lttng_relay_stop_threads(void)
 {
-	int ret;
+	int retval = 0;
 
 	/* Stopping all threads */
 	DBG("Terminating all threads");
-	ret = notify_thread_pipe(thread_quit_pipe[1]);
-	if (ret < 0) {
+	if (notify_thread_pipe(thread_quit_pipe[1])) {
 		ERR("write error on thread quit pipe");
+		retval = -1;
 	}
 
-	notify_health_quit_pipe(health_quit_pipe);
+	if (notify_health_quit_pipe(health_quit_pipe)) {
+		ERR("write error on health quit pipe");
+	}
 
 	/* Dispatch thread */
 	CMM_STORE_SHARED(dispatch_thread_exit, 1);
 	futex_nto1_wake(&relay_conn_queue.futex);
 
-	ret = relayd_live_stop();
-	if (ret) {
+	if (relayd_live_stop()) {
 		ERR("Error stopping live threads");
+		retval = -1;
 	}
+	return retval;
 }
 
 /*
@@ -550,11 +559,15 @@ void sighandler(int sig)
 		return;
 	case SIGINT:
 		DBG("SIGINT caught");
-		stop_threads();
+		if (lttng_relay_stop_threads()) {
+			ERR("Error stopping threads");
+		}
 		break;
 	case SIGTERM:
 		DBG("SIGTERM caught");
-		stop_threads();
+		if (lttng_relay_stop_threads()) {
+			ERR("Error stopping threads");
+		}
 		break;
 	case SIGUSR1:
 		CMM_STORE_SHARED(recv_child_signal, 1);
@@ -952,7 +965,7 @@ error_sock_control:
 	}
 	health_unregister(health_relayd);
 	DBG("Relay listener thread cleanup complete");
-	stop_threads();
+	lttng_relay_stop_threads();
 	return NULL;
 }
 
@@ -1028,7 +1041,7 @@ error_testpoint:
 	}
 	health_unregister(health_relayd);
 	DBG("Dispatch thread dying");
-	stop_threads();
+	lttng_relay_stop_threads();
 	return NULL;
 }
 
@@ -2722,7 +2735,7 @@ error_testpoint:
 	}
 	health_unregister(health_relayd);
 	rcu_unregister_thread();
-	stop_threads();
+	lttng_relay_stop_threads();
 	return NULL;
 }
 

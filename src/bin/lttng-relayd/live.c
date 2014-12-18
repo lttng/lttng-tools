@@ -325,42 +325,12 @@ error_unlock:
 	return ret;
 }
 
-/*
- * Write to writable pipe used to notify a thread.
- */
-static
-int notify_thread_pipe(int wpipe)
+int relayd_live_stop(void)
 {
-	ssize_t ret;
-
-	ret = lttng_write(wpipe, "!", 1);
-	if (ret < 1) {
-		PERROR("write poll pipe");
-	}
-
-	return (int) ret;
-}
-
-/*
- * Stop all threads by closing the thread quit pipe.
- */
-static
-int stop_threads(void)
-{
-	int ret, retval = 0;
-
-	/* Stopping all threads */
-	DBG("Terminating all live threads");
-	ret = notify_thread_pipe(thread_quit_pipe[1]);
-	if (ret < 0) {
-		ERR("write error on thread quit pipe");
-		retval = -1;
-	}
-
-	/* Dispatch thread */
+	/* Stop dispatch thread */
 	CMM_STORE_SHARED(live_dispatch_thread_exit, 1);
 	futex_nto1_wake(&viewer_conn_queue.futex);
-	return retval;
+	return 0;
 }
 
 /*
@@ -597,8 +567,8 @@ error_sock_control:
 	}
 	health_unregister(health_relayd);
 	DBG("Live viewer listener thread cleanup complete");
-	if (stop_threads()) {
-		ERR("Error stopping live threads");
+	if (lttng_relay_stop_threads()) {
+		ERR("Error stopping threads");
 	}
 	return NULL;
 }
@@ -676,8 +646,8 @@ error_testpoint:
 	}
 	health_unregister(health_relayd);
 	DBG("Live viewer dispatch thread dying");
-	if (stop_threads()) {
-		ERR("Error stopping live threads");
+	if (lttng_relay_stop_threads()) {
+		ERR("Error stopping threads");
 	}
 	return NULL;
 }
@@ -2052,8 +2022,8 @@ error_testpoint:
 		ERR("Health error occurred in %s", __func__);
 	}
 	health_unregister(health_relayd);
-	if (stop_threads()) {
-		ERR("Error stopping live threads");
+	if (lttng_relay_stop_threads()) {
+		ERR("Error stopping threads");
 	}
 	rcu_unregister_thread();
 	return NULL;
@@ -2066,11 +2036,6 @@ error_testpoint:
 static int create_conn_pipe(void)
 {
 	return utils_create_pipe_cloexec(live_conn_pipe);
-}
-
-int relayd_live_stop(void)
-{
-	return stop_threads();
 }
 
 int relayd_live_join(void)
