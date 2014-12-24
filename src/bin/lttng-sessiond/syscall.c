@@ -408,6 +408,7 @@ ssize_t syscall_list_channel(struct ltt_kernel_channel *kchan,
 		ksyscall = lookup_syscall(syscalls_ht, syscall_table[i].name);
 		if (ksyscall) {
 			update_event_syscall_bitness(events, i, ksyscall->index);
+			rcu_read_unlock();
 			continue;
 		}
 		ksyscall = NULL;
