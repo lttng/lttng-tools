@@ -868,6 +868,11 @@ restart:
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
+
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
@@ -2536,6 +2541,11 @@ restart:
 
 			health_code_update();
 
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
+
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
@@ -2638,46 +2648,49 @@ restart:
 
 			health_code_update();
 
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
+
 			/* Skip the command pipe. It's handled in the first loop. */
 			if (pollfd == relay_conn_pipe[0]) {
 				continue;
 			}
 
-			if (revents) {
-				rcu_read_lock();
-				conn = connection_find_by_sock(relay_connections_ht, pollfd);
-				if (!conn) {
-					/* Skip it. Might be removed before. */
+			rcu_read_lock();
+			conn = connection_find_by_sock(relay_connections_ht, pollfd);
+			if (!conn) {
+				/* Skip it. Might be removed before. */
+				rcu_read_unlock();
+				continue;
+			}
+
+			if (revents & LPOLLIN) {
+				if (conn->type != RELAY_DATA) {
 					rcu_read_unlock();
 					continue;
 				}
 
-				if (revents & LPOLLIN) {
-					if (conn->type != RELAY_DATA) {
-						rcu_read_unlock();
-						continue;
-					}
-
-					ret = relay_process_data(conn);
-					/* Connection closed */
-					if (ret < 0) {
-						cleanup_connection_pollfd(&events, pollfd);
-						destroy_connection(relay_connections_ht, conn);
-						DBG("Data connection closed with %d", pollfd);
-						/*
-						 * Every goto restart call sets the last seen fd where
-						 * here we don't really care since we gracefully
-						 * continue the loop after the connection is deleted.
-						 */
-					} else {
-						/* Keep last seen port. */
-						last_seen_data_fd = pollfd;
-						rcu_read_unlock();
-						goto restart;
-					}
+				ret = relay_process_data(conn);
+				/* Connection closed */
+				if (ret < 0) {
+					cleanup_connection_pollfd(&events, pollfd);
+					destroy_connection(relay_connections_ht, conn);
+					DBG("Data connection closed with %d", pollfd);
+					/*
+					 * Every goto restart call sets the last seen fd where
+					 * here we don't really care since we gracefully
+					 * continue the loop after the connection is deleted.
+					 */
+				} else {
+					/* Keep last seen port. */
+					last_seen_data_fd = pollfd;
+					rcu_read_unlock();
+					goto restart;
 				}
-				rcu_read_unlock();
 			}
+			rcu_read_unlock();
 		}
 		last_seen_data_fd = -1;
 	}
