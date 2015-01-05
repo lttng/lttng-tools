@@ -42,6 +42,7 @@ void *thread_ht_cleanup(void *data)
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_HT_CLEANUP);
 
 	if (testpoint(sessiond_thread_ht_cleanup)) {
+		DBG("[ht-thread] testpoint.");
 		goto error_testpoint;
 	}
 
@@ -49,12 +50,14 @@ void *thread_ht_cleanup(void *data)
 
 	ret = sessiond_set_ht_cleanup_thread_pollset(&events, 2);
 	if (ret < 0) {
+		DBG("[ht-thread] sessiond_set_ht_cleanup_thread_pollset error %d.", ret);
 		goto error_poll_create;
 	}
 
 	/* Add pipe to the pollset. */
 	ret = lttng_poll_add(&events, ht_cleanup_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
+		DBG("[ht-thread] lttng_poll_add error %d.", ret);
 		goto error;
 	}
 
@@ -145,6 +148,7 @@ restart:
 			ret = sessiond_check_ht_cleanup_quit(pollfd, revents);
 			if (ret) {
 				err = 0;
+				DBG("[ht-cleanup] quit.");
 				goto exit;
 			}
 		}
