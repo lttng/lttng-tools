@@ -1002,12 +1002,14 @@ static void *thread_manage_kernel(void *data)
 			update_poll_flag = 0;
 		}
 
-		DBG("Thread kernel polling on %d fds", LTTNG_POLL_GETNB(&events));
+		DBG("Thread kernel polling");
 
 		/* Poll infinite value of time */
 	restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		DBG("Thread kernel return from poll on %d fds",
+				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*
@@ -1470,12 +1472,14 @@ static void *thread_manage_apps(void *data)
 	health_code_update();
 
 	while (1) {
-		DBG("Apps thread polling on %d fds", LTTNG_POLL_GETNB(&events));
+		DBG("Apps thread polling");
 
 		/* Inifinite blocking call, waiting for transmission */
 	restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		DBG("Apps thread return from poll on %d fds",
+				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*

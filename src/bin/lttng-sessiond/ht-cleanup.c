@@ -60,13 +60,14 @@ void *thread_ht_cleanup(void *data)
 	health_code_update();
 
 	while (1) {
-		DBG3("[ht-thread] Polling on %d fds.",
-			LTTNG_POLL_GETNB(&events));
+		DBG3("[ht-thread] Polling.");
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		DBG3("[ht-thread] Returning from poll on %d fds.",
+			LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*
