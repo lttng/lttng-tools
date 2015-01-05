@@ -3546,15 +3546,6 @@ int consumer_data_pending(uint64_t id)
 		 */
 		ret = cds_lfht_is_node_deleted(&stream->node.node);
 		if (!ret) {
-			/*
-			 * An empty output file is not valid. We need at least one packet
-			 * generated per stream, even if it contains no event, so it
-			 * contains at least one packet header.
-			 */
-			if (stream->output_written == 0) {
-				pthread_mutex_unlock(&stream->lock);
-				goto data_pending;
-			}
 			/* Check the stream if there is data in the buffers. */
 			ret = data_pending(stream);
 			if (ret == 1) {
