@@ -3408,31 +3408,43 @@ void ust_app_clean_list(void)
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		ret = lttng_ht_del(ust_app_ht, &iter);
-		assert(!ret);
-		call_rcu(&app->pid_n.head, delete_ust_app_rcu);
+	if (ust_app_ht) {
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			ret = lttng_ht_del(ust_app_ht, &iter);
+			assert(!ret);
+			call_rcu(&app->pid_n.head, delete_ust_app_rcu);
+		}
 	}
 
 	/* Cleanup socket hash table */
-	cds_lfht_for_each_entry(ust_app_ht_by_sock->ht, &iter.iter, app,
-			sock_n.node) {
-		ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
-		assert(!ret);
+	if (ust_app_ht_by_sock) {
+		cds_lfht_for_each_entry(ust_app_ht_by_sock->ht, &iter.iter, app,
+				sock_n.node) {
+			ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
+			assert(!ret);
+		}
 	}
 
 	/* Cleanup notify socket hash table */
-	cds_lfht_for_each_entry(ust_app_ht_by_notify_sock->ht, &iter.iter, app,
-			notify_sock_n.node) {
-		ret = lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
-		assert(!ret);
+	if (ust_app_ht_by_notify_sock) {
+		cds_lfht_for_each_entry(ust_app_ht_by_notify_sock->ht, &iter.iter, app,
+				notify_sock_n.node) {
+			ret = lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
+			assert(!ret);
+		}
 	}
 	rcu_read_unlock();
 
 	/* Destroy is done only when the ht is empty */
-	ht_cleanup_push(ust_app_ht);
-	ht_cleanup_push(ust_app_ht_by_sock);
-	ht_cleanup_push(ust_app_ht_by_notify_sock);
+	if (ust_app_ht) {
+		ht_cleanup_push(ust_app_ht);
+	}
+	if (ust_app_ht_by_sock) {
+		ht_cleanup_push(ust_app_ht_by_sock);
+	}
+	if (ust_app_ht_by_notify_sock) {
+		ht_cleanup_push(ust_app_ht_by_notify_sock);
+	}
 }
 
 /*
