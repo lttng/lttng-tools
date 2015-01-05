@@ -80,7 +80,7 @@ static int update_current_events(struct lttng_poll_event *events)
 	wait = &events->wait;
 
 	wait->nb_fd = current->nb_fd;
-	if (events->need_realloc) {
+	if (current->alloc_size != wait->alloc_size) {
 		ret = resize_poll_event(wait, current->alloc_size);
 		if (ret < 0) {
 			goto error;
@@ -89,9 +89,8 @@ static int update_current_events(struct lttng_poll_event *events)
 	memcpy(wait->events, current->events,
 			current->nb_fd * sizeof(*current->events));
 
-	/* Update is done and realloc as well. */
+	/* Update is done. */
 	events->need_update = 0;
-	events->need_realloc = 0;
 
 	return 0;
 
@@ -111,6 +110,11 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 		goto error;
 	}
 
+	if (!poll_max_size) {
+		ERR("poll_max_size not initialized yet");
+		goto error;
+	}
+
 	/* Don't bust the limit here */
 	if (size > poll_max_size) {
 		size = poll_max_size;
@@ -119,7 +123,6 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 	/* Reset everything before begining the allocation. */
 	memset(events, 0, sizeof(struct lttng_poll_event));
 
-	/* Ease our life a bit. */
 	current = &events->current;
 	wait = &events->wait;
 
@@ -160,29 +163,23 @@ int compat_poll_add(struct lttng_poll_event *events, int fd,
 		goto error;
 	}
 
-	/* Ease our life a bit. */
 	current = &events->current;
 
 	/* Check if fd we are trying to add is already there. */
 	for (i = 0; i < current->nb_fd; i++) {
-		/* Don't put back the fd we want to delete */
 		if (current->events[i].fd == fd) {
 			errno = EEXIST;
 			goto error;
 		}
 	}
 
-	/* Check for a needed resize of the array. */
-	if (current->nb_fd > current->alloc_size) {
-		/* Expand it by a power of two of the current size. */
-		new_size = max_t(int,
-				1U << utils_get_count_order_u32(current->nb_fd),
-				current->alloc_size << 1UL);
+	/* Resize array if needed. */
+	new_size = 1U << utils_get_count_order_u32(current->nb_fd + 1);
+	if (new_size != current->alloc_size && new_size >= current->init_size) {
 		ret = resize_poll_event(current, new_size);
 		if (ret < 0) {
 			goto error;
 		}
-		events->need_realloc = 1;
 	}
 
 	current->events[current->nb_fd].fd = fd;
@@ -214,23 +211,6 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 	/* Ease our life a bit. */
 	current = &events->current;
 
-	/* Check if we need to shrink it down. */
-	if ((current->nb_fd << 1UL) <= current->alloc_size &&
-			current->nb_fd >= current->init_size) {
-		/*
-		 * Shrink if nb_fd multiplied by two is <= than the actual size and we
-		 * are above the initial size.
-		 */
-		new_size = max_t(int,
-				utils_get_count_order_u32(current->nb_fd) >> 1U,
-				current->alloc_size >> 1U);
-		ret = resize_poll_event(current, new_size);
-		if (ret < 0) {
-			goto error;
-		}
-		events->need_realloc = 1;
-	}
-
 	for (i = 0; i < current->nb_fd; i++) {
 		/* Don't put back the fd we want to delete */
 		if (current->events[i].fd != fd) {
@@ -239,8 +219,19 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 			count++;
 		}
 	}
+	/* No fd duplicate should be ever added into array. */
+	assert(current->nb_fd - 1 == count);
+	current->nb_fd = count;
 
-	current->nb_fd--;
+	/* Resize array if needed. */
+	new_size = 1U << utils_get_count_order_u32(current->nb_fd);
+	if (new_size != current->alloc_size && new_size >= current->init_size) {
+		ret = resize_poll_event(current, new_size);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
 	events->need_update = 1;
 
 	return 0;
@@ -260,10 +251,12 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 		ERR("poll wait arguments error");
 		goto error;
 	}
+	assert(events->current.nb_fd >= 0);
 
 	if (events->current.nb_fd == 0) {
 		/* Return an invalid error to be consistent with epoll. */
 		errno = EINVAL;
+		events->wait.nb_fd = 0;
 		goto error;
 	}
 
@@ -295,25 +288,23 @@ error:
 /*
  * Setup poll set maximum size.
  */
-void compat_poll_set_max_size(void)
+int compat_poll_set_max_size(void)
 {
-	int ret;
+	int ret, retval = 0;
 	struct rlimit lim;
-
-	/* Default value */
-	poll_max_size = DEFAULT_POLL_SIZE;
 
 	ret = getrlimit(RLIMIT_NOFILE, &lim);
 	if (ret < 0) {
 		perror("getrlimit poll RLIMIT_NOFILE");
-		return;
+		retval = -1;
+		goto end;
 	}
 
 	poll_max_size = lim.rlim_cur;
+end:
 	if (poll_max_size == 0) {
-		/* Extra precaution */
 		poll_max_size = DEFAULT_POLL_SIZE;
 	}
-
 	DBG("poll set max size set to %u", poll_max_size);
+	return retval;
 }

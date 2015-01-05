@@ -141,7 +141,7 @@ extern int compat_epoll_del(struct lttng_poll_event *events, int fd);
 /*
  * Set up the poll set limits variable poll_max_size
  */
-extern void compat_epoll_set_max_size(void);
+extern int compat_epoll_set_max_size(void);
 #define lttng_poll_set_max_size() \
 	compat_epoll_set_max_size()
 
@@ -252,8 +252,7 @@ struct compat_poll_event {
 	 * execution before a poll wait is done.
 	 */
 	struct compat_poll_event_array current;
-	/* Indicate if wait.events needs to be realloc. */
-	int need_realloc:1;
+
 	/* Indicate if wait.events need to be updated from current. */
 	int need_update:1;
 };
@@ -318,7 +317,7 @@ extern int compat_poll_del(struct lttng_poll_event *events, int fd);
 /*
  * Set up the poll set limits variable poll_max_size
  */
-extern void compat_poll_set_max_size(void);
+extern int compat_poll_set_max_size(void);
 #define lttng_poll_set_max_size() \
 	compat_poll_set_max_size()
 
