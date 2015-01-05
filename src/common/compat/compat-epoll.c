@@ -76,8 +76,13 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 		goto error;
 	}
 
+	if (!poll_max_size) {
+		ERR("poll_max_size not initialized yet");
+		goto error;
+	}
+
 	/* Don't bust the limit here */
-	if (size > poll_max_size && poll_max_size != 0) {
+	if (size > poll_max_size) {
 		size = poll_max_size;
 	}
 
@@ -165,7 +170,7 @@ int compat_epoll_del(struct lttng_poll_event *events, int fd)
 {
 	int ret;
 
-	if (events == NULL || fd < 0) {
+	if (events == NULL || fd < 0 || events->nb_fd == 0) {
 		goto error;
 	}
 
@@ -204,6 +209,12 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 		ERR("Wrong arguments in compat_epoll_wait");
 		goto error;
 	}
+	assert(events->nb_fd >= 0);
+
+	if (events->nb_fd == 0) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	/*
 	 * Resize if needed before waiting. We could either expand the array or
@@ -211,23 +222,8 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 	 * ensured that the events argument of the epoll_wait call will be large
 	 * enough to hold every possible returned events.
 	 */
-	if (events->nb_fd > events->alloc_size) {
-		/* Expand if the nb_fd is higher than the actual size. */
-		new_size = max_t(uint32_t,
-				1U << utils_get_count_order_u32(events->nb_fd),
-				events->alloc_size << 1UL);
-	} else if ((events->nb_fd << 1UL) <= events->alloc_size &&
-			events->nb_fd >= events->init_size) {
-		/* Shrink if nb_fd multiplied by two is <= than the actual size. */
-		new_size = max_t(uint32_t,
-				utils_get_count_order_u32(events->nb_fd) >> 1U,
-				events->alloc_size >> 1U);
-	} else {
-		/* Indicate that we don't want to resize. */
-		new_size = 0;
-	}
-
-	if (new_size) {
+	new_size = 1U << utils_get_count_order_u32(events->nb_fd);
+	if (new_size != events->alloc_size && new_size >= events->init_size) {
 		ret = resize_poll_event(events, new_size);
 		if (ret < 0) {
 			/* ENOMEM problem at this point. */
@@ -257,17 +253,16 @@ error:
 /*
  * Setup poll set maximum size.
  */
-void compat_epoll_set_max_size(void)
+int compat_epoll_set_max_size(void)
 {
-	int ret, fd;
+	int ret, fd, retval = 0;
 	ssize_t size_ret;
 	char buf[64];
 
-	poll_max_size = DEFAULT_POLL_SIZE;
-
 	fd = open(COMPAT_EPOLL_PROC_PATH, O_RDONLY);
 	if (fd < 0) {
-		return;
+		retval = -1;
+		goto end;
 	}
 
 	size_ret = lttng_read(fd, buf, sizeof(buf));
@@ -277,21 +272,20 @@ void compat_epoll_set_max_size(void)
 	 */
 	if (size_ret < 0 || size_ret >= sizeof(buf)) {
 		PERROR("read set max size");
-		goto error;
+		retval = -1;
+		goto end_read;
 	}
 	buf[size_ret] = '\0';
-
 	poll_max_size = atoi(buf);
-	if (poll_max_size == 0) {
-		/* Extra precaution */
-		poll_max_size = DEFAULT_POLL_SIZE;
-	}
-
-	DBG("epoll set max size is %d", poll_max_size);
-
-error:
+end_read:
 	ret = close(fd);
 	if (ret) {
 		PERROR("close");
 	}
+end:
+	if (!poll_max_size) {
+		poll_max_size = DEFAULT_POLL_SIZE;
+	}
+	DBG("epoll set max size is %d", poll_max_size);
+	return retval;
 }
