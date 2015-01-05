@@ -516,7 +516,7 @@ int utils_create_lock_file(const char *filepath)
 	 */
 	ret = flock(fd, LOCK_EX | LOCK_NB);
 	if (ret) {
-		WARN("Could not get lock file %s, another instance is running.",
+		ERR("Could not get lock file %s, another instance is running.",
 			filepath);
 		if (close(fd)) {
 			PERROR("close lock file");
