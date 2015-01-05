@@ -321,14 +321,14 @@ int spawn_relayd(const char *pathname, int port)
 		if (errno == ENOENT) {
 			ERR("No relayd found. Use --relayd-path.");
 		} else {
-			perror("execlp");
+			PERROR("execlp");
 		}
 		kill(getppid(), SIGTERM);	/* wake parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		goto end;
 	} else {
-		perror("fork");
+		PERROR("fork");
 		ret = -1;
 		goto end;
 	}
@@ -349,7 +349,7 @@ int check_relayd(void)
 
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) {
-		perror("socket check relayd");
+		PERROR("socket check relayd");
 		ret = -1;
 		goto error_socket;
 	}
@@ -358,7 +358,7 @@ int check_relayd(void)
 	sin.sin_port = htons(DEFAULT_NETWORK_VIEWER_PORT);
 	ret = inet_pton(sin.sin_family, "127.0.0.1", &sin.sin_addr);
 	if (ret < 1) {
-		perror("inet_pton check relayd");
+		PERROR("inet_pton check relayd");
 		ret = -1;
 		goto error;
 	}
@@ -378,7 +378,7 @@ int check_relayd(void)
 
 error:
 	if (close(fd) < 0) {
-		perror("close relayd fd");
+		PERROR("close relayd fd");
 	}
 error_socket:
 	return ret;

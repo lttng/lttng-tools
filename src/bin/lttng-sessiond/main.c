@@ -4363,7 +4363,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		tracing_group_name = strdup(arg);
 		if (!tracing_group_name) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		tracing_group_name_override = 1;
@@ -4427,7 +4427,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		consumerd32_bin = strdup(arg);
 		if (!consumerd32_bin) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		consumerd32_bin_override = 1;
@@ -4438,7 +4438,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		consumerd32_libdir = strdup(arg);
 		if (!consumerd32_libdir) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		consumerd32_libdir_override = 1;
@@ -4449,7 +4449,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		consumerd64_bin = strdup(arg);
 		if (!consumerd64_bin) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		consumerd64_bin_override = 1;
@@ -4460,7 +4460,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		consumerd64_libdir = strdup(arg);
 		if (!consumerd64_libdir) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		consumerd64_libdir_override = 1;
@@ -4469,7 +4469,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		free(opt_pidfile);
 		opt_pidfile = strdup(arg);
 		if (!opt_pidfile) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		break;
@@ -4495,7 +4495,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		free(opt_load_session_path);
 		opt_load_session_path = strdup(arg);
 		if (!opt_load_session_path) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		break;
@@ -4503,7 +4503,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		free(kmod_probes_list);
 		kmod_probes_list = strdup(arg);
 		if (!kmod_probes_list) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		break;
@@ -4511,7 +4511,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		free(kmod_extra_probes_list);
 		kmod_extra_probes_list = strdup(arg);
 		if (!kmod_extra_probes_list) {
-			perror("strdup");
+			PERROR("strdup");
 			ret = -ENOMEM;
 		}
 		break;

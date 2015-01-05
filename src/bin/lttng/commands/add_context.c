@@ -718,7 +718,7 @@ int cmd_add_context(int argc, const char **argv)
 
 			type = zmalloc(sizeof(struct ctx_type));
 			if (type == NULL) {
-				perror("malloc ctx_type");
+				PERROR("malloc ctx_type");
 				ret = CMD_FATAL;
 				goto end;
 			}

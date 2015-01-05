@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "fd-limit.h"
+#include <common/error.h>
 
 /* total count of fd. */
 static long fd_count;
@@ -65,7 +66,7 @@ void lttng_fd_init(void)
 
 	ret = getrlimit(RLIMIT_NOFILE, &rlim);
 	if (ret < 0) {
-		perror("getrlimit");
+		PERROR("getrlimit");
 	}
 	max_nr_fd = rlim.rlim_cur;
 }

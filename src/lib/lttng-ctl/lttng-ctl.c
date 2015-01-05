@@ -221,19 +221,19 @@ int lttng_check_tracing_group(void)
 	/* Get number of supplementary group IDs */
 	grp_list_size = getgroups(0, NULL);
 	if (grp_list_size < 0) {
-		perror("getgroups");
+		PERROR("getgroups");
 		goto end;
 	}
 
 	/* Alloc group list of the right size */
 	grp_list = zmalloc(grp_list_size * sizeof(gid_t));
 	if (!grp_list) {
-		perror("malloc");
+		PERROR("malloc");
 		goto end;
 	}
 	grp_id = getgroups(grp_list_size, grp_list);
 	if (grp_id < 0) {
-		perror("getgroups");
+		PERROR("getgroups");
 		goto free_list;
 	}
 
@@ -275,7 +275,7 @@ static int try_connect_sessiond(const char *sock_path)
 
 	ret = lttcomm_close_unix_sock(ret);
 	if (ret < 0) {
-		perror("lttcomm_close_unix_sock");
+		PERROR("lttcomm_close_unix_sock");
 	}
 
 	return 0;
@@ -858,7 +858,7 @@ static int generate_filter(char *filter_expression,
 
 	/* No need to keep the memory stream. */
 	if (fclose(fmem) != 0) {
-		perror("fclose");
+		PERROR("fclose");
 	}
 
 	*ctxp = ctx;
@@ -869,7 +869,7 @@ parse_error:
 	filter_parser_ctx_free(ctx);
 filter_alloc_error:
 	if (fclose(fmem) != 0) {
-		perror("fclose");
+		PERROR("fclose");
 	}
 error:
 	return ret;

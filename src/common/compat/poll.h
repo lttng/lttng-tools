@@ -217,7 +217,7 @@ static inline void lttng_poll_clean(struct lttng_poll_event *events)
 	if (events->epfd >= 0) {
 		ret = close(events->epfd);
 		if (ret) {
-			perror("close");
+			PERROR("close");
 		}
 	}
 

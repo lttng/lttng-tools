@@ -238,7 +238,7 @@ static int set_signal_handler(void)
 	sigset_t sigset;
 
 	if ((ret = sigemptyset(&sigset)) < 0) {
-		perror("sigemptyset");
+		PERROR("sigemptyset");
 		goto end;
 	}
 
@@ -246,17 +246,17 @@ static int set_signal_handler(void)
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
 	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
-		perror("sigaction");
+		PERROR("sigaction");
 		goto end;
 	}
 
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
-		perror("sigaction");
+		PERROR("sigaction");
 		goto end;
 	}
 
 	if ((ret = sigaction(SIGCHLD, &sa, NULL)) < 0) {
-		perror("sigaction");
+		PERROR("sigaction");
 		goto end;
 	}
 
@@ -324,7 +324,7 @@ static int spawn_sessiond(char *pathname)
 		if (errno == ENOENT) {
 			ERR("No session daemon found. Use --sessiond-path.");
 		} else {
-			perror("execlp");
+			PERROR("execlp");
 		}
 		kill(getppid(), SIGTERM);	/* wake parent */
 		exit(EXIT_FAILURE);
@@ -350,7 +350,7 @@ static int spawn_sessiond(char *pathname)
 		}
 		goto end;
 	} else {
-		perror("fork");
+		PERROR("fork");
 		ret = -1;
 		goto end;
 	}

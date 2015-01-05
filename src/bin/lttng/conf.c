@@ -144,7 +144,7 @@ void config_destroy(char *path)
 	DBG("Removing %s\n", config_path);
 	ret = remove(config_path);
 	if (ret < 0) {
-		perror("remove config file");
+		PERROR("remove config file");
 	}
 end:
 	free(config_path);

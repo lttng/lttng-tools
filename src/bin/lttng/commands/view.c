@@ -316,14 +316,14 @@ static char *build_live_path(char *session_name)
 
 	ret = gethostname(hostname, sizeof(hostname));
 	if (ret < 0) {
-		perror("gethostname");
+		PERROR("gethostname");
 		goto error;
 	}
 
 	ret = asprintf(&path, "net://localhost/host/%s/%s", hostname,
 			session_name);
 	if (ret < 0) {
-		perror("asprintf live path");
+		PERROR("asprintf live path");
 		goto error;
 	}
 

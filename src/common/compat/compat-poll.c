@@ -127,7 +127,7 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 	/* This *must* be freed by using lttng_poll_free() */
 	wait->events = zmalloc(size * sizeof(struct pollfd));
 	if (wait->events == NULL) {
-		perror("zmalloc struct pollfd");
+		PERROR("zmalloc struct pollfd");
 		goto error;
 	}
 
@@ -135,7 +135,7 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 
 	current->events = zmalloc(size * sizeof(struct pollfd));
 	if (current->events == NULL) {
-		perror("zmalloc struct current pollfd");
+		PERROR("zmalloc struct current pollfd");
 		goto error;
 	}
 
@@ -279,7 +279,7 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 	ret = poll(events->wait.events, events->wait.nb_fd, timeout);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
-		perror("poll wait");
+		PERROR("poll wait");
 		goto error;
 	}
 
@@ -306,7 +306,7 @@ void compat_poll_set_max_size(void)
 
 	ret = getrlimit(RLIMIT_NOFILE, &lim);
 	if (ret < 0) {
-		perror("getrlimit poll RLIMIT_NOFILE");
+		PERROR("getrlimit poll RLIMIT_NOFILE");
 		return;
 	}
 

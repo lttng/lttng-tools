@@ -93,7 +93,7 @@ int connect_viewer(char *hostname)
 	}
 
 	if ((control_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		perror("Socket");
+		PERROR("Socket");
 		ret = -1;
 		goto end;
 	}
@@ -105,7 +105,7 @@ int connect_viewer(char *hostname)
 
 	if (connect(control_sock, (struct sockaddr *) &server_addr,
 				sizeof(struct sockaddr)) == -1) {
-		perror("Connect");
+		PERROR("Connect");
 		ret = -1;
 		goto end;
 	}
@@ -420,7 +420,7 @@ int get_metadata(void)
 
 	data = zmalloc(len);
 	if (!data) {
-		perror("relay data zmalloc");
+		PERROR("relay data zmalloc");
 		goto error;
 	}
 	do {

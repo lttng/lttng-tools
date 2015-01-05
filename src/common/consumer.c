@@ -1430,7 +1430,7 @@ static int write_relayd_metadata_id(int fd,
 	ret = lttng_write(fd, (void *) &hdr, sizeof(hdr));
 	if (ret < sizeof(hdr)) {
 		/*
-		 * This error means that the fd's end is closed so ignore the perror
+		 * This error means that the fd's end is closed so ignore the PERROR
 		 * not to clubber the error output since this can happen in a normal
 		 * code path.
 		 */

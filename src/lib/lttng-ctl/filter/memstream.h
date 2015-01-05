@@ -73,25 +73,25 @@ FILE *lttng_fmemopen(void *buf, size_t size, const char *mode)
 	}
 	ret = fseek(fp, 0L, SEEK_SET);
 	if (ret < 0) {
-		perror("fseek");
+		PERROR("fseek");
 		goto error_close;
 	}
 	/* We keep the handle open, but can unlink the file on the VFS. */
 	ret = unlink(tmpname);
 	if (ret < 0) {
-		perror("unlink");
+		PERROR("unlink");
 	}
 	return fp;
 
 error_close:
 	ret = fclose(fp);
 	if (ret < 0) {
-		perror("close");
+		PERROR("close");
 	}
 error_unlink:
 	ret = unlink(tmpname);
 	if (ret < 0) {
-		perror("unlink");
+		PERROR("unlink");
 	}
 	return NULL;
 }
@@ -148,14 +148,14 @@ FILE *lttng_open_memstream(char **ptr, size_t *sizeloc)
 	 */
 	ret = unlink(tmpname);
 	if (ret < 0) {
-		perror("unlink");
+		PERROR("unlink");
 	}
 	return fp;
 
 error_unlink:
 	ret = unlink(tmpname);
 	if (ret < 0) {
-		perror("unlink");
+		PERROR("unlink");
 	}
 	return NULL;
 }
@@ -170,17 +170,17 @@ int lttng_close_memstream(char **buf, size_t *size, FILE *fp)
 
 	ret = fflush(fp);
 	if (ret < 0) {
-		perror("fflush");
+		PERROR("fflush");
 		return ret;
 	}
 	ret = fseek(fp, 0L, SEEK_END);
 	if (ret < 0) {
-		perror("fseek");
+		PERROR("fseek");
 		return ret;
 	}
 	pos = ftell(fp);
 	if (ret < 0) {
-		perror("ftell");
+		PERROR("ftell");
 		return ret;
 	}
 	*size = pos;
@@ -191,7 +191,7 @@ int lttng_close_memstream(char **buf, size_t *size, FILE *fp)
 	}
 	ret = fseek(fp, 0L, SEEK_SET);
 	if (ret < 0) {
-		perror("fseek");
+		PERROR("fseek");
 		goto error_free;
 	}
 	/* Copy the entire file into the buffer */
@@ -207,7 +207,7 @@ int lttng_close_memstream(char **buf, size_t *size, FILE *fp)
 	}
 	ret = fclose(fp);
 	if (ret < 0) {
-		perror("fclose");
+		PERROR("fclose");
 		return ret;
 	}
 	return 0;
@@ -215,7 +215,7 @@ int lttng_close_memstream(char **buf, size_t *size, FILE *fp)
 error_close:
 	ret = fclose(fp);
 	if (ret < 0) {
-		perror("fclose");
+		PERROR("fclose");
 	}
 error_free:
 	free(*buf);
