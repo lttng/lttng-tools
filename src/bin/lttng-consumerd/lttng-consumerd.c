@@ -346,7 +346,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Set up max poll set size */
-	lttng_poll_set_max_size();
+	if (lttng_poll_set_max_size()) {
+		retval = -1;
+		goto exit_init_data;
+	}
 
 	if (*command_sock_path == '\0') {
 		switch (opt_type) {

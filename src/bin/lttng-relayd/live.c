@@ -2102,7 +2102,10 @@ int relayd_live_create(struct lttng_uri *uri,
 	cds_wfcq_init(&viewer_conn_queue.head, &viewer_conn_queue.tail);
 
 	/* Set up max poll set size */
-	lttng_poll_set_max_size();
+	if (lttng_poll_set_max_size()) {
+		retval = -1;
+		goto exit_init_data;
+	}
 
 	/* Setup the dispatcher thread */
 	ret = pthread_create(&live_dispatcher_thread, NULL,
