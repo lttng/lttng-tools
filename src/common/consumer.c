@@ -2179,14 +2179,6 @@ void *consumer_thread_metadata_poll(void *data)
 	DBG("Metadata main loop started");
 
 	while (1) {
-		health_code_update();
-
-		/* Only the metadata pipe is set */
-		if (LTTNG_POLL_GETNB(&events) == 0 && consumer_quit == 1) {
-			err = 0;	/* All is OK */
-			goto end;
-		}
-
 restart:
 		health_code_update();
 		health_poll_entry();
@@ -2201,7 +2193,10 @@ restart:
 				ERR("Poll EINTR catched");
 				goto restart;
 			}
-			goto error;
+			if (LTTNG_POLL_GETNB(&events) == 0) {
+				err = 0;	/* All is OK */
+			}
+			goto end;
 		}
 
 		nb_fd = ret;
@@ -2757,14 +2752,6 @@ void *consumer_thread_channel_poll(void *data)
 	DBG("Channel main loop started");
 
 	while (1) {
-		health_code_update();
-
-		/* Only the channel pipe is set */
-		if (LTTNG_POLL_GETNB(&events) == 0 && consumer_quit == 1) {
-			err = 0;	/* All is OK */
-			goto end;
-		}
-
 restart:
 		health_code_update();
 		DBG("Channel poll wait");
@@ -2778,6 +2765,9 @@ restart:
 			if (errno == EINTR) {
 				ERR("Poll EINTR catched");
 				goto restart;
+			}
+			if (LTTNG_POLL_GETNB(&events) == 0) {
+				err = 0;	/* All is OK */
 			}
 			goto end;
 		}
