@@ -515,6 +515,11 @@ restart:
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
+
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
@@ -1947,6 +1952,11 @@ restart:
 			int pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
+
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
 
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = check_thread_quit_pipe(pollfd, revents);
