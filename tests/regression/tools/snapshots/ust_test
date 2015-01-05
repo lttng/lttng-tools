@@ -174,8 +174,6 @@ function test_ust_local_snapshot ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 
 	stop_test_apps
@@ -253,8 +251,6 @@ function test_ust_local_snapshot_large_metadata ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 }
 
@@ -288,8 +284,6 @@ function test_ust_per_uid_local_snapshot ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 
 	stop_test_apps
@@ -317,8 +311,6 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 }
 
@@ -343,8 +335,6 @@ function test_ust_local_snapshots ()
 		if [ $? -eq 0 ]; then
 			# Only delete if successful
 			rm -rf $TRACE_PATH
-		else
-			break
 		fi
 	done
 	stop_lttng_tracing $SESSION_NAME
