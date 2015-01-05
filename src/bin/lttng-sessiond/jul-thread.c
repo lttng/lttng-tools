@@ -284,12 +284,13 @@ void *jul_thread_manage_registration(void *data)
 	}
 
 	while (1) {
-		DBG3("[jul-thread] Manage JUL polling on %d fds",
-				LTTNG_POLL_GETNB(&events));
+		DBG3("[jul-thread] Manage JUL polling");
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
 		ret = lttng_poll_wait(&events, -1);
+		DBG3("[jul-thread] Manage agent return from poll on %d fds",
+				LTTNG_POLL_GETNB(&events));
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.

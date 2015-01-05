@@ -2189,9 +2189,12 @@ void *consumer_thread_metadata_poll(void *data)
 		}
 
 restart:
-		DBG("Metadata poll wait with %d fd(s)", LTTNG_POLL_GETNB(&events));
+		health_code_update();
 		health_poll_entry();
+		DBG("Metadata poll wait");
 		ret = lttng_poll_wait(&events, -1);
+		DBG("Metadata poll return from wait with %d fd(s)",
+				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		DBG("Metadata event catched in thread");
 		if (ret < 0) {
@@ -2764,9 +2767,12 @@ void *consumer_thread_channel_poll(void *data)
 		}
 
 restart:
-		DBG("Channel poll wait with %d fd(s)", LTTNG_POLL_GETNB(&events));
+		health_code_update();
+		DBG("Channel poll wait");
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		DBG("Channel poll return from wait with %d fd(s)",
+				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		DBG("Channel event catched in thread");
 		if (ret < 0) {
