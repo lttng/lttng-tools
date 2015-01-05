@@ -65,13 +65,14 @@ void *ust_thread_manage_notify(void *data)
 	health_code_update();
 
 	while (1) {
-		DBG3("[ust-thread] Manage notify polling on %d fds",
-				LTTNG_POLL_GETNB(&events));
+		DBG3("[ust-thread] Manage notify polling");
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
+		DBG3("[ust-thread] Manage notify return from poll on %d fds",
+				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*
