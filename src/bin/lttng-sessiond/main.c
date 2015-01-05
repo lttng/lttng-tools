@@ -945,6 +945,11 @@ static void *thread_manage_kernel(void *data)
 
 			health_code_update();
 
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
+
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
@@ -1090,6 +1095,11 @@ restart:
 
 		health_code_update();
 
+		if (!revents) {
+			/* No activity for this FD (poll implementation). */
+			continue;
+		}
+
 		/* Thread quit pipe has been closed. Killing thread. */
 		ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 		if (ret) {
@@ -1216,6 +1226,11 @@ restart_poll:
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
+
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
 
 			/*
 			 * Thread quit pipe has been triggered, flag that we should stop
@@ -1392,6 +1407,11 @@ static void *thread_manage_apps(void *data)
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
+
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
 
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
@@ -1570,6 +1590,11 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		/* Get faulty FD. */
 		uint32_t revents = LTTNG_POLL_GETEV(&events, i);
 		int pollfd = LTTNG_POLL_GETFD(&events, i);
+
+		if (!revents) {
+			/* No activity for this FD (poll implementation). */
+			continue;
+		}
 
 		cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
 				&wait_queue->head, head) {
@@ -1909,6 +1934,11 @@ static void *thread_registration_apps(void *data)
 			/* Fetch once the poll data */
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
+
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
 
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
@@ -3683,6 +3713,11 @@ restart:
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
+
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
 			if (ret) {
@@ -3849,6 +3884,11 @@ static void *thread_manage_clients(void *data)
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
+
+			if (!revents) {
+				/* No activity for this FD (poll implementation). */
+				continue;
+			}
 
 			/* Thread quit pipe has been closed. Killing thread. */
 			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
