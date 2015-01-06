@@ -1341,6 +1341,9 @@ int mi_lttng_snapshot_output_session_name(struct mi_writer *writer,
 	/* Snapshot output list for current session name */
 	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
 			session_name);
+	if (ret) {
+		goto end;
+	}
 
 	/* Open element snapshots (sequence one snapshot) */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_snapshots);
