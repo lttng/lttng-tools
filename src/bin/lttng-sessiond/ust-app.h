@@ -410,8 +410,10 @@ struct ust_app *ust_app_get_by_pid(pid_t pid)
 	return NULL;
 }
 static inline
-void ust_app_ht_alloc(void)
-{}
+int ust_app_ht_alloc(void)
+{
+	return 0;
+}
 static inline
 void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 {}
