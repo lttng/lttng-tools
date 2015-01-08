@@ -307,8 +307,7 @@ void *agent_thread_manage_registration(void *data)
 	}
 
 	while (1) {
-		DBG3("[agent-thread] Manage agent polling",
-				LTTNG_POLL_GETNB(&events));
+		DBG3("[agent-thread] Manage agent polling");
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
