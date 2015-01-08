@@ -2142,13 +2142,11 @@ int relayd_live_create(struct lttng_uri *uri,
 	 */
 	return retval;
 
+	/*
+	 * Join on the live_listener_thread should anything be added after
+	 * the live_listener thread's creation.
+	 */
 
-	ret = pthread_join(live_listener_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join live listener");
-		retval = -1;
-	}
 exit_listener_thread:
 
 	ret = pthread_join(live_worker_thread, &status);
