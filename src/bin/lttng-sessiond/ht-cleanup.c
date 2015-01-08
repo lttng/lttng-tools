@@ -64,13 +64,10 @@ void *thread_ht_cleanup(void *data)
 	health_code_update();
 
 	while (1) {
-		int handled_event;
-
 		DBG3("[ht-thread] Polling.");
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
-		handled_event = 0;
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
 		DBG3("[ht-thread] Returning from poll on %d fds.",
@@ -132,11 +129,6 @@ restart:
 			lttng_ht_destroy(ht);
 
 			health_code_update();
-		}
-
-		/* Only check cleanup quit when no more work to do. */
-		if (handled_event) {
-			continue;
 		}
 
 		for (i = 0; i < nb_fd; i++) {
