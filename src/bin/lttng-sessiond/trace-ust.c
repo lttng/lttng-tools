@@ -474,7 +474,12 @@ int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
 		utype = LTTNG_UST_CONTEXT_IP;
 		break;
 	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
-		utype = LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER;
+		if (!ustctl_has_perf_counters()) {
+			utype = -1;
+			WARN("Perf counters not implemented in UST");
+		} else {
+			utype = LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER;
+		}
 		break;
 	default:
 		ERR("Invalid UST context");
