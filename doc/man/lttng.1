@@ -875,15 +875,15 @@ Simple listing of options
 .TP
 \fBadd-output\fP [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>
 
-Setup and add an snapshot output for a session. Output are the destination
+Setup and add a snapshot output for a session. Output is the destination
 where the snapshot will be sent. Only one output is permitted. To change it,
 you'll need to delete it and add back the new one.
 
 .TP
 \fBdel-output\fP ID | NAME [-s <NAME>]
 
-Delete an output for a session using the ID. You can either specify the
-output's ID that can be found with list-output or the name.
+Delete an output for a session using the output's ID. You can either specify the
+output by name or use its ID as returned by the list-output command.
 
 .TP
 \fBlist-output\fP [-s <NAME>]
