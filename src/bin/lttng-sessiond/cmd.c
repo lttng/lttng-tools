@@ -2942,7 +2942,7 @@ error:
  */
 static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, struct ltt_session *session,
-		int wait, uint64_t max_stream_size)
+		int wait, uint64_t nb_packets_per_stream)
 {
 	int ret;
 
@@ -2973,7 +2973,7 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		goto error_snapshot;
 	}
 
-	ret = kernel_snapshot_record(ksess, output, wait, max_stream_size);
+	ret = kernel_snapshot_record(ksess, output, wait, nb_packets_per_stream);
 	if (ret != LTTNG_OK) {
 		goto error_snapshot;
 	}
@@ -2996,7 +2996,7 @@ end:
  */
 static int record_ust_snapshot(struct ltt_ust_session *usess,
 		struct snapshot_output *output, struct ltt_session *session,
-		int wait, uint64_t max_stream_size)
+		int wait, uint64_t nb_packets_per_stream)
 {
 	int ret;
 
@@ -3027,7 +3027,7 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 		goto error_snapshot;
 	}
 
-	ret = ust_app_snapshot_record(usess, output, wait, max_stream_size);
+	ret = ust_app_snapshot_record(usess, output, wait, nb_packets_per_stream);
 	if (ret < 0) {
 		switch (-ret) {
 		case EINVAL:
@@ -3052,69 +3052,90 @@ error:
 	return ret;
 }
 
-/*
- * Return the biggest subbuffer size of all channels in the given session.
- */
-static uint64_t get_session_max_subbuf_size(struct ltt_session *session)
+static
+uint64_t get_session_size_one_more_packet_per_stream(struct ltt_session *session,
+	uint64_t cur_nr_packets)
 {
-	uint64_t max_size = 0;
-
-	assert(session);
+	uint64_t tot_size = 0;
 
 	if (session->kernel_session) {
 		struct ltt_kernel_channel *chan;
 		struct ltt_kernel_session *ksess = session->kernel_session;
 
-		/*
-		 * For each channel, add to the max size the size of each subbuffer
-		 * multiplied by their sized.
-		 */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			if (chan->channel->attr.subbuf_size > max_size) {
-				max_size = chan->channel->attr.subbuf_size;
+			if (cur_nr_packets >= chan->channel->attr.num_subbuf) {
+				/*
+				 * Don't take channel into account if we
+				 * already grab all its packets.
+				 */
+				continue;
 			}
+			tot_size += chan->channel->attr.subbuf_size
+				* chan->stream_count;
 		}
 	}
 
 	if (session->ust_session) {
-		struct lttng_ht_iter iter;
-		struct ltt_ust_channel *uchan;
 		struct ltt_ust_session *usess = session->ust_session;
 
-		rcu_read_lock();
-		cds_lfht_for_each_entry(usess->domain_global.channels->ht, &iter.iter,
-				uchan, node.node) {
-			if (uchan->attr.subbuf_size > max_size) {
-				max_size = uchan->attr.subbuf_size;
-			}
-		}
-		rcu_read_unlock();
+		tot_size += ust_app_get_size_one_more_packet_per_stream(usess,
+				cur_nr_packets);
 	}
 
-	return max_size;
+	return tot_size;
 }
 
 /*
- * Returns the total number of streams for a session or a negative value
- * on error.
+ * Calculate the number of packets we can grab from each stream that
+ * fits within the overall snapshot max size.
+ *
+ * Returns -1 on error, 0 means infinite number of packets, else > 0 is
+ * the number of packets per stream.
+ *
+ * TODO: this approach is not perfect: we consider the worse case
+ * (packet filling the sub-buffers) as an upper bound, but we could do
+ * better if we do this calculation while we actually grab the packet
+ * content: we would know how much padding we don't actually store into
+ * the file.
+ *
+ * This algorithm is currently bounded by the number of packets per
+ * stream.
+ *
+ * Since we call this algorithm before actually grabbing the data, it's
+ * an approximation: for instance, applications could appear/disappear
+ * in between this call and actually grabbing data.
  */
-static unsigned int get_session_nb_streams(struct ltt_session *session)
+static
+int64_t get_session_nb_packets_per_stream(struct ltt_session *session, uint64_t max_size)
 {
-	unsigned int total_streams = 0;
+	int64_t size_left;
+	uint64_t cur_nb_packets = 0;
 
-	if (session->kernel_session) {
-		struct ltt_kernel_session *ksess = session->kernel_session;
-
-		total_streams += ksess->stream_count_global;
+	if (!max_size) {
+		return 0;	/* Infinite */
 	}
 
-	if (session->ust_session) {
-		struct ltt_ust_session *usess = session->ust_session;
+	size_left = max_size;
+	for (;;) {
+		uint64_t one_more_packet_tot_size;
 
-		total_streams += ust_app_get_nb_stream(usess);
+		one_more_packet_tot_size = get_session_size_one_more_packet_per_stream(session,
+					cur_nb_packets);
+		if (!one_more_packet_tot_size) {
+			/* We are already grabbing all packets. */
+			break;
+		}
+		size_left -= one_more_packet_tot_size;
+		if (size_left < 0) {
+			break;
+		}
+		cur_nb_packets++;
 	}
-
-	return total_streams;
+	if (!cur_nb_packets) {
+		/* Not enough room to grab one packet of each stream, error. */
+		return -1;
+	}
+	return cur_nb_packets;
 }
 
 /*
@@ -3132,7 +3153,6 @@ int cmd_snapshot_record(struct ltt_session *session,
 	unsigned int use_tmp_output = 0;
 	struct snapshot_output tmp_output;
 	unsigned int nb_streams, snapshot_success = 0;
-	uint64_t session_max_size = 0, max_stream_size = 0;
 
 	assert(session);
 	assert(output);
@@ -3172,44 +3192,20 @@ int cmd_snapshot_record(struct ltt_session *session,
 		use_tmp_output = 1;
 	}
 
-	/*
-	 * Get the session maximum size for a snapshot meaning it will compute the
-	 * size of all streams from all domain.
-	 */
-	max_stream_size = get_session_max_subbuf_size(session);
-
-	nb_streams = get_session_nb_streams(session);
-	if (nb_streams) {
-		/*
-		 * The maximum size of the snapshot is the number of streams multiplied
-		 * by the biggest subbuf size of all channels in a session which is the
-		 * maximum stream size available for each stream. The session max size
-		 * is now checked against the snapshot max size value given by the user
-		 * and if lower, an error is returned.
-		 */
-		session_max_size = max_stream_size * nb_streams;
-	}
-
-	DBG3("Snapshot max size is %" PRIu64 " for max stream size of %" PRIu64,
-			session_max_size, max_stream_size);
-
-	/*
-	 * If we use a temporary output, check right away if the max size fits else
-	 * for each output the max size will be checked.
-	 */
-	if (use_tmp_output &&
-			(tmp_output.max_size != 0 &&
-			tmp_output.max_size < session_max_size)) {
-		ret = LTTNG_ERR_MAX_SIZE_INVALID;
-		goto error;
-	}
-
 	if (session->kernel_session) {
 		struct ltt_kernel_session *ksess = session->kernel_session;
 
 		if (use_tmp_output) {
+			int64_t nb_packets_per_stream;
+
+			nb_packets_per_stream = get_session_nb_packets_per_stream(session,
+					tmp_output.max_size);
+			if (nb_packets_per_stream < 0) {
+				ret = LTTNG_ERR_MAX_SIZE_INVALID;
+				goto error;
+			}
 			ret = record_kernel_snapshot(ksess, &tmp_output, session,
-					wait, max_stream_size);
+					wait, nb_packets_per_stream);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3221,6 +3217,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
+				int64_t nb_packets_per_stream;
+
 				/*
 				 * Make a local copy of the output and assign the possible
 				 * temporary value given by the caller.
@@ -3228,14 +3226,13 @@ int cmd_snapshot_record(struct ltt_session *session,
 				memset(&tmp_output, 0, sizeof(tmp_output));
 				memcpy(&tmp_output, sout, sizeof(tmp_output));
 
-				/* Use temporary max size. */
 				if (output->max_size != (uint64_t) -1ULL) {
 					tmp_output.max_size = output->max_size;
 				}
 
-				if (tmp_output.max_size != 0 &&
-						tmp_output.max_size < session_max_size) {
-					rcu_read_unlock();
+				nb_packets_per_stream = get_session_nb_packets_per_stream(session,
+						tmp_output.max_size);
+				if (nb_packets_per_stream < 0) {
 					ret = LTTNG_ERR_MAX_SIZE_INVALID;
 					goto error;
 				}
@@ -3249,7 +3246,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
 
 				ret = record_kernel_snapshot(ksess, &tmp_output,
-						session, wait, max_stream_size);
+						session, wait, nb_packets_per_stream);
 				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
@@ -3264,8 +3261,16 @@ int cmd_snapshot_record(struct ltt_session *session,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		if (use_tmp_output) {
+			int64_t nb_packets_per_stream;
+
+			nb_packets_per_stream = get_session_nb_packets_per_stream(session,
+					tmp_output.max_size);
+			if (nb_packets_per_stream < 0) {
+				ret = LTTNG_ERR_MAX_SIZE_INVALID;
+				goto error;
+			}
 			ret = record_ust_snapshot(usess, &tmp_output, session,
-					wait, max_stream_size);
+					wait, nb_packets_per_stream);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3277,6 +3282,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 					&iter.iter, sout, node.node) {
+				int64_t nb_packets_per_stream;
+
 				/*
 				 * Make a local copy of the output and assign the possible
 				 * temporary value given by the caller.
@@ -3284,15 +3291,15 @@ int cmd_snapshot_record(struct ltt_session *session,
 				memset(&tmp_output, 0, sizeof(tmp_output));
 				memcpy(&tmp_output, sout, sizeof(tmp_output));
 
-				/* Use temporary max size. */
 				if (output->max_size != (uint64_t) -1ULL) {
 					tmp_output.max_size = output->max_size;
 				}
 
-				if (tmp_output.max_size != 0 &&
-						tmp_output.max_size < session_max_size) {
-					rcu_read_unlock();
+				nb_packets_per_stream = get_session_nb_packets_per_stream(session,
+						tmp_output.max_size);
+				if (nb_packets_per_stream < 0) {
 					ret = LTTNG_ERR_MAX_SIZE_INVALID;
+					rcu_read_unlock();
 					goto error;
 				}
 
@@ -3305,7 +3312,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
 
 				ret = record_ust_snapshot(usess, &tmp_output, session,
-						wait, max_stream_size);
+						wait, nb_packets_per_stream);
 				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
