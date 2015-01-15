@@ -921,10 +921,6 @@ Name of the snapshot's output.
 Maximum size in bytes of the snapshot. The maximum size does not include the
 metadata file. Human readable format is accepted: {+k,+M,+G}. For instance,
 \-\-max-size 5M
-
-The minimum size of a snapshot is computed by multiplying the total amount of
-streams in the session by the largest subbuffer size. This is to ensure
-fairness between channels when extracting data.
 .TP
 .BR "\-C, \-\-ctrl-url URL"
 Set control path URL. (Must use -D also)

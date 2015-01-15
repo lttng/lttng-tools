@@ -852,7 +852,8 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  * Return 0 on success or else return a LTTNG_ERR code.
  */
 int kernel_snapshot_record(struct ltt_kernel_session *ksess,
-		struct snapshot_output *output, int wait, uint64_t max_size_per_stream)
+		struct snapshot_output *output, int wait,
+		uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
 	struct consumer_socket *socket;
@@ -913,7 +914,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
 					ksess->uid, ksess->gid,
 					DEFAULT_KERNEL_TRACE_DIR, wait,
-					max_size_per_stream);
+					nb_packets_per_stream);
 			pthread_mutex_unlock(socket->lock);
 			if (ret < 0) {
 				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
@@ -927,7 +928,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		pthread_mutex_lock(socket->lock);
 		ret = consumer_snapshot_channel(socket, ksess->metadata->fd, output,
 				1, ksess->uid, ksess->gid,
-				DEFAULT_KERNEL_TRACE_DIR, wait, max_size_per_stream);
+				DEFAULT_KERNEL_TRACE_DIR, wait, 0);
 		pthread_mutex_unlock(socket->lock);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
