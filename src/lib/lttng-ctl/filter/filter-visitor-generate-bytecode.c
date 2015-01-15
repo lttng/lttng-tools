@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "align.h"
+#include "common/align.h"
 #include "filter-bytecode.h"
 #include "filter-ir.h"
 #include "filter-ast.h"

@@ -46,6 +46,7 @@
 #include "consumer.h"
 #include "consumer-stream.h"
 #include "consumer-testpoint.h"
+#include "align.h"
 
 struct lttng_consumer_global_data consumer_data = {
 	.stream_count = 0,
@@ -3650,22 +3651,19 @@ int consumer_send_status_channel(int sock,
 	return lttcomm_send_unix_sock(sock, &msg, sizeof(msg));
 }
 
-/*
- * Using a maximum stream size with the produced and consumed position of a
- * stream, computes the new consumed position to be as close as possible to the
- * maximum possible stream size.
- *
- * If maximum stream size is lower than the possible buffer size (produced -
- * consumed), the consumed_pos given is returned untouched else the new value
- * is returned.
- */
-unsigned long consumer_get_consumed_maxsize(unsigned long consumed_pos,
-		unsigned long produced_pos, uint64_t max_stream_size)
+unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
+		unsigned long produced_pos, uint64_t nb_packets_per_stream,
+		uint64_t max_sb_size)
 {
-	if (max_stream_size && max_stream_size < (produced_pos - consumed_pos)) {
-		/* Offset from the produced position to get the latest buffers. */
-		return produced_pos - max_stream_size;
-	}
+	unsigned long start_pos;
 
-	return consumed_pos;
+	if (!nb_packets_per_stream) {
+		return consumed_pos;	/* Grab everything */
+	}
+	start_pos = produced_pos - offset_align_floor(produced_pos, max_sb_size);
+	start_pos -= max_sb_size * nb_packets_per_stream;
+	if ((long) (start_pos - consumed_pos) < 0) {
+		return consumed_pos;	/* Grab everything */
+	}
+	return start_pos;
 }

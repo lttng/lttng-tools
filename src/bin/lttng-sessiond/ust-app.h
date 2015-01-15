@@ -325,8 +325,10 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct snapshot_output *output, int wait, unsigned int nb_streams);
-unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess);
+		struct snapshot_output *output, int wait,
+		uint64_t nb_packets_per_stream);
+uint64_t ust_app_get_size_one_more_packet_per_stream(struct ltt_ust_session *usess,
+		uint64_t cur_nr_packets);
 struct ust_app *ust_app_find_by_sock(int sock);
 
 static inline

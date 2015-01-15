@@ -858,7 +858,7 @@ error:
  * Returns 0 on success, < 0 on error
  */
 static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
-		uint64_t max_stream_size, struct lttng_consumer_local_data *ctx)
+		uint64_t nb_packets_per_stream, struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	unsigned use_relayd = 0;
@@ -940,12 +940,13 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 
 		/*
 		 * The original value is sent back if max stream size is larger than
-		 * the possible size of the snapshot. Also, we asume that the session
+		 * the possible size of the snapshot. Also, we assume that the session
 		 * daemon should never send a maximum stream size that is lower than
 		 * subbuffer size.
 		 */
-		consumed_pos = consumer_get_consumed_maxsize(consumed_pos,
-				produced_pos, max_stream_size);
+		consumed_pos = consumer_get_consume_start_pos(consumed_pos,
+				produced_pos, nb_packets_per_stream,
+				stream->max_sb_size);
 
 		while (consumed_pos < produced_pos) {
 			ssize_t read_len;
@@ -1488,7 +1489,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			ret = snapshot_channel(msg.u.snapshot_channel.key,
 					msg.u.snapshot_channel.pathname,
 					msg.u.snapshot_channel.relayd_id,
-					msg.u.snapshot_channel.max_stream_size,
+					msg.u.snapshot_channel.nb_packets_per_stream,
 					ctx);
 			if (ret < 0) {
 				ERR("Snapshot channel failed");

@@ -51,6 +51,8 @@ struct buffer_reg_channel {
 	struct lttng_ht_node_u64 node;
 	/* Size of subbuffers in this channel. */
 	size_t subbuf_size;
+	/* Number of subbuffers per stream. */
+	size_t num_subbuf;
 	union {
 		/* Original object data that MUST be copied over. */
 		struct lttng_ust_object_data *ust;
