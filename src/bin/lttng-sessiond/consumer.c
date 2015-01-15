@@ -1276,7 +1276,7 @@ end:
  */
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
-		const char *session_path, int wait, int max_stream_size)
+		const char *session_path, int wait, uint64_t nb_packets_per_stream)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -1290,7 +1290,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_SNAPSHOT_CHANNEL;
 	msg.u.snapshot_channel.key = key;
-	msg.u.snapshot_channel.max_stream_size = max_stream_size;
+	msg.u.snapshot_channel.nb_packets_per_stream = nb_packets_per_stream;
 	msg.u.snapshot_channel.metadata = metadata;
 
 	if (output->consumer->type == CONSUMER_DST_NET) {
