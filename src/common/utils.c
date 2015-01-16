@@ -35,6 +35,7 @@
 
 #include <common/common.h>
 #include <common/runas.h>
+#include <common/compat/getenv.h>
 
 #include "utils.h"
 #include "defaults.h"
@@ -885,11 +886,11 @@ char *utils_get_home_dir(void)
 	char *val = NULL;
 	struct passwd *pwd;
 
-	val = getenv(DEFAULT_LTTNG_HOME_ENV_VAR);
+	val = lttng_secure_getenv(DEFAULT_LTTNG_HOME_ENV_VAR);
 	if (val != NULL) {
 		goto end;
 	}
-	val = getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
+	val = lttng_secure_getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
 	if (val != NULL) {
 		goto end;
 	}
@@ -954,7 +955,7 @@ end:
 LTTNG_HIDDEN
 char *utils_get_kmod_probes_list(void)
 {
-	return getenv(DEFAULT_LTTNG_KMOD_PROBES);
+	return lttng_secure_getenv(DEFAULT_LTTNG_KMOD_PROBES);
 }
 
 /*
@@ -964,7 +965,7 @@ char *utils_get_kmod_probes_list(void)
 LTTNG_HIDDEN
 char *utils_get_extra_kmod_probes_list(void)
 {
-	return getenv(DEFAULT_LTTNG_EXTRA_KMOD_PROBES);
+	return lttng_secure_getenv(DEFAULT_LTTNG_EXTRA_KMOD_PROBES);
 }
 
 /*

@@ -35,6 +35,7 @@
 #include <common/utils.h>
 #include <common/compat/mman.h>
 #include <common/compat/clone.h>
+#include <common/compat/getenv.h>
 
 #include "runas.h"
 
@@ -88,7 +89,7 @@ int use_clone(void)
 static
 int use_clone(void)
 {
-	return !getenv("LTTNG_DEBUG_NOCLONE");
+	return !lttng_secure_getenv("LTTNG_DEBUG_NOCLONE");
 }
 #endif
 

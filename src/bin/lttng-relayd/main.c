@@ -46,6 +46,7 @@
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
 #include <common/compat/endian.h>
+#include <common/compat/getenv.h>
 #include <common/defaults.h>
 #include <common/daemonize.h>
 #include <common/futex.h>
@@ -197,33 +198,48 @@ int set_option(int opt, const char *arg, const char *optname)
 		}
 		break;
 	case 'C':
-		ret = uri_parse(arg, &control_uri);
-		if (ret < 0) {
-			ERR("Invalid control URI specified");
-			goto end;
-		}
-		if (control_uri->port == 0) {
-			control_uri->port = DEFAULT_NETWORK_CONTROL_PORT;
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-C, --control-port");
+		} else {
+			ret = uri_parse(arg, &control_uri);
+			if (ret < 0) {
+				ERR("Invalid control URI specified");
+				goto end;
+			}
+			if (control_uri->port == 0) {
+				control_uri->port = DEFAULT_NETWORK_CONTROL_PORT;
+			}
 		}
 		break;
 	case 'D':
-		ret = uri_parse(arg, &data_uri);
-		if (ret < 0) {
-			ERR("Invalid data URI specified");
-			goto end;
-		}
-		if (data_uri->port == 0) {
-			data_uri->port = DEFAULT_NETWORK_DATA_PORT;
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-D, -data-port");
+		} else {
+			ret = uri_parse(arg, &data_uri);
+			if (ret < 0) {
+				ERR("Invalid data URI specified");
+				goto end;
+			}
+			if (data_uri->port == 0) {
+				data_uri->port = DEFAULT_NETWORK_DATA_PORT;
+			}
 		}
 		break;
 	case 'L':
-		ret = uri_parse(arg, &live_uri);
-		if (ret < 0) {
-			ERR("Invalid live URI specified");
-			goto end;
-		}
-		if (live_uri->port == 0) {
-			live_uri->port = DEFAULT_NETWORK_VIEWER_PORT;
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-L, -live-port");
+		} else {
+			ret = uri_parse(arg, &live_uri);
+			if (ret < 0) {
+				ERR("Invalid live URI specified");
+				goto end;
+			}
+			if (live_uri->port == 0) {
+				live_uri->port = DEFAULT_NETWORK_VIEWER_PORT;
+			}
 		}
 		break;
 	case 'd':
@@ -233,23 +249,33 @@ int set_option(int opt, const char *arg, const char *optname)
 		opt_background = 1;
 		break;
 	case 'g':
-		tracing_group_name = strdup(arg);
-		if (tracing_group_name == NULL) {
-			ret = -errno;
-			PERROR("strdup");
-			goto end;
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-g, --group");
+		} else {
+			tracing_group_name = strdup(arg);
+			if (tracing_group_name == NULL) {
+				ret = -errno;
+				PERROR("strdup");
+				goto end;
+			}
+			tracing_group_name_override = 1;
 		}
-		tracing_group_name_override = 1;
 		break;
 	case 'h':
 		usage();
 		exit(EXIT_FAILURE);
 	case 'o':
-		ret = asprintf(&opt_output_path, "%s", arg);
-		if (ret < 0) {
-			ret = -errno;
-			PERROR("asprintf opt_output_path");
-			goto end;
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-o, --output");
+		} else {
+			ret = asprintf(&opt_output_path, "%s", arg);
+			if (ret < 0) {
+				ret = -errno;
+				PERROR("asprintf opt_output_path");
+				goto end;
+			}
 		}
 		break;
 	case 'v':
@@ -359,9 +385,14 @@ int set_options(int argc, char **argv)
 			continue;
 		}
 
-		config_path = utils_expand_path(optarg);
-		if (!config_path) {
-			ERR("Failed to resolve path: %s", optarg);
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-f, --config");
+		} else {
+			config_path = utils_expand_path(optarg);
+			if (!config_path) {
+				ERR("Failed to resolve path: %s", optarg);
+			}
 		}
 	}
 

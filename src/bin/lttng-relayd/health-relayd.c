@@ -49,6 +49,7 @@
 #include <common/compat/poll.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/utils.h>
+#include <common/compat/getenv.h>
 
 #include "lttng-relayd.h"
 #include "health-relayd.h"
@@ -136,7 +137,7 @@ int parse_health_env(void)
 {
 	const char *health_path;
 
-	health_path = getenv(LTTNG_RELAYD_HEALTH_ENV);
+	health_path = lttng_secure_getenv(LTTNG_RELAYD_HEALTH_ENV);
 	if (health_path) {
 		strncpy(health_unix_sock_path, health_path,
 			PATH_MAX);

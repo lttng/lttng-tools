@@ -30,6 +30,7 @@
 
 #include <lttng/lttng.h>
 #include <common/error.h>
+#include <common/compat/getenv.h>
 
 #include "command.h"
 
@@ -444,6 +445,11 @@ static int parse_args(int argc, char **argv)
 {
 	int opt, ret;
 	char *user;
+
+	if (lttng_is_setuid_setgid()) {
+		ERR("'%s' is not allowed to be executed as a setuid/setgid binary for security reasons. Aborting.", argv[0]);
+		clean_exit(EXIT_FAILURE);
+	}
 
 	if (argc < 2) {
 		usage(stderr);

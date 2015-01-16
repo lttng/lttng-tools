@@ -32,6 +32,7 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/utils.h>
+#include <common/compat/getenv.h>
 #include <lttng/lttng-error.h>
 #include <libxml/parser.h>
 #include <libxml/valid.h>
@@ -595,7 +596,7 @@ static
 char *get_session_config_xsd_path()
 {
 	char *xsd_path;
-	const char *base_path = getenv(DEFAULT_SESSION_CONFIG_XSD_PATH_ENV);
+	const char *base_path = lttng_secure_getenv(DEFAULT_SESSION_CONFIG_XSD_PATH_ENV);
 	size_t base_path_len;
 	size_t max_path_len;
 

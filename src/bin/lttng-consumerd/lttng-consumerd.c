@@ -47,6 +47,7 @@
 #include <common/consumer.h>
 #include <common/consumer-timer.h>
 #include <common/compat/poll.h>
+#include <common/compat/getenv.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/utils.h>
 
@@ -223,16 +224,31 @@ static int parse_args(int argc, char **argv)
 			}
 			break;
 		case 'c':
-			snprintf(command_sock_path, PATH_MAX, "%s", optarg);
+			if (lttng_is_setuid_setgid()) {
+				WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+					"-c, --consumerd-cmd-sock");
+			} else {
+				snprintf(command_sock_path, PATH_MAX, "%s", optarg);
+			}
 			break;
 		case 'e':
-			snprintf(error_sock_path, PATH_MAX, "%s", optarg);
+			if (lttng_is_setuid_setgid()) {
+				WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+					"-e, --consumerd-err-sock");
+			} else {
+				snprintf(error_sock_path, PATH_MAX, "%s", optarg);
+			}
 			break;
 		case 'd':
 			opt_daemon = 1;
 			break;
 		case 'g':
-			tracing_group_name = optarg;
+			if (lttng_is_setuid_setgid()) {
+				WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+					"-g, --group");
+			} else {
+				tracing_group_name = optarg;
+			}
 			break;
 		case 'h':
 			usage(stdout);
