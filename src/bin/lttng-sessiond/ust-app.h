@@ -328,8 +328,8 @@ void ust_app_destroy(struct ust_app *app);
 int ust_app_snapshot_record(struct ltt_ust_session *usess,
 		struct snapshot_output *output, int wait,
 		uint64_t nb_packets_per_stream);
-uint64_t ust_app_get_size_one_more_packet_per_stream(struct ltt_ust_session *usess,
-		uint64_t cur_nr_packets);
+uint64_t ust_app_get_size_one_more_packet_per_stream(
+		struct ltt_ust_session *usess, uint64_t cur_nr_packets);
 struct ust_app *ust_app_find_by_sock(int sock);
 
 static inline
@@ -537,6 +537,11 @@ static inline
 struct ust_app *ust_app_find_by_pid(pid_t pid)
 {
 	return NULL;
+}
+static inline
+uint64_t ust_app_get_size_one_more_packet_per_stream(
+		struct ltt_ust_session *usess, uint64_t cur_nr_packets) {
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
