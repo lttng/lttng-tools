@@ -3152,7 +3152,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	int ret = LTTNG_OK;
 	unsigned int use_tmp_output = 0;
 	struct snapshot_output tmp_output;
-	unsigned int nb_streams, snapshot_success = 0;
+	unsigned int snapshot_success = 0;
 
 	assert(session);
 	assert(output);
