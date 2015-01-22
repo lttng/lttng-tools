@@ -2331,7 +2331,6 @@ restart:
 
 	/* All is OK */
 	err = 0;
-error:
 end:
 	DBG("Metadata poll thread exiting");
 
