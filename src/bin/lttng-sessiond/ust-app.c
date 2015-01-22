@@ -591,7 +591,6 @@ static int push_metadata(struct ust_registry_session *registry,
 	return 0;
 
 error:
-end:
 	return ret_val;
 }
 
@@ -4092,7 +4091,6 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 		break;
 	}
 
-end_no_session:
 	rcu_read_unlock();
 	health_code_update();
 	return ret;
@@ -4988,7 +4986,6 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
-	uint64_t max_stream_size = 0;
 
 	assert(usess);
 	assert(output);

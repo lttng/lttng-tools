@@ -838,7 +838,6 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_metadata *saved_metadata;
-	uint64_t max_size_per_stream = 0;
 
 	assert(ksess);
 	assert(ksess->consumer);
