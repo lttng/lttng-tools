@@ -33,8 +33,12 @@ struct ust_app;
 
 struct ust_registry_session {
 	/*
-	 * With multiple writers and readers, use this lock to access the registry.
-	 * Can nest within the ust app session lock.
+	 * With multiple writers and readers, use this lock to access
+	 * the registry. Can nest within the ust app session lock.
+	 * Also acts as a registry serialization lock. Used by registry
+	 * readers to serialize the registry information sent from the
+	 * sessiond to the consumerd.
+	 * The consumer socket lock nests within this lock.
 	 */
 	pthread_mutex_t lock;
 	/* Next channel ID available for a newly registered channel. */
@@ -63,11 +67,13 @@ struct ust_registry_session {
 	/* Length of bytes sent to the consumer. */
 	size_t metadata_len_sent;
 	/*
-	 * Hash table containing channels sent by the UST tracer. MUST be accessed
-	 * with a RCU read side lock acquired.
+	 * Hash table containing channels sent by the UST tracer. MUST
+	 * be accessed with a RCU read side lock acquired.
 	 */
 	struct lttng_ht *channels;
-	/* Unique key to identify the metadata on the consumer side. */
+	/*
+	 * Unique key to identify the metadata on the consumer side.
+	 */
 	uint64_t metadata_key;
 	/*
 	 * Indicates if the metadata is closed on the consumer side. This is to
