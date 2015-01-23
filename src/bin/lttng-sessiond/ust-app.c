@@ -425,8 +425,9 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 /*
  * Push metadata to consumer socket.
  *
- * The socket lock MUST be acquired.
- * The ust app session lock MUST be acquired.
+ * RCU read-side lock must be held to guarantee existance of socket.
+ * Must be called with the ust app session lock held.
+ * Must be called with the registry lock held.
  *
  * On success, return the len of metadata pushed or else a negative value.
  */
@@ -441,25 +442,22 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	assert(registry);
 	assert(socket);
 
-	pthread_mutex_lock(&registry->lock);
-
 	/*
-	 * Means that no metadata was assigned to the session. This can happens if
-	 * no start has been done previously.
+	 * Means that no metadata was assigned to the session. This can
+	 * happens if no start has been done previously.
 	 */
 	if (!registry->metadata_key) {
-		pthread_mutex_unlock(&registry->lock);
 		return 0;
 	}
 
 	/*
-	 * On a push metadata error either the consumer is dead or the metadata
-	 * channel has been destroyed because its endpoint might have died (e.g:
-	 * relayd). If so, the metadata closed flag is set to 1 so we deny pushing
-	 * metadata again which is not valid anymore on the consumer side.
+	 * On a push metadata error either the consumer is dead or the
+	 * metadata channel has been destroyed because its endpoint
+	 * might have died (e.g: relayd). If so, the metadata closed
+	 * flag is set to 1 so we deny pushing metadata again which is
+	 * not valid anymore on the consumer side.
 	 */
 	if (registry->metadata_closed) {
-		pthread_mutex_unlock(&registry->lock);
 		return -EPIPE;
 	}
 
@@ -488,29 +486,32 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	registry->metadata_len_sent += len;
 
 push_data:
-	pthread_mutex_unlock(&registry->lock);
 	ret = consumer_push_metadata(socket, registry->metadata_key,
 			metadata_str, len, offset);
 	if (ret < 0) {
 		/*
-		 * There is an acceptable race here between the registry metadata key
-		 * assignment and the creation on the consumer. The session daemon can
-		 * concurrently push metadata for this registry while being created on
-		 * the consumer since the metadata key of the registry is assigned
-		 * *before* it is setup to avoid the consumer to ask for metadata that
-		 * could possibly be not found in the session daemon.
+		 * There is an acceptable race here between the registry
+		 * metadata key assignment and the creation on the
+		 * consumer. The session daemon can concurrently push
+		 * metadata for this registry while being created on the
+		 * consumer since the metadata key of the registry is
+		 * assigned *before* it is setup to avoid the consumer
+		 * to ask for metadata that could possibly be not found
+		 * in the session daemon.
 		 *
-		 * The metadata will get pushed either by the session being stopped or
-		 * the consumer requesting metadata if that race is triggered.
+		 * The metadata will get pushed either by the session
+		 * being stopped or the consumer requesting metadata if
+		 * that race is triggered.
 		 */
 		if (ret == -LTTCOMM_CONSUMERD_CHANNEL_FAIL) {
 			ret = 0;
 		}
 
-		/* Update back the actual metadata len sent since it failed here. */
-		pthread_mutex_lock(&registry->lock);
+		/*
+		 * Update back the actual metadata len sent since it
+		 * failed here.
+		 */
 		registry->metadata_len_sent -= len;
-		pthread_mutex_unlock(&registry->lock);
 		ret_val = ret;
 		goto error_push;
 	}
@@ -522,13 +523,14 @@ end:
 error:
 	if (ret_val) {
 		/*
-		 * On error, flag the registry that the metadata is closed. We were unable
-		 * to push anything and this means that either the consumer is not
-		 * responding or the metadata cache has been destroyed on the consumer.
+		 * On error, flag the registry that the metadata is
+		 * closed. We were unable to push anything and this
+		 * means that either the consumer is not responding or
+		 * the metadata cache has been destroyed on the
+		 * consumer.
 		 */
 		registry->metadata_closed = 1;
 	}
-	pthread_mutex_unlock(&registry->lock);
 error_push:
 	free(metadata_str);
 	return ret_val;
@@ -540,7 +542,8 @@ error_push:
  * socket to send the metadata is retrieved from consumer, if sock
  * is not NULL we use it to send the metadata.
  * RCU read-side lock must be held while calling this function,
- * therefore ensuring existance of registry.
+ * therefore ensuring existance of registry. It also ensures existance
+ * of socket throughout this function.
  *
  * Return 0 on success else a negative error.
  */
@@ -555,49 +558,37 @@ static int push_metadata(struct ust_registry_session *registry,
 	assert(consumer);
 
 	pthread_mutex_lock(&registry->lock);
-
 	if (registry->metadata_closed) {
-		pthread_mutex_unlock(&registry->lock);
-		return -EPIPE;
+		ret_val = -EPIPE;
+		goto error;
 	}
 
 	/* Get consumer socket to use to push the metadata.*/
 	socket = consumer_find_socket_by_bitness(registry->bits_per_long,
 			consumer);
-	pthread_mutex_unlock(&registry->lock);
 	if (!socket) {
 		ret_val = -1;
 		goto error;
 	}
 
-	/*
-	 * TODO: Currently, we hold the socket lock around sampling of the next
-	 * metadata segment to ensure we send metadata over the consumer socket in
-	 * the correct order. This makes the registry lock nest inside the socket
-	 * lock.
-	 *
-	 * Please note that this is a temporary measure: we should move this lock
-	 * back into ust_consumer_push_metadata() when the consumer gets the
-	 * ability to reorder the metadata it receives.
-	 */
-	pthread_mutex_lock(socket->lock);
 	ret = ust_app_push_metadata(registry, socket, 0);
-	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		ret_val = ret;
 		goto error;
 	}
-
+	pthread_mutex_unlock(&registry->lock);
 	return 0;
 
 error:
+end:
+	pthread_mutex_unlock(&registry->lock);
 	return ret_val;
 }
 
 /*
  * Send to the consumer a close metadata command for the given session. Once
  * done, the metadata channel is deleted and the session metadata pointer is
- * nullified. The session lock MUST be acquired here unless the application is
+ * nullified. The session lock MUST be held unless the application is
  * in the destroy path.
  *
  * Return 0 on success else a negative value.
