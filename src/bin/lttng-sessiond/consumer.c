@@ -1158,7 +1158,8 @@ end:
 }
 
 /*
- * Send a close metdata command to consumer using the given channel key.
+ * Send a close metadata command to consumer using the given channel key.
+ * Called with registry lock held.
  *
  * Return 0 on success else a negative value.
  */
@@ -1224,7 +1225,8 @@ end:
 }
 
 /*
- * Send metadata string to consumer. Socket lock MUST be acquired.
+ * Send metadata string to consumer.
+ * RCU read-side lock must be held to guarantee existence of socket.
  *
  * Return 0 on success else a negative value.
  */
@@ -1238,6 +1240,8 @@ int consumer_push_metadata(struct consumer_socket *socket,
 	assert(socket);
 
 	DBG2("Consumer push metadata to consumer socket %d", *socket->fd_ptr);
+
+	pthread_mutex_lock(socket->lock);
 
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_PUSH_METADATA;
@@ -1266,6 +1270,7 @@ int consumer_push_metadata(struct consumer_socket *socket,
 	}
 
 end:
+	pthread_mutex_unlock(socket->lock);
 	health_code_update();
 	return ret;
 }
