@@ -447,12 +447,12 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	assert(socket);
 
 	rcu_read_lock();
-	pthread_mutex_lock(socket->lock);
-
 	health_code_update();
 
 	/* Wait for a metadata request */
+	pthread_mutex_lock(socket->lock);
 	ret = consumer_socket_recv(socket, &request, sizeof(request));
+	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		goto end;
 	}
@@ -487,7 +487,9 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	}
 	assert(ust_reg);
 
+	pthread_mutex_lock(&ust_reg->lock);
 	ret_push = ust_app_push_metadata(ust_reg, socket, 1);
+	pthread_mutex_unlock(&ust_reg->lock);
 	if (ret_push < 0) {
 		ERR("Pushing metadata");
 		ret = -1;
@@ -497,7 +499,6 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	ret = 0;
 
 end:
-	pthread_mutex_unlock(socket->lock);
 	rcu_read_unlock();
 	return ret;
 }
