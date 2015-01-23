@@ -4132,7 +4132,7 @@ static
 int ust_app_flush_session(struct ltt_ust_session *usess)
 
 {
-	int ret;
+	int ret = 0;
 
 	DBG("Flushing session buffers for all ust apps");
 
@@ -4173,7 +4173,6 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 			/* Push metadata. */
 			(void) push_metadata(ust_session_reg, usess->consumer);
 		}
-		ret = 0;
 		break;
 	}
 	case LTTNG_BUFFER_PER_PID:
@@ -4192,6 +4191,7 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 		break;
 	}
 	default:
+		ret = -1;
 		assert(0);
 		break;
 	}
