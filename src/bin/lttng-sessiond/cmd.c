@@ -912,11 +912,6 @@ int cmd_disable_channel(struct ltt_session *session, int domain,
 		}
 		break;
 	}
-#if 0
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-#endif
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
@@ -953,12 +948,7 @@ int cmd_track_pid(struct ltt_session *session, int domain, int pid)
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
 	}
-#if 0
 	case LTTNG_DOMAIN_UST:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-#endif
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
@@ -995,12 +985,7 @@ int cmd_untrack_pid(struct ltt_session *session, int domain, int pid)
 		kernel_wait_quiescent(kernel_tracer_fd);
 		break;
 	}
-#if 0
 	case LTTNG_DOMAIN_UST:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-#endif
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
@@ -1270,11 +1255,6 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		break;
 	}
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
@@ -1414,11 +1394,6 @@ int cmd_add_context(struct ltt_session *session, int domain,
 		}
 		break;
 	}
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
@@ -1745,11 +1720,6 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		break;
 	}
-#if 0
-	case LTTNG_DOMAIN_UST_EXEC_NAME:
-	case LTTNG_DOMAIN_UST_PID:
-	case LTTNG_DOMAIN_UST_PID_FOLLOW_CHILDREN:
-#endif
 	default:
 		ret = LTTNG_ERR_UND;
 		goto error;
