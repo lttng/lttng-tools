@@ -1,3 +1,33 @@
+2015-01-26 lttng-tools 2.5.4 (Paul the Octopus is born)
+	* Revert "Update version to v2.5.4"
+	* Fix: Add align.h and bug.h to src/common noinst target
+	* Update version to v2.5.4
+	* Tests: Run health check test_thread_ok as part of root_regression
+	* Fix: deadlock between UST registry lock and consumer lock
+	* Fix: uninitialized return value
+	* Fix: build failure using disable-lttng-ust configure option
+	* Fix: Warnings introduced by backported fixes
+	* Fix: grab more than one packet for snapshots
+	* Fix: per-uid flush and ust registry locking
+	* Fix: add missing synchronization point for before app test case
+	* Fix: tests: wait output hide Terminate errors
+	* Fix: tests: remove killall, add missing SIGTERM handlers
+	* Fix: high throughput test: reset bw limit on sigterm
+	* Fix: tests: add missing wait, document missing synchro
+	* Document test anti-patterns
+	* Fix: test flaky sleep and wait patterns
+	* Fix: tests: don't use pidof to wait for test apps
+	* Fix: tests: integer too large for long type
+	* Fix: undefined operation on last_relay_viewer_session_id
+	* Fix: print format type mismatch
+	* Fix: exit threads not only on goto restart
+	* Fix: poll: show the correct number of fds
+	* Fix: compat poll: add missing empty revents checks
+	* Fix: various compat poll/epoll issues
+	* Fix: ust-app: per-PID app unregister vs tracing stop races
+	* Fix: data pending: allow empty streams
+	* Fix: ust snapshot: cleanup after error
+
 2014-12-12 lttng-tools 2.5.3 (International Day Of Heavy Metal)
 	* Fix: don't destroy the sockets if the snapshot was successful
 	* Fix: Missing RCU read lock in kernel_destroy_session()
