@@ -6,3 +6,4 @@ regression/tools/streaming/test_high_throughput_limits
 regression/tools/streaming/test_kernel
 regression/tools/snapshots/test_kernel
 regression/tools/snapshots/test_kernel_streaming
+regression/tools/health/test_thread_ok
