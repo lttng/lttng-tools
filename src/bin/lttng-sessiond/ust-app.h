@@ -313,7 +313,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx);
-void ust_app_global_update(struct ltt_ust_session *usess, int sock);
+void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app);
+void ust_app_global_update_all(struct ltt_ust_session *usess);
 
 void ust_app_clean_list(void);
 int ust_app_ht_alloc(void);

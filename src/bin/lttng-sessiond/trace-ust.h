@@ -74,6 +74,14 @@ struct ltt_ust_domain_global {
 	struct cds_list_head registry_buffer_uid_list;
 };
 
+struct ust_pid_tracker_node {
+	struct lttng_ht_node_ulong node;
+};
+
+struct ust_pid_tracker {
+	struct lttng_ht *ht;
+};
+
 /* UST session */
 struct ltt_ust_session {
 	uint64_t id;    /* Unique identifier of session */
@@ -119,6 +127,8 @@ struct ltt_ust_session {
 	 */
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
+
+	struct ust_pid_tracker pid_tracker;
 };
 
 /*
@@ -190,6 +200,9 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
 void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
+
+int trace_ust_track_pid(struct ltt_ust_session *session, int pid);
+int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -271,6 +284,16 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 		enum lttng_domain_type domain_type)
 {
 	return NULL;
+}
+static inline
+int trace_ust_track_pid(struct ltt_ust_session *session, int pid)
+{
+	return 0;
+}
+static inline
+int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
+{
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

@@ -3726,6 +3726,11 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 			 */
 			continue;
 		}
+		if (!trace_ust_pid_tracker_lookup(usess, app->pid)) {
+			/* Skip. */
+			continue;
+		}
+
 		/*
 		 * Create session on the tracer side and add it to app session HT. Note
 		 * that if session exist, it will simply return a pointer to the ust
@@ -4353,45 +4358,25 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 	return 0;
 }
 
-/*
- * Add channels/events from UST global domain to registered apps at sock.
- */
-void ust_app_global_update(struct ltt_ust_session *usess, int sock)
+static
+void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter, uiter;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess = NULL;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
+	int is_created = 0;
 
-	assert(usess);
-	assert(sock >= 0);
-
-	DBG2("UST app global update for app sock %d for session id %" PRIu64, sock,
-			usess->id);
-
-	rcu_read_lock();
-
-	app = ust_app_find_by_sock(sock);
-	if (app == NULL) {
-		/*
-		 * Application can be unregistered before so this is possible hence
-		 * simply stopping the update.
-		 */
-		DBG3("UST app update failed to find app sock %d", sock);
-		goto error;
-	}
-
-	if (!app->compatible) {
-		goto error;
-	}
-
-	ret = create_ust_app_session(usess, app, &ua_sess, NULL);
+	ret = create_ust_app_session(usess, app, &ua_sess, &is_created);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
 		goto error;
+	}
+	if (!is_created) {
+		/* App session already created. */
+		goto end;
 	}
 	assert(ua_sess);
 
@@ -4446,9 +4431,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, int sock)
 
 		DBG2("UST trace started for app pid %d", app->pid);
 	}
-
+end:
 	/* Everything went well at this point. */
-	rcu_read_unlock();
 	return;
 
 error_unlock:
@@ -4457,8 +4441,58 @@ error:
 	if (ua_sess) {
 		destroy_app_session(app, ua_sess);
 	}
-	rcu_read_unlock();
 	return;
+}
+
+static
+void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app *app)
+{
+	struct ust_app_session *ua_sess;
+
+	ua_sess = lookup_session_by_app(usess, app);
+	if (ua_sess == NULL) {
+		return;
+	}
+	destroy_app_session(app, ua_sess);
+}
+
+/*
+ * Add channels/events from UST global domain to registered apps at sock.
+ *
+ * Called with session lock held.
+ * Called with RCU read-side lock held.
+ */
+void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
+{
+	assert(usess);
+
+	DBG2("UST app global update for app sock %d for session id %" PRIu64,
+			app->sock, usess->id);
+
+	if (!app->compatible) {
+		return;
+	}
+
+	if (trace_ust_pid_tracker_lookup(usess, app->pid)) {
+		ust_app_global_create(usess, app);
+	} else {
+		ust_app_global_destroy(usess, app);
+	}
+}
+
+/*
+ * Called with session lock held.
+ */
+void ust_app_global_update_all(struct ltt_ust_session *usess)
+{
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		ust_app_global_update(usess, app);
+	}
+	rcu_read_unlock();
 }
 
 /*

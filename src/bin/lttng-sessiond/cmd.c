@@ -926,6 +926,8 @@ error:
 
 /*
  * Command LTTNG_TRACK_PID processed by the client thread.
+ *
+ * Called with session lock held.
  */
 int cmd_track_pid(struct ltt_session *session, int domain, int pid)
 {
@@ -949,6 +951,17 @@ int cmd_track_pid(struct ltt_session *session, int domain, int pid)
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess;
+
+		usess = session->ust_session;
+
+		ret = trace_ust_track_pid(usess, pid);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+		break;
+	}
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
@@ -963,6 +976,8 @@ error:
 
 /*
  * Command LTTNG_UNTRACK_PID processed by the client thread.
+ *
+ * Called with session lock held.
  */
 int cmd_untrack_pid(struct ltt_session *session, int domain, int pid)
 {
@@ -986,6 +1001,17 @@ int cmd_untrack_pid(struct ltt_session *session, int domain, int pid)
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess;
+
+		usess = session->ust_session;
+
+		ret = trace_ust_untrack_pid(usess, pid);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+		break;
+	}
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
@@ -1925,6 +1951,8 @@ ssize_t cmd_list_syscalls(struct lttng_event **events)
 
 /*
  * Command LTTNG_START_TRACE processed by the client thread.
+ *
+ * Called with session mutex held.
  */
 int cmd_start_trace(struct ltt_session *session)
 {
@@ -2285,6 +2313,8 @@ error:
 
 /*
  * Command LTTNG_DESTROY_SESSION processed by the client thread.
+ *
+ * Called with session lock held.
  */
 int cmd_destroy_session(struct ltt_session *session, int wpipe)
 {

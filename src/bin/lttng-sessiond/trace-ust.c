@@ -29,6 +29,7 @@
 #include "buffer-registry.h"
 #include "trace-ust.h"
 #include "utils.h"
+#include "ust-app.h"
 
 /*
  * Match function for the events hash table lookup.
@@ -567,6 +568,246 @@ error:
 	return NULL;
 }
 
+static
+void destroy_pid_tracker_node_rcu(struct rcu_head *head)
+{
+	struct ust_pid_tracker_node *tracker_node =
+		caa_container_of(head, struct ust_pid_tracker_node, node.head);
+	free(tracker_node);
+}
+
+static
+void destroy_pid_tracker_node(struct ust_pid_tracker_node *tracker_node)
+{
+
+	call_rcu(&tracker_node->node.head, destroy_pid_tracker_node_rcu);
+}
+
+static
+int init_pid_tracker(struct ust_pid_tracker *pid_tracker)
+{
+	int ret = 0;
+
+	pid_tracker->ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!pid_tracker->ht) {
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Teardown pid tracker content, but don't free pid_tracker object.
+ */
+static
+void fini_pid_tracker(struct ust_pid_tracker *pid_tracker)
+{
+	struct ust_pid_tracker_node *tracker_node;
+	struct lttng_ht_iter iter;
+
+	if (!pid_tracker->ht) {
+		return;
+	}
+	rcu_read_lock();
+	cds_lfht_for_each_entry(pid_tracker->ht->ht,
+			&iter.iter, tracker_node, node.node) {
+		int ret = lttng_ht_del(pid_tracker->ht, &iter);
+
+		assert(!ret);
+		destroy_pid_tracker_node(tracker_node);
+	}
+	rcu_read_unlock();
+	ht_cleanup_push(pid_tracker->ht);
+	pid_tracker->ht = NULL;
+}
+
+static
+struct ust_pid_tracker_node *pid_tracker_lookup(
+		struct ust_pid_tracker *pid_tracker, int pid,
+		struct lttng_ht_iter *iter)
+{
+	unsigned long _pid = (unsigned long) pid;
+	struct lttng_ht_node_ulong *node;
+
+	lttng_ht_lookup(pid_tracker->ht, (void *) _pid, iter);
+	node = lttng_ht_iter_get_node_ulong(iter);
+	if (node) {
+		return caa_container_of(node, struct ust_pid_tracker_node,
+			node);
+	} else {
+		return NULL;
+	}
+}
+
+static
+int pid_tracker_add_pid(struct ust_pid_tracker *pid_tracker, int pid)
+{
+	int retval = LTTNG_OK;
+	struct ust_pid_tracker_node *tracker_node;
+	struct lttng_ht_iter iter;
+
+	if (pid < 0) {
+		retval = LTTNG_ERR_INVALID;
+		goto end;
+	}
+	tracker_node = pid_tracker_lookup(pid_tracker, pid, &iter);
+	if (tracker_node) {
+		/* Already exists. */
+		retval = LTTNG_ERR_INVALID;
+		goto end;
+	}
+	tracker_node = zmalloc(sizeof(*tracker_node));
+	if (!tracker_node) {
+		retval = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+	lttng_ht_node_init_ulong(&tracker_node->node, (unsigned long) pid);
+	lttng_ht_add_unique_ulong(pid_tracker->ht, &tracker_node->node);
+end:
+	return retval;
+}
+
+static
+int pid_tracker_del_pid(struct ust_pid_tracker *pid_tracker, int pid)
+{
+	int retval = LTTNG_OK, ret;
+	struct ust_pid_tracker_node *tracker_node;
+	struct lttng_ht_iter iter;
+
+	if (pid < 0) {
+		retval = LTTNG_ERR_INVALID;
+		goto end;
+	}
+	tracker_node = pid_tracker_lookup(pid_tracker, pid, &iter);
+	if (!tracker_node) {
+		/* Not found */
+		retval = LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret = lttng_ht_del(pid_tracker->ht, &iter);
+	assert(!ret);
+
+	destroy_pid_tracker_node(tracker_node);
+end:
+	return retval;
+}
+
+/*
+ * The session lock is held when calling this function.
+ */
+int trace_ust_pid_tracker_lookup(struct ltt_ust_session *session, int pid)
+{
+	struct lttng_ht_iter iter;
+
+	if (!session->pid_tracker.ht) {
+		return 1;
+	}
+	if (pid_tracker_lookup(&session->pid_tracker, pid, &iter)) {
+		return 1;
+	}
+	return 0;
+}
+
+/*
+ * Called with the session lock held.
+ */
+int trace_ust_track_pid(struct ltt_ust_session *session, int pid)
+{
+	int retval = LTTNG_OK;
+
+	if (pid == -1) {
+		/* Track all pids: destroy tracker if exists. */
+		if (session->pid_tracker.ht) {
+			fini_pid_tracker(&session->pid_tracker);
+			/* Ensure all apps have session. */
+			ust_app_global_update_all(session);
+		}
+	} else {
+		int ret;
+
+		if (!session->pid_tracker.ht) {
+			/* Create tracker. */
+			if (init_pid_tracker(&session->pid_tracker)) {
+				ERR("Error initializing PID tracker");
+				retval = LTTNG_ERR_NOMEM;
+				goto end;
+			}
+			ret = pid_tracker_add_pid(&session->pid_tracker, pid);
+			if (ret != LTTNG_OK) {
+				retval = ret;
+				fini_pid_tracker(&session->pid_tracker);
+				goto end;
+			}
+			/* Remove all apps from session except pid. */
+			ust_app_global_update_all(session);
+		} else {
+			struct ust_app *app;
+
+			ret = pid_tracker_add_pid(&session->pid_tracker, pid);
+			if (ret != LTTNG_OK) {
+				retval = ret;
+				goto end;
+			}
+			/* Add session to application */
+			app = ust_app_find_by_pid(pid);
+			if (app) {
+				ust_app_global_update(session, app);
+			}
+		}
+	}
+end:
+	return retval;
+}
+
+/*
+ * Called with the session lock held.
+ */
+int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
+{
+	int retval = LTTNG_OK;
+
+	if (pid == -1) {
+		/* Create empty tracker, replace old tracker. */
+		struct ust_pid_tracker tmp_tracker;
+
+		tmp_tracker = session->pid_tracker;
+		if (init_pid_tracker(&session->pid_tracker)) {
+			ERR("Error initializing PID tracker");
+			retval = LTTNG_ERR_NOMEM;
+			/* Rollback operation. */
+			session->pid_tracker = tmp_tracker;
+			goto end;
+		}
+		fini_pid_tracker(&tmp_tracker);
+
+		/* Remove session from all applications */
+		ust_app_global_update_all(session);
+	} else {
+		int ret;
+		struct ust_app *app;
+
+		if (!session->pid_tracker.ht) {
+			retval = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		/* Remove PID from tracker */
+		ret = pid_tracker_del_pid(&session->pid_tracker, pid);
+		if (ret != LTTNG_OK) {
+			retval = ret;
+			goto end;
+		}
+		/* Remove session from application. */
+		app = ust_app_find_by_pid(pid);
+		if (app) {
+			ust_app_global_update(session, app);
+		}
+	}
+end:
+	return retval;
+}
+
 /*
  * RCU safe free context structure.
  */
@@ -783,6 +1024,8 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 
 	consumer_destroy_output(session->consumer);
 	consumer_destroy_output(session->tmp_consumer);
+
+	fini_pid_tracker(&session->pid_tracker);
 
 	free(session);
 }
