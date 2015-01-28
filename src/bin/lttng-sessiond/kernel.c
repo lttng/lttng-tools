@@ -381,6 +381,77 @@ int kernel_untrack_pid(struct ltt_kernel_session *session, int pid)
 	return kernctl_untrack_pid(session->fd, pid);
 }
 
+ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
+		int **_pids)
+{
+	int fd, ret;
+	int pid;
+	ssize_t nbmem, count = 0;
+	FILE *fp;
+	int *pids;
+
+	fd = kernctl_list_tracker_pids(session->fd);
+	if (fd < 0) {
+		PERROR("kernel tracker pids list");
+		goto error;
+	}
+
+	fp = fdopen(fd, "r");
+	if (fp == NULL) {
+		PERROR("kernel tracker pids list fdopen");
+		goto error_fp;
+	}
+
+	nbmem = KERNEL_TRACKER_PIDS_INIT_LIST_SIZE;
+	pids = zmalloc(sizeof(*pids) * nbmem);
+	if (pids == NULL) {
+		PERROR("alloc list pids");
+		count = -ENOMEM;
+		goto end;
+	}
+
+	while (fscanf(fp, "process { pid = %u; };\n", &pid) == 1) {
+		if (count >= nbmem) {
+			int *new_pids;
+			size_t new_nbmem;
+
+			new_nbmem = nbmem << 1;
+			DBG("Reallocating pids list from %zu to %zu entries",
+					nbmem, new_nbmem);
+			new_pids = realloc(pids, new_nbmem * sizeof(*new_pids));
+			if (new_pids == NULL) {
+				PERROR("realloc list events");
+				free(pids);
+				count = -ENOMEM;
+				goto end;
+			}
+			/* Zero the new memory */
+			memset(new_pids + nbmem, 0,
+				(new_nbmem - nbmem) * sizeof(*new_pids));
+			nbmem = new_nbmem;
+			pids = new_pids;
+		}
+		pids[count++] = pid;
+	}
+
+	*_pids = pids;
+	DBG("Kernel list tracker pids done (%zd pids)", count);
+end:
+	ret = fclose(fp);	/* closes both fp and fd */
+	if (ret) {
+		PERROR("fclose");
+	}
+	return count;
+
+error_fp:
+	ret = close(fd);
+	if (ret) {
+		PERROR("close");
+	}
+error:
+	return -1;
+}
+
 /*
  * Create kernel metadata, open from the kernel tracer and add it to the
  * kernel session.

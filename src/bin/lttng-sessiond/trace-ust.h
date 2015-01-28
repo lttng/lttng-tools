@@ -204,6 +204,9 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 int trace_ust_track_pid(struct ltt_ust_session *session, int pid);
 int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid);
 
+ssize_t trace_ust_list_tracker_pids(struct ltt_ust_session *session,
+		int32_t **_pids);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline int trace_ust_ht_match_event(struct cds_lfht_node *node,
@@ -295,7 +298,11 @@ int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
 {
 	return 0;
 }
-
+ssize_t trace_ust_list_tracker_pids(struct ltt_ust_session *session,
+		int32_t **_pids)
+{
+	return -1;
+}
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_TRACE_UST_H */

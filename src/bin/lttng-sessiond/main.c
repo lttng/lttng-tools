@@ -2960,6 +2960,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_CHANNELS:
 	case LTTNG_LIST_EVENTS:
 	case LTTNG_LIST_SYSCALLS:
+	case LTTNG_LIST_TRACKER_PIDS:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -3491,6 +3492,38 @@ skip_domain:
 				sizeof(struct lttng_event) * nb_events);
 
 		free(events);
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_LIST_TRACKER_PIDS:
+	{
+		int32_t *pids = NULL;
+		ssize_t nr_pids;
+
+		nr_pids = cmd_list_tracker_pids(cmd_ctx->session,
+				cmd_ctx->lsm->domain.type, &pids);
+		if (nr_pids < 0) {
+			/* Return value is a negative lttng_error_code. */
+			ret = -nr_pids;
+			goto error;
+		}
+
+		/*
+		 * Setup lttng message with payload size set to the event list size in
+		 * bytes and then copy list into the llm payload.
+		 */
+		ret = setup_lttng_msg(cmd_ctx, sizeof(int32_t) * nr_pids);
+		if (ret < 0) {
+			free(pids);
+			goto setup_error;
+		}
+
+		/* Copy event list into message payload */
+		memcpy(cmd_ctx->llm->payload, pids,
+				sizeof(int) * nr_pids);
+
+		free(pids);
 
 		ret = LTTNG_OK;
 		break;

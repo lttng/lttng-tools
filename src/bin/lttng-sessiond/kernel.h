@@ -30,6 +30,7 @@
  * dynamic reallocation is performed.
  */
 #define KERNEL_EVENT_INIT_LIST_SIZE 64
+#define KERNEL_TRACKER_PIDS_INIT_LIST_SIZE 64
 
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct ltt_kernel_context *ctx);
@@ -66,5 +67,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 
 int init_kernel_workarounds(void);
+ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
+		int **_pids);
 
 #endif /* _LTT_KERNEL_CTL_H */

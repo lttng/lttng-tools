@@ -121,6 +121,7 @@
 	_IOR(0xF6, 0x58, int32_t)
 #define LTTNG_KERNEL_SESSION_UNTRACK_PID	\
 	_IOR(0xF6, 0x59, int32_t)
+#define LTTNG_KERNEL_SESSION_LIST_TRACKER_PIDS	_IO(0xF6, 0x58)
 
 /* Channel FD ioctl */
 #define LTTNG_KERNEL_STREAM			_IO(0xF6, 0x62)

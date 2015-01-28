@@ -136,6 +136,19 @@ extern int lttng_track_pid(struct lttng_handle *handle, int pid);
  */
 extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
 
+/*
+ * List PIDs in the tracker.
+ *
+ * @enabled is set to whether the PID tracker is enabled.
+ * @pids is set to an allocated array of PIDs currently tracked. On
+ * success, @pids must be freed by the caller.
+ * @nr_pids is set to the number of entries contained by the @pids array.
+ *
+ * Returns 0 on success, else a negative LTTng error code.
+ */
+extern int lttng_list_tracker_pids(struct lttng_handle *handle,
+		int *enabled, int32_t **pids, size_t *nr_pids);
+
 #ifdef __cplusplus
 }
 #endif

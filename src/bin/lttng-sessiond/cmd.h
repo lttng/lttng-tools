@@ -86,6 +86,8 @@ ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events);
 ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		struct lttng_snapshot_output **outputs);
 ssize_t cmd_list_syscalls(struct lttng_event **events);
+ssize_t cmd_list_tracker_pids(struct ltt_session *session,
+		int domain, int32_t **pids);
 
 int cmd_calibrate(int domain, struct lttng_calibrate *calibrate);
 int cmd_data_pending(struct ltt_session *session);

@@ -1991,6 +1991,51 @@ end:
 }
 
 /*
+ * List PIDs in the tracker.
+ *
+ * @enabled is set to whether the PID tracker is enabled.
+ * @pids is set to an allocated array of PIDs currently tracked. On
+ * success, @pids must be freed by the caller.
+ * @nr_pids is set to the number of entries contained by the @pids array.
+ *
+ * Returns 0 on success, else a negative LTTng error code.
+ */
+int lttng_list_tracker_pids(struct lttng_handle *handle,
+		int *_enabled, int32_t **_pids, size_t *_nr_pids)
+{
+	int ret, enabled = 1;
+	struct lttcomm_session_msg lsm;
+	size_t nr_pids;
+	int32_t *pids;
+
+	if (handle == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_LIST_TRACKER_PIDS;
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &pids);
+	if (ret < 0) {
+		return ret;
+	}
+	nr_pids = ret / sizeof(int32_t);
+	if (nr_pids == 1 && pids[0] == -1) {
+		free(pids);
+		pids = NULL;
+		enabled = 0;
+		nr_pids = 0;
+	}
+	*_enabled = enabled;
+	*_pids = pids;
+	*_nr_pids = nr_pids;
+	return 0;
+}
+
+/*
  * lib constructor
  */
 static void __attribute__((constructor)) init()

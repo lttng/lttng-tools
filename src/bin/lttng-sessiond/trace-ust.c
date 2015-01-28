@@ -809,6 +809,50 @@ end:
 }
 
 /*
+ * Called with session lock held.
+ */
+ssize_t trace_ust_list_tracker_pids(struct ltt_ust_session *session,
+		int32_t **_pids)
+{
+	struct ust_pid_tracker_node *tracker_node;
+	struct lttng_ht_iter iter;
+	unsigned long count, i = 0;
+	long approx[2];
+	int32_t *pids;
+	int ret = 0;
+
+	if (!session->pid_tracker.ht) {
+		/* Tracker disabled. Set first entry to -1. */
+		pids = zmalloc(sizeof(*pids));
+		if (!pids) {
+			ret = -1;
+			goto end;
+		}
+		pids[0] = -1;
+		*_pids = pids;
+		return 1;
+	}
+
+	rcu_read_lock();
+	cds_lfht_count_nodes(session->pid_tracker.ht->ht,
+		&approx[0], &count, &approx[1]);
+	pids = zmalloc(sizeof(*pids) * count);
+	if (!pids) {
+		ret = -1;
+		goto end;
+	}
+	cds_lfht_for_each_entry(session->pid_tracker.ht->ht,
+			&iter.iter, tracker_node, node.node) {
+		pids[i++] = tracker_node->node.key;
+	}
+	*_pids = pids;
+	ret = count;
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
  * RCU safe free context structure.
  */
 static void destroy_context_rcu(struct rcu_head *head)

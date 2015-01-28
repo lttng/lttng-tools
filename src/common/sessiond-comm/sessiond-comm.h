@@ -93,6 +93,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_SAVE_SESSION                  = 31,
 	LTTNG_TRACK_PID                     = 32,
 	LTTNG_UNTRACK_PID                   = 33,
+	LTTNG_LIST_TRACKER_PIDS             = 34,
 	LTTNG_SET_SESSION_SHM_PATH          = 40,
 };
 

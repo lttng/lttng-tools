@@ -1247,6 +1247,37 @@ error_channels:
 }
 
 /*
+ * List tracker PID(s) of session and domain.
+ */
+static int list_tracker_pids(void)
+{
+	int enabled, ret;
+	int *pids = NULL;
+	size_t nr_pids, i;
+
+	ret = lttng_list_tracker_pids(handle,
+		&enabled, &pids, &nr_pids);
+	if (ret) {
+		return ret;
+	}
+	_MSG("PID tracker: [%s]", enabled ? "enabled" : "disabled");
+	if (enabled) {
+		_MSG(", pids: [");
+
+		for (i = 0; i < nr_pids; i++) {
+			if (i) {
+				_MSG(",");
+			}
+			_MSG(" %d", pids[i]);
+		}
+		_MSG(" ]");
+	}
+	_MSG("\n\n");
+	free(pids);
+	return 0;
+}
+
+/*
  * Machine interface
  * Find the session with session_name as name
  * and print his informations.
@@ -1667,6 +1698,11 @@ int cmd_list(int argc, const char **argv)
 
 			}
 
+			ret = list_tracker_pids();
+			if (ret) {
+				goto end;
+			}
+
 			ret = list_channels(opt_channel);
 			if (ret) {
 				goto end;
@@ -1752,6 +1788,18 @@ int cmd_list(int argc, const char **argv)
 						goto end;
 					}
 					continue;
+				}
+
+				switch (domains[i].type) {
+				case LTTNG_DOMAIN_KERNEL:
+				case LTTNG_DOMAIN_UST:
+					ret = list_tracker_pids();
+					if (ret) {
+						goto end;
+					}
+					break;
+				default:
+					break;
 				}
 
 				ret = list_channels(opt_channel);

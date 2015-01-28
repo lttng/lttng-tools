@@ -1950,6 +1950,57 @@ ssize_t cmd_list_syscalls(struct lttng_event **events)
 }
 
 /*
+ * Command LTTNG_LIST_TRACKER_PIDS processed by the client thread.
+ *
+ * Called with session lock held.
+ */
+ssize_t cmd_list_tracker_pids(struct ltt_session *session,
+		int domain, int32_t **pids)
+{
+	int ret;
+	ssize_t nr_pids = 0;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct ltt_kernel_session *ksess;
+
+		ksess = session->kernel_session;
+		nr_pids = kernel_list_tracker_pids(ksess, pids);
+		if (nr_pids < 0) {
+			ret = LTTNG_ERR_KERN_LIST_FAIL;
+			goto error;
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct ltt_ust_session *usess;
+
+		usess = session->ust_session;
+		nr_pids = trace_ust_list_tracker_pids(usess, pids);
+		if (nr_pids < 0) {
+			ret = LTTNG_ERR_UST_LIST_FAIL;
+			goto error;
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_PYTHON:
+	default:
+		ret = LTTNG_ERR_UND;
+		goto error;
+	}
+
+	return nr_pids;
+
+error:
+	/* Return negative value to differentiate return code */
+	return -ret;
+}
+
+/*
  * Command LTTNG_START_TRACE processed by the client thread.
  *
  * Called with session mutex held.

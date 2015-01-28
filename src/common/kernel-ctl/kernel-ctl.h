@@ -62,6 +62,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask,
 /* Process ID tracking can be applied to session FD */
 int kernctl_track_pid(int fd, int pid);
 int kernctl_untrack_pid(int fd, int pid);
+int kernctl_list_tracker_pids(int fd);
 
 /* Buffer operations */
 
