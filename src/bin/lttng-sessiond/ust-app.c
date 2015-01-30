@@ -4185,7 +4185,6 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 		break;
 	}
 
-end_no_session:
 	rcu_read_unlock();
 	health_code_update();
 	return ret;
