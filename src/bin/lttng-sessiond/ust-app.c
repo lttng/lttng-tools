@@ -581,7 +581,6 @@ static int push_metadata(struct ust_registry_session *registry,
 	return 0;
 
 error:
-end:
 	pthread_mutex_unlock(&registry->lock);
 	return ret_val;
 }
