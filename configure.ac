@@ -57,7 +57,9 @@ AM_CONDITIONAL([NO_SHARED], [test x$enable_shared = xno])
 AC_CHECK_HEADERS([ \
 	sys/types.h unistd.h fcntl.h string.h pthread.h limits.h \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
-	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
+	getopt.h sys/ipc.h sys/shm.h popt.h grp.h arpa/inet.h \
+	netdb.h netinet/in.h paths.h stddef.h sys/file.h sys/ioctl.h \
+	sys/mount.h sys/param.h sys/time.h
 ])
 
 # Basic functions check
