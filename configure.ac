@@ -70,6 +70,7 @@ AC_CHECK_FUNCS([ \
 	strncasecmp strndup strpbrk strrchr strstr strtol strtoul \
 	strtoull \
 ])
+
 # Babeltrace viewer check
 AC_ARG_WITH([babeltrace-bin],
 	AS_HELP_STRING([--with-babeltrace-bin],
@@ -414,7 +415,11 @@ fi
 AM_CONDITIONAL([BUILD_JAVA_LOG4J_AGENT], [test "x$build_java_log4j_agent" = "xyes"])
 
 AC_SYS_LARGEFILE
+
+# C compiler tests
 AC_PROG_CC
+AC_C_INLINE
+
 LT_INIT
 AC_PROG_YACC
 AC_PROG_LEX
