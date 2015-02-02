@@ -60,6 +60,14 @@ AC_CHECK_HEADERS([ \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h \
 ])
 
+# Basic functions check
+AC_CHECK_FUNCS([ \
+	atexit bzero clock_gettime dup2 fdatasync ftruncate \
+	gethostbyname gethostname getpagesize localtime_r memchr memset \
+	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
+	strncasecmp strndup strpbrk strrchr strstr strtol strtoul \
+	strtoull \
+])
 # Babeltrace viewer check
 AC_ARG_WITH([babeltrace-bin],
 	AS_HELP_STRING([--with-babeltrace-bin],
