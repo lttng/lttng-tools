@@ -1,5 +1,3 @@
-if BUILD_JAVA_JUL
-
 noinst_SCRIPTS = test_java_jul JTestLTTng.java
 EXTRA_DIST = test_java_jul JTestLTTng.java
 
@@ -11,14 +9,17 @@ endif
 
 JUL_JAR_FILE=$(java_jul_jar_path)
 
-all-local: JTestLTTng.class
+# Still need to copy test files in case of out of tree build
+if BUILD_JAVA_JUL
 
+all-local: static_file JTestLTTng.class
 %.class: %.java
 	$(JCC) -d "$(builddir)" -cp "$(JUL_JAR_FILE):." $<
+else
+all-local: static_file
+endif #BUILD_JAVA_JUL
 
-JTestLTTng.class: JTestLTTng.java
-
-all-local:
+static_file:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(EXTRA_DIST); do \
 			cp -f $(srcdir)/$$script $(builddir); \
@@ -32,5 +33,3 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
-
-endif # BUILD_JAVA_JUL
