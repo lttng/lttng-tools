@@ -1479,7 +1479,6 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 			&uevent, filter_expression, filter, NULL, wpipe);
 		/* We have passed ownership */
 		filter_expression = NULL;
-		filter = NULL;
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto error;
 		}
@@ -1487,8 +1486,10 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
 			ret = event_jul_enable_all(usess, event, filter);
+			filter = NULL;
 		} else {
 			ret = event_jul_enable(usess, event, filter);
+			filter = NULL;
 		}
 		if (ret != LTTNG_OK) {
 			goto error;
