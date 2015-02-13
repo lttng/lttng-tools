@@ -55,7 +55,7 @@ version.h:
 
 ##
 ## version.h is defined as a .PHONY file even if it's a real file as
-## we want our routine to be runned for each build.
+## we want our routine to be ran for each build.
 ##
 .PHONY: version.h
 
