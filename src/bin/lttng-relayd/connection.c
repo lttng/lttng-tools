@@ -31,6 +31,10 @@ static void rcu_free_connection(struct rcu_head *head)
 	connection_free(conn);
 }
 
+/*
+ * Must be called with a read side lock held. The read side lock must be
+ * kept until the returned relay_connection is no longer in use.
+ */
 struct relay_connection *connection_find_by_sock(struct lttng_ht *ht, int sock)
 {
 	struct lttng_ht_node_ulong *node;
