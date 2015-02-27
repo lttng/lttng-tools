@@ -1863,13 +1863,13 @@ void *thread_worker(void *data)
 {
 	int ret, err = -1;
 	uint32_t nb_fd;
-	struct relay_connection *conn;
 	struct lttng_poll_event events;
 	struct lttng_ht *relay_connections_ht;
 	struct lttng_ht_iter iter;
 	struct lttng_viewer_cmd recv_hdr;
 	struct relay_local_data *relay_ctx = (struct relay_local_data *) data;
 	struct lttng_ht *sessions_ht = relay_ctx->sessions_ht;
+	struct relay_connection *destroy_conn;
 
 	DBG("[thread] Live viewer relay worker started");
 
@@ -1950,6 +1950,8 @@ restart:
 					ERR("Relay live pipe error");
 					goto error;
 				} else if (revents & LPOLLIN) {
+					struct relay_connection *conn;
+
 					ret = lttng_read(live_conn_pipe[0], &conn, sizeof(conn));
 					if (ret < 0) {
 						goto error;
@@ -1965,6 +1967,8 @@ restart:
 					DBG("Connection socket %d added", conn->sock->fd);
 				}
 			} else {
+				struct relay_connection *conn;
+
 				rcu_read_lock();
 				conn = connection_find_by_sock(relay_connections_ht, pollfd);
 				/* If not found, there is a synchronization issue. */
@@ -2002,10 +2006,11 @@ error:
 
 	/* Cleanup reamaining connection object. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter, conn,
+	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter,
+			destroy_conn,
 			sock_n.node) {
 		health_code_update();
-		destroy_connection(relay_connections_ht, conn);
+		destroy_connection(relay_connections_ht, destroy_conn);
 	}
 	rcu_read_unlock();
 error_poll_create:
