@@ -204,6 +204,8 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 int trace_ust_track_pid(struct ltt_ust_session *session, int pid);
 int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid);
 
+int trace_ust_pid_tracker_lookup(struct ltt_ust_session *session, int pid);
+
 ssize_t trace_ust_list_tracker_pids(struct ltt_ust_session *session,
 		int32_t **_pids);
 
@@ -295,6 +297,11 @@ int trace_ust_track_pid(struct ltt_ust_session *session, int pid)
 }
 static inline
 int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
+{
+	return 0;
+}
+static inline
+int trace_ust_pid_tracker_lookup(struct ltt_ust_session *session, int pid)
 {
 	return 0;
 }
