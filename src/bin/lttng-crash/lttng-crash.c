@@ -1001,6 +1001,9 @@ int extract_trace_recursive(const char *output_path,
 
 			ret = extract_trace_recursive(output_subpath,
 				input_subpath);
+			if (ret) {
+				has_warning = 1;
+			}
 			break;
 		}
 		case DT_REG:
