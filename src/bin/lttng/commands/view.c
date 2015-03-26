@@ -282,7 +282,7 @@ static int spawn_viewer(const char *trace_path)
 		break;
 	}
 
-	if (argv == NULL) {
+	if (argv == NULL || !viewer_bin) {
 		ret = CMD_FATAL;
 		goto error;
 	}
