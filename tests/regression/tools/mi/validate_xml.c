@@ -163,7 +163,7 @@ end:
 int main(int argc, char **argv, char *env[])
 {
 	int ret;
-	struct validation_ctx ctx;
+	struct validation_ctx ctx = { 0 };
 
 	/* Check if we have all argument */
 	if (argc < 3) {
