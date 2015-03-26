@@ -334,6 +334,10 @@ static int loglevel_log4j_str_to_value(const char *inputstr)
 	int i = 0;
 	char str[LTTNG_SYMBOL_NAME_LEN];
 
+	if (!inputstr || strlen(inputstr) == 0) {
+		return -1;
+	}
+
 	/*
 	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
 	 * added at the end of the loop so a the upper bound we avoid the overflow.
@@ -372,6 +376,10 @@ static int loglevel_jul_str_to_value(const char *inputstr)
 {
 	int i = 0;
 	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	if (!inputstr || strlen(inputstr) == 0) {
+		return -1;
+	}
 
 	/*
 	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
@@ -414,6 +422,10 @@ static int loglevel_python_str_to_value(const char *inputstr)
 	int i = 0;
 	char str[LTTNG_SYMBOL_NAME_LEN];
 
+	if (!inputstr || strlen(inputstr) == 0) {
+		return -1;
+	}
+
 	/*
 	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
 	 * added at the end of the loop so a the upper bound we avoid the overflow.
@@ -449,6 +461,10 @@ int loglevel_str_to_value(const char *inputstr)
 {
 	int i = 0;
 	char str[LTTNG_SYMBOL_NAME_LEN];
+
+	if (!inputstr || strlen(inputstr) == 0) {
+		return -1;
+	}
 
 	/*
 	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
