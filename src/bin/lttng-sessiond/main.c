@@ -4612,6 +4612,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 		} else {
 			unsigned long v;
 
+			if (!arg) {
+				ret = -EINVAL;
+				goto end;
+			}
 			errno = 0;
 			v = strtoul(arg, NULL, 0);
 			if (errno != 0 || !isdigit(arg[0])) {
