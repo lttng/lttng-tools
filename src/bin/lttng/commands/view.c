@@ -258,17 +258,6 @@ static int spawn_viewer(const char *trace_path)
 		argv = alloc_argv_from_local_opts(babeltrace_opts,
 				ARRAY_SIZE(babeltrace_opts), trace_path);
 		break;
-#if 0
-	case VIEWER_LTTV_GUI:
-		if (stat(lttv_gui_bin, &status) == 0) {
-			viewer_bin = lttv_gui_bin;
-		} else {
-			viewer_bin = viewer->exec_name;
-		}
-		argv = alloc_argv_from_local_opts(lttv_gui_opts,
-				ARRAY_SIZE(lttv_gui_opts), trace_path);
-		break;
-#endif
 	case VIEWER_USER_DEFINED:
 		argv = alloc_argv_from_user_opts(opt_viewer, trace_path);
 		if (argv) {
