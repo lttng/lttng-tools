@@ -209,7 +209,7 @@ static void usage(FILE *ofp)
 {
 	fprintf(ofp, "LTTng Crash Trace Viewer " VERSION " - " VERSION_NAME "%s\n\n",
 		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
-	fprintf(ofp, "usage: lttng [OPTIONS] FILE\n");
+	fprintf(ofp, "usage: lttng-crash [OPTIONS] FILE\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -V, --version              Show version.\n");
