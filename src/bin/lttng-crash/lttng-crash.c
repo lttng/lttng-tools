@@ -766,7 +766,8 @@ int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest,
 	readlen = lttng_read(fd_src, buf, src_file_len);
 	if (readlen < 0) {
 		PERROR("Error reading input file");
-		return -1;
+		ret = -1;
+		goto end;
 	}
 
 	prod_offset = crash_get_field(layout, buf, prod_offset);
