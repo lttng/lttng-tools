@@ -827,6 +827,54 @@ function lttng_load()
 	ok $? "Load command successful"
 }
 
+function lttng_track()
+{
+	local expected_to_fail=$1
+	local opts=$2
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN track $opts >$OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Track command failed as expected with opts: $opts"
+	else
+		ok $ret "Track command success as expected with opts: $opts"
+	fi
+}
+
+function lttng_track_ok()
+{
+	lttng_track 0 "$@"
+}
+
+function lttng_track_fail()
+{
+	lttng_track 1 "$@"
+}
+
+function lttng_untrack()
+{
+	local expected_to_fail=$1
+	local opts=$2
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN untrack $opts >$OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Untrack command failed as expected with opts: $opts"
+	else
+		ok $ret "Untrack command success as expected with opts: $opts"
+	fi
+}
+
+function lttng_untrack_ok()
+{
+	lttng_untrack 0 "$@"
+}
+
+function lttng_untrack_fail()
+{
+	lttng_untrack 1 "$@"
+}
+
 function trace_matches ()
 {
 	local event_name=$1
