@@ -120,6 +120,8 @@ const char * const config_element_pids = "pids";
 const char * const config_element_shared_memory_path = "shared_memory_path";
 const char * const config_element_pid_tracker = "pid_tracker";
 const char * const config_element_trackers = "trackers";
+const char * const config_element_targets = "targets";
+const char * const config_element_target_pid = "pid_target";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
@@ -2091,12 +2093,87 @@ end:
 }
 
 static
+int process_pid_tracker_node(xmlNodePtr pid_tracker_node,
+	struct lttng_handle *handle)
+{
+	int ret, child;
+	xmlNodePtr targets_node = NULL;
+	xmlNodePtr node;
+
+	assert(handle);
+	assert(pid_tracker_node);
+	/* get the targets node */
+	for (node = xmlFirstElementChild(pid_tracker_node); node;
+		node = xmlNextElementSibling(node)) {
+		if (!strcmp((const char *) node->name,
+				config_element_targets)) {
+			targets_node = node;
+			break;
+		}
+	}
+
+	if (!targets_node) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Go through all pid_target node */
+	child = xmlChildElementCount(targets_node);
+	if (child == 0) {
+		/* The session is explicitly set to target nothing. */
+		ret = lttng_untrack_pid(handle, -1);
+		if (ret) {
+			goto end;
+		}
+	}
+	for (node = xmlFirstElementChild(targets_node); node;
+			node = xmlNextElementSibling(node)) {
+		xmlNodePtr pid_target_node = node;
+
+		/* get pid node and track it */
+		for (node = xmlFirstElementChild(pid_target_node); node;
+			node = xmlNextElementSibling(node)) {
+			if (!strcmp((const char *) node->name,
+					config_element_pid)) {
+				int64_t pid;
+				xmlChar *content = NULL;
+
+				content = xmlNodeGetContent(node);
+				if (!content) {
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
+				ret = parse_int(content, &pid);
+				free(content);
+				if (ret) {
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
+				ret = lttng_track_pid(handle, (int) pid);
+				if (ret) {
+					goto end;
+				}
+			}
+		}
+		node = pid_target_node;
+	}
+
+end:
+	return ret;
+}
+
+
+static
 int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
 	struct lttng_domain domain = { 0 };
 	struct lttng_handle *handle = NULL;
 	xmlNodePtr channels_node = NULL;
+	xmlNodePtr trackers_node = NULL;
+	xmlNodePtr pid_tracker_node = NULL;
 	xmlNodePtr node;
 
 	assert(session_name);
@@ -2163,6 +2240,36 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 			goto end;
 		}
 	}
+
+	/* get the trackers node */
+	for (node = xmlFirstElementChild(domain_node); node;
+			node = xmlNextElementSibling(node)) {
+		if (!strcmp((const char *) node->name,
+					config_element_trackers)) {
+			trackers_node = node;
+			break;
+		}
+	}
+
+	if (!trackers_node) {
+		goto end;
+	}
+
+	for (node = xmlFirstElementChild(trackers_node); node;
+			node = xmlNextElementSibling(node)) {
+		if (!strcmp((const char *)node->name,config_element_pid_tracker)) {
+			pid_tracker_node = node;
+			ret = process_pid_tracker_node(pid_tracker_node, handle);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+
+	if (!pid_tracker_node) {
+		lttng_track_pid(handle, -1);
+	}
+
 end:
 	lttng_destroy_handle(handle);
 	return ret;
