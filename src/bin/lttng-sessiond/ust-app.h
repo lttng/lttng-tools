@@ -421,7 +421,7 @@ int ust_app_ht_alloc(void)
 	return 0;
 }
 static inline
-void ust_app_global_update(struct ltt_ust_session *usess, int sock)
+void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 {}
 static inline
 int ust_app_disable_channel_glb(struct ltt_ust_session *usess,

@@ -305,6 +305,7 @@ int trace_ust_pid_tracker_lookup(struct ltt_ust_session *session, int pid)
 {
 	return 0;
 }
+static inline
 ssize_t trace_ust_list_tracker_pids(struct ltt_ust_session *session,
 		int32_t **_pids)
 {
