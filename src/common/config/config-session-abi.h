@@ -69,6 +69,8 @@ const char * const config_element_pid;
 const char * const config_element_pids;
 const char * const config_element_pid_tracker;
 const char * const config_element_trackers;
+const char * const config_element_targets;
+const char * const config_element_target_pid;
 
 const char * const config_domain_type_kernel;
 const char * const config_domain_type_ust;
