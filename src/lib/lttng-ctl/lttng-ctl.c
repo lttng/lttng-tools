@@ -1954,7 +1954,7 @@ int lttng_create_session_live(const char *name, const char *url,
 	struct lttcomm_session_msg lsm;
 	struct lttng_uri *uris = NULL;
 
-	if (name == NULL) {
+	if (name == NULL || timer_interval == 0) {
 		return -LTTNG_ERR_INVALID;
 	}
 
