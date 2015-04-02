@@ -597,6 +597,11 @@ int cmd_create(int argc, const char **argv)
 				ret = CMD_ERROR;
 				goto end;
 			}
+			if (v == 0) {
+				ERR("Live timer interval must be greater than zero");
+				ret = CMD_ERROR;
+				goto end;
+			}
 			opt_live_timer = (uint32_t) v;
 			DBG("Session live timer interval set to %d", opt_live_timer);
 			break;
