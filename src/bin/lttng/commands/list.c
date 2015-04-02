@@ -1253,16 +1253,16 @@ static int list_tracker_pids(void)
 {
 	int enabled, ret;
 	int *pids = NULL;
-	size_t nr_pids, i;
+	size_t nr_pids;
 
 	ret = lttng_list_tracker_pids(handle,
 		&enabled, &pids, &nr_pids);
 	if (ret) {
 		return ret;
 	}
-	_MSG("PID tracker: [%s]", enabled ? "enabled" : "disabled");
 	if (enabled) {
-		_MSG(", pids: [");
+		int i;
+		_MSG("PID tracker: [");
 
 		for (i = 0; i < nr_pids; i++) {
 			if (i) {
@@ -1270,9 +1270,8 @@ static int list_tracker_pids(void)
 			}
 			_MSG(" %d", pids[i]);
 		}
-		_MSG(" ]");
+		_MSG(" ]\n\n");
 	}
-	_MSG("\n\n");
 	free(pids);
 	return 0;
 }
