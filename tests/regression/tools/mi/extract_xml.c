@@ -15,10 +15,11 @@
  */
 
 /*
- * Usage: extract_xml [-v] xml_path xpath_expression
+ * Usage: extract_xml [-v|-e] xml_path xpath_expression
  * Evaluate XPath expression and prints result node set.
  * args[1] path to the xml file
  * args[2] xpath expression to extract
+ * If -e look if node exist return "true" else nothing
  * If -v is set the name of the node will appear with his value delimited by
  * a semicolon(;)
  * Ex:
@@ -47,6 +48,8 @@
 
 
 int opt_verbose;
+int node_exist;
+
 /**
  * print_xpath_nodes:
  * nodes:  the nodes set.
@@ -56,7 +59,7 @@ int opt_verbose;
  */
 static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 {
-	int ret;
+	int ret = 0;
 	int size;
 	int i;
 
@@ -81,7 +84,9 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 				if (xmlNodeIsText(cur->children)) {
 					node_child_value_string = xmlNodeListGetString(doc,
 							cur->children, 1);
-					if (opt_verbose) {
+					if (node_exist) {
+						fprintf(output, "true\n");
+					} else if (opt_verbose) {
 						fprintf(output, "%s;%s;\n", cur->name,
 								node_child_value_string);
 					} else {
@@ -91,26 +96,35 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 					xmlFree(node_child_value_string);
 				} else {
 					/* We don't want to print non-final element */
+					if (node_exist) {
+						fprintf(output, "true\n");
+					} else {
+						fprintf(stderr, "ERR:%s\n",
+								"Xpath expression return non-final xml element");
+						ret = -1;
+						goto end;
+					}
+				}
+			} else {
+				if (node_exist) {
+					fprintf(output, "true\n");
+				} else {
+					/* We don't want to print non-final element */
 					fprintf(stderr, "ERR:%s\n",
 							"Xpath expression return non-final xml element");
 					ret = -1;
 					goto end;
 				}
-			} else {
-				/* We don't want to print non-final element */
-				fprintf(stderr, "ERR:%s\n",
-						"Xpath expression return non-final xml element");
-				ret = -1;
-				goto end;
 			}
 
 		} else {
 			cur = nodes->nodeTab[i];
-			if (opt_verbose) {
+			if (node_exist) {
+				fprintf(output, "true\n");
+			} else if (opt_verbose) {
 				fprintf(output, "%s;%s;\n", cur->parent->name, cur->content);
 			} else {
 				fprintf(output, "%s\n", cur->content);
-
 			}
 		}
 	}
@@ -185,10 +199,13 @@ int main(int argc, char **argv)
 	int opt;
 
 	/* Parse command line and process file */
-	while ((opt = getopt(argc, argv, "v")) != -1) {
+	while ((opt = getopt(argc, argv, "ve")) != -1) {
 		switch (opt) {
 		case 'v':
 			opt_verbose = 1;
+			break;
+		case 'e':
+			node_exist = 1;
 			break;
 		default:
 			abort();
