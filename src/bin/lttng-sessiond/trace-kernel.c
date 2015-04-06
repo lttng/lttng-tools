@@ -258,6 +258,7 @@ error:
 
 /*
  * Allocate and initialize a kernel event. Set name and event type.
+ * We own filter_expression, and filter.
  *
  * Return pointer to structure or NULL.
  */
@@ -327,6 +328,8 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 	return lke;
 
 error:
+	free(filter_expression);
+	free(filter);
 	free(lke);
 	free(attr);
 	return NULL;

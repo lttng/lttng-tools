@@ -143,6 +143,9 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 	if (kevent == NULL) {
 		ret = kernel_create_event(event, kchan,
 			filter_expression, filter);
+		/* We have passed ownership */
+		filter_expression = NULL;
+		filter = NULL;
 		if (ret < 0) {
 			switch (-ret) {
 			case EEXIST:
@@ -171,6 +174,8 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 
 	ret = LTTNG_OK;
 end:
+	free(filter_expression);
+	free(filter);
 	return ret;
 }
 

@@ -187,6 +187,7 @@ int kernel_create_event(struct lttng_event *ev,
 	assert(ev);
 	assert(channel);
 
+	/* We pass ownership of filter_expression and filter */
 	event = trace_kernel_create_event(ev, filter_expression,
 			filter);
 	if (event == NULL) {
