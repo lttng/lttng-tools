@@ -108,6 +108,7 @@ int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 {
 	struct lttng_kernel_channel channel;
 
+	memset(&channel, 0, sizeof(channel));
 	if (lttng_kernel_use_old_abi) {
 		struct lttng_kernel_old_channel old_channel;
 
