@@ -29,7 +29,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=21
+NUM_TESTS=26
 
 source $TESTDIR/utils/utils.sh
 
@@ -37,16 +37,6 @@ source $TESTDIR/utils/utils.sh
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
-
-function disable_event()
-{
-	local sess_name="$1"
-	local chan_name="$2"
-	local event_name="$3"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -c $chan_name -u >/dev/null 2>&1
-	ok $? "Disable event $event_name for session $sess_name"
-}
 
 function test_basic_load()
 {
@@ -70,9 +60,9 @@ function test_complex_load()
 
 	# Once loaded, we are suppose to be able to disable certain events/channels
 	# thus having a confirmation that it's valid
-	disable_event $sess chan1 uevent1
-	disable_event $sess chan2 uevent2
-	disable_event $sess chan3 uevent3*
+	disable_ust_lttng_event $sess uevent1 chan1
+	disable_ust_lttng_event $sess uevent2 chan2
+	disable_ust_lttng_event $sess uevent3* chan3
 
 	disable_ust_lttng_channel $sess chan1
 	disable_ust_lttng_channel $sess chan2
@@ -107,6 +97,7 @@ function test_all_load()
 
 	destroy_lttng_session $SESSION_NAME
 	destroy_lttng_session "$SESSION_NAME-complex"
+	destroy_lttng_session "$SESSION_NAME-trackers"
 
 	stop_lttng_relayd_nocheck
 }
@@ -123,6 +114,31 @@ function test_overwrite()
 	destroy_lttng_session $SESSION_NAME
 }
 
+function test_trackers()
+{
+	diag "Test trackers loading"
+
+	lttng_load "-i $CURDIR/$SESSION_NAME-trackers.lttng"
+
+	diag "Test pid tracker"
+	local mi_output_file=$(mktemp)
+	if [ $? -ne 0 ]; then
+		break;
+	fi
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
+	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//command/output/sessions/session/domains/domain/trackers/pid_tracker/targets/pid_target")
+	if [[ $mi_result = "true" ]]; then
+	    ok 0 "Pid target is present"
+	else
+	    fail "Pid target missing"
+	fi
+
+	# Test to remove the target just to make sure
+	lttng_untrack "-p 666 -u -s $SESSION_NAME-trackers"
+
+	destroy_lttng_session "$SESSION_NAME-trackers"
+}
+
 start_lttng_sessiond
 
 TESTS=(
@@ -130,6 +146,7 @@ TESTS=(
 	test_complex_load
 	test_all_load
 	test_overwrite
+	test_trackers
 )
 
 for fct_test in ${TESTS[@]};
