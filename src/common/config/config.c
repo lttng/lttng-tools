@@ -117,6 +117,8 @@ const char * const config_element_data_uri = "data_uri";
 const char * const config_element_max_size = "max_size";
 const char * const config_element_pid = "pid";
 const char * const config_element_pids = "pids";
+const char * const config_element_pid_tracker = "pid_tracker";
+const char * const config_element_trackers = "trackers";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";

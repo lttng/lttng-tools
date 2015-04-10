@@ -198,7 +198,7 @@ int track_untrack_pid(enum cmd_type cmd_type, const char *cmd_str,
 		const char *session_name, const char *pid_string,
 		int all, struct mi_writer *writer)
 {
-	int ret, retval = CMD_SUCCESS, i;
+	int ret, retval = CMD_SUCCESS, success = 1 , i;
 	int *pid_list = NULL;
 	int nr_pids;
 	struct lttng_domain dom;
@@ -244,34 +244,56 @@ int track_untrack_pid(enum cmd_type cmd_type, const char *cmd_str,
 	}
 
 	if (writer) {
-		/* Open pids element */
-		ret = mi_lttng_writer_open_element(writer, config_element_pids);
+		/* Open process element */
+		ret = mi_lttng_targets_open(writer);
 		if (ret) {
-			retval = CMD_ERROR;
+			retval = ret;
 			goto end;
 		}
 	}
 
-	/* TODO: MI */
 	for (i = 0; i < nr_pids; i++) {
 		DBG("%s PID %d", cmd_str, pid_list[i]);
 		ret = lib_func(handle, pid_list[i]);
 		if (ret) {
+			success = 0;
 			retval = CMD_ERROR;
-			goto end;
+		} else {
+			success = 1;
+		}
+
+		/* Mi */
+		if (writer) {
+			ret = mi_lttng_pid_target(writer, pid_list[i], 1);
+			if (ret) {
+				retval = ret;
+				goto end;
+			}
+
+			ret = mi_lttng_writer_write_element_bool(writer,
+					mi_lttng_element_success, success);
+			if (ret) {
+				retval = ret;
+				goto end;
+			}
+
+			ret = mi_lttng_writer_close_element(writer);
+			if (ret) {
+				retval = ret;
+				goto end;
+			}
 		}
 	}
 
 	if (writer) {
-		/* Close pids element */
+		/* Close targets element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
-			retval = CMD_ERROR;
+			retval = ret;
 			goto end;
 		}
 	}
 
-	/* SUCCESS */
 end:
 	if (handle) {
 		lttng_destroy_handle(handle);
