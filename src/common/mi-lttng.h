@@ -103,7 +103,6 @@ const char * const mi_lttng_element_perf_counter_context;
 /* Strings related to pid */
 const char * const mi_lttng_element_processes;
 const char * const mi_lttng_element_process;
-const char * const mi_lttng_element_pid_id;
 
 /* Strings related to save command */
 const char * const mi_lttng_element_save;
@@ -196,8 +195,6 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value);
 const char *mi_lttng_calibratetype_string(enum lttng_calibrate_type val);
 
 /* String related to track/untrack command */
-const char * const mi_lttng_element_track_untrack_targets;
-const char * const mi_lttng_element_track_untrack_pid_target;
 const char * const mi_lttng_element_track_untrack_all_wildcard;
 
 /*
