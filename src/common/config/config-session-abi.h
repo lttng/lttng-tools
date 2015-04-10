@@ -68,6 +68,8 @@ extern const char * const config_element_max_size;
 extern const char * const config_element_pid;
 extern const char * const config_element_pids;
 extern const char * const config_element_shared_memory_path;
+extern const char * const config_element_pid_tracker;
+extern const char * const config_element_trackers;
 
 extern const char * const config_domain_type_kernel;
 extern const char * const config_domain_type_ust;
