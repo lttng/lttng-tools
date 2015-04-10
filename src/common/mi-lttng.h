@@ -196,8 +196,6 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value);
 const char *mi_lttng_calibratetype_string(enum lttng_calibrate_type val);
 
 /* String related to track/untrack command */
-const char * const mi_lttng_element_track_untrack_targets;
-const char * const mi_lttng_element_track_untrack_pid_target;
 const char * const mi_lttng_element_track_untrack_all_wildcard;
 
 /*

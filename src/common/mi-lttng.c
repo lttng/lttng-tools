@@ -80,7 +80,6 @@ const char * const mi_lttng_element_perf_counter_context = "perf_counter_context
 /* Strings related to pid */
 const char * const mi_lttng_element_processes = "processes";
 const char * const mi_lttng_element_process = "process";
-const char * const mi_lttng_element_pid_id = "id";
 
 /* Strings related to save command */
 const char * const mi_lttng_element_save = "save";
@@ -165,8 +164,6 @@ const char * const mi_lttng_element_snapshot_session_name = "session_name";
 const char * const mi_lttng_element_snapshots = "snapshots";
 
 /* String related to track/untrack command */
-const char * const mi_lttng_element_track_untrack_targets = "targets";
-const char * const mi_lttng_element_track_untrack_pid_target = "pid_target";
 const char * const mi_lttng_element_track_untrack_all_wildcard = "*";
 
 
@@ -1201,7 +1198,7 @@ LTTNG_HIDDEN
 int mi_lttng_targets_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer,
-			mi_lttng_element_track_untrack_targets);
+			config_element_targets);
 }
 
 LTTNG_HIDDEN
@@ -1210,7 +1207,7 @@ int mi_lttng_pid_target(struct mi_writer *writer, pid_t pid, int is_open)
 	int ret;
 
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_track_untrack_pid_target);
+			config_element_target_pid);
 	if (ret) {
 		goto end;
 	}
