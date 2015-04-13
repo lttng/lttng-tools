@@ -2,10 +2,10 @@ AM_CFLAGS = -I$(srcdir) -O2
 AM_LDFLAGS = -llttng-ust
 
 if LTTNG_TOOLS_BUILD_WITH_LIBDL
-AM_LDFLAGS += -ldl
+LIBS += -ldl
 endif
 if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-AM_LDFLAGS += -lc
+LIBS += -lc
 endif
 
 noinst_PROGRAMS = gen-events

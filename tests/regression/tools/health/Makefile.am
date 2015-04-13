@@ -2,10 +2,10 @@ AM_CFLAGS = -I. -O2 -g -I$(top_srcdir)/include
 AM_LDFLAGS =
 
 if LTTNG_TOOLS_BUILD_WITH_LIBDL
-AM_LDFLAGS += -ldl
+LIBS += -ldl
 endif
 if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-AM_LDFLAGS += -lc
+LIBS += -lc
 endif
 
 if NO_SHARED

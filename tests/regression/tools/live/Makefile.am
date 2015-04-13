@@ -2,10 +2,10 @@ AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/tests/ut
 AM_LDFLAGS =
 
 if LTTNG_TOOLS_BUILD_WITH_LIBDL
-AM_LDFLAGS += -ldl
+LIBS += -ldl
 endif
 if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-AM_LDFLAGS += -lc
+LIBS += -lc
 endif
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
