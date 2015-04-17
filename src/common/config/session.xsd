@@ -279,6 +279,7 @@ elementFormDefault="qualified" version="2.5">
 <xs:complexType name="session_type">
 	<xs:all>
 		<xs:element name="name" type="name_type"/>
+		<xs:element name="shared_memory_path" type="xs:string" minOccurs="0"/>
 		<xs:element name="domains" type="domain_list_type" minOccurs="0"/>
 		<xs:element name="started" type="xs:boolean" default="0" minOccurs="0"/>
 		<xs:element name="attributes" type="session_attributes_type" minOccurs="0"/>

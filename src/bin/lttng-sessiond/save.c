@@ -1663,6 +1663,16 @@ int save_session(struct ltt_session *session,
 		goto end;
 	}
 
+	if(session->shm_path[0] != '\0') {
+		ret = config_writer_write_element_string(writer,
+				config_element_shared_memory_path,
+				session->shm_path);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
 	ret = save_domains(writer, session);
 	if (ret) {
 		goto end;

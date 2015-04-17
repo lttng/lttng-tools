@@ -117,6 +117,7 @@ const char * const config_element_data_uri = "data_uri";
 const char * const config_element_max_size = "max_size";
 const char * const config_element_pid = "pid";
 const char * const config_element_pids = "pids";
+const char * const config_element_shared_memory_path = "shared_memory_path";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
@@ -2172,6 +2173,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 	int ret, started = -1, snapshot_mode = -1;
 	uint64_t live_timer_interval = UINT64_MAX;
 	char *name = NULL;
+	xmlChar *shm_path = NULL;
 	xmlNodePtr domains_node = NULL;
 	xmlNodePtr output_node = NULL;
 	xmlNodePtr node;
@@ -2216,6 +2218,16 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 			config_element_output)) {
 			/* output */
 			output_node = node;
+		} else if (!shm_path && !strcmp((const char *) node->name,
+			config_element_shared_memory_path)) {
+			/* shared memory path */
+			xmlChar *node_content = xmlNodeGetContent(node);
+			if (!node_content) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+
+			shm_path = node_content;
 		} else {
 			/* attributes, snapshot_mode or live_timer_interval */
 			xmlNodePtr attributes_child =
@@ -2356,6 +2368,14 @@ domain_init_error:
 		goto error;
 	}
 
+	if (shm_path) {
+		ret = lttng_set_session_shm_path((const char *) name,
+			(const char *) shm_path);
+		if (ret) {
+			goto error;
+		}
+	}
+
 	for (node = xmlFirstElementChild(domains_node); node;
 		node = xmlNextElementSibling(node)) {
 		ret = process_domain_node(node, name);
@@ -2384,6 +2404,7 @@ error:
 	free(log4j_domain);
 	free(python_domain);
 	free(name);
+	xmlFree(shm_path);
 	return ret;
 }
 
