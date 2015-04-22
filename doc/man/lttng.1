@@ -312,6 +312,8 @@ Path where shared memory holding buffers should be created. Useful
 when used with PRAMFS or other persistent memory filesystems to extract
 trace data in the event of a crash requiring a reboot.
 
+See the \fBlttng-crash(1)\fP utility for more information on crash recovery.
+
 .TP
 .BR "\-U, \-\-set-url=URL"
 Set URL for the consumer output destination. It is persistent for the
@@ -1116,6 +1118,7 @@ found.
 .BR lttng-ust(3),
 .BR lttng-sessiond(8),
 .BR lttng-relayd(8),
+.BR lttng-crash(1),
 
 .SH "BUGS"
 
