@@ -60,7 +60,7 @@ function test_event_basic()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
-	enable_ust_lttng_channel $SESSION_NAME $CHAN_NAME
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
 
 	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
 
