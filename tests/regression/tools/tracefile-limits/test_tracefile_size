@@ -100,7 +100,7 @@ function test_tracefile_size_limit ()
 
 	diag "Test tracefile size limit : $size_limit bytes"
 
-	create_lttng_session $session_name $trace_path
+	create_lttng_session_ok $session_name $trace_path
 
 	enable_lttng_channel_size_limit \
 	    $session_name $channel_name $size_limit

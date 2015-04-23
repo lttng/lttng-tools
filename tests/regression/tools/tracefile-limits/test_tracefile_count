@@ -108,7 +108,7 @@ function test_tracefile_count_limit ()
 
 	diag "Test tracefile count limit : $count_limit tracefiles"
 
-	create_lttng_session $session_name $trace_path
+	create_lttng_session_ok $session_name $trace_path
 
 	enable_lttng_channel_count_limit \
 	    $session_name $channel_name $count_limit

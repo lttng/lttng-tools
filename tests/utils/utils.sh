@@ -363,19 +363,30 @@ function create_lttng_session_no_output ()
 
 function create_lttng_session ()
 {
-	local sess_name=$1
-	local trace_path=$2
-	local expected_to_fail=$3
+	local expected_to_fail=$1
+	local sess_name=$2
+	local trace_path=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path > $OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on session creation $sess_name in $trace_path"
 	else
 		ok $ret "Create session $sess_name in $trace_path"
 	fi
 }
+
+function create_lttng_session_ok ()
+{
+	create_lttng_session 0 "$@"
+}
+
+function create_lttng_session_fail ()
+{
+	create_lttng_session 1 "$@"
+}
+
 
 function enable_ust_lttng_channel()
 {
