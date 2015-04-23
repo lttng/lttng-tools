@@ -388,20 +388,30 @@ function create_lttng_session_fail ()
 }
 
 
-function enable_ust_lttng_channel()
+function enable_ust_lttng_channel ()
 {
-	local sess_name=$1
-	local channel_name=$2
-	local expect_fail=$3
+	local expect_fail=$1
+	local sess_name=$2
+	local channel_name=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expect_fail ]]; then
+	if [[ $expect_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on ust channel creation $channel_name in $sess_name"
 	else
 		ok $ret "Enable channel $channel_name for session $sess_name"
 	fi
+}
+
+function enable_ust_lttng_channel_ok ()
+{
+	enable_ust_lttng_channel 0 "$@"
+}
+
+function enable_ust_lttng_channel_fail ()
+{
+	enable_ust_lttng_channel 1 "$@"
 }
 
 function disable_ust_lttng_channel()

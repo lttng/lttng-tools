@@ -246,20 +246,20 @@ function test_ust_channel ()
 
 	#Test the enable_channel command
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	enable_ust_lttng_channel $session_name ${channel_name[0]}
+	enable_ust_lttng_channel_ok $session_name ${channel_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: enable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Expect the command to fail
-	enable_ust_lttng_channel $session_name ${channel_name[0]} true
+	enable_ust_lttng_channel_fail $session_name ${channel_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: fail enable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST true
 
 	#Create two ust channel to test multiple disable
 	for (( i = 1; i < 3; i++ )); do
-		enable_ust_lttng_channel $session_name ${channel_name[$i]}
+		enable_ust_lttng_channel_ok $session_name ${channel_name[$i]}
 	done
 
 	#Test the disable_channel command
@@ -301,7 +301,7 @@ function test_ust_lttng_event ()
 	#Test build up
 	OUTPUT_DEST=$DEVNULL
 	create_lttng_session_ok $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	#Test the enable event for ust domain
@@ -373,7 +373,7 @@ function test_list_channel ()
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
 	create_lttng_session_ok $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
@@ -402,7 +402,7 @@ function test_list_channel ()
 
 	#Add a channel and make sure we have 2 channel now
 	OUTPUT_DEST=$DEVNULL
-	enable_ust_lttng_channel $session_name $channel_name"a"
+	enable_ust_lttng_channel_ok $session_name $channel_name"a"
 
 	#Teardown
 	OUTPUT_DEST=$DEVNULL
@@ -420,7 +420,7 @@ function test_list_domain ()
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
 	create_lttng_session_ok $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
@@ -468,7 +468,7 @@ function test_list_session ()
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
 	create_lttng_session_ok $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
@@ -551,7 +551,7 @@ function test_start_stop () {
 
 	#Enable a channel to test success
 	OUTPUT_DEST=$DEVNULL
-	enable_ust_lttng_channel $session_name $channel_name
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Start tracing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
