@@ -118,7 +118,7 @@ sub print_fields_stats
 
 	foreach my $field (keys %{$merged_ref->{$tracepoint}}) {
 		my @sorted;
-		my @val = keys ($merged_ref->{$tracepoint}->{$field});
+		my @val = keys %{$merged_ref->{$tracepoint}->{$field}};
 
 		if ($val[0] =~ /^\d+$/) {
 			# Sort numerically
