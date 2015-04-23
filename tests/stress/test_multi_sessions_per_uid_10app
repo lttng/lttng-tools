@@ -78,7 +78,7 @@ test_stress()
 {
 	for b in $(seq 1 $NR_LOOP); do
 		for a in $(seq 1 $NR_SESSION); do
-			create_lttng_session $SESSION_NAME-$a $TRACE_PATH
+			create_lttng_session_ok $SESSION_NAME-$a $TRACE_PATH
 			check_sessiond
 			enable_channel_per_uid $SESSION_NAME-$a $CHANNEL_NAME
 			check_sessiond

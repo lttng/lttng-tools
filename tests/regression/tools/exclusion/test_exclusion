@@ -52,7 +52,7 @@ function test_exclusion
 	trace_path=$(mktemp -d)
 
 	# Create session
-	create_lttng_session $SESSION_NAME $trace_path
+	create_lttng_session_ok $SESSION_NAME $trace_path
 
 	enable_ust_lttng_all_event_exclusion $SESSION_NAME $EV_EXCLUDE_NAME
 

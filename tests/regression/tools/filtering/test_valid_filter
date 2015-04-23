@@ -59,7 +59,7 @@ function test_valid_filter
 	trace_path=$(mktemp -d)
 
 	# Create session
-	create_lttng_session $SESSION_NAME $trace_path
+	create_lttng_session_ok $SESSION_NAME $trace_path
 
 	# Enable filter
 	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME $filter

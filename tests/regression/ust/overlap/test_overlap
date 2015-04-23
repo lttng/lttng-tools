@@ -651,7 +651,7 @@ while [ "$i" -lt "$TEST_COUNT" ]; do
 
 	TRACE_PATH=$(mktemp -d)
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	# Execute test
 	${TESTS[$i]}

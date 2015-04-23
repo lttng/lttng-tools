@@ -40,7 +40,7 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-create_lttng_session $SESSION_NAME $TRACE_PATH
+create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
 start_lttng_tracing $SESSION_NAME

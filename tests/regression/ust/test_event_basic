@@ -68,8 +68,8 @@ function test_event_basic()
 	EVENT_NAME2="ev2"
 	EVENT_NAME3="ev3"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	create_lttng_session $SESSION_NAME2 $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME2 $TRACE_PATH
 
 	enable_ust_lttng_channel $SESSION_NAME $CHAN_NAME
 	enable_ust_lttng_channel $SESSION_NAME2 $CHAN_NAME2

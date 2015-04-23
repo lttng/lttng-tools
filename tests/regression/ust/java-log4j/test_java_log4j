@@ -95,7 +95,7 @@ function test_log4j_before_start ()
 	local file_sync_before_last=$(mktemp -u)
 
 	diag "Test LOG4J application BEFORE tracing starts"
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
@@ -125,7 +125,7 @@ function test_log4j_after_start ()
 {
 	diag "Test LOG4J application AFTER tracing starts"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
@@ -146,7 +146,7 @@ function test_log4j_loglevel ()
 {
 	diag "Test LOG4J application with loglevel"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
 	start_lttng_tracing $SESSION_NAME
 
@@ -164,7 +164,7 @@ function test_log4j_loglevel ()
 
 	diag "Test LOG4J applications with lower loglevel"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_FATAL"
 	start_lttng_tracing $SESSION_NAME
 
@@ -182,7 +182,7 @@ function test_log4j_loglevel ()
 
 	diag "Test LOG4J applications with higher loglevel"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_TRACE"
 	start_lttng_tracing $SESSION_NAME
 
@@ -201,7 +201,7 @@ function test_log4j_loglevel_multiple ()
 {
 	diag "Test LOG4J application with multiple loglevel"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_DEBUG"
 	start_lttng_tracing $SESSION_NAME
@@ -218,7 +218,7 @@ function test_log4j_loglevel_multiple ()
 		return $?
 	fi
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_INFO"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_DEBUG"
 	start_lttng_tracing $SESSION_NAME
@@ -240,11 +240,11 @@ function test_log4j_multi_session_loglevel()
 {
 	diag "Test LOG4J with multiple session"
 
-	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_log4j_loglevel_only $SESSION_NAME-1 '*' "LOG4J_INFO"
 	start_lttng_tracing $SESSION_NAME-1
 
-	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_loglevel_only $SESSION_NAME-2 '*' "LOG4J_DEBUG"
 	start_lttng_tracing $SESSION_NAME-2
 
@@ -273,13 +273,13 @@ function test_log4j_multi_session_disable()
 {
 	diag "Test LOG4J with multiple session with disabled event"
 
-	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME2
 	disable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME-1
 
-	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME-2
 
@@ -308,10 +308,10 @@ function test_log4j_multi_session_disable_wildcard()
 {
 	diag "Test LOG4J with multiple session with disabled wildcard event"
 
-	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 '*'
 
-	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 '*'
 
 	disable_log4j_lttng_event $SESSION_NAME-1 '*'
@@ -343,7 +343,7 @@ function test_log4j_disable_all()
 {
 	diag "Test LOG4J with multiple session with disabled all event"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	enable_log4j_lttng_event $SESSION_NAME '*'
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
@@ -369,11 +369,11 @@ function test_log4j_multi_session()
 {
 	diag "Test LOG4J with multiple session"
 
-	create_lttng_session $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME-1
 
-	create_lttng_session $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME-2
 
@@ -402,7 +402,7 @@ function test_log4j_destroy_session()
 {
 	diag "Test LOG4J two session with destroy"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/first-sess
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/first-sess
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
@@ -420,7 +420,7 @@ function test_log4j_destroy_session()
 		return $?
 	fi
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/second-sess
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/second-sess
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
 	start_lttng_tracing $SESSION_NAME
 
@@ -443,7 +443,7 @@ function test_log4j_filtering()
 {
 	diag "Test LOG4J filtering"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_log4j_filter $SESSION_NAME '*' 'msg == "LOG4J second logger fired"'
 	start_lttng_tracing $SESSION_NAME
@@ -460,7 +460,7 @@ function test_log4j_filtering()
 		return $?
 	fi
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable first Logger but filter msg payload for the INFO one while
 	# triggering the debug and second TP.
 	enable_log4j_filter $SESSION_NAME $EVENT_NAME 'msg == "LOG4J tp fired!"'
@@ -483,7 +483,7 @@ function test_log4j_disable()
 {
 	diag "Test LOG4J disable event"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
@@ -507,7 +507,7 @@ function test_log4j_disable_enable()
 {
 	diag "Test LOG4J disable event followed by an enable"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	disable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
@@ -535,7 +535,7 @@ function test_log4j_filter_loglevel()
 
 	diag "Test LOG4J a filter with a loglevel"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable an event with a filter and the loglevel-only option.
 	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
 	disable_log4j_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME

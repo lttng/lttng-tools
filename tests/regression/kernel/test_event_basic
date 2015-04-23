@@ -28,7 +28,7 @@ function test_event_basic()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_event_basic"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_event $SESSION_NAME "sched_switch"
 	lttng_enable_kernel_event $SESSION_NAME "sched_process_exit"
@@ -51,7 +51,7 @@ function test_enable_after_start()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_enable_after_start"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_event $SESSION_NAME "sched_switch"
 

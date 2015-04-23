@@ -52,7 +52,7 @@ test_after_multiple_apps() {
 	diag "Start multiple applications AFTER tracing is started"
 
 	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
@@ -85,7 +85,7 @@ test_before_multiple_apps() {
 	done
 
 	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
@@ -126,7 +126,7 @@ test_after_app() {
 	diag "Start application AFTER tracing is started"
 
 	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
@@ -152,7 +152,7 @@ test_before_app() {
 
 
 	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
 
@@ -191,7 +191,7 @@ test_multiple_channels() {
 	diag "Start with multiple channels"
 
 	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_channel_per_pid $SESSION_NAME "channel1"
 	enable_channel_per_pid $SESSION_NAME "channel2"
