@@ -448,10 +448,10 @@ function enable_lttng_mmap_overwrite_ust_channel()
 
 function enable_ust_lttng_event ()
 {
-	local sess_name=$1
-	local event_name="$2"
-	local channel_name=$3
-	local expected_to_fail=$4
+	local expected_to_fail=$1
+	local sess_name=$2
+	local event_name="$3"
+	local channel_name=$4
 
 	if [ -z $channel_name ]; then
 		# default channel if none specified
@@ -462,12 +462,22 @@ function enable_ust_lttng_event ()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -u >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
 		ok $? "Enable ust event $event_name for session $session_name on channel $channel_name failed as expected"
 	else
 		ok $ret "Enable event $event_name for session $sess_name"
 	fi
+}
+
+function enable_ust_lttng_event_ok ()
+{
+	enable_ust_lttng_event 0 "$@"
+}
+
+function enable_ust_lttng_event_fail ()
+{
+	enable_ust_lttng_event 1 "$@"
 }
 
 function enable_jul_lttng_event()

@@ -91,7 +91,7 @@ function test_ust_default_name_with_del()
 	diag "Test UST snapshot streaming with default name with delete output"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	start_test_app
@@ -132,7 +132,7 @@ function test_ust_default_name()
 	diag "Test UST snapshot streaming with default name"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	start_test_app
@@ -155,7 +155,7 @@ function test_ust_default_name_custom_uri()
 	diag "Test UST snapshot streaming with default name with custom URL"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	start_test_app
@@ -182,7 +182,7 @@ function test_ust_custom_name()
 	diag "Test UST snapshot streaming with custom name"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	start_test_app

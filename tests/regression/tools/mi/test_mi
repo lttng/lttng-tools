@@ -305,13 +305,13 @@ function test_ust_lttng_event ()
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	#Test the enable event for ust domain
-	enable_ust_lttng_event $session_name ${event[0]} $channel_name
+	enable_ust_lttng_event_ok $session_name ${event[0]} $channel_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Enable_event for ust domain xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Try to reenable an enabled event. Should fail
-	enable_ust_lttng_event $session_name ${event[0]} $channel_name true
+	enable_ust_lttng_event_fail $session_name ${event[0]} $channel_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Fail enable_event for ust domain xsd validation"
 	is_command_success $OUTPUT_DEST true
@@ -324,7 +324,7 @@ function test_ust_lttng_event ()
 	#Event[*] print all the element inside the array with the IFS in between
 	concat_event=$( IFS=$','; echo "${event[*]}" )
 
-	enable_ust_lttng_event $session_name $concat_event $channel_name true
+	enable_ust_lttng_event_fail $session_name $concat_event $channel_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Multiple enable ust event with inside fail xsd validation"
 
@@ -377,7 +377,7 @@ function test_list_channel ()
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
-	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_ust_lttng_event_ok $session_name $concat_event $channel_name
 
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
@@ -424,7 +424,7 @@ function test_list_domain ()
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
-	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_ust_lttng_event_ok $session_name $concat_event $channel_name
 	enable_jul_lttng_event $session_name $concat_event $channel_name
 
 	#Begin testing
@@ -472,7 +472,7 @@ function test_list_session ()
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
-	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_ust_lttng_event_ok $session_name $concat_event $channel_name
 	enable_jul_lttng_event $session_name $concat_event $channel_name
 
 	#Begin testing

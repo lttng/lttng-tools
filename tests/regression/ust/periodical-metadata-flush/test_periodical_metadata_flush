@@ -137,7 +137,7 @@ test_after_app_pid() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# Start application after tracing
@@ -183,7 +183,7 @@ test_before_app_pid() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	check_app_tmp_file
@@ -226,7 +226,7 @@ test_after_app_uid() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_uid $SESSION_NAME
 	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	# Start application after tracing
@@ -272,7 +272,7 @@ test_before_app_uid() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_metadata_per_uid $SESSION_NAME
 	enable_channel_per_uid $SESSION_NAME "channel0"
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing $SESSION_NAME
 
 	check_app_tmp_file

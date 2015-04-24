@@ -39,8 +39,8 @@ function test_event_wildcard()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
-	enable_ust_lttng_event $SESSION_NAME "$EVENT_NAME"
-	enable_ust_lttng_event $SESSION_NAME "$EVENT_NAME2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME2"
 
 	start_lttng_tracing
 	stop_lttng_tracing

@@ -130,7 +130,7 @@ function test_ust_list_output ()
 	diag "Test UST snapshot output listing"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	start_lttng_tracing $SESSION_NAME
 
@@ -158,7 +158,7 @@ function test_ust_local_snapshot ()
 	diag "Test local UST snapshots"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 
@@ -192,7 +192,7 @@ function test_ust_local_snapshot_max_size ()
 
 	enable_mmap_overwrite_subbuf_ust_channel $SESSION_NAME $CHANNEL_NAME $subbuf_size
 
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	snapshot_add_output $SESSION_NAME "file://$TRACE_PATH" "" $max_size
@@ -237,7 +237,7 @@ function test_ust_local_snapshot_large_metadata ()
 	diag "Test local UST snapshots with > 4kB metadata"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $LM_EVENT $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $LM_EVENT $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 	$LM_BIN 1 1
@@ -268,7 +268,7 @@ function test_ust_per_uid_local_snapshot ()
 	diag "Test local UST snapshots"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 
@@ -294,7 +294,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	diag "Test local UST snapshots post-mortem"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 
@@ -319,7 +319,7 @@ function test_ust_local_snapshots ()
 	diag "Test $NR_SNAPSHOT local UST snapshots"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 
