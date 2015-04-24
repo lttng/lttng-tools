@@ -35,7 +35,7 @@ function test_event_basic()
 	lttng_enable_kernel_event $SESSION_NAME "sched_process_free"
 
 	start_lttng_tracing_ok
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
 	validate_trace "sched_process_exit" $TRACE_PATH
@@ -57,7 +57,7 @@ function test_enable_after_start()
 
 	start_lttng_tracing_ok
 	lttng_enable_kernel_event $SESSION_NAME "sched_process_exit"
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
 	validate_trace "sched_process_exit" $TRACE_PATH

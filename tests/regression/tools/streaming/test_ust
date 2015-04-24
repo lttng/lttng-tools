@@ -66,7 +66,7 @@ function test_ust_before_start ()
 	# Wait for the applications started in background
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}
@@ -88,7 +88,7 @@ function test_ust_after_start ()
 		sleep 0.5
 	done
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Wait for the applications started in background

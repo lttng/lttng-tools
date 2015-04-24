@@ -33,7 +33,7 @@ function test_all_event()
 	lttng_enable_kernel_event $SESSION_NAME
 
 	start_lttng_tracing_ok
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
 

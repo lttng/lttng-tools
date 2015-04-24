@@ -91,7 +91,7 @@ test_enable_simple_wildcard()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 
@@ -113,7 +113,7 @@ test_enable_wildcard_filter()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -134,7 +134,7 @@ test_enable_wildcard_filter_2()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -155,7 +155,7 @@ test_enable_wildcard_filter_3()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -176,7 +176,7 @@ test_enable_wildcard_filter_4()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_no_demo_events
 	return $?
@@ -197,7 +197,7 @@ test_enable_wildcard_filter_5()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -218,7 +218,7 @@ test_enable_wildcard_filter_6()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
 	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
@@ -242,7 +242,7 @@ test_enable_wildcard_filter_7()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -263,7 +263,7 @@ test_enable_wildcard_filter_8()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_no_demo_events
 	return $?
@@ -284,7 +284,7 @@ test_enable_same_wildcard_filter()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -312,7 +312,7 @@ test_enable_same_wildcard_filter_2()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -333,7 +333,7 @@ test_enable_same_wildcard_filter_3()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -354,7 +354,7 @@ test_enable_same_wildcard_filter_4()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_no_demo_events
 	return $?
@@ -375,7 +375,7 @@ test_enable_same_event_filter()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
 	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
@@ -401,7 +401,7 @@ test_disable_same_wildcard_filter()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_no_demo_events
 	return $?
@@ -425,7 +425,7 @@ test_enable_bad_wildcard()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_no_demo_events
 	return $?
@@ -446,7 +446,7 @@ test_enable_simple_wildcard_2()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -467,7 +467,7 @@ test_enable_loglevel_overlap()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -488,7 +488,7 @@ test_enable_loglevel_only_overlap()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -509,7 +509,7 @@ test_enable_loglevel_overlap_2()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -530,7 +530,7 @@ test_enable_same_wildcard_loglevels()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_match_all_demo_events
 	return $?
@@ -551,7 +551,7 @@ test_enable_same_event_loglevels()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
 	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
@@ -578,7 +578,7 @@ test_disable_simple_wildcard()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	# No events are expected.
 	trace_match_no_demo_events
@@ -602,7 +602,7 @@ test_disable_wildcard_overlap()
 
 	run_demo_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Expect only "ust_tests_demo" events.
 	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT $TRACE_PATH

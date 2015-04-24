@@ -91,10 +91,10 @@ function test_event_basic()
 	enable_ust_lttng_event_per_chan $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
 
 	start_lttng_tracing_ok
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	start_lttng_tracing_ok
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	TODO="Validate trace output is coherent"
 	ok 0 "Validate trace"

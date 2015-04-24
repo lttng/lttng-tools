@@ -67,7 +67,7 @@ function test_syscall_simple_list()
 
 	start_lttng_tracing_ok
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure each is there.
 	validate_trace_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME:" $TRACE_PATH
@@ -100,7 +100,7 @@ function test_syscall_simple_list_two()
 
 	start_lttng_tracing_ok
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure each is there.
 	validate_trace_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME:" $TRACE_PATH
@@ -131,7 +131,7 @@ function test_syscall_single()
 
 	start_lttng_tracing_ok
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure each is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
@@ -159,7 +159,7 @@ function test_syscall_two()
 
 	start_lttng_tracing_ok
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure each is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
@@ -189,7 +189,7 @@ function test_syscall_all()
 
 	start_lttng_tracing_ok
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure at least open and close are there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
@@ -220,7 +220,7 @@ function test_syscall_all_disable_one()
 
 	start_lttng_tracing_ok
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure "open" syscall is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
@@ -253,7 +253,7 @@ function test_syscall_all_disable_two()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure "open" syscall is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
@@ -288,7 +288,7 @@ function test_syscall_enable_all_disable_all()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -317,7 +317,7 @@ function test_syscall_enable_all_disable_all_enable_all()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure at least open and close are there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
@@ -352,7 +352,7 @@ function test_syscall_enable_all_disable_all_twice()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -379,7 +379,7 @@ function test_syscall_enable_one_disable_one()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -408,7 +408,7 @@ function test_syscall_enable_two_disable_two()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -436,7 +436,7 @@ function test_syscall_enable_two_disable_one()
 	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	# ensure open is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH

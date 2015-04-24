@@ -107,7 +107,7 @@ function test_jul_before_start ()
 	# Wait for the applications started in background
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	rm -f ${file_sync_after_first}
@@ -131,7 +131,7 @@ function test_jul_after_start ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
@@ -152,7 +152,7 @@ function test_jul_loglevel ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
@@ -170,7 +170,7 @@ function test_jul_loglevel ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting 0 events.
@@ -188,7 +188,7 @@ function test_jul_loglevel ()
 	# Run 5 times with a 1 second delay
 	run_app
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events.
@@ -208,7 +208,7 @@ function test_jul_loglevel_multiple ()
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events times two.
@@ -225,7 +225,7 @@ function test_jul_loglevel_multiple ()
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting all events times two.
@@ -250,8 +250,8 @@ function test_jul_multi_session_loglevel()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 1 1
 
-	stop_lttng_tracing $SESSION_NAME-1
-	stop_lttng_tracing $SESSION_NAME-2
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
 	destroy_lttng_session $SESSION_NAME-1
 	destroy_lttng_session $SESSION_NAME-2
 
@@ -285,8 +285,8 @@ function test_jul_multi_session_disable()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME-1
-	stop_lttng_tracing $SESSION_NAME-2
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
 	destroy_lttng_session $SESSION_NAME-1
 	destroy_lttng_session $SESSION_NAME-2
 
@@ -320,8 +320,8 @@ function test_jul_multi_session_disable_wildcard()
 
 	run_app
 
-	stop_lttng_tracing $SESSION_NAME-1
-	stop_lttng_tracing $SESSION_NAME-2
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
 	destroy_lttng_session $SESSION_NAME-1
 	destroy_lttng_session $SESSION_NAME-2
 
@@ -353,7 +353,7 @@ function test_jul_disable_all()
 
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting NO event of the first TP and second TP.
@@ -379,8 +379,8 @@ function test_jul_multi_session()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME-1
-	stop_lttng_tracing $SESSION_NAME-2
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
 	destroy_lttng_session $SESSION_NAME-1
 	destroy_lttng_session $SESSION_NAME-2
 
@@ -411,7 +411,7 @@ function test_jul_destroy_session()
 	# Wait for the applications started in background
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting at least one event num 1
@@ -430,7 +430,7 @@ function test_jul_destroy_session()
 	# Wait for the applications started in background
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting only one event num 2
@@ -452,7 +452,7 @@ function test_jul_filtering()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
@@ -470,7 +470,7 @@ function test_jul_filtering()
 	# Run 5 times with a 1 second delay, fire finest and second TP.
 	run_app 1 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
@@ -494,7 +494,7 @@ function test_jul_disable()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
@@ -518,7 +518,7 @@ function test_jul_disable_enable()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
@@ -546,7 +546,7 @@ function test_jul_filter_loglevel()
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test. Expecting no events.

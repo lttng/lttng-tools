@@ -78,7 +78,7 @@ touch ${file_sync_before_last}
 # We don't validate whether the applications have traced here, rather
 # just that they registered to sessiond (above).
 
-stop_lttng_tracing $SESSION_NAME
+stop_lttng_tracing_ok $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
 
 #TODO: add trace validation.

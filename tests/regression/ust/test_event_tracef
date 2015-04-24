@@ -44,7 +44,7 @@ function test_event_tracef()
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 	ok $? "Traced application stopped."
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH

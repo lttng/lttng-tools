@@ -50,7 +50,7 @@ function test_kernel_before_start ()
 	start_lttng_tracing_ok $SESSION_NAME
 	# Give a second
 	sleep 1
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
@@ -64,7 +64,7 @@ function test_kernel_after_start ()
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	# Give a second
 	sleep 1
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 

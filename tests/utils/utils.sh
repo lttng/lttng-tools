@@ -681,17 +681,27 @@ function start_lttng_tracing_fail ()
 
 function stop_lttng_tracing ()
 {
-	local sess_name=$1
-	local expected_to_fail=$2
+	local expected_to_fail=$1
+	local sess_name=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on stop tracing for session: $sess_name"
 	else
 		ok $ret "Stop lttng tracing for session $sess_name"
 	fi
+}
+
+function stop_lttng_tracing_ok ()
+{
+	stop_lttng_tracing 0 "$@"
+}
+
+function stop_lttng_tracing_fail ()
+{
+	stop_lttng_tracing 1 "$@"
 }
 
 function destroy_lttng_session ()
@@ -701,7 +711,7 @@ function destroy_lttng_session ()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on session deletion $sess_name"
 	else

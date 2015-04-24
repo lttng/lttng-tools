@@ -44,7 +44,7 @@ function test_kernel_local_snapshot ()
 	start_lttng_tracing_ok $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
@@ -64,7 +64,7 @@ function test_kernel_local_snapshot_after_stop ()
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 	lttng_snapshot_record $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
@@ -114,7 +114,7 @@ function test_kernel_local_snapshot_append_to_metadata ()
 		break
 	fi
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
@@ -141,7 +141,7 @@ function test_kernel_1000_local_snapshots ()
 			break
 		fi
 	done
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 

@@ -149,7 +149,7 @@ function test_ust_list_output ()
 
 	ok $? "Snapshot named ${output_names[1]} present in list-output listing"
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 }
 
@@ -166,7 +166,7 @@ function test_ust_local_snapshot ()
 	start_test_app
 
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
@@ -213,7 +213,7 @@ function test_ust_local_snapshot_max_size ()
 
 	pass "Tracefiles size sum validation"
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
@@ -243,7 +243,7 @@ function test_ust_local_snapshot_large_metadata ()
 	$LM_BIN 1 1
 	ok $? "Start application to trace"
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
@@ -276,7 +276,7 @@ function test_ust_per_uid_local_snapshot ()
 	start_test_app
 
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
@@ -303,7 +303,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	stop_test_apps
 
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	# Validate test
@@ -337,7 +337,7 @@ function test_ust_local_snapshots ()
 			rm -rf $TRACE_PATH
 		fi
 	done
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	stop_test_apps
