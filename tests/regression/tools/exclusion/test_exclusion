@@ -59,7 +59,7 @@ function test_exclusion
 	# Trace apps
 	start_lttng_tracing_ok $SESSION_NAME
 	run_apps
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Destroy session
 	destroy_lttng_session $SESSION_NAME

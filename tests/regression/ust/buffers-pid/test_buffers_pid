@@ -63,7 +63,7 @@ test_after_multiple_apps() {
 	done
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
@@ -98,7 +98,7 @@ test_before_multiple_apps() {
 	wait
 	pass "Waiting done"
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	for i in `seq 1 5`; do
@@ -135,7 +135,7 @@ test_after_app() {
 	ok $? "Start application to trace"
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
@@ -165,7 +165,7 @@ test_before_app() {
 
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	rm -f ${file_sync_after_first}
@@ -214,7 +214,7 @@ test_multiple_channels() {
 	ok $? "Start application to trace"
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
 	out=$?
 

@@ -112,7 +112,7 @@ function test_tracefile_size_limit ()
 
 	$TESTAPP_BIN $NR_ITER >/dev/null 2>&1
 
-	stop_lttng_tracing $session_name
+	stop_lttng_tracing_ok $session_name
 
 	destroy_lttng_session $session_name
 

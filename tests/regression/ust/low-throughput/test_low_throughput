@@ -47,7 +47,7 @@ start_lttng_tracing_ok $SESSION_NAME
 # This is going to take 20 minutes
 ./$CURDIR/$BIN_NAME >/dev/null 2>&1
 
-stop_lttng_tracing $SESSION_NAME
+stop_lttng_tracing_ok $SESSION_NAME
 destroy_lttng_session $SESSION_NAME
 
 stop_lttng_sessiond

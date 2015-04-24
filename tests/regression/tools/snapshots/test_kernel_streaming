@@ -77,7 +77,7 @@ function test_kernel_default_name_with_del()
 		return $?
 	fi
 
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	return 0
@@ -93,7 +93,7 @@ function test_kernel_default_name()
 	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
@@ -115,7 +115,7 @@ function test_kernel_custom_name()
 	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 
 	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then

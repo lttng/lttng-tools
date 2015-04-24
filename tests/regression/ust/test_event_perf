@@ -70,7 +70,7 @@ function test_event_basic()
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	destroy_lttng_session $SESSION_NAME
 
