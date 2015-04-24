@@ -54,7 +54,7 @@ function test_basic_load()
 
 	lttng_load "-i $CURDIR/$SESSION_NAME.lttng"
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_complex_load()
@@ -90,7 +90,7 @@ function test_complex_load()
 	else
 	    fail "Disabled event is loaded in disabled state"
 	fi
-	destroy_lttng_session $sess
+	destroy_lttng_session_ok $sess
 
 	stop_lttng_relayd_nocheck
 }
@@ -105,8 +105,8 @@ function test_all_load()
 
 	lttng_load "-a -i $CURDIR"
 
-	destroy_lttng_session $SESSION_NAME
-	destroy_lttng_session "$SESSION_NAME-complex"
+	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok "$SESSION_NAME-complex"
 
 	stop_lttng_relayd_nocheck
 }
@@ -120,7 +120,7 @@ function test_overwrite()
 	# This one should succeed
 	lttng_load "-f -i $CURDIR $SESSION_NAME"
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 start_lttng_sessiond

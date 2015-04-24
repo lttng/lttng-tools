@@ -73,7 +73,7 @@ function test_basic_save()
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_basic_save_all()
@@ -98,9 +98,9 @@ function test_basic_save_all()
 	is_session_saved $TRACE_PATH $SESSION_NAME-2
 	is_session_saved $TRACE_PATH $SESSION_NAME-3
 
-	destroy_lttng_session $SESSION_NAME-1
-	destroy_lttng_session $SESSION_NAME-2
-	destroy_lttng_session $SESSION_NAME-3
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-3
 }
 
 function test_overwrite()
@@ -115,7 +115,7 @@ function test_overwrite()
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Create a new session with same name so we can force the overwrite
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -130,7 +130,7 @@ function test_overwrite()
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 start_lttng_sessiond

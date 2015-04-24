@@ -37,7 +37,7 @@ function test_all_event()
 
 	validate_trace "sched_switch" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }

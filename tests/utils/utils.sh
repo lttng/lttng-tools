@@ -711,8 +711,8 @@ function stop_lttng_tracing_fail ()
 
 function destroy_lttng_session ()
 {
-	local sess_name=$1
-	local expected_to_fail=$2
+	local expected_to_fail=$1
+	local sess_name=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >$OUTPUT_DEST
 	ret=$?
@@ -723,6 +723,18 @@ function destroy_lttng_session ()
 		ok $ret "Destroy session $sess_name"
 	fi
 }
+
+function destroy_lttng_session_ok ()
+{
+	destroy_lttng_session 0 "$@"
+
+}
+
+function destroy_lttng_session_fail ()
+{
+	destroy_lttng_session 1 "$@"
+}
+
 
 function destroy_lttng_sessions ()
 {

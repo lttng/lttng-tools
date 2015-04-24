@@ -114,7 +114,7 @@ function test_tracefile_size_limit ()
 
 	stop_lttng_tracing_ok $session_name
 
-	destroy_lttng_session $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Validate file size, each one shall be no larger than the
 	# specified size limit

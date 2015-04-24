@@ -162,7 +162,7 @@ test_after_app_pid() {
 		wait ${p} 2>/dev/null
 	done
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	wait_trace_apps
 
@@ -209,7 +209,7 @@ test_before_app_pid() {
 	done
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	wait_trace_apps
 
@@ -252,7 +252,7 @@ test_after_app_uid() {
 		wait ${p} 2>/dev/null
 	done
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	wait_trace_apps
 
@@ -297,7 +297,7 @@ test_before_app_uid() {
 		wait ${p} 2>/dev/null
 	done
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	wait_trace_apps
 

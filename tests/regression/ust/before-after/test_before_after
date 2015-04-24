@@ -47,7 +47,7 @@ function test_before_apps()
 	ok $? "Traced application stopped."
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
 
@@ -73,7 +73,7 @@ function test_after_apps()
 	wait
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}

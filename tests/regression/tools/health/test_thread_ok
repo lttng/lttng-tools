@@ -81,7 +81,7 @@ function test_thread_ok
 	create_lttng_session_no_output $SESSION_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Check health status
 	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
@@ -93,7 +93,7 @@ function test_thread_ok
 		create_lttng_session_no_output $SESSION_NAME
 		lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME $CHANNEL_NAME
 		start_lttng_tracing_ok $SESSION_NAME
-		destroy_lttng_session $SESSION_NAME
+		destroy_lttng_session_ok $SESSION_NAME
 
 		# Check health status
 		$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}

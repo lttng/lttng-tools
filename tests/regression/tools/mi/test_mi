@@ -151,7 +151,7 @@ function test_create_session ()
 	is_command_success $OUTPUT_DEST true
 
 	OUTPUT_DEST=$DEVNULL
-	destroy_lttng_session $session_name
+	destroy_lttng_session_ok $session_name
 }
 
 function test_destroy_session ()
@@ -170,7 +170,7 @@ function test_destroy_session ()
 	done
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	destroy_lttng_session ${session_name[0]}
+	destroy_lttng_session_ok ${session_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: destroy session ${session_name[0]} xsd validation"
 
@@ -191,7 +191,7 @@ function test_destroy_session ()
 	ok $? "Mi test: $num / 2 sessions discovered"
 
 	#Verify that if no session is present command fail and mi report it.
-	destroy_lttng_session ${session_name[0]} 1
+	destroy_lttng_session_fail ${session_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: failing destroy session ${session_name[0]} xsd validation"
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result

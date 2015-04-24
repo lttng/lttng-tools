@@ -119,7 +119,7 @@ function test_ust_default_name_with_del()
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	stop_test_apps
 
@@ -140,7 +140,7 @@ function test_ust_default_name()
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
@@ -163,7 +163,7 @@ function test_ust_default_name_custom_uri()
 	snapshot_add_output $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
@@ -190,7 +190,7 @@ function test_ust_custom_name()
 	snapshot_add_output $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then
 		ok 0 "Custom name snapshot exists"

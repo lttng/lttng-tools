@@ -91,7 +91,7 @@ test_stress()
 		for a in $(seq 1 $NR_SESSION); do
 			stop_lttng_tracing_ok $SESSION_NAME-$a
 			check_sessiond
-			destroy_lttng_session $SESSION_NAME-$a
+			destroy_lttng_session_ok $SESSION_NAME-$a
 			check_sessiond
 		done
 	done

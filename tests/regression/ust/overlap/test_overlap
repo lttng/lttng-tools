@@ -656,7 +656,7 @@ while [ "$i" -lt "$TEST_COUNT" ]; do
 	# Execute test
 	${TESTS[$i]}
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 

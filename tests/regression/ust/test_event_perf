@@ -72,7 +72,7 @@ function test_event_basic()
 
 	stop_lttng_tracing_ok
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	validate_trace "perf_thread_page_fault" $TRACE_PATH
 	rm -rf $TRACE_PATH

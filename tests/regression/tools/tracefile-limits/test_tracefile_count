@@ -122,7 +122,7 @@ function test_tracefile_count_limit ()
 
 	stop_lttng_tracing_ok $session_name
 
-	destroy_lttng_session $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Validate tracing dir
 

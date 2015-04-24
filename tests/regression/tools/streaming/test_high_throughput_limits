@@ -106,7 +106,7 @@ function test_high_throughput
 	wait
 	pass "waiting done"
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 	validate_event_count
 }
 
