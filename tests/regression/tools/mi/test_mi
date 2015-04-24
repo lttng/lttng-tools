@@ -617,7 +617,7 @@ function test_snapshot () {
 	#Test fail command
 	#No channel enable start command should return element success false
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-    lttng_snapshot_add_output $session_name $snapshot_path
+    lttng_snapshot_add_output_ok $session_name $snapshot_path
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot xsd validation"
 
