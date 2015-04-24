@@ -57,7 +57,7 @@ function test_exclusion
 	enable_ust_lttng_all_event_exclusion $SESSION_NAME $EV_EXCLUDE_NAME
 
 	# Trace apps
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	run_apps
 	stop_lttng_tracing $SESSION_NAME
 

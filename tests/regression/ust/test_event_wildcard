@@ -42,7 +42,7 @@ function test_event_wildcard()
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME2"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	stop_lttng_tracing
 
 	TODO="Validate trace output is coherent"

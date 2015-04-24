@@ -138,7 +138,7 @@ test_after_app_pid() {
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Start application after tracing
 	start_check_trace_app
@@ -184,7 +184,7 @@ test_before_app_pid() {
 	enable_metadata_per_pid $SESSION_NAME
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	check_app_tmp_file
 	# Let the application at least perform a flush!
@@ -227,7 +227,7 @@ test_after_app_uid() {
 	enable_metadata_per_uid $SESSION_NAME
 	enable_channel_per_uid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Start application after tracing
 	start_check_trace_app
@@ -273,7 +273,7 @@ test_before_app_uid() {
 	enable_metadata_per_uid $SESSION_NAME
 	enable_channel_per_uid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	check_app_tmp_file
 	# Let the application at least perform a flush!

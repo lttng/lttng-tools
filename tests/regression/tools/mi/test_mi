@@ -540,7 +540,7 @@ function test_start_stop () {
 	#Test fail command
 	#No channel enable start command should return element success false
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	start_lttng_tracing $session_name 1
+	start_lttng_tracing_fail $session_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: failed start xsd validation"
 
@@ -555,7 +555,7 @@ function test_start_stop () {
 
 	#Start tracing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	start_lttng_tracing $session_name
+	start_lttng_tracing_ok $session_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: start xsd validation"
 

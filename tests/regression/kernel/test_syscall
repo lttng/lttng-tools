@@ -65,7 +65,7 @@ function test_syscall_simple_list()
 
 	validate_list $SESSION_NAME $EVENT_NAME
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	eval ${TESTCMD}
 	stop_lttng_tracing
 
@@ -98,7 +98,7 @@ function test_syscall_simple_list_two()
 	validate_list $SESSION_NAME $EVENT_NAME
 	validate_list $SESSION_NAME $EVENT_NAME2
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	eval ${TESTCMD}
 	stop_lttng_tracing
 
@@ -129,7 +129,7 @@ function test_syscall_single()
 
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	eval ${TESTCMD}
 	stop_lttng_tracing
 
@@ -157,7 +157,7 @@ function test_syscall_two()
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "close"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	eval ${TESTCMD}
 	stop_lttng_tracing
 
@@ -187,7 +187,7 @@ function test_syscall_all()
 	# enable all syscalls
 	lttng_enable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	eval ${TESTCMD}
 	stop_lttng_tracing
 
@@ -218,7 +218,7 @@ function test_syscall_all_disable_one()
 	# "all syscalls" is not "the open" system call.
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	eval ${TESTCMD}
 	stop_lttng_tracing
 
@@ -250,7 +250,7 @@ function test_syscall_all_disable_two()
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "close"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing
@@ -285,7 +285,7 @@ function test_syscall_enable_all_disable_all()
 	# disable all system calls
 	lttng_disable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing
@@ -314,7 +314,7 @@ function test_syscall_enable_all_disable_all_enable_all()
 	# enable all system calls
 	lttng_enable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing
@@ -349,7 +349,7 @@ function test_syscall_enable_all_disable_all_twice()
 	# disable all system calls
 	lttng_disable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing
@@ -376,7 +376,7 @@ function test_syscall_enable_one_disable_one()
 	# disable open system call
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing
@@ -405,7 +405,7 @@ function test_syscall_enable_two_disable_two()
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing
@@ -433,7 +433,7 @@ function test_syscall_enable_two_disable_one()
 	# disable close system call
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	# generates open, close, execve (at least)
 	eval ${TESTCMD}
 	stop_lttng_tracing

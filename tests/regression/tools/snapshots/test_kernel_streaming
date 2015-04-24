@@ -57,7 +57,7 @@ function test_kernel_default_name_with_del()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 
@@ -90,7 +90,7 @@ function test_kernel_default_name()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME
@@ -112,7 +112,7 @@ function test_kernel_custom_name()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing $SESSION_NAME

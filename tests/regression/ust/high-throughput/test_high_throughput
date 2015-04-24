@@ -43,7 +43,7 @@ start_lttng_sessiond
 create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-start_lttng_tracing $SESSION_NAME
+start_lttng_tracing_ok $SESSION_NAME
 
 for i in `seq 1 $NR_APP`; do
 	./$CURDIR/$BIN_NAME >/dev/null 2>&1 &

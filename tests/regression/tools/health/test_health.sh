@@ -111,7 +111,7 @@ function test_health
 			diag "With kernel consumer daemon"
 			lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME $CHANNEL_NAME
 		}
-		start_lttng_tracing $SESSION_NAME
+		start_lttng_tracing_ok $SESSION_NAME
 	fi
 
 	if [ ${test_relayd} -eq 1 ]; then

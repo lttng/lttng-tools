@@ -65,7 +65,7 @@ function test_valid_filter
 	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME $filter
 
 	# Trace apps
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	run_apps
 	stop_lttng_tracing $SESSION_NAME
 
