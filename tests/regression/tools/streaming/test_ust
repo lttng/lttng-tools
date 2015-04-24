@@ -54,7 +54,7 @@ function test_ust_before_start ()
 
 	diag "Test UST streaming BEFORE tracing starts"
 	lttng_create_session_uri
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
@@ -78,7 +78,7 @@ function test_ust_after_start ()
 
 	diag "Test UST streaming AFTER tracing starts"
 	lttng_create_session_uri
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 
 	# Run 5 times with a 1 second delay

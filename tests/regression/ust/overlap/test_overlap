@@ -84,8 +84,8 @@ test_enable_simple_wildcard()
 
 	diag "Simple wildcard overlap"
 
-	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
-	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild2"
 
 	start_lttng_tracing $SESSION_NAME
 
@@ -417,9 +417,9 @@ test_enable_bad_wildcard()
 
 	diag "Enable bad wildcard"
 
-	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
-	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
-	enable_ust_lttng_event $SESSION_NAME "$event_wild3"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild3"
 
 	start_lttng_tracing $SESSION_NAME
 
@@ -439,8 +439,8 @@ test_enable_simple_wildcard_2()
 
 	diag "Simple wildcard 2"
 
-	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
-	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild2"
 
 	start_lttng_tracing $SESSION_NAME
 
@@ -568,8 +568,8 @@ test_disable_simple_wildcard()
 
 	diag "Disable simple wildcard"
 
-	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
-	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild2"
 
 	disable_ust_lttng_event $SESSION_NAME "$event_wild1"
 	disable_ust_lttng_event $SESSION_NAME "$event_wild2"
@@ -593,8 +593,8 @@ test_disable_wildcard_overlap()
 
 	diag "Disable wildcard overlap"
 
-	enable_ust_lttng_event $SESSION_NAME "$event_wild1"
-	enable_ust_lttng_event $SESSION_NAME "$event_wild2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_wild2"
 
 	disable_ust_lttng_event $SESSION_NAME "$event_wild1"
 

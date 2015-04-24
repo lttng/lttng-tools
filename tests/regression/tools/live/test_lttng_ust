@@ -62,7 +62,7 @@ function setup_live_tracing()
 		-U net://localhost >/dev/null 2>&1
 	ok $? "Create session in live mode with delay $DELAY_USEC"
 
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 }
 

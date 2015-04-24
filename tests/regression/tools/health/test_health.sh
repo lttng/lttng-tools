@@ -104,7 +104,7 @@ function test_health
 		create_lttng_session_no_output $SESSION_NAME
 
 		diag "With UST consumer daemons"
-		enable_ust_lttng_event $SESSION_NAME $UST_EVENT_NAME $CHANNEL_NAME
+		enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME $CHANNEL_NAME
 
 		skip $isroot "Root access is needed. Skipping kernel consumer health check test." "1" ||
 		{

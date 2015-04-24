@@ -67,7 +67,7 @@ function test_basic_save()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	lttng_save $SESSION_NAME "-o $TRACE_PATH"
 
@@ -88,9 +88,9 @@ function test_basic_save_all()
 	enable_ust_lttng_channel_ok $SESSION_NAME-2 $CHANNEL_NAME
 	enable_ust_lttng_channel_ok $SESSION_NAME-3 $CHANNEL_NAME
 
-	enable_ust_lttng_event $SESSION_NAME-1 $EVENT_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME-1 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
 
 	lttng_save "" "-a -o $TRACE_PATH"
 
@@ -109,7 +109,7 @@ function test_overwrite()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	lttng_save $SESSION_NAME "-o $TRACE_PATH"
 
@@ -120,7 +120,7 @@ function test_overwrite()
 	# Create a new session with same name so we can force the overwrite
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	# This one MUST fail
 	save_lttng_fail $SESSION_NAME "-o $TRACE_PATH"

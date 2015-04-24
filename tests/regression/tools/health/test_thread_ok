@@ -79,7 +79,7 @@ function test_thread_ok
 
 	diag "With UST consumer daemons"
 	create_lttng_session_no_output $SESSION_NAME
-	enable_ust_lttng_event $SESSION_NAME $UST_EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing $SESSION_NAME
 	destroy_lttng_session $SESSION_NAME
 

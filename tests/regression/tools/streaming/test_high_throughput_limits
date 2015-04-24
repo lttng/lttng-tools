@@ -99,7 +99,7 @@ function test_high_throughput
 {
 	NETWORK_URI="net://localhost"
 	create_lttng_session_with_uri $SESSION_NAME $NETWORK_URI
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing $SESSION_NAME
 	run_apps
 	diag "Waiting for applications to end"
