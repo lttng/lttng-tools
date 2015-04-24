@@ -96,7 +96,7 @@ function test_python_before_start ()
 	# Run 5 times with a 1 second delay
 	run_app_background
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Wait for the applications started in background
 	wait
@@ -117,7 +117,7 @@ function test_python_after_start ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -138,7 +138,7 @@ function test_python_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "INFO"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -156,7 +156,7 @@ function test_python_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "CRITICAL"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -174,7 +174,7 @@ function test_python_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "DEBUG"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -194,7 +194,7 @@ function test_python_loglevel_multiple ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "INFO"
 	enable_python_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "DEBUG"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
@@ -211,7 +211,7 @@ function test_python_loglevel_multiple ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event_loglevel $SESSION_NAME '*' "INFO"
 	enable_python_lttng_event_loglevel $SESSION_NAME '*' "DEBUG"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
@@ -232,11 +232,11 @@ function test_python_multi_session_loglevel()
 
 	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_python_loglevel_only $SESSION_NAME-1 '*' "INFO"
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_python_loglevel_only $SESSION_NAME-2 '*' "DEBUG"
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 1 1
@@ -271,11 +271,11 @@ function test_python_multi_session_disable()
 	enable_python_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	enable_python_lttng_event $SESSION_NAME-1 $EVENT_NAME2
 	disable_python_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_python_lttng_event $SESSION_NAME-2 $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -310,8 +310,8 @@ function test_python_multi_session_disable_wildcard()
 
 	disable_python_lttng_event $SESSION_NAME-1 '*'
 
-	start_lttng_tracing $SESSION_NAME-1
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	run_app
 
@@ -344,7 +344,7 @@ function test_python_disable_all()
 
 	disable_python_lttng_event $SESSION_NAME '*'
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	run_app 0 1
 
@@ -365,11 +365,11 @@ function test_python_multi_session()
 
 	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_python_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_python_lttng_event $SESSION_NAME-2 $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -398,7 +398,7 @@ function test_python_destroy_session()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/first-sess
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
@@ -417,7 +417,7 @@ function test_python_destroy_session()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/second-sess
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
@@ -442,7 +442,7 @@ function test_python_filtering()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_python_filter $SESSION_NAME '*' 'msg == "python-ev-test2 fired"'
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -460,7 +460,7 @@ function test_python_filtering()
 	# Enable first Logger but filter msg payload for the INFO one while
 	# triggering the debug and second TP.
 	enable_python_filter $SESSION_NAME $EVENT_NAME 'msg == "python-ev-test1 fired"'
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay, fire debug and second TP.
 	run_app 1 1
@@ -484,7 +484,7 @@ function test_python_disable()
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME2
 	disable_python_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -508,7 +508,7 @@ function test_python_disable_enable()
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
 	disable_python_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -536,7 +536,7 @@ function test_python_filter_loglevel()
 	enable_python_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" "INFO"
 	disable_python_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
 	enable_python_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" "INFO"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1

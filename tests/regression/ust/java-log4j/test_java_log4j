@@ -101,7 +101,7 @@ function test_log4j_before_start ()
 	# Run 5 times with a 1 second delay
 	run_app_background
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
@@ -127,7 +127,7 @@ function test_log4j_after_start ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -148,7 +148,7 @@ function test_log4j_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -166,7 +166,7 @@ function test_log4j_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_FATAL"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -184,7 +184,7 @@ function test_log4j_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_TRACE"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -204,7 +204,7 @@ function test_log4j_loglevel_multiple ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_DEBUG"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
@@ -221,7 +221,7 @@ function test_log4j_loglevel_multiple ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_INFO"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_DEBUG"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
@@ -242,11 +242,11 @@ function test_log4j_multi_session_loglevel()
 
 	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_log4j_loglevel_only $SESSION_NAME-1 '*' "LOG4J_INFO"
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_loglevel_only $SESSION_NAME-2 '*' "LOG4J_DEBUG"
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 1 1
@@ -277,11 +277,11 @@ function test_log4j_multi_session_disable()
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME2
 	disable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -316,8 +316,8 @@ function test_log4j_multi_session_disable_wildcard()
 
 	disable_log4j_lttng_event $SESSION_NAME-1 '*'
 
-	start_lttng_tracing $SESSION_NAME-1
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	run_app
 
@@ -350,7 +350,7 @@ function test_log4j_disable_all()
 
 	disable_log4j_lttng_event $SESSION_NAME '*'
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	run_app 0 1
 
@@ -371,11 +371,11 @@ function test_log4j_multi_session()
 
 	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -404,7 +404,7 @@ function test_log4j_destroy_session()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/first-sess
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
@@ -422,7 +422,7 @@ function test_log4j_destroy_session()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/second-sess
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
@@ -446,7 +446,7 @@ function test_log4j_filtering()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_log4j_filter $SESSION_NAME '*' 'msg == "LOG4J second logger fired"'
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -464,7 +464,7 @@ function test_log4j_filtering()
 	# Enable first Logger but filter msg payload for the INFO one while
 	# triggering the debug and second TP.
 	enable_log4j_filter $SESSION_NAME $EVENT_NAME 'msg == "LOG4J tp fired!"'
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay, fire debug and second TP.
 	run_app 1 1
@@ -488,7 +488,7 @@ function test_log4j_disable()
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
 	disable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -512,7 +512,7 @@ function test_log4j_disable_enable()
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	disable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -540,7 +540,7 @@ function test_log4j_filter_loglevel()
 	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
 	disable_log4j_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
 	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1

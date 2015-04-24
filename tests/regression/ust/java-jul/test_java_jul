@@ -100,7 +100,7 @@ function test_jul_before_start ()
 	# Run 5 times with a 1 second delay
 	run_app_background
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
@@ -126,7 +126,7 @@ function test_jul_after_start ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -147,7 +147,7 @@ function test_jul_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_INFO"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -165,7 +165,7 @@ function test_jul_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_SEVERE"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -183,7 +183,7 @@ function test_jul_loglevel ()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_FINER"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app
@@ -203,7 +203,7 @@ function test_jul_loglevel_multiple ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_INFO"
 	enable_jul_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "JUL_FINEST"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
@@ -220,7 +220,7 @@ function test_jul_loglevel_multiple ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_jul_lttng_event_loglevel $SESSION_NAME '*' "JUL_INFO"
 	enable_jul_lttng_event_loglevel $SESSION_NAME '*' "JUL_FINEST"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire two TP.
 	run_app 1
@@ -241,11 +241,11 @@ function test_jul_multi_session_loglevel()
 
 	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_jul_loglevel_only $SESSION_NAME-1 '*' "JUL_INFO"
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_jul_loglevel_only $SESSION_NAME-2 '*' "JUL_FINEST"
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 1 1
@@ -276,11 +276,11 @@ function test_jul_multi_session_disable()
 	enable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	enable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME2
 	disable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_jul_lttng_event $SESSION_NAME-2 $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -315,8 +315,8 @@ function test_jul_multi_session_disable_wildcard()
 
 	disable_jul_lttng_event $SESSION_NAME-1 '*'
 
-	start_lttng_tracing $SESSION_NAME-1
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	run_app
 
@@ -349,7 +349,7 @@ function test_jul_disable_all()
 
 	disable_jul_lttng_event $SESSION_NAME '*'
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	run_app 0 1
 
@@ -370,11 +370,11 @@ function test_jul_multi_session()
 
 	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
 	enable_jul_lttng_event $SESSION_NAME-1 $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-1
 
 	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
 	enable_jul_lttng_event $SESSION_NAME-2 $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME-2
+	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -403,7 +403,7 @@ function test_jul_destroy_session()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/first-sess
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
@@ -422,7 +422,7 @@ function test_jul_destroy_session()
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/second-sess
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
@@ -447,7 +447,7 @@ function test_jul_filtering()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_jul_filter $SESSION_NAME '*' 'msg == "JUL second logger fired"'
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -465,7 +465,7 @@ function test_jul_filtering()
 	# Enable first Logger but filter msg payload for the INFO one while
 	# triggering the finest and second TP.
 	enable_jul_filter $SESSION_NAME $EVENT_NAME 'msg == "JUL tp fired!"'
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay, fire finest and second TP.
 	run_app 1 1
@@ -489,7 +489,7 @@ function test_jul_disable()
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
 	disable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -513,7 +513,7 @@ function test_jul_disable_enable()
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
 	disable_jul_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1
@@ -541,7 +541,7 @@ function test_jul_filter_loglevel()
 	enable_jul_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" JUL_CONFIG
 	disable_jul_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
 	enable_jul_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" JUL_CONFIG
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
 	run_app 0 1

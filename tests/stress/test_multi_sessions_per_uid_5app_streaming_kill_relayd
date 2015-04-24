@@ -122,7 +122,7 @@ test_stress()
 			enable_ust_lttng_event_ok $SESSION_NAME-$a $EVENT_NAME
 			check_sessiond
 			check_relayd
-			start_lttng_tracing $SESSION_NAME-$a
+			start_lttng_tracing_ok $SESSION_NAME-$a
 			check_sessiond
 			check_relayd
 		done

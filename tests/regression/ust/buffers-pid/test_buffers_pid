@@ -55,7 +55,7 @@ test_after_multiple_apps() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	for i in `seq 1 5`; do
 		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1 &
@@ -88,7 +88,7 @@ test_before_multiple_apps() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	for i in `seq 1 5`; do
 		touch ${file_sync_before_last}_${i}
@@ -129,7 +129,7 @@ test_after_app() {
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"
@@ -159,7 +159,7 @@ test_before_app() {
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} &
 	ok $? "Start application to trace"
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
@@ -208,7 +208,7 @@ test_multiple_channels() {
 	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel3"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel4 -s $SESSION_NAME -u >/dev/null 2>&1
 	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel4"
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	ok $? "Start application to trace"

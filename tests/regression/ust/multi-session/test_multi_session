@@ -38,7 +38,7 @@ test_multi_session() {
 	for i in `seq 0 3`; do
 		create_lttng_session_ok "$SESSION_NAME-$i" "$TRACE_PATH/$i"
 		enable_ust_lttng_event_ok "$SESSION_NAME-$i" "$EVENT_NAME$i"
-		start_lttng_tracing "$SESSION_NAME-$i"
+		start_lttng_tracing_ok "$SESSION_NAME-$i"
 	done
 
 	./$CURDIR/gen-nevents $NR_ITER &

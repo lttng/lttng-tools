@@ -92,7 +92,7 @@ function test_ust_default_name_with_del()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	start_test_app
 
@@ -133,7 +133,7 @@ function test_ust_default_name()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	start_test_app
 
@@ -156,7 +156,7 @@ function test_ust_default_name_custom_uri()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	start_test_app
 
@@ -183,7 +183,7 @@ function test_ust_custom_name()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	start_test_app
 

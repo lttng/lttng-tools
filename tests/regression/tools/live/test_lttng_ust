@@ -63,7 +63,7 @@ function setup_live_tracing()
 	ok $? "Create session in live mode with delay $DELAY_USEC"
 
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 }
 
 function clean_live_tracing()

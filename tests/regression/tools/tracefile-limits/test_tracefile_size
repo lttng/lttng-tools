@@ -108,7 +108,7 @@ function test_tracefile_size_limit ()
 	enable_ust_lttng_event_per_channel \
 	    $session_name $event_name $channel_name
 
-	start_lttng_tracing $session_name
+	start_lttng_tracing_ok $session_name
 
 	$TESTAPP_BIN $NR_ITER >/dev/null 2>&1
 

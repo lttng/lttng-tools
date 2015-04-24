@@ -661,17 +661,27 @@ function disable_python_lttng_event ()
 
 function start_lttng_tracing ()
 {
-	local sess_name=$1
-	local expected_to_fail=$2
+	local expected_to_fail=$1
+	local sess_name=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on start tracing for session: $sess_name"
 	else
 		ok $ret "Start tracing for session $sess_name"
 	fi
+}
+
+function start_lttng_tracing_ok ()
+{
+	start_lttng_tracing 0 "$@"
+}
+
+function start_lttng_tracing_fail ()
+{
+	start_lttng_tracing 1 "$@"
 }
 
 function stop_lttng_tracing ()
