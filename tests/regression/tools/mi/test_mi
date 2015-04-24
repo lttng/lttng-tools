@@ -655,7 +655,7 @@ function test_snapshot () {
 	ok $? "Mi test: snapshot list extracted snapshot: $result expected: $snapshot_name"
 
 	#Test del output
-	lttng_snapshot_del_output $session_name $snapshot_id
+	lttng_snapshot_del_output_ok $session_name $snapshot_id
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot delete xsd validation"
 
@@ -674,7 +674,7 @@ function test_snapshot () {
 	ok $? "Mi test: snapshot del extracted snapshot id: $result expected: $session_name"
 
 	#Test fail on delete command
-	lttng_snapshot_del_output $session_name $snapshot_id 1
+	lttng_snapshot_del_output_fail $session_name $snapshot_id
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot delete xsd validation"
 
