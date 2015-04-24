@@ -744,18 +744,28 @@ function destroy_lttng_sessions ()
 
 function lttng_snapshot_add_output ()
 {
-	local sess_name=$1
-	local trace_path=$2
-	local expected_to_fail=$3
+	local expected_to_fail=$1
+	local sess_name=$2
+	local trace_path=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq 1 ]]; then
 		test "$ret" -ne "0"
 		ok $? "Failed to add a  snapshot output file://$trace_path as expected"
 	else
 		ok $ret "Added snapshot output file://$trace_path"
 	fi
+}
+
+function lttng_snapshot_add_output_ok ()
+{
+	lttng_snapshot_add_output 0 "$@"
+}
+
+function lttng_snapshot_add_output_fail ()
+{
+	lttng_snapshot_add_output 1 "$@"
 }
 
 function lttng_snapshot_del_output ()
