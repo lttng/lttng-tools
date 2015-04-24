@@ -67,7 +67,7 @@ function test_kernel_default_name_with_del()
 		return $?
 	fi
 
-	lttng_snapshot_del_output $SESSION_NAME 1
+	lttng_snapshot_del_output_ok $SESSION_NAME 1
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 

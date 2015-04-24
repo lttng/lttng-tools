@@ -765,18 +765,28 @@ function lttng_snapshot_add_output_fail ()
 
 function lttng_snapshot_del_output ()
 {
-	local sess_name=$1
-	local id=$2
-	local expected_to_fail=$3
+	local expected_to_fail=$1
+	local sess_name=$2
+	local id=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot del-output -s $sess_name $id >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expect fail on deletion of snapshot output id $id"
 	else
 		ok $ret "Deleted snapshot output id $id"
 	fi
+}
+
+function lttng_snapshot_del_output_ok ()
+{
+	lttng_snapshot_del_output 0 "$@"
+}
+
+function lttng_snapshot_del_output_fail ()
+{
+	lttng_snapshot_del_output 1 "$@"
 }
 
 function lttng_snapshot_record ()
