@@ -49,7 +49,7 @@ function test_event_wildcard()
 	ok 0 "Validate trace"
 	unset TODO
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }

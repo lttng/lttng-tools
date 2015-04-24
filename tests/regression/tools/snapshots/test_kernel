@@ -45,7 +45,7 @@ function test_kernel_local_snapshot ()
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/
@@ -67,7 +67,7 @@ function test_kernel_local_snapshot_after_stop ()
 	stop_lttng_tracing_ok $SESSION_NAME
 	lttng_snapshot_add_output $SESSION_NAME $TRACE_PATH
 	lttng_snapshot_record $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/
@@ -115,7 +115,7 @@ function test_kernel_local_snapshot_append_to_metadata ()
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_kernel_1000_local_snapshots ()
@@ -142,7 +142,7 @@ function test_kernel_1000_local_snapshots ()
 		fi
 	done
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 plan_tests $NUM_TESTS

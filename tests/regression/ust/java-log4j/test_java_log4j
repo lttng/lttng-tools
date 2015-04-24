@@ -109,7 +109,7 @@ function test_log4j_before_start ()
 	wait
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}
@@ -133,7 +133,7 @@ function test_log4j_after_start ()
 	run_app
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events.
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
@@ -154,7 +154,7 @@ function test_log4j_loglevel ()
 	run_app
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events.
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
@@ -172,7 +172,7 @@ function test_log4j_loglevel ()
 	run_app
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting 0 events.
 	trace_match_only $EVENT_NAME 0 $TRACE_PATH
@@ -190,7 +190,7 @@ function test_log4j_loglevel ()
 	run_app
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events.
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
@@ -210,7 +210,7 @@ function test_log4j_loglevel_multiple ()
 	run_app 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events times two.
 	trace_match_only $EVENT_NAME $(($NR_ITER * 2)) $TRACE_PATH
@@ -227,7 +227,7 @@ function test_log4j_loglevel_multiple ()
 	run_app 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events times two.
 	trace_match_only $EVENT_NAME $(($NR_ITER * 2)) $TRACE_PATH
@@ -253,8 +253,8 @@ function test_log4j_multi_session_loglevel()
 
 	stop_lttng_tracing_ok $SESSION_NAME-1
 	stop_lttng_tracing_ok $SESSION_NAME-2
-	destroy_lttng_session $SESSION_NAME-1
-	destroy_lttng_session $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Expecting 6 events being the main event plus the second tp.
 	trace_match_only $EVENT_NAME $(($NR_ITER + 1)) $TRACE_PATH/$SESSION_NAME-1
@@ -288,8 +288,8 @@ function test_log4j_multi_session_disable()
 
 	stop_lttng_tracing_ok $SESSION_NAME-1
 	stop_lttng_tracing_ok $SESSION_NAME-2
-	destroy_lttng_session $SESSION_NAME-1
-	destroy_lttng_session $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting one event of the second TP.
 	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-1
@@ -323,8 +323,8 @@ function test_log4j_multi_session_disable_wildcard()
 
 	stop_lttng_tracing_ok $SESSION_NAME-1
 	stop_lttng_tracing_ok $SESSION_NAME-2
-	destroy_lttng_session $SESSION_NAME-1
-	destroy_lttng_session $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting NO event of the first TP.
 	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
@@ -355,7 +355,7 @@ function test_log4j_disable_all()
 	run_app 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting NO event of the first TP and second TP.
 	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME
@@ -382,8 +382,8 @@ function test_log4j_multi_session()
 
 	stop_lttng_tracing_ok $SESSION_NAME-1
 	stop_lttng_tracing_ok $SESSION_NAME-2
-	destroy_lttng_session $SESSION_NAME-1
-	destroy_lttng_session $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting all events of first TP
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-1
@@ -412,7 +412,7 @@ function test_log4j_destroy_session()
 	wait
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting at least one event num 1
 	validate_trace $EVENT_NAME $TRACE_PATH/first-sess
@@ -430,7 +430,7 @@ function test_log4j_destroy_session()
 	wait
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting only one event num 2
 	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/second-sess
@@ -452,7 +452,7 @@ function test_log4j_filtering()
 	run_app 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
 	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
@@ -470,7 +470,7 @@ function test_log4j_filtering()
 	run_app 1 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
@@ -494,7 +494,7 @@ function test_log4j_disable()
 	run_app 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
 	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
@@ -518,7 +518,7 @@ function test_log4j_disable_enable()
 	run_app 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
@@ -546,7 +546,7 @@ function test_log4j_filter_loglevel()
 	run_app 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting no events.
 	trace_match_only $ALL_EVENTS 0 $TRACE_PATH/$SESSION_NAME

@@ -60,7 +60,7 @@ function test_invalid_filter
 	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME "$test_invalid_filter"
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_bytecode_limit
@@ -78,7 +78,7 @@ function test_bytecode_limit
 	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME "$BYTECODE_LIMIT"
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 plan_tests $NUM_TESTS

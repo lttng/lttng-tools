@@ -41,7 +41,7 @@ function test_event_basic()
 	validate_trace "sched_process_exit" $TRACE_PATH
 	validate_trace "sched_process_free" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -62,7 +62,7 @@ function test_enable_after_start()
 	validate_trace "sched_switch" $TRACE_PATH
 	validate_trace "sched_process_exit" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }

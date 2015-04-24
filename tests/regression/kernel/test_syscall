@@ -76,7 +76,7 @@ function test_syscall_simple_list()
 	# ensure trace only contains those.
 	validate_trace_only_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME: -e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -113,7 +113,7 @@ function test_syscall_simple_list_two()
 	# ensure trace only contains those.
 	validate_trace_only_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME: -e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME: -e syscall_entry_$EVENT_NAME2: -e compat_syscall_entry_$EVENT_NAME2: -e syscall_exit_$EVENT_NAME2: -e compat_syscall_exit_$EVENT_NAME2:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -140,7 +140,7 @@ function test_syscall_single()
 	# ensure trace only contains those.
 	validate_trace_only_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -170,7 +170,7 @@ function test_syscall_two()
 	# ensure trace only contains those.
 	validate_trace_only_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open: -e syscall_entry_close: -e compat_syscall_entry_close: -e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -198,7 +198,7 @@ function test_syscall_all()
 	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 	# trace may contain other syscalls.
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -229,7 +229,7 @@ function test_syscall_all_disable_one()
 	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -266,7 +266,7 @@ function test_syscall_all_disable_two()
 	validate_trace_exp "-e syscall_entry_execve: -e compat_syscall_entry_execve:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_execve: -e compat_syscall_exit_execve:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -293,7 +293,7 @@ function test_syscall_enable_all_disable_all()
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -326,7 +326,7 @@ function test_syscall_enable_all_disable_all_enable_all()
 	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 	# trace may contain other syscalls.
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -357,7 +357,7 @@ function test_syscall_enable_all_disable_all_twice()
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -384,7 +384,7 @@ function test_syscall_enable_one_disable_one()
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -413,7 +413,7 @@ function test_syscall_enable_two_disable_two()
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -445,7 +445,7 @@ function test_syscall_enable_two_disable_one()
 	# ensure trace only contains those.
 	validate_trace_only_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -465,7 +465,7 @@ function test_syscall_disable_twice()
 	# Second disable succeeds too, due to enabler semantic.
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -485,7 +485,7 @@ function test_syscall_disable_all_twice()
 	# Second disable succeeds too, due to enabler semantic.
 	lttng_disable_kernel_syscall_ok $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -504,7 +504,7 @@ function test_syscall_enable_unknown()
 	# semantic.
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "thissyscallcannotexist"
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -522,7 +522,7 @@ function test_syscall_enable_all_enable_one()
 	# Enabling an event already enabled succeeds, due to enabler semantic.
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -541,7 +541,7 @@ function test_syscall_disable_all_disable_one()
 	# Disabling an event already disabled fails.
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -561,7 +561,7 @@ function test_syscall_enable_channel_disable_all()
 	# it knowns about. Disable all succeeds if it finds no match.
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "-a" $CHANNEL_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -579,7 +579,7 @@ function test_syscall_enable_channel_disable_one()
 	lttng_enable_kernel_channel_ok $SESSION_NAME $CHANNEL_NAME
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "open" $CHANNEL_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }

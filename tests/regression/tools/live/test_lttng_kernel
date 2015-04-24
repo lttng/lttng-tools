@@ -55,7 +55,7 @@ function setup_live_tracing()
 function clean_live_tracing()
 {
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 # Need root access for kernel tracing.

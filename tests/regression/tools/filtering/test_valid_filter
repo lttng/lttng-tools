@@ -70,7 +70,7 @@ function test_valid_filter
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $EVENT_NAME`
 
