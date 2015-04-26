@@ -138,12 +138,12 @@ function lttng_enable_kernel_syscall()
 
 function lttng_enable_kernel_syscall_ok()
 {
-	lttng_enable_kernel_syscall 0 ${*}
+	lttng_enable_kernel_syscall 0 "$@"
 }
 
 function lttng_enable_kernel_syscall_fail()
 {
-	lttng_enable_kernel_syscall 1 ${*}
+	lttng_enable_kernel_syscall 1 "$@"
 }
 
 function lttng_disable_kernel_syscall()
@@ -178,12 +178,12 @@ function lttng_disable_kernel_syscall()
 
 function lttng_disable_kernel_syscall_ok()
 {
-	lttng_disable_kernel_syscall 0 ${*}
+	lttng_disable_kernel_syscall 0 "$@"
 }
 
 function lttng_disable_kernel_syscall_fail()
 {
-	lttng_disable_kernel_syscall 1 ${*}
+	lttng_disable_kernel_syscall 1 "$@"
 }
 
 function lttng_enable_kernel_channel()
@@ -204,12 +204,12 @@ function lttng_enable_kernel_channel()
 
 function lttng_enable_kernel_channel_ok()
 {
-	lttng_enable_kernel_channel 0 ${*}
+	lttng_enable_kernel_channel 0 "$@"
 }
 
 function lttng_enable_kernel_channel_fail()
 {
-	lttng_enable_kernel_channel 1 ${*}
+	lttng_enable_kernel_channel 1 "$@"
 }
 
 function lttng_disable_kernel_channel()
@@ -230,12 +230,12 @@ function lttng_disable_kernel_channel()
 
 function lttng_disable_kernel_channel_ok()
 {
-	lttng_disable_kernel_channel 0 ${*}
+	lttng_disable_kernel_channel 0 "$@"
 }
 
 function lttng_disable_kernel_channel_fail()
 {
-	lttng_disable_kernel_channel 1 ${*}
+	lttng_disable_kernel_channel 1 "$@"
 }
 
 function start_lttng_relayd
