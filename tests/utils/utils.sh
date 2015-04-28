@@ -26,6 +26,11 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
+# We set the default UST register timeout to "wait forever", so that
+# basic tests don't have to worry about hitting timeouts on busy
+# systems. Specialized tests should test those corner-cases.
+export LTTNG_UST_REGISTER_TIMEOUT=-1
+
 source $TESTDIR/utils/tap/tap.sh
 
 function print_ok ()
