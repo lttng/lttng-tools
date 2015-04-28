@@ -360,11 +360,11 @@ static int append_list_to_probes(const char *list)
 {
 	char *next;
 	int index = nr_probes, ret;
-	char *tmp_list;
+	char *tmp_list, *cur_list;
 
 	assert(list);
 
-	tmp_list = strdup(list);
+	cur_list = tmp_list = strdup(list);
 	if (!tmp_list) {
 		PERROR("strdup temp list");
 		return -ENOMEM;
@@ -374,11 +374,11 @@ static int append_list_to_probes(const char *list)
 		size_t name_len;
 		struct kern_modules_param *cur_mod;
 
-		next = strtok(tmp_list, ",");
+		next = strtok(cur_list, ",");
 		if (!next) {
 			break;
 		}
-		tmp_list = NULL;
+		cur_list = NULL;
 
 		/* filter leading spaces */
 		while (*next == ' ') {
