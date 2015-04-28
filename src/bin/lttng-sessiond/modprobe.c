@@ -393,7 +393,7 @@ static int append_list_to_probes(const char *list)
 		/* Length 13 is "lttng-probe-" + \0 */
 		name_len = strlen(next) + 13;
 
-		cur_mod = &probes[index];
+		cur_mod = &probes[index++];
 		cur_mod->name = zmalloc(name_len);
 		if (!cur_mod->name) {
 			PERROR("malloc probe list");
