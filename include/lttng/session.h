@@ -147,7 +147,7 @@ extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
  * Returns 0 on success, else a negative LTTng error code.
  */
 extern int lttng_list_tracker_pids(struct lttng_handle *handle,
-		int *enabled, int32_t **pids, size_t *nr_pids);
+		uint32_t *enabled, int32_t **pids, size_t *nr_pids);
 
 #ifdef __cplusplus
 }

@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-elementFormDefault="qualified" version="2.5">
+elementFormDefault="qualified" version="2.7">
 
 <xs:simpleType name="name_type">
 	<xs:restriction base="xs:string">
@@ -208,16 +208,46 @@ elementFormDefault="qualified" version="2.5">
 
 <xs:complexType name="channel_list_type">
 	<xs:sequence>
-		<xs:element name="channel" type="channel_type" minOccurs="0" maxOccurs="unbounded"/>
+		<xs:element name="channel" type="channel_type" minOccurs="0" maxOccurs="unbounded" />
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to struct lttng_domain and contains channels -->
+<xs:complexType name="pid_target_type">
+	<xs:all>
+		<xs:element name="pid" type="xs:integer" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a list of pid_targets-->
+<xs:complexType name="targets_type">
+	<xs:sequence>
+		<xs:choice>
+			<xs:element name="pid_target" type="pid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:choice>
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a pid_tracker-->
+<xs:complexType name="pid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a list of trackers-->
+<xs:complexType name="trackers_type">
+	<xs:sequence minOccurs="0" maxOccurs="unbounded">
+		<xs:element name="pid_tracker" type="pid_tracker_type" maxOccurs="1" />
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to struct lttng_domain, contains channels and pid_tracker -->
 <xs:complexType name="domain_type">
 	<xs:all>
 		<xs:element name="type" type="domain_type_type"/>
 		<xs:element name="buffer_type" type="domain_buffer_type"/>
 		<xs:element name="channels" type="channel_list_type" minOccurs="0"/>
+		<xs:element name="trackers" type="trackers_type" minOccurs="0"/>
 	</xs:all>
 </xs:complexType>
 

@@ -352,8 +352,8 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 		goto end;
 	}
 
-	/* Open pids element */
-	ret = mi_lttng_pids_open(writer);
+	/* Open processes element */
+	ret = mi_lttng_processes_open(writer);
 	if (ret) {
 		goto end;
 	}
@@ -378,7 +378,7 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 
 			if (!pid_element_open) {
 				/* Open and write a pid element */
-				ret = mi_lttng_pid(writer, cur_pid, cmdline, 1);
+				ret = mi_lttng_process(writer, cur_pid, cmdline, 1);
 				if (ret) {
 					goto error;
 				}
@@ -401,7 +401,7 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 		}
 	}
 
-	/* Close pids */
+	/* Close processes */
 	ret = mi_lttng_writer_close_element(writer);
 	if (ret) {
 		goto end;
@@ -585,8 +585,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 		goto end;
 	}
 
-	/* Open pids element */
-	ret = mi_lttng_pids_open(writer);
+	/* Open processes element */
+	ret = mi_lttng_processes_open(writer);
 	if (ret) {
 		goto end;
 	}
@@ -614,8 +614,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 			cur_pid = fields[i].event.pid;
 			cmdline = get_cmdline_by_pid(cur_pid);
 			if (!pid_element_open) {
-				/* Open and write a pid element */
-				ret = mi_lttng_pid(writer, cur_pid, cmdline, 1);
+				/* Open and write a process element */
+				ret = mi_lttng_process(writer, cur_pid, cmdline, 1);
 				if (ret) {
 					goto error;
 				}
@@ -669,7 +669,7 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 		}
 	}
 
-	/* Close pids, domain, domains */
+	/* Close processes, domain, domains */
 	ret = mi_lttng_close_multi_element(writer, 3);
 end:
 	return ret;
@@ -1251,7 +1251,8 @@ error_channels:
  */
 static int list_tracker_pids(void)
 {
-	int enabled, ret;
+	int ret = 0;
+	uint32_t enabled;
 	int *pids = NULL;
 	size_t nr_pids;
 
@@ -1264,16 +1265,76 @@ static int list_tracker_pids(void)
 		int i;
 		_MSG("PID tracker: [");
 
+		/* Mi tracker_pid element*/
+		if (writer) {
+			/* Open tracker_pid and targets elements */
+			ret = mi_lttng_pid_tracker_open(writer);
+			if (ret) {
+				goto end;
+			}
+		}
+
 		for (i = 0; i < nr_pids; i++) {
 			if (i) {
 				_MSG(",");
 			}
 			_MSG(" %d", pids[i]);
+
+			/* Mi */
+			if (writer) {
+				ret = mi_lttng_pid_target(writer, pids[i], 0);
+				if (ret) {
+					goto end;
+				}
+			}
 		}
 		_MSG(" ]\n\n");
+
+		/* Mi close tracker_pid and targets */
+		if (writer) {
+			ret = mi_lttng_close_multi_element(writer,2);
+			if (ret) {
+				goto end;
+			}
+		}
 	}
+end:
 	free(pids);
-	return 0;
+	return ret;
+
+}
+
+/*
+ * List all tracker of a domain
+ */
+static int list_trackers(void)
+{
+	int ret;
+
+	/* Trackers listing */
+	if (lttng_opt_mi) {
+		ret = mi_lttng_trackers_open(writer);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* pid tracker */
+	ret = list_tracker_pids();
+	if (ret) {
+		goto end;
+	}
+
+	if (lttng_opt_mi) {
+		/* Close trackers element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+	}
+
+end:
+	return ret;
 }
 
 /*
@@ -1700,11 +1761,14 @@ int cmd_list(int argc, const char **argv)
 
 			}
 
-			ret = list_tracker_pids();
+
+			/* Trackers */
+			ret = list_trackers();
 			if (ret) {
 				goto end;
 			}
 
+			/* Channels */
 			ret = list_channels(opt_channel);
 			if (ret) {
 				goto end;
@@ -1795,7 +1859,7 @@ int cmd_list(int argc, const char **argv)
 				switch (domains[i].type) {
 				case LTTNG_DOMAIN_KERNEL:
 				case LTTNG_DOMAIN_UST:
-					ret = list_tracker_pids();
+					ret = list_trackers();
 					if (ret) {
 						goto end;
 					}

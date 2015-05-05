@@ -29,7 +29,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=37
+NUM_TESTS=41
 
 source $TESTDIR/utils/utils.sh
 
@@ -68,6 +68,7 @@ function test_basic_save()
 	create_lttng_session $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	lttng_track "-p 666 -u -s $SESSION_NAME"
 
 	lttng_save $SESSION_NAME "-o $TRACE_PATH"
 
@@ -91,6 +92,10 @@ function test_basic_save_all()
 	enable_ust_lttng_event $SESSION_NAME-1 $EVENT_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
 	enable_ust_lttng_event $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
+
+	lttng_track "-p 666 -u -s $SESSION_NAME-1"
+	lttng_track "-p 666 -u -s $SESSION_NAME-2"
+	lttng_track "-p 666 -u -s $SESSION_NAME-3"
 
 	lttng_save "" "-a -o $TRACE_PATH"
 
