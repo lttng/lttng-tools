@@ -39,7 +39,7 @@ if session_daemon_alive() == 0:
     bail("No sessiond running. Please make sure you are running this test with the \"run\" shell script and verify that the lttng tools are properly installed.")
 
 session_info = create_session()
-enable_ust_tracepoint_event(session_info, "ust_libc*")
+enable_ust_tracepoint_event(session_info, "lttng_ust_libc*")
 start_session(session_info)
 
 malloc_process = subprocess.Popen(test_path + "prog", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -72,10 +72,10 @@ for event_line in babeltrace_process.stdout:
         continue
 
     event_line = event_line.decode('utf-8').replace("\n", "")
-    if re.search(r".*ust_libc:malloc.*", event_line) is not None:
+    if re.search(r".*lttng_ust_libc:malloc.*", event_line) is not None:
         malloc_event_found = True
 
-    if re.search(r".*ust_libc:free.*", event_line) is not None:
+    if re.search(r".*lttng_ust_libc:free.*", event_line) is not None:
         free_event_found = True
 
 babeltrace_process.wait()
@@ -83,10 +83,10 @@ babeltrace_process.wait()
 print_test_result(babeltrace_process.returncode == 0, current_test, "Resulting trace is readable")
 current_test += 1
 
-print_test_result(free_event_found, current_test, "ust_libc:malloc event found in resulting trace")
+print_test_result(free_event_found, current_test, "lttng_ust_libc:malloc event found in resulting trace")
 current_test += 1
 
-print_test_result(free_event_found, current_test, "ust_libc:free event found in resulting trace")
+print_test_result(free_event_found, current_test, "lttng_ust_libc:free event found in resulting trace")
 current_test += 1
 
 shutil.rmtree(session_info.tmp_directory)

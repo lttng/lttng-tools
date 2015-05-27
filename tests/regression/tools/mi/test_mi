@@ -511,11 +511,11 @@ function test_list_ust_event ()
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list ust event xsd validation"
 
-	#Extract events 3 events should be present
+	#Extract events 5 events should be present
 	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""/name/text()" result
 	num=$(echo "$result" | wc -l)
-	test "$num" -eq "3"
-	ok $? "Mi test: $num / 3 ust events discovered"
+	test "$num" -eq "5"
+	ok $? "Mi test: $num / 5 ust events discovered"
 
 	#Extract field from tp:tptest event. Expect 12
 	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""[./name = 'tp:tptest']/event_fields/event_field/name/text()" result
