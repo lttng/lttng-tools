@@ -328,7 +328,7 @@ function test_ust_lttng_event ()
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Multiple enable ust event with inside fail xsd validation"
 
-	#Check for 2 success = true et 1 false
+	#Check for 2 success = true and 1 success = false
 	extract_xml $OUTPUT_DEST $XPATH_ENABLE_EVENT_SUCCESS result
 	num_ocur=$(grep -o "true" <<< "$result" | wc -l)
 	test "$num_ocur" -eq "2"
@@ -511,16 +511,21 @@ function test_list_ust_event ()
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list ust event xsd validation"
 
-	#Extract events 5 events should be present
+	#Extract events
 	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""/name/text()" result
 	num=$(echo "$result" | wc -l)
-	test "$num" -eq "5"
+
+	#Since the number of events is prone to change we only look for >= from a
+	#base number. An alternative would be to look for each events but this
+	#is complicated for nothing.
+	test "$num" -ge "5"
 	ok $? "Mi test: $num / 5 ust events discovered"
 
-	#Extract field from tp:tptest event. Expect 12
+	#Extract field from tp:tptest event. Expect >= to 12 because number of
+	#field is prone to change.
 	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""[./name = 'tp:tptest']/event_fields/event_field/name/text()" result
 	num=$(echo "$result" | wc -l)
-	test "$num" -eq "12"
+	test "$num" -ge "12"
 	ok $? "Mi test: $num / 12 ust event fields discovered"
 
 	#Wait for all background processes
