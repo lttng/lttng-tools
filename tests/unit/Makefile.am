@@ -10,6 +10,7 @@ TESTS = test_kernel_data \
 	test_session \
 	test_uri \
 	test_utils_parse_size_suffix \
+	test_utils_parse_time_suffix \
 	test_utils_expand_path \
 	test_string_utils \
 	test_notification \
@@ -25,9 +26,9 @@ LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 # Define test programs
-noinst_PROGRAMS = test_uri test_session test_kernel_data
-noinst_PROGRAMS += test_utils_parse_size_suffix test_utils_expand_path
-noinst_PROGRAMS += test_string_utils test_notification
+noinst_PROGRAMS = test_uri test_session test_kernel_data \
+                  test_utils_parse_size_suffix test_utils_parse_time_suffix \
+                  test_utils_expand_path test_string_utils test_notification
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -102,6 +103,11 @@ UTILS_SUFFIX=$(top_builddir)/src/common/libcommon.la
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
 test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
 test_utils_parse_size_suffix_LDADD += $(UTILS_SUFFIX)
+
+# parse_time_suffix unit test
+test_utils_parse_time_suffix_SOURCES = test_utils_parse_time_suffix.c
+test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+test_utils_parse_time_suffix_LDADD += $(UTILS_SUFFIX)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c

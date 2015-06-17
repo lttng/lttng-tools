@@ -1001,6 +1001,107 @@ end:
 	return ret;
 }
 
+/**
+ * Parse a string that represents a time in human readable format. It
+ * supports decimal integers suffixed by 's', 'u', 'm', 'us', and 'ms'.
+ *
+ * The suffix multiply the integer by:
+ * 'u'/'us': 1
+ * 'm'/'ms': 1000
+ * 's': 1000000
+ *
+ * Note that unit-less numbers are assumed to be microseconds.
+ *
+ * @param str		The string to parse, assumed to be NULL-terminated.
+ * @param time_us	Pointer to a uint64_t that will be filled with the
+ *			resulting time in microseconds.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+LTTNG_HIDDEN
+int utils_parse_time_suffix(char const * const str, uint64_t * const time_us)
+{
+	int ret;
+	uint64_t base_time;
+	long multiplier = 1;
+	const char *str_end;
+	char *num_end;
+
+	if (!str) {
+		DBG("utils_parse_time_suffix: received a NULL string.");
+		ret = -1;
+		goto end;
+	}
+
+	/* strtoull will accept a negative number, but we don't want to. */
+	if (strchr(str, '-') != NULL) {
+		DBG("utils_parse_time_suffix: invalid time string, should not contain '-'.");
+		ret = -1;
+		goto end;
+	}
+
+	/* str_end will point to the \0 */
+	str_end = str + strlen(str);
+	errno = 0;
+	base_time = strtoull(str, &num_end, 10);
+	if (errno != 0) {
+		PERROR("utils_parse_time_suffix strtoull on string \"%s\"", str);
+		ret = -1;
+		goto end;
+	}
+
+	if (num_end == str) {
+		/* strtoull parsed nothing, not good. */
+		DBG("utils_parse_time_suffix: strtoull had nothing good to parse.");
+		ret = -1;
+		goto end;
+	}
+
+	/* Check if a prefix is present. */
+	switch (*num_end) {
+	case 'u':
+		multiplier = 1;
+		/* Skip another letter in the 'us' case. */
+		num_end += (*(num_end + 1) == 's') ? 2 : 1;
+		break;
+	case 'm':
+		multiplier = 1000;
+		/* Skip another letter in the 'ms' case. */
+		num_end += (*(num_end + 1) == 's') ? 2 : 1;
+		break;
+	case 's':
+		multiplier = 1000000;
+		num_end++;
+		break;
+	case '\0':
+		break;
+	default:
+		DBG("utils_parse_time_suffix: invalid suffix.");
+		ret = -1;
+		goto end;
+	}
+
+	/* Check for garbage after the valid input. */
+	if (num_end != str_end) {
+		DBG("utils_parse_time_suffix: Garbage after time string.");
+		ret = -1;
+		goto end;
+	}
+
+	*time_us = base_time * multiplier;
+
+	/* Check for overflow */
+	if ((*time_us / multiplier) != base_time) {
+		DBG("utils_parse_time_suffix: oops, overflow detected.");
+		ret = -1;
+		goto end;
+	}
+
+	ret = 0;
+end:
+	return ret;
+}
+
 /*
  * fls: returns the position of the most significant bit.
  * Returns 0 if no bit is set, else returns the position of the most

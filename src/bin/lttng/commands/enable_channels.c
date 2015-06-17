@@ -535,13 +535,13 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_MONITOR_TIMER:
 		{
-			unsigned long long v;
+			uint64_t v;
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			v = strtoull(opt_arg, NULL, 0);
-			if (errno != 0 || !isdigit(opt_arg[0])) {
-				ERR("Wrong value in --monitor-timer parameter: %s", opt_arg);
+
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --monitor-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
@@ -552,7 +552,7 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_BLOCKING_TIMEOUT:
 		{
-			long long v;	/* in usec */
+			uint64_t v;
 			long long v_msec;
 
 			errno = 0;
@@ -565,10 +565,8 @@ int cmd_enable_channels(int argc, const char **argv)
 				break;
 			}
 
-			v = strtoll(opt_arg, NULL, 0);
-			if (errno != 0 || (!isdigit(opt_arg[0]) && opt_arg[0] != '-')
-					|| v < 0) {
-				ERR("Wrong value in --blocking-timeout parameter: %s", opt_arg);
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --blocking-timeout parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
