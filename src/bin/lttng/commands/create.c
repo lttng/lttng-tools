@@ -48,7 +48,7 @@ static char *opt_shm_path;
 static int opt_no_consumer;
 static int opt_no_output;
 static int opt_snapshot;
-static unsigned int opt_live_timer;
+static uint32_t opt_live_timer;
 
 enum {
 	OPT_HELP = 1,
@@ -100,13 +100,15 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                       if one, as the default snapshot output.\n");
 	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");
 	fprintf(ofp, "                       and with mmap output (splice not supported).\n");
-	fprintf(ofp, "      --live [USEC]    Set the session in live-reading mode.\n");
-	fprintf(ofp, "                       The delay parameter in micro-seconds is the\n");
-	fprintf(ofp, "                       maximum time the user can wait for the data\n");
-	fprintf(ofp, "                       to be flushed. Can be set with a network\n");
-	fprintf(ofp, "                       URL (-U or -C/-D) and must have a relayd listening.\n");
+	fprintf(ofp, "      --live [DELAY]   Set the session in live-reading mode.\n");
+	fprintf(ofp, "                       The delay parameter is the maximum time the user\n");
+	fprintf(ofp, "                       can wait for the data to be flushed. The delay is\n");
+	fprintf(ofp, "                       expressed by default in microseconds, but can also\n");
+	fprintf(ofp, "                       be suffixed with m (milliseconds) or s (seconds).\n");
+	fprintf(ofp, "                       This option can be used with a network URL\n");
+	fprintf(ofp, "                       (-U or -C/-D) and must have a relayd listening.\n");
 	fprintf(ofp, "                       By default, %u is used for the timer and the\n",
-											DEFAULT_LTTNG_LIVE_TIMER);
+		DEFAULT_LTTNG_LIVE_TIMER);
 	fprintf(ofp, "                       network URL is set to net://127.0.0.1.\n");
 	fprintf(ofp, "      --shm-path PATH  Path where shared memory holding buffers\n");
 	fprintf(ofp, "                       should be created. Useful when used with pramfs\n");
@@ -574,7 +576,7 @@ int cmd_create(int argc, const char **argv)
 			goto end;
 		case OPT_LIVE_TIMER:
 		{
-			unsigned long v;
+			uint64_t v;
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
@@ -586,22 +588,24 @@ int cmd_create(int argc, const char **argv)
 				break;
 			}
 
-			v = strtoul(opt_arg, NULL, 0);
-			if (errno != 0 || !isdigit(opt_arg[0])) {
-				ERR("Wrong value in --live parameter: %s", opt_arg);
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --live parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			if (v != (uint32_t) v) {
 				ERR("32-bit overflow in --live parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			if (v == 0) {
 				ERR("Live timer interval must be greater than zero");
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			opt_live_timer = (uint32_t) v;
 			DBG("Session live timer interval set to %d", opt_live_timer);
 			break;

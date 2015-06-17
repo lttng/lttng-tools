@@ -284,20 +284,21 @@ Set the session in snapshot mode. Created in no-output mode and uses the
 URL, if one is specified, as the default snapshot output.  Every channel will be set
 in overwrite mode and with mmap output (splice not supported).
 .TP
-.BR "\-\-live [USEC]"
-Set the session exclusively in live mode. The parameter is the delay in micro
-seconds before the data is flushed and streamed. The live mode allows you to
-stream the trace and view it while it's being recorded by any tracer. For that,
-you need a lttng-relayd and this session requires a network URL (\-U or
-\-C/\-D). If no USEC nor URL is provided, the default is to use a timer value
-set to 1000000 and the network URL set to net://127.0.0.1.
+.BR "\-\-live [delay]"
+Set the session exclusively in live mode. The parameter is the delay before
+the data is flushed and streamed. The delay is expressed in microseconds by
+default, but can also be suffixed with m (milliseconds) or s (seconds). The
+live mode allows you to stream the trace and view it while it's being recorded
+by any tracer. For that, you need a lttng-relayd and this session requires a
+network URL (\-U or \-C/\-D). If no delay nor URL is provided, the default is
+to use a timer value set to 1000000 and the network URL set to net://127.0.0.1.
 
 To read a live session, you can use babeltrace(1) or the live streaming
 protocol in doc/live-reading-protocol.txt. Here is an example:
 
 .nf
 $ lttng-relayd -o /tmp/lttng
-$ lttng create --live 200000 -U net://localhost
+$ lttng create --live 200m -U net://localhost
 $ lttng enable-event -a --userspace
 $ lttng start
 .fi
@@ -451,12 +452,14 @@ to get the current page size on your system: \fB$ getconf PAGE_SIZE\fP
 Number of subbuffers. (default UST uid: 4, UST pid: 4, kernel: 4,
 metadata: 2) Rounded up to the next power of 2.
 .TP
-.BR "\-\-switch-timer USEC"
-Switch subbuffer timer interval in µsec.
+.BR "\-\-switch-timer TIME"
+Switch subbuffer timer interval in microseconds. Can also be suffixed with
+m (milliseconds) or s (seconds).
 (default UST uid: 0, UST pid: 0, kernel: 0, metadata: 0)
 .TP
-.BR "\-\-read-timer USEC"
-Read timer interval in µsec.
+.BR "\-\-read-timer TIME"
+Read timer interval in microseconds. Can also be suffixed with m (milliseconds)
+or s (seconds).
 (default UST uid: 0, UST pid: 0, kernel: 200000, metadata: 0)
 .TP
 .BR "\-\-output TYPE"

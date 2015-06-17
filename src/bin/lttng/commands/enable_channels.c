@@ -120,11 +120,13 @@ static void usage(FILE *ofp)
 		DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM, DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM,
 		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM, DEFAULT_METADATA_SUBBUF_NUM);
 	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
-	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec\n");
+	fprintf(ofp, "      --switch-timer TIME  Switch timer interval in microseconds. Can also\n");
+	fprintf(ofp, "                           be suffixed with m (milliseconds) or s (seconds).\n");
 	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
 		DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER, DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER,
 		DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER, DEFAULT_METADATA_SWITCH_TIMER);
-	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec.\n");
+	fprintf(ofp, "      --read-timer TIME    Read timer interval in microseconds. Can also\n");
+	fprintf(ofp, "                           be suffixed with m (milliseconds) or s (seconds).\n");
 	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
 		DEFAULT_UST_UID_CHANNEL_READ_TIMER, DEFAULT_UST_UID_CHANNEL_READ_TIMER,
 		DEFAULT_KERNEL_CHANNEL_READ_TIMER, DEFAULT_METADATA_READ_TIMER);
@@ -485,16 +487,17 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_SWITCH_TIMER:
 		{
-			unsigned long v;
+			uint64_t v;
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			v = strtoul(opt_arg, NULL, 0);
-			if (errno != 0 || !isdigit(opt_arg[0])) {
-				ERR("Wrong value in --switch-timer parameter: %s", opt_arg);
+
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --switch-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			if (v != (uint32_t) v) {
 				ERR("32-bit overflow in --switch-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
@@ -506,21 +509,23 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_READ_TIMER:
 		{
-			unsigned long v;
+			uint64_t v;
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			v = strtoul(opt_arg, NULL, 0);
-			if (errno != 0 || !isdigit(opt_arg[0])) {
-				ERR("Wrong value in --read-timer parameter: %s", opt_arg);
+
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --read-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			if (v != (uint32_t) v) {
 				ERR("32-bit overflow in --read-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			chan.attr.read_timer_interval = (uint32_t) v;
 			DBG("Channel read timer interval set to %d", chan.attr.read_timer_interval);
 			break;
