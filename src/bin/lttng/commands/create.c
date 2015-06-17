@@ -49,7 +49,7 @@ static char *opt_shm_path;
 static int opt_no_consumer;
 static int opt_no_output;
 static int opt_snapshot;
-static unsigned int opt_live_timer;
+static uint32_t opt_live_timer;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -641,7 +641,7 @@ int cmd_create(int argc, const char **argv)
 			goto end;
 		case OPT_LIVE_TIMER:
 		{
-			unsigned long v;
+			uint64_t v;
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
@@ -653,22 +653,24 @@ int cmd_create(int argc, const char **argv)
 				break;
 			}
 
-			v = strtoul(opt_arg, NULL, 0);
-			if (errno != 0 || !isdigit(opt_arg[0])) {
-				ERR("Wrong value in --live parameter: %s", opt_arg);
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --live parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			if (v != (uint32_t) v) {
 				ERR("32-bit overflow in --live parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			if (v == 0) {
 				ERR("Live timer interval must be greater than zero");
 				ret = CMD_ERROR;
 				goto end;
 			}
+
 			opt_live_timer = (uint32_t) v;
 			DBG("Session live timer interval set to %d", opt_live_timer);
 			break;
