@@ -811,6 +811,87 @@ end:
 	return ret;
 }
 
+int utils_parse_time_suffix(char const * const str, uint64_t * const time_us)
+{
+	int ret;
+	uint64_t base_time;
+	long multiplier = 1;
+	const char *str_end;
+	char *num_end;
+
+	if (!str) {
+		DBG("utils_parse_time_suffix: received a NULL string.");
+		ret = -1;
+		goto end;
+	}
+
+	/* strtoull will accept a negative number, but we don't want to. */
+	if (strchr(str, '-') != NULL) {
+		DBG("utils_parse_time_suffix: invalid time string, should not contain '-'.");
+		ret = -1;
+		goto end;
+	}
+
+	/* str_end will point to the \0 */
+	str_end = str + strlen(str);
+	errno = 0;
+	base_time = strtoull(str, &num_end, 0);
+	if (errno != 0) {
+		PERROR("utils_parse_time_suffix strtoull");
+		ret = -1;
+		goto end;
+	}
+
+	if (num_end == str) {
+		/* strtoull parsed nothing, not good. */
+		DBG("utils_parse_time_suffix: strtoull had nothing good to parse.");
+		ret = -1;
+		goto end;
+	}
+
+	/* Check if a prefix is present. */
+	switch (*num_end) {
+	case 'u':
+		multiplier = 1;
+		num_end++;
+		break;
+	case 'm':
+		multiplier = 1000;
+		num_end++;
+		break;
+	case 's':
+		multiplier = 1000000;
+		num_end++;
+		break;
+	case '\0':
+		break;
+	default:
+		DBG("utils_parse_time_suffix: invalid suffix.");
+		ret = -1;
+		goto end;
+	}
+
+	/* Check for garbage after the valid input. */
+	if (num_end != str_end) {
+		DBG("utils_parse_time_suffix: Garbage after time string.");
+		ret = -1;
+		goto end;
+	}
+
+	*time_us = base_time * multiplier;
+
+	/* Check for overflow */
+	if ((*time_us / multiplier) != base_time) {
+		DBG("utils_parse_time_suffix: oops, overflow detected.");
+		ret = -1;
+		goto end;
+	}
+
+	ret = 0;
+end:
+	return ret;
+}
+
 /*
  * fls: returns the position of the most significant bit.
  * Returns 0 if no bit is set, else returns the position of the most
