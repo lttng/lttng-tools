@@ -24,6 +24,7 @@
 #include <assert.h>
 
 #include <common/mi-lttng.h>
+#include <lttng/constant.h>
 
 #include "../command.h"
 
@@ -116,7 +117,8 @@ static char *get_cmdline_by_pid(pid_t pid)
 	int ret;
 	FILE *fp = NULL;
 	char *cmdline = NULL;
-	char path[20];	/* Can't go bigger than /proc/65535/cmdline */
+	/* Can't go bigger than /proc/LTTNG_MAX_PID/cmdline */
+	char path[sizeof("/proc//cmdline") + sizeof(LTTNG_MAX_PID_STR) - 1];
 
 	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	fp = fopen(path, "r");

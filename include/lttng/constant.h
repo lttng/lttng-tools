@@ -45,6 +45,13 @@
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
-#define LTTNG_SYMBOL_NAME_LEN             256
+#define LTTNG_SYMBOL_NAME_LEN			256
+
+/*
+ * PROC(5) mentions that PID_MAX_LIMIT may not exceed 2^22 on 64-bit HW.
+ * We prefer to use 32-bits for simplicity's sake.
+ */
+#define LTTNG_MAX_PID				INT32_MAX
+#define LTTNG_MAX_PID_STR			"2147483647"
 
 #endif /* LTTNG_CONSTANT_H */
