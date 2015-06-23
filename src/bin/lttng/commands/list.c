@@ -37,11 +37,6 @@ static char *opt_channel;
 static int opt_domain;
 static int opt_fields;
 static int opt_syscall;
-#if 0
-/* Not implemented yet */
-static char *opt_cmd_name;
-static pid_t opt_pid;
-#endif
 
 const char *indent4 = "    ";
 const char *indent6 = "      ";
@@ -58,22 +53,16 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"kernel",    'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"jul",       'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
-	{"log4j",     'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
-	{"python",    'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
-#if 0
-	/* Not implemented yet */
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-#else
-	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-#endif
-	{"channel",   'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
-	{"domain",    'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
-	{"fields",    'f', POPT_ARG_VAL, &opt_fields, 1, 0, 0},
-	{"syscall",   'S', POPT_ARG_VAL, &opt_syscall, 1, 0, 0},
+	{"help",	'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
+	{"kernel",	'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
+	{"jul",	'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
+	{"log4j",	'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
+	{"python",	'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
+	{"userspace",	'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+	{"channel",	'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0},
+	{"domain",	'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0},
+	{"fields",	'f', POPT_ARG_VAL, &opt_fields, 1, 0, 0},
+	{"syscall",	'S', POPT_ARG_VAL, &opt_syscall, 1, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -99,9 +88,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -p, --python            Apply for Python application using logging\n");
 	fprintf(ofp, "  -f, --fields            List event fields.\n");
 	fprintf(ofp, "      --syscall           List available system calls.\n");
-#if 0
-	fprintf(ofp, "  -p, --pid PID           List user-space events by PID\n");
-#endif
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Session Options:\n");
 	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
