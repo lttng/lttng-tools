@@ -100,7 +100,7 @@ function test_tracefile_size_limit ()
 
 	diag "Test tracefile size limit : $size_limit bytes"
 
-	create_lttng_session $session_name $trace_path
+	create_lttng_session_ok $session_name $trace_path
 
 	enable_lttng_channel_size_limit \
 	    $session_name $channel_name $size_limit
@@ -108,13 +108,13 @@ function test_tracefile_size_limit ()
 	enable_ust_lttng_event_per_channel \
 	    $session_name $event_name $channel_name
 
-	start_lttng_tracing $session_name
+	start_lttng_tracing_ok $session_name
 
 	$TESTAPP_BIN $NR_ITER >/dev/null 2>&1
 
-	stop_lttng_tracing $session_name
+	stop_lttng_tracing_ok $session_name
 
-	destroy_lttng_session $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Validate file size, each one shall be no larger than the
 	# specified size limit

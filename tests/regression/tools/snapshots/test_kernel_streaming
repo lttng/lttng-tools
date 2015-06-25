@@ -57,7 +57,7 @@ function test_kernel_default_name_with_del()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 
@@ -67,7 +67,7 @@ function test_kernel_default_name_with_del()
 		return $?
 	fi
 
-	lttng_snapshot_del_output $SESSION_NAME 1
+	lttng_snapshot_del_output_ok $SESSION_NAME 1
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 
@@ -77,8 +77,8 @@ function test_kernel_default_name_with_del()
 		return $?
 	fi
 
-	stop_lttng_tracing $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	return 0
 }
@@ -90,11 +90,11 @@ function test_kernel_default_name()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
@@ -112,11 +112,11 @@ function test_kernel_custom_name()
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	snapshot_add_output $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then
 		ok 0 "Custom name snapshot exists"

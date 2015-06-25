@@ -38,16 +38,16 @@ fi
 function test_before_apps()
 {
 	# BEFORE application is spawned
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing $SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
 	wait
 	ok $? "Traced application stopped."
 
-	stop_lttng_tracing $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
 
@@ -60,20 +60,20 @@ function test_after_apps()
 	local file_sync_after_first=$(mktemp -u)
 	local file_sync_before_last=$(mktemp -u)
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} &
 	ok $? "Application started in background."
 
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
 	wait
 
-	stop_lttng_tracing $SESSION_NAME
-	destroy_lttng_session $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}

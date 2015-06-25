@@ -68,18 +68,18 @@ pass "All applications are registered to sessiond"
 
 TRACE_PATH=$(mktemp -d)
 
-create_lttng_session $SESSION_NAME $TRACE_PATH
+create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
-enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-start_lttng_tracing $SESSION_NAME
+enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+start_lttng_tracing_ok $SESSION_NAME
 
 touch ${file_sync_before_last}
 
 # We don't validate whether the applications have traced here, rather
 # just that they registered to sessiond (above).
 
-stop_lttng_tracing $SESSION_NAME
-destroy_lttng_session $SESSION_NAME
+stop_lttng_tracing_ok $SESSION_NAME
+destroy_lttng_session_ok $SESSION_NAME
 
 #TODO: add trace validation.
 

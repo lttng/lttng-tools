@@ -28,16 +28,16 @@ function test_all_event()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_all_events_basic"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_event $SESSION_NAME
 
-	start_lttng_tracing
-	stop_lttng_tracing
+	start_lttng_tracing_ok
+	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }

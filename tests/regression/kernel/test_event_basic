@@ -28,20 +28,20 @@ function test_event_basic()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_event_basic"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_event $SESSION_NAME "sched_switch"
 	lttng_enable_kernel_event $SESSION_NAME "sched_process_exit"
 	lttng_enable_kernel_event $SESSION_NAME "sched_process_free"
 
-	start_lttng_tracing
-	stop_lttng_tracing
+	start_lttng_tracing_ok
+	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
 	validate_trace "sched_process_exit" $TRACE_PATH
 	validate_trace "sched_process_free" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
@@ -51,18 +51,18 @@ function test_enable_after_start()
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="kernel_enable_after_start"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	lttng_enable_kernel_event $SESSION_NAME "sched_switch"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 	lttng_enable_kernel_event $SESSION_NAME "sched_process_exit"
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
 	validate_trace "sched_process_exit" $TRACE_PATH
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }

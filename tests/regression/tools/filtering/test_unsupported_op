@@ -54,7 +54,7 @@ function test_unsupported_op
 	diag "Test filter expression with unsupported operator $test_op_str ($test_op_tkn)"
 
 	# Create session
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	# Create filter
 	if [ "$test_op_str" == "UNARY_BIN_NOT" ]; then
@@ -78,7 +78,7 @@ function test_unsupported_op
 	fi
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 	return 0
 }
 

@@ -52,17 +52,17 @@ function test_exclusion
 	trace_path=$(mktemp -d)
 
 	# Create session
-	create_lttng_session $SESSION_NAME $trace_path
+	create_lttng_session_ok $SESSION_NAME $trace_path
 
 	enable_ust_lttng_all_event_exclusion $SESSION_NAME $EV_EXCLUDE_NAME
 
 	# Trace apps
-	start_lttng_tracing $SESSION_NAME
+	start_lttng_tracing_ok $SESSION_NAME
 	run_apps
-	stop_lttng_tracing $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $EV_EXCLUDE_NAME | grep -v index`
 	if [ ! -z "$stats" ]; then

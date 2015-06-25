@@ -58,21 +58,21 @@ function test_event_basic()
 	SESSION_NAME="ust_event_basic"
 	CHAN_NAME="mychan"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
-	enable_ust_lttng_channel $SESSION_NAME $CHAN_NAME
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
 
 	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
 
 	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "perf:thread:page-fault"
 
-	start_lttng_tracing
+	start_lttng_tracing_ok
 
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	validate_trace "perf_thread_page_fault" $TRACE_PATH
 	rm -rf $TRACE_PATH

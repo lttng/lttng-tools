@@ -138,12 +138,12 @@ function lttng_enable_kernel_syscall()
 
 function lttng_enable_kernel_syscall_ok()
 {
-	lttng_enable_kernel_syscall 0 ${*}
+	lttng_enable_kernel_syscall 0 "$@"
 }
 
 function lttng_enable_kernel_syscall_fail()
 {
-	lttng_enable_kernel_syscall 1 ${*}
+	lttng_enable_kernel_syscall 1 "$@"
 }
 
 function lttng_disable_kernel_syscall()
@@ -178,12 +178,12 @@ function lttng_disable_kernel_syscall()
 
 function lttng_disable_kernel_syscall_ok()
 {
-	lttng_disable_kernel_syscall 0 ${*}
+	lttng_disable_kernel_syscall 0 "$@"
 }
 
 function lttng_disable_kernel_syscall_fail()
 {
-	lttng_disable_kernel_syscall 1 ${*}
+	lttng_disable_kernel_syscall 1 "$@"
 }
 
 function lttng_enable_kernel_channel()
@@ -204,12 +204,12 @@ function lttng_enable_kernel_channel()
 
 function lttng_enable_kernel_channel_ok()
 {
-	lttng_enable_kernel_channel 0 ${*}
+	lttng_enable_kernel_channel 0 "$@"
 }
 
 function lttng_enable_kernel_channel_fail()
 {
-	lttng_enable_kernel_channel 1 ${*}
+	lttng_enable_kernel_channel 1 "$@"
 }
 
 function lttng_disable_kernel_channel()
@@ -230,12 +230,12 @@ function lttng_disable_kernel_channel()
 
 function lttng_disable_kernel_channel_ok()
 {
-	lttng_disable_kernel_channel 0 ${*}
+	lttng_disable_kernel_channel 0 "$@"
 }
 
 function lttng_disable_kernel_channel_fail()
 {
-	lttng_disable_kernel_channel 1 ${*}
+	lttng_disable_kernel_channel 1 "$@"
 }
 
 function start_lttng_relayd
@@ -368,13 +368,13 @@ function create_lttng_session_no_output ()
 
 function create_lttng_session ()
 {
-	local sess_name=$1
-	local trace_path=$2
-	local expected_to_fail=$3
+	local expected_to_fail=$1
+	local sess_name=$2
+	local trace_path=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path > $OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on session creation $sess_name in $trace_path"
 	else
@@ -382,20 +382,41 @@ function create_lttng_session ()
 	fi
 }
 
-function enable_ust_lttng_channel()
+function create_lttng_session_ok ()
 {
-	local sess_name=$1
-	local channel_name=$2
-	local expect_fail=$3
+	create_lttng_session 0 "$@"
+}
+
+function create_lttng_session_fail ()
+{
+	create_lttng_session 1 "$@"
+}
+
+
+function enable_ust_lttng_channel ()
+{
+	local expect_fail=$1
+	local sess_name=$2
+	local channel_name=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expect_fail ]]; then
+	if [[ $expect_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on ust channel creation $channel_name in $sess_name"
 	else
 		ok $ret "Enable channel $channel_name for session $sess_name"
 	fi
+}
+
+function enable_ust_lttng_channel_ok ()
+{
+	enable_ust_lttng_channel 0 "$@"
+}
+
+function enable_ust_lttng_channel_fail ()
+{
+	enable_ust_lttng_channel 1 "$@"
 }
 
 function disable_ust_lttng_channel()
@@ -427,10 +448,10 @@ function enable_lttng_mmap_overwrite_ust_channel()
 
 function enable_ust_lttng_event ()
 {
-	local sess_name=$1
-	local event_name="$2"
-	local channel_name=$3
-	local expected_to_fail=$4
+	local expected_to_fail=$1
+	local sess_name=$2
+	local event_name="$3"
+	local channel_name=$4
 
 	if [ -z $channel_name ]; then
 		# default channel if none specified
@@ -441,12 +462,22 @@ function enable_ust_lttng_event ()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -u >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
 		ok $? "Enable ust event $event_name for session $session_name on channel $channel_name failed as expected"
 	else
 		ok $ret "Enable event $event_name for session $sess_name"
 	fi
+}
+
+function enable_ust_lttng_event_ok ()
+{
+	enable_ust_lttng_event 0 "$@"
+}
+
+function enable_ust_lttng_event_fail ()
+{
+	enable_ust_lttng_event 1 "$@"
 }
 
 function enable_jul_lttng_event()
@@ -630,12 +661,12 @@ function disable_python_lttng_event ()
 
 function start_lttng_tracing ()
 {
-	local sess_name=$1
-	local expected_to_fail=$2
+	local expected_to_fail=$1
+	local sess_name=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on start tracing for session: $sess_name"
 	else
@@ -643,14 +674,24 @@ function start_lttng_tracing ()
 	fi
 }
 
+function start_lttng_tracing_ok ()
+{
+	start_lttng_tracing 0 "$@"
+}
+
+function start_lttng_tracing_fail ()
+{
+	start_lttng_tracing 1 "$@"
+}
+
 function stop_lttng_tracing ()
 {
-	local sess_name=$1
-	local expected_to_fail=$2
+	local expected_to_fail=$1
+	local sess_name=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on stop tracing for session: $sess_name"
 	else
@@ -658,20 +699,42 @@ function stop_lttng_tracing ()
 	fi
 }
 
+function stop_lttng_tracing_ok ()
+{
+	stop_lttng_tracing 0 "$@"
+}
+
+function stop_lttng_tracing_fail ()
+{
+	stop_lttng_tracing 1 "$@"
+}
+
 function destroy_lttng_session ()
 {
-	local sess_name=$1
-	local expected_to_fail=$2
+	local expected_to_fail=$1
+	local sess_name=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expected fail on session deletion $sess_name"
 	else
 		ok $ret "Destroy session $sess_name"
 	fi
 }
+
+function destroy_lttng_session_ok ()
+{
+	destroy_lttng_session 0 "$@"
+
+}
+
+function destroy_lttng_session_fail ()
+{
+	destroy_lttng_session 1 "$@"
+}
+
 
 function destroy_lttng_sessions ()
 {
@@ -681,13 +744,13 @@ function destroy_lttng_sessions ()
 
 function lttng_snapshot_add_output ()
 {
-	local sess_name=$1
-	local trace_path=$2
-	local expected_to_fail=$3
+	local expected_to_fail=$1
+	local sess_name=$2
+	local trace_path=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq 1 ]]; then
 		test "$ret" -ne "0"
 		ok $? "Failed to add a  snapshot output file://$trace_path as expected"
 	else
@@ -695,20 +758,40 @@ function lttng_snapshot_add_output ()
 	fi
 }
 
+function lttng_snapshot_add_output_ok ()
+{
+	lttng_snapshot_add_output 0 "$@"
+}
+
+function lttng_snapshot_add_output_fail ()
+{
+	lttng_snapshot_add_output 1 "$@"
+}
+
 function lttng_snapshot_del_output ()
 {
-	local sess_name=$1
-	local id=$2
-	local expected_to_fail=$3
+	local expected_to_fail=$1
+	local sess_name=$2
+	local id=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot del-output -s $sess_name $id >$OUTPUT_DEST
 	ret=$?
-	if [[ $expected_to_fail ]]; then
+	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
 		ok $? "Expect fail on deletion of snapshot output id $id"
 	else
 		ok $ret "Deleted snapshot output id $id"
 	fi
+}
+
+function lttng_snapshot_del_output_ok ()
+{
+	lttng_snapshot_del_output 0 "$@"
+}
+
+function lttng_snapshot_del_output_fail ()
+{
+	lttng_snapshot_del_output 1 "$@"
 }
 
 function lttng_snapshot_record ()

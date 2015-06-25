@@ -39,16 +39,16 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-create_lttng_session $SESSION_NAME $TRACE_PATH
+create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
-enable_ust_lttng_event $SESSION_NAME $EVENT_NAME
-start_lttng_tracing $SESSION_NAME
+enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+start_lttng_tracing_ok $SESSION_NAME
 
 # This is going to take 20 minutes
 ./$CURDIR/$BIN_NAME >/dev/null 2>&1
 
-stop_lttng_tracing $SESSION_NAME
-destroy_lttng_session $SESSION_NAME
+stop_lttng_tracing_ok $SESSION_NAME
+destroy_lttng_session_ok $SESSION_NAME
 
 stop_lttng_sessiond
 

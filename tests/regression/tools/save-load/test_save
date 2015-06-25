@@ -65,32 +65,32 @@ function test_basic_save()
 {
 	diag "Test basic save"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	lttng_save $SESSION_NAME "-o $TRACE_PATH"
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_basic_save_all()
 {
 	diag "Test basic save all"
 
-	create_lttng_session $SESSION_NAME-1 $TRACE_PATH
-	create_lttng_session $SESSION_NAME-2 $TRACE_PATH
-	create_lttng_session $SESSION_NAME-3 $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME-3 $TRACE_PATH
 
-	enable_ust_lttng_channel $SESSION_NAME-1 $CHANNEL_NAME
-	enable_ust_lttng_channel $SESSION_NAME-2 $CHANNEL_NAME
-	enable_ust_lttng_channel $SESSION_NAME-3 $CHANNEL_NAME
+	enable_ust_lttng_channel_ok $SESSION_NAME-1 $CHANNEL_NAME
+	enable_ust_lttng_channel_ok $SESSION_NAME-2 $CHANNEL_NAME
+	enable_ust_lttng_channel_ok $SESSION_NAME-3 $CHANNEL_NAME
 
-	enable_ust_lttng_event $SESSION_NAME-1 $EVENT_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME-1 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
 
 	lttng_save "" "-a -o $TRACE_PATH"
 
@@ -98,29 +98,29 @@ function test_basic_save_all()
 	is_session_saved $TRACE_PATH $SESSION_NAME-2
 	is_session_saved $TRACE_PATH $SESSION_NAME-3
 
-	destroy_lttng_session $SESSION_NAME-1
-	destroy_lttng_session $SESSION_NAME-2
-	destroy_lttng_session $SESSION_NAME-3
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-3
 }
 
 function test_overwrite()
 {
 	diag "Test overwrite session file"
 
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	lttng_save $SESSION_NAME "-o $TRACE_PATH"
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 
 	# Create a new session with same name so we can force the overwrite
-	create_lttng_session $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	# This one MUST fail
 	save_lttng_fail $SESSION_NAME "-o $TRACE_PATH"
@@ -130,7 +130,7 @@ function test_overwrite()
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 start_lttng_sessiond

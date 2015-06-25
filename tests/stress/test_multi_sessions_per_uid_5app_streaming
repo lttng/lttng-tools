@@ -117,19 +117,19 @@ test_stress()
 			enable_channel_per_uid $SESSION_NAME-$a $CHANNEL_NAME
 			check_sessiond
 			check_relayd
-			enable_ust_lttng_event $SESSION_NAME-$a $EVENT_NAME
+			enable_ust_lttng_event_ok $SESSION_NAME-$a $EVENT_NAME
 			check_sessiond
 			check_relayd
-			start_lttng_tracing $SESSION_NAME-$a
+			start_lttng_tracing_ok $SESSION_NAME-$a
 			check_sessiond
 			check_relayd
 		done
 
 		for a in $(seq 1 $NR_SESSION); do
-			stop_lttng_tracing $SESSION_NAME-$a
+			stop_lttng_tracing_ok $SESSION_NAME-$a
 			check_sessiond
 			check_relayd
-			destroy_lttng_session $SESSION_NAME-$a
+			destroy_lttng_session_ok $SESSION_NAME-$a
 			check_sessiond
 			check_relayd
 		done

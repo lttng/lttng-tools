@@ -54,13 +54,13 @@ function test_invalid_filter
 	diag "Filter: $test_invalid_filter"
 
 	# Create session
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	# Apply filter
 	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME "$test_invalid_filter"
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_bytecode_limit
@@ -72,13 +72,13 @@ function test_bytecode_limit
 	diag "Test filter bytecode limits (64KiB)"
 
 	# Create session
-	create_lttng_session $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	# Apply filter
 	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME "$BYTECODE_LIMIT"
 
 	# Destroy session
-	destroy_lttng_session $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
 }
 
 plan_tests $NUM_TESTS

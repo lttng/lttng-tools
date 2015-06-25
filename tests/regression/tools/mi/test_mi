@@ -140,18 +140,18 @@ function test_create_session ()
 
 	OUTPUT_FILE="create_session.xml"
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	create_lttng_session $session_name $OUTPUT_DIR
+	create_lttng_session_ok $session_name $OUTPUT_DIR
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: create session xsd validation"
 
 	#try to recreate a session. Expecting it to fail
-	create_lttng_session $session_name $OUTPUT_DIR true
+	create_lttng_session_fail $session_name $OUTPUT_DIR
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: expecting fail create session xsd validation"
 	is_command_success $OUTPUT_DEST true
 
 	OUTPUT_DEST=$DEVNULL
-	destroy_lttng_session $session_name
+	destroy_lttng_session_ok $session_name
 }
 
 function test_destroy_session ()
@@ -166,11 +166,11 @@ function test_destroy_session ()
 	#Test build up
 	OUTPUT_DEST=$DEVNULL
 	for (( i = 0; i < 3; i++ )); do
-		create_lttng_session ${session_name[$i]} $OUTPUT_DIR
+		create_lttng_session_ok ${session_name[$i]} $OUTPUT_DIR
 	done
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	destroy_lttng_session ${session_name[0]}
+	destroy_lttng_session_ok ${session_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: destroy session ${session_name[0]} xsd validation"
 
@@ -191,7 +191,7 @@ function test_destroy_session ()
 	ok $? "Mi test: $num / 2 sessions discovered"
 
 	#Verify that if no session is present command fail and mi report it.
-	destroy_lttng_session ${session_name[0]} 1
+	destroy_lttng_session_fail ${session_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: failing destroy session ${session_name[0]} xsd validation"
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
@@ -212,7 +212,7 @@ function test_list_sessions ()
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
 	for (( i = 0; i < 3; i++ )); do
-		create_lttng_session ${session_name[$i]} $OUTPUT_DIR
+		create_lttng_session_ok ${session_name[$i]} $OUTPUT_DIR
 	done
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
@@ -242,24 +242,24 @@ function test_ust_channel ()
 
 	#Test buil up
 	OUTPUT_DEST=$DEVNULL
-	create_lttng_session $session_name $OUTPUT_DIR
+	create_lttng_session_ok $session_name $OUTPUT_DIR
 
 	#Test the enable_channel command
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	enable_ust_lttng_channel $session_name ${channel_name[0]}
+	enable_ust_lttng_channel_ok $session_name ${channel_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: enable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Expect the command to fail
-	enable_ust_lttng_channel $session_name ${channel_name[0]} true
+	enable_ust_lttng_channel_fail $session_name ${channel_name[0]}
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: fail enable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST true
 
 	#Create two ust channel to test multiple disable
 	for (( i = 1; i < 3; i++ )); do
-		enable_ust_lttng_channel $session_name ${channel_name[$i]}
+		enable_ust_lttng_channel_ok $session_name ${channel_name[$i]}
 	done
 
 	#Test the disable_channel command
@@ -300,18 +300,18 @@ function test_ust_lttng_event ()
 
 	#Test build up
 	OUTPUT_DEST=$DEVNULL
-	create_lttng_session $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	create_lttng_session_ok $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	#Test the enable event for ust domain
-	enable_ust_lttng_event $session_name ${event[0]} $channel_name
+	enable_ust_lttng_event_ok $session_name ${event[0]} $channel_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Enable_event for ust domain xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Try to reenable an enabled event. Should fail
-	enable_ust_lttng_event $session_name ${event[0]} $channel_name true
+	enable_ust_lttng_event_fail $session_name ${event[0]} $channel_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Fail enable_event for ust domain xsd validation"
 	is_command_success $OUTPUT_DEST true
@@ -324,7 +324,7 @@ function test_ust_lttng_event ()
 	#Event[*] print all the element inside the array with the IFS in between
 	concat_event=$( IFS=$','; echo "${event[*]}" )
 
-	enable_ust_lttng_event $session_name $concat_event $channel_name true
+	enable_ust_lttng_event_fail $session_name $concat_event $channel_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Multiple enable ust event with inside fail xsd validation"
 
@@ -372,12 +372,12 @@ function test_list_channel ()
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
-	create_lttng_session $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	create_lttng_session_ok $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
-	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_ust_lttng_event_ok $session_name $concat_event $channel_name
 
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
@@ -402,7 +402,7 @@ function test_list_channel ()
 
 	#Add a channel and make sure we have 2 channel now
 	OUTPUT_DEST=$DEVNULL
-	enable_ust_lttng_channel $session_name $channel_name"a"
+	enable_ust_lttng_channel_ok $session_name $channel_name"a"
 
 	#Teardown
 	OUTPUT_DEST=$DEVNULL
@@ -419,12 +419,12 @@ function test_list_domain ()
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
-	create_lttng_session $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	create_lttng_session_ok $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
-	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_ust_lttng_event_ok $session_name $concat_event $channel_name
 	enable_jul_lttng_event $session_name $concat_event $channel_name
 
 	#Begin testing
@@ -467,12 +467,12 @@ function test_list_session ()
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
-	create_lttng_session $session_name $OUTPUT_DIR
-	enable_ust_lttng_channel $session_name $channel_name
+	create_lttng_session_ok $session_name $OUTPUT_DIR
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Enable ust and jul events
 	concat_event=$( IFS=$','; echo "${event[*]}" )
-	enable_ust_lttng_event $session_name $concat_event $channel_name
+	enable_ust_lttng_event_ok $session_name $concat_event $channel_name
 	enable_jul_lttng_event $session_name $concat_event $channel_name
 
 	#Begin testing
@@ -540,12 +540,12 @@ function test_start_stop () {
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
-	create_lttng_session $session_name $OUTPUT_DIR
+	create_lttng_session_ok $session_name $OUTPUT_DIR
 
 	#Test fail command
 	#No channel enable start command should return element success false
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	start_lttng_tracing $session_name 1
+	start_lttng_tracing_fail $session_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: failed start xsd validation"
 
@@ -556,11 +556,11 @@ function test_start_stop () {
 
 	#Enable a channel to test success
 	OUTPUT_DEST=$DEVNULL
-	enable_ust_lttng_channel $session_name $channel_name
+	enable_ust_lttng_channel_ok $session_name $channel_name
 
 	#Start tracing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	start_lttng_tracing $session_name
+	start_lttng_tracing_ok $session_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: start xsd validation"
 
@@ -580,7 +580,7 @@ function test_start_stop () {
 	ok $? "Mi test: enabled element : $result expected: true"
 
 	#Test stop command
-	stop_lttng_tracing $session_name
+	stop_lttng_tracing_ok $session_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: stop xsd validation"
 
@@ -595,7 +595,7 @@ function test_start_stop () {
 	ok $? "Mi test: enabled element : $result expected: false"
 
 	#Test failing stop command
-	stop_lttng_tracing $session_name 1
+	stop_lttng_tracing_fail $session_name
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: failed stop xsd validation"
 
@@ -622,7 +622,7 @@ function test_snapshot () {
 	#Test fail command
 	#No channel enable start command should return element success false
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-    lttng_snapshot_add_output $session_name $snapshot_path
+    lttng_snapshot_add_output_ok $session_name $snapshot_path
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot xsd validation"
 
@@ -655,7 +655,7 @@ function test_snapshot () {
 	ok $? "Mi test: snapshot list extracted snapshot: $result expected: $snapshot_name"
 
 	#Test del output
-	lttng_snapshot_del_output $session_name $snapshot_id
+	lttng_snapshot_del_output_ok $session_name $snapshot_id
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot delete xsd validation"
 
@@ -674,7 +674,7 @@ function test_snapshot () {
 	ok $? "Mi test: snapshot del extracted snapshot id: $result expected: $session_name"
 
 	#Test fail on delete command
-	lttng_snapshot_del_output $session_name $snapshot_id 1
+	lttng_snapshot_del_output_fail $session_name $snapshot_id
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot delete xsd validation"
 
