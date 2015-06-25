@@ -2172,7 +2172,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 {
 	int ret, started = -1, snapshot_mode = -1;
 	uint64_t live_timer_interval = UINT64_MAX;
-	char *name = NULL;
+	xmlChar *name = NULL;
 	xmlChar *shm_path = NULL;
 	xmlNodePtr domains_node = NULL;
 	xmlNodePtr output_node = NULL;
@@ -2194,7 +2194,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 				goto error;
 			}
 
-			name = (char *) node_content;
+			name = node_content;
 		} else if (!domains_node && !strcmp((const char *) node->name,
 			config_element_domains)) {
 			/* domains */
@@ -2274,7 +2274,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 		goto error;
 	}
 
-	if (session_name && strcmp(name, session_name)) {
+	if (session_name && strcmp((char *) name, session_name)) {
 		/* This is not the session we are looking for */
 		ret = -LTTNG_ERR_NO_SESSION;
 		goto error;
@@ -2345,7 +2345,7 @@ domain_init_error:
 
 	if (override) {
 		/* Destroy session if it exists */
-		ret = lttng_destroy_session(name);
+		ret = lttng_destroy_session((const char *) name);
 		if (ret && ret != -LTTNG_ERR_SESS_NOT_FOUND) {
 			ERR("Failed to destroy existing session.");
 			goto error;
@@ -2354,15 +2354,17 @@ domain_init_error:
 
 	/* Create session type depending on output type */
 	if (snapshot_mode && snapshot_mode != -1) {
-		ret = create_snapshot_session(name, output_node);
+		ret = create_snapshot_session((const char *) name, output_node);
 	} else if (live_timer_interval &&
 		live_timer_interval != UINT64_MAX) {
-		ret = create_session(name, kernel_domain, ust_domain, jul_domain,
-				log4j_domain, output_node, live_timer_interval);
+		ret = create_session((const char *) name, kernel_domain,
+				ust_domain, jul_domain, log4j_domain,
+				output_node, live_timer_interval);
 	} else {
 		/* regular session */
-		ret = create_session(name, kernel_domain, ust_domain, jul_domain,
-				log4j_domain, output_node, UINT64_MAX);
+		ret = create_session((const char *) name, kernel_domain,
+				ust_domain, jul_domain, log4j_domain,
+				output_node, UINT64_MAX);
 	}
 	if (ret) {
 		goto error;
@@ -2370,7 +2372,7 @@ domain_init_error:
 
 	if (shm_path) {
 		ret = lttng_set_session_shm_path((const char *) name,
-			(const char *) shm_path);
+				(const char *) shm_path);
 		if (ret) {
 			goto error;
 		}
@@ -2378,14 +2380,14 @@ domain_init_error:
 
 	for (node = xmlFirstElementChild(domains_node); node;
 		node = xmlNextElementSibling(node)) {
-		ret = process_domain_node(node, name);
+		ret = process_domain_node(node, (const char *) name);
 		if (ret) {
 			goto end;
 		}
 	}
 
 	if (started) {
-		ret = lttng_start_tracing(name);
+		ret = lttng_start_tracing((const char *) name);
 		if (ret) {
 			goto end;
 		}
@@ -2393,8 +2395,9 @@ domain_init_error:
 
 end:
 	if (ret < 0) {
-		ERR("Failed to load session %s: %s", name, lttng_strerror(ret));
-		lttng_destroy_session(name);
+		ERR("Failed to load session %s: %s", (const char *) name,
+			lttng_strerror(ret));
+		lttng_destroy_session((const char *) name);
 	}
 
 error:
@@ -2403,7 +2406,7 @@ error:
 	free(jul_domain);
 	free(log4j_domain);
 	free(python_domain);
-	free(name);
+	xmlFree(name);
 	xmlFree(shm_path);
 	return ret;
 }
