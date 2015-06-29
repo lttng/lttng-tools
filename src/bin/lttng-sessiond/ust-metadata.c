@@ -723,6 +723,7 @@ int _lttng_stream_packet_context_declare(struct ust_registry_session *session)
 		"	uint64_clock_monotonic_t timestamp_end;\n"
 		"	uint64_t content_size;\n"
 		"	uint64_t packet_size;\n"
+		"	uint64_t packet_seq_num;\n"
 		"	unsigned long events_discarded;\n"
 		"	uint32_t cpu_id;\n"
 		"};\n\n"
@@ -885,6 +886,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"		uint32_t magic;\n"
 		"		uint8_t  uuid[16];\n"
 		"		uint32_t stream_id;\n"
+		"		uint64_t stream_instance_id;\n"
 		"	};\n"
 		"};\n\n",
 		session->uint8_t_alignment,
