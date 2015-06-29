@@ -80,6 +80,8 @@ struct ltt_ust_channel {
 	struct lttng_ht_node_str node;
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
+	uint64_t per_pid_closed_app_discarded;
+	uint64_t per_pid_closed_app_lost;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

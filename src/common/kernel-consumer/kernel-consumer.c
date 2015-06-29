@@ -940,6 +940,66 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		goto end_nosignal;
 	}
+	case LTTNG_CONSUMER_DISCARDED_EVENTS:
+	{
+		uint64_t ret;
+		struct lttng_consumer_channel *channel;
+		uint64_t id = msg.u.discarded_events.session_id;
+		uint64_t key = msg.u.discarded_events.channel_key;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			ERR("Kernel consumer discarded events channel %"
+					PRIu64 " not found", key);
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		DBG("Kernel consumer discarded events command for session id %"
+				PRIu64 ", channel key %" PRIu64, id, key);
+
+		ret = channel->discarded_events;
+
+		health_code_update();
+
+		/* Send back returned value to session daemon */
+		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		if (ret < 0) {
+			PERROR("send discarded events");
+			goto error_fatal;
+		}
+
+		break;
+	}
+	case LTTNG_CONSUMER_LOST_PACKETS:
+	{
+		uint64_t ret;
+		struct lttng_consumer_channel *channel;
+		uint64_t id = msg.u.lost_packets.session_id;
+		uint64_t key = msg.u.lost_packets.channel_key;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			ERR("Kernel consumer lost packets channel %"
+					PRIu64 " not found", key);
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		DBG("Kernel consumer lost packets command for session id %"
+				PRIu64 ", channel key %" PRIu64, id, key);
+
+		ret = channel->lost_packets;
+
+		health_code_update();
+
+		/* Send back returned value to session daemon */
+		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		if (ret < 0) {
+			PERROR("send lost packets");
+			goto error_fatal;
+		}
+
+		break;
+	}
 	default:
 		goto end_nosignal;
 	}
@@ -1051,6 +1111,61 @@ end:
 	return ret;
 }
 
+static
+int update_stream_stats(struct lttng_consumer_stream *stream)
+{
+	int ret;
+	uint64_t seq, discarded;
+
+	ret = kernctl_get_sequence_number(stream->wait_fd, &seq);
+	if (ret < 0) {
+		PERROR("kernctl_get_sequence_number");
+		goto end;
+	}
+
+	/*
+	 * Start the sequence when we extract the first packet in case we don't
+	 * start at 0 (for example if a consumer is not connected to the
+	 * session immediately after the beginning).
+	 */
+	if (stream->last_sequence_number == -1ULL) {
+		stream->last_sequence_number = seq;
+	} else if (seq > stream->last_sequence_number) {
+		stream->chan->lost_packets += seq -
+				stream->last_sequence_number - 1;
+	} else {
+		/* seq <= last_sequence_number */
+		ERR("Sequence number inconsistent : prev = %" PRIu64
+				", current = %" PRIu64,
+				stream->last_sequence_number, seq);
+		ret = -1;
+		goto end;
+	}
+	stream->last_sequence_number = seq;
+
+	ret = kernctl_get_events_discarded(stream->wait_fd, &discarded);
+	if (ret < 0) {
+		PERROR("kernctl_get_events_discarded");
+		goto end;
+	}
+	if (discarded < stream->last_discarded_events) {
+		/*
+		 * Overflow has occured. We assume only one wrap-around
+		 * has occured.
+		 */
+		stream->chan->discarded_events += (1ULL << (CAA_BITS_PER_LONG - 1)) -
+			stream->last_discarded_events + discarded;
+	} else {
+		stream->chan->discarded_events += discarded -
+			stream->last_discarded_events;
+	}
+	stream->last_discarded_events = discarded;
+	ret = 0;
+
+end:
+	return ret;
+}
+
 /*
  * Consume data on a file descriptor and write it on a trace file.
  */
@@ -1113,6 +1228,10 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 				ret = -errno;
 				goto end;
 			}
+			goto end;
+		}
+		ret = update_stream_stats(stream);
+		if (ret < 0) {
 			goto end;
 		}
 	} else {

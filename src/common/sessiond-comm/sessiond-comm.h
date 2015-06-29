@@ -509,6 +509,14 @@ struct lttcomm_consumer_msg {
 			uint64_t channel_key;
 			uint64_t net_seq_idx;
 		} LTTNG_PACKED sent_streams;
+		struct {
+			uint64_t session_id;
+			uint64_t channel_key;
+		} LTTNG_PACKED discarded_events;
+		struct {
+			uint64_t session_id;
+			uint64_t channel_key;
+		} LTTNG_PACKED lost_packets;
 	} u;
 } LTTNG_PACKED;
 

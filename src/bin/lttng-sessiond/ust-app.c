@@ -40,6 +40,7 @@
 #include "ust-consumer.h"
 #include "ust-ctl.h"
 #include "utils.h"
+#include "session.h"
 
 static
 int ust_app_flush_app_session(struct ust_app *app, struct ust_app_session *ua_sess);
@@ -372,6 +373,57 @@ void delete_ust_app_channel_rcu(struct rcu_head *head)
 }
 
 /*
+ * Extract the lost packet or discarded events counter when the channel is
+ * being deleted and store the value in the parent channel so we can
+ * access it from lttng list and at stop/destroy.
+ */
+static
+void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
+{
+	uint64_t discarded = 0, lost = 0;
+	struct ltt_session *session;
+	struct ltt_ust_channel *uchan;
+
+	if (ua_chan->attr.type != LTTNG_UST_CHAN_PER_CPU) {
+		return;
+	}
+
+	rcu_read_lock();
+	session = session_find_by_id(ua_chan->session->tracing_id);
+	if (!session) {
+		ERR("Missing LTT session to get discarded events");
+		goto end;
+	}
+	if (!session->ust_session) {
+		ERR("Missing UST session to get discarded events");
+		goto end;
+	}
+
+	if (ua_chan->attr.overwrite) {
+		consumer_get_lost_packets(ua_chan->session->tracing_id,
+				ua_chan->key, session->ust_session->consumer,
+				&lost);
+	} else {
+		consumer_get_discarded_events(ua_chan->session->tracing_id,
+				ua_chan->key, session->ust_session->consumer,
+				&discarded);
+	}
+	uchan = trace_ust_find_channel_by_name(
+			session->ust_session->domain_global.channels,
+			ua_chan->name);
+	if (!uchan) {
+		ERR("Missing UST channel to store discarded counters");
+		goto end;
+	}
+
+	uchan->per_pid_closed_app_discarded += discarded;
+	uchan->per_pid_closed_app_lost += lost;
+
+end:
+	rcu_read_unlock();
+}
+
+/*
  * Delete ust app channel safely. RCU read lock must be held before calling
  * this function.
  */
@@ -418,6 +470,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		if (registry) {
 			ust_registry_channel_del_free(registry, ua_chan->key);
 		}
+		save_per_pid_lost_discarded_counters(ua_chan);
 	}
 
 	if (ua_chan->obj != NULL) {
@@ -1874,7 +1927,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 		DBG2("Channel %s not found on shadow session copy, creating it",
 				uchan->name);
-		ua_chan = alloc_ust_app_channel(uchan->name, ua_sess, &uchan->attr);
+		ua_chan = alloc_ust_app_channel(uchan->name, ua_sess,
+				&uchan->attr);
 		if (ua_chan == NULL) {
 			/* malloc failed FIXME: Might want to do handle ENOMEM .. */
 			continue;
@@ -5846,4 +5900,81 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(struct ltt_ust_session *use
 	}
 
 	return tot_size;
+}
+
+int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
+		struct cds_list_head *buffer_reg_uid_list,
+		struct consumer_output *consumer, uint64_t uchan_id,
+		int overwrite, uint64_t *discarded, uint64_t *lost)
+{
+	int ret;
+	uint64_t consumer_chan_key;
+
+	ret = buffer_reg_uid_consumer_channel_key(
+			buffer_reg_uid_list, ust_session_id,
+			uchan_id, &consumer_chan_key);
+	if (ret < 0) {
+		goto end;
+	}
+
+	if (overwrite) {
+		ret = consumer_get_lost_packets(ust_session_id,
+				consumer_chan_key, consumer, lost);
+	} else {
+		ret = consumer_get_discarded_events(ust_session_id,
+				consumer_chan_key, consumer, discarded);
+	}
+
+end:
+	return ret;
+}
+
+int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan,
+		struct consumer_output *consumer, int overwrite,
+		uint64_t *discarded, uint64_t *lost)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *ua_chan_node;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_app_channel *ua_chan;
+
+	rcu_read_lock();
+	/*
+	 * Iterate over every registered applications, return when we
+	 * found one in the right session and channel.
+	 */
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		struct lttng_ht_iter uiter;
+
+		ua_sess = lookup_session_by_app(usess, app);
+		if (ua_sess == NULL) {
+			continue;
+		}
+
+		/* Get channel */
+		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+		/* If the session is found for the app, the channel must be there */
+		assert(ua_chan_node);
+
+		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+
+		if (overwrite) {
+			ret = consumer_get_lost_packets(usess->id, ua_chan->key,
+					consumer, lost);
+			goto end;
+		} else {
+			ret = consumer_get_discarded_events(usess->id,
+					ua_chan->key, consumer, discarded);
+			goto end;
+		}
+		goto end;
+	}
+
+end:
+	rcu_read_unlock();
+	return ret;
 }

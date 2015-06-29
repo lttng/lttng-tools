@@ -532,3 +532,9 @@ int kernctl_get_current_timestamp(int fd, uint64_t *ts)
 {
 	return ioctl(fd, LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP, ts);
 }
+
+/* Returns the packet sequence number of the current sub-buffer. */
+int kernctl_get_sequence_number(int fd, uint64_t *seq)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_GET_SEQ_NUM, seq);
+}

@@ -140,12 +140,96 @@ error:
 }
 
 /*
+ * Get run-time attributes if the session has been started (discarded events,
+ * lost packets).
+ */
+static int get_kernel_runtime_stats(struct ltt_session *session,
+		struct ltt_kernel_channel *kchan, uint64_t *discarded_events,
+		uint64_t *lost_packets)
+{
+	int ret;
+
+	if (!session->has_been_started) {
+		ret = 0;
+		*discarded_events = 0;
+		*lost_packets = 0;
+		goto end;
+	}
+
+	ret = consumer_get_discarded_events(session->id, kchan->fd,
+			session->kernel_session->consumer,
+			discarded_events);
+	if (ret < 0) {
+		goto end;
+	}
+
+	ret = consumer_get_lost_packets(session->id, kchan->fd,
+			session->kernel_session->consumer,
+			lost_packets);
+	if (ret < 0) {
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Get run-time attributes if the session has been started (discarded events,
+ * lost packets).
+ */
+static int get_ust_runtime_stats(struct ltt_session *session,
+		struct ltt_ust_channel *uchan, uint64_t *discarded_events,
+		uint64_t *lost_packets)
+{
+	int ret;
+	struct ltt_ust_session *usess;
+
+	usess = session->ust_session;
+
+	if (!usess || !session->has_been_started) {
+		*discarded_events = 0;
+		*lost_packets = 0;
+		ret = 0;
+		goto end;
+	}
+
+	if (usess->buffer_type == LTTNG_BUFFER_PER_UID) {
+		ret = ust_app_uid_get_channel_runtime_stats(usess->id,
+				&usess->buffer_reg_uid_list,
+				usess->consumer, uchan->id,
+				uchan->attr.overwrite,
+				discarded_events,
+				lost_packets);
+	} else if (usess->buffer_type == LTTNG_BUFFER_PER_PID) {
+		ret = ust_app_pid_get_channel_runtime_stats(usess,
+				uchan, usess->consumer,
+				uchan->attr.overwrite,
+				discarded_events,
+				lost_packets);
+		if (ret < 0) {
+			goto end;
+		}
+		*discarded_events += uchan->per_pid_closed_app_discarded;
+		*lost_packets += uchan->per_pid_closed_app_lost;
+	} else {
+		ERR("Unsupported buffer type");
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Fill lttng_channel array of all channels.
  */
 static void list_lttng_channels(enum lttng_domain_type domain,
-		struct ltt_session *session, struct lttng_channel *channels)
+		struct ltt_session *session, struct lttng_channel *channels,
+		struct lttcomm_channel_extended *chan_exts)
 {
-	int i = 0;
+	int i = 0, ret;
 	struct ltt_kernel_channel *kchan;
 
 	DBG("Listing channels for session %s", session->name);
@@ -156,9 +240,19 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 		if (session->kernel_session != NULL) {
 			cds_list_for_each_entry(kchan,
 					&session->kernel_session->channel_list.head, list) {
+				uint64_t discarded_events, lost_packets;
+
+				ret = get_kernel_runtime_stats(session, kchan,
+						&discarded_events, &lost_packets);
+				if (ret < 0) {
+					goto end;
+				}
 				/* Copy lttng_channel struct to array */
 				memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
 				channels[i].enabled = kchan->enabled;
+				chan_exts[i].discarded_events =
+						discarded_events;
+				chan_exts[i].lost_packets = lost_packets;
 				i++;
 			}
 		}
@@ -171,6 +265,8 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 		rcu_read_lock();
 		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 				&iter.iter, uchan, node.node) {
+			uint64_t discarded_events, lost_packets;
+
 			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
 			channels[i].attr.overwrite = uchan->attr.overwrite;
 			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
@@ -188,6 +284,14 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 				channels[i].attr.output = LTTNG_EVENT_MMAP;
 				break;
 			}
+
+			ret = get_ust_runtime_stats(session, uchan,
+					&discarded_events, &lost_packets);
+			if (ret < 0) {
+				break;
+			}
+			chan_exts[i].discarded_events = discarded_events;
+			chan_exts[i].lost_packets = lost_packets;
 			i++;
 		}
 		rcu_read_unlock();
@@ -196,6 +300,9 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 	default:
 		break;
 	}
+
+end:
+	return;
 }
 
 static void increment_extended_len(const char *filter_expression,

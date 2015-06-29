@@ -360,6 +360,8 @@ THE SOFTWARE.
 			<xs:element name="tracefile_size" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- bytes -->
 			<xs:element name="tracefile_count" type="tns:uint64_type" default="0" minOccurs="0" />
 			<xs:element name="live_timer_interval" type="tns:uint32_type" default="0" minOccurs="0" /> <!-- usec -->
+			<xs:element name="discarded_events" type="tns:uint64_type" default="0" minOccurs="0" />
+			<xs:element name="lost_packets" type="tns:uint64_type" default="0" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 

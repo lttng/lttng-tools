@@ -58,6 +58,8 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_SNAPSHOT_CHANNEL,
 	LTTNG_CONSUMER_SNAPSHOT_METADATA,
 	LTTNG_CONSUMER_STREAMS_SENT,
+	LTTNG_CONSUMER_DISCARDED_EVENTS,
+	LTTNG_CONSUMER_LOST_PACKETS,
 };
 
 /* State of each fd in consumer */
@@ -211,6 +213,10 @@ struct lttng_consumer_channel {
 	int nr_stream_fds;
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
+	/* Total number of discarded events for that channel. */
+	uint64_t discarded_events;
+	/* Total number of missed packets due to overwriting (overwrite). */
+	uint64_t lost_packets;
 };
 
 /*
@@ -351,6 +357,13 @@ struct lttng_consumer_stream {
 	 * to the channel.
 	 */
 	uint64_t ust_metadata_pushed;
+	/*
+	 * Copy of the last discarded event value to detect the overflow of
+	 * the counter.
+	 */
+	uint64_t last_discarded_events;
+	/* Copy of the sequence number of the last packet extracted. */
+	uint64_t last_sequence_number;
 	/*
 	 * FD of the index file for this stream.
 	 */

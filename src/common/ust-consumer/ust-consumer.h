@@ -67,6 +67,8 @@ void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer);
 int lttng_ustconsumer_get_current_timestamp(
 		struct lttng_consumer_stream *stream, uint64_t *ts);
+int lttng_ustconsumer_get_sequence_number(
+		struct lttng_consumer_stream *stream, uint64_t *seq);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -208,6 +210,11 @@ void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 static inline
 int lttng_ustconsumer_get_current_timestamp(
 		struct lttng_consumer_stream *stream, uint64_t *ts)
+{
+	return -ENOSYS;
+}
+int lttng_ustconsumer_get_sequence_number(
+		struct lttng_consumer_stream *stream, uint64_t *seq)
 {
 	return -ENOSYS;
 }

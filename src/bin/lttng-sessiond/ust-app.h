@@ -344,6 +344,14 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 uint64_t ust_app_get_size_one_more_packet_per_stream(
 		struct ltt_ust_session *usess, uint64_t cur_nr_packets);
 struct ust_app *ust_app_find_by_sock(int sock);
+int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
+		struct cds_list_head *buffer_reg_uid_list,
+		struct consumer_output *consumer, uint64_t uchan_id,
+		int overwrite, uint64_t *discarded, uint64_t *lost);
+int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan,
+		struct consumer_output *consumer,
+		int overwrite, uint64_t *discarded, uint64_t *lost);
 
 static inline
 int ust_app_supported(void)
@@ -556,6 +564,23 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 static inline
 uint64_t ust_app_get_size_one_more_packet_per_stream(
 		struct ltt_ust_session *usess, uint64_t cur_nr_packets) {
+	return 0;
+}
+static inline
+int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
+		struct cds_list_head *buffer_reg_uid_list,
+		struct consumer_output *consumer, int overwrite,
+		uint64_t uchan_id, uint64_t *discarded, uint64_t *lost)
+{
+	return 0;
+}
+
+static inline
+int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan,
+		struct consumer_output *consumer,
+		int overwrite, uint64_t *discarded, uint64_t *lost)
+{
 	return 0;
 }
 

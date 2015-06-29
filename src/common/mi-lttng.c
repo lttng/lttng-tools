@@ -21,6 +21,7 @@
 #include <common/config/session-config.h>
 #include <common/defaults.h>
 #include <lttng/snapshot-internal.h>
+#include <lttng/channel.h>
 #include "mi-lttng.h"
 
 #include <assert.h>
@@ -866,8 +867,21 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 		struct lttng_channel_attr *attr)
 {
 	int ret = 0;
+	struct lttng_channel *chan = caa_container_of(attr,
+			struct lttng_channel, attr);
+	uint64_t discarded_events, lost_packets;
 
 	assert(attr);
+
+	ret = lttng_channel_get_discarded_event_count(chan, &discarded_events);
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_channel_get_lost_packet_count(chan, &lost_packets);
+	if (ret) {
+		goto end;
+	}
 
 	/* Opening Attributes */
 	ret = mi_lttng_writer_open_element(writer, config_element_attributes);
@@ -943,6 +957,22 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	ret = mi_lttng_writer_write_element_unsigned_int(writer,
 		config_element_live_timer_interval,
 		attr->live_timer_interval);
+	if (ret) {
+		goto end;
+	}
+
+	/* Discarded events */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+		config_element_discarded_events,
+		discarded_events);
+	if (ret) {
+		goto end;
+	}
+
+	/* Lost packets */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+		config_element_lost_packets,
+		lost_packets);
 	if (ret) {
 		goto end;
 	}

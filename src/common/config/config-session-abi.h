@@ -46,6 +46,8 @@ extern const char * const config_element_output_type;
 extern const char * const config_element_tracefile_size;
 extern const char * const config_element_tracefile_count;
 extern const char * const config_element_live_timer_interval;
+extern const char * const config_element_discarded_events;
+extern const char * const config_element_lost_packets;
 extern const char * const config_element_type;
 extern const char * const config_element_buffer_type;
 extern const char * const config_element_session;

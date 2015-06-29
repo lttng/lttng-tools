@@ -1190,6 +1190,23 @@ error:
  */
 static void print_channel(struct lttng_channel *channel)
 {
+	int ret;
+	uint64_t discarded_events, lost_packets;
+
+	ret = lttng_channel_get_discarded_event_count(channel,
+			&discarded_events);
+	if (ret) {
+		ERR("Failed to retrieve discarded event count of channel");
+		return;
+	}
+
+	ret = lttng_channel_get_lost_packet_count(channel,
+			&lost_packets);
+	if (ret) {
+		ERR("Failed to retrieve lost packet count of channel");
+		return;
+	}
+
 	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
 
 	MSG("%sAttributes:", indent4);
@@ -1200,6 +1217,8 @@ static void print_channel(struct lttng_channel *channel)
 	MSG("%sread timer interval: %u", indent6, channel->attr.read_timer_interval);
 	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
 	MSG("%strace file size (bytes): %" PRIu64, indent6, channel->attr.tracefile_size);
+	MSG("%sdiscarded events: %" PRIu64, indent6, discarded_events);
+	MSG("%slost packets: %" PRIu64, indent6, lost_packets);
 	switch (channel->attr.output) {
 		case LTTNG_EVENT_SPLICE:
 			MSG("%soutput: splice()", indent6);
