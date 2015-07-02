@@ -1,3 +1,4 @@
+AC_PREREQ([2.64])
 AC_INIT([lttng-tools],[2.7.0-pre],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
