@@ -149,7 +149,7 @@ static
 int setup_health_path(void)
 {
 	int is_root, ret = 0;
-	char *home_path = NULL, *rundir = NULL, *relayd_path;
+	char *home_path = NULL, *rundir = NULL, *relayd_path = NULL;
 
 	ret = parse_health_env();
 	if (ret) {
@@ -221,6 +221,7 @@ int setup_health_path(void)
 
 end:
 	free(rundir);
+	free(relayd_path);
 	return ret;
 }
 
