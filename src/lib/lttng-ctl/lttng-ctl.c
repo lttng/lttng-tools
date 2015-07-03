@@ -1525,7 +1525,7 @@ int lttng_create_session(const char *name, const char *url)
  * Destroy session using name.
  * Returns size of returned session payload data or a negative error code.
  */
-int lttng_destroy_session(const char *session_name)
+int _lttng_destroy_session(const char *session_name)
 {
 	struct lttcomm_session_msg lsm;
 
@@ -1540,6 +1540,48 @@ int lttng_destroy_session(const char *session_name)
 			sizeof(lsm.session.name));
 
 	return lttng_ctl_ask_sessiond(&lsm, NULL);
+}
+
+/*
+ * Stop the session and wait for the data before destroying it
+ */
+int lttng_destroy_session(const char *session_name)
+{
+	int ret;
+
+	/*
+	 * Stop the tracing and wait for the data.
+	 */
+	ret = _lttng_stop_tracing(session_name, 1);
+	if (ret && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
+		goto end;
+	}
+
+	ret = _lttng_destroy_session(session_name);
+end:
+	return ret;
+}
+
+/*
+ * Destroy the session without waiting for the data.
+ */
+int lttng_destroy_session_no_wait(const char *session_name)
+{
+	int ret;
+
+	/*
+	 * Stop the tracing without waiting for the data.
+	 * The session might already have been stopped, so just
+	 * skip this error.
+	 */
+	ret = _lttng_stop_tracing(session_name, 0);
+	if (ret && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
+		goto end;
+	}
+
+	ret = _lttng_destroy_session(session_name);
+end:
+	return ret;
 }
 
 /*

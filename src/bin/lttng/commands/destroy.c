@@ -32,6 +32,7 @@
 
 static char *opt_session_name;
 static int opt_destroy_all;
+static int opt_no_wait;
 
 /* Mi writer */
 static struct mi_writer *writer;
@@ -46,6 +47,7 @@ static struct poptOption long_options[] = {
 	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"all",       'a', POPT_ARG_VAL, &opt_destroy_all, 1, 0, 0},
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
+	{"no-wait",   'n', POPT_ARG_VAL, &opt_no_wait, 1, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -63,6 +65,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -h, --help           Show this help\n");
 	fprintf(ofp, "  -a, --all            Destroy all sessions\n");
 	fprintf(ofp, "      --list-options   Simple listing of options\n");
+	fprintf(ofp, "  -n, --no-wait        Don't wait for data availability\n");
 	fprintf(ofp, "\n");
 }
 
@@ -77,16 +80,35 @@ static int destroy_session(struct lttng_session *session)
 	int ret;
 	char *session_name = NULL;
 
-	ret = lttng_destroy_session(session->name);
+	ret = lttng_stop_tracing_no_wait(session->name);
+	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
+		ERR("%s", lttng_strerror(ret));
+	}
+	if (!opt_no_wait) {
+		_MSG("Waiting for data availability");
+		fflush(stdout);
+		do {
+			ret = lttng_data_pending(session->name);
+			if (ret < 0) {
+				/* Return the data available call error. */
+				goto error;
+			}
+
+			/*
+			 * Data sleep time before retrying (in usec). Don't sleep if the call
+			 * returned value indicates availability.
+			 */
+			if (ret) {
+				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+				_MSG(".");
+				fflush(stdout);
+			}
+		} while (ret != 0);
+		MSG("");
+	}
+
+	ret = lttng_destroy_session_no_wait(session->name);
 	if (ret < 0) {
-		switch (-ret) {
-		case LTTNG_ERR_SESS_NOT_FOUND:
-			WARN("Session name %s not found", session->name);
-			break;
-		default:
-			ERR("%s", lttng_strerror(ret));
-			break;
-		}
 		goto error;
 	}
 
