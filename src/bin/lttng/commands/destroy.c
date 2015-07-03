@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "../command.h"
 
@@ -79,11 +80,13 @@ static int destroy_session(struct lttng_session *session)
 {
 	int ret;
 	char *session_name = NULL;
+	bool session_was_stopped;
 
 	ret = lttng_stop_tracing_no_wait(session->name);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
 		ERR("%s", lttng_strerror(ret));
 	}
+	session_was_stopped = ret == -LTTNG_ERR_TRACE_ALREADY_STOPPED;
 	if (!opt_no_wait) {
 		_MSG("Waiting for data availability");
 		fflush(stdout);
@@ -105,6 +108,13 @@ static int destroy_session(struct lttng_session *session)
 			}
 		} while (ret != 0);
 		MSG("");
+	}
+	if (!session_was_stopped) {
+		/*
+		 * Don't print the event and packet loss warnings since the user
+		 * already saw them when stopping the trace.
+		 */
+		print_session_stats(session->name);
 	}
 
 	ret = lttng_destroy_session_no_wait(session->name);

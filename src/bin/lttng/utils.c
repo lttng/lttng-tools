@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <inttypes.h>
 
 #include <common/error.h>
 #include <common/utils.h>
@@ -414,4 +415,67 @@ int print_missing_or_multiple_domains(unsigned int sum)
 	}
 
 	return ret;
+}
+
+/*
+ * Get the discarded events and lost packet counts.
+ */
+void print_session_stats(const char *session_name)
+{
+	int count, nb_domains, domain_idx, channel_idx;
+	struct lttng_domain *domains;
+	struct lttng_channel *channels;
+	uint64_t discarded_total = 0, lost_total = 0;
+
+	nb_domains = lttng_list_domains(session_name, &domains);
+	if (nb_domains < 0) {
+		goto end;
+	}
+	for (domain_idx = 0; domain_idx < nb_domains; domain_idx++) {
+		struct lttng_handle *handle = lttng_create_handle(session_name,
+				&domains[domain_idx]);
+
+		if (!handle) {
+			ERR("Failed to create session handle while printing session stats.");
+			goto end;
+		}
+
+		count = lttng_list_channels(handle, &channels);
+		for (channel_idx = 0; channel_idx < count; channel_idx++) {
+			int ret;
+			uint64_t discarded = 0, lost = 0;
+			struct lttng_channel *channel = &channels[channel_idx];
+
+			ret = lttng_channel_get_discarded_event_count(channel,
+					&discarded);
+			if (ret) {
+				ERR("Failed to retrieve discarded event count from channel %s",
+						channel->name);
+			}
+
+			ret = lttng_channel_get_lost_packet_count(channel,
+					&lost);
+			if (ret) {
+				ERR("Failed to retrieve lost packet count from channel %s",
+						channel->name);
+			}
+
+			discarded_total += discarded;
+			lost_total += lost;
+		}
+		lttng_destroy_handle(handle);
+	}
+	if (discarded_total > 0) {
+		MSG("[warning] %" PRIu64 " events discarded, please refer to "
+				"the documentation on channel configuration.",
+				discarded_total);
+	}
+	if (lost_total > 0) {
+		MSG("[warning] %" PRIu64 " packets lost, please refer to "
+				"the documentation on channel configuration.",
+				lost_total);
+	}
+
+end:
+	return;
 }
