@@ -27,6 +27,7 @@
 #include "../command.h"
 
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/utils.h>
 
 static char *opt_session_name;
 static int opt_destroy_all;
@@ -70,6 +71,7 @@ static void usage(FILE *ofp)
 static int destroy_session(const char *session_name)
 {
 	int ret;
+	char *default_session_name = NULL;
 
 	ret = lttng_destroy_session(session_name);
 	if (ret < 0) {
@@ -85,9 +87,15 @@ static int destroy_session(const char *session_name)
 	}
 
 	MSG("Session %s destroyed", session_name);
-	config_destroy_default();
+
+	default_session_name = get_session_name_quiet();
+	if (default_session_name &&
+		!strncmp(session_name, session_name, NAME_MAX)) {
+		config_destroy_default();
+	}
 	ret = CMD_SUCCESS;
 error:
+	free(default_session_name);
 	return ret;
 }
 
