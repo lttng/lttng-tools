@@ -29,6 +29,7 @@
 
 #include <common/mi-lttng.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/utils.h>
 
 static char *opt_session_name;
 static int opt_destroy_all;
@@ -75,6 +76,7 @@ static void usage(FILE *ofp)
 static int destroy_session(struct lttng_session *session)
 {
 	int ret;
+	char *session_name = NULL;
 
 	ret = lttng_destroy_session(session->name);
 	if (ret < 0) {
@@ -90,7 +92,11 @@ static int destroy_session(struct lttng_session *session)
 	}
 
 	MSG("Session %s destroyed", session->name);
-	config_destroy_default();
+
+	session_name = get_session_name_quiet();
+	if (session_name && !strncmp(session->name, session_name, NAME_MAX)) {
+		config_destroy_default();
+	}
 
 	if (lttng_opt_mi) {
 		ret = mi_lttng_session(writer, session, 0);
@@ -102,6 +108,7 @@ static int destroy_session(struct lttng_session *session)
 
 	ret = CMD_SUCCESS;
 error:
+	free(session_name);
 	return ret;
 }
 
@@ -213,7 +220,7 @@ int cmd_destroy(int argc, const char **argv)
 	} else {
 		opt_session_name = (char *) poptGetArg(pc);
 
-		if (opt_session_name == NULL) {
+		if (!opt_session_name) {
 			/* No session name specified, lookup default */
 			session_name = get_session_name();
 			if (session_name == NULL) {

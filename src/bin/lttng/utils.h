@@ -28,6 +28,7 @@ extern char *opt_relayd_path;
 struct cmd_struct;
 
 char *get_session_name(void);
+char *get_session_name_quiet(void);
 void list_commands(struct cmd_struct *commands, FILE *ofp);
 void list_cmd_options(FILE *ofp, struct poptOption *options);
 

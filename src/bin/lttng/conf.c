@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -177,14 +178,10 @@ int config_exists(const char *path)
 	return S_ISREG(info.st_mode) || S_ISDIR(info.st_mode);
 }
 
-/*
- * Returns the session name from the config file.
- * The caller is responsible for freeing the returned string.
- * On error, NULL is returned.
- */
-char *config_read_session_name(char *path)
+static
+int _config_read_session_name(char *path, char **name)
 {
-	int ret;
+	int ret = 0;
 	FILE *fp;
 	char var[NAME_MAX], *session_name;
 #if (NAME_MAX == 255)
@@ -193,15 +190,14 @@ char *config_read_session_name(char *path)
 
 	session_name = zmalloc(NAME_MAX);
 	if (session_name == NULL) {
+		ret = -ENOMEM;
 		ERR("Out of memory");
 		goto error;
 	}
 
 	fp = open_config(path, "r");
 	if (fp == NULL) {
-		ERR("Can't find valid lttng config %s/.lttngrc", path);
-		MSG("Did you create a session? (lttng create <my_session>)");
-		free(session_name);
+		ret = -ENOENT;
 		goto error;
 	}
 
@@ -222,22 +218,54 @@ char *config_read_session_name(char *path)
 	}
 
 error_close:
-	free(session_name);
-	ret = fclose(fp);
-	if (ret < 0) {
+	if (fclose(fp) < 0) {
 		PERROR("close config read session name");
 	}
-
 error:
-	return NULL;
-
+	free(session_name);
+	return ret;
 found:
-	ret = fclose(fp);
-	if (ret < 0) {
+	*name = session_name;
+	if (fclose(fp) < 0) {
 		PERROR("close config read session name found");
 	}
-	return session_name;
+	return ret;
+}
 
+/*
+ * Returns the session name from the config file.
+ *
+ * The caller is responsible for freeing the returned string.
+ * On error, NULL is returned.
+ */
+char *config_read_session_name(char *path)
+{
+	int ret;
+	char *name = NULL;
+
+	ret = _config_read_session_name(path, &name);
+	if (ret == -ENOENT) {
+		const char *home_dir = utils_get_home_dir();
+
+		ERR("Can't find valid lttng config %s/.lttngrc", home_dir);
+		MSG("Did you create a session? (lttng create <my_session>)");
+	}
+
+	return name;
+}
+
+/*
+ * Returns the session name from the config file. (no warnings/errors emitted)
+ *
+ * The caller is responsible for freeing the returned string.
+ * On error, NULL is returned.
+ */
+char *config_read_session_name_quiet(char *path)
+{
+	char *name = NULL;
+
+	(void) _config_read_session_name(path, &name);
+	return name;
 }
 
 /*
