@@ -38,13 +38,8 @@ static const char *str_ust = "UST";
 static const char *str_jul = "JUL";
 static const char *str_log4j = "LOG4J";
 
-/*
- *  get_session_name
- *
- *  Return allocated string with the session name found in the config
- *  directory.
- */
-char *get_session_name(void)
+static
+char *_get_session_name(int quiet)
 {
 	char *path, *session_name = NULL;
 
@@ -55,7 +50,8 @@ char *get_session_name(void)
 	}
 
 	/* Get session name from config */
-	session_name = config_read_session_name(path);
+	session_name = quiet ? config_read_session_name_quiet(path) :
+		config_read_session_name(path);
 	if (session_name == NULL) {
 		goto error;
 	}
@@ -66,6 +62,28 @@ char *get_session_name(void)
 
 error:
 	return NULL;
+}
+
+/*
+ *  get_session_name
+ *
+ *  Return allocated string with the session name found in the config
+ *  directory.
+ */
+char *get_session_name(void)
+{
+	return _get_session_name(0);
+}
+
+/*
+ *  get_session_name_quiet (no warnings/errors emitted)
+ *
+ *  Return allocated string with the session name found in the config
+ *  directory.
+ */
+char *get_session_name_quiet(void)
+{
+	return _get_session_name(1);
 }
 
 /*

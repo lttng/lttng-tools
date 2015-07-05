@@ -28,6 +28,7 @@ int config_add_session_name(char *path, char *name);
 
 /* Must free() the return pointer */
 char *config_read_session_name(char *path);
+char *config_read_session_name_quiet(char *path);
 char *config_get_file_path(char *path);
 
 #endif /* _LTTNG_CONFIG_H */
