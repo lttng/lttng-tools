@@ -511,12 +511,15 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	pthread_mutex_lock(&ust_reg->lock);
 	ret_push = ust_app_push_metadata(ust_reg, socket, 1);
 	pthread_mutex_unlock(&ust_reg->lock);
-	if (ret_push < 0) {
+	if (ret_push == -EPIPE) {
+		DBG("Application or relay closed while pushing metadata");
+	} else if (ret_push < 0) {
 		ERR("Pushing metadata");
 		ret = -1;
 		goto end;
+	} else {
+		DBG("UST Consumer metadata pushed successfully");
 	}
-	DBG("UST Consumer metadata pushed successfully");
 	ret = 0;
 
 end:

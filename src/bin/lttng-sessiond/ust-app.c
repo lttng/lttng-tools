@@ -431,6 +431,9 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
  * Must be called with the registry lock held.
  *
  * On success, return the len of metadata pushed or else a negative value.
+ * Returning a -EPIPE return value means we could not send the metadata,
+ * but it can be caused by recoverable errors (e.g. the application has
+ * terminated concurrently).
  */
 ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data)
@@ -454,9 +457,10 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	/*
 	 * On a push metadata error either the consumer is dead or the
 	 * metadata channel has been destroyed because its endpoint
-	 * might have died (e.g: relayd). If so, the metadata closed
-	 * flag is set to 1 so we deny pushing metadata again which is
-	 * not valid anymore on the consumer side.
+	 * might have died (e.g: relayd), or because the application has
+	 * exited. If so, the metadata closed flag is set to 1 so we
+	 * deny pushing metadata again which is not valid anymore on the
+	 * consumer side.
 	 */
 	if (registry->metadata_closed) {
 		return -EPIPE;
@@ -547,6 +551,9 @@ error_push:
  * of socket throughout this function.
  *
  * Return 0 on success else a negative error.
+ * Returning a -EPIPE return value means we could not send the metadata,
+ * but it can be caused by recoverable errors (e.g. the application has
+ * terminated concurrently).
  */
 static int push_metadata(struct ust_registry_session *registry,
 		struct consumer_output *consumer)
