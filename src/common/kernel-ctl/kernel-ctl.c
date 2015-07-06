@@ -538,3 +538,9 @@ int kernctl_get_sequence_number(int fd, uint64_t *seq)
 {
 	return ioctl(fd, LTTNG_RING_BUFFER_GET_SEQ_NUM, seq);
 }
+
+/* Returns the stream instance id. */
+int kernctl_get_instance_id(int fd, uint64_t *id)
+{
+	return ioctl(fd, LTTNG_RING_BUFFER_INSTANCE_ID, id);
+}
