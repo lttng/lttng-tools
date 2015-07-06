@@ -54,8 +54,11 @@ void futex_wait_update(int32_t *futex, int active)
 {
 	if (active) {
 		uatomic_set(futex, 1);
-		futex_async(futex, FUTEX_WAKE,
-				INT_MAX, NULL, NULL, 0);
+		if (futex_async(futex, FUTEX_WAKE,
+				INT_MAX, NULL, NULL, 0) < 0) {
+			PERROR("futex_async");
+			abort();
+		}
 	} else {
 		uatomic_set(futex, 0);
 	}
@@ -83,10 +86,23 @@ void futex_nto1_wait(int32_t *futex)
 {
 	cmm_smp_mb();
 
-	if (uatomic_read(futex) == -1) {
-		futex_async(futex, FUTEX_WAIT, -1, NULL, NULL, 0);
+	if (uatomic_read(futex) != -1)
+		goto end;
+	while (futex_async(futex, FUTEX_WAIT, -1, NULL, NULL, 0)) {
+		switch (errno) {
+		case EWOULDBLOCK:
+			/* Value already changed. */
+			goto end;
+		case EINTR:
+			/* Retry if interrupted by signal. */
+			break;	/* Get out of switch. */
+		default:
+			/* Unexpected error. */
+			PERROR("futex_async");
+			abort();
+		}
 	}
-
+end:
 	DBG("Futex n to 1 wait done");
 }
 
@@ -96,10 +112,13 @@ void futex_nto1_wait(int32_t *futex)
 LTTNG_HIDDEN
 void futex_nto1_wake(int32_t *futex)
 {
-	if (caa_unlikely(uatomic_read(futex) == -1)) {
-		uatomic_set(futex, 0);
-		futex_async(futex, FUTEX_WAKE, 1, NULL, NULL, 0);
+	if (caa_unlikely(uatomic_read(futex) != -1))
+		goto end;
+	uatomic_set(futex, 0);
+	if (futex_async(futex, FUTEX_WAKE, 1, NULL, NULL, 0) < 0) {
+		PERROR("futex_async");
+		abort();
 	}
-
+end:
 	DBG("Futex n to 1 wake done");
 }
