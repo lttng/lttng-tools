@@ -1093,6 +1093,20 @@ static int get_index_values(struct ctf_packet_index *index, int infd)
 	}
 	index->stream_id = htobe64(index->stream_id);
 
+	ret = kernctl_get_instance_id(infd, &index->stream_instance_id);
+	if (ret < 0) {
+		PERROR("kernctl_get_instance_id");
+		goto error;
+	}
+	index->stream_instance_id = htobe64(index->stream_instance_id);
+
+	ret = kernctl_get_sequence_number(infd, &index->packet_seq_num);
+	if (ret < 0) {
+		PERROR("kernctl_get_sequence_number");
+		goto error;
+	}
+	index->packet_seq_num = htobe64(index->packet_seq_num);
+
 error:
 	return ret;
 }

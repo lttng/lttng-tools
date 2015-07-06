@@ -851,6 +851,11 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 	msg.events_discarded = index->events_discarded;
 	msg.stream_id = index->stream_id;
 
+	if (rsock->minor >= 8) {
+		msg.stream_instance_id = index->stream_instance_id;
+		msg.packet_seq_num = index->packet_seq_num;
+	}
+
 	/* Send command */
 	ret = send_command(rsock, RELAYD_SEND_INDEX, &msg, sizeof(msg), 0);
 	if (ret < 0) {

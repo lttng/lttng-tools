@@ -1036,7 +1036,8 @@ error_testpoint:
  * Set index data from the control port to a given index object.
  */
 static int set_index_control_data(struct relay_index *index,
-		struct lttcomm_relayd_index *data)
+		struct lttcomm_relayd_index *data,
+		struct relay_connection *conn)
 {
 	struct ctf_packet_index index_data;
 
@@ -1052,6 +1053,12 @@ static int set_index_control_data(struct relay_index *index,
 	index_data.timestamp_end = data->timestamp_end;
 	index_data.events_discarded = data->events_discarded;
 	index_data.stream_id = data->stream_id;
+
+	if (conn->minor >= 8) {
+		index->index_data.stream_instance_id = data->stream_instance_id;
+		index->index_data.packet_seq_num = data->packet_seq_num;
+	}
+
 	return relay_index_set_data(index, &index_data);
 }
 
@@ -1925,7 +1932,7 @@ static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		ERR("relay_index_get_by_id_or_create index NULL");
 		goto end_stream_put;
 	}
-	if (set_index_control_data(index, &index_info)) {
+	if (set_index_control_data(index, &index_info, conn)) {
 		ERR("set_index_control_data error");
 		relay_index_put(index);
 		ret = -1;

@@ -29,7 +29,7 @@
 
 #define CTF_INDEX_MAGIC 0xC1F1DCC1
 #define CTF_INDEX_MAJOR 1
-#define CTF_INDEX_MINOR 0
+#define CTF_INDEX_MINOR 1
 
 /*
  * Header at the beginning of each index file.
@@ -54,7 +54,10 @@ struct ctf_packet_index {
 	uint64_t timestamp_begin;
 	uint64_t timestamp_end;
 	uint64_t events_discarded;
-	uint64_t stream_id;
+	uint64_t stream_id;		/* ID of the channel */
+	/* CTF_INDEX 1.0 limit */
+	uint64_t stream_instance_id;	/* ID of the channel instance */
+	uint64_t packet_seq_num;	/* packet sequence number */
 } __attribute__((__packed__));
 
 #endif /* LTTNG_INDEX_H */

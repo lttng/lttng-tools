@@ -159,6 +159,8 @@ struct lttcomm_relayd_index {
 	uint64_t timestamp_end;
 	uint64_t events_discarded;
 	uint64_t stream_id;
+	uint64_t stream_instance_id;
+	uint64_t packet_seq_num;
 } LTTNG_PACKED;
 
 /*

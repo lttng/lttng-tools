@@ -2079,6 +2079,20 @@ static int get_index_values(struct ctf_packet_index *index,
 	}
 	index->stream_id = htobe64(index->stream_id);
 
+	ret = ustctl_get_instance_id(ustream, &index->stream_instance_id);
+	if (ret < 0) {
+		PERROR("ustctl_get_instance_id");
+		goto error;
+	}
+	index->stream_instance_id = htobe64(index->stream_instance_id);
+
+	ret = ustctl_get_sequence_number(ustream, &index->packet_seq_num);
+	if (ret < 0) {
+		PERROR("ustctl_get_sequence_number");
+		goto error;
+	}
+	index->packet_seq_num = htobe64(index->packet_seq_num);
+
 error:
 	return ret;
 }
