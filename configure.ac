@@ -455,6 +455,10 @@ if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
 		AC_MSG_ERROR([[flex not found and is required when building from git.
 		Please install flex]])
 	fi
+	AC_PATH_PROG([FLEX],[flex])
+	AX_PROG_FLEX_VERSION([2.5.35], [],[
+		AC_MSG_ERROR([[Flex >= 2.5.35 is required when building from git]])
+	])
 fi
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
