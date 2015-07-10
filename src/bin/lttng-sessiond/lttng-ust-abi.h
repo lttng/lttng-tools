@@ -166,7 +166,7 @@ struct lttng_ust_context {
  */
 #define LTTNG_UST_CHANNEL_ATTR_PADDING	(LTTNG_UST_SYM_NAME_LEN + 32)
 struct lttng_ust_channel_attr {
-	uint64_t subbuf_size;			/* bytes */
+	uint64_t subbuf_size;			/* bytes, power of 2 */
 	uint64_t num_subbuf;			/* power of 2 */
 	int overwrite;				/* 1: overwrite, 0: discard */
 	unsigned int switch_timer_interval;	/* usec */
