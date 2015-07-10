@@ -45,7 +45,7 @@ struct lttng_ust_lib_ring_buffer;
 
 struct ustctl_consumer_channel_attr {
 	enum lttng_ust_chan_type type;
-	uint64_t subbuf_size;			/* bytes */
+	uint64_t subbuf_size;			/* bytes, power of 2 */
 	uint64_t num_subbuf;			/* power of 2 */
 	int overwrite;				/* 1: overwrite, 0: discard */
 	unsigned int switch_timer_interval;	/* usec */
