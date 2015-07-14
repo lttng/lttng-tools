@@ -2495,6 +2495,23 @@ end:
 	return ret;
 }
 
+/* Allocate dirent as recommended by READDIR(3), NOTES on readdir_r */
+static
+struct dirent *alloc_dirent(const char *path)
+{
+	size_t len;
+	long name_max;
+	struct dirent *entry;
+
+	name_max = pathconf(path, _PC_NAME_MAX);
+	if (name_max == -1) {
+		name_max = PATH_MAX;
+	}
+	len = offsetof(struct dirent, d_name) + name_max + 1;
+	entry = zmalloc(len);
+	return entry;
+}
+
 static
 int load_session_from_path(const char *path, const char *session_name,
 	struct session_config_validation_ctx *validation_ctx, int override)
@@ -2530,7 +2547,7 @@ int load_session_from_path(const char *path, const char *session_name,
 			goto end;
 		}
 
-		entry = zmalloc(sizeof(*entry));
+		entry = alloc_dirent(path);
 		if (!entry) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
