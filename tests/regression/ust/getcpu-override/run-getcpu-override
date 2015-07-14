@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# launch with: run-getcpu-override progname args
+DIR=$(dirname $0)
+DIR=$(readlink -f $DIR)
+
+if [ -x "$DIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
+	ret=`LTTNG_UST_GETCPU_PLUGIN="$DIR/.libs/lttng-ust-getcpu-override-test.so" $@`
+	exit $ret
+else
+	echo "Getcpu-override missing shared object"
+	exit $1
+fi

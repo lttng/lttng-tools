@@ -1,0 +1,166 @@
+#!/bin/bash
+#
+# Copyright (C) - 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST - Getcpu override plugin"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+SESSION_NAME="sequence-cpu"
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_WRAPPER="run-getcpu-override"
+NUM_EVENT=256
+EVENT_NAME="tp:tptest"
+
+NUM_TESTS=20
+
+SEQUENCE_SEED=(
+100 57 232 236 42 193 224 184 216 150 92 91 108 118 55 243 65 101 209 0 147 36
+29 34 49 188 174 105 253 245 227 238 112 20 222 201 102 175 119 19 132 41 78 90
+114 64 138 14 48 18 162 85 204 124 133 73 172 106 241 126 28 104 111 21 127 219
+9 244 237 189 59 214 52 141 107 26 25 199 3 157 117 234 33 44 46 84 69 155 122
+250 231 86 239 76 190 120 1 94 206 8 148 159 167 215 164 31 217 61 71 125 68 109
+195 177 95 82 142 182 129 87 37 140 134 186 173 39 116 143 254 229 131 67 121
+192 240 15 221 30 242 185 80 170 135 51 187 194 246 12 225 181 137 211 228 88
+218 27 233 161 77 252 123 93 220 248 205 223 144 128 196 70 247 210 178 203 154
+24 169 149 163 35 7 151 103 197 139 165 158 207 72 113 145 45 183 11 198 43 81
+230 97 96 2 66 213 146 179 22 58 54 38 160 200 235 226 156 56 208 249 32 176 168
+110 191 79 152 115 10 74 60 251 17 83 180 171 202 40 166 255 53 212 98 5 50 99 4
+89 13 63 6 136 153 23 16 47 130 75 62
+)
+
+# Equivalent to the syconf(_SC_NPROCESSORS_CONF) call.
+NPROC=`nproc --all`
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$CURDIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
+	BAIL_OUT "No shared object generated"
+fi
+
+# MUST set TESTDIR before calling those functions
+
+run_app()
+{
+	diag "Launching app without getcpu-plugin wrapper"
+	$TESTAPP_BIN $NUM_EVENT
+	ok $? "Application without wrapper done"
+}
+
+run_getcpu_plugin_app()
+{
+	diag "Launching app with getcpu-plugin wrapper"
+	$CURDIR/$TESTAPP_WRAPPER $TESTAPP_BIN $NUM_EVENT
+	ok $? "Application with wrapper done"
+}
+
+compare_ok()
+{
+	compare 0 "$@"
+}
+
+compare_fail()
+{
+	compare 1 "$@"
+}
+
+compare()
+{
+	local expected_to_fail=$1
+	declare -a array_to_compare=("${!2}")
+	local valid=0
+
+	test ${#array_to_compare[*]} -eq ${#SEQUENCE_SEED[*]}
+	ok $? "Sequence seed and cpuid sequence are equal ${#SEQUENCE_SEED[*]}/${#array_to_compare[*]}"
+
+	for (( i = 0; i < ${#SEQUENCE_SEED[*]}; i++ )); do
+		if [ "${array_to_compare[$i]}" -ne "$(( ${SEQUENCE_SEED[$i]} % $NPROC))" ]; then
+			valid=1
+			break
+		fi
+	done
+
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $valid -ne "0"
+		ok $? "Cpuid extraction and seed sequence comparison fail as expected"
+	else
+		ok $valid "Cpuid extraction and seed sequence comparison"
+	fi
+}
+
+test_getcpu_override()
+{
+	diag "Getcpu plugin"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	start_lttng_tracing_ok $SESSION_NAME
+	run_app
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Move output to an array by using =($())
+	cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
+	num_events=${#cpuid_events[*]}
+	test $num_events -eq $NUM_EVENT
+	ok $? "Extraction without getcpu plugin have $num_events/$NUM_EVENT"
+	compare_fail cpuid_events[@]
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	start_lttng_tracing_ok $SESSION_NAME
+	run_getcpu_plugin_app
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
+	num_events=${#cpuid_events[*]}
+	test $num_events -eq $NUM_EVENT
+	ok $? "Extraction without getcpu plugin have $num_events/$NUM_EVENT"
+
+	compare_ok cpuid_events[@]
+
+	return $?
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+TESTS=(
+	"test_getcpu_override"
+)
+
+TEST_COUNT=${#TESTS[@]}
+i=0
+
+start_lttng_sessiond
+
+while [ "$i" -lt "$TEST_COUNT" ]; do
+
+	TRACE_PATH=$(mktemp -d)
+
+	# Execute test
+	${TESTS[$i]}
+
+	rm -rf $TRACE_PATH
+
+	let "i++"
+done
+
+stop_lttng_sessiond
