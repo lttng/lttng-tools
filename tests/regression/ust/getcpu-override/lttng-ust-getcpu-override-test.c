@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <lttng/ust-getcpu.h>
 
+static long nprocessors;
+
 int plugin_getcpu(void)
 {
 	/* Generate a sequence based on the number of configurated processor
@@ -63,7 +65,8 @@ int plugin_getcpu(void)
 		98, 5, 50, 99, 4, 89, 13, 63, 6, 136, 153, 23, 16, 47, 130, 75,
 		62 };
 	int ret;
-	ret = seq_seed[i] % sysconf(_SC_NPROCESSORS_CONF);
+
+	ret = seq_seed[i] % nprocessors;
 	i++;
 	i = i % 256;
 	return ret;
@@ -72,6 +75,12 @@ int plugin_getcpu(void)
 void lttng_ust_getcpu_plugin_init(void)
 {
 	int ret;
+
+	nprocessors = sysconf(_SC_NPROCESSORS_CONF);
+	if (nprocessors < 0) {
+		perror("Failed to get _SC_NPROCESSORS_CONF");
+		goto error;
+	}
 
 	ret = lttng_ust_getcpu_override(plugin_getcpu);
 	if (ret) {
