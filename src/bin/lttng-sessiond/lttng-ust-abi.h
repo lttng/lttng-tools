@@ -141,6 +141,7 @@ enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_PROCNAME		= 3,
 	LTTNG_UST_CONTEXT_IP			= 4,
 	LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER	= 5,
+	LTTNG_UST_CONTEXT_CPU_ID		= 6,
 };
 
 struct lttng_ust_perf_counter_ctx {
