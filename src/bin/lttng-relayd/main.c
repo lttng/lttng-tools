@@ -1289,7 +1289,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	ret = utils_mkdir_recursive(stream->path_name, S_IRWXU | S_IRWXG);
 	if (ret < 0) {
 		ERR("relay creating output directory");
-		goto end;
+		goto err_free_stream;
 	}
 
 	/*
