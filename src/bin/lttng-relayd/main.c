@@ -1235,7 +1235,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 			stream->tracefile_size, 0, relayd_uid, relayd_gid, NULL);
 	if (ret < 0) {
 		ERR("Create output file");
-		goto end;
+		goto err_free_stream;
 	}
 	stream->fd = ret;
 	if (stream->tracefile_size) {
