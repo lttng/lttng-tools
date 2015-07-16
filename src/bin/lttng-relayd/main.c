@@ -1352,7 +1352,7 @@ end:
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
 		/* stream was not properly added to the ht, so free it */
-		free(stream);
+		stream_destroy(stream);
 	} else {
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
@@ -1369,9 +1369,7 @@ end_no_session:
 	return ret;
 
 err_free_stream:
-	free(stream->path_name);
-	free(stream->channel_name);
-	free(stream);
+	stream_destroy(stream);
 	return ret;
 }
 
