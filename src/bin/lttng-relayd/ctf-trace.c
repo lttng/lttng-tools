@@ -38,6 +38,14 @@ static void rcu_destroy_ctf_trace(struct rcu_head *head)
 	free(trace);
 }
 
+static void rcu_destroy_stream(struct rcu_head *head)
+{
+	struct relay_stream *stream =
+		caa_container_of(head, struct relay_stream, rcu_node);
+
+	stream_destroy(stream);
+}
+
 /*
  * Destroy a ctf trace and all stream contained in it.
  *
@@ -57,7 +65,7 @@ void ctf_trace_destroy(struct ctf_trace *obj)
 	cds_list_for_each_entry_safe(stream, tmp_stream, &obj->stream_list,
 			trace_list) {
 		stream_delete(relay_streams_ht, stream);
-		stream_destroy(stream);
+		call_rcu(&stream->rcu_node, rcu_destroy_stream);
 	}
 
 	call_rcu(&obj->node.head, rcu_destroy_ctf_trace);
