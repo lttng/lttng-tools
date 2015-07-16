@@ -23,16 +23,6 @@
 #include "stream.h"
 #include "viewer-stream.h"
 
-static void rcu_destroy_stream(struct rcu_head *head)
-{
-	struct relay_stream *stream =
-		caa_container_of(head, struct relay_stream, rcu_node);
-
-	free(stream->path_name);
-	free(stream->channel_name);
-	free(stream);
-}
-
 /*
  * Get stream from stream id from the given hash table. Return stream if found
  * else NULL.
@@ -149,6 +139,7 @@ void stream_delete(struct lttng_ht *ht, struct relay_stream *stream)
 void stream_destroy(struct relay_stream *stream)
 {
 	assert(stream);
-
-	call_rcu(&stream->rcu_node, rcu_destroy_stream);
+	free(stream->path_name);
+	free(stream->channel_name);
+	free(stream);
 }
