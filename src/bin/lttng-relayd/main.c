@@ -1248,7 +1248,7 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	struct relay_session *session = conn->session;
 	struct relay_stream *stream = NULL;
 	struct lttcomm_relayd_status_stream reply;
-	struct ctf_trace *trace;
+	struct ctf_trace *trace = NULL;
 
 	if (!session || conn->version_check_done == 0) {
 		ERR("Trying to add a stream before version check");
@@ -1276,7 +1276,6 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto err_free_stream;
 	}
 
-	rcu_read_lock();
 	stream->stream_handle = ++last_relay_stream_id;
 	stream->prev_seq = -1ULL;
 	stream->session_id = session->id;
@@ -1309,6 +1308,8 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		DBG("Tracefile %s/%s created", stream->path_name, stream->channel_name);
 	}
 
+	/* Protect access to "trace" */
+	rcu_read_lock();
 	trace = ctf_trace_find_by_path(session->ctf_traces_ht, stream->path_name);
 	if (!trace) {
 		trace = ctf_trace_create(stream->path_name);
@@ -1336,6 +1337,9 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	/*
 	 * Both in the ctf_trace object and the global stream ht since the data
 	 * side of the relayd does not have the concept of session.
+	 *
+	 * rcu_read_lock() is kept to protect the stream which is now part of
+	 * the relay_streams_ht.
 	 */
 	lttng_ht_add_unique_u64(relay_streams_ht, &stream->node);
 	cds_list_add_tail(&stream->trace_list, &trace->stream_list);
@@ -1363,7 +1367,13 @@ end:
 		ERR("Relay sending stream id");
 		ret = send_ret;
 	}
+	/*
+	 * rcu_read_lock() was held to protect either "trace" OR the "stream" at
+	 * this point.
+	 */
 	rcu_read_unlock();
+	trace = NULL;
+	stream = NULL;
 
 end_no_session:
 	return ret;
