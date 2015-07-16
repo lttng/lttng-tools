@@ -2569,8 +2569,8 @@ restart:
 		nb_fd = ret;
 
 		/*
-		 * Process control. The control connection is prioritised so we don't
-		 * starve it with high throughout put tracing data on the data
+		 * Process control. The control connection is prioritised so we
+		 * don't starve it with high throughput tracing data on the data
 		 * connection.
 		 */
 		for (i = 0; i < nb_fd; i++) {
