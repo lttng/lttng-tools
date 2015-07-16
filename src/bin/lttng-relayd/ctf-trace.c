@@ -117,6 +117,8 @@ error:
 
 /*
  * Return a ctf_trace object if found by id in the given hash table else NULL.
+ *
+ * Must be called with rcu_read_lock() taken.
  */
 struct ctf_trace *ctf_trace_find_by_path(struct lttng_ht *ht,
 		char *path_name)
