@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# launch with: run-clock-override progname args
+DIR=$(dirname $0)
+DIR=$(readlink -f $DIR)
+
+if [ -x "$DIR/.libs/lttng-ust-clock-override-test.so" ]; then
+	ret=`LTTNG_UST_CLOCK_PLUGIN="$DIR/.libs/lttng-ust-clock-override-test.so" $@`
+	exit $ret
+else
+	echo "Clock-override missing shared object"
+	exit $1
+fi
