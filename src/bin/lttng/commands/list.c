@@ -372,7 +372,7 @@ static int list_jul_events(void)
 	int i, size;
 	struct lttng_domain domain;
 	struct lttng_handle *handle;
-	struct lttng_event *event_list;
+	struct lttng_event *event_list = NULL;
 	pid_t cur_pid = 0;
 	char *cmdline = NULL;
 
