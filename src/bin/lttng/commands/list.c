@@ -408,7 +408,7 @@ static int list_agent_events(void)
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_domain domain;
-	struct lttng_handle *handle;
+	struct lttng_handle *handle = NULL;
 	struct lttng_event *event_list = NULL;
 	pid_t cur_pid = 0;
 	char *cmdline = NULL;
@@ -421,6 +421,10 @@ static int list_agent_events(void)
 		domain.type = LTTNG_DOMAIN_LOG4J;
 	} else if (opt_python) {
 		domain.type = LTTNG_DOMAIN_PYTHON;
+	} else {
+		ERR("Invalid agent domain selected.");
+		ret = CMD_ERROR;
+		goto error;
 	}
 
 	agent_domain_str = get_domain_str(domain.type);
