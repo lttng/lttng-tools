@@ -96,6 +96,7 @@ int parse_pid_string(const char *_pid_string,
 	int count = 0;
 	int *pid_list = NULL;
 	char *pid_string = NULL;
+	char *endptr;
 
 	if (all && _pid_string) {
 		ERR("An empty PID string is expected with --all");
@@ -132,13 +133,16 @@ int parse_pid_string(const char *_pid_string,
 	while (one_pid_str != NULL) {
 		unsigned long v;
 
-		v = strtoul(one_pid_str, NULL, 10);
+		errno = 0;
+		v = strtoul(one_pid_str, &endptr, 10);
 		if ((v == 0 && errno == EINVAL)
-				|| (v == ULONG_MAX && errno == ERANGE)) {
+				|| (v == ULONG_MAX && errno == ERANGE)
+				|| (*one_pid_str != '\0' && *endptr != '\0')){
 			ERR("Error parsing PID %s", one_pid_str);
 			retval = CMD_ERROR;
 			goto error;
 		}
+
 		if ((long) v > INT_MAX || (int) v < 0) {
 			ERR("Invalid PID value %ld", (long) v);
 			retval = CMD_ERROR;
