@@ -698,7 +698,7 @@ void agent_delete_app(struct agent_app *app)
 }
 
 /*
- * Destroy a agent application object by detaching it from its corresponding
+ * Destroy an agent application object by detaching it from its corresponding
  * UST app if one is connected by closing the socket. Finally, perform a
  * delayed memory reclaim.
  */
