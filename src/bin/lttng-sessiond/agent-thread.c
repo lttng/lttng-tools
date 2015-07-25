@@ -89,13 +89,13 @@ static void destroy_agent_app(int sock)
 	rcu_read_lock();
 	app = agent_find_app_by_sock(sock);
 	assert(app);
-	rcu_read_unlock();
 
-	/* RCU read side lock is taken in this function call. */
+	/* RCU read side lock is assumed to be held by this function. */
 	agent_delete_app(app);
 
 	/* The application is freed in a RCU call but the socket is closed here. */
 	agent_destroy_app(app);
+	rcu_read_unlock();
 }
 
 /*
