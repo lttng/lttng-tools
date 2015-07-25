@@ -4,7 +4,7 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: LTTng control library
-Description: The LTTng control and utility library is a library used to control the tracing sessions of a LTTng-session deamon
+Description: The LTTng control and utility library is a library used to control the tracing sessions of a LTTng-session daemon
 Version: @PACKAGE_VERSION@
 Requires:
 Requires.private:
