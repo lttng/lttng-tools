@@ -5630,6 +5630,7 @@ int main(int argc, char **argv)
 	 * cleanup() can get called after that point.
 	 */
 	if (ust_app_ht_alloc()) {
+		ERR("Failed to allocate UST app hash table");
 		retval = -1;
 		goto exit_init_data;
 	}
