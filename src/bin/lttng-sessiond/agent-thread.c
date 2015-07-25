@@ -28,6 +28,7 @@
 
 #include "fd-limit.h"
 #include "agent-thread.h"
+#include "agent.h"
 #include "lttng-sessiond.h"
 #include "session.h"
 #include "utils.h"
@@ -71,53 +72,6 @@ static void update_agent_app(struct agent_app *app)
 		session_unlock(session);
 	}
 	session_unlock_list();
-}
-
-/*
- * Destroy a agent application by socket.
- */
-static void destroy_agent_app(int sock)
-{
-	struct agent_app *app;
-
-	assert(sock >= 0);
-
-	/*
-	 * Not finding an application is a very important error that should NEVER
-	 * happen. The hash table deletion is ONLY done through this call even on
-	 * thread cleanup.
-	 */
-	rcu_read_lock();
-	app = agent_find_app_by_sock(sock);
-	assert(app);
-
-	/* RCU read side lock is assumed to be held by this function. */
-	agent_delete_app(app);
-
-	/* The application is freed in a RCU call but the socket is closed here. */
-	agent_destroy_app(app);
-	rcu_read_unlock();
-}
-
-/*
- * Cleanup remaining agent apps in the hash table. This should only be called in
- * the exit path of the thread.
- */
-static void clean_agent_apps_ht(void)
-{
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
-
-	DBG3("[agent-thread] Cleaning agent apps ht");
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
-		struct agent_app *app;
-
-		app = caa_container_of(node, struct agent_app, node);
-		destroy_agent_app(app->sock->fd);
-	}
-	rcu_read_unlock();
 }
 
 /*
@@ -353,7 +307,7 @@ restart:
 					goto error;
 				}
 
-				destroy_agent_app(pollfd);
+				agent_destroy_app_by_sock(pollfd);
 			} else if (revents & (LPOLLIN)) {
 				int new_fd;
 				struct agent_app *app = NULL;
@@ -374,7 +328,7 @@ restart:
 				ret = lttng_poll_add(&events, new_fd,
 						LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 				if (ret < 0) {
-					destroy_agent_app(new_fd);
+					agent_destroy_app_by_sock(new_fd);
 					continue;
 				}
 
@@ -399,11 +353,6 @@ error_tcp_socket:
 	lttng_poll_clean(&events);
 error_poll_create:
 	DBG("[agent-thread] is cleaning up and stopping.");
-
-	if (agent_apps_ht_by_sock) {
-		clean_agent_apps_ht();
-		lttng_ht_destroy(agent_apps_ht_by_sock);
-	}
 
 	rcu_thread_offline();
 	rcu_unregister_thread();
