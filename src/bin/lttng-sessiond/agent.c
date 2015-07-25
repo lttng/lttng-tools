@@ -900,7 +900,7 @@ struct agent_event *agent_find_event(const char *name, int loglevel,
 	return caa_container_of(node, struct agent_event, node);
 
 error:
-	DBG3("Agent NOT found %s.", name);
+	DBG3("Agent event NOT found %s.", name);
 	return NULL;
 }
 
