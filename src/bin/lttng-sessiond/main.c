@@ -629,6 +629,9 @@ static void cleanup(void)
 		}
 	}
 
+	DBG("Cleaning up all agent apps");
+	agent_app_ht_clean();
+
 	DBG("Closing all UST sockets");
 	ust_app_clean_list();
 	buffer_reg_destroy_registries();
@@ -5268,19 +5271,23 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
+	/* After this point, we can safely call cleanup() with "goto exit" */
+
 	/*
 	 * Init UST app hash table. Alloc hash table before this point since
 	 * cleanup() can get called after that point.
 	 */
 	ust_app_ht_alloc();
 
-	/* Initialize agent domain subsystem. */
-	if ((ret = agent_setup()) < 0) {
-		/* ENOMEM at this point. */
-		goto error;
+	/*
+	 * Initialize agent app hash table. We allocate the hash table here
+	 * since cleanup() can get called after this point.
+	 */
+	if (agent_app_ht_alloc()) {
+		ERR("Failed to allocate Agent app hash table");
+		ret = -1;
+		goto exit;
 	}
-
-	/* After this point, we can safely call cleanup() with "goto exit" */
 
 	/*
 	 * These actions must be executed as root. We do that *after* setting up

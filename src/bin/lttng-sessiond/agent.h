@@ -117,8 +117,10 @@ struct agent {
 	struct lttng_ht_node_u64 node;
 };
 
-/* Setup agent subsystem. */
-int agent_setup(void);
+/* Allocate agent apps hash table */
+int agent_app_ht_alloc(void);
+/* Clean-up agent apps hash table */
+void agent_app_ht_clean(void);
 
 /* Initialize an already allocated agent domain. */
 int agent_init(struct agent *agt);
@@ -145,6 +147,7 @@ void agent_add_app(struct agent_app *app);
 void agent_delete_app(struct agent_app *app);
 struct agent_app *agent_find_app_by_sock(int sock);
 void agent_destroy_app(struct agent_app *app);
+void agent_destroy_app_by_sock(int sock);
 int agent_send_registration_done(struct agent_app *app);
 
 /* Agent action API */
