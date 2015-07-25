@@ -105,10 +105,33 @@ end:
 static int set_session(void)
 {
 	int ret = CMD_SUCCESS;
+	int count, i;
+	unsigned int session_found = 0;
+	struct lttng_session *sessions;
 
 	if (opt_session_name && strlen(opt_session_name) > NAME_MAX) {
 		ERR("Session name too long. Length must be lower or equal to %d",
 			NAME_MAX);
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	count = lttng_list_sessions(&sessions);
+	if (count < 0) {
+		ret = CMD_ERROR;
+		ERR("%s", lttng_strerror(count));
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (strncmp(sessions[i].name, opt_session_name, NAME_MAX) == 0) {
+			session_found = 1;
+			break;
+		}
+	}
+
+	if (!session_found) {
+		ERR("Session '%s' not found", opt_session_name);
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -132,6 +155,8 @@ static int set_session(void)
 	ret = CMD_SUCCESS;
 
 error:
+	free(sessions);
+end:
 	return ret;
 }
 
