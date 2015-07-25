@@ -680,6 +680,8 @@ void agent_add_app(struct agent_app *app)
 
 /*
  * Delete agent application from the global hash table.
+ *
+ * rcu_read_lock() must be held by the caller.
  */
 void agent_delete_app(struct agent_app *app)
 {
@@ -691,9 +693,7 @@ void agent_delete_app(struct agent_app *app)
 	DBG3("Agent deleting app pid: %d and sock: %d", app->pid, app->sock->fd);
 
 	iter.iter.node = &app->node.node;
-	rcu_read_lock();
 	ret = lttng_ht_del(agent_apps_ht_by_sock, &iter);
-	rcu_read_unlock();
 	assert(!ret);
 }
 
