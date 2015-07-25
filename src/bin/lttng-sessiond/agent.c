@@ -961,16 +961,64 @@ void agent_destroy(struct agent *agt)
 }
 
 /*
- * Initialize agent subsystem.
+ * Allocate agent_apps_ht_by_sock.
  */
-int agent_setup(void)
+int agent_app_ht_alloc(void)
 {
+	int ret = 0;
+
 	agent_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!agent_apps_ht_by_sock) {
-		return -1;
+		ret = -1;
 	}
 
-	return 0;
+	return ret;
+}
+
+/*
+ * Destroy a agent application by socket.
+ */
+void agent_destroy_app_by_sock(int sock)
+{
+	struct agent_app *app;
+
+	assert(sock >= 0);
+
+	/*
+	 * Not finding an application is a very important error that should NEVER
+	 * happen. The hash table deletion is ONLY done through this call when the
+	 * main sessiond thread is torn down.
+	 */
+	rcu_read_lock();
+	app = agent_find_app_by_sock(sock);
+	assert(app);
+
+	/* RCU read side lock is assumed to be held by this function. */
+	agent_delete_app(app);
+
+	/* The application is freed in a RCU call but the socket is closed here. */
+	agent_destroy_app(app);
+	rcu_read_unlock();
+}
+
+/*
+ * Clean-up the agent app hash table and destroy it.
+ */
+void agent_app_ht_clean(void)
+{
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
+		struct agent_app *app;
+
+		app = caa_container_of(node, struct agent_app, node);
+		agent_destroy_app_by_sock(app->sock->fd);
+	}
+	rcu_read_unlock();
+
+	lttng_ht_destroy(agent_apps_ht_by_sock);
 }
 
 /*

@@ -676,6 +676,9 @@ static void sessiond_cleanup(void)
 		}
 	}
 
+	DBG("Cleaning up all agent apps");
+	agent_app_ht_clean();
+
 	DBG("Closing all UST sockets");
 	ust_app_clean_list();
 	buffer_reg_destroy_registries();
@@ -5635,9 +5638,12 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
-	/* Initialize agent domain subsystem. */
-	if (agent_setup()) {
-		/* ENOMEM at this point. */
+	/*
+	 * Initialize agent app hash table. We allocate the hash table here
+	 * since cleanup() can get called after this point.
+	 */
+	if (agent_app_ht_alloc()) {
+		ERR("Failed to allocate Agent app hash table");
 		retval = -1;
 		goto exit_init_data;
 	}
