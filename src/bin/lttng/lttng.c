@@ -36,10 +36,10 @@
 
 /* Variables */
 static char *progname;
-static int opt_no_sessiond;
-static char *opt_sessiond_path;
-static pid_t sessiond_pid;
-static volatile int recv_child_signal;
+int opt_no_sessiond;
+char *opt_sessiond_path;
+pid_t sessiond_pid;
+volatile int recv_child_signal;
 
 char *opt_relayd_path;
 
@@ -307,140 +307,6 @@ end:
 }
 
 /*
- *  spawn_sessiond
- *
- *  Spawn a session daemon by forking and execv.
- */
-static int spawn_sessiond(char *pathname)
-{
-	int ret = 0;
-	pid_t pid;
-
-	MSG("Spawning a session daemon");
-	recv_child_signal = 0;
-	pid = fork();
-	if (pid == 0) {
-		/*
-		 * Spawn session daemon and tell
-		 * it to signal us when ready.
-		 */
-		execlp(pathname, "lttng-sessiond", "--sig-parent", "--quiet", NULL);
-		/* execlp only returns if error happened */
-		if (errno == ENOENT) {
-			ERR("No session daemon found. Use --sessiond-path.");
-		} else {
-			PERROR("execlp");
-		}
-		kill(getppid(), SIGTERM);	/* wake parent */
-		exit(EXIT_FAILURE);
-	} else if (pid > 0) {
-		sessiond_pid = pid;
-		/*
-		 * Wait for lttng-sessiond to start. We need to use a flag to check if
-		 * the signal has been sent to us, because the child can be scheduled
-		 * before the parent, and thus send the signal before this check. In
-		 * the signal handler, we set the recv_child_signal flag, so anytime we
-		 * check it after the fork is fine. Note that sleep() is interrupted
-		 * before the 1 second delay as soon as the signal is received, so it
-		 * will not cause visible delay for the user.
-		 */
-		while (!recv_child_signal) {
-			sleep(1);
-		}
-		/*
-		 * The signal handler will nullify sessiond_pid on SIGCHLD
-		 */
-		if (!sessiond_pid) {
-			exit(EXIT_FAILURE);
-		}
-		goto end;
-	} else {
-		PERROR("fork");
-		ret = -1;
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-/*
- *  check_sessiond
- *
- *  Check if the session daemon is available using
- *  the liblttngctl API for the check. If not, try to
- *  spawn a daemon.
- */
-static int check_sessiond(void)
-{
-	int ret;
-	char *pathname = NULL;
-
-	ret = lttng_session_daemon_alive();
-	if (ret == 0) {	/* not alive */
-		/* Try command line option path */
-		pathname = opt_sessiond_path;
-
-		/* Try LTTNG_SESSIOND_PATH env variable */
-		if (pathname == NULL) {
-			pathname = getenv(DEFAULT_SESSIOND_PATH_ENV);
-		}
-
-		/* Try with configured path */
-		if (pathname == NULL) {
-			if (CONFIG_SESSIOND_BIN[0] != '\0') {
-				pathname = CONFIG_SESSIOND_BIN;
-			}
-		}
-
-		/* Let's rock and roll while trying the default path */
-		if (pathname == NULL) {
-			pathname = INSTALL_BIN_PATH "/lttng-sessiond";
-		}
-
-		DBG("Session daemon at: %s", pathname);
-
-		/* Check existence and permissions */
-		ret = access(pathname, F_OK | X_OK);
-		if (ret < 0) {
-			ERR("No such file or access denied: %s", pathname);
-			goto end;
-		}
-
-		ret = spawn_sessiond(pathname);
-		if (ret < 0) {
-			ERR("Problem occurred when starting %s", pathname);
-		}
-	}
-end:
-	return ret;
-}
-
-/*
- * Check args for specific options that *must* not trigger a session daemon
- * execution.
- *
- * Return 1 if match else 0.
- */
-static int check_args_no_sessiond(int argc, char **argv)
-{
-	int i;
-
-	for (i = 0; i < argc; i++) {
-		if ((strncmp(argv[i], "-h", sizeof("-h")) == 0) ||
-				strncmp(argv[i], "--h", sizeof("--h")) == 0 ||
-				strncmp(argv[i], "--list-options", sizeof("--list-options")) == 0 ||
-				strncmp(argv[i], "--list-commands", sizeof("--list-commands")) == 0 ||
-				strncmp(argv[i], "version", sizeof("version")) == 0 ||
-				strncmp(argv[i], "view", sizeof("view")) == 0) {
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-/*
  * Parse command line arguments.
  *
  * Return 0 if OK, else -1
@@ -526,13 +392,6 @@ static int parse_args(int argc, char **argv)
 		lttng_opt_verbose = 0;
 	}
 
-	/* Spawn session daemon if needed */
-	if (opt_no_sessiond == 0 && check_args_no_sessiond(argc, argv) == 0 &&
-			(check_sessiond() < 0)) {
-		ret = 1;
-		goto error;
-	}
-
 	/* No leftovers, print usage and quit */
 	if ((argc - optind) == 0) {
 		usage(stderr);
@@ -548,7 +407,7 @@ static int parse_args(int argc, char **argv)
 	}
 	/* Thanks Mathieu */
 
-	/* 
+	/*
 	 * Handle leftovers which is a first level command with the trailing
 	 * options.
 	 */
