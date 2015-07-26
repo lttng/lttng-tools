@@ -1050,9 +1050,11 @@ char *utils_generate_optstring(const struct option *long_options,
 			break;
 		}
 
-		optstring[str_pos++] = (char)long_options[i].val;
-		if (long_options[i].has_arg) {
-			optstring[str_pos++] = ':';
+		if (long_options[i].val != '\0') {
+			optstring[str_pos++] = (char) long_options[i].val;
+			if (long_options[i].has_arg) {
+				optstring[str_pos++] = ':';
+			}
 		}
 	}
 
