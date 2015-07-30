@@ -22,7 +22,6 @@
 
 #include <common/compat/uuid.h>
 
-#include "agent.h"
 #include "trace-ust.h"
 #include "ust-registry.h"
 

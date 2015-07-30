@@ -30,6 +30,7 @@
 #include "trace-ust.h"
 #include "utils.h"
 #include "ust-app.h"
+#include "agent.h"
 
 /*
  * Match function for the events hash table lookup.

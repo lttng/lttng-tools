@@ -38,6 +38,7 @@
 #include "lttng-sessiond.h"
 #include "utils.h"
 #include "syscall.h"
+#include "agent.h"
 
 #include "cmd.h"
 

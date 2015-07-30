@@ -18,8 +18,9 @@
 #ifndef _LTT_EVENT_H
 #define _LTT_EVENT_H
 
-#include "agent.h"
 #include "trace-kernel.h"
+
+struct agent;
 
 int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 		char *event_name);

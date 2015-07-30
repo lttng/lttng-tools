@@ -30,9 +30,9 @@
 
 /*
  * Hash table that contains the agent app created upon registration indexed by
- * socket.
+ * socket. Global to the session daemon.
  */
-struct lttng_ht *agent_apps_ht_by_sock;
+extern struct lttng_ht *agent_apps_ht_by_sock;
 
 struct agent_ht_key {
 	const char *name;

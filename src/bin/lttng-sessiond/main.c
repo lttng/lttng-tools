@@ -73,6 +73,7 @@
 #include "save.h"
 #include "load-session-thread.h"
 #include "syscall.h"
+#include "agent.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -304,6 +305,9 @@ const char * const config_section_name = "sessiond";
 
 /* Load session thread information to operate. */
 struct load_session_thread_data *load_info;
+
+/* Global hash tables */
+struct lttng_ht *agent_apps_ht_by_sock = NULL;
 
 /*
  * Whether sessiond is ready for commands/health check requests.

@@ -27,8 +27,9 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
-#include "agent.h"
 #include "ust-ctl.h"
+
+struct agent;
 
 struct ltt_ust_ht_key {
 	const char *name;

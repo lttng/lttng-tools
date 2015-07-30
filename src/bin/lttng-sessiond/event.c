@@ -33,6 +33,7 @@
 #include "ust-app.h"
 #include "trace-kernel.h"
 #include "trace-ust.h"
+#include "agent.h"
 
 /*
  * Add unique UST event based on the event name, filter bytecode and loglevel.
