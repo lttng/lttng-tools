@@ -176,7 +176,7 @@
 /* Default Python domain channel name. */
 #define DEFAULT_PYTHON_CHANNEL_NAME       "lttng_python_channel"
 /* Default Python tracepoint name. This is a wildcard for the python domain. */
-#define DEFAULT_USER_PYTHON_EVENT_NAME    "lttng_python:user*"
+#define DEFAULT_PYTHON_EVENT_NAME         "lttng_python:*"
 
 #define DEFAULT_CHANNEL_OVERWRITE       0
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  0
