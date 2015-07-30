@@ -597,8 +597,8 @@ error:
 }
 
 /*
- * Return the agent default event name to use by testing if the process is root
- * or not. Return NULL on error.
+ * Return the default event name associated with the provided UST domain. Return
+ * NULL on error.
  */
 const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 {
@@ -606,18 +606,10 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 
 	switch (domain) {
 	case LTTNG_DOMAIN_LOG4J:
-		if (is_root) {
-			default_event_name = DEFAULT_SYS_LOG4J_EVENT_NAME;
-		} else {
-			default_event_name = DEFAULT_USER_LOG4J_EVENT_NAME;
-		}
+		default_event_name = DEFAULT_LOG4J_EVENT_NAME;
 		break;
 	case LTTNG_DOMAIN_JUL:
-		if (is_root) {
-			default_event_name = DEFAULT_SYS_JUL_EVENT_NAME;
-		} else {
-			default_event_name = DEFAULT_USER_JUL_EVENT_NAME;
-		}
+		default_event_name = DEFAULT_JUL_EVENT_NAME;
 		break;
 	case LTTNG_DOMAIN_PYTHON:
 		default_event_name = DEFAULT_USER_PYTHON_EVENT_NAME;
