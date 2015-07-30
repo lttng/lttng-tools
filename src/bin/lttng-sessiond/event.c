@@ -619,7 +619,7 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 		}
 		break;
 	case LTTNG_DOMAIN_PYTHON:
-		default_event_name = DEFAULT_USER_PYTHON_EVENT_NAME;
+		default_event_name = DEFAULT_PYTHON_EVENT_NAME;
 		break;
 	default:
 		assert(0);
