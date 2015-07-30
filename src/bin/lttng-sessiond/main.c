@@ -5298,6 +5298,9 @@ int main(int argc, char **argv)
 	void *status;
 	const char *home_path, *env_app_timeout;
 
+	/* Initialize agent apps ht global variable */
+	agent_apps_ht_by_sock = NULL;
+
 	init_kernel_workarounds();
 
 	rcu_register_thread();

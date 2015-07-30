@@ -1009,6 +1009,9 @@ void agent_app_ht_clean(void)
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
+	if (!agent_apps_ht_by_sock) {
+		return;
+	}
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
 		struct agent_app *app;
