@@ -83,7 +83,7 @@ babeltrace_process.wait()
 print_test_result(babeltrace_process.returncode == 0, current_test, "Resulting trace is readable")
 current_test += 1
 
-print_test_result(free_event_found, current_test, "ust_libc:malloc event found in resulting trace")
+print_test_result(malloc_event_found, current_test, "ust_libc:malloc event found in resulting trace")
 current_test += 1
 
 print_test_result(free_event_found, current_test, "ust_libc:free event found in resulting trace")
