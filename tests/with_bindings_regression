@@ -3,3 +3,4 @@ regression/ust/daemon/test_daemon
 regression/ust/exit-fast/test_exit-fast
 regression/ust/fork/test_fork
 regression/ust/libc-wrapper/test_libc-wrapper
+regression/ust/baddr-statedump/test_baddr-statedump
