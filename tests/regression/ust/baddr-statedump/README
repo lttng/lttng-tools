@@ -1,0 +1,33 @@
+UST base address statedump test
+-------------------------------
+
+This test verifies that the tracing of base address statedump works
+properly. When an application traced with LTTng UST registers to the
+session daemon, it should produce a statedump, delimited by `start`
+and `end` events. Between those events, the base addresses of the
+executable and all the shared objects it has loaded are dumped, along
+with extra debug information such as build id or debug link if it
+exists.
+
+DESCRIPTION
+-----------
+
+The test application simply sleeps for one second to ensure the
+statedump has the time to complete fully, and defines a single
+userspace tracepoint. The statedump events should be generated when
+the application registers with the sessiond. The application is
+compiled with debug information, which is then copied into a separate
+`prog.debug` file, and a debug link section is added to the original
+`prog` executable, now stripped of debug information. This ensures
+that `lttng_ust_statedump:debug_link` event will be produced. The
+events `start`, `soinfo`, `build_id`, and `end` from the same provider
+are also expected in the trace and verified by the test.
+
+DEPENDENCIES
+------------
+
+To run this test, you will need:
+
+  - lttng-tools (with python bindings)
+  - babeltrace
+  - python 3.0 or later
