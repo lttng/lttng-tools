@@ -444,7 +444,7 @@ int agent_send_registration_done(struct agent_app *app)
 
 	DBG("Agent sending registration done to app socket %d", app->sock->fd);
 
-	return send_header(app->sock, 0, AGENT_CMD_REG_DONE, 1);
+	return send_header(app->sock, 0, AGENT_CMD_REG_DONE, 0);
 }
 
 /*
