@@ -444,7 +444,7 @@ int agent_send_registration_done(struct agent_app *app)
 
 	DBG("Agent sending registration done to app socket %d", app->sock->fd);
 
-	return send_header(app->sock, 0, AGENT_CMD_REG_DONE, 0);
+	return send_header(app->sock, 0, AGENT_CMD_REG_DONE, 1);
 }
 
 /*
@@ -494,11 +494,14 @@ error:
 int agent_disable_event(struct agent_event *event,
 		enum lttng_domain_type domain)
 {
-	int ret;
+	int ret = LTTNG_OK;
 	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
 	assert(event);
+	if (!event->enabled) {
+		goto end;
+	}
 
 	rcu_read_lock();
 
@@ -516,10 +519,10 @@ int agent_disable_event(struct agent_event *event,
 	}
 
 	event->enabled = 0;
-	ret = LTTNG_OK;
 
 error:
 	rcu_read_unlock();
+end:
 	return ret;
 }
 
