@@ -355,65 +355,43 @@ AX_CONFIG_FEATURE(
 )
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
-# Set compile flags to java include files if given. This is only used to
-# compile java agent tests.
-AC_ARG_WITH([java-jdk],
-	[AS_HELP_STRING([--with-java-jdk=DIR],[use the Java JDK in DIR. Ex : $JAVA_HOME.])],
-	[JAVA_JDK=$withval],
-	[JAVA_JDK=""]
-)
-AM_CONDITIONAL([HAVE_JAVA_JDK], [test $JAVA_JDK], [Java JDK path])
-AC_SUBST([JAVA_JDK])
+AX_JAVA_OPTIONS
+AX_PROG_JAVAC
+AX_PROG_JAVA
+AX_PROG_JAR
 
-AS_IF([test $JAVA_JDK],[
-	AS_IF([test -d $JAVA_JDK],
-		[
-			AC_MSG_RESULT([using Java includes in $JAVA_SDK])
-			SUBDIRS=`find $JAVA_JDK/include -type d`
-			CPPFLAGS+=" "
-			CPPFLAGS+=`for x in $SUBDIRS; do echo -n "-I$x "; done`
-			CPPFLAGS+=" "
-        ],[AC_MSG_ERROR(Unable to find Java include files in $JAVA_JDK)]
-	)
-])
+AX_CHECK_CLASSPATH
 
-# Check for the UST agent jar file in the system. Hardcoded path is added here
-# since we have *no* idea where this could be installed. Note that this is only
-# used for agent testing.
-AC_MSG_CHECKING(Java UST agent jar file)
-java_agent_jar_path="${prefix}/share/java/liblttng-ust-agent.jar"
-if test -f $java_agent_jar_path; then
-	build_java_agent=yes
-	AC_MSG_RESULT(found)
+# Check for Java UST agent common class first
+AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
+if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xyes"; then
+	java_agent_common=yes
 else
-	build_java_agent=no
-	AC_MSG_RESULT(not found)
+	java_agent_common=no
 fi
-AM_CONDITIONAL([BUILD_JAVA_AGENT], [test "x$build_java_agent" = "xyes"])
-AC_SUBST([java_agent_jar_path])
 
-# Check for log4j support on the system to know if we can build or not the
-# log4j tests.
-if test "x$build_java_agent" = "xyes"; then
-	AC_MSG_CHECKING(Java agent support for log4j)
-	AX_JAVA_OPTIONS
-	AX_PROG_JAR
-	AX_PROG_JAVA
-	AX_PROG_JAVAC
-
-	# By default, use a commonly used classpath on the system to ease things up
-	# for the Java testing in this directory.
-	LOG4J_CLASSPATH="$java_agent_jar_path:$CLASSPATH:.:/usr/share/java/*"
-	JAVAFLAGS="-cp $LOG4J_CLASSPATH"
-	JAVACFLAGS="$JAVAFLAGS"
+# If the common class is available, test for each agent
+if test "x$java_agent_common" = "xyes"; then
+	# Check for JUL
+	AX_CHECK_CLASS(org.lttng.ust.agent.jul.LttngLogHandler)
+	AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
 	AX_CHECK_CLASS(org.apache.log4j.Logger)
 
-	if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
-		build_java_log4j_agent=no
-	else
-		build_java_log4j_agent=yes
+	build_java_jul_agent=no
+	if test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xyes"; then
+		build_java_jul_agent=yes
 	fi
+
+	build_java_log4j_agent=no
+	if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xyes"; then
+		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xyes"; then
+			build_java_log4j_agent=yes
+		fi
+	fi
+
 fi
+
+AM_CONDITIONAL([BUILD_JAVA_JUL_AGENT], [test "x$build_java_jul_agent" = "xyes"])
 AM_CONDITIONAL([BUILD_JAVA_LOG4J_AGENT], [test "x$build_java_log4j_agent" = "xyes"])
 
 AC_SYS_LARGEFILE

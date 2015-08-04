@@ -118,7 +118,7 @@ EOF
                         ac_cv_prog_uudecode_base64=no
                 fi
         rm -f Test.uue
-        if AC_TRY_COMMAND($JAVA $JAVAFLAGS Test $1) >/dev/null 2>&1; then
+        if AC_TRY_COMMAND($JAVA -classpath ".:$CLASSPATH" $JAVAFLAGS Test $1) >/dev/null 2>&1; then
                 eval "ac_cv_class_$ac_var_name=yes"
         else
                 eval "ac_cv_class_$ac_var_name=no"
