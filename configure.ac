@@ -634,6 +634,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/fork/Makefile
 	tests/regression/ust/libc-wrapper/Makefile
 	tests/regression/ust/baddr-statedump/Makefile
+	tests/regression/ust/ust-dl/Makefile
 	tests/regression/ust/java-jul/Makefile
 	tests/regression/ust/java-log4j/Makefile
 	tests/regression/ust/python-logging/Makefile
