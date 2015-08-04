@@ -27,7 +27,7 @@ TESTAPP_PATH="$CURDIR/$TESTAPP_NAME"
 SESSION_NAME="log4j"
 EVENT_NAME="log4j-event"
 EVENT_NAME2="log4j-event-2"
-JAVA_CP="$CURDIR:/usr/local/share/java/liblttng-ust-agent.jar:/usr/share/java/*"
+JAVA_CP="$CURDIR:$CLASSPATH"
 OUTPUT_DEST="/dev/null"
 
 NUM_TESTS=155
@@ -40,7 +40,7 @@ function run_app
 	local fire_second_tp=$2
 
 	# FIXME: test app should have synchro.
-	java -cp $JAVA_CP -Djava.library.path="/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $debug_tp $fire_second_tp >/dev/null 2>&1
+	java -cp $JAVA_CP -Djava.library.path="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $debug_tp $fire_second_tp >/dev/null 2>&1
 }
 
 function run_app_background

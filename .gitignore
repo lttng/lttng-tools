@@ -93,3 +93,5 @@ health_check
 /benchmark/
 
 /include/version.h
+
+classnoinst.stamp

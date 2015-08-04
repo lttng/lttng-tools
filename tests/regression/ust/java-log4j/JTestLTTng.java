@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2015 - Michael Jeanson <dgoulet@efficios.com>
  * Copyright (C) 2014 - David Goulet <dgoulet@efficios.com>
  *                      Christian Babeux <christian.babeux@efficios.com>
  *
@@ -19,19 +20,26 @@
 import java.io.IOException;
 import java.lang.Integer;
 
-import org.apache.log4j.Logger;
+import org.apache.log4j.Appender;
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
+import org.lttng.ust.agent.log4j.LttngLogAppender;
 
-import org.lttng.ust.agent.LTTngAgent;
+public class JTestLTTng {
 
-public class JTestLTTng
-{
-	private static LTTngAgent lttngAgent;
+	/**
+	 * Application start
+	 *
+	 * @param args
+	 *            Command-line arguments
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public static void main(String args[]) throws IOException, InterruptedException {
 
-	public static void main(String args[]) throws Exception
-	{
 		Logger lttng = Logger.getLogger("log4j-event");
 		Logger lttng2 = Logger.getLogger("log4j-event-2");
+
 		int nrIter = Integer.parseInt(args[0]);
 		int waitTime = Integer.parseInt(args[1]);
 		int fire_debug_tp = 0;
@@ -44,8 +52,16 @@ public class JTestLTTng
 			fire_second_tp = Integer.parseInt(args[3]);
 		}
 
+		/* Start with the default Log4j configuration, which logs to console */
 		BasicConfigurator.configure();
-		lttngAgent = LTTngAgent.getLTTngAgent();
+
+		/*
+		 * Add a LTTng log appender to both loggers, which will also send the
+		 * logged events to UST.
+		 */
+		Appender lttngAppender = new LttngLogAppender();
+		lttng.addAppender(lttngAppender);
+		lttng2.addAppender(lttngAppender);
 
 		for (int iter = 0; iter < nrIter; iter++) {
 			lttng.info("LOG4J tp fired!");
@@ -59,5 +75,11 @@ public class JTestLTTng
 		if (fire_second_tp == 1) {
 			lttng2.info("LOG4J second logger fired");
 		}
+
+		/*
+		 * Do not forget to close() all handlers so that the agent can shutdown
+		 * and the session daemon socket gets cleaned up explicitly.
+		 */
+		lttngAppender.close();
 	}
 }
