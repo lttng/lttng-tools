@@ -3766,7 +3766,35 @@ skip_domain:
 	}
 	case LTTNG_DATA_PENDING:
 	{
-		ret = cmd_data_pending(cmd_ctx->session);
+		int pending_ret;
+
+		/* 1 byte to return whether or not data is pending */
+		ret = setup_lttng_msg(cmd_ctx, 1);
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		pending_ret = cmd_data_pending(cmd_ctx->session);
+		/*
+		 * FIXME
+		 *
+		 * This function may returns 0 or 1 to indicate whether or not
+		 * there is data pending. In case of error, it should return an
+		 * LTTNG_ERR code. However, some code paths may still return
+		 * a nondescript error code, which we handle by returning an
+		 * "unknown" error.
+		 */
+		if (pending_ret == 0 || pending_ret == 1) {
+			ret = LTTNG_OK;
+		} else if (pending_ret < 0) {
+			ret = LTTNG_ERR_UNK;
+			goto setup_error;
+		} else {
+			ret = pending_ret;
+			goto setup_error;
+		}
+
+		*cmd_ctx->llm->payload = (uint8_t) pending_ret;
 		break;
 	}
 	case LTTNG_SNAPSHOT_ADD_OUTPUT:

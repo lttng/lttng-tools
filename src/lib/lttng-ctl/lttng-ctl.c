@@ -1880,6 +1880,7 @@ int lttng_data_pending(const char *session_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
+	uint8_t *pending = NULL;
 
 	if (session_name == NULL) {
 		return -LTTNG_ERR_INVALID;
@@ -1891,18 +1892,18 @@ int lttng_data_pending(const char *session_name)
 	lttng_ctl_copy_string(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
-
-	/*
-	 * The lttng_ctl_ask_sessiond function negate the return code if it's not
-	 * LTTNG_OK so getting -1 means that the reply ret_code was 1 thus meaning
-	 * that the data is available. Yes it is hackish but for now this is the
-	 * only way.
-	 */
-	if (ret == -1) {
-		ret = 1;
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &pending);
+	if (ret < 0) {
+		goto end;
+	} else if (ret != 1) {
+		/* Unexpected payload size */
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
+	ret = (int) *pending;
+end:
+	free(pending);
 	return ret;
 }
 
