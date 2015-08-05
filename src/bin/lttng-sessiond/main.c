@@ -4333,9 +4333,10 @@ static void *thread_manage_clients(void *data)
 
 		health_code_update();
 
-		DBG("Sending response (size: %d, retcode: %s)",
+		DBG("Sending response (size: %d, retcode: %s (%d))",
 				cmd_ctx->lttng_msg_size,
-				lttng_strerror(-cmd_ctx->llm->ret_code));
+				lttng_strerror(-cmd_ctx->llm->ret_code),
+				cmd_ctx->llm->ret_code);
 		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
 		if (ret < 0) {
 			ERR("Failed to send data back to client");
