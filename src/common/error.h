@@ -106,6 +106,34 @@ extern int lttng_opt_mi;
 #define DBG(fmt, args...) _ERRMSG("DEBUG1", PRINT_DBG, fmt, ## args)
 #define DBG2(fmt, args...) _ERRMSG("DEBUG2", PRINT_DBG2, fmt, ## args)
 #define DBG3(fmt, args...) _ERRMSG("DEBUG3", PRINT_DBG3, fmt, ## args)
+#define LOG(type, fmt, args...)			\
+	do {					\
+		switch (type) {			\
+		case PRINT_ERR:			\
+			ERR(fmt, ## args);	\
+			break;			\
+		case PRINT_WARN:		\
+			WARN(fmt, ## args);	\
+			break;			\
+		case PRINT_BUG:			\
+			BUG(fmt, ## args);	\
+			break;			\
+		case PRINT_MSG:			\
+			MSG(fmt, ## args);	\
+			break;			\
+		case PRINT_DBG:			\
+			DBG(fmt, ## args);	\
+			break;			\
+		case PRINT_DBG2:		\
+			DBG2(fmt, ## args);	\
+			break;			\
+		case PRINT_DBG3:		\
+			DBG3(fmt, ## args);	\
+			break;			\
+		default:			\
+			assert(0);		\
+		}				\
+	} while(0);
 
 #define _PERROR(fmt, args...) _ERRMSG("PERROR", PRINT_ERR, fmt, ## args)
 
