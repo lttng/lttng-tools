@@ -37,8 +37,11 @@ enum lttcomm_agent_command {
  * Return codes from the agent.
  */
 enum lttcomm_agent_ret_code {
+	/* Success, assumed to be the first entry */
 	AGENT_RET_CODE_SUCCESS      = 1,
+	/* Invalid command */
 	AGENT_RET_CODE_INVALID      = 2,
+	/* Unknown logger name */
 	AGENT_RET_CODE_UNKNOWN_NAME = 3,
 	AGENT_RET_CODE_NR,
 };
