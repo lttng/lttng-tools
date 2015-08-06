@@ -131,6 +131,25 @@ AC_ARG_WITH([lttng-system-rundir],
 	[LTTNG_SYSTEM_RUNDIR="/var/run/lttng"])
 AC_SUBST([LTTNG_SYSTEM_RUNDIR])
 
+AC_ARG_ENABLE([test-java-agent-jul],
+	[AS_HELP_STRING([--enable-test-java-agent-jul],[enable the LTTng UST Java agent JUL tests [default=no]])],
+	[test_java_agent_jul=$enableval],
+	[test_java_agent_jul=no]
+)
+
+AC_ARG_ENABLE([test-java-agent-log4j],
+        [AS_HELP_STRING([--enable-test-java-agent-log4j],[enable the LTTng UST Java agent Log4j tests [default=no]])],
+        [test_java_agent_log4j=$enableval],
+        [test_java_agent_log4j=no]
+)
+
+AC_ARG_ENABLE([test-java-agent-all],
+        [AS_HELP_STRING([--enable-test-java-agent-all],[enable all the LTTng UST Java agent tests [default=no]])],
+        [test_java_agent_jul=$enableval
+         test_java_agent_log4j=$enableval],
+        [:]
+)
+
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_BIN], "$CONSUMERD32_BIN", [Location of the 32-bit consumerd executable.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of the 64-bit consumerd executable])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
@@ -355,44 +374,45 @@ AX_CONFIG_FEATURE(
 )
 AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
-AX_JAVA_OPTIONS
-AX_PROG_JAVAC
-AX_PROG_JAVA
-AX_PROG_JAR
+AM_CONDITIONAL([TEST_JAVA_JUL_AGENT], [test "x$test_java_agent_jul" = "xyes"])
+AM_CONDITIONAL([TEST_JAVA_LOG4J_AGENT], [test "x$test_java_agent_log4j" = "xyes"])
 
-AX_CHECK_CLASSPATH
+if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xyes"; then
+	AX_JAVA_OPTIONS
+	AX_PROG_JAVAC
+	AX_PROG_JAVA
+	AX_PROG_JAR
 
-# Check for Java UST agent common class first
-AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
-if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xyes"; then
-	java_agent_common=yes
-else
-	java_agent_common=no
-fi
+	AX_CHECK_CLASSPATH
 
-# If the common class is available, test for each agent
-if test "x$java_agent_common" = "xyes"; then
-	# Check for JUL
-	AX_CHECK_CLASS(org.lttng.ust.agent.jul.LttngLogHandler)
-	AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
-	AX_CHECK_CLASS(org.apache.log4j.Logger)
-
-	build_java_jul_agent=no
-	if test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xyes"; then
-		build_java_jul_agent=yes
+	# Check for Java UST agent common class first
+	AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
+	if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xno"; then
+		AC_MSG_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-common.jar"])
 	fi
 
-	build_java_log4j_agent=no
-	if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xyes"; then
-		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xyes"; then
-			build_java_log4j_agent=yes
+	if test "x$test_java_agent_jul" = "xyes"; then
+		# Check for JUL agent class
+		AX_CHECK_CLASS(org.lttng.ust.agent.jul.LttngLogHandler)
+		if test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xno"; then
+			AC_MSG_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-jul.jar"])
 		fi
 	fi
 
-fi
+	if test "x$test_java_agent_log4j" = "xyes"; then
+		# Check for Log4j agent class
+		AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
+		if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xno"; then
+			AC_MSG_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
+		fi
 
-AM_CONDITIONAL([BUILD_JAVA_JUL_AGENT], [test "x$build_java_jul_agent" = "xyes"])
-AM_CONDITIONAL([BUILD_JAVA_LOG4J_AGENT], [test "x$build_java_log4j_agent" = "xyes"])
+		# Check for Log4j class
+		AX_CHECK_CLASS(org.apache.log4j.Logger)
+		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
+			AC_MSG_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
+		fi
+	fi
+fi
 
 AC_SYS_LARGEFILE
 
@@ -565,6 +585,22 @@ AS_IF([test "x$kmod_found" = "xyes"],[
 # LTTng-UST enabled/disabled
 AS_ECHO_N("Lttng-UST support: ")
 AS_IF([test "x$lttng_ust_support" = "xyes"],[
+	AS_ECHO("Enabled")
+],[
+	AS_ECHO("Disabled")
+])
+
+# LTTng UST Java agent JUL tests enabled/disabled
+AS_ECHO_N("LTTng-UST Java agent JUL tests: ")
+AS_IF([test "x$test_java_agent_jul" = "xyes"],[
+	AS_ECHO("Enabled")
+],[
+	AS_ECHO("Disabled")
+])
+
+# LTTng UST Java agent Log4j tests enabled/disabled
+AS_ECHO_N("LTTng-UST Java agent Log4j tests: ")
+AS_IF([test "x$test_java_agent_log4j" = "xyes"],[
 	AS_ECHO("Enabled")
 ],[
 	AS_ECHO("Disabled")
