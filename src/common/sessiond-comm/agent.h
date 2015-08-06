@@ -24,7 +24,7 @@
 #include <lttng/lttng.h>
 
 /*
- * Command value pass in the header.
+ * Command value passed in the header.
  */
 enum lttcomm_agent_command {
 	AGENT_CMD_LIST       = 1,
