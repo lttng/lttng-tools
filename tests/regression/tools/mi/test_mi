@@ -27,8 +27,8 @@ RELAYD_BIN="lttng-relayd"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
-NR_USEC_WAIT=10000
-
+NR_USEC_WAIT=0
+NR_ITER=10000
 
 #Temp file output
 OUTPUT_DIR=$(mktemp -d)
@@ -500,14 +500,25 @@ function test_list_session ()
 
 function test_list_ust_event ()
 {
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
+
 	OUTPUT_FILE="list_ust_event.xml"
 
 	#Test buid up
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 
 	#Begin testing
-	$TESTAPP_BIN $NR_USEC_WAIT & 2>/dev/null
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} & 2>/dev/null
+
+	while [ ! -f "${file_sync_after_first}" ]; do
+		sleep 0.5
+	done
+
 	list_lttng_with_opts "-u -f"
+
+	touch ${file_sync_before_last}
+
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list ust event xsd validation"
 
@@ -530,6 +541,9 @@ function test_list_ust_event ()
 
 	#Wait for all background processes
 	wait
+
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
 }
 
 function test_start_stop () {
