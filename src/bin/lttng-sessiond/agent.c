@@ -303,9 +303,7 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 		data_size = be32toh(reply_hdr.data_size) + sizeof(*reply);
 		break;
 	default:
-		ERR("Agent returned an unknown code: %" PRIu32,
-				be32toh(reply_hdr.ret_code));
-		ret = LTTNG_ERR_FATAL;
+		ret = LTTNG_ERR_UNK;
 		goto error;
 	}
 
@@ -402,9 +400,7 @@ static int enable_event(struct agent_app *app, struct agent_event *event)
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
 	default:
-		ERR("Agent returned an unknown code: %" PRIu32,
-				be32toh(reply.ret_code));
-		ret = LTTNG_ERR_FATAL;
+		ret = LTTNG_ERR_UNK;
 		goto error;
 	}
 
@@ -465,9 +461,7 @@ static int disable_event(struct agent_app *app, struct agent_event *event)
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
 	default:
-		ERR("Agent returned an unknown code: %" PRIu32,
-				be32toh(reply.ret_code));
-		ret = LTTNG_ERR_FATAL;
+		ret = LTTNG_ERR_UNK;
 		goto error;
 	}
 
