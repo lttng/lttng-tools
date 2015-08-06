@@ -1,3 +1,3 @@
-if USE_PYTHON
+if PYTHON_BINDING
 SUBDIRS = python
 endif

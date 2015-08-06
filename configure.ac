@@ -333,11 +333,11 @@ swig_version=2.0.0
 AC_ARG_ENABLE([python-bindings],
               [AC_HELP_STRING([--enable-python-bindings],
                               [compile Python bindings])],
-              [enable_python=yes], [enable_python=no])
+              [enable_python_binding=yes], [enable_python_binding=no])
 
-AM_CONDITIONAL([USE_PYTHON], [test "x${enable_python:-yes}" = xyes])
+AM_CONDITIONAL([PYTHON_BINDING], [test "x${enable_python_binding:-yes}" = xyes])
 
-if test "x${enable_python:-yes}" = xyes; then
+if test "x${enable_python_binding:-yes}" = xyes; then
   AX_PKG_SWIG($swig_version, [], [ AC_MSG_ERROR([SWIG $swig_version or newer is needed]) ])
   AM_PATH_PYTHON
 
@@ -609,7 +609,7 @@ AS_IF([test "x$test_java_agent_log4j" = "xyes"],[
 
 #Python binding enabled/disabled
 AS_ECHO_N("Python binding: ")
-AS_IF([test "x${enable_python:-yes}" = xyes], [
+AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
 	AS_ECHO("Enabled")
 ],[
 	AS_ECHO("Disabled")

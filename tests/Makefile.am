@@ -3,14 +3,14 @@ SUBDIRS = utils regression unit stress
 installcheck-am:
 	./run.sh unit_tests
 	./run.sh fast_regression
-if USE_PYTHON
+if PYTHON_BINDING
 	./run.sh with_bindings_regression
 endif
 
 check-am:
 	./run.sh unit_tests
 	./run.sh fast_regression
-if USE_PYTHON
+if PYTHON_BINDING
 	./run.sh with_bindings_regression
 endif
 
