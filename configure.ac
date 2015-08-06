@@ -320,7 +320,7 @@ AM_CONDITIONAL([PYTHON_BINDING], [test "x${enable_python_binding:-yes}" = xyes])
 
 if test "x${enable_python_binding:-yes}" = xyes; then
   AX_PKG_SWIG($swig_version, [], [ AC_MSG_ERROR([SWIG $swig_version or newer is needed]) ])
-  AM_PATH_PYTHON
+  AM_PATH_PYTHON([3.0])
 
   AC_ARG_VAR([PYTHON_INCLUDE], [Include flags for python, bypassing python-config])
   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
