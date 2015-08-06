@@ -34,7 +34,7 @@ enum lttcomm_agent_command {
 };
 
 /*
- * Return code from the Java agent.
+ * Return codes from the agent.
  */
 enum lttcomm_agent_ret_code {
 	AGENT_RET_CODE_SUCCESS      = 1,
@@ -69,7 +69,7 @@ struct lttcomm_agent_disable {
 } LTTNG_PACKED;
 
 /*
- * Generic reply coming from the Java Agent.
+ * Generic reply coming from the agent.
  */
 struct lttcomm_agent_generic_reply {
 	uint32_t ret_code;
@@ -84,7 +84,7 @@ struct lttcomm_agent_list_reply_hdr {
 } LTTNG_PACKED;
 
 /*
- * List command reply payload coming from the Java Agent.
+ * List command reply payload coming from the agent.
  */
 struct lttcomm_agent_list_reply {
 	uint32_t nb_event;
