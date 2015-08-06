@@ -273,6 +273,7 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 	int ret, i, len = 0, offset = 0;
 	uint32_t nb_event;
 	size_t data_size;
+	uint32_t reply_ret_code;
 	struct lttng_event *tmp_events = NULL;
 	struct lttcomm_agent_list_reply *reply = NULL;
 	struct lttcomm_agent_list_reply_hdr reply_hdr;
@@ -295,7 +296,9 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 		goto error_io;
 	}
 
-	switch (be32toh(reply_hdr.ret_code)) {
+	reply_ret_code = be32toh(reply_hdr.ret_code);
+	log_reply_code(reply_ret_code);
+	switch (reply_ret_code) {
 	case AGENT_RET_CODE_SUCCESS:
 		data_size = be32toh(reply_hdr.data_size) + sizeof(*reply);
 		break;
