@@ -1,6 +1,10 @@
+#ifndef _CONNECTION_H
+#define _CONNECTION_H
+
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -16,9 +20,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _CONNECTION_H
-#define _CONNECTION_H
-
 #include <limits.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -32,6 +33,7 @@
 #include "session.h"
 
 enum connection_type {
+	RELAY_CONNECTION_UNKNOWN    = 0,
 	RELAY_DATA                  = 1,
 	RELAY_CONTROL               = 2,
 	RELAY_VIEWER_COMMAND        = 3,
@@ -44,36 +46,49 @@ enum connection_type {
  */
 struct relay_connection {
 	struct lttcomm_sock *sock;
-	struct relay_session *session;
-	struct relay_viewer_session *viewer_session;
 	struct cds_wfcq_node qnode;
-	struct lttng_ht_node_ulong sock_n;
-	struct rcu_head rcu_node;
+
 	enum connection_type type;
-	/* Protocol version to use for this connection. */
-	uint32_t major;
-	uint32_t minor;
-	uint64_t session_id;
+	/*
+	 * session is only ever set for RELAY_CONTROL connection type.
+	 */
+	struct relay_session *session;
+	/*
+	 * viewer_session is only ever set for RELAY_VIEWER_COMMAND
+	 * connection type.
+	 */
+	struct relay_viewer_session *viewer_session;
 
 	/*
-	 * This contains streams that are received on that connection. It's used to
-	 * store them until we get the streams sent command where they are removed
-	 * and flagged ready for the viewer. This is ONLY used by the control
-	 * thread thus any action on it should happen in that thread.
+	 * Protocol version to use for this connection. Only valid for
+	 * RELAY_CONTROL connection type.
 	 */
-	struct cds_list_head recv_head;
-	unsigned int version_check_done:1;
+	uint32_t major;
+	uint32_t minor;
 
-	/* Pointer to the sessions HT that this connection can use. */
-	struct lttng_ht *sessions_ht;
+	struct urcu_ref ref;
+	pthread_mutex_t reflock;
+
+	pthread_mutex_t lock;
+
+	bool version_check_done;
+
+	/*
+	 * Node member of connection within global socket hash table.
+	 */
+	struct lttng_ht_node_ulong sock_n;
+	bool in_socket_ht;
+	struct lttng_ht *socket_ht;	/* HACK: Contained within this hash table. */
+	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 };
 
-struct relay_connection *connection_find_by_sock(struct lttng_ht *ht,
+struct relay_connection *connection_create(struct lttcomm_sock *sock,
+		enum connection_type type);
+struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht,
 		int sock);
-struct relay_connection *connection_create(void);
-void connection_init(struct relay_connection *conn);
-void connection_delete(struct lttng_ht *ht, struct relay_connection *conn);
-void connection_destroy(struct relay_connection *conn);
-void connection_free(struct relay_connection *conn);
+bool connection_get(struct relay_connection *connection);
+void connection_put(struct relay_connection *connection);
+void connection_ht_add(struct lttng_ht *relay_connections_ht,
+		struct relay_connection *conn);
 
 #endif /* _CONNECTION_H */

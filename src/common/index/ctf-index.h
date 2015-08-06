@@ -44,7 +44,7 @@ struct ctf_packet_index_file_hdr {
 } __attribute__((__packed__));
 
 /*
- * Packet index generated for each trace packet store in a trace file.
+ * Packet index generated for each trace packet stored in a trace file.
  * All integer fields are stored in big endian.
  */
 struct ctf_packet_index {

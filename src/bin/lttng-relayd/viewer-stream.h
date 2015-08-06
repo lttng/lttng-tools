@@ -1,6 +1,10 @@
+#ifndef _VIEWER_STREAM_H
+#define _VIEWER_STREAM_H
+
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -16,9 +20,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _VIEWER_STREAM_H
-#define _VIEWER_STREAM_H
-
 #include <limits.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -33,57 +34,46 @@
 struct relay_stream;
 
 /*
- * Shadow copy of the relay_stream structure for the viewer side.  The only
- * fields updated by the writer (streaming side) after allocation are :
- * total_index_received and close_flag. Everything else is updated by the
- * reader (viewer side).
+ * Shadow copy of the relay_stream structure for the viewer side.
  */
 struct relay_viewer_stream {
-	uint64_t stream_handle;
-	uint64_t session_id;
-	int read_fd;
-	int index_read_fd;
+	struct urcu_ref ref;
+	pthread_mutex_t reflock;
+
+	/* Back ref to stream */
+	struct relay_stream *stream;
+
+	/* FD from which to read the stream data. */
+	struct stream_fd *stream_fd;
+	/* FD from which to read the index data. */
+	struct stream_fd *index_fd;
+
 	char *path_name;
 	char *channel_name;
+
+	uint64_t current_tracefile_id;
+	uint64_t current_tracefile_seq;	/* Free-running counter */
+
 	uint64_t last_sent_index;
-	uint64_t total_index_received;
-	uint64_t tracefile_count;
-	uint64_t tracefile_count_current;
-	/* Stop after reading this tracefile. */
-	uint64_t tracefile_count_last;
+
+	/* Indicates if this stream has been sent to a viewer client. */
+	bool sent_flag;
+	/* For metadata stream, how much metadata has been sent. */
+	uint64_t metadata_sent;
+
 	struct lttng_ht_node_u64 stream_n;
 	struct rcu_head rcu_node;
-	struct ctf_trace *ctf_trace;
-	/*
-	 * This lock blocks only when the writer is about to start overwriting
-	 * a file currently read by the reader.
-	 *
-	 * This is nested INSIDE the viewer_stream_rotation_lock.
-	 */
-	pthread_mutex_t overwrite_lock;
-	/* Information telling us if the stream is a metadata stream. */
-	unsigned int metadata_flag:1;
-	/*
-	 * Information telling us that the stream is closed in write, so
-	 * we don't expect new indexes and we can read up to EOF.
-	 */
-	unsigned int close_write_flag:1;
-	/*
-	 * If the streaming side closes a FD in use in the viewer side,
-	 * it sets this flag to inform that it is a normal error.
-	 */
-	unsigned int abort_flag:1;
-	/* Indicates if this stream has been sent to a viewer client. */
-	unsigned int sent_flag:1;
 };
 
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
-		enum lttng_viewer_seek seek_t, struct ctf_trace *ctf_trace);
-struct relay_viewer_stream *viewer_stream_find_by_id(uint64_t id);
-void viewer_stream_destroy(struct ctf_trace *ctf_trace,
-		struct relay_viewer_stream *stream);
-void viewer_stream_delete(struct relay_viewer_stream *stream);
-int viewer_stream_rotate(struct relay_viewer_stream *vstream,
-		struct relay_stream *stream);
+		enum lttng_viewer_seek seek_t);
+
+struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id);
+bool viewer_stream_get(struct relay_viewer_stream *vstream);
+void viewer_stream_put(struct relay_viewer_stream *vstream);
+int viewer_stream_rotate(struct relay_viewer_stream *vstream);
+bool viewer_stream_is_tracefile_seq_readable(struct relay_viewer_stream *vstream,
+		uint64_t seq);
+void print_viewer_streams(void);
 
 #endif /* _VIEWER_STREAM_H */

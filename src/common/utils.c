@@ -594,20 +594,17 @@ error:
 }
 
 /*
- * Create the stream tracefile on disk.
- *
- * Return 0 on success or else a negative value.
+ * path is the output parameter. It needs to be PATH_MAX len.
  */
-LTTNG_HIDDEN
-int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, char *suffix)
+static int utils_stream_file_name(char *path,
+		const char *path_name, const char *file_name,
+		uint64_t size, uint64_t count,
+		const char *suffix)
 {
-	int ret, out_fd, flags, mode;
-	char full_path[PATH_MAX], *path_name_suffix = NULL, *path;
+	int ret;
+	char full_path[PATH_MAX];
+	char *path_name_suffix = NULL;
 	char *extra = NULL;
-
-	assert(path_name);
-	assert(file_name);
 
 	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
 			path_name, file_name);
@@ -639,9 +636,37 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 			PERROR("Allocating path name with extra string");
 			goto error_free_suffix;
 		}
-		path = path_name_suffix;
+		strncpy(path, path_name_suffix, PATH_MAX - 1);
+		path[PATH_MAX - 1] = '\0';
 	} else {
-		path = full_path;
+		strncpy(path, full_path, PATH_MAX - 1);
+	}
+	path[PATH_MAX - 1] = '\0';
+	ret = 0;
+
+	free(path_name_suffix);
+error_free_suffix:
+	free(extra);
+error:
+	return ret;
+}
+
+/*
+ * Create the stream tracefile on disk.
+ *
+ * Return 0 on success or else a negative value.
+ */
+LTTNG_HIDDEN
+int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
+		uint64_t count, int uid, int gid, char *suffix)
+{
+	int ret, flags, mode;
+	char path[PATH_MAX];
+
+	ret = utils_stream_file_name(path, path_name, file_name,
+		size, count, suffix);
+	if (ret < 0) {
+		goto error;
 	}
 
 	flags = O_WRONLY | O_CREAT | O_TRUNC;
@@ -649,21 +674,48 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 
 	if (uid < 0 || gid < 0) {
-		out_fd = open(path, flags, mode);
+		ret = open(path, flags, mode);
 	} else {
-		out_fd = run_as_open(path, flags, mode, uid, gid);
+		ret = run_as_open(path, flags, mode, uid, gid);
 	}
-	if (out_fd < 0) {
+	if (ret < 0) {
 		PERROR("open stream path %s", path);
-		goto error_open;
 	}
-	ret = out_fd;
-
-error_open:
-	free(path_name_suffix);
-error_free_suffix:
-	free(extra);
 error:
+	return ret;
+}
+
+/*
+ * Unlink the stream tracefile from disk.
+ *
+ * Return 0 on success or else a negative value.
+ */
+LTTNG_HIDDEN
+int utils_unlink_stream_file(const char *path_name, char *file_name, uint64_t size,
+		uint64_t count, int uid, int gid, char *suffix)
+{
+	int ret;
+	char path[PATH_MAX];
+
+	ret = utils_stream_file_name(path, path_name, file_name,
+		size, count, suffix);
+	if (ret < 0) {
+		goto error;
+	}
+	if (uid < 0 || gid < 0) {
+		ret = unlink(path);
+	} else {
+		ret = run_as_unlink(path, uid, gid);
+		if (ret < 0) {
+			errno = -ret;
+			ret = -1;
+		}
+	}
+	if (ret < 0) {
+		goto error;
+	}
+error:
+	DBG("utils_unlink_stream_file %s returns %d", path, ret);
 	return ret;
 }
 
@@ -693,7 +745,25 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 	}
 
 	if (count > 0) {
+		/*
+		 * In tracefile rotation, for the relay daemon we need
+		 * to unlink the old file is present, because it may
+		 * still be open in reading by the live thread, and we
+		 * need to ensure that we do not overwrite the content
+		 * between get_index and get_packet. Since we have no
+		 * way to verify integrity of the data content compared
+		 * to the associated index, we need to ensure the reader
+		 * has exclusive access to the file content, and that
+		 * the open of the data file is performed in get_index.
+		 * Unlinking the old file rather than overwriting it
+		 * achieves this.
+		 */
 		*new_count = (*new_count + 1) % count;
+		ret = utils_unlink_stream_file(path_name, file_name,
+			size, *new_count, uid, gid, 0);
+		if (ret < 0 && errno != ENOENT) {
+			goto error;
+		}
 	} else {
 		(*new_count)++;
 	}
