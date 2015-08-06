@@ -173,7 +173,7 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 
 	do {
 		len_last = iov[0].iov_len;
-		ret = recvmsg(sock, &msg, 0);
+		ret = recvmsg(sock, &msg, MSG_NOSIGNAL);
 		if (ret > 0) {
 			iov[0].iov_base += ret;
 			iov[0].iov_len -= ret;
