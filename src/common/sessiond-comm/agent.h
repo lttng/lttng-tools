@@ -40,6 +40,7 @@ enum lttcomm_agent_ret_code {
 	AGENT_RET_CODE_SUCCESS      = 1,
 	AGENT_RET_CODE_INVALID      = 2,
 	AGENT_RET_CODE_UNKNOWN_NAME = 3,
+	AGENT_RET_CODE_NR,
 };
 
 /*

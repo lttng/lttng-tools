@@ -28,6 +28,44 @@
 #include "agent.h"
 #include "ust-app.h"
 #include "utils.h"
+#include "error.h"
+
+#define AGENT_RET_CODE_INDEX(code) (code - AGENT_RET_CODE_SUCCESS)
+
+/*
+ * Human readable agent return code.
+ */
+static const char *error_string_array[] = {
+	[ AGENT_RET_CODE_INDEX(AGENT_RET_CODE_SUCCESS) ] = "Success",
+	[ AGENT_RET_CODE_INDEX(AGENT_RET_CODE_INVALID) ] = "Invalid command",
+	[ AGENT_RET_CODE_INDEX(AGENT_RET_CODE_UNKNOWN_NAME) ] = "Unknown logger name",
+
+	/* Last element */
+	[ AGENT_RET_CODE_INDEX(AGENT_RET_CODE_NR) ] = "Unknown code",
+};
+
+static
+void log_reply_code(uint32_t in_reply_ret_code)
+{
+	int level = PRINT_DBG3;
+	/*
+	 * reply_ret_code and in_reply_ret_code are kept separate to have a
+	 * sanitized value (used to retrieve the human readable string) and the
+	 * original value which is logged as-is.
+	 */
+	uint32_t reply_ret_code = in_reply_ret_code;
+
+	if (reply_ret_code < AGENT_RET_CODE_SUCCESS ||
+			reply_ret_code >= AGENT_RET_CODE_NR) {
+		reply_ret_code = AGENT_RET_CODE_NR;
+		level = PRINT_ERR;
+	}
+
+	LOG(level, "Agent replied with retcode: %s (%"PRIu32")",
+			error_string_array[AGENT_RET_CODE_INDEX(
+			reply_ret_code)],
+			in_reply_ret_code);
+}
 
 /*
  * Match function for the events hash table lookup by name.
