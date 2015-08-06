@@ -239,9 +239,10 @@ function lttng_disable_kernel_channel_fail()
 	lttng_disable_kernel_channel 1 "$@"
 }
 
-function start_lttng_relayd
+function start_lttng_relayd_opt()
 {
-	local opt=$1
+	local withtap=$1
+	local opt=$2
 
 	DIR=$(readlink -f $TESTDIR)
 
@@ -249,52 +250,77 @@ function start_lttng_relayd
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
-			fail "Start lttng-relayd (opt: $opt)"
+			if [ $withtap -eq "1" ]; then
+				fail "Start lttng-relayd (opt: $opt)"
+			fi
 			return 1
 		else
-			pass "Start lttng-relayd (opt: $opt)"
+			if [ $withtap -eq "1" ]; then
+				pass "Start lttng-relayd (opt: $opt)"
+			fi
 		fi
 	else
 		pass "Start lttng-relayd (opt: $opt)"
 	fi
 }
 
-function stop_lttng_relayd_nocheck
+function start_lttng_relayd()
 {
+	start_lttng_relayd_opt 1 "$@"
+}
+
+function start_lttng_relayd_notap()
+{
+	start_lttng_relayd_opt 0 "$@"
+}
+
+function stop_lttng_relayd_opt()
+{
+	local withtap=$1
+
 	PID_RELAYD=`pidof lt-$RELAYD_BIN`
 
-	diag "Killing lttng-relayd (pid: $PID_RELAYD)"
+	if [ $withtap -eq "1" ]; then
+		diag "Killing lttng-relayd (pid: $PID_RELAYD)"
+	fi
 	kill $PID_RELAYD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	retval=$?
 
-	if [ $retval -eq 1 ]; then
+	if [ $? -eq 1 ]; then
+		if [ $withtap -eq "1" ]; then
+			fail "Kill relay daemon"
+		fi
+		return 1
+	else
 		out=1
 		while [ -n "$out" ]; do
 			out=$(pidof lt-$RELAYD_BIN)
 			sleep 0.5
 		done
+		if [ $withtap -eq "1" ]; then
+			pass "Kill relay daemon"
+		fi
 	fi
 	return $retval
 }
 
-function stop_lttng_relayd
+function stop_lttng_relayd()
 {
-	stop_lttng_relayd_nocheck
-
-	if [ $? -eq 1 ]; then
-		fail "Killed lttng-relayd (pid: $PID_RELAYD)"
-		return 1
-	else
-		pass "Killed lttng-relayd (pid: $PID_RELAYD)"
-		return 0
-	fi
+	stop_lttng_relayd_opt 1 "$@"
 }
 
-#First argument: load path for automatic loading
-function start_lttng_sessiond()
+function stop_lttng_relayd_notap()
 {
+	stop_lttng_relayd_opt 0 "$@"
+}
 
-	local load_path="$1"
+#First arg: show tap output
+#Second argument: load path for automatic loading
+function start_lttng_sessiond_opt()
+{
+	local withtap=$1
+	local load_path=$2
+
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
 		return
@@ -312,19 +338,33 @@ function start_lttng_sessiond()
 
 	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
 		# Have a load path ?
-		if [ -n "$1" ]; then
+		if [ -n "$load_path" ]; then
 			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$1" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 		else
 			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 		fi
 		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1
 		status=$?
-		ok $status "Start session daemon"
+		if [ $withtap -eq "1" ]; then
+			ok $status "Start session daemon"
+		fi
 	fi
 }
 
-function stop_lttng_sessiond ()
+function start_lttng_sessiond()
 {
+	start_lttng_sessiond_opt 1 "$@"
+}
+
+function start_lttng_sessiond_notap()
+{
+	start_lttng_sessiond_opt 0 "$@"
+}
+
+function stop_lttng_sessiond_opt()
+{
+	local withtap=$1
+
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
 		return
@@ -335,8 +375,9 @@ function stop_lttng_sessiond ()
 	kill $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 
 	if [ $? -eq 1 ]; then
-		fail "Kill sessions daemon"
-		return 1
+		if [ $withtap -eq "1" ]; then
+			fail "Kill sessions daemon"
+		fi
 	else
 		out=1
 		while [ -n "$out" ]; do
@@ -348,8 +389,20 @@ function stop_lttng_sessiond ()
 			out=$(pidof $CONSUMERD_BIN)
 			sleep 0.5
 		done
-		pass "Kill session daemon"
+		if [ $withtap -eq "1" ]; then
+			pass "Kill session daemon"
+		fi
 	fi
+}
+
+function stop_lttng_sessiond()
+{
+	stop_lttng_sessiond_opt 1 "$@"
+}
+
+function stop_lttng_sessiond_notap()
+{
+	stop_lttng_sessiond_opt 0 "$@"
 }
 
 function list_lttng_with_opts ()
