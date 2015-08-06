@@ -60,57 +60,29 @@ function clean_live_tracing()
 	rm -rf $TRACE_PATH
 }
 
-if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
-	$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
-	if [ $? -eq 1 ]; then
-		echo "Fail to start lttng-sessiond"
-		exit 1
-	fi
-fi
+file_sync_after_first=$(mktemp -u)
 
-opt="-o $TRACE_PATH --background"
-if [ -z $(pidof lt-$RELAYD_BIN) ]; then
-	$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt >/dev/null 2>&1
-	if [ $? -eq 1 ]; then
-		echo "Fail to start lttng-relayd (opt: $opt)"
-		return 1
-	fi
-fi
+start_lttng_sessiond_notap
+start_lttng_relayd_notap "-o $TRACE_PATH"
 
 setup_live_tracing
 
 # Run app in background
-$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} >/dev/null 2>&1
+
+while [ ! -f "${file_sync_after_first}" ]; do
+	sleep 0.5
+done
 
 # Start the live test
 $TESTDIR/regression/tools/live/live_test
 
+# Wait for the applications started in background
+wait
+
 clean_live_tracing
 
-# Kill the relayd
-PID_RELAYD=`pidof lt-$RELAYD_BIN`
-kill $PID_RELAYD
-if [ $? -eq 1 ]; then
-	echo "Kill lttng-relayd (pid: $PID_RELAYD)"
-	exit 1
-else
-	out=1
-	while [ -n "$out" ]; do
-		out=$(pidof lt-$RELAYD_BIN)
-		sleep 0.5
-	done
-fi
+rm -f ${file_sync_after_first}
 
-# Kill the sessiond
-PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
-kill $PID_SESSIOND
-if [ $? -eq 1 ]; then
-	echo "Kill sessiond daemon"
-	exit 1
-else
-	out=1
-	while [ -n "$out" ]; do
-		out=$(pidof lt-$SESSIOND_BIN)
-		sleep 0.5
-	done
-fi
+stop_lttng_relayd_notap
+stop_lttng_sessiond_notap
