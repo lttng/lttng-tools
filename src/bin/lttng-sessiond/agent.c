@@ -426,6 +426,7 @@ static int disable_event(struct agent_app *app, struct agent_event *event)
 {
 	int ret;
 	uint64_t data_size;
+	uint32_t reply_ret_code;
 	struct lttcomm_agent_disable msg;
 	struct lttcomm_agent_generic_reply reply;
 
@@ -455,7 +456,9 @@ static int disable_event(struct agent_app *app, struct agent_event *event)
 		goto error_io;
 	}
 
-	switch (be32toh(reply.ret_code)) {
+	reply_ret_code = be32toh(reply.ret_code);
+	log_reply_code(reply_ret_code);
+	switch (reply_ret_code) {
 	case AGENT_RET_CODE_SUCCESS:
 		break;
 	case AGENT_RET_CODE_UNKNOWN_NAME:
