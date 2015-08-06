@@ -1093,11 +1093,8 @@ error:
 }
 
 /*
- * Ask the consumer if the data is ready to read (NOT pending) for the specific
- * session id.
- *
- * This function has a different behavior with the consumer i.e. that it waits
- * for a reply from the consumer if yes or no the data is pending.
+ * Ask the consumer if the data is pending for the specific session id.
+ * Returns 1 if data is pending, 0 otherwise, or < 0 on error.
  */
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer)

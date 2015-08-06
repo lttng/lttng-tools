@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -22,29 +23,21 @@
 
 #include <common/common.h>
 #include <common/utils.h>
+#include <urcu/rculist.h>
 
 #include "ctf-trace.h"
 #include "lttng-relayd.h"
 #include "stream.h"
 
 static uint64_t last_relay_ctf_trace_id;
+static pthread_mutex_t last_relay_ctf_trace_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static void rcu_destroy_ctf_trace(struct rcu_head *head)
+static void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
 {
-	struct lttng_ht_node_str *node =
-		caa_container_of(head, struct lttng_ht_node_str, head);
-	struct ctf_trace *trace=
-		caa_container_of(node, struct ctf_trace, node);
+	struct ctf_trace *trace =
+		caa_container_of(rcu_head, struct ctf_trace, rcu_node);
 
 	free(trace);
-}
-
-static void rcu_destroy_stream(struct rcu_head *head)
-{
-	struct relay_stream *stream =
-		caa_container_of(head, struct relay_stream, rcu_node);
-
-	stream_destroy(stream);
 }
 
 /*
@@ -52,118 +45,169 @@ static void rcu_destroy_stream(struct rcu_head *head)
  *
  * MUST be called with the RCU read side lock.
  */
-void ctf_trace_destroy(struct ctf_trace *obj)
+void ctf_trace_destroy(struct ctf_trace *trace)
 {
-	struct relay_stream *stream, *tmp_stream;
-
-	assert(obj);
 	/*
-	 * Getting to this point, every stream referenced to that object have put
-	 * back their ref since the've been closed by the control side.
+	 * Getting to this point, every stream referenced by that traceect
+	 * have put back their ref since the've been closed by the
+	 * control side.
 	 */
-	assert(!obj->refcount);
-
-	cds_list_for_each_entry_safe(stream, tmp_stream, &obj->stream_list,
-			trace_list) {
-		stream_delete(relay_streams_ht, stream);
-		call_rcu(&stream->rcu_node, rcu_destroy_stream);
-	}
-
-	call_rcu(&obj->node.head, rcu_destroy_ctf_trace);
+	assert(cds_list_empty(&trace->stream_list));
+	session_put(trace->session);
+	trace->session = NULL;
+	call_rcu(&trace->rcu_node, rcu_destroy_ctf_trace);
 }
 
-void ctf_trace_try_destroy(struct relay_session *session,
-		struct ctf_trace *ctf_trace)
+void ctf_trace_release(struct urcu_ref *ref)
 {
-	assert(session);
-	assert(ctf_trace);
+	struct ctf_trace *trace =
+		caa_container_of(ref, struct ctf_trace, ref);
+	int ret;
+	struct lttng_ht_iter iter;
 
-	/*
-	 * Considering no viewer attach to the session and the trace having no more
-	 * stream attached, wipe the trace.
-	 */
-	if (uatomic_read(&session->viewer_refcount) == 0 &&
-			uatomic_read(&ctf_trace->refcount) == 0) {
-		ctf_trace_delete(session->ctf_traces_ht, ctf_trace);
-		ctf_trace_destroy(ctf_trace);
-	}
+	iter.iter.node = &trace->node.node;
+	ret = lttng_ht_del(trace->session->ctf_traces_ht, &iter);
+	assert(!ret);
+	ctf_trace_destroy(trace);
 }
 
 /*
- * Create and return an allocated ctf_trace object. NULL on error.
+ * Should be called with RCU read-side lock held.
  */
-struct ctf_trace *ctf_trace_create(char *path_name)
+bool ctf_trace_get(struct ctf_trace *trace)
 {
-	struct ctf_trace *obj;
+	bool has_ref = false;
 
-	assert(path_name);
+	/* Confirm that the trace refcount has not reached 0. */
+	pthread_mutex_lock(&trace->reflock);
+	if (trace->ref.refcount != 0) {
+		has_ref = true;
+		urcu_ref_get(&trace->ref);
+	}
+	pthread_mutex_unlock(&trace->reflock);
 
-	obj = zmalloc(sizeof(*obj));
-	if (!obj) {
+	return has_ref;
+}
+
+/*
+ * Create and return an allocated ctf_trace. NULL on error.
+ * There is no "open" and "close" for a ctf_trace, but rather just a
+ * create and refcounting. Whenever all the streams belonging to a trace
+ * put their reference, its refcount drops to 0.
+ */
+static struct ctf_trace *ctf_trace_create(struct relay_session *session,
+		char *path_name)
+{
+	struct ctf_trace *trace;
+
+	trace = zmalloc(sizeof(*trace));
+	if (!trace) {
 		PERROR("ctf_trace alloc");
 		goto error;
 	}
 
-	CDS_INIT_LIST_HEAD(&obj->stream_list);
+	if (!session_get(session)) {
+		ERR("Cannot get session");
+		free(trace);
+		trace = NULL;
+		goto error;
+	}
+	trace->session = session;
 
-	obj->id = ++last_relay_ctf_trace_id;
-	lttng_ht_node_init_str(&obj->node, path_name);
+	CDS_INIT_LIST_HEAD(&trace->stream_list);
 
-	DBG("Created ctf_trace %" PRIu64 " with path: %s", obj->id, path_name);
+	pthread_mutex_lock(&last_relay_ctf_trace_id_lock);
+	trace->id = ++last_relay_ctf_trace_id;
+	pthread_mutex_unlock(&last_relay_ctf_trace_id_lock);
+
+	lttng_ht_node_init_str(&trace->node, path_name);
+	trace->session = session;
+	urcu_ref_init(&trace->ref);
+	pthread_mutex_init(&trace->lock, NULL);
+	pthread_mutex_init(&trace->reflock, NULL);
+	pthread_mutex_init(&trace->stream_list_lock, NULL);
+	lttng_ht_add_str(session->ctf_traces_ht, &trace->node);
+
+	DBG("Created ctf_trace %" PRIu64 " with path: %s", trace->id, path_name);
 
 error:
-	return obj;
+	return trace;
 }
 
 /*
- * Return a ctf_trace object if found by id in the given hash table else NULL.
- *
- * Must be called with rcu_read_lock() taken.
+ * Return a ctf_trace if found by id in the given hash table else NULL.
+ * Hold a reference on the ctf_trace, and must be paired with
+ * ctf_trace_put().
  */
-struct ctf_trace *ctf_trace_find_by_path(struct lttng_ht *ht,
+struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 		char *path_name)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	struct ctf_trace *trace = NULL;
 
-	assert(ht);
-
-	lttng_ht_lookup(ht, (void *) path_name, &iter);
+	rcu_read_lock();
+	lttng_ht_lookup(session->ctf_traces_ht, (void *) path_name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
 		DBG("CTF Trace path %s not found", path_name);
 		goto end;
 	}
 	trace = caa_container_of(node, struct ctf_trace, node);
-
+	if (!ctf_trace_get(trace)) {
+		trace = NULL;
+	}
 end:
+	rcu_read_unlock();
+	if (!trace) {
+		/* Try to create */
+		trace = ctf_trace_create(session, path_name);
+	}
 	return trace;
 }
 
-/*
- * Add stream to a given hash table.
- */
-void ctf_trace_add(struct lttng_ht *ht, struct ctf_trace *trace)
+void ctf_trace_put(struct ctf_trace *trace)
 {
-	assert(ht);
-	assert(trace);
-
-	lttng_ht_add_str(ht, &trace->node);
+	rcu_read_lock();
+	pthread_mutex_lock(&trace->reflock);
+	urcu_ref_put(&trace->ref, ctf_trace_release);
+	pthread_mutex_unlock(&trace->reflock);
+	rcu_read_unlock();
 }
 
-/*
- * Delete stream from a given hash table.
- */
-void ctf_trace_delete(struct lttng_ht *ht, struct ctf_trace *trace)
+int ctf_trace_close(struct ctf_trace *trace)
 {
-	int ret;
-	struct lttng_ht_iter iter;
+	struct relay_stream *stream;
 
-	assert(ht);
-	assert(trace);
+	rcu_read_lock();
+	cds_list_for_each_entry_rcu(stream, &trace->stream_list,
+			stream_node) {
+		/*
+		 * Close the stream.
+		 */
+		stream_close(stream);
+	}
+	rcu_read_unlock();
+	/*
+	 * Since all references to the trace are held by its streams, we
+	 * don't need to do any self-ref put.
+	 */
+	return 0;
+}
 
-	iter.iter.node = &trace->node.node;
-	ret = lttng_ht_del(ht, &iter);
-	assert(!ret);
+struct relay_viewer_stream *ctf_trace_get_viewer_metadata_stream(struct ctf_trace *trace)
+{
+	struct relay_viewer_stream *vstream;
+
+	rcu_read_lock();
+	vstream = rcu_dereference(trace->viewer_metadata_stream);
+	if (!vstream) {
+		goto end;
+	}
+	if (!viewer_stream_get(vstream)) {
+		vstream = NULL;
+	}
+end:
+	rcu_read_unlock();
+	return vstream;
 }
