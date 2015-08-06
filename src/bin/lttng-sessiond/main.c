@@ -3267,8 +3267,34 @@ skip_domain:
 	}
 	case LTTNG_DISABLE_EVENT:
 	{
+
+		/*
+		 * FIXME: handle filter; for now we just receive the filter's
+		 * bytecode along with the filter expression which are sent by
+		 * liblttng-ctl and discard them.
+		 *
+		 * This fixes an issue where the client may block while sending
+		 * the filter payload and encounter an error because the session
+		 * daemon closes the socket without ever handling this data.
+		 */
+		size_t count = cmd_ctx->lsm->u.disable.expression_len +
+			cmd_ctx->lsm->u.disable.bytecode_len;
+
+		if (count) {
+			char data[LTTNG_FILTER_MAX_LEN];
+
+			DBG("Discarding disable event command payload of size %zu", count);
+			while (count) {
+				ret = lttcomm_recv_unix_sock(sock, data,
+				        count > sizeof(data) ? sizeof(data) : count);
+				if (ret < 0) {
+					goto error;
+				}
+
+				count -= (size_t) ret;
+			}
+		}
 		/* FIXME: passing packed structure to non-packed pointer */
-		/* TODO: handle filter */
 		ret = cmd_disable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.disable.channel_name,
 				&cmd_ctx->lsm->u.disable.event);
