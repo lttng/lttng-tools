@@ -586,7 +586,7 @@ int check_exclusion_subsets(const char *event_name,
 					goto error;
 				}
 				new_exclusion_list = realloc(exclusion_list,
-					sizeof(char **) * (exclusion_count + 1));
+					sizeof(char *) * (exclusion_count + 1));
 				if (!new_exclusion_list) {
 					PERROR("realloc");
 					free(string);
