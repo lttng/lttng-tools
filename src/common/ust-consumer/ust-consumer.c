@@ -352,8 +352,12 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 		/* Keep stream reference when creating metadata. */
 		if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA) {
 			channel->metadata_stream = stream;
-			stream->ust_metadata_poll_pipe[0] = ust_metadata_pipe[0];
-			stream->ust_metadata_poll_pipe[1] = ust_metadata_pipe[1];
+			if (channel->monitor) {
+				/* Set metadata poll pipe if we created one */
+				memcpy(stream->ust_metadata_poll_pipe,
+						ust_metadata_pipe,
+						sizeof(ust_metadata_pipe));
+			}
 		}
 	}
 
