@@ -349,7 +349,7 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 	for (i = 0; i < count; i++) {
 		if (cur_pid != events[i].pid) {
 			if (pid_element_open) {
-				/* Close the previous events and  pid element */
+				/* Close the previous events and pid element */
 				ret = mi_lttng_close_multi_element(writer, 2);
 				if (ret) {
 					goto end;
