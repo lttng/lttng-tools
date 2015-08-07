@@ -173,4 +173,13 @@ struct lttcomm_relayd_create_session_2_4 {
 	uint32_t snapshot;
 } LTTNG_PACKED;
 
+/*
+ * Used to ask the relay to reset the metadata trace file (regeneration).
+ * Send the new version of the metadata (starts at 0).
+ */
+struct lttcomm_relayd_reset_metadata {
+	uint64_t stream_id;
+	uint64_t version;
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

@@ -28,6 +28,7 @@
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
 #include <common/compat/string.h>
+#include <common/kernel-ctl/kernel-ctl.h>
 
 #include "channel.h"
 #include "consumer.h"
@@ -39,6 +40,7 @@
 #include "utils.h"
 #include "syscall.h"
 #include "agent.h"
+#include "buffer-registry.h"
 
 #include "cmd.h"
 
@@ -3371,6 +3373,156 @@ error:
 	rcu_read_unlock();
 	return ret;
 }
+
+/*
+ * Check if we can regenerate the metadata for this session.
+ * Only kernel, UST per-uid and non-live sessions are supported.
+ *
+ * Return 0 if the metadata can be generated, a LTTNG_ERR code otherwise.
+ */
+static
+int check_metadata_regenerate_support(struct ltt_session *session)
+{
+	int ret;
+
+	assert(session);
+
+	if (session->live_timer != 0) {
+		ret = LTTNG_ERR_LIVE_SESSION;
+		goto end;
+	}
+	if (!session->active) {
+		ret = LTTNG_ERR_SESSION_NOT_STARTED;
+		goto end;
+	}
+	if (session->ust_session) {
+		switch (session->ust_session->buffer_type) {
+		case LTTNG_BUFFER_PER_UID:
+			break;
+		case LTTNG_BUFFER_PER_PID:
+			ret = LTTNG_ERR_PER_PID_SESSION;
+			goto end;
+		default:
+			assert(0);
+			ret = LTTNG_ERR_UNK;
+			goto end;
+		}
+	}
+	if (session->consumer->type == CONSUMER_DST_NET &&
+			session->consumer->relay_minor_version < 8) {
+		ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
+		goto end;
+	}
+	ret = 0;
+
+end:
+	return ret;
+}
+
+static
+int ust_metadata_regenerate(struct ltt_ust_session *usess)
+{
+	int ret = 0;
+	struct buffer_reg_uid *uid_reg = NULL;
+	struct buffer_reg_session *session_reg = NULL;
+
+	rcu_read_lock();
+	cds_list_for_each_entry(uid_reg, &usess->buffer_reg_uid_list, lnode) {
+		struct ust_registry_session *registry;
+		struct ust_registry_channel *chan;
+		struct lttng_ht_iter iter_chan;
+
+		session_reg = uid_reg->registry;
+		registry = session_reg->reg.ust;
+
+		pthread_mutex_lock(&registry->lock);
+		registry->metadata_len_sent = 0;
+		memset(registry->metadata, 0, registry->metadata_alloc_len);
+		registry->metadata_len = 0;
+		registry->metadata_version++;
+		ret = ust_metadata_session_statedump(registry, NULL,
+				registry->major, registry->minor);
+		if (ret) {
+			pthread_mutex_unlock(&registry->lock);
+			ERR("Failed to generate session metadata (err = %d)",
+					ret);
+			goto end;
+		}
+		cds_lfht_for_each_entry(registry->channels->ht, &iter_chan.iter,
+				chan, node.node) {
+			struct ust_registry_event *event;
+			struct lttng_ht_iter iter_event;
+
+			ret = ust_metadata_channel_statedump(registry, chan);
+			if (ret) {
+				pthread_mutex_unlock(&registry->lock);
+				ERR("Failed to generate channel metadata "
+						"(err = %d)", ret);
+				goto end;
+			}
+			cds_lfht_for_each_entry(chan->ht->ht, &iter_event.iter,
+					event, node.node) {
+				ret = ust_metadata_event_statedump(registry,
+						chan, event);
+				if (ret) {
+					pthread_mutex_unlock(&registry->lock);
+					ERR("Failed to generate event metadata "
+							"(err = %d)", ret);
+					goto end;
+				}
+			}
+		}
+		pthread_mutex_unlock(&registry->lock);
+	}
+
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Command LTTNG_METADATA_REGENERATE from the lttng-ctl library.
+ *
+ * Ask the consumer to truncate the existing metadata file(s) and
+ * then regenerate the metadata. Live and per-pid sessions are not
+ * supported and return an error.
+ *
+ * Return 0 on success or else a LTTNG_ERR code.
+ */
+int cmd_metadata_regenerate(struct ltt_session *session)
+{
+	int ret;
+
+	assert(session);
+
+	ret = check_metadata_regenerate_support(session);
+	if (ret) {
+		goto end;
+	}
+
+	if (session->kernel_session) {
+		ret = kernctl_session_metadata_regenerate(
+				session->kernel_session->fd);
+		if (ret < 0) {
+			ERR("Failed to regenerate the kernel metadata");
+			goto end;
+		}
+	}
+
+	if (session->ust_session) {
+		ret = ust_metadata_regenerate(session->ust_session);
+		if (ret < 0) {
+			ERR("Failed to regenerate the UST metadata");
+			goto end;
+		}
+	}
+	DBG("Cmd metadata regenerate for session %s", session->name);
+	ret = LTTNG_OK;
+
+end:
+	return ret;
+}
+
 
 /*
  * Send relayd sockets from snapshot output to consumer. Ignore request if the

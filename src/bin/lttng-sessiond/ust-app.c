@@ -551,7 +551,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	char *metadata_str = NULL;
 	size_t len, offset, new_metadata_len_sent;
 	ssize_t ret_val;
-	uint64_t metadata_key;
+	uint64_t metadata_key, metadata_version;
 
 	assert(registry);
 	assert(socket);
@@ -581,6 +581,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	offset = registry->metadata_len_sent;
 	len = registry->metadata_len - registry->metadata_len_sent;
 	new_metadata_len_sent = registry->metadata_len;
+	metadata_version = registry->metadata_version;
 	if (len == 0) {
 		DBG3("No metadata to push for metadata key %" PRIu64,
 				registry->metadata_key);
@@ -617,7 +618,7 @@ push_data:
 	 * different bidirectionnal communication sockets.
 	 */
 	ret = consumer_push_metadata(socket, metadata_key,
-			metadata_str, len, offset);
+			metadata_str, len, offset, metadata_version);
 	pthread_mutex_lock(&registry->lock);
 	if (ret < 0) {
 		/*

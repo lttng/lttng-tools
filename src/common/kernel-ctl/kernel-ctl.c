@@ -209,6 +209,11 @@ int kernctl_list_tracker_pids(int fd)
 	return ioctl(fd, LTTNG_KERNEL_SESSION_LIST_TRACKER_PIDS);
 }
 
+int kernctl_session_metadata_regenerate(int fd)
+{
+	return ioctl(fd, LTTNG_KERNEL_SESSION_METADATA_REGEN);
+}
+
 int kernctl_create_stream(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_STREAM,
@@ -404,6 +409,12 @@ end:
 int kernctl_buffer_flush(int fd)
 {
 	return ioctl(fd, RING_BUFFER_FLUSH);
+}
+
+/* returns the version of the metadata. */
+int kernctl_get_metadata_version(int fd, uint64_t *version)
+{
+	return ioctl(fd, RING_BUFFER_GET_METADATA_VERSION, version);
 }
 
 

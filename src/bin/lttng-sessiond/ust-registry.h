@@ -68,6 +68,8 @@ struct ust_registry_session {
 	size_t metadata_len, metadata_alloc_len;
 	/* Length of bytes sent to the consumer. */
 	size_t metadata_len_sent;
+	/* Current version of the metadata. */
+	uint64_t metadata_version;
 
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];

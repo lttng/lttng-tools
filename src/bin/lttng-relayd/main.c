@@ -1331,6 +1331,90 @@ end_no_session:
 }
 
 /*
+ * relay_reset_metadata: reset a metadata stream
+ */
+static
+int relay_reset_metadata(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn)
+{
+	int ret, send_ret;
+	struct relay_session *session = conn->session;
+	struct lttcomm_relayd_reset_metadata stream_info;
+	struct lttcomm_relayd_generic_reply reply;
+	struct relay_stream *stream;
+
+	DBG("Reset metadata received");
+
+	if (!session || conn->version_check_done == 0) {
+		ERR("Trying to reset a metadata stream before version check");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	ret = conn->sock->ops->recvmsg(conn->sock, &stream_info,
+			sizeof(struct lttcomm_relayd_reset_metadata), 0);
+	if (ret < sizeof(struct lttcomm_relayd_reset_metadata)) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid reset_metadata struct "
+					"size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+	DBG("Update metadata to version %" PRIu64, be64toh(stream_info.version));
+
+	/* Unsupported for live sessions for now. */
+	if (session->live_timer != 0) {
+		ret = -1;
+		goto end;
+	}
+
+	stream = stream_get_by_id(be64toh(stream_info.stream_id));
+	if (!stream) {
+		ret = -1;
+		goto end;
+	}
+	pthread_mutex_lock(&stream->lock);
+	if (!stream->is_metadata) {
+		ret = -1;
+		goto end_unlock;
+	}
+
+	ret = utils_rotate_stream_file(stream->path_name, stream->channel_name,
+			0, 0, -1, -1, stream->stream_fd->fd, NULL,
+			&stream->stream_fd->fd);
+	if (ret < 0) {
+		ERR("Failed to rotate metadata file %s of channel %s",
+				stream->path_name, stream->channel_name);
+		goto end_unlock;
+	}
+
+end_unlock:
+	pthread_mutex_unlock(&stream->lock);
+	stream_put(stream);
+
+end:
+	memset(&reply, 0, sizeof(reply));
+	if (ret < 0) {
+		reply.ret_code = htobe32(LTTNG_ERR_UNK);
+	} else {
+		reply.ret_code = htobe32(LTTNG_OK);
+	}
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
+			sizeof(struct lttcomm_relayd_generic_reply), 0);
+	if (send_ret < 0) {
+		ERR("Relay sending reset metadata reply");
+		ret = send_ret;
+	}
+
+end_no_session:
+	return ret;
+}
+
+/*
  * relay_unknown_command: send -1 if received unknown command
  */
 static void relay_unknown_command(struct relay_connection *conn)
@@ -2059,6 +2143,9 @@ static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case RELAYD_STREAMS_SENT:
 		ret = relay_streams_sent(recv_hdr, conn);
+		break;
+	case RELAYD_RESET_METADATA:
+		ret = relay_reset_metadata(recv_hdr, conn);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:

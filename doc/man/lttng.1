@@ -849,6 +849,31 @@ already exists.
 .PP
 
 .PP
+\fBmetadata\fP [OPTIONS] ACTION
+.RS
+Metadata command for a LTTng session.
+
+.B OPTIONS:
+
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+
+.PP
+.B ACTION:
+
+.TP
+\fBregenerate\fP [-s <NAME>]
+Regenerate the metadata of a session. This allows the user to regenerate the
+metadata after a major NTP correction and that way update the clock offset from
+epoch in the metadata. Only works on kernel, UST per-uid and non-live sessions.
+.RE
+.PP
+
+.PP
 \fBsave\fP [OPTIONS] [SESSION]
 .RS
 Save tracing session configuration

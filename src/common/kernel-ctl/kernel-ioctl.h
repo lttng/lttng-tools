@@ -49,6 +49,8 @@
 #define RING_BUFFER_GET_MMAP_READ_OFFSET    _IOR(0xF6, 0x0B, unsigned long)
 /* flush the current sub-buffer */
 #define RING_BUFFER_FLUSH                   _IO(0xF6, 0x0C)
+/* Get the current version of the metadata cache (after a get_next). */
+#define RING_BUFFER_GET_METADATA_VERSION    _IOR(0xF6, 0x0D, uint64_t)
 
 /* returns the timestamp begin of the current sub-buffer */
 #define LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN     _IOR(0xF6, 0x20, uint64_t)
@@ -126,6 +128,7 @@
 #define LTTNG_KERNEL_SESSION_UNTRACK_PID	\
 	_IOR(0xF6, 0x59, int32_t)
 #define LTTNG_KERNEL_SESSION_LIST_TRACKER_PIDS	_IO(0xF6, 0x58)
+#define LTTNG_KERNEL_SESSION_METADATA_REGEN	_IO(0xF6, 0x59)
 
 /* Channel FD ioctl */
 #define LTTNG_KERNEL_STREAM			_IO(0xF6, 0x62)

@@ -65,6 +65,8 @@ int kernctl_track_pid(int fd, int pid);
 int kernctl_untrack_pid(int fd, int pid);
 int kernctl_list_tracker_pids(int fd);
 
+int kernctl_session_metadata_regenerate(int fd);
+
 /* Buffer operations */
 
 /* For mmap mode, readable without "get" operation */
@@ -90,6 +92,7 @@ int kernctl_get_subbuf(int fd, unsigned long *pos);
 int kernctl_put_subbuf(int fd);
 
 int kernctl_buffer_flush(int fd);
+int kernctl_get_metadata_version(int fd, uint64_t *version);
 
 /* index */
 int kernctl_get_timestamp_begin(int fd, uint64_t *timestamp_begin);

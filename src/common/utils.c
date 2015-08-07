@@ -843,7 +843,6 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 {
 	int ret;
 
-	assert(new_count);
 	assert(stream_fd);
 
 	ret = close(out_fd);
@@ -866,18 +865,22 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		 * Unlinking the old file rather than overwriting it
 		 * achieves this.
 		 */
-		*new_count = (*new_count + 1) % count;
-		ret = utils_unlink_stream_file(path_name, file_name,
-				size, *new_count, uid, gid, 0);
+		if (new_count) {
+			*new_count = (*new_count + 1) % count;
+		}
+		ret = utils_unlink_stream_file(path_name, file_name, size,
+				new_count ? *new_count : 0, uid, gid, 0);
 		if (ret < 0 && errno != ENOENT) {
 			goto error;
 		}
 	} else {
-		(*new_count)++;
+		if (new_count) {
+			(*new_count)++;
+		}
 	}
 
-	ret = utils_create_stream_file(path_name, file_name, size, *new_count,
-			uid, gid, 0);
+	ret = utils_create_stream_file(path_name, file_name, size,
+			new_count ? *new_count : 0, uid, gid, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -1320,5 +1323,25 @@ end:
 		DBG3("Attempting rmdir %s", path);
 		ret = rmdir(path);
 	}
+	return ret;
+}
+
+LTTNG_HIDDEN
+int utils_truncate_stream_file(int fd, off_t length)
+{
+	int ret;
+
+	ret = ftruncate(fd, length);
+	if (ret < 0) {
+		PERROR("ftruncate");
+		goto end;
+	}
+	ret = lseek(fd, length, SEEK_SET);
+	if (ret < 0) {
+		PERROR("lseek");
+		goto end;
+	}
+
+end:
 	return ret;
 }

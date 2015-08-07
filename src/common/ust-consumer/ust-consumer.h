@@ -57,8 +57,8 @@ void lttng_ustconsumer_close_all_metadata(struct lttng_ht *ht);
 void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata);
 void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
-		uint64_t len, struct lttng_consumer_channel *channel,
-		int timer, int wait);
+		uint64_t len, uint64_t version,
+		struct lttng_consumer_channel *channel, int timer, int wait);
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_channel *channel, int timer, int wait);
 int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
@@ -185,8 +185,8 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
 }
 static inline
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
-		uint64_t len, struct lttng_consumer_channel *channel,
-		int timer)
+		uint64_t len, uint64_t version,
+		struct lttng_consumer_channel *channel, int timer)
 {
 	return -ENOSYS;
 }

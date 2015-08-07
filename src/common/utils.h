@@ -58,5 +58,6 @@ char *utils_generate_optstring(const struct option *long_options,
 		size_t opt_count);
 int utils_create_lock_file(const char *filepath);
 int utils_recursive_rmdir(const char *path);
+int utils_truncate_stream_file(int fd, off_t length);
 
 #endif /* _COMMON_UTILS_H */

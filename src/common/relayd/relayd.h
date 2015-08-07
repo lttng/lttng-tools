@@ -49,5 +49,7 @@ int relayd_end_data_pending(struct lttcomm_relayd_sock *sock, uint64_t id,
 int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 		struct ctf_packet_index *index, uint64_t relay_stream_id,
 		uint64_t net_seq_num);
+int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
+		uint64_t stream_id, uint64_t version);
 
 #endif /* _RELAYD_H */

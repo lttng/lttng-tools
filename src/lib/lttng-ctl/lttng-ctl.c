@@ -2375,6 +2375,36 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 }
 
 /*
+ * Regenerate the metadata for a session.
+ * Return 0 on success, a negative error code on error.
+ */
+int lttng_metadata_regenerate(const char *session_name)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+
+	if (!session_name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_METADATA_REGENERATE;
+
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
+
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	if (ret < 0) {
+		goto end;
+	}
+
+	ret = 0;
+end:
+	return ret;
+}
+
+/*
  * lib constructor.
  */
 static void __attribute__((constructor)) init()

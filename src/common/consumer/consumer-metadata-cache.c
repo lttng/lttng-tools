@@ -71,6 +71,41 @@ end:
 }
 
 /*
+ * Reset the metadata cache.
+ */
+static
+void metadata_cache_reset(struct consumer_metadata_cache *cache)
+{
+	memset(cache->data, 0, cache->cache_alloc_size);
+	cache->max_offset = 0;
+}
+
+/*
+ * Check if the metadata cache version changed.
+ * If it did, reset the metadata cache.
+ * The metadata cache lock MUST be held.
+ *
+ * Returns 0 on success, a negative value on error.
+ */
+static
+int metadata_cache_check_version(struct consumer_metadata_cache *cache,
+		struct lttng_consumer_channel *channel, uint64_t version)
+{
+	int ret = 0;
+
+	if (cache->version == version) {
+		goto end;
+	}
+
+	DBG("Metadata cache version update to %" PRIu64, version);
+	metadata_cache_reset(cache);
+	cache->version = version;
+
+end:
+	return ret;
+}
+
+/*
  * Write metadata to the cache, extend the cache if necessary. We support
  * overlapping updates, but they need to be contiguous. Send the
  * contiguous metadata in cache to the ring buffer. The metadata cache
@@ -79,7 +114,8 @@ end:
  * Return 0 on success, a negative value on error.
  */
 int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
-		unsigned int offset, unsigned int len, char *data)
+		unsigned int offset, unsigned int len, uint64_t version,
+		char *data)
 {
 	int ret = 0;
 	int size_ret;
@@ -89,6 +125,12 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 	assert(channel->metadata_cache);
 
 	cache = channel->metadata_cache;
+
+	ret = metadata_cache_check_version(cache, channel, version);
+	if (ret < 0) {
+		goto end;
+	}
+
 	DBG("Writing %u bytes from offset %u in metadata cache", len, offset);
 
 	if (offset + len > cache->cache_alloc_size) {

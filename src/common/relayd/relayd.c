@@ -882,3 +882,58 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 error:
 	return ret;
 }
+
+/*
+ * Ask the relay to reset the metadata trace file (regeneration).
+ */
+int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
+		uint64_t stream_id, uint64_t version)
+{
+	int ret;
+	struct lttcomm_relayd_reset_metadata msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	/* Should have been prevented by the sessiond. */
+	if (rsock->minor < 8) {
+		ERR("Metadata regeneration unsupported before 2.8");
+		ret = -1;
+		goto error;
+	}
+
+	DBG("Relayd reset metadata stream id %" PRIu64, stream_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.stream_id = htobe64(stream_id);
+	msg.version = htobe64(version);
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_RESET_METADATA, (void *) &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd reset metadata replied error %d", reply.ret_code);
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd reset metadata stream id %" PRIu64 " successfully", stream_id);
+
+error:
+	return ret;
+}

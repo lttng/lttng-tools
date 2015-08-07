@@ -25,6 +25,10 @@ struct consumer_metadata_cache {
 	char *data;
 	uint64_t cache_alloc_size;
 	/*
+	 * Current version of the metadata cache.
+	 */
+	uint64_t version;
+	/*
 	 * The upper-limit of data written inside the buffer.
 	 *
 	 * With the total_bytes_written it allows us to keep track of when the
@@ -42,7 +46,8 @@ struct consumer_metadata_cache {
 };
 
 int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
-		unsigned int offset, unsigned int len, char *data);
+		unsigned int offset, unsigned int len, uint64_t version,
+		char *data);
 int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);
 void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel);
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,

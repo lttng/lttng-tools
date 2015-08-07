@@ -64,5 +64,6 @@ DECL_COMMAND(save);
 DECL_COMMAND(load);
 DECL_COMMAND(track);
 DECL_COMMAND(untrack);
+DECL_COMMAND(metadata);
 
 #endif /* _LTTNG_CMD_H */

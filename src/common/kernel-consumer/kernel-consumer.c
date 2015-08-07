@@ -1203,6 +1203,37 @@ end:
 }
 
 /*
+ * Check if the local version of the metadata stream matches with the version
+ * of the metadata stream in the kernel. If it was updated, set the reset flag
+ * on the stream.
+ */
+static
+int metadata_stream_check_version(int infd, struct lttng_consumer_stream *stream)
+{
+	int ret;
+	uint64_t cur_version;
+
+	ret = kernctl_get_metadata_version(infd, &cur_version);
+	if (ret < 0) {
+		ERR("Failed to get the metadata version");
+		goto end;
+	}
+
+	if (stream->metadata_version == cur_version) {
+		ret = 0;
+		goto end;
+	}
+
+	DBG("New metadata version detected");
+	stream->metadata_version = cur_version;
+	stream->reset_metadata_flag = 1;
+	ret = 0;
+
+end:
+	return ret;
+}
+
+/*
  * Consume data on a file descriptor and write it on a trace file.
  */
 ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
@@ -1272,6 +1303,10 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		}
 	} else {
 		write_index = 0;
+		ret = metadata_stream_check_version(infd, stream);
+		if (ret < 0) {
+			goto end;
+		}
 	}
 
 	switch (stream->chan->output) {

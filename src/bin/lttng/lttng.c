@@ -84,6 +84,7 @@ static struct cmd_struct commands[] =  {
 	{ "load", cmd_load},
 	{ "track", cmd_track},
 	{ "untrack", cmd_untrack},
+	{ "metadata", cmd_metadata},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -128,6 +129,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    load              Load session configuration\n");
 	fprintf(ofp, "    track             Track specific system resources\n");
 	fprintf(ofp, "    untrack           Untrack specific system resources\n");
+	fprintf(ofp, "    metadata          Regenerate the metadata of a session\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Each command also has its own -h, --help option.\n");
 	fprintf(ofp, "\n");

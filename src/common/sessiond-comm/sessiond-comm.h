@@ -94,6 +94,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_UNTRACK_PID                   = 33,
 	LTTNG_LIST_TRACKER_PIDS             = 34,
 	LTTNG_SET_SESSION_SHM_PATH          = 40,
+	LTTNG_METADATA_REGENERATE           = 41,
 };
 
 enum lttcomm_relayd_command {
@@ -115,6 +116,8 @@ enum lttcomm_relayd_command {
 	RELAYD_LIST_SESSIONS                = 15,
 	/* All streams of the channel have been sent to the relayd (2.4+). */
 	RELAYD_STREAMS_SENT                 = 16,
+	/* Ask the relay to reset the metadata trace file (2.8+) */
+	RELAYD_RESET_METADATA               = 17,
 };
 
 /*
@@ -486,6 +489,7 @@ struct lttcomm_consumer_msg {
 			uint64_t key;	/* Metadata channel key. */
 			uint64_t target_offset;	/* Offset in the consumer */
 			uint64_t len;	/* Length of metadata to be received. */
+			uint64_t version; /* Version of the metadata. */
 		} LTTNG_PACKED push_metadata;
 		struct {
 			uint64_t key;	/* Metadata channel key. */
@@ -517,6 +521,9 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 			uint64_t channel_key;
 		} LTTNG_PACKED lost_packets;
+		struct {
+			uint64_t session_id;
+		} LTTNG_PACKED metadata_regenerate;
 	} u;
 } LTTNG_PACKED;
 

@@ -292,6 +292,11 @@ struct lttng_consumer_stream {
 
 	/* Identify if the stream is the metadata */
 	unsigned int metadata_flag;
+	/*
+	 * Last known metadata version, reset the metadata file in case
+	 * of change.
+	 */
+	uint64_t metadata_version;
 	/* Used when the stream is set for network streaming */
 	uint64_t relayd_stream_id;
 	/*
@@ -382,6 +387,11 @@ struct lttng_consumer_stream {
 
 	/* Indicate if the stream still has some data to be read. */
 	unsigned int has_data:1;
+	/*
+	 * Inform the consumer or relay to reset the metadata
+	 * file before writing in it (regeneration).
+	 */
+	unsigned int reset_metadata_flag:1;
 };
 
 /*

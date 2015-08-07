@@ -159,6 +159,14 @@ extern int lttng_set_consumer_url(struct lttng_handle *handle,
  */
 extern int lttng_data_pending(const char *session_name);
 
+/*
+ * Trigger the regeneration of the metadata for a session.
+ * The new metadata overwrite the previous one locally or remotely (through
+ * the lttng-relayd). Only kernel, per-uid and non-live sessions are supported.
+ * Return 0 on success, a negative LTTng error code on error.
+ */
+extern int lttng_metadata_regenerate(const char *session_name);
+
 #ifdef __cplusplus
 }
 #endif

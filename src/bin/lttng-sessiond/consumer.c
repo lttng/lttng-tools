@@ -1259,7 +1259,7 @@ end:
  */
 int consumer_push_metadata(struct consumer_socket *socket,
 		uint64_t metadata_key, char *metadata_str, size_t len,
-		size_t target_offset)
+		size_t target_offset, uint64_t version)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -1275,6 +1275,7 @@ int consumer_push_metadata(struct consumer_socket *socket,
 	msg.u.push_metadata.key = metadata_key;
 	msg.u.push_metadata.target_offset = target_offset;
 	msg.u.push_metadata.len = len;
+	msg.u.push_metadata.version = version;
 
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
