@@ -108,8 +108,7 @@ static void empty_session_list(void)
 	struct ltt_session *iter, *tmp;
 
 	cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
-		cds_list_del(&iter->list);
-		free(iter);
+		session_destroy(iter);
 	}
 
 	/* Session list must be 0 */

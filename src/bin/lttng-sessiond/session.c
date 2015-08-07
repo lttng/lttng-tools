@@ -30,6 +30,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "session.h"
+#include "utils.h"
 
 /*
  * NOTES:
@@ -53,6 +54,9 @@ static struct ltt_session_list ltt_session_list = {
 
 /* These characters are forbidden in a session name. Used by validate_name. */
 static const char *forbidden_name_chars = "/";
+
+/* Global hash table to keep the sessions, indexed by id. */
+static struct lttng_ht *ltt_sessions_ht_by_id = NULL;
 
 /*
  * Validate the session name for forbidden characters.
@@ -138,6 +142,103 @@ void session_unlock_list(void)
 }
 
 /*
+ * Allocate the ltt_sessions_ht_by_id HT.
+ */
+int ltt_sessions_ht_alloc(void)
+{
+	int ret = 0;
+
+	DBG("Allocating ltt_sessions_ht_by_id");
+	ltt_sessions_ht_by_id = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!ltt_sessions_ht_by_id) {
+		ret = -1;
+		ERR("Failed to allocate ltt_sessions_ht_by_id");
+		goto end;
+	}
+end:
+	return ret;
+}
+
+/*
+ * Destroy the ltt_sessions_ht_by_id HT.
+ */
+void ltt_sessions_ht_destroy(void)
+{
+	if (!ltt_sessions_ht_by_id) {
+		return;
+	}
+	ht_cleanup_push(ltt_sessions_ht_by_id);
+	ltt_sessions_ht_by_id = NULL;
+}
+
+/*
+ * Add a ltt_session to the ltt_sessions_ht_by_id.
+ * If unallocated, the ltt_sessions_ht_by_id HT is allocated.
+ * The session list lock must be held.
+ */
+static void add_session_ht(struct ltt_session *ls)
+{
+	int ret;
+
+	assert(ls);
+
+	if (!ltt_sessions_ht_by_id) {
+		ret = ltt_sessions_ht_alloc();
+		if (ret) {
+			ERR("Error allocating the sessions HT");
+			goto end;
+		}
+	}
+	lttng_ht_node_init_u64(&ls->node, ls->id);
+	lttng_ht_add_unique_u64(ltt_sessions_ht_by_id, &ls->node);
+
+end:
+	return;
+}
+
+/*
+ * Test if ltt_sessions_ht_by_id is empty.
+ * Return 1 if empty, 0 if not empty.
+ * The session list lock must be held.
+ */
+static int ltt_sessions_ht_empty()
+{
+	int ret;
+
+	if (!ltt_sessions_ht_by_id) {
+		ret = 1;
+		goto end;
+	}
+
+	ret = lttng_ht_get_count(ltt_sessions_ht_by_id) ? 0 : 1;
+end:
+	return ret;
+}
+
+/*
+ * Remove a ltt_session from the ltt_sessions_ht_by_id.
+ * If empty, the ltt_sessions_ht_by_id HT is freed.
+ * The session list lock must be held.
+ */
+static void del_session_ht(struct ltt_session *ls)
+{
+	struct lttng_ht_iter iter;
+	int ret;
+
+	assert(ls);
+	assert(ltt_sessions_ht_by_id);
+
+	iter.iter.node = &ls->node.node;
+	ret = lttng_ht_del(ltt_sessions_ht_by_id, &iter);
+	assert(!ret);
+
+	if (ltt_sessions_ht_empty()) {
+		DBG("Empty ltt_sessions_ht_by_id, destroying it");
+		ltt_sessions_ht_destroy();
+	}
+}
+
+/*
  * Acquire session lock
  */
 void session_lock(struct ltt_session *session)
@@ -159,7 +260,7 @@ void session_unlock(struct ltt_session *session)
 
 /*
  * Return a ltt_session structure ptr that matches name. If no session found,
- * NULL is returned. This must be called with the session lock held using
+ * NULL is returned. This must be called with the session list lock held using
  * session_lock_list and session_unlock_list.
  */
 struct ltt_session *session_find_by_name(const char *name)
@@ -183,6 +284,32 @@ found:
 }
 
 /*
+ * Return an ltt_session that matches the id. If no session is found,
+ * NULL is returned. This must be called with rcu_read_lock and
+ * session list lock held (to guarantee the lifetime of the session).
+ */
+struct ltt_session *session_find_by_id(uint64_t id)
+{
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+	struct ltt_session *ls;
+
+	lttng_ht_lookup(ltt_sessions_ht_by_id, &id, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
+	if (node == NULL) {
+		goto error;
+	}
+	ls = caa_container_of(node, struct ltt_session, node);
+
+	DBG3("Session %" PRIu64 " found by id.", id);
+	return ls;
+
+error:
+	DBG3("Session %" PRIu64 " NOT found by id", id);
+	return NULL;
+}
+
+/*
  * Delete session from the session list and free the memory.
  *
  * Return -1 if no session is found.  On success, return 1;
@@ -196,6 +323,7 @@ int session_destroy(struct ltt_session *session)
 	DBG("Destroying session %s", session->name);
 	del_session_list(session);
 	pthread_mutex_destroy(&session->lock);
+	del_session_ht(session);
 
 	consumer_output_put(session->consumer);
 	snapshot_destroy(&session->snapshot);
@@ -267,13 +395,19 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	/* Add new session to the session list */
 	session_lock_list();
 	new_session->id = add_session_list(new_session);
+	/*
+	 * Add the new session to the ltt_sessions_ht_by_id.
+	 * No ownership is taken by the hash table; it is merely
+	 * a wrapper around the session list used for faster access
+	 * by session id.
+	 */
+	add_session_ht(new_session);
 	session_unlock_list();
 
 	/*
 	 * Consumer is let to NULL since the create_session_uri command will set it
 	 * up and, if valid, assign it to the session.
 	 */
-
 	DBG("Tracing session %s created with ID %" PRIu64 " by UID %d GID %d",
 			name, new_session->id, new_session->uid, new_session->gid);
 
