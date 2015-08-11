@@ -2002,9 +2002,10 @@ end:
  * Returns 0 on success, else a negative LTTng error code.
  */
 int lttng_list_tracker_pids(struct lttng_handle *handle,
-		int *_enabled, int32_t **_pids, size_t *_nr_pids)
+		uint32_t *_enabled, int32_t **_pids, size_t *_nr_pids)
 {
-	int ret, enabled = 1;
+	int ret;
+	uint32_t enabled = 1;
 	struct lttcomm_session_msg lsm;
 	size_t nr_pids;
 	int32_t *pids;

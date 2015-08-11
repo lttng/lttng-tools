@@ -101,8 +101,8 @@ extern const char * const mi_lttng_context_type_perf_thread_counter;
 extern const char * const mi_lttng_element_perf_counter_context;
 
 /* Strings related to pid */
-extern const char * const mi_lttng_element_pids;
-extern const char * const mi_lttng_element_pid;
+extern const char * const mi_lttng_element_processes;
+extern const char * const mi_lttng_element_process;
 extern const char * const mi_lttng_element_pid_id;
 
 /* Strings related to save command */
@@ -194,6 +194,9 @@ const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type value);
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value);
 const char *mi_lttng_buffertype_string(enum lttng_buffer_type value);
 const char *mi_lttng_calibratetype_string(enum lttng_calibrate_type val);
+
+/* String related to track/untrack command */
+const char * const mi_lttng_element_track_untrack_all_wildcard;
 
 /*
  * Create an instance of a machine interface writer.
@@ -556,6 +559,28 @@ int mi_lttng_event_field(struct mi_writer *writer,
 int mi_lttng_event_fields_open(struct mi_writer *writer);
 
 /*
+ * Machine interface: open a trackers element.
+ *
+ * writer An instance of a machine interface writer.
+ * enabled Tell if the pid tracker is enabled (enabled > 0)
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_trackers_open(struct mi_writer *writer);
+
+/*
+ * Machine interface: open a pid_tracker element.
+ * Note: A targets element is also open per definition of the tracker
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_pid_tracker_open(struct mi_writer *writer);
+
+/*
  * Machine interface: open a PIDs element.
  *
  * writer An instance of a machine interface writer.
@@ -566,7 +591,17 @@ int mi_lttng_event_fields_open(struct mi_writer *writer);
 int mi_lttng_pids_open(struct mi_writer *writer);
 
 /*
- * Machine interface of a PID.
+ * Machine interface: open a processes element.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_processes_open(struct mi_writer *writer);
+
+/*
+ * Machine interface of a Process.
  *
  * writer An instance of a machine interface writer.
  * pid A PID.
@@ -580,8 +615,27 @@ int mi_lttng_pids_open(struct mi_writer *writer);
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_pid(struct mi_writer *writer, pid_t pid , const char *cmdline,
+int mi_lttng_process(struct mi_writer *writer, pid_t pid , const char *name,
 		int is_open);
+/*
+ * Machine interface: open a targets element.
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_targets_open(struct mi_writer *writer);
+
+/*
+ * Machine interface for track/untrack a pid_target
+ *
+ * writer An instance of a machine interface writer.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_pid_target(struct mi_writer *writer, pid_t pid, int is_open);
 
 /*
  * Machine interface for struct lttng_calibrate.
