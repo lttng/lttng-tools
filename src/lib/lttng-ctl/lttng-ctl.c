@@ -1994,10 +1994,10 @@ end:
 /*
  * List PIDs in the tracker.
  *
- * @enabled is set to whether the PID tracker is enabled.
- * @pids is set to an allocated array of PIDs currently tracked. On
- * success, @pids must be freed by the caller.
- * @nr_pids is set to the number of entries contained by the @pids array.
+ * enabled is set to whether the PID tracker is enabled.
+ * pids is set to an allocated array of PIDs currently tracked. On
+ * success, pids must be freed by the caller.
+ * nr_pids is set to the number of entries contained by the pids array.
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
