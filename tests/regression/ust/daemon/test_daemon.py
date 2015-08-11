@@ -47,7 +47,7 @@ daemon_process = subprocess.Popen(test_path + "daemon", stdout=subprocess.PIPE)
 if sys.version_info >= (3, 3):
     try:
         daemon_process_return_code = daemon_process.wait(5)
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         daemon_process.kill()
         daemon_process_return_code = -1
 else:

@@ -52,7 +52,7 @@ exit_fast_process = subprocess.Popen(test_path + "exit-fast", stdout=subprocess.
 if sys.version_info >= (3, 3):
     try:
         exit_fast_process.wait(5)
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         exit_fast_process.kill()
         bail("Failed to run exit-fast test application.")
 else:
@@ -66,7 +66,7 @@ exit_fast_process = subprocess.Popen([test_path + "exit-fast", "suicide"], stdou
 if sys.version_info >= (3, 3):
     try:
         exit_fast_process.wait(5)
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         exit_fast_process.kill()
         bail("Failed to run exit-fast test application in suicide mode.")
 else:
