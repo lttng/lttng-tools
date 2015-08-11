@@ -47,7 +47,7 @@ fork_process = subprocess.Popen([test_path + "fork", test_path + "fork2"], stdou
 if sys.version_info >= (3, 3):
     try:
         fork_process.wait(5)
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         fork_process.kill()
         bail("Failed to run fork test application (time out)", session_info)
 else:

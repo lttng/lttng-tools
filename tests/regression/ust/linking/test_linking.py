@@ -114,7 +114,7 @@ if DYNAMIC_TEST_ENABLED:
     if sys.version_info >= (3 ,3):
         try:
             demo_process.wait(5)
-        except TimeoutExpired:
+        except subprocess.TimeoutExpired:
             demo_process.kill()
             bail("Failed to run demo test application without preloading")
     else:
@@ -140,7 +140,7 @@ for executable in test_executables:
     if sys.version_info >= (3, 3):
         try:
             demo_process.wait(5)
-        except TimeoutExpired:
+        except subprocess.TimeoutExpired:
             demo_process.kill()
             bail("Failed to run {0} test application".format(executable_name))
     else:
