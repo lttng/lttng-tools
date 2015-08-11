@@ -198,11 +198,12 @@ end:
 }
 
 static
-int track_untrack_pid(enum cmd_type cmd_type, const char *cmd_str,
+enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_str,
 		const char *session_name, const char *pid_string,
 		int all, struct mi_writer *writer)
 {
-	int ret, retval = CMD_SUCCESS, success = 1 , i;
+	int ret, success = 1 , i;
+	enum cmd_error_code retval = CMD_SUCCESS;
 	int *pid_list = NULL;
 	int nr_pids;
 	struct lttng_domain dom;
@@ -326,7 +327,8 @@ static
 int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	int opt, ret = 0;
+	enum cmd_error_code command_ret = CMD_SUCCESS;
 	int success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
@@ -334,7 +336,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 
 	if (argc < 1) {
 		usage(stderr, cmd_str);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -355,7 +357,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 			break;
 		default:
 			usage(stderr, cmd_str);
-			ret = CMD_UNDEFINED;
+			command_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
@@ -363,14 +365,14 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	if (!(opt_userspace ^ opt_kernel)) {
 		ERR("Exactly one of -u or -k needs to be specified.");
 		usage(stderr, cmd_str);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
@@ -381,7 +383,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	if (!opt_pid) {
 		ERR("Please specify at least one tracker with its expected arguments");
 		usage(stderr, cmd_str);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -389,7 +391,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -399,7 +401,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		ret = mi_lttng_writer_command_open(writer,
 				get_mi_element_command(cmd_type));
 		if (ret) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
@@ -407,7 +409,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		ret = mi_lttng_writer_open_element(writer,
 				mi_lttng_element_command_output);
 		if (ret) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -415,7 +417,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	command_ret = track_untrack_pid(cmd_type,
 			cmd_str, session_name, opt_pid_string,
 			opt_all, writer);
-	if (command_ret) {
+	if (command_ret != CMD_SUCCESS) {
 		success = 0;
 	}
 
@@ -424,7 +426,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		/* Close  output element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
@@ -432,14 +434,14 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		ret = mi_lttng_writer_write_element_bool(writer,
 				mi_lttng_element_command_success, success);
 		if (ret) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Command element close */
 		ret = mi_lttng_writer_command_close(writer);
 		if (ret) {
-			ret = CMD_ERROR;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -452,14 +454,11 @@ end:
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {
 		/* Preserve original error code */
-		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
+		command_ret = CMD_ERROR;
 	}
 
-	/* Overwrite ret if an error occurred during track() */
-	ret = command_ret ? command_ret : ret;
-
 	poptFreeContext(pc);
-	return ret;
+	return (int) command_ret;
 }
 
 int cmd_track(int argc, const char **argv)
