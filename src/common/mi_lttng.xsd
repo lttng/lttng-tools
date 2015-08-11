@@ -363,7 +363,7 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Map to the save command -->
+	<!-- Maps to the save command -->
 	<xs:complexType name="save_type">
 		<xs:all>
 			<xs:element name="session" type="session_type" />
@@ -371,7 +371,7 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Map to the load command -->
+	<!-- Maps to the load command -->
 	<xs:complexType name="load_type">
 		<xs:all>
 			<xs:element name="session" type="session_type" />
@@ -386,7 +386,7 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Map to lttng_event_perf_counter_ctx -->
+	<!-- Maps to lttng_event_perf_counter_ctx -->
 	<xs:complexType name="perf_counter_context_type">
 		<xs:all>
 			<xs:element name="type" type="uint32_type" />
@@ -395,7 +395,7 @@ THE SOFTWARE.
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Map to lttng_event_context -->
+	<!-- Maps to lttng_event_context -->
 	<xs:complexType name="context_type">
 		<xs:all>
 			<xs:element name="type" type="context_type_type" />
