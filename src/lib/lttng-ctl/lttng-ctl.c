@@ -2003,7 +2003,8 @@ end:
 int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *_enabled, int32_t **_pids, size_t *_nr_pids)
 {
-	int ret, enabled = 1;
+	int ret;
+	int enabled = 1;
 	struct lttcomm_session_msg lsm;
 	size_t nr_pids;
 	int32_t *pids;
