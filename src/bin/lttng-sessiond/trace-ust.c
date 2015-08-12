@@ -655,7 +655,7 @@ int pid_tracker_add_pid(struct ust_pid_tracker *pid_tracker, int pid)
 	tracker_node = pid_tracker_lookup(pid_tracker, pid, &iter);
 	if (tracker_node) {
 		/* Already exists. */
-		retval = LTTNG_ERR_INVALID;
+		retval = LTTNG_ERR_PID_TRACKED;
 		goto end;
 	}
 	tracker_node = zmalloc(sizeof(*tracker_node));
@@ -683,7 +683,7 @@ int pid_tracker_del_pid(struct ust_pid_tracker *pid_tracker, int pid)
 	tracker_node = pid_tracker_lookup(pid_tracker, pid, &iter);
 	if (!tracker_node) {
 		/* Not found */
-		retval = LTTNG_ERR_INVALID;
+		retval = LTTNG_ERR_PID_NOT_TRACKED;
 		goto end;
 	}
 	ret = lttng_ht_del(pid_tracker->ht, &iter);

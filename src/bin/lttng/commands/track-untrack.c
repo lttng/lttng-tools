@@ -261,9 +261,28 @@ enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_st
 		DBG("%s PID %d", cmd_str, pid_list[i]);
 		ret = lib_func(handle, pid_list[i]);
 		if (ret) {
-			success = 0;
-			retval = CMD_ERROR;
+			switch (-ret) {
+			case LTTNG_ERR_PID_TRACKED:
+				WARN("PID %i already tracked in session %s",
+						pid_list[i], session_name);
+				success = 1;
+				retval = CMD_SUCCESS;
+				break;
+			case LTTNG_ERR_PID_NOT_TRACKED:
+				WARN("PID %i not tracked in session %s",
+						pid_list[i], session_name);
+				success = 1;
+				retval = CMD_SUCCESS;
+				break;
+			default:
+				ERR("%s", lttng_strerror(ret));
+				success = 0;
+				retval = CMD_ERROR;
+				break;
+			}
 		} else {
+			MSG("PID %i %sed in session %s",
+					pid_list[i], cmd_str, session_name);
 			success = 1;
 		}
 
