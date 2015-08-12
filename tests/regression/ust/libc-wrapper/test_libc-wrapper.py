@@ -46,7 +46,7 @@ malloc_process = subprocess.Popen(test_path + "prog", stdout=subprocess.PIPE, st
 if sys.version_info >= (3, 3):
     try:
         malloc_process.wait(5)
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         malloc_process.kill()
         bail("Failed to run libustinstr-malloc test application.", session_info)
 else:
