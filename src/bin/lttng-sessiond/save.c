@@ -1409,9 +1409,6 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 		}
 	}
 
-	if (session->ust_session) {
-	}
-
 	/* /domains */
 	ret = config_writer_close_element(writer);
 	if (ret) {
