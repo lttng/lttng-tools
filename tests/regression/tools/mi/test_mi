@@ -59,7 +59,7 @@ DEVNULL=/dev/null 2>&1
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=234
+NUM_TESTS=222
 
 source $TESTDIR/utils/utils.sh
 
@@ -744,21 +744,6 @@ function test_track_untrack ()
 	test "$num" -eq "3"
 	ok $? "Mi test: track pid expecting 3 processes got $num"
 
-	#Retry to enable and look for fail
-	lttng_track_fail "-p $pid -u"
-	$XML_VALIDATE $OUTPUT_DEST
-	ok $? "Mi test: fail track pid xsd validation"
-
-	#Expect a false element
-	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
-	test "$result" = "false"
-	ok $? "Mi test: track pid expected false got $result"
-
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"[./success='false']/pid" result
-	num=$(echo "$result" | wc -l)
-	test "$num" -eq "3"
-	ok $? "Mi test: track pid expecting 3 failed process got $num"
-
 	#Test the pid_tracker listing
 	list_lttng_with_opts $session_name
 	$XML_VALIDATE $OUTPUT_DEST
@@ -785,22 +770,6 @@ function test_track_untrack ()
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: untrack pid expecting 2 process got $num"
-
-	#Retry to untrack and look for fail
-	lttng_untrack_fail "-p 2,3 -u"
-	$XML_VALIDATE $OUTPUT_DEST
-	ok $? "Mi test: fail untrack pid xsd validation"
-
-	#Expect a false element
-	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
-	test "$result" = "false"
-	ok $? "Mi test: untrack pid expected false got $result"
-
-	#Expect 2 failed attempt at untracking
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"[./success='false']/pid" result
-	num=$(echo "$result" | wc -l)
-	test "$num" -eq "2"
-	ok $? "Mi test: untrack pid expecting 2 failed process got $num"
 
 	#Check pid_tracker listing
 	list_lttng_with_opts $session_name
