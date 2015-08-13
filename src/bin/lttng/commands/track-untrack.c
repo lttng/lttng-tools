@@ -208,14 +208,14 @@ enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_st
 	int nr_pids;
 	struct lttng_domain dom;
 	struct lttng_handle *handle = NULL;
-	int (*lib_func)(struct lttng_handle *handle, int pid);
+	int (*cmd_func)(struct lttng_handle *handle, int pid);
 
 	switch (cmd_type) {
 	case CMD_TRACK:
-		lib_func = lttng_track_pid;
+		cmd_func = lttng_track_pid;
 		break;
 	case CMD_UNTRACK:
-		lib_func = lttng_untrack_pid;
+		cmd_func = lttng_untrack_pid;
 		break;
 	default:
 		ERR("Unknown command");
@@ -259,7 +259,7 @@ enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_st
 
 	for (i = 0; i < nr_pids; i++) {
 		DBG("%s PID %d", cmd_str, pid_list[i]);
-		ret = lib_func(handle, pid_list[i]);
+		ret = cmd_func(handle, pid_list[i]);
 		if (ret) {
 			switch (-ret) {
 			case LTTNG_ERR_PID_TRACKED:
