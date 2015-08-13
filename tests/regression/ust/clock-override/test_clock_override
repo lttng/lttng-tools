@@ -23,7 +23,6 @@ SESSION_NAME="clock_override"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
-TESTAPP_WRAPPER="run-getcpu-override"
 NUM_EVENT=256
 EVENT_NAME="tp:tptest"
 LTTNG_UST_CLOCK_PLUGIN_SO="lttng-ust-clock-override-test.so"
@@ -147,11 +146,11 @@ function test_getcpu_override_timestamp()
 	diag "Plugin enabled"
 	export LTTNG_UST_CLOCK_PLUGIN=$CURDIR/.libs/$LTTNG_UST_CLOCK_PLUGIN_SO
 	start_lttng_sessiond
-	unset LTTNG_UST_CLOCK_PLUGIN
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
 	start_lttng_tracing_ok $SESSION_NAME
 	run_app
+	unset LTTNG_UST_CLOCK_PLUGIN
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
