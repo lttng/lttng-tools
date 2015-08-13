@@ -19,8 +19,8 @@ if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
 lttng_ust_clock_override_test_la_LIBADD = -lc
 endif
 
-noinst_SCRIPTS = test_clock_override run-clock-override
-EXTRA_DIST = test_clock_override run-clock-override
+noinst_SCRIPTS = test_clock_override
+EXTRA_DIST = test_clock_override
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
