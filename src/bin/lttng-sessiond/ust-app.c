@@ -1376,7 +1376,10 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret < 0) {
+	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+		ret = -ENOTCONN;	/* Caused by app exiting. */
+		goto error;
+	} else if (ret < 0) {
 		goto error;
 	}
 
@@ -1385,7 +1388,10 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 	/* Send all streams to application. */
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
-		if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			ret = -ENOTCONN;	/* Caused by app exiting. */
+			goto error;
+		} else if (ret < 0) {
 			goto error;
 		}
 		/* We don't need the stream anymore once sent to the tracer. */
@@ -2517,7 +2523,10 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret < 0) {
+	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+		ret = -ENOTCONN;	/* Caused by app exiting. */
+		goto error;
+	} else if (ret < 0) {
 		goto error;
 	}
 
@@ -2536,6 +2545,12 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &stream);
 		if (ret < 0) {
 			(void) release_ust_app_stream(-1, &stream);
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				ret = -ENOTCONN; /* Caused by app exiting. */
+				goto error;
+			} else if (ret < 0) {
+				goto error;
+			}
 			goto error_stream_unlock;
 		}
 
@@ -2629,10 +2644,9 @@ static int create_channel_per_uid(struct ust_app *app,
 	/* Send buffers to the application. */
 	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
 	if (ret < 0) {
-		/*
-		 * Don't report error to the console, since it may be
-		 * caused by application concurrently exiting.
-		 */
+		if (ret != -ENOTCONN) {
+			ERR("Error sending channel to application");
+		}
 		goto error;
 	}
 
@@ -2683,10 +2697,9 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	ret = send_channel_pid_to_ust(app, ua_sess, ua_chan);
 	if (ret < 0) {
-		/*
-		 * Don't report error to the console, since it may be
-		 * caused by application concurrently exiting.
-		 */
+		if (ret != -ENOTCONN) {
+			ERR("Error sending channel to application");
+		}
 		goto error;
 	}
 
@@ -2700,7 +2713,8 @@ error:
  * need and send it to the application. This MUST be called with a RCU read
  * side lock acquired.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or else a negative value. Returns -ENOTCONN if
+ * the application exited concurrently.
  */
 static int do_create_channel(struct ust_app *app,
 		struct ltt_ust_session *usess, struct ust_app_session *ua_sess,
@@ -2759,7 +2773,8 @@ error:
  *
  * Called with UST app session lock and RCU read-side lock held.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or else a negative value. Returns -ENOTCONN if
+ * the application exited concurrently.
  */
 static int create_ust_app_channel(struct ust_app_session *ua_sess,
 		struct ltt_ust_channel *uchan, struct ust_app *app,
@@ -3760,6 +3775,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 				 * or a timeout on it. We can't inform the caller that for a
 				 * specific app, the session failed so lets continue here.
 				 */
+				ret = 0;	/* Not an error. */
 				continue;
 			case -ENOMEM:
 			default:
@@ -3786,13 +3802,23 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		}
 		pthread_mutex_unlock(&ua_sess->lock);
 		if (ret < 0) {
-			if (ret == -ENOMEM) {
-				/* No more memory is a fatal error. Stop right now. */
-				goto error_rcu_unlock;
-			}
 			/* Cleanup the created session if it's the case. */
 			if (created) {
 				destroy_app_session(app, ua_sess);
+			}
+			switch (ret) {
+			case -ENOTCONN:
+				/*
+				 * The application's socket is not valid. Either a bad socket
+				 * or a timeout on it. We can't inform the caller that for a
+				 * specific app, the session failed so lets continue here.
+				 */
+				ret = 0;	/* Not an error. */
+				continue;
+			case -ENOMEM:
+			default:
+
+				goto error_rcu_unlock;
 			}
 		}
 	}
@@ -3924,8 +3950,15 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
-		/* If the channel is not found, there is a code flow error */
-		assert(ua_chan_node);
+		/*
+		 * It is possible that the channel cannot be found is
+		 * the channel/event creation occurs concurrently with
+		 * an application exit.
+		 */
+		if (!ua_chan_node) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
@@ -4442,11 +4475,14 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
 		ret = do_create_channel(app, usess, ua_sess, ua_chan);
-		if (ret < 0) {
+		if (ret < 0 && ret != -ENOTCONN) {
 			/*
-			 * Stop everything. On error, the application failed, no more
-			 * file descriptor are available or ENOMEM so stopping here is
-			 * the only thing we can do for now.
+			 * Stop everything. On error, the application
+			 * failed, no more file descriptor are available
+			 * or ENOMEM so stopping here is the only thing
+			 * we can do for now. The only exception is
+			 * -ENOTCONN, which indicates that the application
+			 * has exit.
 			 */
 			goto error_unlock;
 		}
