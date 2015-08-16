@@ -677,6 +677,9 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	assert(!ua_sess->deleted);
+	ua_sess->deleted = true;
+
 	registry = get_session_registry(ua_sess);
 	if (registry) {
 		/* Push metadata for application before freeing the application. */
@@ -3228,6 +3231,11 @@ void ust_app_unregister(int sock)
 		 */
 		pthread_mutex_lock(&ua_sess->lock);
 
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		/*
 		 * Normally, this is done in the delete session process which is
 		 * executed in the call rcu below. However, upon registration we can't
@@ -3820,6 +3828,12 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		assert(ua_sess);
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		if (!strncmp(uchan->name, DEFAULT_METADATA_NAME,
 					sizeof(uchan->name))) {
 			copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
@@ -3889,6 +3903,11 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 		pthread_mutex_lock(&ua_sess->lock);
 
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
@@ -3955,6 +3974,12 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		}
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
@@ -4005,6 +4030,11 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	pthread_mutex_lock(&ua_sess->lock);
+
+	if (ua_sess->deleted) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end;
+	}
 
 	/* Upon restart, we skip the setup, already done */
 	if (ua_sess->started) {
@@ -4106,6 +4136,11 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end_no_session;
+	}
+
 	/*
 	 * If started = 0, it means that stop trace has been called for a session
 	 * that was never started. It's possible since we can have a fail start
@@ -4186,6 +4221,10 @@ int ust_app_flush_app_session(struct ust_app *app,
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		goto end_deleted;
+	}
+
 	health_code_update();
 
 	/* Flushing buffers */
@@ -4215,6 +4254,7 @@ int ust_app_flush_app_session(struct ust_app *app,
 
 	health_code_update();
 
+end_deleted:
 	pthread_mutex_unlock(&ua_sess->lock);
 
 end_not_compatible:
@@ -4448,6 +4488,11 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end;
+	}
+
 	/*
 	 * We can iterate safely here over all UST app session since the create ust
 	 * app session above made a shadow copy of the UST global domain from the
@@ -4590,6 +4635,12 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		}
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
@@ -4648,6 +4699,12 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 	}
 
 	pthread_mutex_lock(&ua_sess->lock);
+
+	if (ua_sess->deleted) {
+		ret = 0;
+		goto end_unlock;
+	}
+
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
