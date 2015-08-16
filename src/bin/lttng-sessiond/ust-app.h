@@ -183,6 +183,8 @@ struct ust_app_session {
 	int started;  /* allows detection of start vs restart. */
 	int handle;   /* used has unique identifier for app session */
 
+	bool deleted;	/* Session deleted flag. Check with lock held. */
+
 	/*
 	 * Tracing session ID. Multiple ust app session can have the same tracing
 	 * session id making this value NOT unique to the object.
