@@ -2153,6 +2153,10 @@ static void *thread_registration_apps(void *data)
 					ust_cmd = zmalloc(sizeof(struct ust_command));
 					if (ust_cmd == NULL) {
 						PERROR("ust command zmalloc");
+						ret = close(sock);
+						if (ret) {
+							PERROR("close");
+						}
 						goto error;
 					}
 
