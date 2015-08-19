@@ -722,6 +722,8 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	}
 	pthread_mutex_unlock(&ua_sess->lock);
 
+	consumer_output_put(ua_sess->consumer);
+
 	call_rcu(&ua_sess->rcu_head, delete_ust_app_session_rcu);
 }
 
@@ -1626,8 +1628,11 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->egid = usess->gid;
 	ua_sess->buffer_type = usess->buffer_type;
 	ua_sess->bits_per_long = app->bits_per_long;
+
 	/* There is only one consumer object per session possible. */
+	consumer_output_get(usess->consumer);
 	ua_sess->consumer = usess->consumer;
+
 	ua_sess->output_traces = usess->output_traces;
 	ua_sess->live_timer_interval = usess->live_timer_interval;
 	copy_channel_attr_to_ustctl(&ua_sess->metadata_attr,
@@ -1714,9 +1719,10 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 	}
+	return;
 
 error:
-	return;
+	consumer_output_put(ua_sess->consumer);
 }
 
 /*
