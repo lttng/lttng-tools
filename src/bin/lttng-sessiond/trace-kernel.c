@@ -108,14 +108,6 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 		goto error;
 	}
 
-	/*
-	 * The tmp_consumer stays NULL until a set_consumer_uri command is
-	 * executed. At this point, the consumer should be nullify until an
-	 * enable_consumer command. This assignment is symbolic since we've zmalloc
-	 * the struct.
-	 */
-	lks->tmp_consumer = NULL;
-
 	return lks;
 
 error:
@@ -515,8 +507,7 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	}
 
 	/* Wipe consumer output object */
-	consumer_destroy_output(session->consumer);
-	consumer_destroy_output(session->tmp_consumer);
+	consumer_output_put(session->consumer);
 
 	free(session);
 }

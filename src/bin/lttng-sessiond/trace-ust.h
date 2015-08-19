@@ -85,14 +85,7 @@ struct ltt_ust_session {
 	gid_t gid;
 	/* Is the session active meaning has is been started or stopped. */
 	unsigned int active:1;
-	/*
-	 * Two consumer_output object are needed where one is for the current
-	 * output object and the second one is the temporary object used to store
-	 * URI being set by the lttng_set_consumer_uri call. Once
-	 * lttng_enable_consumer is called, the two pointers are swapped.
-	 */
 	struct consumer_output *consumer;
-	struct consumer_output *tmp_consumer;
 	/* Sequence number for filters so the tracer knows the ordering. */
 	uint64_t filter_seq_num;
 	/* This indicates which type of buffer this session is set for. */

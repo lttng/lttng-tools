@@ -222,7 +222,7 @@ void snapshot_output_destroy(struct snapshot_output *obj)
 
 	if (obj->consumer) {
 		consumer_output_send_destroy_relayd(obj->consumer);
-		consumer_destroy_output(obj->consumer);
+		consumer_output_put(obj->consumer);
 	}
 	free(obj);
 }

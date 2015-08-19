@@ -195,7 +195,7 @@ int session_destroy(struct ltt_session *session)
 	del_session_list(session);
 	pthread_mutex_destroy(&session->lock);
 
-	consumer_destroy_output(session->consumer);
+	consumer_output_put(session->consumer);
 	snapshot_destroy(&session->snapshot);
 	free(session);
 
