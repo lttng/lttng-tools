@@ -2713,7 +2713,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		 * domain.
 		 */
 		if (session->kernel_session->consumer) {
-			consumer_destroy_output(session->kernel_session->consumer);
+			consumer_output_put(session->kernel_session->consumer);
 		}
 		session->kernel_session->consumer =
 			consumer_copy_output(session->consumer);
@@ -2727,7 +2727,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
 		if (session->ust_session->consumer) {
-			consumer_destroy_output(session->ust_session->consumer);
+			consumer_output_put(session->ust_session->consumer);
 		}
 		session->ust_session->consumer =
 			consumer_copy_output(session->consumer);

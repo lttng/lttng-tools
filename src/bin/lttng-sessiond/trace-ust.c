@@ -283,14 +283,6 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 		goto error_consumer;
 	}
 
-	/*
-	 * The tmp_consumer stays NULL until a set_consumer_uri command is
-	 * executed. At this point, the consumer should be nullify until an
-	 * enable_consumer command. This assignment is symbolic since we've zmalloc
-	 * the struct.
-	 */
-	lus->tmp_consumer = NULL;
-
 	DBG2("UST trace session create successful");
 
 	return lus;
@@ -1072,8 +1064,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 		buffer_reg_uid_destroy(reg, session->consumer);
 	}
 
-	consumer_destroy_output(session->consumer);
-	consumer_destroy_output(session->tmp_consumer);
+	consumer_output_put(session->consumer);
 
 	fini_pid_tracker(&session->pid_tracker);
 
