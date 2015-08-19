@@ -103,14 +103,7 @@ struct ltt_kernel_session {
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
-	/*
-	 * Two consumer_output object are needed where one is needed for the
-	 * current output object and the second one is the temporary object used to
-	 * store URI being set by the lttng_set_consumer_uri call. Once
-	 * lttng_enable_consumer is called, the two pointers are swapped.
-	 */
 	struct consumer_output *consumer;
-	struct consumer_output *tmp_consumer;
 	/* Tracing session id */
 	uint64_t id;
 	/* Session is active or not meaning it has been started or stopped. */
