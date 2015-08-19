@@ -1353,7 +1353,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		ret = run_as_mkdir_recursive(msg.u.snapshot_channel.pathname,
 				S_IRWXU | S_IRWXG, uid, gid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error;
 			}
