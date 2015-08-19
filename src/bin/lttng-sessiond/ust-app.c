@@ -2553,9 +2553,9 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 			(void) release_ust_app_stream(-1, &stream);
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				ret = -ENOTCONN; /* Caused by app exiting. */
-				goto error;
+				goto error_stream_unlock;
 			} else if (ret < 0) {
-				goto error;
+				goto error_stream_unlock;
 			}
 			goto error_stream_unlock;
 		}
