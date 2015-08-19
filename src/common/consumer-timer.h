@@ -55,4 +55,7 @@ void consumer_signal_init(void);
 int consumer_flush_kernel_index(struct lttng_consumer_stream *stream);
 int consumer_flush_ust_index(struct lttng_consumer_stream *stream);
 
+int consumer_flush_kernel_index(struct lttng_consumer_stream *stream);
+int consumer_flush_ust_index(struct lttng_consumer_stream *stream);
+
 #endif /* CONSUMER_TIMER_H */
