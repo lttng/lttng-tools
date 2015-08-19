@@ -1217,7 +1217,22 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		/*
 		 * In live, block until all the metadata is sent.
 		 */
+		pthread_mutex_lock(&stream->metadata_timer_lock);
+		assert(!stream->missed_metadata_flush);
+		stream->waiting_on_metadata = true;
+		pthread_mutex_unlock(&stream->metadata_timer_lock);
+
 		err = consumer_stream_sync_metadata(ctx, stream->session_id);
+
+		pthread_mutex_lock(&stream->metadata_timer_lock);
+		stream->waiting_on_metadata = false;
+		if (stream->missed_metadata_flush) {
+			stream->missed_metadata_flush = false;
+			pthread_mutex_unlock(&stream->metadata_timer_lock);
+			(void) consumer_flush_kernel_index(stream);
+		} else {
+			pthread_mutex_unlock(&stream->metadata_timer_lock);
+		}
 		if (err < 0) {
 			goto end;
 		}

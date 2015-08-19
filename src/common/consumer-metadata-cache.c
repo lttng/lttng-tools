@@ -72,8 +72,8 @@ end:
 
 /*
  * Write metadata to the cache, extend the cache if necessary. We support
- * non-contiguous updates but not overlapping ones. If there is contiguous
- * metadata in the cache, we send it to the ring buffer. The metadata cache
+ * overlapping updates, but they need to be contiguous. Send the
+ * contiguous metadata in cache to the ring buffer. The metadata cache
  * lock MUST be acquired to write in the cache.
  *
  * Return 0 on success, a negative value on error.
@@ -101,15 +101,10 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 	}
 
 	memcpy(cache->data + offset, data, len);
-	cache->total_bytes_written += len;
 	if (offset + len > cache->max_offset) {
-		cache->max_offset = offset + len;
-	}
-
-	if (cache->max_offset == cache->total_bytes_written) {
 		char dummy = 'c';
 
-		cache->contiguous = cache->max_offset;
+		cache->max_offset = offset + len;
 		if (channel->monitor) {
 			size_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
 					&dummy, 1);

@@ -439,17 +439,20 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 {
 	int ret;
 	char *metadata_str = NULL;
-	size_t len, offset;
+	size_t len, offset, new_metadata_len_sent;
 	ssize_t ret_val;
+	uint64_t metadata_key;
 
 	assert(registry);
 	assert(socket);
+
+	metadata_key = registry->metadata_key;
 
 	/*
 	 * Means that no metadata was assigned to the session. This can
 	 * happens if no start has been done previously.
 	 */
-	if (!registry->metadata_key) {
+	if (!metadata_key) {
 		return 0;
 	}
 
@@ -467,6 +470,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 
 	offset = registry->metadata_len_sent;
 	len = registry->metadata_len - registry->metadata_len_sent;
+	new_metadata_len_sent = registry->metadata_len;
 	if (len == 0) {
 		DBG3("No metadata to push for metadata key %" PRIu64,
 				registry->metadata_key);
@@ -485,13 +489,26 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		ret_val = -ENOMEM;
 		goto error;
 	}
-	/* Copy what we haven't send out. */
+	/* Copy what we haven't sent out. */
 	memcpy(metadata_str, registry->metadata + offset, len);
-	registry->metadata_len_sent += len;
 
 push_data:
-	ret = consumer_push_metadata(socket, registry->metadata_key,
+	pthread_mutex_unlock(&registry->lock);
+	/*
+	 * We need to unlock the registry while we push metadata to
+	 * break a circular dependency between the consumerd metadata
+	 * lock and the sessiond registry lock. Indeed, pushing metadata
+	 * to the consumerd awaits that it gets pushed all the way to
+	 * relayd, but doing so requires grabbing the metadata lock. If
+	 * a concurrent metadata request is being performed by
+	 * consumerd, this can try to grab the registry lock on the
+	 * sessiond while holding the metadata lock on the consumer
+	 * daemon. Those push and pull schemes are performed on two
+	 * different bidirectionnal communication sockets.
+	 */
+	ret = consumer_push_metadata(socket, metadata_key,
 			metadata_str, len, offset);
+	pthread_mutex_lock(&registry->lock);
 	if (ret < 0) {
 		/*
 		 * There is an acceptable race here between the registry
@@ -509,17 +526,29 @@ push_data:
 		 */
 		if (ret == -LTTCOMM_CONSUMERD_CHANNEL_FAIL) {
 			ret = 0;
+		} else {
+			ERR("Error pushing metadata to consumer");
 		}
-
-		/*
-		 * Update back the actual metadata len sent since it
-		 * failed here.
-		 */
-		registry->metadata_len_sent -= len;
 		ret_val = ret;
 		goto error_push;
+	} else {
+		/*
+		 * Metadata may have been concurrently pushed, since
+		 * we're not holding the registry lock while pushing to
+		 * consumer.  This is handled by the fact that we send
+		 * the metadata content, size, and the offset at which
+		 * that metadata belongs. This may arrive out of order
+		 * on the consumer side, and the consumer is able to
+		 * deal with overlapping fragments. The consumer
+		 * supports overlapping fragments, which must be
+		 * contiguous starting from offset 0. We keep the
+		 * largest metadata_len_sent value of the concurrent
+		 * send.
+		 */
+		registry->metadata_len_sent =
+			max_t(size_t, registry->metadata_len_sent,
+				new_metadata_len_sent);
 	}
-
 	free(metadata_str);
 	return len;
 

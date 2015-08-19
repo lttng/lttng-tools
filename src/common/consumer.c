@@ -562,6 +562,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
 	stream->index_fd = -1;
 	pthread_mutex_init(&stream->lock, NULL);
+	pthread_mutex_init(&stream->metadata_timer_lock, NULL);
 
 	/* If channel is the metadata, flag this stream as metadata. */
 	if (type == CONSUMER_CHANNEL_TYPE_METADATA) {
