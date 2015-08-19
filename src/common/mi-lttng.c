@@ -395,6 +395,8 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 		return config_domain_type_jul;
 	case LTTNG_DOMAIN_LOG4J:
 		return config_domain_type_log4j;
+	case LTTNG_DOMAIN_PYTHON:
+		return config_domain_type_python;
 	default:
 		/* Should not have an unknown domain */
 		assert(0);
