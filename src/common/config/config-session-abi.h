@@ -77,6 +77,7 @@ extern const char * const config_domain_type_kernel;
 extern const char * const config_domain_type_ust;
 extern const char * const config_domain_type_jul;
 extern const char * const config_domain_type_log4j;
+extern const char * const config_domain_type_python;
 
 extern const char * const config_buffer_type_per_pid;
 extern const char * const config_buffer_type_per_uid;
