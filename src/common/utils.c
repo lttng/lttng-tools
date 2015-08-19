@@ -754,10 +754,6 @@ int utils_unlink_stream_file(const char *path_name, char *file_name, uint64_t si
 		ret = unlink(path);
 	} else {
 		ret = run_as_unlink(path, uid, gid);
-		if (ret < 0) {
-			errno = -ret;
-			ret = -1;
-		}
 	}
 	if (ret < 0) {
 		goto error;

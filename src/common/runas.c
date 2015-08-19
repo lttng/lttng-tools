@@ -81,6 +81,11 @@ struct run_as_unlink_data {
 	const char *path;
 };
 
+struct run_as_ret {
+	int ret;
+	int _errno;
+};
+
 #ifdef VALGRIND
 static
 int use_clone(void)
@@ -118,36 +123,25 @@ int _mkdir_recursive(void *_data)
 static
 int _mkdir(void *_data)
 {
-	int ret;
 	struct run_as_mkdir_data *data = _data;
 
-	ret = mkdir(data->path, data->mode);
-	if (ret < 0) {
-		ret = -errno;
-	}
-
-	return ret;
+	return mkdir(data->path, data->mode);
 }
 
 static
 int _open(void *_data)
 {
 	struct run_as_open_data *data = _data;
+
 	return open(data->path, data->flags, data->mode);
 }
 
 static
 int _unlink(void *_data)
 {
-	int ret;
 	struct run_as_unlink_data *data = _data;
 
-	ret = unlink(data->path);
-	if (ret < 0) {
-		ret = -errno;
-	}
-
-	return ret;
+	return unlink(data->path);
 }
 
 static
@@ -156,7 +150,7 @@ int child_run_as(void *_data)
 	int ret;
 	struct run_as_data *data = _data;
 	ssize_t writelen;
-	int sendret;
+	struct run_as_ret sendret;
 
 	/*
 	 * Child: it is safe to drop egid and euid while sharing the
@@ -169,7 +163,6 @@ int child_run_as(void *_data)
 		ret = setegid(data->gid);
 		if (ret < 0) {
 			PERROR("setegid");
-			sendret = -1;
 			goto write_return;
 		}
 	}
@@ -177,7 +170,6 @@ int child_run_as(void *_data)
 		ret = seteuid(data->uid);
 		if (ret < 0) {
 			PERROR("seteuid");
-			sendret = -1;
 			goto write_return;
 		}
 	}
@@ -185,9 +177,11 @@ int child_run_as(void *_data)
 	 * Also set umask to 0 for mkdir executable bit.
 	 */
 	umask(0);
-	sendret = (*data->cmd)(data->data);
+	ret = (*data->cmd)(data->data);
 
 write_return:
+	sendret.ret = ret;
+	sendret._errno = errno;
 	/* send back return value */
 	writelen = lttng_write(data->retval_pipe, &sendret, sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
@@ -208,23 +202,26 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	pid_t pid;
 	int retval_pipe[2];
 	void *child_stack;
-	int retval;
+	struct run_as_ret recvret;
 
 	/*
 	 * If we are non-root, we can only deal with our own uid.
 	 */
 	if (geteuid() != 0) {
 		if (uid != geteuid()) {
+			recvret.ret = -1;
+			recvret._errno = EPERM;
 			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
 				uid, geteuid());
-			return -EPERM;
+			goto end;
 		}
 	}
 
 	ret = pipe(retval_pipe);
 	if (ret < 0) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 		PERROR("pipe");
-		retval = ret;
 		goto end;
 	}
 	run_as_data.data = data;
@@ -237,8 +234,9 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | LTTNG_MAP_STACK,
 		-1, 0);
 	if (child_stack == MAP_FAILED) {
+		recvret.ret = -1;
+		recvret._errno = ENOMEM;
 		PERROR("mmap");
-		retval = -ENOMEM;
 		goto close_pipe;
 	}
 	/*
@@ -248,14 +246,16 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	pid = lttng_clone_files(child_run_as, child_stack + (RUNAS_CHILD_STACK_SIZE / 2),
 		&run_as_data);
 	if (pid < 0) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 		PERROR("clone");
-		retval = pid;
 		goto unmap_stack;
 	}
 	/* receive return value */
-	readlen = lttng_read(retval_pipe[0], &retval, sizeof(retval));
-	if (readlen < sizeof(retval)) {
-		ret = -1;
+	readlen = lttng_read(retval_pipe[0], &recvret, sizeof(recvret));
+	if (readlen < sizeof(recvret)) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 	}
 
 	/*
@@ -264,26 +264,33 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 	 */
 	pid = waitpid(pid, &status, 0);
 	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 		PERROR("wait");
-		retval = -1;
 	}
 unmap_stack:
 	ret = munmap(child_stack, RUNAS_CHILD_STACK_SIZE);
 	if (ret < 0) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 		PERROR("munmap");
-		retval = ret;
 	}
 close_pipe:
 	ret = close(retval_pipe[0]);
 	if (ret) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 		PERROR("close");
 	}
 	ret = close(retval_pipe[1]);
 	if (ret) {
+		recvret.ret = -1;
+		recvret._errno = errno;
 		PERROR("close");
 	}
 end:
-	return retval;
+	errno = recvret._errno;
+	return recvret.ret;
 }
 
 /*
@@ -294,12 +301,14 @@ end:
 static
 int run_as_noclone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 {
-	int ret;
+	int ret, saved_errno;
 	mode_t old_mask;
 
 	old_mask = umask(0);
 	ret = cmd(data);
+	saved_errno = errno;
 	umask(old_mask);
+	errno = saved_errno;
 
 	return ret;
 }

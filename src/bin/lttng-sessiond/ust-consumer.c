@@ -72,7 +72,7 @@ static char *setup_trace_path(struct consumer_output *consumer,
 		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG,
 				ua_sess->euid, ua_sess->egid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error;
 			}
