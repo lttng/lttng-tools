@@ -53,7 +53,7 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 	/* Create index directory if necessary. */
 	ret = utils_mkdir(fullpath, S_IRWXU | S_IRWXG, uid, gid);
 	if (ret < 0) {
-		if (ret != -EEXIST) {
+		if (errno != EEXIST) {
 			PERROR("Index trace directory creation error");
 			goto error;
 		}

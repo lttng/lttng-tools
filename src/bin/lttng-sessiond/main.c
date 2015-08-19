@@ -2847,7 +2847,7 @@ static int create_kernel_session(struct ltt_session *session)
 				session->kernel_session->consumer->dst.trace_path,
 				S_IRWXU | S_IRWXG, session->uid, session->gid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error;
 			}

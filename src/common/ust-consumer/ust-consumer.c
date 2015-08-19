@@ -504,7 +504,6 @@ error_open:
 			closeret = run_as_unlink(shm_path,
 					channel->uid, channel->gid);
 			if (closeret) {
-				errno = -closeret;
 				PERROR("unlink %s", shm_path);
 			}
 		}
@@ -1835,7 +1834,6 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 			}
 			ret = run_as_unlink(shm_path, chan->uid, chan->gid);
 			if (ret) {
-				errno = -ret;
 				PERROR("unlink %s", shm_path);
 			}
 		}

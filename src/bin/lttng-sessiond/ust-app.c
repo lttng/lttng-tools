@@ -4085,7 +4085,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		ret = run_as_mkdir_recursive(usess->consumer->dst.trace_path,
 				S_IRWXU | S_IRWXG, ua_sess->euid, ua_sess->egid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error_unlock;
 			}
