@@ -2456,6 +2456,10 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 
 	if (session->kernel_session != NULL) {
 		(*domains)[index].type = LTTNG_DOMAIN_KERNEL;
+
+		/* Kernel session buffer type is always GLOBAL */
+		(*domains)[index].buf_type = LTTNG_BUFFER_GLOBAL;
+
 		index++;
 	}
 
