@@ -860,6 +860,8 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	session->uid = euid;
 	session->gid = egid;
 	session->next_enum_id = 0;
+	session->major = major;
+	session->minor = minor;
 	strncpy(session->root_shm_path, root_shm_path,
 		sizeof(session->root_shm_path));
 	session->root_shm_path[sizeof(session->root_shm_path) - 1] = '\0';

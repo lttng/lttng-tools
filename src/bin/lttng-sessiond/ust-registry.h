@@ -96,6 +96,13 @@ struct ust_registry_session {
 
 	/* Enumerations table. */
 	struct lttng_ht *enums;
+
+	/*
+	 * Copy of the tracer version when the first app is registered.
+	 * It is used if we need to regenerate the metadata.
+	 */
+	uint32_t major;
+	uint32_t minor;
 };
 
 struct ust_registry_channel {
