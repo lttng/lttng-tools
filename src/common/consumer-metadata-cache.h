@@ -25,19 +25,11 @@ struct consumer_metadata_cache {
 	char *data;
 	uint64_t cache_alloc_size;
 	/*
-	 * How many bytes from the cache are written contiguously.
-	 */
-	uint64_t contiguous;
-	/*
-	 * How many bytes are written in the buffer (excluding the wholes).
-	 */
-	uint64_t total_bytes_written;
-	/*
 	 * The upper-limit of data written inside the buffer.
 	 *
 	 * With the total_bytes_written it allows us to keep track of when the
 	 * cache contains contiguous metadata ready to be sent to the RB.
-	 * The metadata cache updates must not overlap.
+	 * All cached data is contiguous.
 	 */
 	uint64_t max_offset;
 	/*

@@ -504,7 +504,6 @@ error_open:
 			closeret = run_as_unlink(shm_path,
 					channel->uid, channel->gid);
 			if (closeret) {
-				errno = -closeret;
 				PERROR("unlink %s", shm_path);
 			}
 		}
@@ -1168,7 +1167,12 @@ error:
 }
 
 /*
- * Receive the metadata updates from the sessiond.
+ * Receive the metadata updates from the sessiond. Supports receiving
+ * overlapping metadata, but is needs to always belong to a contiguous
+ * range starting from 0.
+ * Be careful about the locks held when calling this function: it needs
+ * the metadata cache flush to concurrently progress in order to
+ * complete.
  */
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		uint64_t len, struct lttng_consumer_channel *channel,
@@ -1582,6 +1586,15 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
+		if (!len) {
+			/*
+			 * There is nothing to receive. We have simply
+			 * checked whether the channel can be found.
+			 */
+			ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+			goto end_msg_sessiond;
+		}
+
 		/* Tell session daemon we are ready to receive the metadata. */
 		ret = consumer_send_status_msg(sock, LTTCOMM_CONSUMERD_SUCCESS);
 		if (ret < 0) {
@@ -1835,7 +1848,6 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 			}
 			ret = run_as_unlink(shm_path, chan->uid, chan->gid);
 			if (ret) {
-				errno = -ret;
 				PERROR("unlink %s", shm_path);
 			}
 		}
@@ -1944,7 +1956,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	int ret;
 
 	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-	if (stream->chan->metadata_cache->contiguous
+	if (stream->chan->metadata_cache->max_offset
 			== stream->ust_metadata_pushed) {
 		ret = 0;
 		goto end;
@@ -1952,7 +1964,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 
 	write_len = ustctl_write_one_packet_to_channel(stream->chan->uchan,
 			&stream->chan->metadata_cache->data[stream->ust_metadata_pushed],
-			stream->chan->metadata_cache->contiguous
+			stream->chan->metadata_cache->max_offset
 			- stream->ust_metadata_pushed);
 	assert(write_len != 0);
 	if (write_len < 0) {
@@ -1962,7 +1974,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	}
 	stream->ust_metadata_pushed += write_len;
 
-	assert(stream->chan->metadata_cache->contiguous >=
+	assert(stream->chan->metadata_cache->max_offset >=
 			stream->ust_metadata_pushed);
 	ret = write_len;
 
@@ -1976,7 +1988,9 @@ end:
  * Sync metadata meaning request them to the session daemon and snapshot to the
  * metadata thread can consumer them.
  *
- * Metadata stream lock MUST be acquired.
+ * Metadata stream lock is held here, but we need to release it when
+ * interacting with sessiond, else we cause a deadlock with live
+ * awaiting on metadata to be pushed out.
  *
  * Return 0 if new metadatda is available, EAGAIN if the metadata stream
  * is empty or a negative value on error.
@@ -1990,6 +2004,7 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 	assert(ctx);
 	assert(metadata);
 
+	pthread_mutex_unlock(&metadata->lock);
 	/*
 	 * Request metadata from the sessiond, but don't wait for the flush
 	 * because we locked the metadata thread.
@@ -1998,6 +2013,7 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 	if (ret < 0) {
 		goto end;
 	}
+	pthread_mutex_lock(&metadata->lock);
 
 	ret = commit_one_metadata_packet(metadata);
 	if (ret <= 0) {
@@ -2224,7 +2240,23 @@ retry:
 		/*
 		 * In live, block until all the metadata is sent.
 		 */
+		pthread_mutex_lock(&stream->metadata_timer_lock);
+		assert(!stream->missed_metadata_flush);
+		stream->waiting_on_metadata = true;
+		pthread_mutex_unlock(&stream->metadata_timer_lock);
+
 		err = consumer_stream_sync_metadata(ctx, stream->session_id);
+
+		pthread_mutex_lock(&stream->metadata_timer_lock);
+		stream->waiting_on_metadata = false;
+		if (stream->missed_metadata_flush) {
+			stream->missed_metadata_flush = false;
+			pthread_mutex_unlock(&stream->metadata_timer_lock);
+			lttng_ustconsumer_flush_buffer(stream, 1);
+		} else {
+			pthread_mutex_unlock(&stream->metadata_timer_lock);
+		}
+
 		if (err < 0) {
 			goto end;
 		}
@@ -2305,7 +2337,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		uint64_t contiguous, pushed;
 
 		/* Ease our life a bit. */
-		contiguous = stream->chan->metadata_cache->contiguous;
+		contiguous = stream->chan->metadata_cache->max_offset;
 		pushed = stream->ust_metadata_pushed;
 
 		/*
@@ -2434,6 +2466,10 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
  * function or any of its callees. Timers have a very strict locking
  * semantic with respect to teardown. Failure to respect this semantic
  * introduces deadlocks.
+ *
+ * DON'T hold the metadata lock when calling this function, else this
+ * can cause deadlock involving consumer awaiting for metadata to be
+ * pushed out due to concurrent interaction with the session daemon.
  */
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_channel *channel, int timer, int wait)

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -30,13 +31,11 @@
 #include "lttng-relayd.h"
 
 int cmd_create_session_2_4(struct relay_connection *conn,
-		struct relay_session *session)
+		char *session_name, char *hostname,
+		uint32_t *live_timer, bool *snapshot)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 session_info;
-
-	assert(conn);
-	assert(session);
 
 	ret = cmd_recv(conn->sock, &session_info, sizeof(session_info));
 	if (ret < 0) {
@@ -44,12 +43,12 @@ int cmd_create_session_2_4(struct relay_connection *conn,
 		goto error;
 	}
 
-	strncpy(session->session_name, session_info.session_name,
-			sizeof(session->session_name));
-	strncpy(session->hostname, session_info.hostname,
-			sizeof(session->hostname));
-	session->live_timer = be32toh(session_info.live_timer);
-	session->snapshot = be32toh(session_info.snapshot);
+	strncpy(session_name, session_info.session_name,
+			sizeof(session_info.session_name));
+	strncpy(hostname, session_info.hostname,
+			sizeof(session_info.hostname));
+	*live_timer = be32toh(session_info.live_timer);
+	*snapshot = be32toh(session_info.snapshot);
 
 	ret = 0;
 

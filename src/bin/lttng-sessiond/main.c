@@ -2157,6 +2157,10 @@ static void *thread_registration_apps(void *data)
 					ust_cmd = zmalloc(sizeof(struct ust_command));
 					if (ust_cmd == NULL) {
 						PERROR("ust command zmalloc");
+						ret = close(sock);
+						if (ret) {
+							PERROR("close");
+						}
 						goto error;
 					}
 
@@ -2713,7 +2717,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		 * domain.
 		 */
 		if (session->kernel_session->consumer) {
-			consumer_destroy_output(session->kernel_session->consumer);
+			consumer_output_put(session->kernel_session->consumer);
 		}
 		session->kernel_session->consumer =
 			consumer_copy_output(session->consumer);
@@ -2727,7 +2731,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
 		if (session->ust_session->consumer) {
-			consumer_destroy_output(session->ust_session->consumer);
+			consumer_output_put(session->ust_session->consumer);
 		}
 		session->ust_session->consumer =
 			consumer_copy_output(session->consumer);
@@ -2847,7 +2851,7 @@ static int create_kernel_session(struct ltt_session *session)
 				session->kernel_session->consumer->dst.trace_path,
 				S_IRWXU | S_IRWXG, session->uid, session->gid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error;
 			}

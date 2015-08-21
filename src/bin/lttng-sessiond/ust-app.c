@@ -440,17 +440,20 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 {
 	int ret;
 	char *metadata_str = NULL;
-	size_t len, offset;
+	size_t len, offset, new_metadata_len_sent;
 	ssize_t ret_val;
+	uint64_t metadata_key;
 
 	assert(registry);
 	assert(socket);
+
+	metadata_key = registry->metadata_key;
 
 	/*
 	 * Means that no metadata was assigned to the session. This can
 	 * happens if no start has been done previously.
 	 */
-	if (!registry->metadata_key) {
+	if (!metadata_key) {
 		return 0;
 	}
 
@@ -468,6 +471,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 
 	offset = registry->metadata_len_sent;
 	len = registry->metadata_len - registry->metadata_len_sent;
+	new_metadata_len_sent = registry->metadata_len;
 	if (len == 0) {
 		DBG3("No metadata to push for metadata key %" PRIu64,
 				registry->metadata_key);
@@ -486,13 +490,26 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		ret_val = -ENOMEM;
 		goto error;
 	}
-	/* Copy what we haven't send out. */
+	/* Copy what we haven't sent out. */
 	memcpy(metadata_str, registry->metadata + offset, len);
-	registry->metadata_len_sent += len;
 
 push_data:
-	ret = consumer_push_metadata(socket, registry->metadata_key,
+	pthread_mutex_unlock(&registry->lock);
+	/*
+	 * We need to unlock the registry while we push metadata to
+	 * break a circular dependency between the consumerd metadata
+	 * lock and the sessiond registry lock. Indeed, pushing metadata
+	 * to the consumerd awaits that it gets pushed all the way to
+	 * relayd, but doing so requires grabbing the metadata lock. If
+	 * a concurrent metadata request is being performed by
+	 * consumerd, this can try to grab the registry lock on the
+	 * sessiond while holding the metadata lock on the consumer
+	 * daemon. Those push and pull schemes are performed on two
+	 * different bidirectionnal communication sockets.
+	 */
+	ret = consumer_push_metadata(socket, metadata_key,
 			metadata_str, len, offset);
+	pthread_mutex_lock(&registry->lock);
 	if (ret < 0) {
 		/*
 		 * There is an acceptable race here between the registry
@@ -510,17 +527,29 @@ push_data:
 		 */
 		if (ret == -LTTCOMM_CONSUMERD_CHANNEL_FAIL) {
 			ret = 0;
+		} else {
+			ERR("Error pushing metadata to consumer");
 		}
-
-		/*
-		 * Update back the actual metadata len sent since it
-		 * failed here.
-		 */
-		registry->metadata_len_sent -= len;
 		ret_val = ret;
 		goto error_push;
+	} else {
+		/*
+		 * Metadata may have been concurrently pushed, since
+		 * we're not holding the registry lock while pushing to
+		 * consumer.  This is handled by the fact that we send
+		 * the metadata content, size, and the offset at which
+		 * that metadata belongs. This may arrive out of order
+		 * on the consumer side, and the consumer is able to
+		 * deal with overlapping fragments. The consumer
+		 * supports overlapping fragments, which must be
+		 * contiguous starting from offset 0. We keep the
+		 * largest metadata_len_sent value of the concurrent
+		 * send.
+		 */
+		registry->metadata_len_sent =
+			max_t(size_t, registry->metadata_len_sent,
+				new_metadata_len_sent);
 	}
-
 	free(metadata_str);
 	return len;
 
@@ -677,6 +706,9 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	assert(!ua_sess->deleted);
+	ua_sess->deleted = true;
+
 	registry = get_session_registry(ua_sess);
 	if (registry) {
 		/* Push metadata for application before freeing the application. */
@@ -718,6 +750,8 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 		}
 	}
 	pthread_mutex_unlock(&ua_sess->lock);
+
+	consumer_output_put(ua_sess->consumer);
 
 	call_rcu(&ua_sess->rcu_head, delete_ust_app_session_rcu);
 }
@@ -1373,7 +1407,10 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret < 0) {
+	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+		ret = -ENOTCONN;	/* Caused by app exiting. */
+		goto error;
+	} else if (ret < 0) {
 		goto error;
 	}
 
@@ -1382,7 +1419,10 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 	/* Send all streams to application. */
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
-		if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			ret = -ENOTCONN;	/* Caused by app exiting. */
+			goto error;
+		} else if (ret < 0) {
 			goto error;
 		}
 		/* We don't need the stream anymore once sent to the tracer. */
@@ -1617,8 +1657,11 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->egid = usess->gid;
 	ua_sess->buffer_type = usess->buffer_type;
 	ua_sess->bits_per_long = app->bits_per_long;
+
 	/* There is only one consumer object per session possible. */
+	consumer_output_get(usess->consumer);
 	ua_sess->consumer = usess->consumer;
+
 	ua_sess->output_traces = usess->output_traces;
 	ua_sess->live_timer_interval = usess->live_timer_interval;
 	copy_channel_attr_to_ustctl(&ua_sess->metadata_attr,
@@ -1705,9 +1748,10 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 	}
+	return;
 
 error:
-	return;
+	consumer_output_put(ua_sess->consumer);
 }
 
 /*
@@ -2514,7 +2558,10 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret < 0) {
+	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+		ret = -ENOTCONN;	/* Caused by app exiting. */
+		goto error;
+	} else if (ret < 0) {
 		goto error;
 	}
 
@@ -2533,6 +2580,12 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &stream);
 		if (ret < 0) {
 			(void) release_ust_app_stream(-1, &stream);
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				ret = -ENOTCONN; /* Caused by app exiting. */
+				goto error_stream_unlock;
+			} else if (ret < 0) {
+				goto error_stream_unlock;
+			}
 			goto error_stream_unlock;
 		}
 
@@ -2626,10 +2679,9 @@ static int create_channel_per_uid(struct ust_app *app,
 	/* Send buffers to the application. */
 	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
 	if (ret < 0) {
-		/*
-		 * Don't report error to the console, since it may be
-		 * caused by application concurrently exiting.
-		 */
+		if (ret != -ENOTCONN) {
+			ERR("Error sending channel to application");
+		}
 		goto error;
 	}
 
@@ -2680,10 +2732,9 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	ret = send_channel_pid_to_ust(app, ua_sess, ua_chan);
 	if (ret < 0) {
-		/*
-		 * Don't report error to the console, since it may be
-		 * caused by application concurrently exiting.
-		 */
+		if (ret != -ENOTCONN) {
+			ERR("Error sending channel to application");
+		}
 		goto error;
 	}
 
@@ -2697,7 +2748,8 @@ error:
  * need and send it to the application. This MUST be called with a RCU read
  * side lock acquired.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or else a negative value. Returns -ENOTCONN if
+ * the application exited concurrently.
  */
 static int do_create_channel(struct ust_app *app,
 		struct ltt_ust_session *usess, struct ust_app_session *ua_sess,
@@ -2756,7 +2808,8 @@ error:
  *
  * Called with UST app session lock and RCU read-side lock held.
  *
- * Return 0 on success or else a negative value.
+ * Return 0 on success or else a negative value. Returns -ENOTCONN if
+ * the application exited concurrently.
  */
 static int create_ust_app_channel(struct ust_app_session *ua_sess,
 		struct ltt_ust_channel *uchan, struct ust_app *app,
@@ -3168,6 +3221,11 @@ void ust_app_unregister(int sock)
 		 * are the only one using this list.
 		 */
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
 
 		/*
 		 * Normally, this is done in the delete session process which is
@@ -3752,6 +3810,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 				 * or a timeout on it. We can't inform the caller that for a
 				 * specific app, the session failed so lets continue here.
 				 */
+				ret = 0;	/* Not an error. */
 				continue;
 			case -ENOMEM:
 			default:
@@ -3761,6 +3820,12 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		assert(ua_sess);
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		if (!strncmp(uchan->name, DEFAULT_METADATA_NAME,
 					sizeof(uchan->name))) {
 			copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
@@ -3772,13 +3837,23 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		}
 		pthread_mutex_unlock(&ua_sess->lock);
 		if (ret < 0) {
-			if (ret == -ENOMEM) {
-				/* No more memory is a fatal error. Stop right now. */
-				goto error_rcu_unlock;
-			}
 			/* Cleanup the created session if it's the case. */
 			if (created) {
 				destroy_app_session(app, ua_sess);
+			}
+			switch (ret) {
+			case -ENOTCONN:
+				/*
+				 * The application's socket is not valid. Either a bad socket
+				 * or a timeout on it. We can't inform the caller that for a
+				 * specific app, the session failed so lets continue here.
+				 */
+				ret = 0;	/* Not an error. */
+				continue;
+			case -ENOMEM:
+			default:
+
+				goto error_rcu_unlock;
 			}
 		}
 	}
@@ -3829,6 +3904,11 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		}
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
 
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
@@ -3896,11 +3976,24 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		}
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
-		/* If the channel is not found, there is a code flow error */
-		assert(ua_chan_node);
+		/*
+		 * It is possible that the channel cannot be found is
+		 * the channel/event creation occurs concurrently with
+		 * an application exit.
+		 */
+		if (!ua_chan_node) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
@@ -3947,6 +4040,11 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end;
+	}
+
 	/* Upon restart, we skip the setup, already done */
 	if (ua_sess->started) {
 		goto skip_setup;
@@ -3958,7 +4056,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		ret = run_as_mkdir_recursive(usess->consumer->dst.trace_path,
 				S_IRWXU | S_IRWXG, ua_sess->euid, ua_sess->egid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error_unlock;
 			}
@@ -4047,6 +4145,11 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end_no_session;
+	}
+
 	/*
 	 * If started = 0, it means that stop trace has been called for a session
 	 * that was never started. It's possible since we can have a fail start
@@ -4127,6 +4230,10 @@ int ust_app_flush_app_session(struct ust_app *app,
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		goto end_deleted;
+	}
+
 	health_code_update();
 
 	/* Flushing buffers */
@@ -4156,6 +4263,7 @@ int ust_app_flush_app_session(struct ust_app *app,
 
 	health_code_update();
 
+end_deleted:
 	pthread_mutex_unlock(&ua_sess->lock);
 
 end_not_compatible:
@@ -4389,6 +4497,11 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 
 	pthread_mutex_lock(&ua_sess->lock);
 
+	if (ua_sess->deleted) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end;
+	}
+
 	/*
 	 * We can iterate safely here over all UST app session since the create ust
 	 * app session above made a shadow copy of the UST global domain from the
@@ -4397,11 +4510,14 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
 		ret = do_create_channel(app, usess, ua_sess, ua_chan);
-		if (ret < 0) {
+		if (ret < 0 && ret != -ENOTCONN) {
 			/*
-			 * Stop everything. On error, the application failed, no more
-			 * file descriptor are available or ENOMEM so stopping here is
-			 * the only thing we can do for now.
+			 * Stop everything. On error, the application
+			 * failed, no more file descriptor are available
+			 * or ENOMEM so stopping here is the only thing
+			 * we can do for now. The only exception is
+			 * -ENOTCONN, which indicates that the application
+			 * has exit.
 			 */
 			goto error_unlock;
 		}
@@ -4531,6 +4647,12 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		}
 
 		pthread_mutex_lock(&ua_sess->lock);
+
+		if (ua_sess->deleted) {
+			pthread_mutex_unlock(&ua_sess->lock);
+			continue;
+		}
+
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
@@ -4589,6 +4711,12 @@ int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 	}
 
 	pthread_mutex_lock(&ua_sess->lock);
+
+	if (ua_sess->deleted) {
+		ret = 0;
+		goto end_unlock;
+	}
+
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);

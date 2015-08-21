@@ -1219,7 +1219,9 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		/*
 		 * In live, block until all the metadata is sent.
 		 */
+		CMM_STORE_SHARED(stream->waiting_on_metadata, 1);
 		err = consumer_stream_sync_metadata(ctx, stream->session_id);
+		CMM_STORE_SHARED(stream->waiting_on_metadata, 0);
 		if (err < 0) {
 			goto end;
 		}

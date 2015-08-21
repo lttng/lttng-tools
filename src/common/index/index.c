@@ -53,12 +53,25 @@ int index_create_file(char *path_name, char *stream_name, int uid, int gid,
 	/* Create index directory if necessary. */
 	ret = run_as_mkdir(fullpath, S_IRWXU | S_IRWXG, uid, gid);
 	if (ret < 0) {
-		if (ret != -EEXIST) {
+		if (errno != EEXIST) {
 			PERROR("Index trace directory creation error");
 			goto error;
 		}
 	}
 
+	/*
+	 * For tracefile rotation. We need to unlink the old
+	 * file if present to synchronize with the tail of the
+	 * live viewer which could be working on this same file.
+	 * By doing so, any reference to the old index file
+	 * stays valid even if we re-create a new file with the
+	 * same name afterwards.
+	 */
+	ret = utils_unlink_stream_file(fullpath, stream_name, size, count, uid,
+			gid, DEFAULT_INDEX_FILE_SUFFIX);
+	if (ret < 0 && errno != ENOENT) {
+		goto error;
+	}
 	ret = utils_create_stream_file(fullpath, stream_name, size, count, uid,
 			gid, DEFAULT_INDEX_FILE_SUFFIX);
 	if (ret < 0) {
