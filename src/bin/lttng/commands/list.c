@@ -1855,7 +1855,8 @@ int cmd_list(int argc, const char **argv)
 					if (ret) {
 						goto end;
 					}
-					continue;
+
+					goto next_domain;
 				}
 
 				switch (domains[i].type) {
@@ -1875,6 +1876,7 @@ int cmd_list(int argc, const char **argv)
 					goto end;
 				}
 
+next_domain:
 				if (lttng_opt_mi) {
 					/* Close domain element */
 					ret = mi_lttng_writer_close_element(writer);
