@@ -166,17 +166,20 @@
 /* Default JUL domain channel name. */
 #define DEFAULT_JUL_CHANNEL_NAME        "lttng_jul_channel"
 /* Default JUL tracepoint name. This is a wildcard for the JUL domain. */
-#define DEFAULT_JUL_EVENT_NAME          "lttng_jul:*"
+#define DEFAULT_JUL_EVENT_COMPONENT     "lttng_jul"
+#define DEFAULT_JUL_EVENT_NAME          DEFAULT_JUL_EVENT_COMPONENT ":*"
 
 /* Default log4j domain channel name. */
 #define DEFAULT_LOG4J_CHANNEL_NAME        "lttng_log4j_channel"
 /* Default log4j tracepoint name. This is a wildcard for the log4j domain. */
-#define DEFAULT_LOG4J_EVENT_NAME          "lttng_log4j:*"
+#define DEFAULT_LOG4J_EVENT_COMPONENT     "lttng_log4j"
+#define DEFAULT_LOG4J_EVENT_NAME          DEFAULT_LOG4J_EVENT_COMPONENT ":*"
 
 /* Default Python domain channel name. */
 #define DEFAULT_PYTHON_CHANNEL_NAME       "lttng_python_channel"
 /* Default Python tracepoint name. This is a wildcard for the python domain. */
-#define DEFAULT_PYTHON_EVENT_NAME         "lttng_python:*"
+#define DEFAULT_PYTHON_EVENT_COMPONENT    "lttng_python"
+#define DEFAULT_PYTHON_EVENT_NAME         DEFAULT_PYTHON_EVENT_COMPONENT ":*"
 
 #define DEFAULT_CHANNEL_OVERWRITE       0
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  0
