@@ -1409,16 +1409,28 @@ end:
 	return ret;
 }
 
-/*
- * Command LTTNG_ENABLE_EVENT processed by the client thread.
- * We own filter, exclusion, and filter_expression.
- */
-int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
+
+static int cmd_enable_event_internal(struct ltt_session *session,
+		struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
-		int wpipe)
+		int wpipe);
+
+/*
+ * Internal version of cmd_enable_event() with a supplemental
+ * "internal_event" flag which is used to enable internal events which should
+ * be hidden from clients. Such events are used in the agent implementation to
+ * enable the events through which all "agent" events are funeled.
+ */
+static int _cmd_enable_event(struct ltt_session *session,
+		struct lttng_domain *domain,
+		char *channel_name, struct lttng_event *event,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter,
+		struct lttng_event_exclusion *exclusion,
+		int wpipe, bool internal_event)
 {
 	int ret, channel_created = 0;
 	struct lttng_channel *attr;
@@ -1614,7 +1626,8 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		/* At this point, the session and channel exist on the tracer */
 		ret = event_ust_enable_tracepoint(usess, uchan, event,
-				filter_expression, filter, exclusion);
+				filter_expression, filter, exclusion,
+				internal_event);
 		/* We have passed ownership */
 		filter_expression = NULL;
 		filter = NULL;
@@ -1697,7 +1710,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 					+ filter->len);
 			}
 
-			ret = cmd_enable_event(session, &tmp_dom,
+			ret = cmd_enable_event_internal(session, &tmp_dom,
 					(char *) default_chan_name,
 					&uevent, filter_expression, filter_copy,
 					NULL, wpipe);
@@ -1736,6 +1749,38 @@ error:
 	free(exclusion);
 	rcu_read_unlock();
 	return ret;
+}
+
+/*
+ * Command LTTNG_ENABLE_EVENT processed by the client thread.
+ * We own filter, exclusion, and filter_expression.
+ */
+int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
+		char *channel_name, struct lttng_event *event,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter,
+		struct lttng_event_exclusion *exclusion,
+		int wpipe)
+{
+	return _cmd_enable_event(session, domain, channel_name, event,
+			filter_expression, filter, exclusion, wpipe, false);
+}
+
+/*
+ * Enable an event which is internal to LTTng. An internal should
+ * never be made visible to clients and are immune to checks such as
+ * reserved names.
+ */
+static int cmd_enable_event_internal(struct ltt_session *session,
+		struct lttng_domain *domain,
+		char *channel_name, struct lttng_event *event,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter,
+		struct lttng_event_exclusion *exclusion,
+		int wpipe)
+{
+	return _cmd_enable_event(session, domain, channel_name, event,
+			filter_expression, filter, exclusion, wpipe, true);
 }
 
 /*

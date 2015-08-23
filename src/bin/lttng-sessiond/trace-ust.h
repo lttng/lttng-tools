@@ -52,6 +52,7 @@ struct ltt_ust_event {
 	char *filter_expression;
 	struct lttng_ust_filter_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
+	bool internal;
 };
 
 /* UST channel */
@@ -185,7 +186,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
-		struct lttng_event_exclusion *exclusion);
+		struct lttng_event_exclusion *exclusion,
+		bool internal_event);
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx);
 int trace_ust_match_context(struct ltt_ust_context *uctx,
@@ -242,7 +244,8 @@ static inline
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		const char *filter_expression,
 		struct lttng_filter_bytecode *filter,
-		struct lttng_event_exclusion *exclusion)
+		struct lttng_event_exclusion *exclusion,
+		bool internal_event)
 {
 	return NULL;
 }

@@ -243,7 +243,7 @@ int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess,
 
 		/* Create ust event */
 		uevent = trace_ust_create_event(&events[i], filter_expression,
-			filter, NULL);
+				filter, NULL, false);
 		if (uevent == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error_destroy;
@@ -290,7 +290,8 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
-		struct lttng_event_exclusion *exclusion)
+		struct lttng_event_exclusion *exclusion,
+		bool internal_event)
 {
 	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
@@ -305,7 +306,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 			event->loglevel, exclusion);
 	if (uevent == NULL) {
 		uevent = trace_ust_create_event(event, filter_expression,
-			filter, exclusion);
+				filter, exclusion, internal_event);
 		/* We have passed ownership */
 		filter_expression = NULL;
 		filter = NULL;
