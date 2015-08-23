@@ -268,8 +268,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 	uchan = caa_container_of(&node->node, struct ltt_ust_channel, node.node);
 
-	nb_event += lttng_ht_get_count(uchan->events);
-
+	nb_event = lttng_ht_get_count(uchan->events);
 	if (nb_event == 0) {
 		ret = nb_event;
 		goto error;
@@ -284,6 +283,11 @@ static int list_lttng_ust_global_events(char *channel_name,
 	}
 
 	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
+		if (uevent->internal) {
+			/* This event should remain hidden from clients */
+			nb_event--;
+			continue;
+		}
 		strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
 		tmp[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		tmp[i].enabled = uevent->enabled;
