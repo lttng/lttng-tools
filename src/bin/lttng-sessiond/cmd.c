@@ -1383,6 +1383,7 @@ static int validate_event_name(const char *name)
 	int ret = 0;
 	const char *c = name;
 	const char *event_name_end = c + LTTNG_SYMBOL_NAME_LEN;
+	bool null_terminated = false;
 
 	/*
 	 * Make sure that unescaped wildcards are only used as the last
@@ -1391,6 +1392,7 @@ static int validate_event_name(const char *name)
 	while (c < event_name_end) {
 		switch (*c) {
 		case '\0':
+		        null_terminated = true;
 			goto end;
 		case '\\':
 			c++;
@@ -1407,6 +1409,9 @@ static int validate_event_name(const char *name)
 		c++;
 	}
 end:
+	if (!ret && !null_terminated) {
+		ret = LTTNG_ERR_INVALID_EVENT_NAME;
+	}
 	return ret;
 }
 
