@@ -375,7 +375,8 @@ error:
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
-		struct lttng_event_exclusion *exclusion)
+		struct lttng_event_exclusion *exclusion,
+		bool internal_event)
 {
 	struct ltt_ust_event *lue;
 
@@ -386,6 +387,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		PERROR("ust event zmalloc");
 		goto error;
 	}
+
+	lue->internal = internal_event;
 
 	switch (ev->type) {
 	case LTTNG_EVENT_PROBE:

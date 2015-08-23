@@ -194,7 +194,8 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
-		struct lttng_event_exclusion *exclusion)
+		struct lttng_event_exclusion *exclusion,
+		bool internal_event)
 {
 	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
