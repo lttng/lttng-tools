@@ -1745,7 +1745,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			default_chan_name = DEFAULT_PYTHON_CHANNEL_NAME;
 			break;
 		default:
-			/* The switch/case we are in should avoid this else big problem */
+			/* The switch/case we are in makes this impossible */
 			assert(0);
 		}
 
