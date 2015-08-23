@@ -286,6 +286,17 @@ static void free_channel_rcu(struct rcu_head *head)
 	struct lttng_consumer_channel *channel =
 		caa_container_of(node, struct lttng_consumer_channel, node);
 
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		break;
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		lttng_ustconsumer_free_channel(channel);
+		break;
+	default:
+		ERR("Unknown consumer_data type");
+		abort();
+	}
 	free(channel);
 }
 
