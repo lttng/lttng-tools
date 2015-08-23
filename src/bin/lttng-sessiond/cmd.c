@@ -1409,6 +1409,36 @@ end:
 	return ret;
 }
 
+static inline bool name_starts_with(const char *name, const char *prefix)
+{
+	const size_t max_cmp_len = min(strlen(prefix), LTTNG_SYMBOL_NAME_LEN);
+
+	return !strncmp(name, prefix, max_cmp_len);
+}
+
+/* Perform userspace-specific event name validation */
+static int validate_ust_event_name(const char *name)
+{
+	int ret = 0;
+
+	if (!name) {
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * Check name against all internal UST event component namespaces used
+	 * by the agents.
+	 */
+	if (name_starts_with(name, DEFAULT_JUL_EVENT_COMPONENT) ||
+		name_starts_with(name, DEFAULT_LOG4J_EVENT_COMPONENT) ||
+		name_starts_with(name, DEFAULT_PYTHON_EVENT_COMPONENT)) {
+		ret = -1;
+	}
+
+end:
+	return ret;
+}
 
 static int cmd_enable_event_internal(struct ltt_session *session,
 		struct lttng_domain *domain,
@@ -1622,6 +1652,21 @@ static int _cmd_enable_event(struct ltt_session *session,
 			uchan = trace_ust_find_channel_by_name(
 					usess->domain_global.channels, channel_name);
 			assert(uchan);
+		}
+
+		if (!internal_event) {
+			/*
+			 * Ensure the event name is not reserved for internal
+			 * use.
+			 */
+			ret = validate_ust_event_name(event->name);
+			if (ret) {
+			        WARN("Userspace event name %s failed validation.",
+						event->name ?
+						event->name : "NULL");
+				ret = LTTNG_ERR_INVALID_EVENT_NAME;
+				goto error;
+			}
 		}
 
 		/* At this point, the session and channel exist on the tracer */
