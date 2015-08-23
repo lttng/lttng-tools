@@ -557,6 +557,8 @@ void *consumer_timer_thread(void *data)
 	siginfo_t info;
 	struct lttng_consumer_local_data *ctx = data;
 
+	rcu_register_thread();
+
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA_TIMER);
 
 	if (testpoint(consumerd_thread_metadata_timer)) {
@@ -598,6 +600,8 @@ error_testpoint:
 	/* Only reached in testpoint error */
 	health_error();
 	health_unregister(health_consumerd);
+
+	rcu_unregister_thread();
 
 	/* Never return */
 	return NULL;
