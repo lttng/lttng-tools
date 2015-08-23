@@ -208,9 +208,9 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
 			event->loglevel, exclusion);
-	if (uevent == NULL) {
+	if (!uevent) {
 		uevent = trace_ust_create_event(event, filter_expression,
-			filter, exclusion);
+				filter, exclusion, internal_event);
 		/* We have passed ownership */
 		filter_expression = NULL;
 		filter = NULL;
