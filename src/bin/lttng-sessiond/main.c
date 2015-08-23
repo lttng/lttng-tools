@@ -1134,6 +1134,9 @@ static void *thread_manage_consumer(void *data)
 
 	DBG("[thread] Manage consumer started");
 
+	rcu_register_thread();
+	rcu_thread_online();
+
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CONSUMER);
 
 	health_code_update();
@@ -1431,6 +1434,9 @@ error_poll:
 	}
 	health_unregister(health_sessiond);
 	DBG("consumer thread cleanup completed");
+
+	rcu_thread_offline();
+	rcu_unregister_thread();
 
 	return NULL;
 }
