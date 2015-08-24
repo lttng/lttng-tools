@@ -1386,11 +1386,7 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 			goto end;
 		}
 
-		rcu_read_lock();
-		agent_count =
-			lttng_ht_get_count(session->ust_session->agents);
-		rcu_read_unlock();
-
+		agent_count = lttng_ht_get_count(session->ust_session->agents);
 		if (agent_count > 0) {
 			ret = config_writer_open_element(writer,
 				config_element_domain);
