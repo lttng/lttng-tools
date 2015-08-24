@@ -2027,6 +2027,22 @@ error:
 		free(wait_node);
 	}
 
+	/* Empty command queue. */
+	for (;;) {
+		/* Dequeue command for registration */
+		node = cds_wfcq_dequeue_blocking(&ust_cmd_queue.head, &ust_cmd_queue.tail);
+		if (node == NULL) {
+			break;
+		}
+		ust_cmd = caa_container_of(node, struct ust_command, node);
+		ret = close(ust_cmd->sock);
+		if (ret < 0) {
+			PERROR("close ust sock exit dispatch %d", ust_cmd->sock);
+		}
+		lttng_fd_put(LTTNG_FD_APPS, 1);
+		free(ust_cmd);
+	}
+
 error_testpoint:
 	DBG("Dispatch thread dying");
 	if (err) {
@@ -5943,6 +5959,10 @@ exit_apps:
 	}
 exit_reg_apps:
 
+	/*
+	 * Join dispatch thread after joining reg_apps_thread to ensure
+	 * we don't leak applications in the queue.
+	 */
 	ret = pthread_join(dispatch_thread, &status);
 	if (ret) {
 		errno = ret;
