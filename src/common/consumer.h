@@ -631,8 +631,6 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 void consumer_del_channel(struct lttng_consumer_channel *channel);
 
 /* lttng-relayd consumer command */
-struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
-		uint64_t net_seq_idx);
 struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key);
 int consumer_send_relayd_stream(struct lttng_consumer_stream *stream, char *path);
 int consumer_send_relayd_streams_sent(uint64_t net_seq_idx);

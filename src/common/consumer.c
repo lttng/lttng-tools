@@ -713,7 +713,7 @@ end:
 /*
  * Allocate and return a consumer relayd socket.
  */
-struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
+static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		uint64_t net_seq_idx)
 {
 	struct consumer_relayd_sock_pair *obj = NULL;
