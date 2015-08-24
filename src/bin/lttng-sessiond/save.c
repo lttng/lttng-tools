@@ -705,6 +705,10 @@ int save_ust_events(struct config_writer *writer,
 	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
 		event = caa_container_of(node, struct ltt_ust_event, node);
 
+		if (event->internal) {
+			/* Internal events must not be exposed to clients */
+			continue;
+		}
 		ret = save_ust_event(writer, event);
 		if (ret) {
 			rcu_read_unlock();
