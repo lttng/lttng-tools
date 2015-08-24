@@ -535,5 +535,7 @@ end:
 		health_app_destroy(health_consumerd);
 	}
 
+	/* Ensure all prior call_rcu are done. */
+	rcu_barrier();
 	return ret;
 }
