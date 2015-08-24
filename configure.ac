@@ -414,6 +414,104 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 	fi
 fi
 
+# Python agent test
+UST_PYTHON_AGENT="lttngust"
+
+AC_ARG_ENABLE(test-python2-agent,
+	AS_HELP_STRING([--enable-test-python2-agent],
+		[enable tests for python2 agent. Python2 interpreter path can be overridden by setting the PYTHON2 environment variable. Default: Autodetect]
+	),[:],[test_python2_agent_autodetect=yes]
+)
+
+AC_ARG_ENABLE(test-python3-agent,
+	AS_HELP_STRING([--enable-test-python3-agent],
+		[enable tests for python3 agent. Python3 interpreter path can be overridden by setting the PYTHON3 environment variable. Default: Autodetect]
+	),[:],[test_python3_agent_autodetect=yes]
+)
+
+AC_ARG_ENABLE(test-python-agent-all,
+	AS_HELP_STRING([--enable-test-python-agent-all],
+		[enable test for all python{2/3} agent.]
+	),
+)
+
+AS_IF([test ! -z "$enable_test_python_agent_all"], [
+       unset test_python2_agent_autodetect
+       unset test_python3_agent_autodetect
+])
+
+AS_IF([test "x$enable_test_python_agent_all" = "xyes"], [
+       enable_test_python2_agent=yes
+       enable_test_python3_agent=yes
+])
+
+AS_IF([test "x$enable_test_python_agent_all" = "xno"], [
+       enable_test_python2_agent=no
+       enable_test_python3_agent=no
+])
+
+
+AS_IF([test "x$enable_test_python2_agent" = "xyes" -o "x$test_python2_agent_autodetect" = "xyes" ], [
+	AS_IF([test -z "$PYTHON2"], [
+			PYTHON2=python2
+		], [
+			AC_MSG_WARN([Using user-defined PYTHON2 ($PYTHON2) for lttng-ust python2 agent check])
+	])
+
+	AC_PATH_PROG([PYTHON2_BIN],[$PYTHON2])
+	AS_IF([test -z "$PYTHON2_BIN"], [
+		AS_IF([test -z "$test_python2_agent_autodetect"],[
+			AC_MSG_ERROR([No python2 interpreter found. PYTHON2 can be set to override default interpreter path])
+		])
+	], [
+		AC_MSG_CHECKING([for python2 lttng-ust agent])
+		AS_IF([$PYTHON2_BIN -c "import $UST_PYTHON_AGENT" 2>/dev/null], [
+			PYTHON2_AGENT=$PYTHON2_BIN
+			AC_MSG_RESULT([yes])
+			RUN_PYTHON_AGENT_TEST=yes
+		], [
+			AC_MSG_RESULT([no])
+			AS_IF([test -z "$test_python2_agent_autodetect"],[
+				AC_MSG_ERROR([No python2 agent found. The path to the agent can be specified by setting the PYTHONPATH environment variable.])
+			])
+		])
+
+	])
+
+])
+
+AS_IF([test "x$enable_test_python3_agent" = "xyes" -o "x$test_python3_agent_autodetect" = "xyes" ], [
+	AS_IF([test -z "$PYTHON3"], [
+		PYTHON3=python3
+	], [
+		AC_MSG_WARN([Using user-defined PYTHON3 ($PYTHON3) for lttng-ust python3 agent check])
+	])
+
+	AC_PATH_PROG([PYTHON3_BIN],[$PYTHON3])
+	AS_IF([test -z "$PYTHON3_BIN"], [
+		AS_IF([test -z "$test_python3_agent_autodetect"],[
+			AC_MSG_ERROR([No python3 interpreter found. PYTHON3 can be set to override default interpreter path])
+		])
+	], [
+		AC_MSG_CHECKING([for python3 lttng-ust agent])
+		AS_IF([$PYTHON3_BIN -c "import $UST_PYTHON_AGENT" 2>/dev/null], [
+			PYTHON3_AGENT=$PYTHON3_BIN
+			AC_MSG_RESULT([yes])
+			RUN_PYTHON_AGENT_TEST=yes
+		], [
+			AC_MSG_RESULT([no])
+			AS_IF([test -z "$test_python3_agent_autodetect"],[
+				AC_MSG_ERROR([No python3 agent found. The path to the agent can be specified by setting the PYTHONPATH environment variable.])
+			])
+		])
+
+	])
+])
+
+AC_SUBST([RUN_PYTHON_AGENT_TEST])
+AC_SUBST([PYTHON2_AGENT])
+AC_SUBST([PYTHON3_AGENT])
+
 AC_SYS_LARGEFILE
 
 # C compiler tests
@@ -549,6 +647,9 @@ AC_CONFIG_FILES([
 	tests/utils/testapp/gen-ust-tracef/Makefile
 ])
 
+# Inject variable into python test script
+AC_CONFIG_FILES([tests/regression/ust/python-logging/test_python_logging],[chmod +x tests/regression/ust/python-logging/test_python_logging])
+
 AC_OUTPUT
 
 #
@@ -602,6 +703,20 @@ AS_IF([test "x$test_java_agent_jul" = "xyes"],[
 # LTTng UST Java agent Log4j tests enabled/disabled
 AS_ECHO_N("LTTng-UST Java agent Log4j tests: ")
 AS_IF([test "x$test_java_agent_log4j" = "xyes"],[
+	AS_ECHO("Enabled")
+],[
+	AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("LTTng-UST Python2 agent tests: ")
+AS_IF([test ! -z "$PYTHON2_AGENT"],[
+	AS_ECHO("Enabled")
+],[
+	AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("LTTng-UST Python3 agent tests: ")
+AS_IF([test ! -z "$PYTHON3_AGENT"],[
 	AS_ECHO("Enabled")
 ],[
 	AS_ECHO("Disabled")

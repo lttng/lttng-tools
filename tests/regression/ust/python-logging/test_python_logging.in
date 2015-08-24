@@ -21,7 +21,7 @@ TEST_DESC="Python support"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_ITER=5
-NR_SEC_WAIT=1
+NR_SEC_WAIT=0
 TESTAPP_NAME="test"
 TESTAPP_BIN="$TESTAPP_NAME.py"
 TESTAPP_PATH="$CURDIR"
@@ -30,7 +30,14 @@ EVENT_NAME="python-ev-test1"
 EVENT_NAME2="python-ev-test2"
 OUTPUT_DEST="/dev/null"
 
-NUM_TESTS=310
+python_versions=(@PYTHON2_AGENT@ @PYTHON3_AGENT@)
+run_test=@RUN_PYTHON_AGENT_TEST@
+
+if [[ -z "$run_test" ]]; then
+	NUM_TESTS=1
+else
+	NUM_TESTS=$(((154 * ${#python_versions[@]})+2))
+fi
 
 source $TESTDIR/utils/utils.sh
 
@@ -72,7 +79,7 @@ function enable_python_filter()
 	local event_name="$2"
 	local filter="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -p --filter "$filter" >/dev/null 2>&1
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -p --filter "$filter" >$OUTPUT_DEST
 	ok $? "Enable event $event_name with filter $filter for session $sess_name"
 }
 
@@ -461,7 +468,7 @@ function test_python_filtering()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
 	# Enable first Logger but filter msg payload for the INFO one while
 	# triggering the debug and second TP.
-	enable_python_filter $SESSION_NAME $EVENT_NAME 'msg == "python-ev-test1 fired" [INFO]'
+	enable_python_filter $SESSION_NAME $EVENT_NAME 'msg == "python-ev-test1 fired [INFO]"'
 	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay, fire debug and second TP.
@@ -557,13 +564,13 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-if [ ! -f "$TESTAPP_BIN" ]; then
-	withapp=0
+if [[ ${#python_versions[@]} -eq 0 ||  "x$run_test" != "xyes" ]]; then
+	skip_agent=0
 else
-	withapp=1
+	skip_agent=1
 fi
 
-skip $withapp "Python support is needed. Skipping all tests." $NUM_TESTS ||
+skip $skip_agent "Python agent test skipped." $NUM_TESTS ||
 {
 	start_lttng_sessiond
 
@@ -584,20 +591,20 @@ skip $withapp "Python support is needed. Skipping all tests." $NUM_TESTS ||
 		test_python_filter_loglevel
 	)
 
-	for python_version in 2 3;
+
+	for python_version in ${python_versions[*]};
 	do
 		for fct_test in ${tests[@]};
 		do
 			TRACE_PATH=$(mktemp -d)
 
 			diag "(Python $python_version)"
-			${fct_test} python$python_version
+			${fct_test} $python_version
 			if [ $? -ne 0 ]; then
 				break;
 			fi
 			rm -rf $TRACE_PATH
 		done
 	done
-
 	stop_lttng_sessiond
 }
