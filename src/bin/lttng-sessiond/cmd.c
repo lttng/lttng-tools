@@ -50,6 +50,16 @@
 static pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t relayd_net_seq_idx;
 
+static int validate_event_name(const char *);
+static int validate_ust_event_name(const char *);
+static int cmd_enable_event_internal(struct ltt_session *session,
+		struct lttng_domain *domain,
+		char *channel_name, struct lttng_event *event,
+		char *filter_expression,
+		struct lttng_filter_bytecode *filter,
+		struct lttng_event_exclusion *exclusion,
+		int wpipe);
+
 /*
  * Create a session path used by list_lttng_sessions for the case that the
  * session consumer is on the network.
@@ -1136,11 +1146,16 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 	DBG("Disable event command for event \'%s\'", event->name);
 
 	event_name = event->name;
+	if (validate_event_name(event_name)) {
+		ret = LTTNG_ERR_INVALID_EVENT_NAME;
+		goto error;
+	}
 
 	/* Error out on unhandled search criteria */
 	if (event->loglevel_type || event->loglevel != -1 || event->enabled
 			|| event->pid || event->filter || event->exclusion) {
-		return LTTNG_ERR_UNK;
+		ret = LTTNG_ERR_UNK;
+		goto error;
 	}
 
 	rcu_read_lock();
@@ -1160,20 +1175,20 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 		 */
 		if (ksess->has_non_default_channel && channel_name[0] == '\0') {
 			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
+			goto error_unlock;
 		}
 
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == NULL) {
 			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-			goto error;
+			goto error_unlock;
 		}
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
 			ret = event_kernel_disable_event_all(kchan);
 			if (ret != LTTNG_OK) {
-				goto error;
+				goto error_unlock;
 			}
 			break;
 		case LTTNG_EVENT_TRACEPOINT:	/* fall-through */
@@ -1186,7 +1201,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 					event_name);
 			}
 			if (ret != LTTNG_OK) {
-				goto error;
+				goto error_unlock;
 			}
 			break;
 		case LTTNG_EVENT_PROBE:
@@ -1194,12 +1209,12 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 		case LTTNG_EVENT_FUNCTION_ENTRY:
 			ret = event_kernel_disable_event(kchan, event_name);
 			if (ret != LTTNG_OK) {
-				goto error;
+				goto error_unlock;
 			}
 			break;
 		default:
 			ret = LTTNG_ERR_UNK;
-			goto error;
+			goto error_unlock;
 		}
 
 		kernel_wait_quiescent(kernel_tracer_fd);
@@ -1212,6 +1227,11 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		usess = session->ust_session;
 
+		if (validate_ust_event_name(event_name)) {
+			ret = LTTNG_ERR_INVALID_EVENT_NAME;
+			goto error_unlock;
+		}
+
 		/*
 		 * If a non-default channel has been created in the
 		 * session, explicitely require that -c chan_name needs
@@ -1219,26 +1239,26 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 		 */
 		if (usess->has_non_default_channel && channel_name[0] == '\0') {
 			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
+			goto error_unlock;
 		}
 
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
 				channel_name);
 		if (uchan == NULL) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto error;
+			goto error_unlock;
 		}
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
 			ret = event_ust_disable_tracepoint(usess, uchan, event_name);
 			if (ret != LTTNG_OK) {
-				goto error;
+				goto error_unlock;
 			}
 			break;
 		default:
 			ret = LTTNG_ERR_UNK;
-			goto error;
+			goto error_unlock;
 		}
 
 		DBG3("Disable UST event %s in channel %s completed", event_name,
@@ -1259,13 +1279,13 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			break;
 		default:
 			ret = LTTNG_ERR_UNK;
-			goto error;
+			goto error_unlock;
 		}
 
 		agt = trace_ust_find_agent(usess, domain);
 		if (!agt) {
 			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
-			goto error;
+			goto error_unlock;
 		}
 		/* The wild card * means that everything should be disabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
@@ -1274,20 +1294,21 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 			ret = event_agent_disable(usess, agt, event_name);
 		}
 		if (ret != LTTNG_OK) {
-			goto error;
+			goto error_unlock;
 		}
 
 		break;
 	}
 	default:
 		ret = LTTNG_ERR_UND;
-		goto error;
+		goto error_unlock;
 	}
 
 	ret = LTTNG_OK;
 
-error:
+error_unlock:
 	rcu_read_unlock();
+error:
 	return ret;
 }
 
@@ -1443,14 +1464,6 @@ static int validate_ust_event_name(const char *name)
 end:
 	return ret;
 }
-
-static int cmd_enable_event_internal(struct ltt_session *session,
-		struct lttng_domain *domain,
-		char *channel_name, struct lttng_event *event,
-		char *filter_expression,
-		struct lttng_filter_bytecode *filter,
-		struct lttng_event_exclusion *exclusion,
-		int wpipe);
 
 /*
  * Internal version of cmd_enable_event() with a supplemental
