@@ -5641,6 +5641,7 @@ exit:
 	cleanup();
 	rcu_thread_offline();
 	rcu_unregister_thread();
+	rcu_barrier();
 	if (!ret) {
 		exit(EXIT_SUCCESS);
 	}
