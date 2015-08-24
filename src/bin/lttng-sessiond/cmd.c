@@ -142,8 +142,8 @@ error:
 /*
  * Fill lttng_channel array of all channels.
  */
-static void list_lttng_channels(int domain, struct ltt_session *session,
-		struct lttng_channel *channels)
+static void list_lttng_channels(enum lttng_domain_type domain,
+		struct ltt_session *session, struct lttng_channel *channels)
 {
 	int i = 0;
 	struct ltt_kernel_channel *kchan;
@@ -438,7 +438,8 @@ error:
  * domain adding the default trace directory.
  */
 static int add_uri_to_consumer(struct consumer_output *consumer,
-		struct lttng_uri *uri, int domain, const char *session_name)
+		struct lttng_uri *uri, enum lttng_domain_type domain,
+		const char *session_name)
 {
 	int ret = LTTNG_OK;
 	const char *default_trace_dir;
@@ -635,8 +636,9 @@ error:
 /*
  * Connect to the relayd using URI and send the socket to the right consumer.
  */
-static int send_consumer_relayd_socket(int domain, unsigned int session_id,
-		struct lttng_uri *relayd_uri, struct consumer_output *consumer,
+static int send_consumer_relayd_socket(enum lttng_domain_type domain,
+		unsigned int session_id, struct lttng_uri *relayd_uri,
+		struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock,
 		char *session_name, char *hostname, int session_live_timer)
 {
@@ -706,9 +708,10 @@ error:
  * helper function to facilitate sending the information to the consumer for a
  * session.
  */
-static int send_consumer_relayd_sockets(int domain, unsigned int session_id,
-		struct consumer_output *consumer, struct consumer_socket *sock,
-		char *session_name, char *hostname, int session_live_timer)
+static int send_consumer_relayd_sockets(enum lttng_domain_type domain,
+		unsigned int session_id, struct consumer_output *consumer,
+		struct consumer_socket *sock, char *session_name,
+		char *hostname, int session_live_timer)
 {
 	int ret = LTTNG_OK;
 
@@ -871,8 +874,8 @@ error:
 /*
  * Command LTTNG_DISABLE_CHANNEL processed by the client thread.
  */
-int cmd_disable_channel(struct ltt_session *session, int domain,
-		char *channel_name)
+int cmd_disable_channel(struct ltt_session *session,
+		enum lttng_domain_type domain, char *channel_name)
 {
 	int ret;
 	struct ltt_ust_session *usess;
@@ -929,7 +932,8 @@ error:
  *
  * Called with session lock held.
  */
-int cmd_track_pid(struct ltt_session *session, int domain, int pid)
+int cmd_track_pid(struct ltt_session *session, enum lttng_domain_type domain,
+		int pid)
 {
 	int ret;
 
@@ -979,7 +983,8 @@ error:
  *
  * Called with session lock held.
  */
-int cmd_untrack_pid(struct ltt_session *session, int domain, int pid)
+int cmd_untrack_pid(struct ltt_session *session, enum lttng_domain_type domain,
+		int pid)
 {
 	int ret;
 
@@ -1137,8 +1142,8 @@ end:
 /*
  * Command LTTNG_DISABLE_EVENT processed by the client thread.
  */
-int cmd_disable_event(struct ltt_session *session, int domain,
-		char *channel_name,
+int cmd_disable_event(struct ltt_session *session,
+		enum lttng_domain_type domain, char *channel_name,
 		struct lttng_event *event)
 {
 	int ret;
@@ -1316,7 +1321,7 @@ error:
 /*
  * Command LTTNG_ADD_CONTEXT processed by the client thread.
  */
-int cmd_add_context(struct ltt_session *session, int domain,
+int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event_context *ctx, int kwpipe)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
@@ -1854,7 +1859,8 @@ static int cmd_enable_event_internal(struct ltt_session *session,
 /*
  * Command LTTNG_LIST_TRACEPOINTS processed by the client thread.
  */
-ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events)
+ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,
+		struct lttng_event **events)
 {
 	int ret;
 	ssize_t nb_events = 0;
@@ -1898,7 +1904,7 @@ error:
 /*
  * Command LTTNG_LIST_TRACEPOINT_FIELDS processed by the client thread.
  */
-ssize_t cmd_list_tracepoint_fields(int domain,
+ssize_t cmd_list_tracepoint_fields(enum lttng_domain_type domain,
 		struct lttng_event_field **fields)
 {
 	int ret;
@@ -1936,7 +1942,7 @@ ssize_t cmd_list_syscalls(struct lttng_event **events)
  * Called with session lock held.
  */
 ssize_t cmd_list_tracker_pids(struct ltt_session *session,
-		int domain, int32_t **pids)
+		enum lttng_domain_type domain, int32_t **pids)
 {
 	int ret;
 	ssize_t nr_pids = 0;
@@ -2393,7 +2399,8 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe)
 /*
  * Command LTTNG_CALIBRATE processed by the client thread.
  */
-int cmd_calibrate(int domain, struct lttng_calibrate *calibrate)
+int cmd_calibrate(enum lttng_domain_type domain,
+		struct lttng_calibrate *calibrate)
 {
 	int ret;
 
@@ -2450,8 +2457,9 @@ error:
 /*
  * Command LTTNG_REGISTER_CONSUMER processed by the client thread.
  */
-int cmd_register_consumer(struct ltt_session *session, int domain,
-		const char *sock_path, struct consumer_data *cdata)
+int cmd_register_consumer(struct ltt_session *session,
+		enum lttng_domain_type domain, const char *sock_path,
+		struct consumer_data *cdata)
 {
 	int ret, sock;
 	struct consumer_socket *socket = NULL;
@@ -2602,8 +2610,8 @@ error:
 /*
  * Command LTTNG_LIST_CHANNELS processed by the client thread.
  */
-ssize_t cmd_list_channels(int domain, struct ltt_session *session,
-		struct lttng_channel **channels)
+ssize_t cmd_list_channels(enum lttng_domain_type domain,
+		struct ltt_session *session, struct lttng_channel **channels)
 {
 	int ret;
 	ssize_t nb_chan = 0;
@@ -2656,8 +2664,9 @@ error:
 /*
  * Command LTTNG_LIST_EVENTS processed by the client thread.
  */
-ssize_t cmd_list_events(int domain, struct ltt_session *session,
-		char *channel_name, struct lttng_event **events)
+ssize_t cmd_list_events(enum lttng_domain_type domain,
+		struct ltt_session *session, char *channel_name,
+		struct lttng_event **events)
 {
 	int ret = 0;
 	ssize_t nb_event = 0;

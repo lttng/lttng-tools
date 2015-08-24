@@ -35,20 +35,24 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 int cmd_destroy_session(struct ltt_session *session, int wpipe);
 
 /* Channel commands */
-int cmd_disable_channel(struct ltt_session *session, int domain,
-		char *channel_name);
+int cmd_disable_channel(struct ltt_session *session,
+		enum lttng_domain_type domain, char *channel_name);
 int cmd_enable_channel(struct ltt_session *session,
-		struct lttng_domain *domain, struct lttng_channel *attr, int wpipe);
-int cmd_track_pid(struct ltt_session *session, int domain, int pid);
-int cmd_untrack_pid(struct ltt_session *session, int domain, int pid);
+		struct lttng_domain *domain, struct lttng_channel *attr,
+		int wpipe);
+int cmd_track_pid(struct ltt_session *session, enum lttng_domain_type domain,
+		int pid);
+int cmd_untrack_pid(struct ltt_session *session, enum lttng_domain_type domain,
+		int pid);
 
 /* Event commands */
-int cmd_disable_event(struct ltt_session *session, int domain,
+int cmd_disable_event(struct ltt_session *session,
+		enum lttng_domain_type domain,
 		char *channel_name,
 		struct lttng_event *event);
-int cmd_add_context(struct ltt_session *session, int domain,
+int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event_context *ctx, int kwpipe);
-int cmd_set_filter(struct ltt_session *session, int domain,
+int cmd_set_filter(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode);
 int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
@@ -63,7 +67,8 @@ int cmd_start_trace(struct ltt_session *session);
 int cmd_stop_trace(struct ltt_session *session);
 
 /* Consumer commands */
-int cmd_register_consumer(struct ltt_session *session, int domain,
+int cmd_register_consumer(struct ltt_session *session,
+		enum lttng_domain_type domain,
 		const char *sock_path, struct consumer_data *cdata);
 int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 		struct lttng_uri *uris);
@@ -72,24 +77,27 @@ int cmd_setup_relayd(struct ltt_session *session);
 /* Listing commands */
 ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
-ssize_t cmd_list_events(int domain, struct ltt_session *session,
-		char *channel_name, struct lttng_event **events);
-ssize_t cmd_list_channels(int domain, struct ltt_session *session,
-		struct lttng_channel **channels);
+ssize_t cmd_list_events(enum lttng_domain_type domain,
+		struct ltt_session *session, char *channel_name,
+		struct lttng_event **events);
+ssize_t cmd_list_channels(enum lttng_domain_type domain,
+		struct ltt_session *session, struct lttng_channel **channels);
 ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
 void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		gid_t gid);
-ssize_t cmd_list_tracepoint_fields(int domain,
+ssize_t cmd_list_tracepoint_fields(enum lttng_domain_type domain,
 		struct lttng_event_field **fields);
-ssize_t cmd_list_tracepoints(int domain, struct lttng_event **events);
+ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,
+		struct lttng_event **events);
 ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		struct lttng_snapshot_output **outputs);
 ssize_t cmd_list_syscalls(struct lttng_event **events);
 ssize_t cmd_list_tracker_pids(struct ltt_session *session,
-		int domain, int32_t **pids);
+		enum lttng_domain_type domain, int32_t **pids);
 
-int cmd_calibrate(int domain, struct lttng_calibrate *calibrate);
+int cmd_calibrate(enum lttng_domain_type domain,
+		struct lttng_calibrate *calibrate);
 int cmd_data_pending(struct ltt_session *session);
 
 /* Snapshot */
