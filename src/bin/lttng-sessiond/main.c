@@ -6058,6 +6058,9 @@ exit_options:
 	sessiond_cleanup_options();
 
 exit_set_signal_handler:
+	/* Ensure all prior call_rcu are done. */
+	rcu_barrier();
+
 	if (!retval) {
 		exit(EXIT_SUCCESS);
 	} else {
