@@ -313,6 +313,12 @@ int make_viewer_streams(struct relay_session *session,
 			if (!stream->published) {
 				goto next;
 			}
+			/*
+			 * Stream has no data, don't consider it yet.
+			 */
+			if (stream->prev_seq == -1ULL) {
+				goto next;
+			}
 			vstream = viewer_stream_get_by_id(stream->stream_handle);
 			if (!vstream) {
 				vstream = viewer_stream_create(stream, seek_t);
