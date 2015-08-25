@@ -435,6 +435,16 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	call_rcu(&ua_chan->rcu_head, delete_ust_app_channel_rcu);
 }
 
+int ust_app_register_done(struct ust_app *app)
+{
+	int ret;
+
+	pthread_mutex_lock(&app->sock_lock);
+	ret = ustctl_register_done(app->sock);
+	pthread_mutex_unlock(&app->sock_lock);
+	return ret;
+}
+
 /*
  * Push metadata to consumer socket.
  *

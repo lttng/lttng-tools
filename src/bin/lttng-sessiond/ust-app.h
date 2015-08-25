@@ -285,11 +285,7 @@ struct ust_app {
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
-static inline
-int ust_app_register_done(int sock)
-{
-	return ustctl_register_done(sock);
-}
+int ust_app_register_done(struct ust_app *app);
 int ust_app_version(struct ust_app *app);
 void ust_app_unregister(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
@@ -383,7 +379,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	return -ENOSYS;
 }
 static inline
-int ust_app_register_done(int sock)
+int ust_app_register_done(struct ust_app *app)
 {
 	return -ENOSYS;
 }
