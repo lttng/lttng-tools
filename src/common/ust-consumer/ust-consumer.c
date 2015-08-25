@@ -1860,8 +1860,6 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 
 void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 {
-	int i;
-
 	assert(chan);
 	assert(chan->uchan);
 
