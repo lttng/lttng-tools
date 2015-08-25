@@ -1273,8 +1273,8 @@ int viewer_get_next_index(struct relay_connection *conn)
 
 	vstream = viewer_stream_get_by_id(be64toh(request_index.stream_id));
 	if (!vstream) {
-		ret = -1;
-		goto end;
+		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+		goto send_reply;
 	}
 
 	/* Use back. ref. Protected by refcounts. */
@@ -1397,7 +1397,9 @@ int viewer_get_next_index(struct relay_connection *conn)
 	viewer_index.stream_id = packet_index.stream_id;
 
 send_reply:
-	pthread_mutex_unlock(&rstream->lock);
+	if (rstream) {
+		pthread_mutex_unlock(&rstream->lock);
+	}
 
 	if (metadata_viewer_stream) {
 		pthread_mutex_lock(&metadata_viewer_stream->stream->lock);
