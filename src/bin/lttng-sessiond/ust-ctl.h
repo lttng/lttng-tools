@@ -24,6 +24,8 @@
 
 #include <config.h>
 
+struct ust_app;
+
 /*
  * FIXME: temporary workaround: we use a lttng-tools local version of
  * lttng-ust-abi.h if UST is not found. Eventually, we should use our
@@ -36,11 +38,7 @@
 #include <lttng/ust-abi.h>
 #include <lttng/ust-error.h>
 
-static inline
-int ust_ctl_release_object(int sock, struct lttng_ust_object_data *data)
-{
-	return ustctl_release_object(sock, data);
-}
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -49,7 +47,7 @@ int ust_ctl_release_object(int sock, struct lttng_ust_object_data *data)
 #include "lttng-ust-error.h"
 
 static inline
-int ust_ctl_release_object(int sock, struct lttng_ust_object_data *data)
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data)
 {
 	return 0;
 }

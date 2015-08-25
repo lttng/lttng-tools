@@ -445,6 +445,23 @@ int ust_app_register_done(struct ust_app *app)
 	return ret;
 }
 
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data)
+{
+	int ret, sock;
+
+	if (app) {
+		pthread_mutex_lock(&app->sock_lock);
+		sock = app->sock;
+	} else {
+		sock = -1;
+	}
+	ret = ustctl_release_object(sock, data);
+	if (app) {
+		pthread_mutex_unlock(&app->sock_lock);
+	}
+	return ret;
+}
+
 /*
  * Push metadata to consumer socket.
  *
