@@ -182,6 +182,8 @@ struct ust_app_session {
 	int started;  /* allows detection of start vs restart. */
 	int handle;   /* used has unique identifier for app session */
 
+	bool deleted;	/* Session deleted flag. Check with lock held. */
+
 	/*
 	 * Tracing session ID. Multiple ust app session can have the same tracing
 	 * session id making this value NOT unique to the object.
@@ -225,6 +227,8 @@ struct ust_app_session {
  */
 struct ust_app {
 	int sock;
+	pthread_mutex_t sock_lock;	/* Protects sock protocol. */
+
 	int notify_sock;
 	pid_t pid;
 	pid_t ppid;
@@ -281,11 +285,7 @@ struct ust_app {
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
-static inline
-int ust_app_register_done(int sock)
-{
-	return ustctl_register_done(sock);
-}
+int ust_app_register_done(struct ust_app *app);
 int ust_app_version(struct ust_app *app);
 void ust_app_unregister(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
@@ -379,7 +379,7 @@ int ust_app_register(struct ust_register_msg *msg, int sock)
 	return -ENOSYS;
 }
 static inline
-int ust_app_register_done(int sock)
+int ust_app_register_done(struct ust_app *app)
 {
 	return -ENOSYS;
 }

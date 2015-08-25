@@ -1,6 +1,10 @@
+#ifndef RELAYD_CMD_2_4_H
+#define RELAYD_CMD_2_4_H
+
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -16,12 +20,10 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef RELAYD_CMD_2_4_H
-#define RELAYD_CMD_2_4_H
-
 #include "lttng-relayd.h"
 
 int cmd_create_session_2_4(struct relay_connection *conn,
-		struct relay_session *session);
+		char *session_name, char *hostname,
+		uint32_t *live_timer, bool *snapshot);
 
 #endif /* RELAYD_CMD_2_4_H */

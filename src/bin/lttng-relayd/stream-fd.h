@@ -1,10 +1,8 @@
-#ifndef RELAYD_CMD_GENERIC_H
-#define RELAYD_CMD_GENERIC_H
+#ifndef _STREAM_FD_H
+#define _STREAM_FD_H
 
 /*
- * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
- *                      David Goulet <dgoulet@efficios.com>
- *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -20,10 +18,15 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <urcu/ref.h>
 
-#include "connection.h"
+struct stream_fd {
+	int fd;
+	struct urcu_ref ref;
+};
 
-int cmd_recv(struct lttcomm_sock *sock, void *buf, size_t len);
+struct stream_fd *stream_fd_create(int fd);
+void stream_fd_get(struct stream_fd *sf);
+void stream_fd_put(struct stream_fd *sf);
 
-#endif /* RELAYD_CMD_GENERIC_H */
+#endif /* _STREAM_FD_H */

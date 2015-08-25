@@ -73,7 +73,7 @@ static char *setup_trace_path(struct consumer_output *consumer,
 		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG,
 				ua_sess->euid, ua_sess->egid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error;
 			}
@@ -245,14 +245,13 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 	}
 
 	pthread_mutex_lock(socket->lock);
-
 	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry);
+	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		goto error;
 	}
 
 error:
-	pthread_mutex_unlock(socket->lock);
 	return ret;
 }
 
@@ -401,7 +400,9 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 	DBG2("UST consumer send stream to app %d", app->sock);
 
 	/* Relay stream to application. */
+	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_send_stream_to_ust(app->sock, channel->obj, stream->obj);
+	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("ustctl send stream handle %d to app pid: %d with ret %d",
@@ -436,7 +437,9 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 			app->sock, app->pid, channel->name, channel->tracing_channel_id);
 
 	/* Send stream to application. */
+	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);
+	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Error ustctl send channel %s to app pid: %d with ret %d",
