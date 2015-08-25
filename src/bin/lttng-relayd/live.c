@@ -1616,10 +1616,10 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 * just before we attach. It can also be closed by
 		 * per-pid tracing during tracing. Therefore, it is
 		 * possible that we cannot find this viewer stream.
-		 * Reply back to the client with an error if we cannot
+		 * Reply back to the client with HUP if we cannot
 		 * find it.
 		 */
-		reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
+		reply.status = htobe32(LTTNG_VIEWER_METADATA_HUP);
 		goto send_reply;
 	}
 	if (!vstream->stream->is_metadata) {
