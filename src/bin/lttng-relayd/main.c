@@ -2114,6 +2114,7 @@ static int relay_process_data(struct relay_connection *conn)
 	uint64_t net_seq_num;
 	uint32_t data_size;
 	struct relay_session *session;
+	bool new_stream = false;
 
 	ret = conn->sock->ops->recvmsg(conn->sock, &data_hdr,
 			sizeof(struct lttcomm_relayd_data_hdr), 0);
@@ -2237,10 +2238,19 @@ static int relay_process_data(struct relay_connection *conn)
 	}
 	stream->tracefile_size_current +=
 			data_size + be32toh(data_hdr.padding_size);
+	if (stream->prev_seq == -1ULL) {
+		new_stream = true;
+	}
+
 	stream->prev_seq = net_seq_num;
 
 end_stream_unlock:
 	pthread_mutex_unlock(&stream->lock);
+	if (new_stream) {
+		pthread_mutex_lock(&session->lock);
+		uatomic_set(&session->new_streams, 1);
+		pthread_mutex_unlock(&session->lock);
+	}
 end_stream_put:
 	stream_put(stream);
 end:
@@ -2292,7 +2302,6 @@ static void *relay_thread_worker(void *data)
 {
 	int ret, err = -1, last_seen_data_fd = -1;
 	uint32_t nb_fd;
-	struct relay_connection *conn;
 	struct lttng_poll_event events;
 	struct lttng_ht *relay_connections_ht;
 	struct lttng_ht_iter iter;
