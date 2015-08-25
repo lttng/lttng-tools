@@ -1907,7 +1907,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * Don't care about return value. Let the manage apps threads
 				 * handle app unregistration upon socket close.
 				 */
-				(void) ust_app_register_done(app->sock);
+				(void) ust_app_register_done(app);
 
 				/*
 				 * Even if the application socket has been closed, send the app

@@ -450,7 +450,7 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
 	{
 		int ret;
 
-		ret = ust_ctl_release_object(-1, regp->obj.ust);
+		ret = ust_app_release_object(NULL, regp->obj.ust);
 		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Buffer reg stream release obj handle %d failed with ret %d",
 					regp->obj.ust->handle, ret);
@@ -510,7 +510,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 		}
 
 		if (regp->obj.ust) {
-			ret = ust_ctl_release_object(-1, regp->obj.ust);
+			ret = ust_app_release_object(NULL, regp->obj.ust);
 			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 				ERR("Buffer reg channel release obj handle %d failed with ret %d",
 						regp->obj.ust->handle, ret);
