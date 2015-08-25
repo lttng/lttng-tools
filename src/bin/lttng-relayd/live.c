@@ -1479,7 +1479,8 @@ int viewer_get_packet(struct relay_connection *conn)
 
 	vstream = viewer_stream_get_by_id(be64toh(get_packet_info.stream_id));
 	if (!vstream) {
-		goto error;
+		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
+		goto send_reply_nolock;
 	}
 
 	ctf_trace = vstream->stream->trace;
