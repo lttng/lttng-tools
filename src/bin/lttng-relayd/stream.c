@@ -332,6 +332,7 @@ void stream_close(struct relay_stream *stream)
 {
 	DBG("closing stream %" PRIu64, stream->stream_handle);
 	pthread_mutex_lock(&stream->lock);
+	stream->closed = true;
 	relay_index_close_all(stream);
 	pthread_mutex_unlock(&stream->lock);
 	stream_put(stream);
