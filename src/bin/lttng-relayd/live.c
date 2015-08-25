@@ -1534,23 +1534,6 @@ int viewer_get_packet(struct relay_connection *conn)
 	}
 
 	pthread_mutex_lock(&vstream->stream->lock);
-	/*
-	 * The vstream->stream_fd used here has been opened by
-	 * get_next_index. It is opened there because this is what
-	 * allows us to grab a reference to the file with stream lock
-	 * held, thus protecting us against overwrite caused by
-	 * tracefile rotation. Since tracefile rotation unlinks the old
-	 * data file, we are ensured that we won't have our data
-	 * overwritten under us.
-	 */
-	ret = check_new_streams(conn);
-	if (ret < 0) {
-		goto end_free;
-	} else if (ret == 1) {
-		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
-		reply.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
-		goto send_reply;
-	}
 
 	len = be32toh(get_packet_info.len);
 	data = zmalloc(len);
