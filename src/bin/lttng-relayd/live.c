@@ -1629,7 +1629,15 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 	vstream = viewer_stream_get_by_id(be64toh(request.stream_id));
 	if (!vstream) {
-		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
+		/*
+		 * The metadata stream can be closed by a CLOSE command
+		 * just before we attach. It can also be closed by
+		 * per-pid tracing during tracing. Therefore, it is
+		 * possible that we cannot find this viewer stream.
+		 * Reply back to the client with an error if we cannot
+		 * find it.
+		 */
+		reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 		goto send_reply;
 	}
 	pthread_mutex_lock(&vstream->stream->lock);
