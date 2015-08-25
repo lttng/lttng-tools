@@ -227,6 +227,8 @@ struct ust_app_session {
  */
 struct ust_app {
 	int sock;
+	pthread_mutex_t sock_lock;	/* Protects sock protocol. */
+
 	int notify_sock;
 	pid_t pid;
 	pid_t ppid;
