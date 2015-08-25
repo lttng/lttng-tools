@@ -79,6 +79,7 @@ enum lttng_viewer_get_metadata_return_code {
 	LTTNG_VIEWER_METADATA_OK	= 1,
 	LTTNG_VIEWER_NO_NEW_METADATA	= 2,
 	LTTNG_VIEWER_METADATA_ERR	= 3,
+	LTTNG_VIEWER_METADATA_HUP	= 4,
 };
 
 enum lttng_viewer_connection_type {
