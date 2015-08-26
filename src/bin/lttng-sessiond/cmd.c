@@ -1497,6 +1497,9 @@ static int _cmd_enable_event(struct ltt_session *session,
 	assert(event);
 	assert(channel_name);
 
+	/* If we have a filter, we must have its filter expression */
+	assert(!(!!filter_expression ^ !!filter));
+
 	DBG("Enable event command for event \'%s\'", event->name);
 
 	ret = validate_event_name(event->name);
