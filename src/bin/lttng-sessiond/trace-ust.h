@@ -53,6 +53,12 @@ struct ltt_ust_event {
 	char *filter_expression;
 	struct lttng_ust_filter_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
+	/*
+	 * An internal event is an event which was created by the session daemon
+	 * through which, for example, events emitted in Agent domains are
+	 * "funelled". This is used to hide internal events from external
+	 * clients as they should never be modified by the external world.
+	 */
 	bool internal;
 };
 
