@@ -42,7 +42,20 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
  * error code. If buf is NULL, 0 is returned on success.
  */
 int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		const void *vardata, size_t varlen, void **buf);
+		const void *vardata, size_t vardata_len,
+		void **user_payload_buf, void **user_cmd_header_buf,
+		size_t *user_cmd_header_len);
+
+/*
+ * Calls lttng_ctl_ask_sessiond_varlen() with no expected command header.
+ */
+static inline
+int lttng_ctl_ask_sessiond_varlen_no_cmd_header(struct lttcomm_session_msg *lsm,
+		void *vardata, size_t vardata_len, void **user_payload_buf)
+{
+	return lttng_ctl_ask_sessiond_varlen(lsm, vardata,
+		vardata_len, user_payload_buf, NULL, NULL);
+}
 
 /*
  * Use this if no variable length data needs to be sent.
@@ -50,7 +63,7 @@ int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 static inline
 int lttng_ctl_ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 {
-	return lttng_ctl_ask_sessiond_varlen(lsm, NULL, 0, buf);
+	return lttng_ctl_ask_sessiond_varlen_no_cmd_header(lsm, NULL, 0, buf);
 }
 
 int lttng_check_tracing_group(void);

@@ -348,6 +348,7 @@ struct lttcomm_lttng_msg {
 	uint32_t cmd_type;	/* enum lttcomm_sessiond_command */
 	uint32_t ret_code;	/* enum lttcomm_return_code */
 	uint32_t pid;		/* pid_t */
+	uint32_t cmd_header_size;
 	uint32_t data_size;
 	/* Contains: trace_name + data */
 	char payload[];
