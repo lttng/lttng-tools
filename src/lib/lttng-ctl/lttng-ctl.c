@@ -1000,7 +1000,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	/* Put exclusion names first in the data */
 	while (exclusion_count--) {
 		strncpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * exclusion_count,
-			*(exclusion_list + exclusion_count), LTTNG_SYMBOL_NAME_LEN);
+			*(exclusion_list + exclusion_count),
+			LTTNG_SYMBOL_NAME_LEN - 1);
 	}
 	/* Add filter expression next */
 	if (lsm.u.enable.expression_len != 0) {
