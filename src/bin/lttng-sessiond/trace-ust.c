@@ -144,8 +144,7 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 					LTTNG_EVENT_EXCLUSION_NAME_AT(
 						key->exclusion, j);
 
-				if (!memcmp(name_ev, name_key,
-						LTTNG_SYMBOL_NAME_LEN)) {
+				if (!strcmp(name_ev, name_key)) {
 					/* Names match! */
 					found = 1;
 					break;
@@ -421,7 +420,7 @@ static int validate_exclusion(struct lttng_event_exclusion *exclusion)
 			const char *name_b =
 				LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, j);
 
-			if (!memcmp(name_a, name_b, LTTNG_SYMBOL_NAME_LEN)) {
+			if (!strcmp(name_a, name_b)) {
 				/* Match! */
 				ret = -1;
 				goto end;
