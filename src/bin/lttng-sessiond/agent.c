@@ -917,6 +917,7 @@ void agent_destroy_event(struct agent_event *event)
 	assert(event);
 
 	free(event->filter);
+	free(event->filter_expression);
 	free(event);
 }
 

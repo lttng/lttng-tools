@@ -509,7 +509,8 @@ error:
  */
 int event_agent_enable_all(struct ltt_ust_session *usess,
 		struct agent *agt, struct lttng_event *event,
-		struct lttng_filter_bytecode *filter)
+		struct lttng_filter_bytecode *filter,
+		char *filter_expression)
 {
 	int ret;
 	struct agent_event *aevent;
@@ -520,7 +521,7 @@ int event_agent_enable_all(struct ltt_ust_session *usess,
 	DBG("Event agent enabling ALL events for session %" PRIu64, usess->id);
 
 	/* Enable event on agent application through TCP socket. */
-	ret = event_agent_enable(usess, agt, event, filter);
+	ret = event_agent_enable(usess, agt, event, filter, filter_expression);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -546,7 +547,8 @@ error:
  */
 int event_agent_enable(struct ltt_ust_session *usess,
 		struct agent *agt, struct lttng_event *event,
-		struct lttng_filter_bytecode *filter)
+		struct lttng_filter_bytecode *filter,
+		char *filter_expression)
 {
 	int ret, created = 0;
 	struct agent_event *aevent;
