@@ -367,6 +367,39 @@ error:
 }
 
 /*
+ * Validates an exclusion list.
+ *
+ * Returns 0 if valid, negative value if invalid.
+ */
+static int validate_exclusion(struct lttng_event_exclusion *exclusion)
+{
+	size_t i;
+	int ret = 0;
+
+	assert(exclusion);
+
+	for (i = 0; i < exclusion->count; ++i) {
+		size_t j;
+		const char *name_a =
+			LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, i);
+
+		for (j = 0; j < i; ++j) {
+			const char *name_b =
+				LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, j);
+
+			if (!memcmp(name_a, name_b, LTTNG_SYMBOL_NAME_LEN)) {
+				/* Match! */
+				ret = -1;
+				goto end;
+			}
+		}
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Allocate and initialize a ust event. Set name and event type.
  * We own filter_expression, filter, and exclusion.
  *
@@ -380,6 +413,10 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 	struct ltt_ust_event *lue;
 
 	assert(ev);
+
+	if (exclusion && validate_exclusion(exclusion)) {
+		goto error;
+	}
 
 	lue = zmalloc(sizeof(struct ltt_ust_event));
 	if (lue == NULL) {
