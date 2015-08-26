@@ -42,9 +42,11 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, char *event_name);
 
 int event_agent_enable(struct ltt_ust_session *usess, struct agent *agt,
-		struct lttng_event *event, struct lttng_filter_bytecode *filter);
+		struct lttng_event *event, struct lttng_filter_bytecode *filter,
+		char *filter_expression);
 int event_agent_enable_all(struct ltt_ust_session *usess, struct agent *agt,
-		struct lttng_event *event, struct lttng_filter_bytecode *filter);
+		struct lttng_event *event, struct lttng_filter_bytecode *filter,
+		char *filter_expression);
 
 int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 		char *event_name);

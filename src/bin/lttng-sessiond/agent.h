@@ -92,6 +92,7 @@ struct agent_event {
 	struct lttng_ht_node_str node;
 
 	/* Bytecode filter associated with the event . NULL if none. */
+	char *filter_expression;
 	struct lttng_filter_bytecode *filter;
 };
 
