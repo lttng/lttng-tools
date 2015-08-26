@@ -759,7 +759,7 @@ error:
 }
 
 /*
- * Generate the filter bytecode from a give filter expression string. Put the
+ * Generate the filter bytecode from a given filter expression string. Put the
  * newly allocated parser context in ctxp and populate the lsm object with the
  * expression len.
  *
