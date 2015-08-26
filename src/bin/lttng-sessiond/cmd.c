@@ -1609,6 +1609,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		{
 			struct lttng_filter_bytecode *filter_copy = NULL;
+			char *filter_expression_copy = NULL;
 
 			if (filter) {
 				filter_copy = zmalloc(
@@ -1619,16 +1620,28 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 				}
 
 				memcpy(filter_copy, filter,
-					sizeof(struct lttng_filter_bytecode)
-					+ filter->len);
+				       sizeof(struct lttng_filter_bytecode)
+				       + filter->len);
+			}
+
+			if (filter_expression) {
+				filter_expression_copy =
+						strdup(filter_expression);
+				if (!filter_expression) {
+					ret = LTTNG_ERR_NOMEM;
+					goto error_free_copy;
+				}
 			}
 
 			ret = cmd_enable_event(session, &tmp_dom,
 					(char *) default_chan_name,
-					&uevent, filter_expression, filter_copy,
-					NULL, wpipe);
-			/* We have passed ownership */
-			filter_expression = NULL;
+					&uevent, filter_expression_copy,
+					filter_copy, NULL, wpipe);
+			filter_copy = NULL;
+			filter_expression_copy = NULL;
+error_free_copy:
+			free(filter_copy);
+			free(filter_expression_copy);
 		}
 
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
@@ -1637,10 +1650,12 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
-			ret = event_agent_enable_all(usess, agt, event, filter);
+			ret = event_agent_enable_all(usess, agt, event, filter,
+					filter_expression);
 			filter = NULL;
 		} else {
-			ret = event_agent_enable(usess, agt, event, filter);
+			ret = event_agent_enable(usess, agt, event, filter,
+					filter_expression);
 			filter = NULL;
 		}
 		if (ret != LTTNG_OK) {
