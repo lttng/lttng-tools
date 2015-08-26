@@ -1616,6 +1616,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
 					sizeof(struct lttng_filter_bytecode)
 					+ filter->len);
 				if (!filter_copy) {
+					ret = LTTNG_ERR_NOMEM;
 					goto error;
 				}
 
