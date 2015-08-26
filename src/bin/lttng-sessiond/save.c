@@ -661,7 +661,7 @@ int save_ust_event(struct config_writer *writer,
 		for (i = 0; i < event->exclusion->count; i++) {
 			ret = config_writer_write_element_string(writer,
 				config_element_exclusion,
-				&event->exclusion->names[0][i]);
+				&event->exclusion->names[i][0]);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;

@@ -334,7 +334,7 @@ struct lttng_filter_bytecode {
 struct lttng_event_exclusion {
 	uint32_t count;
 	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
-	char names[LTTNG_SYMBOL_NAME_LEN][0];
+	char names[0][LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 
 /*
