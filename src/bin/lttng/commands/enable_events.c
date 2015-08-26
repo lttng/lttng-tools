@@ -676,6 +676,24 @@ end:
 	*exclusion_list_ptr = exclusion_list;
 	return ret;
 }
+
+static void warn_on_truncated_exclusion_names(char **exclusion_list,
+	int exclusion_count, int *warn)
+{
+	size_t i = 0;
+
+	for (i = 0; i < exclusion_count; ++i) {
+		const char *name = exclusion_list[i];
+		size_t len = strlen(name);
+
+		if (len >= LTTNG_SYMBOL_NAME_LEN) {
+			WARN("Event exclusion \"%s\" will be truncated",
+				name);
+			*warn = 1;
+		}
+	}
+}
+
 /*
  * Enabling event using the lttng API.
  * Note: in case of error only the last error code will be return.
@@ -808,6 +826,9 @@ static int enable_events(char *session_name)
 				goto error;
 			}
 			ev.exclusion = 1;
+
+			warn_on_truncated_exclusion_names(exclusion_list,
+				exclusion_count, &warn);
 		}
 		if (!opt_filter) {
 			ret = lttng_enable_event_with_exclusions(handle,
@@ -1100,6 +1121,9 @@ static int enable_events(char *session_name)
 				if (ret == CMD_ERROR) {
 					goto error;
 				}
+
+				warn_on_truncated_exclusion_names(
+					exclusion_list, exclusion_count, &warn);
 			}
 
 			ev.loglevel_type = opt_loglevel_type;
