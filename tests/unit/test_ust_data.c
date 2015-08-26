@@ -38,7 +38,7 @@
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 11
+#define NUM_TESTS 12
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -145,7 +145,9 @@ static void test_create_ust_event_exclusion(void)
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
 	char *name;
+	char *random_name;
 	struct lttng_event_exclusion *exclusion;
+	const int exclusion_count = 2;
 
 	memset(&ev, 0, sizeof(ev));
 
@@ -158,26 +160,49 @@ static void test_create_ust_event_exclusion(void)
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	/* set up an exclusion set */
-	exclusion = zmalloc(sizeof(*exclusion) + LTTNG_SYMBOL_NAME_LEN);
+	exclusion = zmalloc(sizeof(*exclusion) +
+		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
 	if (!exclusion) {
 		PERROR("zmalloc");
 	}
 
 	ok(exclusion != NULL, "Create UST exclusion");
 
-	exclusion->count = 1;
-	strncpy((char *)(exclusion->names), get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+	exclusion->count = exclusion_count;
+	random_name = get_random_string();
+	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0), random_name,
+		LTTNG_SYMBOL_NAME_LEN);
+	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1), random_name,
+		LTTNG_SYMBOL_NAME_LEN);
 
 	event = trace_ust_create_event(&ev, NULL, NULL, exclusion, false);
 
-	ok(event != NULL, "Create UST event with exclusion");
+	ok(!event, "Create UST event with identical exclusion names fails");
+
+	exclusion = zmalloc(sizeof(*exclusion) +
+		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
+	if (!exclusion) {
+		PERROR("zmalloc");
+	}
+
+	exclusion->count = exclusion_count;
+	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
+		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
+		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+
+	event = trace_ust_create_event(&ev, NULL, NULL, exclusion, false);
+	assert(event != NULL);
+
+	ok(event != NULL, "Create UST event with different exclusion names");
 
 	ok(event->enabled == 0 &&
 	   event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
 	   strcmp(event->attr.name, ev.name) == 0 &&
 	   event->exclusion != NULL &&
-	   event->exclusion->count == 1 &&
-	   strcmp((char *)(event->exclusion->names), (char *)(exclusion->names)) == 0 &&
+	   event->exclusion->count == exclusion_count &&
+	   !memcmp(event->exclusion->names, exclusion->names,
+	   	LTTNG_SYMBOL_NAME_LEN * exclusion_count) &&
 	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
 	   "Validate UST event and exclusion");
 
