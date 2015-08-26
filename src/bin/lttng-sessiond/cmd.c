@@ -1715,7 +1715,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		if (!agt) {
 			agt = agent_create(domain->type);
 			if (!agt) {
-				ret = -LTTNG_ERR_NOMEM;
+				ret = LTTNG_ERR_NOMEM;
 				goto error;
 			}
 			agent_add(agt, usess->agents);
@@ -1727,7 +1727,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		default_event_name = event_get_default_agent_ust_name(domain->type);
 		if (!default_event_name) {
-			ret = -LTTNG_ERR_FATAL;
+			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
 		strncpy(uevent.name, default_event_name, sizeof(uevent.name));
