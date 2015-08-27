@@ -25,6 +25,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
@@ -565,6 +566,18 @@ static int spawn_sessiond(char *pathname)
 	recv_child_signal = 0;
 	pid = fork();
 	if (pid == 0) {
+		int dev_null_fd;
+
+		dev_null_fd = open("/dev/null", O_WRONLY);
+
+		if (dev_null_fd < 0) {
+			PERROR("open /dev/null");
+		} else {
+			if (dup2(dev_null_fd, STDOUT_FILENO) < 0) {
+				PERROR("dup2 (stdout)");
+			}
+		}
+
 		/*
 		 * Spawn session daemon and tell
 		 * it to signal us when ready.
