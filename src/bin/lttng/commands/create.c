@@ -571,7 +571,7 @@ static int spawn_sessiond(char *pathname)
 		 * it to signal us when ready.
 		 */
 		execlp(pathname, "lttng-sessiond", "--sig-parent",
-			"--daemonize", "--quiet", NULL);
+			"--daemonize", NULL);
 
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
