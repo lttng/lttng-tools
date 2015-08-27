@@ -38,8 +38,6 @@
 static char *progname;
 int opt_no_sessiond;
 char *opt_sessiond_path;
-pid_t sessiond_pid;
-volatile int recv_child_signal;
 
 char *opt_relayd_path;
 
@@ -203,25 +201,10 @@ static void clean_exit(int code)
  */
 static void sighandler(int sig)
 {
-	int status;
-
 	switch (sig) {
 		case SIGTERM:
 			DBG("SIGTERM caught");
 			clean_exit(EXIT_FAILURE);
-			break;
-		case SIGCHLD:
-			DBG("SIGCHLD caught");
-			waitpid(sessiond_pid, &status, 0);
-			recv_child_signal = 1;
-			/* Indicate that the session daemon died */
-			sessiond_pid = 0;
-			ERR("Session daemon died (exit status %d)", WEXITSTATUS(status));
-			break;
-		case SIGUSR1:
-			/* Notify is done */
-			recv_child_signal = 1;
-			DBG("SIGUSR1 caught");
 			break;
 		default:
 			DBG("Unknown signal %d caught", sig);
@@ -250,17 +233,8 @@ static int set_signal_handler(void)
 	sa.sa_handler = sighandler;
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
-	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
-		PERROR("sigaction");
-		goto end;
-	}
 
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
-		PERROR("sigaction");
-		goto end;
-	}
-
-	if ((ret = sigaction(SIGCHLD, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		goto end;
 	}

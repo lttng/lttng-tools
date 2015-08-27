@@ -28,6 +28,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 #include <common/mi-lttng.h>
 
@@ -562,14 +563,13 @@ static int spawn_sessiond(char *pathname)
 	pid_t pid;
 
 	MSG("Spawning a session daemon");
-	recv_child_signal = 0;
 	pid = fork();
 	if (pid == 0) {
 		/*
-		 * Spawn session daemon and tell
-		 * it to signal us when ready.
+		 * Spawn session daemon in daemon mode.
 		 */
-		execlp(pathname, "lttng-sessiond", "--sig-parent", "--quiet", NULL);
+		execlp(pathname, "lttng-sessiond",
+			"--daemonize", NULL);
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
 			ERR("No session daemon found. Use --sessiond-path.");
@@ -579,25 +579,33 @@ static int spawn_sessiond(char *pathname)
 		kill(getppid(), SIGTERM);	/* wake parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
-		sessiond_pid = pid;
+		int status;
+
 		/*
-		 * Wait for lttng-sessiond to start. We need to use a flag to check if
-		 * the signal has been sent to us, because the child can be scheduled
-		 * before the parent, and thus send the signal before this check. In
-		 * the signal handler, we set the recv_child_signal flag, so anytime we
-		 * check it after the fork is fine. Note that sleep() is interrupted
-		 * before the 1 second delay as soon as the signal is received, so it
-		 * will not cause visible delay for the user.
+		 * In daemon mode (--daemonize), sessiond only exits when
+		 * it's ready to accept commands.
 		 */
-		while (!recv_child_signal) {
-			sleep(1);
+		for (;;) {
+			waitpid(pid, &status, 0);
+
+			if (WIFSIGNALED(status)) {
+				ERR("Session daemon was killed by signal %d",
+					WTERMSIG(status));
+				exit(EXIT_FAILURE);
+			} else if (WIFEXITED(status)) {
+				DBG("Session daemon terminated normally (exit status: %d)",
+					WEXITSTATUS(status));
+
+				if (WEXITSTATUS(status) != 0) {
+					ERR("Session daemon terminated with an error (exit status: %d)",
+						WEXITSTATUS(status));
+					exit(EXIT_FAILURE);
+				}
+
+				break;
+			}
 		}
-		/*
-		 * The signal handler will nullify sessiond_pid on SIGCHLD
-		 */
-		if (!sessiond_pid) {
-			exit(EXIT_FAILURE);
-		}
+
 		goto end;
 	} else {
 		PERROR("fork");
