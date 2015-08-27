@@ -582,14 +582,14 @@ static int spawn_sessiond(char *pathname)
 				PERROR("dup2 (stdout)");
 			}
 
-			saved_stderr = dup(STDERR_FILENO);
+			saved_stderr = fcntl(STDERR_FILENO, F_DUPFD_CLOEXEC, 0);
 
 			if (saved_stderr >= 0) {
 				if (dup2(dev_null_fd, STDERR_FILENO) < 0) {
 					PERROR("dup2 (stderr)");
 				}
 			} else {
-				PERROR("dup (stderr)");
+				PERROR("fcntl (stderr)");
 			}
 		}
 
