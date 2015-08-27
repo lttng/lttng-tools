@@ -26,7 +26,6 @@
 extern char *opt_relayd_path;
 extern int opt_no_sessiond;
 extern char * opt_sessiond_path;
-extern volatile int recv_child_signal;
 extern pid_t sessiond_pid;
 
 struct cmd_struct;
