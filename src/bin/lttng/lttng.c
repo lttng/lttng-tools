@@ -214,9 +214,14 @@ static void sighandler(int sig)
 			DBG("SIGCHLD caught");
 			waitpid(sessiond_pid, &status, 0);
 			recv_child_signal = 1;
+
 			/* Indicate that the session daemon died */
-			sessiond_pid = 0;
-			ERR("Session daemon died (exit status %d)", WEXITSTATUS(status));
+			if (WEXITSTATUS(status) != 0) {
+				/* Error happened */
+				sessiond_pid = 0;
+				ERR("Session daemon died (exit status %d)",
+					WEXITSTATUS(status));
+			}
 			break;
 		case SIGUSR1:
 			/* Notify is done */

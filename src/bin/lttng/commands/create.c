@@ -566,44 +566,12 @@ static int spawn_sessiond(char *pathname)
 	recv_child_signal = 0;
 	pid = fork();
 	if (pid == 0) {
-		int dev_null_fd;
-		int saved_stderr = -1;
-
-		/* send sessiond's stdout and stderr to /dev/null */
-		dev_null_fd = open("/dev/null", O_WRONLY);
-
-		if (dev_null_fd < 0) {
-			PERROR("open /dev/null");
-		} else {
-			fflush(stdout);
-			fflush(stderr);
-
-			if (dup2(dev_null_fd, STDOUT_FILENO) < 0) {
-				PERROR("dup2 (stdout)");
-			}
-
-			saved_stderr = fcntl(STDERR_FILENO, F_DUPFD_CLOEXEC, 0);
-
-			if (saved_stderr >= 0) {
-				if (dup2(dev_null_fd, STDERR_FILENO) < 0) {
-					PERROR("dup2 (stderr)");
-				}
-			} else {
-				PERROR("fcntl (stderr)");
-			}
-		}
-
 		/*
 		 * Spawn session daemon and tell
 		 * it to signal us when ready.
 		 */
-		execlp(pathname, "lttng-sessiond", "--sig-parent", "--quiet", NULL);
-
-		/* restore standard error */
-		if (saved_stderr >= 0) {
-			dup2(saved_stderr, STDERR_FILENO);
-			close(saved_stderr);
-		}
+		execlp(pathname, "lttng-sessiond", "--sig-parent",
+			"--daemonize", "--quiet", NULL);
 
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
@@ -629,6 +597,7 @@ static int spawn_sessiond(char *pathname)
 		}
 		/*
 		 * The signal handler will nullify sessiond_pid on SIGCHLD
+		 * if the session daemon exited with an error.
 		 */
 		if (!sessiond_pid) {
 			exit(EXIT_FAILURE);
