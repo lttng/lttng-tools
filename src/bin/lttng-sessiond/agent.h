@@ -58,7 +58,7 @@ struct agent_register_msg {
  */
 struct agent_app {
 	/*
-	 * PID sent during registration of a AGENT application.
+	 * PID sent during registration of an agent application.
 	 */
 	pid_t pid;
 
