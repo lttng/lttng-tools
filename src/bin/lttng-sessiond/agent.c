@@ -716,10 +716,7 @@ void agent_add_app(struct agent_app *app)
 	assert(app);
 
 	DBG3("Agent adding app sock: %d and pid: %d to ht", app->sock->fd, app->pid);
-
-	rcu_read_lock();
 	lttng_ht_add_unique_ulong(agent_apps_ht_by_sock, &app->node);
-	rcu_read_unlock();
 }
 
 /*
