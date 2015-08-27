@@ -567,14 +567,29 @@ static int spawn_sessiond(char *pathname)
 	pid = fork();
 	if (pid == 0) {
 		int dev_null_fd;
+		int saved_stderr = -1;
 
+		/* send sessiond's stdout and stderr to /dev/null */
 		dev_null_fd = open("/dev/null", O_WRONLY);
 
 		if (dev_null_fd < 0) {
 			PERROR("open /dev/null");
 		} else {
+			fflush(stdout);
+			fflush(stderr);
+
 			if (dup2(dev_null_fd, STDOUT_FILENO) < 0) {
 				PERROR("dup2 (stdout)");
+			}
+
+			saved_stderr = dup(STDERR_FILENO);
+
+			if (saved_stderr >= 0) {
+				if (dup2(dev_null_fd, STDERR_FILENO) < 0) {
+					PERROR("dup2 (stderr)");
+				}
+			} else {
+				PERROR("dup (stderr)");
 			}
 		}
 
@@ -583,6 +598,13 @@ static int spawn_sessiond(char *pathname)
 		 * it to signal us when ready.
 		 */
 		execlp(pathname, "lttng-sessiond", "--sig-parent", "--quiet", NULL);
+
+		/* restore standard error */
+		if (saved_stderr >= 0) {
+			dup2(saved_stderr, STDERR_FILENO);
+			close(saved_stderr);
+		}
+
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
 			ERR("No session daemon found. Use --sessiond-path.");
