@@ -379,6 +379,8 @@ static int list_lttng_kernel_events(char *channel_name,
 		strncpy((*events)[i].name, event->event->name, LTTNG_SYMBOL_NAME_LEN);
 		(*events)[i].name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		(*events)[i].enabled = event->enabled;
+		(*events)[i].filter =
+				(unsigned char) !!event->filter_expression;
 
 		switch (event->event->instrumentation) {
 		case LTTNG_KERNEL_TRACEPOINT:
