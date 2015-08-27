@@ -789,9 +789,7 @@ void agent_add(struct agent *agt, struct lttng_ht *ht)
 
 	DBG3("Agent adding from domain %d", agt->domain);
 
-	rcu_read_lock();
 	lttng_ht_add_unique_u64(ht, &agt->node);
-	rcu_read_unlock();
 }
 
 /*
