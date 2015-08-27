@@ -363,6 +363,16 @@ int save_kernel_event(struct config_writer *writer,
 		goto end;
 	}
 
+	if (event->filter_expression) {
+		ret = config_writer_write_element_string(writer,
+				config_element_filter,
+				event->filter_expression);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
 	if (event->event->instrumentation == LTTNG_KERNEL_FUNCTION ||
 		event->event->instrumentation == LTTNG_KERNEL_KPROBE ||
 		event->event->instrumentation == LTTNG_KERNEL_KRETPROBE) {
