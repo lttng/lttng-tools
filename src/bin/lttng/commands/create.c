@@ -25,6 +25,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
@@ -569,7 +570,9 @@ static int spawn_sessiond(char *pathname)
 		 * Spawn session daemon and tell
 		 * it to signal us when ready.
 		 */
-		execlp(pathname, "lttng-sessiond", "--sig-parent", "--quiet", NULL);
+		execlp(pathname, "lttng-sessiond", "--sig-parent",
+			"--daemonize", NULL);
+
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
 			ERR("No session daemon found. Use --sessiond-path.");
@@ -594,6 +597,7 @@ static int spawn_sessiond(char *pathname)
 		}
 		/*
 		 * The signal handler will nullify sessiond_pid on SIGCHLD
+		 * if the session daemon exited with an error.
 		 */
 		if (!sessiond_pid) {
 			exit(EXIT_FAILURE);
