@@ -79,7 +79,7 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
 ssize_t cmd_list_events(enum lttng_domain_type domain,
 		struct ltt_session *session, char *channel_name,
-		struct lttng_event **events);
+		struct lttng_event **events, size_t *total_size);
 ssize_t cmd_list_channels(enum lttng_domain_type domain,
 		struct ltt_session *session, struct lttng_channel **channels);
 ssize_t cmd_list_domains(struct ltt_session *session,

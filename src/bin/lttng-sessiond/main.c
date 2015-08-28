@@ -899,12 +899,16 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	cmd_ctx->lttng_msg_size = total_msg_size;
 
 	/* Copy command header */
-	memcpy(((uint8_t *) cmd_ctx->llm) + cmd_header_offset, cmd_header_buf,
-		cmd_header_len);
+	if (cmd_header_len) {
+		memcpy(((uint8_t *) cmd_ctx->llm) + cmd_header_offset, cmd_header_buf,
+			cmd_header_len);
+	}
 
 	/* Copy payload */
-	memcpy(((uint8_t *) cmd_ctx->llm) + payload_offset, payload_buf,
-		payload_len);
+	if (payload_len) {
+		memcpy(((uint8_t *) cmd_ctx->llm) + payload_offset, payload_buf,
+			payload_len);
+	}
 
 end:
 	return ret;
@@ -3866,17 +3870,23 @@ error_add_context:
 	{
 		ssize_t nb_event;
 		struct lttng_event *events = NULL;
+		struct lttcomm_event_command_header cmd_header;
+		size_t total_size;
 
-		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type, cmd_ctx->session,
-				cmd_ctx->lsm->u.list.channel_name, &events);
+		/* Extended infos are included at the end of events */
+		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type,
+			cmd_ctx->session, cmd_ctx->lsm->u.list.channel_name,
+			&events, &total_size);
+
 		if (nb_event < 0) {
 			/* Return value is a negative lttng_error_code. */
 			ret = -nb_event;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, events,
-			nb_event * sizeof(struct lttng_event));
+		cmd_header.nb_events = nb_event;
+		ret = setup_lttng_msg(cmd_ctx, events, total_size,
+			&cmd_header, sizeof(cmd_header));
 		free(events);
 
 		if (ret < 0) {

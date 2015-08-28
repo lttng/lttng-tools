@@ -342,6 +342,26 @@ struct lttng_event_exclusion {
 	(&(_exclusion)->names[_i][0])
 
 /*
+ * Event command header.
+ */
+struct lttcomm_event_command_header {
+	/* Number of events */
+	uint32_t nb_events;
+} LTTNG_PACKED;
+
+/*
+ * Event extended info header. This is the structure preceding each
+ * extended info data.
+ */
+struct lttcomm_event_extended_header {
+	/*
+	 * Size of filter string immediately following this header.
+	 * This size includes the terminal null character.
+	 */
+	uint32_t filter_len;
+} LTTNG_PACKED;
+
+/*
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
