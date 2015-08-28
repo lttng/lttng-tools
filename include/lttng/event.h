@@ -216,25 +216,44 @@ struct lttng_event_function_attr {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_EVENT_PADDING1               10
+#define LTTNG_EVENT_PADDING1               12
 #define LTTNG_EVENT_PADDING2               LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event {
+	/* Offset 0 */
 	enum lttng_event_type type;
+
+	/* Offset 4 */
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
+	/* Offset 260 */
 	enum lttng_loglevel_type loglevel_type;
+
+	/* Offset 264 */
 	int loglevel;
 
+	/* Offset 268 */
 	int32_t enabled;	/* Does not apply: -1 */
+
+	/* Offset 272 */
 	pid_t pid;
+
+	/* Offset 276 */
 	unsigned char filter;	/* filter enabled ? */
+
+	/* Offset 277 */
 	unsigned char exclusion; /* exclusions added ? */
 
+	/* Offset 278 */
+	char padding2[2];
+
+	/* Offset 280 */
 	/* Event flag, from 2.6 and above. */
 	enum lttng_event_flag flags;
 
+	/* Offset 284 */
 	char padding[LTTNG_EVENT_PADDING1];
 
+	/* Offset 296 */
 	/* Per event type configuration */
 	union {
 		struct lttng_event_probe_attr probe;
