@@ -346,8 +346,6 @@ struct lttcomm_lttng_msg {
 	uint32_t pid;		/* pid_t */
 	uint32_t cmd_header_size;
 	uint32_t data_size;
-	/* Contains: trace_name + data */
-	char payload[];
 } LTTNG_PACKED;
 
 struct lttcomm_lttng_output_id {
