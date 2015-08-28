@@ -624,11 +624,14 @@ int save_ust_event(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_signed_int(writer,
-		config_element_loglevel, event->attr.loglevel);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
+	/* The log level is irrelevant if no "filtering" is enabled */
+	if (event->attr.loglevel_type != LTTNG_UST_LOGLEVEL_ALL) {
+		ret = config_writer_write_element_signed_int(writer,
+				config_element_loglevel, event->attr.loglevel);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
 	}
 
 	if (event->filter_expression) {
