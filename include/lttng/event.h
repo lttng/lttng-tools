@@ -251,7 +251,13 @@ struct lttng_event {
 	enum lttng_event_flag flags;
 
 	/* Offset 284 */
-	char padding[LTTNG_EVENT_PADDING1];
+	char padding[4];
+
+	/* Offset 288 */
+	union {
+		char padding[8];
+		void *ptr;
+	} extended;
 
 	/* Offset 296 */
 	/* Per event type configuration */

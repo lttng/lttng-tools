@@ -1633,6 +1633,10 @@ int lttng_list_events(struct lttng_handle *handle,
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
+	struct lttcomm_event_command_header *cmd_header;
+	size_t cmd_header_len;
+	void *extended_at;
+	int i;
 
 	/* Safety check. An handle and channel name are mandatory */
 	if (handle == NULL || channel_name == NULL) {
@@ -1645,16 +1649,35 @@ int lttng_list_events(struct lttng_handle *handle,
 			sizeof(lsm.session.name));
 	lttng_ctl_copy_string(lsm.u.list.channel_name, channel_name,
 			sizeof(lsm.u.list.channel_name));
-
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, NULL, 0, (void **) events,
+		(void **) &cmd_header, &cmd_header_len);
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void**) events);
 	if (ret < 0) {
 		return ret;
 	}
 
-	return ret / sizeof(struct lttng_event);
+	/* Set number of events and free command header */
+	ret = cmd_header->nb_events;
+	free(cmd_header);
+
+	/* Set extended info pointers */
+	extended_at = ((void*) (*events)) + ret * sizeof(struct lttng_event);
+
+	for (i = 0; i < ret; ++i) {
+		struct lttcomm_event_extended_header *ext_header;
+		struct lttng_event *event = &(*events)[i];
+
+		event->extended.ptr = extended_at;
+		ext_header =
+			(struct lttcomm_event_extended_header *) extended_at;
+		extended_at += sizeof(*ext_header);
+		extended_at += ext_header->filter_len;
+	}
+
+	return ret;
 }
+
 
 /*
  * Sets the tracing_group variable with name.

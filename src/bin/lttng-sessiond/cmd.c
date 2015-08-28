@@ -188,19 +188,48 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 	}
 }
 
+static void increment_extended_len(const char *filter_expression,
+	size_t *extended_len)
+{
+	*extended_len += sizeof(struct lttcomm_event_extended_header);
+
+	if (filter_expression) {
+		*extended_len += strlen(filter_expression) + 1;
+	}
+}
+
+static void append_extended_info(const char *filter_expression,
+	void **extended_at)
+{
+	struct lttcomm_event_extended_header extended_header;
+	size_t filter_len = 0;
+
+	if (filter_expression) {
+		filter_len = strlen(filter_expression) + 1;
+	}
+
+	extended_header.filter_len = filter_len;
+	memcpy(*extended_at, &extended_header, sizeof(extended_header));
+	*extended_at += sizeof(extended_header);
+	memcpy(*extended_at, filter_expression, filter_len);
+	*extended_at += filter_len;
+}
+
 /*
  * Create a list of agent domain events.
  *
  * Return number of events in list on success or else a negative value.
  */
 static int list_lttng_agent_events(struct agent *agt,
-		struct lttng_event **events)
+		struct lttng_event **events, size_t *total_size)
 {
 	int i = 0, ret = 0;
 	unsigned int nb_event = 0;
 	struct agent_event *event;
 	struct lttng_event *tmp_events;
 	struct lttng_ht_iter iter;
+	size_t extended_len = 0;
+	void *extended_at;
 
 	assert(agt);
 	assert(events);
@@ -212,15 +241,22 @@ static int list_lttng_agent_events(struct agent *agt,
 	rcu_read_unlock();
 	if (nb_event == 0) {
 		ret = nb_event;
+		*total_size = 0;
 		goto error;
 	}
 
-	tmp_events = zmalloc(nb_event * sizeof(*tmp_events));
+	/* Compute required extended infos size */
+	extended_len = nb_event * sizeof(struct lttcomm_event_extended_header);
+	*total_size = nb_event * sizeof(*tmp_events) + extended_len;
+	tmp_events = zmalloc(*total_size);
 	if (!tmp_events) {
 		PERROR("zmalloc agent events session");
 		ret = -LTTNG_ERR_FATAL;
 		goto error;
 	}
+
+	extended_at = ((uint8_t *) tmp_events) +
+		nb_event * sizeof(struct lttng_event);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
@@ -230,6 +266,9 @@ static int list_lttng_agent_events(struct agent *agt,
 		tmp_events[i].loglevel = event->loglevel;
 		tmp_events[i].loglevel_type = event->loglevel_type;
 		i++;
+
+		/* Append extended info */
+		append_extended_info(NULL, &extended_at);
 	}
 	rcu_read_unlock();
 
@@ -245,7 +284,8 @@ error:
  * Create a list of ust global domain events.
  */
 static int list_lttng_ust_global_events(char *channel_name,
-		struct ltt_ust_domain_global *ust_global, struct lttng_event **events)
+		struct ltt_ust_domain_global *ust_global,
+		struct lttng_event **events, size_t *total_size)
 {
 	int i = 0, ret = 0;
 	unsigned int nb_event = 0;
@@ -254,6 +294,8 @@ static int list_lttng_ust_global_events(char *channel_name,
 	struct ltt_ust_channel *uchan;
 	struct ltt_ust_event *uevent;
 	struct lttng_event *tmp;
+	size_t extended_len = 0;
+	void *extended_at;
 
 	DBG("Listing UST global events for channel %s", channel_name);
 
@@ -272,16 +314,26 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 	if (nb_event == 0) {
 		ret = nb_event;
+		*total_size = 0;
 		goto error;
 	}
 
 	DBG3("Listing UST global %d events", nb_event);
 
-	tmp = zmalloc(nb_event * sizeof(struct lttng_event));
+	/* Compute required extended infos size */
+	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
+		increment_extended_len(uevent->filter_expression,
+			&extended_len);
+	}
+
+	*total_size = nb_event * sizeof(struct lttng_event) + extended_len;
+	tmp = zmalloc(*total_size);
 	if (tmp == NULL) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
+
+	extended_at = ((uint8_t *) tmp) + nb_event * sizeof(struct lttng_event);
 
 	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent, node.node) {
 		strncpy(tmp[i].name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN);
@@ -319,6 +371,9 @@ static int list_lttng_ust_global_events(char *channel_name,
 			tmp[i].exclusion = 1;
 		}
 		i++;
+
+		/* Append extended info */
+		append_extended_info(uevent->filter_expression, &extended_at);
 	}
 
 	ret = nb_event;
@@ -333,12 +388,15 @@ error:
  * Fill lttng_event array of all kernel events in the channel.
  */
 static int list_lttng_kernel_events(char *channel_name,
-		struct ltt_kernel_session *kernel_session, struct lttng_event **events)
+		struct ltt_kernel_session *kernel_session,
+		struct lttng_event **events, size_t *total_size)
 {
 	int i = 0, ret;
 	unsigned int nb_event;
 	struct ltt_kernel_event *event;
 	struct ltt_kernel_channel *kchan;
+	size_t extended_len = 0;
+	void *extended_at;
 
 	kchan = trace_kernel_get_channel_by_name(channel_name, kernel_session);
 	if (kchan == NULL) {
@@ -351,15 +409,25 @@ static int list_lttng_kernel_events(char *channel_name,
 	DBG("Listing events for channel %s", kchan->channel->name);
 
 	if (nb_event == 0) {
+		*total_size = 0;
 		*events = NULL;
 		goto syscall;
 	}
 
-	*events = zmalloc(nb_event * sizeof(struct lttng_event));
+	/* Compute required extended infos size */
+	cds_list_for_each_entry(event, &kchan->events_list.head, list) {
+		increment_extended_len(event->filter_expression, &extended_len);
+	}
+
+	*total_size = nb_event * sizeof(struct lttng_event) + extended_len;
+	*events = zmalloc(*total_size);
 	if (*events == NULL) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
+
+	extended_at = ((uint8_t *) events) +
+		nb_event * sizeof(struct lttng_event);
 
 	/* Kernel channels */
 	cds_list_for_each_entry(event, &kchan->events_list.head , list) {
@@ -397,6 +465,9 @@ static int list_lttng_kernel_events(char *channel_name,
 			break;
 		}
 		i++;
+
+		/* Append extended info */
+		append_extended_info(event->filter_expression, &extended_at);
 	}
 
 syscall:
@@ -2547,7 +2618,8 @@ error:
  * Command LTTNG_LIST_EVENTS processed by the client thread.
  */
 ssize_t cmd_list_events(int domain, struct ltt_session *session,
-		char *channel_name, struct lttng_event **events)
+		char *channel_name, struct lttng_event **events,
+		size_t *total_size)
 {
 	int ret = 0;
 	ssize_t nb_event = 0;
@@ -2556,14 +2628,16 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 	case LTTNG_DOMAIN_KERNEL:
 		if (session->kernel_session != NULL) {
 			nb_event = list_lttng_kernel_events(channel_name,
-					session->kernel_session, events);
+					session->kernel_session, events,
+					total_size);
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
 		if (session->ust_session != NULL) {
 			nb_event = list_lttng_ust_global_events(channel_name,
-					&session->ust_session->domain_global, events);
+					&session->ust_session->domain_global, events,
+					total_size);
 		}
 		break;
 	}
@@ -2577,7 +2651,8 @@ ssize_t cmd_list_events(int domain, struct ltt_session *session,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->ust_session->agents->ht,
 					&iter.iter, agt, node.node) {
-				nb_event = list_lttng_agent_events(agt, events);
+				nb_event = list_lttng_agent_events(agt, events,
+					total_size);
 			}
 			rcu_read_unlock();
 		}
