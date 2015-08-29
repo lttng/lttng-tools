@@ -109,6 +109,7 @@ const char * const config_element_snapshot_mode = "snapshot_mode";
 const char * const config_element_loglevel = "loglevel";
 const char * const config_element_loglevel_type = "loglevel_type";
 const char * const config_element_filter = "filter";
+const char * const config_element_filter_expression = "filter_expression";
 const char * const config_element_snapshot_outputs = "snapshot_outputs";
 const char * const config_element_consumer_output = "consumer_output";
 const char * const config_element_destination = "destination";
