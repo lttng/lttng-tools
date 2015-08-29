@@ -326,7 +326,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		goto error;
+		goto end;
 	}
 
 	uchan = caa_container_of(&node->node, struct ltt_ust_channel, node.node);
@@ -335,7 +335,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 	if (nb_event == 0) {
 		ret = nb_event;
 		*total_size = 0;
-		goto error;
+		goto end;
 	}
 
 	DBG3("Listing UST global %d events", nb_event);
@@ -349,6 +349,12 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 		increment_extended_len(uevent->filter_expression,
 			&extended_len);
+	}
+	if (nb_event == 0) {
+		/* All events are internal, skip. */
+		ret = 0;
+		*total_size = 0;
+		goto end;
 	}
 
 	*total_size = nb_event * sizeof(struct lttng_event) + extended_len;
@@ -407,8 +413,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 
 	ret = nb_event;
 	*events = tmp;
-
-error:
+end:
 	rcu_read_unlock();
 	return ret;
 }

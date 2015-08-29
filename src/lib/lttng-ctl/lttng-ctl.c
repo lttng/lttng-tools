@@ -1782,6 +1782,38 @@ error:
 	return ret;
 }
 
+int lttng_event_get_filter_string(struct lttng_event *event,
+	const char **filter_string)
+{
+	int ret = 0;
+	struct lttcomm_event_extended_header *ext_header;
+
+	if (!event || !filter_string) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ext_header = event->extended.ptr;
+
+	if (!ext_header) {
+		/*
+		 * This can happen since the lttng_event structure is
+		 * used for other tasks where this pointer is never set.
+		 */
+		*filter_string = NULL;
+		goto end;
+	}
+
+	if (ext_header->filter_len) {
+		*filter_string = ((const char *) (ext_header)) +
+			sizeof(*ext_header);
+	} else {
+		*filter_string = NULL;
+	}
+
+end:
+	return ret;
+}
 
 /*
  * Sets the tracing_group variable with name.

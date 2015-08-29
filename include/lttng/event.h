@@ -296,6 +296,18 @@ extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
 
 /*
+ * Get the filter string of a specific LTTng event.
+ *
+ * If the call is successful, then the filter string's address is put
+ * in *filter_string. If the event has no filter string, *filter_string
+ * is set to NULL. The caller does NOT own *filter_string.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_event_get_filter_string(struct lttng_event *event,
+		const char **filter_string);
+
+/*
  * List the available tracepoints of a specific lttng domain.
  *
  * The handle CAN NOT be NULL.
