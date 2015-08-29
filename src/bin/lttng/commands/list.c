@@ -166,18 +166,9 @@ const char *enabled_string(int value)
 }
 
 static
-const char *filter_message(const char *filter_msg)
+const char *safe_string(const char *str)
 {
-	return filter_msg ? filter_msg : "";
-}
-
-static
-const char *exclusion_string(int value)
-{
-	switch (value) {
-	case 1: return " [has exclusions]";
-	default: return "";
-	}
+	return str ? str : "";
 }
 
 static const char *logleveltype_string(enum lttng_loglevel_type value)
@@ -210,6 +201,78 @@ static const char *bitness_event(enum lttng_event_flag flags)
 }
 
 /*
+ * Get exclusion names message for a single event.
+ *
+ * Returned pointer must be freed by caller. Returns NULL on error.
+ */
+static char *get_exclusion_names_msg(struct lttng_event *event)
+{
+	int ret;
+	int exclusion_count;
+	char *exclusion_msg = NULL;
+	char *at;
+	int count;
+	size_t i;
+	const char * const exclusion_fmt = " [exclusions: ";
+
+	exclusion_count = lttng_event_get_exclusion_name_count(event);
+	if (exclusion_count < 0) {
+		goto end;
+	} else if (exclusion_count == 0) {
+		/*
+		 * No exclusions: return copy of empty string so that
+		 * it can be freed by caller.
+		 */
+		exclusion_msg = strdup("");
+		goto end;
+	}
+
+	/*
+	 * exclusion_msg's size is bounded by the exclusion_fmt string,
+	 * a comma per entry, the entry count (fixed-size), a closing
+	 * bracket, and a trailing \0.
+	 */
+	exclusion_msg = malloc(exclusion_count +
+			exclusion_count * LTTNG_SYMBOL_NAME_LEN +
+			strlen(exclusion_fmt) + 1);
+	if (!exclusion_msg) {
+		goto end;
+	}
+
+	at = exclusion_msg;
+	count = sprintf(at, exclusion_fmt);
+	at += count;
+
+	for (i = 0; i < exclusion_count; ++i) {
+		const char *name;
+
+		/* Append comma between exclusion names */
+		if (i > 0) {
+			*at = ',';
+			at++;
+		}
+
+		ret = lttng_event_get_exclusion_name(event, i, &name);
+		if (ret) {
+			/* Prints '?' on local error; should never happen */
+			*at = '?';
+			at++;
+			continue;
+		}
+
+		/* Append exclusion name */
+		count = sprintf(at, "%s", name);
+		at += count;
+	}
+
+	/* This also puts a final '\0' at the end of exclusion_msg */
+	sprintf(at, "]");
+
+end:
+	return exclusion_msg;
+}
+
+/*
  * Pretty print single event.
  */
 static void print_events(struct lttng_event *event)
@@ -217,6 +280,7 @@ static void print_events(struct lttng_event *event)
 	int ret;
 	const char *filter_str;
 	char *filter_msg = NULL;
+	char *exclusion_msg = NULL;
 
 	ret = lttng_event_get_filter_string(event, &filter_str);
 
@@ -233,6 +297,11 @@ static void print_events(struct lttng_event *event)
 		}
 	}
 
+	exclusion_msg = get_exclusion_names_msg(event);
+	if (!exclusion_msg) {
+		exclusion_msg = strdup(" [failed to retrieve exclusions]");
+	}
+
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
@@ -244,22 +313,22 @@ static void print_events(struct lttng_event *event)
 				mi_lttng_loglevel_string(event->loglevel, handle->domain.type),
 				event->loglevel,
 				enabled_string(event->enabled),
-				exclusion_string(event->exclusion),
-				filter_message(filter_msg));
+				safe_string(exclusion_msg),
+				safe_string(filter_msg));
 		} else {
 			MSG("%s%s (type: tracepoint)%s%s%s",
 				indent6,
 				event->name,
 				enabled_string(event->enabled),
-				exclusion_string(event->exclusion),
-				filter_message(filter_msg));
+				safe_string(exclusion_msg),
+				safe_string(filter_msg));
 		}
 		break;
 	}
 	case LTTNG_EVENT_FUNCTION:
 		MSG("%s%s (type: function)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
-				filter_message(filter_msg));
+				safe_string(filter_msg));
 		if (event->attr.probe.addr != 0) {
 			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
 		} else {
@@ -270,7 +339,7 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_PROBE:
 		MSG("%s%s (type: probe)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
-				filter_message(filter_msg));
+				safe_string(filter_msg));
 		if (event->attr.probe.addr != 0) {
 			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
 		} else {
@@ -281,7 +350,7 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		MSG("%s%s (type: function)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
-				filter_message(filter_msg));
+				safe_string(filter_msg));
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
@@ -293,7 +362,7 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s%s", indent6,
 				enabled_string(event->enabled),
-				filter_message(filter_msg));
+				safe_string(filter_msg));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */
@@ -302,6 +371,7 @@ static void print_events(struct lttng_event *event)
 	}
 
 	free(filter_msg);
+	free(exclusion_msg);
 }
 
 static const char *field_type(struct lttng_event_field *field)
@@ -1031,11 +1101,11 @@ static int list_session_agent_events(void)
 						mi_lttng_loglevel_string(
 							event->loglevel,
 							handle->domain.type),
-						filter_message(filter_msg));
+						safe_string(filter_msg));
 			} else {
 				MSG("%s- %s%s%s", indent4, event->name,
 						enabled_string(event->enabled),
-						filter_message(filter_msg));
+						safe_string(filter_msg));
 			}
 			free(filter_msg);
 		}
