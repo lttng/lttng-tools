@@ -359,6 +359,14 @@ struct lttcomm_event_extended_header {
 	 * This size includes the terminal null character.
 	 */
 	uint32_t filter_len;
+
+	/*
+	 * Number of exclusion names, immediately following the filter
+	 * string. Each exclusion name has a fixed length of
+	 * LTTNG_SYMBOL_NAME_LEN bytes, including the terminal null
+	 * character.
+	 */
+	uint32_t nb_exclusions;
 } LTTNG_PACKED;
 
 /*

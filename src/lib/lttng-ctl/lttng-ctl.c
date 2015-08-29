@@ -1773,6 +1773,8 @@ int lttng_list_events(struct lttng_handle *handle,
 			(struct lttcomm_event_extended_header *) extended_at;
 		extended_at += sizeof(*ext_header);
 		extended_at += ext_header->filter_len;
+		extended_at +=
+			ext_header->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
 	}
 
 	return ret;
