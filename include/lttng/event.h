@@ -302,6 +302,25 @@ extern int lttng_event_get_filter_string(struct lttng_event *event,
 	const char **filter_string);
 
 /*
+ * Get the number of exclusion names of a specific LTTng event.
+ *
+ * Returns the number of exclusion names on success, or a negative
+ * LTTng error code on error.
+ */
+extern int lttng_event_get_exclusion_names_count(struct lttng_event *event);
+
+/*
+ * Get an LTTng event's exclusion name at a given index.
+ *
+ * If the call is successful, then the exclusion name string's address
+ * is put in *exclusion_name. The caller does NOT own *exclusion_name.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_event_get_exclusion_name(struct lttng_event *event,
+	size_t index, const char **exclusion_name);
+
+/*
  * List the available tracepoints of a specific lttng domain.
  *
  * The handle CAN NOT be NULL.
