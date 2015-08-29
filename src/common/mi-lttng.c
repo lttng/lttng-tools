@@ -1010,6 +1010,58 @@ end:
 	return ret;
 }
 
+static int write_event_exclusions(struct mi_writer *writer,
+		struct lttng_event *event)
+{
+	int i;
+	int ret;
+	int exclusion_count;
+
+	/* event exclusion filter */
+	ret = mi_lttng_writer_write_element_bool(writer,
+			config_element_exclusion, event->exclusion);
+	if (ret) {
+		goto end;
+	}
+
+	/* Open event exclusions */
+	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
+	if (ret) {
+		goto end;
+	}
+
+	exclusion_count = lttng_event_get_exclusion_name_count(event);
+	if (exclusion_count < 0) {
+		ret = exclusion_count;
+		goto end;
+	}
+
+	for (i = 0; i < exclusion_count; i++) {
+		const char *name;
+
+		ret = lttng_event_get_exclusion_name(event, i, &name);
+		if (ret) {
+			/* Close exclusions */
+			mi_lttng_writer_close_element(writer);
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_exclusion, name);
+		if (ret) {
+			/* Close exclusions */
+			mi_lttng_writer_close_element(writer);
+			goto end;
+		}
+	}
+
+	/* Close exclusions */
+	ret = mi_lttng_writer_close_element(writer);
+
+end:
+	return ret;
+}
+
 LTTNG_HIDDEN
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
 		struct lttng_event *event, enum lttng_domain_type domain)
@@ -1032,12 +1084,8 @@ int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* event exclusion filter */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			config_element_exclusion, event->exclusion);
-	if (ret) {
-		goto end;
-	}
+	/* Event exclusions */
+	ret = write_event_exclusions(writer, event);
 
 end:
 	return ret;
@@ -1048,8 +1096,7 @@ int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer,
 		struct lttng_event *event)
 {
 	/* event exclusion filter */
-	return mi_lttng_writer_write_element_bool(writer,
-			config_element_exclusion, event->exclusion);
+	return write_event_exclusions(writer, event);
 }
 
 LTTNG_HIDDEN
