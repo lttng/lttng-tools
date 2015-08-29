@@ -1817,6 +1817,67 @@ end:
 	return ret;
 }
 
+int lttng_event_get_exclusion_name_count(struct lttng_event *event)
+{
+	int ret;
+	struct lttcomm_event_extended_header *ext_header;
+
+	if (!event) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ext_header = event->extended.ptr;
+	if (!ext_header) {
+		/*
+		 * This can happen since the lttng_event structure is
+		 * used for other tasks where this pointer is never set.
+		 */
+		ret = 0;
+		goto end;
+	}
+
+	if (ext_header->nb_exclusions > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+	ret = (int) ext_header->nb_exclusions;
+end:
+	return ret;
+}
+
+int lttng_event_get_exclusion_name(struct lttng_event *event,
+		size_t index, const char **exclusion_name)
+{
+	int ret = 0;
+	struct lttcomm_event_extended_header *ext_header;
+	void *at;
+
+	if (!event || !exclusion_name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ext_header = event->extended.ptr;
+	if (!ext_header) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (index >= ext_header->nb_exclusions) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	at = (void *) ext_header + sizeof(*ext_header);
+	at += ext_header->filter_len;
+	at += index * LTTNG_SYMBOL_NAME_LEN;
+	*exclusion_name = at;
+
+end:
+	return ret;
+}
+
 /*
  * Sets the tracing_group variable with name.
  * This function allocates memory pointed to by tracing_group.
