@@ -57,6 +57,7 @@ extern const char * const config_element_snapshot_mode;
 extern const char * const config_element_loglevel;
 extern const char * const config_element_loglevel_type;
 extern const char * const config_element_filter;
+extern const char * const config_element_filter_expression;
 extern const char * const config_element_snapshot_outputs;
 extern const char * const config_element_consumer_output;
 extern const char * const config_element_destination;
