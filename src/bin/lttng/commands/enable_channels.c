@@ -94,7 +94,7 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng enable-channel NAME[,NAME2,...] (-u | -k) [OPTIONS]\n");
+	fprintf(ofp, "usage: lttng enable-channel NAME[,NAME2,...] (-k | -u) [OPTIONS]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -220,7 +220,7 @@ static int enable_channel(char *session_name)
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
 		}
 	} else {
-		print_missing_domain();
+		print_missing_domain_no_agents();
 		ret = CMD_ERROR;
 		goto error;
 	}

@@ -59,7 +59,13 @@ const char *get_domain_str(enum lttng_domain_type domain);
 static inline
 void print_missing_domain(void)
 {
-	ERR("Please specify a domain (-k/-u/-j).");
+	ERR("Please specify a domain (-k, -u, -j, -l, or -p).");
+}
+
+static inline
+void print_missing_domain_no_agents(void)
+{
+	ERR("Please specify a domain (-k or -u).");
 }
 
 int spawn_relayd(const char *pathname, int port);

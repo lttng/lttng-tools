@@ -77,8 +77,11 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Without a session, -k lists available kernel events\n");
-	fprintf(ofp, "Without a session, -u lists available userspace events\n");
+	fprintf(ofp, "Without a session, -k lists available kernel events,\n");
+	fprintf(ofp, "                   -u lists available userspace events,\n");
+	fprintf(ofp, "                   -j lists available JUL events,\n");
+	fprintf(ofp, "                   -l lists available log4j events, and\n");
+	fprintf(ofp, "                   -p lists available Python events\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "  -h, --help              Show this help\n");
 	fprintf(ofp, "      --list-options      Simple listing of options\n");

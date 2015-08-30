@@ -143,7 +143,7 @@ static int disable_channels(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		print_missing_domain();
+		print_missing_domain_no_agents();
 		ret = CMD_ERROR;
 		goto error;
 	}
