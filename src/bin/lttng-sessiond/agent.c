@@ -967,14 +967,6 @@ void agent_destroy(struct agent *agt)
 
 	DBG3("Agent destroy");
 
-	/*
-	 * Just ignore if no events hash table exists. This is possible if for
-	 * instance an agent object was allocated but not initialized.
-	 */
-	if (!agt->events) {
-		return;
-	}
-
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, node, node) {
 		int ret;
