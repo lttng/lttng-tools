@@ -340,11 +340,10 @@ static xmlChar *encode_string(const char *in_str)
 
 	in_len = strlen(in_str);
 	/*
-	 * Add 1 byte for the NULL terminted character. The factor 2 here is
-	 * because UTF-8 can be on two bytes so this fits the worst case for each
-	 * bytes.
+	 * Add 1 byte for the NULL terminted character. The factor 4 here is
+	 * used because UTF-8 characters can take up to 4 bytes.
 	 */
-	out_len = (in_len * 2) + 1;
+	out_len = (in_len * 4) + 1;
 	out_str = xmlMalloc(out_len);
 	if (!out_str) {
 		goto end;
