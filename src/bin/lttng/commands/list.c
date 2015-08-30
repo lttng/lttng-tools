@@ -1556,7 +1556,7 @@ static int list_domains(const char *session_name)
 				MSG("  - UST global");
 				break;
 			case LTTNG_DOMAIN_JUL:
-				MSG("  - JUL (Java Util Logging)");
+				MSG("  - JUL (java.util.logging)");
 				break;
 			case LTTNG_DOMAIN_LOG4J:
 				MSG("  - log4j (Logging for Java)");
@@ -1806,7 +1806,7 @@ int cmd_list(int argc, const char **argv)
 							LTTNG_BUFFER_PER_PID ? "per PID" : "per UID");
 					break;
 				case LTTNG_DOMAIN_JUL:
-					MSG("=== Domain: JUL (Java Util Logging) ===\n");
+					MSG("=== Domain: JUL (java.util.logging) ===\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J:
 					MSG("=== Domain: log4j (Logging for Java) ===\n");
