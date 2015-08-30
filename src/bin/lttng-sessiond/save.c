@@ -1251,93 +1251,6 @@ const char *get_config_domain_str(enum lttng_domain_type domain)
 }
 
 static
-int save_ust_domain(struct config_writer *writer,
-	struct ltt_session *session, enum lttng_domain_type domain)
-{
-	int ret;
-	struct ltt_ust_channel *ust_chan;
-	const char *buffer_type_string;
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
-	const char *config_domain_name;
-
-	assert(writer);
-	assert(session);
-
-	ret = config_writer_open_element(writer,
-			config_element_domain);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	config_domain_name = get_config_domain_str(domain);
-	if (!config_domain_name) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	ret = config_writer_write_element_string(writer,
-			config_element_type, config_domain_name);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	buffer_type_string = get_buffer_type_string(
-			session->ust_session->buffer_type);
-	if (!buffer_type_string) {
-		ERR("Unsupported buffer type.");
-		ret = LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	ret = config_writer_write_element_string(writer,
-			config_element_buffer_type, buffer_type_string);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = config_writer_open_element(writer, config_element_channels);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
-			&iter.iter, node, node) {
-		ust_chan = caa_container_of(node, struct ltt_ust_channel, node);
-		if (domain == ust_chan->domain) {
-			ret = save_ust_channel(writer, ust_chan, session->ust_session);
-			if (ret) {
-				rcu_read_unlock();
-				goto end;
-			}
-		}
-	}
-	rcu_read_unlock();
-
-	/* /channels */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	/* /domain */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-static
 int save_pid_tracker(struct config_writer *writer,
 	struct ltt_session *sess, int domain)
 {
@@ -1431,6 +1344,113 @@ end:
 }
 
 static
+int save_ust_domain(struct config_writer *writer,
+	struct ltt_session *session, enum lttng_domain_type domain)
+{
+	int ret;
+	struct ltt_ust_channel *ust_chan;
+	const char *buffer_type_string;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
+	const char *config_domain_name;
+
+	assert(writer);
+	assert(session);
+
+	ret = config_writer_open_element(writer,
+			config_element_domain);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	config_domain_name = get_config_domain_str(domain);
+	if (!config_domain_name) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer,
+			config_element_type, config_domain_name);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	buffer_type_string = get_buffer_type_string(
+			session->ust_session->buffer_type);
+	if (!buffer_type_string) {
+		ERR("Unsupported buffer type.");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer,
+			config_element_buffer_type, buffer_type_string);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_open_element(writer, config_element_channels);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
+			&iter.iter, node, node) {
+		ust_chan = caa_container_of(node, struct ltt_ust_channel, node);
+		if (domain == ust_chan->domain) {
+			ret = save_ust_channel(writer, ust_chan, session->ust_session);
+			if (ret) {
+				rcu_read_unlock();
+				goto end;
+			}
+		}
+	}
+	rcu_read_unlock();
+
+	/* /channels */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	if (domain == LTTNG_DOMAIN_UST) {
+		ret = config_writer_open_element(writer,
+				config_element_trackers);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+
+		ret = save_pid_tracker(writer, session, LTTNG_DOMAIN_UST);
+		if (ret) {
+			goto end;
+		}
+
+		/* /trackers */
+		ret = config_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* /domain */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
 int save_domains(struct config_writer *writer, struct ltt_session *session)
 {
 	int ret = 0;
@@ -1490,24 +1510,6 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 
 	if (session->ust_session) {
 		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_UST);
-		if (ret) {
-			goto end;
-		}
-
-		ret = config_writer_open_element(writer,
-				config_element_trackers);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = save_pid_tracker(writer, session, LTTNG_DOMAIN_UST);
-		if (ret) {
-			goto end;
-		}
-
-		/* /trackers */
-		ret = config_writer_close_element(writer);
 		if (ret) {
 			goto end;
 		}
