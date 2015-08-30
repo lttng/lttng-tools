@@ -1687,6 +1687,16 @@ static int _cmd_enable_event(struct ltt_session *session,
 			assert(uchan);
 		}
 
+		if (uchan->domain != LTTNG_DOMAIN_UST && !internal_event) {
+			/*
+			 * Don't allow users to add UST events to channels which
+			 * are assigned to a userspace subdomain (JUL, Log4J,
+			 * Python, etc.).
+			 */
+			ret = LTTNG_ERR_INVALID_CHANNEL_DOMAIN;
+			goto error;
+		}
+
 		if (!internal_event) {
 			/*
 			 * Ensure the event name is not reserved for internal
