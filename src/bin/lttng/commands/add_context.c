@@ -466,25 +466,11 @@ struct ctx_type_list {
  */
 static void print_ctx_type(FILE *ofp)
 {
-	const char *indent = "                               ";
-	int indent_len = strlen(indent);
-	int len, i = 0;
+	int i = 0;
 
-	fprintf(ofp, "%s", indent);
-	len = indent_len;
 	while (ctx_opts[i].symbol != NULL) {
 		if (!ctx_opts[i].hide_help) {
-			if (len > indent_len) {
-				if (len + strlen(ctx_opts[i].symbol) + 2
-						>= PRINT_LINE_LEN) {
-					fprintf(ofp, ",\n");
-					fprintf(ofp, "%s", indent);
-					len = indent_len;
-				} else {
-					len += fprintf(ofp, ", ");
-				}
-			}
-			len += fprintf(ofp, "%s", ctx_opts[i].symbol);
+			fprintf(ofp, "  %s\n", ctx_opts[i].symbol);
 		}
 		i++;
 	}
@@ -495,39 +481,37 @@ static void print_ctx_type(FILE *ofp)
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng add-context -t TYPE [-k|-u] [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng add-context -t TYPE [-t TYPE...] (-k | -u) [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "If no channel is given (-c), the context is added to\n");
+	fprintf(ofp, "If no channel is given (-c, --channel option), the context is added to\n");
 	fprintf(ofp, "all channels.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Otherwise the context is added only to the channel (-c).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Exactly one domain (-k or -u) must be specified.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "Domain options:\n");
+	fprintf(ofp, "  -k, --kernel           Apply to the kernel tracer\n");
+	fprintf(ofp, "  -u, --userspace        Apply to the user space tracer\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Context:\n");
-	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
-	fprintf(ofp, "                           the command line to specify multiple contexts at once.\n");
-	fprintf(ofp, "                           (--kernel preempts --userspace)\n");
-	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
+	fprintf(ofp, "Target options:\n");
+	fprintf(ofp, "  -c, --channel CHANNEL  Apply to channel CHANNEL\n");
+	fprintf(ofp, "  -s, --session SESSION  Apply to session SESSION\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Context options:\n");
+	fprintf(ofp, "  -t, --type TYPE        Context type (repeatable; more infos below)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "The -t, --type option can be repeated on the command line to specify multiple\n");
+	fprintf(ofp, "contexts at once. TYPE can be one of the following strings:\n");
+	fprintf(ofp, "\n");
 	print_ctx_type(ofp);
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Note that the vpid, vppid and vtid context types represent the virtual process id,\n"
-			"virtual parent process id and virtual thread id as seen from the current execution context\n"
-			"as opposed to the pid, ppid and tid which are kernel internal data structures.\n\n");
-	fprintf(ofp, "Example:\n");
-	fprintf(ofp, "This command will add the context information 'prio' and two per-cpu\n"
-			"perf counters (hardware branch misses and cache misses), to all channels\n"
-			"in the trace data output:\n");
-	fprintf(ofp, "# lttng add-context -k -t prio -t perf:cpu:branch-misses -t perf:cpu:cache-misses\n");
-	fprintf(ofp, "\n");
+	fprintf(ofp, "Note that the vpid, vppid, and vtid context types represent the virtual process\n");
+	fprintf(ofp, "ID, virtual parent process ID, and virtual thread ID as seen from the current\n");
+	fprintf(ofp, "execution context, as opposed to the pid, ppid, and tid which are kernel\n");
+	fprintf(ofp, "internal data structures.\n");
 }
 
 /*
