@@ -16,6 +16,7 @@ regression/tools/save-load/test_load
 regression/tools/mi/test_mi
 regression/tools/wildcard/test_event_wildcard
 regression/tools/crash/test_crash
+regression/tools/metadata-regen/test_ust
 regression/ust/before-after/test_before_after
 regression/ust/buffers-pid/test_buffers_pid
 regression/ust/multi-session/test_multi_session
