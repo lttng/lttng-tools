@@ -927,8 +927,7 @@ void agent_destroy_event(struct agent_event *event)
 }
 
 /*
- * Destroy an agent completely. Note that the given pointer is NOT freed
- * thus a reference to static or stack data can be passed to this function.
+ * Destroy an agent completely.
  */
 void agent_destroy(struct agent *agt)
 {
@@ -967,6 +966,7 @@ void agent_destroy(struct agent *agt)
 	rcu_read_unlock();
 
 	ht_cleanup_push(agt->events);
+	free(agt);
 }
 
 /*
