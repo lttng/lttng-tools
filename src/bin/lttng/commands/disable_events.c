@@ -94,7 +94,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j              Apply to Java application using LOG4j\n");
+	fprintf(ofp, "  -l, --log4j              Apply to Java application using log4j\n");
 	fprintf(ofp, "  -p, --python             Apply to Python application using logging\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");

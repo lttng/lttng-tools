@@ -85,7 +85,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
 	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
 	fprintf(ofp, "  -j, --jul               Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j             Apply for Java application using LOG4J\n");
+	fprintf(ofp, "  -l, --log4j             Apply for Java application using log4j\n");
 	fprintf(ofp, "  -p, --python            Apply for Python application using logging\n");
 	fprintf(ofp, "  -f, --fields            List event fields.\n");
 	fprintf(ofp, "      --syscall           List available system calls.\n");
@@ -1559,7 +1559,7 @@ static int list_domains(const char *session_name)
 				MSG("  - JUL (Java Util Logging)");
 				break;
 			case LTTNG_DOMAIN_LOG4J:
-				MSG("  - LOG4j (Logging for Java)");
+				MSG("  - log4j (Logging for Java)");
 				break;
 			case LTTNG_DOMAIN_PYTHON:
 				MSG("  - Python (logging)");
@@ -1809,7 +1809,7 @@ int cmd_list(int argc, const char **argv)
 					MSG("=== Domain: JUL (Java Util Logging) ===\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J:
-					MSG("=== Domain: LOG4j (Logging for Java) ===\n");
+					MSG("=== Domain: log4j (Logging for Java) ===\n");
 					break;
 				case LTTNG_DOMAIN_PYTHON:
 					MSG("=== Domain: Python (logging) ===\n");

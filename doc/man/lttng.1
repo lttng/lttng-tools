@@ -27,7 +27,7 @@ kernel and/or instrumented applications (lttng-ust(3)). Aggregating and reading
 those traces is done using the babeltrace(1) text viewer.
 
 We introduce the notion of \fBtracing domains\fP which is essentially a type of
-tracer (kernel, user space, JUL, LOG4J or Python for now). In the future, we
+tracer (kernel, user space, JUL, log4j or Python for now). In the future, we
 could see more tracer like for instance an hypervisor. For some commands,
 you'll need to specify on which domain the command operates (\-u, \-k, \-l, \-j
 or \-p). For instance, the kernel domain must be specified when enabling a
@@ -553,7 +553,7 @@ Apply for the user-space tracer
 Apply for Java application using Java Util Logging interface (JUL)
 .TP
 .BR "\-l, \-\-log4j"
-Apply for Java application using LOG4J
+Apply for Java application using log4j
 .TP
 .BR "\-p, \-\-python"
 Apply for Python application using the logging module.
@@ -571,7 +571,7 @@ e.g.:
 Tracepoint loglevel range from 0 to loglevel. Listed in the help (\-h).
 For the JUL domain, the loglevel ranges are detailed with the \-\-help
 option thus starting from SEVERE to FINEST.
-For the LOG4J domain, loglevels range from FATAL to TRACE which are also
+For the log4j domain, loglevels range from FATAL to TRACE which are also
 detailed in the help.
 For the Python domain, loglevels range from CRITICAL to DEBUG which are
 detailed in the help as well.
@@ -724,7 +724,7 @@ Apply for the user-space tracer
 Apply for Java application using Java Util Logging interface (JUL)
 .TP
 .BR "\-l, \-\-log4j"
-Apply for Java application using LOG4J
+Apply for Java application using log4j
 .TP
 .BR "\-p, \-\-python"
 Apply for Python application using the logging module.
@@ -746,8 +746,8 @@ With \-k alone, it will list all available kernel events (except the system
 calls events).
 With \-j alone, the available JUL event from registered application will be
 list. The event corresponds to the Logger name in the Java JUL application.
-With \-l alone, the available LOG4J event from registered application will be
-list. The event corresponds to the Logger name in the Java LOG4J application.
+With \-l alone, the available log4j event from registered application will be
+list. The event corresponds to the Logger name in the Java log4j application.
 With \-p alone, the available Python event from registered application will be
 list. The event corresponds to the Logger name in the Python application.
 With \-u alone, it will list all available user-space events from registered
@@ -781,7 +781,7 @@ Select user-space domain.
 Apply for Java application using JUL
 .TP
 .BR "\-l, \-\-log4j"
-Apply for Java application using LOG4J
+Apply for Java application using log4j
 .TP
 .BR "\-p, \-\-python"
 Apply for Python application using the logging module.
@@ -1043,9 +1043,9 @@ arguments
 .RE
 .PP
 
-.SH "JUL/LOG4J DOMAIN"
+.SH "JUL/log4j DOMAIN"
 
-This section explains the JUL and LOG4J domain where JUL stands for Java Util
+This section explains the JUL and log4j domain where JUL stands for Java Util
 Logging. You can use these by using the \fBliblttng-ust-<domain>-jni.so\fP from
 the lttng-ust(3) project.
 
@@ -1053,11 +1053,11 @@ The LTTng Java Agent uses JNI to link the UST tracer to the Java application
 that uses the agent. Thus, it behaves similarly to the UST domain (\-u). When
 enabling events, you enable a Logger name that will then be mapped to a default
 UST tracepoint called \fBlttng_jul:<domain>_event\fP in the
-\fBlttng_<domain>_channel\fP. Using the lttng-ctl API, any JUL/LOG4J events
+\fBlttng_<domain>_channel\fP. Using the lttng-ctl API, any JUL/log4j events
 must use the tracepoint event type (same as \-\-tracepoint).
 
 Because of the default immutable channel, the \fBenable-channel\fP command CAN
-NOT be used with the JUL and LOG4J domain thus not having any options.
+NOT be used with the JUL and log4j domain thus not having any options.
 
 Also, loglevels are supported. Use \fBlttng enable-event \-h\fP to list them.
 Wildcards are NOT supported except the "*" meaning all events (same as \-a).

@@ -112,7 +112,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
 	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
+	fprintf(ofp, "  -l, --log4j              Apply for Java application using log4j\n");
 	fprintf(ofp, "  -p, --python             Apply for Python application\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
@@ -134,7 +134,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "    --loglevel name\n");
 	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel.\n");
-	fprintf(ofp, "                           For JUL/LOG4j domain, see the table below for the range values.\n");
+	fprintf(ofp, "                           For JUL/log4j domain, see the table below for the range values.\n");
 	fprintf(ofp, "    --loglevel-only name\n");
 	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
 	fprintf(ofp, "\n");
@@ -172,7 +172,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "                               JUL_ALL            = INT32_MIN\n");
 	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "                           Available LOG4j domain loglevels:\n");
+	fprintf(ofp, "                           Available log4j domain loglevels:\n");
 	fprintf(ofp, "                               LOG4J_OFF            = INT32_MAX\n");
 	fprintf(ofp, "                               LOG4J_FATAL          = %d\n", LTTNG_LOGLEVEL_LOG4J_FATAL);
 	fprintf(ofp, "                               LOG4J_ERROR          = %d\n", LTTNG_LOGLEVEL_LOG4J_ERROR);
@@ -309,7 +309,7 @@ end:
 }
 
 /*
- * Maps LOG4j loglevel from string to value
+ * Maps log4j loglevel from string to value
  */
 static int loglevel_log4j_str_to_value(const char *inputstr)
 {

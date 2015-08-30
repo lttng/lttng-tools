@@ -37,7 +37,7 @@
 static const char *str_kernel = "Kernel";
 static const char *str_ust = "UST";
 static const char *str_jul = "JUL";
-static const char *str_log4j = "LOG4J";
+static const char *str_log4j = "log4j";
 static const char *str_python = "Python";
 
 static
