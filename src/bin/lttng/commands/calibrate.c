@@ -89,28 +89,18 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng calibrate [-k|-u] [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng calibrate (-k | -u) [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "Domain options:\n");
+	fprintf(ofp, "  -k, --kernel        Apply to the kernel tracer\n");
+	fprintf(ofp, "  -u, --userspace     Apply to the user space tracer\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Calibrate options:\n");
-	fprintf(ofp, "    --function             Dynamic function entry/return probe (default)\n");
-#if 0
-	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
-	fprintf(ofp, "    --probe\n");
-	fprintf(ofp, "                           Dynamic probe.\n");
-#if 0
-	fprintf(ofp, "    --function:entry symbol\n");
-	fprintf(ofp, "                           Function tracer event\n");
-#endif
-	fprintf(ofp, "    --syscall              System call eventl\n");
-	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
-#endif
+	fprintf(ofp, "      --function      Dynamic function entry/return probe (default)\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help          Show this help\n");
+	fprintf(ofp, "      --list-options  List options\n");
 }
 
 /*
