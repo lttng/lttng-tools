@@ -803,7 +803,8 @@ error:
  * Else, it's stays untouched and a lttcomm error code is returned.
  */
 static int create_connect_relayd(struct lttng_uri *uri,
-		struct lttcomm_relayd_sock **relayd_sock)
+		struct lttcomm_relayd_sock **relayd_sock,
+		struct consumer_output *consumer)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock;
@@ -839,6 +840,8 @@ static int create_connect_relayd(struct lttng_uri *uri,
 			ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
 			goto close_sock;
 		}
+		consumer->relay_major_version = rsock->major;
+		consumer->relay_minor_version = rsock->minor;
 	} else if (uri->stype == LTTNG_STREAM_DATA) {
 		DBG3("Creating relayd data socket from URI");
 	} else {
@@ -874,7 +877,7 @@ static int send_consumer_relayd_socket(enum lttng_domain_type domain,
 	struct lttcomm_relayd_sock *rsock = NULL;
 
 	/* Connect to relayd and make version check if uri is the control. */
-	ret = create_connect_relayd(relayd_uri, &rsock);
+	ret = create_connect_relayd(relayd_uri, &rsock, consumer);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -1009,6 +1012,10 @@ int cmd_setup_relayd(struct ltt_session *session)
 			/* Session is now ready for network streaming. */
 			session->net_handle = 1;
 		}
+		session->consumer->relay_major_version =
+			usess->consumer->relay_major_version;
+		session->consumer->relay_minor_version =
+			usess->consumer->relay_minor_version;
 	}
 
 	if (ksess && ksess->consumer && ksess->consumer->type == CONSUMER_DST_NET
@@ -1027,6 +1034,10 @@ int cmd_setup_relayd(struct ltt_session *session)
 			/* Session is now ready for network streaming. */
 			session->net_handle = 1;
 		}
+		session->consumer->relay_major_version =
+			ksess->consumer->relay_major_version;
+		session->consumer->relay_minor_version =
+			ksess->consumer->relay_minor_version;
 	}
 
 error:

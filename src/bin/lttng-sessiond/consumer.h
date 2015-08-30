@@ -153,6 +153,9 @@ struct consumer_output {
 	 * index. The relayd sockets are index with it on the consumer side.
 	 */
 	uint64_t net_seq_index;
+	/* Store the relay protocol in use if the session is remote. */
+	uint32_t relay_major_version;
+	uint32_t relay_minor_version;
 
 	/*
 	 * Subdirectory path name used for both local and network consumer.

@@ -563,6 +563,8 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 	output->net_seq_index = obj->net_seq_index;
 	memcpy(output->subdir, obj->subdir, PATH_MAX);
 	output->snapshot = obj->snapshot;
+	output->relay_major_version = obj->relay_major_version;
+	output->relay_minor_version = obj->relay_minor_version;
 	memcpy(&output->dst, &obj->dst, sizeof(output->dst));
 	ret = consumer_copy_sockets(output, obj);
 	if (ret < 0) {
