@@ -91,9 +91,10 @@ struct agent_event {
 	/* Hash table node of the agent domain object. */
 	struct lttng_ht_node_str node;
 
-	/* Bytecode filter associated with the event . NULL if none. */
-	char *filter_expression;
+	/* Filter associated with the event. NULL if none. */
 	struct lttng_filter_bytecode *filter;
+	char *filter_expression;
+	struct lttng_event_exclusion *exclusion;
 };
 
 /*
@@ -130,8 +131,10 @@ void agent_destroy(struct agent *agt);
 void agent_add(struct agent *agt, struct lttng_ht *ht);
 
 /* Agent event API. */
-struct agent_event *agent_create_event(const char *name,
-		struct lttng_filter_bytecode *filter);
+struct agent_event *agent_create_event(const char *name, int loglevel,
+		enum lttng_loglevel_type loglevel_type,
+		struct lttng_filter_bytecode *filter,
+		char *filter_expression);
 void agent_add_event(struct agent_event *event, struct agent *agt);
 
 struct agent_event *agent_find_event(const char *name, int loglevel,

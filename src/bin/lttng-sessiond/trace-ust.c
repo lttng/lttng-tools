@@ -308,7 +308,8 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
+		enum lttng_domain_type domain)
 {
 	struct ltt_ust_channel *luc;
 
@@ -319,6 +320,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
 		PERROR("ltt_ust_channel zmalloc");
 		goto error;
 	}
+
+	luc->domain = domain;
 
 	/* Copy UST channel attributes */
 	luc->attr.overwrite = chan->attr.overwrite;
@@ -431,8 +434,8 @@ struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 
 	/* Same layout. */
 	lue->filter_expression = filter_expression;
-	lue->filter = (struct lttng_ust_filter_bytecode *) filter;
-	lue->exclusion = (struct lttng_event_exclusion *) exclusion;
+	lue->filter = filter;
+	lue->exclusion = exclusion;
 
 	/* Init node */
 	lttng_ht_node_init_str(&lue->node, lue->attr.name);

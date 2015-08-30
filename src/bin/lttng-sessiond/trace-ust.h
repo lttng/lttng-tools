@@ -50,7 +50,7 @@ struct ltt_ust_event {
 	struct lttng_ust_event attr;
 	struct lttng_ht_node_str node;
 	char *filter_expression;
-	struct lttng_ust_filter_bytecode *filter;
+	struct lttng_filter_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
 	bool internal;
 };
@@ -59,6 +59,11 @@ struct ltt_ust_event {
 struct ltt_ust_channel {
 	uint64_t id;	/* unique id per session. */
 	unsigned int enabled;
+	/*
+	 * A UST channel can be part of a userspace sub-domain such as JUL,
+	 * Log4j, Python.
+	 */
+	enum lttng_domain_type domain;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ust_channel_attr attr;
 	struct lttng_ht *ctx;
@@ -182,7 +187,8 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
  * Create functions malloc() the data structure.
  */
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
+		enum lttng_domain_type domain);
 struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
@@ -236,7 +242,8 @@ struct ltt_ust_session *trace_ust_create_session(unsigned int session_id)
 	return NULL;
 }
 static inline
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr)
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
+		enum lttng_domain_type domain)
 {
 	return NULL;
 }

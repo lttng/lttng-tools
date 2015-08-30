@@ -980,20 +980,44 @@ error:
  *
  * Return allocated filter or NULL on error.
  */
-static struct lttng_ust_filter_bytecode *alloc_copy_ust_app_filter(
-		struct lttng_ust_filter_bytecode *orig_f)
+static struct lttng_filter_bytecode *copy_filter_bytecode(
+		struct lttng_filter_bytecode *orig_f)
+{
+	struct lttng_filter_bytecode *filter = NULL;
+
+	/* Copy filter bytecode */
+	filter = zmalloc(sizeof(*filter) + orig_f->len);
+	if (!filter) {
+		PERROR("zmalloc alloc filter bytecode");
+		goto error;
+	}
+
+	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
+
+error:
+	return filter;
+}
+
+/*
+ * Create a liblttng-ust filter bytecode from given bytecode.
+ *
+ * Return allocated filter or NULL on error.
+ */
+static struct lttng_ust_filter_bytecode *create_ust_bytecode_from_bytecode(
+		struct lttng_filter_bytecode *orig_f)
 {
 	struct lttng_ust_filter_bytecode *filter = NULL;
 
 	/* Copy filter bytecode */
 	filter = zmalloc(sizeof(*filter) + orig_f->len);
 	if (!filter) {
-		PERROR("zmalloc alloc ust app filter");
+		PERROR("zmalloc alloc ust filter bytecode");
 		goto error;
 	}
 
+	assert(sizeof(struct lttng_filter_bytecode) ==
+			sizeof(struct lttng_ust_filter_bytecode));
 	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
-
 error:
 	return filter;
 }
@@ -1050,7 +1074,7 @@ error:
  * Return an ust_app_event object or NULL on error.
  */
 static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
-		char *name, struct lttng_ust_filter_bytecode *filter, int loglevel,
+		char *name, struct lttng_filter_bytecode *filter, int loglevel,
 		const struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_iter iter;
@@ -1066,7 +1090,7 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	key.filter = filter;
 	key.loglevel = loglevel;
 	/* lttng_event_exclusion and lttng_ust_event_exclusion structures are similar */
-	key.exclusion = (struct lttng_ust_event_exclusion *)exclusion;
+	key.exclusion = exclusion;
 
 	/* Lookup using the event name as hash and a custom match fct. */
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
@@ -1131,6 +1155,7 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 		struct ust_app *app)
 {
 	int ret;
+	struct lttng_ust_filter_bytecode *ust_bytecode = NULL;
 
 	health_code_update();
 
@@ -1139,7 +1164,12 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 		goto error;
 	}
 
-	ret = ustctl_set_filter(app->sock, ua_event->filter,
+	ust_bytecode = create_ust_bytecode_from_bytecode(ua_event->filter);
+	if (!ust_bytecode) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+	ret = ustctl_set_filter(app->sock, ust_bytecode,
 			ua_event->obj);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
@@ -1161,7 +1191,29 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 
 error:
 	health_code_update();
+	free(ust_bytecode);
 	return ret;
+}
+
+static
+struct lttng_ust_event_exclusion *create_ust_exclusion_from_exclusion(
+		struct lttng_event_exclusion *exclusion)
+{
+	struct lttng_ust_event_exclusion *ust_exclusion = NULL;
+	size_t exclusion_alloc_size = sizeof(struct lttng_ust_event_exclusion) +
+		LTTNG_UST_SYM_NAME_LEN * exclusion->count;
+
+	ust_exclusion = zmalloc(exclusion_alloc_size);
+	if (!ust_exclusion) {
+		PERROR("malloc");
+		goto end;
+	}
+
+	assert(sizeof(struct lttng_event_exclusion) ==
+			sizeof(struct lttng_ust_event_exclusion));
+	memcpy(ust_exclusion, exclusion, exclusion_alloc_size);
+end:
+	return ust_exclusion;
 }
 
 /*
@@ -1172,6 +1224,7 @@ int set_ust_event_exclusion(struct ust_app_event *ua_event,
 		struct ust_app *app)
 {
 	int ret;
+	struct lttng_ust_event_exclusion *ust_exclusion = NULL;
 
 	health_code_update();
 
@@ -1180,8 +1233,13 @@ int set_ust_event_exclusion(struct ust_app_event *ua_event,
 		goto error;
 	}
 
-	ret = ustctl_set_exclusion(app->sock, ua_event->exclusion,
-			ua_event->obj);
+	ust_exclusion = create_ust_exclusion_from_exclusion(
+			ua_event->exclusion);
+	if (!ust_exclusion) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+	ret = ustctl_set_exclusion(app->sock, ust_exclusion, ua_event->obj);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("UST app event %s exclusions failed for app (pid: %d) "
@@ -1202,6 +1260,7 @@ int set_ust_event_exclusion(struct ust_app_event *ua_event,
 
 error:
 	health_code_update();
+	free(ust_exclusion);
 	return ret;
 }
 
@@ -1503,13 +1562,13 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 
 	/* Copy filter bytecode */
 	if (uevent->filter) {
-		ua_event->filter = alloc_copy_ust_app_filter(uevent->filter);
+		ua_event->filter = copy_filter_bytecode(uevent->filter);
 		/* Filter might be NULL here in case of ENONEM. */
 	}
 
 	/* Copy exclusion data */
 	if (uevent->exclusion) {
-		exclusion_alloc_size = sizeof(struct lttng_ust_event_exclusion) +
+		exclusion_alloc_size = sizeof(struct lttng_event_exclusion) +
 				LTTNG_UST_SYM_NAME_LEN * uevent->exclusion->count;
 		ua_event->exclusion = zmalloc(exclusion_alloc_size);
 		if (ua_event->exclusion == NULL) {
