@@ -861,10 +861,7 @@ void agent_add_event(struct agent_event *event, struct agent *agt)
 	assert(agt->events);
 
 	DBG3("Agent adding event %s", event->name);
-
-	rcu_read_lock();
 	add_unique_agent_event(agt->events, event);
-	rcu_read_unlock();
 	agt->being_used = 1;
 }
 
