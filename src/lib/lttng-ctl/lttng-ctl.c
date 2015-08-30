@@ -389,6 +389,57 @@ static int disconnect_sessiond(void)
 	return ret;
 }
 
+static int recv_sessiond_optional_data(size_t len, void **user_buf,
+	size_t *user_len)
+{
+	int ret = 0;
+	void *buf = NULL;
+
+	if (len) {
+		if (!user_len) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		buf = zmalloc(len);
+
+		if (!buf) {
+			ret = -ENOMEM;
+			goto end;
+		}
+
+		ret = recv_data_sessiond(buf, len);
+
+		if (ret < 0) {
+			goto end;
+		}
+
+		if (!user_buf) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		/* Move ownership of command header buffer to user. */
+		*user_buf = buf;
+		buf = NULL;
+		*user_len = len;
+	} else {
+		/* No command header. */
+		if (user_len) {
+			*user_len = 0;
+		}
+
+		if (user_buf) {
+			*user_buf = NULL;
+		}
+	}
+
+end:
+	free(buf);
+
+	return ret;
+}
+
 /*
  * Ask the session daemon a specific command and put the data into buf.
  * Takes extra var. len. data as input to send to the session daemon.
@@ -397,11 +448,11 @@ static int disconnect_sessiond(void)
  */
 LTTNG_HIDDEN
 int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		void *vardata, size_t varlen, void **buf)
+		void *vardata, size_t vardata_len, void **user_payload_buf,
+		void **user_cmd_header_buf, size_t *user_cmd_header_len)
 {
 	int ret;
-	size_t size;
-	void *data = NULL;
+	size_t payload_len;
 	struct lttcomm_lttng_msg llm;
 
 	ret = connect_sessiond();
@@ -417,7 +468,7 @@ int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 		goto end;
 	}
 	/* Send var len data */
-	ret = send_session_varlen(vardata, varlen);
+	ret = send_session_varlen(vardata, vardata_len);
 	if (ret < 0) {
 		/* Ret value is a valid lttng error code. */
 		goto end;
@@ -436,41 +487,23 @@ int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 		goto end;
 	}
 
-	size = llm.data_size;
-	if (size == 0) {
-		/* If client free with size 0 */
-		if (buf != NULL) {
-			*buf = NULL;
-		}
-		ret = 0;
-		goto end;
-	}
+	/* Get command header from data transmission */
+	ret = recv_sessiond_optional_data(llm.cmd_header_size,
+		user_cmd_header_buf, user_cmd_header_len);
 
-	data = zmalloc(size);
-	if (!data) {
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	/* Get payload data */
-	ret = recv_data_sessiond(data, size);
 	if (ret < 0) {
-		free(data);
 		goto end;
 	}
 
-	/*
-	 * Extra protection not to dereference a NULL pointer. If buf is NULL at
-	 * this point, an error is returned and data is freed.
-	 */
-	if (buf == NULL) {
-		ret = -LTTNG_ERR_INVALID;
-		free(data);
+	/* Get payload from data transmission */
+	ret = recv_sessiond_optional_data(llm.data_size, user_payload_buf,
+		&payload_len);
+
+	if (ret < 0) {
 		goto end;
 	}
 
-	*buf = data;
-	ret = size;
+	ret = llm.data_size;
 
 end:
 	disconnect_sessiond();
@@ -1018,7 +1051,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			lsm.u.enable.bytecode_len);
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, varlen_data,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, varlen_data,
 			(LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count) +
 			lsm.u.enable.bytecode_len + lsm.u.enable.expression_len, NULL);
 	free(varlen_data);
@@ -1174,7 +1207,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 			lsm.u.disable.bytecode_len);
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, varlen_data,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, varlen_data,
 			lsm.u.disable.bytecode_len + lsm.u.disable.expression_len, NULL);
 	free(varlen_data);
 
@@ -1459,7 +1492,7 @@ int lttng_create_session(const char *name, const char *url)
 
 	lsm.u.uri.size = size;
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
 			sizeof(struct lttng_uri) * size, NULL);
 
 	free(uris);
@@ -1600,6 +1633,10 @@ int lttng_list_events(struct lttng_handle *handle,
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
+	struct lttcomm_event_command_header *cmd_header;
+	size_t cmd_header_len;
+	void *extended_at;
+	int i;
 
 	/* Safety check. An handle and channel name are mandatory */
 	if (handle == NULL || channel_name == NULL) {
@@ -1612,15 +1649,124 @@ int lttng_list_events(struct lttng_handle *handle,
 			sizeof(lsm.session.name));
 	lttng_ctl_copy_string(lsm.u.list.channel_name, channel_name,
 			sizeof(lsm.u.list.channel_name));
-
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, NULL, 0, (void **) events,
+		(void **) &cmd_header, &cmd_header_len);
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void**) events);
 	if (ret < 0) {
 		return ret;
 	}
 
-	return ret / sizeof(struct lttng_event);
+	/* Set number of events and free command header */
+	ret = cmd_header->nb_events;
+	free(cmd_header);
+
+	/* Set extended info pointers */
+	extended_at = ((void*) (*events)) + ret * sizeof(struct lttng_event);
+
+	for (i = 0; i < ret; ++i) {
+		struct lttcomm_event_extended_header *ext_header;
+		struct lttng_event *event = &(*events)[i];
+
+		event->extended.ptr = extended_at;
+		ext_header =
+			(struct lttcomm_event_extended_header *) extended_at;
+		extended_at += sizeof(*ext_header);
+		extended_at += ext_header->filter_len;
+		extended_at +=
+			ext_header->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+	}
+
+	return ret;
+}
+
+int lttng_event_get_filter_string(struct lttng_event *event,
+	const char **filter_string)
+{
+	int ret = 0;
+	struct lttcomm_event_extended_header *ext_header;
+
+	if (!event || !filter_string) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ext_header = event->extended.ptr;
+
+	if (!ext_header) {
+		/*
+		 * This can happen since the lttng_event structure is
+		 * used for other tasks where this pointer is never set.
+		 */
+		*filter_string = NULL;
+		goto end;
+	}
+
+	if (ext_header->filter_len) {
+		*filter_string = ((const char *) (ext_header)) +
+			sizeof(*ext_header);
+	} else {
+		*filter_string = NULL;
+	}
+
+end:
+	return ret;
+}
+
+int lttng_event_get_exclusion_names_count(struct lttng_event *event)
+{
+	int ret;
+	struct lttcomm_event_extended_header *ext_header;
+
+	if (!event) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ext_header = event->extended.ptr;
+
+	if (!ext_header) {
+		/*
+		 * This can happen since the lttng_event structure is
+		 * used for other tasks where this pointer is never set.
+		 */
+		ret = 0;
+		goto end;
+	}
+
+	ret = ext_header->nb_exclusions;
+
+end:
+	return ret;
+}
+
+int lttng_event_get_exclusion_name(struct lttng_event *event,
+	size_t index, const char **exclusion_name)
+{
+	int ret = 0;
+	struct lttcomm_event_extended_header *ext_header;
+	void *at;
+
+	if (!event || !exclusion_name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ext_header = event->extended.ptr;
+	assert(ext_header);
+
+	if (index >= ext_header->nb_exclusions) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	at = (void *) ext_header + sizeof(*ext_header);
+	at += ext_header->filter_len;
+	at += index * LTTNG_SYMBOL_NAME_LEN;
+	*exclusion_name = at;
+
+end:
+	return ret;
 }
 
 /*
@@ -1780,7 +1926,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lsm.u.uri.size = size;
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
 			sizeof(struct lttng_uri) * size, NULL);
 
 	free(uris);
@@ -1863,7 +2009,7 @@ int _lttng_create_session_ext(const char *name, const char *url,
 		}
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
 			sizeof(struct lttng_uri) * size, NULL);
 
 error:
@@ -1935,7 +2081,7 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 
 	lsm.u.uri.size = size;
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
 			sizeof(struct lttng_uri) * size, NULL);
 
 	free(uris);
@@ -1983,7 +2129,7 @@ int lttng_create_session_live(const char *name, const char *url,
 	lsm.u.session_live.nb_uri = size;
 	lsm.u.session_live.timer_interval = timer_interval;
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, uris,
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
 			sizeof(struct lttng_uri) * size, NULL);
 
 end:

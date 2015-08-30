@@ -923,6 +923,7 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer,
 		struct lttng_event *event)
 {
 	int ret;
+	const char *filter_expression;
 
 	/* Open event element */
 	ret = mi_lttng_writer_open_element(writer, config_element_event);
@@ -955,6 +956,79 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer,
 	ret = mi_lttng_writer_write_element_bool(writer,
 			config_element_filter, event->filter);
 
+	/* Event filter expression */
+	ret = lttng_event_get_filter_string(event, &filter_expression);
+
+	if (ret) {
+		goto end;
+	}
+
+	if (filter_expression) {
+		ret = mi_lttng_writer_write_element_string(writer,
+			config_element_filter_expression,
+			filter_expression);
+
+		if (ret) {
+			goto end;
+		}
+	}
+
+end:
+	return ret;
+}
+
+static int write_event_exclusions(struct mi_writer *writer,
+		struct lttng_event *event)
+{
+	int i;
+	int ret;
+	int exclusion_count;
+
+	/* event exclusion filter */
+	ret = mi_lttng_writer_write_element_bool(writer,
+			config_element_exclusion, event->exclusion);
+	if (ret) {
+		goto end;
+	}
+
+	/* Open event exclusions */
+	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
+	if (ret) {
+		goto end;
+	}
+
+	exclusion_count = lttng_event_get_exclusion_names_count(event);
+
+	if (exclusion_count < 0) {
+		ret = exclusion_count;
+		goto end;
+	}
+
+	for (i = 0; i < exclusion_count; ++i) {
+		const char *name;
+
+		ret = lttng_event_get_exclusion_name(event, i, &name);
+		assert(ret == 0);
+
+		if (ret) {
+			/* Close exclusions */
+			mi_lttng_writer_close_element(writer);
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_exclusion, name);
+
+		if (ret) {
+			/* Close exclusions */
+			mi_lttng_writer_close_element(writer);
+			goto end;
+		}
+	}
+
+	/* Close exclusions */
+	ret = mi_lttng_writer_close_element(writer);
+
 end:
 	return ret;
 }
@@ -981,12 +1055,8 @@ int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* event exclusion filter */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			config_element_exclusion, event->exclusion);
-	if (ret) {
-		goto end;
-	}
+	/* Event exclusions */
+	ret = write_event_exclusions(writer, event);
 
 end:
 	return ret;
@@ -997,8 +1067,7 @@ int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer,
 		struct lttng_event *event)
 {
 	/* event exclusion filter */
-	return mi_lttng_writer_write_element_bool(writer,
-			config_element_exclusion, event->exclusion);
+	return write_event_exclusions(writer, event);
 }
 
 LTTNG_HIDDEN

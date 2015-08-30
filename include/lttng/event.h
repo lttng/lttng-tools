@@ -216,25 +216,50 @@ struct lttng_event_function_attr {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_EVENT_PADDING1               10
+#define LTTNG_EVENT_PADDING1               12
 #define LTTNG_EVENT_PADDING2               LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_event {
+	/* Offset 0 */
 	enum lttng_event_type type;
+
+	/* Offset 4 */
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
+	/* Offset 260 */
 	enum lttng_loglevel_type loglevel_type;
+
+	/* Offset 264 */
 	int loglevel;
 
+	/* Offset 268 */
 	int32_t enabled;	/* Does not apply: -1 */
+
+	/* Offset 272 */
 	pid_t pid;
+
+	/* Offset 276 */
 	unsigned char filter;	/* filter enabled ? */
+
+	/* Offset 277 */
 	unsigned char exclusion; /* exclusions added ? */
 
+	/* Offset 278 */
+	char padding2[2];
+
+	/* Offset 280 */
 	/* Event flag, from 2.6 and above. */
 	enum lttng_event_flag flags;
 
-	char padding[LTTNG_EVENT_PADDING1];
+	/* Offset 284 */
+	char padding[4];
 
+	/* Offset 288 */
+	union {
+		char padding[8];
+		void *ptr;
+	} extended;
+
+	/* Offset 296 */
 	/* Per event type configuration */
 	union {
 		struct lttng_event_probe_attr probe;
@@ -263,6 +288,37 @@ struct lttng_event_field {
  */
 extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
+
+/*
+ * Get the filter string of a specific LTTng event.
+ *
+ * If the call is successful, then the filter string's address is put
+ * in *filter_string. If the event has no filter string, *filter_string
+ * is set to NULL. The caller does NOT own *filter_string.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_event_get_filter_string(struct lttng_event *event,
+	const char **filter_string);
+
+/*
+ * Get the number of exclusion names of a specific LTTng event.
+ *
+ * Returns the number of exclusion names on success, or a negative
+ * LTTng error code on error.
+ */
+extern int lttng_event_get_exclusion_names_count(struct lttng_event *event);
+
+/*
+ * Get an LTTng event's exclusion name at a given index.
+ *
+ * If the call is successful, then the exclusion name string's address
+ * is put in *exclusion_name. The caller does NOT own *exclusion_name.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_event_get_exclusion_name(struct lttng_event *event,
+	size_t index, const char **exclusion_name);
 
 /*
  * List the available tracepoints of a specific lttng domain.

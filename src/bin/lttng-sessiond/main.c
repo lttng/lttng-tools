@@ -839,34 +839,57 @@ error:
  * right amount of memory and copying the original information from the lsm
  * structure.
  *
- * Return total size of the buffer pointed by buf.
+ * Return 0 on success, negative value on error.
  */
-static int setup_lttng_msg(struct command_ctx *cmd_ctx, size_t size)
+static int setup_lttng_msg_full(struct command_ctx *cmd_ctx,
+	void *payload_buf, size_t payload_len,
+	void *cmd_header_buf, size_t cmd_header_len)
 {
-	int ret, buf_size;
+	int ret = 0;
+	const size_t header_len = sizeof(struct lttcomm_lttng_msg);
+	const size_t cmd_header_offset = header_len;
+	const size_t payload_offset = cmd_header_offset + cmd_header_len;
+	const size_t total_msg_size = header_len + cmd_header_len + payload_len;
 
-	buf_size = size;
+	cmd_ctx->llm = zmalloc(total_msg_size);
 
-	cmd_ctx->llm = zmalloc(sizeof(struct lttcomm_lttng_msg) + buf_size);
 	if (cmd_ctx->llm == NULL) {
 		PERROR("zmalloc");
 		ret = -ENOMEM;
-		goto error;
+		goto end;
 	}
 
 	/* Copy common data */
 	cmd_ctx->llm->cmd_type = cmd_ctx->lsm->cmd_type;
 	cmd_ctx->llm->pid = cmd_ctx->lsm->domain.attr.pid;
+	cmd_ctx->llm->cmd_header_size = cmd_header_len;
+	cmd_ctx->llm->data_size = payload_len;
+	cmd_ctx->lttng_msg_size = total_msg_size;
 
-	cmd_ctx->llm->data_size = size;
-	cmd_ctx->lttng_msg_size = sizeof(struct lttcomm_lttng_msg) + buf_size;
+	/* Copy command header */
+	if (cmd_header_len) {
+		memcpy(((uint8_t *) cmd_ctx->llm) + cmd_header_offset, cmd_header_buf,
+			cmd_header_len);
+	}
 
-	return buf_size;
+	/* Copy payload */
+	if (payload_len) {
+		memcpy(((uint8_t *) cmd_ctx->llm) + payload_offset, payload_buf,
+			payload_len);
+	}
 
-error:
+end:
 	return ret;
 }
 
+/*
+ * Version of setup_lttng_msg_full() without command header.
+ */
+static int setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx,
+	void *payload_buf, size_t payload_len)
+{
+	return setup_lttng_msg_full(cmd_ctx, payload_buf, payload_len, NULL, 0);
+}
 /*
  * Update the kernel poll set of all channel fd available over all tracing
  * session. Add the wakeup pipe at the end of the set.
@@ -2971,7 +2994,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		break;
 	default:
 		/* Setup lttng message with no payload */
-		ret = setup_lttng_msg(cmd_ctx, 0);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, NULL, 0);
 		if (ret < 0) {
 			/* This label does not try to unlock the session */
 			goto init_setup_error;
@@ -3448,17 +3471,13 @@ skip_domain:
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event) * nb_events);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, events,
+			sizeof(struct lttng_event) * nb_events);
+		free(events);
+
 		if (ret < 0) {
-			free(events);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, events,
-				sizeof(struct lttng_event) * nb_events);
-
-		free(events);
 
 		ret = LTTNG_OK;
 		break;
@@ -3482,18 +3501,13 @@ skip_domain:
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx,
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, fields,
 				sizeof(struct lttng_event_field) * nb_fields);
+		free(fields);
+
 		if (ret < 0) {
-			free(fields);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, fields,
-				sizeof(struct lttng_event_field) * nb_fields);
-
-		free(fields);
 
 		ret = LTTNG_OK;
 		break;
@@ -3514,17 +3528,13 @@ skip_domain:
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_event) * nb_events);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, events,
+			sizeof(struct lttng_event) * nb_events);
+		free(events);
+
 		if (ret < 0) {
-			free(events);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, events,
-				sizeof(struct lttng_event) * nb_events);
-
-		free(events);
 
 		ret = LTTNG_OK;
 		break;
@@ -3546,17 +3556,13 @@ skip_domain:
 		 * Setup lttng message with payload size set to the event list size in
 		 * bytes and then copy list into the llm payload.
 		 */
-		ret = setup_lttng_msg(cmd_ctx, sizeof(int32_t) * nr_pids);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, pids,
+			sizeof(int32_t) * nr_pids);
+		free(pids);
+
 		if (ret < 0) {
-			free(pids);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, pids,
-				sizeof(int) * nr_pids);
-
-		free(pids);
 
 		ret = LTTNG_OK;
 		break;
@@ -3671,17 +3677,13 @@ skip_domain:
 			goto error;
 		}
 
-		ret = setup_lttng_msg(cmd_ctx, nb_dom * sizeof(struct lttng_domain));
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, domains,
+			nb_dom * sizeof(struct lttng_domain));
+		free(domains);
+
 		if (ret < 0) {
-			free(domains);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, domains,
-				nb_dom * sizeof(struct lttng_domain));
-
-		free(domains);
 
 		ret = LTTNG_OK;
 		break;
@@ -3699,17 +3701,13 @@ skip_domain:
 			goto error;
 		}
 
-		ret = setup_lttng_msg(cmd_ctx, nb_chan * sizeof(struct lttng_channel));
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, channels,
+			nb_chan * sizeof(struct lttng_channel));
+		free(channels);
+
 		if (ret < 0) {
-			free(channels);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, channels,
-				nb_chan * sizeof(struct lttng_channel));
-
-		free(channels);
 
 		ret = LTTNG_OK;
 		break;
@@ -3718,26 +3716,28 @@ skip_domain:
 	{
 		ssize_t nb_event;
 		struct lttng_event *events = NULL;
+		struct lttcomm_event_command_header cmd_header;
+		size_t total_size;
 
-		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type, cmd_ctx->session,
-				cmd_ctx->lsm->u.list.channel_name, &events);
+		/* Extended infos are included at the end of events */
+		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type,
+			cmd_ctx->session, cmd_ctx->lsm->u.list.channel_name,
+			&events, &total_size);
+
 		if (nb_event < 0) {
 			/* Return value is a negative lttng_error_code. */
 			ret = -nb_event;
 			goto error;
 		}
 
-		ret = setup_lttng_msg(cmd_ctx, nb_event * sizeof(struct lttng_event));
+		cmd_header.nb_events = nb_event;
+		ret = setup_lttng_msg_full(cmd_ctx, events, total_size,
+			&cmd_header, sizeof(cmd_header));
+		free(events);
+
 		if (ret < 0) {
-			free(events);
 			goto setup_error;
 		}
-
-		/* Copy event list into message payload */
-		memcpy(cmd_ctx->llm->payload, events,
-				nb_event * sizeof(struct lttng_event));
-
-		free(events);
 
 		ret = LTTNG_OK;
 		break;
@@ -3745,24 +3745,34 @@ skip_domain:
 	case LTTNG_LIST_SESSIONS:
 	{
 		unsigned int nr_sessions;
+		void *sessions_payload;
+		size_t payload_len;
 
 		session_lock_list();
 		nr_sessions = lttng_sessions_count(
 				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
+		payload_len = sizeof(struct lttng_session) * nr_sessions;
+		sessions_payload = zmalloc(payload_len);
 
-		ret = setup_lttng_msg(cmd_ctx, sizeof(struct lttng_session) * nr_sessions);
-		if (ret < 0) {
+		if (!sessions_payload) {
 			session_unlock_list();
+			ret = -ENOMEM;
 			goto setup_error;
 		}
 
-		/* Filled the session array */
-		cmd_list_lttng_sessions((struct lttng_session *)(cmd_ctx->llm->payload),
+		cmd_list_lttng_sessions(sessions_payload,
 			LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 			LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
-
 		session_unlock_list();
+
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, sessions_payload,
+			payload_len);
+		free(sessions_payload);
+
+		if (ret < 0) {
+			goto setup_error;
+		}
 
 		ret = LTTNG_OK;
 		break;
@@ -3793,14 +3803,10 @@ skip_domain:
 	case LTTNG_DATA_PENDING:
 	{
 		int pending_ret;
-
-		/* 1 byte to return whether or not data is pending */
-		ret = setup_lttng_msg(cmd_ctx, 1);
-		if (ret < 0) {
-			goto setup_error;
-		}
+		uint8_t pending_ret_byte;
 
 		pending_ret = cmd_data_pending(cmd_ctx->session);
+
 		/*
 		 * FIXME
 		 *
@@ -3811,7 +3817,10 @@ skip_domain:
 		 * "unknown" error.
 		 */
 		if (pending_ret == 0 || pending_ret == 1) {
-			ret = LTTNG_OK;
+			/*
+			 * ret will be set to LTTNG_OK at the end of
+			 * this function.
+			 */
 		} else if (pending_ret < 0) {
 			ret = LTTNG_ERR_UNK;
 			goto setup_error;
@@ -3820,7 +3829,17 @@ skip_domain:
 			goto setup_error;
 		}
 
-		*cmd_ctx->llm->payload = (uint8_t) pending_ret;
+		pending_ret_byte = (uint8_t) pending_ret;
+
+		/* 1 byte to return whether or not data is pending */
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx,
+			&pending_ret_byte, 1);
+
+		if (ret < 0) {
+			goto setup_error;
+		}
+
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_SNAPSHOT_ADD_OUTPUT:
@@ -3833,13 +3852,13 @@ skip_domain:
 			goto error;
 		}
 
-		ret = setup_lttng_msg(cmd_ctx, sizeof(reply));
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &reply,
+			sizeof(reply));
 		if (ret < 0) {
 			goto setup_error;
 		}
 
 		/* Copy output list into message payload */
-		memcpy(cmd_ctx->llm->payload, &reply, sizeof(reply));
 		ret = LTTNG_OK;
 		break;
 	}
@@ -3860,18 +3879,13 @@ skip_domain:
 			goto error;
 		}
 
-		ret = setup_lttng_msg(cmd_ctx,
+		assert((nb_output > 0 && outputs) || nb_output == 0);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, outputs,
 				nb_output * sizeof(struct lttng_snapshot_output));
-		if (ret < 0) {
-			free(outputs);
-			goto setup_error;
-		}
+		free(outputs);
 
-		if (outputs) {
-			/* Copy output list into message payload */
-			memcpy(cmd_ctx->llm->payload, outputs,
-					nb_output * sizeof(struct lttng_snapshot_output));
-			free(outputs);
+		if (ret < 0) {
+			goto setup_error;
 		}
 
 		ret = LTTNG_OK;
@@ -3982,7 +3996,7 @@ skip_domain:
 error:
 	if (cmd_ctx->llm == NULL) {
 		DBG("Missing llm structure. Allocating one.");
-		if (setup_lttng_msg(cmd_ctx, 0) < 0) {
+		if (setup_lttng_msg_no_cmd_header(cmd_ctx, NULL, 0) < 0) {
 			goto setup_error;
 		}
 	}

@@ -338,15 +338,42 @@ struct lttng_event_exclusion {
 } LTTNG_PACKED;
 
 /*
+ * Event command header.
+ */
+struct lttcomm_event_command_header {
+	/* Number of events */
+	uint32_t nb_events;
+} LTTNG_PACKED;
+
+/*
+ * Event extended info header. This is the structure preceding each
+ * extended info data.
+ */
+struct lttcomm_event_extended_header {
+	/*
+	 * Size of filter string immediately following this header.
+	 * This size includes the terminal null character.
+	 */
+	uint32_t filter_len;
+
+	/*
+	 * Number of exclusion names, immediately following the filter
+	 * string. Each exclusion name has a fixed length of
+	 * LTTNG_SYMBOL_NAME_LEN bytes, including the terminal null
+	 * character.
+	 */
+	uint32_t nb_exclusions;
+} LTTNG_PACKED;
+
+/*
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
 	uint32_t cmd_type;	/* enum lttcomm_sessiond_command */
 	uint32_t ret_code;	/* enum lttcomm_return_code */
 	uint32_t pid;		/* pid_t */
+	uint32_t cmd_header_size;
 	uint32_t data_size;
-	/* Contains: trace_name + data */
-	char payload[];
 } LTTNG_PACKED;
 
 struct lttcomm_lttng_output_id {
