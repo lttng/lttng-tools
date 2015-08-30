@@ -802,7 +802,7 @@ struct agent *agent_create(enum lttng_domain_type domain)
 	int ret;
 	struct agent *agt;
 
-	agt = zmalloc(sizeof(*agt));
+	agt = zmalloc(sizeof(struct agent));
 	if (!agt) {
 		goto error;
 	}
