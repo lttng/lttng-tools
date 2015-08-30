@@ -136,6 +136,7 @@ enum lttng_error_code {
 	LTTNG_ERR_INVALID_CHANNEL_NAME   = 113, /* Invalid channel name */
 	LTTNG_ERR_PID_TRACKED            = 114, /* PID already tracked */
 	LTTNG_ERR_PID_NOT_TRACKED        = 115, /* PID not tracked */
+	LTTNG_ERR_INVALID_CHANNEL_DOMAIN = 116, /* Invalid channel domain */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
