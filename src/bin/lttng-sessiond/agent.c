@@ -124,7 +124,7 @@ static void destroy_event_agent_rcu(struct rcu_head *head)
 	struct agent_event *event =
 		caa_container_of(node, struct agent_event, node);
 
-	free(event);
+	agent_destroy_event(event);
 }
 
 /*
