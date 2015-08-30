@@ -35,6 +35,7 @@
 #include "session.h"
 #include "syscall.h"
 #include "trace-ust.h"
+#include "agent.h"
 
 static
 int save_kernel_channel_attributes(struct config_writer *writer,
@@ -741,6 +742,68 @@ end:
 }
 
 static
+void init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
+		struct agent_event *agent_event)
+{
+	ust_event->enabled = agent_event->enabled;
+	ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
+	strncpy(ust_event->attr.name, agent_event->name, LTTNG_SYMBOL_NAME_LEN);
+	ust_event->attr.loglevel_type = agent_event->loglevel_type;
+	ust_event->attr.loglevel = agent_event->loglevel;
+	ust_event->filter_expression = agent_event->filter_expression;
+	ust_event->exclusion = agent_event->exclusion;
+}
+
+static
+int save_agent_events(struct config_writer *writer,
+		struct ltt_ust_channel *chan,
+		struct agent *agent)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *node;
+
+	ret = config_writer_open_element(writer, config_element_events);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(agent->events->ht, &iter.iter, node, node) {
+		int ret;
+		struct agent_event *agent_event;
+		struct ltt_ust_event fake_event;
+
+		memset(&fake_event, 0, sizeof(fake_event));
+		agent_event = caa_container_of(node, struct agent_event, node);
+
+		/*
+		 * Initialize a fake ust event to reuse the same serialization
+		 * function since UST and agent events contain the same info
+		 * (and one could wonder why they don't reuse the same
+		 * structures...).
+		 */
+		init_ust_event_from_agent_event(&fake_event, agent_event);
+		ret = save_ust_event(writer, &fake_event);
+		if (ret) {
+			rcu_read_unlock();
+			goto end;
+		}
+	}
+	rcu_read_unlock();
+
+	/* /events */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
 int save_kernel_context(struct config_writer *writer,
 	struct lttng_kernel_context *ctx)
 {
@@ -1068,10 +1131,31 @@ int save_ust_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = save_ust_events(writer, ust_chan->events);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
+	if (ust_chan->domain == LTTNG_DOMAIN_UST) {
+		ret = save_ust_events(writer, ust_chan->events);
+		if (ret) {
+			goto end;
+		}
+	} else {
+		struct agent *agent = NULL;
+
+		agent = trace_ust_find_agent(session, ust_chan->domain);
+		if (!agent) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			ERR("Could not find agent associated to UST subdomain");
+			goto end;
+		}
+
+		/*
+		 * Channels associated with a UST sub-domain (such as JUL, Log4j
+		 * or Python) don't have any non-internal events. We retrieve
+		 * the "agent" events associated with this channel and serialize
+		 * them.
+		 */
+		ret = save_agent_events(writer, ust_chan, agent);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	ret = save_ust_context(writer, &ust_chan->ctx_list);
@@ -1139,20 +1223,62 @@ end:
 }
 
 static
-int save_ust_session(struct config_writer *writer,
-	struct ltt_session *session, int save_agent)
+const char *get_config_domain_str(enum lttng_domain_type domain)
+{
+	const char *str_dom;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		str_dom = config_domain_type_kernel;
+		break;
+	case LTTNG_DOMAIN_UST:
+		str_dom = config_domain_type_ust;
+		break;
+	case LTTNG_DOMAIN_JUL:
+		str_dom = config_domain_type_jul;
+		break;
+	case LTTNG_DOMAIN_LOG4J:
+		str_dom = config_domain_type_log4j;
+		break;
+	case LTTNG_DOMAIN_PYTHON:
+		str_dom = config_domain_type_python;
+		break;
+	default:
+		assert(0);
+	}
+
+	return str_dom;
+}
+
+static
+int save_ust_domain(struct config_writer *writer,
+	struct ltt_session *session, enum lttng_domain_type domain)
 {
 	int ret;
 	struct ltt_ust_channel *ust_chan;
 	const char *buffer_type_string;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
+	const char *config_domain_name;
 
 	assert(writer);
 	assert(session);
 
-	ret = config_writer_write_element_string(writer, config_element_type,
-			save_agent ? config_domain_type_jul : config_domain_type_ust);
+	ret = config_writer_open_element(writer,
+			config_element_domain);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	config_domain_name = get_config_domain_str(domain);
+	if (!config_domain_name) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer,
+			config_element_type, config_domain_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1182,13 +1308,8 @@ int save_ust_session(struct config_writer *writer,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 			&iter.iter, node, node) {
-		int agent_channel;
-
 		ust_chan = caa_container_of(node, struct ltt_ust_channel, node);
-		agent_channel = !strcmp(DEFAULT_JUL_CHANNEL_NAME, ust_chan->name) ||
-			!strcmp(DEFAULT_LOG4J_CHANNEL_NAME, ust_chan->name) ||
-			!strcmp(DEFAULT_PYTHON_CHANNEL_NAME, ust_chan->name);
-		if (!(save_agent ^ agent_channel)) {
+		if (domain == ust_chan->domain) {
 			ret = save_ust_channel(writer, ust_chan, session->ust_session);
 			if (ret) {
 				rcu_read_unlock();
@@ -1204,6 +1325,14 @@ int save_ust_session(struct config_writer *writer,
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
+
+	/* /domain */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
 end:
 	return ret;
 }
@@ -1360,22 +1489,13 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 	}
 
 	if (session->ust_session) {
-		unsigned long agent_count;
-
-		ret = config_writer_open_element(writer,
-			config_element_domain);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = save_ust_session(writer, session, 0);
+		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_UST);
 		if (ret) {
 			goto end;
 		}
 
 		ret = config_writer_open_element(writer,
-			config_element_trackers);
+				config_element_trackers);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -1389,36 +1509,22 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 		/* /trackers */
 		ret = config_writer_close_element(writer);
 		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
-		/* /domain */
-		ret = config_writer_close_element(writer);
+
+		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_JUL);
 		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		agent_count = lttng_ht_get_count(session->ust_session->agents);
-		if (agent_count > 0) {
-			ret = config_writer_open_element(writer,
-				config_element_domain);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_LOG4J);
+		if (ret) {
+			goto end;
+		}
 
-			ret = save_ust_session(writer, session, 1);
-			if (ret) {
-				goto end;
-			}
-
-			/* /domain */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_PYTHON);
+		if (ret) {
+			goto end;
 		}
 	}
 

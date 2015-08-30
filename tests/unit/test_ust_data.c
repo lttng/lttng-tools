@@ -104,7 +104,7 @@ static void test_create_ust_channel(void)
 
 	strncpy(attr.name, "channel0", 8);
 
-	uchan = trace_ust_create_channel(&attr);
+	uchan = trace_ust_create_channel(&attr, LTTNG_DOMAIN_UST);
 	ok(uchan != NULL, "Create UST channel");
 
 	ok(uchan->enabled == 0 &&

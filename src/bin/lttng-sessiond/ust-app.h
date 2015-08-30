@@ -47,9 +47,9 @@ struct ust_app_notify_sock_obj {
 
 struct ust_app_ht_key {
 	const char *name;
-	const struct lttng_ust_filter_bytecode *filter;
+	const struct lttng_filter_bytecode *filter;
 	enum lttng_ust_loglevel_type loglevel;
-	const struct lttng_ust_event_exclusion *exclusion;
+	const struct lttng_event_exclusion *exclusion;
 };
 
 /*
@@ -114,8 +114,8 @@ struct ust_app_event {
 	struct lttng_ust_event attr;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ht_node_str node;
-	struct lttng_ust_filter_bytecode *filter;
-	struct lttng_ust_event_exclusion *exclusion;
+	struct lttng_filter_bytecode *filter;
+	struct lttng_event_exclusion *exclusion;
 };
 
 struct ust_app_stream {

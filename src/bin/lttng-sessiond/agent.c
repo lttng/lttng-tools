@@ -820,33 +820,37 @@ error:
 }
 
 /*
- * Create a newly allocated agent event data structure. If name is valid, it's
- * copied into the created event.
+ * Create a newly allocated agent event data structure.
+ * Ownership of filter_expression is taken.
  *
  * Return a new object else NULL on error.
  */
 struct agent_event *agent_create_event(const char *name,
-		struct lttng_filter_bytecode *filter)
+		int loglevel, enum lttng_loglevel_type loglevel_type,
+		struct lttng_filter_bytecode *filter, char *filter_expression)
 {
-	struct agent_event *event;
+	struct agent_event *event = NULL;
 
 	DBG3("Agent create new event with name %s", name);
+
+	if (!name) {
+		ERR("Failed to create agent event; no name provided.");
+		goto error;
+	}
 
 	event = zmalloc(sizeof(*event));
 	if (!event) {
 		goto error;
 	}
 
-	if (name) {
-		strncpy(event->name, name, sizeof(event->name));
-		event->name[sizeof(event->name) - 1] = '\0';
-		lttng_ht_node_init_str(&event->node, event->name);
-	}
+	strncpy(event->name, name, sizeof(event->name));
+	event->name[sizeof(event->name) - 1] = '\0';
+	lttng_ht_node_init_str(&event->node, event->name);
 
-	if (filter) {
-		event->filter = filter;
-	}
-
+	event->loglevel = loglevel;
+	event->loglevel_type = loglevel_type;
+	event->filter = filter;
+	event->filter_expression = filter_expression;
 error:
 	return event;
 }
@@ -951,6 +955,7 @@ void agent_destroy_event(struct agent_event *event)
 
 	free(event->filter);
 	free(event->filter_expression);
+	free(event->exclusion);
 	free(event);
 }
 

@@ -359,8 +359,7 @@ error:
  */
 int event_agent_enable_all(struct ltt_ust_session *usess,
 		struct agent *agt, struct lttng_event *event,
-		struct lttng_filter_bytecode *filter,
-		char *filter_expression)
+		struct lttng_filter_bytecode *filter ,char *filter_expression)
 {
 	int ret;
 	struct agent_event *aevent;
@@ -408,18 +407,19 @@ int event_agent_enable(struct ltt_ust_session *usess,
 	assert(agt);
 
 	DBG("Event agent enabling %s for session %" PRIu64 " with loglevel type %d "
-			"and loglevel %d", event->name, usess->id, event->loglevel_type,
-			event->loglevel);
+			", loglevel %d and filter \"%s\"", event->name,
+			usess->id, event->loglevel_type, event->loglevel,
+			filter_expression ? filter_expression : "NULL");
 
 	aevent = agent_find_event(event->name, event->loglevel, agt);
 	if (!aevent) {
-		aevent = agent_create_event(event->name, filter);
+		aevent = agent_create_event(event->name, event->loglevel,
+				event->loglevel_type, filter,
+				filter_expression);
 		if (!aevent) {
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-		aevent->loglevel = event->loglevel;
-		aevent->loglevel_type = event->loglevel_type;
 		created = 1;
 	}
 

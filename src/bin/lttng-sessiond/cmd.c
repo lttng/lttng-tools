@@ -1751,7 +1751,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 		memset(&uevent, 0, sizeof(uevent));
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		default_event_name = event_get_default_agent_ust_name(domain->type);
+		default_event_name = event_get_default_agent_ust_name(
+				domain->type);
 		if (!default_event_name) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
@@ -1783,29 +1784,30 @@ static int _cmd_enable_event(struct ltt_session *session,
 		}
 
 		{
-			struct lttng_filter_bytecode *filter_copy = NULL;
 			char *filter_expression_copy = NULL;
+			struct lttng_filter_bytecode *filter_copy = NULL;
 
 			if (filter) {
-				filter_copy = zmalloc(
-					sizeof(struct lttng_filter_bytecode)
-					+ filter->len);
+				const size_t filter_size = sizeof(
+						struct lttng_filter_bytecode)
+						+ filter->len;
+
+				filter_copy = zmalloc(filter_size);
 				if (!filter_copy) {
 					ret = LTTNG_ERR_NOMEM;
-					goto error;
 				}
+				memcpy(filter_copy, filter, filter_size);
 
-				memcpy(filter_copy, filter,
-				       sizeof(struct lttng_filter_bytecode)
-				       + filter->len);
-			}
-
-			if (filter_expression) {
 				filter_expression_copy =
 						strdup(filter_expression);
 				if (!filter_expression) {
 					ret = LTTNG_ERR_NOMEM;
-					goto error_free_copy;
+				}
+
+				if (!filter_expression_copy || !filter_copy) {
+					free(filter_expression_copy);
+					free(filter_copy);
+					goto error;
 				}
 			}
 
@@ -1813,11 +1815,6 @@ static int _cmd_enable_event(struct ltt_session *session,
 					(char *) default_chan_name,
 					&uevent, filter_expression_copy,
 					filter_copy, NULL, wpipe);
-			filter_copy = NULL;
-			filter_expression_copy = NULL;
-error_free_copy:
-			free(filter_copy);
-			free(filter_expression_copy);
 		}
 
 		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
@@ -1828,12 +1825,12 @@ error_free_copy:
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
 			ret = event_agent_enable_all(usess, agt, event, filter,
 					filter_expression);
-			filter = NULL;
 		} else {
 			ret = event_agent_enable(usess, agt, event, filter,
 					filter_expression);
-			filter = NULL;
 		}
+		filter = NULL;
+		filter_expression = NULL;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}

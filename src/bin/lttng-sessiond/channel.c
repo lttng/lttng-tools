@@ -333,11 +333,24 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	}
 
 	/* Create UST channel */
-	uchan = trace_ust_create_channel(attr);
+	uchan = trace_ust_create_channel(attr, LTTNG_DOMAIN_UST);
 	if (uchan == NULL) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
+
+	/*
+	 * HACK: Set the channel's subdomain (JUL, Log4j, Python, etc.)
+	 * based on the default name.
+	 */
+	if (!strcmp(uchan->name, DEFAULT_JUL_CHANNEL_NAME)) {
+		uchan->domain = LTTNG_DOMAIN_JUL;
+	} else if (!strcmp(uchan->name, DEFAULT_LOG4J_CHANNEL_NAME)) {
+		uchan->domain = LTTNG_DOMAIN_LOG4J;
+	} else if (!strcmp(uchan->name, DEFAULT_PYTHON_CHANNEL_NAME)) {
+		uchan->domain = LTTNG_DOMAIN_PYTHON;
+	}
+
 	uchan->enabled = 1;
 	if (trace_ust_is_max_id(usess->used_channel_id)) {
 		ret = LTTNG_ERR_UST_CHAN_FAIL;
