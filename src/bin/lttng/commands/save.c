@@ -57,13 +57,16 @@ static struct mi_writer *writer;
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng save [OPTIONS] [SESSION]\n");
+	fprintf(ofp, "Usage: lttng save [options] [<session>]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "  -a, --all            Save all sessions (default)\n");
-	fprintf(ofp, "  -o, --output-path    Output path of the session configuration(s)\n");
-	fprintf(ofp, "  -f, --force          Overwrite existing session configuration(s)\n");
+	fprintf(ofp, "Save options:\n");
+	fprintf(ofp, "  -a, --all               Save all sessions (default)\n");
+	fprintf(ofp, "  -f, --force             Overwrite existing session configuration(s)\n");
+	fprintf(ofp, "  -o, --output-path PATH  Save session configuration(s) in PATH\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help              Show this help\n");
+	fprintf(ofp, "      --list-options      List options\n");
 }
 
 static int mi_partial_session(const char *session_name)
