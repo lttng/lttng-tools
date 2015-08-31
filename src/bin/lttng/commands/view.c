@@ -85,23 +85,23 @@ static int session_live_mode;
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng view [SESSION_NAME] [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng view [<session>] [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "By default, the babeltrace viewer will be used for text viewing\n");
+	fprintf(ofp, "By default, the Babeltrace viewer is used for text viewing.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Where SESSION_NAME is an optional session name. If not specified, lttng will\n");
-	fprintf(ofp, "get it from the configuration file (.lttngrc).\n");
+	fprintf(ofp, "<session> is an optional session name. If not specified, lttng will get it from\n");
+	fprintf(ofp, "the configuration directory (~/.lttng).\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -t, --trace-path PATH    Trace directory path for the viewer\n");
-	fprintf(ofp, "  -e, --viewer CMD         Specify viewer and/or options to use\n");
-	fprintf(ofp, "                           This will completely override the default viewers so\n");
-	fprintf(ofp, "                           please make sure to specify the full command. The trace\n");
-	fprintf(ofp, "                           directory path of the session will be appended at the end\n");
-	fprintf(ofp, "                           to the arguments\n");
+	fprintf(ofp, "View options:\n");
+	fprintf(ofp, "  -t, --trace-path PATH  View trace in directory PATH\n");
+	fprintf(ofp, "  -e, --viewer CMD       Use viewer command CMD. This completely overrides the\n");
+	fprintf(ofp, "                         default viewer, so please make sure to specify the full\n");
+	fprintf(ofp, "                         command. The trace directory path of the session is\n");
+	fprintf(ofp, "                         appended to the end of the arguments.\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 static struct viewers *parse_options(void)

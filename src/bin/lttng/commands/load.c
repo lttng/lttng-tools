@@ -59,17 +59,19 @@ static struct poptOption load_opts[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng load [OPTIONS] [SESSION]\n");
+	fprintf(ofp, "Usage: lttng load [<session>] [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "  -a, --all                Load all sessions (default)\n");
-	fprintf(ofp, "  -i, --input-path PATH    Input path of the session file(s).\n");
-	fprintf(ofp, "                           If a directory, load all files in it\n");
-	fprintf(ofp, "                           else try to load the given file.\n");
-	fprintf(ofp, "  -f, --force              Override existing session(s).\n");
-	fprintf(ofp, "                           This will destroy existing session(s)\n");
-	fprintf(ofp, "                           before creating new one(s).\n");
+	fprintf(ofp, "Load options:\n");
+	fprintf(ofp, "  -a, --all              Load all sessions (default)\n");
+	fprintf(ofp, "  -f, --force            Override existing session(s). This will destroy\n");
+	fprintf(ofp, "                         existing session(s) before creating new one(s).\n");
+	fprintf(ofp, "  -i, --input-path PATH  Load session file(s) from PATH. If PATH is a directory,\n");
+	fprintf(ofp, "                         load all files in it. Otherwise, try to load the\n");
+	fprintf(ofp, "                         given file.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 static int mi_partial_session(const char *session_name)

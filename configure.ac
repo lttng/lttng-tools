@@ -138,7 +138,7 @@ AC_ARG_ENABLE([test-java-agent-jul],
 )
 
 AC_ARG_ENABLE([test-java-agent-log4j],
-        [AS_HELP_STRING([--enable-test-java-agent-log4j],[enable the LTTng UST Java agent Log4j tests [default=no]])],
+        [AS_HELP_STRING([--enable-test-java-agent-log4j],[enable the LTTng UST Java agent log4j tests [default=no]])],
         [test_java_agent_log4j=$enableval],
         [test_java_agent_log4j=no]
 )
@@ -400,16 +400,16 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 	fi
 
 	if test "x$test_java_agent_log4j" = "xyes"; then
-		# Check for Log4j agent class
+		# Check for log4j agent class
 		AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
 		if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xno"; then
-			AC_MSG_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
+			AC_MSG_ERROR([The UST Java agent log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
 		fi
 
-		# Check for Log4j class
+		# Check for log4j class
 		AX_CHECK_CLASS(org.apache.log4j.Logger)
 		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
-			AC_MSG_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
+			AC_MSG_ERROR([The log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
 		fi
 	fi
 fi
@@ -599,8 +599,8 @@ AS_IF([test "x$test_java_agent_jul" = "xyes"],[
 	AS_ECHO("Disabled")
 ])
 
-# LTTng UST Java agent Log4j tests enabled/disabled
-AS_ECHO_N("LTTng-UST Java agent Log4j tests: ")
+# LTTng UST Java agent log4j tests enabled/disabled
+AS_ECHO_N("LTTng-UST Java agent log4j tests: ")
 AS_IF([test "x$test_java_agent_log4j" = "xyes"],[
 	AS_ECHO("Enabled")
 ],[

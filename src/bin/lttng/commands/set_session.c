@@ -51,12 +51,11 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng set-session NAME [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng set-session <name> [options]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "\n");
+	fprintf(ofp, "  -h, --help          Show this help\n");
+	fprintf(ofp, "      --list-options  List options\n");
 }
 
 /*

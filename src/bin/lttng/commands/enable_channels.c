@@ -94,60 +94,102 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng enable-channel NAME[,NAME2,...] (-u | -k) [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng enable-channel <name>[,<name2>,...] (-k | -u) [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "Domain options:\n");
+	fprintf(ofp, "  -k, --kernel               Apply to the kernel tracer\n");
+	fprintf(ofp, "  -u, --userspace            Apply to the user space tracer\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Channel options:\n");
-	fprintf(ofp, "      --discard            Discard event when buffers are full%s\n",
+	fprintf(ofp, "Target options:\n");
+	fprintf(ofp, "  -s, --session SESSION      Apply to session SESSION\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Mode options:\n");
+	fprintf(ofp, "      --discard              Discard event when buffers are full%s\n",
 		DEFAULT_CHANNEL_OVERWRITE ? "" : " (default)");
-	fprintf(ofp, "      --overwrite          Flight recorder mode%s\n",
-		DEFAULT_CHANNEL_OVERWRITE ? " (default)" : "");
-	fprintf(ofp, "      --subbuf-size SIZE   Subbuffer size in bytes {+k,+M,+G}\n");
-	fprintf(ofp, "                               (default UST uid: %zu, UST pid: %zu, kernel: %zu, metadata: %zu)\n",
-		default_get_ust_uid_channel_subbuf_size(),
-		default_get_ust_pid_channel_subbuf_size(),
-		default_get_kernel_channel_subbuf_size(),
-		default_get_metadata_subbuf_size());
-	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
-	fprintf(ofp, "      --num-subbuf NUM     Number of subbufers\n");
-	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
-		DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM, DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM,
-		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM, DEFAULT_METADATA_SUBBUF_NUM);
-	fprintf(ofp, "                               Rounded up to the next power of 2.\n");
-	fprintf(ofp, "      --switch-timer USEC  Switch timer interval in usec\n");
-	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
-		DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER, DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER,
-		DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER, DEFAULT_METADATA_SWITCH_TIMER);
-	fprintf(ofp, "      --read-timer USEC    Read timer interval in usec.\n");
-	fprintf(ofp, "                               (default UST uid: %u, UST pid: %u, kernel: %u, metadata: %u)\n",
-		DEFAULT_UST_UID_CHANNEL_READ_TIMER, DEFAULT_UST_UID_CHANNEL_READ_TIMER,
-		DEFAULT_KERNEL_CHANNEL_READ_TIMER, DEFAULT_METADATA_READ_TIMER);
-	fprintf(ofp, "      --output TYPE        Channel output type (Values: %s, %s)\n",
-			output_mmap, output_splice);
-	fprintf(ofp, "                               (default UST uid: %s, UST pid: %s, kernel: %s, metadata: %s)\n",
-			DEFAULT_UST_UID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
-			DEFAULT_UST_PID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
-			DEFAULT_KERNEL_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice,
-			DEFAULT_METADATA_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
-	fprintf(ofp, "      --buffers-uid        Use per UID buffer (-u only)\n");
-	fprintf(ofp, "      --buffers-pid        Use per PID buffer (-u only)\n");
-	fprintf(ofp, "      --buffers-global     Use shared buffer for the whole system (-k only)\n");
-	fprintf(ofp, "  -C, --tracefile-size SIZE\n");
-	fprintf(ofp, "                           Maximum size of each tracefile within a stream (in bytes). 0 means unlimited.\n");
-	fprintf(ofp, "                               (default: %u)\n", DEFAULT_CHANNEL_TRACEFILE_SIZE);
-	fprintf(ofp, "                           Note: traces generated with this option may inaccurately report\n");
-	fprintf(ofp, "                           discarded events as per CTF 1.8.\n");
-	fprintf(ofp, "  -W, --tracefile-count COUNT\n");
-	fprintf(ofp, "                           Used in conjunction with -C option, this will limit the number\n");
-	fprintf(ofp, "                           of files created to the specified count. 0 means unlimited.\n");
-	fprintf(ofp, "                               (default: %u)\n", DEFAULT_CHANNEL_TRACEFILE_COUNT);
+	fprintf(ofp, "      --overwrite            Flight recorder mode (always keep a fixed amount\n");
+	fprintf(ofp, "                             of the latest data%s)\n",
+		DEFAULT_CHANNEL_OVERWRITE ? "; default" : "");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Sub-buffer options:\n");
+	fprintf(ofp, "      --subbuf-size SIZE     Set sub-buffer size to SIZE bytes ('k', 'M',\n");
+	fprintf(ofp, "                             and 'G' suffixes can be used). Rounded up to the\n");
+	fprintf(ofp, "                             next power of 2. Default values:\n");
+	fprintf(ofp, "                               UST per-user:    %zu\n",
+		default_get_ust_uid_channel_subbuf_size());
+	fprintf(ofp, "                               UST per-process: %zu\n",
+		default_get_ust_pid_channel_subbuf_size());
+	fprintf(ofp, "                               Kernel:          %zu\n",
+		default_get_kernel_channel_subbuf_size());
+	fprintf(ofp, "                               Metadata:        %zu\n",
+		default_get_metadata_subbuf_size());
+	fprintf(ofp, "      --num-subbuf NUM       Use NUM sub-buffers. Rounded up to the next power\n");
+	fprintf(ofp, "                             of 2. Default values:\n");
+	fprintf(ofp, "                               UST per-user:    %u\n",
+		DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM);
+	fprintf(ofp, "                               UST per-process: %u\n",
+		DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM);
+	fprintf(ofp, "                               Kernel:          %u\n",
+		DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM);
+	fprintf(ofp, "                               Metadata:        %u\n",
+		DEFAULT_METADATA_SUBBUF_NUM);
+	fprintf(ofp, "      --output TYPE          Set channel output type to TYPE\n");
+	fprintf(ofp, "                               Available types: %s, %s\n",
+		output_mmap, output_splice);
+	fprintf(ofp, "                             Default values:\n");
+	fprintf(ofp, "                               UST per-user:    %s\n",
+		DEFAULT_UST_UID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
+	fprintf(ofp, "                               UST per-process: %s\n",
+		DEFAULT_UST_PID_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
+	fprintf(ofp, "                               Kernel:          %s\n",
+		DEFAULT_KERNEL_CHANNEL_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
+	fprintf(ofp, "                               Metadata:        %s\n",
+		DEFAULT_METADATA_OUTPUT == LTTNG_EVENT_MMAP ? output_mmap : output_splice);
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Buffering scheme options:\n");
+	fprintf(ofp, "      --buffers-global       Use shared buffer for the whole system\n");
+	fprintf(ofp, "                             (with -k, --kernel option only)\n");
+	fprintf(ofp, "      --buffers-pid          Use per-process buffer\n");
+	fprintf(ofp, "                             (with -u, --userspace option only)\n");
+	fprintf(ofp, "      --buffers-uid          Use per-user buffer\n");
+	fprintf(ofp, "                             (-u, --userspace option only)\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Timer options:\n");
+	fprintf(ofp, "      --read-timer USEC      Set read timer period to USEC microseconds. Use 0\n");
+	fprintf(ofp, "                             to disable the read timer. Default values:\n");
+	fprintf(ofp, "                               UST per-user:    %u\n",
+		DEFAULT_UST_UID_CHANNEL_READ_TIMER);
+	fprintf(ofp, "                               UST per-process: %u\n",
+		DEFAULT_UST_PID_CHANNEL_READ_TIMER);
+	fprintf(ofp, "                               Kernel:          %u\n",
+		DEFAULT_KERNEL_CHANNEL_READ_TIMER);
+	fprintf(ofp, "                               Metadata:        %u\n",
+		DEFAULT_METADATA_READ_TIMER);
+	fprintf(ofp, "      --switch-timer USEC    Set switch timer period to USEC microseconds.\n");
+	fprintf(ofp, "                             Use 0 to disable the switch timer. Default values:\n");
+	fprintf(ofp, "                               UST per-user:    %u\n",
+		DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER);
+	fprintf(ofp, "                               UST per-process: %u\n",
+		DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER);
+	fprintf(ofp, "                               Kernel:          %u\n",
+		DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER);
+	fprintf(ofp, "                               Metadata:        %u\n",
+		DEFAULT_METADATA_SWITCH_TIMER);
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Trace file options:\n");
+	fprintf(ofp, "  -W, --tracefile-count CNT  Used in conjunction with -C, --tracefile-size\n");
+	fprintf(ofp, "                             option, set the trace files limit to CNT (0 means\n");
+	fprintf(ofp, "                             unlimited; default: %u)\n",
+		DEFAULT_CHANNEL_TRACEFILE_COUNT);
+	fprintf(ofp, "  -C, --tracefile-size SIZE  Set maximum size of each trace file within a stream\n");
+	fprintf(ofp, "                             to SIZE bytes (0 means unlimited; default: %u).\n",
+		DEFAULT_CHANNEL_TRACEFILE_SIZE);
+	fprintf(ofp, "                             Note: traces generated with this option may\n");
+	fprintf(ofp, "                             inaccurately report discarded events as per\n");
+	fprintf(ofp, "                             CTF 1.8.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help                 Show this help\n");
+	fprintf(ofp, "      --list-options         List options\n");
 }
 
 /*
@@ -220,7 +262,7 @@ static int enable_channel(char *session_name)
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
 		}
 	} else {
-		print_missing_domain();
+		print_missing_domain_no_agents();
 		ret = CMD_ERROR;
 		goto error;
 	}

@@ -73,27 +73,26 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng list [OPTIONS] [SESSION [SESSION OPTIONS]]\n");
+	fprintf(ofp, "Usage: lttng list [<session> [session options]] [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
+	fprintf(ofp, "With no arguments, list available tracing session(s).\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Without a session, -k lists available kernel events\n");
-	fprintf(ofp, "Without a session, -u lists available userspace events\n");
+	fprintf(ofp, "Available events options (without specifying <session>):\n");
+	fprintf(ofp, "  -f, --fields           Also list event fields\n");
+	fprintf(ofp, "  -j, --jul              List available Java application events using JUL\n");
+	fprintf(ofp, "  -k, --kernel           List available kernel events\n");
+	fprintf(ofp, "  -l, --log4j            List available Java application events using log4j\n");
+	fprintf(ofp, "  -p, --python           List available Python application events\n");
+	fprintf(ofp, "      --syscall          List available system calls events\n");
+	fprintf(ofp, "  -u, --userspace        List available user space events\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  -h, --help              Show this help\n");
-	fprintf(ofp, "      --list-options      Simple listing of options\n");
-	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
-	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
-	fprintf(ofp, "  -j, --jul               Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j             Apply for Java application using LOG4J\n");
-	fprintf(ofp, "  -p, --python            Apply for Python application using logging\n");
-	fprintf(ofp, "  -f, --fields            List event fields.\n");
-	fprintf(ofp, "      --syscall           List available system calls.\n");
+	fprintf(ofp, "Session options:\n");
+	fprintf(ofp, "  -c, --channel CHANNEL  List details of channel CHANNEL\n");
+	fprintf(ofp, "  -d, --domain           List available domain(s)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Session Options:\n");
-	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
-	fprintf(ofp, "  -d, --domain            List available domain(s)\n");
-	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 /*
@@ -1556,10 +1555,10 @@ static int list_domains(const char *session_name)
 				MSG("  - UST global");
 				break;
 			case LTTNG_DOMAIN_JUL:
-				MSG("  - JUL (Java Util Logging)");
+				MSG("  - JUL (java.util.logging)");
 				break;
 			case LTTNG_DOMAIN_LOG4J:
-				MSG("  - LOG4j (Logging for Java)");
+				MSG("  - log4j (Logging for Java)");
 				break;
 			case LTTNG_DOMAIN_PYTHON:
 				MSG("  - Python (logging)");
@@ -1806,10 +1805,10 @@ int cmd_list(int argc, const char **argv)
 							LTTNG_BUFFER_PER_PID ? "per PID" : "per UID");
 					break;
 				case LTTNG_DOMAIN_JUL:
-					MSG("=== Domain: JUL (Java Util Logging) ===\n");
+					MSG("=== Domain: JUL (java.util.logging) ===\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J:
-					MSG("=== Domain: LOG4j (Logging for Java) ===\n");
+					MSG("=== Domain: log4j (Logging for Java) ===\n");
 					break;
 				case LTTNG_DOMAIN_PYTHON:
 					MSG("=== Domain: Python (logging) ===\n");

@@ -84,7 +84,7 @@ enum lttng_loglevel_jul {
 };
 
 /*
- * Available loglevels for the LOG4j domain. Those are an exact map from the
+ * Available loglevels for the log4j domain. Those are an exact map from the
  * class org.apache.log4j.Level.
  */
 enum lttng_loglevel_log4j {

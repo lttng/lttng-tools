@@ -69,21 +69,31 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp, const char *cmd_str)
 {
-	fprintf(ofp, "usage: lttng %s [-k|-u] [OPTIONS]\n", cmd_str);
+	const char *verb = cmd_str[0] == 't' ? "Track" : "Untrack";
+
+	fprintf(ofp, "Usage: lttng %s (-k | -u) [options]\n", cmd_str);
 	fprintf(ofp, "\n");
-	fprintf(ofp, "If no session is given (-s), the context is added to\n");
-	fprintf(ofp, "the current sesssion. Exactly one domain (-k or -u)\n");
-	fprintf(ofp, "must be specified.\n");
+	fprintf(ofp, "If no session is given (-s, --session option), the resources are %sed\n",
+		cmd_str);
+	fprintf(ofp, "within the current sesssion.\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help.\n");
-	fprintf(ofp, "      --list-options       Simple listing of options.\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name.\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer.\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer.\n");
-	fprintf(ofp, "  -p, --pid [PID]          Process ID tracker. Leave PID empty when used with --all.\n");
-	fprintf(ofp, "  -a, --all                All PIDs (use with --pid).\n");
+	fprintf(ofp, "Domain options:\n");
+	fprintf(ofp, "  -k, --kernel           Apply to the kernel tracer\n");
+	fprintf(ofp, "  -u, --userspace        Apply to the user space tracer\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Target options:\n");
+	fprintf(ofp, "  -s, --session SESSION  Apply to session SESSION\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Tracking options:\n");
+	fprintf(ofp, "  -a, --all              %s all PIDs (use with empty -p, --pid option)\n",
+		verb);
+	fprintf(ofp, "  -p, --pid [PID]        %s process IDs. Leave PID empty when used\n",
+		verb);
+	fprintf(ofp, "                         with -a, --all option.\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 static

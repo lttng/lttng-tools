@@ -70,15 +70,18 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng disable-channel NAME[,NAME2,...] (-k | -u) [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng disable-channel <name>[,<name2>,...] (-k | -u) [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "Domain options:\n");
+	fprintf(ofp, "  -k, --kernel           Apply to the kernel tracer\n");
+	fprintf(ofp, "  -u, --userspace        Apply to the user space tracer\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Target options:\n");
+	fprintf(ofp, "  -s, --session SESSION  Apply to session SESSION\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
@@ -143,7 +146,7 @@ static int disable_channels(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		print_missing_domain();
+		print_missing_domain_no_agents();
 		ret = CMD_ERROR;
 		goto error;
 	}

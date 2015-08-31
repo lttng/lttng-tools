@@ -151,7 +151,7 @@ extern const char * const mi_lttng_loglevel_str_jul_off;
 extern const char * const mi_lttng_loglevel_str_jul_severe;
 extern const char * const mi_lttng_loglevel_str_jul_warning;
 
-/* String related to loglevel Log4j */
+/* String related to loglevel log4j */
 extern const char * const mi_lttng_loglevel_str_log4j_off;
 extern const char * const mi_lttng_loglevel_str_log4j_fatal;
 extern const char * const mi_lttng_loglevel_str_log4j_error;
