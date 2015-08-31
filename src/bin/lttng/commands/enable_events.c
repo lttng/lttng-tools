@@ -781,8 +781,10 @@ static int enable_events(char *session_name)
 				assert(opt_userspace || opt_jul || opt_log4j || opt_python);
 				if (opt_userspace) {
 					ev.loglevel = -1;
-				} else if (opt_jul || opt_log4j) {
+				} else if (opt_jul) {
 					ev.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+				} else if (opt_log4j) {
+					ev.loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
 				} else if (opt_python) {
 					ev.loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
 				}
