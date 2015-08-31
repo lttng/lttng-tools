@@ -73,30 +73,26 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng list [OPTIONS] [SESSION [SESSION OPTIONS]]\n");
+	fprintf(ofp, "Usage: lttng list [<session> [session options]] [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
+	fprintf(ofp, "With no arguments, list available tracing session(s).\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Without a session, -k lists available kernel events,\n");
-	fprintf(ofp, "                   -u lists available userspace events,\n");
-	fprintf(ofp, "                   -j lists available JUL events,\n");
-	fprintf(ofp, "                   -l lists available log4j events, and\n");
-	fprintf(ofp, "                   -p lists available Python events\n");
+	fprintf(ofp, "Available events options (without specifying <session>):\n");
+	fprintf(ofp, "  -f, --fields           Also list event fields\n");
+	fprintf(ofp, "  -j, --jul              List available Java application events using JUL\n");
+	fprintf(ofp, "  -k, --kernel           List available kernel events\n");
+	fprintf(ofp, "  -l, --log4j            List available Java application events using log4j\n");
+	fprintf(ofp, "  -p, --python           List available Python application events\n");
+	fprintf(ofp, "      --syscall          List available system calls events\n");
+	fprintf(ofp, "  -u, --userspace        List available user space events\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "  -h, --help              Show this help\n");
-	fprintf(ofp, "      --list-options      Simple listing of options\n");
-	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
-	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
-	fprintf(ofp, "  -j, --jul               Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j             Apply for Java application using log4j\n");
-	fprintf(ofp, "  -p, --python            Apply for Python application using logging\n");
-	fprintf(ofp, "  -f, --fields            List event fields.\n");
-	fprintf(ofp, "      --syscall           List available system calls.\n");
+	fprintf(ofp, "Session options:\n");
+	fprintf(ofp, "  -c, --channel CHANNEL  List details of channel CHANNEL\n");
+	fprintf(ofp, "  -d, --domain           List available domain(s)\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Session Options:\n");
-	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
-	fprintf(ofp, "  -d, --domain            List available domain(s)\n");
-	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 /*
