@@ -51,15 +51,14 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng start [NAME] [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng start [<name>] [options]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Where NAME is an optional session name. If not specified, lttng will\n");
-	fprintf(ofp, "get it from the configuration directory (.lttng).\n");
+	fprintf(ofp, "<name> is an optional session name. If not specified, lttng will get it from\n");
+	fprintf(ofp, "the configuration directory (~/.lttng).\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "\n");
+	fprintf(ofp, "  -h, --help          Show this help\n");
+	fprintf(ofp, "      --list-options  List options\n");
 }
 
 static int mi_print_session(char *session_name, int enabled)
