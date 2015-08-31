@@ -83,23 +83,26 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] (-k | -u | -j | -l | -p) [OPTIONS]\n");
+	fprintf(ofp, "Usage: lttng disable-event <name>[,<name2>,...] (-k | -u | -j | -l | -p) [opts]\n");
 	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply to this channel\n");
-	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
-	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j              Apply to Java application using log4j\n");
-	fprintf(ofp, "  -p, --python             Apply to Python application using logging\n");
+	fprintf(ofp, "Domain options:\n");
+	fprintf(ofp, "  -j, --jul              Apply to Java applications using JUL\n");
+	fprintf(ofp, "  -k, --kernel           Apply to the kernel tracer\n");
+	fprintf(ofp, "  -l, --log4j            Apply to Java applications using log4j\n");
+	fprintf(ofp, "  -p, --python           Apply to Python applications using logging\n");
+	fprintf(ofp, "  -u, --userspace        Apply to the user space tracer\n");
+	fprintf(ofp, "\n");
+	fprintf(ofp, "Target options:\n");
+	fprintf(ofp, "  -c, --channel CHANNEL  Apply to channel CHANNEL\n");
+	fprintf(ofp, "  -s, --session SESSION  Apply to session SESSION\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
-	fprintf(ofp, "      --syscall            System call event\n");
+	fprintf(ofp, "  -a, --all-events       Disable all tracepoints\n");
+	fprintf(ofp, "      --syscall          Disable system call events\n");
 	fprintf(ofp, "\n");
+	fprintf(ofp, "Help options:\n");
+	fprintf(ofp, "  -h, --help             Show this help\n");
+	fprintf(ofp, "      --list-options     List options\n");
 }
 
 static
