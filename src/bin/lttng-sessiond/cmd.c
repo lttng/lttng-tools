@@ -1108,8 +1108,39 @@ int cmd_enable_channel(struct ltt_session *session,
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
 	{
 		struct ltt_ust_channel *uchan;
+
+		/*
+		 * FIXME
+		 *
+		 * Current agent implementation limitations force us to allow
+		 * only one channel at once in "agent" subdomains. Each
+		 * subdomain has a default channel name which must be strictly
+		 * adhered to.
+		 */
+		if (domain->type == LTTNG_DOMAIN_JUL) {
+			if (strncmp(attr->name, DEFAULT_JUL_CHANNEL_NAME,
+					LTTNG_SYMBOL_NAME_LEN)) {
+				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				goto error;
+			}
+		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
+			if (strncmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME,
+					LTTNG_SYMBOL_NAME_LEN)) {
+				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				goto error;
+			}
+		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
+			if (strncmp(attr->name, DEFAULT_PYTHON_CHANNEL_NAME,
+					LTTNG_SYMBOL_NAME_LEN)) {
+				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				goto error;
+			}
+		}
 
 		chan_ht = usess->domain_global.channels;
 
