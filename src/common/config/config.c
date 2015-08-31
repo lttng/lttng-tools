@@ -1427,6 +1427,26 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 
 	memset(&event, 0, sizeof(event));
 
+	/* Initialize default log level which varies by domain */
+	switch (handle->domain.type)
+	{
+	case LTTNG_DOMAIN_JUL:
+		event.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+		break;
+	case LTTNG_DOMAIN_LOG4J:
+		event.loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+		break;
+	case LTTNG_DOMAIN_PYTHON:
+		event.loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
+		break;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_KERNEL:
+		event.loglevel = LTTNG_LOGLEVEL_DEBUG;
+		break;
+	default:
+		assert(0);
+	}
+
 	for (node = xmlFirstElementChild(event_node); node;
 		node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name, config_element_name)) {
