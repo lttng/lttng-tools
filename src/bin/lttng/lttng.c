@@ -193,6 +193,21 @@ static void list_options(FILE *ofp)
 static void clean_exit(int code)
 {
 	DBG("Clean exit");
+
+	/* Get absolute value of code */
+	if (code < 0) {
+		code = -code;
+	}
+
+	/* Convert LTTng status code to appropriate exit status */
+	if (code == LTTNG_OK) {
+		code = 0;
+	} else if (code == LTTNG_ERR_FATAL) {
+		code = 3;
+	} else if (code > LTTNG_OK) {
+		code = EXIT_FAILURE;
+	}
+
 	exit(code);
 }
 
