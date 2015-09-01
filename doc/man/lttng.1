@@ -1089,6 +1089,82 @@ Simple listing of options
 .PP
 
 .PP
+\fBuntrack\fP (-k | -u) --pid [PID1[,PID2[,...]]] [OPTIONS]
+.RS
+Removes one or more entries from a tracker
+
+See the \fBtrack\fP command's documentation to learn more about LTTng
+trackers.
+
+The \fBuntrack\fP command removes specific resources from a tracker. The
+resources to remove must have been precedently added by the
+\fBtrack\fP command. It is also possible to remove all the resources
+from the whitelist using the \fB\-\-all\fR option.
+
+As of this version, the only available tracker is the \fBPID tracker\fP.
+
+One common operation is to create a tracing session, remove all the entries
+from the PID tracker whitelist, start tracing, and then manually track PIDs
+while tracing is active.
+
+Assume the maximum PID is 7 for the following examples:
+
+.nf
+    $ lttng create
+
+    Initial whitelist: [0] [1] [2] [3] [4] [5] [6] [7]
+
+    $ lttng untrack --userspace --pid --all
+
+            Whitelist: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
+
+    $ lttng enable-event --userspace ...
+    $ lttng start
+    ...
+    $ lttng track --userspace --pid 3,5
+
+            Whitelist: [ ] [ ] [ ] [3] [ ] [5] [ ] [ ]
+
+    $ lttng track --userspace --pid 2
+
+            Whitelist: [ ] [ ] [2] [3] [ ] [5] [ ] [ ]
+.fi
+
+See the \fBtrack\fR command's documentation for more details about
+adding entries.
+
+.B OPTIONS:
+
+.TP
+.BR "\-s, \-\-session NAME"
+Apply to session name.
+.TP
+.BR "\-k, \-\-kernel"
+Apply to the kernel tracer.
+.TP
+.BR "\-u, \-\-userspace"
+Apply to the user space tracer.
+.TP
+.BR "\-p, \-\-pid [PIDS]"
+Stop tracking process IDs PIDS (remove from whitelist).
+
+PIDS is a comma-separated list of PIDs to remove from the PID tracker.
+
+The PIDS argument must be omitted when also using the \fB\-\-all\fP option.
+.TP
+.BR "\-a, \-\-all"
+Used in conjunction with an empty \fB\-\-pid\fP option: stop tracking all
+process IDs (remove all entries from whitelist).
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
+
+.PP
 \fBversion\fP
 .RS
 Show version information
