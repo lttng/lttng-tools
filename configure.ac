@@ -438,6 +438,10 @@ LT_INIT
 AC_PROG_YACC
 AC_PROG_LEX
 
+# check for pgrep
+AC_PATH_PROG([PGREP],[pgrep], [no])
+AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
+
 if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
 	if test x"$YACC" != "xbison -y"; then
 		AC_MSG_ERROR([[bison not found and is required when building from git.
