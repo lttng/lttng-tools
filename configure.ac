@@ -457,6 +457,35 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 	fi
 fi
 
+# set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
+# is not distributed in tarballs
+AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
+AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
+
+# enable building man pages
+AC_ARG_ENABLE(
+	build-man-pages,
+	AS_HELP_STRING(
+		[--enable-build-man-pages],
+		[Build man pages (already built in a distributed tarball)]
+	),
+	[enable_build_man_pages=yes],
+	[enable_build_man_pages=no]
+)
+
+# export man page build condition
+AM_CONDITIONAL([BUILD_MAN_PAGES], [test "x$enable_build_man_pages" != "xno"])
+
+# check for asciidoc and xmlto if we enabled building the man pages
+AS_IF([test "x$enable_build_man_pages" = "xyes"], [
+	AC_PATH_PROG([ASCIIDOC],[asciidoc],[no])
+	AC_PATH_PROG([XMLTO],[xmlto],[no])
+
+	if test "x$ASCIIDOC" = xno -o "x$XMLTO" = xno; then
+		AC_MSG_ERROR([Both asciidoc and xmlto are needed to build the LTTng man pages.])
+	fi
+])
+
 # Python agent test
 UST_PYTHON_AGENT="lttngust"
 
@@ -961,6 +990,8 @@ AS_IF([test ! -z "$PYTHON3_AGENT"],[
 	AS_ECHO("Disabled")
 ])
 
+AS_ECHO()
+
 #Python binding enabled/disabled
 AS_ECHO_N("Python binding: ")
 AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
@@ -969,8 +1000,27 @@ AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
 	AS_ECHO("Disabled")
 ])
 
-# If we build the sessiond, print the paths it will use
 AS_ECHO()
+
+# man pages build enabled/disabled
+AS_ECHO_N("Build man pages: ")
+AS_IF([test "x$enable_build_man_pages" = "xyes"], [
+	AS_ECHO("Yes")
+], [
+	AS_ECHO("No")
+])
+
+# man pages install enabled/disabled (always true in tarball)
+AS_ECHO_N("Install man pages: ")
+AS_IF([test "x$enable_build_man_pages" = "xno" -a "x$in_git_repo" = "xyes"], [
+	AS_ECHO("No")
+], [
+	AS_ECHO("Yes")
+])
+
+AS_ECHO()
+
+# If we build the sessiond, print the paths it will use
 AS_ECHO_N("The lttng command will search for the lttng-sessiond executable at: ")
 AS_IF([test "$SESSIOND_BIN" = ""],[
 	AS_ECHO_N("`eval eval echo $bindir`")
