@@ -103,6 +103,17 @@ tests/regression/ust/python-logging/test_python_logging
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
 
+# man pages
+/doc/man/*.1
+/doc/man/*.3
+/doc/man/*.8
+/doc/man/*.xml
+/doc/man/*.html
+!/doc/man/lttng-crash.1
+!/doc/man/lttng-health-check.3
+!/doc/man/lttng-relayd.8
+!/doc/man/lttng-sessiond.8
+
 /benchmark/
 
 /include/version.h
