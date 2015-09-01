@@ -726,10 +726,22 @@ static int enable_events(char *session_name)
 		goto error;
 	}
 
-	if (opt_kernel && opt_exclude) {
-		ERR("Event name exclusions are not yet implemented for kernel events");
-		ret = CMD_ERROR;
-		goto error;
+	if (opt_exclude) {
+		switch (dom.type) {
+		case LTTNG_DOMAIN_KERNEL:
+		case LTTNG_DOMAIN_JUL:
+		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_PYTHON:
+			ERR("Event name exclusions are not yet implemented for %s events",
+					get_domain_str(dom.type));
+			ret = CMD_ERROR;
+			goto error;
+		case LTTNG_DOMAIN_UST:
+			/* Exclusions supported */
+			break;
+		default:
+			assert(0);
+		}
 	}
 
 	channel_name = opt_channel_name;
