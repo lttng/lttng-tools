@@ -2358,7 +2358,7 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 	 * Create session in no output mode with URIs set to NULL. The uris we've
 	 * received are for a default snapshot output if one.
 	 */
-	ret = cmd_create_session_uri(name, NULL, 0, creds, -1);
+	ret = cmd_create_session_uri(name, NULL, 0, creds, 0);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
