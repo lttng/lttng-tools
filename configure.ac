@@ -703,6 +703,10 @@ AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 
+# check for pgrep
+AC_PATH_PROG([PGREP], [pgrep], [no])
+AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
+
 if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
 	if test x"$(basename "$YACC")" != "xbison -y"; then
 		AC_MSG_ERROR([[bison not found and is required when building from git.

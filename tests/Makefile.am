@@ -7,6 +7,9 @@ endif
 
 installcheck-am:
 if BUILD_TESTS
+if HAS_PGREP
+	./utils/warn_lttng_processes.sh $(PGREP)
+endif
 	./run.sh unit_tests
 	./run.sh fast_regression
 if PYTHON_BINDING
@@ -20,6 +23,9 @@ endif
 
 check-am:
 if BUILD_TESTS
+if HAS_PGREP
+	./utils/warn_lttng_processes.sh $(PGREP)
+endif
 	./run.sh unit_tests
 	./run.sh fast_regression
 if PYTHON_BINDING
