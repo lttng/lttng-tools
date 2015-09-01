@@ -985,11 +985,21 @@ static int list_session_agent_events(void)
 		}
 
 		for (i = 0; i < count; i++) {
-			MSG("%s- %s%s (loglevel%s %s)", indent4, events[i].name,
-					enabled_string(events[i].enabled),
-					logleveltype_string(events[i].loglevel_type),
-					mi_lttng_loglevel_string(events[i].loglevel,
-						handle->domain.type));
+			if (events[i].loglevel_type !=
+					LTTNG_EVENT_LOGLEVEL_ALL) {
+				MSG("%s- %s%s (loglevel%s %s)", indent4,
+						events[i].name,
+						enabled_string(
+							events[i].enabled),
+						logleveltype_string(
+							events[i].loglevel_type),
+						mi_lttng_loglevel_string(
+							events[i].loglevel,
+							handle->domain.type));
+			} else {
+				MSG("%s- %s%s", indent4, events[i].name,
+				    enabled_string(events[i].enabled));
+			}
 		}
 
 		MSG("");
