@@ -1189,17 +1189,29 @@ static int enable_events(char *session_name)
 				}
 				error_holder = command_ret;
 			} else {
-				/* So we don't print the default channel name for agent domain. */
-				if (dom.type == LTTNG_DOMAIN_JUL ||
-						dom.type == LTTNG_DOMAIN_LOG4J) {
-					MSG("%s event %s%s enabled.",
-							get_domain_str(dom.type), event_name,
-							exclusion_string);
-				} else {
+				switch (dom.type) {
+				case LTTNG_DOMAIN_KERNEL:
+				case LTTNG_DOMAIN_UST:
 					MSG("%s event %s%s created in channel %s",
-							get_domain_str(dom.type), event_name,
-							exclusion_string,
-							print_channel_name(channel_name));
+						get_domain_str(dom.type),
+						event_name,
+						exclusion_string,
+						print_channel_name(channel_name));
+					break;
+				case LTTNG_DOMAIN_JUL:
+				case LTTNG_DOMAIN_LOG4J:
+				case LTTNG_DOMAIN_PYTHON:
+					/*
+					 * Don't print the default channel
+					 * name for agent domains.
+					 */
+					MSG("%s event %s%s enabled.",
+						get_domain_str(dom.type),
+						event_name,
+						exclusion_string);
+					break;
+				default:
+					assert(0);
 				}
 			}
 			free(exclusion_string);
