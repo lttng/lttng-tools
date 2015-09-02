@@ -841,40 +841,47 @@ void agent_add_event(struct agent_event *event, struct agent *agt)
 }
 
 /*
- * Find a agent event in the given agent using name.
+ * Find multiple agent events sharing the given name.
  *
- * RCU read side lock MUST be acquired.
+ * RCU read side lock MUST be acquired. It must be held for the
+ * duration of the iteration.
  *
- * Return object if found else NULL.
+ * Sets the given iterator.
  */
-struct agent_event *agent_find_event_by_name(const char *name,
-		struct agent *agt)
+void agent_find_events_by_name(const char *name, struct agent *agt,
+		struct lttng_ht_iter* iter)
 {
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
 	struct agent_ht_key key;
 
 	assert(name);
 	assert(agt);
 	assert(agt->events);
+	assert(iter);
 
 	ht = agt->events;
 	key.name = name;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
-			ht_match_event_by_name, &key, &iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
-		goto error;
-	}
+			ht_match_event_by_name, &key, &iter->iter);
+}
 
-	DBG3("Agent event found %s by name.", name);
-	return caa_container_of(node, struct agent_event, node);
+/*
+ * Get the next agent event duplicate by name. This should be called
+ * after a call to agent_find_events_by_name() to iterate on events.
+ *
+ * The RCU read lock must be held during the iteration and for as long
+ * as the object the iterator points to remains in use.
+ */
+void agent_event_next_duplicate(const char *name,
+		struct agent *agt, struct lttng_ht_iter* iter)
+{
+	struct agent_ht_key key;
 
-error:
-	DBG3("Agent NOT found by name %s.", name);
-	return NULL;
+	key.name = name;
+
+	cds_lfht_next_duplicate(agt->events->ht, ht_match_event_by_name,
+		&key, &iter->iter);
 }
 
 /*
