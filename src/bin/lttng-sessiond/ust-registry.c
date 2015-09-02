@@ -133,8 +133,8 @@ int validate_event_fields(size_t nr_fields, struct ustctl_field *fields,
  */
 static struct ust_registry_event *alloc_event(int session_objd,
 		int channel_objd, char *name, char *sig, size_t nr_fields,
-		struct ustctl_field *fields, int loglevel, char *model_emf_uri,
-		struct ust_app *app)
+		struct ustctl_field *fields, int loglevel_value,
+		char *model_emf_uri, struct ust_app *app)
 {
 	struct ust_registry_event *event = NULL;
 
@@ -157,7 +157,7 @@ static struct ust_registry_event *alloc_event(int session_objd,
 	event->signature = sig;
 	event->nr_fields = nr_fields;
 	event->fields = fields;
-	event->loglevel = loglevel;
+	event->loglevel_value = loglevel_value;
 	event->model_emf_uri = model_emf_uri;
 	if (name) {
 		/* Copy event name and force NULL byte. */
@@ -248,9 +248,9 @@ end:
  */
 int ust_registry_create_event(struct ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
-		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
-		char *model_emf_uri, int buffer_type, uint32_t *event_id_p,
-		struct ust_app *app)
+		char *sig, size_t nr_fields, struct ustctl_field *fields,
+		int loglevel_value, char *model_emf_uri, int buffer_type,
+		uint32_t *event_id_p, struct ust_app *app)
 {
 	int ret;
 	uint32_t event_id;
@@ -287,7 +287,7 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	}
 
 	event = alloc_event(session_objd, channel_objd, name, sig, nr_fields,
-			fields, loglevel, model_emf_uri, app);
+			fields, loglevel_value, model_emf_uri, app);
 	if (!event) {
 		ret = -ENOMEM;
 		goto error_free;

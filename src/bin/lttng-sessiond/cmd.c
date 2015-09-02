@@ -237,7 +237,7 @@ static int list_lttng_agent_events(struct agent *agt,
 		strncpy(tmp_events[i].name, event->name, sizeof(tmp_events[i].name));
 		tmp_events[i].name[sizeof(tmp_events[i].name) - 1] = '\0';
 		tmp_events[i].enabled = event->enabled;
-		tmp_events[i].loglevel = event->loglevel;
+		tmp_events[i].loglevel = event->loglevel_value;
 		tmp_events[i].loglevel_type = event->loglevel_type;
 		i++;
 	}

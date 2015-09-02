@@ -117,9 +117,10 @@ static int ht_match_event(struct cds_lfht_node *node,
 		goto no_match;
 	}
 
-	if (event->loglevel != key->loglevel) {
+	if (event->loglevel_value != key->loglevel_value) {
 		if (event->loglevel_type == LTTNG_EVENT_LOGLEVEL_ALL &&
-				key->loglevel == 0 && event->loglevel == -1) {
+				key->loglevel_value == 0 &&
+				event->loglevel_value == -1) {
 			goto match;
 		}
 		goto no_match;
@@ -145,7 +146,7 @@ static void add_unique_agent_event(struct lttng_ht *ht,
 	assert(event);
 
 	key.name = event->name;
-	key.loglevel = event->loglevel;
+	key.loglevel_value = event->loglevel_value;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
@@ -378,7 +379,7 @@ static int enable_event(struct agent_app *app, struct agent_event *event)
 	}
 
 	memset(&msg, 0, sizeof(msg));
-	msg.loglevel = event->loglevel;
+	msg.loglevel_value = event->loglevel_value;
 	msg.loglevel_type = event->loglevel_type;
 	strncpy(msg.name, event->name, sizeof(msg.name));
 	ret = send_payload(app->sock, &msg, sizeof(msg));
@@ -826,7 +827,7 @@ error:
  * Return a new object else NULL on error.
  */
 struct agent_event *agent_create_event(const char *name,
-		int loglevel, enum lttng_loglevel_type loglevel_type,
+		int loglevel_value, enum lttng_loglevel_type loglevel_type,
 		struct lttng_filter_bytecode *filter, char *filter_expression)
 {
 	struct agent_event *event = NULL;
@@ -847,7 +848,7 @@ struct agent_event *agent_create_event(const char *name,
 	event->name[sizeof(event->name) - 1] = '\0';
 	lttng_ht_node_init_str(&event->node, event->name);
 
-	event->loglevel = loglevel;
+	event->loglevel_value = loglevel_value;
 	event->loglevel_type = loglevel_type;
 	event->filter = filter;
 	event->filter_expression = filter_expression;
@@ -913,7 +914,7 @@ error:
  *
  * Return object if found else NULL.
  */
-struct agent_event *agent_find_event(const char *name, int loglevel,
+struct agent_event *agent_find_event(const char *name, int loglevel_value,
 		struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
@@ -927,7 +928,7 @@ struct agent_event *agent_find_event(const char *name, int loglevel,
 
 	ht = agt->events;
 	key.name = name;
-	key.loglevel = loglevel;
+	key.loglevel_value = loglevel_value;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
 			ht_match_event, &key, &iter.iter);
