@@ -356,7 +356,7 @@ int ustctl_recv_register_event(int sock,
 					 * event name (output,
 					 * size LTTNG_UST_SYM_NAME_LEN)
 					 */
-	int *loglevel,
+	int *loglevel_value,
 	char **signature,		/*
 					 * event signature
 					 * (output, dynamically

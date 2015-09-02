@@ -34,7 +34,7 @@ struct agent;
 struct ltt_ust_ht_key {
 	const char *name;
 	const struct lttng_filter_bytecode *filter;
-	enum lttng_ust_loglevel_type loglevel;
+	enum lttng_ust_loglevel_type loglevel_type;
 	const struct lttng_event_exclusion *exclusion;
 };
 
@@ -183,8 +183,8 @@ int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
  * Lookup functions. NULL is returned if not found.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter, int loglevel,
-		struct lttng_event_exclusion *exclusion);
+		char *name, struct lttng_filter_bytecode *filter,
+		int loglevel_value, struct lttng_event_exclusion *exclusion);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		char *name);
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
@@ -290,8 +290,8 @@ int trace_ust_match_context(struct ltt_ust_context *uctx,
 	return 0;
 }
 static inline struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter, int loglevel,
-		struct lttng_event_exclusion *exclusion)
+		char *name, struct lttng_filter_bytecode *filter,
+		int loglevel_value, struct lttng_event_exclusion *exclusion)
 {
 	return NULL;
 }
