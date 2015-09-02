@@ -379,16 +379,46 @@ error:
 
 int kernel_track_pid(struct ltt_kernel_session *session, int pid)
 {
+	int ret;
+
 	DBG("Kernel track PID %d for session id %" PRIu64 ".",
 			pid, session->id);
-	return kernctl_track_pid(session->fd, pid);
+	ret = kernctl_track_pid(session->fd, pid);
+	if (!ret) {
+		return LTTNG_OK;
+	}
+	switch (errno) {
+	case EINVAL:
+		return LTTNG_ERR_INVALID;
+	case ENOMEM:
+		return LTTNG_ERR_NOMEM;
+	case EEXIST:
+		return LTTNG_ERR_PID_TRACKED;
+	default:
+		return LTTNG_ERR_UNK;
+	}
 }
 
 int kernel_untrack_pid(struct ltt_kernel_session *session, int pid)
 {
+	int ret;
+
 	DBG("Kernel untrack PID %d for session id %" PRIu64 ".",
 			pid, session->id);
-	return kernctl_untrack_pid(session->fd, pid);
+	ret = kernctl_untrack_pid(session->fd, pid);
+	if (!ret) {
+		return LTTNG_OK;
+	}
+	switch (errno) {
+	case EINVAL:
+		return LTTNG_ERR_INVALID;
+	case ENOMEM:
+		return LTTNG_ERR_NOMEM;
+	case ENOENT:
+		return LTTNG_ERR_PID_NOT_TRACKED;
+	default:
+		return LTTNG_ERR_UNK;
+	}
 }
 
 ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
