@@ -34,7 +34,7 @@
 #include "../command.h"
 
 static int opt_event_type;
-static char *opt_kernel;
+static int opt_kernel;
 static int opt_userspace;
 #if 0
 /* Not implemented yet */
@@ -133,9 +133,7 @@ static int calibrate_lttng(void)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		assert(0);
 	}
 
 	handle = lttng_create_handle(NULL, &dom);
@@ -237,6 +235,13 @@ int cmd_calibrate(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
+
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */
