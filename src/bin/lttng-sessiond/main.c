@@ -1216,6 +1216,9 @@ static void *thread_manage_consumer(void *data)
 
 	DBG("[thread] Manage consumer started");
 
+	rcu_register_thread();
+	rcu_thread_online();
+
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CONSUMER);
 
 	health_code_update();
@@ -1513,6 +1516,9 @@ error_poll:
 	}
 	health_unregister(health_sessiond);
 	DBG("consumer thread cleanup completed");
+
+	rcu_thread_offline();
+	rcu_unregister_thread();
 
 	return NULL;
 }
@@ -1983,7 +1989,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * Don't care about return value. Let the manage apps threads
 				 * handle app unregistration upon socket close.
 				 */
-				(void) ust_app_register_done(app->sock);
+				(void) ust_app_register_done(app);
 
 				/*
 				 * Even if the application socket has been closed, send the app
@@ -2023,6 +2029,22 @@ error:
 		cds_list_del(&wait_node->head);
 		wait_queue.count--;
 		free(wait_node);
+	}
+
+	/* Empty command queue. */
+	for (;;) {
+		/* Dequeue command for registration */
+		node = cds_wfcq_dequeue_blocking(&ust_cmd_queue.head, &ust_cmd_queue.tail);
+		if (node == NULL) {
+			break;
+		}
+		ust_cmd = caa_container_of(node, struct ust_command, node);
+		ret = close(ust_cmd->sock);
+		if (ret < 0) {
+			PERROR("close ust sock exit dispatch %d", ust_cmd->sock);
+		}
+		lttng_fd_put(LTTNG_FD_APPS, 1);
+		free(ust_cmd);
 	}
 
 error_testpoint:
@@ -2157,6 +2179,10 @@ static void *thread_registration_apps(void *data)
 					ust_cmd = zmalloc(sizeof(struct ust_command));
 					if (ust_cmd == NULL) {
 						PERROR("ust command zmalloc");
+						ret = close(sock);
+						if (ret) {
+							PERROR("close");
+						}
 						goto error;
 					}
 
@@ -2713,7 +2739,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		 * domain.
 		 */
 		if (session->kernel_session->consumer) {
-			consumer_destroy_output(session->kernel_session->consumer);
+			consumer_output_put(session->kernel_session->consumer);
 		}
 		session->kernel_session->consumer =
 			consumer_copy_output(session->consumer);
@@ -2727,7 +2753,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
 		if (session->ust_session->consumer) {
-			consumer_destroy_output(session->ust_session->consumer);
+			consumer_output_put(session->ust_session->consumer);
 		}
 		session->ust_session->consumer =
 			consumer_copy_output(session->consumer);
@@ -2847,7 +2873,7 @@ static int create_kernel_session(struct ltt_session *session)
 				session->kernel_session->consumer->dst.trace_path,
 				S_IRWXU | S_IRWXG, session->uid, session->gid);
 		if (ret < 0) {
-			if (ret != -EEXIST) {
+			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
 				goto error;
 			}
@@ -5963,6 +5989,10 @@ exit_apps:
 	}
 exit_reg_apps:
 
+	/*
+	 * Join dispatch thread after joining reg_apps_thread to ensure
+	 * we don't leak applications in the queue.
+	 */
 	ret = pthread_join(dispatch_thread, &status);
 	if (ret) {
 		errno = ret;
@@ -6028,6 +6058,9 @@ exit_options:
 	sessiond_cleanup_options();
 
 exit_set_signal_handler:
+	/* Ensure all prior call_rcu are done. */
+	rcu_barrier();
+
 	if (!retval) {
 		exit(EXIT_SUCCESS);
 	} else {

@@ -593,7 +593,6 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 			S_IRWXU | S_IRWXG,
 			euid, egid);
 		if (ret) {
-			errno = -ret;
 			PERROR("run_as_mkdir_recursive");
 			goto error;
 		}
@@ -604,7 +603,6 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 			O_WRONLY | O_CREAT | O_EXCL,
 			S_IRUSR | S_IWUSR, euid, egid);
 		if (ret < 0) {
-			errno = -ret;
 			PERROR("Opening metadata file");
 			goto error;
 		}

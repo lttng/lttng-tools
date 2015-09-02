@@ -242,6 +242,21 @@ struct lttng_consumer_stream {
 	int shm_fd_is_copy;
 	int data_read;
 	int hangup_flush_done;
+
+	/*
+	 * metadata_timer_lock protects flags waiting_on_metadata and
+	 * missed_metadata_flush.
+	 */
+	pthread_mutex_t metadata_timer_lock;
+	/*
+	 * Flag set when awaiting metadata to be pushed. Used in the
+	 * timer thread to skip waiting on the stream (and stream lock) to
+	 * ensure we can proceed to flushing metadata in live mode.
+	 */
+	bool waiting_on_metadata;
+	/* Raised when a timer misses a metadata flush. */
+	bool missed_metadata_flush;
+
 	enum lttng_event_output output;
 	/* Maximum subbuffer size. */
 	unsigned long max_sb_size;
@@ -616,8 +631,6 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 void consumer_del_channel(struct lttng_consumer_channel *channel);
 
 /* lttng-relayd consumer command */
-struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
-		uint64_t net_seq_idx);
 struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key);
 int consumer_send_relayd_stream(struct lttng_consumer_stream *stream, char *path);
 int consumer_send_relayd_streams_sent(uint64_t net_seq_idx);

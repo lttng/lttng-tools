@@ -1,6 +1,10 @@
+#ifndef RELAYD_CMD_2_1_H
+#define RELAYD_CMD_2_1_H
+
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -16,13 +20,9 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef RELAYD_CMD_2_1_H
-#define RELAYD_CMD_2_1_H
-
 #include "lttng-relayd.h"
-#include "stream.h"
 
 int cmd_recv_stream_2_1(struct relay_connection *conn,
-		struct relay_stream *stream);
+		char **path_name, char **channel_name);
 
 #endif /* RELAYD_CMD_2_1_H */

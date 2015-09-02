@@ -21,6 +21,7 @@
 #include <common/consumer.h>
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
+#include <urcu/ref.h>
 
 #include "snapshot.h"
 
@@ -140,6 +141,8 @@ struct consumer_net {
  * Consumer output object describing where and how to send data.
  */
 struct consumer_output {
+	struct urcu_ref ref;	/* Refcount */
+
 	/* If the consumer is enabled meaning that should be used */
 	unsigned int enabled;
 	enum consumer_dst_type type;
@@ -192,7 +195,8 @@ int consumer_socket_recv(struct consumer_socket *socket, void *msg,
 
 struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
-void consumer_destroy_output(struct consumer_output *obj);
+void consumer_output_get(struct consumer_output *obj);
+void consumer_output_put(struct consumer_output *obj);
 int consumer_set_network_uri(struct consumer_output *obj,
 		struct lttng_uri *uri);
 int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd);

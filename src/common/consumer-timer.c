@@ -144,8 +144,35 @@ static int check_kernel_stream(struct lttng_consumer_stream *stream)
 	 * thread handle that. Otherwise, if the snapshot returns EAGAIN, it
 	 * means that there is no data to read after the flush, so we can
 	 * safely send the empty index.
+	 *
+	 * Doing a trylock and checking if waiting on metadata if
+	 * trylock fails. Bail out of the stream is indeed waiting for
+	 * metadata to be pushed. Busy wait on trylock otherwise.
 	 */
-	pthread_mutex_lock(&stream->lock);
+	for (;;) {
+		ret = pthread_mutex_trylock(&stream->lock);
+		switch (ret) {
+		case 0:
+			break;	/* We have the lock. */
+		case EBUSY:
+			pthread_mutex_lock(&stream->metadata_timer_lock);
+			if (stream->waiting_on_metadata) {
+				ret = 0;
+				stream->missed_metadata_flush = true;
+				pthread_mutex_unlock(&stream->metadata_timer_lock);
+				goto end;	/* Bail out. */
+			}
+			pthread_mutex_unlock(&stream->metadata_timer_lock);
+			/* Try again. */
+			caa_cpu_relax();
+			continue;
+		default:
+			ERR("Unexpected pthread_mutex_trylock error %d", ret);
+			ret = -1;
+			goto end;
+		}
+		break;
+	}
 	ret = kernctl_get_current_timestamp(stream->wait_fd, &ts);
 	if (ret < 0) {
 		ERR("Failed to get the current timestamp");
@@ -178,6 +205,7 @@ static int check_kernel_stream(struct lttng_consumer_stream *stream)
 
 error_unlock:
 	pthread_mutex_unlock(&stream->lock);
+end:
 	return ret;
 }
 
@@ -194,8 +222,35 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 	 * thread handle that. Otherwise, if the snapshot returns EAGAIN, it
 	 * means that there is no data to read after the flush, so we can
 	 * safely send the empty index.
+	 *
+	 * Doing a trylock and checking if waiting on metadata if
+	 * trylock fails. Bail out of the stream is indeed waiting for
+	 * metadata to be pushed. Busy wait on trylock otherwise.
 	 */
-	pthread_mutex_lock(&stream->lock);
+	for (;;) {
+		ret = pthread_mutex_trylock(&stream->lock);
+		switch (ret) {
+		case 0:
+			break;	/* We have the lock. */
+		case EBUSY:
+			pthread_mutex_lock(&stream->metadata_timer_lock);
+			if (stream->waiting_on_metadata) {
+				ret = 0;
+				stream->missed_metadata_flush = true;
+				pthread_mutex_unlock(&stream->metadata_timer_lock);
+				goto end;	/* Bail out. */
+			}
+			pthread_mutex_unlock(&stream->metadata_timer_lock);
+			/* Try again. */
+			caa_cpu_relax();
+			continue;
+		default:
+			ERR("Unexpected pthread_mutex_trylock error %d", ret);
+			ret = -1;
+			goto end;
+		}
+		break;
+	}
 	ret = cds_lfht_is_node_deleted(&stream->node.node);
 	if (ret) {
 		goto error_unlock;
@@ -229,6 +284,7 @@ static int check_ust_stream(struct lttng_consumer_stream *stream)
 
 error_unlock:
 	pthread_mutex_unlock(&stream->lock);
+end:
 	return ret;
 }
 
@@ -487,6 +543,8 @@ void *consumer_timer_thread(void *data)
 	siginfo_t info;
 	struct lttng_consumer_local_data *ctx = data;
 
+	rcu_register_thread();
+
 	health_register(health_consumerd, HEALTH_CONSUMERD_TYPE_METADATA_TIMER);
 
 	if (testpoint(consumerd_thread_metadata_timer)) {
@@ -528,6 +586,8 @@ error_testpoint:
 	/* Only reached in testpoint error */
 	health_error();
 	health_unregister(health_consumerd);
+
+	rcu_unregister_thread();
 
 	/* Never return */
 	return NULL;

@@ -284,14 +284,6 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 		goto error_consumer;
 	}
 
-	/*
-	 * The tmp_consumer stays NULL until a set_consumer_uri command is
-	 * executed. At this point, the consumer should be nullify until an
-	 * enable_consumer command. This assignment is symbolic since we've zmalloc
-	 * the struct.
-	 */
-	lus->tmp_consumer = NULL;
-
 	DBG2("UST trace session create successful");
 
 	return lus;
@@ -960,11 +952,6 @@ static void _trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 
 	DBG2("Trace destroy UST channel %s", channel->name);
 
-	/* Destroying all events of the channel */
-	destroy_events(channel->events);
-	/* Destroying all context of the channel */
-	destroy_contexts(channel->ctx);
-
 	free(channel);
 }
 
@@ -983,6 +970,11 @@ static void destroy_channel_rcu(struct rcu_head *head)
 
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
+	/* Destroying all events of the channel */
+	destroy_events(channel->events);
+	/* Destroying all context of the channel */
+	destroy_contexts(channel->ctx);
+
 	call_rcu(&channel->node.head, destroy_channel_rcu);
 }
 
@@ -1008,18 +1000,18 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
  */
 static void destroy_channels(struct lttng_ht *channels)
 {
-	int ret;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
 	assert(channels);
 
 	rcu_read_lock();
-
 	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
-		ret = lttng_ht_del(channels, &iter);
-		assert(!ret);
-		call_rcu(&node->head, destroy_channel_rcu);
+		struct ltt_ust_channel *chan =
+			caa_container_of(node, struct ltt_ust_channel, node);
+
+		trace_ust_delete_channel(channels, chan);
+		trace_ust_destroy_channel(chan);
 	}
 	rcu_read_unlock();
 
@@ -1073,8 +1065,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 		buffer_reg_uid_destroy(reg, session->consumer);
 	}
 
-	consumer_destroy_output(session->consumer);
-	consumer_destroy_output(session->tmp_consumer);
+	consumer_output_put(session->consumer);
 
 	fini_pid_tracker(&session->pid_tracker);
 

@@ -286,6 +286,17 @@ static void free_channel_rcu(struct rcu_head *head)
 	struct lttng_consumer_channel *channel =
 		caa_container_of(node, struct lttng_consumer_channel, node);
 
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		break;
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		lttng_ustconsumer_free_channel(channel);
+		break;
+	default:
+		ERR("Unknown consumer_data type");
+		abort();
+	}
 	free(channel);
 }
 
@@ -563,6 +574,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
 	stream->index_fd = -1;
 	pthread_mutex_init(&stream->lock, NULL);
+	pthread_mutex_init(&stream->metadata_timer_lock, NULL);
 
 	/* If channel is the metadata, flag this stream as metadata. */
 	if (type == CONSUMER_CHANNEL_TYPE_METADATA) {
@@ -701,7 +713,7 @@ end:
 /*
  * Allocate and return a consumer relayd socket.
  */
-struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
+static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		uint64_t net_seq_idx)
 {
 	struct consumer_relayd_sock_pair *obj = NULL;
