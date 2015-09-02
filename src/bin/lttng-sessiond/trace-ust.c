@@ -70,12 +70,14 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
 	struct ltt_ust_event *event;
 	const struct ltt_ust_ht_key *key;
+	int ev_loglevel_value;
 
 	assert(node);
 	assert(_key);
 
 	event = caa_container_of(node, struct ltt_ust_event, node.node);
 	key = _key;
+	ev_loglevel_value = event->attr.loglevel;
 
 	/* Match the 4 elements of the key: name, filter, loglevel, exclusions. */
 
@@ -85,9 +87,9 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 	}
 
 	/* Event loglevel. */
-	if (event->attr.loglevel != key->loglevel) {
+	if (ev_loglevel_value != key->loglevel_type) {
 		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
-				&& key->loglevel == 0 && event->attr.loglevel == -1) {
+				&& key->loglevel_type == 0 && ev_loglevel_value == -1) {
 			/*
 			 * Match is accepted. This is because on event creation, the
 			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
@@ -170,8 +172,8 @@ error:
  * MUST be acquired before calling this.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter, int loglevel,
-		struct lttng_event_exclusion *exclusion)
+		char *name, struct lttng_filter_bytecode *filter,
+		int loglevel_value, struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -182,7 +184,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 	key.name = name;
 	key.filter = filter;
-	key.loglevel = loglevel;
+	key.loglevel_type = loglevel_value;
 	key.exclusion = exclusion;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),

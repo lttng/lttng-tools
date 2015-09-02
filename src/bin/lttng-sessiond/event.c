@@ -49,7 +49,7 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 
 	key.name = event->attr.name;
 	key.filter = (struct lttng_filter_bytecode *) event->filter;
-	key.loglevel = event->attr.loglevel;
+	key.loglevel_type = event->attr.loglevel;
 	key.exclusion = event->exclusion;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,

@@ -359,7 +359,7 @@ int ust_metadata_event_statedump(struct ust_registry_session *session,
 
 	ret = lttng_metadata_printf(session,
 		"	loglevel = %d;\n",
-		event->loglevel);
+		event->loglevel_value);
 	if (ret)
 		goto end;
 

@@ -36,7 +36,7 @@ struct lttng_ht *agent_apps_ht_by_sock;
 
 struct agent_ht_key {
 	const char *name;
-	int loglevel;
+	int loglevel_value;
 };
 
 /*
@@ -80,7 +80,7 @@ struct agent_app {
 struct agent_event {
 	/* Name of the event. */
 	char name[LTTNG_SYMBOL_NAME_LEN];
-	int loglevel;
+	int loglevel_value;
 	enum lttng_loglevel_type loglevel_type;
 
 	/*

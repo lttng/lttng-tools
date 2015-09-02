@@ -768,7 +768,7 @@ int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 	}
 
 	ust_event->attr.loglevel_type = ust_loglevel_type;
-	ust_event->attr.loglevel = agent_event->loglevel;
+	ust_event->attr.loglevel = agent_event->loglevel_value;
 	ust_event->filter_expression = agent_event->filter_expression;
 	ust_event->exclusion = agent_event->exclusion;
 end:

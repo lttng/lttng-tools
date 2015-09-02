@@ -15,7 +15,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _LTT_UST_APP_H 
+#ifndef _LTT_UST_APP_H
 #define _LTT_UST_APP_H
 
 #include <stdint.h>
@@ -49,7 +49,7 @@ struct ust_app_notify_sock_obj {
 struct ust_app_ht_key {
 	const char *name;
 	const struct lttng_filter_bytecode *filter;
-	enum lttng_ust_loglevel_type loglevel;
+	enum lttng_ust_loglevel_type loglevel_type;
 	const struct lttng_event_exclusion *exclusion;
 };
 
