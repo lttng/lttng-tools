@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include <urcu/list.h>
 
@@ -229,9 +230,8 @@ enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_st
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto end;
+		/* Checked by the caller. */
+		assert(0);
 	}
 
 	ret = parse_pid_string(pid_string, all, &pid_list, &nr_pids);
@@ -381,10 +381,9 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		}
 	}
 
-	if (!(opt_userspace ^ opt_kernel)) {
-		ERR("Exactly one of -u or -k needs to be specified.");
-		usage(stderr, cmd_str);
-		command_ret = CMD_ERROR;
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
+	if (ret) {
+		ret = CMD_ERROR;
 		goto end;
 	}
 

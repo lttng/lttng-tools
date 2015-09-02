@@ -185,9 +185,8 @@ static int disable_events(char *session_name)
 	} else if (opt_python) {
 		dom.type = LTTNG_DOMAIN_PYTHON;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		/* Checked by the caller. */
+		assert(0);
 	}
 
 	channel_name = opt_channel_name;
@@ -375,6 +374,13 @@ int cmd_disable_events(int argc, const char **argv)
 				goto end;
 			}
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(
+		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_python);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	opt_event_list = (char*) poptGetArg(pc);
