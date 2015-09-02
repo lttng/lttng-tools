@@ -72,3 +72,27 @@ void ht_cleanup_push(struct lttng_ht *ht)
 error:
 	assert(!ret);
 }
+
+int loglevels_match(int a_loglevel_type, int a_loglevel_value,
+	int b_loglevel_type, int b_loglevel_value, int loglevel_all_type)
+{
+	int match = 1;
+
+	if (a_loglevel_type == b_loglevel_type) {
+		/* Same loglevel type. */
+		if (b_loglevel_type != loglevel_all_type) {
+			/*
+			 * Loglevel value must also match since the loglevel
+			 * type is not all.
+			 */
+			if (a_loglevel_value != b_loglevel_value) {
+				match = 0;
+			}
+		}
+	} else {
+		/* Loglevel type is different: no match. */
+		match = 0;
+	}
+
+	return match;
+}

@@ -103,6 +103,7 @@ static int ht_match_event(struct cds_lfht_node *node,
 {
 	struct agent_event *event;
 	const struct agent_ht_key *key;
+	int ll_match;
 
 	assert(node);
 	assert(_key);
@@ -118,19 +119,11 @@ static int ht_match_event(struct cds_lfht_node *node,
 	}
 
 	/* Event loglevel value and type. */
-	if (event->loglevel_type == key->loglevel_type) {
-		/* Same loglevel type. */
-		if (key->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-			/*
-			 * Loglevel value must also match since the loglevel
-			 * type is not all.
-			 */
-			if (event->loglevel_value != key->loglevel_value) {
-				goto no_match;
-			}
-		}
-	} else {
-		/* Loglevel type is different: no match. */
+	ll_match = loglevels_match(event->loglevel_type,
+		event->loglevel_value, key->loglevel_type,
+		key->loglevel_value, LTTNG_EVENT_LOGLEVEL_ALL);
+
+	if (!ll_match) {
 		goto no_match;
 	}
 
