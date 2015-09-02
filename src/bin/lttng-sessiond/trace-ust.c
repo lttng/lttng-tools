@@ -86,19 +86,21 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 		goto no_match;
 	}
 
-	/* Event loglevel. */
-	if (ev_loglevel_value != key->loglevel_type) {
-		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
-				&& key->loglevel_type == 0 && ev_loglevel_value == -1) {
+	/* Event loglevel value and type. */
+	if (event->attr.loglevel_type == key->loglevel_type) {
+		/* Same loglevel type. */
+		if (key->loglevel_type != LTTNG_UST_LOGLEVEL_ALL) {
 			/*
-			 * Match is accepted. This is because on event creation, the
-			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
-			 * -1 are accepted for this loglevel type since 0 is the one set by
-			 * the API when receiving an enable event.
+			 * Loglevel value must also match since the loglevel
+			 * type is not all.
 			 */
-		} else {
-			goto no_match;
+			if (ev_loglevel_value != key->loglevel_value) {
+				goto no_match;
+			}
 		}
+	} else {
+		/* Loglevel type is different: no match. */
+		goto no_match;
 	}
 
 	/* Only one of the filters is NULL, fail. */
@@ -173,7 +175,8 @@ error:
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_filter_bytecode *filter,
-		int loglevel_value, struct lttng_event_exclusion *exclusion)
+		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
+		struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -184,7 +187,8 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 	key.name = name;
 	key.filter = filter;
-	key.loglevel_type = loglevel_value;
+	key.loglevel_type = loglevel_type;
+	key.loglevel_value = loglevel_value;
 	key.exclusion = exclusion;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),

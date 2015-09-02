@@ -40,13 +40,6 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, char *event_name);
 
-int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan,
-		char *filter_expression,
-		struct lttng_filter_bytecode *filter);
-int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan);
-
 int event_agent_enable(struct ltt_ust_session *usess, struct agent *agt,
 		struct lttng_event *event, struct lttng_filter_bytecode *filter,
 		char *filter_expression);

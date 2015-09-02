@@ -49,7 +49,8 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 
 	key.name = event->attr.name;
 	key.filter = (struct lttng_filter_bytecode *) event->filter;
-	key.loglevel_type = event->attr.loglevel;
+	key.loglevel_type = event->attr.loglevel_type;
+	key.loglevel_value = event->attr.loglevel;
 	key.exclusion = event->exclusion;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
@@ -186,103 +187,6 @@ end:
  */
 
 /*
- * Enable all UST tracepoints for a channel from a UST session.
- */
-int event_ust_enable_all_tracepoints(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan,
-		char *filter_expression,
-		struct lttng_filter_bytecode *filter)
-{
-	int ret, i, size;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_event *uevent = NULL;
-	struct lttng_event *events = NULL;
-
-	assert(usess);
-	assert(uchan);
-
-	rcu_read_lock();
-
-	/* Enable existing events */
-	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent,
-			node.node) {
-		if (uevent->enabled == 0) {
-			ret = ust_app_enable_event_glb(usess, uchan, uevent);
-			if (ret < 0) {
-				continue;
-			}
-			uevent->enabled = 1;
-		}
-	}
-
-	/* Get all UST available events */
-	size = ust_app_list_events(&events);
-	if (size < 0) {
-		ret = LTTNG_ERR_UST_LIST_FAIL;
-		goto error;
-	}
-
-	for (i = 0; i < size; i++) {
-		/*
-		 * Check if event exist and if so, continue since it was enable
-		 * previously.
-		 */
-		uevent = trace_ust_find_event(uchan->events, events[i].name, filter,
-				events[i].loglevel, NULL);
-		if (uevent != NULL) {
-			ret = ust_app_enable_event_pid(usess, uchan, uevent,
-					events[i].pid);
-			if (ret < 0) {
-				if (ret != -LTTNG_UST_ERR_EXIST) {
-					ret = LTTNG_ERR_UST_ENABLE_FAIL;
-					goto error;
-				}
-			}
-			continue;
-		}
-
-		/* Create ust event */
-		uevent = trace_ust_create_event(&events[i], filter_expression,
-				filter, NULL, false);
-		if (uevent == NULL) {
-			ret = LTTNG_ERR_FATAL;
-			goto error_destroy;
-		}
-
-		/* Create event for the specific PID */
-		ret = ust_app_enable_event_pid(usess, uchan, uevent,
-				events[i].pid);
-		if (ret < 0) {
-			if (ret == -LTTNG_UST_ERR_EXIST) {
-				ret = LTTNG_ERR_UST_EVENT_EXIST;
-				goto error;
-			} else {
-				ret = LTTNG_ERR_UST_ENABLE_FAIL;
-				goto error_destroy;
-			}
-		}
-
-		uevent->enabled = 1;
-		/* Add ltt ust event to channel */
-		rcu_read_lock();
-		add_unique_ust_event(uchan->events, uevent);
-		rcu_read_unlock();
-	}
-	free(events);
-
-	rcu_read_unlock();
-	return LTTNG_OK;
-
-error_destroy:
-	trace_ust_destroy_event(uevent);
-
-error:
-	free(events);
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
  * Enable UST tracepoint event for a channel from a UST session.
  * We own filter_expression, filter, and exclusion.
  */
@@ -303,8 +207,8 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
-			event->loglevel, exclusion);
-	if (uevent == NULL) {
+			event->loglevel_type, event->loglevel, exclusion);
+	if (!uevent) {
 		uevent = trace_ust_create_event(event, filter_expression,
 				filter, exclusion, internal_event);
 		/* We have passed ownership */
@@ -444,60 +348,6 @@ next:
 	ret = LTTNG_OK;
 
 error:
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
- * Disable all UST tracepoints for a channel from a UST session.
- */
-int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan)
-{
-	int ret, i, size;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_event *uevent = NULL;
-	struct lttng_event *events = NULL;
-
-	assert(usess);
-	assert(uchan);
-
-	rcu_read_lock();
-
-	/* Disabling existing events */
-	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent,
-			node.node) {
-		if (uevent->enabled == 1) {
-			ret = event_ust_disable_tracepoint(usess, uchan,
-					uevent->attr.name);
-			if (ret < 0) {
-				continue;
-			}
-		}
-	}
-
-	/* Get all UST available events */
-	size = ust_app_list_events(&events);
-	if (size < 0) {
-		ret = LTTNG_ERR_UST_LIST_FAIL;
-		goto error;
-	}
-
-	for (i = 0; i < size; i++) {
-		ret = event_ust_disable_tracepoint(usess, uchan,
-				events[i].name);
-		if (ret != LTTNG_OK) {
-			/* Continue to disable the rest... */
-			continue;
-		}
-	}
-	free(events);
-
-	rcu_read_unlock();
-	return LTTNG_OK;
-
-error:
-	free(events);
 	rcu_read_unlock();
 	return ret;
 }
@@ -691,12 +541,13 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	}
 
 	/*
-	 * The loglevel is hardcoded with 0 here since the agent ust event is set
-	 * with the loglevel type to ALL thus the loglevel stays 0. The event's
-	 * filter is the one handling the loglevel for agent.
+	 * Agent UST event has its loglevel type forced to
+	 * LTTNG_UST_LOGLEVEL_ALL. The actual loglevel type/value filtering
+	 * happens thanks to an UST filter. The following -1 is actually
+	 * ignored since the type is LTTNG_UST_LOGLEVEL_ALL.
 	 */
 	uevent = trace_ust_find_event(uchan->events, (char *) ust_event_name,
-			aevent->filter, 0, NULL);
+			aevent->filter, LTTNG_UST_LOGLEVEL_ALL, -1, NULL);
 	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
 
