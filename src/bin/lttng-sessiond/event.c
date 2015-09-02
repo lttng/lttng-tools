@@ -411,10 +411,11 @@ int event_agent_enable(struct ltt_ust_session *usess,
 			usess->id, event->loglevel_type, event->loglevel,
 			filter_expression ? filter_expression : "NULL");
 
-	aevent = agent_find_event(event->name, event->loglevel, agt);
+	aevent = agent_find_event(event->name, event->loglevel_type,
+		event->loglevel, agt);
 	if (!aevent) {
-		aevent = agent_create_event(event->name, event->loglevel,
-				event->loglevel_type, filter,
+		aevent = agent_create_event(event->name, event->loglevel_type,
+				event->loglevel, filter,
 				filter_expression);
 		if (!aevent) {
 			ret = LTTNG_ERR_NOMEM;

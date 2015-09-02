@@ -79,15 +79,23 @@ static int ht_match_event(struct cds_lfht_node *node,
 		goto no_match;
 	}
 
-	if (event->loglevel_value != key->loglevel_value) {
-		if (event->loglevel_type == LTTNG_EVENT_LOGLEVEL_ALL &&
-				key->loglevel_value == 0 &&
-				event->loglevel_value == -1) {
-			goto match;
+	/* Event loglevel value and type. */
+	if (event->loglevel_type == key->loglevel_type) {
+		/* Same loglevel type. */
+		if (key->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+			/*
+			 * Loglevel value must also match since the loglevel
+			 * type is not all.
+			 */
+			if (event->loglevel_value != key->loglevel_value) {
+				goto no_match;
+			}
 		}
+	} else {
+		/* Loglevel type is different: no match. */
 		goto no_match;
 	}
-match:
+
 	return 1;
 
 no_match:
@@ -109,6 +117,7 @@ static void add_unique_agent_event(struct lttng_ht *ht,
 
 	key.name = event->name;
 	key.loglevel_value = event->loglevel_value;
+	key.loglevel_type = event->loglevel_type;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
@@ -791,12 +800,13 @@ error:
  * Return a new object else NULL on error.
  */
 struct agent_event *agent_create_event(const char *name,
-		int loglevel_value, enum lttng_loglevel_type loglevel_type,
+		enum lttng_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_filter_bytecode *filter, char *filter_expression)
 {
 	struct agent_event *event = NULL;
 
-	DBG3("Agent create new event with name %s", name);
+	DBG3("Agent create new event with name %s, loglevel type %d and loglevel value %d",
+		name, loglevel_type, loglevel_value);
 
 	if (!name) {
 		ERR("Failed to create agent event; no name provided.");
@@ -881,7 +891,8 @@ error:
  *
  * Return object if found else NULL.
  */
-struct agent_event *agent_find_event(const char *name, int loglevel_value,
+struct agent_event *agent_find_event(const char *name,
+		enum lttng_loglevel_type loglevel_type, int loglevel_value,
 		struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
@@ -896,6 +907,7 @@ struct agent_event *agent_find_event(const char *name, int loglevel_value,
 	ht = agt->events;
 	key.name = name;
 	key.loglevel_value = loglevel_value;
+	key.loglevel_type = loglevel_type;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
 			ht_match_event, &key, &iter.iter);
