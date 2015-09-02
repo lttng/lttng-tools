@@ -71,6 +71,7 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 	struct ltt_ust_event *event;
 	const struct ltt_ust_ht_key *key;
 	int ev_loglevel_value;
+	int ll_match;
 
 	assert(node);
 	assert(_key);
@@ -87,19 +88,11 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 	}
 
 	/* Event loglevel value and type. */
-	if (event->attr.loglevel_type == key->loglevel_type) {
-		/* Same loglevel type. */
-		if (key->loglevel_type != LTTNG_UST_LOGLEVEL_ALL) {
-			/*
-			 * Loglevel value must also match since the loglevel
-			 * type is not all.
-			 */
-			if (ev_loglevel_value != key->loglevel_value) {
-				goto no_match;
-			}
-		}
-	} else {
-		/* Loglevel type is different: no match. */
+	ll_match = loglevels_match(event->attr.loglevel_type,
+		ev_loglevel_value, key->loglevel_type,
+		key->loglevel_value, LTTNG_UST_LOGLEVEL_ALL);
+
+	if (!ll_match) {
 		goto no_match;
 	}
 
