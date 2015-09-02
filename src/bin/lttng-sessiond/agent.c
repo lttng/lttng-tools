@@ -907,6 +907,46 @@ error:
 }
 
 /*
+ * Find multiple agent events sharing the given name.
+ *
+ * RCU read side lock MUST be acquired.
+ *
+ * Sets the given iterator.
+ */
+void agent_find_events_by_name(const char *name, struct agent *agt,
+		struct lttng_ht_iter* iter)
+{
+	struct lttng_ht *ht;
+	struct agent_ht_key key;
+
+	assert(name);
+	assert(agt);
+	assert(agt->events);
+	assert(iter);
+
+	ht = agt->events;
+	key.name = name;
+
+	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
+			ht_match_event_by_name, &key, &iter->iter);
+}
+
+/*
+ * Get the next agent event duplicate by name. This should be called
+ * after a call to agent_find_events_by_name() to iterate on events.
+ */
+void agent_event_next_duplicate(const char *name,
+		struct agent *agt, struct lttng_ht_iter* iter)
+{
+	struct agent_ht_key key;
+
+	key.name = name;
+
+	cds_lfht_next_duplicate(agt->events->ht, ht_match_event_by_name,
+		&key, &iter->iter);
+}
+
+/*
  * Find a agent event in the given agent using name and loglevel.
  *
  * RCU read side lock MUST be acquired.
