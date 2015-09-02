@@ -476,30 +476,26 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 }
 
 /*
- * Disable a single agent event for a given UST session.
+ * Disable a given agent event for a given UST session.
  *
+ * Must be called with the RCU read lock held.
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
-		char *event_name)
+static int event_agent_disable_one(struct ltt_ust_session *usess,
+		struct agent *agt, struct agent_event *aevent)
 {
 	int ret;
-	struct agent_event *aevent;
 	struct ltt_ust_event *uevent = NULL;
 	struct ltt_ust_channel *uchan = NULL;
 	const char *ust_event_name, *ust_channel_name;
 
 	assert(agt);
 	assert(usess);
-	assert(event_name);
+	assert(aevent);
 
-	DBG("Event agent disabling %s for session %" PRIu64, event_name, usess->id);
-
-	aevent = agent_find_event_by_name(event_name, agt);
-	if (!aevent) {
-		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
-		goto error;
-	}
+	DBG("Event agent disabling %s (loglevel type %d, loglevel value %d) for session %" PRIu64,
+		aevent->name, aevent->loglevel_type, aevent->loglevel_value,
+		usess->id);
 
 	/* Already disabled? */
 	if (!aevent->enabled) {
@@ -566,6 +562,52 @@ end:
 	return LTTNG_OK;
 
 error:
+	return ret;
+}
+
+/*
+ * Disable all agent events matching a given name for a given UST session.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
+		char *event_name)
+{
+	int ret = LTTNG_OK;
+	struct agent_event *aevent;
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_str *node;
+
+	assert(agt);
+	assert(usess);
+	assert(event_name);
+
+	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64, event_name, usess->id);
+
+	rcu_read_lock();
+	agent_find_events_by_name(event_name, agt, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+
+	if (node == NULL) {
+		DBG2("Event agent NOT found by name %s", event_name);
+		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
+		goto end;
+	}
+
+	do {
+		aevent = caa_container_of(node, struct agent_event, node);
+		ret = event_agent_disable_one(usess, agt, aevent);
+
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
+		/* Get next duplicate agent event by name. */
+		agent_event_next_duplicate(event_name, agt, &iter);
+		node = lttng_ht_iter_get_node_str(&iter);
+	} while (node);
+end:
+	rcu_read_unlock();
 	return ret;
 }
 /*
