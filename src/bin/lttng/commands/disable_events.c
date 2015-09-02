@@ -179,9 +179,8 @@ static int disable_events(char *session_name)
 	} else if (opt_log4j) {
 		dom.type = LTTNG_DOMAIN_LOG4J;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		/* Checked by the caller. */
+		assert(0);
 	}
 
 	channel_name = opt_channel_name;
@@ -369,6 +368,13 @@ int cmd_disable_events(int argc, const char **argv)
 				goto end;
 			}
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(
+		opt_kernel + opt_userspace + opt_jul + opt_log4j);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	opt_event_list = (char*) poptGetArg(pc);

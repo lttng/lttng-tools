@@ -33,7 +33,7 @@
 #include "../command.h"
 
 static int opt_event_type;
-static char *opt_kernel;
+static int opt_kernel;
 static int opt_userspace;
 #if 0
 /* Not implemented yet */
@@ -50,6 +50,7 @@ enum {
 	OPT_FUNCTION_ENTRY,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
+	OPT_KERNEL,
 	OPT_LIST_OPTIONS,
 };
 
@@ -59,7 +60,6 @@ static struct mi_writer *writer;
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 #if 0
 	/* Not implemented yet */
 	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
@@ -68,6 +68,7 @@ static struct poptOption long_options[] = {
 	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
 	{"probe",          0,   POPT_ARG_NONE, 0, OPT_PROBE, 0, 0},
 #else
+	{"kernel",         'k', POPT_ARG_NONE, 0, OPT_KERNEL, 0, 0},
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"function",       0,   POPT_ARG_NONE, 0, OPT_FUNCTION, 0, 0},
 #endif
@@ -132,9 +133,8 @@ static int calibrate_lttng(void)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		/* Checked by the caller. */
+		assert(0);
 	}
 
 	handle = lttng_create_handle(NULL, &dom);
@@ -228,6 +228,9 @@ int cmd_calibrate(int argc, const char **argv)
 		case OPT_USERSPACE:
 			opt_userspace = 1;
 			break;
+		case OPT_KERNEL:
+			opt_kernel = 1;
+			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
@@ -236,6 +239,12 @@ int cmd_calibrate(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */

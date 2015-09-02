@@ -219,9 +219,8 @@ static int enable_channel(char *session_name)
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
 		}
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		/* Checked by the caller. */
+		assert(0);
 	}
 
 	set_default_attr(&dom);
@@ -567,6 +566,12 @@ int cmd_enable_channels(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */

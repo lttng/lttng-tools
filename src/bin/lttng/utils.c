@@ -396,3 +396,18 @@ error:
 error_socket:
 	return ret;
 }
+
+int print_missing_or_multiple_domains(unsigned int sum)
+{
+	int ret = 0;
+
+	if (sum == 0) {
+		ERR("Please specify a domain (-k/-u/-j).");
+		ret = -1;
+	} else if (sum > 1) {
+		ERR("Multiple domains specified.");
+		ret = -1;
+	}
+
+	return ret;
+}

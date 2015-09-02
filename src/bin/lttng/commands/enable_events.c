@@ -676,9 +676,8 @@ static int enable_events(char *session_name)
 		/* Default. */
 		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		/* Checked by the caller. */
+		assert(0);
 	}
 
 	if (opt_exclude) {
@@ -1105,9 +1104,7 @@ static int enable_events(char *session_name)
 			strncpy(ev.name, event_name, LTTNG_SYMBOL_NAME_LEN);
 			ev.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		} else {
-			print_missing_domain();
-			ret = CMD_ERROR;
-			goto error;
+			assert(0);
 		}
 
 		if (!opt_filter) {
@@ -1386,6 +1383,13 @@ int cmd_enable_events(int argc, const char **argv)
 				goto end;
 			}
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(
+		opt_kernel + opt_userspace + opt_jul + opt_log4j);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */
