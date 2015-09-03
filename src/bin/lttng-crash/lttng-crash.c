@@ -103,7 +103,7 @@ enum rb_modes {
 
 struct crash_abi_unknown {
 	uint8_t magic[RB_CRASH_DUMP_ABI_MAGIC_LEN];
-	uint64_t mmap_length;	/* Overall lenght of crash record */
+	uint64_t mmap_length;	/* Overall length of crash record */
 	uint16_t endian;	/*
 				 * { 0x12, 0x34 }: big endian
 				 * { 0x34, 0x12 }: little endian
@@ -323,29 +323,33 @@ error:
 static
 int copy_file(const char *file_dest, const char *file_src)
 {
-	int fd_src, fd_dest;
+	int fd_src = -1, fd_dest = -1;
 	ssize_t readlen, writelen;
 	char buf[COPY_BUFLEN];
+	int ret;
 
 	DBG("Copy metadata file '%s' into '%s'", file_src, file_dest);
 
 	fd_src = open(file_src, O_RDONLY);
 	if (fd_src < 0) {
 		PERROR("Error opening %s for reading", file_src);
-		return fd_src;
+		ret = -errno;
+		goto error;
 	}
 	fd_dest = open(file_dest, O_RDWR | O_CREAT | O_EXCL,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (fd_dest < 0) {
 		PERROR("Error opening %s for writing", file_dest);
-		return fd_dest;
+		ret = -errno;
+		goto error;
 	}
 
 	for (;;) {
 		readlen = lttng_read(fd_src, buf, COPY_BUFLEN);
 		if (readlen < 0) {
 			PERROR("Error reading input file");
-			return -1;
+			ret = -1;
+			goto error;
 		}
 		if (!readlen) {
 			break;
@@ -353,10 +357,25 @@ int copy_file(const char *file_dest, const char *file_src)
 		writelen = lttng_write(fd_dest, buf, readlen);
 		if (writelen < readlen) {
 			PERROR("Error writing to output file");
-			return -1;
+			ret = -1;
+			goto error;
 		}
 	}
-	return 0;
+
+	ret = 0;
+error:
+	if (fd_src >= 0) {
+		if (close(fd_src) < 0) {
+			PERROR("Error closing %s", file_src);
+		}
+	}
+
+	if (fd_dest >= 0) {
+		if (close(fd_dest) < 0) {
+			PERROR("Error closing %s", file_dest);
+		}
+	}
+	return ret;
 }
 
 static
