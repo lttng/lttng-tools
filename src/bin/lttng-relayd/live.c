@@ -1453,9 +1453,11 @@ send_reply:
 	}
 	health_code_update();
 
-	DBG("Index %" PRIu64 " for stream %" PRIu64 " sent",
-			vstream->last_sent_index,
-			vstream->stream->stream_handle);
+	if (vstream) {
+		DBG("Index %" PRIu64 " for stream %" PRIu64 " sent",
+				vstream->last_sent_index,
+				vstream->stream->stream_handle);
+	}
 end:
 	if (metadata_viewer_stream) {
 		viewer_stream_put(metadata_viewer_stream);
