@@ -69,6 +69,7 @@
 #include "session.h"
 #include "stream.h"
 #include "connection.h"
+#include "tracefile-array.h"
 
 /* command line options */
 char *opt_output_path;
@@ -1858,7 +1859,7 @@ static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		 * Only flag a stream inactive when it has already
 		 * received data and no indexes are in flight.
 		 */
-		if (stream->total_index_received > 0
+		if (stream->index_received_seqcount > 0
 				&& stream->indexes_in_flight == 0) {
 			stream->beacon_ts_end =
 				be64toh(index_info.timestamp_end);
@@ -1886,7 +1887,8 @@ static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	ret = relay_index_try_flush(index);
 	if (ret == 0) {
-		stream->total_index_received++;
+		tracefile_array_commit_seq(stream->tfa);
+		stream->index_received_seqcount++;
 	} else if (ret > 0) {
 		/* no flush. */
 		ret = 0;
@@ -2059,7 +2061,7 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 
 		fd = index_create_file(stream->path_name, stream->channel_name,
 			        -1, -1, stream->tracefile_size,
-				stream->current_tracefile_id);
+				tracefile_array_get_file_index_head(stream->tfa));
 		if (fd < 0) {
 			ret = -1;
 			/* Put self-ref for this index due to error. */
@@ -2088,7 +2090,8 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 
 	ret = relay_index_try_flush(index);
 	if (ret == 0) {
-		stream->total_index_received++;
+		tracefile_array_commit_seq(stream->tfa);
+		stream->index_received_seqcount++;
 	} else if (ret > 0) {
 		/* No flush. */
 		ret = 0;
@@ -2172,34 +2175,22 @@ static int relay_process_data(struct relay_connection *conn)
 	if (stream->tracefile_size > 0 &&
 			(stream->tracefile_size_current + data_size) >
 			stream->tracefile_size) {
-		uint64_t new_id;
+		uint64_t old_id, new_id;
 
-		new_id = (stream->current_tracefile_id + 1) %
-			stream->tracefile_count;
-		/*
-		 * Move viewer oldest available data position forward if
-		 * we are overwriting a tracefile.
-		 */
-		if (new_id == stream->oldest_tracefile_id) {
-			stream->oldest_tracefile_id =
-				(stream->oldest_tracefile_id + 1) %
-				stream->tracefile_count;
-		}
+		old_id = tracefile_array_get_file_index_head(stream->tfa);
+		tracefile_array_file_rotate(stream->tfa);
+
+		/* new_id is updated by utils_rotate_stream_file. */
+		new_id = old_id;
+
 		ret = utils_rotate_stream_file(stream->path_name,
 				stream->channel_name, stream->tracefile_size,
 				stream->tracefile_count, -1,
 			        -1, stream->stream_fd->fd,
-				&stream->current_tracefile_id,
-				&stream->stream_fd->fd);
+				&new_id, &stream->stream_fd->fd);
 		if (ret < 0) {
 			ERR("Rotating stream output file");
 			goto end_stream_unlock;
-		}
-		stream->current_tracefile_seq++;
-		if (stream->current_tracefile_seq
-			- stream->oldest_tracefile_seq >=
-				stream->tracefile_count) {
-			stream->oldest_tracefile_seq++;
 		}
 		/*
 		 * Reset current size because we just performed a stream

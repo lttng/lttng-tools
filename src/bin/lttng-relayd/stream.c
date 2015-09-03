@@ -136,6 +136,11 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 		ret = -1;
 		goto end;
 	}
+	stream->tfa = tracefile_array_create(stream->tracefile_count);
+	if (!stream->tfa) {
+		ret = -1;
+		goto end;
+	}
 	if (stream->tracefile_size) {
 		DBG("Tracefile %s/%s_0 created", stream->path_name, stream->channel_name);
 	} else {
@@ -239,6 +244,9 @@ static void stream_destroy(struct relay_stream *stream)
 {
 	if (stream->indexes_ht) {
 		lttng_ht_destroy(stream->indexes_ht);
+	}
+	if (stream->tfa) {
+		tracefile_array_destroy(stream->tfa);
 	}
 	free(stream->path_name);
 	free(stream->channel_name);
