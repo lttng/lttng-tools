@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -19,9 +20,70 @@
 #define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <common/common.h>
+#include <urcu/rculist.h>
 
 #include "connection.h"
 #include "stream.h"
+#include "viewer-session.h"
+
+bool connection_get(struct relay_connection *conn)
+{
+	bool has_ref = false;
+
+	pthread_mutex_lock(&conn->reflock);
+	if (conn->ref.refcount != 0) {
+		has_ref = true;
+		urcu_ref_get(&conn->ref);
+	}
+	pthread_mutex_unlock(&conn->reflock);
+
+	return has_ref;
+}
+
+struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht,
+		int sock)
+{
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+	struct relay_connection *conn = NULL;
+
+	assert(sock >= 0);
+
+	rcu_read_lock();
+	lttng_ht_lookup(relay_connections_ht, (void *)((unsigned long) sock),
+			&iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (!node) {
+		DBG2("Relay connection by sock %d not found", sock);
+		goto end;
+	}
+	conn = caa_container_of(node, struct relay_connection, sock_n);
+	if (!connection_get(conn)) {
+		conn = NULL;
+	}
+end:
+	rcu_read_unlock();
+	return conn;
+}
+
+struct relay_connection *connection_create(struct lttcomm_sock *sock,
+		enum connection_type type)
+{
+	struct relay_connection *conn;
+
+	conn = zmalloc(sizeof(*conn));
+	if (!conn) {
+		PERROR("zmalloc relay connection");
+		goto end;
+	}
+	pthread_mutex_init(&conn->reflock, NULL);
+	urcu_ref_init(&conn->ref);
+	conn->type = type;
+	conn->sock = sock;
+	lttng_ht_node_init_ulong(&conn->sock_n, (unsigned long) conn->sock->fd);
+end:
+	return conn;
+}
 
 static void rcu_free_connection(struct rcu_head *head)
 {
@@ -29,81 +91,58 @@ static void rcu_free_connection(struct rcu_head *head)
 		caa_container_of(head, struct relay_connection, rcu_node);
 
 	lttcomm_destroy_sock(conn->sock);
-	connection_free(conn);
-}
-
-/*
- * Must be called with a read side lock held. The read side lock must be
- * kept until the returned relay_connection is no longer in use.
- */
-struct relay_connection *connection_find_by_sock(struct lttng_ht *ht, int sock)
-{
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
-	struct relay_connection *conn = NULL;
-
-	assert(ht);
-	assert(sock >= 0);
-
-	lttng_ht_lookup(ht, (void *)((unsigned long) sock), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (!node) {
-		DBG2("Relay connection by sock %d not found", sock);
-		goto end;
+	if (conn->viewer_session) {
+		viewer_session_destroy(conn->viewer_session);
+		conn->viewer_session = NULL;
 	}
-	conn = caa_container_of(node, struct relay_connection, sock_n);
-
-end:
-	return conn;
+	free(conn);
 }
 
-void connection_delete(struct lttng_ht *ht, struct relay_connection *conn)
+static void destroy_connection(struct relay_connection *conn)
 {
-	int ret;
-	struct lttng_ht_iter iter;
-
-	assert(ht);
-	assert(conn);
-
-	iter.iter.node = &conn->sock_n.node;
-	ret = lttng_ht_del(ht, &iter);
-	assert(!ret);
-}
-
-void connection_destroy(struct relay_connection *conn)
-{
-	assert(conn);
-
 	call_rcu(&conn->rcu_node, rcu_free_connection);
 }
 
-struct relay_connection *connection_create(void)
+static void connection_release(struct urcu_ref *ref)
 {
-	struct relay_connection *conn;
+	struct relay_connection *conn =
+		caa_container_of(ref, struct relay_connection, ref);
 
-	conn = zmalloc(sizeof(*conn));
-	if (!conn) {
-		PERROR("zmalloc relay connection");
-		goto error;
+	if (conn->in_socket_ht) {
+		struct lttng_ht_iter iter;
+		int ret;
+
+		iter.iter.node = &conn->sock_n.node;
+		ret = lttng_ht_del(conn->socket_ht, &iter);
+		assert(!ret);
 	}
 
-error:
-	return conn;
+	if (conn->session) {
+		if (session_close(conn->session)) {
+			ERR("session_close");
+		}
+		conn->session = NULL;
+	}
+	if (conn->viewer_session) {
+		viewer_session_close(conn->viewer_session);
+	}
+	destroy_connection(conn);
 }
 
-void connection_init(struct relay_connection *conn)
+void connection_put(struct relay_connection *conn)
 {
-	assert(conn);
-	assert(conn->sock);
-
-	CDS_INIT_LIST_HEAD(&conn->recv_head);
-	lttng_ht_node_init_ulong(&conn->sock_n, (unsigned long) conn->sock->fd);
+	rcu_read_lock();
+	pthread_mutex_lock(&conn->reflock);
+	urcu_ref_put(&conn->ref, connection_release);
+	pthread_mutex_unlock(&conn->reflock);
+	rcu_read_unlock();
 }
 
-void connection_free(struct relay_connection *conn)
+void connection_ht_add(struct lttng_ht *relay_connections_ht,
+		struct relay_connection *conn)
 {
-	assert(conn);
-
-	free(conn->viewer_session);
-	free(conn);
+	assert(!conn->in_socket_ht);
+	lttng_ht_add_unique_ulong(relay_connections_ht, &conn->sock_n);
+	conn->in_socket_ht = 1;
+	conn->socket_ht = relay_connections_ht;
 }
