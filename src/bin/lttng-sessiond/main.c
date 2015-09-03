@@ -583,6 +583,34 @@ static int generate_lock_file_path(char *path, size_t len)
 }
 
 /*
+ * Wait on consumer process termination.
+ *
+ * Need to be called with the consumer data lock held or from a context
+ * ensuring no concurrent access to data (e.g: cleanup).
+ */
+static void wait_consumer(struct consumer_data *consumer_data)
+{
+	pid_t ret;
+	int status;
+
+	if (consumer_data->pid <= 0) {
+		return;
+	}
+
+	DBG("Waiting for complete teardown of consumerd (PID: %d)",
+			consumer_data->pid);
+	ret = waitpid(consumer_data->pid, &status, 0);
+	if (ret == -1) {
+		PERROR("consumerd waitpid pid: %d", consumer_data->pid)
+	}
+	if (!WIFEXITED(status)) {
+		ERR("consumerd termination with error: %d",
+				WEXITSTATUS(ret));
+	}
+	consumer_data->pid = 0;
+}
+
+/*
  * Cleanup the session daemon's data structures.
  */
 static void sessiond_cleanup(void)
@@ -675,6 +703,11 @@ static void sessiond_cleanup(void)
 			cmd_destroy_session(sess, kernel_poll_pipe[1]);
 		}
 	}
+
+	wait_consumer(&kconsumer_data);
+	wait_consumer(&ustconsumer64_data);
+	wait_consumer(&ustconsumer32_data);
+
 
 	DBG("Cleaning up all agent apps");
 	agent_app_ht_clean();
@@ -1496,7 +1529,6 @@ error:
 
 	unlink(consumer_data->err_unix_sock_path);
 	unlink(consumer_data->cmd_unix_sock_path);
-	consumer_data->pid = 0;
 	pthread_mutex_unlock(&consumer_data->lock);
 
 	/* Cleanup metadata socket mutex. */
