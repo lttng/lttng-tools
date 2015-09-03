@@ -101,6 +101,9 @@ int use_clone(void)
 }
 #endif
 
+LTTNG_HIDDEN
+int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode);
+
 /*
  * Create recursively directory using the FULL path.
  */
@@ -114,7 +117,8 @@ int _mkdir_recursive(void *_data)
 	path = data->path;
 	mode = data->mode;
 
-	return utils_mkdir_recursive(path, mode);
+	/* Safe to call as we have transitioned to the requested uid/gid. */
+	return _utils_mkdir_recursive_unsafe(path, mode);
 }
 
 static

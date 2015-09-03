@@ -532,12 +532,42 @@ error:
 }
 
 /*
- * Recursively create directory using the given path and mode.
+ * Create directory using the given path and mode.
  *
  * On success, return 0 else a negative error code.
  */
 LTTNG_HIDDEN
-int utils_mkdir_recursive(const char *path, mode_t mode)
+int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
+{
+	int ret;
+
+	if (uid < 0 || gid < 0) {
+		ret = mkdir(path, mode);
+	} else {
+		ret = run_as_mkdir(path, mode, uid, gid);
+	}
+	if (ret < 0) {
+		if (errno != EEXIST) {
+			PERROR("mkdir %s, uid %d, gid %d", path ? path : "NULL",
+					uid, gid);
+		} else {
+			ret = 0;
+		}
+	}
+
+	return ret;
+}
+
+/*
+ * Internal version of mkdir_recursive. Runs as the current user.
+ * Don't call directly; use utils_mkdir_recursive().
+ *
+ * This function is ominously marked as "unsafe" since it should only
+ * be called by a caller that has transitioned to the uid and gid under which
+ * the directory creation should occur.
+ */
+LTTNG_HIDDEN
+int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode)
 {
 	char *p, tmp[PATH_MAX];
 	size_t len;
@@ -582,7 +612,7 @@ int utils_mkdir_recursive(const char *path, mode_t mode)
 	ret = mkdir(tmp, mode);
 	if (ret < 0) {
 		if (errno != EEXIST) {
-			PERROR("mkdir recursive last piece");
+			PERROR("mkdir recursive last element");
 			ret = -errno;
 		} else {
 			ret = 0;
@@ -594,7 +624,33 @@ error:
 }
 
 /*
+ * Recursively create directory using the given path and mode, under the
+ * provided uid and gid.
+ *
+ * On success, return 0 else a negative error code.
+ */
+LTTNG_HIDDEN
+int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
+{
+	int ret;
+
+	if (uid < 0 || gid < 0) {
+		/* Run as current user. */
+		ret = _utils_mkdir_recursive_unsafe(path, mode);
+	} else {
+		ret = run_as_mkdir_recursive(path, mode, uid, gid);
+	}
+	if (ret < 0) {
+		PERROR("mkdir %s, uid %d, gid %d", path ? path : "NULL",
+				uid, gid);
+	}
+
+	return ret;
+}
+
+/*
  * Create the stream tracefile on disk.
+ * path is the output parameter. It needs to be PATH_MAX len.
  *
  * Return 0 on success or else a negative value.
  */
