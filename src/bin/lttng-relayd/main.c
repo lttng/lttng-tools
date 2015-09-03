@@ -1285,7 +1285,8 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	lttng_ht_node_init_u64(&stream->node, stream->stream_handle);
 	pthread_mutex_init(&stream->lock, NULL);
 
-	ret = utils_mkdir_recursive(stream->path_name, S_IRWXU | S_IRWXG);
+	ret = utils_mkdir_recursive(stream->path_name, S_IRWXU | S_IRWXG,
+			-1, -1);
 	if (ret < 0) {
 		ERR("relay creating output directory");
 		goto err_free_stream;
@@ -2828,7 +2829,8 @@ int main(int argc, char **argv)
 			goto exit_options;
 		}
 
-		ret = utils_mkdir_recursive(opt_output_path, S_IRWXU | S_IRWXG);
+		ret = utils_mkdir_recursive(opt_output_path, S_IRWXU | S_IRWXG,
+				-1, -1);
 		if (ret < 0) {
 			ERR("Unable to create %s", opt_output_path);
 			retval = -1;
