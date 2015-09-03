@@ -315,8 +315,14 @@ int make_viewer_streams(struct relay_session *session,
 			/*
 			 * Stream has no data, don't consider it yet.
 			 */
-			if (stream->prev_seq == -1ULL) {
-				goto next;
+			if (stream->is_metadata) {
+				if (!stream->metadata_received) {
+					goto next;
+				}
+			} else {
+				if (stream->prev_seq == -1ULL) {
+					goto next;
+				}
 			}
 			vstream = viewer_stream_get_by_id(stream->stream_handle);
 			if (!vstream) {
