@@ -1053,37 +1053,62 @@ end:
 }
 
 static
-int delete_trace(const char *trace_path)
+int delete_dir_recursive(const char *path)
 {
-	DIR *trace_dir;
-	int trace_dir_fd, ret = 0, closeret;
+	DIR *dir;
+	int dir_fd, ret = 0, closeret;
 	struct dirent *entry;
 
 	/* Open trace directory */
-	trace_dir = opendir(trace_path);
-	if (!trace_dir) {
-		PERROR("Cannot open '%s' path", trace_path);
+	dir = opendir(path);
+	if (!dir) {
+		PERROR("Cannot open '%s' path", path);
 		ret = -errno;
 	        goto end;
 	}
-	trace_dir_fd = dirfd(trace_dir);
-	if (trace_dir_fd < 0) {
+	dir_fd = dirfd(dir);
+	if (dir_fd < 0) {
 		PERROR("dirfd");
 		ret = -errno;
 		goto end;
 	}
 
-	while ((entry = readdir(trace_dir))) {
+	while ((entry = readdir(dir))) {
 		if (!strcmp(entry->d_name, ".")
 				|| !strcmp(entry->d_name, "..")) {
 			continue;
 		}
 		switch (entry->d_type) {
 		case DT_DIR:
-			unlinkat(trace_dir_fd, entry->d_name, AT_REMOVEDIR);
+		{
+			char *subpath = zmalloc(PATH_MAX);
+
+			if (!subpath) {
+				PERROR("zmalloc path");
+				ret = -1;
+				goto end;
+			}
+			strncpy(subpath, path, PATH_MAX);
+			subpath[PATH_MAX - 1] = '\0';
+			strncat(subpath, "/",
+				        PATH_MAX - strlen(subpath) - 1);
+			strncat(subpath, entry->d_name,
+				        PATH_MAX - strlen(subpath) - 1);
+
+			ret = delete_dir_recursive(subpath);
+			free(subpath);
+			if (ret) {
+				/* Error occured, abort traversal. */
+				goto end;
+			}
 			break;
+		}
 		case DT_REG:
-			unlinkat(trace_dir_fd, entry->d_name, 0);
+			ret = unlinkat(dir_fd, entry->d_name, 0);
+			if (ret) {
+				PERROR("Unlinking '%s'", entry->d_name);
+				goto end;
+			}
 			break;
 		default:
 			ret = -EINVAL;
@@ -1091,12 +1116,15 @@ int delete_trace(const char *trace_path)
 		}
 	}
 end:
-	closeret = closedir(trace_dir);
+	if (!ret) {
+		ret = rmdir(path);
+		if (ret) {
+			PERROR("rmdir '%s'", path);
+		}
+	}
+	closeret = closedir(dir);
 	if (closeret) {
 		PERROR("closedir");
-	}
-	if (!ret) {
-		ret = rmdir(trace_path);
 	}
 	return ret;
 }
@@ -1186,7 +1214,7 @@ int main(int argc, char *argv[])
 			has_warning = true;
 		}
 		/* unlink temporary trace */
-		ret = delete_trace(output_path);
+		ret = delete_dir_recursive(output_path);
 		if (ret) {
 			has_warning = true;
 		}
