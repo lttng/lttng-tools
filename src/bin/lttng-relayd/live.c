@@ -1478,8 +1478,6 @@ int viewer_get_packet(struct relay_connection *conn)
 	struct lttng_viewer_get_packet get_packet_info;
 	struct lttng_viewer_trace_packet reply;
 	struct relay_viewer_stream *vstream = NULL;
-	struct ctf_trace *ctf_trace;
-	struct relay_viewer_stream *metadata_viewer_stream = NULL;
 
 	DBG2("Relay get data packet");
 
@@ -1499,39 +1497,6 @@ int viewer_get_packet(struct relay_connection *conn)
 	if (!vstream) {
 		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 		goto send_reply_nolock;
-	}
-
-	ctf_trace = vstream->stream->trace;
-
-	/* metadata_viewer_stream may be NULL. */
-	metadata_viewer_stream =
-			ctf_trace_get_viewer_metadata_stream(ctf_trace);
-
-	if (metadata_viewer_stream) {
-		bool get_packet_err = false;
-
-		pthread_mutex_lock(&metadata_viewer_stream->stream->lock);
-		DBG("get packet metadata check: recv %" PRIu64 " sent %" PRIu64,
-			metadata_viewer_stream->stream->metadata_received,
-			metadata_viewer_stream->metadata_sent);
-		if (!metadata_viewer_stream->stream->metadata_received ||
-				metadata_viewer_stream->stream->metadata_received >
-					metadata_viewer_stream->metadata_sent) {
-			/*
-			 * We prevent the client from reading a data stream as
-			 * long as there is metadata left to consume. This
-			 * ensures that the client won't receive data of which
-			 * it can't make sense.
-			 */
-			get_packet_err = true;
-		}
-		pthread_mutex_unlock(&metadata_viewer_stream->stream->lock);
-		viewer_stream_put(metadata_viewer_stream);
-		if (get_packet_err) {
-			reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
-			reply.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
-			goto send_reply_nolock;
-		}
 	}
 
 	pthread_mutex_lock(&vstream->stream->lock);
