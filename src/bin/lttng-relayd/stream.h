@@ -29,6 +29,7 @@
 
 #include "session.h"
 #include "stream-fd.h"
+#include "tracefile-array.h"
 
 /*
  * Represents a stream in the relay
@@ -67,15 +68,22 @@ struct relay_stream {
 	uint64_t tracefile_size;
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count;
-	uint64_t current_tracefile_id;
 
-	uint64_t current_tracefile_seq;	/* Free-running counter. */
-	uint64_t oldest_tracefile_seq;	/* Free-running counter. */
+	/*
+	 * Counts the number of received indexes. The "tag" associated
+	 * with an index is taken before incrementing this seqcount.
+	 * Therefore, the sequence tag associated with the last index
+	 * received is always index_received_seqcount - 1.
+	 */
+	uint64_t index_received_seqcount;
 
-	/* To inform the viewer up to where it can go back in time. */
-	uint64_t oldest_tracefile_id;
-
-	uint64_t total_index_received;
+	/*
+	 * Tracefile array is an index of the stream trace files,
+	 * indexed by position. It allows keeping track of the oldest
+	 * available indexes when overwriting trace files in tracefile
+	 * rotation.
+	 */
+	struct tracefile_array *tfa;
 
 	bool closed;	/* Stream is closed. */
 

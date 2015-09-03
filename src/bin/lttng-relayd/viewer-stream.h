@@ -59,10 +59,15 @@ struct relay_viewer_stream {
 	char *channel_name;
 
 	uint64_t current_tracefile_id;
-	/* Free-running counter. */
-	uint64_t current_tracefile_seq;
 
-	uint64_t last_sent_index;
+	/*
+	 * Counts the number of sent indexes. The "tag" associated
+	 * with an index to send is the current index_received_seqcount,
+	 * because we increment index_received_seqcount after sending
+	 * each index. This index_received_seqcount counter can also be
+	 * updated when catching up with the producer.
+	 */
+	uint64_t index_sent_seqcount;
 
 	/* Indicates if this stream has been sent to a viewer client. */
 	bool sent_flag;
