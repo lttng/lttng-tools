@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -35,6 +36,7 @@
 #include <inttypes.h>
 #include <urcu/futex.h>
 #include <urcu/uatomic.h>
+#include <urcu/rculist.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <config.h>
@@ -64,6 +66,9 @@
 #include "session.h"
 #include "ctf-trace.h"
 #include "connection.h"
+#include "viewer-session.h"
+
+#define SESSION_BUF_DEFAULT_COUNT	16
 
 static struct lttng_uri *live_uri;
 
@@ -89,6 +94,8 @@ static pthread_t live_worker_thread;
 static struct relay_conn_queue viewer_conn_queue;
 
 static uint64_t last_relay_viewer_session_id;
+static pthread_mutex_t last_relay_viewer_session_id_lock =
+		PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * Cleanup the daemon
@@ -112,9 +119,6 @@ static
 ssize_t recv_request(struct lttcomm_sock *sock, void *buf, size_t size)
 {
 	ssize_t ret;
-
-	assert(sock);
-	assert(buf);
 
 	ret = sock->ops->recvmsg(sock, buf, size, 0);
 	if (ret < 0 || ret != size) {
@@ -142,9 +146,6 @@ ssize_t send_response(struct lttcomm_sock *sock, void *buf, size_t size)
 {
 	ssize_t ret;
 
-	assert(sock);
-	assert(buf);
-
 	ret = sock->ops->sendmsg(sock, buf, size, 0);
 	if (ret < 0) {
 		ERR("Relayd failed to send response.");
@@ -170,17 +171,22 @@ int check_new_streams(struct relay_connection *conn)
 	if (!conn->viewer_session) {
 		goto end;
 	}
-	cds_list_for_each_entry(session,
-			&conn->viewer_session->sessions_head,
-			viewer_session_list) {
+	rcu_read_lock();
+	cds_list_for_each_entry_rcu(session,
+			&conn->viewer_session->session_list,
+			viewer_session_node) {
+		if (!session_get(session)) {
+			continue;
+		}
 		current_val = uatomic_cmpxchg(&session->new_streams, 1, 0);
 		ret = current_val;
+		session_put(session);
 		if (ret == 1) {
 			goto end;
 		}
 	}
-
 end:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -199,8 +205,6 @@ ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream;
 
-	assert(session);
-
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, vstream,
@@ -209,30 +213,39 @@ ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 
 		health_code_update();
 
-		/* Ignore if not the same session. */
-		if (vstream->session_id != session->id ||
-				(!ignore_sent_flag && vstream->sent_flag)) {
+		if (!viewer_stream_get(vstream)) {
 			continue;
 		}
 
-		ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-				vstream->path_name);
-		assert(ctf_trace);
+		pthread_mutex_lock(&vstream->stream->lock);
+		/* Ignore if not the same session. */
+		if (vstream->stream->trace->session->id != session->id ||
+				(!ignore_sent_flag && vstream->sent_flag)) {
+			pthread_mutex_unlock(&vstream->stream->lock);
+			viewer_stream_put(vstream);
+			continue;
+		}
 
-		send_stream.id = htobe64(vstream->stream_handle);
+		ctf_trace = vstream->stream->trace;
+		send_stream.id = htobe64(vstream->stream->stream_handle);
 		send_stream.ctf_trace_id = htobe64(ctf_trace->id);
-		send_stream.metadata_flag = htobe32(vstream->metadata_flag);
+		send_stream.metadata_flag = htobe32(
+				vstream->stream->is_metadata);
 		strncpy(send_stream.path_name, vstream->path_name,
 				sizeof(send_stream.path_name));
 		strncpy(send_stream.channel_name, vstream->channel_name,
 				sizeof(send_stream.channel_name));
 
-		DBG("Sending stream %" PRIu64 " to viewer", vstream->stream_handle);
+		DBG("Sending stream %" PRIu64 " to viewer",
+				vstream->stream->stream_handle);
+		vstream->sent_flag = 1;
+		pthread_mutex_unlock(&vstream->stream->lock);
+
 		ret = send_response(sock, &send_stream, sizeof(send_stream));
+		viewer_stream_put(vstream);
 		if (ret < 0) {
 			goto end_unlock;
 		}
-		vstream->sent_flag = 1;
 	}
 
 	ret = 0;
@@ -262,17 +275,14 @@ int make_viewer_streams(struct relay_session *session,
 	assert(session);
 
 	/*
-	 * This is to make sure we create viewer streams for a full received
-	 * channel. For instance, if we have 8 streams for a channel that are
-	 * concurrently being flagged ready, we can end up creating just a subset
-	 * of the 8 streams (the ones that are flagged). This lock avoids this
-	 * limbo state.
+	 * Hold the session lock to ensure that we see either none or
+	 * all initial streams for a session, but no intermediate state.
 	 */
-	pthread_mutex_lock(&session->viewer_ready_lock);
+	pthread_mutex_lock(&session->lock);
 
 	/*
-	 * Create viewer streams for relay streams that are ready to be used for a
-	 * the given session id only.
+	 * Create viewer streams for relay streams that are ready to be
+	 * used for a the given session id only.
 	 */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->ctf_traces_ht->ht, &iter.iter, ctf_trace,
@@ -281,47 +291,59 @@ int make_viewer_streams(struct relay_session *session,
 
 		health_code_update();
 
-		if (ctf_trace->invalid_flag) {
+		if (!ctf_trace_get(ctf_trace)) {
 			continue;
 		}
 
-		cds_list_for_each_entry(stream, &ctf_trace->stream_list, trace_list) {
+		cds_list_for_each_entry_rcu(stream, &ctf_trace->stream_list, stream_node) {
 			struct relay_viewer_stream *vstream;
 
-			if (!stream->viewer_ready) {
+			if (!stream_get(stream)) {
 				continue;
 			}
-
-			vstream = viewer_stream_find_by_id(stream->stream_handle);
+			/*
+			 * stream published is protected by the session
+			 * lock.
+			 */
+			if (!stream->published) {
+				goto next;
+			}
+			vstream = viewer_stream_get_by_id(stream->stream_handle);
 			if (!vstream) {
-				vstream = viewer_stream_create(stream, seek_t, ctf_trace);
+				vstream = viewer_stream_create(stream, seek_t);
 				if (!vstream) {
 					ret = -1;
+					ctf_trace_put(ctf_trace);
+					stream_put(stream);
 					goto error_unlock;
 				}
-				/* Acquire reference to ctf_trace. */
-				ctf_trace_get_ref(ctf_trace);
 
 				if (nb_created) {
 					/* Update number of created stream counter. */
 					(*nb_created)++;
 				}
-			} else if (!vstream->sent_flag && nb_unsent) {
-				/* Update number of unsent stream counter. */
-				(*nb_unsent)++;
+			} else {
+				if (!vstream->sent_flag && nb_unsent) {
+					/* Update number of unsent stream counter. */
+					(*nb_unsent)++;
+				}
+				viewer_stream_put(vstream);
 			}
 			/* Update number of total stream counter. */
 			if (nb_total) {
 				(*nb_total)++;
 			}
+		next:
+			stream_put(stream);
 		}
+		ctf_trace_put(ctf_trace);
 	}
 
 	ret = 0;
 
 error_unlock:
 	rcu_read_unlock();
-	pthread_mutex_unlock(&session->viewer_ready_lock);
+	pthread_mutex_unlock(&session->lock);
 	return ret;
 }
 
@@ -504,22 +526,18 @@ restart:
 				goto error;
 			} else if (revents & LPOLLIN) {
 				/*
-				 * Get allocated in this thread, enqueued to a global queue,
-				 * dequeued and freed in the worker thread.
+				 * A new connection is requested, therefore a
+				 * viewer connection is allocated in this
+				 * thread, enqueued to a global queue and
+				 * dequeued (and freed) in the worker thread.
 				 */
 				int val = 1;
 				struct relay_connection *new_conn;
 				struct lttcomm_sock *newsock;
 
-				new_conn = connection_create();
-				if (!new_conn) {
-					goto error;
-				}
-
 				newsock = live_control_sock->ops->accept(live_control_sock);
 				if (!newsock) {
 					PERROR("accepting control sock");
-					connection_free(new_conn);
 					goto error;
 				}
 				DBG("Relay viewer connection accepted socket %d", newsock->fd);
@@ -529,18 +547,24 @@ restart:
 				if (ret < 0) {
 					PERROR("setsockopt inet");
 					lttcomm_destroy_sock(newsock);
-					connection_free(new_conn);
 					goto error;
 				}
-				new_conn->sock = newsock;
+				new_conn = connection_create(newsock, RELAY_CONNECTION_UNKNOWN);
+				if (!new_conn) {
+					lttcomm_destroy_sock(newsock);
+					goto error;
+				}
+				/* Ownership assumed by the connection. */
+				newsock = NULL;
 
 				/* Enqueue request for the dispatcher thread. */
 				cds_wfcq_enqueue(&viewer_conn_queue.head, &viewer_conn_queue.tail,
 						 &new_conn->qnode);
 
 				/*
-				 * Wake the dispatch queue futex. Implicit memory barrier with
-				 * the exchange in cds_wfcq_enqueue.
+				 * Wake the dispatch queue futex.
+				 * Implicit memory barrier with the
+				 * exchange in cds_wfcq_enqueue.
 				 */
 				futex_nto1_wake(&viewer_conn_queue.futex);
 			}
@@ -617,14 +641,15 @@ void *thread_dispatcher(void *data)
 					conn->sock->fd);
 
 			/*
-			 * Inform worker thread of the new request. This call is blocking
-			 * so we can be assured that the data will be read at some point in
-			 * time or wait to the end of the world :)
+			 * Inform worker thread of the new request. This
+			 * call is blocking so we can be assured that
+			 * the data will be read at some point in time
+			 * or wait to the end of the world :)
 			 */
 			ret = lttng_write(live_conn_pipe[1], &conn, sizeof(conn));
 			if (ret < 0) {
 				PERROR("write conn pipe");
-				connection_destroy(conn);
+				connection_put(conn);
 				goto error;
 			}
 		} while (node != NULL);
@@ -662,8 +687,6 @@ int viewer_connect(struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_viewer_connect reply, msg;
-
-	assert(conn);
 
 	conn->version_check_done = 1;
 
@@ -712,10 +735,13 @@ int viewer_connect(struct relay_connection *conn)
 	reply.minor = htobe32(reply.minor);
 	if (conn->type == RELAY_VIEWER_COMMAND) {
 		/*
-		 * Increment outside of htobe64 macro, because can be used more than once
-		 * within the macro, and thus the operation may be undefined.
+		 * Increment outside of htobe64 macro, because the argument can
+		 * be used more than once within the macro, and thus the
+		 * operation may be undefined.
 		 */
+		pthread_mutex_lock(&last_relay_viewer_session_id_lock);
 		last_relay_viewer_session_id++;
+		pthread_mutex_unlock(&last_relay_viewer_session_id_lock);
 		reply.viewer_session_id = htobe64(last_relay_viewer_session_id);
 	}
 
@@ -737,6 +763,9 @@ end:
 
 /*
  * Send the viewer the list of current sessions.
+ * We need to create a copy of the hash table content because otherwise
+ * we cannot assume the number of entries stays the same between getting
+ * the number of HT elements and iteration over the HT.
  *
  * Return 0 on success or else a negative value.
  */
@@ -745,156 +774,89 @@ int viewer_list_sessions(struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_viewer_list_sessions session_list;
-	unsigned long count;
-	long approx_before, approx_after;
 	struct lttng_ht_iter iter;
-	struct lttng_viewer_session send_session;
 	struct relay_session *session;
+	struct lttng_viewer_session *send_session_buf = NULL;
+	uint32_t buf_count = SESSION_BUF_DEFAULT_COUNT;
+	uint32_t count = 0;
 
 	DBG("List sessions received");
 
+	send_session_buf = zmalloc(SESSION_BUF_DEFAULT_COUNT * sizeof(*send_session_buf));
+	if (!send_session_buf) {
+		return -1;
+	}
+
 	rcu_read_lock();
-	cds_lfht_count_nodes(conn->sessions_ht->ht, &approx_before, &count,
-			&approx_after);
+	cds_lfht_for_each_entry(sessions_ht->ht, &iter.iter, session,
+			session_n.node) {
+		struct lttng_viewer_session *send_session;
+
+		health_code_update();
+
+		if (count >= buf_count) {
+			struct lttng_viewer_session *newbuf;
+			uint32_t new_buf_count = buf_count << 1;
+
+			newbuf = realloc(send_session_buf,
+				new_buf_count * sizeof(*send_session_buf));
+			if (!newbuf) {
+				ret = -1;
+				rcu_read_unlock();
+				goto end_free;
+			}
+			send_session_buf = newbuf;
+			buf_count = new_buf_count;
+		}
+		send_session = &send_session_buf[count];
+		strncpy(send_session->session_name, session->session_name,
+				sizeof(send_session->session_name));
+		strncpy(send_session->hostname, session->hostname,
+				sizeof(send_session->hostname));
+		send_session->id = htobe64(session->id);
+		send_session->live_timer = htobe32(session->live_timer);
+		if (session->viewer_attached) {
+			send_session->clients = htobe32(1);
+		} else {
+			send_session->clients = htobe32(0);
+		}
+		send_session->streams = htobe32(session->stream_count);
+		count++;
+	}
+	rcu_read_unlock();
+
 	session_list.sessions_count = htobe32(count);
 
 	health_code_update();
 
 	ret = send_response(conn->sock, &session_list, sizeof(session_list));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_free;
 	}
 
 	health_code_update();
 
-	cds_lfht_for_each_entry(conn->sessions_ht->ht, &iter.iter, session,
-			session_n.node) {
-		health_code_update();
-
-		strncpy(send_session.session_name, session->session_name,
-				sizeof(send_session.session_name));
-		strncpy(send_session.hostname, session->hostname,
-				sizeof(send_session.hostname));
-		send_session.id = htobe64(session->id);
-		send_session.live_timer = htobe32(session->live_timer);
-		send_session.clients = htobe32(session->viewer_refcount);
-		send_session.streams = htobe32(session->stream_count);
-
-		health_code_update();
-
-		ret = send_response(conn->sock, &send_session, sizeof(send_session));
-		if (ret < 0) {
-			goto end_unlock;
-		}
+	ret = send_response(conn->sock, send_session_buf,
+			count * sizeof(*send_session_buf));
+	if (ret < 0) {
+		goto end_free;
 	}
 	health_code_update();
 
 	ret = 0;
-end_unlock:
-	rcu_read_unlock();
+end_free:
+	free(send_session_buf);
 	return ret;
 }
 
 /*
- * Check if a connection is attached to a session.
- * Return 1 if attached, 0 if not attached, a negative value on error.
- */
-static
-int session_attached(struct relay_connection *conn, uint64_t session_id)
-{
-	struct relay_session *session;
-	int found = 0;
-
-	if (!conn->viewer_session) {
-		goto end;
-	}
-	cds_list_for_each_entry(session,
-			&conn->viewer_session->sessions_head,
-			viewer_session_list) {
-		if (session->id == session_id) {
-			found = 1;
-			goto end;
-		}
-	}
-
-end:
-	return found;
-}
-
-/*
- * Delete all streams for a specific session ID.
- */
-static void destroy_viewer_streams_by_session(struct relay_session *session)
-{
-	struct relay_viewer_stream *stream;
-	struct lttng_ht_iter iter;
-
-	assert(session);
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, stream,
-			stream_n.node) {
-		struct ctf_trace *ctf_trace;
-
-		health_code_update();
-		if (stream->session_id != session->id) {
-			continue;
-		}
-
-		ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-				stream->path_name);
-		assert(ctf_trace);
-
-		viewer_stream_delete(stream);
-
-		if (stream->metadata_flag) {
-			ctf_trace->metadata_sent = 0;
-			ctf_trace->viewer_metadata_stream = NULL;
-		}
-
-		viewer_stream_destroy(ctf_trace, stream);
-	}
-	rcu_read_unlock();
-}
-
-static void try_destroy_streams(struct relay_session *session)
-{
-	struct ctf_trace *ctf_trace;
-	struct lttng_ht_iter iter;
-
-	assert(session);
-
-	cds_lfht_for_each_entry(session->ctf_traces_ht->ht, &iter.iter, ctf_trace,
-			node.node) {
-		/* Attempt to destroy the ctf trace of that session. */
-		ctf_trace_try_destroy(session, ctf_trace);
-	}
-}
-
-/*
- * Cleanup a session.
- */
-static void cleanup_session(struct relay_connection *conn,
-		struct relay_session *session)
-{
-	/*
-	 * Very important that this is done before destroying the session so we
-	 * can put back every viewer stream reference from the ctf_trace.
-	 */
-	destroy_viewer_streams_by_session(session);
-	try_destroy_streams(session);
-	cds_list_del(&session->viewer_session_list);
-	session_viewer_try_destroy(conn->sessions_ht, session);
-}
-
-/*
- * Send the viewer the list of current sessions.
+ * Send the viewer the list of current streams.
  */
 static
 int viewer_get_new_streams(struct relay_connection *conn)
 {
 	int ret, send_streams = 0;
-	uint32_t nb_created = 0, nb_unsent = 0, nb_streams = 0;
+	uint32_t nb_created = 0, nb_unsent = 0, nb_streams = 0, nb_total = 0;
 	struct lttng_viewer_new_streams_request request;
 	struct lttng_viewer_new_streams_response response;
 	struct relay_session *session;
@@ -917,15 +879,14 @@ int viewer_get_new_streams(struct relay_connection *conn)
 
 	memset(&response, 0, sizeof(response));
 
-	rcu_read_lock();
-	session = session_find_by_id(conn->sessions_ht, session_id);
+	session = session_get_by_id(session_id);
 	if (!session) {
 		DBG("Relay session %" PRIu64 " not found", session_id);
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
 		goto send_reply;
 	}
 
-	if (!session_attached(conn, session_id)) {
+	if (!viewer_session_is_attached(conn->viewer_session, session)) {
 		send_streams = 0;
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
 		goto send_reply;
@@ -934,10 +895,10 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	send_streams = 1;
 	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
 
-	ret = make_viewer_streams(session, LTTNG_VIEWER_SEEK_LAST, NULL, &nb_unsent,
+	ret = make_viewer_streams(session, LTTNG_VIEWER_SEEK_LAST, &nb_total, &nb_unsent,
 			&nb_created);
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put_session;
 	}
 	/* Only send back the newly created streams with the unsent ones. */
 	nb_streams = nb_created + nb_unsent;
@@ -948,15 +909,9 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	 * it means that the viewer has already received the whole trace
 	 * for this session and should now close it.
 	 */
-	if (nb_streams == 0 && session->close_flag) {
+	if (nb_total == 0 && session->connection_closed) {
 		send_streams = 0;
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_HUP);
-		/*
-		 * Remove the session from the attached list of the connection
-		 * and try to destroy it.
-		 */
-		cds_list_del(&session->viewer_session_list);
-		cleanup_session(conn, session);
 		goto send_reply;
 	}
 
@@ -964,30 +919,33 @@ send_reply:
 	health_code_update();
 	ret = send_response(conn->sock, &response, sizeof(response));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put_session;
 	}
 	health_code_update();
 
 	/*
-	 * Unknown or empty session, just return gracefully, the viewer knows what
-	 * is happening.
+	 * Unknown or empty session, just return gracefully, the viewer
+	 * knows what is happening.
 	 */
 	if (!send_streams || !nb_streams) {
 		ret = 0;
-		goto end_unlock;
+		goto end_put_session;
 	}
 
 	/*
-	 * Send stream and *DON'T* ignore the sent flag so every viewer streams
-	 * that were not sent from that point will be sent to the viewer.
+	 * Send stream and *DON'T* ignore the sent flag so every viewer
+	 * streams that were not sent from that point will be sent to
+	 * the viewer.
 	 */
 	ret = send_viewer_streams(conn->sock, session, 0);
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put_session;
 	}
 
-end_unlock:
-	rcu_read_unlock();
+end_put_session:
+	if (session) {
+		session_put(session);
+	}
 error:
 	return ret;
 }
@@ -1004,7 +962,7 @@ int viewer_attach_session(struct relay_connection *conn)
 	enum lttng_viewer_seek seek_type;
 	struct lttng_viewer_attach_session_request request;
 	struct lttng_viewer_attach_session_response response;
-	struct relay_session *session;
+	struct relay_session *session = NULL;
 
 	assert(conn);
 
@@ -1026,37 +984,34 @@ int viewer_attach_session(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	rcu_read_lock();
-	session = session_find_by_id(conn->sessions_ht,
-			be64toh(request.session_id));
+	session = session_get_by_id(be64toh(request.session_id));
 	if (!session) {
 		DBG("Relay session %" PRIu64 " not found",
 				be64toh(request.session_id));
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
 		goto send_reply;
 	}
-	session_viewer_attach(session);
-	DBG("Attach session ID %" PRIu64 " received", be64toh(request.session_id));
+	DBG("Attach session ID %" PRIu64 " received",
+		be64toh(request.session_id));
 
-	if (uatomic_read(&session->viewer_refcount) > 1) {
-		DBG("Already a viewer attached");
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_ALREADY);
-		session_viewer_detach(session);
-		goto send_reply;
-	} else if (session->live_timer == 0) {
+	if (session->live_timer == 0) {
 		DBG("Not live session");
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_NOT_LIVE);
 		goto send_reply;
-	} else {
-		send_streams = 1;
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_OK);
-		cds_list_add(&session->viewer_session_list,
-				&conn->viewer_session->sessions_head);
+	}
+
+	send_streams = 1;
+	ret = viewer_session_attach(conn->viewer_session, session);
+	if (ret) {
+		DBG("Already a viewer attached");
+		response.status = htobe32(LTTNG_VIEWER_ATTACH_ALREADY);
+		goto send_reply;
 	}
 
 	switch (be32toh(request.seek)) {
 	case LTTNG_VIEWER_SEEK_BEGINNING:
 	case LTTNG_VIEWER_SEEK_LAST:
+		response.status = htobe32(LTTNG_VIEWER_ATTACH_OK);
 		seek_type = be32toh(request.seek);
 		break;
 	default:
@@ -1068,7 +1023,7 @@ int viewer_attach_session(struct relay_connection *conn)
 
 	ret = make_viewer_streams(session, seek_type, &nb_streams, NULL, NULL);
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put_session;
 	}
 	response.streams_count = htobe32(nb_streams);
 
@@ -1076,27 +1031,29 @@ send_reply:
 	health_code_update();
 	ret = send_response(conn->sock, &response, sizeof(response));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put_session;
 	}
 	health_code_update();
 
 	/*
-	 * Unknown or empty session, just return gracefully, the viewer knows what
-	 * is happening.
+	 * Unknown or empty session, just return gracefully, the viewer
+	 * knows what is happening.
 	 */
 	if (!send_streams || !nb_streams) {
 		ret = 0;
-		goto end_unlock;
+		goto end_put_session;
 	}
 
 	/* Send stream and ignore the sent flag. */
 	ret = send_viewer_streams(conn->sock, session, 1);
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put_session;
 	}
 
-end_unlock:
-	rcu_read_unlock();
+end_put_session:
+	if (session) {
+		session_put(session);
+	}
 error:
 	return ret;
 }
@@ -1104,38 +1061,42 @@ error:
 /*
  * Open the index file if needed for the given vstream.
  *
- * If an index file is successfully opened, the index_read_fd of the stream is
- * set with it.
+ * If an index file is successfully opened, the vstream index_fd set with
+ * it.
  *
  * Return 0 on success, a negative value on error (-ENOENT if not ready yet).
+ *
+ * Called with rstream lock held.
  */
 static int try_open_index(struct relay_viewer_stream *vstream,
 		struct relay_stream *rstream)
 {
 	int ret = 0;
 
-	assert(vstream);
-	assert(rstream);
-
-	if (vstream->index_read_fd >= 0) {
+	if (vstream->index_fd) {
 		goto end;
 	}
 
 	/*
-	 * First time, we open the index file and at least one index is ready.  The
-	 * race between the read and write of the total_index_received is
-	 * acceptable here since the client will be notified to simply come back
-	 * and get the next index.
+	 * First time, we open the index file and at least one index is ready.
 	 */
-	if (rstream->total_index_received <= 0) {
+	if (rstream->total_index_received == 0) {
 		ret = -ENOENT;
 		goto end;
 	}
 	ret = index_open(vstream->path_name, vstream->channel_name,
-			vstream->tracefile_count, vstream->tracefile_count_current);
+			vstream->stream->tracefile_count,
+			vstream->current_tracefile_id);
 	if (ret >= 0) {
-		vstream->index_read_fd = ret;
-		ret = 0;
+		vstream->index_fd = stream_fd_create(ret);
+		if (!vstream->index_fd) {
+			if (close(ret)) {
+				PERROR("close");
+			}
+			ret = -1;
+		} else {
+			ret = 0;
+		}
 		goto end;
 	}
 
@@ -1144,13 +1105,15 @@ end:
 }
 
 /*
- * Check the status of the index for the given stream. This function updates
- * the index structure if needed and can destroy the vstream also for the HUP
- * situation.
+ * Check the status of the index for the given stream. This function
+ * updates the index structure if needed and can put (close) the vstream
+ * in the HUP situation.
  *
- * Return 0 means that we can proceed with the index. A value of 1 means that
- * the index has been updated and is ready to be send to the client. A negative
- * value indicates an error that can't be handled.
+ * Return 0 means that we can proceed with the index. A value of 1 means
+ * that the index has been updated and is ready to be sent to the
+ * client. A negative value indicates an error that can't be handled.
+ *
+ * Called with rstream lock held.
  */
 static int check_index_status(struct relay_viewer_stream *vstream,
 		struct relay_stream *rstream, struct ctf_trace *trace,
@@ -1158,68 +1121,101 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 {
 	int ret;
 
-	assert(vstream);
-	assert(rstream);
-	assert(index);
-	assert(trace);
+	if (trace->session->connection_closed
+			&& rstream->total_index_received
+				== vstream->last_sent_index) {
+		/* Last index sent and session connection is closed. */
+		index->status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+		goto hup;
+	} else if (rstream->beacon_ts_end != -1ULL &&
+			rstream->total_index_received
+				== vstream->last_sent_index) {
+		/*
+		 * We've received a synchronization beacon and the last index
+		 * available has been sent, the index for now is inactive.
+		 *
+		 * In this case, we have received a beacon which allows us to
+		 * inform the client of a time interval during which we can
+		 * guarantee that there are no events to read (and never will
+		 * be).
+		 */
+		index->status = htobe32(LTTNG_VIEWER_INDEX_INACTIVE);
+		index->timestamp_end = htobe64(rstream->beacon_ts_end);
+		index->stream_id = htobe64(rstream->ctf_stream_id);
+		goto index_ready;
+	} else if (rstream->total_index_received <= vstream->last_sent_index) {
+		/*
+		 * This actually checks the case where recv == last_sent.
+		 * In this case, we have not received a beacon. Therefore, we
+		 * can only ask the client to retry later.
+		 */
+		index->status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
+		goto index_ready;
+	} else if (!viewer_stream_is_tracefile_seq_readable(vstream,
+			vstream->current_tracefile_seq)) {
+		/*
+		 * The producer has overwritten our current file. We
+		 * need to rotate.
+		 */
+		DBG("Viewer stream %" PRIu64 " rotation due to overwrite",
+				vstream->stream->stream_handle);
+		ret = viewer_stream_rotate(vstream);
+		if (ret < 0) {
+			goto end;
+		} else if (ret == 1) {
+			/* EOF across entire stream. */
+			index->status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+			goto hup;
+		}
+		assert(viewer_stream_is_tracefile_seq_readable(vstream,
+			vstream->current_tracefile_seq));
+		/* ret == 0 means successful so we continue. */
+		ret = 0;
+	} else {
+		ssize_t read_ret;
+		char tmp[1];
 
-	if (!rstream->close_flag) {
-		/* Rotate on abort (overwrite). */
-		if (vstream->abort_flag) {
-			DBG("Viewer stream %" PRIu64 " rotate because of overwrite",
-					vstream->stream_handle);
-			ret = viewer_stream_rotate(vstream, rstream);
+		/*
+		 * Use EOF on current index file to find out when we
+		 * need to rotate.
+		 */
+		read_ret = lttng_read(vstream->index_fd->fd, tmp, 1);
+		if (read_ret == 1) {
+			off_t seek_ret;
+
+			/* There is still data to read. Rewind position. */
+			seek_ret = lseek(vstream->index_fd->fd, -1, SEEK_CUR);
+			if (seek_ret < 0) {
+				ret = -1;
+				goto end;
+			}
+			ret = 0;
+		} else if (read_ret == 0) {
+			/* EOF. We need to rotate. */
+			DBG("Viewer stream %" PRIu64 " rotation due to EOF",
+					vstream->stream->stream_handle);
+			ret = viewer_stream_rotate(vstream);
 			if (ret < 0) {
-				goto error;
+				goto end;
 			} else if (ret == 1) {
-				/* EOF */
+				/* EOF across entire stream. */
 				index->status = htobe32(LTTNG_VIEWER_INDEX_HUP);
 				goto hup;
 			}
+			assert(viewer_stream_is_tracefile_seq_readable(vstream,
+				vstream->current_tracefile_seq));
 			/* ret == 0 means successful so we continue. */
+			ret = 0;
+		} else {
+			/* Error reading index. */
+			ret = -1;
 		}
-
-		/* Check if we are in the same trace file at this point. */
-		if (rstream->tracefile_count_current == vstream->tracefile_count_current) {
-			if (rstream->beacon_ts_end != -1ULL &&
-					vstream->last_sent_index == rstream->total_index_received) {
-				/*
-				 * We've received a synchronization beacon and the last index
-				 * available has been sent, the index for now is inactive.
-				 */
-				index->status = htobe32(LTTNG_VIEWER_INDEX_INACTIVE);
-				index->timestamp_end = htobe64(rstream->beacon_ts_end);
-				index->stream_id = htobe64(rstream->ctf_stream_id);
-				goto index_ready;
-			} else if (rstream->total_index_received <= vstream->last_sent_index
-					&& !vstream->close_write_flag) {
-				/*
-				 * Reader and writer are working in the same tracefile, so we care
-				 * about the number of index received and sent. Otherwise, we read
-				 * up to EOF.
-				 */
-				index->status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
-				goto index_ready;
-			}
-		}
-		/* Nothing to do with the index, continue with it. */
-		ret = 0;
-	} else if (rstream->close_flag && vstream->close_write_flag &&
-			vstream->total_index_received == vstream->last_sent_index) {
-		/* Last index sent and current tracefile closed in write */
-		index->status = htobe32(LTTNG_VIEWER_INDEX_HUP);
-		goto hup;
-	} else {
-		vstream->close_write_flag = 1;
-		ret = 0;
 	}
-
-error:
+end:
 	return ret;
 
 hup:
-	viewer_stream_delete(vstream);
-	viewer_stream_destroy(trace, vstream);
+	viewer_stream_put(vstream);
 index_ready:
 	return 1;
 }
@@ -1237,15 +1233,16 @@ int viewer_get_next_index(struct relay_connection *conn)
 	struct lttng_viewer_get_next_index request_index;
 	struct lttng_viewer_index viewer_index;
 	struct ctf_packet_index packet_index;
-	struct relay_viewer_stream *vstream;
-	struct relay_stream *rstream;
-	struct ctf_trace *ctf_trace;
-	struct relay_session *session;
+	struct relay_viewer_stream *vstream = NULL;
+	struct relay_stream *rstream = NULL;
+	struct ctf_trace *ctf_trace = NULL;
+	struct relay_viewer_stream *metadata_viewer_stream = NULL;
 
 	assert(conn);
 
 	DBG("Viewer get next index");
 
+	memset(&viewer_index, 0, sizeof(viewer_index));
 	health_code_update();
 
 	ret = recv_request(conn->sock, &request_index, sizeof(request_index));
@@ -1254,42 +1251,38 @@ int viewer_get_next_index(struct relay_connection *conn)
 	}
 	health_code_update();
 
-	rcu_read_lock();
-	vstream = viewer_stream_find_by_id(be64toh(request_index.stream_id));
+	vstream = viewer_stream_get_by_id(be64toh(request_index.stream_id));
 	if (!vstream) {
 		ret = -1;
-		goto end_unlock;
+		goto end;
 	}
 
-	session = session_find_by_id(conn->sessions_ht, vstream->session_id);
-	if (!session) {
-		ret = -1;
-		goto end_unlock;
-	}
+	/* Use back. ref. Protected by refcounts. */
+	rstream = vstream->stream;
+	ctf_trace = rstream->trace;
 
-	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht, vstream->path_name);
-	assert(ctf_trace);
+	/* metadata_viewer_stream may be NULL. */
+	metadata_viewer_stream =
+			ctf_trace_get_viewer_metadata_stream(ctf_trace);
 
-	memset(&viewer_index, 0, sizeof(viewer_index));
+	pthread_mutex_lock(&rstream->lock);
 
 	/*
 	 * The viewer should not ask for index on metadata stream.
 	 */
-	if (vstream->metadata_flag) {
+	if (rstream->is_metadata) {
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
 		goto send_reply;
 	}
-
-	rstream = stream_find_by_id(relay_streams_ht, vstream->stream_handle);
-	assert(rstream);
 
 	/* Try to open an index if one is needed for that stream. */
 	ret = try_open_index(vstream, rstream);
 	if (ret < 0) {
 		if (ret == -ENOENT) {
 			/*
-			 * The index is created only when the first data packet arrives, it
-			 * might not be ready at the beginning of the session
+			 * The index is created only when the first data
+			 * packet arrives, it might not be ready at the
+			 * beginning of the session
 			 */
 			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
 		} else {
@@ -1299,80 +1292,70 @@ int viewer_get_next_index(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
 	ret = check_index_status(vstream, rstream, ctf_trace, &viewer_index);
-	pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
 	if (ret < 0) {
-		goto end_unlock;
+		goto error_put;
 	} else if (ret == 1) {
 		/*
-		 * This means the viewer index data structure has been populated by the
-		 * check call thus we now send back the reply to the client.
+		 * We have no index to send and check_index_status has populated
+		 * viewer_index's status.
 		 */
 		goto send_reply;
 	}
-	/* At this point, ret MUST be 0 thus we continue with the get. */
+	/* At this point, ret is 0 thus we will be able to read the index. */
 	assert(!ret);
 
-	if (!ctf_trace->metadata_received ||
-			ctf_trace->metadata_received > ctf_trace->metadata_sent) {
-		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
+	/*
+	 * vstream->stream_fd may be NULL if it has been closed by
+	 * tracefile rotation, or if we are at the beginning of the
+	 * stream. We open the data stream file here to protect against
+	 * overwrite caused by tracefile rotation (in association with
+	 * unlink performed before overwrite).
+	 */
+	if (!vstream->stream_fd) {
+		char fullpath[PATH_MAX];
+
+		if (vstream->stream->tracefile_count > 0) {
+			ret = snprintf(fullpath, PATH_MAX, "%s/%s_%" PRIu64,
+					vstream->path_name,
+					vstream->channel_name,
+					vstream->current_tracefile_id);
+		} else {
+			ret = snprintf(fullpath, PATH_MAX, "%s/%s",
+					vstream->path_name,
+					vstream->channel_name);
+		}
+		if (ret < 0) {
+			goto error_put;
+		}
+		ret = open(fullpath, O_RDONLY);
+		if (ret < 0) {
+			PERROR("Relay opening trace file");
+			goto error_put;
+		}
+		vstream->stream_fd = stream_fd_create(ret);
+		if (!vstream->stream_fd) {
+			if (close(ret)) {
+				PERROR("close");
+			}
+			goto error_put;
+		}
 	}
 
 	ret = check_new_streams(conn);
 	if (ret < 0) {
-		goto end_unlock;
+		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+		goto send_reply;
 	} else if (ret == 1) {
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
 	}
 
-	pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
-	pthread_mutex_lock(&vstream->overwrite_lock);
-	if (vstream->abort_flag) {
-		/* The file is being overwritten by the writer, we cannot use it. */
-		pthread_mutex_unlock(&vstream->overwrite_lock);
-		ret = viewer_stream_rotate(vstream, rstream);
-		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
-		if (ret < 0) {
-			goto end_unlock;
-		} else if (ret == 1) {
-			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
-			viewer_stream_delete(vstream);
-			viewer_stream_destroy(ctf_trace, vstream);
-		} else {
-			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
-		}
-		goto send_reply;
-	}
-
-	read_ret = lttng_read(vstream->index_read_fd, &packet_index,
+	read_ret = lttng_read(vstream->index_fd->fd, &packet_index,
 			sizeof(packet_index));
-	pthread_mutex_unlock(&vstream->overwrite_lock);
-	pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
-	if (read_ret < 0) {
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
-		viewer_stream_delete(vstream);
-		viewer_stream_destroy(ctf_trace, vstream);
-		goto send_reply;
-	} else if (read_ret < sizeof(packet_index)) {
-		pthread_mutex_lock(&rstream->viewer_stream_rotation_lock);
-		if (vstream->close_write_flag) {
-			ret = viewer_stream_rotate(vstream, rstream);
-			if (ret < 0) {
-				pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
-				goto end_unlock;
-			} else if (ret == 1) {
-				viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
-				viewer_stream_delete(vstream);
-				viewer_stream_destroy(ctf_trace, vstream);
-			} else {
-				viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
-			}
-		} else {
-			ERR("Relay reading index file %d", vstream->index_read_fd);
-			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
-		}
-		pthread_mutex_unlock(&rstream->viewer_stream_rotation_lock);
+	if (read_ret < sizeof(packet_index)) {
+		ERR("Relay reading index file %d returned %zd",
+			vstream->index_fd->fd, read_ret);
+		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
 		goto send_reply;
 	} else {
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_OK);
@@ -1382,6 +1365,9 @@ int viewer_get_next_index(struct relay_connection *conn)
 	/*
 	 * Indexes are stored in big endian, no need to switch before sending.
 	 */
+	DBG("Sending viewer index for stream %" PRIu64 " offset %" PRIu64,
+		rstream->stream_handle,
+		be64toh(packet_index.offset));
 	viewer_index.offset = packet_index.offset;
 	viewer_index.packet_size = packet_index.packet_size;
 	viewer_index.content_size = packet_index.content_size;
@@ -1391,22 +1377,49 @@ int viewer_get_next_index(struct relay_connection *conn)
 	viewer_index.stream_id = packet_index.stream_id;
 
 send_reply:
+	pthread_mutex_unlock(&rstream->lock);
+
+	if (metadata_viewer_stream) {
+		pthread_mutex_lock(&metadata_viewer_stream->stream->lock);
+		DBG("get next index metadata check: recv %" PRIu64
+				" sent %" PRIu64,
+			metadata_viewer_stream->stream->metadata_received,
+			metadata_viewer_stream->metadata_sent);
+		if (!metadata_viewer_stream->stream->metadata_received ||
+				metadata_viewer_stream->stream->metadata_received >
+					metadata_viewer_stream->metadata_sent) {
+			viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
+		}
+		pthread_mutex_unlock(&metadata_viewer_stream->stream->lock);
+	}
+
 	viewer_index.flags = htobe32(viewer_index.flags);
 	health_code_update();
 
 	ret = send_response(conn->sock, &viewer_index, sizeof(viewer_index));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end;
 	}
 	health_code_update();
 
 	DBG("Index %" PRIu64 " for stream %" PRIu64 " sent",
-			vstream->last_sent_index, vstream->stream_handle);
-
-end_unlock:
-	rcu_read_unlock();
-
+			vstream->last_sent_index,
+			vstream->stream->stream_handle);
 end:
+	if (metadata_viewer_stream) {
+		viewer_stream_put(metadata_viewer_stream);
+	}
+	if (vstream) {
+		viewer_stream_put(vstream);
+	}
+	return ret;
+
+error_put:
+	pthread_mutex_unlock(&rstream->lock);
+	if (metadata_viewer_stream) {
+		viewer_stream_put(metadata_viewer_stream);
+	}
+	viewer_stream_put(vstream);
 	return ret;
 }
 
@@ -1424,17 +1437,16 @@ int viewer_get_packet(struct relay_connection *conn)
 	ssize_t read_len;
 	struct lttng_viewer_get_packet get_packet_info;
 	struct lttng_viewer_trace_packet reply;
-	struct relay_viewer_stream *stream;
-	struct relay_session *session;
+	struct relay_viewer_stream *vstream = NULL;
 	struct ctf_trace *ctf_trace;
-
-	assert(conn);
+	struct relay_viewer_stream *metadata_viewer_stream = NULL;
 
 	DBG2("Relay get data packet");
 
 	health_code_update();
 
-	ret = recv_request(conn->sock, &get_packet_info, sizeof(get_packet_info));
+	ret = recv_request(conn->sock, &get_packet_info,
+			sizeof(get_packet_info));
 	if (ret < 0) {
 		goto end;
 	}
@@ -1443,59 +1455,57 @@ int viewer_get_packet(struct relay_connection *conn)
 	/* From this point on, the error label can be reached. */
 	memset(&reply, 0, sizeof(reply));
 
-	rcu_read_lock();
-	stream = viewer_stream_find_by_id(be64toh(get_packet_info.stream_id));
-	if (!stream) {
+	vstream = viewer_stream_get_by_id(be64toh(get_packet_info.stream_id));
+	if (!vstream) {
 		goto error;
 	}
 
-	session = session_find_by_id(conn->sessions_ht, stream->session_id);
-	if (!session) {
-		ret = -1;
-		goto error;
+	ctf_trace = vstream->stream->trace;
+
+	/* metadata_viewer_stream may be NULL. */
+	metadata_viewer_stream =
+			ctf_trace_get_viewer_metadata_stream(ctf_trace);
+
+	if (metadata_viewer_stream) {
+		bool get_packet_err = false;
+
+		pthread_mutex_lock(&metadata_viewer_stream->stream->lock);
+		DBG("get packet metadata check: recv %" PRIu64 " sent %" PRIu64,
+			metadata_viewer_stream->stream->metadata_received,
+			metadata_viewer_stream->metadata_sent);
+		if (!metadata_viewer_stream->stream->metadata_received ||
+				metadata_viewer_stream->stream->metadata_received >
+					metadata_viewer_stream->metadata_sent) {
+			/*
+			 * We prevent the client from reading a data stream as
+			 * long as there is metadata left to consume. This
+			 * ensures that the client won't receive data of which
+			 * it can't make sense.
+			 */
+			get_packet_err = true;
+		}
+		pthread_mutex_unlock(&metadata_viewer_stream->stream->lock);
+		viewer_stream_put(metadata_viewer_stream);
+		if (get_packet_err) {
+			reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
+			reply.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
+			goto send_reply_nolock;
+		}
 	}
 
-	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-			stream->path_name);
-	assert(ctf_trace);
-
+	pthread_mutex_lock(&vstream->stream->lock);
 	/*
-	 * First time we read this stream, we need open the tracefile, we should
-	 * only arrive here if an index has already been sent to the viewer, so the
-	 * tracefile must exist, if it does not it is a fatal error.
+	 * The vstream->stream_fd used here has been opened by
+	 * get_next_index. It is opened there because this is what
+	 * allows us to grab a reference to the file with stream lock
+	 * held, thus protecting us against overwrite caused by
+	 * tracefile rotation. Since tracefile rotation unlinks the old
+	 * data file, we are ensured that we won't have our data
+	 * overwritten under us.
 	 */
-	if (stream->read_fd < 0) {
-		char fullpath[PATH_MAX];
-
-		if (stream->tracefile_count > 0) {
-			ret = snprintf(fullpath, PATH_MAX, "%s/%s_%" PRIu64, stream->path_name,
-					stream->channel_name,
-					stream->tracefile_count_current);
-		} else {
-			ret = snprintf(fullpath, PATH_MAX, "%s/%s", stream->path_name,
-					stream->channel_name);
-		}
-		if (ret < 0) {
-			goto error;
-		}
-		ret = open(fullpath, O_RDONLY);
-		if (ret < 0) {
-			PERROR("Relay opening trace file");
-			goto error;
-		}
-		stream->read_fd = ret;
-	}
-
-	if (!ctf_trace->metadata_received ||
-			ctf_trace->metadata_received > ctf_trace->metadata_sent) {
-		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
-		reply.flags |= LTTNG_VIEWER_FLAG_NEW_METADATA;
-		goto send_reply;
-	}
-
 	ret = check_new_streams(conn);
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_free;
 	} else if (ret == 1) {
 		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 		reply.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
@@ -1509,34 +1519,19 @@ int viewer_get_packet(struct relay_connection *conn)
 		goto error;
 	}
 
-	ret = lseek(stream->read_fd, be64toh(get_packet_info.offset), SEEK_SET);
+	ret = lseek(vstream->stream_fd->fd, be64toh(get_packet_info.offset),
+			SEEK_SET);
 	if (ret < 0) {
-		/*
-		 * If the read fd was closed by the streaming side, the
-		 * abort_flag will be set to 1, otherwise it is an error.
-		 */
-		if (stream->abort_flag == 0) {
-			PERROR("lseek");
-			goto error;
-		}
-		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_EOF);
-		goto send_reply;
+		PERROR("lseek fd %d to offset %" PRIu64, vstream->stream_fd->fd,
+			be64toh(get_packet_info.offset));
+		goto error;
 	}
-	read_len = lttng_read(stream->read_fd, data, len);
+	read_len = lttng_read(vstream->stream_fd->fd, data, len);
 	if (read_len < len) {
-		/*
-		 * If the read fd was closed by the streaming side, the
-		 * abort_flag will be set to 1, otherwise it is an error.
-		 */
-		if (stream->abort_flag == 0) {
-			PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
-					stream->read_fd,
-					be64toh(get_packet_info.offset));
-			goto error;
-		} else {
-			reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_EOF);
-			goto send_reply;
-		}
+		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
+				vstream->stream_fd->fd,
+				be64toh(get_packet_info.offset));
+		goto error;
 	}
 	reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
 	reply.len = htobe32(len);
@@ -1547,13 +1542,17 @@ error:
 	reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 
 send_reply:
+	if (vstream) {
+		pthread_mutex_unlock(&vstream->stream->lock);
+	}
+send_reply_nolock:
 	reply.flags = htobe32(reply.flags);
 
 	health_code_update();
 
 	ret = send_response(conn->sock, &reply, sizeof(reply));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_free;
 	}
 	health_code_update();
 
@@ -1561,7 +1560,7 @@ send_reply:
 		health_code_update();
 		ret = send_response(conn->sock, data, len);
 		if (ret < 0) {
-			goto end_unlock;
+			goto end_free;
 		}
 		health_code_update();
 	}
@@ -1569,11 +1568,12 @@ send_reply:
 	DBG("Sent %u bytes for stream %" PRIu64, len,
 			be64toh(get_packet_info.stream_id));
 
-end_unlock:
+end_free:
 	free(data);
-	rcu_read_unlock();
-
 end:
+	if (vstream) {
+		viewer_stream_put(vstream);
+	}
 	return ret;
 }
 
@@ -1591,9 +1591,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 	char *data = NULL;
 	struct lttng_viewer_get_metadata request;
 	struct lttng_viewer_metadata_packet reply;
-	struct relay_viewer_stream *stream;
-	struct ctf_trace *ctf_trace;
-	struct relay_session *session;
+	struct relay_viewer_stream *vstream = NULL;
 
 	assert(conn);
 
@@ -1609,36 +1607,31 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 	memset(&reply, 0, sizeof(reply));
 
-	rcu_read_lock();
-	stream = viewer_stream_find_by_id(be64toh(request.stream_id));
-	if (!stream || !stream->metadata_flag) {
+	vstream = viewer_stream_get_by_id(be64toh(request.stream_id));
+	if (!vstream) {
+		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
+		goto send_reply;
+	}
+	pthread_mutex_lock(&vstream->stream->lock);
+	if (!vstream->stream->is_metadata) {
 		ERR("Invalid metadata stream");
 		goto error;
 	}
 
-	session = session_find_by_id(conn->sessions_ht, stream->session_id);
-	if (!session) {
-		ret = -1;
-		goto error;
-	}
+	assert(vstream->metadata_sent <= vstream->stream->metadata_received);
 
-	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-			stream->path_name);
-	assert(ctf_trace);
-	assert(ctf_trace->metadata_sent <= ctf_trace->metadata_received);
-
-	len = ctf_trace->metadata_received - ctf_trace->metadata_sent;
+	len = vstream->stream->metadata_received - vstream->metadata_sent;
 	if (len == 0) {
 		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
 		goto send_reply;
 	}
 
 	/* first time, we open the metadata file */
-	if (stream->read_fd < 0) {
+	if (!vstream->stream_fd) {
 		char fullpath[PATH_MAX];
 
-		ret = snprintf(fullpath, PATH_MAX, "%s/%s", stream->path_name,
-				stream->channel_name);
+		ret = snprintf(fullpath, PATH_MAX, "%s/%s", vstream->path_name,
+				vstream->channel_name);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1647,7 +1640,13 @@ int viewer_get_metadata(struct relay_connection *conn)
 			PERROR("Relay opening metadata file");
 			goto error;
 		}
-		stream->read_fd = ret;
+		vstream->stream_fd = stream_fd_create(ret);
+		if (!vstream->stream_fd) {
+			if (close(ret)) {
+				PERROR("close");
+			}
+			goto error;
+		}
 	}
 
 	reply.len = htobe64(len);
@@ -1657,13 +1656,20 @@ int viewer_get_metadata(struct relay_connection *conn)
 		goto error;
 	}
 
-	read_len = lttng_read(stream->read_fd, data, len);
+	read_len = lttng_read(vstream->stream_fd->fd, data, len);
 	if (read_len < len) {
 		PERROR("Relay reading metadata file");
 		goto error;
 	}
-	ctf_trace->metadata_sent += read_len;
+	vstream->metadata_sent += read_len;
+	if (vstream->metadata_sent == vstream->stream->metadata_received
+			&& vstream->stream->closed) {
+		/* Release ownership for the viewer metadata stream. */
+		viewer_stream_put(vstream);
+	}
+
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_OK);
+
 	goto send_reply;
 
 error:
@@ -1671,16 +1677,19 @@ error:
 
 send_reply:
 	health_code_update();
+	if (vstream) {
+		pthread_mutex_unlock(&vstream->stream->lock);
+	}
 	ret = send_response(conn->sock, &reply, sizeof(reply));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_free;
 	}
 	health_code_update();
 
 	if (len > 0) {
 		ret = send_response(conn->sock, data, len);
 		if (ret < 0) {
-			goto end_unlock;
+			goto end_free;
 		}
 	}
 
@@ -1689,10 +1698,12 @@ send_reply:
 
 	DBG("Metadata sent");
 
-end_unlock:
+end_free:
 	free(data);
-	rcu_read_unlock();
 end:
+	if (vstream) {
+		viewer_stream_put(vstream);
+	}
 	return ret;
 }
 
@@ -1711,13 +1722,12 @@ int viewer_create_session(struct relay_connection *conn)
 
 	memset(&resp, 0, sizeof(resp));
 	resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_OK);
-	conn->viewer_session = zmalloc(sizeof(*conn->viewer_session));
+	conn->viewer_session = viewer_session_create();
 	if (!conn->viewer_session) {
 		ERR("Allocation viewer session");
 		resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_ERR);
 		goto send_reply;
 	}
-	CDS_INIT_LIST_HEAD(&conn->viewer_session->sessions_head);
 
 send_reply:
 	health_code_update();
@@ -1755,9 +1765,6 @@ int process_control(struct lttng_viewer_cmd *recv_hdr,
 {
 	int ret = 0;
 	uint32_t msg_value;
-
-	assert(recv_hdr);
-	assert(conn);
 
 	msg_value = be32toh(recv_hdr->cmd);
 
@@ -1797,7 +1804,8 @@ int process_control(struct lttng_viewer_cmd *recv_hdr,
 		ret = viewer_create_session(conn);
 		break;
 	default:
-		ERR("Received unknown viewer command (%u)", be32toh(recv_hdr->cmd));
+		ERR("Received unknown viewer command (%u)",
+				be32toh(recv_hdr->cmd));
 		live_relay_unknown_command(conn);
 		ret = -1;
 		goto end;
@@ -1812,46 +1820,12 @@ void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 {
 	int ret;
 
-	assert(events);
-
 	(void) lttng_poll_del(events, pollfd);
 
 	ret = close(pollfd);
 	if (ret < 0) {
 		ERR("Closing pollfd %d", pollfd);
 	}
-}
-
-/*
- * Delete and destroy a connection.
- *
- * RCU read side lock MUST be acquired.
- */
-static void destroy_connection(struct lttng_ht *relay_connections_ht,
-		struct relay_connection *conn)
-{
-	struct relay_session *session, *tmp_session;
-
-	assert(relay_connections_ht);
-	assert(conn);
-
-	connection_delete(relay_connections_ht, conn);
-
-	if (!conn->viewer_session) {
-		goto end;
-	}
-
-	rcu_read_lock();
-	cds_list_for_each_entry_safe(session, tmp_session,
-			&conn->viewer_session->sessions_head,
-			viewer_session_list) {
-		DBG("Cleaning connection of session ID %" PRIu64, session->id);
-		cleanup_session(conn, session);
-	}
-	rcu_read_unlock();
-
-end:
-	connection_destroy(conn);
 }
 
 /*
@@ -1863,11 +1837,9 @@ void *thread_worker(void *data)
 	int ret, err = -1;
 	uint32_t nb_fd;
 	struct lttng_poll_event events;
-	struct lttng_ht *relay_connections_ht;
+	struct lttng_ht *viewer_connections_ht;
 	struct lttng_ht_iter iter;
 	struct lttng_viewer_cmd recv_hdr;
-	struct relay_local_data *relay_ctx = (struct relay_local_data *) data;
-	struct lttng_ht *sessions_ht = relay_ctx->sessions_ht;
 	struct relay_connection *destroy_conn;
 
 	DBG("[thread] Live viewer relay worker started");
@@ -1881,9 +1853,9 @@ void *thread_worker(void *data)
 	}
 
 	/* table of connections indexed on socket */
-	relay_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	if (!relay_connections_ht) {
-		goto relay_connections_ht_error;
+	viewer_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	if (!viewer_connections_ht) {
+		goto viewer_connections_ht_error;
 	}
 
 	ret = create_thread_poll_set(&events, 2);
@@ -1943,7 +1915,7 @@ restart:
 				goto exit;
 			}
 
-			/* Inspect the relay conn pipe for new connection */
+			/* Inspect the relay conn pipe for new connection. */
 			if (pollfd == live_conn_pipe[0]) {
 				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Relay live pipe error");
@@ -1951,50 +1923,51 @@ restart:
 				} else if (revents & LPOLLIN) {
 					struct relay_connection *conn;
 
-					ret = lttng_read(live_conn_pipe[0], &conn, sizeof(conn));
+					ret = lttng_read(live_conn_pipe[0],
+							&conn, sizeof(conn));
 					if (ret < 0) {
 						goto error;
 					}
-					conn->sessions_ht = sessions_ht;
-					connection_init(conn);
 					lttng_poll_add(&events, conn->sock->fd,
 							LPOLLIN | LPOLLRDHUP);
-					rcu_read_lock();
-					lttng_ht_add_unique_ulong(relay_connections_ht,
-							&conn->sock_n);
-					rcu_read_unlock();
-					DBG("Connection socket %d added", conn->sock->fd);
+					connection_ht_add(viewer_connections_ht, conn);
+					DBG("Connection socket %d added to poll", conn->sock->fd);
 				}
 			} else {
+				/* Connection activity. */
 				struct relay_connection *conn;
 
-				rcu_read_lock();
-				conn = connection_find_by_sock(relay_connections_ht, pollfd);
-				/* If not found, there is a synchronization issue. */
-				assert(conn);
+				conn = connection_get_by_sock(viewer_connections_ht, pollfd);
+				if (!conn) {
+					continue;
+				}
 
 				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					cleanup_connection_pollfd(&events, pollfd);
-					destroy_connection(relay_connections_ht, conn);
+					/* Put "create" ownership reference. */
+					connection_put(conn);
 				} else if (revents & LPOLLIN) {
 					ret = conn->sock->ops->recvmsg(conn->sock, &recv_hdr,
 							sizeof(recv_hdr), 0);
 					if (ret <= 0) {
-						/* Connection closed */
+						/* Connection closed. */
 						cleanup_connection_pollfd(&events, pollfd);
-						destroy_connection(relay_connections_ht, conn);
+						/* Put "create" ownership reference. */
+						connection_put(conn);
 						DBG("Viewer control conn closed with %d", pollfd);
 					} else {
 						ret = process_control(&recv_hdr, conn);
 						if (ret < 0) {
 							/* Clear the session on error. */
 							cleanup_connection_pollfd(&events, pollfd);
-							destroy_connection(relay_connections_ht, conn);
+							/* Put "create" ownership reference. */
+							connection_put(conn);
 							DBG("Viewer connection closed with %d", pollfd);
 						}
 					}
 				}
-				rcu_read_unlock();
+				/* Put local "get_by_sock" reference. */
+				connection_put(conn);
 			}
 		}
 	}
@@ -2005,16 +1978,16 @@ error:
 
 	/* Cleanup reamaining connection object. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter,
+	cds_lfht_for_each_entry(viewer_connections_ht->ht, &iter.iter,
 			destroy_conn,
 			sock_n.node) {
 		health_code_update();
-		destroy_connection(relay_connections_ht, destroy_conn);
+		connection_put(destroy_conn);
 	}
 	rcu_read_unlock();
 error_poll_create:
-	lttng_ht_destroy(relay_connections_ht);
-relay_connections_ht_error:
+	lttng_ht_destroy(viewer_connections_ht);
+viewer_connections_ht_error:
 	/* Close relay conn pipes */
 	utils_close_pipe(live_conn_pipe);
 	if (err) {
@@ -2077,8 +2050,7 @@ int relayd_live_join(void)
 /*
  * main
  */
-int relayd_live_create(struct lttng_uri *uri,
-		struct relay_local_data *relay_ctx)
+int relayd_live_create(struct lttng_uri *uri)
 {
 	int ret = 0, retval = 0;
 	void *status;
@@ -2125,7 +2097,7 @@ int relayd_live_create(struct lttng_uri *uri,
 
 	/* Setup the worker thread */
 	ret = pthread_create(&live_worker_thread, NULL,
-			thread_worker, relay_ctx);
+			thread_worker, NULL);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create viewer worker");

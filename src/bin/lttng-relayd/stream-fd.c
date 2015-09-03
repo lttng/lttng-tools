@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
- *                      David Goulet <dgoulet@efficios.com>
- *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -18,32 +16,43 @@
  */
 
 #define _GNU_SOURCE
-#include <assert.h>
-
+#define _LGPL_SOURCE
 #include <common/common.h>
 
-#include "cmd-generic.h"
+#include "stream-fd.h"
 
-int cmd_recv(struct lttcomm_sock *sock, void *buf, size_t len)
+struct stream_fd *stream_fd_create(int fd)
 {
+	struct stream_fd *sf;
+
+	sf = zmalloc(sizeof(*sf));
+	if (!sf) {
+		goto end;
+	}
+	urcu_ref_init(&sf->ref);
+	sf->fd = fd;
+end:
+	return sf;
+}
+
+void stream_fd_get(struct stream_fd *sf)
+{
+	urcu_ref_get(&sf->ref);
+}
+
+static void stream_fd_release(struct urcu_ref *ref)
+{
+	struct stream_fd *sf = caa_container_of(ref, struct stream_fd, ref);
 	int ret;
 
-	assert(sock);
-	assert(buf);
-
-	ret = sock->ops->recvmsg(sock, buf, len, 0);
-	if (ret < len) {
-		if (ret == 0) {
-			/* Orderly shutdown. Not necessary to print an error. */
-			DBG("Socket %d did an orderly shutdown", sock->fd);
-		} else {
-			ERR("Relay didn't receive valid add_stream struct size. "
-					"Expected %zu, got %d", len, ret);
-		}
-		ret = -1;
-		goto error;
+	ret = close(sf->fd);
+	if (ret) {
+		PERROR("Error closing stream FD %d", sf->fd);
 	}
+	free(sf);
+}
 
-error:
-	return ret;
+void stream_fd_put(struct stream_fd *sf)
+{
+	urcu_ref_put(&sf->ref, stream_fd_release);
 }

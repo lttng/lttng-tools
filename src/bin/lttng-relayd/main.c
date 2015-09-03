@@ -2,6 +2,7 @@
  * Copyright (C) 2012 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
  *               2013 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -54,6 +55,7 @@
 #include <common/uri.h>
 #include <common/utils.h>
 #include <common/config/config.h>
+#include <urcu/rculist.h>
 
 #include "cmd.h"
 #include "ctf-trace.h"
@@ -112,6 +114,11 @@ static pthread_t dispatcher_thread;
 static pthread_t worker_thread;
 static pthread_t health_thread;
 
+/*
+ * last_relay_stream_id_lock protects last_relay_stream_id increment
+ * atomicity on 32-bit architectures.
+ */
+static pthread_mutex_t last_relay_stream_id_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t last_relay_stream_id;
 
 /*
@@ -126,18 +133,14 @@ static struct relay_conn_queue relay_conn_queue;
 static char *data_buffer;
 static unsigned int data_buffer_size;
 
-/* We need those values for the file/dir creation. */
-static uid_t relayd_uid;
-static gid_t relayd_gid;
-
 /* Global relay stream hash table. */
 struct lttng_ht *relay_streams_ht;
 
 /* Global relay viewer stream hash table. */
 struct lttng_ht *viewer_streams_ht;
 
-/* Global hash table that stores relay index object. */
-struct lttng_ht *indexes_ht;
+/* Global relay sessions hash table. */
+struct lttng_ht *sessions_ht;
 
 /* Relayd health monitoring */
 struct health_app *health_relayd;
@@ -161,8 +164,7 @@ static const char *config_ignore_options[] = { "help", "config" };
 /*
  * usage function on stderr
  */
-static
-void usage(void)
+static void usage(void)
 {
 	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(stderr, "  -h, --help                Display this usage.\n");
@@ -183,8 +185,7 @@ void usage(void)
  *
  * Return 0 on success else a negative value.
  */
-static
-int set_option(int opt, const char *arg, const char *optname)
+static int set_option(int opt, const char *arg, const char *optname)
 {
 	int ret;
 
@@ -281,8 +282,7 @@ end:
  * See config_entry_handler_cb comment in common/config/config.h for the
  * return value conventions.
  */
-static
-int config_entry_handler(const struct config_entry *entry, void *unused)
+static int config_entry_handler(const struct config_entry *entry, void *unused)
 {
 	int ret = 0, i;
 
@@ -305,9 +305,9 @@ int config_entry_handler(const struct config_entry *entry, void *unused)
 		}
 
 		/*
-		 * If the option takes no argument on the command line, we have to
-		 * check if the value is "true". We support non-zero numeric values,
-		 * true, on and yes.
+		 * If the option takes no argument on the command line,
+		 * we have to check if the value is "true". We support
+		 * non-zero numeric values, true, on and yes.
 		 */
 		if (!long_options[i].has_arg) {
 			ret = config_parse_value(entry->value);
@@ -332,8 +332,7 @@ end:
 	return ret;
 }
 
-static
-int set_options(int argc, char **argv)
+static int set_options(int argc, char **argv)
 {
 	int c, ret = 0, option_index = 0, retval = 0;
 	int orig_optopt = optopt, orig_optind = optind;
@@ -451,21 +450,32 @@ exit:
 	return retval;
 }
 
+static void print_global_objects(void)
+{
+	rcu_register_thread();
+
+	print_viewer_streams();
+	print_relay_streams();
+	print_sessions();
+
+	rcu_unregister_thread();
+}
+
 /*
  * Cleanup the daemon
  */
-static
-void relayd_cleanup(struct relay_local_data *relay_ctx)
+static void relayd_cleanup(void)
 {
+	print_global_objects();
+
 	DBG("Cleaning up");
 
 	if (viewer_streams_ht)
 		lttng_ht_destroy(viewer_streams_ht);
 	if (relay_streams_ht)
 		lttng_ht_destroy(relay_streams_ht);
-	if (relay_ctx && relay_ctx->sessions_ht)
-		lttng_ht_destroy(relay_ctx->sessions_ht);
-	free(relay_ctx);
+	if (sessions_ht)
+		lttng_ht_destroy(sessions_ht);
 
 	/* free the dynamically allocated opt_output_path */
 	free(opt_output_path);
@@ -485,8 +495,7 @@ void relayd_cleanup(struct relay_local_data *relay_ctx)
 /*
  * Write to writable pipe used to notify a thread.
  */
-static
-int notify_thread_pipe(int wpipe)
+static int notify_thread_pipe(int wpipe)
 {
 	ssize_t ret;
 
@@ -500,8 +509,7 @@ end:
 	return ret;
 }
 
-static
-int notify_health_quit_pipe(int *pipe)
+static int notify_health_quit_pipe(int *pipe)
 {
 	ssize_t ret;
 
@@ -550,8 +558,7 @@ int lttng_relay_stop_threads(void)
  * Simply stop all worker threads, leaving main() return gracefully after
  * joining all threads and calling cleanup().
  */
-static
-void sighandler(int sig)
+static void sighandler(int sig)
 {
 	switch (sig) {
 	case SIGPIPE:
@@ -581,8 +588,7 @@ void sighandler(int sig)
  * Setup signal handler for :
  *		SIGINT, SIGTERM, SIGPIPE
  */
-static
-int set_signal_handler(void)
+static int set_signal_handler(void)
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -636,8 +642,7 @@ void lttng_relay_notify_ready(void)
  *
  * Return -1 on error or 0 if all pipes are created.
  */
-static
-int init_thread_quit_pipe(void)
+static int init_thread_quit_pipe(void)
 {
 	int ret;
 
@@ -649,8 +654,7 @@ int init_thread_quit_pipe(void)
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
-static
-int create_thread_poll_set(struct lttng_poll_event *events, int size)
+static int create_thread_poll_set(struct lttng_poll_event *events, int size)
 {
 	int ret;
 
@@ -681,8 +685,7 @@ error:
  *
  * Return 1 if it was triggered else 0;
  */
-static
-int check_thread_quit_pipe(int fd, uint32_t events)
+static int check_thread_quit_pipe(int fd, uint32_t events)
 {
 	if (fd == thread_quit_pipe[0] && (events & LPOLLIN)) {
 		return 1;
@@ -694,8 +697,7 @@ int check_thread_quit_pipe(int fd, uint32_t events)
 /*
  * Create and init socket from uri.
  */
-static
-struct lttcomm_sock *relay_init_sock(struct lttng_uri *uri)
+static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri)
 {
 	int ret;
 	struct lttcomm_sock *sock = NULL;
@@ -733,63 +735,9 @@ error:
 }
 
 /*
- * Return nonzero if stream needs to be closed.
- */
-static
-int close_stream_check(struct relay_stream *stream)
-{
-	if (stream->close_flag && stream->prev_seq == stream->last_net_seq_num) {
-		/*
-		 * We are about to close the stream so set the data pending flag to 1
-		 * which will make the end data pending command skip the stream which
-		 * is now closed and ready. Note that after proceeding to a file close,
-		 * the written file is ready for reading.
-		 */
-		stream->data_pending_check_done = 1;
-		return 1;
-	}
-	return 0;
-}
-
-static void try_close_stream(struct relay_session *session,
-		struct relay_stream *stream)
-{
-	int ret;
-	struct ctf_trace *ctf_trace;
-
-	assert(session);
-	assert(stream);
-
-	if (!close_stream_check(stream)) {
-		/* Can't close it, not ready for that. */
-		goto end;
-	}
-
-	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-			stream->path_name);
-	assert(ctf_trace);
-
-	pthread_mutex_lock(&session->viewer_ready_lock);
-	ctf_trace->invalid_flag = 1;
-	pthread_mutex_unlock(&session->viewer_ready_lock);
-
-	ret = stream_close(session, stream);
-	if (ret || session->snapshot) {
-		/* Already close thus the ctf trace is being or has been destroyed. */
-		goto end;
-	}
-
-	ctf_trace_try_destroy(session, ctf_trace);
-
-end:
-	return;
-}
-
-/*
  * This thread manages the listening for new connections on the network
  */
-static
-void *relay_thread_listener(void *data)
+static void *relay_thread_listener(void *data)
 {
 	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
@@ -802,18 +750,19 @@ void *relay_thread_listener(void *data)
 
 	health_code_update();
 
-	control_sock = relay_init_sock(control_uri);
+	control_sock = relay_socket_create(control_uri);
 	if (!control_sock) {
 		goto error_sock_control;
 	}
 
-	data_sock = relay_init_sock(data_uri);
+	data_sock = relay_socket_create(data_uri);
 	if (!data_sock) {
 		goto error_sock_relay;
 	}
 
 	/*
-	 * Pass 3 as size here for the thread quit pipe, control and data socket.
+	 * Pass 3 as size here for the thread quit pipe, control and
+	 * data socket.
 	 */
 	ret = create_thread_poll_set(&events, 3);
 	if (ret < 0) {
@@ -868,7 +817,10 @@ restart:
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			if (!revents) {
-				/* No activity for this FD (poll implementation). */
+				/*
+				 * No activity for this FD (poll
+				 * implementation).
+				 */
 				continue;
 			}
 
@@ -884,33 +836,30 @@ restart:
 				goto error;
 			} else if (revents & LPOLLIN) {
 				/*
-				 * Get allocated in this thread, enqueued to a global queue,
-				 * dequeued and freed in the worker thread.
+				 * A new connection is requested, therefore a
+				 * sessiond/consumerd connection is allocated in
+				 * this thread, enqueued to a global queue and
+				 * dequeued (and freed) in the worker thread.
 				 */
 				int val = 1;
 				struct relay_connection *new_conn;
 				struct lttcomm_sock *newsock;
-
-				new_conn = connection_create();
-				if (!new_conn) {
-					goto error;
-				}
+				enum connection_type type;
 
 				if (pollfd == data_sock->fd) {
-					new_conn->type = RELAY_DATA;
+					type = RELAY_DATA;
 					newsock = data_sock->ops->accept(data_sock);
 					DBG("Relay data connection accepted, socket %d",
 							newsock->fd);
 				} else {
 					assert(pollfd == control_sock->fd);
-					new_conn->type = RELAY_CONTROL;
+					type = RELAY_CONTROL;
 					newsock = control_sock->ops->accept(control_sock);
 					DBG("Relay control connection accepted, socket %d",
 							newsock->fd);
 				}
 				if (!newsock) {
 					PERROR("accepting sock");
-					connection_free(new_conn);
 					goto error;
 				}
 
@@ -919,18 +868,22 @@ restart:
 				if (ret < 0) {
 					PERROR("setsockopt inet");
 					lttcomm_destroy_sock(newsock);
-					connection_free(new_conn);
 					goto error;
 				}
-				new_conn->sock = newsock;
+				new_conn = connection_create(newsock, type);
+				if (!new_conn) {
+					lttcomm_destroy_sock(newsock);
+					goto error;
+				}
 
 				/* Enqueue request for the dispatcher thread. */
 				cds_wfcq_enqueue(&relay_conn_queue.head, &relay_conn_queue.tail,
 						 &new_conn->qnode);
 
 				/*
-				 * Wake the dispatch queue futex. Implicit memory barrier with
-				 * the exchange in cds_wfcq_enqueue.
+				 * Wake the dispatch queue futex.
+				 * Implicit memory barrier with the
+				 * exchange in cds_wfcq_enqueue.
 				 */
 				futex_nto1_wake(&relay_conn_queue.futex);
 			}
@@ -972,8 +925,7 @@ error_sock_control:
 /*
  * This thread manages the dispatching of the requests to worker threads
  */
-static
-void *relay_thread_dispatcher(void *data)
+static void *relay_thread_dispatcher(void *data)
 {
 	int err = -1;
 	ssize_t ret;
@@ -1012,14 +964,15 @@ void *relay_thread_dispatcher(void *data)
 			DBG("Dispatching request waiting on sock %d", new_conn->sock->fd);
 
 			/*
-			 * Inform worker thread of the new request. This call is blocking
-			 * so we can be assured that the data will be read at some point in
-			 * time or wait to the end of the world :)
+			 * Inform worker thread of the new request. This
+			 * call is blocking so we can be assured that
+			 * the data will be read at some point in time
+			 * or wait to the end of the world :)
 			 */
 			ret = lttng_write(relay_conn_pipe[1], &new_conn, sizeof(new_conn));
 			if (ret < 0) {
 				PERROR("write connection pipe");
-				connection_destroy(new_conn);
+				connection_put(new_conn);
 				goto error;
 			}
 		} while (node != NULL);
@@ -1045,72 +998,27 @@ error_testpoint:
 	return NULL;
 }
 
-static void try_close_streams(struct relay_session *session)
-{
-	struct ctf_trace *ctf_trace;
-	struct lttng_ht_iter iter;
-
-	assert(session);
-
-	pthread_mutex_lock(&session->viewer_ready_lock);
-	rcu_read_lock();
-	cds_lfht_for_each_entry(session->ctf_traces_ht->ht, &iter.iter, ctf_trace,
-			node.node) {
-		struct relay_stream *stream;
-
-		/* Close streams. */
-		cds_list_for_each_entry(stream, &ctf_trace->stream_list, trace_list) {
-			stream_close(session, stream);
-		}
-
-		ctf_trace->invalid_flag = 1;
-		ctf_trace_try_destroy(session, ctf_trace);
-	}
-	rcu_read_unlock();
-	pthread_mutex_unlock(&session->viewer_ready_lock);
-}
-
 /*
- * Try to destroy a session within a connection.
+ * Set index data from the control port to a given index object.
  */
-static void destroy_session(struct relay_session *session,
-		struct lttng_ht *sessions_ht)
-{
-	assert(session);
-	assert(sessions_ht);
-
-	/* Indicate that this session can be destroyed from now on. */
-	session->close_flag = 1;
-
-	try_close_streams(session);
-
-	/*
-	 * This will try to delete and destroy the session if no viewer is attached
-	 * to it meaning the refcount is down to zero.
-	 */
-	session_try_destroy(sessions_ht, session);
-}
-
-/*
- * Copy index data from the control port to a given index object.
- */
-static void copy_index_control_data(struct relay_index *index,
+static int set_index_control_data(struct relay_index *index,
 		struct lttcomm_relayd_index *data)
 {
-	assert(index);
-	assert(data);
+	struct ctf_packet_index index_data;
 
 	/*
-	 * The index on disk is encoded in big endian, so we don't need to convert
-	 * the data received on the network. The data_offset value is NEVER
-	 * modified here and is updated by the data thread.
+	 * The index on disk is encoded in big endian, so we don't need
+	 * to convert the data received on the network. The data_offset
+	 * value is NEVER modified here and is updated by the data
+	 * thread.
 	 */
-	index->index_data.packet_size = data->packet_size;
-	index->index_data.content_size = data->content_size;
-	index->index_data.timestamp_begin = data->timestamp_begin;
-	index->index_data.timestamp_end = data->timestamp_end;
-	index->index_data.events_discarded = data->events_discarded;
-	index->index_data.stream_id = data->stream_id;
+	index_data.packet_size = data->packet_size;
+	index_data.content_size = data->content_size;
+	index_data.timestamp_begin = data->timestamp_begin;
+	index_data.timestamp_end = data->timestamp_end;
+	index_data.events_discarded = data->events_discarded;
+	index_data.stream_id = data->stream_id;
+	return relay_index_set_data(index, &index_data);
 }
 
 /*
@@ -1118,30 +1026,21 @@ static void copy_index_control_data(struct relay_index *index,
  *
  * On success, send back the session id or else return a negative value.
  */
-static
-int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret = 0, send_ret;
 	struct relay_session *session;
 	struct lttcomm_relayd_status_session reply;
+	char session_name[NAME_MAX];
+	char hostname[HOST_NAME_MAX];
+	uint32_t live_timer = 0;
+	bool snapshot = false;
 
-	assert(recv_hdr);
-	assert(conn);
+	memset(session_name, 0, NAME_MAX);
+	memset(hostname, 0, HOST_NAME_MAX);
 
 	memset(&reply, 0, sizeof(reply));
-
-	session = session_create();
-	if (!session) {
-		ret = -1;
-		goto error;
-	}
-	session->minor = conn->minor;
-	session->major = conn->major;
-	conn->session_id = session->id;
-	conn->session = session;
-
-	reply.session_id = htobe64(session->id);
 
 	switch (conn->minor) {
 	case 1:
@@ -1150,13 +1049,26 @@ int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case 4: /* LTTng sessiond 2.4 */
 	default:
-		ret = cmd_create_session_2_4(conn, session);
+		ret = cmd_create_session_2_4(conn, session_name,
+			hostname, &live_timer, &snapshot);
+	}
+	if (ret < 0) {
+		goto send_reply;
 	}
 
-	lttng_ht_add_unique_u64(conn->sessions_ht, &session->session_n);
+	session = session_create(session_name, hostname, live_timer,
+			snapshot, conn->major, conn->minor);
+	if (!session) {
+		ret = -1;
+		goto send_reply;
+	}
+	assert(!conn->session);
+	conn->session = session;
 	DBG("Created session %" PRIu64, session->id);
 
-error:
+	reply.session_id = htobe64(session->id);
+
+send_reply:
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_FATAL);
 	} else {
@@ -1176,47 +1088,47 @@ error:
  * When we have received all the streams and the metadata for a channel,
  * we make them visible to the viewer threads.
  */
-static
-void set_viewer_ready_flag(struct relay_connection *conn)
+static void publish_connection_local_streams(struct relay_connection *conn)
 {
-	struct relay_stream *stream, *tmp_stream;
+	struct relay_stream *stream;
+	struct relay_session *session = conn->session;
 
-	pthread_mutex_lock(&conn->session->viewer_ready_lock);
-	cds_list_for_each_entry_safe(stream, tmp_stream, &conn->recv_head,
-			recv_list) {
-		stream->viewer_ready = 1;
-		cds_list_del(&stream->recv_list);
+	/*
+	 * We publish all streams belonging to a session atomically wrt
+	 * session lock.
+	 */
+	pthread_mutex_lock(&session->lock);
+	rcu_read_lock();
+	cds_list_for_each_entry_rcu(stream, &session->recv_list,
+			recv_node) {
+		stream_publish(stream);
 	}
-	pthread_mutex_unlock(&conn->session->viewer_ready_lock);
-	return;
-}
+	rcu_read_unlock();
 
-/*
- * Add a recv handle node to the connection recv list with the given stream
- * handle. A new node is allocated thus must be freed when the node is deleted
- * from the list.
- */
-static void queue_stream(struct relay_stream *stream,
-		struct relay_connection *conn)
-{
-	assert(conn);
-	assert(stream);
-
-	cds_list_add(&stream->recv_list, &conn->recv_head);
+	/*
+	 * Inform the viewer that there are new streams in the session.
+	 */
+	if (session->viewer_attached) {
+		uatomic_set(&session->new_streams, 1);
+	}
+	pthread_mutex_unlock(&session->lock);
 }
 
 /*
  * relay_add_stream: allocate a new stream for a session
  */
-static
-int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
-	int ret, send_ret;
+	int ret;
+	ssize_t send_ret;
 	struct relay_session *session = conn->session;
 	struct relay_stream *stream = NULL;
 	struct lttcomm_relayd_status_stream reply;
-	struct ctf_trace *trace;
+	struct ctf_trace *trace = NULL;
+	uint64_t stream_handle = -1ULL;
+	char *path_name = NULL, *channel_name = NULL;
+	uint64_t tracefile_size = 0, tracefile_count = 0;
 
 	if (!session || conn->version_check_done == 0) {
 		ERR("Trying to add a stream before version check");
@@ -1224,104 +1136,48 @@ int relay_add_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	stream = zmalloc(sizeof(struct relay_stream));
-	if (stream == NULL) {
-		PERROR("relay stream zmalloc");
-		ret = -1;
-		goto end_no_session;
-	}
-
-	switch (conn->minor) {
-	case 1: /* LTTng sessiond 2.1 */
-		ret = cmd_recv_stream_2_1(conn, stream);
+	switch (session->minor) {
+	case 1: /* LTTng sessiond 2.1. Allocates path_name and channel_name. */
+		ret = cmd_recv_stream_2_1(conn, &path_name,
+			&channel_name);
 		break;
-	case 2: /* LTTng sessiond 2.2 */
+	case 2: /* LTTng sessiond 2.2. Allocates path_name and channel_name. */
 	default:
-		ret = cmd_recv_stream_2_2(conn, stream);
+		ret = cmd_recv_stream_2_2(conn, &path_name,
+			&channel_name, &tracefile_size, &tracefile_count);
 		break;
 	}
 	if (ret < 0) {
-		goto err_free_stream;
+		goto send_reply;
 	}
 
-	rcu_read_lock();
-	stream->stream_handle = ++last_relay_stream_id;
-	stream->prev_seq = -1ULL;
-	stream->session_id = session->id;
-	stream->index_fd = -1;
-	stream->read_index_fd = -1;
-	stream->ctf_stream_id = -1ULL;
-	lttng_ht_node_init_u64(&stream->node, stream->stream_handle);
-	pthread_mutex_init(&stream->lock, NULL);
-
-	ret = utils_mkdir_recursive(stream->path_name, S_IRWXU | S_IRWXG,
-			-1, -1);
-	if (ret < 0) {
-		ERR("relay creating output directory");
-		goto err_free_stream;
-	}
-
-	/*
-	 * No need to use run_as API here because whatever we receives, the relayd
-	 * uses its own credentials for the stream files.
-	 */
-	ret = utils_create_stream_file(stream->path_name, stream->channel_name,
-			stream->tracefile_size, 0, relayd_uid, relayd_gid, NULL);
-	if (ret < 0) {
-		ERR("Create output file");
-		goto err_free_stream;
-	}
-	stream->fd = ret;
-	if (stream->tracefile_size) {
-		DBG("Tracefile %s/%s_0 created", stream->path_name, stream->channel_name);
-	} else {
-		DBG("Tracefile %s/%s created", stream->path_name, stream->channel_name);
-	}
-
-	trace = ctf_trace_find_by_path(session->ctf_traces_ht, stream->path_name);
+	trace = ctf_trace_get_by_path_or_create(session, path_name);
 	if (!trace) {
-		trace = ctf_trace_create(stream->path_name);
-		if (!trace) {
-			ret = -1;
-			goto end;
-		}
-		ctf_trace_add(session->ctf_traces_ht, trace);
+		goto send_reply;
 	}
-	ctf_trace_get_ref(trace);
+	/* This stream here has one reference on the trace. */
 
-	if (!strncmp(stream->channel_name, DEFAULT_METADATA_NAME, NAME_MAX)) {
-		stream->metadata_flag = 1;
-		/* Assign quick reference to the metadata stream in the trace. */
-		trace->metadata_stream = stream;
-	}
+	pthread_mutex_lock(&last_relay_stream_id_lock);
+	stream_handle = ++last_relay_stream_id;
+	pthread_mutex_unlock(&last_relay_stream_id_lock);
+
+	/* We pass ownership of path_name and channel_name. */
+	stream = stream_create(trace, stream_handle, path_name,
+			channel_name, tracefile_size, tracefile_count);
+	path_name = NULL;
+	channel_name = NULL;
 
 	/*
-	 * Add the stream in the recv list of the connection. Once the end stream
-	 * message is received, this list is emptied and streams are set with the
-	 * viewer ready flag.
+	 * Streams are the owners of their trace. Reference to trace is
+	 * kept within stream_create().
 	 */
-	queue_stream(stream, conn);
+	ctf_trace_put(trace);
 
-	/*
-	 * Both in the ctf_trace object and the global stream ht since the data
-	 * side of the relayd does not have the concept of session.
-	 */
-	lttng_ht_add_unique_u64(relay_streams_ht, &stream->node);
-	cds_list_add_tail(&stream->trace_list, &trace->stream_list);
-
-	session->stream_count++;
-
-	DBG("Relay new stream added %s with ID %" PRIu64, stream->channel_name,
-			stream->stream_handle);
-
-end:
+send_reply:
 	memset(&reply, 0, sizeof(reply));
-	reply.handle = htobe64(stream->stream_handle);
-	/* send the session id to the client or a negative return code on error */
-	if (ret < 0) {
+	reply.handle = htobe64(stream_handle);
+	if (!stream) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
-		/* stream was not properly added to the ht, so free it */
-		stream_destroy(stream);
 	} else {
 		reply.ret_code = htobe32(LTTNG_OK);
 	}
@@ -1330,23 +1186,19 @@ end:
 			sizeof(struct lttcomm_relayd_status_stream), 0);
 	if (send_ret < 0) {
 		ERR("Relay sending stream id");
-		ret = send_ret;
+		ret = (int) send_ret;
 	}
-	rcu_read_unlock();
 
 end_no_session:
-	return ret;
-
-err_free_stream:
-	stream_destroy(stream);
+	free(path_name);
+	free(channel_name);
 	return ret;
 }
 
 /*
  * relay_close_stream: close a specific stream
  */
-static
-int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret, send_ret;
@@ -1376,24 +1228,36 @@ int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	rcu_read_lock();
-	stream = stream_find_by_id(relay_streams_ht,
-			be64toh(stream_info.stream_id));
+	stream = stream_get_by_id(be64toh(stream_info.stream_id));
 	if (!stream) {
 		ret = -1;
-		goto end_unlock;
+		goto end;
 	}
-
+	pthread_mutex_lock(&stream->lock);
+	stream->closed = true;
 	stream->last_net_seq_num = be64toh(stream_info.last_net_seq_num);
-	stream->close_flag = 1;
-	session->stream_count--;
+	if (stream->is_metadata) {
+		struct relay_viewer_stream *vstream;
 
-	/* Check if we can close it or else the data will do it. */
-	try_close_stream(session, stream);
+		vstream = viewer_stream_get_by_id(stream->stream_handle);
+		if (vstream) {
+			if (vstream->metadata_sent == stream->metadata_received) {
+				/*
+				 * Since all the metadata has been sent to the
+				 * viewer and that we have a request to close
+				 * its stream, we can safely teardown the
+				 * corresponding metadata viewer stream.
+				 */
+				viewer_stream_put(vstream);
+			}
+			/* Put local reference. */
+			viewer_stream_put(vstream);
+		}
+	}
+	pthread_mutex_unlock(&stream->lock);
+	stream_put(stream);
 
-end_unlock:
-	rcu_read_unlock();
-
+end:
 	memset(&reply, 0, sizeof(reply));
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
@@ -1414,8 +1278,7 @@ end_no_session:
 /*
  * relay_unknown_command: send -1 if received unknown command
  */
-static
-void relay_unknown_command(struct relay_connection *conn)
+static void relay_unknown_command(struct relay_connection *conn)
 {
 	struct lttcomm_relayd_generic_reply reply;
 	int ret;
@@ -1433,8 +1296,7 @@ void relay_unknown_command(struct relay_connection *conn)
  * relay_start: send an acknowledgment to the client to tell if we are
  * ready to receive data. We are ready if a session is established.
  */
-static
-int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_start(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret = htobe32(LTTNG_OK);
@@ -1488,10 +1350,9 @@ end:
 }
 
 /*
- * relay_recv_metadata: receive the metada for the session.
+ * relay_recv_metadata: receive the metadata for the session.
  */
-static
-int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret = htobe32(LTTNG_OK);
@@ -1500,7 +1361,6 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_metadata_payload *metadata_struct;
 	struct relay_stream *metadata_stream;
 	uint64_t data_size, payload_size;
-	struct ctf_trace *ctf_trace;
 
 	if (!session) {
 		ERR("Metadata sent before version check");
@@ -1545,38 +1405,37 @@ int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	metadata_struct = (struct lttcomm_relayd_metadata_payload *) data_buffer;
 
-	rcu_read_lock();
-	metadata_stream = stream_find_by_id(relay_streams_ht,
-			be64toh(metadata_struct->stream_id));
+	metadata_stream = stream_get_by_id(be64toh(metadata_struct->stream_id));
 	if (!metadata_stream) {
 		ret = -1;
-		goto end_unlock;
+		goto end;
 	}
 
-	size_ret = lttng_write(metadata_stream->fd, metadata_struct->payload,
+	pthread_mutex_lock(&metadata_stream->lock);
+
+	size_ret = lttng_write(metadata_stream->stream_fd->fd, metadata_struct->payload,
 			payload_size);
 	if (size_ret < payload_size) {
 		ERR("Relay error writing metadata on file");
 		ret = -1;
-		goto end_unlock;
+		goto end_put;
 	}
 
-	ret = write_padding_to_file(metadata_stream->fd,
+	ret = write_padding_to_file(metadata_stream->stream_fd->fd,
 			be32toh(metadata_struct->padding_size));
 	if (ret < 0) {
-		goto end_unlock;
+		goto end_put;
 	}
 
-	ctf_trace = ctf_trace_find_by_path(session->ctf_traces_ht,
-			metadata_stream->path_name);
-	assert(ctf_trace);
-	ctf_trace->metadata_received +=
+	metadata_stream->metadata_received +=
 		payload_size + be32toh(metadata_struct->padding_size);
+	DBG2("Relay metadata written. Updated metadata_received %" PRIu64,
+		metadata_stream->metadata_received);
 
-	DBG2("Relay metadata written");
+end_put:
+	pthread_mutex_unlock(&metadata_stream->lock);
+	stream_put(metadata_stream);
 
-end_unlock:
-	rcu_read_unlock();
 end:
 	return ret;
 }
@@ -1584,14 +1443,11 @@ end:
 /*
  * relay_send_version: send relayd version number
  */
-static
-int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret;
 	struct lttcomm_relayd_version reply, msg;
-
-	assert(conn);
 
 	conn->version_check_done = 1;
 
@@ -1616,7 +1472,7 @@ int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	if (reply.major != be32toh(msg.major)) {
 		DBG("Incompatible major versions (%u vs %u), deleting session",
 				reply.major, be32toh(msg.major));
-		destroy_session(conn->session, conn->sessions_ht);
+		connection_put(conn);
 		ret = 0;
 		goto end;
 	}
@@ -1647,8 +1503,7 @@ end:
 /*
  * Check for data pending for a given stream id from the session daemon.
  */
-static
-int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	struct relay_session *session = conn->session;
@@ -1682,12 +1537,13 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	stream_id = be64toh(msg.stream_id);
 	last_net_seq_num = be64toh(msg.last_net_seq_num);
 
-	rcu_read_lock();
-	stream = stream_find_by_id(relay_streams_ht, stream_id);
+	stream = stream_get_by_id(stream_id);
 	if (stream == NULL) {
 		ret = -1;
-		goto end_unlock;
+		goto end;
 	}
+
+	pthread_mutex_lock(&stream->lock);
 
 	DBG("Data pending for stream id %" PRIu64 " prev_seq %" PRIu64
 			" and last_seq %" PRIu64, stream_id, stream->prev_seq,
@@ -1702,11 +1558,11 @@ int relay_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = 1;
 	}
 
-	/* Pending check is now done. */
-	stream->data_pending_check_done = 1;
+	stream->data_pending_check_done = true;
+	pthread_mutex_unlock(&stream->lock);
 
-end_unlock:
-	rcu_read_unlock();
+	stream_put(stream);
+end:
 
 	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(ret);
@@ -1722,18 +1578,17 @@ end_no_session:
 /*
  * Wait for the control socket to reach a quiescent state.
  *
- * Note that for now, when receiving this command from the session daemon, this
- * means that every subsequent commands or data received on the control socket
- * has been handled. So, this is why we simply return OK here.
+ * Note that for now, when receiving this command from the session
+ * daemon, this means that every subsequent commands or data received on
+ * the control socket has been handled. So, this is why we simply return
+ * OK here.
  */
-static
-int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret;
 	uint64_t stream_id;
 	struct relay_stream *stream;
-	struct lttng_ht_iter iter;
 	struct lttcomm_relayd_quiescent_control msg;
 	struct lttcomm_relayd_generic_reply reply;
 
@@ -1759,19 +1614,16 @@ int relay_quiescent_control(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	stream_id = be64toh(msg.stream_id);
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, stream,
-			node.node) {
-		if (stream->stream_handle == stream_id) {
-			stream->data_pending_check_done = 1;
-			DBG("Relay quiescent control pending flag set to %" PRIu64,
-					stream_id);
-			break;
-		}
+	stream = stream_get_by_id(stream_id);
+	if (!stream) {
+		goto reply;
 	}
-	rcu_read_unlock();
-
+	pthread_mutex_lock(&stream->lock);
+	stream->data_pending_check_done = true;
+	pthread_mutex_unlock(&stream->lock);
+	DBG("Relay quiescent control pending flag set to %" PRIu64, stream_id);
+	stream_put(stream);
+reply:
 	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(LTTNG_OK);
 	ret = conn->sock->ops->sendmsg(conn->sock, &reply, sizeof(reply), 0);
@@ -1784,14 +1636,13 @@ end_no_session:
 }
 
 /*
- * Initialize a data pending command. This means that a client is about to ask
- * for data pending for each stream he/she holds. Simply iterate over all
- * streams of a session and set the data_pending_check_done flag.
+ * Initialize a data pending command. This means that a consumer is about
+ * to ask for data pending for each stream it holds. Simply iterate over
+ * all streams of a session and set the data_pending_check_done flag.
  *
  * This command returns to the client a LTTNG_OK code.
  */
-static
-int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret;
@@ -1828,18 +1679,25 @@ int relay_begin_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	session_id = be64toh(msg.session_id);
 
 	/*
-	 * Iterate over all streams to set the begin data pending flag. For now, the
-	 * streams are indexed by stream handle so we have to iterate over all
-	 * streams to find the one associated with the right session_id.
+	 * Iterate over all streams to set the begin data pending flag.
+	 * For now, the streams are indexed by stream handle so we have
+	 * to iterate over all streams to find the one associated with
+	 * the right session_id.
 	 */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, stream,
 			node.node) {
-		if (stream->session_id == session_id) {
-			stream->data_pending_check_done = 0;
+		if (!stream_get(stream)) {
+			continue;
+		}
+		if (stream->trace->session->id == session_id) {
+			pthread_mutex_lock(&stream->lock);
+			stream->data_pending_check_done = false;
+			pthread_mutex_unlock(&stream->lock);
 			DBG("Set begin data pending flag to stream %" PRIu64,
 					stream->stream_handle);
 		}
+		stream_put(stream);
 	}
 	rcu_read_unlock();
 
@@ -1857,16 +1715,15 @@ end_no_session:
 }
 
 /*
- * End data pending command. This will check, for a given session id, if each
- * stream associated with it has its data_pending_check_done flag set. If not,
- * this means that the client lost track of the stream but the data is still
- * being streamed on our side. In this case, we inform the client that data is
- * inflight.
+ * End data pending command. This will check, for a given session id, if
+ * each stream associated with it has its data_pending_check_done flag
+ * set. If not, this means that the client lost track of the stream but
+ * the data is still being streamed on our side. In this case, we inform
+ * the client that data is in flight.
  *
  * Return to the client if there is data in flight or not with a ret_code.
  */
-static
-int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret;
@@ -1876,9 +1733,6 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	struct relay_stream *stream;
 	uint64_t session_id;
 	uint32_t is_data_inflight = 0;
-
-	assert(recv_hdr);
-	assert(conn);
 
 	DBG("End data pending command");
 
@@ -1903,17 +1757,33 @@ int relay_end_data_pending(struct lttcomm_relayd_hdr *recv_hdr,
 
 	session_id = be64toh(msg.session_id);
 
-	/* Iterate over all streams to see if the begin data pending flag is set. */
+	/*
+	 * Iterate over all streams to see if the begin data pending
+	 * flag is set.
+	 */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, stream,
 			node.node) {
-		if (stream->session_id == session_id &&
-				!stream->data_pending_check_done && !stream->terminated_flag) {
-			is_data_inflight = 1;
-			DBG("Data is still in flight for stream %" PRIu64,
-					stream->stream_handle);
-			break;
+		if (!stream_get(stream)) {
+			continue;
 		}
+		if (stream->trace->session->id != session_id) {
+			stream_put(stream);
+			continue;
+		}
+		pthread_mutex_lock(&stream->lock);
+		if (!stream->data_pending_check_done) {
+			if (!stream->closed || !(((int64_t) (stream->prev_seq - stream->last_net_seq_num)) >= 0)) {
+				is_data_inflight = 1;
+				DBG("Data is still in flight for stream %" PRIu64,
+						stream->stream_handle);
+				pthread_mutex_unlock(&stream->lock);
+				stream_put(stream);
+				break;
+			}
+		}
+		pthread_mutex_unlock(&stream->lock);
+		stream_put(stream);
 	}
 	rcu_read_unlock();
 
@@ -1935,14 +1805,13 @@ end_no_session:
  *
  * Return 0 on success else a negative value.
  */
-static
-int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
-	int ret, send_ret, index_created = 0;
+	int ret, send_ret;
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_index index_info;
-	struct relay_index *index, *wr_index = NULL;
+	struct relay_index *index;
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	uint64_t net_seq_num;
@@ -1972,76 +1841,66 @@ int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 
 	net_seq_num = be64toh(index_info.net_seq_num);
 
-	rcu_read_lock();
-	stream = stream_find_by_id(relay_streams_ht,
-			be64toh(index_info.relay_stream_id));
+	stream = stream_get_by_id(be64toh(index_info.relay_stream_id));
 	if (!stream) {
+		ERR("stream_get_by_id not found");
 		ret = -1;
-		goto end_rcu_unlock;
+		goto end;
 	}
+	pthread_mutex_lock(&stream->lock);
 
 	/* Live beacon handling */
 	if (index_info.packet_size == 0) {
-		DBG("Received live beacon for stream %" PRIu64, stream->stream_handle);
+		DBG("Received live beacon for stream %" PRIu64,
+				stream->stream_handle);
 
 		/*
-		 * Only flag a stream inactive when it has already received data
-		 * and no indexes are in flight.
+		 * Only flag a stream inactive when it has already
+		 * received data and no indexes are in flight.
 		 */
-		if (stream->total_index_received > 0 && stream->indexes_in_flight == 0) {
-			stream->beacon_ts_end = be64toh(index_info.timestamp_end);
+		if (stream->total_index_received > 0
+				&& stream->indexes_in_flight == 0) {
+			stream->beacon_ts_end =
+				be64toh(index_info.timestamp_end);
 		}
 		ret = 0;
-		goto end_rcu_unlock;
+		goto end_stream_put;
 	} else {
 		stream->beacon_ts_end = -1ULL;
 	}
 
-	index = relay_index_find(stream->stream_handle, net_seq_num);
-	if (!index) {
-		/* A successful creation will add the object to the HT. */
-		index = relay_index_create(stream->stream_handle, net_seq_num);
-		if (!index) {
-			goto end_rcu_unlock;
-		}
-		index_created = 1;
-		stream->indexes_in_flight++;
-	}
-
-	copy_index_control_data(index, &index_info);
 	if (stream->ctf_stream_id == -1ULL) {
 		stream->ctf_stream_id = be64toh(index_info.stream_id);
 	}
-
-	if (index_created) {
-		/*
-		 * Try to add the relay index object to the hash table. If an object
-		 * already exist, destroy back the index created, set the data in this
-		 * object and write it on disk.
-		 */
-		relay_index_add(index, &wr_index);
-		if (wr_index) {
-			copy_index_control_data(wr_index, &index_info);
-			free(index);
-		}
-	} else {
-		/* The index already exists so write it on disk. */
-		wr_index = index;
+	index = relay_index_get_by_id_or_create(stream, net_seq_num);
+	if (!index) {
+		ret = -1;
+		ERR("relay_index_get_by_id_or_create index NULL");
+		goto end_stream_put;
 	}
-
-	/* Do we have a writable ready index to write on disk. */
-	if (wr_index) {
-		ret = relay_index_write(wr_index->fd, wr_index);
-		if (ret < 0) {
-			goto end_rcu_unlock;
-		}
+	if (set_index_control_data(index, &index_info)) {
+		ERR("set_index_control_data error");
+		relay_index_put(index);
+		ret = -1;
+		goto end_stream_put;
+	}
+	ret = relay_index_try_flush(index);
+	if (ret == 0) {
 		stream->total_index_received++;
-		stream->indexes_in_flight--;
-		assert(stream->indexes_in_flight >= 0);
+	} else if (ret > 0) {
+		/* no flush. */
+		ret = 0;
+	} else {
+		ERR("relay_index_try_flush error %d", ret);
+		relay_index_put(index);
+		ret = -1;
 	}
 
-end_rcu_unlock:
-	rcu_read_unlock();
+end_stream_put:
+	pthread_mutex_unlock(&stream->lock);
+	stream_put(stream);
+
+end:
 
 	memset(&reply, 0, sizeof(reply));
 	if (ret < 0) {
@@ -2064,8 +1923,7 @@ end_no_session:
  *
  * Return 0 on success else a negative value.
  */
-static
-int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret, send_ret;
@@ -2082,17 +1940,10 @@ int relay_streams_sent(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	/*
-	 * Flag every pending stream in the connection recv list that they are
-	 * ready to be used by the viewer.
+	 * Publish every pending stream in the connection recv list which are
+	 * now ready to be used by the viewer.
 	 */
-	set_viewer_ready_flag(conn);
-
-	/*
-	 * Inform the viewer that there are new streams in the session.
-	 */
-	if (conn->session->viewer_refcount) {
-		uatomic_set(&conn->session->new_streams, 1);
-	}
+	publish_connection_local_streams(conn);
 
 	memset(&reply, 0, sizeof(reply));
 	reply.ret_code = htobe32(LTTNG_OK);
@@ -2112,8 +1963,7 @@ end_no_session:
 /*
  * Process the commands received on the control socket
  */
-static
-int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret = 0;
@@ -2170,93 +2020,91 @@ end:
 /*
  * Handle index for a data stream.
  *
- * RCU read side lock MUST be acquired.
+ * Called with the stream lock held.
  *
  * Return 0 on success else a negative value.
  */
 static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 		int rotate_index)
 {
-	int ret = 0, index_created = 0;
-	uint64_t stream_id, data_offset;
-	struct relay_index *index, *wr_index = NULL;
+	int ret = 0;
+	uint64_t data_offset;
+	struct relay_index *index;
 
-	assert(stream);
-
-	stream_id = stream->stream_handle;
 	/* Get data offset because we are about to update the index. */
 	data_offset = htobe64(stream->tracefile_size_current);
 
+	DBG("handle_index_data: stream %" PRIu64 " data offset %" PRIu64,
+		stream->stream_handle, stream->tracefile_size_current);
+
 	/*
-	 * Lookup for an existing index for that stream id/sequence number. If on
-	 * exists, the control thread already received the data for it thus we need
-	 * to write it on disk.
+	 * Lookup for an existing index for that stream id/sequence
+	 * number. If it exists, the control thread has already received the
+	 * data for it, thus we need to write it to disk.
 	 */
-	index = relay_index_find(stream_id, net_seq_num);
+	index = relay_index_get_by_id_or_create(stream, net_seq_num);
 	if (!index) {
-		/* A successful creation will add the object to the HT. */
-		index = relay_index_create(stream_id, net_seq_num);
-		if (!index) {
+		ret = -1;
+		goto end;
+	}
+
+	if (rotate_index || !stream->index_fd) {
+		int fd;
+
+		/* Put ref on previous index_fd. */
+		if (stream->index_fd) {
+			stream_fd_put(stream->index_fd);
+			stream->index_fd = NULL;
+		}
+
+		fd = index_create_file(stream->path_name, stream->channel_name,
+			        -1, -1, stream->tracefile_size,
+				stream->current_tracefile_id);
+		if (fd < 0) {
 			ret = -1;
-			goto error;
+			/* Put self-ref for this index due to error. */
+			relay_index_put(index);
+			goto end;
 		}
-		index_created = 1;
-		stream->indexes_in_flight++;
+		stream->index_fd = stream_fd_create(fd);
+		if (!stream->index_fd) {
+			ret = -1;
+			if (close(fd)) {
+				PERROR("Error closing FD %d", fd);
+			}
+			/* Put self-ref for this index due to error. */
+			relay_index_put(index);
+			/* Will put the local ref. */
+			goto end;
+		}
 	}
 
-	if (rotate_index || stream->index_fd < 0) {
-		index->to_close_fd = stream->index_fd;
-		ret = index_create_file(stream->path_name, stream->channel_name,
-				relayd_uid, relayd_gid, stream->tracefile_size,
-				stream->tracefile_count_current);
-		if (ret < 0) {
-			/* This will close the stream's index fd if one. */
-			relay_index_free_safe(index);
-			goto error;
-		}
-		stream->index_fd = ret;
-	}
-	index->fd = stream->index_fd;
-	index->index_data.offset = data_offset;
-
-	if (index_created) {
-		/*
-		 * Try to add the relay index object to the hash table. If an object
-		 * already exist, destroy back the index created and set the data.
-		 */
-		relay_index_add(index, &wr_index);
-		if (wr_index) {
-			/* Copy back data from the created index. */
-			wr_index->fd = index->fd;
-			wr_index->to_close_fd = index->to_close_fd;
-			wr_index->index_data.offset = data_offset;
-			free(index);
-		}
-	} else {
-		/* The index already exists so write it on disk. */
-		wr_index = index;
+	if (relay_index_set_fd(index, stream->index_fd, data_offset)) {
+		ret = -1;
+		/* Put self-ref for this index due to error. */
+		relay_index_put(index);
+		goto end;
 	}
 
-	/* Do we have a writable ready index to write on disk. */
-	if (wr_index) {
-		ret = relay_index_write(wr_index->fd, wr_index);
-		if (ret < 0) {
-			goto error;
-		}
+	ret = relay_index_try_flush(index);
+	if (ret == 0) {
 		stream->total_index_received++;
-		stream->indexes_in_flight--;
-		assert(stream->indexes_in_flight >= 0);
+	} else if (ret > 0) {
+		/* No flush. */
+		ret = 0;
+	} else {
+		/* Put self-ref for this index due to error. */
+		relay_index_put(index);
+		ret = -1;
 	}
-
-error:
+end:
 	return ret;
 }
 
 /*
  * relay_process_data: Process the data received on the data socket
  */
-static
-int relay_process_data(struct relay_connection *conn)
+static int relay_process_data(struct relay_connection *conn)
 {
 	int ret = 0, rotate_index = 0;
 	ssize_t size_ret;
@@ -2266,8 +2114,6 @@ int relay_process_data(struct relay_connection *conn)
 	uint64_t net_seq_num;
 	uint32_t data_size;
 	struct relay_session *session;
-
-	assert(conn);
 
 	ret = conn->sock->ops->recvmsg(conn->sock, &data_hdr,
 			sizeof(struct lttcomm_relayd_data_hdr), 0);
@@ -2283,17 +2129,12 @@ int relay_process_data(struct relay_connection *conn)
 	}
 
 	stream_id = be64toh(data_hdr.stream_id);
-
-	rcu_read_lock();
-	stream = stream_find_by_id(relay_streams_ht, stream_id);
+	stream = stream_get_by_id(stream_id);
 	if (!stream) {
 		ret = -1;
-		goto end_rcu_unlock;
+		goto end;
 	}
-
-	session = session_find_by_id(conn->sessions_ht, stream->session_id);
-	assert(session);
-
+	session = stream->trace->session;
 	data_size = be32toh(data_hdr.data_size);
 	if (data_buffer_size < data_size) {
 		char *tmp_data_ptr;
@@ -2303,7 +2144,7 @@ int relay_process_data(struct relay_connection *conn)
 			ERR("Allocating data buffer");
 			free(data_buffer);
 			ret = -1;
-			goto end_rcu_unlock;
+			goto end_stream_put;
 		}
 		data_buffer = tmp_data_ptr;
 		data_buffer_size = data_size;
@@ -2321,113 +2162,94 @@ int relay_process_data(struct relay_connection *conn)
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		}
 		ret = -1;
-		goto end_rcu_unlock;
+		goto end_stream_put;
 	}
+
+	pthread_mutex_lock(&stream->lock);
 
 	/* Check if a rotation is needed. */
 	if (stream->tracefile_size > 0 &&
 			(stream->tracefile_size_current + data_size) >
 			stream->tracefile_size) {
-		struct relay_viewer_stream *vstream;
 		uint64_t new_id;
 
-		new_id = (stream->tracefile_count_current + 1) %
+		new_id = (stream->current_tracefile_id + 1) %
 			stream->tracefile_count;
 		/*
-		 * When we wrap-around back to 0, we start overwriting old
-		 * trace data.
+		 * Move viewer oldest available data position forward if
+		 * we are overwriting a tracefile.
 		 */
-		if (!stream->tracefile_overwrite && new_id == 0) {
-			stream->tracefile_overwrite = 1;
-		}
-		pthread_mutex_lock(&stream->viewer_stream_rotation_lock);
-		if (stream->tracefile_overwrite) {
+		if (new_id == stream->oldest_tracefile_id) {
 			stream->oldest_tracefile_id =
 				(stream->oldest_tracefile_id + 1) %
 				stream->tracefile_count;
 		}
-		vstream = viewer_stream_find_by_id(stream->stream_handle);
-		if (vstream) {
-			/*
-			 * The viewer is reading a file about to be
-			 * overwritten. Close the FDs it is
-			 * currently using and let it handle the fault.
-			 */
-			if (vstream->tracefile_count_current == new_id) {
-				pthread_mutex_lock(&vstream->overwrite_lock);
-				vstream->abort_flag = 1;
-				pthread_mutex_unlock(&vstream->overwrite_lock);
-				DBG("Streaming side setting abort_flag on stream %s_%" PRIu64 "\n",
-						stream->channel_name, new_id);
-			} else if (vstream->tracefile_count_current ==
-					stream->tracefile_count_current) {
-				/*
-				 * The reader and writer were in the
-				 * same trace file, inform the viewer
-				 * that no new index will ever be added
-				 * to this file.
-				 */
-				vstream->close_write_flag = 1;
-			}
-		}
-		ret = utils_rotate_stream_file(stream->path_name, stream->channel_name,
-				stream->tracefile_size, stream->tracefile_count,
-				relayd_uid, relayd_gid, stream->fd,
-				&(stream->tracefile_count_current), &stream->fd);
-		pthread_mutex_unlock(&stream->viewer_stream_rotation_lock);
+		ret = utils_rotate_stream_file(stream->path_name,
+				stream->channel_name, stream->tracefile_size,
+				stream->tracefile_count, -1,
+			        -1, stream->stream_fd->fd,
+				&stream->current_tracefile_id,
+				&stream->stream_fd->fd);
 		if (ret < 0) {
 			ERR("Rotating stream output file");
-			goto end_rcu_unlock;
+			goto end_stream_unlock;
 		}
-		/* Reset current size because we just perform a stream rotation. */
+		stream->current_tracefile_seq++;
+		if (stream->current_tracefile_seq
+			- stream->oldest_tracefile_seq >=
+				stream->tracefile_count) {
+			stream->oldest_tracefile_seq++;
+		}
+		/*
+		 * Reset current size because we just performed a stream
+		 * rotation.
+		 */
 		stream->tracefile_size_current = 0;
 		rotate_index = 1;
 	}
 
 	/*
-	 * Index are handled in protocol version 2.4 and above. Also, snapshot and
-	 * index are NOT supported.
+	 * Index are handled in protocol version 2.4 and above. Also,
+	 * snapshot and index are NOT supported.
 	 */
 	if (session->minor >= 4 && !session->snapshot) {
 		ret = handle_index_data(stream, net_seq_num, rotate_index);
 		if (ret < 0) {
-			goto end_rcu_unlock;
+			goto end_stream_unlock;
 		}
 	}
 
 	/* Write data to stream output fd. */
-	size_ret = lttng_write(stream->fd, data_buffer, data_size);
+	size_ret = lttng_write(stream->stream_fd->fd, data_buffer, data_size);
 	if (size_ret < data_size) {
 		ERR("Relay error writing data to file");
 		ret = -1;
-		goto end_rcu_unlock;
+		goto end_stream_unlock;
 	}
 
-	DBG2("Relay wrote %d bytes to tracefile for stream id %" PRIu64,
-			ret, stream->stream_handle);
+	DBG2("Relay wrote %zd bytes to tracefile for stream id %" PRIu64,
+			size_ret, stream->stream_handle);
 
-	ret = write_padding_to_file(stream->fd, be32toh(data_hdr.padding_size));
+	ret = write_padding_to_file(stream->stream_fd->fd,
+			be32toh(data_hdr.padding_size));
 	if (ret < 0) {
-		goto end_rcu_unlock;
+		goto end_stream_unlock;
 	}
-	stream->tracefile_size_current += data_size + be32toh(data_hdr.padding_size);
-
+	stream->tracefile_size_current +=
+			data_size + be32toh(data_hdr.padding_size);
 	stream->prev_seq = net_seq_num;
 
-	try_close_stream(session, stream);
-
-end_rcu_unlock:
-	rcu_read_unlock();
+end_stream_unlock:
+	pthread_mutex_unlock(&stream->lock);
+end_stream_put:
+	stream_put(stream);
 end:
 	return ret;
 }
 
-static
-void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
+static void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 {
 	int ret;
-
-	assert(events);
 
 	(void) lttng_poll_del(events, pollfd);
 
@@ -2437,27 +2259,36 @@ void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 	}
 }
 
-static void destroy_connection(struct lttng_ht *relay_connections_ht,
-		struct relay_connection *conn)
+static void relay_thread_close_connection(struct lttng_poll_event *events,
+		int pollfd, struct relay_connection *conn)
 {
-	assert(relay_connections_ht);
-	assert(conn);
+	const char *type_str;
 
-	connection_delete(relay_connections_ht, conn);
-
-	/* For the control socket, we try to destroy the session. */
-	if (conn->type == RELAY_CONTROL && conn->session) {
-		destroy_session(conn->session, conn->sessions_ht);
+	switch (conn->type) {
+	case RELAY_DATA:
+		type_str = "Data";
+		break;
+	case RELAY_CONTROL:
+		type_str = "Control";
+		break;
+	case RELAY_VIEWER_COMMAND:
+		type_str = "Viewer Command";
+		break;
+	case RELAY_VIEWER_NOTIFICATION:
+		type_str = "Viewer Notification";
+		break;
+	default:
+		type_str = "Unknown";
 	}
-
-	connection_destroy(conn);
+	cleanup_connection_pollfd(events, pollfd);
+	connection_put(conn);
+	DBG("%s connection closed with %d", type_str, pollfd);
 }
 
 /*
  * This thread does the actual work
  */
-static
-void *relay_thread_worker(void *data)
+static void *relay_thread_worker(void *data)
 {
 	int ret, err = -1, last_seen_data_fd = -1;
 	uint32_t nb_fd;
@@ -2466,9 +2297,7 @@ void *relay_thread_worker(void *data)
 	struct lttng_ht *relay_connections_ht;
 	struct lttng_ht_iter iter;
 	struct lttcomm_relayd_hdr recv_hdr;
-	struct relay_local_data *relay_ctx = (struct relay_local_data *) data;
-	struct lttng_ht *sessions_ht = relay_ctx->sessions_ht;
-	struct relay_index *index;
+	struct relay_connection *destroy_conn = NULL;
 
 	DBG("[thread] Relay worker started");
 
@@ -2486,12 +2315,6 @@ void *relay_thread_worker(void *data)
 	relay_connections_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!relay_connections_ht) {
 		goto relay_connections_ht_error;
-	}
-
-	/* Tables of received indexes indexed by index handle and net_seq_num. */
-	indexes_ht = lttng_ht_new(0, LTTNG_HT_TYPE_TWO_U64);
-	if (!indexes_ht) {
-		goto indexes_ht_error;
 	}
 
 	ret = create_thread_poll_set(&events, 2);
@@ -2528,9 +2351,9 @@ restart:
 		nb_fd = ret;
 
 		/*
-		 * Process control. The control connection is prioritised so we don't
-		 * starve it with high throughout put tracing data on the data
-		 * connection.
+		 * Process control. The control connection is
+		 * prioritized so we don't starve it with high
+		 * throughput tracing data on the data connection.
 		 */
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -2540,7 +2363,10 @@ restart:
 			health_code_update();
 
 			if (!revents) {
-				/* No activity for this FD (poll implementation). */
+				/*
+				 * No activity for this FD (poll
+				 * implementation).
+				 */
 				continue;
 			}
 
@@ -2553,56 +2379,33 @@ restart:
 
 			/* Inspect the relay conn pipe for new connection */
 			if (pollfd == relay_conn_pipe[0]) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Relay connection pipe error");
-					goto error;
-				} else if (revents & LPOLLIN) {
+				if (revents & LPOLLIN) {
+					struct relay_connection *conn;
+
 					ret = lttng_read(relay_conn_pipe[0], &conn, sizeof(conn));
 					if (ret < 0) {
 						goto error;
 					}
-					conn->sessions_ht = sessions_ht;
-					connection_init(conn);
 					lttng_poll_add(&events, conn->sock->fd,
 							LPOLLIN | LPOLLRDHUP);
-					rcu_read_lock();
-					lttng_ht_add_unique_ulong(relay_connections_ht,
-							&conn->sock_n);
-					rcu_read_unlock();
+					connection_ht_add(relay_connections_ht, conn);
 					DBG("Connection socket %d added", conn->sock->fd);
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					ERR("Relay connection pipe error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 			} else {
-				rcu_read_lock();
-				conn = connection_find_by_sock(relay_connections_ht, pollfd);
-				/* If not found, there is a synchronization issue. */
-				assert(conn);
+				struct relay_connection *ctrl_conn;
 
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					cleanup_connection_pollfd(&events, pollfd);
-					destroy_connection(relay_connections_ht, conn);
-					if (last_seen_data_fd == pollfd) {
-						last_seen_data_fd = last_notdel_data_fd;
-					}
-				} else if (revents & LPOLLIN) {
-					if (conn->type == RELAY_CONTROL) {
-						ret = conn->sock->ops->recvmsg(conn->sock, &recv_hdr,
-								sizeof(recv_hdr), 0);
-						if (ret <= 0) {
-							/* Connection closed */
-							cleanup_connection_pollfd(&events, pollfd);
-							destroy_connection(relay_connections_ht, conn);
-							DBG("Control connection closed with %d", pollfd);
-						} else {
-							ret = relay_process_control(&recv_hdr, conn);
-							if (ret < 0) {
-								/* Clear the session on error. */
-								cleanup_connection_pollfd(&events, pollfd);
-								destroy_connection(relay_connections_ht, conn);
-								DBG("Connection closed with %d", pollfd);
-							}
-							seen_control = 1;
-						}
-					} else {
+				ctrl_conn = connection_get_by_sock(relay_connections_ht, pollfd);
+				/* If not found, there is a synchronization issue. */
+				assert(ctrl_conn);
+
+				if (ctrl_conn->type == RELAY_DATA) {
+					if (revents & LPOLLIN) {
 						/*
 						 * Flag the last seen data fd not deleted. It will be
 						 * used as the last seen fd if any fd gets deleted in
@@ -2610,10 +2413,40 @@ restart:
 						 */
 						last_notdel_data_fd = pollfd;
 					}
-				} else {
-					ERR("Unknown poll events %u for sock %d", revents, pollfd);
+					goto put_ctrl_connection;
 				}
-				rcu_read_unlock();
+				assert(ctrl_conn->type == RELAY_CONTROL);
+
+				if (revents & LPOLLIN) {
+					ret = ctrl_conn->sock->ops->recvmsg(ctrl_conn->sock,
+							&recv_hdr, sizeof(recv_hdr), 0);
+					if (ret <= 0) {
+						/* Connection closed */
+						relay_thread_close_connection(&events, pollfd,
+								ctrl_conn);
+					} else {
+						ret = relay_process_control(&recv_hdr, ctrl_conn);
+						if (ret < 0) {
+							/* Clear the session on error. */
+							relay_thread_close_connection(&events,
+									pollfd, ctrl_conn);
+						}
+						seen_control = 1;
+					}
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					relay_thread_close_connection(&events,
+							pollfd, ctrl_conn);
+					if (last_seen_data_fd == pollfd) {
+						last_seen_data_fd = last_notdel_data_fd;
+					}
+				} else {
+					ERR("Unexpected poll events %u for control sock %d",
+							revents, pollfd);
+					connection_put(ctrl_conn);
+					goto error;
+				}
+			put_ctrl_connection:
+				connection_put(ctrl_conn);
 			}
 		}
 
@@ -2643,6 +2476,7 @@ restart:
 			/* Fetch the poll data. */
 			uint32_t revents = LTTNG_POLL_GETEV(&events, i);
 			int pollfd = LTTNG_POLL_GETFD(&events, i);
+			struct relay_connection *data_conn;
 
 			health_code_update();
 
@@ -2656,26 +2490,22 @@ restart:
 				continue;
 			}
 
-			rcu_read_lock();
-			conn = connection_find_by_sock(relay_connections_ht, pollfd);
-			if (!conn) {
+			data_conn = connection_get_by_sock(relay_connections_ht, pollfd);
+			if (!data_conn) {
 				/* Skip it. Might be removed before. */
-				rcu_read_unlock();
 				continue;
 			}
+			if (data_conn->type == RELAY_CONTROL) {
+				goto put_data_connection;
+			}
+			assert(data_conn->type == RELAY_DATA);
 
 			if (revents & LPOLLIN) {
-				if (conn->type != RELAY_DATA) {
-					rcu_read_unlock();
-					continue;
-				}
-
-				ret = relay_process_data(conn);
+				ret = relay_process_data(data_conn);
 				/* Connection closed */
 				if (ret < 0) {
-					cleanup_connection_pollfd(&events, pollfd);
-					destroy_connection(relay_connections_ht, conn);
-					DBG("Data connection closed with %d", pollfd);
+					relay_thread_close_connection(&events, pollfd,
+							data_conn);
 					/*
 					 * Every goto restart call sets the last seen fd where
 					 * here we don't really care since we gracefully
@@ -2684,11 +2514,18 @@ restart:
 				} else {
 					/* Keep last seen port. */
 					last_seen_data_fd = pollfd;
-					rcu_read_unlock();
+					connection_put(data_conn);
 					goto restart;
 				}
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				relay_thread_close_connection(&events, pollfd,
+						data_conn);
+			} else {
+				ERR("Unknown poll events %u for data sock %d",
+						revents, pollfd);
 			}
-			rcu_read_unlock();
+		put_data_connection:
+			connection_put(data_conn);
 		}
 		last_seen_data_fd = -1;
 	}
@@ -2698,27 +2535,23 @@ restart:
 
 exit:
 error:
-	lttng_poll_clean(&events);
-
 	/* Cleanup reamaining connection object. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter, conn,
+	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter,
+			destroy_conn,
 			sock_n.node) {
 		health_code_update();
-		destroy_connection(relay_connections_ht, conn);
+		/*
+		 * No need to grab another ref, because we own
+		 * destroy_conn.
+		 */
+		relay_thread_close_connection(&events, destroy_conn->sock->fd,
+				destroy_conn);
 	}
 	rcu_read_unlock();
+
+	lttng_poll_clean(&events);
 error_poll_create:
-	rcu_read_lock();
-	cds_lfht_for_each_entry(indexes_ht->ht, &iter.iter, index,
-			index_n.node) {
-		health_code_update();
-		relay_index_delete(index);
-		relay_index_free_safe(index);
-	}
-	rcu_read_unlock();
-	lttng_ht_destroy(indexes_ht);
-indexes_ht_error:
 	lttng_ht_destroy(relay_connections_ht);
 relay_connections_ht_error:
 	/* Close relay conn pipes */
@@ -2759,7 +2592,6 @@ int main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
 	void *status;
-	struct relay_local_data *relay_ctx = NULL;
 
 	/* Parse arguments */
 	progname = argv[0];
@@ -2826,12 +2658,8 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
-	/* We need those values for the file/dir creation. */
-	relayd_uid = getuid();
-	relayd_gid = getgid();
-
 	/* Check if daemon is UID = 0 */
-	if (relayd_uid == 0) {
+	if (!getuid()) {
 		if (control_uri->port < 1024 || data_uri->port < 1024 || live_uri->port < 1024) {
 			ERR("Need to be root to use ports < 1024");
 			retval = -1;
@@ -2855,16 +2683,9 @@ int main(int argc, char **argv)
 	lttcomm_init();
 	lttcomm_inet_init();
 
-	relay_ctx = zmalloc(sizeof(struct relay_local_data));
-	if (!relay_ctx) {
-		PERROR("relay_ctx");
-		retval = -1;
-		goto exit_init_data;
-	}
-
 	/* tables of sessions indexed by session ID */
-	relay_ctx->sessions_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!relay_ctx->sessions_ht) {
+	sessions_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!sessions_ht) {
 		retval = -1;
 		goto exit_init_data;
 	}
@@ -2911,7 +2732,7 @@ int main(int argc, char **argv)
 
 	/* Setup the worker thread */
 	ret = pthread_create(&worker_thread, NULL,
-			relay_thread_worker, (void *) relay_ctx);
+			relay_thread_worker, NULL);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create worker");
@@ -2929,7 +2750,7 @@ int main(int argc, char **argv)
 		goto exit_listener_thread;
 	}
 
-	ret = relayd_live_create(live_uri, relay_ctx);
+	ret = relayd_live_create(live_uri);
 	if (ret) {
 		ERR("Starting live viewer threads");
 		retval = -1;
@@ -2986,7 +2807,10 @@ exit_init_data:
 	health_app_destroy(health_relayd);
 exit_health_app_create:
 exit_options:
-	relayd_cleanup(relay_ctx);
+	relayd_cleanup();
+
+	/* Ensure all prior call_rcu are done. */
+	rcu_barrier();
 
 	if (!retval) {
 		exit(EXIT_SUCCESS);

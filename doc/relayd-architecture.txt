@@ -1,0 +1,101 @@
+LTTng Relay Daemon Architecture
+Mathieu Desnoyers, August 2015
+
+This document describes the object model and architecture of the relay
+daemon, after the refactoring done within the commit "Fix: Relay daemon
+ownership and reference counting".
+
+We have the following object composition hierarchy:
+
+relay connection (main.c, for sessiond/consumer)
+  |
+  \-> 0 or 1 session
+       |
+       \-> 0 or many ctf-trace
+                 |
+                 \-> 0 or many stream
+                      |   |
+                      |   \-> 0 or many index
+                      |
+                      \-------> 0 or 1 viewer stream
+
+live connection (live.c, for client)
+  |
+  \-> 1 viewer session
+       |
+       \-> 0 or many session (actually a reference to session as created
+             |                by the relay connection)
+             |
+             \-> ..... (ctf-trace, stream, index, viewer stream)
+
+There are global tables declared in lttng-relayd.h for sessions
+(sessions_ht, indexed by session id), streams (relay_streams_ht, indexed
+by stream handle), and viewer streams (viewer_streams_ht, indexed by
+stream handle). The purpose of those tables is to allow fast lookup of
+those objects using the IDs received in the communication protocols.
+
+There is also one connection hash table per worker thread. There is one
+worker thread to receive data (main.c), and one worker thread to
+interact with viewer clients (live.c). Those tables are indexed by
+socket file descriptor.
+
+A RCU lookup+refcounting scheme has been introduced for all objects
+(except viewer session which is still an exception at the moment). This
+scheme allows looking up the objects or doing a traversal on the RCU
+linked list or hash table in combination with a getter on the object.
+This getter validates that there is still at least one reference to the
+object, else the lookup acts just as if the object does not exist. This
+scheme is protected by a "reflock" mutex in each object. "reflock"
+mutexes can be nested from the innermost object to the outermost object.
+IOW, the session reflock can nest within the ctf-trace reflock.
+
+The relay_connection (connection between the sessiond/consumer and the
+relayd) is the outermost object of its hierarchy.
+
+The live connection (connection between a live client and the relayd)
+is the outermost object of its hierarchy.
+
+There is also a "lock" mutex in each object. Those are used to
+synchronize between threads (currently the main.c relay thread and
+live.c client thread) when objects are shared. Locks can be nested from
+the outermost object to the innermost object. IOW, the ctf-trace lock can
+nest within the session lock.
+
+A "lock" should never nest within a "reflock".
+
+RCU linked lists are used to iterate using RCU, and are protected by
+their own mutex for modifications. Iterations should be confirmed using
+the object "getter" to ensure its refcount is not 0 (except in cases
+where the caller actually owns the objects and therefore can assume its
+refcount is not 0).
+
+RCU hash tables are used to iterate using RCU. Iteration should be
+confirmed using the object "getter" to ensure its refcount is not 0
+(except again if we have ownership and can assume the object refcount is
+not 0).
+
+Object creation has a refcount of 1. Each getter increments the
+refcount, and needs to be paired with a "put" to decrement it. A final
+put on "self" (ownership) will allow refcount to reach 0, therefore
+triggering release, and thus free through call_rcu.
+
+In the composition scheme, we find back references from each composite
+to its container. Therefore, each composite holds a reference (refcount)
+on its container. This allows following pointers from e.g. viewer stream
+to stream to ctf-trace to session without performing any validation,
+due to transitive refcounting of those back-references.
+
+In addition to those back references, there are a few key ownership
+references held. The connection in the relay worker thread (main.c)
+holds ownership on the session, and on each stream it contains. The
+connection in the live worker thread (live.c) holds ownership on each
+viewer stream it creates. The rest is ensured by back references from
+composite to container objects. When a connection is closed, it puts all
+the ownership references it is holding. This will then eventually
+trigger destruction of the session, streams, and viewer streams
+associated with the connection when all the back references reach 0.
+
+RCU read-side locks are now only held during iteration on RCU lists and
+hash tables, and within the internals of the get (lookup) and put
+functions. Those functions then use refcounting to ensure existence of
+the object when returned to their caller.

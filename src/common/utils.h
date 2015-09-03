@@ -41,6 +41,8 @@ int utils_mkdir(const char *path, mode_t mode, int uid, int gid);
 int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid);
 int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid, char *suffix);
+int utils_unlink_stream_file(const char *path_name, char *file_name, uint64_t size,
+		uint64_t count, int uid, int gid, char *suffix);
 int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
 		int *stream_fd);
