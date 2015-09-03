@@ -1,6 +1,10 @@
+#ifndef _STREAM_H
+#define _STREAM_H
+
 /*
  * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
  *                      David Goulet <dgoulet@efficios.com>
+ *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -16,9 +20,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _STREAM_H
-#define _STREAM_H
-
 #include <limits.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -27,100 +28,115 @@
 #include <common/hashtable/hashtable.h>
 
 #include "session.h"
+#include "stream-fd.h"
 
 /*
  * Represents a stream in the relay
  */
 struct relay_stream {
 	uint64_t stream_handle;
-	uint64_t prev_seq;	/* previous data sequence number encountered */
-	struct lttng_ht_node_u64 node;
-	/*
-	 * When we receive a stream, it gets stored in a list (on a per connection
-	 * basis) until we have all the streams of the same channel and the metadata
-	 * associated with it, then it gets flagged with viewer_ready.
-	 */
-	struct cds_list_head recv_list;
 
-	/* Added to the corresponding ctf_trace. */
-	struct cds_list_head trace_list;
-	struct rcu_head rcu_node;
-	uint64_t session_id;
-	int fd;
+	/*
+	 * reflock used to synchronize the closing of this stream.
+	 * stream reflock nests inside viewer stream reflock.
+	 * stream reflock nests inside index reflock.
+	 */
+	pthread_mutex_t reflock;
+	struct urcu_ref ref;
+	/* Back reference to trace. Protected by refcount on trace object. */
+	struct ctf_trace *trace;
+
+	/*
+	 * To protect from concurrent read/update. The viewer stream
+	 * lock nests inside the stream lock. The stream lock nests
+	 * inside the ctf_trace lock.
+	 */
+	pthread_mutex_t lock;
+	uint64_t prev_seq;		/* previous data sequence number encountered. */
+	uint64_t last_net_seq_num;	/* seq num to encounter before closing. */
+
+	/* FD on which to write the stream data. */
+	struct stream_fd *stream_fd;
 	/* FD on which to write the index data. */
-	int index_fd;
-	/* FD on which to read the index data for the viewer. */
-	int read_index_fd;
+	struct stream_fd *index_fd;
 
 	char *path_name;
 	char *channel_name;
-	/* on-disk circular buffer of tracefiles */
+
+	/* On-disk circular buffer of tracefiles. */
 	uint64_t tracefile_size;
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count;
-	uint64_t tracefile_count_current;
+	uint64_t current_tracefile_id;
+
+	uint64_t current_tracefile_seq;	/* Free-running counter. */
+	uint64_t oldest_tracefile_seq;	/* Free-running counter. */
+
 	/* To inform the viewer up to where it can go back in time. */
 	uint64_t oldest_tracefile_id;
 
 	uint64_t total_index_received;
-	uint64_t last_net_seq_num;
+
+	bool closed;	/* Stream is closed. */
 
 	/*
-	 * To protect from concurrent read/update. Also used to synchronize the
-	 * closing of this stream.
-	 */
-	pthread_mutex_t lock;
-
-	/*
-	 * If the stream is inactive, this field is updated with the live beacon
-	 * timestamp end, when it is active, this field == -1ULL.
-	 */
-	uint64_t beacon_ts_end;
-	/*
-	 * Number of indexes that are supposed to be complete soon.
-	 * Avoid sending the inactivity beacon to the client when data is in
-	 * transit.
+	 * Counts number of indexes in indexes_ht. Redundant info.
+	 * Protected by stream lock.
 	 */
 	int indexes_in_flight;
-	/*
-	 * CTF stream ID, -1ULL when unset.
-	 */
-	uint64_t ctf_stream_id;
-	/*
-	 * To protect the update of the close_write_flag and the checks of
-	 * the tracefile_count_current.
-	 * It is taken before checking whenever we need to know if the
-	 * writer and reader are working in the same tracefile.
-	 */
-	pthread_mutex_t viewer_stream_rotation_lock;
+	struct lttng_ht *indexes_ht;
 
-	/* Information telling us when to close the stream  */
-	unsigned int close_flag:1;
 	/*
-	 * Indicates if the stream has been effectively closed thus having the
-	 * information in it invalidated but NOT freed. The stream lock MUST be
-	 * held to read/update that value.
+	 * If the stream is inactive, this field is updated with the
+	 * live beacon timestamp end, when it is active, this
+	 * field == -1ULL.
 	 */
-	unsigned int terminated_flag:1;
+	uint64_t beacon_ts_end;
+
+	/* CTF stream ID, -1ULL when unset (first packet not received yet). */
+	uint64_t ctf_stream_id;
+
 	/* Indicate if the stream was initialized for a data pending command. */
-	unsigned int data_pending_check_done:1;
-	unsigned int metadata_flag:1;
+	bool data_pending_check_done;
+
+	/* Is this stream a metadata stream ? */
+	int32_t is_metadata;
+	/* Amount of metadata received (bytes). */
+	uint64_t metadata_received;
+
 	/*
-	 * To detect when we start overwriting old data, it is used to
-	 * update the oldest_tracefile_id.
+	 * Member of the stream list in struct ctf_trace.
+	 * Updates are protected by the stream_list_lock.
+	 * Traversals are protected by RCU.
 	 */
-	unsigned int tracefile_overwrite:1;
+	struct cds_list_head stream_node;
 	/*
-	 * Can this stream be used by a viewer or are we waiting for additional
-	 * information.
+	 * Temporary list belonging to the connection until all streams
+	 * are received for that connection.
+	 * Member of the stream recv list in the connection.
+	 * Updates are protected by the stream_recv_list_lock.
+	 * Traversals are protected by RCU.
 	 */
-	unsigned int viewer_ready:1;
+	bool in_recv_list;
+	struct cds_list_head recv_node;
+	bool published;	/* Protected by session lock. */
+	/*
+	 * Node of stream within global stream hash table.
+	 */
+	struct lttng_ht_node_u64 node;
+	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 };
 
-struct relay_stream *stream_find_by_id(struct lttng_ht *ht,
-		uint64_t stream_id);
-int stream_close(struct relay_session *session, struct relay_stream *stream);
-void stream_delete(struct lttng_ht *ht, struct relay_stream *stream);
-void stream_destroy(struct relay_stream *stream);
+struct relay_stream *stream_create(struct ctf_trace *trace,
+	uint64_t stream_handle, char *path_name,
+	char *channel_name, uint64_t tracefile_size,
+	uint64_t tracefile_count);
+
+struct relay_stream *stream_get_by_id(uint64_t stream_id);
+bool stream_get(struct relay_stream *stream);
+void stream_put(struct relay_stream *stream);
+void stream_close(struct relay_stream *stream);
+void stream_publish(struct relay_stream *stream);
+void print_relay_streams(void);
 
 #endif /* _STREAM_H */
