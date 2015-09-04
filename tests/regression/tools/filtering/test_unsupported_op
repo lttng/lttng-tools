@@ -24,17 +24,22 @@ SESSION_NAME="filter-unsupported-ops"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/unsupported-ops-enable"
 TRACE_PATH=$(mktemp -d)
-NUM_TESTS=46
+NUM_GLOBAL_TESTS=2
+NUM_UST_TESTS=44
+NUM_KERNEL_TESTS=44
+NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
+
 source $TESTDIR/utils/utils.sh
 
-function enable_ust_lttng_event_filter_unsupported
+function enable_lttng_event_filter_unsupported
 {
-	sess_name=$1
-	event_name=$2
-	filter=$3
+	domain="$1"
+	sess_name="$2"
+	event_name="$3"
+	filter="$4"
 
 	enable_cmd="$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event"
-	$enable_cmd $event_name -s $sess_name -u --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
+	$enable_cmd $event_name -s $sess_name $domain --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
 
 	# Enable must fail
 	if [ $? -eq 0 ]; then
@@ -48,8 +53,9 @@ function enable_ust_lttng_event_filter_unsupported
 
 function test_unsupported_op
 {
-	test_op_str=$1
-	test_op_tkn=$2
+	domain="$1"
+	test_op_str="$2"
+	test_op_tkn="$3"
 
 	diag "Test filter expression with unsupported operator $test_op_str ($test_op_tkn)"
 
@@ -64,7 +70,7 @@ function test_unsupported_op
 	fi
 
 	# Apply filter
-	enable_ust_lttng_event_filter_unsupported $SESSION_NAME $EVENT_NAME "$TEST_FILTER"
+	enable_lttng_event_filter_unsupported $domain $SESSION_NAME $EVENT_NAME "$TEST_FILTER"
 
 	# Test stderr for unsupported operator
 
@@ -93,12 +99,14 @@ OP_STR=("MUL" "DIV" "MOD" "PLUS" "MINUS" "LSHIFT" "RSHIFT"
 OP_TKN=("*" "/" "%" "+" "-" "<<" ">>" "&" "|" "^" "~")
 
 OP_COUNT=${#OP_STR[@]}
-i=0
 
 start_lttng_sessiond
 
+diag "Test UST unsupported filter operations"
+
+i=0
 while [ "$i" -lt "$OP_COUNT" ]; do
-	test_unsupported_op "${OP_STR[$i]}" "${OP_TKN[$i]}"
+	test_unsupported_op -u "${OP_STR[$i]}" "${OP_TKN[$i]}"
 
 	if [ $? -eq 1 ]; then
 		exit 1
@@ -106,6 +114,28 @@ while [ "$i" -lt "$OP_COUNT" ]; do
 
 	let "i++"
 done
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all kernel unsupported filter operations tests." $NUM_KERNEL_TESTS ||
+{
+	diag "Test kernel unsupported filter operations"
+
+	i=0
+	while [ "$i" -lt "$OP_COUNT" ]; do
+		test_unsupported_op -k "${OP_STR[$i]}" "${OP_TKN[$i]}"
+
+		if [ $? -eq 1 ]; then
+			exit 1
+		fi
+
+		let "i++"
+	done
+}
 
 stop_lttng_sessiond
 
