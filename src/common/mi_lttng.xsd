@@ -263,27 +263,19 @@ THE SOFTWARE.
 		</xs:restriction>
 	</xs:simpleType>
 
-	<!-- Maps to a process -->
-	<xs:complexType name="process_type">
+	<!-- map to a pid -->
+	<xs:complexType name="pid_type">
 		<xs:all>
-			<xs:element name="pid" type="xs:int" />
-			<xs:element name="name" type="name_type" minOccurs="0" />
+			<xs:element name="id" type="xs:int" />
+			<xs:element name="name" type="name_type" />
 			<xs:element name="events" type="event_list_type" minOccurs="0" />
-			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to an array of pid -->
+	<!-- maps to an array of pid -->
 	<xs:complexType name="pids_type">
 		<xs:sequence>
-			<xs:element name="pid" type="xs:int" minOccurs="0" maxOccurs="unbounded" />
-		</xs:sequence>
-	</xs:complexType>
-
-	<!-- Maps to an array of processes -->
-	<xs:complexType name="processes_type">
-		<xs:sequence>
-			<xs:element name="process" type="process_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="pid" type="pid_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
@@ -339,7 +331,7 @@ THE SOFTWARE.
 		<xs:all>
 			<xs:element name="type" type="domain_type_type" />
 			<xs:element name="buffer_type" type="domain_buffer_type" />
-			<xs:element name="processes" type="processes_type" minOccurs="0" />
+			<xs:element name="pids" type="pids_type" minOccurs="0" />
 			<xs:element name="channels" type="channels_type" minOccurs="0" />
 			<xs:element name="events" type="event_list_type" minOccurs="0" />
 			<xs:element name="trackers" type="trackers_type" minOccurs="0" />
