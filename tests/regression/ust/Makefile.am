@@ -4,7 +4,7 @@ SUBDIRS = nprocesses high-throughput low-throughput before-after multi-session \
 		periodical-metadata-flush java-jul java-log4j python-logging \
 		getcpu-override clock-override
 
-EXTRA_DIST = test_event_basic test_event_wildcard test_event_tracef test_event_perf
+EXTRA_DIST = test_event_basic test_event_tracef test_event_perf
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
