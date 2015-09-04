@@ -61,7 +61,7 @@ struct live_session *session;
 
 static int first_packet_offset;
 static int first_packet_len;
-static int first_packet_stream_id;
+static int first_packet_stream_id = -1;
 
 struct viewer_stream {
 	uint64_t id;
@@ -170,22 +170,22 @@ int establish_connection(void)
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending cmd\n");
+		diag("Error sending cmd");
 		goto error;
 	}
 	ret_len = lttng_live_send(control_sock, &connect, sizeof(connect));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending version\n");
+		diag("Error sending version");
 		goto error;
 	}
 
 	ret_len = lttng_live_recv(control_sock, &connect, sizeof(connect));
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving version\n");
+		diag("Error receiving version");
 		goto error;
 	}
 	return 0;
@@ -197,7 +197,7 @@ error:
 /*
  * Returns the number of sessions, should be 1 during the unit test.
  */
-int list_sessions(int *session_id)
+int list_sessions(uint64_t *session_id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_list_sessions list;
@@ -212,24 +212,24 @@ int list_sessions(int *session_id)
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending cmd\n");
+		diag("Error sending cmd");
 		goto error;
 	}
 
 	ret_len = lttng_live_recv(control_sock, &list, sizeof(list));
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving session list\n");
+		diag("Error receiving session list");
 		goto error;
 	}
 
 	for (i = 0; i < be32toh(list.sessions_count); i++) {
 		ret_len = lttng_live_recv(control_sock, &lsession, sizeof(lsession));
 		if (ret_len < 0) {
-			fprintf(stderr, "Error receiving session\n");
+			diag("Error receiving session");
 			goto error;
 		}
 		if (lsession.streams > 0 && first_session <= 0) {
@@ -256,24 +256,24 @@ int create_viewer_session(void)
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
-		fprintf(stderr, "[error] Error sending cmd\n");
+		diag("[error] Error sending cmd");
 		goto error;
 	}
 	assert(ret_len == sizeof(cmd));
 
 	ret_len = lttng_live_recv(control_sock, &resp, sizeof(resp));
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "[error] Error receiving create session reply\n");
+		diag("[error] Error receiving create session reply");
 		goto error;
 	}
 	assert(ret_len == sizeof(resp));
 
 	if (be32toh(resp.status) != LTTNG_VIEWER_CREATE_SESSION_OK) {
-		fprintf(stderr, "[error] Error creating viewer session\n");
+		diag("[error] Error creating viewer session");
 		goto error;
 	}
 	return 0;
@@ -282,7 +282,7 @@ error:
 	return -1;
 }
 
-int attach_session(int id)
+int attach_session(uint64_t id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_attach_session_request rq;
@@ -306,22 +306,22 @@ int attach_session(int id)
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending cmd\n");
+		diag("Error sending cmd LTTNG_VIEWER_ATTACH_SESSION");
 		goto error;
 	}
 	ret_len = lttng_live_send(control_sock, &rq, sizeof(rq));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending attach request\n");
+		diag("Error sending attach request");
 		goto error;
 	}
 
 	ret_len = lttng_live_recv(control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving attach response\n");
+		diag("Error receiving attach response");
 		goto error;
 	}
 	if (be32toh(rp.status) != LTTNG_VIEWER_ATTACH_OK) {
@@ -329,6 +329,10 @@ int attach_session(int id)
 	}
 
 	session->stream_count = be32toh(rp.streams_count);
+	if (session->stream_count == 0) {
+		diag("Got session stream count == 0");
+		goto error;
+	}
 	session->streams = zmalloc(session->stream_count *
 			sizeof(struct viewer_stream));
 	if (!session->streams) {
@@ -338,21 +342,22 @@ int attach_session(int id)
 	for (i = 0; i < be32toh(rp.streams_count); i++) {
 		ret_len = lttng_live_recv(control_sock, &stream, sizeof(stream));
 		if (ret_len == 0) {
-			fprintf(stderr, "[error] Remote side has closed connection\n");
+			diag("[error] Remote side has closed connection");
 			goto error;
 		}
 		if (ret_len < 0) {
-			fprintf(stderr, "Error receiving stream\n");
+			diag("Error receiving stream");
 			goto error;
 		}
 		session->streams[i].id = be64toh(stream.id);
 
 		session->streams[i].ctf_trace_id = be64toh(stream.ctf_trace_id);
 		session->streams[i].first_read = 1;
-		session->streams[i].mmap_base = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
+		session->streams[i].mmap_base = mmap(NULL, mmap_size,
+				PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if (session->streams[i].mmap_base == MAP_FAILED) {
-			fprintf(stderr, "mmap error\n");
+			diag("mmap error");
 			goto error;
 		}
 
@@ -390,7 +395,7 @@ int get_metadata(void)
 	}
 
 	if (metadata_stream_id < 0) {
-		fprintf(stderr, "No metadata stream found\n");
+		diag("No metadata stream found");
 		goto error;
 	}
 
@@ -398,36 +403,36 @@ int get_metadata(void)
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending cmd\n");
+		diag("Error sending cmd");
 		goto error;
 	}
 	ret_len = lttng_live_send(control_sock, &rq, sizeof(rq));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending get_metadata request\n");
+		diag("Error sending get_metadata request");
 		goto error;
 	}
 	ret_len = lttng_live_recv(control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving metadata response\n");
+		diag("Error receiving metadata response");
 		goto error;
 	}
 	switch (be32toh(rp.status)) {
-		case LTTNG_VIEWER_METADATA_OK:
-			break;
-		case LTTNG_VIEWER_NO_NEW_METADATA:
-			fprintf(stderr, "NO NEW\n");
-			ret = 0;
-			goto end;
-		case LTTNG_VIEWER_METADATA_ERR:
-			fprintf(stderr, "ERR\n");
-			goto error;
-		default:
-			fprintf(stderr, "UNKNOWN\n");
-			goto error;
+	case LTTNG_VIEWER_METADATA_OK:
+		break;
+	case LTTNG_VIEWER_NO_NEW_METADATA:
+		diag("Got LTTNG_VIEWER_NO_NEW_METADATA:");
+		ret = 0;
+		goto end;
+	case LTTNG_VIEWER_METADATA_ERR:
+		diag("Got LTTNG_VIEWER_METADATA_ERR:");
+		goto error;
+	default:
+		diag("Got unknown status during LTTNG_VIEWER_GET_METADATA");
+		goto error;
 	}
 
 	len = be64toh(rp.len);
@@ -442,11 +447,11 @@ int get_metadata(void)
 	}
 	ret_len = lttng_live_recv(control_sock, data, len);
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error_free_data;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving trace packet\n");
+		diag("Error receiving trace packet");
 		goto error_free_data;
 	}
 	free(data);
@@ -482,51 +487,58 @@ int get_next_index(void)
 retry:
 		ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 		if (ret_len < 0) {
-			fprintf(stderr, "Error sending cmd\n");
+			diag("Error sending cmd");
 			goto error;
 		}
 		ret_len = lttng_live_send(control_sock, &rq, sizeof(rq));
 		if (ret_len < 0) {
-			fprintf(stderr, "Error sending get_next_index request\n");
+			diag("Error sending get_next_index request");
 			goto error;
 		}
 		ret_len = lttng_live_recv(control_sock, &rp, sizeof(rp));
 		if (ret_len == 0) {
-			fprintf(stderr, "[error] Remote side has closed connection\n");
+			diag("[error] Remote side has closed connection");
 			goto error;
 		}
 		if (ret_len < 0) {
-			fprintf(stderr, "Error receiving index response\n");
+			diag("Error receiving index response");
 			goto error;
 		}
 
 		rp.flags = be32toh(rp.flags);
 
 		switch (be32toh(rp.status)) {
-			case LTTNG_VIEWER_INDEX_INACTIVE:
-				fprintf(stderr, "(INACTIVE)\n");
-				break;
-			case LTTNG_VIEWER_INDEX_OK:
-				break;
-			case LTTNG_VIEWER_INDEX_RETRY:
-				sleep(1);
-				goto retry;
-			case LTTNG_VIEWER_INDEX_HUP:
-				fprintf(stderr, "(HUP)\n");
-				session->streams[id].id = -1ULL;
-				session->streams[id].fd = -1;
-				break;
-			case LTTNG_VIEWER_INDEX_ERR:
-				fprintf(stderr, "(ERR)\n");
-				goto error;
-			default:
-				fprintf(stderr, "SHOULD NOT HAPPEN\n");
-				goto error;
+		case LTTNG_VIEWER_INDEX_INACTIVE:
+			/* Skip this stream. */
+			diag("Got LTTNG_VIEWER_INDEX_INACTIVE");
+			continue;
+		case LTTNG_VIEWER_INDEX_OK:
+			break;
+		case LTTNG_VIEWER_INDEX_RETRY:
+			sleep(1);
+			goto retry;
+		case LTTNG_VIEWER_INDEX_HUP:
+			diag("Got LTTNG_VIEWER_INDEX_HUP");
+			session->streams[id].id = -1ULL;
+			session->streams[id].fd = -1;
+			goto error;
+		case LTTNG_VIEWER_INDEX_ERR:
+			diag("Got LTTNG_VIEWER_INDEX_ERR");
+			goto error;
+		default:
+			diag("Unknown reply status during LTTNG_VIEWER_GET_NEXT_INDEX (%d)", be32toh(rp.status));
+			goto error;
 		}
-		if (!first_packet_stream_id) {
+		if (first_packet_stream_id < 0) {
+			/*
+			 * Initialize the first packet stream id. That is,
+			 * the first active stream encoutered.
+			 */
 			first_packet_offset = be64toh(rp.offset);
 			first_packet_len = be64toh(rp.packet_size) / CHAR_BIT;
 			first_packet_stream_id = id;
+			diag("Got first packet index with offset %d and len %d",
+					first_packet_offset, first_packet_len);
 		}
 	}
 	return 0;
@@ -556,21 +568,21 @@ int get_data_packet(int id, uint64_t offset,
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending cmd\n");
+		diag("Error sending cmd");
 		goto error;
 	}
 	ret_len = lttng_live_send(control_sock, &rq, sizeof(rq));
 	if (ret_len < 0) {
-		fprintf(stderr, "Error sending get_data_packet request\n");
+		diag("Error sending get_data_packet request");
 		goto error;
 	}
 	ret_len = lttng_live_recv(control_sock, &rp, sizeof(rp));
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving data response\n");
+		diag("Error receiving data response");
 		goto error;
 	}
 	rp.flags = be32toh(rp.flags);
@@ -578,38 +590,38 @@ int get_data_packet(int id, uint64_t offset,
 	switch (be32toh(rp.status)) {
 	case LTTNG_VIEWER_GET_PACKET_OK:
 		len = be32toh(rp.len);
+		if (len == 0) {
+			diag("Got LTTNG_VIEWER_GET_PACKET_OK, but len == 0");
+			goto error;
+		}
 		break;
 	case LTTNG_VIEWER_GET_PACKET_RETRY:
-		fprintf(stderr, "RETRY\n");
+		diag("Got LTTNG_VIEWER_GET_PACKET_RETRY:");
 		goto error;
 	case LTTNG_VIEWER_GET_PACKET_ERR:
 		if (rp.flags & LTTNG_VIEWER_FLAG_NEW_METADATA) {
-			fprintf(stderr, "NEW_METADATA\n");
+			diag("Got LTTNG_VIEWER_GET_PACKET_ERR with NEW_METADATA flag");
 			goto end;
 		}
-		fprintf(stderr, "ERR\n");
+		diag("Got LTTNG_VIEWER_GET_PACKET_ERR:");
 		goto error;
 	default:
-		fprintf(stderr, "UNKNOWN\n");
-		goto error;
-	}
-
-	if (len == 0) {
+		diag("Got unknown status code during LTTNG_VIEWER_GET_PACKET");
 		goto error;
 	}
 
 	if (len > mmap_size) {
-		fprintf(stderr, "mmap_size not big enough\n");
+		diag("mmap_size not big enough");
 		goto error;
 	}
 
 	ret_len = lttng_live_recv(control_sock, session->streams[id].mmap_base, len);
 	if (ret_len == 0) {
-		fprintf(stderr, "[error] Remote side has closed connection\n");
+		diag("[error] Remote side has closed connection");
 		goto error;
 	}
 	if (ret_len < 0) {
-		fprintf(stderr, "Error receiving trace packet\n");
+		diag("Error receiving trace packet");
 		goto error;
 	}
 end:
@@ -621,7 +633,7 @@ error:
 int main(int argc, char **argv)
 {
 	int ret;
-	int session_id;
+	uint64_t session_id;
 
 	plan_tests(NUM_TESTS);
 
@@ -641,7 +653,7 @@ int main(int argc, char **argv)
 	ok(ret == 0, "Create viewer session");
 
 	ret = attach_session(session_id);
-	ok(ret > 0, "Attach to session, %d streams received", ret);
+	ok(ret > 0, "Attach to session, %d stream(s) received", ret);
 
 	ret = get_metadata();
 	ok(ret > 0, "Get metadata, received %d bytes", ret);
