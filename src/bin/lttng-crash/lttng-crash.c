@@ -274,7 +274,7 @@ static int parse_args(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+Vhvex:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+Vhve:x:", long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'V':
 			version(stdout);
