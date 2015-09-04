@@ -306,23 +306,10 @@ int make_viewer_streams(struct relay_session *session,
 				continue;
 			}
 			/*
-			 * stream published is protected by the session
-			 * lock.
+			 * stream published is protected by the session lock.
 			 */
 			if (!stream->published) {
 				goto next;
-			}
-			/*
-			 * Stream has no data, don't consider it yet.
-			 */
-			if (stream->is_metadata) {
-				if (!stream->metadata_received) {
-					goto next;
-				}
-			} else {
-				if (stream->prev_seq == -1ULL) {
-					goto next;
-				}
 			}
 			vstream = viewer_stream_get_by_id(stream->stream_handle);
 			if (!vstream) {
