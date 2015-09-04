@@ -8,3 +8,6 @@ regression/tools/streaming/test_kernel
 regression/tools/snapshots/test_kernel
 regression/tools/snapshots/test_kernel_streaming
 regression/tools/health/test_thread_ok
+regression/tools/filtering/test_invalid_filter
+regression/tools/filtering/test_unsupported_op
+regression/tools/filtering/test_valid_filter

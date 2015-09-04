@@ -24,17 +24,22 @@ SESSION_NAME="filter-invalid"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
-NUM_TESTS=146
+NUM_GLOBAL_TESTS=2
+NUM_UST_TESTS=144
+NUM_KERNEL_TESTS=144
+NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
 
-function enable_ust_lttng_event_filter
+function enable_lttng_event_filter
 {
-	sess_name="$1"
-	event_name="$2"
-	filter="$3"
+	domain="$1"
+	sess_name="$2"
+	event_name="$3"
+	filter="$4"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name -u --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name -s $sess_name \
+		$domain --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
 
 	# Enable must fail
 	if [ $? -eq 0 ]; then
@@ -48,7 +53,8 @@ function enable_ust_lttng_event_filter
 
 function test_invalid_filter
 {
-	test_invalid_filter="$1"
+	domain="$1"
+	test_invalid_filter="$2"
 
 	diag "Test filter expression with invalid filter"
 	diag "Filter: $test_invalid_filter"
@@ -57,7 +63,7 @@ function test_invalid_filter
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	# Apply filter
-	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME "$test_invalid_filter"
+	enable_lttng_event_filter $domain $SESSION_NAME $EVENT_NAME "$test_invalid_filter"
 
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
@@ -65,6 +71,8 @@ function test_invalid_filter
 
 function test_bytecode_limit
 {
+	domain="$1"
+
 	# Current bytecode limitation is 65536 bytes long.
 	# Generate a huge bytecode with some perl-fu
 	BYTECODE_LIMIT=`perl -e 'print "intfield" . " && 1" x5460'`
@@ -75,7 +83,7 @@ function test_bytecode_limit
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	# Apply filter
-	enable_ust_lttng_event_filter $SESSION_NAME $EVENT_NAME "$BYTECODE_LIMIT"
+	enable_lttng_event_filter $domain $SESSION_NAME $EVENT_NAME "$BYTECODE_LIMIT"
 
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
@@ -148,12 +156,30 @@ INVALID_FILTERS=(
 		)
 
 start_lttng_sessiond
+diag "Test UST filters"
 for FILTER in ${INVALID_FILTERS[@]};
 do
-	test_invalid_filter "$FILTER"
+	test_invalid_filter -u "$FILTER"
 done
 
-test_bytecode_limit
+test_bytecode_limit -u
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all kernel invalid filter tests." $NUM_KERNEL_TESTS ||
+{
+	diag "Test kernel filters"
+	for FILTER in ${INVALID_FILTERS[@]};
+	do
+		test_invalid_filter -k "$FILTER"
+	done
+
+	test_bytecode_limit -k
+}
 
 unset IFS
 stop_lttng_sessiond

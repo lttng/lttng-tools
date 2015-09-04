@@ -92,9 +92,8 @@ sub merge_fields
 	my %merged;
 
 	foreach my $event (@{$events_ref}) {
-		my $tp_provider = $event->{'tp_provider'};
-		my $tp_name     = $event->{'tp_name'};
-		my $tracepoint  = "$tp_provider:$tp_name";
+		my $tp_event     = $event->{'tp_event'};
+		my $tracepoint  = "${tp_event}";
 
 		foreach my $key (keys %{$event->{'fields'}}) {
 			my $val = $event->{'fields'}->{$key};
@@ -148,13 +147,12 @@ while (<>)
 	my $pname       = '.*';
 	my $pinfo       = '.*';
 	my $pid         = '\d+';
-	my $tp_provider = '.*';
-	my $tp_name     = '.*';
+	my $tp_event    = '.*';
 	my $cpu_info    = '{\scpu_id\s=\s(\d+)\s\}';
 	my $fields      = '{(.*)}';
 
 	# Parse babeltrace text output format
-	if (/$timestamp\s$elapsed\s($pinfo)\s($tp_provider):($tp_name):\s$cpu_info,\s$fields/) {
+	if (/$timestamp\s$elapsed\s($pinfo)\s($tp_event):\s$cpu_info,\s$fields/) {
 		my %event_hash;
 		$event_hash{'timestamp'}   = $1;
 		$event_hash{'elapsed'}     = $2;
@@ -165,10 +163,9 @@ while (<>)
 #		$event_hash{'pname'}       = defined($split_pinfo[1]) ? $split_pinfo[1] : undef;
 #		$event_hash{'pid'}         = defined($split_pinfo[2]) ? $split_pinfo[2] : undef;
 
-		$event_hash{'tp_provider'} = $4;
-		$event_hash{'tp_name'}     = $5;
-		$event_hash{'cpu_id'}      = $6;
-		$event_hash{'fields'}      = parse_fields($7);
+		$event_hash{'tp_event'}    = $4;
+		$event_hash{'cpu_id'}      = $5;
+		$event_hash{'fields'}      = parse_fields($6);
 
 		push @events, \%event_hash;
 	}
