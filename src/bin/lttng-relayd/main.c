@@ -1234,9 +1234,17 @@ static int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto end;
 	}
+
+	/*
+	 * Set last_net_seq_num before the close flag. Required by data
+	 * pending check.
+	 */
 	pthread_mutex_lock(&stream->lock);
-	stream->closed = true;
 	stream->last_net_seq_num = be64toh(stream_info.last_net_seq_num);
+	pthread_mutex_unlock(&stream->lock);
+
+	stream_close(stream);
+
 	if (stream->is_metadata) {
 		struct relay_viewer_stream *vstream;
 
@@ -1255,7 +1263,6 @@ static int relay_close_stream(struct lttcomm_relayd_hdr *recv_hdr,
 			viewer_stream_put(vstream);
 		}
 	}
-	pthread_mutex_unlock(&stream->lock);
 	stream_put(stream);
 
 end:
