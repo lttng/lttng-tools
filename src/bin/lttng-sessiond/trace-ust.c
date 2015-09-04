@@ -788,7 +788,8 @@ int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
 		struct ust_app *app;
 
 		if (!session->pid_tracker.ht) {
-			retval = LTTNG_ERR_INVALID;
+			/* No PID being tracked. */
+			retval = LTTNG_ERR_PID_NOT_TRACKED;
 			goto end;
 		}
 		/* Remove PID from tracker */
