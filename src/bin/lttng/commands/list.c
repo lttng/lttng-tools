@@ -340,8 +340,8 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 		goto end;
 	}
 
-	/* Open processes element */
-	ret = mi_lttng_processes_open(writer);
+	/* Open pids element element */
+	ret = mi_lttng_pids_open(writer);
 	if (ret) {
 		goto end;
 	}
@@ -366,7 +366,7 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 
 			if (!pid_element_open) {
 				/* Open and write a pid element */
-				ret = mi_lttng_process(writer, cur_pid, cmdline, 1);
+				ret = mi_lttng_pid(writer, cur_pid, cmdline, 1);
 				if (ret) {
 					goto error;
 				}
@@ -389,7 +389,7 @@ static int mi_list_agent_ust_events(struct lttng_event *events, int count,
 		}
 	}
 
-	/* Close processes */
+	/* Close pids */
 	ret = mi_lttng_writer_close_element(writer);
 	if (ret) {
 		goto end;
@@ -577,8 +577,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 		goto end;
 	}
 
-	/* Open processes element */
-	ret = mi_lttng_processes_open(writer);
+	/* Open pids element */
+	ret = mi_lttng_pids_open(writer);
 	if (ret) {
 		goto end;
 	}
@@ -606,8 +606,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 			cur_pid = fields[i].event.pid;
 			cmdline = get_cmdline_by_pid(cur_pid);
 			if (!pid_element_open) {
-				/* Open and write a process element */
-				ret = mi_lttng_process(writer, cur_pid, cmdline, 1);
+				/* Open and write a pid element */
+				ret = mi_lttng_pid(writer, cur_pid, cmdline, 1);
 				if (ret) {
 					goto error;
 				}
@@ -661,7 +661,7 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 		}
 	}
 
-	/* Close processes, domain, domains */
+	/* Close pid, domain, domains */
 	ret = mi_lttng_close_multi_element(writer, 3);
 end:
 	return ret;

@@ -101,8 +101,6 @@ extern const char * const mi_lttng_context_type_perf_thread_counter;
 extern const char * const mi_lttng_element_perf_counter_context;
 
 /* Strings related to pid */
-extern const char * const mi_lttng_element_processes;
-extern const char * const mi_lttng_element_process;
 extern const char * const mi_lttng_element_pid_id;
 
 /* Strings related to save command */
@@ -618,6 +616,25 @@ int mi_lttng_processes_open(struct mi_writer *writer);
  * Negative values indicate an error.
  */
 int mi_lttng_process(struct mi_writer *writer, pid_t pid , const char *name,
+		int is_open);
+
+/*
+ * TODO: move pid of lttng list -u to process semantic on mi api bump
+ * Machine interface of a Process.
+ *
+ * writer An instance of a machine interface writer.
+ * pid A PID.
+ *
+ * is_open Defines whether or not the session element shall be closed.
+ *         This should be used carefully and the client
+ *         must close the pid element.
+ *         Use case: nested addition information on a domain
+ *                  ex: channel event.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_pid(struct mi_writer *writer, pid_t pid , const char *name,
 		int is_open);
 /*
  * Machine interface: open a targets element.

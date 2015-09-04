@@ -78,8 +78,6 @@ const char * const mi_lttng_context_type_perf_thread_counter = "PERF_THREAD_COUN
 const char * const mi_lttng_element_perf_counter_context = "perf_counter_context";
 
 /* Strings related to pid */
-const char * const mi_lttng_element_processes = "processes";
-const char * const mi_lttng_element_process = "process";
 const char * const mi_lttng_element_pid_id = "id";
 
 /* Strings related to save command */
@@ -1156,27 +1154,25 @@ int mi_lttng_pids_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, config_element_pids);
 }
 
+/*
+ * TODO: move the listing of pid for user agent to process semantic on
+ * mi api bump. The use of process element break the mi api.
+ */
 LTTNG_HIDDEN
-int mi_lttng_processes_open(struct mi_writer *writer)
-{
-	return mi_lttng_writer_open_element(writer, mi_lttng_element_processes);
-}
-
-LTTNG_HIDDEN
-int mi_lttng_process(struct mi_writer *writer, pid_t pid , const char *name,
+int mi_lttng_pid(struct mi_writer *writer, pid_t pid , const char *name,
 		int is_open)
 {
 	int ret;
 
-	/* Open element process */
-	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_process);
+	/* Open pid process */
+	ret = mi_lttng_writer_open_element(writer, config_element_pid);
 	if (ret) {
 		goto end;
 	}
 
 	/* Writing pid number */
 	ret = mi_lttng_writer_write_element_signed_int(writer,
-			config_element_pid, (int)pid);
+			mi_lttng_element_pid_id, (int)pid);
 	if (ret) {
 		goto end;
 	}
