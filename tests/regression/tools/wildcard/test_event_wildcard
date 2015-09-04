@@ -16,7 +16,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-TEST_DESC="UST tracer - Event wildcard"
+TEST_DESC="LTTng - Event wildcard test"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
@@ -25,28 +25,38 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="wildcard"
-EVENT_NAME="tp:tptest"
-NUM_TESTS=39
 NR_ITER=100
+NUM_GLOBAL_TESTS=2
+NUM_UST_TESTS=37
+NUM_KERNEL_TESTS=37
+NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -x "$TESTAPP_BIN" ]; then
-	BAIL_OUT "No UST nevents binary detected."
-fi
+function run_ust
+{
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+}
+
+function run_kernel
+{
+	# Trigger the event for 100 iterations
+	echo -n "100" > /proc/lttng-test-filter-event
+}
 
 function test_event_wildcard()
 {
 	TRACE_PATH=$(mktemp -d)
-	FIND="${1}"
-	WILDCARD="${2}"
+	DOMAIN="$1"
+	FIND="$2"
+	WILDCARD="$3"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$WILDCARD"
+	enable_${DOMAIN}_lttng_event_ok $SESSION_NAME "$WILDCARD"
 
 	start_lttng_tracing_ok
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	run_${DOMAIN}
 	ok $? "Traced application stopped."
 
 	stop_lttng_tracing_ok
@@ -64,15 +74,15 @@ function test_event_wildcard()
 function test_event_wildcard_fail()
 {
 	TRACE_PATH=$(mktemp -d)
-	WILDCARD="${1}"
+	DOMAIN="$1"
+	WILDCARD="$2"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_fail $SESSION_NAME "$WILDCARD"
+	enable_${DOMAIN}_lttng_event_fail $SESSION_NAME "$WILDCARD"
 	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
-
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -81,13 +91,48 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-test_event_wildcard 1 'tp:tp*'
-test_event_wildcard 1 '*'
-test_event_wildcard 1 'tp:tptest*'
-test_event_wildcard 0 'tp:abc*'
+diag "Test UST wildcard"
 
-test_event_wildcard_fail 'tp:*tp'
-test_event_wildcard_fail 'tp:tp**'
-test_event_wildcard_fail '*tp:tp*'
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+EVENT_NAME="tp:tptest"
+
+test_event_wildcard ust 1 'tp:tp*'
+test_event_wildcard ust 1 '*'
+test_event_wildcard ust 1 'tp:tptest*'
+test_event_wildcard ust 0 'tp:abc*'
+
+test_event_wildcard_fail ust 'tp:*tp'
+test_event_wildcard_fail ust 'tp:tp**'
+test_event_wildcard_fail ust '*tp:tp*'
+
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all kernel wildcard tests." $NUM_KERNEL_TESTS ||
+{
+	diag "Test kernel wildcards"
+
+	modprobe lttng-test
+
+	EVENT_NAME="lttng_test_filter_event"
+
+	test_event_wildcard kernel 1 'lttng_test_*'
+	test_event_wildcard kernel 1 '*'
+	test_event_wildcard kernel 1 'lttng_test_filter_event*'
+	test_event_wildcard kernel 0 'lttng_test_asdfasdf*'
+
+	test_event_wildcard_fail kernel 'tp_*tp'
+	test_event_wildcard_fail kernel 'tp_tp**'
+	test_event_wildcard_fail kernel '*tp_tp*'
+
+	rmmod lttng-test
+}
 
 stop_lttng_sessiond
