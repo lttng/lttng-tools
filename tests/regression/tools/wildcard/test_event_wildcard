@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2015 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License, version 2 only, as
@@ -20,39 +21,58 @@ TEST_DESC="UST tracer - Event wildcard"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
 LTTNG_BIN="lttng"
-BIN_NAME="gen-ust-events"
-SESSION_NAME="valid_filter"
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+SESSION_NAME="wildcard"
 EVENT_NAME="tp:tptest"
-NUM_TESTS=9
+NUM_TESTS=39
+NR_ITER=100
 
 source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
 
 function test_event_wildcard()
 {
 	TRACE_PATH=$(mktemp -d)
-	SESSION_NAME="ust_event_basic"
-	SESSION_NAME2="ust_event_basic2"
-	CHAN_NAME="mychan"
-	CHAN_NAME2="mychan2"
-	EVENT_NAME="*"
-	EVENT_NAME2="abc*"
+	FIND="${1}"
+	WILDCARD="${2}"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME2"
+	enable_ust_lttng_event_ok $SESSION_NAME "$WILDCARD"
 
 	start_lttng_tracing_ok
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	ok $? "Traced application stopped."
+
 	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
 
-	TODO="Validate trace output is coherent"
-	ok 0 "Validate trace"
-	unset TODO
+	if [ ${FIND} -eq 1 ]; then
+		trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
+	else
+		validate_trace_empty $TRACE_PATH
+	fi
 
+	rm -rf $TRACE_PATH
+}
+
+function test_event_wildcard_fail()
+{
+	TRACE_PATH=$(mktemp -d)
+	WILDCARD="${1}"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_fail $SESSION_NAME "$WILDCARD"
 	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf $TRACE_PATH
 }
+
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -61,6 +81,13 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-test_event_wildcard
+test_event_wildcard 1 'tp:tp*'
+test_event_wildcard 1 '*'
+test_event_wildcard 1 'tp:tptest*'
+test_event_wildcard 0 'tp:abc*'
+
+test_event_wildcard_fail 'tp:*tp'
+test_event_wildcard_fail 'tp:tp**'
+test_event_wildcard_fail '*tp:tp*'
 
 stop_lttng_sessiond

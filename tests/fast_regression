@@ -14,6 +14,7 @@ regression/tools/snapshots/test_ust_streaming
 regression/tools/save-load/test_save
 regression/tools/save-load/test_load
 regression/tools/mi/test_mi
+regression/tools/wildcard/test_event_wildcard
 regression/ust/before-after/test_before_after
 regression/ust/buffers-pid/test_buffers_pid
 regression/ust/multi-session/test_multi_session
@@ -26,5 +27,4 @@ regression/ust/getcpu-override/test_getcpu_override
 regression/ust/clock-override/test_clock_override
 regression/ust/test_event_basic
 regression/ust/test_event_tracef
-regression/ust/test_event_wildcard
 regression/ust/test_event_perf
