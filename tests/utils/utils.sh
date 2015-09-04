@@ -86,18 +86,19 @@ function randstring()
 	echo
 }
 
-function lttng_enable_kernel_event
+function enable_kernel_lttng_event
 {
-	local sess_name=$1
-	local event_name=$2
-	local channel_name=$3
+	local expected_to_fail="$1"
+	local sess_name="$2"
+	local event_name="$3"
+	local channel_name="$4"
 
-	if [ -z $event_name ]; then
+	if [ -z "$event_name" ]; then
 		# Enable all event if no event name specified
 		event_name="-a"
 	fi
 
-	if [ -z $channel_name ]; then
+	if [ -z "$channel_name" ]; then
 		# default channel if none specified
 		chan=""
 	else
@@ -105,7 +106,29 @@ function lttng_enable_kernel_event
 	fi
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" $chan -s $sess_name -k 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
-	ok $? "Enable kernel event $event_name for session $sess_name"
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Enable kernel event $event_name for session $session_name on channel $channel_name failed as expected"
+	else
+		ok $ret "Enable kernel event $event_name for session $sess_name"
+	fi
+}
+
+function enable_kernel_lttng_event_ok ()
+{
+	enable_kernel_lttng_event 0 "$@"
+}
+
+function enable_kernel_lttng_event_fail ()
+{
+	enable_kernel_lttng_event 1 "$@"
+}
+
+# Old interface
+function lttng_enable_kernel_event
+{
+	enable_kernel_lttng_event_ok "$@"
 }
 
 function lttng_enable_kernel_syscall()
