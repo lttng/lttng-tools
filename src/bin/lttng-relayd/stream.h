@@ -132,6 +132,7 @@ struct relay_stream {
 	 * Node of stream within global stream hash table.
 	 */
 	struct lttng_ht_node_u64 node;
+	bool in_stream_ht;		/* is stream in stream hash table. */
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 };
 
