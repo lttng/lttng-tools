@@ -59,7 +59,7 @@ struct lttcomm_agent_hdr {
  * Enable event command payload.
  */
 struct lttcomm_agent_enable {
-	uint32_t loglevel;
+	uint32_t loglevel_value;
 	uint32_t loglevel_type;
 	char name[LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;

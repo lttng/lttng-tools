@@ -71,12 +71,15 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
 	struct ltt_ust_event *event;
 	const struct ltt_ust_ht_key *key;
+	int ev_loglevel_value;
+	int ll_match;
 
 	assert(node);
 	assert(_key);
 
 	event = caa_container_of(node, struct ltt_ust_event, node.node);
 	key = _key;
+	ev_loglevel_value = event->attr.loglevel;
 
 	/* Match the 4 elements of the key: name, filter, loglevel, exclusions. */
 
@@ -85,19 +88,13 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 		goto no_match;
 	}
 
-	/* Event loglevel. */
-	if (event->attr.loglevel != key->loglevel) {
-		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
-				&& key->loglevel == 0 && event->attr.loglevel == -1) {
-			/*
-			 * Match is accepted. This is because on event creation, the
-			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
-			 * -1 are accepted for this loglevel type since 0 is the one set by
-			 * the API when receiving an enable event.
-			 */
-		} else {
-			goto no_match;
-		}
+	/* Event loglevel value and type. */
+	ll_match = loglevels_match(event->attr.loglevel_type,
+		ev_loglevel_value, key->loglevel_type,
+		key->loglevel_value, LTTNG_UST_LOGLEVEL_ALL);
+
+	if (!ll_match) {
+		goto no_match;
 	}
 
 	/* Only one of the filters is NULL, fail. */
@@ -171,7 +168,8 @@ error:
  * MUST be acquired before calling this.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter, int loglevel,
+		char *name, struct lttng_filter_bytecode *filter,
+		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_node_str *node;
@@ -183,7 +181,8 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 	key.name = name;
 	key.filter = filter;
-	key.loglevel = loglevel;
+	key.loglevel_type = loglevel_type;
+	key.loglevel_value = loglevel_value;
 	key.exclusion = exclusion;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),

@@ -749,7 +749,7 @@ void init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 	ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 	strncpy(ust_event->attr.name, agent_event->name, LTTNG_SYMBOL_NAME_LEN);
 	ust_event->attr.loglevel_type = agent_event->loglevel_type;
-	ust_event->attr.loglevel = agent_event->loglevel;
+	ust_event->attr.loglevel = agent_event->loglevel_value;
 	ust_event->filter_expression = agent_event->filter_expression;
 	ust_event->exclusion = agent_event->exclusion;
 }

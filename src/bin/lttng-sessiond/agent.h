@@ -36,7 +36,8 @@ extern struct lttng_ht *agent_apps_ht_by_sock;
 
 struct agent_ht_key {
 	const char *name;
-	int loglevel;
+	int loglevel_value;
+	enum lttng_loglevel_type loglevel_type;
 };
 
 /*
@@ -80,7 +81,7 @@ struct agent_app {
 struct agent_event {
 	/* Name of the event. */
 	char name[LTTNG_SYMBOL_NAME_LEN];
-	int loglevel;
+	int loglevel_value;
 	enum lttng_loglevel_type loglevel_type;
 
 	/*
@@ -131,13 +132,14 @@ void agent_destroy(struct agent *agt);
 void agent_add(struct agent *agt, struct lttng_ht *ht);
 
 /* Agent event API. */
-struct agent_event *agent_create_event(const char *name, int loglevel,
-		enum lttng_loglevel_type loglevel_type,
+struct agent_event *agent_create_event(const char *name,
+		enum lttng_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_filter_bytecode *filter,
 		char *filter_expression);
 void agent_add_event(struct agent_event *event, struct agent *agt);
 
-struct agent_event *agent_find_event(const char *name, int loglevel,
+struct agent_event *agent_find_event(const char *name,
+		enum lttng_loglevel_type loglevel_type, int loglevel_value,
 		struct agent *agt);
 struct agent_event *agent_find_event_by_name(const char *name,
 		struct agent *agt);

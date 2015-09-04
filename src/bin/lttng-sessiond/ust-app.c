@@ -101,12 +101,14 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 {
 	struct ust_app_event *event;
 	const struct ust_app_ht_key *key;
+	int ev_loglevel_value;
 
 	assert(node);
 	assert(_key);
 
 	event = caa_container_of(node, struct ust_app_event, node.node);
 	key = _key;
+	ev_loglevel_value = event->attr.loglevel;
 
 	/* Match the 4 elements of the key: name, filter, loglevel, exclusions */
 
@@ -116,9 +118,10 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 	}
 
 	/* Event loglevel. */
-	if (event->attr.loglevel != key->loglevel) {
+	if (ev_loglevel_value != key->loglevel_type) {
 		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
-				&& key->loglevel == 0 && event->attr.loglevel == -1) {
+				&& key->loglevel_type == 0 &&
+				ev_loglevel_value == -1) {
 			/*
 			 * Match is accepted. This is because on event creation, the
 			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
@@ -184,7 +187,7 @@ static void add_unique_ust_app_event(struct ust_app_channel *ua_chan,
 	ht = ua_chan->events;
 	key.name = event->attr.name;
 	key.filter = event->filter;
-	key.loglevel = event->attr.loglevel;
+	key.loglevel_type = event->attr.loglevel;
 	key.exclusion = event->exclusion;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
@@ -1074,7 +1077,8 @@ error:
  * Return an ust_app_event object or NULL on error.
  */
 static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter, int loglevel,
+		char *name, struct lttng_filter_bytecode *filter,
+		int loglevel_value,
 		const struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_iter iter;
@@ -1088,7 +1092,7 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	/* Setup key for event lookup. */
 	key.name = name;
 	key.filter = filter;
-	key.loglevel = loglevel;
+	key.loglevel_type = loglevel_value;
 	/* lttng_event_exclusion and lttng_ust_event_exclusion structures are similar */
 	key.exclusion = exclusion;
 
@@ -4928,8 +4932,8 @@ error_rcu_unlock:
  * On success 0 is returned else a negative value.
  */
 static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
-		char *sig, size_t nr_fields, struct ustctl_field *fields, int loglevel,
-		char *model_emf_uri)
+		char *sig, size_t nr_fields, struct ustctl_field *fields,
+		int loglevel_value, char *model_emf_uri)
 {
 	int ret, ret_code;
 	uint32_t event_id = 0;
@@ -4984,9 +4988,9 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	 * three variables MUST NOT be read/write after this.
 	 */
 	ret_code = ust_registry_create_event(registry, chan_reg_key,
-			sobjd, cobjd, name, sig, nr_fields, fields, loglevel,
-			model_emf_uri, ua_sess->buffer_type, &event_id,
-			app);
+			sobjd, cobjd, name, sig, nr_fields, fields,
+			loglevel_value, model_emf_uri, ua_sess->buffer_type,
+			&event_id, app);
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
@@ -5042,15 +5046,16 @@ int ust_app_recv_notify(int sock)
 	switch (cmd) {
 	case USTCTL_NOTIFY_CMD_EVENT:
 	{
-		int sobjd, cobjd, loglevel;
+		int sobjd, cobjd, loglevel_value;
 		char name[LTTNG_UST_SYM_NAME_LEN], *sig, *model_emf_uri;
 		size_t nr_fields;
 		struct ustctl_field *fields;
 
 		DBG2("UST app ustctl register event received");
 
-		ret = ustctl_recv_register_event(sock, &sobjd, &cobjd, name, &loglevel,
-				&sig, &nr_fields, &fields, &model_emf_uri);
+		ret = ustctl_recv_register_event(sock, &sobjd, &cobjd, name,
+				&loglevel_value, &sig, &nr_fields, &fields,
+				&model_emf_uri);
 		if (ret < 0) {
 			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 				ERR("UST app recv event failed with ret %d", ret);
@@ -5067,7 +5072,7 @@ int ust_app_recv_notify(int sock)
 		 * to the this function.
 		 */
 		ret = add_event_ust_registry(sock, sobjd, cobjd, name, sig, nr_fields,
-				fields, loglevel, model_emf_uri);
+				fields, loglevel_value, model_emf_uri);
 		if (ret < 0) {
 			goto error;
 		}

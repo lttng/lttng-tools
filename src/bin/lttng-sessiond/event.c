@@ -50,7 +50,8 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 
 	key.name = event->attr.name;
 	key.filter = (struct lttng_filter_bytecode *) event->filter;
-	key.loglevel = event->attr.loglevel;
+	key.loglevel_type = event->attr.loglevel_type;
+	key.loglevel_value = event->attr.loglevel;
 	key.exclusion = event->exclusion;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
@@ -207,7 +208,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
-			event->loglevel, exclusion);
+			event->loglevel_type, event->loglevel, exclusion);
 	if (!uevent) {
 		uevent = trace_ust_create_event(event, filter_expression,
 				filter, exclusion, internal_event);
@@ -411,10 +412,11 @@ int event_agent_enable(struct ltt_ust_session *usess,
 			usess->id, event->loglevel_type, event->loglevel,
 			filter_expression ? filter_expression : "NULL");
 
-	aevent = agent_find_event(event->name, event->loglevel, agt);
+	aevent = agent_find_event(event->name, event->loglevel_type,
+		event->loglevel, agt);
 	if (!aevent) {
-		aevent = agent_create_event(event->name, event->loglevel,
-				event->loglevel_type, filter,
+		aevent = agent_create_event(event->name, event->loglevel_type,
+				event->loglevel, filter,
 				filter_expression);
 		if (!aevent) {
 			ret = LTTNG_ERR_NOMEM;
@@ -533,12 +535,13 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	}
 
 	/*
-	 * The loglevel is hardcoded with 0 here since the agent ust event is set
-	 * with the loglevel type to ALL thus the loglevel stays 0. The event's
-	 * filter is the one handling the loglevel for agent.
+	 * Agent UST event has its loglevel type forced to
+	 * LTTNG_UST_LOGLEVEL_ALL. The actual loglevel type/value filtering
+	 * happens thanks to an UST filter. The following -1 is actually
+	 * ignored since the type is LTTNG_UST_LOGLEVEL_ALL.
 	 */
 	uevent = trace_ust_find_event(uchan->events, (char *) ust_event_name,
-			aevent->filter, 0, NULL);
+			aevent->filter, LTTNG_UST_LOGLEVEL_ALL, -1, NULL);
 	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
 
