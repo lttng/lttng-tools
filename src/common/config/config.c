@@ -2115,7 +2115,7 @@ static
 int process_pid_tracker_node(xmlNodePtr pid_tracker_node,
 	struct lttng_handle *handle)
 {
-	int ret, child;
+	int ret = 0, child;
 	xmlNodePtr targets_node = NULL;
 	xmlNodePtr node;
 
