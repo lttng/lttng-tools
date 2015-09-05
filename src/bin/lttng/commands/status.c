@@ -56,7 +56,7 @@ static void usage(FILE *ofp)
 static int status(void)
 {
 	int ret = CMD_SUCCESS;
-	const char *session_name;
+	char *session_name = NULL;
 	const char *argv[2];
 
 	session_name = get_session_name();
@@ -72,6 +72,8 @@ static int status(void)
 	ret = cmd_list(2, argv);
 
 end:
+	free(session_name);
+
 	return ret;
 }
 
