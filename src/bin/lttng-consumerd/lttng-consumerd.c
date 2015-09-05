@@ -109,7 +109,9 @@ static void sighandler(int sig)
 		return;
 	}
 
-	lttng_consumer_should_exit(ctx);
+	if (ctx) {
+		lttng_consumer_should_exit(ctx);
+	}
 }
 
 /*
@@ -312,6 +314,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
 	void *status;
+	struct lttng_consumer_local_data *tmp_ctx;
 
 	if (set_signal_handler()) {
 		retval = -1;
@@ -626,7 +629,10 @@ exit_health_thread:
 exit_health_pipe:
 
 exit_init_data:
-	lttng_consumer_destroy(ctx);
+	tmp_ctx = ctx;
+	ctx = NULL;
+	cmm_barrier();	/* Clear ctx for signal handler. */
+	lttng_consumer_destroy(tmp_ctx);
 	lttng_consumer_cleanup();
 
 	if (health_consumerd) {
