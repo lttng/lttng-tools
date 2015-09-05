@@ -742,16 +742,37 @@ end:
 }
 
 static
-void init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
+int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 		struct agent_event *agent_event)
 {
+	int ret = 0;
+	enum lttng_ust_loglevel_type ust_loglevel_type;
+
 	ust_event->enabled = agent_event->enabled;
 	ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 	strncpy(ust_event->attr.name, agent_event->name, LTTNG_SYMBOL_NAME_LEN);
-	ust_event->attr.loglevel_type = agent_event->loglevel_type;
+	switch (agent_event->loglevel_type) {
+	case LTTNG_EVENT_LOGLEVEL_ALL:
+		ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		break;
+	case LTTNG_EVENT_LOGLEVEL_SINGLE:
+		ust_loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		break;
+	case LTTNG_EVENT_LOGLEVEL_RANGE:
+		ust_loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		break;
+	default:
+		ERR("Invalid agent_event loglevel_type.");
+	        ret = -1;
+		goto end;
+	}
+
+	ust_event->attr.loglevel_type = ust_loglevel_type;
 	ust_event->attr.loglevel = agent_event->loglevel;
 	ust_event->filter_expression = agent_event->filter_expression;
 	ust_event->exclusion = agent_event->exclusion;
+end:
+	return ret;
 }
 
 static
@@ -784,7 +805,11 @@ int save_agent_events(struct config_writer *writer,
 		 * (and one could wonder why they don't reuse the same
 		 * structures...).
 		 */
-		init_ust_event_from_agent_event(&fake_event, agent_event);
+		ret = init_ust_event_from_agent_event(&fake_event, agent_event);
+		if (ret) {
+			rcu_read_unlock();
+			goto end;
+		}
 		ret = save_ust_event(writer, &fake_event);
 		if (ret) {
 			rcu_read_unlock();
