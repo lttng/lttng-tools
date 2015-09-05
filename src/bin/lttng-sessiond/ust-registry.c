@@ -43,13 +43,13 @@ static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 	key = _key;
 
 	/* It has to be a perfect match. */
-	if (strncmp(event->name, key->name, sizeof(event->name)) != 0) {
+	if (strncmp(event->name, key->name, sizeof(event->name))) {
 		goto no_match;
 	}
 
 	/* It has to be a perfect match. */
 	if (strncmp(event->signature, key->signature,
-				strlen(event->signature) != 0)) {
+			strlen(event->signature))) {
 		goto no_match;
 	}
 
