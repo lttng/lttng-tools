@@ -109,7 +109,9 @@ static void sighandler(int sig)
 		return;
 	}
 
-	lttng_consumer_should_exit(ctx);
+	if (ctx) {
+		lttng_consumer_should_exit(ctx);
+	}
 }
 
 /*
@@ -290,6 +292,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0;
 	void *status;
+	struct lttng_consumer_local_data *tmp_ctx;
 
 	/* Parse arguments */
 	progname = argv[0];
@@ -529,7 +532,10 @@ error:
 	ret = EXIT_FAILURE;
 
 end:
-	lttng_consumer_destroy(ctx);
+	tmp_ctx = ctx;
+	ctx = NULL;
+	cmm_barrier();	/* Clear ctx for signal handler. */
+	lttng_consumer_destroy(tmp_ctx);
 	lttng_consumer_cleanup();
 	if (health_consumerd) {
 		health_app_destroy(health_consumerd);
