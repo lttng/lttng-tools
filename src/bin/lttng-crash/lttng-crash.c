@@ -1062,12 +1062,14 @@ int delete_trace(const char *trace_path)
 	trace_dir = opendir(trace_path);
 	if (!trace_dir) {
 		PERROR("Cannot open '%s' path", trace_path);
-		return -1;
+		ret = -errno;
+	        goto end;
 	}
 	trace_dir_fd = dirfd(trace_dir);
 	if (trace_dir_fd < 0) {
 		PERROR("dirfd");
-		return -1;
+		ret = -errno;
+		goto end;
 	}
 
 	while ((entry = readdir(trace_dir))) {
