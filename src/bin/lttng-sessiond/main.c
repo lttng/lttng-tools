@@ -708,7 +708,6 @@ static void sessiond_cleanup(void)
 	wait_consumer(&ustconsumer64_data);
 	wait_consumer(&ustconsumer32_data);
 
-
 	DBG("Cleaning up all agent apps");
 	agent_app_ht_clean();
 
