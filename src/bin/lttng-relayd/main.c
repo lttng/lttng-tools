@@ -1370,7 +1370,7 @@ end:
 static int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn)
 {
-	int ret = htobe32(LTTNG_OK);
+	int ret = 0;
 	ssize_t size_ret;
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_metadata_payload *metadata_struct;
@@ -1407,9 +1407,9 @@ static int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	memset(data_buffer, 0, data_size);
 	DBG2("Relay receiving metadata, waiting for %" PRIu64 " bytes", data_size);
-	ret = conn->sock->ops->recvmsg(conn->sock, data_buffer, data_size, 0);
-	if (ret < 0 || ret != data_size) {
-		if (ret == 0) {
+	size_ret = conn->sock->ops->recvmsg(conn->sock, data_buffer, data_size, 0);
+	if (size_ret < 0 || size_ret != data_size) {
+		if (size_ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
 		} else {
@@ -1436,9 +1436,9 @@ static int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_put;
 	}
 
-	ret = write_padding_to_file(metadata_stream->stream_fd->fd,
+	size_ret = write_padding_to_file(metadata_stream->stream_fd->fd,
 			be32toh(metadata_struct->padding_size));
-	if (ret < 0) {
+	if (size_ret < 0) {
 		goto end_put;
 	}
 
@@ -1450,7 +1450,6 @@ static int relay_recv_metadata(struct lttcomm_relayd_hdr *recv_hdr,
 end_put:
 	pthread_mutex_unlock(&metadata_stream->lock);
 	stream_put(metadata_stream);
-
 end:
 	return ret;
 }
