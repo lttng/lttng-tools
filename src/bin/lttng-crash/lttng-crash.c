@@ -34,6 +34,7 @@
 #include <dirent.h>
 #include <byteswap.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include <version.h>
 #include <lttng/lttng.h>
@@ -1138,7 +1139,8 @@ int view_trace(const char *viewer_path, const char *trace_path)
  */
 int main(int argc, char *argv[])
 {
-	int ret, has_warning = 0;
+	int ret;
+	bool has_warning = false;
 	const char *output_path = NULL;
 	char tmppath[] = "/tmp/lttng-crash-XXXXXX";
 
@@ -1146,9 +1148,10 @@ int main(int argc, char *argv[])
 
 	ret = parse_args(argc, argv);
 	if (ret > 0) {
-		exit(EXIT_SUCCESS);
+		goto end;
 	} else if (ret < 0) {
-		exit(EXIT_FAILURE);
+		has_warning = true;
+		goto end;
 	}
 
 	if (opt_output_path) {
@@ -1156,34 +1159,38 @@ int main(int argc, char *argv[])
 		ret = mkdir(output_path, S_IRWXU | S_IRWXG);
 		if (ret) {
 			PERROR("mkdir");
-			exit(EXIT_FAILURE);
+			has_warning = true;
+			goto end;
 		}
 	} else {
 		output_path = mkdtemp(tmppath);
 		if (!output_path) {
 			PERROR("mkdtemp");
-			exit(EXIT_FAILURE);
+			has_warning = true;
+			goto end;
 		}
 	}
 
 	ret = extract_trace_recursive(output_path, input_path);
 	if (ret < 0) {
-		exit(EXIT_FAILURE);
+		has_warning = true;
+		goto end;
 	} else if (ret > 0) {
-		has_warning = 1;
+		/* extract_trace_recursive reported a warning. */
+		has_warning = true;
 	}
 	if (!opt_output_path) {
 		/* View trace */
 		ret = view_trace(opt_viewer_path, output_path);
-		if (ret)
-			has_warning = 1;
-
+		if (ret) {
+			has_warning = true;
+		}
 		/* unlink temporary trace */
 		ret = delete_trace(output_path);
-		if (ret)
-			has_warning = 1;
+		if (ret) {
+			has_warning = true;
+		}
 	}
-	if (has_warning)
-		exit(EXIT_FAILURE);
-	exit(EXIT_SUCCESS);
+end:
+	exit(has_warning ? EXIT_FAILURE : EXIT_SUCCESS);
 }
