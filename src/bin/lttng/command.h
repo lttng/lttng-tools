@@ -43,6 +43,7 @@ struct cmd_struct {
 };
 
 DECL_COMMAND(list);
+DECL_COMMAND(status);
 DECL_COMMAND(create);
 DECL_COMMAND(destroy);
 DECL_COMMAND(start);
