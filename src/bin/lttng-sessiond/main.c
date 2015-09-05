@@ -1787,6 +1787,12 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 				wait_queue->count--;
 				ust_app_destroy(wait_node->app);
 				free(wait_node);
+				/*
+				 * Silence warning of use-after-free in
+				 * cds_list_for_each_entry_safe which uses
+				 * __typeof__(*wait_node).
+				 */
+				wait_node = NULL;
 				break;
 			}
 		}
