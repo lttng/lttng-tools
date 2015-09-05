@@ -85,7 +85,8 @@ struct relay_stream {
 	 */
 	struct tracefile_array *tfa;
 
-	bool closed;	/* Stream is closed. */
+	bool closed;		/* Stream is closed. */
+	bool close_requested;	/* Close command has been received. */
 
 	/*
 	 * Counts number of indexes in indexes_ht. Redundant info.
@@ -144,7 +145,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 struct relay_stream *stream_get_by_id(uint64_t stream_id);
 bool stream_get(struct relay_stream *stream);
 void stream_put(struct relay_stream *stream);
-void stream_close(struct relay_stream *stream);
+void try_stream_close(struct relay_stream *stream);
 void stream_publish(struct relay_stream *stream);
 void print_relay_streams(void);
 
