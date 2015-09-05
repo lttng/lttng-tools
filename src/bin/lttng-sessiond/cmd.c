@@ -1812,6 +1812,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 				filter_copy = zmalloc(filter_size);
 				if (!filter_copy) {
 					ret = LTTNG_ERR_NOMEM;
+					goto error;
 				}
 				memcpy(filter_copy, filter, filter_size);
 
