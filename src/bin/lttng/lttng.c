@@ -69,6 +69,7 @@ static struct option long_options[] = {
 /* First level command */
 static struct cmd_struct commands[] =  {
 	{ "list", cmd_list},
+	{ "status", cmd_status},
 	{ "create", cmd_create},
 	{ "destroy", cmd_destroy},
 	{ "start", cmd_start},
@@ -123,6 +124,7 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "    set-session       Set current session name\n");
 	fprintf(ofp, "    snapshot          Snapshot buffers of current session name\n");
 	fprintf(ofp, "    start             Start tracing\n");
+	fprintf(ofp, "    status            Show current session's details\n");
 	fprintf(ofp, "    stop              Stop tracing\n");
 	fprintf(ofp, "    version           Show version information\n");
 	fprintf(ofp, "    view              Start trace viewer\n");
