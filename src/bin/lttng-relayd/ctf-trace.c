@@ -183,9 +183,10 @@ int ctf_trace_close(struct ctf_trace *trace)
 	cds_list_for_each_entry_rcu(stream, &trace->stream_list,
 			stream_node) {
 		/*
-		 * Close the stream.
+		 * Close stream since the connection owning the trace is being
+		 * torn down.
 		 */
-		stream_close(stream);
+		try_stream_close(stream);
 	}
 	rcu_read_unlock();
 	/*

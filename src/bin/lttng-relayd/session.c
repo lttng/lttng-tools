@@ -212,7 +212,8 @@ unlock:
 	}
 	cds_list_for_each_entry_rcu(stream, &session->recv_list,
 			recv_node) {
-		stream_close(stream);
+		/* Close streams which have not been published yet. */
+		try_stream_close(stream);
 	}
 rcu_unlock:
 	rcu_read_unlock();
