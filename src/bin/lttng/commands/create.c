@@ -80,7 +80,7 @@ static struct poptOption long_options[] = {
  * why this declaration exists and used ONLY in for this command.
  */
 extern int _lttng_create_session_ext(const char *name, const char *url,
-		const char *datetime, int live_timer);
+		const char *datetime);
 
 /*
  * usage
@@ -459,7 +459,7 @@ static int create_session(void)
 		}
 		ret = lttng_create_session_live(session_name, url, opt_live_timer);
 	} else {
-		ret = _lttng_create_session_ext(session_name, url, datetime, -1);
+		ret = _lttng_create_session_ext(session_name, url, datetime);
 	}
 	if (ret < 0) {
 		/* Don't set ret so lttng can interpret the sessiond error. */
