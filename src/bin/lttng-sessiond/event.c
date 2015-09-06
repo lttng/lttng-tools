@@ -641,7 +641,7 @@ int event_agent_disable_all(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	/* Flag every event that they are now enabled. */
+	/* Disable every event. */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, aevent,
 			node.node) {
@@ -651,14 +651,15 @@ int event_agent_disable_all(struct ltt_ust_session *usess,
 
 		ret = event_agent_disable(usess, agt, aevent->name);
 		if (ret != LTTNG_OK) {
-			rcu_read_unlock();
-			goto error;
+			goto error_unlock;
 		}
 	}
 	rcu_read_unlock();
 
 	ret = LTTNG_OK;
 
+error_unlock:
+	rcu_read_unlock();
 error:
 	return ret;
 }
