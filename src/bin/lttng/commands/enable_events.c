@@ -1171,7 +1171,7 @@ static int enable_events(char *session_name)
 					 * Don't print the default channel
 					 * name for agent domains.
 					 */
-					MSG("%s event %s%s enabled.",
+					MSG("%s event %s%s enabled",
 						get_domain_str(dom.type),
 						event_name,
 						exclusion_string);
