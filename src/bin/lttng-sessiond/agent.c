@@ -920,7 +920,8 @@ void agent_event_next_duplicate(const char *name,
 /*
  * Find a agent event in the given agent using name and loglevel.
  *
- * RCU read side lock MUST be acquired.
+ * RCU read side lock MUST be acquired. It must be kept for as long as
+ * the returned agent_event is used.
  *
  * Return object if found else NULL.
  */
