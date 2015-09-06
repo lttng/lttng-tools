@@ -667,10 +667,11 @@ static int launch_sessiond(void)
 	}
 
 	ret = spawn_sessiond(pathname);
-	if (ret < 0) {
-		ERR("Problem occurred when starting %s", pathname);
-	}
 end:
+	if (ret) {
+		ERR("Problem occurred while launching session daemon (%s)",
+				pathname);
+	}
 	return ret;
 }
 
