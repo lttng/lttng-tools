@@ -19,7 +19,7 @@
 TEST_DESC="UST tracer - Event wildcard"
 
 CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/../..
+TESTDIR=$CURDIR/../../..
 LTTNG_BIN="lttng"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
