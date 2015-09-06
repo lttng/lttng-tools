@@ -1001,6 +1001,170 @@ Don't wait for data availability.
 .PP
 
 .PP
+\fBtrack\fP (-k | -u) --pid [PID1[,PID2[,...]]] [OPTIONS]
+.RS
+Adds one or more entries to a tracker
+
+The \fBtrack\fP command adds one or more entries to a tracker. A tracker is
+a whitelist of resources. Tracked resources are allowed to emit events, provided
+those events are enabled (see the \fBenable-event\fP command).
+
+Tracker entries can be removed from the whitelist with the
+\fBuntrack\fP command.
+
+As of this version, the only available tracker is the \fBPID tracker\fP. The
+process ID (PID) tracker follows one or more process IDs;
+only the processes with a tracked PID are allowed to emit events. By default,
+all possible PIDs on the system are tracked: any process may emit enabled
+events (equivalent of \fBlttng track \-\-pid \-\-all\fR for all domains).
+
+With the PID tracker, it is possible, for example, to record all system calls
+called by a given process:
+
+.nf
+    $ lttng enable-event --kernel --all --syscall
+    $ lttng track --kernel --pid 2345
+    $ lttng start
+.fi
+
+If all the PIDs are tracked (i.e. \fBlttng track \-\-pid \-\-all\fR, which
+is the default state of all domains when creating a tracing session), then
+using the \fBtrack\fR command with one or more specific PIDs has the effect of
+first removing all the PIDs from the whitelist, then adding the specified PIDs.
+
+Assume the maximum PID is 7 for the following examples:
+
+.nf
+    Initial whitelist: [0] [1] [2] [3] [4] [5] [6] [7]
+
+    $ lttng track --userspace --pid 3,6,7
+
+            Whitelist: [ ] [ ] [ ] [3] [ ] [ ] [6] [7]
+
+    $ lttng untrack --userspace --pid 7
+
+            Whitelist: [ ] [ ] [ ] [3] [ ] [ ] [6] [ ]
+
+    $ lttng track --userspace --pid 1,5
+
+            Whitelist: [ ] [1] [ ] [3] [ ] [5] [6] [ ]
+.fi
+
+It should be noted that the PID tracker tracks the numeric process IDs.
+Should a process with a given ID exit and another process be given this
+ID, then the latter would also be allowed to emit events.
+
+See the \fBuntrack\fR command's documentation for more details about
+removing entries.
+
+.B OPTIONS:
+
+.TP
+.BR "\-s, \-\-session NAME"
+Apply to session name.
+.TP
+.BR "\-k, \-\-kernel"
+Apply to the kernel tracer.
+.TP
+.BR "\-u, \-\-userspace"
+Apply to the user space tracer.
+.TP
+.BR "\-p, \-\-pid [PIDS]"
+Track process IDs PIDS (add to whitelist).
+
+PIDS is a comma-separated list of PIDs to add to the PID tracker.
+
+The PIDS argument must be omitted when also using the \fB\-\-all\fP option.
+.TP
+.BR "\-a, \-\-all"
+Used in conjunction with an empty \fB\-\-pid\fP option: track all process IDs
+(add all entries to whitelist).
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
+
+.PP
+\fBuntrack\fP (-k | -u) --pid [PID1[,PID2[,...]]] [OPTIONS]
+.RS
+Removes one or more entries from a tracker
+
+See the \fBtrack\fP command's documentation to learn more about LTTng
+trackers.
+
+The \fBuntrack\fP command removes specific resources from a tracker. The
+resources to remove must have been precedently added by the
+\fBtrack\fP command. It is also possible to remove all the resources
+from the whitelist using the \fB\-\-all\fR option.
+
+As of this version, the only available tracker is the \fBPID tracker\fP.
+
+One common operation is to create a tracing session, remove all the entries
+from the PID tracker whitelist, start tracing, and then manually track PIDs
+while tracing is active.
+
+Assume the maximum PID is 7 for the following examples:
+
+.nf
+    $ lttng create
+
+    Initial whitelist: [0] [1] [2] [3] [4] [5] [6] [7]
+
+    $ lttng untrack --userspace --pid --all
+
+            Whitelist: [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
+
+    $ lttng enable-event --userspace ...
+    $ lttng start
+    ...
+    $ lttng track --userspace --pid 3,5
+
+            Whitelist: [ ] [ ] [ ] [3] [ ] [5] [ ] [ ]
+
+    $ lttng track --userspace --pid 2
+
+            Whitelist: [ ] [ ] [2] [3] [ ] [5] [ ] [ ]
+.fi
+
+See the \fBtrack\fR command's documentation for more details about
+adding entries.
+
+.B OPTIONS:
+
+.TP
+.BR "\-s, \-\-session NAME"
+Apply to session name.
+.TP
+.BR "\-k, \-\-kernel"
+Apply to the kernel tracer.
+.TP
+.BR "\-u, \-\-userspace"
+Apply to the user space tracer.
+.TP
+.BR "\-p, \-\-pid [PIDS]"
+Stop tracking process IDs PIDS (remove from whitelist).
+
+PIDS is a comma-separated list of PIDs to remove from the PID tracker.
+
+The PIDS argument must be omitted when also using the \fB\-\-all\fP option.
+.TP
+.BR "\-a, \-\-all"
+Used in conjunction with an empty \fB\-\-pid\fP option: stop tracking all
+process IDs (remove all entries from whitelist).
+.TP
+.BR "\-h, \-\-help"
+Show summary of possible options and commands.
+.TP
+.BR "\-\-list-options"
+Simple listing of options
+.RE
+.PP
+
+.PP
 \fBversion\fP
 .RS
 Show version information
