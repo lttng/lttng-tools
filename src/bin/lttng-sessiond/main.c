@@ -2962,6 +2962,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
+	assert(!rcu_read_ongoing());
+
 	*sock_error = 0;
 
 	switch (cmd_ctx->lsm->cmd_type) {
@@ -4021,6 +4023,7 @@ setup_error:
 		session_unlock_list();
 	}
 init_setup_error:
+	assert(!rcu_read_ongoing());
 	return ret;
 }
 
