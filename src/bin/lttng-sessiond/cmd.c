@@ -1521,12 +1521,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 
 	DBG("Enable event command for event \'%s\'", event->name);
 
+	rcu_read_lock();
+
 	ret = validate_event_name(event->name);
 	if (ret) {
 		goto error;
 	}
-
-	rcu_read_lock();
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
