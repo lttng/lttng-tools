@@ -654,8 +654,6 @@ int event_agent_disable_all(struct ltt_ust_session *usess,
 			goto error_unlock;
 		}
 	}
-	rcu_read_unlock();
-
 	ret = LTTNG_OK;
 
 error_unlock:
