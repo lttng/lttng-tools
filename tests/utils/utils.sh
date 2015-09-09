@@ -387,6 +387,8 @@ function start_lttng_sessiond_notap()
 function stop_lttng_sessiond_opt()
 {
 	local withtap=$1
+	local signal=$2
+	local kill_opt=""
 
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
@@ -395,7 +397,11 @@ function stop_lttng_sessiond_opt()
 
 	PID_SESSIOND=`pidof lt-$SESSIOND_BIN`
 
-	kill $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	if [ -n "$2" ]; then
+		kill_opt="$kill_opt -s $signal"
+	fi
+
+	kill $kill_opt $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 
 	if [ $? -eq 1 ]; then
 		if [ $withtap -eq "1" ]; then
@@ -428,6 +434,63 @@ function stop_lttng_sessiond_notap()
 	stop_lttng_sessiond_opt 0 "$@"
 }
 
+function stop_lttng_consumerd_opt()
+{
+	local withtap=$1
+	local signal=$2
+	local kill_opt=""
+
+	PID_CONSUMERD=`pidof $CONSUMERD_BIN`
+
+	if [ -n "$2" ]; then
+		kill_opt="$kill_opt -s $signal"
+	fi
+
+	if [ $withtap -eq "1" ]; then
+		diag "Killing lttng-consumerd (pid: $PID_CONSUMERD)"
+	fi
+	kill $kill_opt $PID_CONSUMERD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	retval=$?
+	set +x
+
+	if [ $? -eq 1 ]; then
+		if [ $withtap -eq "1" ]; then
+			fail "Kill consumer daemon"
+		fi
+		return 1
+	else
+		out=1
+		while [ $out -ne 0 ]; do
+			pid=$(pidof $CONSUMERD_BIN)
+
+			# If consumerds are still present check their status.
+			# A zombie status qualifies the consumerd as *killed*
+			out=0
+			for consumer_pid in $pid; do
+				state=$(ps -p $consumer_pid -o state= )
+				if [[ -n "$state" && "$state" != "Z" ]]; then
+					out=1
+				fi
+			done
+			sleep 0.5
+		done
+		if [ $withtap -eq "1" ]; then
+			pass "Kill consumer daemon"
+		fi
+	fi
+	return $retval
+}
+
+function stop_lttng_consumerd()
+{
+	stop_lttng_consumerd_opt 1 "$@"
+}
+
+function stop_lttng_consumerd_notap()
+{
+	stop_lttng_consumerd_opt 0 "$@"
+}
+
 function list_lttng_with_opts ()
 {
 	local opts=$1
@@ -448,8 +511,9 @@ function create_lttng_session ()
 	local expected_to_fail=$1
 	local sess_name=$2
 	local trace_path=$3
+	local opt=$4
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path > $OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path $opt > $OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
@@ -475,8 +539,9 @@ function enable_ust_lttng_channel ()
 	local expect_fail=$1
 	local sess_name=$2
 	local channel_name=$3
+	local opt=$4
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expect_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
