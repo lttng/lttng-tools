@@ -103,32 +103,31 @@ restart:
 				continue;
 			}
 
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+			if (revents & LPOLLIN) {
+				/* Get socket from dispatch thread. */
+				size_ret = lttng_read(ht_cleanup_pipe[0], &ht,
+						sizeof(ht));
+				if (size_ret < sizeof(ht)) {
+					PERROR("ht cleanup notify pipe");
+					goto error;
+				}
+				health_code_update();
+				/*
+				 * The whole point of this thread is to call
+				 * lttng_ht_destroy from a context that is NOT:
+				 * 1) a read-side RCU lock,
+				 * 2) a call_rcu thread.
+				 */
+				lttng_ht_destroy(ht);
+
+				health_code_update();
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				ERR("ht cleanup pipe error");
 				goto error;
-			} else if (!(revents & LPOLLIN)) {
-				/* No POLLIN and not a catched error, stop the thread. */
-				ERR("ht cleanup failed. revent: %u", revents);
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 				goto error;
 			}
-
-			/* Get socket from dispatch thread. */
-			size_ret = lttng_read(ht_cleanup_pipe[0], &ht,
-					sizeof(ht));
-			if (size_ret < sizeof(ht)) {
-				PERROR("ht cleanup notify pipe");
-				goto error;
-			}
-			health_code_update();
-			/*
-			 * The whole point of this thread is to call
-			 * lttng_ht_destroy from a context that is NOT:
-			 * 1) a read-side RCU lock,
-			 * 2) a call_rcu thread.
-			 */
-			lttng_ht_destroy(ht);
-
-			health_code_update();
 		}
 
 		for (i = 0; i < nb_fd; i++) {
