@@ -1034,6 +1034,7 @@ int extract_trace_recursive(const char *output_path,
 			break;
 		}
 		case DT_REG:
+		case DT_LNK:
 			if (!strcmp(entry->d_name, "metadata")) {
 				ret = extract_one_trace(output_path,
 					input_path);

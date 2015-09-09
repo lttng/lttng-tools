@@ -31,7 +31,7 @@ NR_ITER=-1
 # Temp file output
 OUTPUT_DIR=$(mktemp -d)
 
-NUM_TESTS=70
+NUM_TESTS=71
 
 source $TESTDIR/utils/utils.sh
 
@@ -225,6 +225,7 @@ function test_lttng_crash()
 	local session_name=crash_test
 	local channel_name=channel_crash
 	local shm_path=$(mktemp -d)
+	local shm_path_symlink=$(mktemp -d)
 	local event_name="tp:tptest"
 
 	# Create a session in snapshot mode to deactivate any use of consumerd
@@ -242,10 +243,17 @@ function test_lttng_crash()
 	test $crash_recup_count -eq "10"
 	ok $? "Expect 10 recup event from buffers got $crash_recup_count"
 
+	# Test with symlink
+	cp -rs $shm_path/. $shm_path_symlink
+	crash_recup_count=$($LTTNG_CRASH $shm_path_symlink | wc -l)
+	test $crash_recup_count -eq "10"
+	ok $? "Expect 10 recup event from symlink buffers got $crash_recup_count"
+
 	# Tear down
 	destroy_lttng_session_ok $session_name
 	stop_lttng_sessiond
 	rm -rf $shm_path
+	rm -rf $shm_path_symlink
 }
 
 function test_lttng_crash_extraction()
@@ -380,10 +388,10 @@ function test_lttng_crash_extraction_sigkill()
 TESTS=(
 	test_shm_path_per_uid
 	test_shm_path_per_pid
-	test_lttng_crash
-	test_lttng_crash_extraction
 	test_shm_path_per_pid_sigint
 	test_shm_path_per_uid_sigint
+	test_lttng_crash
+	test_lttng_crash_extraction
 	test_lttng_crash_extraction_sigkill
 )
 
