@@ -333,3 +333,42 @@ void relay_index_close_all(struct relay_stream *stream)
 	}
 	rcu_read_unlock();
 }
+
+void relay_index_close_partial_fd(struct relay_stream *stream)
+{
+	struct lttng_ht_iter iter;
+	struct relay_index *index;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter,
+			index, index_n.node) {
+		if (!index->index_fd) {
+			continue;
+		}
+		/*
+		 * Partial index has its index_fd: we have only
+		 * received its info from the data socket.
+		 * Put self-ref from index.
+		 */
+		relay_index_put(index);
+	}
+	rcu_read_unlock();
+}
+
+uint64_t relay_index_find_last(struct relay_stream *stream)
+{
+	struct lttng_ht_iter iter;
+	struct relay_index *index;
+	uint64_t net_seq_num = -1ULL;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter,
+			index, index_n.node) {
+		if (net_seq_num == -1ULL ||
+				index->index_n.key > net_seq_num) {
+			net_seq_num = index->index_n.key;
+		}
+	}
+	rcu_read_unlock();
+	return net_seq_num;
+}
