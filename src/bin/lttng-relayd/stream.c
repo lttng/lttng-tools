@@ -416,6 +416,27 @@ void try_stream_close(struct relay_stream *stream)
 	stream_put(stream);
 }
 
+static void print_stream_indexes(struct relay_stream *stream)
+{
+	struct lttng_ht_iter iter;
+	struct relay_index *index;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter, index,
+			index_n.node) {
+		DBG("index %p net_seq_num %" PRIu64 " refcount %ld"
+				" stream %" PRIu64 " trace %" PRIu64
+				" session %" PRIu64,
+				index,
+				index->index_n.key,
+				stream->ref.refcount,
+				index->stream->stream_handle,
+				index->stream->trace->id,
+				index->stream->trace->session->id);
+	}
+	rcu_read_unlock();
+}
+
 void print_relay_streams(void)
 {
 	struct lttng_ht_iter iter;
@@ -434,6 +455,7 @@ void print_relay_streams(void)
 				stream->stream_handle,
 				stream->trace->id,
 				stream->trace->session->id);
+		print_stream_indexes(stream);
 		stream_put(stream);
 	}
 	rcu_read_unlock();
