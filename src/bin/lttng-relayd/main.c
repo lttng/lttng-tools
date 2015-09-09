@@ -2084,8 +2084,8 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 	/* Get data offset because we are about to update the index. */
 	data_offset = htobe64(stream->tracefile_size_current);
 
-	DBG("handle_index_data: stream %" PRIu64 " data offset %" PRIu64,
-		stream->stream_handle, stream->tracefile_size_current);
+	DBG("handle_index_data: stream %" PRIu64 " net_seq_num %" PRIu64 " data offset %" PRIu64,
+			stream->stream_handle, net_seq_num, stream->tracefile_size_current);
 
 	/*
 	 * Lookup for an existing index for that stream id/sequence
@@ -2183,6 +2183,7 @@ static int relay_process_data(struct relay_connection *conn)
 	stream_id = be64toh(data_hdr.stream_id);
 	stream = stream_get_by_id(stream_id);
 	if (!stream) {
+		ERR("relay_process_data: Cannot find stream %" PRIu64, stream_id);
 		ret = -1;
 		goto end;
 	}
@@ -2212,6 +2213,8 @@ static int relay_process_data(struct relay_connection *conn)
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Socket %d error %d", conn->sock->fd, ret);
 		}
 		ret = -1;
 		goto end_stream_put;
@@ -2255,6 +2258,8 @@ static int relay_process_data(struct relay_connection *conn)
 	if (session->minor >= 4 && !session->snapshot) {
 		ret = handle_index_data(stream, net_seq_num, rotate_index);
 		if (ret < 0) {
+			ERR("handle_index_data: fail stream %" PRIu64 " net_seq_num %" PRIu64 " ret %d",
+					stream->stream_handle, net_seq_num, ret);
 			goto end_stream_unlock;
 		}
 	}
@@ -2273,6 +2278,8 @@ static int relay_process_data(struct relay_connection *conn)
 	ret = write_padding_to_file(stream->stream_fd->fd,
 			be32toh(data_hdr.padding_size));
 	if (ret < 0) {
+		ERR("write_padding_to_file: fail stream %" PRIu64 " net_seq_num %" PRIu64 " ret %d",
+				stream->stream_handle, net_seq_num, ret);
 		goto end_stream_unlock;
 	}
 	stream->tracefile_size_current +=
