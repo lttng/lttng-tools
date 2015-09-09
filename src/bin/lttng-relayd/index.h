@@ -71,5 +71,7 @@ int relay_index_set_data(struct relay_index *index,
 int relay_index_try_flush(struct relay_index *index);
 
 void relay_index_close_all(struct relay_stream *stream);
+void relay_index_close_partial_fd(struct relay_stream *stream);
+uint64_t relay_index_find_last(struct relay_stream *stream);
 
 #endif /* _RELAY_INDEX_H */
