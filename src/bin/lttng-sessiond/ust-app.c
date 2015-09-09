@@ -3873,7 +3873,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct lttng_ht_iter iter, uiter;
-	struct lttng_ht_node_str *ua_chan_node, *ua_event_node;
+	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
@@ -3910,14 +3910,14 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		lttng_ht_lookup(ua_chan->events, (void *)uevent->attr.name, &uiter);
-		ua_event_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_event_node == NULL) {
+		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
+				uevent->filter, uevent->attr.loglevel,
+				uevent->exclusion);
+		if (ua_event == NULL) {
 			DBG2("Event %s not found in channel %s for app pid %d."
 					"Skipping", uevent->attr.name, uchan->name, app->pid);
 			continue;
 		}
-		ua_event = caa_container_of(ua_event_node, struct ust_app_event, node);
 
 		ret = disable_ust_app_event(ua_sess, ua_event, app);
 		if (ret < 0) {
