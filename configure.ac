@@ -386,24 +386,24 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 	AX_CHECK_CLASSPATH
 
 	# Check for Java UST agent common class first
-	AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
-	if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xno"; then
-		AC_MSG_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-common.jar"])
+	AX_CHECK_CLASS(org.lttng.ust.agent.LTTngAgent)
+	if test "x$ac_cv_class_org_lttng_ust_agent_LTTngAgent" = "xno"; then
+		AC_MSG_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/liblttng-ust-agent.jar"])
 	fi
 
 	if test "x$test_java_agent_jul" = "xyes"; then
 		# Check for JUL agent class
-		AX_CHECK_CLASS(org.lttng.ust.agent.jul.LttngLogHandler)
-		if test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xno"; then
-			AC_MSG_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-jul.jar"])
+		AX_CHECK_CLASS(org.lttng.ust.agent.jul.LTTngJUL)
+		if test "x$ac_cv_class_org_lttng_ust_agent_jul_LTTngJUL" = "xno"; then
+			AC_MSG_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/liblttng-ust-jul.jar"])
 		fi
 	fi
 
 	if test "x$test_java_agent_log4j" = "xyes"; then
 		# Check for Log4j agent class
-		AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
-		if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xno"; then
-			AC_MSG_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
+		AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LTTngLog4j)
+		if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LTTngLog4j" = "xno"; then
+			AC_MSG_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/liblttng-ust-agent.jar"])
 		fi
 
 		# Check for Log4j class

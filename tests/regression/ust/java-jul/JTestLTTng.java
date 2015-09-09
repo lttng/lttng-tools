@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2015 - Michael Jeanson <mjeanson@efficios.com>
  * Copyright (C) 2013 - David Goulet <dgoulet@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,29 +15,20 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-import java.io.IOException;
 import java.lang.Integer;
-import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-import org.lttng.ust.agent.jul.LttngLogHandler;
+import org.lttng.ust.agent.LTTngAgent;
 
-public class JTestLTTng {
+public class JTestLTTng
+{
+	private static LTTngAgent lttngAgent;
 
-	/**
-	 * Application start
-	 *
-	 * @param args
-	 *            Command-line arguments
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
-	public static void main(String args[]) throws IOException, InterruptedException {
-
+	public static void main(String args[]) throws Exception
+	{
 		Logger lttng = Logger.getLogger("JTestLTTng");
 		Logger lttng2 = Logger.getLogger("JTestLTTng2");
-
 		int nrIter = Integer.parseInt(args[0]);
 		int waitTime = Integer.parseInt(args[1]);
 		int fire_finest_tp = 0;
@@ -51,11 +41,7 @@ public class JTestLTTng {
 			fire_second_tp = Integer.parseInt(args[3]);
 		}
 
-		/* Instantiate a LTTngLogHandler object, and attach it to our loggers */
-		Handler lttngHandler = new LttngLogHandler();
-		lttng.addHandler(lttngHandler);
-		lttng2.addHandler(lttngHandler);
-
+		lttngAgent = LTTngAgent.getLTTngAgent();
 		lttng.setLevel(Level.FINEST);
 
 		for (int iter = 0; iter < nrIter; iter++) {
@@ -71,10 +57,6 @@ public class JTestLTTng {
 			lttng2.info("JUL second logger fired");
 		}
 
-		/*
-		 * Do not forget to close() all handlers so that the agent can shutdown
-		 * and the session daemon socket gets cleaned up explicitly.
-		 */
-		lttngHandler.close();
+		lttngAgent.dispose();
 	}
 }
