@@ -25,7 +25,7 @@
 #include <lttng/lttng.h>
 
 /* Agent protocol version that is verified during the agent registration. */
-#define AGENT_MAJOR_VERSION		1
+#define AGENT_MAJOR_VERSION		2
 #define AGENT_MINOR_VERSION		0
 
 /*

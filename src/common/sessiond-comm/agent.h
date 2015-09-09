@@ -56,12 +56,14 @@ struct lttcomm_agent_hdr {
 } LTTNG_PACKED;
 
 /*
- * Enable event command payload.
+ * Enable event command payload. Will be immediately followed by the
+ * variable-length string representing the filter expression.
  */
 struct lttcomm_agent_enable {
 	uint32_t loglevel_value;
 	uint32_t loglevel_type;
 	char name[LTTNG_SYMBOL_NAME_LEN];
+	uint32_t filter_expression_length;
 } LTTNG_PACKED;
 
 /*

@@ -361,7 +361,9 @@ error:
 static int enable_event(struct agent_app *app, struct agent_event *event)
 {
 	int ret;
+	char *bytes_to_send;
 	uint64_t data_size;
+	size_t filter_expression_length;
 	uint32_t reply_ret_code;
 	struct lttcomm_agent_enable msg;
 	struct lttcomm_agent_generic_reply reply;
@@ -373,7 +375,16 @@ static int enable_event(struct agent_app *app, struct agent_event *event)
 	DBG2("Agent enabling event %s for app pid: %d and socket %d", event->name,
 			app->pid, app->sock->fd);
 
-	data_size = sizeof(msg);
+	/*
+	 * Calculate the payload's size, which is the fixed-size struct followed
+	 * by the variable-length filter expression (+1 for the ending \0).
+	 */
+	if (!event->filter_expression) {
+		filter_expression_length = 0;
+	} else {
+		filter_expression_length = strlen(event->filter_expression) + 1;
+	}
+	data_size = sizeof(msg) + filter_expression_length;
 
 	ret = send_header(app->sock, data_size, AGENT_CMD_ENABLE, 0);
 	if (ret < 0) {
@@ -384,7 +395,22 @@ static int enable_event(struct agent_app *app, struct agent_event *event)
 	msg.loglevel_value = event->loglevel_value;
 	msg.loglevel_type = event->loglevel_type;
 	strncpy(msg.name, event->name, sizeof(msg.name));
-	ret = send_payload(app->sock, &msg, sizeof(msg));
+	msg.filter_expression_length = filter_expression_length;
+
+	bytes_to_send = zmalloc(data_size);
+	if (!bytes_to_send) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	memcpy(bytes_to_send, &msg, sizeof(msg));
+	if (filter_expression_length > 0) {
+		memcpy(bytes_to_send + sizeof(msg), event->filter_expression,
+				filter_expression_length);
+	}
+
+	ret = send_payload(app->sock, bytes_to_send, data_size);
+	free(bytes_to_send);
 	if (ret < 0) {
 		goto error_io;
 	}
