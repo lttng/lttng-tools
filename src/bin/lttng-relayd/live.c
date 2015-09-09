@@ -541,10 +541,7 @@ restart:
 				goto exit;
 			}
 
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-				ERR("socket poll error");
-				goto error;
-			} else if (revents & LPOLLIN) {
+			if (revents & LPOLLIN) {
 				/*
 				 * A new connection is requested, therefore a
 				 * viewer connection is allocated in this
@@ -587,6 +584,12 @@ restart:
 				 * exchange in cds_wfcq_enqueue.
 				 */
 				futex_nto1_wake(&viewer_conn_queue.futex);
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				ERR("socket poll error");
+				goto error;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 	}
@@ -1907,10 +1910,7 @@ restart:
 
 			/* Inspect the relay conn pipe for new connection. */
 			if (pollfd == live_conn_pipe[0]) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Relay live pipe error");
-					goto error;
-				} else if (revents & LPOLLIN) {
+				if (revents & LPOLLIN) {
 					struct relay_connection *conn;
 
 					ret = lttng_read(live_conn_pipe[0],
@@ -1922,6 +1922,12 @@ restart:
 							LPOLLIN | LPOLLRDHUP);
 					connection_ht_add(viewer_connections_ht, conn);
 					DBG("Connection socket %d added to poll", conn->sock->fd);
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					ERR("Relay live pipe error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 			} else {
 				/* Connection activity. */
@@ -1932,11 +1938,7 @@ restart:
 					continue;
 				}
 
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					cleanup_connection_pollfd(&events, pollfd);
-					/* Put "create" ownership reference. */
-					connection_put(conn);
-				} else if (revents & LPOLLIN) {
+				if (revents & LPOLLIN) {
 					ret = conn->sock->ops->recvmsg(conn->sock, &recv_hdr,
 							sizeof(recv_hdr), 0);
 					if (ret <= 0) {
@@ -1955,6 +1957,14 @@ restart:
 							DBG("Viewer connection closed with %d", pollfd);
 						}
 					}
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					cleanup_connection_pollfd(&events, pollfd);
+					/* Put "create" ownership reference. */
+					connection_put(conn);
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					connection_put(conn);
+					goto error;
 				}
 				/* Put local "get_by_sock" reference. */
 				connection_put(conn);

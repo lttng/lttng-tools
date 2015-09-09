@@ -274,7 +274,8 @@ restart:
 
 			/* Event on the registration socket */
 			if (pollfd == sock) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)
+						&& !(revents & LPOLLIN)) {
 					ERR("Health socket poll error");
 					goto error;
 				}

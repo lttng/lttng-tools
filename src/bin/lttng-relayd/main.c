@@ -832,10 +832,7 @@ restart:
 				goto exit;
 			}
 
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-				ERR("socket poll error");
-				goto error;
-			} else if (revents & LPOLLIN) {
+			if (revents & LPOLLIN) {
 				/*
 				 * A new connection is requested, therefore a
 				 * sessiond/consumerd connection is allocated in
@@ -887,6 +884,12 @@ restart:
 				 * exchange in cds_wfcq_enqueue.
 				 */
 				futex_nto1_wake(&relay_conn_queue.futex);
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				ERR("socket poll error");
+				goto error;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 	}

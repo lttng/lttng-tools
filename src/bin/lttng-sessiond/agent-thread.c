@@ -295,35 +295,22 @@ restart:
 				goto exit;
 			}
 
-			/*
-			 * Check first if this is a POLLERR since POLLIN is also included
-			 * in an error value thus checking first.
-			 */
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-				/* Removing from the poll set */
-				ret = lttng_poll_del(&events, pollfd);
-				if (ret < 0) {
-					goto error;
-				}
-
-				agent_destroy_app_by_sock(pollfd);
-			} else if (revents & (LPOLLIN)) {
+			if (revents & LPOLLIN) {
 				int new_fd;
 				struct agent_app *app = NULL;
 
-				/* Pollin event of agent app socket should NEVER happen. */
 				assert(pollfd == reg_sock->fd);
-
 				new_fd = handle_registration(reg_sock, &app);
 				if (new_fd < 0) {
-					WARN("[agent-thread] agent registration failed. Ignoring.");
-					/* Somehow the communication failed. Just continue. */
 					continue;
 				}
 				/* Should not have a NULL app on success. */
 				assert(app);
 
-				/* Only add poll error event to only detect shutdown. */
+				/*
+				 * Since this is a command socket (write then read),
+				 * only add poll error event to only detect shutdown.
+				 */
 				ret = lttng_poll_add(&events, new_fd,
 						LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 				if (ret < 0) {
@@ -335,10 +322,26 @@ restart:
 				update_agent_app(app);
 
 				/* On failure, the poll will detect it and clean it up. */
-				(void) agent_send_registration_done(app);
+				ret = agent_send_registration_done(app);
+				if (ret < 0) {
+					/* Removing from the poll set */
+					ret = lttng_poll_del(&events, new_fd);
+					if (ret < 0) {
+						goto error;
+					}
+					agent_destroy_app_by_sock(new_fd);
+					continue;
+				}
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				/* Removing from the poll set */
+				ret = lttng_poll_del(&events, pollfd);
+				if (ret < 0) {
+					goto error;
+				}
+				agent_destroy_app_by_sock(pollfd);
 			} else {
-				ERR("Unknown poll events %u for sock %d", revents, pollfd);
-				continue;
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 	}

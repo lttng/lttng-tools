@@ -1051,31 +1051,33 @@ static void *thread_manage_kernel(void *data)
 			}
 
 			/* Check for data on kernel pipe */
-			if (pollfd == kernel_poll_pipe[0] && (revents & LPOLLIN)) {
-				(void) lttng_read(kernel_poll_pipe[0],
-					&tmp, 1);
-				/*
-				 * Ret value is useless here, if this pipe gets any actions an
-				 * update is required anyway.
-				 */
-				update_poll_flag = 1;
-				continue;
-			} else {
-				/*
-				 * New CPU detected by the kernel. Adding kernel stream to
-				 * kernel session and updating the kernel consumer
-				 */
-				if (revents & LPOLLIN) {
+			if (revents & LPOLLIN) {
+				if (pollfd == kernel_poll_pipe[0]) {
+					(void) lttng_read(kernel_poll_pipe[0],
+						&tmp, 1);
+					/*
+					 * Ret value is useless here, if this pipe gets any actions an
+					 * update is required anyway.
+					 */
+					update_poll_flag = 1;
+					continue;
+				} else {
+					/*
+					 * New CPU detected by the kernel. Adding kernel stream to
+					 * kernel session and updating the kernel consumer
+					 */
 					ret = update_kernel_stream(&kconsumer_data, pollfd);
 					if (ret < 0) {
 						continue;
 					}
 					break;
-					/*
-					 * TODO: We might want to handle the LPOLLERR | LPOLLHUP
-					 * and unregister kernel stream at this point.
-					 */
 				}
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				update_poll_flag = 1;
+				continue;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 	}
@@ -1205,8 +1207,13 @@ restart:
 
 		/* Event on the registration socket */
 		if (pollfd == consumer_data->err_sock) {
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+			if (revents & LPOLLIN) {
+				continue;
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				ERR("consumer err socket poll error");
+				goto error;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 				goto error;
 			}
 		}
@@ -1337,7 +1344,8 @@ restart_poll:
 
 			if (pollfd == sock) {
 				/* Event on the consumerd socket */
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)
+						&& !(revents & LPOLLIN)) {
 					ERR("consumer err socket second poll error");
 					goto error;
 				}
@@ -1355,6 +1363,11 @@ restart_poll:
 
 				goto exit;
 			} else if (pollfd == consumer_data->metadata_fd) {
+				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)
+						&& !(revents & LPOLLIN)) {
+					ERR("consumer err metadata socket second poll error");
+					goto error;
+				}
 				/* UST metadata requests */
 				ret = ust_consumer_metadata_request(
 						&consumer_data->metadata_sock);
@@ -1523,10 +1536,7 @@ static void *thread_manage_apps(void *data)
 
 			/* Inspect the apps cmd pipe */
 			if (pollfd == apps_cmd_pipe[0]) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Apps command pipe error");
-					goto error;
-				} else if (revents & LPOLLIN) {
+				if (revents & LPOLLIN) {
 					int sock;
 
 					/* Empty pipe */
@@ -1539,9 +1549,8 @@ static void *thread_manage_apps(void *data)
 					health_code_update();
 
 					/*
-					 * We only monitor the error events of the socket. This
-					 * thread does not handle any incoming data from UST
-					 * (POLLIN).
+					 * Since this is a command socket (write then read),
+					 * we only monitor the error events of the socket.
 					 */
 					ret = lttng_poll_add(&events, sock,
 							LPOLLERR | LPOLLHUP | LPOLLRDHUP);
@@ -1550,6 +1559,12 @@ static void *thread_manage_apps(void *data)
 					}
 
 					DBG("Apps with sock %d added to poll set", sock);
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					ERR("Apps command pipe error");
+					goto error;
+				} else {
+					ERR("Unknown poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 			} else {
 				/*
@@ -1565,6 +1580,9 @@ static void *thread_manage_apps(void *data)
 
 					/* Socket closed on remote end. */
 					ust_app_unregister(pollfd);
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 			}
 
@@ -1706,6 +1724,9 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 				ust_app_destroy(wait_node->app);
 				free(wait_node);
 				break;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 	}
@@ -2066,10 +2087,7 @@ static void *thread_registration_apps(void *data)
 
 			/* Event on the registration socket */
 			if (pollfd == apps_sock) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Register apps socket poll error");
-					goto error;
-				} else if (revents & LPOLLIN) {
+				if (revents & LPOLLIN) {
 					sock = lttcomm_accept_unix_sock(apps_sock);
 					if (sock < 0) {
 						goto error;
@@ -2156,6 +2174,12 @@ static void *thread_registration_apps(void *data)
 					 * barrier with the exchange in cds_wfcq_enqueue.
 					 */
 					futex_nto1_wake(&ust_cmd_queue.futex);
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					ERR("Register apps socket poll error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 			}
 		}
@@ -3958,8 +3982,13 @@ restart:
 
 			/* Event on the registration socket */
 			if (pollfd == sock) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & LPOLLIN) {
+					continue;
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Health socket poll error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 					goto error;
 				}
 			}
@@ -4135,8 +4164,13 @@ static void *thread_manage_clients(void *data)
 
 			/* Event on the registration socket */
 			if (pollfd == client_sock) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & LPOLLIN) {
+					continue;
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Client socket poll error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 					goto error;
 				}
 			}
