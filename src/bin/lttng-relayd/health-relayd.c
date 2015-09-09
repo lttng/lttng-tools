@@ -346,8 +346,13 @@ restart:
 
 			/* Event on the registration socket */
 			if (pollfd == sock) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & LPOLLIN) {
+					continue;
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Health socket poll error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 					goto error;
 				}
 			}

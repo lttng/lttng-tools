@@ -864,10 +864,7 @@ restart:
 				goto exit;
 			}
 
-			if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-				ERR("socket poll error");
-				goto error;
-			} else if (revents & LPOLLIN) {
+			if (revents & LPOLLIN) {
 				/*
 				 * A new connection is requested, therefore a
 				 * sessiond/consumerd connection is allocated in
@@ -919,6 +916,12 @@ restart:
 				 * exchange in cds_wfcq_enqueue.
 				 */
 				futex_nto1_wake(&relay_conn_queue.futex);
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				ERR("socket poll error");
+				goto error;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 	}
@@ -2429,10 +2432,7 @@ restart:
 
 			/* Inspect the relay conn pipe for new connection */
 			if (pollfd == relay_conn_pipe[0]) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Relay connection pipe error");
-					goto error;
-				} else if (revents & LPOLLIN) {
+				if (revents & LPOLLIN) {
 					struct relay_connection *conn;
 
 					ret = lttng_read(relay_conn_pipe[0], &conn, sizeof(conn));
@@ -2443,6 +2443,12 @@ restart:
 							LPOLLIN | LPOLLRDHUP);
 					connection_ht_add(relay_connections_ht, conn);
 					DBG("Connection socket %d added", conn->sock->fd);
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					ERR("Relay connection pipe error");
+					goto error;
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 			} else {
 				struct relay_connection *ctrl_conn;
@@ -2451,29 +2457,8 @@ restart:
 				/* If not found, there is a synchronization issue. */
 				assert(ctrl_conn);
 
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					relay_thread_close_connection(&events, pollfd, ctrl_conn);
-					if (last_seen_data_fd == pollfd) {
-						last_seen_data_fd = last_notdel_data_fd;
-					}
-				} else if (revents & LPOLLIN) {
-					if (ctrl_conn->type == RELAY_CONTROL) {
-						ret = ctrl_conn->sock->ops->recvmsg(ctrl_conn->sock, &recv_hdr,
-								sizeof(recv_hdr), 0);
-						if (ret <= 0) {
-							/* Connection closed */
-							relay_thread_close_connection(&events, pollfd,
-								ctrl_conn);
-						} else {
-							ret = relay_process_control(&recv_hdr, ctrl_conn);
-							if (ret < 0) {
-								/* Clear the session on error. */
-								relay_thread_close_connection(&events, pollfd,
-									ctrl_conn);
-							}
-							seen_control = 1;
-						}
-					} else {
+				if (ctrl_conn->type == RELAY_DATA) {
+					if (revents & LPOLLIN) {
 						/*
 						 * Flag the last seen data fd not deleted. It will be
 						 * used as the last seen fd if any fd gets deleted in
@@ -2481,9 +2466,39 @@ restart:
 						 */
 						last_notdel_data_fd = pollfd;
 					}
-				} else {
-					ERR("Unknown poll events %u for sock %d", revents, pollfd);
+					goto put_ctrl_connection;
 				}
+				assert(ctrl_conn->type == RELAY_CONTROL);
+
+				if (revents & LPOLLIN) {
+					ret = ctrl_conn->sock->ops->recvmsg(ctrl_conn->sock,
+							&recv_hdr, sizeof(recv_hdr), 0);
+					if (ret <= 0) {
+						/* Connection closed */
+						relay_thread_close_connection(&events, pollfd,
+								ctrl_conn);
+					} else {
+						ret = relay_process_control(&recv_hdr, ctrl_conn);
+						if (ret < 0) {
+							/* Clear the session on error. */
+							relay_thread_close_connection(&events,
+									pollfd, ctrl_conn);
+						}
+						seen_control = 1;
+					}
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+					relay_thread_close_connection(&events,
+							pollfd, ctrl_conn);
+					if (last_seen_data_fd == pollfd) {
+						last_seen_data_fd = last_notdel_data_fd;
+					}
+				} else {
+					ERR("Unexpected poll events %u for control sock %d",
+							revents, pollfd);
+					connection_put(ctrl_conn);
+					goto error;
+				}
+			put_ctrl_connection:
 				connection_put(ctrl_conn);
 			}
 		}
@@ -2533,17 +2548,17 @@ restart:
 				/* Skip it. Might be removed before. */
 				continue;
 			}
+			if (data_conn->type == RELAY_CONTROL) {
+				goto put_data_connection;
+			}
+			assert(data_conn->type == RELAY_DATA);
 
 			if (revents & LPOLLIN) {
-				if (data_conn->type != RELAY_DATA) {
-					goto put_connection;
-				}
-
 				ret = relay_process_data(data_conn);
 				/* Connection closed */
 				if (ret < 0) {
 					relay_thread_close_connection(&events, pollfd,
-						data_conn);
+							data_conn);
 					/*
 					 * Every goto restart call sets the last seen fd where
 					 * here we don't really care since we gracefully
@@ -2555,8 +2570,14 @@ restart:
 					connection_put(data_conn);
 					goto restart;
 				}
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				relay_thread_close_connection(&events, pollfd,
+						data_conn);
+			} else {
+				ERR("Unknown poll events %u for data sock %d",
+						revents, pollfd);
 			}
-		put_connection:
+		put_data_connection:
 			connection_put(data_conn);
 		}
 		last_seen_data_fd = -1;

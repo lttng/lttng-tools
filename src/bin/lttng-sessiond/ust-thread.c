@@ -57,7 +57,8 @@ void *ust_thread_manage_notify(void *data)
 	}
 
 	/* Add notify pipe to the pollset. */
-	ret = lttng_poll_add(&events, apps_cmd_notify_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, apps_cmd_notify_pipe[0],
+			LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
@@ -109,45 +110,56 @@ restart:
 			if (pollfd == apps_cmd_notify_pipe[0]) {
 				int sock;
 
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & LPOLLIN) {
+					/* Get socket from dispatch thread. */
+					size_ret = lttng_read(apps_cmd_notify_pipe[0],
+							&sock, sizeof(sock));
+					if (size_ret < sizeof(sock)) {
+						PERROR("read apps notify pipe");
+						goto error;
+					}
+					health_code_update();
+
+					ret = lttng_poll_add(&events, sock,
+							LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+					if (ret < 0) {
+						/*
+						 * It's possible we've reached the max poll fd allowed.
+						 * Let's close the socket but continue normal execution.
+						 */
+						ret = close(sock);
+						if (ret) {
+							PERROR("close notify socket %d", sock);
+						}
+						lttng_fd_put(LTTNG_FD_APPS, 1);
+						continue;
+					}
+					DBG3("UST thread notify added sock %d to pollset", sock);
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Apps notify command pipe error");
 					goto error;
-				} else if (!(revents & LPOLLIN)) {
-					/* No POLLIN and not a catched error, stop the thread. */
-					ERR("Notify command pipe failed. revent: %u", revents);
+				} else {
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 					goto error;
 				}
-
-				/* Get socket from dispatch thread. */
-				size_ret = lttng_read(apps_cmd_notify_pipe[0],
-						&sock, sizeof(sock));
-				if (size_ret < sizeof(sock)) {
-					PERROR("read apps notify pipe");
-					goto error;
-				}
-				health_code_update();
-
-				ret = lttng_poll_add(&events, sock,
-						LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
-				if (ret < 0) {
-					/*
-					 * It's possible we've reached the max poll fd allowed.
-					 * Let's close the socket but continue normal execution.
-					 */
-					ret = close(sock);
-					if (ret) {
-						PERROR("close notify socket %d", sock);
-					}
-					lttng_fd_put(LTTNG_FD_APPS, 1);
-					continue;
-				}
-				DBG3("UST thread notify added sock %d to pollset", sock);
 			} else {
 				/*
 				 * At this point, we know that a registered application
 				 * triggered the event.
 				 */
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				if (revents & (LPOLLIN | LPOLLPRI)) {
+					ret = ust_app_recv_notify(pollfd);
+					if (ret < 0) {
+						/* Removing from the poll set */
+						ret = lttng_poll_del(&events, pollfd);
+						if (ret < 0) {
+							goto error;
+						}
+
+						/* The socket is closed after a grace period here. */
+						ust_app_notify_sock_unregister(pollfd);
+					}
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					/* Removing from the poll set */
 					ret = lttng_poll_del(&events, pollfd);
 					if (ret < 0) {
@@ -156,22 +168,9 @@ restart:
 
 					/* The socket is closed after a grace period here. */
 					ust_app_notify_sock_unregister(pollfd);
-				} else if (revents & (LPOLLIN | LPOLLPRI)) {
-					ret = ust_app_recv_notify(pollfd);
-					if (ret < 0) {
-						/*
-						 * If the notification failed either the application is
-						 * dead or an internal error happened. In both cases,
-						 * we can only continue here. If the application is
-						 * dead, an unregistration will follow or else the
-						 * application will notice that we are not responding
-						 * on that socket and will close it.
-						 */
-						continue;
-					}
 				} else {
-					ERR("Unknown poll events %u for sock %d", revents, pollfd);
-					continue;
+					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					goto error;
 				}
 				health_code_update();
 			}
