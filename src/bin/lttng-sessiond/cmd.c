@@ -1290,7 +1290,14 @@ int cmd_disable_event(struct ltt_session *session,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
-			ret = event_ust_disable_tracepoint(usess, uchan, event_name);
+			if (strlen(event->name) == 1 &&
+					!strncmp(event->name, "*", 1)) {
+				ret = event_ust_disable_all_tracepoints(usess,
+						uchan);
+			} else {
+				ret = event_ust_disable_tracepoint(usess, uchan,
+						event_name);
+			}
 			if (ret != LTTNG_OK) {
 				goto error_unlock;
 			}
