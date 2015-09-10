@@ -353,6 +353,57 @@ error:
 }
 
 /*
+ * Disable all UST tracepoints for a channel from a UST session.
+ */
+int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
+		struct ltt_ust_channel *uchan)
+{
+	int ret, i, size;
+	struct lttng_ht_iter iter;
+	struct ltt_ust_event *uevent = NULL;
+	struct lttng_event *events = NULL;
+
+	assert(usess);
+	assert(uchan);
+
+	rcu_read_lock();
+
+	/* Disabling existing events */
+	cds_lfht_for_each_entry(uchan->events->ht, &iter.iter, uevent,
+			node.node) {
+		if (uevent->enabled == 1) {
+			ret = event_ust_disable_tracepoint(usess, uchan,
+					uevent->attr.name);
+			if (ret < 0) {
+				continue;
+			}
+		}
+	}
+
+	/* Get all UST available events */
+	size = ust_app_list_events(&events);
+	if (size < 0) {
+		ret = LTTNG_ERR_UST_LIST_FAIL;
+		goto error;
+	}
+
+	for (i = 0; i < size; i++) {
+		ret = event_ust_disable_tracepoint(usess, uchan,
+				events[i].name);
+		if (ret != LTTNG_OK) {
+			/* Continue to disable the rest... */
+			continue;
+		}
+	}
+
+	ret = LTTNG_OK;
+error:
+	rcu_read_unlock();
+	free(events);
+	return ret;
+}
+
+/*
  * Enable all agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
