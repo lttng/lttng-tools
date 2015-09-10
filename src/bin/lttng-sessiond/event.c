@@ -359,7 +359,7 @@ error:
 int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
-	int ret, i, size;
+	int ret, i, size, error = 0;
 	struct lttng_ht_iter iter;
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
@@ -376,6 +376,7 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
 			ret = event_ust_disable_tracepoint(usess, uchan,
 					uevent->attr.name);
 			if (ret < 0) {
+				error = LTTNG_ERR_UST_DISABLE_FAIL;
 				continue;
 			}
 		}
@@ -391,13 +392,14 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
 	for (i = 0; i < size; i++) {
 		ret = event_ust_disable_tracepoint(usess, uchan,
 				events[i].name);
-		if (ret != LTTNG_OK) {
+		if (ret < 0) {
 			/* Continue to disable the rest... */
+			error = LTTNG_ERR_UST_DISABLE_FAIL;
 			continue;
 		}
 	}
 
-	ret = LTTNG_OK;
+	ret = error ? error : LTTNG_OK;
 error:
 	rcu_read_unlock();
 	free(events);
