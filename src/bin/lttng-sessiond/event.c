@@ -413,7 +413,7 @@ int event_agent_enable(struct ltt_ust_session *usess,
 			filter_expression ? filter_expression : "NULL");
 
 	aevent = agent_find_event(event->name, event->loglevel_type,
-		event->loglevel, agt);
+		event->loglevel, filter_expression, agt);
 	if (!aevent) {
 		aevent = agent_create_event(event->name, event->loglevel_type,
 				event->loglevel, filter,
