@@ -29,6 +29,11 @@ libtool
 tags
 /config/
 
+.autotools
+.cproject
+.project
+.settings/
+
 # cscope and ctags
 cscope.*
 tags
