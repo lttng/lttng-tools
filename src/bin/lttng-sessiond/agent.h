@@ -37,6 +37,7 @@ struct agent_ht_key {
 	const char *name;
 	int loglevel_value;
 	enum lttng_loglevel_type loglevel_type;
+	char *filter_expression;
 };
 
 /*
@@ -139,7 +140,7 @@ void agent_add_event(struct agent_event *event, struct agent *agt);
 
 struct agent_event *agent_find_event(const char *name,
 		enum lttng_loglevel_type loglevel_type, int loglevel_value,
-		struct agent *agt);
+		char *filter_expression, struct agent *agt);
 void agent_find_events_by_name(const char *name, struct agent *agt,
 		struct lttng_ht_iter* iter);
 void agent_event_next_duplicate(const char *name,

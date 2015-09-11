@@ -126,6 +126,12 @@ static int ht_match_event(struct cds_lfht_node *node,
 		goto no_match;
 	}
 
+	/* Filter expression */
+	if (strncmp(event->filter_expression, key->filter_expression,
+			strlen(event->filter_expression)) != 0) {
+		goto no_match;
+	}
+
 	return 1;
 
 no_match:
@@ -148,6 +154,7 @@ static void add_unique_agent_event(struct lttng_ht *ht,
 	key.name = event->name;
 	key.loglevel_value = event->loglevel_value;
 	key.loglevel_type = event->loglevel_type;
+	key.filter_expression = event->filter_expression;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
@@ -859,8 +866,9 @@ struct agent_event *agent_create_event(const char *name,
 {
 	struct agent_event *event = NULL;
 
-	DBG3("Agent create new event with name %s, loglevel type %d and loglevel value %d",
-		name, loglevel_type, loglevel_value);
+	DBG3("Agent create new event with name %s, loglevel type %d, \
+			loglevel value %d and filter %s",
+			name, loglevel_type, loglevel_value, filter_expression);
 
 	if (!name) {
 		ERR("Failed to create agent event; no name provided.");
@@ -943,7 +951,7 @@ void agent_event_next_duplicate(const char *name,
 }
 
 /*
- * Find a agent event in the given agent using name and loglevel.
+ * Find a agent event in the given agent using name, loglevel and filter.
  *
  * RCU read side lock MUST be acquired. It must be kept for as long as
  * the returned agent_event is used.
@@ -952,7 +960,7 @@ void agent_event_next_duplicate(const char *name,
  */
 struct agent_event *agent_find_event(const char *name,
 		enum lttng_loglevel_type loglevel_type, int loglevel_value,
-		struct agent *agt)
+		char *filter_expression, struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -967,6 +975,7 @@ struct agent_event *agent_find_event(const char *name,
 	key.name = name;
 	key.loglevel_value = loglevel_value;
 	key.loglevel_type = loglevel_type;
+	key.filter_expression = filter_expression;
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
 			ht_match_event, &key, &iter.iter);
