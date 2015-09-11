@@ -28,6 +28,11 @@ stamp-h1
 libtool
 tags
 
+.autotools
+.cproject
+.project
+.settings/
+
 # cscope and ctags
 cscope.*
 tags
