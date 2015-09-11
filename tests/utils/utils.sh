@@ -1017,6 +1017,44 @@ function lttng_untrack_fail()
 	lttng_untrack 1 "$@"
 }
 
+function add_context_lttng()
+{
+	local expected_to_fail="$1"
+	local domain="$2"
+	local session_name="$3"
+	local channel_name="$4"
+	local type="$5"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-context -s $session_name -c $channel_name -t $type $domain  1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Add context command failed as expected for type: $type"
+	else
+		ok $ret "Add context command for type: $type"
+	fi
+}
+
+function add_context_ust_ok()
+{
+	add_context_lttng 0 -u "$@"
+}
+
+function add_context_ust_fail()
+{
+	add_context_lttng 1 -u "$@"
+}
+
+function add_context_kernel_ok()
+{
+	add_context_lttng 0 -k "$@"
+}
+
+function add_context_kernel_fail()
+{
+	add_context_lttng 1 -k "$@"
+}
+
 function trace_matches ()
 {
 	local event_name=$1

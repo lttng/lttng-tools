@@ -23,39 +23,11 @@ LTTNG_BIN="lttng"
 BIN_NAME="gen-ust-events"
 SESSION_NAME="valid_filter"
 EVENT_NAME="tp:tptest"
+
+
 NUM_TESTS=25
 
 source $TESTDIR/utils/utils.sh
-
-function enable_ust_lttng_event_per_chan()
-{
-	sess_name="$1"
-	event_name="$2"
-	chan_name="$3"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -c $chan_name -u >/dev/null 2>&1
-	ok $? "Enable event $event_name for session $sess_name in channel $chan_name"
-}
-
-function disable_ust_lttng_event_per_chan()
-{
-	sess_name="$1"
-	event_name="$2"
-	chan_name="$3"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -c $chan_name -u >/dev/null 2>&1
-	ok $? "Disable event $event_name for session $sess_name in channel $chan_name"
-}
-
-function add_ust_lttng_context()
-{
-	sess_name="$1"
-	chan_name="$2"
-	type="$3"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-context -s $sess_name -c $chan_name -t $type -u >/dev/null 2>&1
-	ok $? "Add context $type for session $sess_name in channel $chan_name"
-}
 
 function test_event_basic()
 {
@@ -74,21 +46,21 @@ function test_event_basic()
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
 	enable_ust_lttng_channel_ok $SESSION_NAME2 $CHAN_NAME2
 
-	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
-	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME2 $CHAN_NAME
-	enable_ust_lttng_event_per_chan $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHAN_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME2 $CHAN_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
 
-	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "vpid"
-	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "vtid"
-	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "pthread_id"
-	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "procname"
-	add_ust_lttng_context $SESSION_NAME2 $CHAN_NAME2 "procname"
+	add_context_ust_ok $SESSION_NAME $CHAN_NAME "vpid"
+	add_context_ust_ok $SESSION_NAME $CHAN_NAME "vtid"
+	add_context_ust_ok $SESSION_NAME $CHAN_NAME "pthread_id"
+	add_context_ust_ok $SESSION_NAME $CHAN_NAME "procname"
+	add_context_ust_ok $SESSION_NAME2 $CHAN_NAME2 "procname"
 
-	disable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
-	disable_ust_lttng_event_per_chan $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
+	disable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHAN_NAME
+	disable_ust_lttng_event $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
 
-	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
-	enable_ust_lttng_event_per_chan $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHAN_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
 
 	start_lttng_tracing_ok
 	stop_lttng_tracing_ok
