@@ -154,6 +154,7 @@ This package contains the following elements:
   - `include`: the public header files that will be installed on the system.
   - `src/bin`: source code of LTTng-tools programs.
     - `lttng-consumerd`: consumer daemon.
+    - `lttng-crash`: crash trace viewer.
     - `lttng-relayd`: relay daemon.
     - `lttng-sessiond`: session daemon.
     - `lttng`: command line interface for LTTng tracing control.
