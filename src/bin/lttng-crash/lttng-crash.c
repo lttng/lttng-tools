@@ -184,8 +184,8 @@ struct lttng_crash_layout {
 
 /* Variables */
 static char *progname,
-	*opt_viewer_path = DEFAULT_VIEWER,
-	*opt_output_path;
+	*opt_viewer_path = NULL,
+	*opt_output_path = NULL;
 
 static char *input_path;
 
@@ -292,9 +292,11 @@ static int parse_args(int argc, char **argv)
 			}
 			break;
 		case 'e':
+			free(opt_viewer_path);
 			opt_viewer_path = strdup(optarg);
 			break;
 		case 'x':
+			free(opt_output_path);
 			opt_output_path = strdup(optarg);
 			break;
 		case OPT_DUMP_OPTIONS:
@@ -305,6 +307,10 @@ static int parse_args(int argc, char **argv)
 			usage(stderr);
 			goto error;
 		}
+	}
+
+	if (!opt_viewer_path) {
+		opt_viewer_path = DEFAULT_VIEWER;
 	}
 
 	/* No leftovers, or more than one input path, print usage and quit */
