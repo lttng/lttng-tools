@@ -144,7 +144,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 		index = relay_index_create(stream, net_seq_num);
 		if (!index) {
 			ERR("Cannot create index for stream id %" PRIu64 " and seq_num %" PRIu64,
-				index->stream->stream_handle, net_seq_num);
+				stream->stream_handle, net_seq_num);
 			goto end;
 		}
 		oldindex = relay_index_add_unique(stream, index);
