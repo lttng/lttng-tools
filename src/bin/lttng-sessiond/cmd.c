@@ -1633,9 +1633,10 @@ static int _cmd_enable_event(struct ltt_session *session,
 			event->type = LTTNG_EVENT_SYSCALL;	/* Hack */
 			ret = event_kernel_enable_event(kchan, event,
 				filter_expression_a, filter_a);
+			/* We have passed ownership */
+			filter_expression_a = NULL;
+			filter_a = NULL;
 			if (ret != LTTNG_OK) {
-				free(filter_expression_a);
-				free(filter_a);
 				goto error;
 			}
 			break;
