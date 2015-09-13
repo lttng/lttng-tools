@@ -52,7 +52,7 @@
 LTTNG_HIDDEN
 char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 {
-	char *cut_path, *try_path = NULL, *try_path_prev = NULL;
+	char *cut_path = NULL, *try_path = NULL, *try_path_prev = NULL;
 	const char *next, *prev, *end;
 
 	/* Safety net */
@@ -171,6 +171,7 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 
 error:
 	free(resolved_path);
+	free(cut_path);
 	return NULL;
 }
 
