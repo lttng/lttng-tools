@@ -143,9 +143,7 @@ static int disable_channels(char *session_name)
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
-		print_missing_domain();
-		ret = CMD_ERROR;
-		goto error;
+		assert(0);
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
@@ -259,6 +257,13 @@ int cmd_disable_channels(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
+
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	opt_channels = (char*) poptGetArg(pc);

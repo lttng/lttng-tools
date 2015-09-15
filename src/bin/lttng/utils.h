@@ -56,9 +56,19 @@ int get_count_order_ulong(unsigned long x);
 const char *get_domain_str(enum lttng_domain_type domain);
 
 static inline
-void print_missing_domain(void)
+int print_missing_or_multiple_domains(unsigned int sum)
 {
-	ERR("Please specify a domain (-k/-u/-j).");
+	int ret = 0;
+
+	if (sum == 0) {
+		ERR("Please specify a domain (-k/-u/-j).");
+		ret = -1;
+	} else if (sum > 1) {
+		ERR("Multiple domains specified.");
+		ret = -1;
+	}
+
+	return ret;
 }
 
 int spawn_relayd(const char *pathname, int port);
