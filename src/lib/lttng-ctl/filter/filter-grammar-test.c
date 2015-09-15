@@ -104,23 +104,6 @@ int main(int argc, char **argv)
 		printf("Size of bytecode generated: %u bytes.\n",
 			bytecode_get_len(&ctx->bytecode->b));
 	}
-#if 0
-	if (run_bytecode) {
-		int64_t retval;
-
-		printf("Interpreting bytecode... ");
-		fflush(stdout);
-		ret = bytecode_interpret(&ctx->bytecode->b, &retval, NULL);
-		if (ret) {
-			fprintf(stderr, "Error interpreting bytecode\n");
-			goto parse_error;
-		} else {
-			printf("Bytecode interpret result: %" PRIi64 "\n",
-				retval);
-		}
-		printf("done\n");
-	}
-#endif //0
 
 	if (print_bytecode) {
 		unsigned int bytecode_len, len, i;
