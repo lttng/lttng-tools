@@ -40,12 +40,6 @@ static int opt_kernel;
 static int opt_userspace;
 static char *opt_type;
 
-#if 0
-/* Not implemented yet */
-static char *opt_cmd_name;
-static pid_t opt_pid;
-#endif
-
 enum {
 	OPT_HELP = 1,
 	OPT_TYPE,
@@ -735,9 +729,6 @@ int cmd_add_context(int argc, const char **argv)
 			break;
 		case OPT_USERSPACE:
 			opt_userspace = 1;
-#if 0
-			opt_cmd_name = poptGetOptArg(pc);
-#endif
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
