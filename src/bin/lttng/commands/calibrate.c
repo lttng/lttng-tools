@@ -36,11 +36,6 @@
 static int opt_event_type;
 static char *opt_kernel;
 static int opt_userspace;
-#if 0
-/* Not implemented yet */
-static char *opt_cmd_name;
-static pid_t opt_pid;
-#endif
 
 enum {
 	OPT_HELP = 1,
@@ -61,25 +56,8 @@ static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-#if 0
-	/* Not implemented yet */
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
-	{"marker",         0,   POPT_ARG_NONE, 0, OPT_MARKER, 0, 0},
-	{"probe",          0,   POPT_ARG_NONE, 0, OPT_PROBE, 0, 0},
-#else
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
 	{"function",       0,   POPT_ARG_NONE, 0, OPT_FUNCTION, 0, 0},
-#endif
-#if 0
-	/*
-	 * Removed from options to discourage its use. Not in kernel
-	 * tracer anymore.
-	 */
-	{"function:entry", 0,   POPT_ARG_NONE, 0, OPT_FUNCTION_ENTRY, 0, 0},
-	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
-#endif
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -99,17 +77,6 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Calibrate options:\n");
 	fprintf(ofp, "    --function             Dynamic function entry/return probe (default)\n");
-#if 0
-	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
-	fprintf(ofp, "    --probe\n");
-	fprintf(ofp, "                           Dynamic probe.\n");
-#if 0
-	fprintf(ofp, "    --function:entry symbol\n");
-	fprintf(ofp, "                           Function tracer event\n");
-#endif
-	fprintf(ofp, "    --syscall              System call eventl\n");
-	fprintf(ofp, "    --marker               User-space marker (deprecated)\n");
-#endif
 	fprintf(ofp, "\n");
 }
 
