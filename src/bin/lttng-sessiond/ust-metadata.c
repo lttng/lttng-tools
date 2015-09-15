@@ -371,23 +371,6 @@ int ust_metadata_event_statedump(struct ust_registry_session *session,
 			goto end;
 	}
 
-#if 0 /* context for events not supported */
-	if (event->ctx) {
-		ret = lttng_metadata_printf(session,
-			"	context := struct {\n");
-		if (ret)
-			goto end;
-	}
-	ret = _lttng_context_metadata_statedump(session, event->ctx);
-	if (ret)
-		goto end;
-	if (event->ctx) {
-		ret = lttng_metadata_printf(session,
-			"	};\n");
-		if (ret)
-			goto end;
-	}
-#endif
 	ret = lttng_metadata_printf(session,
 		"	fields := struct {\n"
 		);
