@@ -111,12 +111,6 @@ static struct viewers *parse_options(void)
 		return &(viewers[VIEWER_BABELTRACE]);
 	}
 
-#if 0
-	if (strstr(opt_viewer, viewers[VIEWER_LTTV_GUI].exec_name) == 0) {
-		return &(viewers[VIEWER_LTTV_GUI]);
-	}
-#endif
-
 	/*
 	 * This means that if -e, --viewers is used, we just override everything
 	 * with it. For supported viewers like lttv, we could simply detect if "-t"
