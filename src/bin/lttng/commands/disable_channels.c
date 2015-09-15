@@ -34,11 +34,6 @@ static char *opt_channels;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
-#if 0
-/* Not implemented yet */
-static char *opt_cmd_name;
-static pid_t opt_pid;
-#endif
 
 enum {
 	OPT_HELP = 1,
@@ -54,13 +49,7 @@ static struct poptOption long_options[] = {
 	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
 	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-#if 0
-	/* Not implemented yet */
-	{"userspace",      'u', POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL, &opt_cmd_name, OPT_USERSPACE, 0, 0},
-	{"pid",            'p', POPT_ARG_INT, &opt_pid, 0, 0, 0},
-#else
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-#endif
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
