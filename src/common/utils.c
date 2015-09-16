@@ -121,6 +121,7 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 
 		/* Free the allocated memory */
 		free(cut_path);
+		cut_path = NULL;
 	};
 
 	/* Allocate memory for the resolved path if necessary */
