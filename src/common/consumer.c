@@ -2356,7 +2356,7 @@ restart:
 				consumer_del_metadata_stream(stream, metadata_ht);
 			} else {
 				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
-				rcu_read_unlock;
+				rcu_read_unlock();
 				goto end;
 			}
 			/* Release RCU lock for the stream looked up */
