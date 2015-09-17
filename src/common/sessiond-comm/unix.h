@@ -27,6 +27,7 @@
 #include "sessiond-comm.h"
 
 extern int lttcomm_create_unix_sock(const char *pathname);
+extern int lttcomm_create_anon_unix_socketpair(int *fds);
 extern int lttcomm_connect_unix_sock(const char *pathname);
 extern int lttcomm_accept_unix_sock(int sock);
 extern int lttcomm_listen_unix_sock(int sock);

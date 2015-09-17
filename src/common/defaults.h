@@ -306,6 +306,9 @@
 /* Default lttng command live timer value in usec. */
 #define DEFAULT_LTTNG_LIVE_TIMER			1000000
 
+/* Default runas worker name */
+#define DEFAULT_RUN_AS_WORKER_NAME			"lttng-runas"
+
 extern size_t default_channel_subbuf_size;
 extern size_t default_metadata_subbuf_size;
 extern size_t default_ust_pid_channel_subbuf_size;

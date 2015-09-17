@@ -281,14 +281,6 @@
 #include <common/common.h>
 
 /*
- * We need to lock pthread exit, which deadlocks __nptl_setxid in the runas
- * clone.  This work-around will be allowed to be removed when runas.c gets
- * changed to do an exec() before issuing seteuid/setegid. See
- * http://sourceware.org/bugzilla/show_bug.cgi?id=10184 for details.
- */
-pthread_mutex_t lttng_libc_state_lock = PTHREAD_MUTEX_INITIALIZER;
-
-/*
  * Split-counters lazily update the global counter each 1024
  * addition/removal. It automatically keeps track of resize required.
  * We use the bucket length as indicator for need to expand for small

@@ -797,6 +797,8 @@ static void sessiond_cleanup_options(void)
 	free(kmod_probes_list);
 	free(kmod_extra_probes_list);
 
+	run_as_destroy_worker();
+
 	/* <fun> */
 	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
 			"Matthew, BEET driven development works!%c[%dm",
@@ -5474,6 +5476,10 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (run_as_create_worker(argv[0]) < 0) {
+		goto exit_create_run_as_worker_cleanup;
+	}
+
 	/*
 	 * Starting from here, we can create threads. This needs to be after
 	 * lttng_daemonize due to RCU.
@@ -6091,6 +6097,7 @@ exit_ht_cleanup_quit_pipe:
 
 	health_app_destroy(health_sessiond);
 exit_health_sessiond_cleanup:
+exit_create_run_as_worker_cleanup:
 
 exit_options:
 	sessiond_cleanup_options();

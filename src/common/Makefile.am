@@ -18,7 +18,9 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        common.h futex.c futex.h uri.c uri.h defaults.c \
                        pipe.c pipe.h readwrite.c readwrite.h \
                        mi-lttng.h mi-lttng.c \
-                       daemonize.c daemonize.h
+                       daemonize.c daemonize.h \
+                       sessiond-comm/unix.c sessiond-comm/unix.h
+
 libcommon_la_LIBADD = \
 		-luuid \
 		-lrt \

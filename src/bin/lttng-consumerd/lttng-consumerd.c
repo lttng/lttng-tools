@@ -422,6 +422,10 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
+	if (run_as_create_worker(argv[0]) < 0) {
+		goto exit_init_data;
+	}
+
 	/* create the consumer instance with and assign the callbacks */
 	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
 		NULL, lttng_consumer_on_recv_stream, NULL);

@@ -26,12 +26,15 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
 int run_as_unlink(const char *path, uid_t uid, gid_t gid);
-int run_as_recursive_rmdir(const char *path, uid_t uid, gid_t gid);
+int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid);
 
-/*
- * We need to lock pthread exit, which deadlocks __nptl_setxid in the
- * clone.
- */
-extern pthread_mutex_t lttng_libc_state_lock;
+/* Backward compat. */
+static inline int run_as_recursive_rmdir(const char *path, uid_t uid, gid_t gid)
+{
+	return run_as_rmdir_recursive(path, uid, gid);
+}
+
+int run_as_create_worker(char *procname);
+void run_as_destroy_worker(void);
 
 #endif /* _RUNAS_H */
