@@ -131,7 +131,14 @@ static void rcu_destroy_session(struct rcu_head *rcu_head)
 	struct relay_session *session =
 			caa_container_of(rcu_head, struct relay_session,
 				rcu_node);
-
+	/*
+	 * Since each trace has a reference on the session, it means
+	 * that if we are at the point where we teardown the session, no
+	 * trace belonging to that session exist at this point.
+	 * Calling lttng_ht_destroy in call_rcu worker thread so we
+	 * don't hold the RCU read-side lock while calling it.
+	 */
+	lttng_ht_destroy(session->ctf_traces_ht);
 	free(session);
 }
 
@@ -155,12 +162,6 @@ static void destroy_session(struct relay_session *session)
 
 	ret = session_delete(session);
 	assert(!ret);
-	/*
-	 * Since each trace has a reference on the session, it means
-	 * that if we are at the point where we teardown the session, no
-	 * trace belonging to that session exist at this point.
-	 */
-	lttng_ht_destroy(session->ctf_traces_ht);
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
 
