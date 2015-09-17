@@ -90,8 +90,17 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-start_lttng_sessiond
+if [ "$(id -u)" == "0" ]; then
+        isroot=1
+else
+        isroot=0
+fi
 
-test_event_basic
+skip $isroot "Root access is needed. Skipping UST perf tests." ${NUM_TESTS} ||
+{
+	start_lttng_sessiond
 
-stop_lttng_sessiond
+	test_event_basic
+
+	stop_lttng_sessiond
+}
