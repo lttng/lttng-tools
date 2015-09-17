@@ -125,7 +125,7 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		/* Free the allocated memory */
 		free(cut_path);
 		cut_path = NULL;
-	};
+	}
 
 	/* Allocate memory for the resolved path if necessary */
 	if (resolved_path == NULL) {
@@ -162,6 +162,8 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		/* Free the allocated memory */
 		free(cut_path);
 		free(try_path_prev);
+		cut_path = NULL;
+		try_path_prev = NULL;
 	/*
 	 * Else, we just copy the path in our resolved_path to
 	 * return it as is
