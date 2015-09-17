@@ -23,6 +23,7 @@
 
 #include "rculfhash.h"
 #include "rculfhash-internal.h"
+#include <common/macros.h>
 
 extern unsigned long lttng_ht_seed;
 
@@ -76,60 +77,88 @@ struct lttng_ht_node_two_u64 {
 };
 
 /* Hashtable new and destroy */
-extern struct lttng_ht *lttng_ht_new(unsigned long size, int type);
-extern void lttng_ht_destroy(struct lttng_ht *ht);
+LTTNG_HIDDEN
+struct lttng_ht *lttng_ht_new(unsigned long size, int type);
+LTTNG_HIDDEN
+void lttng_ht_destroy(struct lttng_ht *ht);
 
 /* Specialized node init and free functions */
-extern void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key);
-extern void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
+LTTNG_HIDDEN
+void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key);
+LTTNG_HIDDEN
+void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 		unsigned long key);
-extern void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
+LTTNG_HIDDEN
+void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 		uint64_t key);
-extern void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
+LTTNG_HIDDEN
+void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
 		uint64_t key1, uint64_t key2);
-extern void lttng_ht_node_free_str(struct lttng_ht_node_str *node);
-extern void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node);
-extern void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node);
-extern void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node);
+LTTNG_HIDDEN
+void lttng_ht_node_free_str(struct lttng_ht_node_str *node);
+LTTNG_HIDDEN
+void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node);
+LTTNG_HIDDEN
+void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node);
+LTTNG_HIDDEN
+void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node);
 
-extern void lttng_ht_lookup(struct lttng_ht *ht, void *key,
+LTTNG_HIDDEN
+void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 		struct lttng_ht_iter *iter);
 
 /* Specialized add unique functions */
-extern void lttng_ht_add_unique_str(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_unique_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node);
-extern void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
-extern void lttng_ht_add_unique_u64(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node);
-extern void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_two_u64 *node);
-extern struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(
+LTTNG_HIDDEN
+struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(
 		struct lttng_ht *ht, struct lttng_ht_node_ulong *node);
-extern struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(
+LTTNG_HIDDEN
+struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(
 		struct lttng_ht *ht, struct lttng_ht_node_u64 *node);
-extern void lttng_ht_add_str(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node);
-extern void lttng_ht_add_ulong(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node);
-extern void lttng_ht_add_u64(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_add_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node);
 
-extern int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter);
+LTTNG_HIDDEN
+int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter);
 
-extern void lttng_ht_get_first(struct lttng_ht *ht,
+LTTNG_HIDDEN
+void lttng_ht_get_first(struct lttng_ht *ht,
 		struct lttng_ht_iter *iter);
-extern void lttng_ht_get_next(struct lttng_ht *ht, struct lttng_ht_iter *iter);
+LTTNG_HIDDEN
+void lttng_ht_get_next(struct lttng_ht *ht, struct lttng_ht_iter *iter);
 
-extern unsigned long lttng_ht_get_count(struct lttng_ht *ht);
+LTTNG_HIDDEN
+unsigned long lttng_ht_get_count(struct lttng_ht *ht);
 
-extern struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
+LTTNG_HIDDEN
+struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 		struct lttng_ht_iter *iter);
-extern struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
+LTTNG_HIDDEN
+struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 		struct lttng_ht_iter *iter);
-extern struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
+LTTNG_HIDDEN
+struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 		struct lttng_ht_iter *iter);
-extern struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
+LTTNG_HIDDEN
+struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 		struct lttng_ht_iter *iter);
 
 #endif /* _LTT_HT_H */
