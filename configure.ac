@@ -362,6 +362,8 @@ else
 
 fi
 
+AX_LIB_SOCKET_NSL
+
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
 	[AX_CONFIG_FEATURE_ENABLE(epoll)],
