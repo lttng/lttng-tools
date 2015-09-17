@@ -59,7 +59,7 @@ DEVNULL=/dev/null 2>&1
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=222
+NUM_TESTS=224
 
 source $TESTDIR/utils/utils.sh
 
@@ -607,6 +607,11 @@ function test_start_stop () {
 	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:enabled/text()" result
 	test "$result" = "true"
 	ok $? "Mi test: enabled element : $result expected: true"
+
+	#Test metadata regenerate command
+	metadata_regenerate_ok $session_name
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: metadata regenerate"
 
 	#Test stop command
 	stop_lttng_tracing_ok $session_name

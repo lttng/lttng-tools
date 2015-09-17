@@ -39,6 +39,8 @@ enum {
 	OPT_LIST_COMMANDS,
 };
 
+static struct mi_writer *writer;
+
 static struct poptOption long_options[] = {
 	/* { longName, shortName, argInfo, argPtr, value, descrip, argDesc, } */
 	{ "help",		'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0, },
@@ -114,7 +116,32 @@ static int handle_command(const char **argv)
 	while (cmd->func != NULL) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
+			if (lttng_opt_mi) {
+				/* Action element */
+				ret = mi_lttng_writer_open_element(writer,
+						mi_lttng_element_command_metadata_action);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+
+				/* Name of the action */
+				ret = mi_lttng_writer_write_element_string(writer,
+						config_element_name, argv[0]);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+			}
 			command_ret = cmd->func(argc, argv);
+			if (lttng_opt_mi) {
+				/* Close output and action element */
+				ret = mi_lttng_writer_close_element(writer);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+			}
 			goto end;
 		}
 
@@ -134,7 +161,7 @@ end:
  */
 int cmd_metadata(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 
 	if (argc < 1) {
@@ -145,6 +172,29 @@ int cmd_metadata(int argc, const char **argv)
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
+
+	if (lttng_opt_mi) {
+		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		if (!writer) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+		/* Open command element */
+		ret = mi_lttng_writer_command_open(writer,
+				mi_lttng_element_command_metadata);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -179,11 +229,42 @@ int cmd_metadata(int argc, const char **argv)
 		switch (-command_ret) {
 		default:
 			ERR("%s", lttng_strerror(command_ret));
+			success = 0;
 			break;
 		}
 	}
 
+	if (lttng_opt_mi) {
+		/* Close output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Success ? */
+		ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success, success);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close */
+		ret = mi_lttng_writer_command_close(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
 end:
+	/* Mi clean-up */
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		/* Preserve original error code */
+		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+	}
+
 	if (!opt_session_name) {
 		free(session_name);
 	}
