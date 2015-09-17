@@ -22,10 +22,15 @@
 #include <unistd.h>
 #include <pthread.h>
 
+LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid);
 
 /* Backward compat. */
@@ -34,7 +39,9 @@ static inline int run_as_recursive_rmdir(const char *path, uid_t uid, gid_t gid)
 	return run_as_rmdir_recursive(path, uid, gid);
 }
 
+LTTNG_HIDDEN
 int run_as_create_worker(char *procname);
+LTTNG_HIDDEN
 void run_as_destroy_worker(void);
 
 #endif /* _RUNAS_H */
