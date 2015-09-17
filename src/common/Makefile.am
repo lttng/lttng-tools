@@ -1,5 +1,7 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 
+AUTOMAKE_OPTIONS = subdir-objects
+
 SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
 		  kernel-consumer ust-consumer testpoint index config
 
