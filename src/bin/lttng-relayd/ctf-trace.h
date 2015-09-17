@@ -30,10 +30,6 @@
 #include "viewer-stream.h"
 
 struct ctf_trace {
-	/*
-	 * The ctf_trace reflock nests inside the stream reflock.
-	 */
-	pthread_mutex_t reflock;	/* Protects refcounting */
 	struct urcu_ref ref;		/* Every stream has a ref on the trace. */
 	struct relay_session *session;	/* Back ref to trace session */
 

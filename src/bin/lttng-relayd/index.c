@@ -58,7 +58,6 @@ static struct relay_index *relay_index_create(struct relay_stream *stream,
 
 	lttng_ht_node_init_u64(&index->index_n, net_seq_num);
 	pthread_mutex_init(&index->lock, NULL);
-	pthread_mutex_init(&index->reflock, NULL);
 	urcu_ref_init(&index->ref);
 
 end:
@@ -98,21 +97,11 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
  */
 static bool relay_index_get(struct relay_index *index)
 {
-	bool has_ref = false;
-
 	DBG2("index get for stream id %" PRIu64 " and seqnum %" PRIu64 " refcount %d",
 			index->stream->stream_handle, index->index_n.key,
 			(int) index->ref.refcount);
 
-	/* Confirm that the index refcount has not reached 0. */
-	pthread_mutex_lock(&index->reflock);
-	if (index->ref.refcount != 0) {
-		has_ref = true;
-		urcu_ref_get(&index->ref);
-	}
-	pthread_mutex_unlock(&index->reflock);
-
-	return has_ref;
+	return urcu_ref_get_unless_zero(&index->ref);
 }
 
 /*
@@ -265,10 +254,8 @@ void relay_index_put(struct relay_index *index)
 	 * Index lock ensures that concurrent test and update of stream
 	 * ref is atomic.
 	 */
-	pthread_mutex_lock(&index->reflock);
 	assert(index->ref.refcount != 0);
 	urcu_ref_put(&index->ref, index_release);
-	pthread_mutex_unlock(&index->reflock);
 	rcu_read_unlock();
 }
 

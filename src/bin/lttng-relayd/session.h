@@ -54,8 +54,6 @@ struct relay_session {
 	 */
 
 	struct urcu_ref ref;
-	/* session reflock nests inside ctf_trace reflock. */
-	pthread_mutex_t reflock;
 
 	pthread_mutex_t lock;
 

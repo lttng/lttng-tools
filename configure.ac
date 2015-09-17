@@ -385,7 +385,7 @@ AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$link_with_libc_uuid" = "xy
 AC_CHECK_FUNC([clock_gettime], [AC_DEFINE_UNQUOTED([LTTNG_HAVE_CLOCK_GETTIME], 1, [Has clock_gettime() support.])])
 
 # URCU library version needed or newer
-m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.8.0 is needed])
+m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.9.0 is needed])
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
@@ -408,6 +408,11 @@ AC_CHECK_LIB([urcu-cds], [_cds_lfht_new], [],
 #Function added in urcu 0.7.0
 AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
         [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]]
+)
+
+#Function added in urcu 0.9.0
+AC_CHECK_DECL([urcu_ref_get_unless_zero], [],
+        [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/ref.h>]]
 )
 
 # Check kmod library

@@ -145,7 +145,6 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	lttng_ht_node_init_u64(&vstream->stream_n, stream->stream_handle);
 	lttng_ht_add_unique_u64(viewer_streams_ht, &vstream->stream_n);
 
-	pthread_mutex_init(&vstream->reflock, NULL);
 	urcu_ref_init(&vstream->ref);
 
 	return vstream;
@@ -198,16 +197,7 @@ static void viewer_stream_release(struct urcu_ref *ref)
 /* Must be called with RCU read-side lock held. */
 bool viewer_stream_get(struct relay_viewer_stream *vstream)
 {
-	bool has_ref = false;
-
-	pthread_mutex_lock(&vstream->reflock);
-	if (vstream->ref.refcount != 0) {
-		has_ref = true;
-		urcu_ref_get(&vstream->ref);
-	}
-	pthread_mutex_unlock(&vstream->reflock);
-
-	return has_ref;
+	return urcu_ref_get_unless_zero(&vstream->ref);
 }
 
 /*
@@ -240,9 +230,7 @@ end:
 void viewer_stream_put(struct relay_viewer_stream *vstream)
 {
 	rcu_read_lock();
-	pthread_mutex_lock(&vstream->reflock);
 	urcu_ref_put(&vstream->ref, viewer_stream_release);
-	pthread_mutex_unlock(&vstream->reflock);
 	rcu_read_unlock();
 }
 

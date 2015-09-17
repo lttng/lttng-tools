@@ -27,16 +27,7 @@
 
 bool connection_get(struct relay_connection *conn)
 {
-	bool has_ref = false;
-
-	pthread_mutex_lock(&conn->reflock);
-	if (conn->ref.refcount != 0) {
-		has_ref = true;
-		urcu_ref_get(&conn->ref);
-	}
-	pthread_mutex_unlock(&conn->reflock);
-
-	return has_ref;
+	return urcu_ref_get_unless_zero(&conn->ref);
 }
 
 struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht,
@@ -75,7 +66,6 @@ struct relay_connection *connection_create(struct lttcomm_sock *sock,
 		PERROR("zmalloc relay connection");
 		goto end;
 	}
-	pthread_mutex_init(&conn->reflock, NULL);
 	urcu_ref_init(&conn->ref);
 	conn->type = type;
 	conn->sock = sock;
@@ -131,9 +121,7 @@ static void connection_release(struct urcu_ref *ref)
 void connection_put(struct relay_connection *conn)
 {
 	rcu_read_lock();
-	pthread_mutex_lock(&conn->reflock);
 	urcu_ref_put(&conn->ref, connection_release);
-	pthread_mutex_unlock(&conn->reflock);
 	rcu_read_unlock();
 }
 

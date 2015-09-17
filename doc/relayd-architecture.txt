@@ -44,10 +44,7 @@ A RCU lookup+refcounting scheme has been introduced for all objects
 scheme allows looking up the objects or doing a traversal on the RCU
 linked list or hash table in combination with a getter on the object.
 This getter validates that there is still at least one reference to the
-object, else the lookup acts just as if the object does not exist. This
-scheme is protected by a "reflock" mutex in each object. "reflock"
-mutexes can be nested from the innermost object to the outermost object.
-IOW, the session reflock can nest within the ctf-trace reflock.
+object, else the lookup acts just as if the object does not exist.
 
 The relay_connection (connection between the sessiond/consumer and the
 relayd) is the outermost object of its hierarchy.
@@ -60,8 +57,6 @@ synchronize between threads (currently the main.c relay thread and
 live.c client thread) when objects are shared. Locks can be nested from
 the outermost object to the innermost object. IOW, the ctf-trace lock can
 nest within the session lock.
-
-A "lock" should never nest within a "reflock".
 
 RCU linked lists are used to iterate using RCU, and are protected by
 their own mutex for modifications. Iterations should be confirmed using

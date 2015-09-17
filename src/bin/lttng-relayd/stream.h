@@ -37,12 +37,6 @@
 struct relay_stream {
 	uint64_t stream_handle;
 
-	/*
-	 * reflock used to synchronize the closing of this stream.
-	 * stream reflock nests inside viewer stream reflock.
-	 * stream reflock nests inside index reflock.
-	 */
-	pthread_mutex_t reflock;
 	struct urcu_ref ref;
 	/* Back reference to trace. Protected by refcount on trace object. */
 	struct ctf_trace *trace;

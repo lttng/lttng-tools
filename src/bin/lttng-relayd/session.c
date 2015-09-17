@@ -69,7 +69,6 @@ struct relay_session *session_create(const char *session_name,
 	urcu_ref_init(&session->ref);
 	CDS_INIT_LIST_HEAD(&session->recv_list);
 	pthread_mutex_init(&session->lock, NULL);
-	pthread_mutex_init(&session->reflock, NULL);
 	pthread_mutex_init(&session->recv_list_lock, NULL);
 
 	session->live_timer = live_timer;
@@ -86,16 +85,7 @@ error:
 /* Should be called with RCU read-side lock held. */
 bool session_get(struct relay_session *session)
 {
-	bool has_ref = false;
-
-	pthread_mutex_lock(&session->reflock);
-	if (session->ref.refcount != 0) {
-		has_ref = true;
-		urcu_ref_get(&session->ref);
-	}
-	pthread_mutex_unlock(&session->reflock);
-
-	return has_ref;
+	return urcu_ref_get_unless_zero(&session->ref);
 }
 
 /*
@@ -178,9 +168,7 @@ void session_release(struct urcu_ref *ref)
 void session_put(struct relay_session *session)
 {
 	rcu_read_lock();
-	pthread_mutex_lock(&session->reflock);
 	urcu_ref_put(&session->ref, session_release);
-	pthread_mutex_unlock(&session->reflock);
 	rcu_read_unlock();
 }
 

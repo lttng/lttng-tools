@@ -77,7 +77,6 @@ struct relay_connection {
 	uint32_t minor;
 
 	struct urcu_ref ref;
-	pthread_mutex_t reflock;
 
 	bool version_check_done;
 

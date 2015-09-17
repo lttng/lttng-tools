@@ -34,7 +34,6 @@ struct relay_index {
 	/*
 	 * index lock nests inside stream lock.
 	 */
-	pthread_mutex_t reflock;	/* Protects refcounting. */
 	struct urcu_ref ref;		/* Reference from getters. */
 	struct relay_stream *stream;	/* Back ref to stream */
 

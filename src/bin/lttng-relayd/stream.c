@@ -32,16 +32,7 @@
 /* Should be called with RCU read-side lock held. */
 bool stream_get(struct relay_stream *stream)
 {
-	bool has_ref = false;
-
-	pthread_mutex_lock(&stream->reflock);
-	if (stream->ref.refcount != 0) {
-		has_ref = true;
-		urcu_ref_get(&stream->ref);
-	}
-	pthread_mutex_unlock(&stream->reflock);
-
-	return has_ref;
+	return urcu_ref_get_unless_zero(&stream->ref);
 }
 
 /*
@@ -100,7 +91,6 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	stream->channel_name = channel_name;
 	lttng_ht_node_init_u64(&stream->node, stream->stream_handle);
 	pthread_mutex_init(&stream->lock, NULL);
-	pthread_mutex_init(&stream->reflock, NULL);
 	urcu_ref_init(&stream->ref);
 	ctf_trace_get(trace);
 	stream->trace = trace;
@@ -227,8 +217,7 @@ unlock:
 
 /*
  * Stream must be protected by holding the stream lock or by virtue of being
- * called from stream_destroy, in which case it is guaranteed to be accessed
- * from a single thread by the reflock.
+ * called from stream_destroy.
  */
 static void stream_unpublish(struct relay_stream *stream)
 {
@@ -278,9 +267,6 @@ static void stream_destroy_rcu(struct rcu_head *rcu_head)
 /*
  * No need to take stream->lock since this is only called on the final
  * stream_put which ensures that a single thread may act on the stream.
- *
- * At that point, the object is also protected by the reflock which
- * guarantees that no other thread may share ownership of this stream.
  */
 static void stream_release(struct urcu_ref *ref)
 {
@@ -321,15 +307,7 @@ static void stream_release(struct urcu_ref *ref)
 void stream_put(struct relay_stream *stream)
 {
 	DBG("stream put for stream id %" PRIu64, stream->stream_handle);
-	/*
-	 * Ensure existence of stream->reflock for stream unlock.
-	 */
 	rcu_read_lock();
-	/*
-	 * Stream reflock ensures that concurrent test and update of
-	 * stream ref is atomic.
-	 */
-	pthread_mutex_lock(&stream->reflock);
 	assert(stream->ref.refcount != 0);
 	/*
 	 * Wait until we have processed all the stream packets before
@@ -339,7 +317,6 @@ void stream_put(struct relay_stream *stream)
 			stream->stream_handle,
 			(int) stream->ref.refcount);
 	urcu_ref_put(&stream->ref, stream_release);
-	pthread_mutex_unlock(&stream->reflock);
 	rcu_read_unlock();
 }
 

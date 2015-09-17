@@ -23,7 +23,7 @@ components:
     that, the kernel version may probably be older, but we can't provide
     any guarantee. Please let us know if you are able to go lower
     without any problems.
-  - **[`liburcu`](http://www.liburcu.org/) >= 0.8.0**: userspace RCU library,
+  - **[`liburcu`](http://www.liburcu.org/) >= 0.9.0**: userspace RCU library,
     by Mathieu Desnoyers and Paul E. McKenney.
   - **`libpopt` >= 1.13**:  command line arguments parsing library.
     - Debian/Ubuntu package: `libpopt-dev`

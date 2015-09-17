@@ -75,17 +75,7 @@ void ctf_trace_release(struct urcu_ref *ref)
  */
 bool ctf_trace_get(struct ctf_trace *trace)
 {
-	bool has_ref = false;
-
-	/* Confirm that the trace refcount has not reached 0. */
-	pthread_mutex_lock(&trace->reflock);
-	if (trace->ref.refcount != 0) {
-		has_ref = true;
-		urcu_ref_get(&trace->ref);
-	}
-	pthread_mutex_unlock(&trace->reflock);
-
-	return has_ref;
+	return urcu_ref_get_unless_zero(&trace->ref);
 }
 
 /*
@@ -123,7 +113,6 @@ static struct ctf_trace *ctf_trace_create(struct relay_session *session,
 	trace->session = session;
 	urcu_ref_init(&trace->ref);
 	pthread_mutex_init(&trace->lock, NULL);
-	pthread_mutex_init(&trace->reflock, NULL);
 	pthread_mutex_init(&trace->stream_list_lock, NULL);
 	lttng_ht_add_str(session->ctf_traces_ht, &trace->node);
 
@@ -168,9 +157,7 @@ end:
 void ctf_trace_put(struct ctf_trace *trace)
 {
 	rcu_read_lock();
-	pthread_mutex_lock(&trace->reflock);
 	urcu_ref_put(&trace->ref, ctf_trace_release);
-	pthread_mutex_unlock(&trace->reflock);
 	rcu_read_unlock();
 }
 

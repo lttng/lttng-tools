@@ -45,7 +45,6 @@ struct relay_stream;
  */
 struct relay_viewer_stream {
 	struct urcu_ref ref;
-	pthread_mutex_t reflock;
 
 	/* Back ref to stream. */
 	struct relay_stream *stream;
