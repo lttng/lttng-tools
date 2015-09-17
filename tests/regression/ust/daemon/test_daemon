@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (C) - 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 #
@@ -15,21 +15,13 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-# Check for a running sessiond
-`pidof lt-lttng-sessiond`
-STOP_SESSIOND=$?
-
 CURDIR=$(dirname $0)
 TESTDIR=${CURDIR}/../../..
 
-# Try to launch a sessiond before invoking the python test script
-if [ $STOP_SESSIOND -ne 0 ]; then
-	DIR=$(readlink -f ${TESTDIR})
-	${DIR}/../src/bin/lttng-sessiond/lttng-sessiond --daemonize --quiet --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
-fi
+source $TESTDIR/utils/utils.sh
+
+start_lttng_sessiond_notap
 
 python3 ${CURDIR}/test_daemon.py
 
-if [ $STOP_SESSIOND -ne 0 ]; then
-    kill `pidof lt-lttng-sessiond`
-fi
+stop_lttng_sessiond_notap
