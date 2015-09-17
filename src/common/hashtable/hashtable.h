@@ -21,9 +21,8 @@
 #include <urcu.h>
 #include <stdint.h>
 
-#include "rculfhash.h"
-#include "rculfhash-internal.h"
 #include <common/macros.h>
+#include <urcu/rculfhash.h>
 
 extern unsigned long lttng_ht_seed;
 
