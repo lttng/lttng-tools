@@ -19,6 +19,7 @@
 #define LTTNG_PIPE_H
 
 #include <pthread.h>
+#include <common/macros.h>
 
 enum lttng_pipe_state {
 	LTTNG_PIPE_STATE_OPENED = 1,
@@ -72,14 +73,21 @@ static inline int lttng_pipe_get_writefd(struct lttng_pipe *pipe)
 	return pipe->fd[1];
 }
 
+LTTNG_HIDDEN
 struct lttng_pipe *lttng_pipe_open(int flags);
+LTTNG_HIDDEN
 int lttng_pipe_write_close(struct lttng_pipe *pipe);
+LTTNG_HIDDEN
 int lttng_pipe_read_close(struct lttng_pipe *pipe);
 /* Close both side of pipe. */
+LTTNG_HIDDEN
 int lttng_pipe_close(struct lttng_pipe *pipe);
+LTTNG_HIDDEN
 void lttng_pipe_destroy(struct lttng_pipe *pipe);
 
+LTTNG_HIDDEN
 ssize_t lttng_pipe_read(struct lttng_pipe *pipe, void *buf, size_t count);
+LTTNG_HIDDEN
 ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
 		size_t count);
 

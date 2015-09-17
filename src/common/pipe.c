@@ -119,6 +119,7 @@ end:
  *
  * Return a newly allocated lttng pipe on success or else NULL.
  */
+LTTNG_HIDDEN
 struct lttng_pipe *lttng_pipe_open(int flags)
 {
 	int ret;
@@ -166,6 +167,7 @@ error:
  *
  * Return 0 on success else a negative value.
  */
+LTTNG_HIDDEN
 int lttng_pipe_read_close(struct lttng_pipe *pipe)
 {
 	int ret;
@@ -185,6 +187,7 @@ int lttng_pipe_read_close(struct lttng_pipe *pipe)
  *
  * Return 0 on success else a negative value.
  */
+LTTNG_HIDDEN
 int lttng_pipe_write_close(struct lttng_pipe *pipe)
 {
 	int ret;
@@ -203,6 +206,7 @@ int lttng_pipe_write_close(struct lttng_pipe *pipe)
  *
  * Return 0 on success else a negative value.
  */
+LTTNG_HIDDEN
 int lttng_pipe_close(struct lttng_pipe *pipe)
 {
 	int ret, ret_val = 0;
@@ -225,6 +229,7 @@ int lttng_pipe_close(struct lttng_pipe *pipe)
 /*
  * Close and destroy a lttng pipe object. Finally, pipe is freed.
  */
+LTTNG_HIDDEN
 void lttng_pipe_destroy(struct lttng_pipe *pipe)
 {
 	int ret;
@@ -261,6 +266,7 @@ void lttng_pipe_destroy(struct lttng_pipe *pipe)
  * Return "count" on success. Return < count on error. errno can be used
  * to check the actual error.
  */
+LTTNG_HIDDEN
 ssize_t lttng_pipe_read(struct lttng_pipe *pipe, void *buf, size_t count)
 {
 	ssize_t ret;
@@ -286,6 +292,7 @@ error:
  * Return "count" on success. Return < count on error. errno can be used
  * to check the actual error.
  */
+LTTNG_HIDDEN
 ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
 		size_t count)
 {
