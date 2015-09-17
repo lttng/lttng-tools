@@ -20,6 +20,7 @@
  */
 
 #include <unistd.h>
+#include <common/macros.h>
 
 /*
  * Daemonize this process by forking and making the parent wait for the child
@@ -31,6 +32,7 @@
  *
  * Return 0 on success else -1 on error.
  */
+LTTNG_HIDDEN
 int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 		int close_fds);
 

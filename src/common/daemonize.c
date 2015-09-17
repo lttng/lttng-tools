@@ -29,6 +29,7 @@
 #include <src/common/daemonize.h>
 #include <src/common/error.h>
 
+LTTNG_HIDDEN
 int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 		int close_fds)
 {
