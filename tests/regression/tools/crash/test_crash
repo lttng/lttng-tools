@@ -87,19 +87,11 @@ function stop_test_app()
 function verify_path_dont_exists()
 {
 	local path=$1
-	local timeout_try_limit=100
-	local timeout_try_count=0
-	local timeout_flag=0
 
 	while find $path -mindepth 1 -maxdepth 1 &>/dev/null ; do
-		if [[ $timeout_try_count -gt $timeout_try_limit ]]; then
-			timeout_flag=1
-			break
-		fi
-		timeout_try_count=$((timeout_try_count+1))
-		sleep 0.1
+		sleep 2
 	done
-	return $timeout_flag
+	return 0
 }
 
 function test_shm_path_per_pid()
