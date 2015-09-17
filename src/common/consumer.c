@@ -1212,6 +1212,8 @@ void lttng_consumer_cleanup(void)
 	 * it.
 	 */
 	lttng_ht_destroy(consumer_data.stream_list_ht);
+
+	run_as_destroy_worker();
 }
 
 /*

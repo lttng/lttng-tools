@@ -93,6 +93,16 @@ int lttcomm_accept_unix_sock(int sock)
 	return new_fd;
 }
 
+LTTNG_HIDDEN
+int lttcomm_create_anon_unix_socketpair(int *fds)
+{
+	if (socketpair(PF_UNIX, SOCK_STREAM, 0, fds) < 0) {
+		PERROR("socketpair");
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * Creates a AF_UNIX local socket using pathname bind the socket upon creation
  * and return the fd.

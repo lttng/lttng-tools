@@ -33,64 +33,68 @@
 
 #include <common/common.h>
 #include <common/utils.h>
-#include <common/compat/mman.h>
-#include <common/compat/clone.h>
 #include <common/compat/getenv.h>
+#include <common/sessiond-comm/unix.h>
 
 #include "runas.h"
 
-#define RUNAS_CHILD_STACK_SIZE	10485760
-
-#ifndef MAP_STACK
-#define MAP_STACK		0
-#endif
-
-#ifdef __FreeBSD__
-/* FreeBSD MAP_STACK always return -ENOMEM */
-#define LTTNG_MAP_STACK		0
-#else
-#define LTTNG_MAP_STACK		MAP_STACK
-#endif
-
-#ifndef MAP_GROWSDOWN
-#define MAP_GROWSDOWN		0
-#endif
-
-#ifndef MAP_ANONYMOUS
-#define MAP_ANONYMOUS		MAP_ANON
-#endif
-
-struct run_as_data {
-	int (*cmd)(void *data);
-	void *data;
-	uid_t uid;
-	gid_t gid;
-	int retval_pipe;
-};
+struct run_as_data;
+typedef int (*run_as_fct)(struct run_as_data *data);
 
 struct run_as_mkdir_data {
-	const char *path;
+	char path[PATH_MAX];
 	mode_t mode;
 };
 
 struct run_as_open_data {
-	const char *path;
+	char path[PATH_MAX];
 	int flags;
 	mode_t mode;
 };
 
 struct run_as_unlink_data {
-	const char *path;
+	char path[PATH_MAX];
 };
 
-struct run_as_recursive_rmdir_data {
-	const char *path;
+struct run_as_rmdir_recursive_data {
+	char path[PATH_MAX];
+};
+
+enum run_as_cmd {
+	RUN_AS_MKDIR,
+	RUN_AS_OPEN,
+	RUN_AS_UNLINK,
+	RUN_AS_RMDIR_RECURSIVE,
+	RUN_AS_MKDIR_RECURSIVE,
+};
+
+struct run_as_data {
+	enum run_as_cmd cmd;
+	union {
+		struct run_as_mkdir_data mkdir;
+		struct run_as_open_data open;
+		struct run_as_unlink_data unlink;
+		struct run_as_rmdir_recursive_data rmdir_recursive;
+	} u;
+	uid_t uid;
+	gid_t gid;
 };
 
 struct run_as_ret {
 	int ret;
 	int _errno;
 };
+
+struct run_as_worker {
+	pid_t pid;	/* Worker PID. */
+	int sockpair[2];
+	char *procname;
+};
+
+/* Single global worker per process (for now). */
+static struct run_as_worker *global_worker;
+/* Lock protecting the worker. */
+static pthread_mutex_t worker_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef VALGRIND
 static
@@ -113,75 +117,155 @@ int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode);
  * Create recursively directory using the FULL path.
  */
 static
-int _mkdir_recursive(void *_data)
+int _mkdir_recursive(struct run_as_data *data)
 {
-	struct run_as_mkdir_data *data = _data;
 	const char *path;
 	mode_t mode;
 
-	path = data->path;
-	mode = data->mode;
+	path = data->u.mkdir.path;
+	mode = data->u.mkdir.mode;
 
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	return _utils_mkdir_recursive_unsafe(path, mode);
 }
 
 static
-int _mkdir(void *_data)
+int _mkdir(struct run_as_data *data)
 {
-	struct run_as_mkdir_data *data = _data;
-
-	return mkdir(data->path, data->mode);
+	return mkdir(data->u.mkdir.path, data->u.mkdir.mode);
 }
 
 static
-int _open(void *_data)
+int _open(struct run_as_data *data)
 {
-	struct run_as_open_data *data = _data;
-
-	return open(data->path, data->flags, data->mode);
+	return open(data->u.open.path, data->u.open.flags, data->u.open.mode);
 }
 
 static
-int _unlink(void *_data)
+int _unlink(struct run_as_data *data)
 {
-	struct run_as_unlink_data *data = _data;
-
-	return unlink(data->path);
+	return unlink(data->u.unlink.path);
 }
 
 static
-int _recursive_rmdir(void *_data)
+int _rmdir_recursive(struct run_as_data *data)
 {
-	struct run_as_recursive_rmdir_data *data = _data;
-
-	return utils_recursive_rmdir(data->path);
+	return utils_recursive_rmdir(data->u.rmdir_recursive.path);
 }
 
 static
-int child_run_as(void *_data)
+run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 {
-	int ret;
-	struct run_as_data *data = _data;
-	ssize_t writelen;
+	switch (cmd) {
+	case RUN_AS_MKDIR:
+		return _mkdir;
+	case RUN_AS_OPEN:
+		return _open;
+	case RUN_AS_UNLINK:
+		return _unlink;
+	case RUN_AS_RMDIR_RECURSIVE:
+		return _rmdir_recursive;
+	case RUN_AS_MKDIR_RECURSIVE:
+		return _mkdir_recursive;
+	default:
+		ERR("Unknown command %d", (int) cmd)
+		return NULL;
+	}
+}
+
+static
+int do_send_fd(struct run_as_worker *worker,
+		enum run_as_cmd cmd, int fd)
+{
+	ssize_t len;
+
+	switch (cmd) {
+	case RUN_AS_OPEN:
+		break;
+	default:
+		return 0;
+	}
+	if (fd < 0) {
+		return 0;
+	}
+	len = lttcomm_send_fds_unix_sock(worker->sockpair[1], &fd, 1);
+	if (len < 0) {
+		PERROR("lttcomm_send_fds_unix_sock");
+		return -1;
+	}
+	if (close(fd) < 0) {
+		PERROR("close");
+		return -1;
+	}
+	return 0;
+}
+
+static
+int do_recv_fd(struct run_as_worker *worker,
+		enum run_as_cmd cmd, int *fd)
+{
+	ssize_t len;
+
+	switch (cmd) {
+	case RUN_AS_OPEN:
+		break;
+	default:
+		return 0;
+	}
+	if (*fd < 0) {
+		return 0;
+	}
+	len = lttcomm_recv_fds_unix_sock(worker->sockpair[0], fd, 1);
+	if (len < 0) {
+		PERROR("lttcomm_recv_fds_unix_sock");
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ * Return < 0 on error, 0 if OK, 1 on hangup.
+ */
+static
+int handle_one_cmd(struct run_as_worker *worker)
+{
+	int ret = 0;
+	struct run_as_data data;
+	ssize_t readlen, writelen;
 	struct run_as_ret sendret;
+	run_as_fct cmd;
+	uid_t prev_euid;
 
-	/*
-	 * Child: it is safe to drop egid and euid while sharing the
-	 * file descriptors with the parent process, since we do not
-	 * drop "uid": therefore, the user we are dropping egid/euid to
-	 * cannot attach to this process with, e.g. ptrace, nor map this
-	 * process memory.
-	 */
-	if (data->gid != getegid()) {
-		ret = setegid(data->gid);
+	/* Read data */
+	readlen = lttcomm_recv_unix_sock(worker->sockpair[1], &data,
+			sizeof(data));
+	if (readlen == 0) {
+		/* hang up */
+		ret = 1;
+		goto end;
+	}
+	if (readlen < sizeof(data)) {
+		PERROR("lttcomm_recv_unix_sock error");
+		ret = -1;
+		goto end;
+	}
+
+	cmd = run_as_enum_to_fct(data.cmd);
+	if (!cmd) {
+		ret = -1;
+		goto end;
+	}
+
+	prev_euid = getuid();
+	if (data.gid != getegid()) {
+		ret = setegid(data.gid);
 		if (ret < 0) {
 			PERROR("setegid");
 			goto write_return;
 		}
 	}
-	if (data->uid != geteuid()) {
-		ret = seteuid(data->uid);
+	if (data.uid != prev_euid) {
+		ret = seteuid(data.uid);
 		if (ret < 0) {
 			PERROR("seteuid");
 			goto write_return;
@@ -191,33 +275,94 @@ int child_run_as(void *_data)
 	 * Also set umask to 0 for mkdir executable bit.
 	 */
 	umask(0);
-	ret = (*data->cmd)(data->data);
+	ret = (*cmd)(&data);
 
 write_return:
 	sendret.ret = ret;
 	sendret._errno = errno;
 	/* send back return value */
-	writelen = lttng_write(data->retval_pipe, &sendret, sizeof(sendret));
+	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
+			sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
-		PERROR("lttng_write error");
-		return EXIT_FAILURE;
-	} else {
-		return EXIT_SUCCESS;
+		PERROR("lttcomm_send_unix_sock error");
+		ret = -1;
+		goto end;
 	}
+	ret = do_send_fd(worker, data.cmd, ret);
+	if (ret) {
+		PERROR("do_send_fd error");
+		ret = -1;
+		goto end;
+	}
+	if (seteuid(prev_euid) < 0) {
+		PERROR("seteuid");
+		ret = -1;
+		goto end;
+	}
+	ret = 0;
+end:
+	return ret;
 }
 
 static
-int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
+int run_as_worker(struct run_as_worker *worker)
 {
-	struct run_as_data run_as_data;
-	int ret = 0;
-	ssize_t readlen;
-	int status;
-	pid_t pid;
-	int retval_pipe[2];
-	void *child_stack;
+	int ret;
+	ssize_t writelen;
+	struct run_as_ret sendret;
+	size_t proc_orig_len;
+
+	/*
+	 * Initialize worker. Set a different process cmdline.
+	 */
+	proc_orig_len = strlen(worker->procname);
+	memset(worker->procname, 0, proc_orig_len);
+	strncpy(worker->procname, DEFAULT_RUN_AS_WORKER_NAME, proc_orig_len);
+
+	ret = pthread_setname_np(pthread_self(), DEFAULT_RUN_AS_WORKER_NAME);
+	if (ret) {
+		errno = ret;
+		ret = -1;
+		PERROR("pthread_setname_np");
+		return EXIT_FAILURE;
+	}
+
+	sendret.ret = 0;
+	sendret._errno = 0;
+	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
+			sizeof(sendret));
+	if (writelen < sizeof(sendret)) {
+		PERROR("lttcomm_send_unix_sock error");
+		ret = EXIT_FAILURE;
+		goto end;
+	}
+
+	for (;;) {
+		ret = handle_one_cmd(worker);
+		if (ret < 0) {
+			ret = EXIT_FAILURE;
+			goto end;
+		} else if (ret > 0) {
+			break;
+		} else {
+			continue;	/* Next command. */
+		}
+	}
+	ret = EXIT_SUCCESS;
+end:
+	return ret;
+}
+
+static
+int run_as_cmd(struct run_as_worker *worker,
+		enum run_as_cmd cmd,
+		struct run_as_data *data,
+		uid_t uid, gid_t gid)
+{
+	ssize_t readlen, writelen;
 	struct run_as_ret recvret;
 
+	pthread_mutex_lock(&worker_lock);
 	/*
 	 * If we are non-root, we can only deal with our own uid.
 	 */
@@ -231,141 +376,107 @@ int run_as_clone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
 		}
 	}
 
-	ret = pipe(retval_pipe);
-	if (ret < 0) {
+	data->cmd = cmd;
+	data->uid = uid;
+	data->gid = gid;
+
+	writelen = lttcomm_send_unix_sock(worker->sockpair[0], data,
+			sizeof(*data));
+	if (writelen < sizeof(*data)) {
+		PERROR("Error writing message to run_as");
 		recvret.ret = -1;
 		recvret._errno = errno;
-		PERROR("pipe");
 		goto end;
 	}
-	run_as_data.data = data;
-	run_as_data.cmd = cmd;
-	run_as_data.uid = uid;
-	run_as_data.gid = gid;
-	run_as_data.retval_pipe = retval_pipe[1];	/* write end */
-	child_stack = mmap(NULL, RUNAS_CHILD_STACK_SIZE,
-		PROT_WRITE | PROT_READ,
-		MAP_PRIVATE | MAP_GROWSDOWN | MAP_ANONYMOUS | LTTNG_MAP_STACK,
-		-1, 0);
-	if (child_stack == MAP_FAILED) {
-		recvret.ret = -1;
-		recvret._errno = ENOMEM;
-		PERROR("mmap");
-		goto close_pipe;
-	}
-	/*
-	 * Pointing to the middle of the stack to support architectures
-	 * where the stack grows up (HPPA).
-	 */
-	pid = lttng_clone_files(child_run_as, child_stack + (RUNAS_CHILD_STACK_SIZE / 2),
-		&run_as_data);
-	if (pid < 0) {
-		recvret.ret = -1;
-		recvret._errno = errno;
-		PERROR("clone");
-		goto unmap_stack;
-	}
+
 	/* receive return value */
-	readlen = lttng_read(retval_pipe[0], &recvret, sizeof(recvret));
+	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], &recvret,
+			sizeof(recvret));
 	if (readlen < sizeof(recvret)) {
+		PERROR("Error reading response from run_as");
 		recvret.ret = -1;
 		recvret._errno = errno;
+	}
+	if (do_recv_fd(worker, cmd, &recvret.ret)) {
+		recvret.ret = -1;
+		recvret._errno = -EIO;
 	}
 
-	/*
-	 * Parent: wait for child to return, in which case the
-	 * shared memory map will have been created.
-	 */
-	pid = waitpid(pid, &status, 0);
-	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		recvret.ret = -1;
-		recvret._errno = errno;
-		PERROR("wait");
-	}
-unmap_stack:
-	ret = munmap(child_stack, RUNAS_CHILD_STACK_SIZE);
-	if (ret < 0) {
-		recvret.ret = -1;
-		recvret._errno = errno;
-		PERROR("munmap");
-	}
-close_pipe:
-	ret = close(retval_pipe[0]);
-	if (ret) {
-		recvret.ret = -1;
-		recvret._errno = errno;
-		PERROR("close");
-	}
-	ret = close(retval_pipe[1]);
-	if (ret) {
-		recvret.ret = -1;
-		recvret._errno = errno;
-		PERROR("close");
-	}
 end:
+	pthread_mutex_unlock(&worker_lock);
 	errno = recvret._errno;
 	return recvret.ret;
 }
 
 /*
- * To be used on setups where gdb has issues debugging programs using
- * clone/rfork. Note that this is for debuging ONLY, and should not be
- * considered secure.
+ * This is for debugging ONLY and should not be considered secure.
  */
 static
-int run_as_noclone(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
+int run_as_noworker(enum run_as_cmd cmd,
+		struct run_as_data *data, uid_t uid, gid_t gid)
 {
 	int ret, saved_errno;
 	mode_t old_mask;
+	run_as_fct fct;
 
+	fct = run_as_enum_to_fct(cmd);
+	if (!fct) {
+		errno = -ENOSYS;
+		ret = -1;
+		goto end;
+	}
 	old_mask = umask(0);
-	ret = cmd(data);
+	ret = fct(data);
 	saved_errno = errno;
 	umask(old_mask);
 	errno = saved_errno;
-
+end:
 	return ret;
 }
 
 static
-int run_as(int (*cmd)(void *data), void *data, uid_t uid, gid_t gid)
+int run_as(struct run_as_worker *worker,
+		enum run_as_cmd cmd,
+		struct run_as_data *data, uid_t uid, gid_t gid)
 {
-	if (use_clone()) {
-		int ret;
+	int ret;
 
-		DBG("Using run_as_clone");
-		pthread_mutex_lock(&lttng_libc_state_lock);
-		ret = run_as_clone(cmd, data, uid, gid);
-		pthread_mutex_unlock(&lttng_libc_state_lock);
-		return ret;
+	if (worker) {
+		DBG("Using run_as worker");
+		ret = run_as_cmd(worker, cmd, data, uid, gid);
 	} else {
-		DBG("Using run_as_noclone");
-		return run_as_noclone(cmd, data, uid, gid);
+		DBG("Using run_as without worker");
+		ret = run_as_noworker(cmd, data, uid, gid);
 	}
+	return ret;
 }
 
 LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct run_as_mkdir_data data;
+	struct run_as_worker *worker = global_worker;
+	struct run_as_data data;
 
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
 			path, mode, uid, gid);
-	data.path = path;
-	data.mode = mode;
-	return run_as(_mkdir_recursive, &data, uid, gid);
+	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
+	data.u.mkdir.path[PATH_MAX - 1] = '\0';
+	data.u.mkdir.mode = mode;
+	return run_as(worker, RUN_AS_MKDIR_RECURSIVE, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct run_as_mkdir_data data;
+	struct run_as_worker *worker = global_worker;
+	struct run_as_data data;
 
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
 			path, mode, uid, gid);
-	data.path = path;
-	data.mode = mode;
-	return run_as(_mkdir, &data, uid, gid);
+	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
+	data.u.mkdir.path[PATH_MAX - 1] = '\0';
+	data.u.mkdir.mode = mode;
+	return run_as(worker, RUN_AS_MKDIR, &data, uid, gid);
 }
 
 /*
@@ -375,34 +486,151 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct run_as_open_data data;
+	struct run_as_worker *worker = global_worker;
+	struct run_as_data data;
 
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
 			path, flags, mode, uid, gid);
-	data.path = path;
-	data.flags = flags;
-	data.mode = mode;
-	return run_as(_open, &data, uid, gid);
+	strncpy(data.u.open.path, path, PATH_MAX - 1);
+	data.u.open.path[PATH_MAX - 1] = '\0';
+	data.u.open.flags = flags;
+	data.u.open.mode = mode;
+	return run_as(worker, RUN_AS_OPEN, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 {
-	struct run_as_unlink_data data;
+	struct run_as_worker *worker = global_worker;
+	struct run_as_data data;
 
 	DBG3("unlink() %s with for uid %d and gid %d",
 			path, uid, gid);
-	data.path = path;
-	return run_as(_unlink, &data, uid, gid);
+	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
+	data.u.unlink.path[PATH_MAX - 1] = '\0';
+	return run_as(worker, RUN_AS_UNLINK, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
-int run_as_recursive_rmdir(const char *path, uid_t uid, gid_t gid)
+int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 {
-	struct run_as_recursive_rmdir_data data;
+	struct run_as_worker *worker = global_worker;
+	struct run_as_data data;
 
-	DBG3("recursive_rmdir() %s with for uid %d and gid %d",
+	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
 			path, uid, gid);
-	data.path = path;
-	return run_as(_recursive_rmdir, &data, uid, gid);
+	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
+	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
+	return run_as(worker, RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_create_worker(char *procname)
+{
+	pid_t pid;
+	int i, ret = 0;
+	ssize_t readlen;
+	struct run_as_ret recvret;
+	struct run_as_worker *worker;
+
+	if (!use_clone()) {
+		ret = 0;
+		goto end;
+	}
+	worker = zmalloc(sizeof(*worker));
+	if (!worker) {
+		ret = -ENOMEM;
+		goto end;
+	}
+	worker->procname = procname;
+	/* Create unix socket. */
+	if (lttcomm_create_anon_unix_socketpair(worker->sockpair) < 0) {
+		ret = -1;
+		goto error_sock;
+	}
+	/* Fork worker. */
+	pid = fork();
+	if (pid < 0) {
+		PERROR("fork");
+		ret = -1;
+		goto error_fork;
+	} else if (pid == 0) {
+		/* Child */
+
+		/* Just close, no shutdown. */
+		if (close(worker->sockpair[0])) {
+			PERROR("close");
+			exit(EXIT_FAILURE);
+		}
+		worker->sockpair[0] = -1;
+		ret = run_as_worker(worker);
+		if (lttcomm_close_unix_sock(worker->sockpair[1])) {
+			PERROR("close");
+			ret = -1;
+		}
+		worker->sockpair[1] = -1;
+		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
+	} else {
+		/* Parent */
+
+		/* Just close, no shutdown. */
+		if (close(worker->sockpair[1])) {
+			PERROR("close");
+			ret = -1;
+			goto error_fork;
+		}
+		worker->sockpair[1] = -1;
+		worker->pid = pid;
+		/* Wait for worker to become ready. */
+		readlen = lttcomm_recv_unix_sock(worker->sockpair[0],
+				&recvret, sizeof(recvret));
+		if (readlen < sizeof(recvret)) {
+			ERR("readlen: %zd", readlen);
+			PERROR("Error reading response from run_as at creation");
+			ret = -1;
+			goto error_fork;
+		}
+		global_worker = worker;
+	}
+end:
+	return ret;
+
+	/* Error handling. */
+error_fork:
+	for (i = 0; i < 2; i++) {
+		if (worker->sockpair[i] < 0) {
+			continue;
+		}
+		if (lttcomm_close_unix_sock(worker->sockpair[i])) {
+			PERROR("close");
+		}
+		worker->sockpair[i] = -1;
+	}
+error_sock:
+	free(worker);
+	return ret;
+}
+
+LTTNG_HIDDEN
+void run_as_destroy_worker(void)
+{
+	struct run_as_worker *worker = global_worker;
+	int status;
+	pid_t pid;
+
+	if (!worker) {
+		return;
+	}
+	/* Close unix socket */
+	if (lttcomm_close_unix_sock(worker->sockpair[0])) {
+		PERROR("close");
+	}
+	worker->sockpair[0] = -1;
+	/* Wait for worker. */
+	pid = waitpid(worker->pid, &status, 0);
+	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		PERROR("wait");
+	}
+	free(worker);
+	global_worker = NULL;
 }
