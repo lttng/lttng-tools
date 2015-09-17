@@ -32,6 +32,7 @@
  * error occured.
  * The error can be checked by querying errno.
  */
+LTTNG_HIDDEN
 ssize_t lttng_read(int fd, void *buf, size_t count)
 {
 	size_t i = 0;
@@ -69,6 +70,7 @@ error:
 	}
 }
 
+LTTNG_HIDDEN
 ssize_t lttng_write(int fd, const void *buf, size_t count)
 {
 	size_t i = 0;

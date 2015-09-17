@@ -19,6 +19,7 @@
  */
 
 #include <unistd.h>
+#include <common/macros.h>
 
 /*
  * lttng_read and lttng_write take care of EINTR and partial read/write.
@@ -28,7 +29,9 @@
  * error occured.
  * The error can be checked by querying errno.
  */
+LTTNG_HIDDEN
 ssize_t lttng_read(int fd, void *buf, size_t count);
+LTTNG_HIDDEN
 ssize_t lttng_write(int fd, const void *buf, size_t count);
 
 #endif /* LTTNG_COMMON_READWRITE_H */
