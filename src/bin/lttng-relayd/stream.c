@@ -253,6 +253,11 @@ static void stream_unpublish(struct relay_stream *stream)
 static void stream_destroy(struct relay_stream *stream)
 {
 	if (stream->indexes_ht) {
+		/*
+		 * Calling lttng_ht_destroy in call_rcu worker thread so
+		 * we don't hold the RCU read-side lock while calling
+		 * it.
+		 */
 		lttng_ht_destroy(stream->indexes_ht);
 	}
 	if (stream->tfa) {
