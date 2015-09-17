@@ -87,6 +87,7 @@ static int match_two_u64(struct cds_lfht_node *node, const void *key)
 /*
  * Return an allocated lttng hashtable.
  */
+LTTNG_HIDDEN
 struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 {
 	struct lttng_ht *ht;
@@ -143,6 +144,7 @@ error:
 /*
  * Free a lttng hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_destroy(struct lttng_ht *ht)
 {
 	int ret;
@@ -155,6 +157,7 @@ void lttng_ht_destroy(struct lttng_ht *ht)
 /*
  * Init lttng ht node string.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key)
 {
 	assert(node);
@@ -166,6 +169,7 @@ void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key)
 /*
  * Init lttng ht node unsigned long.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 		unsigned long key)
 {
@@ -178,6 +182,7 @@ void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 /*
  * Init lttng ht node uint64_t.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 		uint64_t key)
 {
@@ -190,6 +195,7 @@ void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 /*
  * Init lttng ht node with two uint64_t.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
 		uint64_t key1, uint64_t key2)
 {
@@ -203,6 +209,7 @@ void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
 /*
  * Free lttng ht node string.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_free_str(struct lttng_ht_node_str *node)
 {
 	assert(node);
@@ -212,6 +219,7 @@ void lttng_ht_node_free_str(struct lttng_ht_node_str *node)
 /*
  * Free lttng ht node unsigned long.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node)
 {
 	assert(node);
@@ -221,6 +229,7 @@ void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node)
 /*
  * Free lttng ht node uint64_t.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node)
 {
 	assert(node);
@@ -230,6 +239,7 @@ void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node)
 /*
  * Free lttng ht node two uint64_t.
  */
+LTTNG_HIDDEN
 void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node)
 {
 	assert(node);
@@ -239,6 +249,7 @@ void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node)
 /*
  * Lookup function in hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 		struct lttng_ht_iter *iter)
 {
@@ -252,6 +263,7 @@ void lttng_ht_lookup(struct lttng_ht *ht, void *key,
 /*
  * Add unique string node to hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_add_unique_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node)
 {
@@ -271,6 +283,7 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 /*
  * Add string node to hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_add_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node)
 {
@@ -288,6 +301,7 @@ void lttng_ht_add_str(struct lttng_ht *ht,
 /*
  * Add unsigned long node to hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 {
 	assert(ht);
@@ -303,8 +317,8 @@ void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 
 /*
  * Add uint64_t node to hashtable.
-
  */
+LTTNG_HIDDEN
 void lttng_ht_add_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 {
 	assert(ht);
@@ -321,6 +335,7 @@ void lttng_ht_add_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 /*
  * Add unique unsigned long node to hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node)
 {
@@ -341,6 +356,7 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 /*
  * Add unique uint64_t node to hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node)
 {
@@ -361,6 +377,7 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 /*
  * Add unique two uint64_t node to hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_two_u64 *node)
 {
@@ -381,6 +398,7 @@ void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
 /*
  * Add replace unsigned long node to hashtable.
  */
+LTTNG_HIDDEN
 struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node)
 {
@@ -406,6 +424,7 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 /*
  * Add replace unsigned long node to hashtable.
  */
+LTTNG_HIDDEN
 struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node)
 {
@@ -431,6 +450,7 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 /*
  * Delete node from hashtable.
  */
+LTTNG_HIDDEN
 int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 {
 	int ret;
@@ -449,6 +469,7 @@ int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 /*
  * Get first node in the hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_get_first(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 {
 	assert(ht);
@@ -461,6 +482,7 @@ void lttng_ht_get_first(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 /*
  * Get next node in the hashtable.
  */
+LTTNG_HIDDEN
 void lttng_ht_get_next(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 {
 	assert(ht);
@@ -473,6 +495,7 @@ void lttng_ht_get_next(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 /*
  * Return the number of nodes in the hashtable.
  */
+LTTNG_HIDDEN
 unsigned long lttng_ht_get_count(struct lttng_ht *ht)
 {
 	long scb, sca;
@@ -492,6 +515,7 @@ unsigned long lttng_ht_get_count(struct lttng_ht *ht)
 /*
  * Return lttng ht string node from iterator.
  */
+LTTNG_HIDDEN
 struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 		struct lttng_ht_iter *iter)
 {
@@ -508,6 +532,7 @@ struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 /*
  * Return lttng ht unsigned long node from iterator.
  */
+LTTNG_HIDDEN
 struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 		struct lttng_ht_iter *iter)
 {
@@ -524,6 +549,7 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 /*
  * Return lttng ht unsigned long node from iterator.
  */
+LTTNG_HIDDEN
 struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 		struct lttng_ht_iter *iter)
 {
@@ -540,6 +566,7 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 /*
  * Return lttng ht stream and index id node from iterator.
  */
+LTTNG_HIDDEN
 struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 		struct lttng_ht_iter *iter)
 {
