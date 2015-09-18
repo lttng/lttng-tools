@@ -43,7 +43,7 @@ function enable_channel_per_uid()
 
 function check_sessiond()
 {
-	if [ -z "$(pidof lt-lttng-sessiond)" ]; then
+	if [ -z "$(pgrep --full lt-lttng-sessiond)" ]; then
 		local str_date=$(date +%H%M%S-%d%m%Y)
 
 		diag "!!!The session daemon died unexpectedly!!!"
@@ -65,7 +65,7 @@ function start_sessiond()
 		BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
-	if [ -z $(pidof lt-$SESSIOND_BIN) ]; then
+	if [ -z $(pgrep --full lt-$SESSIOND_BIN) ]; then
 		# We have to start it like this so the ulimit -c is used by this
 		# process. Also, we collect any error message printed out.
 		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --quiet --background --consumerd32-path="$TESTDIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$TESTDIR/../src/bin/lttng-consumerd/lttng-consumerd" >$LOG_FILE 2>&1
