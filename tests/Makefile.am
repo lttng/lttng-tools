@@ -1,6 +1,9 @@
 SUBDIRS = utils regression unit stress
 
 installcheck-am:
+if HAS_PGREP
+	./warn_lttng_processes.sh $(PGREP)
+endif
 	./run.sh unit_tests
 	./run.sh fast_regression
 if PYTHON_BINDING
@@ -8,6 +11,9 @@ if PYTHON_BINDING
 endif
 
 check-am:
+if HAS_PGREP
+	./warn_lttng_processes.sh $(PGREP)
+endif
 	./run.sh unit_tests
 	./run.sh fast_regression
 if PYTHON_BINDING
