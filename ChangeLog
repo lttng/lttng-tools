@@ -1,3 +1,192 @@
+2015-09-18 lttng-tools 2.7.0-rc2
+	* Fix: Check use_clone() instead of worker in run_as
+	* Fix: Perform rcu barrier before tearing down the run-as worker
+	* Fix: Handle hang-up gracefully in run-as
+	* Fix: Only log app handle release on failure
+	* Fix: shm-path: handling of snprintf return value
+	* Fix: Wrong format specifier used in debug statement
+	* Tests: Swap usages of pidof for pgrep --full
+	* Tests: indefinitely wait for shm buffers to be unlinked
+	* Fix: Hide run-as functions
+	* Fix: Hide sessiond-comm functions
+	* Cleanup: remove duplicated implementation of rculfhash
+	* Fix: relayd: don't call lttng_ht_destroy in RCU read-side C.S.
+	* Fix: libc internal mutex races with run_as
+	* Fix: Hide readwrite symbols in common lib
+	* Fix: Hide pipe symbols in common lib
+	* Fix: Hide daemonize symbols in common lib
+	* Fix: Hide RCU hashtable wrapper symbols
+	* Fix: prevent dangling pointer in utils_partial_realpath
+	* Fix: rcu_read_unlock without parentheses has no side-effect
+	* Fix: add missing test file to EXTRA_DIST
+	* Format utils.sh messages
+	* Tests: use functions from utils.sh
+	* Report error if any disable action fails
+	* Fix: disable all ust events
+	* Bring back event_ust_disable_all_tracepoints
+	* Fix: sessiond: disable: match app event by name
+	* lttng-crash: support symlink
+	* Test: lttng-crash and ust shm path
+	* Fix: dereferencing null index pointer
+	* Fix: leaking memory from strdup in lttng-crash
+	* Fix: memleak in utils_partial_realpath
+	* Fix: double free on enable-event
+	* Fix: error on no/multiple domain options
+	* Fix: lttng-crash: segfault when parsing options
+	* Print relayd stream indexes
+	* Enhance relayd error reporting
+	* Fix: relayd: handle consumerd crashes without leak
+	* Fix: LPOLLHUP and LPOLLERR when there is still data in pipe/socket
+	* Fix: Use 2.7 java JAR and class names
+	* Fix: double RCU unlock on event_agent_disable_all
+	* Fix: unbalanced RCU read-side lock in enable event command
+	* Add rcu_read_ongoing() assertions around process_client_msg
+	* Clean-up and simplify event_agent_disable_all
+	* Fix: disable agent events by name
+	* sessiond: add loglevels_match()
+	* Fix: include loglevel type in agent event's primary key
+	* Fix: include loglevel type in UST event's primary key
+	* sessiond: use `loglevel_value` and `loglevel_type` names
+	* Tests: kernel wildcards
+	* Tests: fix wildcard test path
+	* doc: document untrack command in lttng(1)
+	* doc: document track command in lttng(1)
+	* Remove dot after enable-event message
+	* Fix: don't print the default channel name when enabling agent events
+	* Fix: fail gracefully on --exclude on unsupported domains
+	* Fix: initialize live_timer to 0 for snapshot session
+	* Fix: correct mismatched function signatures
+	* Clearer error reporting when failing to launch session daemon
+	* Daemonize sessiond on `lttng create`
+	* Fix: consumer signal handling race
+	* Fix: list_ust_events(): dangling pointer
+	* Fix: MI: close domain when listing multiple agent domains
+	* Tests: expand UST wildcard tests, move to regression/tools
+	* Tests: kernel filtering
+	* Fix: use pid element instead of process element
+	* Fix: race between kconsumerd and sessiond on tear down
+	* Fix: Buggy string comparison in ust registry ht_match_event
+	* Fix: Bad cast of lttng_kernel_instrumentation to lttng_event_type
+	* Fix: Implicit cast from lttng_loglevel_type to lttng_ust_loglevel_type
+	* Fix: lttng-crash: remove tmp working directory
+	* Fix: lttng-crash: DIR leak in delete_trace() on error
+	* Fix: Possible passing of NULL pointer to memcpy()
+	* Fix: Overwrite of ret in relay_recv_metadata
+	* Fix: Wait for in-flight data before closing a stream
+	* Fix: unpublish stream on close
+	* Fix: lttng-crash: fd leak
+	* Fix: Invalid parameter error reported when untracking PID
+	* Fix: kernel track/untrack error handling
+	* Fix: Python agent tests are always skipped
+	* Tests: Java agent: Add configure switches to enable tests
+	* Tests: Java agent: update after Java agent refactoring
+	* Tests: Fix flaky live test client
+	* Fix: Announce empty streams on live attach
+	* Fix: relayd: file rotation and live read
+	* Fix: relay: viewer_get_next_index handle null vstream
+	* Fix: relayd: make viewer streams consider metadata sent
+	* Fix: don't expose empty streams
+	* Fix: relayd: don't check new metadata on get packet
+	* Fix: relayd: don't check for new streams in get packet
+	* Fix: ask new streams HUP
+	* Fix: reply error if get packet vstream fails
+	* Fix: relayd reply error to client if cannot find viewer stream
+	* Fix: relayd reply with error if cannot find metadata
+	* Fix: ust-app: protect app socket protocol with lock
+	* Fix: add missing rcu_barrier at end of sessiond main
+	* Fix: add missing rcu_barrier at end of consumer main
+	* Fix: app cmd leak on sessiond exit
+	* Fix: relayd live don't send incomplete stream list
+	* Fix: consumer timer misses RCU thread registration
+	* Fix: sessiond consumer thread should register as RCU thread
+	* Fix: don't chain RCU free
+	* Fix: free metadata cache after grace period in consumer
+	* Fix: sessiond vs consumerd push/get metadata deadlock
+	* Fix: streamline ret/errno of run_as()
+	* Fix: Double unlock on error path
+	* Fix: Relay daemon ownership and reference counting
+	* Accept uid and gid parameters in utils_mkdir()/utils_mkdir_recursive()
+	* Fix: reference counting of consumer output
+	* Fix: sessiond add missing socket close
+	* Fix: sessiond should not error on channel creation vs app exit
+	* Fix: sessiond ust-app session teardown race
+	* Only display agent loglevel if the loglevel type is not ALL
+	* Initialize default log level of events on load
+	* Don't assume that Log4j and JUL share the same log level mappings
+	* Allow the creation of JUL, Log4j and Python channels
+	* Fix: Save tracker as part of UST and Kernel domains only
+	* Fix: Memory leak of agent
+	* Fix: Memory leak of agent event internals
+	* Save filter expression as part of agent events and save them
+	* Fix: UTF-8 characters may be stored on up to 4 bytes
+	* Prevent the addition of UST events to agent channels
+	* Don't save log level in session configuration when unneeded
+	* Fix: Propagate filter status of kernel events to client
+	* Fix: Save kernel event filter when saving session configuration
+	* Fix: Mention Python as part of enable-event's usage()
+	* Fix: typo in error message
+	* Add agent domains to lttng enable-event usage()
+	* Report memory allocation failure when copying filter bytecode
+	* Fix: cmd_enable_event must return positive error codes
+	* Save filter expressions as part of agent events
+	* Add agent domains to the enable-event section of LTTNG(1)
+	* Prevent disable event on internal UST events
+	* Skip internal events when saving a session configuration
+	* Hide internal events from session daemon clients
+	* Prevent the use of reserved UST event names
+	* Tag events created as side-effect of agent events as internal
+	* Fix: assert(0) when listing Python events with MI
+	* Fix: set GLOBAL buffer type for kernel domain in list
+	* Fix: take RCU read-side lock within hash table functions
+	* Tests: Adapt MI test to change in track/untrack behaviour
+	* Fix: Improve the error reporting of the track/untrack command
+	* Tests: Fix flacky clock-plugin test
+	* Build: look for python >= 3.0 when building python bindings
+	* Build: rename use_python to python_binding
+	* Fix: regression tests
+	* Fix: tests: stderr not correctly redirected
+	* Fix: TimeoutExpired in Python tests not defined globally
+	* Tests: ust: clock override plugin
+	* Test: save/load: pid_tracker basic test
+	* Save/load: pid_tracker feature.
+	* Test: mi: track/untrack feature
+	* Util: xml_extract: add node_exist option
+	* Mi: track/untrack: validation
+	* Docs: Grammar fixes in mi_lttng.xsd
+	* Fix: Ensure a valid command error code is returned by track/untrack
+	* Mi: track/untrack/listing
+	* Fix: intialization of ust_metadata_poll_pipe to garbage value
+	* Fix "allocator sizeof operand mismatch" warning
+	* Fix: incorrect script name in python logging test
+	* Tests: Python agent: update after Python agent refactoring
+	* Fix: Discard disable event command filter payload
+	* Fix: Use MSG_NOSIGNAL when calling sendmsg()
+	* Fix: test_mi test
+	* Set registration done Agent command version back to 0
+	* Fix: Don't send agent disable event command twice
+	* Fix: incorrect variable being checked in libc-wrapper test
+	* Fix: Initialize global agent_apps_ht_by_sock on session daemon launch
+	* Fix: pids should be numbers only
+	* Fix: Mishandled NULL short options in lttng-sessiond
+	* Use popt "required_argument" and "no_argument" constants
+	* Fix: Mishandled NULL short options in utils_generate_optstring()
+	* Fix: only launch a new session daemon for the "create" command
+	* Fix 'daemon' typo in lttng-ctl-pc.in description
+	* Fix: clean-up agent app hash table from the main sessiond thread
+	* Fix: Remove undocumented session daemon short options
+	* Log userspace application hash table allocation failure
+	* Fix: RCU read-side lock released too early in destroy_agent_app
+	* Fix: misleading logging statement in agent_find_event
+	* Fix: Unhandled domain option condition in list_agent_events
+	* Fix: Crash on lttng list -j/-l/-p when no events are present
+	* Document relay_add_stream RCU locking
+	* Fix: Unbalanced rcu_read_unlock() on stream file creation failure
+	* Fix: Unbalanced rcu_read_unlock() on directory creation failure
+	* Fix: Document the locking assumptions of ctf_trace_find_by_path()
+	* Fix: Memory leak in relay_add_stream error path
+	* Fix: set session should not set non-existent session
+	* Rename Python agent event name to omit "user"
+
 2015-07-15 lttng-tools 2.7.0-rc1 (Pet Fire Safety Day)
 	* Update version to v2.7.0-rc1
 	* Tests: lttng-ust-getcpu-override-test cache and error-check sysconf()
