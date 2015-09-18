@@ -254,8 +254,8 @@ int get_stream_shm_path(char *stream_shm_path, const char *shm_path, int cpu)
 	strncpy(stream_shm_path, shm_path, PATH_MAX);
 	stream_shm_path[PATH_MAX - 1] = '\0';
 	ret = snprintf(cpu_nr, UINT_MAX_STR_LEN, "%u", cpu);
-	if (ret != 1) {
-		ret = -1;
+	if (ret < 0) {
+		PERROR("snprintf");
 		goto end;
 	}
 	strncat(stream_shm_path, cpu_nr,
