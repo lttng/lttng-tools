@@ -3482,7 +3482,9 @@ int ust_app_list_events(struct lttng_event **events)
 				}
 				free(tmp_event);
 				release_ret = ustctl_release_handle(app->sock, handle);
-				if (release_ret != -LTTNG_UST_ERR_EXITING && release_ret != -EPIPE) {
+				if (release_ret < 0 &&
+						release_ret != -LTTNG_UST_ERR_EXITING &&
+						release_ret != -EPIPE) {
 					ERR("Error releasing app handle for app %d with ret %d", app->sock, release_ret);
 				}
 				pthread_mutex_unlock(&app->sock_lock);
@@ -3507,7 +3509,9 @@ int ust_app_list_events(struct lttng_event **events)
 					free(tmp_event);
 					ret = -ENOMEM;
 					release_ret = ustctl_release_handle(app->sock, handle);
-					if (release_ret != -LTTNG_UST_ERR_EXITING && release_ret != -EPIPE) {
+					if (release_ret < 0 &&
+							release_ret != -LTTNG_UST_ERR_EXITING &&
+							release_ret != -EPIPE) {
 						ERR("Error releasing app handle for app %d with ret %d", app->sock, release_ret);
 					}
 					pthread_mutex_unlock(&app->sock_lock);
@@ -3528,7 +3532,7 @@ int ust_app_list_events(struct lttng_event **events)
 		}
 		ret = ustctl_release_handle(app->sock, handle);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+		if (ret < 0 && ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
 			ERR("Error releasing app handle for app %d with ret %d", app->sock, ret);
 		}
 	}
@@ -3610,7 +3614,9 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 				free(tmp_event);
 				release_ret = ustctl_release_handle(app->sock, handle);
 				pthread_mutex_unlock(&app->sock_lock);
-				if (release_ret != -LTTNG_UST_ERR_EXITING && release_ret != -EPIPE) {
+				if (release_ret < 0 &&
+						release_ret != -LTTNG_UST_ERR_EXITING &&
+						release_ret != -EPIPE) {
 					ERR("Error releasing app handle for app %d with ret %d", app->sock, release_ret);
 				}
 				goto rcu_error;
@@ -3635,7 +3641,9 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					ret = -ENOMEM;
 					release_ret = ustctl_release_handle(app->sock, handle);
 					pthread_mutex_unlock(&app->sock_lock);
-					if (release_ret != -LTTNG_UST_ERR_EXITING && release_ret != -EPIPE) {
+					if (release_ret &&
+							release_ret != -LTTNG_UST_ERR_EXITING &&
+							release_ret != -EPIPE) {
 						ERR("Error releasing app handle for app %d with ret %d", app->sock, release_ret);
 					}
 					goto rcu_error;
@@ -3661,7 +3669,9 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 		}
 		ret = ustctl_release_handle(app->sock, handle);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+		if (ret < 0 &&
+				ret != -LTTNG_UST_ERR_EXITING &&
+				ret != -EPIPE) {
 			ERR("Error releasing app handle for app %d with ret %d", app->sock, ret);
 		}
 	}
