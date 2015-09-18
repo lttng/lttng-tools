@@ -642,13 +642,14 @@ exit_init_data:
 	if (health_consumerd) {
 		health_app_destroy(health_consumerd);
 	}
-exit_health_consumerd_cleanup:
-
-exit_options:
-
-exit_set_signal_handler:
 	/* Ensure all prior call_rcu are done. */
 	rcu_barrier();
+
+	run_as_destroy_worker();
+
+exit_health_consumerd_cleanup:
+exit_options:
+exit_set_signal_handler:
 
 	if (!retval) {
 		exit(EXIT_SUCCESS);
