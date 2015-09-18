@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <sched.h>
 #include <sys/signal.h>
+#include <assert.h>
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -364,7 +365,6 @@ int run_as_cmd(struct run_as_worker *worker,
 	ssize_t readlen, writelen;
 	struct run_as_ret recvret;
 
-	pthread_mutex_lock(&worker_lock);
 	/*
 	 * If we are non-root, we can only deal with our own uid.
 	 */
@@ -410,7 +410,6 @@ int run_as_cmd(struct run_as_worker *worker,
 	}
 
 end:
-	pthread_mutex_unlock(&worker_lock);
 	errno = recvret._errno;
 	return recvret.ret;
 }
@@ -442,15 +441,17 @@ end:
 }
 
 static
-int run_as(struct run_as_worker *worker,
-		enum run_as_cmd cmd,
-		struct run_as_data *data, uid_t uid, gid_t gid)
+int run_as(enum run_as_cmd cmd, struct run_as_data *data, uid_t uid, gid_t gid)
 {
 	int ret;
 
-	if (worker) {
+	if (use_clone()) {
 		DBG("Using run_as worker");
-		ret = run_as_cmd(worker, cmd, data, uid, gid);
+		pthread_mutex_lock(&worker_lock);
+		assert(global_worker);
+		ret = run_as_cmd(global_worker, cmd, data, uid, gid);
+		pthread_mutex_unlock(&worker_lock);
+
 	} else {
 		DBG("Using run_as without worker");
 		ret = run_as_noworker(cmd, data, uid, gid);
@@ -461,7 +462,6 @@ int run_as(struct run_as_worker *worker,
 LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct run_as_worker *worker = global_worker;
 	struct run_as_data data;
 
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
@@ -469,13 +469,12 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
-	return run_as(worker, RUN_AS_MKDIR_RECURSIVE, &data, uid, gid);
+	return run_as(RUN_AS_MKDIR_RECURSIVE, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct run_as_worker *worker = global_worker;
 	struct run_as_data data;
 
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
@@ -483,7 +482,7 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
-	return run_as(worker, RUN_AS_MKDIR, &data, uid, gid);
+	return run_as(RUN_AS_MKDIR, &data, uid, gid);
 }
 
 /*
@@ -493,7 +492,6 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
-	struct run_as_worker *worker = global_worker;
 	struct run_as_data data;
 
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
@@ -502,33 +500,31 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 	data.u.open.path[PATH_MAX - 1] = '\0';
 	data.u.open.flags = flags;
 	data.u.open.mode = mode;
-	return run_as(worker, RUN_AS_OPEN, &data, uid, gid);
+	return run_as(RUN_AS_OPEN, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 {
-	struct run_as_worker *worker = global_worker;
 	struct run_as_data data;
 
 	DBG3("unlink() %s with for uid %d and gid %d",
 			path, uid, gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
-	return run_as(worker, RUN_AS_UNLINK, &data, uid, gid);
+	return run_as(RUN_AS_UNLINK, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 {
-	struct run_as_worker *worker = global_worker;
 	struct run_as_data data;
 
 	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
 			path, uid, gid);
 	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
 	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
-	return run_as(worker, RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
+	return run_as(RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
 }
 
 LTTNG_HIDDEN
@@ -540,7 +536,13 @@ int run_as_create_worker(char *procname)
 	struct run_as_ret recvret;
 	struct run_as_worker *worker;
 
+	pthread_mutex_lock(&worker_lock);
+	assert(!global_worker);
 	if (!use_clone()) {
+		/*
+		 * Don't initialize a worker, all run_as tasks will be performed
+		 * in the current process.
+		 */
 		ret = 0;
 		goto end;
 	}
@@ -564,6 +566,8 @@ int run_as_create_worker(char *procname)
 	} else if (pid == 0) {
 		/* Child */
 
+		/* The child has no use for this lock. */
+		pthread_mutex_unlock(&worker_lock);
 		/* Just close, no shutdown. */
 		if (close(worker->sockpair[0])) {
 			PERROR("close");
@@ -600,6 +604,7 @@ int run_as_create_worker(char *procname)
 		global_worker = worker;
 	}
 end:
+	pthread_mutex_unlock(&worker_lock);
 	return ret;
 
 	/* Error handling. */
@@ -615,6 +620,7 @@ error_fork:
 	}
 error_sock:
 	free(worker);
+	pthread_mutex_unlock(&worker_lock);
 	return ret;
 }
 
@@ -625,8 +631,9 @@ void run_as_destroy_worker(void)
 	int status;
 	pid_t pid;
 
+	pthread_mutex_lock(&worker_lock);
 	if (!worker) {
-		return;
+		goto end;
 	}
 	/* Close unix socket */
 	if (lttcomm_close_unix_sock(worker->sockpair[0])) {
@@ -640,4 +647,6 @@ void run_as_destroy_worker(void)
 	}
 	free(worker);
 	global_worker = NULL;
+end:
+	pthread_mutex_unlock(&worker_lock);
 }
