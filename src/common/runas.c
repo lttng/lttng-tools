@@ -216,7 +216,9 @@ int do_recv_fd(struct run_as_worker *worker,
 		return 0;
 	}
 	len = lttcomm_recv_fds_unix_sock(worker->sockpair[0], fd, 1);
-	if (len < 0) {
+	if (!len) {
+		return -1;
+	} else if (len < 0) {
 		PERROR("lttcomm_recv_fds_unix_sock");
 		return -1;
 	}
@@ -392,14 +394,19 @@ int run_as_cmd(struct run_as_worker *worker,
 	/* receive return value */
 	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], &recvret,
 			sizeof(recvret));
-	if (readlen < sizeof(recvret)) {
+	if (!readlen) {
+		ERR("Run-as worker has hung-up during run_as_cmd");
+		recvret.ret = -1;
+		recvret._errno = EIO;
+		goto end;
+	} else if (readlen < sizeof(recvret)) {
 		PERROR("Error reading response from run_as");
 		recvret.ret = -1;
 		recvret._errno = errno;
 	}
 	if (do_recv_fd(worker, cmd, &recvret.ret)) {
 		recvret.ret = -1;
-		recvret._errno = -EIO;
+		recvret._errno = EIO;
 	}
 
 end:
