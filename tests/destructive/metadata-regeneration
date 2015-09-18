@@ -1,0 +1,228 @@
+#!/bin/bash
+#
+# Copyright (C) - 2015 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+# WARNING: this test changes the date of the system (and does not set it back).
+# This test sets the date of the current machine to $DATE1, creates a trace
+# makes sure the trace is really at that date, then restarts the trace, changes
+# the date to $DATE2, regenerates the metadata and validates that the trace is
+# actually at $DATE2.
+
+TEST_DESC="Metadata regeneration after date change"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/..
+NUM_TESTS=44
+SESSION_NAME="regen"
+KERNEL_EVENT_NAME="lttng_test_filter_event"
+TRACE_PATH=$(mktemp -d)
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NR_ITER=1
+NR_USEC_WAIT=0
+UST_EVENT_NAME="tp:tptest"
+
+DATE1="1970-02-02"
+DATE2="1980-02-02"
+HOUR="05:30"
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+function lttng_create_session_uri
+{
+	# Create session with default path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
+	ok $? "Create session with default path"
+}
+
+function validate_trace_date
+{
+	local test_date=$1
+	local trace_path=$2
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -ne 0 ]; then
+	    skip 0 "Babeltrace binary not found. Skipping trace validation"
+	fi
+
+	res=$($BABELTRACE_BIN --clock-date $trace_path 2>/dev/null | head -1 | grep $test_date)
+	if [ $? -eq 0 ]; then
+		pass "Validate trace at date $test_date"
+		ret=0
+	else
+		fail "The trace is not at the expected date"
+		ret=-1
+	fi
+
+	return $ret
+}
+
+function test_kernel_local ()
+{
+	diag "Test kernel local with metadata regeneration"
+	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	echo -n "100" > /proc/lttng-test-filter-event
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_date $DATE1 $TRACE_PATH
+	start_lttng_tracing_ok $SESSION_NAME
+	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
+	metadata_regenerate_ok $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_date $DATE2 $TRACE_PATH
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	fi
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_kernel_streaming ()
+{
+	diag "Test kernel streaming with metadata regeneration"
+	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
+	lttng_create_session_uri
+	lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	echo -n "100" > /proc/lttng-test-filter-event
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_date $DATE1 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
+	start_lttng_tracing_ok $SESSION_NAME
+	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
+	metadata_regenerate_ok $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	# Validate test
+	validate_trace_date $DATE2 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	else
+		break
+	fi
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_local ()
+{
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
+
+	diag "Test UST local with metadata regeneration"
+	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	touch ${file_sync_before_last}
+	# Wait for the applications started in background
+	wait
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_date $DATE1 $TRACE_PATH
+
+	start_lttng_tracing_ok $SESSION_NAME
+	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
+	metadata_regenerate_ok $SESSION_NAME
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+	validate_trace_date $DATE2 $TRACE_PATH
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	fi
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
+}
+
+function test_ust_streaming ()
+{
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
+
+	diag "Test UST streaming with metadata regeneration"
+	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
+	lttng_create_session_uri
+	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	touch ${file_sync_before_last}
+
+	# Wait for the applications started in background
+	wait
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_date $DATE1 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
+
+	start_lttng_tracing_ok $SESSION_NAME
+	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
+
+	metadata_regenerate_ok $SESSION_NAME
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+	# Validate test
+	validate_trace_date $DATE2 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	fi
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
+}
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+if ! destructive_tests_enabled ; then
+	echo 'You need to set the LTTNG_ENABLE_DESTRUCTIVE_TESTS to "will-break-my-system" as argument to run this test'
+	echo 'Moreover, please make sure that ntp is not running while executing this test'
+	exit 0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_sessiond
+
+	modprobe lttng-test
+	test_kernel_local
+	test_kernel_streaming
+	rmmod lttng-test
+
+	test_ust_local
+	test_ust_streaming
+
+	stop_lttng_sessiond
+	stop_lttng_relayd
+}

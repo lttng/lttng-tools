@@ -1334,3 +1334,12 @@ function metadata_regenerate_fail ()
 {
 	metadata_regenerate 1 "$@"
 }
+
+function destructive_tests_enabled ()
+{
+	if [ ${LTTNG_ENABLE_DESTRUCTIVE_TESTS} = "will-break-my-system" ]; then
+		return 0
+	else
+		return 1
+	fi
+}

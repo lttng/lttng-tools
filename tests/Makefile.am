@@ -1,8 +1,8 @@
 SUBDIRS =
-DIST_SUBDIRS = utils regression unit stress
+DIST_SUBDIRS = utils regression unit stress destructive
 
 if BUILD_TESTS
-SUBDIRS += utils regression unit stress
+SUBDIRS += utils regression unit stress destructive
 endif
 
 installcheck-am:
@@ -37,8 +37,8 @@ else
 	@echo "========================================="
 endif
 
-dist_noinst_SCRIPTS = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression
-EXTRA_DIST = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression README
+dist_noinst_SCRIPTS = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression root_destructive_tests
+EXTRA_DIST = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression README root_destructive_tests
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

@@ -807,6 +807,7 @@ AC_CONFIG_FILES([
 	src/bin/lttng/Makefile
 	src/bin/lttng-crash/Makefile
 	tests/Makefile
+	tests/destructive/Makefile
 	tests/regression/Makefile
 	tests/regression/kernel/Makefile
 	tests/regression/tools/Makefile
