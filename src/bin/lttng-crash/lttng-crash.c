@@ -668,7 +668,7 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		return -EINVAL;
 	}
 
-	DBG("Copy crash subbuffer at offset %lu", offset);
+	DBG("Copy crash subbuffer at offset %" PRIu64, offset);
 	sbidx = subbuf_index(offset, buf_size, subbuf_size);
 
 	/*
