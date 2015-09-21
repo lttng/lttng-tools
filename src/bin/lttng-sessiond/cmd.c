@@ -1280,10 +1280,12 @@ int cmd_disable_event(struct ltt_session *session,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
-			if (strlen(event->name) == 1 &&
-					!strncmp(event->name, "*", 1)) {
-				ret = event_ust_disable_all_tracepoints(usess,
-						uchan);
+			/*
+			 * An empty event name means that everything
+			 * should be disabled.
+			 */
+			if (event->name[0] == '\0') {
+				ret = event_ust_disable_all_tracepoints(usess, uchan);
 			} else {
 				ret = event_ust_disable_tracepoint(usess, uchan,
 						event_name);
@@ -1323,8 +1325,11 @@ int cmd_disable_event(struct ltt_session *session,
 			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
 			goto error_unlock;
 		}
-		/* The wild card * means that everything should be disabled. */
-		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
+		/*
+		 * An empty event name means that everything
+		 * should be disabled.
+		 */
+		if (event->name[0] == '\0') {
 			ret = event_agent_disable_all(usess, agt);
 		} else {
 			ret = event_agent_disable(usess, agt, event_name);
