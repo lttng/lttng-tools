@@ -61,45 +61,15 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 }
 
 /*
- * Disable kernel tracepoint event for a channel from the kernel session.
+ * Disable kernel tracepoint events for a channel from the kernel session of
+ * a specified event_name and event type.
+ * On type LTTNG_EVENT_ALL all events with event_name are disabled.
+ * If event_name is NULL all events of the specified type are disabled.
  */
 int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
-		char *event_name)
+		char *event_name, enum lttng_event_type type)
 {
-	int ret;
-	struct ltt_kernel_event *kevent;
-
-	assert(kchan);
-
-	kevent = trace_kernel_get_event_by_name(event_name, kchan,
-			LTTNG_EVENT_ALL);
-	if (kevent == NULL) {
-		ret = LTTNG_ERR_NO_EVENT;
-		goto error;
-	}
-
-	ret = kernel_disable_event(kevent);
-	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_DISABLE_FAIL;
-		goto error;
-	}
-
-	DBG("Kernel event %s disable for channel %s.",
-			kevent->event->name, kchan->channel->name);
-
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-}
-
-/*
- * Disable kernel tracepoint events for a channel from the kernel session.
- */
-int event_kernel_disable_event_type(struct ltt_kernel_channel *kchan,
-		enum lttng_event_type type)
-{
-	int ret;
+	int ret, error = 0, found = 0;
 	struct ltt_kernel_event *kevent;
 
 	assert(kchan);
@@ -108,22 +78,26 @@ int event_kernel_disable_event_type(struct ltt_kernel_channel *kchan,
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
 		if (type != LTTNG_EVENT_ALL && kevent->type != type)
 			continue;
+		if (event_name != NULL && strcmp(event_name, kevent->event->name)) {
+			continue;
+		}
+		found++;
 		ret = kernel_disable_event(kevent);
 		if (ret < 0) {
-			/* We continue disabling the rest */
+			error = 1;
 			continue;
 		}
 	}
-	ret = LTTNG_OK;
-	return ret;
-}
+	DBG("Disable kernel event: found %d events with name: %s and type: %d",
+			found, event_name ? event_name : "NULL", type);
 
-/*
- * Disable all kernel event for a channel from the kernel session.
- */
-int event_kernel_disable_event_all(struct ltt_kernel_channel *kchan)
-{
-	return event_kernel_disable_event_type(kchan, LTTNG_EVENT_ALL);
+	if (event_name != NULL && !found) {
+		ret = LTTNG_ERR_NO_EVENT;
+	} else {
+		ret = error ? LTTNG_ERR_KERN_DISABLE_FAIL : LTTNG_OK;
+	}
+
+	return ret;
 }
 
 /*
