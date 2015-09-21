@@ -1091,10 +1091,6 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_DISABLE_EVENT;
-	if (ev->name[0] == '\0') {
-		/* Disable all events */
-		lttng_ctl_copy_string(ev->name, "*", sizeof(ev->name));
-	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 	/* FIXME: copying non-packed struct to packed struct. */

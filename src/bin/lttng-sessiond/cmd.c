@@ -1219,28 +1219,18 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
-			ret = event_kernel_disable_event_all(kchan);
-			if (ret != LTTNG_OK) {
-				goto error_unlock;
-			}
-			break;
-		case LTTNG_EVENT_TRACEPOINT:	/* fall-through */
+		case LTTNG_EVENT_TRACEPOINT:
 		case LTTNG_EVENT_SYSCALL:
-			if (!strcmp(event_name, "*")) {
-				ret = event_kernel_disable_event_type(kchan,
-					event->type);
-			} else {
-				ret = event_kernel_disable_event(kchan,
-					event_name);
-			}
-			if (ret != LTTNG_OK) {
-				goto error_unlock;
-			}
-			break;
 		case LTTNG_EVENT_PROBE:
 		case LTTNG_EVENT_FUNCTION:
-		case LTTNG_EVENT_FUNCTION_ENTRY:
-			ret = event_kernel_disable_event(kchan, event_name);
+		case LTTNG_EVENT_FUNCTION_ENTRY:/* fall-through */
+			if (event_name[0] == '\0') {
+				ret = event_kernel_disable_event(kchan,
+					NULL, event->type);
+			} else {
+				ret = event_kernel_disable_event(kchan,
+					event_name, event->type);
+			}
 			if (ret != LTTNG_OK) {
 				goto error_unlock;
 			}
@@ -1267,7 +1257,7 @@ int cmd_disable_event(struct ltt_session *session, int domain,
 
 		/*
 		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
+		 * session, explicitly require that -c chan_name needs
 		 * to be provided.
 		 */
 		if (usess->has_non_default_channel && channel_name[0] == '\0') {

@@ -22,10 +22,7 @@
 #include "trace-kernel.h"
 
 int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
-		char *event_name);
-int event_kernel_disable_event_type(struct ltt_kernel_channel *kchan,
-		enum lttng_event_type type);
-int event_kernel_disable_event_all(struct ltt_kernel_channel *kchan);
+		char *event_name, enum lttng_event_type event_type);
 
 int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 		struct lttng_event *event, char *filter_expression,
