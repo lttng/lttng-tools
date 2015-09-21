@@ -47,7 +47,7 @@
 
 #include "ust-consumer.h"
 
-#define UINT_MAX_STR_LEN 11	/* includes \0 */
+#define INT_MAX_STR_LEN 12	/* includes \0 */
 
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;
@@ -248,12 +248,12 @@ error:
 static
 int get_stream_shm_path(char *stream_shm_path, const char *shm_path, int cpu)
 {
-	char cpu_nr[UINT_MAX_STR_LEN];  /* unsigned int max len */
+	char cpu_nr[INT_MAX_STR_LEN];  /* int max len */
 	int ret;
 
 	strncpy(stream_shm_path, shm_path, PATH_MAX);
 	stream_shm_path[PATH_MAX - 1] = '\0';
-	ret = snprintf(cpu_nr, UINT_MAX_STR_LEN, "%u", cpu);
+	ret = snprintf(cpu_nr, INT_MAX_STR_LEN, "%i", cpu);
 	if (ret < 0) {
 		PERROR("snprintf");
 		goto end;
