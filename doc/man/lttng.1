@@ -590,11 +590,7 @@ Dynamic function entry/return probe. Addr and offset can be octal
 (0NNN...), decimal (NNN...) or hexadecimal (0xNNN...)
 .TP
 .BR "\-\-syscall"
-System call event. Enabling syscalls tracing (kernel tracer), you will
-not be able to disable them with disable-event. This is a known
-limitation. You can disable the entire channel to do the trick. Also note
-that per-syscall selection is not supported yet. Use with "-a" to enable
-all syscalls.
+System call event.
 .TP
 .BR "\-\-filter 'expression'"
 Set a filter on a newly enabled event. Filter expression on event
@@ -681,7 +677,7 @@ Apply for the user-space tracer
 .PP
 
 .PP
-\fBdisable-event\fP NAME[,NAME2,...] (\-k | \-u) [OPTIONS]
+\fBdisable-event\fP NAME[,NAME2,...] (\-k | \-u | \-j | \-l | \-p) [TYPE] [OPTIONS]
 .RS
 Disable tracing event
 
@@ -711,8 +707,8 @@ Apply on session name
 Apply on channel name
 .TP
 .BR "\-a, \-\-all-events"
-Disable all events. This does NOT disable "*" but rather every known
-events of the session.
+Disable all events. This does NOT ONLY disable "*" but rather every known
+events of the session
 .TP
 .BR "\-k, \-\-kernel"
 Apply for the kernel tracer
@@ -727,7 +723,26 @@ Apply for Java application using Java Util Logging interface (JUL)
 Apply for Java application using LOG4J
 .TP
 .BR "\-p, \-\-python"
-Apply for Python application using the logging module.
+Apply for Python application using the logging module
+
+.TP
+.B TYPE (kernel domain only):
+
+.TP
+.BR "\-\-all"
+Disable event of all type
+.TP
+.BR "\-\-tracepoint"
+Disable event of type tracepoint
+.TP
+.BR "\-\-syscall"
+Disable event of type syscall
+.TP
+.BR "\-\-probe"
+Disable event of type probe
+.TP
+.BR "\-\-function"
+Disable event of type function
 .RE
 .PP
 
