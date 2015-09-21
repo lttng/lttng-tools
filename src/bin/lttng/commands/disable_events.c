@@ -80,7 +80,7 @@ static struct poptOption long_options[] = {
  */
 static void usage(FILE *ofp)
 {
-	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] (-k | -u) [OPTIONS]\n");
+	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] (-k | -u | -j | -l) [OPTIONS]\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Options:\n");
 	fprintf(ofp, "  -h, --help               Show this help\n");
@@ -88,9 +88,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
 	fprintf(ofp, "  -c, --channel NAME       Apply to this channel\n");
 	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
-	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
+	fprintf(ofp, "  -j, --jul                Apply to Java application using JUL\n");
 	fprintf(ofp, "  -l, --log4j              Apply to Java application using LOG4j\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Event options:\n");
