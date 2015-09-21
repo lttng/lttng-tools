@@ -109,9 +109,9 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
 	fprintf(ofp, "  -c, --channel NAME       Apply to this channel\n");
 	fprintf(ofp, "  -a, --all                Enable all tracepoints and syscalls\n");
-	fprintf(ofp, "  -k, --kernel             Apply for the kernel tracer\n");
+	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "  -j, --jul                Apply for Java application using JUL\n");
+	fprintf(ofp, "  -j, --jul                Apply to Java application using JUL\n");
 	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
 	fprintf(ofp, "  -p, --python             Apply for Python application\n");
 	fprintf(ofp, "\n");
