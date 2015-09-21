@@ -281,6 +281,9 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
+	if (!cmptr) {
+		return -1;
+	}
 	cmptr->cmsg_level = SOL_SOCKET;
 	cmptr->cmsg_type = SCM_RIGHTS;
 	cmptr->cmsg_len = CMSG_LEN(sizeof_fds);
@@ -408,6 +411,9 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	msg.msg_controllen = CMSG_LEN(sizeof_cred);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
+	if (!cmptr) {
+		return -1;
+	}
 	cmptr->cmsg_level = SOL_SOCKET;
 	cmptr->cmsg_type = LTTNG_SOCK_CREDS;
 	cmptr->cmsg_len = CMSG_LEN(sizeof_cred);

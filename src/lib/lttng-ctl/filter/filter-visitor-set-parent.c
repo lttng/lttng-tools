@@ -36,6 +36,11 @@ int update_child(struct filter_node *parent,
 		struct filter_node *old_child,
 		struct filter_node *new_child)
 {
+	if (!parent) {
+		fprintf(stderr, "[error] %s: NULL parent\n", __func__);
+		return -EINVAL;
+	}
+
 	switch (parent->type) {
 	case NODE_UNKNOWN:
 	default:
