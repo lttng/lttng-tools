@@ -377,6 +377,14 @@ function test_lttng_crash_extraction_sigkill()
 	rm -rf $extraction_dir_path
 }
 
+function interrupt_cleanup()
+{
+    diag "*** Cleaning-up test ***"
+    stop_test_apps
+    stop_lttng_sessiond
+    exit 1
+}
+
 TESTS=(
 	test_shm_path_per_uid
 	test_shm_path_per_pid
@@ -387,6 +395,7 @@ TESTS=(
 	test_lttng_crash_extraction_sigkill
 )
 
+trap interrupt_cleanup SIGTERM SIGINT
 
 for fct_test in ${TESTS[@]};
 do
