@@ -351,7 +351,7 @@ function test_python_disable_all()
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME2
 
-	disable_python_lttng_event $SESSION_NAME '*'
+	disable_python_lttng_event $SESSION_NAME -a
 
 	start_lttng_tracing_ok $SESSION_NAME
 
