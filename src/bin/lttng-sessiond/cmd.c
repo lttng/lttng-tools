@@ -2764,7 +2764,11 @@ ssize_t cmd_list_events(enum lttng_domain_type domain,
 			rcu_read_lock();
 			cds_lfht_for_each_entry(session->ust_session->agents->ht,
 					&iter.iter, agt, node.node) {
-				nb_event = list_lttng_agent_events(agt, events);
+				if (agt->domain == domain) {
+					nb_event = list_lttng_agent_events(
+							agt, events);
+					break;
+				}
 			}
 			rcu_read_unlock();
 		}
