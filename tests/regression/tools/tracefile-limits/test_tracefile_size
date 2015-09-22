@@ -22,11 +22,13 @@ TESTDIR=$CURDIR/../../..
 
 NR_ITER=1000
 
+PAGE_SIZE=$(getconf PAGE_SIZE)
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-NUM_TESTS=42
+NUM_TESTS=58
 
 source $TESTDIR/utils/utils.sh
 
@@ -128,17 +130,67 @@ function test_tracefile_size_limit ()
 	rm -rf $trace_path
 }
 
+function test_tracefile_size_limit_pagesize ()
+{
+	# Set a size limit lower than the page_size
+	size_limit="$(($PAGE_SIZE-2))"
+	trace_path=$(mktemp -d)
+	session_name=$(randstring 16 0)
+	channel_name="channel"
+	event_name="tp:tptest"
+
+	diag "Test tracefile size limit lower than PAGE_SIZE : $size_limit bytes"
+
+	create_lttng_session_ok $session_name $trace_path
+
+	enable_lttng_channel_size_limit \
+	    $session_name $channel_name $size_limit
+
+	enable_ust_lttng_event_per_channel \
+	    $session_name $event_name $channel_name
+
+	start_lttng_tracing_ok $session_name
+
+	$TESTAPP_BIN $NR_ITER >/dev/null 2>&1
+
+	stop_lttng_tracing_ok $session_name
+
+	destroy_lttng_session_ok $session_name
+
+	# Validate file size, expect file size to be equal to the page size
+
+	check_file_size $trace_path "${channel_name}_*" $PAGE_SIZE
+
+	# Validate tracing data, we should at least have some events
+
+	validate_trace $event_name $trace_path
+
+	rm -rf $trace_path
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-LIMITS=("4096" "8192" "16384" "32768" "65536")
+# Test with multiples of PAGE_SIZE
+LIMITS=("$(($PAGE_SIZE))"
+	"$(($PAGE_SIZE*2))"
+	"$(($PAGE_SIZE*4))"
+	"$(($PAGE_SIZE*8))"
+	"$(($PAGE_SIZE*16))"
+	"$(($PAGE_SIZE*32))")
 
 for limit in ${LIMITS[@]};
 do
 	test_tracefile_size_limit $limit
 done
+
+# Test with a value that is not a multiple of PAGE_SIZE
+test_tracefile_size_limit "$(($PAGE_SIZE+1024))"
+
+# Test that a value lower than the PAGE_SIZE is rounded to it
+test_tracefile_size_limit_pagesize
 
 stop_lttng_sessiond

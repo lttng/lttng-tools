@@ -181,8 +181,11 @@ function test_ust_local_snapshot ()
 
 function test_ust_local_snapshot_max_size ()
 {
-	subbuf_size=8192
+	page_size=`getconf PAGE_SIZE`
 	num_cpus=`nproc`
+
+	# The minimum subbuf size is the platform PAGE_SIZE
+	subbuf_size=$(($page_size*2))
 
 	# The minimum size limit is min(subbuf_size) * nb_streams
 	max_size=$(($subbuf_size*$num_cpus))
