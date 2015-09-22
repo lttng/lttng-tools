@@ -347,7 +347,7 @@ function test_jul_disable_all()
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_jul_lttng_event $SESSION_NAME $EVENT_NAME2
 
-	disable_jul_lttng_event $SESSION_NAME '*'
+	disable_jul_lttng_event $SESSION_NAME -a
 
 	start_lttng_tracing_ok $SESSION_NAME
 
