@@ -415,7 +415,7 @@ int cmd_disable_events(int argc, const char **argv)
 	/* Ust and agent only support ALL event type */
 	if ((opt_userspace || opt_jul || opt_log4j || opt_python)
 			&& opt_event_type != LTTNG_EVENT_ALL) {
-		ERR("UST and agent (-j | -l | -p) event(s) disabling based on event type is not supported.\n");
+		ERR("Disabling userspace and agent (-j | -l | -p) event(s) based on instrumentation type is not supported.\n");
 		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
