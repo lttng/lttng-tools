@@ -1,3 +1,22 @@
+2015-09-24 lttng-tools 2.7.0 (National Punctuation Day)
+	* Fix: Handle EINTR of waipid in run-as worker
+	* Fix: Handle EINTR of waitpid when spawning a session daemon
+	* Add a LOG() macro which handles dynamic severity levels
+	* Fix: tests: support systems where PAGE_SIZE is not 4096
+	* Test: jul/log4j: use -a instead of '*' to disable all events
+	* Reword warning on event disable
+	* Clean-up: Remove unused test launchers
+	* Help: add -j -l -p option to help string
+	* man: update disable-event section
+	* Use empty event name on disable -a for ust and agent domain
+	* Fix: disable kernel event based on name and event type
+	* Tests: Clean-up test-crash on SIGTERM and SIGINT
+	* Fix: Possible dereference of null pointers
+	* Fix: Break out of loop when searching for a domain's agent
+	* Fix: int printed as uint
+	* Fix: add subdir-objects to Makefile.am
+	* Fix: tests: skip UST perf tests if not root
+
 2015-09-18 lttng-tools 2.7.0-rc2
 	* Fix: Check use_clone() instead of worker in run_as
 	* Fix: Perform rcu barrier before tearing down the run-as worker
