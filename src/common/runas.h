@@ -25,6 +25,7 @@
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
+int run_as_unlink(const char *path, uid_t uid, gid_t gid);
 
 /*
  * We need to lock pthread exit, which deadlocks __nptl_setxid in the

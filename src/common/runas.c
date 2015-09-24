@@ -77,6 +77,10 @@ struct run_as_open_data {
 	mode_t mode;
 };
 
+struct run_as_unlink_data {
+	const char *path;
+};
+
 #ifdef VALGRIND
 static
 int use_clone(void)
@@ -130,6 +134,20 @@ int _open(void *_data)
 {
 	struct run_as_open_data *data = _data;
 	return open(data->path, data->flags, data->mode);
+}
+
+static
+int _unlink(void *_data)
+{
+	int ret;
+	struct run_as_unlink_data *data = _data;
+
+	ret = unlink(data->path);
+	if (ret < 0) {
+		ret = -errno;
+	}
+
+	return ret;
 }
 
 static
@@ -342,4 +360,15 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 	data.flags = flags;
 	data.mode = mode;
 	return run_as(_open, &data, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_unlink(const char *path, uid_t uid, gid_t gid)
+{
+	struct run_as_unlink_data data;
+
+	DBG3("unlink() %s with for uid %d and gid %d",
+	     path, uid, gid);
+	data.path = path;
+	return run_as(_unlink, &data, uid, gid);
 }
