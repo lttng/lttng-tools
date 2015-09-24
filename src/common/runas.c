@@ -527,6 +527,22 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 	return run_as(RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
 }
 
+static
+void reset_sighandler(void)
+{
+	int sig;
+
+	for (sig = SIGHUP; sig <= SIGUNUSED; sig++) {
+		/* Skip unblockable signals. */
+		if (sig == SIGKILL || sig == SIGSTOP) {
+			continue;
+		}
+		if (signal(sig, SIG_DFL) == SIG_ERR) {
+			PERROR("reset signal %d", sig);
+		}
+	}
+}
+
 LTTNG_HIDDEN
 int run_as_create_worker(char *procname)
 {
@@ -565,6 +581,8 @@ int run_as_create_worker(char *procname)
 		goto error_fork;
 	} else if (pid == 0) {
 		/* Child */
+
+		reset_sighandler();
 
 		/* The child has no use for this lock. */
 		pthread_mutex_unlock(&worker_lock);
@@ -628,8 +646,6 @@ LTTNG_HIDDEN
 void run_as_destroy_worker(void)
 {
 	struct run_as_worker *worker = global_worker;
-	int status;
-	pid_t pid;
 
 	pthread_mutex_lock(&worker_lock);
 	if (!worker) {
@@ -641,9 +657,29 @@ void run_as_destroy_worker(void)
 	}
 	worker->sockpair[0] = -1;
 	/* Wait for worker. */
-	pid = waitpid(worker->pid, &status, 0);
-	if (pid < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		PERROR("wait");
+	for (;;) {
+		int status;
+		pid_t wait_ret;
+
+		wait_ret = waitpid(worker->pid, &status, 0);
+		if (wait_ret < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+			PERROR("waitpid");
+			break;
+		}
+
+		if (WIFEXITED(status)) {
+			LOG(WEXITSTATUS(status) == 0 ? PRINT_DBG : PRINT_ERR,
+					DEFAULT_RUN_AS_WORKER_NAME " terminated with status code %d",
+				        WEXITSTATUS(status));
+			break;
+		} else if (WIFSIGNALED(status)) {
+			ERR(DEFAULT_RUN_AS_WORKER_NAME " was killed by signal %d",
+					WTERMSIG(status));
+			break;
+		}
 	}
 	free(worker);
 	global_worker = NULL;
