@@ -579,14 +579,22 @@ static int spawn_sessiond(char *pathname)
 		kill(getppid(), SIGTERM);	/* wake parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
-		int status;
-
 		/*
 		 * In daemon mode (--daemonize), sessiond only exits when
 		 * it's ready to accept commands.
 		 */
 		for (;;) {
-			waitpid(pid, &status, 0);
+			int status;
+			pid_t wait_pid_ret = waitpid(pid, &status, 0);
+
+			if (wait_pid_ret < 0) {
+				if (errno == EINTR) {
+					continue;
+				}
+				PERROR("waitpid");
+				ret = -errno;
+				goto end;
+			}
 
 			if (WIFSIGNALED(status)) {
 				ERR("Session daemon was killed by signal %d",
