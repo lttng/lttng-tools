@@ -146,7 +146,9 @@ function test_health
 	fi
 
 	if [ ${test_relayd} -eq 1 ]; then
-		stop_lttng_relayd_nocheck
+		# We may fail to stop relayd here, and this is OK, since
+		# it may have been killed volountarily by testpoint.
+		stop_lttng_relayd_notap
 	fi
 	stop_lttng_sessiond
 

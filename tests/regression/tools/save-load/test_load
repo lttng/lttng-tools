@@ -29,7 +29,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=21
+NUM_TESTS=23
 
 source $TESTDIR/utils/utils.sh
 
@@ -92,7 +92,7 @@ function test_complex_load()
 	fi
 	destroy_lttng_session $sess
 
-	stop_lttng_relayd_nocheck
+	stop_lttng_relayd
 }
 
 function test_all_load()
@@ -108,7 +108,7 @@ function test_all_load()
 	destroy_lttng_session $SESSION_NAME
 	destroy_lttng_session "$SESSION_NAME-complex"
 
-	stop_lttng_relayd_nocheck
+	stop_lttng_relayd
 }
 
 function test_overwrite()
