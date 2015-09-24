@@ -1,5 +1,5 @@
 AC_PREREQ([2.64])
-AC_INIT([lttng-tools],[2.6.0],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
+AC_INIT([lttng-tools],[2.6.1],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST

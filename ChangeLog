@@ -1,3 +1,125 @@
+2015-09-24 lttng-tools 2.6.1 (National Punctuation Day)
+	* Revert "Fix: add missing test file to EXTRA_DIST"
+	* Fix: regression tests
+	* Fix: tests: stderr not correctly redirected
+	* Help: add -j -l -p option to help string
+	* Fix: Only log app handle release on failure
+	* Fix: prevent dangling pointer in utils_partial_realpath
+	* Fix: rcu_read_unlock without parentheses has no side-effect
+	* Fix: add missing test file to EXTRA_DIST
+	* Fix: disable all ust events
+	* Fix: sessiond: disable: match app event by name
+	* Fix: dereferencing null index pointer
+	* Fix: memleak in utils_partial_realpath
+	* Fix: error on no/multiple domain options
+	* Fix: relayd: handle consumerd crashes without leak
+	* Fix: LPOLLHUP and LPOLLERR when there is still data in pipe/socket
+	* Remove dot after enable-event message
+	* Fix: don't print the default channel name when enabling agent events
+	* Fix: fail gracefully on --exclude on unsupported domains
+	* Fix: initialize live_timer to 0 for snapshot session
+	* Fix: correct mismatched function signatures
+	* Fix: consumer signal handling race
+	* Fix: list_ust_events(): dangling pointer
+	* Fix: Buggy string comparison in ust registry ht_match_event
+	* Fix: Overwrite of ret in relay_recv_metadata
+	* Fix: Wait for in-flight data before closing a stream
+	* Fix: unpublish stream on close
+	* Tests: Fix flaky live test client
+	* Fix: Announce empty streams on live attach
+	* Fix: relayd: file rotation and live read
+	* Fix: relay: viewer_get_next_index handle null vstream
+	* Fix: relayd: make viewer streams consider metadata sent
+	* Fix: don't expose empty streams
+	* Fix: relayd: don't check new metadata on get packet
+	* Fix: relayd: don't check for new streams in get packet
+	* Fix: ask new streams HUP
+	* Fix: reply error if get packet vstream fails
+	* Fix: relayd reply error to client if cannot find viewer stream
+	* Fix: relayd reply with error if cannot find metadata
+	* Fix: ust-app: protect app socket protocol with lock
+	* Fix: add missing rcu_barrier at end of sessiond main
+	* Fix: add missing rcu_barrier at end of consumer main
+	* Fix: app cmd leak on sessiond exit
+	* Fix: relayd live don't send incomplete stream list
+	* Fix: consumer timer misses RCU thread registration
+	* Fix: sessiond consumer thread should register as RCU thread
+	* Fix: don't chain RCU free
+	* Fix: sessiond vs consumerd push/get metadata deadlock
+	* Fix: sessiond vs consumerd push/get metadata deadlock
+	* Fix: streamline ret/errno of run_as()
+	* Fix: Double unlock on error path
+	* Fix: Relay daemon ownership and reference counting
+	* Add run_as_unlink implementation
+	* Cleanup: Reduce scope of relayd connections in live thread
+	* Fix: Remove structurally dead code from relayd
+	* Cleanup: relayd: centralize thread stopping function
+	* Refactor relayd main/set_options/cleanup
+	* Cleanup: spaghetti function return path
+	* Accept uid and gid parameters in utils_mkdir()/utils_mkdir_recursive()
+	* Fix: reference counting of consumer output
+	* Fix: sessiond add missing socket close
+	* Fix: sessiond should not error on channel creation vs app exit
+	* Fix: sessiond ust-app session teardown race
+	* Initialize default log level of events on load
+	* Fix: Memory leak of agent
+	* Fix: Memory leak of agent event internals
+	* Fix: UTF-8 characters may be stored on up to 4 bytes
+	* Don't save log level in session configuration when unneeded
+	* Fix: typo in error message
+	* Add agent domains to lttng enable-event usage()
+	* Report memory allocation failure when copying filter bytecode
+	* Fix: cmd_enable_event must return positive error codes
+	* Save filter expressions as part of agent events
+	* Add agent domains to the enable-event section of LTTNG(1)
+	* Fix: set GLOBAL buffer type for kernel domain in list
+	* Fix: take RCU read-side lock within hash table functions
+	* Fix: TimeoutExpired in Python tests not defined globally
+	* Fix: intialization of ust_metadata_poll_pipe to garbage value
+	* Fix "allocator sizeof operand mismatch" warning
+	* Fix: Discard disable event command filter payload
+	* Fix: Use MSG_NOSIGNAL when calling sendmsg()
+	* Fix: test_mi test
+	* Fix: Don't send agent disable event command twice
+	* Fix: incorrect variable being checked in libc-wrapper test
+	* Fix: Initialize global agent_apps_ht_by_sock on session daemon launch
+	* Fix: clean-up agent app hash table from the main sessiond thread
+	* Fix: RCU read-side lock released too early in destroy_agent_app
+	* Fix: misleading logging statement in agent_find_event
+	* Fix: Unhandled domain option condition in list_agent_events
+	* Fix: Crash on lttng list -j/-l/-p when no events are present
+	* Fix: Unbalanced rcu_read_unlock() on stream file creation failure
+	* Fix: Unbalanced rcu_read_unlock() on directory creation failure
+	* Fix: Memory leak in relay_add_stream error path
+	* Fix: set session should not set non-existent session
+	* Fix: Follow struct dirent allocation guidelines of READDIR(3)
+	* Update comments regarding the power of 2 constraint on sub-buffer sizes
+	* Build: add Flex version check
+	* Build: add Bison version check
+	* Fix: handle sys_futex() FUTEX_WAIT interrupted by signal
+	* Fix: metadata push -EPIPE should be recoverable
+	* Fix: destroy session removes the default config file
+	* Build: bump autoconf version requirement to 2.64
+	* Fix: Memory leak in setup of relayd_path
+	* Fix: update liburcu URL
+	* Fix: Memory allocated by xmlNodeGetContent() must be freed by xmlFree()
+	* Fix: get_cmdline_by_pid path length assumes a max pid of 65535
+	* Fix: Mark MI and Config string declarations as extern
+	* Fix: modprobe.c: fix tmp_list memory leak
+	* Fix: append_list_to_probes(): increment index
+	* Fix: live_test regression on large number of cpus
+	* Fix: set UST register timeout to -1 as test default
+	* Tests: Don't rely on implicit scalar expression dereference
+	* Fix python bindings' Makefile for out-of-tree builds
+	* Fix: zero memory passed to create channel kernel ioctl
+	* Fix: possible evaluation of garbage values in fini_validation_ctx()
+	* Fix: Possible call to execvp with NULL argument on allocation failure
+	* Docs: connection_find_by_sock() must be called with rcu_read_lock
+	* Fix: test: log4j: missing static test files for dist and out of tree build
+	* Fix: test: java-jul:missing static test files for dist and out of tree build
+	* Fix: out-of-tree build: missing xsd file for mi test execution
+	* Fix: out-of-tree build: missing xsd file for save-load test execution
+
 2015-01-26 lttng-tools 2.6.0 (Paul the Octopus is born)
 	* Tests: Run health check test_thread_ok as part of root_regression
 	* Fix: deadlock between UST registry lock and consumer lock
