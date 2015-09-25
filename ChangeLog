@@ -1,3 +1,38 @@
+2015-09-25 lttng-tools 2.5.5 (National Punctuation Day)
+	* Fix: take RCU read-side lock within hash table functions
+	* Fix: TimeoutExpired in Python tests not defined globally
+	* Fix: intialization of ust_metadata_poll_pipe to garbage value
+	* Fix: Use MSG_NOSIGNAL when calling sendmsg()
+	* Fix: incorrect variable being checked in libc-wrapper test
+	* Fix: Crash on lttng list -j/-l/-p when no events are present
+	* Fix: Unbalanced rcu_read_unlock() on stream file creation failure
+	* Fix: Unbalanced rcu_read_unlock() on directory creation failure
+	* Fix: Memory leak in relay_add_stream error path
+	* Fix: set session should not set non-existent session
+	* Fix: Follow struct dirent allocation guidelines of READDIR(3)
+	* Update comments regarding the power of 2 constraint on sub-buffer sizes
+	* Build: add Flex version check
+	* Build: add Bison version check
+	* Fix: handle sys_futex() FUTEX_WAIT interrupted by signal
+	* Fix: metadata push -EPIPE should be recoverable
+	* Fix: destroy session removes the default config file
+	* Build: bump autoconf version requirement to 2.64
+	* Fix: Memory leak in setup of relayd_path
+	* Fix: Memory allocated by xmlNodeGetContent() must be freed by xmlFree()
+	* Fix: get_cmdline_by_pid path length assumes a max pid of 65535
+	* Fix: Mark config string declarations as extern
+	* Fix: live_test regression on large number of cpus
+	* Fix: set UST register timeout to -1 as test default
+	* Tests: Don't rely on implicit scalar expression dereference
+	* Fix python bindings' Makefile for out-of-tree builds
+	* Fix: zero memory passed to create channel kernel ioctl
+	* Fix: Possible call to execvp with NULL argument on allocation failure
+	* Fix: Save jul event filter bytecode
+	* Fix: out of tree build by adding missing ini.c include
+	* Test: java-jul:missing static test files for dist and out of tree build
+	* Tests: remove unecessary log4j test
+	* Fix: out-of-tree build: missing xsd file for save-load test execution
+
 2015-01-26 lttng-tools 2.5.4 (Paul the Octopus is born)
 	* Revert "Update version to v2.5.4"
 	* Fix: Add align.h and bug.h to src/common noinst target
