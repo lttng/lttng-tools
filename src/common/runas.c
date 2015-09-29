@@ -532,6 +532,7 @@ void reset_sighandler(void)
 {
 	int sig;
 
+	DBG("Resetting run_as worker signal handlers to default");
 	for (sig = SIGHUP; sig <= SIGUNUSED; sig++) {
 		/* Skip unblockable signals. */
 		if (sig == SIGKILL || sig == SIGSTOP) {
@@ -598,6 +599,7 @@ int run_as_create_worker(char *procname)
 			ret = -1;
 		}
 		worker->sockpair[1] = -1;
+		LOG(ret ? PRINT_ERR : PRINT_DBG, "run_as worker exiting (ret = %d)", ret);
 		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
 	} else {
 		/* Parent */
@@ -647,11 +649,13 @@ void run_as_destroy_worker(void)
 {
 	struct run_as_worker *worker = global_worker;
 
+	DBG("Destroying run_as worker");
 	pthread_mutex_lock(&worker_lock);
 	if (!worker) {
 		goto end;
 	}
 	/* Close unix socket */
+	DBG("Closing run_as worker socket");
 	if (lttcomm_close_unix_sock(worker->sockpair[0])) {
 		PERROR("close");
 	}
