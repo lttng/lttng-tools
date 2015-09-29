@@ -528,9 +528,9 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 }
 
 static
-void reset_sighandler(void)
+int reset_sighandler(void)
 {
-	int sig;
+	int sig, ret = 0;
 
 	DBG("Resetting run_as worker signal handlers to default");
 	for (sig = SIGHUP; sig <= SIGUNUSED; sig++) {
@@ -540,8 +540,67 @@ void reset_sighandler(void)
 		}
 		if (signal(sig, SIG_DFL) == SIG_ERR) {
 			PERROR("reset signal %d", sig);
+			ret = -1;
+			goto end;
 		}
 	}
+end:
+	return ret;
+}
+
+static
+void worker_sighandler(int sig)
+{
+	const char *signame;
+
+	/*
+	 * The worker will its parent's signals since they are part of the same
+	 * process group. However, in the case of SIGINT and SIGTERM, we want
+	 * to give the worker a chance to teardown gracefully when its parent
+	 * closes the command socket.
+	 */
+	switch (sig) {
+	case SIGINT:
+		signame = "SIGINT";
+		break;
+	case SIGTERM:
+		signame = "SIGTERM";
+		break;
+	default:
+		signame = "Unknown";
+	}
+
+	DBG("run_as worker received signal %s", signame);
+}
+
+static
+int set_worker_sighandlers(void)
+{
+	int ret = 0;
+	sigset_t sigset;
+	struct sigaction sa;
+
+	if ((ret = sigemptyset(&sigset)) < 0) {
+		PERROR("sigemptyset");
+		goto end;
+	}
+
+	sa.sa_handler = worker_sighandler;
+	sa.sa_mask = sigset;
+	sa.sa_flags = 0;
+	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
+		PERROR("sigaction SIGINT");
+		goto end;
+	}
+
+	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+		PERROR("sigaction SIGTERM");
+		goto end;
+	}
+
+	DBG("run_as signal handler set for SIGTERM and SIGINT");
+end:
+	return ret;
 }
 
 LTTNG_HIDDEN
@@ -584,6 +643,8 @@ int run_as_create_worker(char *procname)
 		/* Child */
 
 		reset_sighandler();
+
+		set_worker_sighandlers();
 
 		/* The child has no use for this lock. */
 		pthread_mutex_unlock(&worker_lock);
