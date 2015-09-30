@@ -20,10 +20,6 @@ TEST_DESC="Live - User space tracing with tracefile_count"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
-BABELTRACE_BIN="babeltrace"
 NR_ITER=1
 NR_USEC_WAIT=1
 DELAY_USEC=2000000

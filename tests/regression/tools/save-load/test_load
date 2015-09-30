@@ -19,9 +19,6 @@ TEST_DESC="Load session(s)"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
 export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/config/)
 
 SESSION_NAME="load-42"

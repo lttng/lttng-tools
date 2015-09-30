@@ -20,7 +20,6 @@ TEST_DESC="Health check - Thread OK"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 SESSION_NAME="health_thread_ok"
 UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"

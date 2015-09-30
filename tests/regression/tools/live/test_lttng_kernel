@@ -20,9 +20,6 @@ TEST_DESC="Live - Kernel space tracing"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
 DELAY_USEC=2000000
 
 SESSION_NAME="live"
