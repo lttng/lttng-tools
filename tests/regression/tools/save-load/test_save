@@ -19,9 +19,6 @@ TEST_DESC="Save session(s)"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
 
 SESSION_NAME="save-42"
 CHANNEL_NAME="chan-save"

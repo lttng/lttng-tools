@@ -19,7 +19,6 @@ TEST_DESC="UST tracer - Basic events"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-LTTNG_BIN="lttng"
 BIN_NAME="gen-ust-events"
 SESSION_NAME="valid_filter"
 EVENT_NAME="tp:tptest"
