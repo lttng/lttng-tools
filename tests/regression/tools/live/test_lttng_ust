@@ -34,7 +34,7 @@ TRACE_PATH=$(mktemp -d)
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=11
+NUM_TESTS=12
 
 source $TESTDIR/utils/utils.sh
 
@@ -83,6 +83,6 @@ rm -rf $TRACE_PATH
 stop_lttng_relayd
 
 test_custom_url
-pkill $RELAYD_BIN
 
+stop_lttng_relayd
 stop_lttng_sessiond
