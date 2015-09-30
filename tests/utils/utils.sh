@@ -286,7 +286,7 @@ function start_lttng_relayd_opt()
 
 	DIR=$(readlink -f $TESTDIR)
 
-	if [ -z $(pgrep --full lt-$RELAYD_BIN) ]; then
+	if [ -z $(pgrep --full lt-$RELAYD_BIN[^\[]) ]; then
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
@@ -318,7 +318,7 @@ function stop_lttng_relayd_opt()
 {
 	local withtap=$1
 
-	PID_RELAYD=`pgrep --full lt-$RELAYD_BIN`
+	PID_RELAYD=`pgrep --full lt-$RELAYD_BIN[^\[]`
 
 	if [ $withtap -eq "1" ]; then
 		diag "Killing lttng-relayd (pid: $PID_RELAYD)"
@@ -376,7 +376,7 @@ function start_lttng_sessiond_opt()
 	: ${LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/config/}
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
-	if [ -z $(pgrep --full lt-$SESSIOND_BIN) ]; then
+	if [ -z $(pgrep --full lt-$SESSIOND_BIN[^\[]) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
 			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
@@ -412,7 +412,7 @@ function stop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN) $(pgrep --full $RUNAS_BIN)"
+	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN[^\[]) $(pgrep --full $RUNAS_BIN[^\[])"
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
@@ -429,12 +429,12 @@ function stop_lttng_sessiond_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full lt-$SESSIOND_BIN)
+			out=$(pgrep --full lt-$SESSIOND_BIN[^\[])
 			sleep 0.5
 		done
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full $CONSUMERD_BIN)
+			out=$(pgrep --full $CONSUMERD_BIN[^\[])
 			sleep 0.5
 		done
 		if [ $withtap -eq "1" ]; then
@@ -515,7 +515,7 @@ function stop_lttng_consumerd_opt()
 	local signal=$2
 	local kill_opt=""
 
-	PID_CONSUMERD=`pgrep --full $CONSUMERD_BIN`
+	PID_CONSUMERD=`pgrep --full $CONSUMERD_BIN[^\[]`
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
@@ -536,7 +536,7 @@ function stop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid=$(pgrep --full $CONSUMERD_BIN)
+			pid=$(pgrep --full $CONSUMERD_BIN[^\[])
 
 			# If consumerds are still present check their status.
 			# A zombie status qualifies the consumerd as *killed*
