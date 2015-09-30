@@ -46,7 +46,7 @@ function enable_lttng_channel_size_limit ()
 	test_name+="for session $sess_name: "
 	test_name+="$tracefile_size_limit bytes tracefile limit"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-channel \
 	    -u $channel_name -s $sess_name --buffers-pid \
 	    -C $tracefile_size_limit >/dev/null 2>&1
 
@@ -63,7 +63,7 @@ function enable_ust_lttng_event_per_channel ()
 	test_name+="for session $sess_name "
 	test_name+="in channel $channel_name"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" \
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$event_name" \
 	    -s $sess_name -u -c $channel_name >/dev/null 2>&1
 
 	ok $? "$test_name"

@@ -69,7 +69,7 @@ function enable_python_loglevel_only()
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -p >$OUTPUT_DEST
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -p >$OUTPUT_DEST
 	ok $? "Enable Python event $event_name for session $sess_name with loglevel-only $loglevel"
 }
 
@@ -79,7 +79,7 @@ function enable_python_filter()
 	local event_name="$2"
 	local filter="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -p --filter "$filter" >$OUTPUT_DEST
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$event_name" -s $sess_name -p --filter "$filter" >$OUTPUT_DEST
 	ok $? "Enable event $event_name with filter $filter for session $sess_name"
 }
 
@@ -90,7 +90,7 @@ function enable_python_filter_loglevel_only()
 	local filter="$3"
 	local loglevel="$4"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -p --filter "$filter" >$OUTPUT_DEST
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -p --filter "$filter" >$OUTPUT_DEST
 	ok $? "Enable event $event_name with filter \"$filter\" and loglevel-only $loglevel for session $sess_name"
 }
 

@@ -51,7 +51,7 @@ function snapshot_add_output ()
 		extra_opt="-n $name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name $extra_opt $trace_path >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN snapshot add-output -s $sess_name $extra_opt $trace_path >/dev/null 2>&1
 	ok $? "Added snapshot output $trace_path"
 }
 

@@ -61,7 +61,7 @@ function enable_jul_loglevel_only()
 		chan="-c $channel_name"
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -j >/dev/null 2>&1
 	ok $? "Enable JUL event $event_name for session $sess_name with loglevel-only $loglevel"
 }
 
@@ -71,7 +71,7 @@ function enable_jul_filter()
 	local event_name="$2"
 	local filter="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
 	ok $? "Enable event $event_name with filter $filter for session $sess_name"
 }
 
@@ -82,7 +82,7 @@ function enable_jul_filter_loglevel_only()
 	local filter="$3"
 	local loglevel="$4"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -j --filter "$filter" >/dev/null 2>&1
 	ok $? "Enable event $event_name with filter \"$filter\" and loglevel-only $loglevel for session $sess_name"
 }
 

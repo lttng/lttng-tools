@@ -67,7 +67,7 @@ source $TESTDIR/utils/utils.sh
 LTTNG_BIN="lttng --mi xml"
 
 #Global declaration for simplification
-LTTNG=$TESTDIR/../src/bin/lttng/$LTTNG_BIN
+LTTNG=$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN
 
 #Overwrite the default output for utils.sh command
 
