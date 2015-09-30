@@ -20,8 +20,6 @@ TEST_DESC="Machine interface testing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
 XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
 
 #Test app for ust event
 TESTAPP_PATH="$TESTDIR/utils/testapp"

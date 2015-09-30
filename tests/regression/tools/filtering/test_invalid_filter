@@ -19,7 +19,6 @@ TEST_DESC="Filtering - Invalid filters"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 SESSION_NAME="filter-invalid"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"

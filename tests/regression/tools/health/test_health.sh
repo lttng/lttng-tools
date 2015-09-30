@@ -15,7 +15,6 @@
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 TESTDIR=${CURDIR}/../../..
-LTTNG_BIN="lttng"
 UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"

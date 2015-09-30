@@ -19,7 +19,6 @@ TEST_DESC="Event exclusion"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="test-exclusion"
 EV_EXCLUDE_NAME="tp:tptest2"

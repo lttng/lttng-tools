@@ -19,7 +19,6 @@ TEST_DESC="Filtering - Valid filters"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 NR_ITER=100

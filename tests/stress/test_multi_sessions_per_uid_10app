@@ -57,8 +57,6 @@ function check_sessiond()
 
 function start_sessiond()
 {
-	local SESSIOND_BIN="lttng-sessiond"
-
 	validate_kernel_version
 	if [ $? -ne 0 ]; then
 		fail "Start session daemon"
