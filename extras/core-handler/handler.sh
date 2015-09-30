@@ -21,7 +21,6 @@
 CAT_BIN="cat"
 PGREP_BIN="pgrep"
 MKDIR_BIN="mkdir"
-LTTNG_BIN="lttng"
 
 # Session name
 SESSION_NAME="coredump-handler"
