@@ -36,17 +36,17 @@ source $TESTDIR/utils/utils.sh
 function setup_live_tracing()
 {
 	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
 		-U net://localhost >/dev/null 2>&1
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$EVENT_NAME" -s $SESSION_NAME -k >/dev/null 2>&1
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $SESSION_NAME >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$EVENT_NAME" -s $SESSION_NAME -k >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN start $SESSION_NAME >/dev/null 2>&1
 }
 
 function clean_live_tracing()
 {
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $SESSION_NAME >/dev/null 2>&1
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $SESSION_NAME >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN stop $SESSION_NAME >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN destroy $SESSION_NAME >/dev/null 2>&1
 	rm -rf $TRACE_PATH
 }
 

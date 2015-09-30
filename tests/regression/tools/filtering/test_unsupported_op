@@ -37,7 +37,7 @@ function enable_lttng_event_filter_unsupported
 	event_name="$3"
 	filter="$4"
 
-	enable_cmd="$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event"
+	enable_cmd="$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event"
 	$enable_cmd $event_name -s $sess_name $domain --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
 
 	# Enable must fail
