@@ -19,7 +19,6 @@ TEST_DESC="Filtering - Unsupported operators"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 SESSION_NAME="filter-unsupported-ops"
 EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/unsupported-ops-enable"
