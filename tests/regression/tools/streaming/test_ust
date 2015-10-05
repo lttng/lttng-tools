@@ -27,8 +27,6 @@ SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
 PID_RELAYD=0
 
-TRACE_PATH=$(mktemp -d)
-
 NUM_TESTS=16
 
 source $TESTDIR/utils/utils.sh
@@ -37,6 +35,12 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
+
 # MUST set TESTDIR before calling those functions
 
 function test_ust_before_start ()
@@ -44,8 +48,14 @@ function test_ust_before_start ()
 	local file_sync_after_first=$(mktemp -u)
 	local file_sync_before_last=$(mktemp -u)
 
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	diag "Test UST streaming BEFORE tracing starts"
-	create_lttng_session_ok $SESSION_NAME "" "-U net://localhost"
+	create_lttng_session_ok $SESSION_NAME "" "-U net://$host"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
@@ -67,9 +77,14 @@ function test_ust_before_start ()
 function test_ust_after_start ()
 {
 	local file_sync_after_first=$(mktemp -u)
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
 
 	diag "Test UST streaming AFTER tracing starts"
-	create_lttng_session_ok $SESSION_NAME "" "-U net://localhost"
+	create_lttng_session_ok $SESSION_NAME "" "-U net://$host"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -92,7 +107,7 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd_remote_support "-o $TRACE_PATH"
 start_lttng_sessiond
 
 tests=( test_ust_before_start test_ust_after_start )
@@ -103,16 +118,17 @@ do
 	${fct_test}
 
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		$BASE_COMMAND "rm -rf $TRACE_PATH"
 	else
 		break
 	fi
 done
 
 stop_lttng_sessiond
-stop_lttng_relayd
+stop_lttng_relayd_remote_support
+reestablish_base_command
 
 exit $out
