@@ -40,21 +40,6 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
-function snapshot_add_output ()
-{
-	local sess_name=$1
-	local trace_path=$2
-	local name=$3
-	local extra_opt=""
-
-	if [ ! -z $name ]; then
-		extra_opt="-n $name"
-	fi
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name $extra_opt $trace_path >/dev/null 2>&1
-	ok $? "Added snapshot output $trace_path"
-}
-
 # Start trace application and return once one event has been hit.
 function start_test_app()
 {
@@ -96,7 +81,7 @@ function test_ust_default_name_with_del()
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test
@@ -108,7 +93,7 @@ function test_ust_default_name_with_del()
 	fi
 
 	lttng_snapshot_del_output_ok $SESSION_NAME 1
-	snapshot_add_output $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test with the next ID since a del output was done prior.
@@ -137,7 +122,7 @@ function test_ust_default_name()
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -160,7 +145,7 @@ function test_ust_default_name_custom_uri()
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
+	lttng_snapshot_add_output_ok $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -187,7 +172,7 @@ function test_ust_custom_name()
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "net://localhost" $name
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost" $name
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
