@@ -30,7 +30,6 @@ NR_ITER=2000000
 NR_USEC_WAIT=100
 APPS_PID=
 
-TRACE_PATH=$(mktemp -d)
 
 NUM_TESTS=49
 
@@ -39,6 +38,12 @@ source $TESTDIR/utils/utils.sh
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
+
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
 
 # Start trace application and return once one event has been hit.
 function start_test_app()
@@ -74,6 +79,13 @@ function stop_test_apps()
 function test_ust_default_name_with_del()
 {
 	diag "Test UST snapshot streaming with default name with delete output"
+
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
@@ -81,23 +93,22 @@ function test_ust_default_name_with_del()
 
 	start_test_app
 
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host"
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test
-	echo $TRACE_PATH/$HOSTNAME/snapshot-1
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	if [ $? -ne 0 ]; then
 		stop_test_apps
 		return $?
 	fi
 
 	lttng_snapshot_del_output_ok $SESSION_NAME 1
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host"
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test with the next ID since a del output was done prior.
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
 	if [ $? -ne 0 ]; then
 		stop_test_apps
 		return $?
@@ -114,6 +125,12 @@ function test_ust_default_name_with_del()
 # Test a snapshot using a default name for the output destination.
 function test_ust_default_name()
 {
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	diag "Test UST snapshot streaming with default name"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
@@ -122,12 +139,12 @@ function test_ust_default_name()
 
 	start_test_app
 
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
 	stop_test_apps
@@ -137,6 +154,12 @@ function test_ust_default_name()
 
 function test_ust_default_name_custom_uri()
 {
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	diag "Test UST snapshot streaming with default name with custom URL"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
@@ -145,12 +168,12 @@ function test_ust_default_name_custom_uri()
 
 	start_test_app
 
-	lttng_snapshot_add_output_ok $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
+	lttng_snapshot_add_output_ok $SESSION_NAME "-C tcp://$host:5342 -D tcp://$host:5343"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
 	stop_test_apps
@@ -163,6 +186,11 @@ function test_ust_custom_name()
 {
 	local out
 	local name="asnapshotname"
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
 
 	diag "Test UST snapshot streaming with custom name"
 	create_lttng_session_no_output $SESSION_NAME
@@ -172,15 +200,15 @@ function test_ust_custom_name()
 
 	start_test_app
 
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost" $name
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host" $name
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then
+	if ($BASE_COMMAND "ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null"); then
 		ok 0 "Custom name snapshot exists"
 		# Validate test
-		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$name-*
+		validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/$name-*
 		out=$?
 	else
 		fail "No custom name snapshot found"
@@ -196,7 +224,7 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd_remote_support "-o $TRACE_PATH"
 start_lttng_sessiond
 
 tests=( test_ust_default_name_with_del test_ust_default_name test_ust_custom_name test_ust_default_name_custom_uri )
@@ -207,11 +235,12 @@ do
 	${fct_test}
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		$BASE_COMMAND "rm -rf $TRACE_PATH"
 	else
 		break
 	fi
 done
 
 stop_lttng_sessiond
-stop_lttng_relayd
+stop_lttng_relayd_remote_support
+reestablish_base_command
