@@ -72,7 +72,7 @@ function test_valid_filter
 	create_lttng_session_ok $SESSION_NAME $trace_path
 
 	# Enable filter
-	enable_lttng_event_filter $domain $SESSION_NAME $event_name $filter
+	enable_lttng_event_filter $domain $SESSION_NAME "$event_name" "$filter"
 
 	# Trace apps
 	start_lttng_tracing_ok $SESSION_NAME
@@ -344,8 +344,6 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-IFS=$'\n'
-
 issue_356_filter="intfield > 0 && intfield > 1 && "
 issue_356_filter+="intfield > 2 && intfield > 3 && "
 issue_356_filter+="intfield > 4 && intfield > 5 && "
@@ -360,6 +358,9 @@ BIN_NAME="gen-ust-events"
 
 # One to one mapping between filters and validators
 
+# Set IFS to newline to facilitate array declaration
+OLDIFS="$IFS"
+IFS=$'\n'
 UST_FILTERS=("intfield"                                                 #1
 	 "intfield > 1"                                                 #2
 	 "intfield >= 1"                                                #3
@@ -466,6 +467,8 @@ UST_VALIDATOR=("validator_intfield"                 #1
 	   "validator_has_events"                   #48
 )
 
+IFS="$OLDIFS"
+
 diag "Test UST valid filters"
 
 KERNEL_CHECK=0
@@ -488,7 +491,9 @@ done
 BIN_NAME="test_valid_filt"	# Current script name truncated by kernel
 
 # One to one mapping between filters and validators
-
+# Set IFS to newline to facilitate array declaration
+OLDIFS="$IFS"
+IFS=$'\n'
 KERNEL_FILTERS=("intfield"                                              #1
 	 "intfield > 1"                                                 #2
 	 "intfield >= 1"                                                #3
@@ -590,6 +595,8 @@ KERNEL_VALIDATOR=("validator_intfield"              #1
 	   "validator_has_no_event"                 #47
 	   "validator_has_events"                   #48
 )
+
+IFS=$OLDIFS
 
 if [ "$(id -u)" == "0" ]; then
 	isroot=1
