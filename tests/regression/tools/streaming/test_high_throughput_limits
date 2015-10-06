@@ -31,7 +31,6 @@ SESSIOND_CTRL_PORT=5342
 SESSIOND_DATA_PORT=5343
 DEFAULT_IF="lo"
 
-TRACE_PATH=$(mktemp -d)
 
 NUM_TESTS=104
 
@@ -39,6 +38,11 @@ source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
+fi
+
+if [[ ! -z "$REMOTE_RELAYD_TEST" && ! -z "${REMOTE_NETWORK_INTERFACE+x}" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+	DEFAULT_IF="$REMOTE_NETWORK_INTERFACE"
 fi
 
 function set_bw_limit
@@ -88,8 +92,13 @@ function run_apps
 
 function test_high_throughput
 {
-	NETWORK_URI="net://localhost"
-	create_lttng_session_ok $SESSION_NAME "" "-U $NETWORK_URI"
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
+	create_lttng_session_ok $SESSION_NAME "" "-U net://$host"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	run_apps
@@ -107,9 +116,17 @@ function validate_event_count
 	TEMP_FILE=$(mktemp)
 	TEMP_FILE_2=$(mktemp)
 
-	traced=$(babeltrace $TRACE_PATH 2>/dev/null | wc -l)
-	babeltrace $TRACE_PATH >/dev/null 2>$TEMP_FILE_2
+	local babeltrace="$BABELTRACE_BIN"
 
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		if [[ "$BASE_COMMAND" == "$LOCAL_COMMAND" ]]; then
+			fail "Validate event_count: base command not overridden"
+			return 1
+		fi
+		babeltrace="$REMOTE_BABELTRACE_PATH$REMOTE_BABELTRACE_BIN"
+	fi
+
+	traced=$($BASE_COMMAND "$babeltrace $TRACE_PATH" 2>$TEMP_FILE_2 | wc -l)
 	cat $TEMP_FILE_2 | cut -f4 -d " " >$TEMP_FILE
 
 	dropped=0
@@ -129,7 +146,7 @@ function validate_event_count
 		pass "Validate trace event count"
 		diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
 
-		rm -rf $TRACE_PATH
+		$BASE_COMMAND "rm -rf $TRACE_PATH"
 		rm $TEMP_FILE $TEMP_FILE_2
 
 		return 0
@@ -139,7 +156,7 @@ function validate_event_count
 function interrupt_cleanup()
 {
 	diag "*** Exiting ***"
-	stop_lttng_relayd
+	stop_lttng_relayd_remote_support
 	stop_lttng_sessiond
 	reset_bw_limit
 	exit 1
@@ -169,12 +186,14 @@ skip $isroot "Root access is needed to set bandwith limits. Skipping all tests."
 
 		set_bw_limit $BW
 
+		TRACE_PATH=$($BASE_COMMAND "mktemp -d")
+
 		start_lttng_sessiond
-		start_lttng_relayd "-o $TRACE_PATH"
+		start_lttng_relayd_remote_support "-o $TRACE_PATH"
 		test_high_throughput
-		result=$?
-		stop_lttng_relayd
+		stop_lttng_relayd_remote_support
 		stop_lttng_sessiond
 		reset_bw_limit
 	done
 }
+reestablish_base_command
