@@ -665,7 +665,7 @@ function test_start_stop () {
 
 function test_snapshot () {
 	local session_name="testSnapshotAdd"
-	local snapshot_path="$OUTPUT_DIR/snapshotoutput"
+	local snapshot_path="file://$OUTPUT_DIR/snapshotoutput"
 	OUTPUT_FILE="snapshot.xml"
 
 

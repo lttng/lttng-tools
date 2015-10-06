@@ -1068,19 +1068,34 @@ function destroy_lttng_sessions ()
 	ok $? "Destroy all lttng sessions"
 }
 
+# The trace_path must be in an URI format
 function lttng_snapshot_add_output ()
 {
 	local expected_to_fail=$1
 	local sess_name=$2
 	local trace_path=$3
+	local name=$4
+	local max_size=$5
 
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	local extra_opt=""
+
+	if [[ ! -z "$name" ]]; then
+		extra_opt+="-n $name"
+	fi
+
+	if [[ ! -z "$max_size" ]]; then
+		extra_opt+="-m $max_size"
+	fi
+
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN snapshot add-output \
+		-s $sess_name $extra_opt $trace_path \
+		1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq 1 ]]; then
 		test "$ret" -ne "0"
-		ok $? "Added snapshot output file://$trace_path failed as expected"
+		ok $? "Added snapshot output $trace_path failed as expected (extra options $extra_opt)"
 	else
-		ok $ret "Added snapshot output file://$trace_path"
+		ok $ret "Added snapshot output $trace_path (extra options: $extra_opt)"
 	fi
 }
 
