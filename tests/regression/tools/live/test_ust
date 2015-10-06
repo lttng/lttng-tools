@@ -79,5 +79,5 @@ clean_live_tracing
 
 rm -f ${file_sync_after_first}
 
-stop_lttng_relayd_notap
 stop_lttng_sessiond_notap
+stop_lttng_relayd_notap
