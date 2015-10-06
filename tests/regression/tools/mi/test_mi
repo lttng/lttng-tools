@@ -726,7 +726,6 @@ function test_track_untrack ()
 	diag "Test track/untrack pid"
 
 	local session_name="testTrack"
-	local snapshot_path="$OUTPUT_DIR/trackoutput"
 	local pid="1,2,3"
 	OUTPUT_FILE="track.xml"
 
