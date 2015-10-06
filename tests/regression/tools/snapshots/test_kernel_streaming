@@ -23,8 +23,6 @@ PID_RELAYD=0
 SESSION_NAME=""
 CHANNEL_NAME="chan1"
 
-TRACE_PATH=$(mktemp -d)
-
 NUM_TESTS=36
 
 source $TESTDIR/utils/utils.sh
@@ -35,29 +33,41 @@ if [ -z "$out" ]; then
 	BAIL_OUT "LTTng modules not detected."
 fi
 
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
+
 # Test a snapshot using a default name for the output destination.
 function test_kernel_default_name_with_del()
 {
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	diag "Test kernel snapshot streaming with default name with delete output"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host"
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
 
 	lttng_snapshot_del_output_ok $SESSION_NAME 1
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host"
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test with the next ID since a del output was done prior.
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -71,17 +81,23 @@ function test_kernel_default_name_with_del()
 # Test a snapshot using a default name for the output destination.
 function test_kernel_default_name()
 {
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	diag "Test kernel snapshot streaming with default name"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost"
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
 	out=$?
 
 	return $out
@@ -92,21 +108,26 @@ function test_kernel_custom_name()
 {
 	local out
 	local name="asnapshotname"
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
 
 	diag "Test kernel snapshot streaming with custom name"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME "net://localhost" $name
+	lttng_snapshot_add_output_ok $SESSION_NAME "net://$host" $name
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then
+	if ($BASE_COMMAND "ls $TRACE_PATH/$HOSTNAME/$name*") &> /dev/null; then
 		ok 0 "Custom name snapshot exists"
 		# Validate test
-		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$name-*
+		validate_trace_remote_support $EVENT_NAME $TRACE_PATH/$HOSTNAME/$name-*
 		out=$?
 	else
 		fail "No custom name snapshot found"
@@ -128,7 +149,7 @@ fi
 
 skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
 {
-	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_relayd_remote_support "-o $TRACE_PATH"
 	start_lttng_sessiond
 
 	tests=( test_kernel_default_name test_kernel_custom_name \
@@ -140,12 +161,13 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 		${fct_test}
 		if [ $? -eq 0 ]; then
 			# Only delete if successful
-			rm -rf $TRACE_PATH
+			$BASE_COMMAND "rm -rf $TRACE_PATH"
 		else
 			break
 		fi
 	done
 
 	stop_lttng_sessiond
-	stop_lttng_relayd
+	stop_lttng_relayd_remote_support
+	reestablish_base_command
 }
