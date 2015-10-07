@@ -1349,24 +1349,45 @@ function trace_matches ()
 	fi
 }
 
-function trace_match_only()
+function trace_match_only_opt()
 {
-	local event_name=$1
-	local nr_iter=$2
-	local trace_path=$3
+	local remote=$1
+	local event_name=$2
+	local nr_iter=$3
+	local trace_path=$4
 
-	which $BABELTRACE_BIN >/dev/null
+	local babeltrace=$BABELTRACE_BIN
+
+	if [ $remote -eq 1 -a ! -z "$REMOTE_RELAYD_TEST" ]; then
+		if [[ "$BASE_COMMAND" == "$LOCAL_COMMAND" ]]; then
+			fail "Match only remote trace: base command not overridden"
+			return 1
+		fi
+		babeltrace="$REMOTE_BABELTRACE_PATH$REMOTE_BABELTRACE_BIN"
+	fi
+
+	$BASE_COMMAND "which $babeltrace >/dev/null"
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
 
-	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
-	local total=$($BABELTRACE_BIN $trace_path | wc -l)
+	local count=$($BASE_COMMAND "$babeltrace $trace_path" | grep $event_name | wc -l)
+	local total=$($BASE_COMMAND "$babeltrace $trace_path" | wc -l)
 
-    if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
-        pass "Trace match with $total event $event_name"
-    else
-        fail "Trace match"
-        diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
-    fi
+	if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
+		pass "Trace match with $total event $event_name"
+	else
+		fail "Trace match"
+		diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
+	fi
+}
+
+function trace_match_only()
+{
+	trace_match_only_opt 0 "$@"
+}
+
+function trace_match_only_remote_support()
+{
+	trace_match_only_opt 1 "$@"
 }
 
 function validate_trace_opt
