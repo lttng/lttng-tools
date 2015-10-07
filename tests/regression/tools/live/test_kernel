@@ -26,18 +26,26 @@ DELAY_USEC=2000000
 
 SESSION_NAME="live"
 EVENT_NAME="sched_switch"
-
-TRACE_PATH=$(mktemp -d)
+RELAYD_HOST="localhost"
 
 DIR=$(readlink -f $TESTDIR)
 
 source $TESTDIR/utils/utils.sh
 
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+	RELAYD_HOST="$REMOTE_RELAYD_HOST"
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
+
+echo "$TEST_DESC (base command: $BASE_COMMAND)"
+
 function setup_live_tracing()
 {
 	# Create session with default path
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
-		-U net://localhost >/dev/null 2>&1
+		-U net://$RELAYD_HOST >/dev/null 2>&1
 
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$EVENT_NAME" -s $SESSION_NAME -k >/dev/null 2>&1
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN start $SESSION_NAME >/dev/null 2>&1
@@ -47,7 +55,7 @@ function clean_live_tracing()
 {
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN stop $SESSION_NAME >/dev/null 2>&1
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN destroy $SESSION_NAME >/dev/null 2>&1
-	rm -rf $TRACE_PATH
+	$BASE_COMMAND "rm -rf $TRACE_PATH"
 }
 
 # Need root access for kernel tracing.
@@ -59,14 +67,16 @@ else
 fi
 
 start_lttng_sessiond_notap
-start_lttng_relayd_notap "-o $TRACE_PATH"
+# Make sure to listen on all interfaces for the live viewer port
+start_lttng_relayd_remote_support_no_tap "-o $TRACE_PATH -L tcp://0.0.0.0:5344"
 
 setup_live_tracing
 
 # Start the live test
-$TESTDIR/regression/tools/live/live_test "localhost"
+$TESTDIR/regression/tools/live/live_test "$RELAYD_HOST"
 
 clean_live_tracing
 
-stop_lttng_relayd_notap
 stop_lttng_sessiond_notap
+stop_lttng_relayd_remote_support_notap
+reestablish_base_command
