@@ -685,8 +685,14 @@ int main(int argc, char **argv)
 
 	diag("Live unit tests");
 
-	ret = connect_viewer("localhost");
-	ok(ret == 0, "Connect viewer to relayd");
+	if (argc < 2) {
+		fprintf(stderr, "No hostname specified\n");
+		return EXIT_FAILURE;
+	}
+
+
+	ret = connect_viewer(argv[1]);
+	ok(ret == 0, "Connect viewer to relayd %s", argv[1]);
 
 	ret = establish_connection();
 	ok(ret == 0, "Established connection and version check with %d.%d",

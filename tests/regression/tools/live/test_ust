@@ -70,7 +70,7 @@ while [ ! -f "${file_sync_after_first}" ]; do
 done
 
 # Start the live test
-$TESTDIR/regression/tools/live/live_test
+$TESTDIR/regression/tools/live/live_test "localhost"
 
 # Wait for the applications started in background
 wait

@@ -64,7 +64,7 @@ start_lttng_relayd_notap "-o $TRACE_PATH"
 setup_live_tracing
 
 # Start the live test
-$TESTDIR/regression/tools/live/live_test
+$TESTDIR/regression/tools/live/live_test "localhost"
 
 clean_live_tracing
 
