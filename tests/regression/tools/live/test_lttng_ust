@@ -30,13 +30,18 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="live"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d)
-
 DIR=$(readlink -f $TESTDIR)
 
 NUM_TESTS=12
 
 source $TESTDIR/utils/utils.sh
+
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+	RELAYD_HOST="$REMOTE_RELAYD_HOST"
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -46,18 +51,19 @@ print_test_banner "$TEST_DESC"
 function test_custom_url()
 {
 	# Create session with custom URL
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
-		-C tcp://localhost:1819 -D tcp://localhost:9187 >/dev/null 2>&1
-	ok $? "Create session in live mode with delay $DELAY_USEC and custom URLs"
+	create_lttng_session_ok $SESSION_NAME "" "--live $DELAY_USEC -C tcp://localhost:1819 -D tcp://localhost:9187"
 }
 
 function setup_live_tracing()
 {
 	# Create session with default path
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
-		-U net://localhost >/dev/null 2>&1
-	ok $? "Create session in live mode with delay $DELAY_USEC"
+	local host="localhost"
 
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
+	create_lttng_session_ok $SESSION_NAME "" "--live $DELAY_USEC -U net://$host"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 }
@@ -69,7 +75,7 @@ function clean_live_tracing()
 }
 
 start_lttng_sessiond
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd_remote_support "-o $TRACE_PATH"
 
 setup_live_tracing
 
@@ -78,9 +84,14 @@ $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
 clean_live_tracing
 
-trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
-rm -rf $TRACE_PATH
-stop_lttng_relayd
+trace_match_only_remote_support $EVENT_NAME $NR_ITER $TRACE_PATH
+
+$BASE_COMMAND "rm -rf $TRACE_PATH"
+
+stop_lttng_relayd_remote_support
+
+# Following test is valid only locally
+reestablish_base_command
 
 test_custom_url
 
