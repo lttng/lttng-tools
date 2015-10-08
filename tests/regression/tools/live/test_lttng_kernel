@@ -25,13 +25,18 @@ DELAY_USEC=2000000
 SESSION_NAME="live"
 EVENT_NAME="sched_switch"
 
-TRACE_PATH=$(mktemp -d)
-
 DIR=$(readlink -f $TESTDIR)
 
 NUM_TESTS=10
 
 source $TESTDIR/utils/utils.sh
+
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+	RELAYD_HOST="$REMOTE_RELAYD_HOST"
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -41,10 +46,13 @@ print_test_banner "$TEST_DESC"
 function setup_live_tracing()
 {
 	# Create session with default path
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
-		-U net://localhost >/dev/null 2>&1
-	ok $? "Create session in live mode with delay $DELAY_USEC"
+	local host="localhost"
 
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
+	create_lttng_session_ok $SESSION_NAME "" "--live $DELAY_USEC -U net://$host"
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 }
@@ -65,7 +73,7 @@ fi
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
 	start_lttng_sessiond
-	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_relayd_remote_support "-o $TRACE_PATH"
 
 	setup_live_tracing
 
@@ -74,9 +82,10 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	clean_live_tracing
 
-	validate_trace $EVENT_NAME $TRACE_PATH
-	rm -rf $TRACE_PATH
+	validate_trace_remote_support $EVENT_NAME $TRACE_PATH
+	$BASE_COMMAND "rm -rf $TRACE_PATH"
 
-	stop_lttng_relayd
 	stop_lttng_sessiond
+	stop_lttng_relayd_remote_support
+	reestablish_base_command
 }
