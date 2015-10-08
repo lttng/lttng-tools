@@ -364,6 +364,7 @@ function start_lttng_sessiond_opt()
 {
 	local withtap=$1
 	local load_path=$2
+	local raw_opts="$4"
 
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
@@ -383,11 +384,14 @@ function start_lttng_sessiond_opt()
 	if [ -z $(pgrep --full lt-$SESSIOND_BIN[^\[]) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
-			$DIR/$SESSIOND_PATH_REL/$SESSIOND_BIN --load "$load_path" --background --consumerd32-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --consumerd64-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN"
+			$DIR/$SESSIOND_PATH_REL/$SESSIOND_BIN --load "$load_path" --background $raw_opts --consumerd32-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --consumerd64-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN"\
+			1> $OUTPUT_DEST \
+			2> $ERROR_OUTPUT_DEST
 		else
-			$DIR/$SESSIOND_PATH_REL/$SESSIOND_BIN --background --consumerd32-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --consumerd64-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN"
+			$DIR/$SESSIOND_PATH_REL/$SESSIOND_BIN --background $raw_opts --consumerd32-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --consumerd64-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN"\
+				1> $OUTPUT_DEST \
+				2> $ERROR_OUTPUT_DEST
 		fi
-		#$DIR/$SESSIOND_PATH_REL/$SESSIOND_BIN --background --consumerd32-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --consumerd64-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --verbose-consumer >>/tmp/sessiond.log 2>&1
 		status=$?
 		if [ $withtap -eq "1" ]; then
 			ok $status "Start session daemon"
