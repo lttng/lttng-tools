@@ -93,6 +93,7 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+OLDIFS="$IFS"
 IFS=$'\n'
 INVALID_FILTERS=(
 		# Unsupported ops
@@ -153,13 +154,17 @@ INVALID_FILTERS=(
 		"0 == \$global.value"
 		# A wildcard should only appear as the last character in a string literal
 		"msg == \"my_event*_blah\""
-		)
+)
+IFS="$OLDIFS"
 
 start_lttng_sessiond
 diag "Test UST filters"
-for FILTER in ${INVALID_FILTERS[@]};
-do
-	test_invalid_filter -u "$FILTER"
+
+i=0
+while [ "$i" -lt "${#INVALID_FILTERS[@]}" ]; do
+	echo "${INVALID_FILTERS[$i]}"
+	test_invalid_filter -u "${INVALID_FILTERS[$i]}"
+	let "i++"
 done
 
 test_bytecode_limit -u
@@ -173,15 +178,15 @@ fi
 skip $isroot "Root access is needed. Skipping all kernel invalid filter tests." $NUM_KERNEL_TESTS ||
 {
 	diag "Test kernel filters"
-	for FILTER in ${INVALID_FILTERS[@]};
-	do
-		test_invalid_filter -k "$FILTER"
+	i=0
+	while [ "$i" -lt "${#INVALID_FILTERS[@]}" ]; do
+		echo "${INVALID_FILTERS[$i]}"
+		test_invalid_filter -k "${INVALID_FILTERS[$i]}"
+		let "i++"
 	done
 
 	test_bytecode_limit -k
 }
-
-unset IFS
 stop_lttng_sessiond
 
 rm -f $ENABLE_EVENT_STDERR
