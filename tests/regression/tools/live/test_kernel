@@ -43,7 +43,15 @@ echo "$TEST_DESC (base command: $BASE_COMMAND)"
 
 function setup_live_tracing()
 {
+	if [[ $isroot -ne 1 ]]; then
+		# Do nothing the test plan is produced by live_test
+		return 0
+	fi
+
 	# Create session with default path
+	# TODO: provide no_tap of utils.sh functions
+	#       These cannot be used here because the test plan is produced
+	#       by live_test
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
 		-U net://$RELAYD_HOST >/dev/null 2>&1
 
@@ -53,17 +61,23 @@ function setup_live_tracing()
 
 function clean_live_tracing()
 {
+	if [[ $isroot -ne 1 ]]; then
+		# Do nothing the test plan is produced by live_test
+		return 0
+	fi
+
+	# TODO: provide no_tap of utils.sh functions
+	#       These cannot be used here because the test plan is produced
+	#       by live_test
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN stop $SESSION_NAME >/dev/null 2>&1
 	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN destroy $SESSION_NAME >/dev/null 2>&1
-	$BASE_COMMAND "rm -rf $TRACE_PATH"
 }
 
 # Need root access for kernel tracing.
 if [ "$(id -u)" == "0" ]; then
 	isroot=1
 else
-	echo "Root access is needed. Skipping all tests."
-	exit 0
+	isroot=0
 fi
 
 start_lttng_sessiond_notap
@@ -73,7 +87,8 @@ start_lttng_relayd_remote_support_no_tap "-o $TRACE_PATH -L tcp://0.0.0.0:5344"
 setup_live_tracing
 
 # Start the live test
-$TESTDIR/regression/tools/live/live_test "$RELAYD_HOST"
+# We leave to live_test the check for root based on the third argument
+$TESTDIR/regression/tools/live/live_test "$RELAYD_HOST" root
 
 clean_live_tracing
 
