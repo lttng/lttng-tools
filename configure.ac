@@ -14,6 +14,9 @@ AM_MAINTAINER_MODE([enable])
 # Enable silent rules if available (Introduced in AM 1.11)
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
+# Extra recursive
+AM_EXTRA_RECURSIVE_TARGETS([check-remote])
+
 # Checks for C compiler
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
