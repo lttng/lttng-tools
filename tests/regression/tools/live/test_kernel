@@ -94,4 +94,6 @@ clean_live_tracing
 
 stop_lttng_sessiond_notap
 stop_lttng_relayd_remote_support_notap
+
+$BASE_COMMAND "rm -rf $TRACE_PATH"
 reestablish_base_command
