@@ -33,6 +33,14 @@ source $TESTDIR/utils/utils.sh
 
 # MUST set TESTDIR before calling those functions
 
+if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
+	# Enable remote core dump
+	$BASE_COMMAND "ulimit -c unlimited"
+fi
+
+TRACE_PATH=$($BASE_COMMAND "mktemp -d")
+
 function check_sessiond()
 {
 	if [ -z "$(pgrep --full lt-lttng-sessiond)" ]; then
@@ -50,24 +58,38 @@ function check_sessiond()
 
 function check_relayd()
 {
-	if [ -z "$(pgrep --full lt-lttng-relayd)" ]; then
+	local relayd_bin_name="lt-$RELAYD_BIN"
+
+	if [ ! -z "$REMOTE_RELAYD_TEST" ]; then
+		if [[ "$BASE_COMMAND" == "$LOCAL_COMMAND" ]]; then
+			fail "Kill remote relay daemon: base command not overridden"
+			return 1
+		fi
+		# Override default value of regex name
+		relayd_bin_name="$REMOTE_RELAYD_BIN"
+	fi
+
+	if [ -z "$($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]")" ]; then
 		local str_date=$(date +%H%M%S-%d%m%Y)
 
 		diag "!!!The relay daemon died unexpectedly!!!"
-		mv $LOG_FILE_RELAYD $LOG_FILE_RELAYD-$str_date
-		mv $LOG_FILE_ERROR_RELAYD $LOG_FILE_ERROR_RELAYD-$str_date
-		if [ -e $COREDUMP_FILE ]; then
-			mv $COREDUMP_FILE $COREDUMP_FILE-$str_date
-		fi
+		$BASE_COMMAND "mv $LOG_FILE_RELAYD $LOG_FILE_RELAYD-$str_date"
+		$BASE_COMMAND "mv $LOG_FILE_ERROR_RELAYD $LOG_FILE_ERROR_RELAYD-$str_date"
 		exit 1
 	fi
 }
 
-test_stress()
+function test_stress()
 {
+	local host="localhost"
+
+	if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
+		host=$REMOTE_RELAYD_HOST
+	fi
+
 	for b in $(seq 1 $NR_LOOP); do
 		for a in $(seq 1 $NR_SESSION); do
-			create_lttng_session_ok $SESSION_NAME-$a "" "-U net://localhost"
+			create_lttng_session_ok $SESSION_NAME-$a "" "-U net://$host"
 			check_sessiond
 			check_relayd
 			enable_ust_lttng_channel_ok $SESSION_NAME-$a $CHANNEL_NAME "--buffers-uid"
@@ -103,14 +125,18 @@ function cleanup()
 	done
 	APPS_PID=
 	stop_lttng_sessiond
-	stop_lttng_relayd
+	stop_lttng_relayd_remote_support
 }
 
 function sighandler()
 {
 	cleanup
-	rm $LOG_FILE_SESSIOND $LOG_FILE_RELAYD
-	rm $LOG_FILE_ERROR_SESSIOND $LOG_FILE_ERROR_RELAYD
+	rm $LOG_FILE_SESSIOND
+	rm $LOG_FILE_ERROR_SESSIOND
+
+	$BASE_COMMAND "rm $LOG_FILE_RELAYD"
+	$BASE_COMMAND "rm $LOG_FILE_ERROR_RELAYD"
+
 	exit 1
 }
 
@@ -125,11 +151,9 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-TRACE_PATH=$(mktemp -d)
-
 OUTPUT_DEST="$LOG_FILE_RELAYD"
 ERROR_OUTPUT_DEST="$LOG_FILE_ERROR_RELAYD"
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd_remote_support "-o $TRACE_PATH"
 
 OUTPUT_DEST="$LOG_FILE_SESSIOND"
 ERROR_OUTPUT_DEST="$LOG_FILE_ERROR_SESSIOND"
@@ -152,6 +176,7 @@ if [ $out -ne 0 ]; then
 fi
 
 cleanup
-rm -rf $TRACE_PATH
-rm $LOG_FILE_SESSIOND $LOG_FILE_RELAYD
+$BASE_COMMAND "rm -rf $TRACE_PATH"
+$BASE_COMMAND rm $LOG_FILE_RELAYD
+rm $LOG_FILE_SESSIOND
 exit 0
