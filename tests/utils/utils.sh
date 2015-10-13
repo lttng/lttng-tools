@@ -15,6 +15,7 @@
 # along with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
+LOCAL_COMMAND="bash -c"
 SESSIOND_BIN="lttng-sessiond"
 RUNAS_BIN="lttng-runas"
 SESSIOND_PATH_REL="../src/bin/lttng-sessiond/"
@@ -46,6 +47,73 @@ export LTTNG_UST_REGISTER_TIMEOUT=-1
 export LTTNG_SESSIOND_PATH="/bin/true"
 
 source $TESTDIR/utils/tap/tap.sh
+
+
+BASE_COMMAND="bash -c"
+if [ ! -z "$REMOTE_RELAYD_TEST" ]; then
+
+	if [[ -z ${REMOTE_RELAYD_HOST+x} ]]; then
+		echo "Remote: Missing relayd host variable"
+		exit
+	fi
+
+	if [[ -z ${REMOTE_RELAYD_USER+x} ]]; then
+		echo "Remote: Missing relayd user variable"
+		exit
+	fi
+
+	if [[ -z ${REMOTE_RELAYD_ID_FILE+x} ]]; then
+		echo "Remote: path to id file not specified"
+	fi
+
+	if [[ -z ${REMOTE_RELAYD_PATH+x} ]]; then
+		echo "Remote: Missing remote relayd_path for remote test"
+		exit
+	fi
+
+	if [[ -z ${REMOTE_RELAYD_BIN+x} ]]; then
+		echo "Remote: Missing remote relayd_path for remote test"
+		exit
+	fi
+
+	if [[ -z ${REMOTE_BABELTRACE_PATH+x} ]]; then
+		echo "Remote: Missing remote relayd_path for remote test"
+		exit
+	fi
+
+	if [[ -z ${REMOTE_BABELTRACE_BIN+x} ]]; then
+		echo "Remote: Missing remote relayd_path for remote test"
+		exit
+	fi
+
+	if [[ ! -z "$REMOTE_RELAYD_PATH" ]]; then
+		# Add a trailing slash just in case
+		REMOTE_RELAYD_PATH="$REMOTE_RELAYD_PATH"
+	fi
+fi
+
+# Override the base command
+function override_base_command_ssh ()
+{
+	local host=$1
+	local user=$2
+
+	# Optional
+	local identify_file="$3"
+
+	local identity_opt=""
+
+	if [[ ! -z "$identify_file" ]]; then
+		identity_opt="-i $identify_file"
+	fi
+
+	BASE_COMMAND="ssh -l $user $identity_opt $host"
+}
+
+function reestablish_base_command ()
+{
+	BASE_COMMAND="$LOCAL_COMMAND"
+}
 
 function print_ok ()
 {
