@@ -101,7 +101,7 @@ int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 {
 	int ret;
 
-	ret = bind(sock->fd, &sock->sockaddr.addr.sin6,
+	ret = bind(sock->fd, (const struct sockaddr *) &sock->sockaddr.addr.sin6,
 			sizeof(sock->sockaddr.addr.sin6));
 	if (ret < 0) {
 		PERROR("bind inet6");
