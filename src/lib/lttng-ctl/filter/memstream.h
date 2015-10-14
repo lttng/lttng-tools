@@ -19,9 +19,6 @@
  * all copies or substantial portions of the Software.
  */
 
-#define _GNU_SOURCE
-#include <config.h>
-
 #ifdef LTTNG_HAVE_FMEMOPEN
 #include <stdio.h>
 

@@ -22,8 +22,6 @@
 #ifndef LTTNG_UST_CTL_H
 #define LTTNG_UST_CTL_H
 
-#include <config.h>
-
 struct ust_app;
 
 /*

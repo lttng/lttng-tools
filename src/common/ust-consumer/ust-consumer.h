@@ -19,7 +19,6 @@
 #ifndef _LTTNG_USTCONSUMER_H
 #define _LTTNG_USTCONSUMER_H
 
-#include <config.h>
 #include <errno.h>
 
 #include <common/consumer.h>

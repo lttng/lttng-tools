@@ -48,7 +48,7 @@
  * with 12*3 instructions on 3 integers than you can with 3 instructions on 1
  * byte), but shoehorning those bytes into integers efficiently is messy.
  */
-#define _GNU_SOURCE
+
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <stdint.h>     /* defines uint32_t etc */

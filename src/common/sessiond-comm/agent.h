@@ -18,7 +18,6 @@
 #ifndef AGENT_COMM
 #define AGENT_COMM
 
-#define _GNU_SOURCE
 #include <stdint.h>
 
 #include <lttng/lttng.h>

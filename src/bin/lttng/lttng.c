@@ -15,7 +15,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <getopt.h>
 #include <signal.h>
@@ -25,7 +24,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <config.h>
 #include <ctype.h>
 
 #include <lttng/lttng.h>
