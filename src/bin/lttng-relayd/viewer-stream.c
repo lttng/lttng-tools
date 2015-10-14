@@ -21,6 +21,7 @@
 #define _LGPL_SOURCE
 #include <common/common.h>
 #include <common/index/index.h>
+#include <common/compat/string.h>
 
 #include "lttng-relayd.h"
 #include "viewer-stream.h"
@@ -51,12 +52,12 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		goto error;
 	}
 
-	vstream->path_name = strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
+	vstream->path_name = lttng_strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
 	if (vstream->path_name == NULL) {
 		PERROR("relay viewer path_name alloc");
 		goto error;
 	}
-	vstream->channel_name = strndup(stream->channel_name,
+	vstream->channel_name = lttng_strndup(stream->channel_name,
 			LTTNG_VIEWER_NAME_MAX);
 	if (vstream->channel_name == NULL) {
 		PERROR("relay viewer channel_name alloc");

@@ -10,4 +10,4 @@ endif
 
 libcompat_la_SOURCES = poll.h fcntl.h endian.h mman.h clone.h \
 		socket.h compat-fcntl.c uuid.h tid.h \
-		getenv.h $(COMPAT)
+		getenv.h string.h $(COMPAT)
