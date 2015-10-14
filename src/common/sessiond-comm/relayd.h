@@ -68,7 +68,7 @@ struct lttcomm_relayd_status_session {
  */
 struct lttcomm_relayd_add_stream {
 	char channel_name[DEFAULT_STREAM_NAME_LEN];
-	char pathname[PATH_MAX];
+	char pathname[LTTNG_PATH_MAX];
 } LTTNG_PACKED;
 
 /*
@@ -77,7 +77,7 @@ struct lttcomm_relayd_add_stream {
  */
 struct lttcomm_relayd_add_stream_2_2 {
 	char channel_name[DEFAULT_STREAM_NAME_LEN];
-	char pathname[PATH_MAX];
+	char pathname[LTTNG_PATH_MAX];
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
 } LTTNG_PACKED;
