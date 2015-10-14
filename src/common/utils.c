@@ -1197,6 +1197,7 @@ LTTNG_HIDDEN
 int utils_recursive_rmdir(const char *path)
 {
 	DIR *dir;
+	size_t path_len;
 	int dir_fd, ret = 0, closeret, is_empty = 1;
 	struct dirent *entry;
 
@@ -1212,13 +1213,34 @@ int utils_recursive_rmdir(const char *path)
 		return -1;
 	}
 
+	path_len = strlen(path);
 	while ((entry = readdir(dir))) {
 		if (!strcmp(entry->d_name, ".")
 				|| !strcmp(entry->d_name, ".."))
 			continue;
-		switch (entry->d_type) {
-		case DT_DIR:
-		{
+
+		struct stat st;
+		size_t name_len;
+		char filename[PATH_MAX];
+
+		name_len = strlen(entry->d_name);
+		if (path_len + name_len + 2 > sizeof(filename)) {
+			ERR("Failed to remove file: path name too long (%s/%s)",
+				path, entry->d_name);
+			continue;
+		}
+		if (snprintf(filename, sizeof(filename), "%s/%s",
+				path, entry->d_name) < 0) {
+			ERR("Failed to format path.");
+			continue;
+		}
+
+		if (stat(filename, &st)) {
+			PERROR("stat");
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
 			char subpath[PATH_MAX];
 
 			strncpy(subpath, path, PATH_MAX);
@@ -1230,12 +1252,9 @@ int utils_recursive_rmdir(const char *path)
 			if (utils_recursive_rmdir(subpath)) {
 				is_empty = 0;
 			}
-			break;
-		}
-		case DT_REG:
+		} else if (S_ISREG(st.st_mode)) {
 			is_empty = 0;
-			break;
-		default:
+		} else {
 			ret = -EINVAL;
 			goto end;
 		}
