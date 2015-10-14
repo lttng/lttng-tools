@@ -33,6 +33,7 @@
 #include <pwd.h>
 #include <sys/file.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -520,8 +521,14 @@ int utils_create_lock_file(const char *filepath)
 	 * already a process using the same lock file running
 	 * and we should exit.
 	 */
-	ret = flock(fd, LOCK_EX | LOCK_NB);
-	if (ret) {
+	struct flock lock;
+	lock.l_start = 0;
+	lock.l_len = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_type = F_WRLCK;
+
+	ret = fcntl(fd, F_SETLK, &lock);
+	if (ret == -1) {
 		ERR("Could not get lock file %s, another instance is running.",
 			filepath);
 		if (close(fd)) {
