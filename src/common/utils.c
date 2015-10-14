@@ -23,7 +23,6 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -37,6 +36,7 @@
 #include <common/common.h>
 #include <common/runas.h>
 #include <common/compat/getenv.h>
+#include <common/compat/string.h>
 
 #include "utils.h"
 #include "defaults.h"
@@ -92,9 +92,9 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		}
 
 		/* Cut the part we will be trying to resolve */
-		cut_path = strndup(path, next - path);
+		cut_path = lttng_strndup(path, next - path);
 		if (cut_path == NULL) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 
@@ -230,9 +230,9 @@ char *utils_expand_path(const char *path)
 	while ((next = strstr(absolute_path, "/./"))) {
 
 		/* We prepare the start_path not containing it */
-		start_path = strndup(absolute_path, next - absolute_path);
+		start_path = lttng_strndup(absolute_path, next - absolute_path);
 		if (!start_path) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 		/* And we concatenate it with the part after this string */
@@ -250,9 +250,9 @@ char *utils_expand_path(const char *path)
 		}
 
 		/* Then we prepare the start_path not containing it */
-		start_path = strndup(absolute_path, previous - absolute_path);
+		start_path = lttng_strndup(absolute_path, previous - absolute_path);
 		if (!start_path) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 

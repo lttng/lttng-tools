@@ -110,7 +110,7 @@ AC_CHECK_FUNCS([ \
 	atexit bzero clock_gettime dup2 fdatasync ftruncate \
 	gethostbyname gethostname getpagesize localtime_r memchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
-	strncasecmp strndup strpbrk strrchr strstr strtol strtoul \
+	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull \
 ])
 

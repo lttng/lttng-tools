@@ -17,7 +17,6 @@
 
 #define _LGPL_SOURCE
 #include <assert.h>
-#include <string.h>
 #include <inttypes.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
@@ -27,6 +26,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
+#include <common/compat/string.h>
 
 #include "channel.h"
 #include "consumer.h"
@@ -1047,7 +1047,7 @@ int cmd_enable_channel(struct ltt_session *session,
 	assert(attr);
 	assert(domain);
 
-	len = strnlen(attr->name, sizeof(attr->name));
+	len = lttng_strnlen(attr->name, sizeof(attr->name));
 
 	/* Validate channel name */
 	if (attr->name[0] == '.' ||
