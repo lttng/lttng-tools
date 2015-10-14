@@ -30,12 +30,12 @@
 #include <grp.h>
 #include <pwd.h>
 #include <sys/file.h>
-#include <dirent.h>
 
 #include <common/common.h>
 #include <common/runas.h>
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
+#include <common/compat/dirent.h>
 
 #include "utils.h"
 #include "defaults.h"
@@ -1212,9 +1212,9 @@ int utils_recursive_rmdir(const char *path)
 		PERROR("Cannot open '%s' path", path);
 		return -1;
 	}
-	dir_fd = dirfd(dir);
+	dir_fd = lttng_dirfd(dir);
 	if (dir_fd < 0) {
-		PERROR("dirfd");
+		PERROR("lttng_dirfd");
 		return -1;
 	}
 
