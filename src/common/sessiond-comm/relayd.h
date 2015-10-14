@@ -168,7 +168,7 @@ struct lttcomm_relayd_index {
  * Create session in 2.4 adds additionnal parameters for live reading.
  */
 struct lttcomm_relayd_create_session_2_4 {
-	char session_name[NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
 	char hostname[HOST_NAME_MAX];
 	uint32_t live_timer;
 	uint32_t snapshot;

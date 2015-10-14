@@ -20,6 +20,7 @@
 
 #include <limits.h>
 #include <stdint.h>
+#include <lttng/constant.h>
 
 /*
  * Object used for the snapshot API. This is opaque to the public library.
@@ -37,7 +38,7 @@ struct lttng_snapshot_output {
 	 */
 	uint64_t max_size;
 	/* Name of the output so it can be recognized easily when listing them. */
-	char name[NAME_MAX];
+	char name[LTTNG_NAME_MAX];
 	/* Destination of the output. See lttng(1) for URL format. */
 	char ctrl_url[PATH_MAX];
 	/* Destination of the output. See lttng(1) for URL format. */

@@ -84,7 +84,7 @@ int lttng_load_session_attr_set_session_name(
 		size_t len;
 
 		len = strlen(session_name);
-		if (len >= NAME_MAX) {
+		if (len >= LTTNG_NAME_MAX) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}

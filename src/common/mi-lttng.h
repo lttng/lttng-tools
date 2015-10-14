@@ -39,13 +39,13 @@ struct mi_writer {
  * Version information for the machine interface.
  */
 struct mi_lttng_version {
-	char version[NAME_MAX]; /* Version number of package */
+	char version[LTTNG_NAME_MAX]; /* Version number of package */
 	uint32_t version_major; /* LTTng-Tools major version number */
 	uint32_t version_minor; /* LTTng-Tools minor version number */
 	uint32_t version_patchlevel; /* LTTng-Tools patchlevel version number */
-	char version_commit[NAME_MAX]; /* Commit hash of the current version */
-	char version_name[NAME_MAX];
-	char package_url[NAME_MAX]; /* Define to the home page for this package. */
+	char version_commit[LTTNG_NAME_MAX]; /* Commit hash of the current version */
+	char version_name[LTTNG_NAME_MAX];
+	char package_url[LTTNG_NAME_MAX]; /* Define to the home page for this package. */
 };
 
 /* Strings related to command */

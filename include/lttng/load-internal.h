@@ -22,6 +22,7 @@
 #include <limits.h>
 #include <stdint.h>
 
+#include <lttng/constant.h>
 #include <common/macros.h>
 
 /*
@@ -29,7 +30,7 @@
  */
 struct lttng_load_session_attr {
 	/* Name of the session to load, empty string means all. */
-	char session_name[NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
 	/* URL of the session configuration file to load. */
 	char input_url[PATH_MAX];
 	/* Overwrite the session if it exists. */

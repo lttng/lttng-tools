@@ -32,7 +32,7 @@ extern "C" {
  */
 #define LTTNG_SESSION_PADDING1             12
 struct lttng_session {
-	char name[NAME_MAX];
+	char name[LTTNG_NAME_MAX];
 	/* The path where traces are written */
 	char path[PATH_MAX];
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
