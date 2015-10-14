@@ -416,29 +416,41 @@ function start_lttng_relayd_remote_support_no_tap()
 
 function stop_lttng_relayd_opt()
 {
-	local withtap=$1
+	local remote=$1
+	local withtap=$2
 
-	PID_RELAYD=`pgrep --full lt-$RELAYD_BIN[^\[]`
+	local relayd_bin_name="lt-$RELAYD_BIN"
+
+	if [ $remote -eq 1 -a ! -z "$REMOTE_RELAYD_TEST" ]; then
+		if [[ "$BASE_COMMAND" == "$LOCAL_COMMAND" ]]; then
+			fail "Kill remote relay daemon: base command not overridden"
+			return 1
+		fi
+		# Override default value of regex name
+		relayd_bin_name="$REMOTE_RELAYD_BIN"
+	fi
+
+	PID_RELAYD=$($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]")
 
 	if [ $withtap -eq "1" ]; then
-		diag "Killing lttng-relayd (pid: $PID_RELAYD)"
+		diag "Killing lttng-relayd (pid: $PID_RELAYD) (base command: $BASE_COMMAND)"
 	fi
-	kill $PID_RELAYD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$BASE_COMMAND "kill $PID_RELAYD" 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	retval=$?
 
 	if [ $? -eq 1 ]; then
 		if [ $withtap -eq "1" ]; then
-			fail "Kill relay daemon"
+			fail "Kill relay daemon (base command: $BASE_COMMAND)"
 		fi
 		return 1
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full lt-$RELAYD_BIN)
+			out=$($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]")
 			sleep 0.5
 		done
 		if [ $withtap -eq "1" ]; then
-			pass "Kill relay daemon"
+			pass "Kill relay daemon (base command: $BASE_COMMAND)"
 		fi
 	fi
 	return $retval
@@ -446,12 +458,22 @@ function stop_lttng_relayd_opt()
 
 function stop_lttng_relayd()
 {
-	stop_lttng_relayd_opt 1 "$@"
+	stop_lttng_relayd_opt 0 1 "$@"
 }
 
 function stop_lttng_relayd_notap()
 {
-	stop_lttng_relayd_opt 0 "$@"
+	stop_lttng_relayd_opt 0 0 "$@"
+}
+
+function stop_lttng_relayd_remote_support()
+{
+	stop_lttng_relayd_opt 1 1 "$@"
+}
+
+function stop_lttng_relayd_remote_support_notap()
+{
+	stop_lttng_relayd_opt 1 0 "$@"
 }
 
 #First arg: show tap output
