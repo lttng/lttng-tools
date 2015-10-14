@@ -504,11 +504,13 @@ int utils_create_lock_file(const char *filepath)
 {
 	int ret;
 	int fd;
+	struct flock lock;
 
 	assert(filepath);
 
-	fd = open(filepath, O_CREAT,
-		O_WRONLY | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	memset(&lock, 0, sizeof(lock));
+	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR |
+		S_IRGRP | S_IWGRP);
 	if (fd < 0) {
 		PERROR("open lock file %s", filepath);
 		ret = -1;
@@ -520,8 +522,12 @@ int utils_create_lock_file(const char *filepath)
 	 * already a process using the same lock file running
 	 * and we should exit.
 	 */
-	ret = flock(fd, LOCK_EX | LOCK_NB);
-	if (ret) {
+	lock.l_whence = SEEK_SET;
+	lock.l_type = F_WRLCK;
+
+	ret = fcntl(fd, F_SETLK, &lock);
+	if (ret == -1) {
+		PERROR("fcntl lock file");
 		ERR("Could not get lock file %s, another instance is running.",
 			filepath);
 		if (close(fd)) {
