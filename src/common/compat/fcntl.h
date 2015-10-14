@@ -26,7 +26,7 @@
 typedef long long off64_t;
 #endif
 
-#ifdef __FreeBSD__
+#if (defined(__FreeBSD__) || defined(__sun__))
 typedef off64_t loff_t;
 #endif
 
@@ -38,7 +38,7 @@ extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 
 #endif /* __linux__ */
 
-#if (defined(__FreeBSD__) || defined(__CYGWIN__))
+#if (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__))
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrapper.
  */
@@ -53,7 +53,7 @@ static inline int lttng_sync_file_range(int fd, off64_t offset,
 }
 #endif
 
-#if (defined(__FreeBSD__) || defined(__CYGWIN__))
+#if (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__))
 /*
  * Possible flags under Linux. Simply nullify them and avoid wrappers.
  */
@@ -78,8 +78,8 @@ static inline int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 }
 #endif
 
-#if !(defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__))
+#if !(defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__))
 #error "Please add support for your OS."
-#endif /* __linux__ , __FreeBSD__, __CYGWIN__ */
+#endif /* __linux__ , __FreeBSD__, __CYGWIN__, __sun__ */
 
 #endif /* _COMPAT_FCNTL_H */
