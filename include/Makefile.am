@@ -14,7 +14,7 @@ version.h:
 	## We first create variables for the current git version and
 	## the locations of the version.h and version.h.tmpl files.
 	##
-	@echo -n "Generating version.h... "
+	@echo $(ECHO_N) "Generating version.h... $(ECHO_C)"
 	@(version_h_tmpl="$(top_srcdir)/include/version.h.tmpl"; \
 	if [ -f "$${version_h_tmpl}" ]; then \
 		version_h="$(top_builddir)/include/version.h"; \
@@ -35,7 +35,7 @@ version.h:
 			[ "$${version_h_tmpl}" -nt "$${version_h}" ]; then \
 			cp "$${version_h_tmpl}" "$${version_h}"; \
 		fi; \
-		echo -n "git version: \"$${git_version}\""; \
+		echo $(ECHO_N) "git version: \"$${git_version}\"$(ECHO_C)"; \
 		##
 		## We verify that git_version isn't the same as the one
 		## currently in the file (if there is one), as we don't
@@ -47,11 +47,11 @@ version.h:
 		if [ x"$${old_version}" != x"$${new_version}" ]; then \
 			$(SED) -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
 		else \
-			echo -n " (cached)"; \
+			echo $(ECHO_N) " (cached)$(ECHO_C)"; \
 		fi; \
-		echo -n "... "; \
+		echo $(ECHO_N) "... $(ECHO_C)"; \
 	fi)
-	@echo "ok"
+	@echo "$(ECHO_T)ok"
 
 ##
 ## version.h is defined as a .PHONY file even if it's a real file as
