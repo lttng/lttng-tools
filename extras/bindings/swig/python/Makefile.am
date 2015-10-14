@@ -1,5 +1,5 @@
 lttng.i: lttng.i.in
-	sed "s/LTTNG_VERSION_STR/LTTng $(PACKAGE_VERSION)/g" < $(srcdir)/lttng.i.in >lttng.i
+	$(SED) "s/LTTNG_VERSION_STR/LTTng $(PACKAGE_VERSION)/g" < $(srcdir)/lttng.i.in >lttng.i
 
 AM_CFLAGS = $(PYTHON_INCLUDE) -I$(top_srcdir)/include
 

@@ -42,10 +42,10 @@ version.h:
 		## want to update the file if it is already up to date.
 		##
 		version_match='^#define GIT_VERSION.*'; \
-		old_version=$$(grep "$${version_match}" "$${version_h}"); \
+		old_version=$$($(GREP) "$${version_match}" "$${version_h}"); \
 		new_version="#define GIT_VERSION	\"$${git_version}\""; \
 		if [ x"$${old_version}" != x"$${new_version}" ]; then \
-			sed -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
+			$(SED) -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
 		else \
 			echo -n " (cached)"; \
 		fi; \
