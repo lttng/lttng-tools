@@ -1369,30 +1369,52 @@ function trace_match_only()
     fi
 }
 
-function validate_trace
+function validate_trace_opt
 {
-	local event_name=$1
-	local trace_path=$2
+	local remote=$1
+	local event_name=$2
+	local trace_path=$3
 
-	which $BABELTRACE_BIN >/dev/null
+	local babeltrace=$BABELTRACE_BIN
+
+	if [ $remote -eq 1 -a ! -z "$REMOTE_RELAYD_TEST" ]; then
+		if [[ "$BASE_COMMAND" == "$LOCAL_COMMAND" ]]; then
+			fail "Validate remote trace: base command not overridden"
+			return 1
+		fi
+		babeltrace="$REMOTE_BABELTRACE_PATH$REMOTE_BABELTRACE_BIN"
+	fi
+
+	$BASE_COMMAND "which $babeltrace >/dev/null"
 	if [ $? -ne 0 ]; then
 	    skip 0 "Babeltrace binary not found. Skipping trace validation"
 	fi
 
-	OLDIFS=$IFS
+	OLDIFS="$IFS"
 	IFS=","
-	for i in $event_name; do
-		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
+	event_name=($event_name)
+	IFS="$OLDIFS"
+
+	for i in "${event_name[@]}"; do
+		traced=$($BASE_COMMAND "$babeltrace $trace_path 2>/dev/null" | grep $i | wc -l)
 		if [ "$traced" -ne 0 ]; then
-			pass "Validate trace for event $i, $traced events"
+			pass "Validate trace for event $i, $traced events (base command: $BASE_COMMAND)"
 		else
-			fail "Validate trace for event $i"
+			fail "Validate trace for event $i (base command: $BASE_COMMAND)"
 			diag "Found $traced occurences of $i"
 		fi
 	done
-	ret=$?
-	IFS=$OLDIFS
 	return $ret
+}
+
+function validate_trace()
+{
+	validate_trace_opt 0 "$@"
+}
+
+function validate_trace_remote_support()
+{
+	validate_trace_opt 1 "$@"
 }
 
 function validate_trace_exp()
