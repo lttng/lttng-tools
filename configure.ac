@@ -732,13 +732,6 @@ AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
 	AS_ECHO("Disabled")
 ])
 
-# Do we build only the consumerd, or everything
-AS_IF([test "x$consumerd_only" = "xyes"],[
-	AS_ECHO("Only the consumerd daemon will be built.")
-],[
-	AS_ECHO("All binaries will be built.")
-])
-
 # Print the bindir and libdir this `make install' will install into.
 AS_ECHO()
 AS_ECHO_N("Binaries will be installed in:  ")
@@ -747,47 +740,45 @@ AS_ECHO_N("Libraries will be installed in: ")
 AS_ECHO("`eval eval echo $libdir`")
 
 # If we build the sessiond, print the paths it will use
-AS_IF([test "x$consumerd_only" = "xno"],[
-	AS_ECHO()
-	AS_ECHO_N("The lttng command will look for the lttng-sessiond executable at: ")
-	AS_IF([test "$SESSIOND_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $bindir`")
-		AS_ECHO("/lttng-sessiond")
-	],[
-		AS_ECHO("$SESSIOND_BIN")
-	])
+AS_ECHO()
+AS_ECHO_N("The lttng command will look for the lttng-sessiond executable at: ")
+AS_IF([test "$SESSIOND_BIN" = ""],[
+	AS_ECHO_N("`eval eval echo $bindir`")
+	AS_ECHO("/lttng-sessiond")
+],[
+	AS_ECHO("$SESSIOND_BIN")
+])
 
-	AS_ECHO()
-	AS_ECHO("The sessiond daemon will look in the following directories: ")
-	AS_ECHO_N("32-bit consumerd executable at: ")
-	AS_IF([test "$CONSUMERD32_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
-		AS_ECHO("/lttng-consumerd")
-	],[
-		AS_ECHO("$CONSUMERD32_BIN")
-	])
+AS_ECHO()
+AS_ECHO("The sessiond daemon will look in the following directories: ")
+AS_ECHO_N("32-bit consumerd executable at: ")
+AS_IF([test "$CONSUMERD32_BIN" = ""],[
+	AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
+	AS_ECHO("/lttng-consumerd")
+],[
+	AS_ECHO("$CONSUMERD32_BIN")
+])
 
-	AS_ECHO_N("32-bit consumer libraries in:   ")
-	AS_IF([test "$CONSUMERD32_LIBDIR" = ""],[
-		AS_ECHO("`eval eval echo $libdir`")
-	],[
-		AS_ECHO("$CONSUMERD32_LIBDIR")
-	])
+AS_ECHO_N("32-bit consumer libraries in:   ")
+AS_IF([test "$CONSUMERD32_LIBDIR" = ""],[
+	AS_ECHO("`eval eval echo $libdir`")
+],[
+	AS_ECHO("$CONSUMERD32_LIBDIR")
+])
 
-	AS_ECHO_N("64-bit consumerd executable at: ")
-	AS_IF([test "$CONSUMERD64_BIN" = ""],[
-		AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
-		AS_ECHO("/lttng-consumerd")
-	],[
-		AS_ECHO("$CONSUMERD64_BIN")
-	])
+AS_ECHO_N("64-bit consumerd executable at: ")
+AS_IF([test "$CONSUMERD64_BIN" = ""],[
+	AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
+	AS_ECHO("/lttng-consumerd")
+],[
+	AS_ECHO("$CONSUMERD64_BIN")
+])
 
-	AS_ECHO_N("64-bit consumer libraries in:   ")
-	AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
-		AS_ECHO("`eval eval echo $libdir`")
-	],[
-		AS_ECHO("$CONSUMERD64_LIBDIR")
-	])
+AS_ECHO_N("64-bit consumer libraries in:   ")
+AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
+	AS_ECHO("`eval eval echo $libdir`")
+],[
+	AS_ECHO("$CONSUMERD64_LIBDIR")
 ])
 
 AS_ECHO()
