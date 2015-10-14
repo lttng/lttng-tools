@@ -54,4 +54,53 @@ typedef struct lttng_sock_cred lttng_sock_cred;
 #error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__ */
 
+
+#ifdef __sun__
+
+# ifndef CMSG_ALIGN
+#  ifdef _CMSG_DATA_ALIGN
+#   define CMSG_ALIGN(len) _CMSG_DATA_ALIGN(len)
+#  else
+    /* aligning to sizeof (long) is assumed to be portable (fd.o#40235) */
+#   define CMSG_ALIGN(len) (((len) + sizeof (long) - 1) & ~(sizeof (long) - 1))
+#  endif
+#  ifndef CMSG_SPACE
+#    define CMSG_SPACE(len) (CMSG_ALIGN (sizeof (struct cmsghdr)) + CMSG_ALIGN (len))
+#  endif
+#  ifndef CMSG_LEN
+#    define CMSG_LEN(len) (CMSG_ALIGN (sizeof (struct cmsghdr)) + (len))
+#  endif
+# endif
+
+
+#include <ucred.h>
+static int
+getpeereid(int s, uid_t *euid, gid_t *gid)
+{
+	ucred_t *ucred = NULL;
+	int ret = 0;
+
+	if (getpeerucred(s, &ucred) == -1) {
+		ret = -1;
+		goto end;
+	}
+
+	if ((*euid = ucred_geteuid(ucred)) == -1) {
+		ret = -1;
+		goto free;
+	}
+
+	if ((*gid = ucred_getrgid(ucred)) == -1) {
+		ret = -1;
+		goto free;
+	}
+
+free:
+	ucred_free(ucred);
+end:
+	return ret;
+}
+
+#endif /* __sun__ */
+
 #endif /* _COMPAT_SOCKET_H */
