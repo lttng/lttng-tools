@@ -354,21 +354,39 @@ function lttng_disable_kernel_channel_fail()
 
 function start_lttng_relayd_opt()
 {
-	local withtap=$1
-	local opt=$2
+	local remote=$1
+	local withtap=$2
+	local opt=$3
 
-	DIR=$(readlink -f $TESTDIR)
+	# Normal emplacement of lttng-relayd
+	local relayd_full_path=$RELAYD_PATH_REL$RELAYD_BIN
+	local relayd_bin_name="lt-$RELAYD_BIN"
 
-	if [ -z $($BASE_COMMAND "pgrep --full lt-$RELAYD_BIN[^\[]") ]; then
-		$BASE_COMMAND "$DIR/$RELAYD_PATH_REL/$RELAYD_BIN -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST "
-		if [ $? -eq 1 ]; then
+	DIR="$(readlink -f $TESTDIR)/"
+
+	if [ $remote -eq 1 -a ! -z "$REMOTE_RELAYD_TEST" ]; then
+		if [[ "$BASE_COMMAND" == "$LOCAL_COMMAND" ]]; then
+			fail "Start remote lttng-relayd: base command not overridden"
+			return 1
+		fi
+
+		# DIR is not needed on remote execution
+		DIR=""
+		# Override the default value for bin and regex name
+		relayd_full_path="$REMOTE_RELAYD_PATH$REMOTE_RELAYD_BIN"
+		relayd_bin_name=$REMOTE_RELAYD_BIN
+	fi
+
+	if [ -z $($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]") ]; then
+		$BASE_COMMAND "$DIR$relayd_full_path -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST"
+		if [ $? -ne 0 ]; then
 			if [ $withtap -eq "1" ]; then
-				fail "Start lttng-relayd (opt: $opt)"
+				fail "Start lttng-relayd (opt: $opt) (base command: $BASE_COMMAND)"
 			fi
 			return 1
 		else
 			if [ $withtap -eq "1" ]; then
-				pass "Start lttng-relayd (opt: $opt)"
+				pass "Start lttng-relayd (opt: $opt) (base command: $BASE_COMMAND)"
 			fi
 		fi
 	else
@@ -378,12 +396,22 @@ function start_lttng_relayd_opt()
 
 function start_lttng_relayd()
 {
-	start_lttng_relayd_opt 1 "$@"
+	start_lttng_relayd_opt 0 1 "$@"
 }
 
 function start_lttng_relayd_notap()
 {
-	start_lttng_relayd_opt 0 "$@"
+	start_lttng_relayd_opt 0 0 "$@"
+}
+
+function start_lttng_relayd_remote_support()
+{
+	start_lttng_relayd_opt 1 1 "$@"
+}
+
+function start_lttng_relayd_remote_support_no_tap()
+{
+	start_lttng_relayd_opt 1 0 "$@"
 }
 
 function stop_lttng_relayd_opt()
