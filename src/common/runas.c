@@ -30,8 +30,11 @@
 #include <fcntl.h>
 #include <sched.h>
 #include <sys/signal.h>
+#include <signal.h>
 #include <assert.h>
+#ifdef __linux__
 #include <sys/prctl.h>
+#endif
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -323,12 +326,14 @@ int run_as_worker(struct run_as_worker *worker)
 	memset(worker->procname, 0, proc_orig_len);
 	strncpy(worker->procname, DEFAULT_RUN_AS_WORKER_NAME, proc_orig_len);
 
+	#ifdef __linux__
 	ret = prctl(PR_SET_NAME, DEFAULT_RUN_AS_WORKER_NAME, 0, 0, 0);
 	if (ret) {
 		/* Don't fail as this is not essential. */
 		PERROR("prctl PR_SET_NAME");
 		ret = 0;
 	}
+	#endif
 
 	sendret.ret = 0;
 	sendret._errno = 0;
@@ -533,7 +538,7 @@ int reset_sighandler(void)
 	int sig, ret = 0;
 
 	DBG("Resetting run_as worker signal handlers to default");
-	for (sig = SIGHUP; sig <= SIGUNUSED; sig++) {
+	for (sig = SIGHUP; sig <= SIGRTMAX; sig++) {
 		/* Skip unblockable signals. */
 		if (sig == SIGKILL || sig == SIGSTOP) {
 			continue;
