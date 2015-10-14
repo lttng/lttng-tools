@@ -396,10 +396,11 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 	lttng_sock_cred *creds;
+
+	memset(anc_buf, 0, CMSG_SPACE(sizeof_cred) * sizeof(char));
 #endif /* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
-	memset(anc_buf, 0, CMSG_SPACE(sizeof_cred) * sizeof(char));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
