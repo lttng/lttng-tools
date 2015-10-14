@@ -40,7 +40,7 @@ struct relay_session {
 	 */
 	uint64_t id;
 	char session_name[LTTNG_NAME_MAX];
-	char hostname[HOST_NAME_MAX];
+	char hostname[LTTNG_HOST_NAME_MAX];
 	uint32_t live_timer;
 
 	/* Session in snapshot mode. */
