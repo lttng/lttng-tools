@@ -532,9 +532,9 @@ function stop_lttng_consumerd_opt()
 	if [ $withtap -eq "1" ]; then
 		diag "Killing $CONSUMERD_BIN pids: $(echo $PID_CONSUMERD | tr '\n' ' ')"
 	fi
+
 	kill $kill_opt $PID_CONSUMERD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	retval=$?
-	set +x
 
 	if [ $? -eq 1 ]; then
 		if [ $withtap -eq "1" ]; then
