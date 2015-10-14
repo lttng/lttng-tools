@@ -1216,9 +1216,19 @@ int utils_recursive_rmdir(const char *path)
 		if (!strcmp(entry->d_name, ".")
 				|| !strcmp(entry->d_name, ".."))
 			continue;
-		switch (entry->d_type) {
-		case DT_DIR:
-		{
+
+		struct stat st;
+		char filename[PATH_MAX];
+
+		if (snprintf(filename, sizeof(filename), "%s/%s", path, entry->d_name)) {
+			continue;
+		}
+
+		if (stat(filename, &st)) {
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
 			char subpath[PATH_MAX];
 
 			strncpy(subpath, path, PATH_MAX);
@@ -1230,12 +1240,9 @@ int utils_recursive_rmdir(const char *path)
 			if (utils_recursive_rmdir(subpath)) {
 				is_empty = 0;
 			}
-			break;
-		}
-		case DT_REG:
+		} else if (S_ISREG(st.st_mode)) {
 			is_empty = 0;
-			break;
-		default:
+		} else {
 			ret = -EINVAL;
 			goto end;
 		}
