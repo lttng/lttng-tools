@@ -56,4 +56,6 @@
 
 #define LTTNG_NAME_MAX				255
 
+#define LTTNG_HOST_NAME_MAX			64
+
 #endif /* LTTNG_CONSTANT_H */
