@@ -16,7 +16,7 @@
  */
 
 #include <tap/tap.h>
-#include <common/config/config.h>
+#include <common/config/session-config.h>
 #include <common/utils.h>
 #include <string.h>
 

@@ -17,7 +17,7 @@
 
 #define _LGPL_SOURCE
 #include <common/error.h>
-#include <common/config/config.h>
+#include <common/config/session-config.h>
 
 #include "load-session-thread.h"
 #include "lttng-sessiond.h"

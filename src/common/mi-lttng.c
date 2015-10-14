@@ -17,7 +17,7 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/config/config.h>
+#include <common/config/session-config.h>
 #include <lttng/snapshot-internal.h>
 #include "mi-lttng.h"
 

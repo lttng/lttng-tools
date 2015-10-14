@@ -54,7 +54,7 @@
 #include <common/sessiond-comm/relayd.h>
 #include <common/uri.h>
 #include <common/utils.h>
-#include <common/config/config.h>
+#include <common/config/session-config.h>
 #include <urcu/rculist.h>
 
 #include "cmd.h"
@@ -305,7 +305,7 @@ end:
 
 /*
  * config_entry_handler_cb used to handle options read from a config file.
- * See config_entry_handler_cb comment in common/config/config.h for the
+ * See config_entry_handler_cb comment in common/config/session-config.h for the
  * return value conventions.
  */
 static int config_entry_handler(const struct config_entry *entry, void *unused)
