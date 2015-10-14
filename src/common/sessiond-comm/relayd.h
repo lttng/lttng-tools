@@ -19,15 +19,12 @@
 #ifndef _RELAYD_COMM
 #define _RELAYD_COMM
 
-#define _GNU_SOURCE
-
 #include <limits.h>
 #include <stdint.h>
 
 #include <lttng/lttng.h>
 #include <common/defaults.h>
 #include <common/index/ctf-index.h>
-#include <config.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
 #define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR

@@ -18,7 +18,6 @@
 #ifndef _LTTCOMM_INET_H
 #define _LTTCOMM_INET_H
 
-#define _GNU_SOURCE
 #include <limits.h>
 
 #include "sessiond-comm.h"

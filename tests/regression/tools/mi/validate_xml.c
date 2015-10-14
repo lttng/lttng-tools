@@ -22,7 +22,6 @@
   * argv[2] Path to the XML to be validated
   */
 
-#define _GNU_SOURCE
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>

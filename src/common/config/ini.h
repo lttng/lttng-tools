@@ -39,7 +39,6 @@
 extern "C" {
 #endif
 
-#define _GNU_SOURCE
 #include <stdio.h>
 
 typedef int (*ini_entry_handler)(void *, const char *, const char *,

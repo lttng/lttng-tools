@@ -19,8 +19,6 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
 
-#include <config.h>
-
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"
 

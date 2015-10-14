@@ -31,7 +31,6 @@
  * http://code.google.com/p/inih/
  */
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>

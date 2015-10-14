@@ -15,7 +15,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <popt.h>
 #include <stdio.h>
@@ -26,7 +25,6 @@
 #include <unistd.h>
 
 #include "../command.h"
-#include <config.h>
 
 static char *opt_session_name;
 static char *opt_viewer;
