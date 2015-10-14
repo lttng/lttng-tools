@@ -54,4 +54,6 @@
 #define LTTNG_MAX_PID				INT32_MAX
 #define LTTNG_MAX_PID_STR			"2147483647"
 
+#define LTTNG_NAME_MAX				255
+
 #endif /* LTTNG_CONSTANT_H */

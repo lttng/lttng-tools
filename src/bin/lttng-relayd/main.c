@@ -1068,12 +1068,12 @@ static int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 	int ret = 0, send_ret;
 	struct relay_session *session;
 	struct lttcomm_relayd_status_session reply;
-	char session_name[NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
 	char hostname[HOST_NAME_MAX];
 	uint32_t live_timer = 0;
 	bool snapshot = false;
 
-	memset(session_name, 0, NAME_MAX);
+	memset(session_name, 0, LTTNG_NAME_MAX);
 	memset(hostname, 0, HOST_NAME_MAX);
 
 	memset(&reply, 0, sizeof(reply));

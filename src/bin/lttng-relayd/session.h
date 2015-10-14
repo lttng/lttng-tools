@@ -26,6 +26,7 @@
 #include <urcu/list.h>
 #include <urcu/ref.h>
 
+#include <lttng/constant.h>
 #include <common/hashtable/hashtable.h>
 
 /*
@@ -38,7 +39,7 @@ struct relay_session {
 	 * It is used to match a set of streams to their session.
 	 */
 	uint64_t id;
-	char session_name[NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
 	char hostname[HOST_NAME_MAX];
 	uint32_t live_timer;
 

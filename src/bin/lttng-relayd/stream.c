@@ -149,7 +149,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 		DBG("Tracefile %s/%s created", stream->path_name, stream->channel_name);
 	}
 
-	if (!strncmp(stream->channel_name, DEFAULT_METADATA_NAME, NAME_MAX)) {
+	if (!strncmp(stream->channel_name, DEFAULT_METADATA_NAME, LTTNG_NAME_MAX)) {
 		stream->is_metadata = 1;
 	}
 
