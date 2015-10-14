@@ -479,7 +479,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 		goto error;
 	}
 
-	ret = fprintf(fp, "%d\n", pid);
+	ret = fprintf(fp, "%d\n", (int) pid);
 	if (ret < 0) {
 		PERROR("fprintf pid file");
 		goto error;
@@ -488,7 +488,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 	if (fclose(fp)) {
 		PERROR("fclose");
 	}
-	DBG("Pid %d written in file %s", pid, filepath);
+	DBG("Pid %d written in file %s", (int) pid, filepath);
 	ret = 0;
 error:
 	return ret;

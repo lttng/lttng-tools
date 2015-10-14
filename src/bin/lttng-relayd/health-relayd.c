@@ -207,7 +207,7 @@ int setup_health_path(void)
 		}
 		snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
 			DEFAULT_GLOBAL_RELAY_HEALTH_UNIX_SOCK,
-			getpid());
+			(int) getpid());
 	} else {
 		/* Set health check Unix path */
 		if (strlen(health_unix_sock_path) != 0) {
@@ -216,7 +216,7 @@ int setup_health_path(void)
 
 		snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
 			DEFAULT_HOME_RELAY_HEALTH_UNIX_SOCK,
-			home_path, getpid());
+			home_path, (int) getpid());
 	}
 
 end:
