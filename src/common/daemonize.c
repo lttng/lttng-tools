@@ -18,7 +18,7 @@
 
 #define _LGPL_SOURCE
 #include <unistd.h>
-#include <paths.h>
+#include <common/compat/paths.h>
 #include <fcntl.h>
 #include <wait.h>
 #include <stdlib.h>
