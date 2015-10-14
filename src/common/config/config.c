@@ -40,7 +40,7 @@
 #include <lttng/lttng.h>
 #include <lttng/snapshot.h>
 
-#include "config.h"
+#include "cconfig.h"
 #include "config-internal.h"
 
 struct handler_filter_args {

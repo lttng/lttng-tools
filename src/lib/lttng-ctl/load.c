@@ -23,7 +23,7 @@
 #include <lttng/load.h>
 #include <lttng/load-internal.h>
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 
 #include "lttng-ctl-helper.h"
 

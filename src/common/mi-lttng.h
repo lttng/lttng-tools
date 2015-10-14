@@ -23,7 +23,7 @@
 
 #include <common/error.h>
 #include <common/macros.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 #include <lttng/lttng.h>
 
 /* Don't want to reference snapshot-internal.h here */

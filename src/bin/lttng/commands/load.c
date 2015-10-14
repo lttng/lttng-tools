@@ -24,7 +24,7 @@
 #include <assert.h>
 
 #include <common/mi-lttng.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 
 #include "../command.h"
 
