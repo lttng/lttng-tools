@@ -377,7 +377,7 @@ int run_as_cmd(struct run_as_worker *worker,
 			recvret.ret = -1;
 			recvret._errno = EPERM;
 			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
-				uid, geteuid());
+				(int) uid, (int) geteuid());
 			goto end;
 		}
 	}
@@ -469,7 +469,7 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
-			path, mode, uid, gid);
+			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
@@ -482,7 +482,7 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
-			path, mode, uid, gid);
+			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
@@ -499,7 +499,7 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
-			path, flags, mode, uid, gid);
+			path, flags, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.open.path, path, PATH_MAX - 1);
 	data.u.open.path[PATH_MAX - 1] = '\0';
 	data.u.open.flags = flags;
@@ -513,7 +513,7 @@ int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("unlink() %s with for uid %d and gid %d",
-			path, uid, gid);
+			path, (int) uid, (int) gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
 	return run_as(RUN_AS_UNLINK, &data, uid, gid);
@@ -525,7 +525,7 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
-			path, uid, gid);
+			path, (int) uid, (int) gid);
 	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
 	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
 	return run_as(RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
