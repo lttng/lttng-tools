@@ -25,7 +25,7 @@
 #include <inttypes.h>
 
 #include <common/common.h>
-#include <common/consumer.h>
+#include <common/consumer/consumer.h>
 #include <common/defaults.h>
 
 #include "consumer.h"
