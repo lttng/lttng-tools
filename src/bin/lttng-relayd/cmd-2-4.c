@@ -19,12 +19,13 @@
 
 #define _LGPL_SOURCE
 #include <assert.h>
-#include <string.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/relayd.h>
 
 #include <common/compat/endian.h>
+#include <common/compat/string.h>
+#include <lttng/constant.h>
 
 #include "cmd-generic.h"
 #include "lttng-relayd.h"
@@ -35,15 +36,29 @@ int cmd_create_session_2_4(struct relay_connection *conn,
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 session_info;
+	size_t len;
 
 	ret = cmd_recv(conn->sock, &session_info, sizeof(session_info));
 	if (ret < 0) {
 		ERR("Unable to recv session info version 2.4");
 		goto error;
 	}
-
+	len = lttng_strnlen(session_info.session_name, sizeof(session_info.session_name));
+	/* Ensure that NULL-terminated and fits in local filename length. */
+	if (len == sizeof(session_info.session_name) || len >= LTTNG_NAME_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("Session name too long");
+		goto error;
+	}
 	strncpy(session_name, session_info.session_name,
 			sizeof(session_info.session_name));
+
+	len = lttng_strnlen(session_info.hostname, sizeof(session_info.hostname));
+	if (len == sizeof(session_info.hostname) || len >= LTTNG_HOST_NAME_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("Session name too long");
+		goto error;
+	}
 	strncpy(hostname, session_info.hostname,
 			sizeof(session_info.hostname));
 	*live_timer = be32toh(session_info.live_timer);

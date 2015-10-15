@@ -129,7 +129,15 @@ static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
 
+	if (strlen(session_name) >= sizeof(msg.session_name)) {
+		ret = -1;
+		goto error;
+	}
 	strncpy(msg.session_name, session_name, sizeof(msg.session_name));
+	if (strlen(hostname) >= sizeof(msg.hostname)) {
+		ret = -1;
+		goto error;
+	}
 	strncpy(msg.hostname, hostname, sizeof(msg.hostname));
 	msg.live_timer = htobe32(session_live_timer);
 	msg.snapshot = htobe32(snapshot);
@@ -247,7 +255,15 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	/* Compat with relayd 2.1 */
 	if (rsock->minor == 1) {
 		memset(&msg, 0, sizeof(msg));
+		if (strlen(channel_name) >= sizeof(msg.channel_name)) {
+			ret = -1;
+			goto error;
+		}
 		strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name));
+		if (strlen(pathname) >= sizeof(msg.pathname)) {
+			ret = -1;
+			goto error;
+		}
 		strncpy(msg.pathname, pathname, sizeof(msg.pathname));
 
 		/* Send command */
@@ -258,7 +274,15 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	} else {
 		memset(&msg_2_2, 0, sizeof(msg_2_2));
 		/* Compat with relayd 2.2+ */
+		if (strlen(channel_name) >= sizeof(msg_2_2.channel_name)) {
+			ret = -1;
+			goto error;
+		}
 		strncpy(msg_2_2.channel_name, channel_name, sizeof(msg_2_2.channel_name));
+		if (strlen(pathname) >= sizeof(msg_2_2.pathname)) {
+			ret = -1;
+			goto error;
+		}
 		strncpy(msg_2_2.pathname, pathname, sizeof(msg_2_2.pathname));
 		msg_2_2.tracefile_size = htobe64(tracefile_size);
 		msg_2_2.tracefile_count = htobe64(tracefile_count);
