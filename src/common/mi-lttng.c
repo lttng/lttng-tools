@@ -397,6 +397,7 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 	default:
 		/* Should not have an unknown domain */
 		assert(0);
+		return 0;
 	}
 }
 
@@ -413,6 +414,7 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 	default:
 		/* Should not have an unknow buffer type */
 		assert(0);
+		return 0;
 	}
 }
 
