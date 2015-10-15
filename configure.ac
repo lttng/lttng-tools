@@ -53,6 +53,8 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
+AX_LIB_SOCKET_NSL
+
 # Compute minor/major/patchlevel version numbers
 major_version=$(echo AC_PACKAGE_VERSION | $SED 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
 minor_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
@@ -111,7 +113,7 @@ AC_CHECK_FUNCS([ \
 	gethostbyname gethostname getpagesize localtime_r memchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
-	strtoull dirfd \
+	strtoull dirfd gethostbyname2 getipnodebyname \
 ])
 
 # Babeltrace viewer check
@@ -402,8 +404,6 @@ else
 [if you want Python bindings.])
 
 fi
-
-AX_LIB_SOCKET_NSL
 
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
