@@ -19,12 +19,12 @@
 
 #define _LGPL_SOURCE
 #include <assert.h>
-#include <string.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/relayd.h>
 
 #include <common/compat/endian.h>
+#include <common/compat/string.h>
 
 #include "cmd-generic.h"
 #include "cmd-2-1.h"
@@ -41,6 +41,7 @@ int cmd_recv_stream_2_2(struct relay_connection *conn,
 	struct lttcomm_relayd_add_stream_2_2 stream_info;
 	char *path_name = NULL;
 	char *channel_name = NULL;
+	size_t len;
 
 	ret = cmd_recv(conn->sock, &stream_info, sizeof(stream_info));
 	if (ret < 0) {
@@ -48,17 +49,29 @@ int cmd_recv_stream_2_2(struct relay_connection *conn,
 		goto error;
 	}
 
+	len = lttng_strnlen(stream_info.pathname, sizeof(stream_info.pathname));
+	/* Ensure that NULL-terminated and fits in local filename length. */
+	if (len == sizeof(stream_info.pathname) || len >= NAME_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("Path name too long");
+		goto error;
+	}
 	path_name = create_output_path(stream_info.pathname);
 	if (!path_name) {
 		PERROR("Path name allocation");
 		ret = -ENOMEM;
 		goto error;
 	}
-
+	len = lttng_strnlen(stream_info.channel_name, sizeof(stream_info.channel_name));
+	if (len == sizeof(stream_info.channel_name) || len >= DEFAULT_STREAM_NAME_LEN) {
+		ret = -ENAMETOOLONG;
+		ERR("Channel name too long");
+		goto error;
+	}
 	channel_name = strdup(stream_info.channel_name);
 	if (!channel_name) {
 		ret = -errno;
-		PERROR("Path name allocation");
+		PERROR("Channel name allocation");
 		goto error;
 	}
 
