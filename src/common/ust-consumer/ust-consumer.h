@@ -21,7 +21,7 @@
 
 #include <errno.h>
 
-#include <common/consumer.h>
+#include <common/consumer/consumer.h>
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 

@@ -604,6 +604,7 @@ AC_CONFIG_FILES([
 	src/common/Makefile
 	src/common/kernel-ctl/Makefile
 	src/common/kernel-consumer/Makefile
+	src/common/consumer/Makefile
 	src/common/ust-consumer/Makefile
 	src/common/hashtable/Makefile
 	src/common/sessiond-comm/Makefile

@@ -42,12 +42,11 @@
 #include <common/kernel-consumer/kernel-consumer.h>
 #include <common/relayd/relayd.h>
 #include <common/ust-consumer/ust-consumer.h>
-#include <common/consumer-timer.h>
-
-#include "consumer.h"
-#include "consumer-stream.h"
-#include "consumer-testpoint.h"
-#include "align.h"
+#include <common/consumer/consumer-timer.h>
+#include <common/consumer/consumer.h>
+#include <common/consumer/consumer-stream.h>
+#include <common/consumer/consumer-testpoint.h>
+#include <common/align.h>
 
 struct lttng_consumer_global_data consumer_data = {
 	.stream_count = 0,

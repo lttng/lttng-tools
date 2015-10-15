@@ -19,7 +19,7 @@
 #ifndef _LTTNG_KCONSUMER_H
 #define _LTTNG_KCONSUMER_H
 
-#include <common/consumer.h>
+#include <common/consumer/consumer.h>
 
 int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream);
 int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,

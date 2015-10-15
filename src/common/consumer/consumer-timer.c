@@ -26,11 +26,10 @@
 #include <common/compat/endian.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-consumer/kernel-consumer.h>
-#include <common/consumer-stream.h>
-
-#include "consumer-timer.h"
-#include "consumer-testpoint.h"
-#include "ust-consumer/ust-consumer.h"
+#include <common/consumer/consumer-stream.h>
+#include <common/consumer/consumer-timer.h>
+#include <common/consumer/consumer-testpoint.h>
+#include <common/ust-consumer/ust-consumer.h>
 
 static struct timer_signal_data timer_signal = {
 	.tid = 0,

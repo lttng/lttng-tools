@@ -29,7 +29,7 @@
 #include <common/utils.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/ust-consumer/ust-consumer.h>
-#include <common/consumer.h>
+#include <common/consumer/consumer.h>
 
 #include "consumer-metadata-cache.h"
 
