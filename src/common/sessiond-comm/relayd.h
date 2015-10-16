@@ -19,15 +19,12 @@
 #ifndef _RELAYD_COMM
 #define _RELAYD_COMM
 
-#define _GNU_SOURCE
-
 #include <limits.h>
 #include <stdint.h>
 
 #include <lttng/lttng.h>
 #include <common/defaults.h>
 #include <common/index/ctf-index.h>
-#include <config.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
 #define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR
@@ -68,7 +65,7 @@ struct lttcomm_relayd_status_session {
  */
 struct lttcomm_relayd_add_stream {
 	char channel_name[DEFAULT_STREAM_NAME_LEN];
-	char pathname[PATH_MAX];
+	char pathname[LTTNG_PATH_MAX];
 } LTTNG_PACKED;
 
 /*
@@ -77,7 +74,7 @@ struct lttcomm_relayd_add_stream {
  */
 struct lttcomm_relayd_add_stream_2_2 {
 	char channel_name[DEFAULT_STREAM_NAME_LEN];
-	char pathname[PATH_MAX];
+	char pathname[LTTNG_PATH_MAX];
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
 } LTTNG_PACKED;
@@ -168,8 +165,8 @@ struct lttcomm_relayd_index {
  * Create session in 2.4 adds additionnal parameters for live reading.
  */
 struct lttcomm_relayd_create_session_2_4 {
-	char session_name[NAME_MAX];
-	char hostname[HOST_NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
+	char hostname[LTTNG_HOST_NAME_MAX];
 	uint32_t live_timer;
 	uint32_t snapshot;
 } LTTNG_PACKED;

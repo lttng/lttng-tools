@@ -23,7 +23,6 @@
 #ifndef LTTNG_UUID_H
 #define LTTNG_UUID_H
 
-#include <config.h>
 /*
  * Includes final \0.
  */

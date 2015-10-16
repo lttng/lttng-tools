@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <limits.h>
@@ -38,7 +37,7 @@
 LTTNG_HIDDEN
 int lttcomm_connect_unix_sock(const char *pathname)
 {
-	struct sockaddr_un sun;
+	struct sockaddr_un s_un;
 	int fd, ret, closeret;
 
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
@@ -48,12 +47,12 @@ int lttcomm_connect_unix_sock(const char *pathname)
 		goto error;
 	}
 
-	memset(&sun, 0, sizeof(sun));
-	sun.sun_family = AF_UNIX;
-	strncpy(sun.sun_path, pathname, sizeof(sun.sun_path));
-	sun.sun_path[sizeof(sun.sun_path) - 1] = '\0';
+	memset(&s_un, 0, sizeof(s_un));
+	s_un.sun_family = AF_UNIX;
+	strncpy(s_un.sun_path, pathname, sizeof(s_un.sun_path));
+	s_un.sun_path[sizeof(s_un.sun_path) - 1] = '\0';
 
-	ret = connect(fd, (struct sockaddr *) &sun, sizeof(sun));
+	ret = connect(fd, (struct sockaddr *) &s_un, sizeof(s_un));
 	if (ret < 0) {
 		/*
 		 * Don't print message on connect error, because connect is used in
@@ -81,11 +80,11 @@ LTTNG_HIDDEN
 int lttcomm_accept_unix_sock(int sock)
 {
 	int new_fd;
-	struct sockaddr_un sun;
+	struct sockaddr_un s_un;
 	socklen_t len = 0;
 
 	/* Blocking call */
-	new_fd = accept(sock, (struct sockaddr *) &sun, &len);
+	new_fd = accept(sock, (struct sockaddr *) &s_un, &len);
 	if (new_fd < 0) {
 		PERROR("accept");
 	}
@@ -110,7 +109,7 @@ int lttcomm_create_anon_unix_socketpair(int *fds)
 LTTNG_HIDDEN
 int lttcomm_create_unix_sock(const char *pathname)
 {
-	struct sockaddr_un sun;
+	struct sockaddr_un s_un;
 	int fd;
 	int ret = -1;
 
@@ -120,14 +119,14 @@ int lttcomm_create_unix_sock(const char *pathname)
 		goto error;
 	}
 
-	memset(&sun, 0, sizeof(sun));
-	sun.sun_family = AF_UNIX;
-	strncpy(sun.sun_path, pathname, sizeof(sun.sun_path));
-	sun.sun_path[sizeof(sun.sun_path) - 1] = '\0';
+	memset(&s_un, 0, sizeof(s_un));
+	s_un.sun_family = AF_UNIX;
+	strncpy(s_un.sun_path, pathname, sizeof(s_un.sun_path));
+	s_un.sun_path[sizeof(s_un.sun_path) - 1] = '\0';
 
 	/* Unlink the old file if present */
 	(void) unlink(pathname);
-	ret = bind(fd, (struct sockaddr *) &sun, sizeof(sun));
+	ret = bind(fd, (struct sockaddr *) &s_un, sizeof(s_un));
 	if (ret < 0) {
 		PERROR("bind");
 		goto error;
@@ -183,7 +182,7 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 
 	do {
 		len_last = iov[0].iov_len;
-		ret = recvmsg(sock, &msg, MSG_NOSIGNAL);
+		ret = lttng_recvmsg_nosigpipe(sock, &msg);
 		if (ret > 0) {
 			iov[0].iov_base += ret;
 			iov[0].iov_len -= ret;
@@ -396,10 +395,11 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len)
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 	lttng_sock_cred *creds;
+
+	memset(anc_buf, 0, CMSG_SPACE(sizeof_cred) * sizeof(char));
 #endif /* __linux__ */
 
 	memset(&msg, 0, sizeof(msg));
-	memset(anc_buf, 0, CMSG_SPACE(sizeof_cred) * sizeof(char));
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -524,7 +524,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 
 	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__))
 	{
 		int peer_ret;
 
@@ -557,7 +557,7 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	}
 	return ret;
 }
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__))
+#elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__))
 LTTNG_HIDDEN
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {

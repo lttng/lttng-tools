@@ -27,7 +27,7 @@
 #define MAP_GROWSDOWN 0
 #define MAP_ANONYMOUS MAP_ANON
 
-#elif defined(__CYGWIN__)
+#elif defined(__CYGWIN__) || defined(__sun__)
 
 #define MAP_GROWSDOWN 0
 

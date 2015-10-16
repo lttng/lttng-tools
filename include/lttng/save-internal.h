@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <stdint.h>
 
+#include <lttng/constant.h>
 #include <common/macros.h>
 
 /*
@@ -28,7 +29,7 @@
  */
 struct lttng_save_session_attr {
 	/* Name of the session to save, empty string means all. */
-	char session_name[NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
 	/* Destination of the session configuration. See lttng(1) for URL format. */
 	char configuration_url[PATH_MAX];
 	/* Overwrite the session configuration file if it exists. */

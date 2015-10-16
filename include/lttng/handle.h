@@ -31,7 +31,7 @@ extern "C" {
  */
 #define LTTNG_HANDLE_PADDING1              16
 struct lttng_handle {
-	char session_name[NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
 	struct lttng_domain domain;
 
 	char padding[LTTNG_HANDLE_PADDING1];

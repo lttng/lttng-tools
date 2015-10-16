@@ -15,7 +15,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <inttypes.h>
@@ -25,7 +24,7 @@
 
 #include <common/defaults.h>
 #include <common/error.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 #include <common/utils.h>
 #include <common/runas.h>
 #include <lttng/save-internal.h>

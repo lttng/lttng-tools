@@ -114,6 +114,41 @@
 
 #elif defined(__FreeBSD__)
 #include <machine/endian.h>
+
+#elif defined(__sun__)
+#include <sys/byteorder.h>
+#ifndef __BIG_ENDIAN
+#define __BIG_ENDIAN 4321
+#endif
+#ifndef __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN 1234
+#endif
+
+#ifdef _LITTLE_ENDIAN
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#endif
+#ifdef _BIG_ENDIAN
+#define __BYTE_ORDER __BIG_ENDIAN
+#endif
+
+#define LITTLE_ENDIAN  __LITTLE_ENDIAN
+#define BIG_ENDIAN     __BIG_ENDIAN
+#define PDP_ENDIAN     __PDP_ENDIAN
+#define BYTE_ORDER     __BYTE_ORDER
+
+#define betoh16(x) BE_16(x)
+#define letoh16(x) LE_16(x)
+#define betoh32(x) BE_32(x)
+#define letoh32(x) LE_32(x)
+#define betoh64(x) BE_64(x)
+#define letoh64(x) LE_64(x)
+#define htobe16(x) BE_16(x)
+#define be16toh(x) BE_16(x)
+#define htobe32(x) BE_32(x)
+#define be32toh(x) BE_32(x)
+#define htobe64(x) BE_64(x)
+#define be64toh(x) BE_64(x)
+
 #else
 #error "Please add support for your OS."
 #endif

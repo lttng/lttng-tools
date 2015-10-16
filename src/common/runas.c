@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <errno.h>
 #include <limits.h>
@@ -30,8 +29,11 @@
 #include <fcntl.h>
 #include <sched.h>
 #include <sys/signal.h>
+#include <signal.h>
 #include <assert.h>
+#ifdef __linux__
 #include <sys/prctl.h>
+#endif
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -323,12 +325,14 @@ int run_as_worker(struct run_as_worker *worker)
 	memset(worker->procname, 0, proc_orig_len);
 	strncpy(worker->procname, DEFAULT_RUN_AS_WORKER_NAME, proc_orig_len);
 
+	#ifdef __linux__
 	ret = prctl(PR_SET_NAME, DEFAULT_RUN_AS_WORKER_NAME, 0, 0, 0);
 	if (ret) {
 		/* Don't fail as this is not essential. */
 		PERROR("prctl PR_SET_NAME");
 		ret = 0;
 	}
+	#endif
 
 	sendret.ret = 0;
 	sendret._errno = 0;
@@ -373,7 +377,7 @@ int run_as_cmd(struct run_as_worker *worker,
 			recvret.ret = -1;
 			recvret._errno = EPERM;
 			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
-				uid, geteuid());
+				(int) uid, (int) geteuid());
 			goto end;
 		}
 	}
@@ -465,7 +469,7 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
-			path, mode, uid, gid);
+			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
@@ -478,7 +482,7 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
-			path, mode, uid, gid);
+			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
@@ -495,7 +499,7 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
-			path, flags, mode, uid, gid);
+			path, flags, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.open.path, path, PATH_MAX - 1);
 	data.u.open.path[PATH_MAX - 1] = '\0';
 	data.u.open.flags = flags;
@@ -509,7 +513,7 @@ int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("unlink() %s with for uid %d and gid %d",
-			path, uid, gid);
+			path, (int) uid, (int) gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
 	return run_as(RUN_AS_UNLINK, &data, uid, gid);
@@ -521,7 +525,7 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 	struct run_as_data data;
 
 	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
-			path, uid, gid);
+			path, (int) uid, (int) gid);
 	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
 	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
 	return run_as(RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
@@ -533,7 +537,7 @@ int reset_sighandler(void)
 	int sig, ret = 0;
 
 	DBG("Resetting run_as worker signal handlers to default");
-	for (sig = SIGHUP; sig <= SIGUNUSED; sig++) {
+	for (sig = SIGHUP; sig <= SIGRTMAX; sig++) {
 		/* Skip unblockable signals. */
 		if (sig == SIGKILL || sig == SIGSTOP) {
 			continue;

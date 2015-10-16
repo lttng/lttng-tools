@@ -15,7 +15,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <fcntl.h>
 #include <getopt.h>
@@ -37,7 +36,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <assert.h>
-#include <config.h>
 #include <urcu/compiler.h>
 #include <ulimit.h>
 #include <inttypes.h>
@@ -209,7 +207,7 @@ int setup_health_path(void)
 		}
 		snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
 			DEFAULT_GLOBAL_RELAY_HEALTH_UNIX_SOCK,
-			getpid());
+			(int) getpid());
 	} else {
 		/* Set health check Unix path */
 		if (strlen(health_unix_sock_path) != 0) {
@@ -218,7 +216,7 @@ int setup_health_path(void)
 
 		snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
 			DEFAULT_HOME_RELAY_HEALTH_UNIX_SOCK,
-			home_path, getpid());
+			home_path, (int) getpid());
 	}
 
 end:

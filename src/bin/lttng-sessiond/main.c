@@ -17,7 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <getopt.h>
 #include <grp.h>
@@ -38,7 +37,6 @@
 #include <sys/wait.h>
 #include <urcu/uatomic.h>
 #include <unistd.h>
-#include <config.h>
 
 #include <common/common.h>
 #include <common/compat/socket.h>
@@ -49,7 +47,7 @@
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
 #include <common/daemonize.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 
 #include "lttng-sessiond.h"
 #include "buffer-registry.h"
@@ -4903,7 +4901,7 @@ end:
 
 /*
  * config_entry_handler_cb used to handle options read from a config file.
- * See config_entry_handler_cb comment in common/config/config.h for the
+ * See config_entry_handler_cb comment in common/config/cconfig.h for the
  * return value conventions.
  */
 static int config_entry_handler(const struct config_entry *entry, void *unused)

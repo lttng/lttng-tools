@@ -17,14 +17,12 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -32,11 +30,13 @@
 #include <grp.h>
 #include <pwd.h>
 #include <sys/file.h>
-#include <dirent.h>
+#include <fcntl.h>
 
 #include <common/common.h>
 #include <common/runas.h>
 #include <common/compat/getenv.h>
+#include <common/compat/string.h>
+#include <common/compat/dirent.h>
 
 #include "utils.h"
 #include "defaults.h"
@@ -92,9 +92,9 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		}
 
 		/* Cut the part we will be trying to resolve */
-		cut_path = strndup(path, next - path);
+		cut_path = lttng_strndup(path, next - path);
 		if (cut_path == NULL) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 
@@ -230,9 +230,9 @@ char *utils_expand_path(const char *path)
 	while ((next = strstr(absolute_path, "/./"))) {
 
 		/* We prepare the start_path not containing it */
-		start_path = strndup(absolute_path, next - absolute_path);
+		start_path = lttng_strndup(absolute_path, next - absolute_path);
 		if (!start_path) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 		/* And we concatenate it with the part after this string */
@@ -250,9 +250,9 @@ char *utils_expand_path(const char *path)
 		}
 
 		/* Then we prepare the start_path not containing it */
-		start_path = strndup(absolute_path, previous - absolute_path);
+		start_path = lttng_strndup(absolute_path, previous - absolute_path);
 		if (!start_path) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 
@@ -480,7 +480,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 		goto error;
 	}
 
-	ret = fprintf(fp, "%d\n", pid);
+	ret = fprintf(fp, "%d\n", (int) pid);
 	if (ret < 0) {
 		PERROR("fprintf pid file");
 		goto error;
@@ -489,7 +489,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 	if (fclose(fp)) {
 		PERROR("fclose");
 	}
-	DBG("Pid %d written in file %s", pid, filepath);
+	DBG("Pid %d written in file %s", (int) pid, filepath);
 	ret = 0;
 error:
 	return ret;
@@ -520,8 +520,14 @@ int utils_create_lock_file(const char *filepath)
 	 * already a process using the same lock file running
 	 * and we should exit.
 	 */
-	ret = flock(fd, LOCK_EX | LOCK_NB);
-	if (ret) {
+	struct flock lock;
+	lock.l_start = 0;
+	lock.l_len = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_type = F_WRLCK;
+
+	ret = fcntl(fd, F_SETLK, &lock);
+	if (ret == -1) {
 		ERR("Could not get lock file %s, another instance is running.",
 			filepath);
 		if (close(fd)) {
@@ -1206,9 +1212,9 @@ int utils_recursive_rmdir(const char *path)
 		PERROR("Cannot open '%s' path", path);
 		return -1;
 	}
-	dir_fd = dirfd(dir);
+	dir_fd = lttng_dirfd(dir);
 	if (dir_fd < 0) {
-		PERROR("dirfd");
+		PERROR("lttng_dirfd");
 		return -1;
 	}
 
@@ -1216,9 +1222,19 @@ int utils_recursive_rmdir(const char *path)
 		if (!strcmp(entry->d_name, ".")
 				|| !strcmp(entry->d_name, ".."))
 			continue;
-		switch (entry->d_type) {
-		case DT_DIR:
-		{
+
+		struct stat st;
+		char filename[PATH_MAX];
+
+		if (snprintf(filename, sizeof(filename), "%s/%s", path, entry->d_name)) {
+			continue;
+		}
+
+		if (stat(filename, &st)) {
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
 			char subpath[PATH_MAX];
 
 			strncpy(subpath, path, PATH_MAX);
@@ -1230,12 +1246,9 @@ int utils_recursive_rmdir(const char *path)
 			if (utils_recursive_rmdir(subpath)) {
 				is_empty = 0;
 			}
-			break;
-		}
-		case DT_REG:
+		} else if (S_ISREG(st.st_mode)) {
 			is_empty = 0;
-			break;
-		default:
+		} else {
 			ret = -EINVAL;
 			goto end;
 		}

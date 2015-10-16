@@ -27,16 +27,18 @@ config.status
 stamp-h1
 libtool
 tags
+/config/
 
 # cscope and ctags
 cscope.*
 tags
 
 # m4 macros not automatically generated
-/config/
-!config/epoll.m4
-!config/config_feature.m4
-!/config/ax_*
+/m4/libtool.m4
+/m4/ltoptions.m4
+/m4/ltsugar.m4
+/m4/ltversion.m4
+/m4/lt~obsolete.m4
 
 /src/bin/lttng-sessiond/lttng-sessiond
 /src/bin/lttng/lttng

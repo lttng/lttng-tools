@@ -18,7 +18,6 @@
 #ifndef _LTT_TRACE_UST_H
 #define _LTT_TRACE_UST_H
 
-#include <config.h>
 #include <limits.h>
 #include <urcu/list.h>
 

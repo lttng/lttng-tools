@@ -18,7 +18,6 @@
 #ifndef LTTNG_CTL_HELPER_H
 #define LTTNG_CTL_HELPER_H
 
-#define _GNU_SOURCE
 #include <stdio.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>

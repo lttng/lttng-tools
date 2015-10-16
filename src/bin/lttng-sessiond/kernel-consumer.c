@@ -15,16 +15,15 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
+#include <common/compat/string.h>
 
 #include "consumer.h"
 #include "health-sessiond.h"
@@ -48,9 +47,9 @@ static char *create_channel_path(struct consumer_output *consumer,
 			PERROR("snprintf kernel channel path");
 			goto error;
 		}
-		pathname = strndup(tmp_path, sizeof(tmp_path));
+		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));
 		if (!pathname) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 
@@ -69,9 +68,9 @@ static char *create_channel_path(struct consumer_output *consumer,
 			PERROR("snprintf kernel metadata path");
 			goto error;
 		}
-		pathname = strndup(tmp_path, sizeof(tmp_path));
+		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));
 		if (!pathname) {
-			PERROR("strndup");
+			PERROR("lttng_strndup");
 			goto error;
 		}
 		DBG3("Kernel network consumer subdir path: %s", pathname);

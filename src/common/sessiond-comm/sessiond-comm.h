@@ -25,7 +25,6 @@
 #ifndef _LTTNG_SESSIOND_COMM_H
 #define _LTTNG_SESSIOND_COMM_H
 
-#define _GNU_SOURCE
 #include <limits.h>
 #include <lttng/lttng.h>
 #include <lttng/snapshot-internal.h>

@@ -15,13 +15,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -29,6 +27,7 @@
 #include <ctype.h>
 
 #include <src/common/sessiond-comm/sessiond-comm.h>
+#include <common/compat/string.h>
 
 /* Mi dependancy */
 #include <common/mi-lttng.h>
@@ -626,9 +625,9 @@ int check_exclusion_subsets(const char *event_name,
 				char **new_exclusion_list;
 
 				/* Excluder is a proper subset of event */
-				string = strndup(next_excluder, excluder_length);
+				string = lttng_strndup(next_excluder, excluder_length);
 				if (!string) {
-					PERROR("strndup error");
+					PERROR("lttng_strndup error");
 					goto error;
 				}
 				new_exclusion_list = realloc(exclusion_list,

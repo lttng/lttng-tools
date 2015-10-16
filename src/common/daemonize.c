@@ -16,10 +16,9 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <unistd.h>
-#include <paths.h>
+#include <common/compat/paths.h>
 #include <fcntl.h>
 #include <wait.h>
 #include <stdlib.h>

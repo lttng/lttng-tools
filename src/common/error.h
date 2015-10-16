@@ -32,6 +32,11 @@
 #include <lttng/lttng-error.h>
 #include <common/compat/tid.h>
 
+/* Avoid conflict with Solaris <sys/regset.h> */
+#if defined(ERR) && defined(__sun__)
+#undef ERR
+#endif
+
 /* Stringify the expansion of a define */
 #define XSTR(d) STR(d)
 #define STR(s) #s

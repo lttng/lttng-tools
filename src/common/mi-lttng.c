@@ -16,10 +16,8 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
-#include <include/config.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 #include <lttng/snapshot-internal.h>
 #include "mi-lttng.h"
 
@@ -399,6 +397,7 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 	default:
 		/* Should not have an unknown domain */
 		assert(0);
+		return 0;
 	}
 }
 
@@ -415,6 +414,7 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 	default:
 		/* Should not have an unknow buffer type */
 		assert(0);
+		return 0;
 	}
 }
 

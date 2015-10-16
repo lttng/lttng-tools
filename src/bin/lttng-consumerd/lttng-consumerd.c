@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <fcntl.h>
 #include <getopt.h>
@@ -38,7 +37,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <assert.h>
-#include <config.h>
 #include <urcu/compiler.h>
 #include <ulimit.h>
 

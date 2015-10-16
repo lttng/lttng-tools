@@ -15,7 +15,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <string.h>
@@ -83,7 +82,7 @@ int lttng_save_session_attr_set_session_name(
 		size_t len;
 
 		len = strlen(session_name);
-		if (len >= NAME_MAX) {
+		if (len >= LTTNG_NAME_MAX) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}

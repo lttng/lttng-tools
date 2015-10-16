@@ -15,10 +15,9 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <common/error.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 
 #include "load-session-thread.h"
 #include "lttng-sessiond.h"

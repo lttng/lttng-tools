@@ -1,18 +1,64 @@
 AC_PREREQ([2.64])
 AC_INIT([lttng-tools],[2.8.0-pre],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
+
+AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_MACRO_DIR([m4])
+
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
-AC_CONFIG_MACRO_DIR([config])
+
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
 AM_MAINTAINER_MODE([enable])
+
+# Enable silent rules if available (Introduced in AM 1.11)
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-# Compute minor/major/patchlevel version numbers
+# Checks for C compiler
+AC_USE_SYSTEM_EXTENSIONS
+AC_SYS_LARGEFILE
+AC_PROG_CC
+AC_PROG_CC_STDC
+
+# Checks for programs.
+AC_PROG_GREP
+AC_PROG_LEX
+AC_PROG_MAKE_SET
 AC_PROG_SED
-major_version=$(echo AC_PACKAGE_VERSION | sed 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
-minor_version=$(echo AC_PACKAGE_VERSION | sed 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
-patchlevel_version=$(echo AC_PACKAGE_VERSION | sed 's/^[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\).*$/\1/')
+AC_PROG_YACC
+LT_INIT
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UID_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+
+AX_C___ATTRIBUTE__
+AS_IF([test "x$ax_cv___attribute__" = "xyes"],
+        [:],
+        [AC_MSG_ERROR([The compiler does not support __attribute__ extensions])])
+
+AX_PTHREAD(,[AC_MSG_ERROR([Could not configure pthreads support])])
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
+
+AX_LIB_SOCKET_NSL
+
+# Compute minor/major/patchlevel version numbers
+major_version=$(echo AC_PACKAGE_VERSION | $SED 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
+minor_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
+patchlevel_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\).*$/\1/')
 AC_SUBST([MAJOR_VERSION], [$major_version])
 AC_SUBST([MINOR_VERSION], [$minor_version])
 AC_SUBST([PATCHLEVEL_VERSION], [$patchlevel_version])
@@ -22,14 +68,11 @@ AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patch
 
 version_name="Herbe à Détourne"
 version_description='Brewed with unrestrained amounts of Citra hop, the Herbe à Détourne is a fantastic New World Tripel brewed by "Dieu du Ciel!". Aromas of mango, cantaloupe melon and passion fruit, combined with a controlled bitter finish, unite in making this smooth golden-orange beer stand apart.'
-version_description_c=$(echo $version_description | sed 's/"/\\"/g')
+version_description_c=$(echo $version_description | $SED 's/"/\\"/g')
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
 AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description_c"], "")
 
-AC_CONFIG_HEADERS([include/config.h])
-
-AC_PROG_GREP
 # libtool link_all_deplibs fixup. See http://bugs.lttng.org/issues/321.
 AC_ARG_ENABLE(libtool-linkdep-fixup,
 	AS_HELP_STRING([--disable-libtool-linkdep-fixup],
@@ -39,15 +82,15 @@ AC_ARG_ENABLE(libtool-linkdep-fixup,
 
 AS_IF([test "x$libtool_fixup" = "xyes"],
 	    [
-	    libtool_m4="$srcdir/config/libtool.m4"
+	    libtool_m4="$srcdir/m4/libtool.m4"
 	    libtool_flag_pattern=".*link_all_deplibs\s*,\s*\$1\s*)"
 	    AC_MSG_CHECKING([for occurence(s) of link_all_deplibs = no in $libtool_m4])
-	    libtool_flag_pattern_count=$(grep -c "$libtool_flag_pattern\s*=\s*no" $libtool_m4)
+	    libtool_flag_pattern_count=$($GREP -c "$libtool_flag_pattern\s*=\s*no" $libtool_m4)
 	    AS_IF([test $libtool_flag_pattern_count -ne 0],
 	    [
 		  AC_MSG_RESULT([$libtool_flag_pattern_count])
 		  AC_MSG_WARN([the detected libtool will not link all dependencies, forcing link_all_deplibs = unknown])
-		  sed -i "s/\($libtool_flag_pattern\)\s*=\s*no/\1=unknown/g" $libtool_m4
+		  SED -i "s/\($libtool_flag_pattern\)\s*=\s*no/\1=unknown/g" $libtool_m4
 		  ],
 		  [
 		  AC_MSG_RESULT([none])
@@ -69,8 +112,8 @@ AC_CHECK_FUNCS([ \
 	atexit bzero clock_gettime dup2 fdatasync ftruncate \
 	gethostbyname gethostname getpagesize localtime_r memchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
-	strncasecmp strndup strpbrk strrchr strstr strtol strtoul \
-	strtoull \
+	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
+	strtoull dirfd gethostbyname2 getipnodebyname \
 ])
 
 # Babeltrace viewer check
@@ -512,29 +555,6 @@ AC_SUBST([RUN_PYTHON_AGENT_TEST])
 AC_SUBST([PYTHON2_AGENT])
 AC_SUBST([PYTHON3_AGENT])
 
-AC_SYS_LARGEFILE
-
-# C compiler tests
-AC_PROG_CC
-AC_C_INLINE
-
-# Type availability checking
-AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_MODE_T
-AC_TYPE_OFF_T
-AC_TYPE_PID_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UID_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-
-LT_INIT
-AC_PROG_YACC
-AC_PROG_LEX
 
 if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
 	if test x"$YACC" != "xbison -y"; then

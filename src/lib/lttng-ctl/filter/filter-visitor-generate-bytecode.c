@@ -41,7 +41,7 @@ static
 int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 		struct ir_op *node);
 
-static inline int fls(unsigned int x)
+static inline int lttng_fls(unsigned int x)
 {
 	int r = 32;
 
@@ -74,7 +74,7 @@ static inline int get_count_order(unsigned int count)
 {
 	int order;
 
-	order = fls(count) - 1;
+	order = lttng_fls(count) - 1;
 	if (count & (count - 1))
 		order++;
 	return order;

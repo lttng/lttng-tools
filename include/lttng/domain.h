@@ -54,7 +54,7 @@ struct lttng_domain {
 
 	union {
 		pid_t pid;
-		char exec_name[NAME_MAX];
+		char exec_name[LTTNG_NAME_MAX];
 		char padding[LTTNG_DOMAIN_PADDING2];
 	} attr;
 };

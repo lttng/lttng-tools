@@ -14,7 +14,7 @@ version.h:
 	## We first create variables for the current git version and
 	## the locations of the version.h and version.h.tmpl files.
 	##
-	@echo -n "Generating version.h... "
+	@echo $(ECHO_N) "Generating version.h... $(ECHO_C)"
 	@(version_h_tmpl="$(top_srcdir)/include/version.h.tmpl"; \
 	if [ -f "$${version_h_tmpl}" ]; then \
 		version_h="$(top_builddir)/include/version.h"; \
@@ -35,23 +35,23 @@ version.h:
 			[ "$${version_h_tmpl}" -nt "$${version_h}" ]; then \
 			cp "$${version_h_tmpl}" "$${version_h}"; \
 		fi; \
-		echo -n "git version: \"$${git_version}\""; \
+		echo $(ECHO_N) "git version: \"$${git_version}\"$(ECHO_C)"; \
 		##
 		## We verify that git_version isn't the same as the one
 		## currently in the file (if there is one), as we don't
 		## want to update the file if it is already up to date.
 		##
 		version_match='^#define GIT_VERSION.*'; \
-		old_version=$$(grep "$${version_match}" "$${version_h}"); \
+		old_version=$$($(GREP) "$${version_match}" "$${version_h}"); \
 		new_version="#define GIT_VERSION	\"$${git_version}\""; \
 		if [ x"$${old_version}" != x"$${new_version}" ]; then \
-			sed -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
+			$(SED) -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
 		else \
-			echo -n " (cached)"; \
+			echo $(ECHO_N) " (cached)$(ECHO_C)"; \
 		fi; \
-		echo -n "... "; \
+		echo $(ECHO_N) "... $(ECHO_C)"; \
 	fi)
-	@echo "ok"
+	@echo "$(ECHO_T)ok"
 
 ##
 ## version.h is defined as a .PHONY file even if it's a real file as

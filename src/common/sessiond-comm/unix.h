@@ -18,7 +18,6 @@
 #ifndef _LTTCOMM_UNIX_H
 #define _LTTCOMM_UNIX_H
 
-#define _GNU_SOURCE
 #include <limits.h>
 #include <sys/un.h>
 

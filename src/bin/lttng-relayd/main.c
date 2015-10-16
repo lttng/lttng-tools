@@ -18,7 +18,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <getopt.h>
 #include <grp.h>
@@ -40,7 +39,6 @@
 #include <urcu/uatomic.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <config.h>
 
 #include <lttng/lttng.h>
 #include <common/common.h>
@@ -56,7 +54,7 @@
 #include <common/sessiond-comm/relayd.h>
 #include <common/uri.h>
 #include <common/utils.h>
-#include <common/config/config.h>
+#include <common/config/cconfig.h>
 #include <urcu/rculist.h>
 
 #include "cmd.h"
@@ -307,7 +305,7 @@ end:
 
 /*
  * config_entry_handler_cb used to handle options read from a config file.
- * See config_entry_handler_cb comment in common/config/config.h for the
+ * See config_entry_handler_cb comment in common/config/cconfig.h for the
  * return value conventions.
  */
 static int config_entry_handler(const struct config_entry *entry, void *unused)
@@ -1068,13 +1066,13 @@ static int relay_create_session(struct lttcomm_relayd_hdr *recv_hdr,
 	int ret = 0, send_ret;
 	struct relay_session *session;
 	struct lttcomm_relayd_status_session reply;
-	char session_name[NAME_MAX];
-	char hostname[HOST_NAME_MAX];
+	char session_name[LTTNG_NAME_MAX];
+	char hostname[LTTNG_HOST_NAME_MAX];
 	uint32_t live_timer = 0;
 	bool snapshot = false;
 
-	memset(session_name, 0, NAME_MAX);
-	memset(hostname, 0, HOST_NAME_MAX);
+	memset(session_name, 0, LTTNG_NAME_MAX);
+	memset(hostname, 0, LTTNG_HOST_NAME_MAX);
 
 	memset(&reply, 0, sizeof(reply));
 

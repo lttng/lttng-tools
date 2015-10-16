@@ -15,7 +15,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <ctype.h>
@@ -41,7 +40,7 @@
 #include <lttng/lttng.h>
 #include <lttng/snapshot.h>
 
-#include "config.h"
+#include "cconfig.h"
 #include "config-internal.h"
 
 struct handler_filter_args {

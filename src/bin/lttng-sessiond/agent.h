@@ -18,7 +18,6 @@
 #ifndef LTTNG_SESSIOND_AGENT_H
 #define LTTNG_SESSIOND_AGENT_H
 
-#define _GNU_SOURCE
 #include <inttypes.h>
 
 #include <common/hashtable/hashtable.h>
