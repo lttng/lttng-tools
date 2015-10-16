@@ -44,8 +44,8 @@
 
 #include <common/defaults.h>
 #include <common/common.h>
-#include <common/consumer.h>
-#include <common/consumer-timer.h>
+#include <common/consumer/consumer.h>
+#include <common/consumer/consumer-timer.h>
 #include <common/compat/poll.h>
 #include <common/compat/getenv.h>
 #include <common/sessiond-comm/sessiond-comm.h>

@@ -19,7 +19,7 @@
 #ifndef CONSUMER_METADATA_CACHE_H
 #define CONSUMER_METADATA_CACHE_H
 
-#include <common/consumer.h>
+#include <common/consumer/consumer.h>
 
 struct consumer_metadata_cache {
 	char *data;

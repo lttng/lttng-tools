@@ -18,7 +18,7 @@
 #ifndef _CONSUMER_H
 #define _CONSUMER_H
 
-#include <common/consumer.h>
+#include <common/consumer/consumer.h>
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
 #include <urcu/ref.h>

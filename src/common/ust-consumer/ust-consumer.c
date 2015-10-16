@@ -39,9 +39,9 @@
 #include <common/relayd/relayd.h>
 #include <common/compat/fcntl.h>
 #include <common/compat/endian.h>
-#include <common/consumer-metadata-cache.h>
-#include <common/consumer-stream.h>
-#include <common/consumer-timer.h>
+#include <common/consumer/consumer-metadata-cache.h>
+#include <common/consumer/consumer-stream.h>
+#include <common/consumer/consumer-timer.h>
 #include <common/utils.h>
 #include <common/index/index.h>
 

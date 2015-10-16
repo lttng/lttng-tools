@@ -40,9 +40,9 @@
 #include <common/pipe.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
-#include <common/consumer-stream.h>
+#include <common/consumer/consumer-stream.h>
 #include <common/index/index.h>
-#include <common/consumer-timer.h>
+#include <common/consumer/consumer-timer.h>
 
 #include "kernel-consumer.h"
 
