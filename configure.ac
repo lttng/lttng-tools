@@ -550,11 +550,158 @@ AS_IF([test "x$enable_test_python3_agent" = "xyes" -o "x$test_python3_agent_auto
 
 	])
 ])
-
 AC_SUBST([RUN_PYTHON_AGENT_TEST])
 AC_SUBST([PYTHON2_AGENT])
 AC_SUBST([PYTHON3_AGENT])
 
+# Arguments for binaries build exclusion
+AC_ARG_ENABLE([bin-lttng], AS_HELP_STRING([--disable-bin-lttng],[Disable the build of lttng binaries]))
+AC_ARG_ENABLE([bin-lttng-consumerd], AS_HELP_STRING([--disable-bin-lttng-consumerd],
+	      [Disable the build of lttng-consumerd binaries]))
+AC_ARG_ENABLE([bin-lttng-crash], AS_HELP_STRING([--disable-bin-lttng-crash],[Disable the build of lttng-crash binaries]))
+AC_ARG_ENABLE([bin-lttng-relayd], AS_HELP_STRING([--disable-bin-lttng-relayd],
+	      [Disable the build of lttng-relayd binaries]))
+AC_ARG_ENABLE([bin-lttng-sessiond], AS_HELP_STRING([--disable-bin-lttng-sessiond],
+	      [Disable the build of lttng-sessiond binaries]))
+AC_ARG_ENABLE([extras], AS_HELP_STRING([--disable-extras],
+	      [Disable the build of the extra components]))
+
+
+# Always build libconfig since it a dependency of libcommon
+build_lib_config=yes
+
+build_lib_compat=no
+build_lib_consumer=no
+build_lib_hashtable=no
+build_lib_health=no
+build_lib_index=no
+build_lib_kernel_consumer=no
+build_lib_kernel_ctl=no
+build_lib_lttng_ctl=no
+build_lib_relayd=no
+build_lib_sessiond_comm=no
+build_lib_testpoint=no
+build_lib_ust_consumer=no
+
+# There is an overlap for enabled dependencies, but this makes everything
+# simpler. libcommon and libconfig are always compiled so they are not repeated
+# here.
+
+# Enable binary dependencies.
+AS_IF([test x$enable_bin_lttng != xno],
+      [
+       build_lib_lttng_ctl=yes
+      ]
+)
+
+AS_IF([test x$enable_bin_lttng_consumerd != xno],
+      [
+       build_lib_consumer=yes
+       build_lib_sessiond_comm=yes
+       build_lib_index=yes
+       build_lib_health=yes
+       build_lib_testpoint=yes
+      ]
+)
+
+AS_IF([test x$enable_bin_lttng_crash != xno],
+      # Do nothing since libconfig and libcommon are built by default.
+      []
+)
+
+AS_IF([test x$enable_bin_lttng_relayd != xno],
+      [
+       build_lib_lttng_ctl=yes
+       build_lib_sessiond_comm=yes
+       build_lib_hashtable=yes
+       build_lib_compat=yes
+       build_lib_index=yes
+       build_lib_health=yes
+       build_lib_testpoint=yes
+      ]
+)
+AS_IF([test x$enable_bin_lttng_sessiond != xno],
+      [
+       build_lib_lttng_ctl=yes
+       build_lib_sessiond_comm=yes
+       build_lib_kernel_ctl=yes
+       build_lib_hashtable=yes
+       build_lib_compat=yes
+       build_lib_relayd=yes
+       build_lib_testpoint=yes
+       build_lib_health=yes
+       build_lib_health=yes
+      ]
+)
+
+# Libraries dependencies enabling
+AS_IF([test x$build_lib_lttng_ctl = xyes],
+      [
+       build_lib_sessiond_comm=yes
+       build_lib_hashtable=yes
+      ]
+)
+
+AS_IF([test x$build_lib_consumer = xyes],
+      [
+       build_lib_sessiond_comm=yes
+       build_lib_kernel_consumer=yes
+       build_lib_hashtable=yes
+       build_lib_compat=yes
+       build_lib_relayd=yes
+       AS_IF([test x$lttng_ust_ctl_found = xyes],[build_lib_ust_consumer=yes])
+      ]
+)
+
+AS_IF([test x$build_lib_kernel_consumer = xyes],
+      [
+       build_lib_kernel_ctl=yes
+       build_lib_relayd=yes
+      ]
+)
+
+AS_IF([test x$build_lib_relayd = xyes],
+      [
+       build_lib_sessiond_comm=yes
+      ]
+)
+
+
+# Export binaries build conditions.
+AM_CONDITIONAL([BUILD_BIN_LTTNG], [test x$enable_bin_lttng != xno])
+AM_CONDITIONAL([BUILD_BIN_LTTNG_CONSUMERD], [test x$enable_bin_lttng_consumerd != xno])
+AM_CONDITIONAL([BUILD_BIN_LTTNG_CRASH], [test x$enable_bin_lttng_crash != xno])
+AM_CONDITIONAL([BUILD_BIN_LTTNG_RELAYD], [test x$enable_bin_lttng_relayd != xno])
+AM_CONDITIONAL([BUILD_BIN_LTTNG_SESSIOND], [test x$enable_bin_lttng_sessiond != xno])
+
+# Export the tests and extras build conditions.
+AS_IF([\
+test "x$enable_bin_lttng" != "xno" && \
+test "x$enable_bin_lttng_consumerd" != "xno" && \
+test "x$enable_bin_lttng_crash" != "xno" && \
+test "x$enable_bin_lttng_relayd" != "xno" && \
+test "x$enable_bin_lttng_sessiond" != "xno"],
+[build_tests=yes],
+[build_tests=no]
+)
+
+AM_CONDITIONAL([BUILD_TESTS], [test x$build_tests = xyes])
+AM_CONDITIONAL([BUILD_EXTRAS], [test x$enable_extras != xno])
+
+# Export libraries build conditions.
+AM_CONDITIONAL([BUILD_LIB_COMPAT], [test x$build_lib_compat = xyes])
+AM_CONDITIONAL([BUILD_LIB_CONFIG], [test x$build_lib_config = xyes])
+AM_CONDITIONAL([BUILD_LIB_CONSUMER], [test x$build_lib_consumer = xyes])
+AM_CONDITIONAL([BUILD_LIB_HASHTABLE], [test x$build_lib_hashtable = xyes])
+AM_CONDITIONAL([BUILD_LIB_HEALTH], [test x$build_lib_health = xyes])
+AM_CONDITIONAL([BUILD_LIB_INDEX], [test x$build_lib_index = xyes])
+AM_CONDITIONAL([BUILD_LIB_KERNEL_CONSUMER], [test x$build_lib_kernel_consumer = xyes])
+AM_CONDITIONAL([BUILD_LIB_KERNEL_CTL], [test x$build_lib_kernel_ctl = xyes])
+AM_CONDITIONAL([BUILD_LIB_LTTNG_CTL], [test x$build_lib_lttng_ctl = xyes])
+AM_CONDITIONAL([BUILD_LIB_RELAYD], [test x$build_lib_relayd = xyes])
+AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes])
+AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
+AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 
 if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
 	if test x"$YACC" != "xbison -y"; then
@@ -670,13 +817,13 @@ AC_CONFIG_FILES([
 	tests/utils/testapp/gen-ust-tracef/Makefile
 ])
 
-# Inject variable into python test script
+# Inject variable into python test script.
 AC_CONFIG_FILES([tests/regression/ust/python-logging/test_python_logging],[chmod +x tests/regression/ust/python-logging/test_python_logging])
 
 AC_OUTPUT
 
 #
-# Mini-report on what will be built
+# Mini-report on what will be built.
 #
 AS_ECHO()
 
@@ -685,7 +832,7 @@ AS_ECHO("$version_description")
 
 AS_ECHO()
 
-# Target architecture we're building for
+# Target architecture we're building for.
 target_arch=$host_cpu
 [
 for f in $CFLAGS; do
@@ -714,6 +861,69 @@ AS_IF([test "x$lttng_ust_support" = "xyes"],[
 ],[
 	AS_ECHO("Disabled")
 ])
+
+AS_ECHO()
+AS_ECHO("Binaries:")
+
+# List binaries to be built
+AS_ECHO_N("lttng: ")
+AS_IF([test x$enable_bin_lttng != xno],[
+       AS_ECHO("Enabled")
+],[
+       AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("lttng-consumerd: ")
+AS_IF([test x$enable_bin_lttng_consumerd != xno],[
+       AS_ECHO("Enabled")
+],[
+       AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("lttng-crash: ")
+AS_IF([test x$enable_bin_lttng_crash != xno],[
+       AS_ECHO("Enabled")
+],[
+       AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("lttng-relayd: ")
+AS_IF([test x$enable_bin_lttng_relayd != xno],[
+       AS_ECHO("Enabled")
+],[
+       AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("lttng-sessiond: ")
+AS_IF([test x$enable_bin_lttng_sessiond != xno],[
+       AS_ECHO("Enabled")
+],[
+       AS_ECHO("Disabled")
+])
+
+AS_ECHO_N("Extras: ")
+AS_IF([test x$enable_extras != xno],[
+       AS_ECHO("Enabled")
+],[
+       AS_ECHO("Disabled")
+])
+
+# Print the bindir and libdir this `make install' will install into.
+AS_ECHO()
+AS_ECHO_N("Binaries will be installed in:  ")
+AS_ECHO("`eval eval echo $bindir`")
+AS_ECHO_N("Libraries will be installed in: ")
+AS_ECHO("`eval eval echo $libdir`")
+
+
+AS_ECHO()
+
+# Print clear message that tests won't be built
+AS_IF([test "x$build_tests" = "xno"],[
+       AS_ECHO("WARNING: Tests won't be built since some binaries were disabled")
+])
+
+AS_ECHO("Tests:")
 
 # LTTng UST Java agent JUL tests enabled/disabled
 AS_ECHO_N("LTTng-UST Java agent JUL tests: ")
@@ -752,13 +962,6 @@ AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
 ],[
 	AS_ECHO("Disabled")
 ])
-
-# Print the bindir and libdir this `make install' will install into.
-AS_ECHO()
-AS_ECHO_N("Binaries will be installed in:  ")
-AS_ECHO("`eval eval echo $bindir`")
-AS_ECHO_N("Libraries will be installed in: ")
-AS_ECHO("`eval eval echo $libdir`")
 
 # If we build the sessiond, print the paths it will use
 AS_ECHO()

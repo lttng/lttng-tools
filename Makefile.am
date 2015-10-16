@@ -1,10 +1,12 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = include \
-		  src \
-		  tests \
-		  extras \
-		  doc
+DIST_SUBDIRS = include src extras doc tests
+
+SUBDIRS = include src doc tests
+
+if BUILD_EXTRAS
+SUBDIRS += extras
+endif
 
 dist_doc_DATA = LICENSE \
                 ChangeLog \
