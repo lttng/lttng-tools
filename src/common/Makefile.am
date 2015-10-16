@@ -2,9 +2,60 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
-		  kernel-consumer ust-consumer testpoint index config \
-		  consumer
+SUBDIRS =
+
+# Make sure to always distribute all folders
+# since SUBDIRS is decided at configure time.
+DIST_SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
+	  kernel-consumer ust-consumer testpoint index config consumer
+
+if BUILD_LIB_COMPAT
+SUBDIRS += compat
+endif
+
+if BUILD_LIB_HEALTH
+SUBDIRS += health
+endif
+
+if BUILD_LIB_HASHTABLE
+SUBDIRS += hashtable
+endif
+
+if BUILD_LIB_KERNEL_CTL
+SUBDIRS += kernel-ctl
+endif
+
+if BUILD_LIB_SESSIOND_COMM
+SUBDIRS += sessiond-comm
+endif
+
+if BUILD_LIB_RELAYD
+SUBDIRS += relayd
+endif
+
+if BUILD_LIB_KERNEL_CONSUMER
+SUBDIRS += kernel-consumer
+endif
+
+if BUILD_LIB_UST_CONSUMER
+SUBDIRS += ust-consumer
+endif
+
+if BUILD_LIB_TESTPOINT
+SUBDIRS += testpoint
+endif
+
+if BUILD_LIB_INDEX
+SUBDIRS += index
+endif
+
+if BUILD_LIB_CONFIG
+SUBDIRS += config
+endif
+
+if BUILD_LIB_CONSUMER
+SUBDIRS += consumer
+endif
 
 AM_CFLAGS = -fno-strict-aliasing
 
