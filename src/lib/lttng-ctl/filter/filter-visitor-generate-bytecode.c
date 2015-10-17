@@ -34,7 +34,6 @@
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
 #endif
 
-//#define INIT_ALLOC_SIZE		PAGE_SIZE
 #define INIT_ALLOC_SIZE		4
 
 static
