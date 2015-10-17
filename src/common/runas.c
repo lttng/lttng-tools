@@ -532,22 +532,13 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 static
 int reset_sighandler(void)
 {
-	int sig, ret = 0;
+	int sig;
 
 	DBG("Resetting run_as worker signal handlers to default");
-	for (sig = SIGHUP; sig <= SIGUNUSED; sig++) {
-		/* Skip unblockable signals. */
-		if (sig == SIGKILL || sig == SIGSTOP) {
-			continue;
-		}
-		if (signal(sig, SIG_DFL) == SIG_ERR) {
-			PERROR("reset signal %d", sig);
-			ret = -1;
-			goto end;
-		}
+	for (sig = 1; sig <= 31; sig++) {
+		(void) signal(sig, SIG_DFL);
 	}
-end:
-	return ret;
+	return 0;
 }
 
 static
