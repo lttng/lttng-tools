@@ -1336,7 +1336,7 @@ function trace_matches ()
 	local nr_iter=$2
 	local trace_path=$3
 
-	which $BABELTRACE_BIN >/dev/null
+	type $BABELTRACE_BIN >/dev/null
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
 
 	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
@@ -1366,7 +1366,7 @@ function trace_match_only_opt()
 		babeltrace="$REMOTE_BABELTRACE_PATH$REMOTE_BABELTRACE_BIN"
 	fi
 
-	$BASE_COMMAND "which $babeltrace >/dev/null"
+	$BASE_COMMAND "type $babeltrace >/dev/null"
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
 
 	local count=$($BASE_COMMAND "$babeltrace $trace_path" | grep $event_name | wc -l)
@@ -1406,7 +1406,7 @@ function validate_trace_opt
 		babeltrace="$REMOTE_BABELTRACE_PATH$REMOTE_BABELTRACE_BIN"
 	fi
 
-	$BASE_COMMAND "which $babeltrace >/dev/null"
+	$BASE_COMMAND "type $babeltrace >/dev/null"
 	if [ $? -ne 0 ]; then
 	    skip 0 "Babeltrace binary not found. Skipping trace validation"
 	fi
@@ -1443,7 +1443,7 @@ function validate_trace_exp()
 	local event_exp=$1
 	local trace_path=$2
 
-	which $BABELTRACE_BIN >/dev/null
+	type $BABELTRACE_BIN >/dev/null
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace validation"
 
 	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep ${event_exp} | wc -l)
@@ -1462,7 +1462,7 @@ function validate_trace_only_exp()
 	local event_exp=$1
 	local trace_path=$2
 
-	which $BABELTRACE_BIN >/dev/null
+	type $BABELTRACE_BIN >/dev/null
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
 
 	local count=$($BABELTRACE_BIN $trace_path | grep ${event_exp} | wc -l)
@@ -1482,7 +1482,7 @@ function validate_trace_empty()
 {
 	local trace_path=$1
 
-	which $BABELTRACE_BIN >/dev/null
+	type $BABELTRACE_BIN >/dev/null
 	if [ $? -ne 0 ]; then
 	    skip 0 "Babeltrace binary not found. Skipping trace validation"
 	fi
