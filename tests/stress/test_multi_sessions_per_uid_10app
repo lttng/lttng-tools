@@ -35,7 +35,7 @@ source $TESTDIR/utils/utils.sh
 
 function check_sessiond()
 {
-	if [ -z "$(pgrep --full lt-lttng-sessiond)" ]; then
+	if [ -z "$(pgrep -f lt-lttng-sessiond)" ]; then
 		local str_date=$(date +%H%M%S-%d%m%Y)
 
 		diag "!!!The session daemon died unexpectedly!!!"

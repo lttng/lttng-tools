@@ -377,7 +377,7 @@ function start_lttng_relayd_opt()
 		relayd_bin_name=$REMOTE_RELAYD_BIN
 	fi
 
-	if [ -z $($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]") ]; then
+	if [ -z $($BASE_COMMAND "pgrep -f $relayd_bin_name[^\[]") ]; then
 		$BASE_COMMAND "$DIR$relayd_full_path -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST"
 		if [ $? -ne 0 ]; then
 			if [ $withtap -eq "1" ]; then
@@ -430,7 +430,7 @@ function stop_lttng_relayd_opt()
 		relayd_bin_name="$REMOTE_RELAYD_BIN"
 	fi
 
-	PID_RELAYD=$($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]")
+	PID_RELAYD=$($BASE_COMMAND "pgrep -f $relayd_bin_name[^\[]")
 
 	if [ $withtap -eq "1" ]; then
 		diag "Killing lttng-relayd (pid: $PID_RELAYD) (base command: $BASE_COMMAND)"
@@ -446,7 +446,7 @@ function stop_lttng_relayd_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]")
+			out=$($BASE_COMMAND "pgrep -f $relayd_bin_name[^\[]")
 			sleep 0.5
 		done
 		if [ $withtap -eq "1" ]; then
@@ -499,7 +499,7 @@ function start_lttng_sessiond_opt()
 	: ${LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/config/}
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
-	if [ -z $(pgrep --full lt-$SESSIOND_BIN[^\[]) ]; then
+	if [ -z $(pgrep -f lt-$SESSIOND_BIN[^\[]) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
 			$DIR/$SESSIOND_PATH_REL/$SESSIOND_BIN --load "$load_path" --background $raw_opts --consumerd32-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN" --consumerd64-path="$DIR/$CONSUMERD_PATH/$CONSUMERD_BIN"\
@@ -538,7 +538,7 @@ function stop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN[^\[]) $(pgrep --full $RUNAS_BIN[^\[])"
+	PID_SESSIOND="$(pgrep -f lt-$SESSIOND_BIN[^\[]) $(pgrep -f $RUNAS_BIN[^\[])"
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
@@ -555,12 +555,12 @@ function stop_lttng_sessiond_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full lt-$SESSIOND_BIN[^\[])
+			out=$(pgrep -f lt-$SESSIOND_BIN[^\[])
 			sleep 0.5
 		done
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full $CONSUMERD_BIN[^\[])
+			out=$(pgrep -f $CONSUMERD_BIN[^\[])
 			sleep 0.5
 		done
 		if [ $withtap -eq "1" ]; then
@@ -641,7 +641,7 @@ function stop_lttng_consumerd_opt()
 	local signal=$2
 	local kill_opt=""
 
-	PID_CONSUMERD=`pgrep --full $CONSUMERD_BIN[^\[]`
+	PID_CONSUMERD=`pgrep -f $CONSUMERD_BIN[^\[]`
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
@@ -662,7 +662,7 @@ function stop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid=$(pgrep --full $CONSUMERD_BIN[^\[])
+			pid=$(pgrep -f $CONSUMERD_BIN[^\[])
 
 			# If consumerds are still present check their status.
 			# A zombie status qualifies the consumerd as *killed*

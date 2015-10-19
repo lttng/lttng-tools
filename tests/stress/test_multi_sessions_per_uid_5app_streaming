@@ -43,7 +43,7 @@ TRACE_PATH=$($BASE_COMMAND "mktemp -d")
 
 function check_sessiond()
 {
-	if [ -z "$(pgrep --full lt-lttng-sessiond)" ]; then
+	if [ -z "$(pgrep -f lt-lttng-sessiond)" ]; then
 		local str_date=$(date +%H%M%S-%d%m%Y)
 
 		diag "!!!The session daemon died unexpectedly!!!"
@@ -69,7 +69,7 @@ function check_relayd()
 		relayd_bin_name="$REMOTE_RELAYD_BIN"
 	fi
 
-	if [ -z "$($BASE_COMMAND "pgrep --full $relayd_bin_name[^\[]")" ]; then
+	if [ -z "$($BASE_COMMAND "pgrep -f $relayd_bin_name[^\[]")" ]; then
 		local str_date=$(date +%H%M%S-%d%m%Y)
 
 		diag "!!!The relay daemon died unexpectedly!!!"
