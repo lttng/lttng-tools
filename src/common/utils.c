@@ -36,6 +36,7 @@
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
 #include <common/compat/dirent.h>
+#include <lttng/constant.h>
 
 #include "utils.h"
 #include "defaults.h"
@@ -81,6 +82,8 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 
 	/* Resolve the canonical path of the first part of the path */
 	while (try_path != NULL && next != end) {
+		char *try_path_buf = NULL;
+
 		/*
 		 * If there is not any '/' left, we want to try with
 		 * the full path
@@ -97,9 +100,16 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 			goto error;
 		}
 
+		try_path_buf = zmalloc(LTTNG_PATH_MAX);
+		if (!try_path_buf) {
+			PERROR("zmalloc");
+			goto error;
+		}
+
 		/* Try to resolve this part */
-		try_path = realpath((char *)cut_path, NULL);
+		try_path = realpath((char *)cut_path, try_path_buf);
 		if (try_path == NULL) {
+			free(try_path_buf);
 			/*
 			 * There was an error, we just want to be assured it
 			 * is linked to an unexistent directory, if it's another
@@ -116,6 +126,7 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 			}
 		} else {
 			/* Save the place we are before trying the next step */
+			try_path_buf = NULL;
 			free(try_path_prev);
 			try_path_prev = try_path;
 			prev = next;
