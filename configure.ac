@@ -66,7 +66,7 @@ AC_CHECK_HEADERS([ \
 
 # Basic functions check
 AC_CHECK_FUNCS([ \
-	atexit bzero clock_gettime dup2 fdatasync ftruncate \
+	atexit bzero clock_gettime dup2 fdatasync fls ftruncate \
 	gethostbyname gethostname getpagesize localtime_r memchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
