@@ -268,7 +268,9 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 		}
 	}
 
-	ret = poll(events->wait.events, events->wait.nb_fd, timeout);
+	do {
+		ret = poll(events->wait.events, events->wait.nb_fd, timeout);
+	} while (ret == -1 && errno == EINTR);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
 		PERROR("poll wait");
