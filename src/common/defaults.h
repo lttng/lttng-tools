@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *               2015 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -18,6 +19,8 @@
 
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
+
+#include <src/common/macros.h>
 
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"
@@ -303,23 +306,14 @@
 /* Default runas worker name */
 #define DEFAULT_RUN_AS_WORKER_NAME			"lttng-runas"
 
-extern size_t default_channel_subbuf_size;
-extern size_t default_metadata_subbuf_size;
-extern size_t default_ust_pid_channel_subbuf_size;
-extern size_t default_ust_uid_channel_subbuf_size;
-extern size_t default_kernel_channel_subbuf_size;
-
 /*
  * Returns the default subbuf size.
  *
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-static inline
-size_t default_get_channel_subbuf_size(void)
-{
-	return default_channel_subbuf_size;
-}
+LTTNG_HIDDEN
+size_t default_get_channel_subbuf_size(void);
 
 /*
  * Returns the default metadata subbuf size.
@@ -327,11 +321,8 @@ size_t default_get_channel_subbuf_size(void)
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-static inline
-size_t default_get_metadata_subbuf_size(void)
-{
-	return default_metadata_subbuf_size;
-}
+LTTNG_HIDDEN
+size_t default_get_metadata_subbuf_size(void);
 
 /*
  * Returns the default subbuf size for the kernel domain.
@@ -339,11 +330,8 @@ size_t default_get_metadata_subbuf_size(void)
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-static inline
-size_t default_get_kernel_channel_subbuf_size(void)
-{
-	return default_kernel_channel_subbuf_size;
-}
+LTTNG_HIDDEN
+size_t default_get_kernel_channel_subbuf_size(void);
 
 /*
  * Returns the default subbuf size for the UST domain per PID.
@@ -351,11 +339,8 @@ size_t default_get_kernel_channel_subbuf_size(void)
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-static inline
-size_t default_get_ust_pid_channel_subbuf_size(void)
-{
-	return default_ust_pid_channel_subbuf_size;
-}
+LTTNG_HIDDEN
+size_t default_get_ust_pid_channel_subbuf_size(void);
 
 /*
  * Returns the default subbuf size for the UST domain per UID.
@@ -363,10 +348,7 @@ size_t default_get_ust_pid_channel_subbuf_size(void)
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-static inline
-size_t default_get_ust_uid_channel_subbuf_size(void)
-{
-	return default_ust_uid_channel_subbuf_size;
-}
+LTTNG_HIDDEN
+size_t default_get_ust_uid_channel_subbuf_size(void);
 
 #endif /* _DEFAULTS_H */

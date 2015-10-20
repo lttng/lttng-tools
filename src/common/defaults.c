@@ -21,33 +21,40 @@
 
 #include "defaults.h"
 #include "macros.h"
+#include "align.h"
 
-size_t default_channel_subbuf_size;
-size_t default_metadata_subbuf_size;
-size_t default_kernel_channel_subbuf_size;
-size_t default_ust_pid_channel_subbuf_size;
-size_t default_ust_uid_channel_subbuf_size;
+static size_t default_channel_subbuf_size;
+static size_t default_metadata_subbuf_size;
+static size_t default_kernel_channel_subbuf_size;
+static size_t default_ust_pid_channel_subbuf_size;
+static size_t default_ust_uid_channel_subbuf_size;
 
-static void __attribute__((constructor)) init_defaults(void)
+LTTNG_HIDDEN
+size_t default_get_channel_subbuf_size(void)
 {
-	/*
-	 * The libringbuffer won't accept subbuf sizes smaller than the page size.
-	 * If the default subbuf size is smaller, replace it by the page size.
-	 */
-	long page_size = sysconf(_SC_PAGESIZE);
+	return max(_DEFAULT_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+}
 
-	if (page_size < 0) {
-		page_size = 0;
-	}
+LTTNG_HIDDEN
+size_t default_get_metadata_subbuf_size(void)
+{
+	return max(DEFAULT_METADATA_SUBBUF_SIZE, PAGE_SIZE);
+}
 
-	default_channel_subbuf_size =
-		max(_DEFAULT_CHANNEL_SUBBUF_SIZE, page_size);
-	default_metadata_subbuf_size =
-		max(DEFAULT_METADATA_SUBBUF_SIZE, page_size);
-	default_kernel_channel_subbuf_size =
-		max(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, page_size);
-	default_ust_pid_channel_subbuf_size =
-		max(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, page_size);
-	default_ust_uid_channel_subbuf_size =
-		max(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, page_size);
+LTTNG_HIDDEN
+size_t default_get_kernel_channel_subbuf_size(void)
+{
+	return max(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+}
+
+LTTNG_HIDDEN
+size_t default_get_ust_pid_channel_subbuf_size(void)
+{
+	return max(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+}
+
+LTTNG_HIDDEN
+size_t default_get_ust_uid_channel_subbuf_size(void)
+{
+	return max(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
 }
