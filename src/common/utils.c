@@ -107,7 +107,7 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		}
 
 		/* Try to resolve this part */
-		try_path = realpath((char *)cut_path, try_path_buf);
+		try_path = realpath((char *) cut_path, try_path_buf);
 		if (try_path == NULL) {
 			free(try_path_buf);
 			/*
