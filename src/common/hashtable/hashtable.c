@@ -27,6 +27,9 @@
 #include "hashtable.h"
 #include "utils.h"
 
+/* seed_lock protects both seed_init and lttng_ht_seed. */
+static pthread_mutex_t seed_lock = PTHREAD_MUTEX_INITIALIZER;
+static bool seed_init;
 unsigned long lttng_ht_seed;
 
 static unsigned long min_hash_alloc_size = 1;
@@ -94,6 +97,13 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 	/* Test size */
 	if (!size)
 		size = DEFAULT_HT_SIZE;
+
+	pthread_mutex_lock(&seed_lock);
+	if (!seed_init) {
+		lttng_ht_seed = (unsigned long) time(NULL);
+		seed_init = true;
+	}
+	pthread_mutex_unlock(&seed_lock);
 
 	ht = zmalloc(sizeof(*ht));
 	if (ht == NULL) {
@@ -577,13 +587,4 @@ struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 		return NULL;
 	}
 	return caa_container_of(node, struct lttng_ht_node_two_u64, node);
-}
-
-/*
- * lib constructor
- */
-static void __attribute__((constructor)) _init(void)
-{
-	/* Init hash table seed */
-	lttng_ht_seed = (unsigned long) time(NULL);
 }
