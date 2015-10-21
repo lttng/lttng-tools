@@ -437,7 +437,7 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 	channel->switch_timer_enabled = 1;
 
 	its.it_value.tv_sec = switch_timer_interval / 1000000;
-	its.it_value.tv_nsec = switch_timer_interval % 1000000;
+	its.it_value.tv_nsec = (switch_timer_interval % 1000000) * 1000;
 	its.it_interval.tv_sec = its.it_value.tv_sec;
 	its.it_interval.tv_nsec = its.it_value.tv_nsec;
 
@@ -494,7 +494,7 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 	channel->live_timer_enabled = 1;
 
 	its.it_value.tv_sec = live_timer_interval / 1000000;
-	its.it_value.tv_nsec = live_timer_interval % 1000000;
+	its.it_value.tv_nsec = (live_timer_interval % 1000000) * 1000;
 	its.it_interval.tv_sec = its.it_value.tv_sec;
 	its.it_interval.tv_nsec = its.it_value.tv_nsec;
 
