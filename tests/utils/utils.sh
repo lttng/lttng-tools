@@ -88,7 +88,12 @@ if [ ! -z "$REMOTE_RELAYD_TEST" ]; then
 
 	if [[ ! -z "$REMOTE_RELAYD_PATH" ]]; then
 		# Add a trailing slash just in case
-		REMOTE_RELAYD_PATH="$REMOTE_RELAYD_PATH"
+		REMOTE_RELAYD_PATH="$REMOTE_RELAYD_PATH/"
+	fi
+
+	if [[ ! -z "$REMOTE_BABELTRACE_PATH" ]]; then
+		# Add a trailing slash just in case
+		REMOTE_BABELTRACE_PATH="$REMOTE_BABELTRACE_PATH/"
 	fi
 fi
 
