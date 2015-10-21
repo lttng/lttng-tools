@@ -33,11 +33,9 @@ if [ -z "$out" ]; then
 	BAIL_OUT "LTTng modules not detected."
 fi
 
-set -x
 if [[ ! -z "$REMOTE_RELAYD_TEST" ]]; then
 	override_base_command_ssh $REMOTE_RELAYD_HOST $REMOTE_RELAYD_USER $REMOTE_RELAYD_ID_FILE
 fi
-set +x
 
 TRACE_PATH=$($BASE_COMMAND "mktemp -d")
 
