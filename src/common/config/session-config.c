@@ -177,6 +177,11 @@ LTTNG_HIDDEN const char * const config_event_context_preemptible = "PREEMPTIBLE"
 LTTNG_HIDDEN const char * const config_event_context_need_reschedule = "NEED_RESCHEDULE";
 LTTNG_HIDDEN const char * const config_event_context_migratable = "MIGRATABLE";
 
+enum process_event_node_phase {
+	CREATION = 0,
+	ENABLE = 1,
+};
+
 struct consumer_output {
 	int enabled;
 	char *path;
@@ -1455,9 +1460,9 @@ end:
 
 static
 int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
-	const char *channel_name)
+	const char *channel_name, const enum process_event_node_phase phase)
 {
-	int ret, i;
+	int ret = 0, i;
 	xmlNodePtr node;
 	struct lttng_event event;
 	char **exclusions = NULL;
@@ -1708,25 +1713,14 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 		}
 	}
 
-	ret = lttng_enable_event_with_exclusions(handle, &event, channel_name,
-			filter_expression, exclusion_count, exclusions);
-	if (ret) {
-		goto end;
-	}
-
-	if (!event.enabled) {
-		/*
-		 * Note that we should use lttng_disable_event_ext() (2.6+) to
-		 * eliminate the risk of clashing on events of the same
-		 * name (with different event types and loglevels).
-		 *
-		 * Unfortunately, lttng_disable_event_ext() only performs a
-		 * match on the name and event type and errors out if any other
-		 * event attribute is not set to its default value.
-		 *
-		 * This will disable all events that match this name.
-		 */
-		ret = lttng_disable_event(handle, event.name, channel_name);
+	if ((event.enabled && phase == ENABLE) || phase == CREATION) {
+		ret = lttng_enable_event_with_exclusions(handle, &event, channel_name,
+				filter_expression, exclusion_count, exclusions);
+		if (ret < 0) {
+			WARN("Enabling event (name:%s) on load failed.", event.name);
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
 	}
 end:
 	for (i = 0; i < exclusion_count; i++) {
@@ -1743,6 +1737,7 @@ int process_events_node(xmlNodePtr events_node, struct lttng_handle *handle,
 	const char *channel_name)
 {
 	int ret = 0;
+	struct lttng_event event;
 	xmlNodePtr node;
 
 	assert(events_node);
@@ -1751,11 +1746,33 @@ int process_events_node(xmlNodePtr events_node, struct lttng_handle *handle,
 
 	for (node = xmlFirstElementChild(events_node); node;
 		node = xmlNextElementSibling(node)) {
-		ret = process_event_node(node, handle, channel_name);
+		ret = process_event_node(node, handle, channel_name, CREATION);
 		if (ret) {
 			goto end;
 		}
 	}
+
+	/*
+	 * Disable all events to enable only the necessary events.
+	 * Limitations regarding lttng_disable_events and tuple descriptor
+	 * force this approach.
+	 */
+	memset(&event, 0, sizeof(event));
+	event.loglevel = -1;
+	event.type = LTTNG_EVENT_ALL;
+	ret = lttng_disable_event_ext(handle, &event, channel_name, NULL);
+	if (ret) {
+		goto end;
+	}
+
+	for (node = xmlFirstElementChild(events_node); node;
+			node = xmlNextElementSibling(node)) {
+		ret = process_event_node(node, handle, channel_name, ENABLE);
+		if (ret) {
+			goto end;
+		}
+	}
+
 end:
 	return ret;
 }
