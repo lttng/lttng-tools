@@ -23,12 +23,6 @@
 #include "macros.h"
 #include "align.h"
 
-static size_t default_channel_subbuf_size;
-static size_t default_metadata_subbuf_size;
-static size_t default_kernel_channel_subbuf_size;
-static size_t default_ust_pid_channel_subbuf_size;
-static size_t default_ust_uid_channel_subbuf_size;
-
 LTTNG_HIDDEN
 size_t default_get_channel_subbuf_size(void)
 {
