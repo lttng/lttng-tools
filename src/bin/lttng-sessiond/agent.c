@@ -807,7 +807,8 @@ struct agent_event *agent_create_event(const char *name,
 
 	DBG3("Agent create new event with name %s, loglevel type %d, \
 			loglevel value %d and filter %s",
-			name, loglevel_type, loglevel_value, filter_expression);
+			name, loglevel_type, loglevel_value,
+			filter_expression ? filter_expression : "NULL");
 
 	if (!name) {
 		ERR("Failed to create agent event; no name provided.");
