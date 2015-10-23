@@ -398,10 +398,10 @@ static int enable_event(struct agent_app *app, struct agent_event *event)
 	}
 
 	memset(&msg, 0, sizeof(msg));
-	msg.loglevel_value = event->loglevel_value;
-	msg.loglevel_type = event->loglevel_type;
+	msg.loglevel_value = htobe32(event->loglevel_value);
+	msg.loglevel_type = htobe32(event->loglevel_type);
 	strncpy(msg.name, event->name, sizeof(msg.name));
-	msg.filter_expression_length = filter_expression_length;
+	msg.filter_expression_length = htobe32(filter_expression_length);
 
 	bytes_to_send = zmalloc(data_size);
 	if (!bytes_to_send) {
