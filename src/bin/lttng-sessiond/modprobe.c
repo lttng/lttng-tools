@@ -91,6 +91,7 @@ struct kern_modules_param kern_modules_probes_default[] = {
 	{ "lttng-probe-v4l2" },
 	{ "lttng-probe-workqueue" },
 	{ "lttng-probe-writeback" },
+	{ "lttng-probe-x86-irq-vectors" },
 };
 
 /* dynamic probe modules list */
