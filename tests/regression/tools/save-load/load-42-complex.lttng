@@ -61,6 +61,20 @@
 								<loglevel>6</loglevel>
 							</event>
 							<event>
+								<name>uevent_same_name_diff_llevel</name>
+								<enabled>true</enabled>
+								<type>TRACEPOINT</type>
+								<loglevel_type>RANGE</loglevel_type>
+								<loglevel>6</loglevel>
+							</event>
+							<event>
+								<name>uevent_same_name_diff_llevel</name>
+								<enabled>false</enabled>
+								<type>TRACEPOINT</type>
+								<loglevel_type>RANGE</loglevel_type>
+								<loglevel>-1</loglevel>
+							</event>
+							<event>
 								<name>uevent_disabled</name>
 								<enabled>false</enabled>
 								<type>TRACEPOINT</type>

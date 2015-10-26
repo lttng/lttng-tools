@@ -29,7 +29,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=28
+NUM_TESTS=30
 
 source $TESTDIR/utils/utils.sh
 
@@ -50,6 +50,8 @@ function test_basic_load()
 function test_complex_load()
 {
 	local sess="$SESSION_NAME-complex"
+	local mi_result=""
+	local ret=1
 	diag "Test complex load"
 
 	# Start relayd with localhost binding. The complex session uses those
@@ -80,6 +82,18 @@ function test_complex_load()
 	else
 	    fail "Disabled event is loaded in disabled state"
 	fi
+
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//command/output/sessions/session/domains/domain/channels/channel[name='chan2']/events/event[name='uevent_disabled']/enabled/text()")
+	test $mi_result = "false"
+	ok $? "Disabled event is loaded in disabled state"
+
+	# Check that uevent_same_name_diff_llevel with log level 6 (TRACE_INFO) is enabled
+	# This ensure that the state of events with similar name but not same
+	# descriptor tuple (exclusion,filter,loglevel) is restored correctly.
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//command/output/sessions/session/domains/domain/channels/channel[name='chan2']/events/event[name='uevent_same_name_diff_llevel' and loglevel='TRACE_INFO']/enabled/text()")
+	test $mi_result = "true"
+	ok $?  "Enabled event with same name but different loglevel is in disabled state"
+
 	destroy_lttng_session_ok $sess
 
 	stop_lttng_relayd
