@@ -277,7 +277,7 @@
 
 #include "rculfhash.h"
 #include "rculfhash-internal.h"
-#include "urcu-flavor.h"
+#include <urcu-flavor.h>
 
 #include <common/common.h>
 

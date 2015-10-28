@@ -31,8 +31,7 @@
 #include <stdint.h>
 #include <urcu/compiler.h>
 #include <urcu-call-rcu.h>
-
-#include "urcu-flavor.h"
+#include <urcu-flavor.h>
 
 #ifdef __cplusplus
 extern "C" {
