@@ -230,6 +230,10 @@ void print_sessions(void)
 	struct lttng_ht_iter iter;
 	struct relay_session *session;
 
+	if (!sessions_ht) {
+		return;
+	}
+
 	rcu_read_lock();
 	cds_lfht_for_each_entry(sessions_ht->ht, &iter.iter, session,
 			session_n.node) {
