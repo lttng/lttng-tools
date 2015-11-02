@@ -534,6 +534,44 @@ error:
 }
 
 /*
+ * On some filesystems (e.g. nfs), mkdir will validate access rights before
+ * checking for the existence of the path element. This means that on a setup
+ * where "/home/" is a mounted NFS share, and running as an unpriviledged user,
+ * recursively creating a path of the form "/home/my_user/trace/" will fail with
+ * EACCES on mkdir("/home", ...).
+ *
+ * Performing a stat(...) on the path to check for existence allows us to
+ * work around this behaviour.
+ */
+static
+int mkdir_check_exists(const char *path, mode_t mode)
+{
+	int ret = 0;
+	struct stat st;
+
+	ret = stat(path, &st);
+	if (ret == 0) {
+		if (S_ISDIR(st.st_mode)) {
+			/* Directory exists, skip. */
+			goto end;
+		} else {
+			/* Exists, but is not a directory. */
+			errno = ENOTDIR;
+			ret = -1;
+			goto end;
+		}
+	}
+
+	/*
+	 * Let mkdir handle other errors as the caller expects mkdir
+	 * semantics.
+	 */
+	ret = mkdir(path, mode);
+end:
+	return ret;
+}
+
+/*
  * Create directory using the given path and mode.
  *
  * On success, return 0 else a negative error code.
@@ -544,7 +582,7 @@ int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 	int ret;
 
 	if (uid < 0 || gid < 0) {
-		ret = mkdir(path, mode);
+		ret = mkdir_check_exists(path, mode);
 	} else {
 		ret = run_as_mkdir(path, mode, uid, gid);
 	}
@@ -599,9 +637,9 @@ int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode)
 				ret = -1;
 				goto error;
 			}
-			ret = mkdir(tmp, mode);
+			ret = mkdir_check_exists(tmp, mode);
 			if (ret < 0) {
-				if (errno != EEXIST) {
+				if (errno != EACCES) {
 					PERROR("mkdir recursive");
 					ret = -errno;
 					goto error;
@@ -611,14 +649,10 @@ int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode)
 		}
 	}
 
-	ret = mkdir(tmp, mode);
+	ret = mkdir_check_exists(tmp, mode);
 	if (ret < 0) {
-		if (errno != EEXIST) {
-			PERROR("mkdir recursive last element");
-			ret = -errno;
-		} else {
-			ret = 0;
-		}
+		PERROR("mkdir recursive last element");
+		ret = -errno;
 	}
 
 error:
