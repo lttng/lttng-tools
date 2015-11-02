@@ -338,6 +338,10 @@ void print_viewer_streams(void)
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream;
 
+	if (!viewer_streams_ht) {
+		return;
+	}
+
 	rcu_read_lock();
 	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, vstream,
 			stream_n.node) {
