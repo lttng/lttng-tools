@@ -1231,13 +1231,14 @@ int utils_recursive_rmdir(const char *path)
 
 	path_len = strlen(path);
 	while ((entry = readdir(dir))) {
-		if (!strcmp(entry->d_name, ".")
-				|| !strcmp(entry->d_name, ".."))
-			continue;
-
 		struct stat st;
 		size_t name_len;
 		char filename[PATH_MAX];
+
+		if (!strcmp(entry->d_name, ".")
+				|| !strcmp(entry->d_name, "..")) {
+			continue;
+		}
 
 		name_len = strlen(entry->d_name);
 		if (path_len + name_len + 2 > sizeof(filename)) {
