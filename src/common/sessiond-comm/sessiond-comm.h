@@ -6,12 +6,12 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
  * as published by the Free Software Foundation.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -333,8 +333,11 @@ struct lttng_filter_bytecode {
 struct lttng_event_exclusion {
 	uint32_t count;
 	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
-	char names[LTTNG_SYMBOL_NAME_LEN][0];
+	char names[0][LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
+
+#define LTTNG_EVENT_EXCLUSION_NAME_AT(_exclusion, _i) \
+	(&(_exclusion)->names[_i][0])
 
 /*
  * Data structure for the response from sessiond to the lttng client.
