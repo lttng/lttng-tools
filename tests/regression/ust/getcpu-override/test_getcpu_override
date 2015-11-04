@@ -86,7 +86,7 @@ compare()
 	local valid=0
 
 	test ${#array_to_compare[*]} -eq ${#SEQUENCE_SEED[*]}
-	ok $? "Sequence seed and cpuid sequence are equal ${#SEQUENCE_SEED[*]}/${#array_to_compare[*]}"
+	ok $? "Sequence seed and cpuid sequence have the same size ${#SEQUENCE_SEED[*]}/${#array_to_compare[*]}"
 
 	for (( i = 0; i < ${#SEQUENCE_SEED[*]}; i++ )); do
 		if [ "${array_to_compare[$i]}" -ne "$(( ${SEQUENCE_SEED[$i]} % $NPROC))" ]; then
@@ -97,15 +97,26 @@ compare()
 
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $valid -ne "0"
-		ok $? "Cpuid extraction and seed sequence comparison fail as expected"
+		ok $? "Cpuid extraction and seed sequence comparison fails as expected"
 	else
 		ok $valid "Cpuid extraction and seed sequence comparison"
+		if [[ $valid -ne "0" ]]; then
+			diag "Dumping arrays after failed comparison"
+			for (( i = 0; i < ${#SEQUENCE_SEED[*]}; i++ )); do
+				echo -n "# array value is "
+				echo -n "${array_to_compare[$i]}"
+				echo -n " expected "
+				echo "$(( ${SEQUENCE_SEED[$i]} % $NPROC))"
+			done
+			diag "Dumping trace"
+			$BABELTRACE_BIN $TRACE_PATH | awk '{print "# " $0}'
+		fi
 	fi
 }
 
-test_getcpu_override()
+test_getcpu_override_fail()
 {
-	diag "Getcpu plugin"
+	diag "Getcpu plugin - no preloaded plugin"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
@@ -115,11 +126,18 @@ test_getcpu_override()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Move output to an array by using =($())
-	cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
-	num_events=${#cpuid_events[*]}
+	local cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
+	local num_events=${#cpuid_events[*]}
 	test $num_events -eq $NUM_EVENT
 	ok $? "Extraction without getcpu plugin have $num_events/$NUM_EVENT"
 	compare_fail cpuid_events[@]
+
+	return $?
+}
+
+test_getcpu_override()
+{
+	diag "Getcpu plugin - with plugin preloaded"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
@@ -128,10 +146,10 @@ test_getcpu_override()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
-	num_events=${#cpuid_events[*]}
+	local cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
+	local num_events=${#cpuid_events[*]}
 	test $num_events -eq $NUM_EVENT
-	ok $? "Extraction without getcpu plugin have $num_events/$NUM_EVENT"
+	ok $? "Extraction with getcpu plugin have $num_events/$NUM_EVENT"
 
 	compare_ok cpuid_events[@]
 
@@ -143,7 +161,8 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 
 TESTS=(
-	"test_getcpu_override"
+	test_getcpu_override_fail
+	test_getcpu_override
 )
 
 TEST_COUNT=${#TESTS[@]}
@@ -151,16 +170,16 @@ i=0
 
 start_lttng_sessiond
 
-while [ "$i" -lt "$TEST_COUNT" ]; do
-
+for fct_test in ${TESTS[@]};
+do
 	TRACE_PATH=$(mktemp -d)
 
-	# Execute test
-	${TESTS[$i]}
+	${fct_test}
+	if [ $? -ne 0 ]; then
+		break;
+	fi
 
 	rm -rf $TRACE_PATH
-
-	let "i++"
 done
 
 stop_lttng_sessiond
