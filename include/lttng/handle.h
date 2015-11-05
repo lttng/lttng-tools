@@ -43,7 +43,11 @@ struct lttng_handle {
  * This handle contains the session name and domain on which the command will
  * be executed. A domain is basically a tracer like the kernel or user space.
  *
- * Return an newly allocated handle that should be freed using
+ * A NULL domain indicates that the handle is not bound to a specific domain.
+ * This is mostly used for actions that apply on a session and not on a domain
+ * (e.g lttng_set_consumer_url).
+ *
+ * Return a newly allocated handle that should be freed using
  * lttng_destroy_handle. On error, NULL is returned.
  */
 extern struct lttng_handle *lttng_create_handle(const char *session_name,
