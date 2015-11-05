@@ -141,18 +141,15 @@ static int set_consumer_url(const char *session_name, const char *ctrl_url,
 {
 	int ret;
 	struct lttng_handle *handle;
-	struct lttng_domain dom;
 
 	assert(session_name);
 
 	/*
-	 * Set handle with the session name and the domain set to 0. This means to
-	 * the session daemon that the next action applies on the tracing session
-	 * rather then the domain specific session.
+	 * Set handle with the session_name, but no domain. This implies that
+	 * the actions taken with this handle apply on the tracing session
+	 * rather then the domain-specific session.
 	 */
-	memset(&dom, 0, sizeof(dom));
-
-	handle = lttng_create_handle(session_name, &dom);
+	handle = lttng_create_handle(session_name, NULL);
 	if (handle == NULL) {
 		ret = CMD_FATAL;
 		goto error;

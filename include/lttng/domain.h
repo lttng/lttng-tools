@@ -28,6 +28,7 @@ extern "C" {
  * Domain types: the different possible tracers.
  */
 enum lttng_domain_type {
+	LTTNG_DOMAIN_NONE                     = 0,	/* No associated domain. */
 	LTTNG_DOMAIN_KERNEL                   = 1,	/* Linux Kernel tracer. */
 	LTTNG_DOMAIN_UST                      = 2,	/* Global Userspace tracer. */
 	LTTNG_DOMAIN_JUL                      = 3,	/* Java Util Logging. */
