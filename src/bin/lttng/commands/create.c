@@ -146,7 +146,7 @@ static int set_consumer_url(const char *session_name, const char *ctrl_url,
 	assert(session_name);
 
 	/*
-	 * Set handle with the session name and the domain set to 0. This means to
+	 * Set handle with the domain set to 0. This means to
 	 * the session daemon that the next action applies on the tracing session
 	 * rather then the domain specific session.
 	 */

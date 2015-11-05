@@ -1151,17 +1151,24 @@ end:
 }
 
 static
-int create_session_net_output(const char *name, struct lttng_domain *domain,
-	const char *control_uri, const char *data_uri)
+int create_session_net_output(const char *name, const char *control_uri,
+		const char *data_uri)
 {
 	int ret;
 	struct lttng_handle *handle;
+	struct lttng_domain domain;
+
 	const char *uri = NULL;
 
+	/*
+	 * Set handle with the domain set to 0. This means to
+	 * the session daemon that the next action applies on the tracing session
+	 * rather then the domain specific session.
+	 */
+	memset(&domain, 0, sizeof(domain));
 	assert(name);
-	assert(domain);
 
-	handle = lttng_create_handle(name, domain);
+	handle = lttng_create_handle(name, &domain);
 	if (!handle) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto end;
@@ -1343,11 +1350,6 @@ int create_session(const char *name,
 	}
 
 	if (output.control_uri || output.data_uri) {
-		int i;
-		struct lttng_domain *domain;
-		struct lttng_domain *domains[] =
-			{ kernel_domain, ust_domain, jul_domain, log4j_domain };
-
 		/* network destination */
 		if (live_timer_interval && live_timer_interval != UINT64_MAX) {
 			/*
@@ -1363,18 +1365,12 @@ int create_session(const char *name,
 			goto end;
 		}
 
-		for (i = 0; i < (sizeof(domains) / sizeof(domains[0])); i++) {
-			domain = domains[i];
-			if (!domain) {
-				continue;
-			}
-
-			ret = create_session_net_output(name, domain, output.control_uri,
-					output.data_uri);
-			if (ret) {
-				goto end;
-			}
+		ret = create_session_net_output(name, output.control_uri,
+				output.data_uri);
+		if (ret) {
+			goto end;
 		}
+
 	} else {
 		/* either local output or no output */
 		ret = lttng_create_session(name, output.path);
