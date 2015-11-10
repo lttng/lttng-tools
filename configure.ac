@@ -311,8 +311,8 @@ AC_ARG_WITH(lttng-ust-prefix,
 		  ])
 
 # Check liblttng-ust-ctl library
-AC_ARG_ENABLE(lttng-ust,
-	AS_HELP_STRING([--disable-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
+AC_ARG_WITH(lttng-ust,
+	AS_HELP_STRING([--without-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
 	lttng_ust_support=$enableval, lttng_ust_support=yes)
 
 AS_IF([test "x$lttng_ust_support" = "xyes"], [
