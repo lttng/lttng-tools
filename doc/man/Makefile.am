@@ -14,7 +14,8 @@ manaddsuffix = $(addsuffix $(1),$(addprefix $(srcdir)/,$(2)))
 MAN1_NAMES = \
 	lttng \
 	lttng-create \
-	lttng-destroy
+	lttng-destroy \
+	lttng-set-session
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
