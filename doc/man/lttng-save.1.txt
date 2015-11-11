@@ -1,0 +1,69 @@
+lttng-save(1)
+=============
+
+
+NAME
+----
+lttng-save - Save LTTng tracing session configurations
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng save* ['GENERAL OPTIONS'] [option:--all] [option:--force]
+           [option:--output-path='PATH'] ['SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng save` command saves the configurations of one or more
+tracing sessions to files.
+
+The `lttng save` command is used in conjunction with the
+linklttng:lttng-load(1) command to save and restore the complete
+configurations of tracing sessions. This includes the enabled channels
+and event rules, the context added to channels, the tracing activity,
+and more. `lttng save` does not save tracing data, only the tracing
+session parameters.
+
+If 'SESSION' is omitted, all the existing tracing session configurations
+are saved (equivalent to using the option:--all option). Otherwise,
+'SESSION' is the name of an existing tracing session. `lttng list`
+outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
+
+The default output directory path is `$LTTNG_HOME/.lttng/sessions`
+(`$LTTNG_HOME` defaults to `$HOME`). Each tracing
+session configuration file is named `SESSION.lttng`, where `SESSION`
+is the original tracing session name. The default output directory path
+can be overridden with the option:--output-path option.
+
+By default, existing tracing session configuration files are not
+overwritten when saving; the command fails. The option:--force option
+can be used to allow this.
+
+
+OPTIONS
+-------
+General options are described in linklttng:lttng(1).
+
+option:-a, option:--all::
+    Save all tracing session configurations (default).
+
+option:-f, option:--force::
+    Allow overwriting existing tracing session configuration files when
+    saving.
+
+option:-o, option:--output-path='PATH'::
+    Set output directory path to 'PATH'.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-load(1),
+linklttng:lttng(1)

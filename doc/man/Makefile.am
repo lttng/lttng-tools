@@ -15,7 +15,8 @@ MAN1_NAMES = \
 	lttng \
 	lttng-create \
 	lttng-destroy \
-	lttng-set-session
+	lttng-set-session \
+	lttng-save
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
